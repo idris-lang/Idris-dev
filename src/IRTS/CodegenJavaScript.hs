@@ -59,7 +59,9 @@ data JS = JSRaw String
         | JSApp JS [JS]
         | JSNew String [JS]
         | JSError String
-        | JSOp String JS JS
+        | JSBinOp String JS JS
+        | JSPreOp String JS
+        | JSPostOp String JS
         | JSProj JS String
         | JSVar LVar
         | JSNull
@@ -76,6 +78,7 @@ data JS = JSRaw String
         | JSCond [(JS, JS)]
         | JSTernary JS JS JS
         | JSParens JS
+        | JSWhile JS JS
         deriving Eq
 
 
@@ -122,7 +125,7 @@ compileJS (JSNew name args) =
 compileJS (JSError exc) =
   "throw new Error(\"" ++ exc ++ "\")"
 
-compileJS (JSOp op lhs rhs) =
+compileJS (JSBinOp op lhs rhs) =
   compileJS lhs ++ " " ++ op ++ " " ++ compileJS rhs
 
 compileJS (JSProj obj field)
@@ -194,6 +197,10 @@ compileJS (JSTernary cond true false) =
 compileJS (JSParens js) =
   "(" ++ compileJS js ++ ")"
 
+compileJS (JSWhile cond body) =
+     "while (" ++ compileJS cond ++ ") {\n"
+  ++ compileJS body
+  ++ "\n}"
 
 jsTailcall :: JS -> JS
 jsTailcall call =
@@ -212,15 +219,15 @@ jsMeth obj meth =
 
 
 jsInstanceOf :: JS -> JS -> JS
-jsInstanceOf = JSOp "instanceof"
+jsInstanceOf = JSBinOp "instanceof"
 
 
 jsEq :: JS -> JS -> JS
-jsEq = JSOp "=="
+jsEq = JSBinOp "=="
 
 
 jsAnd :: JS -> JS -> JS
-jsAnd = JSOp "&&"
+jsAnd = JSBinOp "&&"
 
 
 jsType :: JS
@@ -277,8 +284,12 @@ foldJS tr add acc js =
           add (tr js) $ add (fold lhs) (foldl' add acc $ map fold rhs)
       | JSNew _ args         <- js =
           add (tr js) $ foldl' add acc $ map fold args
-      | JSOp _ lhs rhs       <- js =
+      | JSBinOp _ lhs rhs    <- js =
           add (tr js) $ add (fold lhs) (fold rhs)
+      | JSPreOp _ val        <- js =
+          add (tr js) $ fold val
+      | JSPostOp _ val       <- js =
+          add (tr js) $ fold val
       | JSProj obj _         <- js =
           add (tr js) (fold obj)
       | JSArray vals         <- js =
@@ -295,6 +306,8 @@ foldJS tr add acc js =
           add (tr js) $ fold val
       | JSCond conds         <- js =
           add (tr js) $ foldl' add acc $ map (uncurry add . (fold *** fold)) conds
+      | JSWhile cond body    <- js =
+          add (tr js) $ add (fold cond) (fold body)
       | otherwise                  =
           tr js
 
@@ -310,7 +323,9 @@ transformJS tr js =
       | JSReturn ret         <- js = JSReturn $ tr ret
       | JSApp lhs rhs        <- js = JSApp (tr lhs) $ map tr rhs
       | JSNew con args       <- js = JSNew con $ map tr args
-      | JSOp op lhs rhs      <- js = JSOp op (tr lhs) (tr rhs)
+      | JSBinOp op lhs rhs   <- js = JSBinOp op (tr lhs) (tr rhs)
+      | JSPreOp op val       <- js = JSPreOp op (tr val)
+      | JSPostOp op val      <- js = JSPostOp op (tr val)
       | JSProj obj field     <- js = JSProj (tr obj) field
       | JSArray vals         <- js = JSArray $ map tr vals
       | JSAssign lhs rhs     <- js = JSAssign (tr lhs) (tr rhs)
@@ -319,7 +334,19 @@ transformJS tr js =
       | JSCond conds         <- js = JSCond $ map (tr *** tr) conds
       | JSTernary c t f      <- js = JSTernary (tr c) (tr t) (tr f)
       | JSParens val         <- js = JSParens $ tr val
+      | JSWhile cond body    <- js = JSWhile(tr cond) (tr body)
       | otherwise                  = js
+
+
+moveJSDeclToTop :: String -> [JS] -> [JS]
+moveJSDeclToTop decl js = move ([], js)
+  where
+    move :: ([JS], [JS]) -> [JS]
+    move (front, js@(JSAlloc name _):back)
+      | name == decl = js : front ++ back
+
+    move (front, js:back) =
+      move (front ++ [js], back)
 
 
 jsSubst :: JS -> JS -> JS -> JS
@@ -454,9 +481,9 @@ inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
         ) field
       ) (inlineJS $ jsSubst (JSIdent arg) opt idx)
 
-  | JSOp op lhs rhs <- ret
+  | JSBinOp op lhs rhs <- ret
   , opt <- inlineJS val =
-      inlineJS $ JSOp op (inlineJS $ jsSubst (JSIdent arg) opt lhs) $
+      inlineJS $ JSBinOp op (inlineJS $ jsSubst (JSIdent arg) opt lhs) $
         (inlineJS $ jsSubst (JSIdent arg) opt rhs)
 
   | JSApp (JSIdent fun) args <- ret
@@ -518,8 +545,12 @@ deadEvalApplyCases js =
 initConstructors :: [JS] -> [JS]
 initConstructors js =
     let tags = nub $ sort $ concat (map getTags js) in
-      map createConstant tags ++ replaceConstructors tags js
+        rearrangePrelude $ map createConstant tags ++ replaceConstructors tags js
       where
+        rearrangePrelude :: [JS] -> [JS]
+        rearrangePrelude = moveJSDeclToTop $ idrRTNamespace ++ "Con"
+
+
         getTags :: JS -> [Int]
         getTags = foldJS match (++) []
           where
@@ -670,6 +701,8 @@ inlineFunctions js =
         match js
           | JSApp (JSIdent ident) _ <- js
           , name == ident = 1
+          | JSNew con _             <- js
+          , name == con   = 1
           | otherwise     = 0
 
 
@@ -689,9 +722,9 @@ reduceConstant
   (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
     JSReturn (JSApp (JSIdent "__IDR__mEVAL0") [val])
   )])
-  | JSNum num       <- val = val
-  | JSOp op lhs rhs <- val =
-      JSParens $ JSOp op (reduceConstant lhs) (reduceConstant rhs)
+  | JSNum num          <- val = val
+  | JSBinOp op lhs rhs <- val =
+      JSParens $ JSBinOp op (reduceConstant lhs) (reduceConstant rhs)
 
   | JSApp (JSProj lhs op) [rhs] <- val
   , op `elem` [ "subtract"
@@ -733,9 +766,9 @@ elimDuplicateEvals (JSAlloc fun (Just (JSFunction args (JSSeq seq)))) =
 elimDuplicateEvals js = js
 
 
-optimizeEvalTailcalls :: (String, String) -> JS -> JS
-optimizeEvalTailcalls (fun, tc) js =
-  optHelper js
+optimizeRuntimeCalls :: String -> String -> [JS] -> [JS]
+optimizeRuntimeCalls fun tc js =
+  optTC tc : map optHelper js
   where
     optHelper :: JS -> JS
     optHelper (JSApp (JSIdent "__IDRRT__tailcall") [
@@ -746,6 +779,165 @@ optimizeEvalTailcalls (fun, tc) js =
     optHelper js = transformJS optHelper js
 
 
+    optTC :: String -> JS
+    optTC tc@"__IDRRT__EVALTC" =
+      JSAlloc tc (Just $ JSFunction ["arg0"] (
+        JSSeq [ JSAlloc "ret" $ Just (
+                  JSTernary (
+                    (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
+                    (hasProp "__IDRLT__mEVAL0" "arg0")
+                  ) (JSApp
+                      (JSIndex
+                        (JSIdent "__IDRLT__mEVAL0")
+                        (JSProj (JSIdent "arg0") "tag")
+                      )
+                      [JSIdent "arg0"]
+                  ) (JSIdent "arg0")
+                )
+              , JSWhile (JSIdent "ret" `jsInstanceOf` (JSIdent "__IDRRT__Cont")) (
+                  JSAssign (JSIdent "ret") (
+                    JSApp (JSProj (JSIdent "ret") "k") []
+                  )
+                )
+              , JSReturn $ JSIdent "ret"
+              ]
+      ))
+
+    optTC tc@"__IDRRT__APPLYTC" =
+      JSAlloc tc (Just $ JSFunction ["fn0", "arg0"] (
+        JSSeq [ JSAlloc "ev" $ Just (JSApp
+                  (JSIdent "__IDRRT__EVALTC") [JSIdent "fn0"]
+                )
+              , JSAlloc "ret" $ Just (
+                  JSTernary (
+                    (JSIdent "ev" `jsInstanceOf` jsCon) `jsAnd`
+                    (hasProp "__IDRLT__mAPPLY0" "ev")
+                  ) (JSApp
+                      (JSIndex
+                        (JSIdent "__IDRLT__mAPPLY0")
+                        (JSProj (JSIdent "ev") "tag")
+                      )
+                      [JSIdent "fn0", JSIdent "arg0", JSIdent "ev"]
+                  ) JSNull
+                )
+              , JSWhile (JSIdent "ret" `jsInstanceOf` (JSIdent "__IDRRT__Cont")) (
+                  JSAssign (JSIdent "ret") (
+                    JSApp (JSProj (JSIdent "ret") "k") []
+                  )
+                )
+              , JSReturn $ JSIdent "ret"
+              ]
+      ))
+
+
+    hasProp :: String -> String -> JS
+    hasProp table var =
+      JSIndex (JSIdent table) (JSProj (JSIdent var) "tag")
+
+
+unfoldLookupTable :: [JS] -> [JS]
+unfoldLookupTable input =
+  let (evals, evalunfold)   = unfoldLT "__IDRLT__mEVAL0" input
+      (applys, applyunfold) = unfoldLT "__IDRLT__mAPPLY0" evalunfold
+      js                    = applyunfold in
+      adaptRuntime $ expandCons evals applys js
+  where
+    adaptRuntime :: [JS] -> [JS]
+    adaptRuntime =
+      adaptCon . adaptApply "__var_2" . adaptApply "ev" . adaptEval
+
+
+    adaptApply var = map (jsSubst (
+        JSIndex (JSIdent "__IDRLT__mAPPLY0") (JSProj (JSIdent var) "tag")
+      ) (JSProj (JSIdent var) "app"))
+
+
+    adaptEval = map (jsSubst (
+        JSIndex (JSIdent "__IDRLT__mEVAL0") (JSProj (JSIdent "arg0") "tag")
+      ) (JSProj (JSIdent "arg0") "eval"))
+
+
+    adaptCon js =
+      adaptCon' [] js
+      where
+        adaptCon' front ((JSAlloc "__IDRRT__Con" (Just body)):back) =
+          front ++ (new:back)
+
+        adaptCon' front (next:back) =
+          adaptCon' (front ++ [next]) back
+
+        adaptCon' front [] = front
+
+
+        new =
+          JSAlloc "__IDRRT__Con" (Just $
+            JSFunction newArgs (
+              JSSeq (map newVar newArgs)
+            )
+          )
+          where
+            newVar var = JSAssign (JSProj JSThis var) (JSIdent var)
+            newArgs = ["tag", "eval", "app", "vars"]
+
+
+    unfoldLT :: String -> [JS] -> ([Int], [JS])
+    unfoldLT lt js =
+      let (table, code) = extractLT lt js
+          expanded      = expandLT lt table in
+          (map fst expanded, map snd expanded ++ code)
+
+
+    expandCons :: [Int] -> [Int] -> [JS] -> [JS]
+    expandCons evals applys js =
+      map expandCons' js
+      where
+        expandCons' :: JS -> JS
+        expandCons' (JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray args])
+          | evalid  <- getId "__IDRLT__mEVAL0"  tag evals
+          , applyid <- getId "__IDRLT__mAPPLY0" tag applys =
+              JSNew "__IDRRT__Con" [ JSNum (JSInt tag)
+                                   , maybe JSNull JSIdent evalid
+                                   , maybe JSNull JSIdent applyid
+                                   , JSArray (map expandCons' args)
+                                   ]
+
+        expandCons' js = transformJS expandCons' js
+
+
+        getId :: String -> Int -> [Int] -> Maybe String
+        getId lt tag entries
+          | tag `elem` entries = Just $ ltIdentifier lt tag
+          | otherwise          = Nothing
+
+
+    ltIdentifier :: String -> Int -> String
+    ltIdentifier "__IDRLT__mEVAL0"  id = idrLTNamespace ++ "EVAL" ++ show id
+    ltIdentifier "__IDRLT__mAPPLY0" id = idrLTNamespace ++ "APPLY" ++ show id
+
+
+    extractLT :: String -> [JS] -> (JS, [JS])
+    extractLT lt js =
+      extractLT' ([], js)
+        where
+          extractLT' :: ([JS], [JS]) -> (JS, [JS])
+          extractLT' (front, js@(JSAlloc fun _):back)
+            | fun == lt = (js, front ++ back)
+
+          extractLT' (front, js:back) = extractLT' (front ++ [js], back)
+
+
+    expandLT :: String -> JS -> [(Int, JS)]
+    expandLT lt (
+        JSAlloc _ (Just (JSApp (JSFunction [] (JSSeq seq)) []))
+      ) = catMaybes (map expandEntry seq)
+          where
+            expandEntry :: JS -> Maybe (Int, JS)
+            expandEntry (JSAssign (JSIndex _ (JSNum (JSInt id))) body) =
+              Just $ (id, JSAlloc (ltIdentifier lt id) (Just body))
+
+            expandEntry js = Nothing
+
+
 removeInstanceChecks :: JS -> JS
 removeInstanceChecks (JSCond conds) =
   JSCond $ eliminateDeadBranches $ map (
@@ -753,7 +945,7 @@ removeInstanceChecks (JSCond conds) =
   ) conds
   where
     removeHelper (
-        JSOp "&&" (JSOp "instanceof" _ (JSIdent "__IDRRT__Con")) check
+        JSBinOp "&&" (JSBinOp "instanceof" _ (JSIdent "__IDRRT__Con")) check
       ) = removeHelper check
     removeHelper js = js
 
@@ -854,9 +1046,12 @@ codegenJavaScript target definitions filename outputType = do
     functions :: [String]
     functions = translate >>> optimize >>> compile $ def
       where
-        translate p = concatMap translateDeclaration p ++ [mainLoop, invokeLoop]
-        optimize p  = foldl' (flip ($)) p opt
-        compile     = map compileJS
+        translate p =
+          prelude ++ concatMap translateDeclaration p ++ [mainLoop, invokeLoop]
+        optimize p  =
+          foldl' (flip ($)) p opt
+        compile     =
+           map compileJS
 
         opt =
           [ map optimizeJS
@@ -867,13 +1062,25 @@ codegenJavaScript target definitions filename outputType = do
           , map removeAllocations
           , elimDeadLoop
           , map elimDuplicateEvals
-          , map (optimizeEvalTailcalls ("__IDR__mEVAL0", "__IDRRT__EVALTC"))
-          , map (optimizeEvalTailcalls ("__IDR__mAPPLY0", "__IDRRT__APPLYTC"))
+          , optimizeRuntimeCalls "__IDR__mEVAL0" "__IDRRT__EVALTC"
+          , optimizeRuntimeCalls "__IDR__mAPPLY0" "__IDRRT__APPLYTC"
           , map removeInstanceChecks
           , inlineFunctions
           , map reduceContinuations
+          , unfoldLookupTable
           ]
 
+    prelude :: [JS]
+    prelude =
+      [ JSAlloc (idrRTNamespace ++ "Cont") (Just $ JSFunction ["k"] (
+          JSAssign (JSProj JSThis "k") (JSIdent "k")
+        ))
+      , JSAlloc (idrRTNamespace ++ "Con") (Just $ JSFunction ["tag", "vars"] (
+          JSSeq [ JSAssign (JSProj JSThis "tag") (JSIdent "tag")
+                , JSAssign (JSProj JSThis "vars") (JSIdent "vars")
+                ]
+        ))
+      ]
 
     mainLoop :: JS
     mainLoop =
@@ -1016,8 +1223,10 @@ translateDeclaration (path, SFun name params stackSize body)
   , (SLet var val next)   <- body
   , (SChkCase cvar cases) <- next
   , ap == txt "APPLY" =
-    let lvar   = translateVariableName var
-        lookup = "[" ++ lvar ++ ".tag](fn0,arg0," ++ lvar ++ ")" in
+    let lvar     = translateVariableName var
+        lookup t = (JSApp
+            (JSIndex (JSIdent t) (JSProj (JSIdent lvar) "tag"))
+            [JSIdent "fn0", JSIdent "arg0", JSIdent lvar]) in
         [ lookupTable [(var, "chk")] var cases
         , jsDecl $ JSFunction ["fn0", "arg0"] (
             JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")
@@ -1027,10 +1236,7 @@ translateDeclaration (path, SFun name params stackSize body)
                   , JSReturn $ (JSTernary (
                        (JSVar var `jsInstanceOf` jsCon) `jsAnd`
                        (hasProp lookupTableName (translateVariableName var))
-                    ) (JSIdent $
-                         lookupTableName ++ lookup
-                      ) JSNull
-                    )
+                    ) (lookup lookupTableName) JSNull)
                   ]
           )
         ]
@@ -1306,7 +1512,7 @@ translateExpression (SOp op vars)
 
   where
     translateBinaryOp :: String -> LVar -> LVar -> JS
-    translateBinaryOp f lhs rhs = JSOp f (JSVar lhs) (JSVar rhs)
+    translateBinaryOp f lhs rhs = JSBinOp f (JSVar lhs) (JSVar rhs)
 
 
     invokeMeth :: LVar -> String -> [LVar] -> JS

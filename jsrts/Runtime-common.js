@@ -14,12 +14,6 @@ var __IDRRT__Float = new __IDRRT__Type('Float');
 var __IDRRT__Ptr = new __IDRRT__Type('Pointer');
 var __IDRRT__Forgot = new __IDRRT__Type('Forgot');
 
-
-/** @constructor */
-var __IDRRT__Cont = function(k) {
-  this.k = k;
-};
-
 var __IDRRT__ffiWrap = function(fid) {
   return function(){
     var res = fid;
@@ -36,12 +30,6 @@ var __IDRRT__ffiWrap = function(fid) {
   }
 };
 
-/** @constructor */
-var __IDRRT__Con = function(tag,vars) {
-  this.tag = tag;
-  this.vars =  vars;
-};
-
 var __IDRRT__tailcall = function(k) {
   var ret = k();
   while (ret instanceof __IDRRT__Cont)
@@ -49,20 +37,3 @@ var __IDRRT__tailcall = function(k) {
 
   return ret;
 };
-
-var __IDRRT__EVALTC = function(arg0) {
-  var ret = (arg0 instanceof __IDRRT__Con && __IDRLT__mEVAL0[arg0.tag])?(__IDRLT__mEVAL0[arg0.tag](arg0)):(arg0);
-  while (ret instanceof __IDRRT__Cont)
-    ret = ret.k();
-
-  return ret;
-};
-
-var __IDRRT__APPLYTC = function(fn0, arg0) {
-  var ev  = __IDRRT__EVALTC(fn0);
-  var ret = (ev instanceof __IDRRT__Con && __IDRLT__mAPPLY0[ev.tag])?(__IDRLT__mAPPLY0[ev.tag](fn0,arg0,ev)):(null)
-  while (ret instanceof __IDRRT__Cont)
-    ret = ret.k();
-
-  return ret;
-}
