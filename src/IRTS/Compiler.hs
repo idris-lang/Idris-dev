@@ -21,6 +21,8 @@ import Idris.AbsSyntax
 import Idris.Erasure
 import Idris.Error
 
+import Debug.Trace
+
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.CaseTree
@@ -50,7 +52,8 @@ compile codegen f tm
 
         -- TODO: DEBUG-ONLY, remove
         ctx <- tt_ctxt <$> getIState
-        let depMap = buildDepMap ctx used
+        ci  <- idris_classes <$> getIState
+        let depMap = buildDepMap ci ctx used
         let printItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
         -- iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
 
@@ -127,7 +130,7 @@ storeUsage n args = do
     cg <- idris_callgraph <$> getIState
     case lookupCtxt n cg of
         [x] -> addToCG n x{ usedpos = IS.toList args }
-        _   -> return ()
+        _   -> addToCG n (CGInfo [] [] [] [] (IS.toList args))  -- data ctors
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do i <- ir tm
@@ -252,6 +255,16 @@ instance ToIR (TT Name) where
                     e' <- ir' env e
                     return (LCase x' [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e',
                                       LConCase 1 (sNS (sUN "True") ["Bool","Prelude"]) [] t'])
+          | (P (DCon t a) n _, args) <- unApply tm
+          = do
+              cg <- idris_callgraph <$> getIState
+              iLOG $ "DCTOR-LEAD " ++ show n ++ " -- " ++ show (lookupCtxt n cg)
+              case lookupCtxtExact n cg of
+                Just (CGInfo _ _ _ _ usedpos)
+                    | ("DCTOR", n, usedpos) `traceShow` True
+                    -> irCon env t a n [if i `elem` usedpos then a else Erased | (i,a) <- zip [0..] args]
+                Nothing -> irCon env t a n args
+
           | (P (DCon t a) n _, args) <- unApply tm
               = irCon env t a n args
           | (P (TCon t a) n _, args) <- unApply tm

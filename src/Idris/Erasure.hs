@@ -11,6 +11,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 
 import Debug.Trace
+import System.IO.Unsafe
 
 import Control.Arrow
 import Control.Applicative
@@ -72,8 +73,8 @@ forwardChain deps
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
-buildDepMap :: Context -> [Name] -> Deps
-buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
+buildDepMap :: Ctxt ClassInfo -> Context -> [Name] -> Deps
+buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
   where
     -- mark the result of Main.main as used with the empty assumption
     addPostulates :: Deps -> Deps
@@ -160,6 +161,13 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
     etaExpand (n : ns) t = etaExpand ns (App t (P Ref n Erased))
 
     getDepsSC :: Name -> [Name] -> Vars -> SC -> Deps
+    getDepsSC fn es vs (STerm t)
+        | show fn == "SN.I-Char instance of NS.Prelude.Classes.UN:\"Ord\""
+        , ("ORDINST", fn, t) `traceShow` True
+        , "===" `traceShow` True
+        , unsafePerformIO (mapM_ print . M.toList $ getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)) `traceShow` True
+        , "===" `traceShow` False
+        = undefined
     getDepsSC fn es vs  ImpossibleCase     = M.empty
     getDepsSC fn es vs (UnmatchedCase msg) = M.empty
     getDepsSC fn es vs (ProjCase t alt)    = error "ProjCase not supported"
@@ -171,6 +179,8 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
         = M.insertWith S.union (S.singleton (fn, Result)) casedVar -- add this dep to all deps
             $ unionMap (getDepsAlt fn es vs casedVar) alts  -- coming from the whole subtree
       where
+        -- TODO: use effect instead of casedVar to mark the ctor tag
+        -- effect    = S.insert (typeName, Result) casedVar  -- mark the tag of the type name as used
         casedVar  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
     getDepsAlt :: Name -> [Name] -> Vars -> Var -> CaseAlt -> Deps
@@ -245,7 +255,13 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
 
             -- TODO: figure out what to do with methods
             -- the following code marks them as completely used
-            Proj t i -> getDepsTerm vs bs cd t `M.union` unconditionalDeps args
+            Proj (P Ref n@(SN (InstanceN className parms)) _) i
+                | [CI ctorName ms ds dscs ps is] <- lookupCtxt className ci
+                    -> S.fromList [(ctorName, Arg i), (n, Result)]
+                         `ins` unconditionalDeps args
+
+            Proj t i
+                -> error $ "cannot analyse projection !" ++ show i ++ " of " ++ show t
 
             _ -> error $ "cannot analyse application of " ++ show fun ++ " to " ++ show args
       where
@@ -255,8 +271,7 @@ buildDepMap ctx ns = addPostulates $ dfs S.empty M.empty ns
         unconditionalDeps args = unionMap (getDepsTerm vs bs cd) args
 
     -- projections (= methods)
-    getDepsTerm vs bs cd (Proj t i) | ("PROJ", t, S.toList cd) `traceShow` False = undefined
-    getDepsTerm vs bs cd (Proj t i) = getDepsTerm vs bs cd t
+    getDepsTerm vs bs cd (Proj t i) = getDepsTerm vs bs cd t  -- TODO?
 
     -- the easy cases
     getDepsTerm vs bs cd (Constant _) = M.empty

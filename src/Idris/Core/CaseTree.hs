@@ -583,7 +583,7 @@ prune proj (Case n alts)
                 | delay == txt "Delay"
                    -> if proj then mkForce n arg sc
                               else Case n as
-            as@[ConCase cn i args sc] -> if proj then mkProj n 0 args sc
+            as@[ConCase cn i args sc] -> if proj && False then mkProj n 0 args sc
                                                  else Case n as
             as@[SucCase cn sc] -> if proj then mkProj n (-1) [cn] sc 
                                           else Case n as
