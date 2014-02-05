@@ -88,8 +88,8 @@ failInIO :: ErrorT String IO a -> IO a
 failInIO = either fail return <=< runErrorT
 
 outputModule :: TargetMachine -> FilePath -> OutputType -> MO.Module -> IO ()
-outputModule _  file Raw    m = failInIO $ MO.writeBitcodeToFile file m
-outputModule tm file Object m = failInIO $ MO.writeObjectToFile tm file m
+outputModule _  file Raw    m = failInIO $ MO.writeBitcodeToFile (MO.File file) m
+outputModule tm file Object m = failInIO $ MO.writeObjectToFile tm (MO.File file) m
 outputModule tm file Executable m = withTmpFile $ \obj -> do
   outputModule tm obj Object m
   cc <- getCC
