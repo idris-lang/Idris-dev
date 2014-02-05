@@ -20,9 +20,10 @@ import System.IO
 import System.Directory
 
 idrNamespace :: String
-idrNamespace   = "__IDR__"
-idrRTNamespace = "__IDRRT__"
-idrLTNamespace = "__IDRLT__"
+idrNamespace    = "__IDR__"
+idrRTNamespace  = "__IDRRT__"
+idrLTNamespace  = "__IDRLT__"
+idrCTRNamespace = "__IDRCTR__"
 
 
 data JSTarget = Node | JavaScript deriving Eq
@@ -564,14 +565,14 @@ initConstructors js =
           where
             replaceHelper :: [Int] -> JS -> JS
             replaceHelper tags (JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray []])
-              | tag `elem` tags = JSIdent ("__IDRCTR__" ++ show tag)
+              | tag `elem` tags = JSIdent (idrCTRNamespace ++ show tag)
 
             replaceHelper tags js = transformJS (replaceHelper tags) js
 
 
         createConstant :: Int -> JS
         createConstant tag =
-          JSAlloc ("__IDRCTR__" ++ show tag) (Just (
+          JSAlloc (idrCTRNamespace ++ show tag) (Just (
             JSNew (idrRTNamespace ++ "Con") [JSNum (JSInt tag), JSArray []]
           ))
 
@@ -632,33 +633,11 @@ inlineFunctions js =
 
 
     inlineAble :: Int -> String -> [String] -> JS -> Maybe JS
-    inlineAble 1 fun args body
+    inlineAble 1 fun args (JSReturn body)
       | nonRecur fun body =
-          inlineAble' body
-            where
-              inlineAble' :: JS -> Maybe JS
-              inlineAble' (
-                  JSReturn js@(JSNew "__IDRRT__Con" [JSNum _, JSArray vals])
-                )
-                | and $ map (\x -> isJSIdent x || isJSConstant x) vals = Just js
-
-              inlineAble' (
-                  JSReturn js@(JSNew "__IDRRT__Cont" [JSFunction [] (
-                    JSReturn (JSApp (JSIdent _) args)
-                  )])
-                )
-                | and $ map (\x -> isJSIdent x || isJSConstant x) args = Just js
-
-              inlineAble' (
-                  JSReturn js@(JSIndex (JSProj (JSApp (JSIdent _) args) "vars") _)
-                )
-                | and $ map (\x -> isJSIdent x || isJSConstant x) args = Just js
-
-              inlineAble' _ = Nothing
-
-              isJSIdent js
-                | JSIdent _ <- js = True
-                | otherwise       = False
+          if all (<= 1) (map ($ body) (map countIDOccurences args))
+             then Just body
+             else Nothing
 
     inlineAble _ _ _ _ = Nothing
 
@@ -692,6 +671,16 @@ inlineFunctions js =
 
     countAll :: String -> [JS] -> Int
     countAll name js = sum $ map (countInvokations name) js
+
+
+    countIDOccurences :: String -> JS -> Int
+    countIDOccurences name = foldJS match (+) 0
+      where
+        match :: JS -> Int
+        match js
+          | JSIdent ident <- js
+          , name == ident = 1
+          | otherwise     = 0
 
 
     countInvokations :: String -> JS -> Int
@@ -785,10 +774,10 @@ optimizeRuntimeCalls fun tc js =
         JSSeq [ JSAlloc "ret" $ Just (
                   JSTernary (
                     (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
-                    (hasProp "__IDRLT__mEVAL0" "arg0")
+                    (hasProp "__IDRLT__EVAL" "arg0")
                   ) (JSApp
                       (JSIndex
-                        (JSIdent "__IDRLT__mEVAL0")
+                        (JSIdent "__IDRLT__EVAL")
                         (JSProj (JSIdent "arg0") "tag")
                       )
                       [JSIdent "arg0"]
@@ -811,10 +800,10 @@ optimizeRuntimeCalls fun tc js =
               , JSAlloc "ret" $ Just (
                   JSTernary (
                     (JSIdent "ev" `jsInstanceOf` jsCon) `jsAnd`
-                    (hasProp "__IDRLT__mAPPLY0" "ev")
+                    (hasProp "__IDRLT__APPLY" "ev")
                   ) (JSApp
                       (JSIndex
-                        (JSIdent "__IDRLT__mAPPLY0")
+                        (JSIdent "__IDRLT__APPLY")
                         (JSProj (JSIdent "ev") "tag")
                       )
                       [JSIdent "fn0", JSIdent "arg0", JSIdent "ev"]
@@ -837,8 +826,8 @@ optimizeRuntimeCalls fun tc js =
 
 unfoldLookupTable :: [JS] -> [JS]
 unfoldLookupTable input =
-  let (evals, evalunfold)   = unfoldLT "__IDRLT__mEVAL0" input
-      (applys, applyunfold) = unfoldLT "__IDRLT__mAPPLY0" evalunfold
+  let (evals, evalunfold)   = unfoldLT "__IDRLT__EVAL" input
+      (applys, applyunfold) = unfoldLT "__IDRLT__APPLY" evalunfold
       js                    = applyunfold in
       adaptRuntime $ expandCons evals applys js
   where
@@ -848,12 +837,12 @@ unfoldLookupTable input =
 
 
     adaptApply var = map (jsSubst (
-        JSIndex (JSIdent "__IDRLT__mAPPLY0") (JSProj (JSIdent var) "tag")
+        JSIndex (JSIdent "__IDRLT__APPLY") (JSProj (JSIdent var) "tag")
       ) (JSProj (JSIdent var) "app"))
 
 
     adaptEval = map (jsSubst (
-        JSIndex (JSIdent "__IDRLT__mEVAL0") (JSProj (JSIdent "arg0") "tag")
+        JSIndex (JSIdent "__IDRLT__EVAL") (JSProj (JSIdent "arg0") "tag")
       ) (JSProj (JSIdent "arg0") "eval"))
 
 
@@ -893,8 +882,8 @@ unfoldLookupTable input =
       where
         expandCons' :: JS -> JS
         expandCons' (JSNew "__IDRRT__Con" [JSNum (JSInt tag), JSArray args])
-          | evalid  <- getId "__IDRLT__mEVAL0"  tag evals
-          , applyid <- getId "__IDRLT__mAPPLY0" tag applys =
+          | evalid  <- getId "__IDRLT__EVAL"  tag evals
+          , applyid <- getId "__IDRLT__APPLY" tag applys =
               JSNew "__IDRRT__Con" [ JSNum (JSInt tag)
                                    , maybe JSNull JSIdent evalid
                                    , maybe JSNull JSIdent applyid
@@ -911,8 +900,8 @@ unfoldLookupTable input =
 
 
     ltIdentifier :: String -> Int -> String
-    ltIdentifier "__IDRLT__mEVAL0"  id = idrLTNamespace ++ "EVAL" ++ show id
-    ltIdentifier "__IDRLT__mAPPLY0" id = idrLTNamespace ++ "APPLY" ++ show id
+    ltIdentifier "__IDRLT__EVAL"  id = idrLTNamespace ++ "EVAL" ++ show id
+    ltIdentifier "__IDRLT__APPLY" id = idrLTNamespace ++ "APPLY" ++ show id
 
 
     extractLT :: String -> [JS] -> (JS, [JS])
@@ -1227,7 +1216,7 @@ translateDeclaration (path, SFun name params stackSize body)
         lookup t = (JSApp
             (JSIndex (JSIdent t) (JSProj (JSIdent lvar) "tag"))
             [JSIdent "fn0", JSIdent "arg0", JSIdent lvar]) in
-        [ lookupTable [(var, "chk")] var cases
+        [ lookupTable "APPLY" [(var, "chk")] var cases
         , jsDecl $ JSFunction ["fn0", "arg0"] (
             JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")
                   , JSAlloc (translateVariableName var) (
@@ -1235,8 +1224,8 @@ translateDeclaration (path, SFun name params stackSize body)
                     )
                   , JSReturn $ (JSTernary (
                        (JSVar var `jsInstanceOf` jsCon) `jsAnd`
-                       (hasProp lookupTableName (translateVariableName var))
-                    ) (lookup lookupTableName) JSNull)
+                       (hasProp (idrLTNamespace ++ "APPLY") (translateVariableName var))
+                    ) (lookup (idrLTNamespace ++ "APPLY")) JSNull)
                   ]
           )
         ]
@@ -1244,13 +1233,13 @@ translateDeclaration (path, SFun name params stackSize body)
   | (MN _ ev)            <- name
   , (SChkCase var cases) <- body
   , ev == txt "EVAL" =
-    [ lookupTable [] var cases
+    [ lookupTable "EVAL" [] var cases
     , jsDecl $ JSFunction ["arg0"] (JSReturn $
         JSTernary (
           (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
-          (hasProp lookupTableName "arg0")
+          (hasProp (idrLTNamespace ++ "EVAL") "arg0")
         ) (JSApp
-            (JSIndex (JSIdent lookupTableName) (JSProj (JSIdent "arg0") "tag"))
+            (JSIndex (JSIdent (idrLTNamespace ++ "EVAL")) (JSProj (JSIdent "arg0") "tag"))
             [JSIdent "arg0"]
         ) (JSIdent "arg0")
       )
@@ -1276,13 +1265,9 @@ translateDeclaration (path, SFun name params stackSize body)
     getTag _                      = Nothing
 
 
-    lookupTableName :: String
-    lookupTableName = idrLTNamespace ++ translateName name
-
-
-    lookupTable :: [(LVar, String)] -> LVar -> [SAlt] -> JS
-    lookupTable aux var cases =
-      JSAlloc lookupTableName $ Just (
+    lookupTable :: String -> [(LVar, String)] -> LVar -> [SAlt] -> JS
+    lookupTable table aux var cases =
+      JSAlloc (idrLTNamespace ++ table) $ Just (
         JSApp (JSFunction [] (
           JSSeq $ [
             JSAlloc "t" $ Just (JSArray [])
