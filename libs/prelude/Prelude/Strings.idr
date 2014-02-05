@@ -145,3 +145,16 @@ unwords = pack . unwords' . map unpack
 
 length : String -> Nat
 length = fromInteger . prim__zextInt_BigInt . prim_lenString
+
+toLower : String -> String
+toLower x with (strM x)
+  strToLower ""             | StrNil = ""
+  strToLower (strCons c cs) | (StrCons c cs) =
+    strCons (toLower c) (toLower (assert_smaller (strCons c cs) cs))
+
+toUpper : String -> String
+toUpper x with (strM x)
+  strToLower ""             | StrNil = ""
+  strToLower (strCons c cs) | (StrCons c cs) =
+    strCons (toUpper c) (toUpper (assert_smaller (strCons c cs) cs ))
+
