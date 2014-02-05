@@ -22,10 +22,10 @@ class Handler (e : Effect) (m : Type -> Type) where
 -- A bit of syntactic sugar ('syntax' is not very flexible so we only go
 -- up to a small number of parameters...)
 
+syntax "{" [inst] "}" [eff] = eff inst (\result => inst)
 syntax "{" [inst] "==>" "{" {b} "}" [outst] "}" [eff] 
        = eff inst (\b => outst)
 syntax "{" [inst] "==>" [outst] "}" [eff] = eff inst (\result => outst)
-syntax "{" [inst] "}" [eff] = eff inst (\result => inst)
 
 ---- Properties and proof construction
 

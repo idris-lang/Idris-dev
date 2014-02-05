@@ -3,7 +3,7 @@ package base
 opts = "--nobasepkgs --total -i ../prelude"
 modules = System,
 
-          Network.Cgi,
+          Network.Cgi, Network.Socket,
           Debug.Trace,
 
           System.Concurrency.Raw, System.Concurrency.Process,

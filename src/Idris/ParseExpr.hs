@@ -70,8 +70,14 @@ Expr' ::=  "External (User-defined) Syntax"
       |   InternalExpr;
 @
  -}
-expr' :: SyntaxInfo -> IdrisParser PTerm
-expr' syn =     try (externalExpr syn)
+expr' syn = doexpr' syn
+--    = do l <- restOfLine
+--         f <- getFC
+--         e <- trace (show (f, l)) $ doexpr' syn
+--         return e
+
+doexpr' :: SyntaxInfo -> IdrisParser PTerm
+doexpr' syn =     try (externalExpr syn)
             <|> internalExpr syn
             <?> "expression"
 
