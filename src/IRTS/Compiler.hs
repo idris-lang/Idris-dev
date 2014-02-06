@@ -60,7 +60,7 @@ compile codegen f tm
         let (residDeps, (reachableNames', minUse)) = minimalUsage depMap
             reachableNames = sUN "prim__subBigInt" : sUN "prim__addBigInt" : S.toList reachableNames'
         iLOG $ "RESIDUAL DEPS:\n" ++ unlines (map printItem . M.toList $ residDeps)
-        iLOG $ "REACHABLE NAMES: " ++ show reachableNames
+        iLOG $ "REACHABLE NAMES:\n" ++ unlines (map show reachableNames)
 
         let fmtDepMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
         iLOG $ "MINIMAL USAGE:\n" ++ fmtDepMap minUse
@@ -276,16 +276,13 @@ instance ToIR (TT Name) where
                         Just tm -> return tm
                         _ -> do
                                  let collapse
-                                        = case lookupCtxtExact n
-                                                   (idris_optimisation i) of
+                                        = case lookupCtxtExact n (idris_optimisation i) of
                                                Just oi -> collapsible oi
                                                _ -> False
                                  let used
-                                        = case lookupCtxtExact n
-                                                      (idris_callgraph i) of
-                                               Just (CGInfo _ _ _ _ usedpos) ->
-                                                      usedpos
-                                               _ -> [] -- TODO: is this correct?
+                                        = case lookupCtxtExact n (idris_callgraph i) of
+                                               Just (CGInfo _ _ _ _ usedpos) -> Just usedpos
+                                               _ -> Nothing
                                  if collapse
                                      then return LNothing
                                      else do
@@ -296,9 +293,10 @@ instance ToIR (TT Name) where
               = do f' <- ir' env f
                    args' <- mapM (ir' env) args
                    return (LApp False f' args')
-        where mkUsed u i [] = []
-              mkUsed u i (x : xs) | i `elem` u = x        : mkUsed u (i + 1) xs
-                                  | otherwise  = LNothing : mkUsed u (i + 1) xs
+        where mkUsed (Just u) i [] = []
+              mkUsed (Just u) i (x : xs) | i `elem` u = x        : mkUsed (Just u) (i + 1) xs
+                                         | otherwise  = LNothing : mkUsed (Just u) (i + 1) xs
+              mkUsed Nothing _ xs = xs
 --       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)
 --                         = return $ LConst (BI 0)
       ir' env (P _ n _) = return $ LV (Glob n)

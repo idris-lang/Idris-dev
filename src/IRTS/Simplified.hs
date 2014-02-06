@@ -123,7 +123,6 @@ checkDefs ctxt [] = return []
 checkDefs ctxt (con@(n, DConstructor _ _ _) : xs)
     = do xs' <- checkDefs ctxt xs
          return xs'
-checkDefs ctxt ((n, DFun n' args exp) : xs) | ("CHECK DEF", n, n', args, exp) `traceShow` False = undefined
 checkDefs ctxt ((n, DFun n' args exp) : xs)
     = do let sexp = evalState (simplify True exp) (ctxt, 0)
          (exp', locs) <- runStateT (scopecheck ctxt (zip args [0..]) sexp) (length args)
