@@ -55,6 +55,7 @@ Data-files:            jsrts/Runtime-browser.js
                        rts/idris_gmp.h
                        rts/idris_main.c
                        rts/idris_rts.h
+                       rts/idris_net.h
                        rts/idris_stdfgn.h
                        rts/libtest.c
 
