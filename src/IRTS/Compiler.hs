@@ -258,10 +258,8 @@ instance ToIR (TT Name) where
           | (P (DCon t a) n _, args) <- unApply tm
           = do
               cg <- idris_callgraph <$> getIState
-              iLOG $ "DCTOR-LEAD " ++ show n ++ " -- " ++ show (lookupCtxt n cg)
               case lookupCtxtExact n cg of
                 Just (CGInfo _ _ _ _ usedpos)
-                    | ("DCTOR", n, usedpos) `traceShow` True
                     -> irCon env t a n [if i `elem` usedpos then a else Erased | (i,a) <- zip [0..] args]
                 Nothing -> irCon env t a n args
 

@@ -166,13 +166,6 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
     etaExpand (n : ns) t = etaExpand ns (App t (P Ref n Erased))
 
     getDepsSC :: Name -> [Name] -> Vars -> SC -> Deps
-    getDepsSC fn es vs (STerm t)
-        | show fn == "SN.I-Char instance of NS.Prelude.Classes.UN:\"Ord\""
-        , ("ORDINST", fn, t) `traceShow` True
-        , "===" `traceShow` True
-        , unsafePerformIO (mapM_ print . M.toList $ getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)) `traceShow` True
-        , "===" `traceShow` False
-        = undefined
     getDepsSC fn es vs  ImpossibleCase     = M.empty
     getDepsSC fn es vs (UnmatchedCase msg) = M.empty
     getDepsSC fn es vs (ProjCase t alt)    = error "ProjCase not supported"
