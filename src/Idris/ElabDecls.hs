@@ -630,7 +630,7 @@ elabProvider info syn fc n ty tm
 
          -- Elaborate the provider term to TT and check that the type matches
          (e, et) <- elabVal toplevel False tm
-         unless (isProviderOf ty' et) $
+         unless (isProviderOf (normalise ctxt [] ty') et) $
            ifail $ "Expected provider type IO (Provider (" ++
                    show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
 
