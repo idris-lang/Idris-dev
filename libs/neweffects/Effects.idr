@@ -252,13 +252,14 @@ eff {xs = [l ::: x]} env (l :- prog) k
 
 -- yuck :) Haven't got type class instances working nicely in tactic
 -- proofs yet, so just brute force it.
-syntax MkDefaultEnv = (| [], [default], [default, default],
-                         [default, default, default],
-                         [default, default, default, default],
-                         [default, default, default, default, default],
-                         [default, default, default, default, default, default],
-                         [default, default, default, default, default, default, default],
-                         [default, default, default, default, default, default, default, default] |)
+syntax MkDefaultEnv = with Env
+                       (| [], [default], [default, default],
+                          [default, default, default],
+                          [default, default, default, default],
+                          [default, default, default, default, default],
+                          [default, default, default, default, default, default],
+                          [default, default, default, default, default, default, default],
+                          [default, default, default, default, default, default, default, default] |)
 
 run : Applicative m => {default MkDefaultEnv env : Env m xs} -> Eff m a xs xs' -> m a
 run {env} prog = eff env prog (\r, env => pure r)
