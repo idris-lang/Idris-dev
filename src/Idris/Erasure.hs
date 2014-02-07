@@ -244,6 +244,9 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
                 | otherwise
                     -> node n args  -- depends on whether the referred thing uses its argument
 
+            -- TODO: could we somehow infer how bound variables use their arguments?
+            V i -> M.unionWith S.union ((bs !! i) cd) (unconditionalDeps args)
+
             -- we interpret applied lambdas as lets in order to reuse code here
             Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
 
@@ -260,6 +263,8 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
 
             Proj t i
                 -> error $ "cannot analyse projection !" ++ show i ++ " of " ++ show t
+
+            Erased -> M.empty
 
             _ -> error $ "cannot analyse application of " ++ show fun ++ " to " ++ show args
       where
