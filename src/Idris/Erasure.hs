@@ -9,6 +9,7 @@ import Idris.AbsSyntax
 import Idris.Core.CaseTree
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Primitives
 
 import Debug.Trace
 import System.IO.Unsafe
@@ -27,6 +28,7 @@ import Data.IntSet (IntSet)
 import Data.Map (Map)
 import Data.IntMap (IntMap)
 import Data.Text (pack)
+import qualified Data.Text as T
 
 -- UseMap maps names to the set of used (reachable) argument positions.
 type UseMap = Map Name IntSet
@@ -82,40 +84,34 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
       where
         -- mini-DSL for postulates
         (==>) ds rs = (S.fromList ds, S.fromList rs)
-        (.:) ms n = NS (UN $ pack n) (map pack $ reverse ms)
-        it n is = [(UN $ pack n, Arg i) | i <- is]
+        (.:) ms n = NS (sUN n) (map pack $ reverse ms)
+        it n is = [(sUN n, Arg i) | i <- is]
         mn n is = [(MN 0 $ pack n, Arg i) | i <- is]
+
+        -- believe_me is special because it does not use all its arguments
+        specialPrims = S.fromList [sUN "prim__believe_me"]
+        usedNames = allNames deps S.\\ specialPrims
+        usedPrims = [(p_name p, p_arity p) | p <- primitives, p_name p `S.member` usedNames]
 
         postulates = 
             [ [] ==> concat
-                [ [(["Main"] .: "main",  Result)] -- These two, Main.main and run__IO, are always evaluated
-                , [(UN (pack "run__IO"), Result)] -- but evade analysis since they come from the seed term.
-                , it "prim__believe_me" [2]
-                , it "prim__strCons"    [0,1]
-                , it "prim__strHead"    [0]
-                , it "prim__strTail"    [0]
-                , it "prim_lenString"   [0]    -- not a typo, just a single underscore
-                , it "prim__concat"     [0,1]
+                -- These two, Main.main and run__IO, are always evaluated
+                -- but they evade analysis since they come from the seed term.
+                [ [(["Main"] .: "main",  Result)] 
+                , [(sUN "run__IO", Result)]
+
+                -- these have been discovered as builtins but are not listed
+                -- among Idris.Primitives.primitives
                 , it "mkForeignPrim"    [2]
                 , it "mkForeign"        [1]
-                , it "prim__toStrBigInt"    [0]
-                , it "prim__addBigInt"      [0,1]
-                , it "prim__subBigInt"      [0,1]
-                , it "prim__sextInt_BigInt" [0]
-                , it "prim__zextInt_BigInt" [0]
-                , it "prim__eqString"       [0,1]
-                , it "prim__eqChar"         [0,1]
-                , it "prim__eqBigInt"       [0,1]
-                , it "prim__charToInt"  [0]
-                , it "prim__sltBigInt"  [0,1]
-                , it "prim__sltChar"    [0,1]
-                , it "prim__toStrInt"   [0,1]
-                , it "prim__addInt"     [0,1]
-                , it "prim__eqInt"      [0,1]
-                , it "prim__sltInt"     [0,1]
-                , it "prim__subInt"     [0,1]
-                , mn "__MkPair" [0,1]
-                ]  
+                , mn "__MkPair"         [0,1]
+
+                -- special prims: believe_me only uses its third argument
+                , it "prim__believe_me" [2]
+    
+                -- in general, all other primitives use all their arguments
+                , [(n, Arg i) | (n,arity) <- usedPrims, i <- [0..arity-1]]
+                ]
             ]
 
     -- perform depth-first search
@@ -128,15 +124,15 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
         | otherwise = dfs (S.insert n visited) (M.unionWith S.union deps' deps) (next ++ ns)
       where
         next = [n | n <- S.toList depn, n `S.notMember` visited]
-        depn = S.delete n $ depNames deps'
+        depn = S.delete n $ allNames deps'
         deps' = getDeps n
 
-        -- extract all names that a function depends on
-        -- from the Deps of the function
-        depNames :: Deps -> Set Name
-        depNames = S.unions . map names . M.toList
-          where
-            names (cs, ns) = S.map fst cs `S.union` S.map fst ns
+    -- extract all names that a function depends on
+    -- from the Deps of the function
+    allNames :: Deps -> Set Name
+    allNames = S.unions . map names . M.toList
+        where
+        names (cs, ns) = S.map fst cs `S.union` S.map fst ns
 
     -- get Deps for a Name
     getDeps :: Name -> Deps
