@@ -324,7 +324,7 @@ instance Pretty [Name] OutputAnnotation where
   pretty = encloseSep empty empty comma . map pretty
 
 instance Show Name where
-    show (UN n) = show (str n)
+    show (UN n) = str n
     show (NS n s) = showSep "." (map T.unpack (reverse s)) ++ "." ++ show n
     show (MN _ u) | u == txt "underscore" = "_"
     show (MN i s) = "{" ++ str s ++ show i ++ "}"
