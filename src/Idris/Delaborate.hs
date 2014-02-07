@@ -88,12 +88,12 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
          | n == sUN "lazy" = de env [] r
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
          | n == sUN "Exists"
-               = PDPair un (PRef un x) (de env [] ty)
+               = PDPair un IsType (PRef un x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [_,_,l,r]
          | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
-         | n == sUN "Ex_intro" = PDPair un (de env [] l) Placeholder
+         | n == sUN "Ex_intro" = PDPair un IsTerm (de env [] l) Placeholder
                                            (de env [] r)
     deFn env (P _ n _) args | not mvs
          = case lookup n (idris_metavars ist) of

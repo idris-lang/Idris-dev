@@ -205,7 +205,7 @@ elab ist info pattern opts fn tm
                                             [pimp (sMN 0 "A") Placeholder True,
                                              pimp (sMN 0 "B") Placeholder True,
                                              pexp l, pexp r])
-    elab' ina (PDPair fc l@(PRef _ n) t r)
+    elab' ina (PDPair fc p l@(PRef _ n) t r)
             = case t of
                 Placeholder ->
                    do hnf_compute
@@ -221,10 +221,10 @@ elab ist info pattern opts fn tm
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
                                           pexp l, pexp r])
-    elab' ina (PDPair fc l t r) = elab' ina (PApp fc (PRef fc existsCon)
-                                            [pimp (sMN 0 "a") t False,
-                                             pimp (sMN 0 "P") Placeholder True,
-                                             pexp l, pexp r])
+    elab' ina (PDPair fc p l t r) = elab' ina (PApp fc (PRef fc existsCon)
+                                              [pimp (sMN 0 "a") t False,
+                                               pimp (sMN 0 "P") Placeholder True,
+                                               pexp l, pexp r])
     elab' ina (PAlternative True as)
         = do hnf_compute
              ty <- goal

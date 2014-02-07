@@ -169,7 +169,7 @@ genAll i args
                 ([pimp (sUN "A") Placeholder True,
                   pimp (sUN "B") Placeholder True] ++
                  [pexp l, pexp r]) o
-    otherPats o@(PDPair fc t _ v)
+    otherPats o@(PDPair fc p t _ v)
         = ops fc (sUN "Ex_intro")
                 ([pimp (sUN "a") Placeholder True,
                   pimp (sUN "P") Placeholder True] ++
@@ -193,7 +193,7 @@ genAll i args
     -- put it back to its original form
     resugar (PApp _ (PRef fc (UN ei)) [_,_,t,v])
       | ei == txt "Ex_intro"
-        = PDPair fc (getTm t) Placeholder (getTm v)
+        = PDPair fc TypeOrTerm (getTm t) Placeholder (getTm v)
     resugar (PApp _ (PRef fc n) [_,_,l,r])
       | n == pairCon
         = PPair fc IsTerm (getTm l) (getTm r)

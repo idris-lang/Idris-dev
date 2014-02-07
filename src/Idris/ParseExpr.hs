@@ -158,7 +158,7 @@ extension syn (Rule ssym ptm _)
     update ns (PAppBind fc t args) = PAppBind fc (update ns t) (map (fmap (update ns)) args)
     update ns (PCase fc c opts) = PCase fc (update ns c) (map (pmap (update ns)) opts)
     update ns (PPair fc p l r) = PPair fc p (update ns l) (update ns r)
-    update ns (PDPair fc l t r) = PDPair fc (update ns l) (update ns t) (update ns r)
+    update ns (PDPair fc p l t r) = PDPair fc p (update ns l) (update ns t) (update ns r)
     update ns (PAlternative a as) = PAlternative a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
@@ -349,7 +349,7 @@ bracketed syn =
                     fc <- getFC
                     r <- expr syn
                     lchar ')'
-                    return (PDPair fc (PRef fc ln) lty r))
+                    return (PDPair fc TypeOrTerm (PRef fc ln) lty r))
         <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
                     -- No prefix operators! (bit of a hack here...)
                     if (o == "-" || o == "!") 
@@ -369,7 +369,7 @@ bracketed syn =
                                                            pexp (PRef fc0 (sMN 1000 "ARG"))]))
         <|> do l <- expr syn
                bracketedExpr syn l
-            
+
 bracketedExpr :: SyntaxInfo -> PTerm -> IdrisParser PTerm
 bracketedExpr syn e =
              do lchar ')'; return e
@@ -384,7 +384,7 @@ bracketedExpr syn e =
                          return fc
                 r <- expr syn
                 lchar ')'
-                return (PDPair fc e Placeholder r)
+                return (PDPair fc TypeOrTerm e Placeholder r)
         <?> "end of bracketed expression"
   where mergePairs :: [(PTerm, FC)] -> PTerm
         mergePairs [(t, fc)]    = t
