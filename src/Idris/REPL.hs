@@ -8,6 +8,7 @@ import Idris.REPLParser
 import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.Error
+import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Prover
 import Idris.Parser
@@ -486,7 +487,7 @@ process h fn (Check (PRef _ n))
   where
     showMetavarInfo imp ist n i
          = case lookupTy n (tt_ctxt ist) of
-                (ty:_) -> putTy imp ist i [] (delab ist ty)
+                (ty:_) -> putTy imp ist i [] (delab ist (errReverse ist ty))
     putTy :: Bool -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     putTy imp ist 0 bnd sc = putGoal imp ist bnd sc
     putTy imp ist i bnd (PPi _ n t sc)
