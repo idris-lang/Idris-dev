@@ -1062,7 +1062,7 @@ extractLocalConstructors js =
 
 evalCons :: [JS] -> [JS]
 evalCons js =
-  map (collapseTC . expandProj . evalCons') js
+  map (collapseCont . collapseTC . expandProj . evalCons') js
   where
     cons :: [(String, JS)]
     cons = concatMap getGlobalCons js
@@ -1072,10 +1072,23 @@ evalCons js =
       where
         match :: JS -> JS
         match (JSApp (JSIdent "__IDRRT__EVALTC") [arg])
-          | JSIdent name <- arg
-          , Just (JSNew _ [_, JSNull, _, _]) <- lookup name cons = arg
+          | JSIdent name                     <- arg
+          , Just (JSNew _ [_, JSNull, _, _]) <- lookupConstructor name cons =
+              arg
+
+        match (JSApp (JSIdent "__IDR__mEVAL0") [arg])
+          | JSIdent name                     <- arg
+          , Just (JSNew _ [_, JSNull, _, _]) <- lookupConstructor name cons =
+              arg
 
         match js = transformJS match js
+
+
+    lookupConstructor :: String -> [(String, JS)] -> Maybe JS
+    lookupConstructor ctr cons
+      | Just (JSIdent name)  <- lookup ctr cons = lookupConstructor name cons
+      | Just con@(JSNew _ _) <- lookup ctr cons = Just con
+      | otherwise                               = Nothing
 
 
     expandProj :: JS -> JS
@@ -1107,12 +1120,25 @@ evalCons js =
         match js = transformJS match js
 
 
+    collapseCont :: JS -> JS
+    collapseCont js = transformJS match js
+      where
+        match :: JS -> JS
+        match (JSNew "__IDRRT__Cont" [JSFunction [] (
+            JSReturn (JSIdent name)
+          )]) = JSIdent name
+
+        match js = transformJS match js
+
+
 getGlobalCons :: JS -> [(String, JS)]
 getGlobalCons js = foldJS match (++) [] js
   where
     match :: JS -> [(String, JS)]
     match js
       | (JSAlloc name (Just con@(JSNew "__IDRRT__Con" _))) <- js =
+          [(name, con)]
+      | (JSAlloc name (Just con@(JSIdent _))) <- js =
           [(name, con)]
       | otherwise =
           []
