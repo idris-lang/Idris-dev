@@ -1060,6 +1060,52 @@ extractLocalConstructors js =
               []
 
 
+evalCons :: [JS] -> [JS]
+evalCons js =
+  map (expandProj . evalCons') js
+  where
+    cons :: [(String, JS)]
+    cons = concatMap getGlobalCons js
+
+    evalCons' :: JS -> JS
+    evalCons' js = transformJS match js
+      where
+        match :: JS -> JS
+        match (JSApp (JSIdent "__IDRRT__EVALTC") [arg])
+          | JSIdent name <- arg
+          , Just (JSNew _ [_, JSNull, _, _]) <- lookup name cons = arg
+
+        match js = transformJS match js
+
+
+    expandProj :: JS -> JS
+    expandProj js = transformJS match js
+      where
+        match :: JS -> JS
+        match (
+            JSIndex (
+              JSProj (JSIdent name) "vars"
+            ) (
+              JSNum (JSInt idx)
+            )
+          )
+          | Just (JSNew _ [_, _, _, JSArray args]) <- lookup name cons =
+              args !! idx
+
+        match js = transformJS match js
+
+
+getGlobalCons :: JS -> [(String, JS)]
+getGlobalCons js = foldJS match (++) [] js
+  where
+    match :: JS -> [(String, JS)]
+    match js
+      | (JSAlloc name (Just con@(JSNew "__IDRRT__Con" _))) <- js =
+          [(name, con)]
+      | otherwise =
+          []
+
+
 codegenJavaScript
   :: JSTarget
   -> [(Name, SDecl)]
@@ -1118,6 +1164,7 @@ codegenJavaScript target definitions filename outputType = do
           , map reduceContinuations
           , extractLocalConstructors
           , unfoldLookupTable
+          , evalCons
           ]
 
     prelude :: [JS]
