@@ -39,7 +39,7 @@ table fixes
       [[backtick],
        [binary "$" (\fc x y -> PApp fc x [pexp y]) AssocRight],
        [binary "="  PEq AssocLeft],
-       [binary "->" (\fc x y -> PPi expl (sMN 42 "__pi_arg") x y) AssocRight]]
+       [binary "->" (\fc x y -> PPi expl (sUN "__pi_arg") x y) AssocRight]]
 
 -- | Calculates table for fixtiy declarations
 toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm

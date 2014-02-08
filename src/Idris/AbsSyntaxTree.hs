@@ -112,6 +112,7 @@ data IState = IState {
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
     idris_calledgraph :: Ctxt [Name],
     idris_docstrings :: Ctxt String,
+    idris_tyinfodata :: Ctxt TIData,
     idris_totcheck :: [(FC, Name)], -- names to check totality on 
     idris_defertotcheck :: [(FC, Name)], -- names to check at the end
     idris_options :: IOption,
@@ -216,7 +217,7 @@ idrisInit :: IState
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   emptyContext
+                   emptyContext emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
@@ -810,6 +811,12 @@ data ClassInfo = CI { instanceName :: Name,
 deriving instance Binary ClassInfo
 deriving instance NFData ClassInfo
 !-}
+
+-- Type inference data
+
+data TIData = TIPartial -- ^ a function with a partially defined type
+            | TISolution Term -- ^ solution to a metavariable in a type 
+    deriving Show
 
 -- An argument is conditionally forceable iff its forceability
 -- depends on the collapsibility of the whole type.

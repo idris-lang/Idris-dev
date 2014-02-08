@@ -151,7 +151,7 @@ pprintErr' i (CantUnify _ x y e sc s) =
     _ -> line <> line <> text "Specifically:" <>
          indented (pprintErr' i e) <>
          if (opt_errContext (idris_options i)) then text $ showSc i sc else empty
-pprintErr' i (CantConvert x y env) =
+pprintErr' i (CantConvert x y env) = trace (show (x,y)) $ 
   text "Can't convert" <> indented (pprintTerm i (delab i x)) <$>
   text "with" <> indented (pprintTerm i (delab i y)) <>
   if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty

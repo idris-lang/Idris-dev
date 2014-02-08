@@ -841,7 +841,8 @@ collectDeferred :: Maybe Name ->
                    Term -> State [(Name, (Int, Maybe Name, Type))] Term
 collectDeferred top (Bind n (GHole i t) app) =
     do ds <- get
-       when (not (n `elem` map fst ds)) $ put ((n, (i, top, t)) : ds)
+       t' <- collectDeferred top t
+       when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, t'))])
        collectDeferred top app
 collectDeferred top (Bind n b t) = do b' <- cdb b
                                       t' <- collectDeferred top t

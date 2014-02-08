@@ -49,9 +49,18 @@ recheckC fc env t
          addConstraints fc cs
          return (tm, ty)
 
-checkDef fc ns = do ctxt <- getContext
-                    mapM (\(n, (i, top, t)) -> do (t', _) <- recheckC fc [] t
-                                                  return (n, (i, top, t'))) ns
+
+checkDef fc ns = checkAddDef False fc ns
+
+checkAddDef add fc [] = return []
+checkAddDef add fc ((n, (i, top, t)) : ns) 
+               = do ctxt <- getContext
+                    (t', _) <- recheckC fc [] t
+                    when add $ addDeferred [(n, (i, top, t, True))]
+                    ns' <- checkAddDef add fc ns
+                    return ((n, (i, top, t')) : ns')
+--                     mapM (\(n, (i, top, t)) -> do (t', _) <- recheckC fc [] t
+--                                                   return (n, (i, top, t'))) ns
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo -> SyntaxInfo -> String ->
@@ -76,9 +85,9 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          ((tyT, defer, is), log) <-
                tclift $ elaborate ctxt n (TType (UVal 0)) []
                         (errAt "type of " n (erun fc (build i info False [] n ty)))
-         ds <- checkDef fc defer
-         let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
-         addDeferred ds'
+         ds <- checkAddDef True fc defer
+--          let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+--          addDeferred ds'
          mapM_ (elabCaseBlock info opts) is
          ctxt <- getContext
          logLvl 5 $ "Rechecking"
