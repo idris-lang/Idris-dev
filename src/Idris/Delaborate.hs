@@ -153,22 +153,22 @@ pprintErr' i (CantUnify _ x y e sc s) =
     Msg "" -> empty
     _ -> line <> line <> text "Specifically:" <>
          indented (pprintErr' i e) <>
-         if (opt_errContext (idris_options i)) then text $ showSc i sc else empty
+         if (opt_errContext (idris_options i)) then showSc i sc else empty
 pprintErr' i (CantConvert x y env) =
   text "Can't convert" <>
   indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x)) <$>
   text "with" <>
   indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i y)) <>
-  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (CantSolveGoal x env) =
   text "Can't solve goal " <>
   indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x)) <>
-  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (UnifyScope n out tm env) =
   text "Can't unify" <> indented (annName n) <+>
   text "with" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm)) <+>
   text "as" <> indented (annName out) <> text "is not in scope" <>
-  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (CantInferType t) = text "Can't infer type for" <+> text t
 pprintErr' i (NonFunctionType f ty) =
   pprintTerm i (delab i f) <+>
@@ -185,7 +185,7 @@ pprintErr' i (InfiniteUnify x tm env) =
   text "Unifying" <+> annName' x (showbasic x) <+> text "and" <+>
   pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm) <+>
   text "would lead to infinite value" <>
-  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (NotInjective p x y) =
   text "Can't verify injectivity of" <+> pprintTerm i (delab i p) <+>
   text " when unifying" <+> pprintTerm i (delab i x) <+> text "and" <+>
@@ -233,9 +233,15 @@ annName n = annName' n (show n)
 annName' :: Name -> String -> Doc OutputAnnotation
 annName' n str = annotate (AnnName n Nothing Nothing) (text str)
 
-showSc i [] = ""
-showSc i xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))
-  where showVar (x, y) = "\t" ++ showbasic x ++ " : " ++ show (delab i y)
+showSc :: IState -> [(Name, Term)] -> Doc OutputAnnotation
+showSc i [] = empty
+showSc i xs = line <> line <> text "In context:" <>
+            indented (vsep (reverse (showSc' [] xs)))
+     where showSc' bnd [] = []
+           showSc' bnd ((n, ty):ctxt) =
+             let this = bindingOf n False <+> colon <+> pprintTerm' i bnd (delab i ty)
+             in this : showSc' ((n,False):bnd) ctxt
+
 
 showqual :: IState -> Name -> String
 showqual i n = showName (Just i) [] False False (dens n)

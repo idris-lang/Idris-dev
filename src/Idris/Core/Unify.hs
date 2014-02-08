@@ -76,7 +76,7 @@ match_unify ctxt env topx topy dont holes =
         | otherwise = do UI s f <- get
                          let r = recoverable x y
                          let err = CantUnify r
-                                     topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
+                                     topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
                            else do put (UI s ((x, y, env, err) : f))
                                    lift $ tfail err
@@ -90,7 +90,7 @@ match_unify ctxt env topx topy dont holes =
     uB bnames x y = do UI s f <- get
                        let r = recoverable (binderTy x) (binderTy y)
                        let err = CantUnify r topx topy
-                                  (CantUnify r (binderTy x) (binderTy y) (Msg "") [] s)
+                                  (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
                                   (errEnv env) s
                        put (UI s ((binderTy x, binderTy y, env, err) : f))
                        return []
@@ -104,7 +104,7 @@ match_unify ctxt env topx topy dont holes =
     unifyFail x y = do UI s f <- get
                        let r = recoverable x y
                        let err = CantUnify r
-                                   topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
+                                   topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                        put (UI s ((x, y, env, err) : f))
                        lift $ tfail err
     combine bnames as [] = return as
@@ -309,7 +309,7 @@ unify ctxt env topx topy dont holes =
         | otherwise = do UI s f <- get
                          let r = recoverable x y
                          let err = CantUnify r
-                                     topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
+                                     topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
                            else do put (UI s ((x, y, env, err) : f))
                                    return [] -- lift $ tfail err
@@ -436,7 +436,7 @@ unify ctxt env topx topy dont holes =
                   = do UI s f <- get
                        let r = recoverable x y
                        let err = CantUnify r
-                                   topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
+                                   topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                        put (UI s ((topx, topy, env, err) : f))
                        return []
 
@@ -444,7 +444,7 @@ unify ctxt env topx topy dont holes =
     unifyFail x y = do UI s f <- get
                        let r = recoverable x y
                        let err = CantUnify r
-                                   topx topy (CantUnify r x y (Msg "") [] s) (errEnv env) s
+                                   topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                        put (UI s ((topx, topy, env, err) : f))
                        lift $ tfail err
 
@@ -466,7 +466,7 @@ unify ctxt env topx topy dont holes =
     uB bnames x y = do UI s f <- get
                        let r = recoverable (binderTy x) (binderTy y)
                        let err = CantUnify r topx topy
-                                  (CantUnify r (binderTy x) (binderTy y) (Msg "") [] s)
+                                  (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
                                   (errEnv env) s
                        put (UI s ((binderTy x, binderTy y, env, err) : f))
                        return [] -- lift $ tfail err
