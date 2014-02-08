@@ -1,4 +1,4 @@
-module Uninhabited
+module Prelude.Uninhabited
 
 class Uninhabited t where
   total uninhabited : t -> _|_

@@ -10,8 +10,6 @@ modules = System,
 
           Decidable.Decidable, Decidable.Order,
 
-          Uninhabited,
-
           Providers,
 
           Language.Reflection, Language.Reflection.Utils, Language.Reflection.Errors,
