@@ -895,8 +895,9 @@ process h fn (Missing n)
                   _ -> iPrintError $ "Ambiguous name"
 process h fn (DynamicLink l)
                            = do i <- getIState
-                                let lib = trim l
-                                handle <- lift . lift $ tryLoadLib lib
+                                let importdirs = opt_importdirs (idris_options i)
+                                    lib = trim l
+                                handle <- lift . lift $ tryLoadLib importdirs lib
                                 case handle of
                                   Nothing -> iPrintError $ "Could not load dynamic lib \"" ++ l ++ "\""
                                   Just x -> do let libs = idris_dynamic_libs i
