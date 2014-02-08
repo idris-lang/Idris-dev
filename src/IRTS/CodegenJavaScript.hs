@@ -1062,7 +1062,7 @@ extractLocalConstructors js =
 
 evalCons :: [JS] -> [JS]
 evalCons js =
-  map (expandProj . evalCons') js
+  map (collapseTC . expandProj . evalCons') js
   where
     cons :: [(String, JS)]
     cons = concatMap getGlobalCons js
@@ -1091,6 +1091,18 @@ evalCons js =
           )
           | Just (JSNew _ [_, _, _, JSArray args]) <- lookup name cons =
               args !! idx
+
+        match js = transformJS match js
+
+
+    collapseTC :: JS -> JS
+    collapseTC js = transformJS match js
+      where
+        match :: JS -> JS
+        match (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+            JSReturn (JSIdent name)
+          )])
+          | Just _ <- lookup name cons = (JSIdent name)
 
         match js = transformJS match js
 
