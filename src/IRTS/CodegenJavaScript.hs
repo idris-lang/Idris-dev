@@ -1128,6 +1128,15 @@ evalCons js =
             JSReturn (JSIdent name)
           )]) = JSIdent name
 
+        match (JSNew "__IDRRT__Cont" [JSFunction [] (
+            JSReturn ret@(JSNew "__IDRRT__Con" [_, _, _, JSArray args])
+          )])
+          | all collapsable args = ret
+          where
+            collapsable :: JS -> Bool
+            collapsable (JSIdent _) = True
+            collapsable js          = isJSConstant (map fst cons) js
+
         match js = transformJS match js
 
 
