@@ -162,30 +162,34 @@ addTyInferred n
                         addDef n TIPartial (idris_tyinfodata i) }
 
 addTyInfConstraints :: [(Term, Term)] -> Idris ()
-addTyInfConstraints ts = do -- iputStrLn (show ts)
-                            mapM_ (addConstraint True) ts
+addTyInfConstraints ts = do logLvl 2 $ "TI missing: " ++ show ts
+                            mapM_ addConstraint ts
                             return ()
-    where addConstraint True (x, y)   -- MV on the left
-             | (P _ mv _, args) <- unApply x
-                  = do ist <- get
-                       case lookup mv (idris_metavars ist) of
-                            Just _ -> addConstraintRule mv y
-                            _ -> addConstraint False (x, y)
-          addConstraint False (x, y)
-             | (P _ mv _, args) <- unApply y
-                  = do ist <- get
-                       case lookup mv (idris_metavars ist) of
-                            Just _ -> addConstraintRule mv x
-                            _ -> return ()
-          addConstraint _ _ = return () -- FIXME: report error?
+    where addConstraint (x, y) = findMVApps x y
+
+          findMVApps x y
+             = do let (fx, argsx) = unApply x
+                  let (fy, argsy) = unApply y
+                  if (not (fx == fy)) 
+                     then do
+                       tryAddMV fx y
+                       tryAddMV fy x
+                     else mapM_ addConstraint (zip argsx argsy)
+
+          tryAddMV (P _ mv _) y =
+               do ist <- get
+                  case lookup mv (idris_metavars ist) of
+                       Just _ -> addConstraintRule mv y
+                       _ -> return ()
+          tryAddMV _ _ = return ()
 
           addConstraintRule :: Name -> Term -> Idris ()
           addConstraintRule n t 
              = do ist <- get
-                  logLvl 2 $ "TI constraint: " ++ show (n, t)
+                  logLvl 1 $ "TI constraint: " ++ show (n, t)
                   case lookupCtxt n (idris_tyinfodata ist) of
                      [TISolution ts] -> 
-                         do let ti' = addDef n (TISolution (ts ++ [t])) 
+                         do let ti' = addDef n (TISolution (t : ts)) 
                                                (idris_tyinfodata ist)
                             put $ ist { idris_tyinfodata = ti' }
                      _ ->  
