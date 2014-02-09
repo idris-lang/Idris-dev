@@ -407,22 +407,32 @@ removeAllocations (JSSeq body) =
 removeAllocations js = transformJS removeAllocations js
 
 
-isJSConstant :: [String] -> JS -> Bool
-isJSConstant constants js
-  | JSString _ <- js = True
-  | JSChar _   <- js = True
-  | JSNum _    <- js = True
-  | JSType _   <- js = True
-  | JSNull     <- js = True
+isJSConstant :: JS -> Bool
+isJSConstant js
+  | JSString _   <- js = True
+  | JSChar _     <- js = True
+  | JSNum _      <- js = True
+  | JSType _     <- js = True
+  | JSNull       <- js = True
+  | JSArray vals <- js = all isJSConstant vals
 
   | JSApp (JSIdent "__IDRRT__bigInt") _ <- js = True
 
-  | JSArray vals              <- js = all (isJSConstant constants) vals
-  | JSNew "__IDRRT__Con" args <- js = all (isJSConstant constants) args
+  | otherwise = False
 
+isJSConstantConstructor :: [String] -> JS -> Bool
+isJSConstantConstructor constants js
+  | isJSConstant js =
+      True
+  | JSArray vals <- js =
+      all (isJSConstantConstructor constants) vals
+  | JSNew "__IDRRT__Con" args <- js =
+      all (isJSConstantConstructor constants) args
+  | JSIndex (JSProj (JSIdent _) "vars") (JSNum _) <- js =
+      True
   | JSIdent name <- js
-  , name `elem` constants = True
-
+  , name `elem` constants =
+      True
   | otherwise = False
 
 
@@ -450,12 +460,12 @@ inlineJS (JSApp (JSProj (JSFunction args (JSReturn body)) "apply") [
       ) (n + 1)
 
 inlineJS (JSApp (JSIdent "__IDR__mEVAL0") [val])
-  | isJSConstant [] val = val
+  | isJSConstant val = val
 
 inlineJS (JSApp (JSIdent "__IDRRT__tailcall") [
     JSFunction [] (JSReturn val)
   ])
-  | isJSConstant [] val = val
+  | isJSConstant val = val
 
 inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
   | JSNew con [tag, vals] <- ret
@@ -1044,7 +1054,7 @@ extractLocalConstructors js =
           , all isConstant args =
               True
           | otherwise =
-              isJSConstant globalCons js
+              isJSConstantConstructor globalCons js
 
     extractLocalConstructors' js = [js]
 
@@ -1140,7 +1150,8 @@ evalCons js =
           where
             collapsable :: JS -> Bool
             collapsable (JSIdent _) = True
-            collapsable js          = isJSConstant (map fst cons) js
+            collapsable js          = isJSConstantConstructor (map fst cons) js
+
 
         match js = transformJS match js
 
