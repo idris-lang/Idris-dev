@@ -1295,7 +1295,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                          probs <- get_probs
                          return (res, probs))
 
-        when inf $ addTyInfConstraints (map (\(x,y,_,_) -> (x,y)) probs)
+        when inf $ addTyInfConstraints fc (map (\(x,y,_,_) -> (x,y)) probs)
 
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
@@ -1357,7 +1357,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                         probs <- get_probs
                         return (tm, ds, is, probs))
 
-        when inf $ addTyInfConstraints (map (\(x,y,_,_) -> (x,y)) probs)
+        when inf $ addTyInfConstraints fc (map (\(x,y,_,_) -> (x,y)) probs)
 
         logLvl 5 "DONE CHECK"
         logLvl 2 $ "---> " ++ show rhs'

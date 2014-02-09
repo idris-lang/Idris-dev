@@ -161,10 +161,10 @@ addTyInferred n
         putIState $ i { idris_tyinfodata =
                         addDef n TIPartial (idris_tyinfodata i) }
 
-addTyInfConstraints :: [(Term, Term)] -> Idris ()
-addTyInfConstraints ts = do logLvl 2 $ "TI missing: " ++ show ts
-                            mapM_ addConstraint ts
-                            return ()
+addTyInfConstraints :: FC -> [(Term, Term)] -> Idris ()
+addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
+                               mapM_ addConstraint ts
+                               return ()
     where addConstraint (x, y) = findMVApps x y
 
           findMVApps x y
@@ -189,13 +189,33 @@ addTyInfConstraints ts = do logLvl 2 $ "TI missing: " ++ show ts
                   logLvl 1 $ "TI constraint: " ++ show (n, t)
                   case lookupCtxt n (idris_tyinfodata ist) of
                      [TISolution ts] -> 
-                         do let ti' = addDef n (TISolution (t : ts)) 
+                         do mapM_ (checkConsistent t) ts
+                            let ti' = addDef n (TISolution (t : ts)) 
                                                (idris_tyinfodata ist)
                             put $ ist { idris_tyinfodata = ti' }
                      _ ->  
                          do let ti' = addDef n (TISolution [t]) 
                                                (idris_tyinfodata ist)
                             put $ ist { idris_tyinfodata = ti' }
+
+          -- Check a solution is consistent with previous solutions
+          -- Meaning: If heads are both data types, they had better be the
+          -- same.
+          checkConsistent :: Term -> Term -> Idris ()
+          checkConsistent x y =
+              do let (fx, _) = unApply x
+                 let (fy, _) = unApply y
+                 case (fx, fy) of
+                      (P (TCon _ _) n _, P (TCon _ _) n' _) -> errWhen (n/=n) 
+                      (P (TCon _ _) n _, Constant _) -> errWhen True
+                      (Constant _, P (TCon _ _) n' _) -> errWhen True
+                      (P (DCon _ _) n _, P (DCon _ _) n' _) -> errWhen (n/=n) 
+                      _ -> return ()
+
+              where errWhen True 
+                       = throwError (At fc 
+                            (CantUnify False x y (Msg "") [] 0))
+                    errWhen False = return ()
 
 isTyInferred :: Name -> Idris Bool
 isTyInferred n
