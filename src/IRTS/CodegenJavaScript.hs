@@ -1125,6 +1125,11 @@ evalCons js =
       where
         match :: JS -> JS
         match (JSNew "__IDRRT__Cont" [JSFunction [] (
+            JSReturn ret@(JSNew "__IDRRT__Cont" [JSFunction [] _])
+          )]) = collapseCont ret
+
+
+        match (JSNew "__IDRRT__Cont" [JSFunction [] (
             JSReturn (JSIdent name)
           )]) = JSIdent name
 
