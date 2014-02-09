@@ -815,7 +815,7 @@ deriving instance NFData ClassInfo
 -- Type inference data
 
 data TIData = TIPartial -- ^ a function with a partially defined type
-            | TISolution Term -- ^ solution to a metavariable in a type 
+            | TISolution [Term] -- ^ possible solutions to a metavariable in a type 
     deriving Show
 
 -- An argument is conditionally forceable iff its forceability
@@ -959,7 +959,10 @@ getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc
 getInferTerm (App (App _ _) tm) = tm
 getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
-getInferType (Bind n b sc) = Bind n b $ getInferType sc
+getInferType (Bind n b sc) = Bind n (toTy b) $ getInferType sc
+  where toTy (Lam t) = Pi t
+        toTy (PVar t) = PVTy t
+        toTy b = b
 getInferType (App (App _ ty) _) = ty
 
 

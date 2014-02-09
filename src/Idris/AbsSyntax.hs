@@ -155,7 +155,53 @@ addToCG n cg
    = do i <- getIState
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
 
--- | Adds error handlers for a particular function and argument. If names are is ambiguous, all matching handlers are updated.
+addTyInferred :: Name -> Idris ()
+addTyInferred n 
+   = do i <- getIState
+        putIState $ i { idris_tyinfodata =
+                        addDef n TIPartial (idris_tyinfodata i) }
+
+addTyInfConstraints :: [(Term, Term)] -> Idris ()
+addTyInfConstraints ts = do -- iputStrLn (show ts)
+                            mapM_ (addConstraint True) ts
+                            return ()
+    where addConstraint True (x, y)   -- MV on the left
+             | (P _ mv _, args) <- unApply x
+                  = do ist <- get
+                       case lookup mv (idris_metavars ist) of
+                            Just _ -> addConstraintRule mv y
+                            _ -> addConstraint False (x, y)
+          addConstraint False (x, y)
+             | (P _ mv _, args) <- unApply y
+                  = do ist <- get
+                       case lookup mv (idris_metavars ist) of
+                            Just _ -> addConstraintRule mv x
+                            _ -> return ()
+          addConstraint _ _ = return () -- FIXME: report error?
+
+          addConstraintRule :: Name -> Term -> Idris ()
+          addConstraintRule n t 
+             = do ist <- get
+                  logLvl 2 $ "TI constraint: " ++ show (n, t)
+                  case lookupCtxt n (idris_tyinfodata ist) of
+                     [TISolution ts] -> 
+                         do let ti' = addDef n (TISolution (ts ++ [t])) 
+                                               (idris_tyinfodata ist)
+                            put $ ist { idris_tyinfodata = ti' }
+                     _ ->  
+                         do let ti' = addDef n (TISolution [t]) 
+                                               (idris_tyinfodata ist)
+                            put $ ist { idris_tyinfodata = ti' }
+
+isTyInferred :: Name -> Idris Bool
+isTyInferred n
+   = do i <- getIState
+        case lookupCtxt n (idris_tyinfodata i) of
+             [TIPartial] -> return True
+             _ -> return False
+
+-- | Adds error handlers for a particular function and argument. If names are
+-- ambiguous, all matching handlers are updated.
 addFunctionErrorHandlers :: Name -> Name -> [Name] -> Idris ()
 addFunctionErrorHandlers f arg hs =
  do i <- getIState

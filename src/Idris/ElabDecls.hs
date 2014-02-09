@@ -50,14 +50,14 @@ recheckC fc env t
          return (tm, ty)
 
 
-checkDef fc ns = checkAddDef False fc ns
+checkDef fc ns = checkAddDef False True fc ns
 
-checkAddDef add fc [] = return []
-checkAddDef add fc ((n, (i, top, t)) : ns) 
+checkAddDef add toplvl fc [] = return []
+checkAddDef add toplvl fc ((n, (i, top, t)) : ns) 
                = do ctxt <- getContext
                     (t', _) <- recheckC fc [] t
-                    when add $ addDeferred [(n, (i, top, t, True))]
-                    ns' <- checkAddDef add fc ns
+                    when add $ addDeferred [(n, (i, top, t, toplvl))]
+                    ns' <- checkAddDef add toplvl fc ns
                     return ((n, (i, top, t')) : ns')
 --                     mapM (\(n, (i, top, t)) -> do (t', _) <- recheckC fc [] t
 --                                                   return (n, (i, top, t'))) ns
@@ -85,7 +85,10 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          ((tyT, defer, is), log) <-
                tclift $ elaborate ctxt n (TType (UVal 0)) []
                         (errAt "type of " n (erun fc (build i info False [] n ty)))
-         ds <- checkAddDef True fc defer
+         ds <- checkAddDef True False fc defer
+         -- if the type is not complete, note that we'll need to infer
+         -- things later (for solving metavariables)
+         when (not (null ds)) $ addTyInferred n
 --          let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
 --          addDeferred ds'
          mapM_ (elabCaseBlock info opts) is
@@ -1271,6 +1274,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
+        inf <- isTyInferred fname
         -- get the parameters first, to pass through to any where block
         let fn_ty = case lookupTy fname (tt_ctxt i) of
                          [t] -> t
@@ -1284,16 +1288,25 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show (fn_ty, fn_is))
 
-        ((lhs', dlhs, []), _) <-
+        (((lhs', dlhs, []), probs), _) <-
             tclift $ elaborate ctxt (sMN 0 "patLHS") infP []
-                     (errAt "left hand side of " fname
-                       (erun fc (buildTC i info True opts fname (infTerm lhs))))
+                     (do res <- errAt "left hand side of " fname
+                                  (erun fc (buildTC i info True opts fname (infTerm lhs)))
+                         probs <- get_probs
+                         return (res, probs))
+
+        when inf $ addTyInfConstraints (map (\(x,y,_,_) -> (x,y)) probs)
+
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
         logLvl 3 ("Elaborated type: " ++ show lhs_ty)
 
-        (clhs_c, clhsty) <- recheckC fc [] lhs_tm
+        -- If we're inferring metavariables in the type, don't recheck,
+        -- because we're only doing this to try to work out those metavariables
+        (clhs_c, clhsty) <- if not inf
+                               then recheckC fc [] lhs_tm
+                               else return (lhs_tm, lhs_ty)
         let clhs = normalise ctxt [] clhs_c
         
         logLvl 3 ("Normalised LHS: " ++ showTmImpls (delabMV i clhs))
@@ -1328,7 +1341,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 2 $ "RHS: " ++ showTmImpls rhs
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
-        ((rhs', defer, is), _) <-
+        ((rhs', defer, is, probs), _) <-
            tclift $ elaborate ctxt (sMN 0 "patRHS") clhsty []
                     (do pbinds lhs_tm
                         setNextName 
@@ -1341,7 +1354,11 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                         mapM_ (elabCaseHole aux) hs
                         tt <- get_term
                         let (tm, ds) = runState (collectDeferred (Just fname) tt) []
-                        return (tm, ds, is))
+                        probs <- get_probs
+                        return (tm, ds, is, probs))
+
+        when inf $ addTyInfConstraints (map (\(x,y,_,_) -> (x,y)) probs)
+
         logLvl 5 "DONE CHECK"
         logLvl 2 $ "---> " ++ show rhs'
         when (not (null defer)) $ iLOG $ "DEFERRED " ++ show (map fst defer)
@@ -1361,7 +1378,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         ctxt <- getContext
         logLvl 5 $ "Rechecking"
         logLvl 6 $ " ==> " ++ show (forget rhs')
-        (crhs, crhsty) <- recheckC fc [] rhs'
+        (crhs, crhsty) <- if not inf 
+                             then recheckC fc [] rhs'
+                             else return (rhs', clhsty)
         logLvl 6 $ " ==> " ++ show crhsty ++ "   against   " ++ show clhsty
         case  converts ctxt [] clhsty crhsty of
             OK _ -> return ()

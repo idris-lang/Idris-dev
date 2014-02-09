@@ -257,7 +257,7 @@ unify ctxt env topx topy dont holes =
                                  then unifyTmpFail xtm tm
                                  else do sc 1
                                          checkCycle bnames (x, tm)
-        | not (injective xtm) && injective tm = unifyFail xtm tm
+        | not (injective xtm) && injective tm = unifyTmpFail xtm tm
     un' fn bnames tm ytm@(P _ y _)
         | holeIn env y || y `elem` holes
                        = do UI s f <- get
@@ -268,7 +268,7 @@ unify ctxt env topx topy dont holes =
                                  then unifyTmpFail tm ytm
                                  else do sc 1
                                          checkCycle bnames (y, tm)
-        | not (injective ytm) && injective tm = unifyFail ytm tm
+        | not (injective ytm) && injective tm = unifyTmpFail tm ytm
     un' fn bnames (V i) (P _ x _)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
     un' fn bnames (P _ x _) (V i)
