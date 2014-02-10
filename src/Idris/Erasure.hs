@@ -102,7 +102,8 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
 
                 -- these have been discovered as builtins but are not listed
                 -- among Idris.Primitives.primitives
-                , mn "__MkPair"          [0,1]
+                , mn "__MkPair"     [0,1]
+                , it "prim_fork"    [0]
 
                 -- believe_me only uses its third argument
                 -- it is special-cased in usedNames above
