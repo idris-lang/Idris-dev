@@ -231,6 +231,10 @@ jsAnd :: JS -> JS -> JS
 jsAnd = JSBinOp "&&"
 
 
+jsOr :: JS -> JS -> JS
+jsOr = JSBinOp "||"
+
+
 jsType :: JS
 jsType = JSIdent $ idrRTNamespace ++ "Type"
 
@@ -1247,15 +1251,23 @@ codegenJavaScript target definitions filename outputType = do
       JSAlloc "main" $ Just $ JSFunction [] (
         case target of
              Node       -> mainFun
-             JavaScript -> jsMeth (JSIdent "window") "addEventListener" [
+             JavaScript -> JSCond [(isReady, mainFun), (JSTrue, jsMeth (JSIdent "window") "addEventListener" [
                  JSString "DOMContentLoaded", JSFunction [] (
                    mainFun
                  ), JSFalse
-               ]
+               ])]
       )
       where
         mainFun :: JS
         mainFun = jsTailcall $ jsCall runMain []
+
+
+        isReady :: JS
+        isReady = readyState `jsEq` JSString "complete" `jsOr` readyState `jsEq` JSString "loaded"
+
+
+        readyState :: JS
+        readyState = JSProj (JSIdent "document") "readyState"
 
 
         runMain :: String
