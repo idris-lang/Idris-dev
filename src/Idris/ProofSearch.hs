@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.ProofSearch(trivial, proofSearch) where
 
 import Idris.Core.Elaborate hiding (Tactic(..))
@@ -45,7 +47,9 @@ proofSearch elab fn nroot hints ist
 
     findInferredTy (t : _) = elab (delab ist (toUN t)) 
 
-    toUN (P nt (MN i n) ty) = P nt (UN n) ty
+    toUN t@(P nt (MN i n) ty) 
+       | ('_':xs) <- str n = t
+       | otherwise = P nt (UN n) ty
     toUN (App f a) = App (toUN f) (toUN a)
     toUN t = t
 

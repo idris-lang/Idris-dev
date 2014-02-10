@@ -7,3 +7,5 @@ Vect (n + m) a
 Nat
 Nat
 S n
+String
+()

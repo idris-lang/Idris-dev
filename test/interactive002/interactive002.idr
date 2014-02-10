@@ -13,5 +13,8 @@ myplus (S k) y = S (myplus k y)
 vfun : a -> Vect n a -> Vect n a -> Vect ?what a
 vfun v xs ys = v :: ys
 
+ifoo : ?ifoo_arg1 -> IO ?ifoo_out
+ifoo x = do putStrLn x
+            putStrLn "World"
 
 
