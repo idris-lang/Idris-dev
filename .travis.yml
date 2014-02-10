@@ -2,7 +2,7 @@ language: haskell
 before_install:
   - sudo add-apt-repository --yes ppa:h-rayflood/llvm
   - sudo apt-get update -qq
-  - sudo apt-get install -qq libgc-dev llvm-3.3
+  - sudo apt-get install -qq libgc-dev llvm-3.4
   - sudo apt-get install -qq libghc-unordered-containers-dev libghc-mtl-dev libghc-network-dev libghc-xml-dev libghc-transformers-dev libghc-text-dev libghc-utf8-string-dev libghc-vector-dev libghc-split-dev libghc-ansi-terminal-dev libghc-ansi-wl-pprint-dev
   # trifecta dependencies
   - sudo apt-get install -qq libghc-blaze-builder-dev libghc-blaze-html-dev libghc-data-lens-dev libghc-bifunctors-dev libghc-hashable-dev libghc-semigroups-dev libghc-semigroupoids-dev libghc-parallel-dev libghc-comonad-dev libghc-terminfo-dev libghc-keys-dev
