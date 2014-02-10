@@ -170,14 +170,6 @@ build (n, d)
                       logLvl 3 $ "Compiled " ++ show n ++ " =\n\t" ++ show def
                       return (n, def)
 
-getPrim :: IState -> Name -> [LExp] -> Maybe LExp
-getPrim i n args = case lookup n (idris_scprims i) of
-                        Just (ar, op) ->
-                           if (ar == length args)
-                             then return (LOp op args)
-                             else Nothing
-                        _ -> Nothing
-
 declArgs args inl n (LLam xs x) = declArgs (args ++ xs) inl n x
 declArgs args inl n x = LFun (if inl then [Inline] else []) n args x
 
@@ -272,8 +264,9 @@ instance ToIR (TT Name) where
           | (P _ n _, args) <- unApply tm = do
                 ist <- getIState
                 case lookup n (idris_scprims ist) of
-                    -- if it's a primitive, compile to the corresponding code
-                    Just _ -> fromJust . getPrim ist n <$> mapM (ir' env) args
+                    -- if it's a primitive, compile to the corresponding op
+                    Just (arity, op) | length args == arity
+                        -> LOp op <$> mapM (ir' env) args
                     
                     Nothing
                         -- if it's collapsible, compile to LNothing
