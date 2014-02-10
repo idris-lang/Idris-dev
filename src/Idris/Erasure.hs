@@ -102,15 +102,16 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
 
                 -- these have been discovered as builtins but are not listed
                 -- among Idris.Primitives.primitives
-                , it "mkForeignPrim"    [2]
-                , it "mkForeign"        [1]
-                , mn "__MkPair"         [0,1]
+                , mn "__MkPair"          [0,1]
 
-                -- special prims: believe_me only uses its third argument
+                -- believe_me only uses its third argument
+                -- it is special-cased in usedNames above
                 , it "prim__believe_me" [2]
     
                 -- in general, all other primitives use all their arguments
                 , [(n, Arg i) | (n,arity) <- usedPrims, i <- [0..arity-1]]
+
+                -- mkForeign* functions are special-cased below
                 ]
             ]
 
@@ -232,9 +233,18 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
     -- applications may add items to Cond
     getDepsTerm vs bs cd app@(App _ _)
         | (fun, args) <- unApply app = case fun of
+
             -- constructors
             P (TCon _ _) n _ -> unconditionalDeps args  -- does not depend on anything
             P (DCon _ _) n _ -> node n args             -- depends on whether (n,#) is used
+
+            -- mkForeign* calls must be special-cased because they are variadic
+            -- All arguments must be marked as used, except for the first one,
+            -- which is the (Foreign a) spec that defines the type
+            -- and is not needed at runtime.
+            P _ (UN n) _
+                | n `elem` map T.pack ["mkForeign", "mkForeignPrim", "mkLazyForeignPrim"]
+                -> unconditionalDeps (drop 1 args)
 
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used
