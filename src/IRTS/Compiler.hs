@@ -264,11 +264,12 @@ instance ToIR (TT Name) where
           | (P _ n _, args) <- unApply tm = do
                 ist <- getIState
                 case lookup n (idris_scprims ist) of
-                    -- if it's a primitive, compile to the corresponding op
+                    -- if it's a primitive which is already saturated,
+                    -- compile to the corresponding op here already to save work
                     Just (arity, op) | length args == arity
                         -> LOp op <$> mapM (ir' env) args
-                    
-                    Nothing
+
+                    _
                         -- if it's collapsible, compile to LNothing
                         | (collapsible <$> lookupCtxtExact n (idris_optimisation ist)) == Just True
                         -> return LNothing
