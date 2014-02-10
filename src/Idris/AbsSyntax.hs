@@ -66,10 +66,13 @@ addFlag tgt f = do i <- getIState; putIState $ i { idris_cgflags = nub $ (tgt, f
 addDyLib :: [String] -> Idris (Either DynamicLib String)
 addDyLib libs = do i <- getIState
                    let ls = idris_dynamic_libs i
+                   let importdirs = opt_importdirs (idris_options i)
                    case mapMaybe (findDyLib ls) libs of
                      x:_ -> return (Left x)
                      [] -> do
-                       handle <- lift . lift $ mapM (\l -> catchIO (tryLoadLib l) (\_ -> return Nothing)) $ libs
+                       handle <- lift . lift .
+                                 mapM (\l -> catchIO (tryLoadLib importdirs l)
+                                                     (\_ -> return Nothing)) $ libs
                        case msum handle of
                          Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
                                                     concat (intersperse "," libs) ++ "\"")
