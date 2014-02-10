@@ -212,7 +212,7 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
         -- assumed to be a global reference
         | otherwise = M.singleton cd (S.singleton (n, Result))
       where
-        specialMNs = words "{__Unit0}"
+        specialMNs = words "{__Unit0} {__False0} {__True0}"
     
     -- dependencies of de bruijn variables are described in `bs'
     getDepsTerm vs bs cd (V i) = (bs !! i) cd
@@ -279,9 +279,14 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
             _ -> error $ "cannot analyse application of " ++ show fun ++ " to " ++ show args
       where
         ins = M.insertWith S.union cd
-        node n = ins (S.singleton (n, Result)) . unionMap (getDepsArgs n) . zip [0..]
-        getDepsArgs n (i, t) = getDepsTerm vs bs (S.insert (n, Arg i) cd) t
         unconditionalDeps args = unionMap (getDepsTerm vs bs cd) args
+
+        node :: Name -> [Term] -> Deps
+        node n = ins (S.singleton (n, Result)) . unionMap (getDepsArgs n) . zip indices
+          where
+            indices = map Just [0 .. getArity n - 1] ++ repeat Nothing
+            getDepsArgs n (Just i,  t) = getDepsTerm vs bs (S.insert (n, Arg i) cd) t  -- conditional
+            getDepsArgs n (Nothing, t) = getDepsTerm vs bs cd t                        -- unconditional
 
     -- projections (= methods)
     getDepsTerm vs bs cd (Proj t i) = getDepsTerm vs bs cd t  -- TODO?
@@ -293,6 +298,14 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
     getDepsTerm vs bs cd  Impossible  = M.empty
 
     getDepsTerm vs bs cd t = error $ "cannot get deps of: " ++ show t
+
+    -- Get the number of arguments that might be considered for erasure.
+    -- If the symbol is unknown, we assume that it uses all its arguments.
+    getArity :: Name -> Int
+    getArity n = case lookupDef n ctx of
+        [CaseOp ci ty tys def tot cdefs]
+            -> length tys
+        _   -> 0
 
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering

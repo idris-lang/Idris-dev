@@ -11,7 +11,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 lookupNames, lookupTy, lookupP, lookupDef, lookupDefAcc, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
-                Value(..), Quote(..), initEval, uniqueNameCtxt) where
+                Value(..), Quote(..), initEval, uniqueNameCtxt, definitions) where
 
 import Debug.Trace
 import Control.Monad.State -- not Strict!

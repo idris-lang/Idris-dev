@@ -29,6 +29,7 @@ import Idris.Core.CaseTree
 
 import Control.Applicative
 import Control.Monad.State
+import Data.Maybe
 import Data.List
 import Data.IntSet (IntSet)
 import qualified Data.IntMap as IM
@@ -267,34 +268,42 @@ instance ToIR (TT Name) where
               = irCon env t a n args
           | (P (TCon t a) n _, args) <- unApply tm
               = return LNothing
-          | (P _ n _, args) <- unApply tm
-              = do i <- getIState
-                   args' <- mapM (ir' env) args
-                   case getPrim i n args' of
-                        Just tm -> return tm
-                        _ -> do
-                                 let collapse
-                                        = case lookupCtxtExact n (idris_optimisation i) of
-                                               Just oi -> collapsible oi
-                                               _ -> False
-                                 let used
-                                        = case lookupCtxtExact n (idris_callgraph i) of
-                                               Just (CGInfo _ _ _ _ usedpos) -> Just usedpos
-                                               _ -> Nothing
-                                 if collapse
-                                     then return LNothing
-                                     else do
-                                        iLOG $ "ERASE:\n  " ++ show tm ++ "\n ==>\n  " ++ show (LApp False (LV (Glob n)) (mkUsed used 0 args'))
-                                        return (LApp False (LV (Glob n))
-                                                 (mkUsed used 0 args'))
+
+          | (P _ n _, args) <- unApply tm = do
+                ist <- getIState
+                case lookup n (idris_scprims ist) of
+                    -- if it's a primitive, compile to the corresponding code
+                    Just _ -> fromJust . getPrim ist n <$> mapM (ir' env) args
+                    
+                    Nothing
+                        -- if it's collapsible, compile to LNothing
+                        | (collapsible <$> lookupCtxtExact n (idris_optimisation ist)) == Just True
+                        -> return LNothing
+        
+                        -- otherwise, compile normally
+                        | otherwise -> applyName n ist args
+
           | (f, args) <- unApply tm
               = do f' <- ir' env f
                    args' <- mapM (ir' env) args
                    return (LApp False f' args')
-        where mkUsed (Just u) i [] = []
-              mkUsed (Just u) i (x : xs) | i `elem` u = x        : mkUsed (Just u) (i + 1) xs
-                                         | otherwise  = LNothing : mkUsed (Just u) (i + 1) xs
-              mkUsed Nothing _ xs = xs
+
+        where
+            applyName :: Name -> IState -> [Term] -> Idris LExp
+            applyName n ist args =
+                LApp False (LV $ Glob n) <$> mapM (ir' env . erase) (zip [0..] args)
+              where
+                erase (i, x)
+                    | i >= arity || i `elem` used = x
+                    | otherwise = Erased
+
+                arity = case fst4 <$> lookupCtxt n (definitions . tt_ctxt $ ist) of
+                    [CaseOp ci ty tys def tot cdefs] -> length tys
+                    _ -> 0
+
+                used = fromMaybe [] (usedpos <$> lookupCtxtExact n (idris_callgraph ist))
+                fst4 (x,_,_,_) = x
+
 --       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)
 --                         = return $ LConst (BI 0)
       ir' env (P _ n _) = return $ LV (Glob n)
