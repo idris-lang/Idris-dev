@@ -100,13 +100,17 @@ data DynamicLib = Lib { lib_name :: String
                       }
     deriving Eq
 
-tryLoadLib :: String -> IO (Maybe DynamicLib)
-tryLoadLib lib = do putStrLn $ "WARNING: Cannot load '" ++ lib ++ "' at compile time because Idris was compiled without libffi support."
-                    return Nothing
+data ForeignFun = forall a. Fun { fun_name :: String
+                                , fun_handle :: ()
+                                }
+
+tryLoadLib :: [FilePath] -> String -> IO (Maybe DynamicLib)
+tryLoadLib fps lib = do putStrLn $ "WARNING: Cannot load '" ++ lib ++ "' at compile time because Idris was compiled without libffi support."
+                        return Nothing
 
 tryLoadFn :: String -> DynamicLib -> IO (Maybe ForeignFun)
-tryLoadLib fn lib = do putStrLn $ "WARNING: Cannot load '" ++ fn ++ "' at compile time because Idris was compiled without libffi support."
-                       return Nothing
+tryLoadFn fn lib = do putStrLn $ "WARNING: Cannot load '" ++ fn ++ "' at compile time because Idris was compiled without libffi support."
+                      return Nothing
 #endif
 
 
