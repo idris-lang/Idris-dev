@@ -1,7 +1,6 @@
 module Control.Isomorphism
 
 import Syntax.PreorderReasoning
-import Uninhabited
 
 %default total
 

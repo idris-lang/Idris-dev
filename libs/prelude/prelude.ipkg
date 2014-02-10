@@ -1,13 +1,14 @@
 package prelude
 
 opts = "--nobuiltins --total"
-modules = Builtins, Prelude, IO, 
+modules = Builtins, Prelude, IO,
 
           Prelude.Algebra, Prelude.Basics, Prelude.Bool, Prelude.Cast,
           Prelude.Classes, Prelude.Nat, Prelude.Fin, Prelude.List,
           Prelude.Maybe, Prelude.Monad, Prelude.Applicative, Prelude.Either,
           Prelude.Vect, Prelude.Strings, Prelude.Chars, Prelude.Functor,
           Prelude.Foldable, Prelude.Traversable, Prelude.Bits, Prelude.Stream,
+          Prelude.Uninhabited,
 
           Decidable.Equality
 
