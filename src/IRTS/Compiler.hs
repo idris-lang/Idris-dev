@@ -16,9 +16,9 @@ import IRTS.CodegenLLVM
 import Util.LLVMStubs
 #endif
 import IRTS.Inliner
-import IRTS.Erasure
 
 import Idris.AbsSyntax
+import Idris.Erasure
 import Idris.Error
 
 import Debug.Trace

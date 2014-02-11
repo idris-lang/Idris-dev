@@ -8,6 +8,7 @@ import Idris.Apropos (apropos)
 import Idris.REPLParser
 import Idris.ElabDecls
 import Idris.ElabTerm
+import Idris.Erasure
 import Idris.Error
 import Idris.ErrReverse
 import Idris.Delaborate
@@ -40,7 +41,6 @@ import Idris.Core.Execute (execute)
 import Idris.Core.TT
 import Idris.Core.Constraints
 
-import IRTS.Erasure
 import IRTS.Compiler
 import IRTS.CodegenCommon
 
