@@ -1,9 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Erasure
-    ( buildDepMap
-    , minimalUsage
-    ) where
+module Idris.Erasure (performUsageAnalysis) where
 
 import Idris.AbsSyntax
 import Idris.Core.CaseTree
@@ -51,6 +48,42 @@ type Cond = Set Node
 type Var = Set Node
 type Vars = Map Name Var
 
+-- Perform usage analysis, write the relevant information in the internal
+-- structures, returning the list of reachable names.
+performUsageAnalysis :: Idris [Name]
+performUsageAnalysis = do
+    ctx <- tt_ctxt <$> getIState
+    ci  <- idris_classes <$> getIState
+
+    -- Build the dependency graph.
+    let depMap = buildDepMap ci ctx (sNS (sUN "main") ["Main"])
+
+    -- Search for reachable nodes in the graph.
+    let (residDeps, (reachableNames, minUse)) = minimalUsage depMap
+
+    -- Print some debug info.
+    logLvl 3 $ "Reachable names:\n" ++ unlines (map show . S.toList $ reachableNames)
+    logLvl 4 $ "Minimal usage:\n" ++ fmtUseMap minUse
+    logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
+
+    -- Store the usage info in the internal state.
+    mapM_ storeUsage . M.toList $ minUse
+
+    return $ S.toList reachableNames
+  where
+    fmtItem :: (Cond, Set Node) -> String
+    fmtItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
+
+    fmtUseMap :: UseMap -> String
+    fmtUseMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
+
+    storeUsage :: (Name, IntSet) -> Idris ()
+    storeUsage (n, args) = do
+        cg <- idris_callgraph <$> getIState
+        case lookupCtxt n cg of
+            [x] -> addToCG n x{ usedpos = IS.toList args }          -- functions
+            _   -> addToCG n (CGInfo [] [] [] [] (IS.toList args))  -- data ctors
+
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> (Deps, (Set Name, UseMap))
 minimalUsage = second gather . forwardChain
@@ -75,8 +108,8 @@ forwardChain deps
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
-buildDepMap :: Ctxt ClassInfo -> Context -> [Name] -> Deps
-buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
+buildDepMap :: Ctxt ClassInfo -> Context -> Name -> Deps
+buildDepMap ci ctx rootName = addPostulates $ dfs S.empty M.empty [rootName]
   where
     -- mark the result of Main.main as used with the empty assumption
     addPostulates :: Deps -> Deps

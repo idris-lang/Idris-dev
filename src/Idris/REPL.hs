@@ -1353,9 +1353,13 @@ idrisMain opts =
 
        ok <- noErrors
        when ok $ case output of
-                    [] -> return ()
+                    -- just do the checks
+                    [] -> performUsageAnalysis >> return ()
+
+                    -- the compiler will run usage analysis itself
                     (o:_) -> idrisCatch (process stdout "" (Compile cgn o))
                                (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
+
        case script of
          Nothing -> return ()
          Just expr -> execScript expr

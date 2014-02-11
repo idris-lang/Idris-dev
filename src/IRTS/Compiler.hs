@@ -46,24 +46,7 @@ import Paths_idris
 compile :: Codegen -> FilePath -> Term -> Idris ()
 compile codegen f tm
    = do checkMVs  -- check for undefined metavariables
-        -- TODO: DEBUG-ONLY, remove
-        ctx <- tt_ctxt <$> getIState
-        ci  <- idris_classes <$> getIState
-        let depMap = buildDepMap ci ctx (namesUsed $ STerm tm)
-        let printItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
-        -- iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
-
-        let (residDeps, (reachableNames', minUse)) = minimalUsage depMap
-            reachableNames = sUN "prim__subBigInt" : sUN "prim__addBigInt" : S.toList reachableNames'
-        iLOG $ "RESIDUAL DEPS:\n" ++ unlines (map printItem . M.toList $ residDeps)
-        iLOG $ "REACHABLE NAMES:\n" ++ unlines (map show reachableNames)
-
-        let fmtDepMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
-        iLOG $ "MINIMAL USAGE:\n" ++ fmtDepMap minUse
-
-        mapM_ (uncurry storeUsage) (M.toList minUse)
-        -- END TODO
-        
+        reachableNames <- performUsageAnalysis
         maindef <- irMain tm
         iLOG $ "MAIN: " ++ show maindef
         objs <- getObjectFiles codegen
@@ -119,13 +102,6 @@ compile codegen f tm
         inDir d h = do let f = d </> h
                        ex <- doesFileExist f
                        if ex then return f else return h
-
-storeUsage :: Name -> IntSet -> Idris ()
-storeUsage n args = do
-    cg <- idris_callgraph <$> getIState
-    case lookupCtxt n cg of
-        [x] -> addToCG n x{ usedpos = IS.toList args }
-        _   -> addToCG n (CGInfo [] [] [] [] (IS.toList args))  -- data ctors
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do i <- ir tm
