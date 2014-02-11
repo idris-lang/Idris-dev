@@ -58,23 +58,26 @@ performUsageAnalysis = do
       [] -> return []  -- no main -> not compiling -> reachability irrelevant
       _  -> do
         ci  <- idris_classes <$> getIState
+        cg  <- idris_callgraph <$> getIState
+        opt <- idris_optimisation <$> getIState
 
         -- Build the dependency graph.
         let depMap = buildDepMap ci ctx mainName
 
         -- Search for reachable nodes in the graph.
         let (residDeps, (reachableNames, minUse)) = minimalUsage depMap
+            usage = M.toList minUse
 
         -- Print some debug info.
         logLvl 3 $ "Reachable names:\n" ++ unlines (map (indent . show) . S.toList $ reachableNames)
-        logLvl 4 $ "Minimal usage:\n" ++ fmtUseMap minUse
+        logLvl 4 $ "Minimal usage:\n" ++ fmtUseMap usage
         logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
 
-        -- Check that everything reachable is accessible
-        checkAccessibility minUse
+        -- Check that everything reachable is accessible.
+        mapM_ (checkAccessibility opt) usage
 
         -- Store the usage info in the internal state.
-        mapM_ storeUsage . M.toList $ minUse
+        mapM_ (storeUsage cg) usage
 
         return $ S.toList reachableNames
   where
@@ -84,18 +87,25 @@ performUsageAnalysis = do
     fmtItem :: (Cond, Set Node) -> String
     fmtItem (cond, deps) = indent $ show (S.toList cond) ++ " -> " ++ show (S.toList deps)
 
-    fmtUseMap :: UseMap -> String
-    fmtUseMap = unlines . map (\(n,is) -> indent $ show n ++ " -> " ++ show (IS.toList is)) . M.toList
+    fmtUseMap :: [(Name, IntSet)] -> String
+    fmtUseMap = unlines . map (\(n,is) -> indent $ show n ++ " -> " ++ show (IS.toList is))
 
-    storeUsage :: (Name, IntSet) -> Idris ()
-    storeUsage (n, args) = do
-        cg <- idris_callgraph <$> getIState
-        case lookupCtxt n cg of
-            [x] -> addToCG n x{ usedpos = IS.toList args }          -- functions
-            _   -> addToCG n (CGInfo [] [] [] [] (IS.toList args))  -- data ctors
+    storeUsage :: Ctxt CGInfo -> (Name, IntSet) -> Idris ()
+    storeUsage cg (n, args)
+        | [x] <- lookupCtxt n cg
+        = addToCG n x{ usedpos = IS.toList args }          -- functions
 
-checkAccessibility :: UseMap -> Idris ()
-checkAccessibility umap = return ()
+        | otherwise
+        = addToCG n (CGInfo [] [] [] [] (IS.toList args))  -- data ctors
+
+    checkAccessibility :: Ctxt OptInfo -> (Name, IntSet) -> Idris ()
+    checkAccessibility opt (n, reachable)
+        | [Optimise col nt forc rec inaccessible] <- lookupCtxt n opt
+        = let collision = IS.fromList inaccessible `IS.intersection` reachable
+          in unless (IS.null collision)
+               . fail $ "Erasure checker: inaccessible arguments reachable: " ++ show (IS.toList collision)
+
+        | otherwise = return ()
 
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> (Deps, (Set Name, UseMap))
