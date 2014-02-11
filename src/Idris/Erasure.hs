@@ -146,7 +146,7 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
     getDepsDef :: Name -> Def -> Deps
     getDepsDef fn (Function ty t) = error "a function encountered"  -- TODO
     getDepsDef fn (TyDecl   ty t) = M.empty
-    getDepsDef fn (Operator ty n' f) = M.empty
+    getDepsDef fn (Operator ty n' f) = M.empty  -- TODO: what's this?
     getDepsDef fn (CaseOp ci ty tys def tot cdefs)
         = getDepsSC fn etaVars (etaMap `M.union` varMap) sc
       where
@@ -207,13 +207,13 @@ buildDepMap ci ctx ns = addPostulates $ dfs S.empty M.empty ns
 
         -- sanity check: machine-generated names shouldn't occur at top-level
         | MN _ _ <- n
-        , show n `notElem` specialMNs
+        , n `notElem` specialMNs
         = error $ "erasure analysis: variable " ++ show n ++ " unbound in " ++ show (S.toList cd)
 
         -- assumed to be a global reference
         | otherwise = M.singleton cd (S.singleton (n, Result))
       where
-        specialMNs = words "{__Unit0} {__False0} {__True0}"
+        specialMNs = [sMN 0 "__Unit", sMN 0 "__True", sMN 0 "__False"] 
     
     -- dependencies of de bruijn variables are described in `bs'
     getDepsTerm vs bs cd (V i) = (bs !! i) cd
