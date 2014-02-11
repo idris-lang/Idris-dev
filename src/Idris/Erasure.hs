@@ -104,10 +104,9 @@ performUsageAnalysis = do
         | [Optimise col nt forc rec inaccessible] <- lookupCtxt n opt
         = let collision = IS.fromList inaccessible `IS.intersection` reachable
           in unless (IS.null collision) . ifail . concat $
-            [ "Erasure checker: in function "
-            , show n
+            [ show n
             , ": inaccessible arguments reachable: "
-            , show (IS.toList collision)
+            , intercalate ", " . map show $ IS.toList collision
             ]
 
         | otherwise = return ()
