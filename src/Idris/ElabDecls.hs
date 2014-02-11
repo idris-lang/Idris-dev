@@ -84,8 +84,11 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          ty' <- addUsingConstraints syn fc ty'
          ty' <- implicit info syn n ty'
 
-         let ty = addImpl i ty'
+         let ty    = addImpl i ty'
+             inacc = inaccessible 0 ty
          logLvl 3 $ show n ++ " type " ++ showTmImpls ty
+         logLvl 5 $ "Erased params: " ++ show inacc
+
          ((tyT, defer, is), log) <-
                tclift $ elaborate ctxt n (TType (UVal 0)) []
                         (errAt "type of " n (erun fc (build i info False [] n ty)))
@@ -160,6 +163,16 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     maybe = txt "Maybe"
     lst = txt "List"
     errrep = txt "ErrorReportPart"
+
+    inaccessible :: Int -> PTerm -> [Int]
+    inaccessible i (PPi (Imp _ _ _ _) n Placeholder t)
+        = i : inaccessible (i+1) t      -- unbound implicit
+    inaccessible i (PPi plicity n ty t)
+        | InaccessibleArg `elem` pargopts plicity
+            = i : inaccessible (i+1) t  -- an .{erased : Implicit}
+        | otherwise
+            = inaccessible (i+1) t      -- a {regular : Implicit}
+    inaccessible _ _ = []
 
     tyIsHandler (Bind _ (Pi (P _ (NS (UN e) ns1) _))
                         (App (P _ (NS (UN m) ns2) _)

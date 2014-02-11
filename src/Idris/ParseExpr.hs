@@ -835,7 +835,7 @@ pi syn =
 
 piOpts :: SyntaxInfo -> IdrisParser [ArgOpt]
 piOpts syn | implicitAllowed syn =
-        lchar '.' *> return [ErasedArg]
+        lchar '.' *> return [InaccessibleArg]
     <|> return []
 piOpts syn = return []
 

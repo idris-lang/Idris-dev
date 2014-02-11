@@ -399,7 +399,7 @@ data Plicity = Imp { pargopts :: [ArgOpt],
                      pparam :: Bool }
              | Exp { pargopts :: [ArgOpt],
                      pstatic :: Static,
-                     pparam :: Bool }
+                     pparam :: Bool }   -- this is a param (rather than index)
              | Constraint { pargopts :: [ArgOpt],
                             pstatic :: Static }
              | TacImp { pargopts :: [ArgOpt],
@@ -793,7 +793,7 @@ data PArg' t = PImp { priority :: Int,
                               getTm :: t }
     deriving (Show, Eq, Functor)
 
-data ArgOpt = Lazy | HideDisplay | ErasedArg
+data ArgOpt = Lazy | HideDisplay | InaccessibleArg
     deriving (Show, Eq)
 
 lazyarg :: PArg' t -> Bool
