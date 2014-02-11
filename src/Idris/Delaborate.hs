@@ -88,12 +88,12 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
          | n == sUN "lazy" = de env [] r
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
          | n == sUN "Exists"
-               = PDPair un (PRef un x) (de env [] ty)
+               = PDPair un IsType (PRef un x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [_,_,l,r]
          | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
-         | n == sUN "Ex_intro" = PDPair un (de env [] l) Placeholder
+         | n == sUN "Ex_intro" = PDPair un IsTerm (de env [] l) Placeholder
                                            (de env [] r)
     deFn env (P _ n _) args | not mvs
          = case lookup n (idris_metavars ist) of
@@ -127,7 +127,10 @@ indented :: Doc a -> Doc a
 indented = nest errorIndent . (line <>)
 
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
-pprintTerm ist = prettyImp (opt_showimp (idris_options ist))
+pprintTerm ist = pprintTerm' ist []
+
+pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
+pprintTerm' ist = pprintPTerm (opt_showimp (idris_options ist)) 
 
 pshow :: IState -> Err -> String
 pshow ist err = displayDecorated (consoleDecorate ist) .
@@ -144,25 +147,28 @@ pprintErr' i (InternalMsg s) =
          text ("Please consider reporting at " ++ bugaddr)
        ]
 pprintErr' i (CantUnify _ x y e sc s) =
-  text "Can't unify" <> indented (pprintTerm i (delab i x)) <$>
-  text "with" <> indented (pprintTerm i (delab i y)) <>
+  text "Can't unify" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i x)) <$>
+  text "with" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i y)) <>
   case e of
     Msg "" -> empty
     _ -> line <> line <> text "Specifically:" <>
          indented (pprintErr' i e) <>
-         if (opt_errContext (idris_options i)) then text $ showSc i sc else empty
-pprintErr' i (CantConvert x y env) = trace (show (x,y)) $ 
-  text "Can't convert" <> indented (pprintTerm i (delab i x)) <$>
-  text "with" <> indented (pprintTerm i (delab i y)) <>
-  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
+         if (opt_errContext (idris_options i)) then showSc i sc else empty
+pprintErr' i (CantConvert x y env) =
+  text "Can't convert" <>
+  indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x)) <$>
+  text "with" <>
+  indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i y)) <>
+  if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (CantSolveGoal x env) =
-  text "Can't solve goal " <> indented (pprintTerm i (delab i x)) <>
-  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
+  text "Can't solve goal " <>
+  indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x)) <>
+  if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (UnifyScope n out tm env) =
   text "Can't unify" <> indented (annName n) <+>
-  text "with" <> indented (pprintTerm i (delab i tm)) <+>
+  text "with" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm)) <+>
   text "as" <> indented (annName out) <> text "is not in scope" <>
-  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (CantInferType t) = text "Can't infer type for" <+> text t
 pprintErr' i (NonFunctionType f ty) =
   pprintTerm i (delab i f) <+>
@@ -176,9 +182,10 @@ pprintErr' i (TooManyArguments f) = text "Too many arguments for" <+> annName f
 pprintErr' i (CantIntroduce ty) =
   text "Can't use lambda here: type is" <+> pprintTerm i (delab i ty)
 pprintErr' i (InfiniteUnify x tm env) =
-  text "Unifying" <+> annName' x (showbasic x) <+> text "and" <+> pprintTerm i (delab i tm) <+>
+  text "Unifying" <+> annName' x (showbasic x) <+> text "and" <+>
+  pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm) <+>
   text "would lead to infinite value" <>
-  if (opt_errContext (idris_options i)) then line <> text (showSc i env) else empty
+  if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (NotInjective p x y) =
   text "Can't verify injectivity of" <+> pprintTerm i (delab i p) <+>
   text " when unifying" <+> pprintTerm i (delab i x) <+> text "and" <+>
@@ -226,9 +233,15 @@ annName n = annName' n (show n)
 annName' :: Name -> String -> Doc OutputAnnotation
 annName' n str = annotate (AnnName n Nothing Nothing) (text str)
 
-showSc i [] = ""
-showSc i xs = "\n\nIn context:\n" ++ showSep "\n" (map showVar (reverse xs))
-  where showVar (x, y) = "\t" ++ showbasic x ++ " : " ++ show (delab i y)
+showSc :: IState -> [(Name, Term)] -> Doc OutputAnnotation
+showSc i [] = empty
+showSc i xs = line <> line <> text "In context:" <>
+            indented (vsep (reverse (showSc' [] xs)))
+     where showSc' bnd [] = []
+           showSc' bnd ((n, ty):ctxt) =
+             let this = bindingOf n False <+> colon <+> pprintTerm' i bnd (delab i ty)
+             in this : showSc' ((n,False):bnd) ctxt
+
 
 showqual :: IState -> Name -> String
 showqual i n = showName (Just i) [] False False (dens n)

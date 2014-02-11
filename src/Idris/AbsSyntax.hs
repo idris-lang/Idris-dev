@@ -919,15 +919,15 @@ expandParams dec ps ns infs tm = en tm
                      PLet n' (en ty) (en v) (en (shadow n n' s))
        | otherwise = PLet n (en ty) (en v) (en s)
     -- FIXME: Should only do this in a type signature!
-    en (PDPair f (PRef f' n) t r)
+    en (PDPair f p (PRef f' n) t r)
        | n `elem` (map fst ps ++ ns) && t /= Placeholder
            = let n' = mkShadow n in
-                 PDPair f (PRef f' n') (en t) (en (shadow n n' r))
+                 PDPair f p (PRef f' n') (en t) (en (shadow n n' r))
     en (PEq f l r) = PEq f (en l) (en r)
     en (PRewrite f l r g) = PRewrite f (en l) (en r) (fmap en g)
     en (PTyped l r) = PTyped (en l) (en r)
     en (PPair f p l r) = PPair f p (en l) (en r)
-    en (PDPair f l t r) = PDPair f (en l) (en t) (en r)
+    en (PDPair f p l t r) = PDPair f p (en l) (en t) (en r)
     en (PAlternative a as) = PAlternative a (map en as)
     en (PHidden t) = PHidden (en t)
     en (PUnifyLog t) = PUnifyLog (en t)
@@ -1021,7 +1021,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     bnames (PRef _ n) = [n]
     bnames (PApp _ _ args) = concatMap bnames (map getTm args)
     bnames (PPair _ _ l r) = bnames l ++ bnames r
-    bnames (PDPair _ l Placeholder r) = bnames l ++ bnames r
+    bnames (PDPair _ _ l Placeholder r) = bnames l ++ bnames r
     bnames _ = []
 
 expandParamsD rhs ist dec ps ns (PData doc syn fc co pd)
@@ -1086,7 +1086,7 @@ getPriority i tm = 1 -- pri tm
     pri (PCase _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.snd) as)))
     pri (PTyped l r) = pri l
     pri (PPair _ _ l r) = max 1 (max (pri l) (pri r))
-    pri (PDPair _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
+    pri (PDPair _ _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
     pri (PAlternative a as) = maximum (map pri as)
     pri (PConstant _) = 0
     pri Placeholder = 1
@@ -1264,11 +1264,11 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist r
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PDPair _ (PRef _ n) t r)
+    imps top env (PDPair _ _ (PRef _ n) t r)
         = do (decls, ns) <- get
              let isn = nub (namesIn uvars ist t ++ namesIn uvars ist r) \\ [n]
              put (decls, nub (ns ++ (isn \\ (env ++ map fst (getImps decls)))))
-    imps top env (PDPair _ l t r)
+    imps top env (PDPair _ _ l t r)
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist t ++
                        namesIn uvars ist r
@@ -1334,11 +1334,11 @@ addImpl' inpat env infns ist ptm
       = let l' = ai env ds l
             r' = ai env ds r in
             PPair fc p l' r'
-    ai env ds (PDPair fc l t r)
+    ai env ds (PDPair fc p l t r)
          = let l' = ai env ds l
                t' = ai env ds t
                r' = ai env ds r in
-           PDPair fc l' t' r'
+           PDPair fc p l' t' r'
     ai env ds (PAlternative a as) 
            = let as' = map (ai env ds) as in
                  PAlternative a as'
@@ -1534,7 +1534,7 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
              if null alts' then Placeholder
                            else PAlternative b alts'
     su (PPair fc p l r) = PPair fc p (su l) (su r)
-    su (PDPair fc l t r) = PDPair fc (su l) (su t) (su r)
+    su (PDPair fc p l t r) = PDPair fc p (su l) (su t) (su r)
     su t = t
 stripUnmatchable i tm = tm
 
@@ -1645,10 +1645,10 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PPair _ _ l r) (PPair _ _ l' r') = do ml <- match' l l'
                                                  mr <- match' r r'
                                                  return (ml ++ mr)
-    match (PDPair _ l t r) (PDPair _ l' t' r') = do ml <- match' l l'
-                                                    mt <- match' t t'
-                                                    mr <- match' r r'
-                                                    return (ml ++ mt ++ mr)
+    match (PDPair _ _ l t r) (PDPair _ _ l' t' r') = do ml <- match' l l'
+                                                        mt <- match' t t'
+                                                        mr <- match' r r'
+                                                        return (ml ++ mt ++ mr)
     match (PAlternative a as) (PAlternative a' as')
         = do ms <- zipWithM match' as as'
              return (concat ms)
@@ -1726,7 +1726,7 @@ substMatchShadow n shs tm t = sm shs t where
                                            (fmap (sm xs) tm)
     sm xs (PTyped x y) = PTyped (sm xs x) (sm xs y)
     sm xs (PPair f p x y) = PPair f p (sm xs x) (sm xs y)
-    sm xs (PDPair f x t y) = PDPair f (sm xs x) (sm xs t) (sm xs y)
+    sm xs (PDPair f p x t y) = PDPair f p (sm xs x) (sm xs t) (sm xs y)
     sm xs (PAlternative a as) = PAlternative a (map (sm xs) as)
     sm xs (PHidden x) = PHidden (sm xs x)
     sm xs (PUnifyLog x) = PUnifyLog (sm xs x)
@@ -1749,7 +1749,7 @@ shadow n n' t = sm t where
     sm (PRewrite f x y tm) = PRewrite f (sm x) (sm y) (fmap sm tm)
     sm (PTyped x y) = PTyped (sm x) (sm y)
     sm (PPair f p x y) = PPair f p (sm x) (sm y)
-    sm (PDPair f x t y) = PDPair f (sm x) (sm t) (sm y)
+    sm (PDPair f p x t y) = PDPair f p (sm x) (sm t) (sm y)
     sm (PAlternative a as) = PAlternative a (map sm as)
     sm (PTactics ts) = PTactics (map (fmap sm) ts)
     sm (PProof ts) = PProof (map (fmap sm) ts)
@@ -1822,7 +1822,7 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   mkUniq (PPair fc p l r)
          = do l' <- mkUniq l; r' <- mkUniq r
               return $! PPair fc p l' r'
-  mkUniq (PDPair fc (PRef fc' n) t sc)
+  mkUniq (PDPair fc p (PRef fc' n) t sc)
       | t /= Placeholder
          = do env <- get
               (n', sc') <- if n `elem` env
@@ -1832,10 +1832,10 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
               put (n' : env)
               t' <- mkUniq t
               sc'' <- mkUniq sc'
-              return $! PDPair fc (PRef fc' n') t' sc''
-  mkUniq (PDPair fc l t r)
+              return $! PDPair fc p (PRef fc' n') t' sc''
+  mkUniq (PDPair fc p l t r)
          = do l' <- mkUniq l; t' <- mkUniq t; r' <- mkUniq r
-              return $! PDPair fc l' t' r'
+              return $! PDPair fc p l' t' r'
   mkUniq (PAlternative b as)
          = liftM (PAlternative b) (mapM mkUniq as)
   mkUniq (PHidden t) = liftM PHidden (mkUniq t)

@@ -26,7 +26,7 @@ import Util.Zlib (decompressEither)
 
 
 ibcVersion :: Word8
-ibcVersion = 59
+ibcVersion = 60
 
 
 data IBCFile = IBCFile { ver :: Word8,
@@ -1611,11 +1611,12 @@ instance Binary PTerm where
                                         put x2
                                         put x3
                                         put x4
-                PDPair x1 x2 x3 x4 -> do putWord8 19
-                                         put x1
-                                         put x2
-                                         put x3
-                                         put x4
+                PDPair x1 x2 x3 x4 x5 -> do putWord8 19
+                                            put x1
+                                            put x2
+                                            put x3
+                                            put x4
+                                            put x5
                 PAlternative x1 x2 -> do putWord8 20
                                          put x1
                                          put x2
@@ -1728,7 +1729,8 @@ instance Binary PTerm where
                             x2 <- get
                             x3 <- get
                             x4 <- get
-                            return (PDPair x1 x2 x3 x4)
+                            x5 <- get
+                            return (PDPair x1 x2 x3 x4 x5)
                    20 -> do x1 <- get
                             x2 <- get
                             return (PAlternative x1 x2)
