@@ -7,6 +7,7 @@ import Idris.Core.CaseTree
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Primitives
+import Idris.Error
 
 import Debug.Trace
 import System.IO.Unsafe
@@ -102,8 +103,12 @@ performUsageAnalysis = do
     checkAccessibility opt (n, reachable)
         | [Optimise col nt forc rec inaccessible] <- lookupCtxt n opt
         = let collision = IS.fromList inaccessible `IS.intersection` reachable
-          in unless (IS.null collision)
-               . fail $ "Erasure checker: inaccessible arguments reachable: " ++ show (IS.toList collision)
+          in unless (IS.null collision) . ifail . concat $
+            [ "Erasure checker: in function "
+            , show n
+            , ": inaccessible arguments reachable: "
+            , show (IS.toList collision)
+            ]
 
         | otherwise = return ()
 
