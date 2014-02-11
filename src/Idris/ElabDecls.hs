@@ -87,7 +87,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          let ty    = addImpl i ty'
              inacc = inaccessible 0 ty
          logLvl 3 $ show n ++ " type " ++ showTmImpls ty
-         logLvl 5 $ "Erased params: " ++ show inacc
+         logLvl 5 $ "Inaccessible arguments: " ++ show inacc
 
          ((tyT, defer, is), log) <-
                tclift $ elaborate ctxt n (TType (UVal 0)) []
@@ -133,8 +133,10 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          addDocStr n doc argDocs
          addIBC (IBCDoc n)
          addIBC (IBCFlags n opts')
+         saveInaccArgs n inacc
          when (Implicit `elem` opts') $ do addCoercion n
                                            addIBC (IBCCoercion n)
+
          -- If the function is declared as an error handler and the language
          -- extension is enabled, then add it to the list of error handlers.
          errorReflection <- fmap (elem ErrorReflection . idris_language_extensions) getIState
@@ -163,6 +165,19 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     maybe = txt "Maybe"
     lst = txt "List"
     errrep = txt "ErrorReportPart"
+
+    saveInaccArgs :: Name -> [Int] -> Idris ()
+    saveInaccArgs n is = do
+        ist <- getIState
+        case lookupCtxt n (idris_optimisation ist) of
+            [oi] -> do
+                putIState ist{ idris_optimisation =
+                    addDef n oi{ inaccessible = is } (idris_optimisation ist) }
+
+            _ -> do
+                putIState ist{ idris_optimisation =
+                    addDef n (Optimise False False [] [] is) (idris_optimisation ist) }
+                addIBC (IBCOpt n)
 
     inaccessible :: Int -> PTerm -> [Int]
     inaccessible i (PPi (Imp _ _ _ _) n Placeholder t)
@@ -965,7 +980,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                  [oi] -> do let opts = addDef n (oi { collapsible = True })
                                            (idris_optimisation ist)
                             putIState (ist { idris_optimisation = opts })
-                 _ -> do let opts = addDef n (Optimise True False [] [])
+                 _ -> do let opts = addDef n (Optimise True False [] [] [])
                                            (idris_optimisation ist)
                          putIState (ist { idris_optimisation = opts })
                          addIBC (IBCOpt n)

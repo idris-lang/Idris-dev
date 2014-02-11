@@ -2102,17 +2102,19 @@ instance Binary ClassInfo where
                return (CI x1 x2 x3 x4 x5 [])
 
 instance Binary OptInfo where
-        put (Optimise x1 x2 x3 x4)
+        put (Optimise x1 x2 x3 x4 x5)
           = do put x1
                put x2
                put x3
                put x4
+               put x5
         get
           = do x1 <- get
                x2 <- get
                x3 <- get
                x4 <- get
-               return (Optimise x1 x2 x3 x4)
+               x5 <- get
+               return (Optimise x1 x2 x3 x4 x5)
 
 instance Binary TypeInfo where
         put (TI x1 x2 x3 x4) = do put x1

@@ -23,7 +23,7 @@ forceArgs typeName n expforce t = do
     ist <- getIState
     let fargs = getForcedArgs ist typeName t
         copt = case lookupCtxt n (idris_optimisation ist) of
-          []   -> Optimise False False [] []
+          []   -> Optimise False False [] [] []
           op:_ -> op
         opts = addDef n (copt { forceable = M.toList fargs ++
                                             zip expforce (repeat Unconditional) }) 
@@ -129,7 +129,7 @@ collapseCons tn ctors = do
                (oi:_) -> do let oi' = oi { collapsible = True }
                             let opts = addDef n oi' (idris_optimisation i)
                             putIState (i { idris_optimisation = opts })
-               [] -> do let oi = Optimise True False [] []
+               [] -> do let oi = Optimise True False [] [] []
                         let opts = addDef n oi (idris_optimisation i)
                         putIState (i { idris_optimisation = opts })
                         addIBC (IBCOpt n)
