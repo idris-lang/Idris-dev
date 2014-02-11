@@ -1027,7 +1027,7 @@ extractLocalConstructors js =
 
     extractLocalConstructors' :: JS -> [JS]
     extractLocalConstructors' js@(JSAlloc fun (Just (JSFunction args body))) =
-      map allocCon cons ++ [foldr (uncurry jsSubst) js (reverse cons)]
+      addCons cons [foldr (uncurry jsSubst) js (reverse cons)]
       where
         cons :: [(JS, JS)]
         cons = zipWith genName (foldJS match (++) [] body) [1..]
@@ -1041,6 +1041,24 @@ extractLocalConstructors js =
               | JSNew "__IDRRT__Con" args <- js
               , all isConstant args = [js]
               | otherwise           = []
+
+
+        addCons :: [(JS, JS)] -> [JS] -> [JS]
+        addCons [] js = js
+        addCons (con@(_, name):cons) js
+          | sum (map (countOccur name) js) > 0 =
+              addCons cons ((allocCon con) : js)
+          | otherwise =
+              addCons cons js
+
+
+        countOccur :: JS -> JS -> Int
+        countOccur ident js = foldJS match (+) 0 js
+          where
+            match :: JS -> Int
+            match js
+              | js == ident = 1
+              | otherwise   = 0
 
 
         allocCon :: (JS, JS) -> JS
