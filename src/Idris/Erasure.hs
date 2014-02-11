@@ -70,6 +70,9 @@ performUsageAnalysis = do
         logLvl 4 $ "Minimal usage:\n" ++ fmtUseMap minUse
         logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
 
+        -- Check that everything reachable is accessible
+        checkAccessibility minUse
+
         -- Store the usage info in the internal state.
         mapM_ storeUsage . M.toList $ minUse
 
@@ -90,6 +93,9 @@ performUsageAnalysis = do
         case lookupCtxt n cg of
             [x] -> addToCG n x{ usedpos = IS.toList args }          -- functions
             _   -> addToCG n (CGInfo [] [] [] [] (IS.toList args))  -- data ctors
+
+checkAccessibility :: UseMap -> Idris ()
+checkAccessibility umap = return ()
 
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> (Deps, (Set Name, UseMap))
