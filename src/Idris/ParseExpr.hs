@@ -798,12 +798,10 @@ Pi ::=
  -}
 
 pi :: SyntaxInfo -> IdrisParser PTerm
+pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
-     do opts <- -- if implicitAllowed syn -- laziness is top level only
-                -- then option [] (do lchar '|'; return [Lazy])
-                -- else return []
-                return []
-        st <- static
+     do opts <- piOpts syn
+        st   <- static
         (do try (lchar '('); xt <- typeDeclList syn; lchar ')'
             symbol "->"
             sc <- expr syn
@@ -834,6 +832,12 @@ pi syn =
                             return (bindList (PPi (Imp opts st False)) xt sc)
                        else do fail "no implicit arguments allowed here"))
   <?> "dependent type signature"
+
+piOpts :: SyntaxInfo -> IdrisParser [ArgOpt]
+piOpts syn | implicitAllowed syn =
+        lchar '.' *> return [ErasedArg]
+    <|> return []
+piOpts syn = return []
 
 {- | Parses a type constraint list
 

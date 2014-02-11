@@ -1319,11 +1319,13 @@ instance Binary ArgOpt where
           = case x of
                 Lazy -> putWord8 0
                 HideDisplay -> putWord8 1
+                ErasedArg -> putWord8 2
         get
           = do i <- getWord8
                case i of
                    0 -> return Lazy
                    1 -> return HideDisplay
+                   2 -> return ErasedArg
                    _ -> error "Corrupted binary data for Static"
 
 instance Binary Static where

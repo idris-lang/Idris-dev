@@ -793,7 +793,7 @@ data PArg' t = PImp { priority :: Int,
                               getTm :: t }
     deriving (Show, Eq, Functor)
 
-data ArgOpt = Lazy | HideDisplay
+data ArgOpt = Lazy | HideDisplay | ErasedArg
     deriving (Show, Eq)
 
 lazyarg :: PArg' t -> Bool
