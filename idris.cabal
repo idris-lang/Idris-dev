@@ -469,7 +469,6 @@ Library
                 , Idris.Docstrings
                 , Idris.ElabDecls
                 , Idris.ElabTerm
-                , Idris.Erasure
                 , Idris.Error
                 , Idris.ErrReverse
                 , Idris.Help
@@ -502,6 +501,7 @@ Library
                 , IRTS.Compiler
                 , IRTS.Defunctionalise
                 , IRTS.DumpBC
+                , IRTS.Erasure
                 , IRTS.Inliner
                 , IRTS.Java.ASTBuilding
                 , IRTS.Java.JTypes

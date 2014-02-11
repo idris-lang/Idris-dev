@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Erasure
+module IRTS.Erasure
     ( buildDepMap
     , minimalUsage
     ) where

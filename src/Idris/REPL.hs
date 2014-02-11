@@ -17,7 +17,6 @@ import Idris.Parser hiding (indent)
 import Idris.Primitives
 import Idris.Coverage
 import Idris.Docs hiding (Doc)
-import Idris.Erasure
 import Idris.Help
 import Idris.Completion
 import qualified Idris.IdeSlave as IdeSlave
@@ -41,6 +40,7 @@ import Idris.Core.Execute (execute)
 import Idris.Core.TT
 import Idris.Core.Constraints
 
+import IRTS.Erasure
 import IRTS.Compiler
 import IRTS.CodegenCommon
 
