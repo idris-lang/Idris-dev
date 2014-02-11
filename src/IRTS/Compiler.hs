@@ -32,7 +32,6 @@ import Control.Monad.State
 import Data.Maybe
 import Data.List
 import Data.IntSet (IntSet)
-import qualified Data.IntMap as IM
 import qualified Data.IntSet as IS
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -46,15 +45,11 @@ import Paths_idris
 
 compile :: Codegen -> FilePath -> Term -> Idris ()
 compile codegen f tm
-   = do checkMVs
-        let tmnames = namesUsed (STerm tm)
-        usedIn <- mapM (allNames []) tmnames
-        let used = sUN "prim__subBigInt" : sUN "prim__addBigInt" : concat usedIn
-
+   = do checkMVs  -- check for undefined metavariables
         -- TODO: DEBUG-ONLY, remove
         ctx <- tt_ctxt <$> getIState
         ci  <- idris_classes <$> getIState
-        let depMap = buildDepMap ci ctx used
+        let depMap = buildDepMap ci ctx (namesUsed $ STerm tm)
         let printItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
         -- iLOG $ "USAGE ANALYSIS:\n" ++ unlines (map printItem . M.toList $ depMap)
 
@@ -71,7 +66,6 @@ compile codegen f tm
         
         maindef <- irMain tm
         iLOG $ "MAIN: " ++ show maindef
-        iLOG $ "USED: " ++ show used
         objs <- getObjectFiles codegen
         libs <- getLibs codegen
         flags <- getFlags codegen
