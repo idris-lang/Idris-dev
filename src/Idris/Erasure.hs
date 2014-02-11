@@ -66,7 +66,7 @@ performUsageAnalysis = do
         let (residDeps, (reachableNames, minUse)) = minimalUsage depMap
 
         -- Print some debug info.
-        logLvl 3 $ "Reachable names:\n" ++ unlines (map show . S.toList $ reachableNames)
+        logLvl 3 $ "Reachable names:\n" ++ unlines (map (indent . show) . S.toList $ reachableNames)
         logLvl 4 $ "Minimal usage:\n" ++ fmtUseMap minUse
         logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
 
@@ -76,12 +76,13 @@ performUsageAnalysis = do
         return $ S.toList reachableNames
   where
     mainName = sNS (sUN "main") ["Main"]
+    indent = ("  " ++)
 
     fmtItem :: (Cond, Set Node) -> String
-    fmtItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
+    fmtItem (cond, deps) = indent $ show (S.toList cond) ++ " -> " ++ show (S.toList deps)
 
     fmtUseMap :: UseMap -> String
-    fmtUseMap = unlines . map (\(n,is) -> show n ++ " -> " ++ show (IS.toList is)) . M.toList
+    fmtUseMap = unlines . map (\(n,is) -> indent $ show n ++ " -> " ++ show (IS.toList is)) . M.toList
 
     storeUsage :: (Name, IntSet) -> Idris ()
     storeUsage (n, args) = do
@@ -123,7 +124,6 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
       where
         -- mini-DSL for postulates
         (==>) ds rs = (S.fromList ds, S.fromList rs)
-        (.:) ms n = NS (sUN n) (map pack $ reverse ms)
         it n is = [(sUN n, Arg i) | i <- is]
         mn n is = [(MN 0 $ pack n, Arg i) | i <- is]
 
@@ -136,8 +136,8 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             [ [] ==> concat
                 -- These two, Main.main and run__IO, are always evaluated
                 -- but they evade analysis since they come from the seed term.
-                [ [(["Main"] .: "main",  Result)] 
-                , [(sUN "run__IO", Result)]
+                [ [(sUN "main" `sNS` ["Main"],  Result)] 
+                , [(sUN "run__IO", Result), (sUN "run__IO", Arg 0)]
 
                 -- these have been discovered as builtins but are not listed
                 -- among Idris.Primitives.primitives
