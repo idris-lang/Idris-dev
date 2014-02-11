@@ -409,13 +409,30 @@ removeAllocations js = transformJS removeAllocations js
 
 isJSConstant :: JS -> Bool
 isJSConstant js
-  | JSString _ <- js = True
-  | JSChar _   <- js = True
-  | JSNum _    <- js = True
-  | JSType _   <- js = True
-  | JSNull     <- js = True
+  | JSString _   <- js = True
+  | JSChar _     <- js = True
+  | JSNum _      <- js = True
+  | JSType _     <- js = True
+  | JSNull       <- js = True
+  | JSArray vals <- js = all isJSConstant vals
 
   | JSApp (JSIdent "__IDRRT__bigInt") _ <- js = True
+
+  | otherwise = False
+
+isJSConstantConstructor :: [String] -> JS -> Bool
+isJSConstantConstructor constants js
+  | isJSConstant js =
+      True
+  | JSArray vals <- js =
+      all (isJSConstantConstructor constants) vals
+  | JSNew "__IDRRT__Con" args <- js =
+      all (isJSConstantConstructor constants) args
+  | JSIndex (JSProj (JSIdent _) "vars") (JSNum _) <- js =
+      True
+  | JSIdent name <- js
+  , name `elem` constants =
+      True
   | otherwise = False
 
 
@@ -1000,6 +1017,158 @@ optimizeJS = inlineLoop
           | otherwise = js
 
 
+extractLocalConstructors :: [JS] -> [JS]
+extractLocalConstructors js =
+  concatMap extractLocalConstructors' js
+  where
+    globalCons :: [String]
+    globalCons = concatMap (getGlobalCons) js
+
+
+    extractLocalConstructors' :: JS -> [JS]
+    extractLocalConstructors' js@(JSAlloc fun (Just (JSFunction args body))) =
+      map allocCon cons ++ [foldr (uncurry jsSubst) js (reverse cons)]
+      where
+        cons :: [(JS, JS)]
+        cons = zipWith genName (foldJS match (++) [] body) [1..]
+          where
+            genName :: JS -> Int -> (JS, JS)
+            genName js id =
+              (js, JSIdent $ idrCTRNamespace ++ fun ++ "_" ++ show id)
+
+            match :: JS -> [JS]
+            match js
+              | JSNew "__IDRRT__Con" args <- js
+              , all isConstant args = [js]
+              | otherwise           = []
+
+
+        allocCon :: (JS, JS) -> JS
+        allocCon (js, JSIdent name) =
+          JSAlloc name (Just js)
+
+
+        isConstant :: JS -> Bool
+        isConstant js
+          | JSNew "__IDRRT__Con" args <- js
+          , all isConstant args =
+              True
+          | otherwise =
+              isJSConstantConstructor globalCons js
+
+    extractLocalConstructors' js = [js]
+
+
+    getGlobalCons :: JS -> [String]
+    getGlobalCons js = foldJS match (++) [] js
+      where
+        match :: JS -> [String]
+        match js
+          | (JSAlloc name (Just (JSNew "__IDRRT__Con" _))) <- js =
+              [name]
+          | otherwise =
+              []
+
+
+evalCons :: [JS] -> [JS]
+evalCons js =
+  map (collapseCont . collapseTC . expandProj . evalCons') js
+  where
+    cons :: [(String, JS)]
+    cons = concatMap getGlobalCons js
+
+    evalCons' :: JS -> JS
+    evalCons' js = transformJS match js
+      where
+        match :: JS -> JS
+        match (JSApp (JSIdent "__IDRRT__EVALTC") [arg])
+          | JSIdent name                     <- arg
+          , Just (JSNew _ [_, JSNull, _, _]) <- lookupConstructor name cons =
+              arg
+
+        match (JSApp (JSIdent "__IDR__mEVAL0") [arg])
+          | JSIdent name                     <- arg
+          , Just (JSNew _ [_, JSNull, _, _]) <- lookupConstructor name cons =
+              arg
+
+        match js = transformJS match js
+
+
+    lookupConstructor :: String -> [(String, JS)] -> Maybe JS
+    lookupConstructor ctr cons
+      | Just (JSIdent name)  <- lookup ctr cons = lookupConstructor name cons
+      | Just con@(JSNew _ _) <- lookup ctr cons = Just con
+      | otherwise                               = Nothing
+
+
+    expandProj :: JS -> JS
+    expandProj js = transformJS match js
+      where
+        match :: JS -> JS
+        match (
+            JSIndex (
+              JSProj (JSIdent name) "vars"
+            ) (
+              JSNum (JSInt idx)
+            )
+          )
+          | Just (JSNew _ [_, _, _, JSArray args]) <- lookup name cons =
+              args !! idx
+
+        match js = transformJS match js
+
+
+    collapseTC :: JS -> JS
+    collapseTC js = transformJS match js
+      where
+        match :: JS -> JS
+        match (JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+            JSReturn (JSIdent name)
+          )])
+          | Just _ <- lookup name cons = (JSIdent name)
+
+        match js = transformJS match js
+
+
+    collapseCont :: JS -> JS
+    collapseCont js = transformJS match js
+      where
+        match :: JS -> JS
+        match (JSNew "__IDRRT__Cont" [JSFunction [] (
+            JSReturn ret@(JSNew "__IDRRT__Cont" [JSFunction [] _])
+          )]) = collapseCont ret
+
+
+        match (JSNew "__IDRRT__Cont" [JSFunction [] (
+            JSReturn (JSIdent name)
+          )]) = JSIdent name
+
+        match (JSNew "__IDRRT__Cont" [JSFunction [] (
+            JSReturn ret@(JSNew "__IDRRT__Con" [_, _, _, JSArray args])
+          )])
+          | all collapsable args = ret
+          where
+            collapsable :: JS -> Bool
+            collapsable (JSIdent _) = True
+            collapsable js          = isJSConstantConstructor (map fst cons) js
+
+
+        match js = transformJS match js
+
+
+getGlobalCons :: JS -> [(String, JS)]
+getGlobalCons js = foldJS match (++) [] js
+  where
+    match :: JS -> [(String, JS)]
+    match js
+      | (JSAlloc name (Just con@(JSNew "__IDRRT__Con" _))) <- js =
+          [(name, con)]
+      | (JSAlloc name (Just con@(JSIdent _))) <- js =
+          [(name, con)]
+      | otherwise =
+          []
+
+
 codegenJavaScript
   :: JSTarget
   -> [(Name, SDecl)]
@@ -1056,7 +1225,9 @@ codegenJavaScript target definitions filename outputType = do
           , map removeInstanceChecks
           , inlineFunctions
           , map reduceContinuations
+          , extractLocalConstructors
           , unfoldLookupTable
+          , evalCons
           ]
 
     prelude :: [JS]

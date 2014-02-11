@@ -1,0 +1,11 @@
+Type checking ./interactive002.idr
+Nat
+Nat
+Nat
+Nat
+Vect (n + m) a
+Nat
+Nat
+S n
+String
+()

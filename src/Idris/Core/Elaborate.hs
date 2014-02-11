@@ -466,8 +466,6 @@ apply' fillt fn imps =
     do args <- prepare_apply fn (map fst imps)
        -- _Don't_ solve the arguments we're specifying by hand.
        -- (remove from unified list before calling end_unify)
-       -- HMMM: Actually, if we get it wrong, the typechecker will complain!
-       -- so do nothing
        hs <- get_holes
        ES (p, a) s prev <- get
        let dont = head hs : dontunify p ++

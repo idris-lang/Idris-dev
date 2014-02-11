@@ -257,7 +257,7 @@ unify ctxt env topx topy dont holes =
                                  then unifyTmpFail xtm tm
                                  else do sc 1
                                          checkCycle bnames (x, tm)
-        | not (injective xtm) && injective tm = unifyFail xtm tm
+        | not (injective xtm) && injective tm = unifyTmpFail xtm tm
     un' fn bnames tm ytm@(P _ y _)
         | holeIn env y || y `elem` holes
                        = do UI s f <- get
@@ -268,7 +268,7 @@ unify ctxt env topx topy dont holes =
                                  then unifyTmpFail tm ytm
                                  else do sc 1
                                          checkCycle bnames (y, tm)
-        | not (injective ytm) && injective tm = unifyFail ytm tm
+        | not (injective ytm) && injective tm = unifyTmpFail tm ytm
     un' fn bnames (V i) (P _ x _)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
     un' fn bnames (P _ x _) (V i)
@@ -379,9 +379,10 @@ unify ctxt env topx topy dont holes =
                      unArgs vs xs ys
 
             metavarApp tm = let (f, args) = unApply tm in
-                                metavar f &&
-                                all (\x -> metavarApp x) args
-                                   && nub args == args
+                                (metavar f &&
+                                 all (\x -> metavarApp x) args
+                                    && nub args == args) ||
+                                       globmetavar tm
             metavarArgs tm = let (f, args) = unApply tm in
                                  all (\x -> metavar x || inenv x) args
                                    && nub args == args
@@ -413,14 +414,22 @@ unify ctxt env topx topy dont holes =
 
             rigid (P (DCon _ _) _ _) = True
             rigid (P (TCon _ _) _ _) = True
-            rigid t@(P Ref _ _)      = inenv t
+            rigid t@(P Ref _ _)      = inenv t || globmetavar t
             rigid (Constant _)       = True
             rigid (App f a)          = rigid f && rigid a
-            rigid t                  = not (metavar t)
+            rigid t                  = not (metavar t) || globmetavar t
+
+            globmetavar t = case unApply t  of
+                                (P _ x _, _) ->
+                                   case lookupDef x ctxt of
+                                        [TyDecl _ _] -> True
+                                        _ -> False
+                                _ -> False
 
             metavar t = case t of
-                             P _ x _ -> (x `elem` holes || holeIn env x) &&
-                                        not (x `elem` dont)
+                             P _ x _ -> ((x `elem` holes || holeIn env x) &&
+                                        not (x `elem` dont))
+                                          || globmetavar t
                              _ -> False
             pat t = case t of
                          P _ x _ -> x `elem` holes || patIn env x

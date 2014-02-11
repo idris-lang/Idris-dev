@@ -11,6 +11,7 @@ import Idris.ProofSearch
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Core.Unify
 import Idris.Core.Typecheck (check)
 
 import Control.Applicative ((<$>))
@@ -46,6 +47,10 @@ build :: IState -> ElabInfo -> Bool -> FnOpts -> Name -> PTerm ->
          ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
 build ist info pattern opts fn tm
     = do elab ist info pattern opts fn tm
+         let tmIn = tm
+         let inf = case lookupCtxt fn (idris_tyinfodata ist) of
+                        [TIPartial] -> True
+                        _ -> False
          ivs <- get_instances
          hs <- get_holes
          ptm <- get_term
@@ -70,7 +75,8 @@ build ist info pattern opts fn tm
          probs <- get_probs
          case probs of
             [] -> return ()
-            ((_,_,_,e):es) -> lift (Error e)
+            ((_,_,_,e):es) -> if inf then return ()
+                                     else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -87,13 +93,18 @@ buildTC :: IState -> ElabInfo -> Bool -> FnOpts -> Name -> PTerm ->
 buildTC ist info pattern opts fn tm
     = do -- set name supply to begin after highest index in tm
          let ns = allNamesIn tm
+         let tmIn = tm
+         let inf = case lookupCtxt fn (idris_tyinfodata ist) of
+                        [TIPartial] -> True
+                        _ -> False
          initNextNameFrom ns
          elab ist info pattern opts fn tm
          probs <- get_probs
          tm <- get_term
          case probs of
             [] -> return ()
-            ((_,_,_,e):es) -> lift (Error e)
+            ((_,_,_,e):es) -> if inf then return ()
+                                     else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -841,7 +852,8 @@ collectDeferred :: Maybe Name ->
                    Term -> State [(Name, (Int, Maybe Name, Type))] Term
 collectDeferred top (Bind n (GHole i t) app) =
     do ds <- get
-       when (not (n `elem` map fst ds)) $ put ((n, (i, top, t)) : ds)
+       t' <- collectDeferred top t
+       when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, t'))])
        collectDeferred top app
 collectDeferred top (Bind n b t) = do b' <- cdb b
                                       t' <- collectDeferred top t

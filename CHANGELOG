@@ -1,3 +1,9 @@
+New in 0.9.12:
+--------------
+
+* Proof search now works for metavariables in types, giving some interactive
+  type inference.
+
 New in 0.9.11:
 --------------
 

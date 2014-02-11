@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.ProofSearch(trivial, proofSearch) where
 
 import Idris.Core.Elaborate hiding (Tactic(..))
@@ -36,9 +38,20 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
 
 proofSearch :: (PTerm -> ElabD ()) -> Maybe Name -> Name -> [Name] ->
                IState -> ElabD ()
-proofSearch elab fn nroot hints ist = psRec maxDepth
+proofSearch elab fn nroot hints ist 
+       = case lookupCtxt nroot (idris_tyinfodata ist) of
+              [TISolution ts] -> findInferredTy ts
+              _ -> psRec maxDepth
   where
     maxDepth = 6
+
+    findInferredTy (t : _) = elab (delab ist (toUN t)) 
+
+    toUN t@(P nt (MN i n) ty) 
+       | ('_':xs) <- str n = t
+       | otherwise = P nt (UN n) ty
+    toUN (App f a) = App (toUN f) (toUN a)
+    toUN t = t
 
     psRec 0 = do attack; defer nroot; solve --fail "Maximum depth reached"
     psRec d = try' (trivial elab ist)
