@@ -53,24 +53,30 @@ type Vars = Map Name Var
 performUsageAnalysis :: Idris [Name]
 performUsageAnalysis = do
     ctx <- tt_ctxt <$> getIState
-    ci  <- idris_classes <$> getIState
 
-    -- Build the dependency graph.
-    let depMap = buildDepMap ci ctx (sNS (sUN "main") ["Main"])
+    case lookupCtxt mainName (definitions ctx) of
+      [] -> return []  -- no main -> not compiling -> reachability irrelevant
+      _  -> do
+        ci  <- idris_classes <$> getIState
 
-    -- Search for reachable nodes in the graph.
-    let (residDeps, (reachableNames, minUse)) = minimalUsage depMap
+        -- Build the dependency graph.
+        let depMap = buildDepMap ci ctx mainName
 
-    -- Print some debug info.
-    logLvl 3 $ "Reachable names:\n" ++ unlines (map show . S.toList $ reachableNames)
-    logLvl 4 $ "Minimal usage:\n" ++ fmtUseMap minUse
-    logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
+        -- Search for reachable nodes in the graph.
+        let (residDeps, (reachableNames, minUse)) = minimalUsage depMap
 
-    -- Store the usage info in the internal state.
-    mapM_ storeUsage . M.toList $ minUse
+        -- Print some debug info.
+        logLvl 3 $ "Reachable names:\n" ++ unlines (map show . S.toList $ reachableNames)
+        logLvl 4 $ "Minimal usage:\n" ++ fmtUseMap minUse
+        logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
 
-    return $ S.toList reachableNames
+        -- Store the usage info in the internal state.
+        mapM_ storeUsage . M.toList $ minUse
+
+        return $ S.toList reachableNames
   where
+    mainName = sNS (sUN "main") ["Main"]
+
     fmtItem :: (Cond, Set Node) -> String
     fmtItem (cond, deps) = show (S.toList cond) ++ " -> " ++ show (S.toList deps)
 
@@ -109,7 +115,7 @@ forwardChain deps
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
 buildDepMap :: Ctxt ClassInfo -> Context -> Name -> Deps
-buildDepMap ci ctx rootName = addPostulates $ dfs S.empty M.empty [rootName]
+buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
   where
     -- mark the result of Main.main as used with the empty assumption
     addPostulates :: Deps -> Deps
