@@ -166,7 +166,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     lst = txt "List"
     errrep = txt "ErrorReportPart"
 
-    saveInaccArgs :: Name -> [Int] -> Idris ()
+    saveInaccArgs :: Name -> [(Int,Name)] -> Idris ()
     saveInaccArgs n is = do
         ist <- getIState
         case lookupCtxt n (idris_optimisation ist) of
@@ -179,12 +179,12 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
                     addDef n (Optimise False False [] [] is) (idris_optimisation ist) }
                 addIBC (IBCOpt n)
 
-    inaccessible :: Int -> PTerm -> [Int]
+    inaccessible :: Int -> PTerm -> [(Int, Name)]
     inaccessible i (PPi (Imp _ _ _ _) n Placeholder t)
-        = i : inaccessible (i+1) t      -- unbound implicit
+        = (i,n) : inaccessible (i+1) t      -- unbound implicit
     inaccessible i (PPi plicity n ty t)
         | InaccessibleArg `elem` pargopts plicity
-            = i : inaccessible (i+1) t  -- an .{erased : Implicit}
+            = (i,n) : inaccessible (i+1) t  -- an .{erased : Implicit}
         | otherwise
             = inaccessible (i+1) t      -- a {regular : Implicit}
     inaccessible _ _ = []

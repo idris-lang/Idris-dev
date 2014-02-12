@@ -102,12 +102,8 @@ performUsageAnalysis = do
     checkAccessibility :: Ctxt OptInfo -> (Name, IntSet) -> Idris ()
     checkAccessibility opt (n, reachable)
         | [Optimise col nt forc rec inaccessible] <- lookupCtxt n opt
-        = let collision = IS.fromList inaccessible `IS.intersection` reachable
-          in unless (IS.null collision) . ifail . concat $
-            [ show n
-            , ": inaccessible arguments reachable: "
-            , intercalate ", " . map show $ IS.toList collision
-            ]
+        , eargs@(_:_) <- [show n | (i,n) <- inaccessible, i `IS.member` reachable]
+        = ifail $ show n ++ ": inaccessible arguments reachable: " ++ intercalate ", " eargs
 
         | otherwise = return ()
 
