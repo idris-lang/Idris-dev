@@ -182,6 +182,10 @@ instance ToIR (TT Name) where
             l == txt "lazy"
               = do arg' <- ir' env arg
                    return $ LLazyExp arg'
+          | (P _ (UN l) _, [_, arg]) <- unApply tm,
+            l == txt "force"
+              = do arg' <- ir' env arg
+                   return $ LForce arg'
           | (P _ (UN a) _, [_, _, arg]) <- unApply tm,
             a == txt "assert_smaller"
               = ir' env arg

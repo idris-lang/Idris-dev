@@ -30,6 +30,9 @@ trans refl refl = refl
 lazy : a -> a
 lazy x = x -- compiled specially
 
+force : a -> a
+force x = x -- compiled specially
+
 par : |(thunk:a) -> a
 par x = x -- compiled specially
 
