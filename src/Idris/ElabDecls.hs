@@ -85,7 +85,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          ty' <- implicit info syn n ty'
 
          let ty    = addImpl i ty'
-             inacc = inaccessible 0 ty
+             inacc = inaccessibleArgs 0 ty
          logLvl 3 $ show n ++ " type " ++ showTmImpls ty
          logLvl 5 $ "Inaccessible arguments: " ++ show inacc
 
@@ -166,29 +166,6 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     lst = txt "List"
     errrep = txt "ErrorReportPart"
 
-    saveInaccArgs :: Name -> [(Int,Name)] -> Idris ()
-    saveInaccArgs n is = do
-        ist <- getIState
-        case lookupCtxt n (idris_optimisation ist) of
-            [oi] -> do
-                putIState ist{ idris_optimisation =
-                    addDef n oi{ inaccessible = is } (idris_optimisation ist) }
-
-            _ -> do
-                putIState ist{ idris_optimisation =
-                    addDef n (Optimise False False [] [] is) (idris_optimisation ist) }
-                addIBC (IBCOpt n)
-
-    inaccessible :: Int -> PTerm -> [(Int, Name)]
-    inaccessible i (PPi (Imp _ _ _ _) n Placeholder t)
-        = (i,n) : inaccessible (i+1) t      -- unbound implicit
-    inaccessible i (PPi plicity n ty t)
-        | InaccessibleArg `elem` pargopts plicity
-            = (i,n) : inaccessible (i+1) t  -- an .{erased : Implicit}
-        | otherwise
-            = inaccessible (i+1) t      -- a {regular : Implicit}
-    inaccessible _ _ = []
-
     tyIsHandler (Bind _ (Pi (P _ (NS (UN e) ns1) _))
                         (App (P _ (NS (UN m) ns2) _)
                              (App (P _ (NS (UN l) ns3) _)
@@ -200,6 +177,30 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
         , ns4 == map txt ["Errors","Reflection","Language"] = True
     tyIsHandler _                                           = False
 
+-- Store the list of inaccessible arguments in the internal state.
+saveInaccArgs :: Name -> [(Int,Name)] -> Idris ()
+saveInaccArgs n is = do
+    ist <- getIState
+    case lookupCtxt n (idris_optimisation ist) of
+        [oi] -> do
+            putIState ist{ idris_optimisation =
+                addDef n oi{ inaccessible = is } (idris_optimisation ist) }
+
+        _ -> do
+            putIState ist{ idris_optimisation =
+                addDef n (Optimise False False [] [] is) (idris_optimisation ist) }
+            addIBC (IBCOpt n)
+
+-- Get the list of (index, name) of inaccessible arguments from the type.
+inaccessibleArgs :: Int -> PTerm -> [(Int, Name)]
+inaccessibleArgs i (PPi (Imp _ _ _ _) n Placeholder t)
+    = (i,n) : inaccessibleArgs (i+1) t      -- unbound implicit
+inaccessibleArgs i (PPi plicity n ty t)
+    | InaccessibleArg `elem` pargopts plicity
+        = (i,n) : inaccessibleArgs (i+1) t  -- an .{erased : Implicit}
+    | otherwise
+        = inaccessibleArgs (i+1) t      -- a {regular : Implicit}
+inaccessibleArgs _ _ = []
 
 elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring ->
                  FC -> FnOpts -> Name -> PTerm -> Idris ()
@@ -891,6 +892,8 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
          t_in <- implicit info syn n (if codata then mkLazy t_in else t_in)
          let t = addImpl i t_in
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t
+         let inacc = inaccessibleArgs 0 t
+         logLvl 5 $ "Inaccessible args: " ++ show inacc
          ((t', defer, is), log) <-
               tclift $ elaborate ctxt n (TType (UVal 0)) []
                        (errAt "constructor " n (erun fc (build i info False [] n t)))
@@ -908,6 +911,8 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
          checkDocs fc argDocs t_in
          addDocStr n doc argDocs
          addIBC (IBCDoc n)
+         saveInaccArgs n inacc
+         addIBC (IBCOpt n)
          let fs = map (getNamePos 0 t) forcenames
          -- FIXME: 'forcenames' is an almighty hack! Need a better way of
          -- erasing non-forceable things
