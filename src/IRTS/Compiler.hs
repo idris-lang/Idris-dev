@@ -223,7 +223,7 @@ instance ToIR (TT Name) where
               cg <- idris_callgraph <$> getIState
               case lookupCtxtExact n cg of
                 Just (CGInfo _ _ _ _ usedpos)
-                    -> irCon env t a n [if i `elem` usedpos then a else Erased | (i,a) <- zip [0..] args]
+                    -> irCon env t a n [if i `elem` map fst usedpos then a else Erased | (i,a) <- zip [0..] args]
                 Nothing -> irCon env t a n args
 
           | (P (DCon t a) n _, args) <- unApply tm
@@ -265,7 +265,7 @@ instance ToIR (TT Name) where
                     [CaseOp ci ty tys def tot cdefs] -> length tys
                     _ -> 0
 
-                used = fromMaybe [] (usedpos <$> lookupCtxtExact n (idris_callgraph ist))
+                used = fromMaybe [] (map fst . usedpos <$> lookupCtxtExact n (idris_callgraph ist))
                 fst4 (x,_,_,_) = x
 
 --       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)

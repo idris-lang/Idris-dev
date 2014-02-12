@@ -29,7 +29,7 @@ import Data.Text (pack)
 import qualified Data.Text as T
 
 -- UseMap maps names to the set of used (reachable) argument positions.
-type UseMap = Map Name IntSet
+type UseMap = Map Name (IntMap (Set Reason))
 
 data Arg = Arg !Int | Result deriving (Eq, Ord)
 
@@ -38,7 +38,11 @@ instance Show Arg where
     show Result  = "*"
 
 type Node = (Name, Arg)
-type Deps = Map Cond (Set Node)
+type Deps = Map Cond DepSet
+type Reason = (Name, Int)  -- function name, argument index
+
+-- Nodes along with sets of reasons for every one.
+type DepSet = Map Node (Set Reason)
 
 -- "Condition" is the conjunction
 -- of elementary assumptions along the path from the root.
@@ -46,7 +50,7 @@ type Deps = Map Cond (Set Node)
 type Cond = Set Node
 
 -- Every variable draws in certain dependencies.
-type Var = Set Node
+type Var = DepSet
 type Vars = Map Name Var
 
 -- Perform usage analysis, write the relevant information in the internal
@@ -85,49 +89,55 @@ performUsageAnalysis = do
     mainName = sNS (sUN "main") ["Main"]
     indent = ("  " ++)
 
-    fmtItem :: (Cond, Set Node) -> String
-    fmtItem (cond, deps) = indent $ show (S.toList cond) ++ " -> " ++ show (S.toList deps)
+    fmtItem :: (Cond, DepSet) -> String
+    fmtItem (cond, deps) = indent $ show (S.toList cond) ++ " -> " ++ show (M.toList deps)
 
-    fmtUseMap :: [(Name, IntSet)] -> String
-    fmtUseMap = unlines . map (\(n,is) -> indent $ show n ++ " -> " ++ show (IS.toList is))
+    fmtUseMap :: [(Name, IntMap (Set Reason))] -> String
+    fmtUseMap = unlines . map (\(n,is) -> indent $ show n ++ " -> " ++ show (IM.toList is))
 
-    storeUsage :: Ctxt CGInfo -> (Name, IntSet) -> Idris ()
+    storeUsage :: Ctxt CGInfo -> (Name, IntMap (Set Reason)) -> Idris ()
     storeUsage cg (n, args)
         | [x] <- lookupCtxt n cg
-        = addToCG n x{ usedpos = IS.toList args }          -- functions
+        = addToCG n x{ usedpos = flat }        -- functions
 
         | otherwise
-        = addToCG n (CGInfo [] [] [] [] (IS.toList args))  -- data ctors
+        = addToCG n (CGInfo [] [] [] [] flat)  -- data ctors
+      where
+        flat = [(i, S.toList rs) | (i,rs) <- IM.toList args]
 
-    checkAccessibility :: Ctxt OptInfo -> (Name, IntSet) -> Idris ()
+    checkAccessibility :: Ctxt OptInfo -> (Name, IntMap (Set Reason)) -> Idris ()
     checkAccessibility opt (n, reachable)
         | [Optimise col nt forc rec inaccessible] <- lookupCtxt n opt
-        , eargs@(_:_) <- [show n | (i,n) <- inaccessible, i `IS.member` reachable]
-        = ifail $ show n ++ ": inaccessible arguments reachable: " ++ intercalate ", " eargs
+        , eargs@(_:_) <- [fmt n (S.toList rs) | (i,n) <- inaccessible, rs <- maybeToList $ IM.lookup i reachable]
+        = ifail $ show n ++ ": inaccessible arguments reachable:\n  " ++ intercalate "\n  " eargs
 
         | otherwise = return ()
+      where
+        fmt n [] = show n ++ " (no more information available)"
+        fmt n rs = show n ++ " from " ++ intercalate ", " [show rn ++ " arg# " ++ show ri | (rn,ri) <- rs]
 
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> (Deps, (Set Name, UseMap))
 minimalUsage = second gather . forwardChain
   where
-    gather :: Set (Name, Arg) -> (Set Name, UseMap)
-    gather = foldr ins (S.empty, M.empty) . S.toList 
+    gather :: DepSet -> (Set Name, UseMap)
+    gather = foldr ins (S.empty, M.empty) . M.toList
        where
-        ins :: Node -> (Set Name, UseMap) -> (Set Name, UseMap)
-        ins (n, Result) (ns, umap) = (S.insert n ns, umap)
-        ins (n, Arg i ) (ns, umap) = (ns, M.insertWith IS.union n (IS.singleton i) umap)
+        ins :: (Node, Set Reason) -> (Set Name, UseMap) -> (Set Name, UseMap)
+        ins ((n, Result), rs) (ns, umap) = (S.insert n ns, umap)
+        ins ((n, Arg i ), rs) (ns, umap) = (ns, M.insertWith (IM.unionWith S.union) n (IM.singleton i rs) umap)
 
-forwardChain :: Deps -> (Deps, Set Node)
+forwardChain :: Deps -> (Deps, DepSet)
 forwardChain deps
     | Just trivials <- M.lookup S.empty deps 
-        = (trivials `S.union`) `second` forwardChain (remove trivials . M.delete S.empty $ deps)
-    | otherwise = (deps, S.empty)
+        = (M.unionWith S.union trivials)
+            `second` forwardChain (remove trivials . M.delete S.empty $ deps)
+    | otherwise = (deps, M.empty)
   where
     -- Remove the given nodes from the Deps entirely,
     -- possibly creating new empty Conds.
-    remove :: Set Node -> Deps -> Deps
-    remove ns = M.mapKeysWith S.union (S.\\ ns)
+    remove :: DepSet -> Deps -> Deps
+    remove ds = M.mapKeysWith (M.unionWith S.union) (S.\\ M.keysSet ds)
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
@@ -136,10 +146,10 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
   where
     -- mark the result of Main.main as used with the empty assumption
     addPostulates :: Deps -> Deps
-    addPostulates deps = foldr (\(ds, rs) -> M.insertWith S.union ds rs) deps postulates
+    addPostulates deps = foldr (\(ds, rs) -> M.insertWith (M.unionWith S.union) ds rs) deps postulates
       where
         -- mini-DSL for postulates
-        (==>) ds rs = (S.fromList ds, S.fromList rs)
+        (==>) ds rs = (S.fromList ds, M.fromList [(r, S.empty) | r <- rs])
         it n is = [(sUN n, Arg i) | i <- is]
         mn n is = [(MN 0 $ pack n, Arg i) | i <- is]
 
@@ -178,7 +188,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     dfs visited deps [] = deps
     dfs visited deps (n : ns)
         | n `S.member` visited = dfs visited deps ns
-        | otherwise = dfs (S.insert n visited) (M.unionWith S.union deps' deps) (next ++ ns)
+        | otherwise = dfs (S.insert n visited) (M.unionWith (M.unionWith S.union) deps' deps) (next ++ ns)
       where
         next = [n | n <- S.toList depn, n `S.notMember` visited]
         depn = S.delete n $ allNames deps'
@@ -189,7 +199,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     allNames :: Deps -> Set Name
     allNames = S.unions . map names . M.toList
         where
-        names (cs, ns) = S.map fst cs `S.union` S.map fst ns
+        names (cs, ns) = S.map fst cs `S.union` S.map fst (M.keysSet ns)
 
     -- get Deps for a Name
     getDeps :: Name -> Deps
@@ -203,17 +213,19 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsDef fn (TyDecl   ty t) = M.empty
     getDepsDef fn (Operator ty n' f) = M.empty  -- TODO: what's this?
     getDepsDef fn (CaseOp ci ty tys def tot cdefs)
-        = getDepsSC fn etaVars (etaMap `M.union` varMap) sc
+        = getDepsSC fn etaVars (etaMap `union` varMap) sc
       where
+        union = M.unionWith (M.unionWith S.union)
+
         -- we must eta-expand the definition with fresh variables
         -- to capture these dependencies as well
         etaIdx = [length vars .. length tys - 1]
         etaVars = [eta i | i <- etaIdx]
-        etaMap = M.fromList [(eta i, S.singleton (fn, Arg i)) | i <- etaIdx]
+        etaMap = M.fromList [(eta i, M.singleton (fn, Arg i) S.empty) | i <- etaIdx]
         eta i = MN i (pack "eta")
 
         -- the variables that arose as function arguments only depend on (n, i)
-        varMap = M.fromList [(v, S.singleton (fn, Arg i)) | (v,i) <- zip vars [0..]]
+        varMap = M.fromList [(v, M.singleton (fn, Arg i) S.empty) | (v,i) <- zip vars [0..]]
         (vars, sc) = cases_runtime cdefs
             -- we use cases_runtime in order to have case-blocks
             -- resolved to top-level functions before our analysis
@@ -234,9 +246,10 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         -- that the result of this function is used at all
         = addTagDep $ unionMap (getDepsAlt fn es vs casedVar) alts  -- coming from the whole subtree
       where
+        
         addTagDep = case alts of
             [_] -> id  -- single branch, tag not used
-            _   -> M.insertWith S.union (S.singleton (fn, Result)) casedVar  -- more case branches
+            _   -> M.insertWith (M.unionWith S.union) (S.singleton (fn, Result)) casedVar
         casedVar  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
     getDepsAlt :: Name -> [Name] -> Vars -> Var -> CaseAlt -> Deps
@@ -246,11 +259,16 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsAlt fn es vs var (SucCase   n sc)
         = getDepsSC fn es (M.insert n var vs) sc -- we're not inserting the S-dependency here because it's special-cased
     getDepsAlt fn es vs var (ConCase n cnt ns sc)
-        = getDepsSC fn es (vs' `M.union` vs) sc  -- left-biased union
+        = getDepsSC fn es (vs' `union` vs) sc  -- left-biased union
       where
+        union = M.unionWith (M.unionWith S.union)
+
         -- Here we insert dependencies that arose from pattern matching on a constructor.
         -- n = ctor name, j = ctor arg#, i = fun arg# of the cased var, cs = ctors of the cased var
-        vs' = M.fromList [(v, S.insert (n, Arg j) var) | (v,j) <- zip ns [0..]]
+        vs' = M.fromList [(v, M.insertWith S.union (n, Arg j) (S.singleton (fn, varIdx)) var) | (v,j) <- zip ns [0..]]
+        
+        -- hack: get the index of the variable from its content
+        varIdx = head [i | (n, Arg i) <- M.keys var, n == fn]
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
     getDepsTerm :: Vars -> [Cond -> Deps] -> Cond -> Term -> Deps
@@ -267,7 +285,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         = error $ "erasure analysis: variable " ++ show n ++ " unbound in " ++ show (S.toList cd)
 
         -- assumed to be a global reference
-        | otherwise = M.singleton cd (S.singleton (n, Result))
+        | otherwise = M.singleton cd (M.singleton (n, Result) S.empty)
       where
         specialMNs = [sMN 0 "__Unit", sMN 0 "__True", sMN 0 "__False"] 
     
@@ -312,7 +330,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                     -> node n args  -- depends on whether the referred thing uses its argument
 
             -- TODO: could we somehow infer how bound variables use their arguments?
-            V i -> M.unionWith S.union ((bs !! i) cd) (unconditionalDeps args)
+            V i -> M.unionWith (M.unionWith S.union) ((bs !! i) cd) (unconditionalDeps args)
 
             -- we interpret applied lambdas as lets in order to reuse code here
             Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
@@ -325,7 +343,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             -- the following code marks them as completely used
             Proj (P Ref n@(SN (InstanceN className parms)) _) i
                 | [CI ctorName ms ds dscs ps is] <- lookupCtxt className ci
-                    -> S.fromList [(ctorName, Arg i), (n, Result)]
+                    -> M.fromList [((ctorName, Arg i), S.empty), ((n, Result), S.empty)]
                          `ins` unconditionalDeps args
 
             Proj t i
@@ -335,11 +353,11 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
             _ -> error $ "cannot analyse application of " ++ show fun ++ " to " ++ show args
       where
-        ins = M.insertWith S.union cd
+        ins = M.insertWith (M.unionWith S.union) cd
         unconditionalDeps args = unionMap (getDepsTerm vs bs cd) args
 
         node :: Name -> [Term] -> Deps
-        node n = ins (S.singleton (n, Result)) . unionMap (getDepsArgs n) . zip indices
+        node n = ins (M.singleton (n, Result) S.empty) . unionMap (getDepsArgs n) . zip indices
           where
             indices = map Just [0 .. getArity n - 1] ++ repeat Nothing
             getDepsArgs n (Just i,  t) = getDepsTerm vs bs (S.insert (n, Arg i) cd) t  -- conditional
@@ -373,7 +391,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     lamToLet    []   t                  = t
 
     unions :: [Deps] -> Deps
-    unions = M.unionsWith S.union
+    unions = M.unionsWith (M.unionWith S.union)
 
     unionMap :: (a -> Deps) -> [a] -> Deps
-    unionMap f = unions . map f
+    unionMap f = M.unionsWith (M.unionWith S.union) . map f
