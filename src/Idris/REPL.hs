@@ -227,11 +227,11 @@ ideslave orig mods
                             Success (Prove n') -> do iPrintResult ""
                                                      idrisCatch
                                                        (process stdout fn (Prove n'))
-                                                       (\e -> getIState >>= iPrintError . flip pshow e)
+                                                       (\e -> getIState >>= ihRenderError . flip pprintErr e)
                                                      isetPrompt (mkPrompt mods)
                             Success cmd -> idrisCatch
                                              (ideslaveProcess fn cmd)
-                                             (\e -> getIState >>= iPrintError . flip pshow e)
+                                             (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
                      Just (IdeSlave.REPLCompletions str) ->
                        do (unused, compls) <- replCompletion (reverse str, "")
                           let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]

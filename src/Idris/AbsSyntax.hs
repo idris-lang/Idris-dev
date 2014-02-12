@@ -579,6 +579,19 @@ fancifyAnnots _ annot = annot
 type1Doc :: Doc OutputAnnotation
 type1Doc = (annotate AnnConstType $ text "Type 1")
 
+-- | Show an error with semantic highlighting
+ihRenderError :: Handle -> Doc OutputAnnotation -> Idris ()
+ihRenderError h e = do ist <- getIState
+                       case idris_outputmode ist of
+                         RawOutput -> consoleDisplayAnnotated h e
+                         IdeSlave n -> do
+                           (str, spans) <- fmap displaySpans .
+                                           iRender .
+                                           fmap (fancifyAnnots ist) $
+                                           e
+                           let good = [SymbolAtom "error", toSExp str, toSExp spans]
+                           runIO . hPutStrLn h $ convSExp "return" good n
+
 ihPrintError :: Handle -> String -> Idris ()
 ihPrintError h s = do i <- getIState
                       case idris_outputmode i of
