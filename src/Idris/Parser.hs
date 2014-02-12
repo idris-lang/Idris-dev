@@ -38,6 +38,7 @@ import Idris.ParseData
 import Paths_idris
 
 import Util.DynamicLinker
+import qualified Util.Pretty as P
 
 import Idris.Core.TT
 import Idris.Core.Evaluate
@@ -1119,7 +1120,7 @@ parseProg syn fname input mrk
                                   i <- getIState
                                   case idris_outputmode i of
                                     RawOutput -> ihputStrLn (idris_outh i) (show doc)
-                                    IdeSlave n -> ihWarn (idris_outh i) fc msg
+                                    IdeSlave n -> ihWarn (idris_outh i) fc (P.text msg)
                                   putIState (i { errLine = Just (fc_line fc) }) -- Just errl })
                                   return []
             Success (x, i)  -> do putIState i
@@ -1187,7 +1188,7 @@ loadSource' h lidr r
    = idrisCatch (loadSource h lidr r)
                 (\e -> do setErrLine (getErrLine e)
                           msg <- showErr e
-                          ihputStrLn h msg)
+                          ihputStrLn h  (msg ++ "fel"))
 
 {- | Load Idris source code-}
 loadSource :: Handle -> Bool -> FilePath -> Idris ()

@@ -44,7 +44,7 @@ setAndReport e = do ist <- getIState
                     let h = idris_outh ist
                     case e of
                       At fc@(FC f l c) e -> do setErrLine l
-                                               ihWarn h fc $ pshow ist e
+                                               ihWarn h fc $ pprintErr ist e
                       _ -> do setErrLine (getErrLine e)
                               ihputStrLn h $ pshow ist e
 

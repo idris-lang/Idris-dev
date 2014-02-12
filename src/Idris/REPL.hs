@@ -227,7 +227,7 @@ ideslave orig mods
                             Success (Prove n') -> do iPrintResult ""
                                                      idrisCatch
                                                        (process stdout fn (Prove n'))
-                                                       (\e -> getIState >>= ihRenderError . flip pprintErr e)
+                                                       (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
                                                      isetPrompt (mkPrompt mods)
                             Success cmd -> idrisCatch
                                              (ideslaveProcess fn cmd)
@@ -1126,7 +1126,7 @@ loadInputs h inputs
         (\e -> do i <- getIState
                   case e of
                     At f _ -> do setErrLine (fc_line f)
-                                 iputStrLn (show e)
+                                 ihRenderError stdout $ pprintErr i e
                     ProgramLineComment -> return () -- fail elsewhere
                     _ -> do setErrLine 3 -- FIXME! Propagate it
                             iputStrLn (pshow i e))

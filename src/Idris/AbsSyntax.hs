@@ -632,11 +632,17 @@ isetPrompt p = do i <- getIState
                   case idris_outputmode i of
                     IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
 
-ihWarn :: Handle -> FC -> String -> Idris ()
+ihWarn :: Handle -> FC -> Doc OutputAnnotation -> Idris ()
 ihWarn h fc err = do i <- getIState
+                     err' <- iRender . fmap (fancifyAnnots i) $ err
                      case idris_outputmode i of
-                       RawOutput -> runIO $ hPutStrLn h (show fc ++ ":" ++ err)
-                       IdeSlave n -> runIO $ hPutStrLn h $ convSExp "warning" (fc_fname fc, fc_line fc, fc_column fc, err) n
+                       RawOutput ->
+                         runIO $
+                         hPutStrLn h (show fc ++ ":" ++ displayDecorated (consoleDecorate i) err')
+                       IdeSlave n ->
+                         do let (str, spans) = displaySpans err'
+                            runIO . hPutStrLn h $
+                              convSExp "warning" (fc_fname fc, fc_line fc, fc_column fc, str, spans) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
