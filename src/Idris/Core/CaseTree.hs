@@ -191,10 +191,10 @@ data Phase = CompileTime | RunTime
 -- Work Right to Left
 
 simpleCase :: Bool -> Bool -> Bool ->
-              Phase -> FC -> [Type] ->
+              Phase -> FC -> [Int] -> [Type] ->
               [([Name], Term, Term)] ->
               TC CaseDef
-simpleCase tc cover reflect phase fc argtys cs
+simpleCase tc cover reflect phase fc inacc argtys cs
       = sc' tc cover phase fc (filter (\(_, _, r) ->
                                           case r of
                                             Impossible -> False
@@ -212,7 +212,7 @@ simpleCase tc cover reflect phase fc argtys cs
                 OK pats ->
                     let numargs    = length (fst (head pats))
                         ns         = take numargs args
-                        (ns', ps') = order ns pats
+                        (ns', ps') = order [(n, i `elem` inacc) | (i,n) <- zip [0..] ns] pats
                         (tree, st) = runState
                                          (match ns' ps' (defaultCase cover)) 
                                          ([], numargs, [])
@@ -381,21 +381,25 @@ partition xs = error $ "Partition " ++ show xs
 -- reorder the patterns so that the one with most distinct names
 -- comes next. Take rightmost first, otherwise (i.e. pick value rather
 -- than dependency)
+--
+-- The first argument means [(Name, IsInaccessible)].
 
-order :: [Name] -> [Clause] -> ([Name], [Clause])
-order [] cs = ([], cs)
-order ns [] = (ns, [])
-order ns cs = let patnames = transpose (map (zip ns) (map fst cs))
-                  pats' = transpose (sortBy moreDistinct (reverse patnames)) in
-                  (getNOrder pats', zipWith rebuild pats' cs)
+order :: [(Name, Bool)] -> [Clause] -> ([Name], [Clause])
+order []  cs = ([], cs)
+order ns' [] = (map fst ns', [])
+order ns' cs = let patnames = transpose (map (zip ns') (map fst cs))
+                   -- note: sortBy . reverse is not nonsense because sortBy is stable
+                   pats' = transpose (sortBy moreDistinct (reverse patnames)) in
+                   (getNOrder pats', zipWith rebuild pats' cs)
   where
-    getNOrder [] = error $ "Failed order on " ++ show (ns, cs)
-    getNOrder (c : _) = map fst c
+    getNOrder [] = error $ "Failed order on " ++ show (map fst ns', cs)
+    getNOrder (c : _) = map (fst . fst) c
 
     rebuild patnames clause = (map snd patnames, snd clause)
 
-    moreDistinct xs ys = compare (numNames [] (map snd ys))
-                                 (numNames [] (map snd xs))
+    -- this compares (+isInaccessible, -numberOfCases)
+    moreDistinct xs ys = compare (snd . fst . head $ xs, numNames [] (map snd ys))
+                                 (snd . fst . head $ ys, numNames [] (map snd xs))
 
     numNames xs (PCon n _ _ : ps)
         | not (Left n `elem` xs) = numNames (Left n : xs) ps

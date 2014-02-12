@@ -944,6 +944,10 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in
       do ctxt <- getContext
+         ist  <- getIState
+         let inacc = case lookupCtxt n (idris_optimisation ist) of
+               [Optimise _ _ _ _ inacc] -> map fst inacc
+               _ -> []
          -- Check n actually exists, with no definition yet
          let tys = lookupTy n ctxt
          let reflect = Reflection `elem` opts
@@ -1039,7 +1043,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            let optpdef = map debind optpats -- \$ map (simple_lhs (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $
-                   simpleCase tcase False reflect CompileTime fc atys pdef
+                   simpleCase tcase False reflect CompileTime fc inacc atys pdef
            cov <- coverage
            pmissing <-
                    if cov && not (hasDefault cs)
@@ -1088,11 +1092,12 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let knowncovering = (pcover && cov) || AssertTotal `elem` opts
 
            tree' <- tclift $ simpleCase tcase knowncovering reflect
-                                        RunTime fc atys pdef'
+                                        RunTime fc inacc atys pdef'
            logLvl 3 (show tree)
            logLvl 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
            ist <- getIState
+           let opt = idris_optimisation ist
            putIState (ist { idris_patdefs = addDef n (force pdef', force pmissing)
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (dictionary opts)
@@ -1102,6 +1107,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                        reflect
                                                        (AssertTotal `elem` opts)
                                                        atys
+                                                       inacc
                                                        pats
                                                        pdef pdef pdef_inl pdef' ty)
                           addIBC (IBCDef n)

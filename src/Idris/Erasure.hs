@@ -227,15 +227,16 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsSC fn es vs (UnmatchedCase msg) = M.empty
     getDepsSC fn es vs (ProjCase t alt)    = error "ProjCase not supported"
     getDepsSC fn es vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)
-    getDepsSC fn es vs (Case     n alts)
-        -- we case-split on this variable, which necessarily marks it as used
-        -- hence we add a new dependency whose only preconditions are that the result
-        -- of this function is used at all
-        = M.insertWith S.union (S.singleton (fn, Result)) casedVar -- add this dep to all deps
-            $ unionMap (getDepsAlt fn es vs casedVar) alts  -- coming from the whole subtree
+    getDepsSC fn es vs (Case n alts)
+        -- we case-split on this variable, which marks it as used
+        -- (unless there is exactly one case branch)
+        -- hence we add a new dependency, whose only precondition is
+        -- that the result of this function is used at all
+        = addTagDep $ unionMap (getDepsAlt fn es vs casedVar) alts  -- coming from the whole subtree
       where
-        -- TODO: use effect instead of casedVar to mark the ctor tag
-        -- effect    = S.insert (typeName, Result) casedVar  -- mark the tag of the type name as used
+        addTagDep = case alts of
+            [_] -> id  -- single branch, tag not used
+            _   -> M.insertWith S.union (S.singleton (fn, Result)) casedVar  -- more case branches
         casedVar  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
     getDepsAlt :: Name -> [Name] -> Vars -> Var -> CaseAlt -> Deps
