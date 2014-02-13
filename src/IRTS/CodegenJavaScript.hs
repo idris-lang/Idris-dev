@@ -231,6 +231,10 @@ jsAnd :: JS -> JS -> JS
 jsAnd = JSBinOp "&&"
 
 
+jsOr :: JS -> JS -> JS
+jsOr = JSBinOp "||"
+
+
 jsType :: JS
 jsType = JSIdent $ idrRTNamespace ++ "Type"
 
@@ -1027,7 +1031,7 @@ extractLocalConstructors js =
 
     extractLocalConstructors' :: JS -> [JS]
     extractLocalConstructors' js@(JSAlloc fun (Just (JSFunction args body))) =
-      map allocCon cons ++ [foldr (uncurry jsSubst) js (reverse cons)]
+      addCons cons [foldr (uncurry jsSubst) js (reverse cons)]
       where
         cons :: [(JS, JS)]
         cons = zipWith genName (foldJS match (++) [] body) [1..]
@@ -1041,6 +1045,24 @@ extractLocalConstructors js =
               | JSNew "__IDRRT__Con" args <- js
               , all isConstant args = [js]
               | otherwise           = []
+
+
+        addCons :: [(JS, JS)] -> [JS] -> [JS]
+        addCons [] js = js
+        addCons (con@(_, name):cons) js
+          | sum (map (countOccur name) js) > 0 =
+              addCons cons ((allocCon con) : js)
+          | otherwise =
+              addCons cons js
+
+
+        countOccur :: JS -> JS -> Int
+        countOccur ident js = foldJS match (+) 0 js
+          where
+            match :: JS -> Int
+            match js
+              | js == ident = 1
+              | otherwise   = 0
 
 
         allocCon :: (JS, JS) -> JS
@@ -1247,15 +1269,23 @@ codegenJavaScript target definitions filename outputType = do
       JSAlloc "main" $ Just $ JSFunction [] (
         case target of
              Node       -> mainFun
-             JavaScript -> jsMeth (JSIdent "window") "addEventListener" [
+             JavaScript -> JSCond [(isReady, mainFun), (JSTrue, jsMeth (JSIdent "window") "addEventListener" [
                  JSString "DOMContentLoaded", JSFunction [] (
                    mainFun
                  ), JSFalse
-               ]
+               ])]
       )
       where
         mainFun :: JS
         mainFun = jsTailcall $ jsCall runMain []
+
+
+        isReady :: JS
+        isReady = readyState `jsEq` JSString "complete" `jsOr` readyState `jsEq` JSString "loaded"
+
+
+        readyState :: JS
+        readyState = JSProj (JSIdent "document") "readyState"
 
 
         runMain :: String

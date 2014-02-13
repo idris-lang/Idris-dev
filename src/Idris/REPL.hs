@@ -227,11 +227,11 @@ ideslave orig mods
                             Success (Prove n') -> do iPrintResult ""
                                                      idrisCatch
                                                        (process stdout fn (Prove n'))
-                                                       (\e -> getIState >>= iPrintError . flip pshow e)
+                                                       (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
                                                      isetPrompt (mkPrompt mods)
                             Success cmd -> idrisCatch
                                              (ideslaveProcess fn cmd)
-                                             (\e -> getIState >>= iPrintError . flip pshow e)
+                                             (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
                      Just (IdeSlave.REPLCompletions str) ->
                        do (unused, compls) <- replCompletion (reverse str, "")
                           let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
@@ -1126,7 +1126,7 @@ loadInputs h inputs
         (\e -> do i <- getIState
                   case e of
                     At f _ -> do setErrLine (fc_line f)
-                                 iputStrLn (show e)
+                                 ihRenderError stdout $ pprintErr i e
                     ProgramLineComment -> return () -- fail elsewhere
                     _ -> do setErrLine 3 -- FIXME! Propagate it
                             iputStrLn (pshow i e))
@@ -1184,6 +1184,7 @@ idrisMain opts =
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
        setColourise $ not quiet && last (True : opt getColour opts)
+       when (not runrepl) $ setWidth InfinitelyWide
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
        setQuiet (quiet || isJust script)

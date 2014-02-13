@@ -579,6 +579,19 @@ fancifyAnnots _ annot = annot
 type1Doc :: Doc OutputAnnotation
 type1Doc = (annotate AnnConstType $ text "Type 1")
 
+-- | Show an error with semantic highlighting
+ihRenderError :: Handle -> Doc OutputAnnotation -> Idris ()
+ihRenderError h e = do ist <- getIState
+                       case idris_outputmode ist of
+                         RawOutput -> consoleDisplayAnnotated h e
+                         IdeSlave n -> do
+                           (str, spans) <- fmap displaySpans .
+                                           iRender .
+                                           fmap (fancifyAnnots ist) $
+                                           e
+                           let good = [SymbolAtom "error", toSExp str, toSExp spans]
+                           runIO . hPutStrLn h $ convSExp "return" good n
+
 ihPrintError :: Handle -> String -> Idris ()
 ihPrintError h s = do i <- getIState
                       case idris_outputmode i of
@@ -619,11 +632,17 @@ isetPrompt p = do i <- getIState
                   case idris_outputmode i of
                     IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
 
-ihWarn :: Handle -> FC -> String -> Idris ()
+ihWarn :: Handle -> FC -> Doc OutputAnnotation -> Idris ()
 ihWarn h fc err = do i <- getIState
+                     err' <- iRender . fmap (fancifyAnnots i) $ err
                      case idris_outputmode i of
-                       RawOutput -> runIO $ hPutStrLn h (show fc ++ ":" ++ err)
-                       IdeSlave n -> runIO $ hPutStrLn h $ convSExp "warning" (fc_fname fc, fc_line fc, fc_column fc, err) n
+                       RawOutput ->
+                         runIO $
+                         hPutStrLn h (show fc ++ ":" ++ displayDecorated (consoleDecorate i) err')
+                       IdeSlave n ->
+                         do let (str, spans) = displaySpans err'
+                            runIO . hPutStrLn h $
+                              convSExp "warning" (fc_fname fc, fc_line fc, fc_column fc, str, spans) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState

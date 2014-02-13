@@ -49,8 +49,12 @@ deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
 deleteAt           _      [] impossible
 
 replaceAt : Fin n -> t -> Vect n t -> Vect n t
-replaceAt fZ y (x::xs) = y::xs
+replaceAt fZ     y (x::xs) = y :: xs
 replaceAt (fS k) y (x::xs) = x :: replaceAt k y xs
+
+updateAt : Fin n -> (t -> t) -> Vect n t -> Vect n t
+updateAt fZ     f (x::xs) = f x :: xs
+updateAt (fS k) f (x::xs) = x :: updateAt k f xs
 
 --------------------------------------------------------------------------------
 -- Subvectors
