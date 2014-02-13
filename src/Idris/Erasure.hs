@@ -174,6 +174,10 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 [ [(sUN "main" `sNS` ["Main"],  Result)] 
                 , [(sUN "run__IO", Result), (sUN "run__IO", Arg 0)]
 
+                -- MkIO is presumably read by run__IO but this cannot be observed
+                -- in the source code of programs.
+                , it "MkIO"         [1]
+
                 -- these have been discovered as builtins but are not listed
                 -- among Idris.Primitives.primitives
                 , mn "__MkPair"     [0,1]
