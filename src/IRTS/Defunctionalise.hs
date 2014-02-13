@@ -41,11 +41,12 @@ defunctionalise :: Int -> LDefs -> DDefs
 defunctionalise nexttag defs
      = let all = toAlist defs
            -- sort newcons so that EVAL and APPLY cons get sequential tags
-           (allD, enames) = runState (mapM (addApps defs) all) []
-           newcons = sortBy conord $ concatMap (toCons enames) (getFn all)
-           eval = mkEval newcons
-           app = mkApply newcons
-           condecls = declare nexttag newcons in
+           (allD, (enames, anames)) = runState (mapM (addApps defs) all) ([], [])
+           newecons = sortBy conord $ concatMap (toCons enames) (getFn all)
+           newacons = sortBy conord $ concatMap (toCons anames) (getFn all)
+           eval = mkEval newecons
+           app = mkApply newacons
+           condecls = declare nexttag (newecons ++ newacons) in
            addAlist (eval : app : condecls ++ allD) emptyContext
    where conord (n, _, _) (n', _, _) = compare n n'
 
@@ -67,17 +68,16 @@ getFn xs = mapMaybe fnData xs
 -- 7 Wrap unknown applications (i.e. applications of local variables) in chains of APPLY
 -- 8 Add explicit EVAL to case, primitives, and foreign calls
 
-addApps :: LDefs -> (Name, LDecl) -> State [Name] (Name, DDecl)
+addApps :: LDefs -> (Name, LDecl) -> State ([Name], [Name]) (Name, DDecl)
 addApps defs o@(n, LConstructor _ t a)
     = return (n, DConstructor n t a)
 addApps defs (n, LFun _ _ args e)
     = do e' <- aa args e
          return (n, DFun n args e')
   where
-    aa :: [Name] -> LExp -> State [Name] DExp
+    aa :: [Name] -> LExp -> State ([Name], [Name]) DExp
     aa env (LV (Glob n)) | n `elem` env = return $ DV (Glob n)
                          | otherwise = aa env (LApp False (LV (Glob n)) [])
---     aa env e@(LApp tc (MN 0 "EVAL") [a]) = e
     aa env (LApp tc (LV (Glob n)) args)
        = do args' <- mapM (aa env) args
             case lookupCtxtExact n defs of
@@ -124,20 +124,20 @@ addApps defs (n, LFun _ _ args e)
         | length args == ar
              = return $ DApp tc n args
         | length args < ar
-             = do ns <- get
-                  put $ nub (n : ns)
+             = do (ens, ans) <- get
+                  put (ens, nub (n : ans))
                   return $ DApp tc (mkUnderCon n (ar - length args)) args
         | length args > ar
              = return $ chainAPPLY (DApp tc n (take ar args)) (drop ar args)
 
     fixLazyApply n args ar
         | length args == ar
-             = do ns <- get
-                  put $ nub (n : ns)
+             = do (ens, ans) <- get
+                  put (nub (n : ens), ans)
                   return $ DApp False (mkFnCon n) args
         | length args < ar
-             = do ns <- get
-                  put $ nub (n : ns)
+             = do (ens, ans) <- get
+                  put (ens, nub (n : ans))
                   return $ DApp False (mkUnderCon n (ar - length args)) args
         | length args > ar
              = return $ chainAPPLY (DApp False n (take ar args)) (drop ar args)
@@ -175,7 +175,6 @@ eEVAL x = DApp False (sMN 0 "EVAL") [x]
 
 data EvalApply a = EvalCase (Name -> a)
                  | ApplyCase a
---     deriving Show
 
 -- For a function name, generate a list of
 -- data constuctors, and whether to handle them in EVAL or APPLY
@@ -216,8 +215,7 @@ mkApply xs = (sMN 0 "APPLY", DFun (sMN 0 "APPLY") [sMN 0 "fn", sMN 0 "arg"]
                                 [] -> DNothing
                                 cases ->
                                     mkBigCase (sMN 0 "APPLY") 256
-                                              (DApp False (sMN 0 "EVAL")
-                                               [DV (Glob (sMN 0 "fn"))])
+                                               (DV (Glob (sMN 0 "fn")))
                                               (cases ++
                                     [DDefaultCase DNothing])))
   where
