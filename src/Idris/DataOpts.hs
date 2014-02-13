@@ -33,7 +33,7 @@ forceArgs typeName n expforce t = do
     iLOG $ "Forced: " ++ show n ++ " " ++ show fargs ++ "\n   from " ++ show t
 
 getForcedArgs :: IState -> Name -> Type -> ForceMap
-getForcedArgs ist typeName t = addCollapsibleArgs 0 t $ forcedInTarget 0 t
+getForcedArgs ist typeName t = M.empty  -- addCollapsibleArgs 0 t $ forcedInTarget 0 t
   where
     maxUnion = M.unionWith max
 
@@ -91,7 +91,7 @@ collapseCons tn ctors = do
         _
           | all (ctorCollapsible ist) ctors
           , disjointTerms ctorTargetArgs
-            -> mapM_ setCollapsible (tn : map fst ctors)
+            -> return ()  -- mapM_ setCollapsible (tn : map fst ctors)
 
         [(cn, ct)]
             -> checkNewType ist cn ct

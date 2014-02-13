@@ -324,10 +324,11 @@ instance ToIR (TT Name) where
 
 getFTypes :: TT Name -> Maybe [FType]
 getFTypes tm = case unApply tm of
-                 (nil, []) -> Just []
-                 (cons, [ty, xs]) ->
-                     fmap (mkIty' ty :) (getFTypes xs)
-                 _ -> Nothing
+    -- nil : {a : Type} -> List a
+    (nil,  [_])         -> Just []
+    -- cons : {a : Type} -> a -> List a -> List a
+    (cons, [_, ty, xs]) -> (mkIty' ty :) <$> getFTypes xs
+    _ -> Nothing
 
 mkIty' (P _ (UN ty) _) = mkIty (str ty)
 mkIty' (App (P _ (UN fi) _) (P _ (UN intTy) _))
