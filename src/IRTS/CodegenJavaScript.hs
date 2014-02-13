@@ -129,6 +129,9 @@ compileJS (JSError exc) =
 compileJS (JSBinOp op lhs rhs) =
   compileJS lhs ++ " " ++ op ++ " " ++ compileJS rhs
 
+compileJS (JSPreOp op val) =
+  op ++ compileJS val
+
 compileJS (JSProj obj field)
   | JSFunction {} <- obj =
     concat ["(", compileJS obj, ").", field]
@@ -428,7 +431,8 @@ isJSConstantConstructor constants js
       all (isJSConstantConstructor constants) vals
   | JSNew "__IDRRT__Con" args <- js =
       all (isJSConstantConstructor constants) args
-  | JSIndex (JSProj (JSIdent _) "vars") (JSNum _) <- js =
+  | JSIndex (JSProj (JSIdent name) "vars") (JSNum _) <- js
+  , name `elem` constants =
       True
   | JSIdent name <- js
   , name `elem` constants =
@@ -1593,7 +1597,7 @@ translateExpression (SOp op vars)
   | (LASHR _)   <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">>" rhs lhs
   | (LCompl _)  <- op
-  , (arg:_)     <- vars = JSRaw $ '~' : translateVariableName arg
+  , (arg:_)     <- vars = JSPreOp "~" (JSVar arg)
 
   | LStrConcat  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
@@ -1662,7 +1666,10 @@ translateExpression (SOp op vars)
   , (lhs:rhs:_) <- vars = JSIndex (JSVar lhs) (JSVar rhs)
   | LStrTail    <- op
   , (arg:_)     <- vars = let v = translateVariableName arg in
-                              JSRaw $ v ++ ".substr(1," ++ v ++ ".length-1)"
+                              JSApp (JSProj (JSIdent v) "substr") [
+                                JSNum (JSInt 1),
+                                JSBinOp "-" (JSProj (JSIdent v) "length") (JSNum (JSInt 1))
+                              ]
   | LNullPtr    <- op
   , (_)         <- vars = JSNull
 
