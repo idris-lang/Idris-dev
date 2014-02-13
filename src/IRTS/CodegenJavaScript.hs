@@ -80,10 +80,13 @@ data JS = JSRaw String
         | JSTernary JS JS JS
         | JSParens JS
         | JSWhile JS JS
+        | JSNoop
         deriving Eq
 
 
 compileJS :: JS -> String
+compileJS JSNoop = ""
+
 compileJS (JSRaw code) =
   code
 
@@ -938,6 +941,7 @@ unfoldLookupTable input =
             | fun == lt = (js, front ++ back)
 
           extractLT' (front, js:back) = extractLT' (front ++ [js], back)
+          extractLT' (front, back)    = (JSNoop, front ++ back)
 
 
     expandLT :: String -> JS -> [(Int, JS)]
@@ -950,6 +954,8 @@ unfoldLookupTable input =
               Just $ (id, JSAlloc (ltIdentifier lt id) (Just body))
 
             expandEntry js = Nothing
+
+    expandLT lt JSNoop = []
 
 
 removeInstanceChecks :: JS -> JS
