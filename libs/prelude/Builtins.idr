@@ -33,6 +33,12 @@ lazy x = x -- compiled specially
 force : a -> a
 force x = x -- compiled specially
 
+data Lazy : Type -> Type where
+     Delay : (val : a) -> Lazy a
+
+Force : Lazy a -> a
+Force (Delay x) = x
+
 par : |(thunk:a) -> a
 par x = x -- compiled specially
 

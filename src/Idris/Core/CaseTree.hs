@@ -574,6 +574,10 @@ prune proj (Case n alts)
     = let alts' = filter notErased (map pruneAlt alts) in
           case alts' of
             [] -> ImpossibleCase
+            as@[ConCase (UN delay) i [arg] sc]
+                | delay == txt "Delay"
+                   -> if proj then mkForce n arg sc
+                              else Case n as
             as@[ConCase cn i args sc] -> if proj then mkProj n 0 args sc
                                                  else Case n as
             as@[SucCase cn sc] -> if proj then mkProj n (-1) [cn] sc 
@@ -593,6 +597,31 @@ prune proj (Case n alts)
           notErased (DefaultCase (STerm Erased)) = False
           notErased (DefaultCase ImpossibleCase) = False
           notErased _ = True
+
+          mkForce n arg (Case x alts)
+                | x == arg = ProjCase (forceArg n)
+                                      (map (mkForceAlt n arg) alts)
+                | otherwise = Case x (map (mkForceAlt n arg) alts)
+          mkForce n arg (ProjCase t alts)
+             = ProjCase (forceTm n arg t) (map (mkForceAlt n arg) alts)
+          mkForce n arg (STerm t) = STerm (forceTm n arg t)
+          mkForce n arg c = c
+
+          mkForceAlt n arg (ConCase cn t args rhs)
+             = ConCase cn t args (mkForce n arg rhs)
+          mkForceAlt n arg (FnCase cn args rhs)
+             = FnCase cn args (mkForce n arg rhs)
+          mkForceAlt n arg (ConstCase t rhs)
+             = ConstCase t (mkForce n arg rhs)
+          mkForceAlt n arg (SucCase sn rhs)
+             = SucCase sn (mkForce n arg rhs)
+          mkForceAlt n arg (DefaultCase rhs)
+             = DefaultCase (mkForce n arg rhs)
+         
+          forceTm n arg t = subst arg (forceArg n) t
+
+          forceArg n = App (App (P Ref (sUN "Force") Erased) Erased) 
+                           (P Bound n Erased)
 
           mkProj n i []       sc = prune proj sc
           mkProj n i (x : xs) sc = mkProj n (i + 1) xs (projRep x n i sc)

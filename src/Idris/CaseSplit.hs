@@ -94,6 +94,8 @@ inventName ist ty n =
                         MN i n | not (tnull n) && thead n == '_'
                                -> mkSupply (supp ++ varlist)
                         MN i n -> mkSupply (UN n : supp ++ varlist)
+                        UN n | thead n == '_'
+                               -> mkSupply (supp ++ varlist)
                         x -> mkSupply (x : supp)
        let badnames = map snd (namemap ms) ++ map snd (invented ms) ++
                       explicit ms

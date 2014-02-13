@@ -101,6 +101,7 @@ simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t
    = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
                                            (sUN "force", 0),
+                                           (sUN "Force", 0),
                                            (sUN "assert_smaller", 0),
                                            (sUN "assert_total", 0),
                                            (sUN "par", 0),
@@ -115,6 +116,7 @@ rt_simplify :: Context -> Env -> TT Name -> TT Name
 rt_simplify ctxt env t
    = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
                                            (sUN "force", 0),
+                                           (sUN "Force", 0),
                                            (sUN "par", 0),
                                            (sUN "prim__syntactic_eq", 0),
                                            (sUN "prim_fork", 0)]

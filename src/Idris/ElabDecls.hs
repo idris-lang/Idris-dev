@@ -250,7 +250,8 @@ elabData info syn doc fc opts (PDatadecl n t_in dcons)
          addIBC (IBCDoc n)
          let metainf = DataMI params
          addIBC (IBCMetaInformation n metainf)
-         collapseCons n cons
+         -- TMP HACK! Make this a data option
+         when (n /= sUN "Lazy") $ collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
          updateContext (setMetaInformation n metainf)
          mapM_ (checkPositive n) cons

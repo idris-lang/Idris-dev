@@ -153,7 +153,8 @@ elab ist info pattern opts fn tm
                  tm <- get_term
                  trace ("Elaborating " ++ show t ++ " : " ++ show g ++ "\n\tin " ++ show tm)
                     $ -}
-                  do t' <- insertCoerce ina t
+                  do ct <- insertCoerce ina t
+                     t' <- insertLazy ct
                      g <- goal
                      tm <- get_term
                      ps <- get_probs
@@ -607,6 +608,22 @@ elab ist info pattern opts fn tm
     getFC d (PRef fc _) = fc
     getFC d (PAlternative _ (x:_)) = getFC d x
     getFC d x = d
+
+    insertLazy :: PTerm -> ElabD PTerm
+--     insertLazy t | pattern = return t
+    insertLazy t@(PApp _ (PRef _ (UN l)) _) | l == txt "Delay" = return t
+    insertLazy t =
+        do ty <- goal
+           env <- get_env
+           let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
+           case tyh of
+                P _ (UN l) _ | l == txt "Lazy"
+                    -> return (PAlternative False [t, mkDelay t])
+                _ -> return t
+      where
+        mkDelay t = let fc = fileFC "Delay" in
+                        addImpl ist (PApp fc (PRef fc (sUN "Delay")) [pexp t])
+                                            
 
     insertCoerce ina t =
         do ty <- goal
