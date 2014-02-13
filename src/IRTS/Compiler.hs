@@ -208,6 +208,7 @@ instance ToIR (TT Name) where
             tm == txt "trace_malloc"
               = do t' <- ir' env t
                    return t' -- TODO
+
           -- This case is here until we get more general inlining. It's just
           -- a really common case, and the laziness hurts...
           | (P _ (NS (UN be) [b,p]) _, [_,x,(App (P _ (UN d) _) t),
@@ -218,16 +219,14 @@ instance ToIR (TT Name) where
                     e' <- ir' env e
                     return (LCase x' [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e',
                                       LConCase 1 (sNS (sUN "True") ["Bool","Prelude"]) [] t'])
-          | (P (DCon t a) n _, args) <- unApply tm
-          = do
+
+          | (P (DCon t a) n _, args) <- unApply tm = do
               cg <- idris_callgraph <$> getIState
               case lookupCtxtExact n cg of
                 Just (CGInfo _ _ _ _ usedpos)
                     -> irCon env t a n [if i `elem` map fst usedpos then a else Erased | (i,a) <- zip [0..] args]
-                Nothing -> irCon env t a n args
+                Nothing -> return LNothing  -- no usage info -> not used at all
 
-          | (P (DCon t a) n _, args) <- unApply tm
-              = irCon env t a n args
           | (P (TCon t a) n _, args) <- unApply tm
               = return LNothing
 
@@ -263,6 +262,8 @@ instance ToIR (TT Name) where
 
                 arity = case fst4 <$> lookupCtxt n (definitions . tt_ctxt $ ist) of
                     [CaseOp ci ty tys def tot cdefs] -> length tys
+                    [TyDecl (DCon tag ar) _]         -> ar
+                    [Operator ty ar op]              -> ar
                     _ -> 0
 
                 used = fromMaybe [] (map fst . usedpos <$> lookupCtxtExact n (idris_callgraph ist))
