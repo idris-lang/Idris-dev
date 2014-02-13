@@ -428,7 +428,8 @@ isJSConstantConstructor constants js
       all (isJSConstantConstructor constants) vals
   | JSNew "__IDRRT__Con" args <- js =
       all (isJSConstantConstructor constants) args
-  | JSIndex (JSProj (JSIdent _) "vars") (JSNum _) <- js =
+  | JSIndex (JSProj (JSIdent name) "vars") (JSNum _) <- js
+  , name `elem` constants =
       True
   | JSIdent name <- js
   , name `elem` constants =
