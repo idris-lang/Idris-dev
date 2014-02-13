@@ -38,7 +38,7 @@ import qualified Data.Text as T
 import Data.Char(isLetter, toLower)
 import Data.List.Split (splitOn)
 
-import Util.Pretty(pretty)
+import Util.Pretty(pretty, text)
 
 recheckC fc env t
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
@@ -2000,7 +2000,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
 
     warnMissing decls ns iname meth
         | null $ filter (clauseFor meth iname ns) decls
-            = iWarn fc $ "method " ++ show meth ++ " not defined"
+            = iWarn fc . text $ "method " ++ show meth ++ " not defined"
         | otherwise = return ()
 
     checkInClass ns meth

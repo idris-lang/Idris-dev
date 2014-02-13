@@ -69,6 +69,10 @@ instance (SExpable a, SExpable b, SExpable c) => SExpable (a, b, c) where
 instance (SExpable a, SExpable b, SExpable c, SExpable d) => SExpable (a, b, c, d) where
   toSExp (l, m, n, o) = SexpList [toSExp l, toSExp m, toSExp n, toSExp o]
 
+instance (SExpable a, SExpable b, SExpable c, SExpable d, SExpable e) =>
+         SExpable (a, b, c, d, e) where
+   toSExp (l, m, n, o, p) = SexpList [toSExp l, toSExp m, toSExp n, toSExp o, toSExp p]
+
 instance SExpable NameOutput where
   toSExp TypeOutput = SymbolAtom "type"
   toSExp FunOutput  = SymbolAtom "function"
