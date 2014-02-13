@@ -1662,7 +1662,10 @@ translateExpression (SOp op vars)
   , (lhs:rhs:_) <- vars = JSIndex (JSVar lhs) (JSVar rhs)
   | LStrTail    <- op
   , (arg:_)     <- vars = let v = translateVariableName arg in
-                              JSRaw $ v ++ ".substr(1," ++ v ++ ".length-1)"
+                              JSApp (JSProj (JSIdent v) "substr") [
+                                JSNum (JSInt 1),
+                                JSBinOp "-" (JSProj (JSIdent v) "length") (JSNum (JSInt 1))
+                              ]
   | LNullPtr    <- op
   , (_)         <- vars = JSNull
 
