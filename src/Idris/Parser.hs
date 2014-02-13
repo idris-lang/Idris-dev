@@ -1187,8 +1187,8 @@ loadSource' :: Handle -> Bool -> FilePath -> Idris ()
 loadSource' h lidr r
    = idrisCatch (loadSource h lidr r)
                 (\e -> do setErrLine (getErrLine e)
-                          msg <- showErr e
-                          ihputStrLn h  (msg ++ "fel"))
+                          ist <- getIState
+                          ihRenderError h (pprintErr ist e))
 
 {- | Load Idris source code-}
 loadSource :: Handle -> Bool -> FilePath -> Idris ()
