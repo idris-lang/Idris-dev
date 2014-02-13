@@ -74,6 +74,7 @@ performUsageAnalysis = do
             usage = M.toList minUse
 
         -- Print some debug info.
+        logLvl 5 $ "Original deps:\n" ++ unlines (map fmtItem . M.toList $ depMap)
         logLvl 3 $ "Reachable names:\n" ++ unlines (map (indent . show) . S.toList $ reachableNames)
         logLvl 4 $ "Minimal usage:\n" ++ fmtUseMap usage
         logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
@@ -116,12 +117,13 @@ performUsageAnalysis = do
     checkAccessibility opt (n, reachable)
         | [Optimise col nt forc rec inaccessible] <- lookupCtxt n opt
         , eargs@(_:_) <- [fmt n (S.toList rs) | (i,n) <- inaccessible, rs <- maybeToList $ IM.lookup i reachable]
-        = ifail $ show n ++ ": inaccessible arguments reachable:\n  " ++ intercalate "\n  " eargs
+        = warn $ show n ++ ": inaccessible arguments reachable:\n  " ++ intercalate "\n  " eargs
 
         | otherwise = return ()
       where
         fmt n [] = show n ++ " (no more information available)"
         fmt n rs = show n ++ " from " ++ intercalate ", " [show rn ++ " arg# " ++ show ri | (rn,ri) <- rs]
+        warn = logLvl 0
 
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> (Deps, (Set Name, UseMap))
@@ -385,9 +387,9 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     -- If the symbol is unknown, we assume that it uses all its arguments.
     getArity :: Name -> Int
     getArity n = case lookupDef n ctx of
-        [CaseOp ci ty tys def tot cdefs]
-            -> length tys
-        _   -> 0
+        [CaseOp ci ty tys def tot cdefs] -> length tys
+        [TyDecl (DCon tag arity) _]      -> arity
+        _  -> 0
 
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering
