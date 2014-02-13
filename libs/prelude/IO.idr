@@ -131,10 +131,10 @@ run__provider (MkIO f) = prim_io_bind (f TheWorld)
 
 -- io_bind v (\v' => io_return v')
 
-prim_fork : |(thread:PrimIO ()) -> PrimIO Ptr
+prim_fork : PrimIO () -> PrimIO Ptr
 prim_fork x = prim_io_return prim__vm -- compiled specially
 
-fork : |(thread:IO ()) -> IO Ptr
+fork : IO () -> IO Ptr
 fork (MkIO f) = MkIO (\w => prim_io_bind
                               (prim_fork (prim_io_bind (f w)
                                    (\ x => prim_io_return x)))

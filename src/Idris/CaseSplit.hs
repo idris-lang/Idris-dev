@@ -321,6 +321,10 @@ getClause l fn fp = do ty <- getInternalApp fp l
    where mkApp i (PPi (Exp _ _ _ False) (MN _ _) ty sc) used
                = let n = getNameFrom i used ty in
                      show n ++ " " ++ mkApp i sc (n : used) 
+         mkApp i (PPi (Exp _ _ _ False) (UN n) ty sc) used
+            | thead n == '_'
+               = let n = getNameFrom i used ty in
+                     show n ++ " " ++ mkApp i sc (n : used) 
          mkApp i (PPi (Exp _ _ _ False) n _ sc) used 
                = show n ++ " " ++ mkApp i sc (n : used) 
          mkApp i (PPi _ _ _ sc) used = mkApp i sc used

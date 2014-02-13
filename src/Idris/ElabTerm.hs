@@ -165,7 +165,25 @@ elab ist info pattern opts fn tm
 --                             ++ "\nproblems " ++ show ps
 --                             ++ "\n-----------\n") $
 --                      trace ("ELAB " ++ show t') $ 
-                     elab' ina t'
+                     let fc = fileFC "Force"
+                     handleError forceErr 
+                         (elab' ina t')
+                         (elab' ina (PApp fc (PRef fc (sUN "Force"))
+                                       [pimp (sUN "a") Placeholder True, 
+                                        pexp ct])) True
+
+    forceErr (CantUnify _ t t' _ _ _)
+       | (P _ (UN ht) _, _) <- unApply t,
+            ht == txt "Lazy" = True
+    forceErr (CantUnify _ t t' _ _ _)
+       | (P _ (UN ht) _, _) <- unApply t',
+            ht == txt "Lazy" = True
+    forceErr (InfiniteUnify _ t _)
+       | (P _ (UN ht) _, _) <- unApply t,
+            ht == txt "Lazy" = True
+    forceErr (Elaborating _ _ t) = forceErr t
+    forceErr (At _ t) = forceErr t
+    forceErr t = False
 
     local f = do e <- get_env
                  return (f `elem` map fst e)
@@ -243,6 +261,7 @@ elab ist info pattern opts fn tm
              ctxt <- get_context
              let (tc, _) = unApply ty
              let as' = pruneByType tc ctxt as
+--              trace (show as ++ "\n ==> " ++ showSep ", " (map showTmImpls as')) $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ (PRef _ n) _) = show n
               showHd (PRef _ n) = show n
@@ -438,7 +457,9 @@ elab ist info pattern opts fn tm
                     let (ns', eargs) = unzip $
                              sortBy cmpArg (zip ns args)
                     elabArgs ist (ina || not isinf, guarded, inty)
-                           [] fc False f ns' (map (\x -> (lazyarg x, getTm x)) eargs)
+                           [] fc False f ns' 
+                             (f == sUN "Force")
+                             (map (\x -> (lazyarg x, getTm x)) eargs)
                     solve
                     ivs' <- get_instances
                     -- Attempt to resolve any type classes which have 'complete' types,
@@ -610,17 +631,20 @@ elab ist info pattern opts fn tm
     getFC d x = d
 
     insertLazy :: PTerm -> ElabD PTerm
---     insertLazy t | pattern = return t
     insertLazy t@(PApp _ (PRef _ (UN l)) _) | l == txt "Delay" = return t
+    insertLazy t@(PApp _ (PRef _ (UN l)) _) | l == txt "Force" = return t
+    insertLazy (PCoerced t) = return t
     insertLazy t =
         do ty <- goal
            env <- get_env
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
+           let tries = if pattern then [t, mkDelay t] else [mkDelay t, t]
            case tyh of
                 P _ (UN l) _ | l == txt "Lazy"
-                    -> return (PAlternative False [t, mkDelay t])
+                    -> return (PAlternative False tries)
                 _ -> return t
       where
+        mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
         mkDelay t = let fc = fileFC "Delay" in
                         addImpl ist (PApp fc (PRef fc (sUN "Delay")) [pexp t])
                                             
@@ -650,15 +674,16 @@ elab ist info pattern opts fn tm
              -> Bool
              -> Name -- ^ Name of the function being applied
              -> [(Name, Name)] -- ^ (Argument Name, Hole Name)
+             -> Bool -- ^ under a 'force'
              -> [(Bool, PTerm)] -- ^ (Laziness, argument)
              -> ElabD ()
-    elabArgs ist ina failed fc retry f [] _
+    elabArgs ist ina failed fc retry f [] force _
 --         | retry = let (ns, ts) = unzip (reverse failed) in
 --                       elabArgs ina [] False ns ts
         | otherwise = return ()
-    elabArgs ist ina failed fc r f (n:ns) ((_, Placeholder) : args)
-        = elabArgs ist ina failed fc r f ns args
-    elabArgs ist ina failed fc r f ((argName, holeName):ns) ((lazy, t) : args)
+    elabArgs ist ina failed fc r f (n:ns) force ((_, Placeholder) : args)
+        = elabArgs ist ina failed fc r f ns force args
+    elabArgs ist ina failed fc r f ((argName, holeName):ns) force ((lazy, t) : args)
         | lazy && not pattern
           = elabArg argName holeName (PApp bi (PRef bi (sUN "lazy"))
                                            [pimp (sUN "a") Placeholder True,
@@ -668,12 +693,15 @@ elab ist info pattern opts fn tm
               reflectFunctionErrors ist f argName $
               do hs <- get_holes
                  tm <- get_term
+                 -- No coercing under an explicit Force (or it can Force/Delay
+                 -- recursively!)
+                 let elab = if force then elab' else elabE
                  failed' <- -- trace (show (n, t, hs, tm)) $
                             -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
                             case holeName `elem` hs of
-                              True -> do focus holeName; elabE ina t; return failed
+                              True -> do focus holeName; elab ina t; return failed
                               False -> return failed
-                 elabArgs ist ina failed fc r f ns args
+                 elabArgs ist ina failed fc r f ns force args
 
 -- | Perform error reflection for function applicaitons with specific error handlers
 reflectFunctionErrors :: IState -> Name -> Name -> ElabD a -> ElabD a

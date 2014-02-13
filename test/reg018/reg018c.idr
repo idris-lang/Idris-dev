@@ -10,7 +10,7 @@ codata InfStream a = (::) a (InfStream a)
 
 take : (n: Nat) -> InfStream a -> Vect n a
 take Z _ = []
-take (S n) (x :: xs) = x :: take n xs
+take (S n) (x :: xs) = x :: CodataTest.take n xs
 
 hdtl : InfStream a -> (a, InfStream a)
 hdtl (x :: xs) = (x, xs)

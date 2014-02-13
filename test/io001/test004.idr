@@ -1,6 +1,6 @@
 module Main
 
-mwhile : |(test : IO Bool) -> |(body : IO ()) -> IO ()
+mwhile : (test : IO Bool) -> (body : IO ()) -> IO ()
 mwhile t b = do v <- t
                 case v of
                      True => do b

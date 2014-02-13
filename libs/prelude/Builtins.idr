@@ -39,8 +39,8 @@ data Lazy : Type -> Type where
 Force : Lazy a -> a
 Force (Delay x) = x
 
-par : |(thunk:a) -> a
-par x = x -- compiled specially
+par : Lazy a -> a
+par (Delay x) = x -- compiled specially
 
 malloc : Int -> a -> a
 malloc size x = x -- compiled specially

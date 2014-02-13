@@ -251,24 +251,30 @@ unify ctxt env topx topy dont holes =
         | holeIn env x || x `elem` holes
                        = do UI s f <- get
                             -- injectivity check
+                            x <- checkCycle bnames (x, tm)
                             if (notP tm && fn)
 --                               trace (show (x, tm, normalise ctxt env tm)) $
 --                                 put (UI s ((tm, topx, topy) : i) f)
                                  then unifyTmpFail xtm tm
                                  else do sc 1
-                                         checkCycle bnames (x, tm)
-        | not (injective xtm) && injective tm = unifyTmpFail xtm tm
+                                         return x
+        | not (injective xtm) && injective tm 
+                       = do checkCycle bnames (x, tm)
+                            unifyTmpFail xtm tm
     un' fn bnames tm ytm@(P _ y _)
         | holeIn env y || y `elem` holes
                        = do UI s f <- get
                             -- injectivity check
+                            x <- checkCycle bnames (y, tm)
                             if (notP tm && fn)
 --                               trace (show (y, tm, normalise ctxt env tm)) $
 --                                 put (UI s ((tm, topx, topy) : i) f)
                                  then unifyTmpFail tm ytm
                                  else do sc 1
-                                         checkCycle bnames (y, tm)
-        | not (injective ytm) && injective tm = unifyTmpFail tm ytm
+                                         return x
+        | not (injective ytm) && injective tm 
+                       = do checkCycle bnames (y, tm)
+                            unifyTmpFail tm ytm
     un' fn bnames (V i) (P _ x _)
         | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
     un' fn bnames (P _ x _) (V i)
@@ -527,6 +533,10 @@ envPos x i ((y, _) : ys) | x == y = i
 -- FIXME: Depending on how overloading gets used, this may cause problems. Better
 -- rethink overloading properly...
 
+recoverable t@(App _ _) _
+    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
+recoverable _ t@(App _ _)
+    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
 recoverable (P (DCon _ _) x _) (P (DCon _ _) y _)
     | x == y = True
     | otherwise = False

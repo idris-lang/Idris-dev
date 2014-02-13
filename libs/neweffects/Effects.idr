@@ -237,8 +237,7 @@ eff env (lift prf effP) k
    = let env' = dropEnv env prf in
          eff env' effP (\p', envk => k p' (rebuildEnv envk prf env))
 eff env (new r prog) k
-   = let env' = r :: env in
-         eff env' prog (\p' => \ (v :: envk) => k p' envk)
+   = eff (r :: env) prog (\p' => \ (v :: envk) => k p' envk)
 eff env (catch prog handler) k
    = catch (eff env prog k)
            (\e => eff env (handler e) k)

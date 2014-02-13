@@ -178,12 +178,23 @@ instance ToIR (TT Name) where
           | (P _ (UN r) _, [_, _, _, _, _, arg]) <- unApply tm,
             r == txt "replace"
               = ir' env arg
+          -- Laziness, the old way
           | (P _ (UN l) _, [_, arg]) <- unApply tm,
             l == txt "lazy"
               = do arg' <- ir' env arg
-                   return $ LLazyExp arg'
+                   error "lazy has crept in somehow"
+--                    return $ LLazyExp arg'
           | (P _ (UN l) _, [_, arg]) <- unApply tm,
             l == txt "force"
+              = do arg' <- ir' env arg
+                   return $ LForce arg'
+          -- Laziness, the new way
+          | (P _ (UN l) _, [arg]) <- unApply tm,
+            l == txt "Delay"
+              = do arg' <- ir' env arg
+                   return $ LLazyExp arg'
+          | (P _ (UN l) _, [_, arg]) <- unApply tm,
+            l == txt "Force"
               = do arg' <- ir' env arg
                    return $ LForce arg'
           | (P _ (UN a) _, [_, _, arg]) <- unApply tm,

@@ -62,7 +62,7 @@ recvWithSender {msg}
   where get : IO (Ptr, msg)
         get = getMsg
 
-create : |(thread : Process msg ()) -> Process msg (ProcID msg)
+create : Process msg () -> Process msg (ProcID msg)
 create (lift p) = do ptr <- lift (fork p)
                      return (MkPID ptr)
 

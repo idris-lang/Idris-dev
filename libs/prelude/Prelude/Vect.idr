@@ -4,7 +4,9 @@ import Prelude.Fin
 import Prelude.Foldable
 import Prelude.Functor
 import Prelude.List
+import Prelude.Classes
 import Prelude.Nat
+import Prelude.Bool
 
 %access public
 %default total

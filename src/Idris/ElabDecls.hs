@@ -858,8 +858,15 @@ elabCon info syn tn codata (doc, n, t_in, fc, forcenames)
     tyIs t = tclift $ tfail (At fc (Msg (show t ++ " is not " ++ show tn)))
 
     mkLazy (PPi pl n ty sc) 
-        = PPi (pl { pargopts = nub (Lazy : pargopts pl) }) n ty (mkLazy sc)
+        = let ty' = if getTyName ty
+                       then PApp fc (PRef fc (sUN "Lazy")) [pexp ty]
+                       else ty in
+              PPi pl n ty' (mkLazy sc)
     mkLazy t = t
+
+    getTyName (PApp _ (PRef _ n) _) = n == nsroot tn
+    getTyName _ = False
+
 
     getNamePos :: Int -> PTerm -> Name -> Maybe Int
     getNamePos i (PPi _ n _ sc) x | n == x = Just i

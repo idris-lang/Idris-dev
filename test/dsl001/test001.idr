@@ -26,7 +26,7 @@ using (G : Vect n Ty)
       Var : HasType i G t -> Expr G t
       Val : (x : Int) -> Expr G TyInt
       Lam : Expr (a :: G) t -> Expr G (TyFun a t)
-      App : Expr G (TyFun a t) -> Expr G a -> Expr G t
+      App : Lazy (Expr G (TyFun a t)) -> Expr G a -> Expr G t
       Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b ->
             Expr G c
       If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
@@ -38,6 +38,7 @@ using (G : Vect n Ty)
       index_first = stop
       index_next = pop
 
+  total
   interp : Env G -> [static] (e : Expr G t) -> interpTy t
   interp env (Var i)     = lookup i env
   interp env (Val x)     = x
@@ -62,13 +63,13 @@ using (G : Vect n Ty)
   eDouble : Expr G (TyFun TyInt TyInt)
   eDouble = expr (\x => App (App eAdd x) (Var stop))
 
-  app : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
-  app = \f, a => App f a
+--   app : Lazy (Expr G (TyFun a t)) -> Expr G a -> Expr G t
+--   app = \f, a => App (Force f) a
 
   eFac : Expr G (TyFun TyInt TyInt)
   eFac = expr (\x => If (Op (==) x (Val 0))
                  (Val 1)
-                 (Op (*) (app eFac (Op (-) x (Val 1))) x))
+                 (Op (*) (App eFac (Op (-) x (Val 1))) x))
 
   -- Exercise elaborator: Complicated way of doing \x y => x*4 + y*2
 

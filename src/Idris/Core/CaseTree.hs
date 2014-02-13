@@ -150,12 +150,18 @@ findCalls sc topargs = nub $ nu' topargs sc where
 
 -- Find names which are used directly (i.e. not in a function call) in a term
 
-directUse :: Eq n => TT n -> [n]
+directUse :: TT Name -> [Name]
 directUse (P _ n _) = [n]
 directUse (Bind n (Let t v) sc) = nub $ directUse v ++ (directUse sc \\ [n])
                                         ++ directUse t
 directUse (Bind n b sc) = nub $ directUse (binderTy b) ++ (directUse sc \\ [n])
 directUse fn@(App f a)
+    | (P Ref (UN pfk) _, [App e w]) <- unApply fn,
+         pfk == txt "prim_fork"
+             = directUse e ++ directUse w -- HACK so that fork works
+    | (P Ref (UN fce) _, [_, a]) <- unApply fn,
+         fce == txt "Force"
+             = directUse a -- forcing a value counts as a use
     | (P Ref n _, args) <- unApply fn = [] -- need to know what n does with them
     | (P (TCon _ _) n _, args) <- unApply fn = [] -- type constructors not used at runtime 
     | otherwise = nub $ directUse f ++ directUse a
@@ -574,7 +580,7 @@ prune proj (Case n alts)
     = let alts' = filter notErased (map pruneAlt alts) in
           case alts' of
             [] -> ImpossibleCase
-            as@[ConCase (UN delay) i [arg] sc]
+            as@(ConCase (UN delay) i [arg] sc : _)
                 | delay == txt "Delay"
                    -> if proj then mkForce n arg sc
                               else Case n as

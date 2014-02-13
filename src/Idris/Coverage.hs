@@ -222,8 +222,9 @@ upd p' p = p { getTm = p' }
 -- and update the context accordingly
 
 checkPositive :: Name -> (Name, Type) -> Idris ()
-checkPositive n (cn, ty)
-    = do let p = cp ty
+checkPositive n (cn, ty')
+    = do let ty = delazy ty'
+         let p = cp ty
          i <- getIState
          let tot = if p then Total (args ty) else Partial NotPositive
          let ctxt' = setTotal cn tot (tt_ctxt i)
@@ -255,12 +256,10 @@ calcProd i fc topn pats
 
      prodRec :: Name -> [Name] -> ([Name], Term, Term) -> Idris Bool
      prodRec n done _ | n `elem` done = return True
-     prodRec n done (_, _, tm) = prod n done False tm
+     prodRec n done (_, _, tm) = prod n done False (delazy tm)
 
      prod :: Name -> [Name] -> Bool -> Term -> Idris Bool
      prod n done ok ap@(App _ _)
-        | (P _ (UN l) _, [_, arg]) <- unApply ap,
-          l == txt "lazy" = prod n done ok arg
         | (P nt f _, args) <- unApply ap
             = do recOK <- checkProdRec (n:done) f
                  let ctxt = tt_ctxt i
@@ -412,15 +411,25 @@ buildSCG (_, n) = do
        [] -> logLvl 5 $ "Could not build SCG for " ++ show n ++ "\n"
        x -> error $ "buildSCG: " ++ show (n, x)
 
+delazy t@(App f a)
+     | (P _ (UN l) _, [_, arg]) <- unApply t,
+       l == txt "Force" = delazy arg
+     | (P _ (UN l) _, [_, arg]) <- unApply t,
+       l == txt "Delay" = delazy arg
+     | (P _ (UN l) _, [arg]) <- unApply t,
+       l == txt "Lazy" = delazy arg
+delazy (App f a) = App (delazy f) (delazy a)
+delazy (Bind n b sc) = Bind n (fmap delazy b) (delazy sc)
+delazy t = t
+
 buildSCG' :: IState -> [(Term, Term)] -> [Name] -> [SCGEntry]
 buildSCG' ist pats args = nub $ concatMap scgPat pats where
-  scgPat (lhs, rhs) = let (f, pargs) = unApply (dePat lhs) in
-                          findCalls (dePat rhs) (patvars lhs) pargs
+  scgPat (lhs, rhs) = let lhs' = delazy lhs
+                          rhs' = delazy rhs
+                          (f, pargs) = unApply (dePat lhs') in
+                          findCalls (dePat rhs') (patvars lhs') pargs
 
   findCalls ap@(App f a) pvs pargs
-     | (P _ (UN l) _, [_, arg]) <- unApply ap,
-       l == txt "lazy"
-        = findCalls arg pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
      -- that it is total.
      | (P _ (UN at) _, [_, _]) <- unApply ap,
@@ -480,7 +489,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
       toJust (n, t) = Just t
 
       getType n = case lookupTy n (tt_ctxt ist) of
-                       [ty] -> ty -- must exist
+                       [ty] -> delazy ty -- must exist
 
       isInductive (P _ nty _) (P _ nty' _) =
           let co = case lookupCtxt nty (idris_datatypes ist) of

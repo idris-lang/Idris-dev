@@ -262,8 +262,7 @@ eff env (lift prf effP) k
    = let env' = dropEnv env prf in
          eff env' effP (\envk, p' => k (rebuildEnv envk prf env) p')
 eff env (new r prog) k
-   = let env' = r :: env in
-         eff env' prog (\(v :: envk), p' => k envk p')
+   = eff (r :: env) prog (\(v :: envk), p' => k envk p')
 eff env (test prf l r) k
    = testEff env prf (\envk => eff envk l k) (\envk => eff envk r k)
 eff env (test_lbl prf l r) k

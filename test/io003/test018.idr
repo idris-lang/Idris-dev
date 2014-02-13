@@ -7,8 +7,7 @@ recvMsg : IO (Ptr, String)
 recvMsg = getMsg
 
 pong : IO ()
-pong = do -- putStrLn "Waiting for ping"
-          (sender, x) <- recvMsg
+pong = do (sender, x) <- recvMsg
           putStrLn x
           putStrLn "Received"
           sendToThread sender "Hello to you too!"

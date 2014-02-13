@@ -550,7 +550,7 @@ validFile (FHandle h) = do x <- nullPtr h
                            return (not x)
 
 partial -- obviously
-while : |(test : IO Bool) -> |(body : IO ()) -> IO ()
+while : (test : IO Bool) -> (body : IO ()) -> IO ()
 while t b = do v <- t
                if v then do b
                             while t b

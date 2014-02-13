@@ -2,6 +2,7 @@ module Prelude.Bits
 
 import Prelude.Strings
 import Prelude.Vect
+import Prelude.Bool
 
 %access public
 %default total

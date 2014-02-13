@@ -28,11 +28,11 @@ isJust (Just j) = True
 -- Misc
 --------------------------------------------------------------------------------
 
-maybe : |(def : b) -> (a -> b) -> Maybe a -> b
+maybe : Lazy b -> (a -> b) -> Maybe a -> b
 maybe n j Nothing  = n
 maybe n j (Just x) = j x
 
-fromMaybe : |(def: a) -> Maybe a -> a
+fromMaybe : (Lazy a) -> Maybe a -> a
 fromMaybe def Nothing  = def
 fromMaybe def (Just j) = j
 

@@ -780,9 +780,10 @@ Pi ::=
 
 pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
-     do opts <- if implicitAllowed syn -- laziness is top level only
-                then option [] (do lchar '|'; return [Lazy])
-                else return []
+     do opts <- -- if implicitAllowed syn -- laziness is top level only
+                -- then option [] (do lchar '|'; return [Lazy])
+                -- else return []
+                return []
         st <- static
         (do try(lchar '('); xt <- typeDeclList syn; lchar ')'
             doc <- option "" (docComment '^')

@@ -630,13 +630,28 @@ no_errors tac err
 try :: Elab' aux a -> Elab' aux a -> Elab' aux a
 try t1 t2 = try' t1 t2 False
 
+handleError :: (Err -> Bool) -> Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
+handleError p t1 t2 proofSearch
+          = do s <- get
+               ps <- get_probs
+               case runStateT t1 s of
+                    OK (v, s') -> do put s'
+                                     return $! v
+                    Error e1 -> if p e1 then
+                                   do case runStateT t2 s of
+                                         OK (v, s') -> do put s'; return $! v
+                                         Error e2 -> if score e1 >= score e2
+                                                        then lift (tfail e1)
+                                                        else lift (tfail e2)
+                                   else lift (tfail e1)
+
 try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
 try' t1 t2 proofSearch
           = do s <- get
                ps <- get_probs
                case prunStateT 999999 False ps t1 s of
-                    OK ((v, _), s') -> do put s'
-                                          return $! v
+                    OK ((v, _, _), s') -> do put s'
+                                             return $! v
                     Error e1 -> if recoverableErr e1 then
                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return $! v
@@ -658,7 +673,7 @@ tryWhen False a b = a
 
 -- Try a selection of tactics. Exactly one must work, all others must fail
 tryAll :: [(Elab' aux a, String)] -> Elab' aux a
-tryAll xs = tryAll' [] 999999 (cantResolve, 0) (map fst xs)
+tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
   where
     cantResolve :: Elab' aux a
     cantResolve = lift $ tfail $ CantResolveAlts (map snd xs)
@@ -666,24 +681,24 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) (map fst xs)
     tryAll' :: [Elab' aux a] -> -- successes
                Int -> -- most problems
                (Elab' aux a, Int) -> -- smallest failure
-               [Elab' aux a] -> -- still to try
+               [(Elab' aux a, String)] -> -- still to try
                Elab' aux a
     tryAll' [res] pmax _   [] = res
     tryAll' (_:_) pmax _   [] = cantResolve
     tryAll' [] pmax (f, _) [] = f
-    tryAll' cs pmax f (x:xs)
+    tryAll' cs pmax f ((x, msg):xs)
        = do s <- get
             ps <- get_probs
             case prunStateT pmax True ps x s of
-                OK ((v, newps), s') ->
+                OK ((v, newps, probs), s') ->
                     do let cs' = if (newps < pmax)
                                     then [do put s'; return $! v]
                                     else (do put s'; return $! v) : cs
                        tryAll' cs' newps f xs
                 Error err -> do put s
-                                if (score err) < 100
-                                    then tryAll' cs pmax (better err f) xs
-                                    else tryAll' [] pmax (better err f) xs -- give up
+--                                 if (score err) < 100
+                                tryAll' cs pmax (better err f) xs
+--                                     else tryAll' [] pmax (better err f) xs -- give up
 
 
     better err (f, i) = let s = score err in
@@ -698,7 +713,7 @@ prunStateT pmax zok ps x s
                  if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
                             ((_,_,_,e):_) -> Error e
-                    else OK ((v, newpmax), s')
+                    else OK ((v, newpmax, problems p), s')
              Error e -> Error e
 
 qshow :: Fails -> String
