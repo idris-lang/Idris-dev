@@ -93,7 +93,14 @@ performUsageAnalysis = do
     fmtItem (cond, deps) = indent $ show (S.toList cond) ++ " -> " ++ show (M.toList deps)
 
     fmtUseMap :: [(Name, IntMap (Set Reason))] -> String
-    fmtUseMap = unlines . map (\(n,is) -> indent $ show n ++ " -> " ++ show (IM.toList is))
+    fmtUseMap = unlines . map (\(n,is) -> indent $ show n ++ " -> " ++ fmtIxs is)
+
+    fmtIxs :: IntMap (Set Reason) -> String
+    fmtIxs = intercalate ", " . map fmtArg . IM.toList
+      where
+        fmtArg (i, rs)
+            | S.null rs = show i
+            | otherwise = show i ++ " from " ++ intercalate ", " (map show $ S.toList rs)
 
     storeUsage :: Ctxt CGInfo -> (Name, IntMap (Set Reason)) -> Idris ()
     storeUsage cg (n, args)
