@@ -129,6 +129,9 @@ compileJS (JSError exc) =
 compileJS (JSBinOp op lhs rhs) =
   compileJS lhs ++ " " ++ op ++ " " ++ compileJS rhs
 
+compileJS (JSPreOp op val) =
+  op ++ compileJS val
+
 compileJS (JSProj obj field)
   | JSFunction {} <- obj =
     concat ["(", compileJS obj, ").", field]
@@ -1594,7 +1597,7 @@ translateExpression (SOp op vars)
   | (LASHR _)   <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp ">>" rhs lhs
   | (LCompl _)  <- op
-  , (arg:_)     <- vars = JSRaw $ '~' : translateVariableName arg
+  , (arg:_)     <- vars = JSPreOp "~" (JSVar arg)
 
   | LStrConcat  <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
