@@ -1184,6 +1184,7 @@ idrisMain opts =
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
        setColourise $ not quiet && last (True : opt getColour opts)
+       when (not runrepl) $ setWidth InfinitelyWide
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
        setQuiet (quiet || isJust script)
