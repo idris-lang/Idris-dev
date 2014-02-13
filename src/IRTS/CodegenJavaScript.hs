@@ -1237,24 +1237,24 @@ codegenJavaScript target definitions filename outputType = do
         compile     =
            map compileJS
 
-        opt =
-          [ map optimizeJS
-          , removeIDs
-          , reduceJS
-          , map reduceConstants
-          , initConstructors
-          , map removeAllocations
-          , elimDeadLoop
-          , map elimDuplicateEvals
-          , optimizeRuntimeCalls "__IDR__mEVAL0" "__IDRRT__EVALTC"
-          , optimizeRuntimeCalls "__IDR__mAPPLY0" "__IDRRT__APPLYTC"
-          , map removeInstanceChecks
-          , inlineFunctions
-          , map reduceContinuations
-          , extractLocalConstructors
-          , unfoldLookupTable
-          , evalCons
-          ]
+        opt = []
+          {-[ map optimizeJS-}
+          {-, removeIDs-}
+          {-, reduceJS-}
+          {-, map reduceConstants-}
+          {-, initConstructors-}
+          {-, map removeAllocations-}
+          {-, elimDeadLoop-}
+          {-, map elimDuplicateEvals-}
+          {-, optimizeRuntimeCalls "__IDR__mEVAL0" "__IDRRT__EVALTC"-}
+          {-, optimizeRuntimeCalls "__IDR__mAPPLY0" "__IDRRT__APPLYTC"-}
+          {-, map removeInstanceChecks-}
+          {-, inlineFunctions-}
+          {-, map reduceContinuations-}
+          {-, extractLocalConstructors-}
+          {-, unfoldLookupTable-}
+          {-, evalCons-}
+          {-]-}
 
     prelude :: [JS]
     prelude =
@@ -1413,42 +1413,42 @@ translateConstant c =
 
 translateDeclaration :: (String, SDecl) -> [JS]
 translateDeclaration (path, SFun name params stackSize body)
-  | (MN _ ap)             <- name
-  , (SLet var val next)   <- body
-  , (SChkCase cvar cases) <- next
-  , ap == txt "APPLY" =
-    let lvar     = translateVariableName var
-        lookup t = (JSApp
-            (JSIndex (JSIdent t) (JSProj (JSIdent lvar) "tag"))
-            [JSIdent "fn0", JSIdent "arg0", JSIdent lvar]) in
-        [ lookupTable "APPLY" [(var, "chk")] var cases
-        , jsDecl $ JSFunction ["fn0", "arg0"] (
-            JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")
-                  , JSAlloc (translateVariableName var) (
-                      Just $ translateExpression val
-                    )
-                  , JSReturn $ (JSTernary (
-                       (JSVar var `jsInstanceOf` jsCon) `jsAnd`
-                       (hasProp (idrLTNamespace ++ "APPLY") (translateVariableName var))
-                    ) (lookup (idrLTNamespace ++ "APPLY")) JSNull)
-                  ]
-          )
-        ]
+  {-| (MN _ ap)             <- name-}
+  {-, (SLet var val next)   <- body-}
+  {-, (SChkCase cvar cases) <- next-}
+  {-, ap == txt "APPLY" =-}
+    {-let lvar     = translateVariableName var-}
+        {-lookup t = (JSApp-}
+            {-(JSIndex (JSIdent t) (JSProj (JSIdent lvar) "tag"))-}
+            {-[JSIdent "fn0", JSIdent "arg0", JSIdent lvar]) in-}
+        {-[ lookupTable "APPLY" [(var, "chk")] var cases-}
+        {-, jsDecl $ JSFunction ["fn0", "arg0"] (-}
+            {-JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")-}
+                  {-, JSAlloc (translateVariableName var) (-}
+                      {-Just $ translateExpression val-}
+                    {-)-}
+                  {-, JSReturn $ (JSTernary (-}
+                       {-(JSVar var `jsInstanceOf` jsCon) `jsAnd`-}
+                       {-(hasProp (idrLTNamespace ++ "APPLY") (translateVariableName var))-}
+                    {-) (lookup (idrLTNamespace ++ "APPLY")) JSNull)-}
+                  {-]-}
+          {-)-}
+        {-]-}
 
-  | (MN _ ev)            <- name
-  , (SChkCase var cases) <- body
-  , ev == txt "EVAL" =
-    [ lookupTable "EVAL" [] var cases
-    , jsDecl $ JSFunction ["arg0"] (JSReturn $
-        JSTernary (
-          (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
-          (hasProp (idrLTNamespace ++ "EVAL") "arg0")
-        ) (JSApp
-            (JSIndex (JSIdent (idrLTNamespace ++ "EVAL")) (JSProj (JSIdent "arg0") "tag"))
-            [JSIdent "arg0"]
-        ) (JSIdent "arg0")
-      )
-    ]
+  {-| (MN _ ev)            <- name-}
+  {-, (SChkCase var cases) <- body-}
+  {-, ev == txt "EVAL" =-}
+    {-[ lookupTable "EVAL" [] var cases-}
+    {-, jsDecl $ JSFunction ["arg0"] (JSReturn $-}
+        {-JSTernary (-}
+          {-(JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`-}
+          {-(hasProp (idrLTNamespace ++ "EVAL") "arg0")-}
+        {-) (JSApp-}
+            {-(JSIndex (JSIdent (idrLTNamespace ++ "EVAL")) (JSProj (JSIdent "arg0") "tag"))-}
+            {-[JSIdent "arg0"]-}
+        {-) (JSIdent "arg0")-}
+      {-)-}
+    {-]-}
   | otherwise =
     let fun = translateExpression body in
         [jsDecl $ jsFun fun]
