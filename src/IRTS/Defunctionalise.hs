@@ -98,22 +98,22 @@ addApps defs (n, LFun _ _ args e)
     aa env (LCon i n args) = liftM (DC i n) (mapM (aa env) args)
     aa env (LProj t@(LV (Glob n)) i)
         | n `elem` env = do t' <- aa env t
-                            return $ DProj (DUpdate n (eEVAL t')) i
+                            return $ DProj (DUpdate n t') i
     aa env (LProj t i) = do t' <- aa env t
-                            return $ DProj (eEVAL t') i
+                            return $ DProj t' i
     aa env (LCase e alts) = do e' <- aa env e
                                alts' <- mapM (aaAlt env) alts
-                               return $ DCase (eEVAL e') alts'
+                               return $ DCase e' alts'
     aa env (LConst c) = return $ DConst c
     aa env (LForeign l t n args) = liftM (DForeign l t n) (mapM (aaF env) args)
     aa env (LOp LFork args) = liftM (DOp LFork) (mapM (aa env) args)
     aa env (LOp f args) = do args' <- mapM (aa env) args
-                             return $ DOp f (map eEVAL args')
+                             return $ DOp f args'
     aa env LNothing = return DNothing
     aa env (LError e) = return $ DError e
 
     aaF env (t, e) = do e' <- aa env e
-                        return (t, eEVAL e')
+                        return (t, e')
 
     aaAlt env (LConCase i n args e)
          = liftM (DConCase i n args) (aa (args ++ env) e)
@@ -150,7 +150,7 @@ addApps defs (n, LFun _ _ args e)
 
     preEval [] t = t
     preEval (x : xs) t
-       | needsEval x t = DLet x (eEVAL (DV (Glob x))) (preEval xs t)
+       | needsEval x t = DLet x (DV (Glob x)) (preEval xs t)
        | otherwise = preEval xs t
 
     needsEval x (DApp _ _ args) = or (map (needsEval x) args)
@@ -187,7 +187,7 @@ toCons ns (n, i)
           EvalCase (\tlarg ->
             (DConCase (-1) (mkFnCon n) (take i (genArgs 0))
               (dupdate tlarg
-                (eEVAL (DApp False n (map (DV . Glob) (take i (genArgs 0)))))))))
+                (DApp False n (map (DV . Glob) (take i (genArgs 0))))))))
           : mkApplyCase n 0 i
     | otherwise = []
   where dupdate tlarg x = x
