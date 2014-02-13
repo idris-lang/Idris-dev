@@ -220,9 +220,16 @@ instance ToIR (TT Name) where
             tm == txt "trace_malloc"
               = do t' <- ir' env t
                    return t' -- TODO
---           | (P _ (NS (UN "S") ["Nat", "Prelude"]) _, [k]) <- unApply tm
---               = do k' <- ir' env k
---                    return (LOp LBPlus [k', LConst (BI 1)])
+          -- This case is here until we get more general inlining. It's just
+          -- a really common case, and the laziness hurts...
+          | (P _ (NS (UN be) [b,p]) _, [_,x,(App (P _ (UN d) _) t),
+                                            (App (P _ (UN d') _) e)]) <- unApply tm,
+            be == txt "boolElim" && d == txt "Delay" && d' == txt "Delay"
+               = do x' <- ir' env x
+                    t' <- ir' env t
+                    e' <- ir' env e
+                    return (LCase x' [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e',
+                                      LConCase 1 (sNS (sUN "True") ["Bool","Prelude"]) [] t'])
           | (P (DCon t a) n _, args) <- unApply tm
               = irCon env t a n args
           | (P (TCon t a) n _, args) <- unApply tm

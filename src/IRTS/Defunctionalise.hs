@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module IRTS.Defunctionalise(module IRTS.Defunctionalise,
                             module IRTS.Lang) where
 
@@ -42,8 +44,9 @@ defunctionalise nexttag defs
      = let all = toAlist defs
            -- sort newcons so that EVAL and APPLY cons get sequential tags
            (allD, (enames, anames)) = runState (mapM (addApps defs) all) ([], [])
+           anames' = sort anames
            newecons = sortBy conord $ concatMap (toCons enames) (getFn all)
-           newacons = sortBy conord $ concatMap (toCons anames) (getFn all)
+           newacons = sortBy conord $ concatMap (toConsA anames') (getFn all)
            eval = mkEval newecons
            app = mkApply newacons
            condecls = declare nexttag (newecons ++ newacons) in
@@ -68,14 +71,14 @@ getFn xs = mapMaybe fnData xs
 -- 7 Wrap unknown applications (i.e. applications of local variables) in chains of APPLY
 -- 8 Add explicit EVAL to case, primitives, and foreign calls
 
-addApps :: LDefs -> (Name, LDecl) -> State ([Name], [Name]) (Name, DDecl)
+addApps :: LDefs -> (Name, LDecl) -> State ([Name], [(Name, Int)]) (Name, DDecl)
 addApps defs o@(n, LConstructor _ t a)
     = return (n, DConstructor n t a)
 addApps defs (n, LFun _ _ args e)
     = do e' <- aa args e
          return (n, DFun n args e')
   where
-    aa :: [Name] -> LExp -> State ([Name], [Name]) DExp
+    aa :: [Name] -> LExp -> State ([Name], [(Name, Int)]) DExp
     aa env (LV (Glob n)) | n `elem` env = return $ DV (Glob n)
                          | otherwise = aa env (LApp False (LV (Glob n)) [])
     aa env (LApp tc (LV (Glob n)) args)
@@ -125,7 +128,8 @@ addApps defs (n, LFun _ _ args e)
              = return $ DApp tc n args
         | length args < ar
              = do (ens, ans) <- get
-                  put (ens, nub (n : ans))
+                  let alln = map (\x -> (n, x)) [length args .. ar] 
+                  put (ens, nub (alln ++ ans))
                   return $ DApp tc (mkUnderCon n (ar - length args)) args
         | length args > ar
              = return $ chainAPPLY (DApp tc n (take ar args)) (drop ar args)
@@ -137,7 +141,8 @@ addApps defs (n, LFun _ _ args e)
                   return $ DApp False (mkFnCon n) args
         | length args < ar
              = do (ens, ans) <- get
-                  put (ens, nub (n : ans))
+                  let alln = map (\x -> (n, x)) [length args .. ar] 
+                  put (ens, nub (alln ++ ans))
                   return $ DApp False (mkUnderCon n (ar - length args)) args
         | length args > ar
              = return $ chainAPPLY (DApp False n (take ar args)) (drop ar args)
@@ -187,7 +192,19 @@ toCons ns (n, i)
             (DConCase (-1) (mkFnCon n) (take i (genArgs 0))
               (dupdate tlarg
                 (DApp False n (map (DV . Glob) (take i (genArgs 0))))))))
-          : mkApplyCase n 0 i
+          : [] -- mkApplyCase n 0 i
+    | otherwise = []
+  where dupdate tlarg x = x
+
+toConsA :: [(Name, Int)] -> (Name, Int) -> [(Name, Int, EvalApply DAlt)]
+toConsA ns (n, i)
+    | Just ar <- lookup n ns
+--       = (mkFnCon n, i,
+--           EvalCase (\tlarg ->
+--             (DConCase (-1) (mkFnCon n) (take i (genArgs 0))
+--               (dupdate tlarg
+--                 (DApp False n (map (DV . Glob) (take i (genArgs 0))))))))
+          = mkApplyCase n ar i
     | otherwise = []
   where dupdate tlarg x = x
 
