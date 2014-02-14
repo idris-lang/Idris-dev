@@ -1179,20 +1179,14 @@ pprintPTerm impl bnd = prettySe 10 bnd
       text "rewrite" <+> prettySe 10 bnd l <+> text "in" <+> prettySe 10 bnd r
     prettySe p bnd (PTyped l r) =
       lparen <> prettySe 10 bnd l <+> colon <+> prettySe 10 bnd r <> rparen
-    prettySe p bnd (PPair _ TypeOrTerm l r) =
-      lparen <> prettySe 10 bnd l <> text "," <+> prettySe 10 bnd r <> rparen
-    prettySe p bnd (PPair _ IsType l r) =
-      annotate (AnnName pairTy Nothing Nothing) lparen <>
-      prettySe 10 bnd l <>
-      annotate (AnnName pairTy Nothing Nothing) comma <+>
-      prettySe 10 bnd r <>
-      annotate (AnnName pairTy Nothing Nothing) rparen
-    prettySe p bnd (PPair _ IsTerm l r) =
-      annotate (AnnName pairCon Nothing Nothing) lparen <>
-      prettySe 10 bnd l <>
-      annotate (AnnName pairCon Nothing Nothing) comma <+>
-      prettySe 10 bnd r <>
-      annotate (AnnName pairCon Nothing Nothing) rparen
+    prettySe p bnd pair@(PPair _ pun _ _) -- flatten tuples to the right, like parser
+      | Just elts <- pairElts pair = enclose (ann lparen) (ann rparen) .
+                                     align . group . vsep . punctuate (ann comma) $
+                                     map (prettySe 10 bnd) elts
+        where ann = case pun of
+                      TypeOrTerm -> id
+                      IsType -> annotate (AnnName pairTy Nothing Nothing)
+                      IsTerm -> annotate (AnnName pairCon Nothing Nothing)
     prettySe p bnd (PDPair _ TypeOrTerm l t r) =
       lparen <> prettySe 10 bnd l <+> text "**" <+> prettySe 10 bnd r <> rparen
     prettySe p bnd (PDPair _ IsType (PRef _ n) t r) =
@@ -1280,6 +1274,11 @@ pprintPTerm impl bnd = prettySe 10 bnd
             right = (annotate AnnConstData (text "]"))
             comma = (annotate AnnConstData (text ","))
     slist _ _ _ = Nothing
+
+    pairElts :: PTerm -> Maybe [PTerm]
+    pairElts (PPair _ _ x y) | Just elts <- pairElts y = Just (x:elts)
+                             | otherwise = Just [x, y]
+    pairElts _ = Nothing
 
     natns = "Prelude.Nat."
 
