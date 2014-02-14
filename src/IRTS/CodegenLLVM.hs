@@ -524,7 +524,7 @@ cgExpr (SChkCase inspect alts) = do
            terminate $ CondBr isNull endBBN notNullBBN []
            newBlock notNullBBN
            ptr <- inst $ BitCast val (PointerType (IntegerType 32) (AddrSpace 0)) []
-           flag <- inst $ loadInv ptr
+           flag <- inst $ Load False ptr Nothing 0 []
            isVal <- inst $ ICmp IPred.EQ flag (ConstantOperand (C.Int 32 (-1))) []
            conBBN <- getName "constructor"
            terminate $ CondBr isVal endBBN conBBN []
@@ -551,7 +551,7 @@ cgExpr (SProj conVar idx) = do
                   , ConstantOperand (C.Int 32 1)
                   , ConstantOperand (C.Int 32 (fromIntegral idx))
                   ] []
-           Just <$> inst (loadInv ptr)
+           Just <$> inst (Load False ptr Nothing 0 [])
 cgExpr (SConst c) = Just <$> cgConst c
 cgExpr (SForeign LANG_C rty fname args) = do
   func <- ensureCDecl fname rty (map fst args)
@@ -630,7 +630,7 @@ cgPrimCase caseValPtr defExp alts = do
                  SConstCase (TT.Ch _)  _ -> IntegerType 32
   realPtr <- inst $ BitCast caseValPtr (PointerType (primTy caseTy) (AddrSpace 0)) []
   valPtr <- inst $ GetElementPtr True realPtr [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)] []
-  caseVal <- inst $ loadInv valPtr
+  caseVal <- inst $ Load False valPtr Nothing 0 []
   defBlockName <- getName "default"
   exitBlockName <- getName "caseExit"
   namedAlts <- mapM (\a -> do n <- nameAlt defBlockName a; return (n, a)) alts
@@ -643,7 +643,7 @@ cgPrimCase caseValPtr defExp alts = do
 cgConCase :: Operand -> Maybe SExp -> [SAlt] -> Codegen (Maybe Operand)
 cgConCase con defExp alts = do
   tagPtr <- inst $ GetElementPtr True con [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 0)] []
-  tag <- inst $ loadInv tagPtr
+  tag <- inst $ Load False tagPtr Nothing 0 []
   defBlockName <- getName "default"
   exitBlockName <- getName "caseExit"
   namedAlts <- mapM (\a -> do n <- nameAlt defBlockName a; return (n, a)) alts
@@ -729,7 +729,7 @@ cgAlt initEnv exitBlockName name destr exp = do
                       do ptr <- inst $ GetElementPtr True con [ ConstantOperand (C.Int 32 0)
                                                               , ConstantOperand (C.Int 32 1)
                                                               , ConstantOperand (C.Int 32 i)] []
-                         Just <$> ninst argName (loadInv ptr)
+                         Just <$> ninst argName (Load False ptr Nothing 0 [])
   altVal <- binds locals $ cgExpr exp
   altEnv <- gets lexenv
   altBlock <- gets currentBlockName
@@ -783,7 +783,7 @@ unbox FUnit x = return x
 unbox fty bval = do
   val <- inst $ BitCast bval (PointerType (primTy (ftyToTy fty)) (AddrSpace 0)) []
   fvalptr <- inst $ GetElementPtr True val [ConstantOperand (C.Int 32 0), ConstantOperand (C.Int 32 1)] []
-  inst $ loadInv fvalptr
+  inst $ Load False fvalptr Nothing 0 []
 
 cgConst' :: TT.Const -> C.Constant
 cgConst' (TT.I i) = C.Int 32 (fromIntegral i)
@@ -1124,7 +1124,7 @@ cgOp LStrCons [c,s] = do
 
 cgOp LStrHead [c] = do
   s <- unbox FString c
-  c <- inst $ loadInv s
+  c <- inst $ Load False s Nothing 0 []
   c' <- inst $ ZExt c (IntegerType 32) []
   box (FArith (ATInt ITChar)) c'
 
@@ -1132,7 +1132,7 @@ cgOp LStrIndex [s, i] = do
   ns <- unbox FString s
   ni <- unbox (FArith (ATInt (ITFixed IT32))) i
   p <- inst $ GetElementPtr True ns [ni] []
-  c <- inst $ loadInv p
+  c <- inst $ Load False p Nothing 0 []
   c' <- inst $ ZExt c (IntegerType 32) []
   box (FArith (ATInt ITChar)) c'
 
