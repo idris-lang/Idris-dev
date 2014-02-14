@@ -857,24 +857,38 @@ unfoldLookupTable input =
       adaptRuntime $ expandCons evals applys js
   where
     adaptRuntime :: [JS] -> [JS]
-    adaptRuntime =
-      adaptCon . adaptApply "__var_2" . adaptApply "ev" . adaptEval
+    adaptRuntime js = (adaptApply . adaptCon) js
 
 
-    adaptApply var = map (jsSubst (
-        JSIndex (JSIdent "__IDRLT__APPLY") (JSProj (JSIdent var) "tag")
-      ) (JSProj (JSIdent var) "app"))
+    adaptApply :: [JS] -> [JS]
+    adaptApply js = adaptApply' [] js
+      where
+        adaptApply' :: [JS] -> [JS] -> [JS]
+        adaptApply' front ((JSAlloc "__IDR__mAPPLY0" (Just _)):back) =
+          front ++ (new:back)
 
+        adaptApply' front (next:back) =
+          adaptApply' (front ++ [next]) back
 
-    adaptEval = map (jsSubst (
-        JSIndex (JSIdent "__IDRLT__EVAL") (JSProj (JSIdent "arg0") "tag")
-      ) (JSProj (JSIdent "arg0") "eval"))
+        adaptApply' front [] = front
+
+        new =
+          JSAlloc "__IDR__mAPPLY0" (Just $ JSFunction ["mfn0", "marg0"] (JSReturn $
+              JSTernary (
+                (JSIdent "mfn0" `jsInstanceOf` jsCon) `jsAnd`
+                (JSProj (JSIdent "mfn0") "app")
+              ) (JSApp
+                  (JSProj (JSIdent "mfn0") "app")
+                  [JSIdent "mfn0", JSIdent "marg0"]
+              ) JSNull
+            )
+          )
 
 
     adaptCon js =
       adaptCon' [] js
       where
-        adaptCon' front ((JSAlloc "__IDRRT__Con" (Just body)):back) =
+        adaptCon' front ((JSAlloc "__IDRRT__Con" (Just _)):back) =
           front ++ (new:back)
 
         adaptCon' front (next:back) =
