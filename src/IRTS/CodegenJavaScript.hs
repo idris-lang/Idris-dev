@@ -186,8 +186,8 @@ compileJS (JSIndex lhs rhs) =
 compileJS (JSCond branches) =
   intercalate " else " $ map createIfBlock branches
   where
-    createIfBlock (JSTrue, e) =
-         "if (true) {\n"
+    createIfBlock (JSNoop, e) =
+         "{\n"
       ++ compileJS e
       ++ ";\n}"
     createIfBlock (cond, e) =
