@@ -92,9 +92,8 @@ docFun n
        let docstr = case lookupCtxt n (idris_docstrings i) of
                          [str] -> str
                          _ -> ""
-       let ty = case lookupTy n (tt_ctxt i) of
-                     (t : _) -> t
-       let argnames = map fst (getArgTys ty)
+       let ty = delabTy i n
+       let argnames = getPArgNames ty
        let args = case lookupCtxt n (idris_implicits i) of
                        [args] -> zip argnames args
                        _ -> []
@@ -104,9 +103,11 @@ docFun n
                     []          -> Nothing
                     (Fix x _:_) -> Just x
 
-       return (FD n docstr args (delab i ty) f)
+       return (FD n docstr args ty f)
        where funName :: Name -> String
              funName (UN n)   = str n
              funName (NS n _) = funName n
 
-
+getPArgNames :: PTerm -> [Name]
+getPArgNames (PPi plicity name ty body) = (name : getPArgNames body)
+getPArgNames _ = []
