@@ -6,63 +6,62 @@ import Idris.Delaborate
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
+import Util.Pretty
+
 import Data.Maybe
 import Data.List
 
 -- TODO: Only include names with public/abstract accessibility
 
-data FunDoc = Doc Name String
-                  [(Name, PArg)] -- args
-                  PTerm -- function type
-                  (Maybe Fixity)
+data FunDoc = FD Name String
+                 [(Name, PArg)] -- args
+                 PTerm -- function type
+                 (Maybe Fixity)
 
-data Doc = FunDoc FunDoc
-         | DataDoc FunDoc -- type constructor docs
-                   [FunDoc] -- data constructor docs
-         | ClassDoc Name String -- class docs
-                    [FunDoc] -- method docs
+data Docs = FunDoc FunDoc
+          | DataDoc FunDoc -- type constructor docs
+                    [FunDoc] -- data constructor docs
+          | ClassDoc Name String -- class docs
+                     [FunDoc] -- method docs
 
-showDoc "" = ""
-showDoc x = "  -- " ++ x
+showDoc "" = empty
+showDoc x = text "  -- " <> text x
 
-instance Show FunDoc where
-   show (Doc n doc args ty f)
-      = show n ++ " : " ++ show ty ++ "\n" ++ showDoc doc ++ "\n" ++
-        maybe "" (\f -> show f ++ "\n\n") f ++
-        let argshow = mapMaybe showArg args in
-            if not (null argshow)
-               then "Arguments:\n\t" ++ showSep "\t" argshow
-               else ""
+pprintFD :: Bool -> FunDoc -> Doc OutputAnnotation
+pprintFD imp (FD n doc args ty f)
+    = prettyName imp [] n <+> colon <+> prettyImp imp ty <$> showDoc doc <$>
+      maybe empty (\f -> text (show f) <> line) f <>
+      let argshow = mapMaybe showArg args in
+      if not (null argshow)
+        then nest 4 $ text "Arguments:" <$> vsep argshow
+        else empty
 
     where showArg (n, arg@(PExp _ _ _ _))
-             = Just $ showName n ++ show (getTm arg) ++
-                      showDoc (pargdoc arg) ++ "\n"
+             = Just $ bindingOf n False <> prettyImp imp (getTm arg) <>
+                      showDoc (pargdoc arg) <> line
           showArg (n, arg@(PConstraint _ _ _ _))
-             = Just $ "Class constraint " ++
-                      show (getTm arg) ++ showDoc (pargdoc arg)
-                      ++ "\n"
+             = Just $ text "Class constraint" <+>
+                      prettyImp imp (getTm arg) <> showDoc (pargdoc arg) <> line
           showArg (n, arg@(PImp _ _ _ _ _ doc))
            | not (null doc)
-             = Just $ "(implicit) " ++
-                      show n ++ " : " ++ show (getTm arg)
-                      ++ showDoc (pargdoc arg) ++ "\n"
+             = Just $ text "(implicit)" <+>
+                      bindingOf n True <+> colon <+> prettyImp imp (getTm arg)
+                      <> showDoc (pargdoc arg) <> line
           showArg (n, _) = Nothing
 
-          showName (MN _ _) = ""
-          showName x = show x ++ " : "
 
-instance Show Doc where
 
-    show (FunDoc d) = show d
-    show (DataDoc t args) = "Data type " ++ show t ++
-       "\nConstructors:\n\n" ++
-       showSep "\n" (map show args)
-    show (ClassDoc n doc meths)
-       = "Type class " ++ show n ++ -- parameters?
-         "\nMethods:\n\n" ++
-         showSep "\n" (map show meths)
+pprintDocs imp (FunDoc d) = pprintFD imp d
+pprintDocs imp (DataDoc t args)
+           = text "Data type" <+> pprintFD imp t <$>
+             nest 4 (text "Constructors:" <> line <>
+                     vsep (map (pprintFD imp) args))
+pprintDocs imp (ClassDoc n doc meths)
+           = text "Type class" <+> prettyName imp [] n <$> -- parameters?
+             nest 4 (text "Methods:" <$>
+                     vsep (map (pprintFD imp) meths))
 
-getDocs :: Name -> Idris Doc
+getDocs :: Name -> Idris Docs
 getDocs n
    = do i <- getIState
         case lookupCtxt n (idris_classes i) of
@@ -72,13 +71,13 @@ getDocs n
                        _ -> do fd <- docFun n
                                return (FunDoc fd)
 
-docData :: Name -> TypeInfo -> Idris Doc
+docData :: Name -> TypeInfo -> Idris Docs
 docData n ti
   = do tdoc <- docFun n
        cdocs <- mapM docFun (con_names ti)
        return (DataDoc tdoc cdocs)
 
-docClass :: Name -> ClassInfo -> Idris Doc
+docClass :: Name -> ClassInfo -> Idris Docs
 docClass n ci
   = do i <- getIState
        let docstr = case lookupCtxt n (idris_docstrings i) of
@@ -105,7 +104,7 @@ docFun n
                     []          -> Nothing
                     (Fix x _:_) -> Just x
 
-       return (Doc n docstr args (delab i ty) f)
+       return (FD n docstr args (delab i ty) f)
        where funName :: Name -> String
              funName (UN n)   = str n
              funName (NS n _) = funName n

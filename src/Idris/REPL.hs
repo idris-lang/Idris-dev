@@ -521,14 +521,14 @@ process h fn (Check t)
                                       (prettyImp imp (delab ist ty))
 
 process h fn (DocStr n)
-                      = do i <- getIState
-                           case lookupCtxtName n (idris_docstrings i) of
-                                [] -> iPrintError $ "No documentation for " ++ show n
-                                ns -> do mapM_ showDoc ns
-                                         iPrintResult ""
-    where showDoc (n, d)
-             = do doc <- getDocs n
-                  iputStrLn $ show doc
+   = do i <- getIState
+        let imp = opt_showimp (idris_options i)
+        case lookupCtxtName n (idris_docstrings i) of
+          [] -> iPrintError $ "No documentation for " ++ show n
+          ns -> do toShow <- mapM (showDoc imp) ns
+                   ihRenderResult h (vsep toShow)
+    where showDoc imp (n, d) = do doc <- getDocs n
+                                  return $ pprintDocs imp doc
 process h fn Universes
                      = do i <- getIState
                           let cs = idris_constraints i
