@@ -858,7 +858,7 @@ unfoldLookupTable input =
   where
     adaptRuntime :: [JS] -> [JS]
     adaptRuntime js =
-      (adaptEval . adaptApply . adaptCon) js
+      (adaptApplyTC . adaptEval . adaptApply . adaptCon) js
 
 
     adaptApply :: [JS] -> [JS]
@@ -884,6 +884,39 @@ unfoldLookupTable input =
               ) JSNull
             )
           )
+
+
+    adaptApplyTC :: [JS] -> [JS]
+    adaptApplyTC js = adaptApplyTC' [] js
+      where
+        adaptApplyTC' :: [JS] -> [JS] -> [JS]
+        adaptApplyTC' front ((JSAlloc "__IDRRT__APPLYTC" (Just _)):back) =
+          front ++ (new:back)
+
+        adaptApplyTC' front (next:back) =
+          adaptApplyTC' (front ++ [next]) back
+
+        adaptApplyTC' front [] = front
+
+        new =
+          JSAlloc "__IDRRT__APPLYTC" (Just $ JSFunction ["mfn0", "marg0"] (
+            JSSeq [ JSAlloc "ret" $ Just (
+                      JSTernary (
+                        (JSIdent "mfn0" `jsInstanceOf` jsCon) `jsAnd`
+                        (JSProj (JSIdent "mfn0") "app")
+                      ) (JSApp
+                          (JSProj (JSIdent "mfn0") "app")
+                          [JSIdent "mfn0", JSIdent "marg0"]
+                      ) JSNull
+                    )
+                  , JSWhile (JSIdent "ret" `jsInstanceOf` (JSIdent "__IDRRT__Cont")) (
+                      JSAssign (JSIdent "ret") (
+                        JSApp (JSProj (JSIdent "ret") "k") []
+                      )
+                    )
+                  , JSReturn $ JSIdent "ret"
+                  ]
+          ))
 
 
     adaptEval :: [JS] -> [JS]
