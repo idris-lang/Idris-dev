@@ -14,7 +14,7 @@ import Data.List
 -- TODO: Only include names with public/abstract accessibility
 
 data FunDoc = FD Name String
-                 [(Name, PArg)] -- args
+                 [(Name, PTerm, Plicity)] -- args: name, ty, plicity
                  PTerm -- function type
                  (Maybe Fixity)
 
@@ -36,18 +36,18 @@ pprintFD imp (FD n doc args ty f)
         then nest 4 $ text "Arguments:" <$> vsep argshow
         else empty
 
-    where showArg (n, arg@(PExp _ _ _ _))
-             = Just $ bindingOf n False <> prettyImp imp (getTm arg) <>
-                      showDoc (pargdoc arg) <> line
-          showArg (n, arg@(PConstraint _ _ _ _))
+    where showArg (n, ty, arg@(Exp {}))
+             = Just $ bindingOf n False <+> colon <+> prettyImp imp ty <>
+                      showDoc (pdocstr arg) <> line
+          showArg (n, ty, arg@(Constraint {}))
              = Just $ text "Class constraint" <+>
-                      prettyImp imp (getTm arg) <> showDoc (pargdoc arg) <> line
-          showArg (n, arg@(PImp _ _ _ _ _ doc))
+                      prettyImp imp ty <> showDoc (pdocstr arg) <> line
+          showArg (n, ty, arg@(Imp {}))
            | not (null doc)
              = Just $ text "(implicit)" <+>
-                      bindingOf n True <+> colon <+> prettyImp imp (getTm arg)
-                      <> showDoc (pargdoc arg) <> line
-          showArg (n, _) = Nothing
+                      bindingOf n True <+> colon <+> prettyImp imp ty
+                      <> showDoc (pdocstr arg) <> line
+          showArg (n, _, _) = Nothing
 
 
 
@@ -93,10 +93,7 @@ docFun n
                          [str] -> str
                          _ -> ""
        let ty = delabTy i n
-       let argnames = getPArgNames ty
-       let args = case lookupCtxt n (idris_implicits i) of
-                       [args] -> zip argnames args
-                       _ -> []
+       let args = getPArgNames ty
        let infixes = idris_infixes i
        let fixdecls = filter (\(Fix _ x) -> x == funName n) infixes
        let f = case fixdecls of
@@ -108,6 +105,6 @@ docFun n
              funName (UN n)   = str n
              funName (NS n _) = funName n
 
-getPArgNames :: PTerm -> [Name]
-getPArgNames (PPi plicity name ty body) = (name : getPArgNames body)
+getPArgNames :: PTerm -> [(Name, PTerm, Plicity)]
+getPArgNames (PPi plicity name ty body) = ((name, ty, plicity) : getPArgNames body)
 getPArgNames _ = []
