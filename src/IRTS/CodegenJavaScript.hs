@@ -1346,24 +1346,24 @@ codegenJavaScript target definitions filename outputType = do
         compile     =
            map compileJS
 
-        opt = []
-          {-[ map optimizeJS-}
-          {-, removeIDs-}
-          {-, reduceJS-}
-          {-, map reduceConstants-}
-          {-, initConstructors-}
-          {-, map removeAllocations-}
-          {-, elimDeadLoop-}
-          {-, map elimDuplicateEvals-}
-          {-, optimizeRuntimeCalls "__IDR__mEVAL0" "__IDRRT__EVALTC"-}
-          {-, optimizeRuntimeCalls "__IDR__mAPPLY0" "__IDRRT__APPLYTC"-}
-          {-, map removeInstanceChecks-}
-          {-, inlineFunctions-}
-          {-, map reduceContinuations-}
-          {-, extractLocalConstructors-}
-          {-, unfoldLookupTable-}
-          {-, evalCons-}
-          {-]-}
+        opt =
+          [ map optimizeJS
+          , removeIDs
+          , reduceJS
+          , map reduceConstants
+          , initConstructors
+          , map removeAllocations
+          , elimDeadLoop
+          , map elimDuplicateEvals
+          , optimizeRuntimeCalls "__IDR__mEVAL0" "__IDRRT__EVALTC"
+          , optimizeRuntimeCalls "__IDR__mAPPLY0" "__IDRRT__APPLYTC"
+          , map removeInstanceChecks
+          , inlineFunctions
+          , map reduceContinuations
+          , extractLocalConstructors
+          , unfoldLookupTable
+          , evalCons
+          ]
 
     prelude :: [JS]
     prelude =
