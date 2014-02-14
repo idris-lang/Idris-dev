@@ -35,8 +35,26 @@ isCons []      = False
 isCons (x::xs) = True
 
 --------------------------------------------------------------------------------
+-- Length
+--------------------------------------------------------------------------------
+
+length : List a -> Nat
+length []      = 0
+length (x::xs) = 1 + length xs
+
+--------------------------------------------------------------------------------
 -- Indexing into lists
 --------------------------------------------------------------------------------
+
+index : (n : Nat) -> (l : List a) -> (lt n (length l) = True) -> a
+index Z     (x::xs) p    = x
+index (S n) (x::xs) p    = index n xs ?indexTailProof
+index _     []      refl   impossible
+
+index' : (n : Nat) -> (l : List a) -> Maybe a
+index' Z     (x::xs) = Just x
+index' (S n) (x::xs) = index' n xs
+index' _     []      = Nothing
 
 head : (l : List a) -> (isCons l = True) -> a
 head []      refl   impossible
@@ -111,10 +129,6 @@ dropWhile p (x::xs) = if p x then dropWhile p xs else x::xs
 list : a -> (a -> List a -> a) -> List a -> a
 list nil cons []      = nil
 list nil cons (x::xs) = cons x xs
-
-length : List a -> Nat
-length []      = 0
-length (x::xs) = 1 + length xs
 
 --------------------------------------------------------------------------------
 -- Building (bigger) lists
@@ -538,6 +552,12 @@ hasAnyNilFalse l = ?hasAnyNilFalseBody
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
+
+indexTailProof = proof {
+  intros;
+  rewrite sym p;
+  trivial;
+}
 
 lengthAppendStepCase = proof {
     intros;
