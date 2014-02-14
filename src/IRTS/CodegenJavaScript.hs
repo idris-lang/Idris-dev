@@ -857,7 +857,8 @@ unfoldLookupTable input =
       adaptRuntime $ expandCons evals applys js
   where
     adaptRuntime :: [JS] -> [JS]
-    adaptRuntime js = (adaptApply . adaptCon) js
+    adaptRuntime js =
+      (adaptEval . adaptApply . adaptCon) js
 
 
     adaptApply :: [JS] -> [JS]
@@ -884,6 +885,30 @@ unfoldLookupTable input =
             )
           )
 
+
+    adaptEval :: [JS] -> [JS]
+    adaptEval js = adaptEval' [] js
+      where
+        adaptEval' :: [JS] -> [JS] -> [JS]
+        adaptEval' front ((JSAlloc "__IDR__mEVAL0" (Just _)):back) =
+          front ++ (new:back)
+
+        adaptEval' front (next:back) =
+          adaptEval' (front ++ [next]) back
+
+        adaptEval' front [] = front
+
+        new =
+          JSAlloc "__IDR__mEVAL0" (Just $ JSFunction ["marg0"] (JSReturn $
+              JSTernary (
+                (JSIdent "marg0" `jsInstanceOf` jsCon) `jsAnd`
+                (JSProj (JSIdent "marg0") "eval")
+              ) (JSApp
+                  (JSProj (JSIdent "marg0") "eval")
+                  [JSIdent "marg0"]
+              ) (JSIdent "marg0")
+            )
+          )
 
     adaptCon js =
       adaptCon' [] js
