@@ -44,8 +44,9 @@ defunctionalise nexttag defs
      = let all = toAlist defs
            -- sort newcons so that EVAL and APPLY cons get sequential tags
            (allD, (enames, anames)) = runState (mapM (addApps defs) all) ([], [])
-           anames' = sort anames
-           newecons = sortBy conord $ concatMap (toCons enames) (getFn all)
+           anames' = sort (nub anames)
+           enames' = nub enames
+           newecons = sortBy conord $ concatMap (toCons enames') (getFn all)
            newacons = sortBy conord $ concatMap (toConsA anames') (getFn all)
            eval = mkEval newecons
            app = mkApply newacons
@@ -129,7 +130,7 @@ addApps defs (n, LFun _ _ args e)
         | length args < ar
              = do (ens, ans) <- get
                   let alln = map (\x -> (n, x)) [length args .. ar] 
-                  put (ens, nub (alln ++ ans))
+                  put (ens, alln ++ ans)
                   return $ DApp tc (mkUnderCon n (ar - length args)) args
         | length args > ar
              = return $ chainAPPLY (DApp tc n (take ar args)) (drop ar args)
@@ -137,12 +138,12 @@ addApps defs (n, LFun _ _ args e)
     fixLazyApply n args ar
         | length args == ar
              = do (ens, ans) <- get
-                  put (nub (n : ens), ans)
+                  put (n : ens, ans)
                   return $ DApp False (mkFnCon n) args
         | length args < ar
              = do (ens, ans) <- get
                   let alln = map (\x -> (n, x)) [length args .. ar] 
-                  put (ens, nub (alln ++ ans))
+                  put (ens, alln ++ ans)
                   return $ DApp False (mkUnderCon n (ar - length args)) args
         | length args > ar
              = return $ chainAPPLY (DApp False n (take ar args)) (drop ar args)
