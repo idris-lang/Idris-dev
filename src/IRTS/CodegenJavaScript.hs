@@ -822,19 +822,16 @@ optimizeRuntimeCalls fun tc js =
 
     optTC tc@"__IDRRT__APPLYTC" =
       JSAlloc tc (Just $ JSFunction ["fn0", "arg0"] (
-        JSSeq [ JSAlloc "ev" $ Just (JSApp
-                  (JSIdent "__IDRRT__EVALTC") [JSIdent "fn0"]
-                )
-              , JSAlloc "ret" $ Just (
+        JSSeq [ JSAlloc "ret" $ Just (
                   JSTernary (
-                    (JSIdent "ev" `jsInstanceOf` jsCon) `jsAnd`
-                    (hasProp "__IDRLT__APPLY" "ev")
+                    (JSIdent "fn0" `jsInstanceOf` jsCon) `jsAnd`
+                    (hasProp "__IDRLT__APPLY" "fn0")
                   ) (JSApp
                       (JSIndex
                         (JSIdent "__IDRLT__APPLY")
-                        (JSProj (JSIdent "ev") "tag")
+                        (JSProj (JSIdent "fn0") "tag")
                       )
-                      [JSIdent "fn0", JSIdent "arg0", JSIdent "ev"]
+                      [JSIdent "fn0", JSIdent "arg0", JSIdent "fn0"]
                   ) JSNull
                 )
               , JSWhile (JSIdent "ret" `jsInstanceOf` (JSIdent "__IDRRT__Cont")) (
