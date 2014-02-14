@@ -29,12 +29,12 @@ showDoc x = text "  -- " <> text x
 
 pprintFD :: Bool -> FunDoc -> Doc OutputAnnotation
 pprintFD imp (FD n doc args ty f)
-    = prettyName imp [] n <+> colon <+> prettyImp imp ty <$> showDoc doc <$>
-      maybe empty (\f -> text (show f) <> line) f <>
-      let argshow = mapMaybe showArg args in
-      if not (null argshow)
-        then nest 4 $ text "Arguments:" <$> vsep argshow
-        else empty
+    = nest 4 (prettyName imp [] n <+> colon <+> prettyImp imp ty <$> showDoc doc <$>
+              maybe empty (\f -> text (show f) <> line) f <>
+              let argshow = mapMaybe showArg args in
+              if not (null argshow)
+                then nest 4 $ text "Arguments:" <$> vsep argshow
+                else empty)
 
     where showArg (n, ty, arg@(Exp {}))
              = Just $ bindingOf n False <+> colon <+> prettyImp imp ty <>
