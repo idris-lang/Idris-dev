@@ -1131,17 +1131,28 @@ pprintPTerm impl bnd = prettySe 10 bnd
       bracket p 2 $
       lbrace <> text "tacimp" <+> pretty n <+> colon <+> prettySe 10 bnd ty <>
       rbrace <+> text "->" </> prettySe 10 ((n, True):bnd) sc
-    prettySe p bnd (PApp _ (PRef _ f) [])
-      | not impl = prettyName impl bnd f
+    prettySe p bnd (PApp _ (PRef _ f) args) -- normal names, no explicit args
+      | UN nm <- basename f
+      , not impl && null (getExps args) = if isAlpha (thead nm)
+                                            then prettyName impl bnd f
+                                            else enclose lparen rparen $
+                                                 prettyName impl bnd f
     prettySe p bnd (PAppBind _ (PRef _ f) [])
       | not impl = text "!" <> prettyName impl bnd f
     prettySe p bnd (PApp _ (PRef _ op) args)
       | UN nm <- basename op
       , not (tnull nm) &&
-        length (getExps args) == 2 && (not impl) && (not $ isAlpha (thead nm)) =
-          let [l, r] = getExps args in
-            bracket p 1 . align . group $
-            (prettySe 1 bnd l <+> prettyName impl bnd op) <$> group (prettySe 0 bnd r)
+        (not impl) && (not $ isAlpha (thead nm)) =
+          case getExps args of
+            [] -> enclose lparen rparen opName
+            [x] -> group (enclose lparen rparen opName <$> group (prettySe 0 bnd x))
+            [l,r] -> bracket p 1 $ inFix l r
+            (l:r:rest) -> bracket p 1 $
+                          enclose lparen rparen (inFix l r) <+>
+                          align (group (vsep (map (prettyArgSe bnd) rest)))
+          where opName = prettyName impl bnd op
+                inFix l r = align . group $
+                            (prettySe 1 bnd l <+> opName) <$> group (prettySe 0 bnd r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm])
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
