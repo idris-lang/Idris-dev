@@ -3,6 +3,7 @@ New in 0.9.12:
 
 * Proof search now works for metavariables in types, giving some interactive
   type inference.
+* New 'Lazy' type, replacing laziness annotations.
 
 New in 0.9.11:
 --------------
