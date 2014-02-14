@@ -1419,43 +1419,39 @@ translateConstant c =
 
 translateDeclaration :: (String, SDecl) -> [JS]
 translateDeclaration (path, SFun name params stackSize body)
-  {-| (MN _ ap)             <- name-}
-  {-, (SLet var val next)   <- body-}
-  {-, (SChkCase cvar cases) <- next-}
-  {-, ap == txt "APPLY" =-}
-    {-let lvar     = translateVariableName var-}
-        {-lookup t = (JSApp-}
-            {-(JSIndex (JSIdent t) (JSProj (JSIdent lvar) "tag"))-}
-            {-[JSIdent "fn0", JSIdent "arg0", JSIdent lvar]) in-}
-        {-[ lookupTable "APPLY" [(var, "chk")] var cases-}
-        {-, jsDecl $ JSFunction ["fn0", "arg0"] (-}
-            {-JSSeq [ JSAlloc "__var_0" (Just $ JSIdent "fn0")-}
-                  {-, JSAlloc (translateVariableName var) (-}
-                      {-Just $ translateExpression val-}
-                    {-)-}
-                  {-, JSReturn $ (JSTernary (-}
-                       {-(JSVar var `jsInstanceOf` jsCon) `jsAnd`-}
-                       {-(hasProp (idrLTNamespace ++ "APPLY") (translateVariableName var))-}
-                    {-) (lookup (idrLTNamespace ++ "APPLY")) JSNull)-}
-                  {-]-}
-          {-)-}
-        {-]-}
+  | (MN _ ap)             <- name
+  , (SChkCase var cases) <- body
+  , ap == txt "APPLY" =
+      [ lookupTable "APPLY" [] var cases
+      , jsDecl $ JSFunction ["mfn0", "marg0"] (JSReturn $
+          JSTernary (
+            (JSIdent "mfn0" `jsInstanceOf` jsCon) `jsAnd`
+            (hasProp (idrLTNamespace ++ "APPLY") "mfn0")
+          ) (JSApp
+              (JSIndex
+                (JSIdent (idrLTNamespace ++ "APPLY"))
+                (JSProj (JSIdent "mfn0") "tag")
+              )
+              [JSIdent "mfn0", JSIdent "marg0"]
+          ) JSNull
+        )
+      ]
 
   | (MN _ ev)            <- name
   , (SChkCase var cases) <- body
   , ev == txt "EVAL" =
       [ lookupTable "EVAL" [] var cases
-      , jsDecl $ JSFunction ["arg0"] (JSReturn $
+      , jsDecl $ JSFunction ["marg0"] (JSReturn $
           JSTernary (
-            (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
-            (hasProp (idrLTNamespace ++ "EVAL") "arg0")
+            (JSIdent "marg0" `jsInstanceOf` jsCon) `jsAnd`
+            (hasProp (idrLTNamespace ++ "EVAL") "marg0")
           ) (JSApp
               (JSIndex
                 (JSIdent (idrLTNamespace ++ "EVAL"))
-                (JSProj (JSIdent "arg0") "tag")
+                (JSProj (JSIdent "marg0") "tag")
               )
-              [JSIdent "arg0"]
-          ) (JSIdent "arg0")
+              [JSIdent "marg0"]
+          ) (JSIdent "marg0")
         )
       ]
   | otherwise =
