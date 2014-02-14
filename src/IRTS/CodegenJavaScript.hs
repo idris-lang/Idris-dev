@@ -967,8 +967,8 @@ removeInstanceChecks (JSCond conds) =
     removeHelper js = js
 
 
-    eliminateDeadBranches (e@(JSTrue, _):_) = [e]
-    eliminateDeadBranches [(_, js)]         = [(JSTrue, js)]
+    eliminateDeadBranches ((JSTrue, cond):_) = [(JSNoop, cond)]
+    eliminateDeadBranches [(_, js)]         = [(JSNoop, js)]
     eliminateDeadBranches (x:xs)            = x : eliminateDeadBranches xs
     eliminateDeadBranches []                = []
 
