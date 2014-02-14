@@ -523,7 +523,7 @@ inlineJS js = transformJS inlineJS js
 
 
 reduceJS :: [JS] -> [JS]
-reduceJS js = reduceLoop [] ([], js)
+reduceJS js = moveJSDeclToTop "__IDRRT__Con" $ reduceLoop [] ([], js)
 
 
 funName :: JS -> String
