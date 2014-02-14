@@ -285,6 +285,15 @@ mapE : Applicative m => (a -> {xs} Eff m b) -> List a -> {xs} Eff m (List b)
 mapE f []        = pure []
 mapE f (x :: xs) = [| f x :: mapE f xs |]
 
+
+mapVE : Applicative m => 
+          (a -> {xs} Eff m b) -> 
+          Vect n a -> 
+          {xs} Eff m (Vect n b)
+mapVE f []        = pure []
+mapVE f (x :: xs) = [| f x :: mapVE f xs |]
+
+
 when : Applicative m => Bool -> ({xs} Eff m ()) -> {xs} Eff m ()
 when True  e = e
 when False e = pure ()
