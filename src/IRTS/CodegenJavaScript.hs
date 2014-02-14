@@ -1441,20 +1441,23 @@ translateDeclaration (path, SFun name params stackSize body)
           {-)-}
         {-]-}
 
-  {-| (MN _ ev)            <- name-}
-  {-, (SChkCase var cases) <- body-}
-  {-, ev == txt "EVAL" =-}
-    {-[ lookupTable "EVAL" [] var cases-}
-    {-, jsDecl $ JSFunction ["arg0"] (JSReturn $-}
-        {-JSTernary (-}
-          {-(JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`-}
-          {-(hasProp (idrLTNamespace ++ "EVAL") "arg0")-}
-        {-) (JSApp-}
-            {-(JSIndex (JSIdent (idrLTNamespace ++ "EVAL")) (JSProj (JSIdent "arg0") "tag"))-}
-            {-[JSIdent "arg0"]-}
-        {-) (JSIdent "arg0")-}
-      {-)-}
-    {-]-}
+  | (MN _ ev)            <- name
+  , (SChkCase var cases) <- body
+  , ev == txt "EVAL" =
+      [ lookupTable "EVAL" [] var cases
+      , jsDecl $ JSFunction ["arg0"] (JSReturn $
+          JSTernary (
+            (JSIdent "arg0" `jsInstanceOf` jsCon) `jsAnd`
+            (hasProp (idrLTNamespace ++ "EVAL") "arg0")
+          ) (JSApp
+              (JSIndex
+                (JSIdent (idrLTNamespace ++ "EVAL"))
+                (JSProj (JSIdent "arg0") "tag")
+              )
+              [JSIdent "arg0"]
+          ) (JSIdent "arg0")
+        )
+      ]
   | otherwise =
     let fun = translateExpression body in
         [jsDecl $ jsFun fun]
