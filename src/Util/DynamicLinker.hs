@@ -14,8 +14,8 @@ import System.FilePath.Posix ((</>))
 import qualified Control.Exception as Exception (catch, IOException)
 import System.Win32.DLL
 import System.Win32.Types
-type DL = HMODULE
 import System.FilePath.Windows ((</>))
+type DL = HMODULE
 #endif
 
 hostDynamicLibExt :: String
