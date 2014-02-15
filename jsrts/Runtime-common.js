@@ -37,3 +37,7 @@ var __IDRRT__tailcall = function(k) {
 
   return ret;
 };
+
+var __IDRRT__isNull = function(s) {
+  return s == null;
+};

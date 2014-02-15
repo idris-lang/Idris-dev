@@ -1847,6 +1847,9 @@ translateExpression (SError msg) =
 translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
   jsCall (idrRTNamespace ++ "print") [JSVar var]
 
+translateExpression (SForeign _ _ "isNull" [(FPtr, var)]) =
+  jsCall (idrRTNamespace ++ "isNull") [JSVar var]
+
 translateExpression (SForeign _ _ fun args) =
   ffi fun (map generateWrapper args)
   where
