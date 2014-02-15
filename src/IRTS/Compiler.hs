@@ -110,7 +110,7 @@ irMain tm = do i <- ir tm
 mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
 mkDecls t used
     = do i <- getIState
-         let ds = filter (\ (n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
+         let ds = filter (\(n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
          decls <- mapM build ds
          return decls
 
@@ -390,6 +390,33 @@ instance ToIR SC where
         ir' (ProjCase tm alt) = do tm' <- ir tm
                                    alt' <- mkIRAlt tm' alt
                                    return $ LCase tm' [alt']
+
+        -- This is important for runtime because sometimes we case on irrelevant data:
+        --
+        --   case {foo} of
+        --     SingleConstructor x y => ... x, y never used ...
+        -- 
+        -- In the example above, {foo} will most probably have been erased
+        -- so this vain projection would make the resulting program segfault.
+        --
+        -- Hence, we check whether the variables are used at all
+        -- and erase the casesplit if they are not.
+        ir' (Case n [alt]) = do
+            alt' <- mkIRAlt (LV (Glob n)) alt
+            return $ case namesBoundIn alt' `usedIn` subexpr alt' of
+                [] -> subexpr alt'  -- strip the unused top-most case
+                _  -> LCase (LV (Glob n)) [alt']
+          where
+            namesBoundIn :: LAlt -> [Name]
+            namesBoundIn (LConCase cn i ns sc) = ns
+            namesBoundIn (LConstCase c sc)     = []
+            namesBoundIn (LDefaultCase sc)     = []
+
+            subexpr :: LAlt -> LExp
+            subexpr (LConCase _ _ _ e) = e
+            subexpr (LConstCase _   e) = e
+            subexpr (LDefaultCase   e) = e
+
         ir' (Case n alts) = do alts' <- mapM (mkIRAlt (LV (Glob n))) alts
                                return $ LCase (LV (Glob n)) alts'
         ir' ImpossibleCase = return LNothing
