@@ -14,6 +14,7 @@ import Util.System
 import Control.Arrow
 import Control.Applicative ((<$>), (<*>), pure)
 import Data.Char
+import Numeric
 import Data.List
 import Data.Maybe
 import System.IO
@@ -71,7 +72,6 @@ data JS = JSRaw String
         | JSFalse
         | JSArray [JS]
         | JSString String
-        | JSChar String
         | JSNum JSNum
         | JSAssign JS JS
         | JSAlloc String (Maybe JS)
@@ -162,10 +162,7 @@ compileJS (JSArray elems) =
   "[" ++ intercalate "," (map compileJS elems) ++ "]"
 
 compileJS (JSString str) =
-  show str
-
-compileJS (JSChar chr) =
-  chr
+  "\"" ++ str ++ "\""
 
 compileJS (JSNum num)
   | JSInt i                <- num = show i
@@ -420,7 +417,6 @@ removeAllocations js = transformJS removeAllocations js
 isJSConstant :: JS -> Bool
 isJSConstant js
   | JSString _   <- js = True
-  | JSChar _     <- js = True
   | JSNum _      <- js = True
   | JSType _     <- js = True
   | JSNull       <- js = True
@@ -1503,11 +1499,8 @@ translateSpecialName name
 translateConstant :: Const -> JS
 translateConstant (I i)                    = JSNum (JSInt i)
 translateConstant (Fl f)                   = JSNum (JSFloat f)
-translateConstant (Ch '\DEL')              = JSChar "'\\u007F'"
-translateConstant (Ch '\a')                = JSChar "'\\u0007'"
-translateConstant (Ch '\SO')               = JSChar "'\\u000E'"
-translateConstant (Ch c)                   = JSString [c]
-translateConstant (Str s)                  = JSString s
+translateConstant (Ch c)                   = JSString $ translateChar c
+translateConstant (Str s)                  = JSString $ concatMap translateChar s
 translateConstant (AType (ATInt ITNative)) = JSType JSIntTy
 translateConstant StrType                  = JSType JSStringTy
 translateConstant (AType (ATInt ITBig))    = JSType JSIntegerTy
@@ -1518,6 +1511,35 @@ translateConstant Forgot                   = JSType JSForgotTy
 translateConstant (BI i)                   = jsBigInt $ JSString (show i)
 translateConstant c =
   jsError $ "Unimplemented Constant: " ++ show c
+
+
+translateChar :: Char -> String
+translateChar ch
+  | '\a'   <- ch       = "\\u0007"
+  | '\b'   <- ch       = "\\b"
+  | '\f'   <- ch       = "\\f"
+  | '\n'   <- ch       = "\\n"
+  | '\r'   <- ch       = "\\r"
+  | '\t'   <- ch       = "\\t"
+  | '\v'   <- ch       = "\\v"
+  | '\SO'  <- ch       = "\\u000E"
+  | '\DEL' <- ch       = "\\u007F"
+  | '\\'   <- ch       = "\\\\"
+  | '\"'   <- ch       = "\\\""
+  | '\''   <- ch       = "\\\'"
+  | ch `elem` asciiTab = "\\u00" ++ fill (showIntAtBase 16 intToDigit (ord ch) "")
+  | otherwise          = [ch]
+  where
+    fill :: String -> String
+    fill s = if length s == 1
+                then '0' : s
+                else s
+
+    asciiTab =
+      ['\NUL', '\SOH', '\STX', '\ETX', '\EOT', '\ENQ', '\ACK', '\BEL',
+       '\BS',  '\HT',  '\LF',  '\VT',  '\FF',  '\CR',  '\SO',  '\SI',
+       '\DLE', '\DC1', '\DC2', '\DC3', '\DC4', '\NAK', '\SYN', '\ETB',
+       '\CAN', '\EM',  '\SUB', '\ESC', '\FS',  '\GS',  '\RS',  '\US']
 
 
 translateDeclaration :: (String, SDecl) -> [JS]
