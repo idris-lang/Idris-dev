@@ -444,78 +444,48 @@ isJSConstantConstructor constants js
 
 
 inlineJS :: JS -> JS
-inlineJS (JSReturn (JSApp (JSFunction [] err@(JSError _)) [])) = err
-inlineJS (JSReturn (JSApp (JSFunction ["cse"] body) [val@(JSVar _)])) =
-  inlineJS $ jsSubst (JSIdent "cse") val body
-
-
-inlineJS (JSReturn (JSApp (JSFunction [arg] cond@(JSCond _)) [val])) =
-  inlineJS $ JSSeq [ JSAlloc arg (Just val)
-                   , cond
-                   ]
-
-inlineJS (JSApp (JSProj (JSFunction args (JSReturn body)) "apply") [
-    JSThis,JSProj var "vars"
-  ])
-  | var /= JSIdent "cse" =
-      inlineJS $ inlineApply args body 0
+inlineJS = inlineError . inlineApply . inlineCaseMatch . inlineJSLet
   where
-    inlineApply []     body _ = inlineJS body
-    inlineApply (a:as) body n =
-      inlineApply as (
-        jsSubst (JSIdent a) (JSIndex (JSProj var "vars") (JSNum (JSInt n))) body
-      ) (n + 1)
+    inlineJSLet :: JS -> JS
+    inlineJSLet (JSApp (JSFunction [arg] (JSReturn ret)) [val])
+      | opt <- inlineJSLet val =
+          inlineJS $ jsSubst (JSIdent arg) opt ret
 
-inlineJS (JSApp (JSIdent "__IDR__mEVAL0") [val])
-  | isJSConstant val = val
+    inlineJSLet js = transformJS inlineJSLet js
 
-inlineJS (JSApp (JSIdent "__IDRRT__tailcall") [
-    JSFunction [] (JSReturn val)
-  ])
-  | isJSConstant val = val
 
-inlineJS (JSApp (JSFunction [arg] (JSReturn ret)) [val])
-  | JSNew con [tag, vals] <- ret
-  , opt <- inlineJS val =
-      inlineJS $ JSNew con [tag, inlineJS $ jsSubst (JSIdent arg) opt vals]
+    inlineCaseMatch (JSReturn (JSApp (JSFunction ["cse"] body) [val]))
+      | opt <- inlineCaseMatch val =
+          inlineCaseMatch $ jsSubst (JSIdent "cse") opt body
 
-  | JSNew con [JSFunction [] (JSReturn (JSApp fun vars))] <- ret
-  , opt <- inlineJS val =
-      inlineJS $ JSNew con [JSFunction [] (
-        JSReturn (
-          JSApp (
-            inlineJS $ jsSubst (JSIdent arg) opt fun
-          ) (
-            map (inlineJS . jsSubst (JSIdent arg) opt) vars
-          )
-        )
-      )]
+    inlineCaseMatch js = transformJS inlineCaseMatch js
 
-  | JSApp (JSProj obj field) args <- ret
-  , opt <- inlineJS val =
-      inlineJS $ JSApp (
-        inlineJS $ JSProj (jsSubst (JSIdent arg) opt obj) field
-      ) (
-        map (inlineJS . jsSubst (JSIdent arg) opt) args
-      )
 
-  | JSIndex (JSProj obj field) idx <- ret
-  , opt <- inlineJS val =
-      inlineJS $ JSIndex (JSProj (
-          inlineJS $ jsSubst (JSIdent arg) opt obj
-        ) field
-      ) (inlineJS $ jsSubst (JSIdent arg) opt idx)
+    inlineApply js
+      | JSApp (
+          JSProj (JSFunction args (JSReturn body)) "apply"
+        ) [JSThis, JSProj var "vars"] <- js =
+          inlineApply $ inlineApply' var args body 0
+      | JSReturn (JSApp  (
+          JSProj (JSFunction args body@(JSCond _)) "apply"
+        ) [JSThis, JSProj var "vars"]) <- js =
+          inlineApply $ inlineApply' var args body 0
+      where
+        inlineApply' _   []     body _ = body
+        inlineApply' var (a:as) body n =
+          inlineApply' var as (
+            jsSubst (JSIdent a) (
+              JSIndex (JSProj var "vars") (JSNum (JSInt n))
+            ) body
+          ) (n + 1)
 
-  | JSBinOp op lhs rhs <- ret
-  , opt <- inlineJS val =
-      inlineJS $ JSBinOp op (inlineJS $ jsSubst (JSIdent arg) opt lhs) $
-        (inlineJS $ jsSubst (JSIdent arg) opt rhs)
+    inlineApply js = transformJS inlineApply js
 
-  | JSApp (JSIdent fun) args <- ret
-  , opt <- inlineJS val =
-      inlineJS $ JSApp (JSIdent fun) $ map (inlineJS . jsSubst (JSIdent arg) opt) args
 
-inlineJS js = transformJS inlineJS js
+    inlineError (JSReturn (JSApp (JSFunction [] error@(JSError _)) [])) =
+      inlineError error
+
+    inlineError js = transformJS inlineError js
 
 
 reduceJS :: [JS] -> [JS]
@@ -1121,15 +1091,6 @@ reduceLoop reduced (cons, program) =
         reduceCall funs js = transformJS (reduceCall funs) js
 
 
-optimizeJS :: JS -> JS
-optimizeJS = inlineLoop
-  where inlineLoop :: JS -> JS
-        inlineLoop js
-          | opt <- inlineJS js
-          , opt /= js = inlineLoop opt
-          | otherwise = js
-
-
 extractLocalConstructors :: [JS] -> [JS]
 extractLocalConstructors js =
   concatMap extractLocalConstructors' js
@@ -1343,7 +1304,7 @@ codegenJavaScript target definitions filename outputType = do
            map compileJS
 
         opt =
-          [ map optimizeJS
+          [ map inlineJS
           , removeIDs
           , reduceJS
           , map reduceConstants
