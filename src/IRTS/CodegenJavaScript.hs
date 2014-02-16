@@ -1811,6 +1811,9 @@ translateExpression (SForeign _ _ "putStr" [(FString, var)]) =
 translateExpression (SForeign _ _ "isNull" [(FPtr, var)]) =
   JSBinOp "==" (JSVar var) JSNull
 
+translateExpression (SForeign _ _ "idris_eqPtr" [(FPtr, lhs),(FPtr, rhs)]) =
+  JSBinOp "==" (JSVar lhs) (JSVar rhs)
+
 translateExpression (SForeign _ _ fun args) =
   ffi fun (map generateWrapper args)
   where
