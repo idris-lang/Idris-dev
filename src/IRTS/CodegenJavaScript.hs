@@ -503,6 +503,42 @@ inlineJS = inlineAssign . inlineError . inlineApply . inlineCaseMatch . inlineJS
     inlineAssign js = transformJS inlineAssign js
 
 
+removeEval :: [JS] -> [JS]
+removeEval js =
+  let (ret, isReduced) = checkEval js in
+      if isReduced
+          then removeEvalApp ret
+          else ret
+  where
+    removeEvalApp js = catMaybes (map removeEvalApp' js)
+      where
+        removeEvalApp' :: JS -> Maybe JS
+        removeEvalApp' (JSAlloc "__IDR__mEVAL0" _) = Nothing
+        removeEvalApp' js = Just $ transformJS match js
+          where
+            match (JSApp (JSIdent "__IDR__mEVAL0") [val]) = val
+            match js = transformJS match js
+
+    removeEvalApp js = js
+
+    checkEval :: [JS] -> ([JS], Bool)
+    checkEval js = foldr f ([], False) $ map checkEval' js
+      where
+        f :: (Maybe JS, Bool) -> ([JS], Bool) -> ([JS], Bool)
+        f (Just js, isReduced) (ret, b) = (js : ret, isReduced || b)
+        f (Nothing, isReduced) (ret, b) = (ret, isReduced || b)
+
+
+        checkEval' :: JS -> (Maybe JS, Bool)
+        checkEval' (JSAlloc "__IDRLT__EVAL" (Just (JSApp (JSFunction [] (
+            JSSeq [ _
+                  , JSReturn (JSIdent "t")
+                  ]
+          )) []))) = (Nothing, True)
+
+        checkEval' js = (Just js, False)
+
+
 reduceJS :: [JS] -> [JS]
 reduceJS js = moveJSDeclToTop "__IDRRT__Con" $ reduceLoop [] ([], js)
 
@@ -1319,7 +1355,8 @@ codegenJavaScript target definitions filename outputType = do
            map compileJS
 
         opt =
-          [ map inlineJS
+          [ removeEval
+          , map inlineJS
           , removeIDs
           , reduceJS
           , map reduceConstants
