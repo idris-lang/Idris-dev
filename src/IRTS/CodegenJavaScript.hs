@@ -444,7 +444,7 @@ isJSConstantConstructor constants js
 
 
 inlineJS :: JS -> JS
-inlineJS = inlineError . inlineApply . inlineCaseMatch . inlineJSLet
+inlineJS = inlineAssign . inlineError . inlineApply . inlineCaseMatch . inlineJSLet
   where
     inlineJSLet :: JS -> JS
     inlineJSLet (JSApp (JSFunction [arg] (JSReturn ret)) [val])
@@ -486,6 +486,21 @@ inlineJS = inlineError . inlineApply . inlineCaseMatch . inlineJSLet
       inlineError error
 
     inlineError js = transformJS inlineError js
+
+
+    inlineAssign (JSAssign lhs rhs)
+      | JSVar _ <- lhs
+      , JSVar _ <- rhs
+      , lhs == rhs =
+          lhs
+
+    inlineAssign (JSAssign lhs rhs)
+      | JSIdent _ <- lhs
+      , JSIdent _ <- rhs
+      , lhs == rhs =
+          lhs
+
+    inlineAssign js = transformJS inlineAssign js
 
 
 reduceJS :: [JS] -> [JS]
