@@ -741,14 +741,29 @@ inlineFunctions js =
 
 
 reduceContinuations :: JS -> JS
-reduceContinuations = transformJS reduceHelper
+reduceContinuations = inlineTC . reduceJS
   where
-    reduceHelper :: JS -> JS
-    reduceHelper (JSNew "__IDRRT__Cont" [JSFunction [] (
+    reduceJS :: JS -> JS
+    reduceJS (JSNew "__IDRRT__Cont" [JSFunction [] (
         JSReturn js@(JSNew "__IDRRT__Cont" [JSFunction [] body])
-      )]) = js
+      )]) = reduceJS js
 
-    reduceHelper js = transformJS reduceHelper js
+    reduceJS js = transformJS reduceJS js
+
+
+    inlineTC :: JS -> JS
+    inlineTC js
+      | JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+            JSReturn (JSNew "__IDRRT__Cont" [JSFunction [] (
+              JSReturn ret@(JSApp (JSIdent "__IDRRT__tailcall") [JSFunction [] (
+                  JSReturn (JSNew "__IDRRT__Cont" _)
+              )])
+            )])
+          )] <- js = inlineTC ret
+
+    inlineTC js = transformJS inlineTC js
+
+
 
 
 reduceConstant :: JS -> JS
