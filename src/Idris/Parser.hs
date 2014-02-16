@@ -312,8 +312,9 @@ fnDecl syn = try (do notEndBlock
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
 fnDecl' syn = checkFixity $
               do (doc, fc, opts', n, acc) <- try (do
-                        doc <- option "" (docComment '|')
                         pushIndent
+                        ist <- get
+                        doc <- option "" (docComment '|')
                         ist <- get
                         let initOpts = if default_total ist
                                           then [TotalFn]
