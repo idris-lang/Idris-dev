@@ -222,10 +222,9 @@ instance ToIR (TT Name) where
 
           | (P (DCon t a) n _, args) <- unApply tm = do
               cg <- idris_callgraph <$> getIState
-              case lookupCtxtExact n cg of
-                Just (CGInfo _ _ _ _ usedpos)
-                    -> irCon env t a n [if i `elem` map fst usedpos then a else Erased | (i,a) <- zip [0..] args]
-                Nothing -> return LNothing  -- no usage info -> not used at all
+              let used  = maybe [] (map fst . usedpos) $ lookupCtxtExact n cg
+                  args' = [if i `elem` used then a else Erased | (i,a) <- zip [0..] args]
+              irCon env t a n args'
 
           | (P (TCon t a) n _, args) <- unApply tm
               = return LNothing
@@ -238,13 +237,18 @@ instance ToIR (TT Name) where
                     Just (arity, op) | length args == arity
                         -> LOp op <$> mapM (ir' env) args
 
+                    _   -> applyName n ist args
+
+{- collapsibility is turned off for now
                     _
                         -- if it's collapsible, compile to LNothing
                         | (collapsible <$> lookupCtxtExact n (idris_optimisation ist)) == Just True
                         -> return LNothing
-        
+      
                         -- otherwise, compile normally
                         | otherwise -> applyName n ist args
+
+-}
 
           | (f, args) <- unApply tm
               = do f' <- ir' env f
@@ -266,7 +270,7 @@ instance ToIR (TT Name) where
                     [Operator ty ar op]              -> ar
                     _ -> 0
 
-                used = fromMaybe [] (map fst . usedpos <$> lookupCtxtExact n (idris_callgraph ist))
+                used = maybe [] (map fst . usedpos) $ lookupCtxtExact n (idris_callgraph ist)
                 fst4 (x,_,_,_) = x
 
 --       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)

@@ -174,9 +174,10 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 [ [(sUN "main" `sNS` ["Main"],  Result)] 
                 , [(sUN "run__IO", Result), (sUN "run__IO", Arg 0)]
 
-                -- MkIO is presumably read by run__IO but this cannot be observed
-                -- in the source code of programs.
+                -- MkIO is presumably read by run__IO
+                -- but this cannot be observed in the source code of programs.
                 , it "MkIO"         [1]
+                , it "prim__IO"     [1]
 
                 -- these have been discovered as builtins but are not listed
                 -- among Idris.Primitives.primitives
@@ -360,7 +361,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                          `ins` unconditionalDeps args
 
             Proj t i
-                -> error $ "cannot analyse projection !" ++ show i ++ " of " ++ show t
+                -> error $ "cannot[0] analyse projection !" ++ show i ++ " of " ++ show t
 
             Erased -> M.empty
 
@@ -377,7 +378,8 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             getDepsArgs n (Nothing, t) = getDepsTerm vs bs cd t                        -- unconditional
 
     -- projections (= methods)
-    getDepsTerm vs bs cd (Proj t i) = getDepsTerm vs bs cd t  -- TODO?
+    getDepsTerm vs bs cd (Proj t i) = error $ "cannot[1] analyse projection !" ++ show i ++ " of " ++ show t
+        -- getDepsTerm vs bs cd t  -- TODO?
 
     -- the easy cases
     getDepsTerm vs bs cd (Constant _) = M.empty

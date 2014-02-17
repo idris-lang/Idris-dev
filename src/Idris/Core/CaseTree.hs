@@ -587,15 +587,25 @@ prune proj (Case n alts)
                 | delay == txt "Delay"
                    -> if proj then mkForce n arg sc
                               else Case n as
+
+            -- Projection transformations prevent us from seeing some uses of ctor fields
+            -- because they delete information about which ctor is being used.
+            -- Consider:
+            --   f (X x) = ...  x  ...
+            -- vs.
+            --   f  x    = ... x!0 ...
+            -- There's currently no code to handle this stuff. (TODO)
             as@[ConCase cn i args sc] -> if proj && False then mkProj n 0 args sc
                                                  else Case n as
             as@[SucCase cn sc] -> if proj then mkProj n (-1) [cn] sc 
                                           else Case n as
             as@[ConstCase _ sc] -> prune proj sc
+
             -- Bit of a hack here! The default case will always be 0, make sure
             -- it gets caught first.
             [s@(SucCase _ _), DefaultCase dc]
                 -> Case n [ConstCase (BI 0) dc, s]
+
             as  -> Case n as
     where pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune proj sc)
           pruneAlt (FnCase cn ns sc) = FnCase cn ns (prune proj sc)
