@@ -28,6 +28,9 @@ class Eq a where
     x /= y = not (x == y)
     x == y = not (x /= y)
 
+instance Eq () where
+  () == () = True
+
 instance Eq Int where
     (==) = boolOp prim__eqInt
 
@@ -88,6 +91,8 @@ class Eq a => Ord a where
     min : a -> a -> a
     min x y = if (x < y) then x else y
 
+instance Ord () where
+    compare () () = EQ
 
 instance Ord Int where
     compare x y = if (x == y) then EQ else
