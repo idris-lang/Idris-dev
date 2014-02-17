@@ -154,7 +154,8 @@ match_unify' :: Context -> Env -> TT Name -> TT Name ->
 match_unify' ctxt env topx topy =
    do ps <- get
       let dont = dontunify ps
-      u <- lift $ match_unify ctxt env topx topy dont (holes ps)
+      let inj = injective ps
+      u <- lift $ match_unify ctxt env topx topy inj (holes ps)
       let (h, ns) = unified ps
       put (ps { unified = (h, u ++ ns) })
       return u
@@ -164,11 +165,14 @@ unify' :: Context -> Env -> TT Name -> TT Name ->
 unify' ctxt env topx topy =
    do ps <- get
       let dont = dontunify ps
+      let inj = injective ps
       (u, fails) <- traceWhen (unifylog ps)
                         ("Trying " ++ show (topx, topy) ++
                          " in " ++ show env ++
-                         "\nHoles: " ++ show (holes ps) ++ "\n") $
-                     lift $ unify ctxt env topx topy dont (holes ps)
+                         "\nHoles: " ++ show (holes ps)
+                         ++ "\nInjective: " ++ show (injective ps) 
+                         ++ "\n") $
+                     lift $ unify ctxt env topx topy inj (holes ps)
       let notu = filter (\ (n, t) -> case t of
                                         P _ _ _ -> False
                                         _ -> n `elem` dont) u
@@ -187,8 +191,16 @@ unify' ctxt env topx topy =
                                               (holes ps)
            put (ps { problems = probs',
                      unified = (h, ns'),
+                     injective = updateInj u (injective ps),
                      notunified = notu ++ notunified ps })
            return u
+  where updateInj ((n, a) : us) inj
+              | (P _ n' _, _) <- unApply a,
+                n `elem` inj = updateInj us (n':inj)
+              | (P _ n' _, _) <- unApply a,
+                n' `elem` inj = updateInj us (n:inj)
+        updateInj (_ : us) inj = updateInj us inj
+        updateInj [] inj = inj
 
 getName :: Monad m => String -> StateT TState m Name
 getName tag = do ps <- get
@@ -358,10 +370,10 @@ instanceArg n ctxt env (Bind x (Hole t) sc)
          return (Bind x (Hole t) sc)
 
 setinj :: Name -> RunTactic
-setinj n ctxt env (Bind x (Hole t) sc)
+setinj n ctxt env (Bind x b sc)
     = do action (\ps -> let is = injective ps in
                             ps { injective = n : is })
-         return (Bind x (Hole t) sc)
+         return (Bind x b sc)
 
 defer :: Name -> RunTactic
 defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
@@ -526,8 +538,11 @@ forall n ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
 patvar n ctxt env (Bind x (Hole t) sc) =
-    do action (\ps -> ps { holes = holes ps \\ [x] })
+    do action (\ps -> ps { holes = holes ps \\ [x],
+                           injective = addInj n x (injective ps) })
        return $ Bind n (PVar t) (subst x (P Bound n t) sc)
+  where addInj n x ps | x `elem` ps = n : ps
+                      | otherwise = ps
 patvar n ctxt env tm = fail $ "Can't add pattern var at " ++ show tm
 
 letbind :: Name -> Raw -> Raw -> RunTactic

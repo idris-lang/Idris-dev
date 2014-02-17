@@ -16,7 +16,7 @@ instance Applicative (\x => Int -> x) where
   pure v = \x => v
   (<$>) f a = \x => f x (a x)
 
-instance Monad (\x => Int -> x) where 
+instance Monad IntFn where 
   f >>= k = \x => k (f x) x
 
 dbl : IntFn Int

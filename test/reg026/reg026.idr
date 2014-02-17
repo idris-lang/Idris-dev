@@ -9,6 +9,6 @@ column = getWitness
 data Action = Left | Ahead | Right
 
 admissible : X t -> Action -> Bool
-admissible x Ahead = column x == 0 || column x == 4
-admissible x Left  = column x <= 2
-admissible x Right = column x >= 2
+admissible {t} x Ahead = column {t} x == 0 || column {t} x == 4
+admissible {t} x Left  = column {t} x <= 2
+admissible {t} x Right = column {t} x >= 2

@@ -950,6 +950,7 @@ expandParams dec ps ns infs tm = en tm
     en (PAlternative a as) = PAlternative a (map en as)
     en (PHidden t) = PHidden (en t)
     en (PUnifyLog t) = PUnifyLog (en t)
+    en (PDisamb ds t) = PDisamb ds (en t)
     en (PNoImplicits t) = PNoImplicits (en t)
     en (PDoBlock ds) = PDoBlock (map (fmap en) ds)
     en (PProof ts)   = PProof (map (fmap en) ts)

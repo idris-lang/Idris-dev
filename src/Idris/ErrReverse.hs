@@ -13,7 +13,7 @@ import Debug.Trace
 -- errors will be more readable
 
 errReverse :: IState -> Term -> Term
-errReverse ist t = rewrite 5 (elideLambdas t)
+errReverse ist t = rewrite 5 t -- (elideLambdas t)
   where
 
     rewrite 0 t = t

@@ -16,7 +16,7 @@ toHexDigit n = index n hexVect where
              'A', 'B', 'C', 'D', 'E', 'F']
 
 b8ToString : Bits8 -> String
-b8ToString c = pack [c1, c2] where
+b8ToString c = pack (with List [c1, c2]) where
   %assert_total -- We will only supply numbers that can fit in 4 bits
   toFin16 : Bits8 -> Fin 16
   toFin16 n = if n == 0

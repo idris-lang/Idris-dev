@@ -27,10 +27,10 @@ indexStep = refl
 find : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect n a)
        -> Either (All (\x => Not (P x)) xs) (y : a ** (P y, (i : Fin n ** y = index i xs)))
 find _ Nil = Left Nil
-find d (x::xs) with (d x)
+find {P} d (x::xs) with (d x)
   | Yes prf = Right (x ** (prf, (fZ ** refl)))
   | No prf =
-    case find d xs of
+    case find {P} d xs of
       Right (y ** (prf', (i ** prf''))) =>
         Right (y ** (prf', (fS i ** replace {P=(\x => y = x)} (indexStep {x=x}) prf'')))
       Left prf' => Left (prf::prf')

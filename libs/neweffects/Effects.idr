@@ -183,21 +183,6 @@ data Eff : (m : Type -> Type) ->
           ((val : a) -> Eff m b (xs' val) xs'') -> Eff m b xs xs''
 (>>=) = ebind 
 
-implicit
-lift' : Eff m t ys ys' ->
-        {default tactics { byReflection reflectEff; }
-           prf : SubList ys xs} ->
-        Eff m t xs (\v => updateWith (ys' v) xs prf)
-lift' e {prf} = lift prf e
-
-implicit
-effect' : {a, b: _} -> {e : Effect} ->
-          (eff : e t a b) ->
-          {default tactics { byReflection reflectEff; }
-             prf : EffElem e a xs} ->
-         Eff m t xs (\v => updateResTy v xs prf eff)
-effect' e {prf} = effect prf e
-
 return : a -> Eff m a xs (\v => xs)
 return x = value x
 
@@ -222,8 +207,9 @@ execEff : Env m xs -> (p : EffElem e res xs) ->
           ((v : a) -> Env m (updateResTy v xs p eff) -> m t) -> m t
 execEff (val :: env) Here eff' k
     = handle val eff' (\v, res => k v (res :: env))
-execEff (val :: env) (There p) eff k
-    = execEff env p eff (\v, env' => k v (val :: env'))
+-- FIXME: Teach the elaborator to propagate parameters here
+execEff {a} {res} {resk} (val :: env) (There p) eff k
+    = execEff {a} {res} {resk} env p eff (\v, env' => k v (val :: env'))
 
 -- Q: Instead of m b, implement as StateT (Env m xs') m b, so that state
 -- updates can be propagated even through failing computations?
@@ -259,6 +245,22 @@ syntax MkDefaultEnv = with Env
                           [default, default, default, default, default, default],
                           [default, default, default, default, default, default, default],
                           [default, default, default, default, default, default, default, default] |)
+
+implicit
+lift' : Eff m t ys ys' ->
+        {default tactics { byReflection reflectEff; }
+           prf : SubList ys xs} ->
+        Eff m t xs (\v => updateWith (ys' v) xs prf)
+lift' e {prf} = lift prf e
+
+implicit
+effect' : {a, b: _} -> {e : Effect} ->
+          (eff : e t a b) ->
+          {default tactics { byReflection reflectEff; }
+             prf : EffElem e a xs} ->
+         Eff m t xs (\v => updateResTy v xs prf eff)
+effect' e {prf} = effect prf e
+
 
 run : Applicative m => {default MkDefaultEnv env : Env m xs} -> Eff m a xs xs' -> m a
 run {env} prog = eff env prog (\r, env => pure r)

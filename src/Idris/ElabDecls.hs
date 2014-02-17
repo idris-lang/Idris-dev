@@ -696,7 +696,7 @@ elabTransform info fc safe lhs_in rhs_in
          let rhs = addImplBound i (map fst newargs) rhs_in
          ((rhs', defer), _) <-
               tclift $ elaborate ctxt (sMN 0 "transRHS") clhs_ty []
-                       (do pbinds lhs_tm
+                       (do pbinds i lhs_tm
                            setNextName
                            erun fc (build i info False [] (sUN "transform") rhs)
                            erun fc $ psolve lhs_tm
@@ -1296,12 +1296,13 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show (fn_ty, fn_is))
 
-        (((lhs', dlhs, []), probs), _) <-
+        (((lhs', dlhs, []), probs, inj), _) <-
             tclift $ elaborate ctxt (sMN 0 "patLHS") infP []
                      (do res <- errAt "left hand side of " fname
                                   (erun fc (buildTC i info True opts fname (infTerm lhs)))
                          probs <- get_probs
-                         return (res, probs))
+                         inj <- get_inj
+                         return (res, probs, inj))
 
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_) -> (x,y)) probs)
 
@@ -1309,6 +1310,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let lhs_ty = getInferType lhs'
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
         logLvl 3 ("Elaborated type: " ++ show lhs_ty)
+        logLvl 5 ("Injective: " ++ show fname ++ " " ++ show inj)
 
         -- If we're inferring metavariables in the type, don't recheck,
         -- because we're only doing this to try to work out those metavariables
@@ -1351,7 +1353,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 5 "STARTING CHECK"
         ((rhs', defer, is, probs), _) <-
            tclift $ elaborate ctxt (sMN 0 "patRHS") clhsty []
-                    (do pbinds lhs_tm
+                    (do pbinds ist lhs_tm
+                        mapM_ setinj inj
                         setNextName 
                         (_, _, is) <- errAt "right hand side of " fname
                                          (erun fc (build i info False opts fname rhs))
@@ -1523,7 +1526,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         ((wval', defer, is), _) <-
             tclift $ elaborate ctxt (sMN 0 "withRHS")
                         (bindTyArgs PVTy bargs infP) []
-                        (do pbinds lhs_tm
+                        (do pbinds i lhs_tm
                             setNextName
                             -- TODO: may want where here - see winfo abpve
                             (_', d, is) <- errAt "with value in " fname
@@ -1587,7 +1590,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         i <- getIState
         ((rhs', defer, is), _) <-
            tclift $ elaborate ctxt (sMN 0 "wpatRHS") clhsty []
-                    (do pbinds lhs_tm
+                    (do pbinds i lhs_tm
                         setNextName
                         (_, d, is) <- erun fc (build i info False opts fname rhs)
                         psolve lhs_tm
@@ -2058,9 +2061,20 @@ decorateid decorate (PClauses f o n cs)
           dappname t = t
 
 
-pbinds (Bind n (PVar t) sc) = do attack; patbind n
-                                 pbinds sc
-pbinds tm = return ()
+-- if 't' is a type class application, assume its arguments are injective
+pbinds :: IState -> Term -> ElabD ()
+pbinds i (Bind n (PVar t) sc) 
+    = do attack; patbind n
+         case unApply t of
+              (P _ c _, args) -> case lookupCtxt c (idris_classes i) of
+                                   [] -> return ()
+                                   _ -> -- type class, set as injective
+                                        mapM_ setinjArg args
+              _ -> return ()
+         pbinds i sc
+  where setinjArg (P _ n _) = setinj n
+        setinjArg _ = return ()
+pbinds i tm = return ()
 
 pbty (Bind n (PVar t) sc) tm = Bind n (PVTy t) (pbty sc tm)
 pbty _ tm = tm

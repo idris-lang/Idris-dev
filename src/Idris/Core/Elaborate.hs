@@ -182,6 +182,10 @@ get_env :: Elab' aux Env
 get_env = do ES p _ _ <- get
              lift $ envAtFocus (fst p)
 
+get_inj :: Elab' aux [Name]
+get_inj = do ES p _ _ <- get
+             return $! (injective (fst p))
+
 get_holes :: Elab' aux [Name]
 get_holes = do ES p _ _ <- get
                return $! (holes (fst p))

@@ -152,21 +152,6 @@ syntax [tag] ":!" [val] = !(tag :- val)
 
 --   Eff : List (EFFECT m) -> Type -> Type
 
-implicit
-lift' : EffM m ys ys' t ->
-        {default tactics { byReflection reflectEff; }
-           prf : SubList ys xs} ->
-        EffM m xs (updateWith ys' xs prf) t
-lift' e {prf} = lift prf e
-
-implicit
-effect' : {a, b: _} -> {e : Effect} ->
-          (eff : e a b t) ->
-          {default tactics { byReflection reflectEff; }
-             prf : EffElem e a xs} ->
-         EffM m xs (updateResTy xs prf eff) t
-effect' e {prf} = effect prf e
-
 -- For making proofs implicitly for 'test' and 'test_lbl'
 
 syntax if_valid then [e] else [t] =
@@ -224,8 +209,8 @@ execEff : Env m xs -> (p : EffElem e res xs) ->
           (Env m (updateResTy xs p eff) -> a -> m t) -> m t
 execEff (val :: env) Here eff' k
     = handle val eff' (\res, v => k (res :: env) v)
-execEff (val :: env) (There p) eff k
-    = execEff env p eff (\env', v => k (val :: env') v)
+execEff {e} {a} {b} (val :: env) (There p) eff k
+    = execEff {e} {a} {b} env p eff (\env', v => k (val :: env') v)
 
 private
 testEff : Env m xs -> (p : EffElem e (Either l r) xs) ->
@@ -278,6 +263,22 @@ eff {xs = [l ::: x]} env (l :- prog) k
    = let env' = unlabel env in
          eff env' prog (\envk, p' => k (relabel l envk) p')
 
+implicit
+lift' : EffM m ys ys' t ->
+        {default tactics { byReflection reflectEff; }
+           prf : SubList ys xs} ->
+        EffM m xs (updateWith ys' xs prf) t
+lift' e {prf} = lift prf e
+
+implicit
+effect' : {a, b: _} -> {e : Effect} ->
+          (eff : e a b t) ->
+          {default tactics { byReflection reflectEff; }
+             prf : EffElem e a xs} ->
+         EffM m xs (updateResTy xs prf eff) t
+effect' e {prf} = effect prf e
+
+
 run : Applicative m => Env m xs -> EffM m xs xs' a -> m a
 run env prog = eff env prog (\env, r => pure r)
 
@@ -287,8 +288,8 @@ runEnv env prog = eff env prog (\env, r => pure (env, r))
 runPure : Env id xs -> EffM id xs xs' a -> a
 runPure env prog = eff env prog (\env, r => r)
 
-runPureEnv : Env id xs -> EffM id xs xs' a -> (Env id xs', a)
-runPureEnv env prog = eff env prog (\env, r => (env, r))
+-- runPureEnv : Env id xs -> EffM id xs xs' a -> (Env id xs', a)
+-- runPureEnv env prog = eff env prog (\env, r => (env, r))
 
 runWith : (a -> m a) -> Env m xs -> EffM m xs xs' a -> m a
 runWith inj env prog = eff env prog (\env, r => inj r)

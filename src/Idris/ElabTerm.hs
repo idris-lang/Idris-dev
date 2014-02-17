@@ -125,6 +125,7 @@ elab ist info pattern opts fn tm
          end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
+                  matchProblems; unifyProblems
                   mkPat)
   where
     tcgen = Dictionary `elem` opts
@@ -453,6 +454,8 @@ elab ist info pattern opts fn tm
 --                    trace ("args is " ++ show args) $ return ()
                     ns <- apply (Var f) (map isph args)
 --                    trace ("ns is " ++ show ns) $ return ()
+                    -- mark any type class arguments as injective
+                    mapM_ checkIfInjective (map snd ns)
                     -- Sort so that the implicit tactics and alternatives go last
                     let (ns', eargs) = unzip $
                              sortBy cmpArg (zip ns args)
@@ -475,15 +478,28 @@ elab ist info pattern opts fn tm
                                                   (movelast n)
                                          else movelast n)
                               (ivs' \\ ivs)
-      where tcArg (n, PConstraint _ _ Placeholder _) = True
-            tcArg _ = False
-            
-            -- normal < tactic < default tactic
+      where -- normal < tactic < default tactic
             cmpArg (_, x) (_, y)
                    = compare (priority x + alt x) (priority y + alt y)
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
                                    _ -> 0
+
+            checkIfInjective n = do
+                env <- get_env
+                case lookup n env of
+                     Nothing -> return ()
+                     Just b ->
+                       case unApply (binderTy b) of
+                            (P _ c _, args) -> 
+                                case lookupCtxt c (idris_classes ist) of
+                                   [] -> return ()
+                                   _ -> -- type class, set as injective
+                                        mapM_ setinjArg args
+                            _ -> return ()
+                     
+            setinjArg (P _ n _) = setinj n
+            setinjArg _ = return ()
 
             tacTm (PTactics _) = True
             tacTm (PProof _) = True
@@ -918,7 +934,9 @@ runTac :: Bool -> IState -> PTactic -> ElabD ()
 runTac autoSolve ist tac
     = do env <- get_env
          g <- goal
-         no_errors (runT (fmap (addImplBound ist (map fst env)) tac))
+         if autoSolve 
+            then runT (fmap (addImplBound ist (map fst env)) tac)
+            else no_errors (runT (fmap (addImplBound ist (map fst env)) tac))
                    (Just (CantSolveGoal g (map (\(n, b) -> (n, binderTy b)) env)))
   where
     runT (Intro []) = do g <- goal

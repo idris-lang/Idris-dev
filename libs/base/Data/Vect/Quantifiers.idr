@@ -14,10 +14,10 @@ anyElim f _ (There p) = f p
 
 any : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect n a) -> Dec (Any P xs)
 any _ Nil = No anyNilAbsurd
-any p (x::xs) with (p x)
+any {P} p (x::xs) with (p x)
   | Yes prf = Yes (Here prf)
   | No prf =
-    case any p xs of
+    case any {P} p xs of
       Yes prf' => Yes (There prf')
       No prf' => No (anyElim prf' prf)
 
@@ -39,9 +39,9 @@ notAllThere np (_ :: ps) = np ps
 
 all : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect n a) -> Dec (All P xs)
 all _ Nil = Yes Nil
-all d (x::xs) with (d x)
+all {P} d (x::xs) with (d x)
   | No prf = No (notAllHere prf)
   | Yes prf =
-    case all d xs of
+    case all {P} d xs of
       Yes prf' => Yes (prf :: prf')
       No prf' => No (notAllThere prf')
