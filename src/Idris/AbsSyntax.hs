@@ -1522,6 +1522,8 @@ stripLinear i tm = evalState (sl tm) [] where
                              then return Placeholder
                              else do put (f : ns)
                                      return (PPatvar fc f)
+    sl t@(PAlternative _ (a : as)) = do sl a
+                                        return t
     sl (PApp fc fn args) = do fn' <- sl fn
                               args' <- mapM slA args
                               return $ PApp fc fn' args'

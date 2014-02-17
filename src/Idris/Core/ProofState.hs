@@ -79,7 +79,7 @@ data Tactic = Attack
             | Instance Name
             | SetInjective Name
             | MoveLast Name
-            | MatchProblems
+            | MatchProblems Bool
             | UnifyProblems
             | ProofState
             | Undo
@@ -147,7 +147,7 @@ hole _           = False
 holeName i = sMN i "hole"
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, _, _) -> (x, y)) fs)
+qshow fs = show (map (\ (x, y, _, _, t) -> (t, x, y)) fs)
 
 match_unify' :: Context -> Env -> TT Name -> TT Name ->
                 StateT TState TC [(Name, TT Name)]
@@ -155,10 +155,26 @@ match_unify' ctxt env topx topy =
    do ps <- get
       let dont = dontunify ps
       let inj = injective ps
-      u <- lift $ match_unify ctxt env topx topy inj (holes ps)
-      let (h, ns) = unified ps
-      put (ps { unified = (h, u ++ ns) })
-      return u
+      traceWhen (unifylog ps)
+                ("Matching " ++ show (topx, topy) ++ 
+                 " in " ++ show env ++
+                 "\nHoles: " ++ show (holes ps)
+                  ++ "\n" 
+                  ++ "\n" ++ show (pterm ps) ++ "\n\n"
+                 ) $
+       case match_unify ctxt env topx topy inj (holes ps) of
+            OK u -> do let (h, ns) = unified ps
+                       put (ps { unified = (h, u ++ ns) })
+                       return u
+            Error e -> do put (ps { problems = (topx, topy, env, e, Match) :
+                                                  problems ps })
+                          return []
+--       traceWhen (unifylog ps)
+--             ("Matched " ++ show (topx, topy) ++ " without " ++ show dont ++
+--              "\nSolved: " ++ show u 
+--              ++ "\nCurrent problems:\n" ++ qshow (problems ps)
+-- --              ++ show (pterm ps)
+--              ++ "\n----------") $
 
 unify' :: Context -> Env -> TT Name -> TT Name ->
           StateT TState TC [(Name, TT Name)]
@@ -403,7 +419,7 @@ deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                   Nothing -> error ("deferType can't find " ++ show n)
 
 regret :: RunTactic
-regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
+regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc = 
     do action (\ps -> let hs = holes ps in
                           ps { holes = hs \\ [x] })
        return sc
@@ -470,22 +486,23 @@ complete_fill ctxt env t = fail $ "Can't complete fill at " ++ show t
 
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
-   | True         = do ps <- get
-                       let (uh, uns) = unified ps
-                       case lookup x (notunified ps) of
-                           Just tm -> unify' ctxt env tm val
-                           _ -> return []
-                       action (\ps -> ps { holes = holes ps \\ [x],
-                                           solved = Just (x, val),
-                                           instances = instances ps \\ [x] })
-                       let tm' = subst x val sc in 
-                           return tm'
-   | otherwise    = lift $ tfail $ IncompleteTerm val
+   = do ps <- get
+        let (uh, uns) = unified ps
+        case lookup x (notunified ps) of
+            Just tm -> match_unify' ctxt env tm val
+            _ -> return []
+        action (\ps -> ps { holes = holes ps \\ [x],
+                            solved = Just (x, val),
+                            notunified = updateNotunified [(x,val)]
+                                           (notunified ps),
+                            instances = instances ps \\ [x] })
+        let tm' = subst x val sc in 
+            return tm'
 solve _ _ h@(Bind x t sc)
-            = do ps <- get
-                 case findType x sc of
-                      Just t -> lift $ tfail (CantInferType (show t))
-                      _ -> fail $ "Not a guess " ++ show h ++ "\n" ++ show (holes ps, pterm ps)
+   = do ps <- get
+        case findType x sc of
+             Just t -> lift $ tfail (CantInferType (show t))
+             _ -> fail $ "Not a guess " ++ show h ++ "\n" ++ show (holes ps, pterm ps)
    where findType x (Bind n (Let t v) sc)
               = findType x v `mplus` findType x sc
          findType x (Bind n t sc) 
@@ -539,6 +556,8 @@ forall n ty ctxt env _ = fail "Can't pi bind here"
 patvar :: Name -> RunTactic
 patvar n ctxt env (Bind x (Hole t) sc) =
     do action (\ps -> ps { holes = holes ps \\ [x],
+                           notunified = updateNotunified [(x,P Bound n t)]
+                                          (notunified ps),
                            injective = addInj n x (injective ps) })
        return $ Bind n (PVar t) (subst x (P Bound n t) sc)
   where addInj n x ps | x `elem` ps = n : ps
@@ -712,7 +731,6 @@ solve_unified ctxt env tm =
        action (\ps -> ps { holes = holes ps \\ map fst unify })
        action (\ps -> ps { pterm = updateSolved unify (pterm ps) })
        return (updateSolved unify tm)
-  where
 
 dropGiven du [] hs = []
 dropGiven du ((n, P Bound t ty) : us) hs
@@ -771,7 +789,7 @@ updateNotunified ns nu = up nu where
 updateProblems ctxt [] ps inj holes = ([], ps)
 updateProblems ctxt ns ps inj holes = up ns ps where
   up ns [] = (ns, [])
-  up ns ((x, y, env, err) : ps) =
+  up ns ((x, y, env, err, um) : ps) =
     let x' = updateSolved ns x
         y' = updateSolved ns y
         err' = updateError ns err
@@ -780,12 +798,13 @@ updateProblems ctxt ns ps inj holes = up ns ps where
             OK (v, []) -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
             _ -> let (ns', ps') = up ns ps in
-                     (ns', (x',y',env',err') : ps')
+                     (ns', (x',y',env',err', um) : ps')
 
 -- attempt to solve remaining problems with match_unify
-matchProblems ctxt ps inj holes = up [] ps where
+matchProblems all ctxt ps inj holes = up [] ps where
   up ns [] = (ns, [])
-  up ns ((x, y, env, err) : ps) =
+  up ns ((x, y, env, err, um) : ps) 
+       | all || um == Match =
     let x' = updateSolved ns x
         y' = updateSolved ns y
         err' = updateError ns err
@@ -794,7 +813,9 @@ matchProblems ctxt ps inj holes = up [] ps where
             OK v -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
             _ -> let (ns', ps') = up ns ps in
-                     (ns', (x',y',env',err') : ps')
+                     (ns', (x',y',env',err',um) : ps')
+  up ns (p : ps) = let (ns', ps') = up ns ps in
+                       (ns', p : ps')
 
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
@@ -834,11 +855,11 @@ processTactic UnifyProblems ps
                    previous = Just ps, plog = "",
                    notunified = updateNotunified ns' (notunified ps),
                    holes = holes ps \\ (map fst ns') }, plog ps)
-processTactic MatchProblems ps
-    = let (ns', probs') = matchProblems (context ps)
-                                        (problems ps)
-                                        (injective ps)
-                                        (holes ps)
+processTactic (MatchProblems all) ps
+    = let (ns', probs') = matchProblems all (context ps)
+                                            (problems ps)
+                                            (injective ps)
+                                            (holes ps)
           pterm' = updateSolved ns' (pterm ps) in
       return (ps { pterm = pterm', solved = Nothing, problems = probs',
                    previous = Just ps, plog = "",

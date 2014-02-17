@@ -71,12 +71,12 @@ build ist info pattern opts fn tm
                                 resolveTC 7 g fn ist) ivs
          tm <- get_term
          ctxt <- get_context
-         when (not pattern) $ do matchProblems; unifyProblems
+         when (not pattern) $ do matchProblems True; unifyProblems
          probs <- get_probs
          case probs of
             [] -> return ()
-            ((_,_,_,e):es) -> if inf then return ()
-                                     else lift (Error e)
+            ((_,_,_,e,_):es) -> if inf then return ()
+                                       else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -103,8 +103,8 @@ buildTC ist info pattern opts fn tm
          tm <- get_term
          case probs of
             [] -> return ()
-            ((_,_,_,e):es) -> if inf then return ()
-                                     else lift (Error e)
+            ((_,_,_,e,_):es) -> if inf then return ()
+                                       else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -125,7 +125,8 @@ elab ist info pattern opts fn tm
          end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
-                  matchProblems; unifyProblems
+                  matchProblems False -- only the ones we matched earlier
+                  unifyProblems
                   mkPat)
   where
     tcgen = Dictionary `elem` opts
@@ -480,10 +481,24 @@ elab ist info pattern opts fn tm
                               (ivs' \\ ivs)
       where -- normal < tactic < default tactic
             cmpArg (_, x) (_, y)
-                   = compare (priority x + alt x) (priority y + alt y)
+                   = compare (conDepth 0 (getTm x) + priority x + alt x) 
+                             (conDepth 0 (getTm y) + priority y + alt y)
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
                                    _ -> 0
+
+            -- Score a point for every level where there is a non-constructor
+            -- function (so higher score --> done later)
+            -- Only relevant when on lhs
+            conDepth d t | not pattern = 0
+            conDepth d (PRef _ f) | isConName f (tt_ctxt ist) = 0
+                                  | otherwise = max (100 - d) 1
+            conDepth d (PApp _ f as) 
+               = conDepth d f + sum (map (conDepth (d+1)) (map getTm as))
+            conDepth d (PPatvar _ _) = 0
+            conDepth d (PAlternative _ as) = maximum (map (conDepth d) as)
+            conDepth d Placeholder = 0
+            conDepth d t = max (100 - d) 1
 
             checkIfInjective n = do
                 env <- get_env
