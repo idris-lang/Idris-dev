@@ -195,7 +195,6 @@ doExec env ctxt Erased = return EErased
 doExec env ctxt Impossible = fail "Tried to execute an impossible case"
 doExec env ctxt (TType u) = return (EType u)
 
-
 execApp :: ExecEnv -> Context -> ExecVal -> [ExecVal] -> Exec ExecVal
 execApp env ctxt v [] = return v -- no args is just a constant! can result from function calls
 execApp env ctxt (EP _ f _) (t:a:delayed:rest)

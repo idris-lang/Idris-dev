@@ -807,7 +807,7 @@ pi syn =
             return (bindList (PPi (Exp opts st False)) xt sc)) <|> (do
                lchar '{'
                (do reserved "auto"
-                   when (Lazy `elem` opts || (st == Static)) $ fail "auto type constraints can not be lazy or static"
+                   when (st == Static) $ fail "auto type constraints can not be lazy or static"
                    xt <- typeDeclList syn
                    lchar '}'
                    symbol "->"
@@ -816,7 +816,7 @@ pi syn =
                      (TacImp [] Dynamic (PTactics [Trivial]))) xt sc)) 
                  <|> (do
                        reserved "default"
-                       when (Lazy `elem` opts || (st == Static)) $ fail "default tactic constraints can not be lazy or static"
+                       when (st == Static) $ fail "default tactic constraints can not be lazy or static"
                        script <- simpleExpr syn
                        xt <- typeDeclList syn
                        lchar '}'

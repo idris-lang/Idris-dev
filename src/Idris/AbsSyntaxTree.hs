@@ -407,15 +407,12 @@ data Plicity = Imp { pargopts :: [ArgOpt],
                         pscript :: PTerm }
   deriving (Show, Eq)
 
-plazy :: Plicity -> Bool
-plazy tm = Lazy `elem` pargopts tm
-
 {-!
 deriving instance Binary Plicity
 deriving instance NFData Plicity
 !-}
 
-impl = Imp [Lazy] Dynamic False
+impl = Imp [] Dynamic False
 expl = Exp [] Dynamic False
 expl_param = Exp [] Dynamic True
 constraint = Constraint [] Dynamic
@@ -793,11 +790,8 @@ data PArg' t = PImp { priority :: Int,
                               getTm :: t }
     deriving (Show, Eq, Functor)
 
-data ArgOpt = Lazy | HideDisplay | InaccessibleArg
+data ArgOpt = HideDisplay | InaccessibleArg
     deriving (Show, Eq)
-
-lazyarg :: PArg' t -> Bool
-lazyarg tm = Lazy `elem` argopts tm
 
 instance Sized a => Sized (PArg' a) where
   size (PImp p _ l nm trm) = 1 + size nm + size trm
@@ -810,10 +804,10 @@ deriving instance Binary PArg'
 deriving instance NFData PArg'
 !-}
 
-pimp n t mach = PImp 1 mach [Lazy] n t
+pimp n t mach = PImp 1 mach [] n t
 pexp t = PExp 1 [] (sMN 0 "arg") t
 pconst t = PConstraint 1 [] (sMN 0 "carg") t
-ptacimp n s t = PTacImplicit 2 [Lazy] n s t
+ptacimp n s t = PTacImplicit 2 [] n s t
 
 type PArg = PArg' PTerm
 
@@ -1126,10 +1120,9 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
       prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PPi (Exp l s _) n ty sc)
       | n `elem` allNamesIn sc || impl || n `elem` docArgs =
-          let open = if Lazy `elem` l then text "|" <> lparen else lparen in
-            bracket p 2 . group $
-            enclose open rparen (group . align $ bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
-            st <> text "->" <$> prettySe 10 ((n, False):bnd) sc
+          bracket p 2 . group $
+          enclose lparen rparen (group . align $ bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
+          st <> text "->" <$> prettySe 10 ((n, False):bnd) sc
       | otherwise                      =
           bracket p 2 . group $
           group (prettySe 0 bnd ty <+> st) <> text "->" <$> group (prettySe 10 ((n, False):bnd) sc)
@@ -1140,10 +1133,9 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
             _      -> empty
     prettySe p bnd (PPi (Imp l s _) n ty sc)
       | impl =
-          let open = if Lazy `elem` l then text "|" <> lbrace else lbrace in
-            bracket p 2 $
-            open <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
-            st <> text "->" </> prettySe 10 ((n, True):bnd) sc
+          bracket p 2 $
+          lparen <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
+          st <> text "->" </> prettySe 10 ((n, True):bnd) sc
       | otherwise = prettySe 10 ((n, True):bnd) sc
       where
         st =
