@@ -209,8 +209,8 @@ execEff : Env m xs -> (p : EffElem e res xs) ->
           (Env m (updateResTy xs p eff) -> a -> m t) -> m t
 execEff (val :: env) Here eff' k
     = handle val eff' (\res, v => k (res :: env) v)
-execEff {e} {a} {b} (val :: env) (There p) eff k
-    = execEff {e} {a} {b} env p eff (\env', v => k (val :: env') v)
+execEff {e} {res} {b} {a} (val :: env) (There p) eff k
+    = execEff {e} {res} {b} {a} env p eff (\env', v => k (val :: env') v)
 
 private
 testEff : Env m xs -> (p : EffElem e (Either l r) xs) ->
@@ -224,7 +224,7 @@ testEff (val :: env) (There p) lk rk
                    (\envk => rk (val :: envk))
 
 private
-testEffLbl : {x : lbl} ->
+testEffLbl : {x : lblTy} ->
              Env m xs -> (p : EffElem e (LRes x (Either l r)) xs) ->
              (Env m (updateResTyImm xs p (LRes x l)) -> m b) ->
              (Env m (updateResTyImm xs p (LRes x r)) -> m b) ->

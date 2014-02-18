@@ -35,10 +35,10 @@ isoSym (MkIso to from toFrom fromTo) = MkIso from to fromTo toFrom
 
 eitherComm : Iso (Either a b) (Either b a)
 eitherComm = MkIso swap swap swapSwap swapSwap
-  where swap : Either a b -> Either b a
+  where swap : Either a' b' -> Either b' a' -- a & b are parameters, so fixed!
         swap (Left x) = Right x
         swap (Right x) = Left x
-        swapSwap : (e : Either a b) -> swap (swap e) = e
+        swapSwap : (e : Either a' b') -> swap (swap e) = e
         swapSwap (Left x) = refl
         swapSwap (Right x) = refl
 
@@ -105,9 +105,10 @@ eitherCongRight i = eitherCong isoRefl i
 -- Isomorphisms over products
 pairComm : Iso (a, b) (b, a)
 pairComm = MkIso swap swap swapSwap swapSwap
-  where swap : (a, b) -> (b, a)
+  where swap : (a', b') -> (b', a')
         swap (x, y) = (y, x)
-        swapSwap : (x : (a, b)) -> swap (swap x) = x
+        
+        swapSwap : (x : (a', b')) -> swap (swap x) = x
         swapSwap (x, y) = refl
 
 pairAssoc : Iso (a, (b, c)) ((a, b), c)

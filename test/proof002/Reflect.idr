@@ -40,9 +40,10 @@ using (xs : List a, ys : List a, G : List (List a))
   expr_r (Var i) = (_ ** (RApp RNil i, refl))
   expr_r (App ex ey) = let (xl ** (xr, xprf)) = expr_r ex in
                        let (yl ** (yr, yprf)) = expr_r ey in
-                           appRExpr _ _ xr yr xprf yprf
+                               appRExpr _ _ xr yr xprf yprf
     where
-      appRExpr : (xs', ys' : List a) ->
+      appRExpr : (xs', ys' : List a) -> 
+                 {G : List (List a)} -> {xs, ys : List a} ->
                  RExpr G xs -> RExpr G ys -> (xs' = xs) -> (ys' = ys) ->
                  (ws' ** (RExpr G ws', xs' ++ ys' = ws'))
       appRExpr x' y' rxs (RApp e i) xprf yprf
@@ -173,7 +174,7 @@ Reflect.appRExpr1 = proof {
   rewrite sym xprf;
   rewrite sym yprf;
   rewrite prf;
-  rewrite sym (appendAssociative xs xs2 ys1);
+  rewrite sym (appendAssociative xs1 xs2 ys1);
   trivial;
 }
 

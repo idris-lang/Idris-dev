@@ -76,12 +76,12 @@ elabType' norm info syn doc fc opts n ty' = {- let ty' = piBind (params info) ty
          ctxt <- getContext
          i <- getIState
 
-         logLvl 3 $ show n ++ " pre-type " ++ showTmImpls ty'
+         logLvl 1 $ show n ++ " pre-type " ++ showTmImpls ty'
          ty' <- addUsingConstraints syn fc ty'
          ty' <- implicit syn n ty'
 
          let ty = addImpl i ty'
-         logLvl 2 $ show n ++ " type " ++ showTmImpls ty
+         logLvl 1 $ show n ++ " type " ++ showTmImpls ty
          ((tyT, defer, is), log) <-
                tclift $ elaborate ctxt n (TType (UVal 0)) []
                         (errAt "type of " n (erun fc (build i info False [] n ty)))
@@ -662,7 +662,7 @@ elabProvider info syn fc n ty tm
          tm <- getProvided fc rhs'
 
          -- Finally add a top-level definition of the provided term
-         elabClauses info fc [] n [PClause fc n (PRef fc n) [] (delab i tm) []]
+         elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
          logLvl 1 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
 
     where isTType :: TT Name -> Bool
@@ -1266,6 +1266,68 @@ checkPossible info fc tcgen fname lhs_in
                      ((P _ x _, _), (P _ y _, _)) -> x == y
                      _ -> False
 
+getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi t) sc)
+    = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
+getFixedInType i env (_ : is) (Bind n (Pi t) sc)
+    = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
+getFixedInType i env is tm@(App f a)
+    | (P _ tn _, args) <- unApply tm
+       = case lookupCtxt tn (idris_datatypes i) of
+            [t] -> nub $ paramNames args env (param_pos t) ++
+                         getFixedInType i env is f ++
+                         getFixedInType i env is a
+            [] -> nub $ getFixedInType i env is f ++
+                        getFixedInType i env is a
+    | otherwise = nub $ getFixedInType i env is f ++
+                        getFixedInType i env is a
+getFixedInType i _ _ _ = []
+
+getFlexInType i env (Bind n (Pi t) sc)
+    = nub $ getFlexInType i env t ++
+            getFlexInType i (n : env) (instantiate (P Bound n t) sc)
+getFlexInType i env tm@(App f a)
+    | (P _ tn _, args) <- unApply tm
+       = case lookupCtxt tn (idris_datatypes i) of
+            [t] -> nub $ paramNames args env [x | x <- [0..length args],
+                                                  not (x `elem` param_pos t)] 
+                          ++ getFlexInType i env f ++
+                             getFlexInType i env a
+            [] -> nub $ getFlexInType i env f ++
+                        getFlexInType i env a
+    | otherwise = nub $ getFlexInType i env f ++
+                        getFlexInType i env a
+getFlexInType i _ _ = []
+
+-- Treat a name as a parameter if it appears in parameter positions in
+-- types, and never in a non-parameter position in a type.
+
+getParamsInType i env ps t = let fix = getFixedInType i env ps t
+                                 flex = getFlexInType i env t in
+                                 [x | x <- fix, not (x `elem` flex)]
+
+paramNames args env [] = []
+paramNames args env (p : ps)
+   | length args > p = case args!!p of
+                          P _ n _ -> if n `elem` env
+                                        then n : paramNames args env ps
+                                        else paramNames args env ps
+                          _ -> paramNames args env ps
+   | otherwise = paramNames args env ps
+
+propagateParams :: [Name] -> Type -> PTerm -> PTerm
+propagateParams ps t tm@(PApp _ (PRef fc n) args)
+     = PApp fc (PRef fc n) (addP t args)
+   where addP (Bind n _ sc) (t : ts)
+              | Placeholder <- getTm t,
+                n `elem` ps,
+                not (n `elem` allNamesIn tm)
+                    = t { getTm = PRef fc n } : addP sc ts
+         addP (Bind n _ sc) (t : ts) = t : addP sc ts
+         addP _ ts = ts
+propagateParams ps t (PRef fc n)
+     = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps)
+propagateParams ps t x = x
+
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
               Idris (Either Term (Term, Term))
 elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
@@ -1292,10 +1354,12 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                          [t] -> t
                          _ -> []
         let params = getParamsInType i [] fn_is fn_ty
-        let lhs = stripUnmatchable i $
-                    addImplPat i (propagateParams params (stripLinear i lhs_in))
-        logLvl 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
-        logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show (fn_ty, fn_is))
+        let flex = getFlexInType i [] fn_ty
+        let lhs = mkLHSapp $ stripUnmatchable i $
+                    propagateParams params fn_ty (addImplPat i (stripLinear i lhs_in))
+        logLvl 5 ("LHS: " ++ show fc ++ " " ++ show lhs)
+        logLvl 4 ("Fixed parameters: " ++ show (flex, params) ++ " from " ++ show lhs_in ++
+                  "\n" ++ show (fn_ty, fn_is))
 
         (((lhs', dlhs, []), probs, inj), _) <-
             tclift $ elaborate ctxt (sMN 0 "patLHS") infP []
@@ -1342,7 +1406,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         -- Elaborate those with a type *before* RHS, those without *after*
         let (wbefore, wafter) = sepBlocks wb
 
-        logLvl 5 $ "Where block:\n " ++ show wbefore ++ "\n" ++ show wafter
+        logLvl 1 $ "Where block:\n " ++ show wbefore ++ "\n" ++ show wafter
         mapM_ (elabDecl' EAll info) wbefore
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- getIState -- new implicits from where block
@@ -1355,7 +1419,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         ((rhs', defer, is, probs), _) <-
            tclift $ elaborate ctxt (sMN 0 "patRHS") clhsty []
                     (do pbinds ist lhs_tm
-                        mapM_ setinj inj
+                        mapM_ setinj (nub (params ++ inj))
                         setNextName 
                         (_, _, is) <- errAt "right hand side of " fname
                                          (erun fc (build i info False opts fname rhs))
@@ -1415,6 +1479,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
            addErrRev (crhs, clhs) 
         return $ Right (clhs, crhs)
   where
+    mkLHSapp t@(PRef _ _) = trace ("APP " ++ show t) $ PApp fc t []
+    mkLHSapp t = t
+
     decorate (NS x ns)
        = NS (SN (WhereN cnum fname x)) ns -- ++ [show cnum])
 --        = NS (UN ('#':show x)) (ns ++ [show cnum, show fname])
@@ -1447,40 +1514,6 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                                      --      _ -> MN i (show n)) . l
                     }
 
-    getParamsInType i env (PExp _ _ _ _ : is) (Bind n (Pi t) sc)
-        = getParamsInType i env is (instantiate (P Bound n t) sc)
-    getParamsInType i env (_ : is) (Bind n (Pi t) sc)
-        = getParamsInType i (n : env) is (instantiate (P Bound n t) sc)
-    getParamsInType i env is tm@(App f a)
-        | (P _ tn _, args) <- unApply tm
-           = case lookupCtxt tn (idris_datatypes i) of
-                [t] -> nub $ paramNames args env (param_pos t) ++
-                             getParamsInType i env is f ++
-                             getParamsInType i env is a
-                [] -> nub $ getParamsInType i env is f ++
-                            getParamsInType i env is a
-        | otherwise = nub $ getParamsInType i env is f ++
-                            getParamsInType i env is a
-    getParamsInType i _ _ _ = []
-
-    paramNames args env [] = []
-    paramNames args env (p : ps)
-       | length args > p = case args!!p of
-                              P _ n _ -> if n `elem` env
-                                            then n : paramNames args env ps
-                                            else paramNames args env ps
-                              _ -> paramNames args env ps
-       | otherwise = paramNames args env ps
-
-    propagateParams :: [Name] -> PTerm -> PTerm
-    propagateParams ps (PApp _ (PRef fc n) args)
-         = PApp fc (PRef fc n) (map addP args)
-       where addP imp@(PImp _ _ _ _ Placeholder _)
-                  | pname imp `elem` ps = imp { getTm = PRef fc (pname imp) }
-             addP t = t
-    propagateParams ps (PRef fc n)
-         = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps)
-    propagateParams ps x = x
 
     -- if a hole is just an argument/result of a case block, treat it as
     -- the unit type. Hack to help elaborate case in do blocks.
@@ -1508,8 +1541,16 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
-        let lhs = addImplPat i (stripLinear i lhs_in)
-        logLvl 5 ("LHS: " ++ showTmImpls lhs)
+        -- get the parameters first, to pass through to any where block
+        let fn_ty = case lookupTy fname (tt_ctxt i) of
+                         [t] -> t
+                         _ -> error "Can't happen (elabClause function type)"
+        let fn_is = case lookupCtxt fname (idris_implicits i) of
+                         [t] -> t
+                         _ -> []
+        let params = getParamsInType i [] fn_is fn_ty
+        let lhs = propagateParams params fn_ty (addImplPat i (stripLinear i lhs_in))
+        logLvl 1 ("LHS: " ++ show lhs)
         ((lhs', dlhs, []), _) <-
             tclift $ elaborate ctxt (sMN 0 "patLHS") infP []
               (errAt "left hand side of with in " fname

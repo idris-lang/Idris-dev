@@ -611,7 +611,7 @@ elab ist info pattern opts fn tm
     elab' ina (PUnifyLog t) = do unifyLog True
                                  elab' ina t
                                  unifyLog False
-    elab' ina x = fail $ "Unelaboratable syntactic form " ++ show x
+    elab' ina x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
     isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))
     isScr (PRef _ n) (n', b) = (n', (n == n', b))

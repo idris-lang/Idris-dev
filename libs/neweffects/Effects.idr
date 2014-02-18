@@ -208,8 +208,8 @@ execEff : Env m xs -> (p : EffElem e res xs) ->
 execEff (val :: env) Here eff' k
     = handle val eff' (\v, res => k v (res :: env))
 -- FIXME: Teach the elaborator to propagate parameters here
-execEff {a} {res} {resk} (val :: env) (There p) eff k
-    = execEff {a} {res} {resk} env p eff (\v, env' => k v (val :: env'))
+execEff {e} {a} {res} {resk} (val :: env) (There p) eff k
+    = execEff {e} {a} {res} {resk} env p eff (\v, env' => k v (val :: env'))
 
 -- Q: Instead of m b, implement as StateT (Env m xs') m b, so that state
 -- updates can be propagated even through failing computations?

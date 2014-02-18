@@ -14,7 +14,7 @@ record StateT : Type -> (Type -> Type) -> Type -> Type where
 
 instance Functor f => Functor (StateT s f) where
     map f (ST g) = ST (\st => map (mapFst f) (g st)) where
-       mapFst : (a -> x) -> (a, b) -> (x, b)
+       mapFst : (a -> x) -> (a, s) -> (x, s)
        mapFst fn (a, b) = (fn a, b)
 
 instance Monad f => Applicative (StateT s f) where
