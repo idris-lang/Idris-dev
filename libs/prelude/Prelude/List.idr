@@ -12,8 +12,7 @@ import Prelude.Nat
 %access public
 %default total
 
-infixr 7 ::
-infixl 8 ++
+infixr 7 ::,++
 
 %elim data List a
   = Nil

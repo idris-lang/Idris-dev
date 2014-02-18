@@ -36,8 +36,6 @@ index : (i : Fin n) -> JSON (JSONArray n ts) -> JSON (index i ts)
 index fZ     (JSArray (x :: xs)) = x
 index (fS i) (JSArray (x :: xs)) = index i (JSArray xs)
 
-infixl 8 ++
-
 (++) : JSON (JSONArray m ts1) ->
        JSON (JSONArray n ts2) ->
        JSON (JSONArray (m + n) (ts1 ++ ts2))
