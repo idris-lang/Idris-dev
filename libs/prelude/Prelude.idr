@@ -500,6 +500,26 @@ partial
 do_fread : Ptr -> IO String
 do_fread h = prim_fread h
 
+fgetc : File -> IO Char
+fgetc (FHandle h) = return (cast !(mkForeign (FFun "fgetc" [FPtr] FInt) h))
+
+fflush : File -> IO ()
+fflush (FHandle h) = mkForeign (FFun "fflush" [FPtr] FUnit) h
+
+do_popen : String -> String -> IO Ptr
+do_popen f m = mkForeign (FFun "popen" [FString, FString] FPtr) f m
+
+popen : String -> Mode -> IO File
+popen f m = do ptr <- do_popen f (modeStr m)
+               return (FHandle ptr)
+  where
+    modeStr Read  = "r"
+    modeStr Write = "w"
+    modeStr ReadWrite = "r+"
+
+pclose : File -> IO ()
+pclose (FHandle h) = mkForeign (FFun "pclose" [FPtr] FUnit) h
+
 -- mkForeign (FFun "idris_readStr" [FPtr, FPtr] (FAny String))
 --                        prim__vm h
 
