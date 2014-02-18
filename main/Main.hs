@@ -127,7 +127,7 @@ usagemsg = usagemsghdr ++ "\n" ++
            "\t    --target=TRIPLE         Select target triple (for llvm codegen)\n" ++
            "\t -S --codegenonly           Do no further compilation of code generator output\n" ++
            "\t -c --compileonly           Compile to object files rather than an executable\n" ++
-           "\t -X --extension ITEM        Undocumented\n" ++
+           "\t -X --extension EXT         Turn on langage extension (TypeProviders or ErrorReflection)\n" ++
            "\t    --dumpdefuns            Undocumented\n" ++
            "\t    --dumpcases             Undocumented\n" ++
            "\t    --log LEVEL --loglevel  Debugging log level\n" ++
