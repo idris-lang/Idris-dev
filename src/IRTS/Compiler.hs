@@ -177,7 +177,7 @@ instance ToIR (TT Name) where
               = do arg' <- ir' env arg
                    return $ LForce arg'
           -- Laziness, the new way
-          | (P _ (UN l) _, [arg]) <- unApply tm,
+          | (P _ (UN l) _, [_, arg]) <- unApply tm,
             l == txt "Delay"
               = do arg' <- ir' env arg
                    return $ LLazyExp arg'

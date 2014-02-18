@@ -724,7 +724,7 @@ elab ist info pattern opts fn tm
         = elabArgs ist ina failed fc r f ns force args
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force ((lazy, t) : args)
         | lazy && not pattern
-          = elabArg argName holeName (PApp bi (PRef bi (sUN "lazy"))
+          = elabArg argName holeName (PApp bi (PRef bi (sUN "Delay"))
                                            [pimp (sUN "a") Placeholder True,
                                             pexp t])
         | otherwise = elabArg argName holeName t
