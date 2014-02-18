@@ -1131,17 +1131,28 @@ pprintPTerm impl bnd = prettySe 10 bnd
       bracket p 2 $
       lbrace <> text "tacimp" <+> pretty n <+> colon <+> prettySe 10 bnd ty <>
       rbrace <+> text "->" </> prettySe 10 ((n, True):bnd) sc
-    prettySe p bnd (PApp _ (PRef _ f) [])
-      | not impl = prettyName impl bnd f
+    prettySe p bnd (PApp _ (PRef _ f) args) -- normal names, no explicit args
+      | UN nm <- basename f
+      , not impl && null (getExps args) = if isAlpha (thead nm)
+                                            then prettyName impl bnd f
+                                            else enclose lparen rparen $
+                                                 prettyName impl bnd f
     prettySe p bnd (PAppBind _ (PRef _ f) [])
       | not impl = text "!" <> prettyName impl bnd f
     prettySe p bnd (PApp _ (PRef _ op) args)
       | UN nm <- basename op
       , not (tnull nm) &&
-        length (getExps args) == 2 && (not impl) && (not $ isAlpha (thead nm)) =
-          let [l, r] = getExps args in
-            bracket p 1 . align . group $
-            (prettySe 1 bnd l <+> prettyName impl bnd op) <$> group (prettySe 0 bnd r)
+        (not impl) && (not $ isAlpha (thead nm)) =
+          case getExps args of
+            [] -> enclose lparen rparen opName
+            [x] -> group (enclose lparen rparen opName <$> group (prettySe 0 bnd x))
+            [l,r] -> bracket p 1 $ inFix l r
+            (l:r:rest) -> bracket p 1 $
+                          enclose lparen rparen (inFix l r) <+>
+                          align (group (vsep (map (prettyArgSe bnd) rest)))
+          where opName = prettyName impl bnd op
+                inFix l r = align . group $
+                            (prettySe 1 bnd l <+> opName) <$> group (prettySe 0 bnd r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm])
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
@@ -1179,20 +1190,14 @@ pprintPTerm impl bnd = prettySe 10 bnd
       text "rewrite" <+> prettySe 10 bnd l <+> text "in" <+> prettySe 10 bnd r
     prettySe p bnd (PTyped l r) =
       lparen <> prettySe 10 bnd l <+> colon <+> prettySe 10 bnd r <> rparen
-    prettySe p bnd (PPair _ TypeOrTerm l r) =
-      lparen <> prettySe 10 bnd l <> text "," <+> prettySe 10 bnd r <> rparen
-    prettySe p bnd (PPair _ IsType l r) =
-      annotate (AnnName pairTy Nothing Nothing) lparen <>
-      prettySe 10 bnd l <>
-      annotate (AnnName pairTy Nothing Nothing) comma <+>
-      prettySe 10 bnd r <>
-      annotate (AnnName pairTy Nothing Nothing) rparen
-    prettySe p bnd (PPair _ IsTerm l r) =
-      annotate (AnnName pairCon Nothing Nothing) lparen <>
-      prettySe 10 bnd l <>
-      annotate (AnnName pairCon Nothing Nothing) comma <+>
-      prettySe 10 bnd r <>
-      annotate (AnnName pairCon Nothing Nothing) rparen
+    prettySe p bnd pair@(PPair _ pun _ _) -- flatten tuples to the right, like parser
+      | Just elts <- pairElts pair = enclose (ann lparen) (ann rparen) .
+                                     align . group . vsep . punctuate (ann comma) $
+                                     map (prettySe 10 bnd) elts
+        where ann = case pun of
+                      TypeOrTerm -> id
+                      IsType -> annotate (AnnName pairTy Nothing Nothing)
+                      IsTerm -> annotate (AnnName pairCon Nothing Nothing)
     prettySe p bnd (PDPair _ TypeOrTerm l t r) =
       lparen <> prettySe 10 bnd l <+> text "**" <+> prettySe 10 bnd r <> rparen
     prettySe p bnd (PDPair _ IsType (PRef _ n) t r) =
@@ -1280,6 +1285,11 @@ pprintPTerm impl bnd = prettySe 10 bnd
             right = (annotate AnnConstData (text "]"))
             comma = (annotate AnnConstData (text ","))
     slist _ _ _ = Nothing
+
+    pairElts :: PTerm -> Maybe [PTerm]
+    pairElts (PPair _ _ x y) | Just elts <- pairElts y = Just (x:elts)
+                             | otherwise = Just [x, y]
+    pairElts _ = Nothing
 
     natns = "Prelude.Nat."
 
