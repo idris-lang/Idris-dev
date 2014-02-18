@@ -301,7 +301,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         -- assumed to be a global reference
         | otherwise = M.singleton cd (M.singleton (n, Result) S.empty)
       where
-        specialMNs = [sMN 0 "__Unit", sMN 0 "__True", sMN 0 "__False"] 
+        specialMNs = map (sMN 0 . ("__" ++)) $ words "Unit True False II"
     
     -- dependencies of de bruijn variables are described in `bs'
     getDepsTerm vs bs cd (V i) = (bs !! i) cd
@@ -377,9 +377,9 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             getDepsArgs n (Just i,  t) = getDepsTerm vs bs (S.insert (n, Arg i) cd) t  -- conditional
             getDepsArgs n (Nothing, t) = getDepsTerm vs bs cd t                        -- unconditional
 
-    -- projections (= methods)
+    -- projections
+    getDepsTerm vs bs cd (Proj t (-1)) = getDepsTerm vs bs cd t  -- naturals, (S n) -> n
     getDepsTerm vs bs cd (Proj t i) = error $ "cannot[1] analyse projection !" ++ show i ++ " of " ++ show t
-        -- getDepsTerm vs bs cd t  -- TODO?
 
     -- the easy cases
     getDepsTerm vs bs cd (Constant _) = M.empty
