@@ -392,13 +392,15 @@ instance Enum Int where
   succ n = n + 1
   toNat n = cast n
   fromNat n = cast n
+  enumFromTo n m =
+    if n <= m
+       then go [] (cast {to = Nat} (m - n)) m
+       else []
+       where
+         go : List Int -> Nat -> Int -> List Int
+         go acc Z     m = m :: acc
+         go acc (S k) m = go (m :: acc) k (m - 1)
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
-  enumFromTo n m = if n <= m
-                   then go (natRange (S (cast {to = Nat} (m - n))))
-                   else []
-    where go : List Nat -> List Int
-          go [] = []
-          go (x :: xs) = n + cast x :: go xs
   enumFromThenTo _ 0   _ = []
   enumFromThenTo n inc m = go (natRange (S (cast {to=Nat} (abs (m - n)) `div` cast {to=Nat} (abs inc))))
     where go : List Nat -> List Int
