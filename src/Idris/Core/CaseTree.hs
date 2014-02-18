@@ -617,12 +617,12 @@ prune proj (Case n alts)
           notErased (DefaultCase ImpossibleCase) = False
           notErased _ = True
 
+          mkForce n arg (Case x [alt])
+                | x == arg = ProjCase (forceArg n) (mkForceAlt n arg alt)
           mkForce n arg (Case x alts)
-                | x == arg = ProjCase (forceArg n)
-                                      (map (mkForceAlt n arg) alts)
-                | otherwise = Case x (map (mkForceAlt n arg) alts)
-          mkForce n arg (ProjCase t alts)
-             = ProjCase (forceTm n arg t) (map (mkForceAlt n arg) alts)
+                 = Case x (map (mkForceAlt n arg) alts)
+          mkForce n arg (ProjCase t alt)
+             = ProjCase (forceTm n arg t) (mkForceAlt n arg alt)
           mkForce n arg (STerm t) = STerm (forceTm n arg t)
           mkForce n arg c = c
 
