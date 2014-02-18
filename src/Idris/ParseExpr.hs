@@ -798,7 +798,6 @@ Pi ::=
  -}
 
 pi :: SyntaxInfo -> IdrisParser PTerm
-pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
      do opts <- piOpts syn
         st   <- static
