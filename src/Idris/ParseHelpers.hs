@@ -78,7 +78,10 @@ isDocCommentMarker   _  = False
  -}
 singleLineComment :: MonadicParsing m => m ()
 singleLineComment =     try (string "--" *> eol *> pure ())
-                    <|> string "--" *> satisfy (not . isDocCommentMarker) *> many (satisfy (not . isEol)) *> eol *> pure ()
+                    <|> try (string "--" *> many simpleWhiteSpace *>
+                             satisfy (not . isDocCommentMarker) *>
+                             many (satisfy (not . isEol)) *>
+                             eol *> pure ())
                     <?> ""
 
 {- | Consumes a multi-line comment
@@ -122,12 +125,26 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
 @
  -}
 docComment :: MonadicParsing m => Char -> m String
-docComment marker | isDocCommentMarker marker = do dc <- docComment' marker; return (T.unpack $ T.strip $ T.pack dc)
-                       | otherwise            = fail "internal error: tried to parse a documentation comment with invalid marker"
+docComment marker | isDocCommentMarker marker = do dc <- docComment' marker
+                                                   return (T.unpack $ T.strip $ T.pack dc)
+                  | otherwise                 = fail "internal error: tried to parse a documentation comment with invalid marker"
   where docComment' :: MonadicParsing m => Char -> m String
-        docComment' marker  =     string "--" *> char marker *> many (satisfy (not . isEol)) <* eol
-                              <|> string "{-" *> char marker *> (manyTill anyChar (try (string "-}")) <?> "end of comment")
-                              <?> ""
+        docComment' marker = (do string "--"
+                                 many (satisfy isSpace)
+                                 char marker
+                                 res <- many (satisfy (not . isEol))
+                                 eol
+                                 rest <- many (do string "--"
+                                                  stuff <- many (satisfy (not . isEol))
+                                                  eol
+                                                  return stuff)
+                                 someSpace
+                                 return (res ++ concat rest))-- ++ concat rest))
+                         <|> (do string "{-"
+                                 many (satisfy isSpace)
+                                 char marker
+                                 (manyTill anyChar (try (string "-}")) <?> "end of comment"))
+                         <?> ""
 
 -- | Parses some white space
 whiteSpace :: MonadicParsing m => m ()

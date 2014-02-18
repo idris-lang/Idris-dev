@@ -1,5 +1,5 @@
--- | Functions operating over Char's
 module Prelude.Char
+-- Functions operating over Chars
 
 import Builtins
 

@@ -182,7 +182,7 @@ simpleConstructor syn
           fc <- getFC
           args <- many (do notEndApp
                            simpleExpr syn)
-          doc <- option "" (docComment '^')
+          doc <- option "" (try $ docComment '^')
           return (doc, cn, args, fc, [])
        <?> "constructor"
 
