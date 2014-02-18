@@ -63,12 +63,16 @@ match_unify ctxt env topx topy inj holes =
         | holeIn env y || y `elem` holes
             = do sc 1; checkCycle names (y, tm)
     un bnames (V i) (P _ x _)
-        | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
+        | length bnames > i, 
+          fst (fst (bnames!!i)) == x || 
+          snd (fst (bnames!!i)) == x = do sc 1; return []
     un bnames (P _ x _) (V i)
-        | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
+        | length bnames > i,
+          fst (fst (bnames!!i)) == x || 
+          snd (fst (bnames!!i)) == x = do sc 1; return []
     un bnames (Bind x bx sx) (Bind y by sy)
         = do h1 <- uB bnames bx by
-             h2 <- un ((x, y) : bnames) sx sy
+             h2 <- un (((x, y), binderTy bx) : bnames) sx sy
              combine bnames h1 h2
     un names (App fx ax) (App fy ay)
         = do hf <- un names fx fy
@@ -126,12 +130,22 @@ match_unify ctxt env topx topy inj holes =
         | otherwise = lift $ tfail (InfiniteUnify x tm (errEnv env))
 
     checkScope ns (x, tm) =
-          case boundVs (envPos x 0 env) tm of
-               [] -> return [(x, tm)]
-               (i:_) -> lift $ tfail (UnifyScope x (fst (ns!!i))
-                                     (inst ns tm) (errEnv env))
+--           case boundVs (envPos x 0 env) tm of
+--                [] -> return [(x, tm)]
+--                (i:_) -> lift $ tfail (UnifyScope x (fst (fst (ns!!i)))
+--                                      (inst ns tm) (errEnv env))
+        let v = highV (-1) tm in
+            if v >= length ns
+               then lift $ tfail (Msg "SCOPE ERROR")
+               else return [(x, bind (highV (-1) tm) ns tm)]
       where inst [] tm = tm
             inst ((n, _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
+
+    bind i ns tm 
+      | i < 0 = tm
+      | otherwise = let ((x,y),ty) = ns!!i in
+                        App (Bind y (Lam ty) (bind (i-1) ns tm))
+                            (P Bound x ty)
     
 renameBinders :: Env -> (Name, TT Name) -> (Name, TT Name)
 renameBinders env (x, tm) = (x, uniqueBinders tm)
@@ -225,7 +239,7 @@ unify ctxt env topx topy inj holes =
                         then return r
                         else do put (UI s f); u2
 
-    un :: Bool -> [(Name, Name)] -> TT Name -> TT Name ->
+    un :: Bool -> [((Name, Name), TT Name)] -> TT Name -> TT Name ->
           StateT UInfo
           TC [(Name, TT Name)]
     un = un'
@@ -236,7 +250,7 @@ unify ctxt env topx topy inj holes =
 --                   uplus (un' fn names x y)
 --                         (un' fn names (hnf ctxt env x) (hnf ctxt env y))
 
-    un' :: Bool -> [(Name, Name)] -> TT Name -> TT Name ->
+    un' :: Bool -> [((Name, Name), TT Name)] -> TT Name -> TT Name ->
            StateT UInfo
            TC [(Name, TT Name)]
     un' fn names x y | x == y = return [] -- shortcut
@@ -253,7 +267,7 @@ unify ctxt env topx topy inj holes =
     un' fn names topx@(P (TCon _ _) x _) topy@(Constant _)
                 = unifyFail topx topy
     un' fn bnames tx@(P _ x _) ty@(P _ y _)
-        | (x,y) `elem` bnames || x == y = do sc 1; return []
+        | (x,y) `elem` map fst bnames || x == y = do sc 1; return []
         | injective tx && not (holeIn env y || y `elem` holes)
              = unifyTmpFail tx ty
         | injective ty && not (holeIn env x || x `elem` holes)
@@ -287,9 +301,16 @@ unify ctxt env topx topy inj holes =
                        = do checkCycle bnames (y, tm)
                             unifyTmpFail tm ytm
     un' fn bnames (V i) (P _ x _)
-        | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
+        | length bnames > i,
+          fst ((map fst bnames)!!i) == x || 
+          snd ((map fst bnames)!!i) == x = do sc 1; return []
     un' fn bnames (P _ x _) (V i)
-        | fst (bnames!!i) == x || snd (bnames!!i) == x = do sc 1; return []
+        | length bnames > i,
+          fst ((map fst bnames)!!i) == x || 
+          snd ((map fst bnames)!!i) == x = do sc 1; return []
+
+    un' fn names topx@(Bind n (Hole t) sc) y = unifyTmpFail topx y
+    un' fn names x topy@(Bind n (Hole t) sc) = unifyTmpFail x topy
 
     un' fn bnames appx@(App _ _) appy@(App _ _)
         = unApp fn bnames appx appy
@@ -327,9 +348,13 @@ unify ctxt env topx topy inj holes =
              combine bnames ux uf
              
     un' fn bnames (Bind x bx sx) (Bind y by sy)
-        = do h1 <- uB bnames bx by
-             h2 <- un' False ((x,y):bnames) sx sy
-             combine bnames h1 h2
+        | sameBinder bx by
+           = do h1 <- uB bnames bx by
+                h2 <- un' False (((x,y),binderTy bx):bnames) sx sy
+                combine bnames h1 h2
+      where sameBinder (Lam _) (Lam _) = True
+            sameBinder (Pi _) (Pi _) = True
+            sameBinder _ _ = False
     un' fn bnames x y
         | OK True <- convEq' ctxt x y = do sc 1; return []
         | otherwise = do UI s f <- get
@@ -367,24 +392,7 @@ unify ctxt env topx topy inj holes =
                     hf <- un' False bnames fx' fy'
                     sc 1
                     combine bnames hf ha)
-       | otherwise = -- FIXME: This fudge should be: 
-                     unifyTmpFail appx appy
---             do let (headx, argsx) = unApply appx
---                let (heady, argsy) = unApply appy
---                -- traceWhen (headx == heady) (show (appx, appy)) $
---                uplus (
---                  if (length argsx == length argsy &&
---                     ((headx == heady && inenv headx) || (argsx == argsy) ||
---                      (and (zipWith sameStruct (headx:argsx) (heady:argsy)))))
---                        then
--- --                      (notFn headx && notFn heady))) then
---                    do uf <- un' True bnames headx heady
---                       failed <- errors
---                       if (not failed) then unArgs uf argsx argsy
---                         else return []
---                    else -- trace ("TMPFAIL " ++ show (appx, appy, injective appx, injective appy)) $
---                         unifyTmpFail appx appy)
---                     (unifyTmpFail appx appy) -- whole application fails
+       | otherwise = unifyTmpFail appx appy
       where hnormalise [] _ _ t = t
             hnormalise ns ctxt env t = normalise ctxt env t
             checkHeads (P (DCon _ _) x _) (P (DCon _ _) y _)
@@ -416,28 +424,6 @@ unify ctxt env topx topy inj holes =
             metavarApp' tm = let (f, args) = unApply tm in
                                  all (\x -> pat x || metavar x) (f : args)
                                    && nub args == args
-
-            sameArgStruct appx appy
-                = let (_, ax) = unApply appx
-                      (_, ay) = unApply appy in
-                      length ax == length ay &&
-                        and (zipWith sameStruct ax ay)
-
-            sameStruct fapp@(App f x) gapp@(App g y)
-                = let (f',a') = unApply fapp
-                      (g',b') = unApply gapp in
-                      (f' == g' && length a' == length b' &&
-                          (injective f' || injective g'))
-                        || (sameStruct f g && sameStruct x y)
-            sameStruct (P _ x _) (P _ y _) = True
-            sameStruct (V i) (V j) = i == j
-            sameStruct (Constant x) (Constant y) = True
-            sameStruct (P _ _ _) (Constant y) = True
-            sameStruct (Constant x) (P _ _ _) = True
-            sameStruct (Bind n t sc) (P _ _ _) = True
-            sameStruct (P _ _ _) (Bind n t sc) = True
-            sameStruct (Bind n t sc) (Bind n' t' sc') = sameStruct sc sc'
-            sameStruct _ _ = False
 
             rigid (P (DCon _ _) _ _) = True
             rigid (P (TCon _ _) _ _) = True
@@ -513,12 +499,22 @@ unify ctxt env topx topy inj holes =
         | otherwise = lift $ tfail (InfiniteUnify x tm (errEnv env))
 
     checkScope ns (x, tm) =
-          case boundVs (envPos x 0 env) tm of
-               [] -> return [(x, tm)]
-               (i:_) -> lift $ tfail (UnifyScope x (fst (ns!!i))
-                                     (inst ns tm) (errEnv env))
+--           case boundVs (envPos x 0 env) tm of
+--                [] -> return [(x, tm)]
+--                (i:_) -> lift $ tfail (UnifyScope x (fst (fst (ns!!i)))
+--                                      (inst ns tm) (errEnv env))
+        let v = highV (-1) tm in
+            if v >= length ns
+               then lift $ tfail (Msg "SCOPE ERROR")
+               else return [(x, bind (highV (-1) tm) ns tm)]
       where inst [] tm = tm
-            inst ((n, _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
+            inst (((n, _), _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
+
+    bind i ns tm 
+      | i < 0 = tm
+      | otherwise = let ((x,y),ty) = ns!!i in
+                        App (Bind y (Lam ty) (bind (i-1) ns tm))
+                            (P Bound x ty)
 
     combineArgs bnames args = ca [] args where
        ca acc [] = return acc
@@ -536,13 +532,20 @@ unify ctxt env topx topy inj holes =
                           combine bnames as (ns' ++ bs)
 
 boundVs :: Int -> Term -> [Int]
-boundVs i (V j) | j <= i = []
+boundVs i (V j) | j < i = []
                 | otherwise = [j]
 boundVs i (Bind n b sc) = boundVs (i + 1) sc
 boundVs i (App f x) = let fs = boundVs i f
                           xs = boundVs i x in
                           nub (fs ++ xs)
 boundVs i _ = []
+
+highV :: Int -> Term -> Int
+highV i (V j) | j > i = j
+                | otherwise = i
+highV i (Bind n b sc) = maximum [i, highV i (binderTy b), (highV i sc - 1)]
+highV i (App f x) = max (highV i f) (highV i x)
+highV i _ = i
 
 envPos x i [] = 0
 envPos x i ((y, _) : ys) | x == y = i

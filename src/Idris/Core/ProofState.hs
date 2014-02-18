@@ -184,6 +184,8 @@ unify' ctxt env topx topy =
       let inj = injective ps
       (u, fails) <- traceWhen (unifylog ps)
                         ("Trying " ++ show (topx, topy) ++
+                         "\nNormalised " ++ show (normalise ctxt env topx,
+                                                  normalise ctxt env topy) ++ 
                          " in " ++ show env ++
                          "\nHoles: " ++ show (holes ps)
                          ++ "\nInjective: " ++ show (injective ps) 
