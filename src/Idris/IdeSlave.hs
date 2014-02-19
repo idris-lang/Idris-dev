@@ -130,6 +130,7 @@ data IdeSlaveCommand = REPLCompletions String
                      | MakeWithBlock Int String
                      | ProofSearch Int String [String]
                      | LoadFile String
+                     | DocsFor String
   deriving Show
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
@@ -147,6 +148,7 @@ sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom
   where getHints = mapM (\h -> case h of
                                  StringAtom s -> Just s
                                  _            -> Nothing)
+sexpToCommand (SexpList [SymbolAtom "docs-for", StringAtom name])                       = Just (DocsFor name)
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)

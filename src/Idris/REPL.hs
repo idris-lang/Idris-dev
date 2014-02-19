@@ -251,12 +251,14 @@ ideslave orig mods
                             Just x -> iPrintError $ "didn't load " ++ filename
                           ideslave orig [filename]
                      Just (IdeSlave.TypeOf name) ->
-                       case reverse $ splitOn "." name  of
-                         [] -> iPrintError ("Didn't understand name '" ++ name ++ "'")
-                         [n] -> process stdout "(ideslave)"
-                                  (Check (PRef (FC "(ideslave)" 0 0) (sUN n)))
-                         (n:ns) -> process stdout "(ideslave)"
-                                     (Check (PRef (FC "(ideslave)" 0 0) (sNS (sUN n) ns)))
+                       case splitName name of
+                         Left err -> iPrintError err
+                         Right n -> process stdout "(ideslave)"
+                                      (Check (PRef (FC "(ideslave)" 0 0) n))
+                     Just (IdeSlave.DocsFor name) ->
+                       case splitName name of
+                         Left err -> iPrintError err
+                         Right n -> process stdout "(ideslave)" (DocStr n)
                      Just (IdeSlave.CaseSplit line name) ->
                        process stdout fn (CaseSplitAt False line (sUN name))
                      Just (IdeSlave.AddClause line name) ->
@@ -273,6 +275,11 @@ ideslave orig mods
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
        ideslave orig mods
+  where splitName :: String -> Either String Name
+        splitName s = case reverse $ splitOn "." s of
+                        [] -> Left ("Didn't understand name '" ++ s ++ "'")
+                        [n] -> Right $ sUN n
+                        (n:ns) -> Right $ sNS (sUN n) ns
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
 ideslaveProcess fn Help = process stdout fn Help
