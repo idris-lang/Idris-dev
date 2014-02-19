@@ -41,6 +41,8 @@ import Idris.Core.Constraints
 import IRTS.Compiler
 import IRTS.CodegenCommon
 
+import Data.List.Split (splitOn)
+
 import Text.Trifecta.Result(Result(..))
 
 -- import RTS.SC
@@ -249,7 +251,12 @@ ideslave orig mods
                             Just x -> iPrintError $ "didn't load " ++ filename
                           ideslave orig [filename]
                      Just (IdeSlave.TypeOf name) ->
-                       process stdout "(ideslave)" (Check (PRef (FC "(ideslave)" 0 0) (sUN name)))
+                       case reverse $ splitOn "." name  of
+                         [] -> iPrintError ("Didn't understand name '" ++ name ++ "'")
+                         [n] -> process stdout "(ideslave)"
+                                  (Check (PRef (FC "(ideslave)" 0 0) (sUN n)))
+                         (n:ns) -> process stdout "(ideslave)"
+                                     (Check (PRef (FC "(ideslave)" 0 0) (sNS (sUN n) ns)))
                      Just (IdeSlave.CaseSplit line name) ->
                        process stdout fn (CaseSplitAt False line (sUN name))
                      Just (IdeSlave.AddClause line name) ->
