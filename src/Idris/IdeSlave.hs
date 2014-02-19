@@ -89,6 +89,10 @@ instance SExpable OutputAnnotation where
                                            (SymbolAtom "implicit", BoolAtom imp)]
   toSExp AnnConstData            = toSExp [(SymbolAtom "decor", SymbolAtom "data")]
   toSExp AnnConstType            = toSExp [(SymbolAtom "decor", SymbolAtom "type")]
+  toSExp (AnnFC (FC f l c))      = toSExp [(SymbolAtom "source-loc",
+                                           ((SymbolAtom "filename", StringAtom f),
+                                            (SymbolAtom "line", IntegerAtom (toInteger l)),
+                                            (SymbolAtom "column", IntegerAtom (toInteger c))))]
 
 escape :: String -> String
 escape = concatMap escapeChar
