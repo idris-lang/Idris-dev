@@ -86,9 +86,9 @@ compile codegen f tm
                               ViaJava ->
                                   codegenJava [] c f hdrs libs outty
                               ViaJavaScript ->
-                                  codegenJavaScript JavaScript c f outty
+                                  codegenJavaScript JavaScript c hdrs f outty
                               ViaNode ->
-                                  codegenJavaScript Node c f outty
+                                  codegenJavaScript Node c hdrs f outty
                               ViaLLVM -> codegenLLVM c triple cpu optimize f outty
                               Bytecode -> dumpBC c f
             Error e -> ierror e

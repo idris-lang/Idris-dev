@@ -1327,27 +1327,32 @@ getGlobalCons js = foldJS match (++) [] js
           []
 
 
+getIncludes :: [FilePath] -> IO [String]
+getIncludes = mapM readFile
+
 codegenJavaScript
   :: JSTarget
   -> [(Name, SDecl)]
+  -> [FilePath]
   -> FilePath
   -> OutputType
   -> IO ()
-codegenJavaScript target definitions filename outputType = do
+codegenJavaScript target definitions includes filename outputType = do
   let (header, runtime) = case target of
                                Node ->
                                  ("#!/usr/bin/env node\n", "-node")
                                JavaScript ->
                                  ("", "-browser")
+  included   <- getIncludes includes
   path       <- (++) <$> getDataDir <*> (pure "/jsrts/")
   idrRuntime <- readFile $ path ++ "Runtime-common.js"
   tgtRuntime <- readFile $ concat [path, "Runtime", runtime, ".js"]
   jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
   writeFile filename $ header ++ (
-    intercalate "\n" $ [ jsbn
-                       , idrRuntime
-                       , tgtRuntime
-                       ] ++ functions
+    intercalate "\n" $ included ++ [ jsbn
+                                   , idrRuntime
+                                   , tgtRuntime
+                                   ] ++ functions
     )
 
   setPermissions filename (emptyPermissions { readable   = True
