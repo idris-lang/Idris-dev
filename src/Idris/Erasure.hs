@@ -174,7 +174,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 [ [(sUN "main" `sNS` ["Main"],  Result)] 
                 , [(sUN "run__IO", Result), (sUN "run__IO", Arg 0)]
 
-                -- MkIO is presumably read by run__IO
+                -- MkIO is presumably read by run__IO,
                 -- but this cannot be observed in the source code of programs.
                 , it "MkIO"         [1]
                 , it "prim__IO"     [1]
@@ -184,7 +184,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 , mn "__MkPair"     [0,1]
                 , it "prim_fork"    [0]
 
-                -- believe_me only uses its third argument
+                -- believe_me is a primitive but it only uses its third argument
                 -- it is special-cased in usedNames above
                 , it "prim__believe_me" [2]
     
