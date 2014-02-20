@@ -4,6 +4,9 @@ New in 0.9.12:
 * Proof search now works for metavariables in types, giving some interactive
   type inference.
 * New 'Lazy' type, replacing laziness annotations.
+* JavaScript and Node codegen now understand the %include directive
+* Concept up 'null' is now understood in the JavaScript and Node codegen
+* Lots of performance patches for generated JavaScript
 
 New in 0.9.11:
 --------------
