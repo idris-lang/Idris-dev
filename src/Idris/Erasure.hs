@@ -170,11 +170,11 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         postulates = 
             [ [] ==> concat
                 -- These two, Main.main and run__IO, are always evaluated
-                -- but they evade analysis since they come from the seed term.
+                -- but they elude analysis since they come from the seed term.
                 [ [(sUN "main" `sNS` ["Main"],  Result)] 
                 , [(sUN "run__IO", Result), (sUN "run__IO", Arg 0)]
 
-                -- MkIO is presumably read by run__IO,
+                -- MkIO is read by run__IO,
                 -- but this cannot be observed in the source code of programs.
                 , it "MkIO"         [1]
                 , it "prim__IO"     [1]
