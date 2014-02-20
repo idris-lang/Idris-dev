@@ -15,6 +15,12 @@ instance Handler StdIO IO where
     handle () (PutCh c)  k = do putChar c; k () () 
     handle () GetCh      k = do x <- getChar; k x ()
 
+instance Handler StdIO (IOExcept a) where
+    handle () (PutStr s) k = do ioe_lift $ putStr s; k () ()
+    handle () GetStr     k = do x <- ioe_lift $ getLine; k x ()
+    handle () (PutCh c)  k = do ioe_lift $ putChar c; k () () 
+    handle () GetCh      k = do x <- ioe_lift $ getChar; k x ()
+
 --- The Effect and associated functions
 
 STDIO : EFFECT

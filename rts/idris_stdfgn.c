@@ -1,5 +1,8 @@
 #include "idris_stdfgn.h"
 #include "idris_rts.h"
+#include <sys/select.h>
+#include <fcntl.h>
+#include <stdio.h>
 
 extern char** environ;
 
@@ -30,6 +33,29 @@ int fileError(void* h) {
 void fputStr(void* h, char* str) {
     FILE* f = (FILE*)h;
     fputs(str, f);
+}
+
+int fpoll(void* h)
+{
+    FILE* f = (FILE*)h;
+    fd_set x;
+    struct timeval timeout;
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 0;
+    int fd = fileno(f);
+
+    FD_ZERO(&x);
+    FD_SET(fd, &x);
+
+    int r = select(fd+1, &x, 0, 0, &timeout);
+    return r;
+}
+
+void* do_popen(const char* cmd, const char* mode) {
+    FILE* f = popen(cmd, mode);
+//    int d = fileno(f);
+//    fcntl(d, F_SETFL, O_NONBLOCK);
+    return f;
 }
 
 int isNull(void* ptr) {

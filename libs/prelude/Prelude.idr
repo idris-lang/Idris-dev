@@ -503,11 +503,17 @@ do_fread h = prim_fread h
 fgetc : File -> IO Char
 fgetc (FHandle h) = return (cast !(mkForeign (FFun "fgetc" [FPtr] FInt) h))
 
+fgetc' : File -> IO (Maybe Char)
+fgetc' (FHandle h) 
+   = do x <- mkForeign (FFun "fgetc" [FPtr] FInt) h
+        if (x < 0) then return Nothing 
+                   else return (Just (cast x))
+
 fflush : File -> IO ()
 fflush (FHandle h) = mkForeign (FFun "fflush" [FPtr] FUnit) h
 
 do_popen : String -> String -> IO Ptr
-do_popen f m = mkForeign (FFun "popen" [FString, FString] FPtr) f m
+do_popen f m = mkForeign (FFun "do_popen" [FString, FString] FPtr) f m
 
 popen : String -> Mode -> IO File
 popen f m = do ptr <- do_popen f (modeStr m)
@@ -551,6 +557,10 @@ do_ferror h = mkForeign (FFun "fileError" [FPtr] FInt) h
 ferror : File -> IO Bool
 ferror (FHandle h) = do err <- do_ferror h
                         return (not (err == 0))
+
+fpoll : File -> IO Bool
+fpoll (FHandle h) = do p <- mkForeign (FFun "fpoll" [FPtr] FInt) h
+                       return (p > 0)
 
 partial
 nullPtr : Ptr -> IO Bool

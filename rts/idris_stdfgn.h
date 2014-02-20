@@ -12,6 +12,9 @@ int fileEOF(void* h);
 int fileError(void* h);
 void fputStr(void*h, char* str);
 
+void* do_popen(const char* cmd, const char* mode);
+int fpoll(void* h);
+
 int idris_eqPtr(void* x, void* y);
 int isNull(void* ptr);
 void* idris_stdin();
