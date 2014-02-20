@@ -1111,19 +1111,19 @@ tactic :: SyntaxInfo -> IdrisParser PTactic
 tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (lchar ',')
                 return $ Intro ns
           <|> do reserved "intros"; return Intros
-          <|> try (do reserved "refine"; n <- (indentPropHolds gtProp *> name)
+          <|> try (do reserved "refine"; n <- (indentPropHolds gtProp *> fnName)
                       imps <- some imp
                       return $ Refine n imps)
-          <|> do reserved "refine"; n <- (indentPropHolds gtProp *> name)
+          <|> do reserved "refine"; n <- (indentPropHolds gtProp *> fnName)
                  i <- get
                  return $ Refine n []
-          <|> do reserved "mrefine"; n <- (indentPropHolds gtProp *> name)
+          <|> do reserved "mrefine"; n <- (indentPropHolds gtProp *> fnName)
                  i <- get
                  return $ MatchRefine n
           <|> do reserved "rewrite"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Rewrite (desugar syn i t)
-          <|> do reserved "induction"; nm <- (indentPropHolds gtProp *> name);
+          <|> do reserved "induction"; nm <- (indentPropHolds gtProp *> fnName);
                  return $ Induction nm
           <|> do reserved "equiv"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
