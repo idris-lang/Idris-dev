@@ -100,7 +100,8 @@ proofSearch elab fn nroot hints ist
                             [args] -> map isImp (snd args)
                             _ -> fail "Ambiguous name"
             ps <- get_probs
-            args <- map snd <$> apply (Var n) imps
+            args <- map snd <$> try' (apply (Var n) imps)
+                                     (match_apply (Var n) imps) True
             ps' <- get_probs
             when (length ps < length ps') $ fail "Can't apply constructor"
             mapM_ (\ (_, h) -> do focus h

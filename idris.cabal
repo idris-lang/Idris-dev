@@ -301,6 +301,10 @@ Extra-source-files:
                        test/interactive002/input
                        test/interactive002/*.idr
                        test/interactive002/expected
+                       test/interactive003/run
+                       test/interactive003/input
+                       test/interactive003/*.idr
+                       test/interactive003/expected
 
                        test/io001/run
                        test/io001/*.idr
