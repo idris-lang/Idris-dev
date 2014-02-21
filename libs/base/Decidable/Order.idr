@@ -10,7 +10,7 @@ import Decidable.Equality
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
--- Preorders and Posets
+-- Preorders, Posets and total Orders
 --------------------------------------------------------------------------------
 
 class Preorder t (po : t -> t -> Type) where
@@ -22,6 +22,16 @@ class (Preorder t po) => Poset t (po : t -> t -> Type) where
 
 class (Poset t to) => Ordered t (to : t -> t -> Type) where
   total order : (a : t) -> (b : t) -> Either (to a b) (to b a) 
+
+minimum : (Ordered t to) => t -> t -> t
+minimum x y with (order x y)
+  | Left _ = x
+  | Right _ = y
+
+maximum : (Ordered t to) => t -> t -> t
+maximum x y with (order x y)
+  | Left _ = y
+  | Right _ = x
 
 --------------------------------------------------------------------------------
 -- Natural numbers
@@ -101,15 +111,9 @@ instance Ordered Nat NatLTE where
     order (S k) (S j) | Left  prf = Left  (shift k j prf)
     order (S k) (S j) | Right prf = Right (shift j k prf)
 
-minimum : (Ordered t to) => t -> t -> t
-minimum x y with (order x y)
-  | Left _ = x
-  | Right _ = y
-
-maximum : (Ordered t to) => t -> t -> t
-maximum x y with (order x y)
-  | Left _ = y
-  | Right _ = x
+--------------------------------------------------------------------------------
+-- Finite numbers
+--------------------------------------------------------------------------------
 
 using (k : Nat)
   data FinLTE : Fin k -> Fin k -> Type where
