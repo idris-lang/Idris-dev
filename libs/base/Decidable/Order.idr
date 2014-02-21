@@ -127,6 +127,11 @@ using (k : Nat)
   instance Poset (Fin k) FinLTE where
     antisymmetric m n (FromNatPrf p1) (FromNatPrf p2) =
       finToNatInjective m n (NatLTEIsAntisymmetric (finToNat m) (finToNat n) p1 p2)
+  
+  instance Decidable [Fin k, Fin k] FinLTE where
+    decide m n with (decideNatLTE (finToNat m) (finToNat n))
+      | Yes prf    = Yes (FromNatPrf prf)
+      | No  disprf = No (\ (FromNatPrf prf) => disprf prf)
 
   instance Ordered (Fin k) FinLTE where
     order m n =
