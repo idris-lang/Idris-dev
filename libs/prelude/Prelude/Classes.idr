@@ -244,29 +244,30 @@ instance Ord Bits64 where
 
 -- ------------------------------------------------------------- [ Bounded ]
 
--- | Names the upper and lower elements of a type.  Ord is not a superclass of
--- Bounded since types that are not totally ordered may also have upper and
--- lower bounds.
-class Bounded b where
+class MinBound b where
   -- | The lower bound for the type
   minBound : b
+
+class MaxBound b where
   -- | The upper bound for the type
   maxBound : b
 
-instance Bounded () where
-  minBound = ()
-  maxBound = ()
-
-instance Bounded Bits16 where
+instance MinBound Bits16 where
   minBound = 0x0
+
+instance MaxBound Bits16 where
   maxBound = 0xffff
 
-instance Bounded Bits32 where
+instance MinBound Bits32 where
   minBound = 0x0
+
+instance MaxBound Bits32 where
   maxBound = 0xffffffff
 
-instance Bounded Bits64 where
+instance MinBound Bits64 where
   minBound = 0x0
+
+instance MaxBound Bits64 where
   maxBound = 0xffffffffffffffff
 
 

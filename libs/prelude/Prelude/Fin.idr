@@ -61,8 +61,10 @@ total fSinjective : {f : Fin n} -> {f' : Fin n} -> (fS f = fS f') -> f = f'
 fSinjective refl = refl
 
 
-instance Bounded (Fin (S n)) where
+instance MinBound (Fin (S n)) where
   minBound = fZ
+
+instance MaxBound (Fin (S n)) where
   maxBound = last
 
 
