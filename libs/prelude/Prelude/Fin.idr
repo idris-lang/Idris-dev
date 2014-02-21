@@ -61,6 +61,11 @@ total fSinjective : {f : Fin n} -> {f' : Fin n} -> (fS f = fS f') -> f = f'
 fSinjective refl = refl
 
 
+instance Bounded (Fin (S n)) where
+  minBound = fZ
+  maxBound = last
+
+
 -- Construct a Fin from an integer literal which must fit in the given Fin
 
 natToFin : Nat -> (n : Nat) -> Maybe (Fin n)

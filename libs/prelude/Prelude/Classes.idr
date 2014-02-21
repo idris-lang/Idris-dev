@@ -242,6 +242,33 @@ instance Ord Bits64 where
                 else if l > r then GT
                      else EQ
 
+-- ------------------------------------------------------------- [ Bounded ]
+
+-- | Names the upper and lower elements of a type.  Ord is not a superclass of
+-- Bounded since types that are not totally ordered may also have upper and
+-- lower bounds.
+class Bounded b where
+  -- | The lower bound for the type
+  minBound : b
+  -- | The upper bound for the type
+  maxBound : b
+
+instance Bounded () where
+  minBound = ()
+  maxBound = ()
+
+instance Bounded Bits16 where
+  minBound = 0x0
+  maxBound = 0xffff
+
+instance Bounded Bits32 where
+  minBound = 0x0
+  maxBound = 0xffffffff
+
+instance Bounded Bits64 where
+  minBound = 0x0
+  maxBound = 0xffffffffffffffff
+
 
 -- ------------------------------------------------------------- [ Fractionals ]
 
