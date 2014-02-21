@@ -309,7 +309,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     apply ntimes stk top env (VBind True n (Lam t) sc) (a:as)
          = do a' <- sc a
               app <- apply ntimes stk top env a' as
-              wknV (-1) app
+              wknV 1 app
     apply ntimes_in stk top env f@(VP Ref n ty) args
       | not top && hnf = case args of
                             [] -> return f
@@ -513,10 +513,10 @@ instance Quote Value where
     quote i (VTmp x)       = return $ V (i - x - 1)
 
 wknV :: Int -> Value -> Eval Value
-wknV i (VV x)         = return $ VV (x + i)
+wknV i (VV x) | x >= i = return $ VV (x - 1)
 wknV i (VBind red n b sc) = do b' <- fmapMB (wknV i) b
                                return $ VBind red n b' (\x -> do x' <- sc x
-                                                                 wknV i x')
+                                                                 wknV (i + 1) x')
 wknV i (VApp f a)     = liftM2 VApp (wknV i f) (wknV i a)
 wknV i t              = return t
 

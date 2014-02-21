@@ -137,7 +137,7 @@ match_unify ctxt env topx topy inj holes =
         let v = highV (-1) tm in
             if v >= length ns
                then lift $ tfail (Msg "SCOPE ERROR")
-               else return [(x, bind (highV (-1) tm) ns tm)]
+               else return [(x, bind v ns tm)]
       where inst [] tm = tm
             inst ((n, _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
 
@@ -506,7 +506,7 @@ unify ctxt env topx topy inj holes =
         let v = highV (-1) tm in
             if v >= length ns
                then lift $ tfail (Msg "SCOPE ERROR")
-               else return [(x, bind (highV (-1) tm) ns tm)]
+               else return [(x, bind v ns tm)]
       where inst [] tm = tm
             inst (((n, _), _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
 

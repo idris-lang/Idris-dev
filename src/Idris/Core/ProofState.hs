@@ -796,10 +796,12 @@ updateProblems ctxt ns ps inj holes = up ns ps where
         y' = updateSolved ns y
         err' = updateError ns err
         env' = updateEnv ns env in
-        case unify ctxt env' x' y' inj holes of
+--         trace ("Updating " ++ show (x',y')) $ 
+          case unify ctxt env' x' y' inj holes of
             OK (v, []) -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
-            _ -> let (ns', ps') = up ns ps in
+            e -> -- trace ("Failed " ++ show e) $
+                  let (ns', ps') = up ns ps in
                      (ns', (x',y',env',err', um) : ps')
 
 -- attempt to solve remaining problems with match_unify
@@ -873,7 +875,9 @@ processTactic t ps
         (h:_)  -> do ps' <- execStateT (process t h) ps
                      let (ns', probs')
                                 = case solved ps' of
-                                    Just s -> updateProblems (context ps')
+                                    Just s -> traceWhen (unifylog ps')
+                                                ("SOLVED " ++ show s) $
+                                               updateProblems (context ps')
                                                       [s] (problems ps')
                                                       (injective ps')
                                                       (holes ps')
