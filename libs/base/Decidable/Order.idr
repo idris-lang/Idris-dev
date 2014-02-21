@@ -101,3 +101,13 @@ instance Ordered Nat NatLTE where
     order (S k) (S j) | Left  prf = Left  (shift k j prf)
     order (S k) (S j) | Right prf = Right (shift j k prf)
 
+minimum : (Ordered t to) => t -> t -> t
+minimum x y with (order x y)
+  | Left _ = x
+  | Right _ = y
+
+maximum : (Ordered t to) => t -> t -> t
+maximum x y with (order x y)
+  | Left _ = y
+  | Right _ = x
+
