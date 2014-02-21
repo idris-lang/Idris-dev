@@ -111,3 +111,22 @@ maximum x y with (order x y)
   | Left _ = y
   | Right _ = x
 
+using (k : Nat)
+  data FinLTE : Fin k -> Fin k -> Type where
+    FromNatPrf : {m : Fin k} -> {n : Fin k} -> NatLTE (finToNat m) (finToNat n) -> FinLTE m n
+
+  instance Preorder (Fin k) FinLTE where
+    transitive m n o (FromNatPrf p1) (FromNatPrf p2) = 
+      FromNatPrf (NatLTEIsTransitive (finToNat m) (finToNat n) (finToNat o) p1 p2)
+    reflexive n = FromNatPrf (NatLTEIsReflexive (finToNat n))
+
+  instance Poset (Fin k) FinLTE where
+    antisymmetric m n (FromNatPrf p1) (FromNatPrf p2) =
+      finToNatInjective m n (NatLTEIsAntisymmetric (finToNat m) (finToNat n) p1 p2)
+
+  instance Ordered (Fin k) FinLTE where
+    order m n =
+      either (Left . FromNatPrf) 
+             (Right . FromNatPrf)
+             (order (finToNat m) (finToNat n))
+
