@@ -1282,27 +1282,27 @@ getFixedInType i env is tm@(App f a)
                         getFixedInType i env is a
 getFixedInType i _ _ _ = []
 
-getFlexInType i env (Bind n (Pi t) sc)
-    = nub $ getFlexInType i env t ++
-            getFlexInType i (n : env) (instantiate (P Bound n t) sc)
-getFlexInType i env tm@(App f a)
+getFlexInType i env ps (Bind n (Pi t) sc)
+    = nub $ (if (not (n `elem` ps)) then getFlexInType i env ps t else []) ++
+            getFlexInType i (n : env) ps (instantiate (P Bound n t) sc)
+getFlexInType i env ps tm@(App f a)
     | (P _ tn _, args) <- unApply tm
        = case lookupCtxt tn (idris_datatypes i) of
             [t] -> nub $ paramNames args env [x | x <- [0..length args],
                                                   not (x `elem` param_pos t)] 
-                          ++ getFlexInType i env f ++
-                             getFlexInType i env a
-            [] -> nub $ getFlexInType i env f ++
-                        getFlexInType i env a
-    | otherwise = nub $ getFlexInType i env f ++
-                        getFlexInType i env a
-getFlexInType i _ _ = []
+                          ++ getFlexInType i env ps f ++
+                             getFlexInType i env ps a
+            [] -> nub $ getFlexInType i env ps f ++
+                        getFlexInType i env ps a
+    | otherwise = nub $ getFlexInType i env ps f ++
+                        getFlexInType i env ps a
+getFlexInType i _ _ _ = []
 
 -- Treat a name as a parameter if it appears in parameter positions in
--- types, and never in a non-parameter position in a type.
+-- types, and never in a non-parameter position in a (non-param) argument type.
 
 getParamsInType i env ps t = let fix = getFixedInType i env ps t
-                                 flex = getFlexInType i env t in
+                                 flex = getFlexInType i env fix t in
                                  [x | x <- fix, not (x `elem` flex)]
 
 paramNames args env [] = []
@@ -1354,11 +1354,10 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                          [t] -> t
                          _ -> []
         let params = getParamsInType i [] fn_is fn_ty
-        let flex = getFlexInType i [] fn_ty
         let lhs = mkLHSapp $ stripUnmatchable i $
                     propagateParams params fn_ty (addImplPat i (stripLinear i lhs_in))
-        logLvl 5 ("LHS: " ++ show fc ++ " " ++ show lhs)
-        logLvl 4 ("Fixed parameters: " ++ show (flex, params) ++ " from " ++ show lhs_in ++
+        logLvl 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
+        logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show lhs_in ++
                   "\n" ++ show (fn_ty, fn_is))
 
         (((lhs', dlhs, []), probs, inj), _) <-
