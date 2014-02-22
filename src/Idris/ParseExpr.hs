@@ -78,8 +78,8 @@ expr' syn = doexpr' syn
 
 doexpr' :: SyntaxInfo -> IdrisParser PTerm
 doexpr' syn =     try (externalExpr syn)
-            <|> internalExpr syn
-            <?> "expression"
+              <|> internalExpr syn
+              <?> "expression"
 
 {- | Parses a user-defined expression -}
 externalExpr :: SyntaxInfo -> IdrisParser PTerm
@@ -204,7 +204,7 @@ internalExpr syn =
      <|> quoteGoal syn
      <|> let_ syn
      <|> rewriteTerm syn
-     <|> try(pi syn)
+     <|> try (pi syn)
      <|> doBlock syn
      <|> caseExpr syn
      <|> simpleExpr syn
@@ -785,7 +785,7 @@ pi syn =
                 -- else return []
                 return []
         st <- static
-        (do try(lchar '('); xt <- typeDeclList syn; lchar ')'
+        (do try (lchar '('); xt <- typeDeclList syn; lchar ')'
             doc <- option "" (docComment '^')
             symbol "->"
             sc <- expr syn

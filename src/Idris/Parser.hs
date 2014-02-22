@@ -87,7 +87,8 @@ import System.IO
 @
 -}
 moduleHeader :: IdrisParser [String]
-moduleHeader =     try (do reserved "module"
+moduleHeader =     try (do noDocCommentHere '|' "Modules cannot have documentation comments"
+                           reserved "module"
                            i <- identifier
                            option ';' (lchar ';')
                            return (moduleName i))
@@ -1085,8 +1086,7 @@ parseImports fname input
     = do i <- getIState
          case parseString (runInnerParser (evalStateT imports i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
               Failure err    -> fail (show err)
-              Success (x, i) -> do -- Discard state updates (there should be
-                                   -- none anyway)
+              Success (x, i) -> do putIState i
                                    return x
   where imports :: IdrisParser (([String], [(String, Maybe String, FC)], Maybe Delta), IState)
         imports = do whiteSpace
@@ -1125,6 +1125,7 @@ parseProg syn fname input mrk
                                   putIState (i { errLine = Just (fc_line fc) }) -- Just errl })
                                   return []
             Success (x, i)  -> do putIState i
+                                  reportParserWarnings
                                   return $ collect x
   where mainProg :: IdrisParser ([PDecl], IState)
         mainProg = case mrk of
@@ -1200,6 +1201,7 @@ loadSource h lidr f
                   file_in <- runIO $ readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, imports, pos) <- parseImports f file
+                  reportParserWarnings
 
                   -- process and check module aliases
                   let modAliases = M.fromList

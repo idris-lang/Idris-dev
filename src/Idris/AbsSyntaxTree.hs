@@ -133,6 +133,7 @@ data IState = IState {
     idris_hdrs :: [(Codegen, String)],
     proof_list :: [(Name, [String])],
     errLine :: Maybe Int,
+    parserWarnings :: [(FC, Err)],
     lastParse :: Maybe Name,
     indent_stack :: [Int],
     brace_stack :: [Maybe Int],
@@ -219,7 +220,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
-                   [] Nothing Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
+                   [] Nothing [] Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth
 
