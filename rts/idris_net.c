@@ -75,7 +75,7 @@ int idrnet_sockaddr_family(void* sockaddr) {
 }
 
 char* idrnet_sockaddr_ipv4(void* sockaddr) {
-    struct sockaddr_in* addr = (struct sockaddr_in*) addr;
+    struct sockaddr_in* addr = (struct sockaddr_in*) sockaddr;
     char* ip_addr = (char*) malloc(sizeof(char) * INET_ADDRSTRLEN);
     inet_ntop(AF_INET, &(addr->sin_addr), ip_addr, INET_ADDRSTRLEN);
     return ip_addr;
