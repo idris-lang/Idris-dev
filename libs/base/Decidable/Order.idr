@@ -10,7 +10,7 @@ import Decidable.Equality
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
--- Preorders and Posets
+-- Preorders, Posets and total Orders
 --------------------------------------------------------------------------------
 
 class Preorder t (po : t -> t -> Type) where
@@ -19,6 +19,19 @@ class Preorder t (po : t -> t -> Type) where
 
 class (Preorder t po) => Poset t (po : t -> t -> Type) where
   total antisymmetric : (a : t) -> (b : t) -> po a b -> po b a -> a = b
+
+class (Poset t to) => Ordered t (to : t -> t -> Type) where
+  total order : (a : t) -> (b : t) -> Either (to a b) (to b a) 
+
+minimum : (Ordered t to) => t -> t -> t
+minimum x y with (order x y)
+  | Left _ = x
+  | Right _ = y
+
+maximum : (Ordered t to) => t -> t -> t
+maximum x y with (order x y)
+  | Left _ = y
+  | Right _ = x
 
 --------------------------------------------------------------------------------
 -- Natural numbers
@@ -56,6 +69,10 @@ total zeroNeverGreater : {n : Nat} -> NatLTE (S n) Z -> _|_
 zeroNeverGreater {n} (nLTESm _) impossible
 zeroNeverGreater {n}  nEqn      impossible
 
+total zeroAlwaysSmaller : {n : Nat} -> NatLTE Z n
+zeroAlwaysSmaller {n = Z  } = nEqn
+zeroAlwaysSmaller {n = S k} = nLTESm (zeroAlwaysSmaller {n = k}) 
+
 total
 nGTSm : {n : Nat} -> {m : Nat} -> (NatLTE n m -> _|_) -> NatLTE n (S m) -> _|_
 nGTSm         disprf (nLTESm nLTEm) = FalseElim (disprf nLTEm)
@@ -74,5 +91,51 @@ decideNatLTE    x   (S y) with (decEq x (S y))
 instance Decidable [Nat,Nat] NatLTE where
   decide = decideNatLTE
 
+total
 lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
 lte m n = decide {ts = [Nat,Nat]} {p = NatLTE} m n
+
+total
+shift : (m : Nat) -> (n : Nat) -> NatLTE m n -> NatLTE (S m) (S n)
+shift Z      Z        _            = nEqn
+shift Z     (S Z)     _            = nLTESm nEqn
+shift Z     (S (S j)) _            = nLTESm (shift Z (S j) zeroAlwaysSmaller)
+shift (S k)  Z        prf          = FalseElim (zeroNeverGreater prf)
+shift (S k) (S k)     nEqn         = nEqn
+shift (S k) (S j)     (nLTESm prf) = nLTESm (shift (S k) j prf)
+
+instance Ordered Nat NatLTE where
+  order Z      n = Left zeroAlwaysSmaller
+  order m      Z = Right zeroAlwaysSmaller
+  order (S k) (S j) with (order k j)
+    order (S k) (S j) | Left  prf = Left  (shift k j prf)
+    order (S k) (S j) | Right prf = Right (shift j k prf)
+
+--------------------------------------------------------------------------------
+-- Finite numbers
+--------------------------------------------------------------------------------
+
+using (k : Nat)
+  data FinLTE : Fin k -> Fin k -> Type where
+    FromNatPrf : {m : Fin k} -> {n : Fin k} -> NatLTE (finToNat m) (finToNat n) -> FinLTE m n
+
+  instance Preorder (Fin k) FinLTE where
+    transitive m n o (FromNatPrf p1) (FromNatPrf p2) = 
+      FromNatPrf (NatLTEIsTransitive (finToNat m) (finToNat n) (finToNat o) p1 p2)
+    reflexive n = FromNatPrf (NatLTEIsReflexive (finToNat n))
+
+  instance Poset (Fin k) FinLTE where
+    antisymmetric m n (FromNatPrf p1) (FromNatPrf p2) =
+      finToNatInjective m n (NatLTEIsAntisymmetric (finToNat m) (finToNat n) p1 p2)
+  
+  instance Decidable [Fin k, Fin k] FinLTE where
+    decide m n with (decideNatLTE (finToNat m) (finToNat n))
+      | Yes prf    = Yes (FromNatPrf prf)
+      | No  disprf = No (\ (FromNatPrf prf) => disprf prf)
+
+  instance Ordered (Fin k) FinLTE where
+    order m n =
+      either (Left . FromNatPrf) 
+             (Right . FromNatPrf)
+             (order (finToNat m) (finToNat n))
+

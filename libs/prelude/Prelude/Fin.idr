@@ -9,6 +9,9 @@ data Fin : Nat -> Type where
     fZ : Fin (S k)
     fS : Fin k -> Fin (S k)
 
+fSInjective : (m : Fin k) -> (n : Fin k) -> fS m = fS n -> m = n
+fSInjective left _ refl = refl
+
 instance Eq (Fin n) where
     (==) fZ fZ = True
     (==) (fS k) (fS k') = k == k'
@@ -23,6 +26,13 @@ FinZElim x = FalseElim (FinZAbsurd x)
 finToNat : Fin n -> Nat
 finToNat fZ = Z
 finToNat (fS k) = S (finToNat k)
+
+finToNatInjective : (fm : Fin k) -> (fn : Fin k) -> (finToNat fm) = (finToNat fn) -> fm = fn
+finToNatInjective fZ     fZ     refl = refl
+finToNatInjective (fS m) fZ     refl impossible
+finToNatInjective fZ     (fS n) refl impossible
+finToNatInjective (fS m) (fS n) prf  =
+  cong (finToNatInjective m n (succInjective (finToNat m) (finToNat n) prf)) 
 
 instance Cast (Fin n) Nat where
     cast x = finToNat x
