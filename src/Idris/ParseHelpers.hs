@@ -15,6 +15,7 @@ import Idris.AbsSyntax
 
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Delaborate (pprintErr)
 
 import Control.Applicative
 import Control.Monad
@@ -46,7 +47,30 @@ type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Mon
 
 -- | Helper to run Idris inner parser based stateT parsers
 runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Result res
-runparser p i inputname = parseString (runInnerParser (evalStateT p i)) (Directed (UTF8.fromString inputname) 0 0 0 0)
+runparser p i inputname =
+  parseString (runInnerParser (evalStateT p i))
+              (Directed (UTF8.fromString inputname) 0 0 0 0)
+
+noDocCommentHere :: Char -> String -> IdrisParser ()
+noDocCommentHere c msg =
+  optional (do fc <- getFC
+               docComment c
+               ist <- get
+               put ist { parserWarnings = (fc, Msg msg) : parserWarnings ist}) *>
+  pure ()
+
+clearParserWarnings :: Idris ()
+clearParserWarnings = do ist <- getIState
+                         putIState ist { parserWarnings = [] }
+
+reportParserWarnings :: Idris ()
+reportParserWarnings = do ist <- getIState
+                          mapM_ (uncurry $ ihWarn (idris_outh ist))
+                                (map (\ (fc, err) -> (fc, pprintErr ist err)) .
+                                 reverse .
+                                 nub $
+                                 parserWarnings ist)
+                          clearParserWarnings
 
 {- * Space, comments and literals (token/lexing like parsers) -}
 
