@@ -142,6 +142,9 @@ instance Num Nat where
 
   fromInteger = fromIntegerNat
 
+instance MinBound Nat where
+  minBound = Z
+
 instance Cast Integer Nat where
   cast = fromInteger
 

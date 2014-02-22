@@ -242,6 +242,34 @@ instance Ord Bits64 where
                 else if l > r then GT
                      else EQ
 
+-- ------------------------------------------------------------- [ Bounded ]
+
+class MinBound b where
+  -- | The lower bound for the type
+  minBound : b
+
+class MaxBound b where
+  -- | The upper bound for the type
+  maxBound : b
+
+instance MinBound Bits16 where
+  minBound = 0x0
+
+instance MaxBound Bits16 where
+  maxBound = 0xffff
+
+instance MinBound Bits32 where
+  minBound = 0x0
+
+instance MaxBound Bits32 where
+  maxBound = 0xffffffff
+
+instance MinBound Bits64 where
+  minBound = 0x0
+
+instance MaxBound Bits64 where
+  maxBound = 0xffffffffffffffff
+
 
 -- ------------------------------------------------------------- [ Fractionals ]
 
