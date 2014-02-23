@@ -122,7 +122,7 @@ usagemsg = usagemsghdr ++ "\n" ++
            "\t    --codegen TARGET        Select code generator: C, Java, bytecode,\n" ++
            "\t                            javascript, node, or llvm\n" ++
            "\t    --mvn                   Create a maven project (for Java codegen)\n" ++
-           "\t    --cpu=CPU               Select tartget CPU e.g. corei7 or cortex-m3\n" ++
+           "\t    --cpu=CPU               Select target CPU e.g. corei7 or cortex-m3\n" ++
            "\t                            (for LLVM codegen)\n" ++
            "\t    --target=TRIPLE         Select target triple (for llvm codegen)\n" ++
            "\t -S --codegenonly           Do no further compilation of code generator output\n" ++
