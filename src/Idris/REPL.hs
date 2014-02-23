@@ -496,7 +496,7 @@ process h fn (Check (PRef _ n))
             case lookup t (idris_metavars ist) of
                 Just (_, i, _) -> ihRenderResult h . fmap (fancifyAnnots ist) $
                                   showMetavarInfo imp ist n i
-                Nothing -> ihPrintFunTypes h n (map (\n -> (n, delabTy ist n)) ts)
+                Nothing -> ihPrintFunTypes h [] n (map (\n -> (n, delabTy ist n)) ts)
           [] -> ihPrintError h $ "No such variable " ++ show n
   where
     showMetavarInfo imp ist n i

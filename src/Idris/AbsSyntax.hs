@@ -549,16 +549,16 @@ ihPrintTermWithType h tm ty = do ist <- getIState
                                    IdeSlave n -> ideSlaveReturnAnnotated n h output
 
 -- | Pretty-print a collection of overloadings to REPL or IDESlave - corresponds to :t name
-ihPrintFunTypes :: Handle -> Name -> [(Name, PTerm)] -> Idris ()
-ihPrintFunTypes h n []        = ihPrintError h $ "No such variable " ++ show n
-ihPrintFunTypes h n overloads = do imp <- impShow
-                                   ist <- getIState
-                                   let output = vsep (map (uncurry (ppOverload imp)) overloads)
-                                   case idris_outputmode ist of
-                                     RawOutput -> consoleDisplayAnnotated h output
-                                     IdeSlave n -> ideSlaveReturnAnnotated n h output
-  where fullName n = annotate (AnnName n Nothing Nothing) $ text (show n)
-        ppOverload imp n tm = fullName n <+> colon <+> align (prettyImp imp tm)
+ihPrintFunTypes :: Handle -> [(Name, Bool)] -> Name -> [(Name, PTerm)] -> Idris ()
+ihPrintFunTypes h bnd n []        = ihPrintError h $ "No such variable " ++ show n
+ihPrintFunTypes h bnd n overloads = do imp <- impShow
+                                       ist <- getIState
+                                       let output = vsep (map (uncurry (ppOverload imp)) overloads)
+                                       case idris_outputmode ist of
+                                         RawOutput -> consoleDisplayAnnotated h output
+                                         IdeSlave n -> ideSlaveReturnAnnotated n h output
+  where fullName n = prettyName True bnd n
+        ppOverload imp n tm = fullName n <+> colon <+> align (pprintPTerm imp bnd tm)
 
 ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderResult h d = do ist <- getIState
