@@ -45,6 +45,10 @@ tacticArgs = [ ("intro", Nothing) -- FIXME syntax for intro (fresh name)
              , ("fill", Just ExprTArg)
              , ("try", Just AltsTArg)
              , ("induction", Just NameTArg)
+             , (":t", Just ExprTArg)
+             , (":type", Just ExprTArg)
+             , (":e", Just ExprTArg)
+             , (":eval", Just ExprTArg)
              ] ++ map (\x -> (x, Nothing)) [
               "intros", "compute", "trivial", "solve", "attack",
               "state", "term", "undo", "qed", "abandon", ":q"
@@ -168,7 +172,8 @@ replCompletion (prev, next) = case firstWord of
 
 
 completeTactic :: [String] -> String -> CompletionFunc Idris
-completeTactic as tac (prev, next) = fromMaybe completeTacName $ fmap completeArg $ lookup tac tacticArgs
+completeTactic as tac (prev, next) = fromMaybe completeTacName . fmap completeArg $
+                                     lookup tac tacticArgs
     where completeTacName = return $ ("", completeWith tactics tac)
           completeArg Nothing           = noCompletion (prev, next)
           completeArg (Just NameTArg)   = noCompletion (prev, next) -- this is for binding new names!

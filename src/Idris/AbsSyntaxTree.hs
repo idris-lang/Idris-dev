@@ -698,6 +698,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Reflect t
                 | Fill t
                 | GoalType String (PTactic' t)
+                | TCheck t
+                | TEval t
                 | Qed | Abandon
     deriving (Show, Eq, Functor)
 {-!
