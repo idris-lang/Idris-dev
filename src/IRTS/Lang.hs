@@ -220,8 +220,8 @@ instance Show LExp where
                                      showSep ", " (map (show' env) args) ++")"
      show' env (LApp _ e args) = show' env e ++ "(" ++
                                    showSep ", " (map (show' env) args) ++")"
-     show' env (LLazyExp e) = "%lazy(" ++ show' env e ++ ")"
-     show' env (LForce e) = "%force(" ++ show' env e ++ ")"
+     show' env (LLazyExp e) = "lazy{ " ++ show' env e ++ " }"
+     show' env (LForce e) = "force{ " ++ show' env e ++ " }"
      show' env (LLet n v e) = "let " ++ show n ++ " = " ++ show' env v ++ " in " ++
                                show' (env ++ [show n]) e
      show' env (LLam args e) = "\\ " ++ showSep "," (map show args) ++ " => " ++
@@ -232,7 +232,7 @@ instance Show LExp where
                                     showSep "\n\t| " (map (showAlt env) alts)
      show' env (LConst c) = show c
      show' env (LForeign lang ty n args) = concat
-            [ "foreign { " 
+            [ "foreign{ "
             ,       n ++ "("
             ,           showSep ", " (map (\(ty,x) -> show' env x ++ " : " ++ show ty) args)
             ,       ") : "
