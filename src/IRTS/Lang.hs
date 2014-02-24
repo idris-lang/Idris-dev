@@ -231,8 +231,15 @@ instance Show LExp where
      show' env (LCase e alts) = "case " ++ show' env e ++ " of {\n\t" ++
                                     showSep "\n\t| " (map (showAlt env) alts)
      show' env (LConst c) = show c
-     show' env (LForeign lang ty n args)
-           = "foreign " ++ n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
+     show' env (LForeign lang ty n args) = concat
+            [ "foreign { " 
+            ,       n ++ "("
+            ,           showSep ", " (map (\(ty,x) -> show' env x ++ " : " ++ show ty) args)
+            ,       ") : "
+            ,       show ty
+            , " }"
+            ]
+
      show' env (LOp f args) = show f ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
      show' env (LError str) = "error " ++ show str
      show' env LNothing = "____"
