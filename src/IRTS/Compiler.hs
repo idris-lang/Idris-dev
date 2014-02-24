@@ -151,16 +151,14 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
          do e <- ir (args, sc)
             return (declArgs [] (case_inlinable ci) n e)
 
-mkLDecl n (TyDecl (DCon t a) _) = do
-    cg <- idris_callgraph <$> getIState
-    return $ LConstructor n t a
-{-
-    case lookupCtxt n cg of
-        [CGInfo _ _ _ _ [(i, _)]]
-            | -> iLOG $ "USED: " ++ show n ++ ": " ++ show used
-        [CGInfo _ _ _ _ used] -> iLOG $ "USED: " ++ show n ++ ": " ++ show used
-        _ -> return $ LConstructor n t a
--}
+mkLDecl n (TyDecl (DCon tag arity) _) = do
+    ist <- getIState
+
+    let realArity = case lookupCtxt n (idris_callgraph ist) of
+            [CGInfo _ _ _ _ xs] -> length xs
+            _ -> arity
+
+    return $ LConstructor n tag realArity
 
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n _ = return $ (declArgs [] True n LNothing) -- postulate, never run
