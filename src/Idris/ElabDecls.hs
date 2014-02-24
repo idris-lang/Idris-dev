@@ -188,7 +188,7 @@ saveInaccArgs n is = do
 
         _ -> do
             putIState ist{ idris_optimisation =
-                addDef n (Optimise False False [] [] is) (idris_optimisation ist) }
+                addDef n (Optimise False False [] [] is False) (idris_optimisation ist) }
             addIBC (IBCOpt n)
 
 -- Get the list of (index, name) of inaccessible arguments from the type.
@@ -951,7 +951,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
       do ctxt <- getContext
          ist  <- getIState
          let inacc = case lookupCtxt n (idris_optimisation ist) of
-               [Optimise _ _ _ _ inacc] -> map fst inacc
+               [Optimise _ _ _ _ inacc _] -> map fst inacc
                _ -> []
          -- Check n actually exists, with no definition yet
          let tys = lookupTy n ctxt
@@ -989,7 +989,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                  [oi] -> do let opts = addDef n (oi { collapsible = True })
                                            (idris_optimisation ist)
                             putIState (ist { idris_optimisation = opts })
-                 _ -> do let opts = addDef n (Optimise True False [] [] [])
+                 _ -> do let opts = addDef n (Optimise True False [] [] [] False)
                                            (idris_optimisation ist)
                          putIState (ist { idris_optimisation = opts })
                          addIBC (IBCOpt n)

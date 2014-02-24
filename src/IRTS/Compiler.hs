@@ -18,6 +18,7 @@ import Util.LLVMStubs
 import IRTS.Inliner
 
 import Idris.AbsSyntax
+import Idris.AbsSyntaxTree
 import Idris.Erasure
 import Idris.Error
 
@@ -149,7 +150,18 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
    = let (args, sc) = cases_runtime cd in
          do e <- ir (args, sc)
             return (declArgs [] (case_inlinable ci) n e)
-mkLDecl n (TyDecl (DCon t a) _) = return $ LConstructor n t a
+
+mkLDecl n (TyDecl (DCon t a) _) = do
+    cg <- idris_callgraph <$> getIState
+    return $ LConstructor n t a
+{-
+    case lookupCtxt n cg of
+        [CGInfo _ _ _ _ [(i, _)]]
+            | -> iLOG $ "USED: " ++ show n ++ ": " ++ show used
+        [CGInfo _ _ _ _ used] -> iLOG $ "USED: " ++ show n ++ ": " ++ show used
+        _ -> return $ LConstructor n t a
+-}
+
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n _ = return $ (declArgs [] True n LNothing) -- postulate, never run
 
