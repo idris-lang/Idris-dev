@@ -1173,7 +1173,17 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
           <|> do reserved "undo"; return Undo
           <|> do reserved "qed"; return Qed
           <|> do reserved "abandon"; return Abandon
-          <|> do lchar ':'; reserved "q"; return Abandon
+          <|> do lchar ':';
+                 (    (do reserved "q"; return Abandon)
+                  <|> (do (reserved "e" <|> reserved "eval");
+                          t <- (indentPropHolds gtProp *> expr syn);
+                          i <- get
+                          return $ TEval (desugar syn i t))
+                  <|> (do (reserved "t" <|> reserved "type");
+                          t <- (indentPropHolds gtProp *> expr syn);
+                          i <- get
+                          return $ TCheck (desugar syn i t))
+                  <?> "prover command")
           <?> "tactic"
   where
     imp :: IdrisParser Bool

@@ -142,19 +142,11 @@ startServer orig fn_in = do tid <- runIO $ forkOS serverLoop
                   _ -> ""
 
         loop fn ist sock
-            = do (h,host,_) <- accept sock
-                 -- just use the local part of the hostname
-                 -- for the "localhost.localdomain" case
-                 if ((takeWhile (/= '.') host) == "localhost" ||
-                     host == "127.0.0.1")
-                   then do
-                     cmd <- hGetLine h
-                     (ist', fn) <- processNetCmd orig ist h fn cmd
-                     hClose h
-                     loop fn ist' sock
-                   else do
-                     putStrLn $ "Closing connection attempt from non-localhost " ++ host
-                     hClose h
+            = do (h,_,_) <- accept sock
+                 cmd <- hGetLine h
+                 (ist', fn) <- processNetCmd orig ist h fn cmd
+                 hClose h
+                 loop fn ist' sock
 
 processNetCmd :: IState -> IState -> Handle -> FilePath -> String ->
                  IO (IState, FilePath)
@@ -496,7 +488,7 @@ process h fn (Check (PRef _ n))
             case lookup t (idris_metavars ist) of
                 Just (_, i, _) -> ihRenderResult h . fmap (fancifyAnnots ist) $
                                   showMetavarInfo imp ist n i
-                Nothing -> ihPrintFunTypes h n (map (\n -> (n, delabTy ist n)) ts)
+                Nothing -> ihPrintFunTypes h [] n (map (\n -> (n, delabTy ist n)) ts)
           [] -> ihPrintError h $ "No such variable " ++ show n
   where
     showMetavarInfo imp ist n i

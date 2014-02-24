@@ -7,6 +7,8 @@ New in 0.9.12:
 * JavaScript and Node codegen now understand the %include directive
 * Concept up 'null' is now understood in the JavaScript and Node codegen
 * Lots of performance patches for generated JavaScript
+* New commands :eval (:e) and :type (:t) in the prover, which either normalise
+  or show the type of expressions
 
 New in 0.9.11:
 --------------
