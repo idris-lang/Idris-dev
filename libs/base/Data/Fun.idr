@@ -6,3 +6,7 @@ module Data.Fun
 Fun : Vect n Type -> Type -> Type
 Fun [] r = r
 Fun (t::ts) r = t -> Fun ts r
+
+target : {ts : Vect n Type} -> Fun ts r -> Type
+target {r} _ = r 
+
