@@ -284,6 +284,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          checkDocs fc argDocs t_in
          addDocStr n doc argDocs
          addIBC (IBCDoc n)
+         addIBC (IBCOpt n)
          let metainf = DataMI params
          addIBC (IBCMetaInformation n metainf)
          -- TMP HACK! Make this a data option
@@ -291,11 +292,24 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          updateContext (addDatatype (Data n ttag cty cons))
          updateContext (setMetaInformation n metainf)
          mapM_ (checkPositive n) cons
+
+         case cons of
+            [(cn,ct)] -> setDetaggable cn >> setDetaggable n
+            _ -> return ()
+
          if DefaultEliminator `elem` opts
            then evalStateT (elabEliminator params n t dcons info) Map.empty
            else return ()
   where
-        checkDefinedAs fc n t ctxt
+        setDetaggable :: Name -> Idris ()
+        setDetaggable n = do
+            ist <- getIState
+            let opt = idris_optimisation ist
+            case lookupCtxt n opt of
+                [oi] -> putIState ist{ idris_optimisation = addDef n oi{ detaggable = True } opt }
+                _    -> putIState ist{ idris_optimisation = addDef n (Optimise False False [] [] [] True) opt }
+
+        checkDefinedAs fc n t ctxt 
             = case lookupDef n ctxt of
                    [] -> return ()
                    [TyDecl _ ty] ->
