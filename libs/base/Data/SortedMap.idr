@@ -183,11 +183,13 @@ treeDelete {n=(S (S _))} k (Branch3 t1 k1 t2 k2 t3) =
       Left t3' => Left (Branch3 t1 k1 t2 k2 t3')
       Right t3' => Left (merge3 t1 k1 t2 k2 t3')
 
--- FIXME: this is very inefficient
 treeToList : Ord k => Tree n k v -> List (k, v)
-treeToList (Leaf k v) = [(k, v)]
-treeToList (Branch2 t1 _ t2) = treeToList t1 ++ treeToList t2
-treeToList (Branch3 t1 _ t2 _ t3) = treeToList t1 ++ treeToList t2 ++ treeToList t3
+treeToList = treeToList' (:: [])
+  where
+    treeToList' : Ord k => ((k, v) -> List (k, v)) -> Tree n k v -> List (k, v)
+    treeToList' cont (Leaf k v) = cont (k, v)
+    treeToList' cont (Branch2 t1 _ t2) = treeToList' (:: treeToList' cont t2) t1
+    treeToList' cont (Branch3 t1 _ t2 _ t3) = treeToList' (:: treeToList' (:: treeToList' cont t3) t2) t1
 
 data SortedMap : Type -> Type -> Type where
   Empty : SortedMap k v
