@@ -152,7 +152,7 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
             return (declArgs [] (case_inlinable ci) n e)
 
 mkLDecl n (TyDecl (DCon tag arity) _) =
-    LConstructor n tag . maybe arity (length . usedpos) . lookupCtxtExact n . idris_callgraph <$> getIState
+    LConstructor n tag . maybe 0 (length . usedpos) . lookupCtxtExact n . idris_callgraph <$> getIState
 
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n _ = return $ (declArgs [] True n LNothing) -- postulate, never run
@@ -474,9 +474,11 @@ instance ToIR SC where
 --                   return $ LDefaultCase
 --                               (LLet arg (LOp LBMinus [n', LConst (BI 1)])
 --                                           rhs')
-        mkIRAlt _ (ConCase n t args rhs)
-             = do rhs' <- ir rhs
-                  return $ LConCase (-1) n args rhs'
+        mkIRAlt _ (ConCase n t args sc) = do
+            sc' <- ir sc
+            used <- maybe [] (map fst . usedpos) . lookupCtxtExact n . idris_callgraph <$> getIState
+            return $ LConCase (-1) n [a | (i,a) <- zip [0..] args, i `elem` used] sc'
+
         mkIRAlt _ (ConstCase x rhs)
           | matchable x
              = do rhs' <- ir rhs
