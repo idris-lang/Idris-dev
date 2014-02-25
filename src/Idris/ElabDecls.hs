@@ -284,7 +284,6 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          checkDocs fc argDocs t_in
          addDocStr n doc argDocs
          addIBC (IBCDoc n)
-         addIBC (IBCOpt n)
          let metainf = DataMI params
          addIBC (IBCMetaInformation n metainf)
          -- TMP HACK! Make this a data option
@@ -293,13 +292,15 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          updateContext (setMetaInformation n metainf)
          mapM_ (checkPositive n) cons
 
+         -- if there's exactly one constructor, mark both the type and the constructor
          case cons of
             [(cn,ct)] -> setDetaggable cn >> setDetaggable n
+                >> addIBC (IBCOpt cn) >> addIBC (IBCOpt n)
             _ -> return ()
 
-         if DefaultEliminator `elem` opts
-           then evalStateT (elabEliminator params n t dcons info) Map.empty
-           else return ()
+         -- create an eliminator
+         when (DefaultEliminator `elem` opts) $
+            evalStateT (elabEliminator params n t dcons info) Map.empty
   where
         setDetaggable :: Name -> Idris ()
         setDetaggable n = do
