@@ -153,10 +153,9 @@ elab ist info pattern opts fn tm
                   [] -> return ()
 
     elabE :: (Bool, Bool, Bool) -> PTerm -> ElabD ()
-    elabE ina t = {- do g <- goal
-                 tm <- get_term
-                 trace ("Elaborating " ++ show t ++ " : " ++ show g ++ "\n\tin " ++ show tm)
-                    $ -}
+    elabE ina t = 
+--               do g <- goal
+--                  trace ("Elaborating " ++ show t ++ " : " ++ show g) $
                   do ct <- insertCoerce ina t
                      t' <- insertLazy ct
                      g <- goal
@@ -841,9 +840,11 @@ proofSearch' ist top n hints
 
 
 resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
-resolveTC 0 topg fn ist = fail $ "Can't resolve type class"
-resolveTC 1 topg fn ist = try' (trivial' ist) (resolveTC 0 topg fn ist) True
-resolveTC depth topg fn ist
+resolveTC = resTC' [] 
+
+resTC' tcs 0 topg fn ist = fail $ "Can't resolve type class"
+resTC' tcs 1 topg fn ist = try' (trivial' ist) (resolveTC 0 topg fn ist) True
+resTC' tcs depth topg fn ist
       = do hnf_compute
            g <- goal
            ptm <- get_term
@@ -915,8 +916,10 @@ resolveTC depth topg fn ist
                 mapM_ (\ (_,n) -> do focus n
                                      t' <- goal
                                      let (tc', ttype) = unApply t'
-                                     let depth' = if t == t' then depth - 1 else depth
-                                     resolveTC depth' topg fn ist)
+                                     let got = fst (unApply t)
+                                     let depth' = if tc' `elem` tcs
+                                                     then depth - 1 else depth 
+                                     resTC' (got : tcs)  depth' topg fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
