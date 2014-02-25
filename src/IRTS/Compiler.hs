@@ -151,14 +151,8 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
          do e <- ir (args, sc)
             return (declArgs [] (case_inlinable ci) n e)
 
-mkLDecl n (TyDecl (DCon tag arity) _) = do
-    ist <- getIState
-
-    let realArity = case lookupCtxt n (idris_callgraph ist) of
-            [CGInfo _ _ _ _ xs] -> length xs
-            _ -> arity
-
-    return $ LConstructor n tag realArity
+mkLDecl n (TyDecl (DCon tag arity) _) =
+    LConstructor n tag . maybe arity (length . usedpos) . lookupCtxtExact n . idris_callgraph <$> getIState
 
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n _ = return $ (declArgs [] True n LNothing) -- postulate, never run
@@ -166,80 +160,87 @@ mkLDecl n _ = return $ (declArgs [] True n LNothing) -- postulate, never run
 instance ToIR (TT Name) where
     ir tm = ir' [] tm where
       ir' env tm@(App f a)
-          | (P _ (UN m) _, args) <- unApply tm,
+        | (P _ (UN m) _, args) <- unApply tm,
             m == txt "mkForeignPrim"
-              = doForeign env args
-          | (P _ (UN u) _, [_, arg]) <- unApply tm,
+            = doForeign env args
+        | (P _ (UN u) _, [_, arg]) <- unApply tm,
             u == txt "unsafePerformPrimIO"
-              = ir' env arg
+            = ir' env arg
             -- TMP HACK - until we get inlining.
-          | (P _ (UN r) _, [_, _, _, _, _, arg]) <- unApply tm,
+        | (P _ (UN r) _, [_, _, _, _, _, arg]) <- unApply tm,
             r == txt "replace"
-              = ir' env arg
-          -- Laziness, the old way
-          | (P _ (UN l) _, [_, arg]) <- unApply tm,
+            = ir' env arg
+        -- Laziness, the old way
+        | (P _ (UN l) _, [_, arg]) <- unApply tm,
             l == txt "lazy"
-              = do arg' <- ir' env arg
-                   error "lazy has crept in somehow"
+            = do arg' <- ir' env arg
+                 error "lazy has crept in somehow"
 --                    return $ LLazyExp arg'
-          | (P _ (UN l) _, [_, arg]) <- unApply tm,
+        | (P _ (UN l) _, [_, arg]) <- unApply tm,
             l == txt "force"
-              = do arg' <- ir' env arg
-                   return $ LForce arg'
-          -- Laziness, the new way
-          | (P _ (UN l) _, [_, arg]) <- unApply tm,
+            = do arg' <- ir' env arg
+                 return $ LForce arg'
+        -- Laziness, the new way
+        | (P _ (UN l) _, [_, arg]) <- unApply tm,
             l == txt "Delay"
-              = do arg' <- ir' env arg
-                   return $ LLazyExp arg'
-          | (P _ (UN l) _, [_, _, arg]) <- unApply tm,
+            = do arg' <- ir' env arg
+                 return $ LLazyExp arg'
+        | (P _ (UN l) _, [_, arg]) <- unApply tm,
             l == txt "Force"
-              = do arg' <- ir' env arg
-                   return $ LForce arg'
-          | (P _ (UN a) _, [_, _, arg]) <- unApply tm,
+            = do arg' <- ir' env arg
+                 return $ LForce arg'
+        | (P _ (UN a) _, [_, _, arg]) <- unApply tm,
             a == txt "assert_smaller"
-              = ir' env arg
-          | (P _ (UN a) _, [_, arg]) <- unApply tm,
+            = ir' env arg
+        | (P _ (UN a) _, [_, arg]) <- unApply tm,
             a == txt "assert_total"
-              = ir' env arg
-          | (P _ (UN p) _, [_, arg]) <- unApply tm,
+            = ir' env arg
+        | (P _ (UN p) _, [_, arg]) <- unApply tm,
             p == txt "par"
-              = do arg' <- ir' env arg
-                   return $ LOp LPar [LLazyExp arg']
-          | (P _ (UN pf) _, [arg]) <- unApply tm,
+            = do arg' <- ir' env arg
+                 return $ LOp LPar [LLazyExp arg']
+        | (P _ (UN pf) _, [arg]) <- unApply tm,
             pf == txt "prim_fork"
-              = do arg' <- ir' env arg
-                   return $ LOp LFork [LLazyExp arg']
-          | (P _ (UN m) _, [_,size,t]) <- unApply tm,
+            = do arg' <- ir' env arg
+                 return $ LOp LFork [LLazyExp arg']
+        | (P _ (UN m) _, [_,size,t]) <- unApply tm,
             m == txt "malloc"
-              = do size' <- ir' env size
-                   t' <- ir' env t
-                   return t' -- TODO $ malloc_ size' t'
-          | (P _ (UN tm) _, [_,t]) <- unApply tm,
+            = do size' <- ir' env size
+                 t' <- ir' env t
+                 return t' -- TODO $ malloc_ size' t'
+        | (P _ (UN tm) _, [_,t]) <- unApply tm,
             tm == txt "trace_malloc"
-              = do t' <- ir' env t
-                   return t' -- TODO
+            = do t' <- ir' env t
+                 return t' -- TODO
 
-          -- This case is here until we get more general inlining. It's just
-          -- a really common case, and the laziness hurts...
-          | (P _ (NS (UN be) [b,p]) _, [_,x,(App (P _ (UN d) _) t),
+        -- This case is here until we get more general inlining. It's just
+        -- a really common case, and the laziness hurts...
+        | (P _ (NS (UN be) [b,p]) _, [_,x,(App (P _ (UN d) _) t),
                                             (App (P _ (UN d') _) e)]) <- unApply tm,
             be == txt "boolElim" && d == txt "Delay" && d' == txt "Delay"
-               = do x' <- ir' env x
-                    t' <- ir' env t
-                    e' <- ir' env e
-                    return (LCase x' [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e',
-                                      LConCase 1 (sNS (sUN "True") ["Bool","Prelude"]) [] t'])
+            = do x' <- ir' env x
+                 t' <- ir' env t
+                 e' <- ir' env e
+                 return (LCase x' [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e',
+                                   LConCase 1 (sNS (sUN "True") ["Bool","Prelude"]) [] t'])
 
-          | (P (DCon t a) n _, args) <- unApply tm = do
-              cg <- idris_callgraph <$> getIState
-              let used  = maybe [] (map fst . usedpos) $ lookupCtxtExact n cg
-                  args' = [if i `elem` used then a else Erased | (i,a) <- zip [0..] args]
-              irCon env t a n args'
+        | (P (DCon t arity) n _, args) <- unApply tm = do
+            ist <- getIState
+            let detag = maybe False detaggable . lookupCtxtExact n $ idris_optimisation ist
+                used  = maybe [] (map fst . usedpos) . lookupCtxtExact n $ idris_callgraph ist
+                args' = [a | (i,a) <- zip [0..] args, i `elem` used]
 
-          | (P (TCon t a) n _, args) <- unApply tm
-              = return LNothing
+            when (length args > arity) $
+                ifail ("oversaturated data ctor: " ++ show tm)
 
-          | (P _ n _, args) <- unApply tm = do
+            if length args' == 1 && detag -- detaggable
+                then ir' env (head args')  -- newtype
+                else irCon env t (length used) n args'
+
+        | (P (TCon t a) n _, args) <- unApply tm
+            = return LNothing
+
+        | (P _ n _, args) <- unApply tm = do
                 ist <- getIState
                 case lookup n (idris_scprims ist) of
                     -- if it's a primitive which is already saturated,
@@ -249,39 +250,28 @@ instance ToIR (TT Name) where
 
                     _   -> applyName n ist args
 
-{- collapsibility is turned off for now
-                    _
-                        -- if it's collapsible, compile to LNothing
-                        | (collapsible <$> lookupCtxtExact n (idris_optimisation ist)) == Just True
-                        -> return LNothing
-      
-                        -- otherwise, compile normally
-                        | otherwise -> applyName n ist args
+        | (f, args) <- unApply tm
+            = do f' <- ir' env f
+                 args' <- mapM (ir' env) args
+                 return (LApp False f' args')
 
--}
-
-          | (f, args) <- unApply tm
-              = do f' <- ir' env f
-                   args' <- mapM (ir' env) args
-                   return (LApp False f' args')
-
-        where
+       where
             applyName :: Name -> IState -> [Term] -> Idris LExp
             applyName n ist args =
                 LApp False (LV $ Glob n) <$> mapM (ir' env . erase) (zip [0..] args)
-              where
-                erase (i, x)
-                    | i >= arity || i `elem` used = x
-                    | otherwise = Erased
+                where
+                    erase (i, x)
+                        | i >= arity || i `elem` used = x
+                        | otherwise = Erased
 
-                arity = case fst4 <$> lookupCtxt n (definitions . tt_ctxt $ ist) of
-                    [CaseOp ci ty tys def tot cdefs] -> length tys
-                    [TyDecl (DCon tag ar) _]         -> ar
-                    [Operator ty ar op]              -> ar
-                    _ -> 0
+                    arity = case fst4 <$> lookupCtxt n (definitions . tt_ctxt $ ist) of
+                        [CaseOp ci ty tys def tot cdefs] -> length tys
+                        [TyDecl (DCon tag ar) _]         -> ar
+                        [Operator ty ar op]              -> ar
+                        _ -> 0
 
-                used = maybe [] (map fst . usedpos) $ lookupCtxtExact n (idris_callgraph ist)
-                fst4 (x,_,_,_) = x
+                    used = maybe [] (map fst . usedpos) $ lookupCtxtExact n (idris_callgraph ist)
+                    fst4 (x,_,_,_) = x
 
 --       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)
 --                         = return $ LConst (BI 0)
