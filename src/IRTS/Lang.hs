@@ -228,8 +228,8 @@ instance Show LExp where
                                  show' (env ++ (map show args)) e
      show' env (LProj t i) = show t ++ "!" ++ show i
      show' env (LCon i n args) = show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
-     show' env (LCase e alts) = "case " ++ show' env e ++ " of {\n\t" ++
-                                    showSep "\n\t| " (map (showAlt env) alts)
+     show' env (LCase e alts) = "case " ++ show' env e ++ " of \n" ++
+                                    unlines (map (("\t | " ++) . showAlt env) alts)
      show' env (LConst c) = show c
      show' env (LForeign lang ty n args) = concat
             [ "foreign{ "
