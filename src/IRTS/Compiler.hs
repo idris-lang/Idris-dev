@@ -395,21 +395,44 @@ instance ToIR SC where
                                    alt' <- mkIRAlt tm' alt
                                    return $ LCase tm' [alt']
 
+        -- There are two transformations in this case:
+        --
+        --  1. Newtype-case elimination:
+        --      case {e0} of
+        --          wrap({e1}) -> P({e1})   ==>   P({e0})
+        --
+        -- This is important because newtyped constructors are compiled away entirely
+        -- and we need to do that everywhere.
+        --
+        --  2. Unused-case elimination:
+        --      case {e0} of
+        --          C(x,y) -> P[... x,y not used ...]   ==>  P
+        --
         -- This is important for runtime because sometimes we case on irrelevant data:
         --
-        --   case {foo} of
-        --     SingleConstructor x y => ... x, y never used ...
-        -- 
-        -- In the example above, {foo} will most probably have been erased
-        -- so this vain projection would make the resulting program segfault.
+        -- In the example above, {e0} will most probably have been erased
+        -- so this vain projection would make the resulting program segfault
+        -- because the code generator still emits a PROJECT(...) STG instruction.
         --
         -- Hence, we check whether the variables are used at all
         -- and erase the casesplit if they are not.
         ir' (Case n [alt]) = do
-            alt' <- mkIRAlt (LV (Glob n)) alt
-            return $ case namesBoundIn alt' `usedIn` subexpr alt' of
-                [] -> subexpr alt'  -- strip the unused top-most case
-                _  -> LCase (LV (Glob n)) [alt']
+            replacement <- case alt of
+                ConCase cn a ns sc -> do
+                    detag <- maybe False detaggable . lookupCtxtExact cn . idris_optimisation <$> getIState
+                    used  <- maybe [] (map fst . usedpos) . lookupCtxtExact cn . idris_callgraph <$> getIState
+                    if detag && length used == 1
+                        then return . Just $ substSC (ns !! head used) n sc
+                        else return Nothing
+                _ -> return Nothing
+
+            case replacement of
+                Just sc -> ir' sc
+                _ -> do
+                    alt' <- mkIRAlt (LV (Glob n)) alt
+                    return $ case namesBoundIn alt' `usedIn` subexpr alt' of
+                        [] -> subexpr alt'  -- strip the unused top-most case
+                        _  -> LCase (LV (Glob n)) [alt']
           where
             namesBoundIn :: LAlt -> [Name]
             namesBoundIn (LConCase cn i ns sc) = ns
@@ -420,6 +443,22 @@ instance ToIR SC where
             subexpr (LConCase _ _ _ e) = e
             subexpr (LConstCase _   e) = e
             subexpr (LDefaultCase   e) = e
+
+            substSC :: Name -> Name -> SC -> SC
+            substSC n repl (Case n' alts)
+                | n == n'   = Case repl (map (substAlt n repl) alts)
+                | otherwise = Case n'   (map (substAlt n repl) alts)
+            substSC n repl (STerm t) = STerm $ subst n (P Bound repl Erased) t
+            substSC n repl sc = error $ "unsupported in substSC: " ++ show sc
+
+            substAlt :: Name -> Name -> CaseAlt -> CaseAlt
+            substAlt n repl (ConCase cn a ns sc) = ConCase cn a ns (substSC n repl sc)
+            substAlt n repl (FnCase fn ns sc)    = FnCase fn ns (substSC n repl sc)
+            substAlt n repl (ConstCase c sc)     = ConstCase c (substSC n repl sc)
+            substAlt n repl (SucCase n' sc)
+                | n == n'   = SucCase n  (substSC n repl sc)
+                | otherwise = SucCase n' (substSC n repl sc)
+            substAlt n repl (DefaultCase sc)     = DefaultCase (substSC n repl sc)
 
         ir' (Case n alts) = do alts' <- mapM (mkIRAlt (LV (Glob n))) alts
                                return $ LCase (LV (Glob n)) alts'
