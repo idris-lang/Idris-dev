@@ -139,10 +139,10 @@ void* allocCon(VM* vm, int arity, int outer) {
 }
 */
 
-VAL MKFLOAT(VM* vm, double val) {
+VAL MKFLOAT64(VM* vm, double val) {
     Closure* cl = allocate(vm, sizeof(Closure), 0);
-    SETTY(cl, FLOAT);
-    cl -> info.f = val;
+    SETTY(cl, FLOAT64);
+    cl -> info.f64 = val; // should macro this
     return cl;
 }
 
@@ -181,7 +181,7 @@ VAL MKPTR(VM* vm, void* ptr) {
 VAL MKFLOATc(VM* vm, double val) {
     Closure* cl = allocate(vm, sizeof(Closure), 1);
     SETTY(cl, FLOAT);
-    cl -> info.f = val;
+    cl -> info.f64 = val; // should use a macro for these
     return cl;
 }
 
@@ -320,7 +320,7 @@ VAL idris_castStrInt(VM* vm, VAL i) {
         return MKINT(0); 
 }
 
-VAL idris_castFloatStr(VM* vm, VAL i) {
+VAL idris_castFloat64Str(VM* vm, VAL i) {
     Closure* cl = allocate(vm, sizeof(Closure) + sizeof(char)*32, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);

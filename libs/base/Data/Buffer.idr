@@ -10,7 +10,7 @@ module Data.Buffer
 -- 3. If we had access to host system information, we could reduce
 --    the needed primitives by implementing the LE/BE variants on
 --    top of the native variant plus a possible swab function
--- 4. Would be nice to be able to peek/append Int, Char, and Float,
+-- 4. Would be nice to be able to peek/append Int, Char, and Float64,
 --    all have fixed (though possibly implementation-dependent) widths.
 --    Currently not in place due to lack of host system introspection.
 -- 5. Would be nice to be able to peek/append the vector types, but

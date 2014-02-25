@@ -72,7 +72,7 @@ names = do i <- get
            return . nub $
              mapMaybe (nameString . fst) (ctxtAlist ctxt) ++
              -- Explicitly add primitive types, as these are special-cased in the parser
-             ["Int", "Integer", "Float", "Char", "String", "Type",
+             ["Int", "Integer", "Float64", "Char", "String", "Type",
               "Ptr", "Bits8", "Bits16", "Bits32", "Bits64",
               "Bits8x16", "Bits16x8", "Bits32x4", "Bits64x2"]
 

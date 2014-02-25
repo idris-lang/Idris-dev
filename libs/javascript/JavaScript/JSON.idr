@@ -26,7 +26,7 @@ mutual
 
     data JSON : JSONType -> Type where
       JSString : String -> JSON JSONString
-      JSNumber : Float -> JSON JSONNumber
+      JSNumber : Float64 -> JSON JSONNumber
       JSBool   : Bool -> JSON JSONBool
       JSNull   : JSON JSONNull
       JSArray  : JArray n ts -> JSON (JSONArray n ts)

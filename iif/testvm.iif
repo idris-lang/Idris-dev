@@ -23,10 +23,10 @@ fun intToNat(x) = case x of {
                    | _ => S (intToNat (x - 1))
                   }
 
-fun sin(x) = foreign C Float "sin" (Float x)
+fun sin(x) = foreign C Float64 "sin" (Float x)
 
 fun main() = let val = natToInt(plus(intToNat(fact(6)), S(S(O)))) in
              let sval = sin(1.0) in
                  %WriteString("Answer: " ++ %IntString(val)
-                                         ++ " " ++ %FloatString(sval))
+                                         ++ " " ++ %Float64String(sval))
 

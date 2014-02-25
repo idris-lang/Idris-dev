@@ -1000,7 +1000,7 @@ Constant ::=
     'Integer'
   | 'Int'
   | 'Char'
-  | 'Float'
+  | 'Float64'
   | 'String'
   | 'Ptr'
   | 'prim__UnsafeBuffer'
@@ -1024,7 +1024,7 @@ constant :: IdrisParser Idris.Core.TT.Const
 constant =  do reserved "Integer";      return (AType (ATInt ITBig))
         <|> do reserved "Int";          return (AType (ATInt ITNative))
         <|> do reserved "Char";         return (AType (ATInt ITChar))
-        <|> do reserved "Float";        return (AType ATFloat)
+        <|> do reserved "Float64";        return (AType ATFloat64)
         <|> do reserved "String";       return StrType
         <|> do reserved "Ptr";          return PtrType
         <|> do reserved "prim__UnsafeBuffer"; return BufferType
@@ -1036,7 +1036,7 @@ constant =  do reserved "Integer";      return (AType (ATInt ITBig))
         <|> do reserved "Bits16x8"; return (AType (ATInt (ITVec IT16 8)))
         <|> do reserved "Bits32x4"; return (AType (ATInt (ITVec IT32 4)))
         <|> do reserved "Bits64x2"; return (AType (ATInt (ITVec IT64 2)))
-        <|> try (do f <- float;   return $ Fl f)
+        <|> try (do f <- float64;   return $ Fl64 f)
         <|> try (do i <- natural; return $ BI i)
         <|> try (do s <- verbatimStringLiteral; return $ Str s)
         <|> try (do s <- stringLiteral;  return $ Str s)

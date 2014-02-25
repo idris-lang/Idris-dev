@@ -591,7 +591,7 @@ instance Binary Const where
 
                 (AType (ATInt ITNative)) -> putWord8 9
                 (AType (ATInt ITBig)) -> putWord8 10
-                (AType ATFloat) -> putWord8 11
+                (AType ATFloat64) -> putWord8 11
                 (AType (ATInt ITChar)) -> putWord8 12
                 StrType -> putWord8 13
                 PtrType -> putWord8 14
@@ -627,7 +627,7 @@ instance Binary Const where
 
                    9 -> return (AType (ATInt ITNative))
                    10 -> return (AType (ATInt ITBig))
-                   11 -> return (AType ATFloat)
+                   11 -> return (AType ATFloat64)
                    12 -> return (AType (ATInt ITChar))
                    13 -> return StrType
                    14 -> return PtrType

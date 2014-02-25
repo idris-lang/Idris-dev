@@ -27,7 +27,7 @@ instance NFData NativeTy where
  
 instance NFData ArithTy where
         rnf (ATInt x1) = rnf x1 `seq` ()
-        rnf ATFloat = ()
+        rnf ATFloat64 = ()
 
 instance NFData SizeChange where
         rnf Smaller = ()

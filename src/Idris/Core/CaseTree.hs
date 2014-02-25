@@ -274,7 +274,7 @@ isType n t = False
 
 isConstType (I _) (AType (ATInt ITNative)) = True 
 isConstType (BI _) (AType (ATInt ITBig)) = True 
-isConstType (Fl _) (AType ATFloat) = True 
+isConstType (Fl _) (AType ATFloat64) = True 
 isConstType (Ch _) (AType (ATInt ITChar)) = True 
 isConstType (Str _) StrType = True 
 isConstType (B8 _) (AType (ATInt _)) = True 

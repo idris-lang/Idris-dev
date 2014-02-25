@@ -10,7 +10,7 @@ var __IDRRT__Int = new __IDRRT__Type('Int');
 var __IDRRT__Char = new __IDRRT__Type('Char');
 var __IDRRT__String = new __IDRRT__Type('String');
 var __IDRRT__Integer = new __IDRRT__Type('Integer');
-var __IDRRT__Float = new __IDRRT__Type('Float');
+var __IDRRT__Float64 = new __IDRRT__Type('Float64');
 var __IDRRT__Ptr = new __IDRRT__Type('Pointer');
 var __IDRRT__Forgot = new __IDRRT__Type('Forgot');
 

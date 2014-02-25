@@ -19,7 +19,7 @@
 
     },
     {  "name": "keyword.other.idris",
-       "match": "\\b(Type|Int|Integer|Float|Char|String|Ptr|Bits8|Bits16|Bits32|Bits64)\\b"
+       "match": "\\b(Type|Int|Integer|Float64|Char|String|Ptr|Bits8|Bits16|Bits32|Bits64)\\b"
     },
     {  "name": "constant.numeric.idris",
        "match": "\\b(S|O)\\b"

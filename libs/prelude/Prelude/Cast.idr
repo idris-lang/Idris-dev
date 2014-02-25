@@ -8,8 +8,8 @@ class Cast from to where
 instance Cast String Int where
     cast = prim__fromStrInt
 
-instance Cast String Float where
-    cast = prim__strToFloat
+instance Cast String Float64 where
+    cast = prim__strToFloat64
 
 instance Cast String Integer where
     cast = prim__fromStrBigInt
@@ -19,8 +19,8 @@ instance Cast String Integer where
 instance Cast Int String where
     cast = prim__toStrInt
 
-instance Cast Int Float where
-    cast = prim__toFloatInt
+instance Cast Int Float64 where
+    cast = prim__toFloat64Int
 
 instance Cast Int Integer where
     cast = prim__sextInt_BigInt
@@ -28,13 +28,14 @@ instance Cast Int Integer where
 instance Cast Int Char where
     cast = prim__intToChar
 
--- Float casts
+-- Float64 casts
 
-instance Cast Float String where
-    cast = prim__floatToStr
+instance Cast Float64 String where
+    cast = prim__float64ToStr
 
-instance Cast Float Int where
-    cast = prim__fromFloatInt
+instance Cast Float64 Int where
+    cast = prim__fromFloat64Int
+-- note, really should be Float64 -> Int64 to always make sense
 
 -- Integer casts
 
