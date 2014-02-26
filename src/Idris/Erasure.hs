@@ -395,6 +395,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getArity n = case lookupDef n ctx of
         [CaseOp ci ty tys def tot cdefs] -> length tys
         [TyDecl (DCon tag arity) _]      -> arity
+        [TyDecl (Ref) ty]                -> length $ getArgTys ty
         [Operator ty arity op]           -> arity
         df  -> error $ "unknown entity " ++ show n ++ ": "  ++ show df
 

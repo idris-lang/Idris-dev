@@ -267,6 +267,7 @@ instance ToIR (TT Name) where
                     arity = case fst4 <$> lookupCtxt n (definitions . tt_ctxt $ ist) of
                         [CaseOp ci ty tys def tot cdefs] -> length tys
                         [TyDecl (DCon tag ar) _]         -> ar
+                        [TyDecl Ref ty]                  -> length $ getArgTys ty
                         [Operator ty ar op]              -> ar
                         _ -> 0
 
