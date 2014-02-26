@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ Postulate.idr -o postulate
+./postulate
+rm -f postulate *.ibc

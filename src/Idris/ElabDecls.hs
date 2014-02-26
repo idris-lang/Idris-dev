@@ -647,9 +647,6 @@ elabProvider info syn fc n ty tm
            ifail $ "Expected provider type IO (Provider (" ++
                    show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
 
-         -- Create the top-level type declaration
-         elabType info syn "" fc [] n ty
-
          -- Execute the type provider and normalise the result
          -- use 'run__provider' to convert to a primitive IO action
 
@@ -658,12 +655,19 @@ elabProvider info syn fc n ty tm
          let rhs' = normalise ctxt [] rhs
          logLvl 1 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
 
-         -- Extract the provided term from the type provider
-         tm <- getProvided fc rhs'
+         -- Extract the provided term or postulate from the type provider
+         provided <- getProvided fc rhs'
 
-         -- Finally add a top-level definition of the provided term
-         elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
-         logLvl 1 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
+         case provided of
+           Provide tm ->
+             do -- Finally add a top-level definition of the provided term
+                elabType info syn "" fc [] n ty
+                elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
+                logLvl 1 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
+           Postulate ->
+             do -- Add the postulate
+                elabPostulate info syn "Provided postulate" fc [] n ty
+                logLvl 1 $ "Elaborated provided postulate " ++ show n
 
     where isTType :: TT Name -> Bool
           isTType (TType _) = True
