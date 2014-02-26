@@ -365,17 +365,11 @@ mkGlobalContext initExps = do
 
 addMainMethod :: [Decl] -> [Decl]
 addMainMethod decls
-  | findMain decls = mkMainMethod : decls
+  | findMainMethod decls = mkMainMethod : decls
   | otherwise = decls
   where
-    findMain ((MemberDecl (MemberClassDecl (ClassDecl _ name _ _ _ (ClassBody body)))):_)
-      | name == mangle' (sUN "Main") = findMainMethod body
-    findMain (_:decls) = findMain decls
-    findMain [] = False
-
-    innerMainMethod = (either error id $ mangle (sUN "main"))
     findMainMethod ((MemberDecl (MethodDecl _ _ _ name [] _ _)):_)
-      | name == mangle' (sUN "main") = True
+      | name == mangle' (sMN 0 "runMain") = True
     findMainMethod (_:decls) = findMainMethod decls
     findMainMethod [] = False
 
