@@ -7,8 +7,7 @@ import Providers
 bad : IO (Provider _|_)
 bad = pure Postulate
 
-%provide (oops : _|_) with bad
+%provide term (oops : _|_) with bad
 
 main : IO ()
 main = putStrLn "oops"
-
