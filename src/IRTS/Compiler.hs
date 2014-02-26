@@ -269,7 +269,8 @@ instance ToIR (TT Name) where
                         [TyDecl (DCon tag ar) _]         -> ar
                         [TyDecl Ref ty]                  -> length $ getArgTys ty
                         [Operator ty ar op]              -> ar
-                        _ -> 0
+                        []  -> 0  -- no definition, probably local name => can't erase anything
+                        def -> error $ "unknown arity: " ++ show (n, def)
 
                     used = maybe [] (map fst . usedpos) $ lookupCtxtExact n (idris_callgraph ist)
                     fst4 (x,_,_,_) = x
