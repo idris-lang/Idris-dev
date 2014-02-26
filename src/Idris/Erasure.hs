@@ -80,7 +80,9 @@ performUsageAnalysis = do
         logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
 
         -- Check that everything reachable is accessible.
-        mapM_ (checkAccessibility opt) usage
+        checkEnabled <- (NoWarnReach `notElem`) . opt_cmdline . idris_options <$> getIState
+        when checkEnabled $
+            mapM_ (checkAccessibility opt) usage
 
         -- Store the usage info in the internal state.
         mapM_ (storeUsage cg) usage
