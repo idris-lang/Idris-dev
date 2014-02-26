@@ -320,6 +320,13 @@ execApp' env ctxt (EP _ fp _) (_:fn:EConstant (Str s):rest)
            = let res = ioWrap . EConstant . I $ 0
                  in execApp' env ctxt res (tail rest)
 
+-- Right now, there's no way to send command-line arguments to the executor,
+-- so just return 0.
+execApp' env ctxt (EP _ fp _) (_:fn:rest)
+    | fp == mkfprim,
+      Just (FFun "idris_numArgs" _ _) <- foreignFromTT fn
+           = let res = ioWrap . EConstant . I $ 0
+             in execApp' env ctxt res (tail rest)
 -- Throw away the 'World' argument to the foreign function
 
 execApp' env ctxt f@(EP _ fp _) args@(ty:fn:xs) | fp == mkfprim
