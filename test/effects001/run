@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-idris -p effects $@ test021.idr -o test021
-idris -p effects $@ test021a.idr -o test021a
+idris -p effects $@ test021.idr -o test021 --nowarnreach
+idris -p effects $@ test021a.idr -o test021a --nowarnreach
 ./test021
 ./test021a
 rm -f test021 test021a *.ibc
