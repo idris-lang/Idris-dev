@@ -1721,7 +1721,7 @@ elabClass :: ElabInfo -> SyntaxInfo -> String ->
              FC -> [PTerm] ->
              Name -> [(Name, PTerm)] -> [PDecl] -> Idris ()
 elabClass info syn doc fc constraints tn ps ds
-    = do let cn = sUN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
+    = do let cn = SN (InstanceCtorN tn) -- sUN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
          let tty = pibind ps PType
          let constraint = PApp fc (PRef fc tn)
                                   (map (pexp . PRef fc) (map fst ps))
