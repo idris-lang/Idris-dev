@@ -189,6 +189,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCDSL Name
               | IBCData Name
               | IBCOpt Name
+              | IBCMetavar Name
               | IBCSyntax Syntax
               | IBCKeyword String
               | IBCImport FilePath

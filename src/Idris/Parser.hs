@@ -1219,56 +1219,60 @@ loadSource h lidr f
                   mapM_ (addIBC . IBCImport) [realName | (realName, alias, fc) <- imports]
                   let syntax = defaultSyntax{ syn_namespace = reverse mname }
                   ds' <- parseProg syntax f file pos
-                  unless (null ds') $ do
-                    let ds = namespaces mname ds'
-                    logLvl 3 (show $ showDecls True ds)
-                    i <- getIState
-                    logLvl 10 (show (toAlist (idris_implicits i)))
-                    logLvl 3 (show (idris_infixes i))
-                    -- Now add all the declarations to the context
-                    v <- verbose
-                    when v $ ihputStrLn h $ "Type checking " ++ f
-                    -- we totality check after every Mutual block, so if
-                    -- anything is a single definition, wrap it in a
-                    -- mutual block on its own
-                    elabDecls toplevel (map toMutual ds)
-                    i <- getIState
-                    -- simplify every definition do give the totality checker
-                    -- a better chance
-                    mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
-                                    updateContext (simplifyCasedef n))
-                             (map snd (idris_totcheck i))
-                    -- build size change graph from simplified definitions
-                    iLOG "Totality checking"
-                    i <- getIState
-                    mapM_ buildSCG (idris_totcheck i)
-                    mapM_ checkDeclTotality (idris_totcheck i)
 
-                    -- Redo totality check for deferred names
-                    let deftots = idris_defertotcheck i
-                    iLOG $ "Totality checking " ++ show deftots
-                    mapM_ (\x -> do tot <- getTotality x
-                                    case tot of
-                                         Total _ -> setTotality x Unchecked
-                                         _ -> return ()) (map snd deftots)
-                    mapM_ buildSCG deftots
-                    mapM_ checkDeclTotality deftots
+                  -- Parsing done, now process declarations
 
-                    iLOG ("Finished " ++ f)
-                    ibcsd <- valIBCSubDir i
-                    iLOG "Universe checking"
-                    iucheck
-                    let ibc = ibcPathNoFallback ibcsd f
-                    i <- getIState
-                    addHides (hide_list i)
-                    ok <- noErrors
-                    when ok $
-                      idrisCatch (do writeIBC f ibc; clearIBC)
-                                 (\c -> return ()) -- failure is harmless
-                    i <- getIState
-                    putIState (i { default_total = def_total,
-                                   hide_list = [] })
-                    return ()
+                  let ds = namespaces mname ds'
+                  logLvl 3 (show $ showDecls True ds)
+                  i <- getIState
+                  logLvl 10 (show (toAlist (idris_implicits i)))
+                  logLvl 3 (show (idris_infixes i))
+                  -- Now add all the declarations to the context
+                  v <- verbose
+                  when v $ ihputStrLn h $ "Type checking " ++ f
+                  -- we totality check after every Mutual block, so if
+                  -- anything is a single definition, wrap it in a
+                  -- mutual block on its own
+                  elabDecls toplevel (map toMutual ds)
+                  i <- getIState
+                  -- simplify every definition do give the totality checker
+                  -- a better chance
+                  mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
+                                  updateContext (simplifyCasedef n))
+                           (map snd (idris_totcheck i))
+                  -- build size change graph from simplified definitions
+                  iLOG "Totality checking"
+                  i <- getIState
+                  mapM_ buildSCG (idris_totcheck i)
+                  mapM_ checkDeclTotality (idris_totcheck i)
+
+                  -- Redo totality check for deferred names
+                  let deftots = idris_defertotcheck i
+                  iLOG $ "Totality checking " ++ show deftots
+                  mapM_ (\x -> do tot <- getTotality x
+                                  case tot of
+                                       Total _ -> setTotality x Unchecked
+                                       _ -> return ()) (map snd deftots)
+                  mapM_ buildSCG deftots
+                  mapM_ checkDeclTotality deftots
+
+                  iLOG ("Finished " ++ f)
+                  ibcsd <- valIBCSubDir i
+                  iLOG "Universe checking"
+                  iucheck
+                  let ibc = ibcPathNoFallback ibcsd f
+                  i <- getIState
+                  addHides (hide_list i)
+
+                  -- Finally, write an ibc if checking was successful
+
+                  ok <- noErrors
+                  when ok $
+                    idrisCatch (do writeIBC f ibc; clearIBC)
+                               (\c -> return ()) -- failure is harmless
+                  i <- getIState
+                  putIState (i { default_total = def_total,
+                                 hide_list = [] })
                   return ()
   where
     namespaces :: [String] -> [PDecl] -> [PDecl]

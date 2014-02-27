@@ -460,6 +460,7 @@ addDeferredTyCon = addDeferred' (TCon 0 0)
 addDeferred' :: NameType -> [(Name, (Int, Maybe Name, Type, Bool))] -> Idris ()
 addDeferred' nt ns
   = do mapM_ (\(n, (i, _, t, _)) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
+       mapM_ (\(n, _) -> addIBC (IBCMetavar n)) ns
        i <- getIState
        putIState $ i { idris_metavars = map (\(n, (i, top, _, isTopLevel)) -> (n, (top, i, isTopLevel))) ns ++
                                             idris_metavars i }
@@ -475,7 +476,12 @@ solveDeferred :: Name -> Idris ()
 solveDeferred n = do i <- getIState
                      putIState $ i { idris_metavars =
                                        filter (\(n', _) -> n/=n')
-                                          (idris_metavars i) }
+                                          (idris_metavars i),
+                                     ibc_write =
+                                       filter (notMV n) (ibc_write i)
+                                          }
+    where notMV n (IBCMetavar n') = not (n == n')
+          notMV n _ = True
 
 getUndefined :: Idris [Name]
 getUndefined = do i <- getIState
