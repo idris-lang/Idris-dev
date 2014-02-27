@@ -79,7 +79,7 @@ match_unify ctxt env topx topy inj holes =
              ha <- un names ax ay
              combine names hf ha
     un names x y
-        | OK True <- convEq' ctxt x y = do sc 1; return []
+        | OK True <- convEq' ctxt holes x y = do sc 1; return []
         | otherwise = do UI s f <- get
                          let r = recoverable x y
                          let err = CantUnify r
@@ -356,7 +356,7 @@ unify ctxt env topx topy inj holes =
             sameBinder (Pi _) (Pi _) = True
             sameBinder _ _ = False
     un' fn bnames x y
-        | OK True <- convEq' ctxt x y = do sc 1; return []
+        | OK True <- convEq' ctxt holes x y = do sc 1; return []
         | otherwise = do UI s f <- get
                          let r = recoverable x y
                          let err = CantUnify r
