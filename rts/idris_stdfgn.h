@@ -21,4 +21,6 @@ void* idris_stdin();
 
 char* getEnvPair(int i);
 
+int idris_time();
+
 #endif

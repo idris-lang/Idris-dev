@@ -3,6 +3,7 @@
 #include <sys/select.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <time.h>
 
 extern char** environ;
 
@@ -73,3 +74,9 @@ void* idris_stdin() {
 char* getEnvPair(int i) {
     return *(environ + i);
 }
+
+int idris_time() {
+    time_t t = time(NULL);
+    return (int)t;
+}
+

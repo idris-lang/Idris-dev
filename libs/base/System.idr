@@ -71,6 +71,9 @@ getEnvironment = getAllPairs 0 []
 exit : Int -> IO ()
 exit code = mkForeign (FFun "exit" [FInt] FUnit) code
 
+time : IO Int
+time = mkForeign (FFun "idris_time" [] FInt)
+
 usleep : Int -> IO ()
 usleep i = mkForeign (FFun "usleep" [FInt] FUnit) i
 
