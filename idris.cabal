@@ -299,6 +299,9 @@ Extra-source-files:
                        test/ffi004/theType
                        test/ffi004/theOtherType
                        test/ffi004/expected
+                       test/ffi005/*.idr
+                       test/ffi005/run
+                       test/ffi005/expected
 
                        test/interactive001/run
                        test/interactive001/input

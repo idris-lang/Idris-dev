@@ -444,6 +444,12 @@ data DataOpt = Codata -- Set if the the data-type is coinductive
 
 type DataOpts = [DataOpt]
 
+-- | Type provider - what to provide
+data ProvideWhat = ProvTerm      -- ^ only allow providing terms
+                 | ProvPostulate -- ^ only allow postulates
+                 | ProvAny       -- ^ either is ok
+    deriving (Show, Eq)
+
 -- | Top-level declarations such as compiler directives, definitions,
 -- datatypes and typeclasses.
 data PDecl' t
@@ -475,7 +481,7 @@ data PDecl' t
    | PSyntax  FC Syntax -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
    | PDirective (Idris ()) -- ^ Compiler directive. The parser inserts the corresponding action in the Idris monad.
-   | PProvider SyntaxInfo FC Name t t -- ^ Type provider. The first t is the type, the second is the term
+   | PProvider SyntaxInfo FC ProvideWhat Name t t -- ^ Type provider. The first t is the type, the second is the term
    | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
                             -- bool is True, lhs and rhs must be convertible
  deriving Functor

@@ -9,6 +9,7 @@ New in 0.9.12:
 * Lots of performance patches for generated JavaScript
 * New commands :eval (:e) and :type (:t) in the prover, which either normalise
   or show the type of expressions
+* Allow type providers to return postulates in addition to terms
 
 New in 0.9.11:
 --------------

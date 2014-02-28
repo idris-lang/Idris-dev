@@ -1,5 +1,5 @@
-{-# LANGUAGE PatternGuards #-}
-module Idris.Providers (providerTy, getProvided) where
+{-# LANGUAGE PatternGuards, DeriveFunctor #-}
+module Idris.Providers (providerTy, getProvided, Provided(..)) where
 
 import Idris.Core.TT
 import Idris.Core.Evaluate
@@ -16,9 +16,14 @@ providerTy fc tm = PApp fc (PRef fc $ sUN "Provider") [PExp 0 [] tm ""]
 ioret = sUN "prim_io_return"
 ermod = sNS (sUN "Error") ["Providers"]
 prmod = sNS (sUN "Provide") ["Providers"]
+posmod = sNS (sUN "Postulate") ["Providers"]
+
+data Provided a = Provide a
+                | Postulate
+  deriving (Show, Eq, Functor)
 
 -- | Handle an error, if the type provider returned an error. Otherwise return the provided term.
-getProvided :: FC -> TT Name -> Idris (TT Name)
+getProvided :: FC -> TT Name -> Idris (Provided (TT Name))
 getProvided fc tm | (P _ pioret _, [tp, result]) <- unApply tm
                   , (P _ nm _, [_, err]) <- unApply result
                   , pioret == ioret && nm == ermod
@@ -28,7 +33,11 @@ getProvided fc tm | (P _ pioret _, [tp, result]) <- unApply tm
                   | (P _ pioret _, [tp, result]) <- unApply tm
                   , (P _ nm _, [_, res]) <- unApply result
                   , pioret == ioret && nm == prmod
-                      = return res
+                      = return . Provide $ res
+                  | (P _ pioret _, [tp, result]) <- unApply tm
+                  , (P _ nm _, [_]) <- unApply result
+                  , pioret == ioret && nm == posmod
+                      = return Postulate
                   | otherwise = ifail $ "Internal type provider error: result was not " ++
                                         "IO (Provider a), or perhaps missing normalisation."
 
