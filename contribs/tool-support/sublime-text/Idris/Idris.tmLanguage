@@ -36,7 +36,7 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>\b(Type|Int|Integer|Float|Char|String|Ptr|Bits8|Bits16|Bits32|Bits64)\b</string>
+			<string>\b(Type|Int|Integer|Float64|Char|String|Ptr|Bits8|Bits16|Bits32|Bits64)\b</string>
 			<key>name</key>
 			<string>keyword.other.idris</string>
 		</dict>

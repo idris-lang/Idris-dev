@@ -1355,7 +1355,7 @@ reifyTTBinderApp _ f args = fail ("Unknown reflection binder: " ++ show (f, args
 reifyTTConst :: Term -> ElabD Const
 reifyTTConst (P _ n _) | n == reflm "IType"    = return (AType (ATInt ITNative))
 reifyTTConst (P _ n _) | n == reflm "BIType"   = return (AType (ATInt ITBig))
-reifyTTConst (P _ n _) | n == reflm "FlType"   = return (AType ATFloat)
+reifyTTConst (P _ n _) | n == reflm "FlType"   = return (AType ATFloat64)
 reifyTTConst (P _ n _) | n == reflm "ChType"   = return (AType (ATInt ITChar))
 reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
 reifyTTConst (P _ n _) | n == reflm "B8Type"   = return (AType (ATInt (ITFixed IT8)))
@@ -1474,7 +1474,7 @@ reflectConstant c@(Ch _) = reflCall "Ch" [RConstant c]
 reflectConstant c@(Str _) = reflCall "Str" [RConstant c]
 reflectConstant (AType (ATInt ITNative)) = Var (reflm "IType")
 reflectConstant (AType (ATInt ITBig)) = Var (reflm "BIType")
-reflectConstant (AType ATFloat) = Var (reflm "FlType")
+reflectConstant (AType ATFloat64) = Var (reflm "FlType")
 reflectConstant (AType (ATInt ITChar)) = Var (reflm "ChType")
 reflectConstant (StrType) = Var (reflm "StrType")
 reflectConstant c@(B8 _) = reflCall "B8" [RConstant c]

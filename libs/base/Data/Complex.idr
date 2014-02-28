@@ -26,8 +26,10 @@ instance Show a => Show (Complex a) where
 
 
 
--- when we have a type class 'Fractional' (which contains Float and Double),
+-- when we have a type class 'Fractional' (which contains Float32 and Float64),
 -- we can do:
+-- q: is that numerically stable?
+-- float operations *need* to have good numerical stability!
 {-
 instance Fractional a => Fractional (Complex a) where
     (/) (a:+b) (c:+d) = let
@@ -41,16 +43,16 @@ instance Fractional a => Fractional (Complex a) where
 
 ------------------------------ Polarform
 
-mkPolar : Float -> Float -> Complex Float
+mkPolar : Float64 -> Float64 -> Complex Float64
 mkPolar radius angle = radius * cos angle :+ radius * sin angle
 
-cis : Float -> Complex Float
+cis : Float64 -> Complex Float64
 cis angle = cos angle :+ sin angle
 
-magnitude : Complex Float -> Float
+magnitude : Complex Float64 -> Float64
 magnitude (r:+i) = sqrt (r*r+i*i)
 
-phase : Complex Float -> Float
+phase : Complex Float64 -> Float64
 phase (x:+y) = atan2 y x
 
 
@@ -60,8 +62,8 @@ conjugate : Num a => Complex a -> Complex a
 conjugate (r:+i) = (r :+ (0-i))
 
 -- We can't do "instance Num a => Num (Complex a)" because
--- we need "abs" which needs "magnitude" which needs "sqrt" which needs Float
-instance Num (Complex Float) where
+-- we need "abs" which needs "magnitude" which needs "sqrt" which needs Float64
+instance Num (Complex Float64) where
     (+) (a:+b) (c:+d) = ((a+b):+(c+d))
     (-) (a:+b) (c:+d) = ((a-b):+(c-d))
     (*) (a:+b) (c:+d) = ((a*c-b*d):+(b*c+a*d))

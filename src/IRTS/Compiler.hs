@@ -337,7 +337,7 @@ mkIty' _ = FAny
 -- would be better if these FInt types were evaluated at compile time
 -- TODO: add %eval directive for such things
 
-mkIty "FFloat"      = FArith ATFloat
+mkIty "FFloat64"      = FArith ATFloat64
 mkIty "FInt"        = mkIntIty "ITNative"
 mkIty "FChar"       = mkIntIty "ITChar"
 mkIty "FByte"       = mkIntIty "IT8"

@@ -94,24 +94,24 @@ primitives =
    iCoerce ITNative (ITFixed IT64) "trunc" trunc LTrunc,
    iCoerce ITBig ITChar "trunc" trunc LTrunc,
 
-   Prim (sUN "prim__addFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (+))
-     (2, LPlus ATFloat) total,
-   Prim (sUN "prim__subFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (-))
-     (2, LMinus ATFloat) total,
-   Prim (sUN "prim__mulFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (*))
-     (2, LTimes ATFloat) total,
-   Prim (sUN "prim__divFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (/))
-     (2, LSDiv ATFloat) total,
-   Prim (sUN "prim__eqFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (==))
-     (2, LEq ATFloat) total,
-   Prim (sUN "prim__sltFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<))
-     (2, LSLt ATFloat) total,
-   Prim (sUN "prim__slteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (<=))
-     (2, LSLe ATFloat) total,
-   Prim (sUN "prim__sgtFloat")  (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>))
-     (2, LSGt ATFloat) total,
-   Prim (sUN "prim__sgteFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType (ATInt ITNative))) 2 (bfBin (>=))
-     (2, LSGe ATFloat) total,
+   Prim (sUN "prim__addFloat64") (ty [(AType ATFloat64), (AType ATFloat64)] (AType ATFloat64)) 2 (fBin (+))
+     (2, LPlus ATFloat64) total,
+   Prim (sUN "prim__subFloat64") (ty [(AType ATFloat64), (AType ATFloat64)] (AType ATFloat64)) 2 (fBin (-))
+     (2, LMinus ATFloat64) total,
+   Prim (sUN "prim__mulFloat64") (ty [(AType ATFloat64), (AType ATFloat64)] (AType ATFloat64)) 2 (fBin (*))
+     (2, LTimes ATFloat64) total,
+   Prim (sUN "prim__divFloat64") (ty [(AType ATFloat64), (AType ATFloat64)] (AType ATFloat64)) 2 (fBin (/))
+     (2, LSDiv ATFloat64) total,
+   Prim (sUN "prim__eqFloat")  (ty [(AType ATFloat64), (AType ATFloat64)] (AType (ATInt ITNative))) 2 (bfBin (==))
+     (2, LEq ATFloat64) total,
+   Prim (sUN "prim__sltFloat64")  (ty [(AType ATFloat64), (AType ATFloat64)] (AType (ATInt ITNative))) 2 (bfBin (<))
+     (2, LSLt ATFloat6464) total,
+   Prim (sUN "prim__slteFloat64") (ty [(AType Float64), (AType Float64)] (AType (ATInt ITNative))) 2 (bfBin (<=))
+     (2, LSLe ATFloat64) total,
+   Prim (sUN "prim__sgtFloat64")  (ty [(AType Float64), (AType Float64)] (AType (ATInt ITNative))) 2 (bfBin (>))
+     (2, LSGt ATFloat64) total,
+   Prim (sUN "prim__sgteFloat64") (ty [(AType Float64), (AType Float64)] (AType (ATInt ITNative))) 2 (bfBin (>=))
+     (2, LSGe ATFloat64) total,
    Prim (sUN "prim__concat") (ty [StrType, StrType] StrType) 2 (sBin (++))
     (2, LStrConcat) total,
    Prim (sUN "prim__eqString") (ty [StrType, StrType] (AType (ATInt ITNative))) 2 (bsBin (==))
@@ -127,30 +127,30 @@ primitives =
      (1, LIntCh ITNative) total,
    Prim (sUN "prim__strToFloat") (ty [StrType] (AType ATFloat)) 1 (c_strToFloat)
      (1, LStrFloat) total,
-   Prim (sUN "prim__floatToStr") (ty [(AType ATFloat)] StrType) 1 (c_floatToStr)
+   Prim (sUN "prim__float64ToStr") (ty [(AType ATFloat64)] StrType) 1 (c_floatToStr)
      (1, LFloatStr) total,
 
-   Prim (sUN "prim__floatExp") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatExp)
+   Prim (sUN "prim__float64Exp") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatExp)
      (1, LFExp) total,
-   Prim (sUN "prim__floatLog") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatLog)
+   Prim (sUN "prim__float64Log") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatLog)
      (1, LFLog) total,
-   Prim (sUN "prim__floatSin") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatSin)
+   Prim (sUN "prim__float64Sin") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatSin)
      (1, LFSin) total,
-   Prim (sUN "prim__floatCos") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatCos)
+   Prim (sUN "prim__float64Cos") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatCos)
      (1, LFCos) total,
-   Prim (sUN "prim__floatTan") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatTan)
+   Prim (sUN "prim__float64Tan") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatTan)
      (1, LFTan) total,
-   Prim (sUN "prim__floatASin") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatASin)
+   Prim (sUN "prim__float64ASin") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatASin)
      (1, LFASin) total,
-   Prim (sUN "prim__floatACos") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatACos)
+   Prim (sUN "prim__float6464ACos") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatACos)
      (1, LFACos) total,
-   Prim (sUN "prim__floatATan") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatATan)
+   Prim (sUN "prim__float64ATan") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatATan)
      (1, LFATan) total,
-   Prim (sUN "prim__floatSqrt") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatSqrt)
+   Prim (sUN "prim__float64Sqrt") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatSqrt)
      (1, LFSqrt) total,
-   Prim (sUN "prim__floatFloor") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatFloor)
+   Prim (sUN "prim__float64Floor") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatFloor)
      (1, LFFloor) total,
-   Prim (sUN "prim__floatCeil") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatCeil)
+   Prim (sUN "prim__float64Ceil") (ty [(AType ATFloat64)] (AType ATFloat64)) 1 (p_floatCeil)
      (1, LFCeil) total,
 
    Prim (sUN "prim__strHead") (ty [StrType] (AType (ATInt ITChar))) 1 (p_strHead)
@@ -232,9 +232,10 @@ intConv ity =
                (1, LIntStr ity) total
     , Prim (sUN $ "prim__fromStr" ++ intTyName ity) (ty [StrType] (AType . ATInt $ ity)) 1 (strToInt ity)
                (1, LStrInt ity) total
-    , Prim (sUN $ "prim__toFloat" ++ intTyName ity) (ty [AType . ATInt $ ity] (AType ATFloat)) 1 intToFloat
-               (1, LIntFloat ity) total
-    , Prim (sUN $ "prim__fromFloat" ++ intTyName ity) (ty [AType ATFloat] (AType . ATInt $ ity)) 1 (floatToInt ity)
+    , Prim (sUN $ "prim__toFloat" ++ intTyName ity) (ty [AType . ATInt $ ity] (AType ATFloat64)) 1 intToFloat
+               (1, LIntFloat64 ity) total
+               -- This Int -> Float64 and Float64->Int stuff can be iffy on 32bit systems
+    , Prim (sUN $ "prim__fromFloat" ++ intTyName ity) (ty [AType ATFloat64] (AType . ATInt $ ity)) 1 (float64ToInt ity)
                (1, LFloatInt ity) total
     ]
 
@@ -389,7 +390,7 @@ mkVecUpdate _ _ _ = Nothing
 
 aTyName :: ArithTy -> String
 aTyName (ATInt t) = intTyName t
-aTyName ATFloat = "Float"
+aTyName ATFloat64 = "Float64"
 
 iCmp  :: IntTy -> String -> Bool -> ([Const] -> Maybe Const) -> (IntTy -> PrimFn) -> Totality -> Prim
 iCmp ity op self impl irop totality
@@ -637,13 +638,13 @@ strToInt ity [Str x] = case reads x of
                          _        -> Just $ I 0
 strToInt _ _ = Nothing
 
-intToFloat :: [Const] -> Maybe Const
-intToFloat val | [i] <- getInt val = Just $ Fl (fromIntegral i)
-intToFloat _ = Nothing
+intToFloat64 :: [Const] -> Maybe Const
+intToFloat64 val | [i] <- getInt val = Just $ Fl (fromIntegral i)
+intToFloat64 _ = Nothing
 
-floatToInt :: IntTy -> [Const] -> Maybe Const
-floatToInt ity [Fl x] = Just $ toInt ity (truncate x :: Integer)
-floatToInt _ _ = Nothing
+float64ToInt :: IntTy -> [Const] -> Maybe Const
+float64ToInt ity [Fl64 x] = Just $ toInt ity (truncate x :: Integer)
+float64ToInt _ _ = Nothing
 
 c_intToChar, c_charToInt :: [Const] -> Maybe Const
 c_intToChar [(I x)] = Just . Ch . toEnum $ x
@@ -651,30 +652,30 @@ c_intToChar _ = Nothing
 c_charToInt [(Ch x)] = Just . I . fromEnum $ x
 c_charToInt _ = Nothing
 
-c_floatToStr :: [Const] -> Maybe Const
-c_floatToStr [Fl x] = Just $ Str (show x)
-c_floatToStr _ = Nothing
-c_strToFloat [Str x] = case reads x of
-                         [(n,"")] -> Just $ Fl n
-                         _ -> Just $ Fl 0
-c_strToFloat _ = Nothing
+c_float64ToStr :: [Const] -> Maybe Const
+c_float64ToStr [Fl64 x] = Just $ Str (show x)
+c_float64ToStr _ = Nothing
+c_strToFloat64 [Str x] = case reads x of
+                         [(n,"")] -> Just $ Fl64 n
+                         _ -> Just $ Fl64 0
+c_strToFloat64 _ = Nothing
 
 p_fPrim :: (Double -> Double) -> [Const] -> Maybe Const
-p_fPrim f [Fl x] = Just $ Fl (f x)
+p_fPrim f [Fl64 x] = Just $ Fl64 (f x)
 p_fPrim f _ = Nothing
 
-p_floatExp, p_floatLog, p_floatSin, p_floatCos, p_floatTan, p_floatASin, p_floatACos, p_floatATan, p_floatSqrt, p_floatFloor, p_floatCeil :: [Const] -> Maybe Const
-p_floatExp = p_fPrim exp
-p_floatLog = p_fPrim log
-p_floatSin = p_fPrim sin
-p_floatCos = p_fPrim cos
-p_floatTan = p_fPrim tan
-p_floatASin = p_fPrim asin
-p_floatACos = p_fPrim acos
-p_floatATan = p_fPrim atan
-p_floatSqrt = p_fPrim sqrt
-p_floatFloor = p_fPrim (fromInteger . floor)
-p_floatCeil = p_fPrim (fromInteger . ceiling)
+p_float64Exp, p_floatLog, p_floatSin, p_floatCos, p_floatTan, p_floatASin, p_floatACos, p_floatATan, p_floatSqrt, p_floatFloor, p_floatCeil :: [Const] -> Maybe Const
+p_float64Exp = p_f64Prim exp
+p_float64Log = p_f64Prim log
+p_float64Sin = p_f64Prim sin
+p_float64Cos = p_f64Prim cos
+p_float64Tan = p_f64Prim tan
+p_float64ASin = p_f64Prim asin
+p_float64ACos = p_f64Prim acos
+p_float64ATan = p_f64Prim atan
+p_float64Sqrt = p_f64Prim sqrt
+p_float64Floor = p_f64Prim (fromInteger . floor)
+p_float64Ceil = p_f64Prim (fromInteger . ceiling)
 
 p_strLen, p_strHead, p_strTail, p_strIndex, p_strCons, p_strRev :: [Const] -> Maybe Const
 p_strLen [Str xs] = Just $ I (length xs)

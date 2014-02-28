@@ -38,8 +38,8 @@ instance Show Int where
 instance Show Integer where
     show = prim__toStrBigInt
 
-instance Show Float where
-    show = prim__floatToStr
+instance Show Float64 where
+    show = prim__float64ToStr
 
 asciiTab : Vect 32 String
 asciiTab = ["NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",

@@ -20,7 +20,7 @@ import Sqlexpr
 
 data DBVal = DBInt Int
            | DBText String
-           | DBFloat Float
+           | DBFloat64 Float64
            | DBNull
 
 -- Database pointer
@@ -308,13 +308,13 @@ get_data (MkDBPointer pointer) row col = do
          get_data_val_text pointer col =
              mkForeign (FFun "sqlite3_get_val_text" [FPtr, FInt] FString) pointer col
 
-         get_data_val_float : Ptr -> Int -> IO Float
+         get_data_val_float : Ptr -> Int -> IO Float64
          get_data_val_float pointer col =
-             mkForeign (FFun "sqlite3_get_float" [FPtr, FInt] FFloat) pointer col
+             mkForeign (FFun "sqlite3_get_float" [FPtr, FInt] FFloat64) pointer col
 
          helper : Int -> IO DBVal
          helper 1 = do i <- get_data_val_int pointer col ; return (DBInt i)
-         helper 2 = do i <- get_data_val_float pointer col ; return (DBFloat i)
+         helper 2 = do i <- get_data_val_float pointer col ; return (DBFloat64 i)
          helper 3 = do i <- get_data_val_text pointer col; return (DBText i)
          helper _ = return DBNull
 
@@ -367,9 +367,9 @@ bind_int (MkStmtPtr pointer) indexval val = do
           else return (MkStmtPtr x)
 
 
-bind_float : StmtPtr -> Int -> Float -> DB StmtPtr
+bind_float : StmtPtr -> Int -> Float64 -> DB StmtPtr
 bind_float (MkStmtPtr pointer) indexval val = do
-        x <- liftIO (mkForeign (FFun "sqlite3_bind_float_idr" [FPtr, FInt, FFloat] FPtr) pointer indexval val)
+        x <- liftIO (mkForeign (FFun "sqlite3_bind_float_idr" [FPtr, FInt, FFloat64] FPtr) pointer indexval val)
         flag <- liftIO (nullPtr x)
         if flag
           then fail "Could not bind float."
@@ -402,7 +402,7 @@ strlen str = liftIO (mkForeign (FFun "strLength" [FString] FInt) str)
 instance Show DBVal where
     show (DBInt i)   = "Int val: "   ++ show i ++ "\n"
     show (DBText i)  = "Text val: "  ++ show i ++ "\n"
-    show (DBFloat i) = "Float val: " ++ show i ++ "\n"
+    show (DBFloat64 i) = "Float64 val: " ++ show i ++ "\n"
     show (DBNull )   = "NULL"
 
 -----------------------------------------------------------------------------
@@ -419,7 +419,7 @@ bindMulti pointer ((Just (indexs, (VStr s)))::vs) =
     do len <- strlen s
        x <- bind_text pointer s indexs len
        bindMulti x vs
-bindMulti pointer ((Just (indexs, (VFloat f)))::vs) =
+bindMulti pointer ((Just (indexs, (VFloat64 f)))::vs) =
     do x <- bind_float pointer indexs f
        bindMulti x vs
 

@@ -63,7 +63,7 @@ data Interval : Type where
 setInterval : (() -> IO ()) -> Float -> IO Interval
 setInterval f t = do
   e <- mkForeign (
-    FFun "setInterval(%0,%1)" [FFunction FUnit (FAny (IO ())), FFloat] FPtr
+    FFun "setInterval(%0,%1)" [FFunction FUnit (FAny (IO ())), FFloat64] FPtr
   ) f t
   return (MkInterval e)
 
@@ -80,7 +80,7 @@ data Timeout : Type where
 setTimeout : (() -> IO ()) -> Float -> IO Timeout
 setTimeout f t = do
   e <- mkForeign (
-    FFun "setTimeout(%0,%1)" [FFunction FUnit (FAny (IO ())), FFloat] FPtr
+    FFun "setTimeout(%0,%1)" [FFunction FUnit (FAny (IO ())), FFloat64] FPtr
   ) f t
   return (MkTimeout e)
 

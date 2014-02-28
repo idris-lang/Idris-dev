@@ -478,7 +478,7 @@ call (FFun name argTypes retType) args =
           call' (Fun _ h) args (FArith (ATInt (ITFixed IT64))) = do
             res <- execIO $ callFFI h retCLong (prepArgs args)
             return (EConstant (B64 (fromIntegral res)))
-          call' (Fun _ h) args (FArith ATFloat) = do
+          call' (Fun _ h) args (FArith ATFloat64) = do
             res <- execIO $ callFFI h retCDouble (prepArgs args)
             return (EConstant (Fl (realToFrac res)))
           call' (Fun _ h) args (FArith (ATInt ITChar)) = do
@@ -532,7 +532,7 @@ getFTy (EApp (EP _ (UN fi) _) (EP _ (UN intTy) _))
       _ -> Nothing
 getFTy (EP _ (UN t) _) =
     case str t of
-      "FFloat"  -> Just (FArith ATFloat)
+      "FFloat64"  -> Just (FArith ATFloat64)
       "FString" -> Just FString
       "FPtr"    -> Just FPtr
       "FUnit"   -> Just FUnit

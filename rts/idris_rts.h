@@ -15,7 +15,7 @@
 // Closures
 
 typedef enum {
-    CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
+    CON, INT, BIGINT, FLOAT64, STRING, STROFFSET,
     BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
     BUFFER
 } ClosureType;
@@ -48,7 +48,7 @@ typedef struct Closure {
     union {
         con c;
         int i;
-        double f;
+        double f64;
         char* str;
         StrOffset* str_offset;
         void* ptr;
@@ -112,7 +112,7 @@ typedef void(*func)(VM*, VAL*);
 
 #define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str) : GETSTROFF(x))
 #define GETPTR(x) (((VAL)(x))->info.ptr) 
-#define GETFLOAT(x) (((VAL)(x))->info.f)
+#define GETFLOAT64(x) (((VAL)(x))->info.f64)
 
 #define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
 #define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
@@ -141,8 +141,8 @@ typedef intptr_t i_int;
 
 #define INTOP(op,x,y) MKINT((i_int)((((i_int)x)>>1) op (((i_int)y)>>1)))
 #define UINTOP(op,x,y) MKINT((i_int)((((uintptr_t)x)>>1) op (((uintptr_t)y)>>1)))
-#define FLOATOP(op,x,y) MKFLOAT(vm, ((GETFLOAT(x)) op (GETFLOAT(y))))
-#define FLOATBOP(op,x,y) MKINT((i_int)(((GETFLOAT(x)) op (GETFLOAT(y)))))
+#define FLOAT64OP(op,x,y) MKFLOAT(vm, ((GETFLOAT64(x)) op (GETFLOAT64(y))))
+#define FLOAT64BOP(op,x,y) MKINT((i_int)(((GETFLOAT64(x)) op (GETFLOAT64(y)))))
 #define ADD(x,y) (void*)(((i_int)x)+(((i_int)y)-1))
 #define MULT(x,y) (MKINT((((i_int)x)>>1) * (((i_int)y)>>1)))
 
@@ -160,7 +160,7 @@ typedef intptr_t i_int;
 #define TAILCALL(f) f(vm, oldbase);
 
 // Creating new values (each value placed at the top of the stack)
-VAL MKFLOAT(VM* vm, double val);
+VAL MKFLOAT64(VM* vm, double val);
 VAL MKSTR(VM* vm, const char* str);
 VAL MKPTR(VM* vm, void* ptr);
 VAL MKB8(VM* vm, uint8_t b);
@@ -169,7 +169,7 @@ VAL MKB32(VM* vm, uint32_t b);
 VAL MKB64(VM* vm, uint64_t b);
 
 // following versions don't take a lock when allocating
-VAL MKFLOATc(VM* vm, double val);
+VAL MKFLOAT64c(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
@@ -218,13 +218,13 @@ void dumpStack(VM* vm);
 
 // Casts
 
-#define idris_castIntFloat(x) MKFLOAT(vm, (double)(GETINT(x)))
-#define idris_castFloatInt(x) MKINT((i_int)(GETFLOAT(x)))
+#define idris_castIntFloat64(x) MKFLOAT(vm, (double)(GETINT(x)))
+#define idris_castFloat64Int(x) MKINT((i_int)(GETFLOAT64(x)))
 
 VAL idris_castIntStr(VM* vm, VAL i);
 VAL idris_castStrInt(VM* vm, VAL i);
-VAL idris_castFloatStr(VM* vm, VAL i);
-VAL idris_castStrFloat(VM* vm, VAL i);
+VAL idris_castFloat64Str(VM* vm, VAL i);
+VAL idris_castStrFloat64(VM* vm, VAL i);
 
 // Raw memory manipulation
 void idris_memset(void* ptr, i_int offset, uint8_t c, i_int size);

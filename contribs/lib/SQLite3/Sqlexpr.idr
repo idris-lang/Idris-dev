@@ -17,7 +17,7 @@ import Prelude.List
 
 data Value = VInt Int
            | VStr String
-           | VFloat Float
+           | VFloat64 Float64
            | VCol String
            | VNULL
 
@@ -93,7 +93,7 @@ mutual
 valString : List (Maybe (Int, Value)) -> Value -> (String, List (Maybe (Int, Value)))
 valString xs (VInt x)   = ("?" ++ show (cast (length xs) + 1), xs ++ [Just (cast ((length xs) + 1), (VInt x))])
 valString xs (VStr x)   = ("?" ++ show (cast (length xs) + 1), xs ++ [Just (cast ((length xs) + 1), (VStr x))])
-valString xs (VFloat x) = ("?" ++ show (cast (length xs) + 1), xs ++ [Just (cast ((length xs) + 1), (VFloat x))])
+valString xs (VFloat64 x) = ("?" ++ show (cast (length xs) + 1), xs ++ [Just (cast ((length xs) + 1), (VFloat64 x))])
 valString xs (VCol n)   = (n, xs)
 
 -----------------------------------------------------------

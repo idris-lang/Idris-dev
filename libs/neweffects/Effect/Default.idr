@@ -9,7 +9,7 @@ instance Default Int where
 instance Default Integer where
     default = 0
 
-instance Default Float where
+instance Default Float64 where
     default = 0
 
 instance Default Nat where

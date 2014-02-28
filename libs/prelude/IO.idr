@@ -29,7 +29,7 @@ prim_io_return x = prim__IO x
 data IntTy = ITChar | ITNative | IT8 | IT16 | IT32 | IT64 | IT8x16 | IT16x8 | IT32x4 | IT64x2
 data FTy = FIntT IntTy
          | FFunction FTy FTy
-         | FFloat
+         | FFloat64
          | FString
          | FPtr
          | FAny Type
@@ -82,7 +82,7 @@ interpFTy (FIntT IT16)     = Bits16
 interpFTy (FIntT IT32)     = Bits32
 interpFTy (FIntT IT64)     = Bits64
 interpFTy (FAny t)         = t
-interpFTy FFloat           = Float
+interpFTy FFloat64           = Float64
 interpFTy FString          = String
 interpFTy FPtr             = Ptr
 interpFTy (FIntT IT8x16)   = Bits8x16

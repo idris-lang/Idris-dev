@@ -208,10 +208,10 @@ instance DecEq Integer where
                           else No (really_believe_me _|_)
 
 --------------------------------------------------------------------------------
--- Float
+-- Float64
 --------------------------------------------------------------------------------
 
-instance DecEq Float where
+instance DecEq Float64 where
     decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
                           else No (really_believe_me _|_)
 
