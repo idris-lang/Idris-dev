@@ -460,7 +460,7 @@ addDeferredTyCon = addDeferred' (TCon 0 0)
 addDeferred' :: NameType -> [(Name, (Int, Maybe Name, Type, Bool))] -> Idris ()
 addDeferred' nt ns
   = do mapM_ (\(n, (i, _, t, _)) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
-       mapM_ (\(n, _) -> addIBC (IBCMetavar n)) ns
+       mapM_ (\(n, _) -> when (not (n `elem` primDefs)) $ addIBC (IBCMetavar n)) ns
        i <- getIState
        putIState $ i { idris_metavars = map (\(n, (i, top, _, isTopLevel)) -> (n, (top, i, isTopLevel))) ns ++
                                             idris_metavars i }
