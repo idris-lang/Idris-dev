@@ -279,7 +279,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsAlt fn es vs var (ConCase ctn@(SN (InstanceCtorN cln)) cnt ns sc) = getDepsSC fn es vs (renameIn sc)
       where
         renameIn = foldr ((.) . rename) id $ zip [0..] ns
-        rename (i, n) = substSC n (SN (WhereN i ctn n))
+        rename (i, n) = substSC n $ SN (WhereN i ctn $ sMN i "field")
 
     -- data constructors
     getDepsAlt fn es vs var (ConCase n cnt ns sc)
@@ -407,7 +407,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         [TyDecl (DCon tag arity) _]      -> arity
         [TyDecl (Ref) ty]                -> length $ getArgTys ty
         [Operator ty arity op]           -> arity
-        df  -> error $ "unknown entity " ++ show n ++ ": "  ++ show df
+        df  -> error $ "unknown entity '" ++ show n ++ "' with definition: "  ++ show df
 
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering
