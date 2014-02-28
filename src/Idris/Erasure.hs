@@ -31,7 +31,7 @@ import qualified Data.Text as T
 -- UseMap maps names to the set of used (reachable) argument positions.
 type UseMap = Map Name (IntMap (Set Reason))
 
-data Arg = Arg !Int | Result deriving (Eq, Ord)
+data Arg = Arg Int | Result deriving (Eq, Ord)
 
 instance Show Arg where
     show (Arg i) = show i
@@ -274,6 +274,14 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsAlt fn es vs var (DefaultCase sc) = getDepsSC fn es vs sc
     getDepsAlt fn es vs var (SucCase   n sc)
         = getDepsSC fn es (M.insert n var vs) sc -- we're not inserting the S-dependency here because it's special-cased
+
+    -- instance constructors
+    getDepsAlt fn es vs var (ConCase ctn@(SN (InstanceCtorN cln)) cnt ns sc) = getDepsSC fn es vs (renameIn sc)
+      where
+        renameIn = foldr ((.) . rename) id $ zip [0..] ns
+        rename (i, n) = substSC n (SN (WhereN i ctn n))
+
+    -- data constructors
     getDepsAlt fn es vs var (ConCase n cnt ns sc)
         = getDepsSC fn es (vs' `union` vs) sc  -- left-biased union
       where

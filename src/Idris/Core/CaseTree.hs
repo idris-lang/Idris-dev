@@ -2,7 +2,8 @@
 
 module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..),
                      Phase(..), CaseTree,
-                     simpleCase, small, namesUsed, findCalls, findUsedArgs) where
+                     simpleCase, small, namesUsed, findCalls, findUsedArgs,
+                     substSC, substAlt) where
 
 import Idris.Core.TT
 
@@ -683,5 +684,18 @@ stripLambdas (CaseDef ns (STerm (Bind x (Lam _) sc)) tm)
 stripLambdas x = x
 
 
+substSC :: Name -> Name -> SC -> SC
+substSC n repl (Case n' alts)
+    | n == n'   = Case repl (map (substAlt n repl) alts)
+    | otherwise = Case n'   (map (substAlt n repl) alts)
+substSC n repl (STerm t) = STerm $ subst n (P Bound repl Erased) t
+substSC n repl sc = error $ "unsupported in substSC: " ++ show sc
 
-
+substAlt :: Name -> Name -> CaseAlt -> CaseAlt
+substAlt n repl (ConCase cn a ns sc) = ConCase cn a ns (substSC n repl sc)
+substAlt n repl (FnCase fn ns sc)    = FnCase fn ns (substSC n repl sc)
+substAlt n repl (ConstCase c sc)     = ConstCase c (substSC n repl sc)
+substAlt n repl (SucCase n' sc)
+    | n == n'   = SucCase n  (substSC n repl sc)
+    | otherwise = SucCase n' (substSC n repl sc)
+substAlt n repl (DefaultCase sc)     = DefaultCase (substSC n repl sc)
