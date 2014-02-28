@@ -1165,6 +1165,8 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
                  return $ TSeq t (mergeSeq ts)
           <|> do reserved "compute"; return Compute
           <|> do reserved "trivial"; return Trivial
+          <|> do reserved "search"; n <- (indentPropHolds gtProp *> fnName)
+                 return (ProofSearch Nothing n [])
           <|> do reserved "instance"; return TCInstance
           <|> do reserved "solve"; return Solve
           <|> do reserved "attack"; return Attack

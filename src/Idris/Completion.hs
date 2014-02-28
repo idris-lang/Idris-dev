@@ -50,7 +50,7 @@ tacticArgs = [ ("intro", Nothing) -- FIXME syntax for intro (fresh name)
              , (":e", Just ExprTArg)
              , (":eval", Just ExprTArg)
              ] ++ map (\x -> (x, Nothing)) [
-              "intros", "compute", "trivial", "solve", "attack",
+              "intros", "compute", "trivial", "search", "solve", "attack",
               "state", "term", "undo", "qed", "abandon", ":q"
              ]
 tactics = map fst tacticArgs
