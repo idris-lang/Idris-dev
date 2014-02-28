@@ -694,7 +694,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
-                | ProofSearch (Maybe Name) Name [Name]
+                | ProofSearch (Maybe Name) [Name]
                 | Solve
                 | Attack
                 | ProofState | ProofTerm | Undo

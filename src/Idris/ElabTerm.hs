@@ -538,9 +538,9 @@ elab ist info pattern opts fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
                         _ -> n
-    elab' ina (PProof ts) = do compute; mapM_ (runTac True ist) ts
+    elab' ina (PProof ts) = do compute; mapM_ (runTac True ist fn) ts
     elab' ina (PTactics ts)
-        | not pattern = do mapM_ (runTac False ist) ts
+        | not pattern = do mapM_ (runTac False ist fn) ts
         | otherwise = elab' ina Placeholder
     elab' ina (PElabError e) = fail (pshow ist e)
     elab' ina (PRewrite fc r sc newg)
@@ -950,8 +950,8 @@ collectDeferred top t = return t
 -- Running tactics directly
 -- if a tactic adds unification problems, return an error
 
-runTac :: Bool -> IState -> PTactic -> ElabD ()
-runTac autoSolve ist tac
+runTac :: Bool -> IState -> Name -> PTactic -> ElabD ()
+runTac autoSolve ist fn tac 
     = do env <- get_env
          g <- goal
          if autoSolve 
@@ -1065,8 +1065,8 @@ runTac autoSolve ist tac
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
     runT TCInstance = runT (Exact (PResolveTC emptyFC))
-    runT (ProofSearch top n hints)
-         = do proofSearch' ist top n hints; when autoSolve solveAll
+    runT (ProofSearch top hints)
+         = do proofSearch' ist top fn hints; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True
@@ -1145,7 +1145,7 @@ runTac autoSolve ist tac
                           ctxt <- get_context
                           env <- get_env
                           let value' = hnf ctxt env value
-                          runTac autoSolve ist (Exact $ PQuote (reflect value'))
+                          runTac autoSolve ist fn (Exact $ PQuote (reflect value'))
     runT (Fill v) = do attack -- let x = fill x in ...
                        tyn <- getNameFrom (sMN 0 "letty")
                        claim tyn RType
@@ -1160,7 +1160,7 @@ runTac autoSolve ist tac
                        env <- get_env
                        let value' = normalise ctxt env value
                        rawValue <- reifyRaw value'
-                       runTac autoSolve ist (Exact $ PQuote rawValue)
+                       runTac autoSolve ist fn (Exact $ PQuote rawValue)
     runT (GoalType n tac) = do g <- goal
                                case unApply g of
                                     (P _ n' _, _) ->
@@ -1173,7 +1173,7 @@ runTac autoSolve ist tac
     runT x = fail $ "Not implemented " ++ show x
 
     runReflected t = do t' <- reify ist t
-                        runTac autoSolve ist t'
+                        runTac autoSolve ist fn t'
 
 -- | Prefix a name with the "Language.Reflection" namespace
 reflm :: String -> Name
