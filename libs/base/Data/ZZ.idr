@@ -7,8 +7,8 @@ import Data.Sign
 %access public
 
 
--- | An integer is either a positive nat or the negated successor of a nat.
--- Zero is chosen to be positive.
+||| An integer is either a positive nat or the negated successor of a nat.
+||| Zero is chosen to be positive.
 data ZZ = Pos Nat | NegS Nat
 
 instance Signed ZZ where

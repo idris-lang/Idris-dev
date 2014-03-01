@@ -926,7 +926,7 @@ resTC' tcs depth topg fn ist
                 ulog <- getUnifyLog
                 solve
                 traceWhen ulog ("Got " ++ show n) $ return ()
-       where isImp (PImp p _ _ _ _ _) = (True, p)
+       where isImp (PImp p _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
 collectDeferred :: Maybe Name ->
@@ -1001,7 +1001,7 @@ runTac autoSolve ist fn tac
                                      show fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
-       where isImp (PImp _ _ _ _ _ _) = True
+       where isImp (PImp _ _ _ _ _) = True
              isImp _ = False
              envArgs n = do e <- get_env
                             case lookup n e of

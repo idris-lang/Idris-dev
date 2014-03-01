@@ -109,6 +109,6 @@ proofSearch elab fn nroot hints ist
                   (filter (\ (x, y) -> not x) (zip (map fst imps) args))
             solve
 
-    isImp (PImp p _ _ _ _ _) = (True, p)
+    isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (False, priority arg)
 

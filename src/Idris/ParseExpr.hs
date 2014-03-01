@@ -786,10 +786,9 @@ pi syn =
                 return []
         st <- static
         (do try (lchar '('); xt <- typeDeclList syn; lchar ')'
-            doc <- option "" (docComment '^')
             symbol "->"
             sc <- expr syn
-            return (bindList (PPi (Exp opts st doc False)) xt sc)) <|> (do
+            return (bindList (PPi (Exp opts st False)) xt sc)) <|> (do
                lchar '{'
                (do reserved "auto"
                    when (Lazy `elem` opts || (st == Static)) $ fail "auto type constraints can not be lazy or static"
@@ -798,7 +797,7 @@ pi syn =
                    symbol "->"
                    sc <- expr syn
                    return (bindList (PPi
-                     (TacImp [] Dynamic (PTactics [Trivial]) "")) xt sc)) 
+                     (TacImp [] Dynamic (PTactics [Trivial]))) xt sc)) 
                  <|> (do
                        reserved "default"
                        when (Lazy `elem` opts || (st == Static)) $ fail "default tactic constraints can not be lazy or static"
@@ -807,13 +806,13 @@ pi syn =
                        lchar '}'
                        symbol "->"
                        sc <- expr syn
-                       return (bindList (PPi (TacImp [] Dynamic script "")) xt sc)) 
+                       return (bindList (PPi (TacImp [] Dynamic script)) xt sc)) 
                  <|> (if implicitAllowed syn then do
                             xt <- typeDeclList syn
                             lchar '}'
                             symbol "->"
                             sc <- expr syn
-                            return (bindList (PPi (Imp opts st "" False)) xt sc)
+                            return (bindList (PPi (Imp opts st False)) xt sc)
                        else do fail "no implicit arguments allowed here"))
   <?> "dependent type signature"
 

@@ -59,7 +59,7 @@ binary name f = Infix (do fc <- getFC
                           indentPropHolds gtProp
                           reservedOp name
                           indentPropHolds gtProp
-                          doc <- option "" (docComment '^')
+                          doc <- option ("", []) docComment
                           return (f fc))
 
 -- | Prefix operator

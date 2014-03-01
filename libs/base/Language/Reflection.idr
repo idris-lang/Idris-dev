@@ -22,7 +22,7 @@ data TTUExp = UVar Int
             -- ^ explicit universe variable
 %name TTUExp uexp
 
--- | Primitive constants
+||| Primitive constants
 data Const = I Int | BI Integer | Fl Float | Ch Char | Str String
            | IType | BIType | FlType   | ChType  | StrType
            | B8 Bits8 | B16 Bits16 | B32 Bits32 | B64 Bits64
@@ -66,7 +66,7 @@ reflectConstant: (ReflConst a) => a -> Const
 reflectConstant = toConst
 
 
--- | Types of named references
+||| Types of named references
 data NameType = Bound
               -- ^ reference which is just bound, e.g. by intro
               | Ref
@@ -77,8 +77,8 @@ data NameType = Bound
               -- ^ type constructor with tag and number
 %name NameType nt, nt'
 
--- | Types annotations for bound variables in different
--- binding contexts
+||| Types annotations for bound variables in different
+||| binding contexts
 data Binder a = Lam a
               | Pi a
               | Let a a
@@ -124,7 +124,7 @@ instance Traversable Binder where
   traverse f (PVTy x) = [| PVTy (f x) |]
 
 
--- | Reflection of the well typed core language
+||| Reflection of the well typed core language
 data TT = P NameType TTName TT
         -- ^ named binders
         | V Int
@@ -146,7 +146,7 @@ data TT = P NameType TTName TT
 
 %name TT tm, tm'
 
--- | Raw terms without types
+||| Raw terms without types
 data Raw = Var TTName
          | RBind TTName (Binder Raw) Raw
          | RApp Raw Raw

@@ -1,14 +1,14 @@
 module Prelude.Bool
 
--- | Boolean Data Type
+||| Boolean Data Type
 data Bool = False | True
 
--- | Boolean elimination
+||| Boolean elimination
 boolElim : Bool -> (t : Lazy a) -> (e : Lazy a) -> a
 boolElim True  t e = t
 boolElim False t e = e
 
--- | Defines a predicate on Bool which guarantees that the value is true.
+||| Defines a predicate on Bool which guarantees that the value is true.
 data so : Bool -> Type where oh : so True
 
 -- Syntaxtic sugar for boolean elimination.
@@ -17,17 +17,17 @@ syntax if [test] then [t] else [e] = boolElim test (Delay t) (Delay e)
 -- Boolean Operator Precedence
 infixl 4 &&, ||
 
--- | Boolean OR
+||| Boolean OR
 (||) : Bool -> Bool -> Bool
 (||) False x = x
 (||) True _  = True
 
--- | Boolean AND
+||| Boolean AND
 (&&) : Bool -> Bool -> Bool
 (&&) True x  = x
 (&&) False _ = False
 
--- | Boolean NOT
+||| Boolean NOT
 not : Bool -> Bool
 not True = False
 not False = True
