@@ -279,6 +279,7 @@ data SpecialName = WhereN Int Name Name
                  | MethodN Name
                  | CaseN Name
                  | ElimN Name
+                 | InstanceCtorN Name
   deriving (Eq, Ord)
 {-!
 deriving instance Binary SpecialName
@@ -322,6 +323,7 @@ instance Show SpecialName where
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
     show (CaseN n) = "case block in " ++ show n
     show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
+    show (InstanceCtorN n) = "constructor of " ++ show n
 
 -- Show a name in a way decorated for code generation, not human reading
 showCG :: Name -> String

@@ -19,6 +19,7 @@ instance NFData SpecialName where
         rnf (MethodN x1) = rnf x1 `seq` ()
         rnf (CaseN x1) = rnf x1 `seq` ()
         rnf (ElimN x1) = rnf x1 `seq` ()
+        rnf (InstanceCtorN x1) = rnf x1 `seq` ()
 
 instance NFData Raw where
         rnf (Var x1) = rnf x1 `seq` ()
