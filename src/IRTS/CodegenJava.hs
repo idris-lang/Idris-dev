@@ -701,6 +701,7 @@ mkConstant c@(B64V     x) = mkConstantArray (constType c) B64 x
 mkConstant c@(AType    x) = ClassLit (Just $ box (constType c))
 mkConstant c@(StrType   ) = ClassLit (Just $ stringType)
 mkConstant c@(PtrType   ) = ClassLit (Just $ objectType)
+mkConstant c@(ManagedPtrType) = ClassLit (Just $ objectType)
 mkConstant c@(VoidType  ) = ClassLit (Just $ voidType)
 mkConstant c@(Forgot    ) = ClassLit (Just $ objectType)
 
