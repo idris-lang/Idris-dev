@@ -617,6 +617,7 @@ instance Binary Const where
                 B32V x1 -> putWord8 23 >> put x1
                 B64V x1 -> putWord8 24 >> put x1
                 BufferType -> putWord8 25
+                ManagedPtrType -> putWord8 26
         get
           = do i <- getWord8
                case i of
@@ -658,6 +659,7 @@ instance Binary Const where
                    23 -> fmap B32V get
                    24 -> fmap B64V get
                    25 -> return BufferType
+                   26 -> return ManagedPtrType
 
                    _ -> error "Corrupted binary data for Const"
 

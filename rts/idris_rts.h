@@ -17,7 +17,7 @@
 typedef enum {
     CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
     BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
-    BUFFER
+    MANAGEDPTR, BUFFER
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -40,6 +40,11 @@ typedef struct {
     unsigned char store[];
 } Buffer;
 
+// A foreign pointer, managed by the idris GC
+typedef struct {
+    size_t size;
+    void* data;
+} ManagedPtr;
 
 typedef struct Closure {
 // Use top 16 bits of ty for saying which heap value is in
@@ -57,6 +62,7 @@ typedef struct Closure {
         uint32_t bits32;
         uint64_t bits64;
         Buffer* buf;
+        ManagedPtr* mptr;
     } info;
 } Closure;
 
@@ -112,6 +118,7 @@ typedef void(*func)(VM*, VAL*);
 
 #define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str) : GETSTROFF(x))
 #define GETPTR(x) (((VAL)(x))->info.ptr) 
+#define GETMPTR(x) (((VAL)(x))->info.mptr->data) 
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 
 #define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
@@ -163,6 +170,7 @@ typedef intptr_t i_int;
 VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, const char* str);
 VAL MKPTR(VM* vm, void* ptr);
+VAL MKMPTR(VM* vm, void* ptr, int size);
 VAL MKB8(VM* vm, uint8_t b);
 VAL MKB16(VM* vm, uint16_t b);
 VAL MKB32(VM* vm, uint32_t b);
@@ -173,6 +181,7 @@ VAL MKFLOATc(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
+VAL MKMPTRc(VM* vm, void* ptr, int size);
 VAL MKBUFFERc(VM* vm, Buffer* buf);
 
 char* GETSTROFF(VAL stroff);

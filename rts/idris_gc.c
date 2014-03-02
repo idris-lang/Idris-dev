@@ -36,6 +36,9 @@ VAL copy(VM* vm, VAL x) {
     case PTR:
         cl = MKPTRc(vm, x->info.ptr);
         break;
+    case MANAGEDPTR:
+        cl = MKMPTRc(vm, x->info.mptr->data, x->info.mptr->size);
+        break;
     case BITS8:
         cl = idris_b8CopyForGC(vm, x);
         break;

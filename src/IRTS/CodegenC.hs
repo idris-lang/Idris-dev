@@ -262,6 +262,7 @@ c_irts (FArith (ATInt (ITFixed ity))) l x
 c_irts FString l x = l ++ "MKSTR(vm, " ++ x ++ ")"
 c_irts FUnit l x = x
 c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
+c_irts FManagedPtr l x = l ++ "MKMPTR(vm, " ++ x ++ ")"
 c_irts (FArith ATFloat) l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"
 c_irts FAny l x = l ++ x
 
@@ -272,6 +273,7 @@ irts_c (FArith (ATInt (ITFixed ity))) x
 irts_c FString x = "GETSTR(" ++ x ++ ")"
 irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
+irts_c FManagedPtr x = "GETMPTR(" ++ x ++ ")"
 irts_c (FArith ATFloat) x = "GETFLOAT(" ++ x ++ ")"
 irts_c FAny x = x
 
@@ -470,6 +472,8 @@ doOp v LFork [x] = v ++ "MKPTR(vm, vmThread(vm, " ++ cname (sMN 0 "EVAL") ++ ", 
 doOp v LPar [x] = v ++ creg x -- "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LVMPtr [] = v ++ "MKPTR(vm, vm)"
 doOp v LNullPtr [] = v ++ "MKPTR(vm, NULL)"
+doOp v LRegisterPtr [p, i] = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++ 
+                                  "), GETINT(" ++ creg i ++ "))" 
 doOp v (LChInt ITNative) args = v ++ creg (last args)
 doOp v (LChInt ITChar) args = doOp v (LChInt ITNative) args
 doOp v (LIntCh ITNative) args = v ++ creg (last args)

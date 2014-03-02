@@ -1003,6 +1003,7 @@ Constant ::=
   | 'Float'
   | 'String'
   | 'Ptr'
+  | 'ManagedPtr'
   | 'prim__UnsafeBuffer'
   | 'Bits8'
   | 'Bits16'
@@ -1027,6 +1028,7 @@ constant =  do reserved "Integer";      return (AType (ATInt ITBig))
         <|> do reserved "Float";        return (AType ATFloat)
         <|> do reserved "String";       return StrType
         <|> do reserved "Ptr";          return PtrType
+        <|> do reserved "ManagedPtr";   return ManagedPtrType
         <|> do reserved "prim__UnsafeBuffer"; return BufferType
         <|> do reserved "Bits8";  return (AType (ATInt (ITFixed IT8)))
         <|> do reserved "Bits16"; return (AType (ATInt (ITFixed IT16)))

@@ -1,5 +1,6 @@
 #include "idris_stdfgn.h"
 #include "idris_rts.h"
+#include "idris_gc.h"
 #include <sys/select.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -80,3 +81,6 @@ int idris_time() {
     return (int)t;
 }
 
+void idris_forceGC(void* vm) {
+   idris_gc((VM*)vm); 
+}
