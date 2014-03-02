@@ -10,6 +10,12 @@ New in 0.9.12:
 * New commands :eval (:e) and :type (:t) in the prover, which either normalise
   or show the type of expressions
 * Allow type providers to return postulates in addition to terms
+* New syntax for inline documentation. Documentation starts with |||, and
+  arguments are documented by preceding their name with @. Example:
+||| Add two natural numbers
+||| @ n the first number (examined by the function)
+||| @ m the second number (not examined)
+plus (n, m : Nat) -> Nat
 
 New in 0.9.11:
 --------------
