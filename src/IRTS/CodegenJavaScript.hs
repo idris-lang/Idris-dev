@@ -80,12 +80,51 @@ data JS = JSRaw String
         | JSTernary JS JS JS
         | JSParens JS
         | JSWhile JS JS
+        | JSFFI String [JS]
         | JSNoop
         deriving Eq
 
 
+data FFI = FFICode Char | FFIArg Int | FFIError String
+
+
+ffi :: String -> [String] -> String
+ffi code args = let parsed = ffiParse code in
+                    case ffiError parsed of
+                         Just err -> compileJS $ jsError err
+                         Nothing  -> renderFFI parsed args
+  where
+    ffiParse :: String -> [FFI]
+    ffiParse ""           = []
+    ffiParse ['%']        = [FFIError "Invalid positional argument"]
+    ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
+    ffiParse ('%':s:ss)
+      | isDigit s =
+         FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
+      | otherwise =
+          [FFIError "Invalid positional argument"]
+    ffiParse (s:ss) = FFICode s : ffiParse ss
+
+
+    ffiError :: [FFI] -> Maybe String
+    ffiError []                 = Nothing
+    ffiError ((FFIError s):xs)  = Just s
+    ffiError (x:xs)             = ffiError xs
+
+
+    renderFFI :: [FFI] -> [String] -> String
+    renderFFI [] _ = ""
+    renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
+    renderFFI ((FFIArg i) : fs) args
+      | i < length args && i >= 0 = args !! i ++ renderFFI fs args
+      | otherwise = "Argument index out of bounds"
+
+
 compileJS :: JS -> String
 compileJS JSNoop = ""
+
+compileJS (JSFFI raw args) =
+  ffi raw (map compileJS args)
 
 compileJS (JSRaw code) =
   code
@@ -316,6 +355,8 @@ foldJS tr add acc js =
           add (tr js) $ foldl' add acc $ map (uncurry add . (fold *** fold)) conds
       | JSWhile cond body    <- js =
           add (tr js) $ add (fold cond) (fold body)
+      | JSFFI raw args       <- js =
+          add (tr js) $ foldl' add acc $ map fold args
       | otherwise                  =
           tr js
 
@@ -342,7 +383,8 @@ transformJS tr js =
       | JSCond conds         <- js = JSCond $ map (tr *** tr) conds
       | JSTernary c t f      <- js = JSTernary (tr c) (tr t) (tr f)
       | JSParens val         <- js = JSParens $ tr val
-      | JSWhile cond body    <- js = JSWhile(tr cond) (tr body)
+      | JSWhile cond body    <- js = JSWhile (tr cond) (tr body)
+      | JSFFI raw args       <- js = JSFFI raw (map tr args)
       | otherwise                  = js
 
 
@@ -1887,16 +1929,20 @@ translateExpression (SForeign _ _ "idris_eqPtr" [(FPtr, lhs),(FPtr, rhs)]) =
   JSBinOp "==" (JSVar lhs) (JSVar rhs)
 
 translateExpression (SForeign _ _ fun args) =
-  ffi fun (map generateWrapper args)
+  JSFFI fun (map generateWrapper args)
   where
     generateWrapper (ffunc, name)
       | FFunction   <- ffunc =
-        idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
+          JSApp (
+            JSIdent $ idrRTNamespace ++ "ffiWrap"
+          ) [JSIdent $ translateVariableName name]
       | FFunctionIO <- ffunc =
-        idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
+          JSApp (
+            JSIdent $ idrRTNamespace ++ "ffiWrap"
+          ) [JSIdent $ translateVariableName name]
 
     generateWrapper (_, name) =
-      translateVariableName name
+      JSIdent $ translateVariableName name
 
 translateExpression patterncase
   | (SChkCase var cases) <- patterncase = caseHelper var cases "chk"
@@ -1937,41 +1983,6 @@ translateExpression SNothing = JSNull
 
 translateExpression e =
   jsError $ "Not yet implemented: " ++ filter (/= '\'') (show e)
-
-
-data FFI = FFICode Char | FFIArg Int | FFIError String
-
-
-ffi :: String -> [String] -> JS
-ffi code args = let parsed = ffiParse code in
-                    case ffiError parsed of
-                         Just err -> jsError err
-                         Nothing  -> JSRaw $ renderFFI parsed args
-  where
-    ffiParse :: String -> [FFI]
-    ffiParse ""           = []
-    ffiParse ['%']        = [FFIError "Invalid positional argument"]
-    ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
-    ffiParse ('%':s:ss)
-      | isDigit s =
-         FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
-      | otherwise =
-          [FFIError "Invalid positional argument"]
-    ffiParse (s:ss) = FFICode s : ffiParse ss
-
-
-    ffiError :: [FFI] -> Maybe String
-    ffiError []                 = Nothing
-    ffiError ((FFIError s):xs)  = Just s
-    ffiError (x:xs)             = ffiError xs
-
-
-    renderFFI :: [FFI] -> [String] -> String
-    renderFFI [] _ = ""
-    renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
-    renderFFI ((FFIArg i) : fs) args
-      | i < length args && i >= 0 = args !! i ++ renderFFI fs args
-      | otherwise = "Argument index out of bounds"
 
 
 data CaseType = ConCase Int
