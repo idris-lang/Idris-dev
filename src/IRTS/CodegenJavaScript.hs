@@ -52,6 +52,13 @@ data JSNum = JSInt Int
            deriving Eq
 
 
+data JSAnnotation = JSConstructor deriving Eq
+
+
+instance Show JSAnnotation where
+  show JSConstructor = "constructor"
+
+
 data JS = JSRaw String
         | JSIdent String
         | JSFunction [String] JS
@@ -81,6 +88,7 @@ data JS = JSRaw String
         | JSParens JS
         | JSWhile JS JS
         | JSFFI String [JS]
+        | JSAnnotation JSAnnotation JS
         | JSNoop
         deriving Eq
 
@@ -122,6 +130,9 @@ ffi code args = let parsed = ffiParse code in
 
 compileJS :: JS -> String
 compileJS JSNoop = ""
+
+compileJS (JSAnnotation annotation js) =
+  "/** @" ++ show annotation ++ " */\n" ++ compileJS js
 
 compileJS (JSFFI raw args) =
   ffi raw (map compileJS args)
@@ -357,6 +368,8 @@ foldJS tr add acc js =
           add (tr js) $ add (fold cond) (fold body)
       | JSFFI raw args       <- js =
           add (tr js) $ foldl' add acc $ map fold args
+      | JSAnnotation a js    <- js =
+          add (tr js) $ fold js
       | otherwise                  =
           tr js
 
@@ -385,6 +398,7 @@ transformJS tr js =
       | JSParens val         <- js = JSParens $ tr val
       | JSWhile cond body    <- js = JSWhile (tr cond) (tr body)
       | JSFFI raw args       <- js = JSFFI raw (map tr args)
+      | JSAnnotation a js    <- js = JSAnnotation a (tr js)
       | otherwise                  = js
 
 
@@ -392,6 +406,9 @@ moveJSDeclToTop :: String -> [JS] -> [JS]
 moveJSDeclToTop decl js = move ([], js)
   where
     move :: ([JS], [JS]) -> [JS]
+    move (front, js@(JSAnnotation _ (JSAlloc name _)):back)
+      | name == decl = js : front ++ back
+
     move (front, js@(JSAlloc name _):back)
       | name == decl = js : front ++ back
 
@@ -1054,7 +1071,7 @@ unfoldLookupTable input =
     adaptCon js =
       adaptCon' [] js
       where
-        adaptCon' front ((JSAlloc "__IDRRT__Con" (Just _)):back) =
+        adaptCon' front ((JSAnnotation _ (JSAlloc "__IDRRT__Con" _)):back) =
           front ++ (new:back)
 
         adaptCon' front (next:back) =
@@ -1064,11 +1081,12 @@ unfoldLookupTable input =
 
 
         new =
-          JSAlloc "__IDRRT__Con" (Just $
-            JSFunction newArgs (
-              JSSeq (map newVar newArgs)
+          JSAnnotation JSConstructor $
+            JSAlloc "__IDRRT__Con" (Just $
+              JSFunction newArgs (
+                JSSeq (map newVar newArgs)
+              )
             )
-          )
           where
             newVar var = JSAssign (JSProj JSThis var) (JSIdent var)
             newArgs = ["tag", "eval", "app", "vars"]
@@ -1438,14 +1456,16 @@ codegenJavaScript target definitions includes filename outputType = do
 
     prelude :: [JS]
     prelude =
-      [ JSAlloc (idrRTNamespace ++ "Cont") (Just $ JSFunction ["k"] (
-          JSAssign (JSProj JSThis "k") (JSIdent "k")
-        ))
-      , JSAlloc (idrRTNamespace ++ "Con") (Just $ JSFunction ["tag", "vars"] (
-          JSSeq [ JSAssign (JSProj JSThis "tag") (JSIdent "tag")
-                , JSAssign (JSProj JSThis "vars") (JSIdent "vars")
-                ]
-        ))
+      [ JSAnnotation JSConstructor $
+          JSAlloc (idrRTNamespace ++ "Cont") (Just $ JSFunction ["k"] (
+            JSAssign (JSProj JSThis "k") (JSIdent "k")
+          ))
+      , JSAnnotation JSConstructor $
+          JSAlloc (idrRTNamespace ++ "Con") (Just $ JSFunction ["tag", "vars"] (
+            JSSeq [ JSAssign (JSProj JSThis "tag") (JSIdent "tag")
+                  , JSAssign (JSProj JSThis "vars") (JSIdent "vars")
+                  ]
+          ))
       ]
 
     mainLoop :: JS
