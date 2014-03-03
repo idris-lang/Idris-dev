@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module Idris.ParseHelpers where
 
 import Prelude hiding (pi)
@@ -37,7 +38,9 @@ import System.FilePath
 type IdrisParser = StateT IState IdrisInnerParser
 
 newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
-  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, Parsing, DeltaParsing, MarkParsing Delta, Monoid)
+  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing{-, Parsing-}, DeltaParsing, MarkParsing Delta, Monoid)
+
+deriving instance Parsing IdrisInnerParser
 
 instance TokenParsing IdrisInnerParser where
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
