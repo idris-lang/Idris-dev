@@ -8,10 +8,12 @@ id : a -> a
 id x = x
 
 ||| Manually assign a type to an expression.
-the : (a : Type) -> a -> a
+||| @ a the type to assign
+||| @ x the element to get the type
+the : (a : Type) -> (x : a) -> a
 the _ = id
 
-||| Constant function.
+||| Constant function. Ignores its second argument.
 const : a -> b -> a
 const x = \v => x
 
@@ -30,17 +32,26 @@ infixl 9 .
 (.) f g x = f (g x)
 
 ||| Takes in the first two arguments in reverse order.
-flip : (a -> b -> c) -> b -> a -> c
+||| @ f the function to flip
+flip : (f : a -> b -> c) -> b -> a -> c
 flip f x y = f y x
 
 ||| Function application.
 apply : (a -> b) -> a -> b
 apply f a = f a
 
+||| Equality is a congruence.
 cong : {f : t -> u} -> (a = b) -> f a = f b
 cong refl = refl
 
+||| Decidability. A decidable property either holds or is a contradiction.
 data Dec : Type -> Type where
-    Yes : {A : Type} -> A          -> Dec A
-    No  : {A : Type} -> (A -> _|_) -> Dec A
+
+  ||| The case where the property holds
+  ||| @ prf the proof
+  Yes : {A : Type} -> (prf : A) -> Dec A
+
+  ||| The case where the property holding would be a contradiction
+  ||| @ contra a demonstration that A would be a contradiction
+  No  : {A : Type} -> (contra : A -> _|_) -> Dec A
 

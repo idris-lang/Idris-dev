@@ -8,7 +8,7 @@ import Data.Sign
 
 
 ||| An integer is either a positive nat or the negated successor of a nat.
-||| Zero is chosen to be positive.
+||| Zero is arbitrarily chosen to be positive.
 data ZZ = Pos Nat | NegS Nat
 
 instance Signed ZZ where

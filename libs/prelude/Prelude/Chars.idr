@@ -66,4 +66,4 @@ isHexDigit x = elem (toUpper x) hexChars where
 isOctDigit : Char -> Bool
 isOctDigit x = (x >= '0' && x <= '7')
 
--- --------------------------------------------------------------------- [ EOF ]
+

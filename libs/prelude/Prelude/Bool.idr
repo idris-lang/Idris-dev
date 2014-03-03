@@ -3,8 +3,11 @@ module Prelude.Bool
 ||| Boolean Data Type
 data Bool = False | True
 
-||| Boolean elimination
-boolElim : Bool -> (t : Lazy a) -> (e : Lazy a) -> a
+||| The underlying implementation of the if ... then ... else ... syntax
+||| @ b the condition on the if
+||| @ t the value if b is true
+||| @ e the falue if b is false
+boolElim : (b : Bool) -> (t : Lazy a) -> (e : Lazy a) -> a
 boolElim True  t e = t
 boolElim False t e = e
 
