@@ -579,8 +579,6 @@ removeEval js =
             match (JSApp (JSIdent "__IDR__mEVAL0") [val]) = val
             match js = transformJS match js
 
-    removeEvalApp js = js
-
     checkEval :: [JS] -> ([JS], Bool)
     checkEval js = foldr f ([], False) $ map checkEval' js
       where
