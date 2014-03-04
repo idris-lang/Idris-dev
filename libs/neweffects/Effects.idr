@@ -19,6 +19,10 @@ class Handler (e : Effect) (m : Type -> Type) where
      handle : res -> (eff : e t res resk) -> 
               ((x : t) -> resk x -> m a) -> m a
 
+-- Get the resource type (handy at the REPL to find out about an effect)
+resourceType : EFFECT -> Type
+resourceType (MkEff t e) = t
+
 -- A bit of syntactic sugar ('syntax' is not very flexible so we only go
 -- up to a small number of parameters...)
 
