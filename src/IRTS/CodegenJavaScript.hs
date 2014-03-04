@@ -20,6 +20,7 @@ import Data.Maybe
 import System.IO
 import System.Directory
 
+
 idrNamespace :: String
 idrNamespace    = "__IDR__"
 idrRTNamespace  = "__IDRRT__"
@@ -723,7 +724,7 @@ inlineFunctions js =
   inlineHelper ([], js)
   where
     inlineHelper :: ([JS], [JS]) -> [JS]
-    inlineHelper (front , (JSAlloc fun (Just (JSFunction  args body))):back)
+    inlineHelper (front , (JSAlloc fun (Just (JSFunction args body))):back)
       | countAll fun front + countAll fun back == 0 =
          inlineHelper (front, back)
       | Just new <- inlineAble (
