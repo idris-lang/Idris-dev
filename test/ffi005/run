@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+idris $@ Postulate.idr -o postulate
+./postulate
+rm -f postulate *.ibc
+
+idris $@ Postulate2.idr -o postulate
+./postulate
+rm -f postulate *.ibc
+
+idris $@ Postulate3.idr -o postulate
+rm -f postulate *.ibc

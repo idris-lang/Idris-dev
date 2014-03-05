@@ -786,10 +786,9 @@ pi syn =
                 return []
         st <- static
         (do try (lchar '('); xt <- typeDeclList syn; lchar ')'
-            doc <- option "" (docComment '^')
             symbol "->"
             sc <- expr syn
-            return (bindList (PPi (Exp opts st doc False)) xt sc)) <|> (do
+            return (bindList (PPi (Exp opts st False)) xt sc)) <|> (do
                lchar '{'
                (do reserved "auto"
                    when (Lazy `elem` opts || (st == Static)) $ fail "auto type constraints can not be lazy or static"
@@ -798,7 +797,7 @@ pi syn =
                    symbol "->"
                    sc <- expr syn
                    return (bindList (PPi
-                     (TacImp [] Dynamic (PTactics [Trivial]) "")) xt sc)) 
+                     (TacImp [] Dynamic (PTactics [Trivial]))) xt sc)) 
                  <|> (do
                        reserved "default"
                        when (Lazy `elem` opts || (st == Static)) $ fail "default tactic constraints can not be lazy or static"
@@ -807,13 +806,13 @@ pi syn =
                        lchar '}'
                        symbol "->"
                        sc <- expr syn
-                       return (bindList (PPi (TacImp [] Dynamic script "")) xt sc)) 
+                       return (bindList (PPi (TacImp [] Dynamic script)) xt sc)) 
                  <|> (if implicitAllowed syn then do
                             xt <- typeDeclList syn
                             lchar '}'
                             symbol "->"
                             sc <- expr syn
-                            return (bindList (PPi (Imp opts st "" False)) xt sc)
+                            return (bindList (PPi (Imp opts st False)) xt sc)
                        else do fail "no implicit arguments allowed here"))
   <?> "dependent type signature"
 
@@ -1003,6 +1002,7 @@ Constant ::=
   | 'Float'
   | 'String'
   | 'Ptr'
+  | 'ManagedPtr'
   | 'prim__UnsafeBuffer'
   | 'Bits8'
   | 'Bits16'
@@ -1027,6 +1027,7 @@ constant =  do reserved "Integer";      return (AType (ATInt ITBig))
         <|> do reserved "Float";        return (AType ATFloat)
         <|> do reserved "String";       return StrType
         <|> do reserved "Ptr";          return PtrType
+        <|> do reserved "ManagedPtr";   return ManagedPtrType
         <|> do reserved "prim__UnsafeBuffer"; return BufferType
         <|> do reserved "Bits8";  return (AType (ATInt (ITFixed IT8)))
         <|> do reserved "Bits16"; return (AType (ATInt (ITFixed IT16)))
@@ -1165,6 +1166,7 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
                  return $ TSeq t (mergeSeq ts)
           <|> do reserved "compute"; return Compute
           <|> do reserved "trivial"; return Trivial
+          <|> do reserved "search"; return (ProofSearch Nothing [])
           <|> do reserved "instance"; return TCInstance
           <|> do reserved "solve"; return Solve
           <|> do reserved "attack"; return Attack

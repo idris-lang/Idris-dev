@@ -16,11 +16,12 @@ import Idris.Core.Evaluate
 -- indexed with 'finalise'
 
 convertsC :: Context -> Env -> Term -> Term -> StateT UCs TC ()
-convertsC ctxt env x y
-  = do c1 <- convEq ctxt x y
+convertsC ctxt env x y =
+    do let hs = map fst (filter isHole env)
+       c1 <- convEq ctxt hs x y
        if c1 then return ()
          else
-            do c2 <- convEq ctxt (finalise (normalise ctxt env x))
+            do c2 <- convEq ctxt hs (finalise (normalise ctxt env x))
                          (finalise (normalise ctxt env y))
                if c2 then return ()
                  else lift $ tfail (CantConvert
@@ -29,14 +30,18 @@ convertsC ctxt env x y
 
 converts :: Context -> Env -> Term -> Term -> TC ()
 converts ctxt env x y
-     = case convEq' ctxt x y of
+     = let hs = map fst (filter isHole env) in
+       case convEq' ctxt hs x y of
           OK True -> return ()
-          _ -> case convEq' ctxt (finalise (normalise ctxt env x))
-                                 (finalise (normalise ctxt env y)) of
+          _ -> case convEq' ctxt hs (finalise (normalise ctxt env x))
+                                    (finalise (normalise ctxt env y)) of
                 OK True -> return ()
                 _ -> tfail (CantConvert
                            (finalise (normalise ctxt env x))
                            (finalise (normalise ctxt env y)) (errEnv env))
+
+isHole (n, Hole _) = True
+isHole _ = False
 
 errEnv = map (\(x, b) -> (x, binderTy b))
 

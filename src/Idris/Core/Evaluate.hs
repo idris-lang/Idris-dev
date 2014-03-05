@@ -520,12 +520,13 @@ wknV i (VBind red n b sc) = do b' <- fmapMB (wknV i) b
 wknV i (VApp f a)     = liftM2 VApp (wknV i f) (wknV i a)
 wknV i t              = return t
 
-convEq' ctxt x y = evalStateT (convEq ctxt x y) (0, [])
+convEq' ctxt hs x y = evalStateT (convEq ctxt hs x y) (0, [])
 
-convEq :: Context -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
-convEq ctxt = ceq [] where
+convEq :: Context -> [Name] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
+convEq ctxt holes = ceq [] where
     ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
     ceq ps (P xt x _) (P yt y _)
+        | x `elem` holes || y `elem` holes = return True
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
     ceq ps x (Bind n (Lam t) (App y (V 0))) = ceq ps x y

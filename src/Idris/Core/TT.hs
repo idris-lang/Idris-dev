@@ -279,6 +279,7 @@ data SpecialName = WhereN Int Name Name
                  | MethodN Name
                  | CaseN Name
                  | ElimN Name
+                 | InstanceCtorN Name
   deriving (Eq, Ord)
 {-!
 deriving instance Binary SpecialName
@@ -322,6 +323,7 @@ instance Show SpecialName where
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
     show (CaseN n) = "case block in " ++ show n
     show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
+    show (InstanceCtorN n) = "constructor of " ++ show n
 
 -- Show a name in a way decorated for code generation, not human reading
 showCG :: Name -> String
@@ -475,7 +477,7 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B8V (Vector Word8) | B16V (Vector Word16)
            | B32V (Vector Word32) | B64V (Vector Word64)
            | AType ArithTy | StrType
-           | PtrType | BufferType | VoidType | Forgot
+           | PtrType | ManagedPtrType | BufferType | VoidType | Forgot
   deriving (Eq, Ord)
 {-!
 deriving instance Binary Const
@@ -495,6 +497,7 @@ instance Pretty Const OutputAnnotation where
   pretty StrType = text "String"
   pretty BufferType = text "prim__UnsafeBuffer"
   pretty PtrType = text "Ptr"
+  pretty ManagedPtrType = text "Ptr"
   pretty VoidType = text "Void"
   pretty Forgot = text "Forgot"
   pretty (B8 w) = text . show $ w
@@ -1041,6 +1044,7 @@ instance Show Const where
     show StrType = "String"
     show BufferType = "prim__UnsafeBuffer"
     show PtrType = "Ptr"
+    show ManagedPtrType = "ManagedPtr"
     show VoidType = "Void"
 
 showEnv :: (Eq n, Show n) => EnvTT n -> TT n -> String

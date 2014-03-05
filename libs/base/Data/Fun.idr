@@ -13,3 +13,6 @@ chain : {ts : Vect n Type} -> Fun [r] r' -> Fun ts r -> Fun ts r'
 chain {ts = []} g r  = g r
 chain {ts = (_::_)} g f = \ x => chain g (f x)
 
+target : {ts : Vect n Type} -> Fun ts r -> Type
+target {r} _ = r 
+

@@ -178,6 +178,17 @@ VAL MKPTR(VM* vm, void* ptr) {
     return cl;
 }
 
+VAL MKMPTR(VM* vm, void* ptr, int size) {
+    Closure* cl = allocate(vm, sizeof(Closure) +
+                               sizeof(ManagedPtr) + size, 0);
+    SETTY(cl, MANAGEDPTR);
+    cl->info.mptr = (ManagedPtr*)((char*)cl + sizeof(Closure));
+    cl->info.mptr->data = (char*)cl + sizeof(Closure) + sizeof(ManagedPtr);
+    memcpy(cl->info.mptr->data, ptr, size); 
+    cl->info.mptr->size = size;
+    return cl;
+}
+
 VAL MKFLOATc(VM* vm, double val) {
     Closure* cl = allocate(vm, sizeof(Closure), 1);
     SETTY(cl, FLOAT);
@@ -199,6 +210,17 @@ VAL MKPTRc(VM* vm, void* ptr) {
     Closure* cl = allocate(vm, sizeof(Closure), 1);
     SETTY(cl, PTR);
     cl -> info.ptr = ptr;
+    return cl;
+}
+
+VAL MKMPTRc(VM* vm, void* ptr, int size) {
+    Closure* cl = allocate(vm, sizeof(Closure) +
+                               sizeof(ManagedPtr) + size, 1);
+    SETTY(cl, MANAGEDPTR);
+    cl->info.mptr = (ManagedPtr*)((char*)cl + sizeof(Closure));
+    cl->info.mptr->data = (char*)cl + sizeof(Closure) + sizeof(ManagedPtr);
+    memcpy(cl->info.mptr->data, ptr, size); 
+    cl->info.mptr->size = size;
     return cl;
 }
 
@@ -794,6 +816,9 @@ VAL copyTo(VM* vm, VAL x) {
         break;
     case PTR:
         cl = MKPTRc(vm, x->info.ptr);
+        break;
+    case MANAGEDPTR:
+        cl = MKMPTRc(vm, x->info.mptr->data, x->info.mptr->size);
         break;
     case BITS8:
         cl = idris_b8CopyForGC(vm, x);

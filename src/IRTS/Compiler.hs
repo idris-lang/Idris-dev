@@ -349,6 +349,7 @@ mkIty "FBits32"     = mkIntIty "IT32"
 mkIty "FBits64"     = mkIntIty "IT64"
 mkIty "FString"     = FString
 mkIty "FPtr"        = FPtr
+mkIty "FManagedPtr" = FManagedPtr
 mkIty "FUnit"       = FUnit
 mkIty "FFunction"   = FFunction
 mkIty "FFunctionIO" = FFunctionIO

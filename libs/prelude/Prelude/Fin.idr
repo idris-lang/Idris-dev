@@ -5,7 +5,9 @@ import Prelude.Either
 
 %default total
 
-data Fin : Nat -> Type where
+||| Numbers strictly less than some bound.  The name comes from "finite sets"
+||| @ n the upper bound
+data Fin : (n : Nat) -> Type where
     fZ : Fin (S k)
     fS : Fin k -> Fin (S k)
 
@@ -44,14 +46,18 @@ finToInteger (fS k) = 1 + finToInteger k
 instance Cast (Fin n) Integer where
     cast x = finToInteger x
 
+||| Weaken the bound on a Fin by 1
 weaken : Fin n -> Fin (S n)
 weaken fZ     = fZ
 weaken (fS k) = fS (weaken k)
 
+||| Weaken the bound on a Fin by some amount
 weakenN : (n : Nat) -> Fin m -> Fin (m + n)
 weakenN n fZ = fZ
 weakenN n (fS f) = fS (weakenN n f)
 
+||| Attempt to tighten the bound on a Fin.
+||| Return `Left` if the bound could not be tightened, or `Right` if it could.
 strengthen : Fin (S n) -> Either (Fin (S n)) (Fin n)
 strengthen {n = S k} fZ = Right fZ
 strengthen {n = S k} (fS i) with (strengthen i)
@@ -59,10 +65,14 @@ strengthen {n = S k} (fS i) with (strengthen i)
   strengthen (fS k) | Right x  = Right (fS x)
 strengthen f = Left f
 
+||| Add some natural number to a Fin, extending the bound accordingly
+||| @ n the previous bound
+||| @ m the number to increase the Fin by
 shift : (m : Nat) -> Fin n -> Fin (m + n)
 shift Z f = f
 shift {n=n} (S m) f = fS {k = (m + n)} (shift m f)
 
+||| The largest element of some Fin type
 last : Fin (S n)
 last {n=Z} = fZ
 last {n=S _} = fS last

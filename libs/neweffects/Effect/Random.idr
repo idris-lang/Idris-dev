@@ -20,6 +20,14 @@ rndInt : Integer -> Integer -> { [RND] } Eff m Integer
 rndInt lower upper = do v <- getRandom
                         return (v `prim__sremBigInt` (upper - lower) + lower)
 
+rndFin : (k : Nat) -> { [RND] } Eff m (Fin (S k))
+rndFin k = do let v = !getRandom `prim__sremBigInt` (cast k)
+              return (toFin v)
+ where toFin : Integer -> Fin (S k) 
+       toFin x = case integerToFin x (S k) of
+                      Just v => v
+                      Nothing => toFin (assert_smaller x (x - cast (S k)))
+
 srand : Integer -> { [RND] } Eff m ()
 srand n = setSeed n
 

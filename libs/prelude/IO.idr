@@ -32,6 +32,7 @@ data FTy = FIntT IntTy
          | FFloat
          | FString
          | FPtr
+         | FManagedPtr
          | FAny Type
          | FUnit
 
@@ -85,6 +86,7 @@ interpFTy (FAny t)         = t
 interpFTy FFloat           = Float
 interpFTy FString          = String
 interpFTy FPtr             = Ptr
+interpFTy FManagedPtr      = ManagedPtr
 interpFTy (FIntT IT8x16)   = Bits8x16
 interpFTy (FIntT IT16x8)   = Bits16x8
 interpFTy (FIntT IT32x4)   = Bits32x4
@@ -105,6 +107,9 @@ data Foreign : Type -> Type where
 mkForeignPrim : Foreign x -> x
 mkLazyForeignPrim : Foreign x -> x
 -- mkForeign and mkLazyForeign compiled as primitives
+
+registerPtr : Ptr -> Int -> ManagedPtr
+registerPtr = prim__registerPtr
 
 abstract
 io_bind : IO a -> (a -> IO b) -> IO b
@@ -148,4 +153,7 @@ unsafePerformIO : IO a -> a
 unsafePerformIO (MkIO f) = unsafePerformPrimIO
         (prim_io_bind (f TheWorld) (\ b => prim_io_return b))
 
+
+forceGC : IO ()
+forceGC = mkForeign (FFun "idris_forceGC" [FPtr] FUnit) prim__vm
 

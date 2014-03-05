@@ -153,10 +153,9 @@ elab ist info pattern opts fn tm
                   [] -> return ()
 
     elabE :: (Bool, Bool, Bool) -> PTerm -> ElabD ()
-    elabE ina t = {- do g <- goal
-                 tm <- get_term
-                 trace ("Elaborating " ++ show t ++ " : " ++ show g ++ "\n\tin " ++ show tm)
-                    $ -}
+    elabE ina t = 
+--               do g <- goal
+--                  trace ("Elaborating " ++ show t ++ " : " ++ show g) $
                   do ct <- insertCoerce ina t
                      t' <- insertLazy ct
                      g <- goal
@@ -539,9 +538,9 @@ elab ist info pattern opts fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
                         _ -> n
-    elab' ina (PProof ts) = do compute; mapM_ (runTac True ist) ts
+    elab' ina (PProof ts) = do compute; mapM_ (runTac True ist fn) ts
     elab' ina (PTactics ts)
-        | not pattern = do mapM_ (runTac False ist) ts
+        | not pattern = do mapM_ (runTac False ist fn) ts
         | otherwise = elab' ina Placeholder
     elab' ina (PElabError e) = fail (pshow ist e)
     elab' ina (PRewrite fc r sc newg)
@@ -841,9 +840,11 @@ proofSearch' ist top n hints
 
 
 resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
-resolveTC 0 topg fn ist = fail $ "Can't resolve type class"
-resolveTC 1 topg fn ist = try' (trivial' ist) (resolveTC 0 topg fn ist) True
-resolveTC depth topg fn ist
+resolveTC = resTC' [] 
+
+resTC' tcs 0 topg fn ist = fail $ "Can't resolve type class"
+resTC' tcs 1 topg fn ist = try' (trivial' ist) (resolveTC 0 topg fn ist) True
+resTC' tcs depth topg fn ist
       = do hnf_compute
            g <- goal
            ptm <- get_term
@@ -915,15 +916,17 @@ resolveTC depth topg fn ist
                 mapM_ (\ (_,n) -> do focus n
                                      t' <- goal
                                      let (tc', ttype) = unApply t'
-                                     let depth' = if t == t' then depth - 1 else depth
-                                     resolveTC depth' topg fn ist)
+                                     let got = fst (unApply t)
+                                     let depth' = if tc' `elem` tcs
+                                                     then depth - 1 else depth 
+                                     resTC' (got : tcs)  depth' topg fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
                 ulog <- getUnifyLog
                 solve
                 traceWhen ulog ("Got " ++ show n) $ return ()
-       where isImp (PImp p _ _ _ _ _) = (True, p)
+       where isImp (PImp p _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
 collectDeferred :: Maybe Name ->
@@ -947,8 +950,8 @@ collectDeferred top t = return t
 -- Running tactics directly
 -- if a tactic adds unification problems, return an error
 
-runTac :: Bool -> IState -> PTactic -> ElabD ()
-runTac autoSolve ist tac
+runTac :: Bool -> IState -> Name -> PTactic -> ElabD ()
+runTac autoSolve ist fn tac 
     = do env <- get_env
          g <- goal
          if autoSolve 
@@ -998,7 +1001,7 @@ runTac autoSolve ist tac
                                      show fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
-       where isImp (PImp _ _ _ _ _ _) = True
+       where isImp (PImp _ _ _ _ _) = True
              isImp _ = False
              envArgs n = do e <- get_env
                             case lookup n e of
@@ -1062,8 +1065,8 @@ runTac autoSolve ist tac
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
     runT TCInstance = runT (Exact (PResolveTC emptyFC))
-    runT (ProofSearch top n hints)
-         = do proofSearch' ist top n hints; when autoSolve solveAll
+    runT (ProofSearch top hints)
+         = do proofSearch' ist top fn hints; when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True
@@ -1142,7 +1145,7 @@ runTac autoSolve ist tac
                           ctxt <- get_context
                           env <- get_env
                           let value' = hnf ctxt env value
-                          runTac autoSolve ist (Exact $ PQuote (reflect value'))
+                          runTac autoSolve ist fn (Exact $ PQuote (reflect value'))
     runT (Fill v) = do attack -- let x = fill x in ...
                        tyn <- getNameFrom (sMN 0 "letty")
                        claim tyn RType
@@ -1157,7 +1160,7 @@ runTac autoSolve ist tac
                        env <- get_env
                        let value' = normalise ctxt env value
                        rawValue <- reifyRaw value'
-                       runTac autoSolve ist (Exact $ PQuote rawValue)
+                       runTac autoSolve ist fn (Exact $ PQuote rawValue)
     runT (GoalType n tac) = do g <- goal
                                case unApply g of
                                     (P _ n' _, _) ->
@@ -1170,7 +1173,7 @@ runTac autoSolve ist tac
     runT x = fail $ "Not implemented " ++ show x
 
     runReflected t = do t' <- reify ist t
-                        runTac autoSolve ist t'
+                        runTac autoSolve ist fn t'
 
 -- | Prefix a name with the "Language.Reflection" namespace
 reflm :: String -> Name

@@ -805,7 +805,7 @@ updateProblems ctxt ns ps inj holes = up ns ps where
                      (ns', (x',y',env',err', um) : ps')
 
 -- attempt to solve remaining problems with match_unify
-matchProblems all ctxt ps inj holes = up [] ps where
+matchProblems all ns ctxt ps inj holes = up ns ps where
   up ns [] = (ns, [])
   up ns ((x, y, env, err, um) : ps) 
        | all || um == Match =
@@ -860,15 +860,19 @@ processTactic UnifyProblems ps
                    notunified = updateNotunified ns' (notunified ps),
                    holes = holes ps \\ (map fst ns') }, plog ps)
 processTactic (MatchProblems all) ps
-    = let (ns', probs') = matchProblems all (context ps)
+    = let (ns', probs') = matchProblems all [] (context ps)
                                             (problems ps)
                                             (injective ps)
                                             (holes ps)
-          pterm' = updateSolved ns' (pterm ps) in
-      return (ps { pterm = pterm', solved = Nothing, problems = probs',
+          (ns'', probs'') = matchProblems all ns' (context ps)
+                                           probs'
+                                           (injective ps)
+                                           (holes ps)
+          pterm' = updateSolved ns'' (pterm ps) in
+        return (ps { pterm = pterm', solved = Nothing, problems = probs'',
                    previous = Just ps, plog = "",
-                   notunified = updateNotunified ns' (notunified ps),
-                   holes = holes ps \\ (map fst ns') }, plog ps)
+                   notunified = updateNotunified ns'' (notunified ps),
+                   holes = holes ps \\ (map fst ns'') }, plog ps)
 processTactic t ps
     = case holes ps of
         [] -> fail "Nothing to fill in."

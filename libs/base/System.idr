@@ -5,6 +5,7 @@ import Prelude
 %default partial
 %access public
 
+||| Get the command-line arguments that the program was called with.
 getArgs : IO (List String)
 getArgs = do n <- numArgs
              ga' [] 0 n
@@ -20,8 +21,8 @@ getArgs = do n <- numArgs
                     do arg <- getArg i
                        ga' (arg :: acc) (i+1) n
 
--- Retrieves an value from the environment, if the given key is present,
--- otherwise it returns Nothing.
+||| Retrieves an value from the environment, if the given key is present,
+||| otherwise it returns Nothing.
 getEnv : String -> IO (Maybe String)
 getEnv key = do
     str_ptr <- getEnv'
@@ -33,15 +34,15 @@ getEnv key = do
     getEnv' : IO String
     getEnv' = mkForeign (FFun "getenv" [FString] FString) key
 
--- Sets an environment variable with a given value.
--- Returns true if the operation was successful.
+||| Sets an environment variable with a given value.
+||| Returns true if the operation was successful.
 setEnv : String -> String -> IO Bool
 setEnv key value = do
   ok <- mkForeign (FFun "setenv" [FString, FString, FInt] FInt) key value 1
   return (ok == 0)
 
--- Unsets an environment variable.
--- Returns true if the variable was able to be unset.
+||| Unsets an environment variable.
+||| Returns true if the variable was able to be unset.
 unsetEnv : String -> IO Bool
 unsetEnv key = do
   ok <- mkForeign (FFun "unsetenv" [FString] FInt) key
@@ -68,8 +69,13 @@ getEnvironment = getAllPairs 0 []
          then return $ reverse $ map splitEq acc
          else getAllPairs (n + 1) (envPair :: acc)
 
+||| Quit with a particular exit code
 exit : Int -> IO ()
 exit code = mkForeign (FFun "exit" [FInt] FUnit) code
+
+||| Get the Unix time
+time : IO Int
+time = mkForeign (FFun "idris_time" [] FInt)
 
 usleep : Int -> IO ()
 usleep i = mkForeign (FFun "usleep" [FInt] FUnit) i

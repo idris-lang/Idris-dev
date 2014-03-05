@@ -1,13 +1,16 @@
-module Prelude.Either
+ module Prelude.Either
 
 import Builtins
 
 import Prelude.Maybe
 import Prelude.List
 
-data Either a b
-  = Left a
-  | Right b
+||| A sum type
+data Either a b =
+  ||| One possibility of the sum, conventionally used to represent errors
+  Left a |
+  ||| The other possibility, conventionally used to represent success
+  Right b
 
 --------------------------------------------------------------------------------
 -- Syntactic tests
@@ -25,11 +28,16 @@ isRight (Right r) = True
 -- Misc.
 --------------------------------------------------------------------------------
 
+||| Perform a case analysis on a Boolean, providing clients with a `so` proof
 choose : (b : Bool) -> Either (so b) (so (not b))
 choose True  = Left oh
 choose False = Right oh
 
-either : (a -> c) -> (b -> c) -> Either a b -> c
+||| Simply-typed eliminator for Either
+||| @ f the action to take on Left
+||| @ g the action to take on Right
+||| @ e the sum to analyze
+either : (f : a -> c) -> (g : b -> c) -> (e : Either a b) -> c
 either l r (Left x)  = l x
 either l r (Right x) = r x
 

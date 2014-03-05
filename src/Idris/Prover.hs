@@ -59,7 +59,7 @@ prove :: Context -> Bool -> Name -> Type -> Idris ()
 prove ctxt lit n ty
     = do let ps = initElaborator n ctxt ty
          ideslavePutSExp "start-proof-mode" n
-         (tm, prf) <- ploop True ("-" ++ show n) [] (ES (ps, []) "" Nothing) Nothing
+         (tm, prf) <- ploop n True ("-" ++ show n) [] (ES (ps, []) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm
          iputStrLn $ showProof lit n prf
          i <- getIState
@@ -161,8 +161,8 @@ receiveInput e =
        Just (Interpret cmd) -> return (Just cmd)
        Nothing -> return Nothing
 
-ploop :: Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
-ploop d prompt prf e h
+ploop :: Name -> Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
+ploop fn d prompt prf e h
     = do i <- getIState
          when d $ dumpState i (proof e)
          (x, h') <-
@@ -260,7 +260,7 @@ ploop d prompt prf e h
                                            return (False, e, False, prf))
                                          (\err -> do putIState ist ; ierror err)
               Success tac -> do (_, e) <- elabStep e saveState
-                                (_, st) <- elabStep e (runTac True i tac)
+                                (_, st) <- elabStep e (runTac True i fn tac)
 --                               trace (show (problems (proof st))) $
                                 iPrintResult ""
                                 return (True, st, False, prf ++ [step]))
@@ -269,5 +269,5 @@ ploop d prompt prf e h
          ideslavePutSExp "write-proof-state" (prf', length prf')
          if done then do (tm, _) <- elabStep st get_term
                          return (tm, prf')
-                 else ploop d prompt prf' st h'
+                 else ploop fn d prompt prf' st h'
   where envCtxt env ctxt = foldl (\c (n, b) -> addTyDecl n Bound (binderTy b) c) ctxt env

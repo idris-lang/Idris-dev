@@ -87,7 +87,7 @@ import System.IO
 @
 -}
 moduleHeader :: IdrisParser [String]
-moduleHeader =     try (do noDocCommentHere '|' "Modules cannot have documentation comments"
+moduleHeader =     try (do noDocCommentHere "Modules cannot have documentation comments"
                            reserved "module"
                            i <- identifier
                            option ';' (lchar ';')
@@ -315,7 +315,7 @@ fnDecl' syn = checkFixity $
               do (doc, fc, opts', n, acc) <- try (do
                         pushIndent
                         ist <- get
-                        doc <- option "" (docComment '|')
+                        doc <- option ("", []) docComment
                         ist <- get
                         let initOpts = if default_total ist
                                           then [TotalFn]
@@ -331,7 +331,7 @@ fnDecl' syn = checkFixity $
                  ty <- typeExpr (allowImp syn)
                  terminator
                  addAcc n acc
-                 return (PTy doc syn fc opts' n ty)
+                 return (PTy (fst doc) (snd doc) syn fc opts' n ty)
             <|> postulate syn
             <|> caf syn
             <|> pattern syn
@@ -344,7 +344,7 @@ fnDecl' syn = checkFixity $
                                             unless fOk . fail $
                                               "Missing fixity declaration for " ++ show n
                                             return decl
-          getName (PTy _ _ _ _ n _) = Just n
+          getName (PTy _ _ _ _ _ n _) = Just n
           getName _ = Nothing
           fixityOK (NS n _) = fixityOK n
           fixityOK (UN n)  | all (flip elem opChars) (str n) =
@@ -413,7 +413,7 @@ Postulate ::=
 @
 -}
 postulate :: SyntaxInfo -> IdrisParser PDecl
-postulate syn = do doc <- try $ do doc <- option "" (docComment '|')
+postulate syn = do doc <- try $ do doc <- option ("", []) docComment
                                    pushIndent
                                    reserved "postulate"
                                    return doc
@@ -431,7 +431,7 @@ postulate syn = do doc <- try $ do doc <- option "" (docComment '|')
                    fc <- getFC
                    terminator
                    addAcc n acc
-                   return (PPostulate doc syn fc opts' n ty)
+                   return (PPostulate (fst doc) syn fc opts' n ty)
                  <?> "postulate"
 
 {- | Parses a using declaration
@@ -561,7 +561,7 @@ Class ::=
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
 class_ syn = do (doc, acc) <- try (do
-                  doc <- option "" (docComment '|')
+                  doc <- option ("", []) docComment
                   acc <- optional accessibility
                   return (doc, acc))
                 reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- fnName
@@ -569,7 +569,7 @@ class_ syn = do (doc, acc) <- try (do
                 cs <- many carg
                 ds <- option [] (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass doc syn fc cons n cs ds]
+                return [PClass (fst doc) syn fc cons n cs ds]
              <?> "type-class declaration"
   where
     carg :: IdrisParser (Name, PTerm)
@@ -1039,18 +1039,25 @@ totality
 {- | Parses a type provider
 
 @
-Provider ::= '%' 'provide' '(' FnName TypeSig ')' 'with' Expr;
+Provider ::= '%' 'provide' Provider_What? '(' FnName TypeSig ')' 'with' Expr;
+ProviderWhat ::= 'proof' | 'term' | 'type' | 'postulate'
 @
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do try (lchar '%' *> reserved "provide");
+                  what <- provideWhat
                   lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
                   fc <- getFC
                   reserved "with"
                   e <- expr syn
-                  return  [PProvider syn fc n t e]
+                  return  [PProvider syn fc what n t e]
                <?> "type provider"
-
+  where provideWhat :: IdrisParser ProvideWhat
+        provideWhat = option ProvAny
+                        (      ((reserved "proof" <|> reserved "term" <|> reserved "type") *>
+                                pure ProvTerm)
+                           <|> (reserved "postulate" *> pure ProvPostulate)
+                   <?> "provider variety")
 {- | Parses a transform
 
 @
@@ -1219,56 +1226,60 @@ loadSource h lidr f
                   mapM_ (addIBC . IBCImport) [realName | (realName, alias, fc) <- imports]
                   let syntax = defaultSyntax{ syn_namespace = reverse mname }
                   ds' <- parseProg syntax f file pos
-                  unless (null ds') $ do
-                    let ds = namespaces mname ds'
-                    logLvl 3 (show $ showDecls True ds)
-                    i <- getIState
-                    logLvl 10 (show (toAlist (idris_implicits i)))
-                    logLvl 3 (show (idris_infixes i))
-                    -- Now add all the declarations to the context
-                    v <- verbose
-                    when v $ ihputStrLn h $ "Type checking " ++ f
-                    -- we totality check after every Mutual block, so if
-                    -- anything is a single definition, wrap it in a
-                    -- mutual block on its own
-                    elabDecls toplevel (map toMutual ds)
-                    i <- getIState
-                    -- simplify every definition do give the totality checker
-                    -- a better chance
-                    mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
-                                    updateContext (simplifyCasedef n))
-                             (map snd (idris_totcheck i))
-                    -- build size change graph from simplified definitions
-                    iLOG "Totality checking"
-                    i <- getIState
-                    mapM_ buildSCG (idris_totcheck i)
-                    mapM_ checkDeclTotality (idris_totcheck i)
 
-                    -- Redo totality check for deferred names
-                    let deftots = idris_defertotcheck i
-                    iLOG $ "Totality checking " ++ show deftots
-                    mapM_ (\x -> do tot <- getTotality x
-                                    case tot of
-                                         Total _ -> setTotality x Unchecked
-                                         _ -> return ()) (map snd deftots)
-                    mapM_ buildSCG deftots
-                    mapM_ checkDeclTotality deftots
+                  -- Parsing done, now process declarations
 
-                    iLOG ("Finished " ++ f)
-                    ibcsd <- valIBCSubDir i
-                    iLOG "Universe checking"
-                    iucheck
-                    let ibc = ibcPathNoFallback ibcsd f
-                    i <- getIState
-                    addHides (hide_list i)
-                    ok <- noErrors
-                    when ok $
-                      idrisCatch (do writeIBC f ibc; clearIBC)
-                                 (\c -> return ()) -- failure is harmless
-                    i <- getIState
-                    putIState (i { default_total = def_total,
-                                   hide_list = [] })
-                    return ()
+                  let ds = namespaces mname ds'
+                  logLvl 3 (show $ showDecls True ds)
+                  i <- getIState
+                  logLvl 10 (show (toAlist (idris_implicits i)))
+                  logLvl 3 (show (idris_infixes i))
+                  -- Now add all the declarations to the context
+                  v <- verbose
+                  when v $ ihputStrLn h $ "Type checking " ++ f
+                  -- we totality check after every Mutual block, so if
+                  -- anything is a single definition, wrap it in a
+                  -- mutual block on its own
+                  elabDecls toplevel (map toMutual ds)
+                  i <- getIState
+                  -- simplify every definition do give the totality checker
+                  -- a better chance
+                  mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
+                                  updateContext (simplifyCasedef n))
+                           (map snd (idris_totcheck i))
+                  -- build size change graph from simplified definitions
+                  iLOG "Totality checking"
+                  i <- getIState
+                  mapM_ buildSCG (idris_totcheck i)
+                  mapM_ checkDeclTotality (idris_totcheck i)
+
+                  -- Redo totality check for deferred names
+                  let deftots = idris_defertotcheck i
+                  iLOG $ "Totality checking " ++ show deftots
+                  mapM_ (\x -> do tot <- getTotality x
+                                  case tot of
+                                       Total _ -> setTotality x Unchecked
+                                       _ -> return ()) (map snd deftots)
+                  mapM_ buildSCG deftots
+                  mapM_ checkDeclTotality deftots
+
+                  iLOG ("Finished " ++ f)
+                  ibcsd <- valIBCSubDir i
+                  iLOG "Universe checking"
+                  iucheck
+                  let ibc = ibcPathNoFallback ibcsd f
+                  i <- getIState
+                  addHides (hide_list i)
+
+                  -- Finally, write an ibc if checking was successful
+
+                  ok <- noErrors
+                  when ok $
+                    idrisCatch (do writeIBC f ibc; clearIBC)
+                               (\c -> return ()) -- failure is harmless
+                  i <- getIState
+                  putIState (i { default_total = def_total,
+                                 hide_list = [] })
                   return ()
   where
     namespaces :: [String] -> [PDecl] -> [PDecl]

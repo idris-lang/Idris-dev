@@ -66,6 +66,7 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
                    -- core or another machine. 'id' is a valid implementation
             | LVMPtr
             | LNullPtr
+            | LRegisterPtr
             | LNoOp
   deriving (Show, Eq)
 
@@ -83,6 +84,7 @@ data FType = FArith ArithTy
            | FString
            | FUnit
            | FPtr
+           | FManagedPtr
            | FAny
   deriving (Show, Eq)
 

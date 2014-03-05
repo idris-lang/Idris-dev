@@ -21,8 +21,4 @@ void* idris_stdin();
 
 char* getEnvPair(int i);
 
-int idris_time();
-
-void idris_forceGC();
-
 #endif

@@ -262,10 +262,10 @@ addCoercion :: Name -> Idris ()
 addCoercion n = do i <- getIState
                    putIState $ i { idris_coercions = nub $ n : idris_coercions i }
 
-addDocStr :: Name -> String -> Idris ()
-addDocStr n doc
+addDocStr :: Name -> String -> [(Name, String)] -> Idris ()
+addDocStr n doc args
    = do i <- getIState
-        putIState $ i { idris_docstrings = addDef n doc (idris_docstrings i) }
+        putIState $ i { idris_docstrings = addDef n (doc, args) (idris_docstrings i) }
 
 addNameHint :: Name -> Name -> Idris ()
 addNameHint ty n
@@ -460,6 +460,7 @@ addDeferredTyCon = addDeferred' (TCon 0 0)
 addDeferred' :: NameType -> [(Name, (Int, Maybe Name, Type, Bool))] -> Idris ()
 addDeferred' nt ns
   = do mapM_ (\(n, (i, _, t, _)) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
+       mapM_ (\(n, _) -> when (not (n `elem` primDefs)) $ addIBC (IBCMetavar n)) ns
        i <- getIState
        putIState $ i { idris_metavars = map (\(n, (i, top, _, isTopLevel)) -> (n, (top, i, isTopLevel))) ns ++
                                             idris_metavars i }
@@ -475,7 +476,12 @@ solveDeferred :: Name -> Idris ()
 solveDeferred n = do i <- getIState
                      putIState $ i { idris_metavars =
                                        filter (\(n', _) -> n/=n')
-                                          (idris_metavars i) }
+                                          (idris_metavars i),
+                                     ibc_write =
+                                       filter (notMV n) (ibc_write i)
+                                          }
+    where notMV n (IBCMetavar n') = not (n == n')
+          notMV n _ = True
 
 getUndefined :: Idris [Name]
 getUndefined = do i <- getIState
@@ -993,12 +999,12 @@ expandParams dec ps ns infs tm = en tm
 expandParamsD :: Bool -> -- True = RHS only
                  IState ->
                  (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PDecl -> PDecl
-expandParamsD rhsonly ist dec ps ns (PTy doc syn fc o n ty)
+expandParamsD rhsonly ist dec ps ns (PTy doc argdocs syn fc o n ty)
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc syn fc o (dec n) (piBindp expl_param ps (expandParams dec ps ns [] ty))
+              PTy doc argdocs syn fc o (dec n) (piBindp expl_param ps (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc syn fc o n (expandParams dec ps ns [] ty)
+              PTy doc argdocs syn fc o n (expandParams dec ps ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PPostulate doc syn fc o n ty)
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
@@ -1044,8 +1050,8 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     bnames (PDPair _ _ l Placeholder r) = bnames l ++ bnames r
     bnames _ = []
 
-expandParamsD rhs ist dec ps ns (PData doc syn fc co pd)
-    = PData doc syn fc co (expandPData pd)
+expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
+    = PData doc argDocs syn fc co (expandPData pd)
   where
     -- just do the type decl, leave constructors alone (parameters will be
     -- added implicitly)
@@ -1054,8 +1060,15 @@ expandParamsD rhs ist dec ps ns (PData doc syn fc co pd)
             then PDatadecl (dec n) (piBind ps (expandParams dec ps ns [] ty))
                            (map econ cons)
             else PDatadecl n (expandParams dec ps ns [] ty) (map econ cons)
-    econ (doc, n, t, fc, fs)
-       = (doc, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
+    econ (doc, argDocs, n, t, fc, fs)
+       = (doc, argDocs, dec n, piBindp impl ps (expandParams dec ps ns [] t), fc, fs)
+expandParamsD rhs ist dec ps ns (PRecord doc syn fc tn tty cdoc cn cty)
+   = if tn `elem` ns
+        then PRecord doc syn fc (dec tn) (piBind ps (expandParams dec ps ns [] tty))
+                     cdoc (dec cn) conty
+        else PRecord doc syn fc (dec tn) (expandParams dec ps ns [] tty)
+                     cdoc (dec cn) conty
+   where conty = piBindp impl ps (expandParams dec ps ns [] cty)
 expandParamsD rhs ist dec ps ns (PParams f params pds)
    = PParams f (ps ++ map (mapsnd (expandParams dec ps ns [])) params)
                (map (expandParamsD True ist dec ps ns) pds)
@@ -1112,6 +1125,7 @@ getPriority i tm = 1 -- pri tm
     pri Placeholder = 1
     pri _ = 3
 
+
 addStatics :: Name -> Term -> PTerm -> Idris ()
 addStatics n tm ptm =
     do let (statics, dynamics) = initStatics tm ptm
@@ -1145,8 +1159,8 @@ addStatics n tm ptm =
     -- if a name appears in a type class or tactic implicit index, it doesn't
     -- affect its 'uniquely inferrable' from a static status since these are
     -- resolved by searching.
-    searchArg (Constraint _ _ _) = True
-    searchArg (TacImp _ _ _ _) = True
+    searchArg (Constraint _ _) = True
+    searchArg (TacImp _ _ _) = True
     searchArg _ = False
 
     staticList sts (Bind n (Pi _) sc) = (n `elem` sts) : staticList sts sc
@@ -1173,14 +1187,14 @@ addUsingConstraints syn fc t
          -- if all of args in ns, then add it
          doAdd (UConstraint c args : cs) ns t
              | all (\n -> elem n ns) args
-                   = PPi (Constraint [] Dynamic "") (sMN 0 "cu")
+                   = PPi (Constraint [] Dynamic) (sMN 0 "cu")
                          (mkConst c args) (doAdd cs ns t)
              | otherwise = doAdd cs ns t
 
          mkConst c args = PApp fc (PRef fc c)
-                             (map (\n -> PExp 0 [] (PRef fc n) "") args)
+                             (map (\n -> PExp 0 [] (PRef fc n)) args)
 
-         getConstraints (PPi (Constraint _ _ _) _ c sc)
+         getConstraints (PPi (Constraint _ _) _ c sc)
              = getcapp c ++ getConstraints sc
          getConstraints (PPi _ _ c sc) = getConstraints sc
          getConstraints _ = []
@@ -1190,7 +1204,7 @@ addUsingConstraints syn fc t
                   return (UConstraint c ns)
          getcapp _ = []
 
-         getName (PExp _ _ (PRef _ n) _) = return n
+         getName (PExp _ _ (PRef _ n)) = return n
          getName _ = []
 
 -- Add implicit Pi bindings for any names in the term which appear in an
@@ -1240,34 +1254,34 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
        = do (decls, ns) <- get
             let isn = concatMap (namesIn uvars ist) (map getTm as)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PPi (Imp l _ doc _) n ty sc)
+    imps top env (PPi (Imp l _ _) n ty sc)
         = do let isn = nub (namesIn uvars ist ty) `dropAll` [n]
              (decls , ns) <- get
-             put (PImp (getPriority ist ty) True l n Placeholder doc : decls,
+             put (PImp (getPriority ist ty) True l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Exp l _ doc _) n ty sc)
+    imps top env (PPi (Exp l _ _) n ty sc)
         = do let isn = nub (namesIn uvars ist ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PExp (getPriority ist ty) l Placeholder doc : decls,
+             put (PExp (getPriority ist ty) l Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Constraint l _ doc) n ty sc)
+    imps top env (PPi (Constraint l _) n ty sc)
         = do let isn = nub (namesIn uvars ist ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PConstraint 10 l Placeholder doc : decls,
+             put (PConstraint 10 l Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (TacImp l _ scr doc) n ty sc)
+    imps top env (PPi (TacImp l _ scr) n ty sc)
         = do let isn = nub (namesIn uvars ist ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PTacImplicit 10 l n scr Placeholder doc : decls,
+             put (PTacImplicit 10 l n scr Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PEq _ l r)
@@ -1308,8 +1322,8 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     pibind using []     sc = sc
     pibind using (n:ns) sc
       = case lookup n using of
-            Just ty -> PPi (Imp [] Dynamic "" False) n ty (pibind using ns sc)
-            Nothing -> PPi (Imp [] Dynamic "" False) n Placeholder
+            Just ty -> PPi (Imp [] Dynamic False) n ty (pibind using ns sc)
+            Nothing -> PPi (Imp [] Dynamic False) n Placeholder
                                    (pibind using ns sc)
 
 -- Add implicit arguments in function calls
@@ -1425,7 +1439,7 @@ aiFn inpat True ist fc f ds []
 --                            any constructor alts || any allImp ialts))
                         then aiFn inpat False ist fc f ds [] -- use it as a constructor
                         else Right $ PPatvar fc f
-    where imp (PExp _ _ _ _) = False
+    where imp (PExp _ _ _) = False
           imp _ = True
 --           allImp [] = False
           allImp xs = all imp xs
@@ -1474,30 +1488,30 @@ aiFn inpat expat ist fc f ds as
 
 
     insertImpl :: [PArg] -> [PArg] -> [PArg]
-    insertImpl (PExp p l ty _ : ps) (PExp _ _ tm d : given) =
-                                 PExp p l tm d : insertImpl ps given
-    insertImpl (PConstraint p l ty _ : ps) (PConstraint _ _ tm d : given) =
-                                 PConstraint p l tm d : insertImpl ps given
-    insertImpl (PConstraint p l ty d : ps) given =
-                 PConstraint p l (PResolveTC fc) d : insertImpl ps given
-    insertImpl (PImp p _ l n ty d : ps) given =
+    insertImpl (PExp p l ty : ps) (PExp _ _ tm : given) =
+                                 PExp p l tm : insertImpl ps given
+    insertImpl (PConstraint p l ty : ps) (PConstraint _ _ tm : given) =
+                                 PConstraint p l tm : insertImpl ps given
+    insertImpl (PConstraint p l ty : ps) given =
+                 PConstraint p l (PResolveTC fc) : insertImpl ps given
+    insertImpl (PImp p _ l n ty : ps) given =
         case find n given [] of
-            Just (tm, given') -> PImp p False l n tm "" : insertImpl ps given'
-            Nothing ->           PImp p True l n Placeholder "" : insertImpl ps given
-    insertImpl (PTacImplicit p l n sc' ty d : ps) given =
+            Just (tm, given') -> PImp p False l n tm : insertImpl ps given'
+            Nothing ->           PImp p True l n Placeholder : insertImpl ps given
+    insertImpl (PTacImplicit p l n sc' ty : ps) given =
       let sc = addImpl ist sc' in
         case find n given [] of
-            Just (tm, given') -> PTacImplicit p l n sc tm "" : insertImpl ps given'
+            Just (tm, given') -> PTacImplicit p l n sc tm : insertImpl ps given'
             Nothing -> if inpat
-                          then PTacImplicit p l n sc Placeholder "" : insertImpl ps given
-                          else PTacImplicit p l n sc sc "" : insertImpl ps given
+                          then PTacImplicit p l n sc Placeholder : insertImpl ps given
+                          else PTacImplicit p l n sc sc : insertImpl ps given
     insertImpl expected [] = []
     insertImpl _        given  = given
 
     find n []               acc = Nothing
-    find n (PImp _ _ _ n' t _ : gs) acc
+    find n (PImp _ _ _ n' t : gs) acc
          | n == n' = Just (t, reverse acc ++ gs)
-    find n (PTacImplicit _ _ n' _ t _ : gs) acc
+    find n (PTacImplicit _ _ n' _ t : gs) acc
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
 
@@ -1527,16 +1541,16 @@ stripLinear i tm = evalState (sl tm) [] where
     sl (PApp fc fn args) = do fn' <- sl fn
                               args' <- mapM slA args
                               return $ PApp fc fn' args'
-       where slA (PImp p m l n t d) = do t' <- sl t
-                                         return $ PImp p m l n t' d
-             slA (PExp p l t d) = do t' <- sl t
-                                     return $ PExp p l t' d
-             slA (PConstraint p l t d)
+       where slA (PImp p m l n t) = do t' <- sl t
+                                       return $ PImp p m l n t'
+             slA (PExp p l t) = do t' <- sl t
+                                   return $ PExp p l t'
+             slA (PConstraint p l t)
                                 = do t' <- sl t
-                                     return $ PConstraint p l t' d
-             slA (PTacImplicit p l n sc t d)
+                                     return $ PConstraint p l t'
+             slA (PTacImplicit p l n sc t)
                                 = do t' <- sl t
-                                     return $ PTacImplicit p l n sc t' d
+                                     return $ PTacImplicit p l n sc t'
     sl x = return x
 
 -- Remove functions which aren't applied to anything, which must then

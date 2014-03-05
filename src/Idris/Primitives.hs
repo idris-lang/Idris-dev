@@ -172,7 +172,9 @@ primitives =
     (0, LStdIn) partial,
    Prim (sUN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
     (0, LNullPtr) total,
-
+   -- Managed pointer registration
+   Prim (sUN "prim__registerPtr") (ty [PtrType, AType (ATInt ITNative)] ManagedPtrType) 2 (p_cantreduce)
+    (2, LRegisterPtr) total,
    -- Buffers
    Prim (sUN "prim__allocate") (ty [AType (ATInt (ITFixed IT64))] BufferType) 1 (p_cantreduce)
     (1, LAllocate) total,

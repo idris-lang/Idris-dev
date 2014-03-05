@@ -57,12 +57,12 @@ buildPkg warnonly (install, fp)
                             _ -> return ()
                        -- Also give up if there are metavariables to solve
                        case (map fst (idris_metavars ist) \\ primDefs) of
-                            [] -> when install $ installPkg pkgdesc
-                            ms -> do if install 
-                                        then putStrLn "Can't install: there are undefined metavariables:"
-                                        else putStrLn "There are undefined metavariables:"
-                                     putStrLn $ "\t" ++ show ms 
-                                     exitWith (ExitFailure 1)
+                            _ -> when install $ installPkg pkgdesc
+--                             ms -> do if install 
+--                                         then putStrLn "Can't install: there are undefined metavariables:"
+--                                         else putStrLn "There are undefined metavariables:"
+--                                      putStrLn $ "\t" ++ show ms 
+--                                      exitWith (ExitFailure 1)
 
 -- | Type check packages only
 --
