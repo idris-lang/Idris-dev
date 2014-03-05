@@ -20,7 +20,7 @@ boolOp : (a -> a -> Int) -> a -> a -> Bool
 boolOp op x y = intToBool (op x y)
 
 -- ---------------------------------------------------------- [ Equality Class ]
--- | The Eq class defines inequality and equality.
+||| The Eq class defines inequality and equality.
 class Eq a where
     (==) : a -> a -> Bool
     (/=) : a -> a -> Bool
@@ -65,7 +65,7 @@ instance Eq Ordering where
     GT == GT = True
     _  == _  = False
 
--- | The Ord class defines comparison operations on ordered data types.
+||| The Ord class defines comparison operations on ordered data types.
 class Eq a => Ord a where
     compare : a -> a -> Ordering
 
@@ -131,14 +131,14 @@ instance (Ord a, Ord b) => Ord (a, b) where
       else compare xr yr
 
 -- --------------------------------------------------------- [ Numerical Class ]
--- | The Num class defines basic numerical arithmetic.
+||| The Num class defines basic numerical arithmetic.
 class Num a where
     (+) : a -> a -> a
     (-) : a -> a -> a
     (*) : a -> a -> a
-    -- | Absolute value
+    ||| Absolute value
     abs : a -> a
-    -- | Conversion from Integer.
+    ||| Conversion from Integer.
     fromInteger : Integer -> a
 
 instance Num Integer where
@@ -245,11 +245,11 @@ instance Ord Bits64 where
 -- ------------------------------------------------------------- [ Bounded ]
 
 class MinBound b where
-  -- | The lower bound for the type
+  ||| The lower bound for the type
   minBound : b
 
 class MaxBound b where
-  -- | The upper bound for the type
+  ||| The upper bound for the type
   maxBound : b
 
 instance MinBound Bits16 where
@@ -273,7 +273,7 @@ instance MaxBound Bits64 where
 
 -- ------------------------------------------------------------- [ Fractionals ]
 
--- | Fractional division of two Floats.
+||| Fractional division of two Floats.
 (/) : Float -> Float -> Float
 (/) = prim__divFloat
 

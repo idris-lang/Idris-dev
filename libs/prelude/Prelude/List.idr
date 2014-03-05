@@ -269,17 +269,17 @@ intersperse sep (x::xs) = x :: intersperse' sep xs
 intercalate : List a -> List (List a) -> List a
 intercalate sep l = concat $ intersperse sep l
 
--- | Transposes rows and columns of a list of lists.
---
--- > transpose [[1, 2], [3, 4]] = [[1, 3], [2, 4]]
---
--- This also works for non square scenarios, thus
--- involution does not always hold:
---
--- > transpose [[], [1, 2]] = [[1], [2]]
--- > transpose (transpose [[], [1, 2]]) = [[1, 2]]
---
--- TODO: Solution which satisfies the totality checker?
+||| Transposes rows and columns of a list of lists.
+|||
+||| > transpose [[1, 2], [3, 4]] = [[1, 3], [2, 4]]
+|||
+||| This also works for non square scenarios, thus
+||| involution does not always hold:
+|||
+||| > transpose [[], [1, 2]] = [[1], [2]]
+||| > transpose (transpose [[], [1, 2]]) = [[1, 2]]
+|||
+||| TODO: Solution which satisfies the totality checker?
 %assert_total
 transpose : List (List a) -> List (List a)
 transpose [] = []

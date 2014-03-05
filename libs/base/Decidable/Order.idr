@@ -21,7 +21,7 @@ class (Preorder t po) => Poset t (po : t -> t -> Type) where
   total antisymmetric : (a : t) -> (b : t) -> po a b -> po b a -> a = b
 
 class (Poset t to) => Ordered t (to : t -> t -> Type) where
-  total order : (a : t) -> (b : t) -> Either (to a b) (to b a) 
+  total order : (a : t) -> (b : t) -> Either (to a b) (to b a)
 
 minimum : (Ordered t to) => t -> t -> t
 minimum x y with (order x y)

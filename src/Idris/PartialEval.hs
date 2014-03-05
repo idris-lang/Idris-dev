@@ -103,7 +103,7 @@ mkPE_TermDecl ist newname sname ns
   deImp (PApp fc t as) = PApp fc t (map deImpArg as)
   deImp t = t
 
-  deImpArg a@(PImp _ _ _ _ _ _) = a { getTm = Placeholder }
+  deImpArg a@(PImp _ _ _ _ _) = a { getTm = Placeholder }
   deImpArg a = a
 
 data PEArgType = ImplicitS | ImplicitD
@@ -124,7 +124,7 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
          | imparg imp = (ImplicitD, tm)
          | otherwise = (ExplicitD, (P Ref (sUN (show n ++ "arg")) Erased))
 
-    imparg (PExp _ _ _ _) = False
+    imparg (PExp _ _ _) = False
     imparg _ = True
 
     buildApp env [] [] _ _ = []

@@ -10,9 +10,12 @@ import Prelude.Classes
 %access public
 %default total
 
-%elim data Nat
-  = Z
-  | S Nat
+||| Unary natural numbers
+%elim data Nat =
+  ||| Zero
+  Z |
+  ||| Successor
+  S Nat
 
 -- name hints for interactive editing
 %name Nat k,j,i,n,m
@@ -33,14 +36,19 @@ isSucc (S n) = True
 -- Basic arithmetic functions
 --------------------------------------------------------------------------------
 
-total plus : Nat -> Nat -> Nat
+||| Add two natural numbers.
+||| @ n the number to case-split on
+||| @ m the other number
+total plus : (n, m : Nat) -> Nat
 plus Z right        = right
 plus (S left) right = S (plus left right)
 
+||| Multiply natural numbers
 total mult : Nat -> Nat -> Nat
 mult Z right        = Z
 mult (S left) right = plus right $ mult left right
 
+||| Convert an Integer to a Nat, mapping negative numbers to 0
 fromIntegerNat : Integer -> Nat
 fromIntegerNat 0 = Z
 fromIntegerNat n =
@@ -49,15 +57,18 @@ fromIntegerNat n =
   else
     Z
 
+||| Convert a Nat to an Integer
 toIntegerNat : Nat -> Integer
 toIntegerNat Z = 0
 toIntegerNat (S k) = 1 + toIntegerNat k
 
+||| Subtract natural numbers. If the second number is larger than the first, return 0.
 total minus : Nat -> Nat -> Nat
 minus Z        right     = Z
 minus left     Z         = left
 minus (S left) (S right) = minus left right
 
+||| Exponentiation of natural numbers
 total power : Nat -> Nat -> Nat
 power base Z       = S Z
 power base (S exp) = mult base $ power base exp
@@ -74,33 +85,46 @@ hyper (S pn)   a (S pb) = hyper pn a (hyper (S pn) a pb)
 -- Comparisons
 --------------------------------------------------------------------------------
 
-data LTE  : Nat -> Nat -> Type where
+||| Proofs that `n` is less than or equal to `m`
+||| @ n the smaller number
+||| @ m the larger number
+data LTE  : (n, m : Nat) -> Type where
+  ||| Zero is the smallest Nat
   lteZero : LTE Z    right
+  ||| If n <= m, then n + 1 <= m + 1
   lteSucc : LTE left right -> LTE (S left) (S right)
 
+||| Greater than or equal to
 total GTE : Nat -> Nat -> Type
 GTE left right = LTE right left
 
+||| Strict less than
 total LT : Nat -> Nat -> Type
 LT left right = LTE (S left) right
 
+||| Strict greater than
 total GT : Nat -> Nat -> Type
 GT left right = LT right left
 
+||| Boolean test than one Nat is less than or equal to another
 total lte : Nat -> Nat -> Bool
 lte Z        right     = True
 lte left     Z         = False
 lte (S left) (S right) = lte left right
 
+||| Boolean test than one Nat is greater than or equal to another
 total gte : Nat -> Nat -> Bool
 gte left right = lte right left
 
+||| Boolean test than one Nat is strictly less than another
 total lt : Nat -> Nat -> Bool
 lt left right = lte (S left) right
 
+||| Boolean test than one Nat is strictly greater than another
 total gt : Nat -> Nat -> Bool
 gt left right = lt right left
 
+||| Find the least of two natural numbers
 total minimum : Nat -> Nat -> Nat
 minimum left right =
   if lte left right then
@@ -108,6 +132,7 @@ minimum left right =
   else
     right
 
+||| Find the greatest of two natural numbers
 total maximum : Nat -> Nat -> Nat
 maximum left right =
   if lte left right then
@@ -148,9 +173,11 @@ instance MinBound Nat where
 instance Cast Integer Nat where
   cast = fromInteger
 
+||| A wrapper for Nat that specifies the semigroup and monad instances that use (+)
 record Multiplicative : Type where
   getMultiplicative : Nat -> Multiplicative
 
+||| A wrapper for Nat that specifies the semigroup and monad instances that use (*)
 record Additive : Type where
   getAdditive : Nat -> Additive
 
@@ -210,6 +237,7 @@ instance Cast Nat Int where
 -- Auxilliary notions
 --------------------------------------------------------------------------------
 
+||| The predecessor of a natural number. `pred Z` is `Z`.
 total pred : Nat -> Nat
 pred Z     = Z
 pred (S n) = n
@@ -218,11 +246,13 @@ pred (S n) = n
 -- Fibonacci and factorial
 --------------------------------------------------------------------------------
 
+||| Fibonacci numbers
 total fib : Nat -> Nat
 fib Z         = Z
 fib (S Z)     = S Z
 fib (S (S n)) = fib (S n) + fib n
 
+||| Factorial function
 total fact : Nat -> Nat
 fact Z     = S Z
 fact (S n) = (S n) * fact n
@@ -283,10 +313,13 @@ lcm x y = divNat (x * y) (gcd x y)
 --------------------------------------------------------------------------------
 
 -- Succ
+
+||| S preserves equality
 total eqSucc : (left : Nat) -> (right : Nat) -> (p : left = right) ->
   S left = S right
 eqSucc left _ refl = refl
 
+||| S is injective
 total succInjective : (left : Nat) -> (right : Nat) -> (p : S left = S right) ->
   left = right
 succInjective left _ refl = refl

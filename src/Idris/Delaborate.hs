@@ -56,19 +56,24 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                                   _ -> PRef un n
     de env _ (Bind n (Lam ty) sc)
           = PLam n (de env [] ty) (de ((n,n):env) [] sc)
-    de env (PImp _ _ _ _ _ _:is) (Bind n (Pi ty) sc)
-          = PPi impl n (de env [] ty) (de ((n,n):env) is sc)
-    de env (PConstraint _ _ _ _:is) (Bind n (Pi ty) sc)
+    de env ((PImp { argopts = opts }):is) (Bind n (Pi ty) sc)
+          = PPi (Imp opts Dynamic False) n (de env [] ty) (de ((n,n):env) is sc)
+    de env (PConstraint _ _ _:is) (Bind n (Pi ty) sc)
           = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
-    de env (PTacImplicit _ _ _ tac _ _:is) (Bind n (Pi ty) sc)
+    de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi ty) sc)
           = PPi (tacimpl tac) n (de env [] ty) (de ((n,n):env) is sc)
-    de env _ (Bind n (Pi ty) sc)
+    de env (plic:is) (Bind n (Pi ty) sc)
+          = PPi (Exp (argopts plic) Dynamic False)
+                n
+                (de env [] ty)
+                (de ((n,n):env) is sc)
+    de env [] (Bind n (Pi ty) sc)
           = PPi expl n (de env [] ty) (de ((n,n):env) [] sc)
     de env _ (Bind n (Let ty val) sc)
         = PLet n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
     de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
     de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
-    de env _ (Bind n _ sc) = de ((n,n):env) [] sc
+    de env plic (Bind n bb sc) = de ((n,n):env) [] sc
     de env _ (Constant i) = PConstant i
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
@@ -112,10 +117,10 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un n) (map pexp args)
 
-    imp (PImp p m l n _ d) arg = PImp p m l n arg d
-    imp (PExp p l _ d)   arg = PExp p l arg d
-    imp (PConstraint p l _ d) arg = PConstraint p l arg d
-    imp (PTacImplicit p l n sc _ d) arg = PTacImplicit p l n sc arg d
+    imp (PImp p m l n _) arg = PImp p m l n arg
+    imp (PExp p l _)   arg = PExp p l arg
+    imp (PConstraint p l _) arg = PConstraint p l arg
+    imp (PTacImplicit p l n sc _) arg = PTacImplicit p l n sc arg
 
 -- | How far to indent sub-errors
 errorIndent :: Int
