@@ -1,7 +1,18 @@
 module Providers
 
+||| Type providers must build one of these in an IO computation.
 public
-data Provider a = Provide a | Error String | Postulate
+data Provider : (a : Type) -> Type where
+  ||| Return a term to be spliced in
+  ||| @ x the term to be spliced (i.e. the proof)
+  Provide : (x : a) -> Provider a
+
+  ||| Report an error to the user and stop compilation
+  ||| @ msg the error message
+  Error : (msg : String) -> Provider a
+
+  ||| Postulate the goal type
+  Postulate : Provider a
 
 -- instances
 instance Functor Provider where

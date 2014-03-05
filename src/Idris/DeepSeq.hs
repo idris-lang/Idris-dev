@@ -57,14 +57,14 @@ instance NFData ArgOpt where
         rnf _ = ()
 
 instance NFData Plicity where
-        rnf (Imp x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (Exp x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (Constraint x1 x2 x3)
+        rnf (Imp x1 x2 x3)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (TacImp x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (Exp x1 x2 x3)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (Constraint x1 x2)
+          = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (TacImp x1 x2 x3)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
 
 instance NFData FnOpt where
         rnf Inlinable = ()
@@ -84,18 +84,20 @@ instance NFData DataOpt where
 
 instance (NFData t) => NFData (PDecl' t) where
         rnf (PFix x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (PTy x1 x2 x3 x4 x5 x6)
+        rnf (PTy x1 x2 x3 x4 x5 x6 x7)
           = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
+              rnf x2 `seq`
+                rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()
         rnf (PPostulate x1 x2 x3 x4 x5 x6)
           = rnf x1 `seq`
               rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
         rnf (PClauses x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PCAF x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (PData x1 x2 x3 x4 x5)
+        rnf (PData x1 x2 x3 x4 x5 x6)
           = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
+              rnf x2 `seq`
+                rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
         rnf (PParams x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PNamespace x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PRecord x1 x2 x3 x4 x5 x6 x7 x8)
@@ -230,16 +232,15 @@ instance (NFData t) => NFData (PDo' t) where
         rnf (DoLetP x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
 
 instance (NFData t) => NFData (PArg' t) where
-        rnf (PImp x1 x2 x3 x4 x5 x6)
+        rnf (PImp x1 x2 x3 x4 x5)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
+        rnf (PExp x1 x2 x3)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (PConstraint x1 x2 x3)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (PTacImplicit x1 x2 x3 x4 x5)
           = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
-        rnf (PExp x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (PConstraint x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (PTacImplicit x1 x2 x3 x4 x5 x6)
-          = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
+              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
 
 instance NFData ClassInfo where
         rnf (CI x1 x2 x3 x4 x5 x6)

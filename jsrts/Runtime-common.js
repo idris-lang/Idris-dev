@@ -1,6 +1,3 @@
-var __IDRRT__ZERO = __IDRRT__bigInt("0");
-var __IDRRT__ONE = __IDRRT__bigInt("1");
-
 /** @constructor */
 var __IDRRT__Type = function(type) {
   this.type = type;

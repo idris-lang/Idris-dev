@@ -14,15 +14,17 @@ import Data.List
 -- TODO: Only include names with public/abstract accessibility
 
 data FunDoc = FD Name String
-                 [(Name, PTerm, Plicity)] -- args: name, ty, plicity
+                 [(Name, PTerm, Plicity, Maybe String)] -- args: name, ty, implicit, docs
                  PTerm -- function type
                  (Maybe Fixity)
+  deriving Show
 
 data Docs = FunDoc FunDoc
           | DataDoc FunDoc -- type constructor docs
                     [FunDoc] -- data constructor docs
           | ClassDoc Name String -- class docs
                      [FunDoc] -- method docs
+  deriving Show
 
 showDoc "" = empty
 showDoc x = text "  -- " <> text x
@@ -31,23 +33,32 @@ pprintFD :: Bool -> FunDoc -> Doc OutputAnnotation
 pprintFD imp (FD n doc args ty f)
     = nest 4 (prettyName imp [] n <+> colon <+> prettyImp imp ty <$> showDoc doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
-              let argshow = mapMaybe showArg args in
+              let argshow = showArgs args [] in
               if not (null argshow)
                 then nest 4 $ text "Arguments:" <$> vsep argshow
                 else empty)
 
-    where showArg (n, ty, arg@(Exp {}))
-             = Just $ bindingOf n False <+> colon <+> prettyImp imp ty <>
-                      showDoc (pdocstr arg) <> line
-          showArg (n, ty, arg@(Constraint {}))
-             = Just $ text "Class constraint" <+>
-                      prettyImp imp ty <> showDoc (pdocstr arg) <> line
-          showArg (n, ty, arg@(Imp {}))
+    where showArgs ((n, ty, Exp {}, d):args) bnd
+             = bindingOf n False <+> colon <+>
+               pprintPTerm imp bnd ty <>
+               showDoc (maybe "" id d) <> line
+               :
+               showArgs args ((n, False):bnd)
+          showArgs ((n, ty, Constraint {}, d):args) bnd
+             = text "Class constraint" <+>
+               pprintPTerm imp bnd ty <> showDoc (maybe "" id d) <> line
+               :
+               showArgs args ((n, True):bnd)
+          showArgs ((n, ty, Imp {}, d):args) bnd
            | not (null doc)
-             = Just $ text "(implicit)" <+>
-                      bindingOf n True <+> colon <+> prettyImp imp ty
-                      <> showDoc (pdocstr arg) <> line
-          showArg (n, _, _) = Nothing
+             = text "(implicit)" <+>
+               bindingOf n True <+> colon <+>
+               pprintPTerm imp bnd ty <>
+               showDoc (maybe "" id d) <> line
+               :
+               showArgs args ((n, True):bnd)
+          showArgs ((n, _, _, _):args) bnd = showArgs args ((n, True):bnd)
+          showArgs []                  _ = []
 
 
 
@@ -81,7 +92,7 @@ docClass :: Name -> ClassInfo -> Idris Docs
 docClass n ci
   = do i <- getIState
        let docstr = case lookupCtxt n (idris_docstrings i) of
-                         [str] -> str
+                         [str] -> fst str
                          _ -> ""
        mdocs <- mapM docFun (map fst (class_methods ci))
        return (ClassDoc n docstr mdocs)
@@ -89,11 +100,11 @@ docClass n ci
 docFun :: Name -> Idris FunDoc
 docFun n
   = do i <- getIState
-       let docstr = case lookupCtxt n (idris_docstrings i) of
-                         [str] -> str
-                         _ -> ""
+       let (docstr, argDocs) = case lookupCtxt n (idris_docstrings i) of
+                                  [d] -> d
+                                  _ -> ("", [])
        let ty = delabTy i n
-       let args = getPArgNames ty
+       let args = getPArgNames ty argDocs
        let infixes = idris_infixes i
        let fixdecls = filter (\(Fix _ x) -> x == funName n) infixes
        let f = case fixdecls of
@@ -105,6 +116,7 @@ docFun n
              funName (UN n)   = str n
              funName (NS n _) = funName n
 
-getPArgNames :: PTerm -> [(Name, PTerm, Plicity)]
-getPArgNames (PPi plicity name ty body) = ((name, ty, plicity) : getPArgNames body)
-getPArgNames _ = []
+getPArgNames :: PTerm -> [(Name, String)] -> [(Name, PTerm, Plicity, Maybe String)]
+getPArgNames (PPi plicity name ty body) ds =
+  (name, ty, plicity, lookup name ds) : getPArgNames body ds
+getPArgNames _ _ = []

@@ -87,7 +87,7 @@ import System.IO
 @
 -}
 moduleHeader :: IdrisParser [String]
-moduleHeader =     try (do noDocCommentHere '|' "Modules cannot have documentation comments"
+moduleHeader =     try (do noDocCommentHere "Modules cannot have documentation comments"
                            reserved "module"
                            i <- identifier
                            option ';' (lchar ';')
@@ -315,7 +315,7 @@ fnDecl' syn = checkFixity $
               do (doc, fc, opts', n, acc) <- try (do
                         pushIndent
                         ist <- get
-                        doc <- option "" (docComment '|')
+                        doc <- option ("", []) docComment
                         ist <- get
                         let initOpts = if default_total ist
                                           then [TotalFn]
@@ -331,7 +331,7 @@ fnDecl' syn = checkFixity $
                  ty <- typeExpr (allowImp syn)
                  terminator
                  addAcc n acc
-                 return (PTy doc syn fc opts' n ty)
+                 return (PTy (fst doc) (snd doc) syn fc opts' n ty)
             <|> postulate syn
             <|> caf syn
             <|> pattern syn
@@ -344,7 +344,7 @@ fnDecl' syn = checkFixity $
                                             unless fOk . fail $
                                               "Missing fixity declaration for " ++ show n
                                             return decl
-          getName (PTy _ _ _ _ n _) = Just n
+          getName (PTy _ _ _ _ _ n _) = Just n
           getName _ = Nothing
           fixityOK (NS n _) = fixityOK n
           fixityOK (UN n)  | all (flip elem opChars) (str n) =
@@ -413,7 +413,7 @@ Postulate ::=
 @
 -}
 postulate :: SyntaxInfo -> IdrisParser PDecl
-postulate syn = do doc <- try $ do doc <- option "" (docComment '|')
+postulate syn = do doc <- try $ do doc <- option ("", []) docComment
                                    pushIndent
                                    reserved "postulate"
                                    return doc
@@ -431,7 +431,7 @@ postulate syn = do doc <- try $ do doc <- option "" (docComment '|')
                    fc <- getFC
                    terminator
                    addAcc n acc
-                   return (PPostulate doc syn fc opts' n ty)
+                   return (PPostulate (fst doc) syn fc opts' n ty)
                  <?> "postulate"
 
 {- | Parses a using declaration
@@ -561,7 +561,7 @@ Class ::=
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
 class_ syn = do (doc, acc) <- try (do
-                  doc <- option "" (docComment '|')
+                  doc <- option ("", []) docComment
                   acc <- optional accessibility
                   return (doc, acc))
                 reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- fnName
@@ -569,7 +569,7 @@ class_ syn = do (doc, acc) <- try (do
                 cs <- many carg
                 ds <- option [] (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass doc syn fc cons n cs ds]
+                return [PClass (fst doc) syn fc cons n cs ds]
              <?> "type-class declaration"
   where
     carg :: IdrisParser (Name, PTerm)

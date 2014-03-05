@@ -42,7 +42,7 @@ data Err = Msg String
 
 %name Err err, e
 
--- | Error reports are a list of report parts
+||| Error reports are a list of report parts
 data ErrorReportPart = TextPart String
                      | NamePart TTName
                      | TermPart TT

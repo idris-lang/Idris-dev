@@ -150,7 +150,7 @@ mergePat ist (PApp _ _ args) (PApp fc f args') t
    where mergeArg x (y, t)
               = do tm' <- mergePat ist (getTm x) (getTm y) t
                    case x of
-                        (PImp _ _ _ _ _ _) ->
+                        (PImp _ _ _ _ _) ->
                              return (y { machine_inf = machine_inf x,
                                          getTm = tm' })
                         _ -> return (y { getTm = tm' })
@@ -318,14 +318,14 @@ getClause l fn fp = do ty <- getInternalApp fp l
                        let ap = mkApp ist ty []
                        return (show fn ++ " " ++ ap ++
                                    "= ?" ++ show fn ++ "_rhs")
-   where mkApp i (PPi (Exp _ _ _ False) (MN _ _) ty sc) used
+   where mkApp i (PPi (Exp _ _ False) (MN _ _) ty sc) used
                = let n = getNameFrom i used ty in
                      show n ++ " " ++ mkApp i sc (n : used) 
-         mkApp i (PPi (Exp _ _ _ False) (UN n) ty sc) used
+         mkApp i (PPi (Exp _ _ False) (UN n) ty sc) used
             | thead n == '_'
                = let n = getNameFrom i used ty in
                      show n ++ " " ++ mkApp i sc (n : used) 
-         mkApp i (PPi (Exp _ _ _ False) n _ sc) used 
+         mkApp i (PPi (Exp _ _ False) n _ sc) used 
                = show n ++ " " ++ mkApp i sc (n : used) 
          mkApp i (PPi _ _ _ sc) used = mkApp i sc used
          mkApp i _ _ = ""

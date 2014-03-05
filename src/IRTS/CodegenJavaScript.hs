@@ -20,6 +20,7 @@ import Data.Maybe
 import System.IO
 import System.Directory
 
+
 idrNamespace :: String
 idrNamespace    = "__IDR__"
 idrRTNamespace  = "__IDRRT__"
@@ -52,6 +53,13 @@ data JSNum = JSInt Int
            deriving Eq
 
 
+data JSAnnotation = JSConstructor deriving Eq
+
+
+instance Show JSAnnotation where
+  show JSConstructor = "constructor"
+
+
 data JS = JSRaw String
         | JSIdent String
         | JSFunction [String] JS
@@ -80,12 +88,55 @@ data JS = JSRaw String
         | JSTernary JS JS JS
         | JSParens JS
         | JSWhile JS JS
+        | JSFFI String [JS]
+        | JSAnnotation JSAnnotation JS
         | JSNoop
         deriving Eq
 
 
+data FFI = FFICode Char | FFIArg Int | FFIError String
+
+
+ffi :: String -> [String] -> String
+ffi code args = let parsed = ffiParse code in
+                    case ffiError parsed of
+                         Just err -> compileJS $ jsError err
+                         Nothing  -> renderFFI parsed args
+  where
+    ffiParse :: String -> [FFI]
+    ffiParse ""           = []
+    ffiParse ['%']        = [FFIError "Invalid positional argument"]
+    ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
+    ffiParse ('%':s:ss)
+      | isDigit s =
+         FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
+      | otherwise =
+          [FFIError "Invalid positional argument"]
+    ffiParse (s:ss) = FFICode s : ffiParse ss
+
+
+    ffiError :: [FFI] -> Maybe String
+    ffiError []                 = Nothing
+    ffiError ((FFIError s):xs)  = Just s
+    ffiError (x:xs)             = ffiError xs
+
+
+    renderFFI :: [FFI] -> [String] -> String
+    renderFFI [] _ = ""
+    renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
+    renderFFI ((FFIArg i) : fs) args
+      | i < length args && i >= 0 = args !! i ++ renderFFI fs args
+      | otherwise = "Argument index out of bounds"
+
+
 compileJS :: JS -> String
 compileJS JSNoop = ""
+
+compileJS (JSAnnotation annotation js) =
+  "/** @" ++ show annotation ++ " */\n" ++ compileJS js
+
+compileJS (JSFFI raw args) =
+  ffi raw (map compileJS args)
 
 compileJS (JSRaw code) =
   code
@@ -316,6 +367,10 @@ foldJS tr add acc js =
           add (tr js) $ foldl' add acc $ map (uncurry add . (fold *** fold)) conds
       | JSWhile cond body    <- js =
           add (tr js) $ add (fold cond) (fold body)
+      | JSFFI raw args       <- js =
+          add (tr js) $ foldl' add acc $ map fold args
+      | JSAnnotation a js    <- js =
+          add (tr js) $ fold js
       | otherwise                  =
           tr js
 
@@ -342,7 +397,9 @@ transformJS tr js =
       | JSCond conds         <- js = JSCond $ map (tr *** tr) conds
       | JSTernary c t f      <- js = JSTernary (tr c) (tr t) (tr f)
       | JSParens val         <- js = JSParens $ tr val
-      | JSWhile cond body    <- js = JSWhile(tr cond) (tr body)
+      | JSWhile cond body    <- js = JSWhile (tr cond) (tr body)
+      | JSFFI raw args       <- js = JSFFI raw (map tr args)
+      | JSAnnotation a js    <- js = JSAnnotation a (tr js)
       | otherwise                  = js
 
 
@@ -350,6 +407,9 @@ moveJSDeclToTop :: String -> [JS] -> [JS]
 moveJSDeclToTop decl js = move ([], js)
   where
     move :: ([JS], [JS]) -> [JS]
+    move (front, js@(JSAnnotation _ (JSAlloc name _)):back)
+      | name == decl = js : front ++ back
+
     move (front, js@(JSAlloc name _):back)
       | name == decl = js : front ++ back
 
@@ -519,8 +579,6 @@ removeEval js =
             match (JSApp (JSIdent "__IDR__mEVAL0") [val]) = val
             match js = transformJS match js
 
-    removeEvalApp js = js
-
     checkEval :: [JS] -> ([JS], Bool)
     checkEval js = foldr f ([], False) $ map checkEval' js
       where
@@ -664,7 +722,7 @@ inlineFunctions js =
   inlineHelper ([], js)
   where
     inlineHelper :: ([JS], [JS]) -> [JS]
-    inlineHelper (front , (JSAlloc fun (Just (JSFunction  args body))):back)
+    inlineHelper (front , (JSAlloc fun (Just (JSFunction args body))):back)
       | countAll fun front + countAll fun back == 0 =
          inlineHelper (front, back)
       | Just new <- inlineAble (
@@ -1012,7 +1070,7 @@ unfoldLookupTable input =
     adaptCon js =
       adaptCon' [] js
       where
-        adaptCon' front ((JSAlloc "__IDRRT__Con" (Just _)):back) =
+        adaptCon' front ((JSAnnotation _ (JSAlloc "__IDRRT__Con" _)):back) =
           front ++ (new:back)
 
         adaptCon' front (next:back) =
@@ -1022,11 +1080,12 @@ unfoldLookupTable input =
 
 
         new =
-          JSAlloc "__IDRRT__Con" (Just $
-            JSFunction newArgs (
-              JSSeq (map newVar newArgs)
+          JSAnnotation JSConstructor $
+            JSAlloc "__IDRRT__Con" (Just $
+              JSFunction newArgs (
+                JSSeq (map newVar newArgs)
+              )
             )
-          )
           where
             newVar var = JSAssign (JSProj JSThis var) (JSIdent var)
             newArgs = ["tag", "eval", "app", "vars"]
@@ -1338,7 +1397,7 @@ codegenJavaScript
   -> OutputType
   -> IO ()
 codegenJavaScript target definitions includes filename outputType = do
-  let (header, runtime) = case target of
+  let (header, rt) = case target of
                                Node ->
                                  ("#!/usr/bin/env node\n", "-node")
                                JavaScript ->
@@ -1346,13 +1405,10 @@ codegenJavaScript target definitions includes filename outputType = do
   included   <- getIncludes includes
   path       <- (++) <$> getDataDir <*> (pure "/jsrts/")
   idrRuntime <- readFile $ path ++ "Runtime-common.js"
-  tgtRuntime <- readFile $ concat [path, "Runtime", runtime, ".js"]
+  tgtRuntime <- readFile $ concat [path, "Runtime", rt, ".js"]
   jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
   writeFile filename $ header ++ (
-    intercalate "\n" $ included ++ [ jsbn
-                                   , idrRuntime
-                                   , tgtRuntime
-                                   ] ++ functions
+      intercalate "\n" $ included ++ runtime jsbn idrRuntime tgtRuntime ++ functions
     )
 
   setPermissions filename (emptyPermissions { readable   = True
@@ -1364,15 +1420,32 @@ codegenJavaScript target definitions includes filename outputType = do
     def = map (first translateNamespace) definitions
 
 
-    functions :: [String]
-    functions = translate >>> optimize >>> compile $ def
+    checkForBigInt :: [JS] -> Bool
+    checkForBigInt js = occur
+      where
+        occur :: Bool
+        occur = or $ map (foldJS match (||) False) js
+
+        match :: JS -> Bool
+        match (JSIdent "__IDRRT__bigInt") = True
+        match (JSNum (JSInteger _))       = True
+        match js                          = False
+
+
+    runtime :: String -> String -> String -> [String]
+    runtime jsbn idrRuntime tgtRuntime =
+      if checkForBigInt optimized
+         then [jsbn, idrRuntime, tgtRuntime]
+         else [idrRuntime, tgtRuntime]
+
+
+    optimized :: [JS]
+    optimized = translate >>> optimize $ def
       where
         translate p =
           prelude ++ concatMap translateDeclaration p ++ [mainLoop, invokeLoop]
         optimize p  =
           foldl' (flip ($)) p opt
-        compile     =
-           map compileJS
 
         opt =
           [ removeEval
@@ -1394,16 +1467,21 @@ codegenJavaScript target definitions includes filename outputType = do
           , evalCons
           ]
 
+    functions :: [String]
+    functions = map compileJS optimized
+
     prelude :: [JS]
     prelude =
-      [ JSAlloc (idrRTNamespace ++ "Cont") (Just $ JSFunction ["k"] (
-          JSAssign (JSProj JSThis "k") (JSIdent "k")
-        ))
-      , JSAlloc (idrRTNamespace ++ "Con") (Just $ JSFunction ["tag", "vars"] (
-          JSSeq [ JSAssign (JSProj JSThis "tag") (JSIdent "tag")
-                , JSAssign (JSProj JSThis "vars") (JSIdent "vars")
-                ]
-        ))
+      [ JSAnnotation JSConstructor $
+          JSAlloc (idrRTNamespace ++ "Cont") (Just $ JSFunction ["k"] (
+            JSAssign (JSProj JSThis "k") (JSIdent "k")
+          ))
+      , JSAnnotation JSConstructor $
+          JSAlloc (idrRTNamespace ++ "Con") (Just $ JSFunction ["tag", "vars"] (
+            JSSeq [ JSAssign (JSProj JSThis "tag") (JSIdent "tag")
+                  , JSAssign (JSProj JSThis "vars") (JSIdent "vars")
+                  ]
+          ))
       ]
 
     mainLoop :: JS
@@ -1887,16 +1965,20 @@ translateExpression (SForeign _ _ "idris_eqPtr" [(FPtr, lhs),(FPtr, rhs)]) =
   JSBinOp "==" (JSVar lhs) (JSVar rhs)
 
 translateExpression (SForeign _ _ fun args) =
-  ffi fun (map generateWrapper args)
+  JSFFI fun (map generateWrapper args)
   where
     generateWrapper (ffunc, name)
       | FFunction   <- ffunc =
-        idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
+          JSApp (
+            JSIdent $ idrRTNamespace ++ "ffiWrap"
+          ) [JSIdent $ translateVariableName name]
       | FFunctionIO <- ffunc =
-        idrRTNamespace ++ "ffiWrap(" ++ translateVariableName name ++ ")"
+          JSApp (
+            JSIdent $ idrRTNamespace ++ "ffiWrap"
+          ) [JSIdent $ translateVariableName name]
 
     generateWrapper (_, name) =
-      translateVariableName name
+      JSIdent $ translateVariableName name
 
 translateExpression patterncase
   | (SChkCase var cases) <- patterncase = caseHelper var cases "chk"
@@ -1937,41 +2019,6 @@ translateExpression SNothing = JSNull
 
 translateExpression e =
   jsError $ "Not yet implemented: " ++ filter (/= '\'') (show e)
-
-
-data FFI = FFICode Char | FFIArg Int | FFIError String
-
-
-ffi :: String -> [String] -> JS
-ffi code args = let parsed = ffiParse code in
-                    case ffiError parsed of
-                         Just err -> jsError err
-                         Nothing  -> JSRaw $ renderFFI parsed args
-  where
-    ffiParse :: String -> [FFI]
-    ffiParse ""           = []
-    ffiParse ['%']        = [FFIError "Invalid positional argument"]
-    ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
-    ffiParse ('%':s:ss)
-      | isDigit s =
-         FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
-      | otherwise =
-          [FFIError "Invalid positional argument"]
-    ffiParse (s:ss) = FFICode s : ffiParse ss
-
-
-    ffiError :: [FFI] -> Maybe String
-    ffiError []                 = Nothing
-    ffiError ((FFIError s):xs)  = Just s
-    ffiError (x:xs)             = ffiError xs
-
-
-    renderFFI :: [FFI] -> [String] -> String
-    renderFFI [] _ = ""
-    renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
-    renderFFI ((FFIArg i) : fs) args
-      | i < length args && i >= 0 = args !! i ++ renderFFI fs args
-      | otherwise = "Argument index out of bounds"
 
 
 data CaseType = ConCase Int
