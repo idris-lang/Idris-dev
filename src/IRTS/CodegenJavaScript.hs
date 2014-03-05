@@ -20,6 +20,7 @@ import Data.Maybe
 import System.IO
 import System.Directory
 
+
 idrNamespace :: String
 idrNamespace    = "__IDR__"
 idrRTNamespace  = "__IDRRT__"
@@ -578,8 +579,6 @@ removeEval js =
             match (JSApp (JSIdent "__IDR__mEVAL0") [val]) = val
             match js = transformJS match js
 
-    removeEvalApp js = js
-
     checkEval :: [JS] -> ([JS], Bool)
     checkEval js = foldr f ([], False) $ map checkEval' js
       where
@@ -723,7 +722,7 @@ inlineFunctions js =
   inlineHelper ([], js)
   where
     inlineHelper :: ([JS], [JS]) -> [JS]
-    inlineHelper (front , (JSAlloc fun (Just (JSFunction  args body))):back)
+    inlineHelper (front , (JSAlloc fun (Just (JSFunction args body))):back)
       | countAll fun front + countAll fun back == 0 =
          inlineHelper (front, back)
       | Just new <- inlineAble (
@@ -1398,7 +1397,7 @@ codegenJavaScript
   -> OutputType
   -> IO ()
 codegenJavaScript target definitions includes filename outputType = do
-  let (header, runtime) = case target of
+  let (header, rt) = case target of
                                Node ->
                                  ("#!/usr/bin/env node\n", "-node")
                                JavaScript ->
@@ -1406,13 +1405,10 @@ codegenJavaScript target definitions includes filename outputType = do
   included   <- getIncludes includes
   path       <- (++) <$> getDataDir <*> (pure "/jsrts/")
   idrRuntime <- readFile $ path ++ "Runtime-common.js"
-  tgtRuntime <- readFile $ concat [path, "Runtime", runtime, ".js"]
+  tgtRuntime <- readFile $ concat [path, "Runtime", rt, ".js"]
   jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
   writeFile filename $ header ++ (
-    intercalate "\n" $ included ++ [ jsbn
-                                   , idrRuntime
-                                   , tgtRuntime
-                                   ] ++ functions
+      intercalate "\n" $ included ++ runtime jsbn idrRuntime tgtRuntime ++ functions
     )
 
   setPermissions filename (emptyPermissions { readable   = True
@@ -1424,15 +1420,32 @@ codegenJavaScript target definitions includes filename outputType = do
     def = map (first translateNamespace) definitions
 
 
-    functions :: [String]
-    functions = translate >>> optimize >>> compile $ def
+    checkForBigInt :: [JS] -> Bool
+    checkForBigInt js = occur
+      where
+        occur :: Bool
+        occur = or $ map (foldJS match (||) False) js
+
+        match :: JS -> Bool
+        match (JSIdent "__IDRRT__bigInt") = True
+        match (JSNum (JSInteger _))       = True
+        match js                          = False
+
+
+    runtime :: String -> String -> String -> [String]
+    runtime jsbn idrRuntime tgtRuntime =
+      if checkForBigInt optimized
+         then [jsbn, idrRuntime, tgtRuntime]
+         else [idrRuntime, tgtRuntime]
+
+
+    optimized :: [JS]
+    optimized = translate >>> optimize $ def
       where
         translate p =
           prelude ++ concatMap translateDeclaration p ++ [mainLoop, invokeLoop]
         optimize p  =
           foldl' (flip ($)) p opt
-        compile     =
-           map compileJS
 
         opt =
           [ removeEval
@@ -1453,6 +1466,9 @@ codegenJavaScript target definitions includes filename outputType = do
           , unfoldLookupTable
           , evalCons
           ]
+
+    functions :: [String]
+    functions = map compileJS optimized
 
     prelude :: [JS]
     prelude =
