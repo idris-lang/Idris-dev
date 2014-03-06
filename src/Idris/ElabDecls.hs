@@ -76,12 +76,12 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          ctxt <- getContext
          i <- getIState
 
-         logLvl 1 $ show n ++ " pre-type " ++ showTmImpls ty'
+         logLvl 3 $ show n ++ " pre-type " ++ showTmImpls ty'
          ty' <- addUsingConstraints syn fc ty'
          ty' <- implicit syn n ty'
 
          let ty = addImpl i ty'
-         logLvl 1 $ show n ++ " type " ++ showTmImpls ty
+         logLvl 3 $ show n ++ " type " ++ showTmImpls ty
          ((tyT, defer, is), log) <-
                tclift $ elaborate ctxt n (TType (UVal 0)) []
                         (errAt "type of " n (erun fc (build i info False [] n ty)))
@@ -656,7 +656,7 @@ elabProvider info syn fc what n ty tm
          rhs <- execute (mkApp (P Ref (sUN "run__provider") Erased)
                                           [Erased, e])
          let rhs' = normalise ctxt [] rhs
-         logLvl 1 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
+         logLvl 3 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
 
          -- Extract the provided term or postulate from the type provider
          provided <- getProvided fc rhs'
@@ -667,14 +667,14 @@ elabProvider info syn fc what n ty tm
                do -- Finally add a top-level definition of the provided term
                   elabType info syn "" [] fc [] n ty
                   elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
-                  logLvl 1 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
+                  logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
              | otherwise ->
                ierror . Msg $ "Attempted to provide a term where a postulate was expected."
            Postulate
              | what `elem` [ProvPostulate, ProvAny] ->
                do -- Add the postulate
                   elabPostulate info syn "Provided postulate" fc [] n ty
-                  logLvl 1 $ "Elaborated provided postulate " ++ show n
+                  logLvl 3 $ "Elaborated provided postulate " ++ show n
              | otherwise ->
                ierror . Msg $ "Attempted to provide a postulate where a term was expected."
 
@@ -1165,7 +1165,7 @@ elabPE info fc caller r =
             elabType info defaultSyntax "" [] fc opts newnm specTy
             let def = map (\ (lhs, rhs) -> PClause fc newnm lhs [] rhs []) pats
             elabClauses info fc opts newnm def
-            logLvl 1 $ "Specialised " ++ show newnm)
+            logLvl 2 $ "Specialised " ++ show newnm)
           -- if it doesn't work, just don't specialise. Could happen for lots
           -- of valid reasons (e.g. local variables in scope which can't be
           -- lifted out).
@@ -1419,7 +1419,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         -- Elaborate those with a type *before* RHS, those without *after*
         let (wbefore, wafter) = sepBlocks wb
 
-        logLvl 1 $ "Where block:\n " ++ show wbefore ++ "\n" ++ show wafter
+        logLvl 2 $ "Where block:\n " ++ show wbefore ++ "\n" ++ show wafter
         mapM_ (elabDecl' EAll info) wbefore
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- getIState -- new implicits from where block
@@ -1563,7 +1563,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                          _ -> []
         let params = getParamsInType i [] fn_is fn_ty
         let lhs = propagateParams params fn_ty (addImplPat i (stripLinear i lhs_in))
-        logLvl 1 ("LHS: " ++ show lhs)
+        logLvl 2 ("LHS: " ++ show lhs)
         ((lhs', dlhs, []), _) <-
             tclift $ elaborate ctxt (sMN 0 "patLHS") infP []
               (errAt "left hand side of with in " fname
@@ -1921,7 +1921,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
          -- get the implicit parameters that need passing through to the
          -- where block
          wparams <- mapM (\p -> case p of
-                                  PApp _ _ args -> getWParams args
+                                  PApp _ _ args -> getWParams (map getTm args)
                                   _ -> return []) ps
          let pnames = map pname (concat (nub wparams))
          let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
@@ -1947,9 +1947,24 @@ elabInstance info syn what fc cs n ps t expn ds = do
          logLvl 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp True . mkTyDecl) mtys)
          logLvl 3 $ "Instance is " ++ show ps ++ " implicits " ++
                                       show (concat (nub wparams))
-         let lhs = PRef fc iname
+
+         -- Bring variables in instance head into scope
+         ist <- getIState
+         let headVars = mapMaybe (\p -> case p of
+                                           PRef _ n -> 
+                                              case lookupTy n (tt_ctxt ist) of
+                                                  [] -> Just n
+                                                  _ -> Nothing
+                                           _ -> Nothing) ps
+--          let lhs = PRef fc iname
+         let lhs = PApp fc (PRef fc iname)
+                           (map (\n -> pimp n (PRef fc n) True) headVars)
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
+
+         logLvl 5 $ "Instance LHS " ++ show lhs
+         logLvl 5 $ "Instance RHS " ++ show rhs
+
          let idecls = [PClauses fc [Dictionary] iname
                                  [PClause fc iname lhs [] rhs wb]]
          iLOG (show idecls)
@@ -2031,7 +2046,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
 
     getWParams [] = return []
     getWParams (p : ps)
-      | PRef _ n <- getTm p
+      | PRef _ n <- p
         = do ps' <- getWParams ps
              ctxt <- getContext
              case lookupP n ctxt of

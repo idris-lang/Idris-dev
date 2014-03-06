@@ -1323,7 +1323,7 @@ prettyName showNS bnd n | Just imp <- lookup n bnd = annotate (AnnBoundName n im
   where strName (UN n) = T.unpack n
         strName (NS n ns) | showNS    = (concatMap (++ ".") . map T.unpack . reverse) ns ++ strName n
                           | otherwise = strName n
-        strName (MN i s) = T.unpack s
+        strName (MN i s) = T.unpack s 
         strName other = show other
 
 
