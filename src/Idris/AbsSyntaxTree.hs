@@ -137,6 +137,7 @@ data IState = IState {
     lastParse :: Maybe Name,
     indent_stack :: [Int],
     brace_stack :: [Maybe Int],
+    lastTokenSpan :: Maybe (FC, FC), -- ^ What was the span of the latest token parsed?
     hide_list :: [(Name, Maybe Accessibility)],
     default_access :: Accessibility,
     default_total :: Bool,
@@ -221,7 +222,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
-                   [] Nothing [] Nothing [] [] [] Hidden False [] Nothing [] [] RawOutput
+                   [] Nothing [] Nothing [] [] Nothing [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth
 

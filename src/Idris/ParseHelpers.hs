@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards, OverlappingInstances #-}
 module Idris.ParseHelpers where
 
 import Prelude hiding (pi)
@@ -41,11 +41,17 @@ import Debug.Trace
 type IdrisParser = StateT IState IdrisInnerParser
 
 newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
-  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, Parsing, DeltaParsing, MarkParsing Delta, Monoid)
+  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, Parsing, DeltaParsing, MarkParsing Delta, Monoid, TokenParsing)
 
-instance TokenParsing IdrisInnerParser where
+instance TokenParsing IdrisParser where
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
-
+  token p = do s <- get
+               startFC <- getFC
+               r <- p
+               endFC <- getFC
+               whiteSpace
+               put (s { lastTokenSpan = Just (startFC, endFC) })
+               return r
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
