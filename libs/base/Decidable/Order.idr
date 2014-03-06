@@ -26,10 +26,9 @@ class (Poset t to) => Ordered t (to : t -> t -> Type) where
 class (Preorder t eq) => Equivalence t (eq : t -> t -> Type) where
   total symmetric : (a : t) -> (b : t) -> eq a b -> eq b a
 
-class (Equivalence t eq) => Congruence t (eq : t -> t -> Type) where
+class (Equivalence t eq) => Congruence t (f : t -> t) (eq : t -> t -> Type) where
   total congruent : (a : t) -> 
                     (b : t) -> 
-                    (f : t -> t) -> 
                     eq a b -> 
                     eq (f a) (f b)
 
@@ -54,8 +53,8 @@ instance Preorder t ((=) {A = t} {B = t}) where
 instance Equivalence t ((=) {A = t} {B = t}) where
   symmetric a b prf = sym prf
 
-instance Congruence t ((=) {A = t} {B = t}) where
-  congruent a b f = cong {a = a} {b = b} {f = f}
+instance Congruence t f ((=) {A = t} {B = t}) where
+  congruent a b = cong {a = a} {b = b} {f = f}
 
 --------------------------------------------------------------------------------
 -- Natural numbers
