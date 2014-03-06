@@ -37,11 +37,12 @@ data UResult a = UOK a
 match_unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
                TC [(Name, TT Name)]
 match_unify ctxt env topx topy inj holes =
-     case runStateT (un [] topx topy) (UI 0 []) of
+     case runStateT (un [] (renameBindersTm env topx) 
+                           (renameBindersTm env topy)) (UI 0 []) of
         OK (v, UI _ []) -> return (map (renameBinders env) (trimSolutions v))
         res ->
-               let topxn = normalise ctxt env topx
-                   topyn = normalise ctxt env topy in
+               let topxn = renameBindersTm env (normalise ctxt env topx)
+                   topyn = renameBindersTm env (normalise ctxt env topy) in
                      case runStateT (un [] topxn topyn)
         	  	        (UI 0 []) of
                        OK (v, UI _ fails) ->
@@ -147,17 +148,20 @@ match_unify ctxt env topx topy inj holes =
                         App (Bind y (Lam ty) (bind (i-1) ns tm))
                             (P Bound x ty)
     
-renameBinders :: Env -> (Name, TT Name) -> (Name, TT Name)
-renameBinders env (x, tm) = (x, uniqueBinders tm)
+renameBinders env (x, t) = (x, renameBindersTm env t)
+
+renameBindersTm :: Env -> TT Name -> TT Name
+renameBindersTm env tm = uniqueBinders (map fst env) tm
   where
-    uniqueBinders (Bind n b sc)
-        | n `elem` map fst env 
-             = let n' = uniqueName n (map fst env) in
-                   Bind n' (fmap uniqueBinders b)
-                           (uniqueBinders (rename n n' sc))
-        | otherwise = Bind n (fmap uniqueBinders b) (uniqueBinders sc)
-    uniqueBinders (App f a) = App (uniqueBinders f) (uniqueBinders a)
-    uniqueBinders t = t
+    uniqueBinders env (Bind n b sc)
+        | n `elem` env 
+             = let n' = uniqueName n env in
+                   Bind n' (fmap (uniqueBinders env) b)
+                           (uniqueBinders (n':env) (rename n n' sc))
+        | otherwise = Bind n (fmap (uniqueBinders (n:env)) b) 
+                             (uniqueBinders (n:env) sc)
+    uniqueBinders env (App f a) = App (uniqueBinders env f) (uniqueBinders env a)
+    uniqueBinders env t = t
 
     rename n n' (P nt x ty) | n == x = P nt n' ty
     rename n n' (Bind x b sc) = Bind x (fmap (rename n n') b) (rename n n' sc)
@@ -189,12 +193,13 @@ unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
 unify ctxt env topx topy inj holes =
 --      trace ("Unifying " ++ show (topx, topy)) $
              -- don't bother if topx and topy are different at the head
-      case runStateT (un False [] topx topy) (UI 0 []) of
+      case runStateT (un False [] (renameBindersTm env topx) 
+                                  (renameBindersTm env topy)) (UI 0 []) of
         OK (v, UI _ []) -> return (map (renameBinders env) (trimSolutions v),
                                    [])
         res ->
-               let topxn = normalise ctxt env topx
-                   topyn = normalise ctxt env topy in
+               let topxn = renameBindersTm env (normalise ctxt env topx)
+                   topyn = renameBindersTm env (normalise ctxt env topy) in
 --                     trace ("Unifying " ++ show (topx, topy) ++ "\n\n==>\n" ++ show (topxn, topyn) ++ "\n\n" ++ show res ++ "\n\n") $
                      case runStateT (un False [] topxn topyn)
         	  	        (UI 0 []) of

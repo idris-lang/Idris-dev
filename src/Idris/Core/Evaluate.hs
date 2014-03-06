@@ -257,9 +257,9 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 return $ VBind True n (Let t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n b sc)
            = do b' <- vbind env b
-                let n' = uniqueName n (map fst env)
+                let n' = uniqueName n (map fst genv ++ map fst env)
                 return $ VBind True -- (vinstances 0 sc < 2)
-                               n' b' (\x -> ev ntimes stk False ((n, x):env) sc)
+                               n' b' (\x -> ev ntimes stk False ((n', x):env) sc)
        where vbind env t
                      = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
     -- Treat "assert_total" specially, as long as it's defined!
@@ -536,8 +536,10 @@ convEq ctxt holes = ceq [] where
     ceq ps (Bind n (Lam t) (App x (P Bound n' _))) y
         | n == n' = ceq ps x y
     ceq ps (V x)      (V y)      = return (x == y)
-    ceq ps (Bind _ xb xs) (Bind _ yb ys)
-                             = liftM2 (&&) (ceqB ps xb yb) (ceq ps xs ys)
+    ceq ps (V x)      (P _ y _)  = return (fst (ps!!x) == y)
+    ceq ps (P _ x _)  (V y)      = return (x == snd (ps!!y))
+    ceq ps (Bind n xb xs) (Bind n' yb ys)
+                             = liftM2 (&&) (ceqB ps xb yb) (ceq ((n,n'):ps) xs ys)
         where
             ceqB ps (Let v t) (Let v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
@@ -549,7 +551,7 @@ convEq ctxt holes = ceq [] where
                                               return True
     ceq ps Erased _ = return True
     ceq ps _ Erased = return True
-    ceq ps _ _ = return False
+    ceq ps x y = return False
 
     caseeq ps (Case n cs) (Case n' cs') = caseeqA ((n,n'):ps) cs cs'
       where
