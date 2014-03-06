@@ -82,12 +82,16 @@ backtick = Infix (do indentPropHolds gtProp
  optional namespace
 
 @
-  OperatorFront ::= (Identifier_t '.')? '(' Operator_t ')';
+  OperatorFront ::=
+    '(' '=' ')'
+    | (Identifier_t '.')? '(' Operator_t ')'
+    ;
 @
 
 -}
 operatorFront :: IdrisParser Name
-operatorFront = maybeWithNS (lchar '(' *> operator <* lchar ')') False []
+operatorFront = try ((lchar '(' *> reservedOp "="  <* lchar ')') >> (return eqTy))
+            <|> maybeWithNS (lchar '(' *> operator <* lchar ')') False []
 
 {- | Parses a function (either normal name or operator)
 
