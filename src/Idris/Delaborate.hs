@@ -100,11 +100,14 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
          | n == sUN "Ex_intro" = PDPair un IsTerm (de env [] l) Placeholder
                                            (de env [] r)
-    deFn env (P _ n _) args | not mvs
-         = case lookup n (idris_metavars ist) of
-                Just (Just _, mi, _) ->
-                     mkMVApp n (drop mi (map (de env []) args))
-                _ -> mkPApp n (map (de env []) args)
+    deFn env f@(P _ n _) args 
+         | n `elem` map snd env 
+              = PApp un (de env [] f) (map pexp (map (de env []) args))
+    deFn env (P _ n _) args 
+         | not mvs = case lookup n (idris_metavars ist) of
+                        Just (Just _, mi, _) ->
+                            mkMVApp n (drop mi (map (de env []) args))
+                        _ -> mkPApp n (map (de env []) args)
          | otherwise = mkPApp n (map (de env []) args)
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 
@@ -113,7 +116,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     mkMVApp n args
             = PApp un (PMetavar n) (map pexp args)
     mkPApp n args
-        | [imps] <- lookupCtxt n (idris_implicits ist)
+        | Just imps <- lookupCtxtExact n (idris_implicits ist)
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un n) (map pexp args)
 
