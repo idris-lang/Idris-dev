@@ -233,7 +233,7 @@ pprintErr' i (ReflectionFailed msg err) =
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
 
 annName :: Name -> Doc OutputAnnotation
-annName n = annName' n (show n)
+annName n = annName' n (showbasic n)
 
 annName' :: Name -> String -> Doc OutputAnnotation
 annName' n str = annotate (AnnName n Nothing Nothing) (text str)
