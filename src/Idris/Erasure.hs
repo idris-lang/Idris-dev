@@ -49,10 +49,11 @@ type DepSet = Map Node (Set Reason)
 -- Elementary assumption (f, i) means that "function f uses the argument i".
 type Cond = Set Node
 
--- Every variable draws in certain dependencies.
+-- Variables carry certain information with them.
 data VarInfo = VI
     { viDeps   :: DepSet     -- dependencies drawn in by the variable
-    , viFunArg :: Maybe Int  -- which argument this variable came from (only valid for patvars)
+    , viFunArg :: Maybe Int  -- which function argument this variable came from (defined only for patvars)
+    , viMethod :: Maybe (Name, Int)  -- instance ctor name, method#
     }
 
 type Vars = Map Name VarInfo
@@ -287,15 +288,6 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsAlt fn es vs var (SucCase   n sc)
         = getDepsSC fn es (M.insert n var vs) sc -- we're not inserting the S-dependency here because it's special-cased
 
-{-
-    -- instance constructors
-    getDepsAlt fn es vs var (ConCase ctn@(SN (InstanceCtorN cln)) cnt ns sc)
-        = getDepsSC fn es vs sc  -- TODO
-      where
-        renameIn = foldr ((.) . rename) id $ zip [0..] ns
-        rename (i, n) = substSC n $ SN (WhereN i ctn $ sMN i "field")
--}
-
     -- data constructors
     getDepsAlt fn es vs var (ConCase n cnt ns sc)
         = getDepsSC fn es (vs' `M.union` vs) sc  -- left-biased union
@@ -305,11 +297,17 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         vs' = M.fromList [(v, VI
             { viDeps   = M.insertWith S.union (n, Arg j) (S.singleton (fn, varIdx)) (viDeps var)
             , viFunArg = viFunArg var
+            , viMethod = meth j
             })
           | (v,j) <- zip ns [0..]]
         
         -- this is safe because it's certainly a patvar
         varIdx = fromJust (viFunArg var)
+
+        -- method info
+        meth = case n of
+            SN (InstanceCtorN className) -> \j -> Just (n, j)
+            _ -> \j -> Nothing
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
     getDepsTerm :: Vars -> [Cond -> Deps] -> Cond -> Term -> Deps
