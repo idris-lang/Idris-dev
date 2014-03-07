@@ -1964,6 +1964,9 @@ translateExpression (SForeign _ _ "isNull" [(FPtr, var)]) =
 translateExpression (SForeign _ _ "idris_eqPtr" [(FPtr, lhs),(FPtr, rhs)]) =
   JSBinOp "==" (JSVar lhs) (JSVar rhs)
 
+translateExpression (SForeign _ _ "idris_time" []) =
+  JSRaw "(new Date()).getTime()"
+
 translateExpression (SForeign _ _ fun args) =
   JSFFI fun (map generateWrapper args)
   where
