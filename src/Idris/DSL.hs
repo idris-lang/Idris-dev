@@ -57,10 +57,10 @@ expandDo dsl (PDoBlock ds)
     block b [a] = PElabError (Msg "Last statement in do block must be an expression")
     block b (DoBind fc n tm : rest)
         = PApp fc b [pexp tm, pexp (PLam n Placeholder (block b rest))]
-    block b (DoBindP fc p tm : rest)
+    block b (DoBindP fc p tm alts : rest)
         = PApp fc b [pexp tm, pexp (PLam (sMN 0 "bpat") Placeholder
                                    (PCase fc (PRef fc (sMN 0 "bpat"))
-                                             [(p, block b rest)]))]
+                                             ((p, block b rest) : alts)))]
     block b (DoLet fc n ty tm : rest)
         = PLet n ty tm (block b rest)
     block b (DoLetP fc p tm : rest)

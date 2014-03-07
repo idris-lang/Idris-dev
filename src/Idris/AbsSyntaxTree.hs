@@ -737,7 +737,7 @@ type PTactic = PTactic' PTerm
 
 data PDo' t = DoExp  FC t
             | DoBind FC Name t
-            | DoBindP FC t t
+            | DoBindP FC t t [(t,t)]
             | DoLet  FC Name t t
             | DoLetP FC t t
     deriving (Eq, Functor)
@@ -749,7 +749,7 @@ deriving instance NFData PDo'
 instance Sized a => Sized (PDo' a) where
   size (DoExp fc t) = 1 + size fc + size t
   size (DoBind fc nm t) = 1 + size fc + size nm + size t
-  size (DoBindP fc l r) = 1 + size fc + size l + size r
+  size (DoBindP fc l r alts) = 1 + size fc + size l + size r + size alts
   size (DoLet fc nm l r) = 1 + size fc + size nm + size l + size r
   size (DoLetP fc l r) = 1 + size fc + size l + size r
 
