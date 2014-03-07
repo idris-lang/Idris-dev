@@ -171,7 +171,7 @@ data Eff : (m : Type -> Type) ->
 
      lift    : (prf : SubList ys xs) ->
                Eff m t ys ys' -> Eff m t xs (\v => updateWith (ys' v) xs prf)
-     new     : Handler e m =>
+     newInit : Handler e m =>
                res -> 
                Eff m a (MkEff res e :: xs) (\v => (MkEff res' e :: xs')) ->
                Eff m a xs (\v => xs')
@@ -226,7 +226,7 @@ eff env (effect prf effP) k = execEff env prf effP k
 eff env (lift prf effP) k
    = let env' = dropEnv env prf in
          eff env' effP (\p', envk => k p' (rebuildEnv envk prf env))
-eff env (new r prog) k
+eff env (newInit r prog) k
    = eff (r :: env) prog (\p' => \ (v :: envk) => k p' envk)
 eff env (catch prog handler) k
    = catch (eff env prog k)
@@ -265,6 +265,11 @@ effect' : {a, b: _} -> {e : Effect} ->
          Eff m t xs (\v => updateResTy v xs prf eff)
 effect' e {prf} = effect prf e
 
+new : Handler e m =>
+      {default default r : res} -> 
+      Eff m a (MkEff res e :: xs) (\v => (MkEff res' e :: xs')) ->
+      Eff m a xs (\v => xs')
+new {r} e = newInit r e
 
 run : Applicative m => {default MkDefaultEnv env : Env m xs} -> Eff m a xs xs' -> m a
 run {env} prog = eff env prog (\r, env => pure r)
