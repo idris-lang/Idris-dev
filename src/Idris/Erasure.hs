@@ -50,8 +50,12 @@ type DepSet = Map Node (Set Reason)
 type Cond = Set Node
 
 -- Every variable draws in certain dependencies.
-type Var = DepSet
-type Vars = Map Name Var
+data VarInfo = VI
+    { viDeps   :: DepSet     -- dependencies drawn in by the variable
+    , viFunArg :: Maybe Int  -- which argument this variable came from (only valid for patvars)
+    }
+
+type Vars = Map Name VarInfo
 
 -- Perform usage analysis, write the relevant information in the internal
 -- structures, returning the list of reachable names.
@@ -229,19 +233,27 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsDef fn (TyDecl   ty t) = M.empty
     getDepsDef fn (Operator ty n' f) = M.empty  -- TODO: what's this?
     getDepsDef fn (CaseOp ci ty tys def tot cdefs)
-        = getDepsSC fn etaVars (etaMap `union` varMap) sc
+        = getDepsSC fn etaVars (etaMap `M.union` varMap) sc
       where
-        union = M.unionWith (M.unionWith S.union)
-
         -- we must eta-expand the definition with fresh variables
         -- to capture these dependencies as well
         etaIdx = [length vars .. length tys - 1]
         etaVars = [eta i | i <- etaIdx]
-        etaMap = M.fromList [(eta i, M.singleton (fn, Arg i) S.empty) | i <- etaIdx]
+        etaMap = M.fromList [(eta i, VI
+                { viDeps   = M.singleton (fn, Arg i) S.empty
+                , viFunArg = Just i
+                })
+            | i <- etaIdx]
         eta i = MN i (pack "eta")
 
         -- the variables that arose as function arguments only depend on (n, i)
-        varMap = M.fromList [(v, M.singleton (fn, Arg i) S.empty) | (v,i) <- zip vars [0..]]
+        varMap = M.fromList
+            [(v, VI
+                { viDeps   = M.singleton (fn, Arg i) S.empty
+                , viFunArg = Just i
+                }
+             ) 
+            | (v,i) <- zip vars [0..]]
         (vars, sc) = cases_runtime cdefs
             -- we use cases_runtime in order to have case-blocks
             -- resolved to top-level functions before our analysis
@@ -265,34 +277,39 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         
         addTagDep = case alts of
             [_] -> id  -- single branch, tag not used
-            _   -> M.insertWith (M.unionWith S.union) (S.singleton (fn, Result)) casedVar
+            _   -> M.insertWith (M.unionWith S.union) (S.singleton (fn, Result)) (viDeps casedVar)
         casedVar  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
-    getDepsAlt :: Name -> [Name] -> Vars -> Var -> CaseAlt -> Deps
+    getDepsAlt :: Name -> [Name] -> Vars -> VarInfo -> CaseAlt -> Deps
     getDepsAlt fn es vs var (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
     getDepsAlt fn es vs var (ConstCase c sc) = getDepsSC fn es vs sc
     getDepsAlt fn es vs var (DefaultCase sc) = getDepsSC fn es vs sc
     getDepsAlt fn es vs var (SucCase   n sc)
         = getDepsSC fn es (M.insert n var vs) sc -- we're not inserting the S-dependency here because it's special-cased
 
+{-
     -- instance constructors
-    getDepsAlt fn es vs var (ConCase ctn@(SN (InstanceCtorN cln)) cnt ns sc) = getDepsSC fn es vs (renameIn sc)
+    getDepsAlt fn es vs var (ConCase ctn@(SN (InstanceCtorN cln)) cnt ns sc)
+        = getDepsSC fn es vs sc  -- TODO
       where
         renameIn = foldr ((.) . rename) id $ zip [0..] ns
         rename (i, n) = substSC n $ SN (WhereN i ctn $ sMN i "field")
+-}
 
     -- data constructors
     getDepsAlt fn es vs var (ConCase n cnt ns sc)
-        = getDepsSC fn es (vs' `union` vs) sc  -- left-biased union
+        = getDepsSC fn es (vs' `M.union` vs) sc  -- left-biased union
       where
-        union = M.unionWith (M.unionWith S.union)
-
         -- Here we insert dependencies that arose from pattern matching on a constructor.
         -- n = ctor name, j = ctor arg#, i = fun arg# of the cased var, cs = ctors of the cased var
-        vs' = M.fromList [(v, M.insertWith S.union (n, Arg j) (S.singleton (fn, varIdx)) var) | (v,j) <- zip ns [0..]]
+        vs' = M.fromList [(v, VI
+            { viDeps   = M.insertWith S.union (n, Arg j) (S.singleton (fn, varIdx)) (viDeps var)
+            , viFunArg = viFunArg var
+            })
+          | (v,j) <- zip ns [0..]]
         
-        -- hack: get the index of the variable from its content
-        varIdx = head [i | (n, Arg i) <- M.keys var, n == fn]
+        -- this is safe because it's certainly a patvar
+        varIdx = fromJust (viFunArg var)
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
     getDepsTerm :: Vars -> [Cond -> Deps] -> Cond -> Term -> Deps
@@ -301,7 +318,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsTerm vs bs cd (P _ n _)
         -- local variables
         | Just var <- M.lookup n vs
-        = M.singleton cd var
+        = M.singleton cd (viDeps var)
 
         -- sanity check: machine-generated names shouldn't occur at top-level
         | MN _ _ <- n
@@ -349,7 +366,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             -- think: f x = x 0  <-- here, `x' _is_ used
             P _ n _
                 | Just var <- M.lookup n vs
-                    -> var `ins` unconditionalDeps args
+                    -> viDeps var `ins` unconditionalDeps args
                 | otherwise
                     -> node n args  -- depends on whether the referred thing uses its argument
 
