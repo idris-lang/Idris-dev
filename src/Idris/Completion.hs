@@ -108,7 +108,11 @@ completeMetaVar = completeWord Nothing (" \t(){}:" ++ opChars) completeM
 
 completeOption :: CompletionFunc Idris
 completeOption = completeWord Nothing " \t" completeOpt
-    where completeOpt = return . completeWith ["errorcontext", "showimplicits", "originalerrors"]
+    where completeOpt = return . completeWith [ "errorcontext"
+                                              , "showimplicits"
+                                              , "originalerrors"
+                                              , "autosolve"
+                                              ]
 
 completeConsoleWidth :: CompletionFunc Idris
 completeConsoleWidth = completeWord Nothing " \t" completeW

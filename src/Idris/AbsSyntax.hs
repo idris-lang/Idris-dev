@@ -713,6 +713,12 @@ setShowOrigErr b = do i <- getIState
                       let opt' = opts { opt_origerr = b }
                       putIState $ i { idris_options = opt' }
 
+setAutoSolve :: Bool -> Idris ()
+setAutoSolve b = do i <- getIState
+                    let opts = idris_options i
+                    let opt' = opts { opt_autoSolve = b }
+                    putIState $ i { idris_options = opt' }
+
 setNoBanner :: Bool -> Idris ()
 setNoBanner n = do i <- getIState
                    let opts = idris_options i
