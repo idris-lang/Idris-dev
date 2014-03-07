@@ -988,7 +988,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                    simpleCase tcase False reflect CompileTime fc atys pdef
            cov <- coverage
            pmissing <-
-                   if cov
+                   if cov && not (hasDefault cs)
                       then do missing <- genClauses fc n (map getLHS pdef) cs
                               -- missing <- genMissing n scargs sc
                               missing' <- filterM (checkPossible info fc True n) missing
@@ -1091,6 +1091,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
     depat acc (Bind n (PVar t) sc) = depat (n : acc) (instantiate (P Bound n t) sc)
     depat acc x = (acc, x)
+
+    hasDefault cs | (PClause _ _ last _ _ _ :_) <- reverse cs
+                  , (PApp fn s args) <- last = all ((==Placeholder) . getTm) args
+    hasDefault _ = False
 
     getLHS (_, l, _) = l
 
