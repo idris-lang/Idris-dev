@@ -224,6 +224,8 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
     -- get Deps for a Name
     getDeps :: Name -> Deps
+    getDeps (SN (WhereN i (SN (InstanceCtorN classN)) (MN i' field)))
+        = M.empty  -- these deps are created when applying instance ctors
     getDeps n = case lookupDef n ctx of
         [def] -> getDepsDef n def
         []    -> error $ "erasure checker: unknown reference: " ++ show n
@@ -422,14 +424,25 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsTerm vs bs cd t = error $ "cannot get deps of: " ++ show t
 
     -- Get the number of arguments that might be considered for erasure.
-    -- If the symbol is unknown, we assume that it uses all its arguments.
     getArity :: Name -> Int
+
+    -- method, derive arity from the type of the instance ctor
+    getArity (SN (WhereN i cn (MN i' field))) = case lookupDef cn ctx of
+        [TyDecl (DCon tag arity) ty]
+            -> let argTys = map snd $ getArgTys ty
+                in if i < length argTys
+                    then length $ getArgTys (argTys !! i)
+                    else error $ "invalid method number " ++ show i ++ " for " ++ show cn
+        _ -> error $ "could not find instance constructor " ++ show cn
+
+    -- other names
     getArity n = case lookupDef n ctx of
         [CaseOp ci ty tys def tot cdefs] -> length tys
         [TyDecl (DCon tag arity) _]      -> arity
         [TyDecl (Ref) ty]                -> length $ getArgTys ty
         [Operator ty arity op]           -> arity
-        df  -> error $ "unknown entity '" ++ show n ++ "' with definition: "  ++ show df
+        [] -> error $ "definition not found: " ++ show n
+        df -> error $ "unrecognised entity '" ++ show n ++ "' with definition: "  ++ show df
 
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering
