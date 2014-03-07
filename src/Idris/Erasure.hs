@@ -240,21 +240,18 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         -- to capture these dependencies as well
         etaIdx = [length vars .. length tys - 1]
         etaVars = [eta i | i <- etaIdx]
-        etaMap = M.fromList [(eta i, VI
-                { viDeps   = M.singleton (fn, Arg i) S.empty
-                , viFunArg = Just i
-                })
-            | i <- etaIdx]
+        etaMap = M.fromList [varPair (eta i) i | i <- etaIdx]
         eta i = MN i (pack "eta")
 
         -- the variables that arose as function arguments only depend on (n, i)
-        varMap = M.fromList
-            [(v, VI
-                { viDeps   = M.singleton (fn, Arg i) S.empty
-                , viFunArg = Just i
-                }
-             ) 
-            | (v,i) <- zip vars [0..]]
+        varMap = M.fromList [varPair v i | (v,i) <- zip vars [0..]]
+
+        varPair n argNo = (n, VI
+            { viDeps   = M.singleton (fn, Arg argNo) S.empty
+            , viFunArg = Just argNo
+            , viMethod = Nothing
+            })
+
         (vars, sc) = cases_runtime cdefs
             -- we use cases_runtime in order to have case-blocks
             -- resolved to top-level functions before our analysis
@@ -363,10 +360,20 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used
             P _ n _
+                -- local name that refers to a method
                 | Just var <- M.lookup n vs
+                , Just (cn, i) <- viMethod var
+                    -> node (SN (WhereN i cn $ sMN i "field")) args
+
+                -- local name
+                | Just var <- M.lookup n vs
+                    -- unconditional use
                     -> viDeps var `ins` unconditionalDeps args
+
+                -- global name
                 | otherwise
-                    -> node n args  -- depends on whether the referred thing uses its argument
+                    -- depends on whether the referred thing uses its argument
+                    -> node n args
 
             -- TODO: could we somehow infer how bound variables use their arguments?
             V i -> M.unionWith (M.unionWith S.union) ((bs !! i) cd) (unconditionalDeps args)
