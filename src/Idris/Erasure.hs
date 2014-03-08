@@ -51,10 +51,11 @@ type Cond = Set Node
 
 -- Variables carry certain information with them.
 data VarInfo = VI
-    { viDeps   :: DepSet     -- dependencies drawn in by the variable
-    , viFunArg :: Maybe Int  -- which function argument this variable came from (defined only for patvars)
-    , viMethod :: Maybe (Name, Int)  -- instance ctor name, method#
+    { viDeps   :: DepSet      -- dependencies drawn in by the variable
+    , viFunArg :: Maybe Int   -- which function argument this variable came from (defined only for patvars)
+    , viMethod :: Maybe Name  -- name of the method represented by the var, if any
     }
+    deriving Show
 
 type Vars = Map Name VarInfo
 
@@ -296,17 +297,26 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         vs' = M.fromList [(v, VI
             { viDeps   = M.insertWith S.union (n, Arg j) (S.singleton (fn, varIdx)) (viDeps var)
             , viFunArg = viFunArg var
-            , viMethod = meth j
+            , viMethod = m
             })
-          | (v,j) <- zip ns [0..]]
+          | (v, j, m) <- zip3 ns [0..] methodNames]
         
         -- this is safe because it's certainly a patvar
         varIdx = fromJust (viFunArg var)
 
-        -- method info
-        meth = case n of
-            SN (InstanceCtorN className) -> \j -> Just (n, j)
-            _ -> \j -> Nothing
+        -- figure out method names, if "n" is an instance ctor
+        methodNames :: [Maybe Name]
+        methodNames = case n of
+            SN (InstanceCtorN className)
+                | Just cinfo <- lookupCtxtExact className ci
+                -> let methNames = map fst $ class_methods cinfo
+                    in replicate (length ns - length methNames) Nothing  -- initial type args to the instance ctor
+                        ++ map Just methNames                            -- methods proper
+
+                | otherwise
+                -> error $ "could not find class for the instance ctor " ++ show n
+
+            _ -> repeat Nothing
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
     getDepsTerm :: Vars -> [Cond -> Deps] -> Cond -> Term -> Deps
@@ -346,7 +356,6 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     -- applications may add items to Cond
     getDepsTerm vs bs cd app@(App _ _)
         | (fun, args) <- unApply app = case fun of
-
             -- constructors
             P (TCon _ _) n _ -> unconditionalDeps args  -- does not depend on anything
             P (DCon _ _) n _ -> node n args             -- depends on whether (n,#) is used
@@ -363,9 +372,9 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             -- think: f x = x 0  <-- here, `x' _is_ used
             P _ n _
                 -- local name that refers to a method
-                | Just var <- M.lookup n vs
-                , Just (cn, i) <- viMethod var
-                    -> node (SN (WhereN i cn $ sMN i "field")) args
+                | Just var  <- M.lookup n vs
+                , Just meth <- viMethod var
+                    -> node meth args  -- use the method instead
 
                 -- local name
                 | Just var <- M.lookup n vs
@@ -386,13 +395,6 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             -- and we interpret applied lets as lambdas
             Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
             Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
-
-            -- TODO: figure out what to do with methods
-            -- the following code marks them as completely used
-            Proj (P Ref n@(SN (InstanceN className parms)) _) i
-                | [CI ctorName ms ds dscs ps is] <- lookupCtxt className ci
-                    -> M.fromList [((ctorName, Arg i), S.empty), ((n, Result), S.empty)]
-                         `ins` unconditionalDeps args
 
             Proj t i
                 -> error $ "cannot[0] analyse projection !" ++ show i ++ " of " ++ show t
@@ -425,24 +427,14 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
     -- Get the number of arguments that might be considered for erasure.
     getArity :: Name -> Int
-
-    -- method, derive arity from the type of the instance ctor
-    getArity (SN (WhereN i cn (MN i' field))) = case lookupDef cn ctx of
-        [TyDecl (DCon tag arity) ty]
-            -> let argTys = map snd $ getArgTys ty
-                in if i < length argTys
-                    then length $ getArgTys (argTys !! i)
-                    else error $ "invalid method number " ++ show i ++ " for " ++ show cn
-        _ -> error $ "could not find instance constructor " ++ show cn
-
-    -- other names
     getArity n = case lookupDef n ctx of
         [CaseOp ci ty tys def tot cdefs] -> length tys
         [TyDecl (DCon tag arity) _]      -> arity
         [TyDecl (Ref) ty]                -> length $ getArgTys ty
         [Operator ty arity op]           -> arity
-        [] -> error $ "definition not found: " ++ show n
-        df -> error $ "unrecognised entity '" ++ show n ++ "' with definition: "  ++ show df
+        [] -> error $ "Erasure/getArity: definition not found for " ++ show n
+        df -> error $ "Erasure/getArity: unrecognised entity '"
+                        ++ show n ++ "' with definition: "  ++ show df
 
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering
@@ -451,6 +443,12 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     lamToLet (x:xs) (Bind n (Lam ty) t) = Bind n (Let ty x) (lamToLet xs t)
     lamToLet (x:xs)  t                  = App (lamToLet xs t) x
     lamToLet    []   t                  = t
+
+    mkField :: Name -> Int -> Name
+    mkField ctorName fieldNo = SN (WhereN fieldNo ctorName $ sMN fieldNo "field")
+
+    union :: Deps -> Deps -> Deps
+    union = M.unionWith (M.unionWith S.union)
 
     unions :: [Deps] -> Deps
     unions = M.unionsWith (M.unionWith S.union)
