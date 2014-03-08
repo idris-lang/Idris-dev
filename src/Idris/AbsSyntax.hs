@@ -9,6 +9,7 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Typecheck
 import Idris.AbsSyntaxTree
 import Idris.Colours
+import Idris.Docstrings
 import Idris.IdeSlave
 import IRTS.CodegenCommon
 import Util.DynamicLinker
@@ -262,7 +263,7 @@ addCoercion :: Name -> Idris ()
 addCoercion n = do i <- getIState
                    putIState $ i { idris_coercions = nub $ n : idris_coercions i }
 
-addDocStr :: Name -> String -> [(Name, String)] -> Idris ()
+addDocStr :: Name -> Docstring -> [(Name, Docstring)] -> Idris ()
 addDocStr n doc args
    = do i <- getIState
         putIState $ i { idris_docstrings = addDef n (doc, args) (idris_docstrings i) }

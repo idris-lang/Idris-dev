@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternGuards #-}
 module Idris.Docs where
 
 import Idris.AbsSyntax
@@ -5,6 +6,7 @@ import Idris.AbsSyntaxTree
 import Idris.Delaborate
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Docstrings
 
 import Util.Pretty
 
@@ -13,8 +15,8 @@ import Data.List
 
 -- TODO: Only include names with public/abstract accessibility
 
-data FunDoc = FD Name String
-                 [(Name, PTerm, Plicity, Maybe String)] -- args: name, ty, implicit, docs
+data FunDoc = FD Name Docstring
+                 [(Name, PTerm, Plicity, Maybe Docstring)] -- args: name, ty, implicit, docs
                  PTerm -- function type
                  (Maybe Fixity)
   deriving Show
@@ -22,16 +24,16 @@ data FunDoc = FD Name String
 data Docs = FunDoc FunDoc
           | DataDoc FunDoc -- type constructor docs
                     [FunDoc] -- data constructor docs
-          | ClassDoc Name String -- class docs
+          | ClassDoc Name Docstring -- class docs
                      [FunDoc] -- method docs
   deriving Show
 
-showDoc "" = empty
-showDoc x = text "  -- " <> text x
+showDoc d | nullDocstring d = empty
+          | otherwise       = text "  -- " <> renderDocstring d
 
 pprintFD :: Bool -> FunDoc -> Doc OutputAnnotation
 pprintFD imp (FD n doc args ty f)
-    = nest 4 (prettyName imp [] n <+> colon <+> prettyImp imp ty <$> showDoc doc <$>
+    = nest 4 (prettyName imp [] n <+> colon <+> prettyImp imp ty <$> renderDocstring doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
               let argshow = showArgs args [] in
               if not (null argshow)
@@ -41,20 +43,20 @@ pprintFD imp (FD n doc args ty f)
     where showArgs ((n, ty, Exp {}, d):args) bnd
              = bindingOf n False <+> colon <+>
                pprintPTerm imp bnd ty <>
-               showDoc (maybe "" id d) <> line
+               showDoc (maybe emptyDocstring id d) <> line
                :
                showArgs args ((n, False):bnd)
           showArgs ((n, ty, Constraint {}, d):args) bnd
              = text "Class constraint" <+>
-               pprintPTerm imp bnd ty <> showDoc (maybe "" id d) <> line
+               pprintPTerm imp bnd ty <> showDoc (maybe emptyDocstring id d) <> line
                :
                showArgs args ((n, True):bnd)
           showArgs ((n, ty, Imp {}, d):args) bnd
-           | not (null doc)
+           | Just d' <- d
              = text "(implicit)" <+>
                bindingOf n True <+> colon <+>
                pprintPTerm imp bnd ty <>
-               showDoc (maybe "" id d) <> line
+               showDoc d' <> line
                :
                showArgs args ((n, True):bnd)
           showArgs ((n, _, _, _):args) bnd = showArgs args ((n, True):bnd)
@@ -93,7 +95,7 @@ docClass n ci
   = do i <- getIState
        let docstr = case lookupCtxt n (idris_docstrings i) of
                          [str] -> fst str
-                         _ -> ""
+                         _ -> emptyDocstring
        mdocs <- mapM docFun (map fst (class_methods ci))
        return (ClassDoc n docstr mdocs)
 
@@ -102,7 +104,7 @@ docFun n
   = do i <- getIState
        let (docstr, argDocs) = case lookupCtxt n (idris_docstrings i) of
                                   [d] -> d
-                                  _ -> ("", [])
+                                  _ -> noDocs
        let ty = delabTy i n
        let args = getPArgNames ty argDocs
        let infixes = idris_infixes i
@@ -116,7 +118,7 @@ docFun n
              funName (UN n)   = str n
              funName (NS n _) = funName n
 
-getPArgNames :: PTerm -> [(Name, String)] -> [(Name, PTerm, Plicity, Maybe String)]
+getPArgNames :: PTerm -> [(Name, Docstring)] -> [(Name, PTerm, Plicity, Maybe Docstring)]
 getPArgNames (PPi plicity name ty body) ds =
   (name, ty, plicity, lookup name ds) : getPArgNames body ds
 getPArgNames _ _ = []

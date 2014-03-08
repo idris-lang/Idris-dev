@@ -26,6 +26,8 @@ import Idris.Core.Execute
 import Idris.Core.Typecheck
 import Idris.Core.CaseTree
 
+import Idris.Docstrings
+
 import Control.DeepSeq
 import Control.Monad
 import Control.Monad.State.Strict as State
@@ -63,12 +65,12 @@ checkAddDef add toplvl fc ((n, (i, top, t)) : ns)
 --                                                   return (n, (i, top, t'))) ns
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
-elabType :: ElabInfo -> SyntaxInfo -> String -> [(Name, String)] ->
+elabType :: ElabInfo -> SyntaxInfo -> Docstring -> [(Name, Docstring)] ->
             FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType = elabType' False
 
 elabType' :: Bool -> -- normalise it
-             ElabInfo -> SyntaxInfo -> String -> [(Name, String)] ->
+             ElabInfo -> SyntaxInfo -> Docstring -> [(Name, Docstring)] ->
              FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                                        n  = liftname info n_in in    -}
@@ -171,7 +173,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     tyIsHandler _                                           = False
 
 
-elabPostulate :: ElabInfo -> SyntaxInfo -> String ->
+elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring ->
                  FC -> FnOpts -> Name -> PTerm -> Idris ()
 elabPostulate info syn doc fc opts n ty
     = do elabType info syn doc [] fc opts n ty
@@ -195,7 +197,7 @@ elabPostulate info syn doc fc opts n ty
          -- remove it from the deferred definitions list
          solveDeferred n
 
-elabData :: ElabInfo -> SyntaxInfo -> String -> [(Name, String)] -> FC -> DataOpts -> PData -> Idris ()
+elabData :: ElabInfo -> SyntaxInfo -> Docstring -> [(Name, Docstring)] -> FC -> DataOpts -> PData -> Idris ()
 elabData info syn doc argDocs fc opts (PLaterdecl n t_in)
     = do let codata = Codata `elem` opts
          iLOG (show (fc, doc))
@@ -257,8 +259,9 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          updateContext (addDatatype (Data n ttag cty cons))
          updateContext (setMetaInformation n metainf)
          mapM_ (checkPositive n) cons
-         if DefaultEliminator `elem` opts then evalStateT (elabEliminator params n t dcons info) Map.empty
-                                          else return ()
+         if DefaultEliminator `elem` opts
+           then evalStateT (elabEliminator params n t dcons info) Map.empty
+           else return ()
   where
         checkDefinedAs fc n t ctxt
             = case lookupDef n ctxt of
@@ -322,7 +325,7 @@ type EliminatorState = StateT (Map.Map String Int) Idris
 
 -- TODO: Use uniqueName for generating names, rewrite everything to use idris_implicits instead of manual splitting, generally just rewrite
 elabEliminator :: [Int] -> Name -> PTerm ->
-                  [(String, [(Name, String)], Name, PTerm, FC, [Name])] ->
+                  [(Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name])] ->
                   ElabInfo -> EliminatorState ()
 elabEliminator paramPos n ty cons info = do
   elimLog $ "Elaborating eliminator"
@@ -339,7 +342,7 @@ elabEliminator paramPos n ty cons info = do
   let motiveConstr = [(motiveName, expl, motive)]
   let scrutinee = (scrutineeName, expl, applyCons n (interlievePos paramPos generalParams scrutineeIdxs 0))
   let eliminatorTy = piConstr (generalParams ++ motiveConstr ++ consTerms ++ scrutineeIdxs ++ [scrutinee]) (applyMotive (map (\(n,_,_) -> PRef elimFC n) scrutineeIdxs) (PRef elimFC scrutineeName))
-  let eliminatorTyDecl = PTy (show n) [] defaultSyntax elimFC [TotalFn] elimDeclName eliminatorTy
+  let eliminatorTyDecl = PTy (parseDocstring . T.pack $ show n) [] defaultSyntax elimFC [TotalFn] elimDeclName eliminatorTy
   let clauseConsElimArgs = map getPiName consTerms
   let clauseGeneralArgs' = map getPiName generalParams ++ [motiveName] ++ clauseConsElimArgs
   let clauseGeneralArgs  = map (\arg -> pexp (PRef elimFC arg)) clauseGeneralArgs'
@@ -488,7 +491,7 @@ elabEliminator paramPos n ty cons info = do
         splitArgPms _                 = ([],[])
 
 
-        implicitIndexes :: (String, Name, PTerm, FC, [Name]) -> EliminatorState [(Name, Plicity, PTerm)]
+        implicitIndexes :: (Docstring, Name, PTerm, FC, [Name]) -> EliminatorState [(Name, Plicity, PTerm)]
         implicitIndexes (cns@(doc, cnm, ty, fc, fs)) = do
           i <-  State.lift getIState
           implargs' <- case lookupCtxt cnm (idris_implicits i) of
@@ -503,7 +506,7 @@ elabEliminator paramPos n ty cons info = do
               in return $ filter (\(n,_,_) -> not (n `elem` oldParams))implargs
              _ -> return implargs
 
-        extractConsTerm :: (String, [(Name, String)], Name, PTerm, FC, [Name]) -> [(Name, Plicity, PTerm)] -> EliminatorState PTerm
+        extractConsTerm :: (Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name]) -> [(Name, Plicity, PTerm)] -> EliminatorState PTerm
         extractConsTerm (doc, argDocs, cnm, ty, fc, fs) generalParameters = do
           let cons' = replaceParams paramPos generalParameters ty
           let (args, resTy) = splitPi cons'
@@ -539,7 +542,7 @@ elabEliminator paramPos n ty cons info = do
         convertImplPi (PImp {getTm = t, pname = n}) = Just (n, expl, t)
         convertImplPi _                             = Nothing
 
-        generateEliminatorClauses :: (String, [(Name, String)], Name, PTerm, FC, [Name]) -> Name -> [PArg] -> [(Name, Plicity, PTerm)] -> EliminatorState PClause
+        generateEliminatorClauses :: (Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name]) -> Name -> [PArg] -> [(Name, Plicity, PTerm)] -> EliminatorState PClause
         generateEliminatorClauses (doc, _, cnm, ty, fc, fs) cnsElim generalArgs generalParameters = do
           let cons' = replaceParams paramPos generalParameters ty
           let (args, resTy) = splitPi cons'
@@ -561,7 +564,7 @@ elabEliminator paramPos n ty cons info = do
 
 elabPrims :: Idris ()
 elabPrims = do mapM_ (elabDecl EAll toplevel)
-                     (map (\(opt, decl) -> PData "" [] defaultSyntax (fileFC "builtin") opt decl)
+                     (map (\(opt, decl) -> PData emptyDocstring [] defaultSyntax (fileFC "builtin") opt decl)
                         (zip
                          [inferOpts, unitOpts, falseOpts, pairOpts, eqOpts]
                          [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl]))
@@ -665,7 +668,7 @@ elabProvider info syn fc what n ty tm
            Provide tm
              | what `elem` [ProvTerm, ProvAny] ->
                do -- Finally add a top-level definition of the provided term
-                  elabType info syn "" [] fc [] n ty
+                  elabType info syn emptyDocstring [] fc [] n ty
                   elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
                   logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
              | otherwise ->
@@ -673,7 +676,7 @@ elabProvider info syn fc what n ty tm
            Postulate
              | what `elem` [ProvPostulate, ProvAny] ->
                do -- Add the postulate
-                  elabPostulate info syn "Provided postulate" fc [] n ty
+                  elabPostulate info syn (parseDocstring $ T.pack "Provided postulate") fc [] n ty
                   logLvl 3 $ "Elaborated provided postulate " ++ show n
              | otherwise ->
                ierror . Msg $ "Attempted to provide a postulate where a term was expected."
@@ -724,8 +727,8 @@ elabTransform info fc safe lhs_in rhs_in
          addIBC (IBCTrans (clhs_tm, crhs_tm))
 
 
-elabRecord :: ElabInfo -> SyntaxInfo -> String -> FC -> Name ->
-              PTerm -> String -> Name -> PTerm -> Idris ()
+elabRecord :: ElabInfo -> SyntaxInfo -> Docstring -> FC -> Name ->
+              PTerm -> Docstring -> Name -> PTerm -> Idris ()
 elabRecord info syn doc fc tyn ty cdoc cn cty
     = do elabData info syn doc [] fc [] (PDatadecl tyn ty [(cdoc, [], cn, cty, fc, [])])
          cty' <- implicit syn cn cty
@@ -797,7 +800,7 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
 
     mkProj recty substs cimp ((pn_in, pty), pos)
         = do let pn = expandNS syn pn_in
-             let pfnTy = PTy "" [] defaultSyntax fc [] pn
+             let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] pn
                             (PPi expl rec recty
                                (substMatches substs pty))
              let pls = repeat Placeholder
@@ -818,7 +821,7 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
             let valname = sMN 0 "updateval"
             let pt = k (PPi expl pn pty
                            (PPi expl rec recty recty))
-            let pfnTy = PTy "" [] defaultSyntax fc [] setname pt
+            let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] setname pt
             let pls = map (\x -> PRef fc (sMN x "field")) [0..num-1]
             let lhsArgs = pls
             let rhsArgs = take pos pls ++ (PRef fc valname) :
@@ -834,7 +837,7 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
             return (pn, pfnTy, PClauses fc [] setname [pclause])
 
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
-           (String, [(Name, String)], Name, PTerm, FC, [Name]) -> Idris (Name, Type)
+           (Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name]) -> Idris (Name, Type)
 elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
     = do checkUndefined fc n
          ctxt <- getContext
@@ -1162,7 +1165,7 @@ elabPE info fc caller r =
                            (map (\ (lhs, rhs) ->
                               (showTmImpls lhs ++ " = " ++ 
                                showTmImpls rhs)) pats)
-            elabType info defaultSyntax "" [] fc opts newnm specTy
+            elabType info defaultSyntax emptyDocstring [] fc opts newnm specTy
             let def = map (\ (lhs, rhs) -> PClause fc newnm lhs [] rhs []) pats
             elabClauses info fc opts newnm def
             logLvl 2 $ "Specialised " ++ show newnm)
@@ -1721,7 +1724,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
 
 data MArgTy = IA | EA | CA deriving Show
 
-elabClass :: ElabInfo -> SyntaxInfo -> String ->
+elabClass :: ElabInfo -> SyntaxInfo -> Docstring ->
              FC -> [PTerm] ->
              Name -> [(Name, PTerm)] -> [PDecl] -> Idris ()
 elabClass info syn doc fc constraints tn ps ds
@@ -1748,7 +1751,7 @@ elabClass info syn doc fc constraints tn ps ds
          let cty = impbind ps $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
-         let cons = [("", [], cn, cty, fc, [])]
+         let cons = [(emptyDocstring, [], cn, cty, fc, [])]
          let ddecl = PDatadecl tn tty cons
          logLvl 5 $ "Class data " ++ show (showDImp True ddecl)
          elabData info (syn { no_imp = no_imp syn ++ mnames }) doc [] fc [] ddecl
@@ -1803,7 +1806,7 @@ elabClass info syn doc fc constraints tn ps ds
         case lookup n mtys of
             Just (syn, o, ty) -> do let ty' = insertConstraint c ty
                                     let ds = map (decorateid defaultdec)
-                                                 [PTy "" [] syn fc [] n ty',
+                                                 [PTy emptyDocstring [] syn fc [] n ty',
                                                   PClauses fc (o ++ opts) n cs]
                                     iLOG (show ds)
                                     return (n, ((defaultdec n, ds!!1), ds))
@@ -1841,7 +1844,7 @@ elabClass info syn doc fc constraints tn ps ds
              addInstance False conn' cfn
              addIBC (IBCInstance False conn' cfn)
 --              iputStrLn ("Added " ++ show (conn, cfn, ty))
-             return [PTy "" [] syn fc [] cfn ty,
+             return [PTy emptyDocstring [] syn fc [] cfn ty,
                      PClauses fc [Dictionary] cfn [PClause fc cfn lhs [] rhs []]]
 
     -- Generate a top level function which looks up a method in a given
@@ -1905,7 +1908,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
     let constraint = PApp fc (PRef fc n) (map pexp ps)
     let iname = mkiname n ps expn
     when (what /= EDefns) $ do
-         nty <- elabType' True info syn "" [] fc [] iname t
+         nty <- elabType' True info syn emptyDocstring [] fc [] iname t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
@@ -2057,7 +2060,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
     decorate ns iname (UN n) = NS (SN (MethodN (UN n))) ns
     decorate ns iname (NS (UN n) s) = NS (SN (MethodN (UN n))) ns
 
-    mkTyDecl (n, op, t, _) = PTy "" [] syn fc op n t
+    mkTyDecl (n, op, t, _) = PTy emptyDocstring [] syn fc op n t
 
     conbind (ty : ns) x = PPi constraint (sMN 0 "class") ty (conbind ns x)
     conbind [] x = x
@@ -2304,7 +2307,7 @@ inferredDiff fc inf user =
 -- | Check a PTerm against documentation and ensure that every documented
 -- argument actually exists.  This must be run _after_ implicits have been
 -- found, or it will give spurious errors.
-checkDocs :: FC -> [(Name, String)] -> PTerm -> Idris ()
+checkDocs :: FC -> [(Name, Docstring)] -> PTerm -> Idris ()
 checkDocs fc args tm = cd (Map.fromList args) tm
   where cd as (PPi _ n _ sc) = cd (Map.delete n as) sc
         cd as _ | Map.null as = return ()

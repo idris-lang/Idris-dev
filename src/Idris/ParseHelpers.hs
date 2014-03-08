@@ -16,6 +16,7 @@ import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Delaborate (pprintErr)
+import Idris.Docstrings
 
 import qualified Util.Pretty as Pretty (text)
 
@@ -139,25 +140,26 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
 {-| Parses a documentation comment (similar to haddoc) given a marker character
 
 @
-  DocComment_t ::=   '--' DocCommentMarker_t ~EOL_t* EOL_t
-                  | '{ -' DocCommentMarket_t ~'- }'* '- }'
+  DocComment_t ::=   '|||' ~EOL_t* EOL_t
                  ;
 @
  -}
-docComment :: IdrisParser (String, [(Name, String)])
+docComment :: IdrisParser (Docstring, [(Name, Docstring)])
 docComment = do dc <- pushIndent *> docCommentLine
                 rest <- many (indented docCommentLine)
                 args <- many (indented argDocCommentLine)
                 popIndent
-                return (T.unpack $ T.strip $ T.pack (dc ++ concat rest), args)
+                return (parseDocstring $ T.pack (concat . intersperse "\n" $ dc:rest),
+                        map (\(n, d) -> (n, parseDocstring (T.pack d))) args)
 
   where docCommentLine :: MonadicParsing m => m String
         docCommentLine = try (do string "|||"
-                                 many (satisfy isSpace)
-                                 first <- satisfy (\c -> not (isEol c || c == '@'))
-                                 res <- many (satisfy (not . isEol))
+                                 many (satisfy (==' '))
+                                 contents <- option "" (do first <- satisfy (\c -> not (isEol c || c == '@'))
+                                                           res <- many (satisfy (not . isEol))
+                                                           return $ first:res)
                                  eol ; someSpace
-                                 return (first:res))-- ++ concat rest))
+                                 return contents)-- ++ concat rest))
                         <?> ""
         argDocCommentLine = do string "|||"
                                many (satisfy isSpace)
