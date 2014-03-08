@@ -36,3 +36,4 @@ else
 endif
 endif
 
+#define HAS_PTHREAD

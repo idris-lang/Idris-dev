@@ -111,10 +111,11 @@ void idris_gc(VM* vm) {
     for(root = vm->valstack; root < vm->valstack_top; ++root) {
         *root = copy(vm, *root);
     }
+#ifdef HAS_PTHREAD
     for(root = vm->inbox_ptr; root < vm->inbox_write; ++root) {
         *root = copy(vm, *root);
     }
-    
+#endif
     vm->ret = copy(vm, vm->ret);
     vm->reg1 = copy(vm, vm->reg1);
 

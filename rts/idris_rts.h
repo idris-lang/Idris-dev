@@ -6,7 +6,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#ifdef HAS_PTHREAD
 #include <pthread.h>
+#endif
 #include <stdint.h>
 
 #include "idris_heap.h"
@@ -66,6 +68,11 @@ typedef struct Closure {
     } info;
 } Closure;
 
+#if HAS_PTHREAD
+typedef void* pthread_mutex_t;
+typedef void* pthread_cond_t;
+#endif
+
 typedef struct {
     VAL* valstack;
     VAL* valstack_top;
@@ -73,7 +80,7 @@ typedef struct {
     VAL* stack_max;
     
     Heap heap;
-
+#ifdef HAS_PTHREAD
     pthread_mutex_t inbox_lock;
     pthread_mutex_t inbox_block;
     pthread_mutex_t alloc_lock;
@@ -87,7 +94,7 @@ typedef struct {
 
     int processes; // Number of child processes
     int max_threads; // maximum number of threads to run in parallel
-    
+#endif
     Stats stats;
 
     VAL ret;
