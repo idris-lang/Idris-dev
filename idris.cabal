@@ -440,6 +440,7 @@ Library
                 , Idris.DeepSeq
                 , Idris.Delaborate
                 , Idris.Docs
+                , Idris.Docstrings
                 , Idris.ElabDecls
                 , Idris.ElabTerm
                 , Idris.Error
@@ -506,6 +507,7 @@ Library
                 , ansi-wl-pprint
                 , binary
                 , bytestring
+                , cheapskate
                 , containers >= 0.5
                 , directory
                 , directory >= 1.2
