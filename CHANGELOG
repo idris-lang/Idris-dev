@@ -13,10 +13,12 @@ New in 0.9.12:
 * Syntax for dealing with match failure in <- and pattern matching let.
 * New syntax for inline documentation. Documentation starts with |||, and
   arguments are documented by preceding their name with @. Example:
-||| Add two natural numbers
-||| @ n the first number (examined by the function)
-||| @ m the second number (not examined)
-plus (n, m : Nat) -> Nat
+  ||| Add two natural numbers
+  ||| @ n the first number (examined by the function)
+  ||| @ m the second number (not examined)
+  plus (n, m : Nat) -> Nat
+* Allow the auto-solve behavior in the prover to be disabled, for easier debugging
+  of proof automation. Use ":set autosolve" and ":unset autosolve".
 
 New in 0.9.11:
 --------------

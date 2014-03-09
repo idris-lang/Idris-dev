@@ -107,6 +107,7 @@ pOption :: P.IdrisParser Opt
 pOption = do discard (P.symbol "errorcontext"); return ErrContext
       <|> do discard (P.symbol "showimplicits"); return ShowImpl
       <|> do discard (P.symbol "originalerrors"); return ShowOrigErr
+      <|> do discard (P.symbol "autosolve"); return AutoSolve
 
 pConsoleWidth :: P.IdrisParser ConsoleWidth
 pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth

@@ -1205,6 +1205,8 @@ reifyApp ist t [t']
              | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
 reifyApp ist t [t']
              | t == reflm "Reflect" = liftM (Reflect . delab ist) (reifyTT t')
+reifyApp ist t [t']
+             | t == reflm "ByReflection" = liftM (ByReflection . delab ist) (reifyTT t')
 reifyApp _ t [t']
            | t == reflm "Fill" = liftM (Fill . PQuote) (reifyRaw t')
 reifyApp ist t [t']

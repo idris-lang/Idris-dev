@@ -53,7 +53,8 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_cpu        :: String,
                          opt_optLevel   :: Word,
                          opt_cmdline    :: [Opt], -- remember whole command line
-                         opt_origerr    :: Bool
+                         opt_origerr    :: Bool,
+                         opt_autoSolve  :: Bool -- ^ automatically apply "solve" tactic in prover
                        }
     deriving (Show, Eq)
 
@@ -76,6 +77,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_optLevel   = 2
                       , opt_cmdline    = []
                       , opt_origerr    = False
+                      , opt_autoSolve  = True
                       }
 
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
@@ -336,6 +338,7 @@ data Opt = Filename String
          | Client String
          | ShowOrigErr
          | AutoWidth -- ^ Automatically adjust terminal width
+         | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
     deriving (Show, Eq)
 
 -- Parsed declarations
