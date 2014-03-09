@@ -53,7 +53,7 @@ type Cond = Set Node
 data VarInfo = VI
     { viDeps   :: DepSet      -- dependencies drawn in by the variable
     , viFunArg :: Maybe Int   -- which function argument this variable came from (defined only for patvars)
-    , viMethod :: Maybe Name  -- name of the method represented by the var, if any
+    , viMethod :: Maybe Name  -- name of the metamethod represented by the var, if any
     }
     deriving Show
 
@@ -297,26 +297,17 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         vs' = M.fromList [(v, VI
             { viDeps   = M.insertWith S.union (n, Arg j) (S.singleton (fn, varIdx)) (viDeps var)
             , viFunArg = viFunArg var
-            , viMethod = m
+            , viMethod = meth j
             })
-          | (v, j, m) <- zip3 ns [0..] methodNames]
+          | (v, j) <- zip ns [0..]]
         
         -- this is safe because it's certainly a patvar
         varIdx = fromJust (viFunArg var)
 
-        -- figure out method names, if "n" is an instance ctor
-        methodNames :: [Maybe Name]
-        methodNames = case n of
-            SN (InstanceCtorN className)
-                | Just cinfo <- lookupCtxtExact className ci
-                -> let methNames = map fst $ class_methods cinfo
-                    in replicate (length ns - length methNames) Nothing  -- initial type args to the instance ctor
-                        ++ map Just methNames                            -- methods proper
-
-                | otherwise
-                -> error $ "could not find class for the instance ctor " ++ show n
-
-            _ -> repeat Nothing
+        -- generate metamethod names, "n" is the instance ctor
+        meth :: Int -> Maybe Name
+        meth | SN (InstanceCtorN className) <- n = \j -> Just (mkField n j)
+             | otherwise = \j -> Nothing
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
     getDepsTerm :: Vars -> [Cond -> Deps] -> Cond -> Term -> Deps
@@ -427,6 +418,15 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
     -- Get the number of arguments that might be considered for erasure.
     getArity :: Name -> Int
+    getArity (SN (WhereN i' ctorName (MN i field)))
+        | [TyDecl (DCon _ _) ty] <- lookupDef ctorName ctx
+        = let argTys = map snd $ getArgTys ty
+            in if i <= length argTys
+                then length $ getArgTys (argTys !! i)
+                else error $ "invalid field number " ++ show i ++ " for " ++ show ctorName
+
+        | otherwise = error $ "unknown instance constructor: " ++ show ctorName
+
     getArity n = case lookupDef n ctx of
         [CaseOp ci ty tys def tot cdefs] -> length tys
         [TyDecl (DCon tag arity) _]      -> arity
