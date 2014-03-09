@@ -347,9 +347,14 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     -- applications may add items to Cond
     getDepsTerm vs bs cd app@(App _ _)
         | (fun, args) <- unApply app = case fun of
-            -- constructors
+            -- instance constructors -> create metamethod deps
+            P (DCon _ _) ctorName@(SN (InstanceCtorN className)) _
+                -> conditionalDeps ctorName args  -- regular data ctor stuff
+                    `union` unionMap (methodDeps ctorName) (zip [0..] args)  -- method-specific stuff
+
+            -- ordinary constructors
             P (TCon _ _) n _ -> unconditionalDeps args  -- does not depend on anything
-            P (DCon _ _) n _ -> node n args             -- depends on whether (n,#) is used
+            P (DCon _ _) n _ -> conditionalDeps n args  -- depends on whether (n,#) is used
 
             -- mkForeign* calls must be special-cased because they are variadic
             -- All arguments must be marked as used, except for the first one,
@@ -365,7 +370,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 -- local name that refers to a method
                 | Just var  <- M.lookup n vs
                 , Just meth <- viMethod var
-                    -> node meth args  -- use the method instead
+                    -> viDeps var `ins` conditionalDeps meth args  -- use the method instead
 
                 -- local name
                 | Just var <- M.lookup n vs
@@ -375,7 +380,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 -- global name
                 | otherwise
                     -- depends on whether the referred thing uses its argument
-                    -> node n args
+                    -> conditionalDeps n args
 
             -- TODO: could we somehow infer how bound variables use their arguments?
             V i -> M.unionWith (M.unionWith S.union) ((bs !! i) cd) (unconditionalDeps args)
@@ -395,14 +400,30 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             _ -> error $ "cannot analyse application of " ++ show fun ++ " to " ++ show args
       where
         ins = M.insertWith (M.unionWith S.union) cd
-        unconditionalDeps args = unionMap (getDepsTerm vs bs cd) args
 
-        node :: Name -> [Term] -> Deps
-        node n = ins (M.singleton (n, Result) S.empty) . unionMap (getDepsArgs n) . zip indices
+        unconditionalDeps :: [Term] -> Deps
+        unconditionalDeps = unionMap (getDepsTerm vs bs cd)
+
+        conditionalDeps :: Name -> [Term] -> Deps
+        conditionalDeps n
+            = ins (M.singleton (n, Result) S.empty) . unionMap (getDepsArgs n) . zip indices
           where
             indices = map Just [0 .. getArity n - 1] ++ repeat Nothing
             getDepsArgs n (Just i,  t) = getDepsTerm vs bs (S.insert (n, Arg i) cd) t  -- conditional
             getDepsArgs n (Nothing, t) = getDepsTerm vs bs cd t                        -- unconditional
+
+        methodDeps :: Name -> (Int, Term) -> Deps
+        methodDeps ctorName (methNo, t) = getDepsTerm vars bruijns cond t
+          where
+            vars = M.fromList [(v, VI
+                { viDeps   = M.singleton (metameth, Arg i) S.empty
+                , viFunArg = Just i
+                , viMethod = Nothing
+                }) | (v, i) <- zip args [0..]]
+            bruijns  = reverse [\cd -> M.singleton cd (M.singleton (metameth, Arg i) S.empty) | i <- [0..length args-1]]
+            cond     = S.singleton (metameth, Result)
+            metameth = mkField ctorName methNo
+            (args, body) = unfoldLams t
 
     -- projections
     getDepsTerm vs bs cd (Proj t (-1)) = getDepsTerm vs bs cd t  -- naturals, (S n) -> n
@@ -443,6 +464,11 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     lamToLet (x:xs) (Bind n (Lam ty) t) = Bind n (Let ty x) (lamToLet xs t)
     lamToLet (x:xs)  t                  = App (lamToLet xs t) x
     lamToLet    []   t                  = t
+
+    -- split "\x_i -> T(x_i)" into [x_i] and T
+    unfoldLams :: Term -> ([Name], Term)
+    unfoldLams (Bind n (Lam ty) t) = let (ns,t') = unfoldLams t in (n:ns, t')
+    unfoldLams t = ([], t)
 
     mkField :: Name -> Int -> Name
     mkField ctorName fieldNo = SN (WhereN fieldNo ctorName $ sMN fieldNo "field")

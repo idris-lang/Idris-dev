@@ -407,8 +407,8 @@ instance ToIR SC where
         -- and we need to do that everywhere.
         --
         --  2. Unused-case elimination:
-        --      case {e0} of
-        --          C(x,y) -> P[... x,y not used ...]   ==>  P
+        --      case {e0} of                                ==>     P
+        --          C(x,y) -> P[... x,y not used ...]
         --
         -- This is important for runtime because sometimes we case on irrelevant data:
         --
