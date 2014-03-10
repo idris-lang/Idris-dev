@@ -4,18 +4,21 @@ New in 0.9.12:
 * Proof search now works for metavariables in types, giving some interactive
   type inference.
 * New 'Lazy' type, replacing laziness annotations.
-* JavaScript and Node codegen now understand the %include directive
-* Concept up 'null' is now understood in the JavaScript and Node codegen
-* Lots of performance patches for generated JavaScript
+* JavaScript and Node codegen now understand the %include directive.
+* Concept up 'null' is now understood in the JavaScript and Node codegen.
+* Lots of performance patches for generated JavaScript.
 * New commands :eval (:e) and :type (:t) in the prover, which either normalise
-  or show the type of expressions
-* Allow type providers to return postulates in addition to terms
+  or show the type of expressions.
+* Allow type providers to return postulates in addition to terms.
+* Syntax for dealing with match failure in <- and pattern matching let.
 * New syntax for inline documentation. Documentation starts with |||, and
   arguments are documented by preceding their name with @. Example:
-||| Add two natural numbers
-||| @ n the first number (examined by the function)
-||| @ m the second number (not examined)
-plus (n, m : Nat) -> Nat
+  ||| Add two natural numbers
+  ||| @ n the first number (examined by the function)
+  ||| @ m the second number (not examined)
+  plus (n, m : Nat) -> Nat
+* Allow the auto-solve behavior in the prover to be disabled, for easier debugging
+  of proof automation. Use ":set autosolve" and ":unset autosolve".
 
 New in 0.9.11:
 --------------

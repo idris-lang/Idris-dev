@@ -932,6 +932,8 @@ process h fn (SetOpt ShowImpl)      = setImpShow True
 process h fn (UnsetOpt ShowImpl)    = setImpShow False
 process h fn (SetOpt ShowOrigErr)   = setShowOrigErr True
 process h fn (UnsetOpt ShowOrigErr) = setShowOrigErr False
+process h fn (SetOpt AutoSolve)     = setAutoSolve True
+process h fn (UnsetOpt AutoSolve)   = setAutoSolve False
 
 process h fn (SetOpt _) = iPrintError "Not a valid option"
 process h fn (UnsetOpt _) = iPrintError "Not a valid option"

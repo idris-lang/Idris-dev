@@ -7,6 +7,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Typecheck
+import Idris.Docstrings
 import IRTS.Lang
 import IRTS.CodegenCommon
 import Util.Pretty
@@ -53,7 +54,8 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_cpu        :: String,
                          opt_optLevel   :: Word,
                          opt_cmdline    :: [Opt], -- remember whole command line
-                         opt_origerr    :: Bool
+                         opt_origerr    :: Bool,
+                         opt_autoSolve  :: Bool -- ^ automatically apply "solve" tactic in prover
                        }
     deriving (Show, Eq)
 
@@ -76,6 +78,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_optLevel   = 2
                       , opt_cmdline    = []
                       , opt_origerr    = False
+                      , opt_autoSolve  = True
                       }
 
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
@@ -111,7 +114,7 @@ data IState = IState {
     idris_flags :: Ctxt [FnOpt],
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
     idris_calledgraph :: Ctxt [Name],
-    idris_docstrings :: Ctxt (String, [(Name, String)]),
+    idris_docstrings :: Ctxt (Docstring, [(Name, Docstring)]),
     idris_tyinfodata :: Ctxt TIData,
     idris_totcheck :: [(FC, Name)], -- names to check totality on 
     idris_defertotcheck :: [(FC, Name)], -- names to check at the end
@@ -336,6 +339,7 @@ data Opt = Filename String
          | Client String
          | ShowOrigErr
          | AutoWidth -- ^ Automatically adjust terminal width
+         | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
     deriving (Show, Eq)
 
 -- Parsed declarations
@@ -450,15 +454,15 @@ data ProvideWhat = ProvTerm      -- ^ only allow providing terms
 -- datatypes and typeclasses.
 data PDecl' t
    = PFix     FC Fixity [String] -- ^ Fixity declaration
-   | PTy      String [(Name, String)] SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
-   | PPostulate String SyntaxInfo FC FnOpts Name t -- ^ Postulate
+   | PTy      Docstring [(Name, Docstring)] SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
+   | PPostulate Docstring SyntaxInfo FC FnOpts Name t -- ^ Postulate
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
    | PCAF     FC Name t -- ^ Top level constant
-   | PData    String [(Name, String)] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
+   | PData    Docstring [(Name, Docstring)] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
    | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
    | PNamespace String [PDecl' t] -- ^ New namespace
-   | PRecord  String SyntaxInfo FC Name t String Name t  -- ^ Record declaration
-   | PClass   String SyntaxInfo FC
+   | PRecord  Docstring SyntaxInfo FC Name t Docstring Name t  -- ^ Record declaration
+   | PClass   Docstring SyntaxInfo FC
               [t] -- constraints
               Name
               [(Name, t)] -- parameters
@@ -512,7 +516,7 @@ deriving instance NFData PClause'
 -- | Data declaration
 data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
                              d_tcon :: t, -- ^ Type constructor
-                             d_cons :: [(String, [(Name, String)], Name, t, FC, [Name])] -- ^ Constructors
+                             d_cons :: [(Docstring, [(Name, Docstring)], Name, t, FC, [Name])] -- ^ Constructors
                            }
                  -- ^ Data declaration
                | PLaterdecl { d_name :: Name, d_tcon :: t }
@@ -737,7 +741,7 @@ type PTactic = PTactic' PTerm
 
 data PDo' t = DoExp  FC t
             | DoBind FC Name t
-            | DoBindP FC t t
+            | DoBindP FC t t [(t,t)]
             | DoLet  FC Name t t
             | DoLetP FC t t
     deriving (Eq, Functor)
@@ -749,7 +753,7 @@ deriving instance NFData PDo'
 instance Sized a => Sized (PDo' a) where
   size (DoExp fc t) = 1 + size fc + size t
   size (DoBind fc nm t) = 1 + size fc + size nm + size t
-  size (DoBindP fc l r) = 1 + size fc + size l + size r
+  size (DoBindP fc l r alts) = 1 + size fc + size l + size r + size alts
   size (DoLet fc nm l r) = 1 + size fc + size nm + size l + size r
   size (DoLetP fc l r) = 1 + size fc + size l + size r
 
@@ -948,9 +952,9 @@ inferTy   = sMN 0 "__Infer"
 inferCon  = sMN 0 "__infer"
 inferDecl = PDatadecl inferTy
                       PType
-                      [("", [], inferCon, PPi impl (sMN 0 "iType") PType (
-                                       PPi expl (sMN 0 "ival") (PRef bi (sMN 0 "iType"))
-                                       (PRef bi inferTy)), bi, [])]
+                      [(emptyDocstring, [], inferCon, PPi impl (sMN 0 "iType") PType (
+                                                   PPi expl (sMN 0 "ival") (PRef bi (sMN 0 "iType"))
+                                                   (PRef bi inferTy)), bi, [])]
 inferOpts = []
 
 infTerm t = PApp bi (PRef bi inferCon) [pimp (sMN 0 "iType") Placeholder True, pexp t]
@@ -978,7 +982,7 @@ primNames = [unitTy, unitCon,
 unitTy   = sMN 0 "__Unit"
 unitCon  = sMN 0 "__II"
 unitDecl = PDatadecl unitTy PType
-                     [("", [], unitCon, PRef bi unitTy, bi, [])]
+                     [(emptyDocstring, [], unitCon, PRef bi unitTy, bi, [])]
 unitOpts = [DefaultEliminator]
 
 falseTy   = sMN 0 "__False"
@@ -988,12 +992,12 @@ falseOpts = []
 pairTy    = sMN 0 "__Pair"
 pairCon   = sMN 0 "__MkPair"
 pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
-            [("", [], pairCon, PPi impl (n "A") PType (
-                           PPi impl (n "B") PType (
-                           PPi expl (n "a") (PRef bi (n "A")) (
-                           PPi expl (n "b") (PRef bi (n "B"))
-                               (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
-                                                    pexp (PRef bi (n "B"))])))), bi, [])]
+            [(emptyDocstring, [], pairCon, PPi impl (n "A") PType (
+                                       PPi impl (n "B") PType (
+                                       PPi expl (n "a") (PRef bi (n "A")) (
+                                       PPi expl (n "b") (PRef bi (n "B"))
+                                           (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
+                                                                pexp (PRef bi (n "B"))])))), bi, [])]
     where n a = sMN 0 a
 pairOpts = []
 
@@ -1002,21 +1006,21 @@ eqCon = sUN "refl"
 eqDecl = PDatadecl eqTy (piBind [(n "A", PType), (n "B", PType),
                                  (n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
                                  PType)
-                [("", [], eqCon, PPi impl (n "A") PType (
-                             PPi impl (n "x") (PRef bi (n "A"))
-                               (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
-                                                        pimp (n "B") Placeholder False,
-                                                        pexp (PRef bi (n "x")),
-                                                        pexp (PRef bi (n "x"))])), bi, [])]
+                [(emptyDocstring, [], eqCon, PPi impl (n "A") PType (
+                                         PPi impl (n "x") (PRef bi (n "A"))
+                                           (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
+                                                                    pimp (n "B") Placeholder False,
+                                                                    pexp (PRef bi (n "x")),
+                                                                    pexp (PRef bi (n "x"))])), bi, [])]
     where n a = sMN 0 a
 eqOpts = []
 
 elimName       = sUN "__Elim"
 elimMethElimTy = sUN "__elimTy"
 elimMethElim   = sUN "elim"
-elimDecl = PClass "Type class for eliminators" defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)]
-                     [PTy "" [] defaultSyntax bi [TotalFn] elimMethElimTy PType,
-                      PTy "" [] defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
+elimDecl = PClass (parseDocstring . T.pack $ "Type class for eliminators") defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)]
+                     [PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElimTy PType,
+                      PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
 -- Defined in builtins.idr
 sigmaTy   = sUN "Exists"

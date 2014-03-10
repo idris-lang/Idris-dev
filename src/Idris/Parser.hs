@@ -35,6 +35,8 @@ import Idris.ParseOps
 import Idris.ParseExpr
 import Idris.ParseData
 
+import Idris.Docstrings
+
 import Paths_idris
 
 import Util.DynamicLinker
@@ -315,7 +317,7 @@ fnDecl' syn = checkFixity $
               do (doc, fc, opts', n, acc) <- try (do
                         pushIndent
                         ist <- get
-                        doc <- option ("", []) docComment
+                        doc <- option noDocs docComment
                         ist <- get
                         let initOpts = if default_total ist
                                           then [TotalFn]
@@ -413,7 +415,7 @@ Postulate ::=
 @
 -}
 postulate :: SyntaxInfo -> IdrisParser PDecl
-postulate syn = do doc <- try $ do doc <- option ("", []) docComment
+postulate syn = do doc <- try $ do doc <- option noDocs docComment
                                    pushIndent
                                    reserved "postulate"
                                    return doc
@@ -561,7 +563,7 @@ Class ::=
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
 class_ syn = do (doc, acc) <- try (do
-                  doc <- option ("", []) docComment
+                  doc <- option noDocs docComment
                   acc <- optional accessibility
                   return (doc, acc))
                 reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- fnName
@@ -1003,8 +1005,8 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                                            mapM_ (addNameHint ty') ns
                                            mapM_ (\n -> addIBC (IBCNameHint (ty', n))) ns)]
              <|> do try (lchar '%' *> reserved "error_handlers")
-                    fn <- iName []
-                    arg <- iName []
+                    fn <- fnName
+                    arg <- fnName
                     ns <- sepBy1 name (lchar ',')
                     return [PDirective (do fn' <- disambiguate fn
                                            ns' <- mapM disambiguate ns

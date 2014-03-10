@@ -164,6 +164,7 @@ receiveInput e =
 ploop :: Name -> Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
 ploop fn d prompt prf e h
     = do i <- getIState
+         let autoSolve = opt_autoSolve (idris_options i)
          when d $ dumpState i (proof e)
          (x, h') <-
            case idris_outputmode i of
@@ -260,7 +261,7 @@ ploop fn d prompt prf e h
                                            return (False, e, False, prf))
                                          (\err -> do putIState ist ; ierror err)
               Success tac -> do (_, e) <- elabStep e saveState
-                                (_, st) <- elabStep e (runTac True i fn tac)
+                                (_, st) <- elabStep e (runTac autoSolve i fn tac)
 --                               trace (show (problems (proof st))) $
                                 iPrintResult ""
                                 return (True, st, False, prf ++ [step]))
