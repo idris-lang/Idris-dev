@@ -24,7 +24,7 @@ typedef enum {
 typedef struct Closure *VAL;
 
 typedef struct {
-    int tag_arity;
+    uint32_t tag_arity;
     VAL args[];
 } con;
 
@@ -50,7 +50,10 @@ typedef struct {
 typedef struct Closure {
 // Use top 16 bits of ty for saying which heap value is in
 // Bottom 16 bits for closure type
-    ClosureType ty;
+//
+// NOTE: ty can not have type ClosureType because ty must be a
+// uint32_t but enum is platform dependent
+    uint32_t ty;
     union {
         con c;
         int i;
