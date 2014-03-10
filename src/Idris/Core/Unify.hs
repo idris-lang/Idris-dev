@@ -372,8 +372,8 @@ unify ctxt env topx topy inj holes =
 
     unApp fn bnames appx@(App fx ax) appy@(App fy ay)
          | (injectiveApp fx && injectiveApp fy)
-        || (injectiveApp fx && rigid appx && metavarApp appy)
-        || (injectiveApp fy && rigid appy && metavarApp appx)
+        || (injectiveApp fx && rigid appx && metavarApp appy && numArgs appx == numArgs appy)
+        || (injectiveApp fy && rigid appy && metavarApp appx && numArgs appx == numArgs appy)
         || (injectiveApp fx && metavarApp fy && ax == ay)
         || (injectiveApp fy && metavarApp fx && ax == ay)
          = do let (headx, _) = unApply fx
@@ -417,6 +417,8 @@ unify ctxt env topx topy inj holes =
                      as' <- un' False bnames x' y'
                      vs <- combine bnames as as'
                      unArgs vs xs ys
+
+            numArgs tm = let (f, args) = unApply tm in length args
 
             metavarApp tm = let (f, args) = unApply tm in
                                 (metavar f &&
