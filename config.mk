@@ -1,6 +1,6 @@
 CC              :=cc
 CABAL           :=cabal
-CFLAGS          :=-O2 -Wall $(CFLAGS)
+CFLAGS          :=-O2 -Wall -DHAS_PTHREAD $(CFLAGS)
 #CABALFLAGS	:=
 ## Disable building of Effects
 #CABALFLAGS :=-f NoEffects
@@ -35,5 +35,3 @@ else
 	SHLIB_SUFFIX    :=.so
 endif
 endif
-
-#define HAS_PTHREAD

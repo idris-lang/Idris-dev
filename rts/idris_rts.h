@@ -68,11 +68,6 @@ typedef struct Closure {
     } info;
 } Closure;
 
-#if HAS_PTHREAD
-typedef void* pthread_mutex_t;
-typedef void* pthread_cond_t;
-#endif
-
 typedef struct {
     VAL* valstack;
     VAL* valstack_top;
