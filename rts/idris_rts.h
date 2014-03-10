@@ -174,7 +174,7 @@ typedef intptr_t i_int;
 VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, const char* str);
 VAL MKPTR(VM* vm, void* ptr);
-VAL MKMPTR(VM* vm, void* ptr, int size);
+VAL MKMPTR(VM* vm, void* ptr, size_t size);
 VAL MKB8(VM* vm, uint8_t b);
 VAL MKB16(VM* vm, uint16_t b);
 VAL MKB32(VM* vm, uint32_t b);
@@ -185,7 +185,7 @@ VAL MKFLOATc(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
-VAL MKMPTRc(VM* vm, void* ptr, int size);
+VAL MKMPTRc(VM* vm, void* ptr, size_t size);
 VAL MKBUFFERc(VM* vm, Buffer* buf);
 
 char* GETSTROFF(VAL stroff);
