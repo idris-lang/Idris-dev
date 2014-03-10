@@ -105,8 +105,9 @@ compile codegen f tm
                        if ex then return f else return h
 
 irMain :: TT Name -> Idris LDecl
-irMain tm = do i <- ir tm
-               return $ LFun [] (sMN 0 "runMain") [] (LForce i)
+irMain tm = do
+    i <- irTerm M.empty [] tm
+    return $ LFun [] (sMN 0 "runMain") [] (LForce i)
 
 mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
 mkDecls t used
@@ -126,9 +127,6 @@ showCaseTrees ds = showSep "\n\n" (map showCT ds)
 isCon (TyDecl _ _) = True
 isCon _ = False
 
-class ToIR a where
-    ir :: a -> Idris LExp
-
 build :: (Name, Def) -> Idris (Name, LDecl)
 build (n, d)
     = do i <- getIState
@@ -144,361 +142,392 @@ build (n, d)
 declArgs args inl n (LLam xs x) = declArgs (args ++ xs) inl n x
 declArgs args inl n x = LFun (if inl then [Inline] else []) n args x
 
-mkLDecl n (Function tm _) = do e <- ir tm
-                               return (declArgs [] True n e)
+mkLDecl n (Function tm _)
+    = declArgs [] True n <$> irTerm M.empty [] tm
+
 mkLDecl n (CaseOp ci _ _ _ pats cd)
-   = let (args, sc) = cases_runtime cd in
-         do e <- ir (args, sc)
-            return (declArgs [] (case_inlinable ci) n e)
+    = declArgs [] (case_inlinable ci) n <$> irTree args sc
+  where
+    (args, sc) = cases_runtime cd
 
 mkLDecl n (TyDecl (DCon tag arity) _) =
-    LConstructor n tag . maybe 0 (length . usedpos) . lookupCtxtExact n . idris_callgraph <$> getIState
+    LConstructor n tag . erasedArity . lookup n <$> getIState
+  where
+    lookup n = lookupCtxtExact n . idris_callgraph
+    erasedArity = maybe 0 (length . usedpos)
 
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n _ = return $ (declArgs [] True n LNothing) -- postulate, never run
 
-instance ToIR (TT Name) where
-    ir tm = ir' [] tm where
-      ir' env tm@(App f a)
-        | (P _ (UN m) _, args) <- unApply tm,
-            m == txt "mkForeignPrim"
-            = doForeign env args
-        | (P _ (UN u) _, [_, arg]) <- unApply tm,
-            u == txt "unsafePerformPrimIO"
-            = ir' env arg
-            -- TMP HACK - until we get inlining.
-        | (P _ (UN r) _, [_, _, _, _, _, arg]) <- unApply tm,
-            r == txt "replace"
-            = ir' env arg
-        -- Laziness, the old way
-        | (P _ (UN l) _, [_, arg]) <- unApply tm,
-            l == txt "lazy"
-            = do arg' <- ir' env arg
-                 error "lazy has crept in somehow"
---                    return $ LLazyExp arg'
-        | (P _ (UN l) _, [_, arg]) <- unApply tm,
-            l == txt "force"
-            = do arg' <- ir' env arg
-                 return $ LForce arg'
-        -- Laziness, the new way
-        | (P _ (UN l) _, [_, arg]) <- unApply tm,
-            l == txt "Delay"
-            = do arg' <- ir' env arg
-                 return $ LLazyExp arg'
-        | (P _ (UN l) _, [_, arg]) <- unApply tm,
-            l == txt "Force"
-            = do arg' <- ir' env arg
-                 return $ LForce arg'
-        | (P _ (UN a) _, [_, _, arg]) <- unApply tm,
-            a == txt "assert_smaller"
-            = ir' env arg
-        | (P _ (UN a) _, [_, arg]) <- unApply tm,
-            a == txt "assert_total"
-            = ir' env arg
-        | (P _ (UN p) _, [_, arg]) <- unApply tm,
-            p == txt "par"
-            = do arg' <- ir' env arg
-                 return $ LOp LPar [LLazyExp arg']
-        | (P _ (UN pf) _, [arg]) <- unApply tm,
-            pf == txt "prim_fork"
-            = do arg' <- ir' env arg
-                 return $ LOp LFork [LLazyExp arg']
-        | (P _ (UN m) _, [_,size,t]) <- unApply tm,
-            m == txt "malloc"
-            = do size' <- ir' env size
-                 t' <- ir' env t
-                 return t' -- TODO $ malloc_ size' t'
-        | (P _ (UN tm) _, [_,t]) <- unApply tm,
-            tm == txt "trace_malloc"
-            = do t' <- ir' env t
-                 return t' -- TODO
+data VarInfo = VI
+    { viMethod :: Maybe Name
+    }
+    deriving Show
 
-        -- This case is here until we get more general inlining. It's just
-        -- a really common case, and the laziness hurts...
-        | (P _ (NS (UN be) [b,p]) _, [_,x,(App (P _ (UN d) _) t),
-                                            (App (P _ (UN d') _) e)]) <- unApply tm,
-            be == txt "boolElim" && d == txt "Delay" && d' == txt "Delay"
-            = do x' <- ir' env x
-                 t' <- ir' env t
-                 e' <- ir' env e
-                 return (LCase x' [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e',
-                                   LConCase 1 (sNS (sUN "True") ["Bool","Prelude"]) [] t'])
+type Vars = M.Map Name VarInfo
 
-        | (P (DCon t arity) n _, args) <- unApply tm = do
-            ist <- getIState
-            let detag = maybe False detaggable . lookupCtxtExact n $ idris_optimisation ist
-                used  = maybe [] (map fst . usedpos) . lookupCtxtExact n $ idris_callgraph ist
-                args' = [a | (i,a) <- zip [0..] args, i `elem` used]
+irTerm :: Vars -> [Name] -> Term -> Idris LExp
+irTerm vs env tm@(App f a) = case unApply tm of
+    (P _ (UN m) _, args)
+        | m == txt "mkForeignPrim"
+        -> doForeign vs env args
 
-            when (length args > arity) $
-                ifail ("oversaturated data ctor: " ++ show tm)
+    (P _ (UN u) _, [_, arg])
+        | u == txt "unsafePerformPrimIO"
+        -> irTerm vs env arg
 
-            if length args' == 1 && detag -- detaggable
-                then ir' env (head args')  -- newtype
-                else irCon env t (length used) n args'
+    -- TMP HACK - until we get inlining.
+    (P _ (UN r) _, [_, _, _, _, _, arg])
+        | r == txt "replace"
+        -> irTerm vs env arg
 
-        | (P (TCon t a) n _, args) <- unApply tm
-            = return LNothing
+    -- Laziness, the old way
+    (P _ (UN l) _, [_, arg])
+        | l == txt "lazy"
+        -> error "lazy has crept in somehow"
 
-        | (P _ n _, args) <- unApply tm = do
-                ist <- getIState
-                case lookup n (idris_scprims ist) of
-                    -- if it's a primitive which is already saturated,
-                    -- compile to the corresponding op here already to save work
-                    Just (arity, op) | length args == arity
-                        -> LOp op <$> mapM (ir' env) args
+    (P _ (UN l) _, [_, arg])
+        | l == txt "force"
+        -> LForce <$> irTerm vs env arg
 
-                    _   -> applyName n ist args
+    -- Laziness, the new way
+    (P _ (UN l) _, [_, arg])
+        | l == txt "Delay"
+        -> LLazyExp <$> irTerm vs env arg
 
-        | (f, args) <- unApply tm
-            = do f' <- ir' env f
-                 args' <- mapM (ir' env) args
-                 return (LApp False f' args')
+    (P _ (UN l) _, [_, arg])
+        | l == txt "Force"
+        -> LForce <$> irTerm vs env arg
 
-       where
-            applyName :: Name -> IState -> [Term] -> Idris LExp
-            applyName n ist args =
-                LApp False (LV $ Glob n) <$> mapM (ir' env . erase) (zip [0..] args)
-                where
-                    erase (i, x)
-                        | i >= arity || i `elem` used = x
-                        | otherwise = Erased
+    (P _ (UN a) _, [_, _, arg])
+        | a == txt "assert_smaller"
+        -> irTerm vs env arg
 
-                    arity = case fst4 <$> lookupCtxt n (definitions . tt_ctxt $ ist) of
-                        [CaseOp ci ty tys def tot cdefs] -> length tys
-                        [TyDecl (DCon tag ar) _]         -> ar
-                        [TyDecl Ref ty]                  -> length $ getArgTys ty
-                        [Operator ty ar op]              -> ar
-                        []  -> 0  -- no definition, probably local name => can't erase anything
-                        def -> error $ "unknown arity: " ++ show (n, def)
+    (P _ (UN a) _, [_, arg])
+        | a == txt "assert_total"
+        -> irTerm vs env arg
 
-                    used = maybe [] (map fst . usedpos) $ lookupCtxtExact n (idris_callgraph ist)
-                    fst4 (x,_,_,_) = x
+    (P _ (UN p) _, [_, arg])
+        | p == txt "par"
+        -> do arg' <- irTerm vs env arg
+              return $ LOp LPar [LLazyExp arg']
+
+    (P _ (UN pf) _, [arg])
+        | pf == txt "prim_fork"
+        -> do arg' <- irTerm vs env arg
+              return $ LOp LFork [LLazyExp arg']
+
+    (P _ (UN m) _, [_,size,t])
+        | m == txt "malloc"
+        -> irTerm vs env t
+{-
+        = do size' <- ir' env size
+                t' <- ir' env t
+                return t' -- TODO $ malloc_ size' t'
+-}
+
+    (P _ (UN tm) _, [_,t])
+        | tm == txt "trace_malloc"
+        -> irTerm vs env t -- TODO
+
+    -- This case is here until we get more general inlining. It's just
+    -- a really common case, and the laziness hurts...
+    (P _ (NS (UN be) [b,p]) _, [_,x,(App (P _ (UN d) _) t),
+                                        (App (P _ (UN d') _) e)])
+        | be == txt "boolElim"
+        , d  == txt "Delay"
+        , d' == txt "Delay"
+        -> do
+            x' <- irTerm vs env x
+            t' <- irTerm vs env t
+            e' <- irTerm vs env e
+            return (LCase x' [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e'
+                             ,LConCase 1 (sNS (sUN "True" ) ["Bool","Prelude"]) [] t'
+                             ])
+
+    (P (DCon t arity) n _, args) -> do
+        ist <- getIState
+        let detag = maybe False detaggable . lookupCtxtExact n $ idris_optimisation ist
+            used  = maybe [] (map fst . usedpos) . lookupCtxtExact n $ idris_callgraph ist
+            args' = [a | (i,a) <- zip [0..] args, i `elem` used]
+
+        when (length args > arity) $
+            ifail ("oversaturated data ctor: " ++ show tm)
+
+        if length args' == 1 && detag -- detaggable
+            then irTerm vs env (head args')  -- newtype
+            else irCon vs env (length used) n args'
+
+    (P (TCon t a) n _, args) -> return LNothing
+
+    (P _ n _, args) -> do
+        ist <- getIState
+        case lookup n (idris_scprims ist) of
+            -- if it's a primitive that is already saturated,
+            -- compile to the corresponding op here already to save work
+            Just (arity, op) | length args == arity
+                -> LOp op <$> mapM (irTerm vs env) args
+
+            -- otherwise, just apply the name
+            _   -> applyName n ist args
+
+    (f, args)
+        -> LApp False
+            <$> irTerm vs env f
+            <*> mapM (irTerm vs env) args
+
+  where
+    applyName :: Name -> IState -> [Term] -> Idris LExp
+    applyName n ist args =
+        LApp False (LV $ Glob n) <$> mapM (irTerm vs env . erase) (zip [0..] args)
+        where
+            erase (i, x)
+                | i >= arity || i `elem` used = x
+                | otherwise = Erased
+
+            arity = case fst4 <$> lookupCtxt n (definitions . tt_ctxt $ ist) of
+                [CaseOp ci ty tys def tot cdefs] -> length tys
+                [TyDecl (DCon tag ar) _]         -> ar
+                [TyDecl Ref ty]                  -> length $ getArgTys ty
+                [Operator ty ar op]              -> ar
+                []  -> 0  -- no definition, probably local name => can't erase anything
+                def -> error $ "unknown arity: " ++ show (n, def)
+
+            used = maybe [] (map fst . usedpos) $ lookupCtxtExact n (idris_callgraph ist)
+            fst4 (x,_,_,_) = x
 
 --       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)
 --                         = return $ LConst (BI 0)
-      ir' env (P _ n _) = return $ LV (Glob n)
-      ir' env (V i)     | i >= 0 && i < length env = return $ LV (Glob (env!!i))
-                        | otherwise = ifail $ "IR fail " ++ show i ++ " " ++ show tm
-      ir' env (Bind n (Lam _) sc)
-          = do let n' = uniqueName n env
-               sc' <- ir' (n' : env) sc
-               return $ LLam [n'] sc'
-      ir' env (Bind n (Let _ v) sc)
-          = do sc' <- ir' (n : env) sc
-               v' <- ir' env v
-               return $ LLet n v' sc'
-      ir' env (Bind _ _ _) = return $ LNothing
-      ir' env (Proj t i) | i == -1
-                             = do t' <- ir' env t
-                                  return $ LOp (LMinus (ATInt ITBig)) 
-                                               [t', LConst (BI 1)]
-      ir' env (Proj t i) = do t' <- ir' env t
-                              return $ LProj t' i
-      ir' env (Constant c) = return $ LConst c
-      ir' env (TType _) = return $ LNothing
-      ir' env Erased = return $ LNothing
-      ir' env Impossible = return $ LNothing
+
+irTerm vs env (P _ n _) = return $ LV (Glob n)
+irTerm vs env (V i)
+    | i >= 0 && i < length env = return $ LV (Glob (env!!i))
+    | otherwise = ifail $ "bad de bruijn index: " ++ show i
+
+irTerm vs env (Bind n (Lam _) sc) = LLam [n'] <$> irTerm vs (n':env) sc
+  where
+    n' = uniqueName n env
+
+irTerm vs env (Bind n (Let _ v) sc)
+    = LLet n <$> irTerm vs env v <*> irTerm vs (n : env) sc
+
+irTerm vs env (Bind _ _ _) = return $ LNothing
+
+irTerm vs env (Proj t (-1)) = do
+    t' <- irTerm vs env t
+    return $ LOp (LMinus (ATInt ITBig)) 
+                 [t', LConst (BI 1)]
+
+irTerm vs env (Proj t i)   = LProj <$> irTerm vs env t <*> pure i
+irTerm vs env (Constant c) = return $ LConst c
+irTerm vs env (TType _)    = return $ LNothing
+irTerm vs env Erased       = return $ LNothing
+irTerm vs env Impossible   = return $ LNothing
 --       ir' env _ = return $ LError "Impossible"
 
-      irCon env t arity n args
-        | length args == arity = buildApp env (LV (Glob n)) args
-        | otherwise = let extra = satArgs (arity - length args) in
-                          do sc' <- irCon env t arity n
-                                        (args ++ map (\n -> P Bound n undefined) extra)
-                             return $ LLam extra sc'
+irCon :: Vars -> [Name] -> Int -> Name -> [Term] -> Idris LExp
+irCon vs env arity n args
+    | length args > arity
+    = error $ "oversaturated data constructor: " ++ show (n, args)
 
-      satArgs n = map (\i -> sMN i "sat") [1..n]
+    -- saturated
+    | length args == arity
+    = buildApp (LV (Glob n)) args
 
-      buildApp env e [] = return e
-      buildApp env e xs = do xs' <- mapM (ir' env) xs
-                             return $ LApp False e xs'
+    -- undersaturated, wrap in lambdas
+    | otherwise
+    = let extraNs = [sMN i "sat" | i <- [length args .. arity-1]]
+          extraTs = [P Bound n undefined | n <- extraNs]
+        in LLam extraNs <$> irCon vs env arity n (args ++ extraTs)
+  where
+    buildApp e [] = return e
+    buildApp e xs = LApp False e <$> mapM (irTerm vs env) xs
 
-      doForeign :: [Name] -> [TT Name] -> Idris LExp
-      doForeign env (_ : fgn : args)
-         | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
-              = let maybeTys = getFTypes fgnArgTys
-                    rty = mkIty' ret in
-                case maybeTys of
-                  Nothing -> ifail $ "Foreign type specification is not a constant list: " ++ show (fgn:args)
-                  Just tys -> do
-                    args' <- mapM (ir' env) (init args)
-                    -- wrap it in a prim__IO
-                    -- return $ con_ 0 @@ impossible @@
-                    return $ -- LLazyExp $
-                      LForeign LANG_C rty fgnName (zip tys args')
-         | otherwise = ifail "Badly formed foreign function call"
+doForeign :: Vars -> [Name] -> [TT Name] -> Idris LExp
+doForeign vs env (_ : fgn : args)
+    | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
+    = case getFTypes fgnArgTys of
+        Nothing -> ifail $ "Foreign type specification is not a constant list: " ++ show (fgn:args)
+        Just tys -> do
+            args' <- mapM (irTerm vs env) (init args)
+            return $ LForeign LANG_C (mkIty' ret) fgnName (zip tys args')
 
-getFTypes :: TT Name -> Maybe [FType]
-getFTypes tm = case unApply tm of
-    -- nil : {a : Type} -> List a
-    (nil,  [_])         -> Just []
-    -- cons : {a : Type} -> a -> List a -> List a
-    (cons, [_, ty, xs]) -> (mkIty' ty :) <$> getFTypes xs
-    _ -> Nothing
+    | otherwise = ifail "Badly formed foreign function call"
+  where
+    getFTypes :: TT Name -> Maybe [FType]
+    getFTypes tm = case unApply tm of
+        -- nil : {a : Type} -> List a
+        (nil,  [_])         -> Just []
+        -- cons : {a : Type} -> a -> List a -> List a
+        (cons, [_, ty, xs]) -> (mkIty' ty :) <$> getFTypes xs
+        _ -> Nothing
 
-mkIty' (P _ (UN ty) _) = mkIty (str ty)
-mkIty' (App (P _ (UN fi) _) (P _ (UN intTy) _))
-   | fi == txt "FIntT" = mkIntIty (str intTy)
-mkIty' (App (App (P _ (UN ff) _) _) (App (P _ (UN fa) _) (App (P _ (UN io) _) _))) 
-   | ff == txt "FFunction" && fa == txt "FAny" &&
-     io == txt "IO" 
+    mkIty' (P _ (UN ty) _) = mkIty (str ty)
+    mkIty' (App (P _ (UN fi) _) (P _ (UN intTy) _))
+        | fi == txt "FIntT"
+        = mkIntIty (str intTy)
+
+    mkIty' (App (App (P _ (UN ff) _) _) (App (P _ (UN fa) _) (App (P _ (UN io) _) _))) 
+        | ff == txt "FFunction"
+        , fa == txt "FAny"
+        , io == txt "IO" 
         = FFunctionIO
-mkIty' (App (App (P _ (UN ff) _) _) _) 
-   | ff == txt "FFunction" = FFunction
-mkIty' _ = FAny
 
--- would be better if these FInt types were evaluated at compile time
--- TODO: add %eval directive for such things
+    mkIty' (App (App (P _ (UN ff) _) _) _) 
+        | ff == txt "FFunction"
+        = FFunction
 
-mkIty "FFloat"      = FArith ATFloat
-mkIty "FInt"        = mkIntIty "ITNative"
-mkIty "FChar"       = mkIntIty "ITChar"
-mkIty "FByte"       = mkIntIty "IT8"
-mkIty "FShort"      = mkIntIty "IT16"
-mkIty "FLong"       = mkIntIty "IT64"
-mkIty "FBits8"      = mkIntIty "IT8"
-mkIty "FBits16"     = mkIntIty "IT16"
-mkIty "FBits32"     = mkIntIty "IT32"
-mkIty "FBits64"     = mkIntIty "IT64"
-mkIty "FString"     = FString
-mkIty "FPtr"        = FPtr
-mkIty "FManagedPtr" = FManagedPtr
-mkIty "FUnit"       = FUnit
-mkIty "FFunction"   = FFunction
-mkIty "FFunctionIO" = FFunctionIO
-mkIty "FBits8x16"   = FArith (ATInt (ITVec IT8 16))
-mkIty "FBits16x8"   = FArith (ATInt (ITVec IT16 8))
-mkIty "FBits32x4"   = FArith (ATInt (ITVec IT32 4))
-mkIty "FBits64x2"   = FArith (ATInt (ITVec IT64 2))
-mkIty x             = error $ "Unknown type " ++ x
+    mkIty' _ = FAny
 
-mkIntIty "ITNative" = FArith (ATInt ITNative)
-mkIntIty "ITChar" = FArith (ATInt ITChar)
-mkIntIty "IT8"  = FArith (ATInt (ITFixed IT8))
-mkIntIty "IT16" = FArith (ATInt (ITFixed IT16))
-mkIntIty "IT32" = FArith (ATInt (ITFixed IT32))
-mkIntIty "IT64" = FArith (ATInt (ITFixed IT64))
+    -- would be better if these FInt types were evaluated at compile time
+    -- TODO: add %eval directive for such things
 
-zname = sNS (sUN "Z") ["Nat","Prelude"]
-sname = sNS (sUN "S") ["Nat","Prelude"]
+    mkIty "FFloat"      = FArith ATFloat
+    mkIty "FInt"        = mkIntIty "ITNative"
+    mkIty "FChar"       = mkIntIty "ITChar"
+    mkIty "FByte"       = mkIntIty "IT8"
+    mkIty "FShort"      = mkIntIty "IT16"
+    mkIty "FLong"       = mkIntIty "IT64"
+    mkIty "FBits8"      = mkIntIty "IT8"
+    mkIty "FBits16"     = mkIntIty "IT16"
+    mkIty "FBits32"     = mkIntIty "IT32"
+    mkIty "FBits64"     = mkIntIty "IT64"
+    mkIty "FString"     = FString
+    mkIty "FPtr"        = FPtr
+    mkIty "FManagedPtr" = FManagedPtr
+    mkIty "FUnit"       = FUnit
+    mkIty "FFunction"   = FFunction
+    mkIty "FFunctionIO" = FFunctionIO
+    mkIty "FBits8x16"   = FArith (ATInt (ITVec IT8 16))
+    mkIty "FBits16x8"   = FArith (ATInt (ITVec IT16 8))
+    mkIty "FBits32x4"   = FArith (ATInt (ITVec IT32 4))
+    mkIty "FBits64x2"   = FArith (ATInt (ITVec IT64 2))
+    mkIty x             = error $ "Unknown type " ++ x
 
-instance ToIR ([Name], SC) where
-    ir (args, tree) = do logLvl 3 $ "Compiling " ++ show args ++ "\n" ++ show tree
-                         tree' <- ir tree
-                         return $ LLam args tree'
+    mkIntIty "ITNative" = FArith (ATInt ITNative)
+    mkIntIty "ITChar" = FArith (ATInt ITChar)
+    mkIntIty "IT8"  = FArith (ATInt (ITFixed IT8))
+    mkIntIty "IT16" = FArith (ATInt (ITFixed IT16))
+    mkIntIty "IT32" = FArith (ATInt (ITFixed IT32))
+    mkIntIty "IT64" = FArith (ATInt (ITFixed IT64))
 
-instance ToIR SC where
-    ir t = ir' t where
+irTree :: [Name] -> SC -> Idris LExp
+irTree args tree = do
+    logLvl 3 $ "Compiling " ++ show args ++ "\n" ++ show tree
+    LLam args <$> irSC M.empty tree
 
-        ir' (STerm t) = ir t
-        ir' (UnmatchedCase str) = return $ LError str
-        ir' (ProjCase tm alt) = do tm' <- ir tm
-                                   alt' <- mkIRAlt tm' alt
-                                   return $ LCase tm' [alt']
+irSC :: Vars -> SC -> Idris LExp
+irSC vs (STerm t) = irTerm vs [] t
+irSC vs (UnmatchedCase str) = return $ LError str
+irSC vs (ProjCase tm alt) = do
+    tm'  <- irTerm vs [] tm
+    alt' <- irAlt vs tm' alt
+    return $ LCase tm' [alt']
 
-        -- There are two transformations in this case:
-        --
-        --  1. Newtype-case elimination:
-        --      case {e0} of
-        --          wrap({e1}) -> P({e1})   ==>   P({e0})
-        --
-        -- This is important because newtyped constructors are compiled away entirely
-        -- and we need to do that everywhere.
-        --
-        --  2. Unused-case elimination:
-        --      case {e0} of                                ==>     P
-        --          C(x,y) -> P[... x,y not used ...]
-        --
-        -- This is important for runtime because sometimes we case on irrelevant data:
-        --
-        -- In the example above, {e0} will most probably have been erased
-        -- so this vain projection would make the resulting program segfault
-        -- because the code generator still emits a PROJECT(...) STG instruction.
-        --
-        -- Hence, we check whether the variables are used at all
-        -- and erase the casesplit if they are not.
-        ir' (Case n [alt]) = do
-            replacement <- case alt of
-                ConCase cn a ns sc -> do
-                    detag <- maybe False detaggable . lookupCtxtExact cn . idris_optimisation <$> getIState
-                    used  <- maybe [] (map fst . usedpos) . lookupCtxtExact cn . idris_callgraph <$> getIState
-                    if detag && length used == 1
-                        then return . Just $ substSC (ns !! head used) n sc
-                        else return Nothing
-                _ -> return Nothing
+-- There are two transformations in this case:
+--
+--  1. Newtype-case elimination:
+--      case {e0} of
+--          wrap({e1}) -> P({e1})   ==>   P({e0})
+--
+-- This is important because newtyped constructors are compiled away entirely
+-- and we need to do that everywhere.
+--
+--  2. Unused-case elimination:
+--      case {e0} of                                ==>     P
+--          C(x,y) -> P[... x,y not used ...]
+--
+-- This is important for runtime because sometimes we case on irrelevant data:
+--
+-- In the example above, {e0} will most probably have been erased
+-- so this vain projection would make the resulting program segfault
+-- because the code generator still emits a PROJECT(...) STG instruction.
+--
+-- Hence, we check whether the variables are used at all
+-- and erase the casesplit if they are not.
+irSC vs (Case n [alt]) = do
+    replacement <- case alt of
+        ConCase cn a ns sc -> do
+            detag <- maybe False detaggable . lookupCtxtExact cn . idris_optimisation <$> getIState
+            used  <- maybe [] (map fst . usedpos) . lookupCtxtExact cn . idris_callgraph <$> getIState
+            if detag && length used == 1
+                then return . Just $ substSC (ns !! head used) n sc
+                else return Nothing
+        _ -> return Nothing
 
-            case replacement of
-                Just sc -> ir' sc
-                _ -> do
-                    alt' <- mkIRAlt (LV (Glob n)) alt
-                    return $ case namesBoundIn alt' `usedIn` subexpr alt' of
-                        [] -> subexpr alt'  -- strip the unused top-most case
-                        _  -> LCase (LV (Glob n)) [alt']
-          where
-            namesBoundIn :: LAlt -> [Name]
-            namesBoundIn (LConCase cn i ns sc) = ns
-            namesBoundIn (LConstCase c sc)     = []
-            namesBoundIn (LDefaultCase sc)     = []
+    case replacement of
+        Just sc -> irSC vs sc
+        _ -> do
+            alt' <- irAlt vs (LV (Glob n)) alt
+            return $ case namesBoundIn alt' `usedIn` subexpr alt' of
+                [] -> subexpr alt'  -- strip the unused top-most case
+                _  -> LCase (LV (Glob n)) [alt']
+  where
+    namesBoundIn :: LAlt -> [Name]
+    namesBoundIn (LConCase cn i ns sc) = ns
+    namesBoundIn (LConstCase c sc)     = []
+    namesBoundIn (LDefaultCase sc)     = []
 
-            subexpr :: LAlt -> LExp
-            subexpr (LConCase _ _ _ e) = e
-            subexpr (LConstCase _   e) = e
-            subexpr (LDefaultCase   e) = e
+    subexpr :: LAlt -> LExp
+    subexpr (LConCase _ _ _ e) = e
+    subexpr (LConstCase _   e) = e
+    subexpr (LDefaultCase   e) = e
 
-        ir' (Case n alts) = do alts' <- mapM (mkIRAlt (LV (Glob n))) alts
-                               return $ LCase (LV (Glob n)) alts'
-        ir' ImpossibleCase = return LNothing
+irSC vs (Case n alts)  = LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+irSC vs ImpossibleCase = return LNothing
 
-        -- special cases for Z and S
-        -- Needs rethink: projections make this fail
---         mkIRAlt n (ConCase z _ [] rhs) | z == zname
---              = mkIRAlt n (ConstCase (BI 0) rhs)
---         mkIRAlt n (ConCase s _ [arg] rhs) | s == sname
+-- zname = sNS (sUN "Z") ["Nat","Prelude"]
+-- sname = sNS (sUN "S") ["Nat","Prelude"]
+
+-- special cases for Z and S
+-- Needs rethink: projections make this fail
+--         irAlt n (ConCase z _ [] rhs) | z == zname
+--              = irAlt n (ConstCase (BI 0) rhs)
+--         irAlt n (ConCase s _ [arg] rhs) | s == sname
 --              = do n' <- ir n
 --                   rhs' <- ir rhs
 --                   return $ LDefaultCase
 --                               (LLet arg (LOp LBMinus [n', LConst (BI 1)])
 --                                           rhs')
-        mkIRAlt _ (ConCase n t args sc) = do
-            sc' <- ir sc
-            used <- maybe [] (map fst . usedpos) . lookupCtxtExact n . idris_callgraph <$> getIState
-            return $ LConCase (-1) n [a | (i,a) <- zip [0..] args, i `elem` used] sc'
 
-        mkIRAlt _ (ConstCase x rhs)
-          | matchable x
-             = do rhs' <- ir rhs
-                  return $ LConstCase x rhs'
-          | matchableTy x
-             = do rhs' <- ir rhs
-                  return $ LDefaultCase rhs'
-        mkIRAlt tm (SucCase n rhs)
-           = do rhs' <- ir rhs
-                return $ LDefaultCase (LLet n (LOp (LMinus (ATInt ITBig))
-                                                 [tm,
-                                                  LConst (BI 1)]) rhs')
---                 return $ LSucCase n rhs'
-        mkIRAlt _ (ConstCase c rhs)
-           = ifail $ "Can't match on (" ++ show c ++ ")"
-        mkIRAlt _ (DefaultCase rhs)
-           = do rhs' <- ir rhs
-                return $ LDefaultCase rhs'
+irAlt :: Vars -> LExp -> CaseAlt -> Idris LAlt
 
-        matchable (I _) = True
-        matchable (BI _) = True
-        matchable (Ch _) = True
-        matchable (Str _) = True
-        matchable _ = False
+-- this leaves out all unused arguments of the constructor
+irAlt vs _ (ConCase n t args sc) = do
+    sc'  <- irSC vs sc
+    used <- maybe [] (map fst . usedpos) . lookupCtxtExact n . idris_callgraph <$> getIState
+    return $ LConCase (-1) n [a | (i,a) <- zip [0..] args, i `elem` used] sc'
 
-        matchableTy (AType (ATInt ITNative)) = True
-        matchableTy (AType (ATInt ITBig)) = True
-        matchableTy (AType (ATInt ITChar)) = True
-        matchableTy StrType = True
+irAlt vs _ (ConstCase x rhs)
+    | matchable   x = LConstCase x <$> irSC vs rhs
+    | matchableTy x = LDefaultCase <$> irSC vs rhs
+  where
+    matchable (I _) = True
+    matchable (BI _) = True
+    matchable (Ch _) = True
+    matchable (Str _) = True
+    matchable _ = False
 
-        matchableTy (AType (ATInt (ITFixed IT8)))  = True
-        matchableTy (AType (ATInt (ITFixed IT16))) = True
-        matchableTy (AType (ATInt (ITFixed IT32))) = True
-        matchableTy (AType (ATInt (ITFixed IT64))) = True
+    matchableTy (AType (ATInt ITNative)) = True
+    matchableTy (AType (ATInt ITBig)) = True
+    matchableTy (AType (ATInt ITChar)) = True
+    matchableTy StrType = True
 
-        matchableTy _ = False
+    matchableTy (AType (ATInt (ITFixed IT8)))  = True
+    matchableTy (AType (ATInt (ITFixed IT16))) = True
+    matchableTy (AType (ATInt (ITFixed IT32))) = True
+    matchableTy (AType (ATInt (ITFixed IT64))) = True
 
+    matchableTy _ = False
+
+irAlt vs tm (SucCase n rhs) = do
+    rhs' <- irSC vs rhs
+    return $ LDefaultCase (LLet n (LOp (LMinus (ATInt ITBig))
+                                            [tm,
+                                            LConst (BI 1)]) rhs')
+
+irAlt vs _ (ConstCase c rhs)
+    = ifail $ "Can't match on (" ++ show c ++ ")"
+
+irAlt vs _ (DefaultCase rhs)
+    = LDefaultCase <$> irSC vs rhs
