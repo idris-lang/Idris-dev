@@ -180,6 +180,8 @@ data Tactic = Try Tactic Tactic
             -- ^ invoke the reflected rep. of another tactic
             | Reflect TT
             -- ^ turn a value into its reflected representation
+            | ByReflection TT
+            -- ^ use a %reflection function
             | Fill Raw
             -- ^ turn a raw value back into a term
             | Exact TT

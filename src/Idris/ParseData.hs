@@ -20,6 +20,8 @@ import Idris.DSL
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
+import Idris.Docstrings
+
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
@@ -41,7 +43,7 @@ Record ::=
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
 record syn = do (doc, acc) <- try (do
-                      doc <- option ("", []) docComment
+                      doc <- option noDocs docComment
                       acc <- optional accessibility
                       reserved "record"
                       return (doc, acc))
@@ -103,7 +105,7 @@ SimpleConstructorList ::=
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
 data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
-                    (doc, argDocs) <- option ("", []) docComment
+                    (doc, argDocs) <- option noDocs docComment
                     pushIndent
                     acc <- optional accessibility
                     elim <- dataOpts []
@@ -160,9 +162,9 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
 {- | Parses a type constructor declaration
   Constructor ::= DocComment? FnName TypeSig;
 -}
-constructor :: SyntaxInfo -> IdrisParser (String, [(Name, String)], Name, PTerm, FC, [Name])
+constructor :: SyntaxInfo -> IdrisParser (Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name])
 constructor syn
-    = do (doc, argDocs) <- option ("", []) docComment
+    = do (doc, argDocs) <- option noDocs docComment
          cn_in <- fnName; fc <- getFC
          let cn = expandNS syn cn_in
          lchar ':'
@@ -177,9 +179,9 @@ constructor syn
 {- | Parses a constructor for simple discriminative union data types
   SimpleConstructor ::= FnName SimpleExpr* DocComment?
 -}
-simpleConstructor :: SyntaxInfo -> IdrisParser (String, [(Name, String)], Name, [PTerm], FC, [Name])
+simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring, [(Name, Docstring)], Name, [PTerm], FC, [Name])
 simpleConstructor syn
-     = do doc <- option ("", []) (try docComment)
+     = do doc <- option noDocs (try docComment)
           cn_in <- fnName
           let cn = expandNS syn cn_in
           fc <- getFC

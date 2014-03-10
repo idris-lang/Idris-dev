@@ -100,18 +100,18 @@ data FFI = FFICode Char | FFIArg Int | FFIError String
 ffi :: String -> [String] -> String
 ffi code args = let parsed = ffiParse code in
                     case ffiError parsed of
-                         Just err -> compileJS $ jsError err
+                         Just err -> error err
                          Nothing  -> renderFFI parsed args
   where
     ffiParse :: String -> [FFI]
     ffiParse ""           = []
-    ffiParse ['%']        = [FFIError "Invalid positional argument"]
+    ffiParse ['%']        = [FFIError $ "FFI - Invalid positional argument"]
     ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
     ffiParse ('%':s:ss)
       | isDigit s =
          FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
       | otherwise =
-          [FFIError "Invalid positional argument"]
+          [FFIError $ "FFI - Invalid positional argument"]
     ffiParse (s:ss) = FFICode s : ffiParse ss
 
 
@@ -126,7 +126,7 @@ ffi code args = let parsed = ffiParse code in
     renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
     renderFFI ((FFIArg i) : fs) args
       | i < length args && i >= 0 = args !! i ++ renderFFI fs args
-      | otherwise = "Argument index out of bounds"
+      | otherwise = error "FFI - Argument index out of bounds"
 
 
 compileJS :: JS -> String
@@ -1963,6 +1963,9 @@ translateExpression (SForeign _ _ "isNull" [(FPtr, var)]) =
 
 translateExpression (SForeign _ _ "idris_eqPtr" [(FPtr, lhs),(FPtr, rhs)]) =
   JSBinOp "==" (JSVar lhs) (JSVar rhs)
+
+translateExpression (SForeign _ _ "idris_time" []) =
+  JSRaw "(new Date()).getTime()"
 
 translateExpression (SForeign _ _ fun args) =
   JSFFI fun (map generateWrapper args)

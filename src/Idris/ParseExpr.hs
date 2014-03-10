@@ -167,7 +167,9 @@ extension syn (Rule ssym ptm _)
             upd ns (DoBind fc n t : ds) = DoBind fc n (update ns t) : upd (dropn n ns) ds
             upd ns (DoLet fc n ty t : ds) = DoLet fc n (update ns ty) (update ns t)
                                                 : upd (dropn n ns) ds
-            upd ns (DoBindP fc i t : ds) = DoBindP fc (update ns i) (update ns t)
+            upd ns (DoBindP fc i t ts : ds) 
+                    = DoBindP fc (update ns i) (update ns t) 
+                                 (map (\(l,r) -> (update ns l, update ns r)) ts)
                                                 : upd ns ds
             upd ns (DoLetP fc i t : ds) = DoLetP fc (update ns i) (update ns t)
                                                 : upd ns ds
@@ -736,16 +738,22 @@ TypeSig' ::=
 @
  -}
 let_ :: SyntaxInfo -> IdrisParser PTerm
-let_ syn = try (do reserved "let"; n <- name;
+let_ syn = try (do reserved "let"; fc <- getFC; n <- name;
                    ty <- option Placeholder (do lchar ':'; expr' syn)
                    lchar '='
                    v <- expr syn
+                   ts <- option [] (do lchar '|'
+                                       sepBy1 (do_alt syn) (lchar '|'))
                    reserved "in";  sc <- expr syn
-                   return (PLet n ty v sc))
+                   case ts of
+                        [] -> return (PLet n ty v sc)
+                        alts -> return (PCase fc v ((PRef fc n, sc) : ts)))
            <|> (do reserved "let"; fc <- getFC; pat <- expr' (syn { inPattern = True } )
                    symbol "="; v <- expr syn
+                   ts <- option [] (do lchar '|'
+                                       sepBy1 (do_alt syn) (lchar '|'))
                    reserved "in"; sc <- expr syn
-                   return (PCase fc v [(pat, sc)]))
+                   return (PCase fc v ((pat, sc) : ts)))
            <?> "let binding"
 
 {- | Parses a quote goal
@@ -967,16 +975,27 @@ do_ syn
                symbol "<-"
                fc <- getFC
                e <- expr syn;
-               return (DoBind fc i e))
+               option (DoBind fc i e)
+                      (do lchar '|'
+                          ts <- sepBy1 (do_alt syn) (lchar '|')
+                          return (DoBindP fc (PRef fc i) e ts)))
    <|> try (do i <- expr' syn
                symbol "<-"
                fc <- getFC
                e <- expr syn;
-               return (DoBindP fc i e))
+               option (DoBindP fc i e [])
+                      (do lchar '|'
+                          ts <- sepBy1 (do_alt syn) (lchar '|')
+                          return (DoBindP fc i e ts)))
    <|> do e <- expr syn
           fc <- getFC
           return (DoExp fc e)
    <?> "do block expression"
+
+do_alt syn = do l <- expr' syn
+                symbol "=>"
+                r <- expr' syn
+                return (l, r)
 
 {- | Parses an expression in idiom brackets
 @

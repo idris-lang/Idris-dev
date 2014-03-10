@@ -9,6 +9,7 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Typecheck
 import Idris.AbsSyntaxTree
 import Idris.Colours
+import Idris.Docstrings
 import Idris.IdeSlave
 import IRTS.CodegenCommon
 import Util.DynamicLinker
@@ -262,7 +263,7 @@ addCoercion :: Name -> Idris ()
 addCoercion n = do i <- getIState
                    putIState $ i { idris_coercions = nub $ n : idris_coercions i }
 
-addDocStr :: Name -> String -> [(Name, String)] -> Idris ()
+addDocStr :: Name -> Docstring -> [(Name, Docstring)] -> Idris ()
 addDocStr n doc args
    = do i <- getIState
         putIState $ i { idris_docstrings = addDef n (doc, args) (idris_docstrings i) }
@@ -712,6 +713,12 @@ setShowOrigErr b = do i <- getIState
                       let opts = idris_options i
                       let opt' = opts { opt_origerr = b }
                       putIState $ i { idris_options = opt' }
+
+setAutoSolve :: Bool -> Idris ()
+setAutoSolve b = do i <- getIState
+                    let opts = idris_options i
+                    let opt' = opts { opt_autoSolve = b }
+                    putIState $ i { idris_options = opt' }
 
 setNoBanner :: Bool -> Idris ()
 setNoBanner n = do i <- getIState
@@ -1250,18 +1257,24 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
                       | otherwise   = x : dropAll xs ys
     dropAll [] ys = []
 
+    -- Find names in argument position in a type, suitable for implicit
+    -- binding
+    -- Not the function position, but do everything else...
+    implNamesIn uv (PApp fc f args) = concatMap (implNamesIn uv) (map getTm args)
+    implNamesIn uv t = namesIn uv ist t
+
     imps top env (PApp _ f as)
        = do (decls, ns) <- get
             let isn = concatMap (namesIn uvars ist) (map getTm as)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PPi (Imp l _ _) n ty sc)
-        = do let isn = nub (namesIn uvars ist ty) `dropAll` [n]
+        = do let isn = nub (implNamesIn uvars ty) `dropAll` [n]
              (decls , ns) <- get
              put (PImp (getPriority ist ty) True l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (Exp l _ _) n ty sc)
-        = do let isn = nub (namesIn uvars ist ty ++ case sc of
+        = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
@@ -1269,7 +1282,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (Constraint l _) n ty sc)
-        = do let isn = nub (namesIn uvars ist ty ++ case sc of
+        = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
@@ -1277,7 +1290,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PPi (TacImp l _ scr) n ty sc)
-        = do let isn = nub (namesIn uvars ist ty ++ case sc of
+        = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
