@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Erasure (performUsageAnalysis) where
+module Idris.Erasure (performUsageAnalysis, mkFieldName) where
 
 import Idris.AbsSyntax
 import Idris.Core.CaseTree
@@ -306,7 +306,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
         -- generate metamethod names, "n" is the instance ctor
         meth :: Int -> Maybe Name
-        meth | SN (InstanceCtorN className) <- n = \j -> Just (mkField n j)
+        meth | SN (InstanceCtorN className) <- n = \j -> Just (mkFieldName n j)
              | otherwise = \j -> Nothing
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
@@ -423,7 +423,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             deps i   = M.singleton (metameth, Arg i) S.empty
             bruijns  = reverse [\cd -> M.singleton cd (deps i) | i <- [0 .. length args - 1]]
             cond     = S.singleton (metameth, Result)
-            metameth = mkField ctorName methNo
+            metameth = mkFieldName ctorName methNo
             (args, body) = unfoldLams t
 
     -- projections
@@ -471,9 +471,6 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     unfoldLams (Bind n (Lam ty) t) = let (ns,t') = unfoldLams t in (n:ns, t')
     unfoldLams t = ([], t)
 
-    mkField :: Name -> Int -> Name
-    mkField ctorName fieldNo = SN (WhereN fieldNo ctorName $ sMN fieldNo "field")
-
     union :: Deps -> Deps -> Deps
     union = M.unionWith (M.unionWith S.union)
 
@@ -482,3 +479,6 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
     unionMap :: (a -> Deps) -> [a] -> Deps
     unionMap f = M.unionsWith (M.unionWith S.union) . map f
+
+mkFieldName :: Name -> Int -> Name
+mkFieldName ctorName fieldNo = SN (WhereN fieldNo ctorName $ sMN fieldNo "field")

@@ -315,7 +315,6 @@ irTerm vs env (Constant c) = return $ LConst c
 irTerm vs env (TType _)    = return $ LNothing
 irTerm vs env Erased       = return $ LNothing
 irTerm vs env Impossible   = return $ LNothing
---       ir' env _ = return $ LError "Impossible"
 
 irCon :: Vars -> [Name] -> Int -> Name -> [Term] -> Idris LExp
 irCon vs env arity n args
@@ -472,9 +471,20 @@ irAlt :: Vars -> LExp -> CaseAlt -> Idris LAlt
 
 -- this leaves out all unused arguments of the constructor
 irAlt vs _ (ConCase n t args sc) = do
-    sc'  <- irSC vs sc
-    used <- maybe [] (map fst . usedpos) . lookupCtxtExact n . idris_callgraph <$> getIState
-    return $ LConCase (-1) n [a | (i,a) <- zip [0..] args, i `elem` used] sc'
+    used <- getUsed . lookup n <$> getIState
+    let usedArgs = [a | (i,a) <- zip [0..] args, i `elem` used]
+    LConCase (-1) n usedArgs <$> irSC (methodVars `M.union` vs) sc
+  where
+    lookup n = lookupCtxtExact n . idris_callgraph
+    getUsed  = maybe [] (map fst . usedpos)
+
+    methodVars = case n of
+        SN (InstanceCtorN className)
+            -> M.fromList [(v, VI
+                { viMethod = Just $ mkFieldName n i
+                }) | (v,i) <- zip args [0..]]
+        _
+            -> M.empty -- not an instance constructor
 
 irAlt vs _ (ConstCase x rhs)
     | matchable   x = LConstCase x <$> irSC vs rhs
