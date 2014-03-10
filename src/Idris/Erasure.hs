@@ -413,7 +413,8 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             getDepsArgs n (Nothing, t) = getDepsTerm vs bs cd t                        -- unconditional
 
         methodDeps :: Name -> (Int, Term) -> Deps
-        methodDeps ctorName (methNo, t) = getDepsTerm vars bruijns cond body
+        methodDeps ctorName (methNo, t)
+            = getDepsTerm (vars `M.union` vs) (bruijns ++ bs) cond body
           where
             vars = M.fromList [(v, VI
                 { viDeps   = deps i
