@@ -382,6 +382,10 @@ Extra-source-files:
                        test/totality003/*.idr
                        test/totality003/expected
 
+                       test/tutorial001/run
+                       test/tutorial001/*.idr
+                       test/tutorial001/expected
+
 source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
