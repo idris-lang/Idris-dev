@@ -266,7 +266,8 @@ irTerm vs env tm@(App f a) = case unApply tm of
             -- otherwise, just apply the name
             _   -> applyName n ist args
 
-    (V i, args) -> irTerm vs env (P Bound (env !! i) Erased)
+    -- turn de bruijn vars into regular named references and try again
+    (V i, args) -> irTerm vs env $ mkApp (P Bound (env !! i) Erased) args
 
     (f, args)
         -> LApp False
