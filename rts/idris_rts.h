@@ -30,7 +30,7 @@ typedef struct {
 
 typedef struct {
     VAL str;
-    int offset;
+    size_t offset;
 } StrOffset;
 
 typedef struct {

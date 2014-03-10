@@ -189,7 +189,7 @@ VAL MKPTR(VM* vm, void* ptr) {
     return cl;
 }
 
-VAL MKMPTR(VM* vm, void* ptr, int size) {
+VAL MKMPTR(VM* vm, void* ptr, size_t size) {
     Closure* cl = allocate(vm, sizeof(Closure) +
                                sizeof(ManagedPtr) + size, 0);
     SETTY(cl, MANAGEDPTR);
@@ -224,7 +224,7 @@ VAL MKPTRc(VM* vm, void* ptr) {
     return cl;
 }
 
-VAL MKMPTRc(VM* vm, void* ptr, int size) {
+VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
     Closure* cl = allocate(vm, sizeof(Closure) +
                                sizeof(ManagedPtr) + size, 1);
     SETTY(cl, MANAGEDPTR);
