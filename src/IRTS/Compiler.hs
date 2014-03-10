@@ -425,7 +425,7 @@ irSC vs (ProjCase tm alt) = do
 -- This is important because newtyped constructors are compiled away entirely
 -- and we need to do that everywhere.
 --
---  2. Unused-case elimination:
+--  2. Unused-case elimination (only valid for singleton branches):
 --      case {e0} of                                ==>     P
 --          C(x,y) -> P[... x,y not used ...]
 --
