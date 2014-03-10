@@ -90,6 +90,11 @@ performUsageAnalysis = do
         when checkEnabled $
             mapM_ (checkAccessibility opt) usage
 
+        -- Check that no postulates are reachable.
+        reachablePostulates <- S.intersection reachableNames . idris_postulates <$> getIState
+        when (not . S.null $ reachablePostulates)
+            $ ifail ("reachable postulates: " ++ (show $ S.toList reachablePostulates))
+
         -- Store the usage info in the internal state.
         mapM_ (storeUsage cg) usage
 

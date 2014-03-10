@@ -37,6 +37,7 @@ import Data.Maybe
 import Debug.Trace
 
 import qualified Data.Map as Map
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Char(isLetter, toLower)
 import Data.List.Split (splitOn)
@@ -204,8 +205,15 @@ inaccessibleArgs _ _ = []
 
 elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring ->
                  FC -> FnOpts -> Name -> PTerm -> Idris ()
-elabPostulate info syn doc fc opts n ty
-    = do elabType info syn doc [] fc opts n ty
+elabPostulate info syn doc fc opts n ty = do
+    elabType info syn doc [] fc opts n ty
+    putIState . (\ist -> ist{ idris_postulates = S.insert n (idris_postulates ist) }) =<< getIState
+
+    -- remove it from the deferred definitions list
+    solveDeferred n
+
+{- NB. this check has been superseded by usage analysis
+ -
          -- make sure it's collapsible, so it is never needed at run time
          -- start by getting the elaborated type
          ctxt <- getContext
@@ -214,6 +222,7 @@ elabPostulate info syn doc fc opts n ty
             [ty] -> return ty
          ist <- getIState
          let (ap, _) = unApply (getRetTy (normalise ctxt [] fty))
+
          logLvl 5 $ "Checking collapsibility of " ++ show (ap, fty)
          let postOK = case ap of
                             P _ tn _ -> case lookupCtxt tn
@@ -223,8 +232,8 @@ elabPostulate info syn doc fc opts n ty
                             _ -> False
          when (not postOK)
             $ tclift $ tfail (At fc (NonCollapsiblePostulate n))
-         -- remove it from the deferred definitions list
-         solveDeferred n
+-}
+
 
 elabData :: ElabInfo -> SyntaxInfo -> Docstring -> [(Name, Docstring)] -> FC -> DataOpts -> PData -> Idris ()
 elabData info syn doc argDocs fc opts (PLaterdecl n t_in)
