@@ -1,5 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards, OverlappingInstances, StandaloneDeriving #-}
 module Idris.ParseHelpers where
 
 import Prelude hiding (pi)
@@ -43,13 +42,19 @@ import Debug.Trace
 type IdrisParser = StateT IState IdrisInnerParser
 
 newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
-  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing{-, Parsing-}, DeltaParsing, MarkParsing Delta, Monoid)
+  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, DeltaParsing, MarkParsing Delta, Monoid, TokenParsing)
 
 deriving instance Parsing IdrisInnerParser
 
-instance TokenParsing IdrisInnerParser where
+instance TokenParsing IdrisParser where
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
-
+  token p = do s <- get
+               (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
+               r <- p
+               (FC fn _ (el, ec)) <- getFC
+               whiteSpace
+               put (s { lastTokenSpan = Just (FC fn (sl, sc) (el, ec)) })
+               return r
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
@@ -333,7 +338,7 @@ getFC :: MonadicParsing m => m FC
 getFC = do s <- position
            let (dir, file) = splitFileName (fileName s)
            let f = if dir == addTrailingPathSeparator "." then file else fileName s
-           return $ FC f (lineNum s) (columnNum s)
+           return $ FC f (lineNum s, columnNum s) (lineNum s, columnNum s) -- TODO: Change to actual spanning
 
 {-* Syntax helpers-}
 -- | Bind constraints to term

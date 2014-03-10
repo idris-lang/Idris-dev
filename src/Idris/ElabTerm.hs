@@ -1620,11 +1620,19 @@ reflectErr (AlreadyDefined n) = raw_apply (Var $ reflErrName "AlreadyDefined") [
 reflectErr (ProofSearchFail e) = raw_apply (Var $ reflErrName "ProofSearchFail") [reflectErr e]
 reflectErr (NoRewriting tm) = raw_apply (Var $ reflErrName "NoRewriting") [reflect tm]
 reflectErr (At fc err) = raw_apply (Var $ reflErrName "At") [reflectFC fc, reflectErr err]
-           where reflectFC (FC source line col) = raw_apply (Var $ reflErrName "FileLoc")
-                                                            [ RConstant (Str source)
-                                                            , RConstant (I line)
-                                                            , RConstant (I col)
-                                                            ]
+           where reflectFC (FC source (sl, sc) (el, ec)) = raw_apply (Var $ reflErrName "FileLoc")
+                                                             [ RConstant (Str source)
+                                                              , raw_apply (Var pairCon) [
+                                                                      RConstant (AType (ATInt ITNative)),
+                                                                      RConstant (AType (ATInt ITNative)),
+                                                                      RConstant (I sl),
+                                                                      RConstant (I sc)]
+                                                              , raw_apply (Var pairCon) [
+                                                                      RConstant (AType (ATInt ITNative)),
+                                                                      RConstant (AType (ATInt ITNative)),
+                                                                      RConstant (I el),
+                                                                      RConstant (I ec)]
+                                                              ]
 reflectErr (Elaborating str n e) =
   raw_apply (Var $ reflErrName "Elaborating")
             [ RConstant (Str str)
