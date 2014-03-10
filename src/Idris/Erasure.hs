@@ -480,5 +480,6 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     unionMap :: (a -> Deps) -> [a] -> Deps
     unionMap f = M.unionsWith (M.unionWith S.union) . map f
 
+-- Make a field name out of a data constructor name and field number.
 mkFieldName :: Name -> Int -> Name
 mkFieldName ctorName fieldNo = SN (WhereN fieldNo ctorName $ sMN fieldNo "field")

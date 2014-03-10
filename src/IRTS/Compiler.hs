@@ -266,6 +266,8 @@ irTerm vs env tm@(App f a) = case unApply tm of
             -- otherwise, just apply the name
             _   -> applyName n ist args
 
+    (V i, args) -> irTerm vs env (P Bound (env !! i) Erased)
+
     (f, args)
         -> LApp False
             <$> irTerm vs env f
@@ -288,7 +290,12 @@ irTerm vs env tm@(App f a) = case unApply tm of
                 []  -> 0  -- no definition, probably local name => can't erase anything
                 def -> error $ "unknown arity: " ++ show (n, def)
 
-            used = maybe [] (map fst . usedpos) $ lookupCtxtExact n (idris_callgraph ist)
+            -- name for purposes of usage info lookup
+            uName
+                | Just n' <- viMethod =<< M.lookup n vs = n'
+                | otherwise = n
+
+            used = maybe [] (map fst . usedpos) $ lookupCtxtExact uName (idris_callgraph ist)
             fst4 (x,_,_,_) = x
 
 irTerm vs env (P _ n _) = return $ LV (Glob n)
