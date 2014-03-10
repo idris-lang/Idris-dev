@@ -103,7 +103,14 @@ void idris_gc(VM* vm) {
         free(vm->heap.old);
 
     vm->heap.heap = newheap;
-    vm->heap.next = newheap;
+#ifdef FORCE_ALIGNMENT
+    if (((i_int)(vm->heap.heap)&1) == 1) {
+        vm->heap.next = newheap + 1;
+    } else
+#endif
+    {
+        vm->heap.next = newheap;
+    }
     vm->heap.end  = newheap + vm->heap.size;
 
     VAL* root;
@@ -111,6 +118,7 @@ void idris_gc(VM* vm) {
     for(root = vm->valstack; root < vm->valstack_top; ++root) {
         *root = copy(vm, *root);
     }
+
 #ifdef HAS_PTHREAD
     for(root = vm->inbox_ptr; root < vm->inbox_write; ++root) {
         *root = copy(vm, *root);
