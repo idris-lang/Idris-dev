@@ -220,11 +220,6 @@ irTerm vs env tm@(App f a) = case unApply tm of
     (P _ (UN m) _, [_,size,t])
         | m == txt "malloc"
         -> irTerm vs env t
-{-
-        = do size' <- ir' env size
-                t' <- ir' env t
-                return t' -- TODO $ malloc_ size' t'
--}
 
     (P _ (UN tm) _, [_,t])
         | tm == txt "trace_malloc"
@@ -295,9 +290,6 @@ irTerm vs env tm@(App f a) = case unApply tm of
 
             used = maybe [] (map fst . usedpos) $ lookupCtxtExact n (idris_callgraph ist)
             fst4 (x,_,_,_) = x
-
---       ir' env (P _ (NS (UN "Z") ["Nat", "Prelude"]) _)
---                         = return $ LConst (BI 0)
 
 irTerm vs env (P _ n _) = return $ LV (Glob n)
 irTerm vs env (V i)
@@ -475,20 +467,6 @@ irSC vs (Case n [alt]) = do
 
 irSC vs (Case n alts)  = LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
 irSC vs ImpossibleCase = return LNothing
-
--- zname = sNS (sUN "Z") ["Nat","Prelude"]
--- sname = sNS (sUN "S") ["Nat","Prelude"]
-
--- special cases for Z and S
--- Needs rethink: projections make this fail
---         irAlt n (ConCase z _ [] rhs) | z == zname
---              = irAlt n (ConstCase (BI 0) rhs)
---         irAlt n (ConCase s _ [arg] rhs) | s == sname
---              = do n' <- ir n
---                   rhs' <- ir rhs
---                   return $ LDefaultCase
---                               (LLet arg (LOp LBMinus [n', LConst (BI 1)])
---                                           rhs')
 
 irAlt :: Vars -> LExp -> CaseAlt -> Idris LAlt
 
