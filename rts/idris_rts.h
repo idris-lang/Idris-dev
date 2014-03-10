@@ -212,7 +212,7 @@ void idris_doneAlloc(VM* vm);
 #define allocCon(cl, vm, t, a, o) \
   cl = allocate(vm, sizeof(Closure) + sizeof(VAL)*a, o); \
   SETTY(cl, CON); \
-  cl->info.c.tag_arity = ((t) << 8) + (a);
+  cl->info.c.tag_arity = ((t) << 8) | (a);
 
 void* vmThread(VM* callvm, func f, VAL arg);
 
