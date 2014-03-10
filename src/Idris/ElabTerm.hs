@@ -1605,18 +1605,6 @@ reflectErr (NonCollapsiblePostulate n) = raw_apply (Var $ reflErrName "NonCollab
 reflectErr (AlreadyDefined n) = raw_apply (Var $ reflErrName "AlreadyDefined") [reflectName n]
 reflectErr (ProofSearchFail e) = raw_apply (Var $ reflErrName "ProofSearchFail") [reflectErr e]
 reflectErr (NoRewriting tm) = raw_apply (Var $ reflErrName "NoRewriting") [reflect tm]
-reflectErr (At fc err) = raw_apply (Var $ reflErrName "At") [reflectFC fc, reflectErr err]
-           where reflectFC (FC source line col) = raw_apply (Var $ reflErrName "FileLoc")
-                                                            [ RConstant (Str source)
-                                                            , RConstant (I line)
-                                                            , RConstant (I col)
-                                                            ]
-reflectErr (Elaborating str n e) =
-  raw_apply (Var $ reflErrName "Elaborating")
-            [ RConstant (Str str)
-            , reflectName n
-            , reflectErr e
-            ]
 reflectErr (ProviderError str) =
   raw_apply (Var $ reflErrName "ProviderError") [RConstant (Str str)]
 reflectErr (LoadingFailed str err) =
@@ -1631,6 +1619,13 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                                return e -- Don't do meta-reflection of errors
           handle e@(ReflectionFailed _ _) = do logLvl 3 "Skipping reflection of reflection failure"
                                                return e
+          -- At and Elaborating are just plumbing - error reflection shouldn't rewrite them
+          handle e@(At fc err) = do logLvl 3 "Reflecting body of At"
+                                    err' <- handle err
+                                    return (At fc err')
+          handle e@(Elaborating what n err) = do logLvl 3 "Reflecting body of Elaborating"
+                                                 err' <- handle err
+                                                 return (Elaborating what n err')
           handle e = do ist <- getIState
                         logLvl 2 "Starting error reflection"
                         let handlers = idris_errorhandlers ist

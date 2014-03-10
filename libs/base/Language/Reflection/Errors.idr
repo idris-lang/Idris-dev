@@ -35,8 +35,6 @@ data Err = Msg String
          | AlreadyDefined TTName
          | ProofSearchFail Err
          | NoRewriting TT
-         | At SourceLocation Err
-         | Elaborating String TTName Err
          | ProviderError String
          | LoadingFailed String Err
 

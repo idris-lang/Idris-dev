@@ -59,17 +59,6 @@ dslerr (CantUnify _ tm1 tm2 _ _ _) = do tm1' <- getTmTy tm1
                                         ty1 <- reifyTy tm1'
                                         ty2 <- reifyTy tm2'
                                         return [TextPart $ "DSL type error: " ++ (show ty1) ++ " doesn't match " ++(show ty2)]
-dslerr (At (FileLoc f l c) err) = do err' <- dslerr err
-                                     return [ TextPart "In file"
-                                            , TextPart f
-                                            , TextPart "line", TextPart (cast l)
-                                            , TextPart "column", TextPart (cast c)
-                                            , SubReport err']
-dslerr (Elaborating s n err) = do err' <- dslerr err
-                                  return ([ TextPart $ "When elaborating " ++ s
-                                          , NamePart n
-                                          , TextPart ":"
-                                          , SubReport err'])
 dslerr _ = Nothing
 
 
