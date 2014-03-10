@@ -413,14 +413,15 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             getDepsArgs n (Nothing, t) = getDepsTerm vs bs cd t                        -- unconditional
 
         methodDeps :: Name -> (Int, Term) -> Deps
-        methodDeps ctorName (methNo, t) = getDepsTerm vars bruijns cond t
+        methodDeps ctorName (methNo, t) = getDepsTerm vars bruijns cond body
           where
             vars = M.fromList [(v, VI
-                { viDeps   = M.singleton (metameth, Arg i) S.empty
+                { viDeps   = deps i
                 , viFunArg = Just i
                 , viMethod = Nothing
                 }) | (v, i) <- zip args [0..]]
-            bruijns  = reverse [\cd -> M.singleton cd (M.singleton (metameth, Arg i) S.empty) | i <- [0..length args-1]]
+            deps i   = M.singleton (metameth, Arg i) S.empty
+            bruijns  = reverse [\cd -> M.singleton cd (deps i) | i <- [0 .. length args - 1]]
             cond     = S.singleton (metameth, Result)
             metameth = mkField ctorName methNo
             (args, body) = unfoldLams t
