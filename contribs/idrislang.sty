@@ -24,6 +24,7 @@
 \RequirePackage{ifthen}
 \RequirePackage{listings}
 \RequirePackage{xspace}
+\RequirePackage{textcomp}
 %% ----------------------------------------------------------------- [ Options ]
 \newboolean{literate}
 \setboolean{literate}{false}
@@ -48,8 +49,9 @@
 \lstdefinelanguage{idris}{%
   sensitive,%
 %% ----------------------------------------------------------- [ Default Style ]
-  xleftmargin=\parindent,
+  xleftmargin=1.5em,
   tabsize=2,
+  upquote=true,
   basicstyle=\ttfamily,
   flexiblecolumns=false,
   commentstyle=\footnotesize\sffamily,
@@ -63,78 +65,9 @@
     total, trivial, try, using, where, with
 },
 %% ------------------------------------------------------- [ Prelude Functions ]
-%% Generated using
-%% find lib/ -name "*.idr" | xargs grep -e "^[a-zA-Z0-9]* :" | awk -F : '{printf $2", "}'
   morekeywords={%
-    class, data, instance, record, dsl, postulate, default, assert_total,
+    class, data, instance, record, dsl, postulate, default, 
     lambda, variable, index_first, index_next
-    % trace, unsafePerformPrimIO, FInt, FChar, FByte, FShort, FLong,
-    % FBits8, FBits16, FBits32, FBits64, FBits8x16, FBits16x8,
-    % FBits32x4, FBits64x2, interpFTy, ForeignTy, mkForeignPrim,
-    % mkLazyForeignPrim, liftPrimIO, fork, unsafePerformIO, listens,
-    % censor, Writer, liftReaderT, asks, Reader, modify, gets, State,
-    % RWS, nGTSm, decideNatLTE, lte, vectInjective1, vectInjective2,
-    % run, myID, send, msgWaiting, recv, recvWithSender, create,
-    % sendToThread, checkMsgs, getMsg, viewB8x16, viewB16x8, viewB32x4,
-    % viewB64x2, pow, exp, log, pi, sin, cos, tan, asin, acos, atan,
-    % atan2, sinh, cosh, tanh, sqrt, floor, ceiling, count, countFrom,
-    % curry, uncurry, uniformB8x16, uniformB16x8, uniformB32x4,
-    % uniformB64x2, putStr, putStrLn, print, getLine, putChar, getChar,
-    % fopen, openFile, closeFile, fread, fwrite, feof, ferror, nullPtr,
-    % nullStr, validFile, while, readFile, userSuppliedName, seq, try,
-    % mkPair, getUName, unApply, mkApp, binderTy, divCeil, nextPow2,
-    % nextBytes, machineTy, bitsUsed, natToBits, getPad, pad8, pad16,
-    % pad32, pad64, shiftLeft, shiftRightLogical, shiftRightArithmetic,
-    % and, or, xor, plus, minus, times, sdiv, udiv, srem, urem, lt, lte,
-    % eq, gte, gt, complement, zeroExtend, intToBits, bitsToInt, bitAt,
-    % getBit, setBit, unsetBit, bitsToStr, findElem, replaceElem,
-    % replaceByElem, mapElem, anyNilAbsurd, anyElim, any, negAnyAll,
-    % notAllHere, notAllThere, all, length, index, weaken, take, toList,
-    % fromList, replicate, foldl, foldr, map, pad, zeroBoundIsEmpty,
-    % empty, insert, delete, contains, fromList, toList, applyKleisli,
-    % applyMor, applyEndo, absZ, negZ, negNat, minusNatZ, plusZ, subZ,
-    % multZ, fromInt, natPlusZPlus, natMultZMult, doubleNegElim,
-    % posInjective, negSInjective, posNotNeg, plusZeroLeftNeutralZ,
-    % plusZeroRightNeutralZ, plusCommutativeZ, modBin, modComp, div,
-    % rem, intToMod, modToStr, branch4, branch5, branch6, branch7,
-    % merge1, merge2, merge3, treeLookup, treeInsert, delType,
-    % treeDelete, treeToList, empty, lookup, insert, delete, fromList,
-    % toList, getWitness, getProof, FalseElim, replace, sym, trans,
-    % lazy, par, malloc, Not, id, the, const, fst, snd, flip, cong,
-    % boolElim, not, intToBool, boolOp, div, mod, strHead, strTail,
-    % strCons, strIndex, reverse, null, getArgs, getEnv, setEnv,
-    % unsetEnv, getEnvironment, exit, usleep, sequence, toHexDigit,
-    % b8ToString, b16ToString, b32ToString, b64ToString, tail, head,
-    % last, init, index, deleteAt, replaceAt, take, drop, fromList,
-    % replicate, zipWith, zip, unzip, concat, elemBy, elem, lookupBy,
-    % lookup, hasAnyBy, hasAny, find, findIndex, elemIndexBy, elemIndex,
-    % nubBy, nub, isPrefixOfBy, isPrefixOf, isSuffixOfBy, isSuffixOf,
-    % catMaybes, diag, range, isLeft, isRight, choose, either, lefts,
-    % rights, partitionEithers, fromEither, maybeToEither, strM, unpack,
-    % pack, span, break, split, ltrim, trim, words, lines, foldr1,
-    % unwords, length, realPart, imagPart, mkPolar, cis, magnitude,
-    % phase, conjugate, isNothing, isJust, maybe, fromMaybe, toMaybe,
-    % justInjective, lowerMaybe, raiseToMaybe, isNil, isCons, head,
-    % tail, last, init, take, drop, takeWhile, dropWhile, list, length,
-    % repeat, replicate, zipWith, zipWith3, zip, zip3, unzip, unzip3,
-    % mapMaybe, toList, reverse, intersperse, intercalate, elemBy, elem,
-    % lookupBy, lookup, hasAnyBy, hasAny, find, findIndex, findIndices,
-    % elemIndexBy, elemIndex, elemIndicesBy, elemIndices, filter, nubBy,
-    % nub, span, break, split, partition, isPrefixOfBy, isPrefixOf,
-    % isSuffixOfBy, isSuffixOf, sorted, mergeBy, merge, sort,
-    % maybeToList, listToMaybe, catMaybes, appendNilRightNeutral,
-    % appendAssociative, lengthAppend, mapPreservesLength,
-    % mapDistributesOverAppend, mapFusion, hasAnyByNilFalse,
-    % hasAnyNilFalse, fromIntegerNat, toIntegerNat, hyper, log2, gcd,
-    % liftA, liftA2, liftA3, guard, when, finToNat, finToInt, weaken,
-    % strengthen, last, natToFin, integerToFin, fromInteger, flatten,
-    % return, isUpper, isLower, isAlpha, isDigit, isAlphaNum, isSpace,
-    % isNL, toUpper, toLower, isHexDigit, isValidHeap, merge, insert,
-    % findMinimum, deleteMinimum, toList, fromList, sort, main, foldl,
-    % concat, concatMap, and, or, any, all, sum, product, Vars,
-    % getAction, setInfo, getInfo, lift, output, queryVars, postVars,
-    % cookieVars, queryVar, getOutput, getHeaders, flushHeaders, flush,
-    % getVars, getContent, getCgiEnv, runCGI, mult
   },
 %% ---------------------------------------------------------------- [ Comments ]
    morecomment=[l]--,%
@@ -166,13 +99,9 @@
 %% -------------------------------------------------- [ Default Listings Style ]
 
 \lstdefinestyle{default}{%
-  xleftmargin=\parindent,
-  tabsize=2,
   basicstyle=\ttfamily
 }
 \lstdefinestyle{numbers}{%
-  xleftmargin=\parindent,
-  tabsize=2,
   numbers=left,
   numbersep=10pt,
   numberstyle=\footnotesize\sffamily,
@@ -186,11 +115,9 @@
     {\ifthenelse{\boolean{literate}}{%
         \lstset{language=literateidris}}{%
         \lstset{language=idris}}
-      \ifthenelse{\boolean{numbers}}{%
-        \lstset{style=numbers, #1}}{%
-        \lstset{style=default, #1}}
-    }
-    {}
+        \ifthenelse{\boolean{numbers}}{%
+          \lstset{style=numbers, #1}}{%
+          \lstset{style=default, #1}}}{}
 %% ---------------------------------------------------------- [ Input Listings ]
 %% Command to add externally defined Idris code to the document.
 \newcommand{\inputIdrisListing}[2][]{%
