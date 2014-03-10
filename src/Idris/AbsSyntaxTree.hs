@@ -135,12 +135,12 @@ data IState = IState {
     idris_cgflags :: [(Codegen, String)],
     idris_hdrs :: [(Codegen, String)],
     proof_list :: [(Name, [String])],
-    errLine :: Maybe Int,
+    errSpan :: Maybe FC,
     parserWarnings :: [(FC, Err)],
     lastParse :: Maybe Name,
     indent_stack :: [Int],
     brace_stack :: [Maybe Int],
-    lastTokenSpan :: Maybe (FC, FC), -- ^ What was the span of the latest token parsed?
+    lastTokenSpan :: Maybe FC, -- ^ What was the span of the latest token parsed?
     hide_list :: [(Name, Maybe Accessibility)],
     default_access :: Accessibility,
     default_total :: Bool,
