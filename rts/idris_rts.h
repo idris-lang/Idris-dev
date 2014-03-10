@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdarg.h>
 #ifdef HAS_PTHREAD
 #include <pthread.h>
