@@ -71,12 +71,47 @@ drop fZ     xs      ?= xs
 drop (fS k) (x::xs) = drop k xs
 
 --------------------------------------------------------------------------------
+-- Transformations
+--------------------------------------------------------------------------------
+
+total reverse : {n : Nat} -> Vect n a -> Vect n a
+reverse {n} xs = reverse' [] (plusZeroRightNeutral n) xs
+  where
+    total reverse' : {m, j, l : Nat} -> 
+                     Vect m a -> (j + m = l) -> Vect j a -> Vect l a
+    reverse' {m} {j = Z  } {l} acc prf []      ?= acc
+    reverse' {m} {j = S k} {l} acc prf (x::xs)  =
+      let prf1 : (m + (S k) = l) = rewrite plusCommutative m (S k) in prf in
+      let prf2 : (S (m + k) = l) = rewrite plusSuccRightSucc m k in prf1 in
+      let prf3 : (S (k + m) = l) = rewrite plusCommutative k m in prf2 in
+      let prf4 : (k + (S m) = l) = rewrite sym $ plusSuccRightSucc k m in prf3 in
+      reverse' (x::acc) prf4 xs
+
+intersperse : a -> Vect n a -> Vect (n + pred n) a
+intersperse sep []      = []
+intersperse sep (x::xs) = x :: intersperse' sep xs
+  where
+    intersperse' : a -> Vect n a -> Vect (n + n) a
+    intersperse' sep []      = []
+    intersperse' sep (x::xs) ?= sep :: x :: intersperse' sep xs
+
+--------------------------------------------------------------------------------
 -- Conversion from list (toList is provided by Foldable)
 --------------------------------------------------------------------------------
 
+
+fromList' : Vect n a -> (l : List a) -> Vect (length l + n) a
+fromList' ys [] = ys
+fromList' {n} ys (x::xs) =
+  rewrite (plusSuccRightSucc (length xs) n) ==> 
+          Vect (plus (length xs) (S n)) a in
+  fromList' (x::ys) xs
+
+
 fromList : (l : List a) -> Vect (length l) a
-fromList []      = []
-fromList (x::xs) = x :: fromList xs
+fromList l =
+  rewrite (sym $ plusZeroRightNeutral (length l)) in
+  reverse $ fromList' [] l
 
 --------------------------------------------------------------------------------
 -- Building (bigger) vectors
@@ -154,9 +189,12 @@ instance Functor (Vect n) where
 -- Folds
 --------------------------------------------------------------------------------
 
+total foldrImpl : (t -> acc -> acc) -> acc -> (acc -> acc) -> Vect n t -> acc
+foldrImpl f e go [] = go e
+foldrImpl f e go (x::xs) = foldrImpl f e (go . (f x)) xs
+
 instance Foldable (Vect n) where
-  foldr f e []      = e
-  foldr f e (x::xs) = f x (foldr f e xs)
+  foldr f e xs = foldrImpl f e id xs
 
 --------------------------------------------------------------------------------
 -- Special folds
@@ -165,25 +203,6 @@ instance Foldable (Vect n) where
 concat : Vect m (Vect n a) -> Vect (m * n) a
 concat []      = []
 concat (v::vs) = v ++ concat vs
-
---------------------------------------------------------------------------------
--- Transformations
---------------------------------------------------------------------------------
-
-total reverse : Vect n a -> Vect n a
-reverse = reverse' []
-  where
-    total reverse' : Vect m a -> Vect n a -> Vect (m + n) a
-    reverse' acc []      ?= acc
-    reverse' acc (x::xs) ?= reverse' (x::acc) xs
-
-intersperse : a -> Vect n a -> Vect (n + pred n) a
-intersperse sep []      = []
-intersperse sep (x::xs) = x :: intersperse' sep xs
-  where
-    intersperse' : a -> Vect n a -> Vect (n + n) a
-    intersperse' sep []      = []
-    intersperse' sep (x::xs) ?= sep :: x :: intersperse' sep xs
 
 --------------------------------------------------------------------------------
 -- Membership tests
@@ -349,14 +368,9 @@ Prelude.Vect.drop_lemma_1 = proof {
   trivial;
 }
 
-Prelude.Vect.reverse'_lemma_2 = proof {
-    intros;
-    rewrite (plusSuccRightSucc m n1);
-    exact value;
-}
-
 Prelude.Vect.reverse'_lemma_1 = proof {
     intros;
+    rewrite prf;
     rewrite sym (plusZeroRightNeutral m);
     exact value;
 }
