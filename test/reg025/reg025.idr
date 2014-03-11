@@ -9,7 +9,7 @@ Cell n = Maybe (Fin n)
 data Board : Nat -> Type where
   MkBoard : {n : Nat} -> Vect n (Vect n (Cell n)) -> Board n
 
-emptyBoard : Board n
+emptyBoard : {n : Nat} -> Board n
 emptyBoard {n=n} = MkBoard (replicate n (replicate n Nothing))
 
 Empty : Cell n -> Type
