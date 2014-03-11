@@ -194,7 +194,7 @@ saveInaccArgs n is = do
 
 -- Get the list of (index, name) of inaccessible arguments from the type.
 inaccessibleArgs :: Int -> PTerm -> [(Int, Name)]
-inaccessibleArgs i (PPi (Imp _ _ _ _) n Placeholder t)
+inaccessibleArgs i (PPi (Imp _ _ _) n Placeholder t)
     = (i,n) : inaccessibleArgs (i+1) t      -- unbound implicit
 inaccessibleArgs i (PPi plicity n ty t)
     | InaccessibleArg `elem` pargopts plicity
