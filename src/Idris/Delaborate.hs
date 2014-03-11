@@ -220,13 +220,13 @@ pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
 pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
 pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
 pprintErr' i (ReflectionError parts orig) =
-  let parts' = map (hsep . map showPart) parts in
-  vsep parts' <>
+  let parts' = map (fillSep . map showPart) parts in
+  align (fillSep parts') <>
   if (opt_origerr (idris_options i))
     then line <> line <> text "Original error:" <$> indented (pprintErr' i orig)
     else empty
   where showPart :: ErrorReportPart -> Doc OutputAnnotation
-        showPart (TextPart str) = text str
+        showPart (TextPart str) = fillSep . map text . words $ str
         showPart (NamePart n)   = annName n
         showPart (TermPart tm)  = pprintTerm i (delab i tm)
         showPart (SubReport rs) = indented . hsep . map showPart $ rs
