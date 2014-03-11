@@ -13,6 +13,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
 import Idris.Core.Typecheck (check)
+import Idris.ErrReverse (errReverse)
 
 import Control.Applicative ((<$>))
 import Control.Monad
@@ -1627,10 +1628,11 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                                  err' <- handle err
                                                  return (Elaborating what n err')
           handle e = do ist <- getIState
+                        let err = fmap (errReverse ist) e
                         logLvl 2 "Starting error reflection"
                         let handlers = idris_errorhandlers ist
                         logLvl 3 $ "Using reflection handlers " ++ concat (intersperse ", " (map show handlers))
-                        let reports = map (\n -> RApp (Var n) (reflectErr e)) handlers
+                        let reports = map (\n -> RApp (Var n) (reflectErr err)) handlers
 
                         -- Typecheck error handlers - if this fails, then something else was wrong earlier!
                         handlers <- case mapM (check (tt_ctxt ist) []) reports of
