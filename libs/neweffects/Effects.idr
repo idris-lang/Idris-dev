@@ -162,26 +162,28 @@ relabel {xs = (MkEff a e :: xs)} l (v :: vs) = (l := v) :: relabel l vs
 data Eff : (m : Type -> Type) ->
            (x : Type) ->
            List EFFECT -> (x -> List EFFECT) -> Type where
-     value   : a -> Eff m a xs (\v => xs)
-     ebind   : Eff m a xs xs' -> 
-               ((val : a) -> Eff m b (xs' val) xs'') -> Eff m b xs xs''
-     effect  : (prf : EffElem e a xs) ->
-               (eff : e t a b) ->
-               Eff m t xs (\v => updateResTy v xs prf eff)
+     value    : a -> Eff m a xs (\v => xs)
+     with_val : (val : a) -> Eff m () xs (\v => xs' val) ->
+                Eff m a xs xs'
+     ebind    : Eff m a xs xs' -> 
+                ((val : a) -> Eff m b (xs' val) xs'') -> Eff m b xs xs''
+     effect   : (prf : EffElem e a xs) ->
+                (eff : e t a b) ->
+                Eff m t xs (\v => updateResTy v xs prf eff)
 
-     lift    : (prf : SubList ys xs) ->
-               Eff m t ys ys' -> Eff m t xs (\v => updateWith (ys' v) xs prf)
-     newInit : Handler e m =>
-               res -> 
-               Eff m a (MkEff res e :: xs) (\v => (MkEff res' e :: xs')) ->
-               Eff m a xs (\v => xs')
-     catch   : Catchable m err =>
-               Eff m a xs xs' -> (err -> Eff m a xs xs') ->
-               Eff m a xs xs'
+     lift     : (prf : SubList ys xs) ->
+                Eff m t ys ys' -> Eff m t xs (\v => updateWith (ys' v) xs prf)
+     newInit  : Handler e m =>
+                res -> 
+                Eff m a (MkEff res e :: xs) (\v => (MkEff res' e :: xs')) ->
+                Eff m a xs (\v => xs')
+     catch    : Catchable m err =>
+                Eff m a xs xs' -> (err -> Eff m a xs xs') ->
+                Eff m a xs xs'
 
-     (:-)    : (l : ty) -> 
-               Eff m t [x] xs' -> -- [x] (\v => xs) -> 
-               Eff m t [l ::: x] (\v => map (l :::) (xs' v))
+     (:-)     : (l : ty) -> 
+                Eff m t [x] xs' -> -- [x] (\v => xs) -> 
+                Eff m t [l ::: x] (\v => map (l :::) (xs' v))
 
 (>>=)   : Eff m a xs xs' -> 
           ((val : a) -> Eff m b (xs' val) xs'') -> Eff m b xs xs''
@@ -196,6 +198,8 @@ infixl 2 <$>
 
 pure : a -> Eff m a xs (\v => xs)
 pure = value
+
+syntax pureM [val] = with_val val (pure ())
 
 (<$>) : Eff m (a -> b) xs (\v => xs) -> 
         Eff m a xs (\v => xs) -> Eff m b xs (\v => xs)
@@ -220,6 +224,7 @@ execEff {e} {a} {res} {resk} (val :: env) (There p) eff k
 
 eff : Env m xs -> Eff m a xs xs' -> ((x : a) -> Env m (xs' x) -> m b) -> m b
 eff env (value x) k = k x env
+eff env (with_val x prog) k = eff env prog (\p', env' => k x env') 
 eff env (prog `ebind` c) k
    = eff env prog (\p', env' => eff env' (c p') k)
 eff env (effect prf effP) k = execEff env prf effP k
