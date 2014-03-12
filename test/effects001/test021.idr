@@ -5,11 +5,11 @@ import Effect.State
 import Effect.StdIO
 import Control.IOExcept
 
-data FName = Count | NotCount
+data Count : Type where
 
 FileIO : Type -> Type -> Type
 FileIO st t
-   = Eff (IOExcept String) [FILE_IO st, STDIO, Count ::: STATE Int] t
+   = { [FILE_IO st, STDIO, Count ::: STATE Int] } Eff IO t
 
 readFile : FileIO (OpenFile Read) (List String)
 readFile = readAcc [] where
@@ -22,14 +22,12 @@ readFile = readAcc [] where
                         else return (reverse acc)
 
 testFile : FileIO () ()
-testFile = do open "testFile" Read
-              if_valid then do putStrLn (show !readFile)
-                               close
-                               putStrLn (show !(Count :- get))
-                 else putStrLn ("Error!")
+testFile = do True <- open "testFile" Read  | False => putStrLn "Error!"
+              putStrLn (show !readFile)
+              close
+              putStrLn (show !(Count :- get))
 
 main : IO ()
-main = do ioe_run (run [(), (), Count := 0] testFile)
-                  (\err => print err) (\ok => return ())
+main = run testFile
 
 

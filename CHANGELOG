@@ -19,6 +19,7 @@ New in 0.9.12:
   plus (n, m : Nat) -> Nat
 * Allow the auto-solve behavior in the prover to be disabled, for easier debugging
   of proof automation. Use ":set autosolve" and ":unset autosolve".
+* Updated 'effects' library
 
 New in 0.9.11:
 --------------
