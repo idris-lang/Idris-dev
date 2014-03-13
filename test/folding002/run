@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ folding002.idr -o folding002
+./folding002
+rm -f folding002 *.ibc
