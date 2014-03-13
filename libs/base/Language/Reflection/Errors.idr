@@ -3,7 +3,7 @@ module Language.Reflection.Errors
 import Language.Reflection
 
 data SourceLocation : Type where
-  FileLoc : (filename : String) -> (line : Int) -> (col : Int) -> SourceLocation
+  FileLoc : (filename : String) -> (start : (Int, Int)) -> (end : (Int, Int)) -> SourceLocation
 
 %name SourceLocation loc
 

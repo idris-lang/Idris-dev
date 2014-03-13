@@ -108,8 +108,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          -- Add normalised type to internals
          rep <- useREPL
          when rep $ do
-           addInternalApp (fc_fname fc) (fc_line fc) (mergeTy ty' (delab i nty'))
-           addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (mergeTy ty' (delab i nty')))
+           addInternalApp (fc_fname fc) (fst . fc_start $ fc) (mergeTy ty' (delab i nty')) -- TODO: Should use span instead of line and filename?
+           addIBC (IBCLineApp (fc_fname fc) (fst . fc_start $ fc) (mergeTy ty' (delab i nty')))
 
          let (t, _) = unApply (getRetTy nty')
          let corec = case t of
@@ -1408,8 +1408,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
 
         rep <- useREPL
         when rep $ do
-          addInternalApp (fc_fname fc) (fc_line fc) (delabMV i clhs)
-          addIBC (IBCLineApp (fc_fname fc) (fc_line fc) (delabMV i clhs))
+          addInternalApp (fc_fname fc) (fst . fc_start $ fc) (delabMV i clhs) -- TODO: Should use span instead of line and filename?
+          addIBC (IBCLineApp (fc_fname fc) (fst . fc_start $ fc) (delabMV i clhs))
 
         logLvl 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
         -- Elaborate where block

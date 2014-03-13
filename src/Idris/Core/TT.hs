@@ -44,8 +44,8 @@ data Option = TTypeInTType
 
 -- | Source location. These are typically produced by the parser 'Idris.Parser.getFC'
 data FC = FC { fc_fname :: String, -- ^ Filename
-               fc_line :: Int, -- ^ Line number
-               fc_column :: Int -- ^ Column number
+               fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
+               fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
              }
 
 -- | Ignore source location equality (so deriving classes do not compare FCs)
@@ -57,7 +57,7 @@ newtype FC' = FC' { unwrapFC :: FC }
 
 instance Eq FC' where
   FC' fc == FC' fc' = fcEq fc fc'
-    where fcEq (FC n l c) (FC n' l' c') = n == n' && l == l' && c == c'
+    where fcEq (FC n s e) (FC n' s' e') = n == n' && s == s' && e == e'
 
 -- | Empty source location
 emptyFC :: FC
@@ -65,7 +65,7 @@ emptyFC = fileFC ""
 
 -- | Source location with file only
 fileFC :: String -> FC
-fileFC s = FC s 0 0
+fileFC s = FC s (0, 0) (0, 0)
 
 {-!
 deriving instance Binary FC
@@ -73,10 +73,13 @@ deriving instance NFData FC
 !-}
 
 instance Sized FC where
-  size (FC f l c) = 1 + length f
+  size (FC f s e) = 4 + length f
 
 instance Show FC where
-    show (FC f l c) = f ++ ":" ++ show l ++ ":" ++ show c
+    show (FC f s e) = f ++ ":" ++ showLC s e
+      where showLC (sl, sc) (el, ec) | sl == el && sc == ec = show sl ++ ":" ++ show sc
+                                     | sl == el             = show sl ++ ":" ++ show sc ++ "-" ++ show ec
+                                     | otherwise            = show sl ++ ":" ++ show sc ++ "-" ++ show el ++ ":" ++ show ec
 
 -- | Output annotation for pretty-printed name - decides colour
 data NameOutput = TypeOutput | FunOutput | DataOutput

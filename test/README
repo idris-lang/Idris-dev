@@ -12,5 +12,6 @@ primitives:  Primitive types
 proof:       Theorem proving, tactics
 sugar:       Syntactic sugar, syntax extensions
 totality:    Totality checking
+tutorial:    Examples from the tutorial
 
 reg:         Regression tests, covering previous bug fixes

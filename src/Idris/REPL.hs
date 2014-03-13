@@ -238,7 +238,7 @@ ideslave orig mods
                           isetPrompt (mkPrompt [filename])
                           -- Report either success or failure
                           i <- getIState
-                          case (errLine i) of
+                          case (errSpan i) of
                             Nothing -> iPrintResult $ "loaded " ++ filename
                             Just x -> iPrintError $ "didn't load " ++ filename
                           ideslave orig [filename]
@@ -246,7 +246,7 @@ ideslave orig mods
                        case splitName name of
                          Left err -> iPrintError err
                          Right n -> process stdout "(ideslave)"
-                                      (Check (PRef (FC "(ideslave)" 0 0) n))
+                                      (Check (PRef (FC "(ideslave)" (0,0) (0,0)) n))
                      Just (IdeSlave.DocsFor name) ->
                        case splitName name of
                          Left err -> iPrintError err
@@ -412,7 +412,7 @@ edit f orig
     = do i <- getIState
          env <- runIO $ getEnvironment
          let editor = getEditor env
-         let line = case errLine i of
+         let line = case errSpan i of
                         Just l -> " +" ++ show l ++ " "
                         Nothing -> " "
          let cmd = editor ++ line ++ fixName f
@@ -1125,7 +1125,7 @@ loadInputs h inputs
            -- to check everything worked consistently (in particular, will catch
            -- if the ibc version is out of date) if we weren't loading per
            -- module
-           case errLine inew of
+           case errSpan inew of
               Nothing ->
                 do putIState ist
                    when (not loadCode) $ tryLoad $ nub (concat ifiles)
@@ -1133,10 +1133,10 @@ loadInputs h inputs
            putIState inew)
         (\e -> do i <- getIState
                   case e of
-                    At f _ -> do setErrLine (fc_line f)
+                    At f _ -> do setErrSpan f
                                  ihRenderError stdout $ pprintErr i e
                     ProgramLineComment -> return () -- fail elsewhere
-                    _ -> do setErrLine 3 -- FIXME! Propagate it
+                    _ -> do setErrSpan emptyFC -- FIXME! Propagate it
                             iputStrLn (pshow i e))
    where -- load all files, stop if any fail
          tryLoad :: [IFileType] -> Idris ()

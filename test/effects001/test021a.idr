@@ -17,7 +17,7 @@ Env = List (String, Integer)
 -- Evaluator t
 --    = Eff m [EXCEPTION String, RND, STATE Env] t
 
-eval : Expr -> Eff IO [EXCEPTION String, STDIO, RND, STATE Env] Integer
+eval : Expr -> { [EXCEPTION String, STDIO, RND, STATE Env] } Eff IO Integer
 eval (Var x) = do vs <- get
                   case lookup x vs of
                         Nothing => raise ("No such variable " ++ x)
@@ -32,7 +32,7 @@ testExpr : Expr
 testExpr = Add (Add (Var "foo") (Val 42)) (Random 100)
 
 runEval : List (String, Integer) -> Expr -> IO Integer
-runEval args expr = run [(), (), 123456, args] (eval expr)
+runEval args expr = runInit [(), (), 123456, args] (eval expr)
 
 main : IO ()
 main = do let x = 42

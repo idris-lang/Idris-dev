@@ -491,7 +491,8 @@ solve ctxt env (Bind x (Guess ty val) sc)
    = do ps <- get
         let (uh, uns) = unified ps
         case lookup x (notunified ps) of
-            Just tm -> match_unify' ctxt env tm val
+            Just tm -> -- trace ("NEED MATCH: " ++ show (tm, val)) $
+                         match_unify' ctxt env tm val
             _ -> return []
         action (\ps -> ps { holes = holes ps \\ [x],
                             solved = Just (x, val),

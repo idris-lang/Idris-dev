@@ -28,7 +28,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 63
+ibcVersion = 64
 
 
 data IBCFile = IBCFile { ver :: Word8,
@@ -577,13 +577,15 @@ instance Binary CGInfo where
                return (CGInfo x1 x2 [] x4 x5)
 
 instance Binary FC where
-        put (FC x1 x2 x3)
+        put (FC x1 (x2, x3) (x4, x5))
           = do put x1
                put (x2 * 65536 + x3)
+               put (x4 * 65536 + x5)
         get
           = do x1 <- get
                x2x3 <- get
-               return (FC x1 (x2x3 `div` 65536) (x2x3 `mod` 65536))
+               x4x5 <- get
+               return (FC x1 (x2x3 `div` 65536, x2x3 `mod` 65536) (x4x5 `div` 65536, x4x5 `mod` 65536))
 
 
 instance Binary Name where

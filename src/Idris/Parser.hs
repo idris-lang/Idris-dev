@@ -1131,7 +1131,7 @@ parseProg syn fname input mrk
                                   case idris_outputmode i of
                                     RawOutput -> ihputStrLn (idris_outh i) (show doc)
                                     IdeSlave n -> ihWarn (idris_outh i) fc (P.text msg)
-                                  putIState (i { errLine = Just (fc_line fc) }) -- Just errl })
+                                  putIState (i { errSpan = Just fc })
                                   return []
             Success (x, i)  -> do putIState i
                                   reportParserWarnings
@@ -1149,7 +1149,7 @@ parseProg syn fname input mrk
 loadModule :: Handle -> FilePath -> Idris String
 loadModule outh f
    = idrisCatch (loadModule' outh f)
-                (\e -> do setErrLine (getErrLine e)
+                (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
                           msg <- showErr e
                           ihputStrLn outh msg
@@ -1197,7 +1197,7 @@ loadFromIFile h (LIDR fn) = loadSource' h True fn
 loadSource' :: Handle -> Bool -> FilePath -> Idris ()
 loadSource' h lidr r
    = idrisCatch (loadSource h lidr r)
-                (\e -> do setErrLine (getErrLine e)
+                (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
                           ihRenderError h (pprintErr ist e))
 

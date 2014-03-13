@@ -5,8 +5,8 @@ import Effect.Memory
 import Control.IOExcept
 
 MemoryIO : Type -> Type -> Type -> Type
-MemoryIO td ts r = Eff (IOExcept String) [ Dst ::: RAW_MEMORY td
-                                         , Src ::: RAW_MEMORY ts ] r
+MemoryIO td ts r = { [ Dst ::: RAW_MEMORY td
+                     , Src ::: RAW_MEMORY ts ] } Eff (IOExcept String) r
 
 inpVect : Vect 5 Bits8
 inpVect = map prim__truncInt_B8 [0, 1, 2, 3, 5]
@@ -28,7 +28,7 @@ testMemory = do Src :- allocate 5
                 return (map (prim__zextB8_Int) res)
 
 main : IO ()
-main = do ioe_run (run [Dst := (), Src := ()] testMemory)
-                  (\err => print err) (\ok => print ok)
+main = ioe_run (runInit [Dst := (), Src := ()] testMemory)
+               (\err => print err) (\ok => print ok)
 
 

@@ -97,10 +97,10 @@ Extra-source-files:
                        libs/effects/Effect/*.idr
                        libs/effects/*.idr
 
-                       libs/neweffects/Makefile
-                       libs/neweffects/neweffects.ipkg
-                       libs/neweffects/Effect/*.idr
-                       libs/neweffects/*.idr
+                       libs/oldeffects/Makefile
+                       libs/oldeffects/oldeffects.ipkg
+                       libs/oldeffects/Effect/*.idr
+                       libs/oldeffects/*.idr
 
                        libs/javascript/*.idr
                        libs/javascript/JavaScript/*.idr
@@ -381,6 +381,10 @@ Extra-source-files:
                        test/totality003/run
                        test/totality003/*.idr
                        test/totality003/expected
+
+                       test/tutorial001/run
+                       test/tutorial001/*.idr
+                       test/tutorial001/expected
 
 source-repository head
   type:     git
