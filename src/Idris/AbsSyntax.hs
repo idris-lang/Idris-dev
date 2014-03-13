@@ -643,13 +643,14 @@ isetPrompt p = do i <- getIState
 
 ihWarn :: Handle -> FC -> Doc OutputAnnotation -> Idris ()
 ihWarn h fc err = do i <- getIState
-                     err' <- iRender . fmap (fancifyAnnots i) $ err
                      case idris_outputmode i of
                        RawOutput ->
-                         runIO $
-                         hPutStrLn h (show fc ++ ":" ++ displayDecorated (consoleDecorate i) err')
+                         do err' <- iRender . fmap (fancifyAnnots i) $
+                                    text (show fc) <> colon <//> err
+                            runIO . hPutStrLn h $ displayDecorated (consoleDecorate i) err'
                        IdeSlave n ->
-                         do let (str, spans) = displaySpans err'
+                         do err' <- iRender . fmap (fancifyAnnots i) $ err
+                            let (str, spans) = displaySpans err'
                             runIO . hPutStrLn h $
                               convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
 

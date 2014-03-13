@@ -13,6 +13,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
 import Idris.Core.Typecheck (check)
+import Idris.ErrReverse (errReverse)
 
 import Control.Applicative ((<$>))
 import Control.Monad
@@ -1619,26 +1620,6 @@ reflectErr (NonCollapsiblePostulate n) = raw_apply (Var $ reflErrName "NonCollab
 reflectErr (AlreadyDefined n) = raw_apply (Var $ reflErrName "AlreadyDefined") [reflectName n]
 reflectErr (ProofSearchFail e) = raw_apply (Var $ reflErrName "ProofSearchFail") [reflectErr e]
 reflectErr (NoRewriting tm) = raw_apply (Var $ reflErrName "NoRewriting") [reflect tm]
-reflectErr (At fc err) = raw_apply (Var $ reflErrName "At") [reflectFC fc, reflectErr err]
-           where reflectFC (FC source (sl, sc) (el, ec)) = raw_apply (Var $ reflErrName "FileLoc")
-                                                             [ RConstant (Str source)
-                                                              , raw_apply (Var pairCon) [
-                                                                      RConstant (AType (ATInt ITNative)),
-                                                                      RConstant (AType (ATInt ITNative)),
-                                                                      RConstant (I sl),
-                                                                      RConstant (I sc)]
-                                                              , raw_apply (Var pairCon) [
-                                                                      RConstant (AType (ATInt ITNative)),
-                                                                      RConstant (AType (ATInt ITNative)),
-                                                                      RConstant (I el),
-                                                                      RConstant (I ec)]
-                                                              ]
-reflectErr (Elaborating str n e) =
-  raw_apply (Var $ reflErrName "Elaborating")
-            [ RConstant (Str str)
-            , reflectName n
-            , reflectErr e
-            ]
 reflectErr (ProviderError str) =
   raw_apply (Var $ reflErrName "ProviderError") [RConstant (Str str)]
 reflectErr (LoadingFailed str err) =
@@ -1653,11 +1634,19 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                                return e -- Don't do meta-reflection of errors
           handle e@(ReflectionFailed _ _) = do logLvl 3 "Skipping reflection of reflection failure"
                                                return e
+          -- At and Elaborating are just plumbing - error reflection shouldn't rewrite them
+          handle e@(At fc err) = do logLvl 3 "Reflecting body of At"
+                                    err' <- handle err
+                                    return (At fc err')
+          handle e@(Elaborating what n err) = do logLvl 3 "Reflecting body of Elaborating"
+                                                 err' <- handle err
+                                                 return (Elaborating what n err')
           handle e = do ist <- getIState
+                        let err = fmap (errReverse ist) e
                         logLvl 2 "Starting error reflection"
                         let handlers = idris_errorhandlers ist
                         logLvl 3 $ "Using reflection handlers " ++ concat (intersperse ", " (map show handlers))
-                        let reports = map (\n -> RApp (Var n) (reflectErr e)) handlers
+                        let reports = map (\n -> RApp (Var n) (reflectErr err)) handlers
 
                         -- Typecheck error handlers - if this fails, then something else was wrong earlier!
                         handlers <- case mapM (check (tt_ctxt ist) []) reports of

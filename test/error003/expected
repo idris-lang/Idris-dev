@@ -1,3 +1,2 @@
-In file ErrorReflection.idr start (78, 5) end (78, 5) 
-        When elaborating right hand side of  Main.bad : 
-                DSL type error: (t'(504) => t'(504)) doesn't match ()
+ErrorReflection.idr:67:5:When elaborating right hand side of bad:
+DSL type error: (t'(504) => t'(504)) doesn't match ()

@@ -147,6 +147,8 @@ getUnifyLog :: Elab' aux Bool
 getUnifyLog = do ES (ps, a) l p <- get
                  return (unifylog ps)
 
+-- | Process a tactic within the current elaborator state
+processTactic' :: Tactic -> Elab' aux ()
 processTactic' t = do ES (p, a) logs prev <- get
                       (p', log) <- lift $ processTactic t p
                       put (ES (p', a) (logs ++ log) prev)

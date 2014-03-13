@@ -252,8 +252,6 @@ instance Show Err where
   show (AlreadyDefined n) = "AlreadyDefined " ++ show n
   show (ProofSearchFail err) = "ProofSearchFail " ++ show err
   show (NoRewriting tm) = "NoRewriting " ++ show tm
-  show (At loc err) = "At " ++ show loc ++ " " ++ show err
-  show (Elaborating x n err) = "Elaborating " ++ show x ++ " " ++ show x ++ " " ++ show n ++ " (" ++ show err ++ ")"
   show (ProviderError x) = "ProviderError \"" ++ show x ++ "\""
   show (LoadingFailed x err) = "LoadingFailed " ++ show x ++ " (" ++ show err ++ ")"
 
