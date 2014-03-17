@@ -15,6 +15,7 @@ import Idris.Core.Unify
 
 import Control.Monad.State.Strict
 import Control.Applicative hiding (empty)
+import Control.Arrow (first)
 import Data.List
 import Debug.Trace
 
@@ -229,6 +230,10 @@ getName tag = do ps <- get
 action :: Monad m => (ProofState -> ProofState) -> StateT TState m ()
 action a = do ps <- get
               put (a ps)
+
+query :: Monad m => (ProofState -> r) -> StateT TState m r
+query q = do ps <- get
+             return $ q ps
 
 addLog :: Monad m => String -> StateT TState m ()
 addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
@@ -638,10 +643,11 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              let scr      = last $ tail args'
              let indxnames = makeIndexNames indicies
              prop <- replaceIndicies indxnames indicies $ Bind nm (Lam tmt') t
-             let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0)))
-                                                        (params ++ [prop] ++ map makeConsArg consargs ++ indicies ++ [tmv])))
+             consargs' <- query (\ps -> map (first $ flip (uniqueNameCtxt (context ps)) (holes ps)) consargs)
+             let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs' (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0)))
+                                                        (params ++ [prop] ++ map makeConsArg consargs' ++ indicies ++ [tmv])))
              action (\ps -> ps {holes = holes ps \\ [x]})
-             mapM_ addConsHole (reverse consargs)
+             mapM_ addConsHole (reverse consargs')
              let res' = forget $ res
              (scv, sct) <- lift $ check ctxt env res'
              let scv' = specialise ctxt env [] scv
