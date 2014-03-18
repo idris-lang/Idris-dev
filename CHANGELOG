@@ -20,6 +20,7 @@ New in 0.9.12:
 * Allow the auto-solve behavior in the prover to be disabled, for easier debugging
   of proof automation. Use ":set autosolve" and ":unset autosolve".
 * Updated 'effects' library
+* New :apropos command at REPL to search documentation, names, and types
 
 New in 0.9.11:
 --------------
