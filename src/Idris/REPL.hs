@@ -23,7 +23,7 @@ import Idris.Completion
 import qualified Idris.IdeSlave as IdeSlave
 import Idris.Chaser
 import Idris.Imports
-import Idris.Colours
+import Idris.Colours hiding (colourise)
 import Idris.Inliner
 import Idris.CaseSplit
 import Idris.DeepSeq

@@ -26,7 +26,7 @@ infixr 7 ::
 
 ||| Calculate the length of a `Vect`.
 |||
-||| *Note*: this is only useful if you don't already statically know the length
+||| **Note**: this is only useful if you don't already statically know the length
 ||| and you want to avoid matching the implicit argument for erasure reasons.
 ||| @ n the length (provably equal to the return value)
 ||| @ xs the vector

@@ -9,7 +9,7 @@ import qualified Cheapskate.Types as CT
 
 import Util.Pretty
 
-import Idris.Core.TT (OutputAnnotation, Name)
+import Idris.Core.TT (OutputAnnotation(..), TextFormatting(..), Name)
 
 import qualified Data.Text as T
 import qualified Data.Foldable as F
@@ -71,10 +71,11 @@ renderInline (CT.Str s) = text $ T.unpack s
 renderInline CT.Space = space
 renderInline CT.SoftBreak = softline
 renderInline CT.LineBreak = line
-renderInline (CT.Emph txt) = renderInlines txt -- TODO
-renderInline (CT.Strong txt) = renderInlines txt -- TODO
+renderInline (CT.Emph txt) = annotate (AnnTextFmt ItalicText) $ renderInlines txt -- TODO
+renderInline (CT.Strong txt) = annotate (AnnTextFmt BoldText) $ renderInlines txt -- TODO
 renderInline (CT.Code txt) = text $ T.unpack txt
-renderInline (CT.Link body url title) = renderInlines body <+> parens (text $ T.unpack url)
+renderInline (CT.Link body url title) = annotate (AnnTextFmt UnderlineText) (renderInlines body) <+>
+                                        parens (text $ T.unpack url)
 renderInline (CT.Image body url title) = text "<image>" -- TODO
 renderInline (CT.Entity a) = text $ "<entity " ++ T.unpack a ++ ">" -- TODO
 renderInline (CT.RawHtml txt) = text "<html content>" --TODO

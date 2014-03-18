@@ -1076,6 +1076,10 @@ consoleDecorate ist (AnnName n _ _) = let ctxt  = tt_ctxt ist
                                            _ | isTConName n ctxt -> colouriseType theme
                                            _ | otherwise         -> id -- don't colourise unknown names
 consoleDecorate ist (AnnFC _) = id
+consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
+  where colour BoldText      = IdrisColour Nothing True False True False
+        colour UnderlineText = IdrisColour Nothing True True False False
+        colour ItalicText    = IdrisColour Nothing True False False True
 
 -- | Pretty-print a high-level closed Idris term
 prettyImp :: Bool -- ^^ whether to show implicits
