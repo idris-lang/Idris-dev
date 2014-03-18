@@ -23,7 +23,7 @@ module Data.Buffer
 --    and offset rather than storing the offset in Buffer itself, which
 --    would require exposing the offset argument of prim__appendBuffer
 
--- A contiguous chunk of n bytes
+||| A contiguous chunk of n bytes
 abstract
 record Buffer : Nat -> Type where
   MkBuffer : ( offset : Nat ) -> ( realBuffer : prim__UnsafeBuffer ) -> Buffer n
