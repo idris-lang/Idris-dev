@@ -98,6 +98,7 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["patt"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Pattelab t))
               <|> try (do cmd ["errorhandlers"]; eof ; return ListErrorHandlers)
               <|> try (do cmd ["consolewidth"]; w <- pConsoleWidth ; return (SetConsoleWidth w))
+              <|> try (do cmd ["apropos"]; str <- many anyChar ; return (Apropos str))
               <|> do P.whiteSpace; do eof; return NOP
                              <|> do t <- P.fullExpr defaultSyntax; return (Eval t)
 

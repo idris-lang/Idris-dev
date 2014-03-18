@@ -434,6 +434,7 @@ Library
 
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
+                , Idris.Apropos
                 , Idris.CaseSplit
                 , Idris.Chaser
                 , Idris.Colours

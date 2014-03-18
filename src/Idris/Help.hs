@@ -29,6 +29,7 @@ help =
     ([":t"], ExprArg, "Check the type of an expression"),
     ([":miss", ":missing"], NameArg, "Show missing clauses"),
     ([":doc"], NameArg, "Show internal documentation"),
+    ([":apropos"], NoArg, "Search names, types, and documentation"),
     ([":i", ":info"], NameArg, "Display information about a type class"),
     ([":total"], NameArg, "Check the totality of a name"),
     ([":r",":reload"], NoArg, "Reload current file"),

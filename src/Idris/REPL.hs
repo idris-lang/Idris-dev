@@ -4,12 +4,14 @@
 module Idris.REPL where
 
 import Idris.AbsSyntax
+import Idris.Apropos (apropos)
 import Idris.REPLParser
 import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.Error
 import Idris.ErrReverse
 import Idris.Delaborate
+import Idris.Docstrings (Docstring, overview, renderDocstring)
 import Idris.Prover
 import Idris.Parser
 import Idris.Primitives
@@ -42,6 +44,7 @@ import IRTS.Compiler
 import IRTS.CodegenCommon
 
 import Data.List.Split (splitOn)
+import qualified Data.Text as T
 
 import Text.Trifecta.Result(Result(..))
 
@@ -710,7 +713,7 @@ process h fn (MakeWith updatefile l n)
               runIO $ copyFile fb fn
            else ihPrintResult h with
   where getIndent s = length (takeWhile isSpace s)
-    
+
 process h fn (DoProofSearch updatefile l n hints)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
@@ -952,6 +955,18 @@ process h fn ListErrorHandlers =
            iPrintResult $ "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
 process h fn (SetConsoleWidth w) = setWidth w
 
+process h fn (Apropos a) =
+  do ist <- getIState
+     let impl = opt_showimp (idris_options ist)
+     let names = apropos ist (T.pack a)
+     let aproposInfo = [ (n,
+                          delabTy ist n,
+                          fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
+                       | n <- names ]
+     ihRenderResult h $ vsep (map (renderApropos impl) aproposInfo)
+  where renderApropos impl (name, ty, docs) =
+          prettyName impl [] name <+> colon <+> align (prettyImp impl ty) <$>
+          fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
 
 classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"

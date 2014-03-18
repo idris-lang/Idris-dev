@@ -1,6 +1,7 @@
 -- | Wrapper around Markdown library
 module Idris.Docstrings (
-    Docstring, parseDocstring, renderDocstring, emptyDocstring, nullDocstring, noDocs
+    Docstring, parseDocstring, renderDocstring, emptyDocstring, nullDocstring, noDocs,
+    overview, containsText
   ) where
 
 import qualified Cheapskate as C
@@ -14,8 +15,10 @@ import qualified Data.Text as T
 import qualified Data.Foldable as F
 import qualified Data.Sequence as S
 
+-- | Representation of Idris's inline documentation
 type Docstring = CT.Doc
 
+-- | Construct a docstring from a Text that contains Markdown-formatted docs
 parseDocstring :: T.Text -> CT.Doc
 parseDocstring = C.markdown options
 
@@ -26,8 +29,14 @@ options = CT.Options { CT.sanitize = True
                      , CT.debug = False
                      }
 
+-- | Convert a docstring to be shown by the pretty-printer
 renderDocstring ::  Docstring -> Doc OutputAnnotation
 renderDocstring (CT.Doc _ blocks) = renderBlocks blocks
+
+-- | Construct a docstring consisting of the first block-level element of the
+-- argument docstring, for use in summaries.
+overview :: Docstring -> Docstring
+overview (CT.Doc opts blocks) = CT.Doc opts (S.take 1 blocks)
 
 renderBlocks ::  CT.Blocks -> Doc OutputAnnotation
 renderBlocks blocks  | S.length blocks > 1  = F.foldr1 (\b1 b2 -> b1 <> line <> line <> b2) $
@@ -70,11 +79,39 @@ renderInline (CT.Image body url title) = text "<image>" -- TODO
 renderInline (CT.Entity a) = text $ "<entity " ++ T.unpack a ++ ">" -- TODO
 renderInline (CT.RawHtml txt) = text "<html content>" --TODO
 
+-- | The empty docstring
 emptyDocstring :: Docstring
 emptyDocstring = CT.Doc options S.empty
 
+-- | Check whether a docstring is emtpy
 nullDocstring :: Docstring -> Bool
 nullDocstring (CT.Doc _ blocks) = S.null blocks
 
+-- | Empty documentation for a definition
 noDocs :: (Docstring, [(Name, Docstring)])
 noDocs = (emptyDocstring, [])
+
+-- | Does a string occur in the docstring?
+containsText ::  T.Text -> Docstring -> Bool
+containsText str (CT.Doc _ blocks) = F.any (blockContains str) blocks
+  where blockContains :: T.Text -> CT.Block -> Bool
+        blockContains str (CT.Para inlines) = F.any (inlineContains str) inlines
+        blockContains str (CT.Header lvl inlines) = F.any (inlineContains str) inlines
+        blockContains str (CT.Blockquote blocks) = F.any (blockContains str) blocks
+        blockContains str (CT.List b ty blockss) = F.any (F.any (blockContains str)) blockss
+        blockContains str (CT.CodeBlock attr src) = T.isInfixOf str src
+        blockContains str (CT.HtmlBlock txt) = False -- TODO
+        blockContains str CT.HRule = False
+
+        inlineContains :: T.Text -> CT.Inline -> Bool
+        inlineContains str (CT.Str s) = T.isInfixOf str s
+        inlineContains str CT.Space = False
+        inlineContains str CT.SoftBreak = False
+        inlineContains str CT.LineBreak = False
+        inlineContains str (CT.Emph txt) = F.any (inlineContains str) txt
+        inlineContains str (CT.Strong txt) = F.any (inlineContains str) txt
+        inlineContains str (CT.Code txt) = T.isInfixOf str txt
+        inlineContains str (CT.Link body url title) = F.any (inlineContains str) body
+        inlineContains str (CT.Image body url title) = False
+        inlineContains str (CT.Entity a) = False
+        inlineContains str (CT.RawHtml txt) = T.isInfixOf str txt
