@@ -23,18 +23,21 @@ apropos ist what = let defs = ctxtAlist (tt_ctxt ist)
                    in nub (map fst (filter (isApropos what) defs) ++
                            map fst (filter (isApropos what) docs))
 
+textIn :: T.Text -> T.Text -> Bool
+textIn a b = T.isInfixOf (T.toLower a) (T.toLower b)
+
 class Apropos a where
   isApropos :: T.Text -> a -> Bool
 
 instance Apropos Name where
-  isApropos str (UN n)     = T.isInfixOf str n
-  isApropos str (NS n' ns) = isApropos str n' || any (T.isInfixOf str) ns
+  isApropos str (UN n)     = textIn str n
+  isApropos str (NS n' ns) = isApropos str n' || any (textIn str) ns
   -- Handle special names from stdlib
   isApropos str n | (n == unitTy || n == unitCon) && str == T.pack "()" = True
                   | n == falseTy && str == T.pack "_|_" = True
                   | (n == pairTy || n == pairCon) && str == T.pack "," = True
                   | n == eqTy && str == T.pack "=" = True
-                  | n == eqCon && str == T.pack "refl" = True
+                  | n == eqCon && (T.toLower str) == T.pack "refl" = True
                   | (n == sigmaTy || n == existsCon) && str == T.pack "**" = True
   isApropos _   _          = False -- we don't care about case blocks, MNs, etc
 
@@ -62,7 +65,7 @@ instance Apropos (TT Name) where
   isApropos str _                   = False
 
 instance Apropos Const where
-  isApropos str c = T.isInfixOf str (T.pack (show c))
+  isApropos str c = textIn str (T.pack (show c))
 
 instance Apropos Docstring where
   isApropos str d = containsText str d
