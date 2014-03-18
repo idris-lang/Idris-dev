@@ -23,7 +23,9 @@ FalseElim : _|_ -> a
 data Symbol_ : String -> Type where
 
 -- ------------------------------------------------------ [ For rewrite tactic ]
-||| Perform substitution in a term. This is used by the `rewrite` tactic and term.
+||| Perform substitution in a term according to some equality.
+|||
+||| This is used by the `rewrite` tactic and term.
 replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Type} -> x = y -> P x -> P y
 replace refl prf = prf
 

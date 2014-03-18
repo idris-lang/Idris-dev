@@ -292,6 +292,7 @@ data Command = Quit
              | ColourOff
              | ListErrorHandlers
              | SetConsoleWidth ConsoleWidth
+             | Apropos String
 
 data Opt = Filename String
          | Ver
