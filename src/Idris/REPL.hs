@@ -966,11 +966,14 @@ process h fn (Apropos a) =
      let aproposInfo = [ (n,
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
-                       | n <- names ]
+                       | n <- sort names, isUN n ]
      ihRenderResult h $ vsep (map (renderApropos impl) aproposInfo)
   where renderApropos impl (name, ty, docs) =
-          prettyName impl [] name <+> colon <+> align (prettyImp impl ty) <$>
+          prettyName True [] name <+> colon <+> align (prettyImp impl ty) <$>
           fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
+        isUN (UN _) = True
+        isUN (NS n _) = isUN n
+        isUN _ = False
 
 classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"
