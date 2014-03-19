@@ -1122,7 +1122,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            tree' <- tclift $ simpleCase tcase knowncovering reflect
                                         RunTime fc inacc atys pdef'
-           logLvl 3 (show tree)
+           logLvl 3 $ "Unoptimised " ++ show n ++ ": " ++ show tree
            logLvl 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
            ist <- getIState
