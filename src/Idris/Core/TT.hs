@@ -89,6 +89,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe Type)
                       | AnnBoundName Name Bool
                       | AnnConstData
                       | AnnConstType
+                      | AnnKeyword
                       | AnnFC FC
 
 -- | Used for error reflection
