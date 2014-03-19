@@ -88,6 +88,18 @@ instance MaxBound (Fin (S n)) where
   maxBound = last
 
 
+||| Add two Fins, extending the bound
+(+) : Fin n -> Fin m -> Fin (n + m)
+(+) {n=S n} {m=m} fZ f' = rewrite plusCommutative n m in weaken (weakenN n f')
+(+) (fS f) f' = fS (f + f')
+
+||| Multiply two Fins, extending the bound
+(*) : Fin n -> Fin m -> Fin (n * m)
+(*) {n=Z} f f' = FinZElim f
+(*) {m=Z} f f' = FinZElim f'
+(*) {n=S n} {m=S m} fZ     f' = fZ
+(*) {n=S n} {m=S m} (fS f) f' = f' + (f * f')
+
 -- Construct a Fin from an integer literal which must fit in the given Fin
 
 natToFin : Nat -> (n : Nat) -> Maybe (Fin n)
@@ -101,11 +113,12 @@ integerToFin : Integer -> (n : Nat) -> Maybe (Fin n)
 integerToFin x n = if x >= 0 then natToFin (cast x) n else Nothing
 
 data IsJust : Maybe a -> Type where
-     ItIsJust : IsJust {a} (Just x)
+  ItIsJust : IsJust {a} (Just x)
 
 fromInteger : (x : Integer) ->
-        {default ItIsJust
-             prf : (IsJust (integerToFin x n))} -> Fin n
+              {default ItIsJust
+               prf : (IsJust (integerToFin x n))} ->
+              Fin n
 fromInteger {n} x {prf} with (integerToFin x n)
   fromInteger {n} x {prf = ItIsJust} | Just y = y
 
