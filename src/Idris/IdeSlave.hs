@@ -89,6 +89,7 @@ instance SExpable OutputAnnotation where
                                            (SymbolAtom "implicit", BoolAtom imp)]
   toSExp AnnConstData            = toSExp [(SymbolAtom "decor", SymbolAtom "data")]
   toSExp AnnConstType            = toSExp [(SymbolAtom "decor", SymbolAtom "type")]
+  toSExp AnnKeyword              = toSExp [(SymbolAtom "decor", SymbolAtom "keyword")]
   toSExp (AnnFC (FC f (sl, sc) (el, ec)))      = toSExp [(SymbolAtom "source-loc",
                                                     ((SymbolAtom "filename", StringAtom f),
                                                      (SymbolAtom "start",  IntegerAtom (toInteger sl), IntegerAtom (toInteger sc)),

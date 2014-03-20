@@ -3,7 +3,7 @@ module Idris.Colours (
   ColourTheme(..),
   defaultTheme,
   colouriseKwd, colouriseBound, colouriseImplicit,
-  colouriseType, colouriseFun, colouriseData,
+  colouriseType, colouriseFun, colouriseData, colouriseKeyword,
   colourisePrompt,
   ColourType(..)) where
 
@@ -31,7 +31,7 @@ data ColourTheme = ColourTheme { keywordColour  :: IdrisColour
                    deriving (Eq, Show)
 
 defaultTheme :: ColourTheme
-defaultTheme = ColourTheme { keywordColour = IdrisColour Nothing True True True False
+defaultTheme = ColourTheme { keywordColour = IdrisColour Nothing True False True False
                            , boundVarColour = mkColour Magenta
                            , implicitColour = IdrisColour (Just Magenta) True True False False
                            , functionColour = mkColour Green
@@ -71,6 +71,8 @@ colouriseData t = colourise (dataColour t)
 colourisePrompt :: ColourTheme -> String -> String
 colourisePrompt t = colourise (promptColour t)
 
+colouriseKeyword :: ColourTheme -> String -> String
+colouriseKeyword t = colourise (keywordColour t)
 
 data ColourType = KeywordColour
                 | BoundVarColour

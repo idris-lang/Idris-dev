@@ -1067,6 +1067,7 @@ consoleDecorate ist AnnConstType = let theme = idris_colourTheme ist
                                    in colouriseType theme
 consoleDecorate ist (AnnBoundName _ True) = colouriseImplicit (idris_colourTheme ist)
 consoleDecorate ist (AnnBoundName _ False) = colouriseBound (idris_colourTheme ist)
+consoleDecorate ist AnnKeyword = colouriseKeyword (idris_colourTheme ist)
 consoleDecorate ist (AnnName n _ _) = let ctxt  = tt_ctxt ist
                                           theme = idris_colourTheme ist
                                       in case () of
@@ -1103,8 +1104,8 @@ pprintPTerm impl bnd = prettySe 10 bnd
       prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PLet n ty v sc) =
       bracket p 2 $
-      text "let" <+> bindingOf n False <+> text "=" </>
-      prettySe 10 bnd v <+> text "in" </>
+      kwd "let" <+> bindingOf n False <+> text "=" </>
+      prettySe 10 bnd v <+> kwd "in" </>
       prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PPi (Exp l s _) n ty sc)
       | n `elem` allNamesIn sc || impl =
@@ -1137,7 +1138,7 @@ pprintPTerm impl bnd = prettySe 10 bnd
       prettySe 10 bnd ty <+> text "=>" </> prettySe 10 ((n, True):bnd) sc
     prettySe p bnd (PPi (TacImp _ _ s) n ty sc) =
       bracket p 2 $
-      lbrace <> text "tacimp" <+> pretty n <+> colon <+> prettySe 10 bnd ty <>
+      lbrace <> kwd "tacimp" <+> pretty n <+> colon <+> prettySe 10 bnd ty <>
       rbrace <+> text "->" </> prettySe 10 ((n, True):bnd) sc
     prettySe p bnd (PApp _ (PRef _ f) args) -- normal names, no explicit args
       | UN nm <- basename f
@@ -1177,7 +1178,7 @@ pprintPTerm impl bnd = prettySe 10 bnd
                    then fp
                    else fp <+> align (vsep (map (prettyArgSe bnd) args))
     prettySe p bnd (PCase _ scr opts) =
-      text "case" <+> prettySe 10 bnd scr <+> text "of" <> prettyBody
+      kwd "case" <+> prettySe 10 bnd scr <+> kwd "of" <> prettyBody
       where
         prettyBody = foldr (<>) empty $ intersperse (text "|") $ map sc opts
 
@@ -1244,8 +1245,8 @@ pprintPTerm impl bnd = prettySe 10 bnd
     prettySe p bnd (PTactics ts) =
       text "tactics" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
     prettySe p bnd (PMetavar n) = text "?" <> pretty n
-    prettySe p bnd (PReturn f) = text "return"
-    prettySe p bnd PImpossible = text "impossible"
+    prettySe p bnd (PReturn f) = kwd "return"
+    prettySe p bnd PImpossible = kwd "impossible"
     prettySe p bnd Placeholder = text "_"
     prettySe p bnd (PDoBlock _) = text "do block pretty not implemented"
     prettySe p bnd (PElabError s) = pretty s
@@ -1260,7 +1261,7 @@ pprintPTerm impl bnd = prettySe 10 bnd
     prettyArgSe bnd arg = prettySe 0 bnd arg
     prettyArgSi bnd (n, val) = lbrace <> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
     prettyArgSc bnd val = lbrace <> lbrace <> prettySe 10 bnd val <> rbrace <> rbrace
-    prettyArgSti bnd (n, val) = lbrace <> text "auto" <+> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
+    prettyArgSti bnd (n, val) = lbrace <> kwd "auto" <+> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
 
     basename :: Name -> Name
     basename (NS n _) = basename n
@@ -1312,6 +1313,8 @@ pprintPTerm impl bnd = prettySe 10 bnd
     bracket outer inner doc
       | inner > outer = lparen <> doc <> rparen
       | otherwise     = doc
+
+    kwd = annotate AnnKeyword . text
 
 -- | Pretty-printer helper for the binding site of a name
 bindingOf :: Name -- ^^ the bound name
