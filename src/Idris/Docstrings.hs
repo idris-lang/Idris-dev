@@ -93,25 +93,26 @@ noDocs = (emptyDocstring, [])
 
 -- | Does a string occur in the docstring?
 containsText ::  T.Text -> Docstring -> Bool
-containsText str (CT.Doc _ blocks) = F.any (blockContains str) blocks
+containsText str (CT.Doc _ blocks) = F.any (blockContains (T.toLower str)) blocks
+  -- blockContains and inlineContains should always be called with a lower-case search string
   where blockContains :: T.Text -> CT.Block -> Bool
         blockContains str (CT.Para inlines) = F.any (inlineContains str) inlines
         blockContains str (CT.Header lvl inlines) = F.any (inlineContains str) inlines
         blockContains str (CT.Blockquote blocks) = F.any (blockContains str) blocks
         blockContains str (CT.List b ty blockss) = F.any (F.any (blockContains str)) blockss
-        blockContains str (CT.CodeBlock attr src) = T.isInfixOf str src
+        blockContains str (CT.CodeBlock attr src) = T.isInfixOf str (T.toLower src)
         blockContains str (CT.HtmlBlock txt) = False -- TODO
         blockContains str CT.HRule = False
 
         inlineContains :: T.Text -> CT.Inline -> Bool
-        inlineContains str (CT.Str s) = T.isInfixOf str s
+        inlineContains str (CT.Str s) = T.isInfixOf str (T.toLower s)
         inlineContains str CT.Space = False
         inlineContains str CT.SoftBreak = False
         inlineContains str CT.LineBreak = False
         inlineContains str (CT.Emph txt) = F.any (inlineContains str) txt
         inlineContains str (CT.Strong txt) = F.any (inlineContains str) txt
-        inlineContains str (CT.Code txt) = T.isInfixOf str txt
+        inlineContains str (CT.Code txt) = T.isInfixOf str (T.toLower txt)
         inlineContains str (CT.Link body url title) = F.any (inlineContains str) body
         inlineContains str (CT.Image body url title) = False
         inlineContains str (CT.Entity a) = False
-        inlineContains str (CT.RawHtml txt) = T.isInfixOf str txt
+        inlineContains str (CT.RawHtml txt) = T.isInfixOf str (T.toLower txt)

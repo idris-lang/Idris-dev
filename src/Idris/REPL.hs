@@ -266,6 +266,8 @@ ideslave orig mods
                        process stdout fn (MakeWith False line (sUN name))
                      Just (IdeSlave.ProofSearch line name hints) ->
                        process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
+                     Just (IdeSlave.Apropos a) ->
+                       process stdout fn (Apropos a)
                      Nothing -> do iPrintError "did not understand")
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
@@ -337,6 +339,8 @@ ideslaveProcess fn (MakeWith False pos str) = process stdout fn (MakeWith False 
 ideslaveProcess fn (DoProofSearch False pos str xs) = process stdout fn (DoProofSearch False pos str xs)
 ideslaveProcess fn (SetConsoleWidth w) = do process stdout fn (SetConsoleWidth w)
                                             iPrintResult ""
+ideslaveProcess fn (Apropos a) = do process stdout fn (Apropos a)
+                                    iPrintResult ""
 ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
@@ -962,11 +966,14 @@ process h fn (Apropos a) =
      let aproposInfo = [ (n,
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
-                       | n <- names ]
+                       | n <- sort names, isUN n ]
      ihRenderResult h $ vsep (map (renderApropos impl) aproposInfo)
   where renderApropos impl (name, ty, docs) =
-          prettyName impl [] name <+> colon <+> align (prettyImp impl ty) <$>
+          prettyName True [] name <+> colon <+> align (prettyImp impl ty) <$>
           fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
+        isUN (UN _) = True
+        isUN (NS n _) = isUN n
+        isUN _ = False
 
 classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"
