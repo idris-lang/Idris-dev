@@ -41,7 +41,7 @@ data UResult a = UOK a
 cantUnify :: [FailContext] -> Bool -> t -> t -> (Err' t) -> [(Name, t)] -> Int -> Err' t
 cantUnify [] r t1 t2 e ctxt i = CantUnify r t1 t2 e ctxt i
 cantUnify (FailContext fc f x : _) r t1 t2 e ctxt i =
-  ElaboratingArg fc f x (CantUnify r t1 t2 e ctxt i)
+  At fc (ElaboratingArg f x (CantUnify r t1 t2 e ctxt i))
 
 -- Solve metavariables by matching terms against each other
 -- Not really unification, of course!

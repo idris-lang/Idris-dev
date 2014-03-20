@@ -189,7 +189,7 @@ elab ist info pattern opts fn tm
        | (P _ (UN ht) _, _) <- unApply t,
             ht == txt "Lazy" = True
     forceErr (Elaborating _ _ t) = forceErr t
-    forceErr (ElaboratingArg _ _ _ t) = forceErr t
+    forceErr (ElaboratingArg _ _ t) = forceErr t
     forceErr (At _ t) = forceErr t
     forceErr t = False
 

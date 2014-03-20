@@ -687,7 +687,8 @@ try' t1 t2 proofSearch
                r || proofSearch
         recoverableErr (CantSolveGoal _ _) = False
         recoverableErr (ProofSearchFail _) = False
-        recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
+        recoverableErr (ElaboratingArg _ _ e) = recoverableErr e
+        recoverableErr (At _ e) = recoverableErr e
         recoverableErr _ = True
 
 tryWhen :: Bool -> Elab' aux a -> Elab' aux a -> Elab' aux a

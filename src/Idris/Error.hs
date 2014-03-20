@@ -57,8 +57,6 @@ ierror = throwError
 tclift :: TC a -> Idris a
 tclift (OK v) = return v
 tclift (Error err@(At fc e)) = do setErrSpan fc; throwError err
-tclift (Error err@(ElaboratingArg fc _ _ e)) = do setErrSpan fc
-                                                  throwError err
 tclift (Error err) = throwError err
 
 tctry :: TC a -> TC a -> Idris a
@@ -69,5 +67,4 @@ tctry tc1 tc2
 
 getErrSpan :: Err -> FC
 getErrSpan (At fc _) = fc
-getErrSpan (ElaboratingArg fc _ _ e) = fc
 getErrSpan _ = emptyFC
