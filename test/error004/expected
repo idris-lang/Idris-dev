@@ -1,4 +1,4 @@
-FunErrTest.idr:35:10:When elaborating right hand side of badCadr1:
+FunErrTest.idr:33:10:When elaborating right hand side of badCadr1:
 Could not prove that [] has at least two elements.
-FunErrTest.idr:38:10:When elaborating right hand side of badCadr2:
+FunErrTest.idr:36:10:When elaborating right hand side of badCadr2:
 Could not prove that tail [(fromInteger 1)] refl has at least two elements.

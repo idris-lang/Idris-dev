@@ -1,13 +1,14 @@
 When elaborating right hand side of foo:
-test020a.idr:14:18:Can't unify
-        Vect n a
-with
-        List a
-
-Specifically:
+test020a.idr:14:18:When elaborating an application of function Prelude.List.reverse:
         Can't unify
                 Vect n a
         with
                 List a
+        
+        Specifically:
+                Can't unify
+                        Vect n a
+                with
+                        List a
 [3, 2, 1]
 "Number 42"

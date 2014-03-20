@@ -81,8 +81,8 @@ build ist info pattern opts fn tm
          probs <- get_probs
          case probs of
             [] -> return ()
-            ((_,_,_,e,_):es) -> if inf then return ()
-                                       else lift (Error e)
+            ((_,_,_,e,_,_):es) -> if inf then return ()
+                                         else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -109,8 +109,8 @@ buildTC ist info pattern opts fn tm
          tm <- get_term
          case probs of
             [] -> return ()
-            ((_,_,_,e,_):es) -> if inf then return ()
-                                       else lift (Error e)
+            ((_,_,_,e,_,_):es) -> if inf then return ()
+                                         else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -158,20 +158,20 @@ elab ist info pattern opts fn tm
 
     elabE :: (Bool, Bool, Bool) -> PTerm -> ElabD ()
     elabE ina t = 
---               do g <- goal
---                  trace ("Elaborating " ++ show t ++ " : " ++ show g) $
+               --do g <- goal
+                  --trace ("Elaborating " ++ show t ++ " : " ++ show g) $
                   do ct <- insertCoerce ina t
                      t' <- insertLazy ct
                      g <- goal
                      tm <- get_term
                      ps <- get_probs
                      hs <- get_holes
---                      trace ("Elaborating " ++ show t' ++ " in " ++ show g
--- --                             ++ "\n" ++ show tm
---                             ++ "\nholes " ++ show hs
---                             ++ "\nproblems " ++ show ps
---                             ++ "\n-----------\n") $
---                      trace ("ELAB " ++ show t') $ 
+                     --trace ("Elaborating " ++ show t' ++ " in " ++ show g
+                     --         ++ "\n" ++ show tm
+                     --         ++ "\nholes " ++ show hs
+                     --         ++ "\nproblems " ++ show ps
+                     --         ++ "\n-----------\n") $
+                     --trace ("ELAB " ++ show t') $ 
                      let fc = fileFC "Force"
                      handleError forceErr 
                          (elab' ina t')
@@ -189,6 +189,7 @@ elab ist info pattern opts fn tm
        | (P _ (UN ht) _, _) <- unApply t,
             ht == txt "Lazy" = True
     forceErr (Elaborating _ _ t) = forceErr t
+    forceErr (ElaboratingArg _ _ t) = forceErr t
     forceErr (At _ t) = forceErr t
     forceErr t = False
 
@@ -694,7 +695,6 @@ elab ist info pattern opts fn tm
         mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
         mkDelay t = let fc = fileFC "Delay" in
                         addImpl ist (PApp fc (PRef fc (sUN "Delay")) [pexp t])
-                                            
 
     insertCoerce ina t =
         do ty <- goal
@@ -737,8 +737,8 @@ elab ist info pattern opts fn tm
                                             pexp t])
         | otherwise = elabArg argName holeName t
       where elabArg argName holeName t =
-              reflectFunctionErrors ist f argName $
-              do hs <- get_holes
+              do now_elaborating fc f argName
+                 hs <- get_holes
                  tm <- get_term
                  -- No coercing under an explicit Force (or it can Force/Delay
                  -- recursively!)
@@ -748,6 +748,7 @@ elab ist info pattern opts fn tm
                             case holeName `elem` hs of
                               True -> do focus holeName; elab ina t; return failed
                               False -> return failed
+                 done_elaborating_arg f argName
                  elabArgs ist ina failed fc r f ns force args
 
 -- | Perform error reflection for function applicaitons with specific error handlers
@@ -802,6 +803,7 @@ pruneAlt xs = map prune xs
               case fs of
                  [a] -> a
                  _ -> PAlternative a as'
+
     choose f (PApp fc f' as) = PApp fc (choose f f') (fmap (fmap (choose f)) as)
     choose f t = t
 
@@ -1113,9 +1115,9 @@ runTac autoSolve ist fn tac
                                runReflected tactic
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (sNS (sUN "List") ["List", "Prelude"])
-              scriptTy = (RBind (sUN "__pi_arg")
+              scriptTy = (RBind (sMN 0 "__pi_arg")
                                 (Pi (RApp listTy envTupleType))
-                                    (RBind (sUN "__pi_arg1")
+                                    (RBind (sMN 1 "__pi_arg")
                                            (Pi (Var $ reflm "TT")) tacticTy))
     runT (ByReflection tm) -- run the reflection function 'tm' on the
                            -- goal, then apply the resulting reflected Tactic
@@ -1641,6 +1643,10 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
           handle e@(Elaborating what n err) = do logLvl 3 "Reflecting body of Elaborating"
                                                  err' <- handle err
                                                  return (Elaborating what n err')
+          handle e@(ElaboratingArg f a err) = do logLvl 3 "Reflecting body of ElaboratingArg"
+                                                 err' <- handle err
+                                                 return (ElaboratingArg f a err')
+          -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         let err = fmap (errReverse ist) e
                         logLvl 2 "Starting error reflection"

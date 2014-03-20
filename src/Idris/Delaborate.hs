@@ -1,5 +1,4 @@
 {-# LANGUAGE PatternGuards #-}
-
 module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pshow, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
@@ -13,6 +12,7 @@ import Idris.Core.Evaluate
 import Idris.ErrReverse
 
 import Data.List (intersperse)
+import qualified Data.Text as T
 
 import Debug.Trace
 
@@ -200,7 +200,7 @@ pprintErr' i (NotInjective p x y) =
   pprintTerm i (delab i y)
 pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
-                                    cat (punctuate (comma <> space) (map text as))
+                                    align (cat (punctuate (comma <> space) (map text as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> pprintTerm i (delab i t)
@@ -217,6 +217,15 @@ pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr
 pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
                                    pprintErr' i e
+pprintErr' i (ElaboratingArg f x e)
+  | isUN x =
+     text "When elaborating argument" <+>
+     annotate (AnnBoundName x False) (text (showbasic x)) <+> --TODO check plicity
+     text "to function" <+> annName f <> colon <>
+     indented (pprintErr' i e)
+  | otherwise =
+     text "When elaborating an application of function" <+>
+     annName f <> colon <> indented (pprintErr' i e)
 pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
 pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
 pprintErr' i (ReflectionError parts orig) =
@@ -234,6 +243,11 @@ pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
+
+isUN :: Name -> Bool
+isUN (UN n) = not $ T.isPrefixOf (T.pack "__") n -- TODO figure out why MNs are getting rewritte to UNs for top-level pattern-matching functions
+isUN (NS n _) = isUN n
+isUN _ = False
 
 annName :: Name -> Doc OutputAnnotation
 annName n = annName' n (showbasic n)
@@ -259,6 +273,7 @@ showqual i n = showName (Just i) [] False False (dens n)
                               _ -> ns
     dens n = n
 
+showbasic :: Name -> String
 showbasic n@(UN _) = show n
 showbasic (MN _ s) = str s
 showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n

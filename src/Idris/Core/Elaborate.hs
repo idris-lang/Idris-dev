@@ -131,14 +131,17 @@ force_term :: Elab' aux ()
 force_term = do ES (ps, a) l p <- get
                 put (ES (ps { pterm = force (pterm ps) }, a) l p)
 
+-- | Modify the auxiliary state
 updateAux :: (aux -> aux) -> Elab' aux ()
 updateAux f = do ES (ps, a) l p <- get
                  put (ES (ps, f a) l p)
 
+-- | Get the auxiliary state
 getAux :: Elab' aux aux
 getAux = do ES (ps, a) _ _ <- get
             return $! a
 
+-- | Set whether to show the unifier log
 unifyLog :: Bool -> Elab' aux ()
 unifyLog log = do ES (ps, a) l p <- get
                   put (ES (ps { unifylog = log }, a) l p)
@@ -153,6 +156,17 @@ processTactic' t = do ES (p, a) logs prev <- get
                       (p', log) <- lift $ processTactic t p
                       put (ES (p', a) (logs ++ log) prev)
                       return $! ()
+
+updatePS :: (ProofState -> ProofState) -> Elab' aux ()
+updatePS f = do ES (ps, a) logs prev <- get
+                put $ ES (f ps, a) logs prev
+
+now_elaborating :: FC -> Name -> Name -> Elab' aux ()
+now_elaborating fc f a = updatePS (nowElaboratingPS fc f a)
+done_elaborating_app :: Name -> Elab' aux ()
+done_elaborating_app f = updatePS (doneElaboratingAppPS f)
+done_elaborating_arg :: Name -> Name -> Elab' aux ()
+done_elaborating_arg f a = updatePS (doneElaboratingArgPS f a)
 
 -- Some handy gadgets for pulling out bits of state
 
@@ -627,7 +641,7 @@ no_errors tac err
             ps' <- get_probs
             if (length ps' > length ps) then
                case reverse ps' of
-                    ((x,y,env,inerr,_) : _) ->
+                    ((x, y, env, inerr, while, _) : _) ->
                        let env' = map (\(x, b) -> (x, binderTy b)) env in
                                   lift $ tfail $ 
                                          case err of
@@ -673,6 +687,8 @@ try' t1 t2 proofSearch
                r || proofSearch
         recoverableErr (CantSolveGoal _ _) = False
         recoverableErr (ProofSearchFail _) = False
+        recoverableErr (ElaboratingArg _ _ e) = recoverableErr e
+        recoverableErr (At _ e) = recoverableErr e
         recoverableErr _ = True
 
 tryWhen :: Bool -> Elab' aux a -> Elab' aux a -> Elab' aux a
@@ -721,12 +737,12 @@ prunStateT pmax zok ps x s
                      newpmax = if newps < 0 then 0 else newps in
                  if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
-                            ((_,_,_,e,_):_) -> Error e
+                            ((_,_,_,e,_,_):_) -> Error e
                     else OK ((v, newpmax, problems p), s')
              Error e -> Error e
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, _, _, _) -> (x, y)) fs)
+qshow fs = show (map (\ (x, y, _, _, _, _) -> (x, y)) fs)
 
 dumpprobs [] = ""
 dumpprobs ((_,_,_,e):es) = show e ++ "\n" ++ dumpprobs es

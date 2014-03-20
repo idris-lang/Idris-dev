@@ -693,7 +693,6 @@ elabProvider info syn fc what n ty tm
             , prov == txt "Provider" && provs == txt "Providers" = True
           isProviderOf _ _ = False
 
--- | Elaborate a type provider
 elabTransform :: ElabInfo -> FC -> Bool -> PTerm -> PTerm -> Idris ()
 elabTransform info fc safe lhs_in rhs_in
     = do ctxt <- getContext
@@ -1280,6 +1279,7 @@ checkPossible info fc tcgen fname lhs_in
           impossibleError (CantConvert _ _ _) = False
           impossibleError (At _ e) = impossibleError e
           impossibleError (Elaborating _ _ e) = impossibleError e
+          impossibleError (ElaboratingArg _ _ e) = impossibleError e
           impossibleError _ = True
 
           sameFam topx topy 
@@ -1389,7 +1389,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                          inj <- get_inj
                          return (res, probs, inj))
 
-        when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_) -> (x,y)) probs)
+        when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_) -> (x,y)) probs)
 
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
@@ -1453,7 +1453,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                         probs <- get_probs
                         return (tm, ds, is, probs))
 
-        when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_) -> (x,y)) probs)
+        when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_) -> (x,y)) probs)
 
         logLvl 5 "DONE CHECK"
         logLvl 2 $ "---> " ++ show rhs'
