@@ -37,6 +37,12 @@ data UResult a = UOK a
                | UPartOK a
                | UFail Err
 
+-- | Smart constructor for unification errors that takes into account the FailContext
+cantUnify :: [FailContext] -> Bool -> t -> t -> (Err' t) -> [(Name, t)] -> Int -> Err' t
+cantUnify [] r t1 t2 e ctxt i = CantUnify r t1 t2 e ctxt i
+cantUnify (FailContext fc f x : _) r t1 t2 e ctxt i =
+  ElaboratingArg fc f x (CantUnify r t1 t2 e ctxt i)
+
 -- Solve metavariables by matching terms against each other
 -- Not really unification, of course!
 
@@ -89,7 +95,7 @@ match_unify ctxt env topx topy inj holes from =
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
         | otherwise = do UI s f <- get
                          let r = recoverable x y
-                         let err = CantUnify r
+                         let err = cantUnify from r
                                      topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
                            else do put (UI s ((x, y, env, err, from, Match) : f))
@@ -103,9 +109,9 @@ match_unify ctxt env topx topy inj holes from =
     uB bnames (Pi tx) (Pi ty) = un bnames tx ty
     uB bnames x y = do UI s f <- get
                        let r = recoverable (binderTy x) (binderTy y)
-                       let err = CantUnify r topx topy
-                                  (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
-                                  (errEnv env) s
+                       let err = cantUnify from r topx topy
+                                   (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
+                                   (errEnv env) s
                        put (UI s ((binderTy x, binderTy y, env, err, from, Match) : f))
                        return []
 
@@ -117,7 +123,7 @@ match_unify ctxt env topx topy inj holes from =
 
     unifyFail x y = do UI s f <- get
                        let r = recoverable x y
-                       let err = CantUnify r
+                       let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                        put (UI s ((x, y, env, err, from, Match) : f))
                        lift $ tfail err
@@ -370,7 +376,7 @@ unify ctxt env topx topy inj holes from =
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
         | otherwise = do UI s f <- get
                          let r = recoverable x y
-                         let err = CantUnify r
+                         let err = cantUnify from r
                                      topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
                            else do put (UI s ((x, y, env, err, from, Unify) : f))
@@ -470,7 +476,7 @@ unify ctxt env topx topy inj holes from =
     unifyTmpFail x y
                   = do UI s f <- get
                        let r = recoverable x y
-                       let err = CantUnify r
+                       let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                        put (UI s ((topx, topy, env, err, from, Unify) : f))
                        return []
@@ -478,7 +484,7 @@ unify ctxt env topx topy inj holes from =
     -- shortcut failure, if we *know* nothing can fix it
     unifyFail x y = do UI s f <- get
                        let r = recoverable x y
-                       let err = CantUnify r
+                       let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                        put (UI s ((topx, topy, env, err, from, Unify) : f))
                        lift $ tfail err
@@ -500,9 +506,9 @@ unify ctxt env topx topy inj holes from =
     uB bnames (PVar tx) (PVar ty) = un' False bnames tx ty
     uB bnames x y = do UI s f <- get
                        let r = recoverable (binderTy x) (binderTy y)
-                       let err = CantUnify r topx topy
-                                  (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
-                                  (errEnv env) s
+                       let err = cantUnify from r topx topy
+                                   (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
+                                   (errEnv env) s
                        put (UI s ((binderTy x, binderTy y, env, err, from, Unify) : f))
                        return [] -- lift $ tfail err
 

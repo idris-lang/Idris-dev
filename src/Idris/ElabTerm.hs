@@ -189,6 +189,7 @@ elab ist info pattern opts fn tm
        | (P _ (UN ht) _, _) <- unApply t,
             ht == txt "Lazy" = True
     forceErr (Elaborating _ _ t) = forceErr t
+    forceErr (ElaboratingArg _ _ _ t) = forceErr t
     forceErr (At _ t) = forceErr t
     forceErr t = False
 
@@ -802,6 +803,7 @@ pruneAlt xs = map prune xs
               case fs of
                  [a] -> a
                  _ -> PAlternative a as'
+
     choose f (PApp fc f' as) = PApp fc (choose f f') (fmap (fmap (choose f)) as)
     choose f t = t
 
@@ -1113,9 +1115,9 @@ runTac autoSolve ist fn tac
                                runReflected tactic
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (sNS (sUN "List") ["List", "Prelude"])
-              scriptTy = (RBind (sUN "__pi_arg")
+              scriptTy = (RBind (sMN 0 "__pi_arg")
                                 (Pi (RApp listTy envTupleType))
-                                    (RBind (sUN "__pi_arg1")
+                                    (RBind (sMN 1 "__pi_arg")
                                            (Pi (Var $ reflm "TT")) tacticTy))
     runT (ByReflection tm) -- run the reflection function 'tm' on the
                            -- goal, then apply the resulting reflected Tactic
@@ -1641,6 +1643,7 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
           handle e@(Elaborating what n err) = do logLvl 3 "Reflecting body of Elaborating"
                                                  err' <- handle err
                                                  return (Elaborating what n err')
+          -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         let err = fmap (errReverse ist) e
                         logLvl 2 "Starting error reflection"

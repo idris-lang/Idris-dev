@@ -140,7 +140,7 @@ data Err' t
           | NoRewriting t
           | At FC (Err' t)
           | Elaborating String Name (Err' t)
-          | ElaboratingArg Name Name (Err' t)
+          | ElaboratingArg FC Name Name (Err' t)
           | ProviderError String
           | LoadingFailed String (Err' t)
           | ReflectionError [[ErrorReportPart]] (Err' t)
@@ -171,6 +171,7 @@ instance Sized Err where
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
   size (Elaborating _ n err) = size err
+  size (ElaboratingArg _ _ _ err) = size err
   size (ProviderError msg) = length msg
   size (LoadingFailed fn e) = 1 + length fn + size e
   size _ = 1
@@ -195,6 +196,8 @@ instance Show Err where
     show (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: (TT) " ++ show e
     show ProgramLineComment = "Program line next to comment"
     show (At f e) = show f ++ ":" ++ show e
+    show (ElaboratingArg fc f x e) = show fc ++ ": Elaborating " ++ show f ++ " arg " ++
+                                     show x ++ ": " ++ show e
     show _ = "Error"
 
 instance Pretty Err OutputAnnotation where
