@@ -1,11 +1,12 @@
-test030a.idr:12:14:When elaborating right hand side of testReflect1:
-Can't unify
-        IsJust (Just x)
-with
-        IsJust (prove (getProof x))
-
-Specifically:
+Reflect.idr:207:38:When elaborating right hand side of testReflect1:
+When elaborating an application of function Reflect.getJust:
         Can't unify
-                Just x
+                IsJust (Just x)
         with
-                Nothing
+                IsJust (prove (getProof x))
+        
+        Specifically:
+                Can't unify
+                        Just x
+                with
+                        Nothing
