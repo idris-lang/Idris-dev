@@ -5,8 +5,8 @@
    evaluation/checking inside the proof system, etc. --}
 
 module Idris.Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
-                  Tactic(..), Goal(..), processTactic, now_elaborating, done_elaborating,
-                  dropGiven, keepGiven) where
+                  Tactic(..), Goal(..), processTactic, nowElaboratingPS, doneElaboratingAppPS,
+                  doneElaboratingArgPS, dropGiven, keepGiven) where
 
 import Idris.Core.Typecheck
 import Idris.Core.Evaluate
@@ -224,20 +224,23 @@ unify' ctxt env topx topy =
         updateInj (_ : us) inj = updateInj us inj
         updateInj [] inj = inj
 
-now_elaborating :: Monad m => FC -> Name -> Name -> StateT TState m ()
-now_elaborating fc f arg = do ps <- get
-                              put ps {
-                                while_elaborating = FailContext fc f arg : while_elaborating ps
-                              }
+nowElaboratingPS :: FC -> Name -> Name -> ProofState -> ProofState
+nowElaboratingPS fc f arg ps = ps { while_elaborating = FailContext fc f arg : while_elaborating ps }
 
-done_elaborating :: Monad m => Name -> Name -> StateT TState m ()
-done_elaborating f x = do ps <- get
-                          let while = while_elaborating ps
-                          let while' = dropUntil (\ (FailContext _ f' x') -> f == f' && x == x') while
-                          put ps { while_elaborating = while' }
-  where dropUntil p [] = []
-        dropUntil p (x:xs) | p x       = xs
-                           | otherwise = dropUntil p xs
+dropUntil :: (a -> Bool) -> [a] -> [a]
+dropUntil p [] = []
+dropUntil p (x:xs) | p x       = xs
+                   | otherwise = dropUntil p xs
+
+doneElaboratingAppPS :: Name -> ProofState -> ProofState
+doneElaboratingAppPS f ps = let while = while_elaborating ps
+                                while' = dropUntil (\ (FailContext _ f' _) -> f == f') while
+                            in ps { while_elaborating = while' }
+
+doneElaboratingArgPS :: Name -> Name -> ProofState -> ProofState
+doneElaboratingArgPS f x ps = let while = while_elaborating ps
+                                  while' = dropUntil (\ (FailContext _ f' x') -> f == f' && x == x') while
+                              in ps { while_elaborating = while' }
 
 getName :: Monad m => String -> StateT TState m Name
 getName tag = do ps <- get

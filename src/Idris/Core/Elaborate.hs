@@ -131,14 +131,17 @@ force_term :: Elab' aux ()
 force_term = do ES (ps, a) l p <- get
                 put (ES (ps { pterm = force (pterm ps) }, a) l p)
 
+-- | Modify the auxiliary state
 updateAux :: (aux -> aux) -> Elab' aux ()
 updateAux f = do ES (ps, a) l p <- get
                  put (ES (ps, f a) l p)
 
+-- | Get the auxiliary state
 getAux :: Elab' aux aux
 getAux = do ES (ps, a) _ _ <- get
             return $! a
 
+-- | Set whether to show the unifier log
 unifyLog :: Bool -> Elab' aux ()
 unifyLog log = do ES (ps, a) l p <- get
                   put (ES (ps { unifylog = log }, a) l p)
@@ -153,6 +156,17 @@ processTactic' t = do ES (p, a) logs prev <- get
                       (p', log) <- lift $ processTactic t p
                       put (ES (p', a) (logs ++ log) prev)
                       return $! ()
+
+updatePS :: (ProofState -> ProofState) -> Elab' aux ()
+updatePS f = do ES (ps, a) logs prev <- get
+                put $ ES (f ps, a) logs prev
+
+now_elaborating :: FC -> Name -> Name -> Elab' aux ()
+now_elaborating fc f a = updatePS (nowElaboratingPS fc f a)
+done_elaborating_app :: Name -> Elab' aux ()
+done_elaborating_app f = updatePS (doneElaboratingAppPS f)
+done_elaborating_arg :: Name -> Name -> Elab' aux ()
+done_elaborating_arg f a = updatePS (doneElaboratingArgPS f a)
 
 -- Some handy gadgets for pulling out bits of state
 

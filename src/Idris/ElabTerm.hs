@@ -158,20 +158,20 @@ elab ist info pattern opts fn tm
 
     elabE :: (Bool, Bool, Bool) -> PTerm -> ElabD ()
     elabE ina t = 
---               do g <- goal
---                  trace ("Elaborating " ++ show t ++ " : " ++ show g) $
+               --do g <- goal
+                  --trace ("Elaborating " ++ show t ++ " : " ++ show g) $
                   do ct <- insertCoerce ina t
                      t' <- insertLazy ct
                      g <- goal
                      tm <- get_term
                      ps <- get_probs
                      hs <- get_holes
---                      trace ("Elaborating " ++ show t' ++ " in " ++ show g
--- --                             ++ "\n" ++ show tm
---                             ++ "\nholes " ++ show hs
---                             ++ "\nproblems " ++ show ps
---                             ++ "\n-----------\n") $
---                      trace ("ELAB " ++ show t') $ 
+                     --trace ("Elaborating " ++ show t' ++ " in " ++ show g
+                     --         ++ "\n" ++ show tm
+                     --         ++ "\nholes " ++ show hs
+                     --         ++ "\nproblems " ++ show ps
+                     --         ++ "\n-----------\n") $
+                     --trace ("ELAB " ++ show t') $ 
                      let fc = fileFC "Force"
                      handleError forceErr 
                          (elab' ina t')
@@ -694,7 +694,6 @@ elab ist info pattern opts fn tm
         mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
         mkDelay t = let fc = fileFC "Delay" in
                         addImpl ist (PApp fc (PRef fc (sUN "Delay")) [pexp t])
-                                            
 
     insertCoerce ina t =
         do ty <- goal
@@ -737,8 +736,8 @@ elab ist info pattern opts fn tm
                                             pexp t])
         | otherwise = elabArg argName holeName t
       where elabArg argName holeName t =
-              reflectFunctionErrors ist f argName $
-              do hs <- get_holes
+              do now_elaborating fc f argName
+                 hs <- get_holes
                  tm <- get_term
                  -- No coercing under an explicit Force (or it can Force/Delay
                  -- recursively!)
@@ -748,6 +747,7 @@ elab ist info pattern opts fn tm
                             case holeName `elem` hs of
                               True -> do focus holeName; elab ina t; return failed
                               False -> return failed
+                 done_elaborating_arg f argName
                  elabArgs ist ina failed fc r f ns force args
 
 -- | Perform error reflection for function applicaitons with specific error handlers

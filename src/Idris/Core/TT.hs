@@ -140,6 +140,7 @@ data Err' t
           | NoRewriting t
           | At FC (Err' t)
           | Elaborating String Name (Err' t)
+          | ElaboratingArg Name Name (Err' t)
           | ProviderError String
           | LoadingFailed String (Err' t)
           | ReflectionError [[ErrorReportPart]] (Err' t)
