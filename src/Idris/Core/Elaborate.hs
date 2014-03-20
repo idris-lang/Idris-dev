@@ -627,7 +627,7 @@ no_errors tac err
             ps' <- get_probs
             if (length ps' > length ps) then
                case reverse ps' of
-                    ((x,y,env,inerr,_) : _) ->
+                    ((x, y, env, inerr, while, _) : _) ->
                        let env' = map (\(x, b) -> (x, binderTy b)) env in
                                   lift $ tfail $ 
                                          case err of
@@ -721,12 +721,12 @@ prunStateT pmax zok ps x s
                      newpmax = if newps < 0 then 0 else newps in
                  if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
-                            ((_,_,_,e,_):_) -> Error e
+                            ((_,_,_,e,_,_):_) -> Error e
                     else OK ((v, newpmax, problems p), s')
              Error e -> Error e
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, _, _, _) -> (x, y)) fs)
+qshow fs = show (map (\ (x, y, _, _, _, _) -> (x, y)) fs)
 
 dumpprobs [] = ""
 dumpprobs ((_,_,_,e):es) = show e ++ "\n" ++ dumpprobs es
