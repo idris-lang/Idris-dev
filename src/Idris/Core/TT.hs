@@ -84,6 +84,9 @@ instance Show FC where
 -- | Output annotation for pretty-printed name - decides colour
 data NameOutput = TypeOutput | FunOutput | DataOutput
 
+-- | Text formatting output
+data TextFormatting = BoldText | ItalicText | UnderlineText
+
 -- | Output annotations for pretty-printing
 data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe Type)
                       | AnnBoundName Name Bool
@@ -91,6 +94,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe Type)
                       | AnnConstType
                       | AnnKeyword
                       | AnnFC FC
+                      | AnnTextFmt TextFormatting
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String

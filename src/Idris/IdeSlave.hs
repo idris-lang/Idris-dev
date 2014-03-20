@@ -94,6 +94,11 @@ instance SExpable OutputAnnotation where
                                                     ((SymbolAtom "filename", StringAtom f),
                                                      (SymbolAtom "start",  IntegerAtom (toInteger sl), IntegerAtom (toInteger sc)),
                                                      (SymbolAtom "end", IntegerAtom (toInteger el), IntegerAtom (toInteger ec))))]
+  toSExp (AnnTextFmt fmt) = toSExp [(SymbolAtom "text-formatting", SymbolAtom format)]
+      where format = case fmt of
+                       BoldText      -> "bold"
+                       ItalicText    -> "italic"
+                       UnderlineText -> "underline"
 
 escape :: String -> String
 escape = concatMap escapeChar
