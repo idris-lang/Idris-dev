@@ -6,10 +6,12 @@ import Data.Vect
 %default total
 
 using (k : Nat, ts : Vect k Type)
+  ||| Heterogeneous vectors where the type index gives, element-wise, the types of the contents
   data HVect : Vect k Type -> Type where
     Nil : HVect []
     (::) : t -> HVect ts -> HVect (t::ts)
 
+  ||| Extract an element from an HVect
   index : (i : Fin k) -> HVect ts -> index i ts
   index fZ (x::xs) = x
   index (fS j) (x::xs) = index j xs
@@ -49,6 +51,8 @@ using (k : Nat, ts : Vect k Type)
   instance (Shows k ts) => Show (HVect ts) where
     show xs = show (shows xs)
 
+  ||| Extract an arbitrary element of the correct type
+  ||| @ t the goal type
   get : {default tactics { applyTactic findElem 100; solve; } p : Elem t ts} -> HVect ts -> t
   get {p = Here} (x::xs) = x
   get {p = There p'} (x::xs) = get {p = p'} xs

@@ -10,11 +10,14 @@ import Language.Reflection
 --------------------------------------------------------------------------------
 
 using (xs : Vect k a)
+  ||| A proof that some element is found in a vector
   data Elem : a -> Vect k a -> Type where
     Here : Elem x (x::xs)
     There : Elem x xs -> Elem x (y::xs)
 
-findElem : Nat -> List (TTName, Binder TT) -> TT -> Tactic
+||| A tactic for discovering where, if anywhere, an element is in a vector
+||| @ n how many elements to search before giving up
+findElem : (n : Nat) -> List (TTName, Binder TT) -> TT -> Tactic
 findElem Z ctxt goal = Refine "Here" `Seq` Solve
 findElem (S n) ctxt goal = GoalType "Elem" (Try (Refine "Here" `Seq` Solve) (Refine "There" `Seq` (Solve `Seq` findElem n ctxt goal)))
 
