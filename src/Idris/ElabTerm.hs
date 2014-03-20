@@ -1643,6 +1643,9 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
           handle e@(Elaborating what n err) = do logLvl 3 "Reflecting body of Elaborating"
                                                  err' <- handle err
                                                  return (Elaborating what n err')
+          handle e@(ElaboratingArg f a err) = do logLvl 3 "Reflecting body of ElaboratingArg"
+                                                 err' <- handle err
+                                                 return (ElaboratingArg f a err')
           -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         let err = fmap (errReverse ist) e

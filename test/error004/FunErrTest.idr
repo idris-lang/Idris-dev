@@ -6,6 +6,7 @@ import Language.Reflection.Utils
 
 %language ErrorReflection
 
+
 total
 cadr :  (xs : List a)
      -> {auto cons1 : isCons xs = True}
@@ -18,7 +19,7 @@ extractList : TT -> Maybe TT
 extractList (App (App reflCon (App isCons lst)) _) = Just lst
 extractList _ = Nothing
 
-
+%error_handler
 total
 has2elts : Err -> Maybe (List ErrorReportPart)
 has2elts (CantSolveGoal tm _) = do lst <- extractList tm
@@ -27,9 +28,6 @@ has2elts (CantSolveGoal tm _) = do lst <- extractList tm
                                           , TextPart "has at least two elements."
                                           ]
 has2elts e = Just [TextPart (show e)]
-
-%error_handlers cadr cons1 has2elts
-%error_handlers cadr cons2 has2elts
 
 badCadr1 : Int
 badCadr1 = cadr []
