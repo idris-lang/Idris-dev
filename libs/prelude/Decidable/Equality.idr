@@ -12,6 +12,7 @@ import Prelude.Maybe
 -- Utility lemmas
 --------------------------------------------------------------------------------
 
+||| The negation of equality is symmetric (follows from symmetry of equality)
 total negEqSym : {a : t} -> {b : t} -> (a = b -> _|_) -> (b = a -> _|_)
 negEqSym p h = p (sym h)
 
@@ -20,7 +21,9 @@ negEqSym p h = p (sym h)
 -- Decidable equality
 --------------------------------------------------------------------------------
 
+||| Decision procedures for propositional equality
 class DecEq t where
+  ||| Decide whether two elements of `t` are propositionally equal
   total decEq : (x1 : t) -> (x2 : t) -> Dec (x1 = x2)
 
 --------------------------------------------------------------------------------
@@ -33,7 +36,6 @@ instance DecEq () where
 --------------------------------------------------------------------------------
 -- Booleans
 --------------------------------------------------------------------------------
-
 total trueNotFalse : True = False -> _|_
 trueNotFalse refl impossible
 
@@ -122,13 +124,13 @@ lemma_fst_neq_snd_eq : {x : a, x' : b, y : c, y' : d} ->
 lemma_fst_neq_snd_eq p_x_not_x' refl refl = p_x_not_x' refl
 
 instance (DecEq a, DecEq b) => DecEq (a, b) where
-  decEq (a, b) (a', b') with (decEq a a')
-    decEq (a, b) (a, b') | (Yes refl) with (decEq b b')
-      decEq (a, b) (a, b) | (Yes refl) | (Yes refl) = Yes refl
-      decEq (a, b) (a, b') | (Yes refl) | (No p) = No (\eq => lemma_snd_neq refl p eq)
-    decEq (a, b) (a', b') | (No p) with (decEq b b')
-      decEq (a, b) (a', b) | (No p) | (Yes refl) =  No (\eq => lemma_fst_neq_snd_eq p refl eq)
-      decEq (a, b) (a', b') | (No p) | (No p') = No (\eq => lemma_both_neq p p' eq)
+  decEq (a, b) (a', b')     with (decEq a a')
+    decEq (a, b) (a, b')    | (Yes refl) with (decEq b b')
+      decEq (a, b) (a, b)   | (Yes refl) | (Yes refl) = Yes refl
+      decEq (a, b) (a, b')  | (Yes refl) | (No p) = No (\eq => lemma_snd_neq refl p eq)
+    decEq (a, b) (a', b')   | (No p)     with (decEq b b')
+      decEq (a, b) (a', b)  | (No p)     | (Yes refl) =  No (\eq => lemma_fst_neq_snd_eq p refl eq)
+      decEq (a, b) (a', b') | (No p)     | (No p') = No (\eq => lemma_both_neq p p' eq)
 
 
 --------------------------------------------------------------------------------
