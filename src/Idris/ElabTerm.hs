@@ -189,7 +189,7 @@ elab ist info pattern opts fn tm
        | (P _ (UN ht) _, _) <- unApply t,
             ht == txt "Lazy" = True
     forceErr (Elaborating _ _ t) = forceErr t
-    forceErr (ElaboratingArg _ _ t) = forceErr t
+    forceErr (ElaboratingArg _ _ _ t) = forceErr t
     forceErr (At _ t) = forceErr t
     forceErr t = False
 
@@ -1643,9 +1643,9 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
           handle e@(Elaborating what n err) = do logLvl 3 "Reflecting body of Elaborating"
                                                  err' <- handle err
                                                  return (Elaborating what n err')
-          handle e@(ElaboratingArg f a err) = do logLvl 3 "Reflecting body of ElaboratingArg"
-                                                 err' <- handle err
-                                                 return (ElaboratingArg f a err')
+          handle e@(ElaboratingArg f a prev err) = do logLvl 3 "Reflecting body of ElaboratingArg"
+                                                      err' <- handle err
+                                                      return (ElaboratingArg f a prev err')
           -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         let err = fmap (errReverse ist) e

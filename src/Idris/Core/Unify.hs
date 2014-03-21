@@ -40,8 +40,10 @@ data UResult a = UOK a
 -- | Smart constructor for unification errors that takes into account the FailContext
 cantUnify :: [FailContext] -> Bool -> t -> t -> (Err' t) -> [(Name, t)] -> Int -> Err' t
 cantUnify [] r t1 t2 e ctxt i = CantUnify r t1 t2 e ctxt i
-cantUnify (FailContext fc f x : _) r t1 t2 e ctxt i =
-  At fc (ElaboratingArg f x (CantUnify r t1 t2 e ctxt i))
+cantUnify (FailContext fc f x : prev) r t1 t2 e ctxt i =
+  At fc (ElaboratingArg f x
+          (map (\(FailContext _ f' x') -> (f', x')) prev)
+          (CantUnify r t1 t2 e ctxt i))
 
 -- Solve metavariables by matching terms against each other
 -- Not really unification, of course!

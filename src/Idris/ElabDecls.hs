@@ -1279,7 +1279,7 @@ checkPossible info fc tcgen fname lhs_in
           impossibleError (CantConvert _ _ _) = False
           impossibleError (At _ e) = impossibleError e
           impossibleError (Elaborating _ _ e) = impossibleError e
-          impossibleError (ElaboratingArg _ _ e) = impossibleError e
+          impossibleError (ElaboratingArg _ _ _ e) = impossibleError e
           impossibleError _ = True
 
           sameFam topx topy 

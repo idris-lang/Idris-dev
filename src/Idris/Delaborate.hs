@@ -217,7 +217,7 @@ pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr
 pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
                                    pprintErr' i e
-pprintErr' i (ElaboratingArg f x e)
+pprintErr' i (ElaboratingArg f x _ e)
   | isUN x =
      text "When elaborating argument" <+>
      annotate (AnnBoundName x False) (text (showbasic x)) <+> --TODO check plicity
