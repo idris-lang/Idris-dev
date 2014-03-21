@@ -173,25 +173,27 @@ elab ist info pattern opts fn tm
                      --         ++ "\n-----------\n") $
                      --trace ("ELAB " ++ show t') $ 
                      let fc = fileFC "Force"
-                     handleError forceErr 
+                     env <- get_env
+                     handleError (forceErr env)
                          (elab' ina t')
                          (elab' ina (PApp fc (PRef fc (sUN "Force"))
-                                       [pimp (sUN "a") Placeholder True, 
+                                       [pimp (sUN "t") Placeholder True,
+                                        pimp (sUN "a") Placeholder True, 
                                         pexp ct])) True
 
-    forceErr (CantUnify _ t t' _ _ _)
-       | (P _ (UN ht) _, _) <- unApply t,
-            ht == txt "Lazy" = True
-    forceErr (CantUnify _ t t' _ _ _)
-       | (P _ (UN ht) _, _) <- unApply t',
-            ht == txt "Lazy" = True
-    forceErr (InfiniteUnify _ t _)
-       | (P _ (UN ht) _, _) <- unApply t,
-            ht == txt "Lazy" = True
-    forceErr (Elaborating _ _ t) = forceErr t
-    forceErr (ElaboratingArg _ _ t) = forceErr t
-    forceErr (At _ t) = forceErr t
-    forceErr t = False
+    forceErr env (CantUnify _ t t' _ _ _)
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
+            ht == txt "Lazy'" = True
+    forceErr env (CantUnify _ t t' _ _ _)
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t'),
+            ht == txt "Lazy'" = True
+    forceErr env (InfiniteUnify _ t _)
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
+            ht == txt "Lazy'" = True
+    forceErr env (Elaborating _ _ t) = forceErr env t
+    forceErr env (ElaboratingArg _ _ t) = forceErr env t
+    forceErr env (At _ t) = forceErr env t
+    forceErr env t = False
 
     local f = do e <- get_env
                  return (f `elem` map fst e)
@@ -688,13 +690,14 @@ elab ist info pattern opts fn tm
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
            let tries = if pattern then [t, mkDelay t] else [mkDelay t, t]
            case tyh of
-                P _ (UN l) _ | l == txt "Lazy"
+                P _ (UN l) _ | l == txt "Lazy'"
                     -> return (PAlternative False tries)
                 _ -> return t
       where
         mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
         mkDelay t = let fc = fileFC "Delay" in
-                        addImpl ist (PApp fc (PRef fc (sUN "Delay")) [pexp t])
+                        addImpl ist (PApp fc (PRef fc (sUN "Delay")) 
+                                          [pexp t])
 
     insertCoerce ina t =
         do ty <- goal

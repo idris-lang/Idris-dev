@@ -193,7 +193,7 @@ instance ToIR (TT Name) where
             l == txt "Delay"
               = do arg' <- ir' env arg
                    return $ LLazyExp arg'
-          | (P _ (UN l) _, [_, arg]) <- unApply tm,
+          | (P _ (UN l) _, [_, _, arg]) <- unApply tm,
             l == txt "Force"
               = do arg' <- ir' env arg
                    return $ LForce arg'
