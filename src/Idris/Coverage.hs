@@ -333,16 +333,6 @@ checkTotality path fc n
                                setTotality n t'
                                addIBC (IBCTotal n t')
                                return t'
-                            -- if it's not total, it can't reduce, to keep
-                            -- typechecking decidable
---                                case t' of
---                                  p@(Partial _) ->
---                                      do setAccessibility n Frozen
---                                         addIBC (IBCAccess n Frozen)
---                                         logLvl 5 $ "HIDDEN: "
---                                               ++ show n ++ show p
---                                  _ -> return ()
---                                return t'
                         _ -> return $ Total []
                 x -> return x
         case t' of
@@ -498,102 +488,11 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
               nty == nty' && not co
       isInductive _ _ = False
 
---       getTypeFam t | (P _ n _, _) <- unApply t
-
   dePat (Bind x (PVar ty) sc) = dePat (instantiate (P Bound x ty) sc)
   dePat t = t
 
   patvars (Bind x (PVar _) sc) = x : patvars sc
   patvars _ = []
-
-{-
-buildSCG' :: IState -> SC -> [Name] -> [SCGEntry]
-buildSCG' ist sc args = -- trace ("Building SCG for " ++ show sc) $
-                           nub $ scg sc (zip args args)
-                                 (zip args (zip args (repeat Same)))
-   where
-      scg :: SC -> [(Name, Name)] -> -- local var, originating top level var
-             [(Name, (Name, SizeChange))] -> -- orig to new,  and relationship
-             [SCGEntry]
-      scg (Case x alts) vars szs
-          = let x' = findTL x vars in
-                concatMap (scgAlt x' vars szs) alts
-        where
-          findTL x vars
-            | Just x' <- lookup x vars
-               = if x' `elem`  args then x'
-                    else findTL x' vars
-            | otherwise = x
-
-      scg (STerm tm) vars szs = scgTerm tm vars szs
-      scg _ _ _ = []
-
-      -- how the arguments relate - either Smaller or Unknown
-      argRels :: Name -> [(Name, SizeChange)]
-      argRels n = let ctxt = tt_ctxt ist
-                      [ty] = lookupTy n ctxt -- must exist!
-                      P _ nty _ = fst (unApply (getRetTy ty))
-                      co = case lookupCtxt nty (idris_datatypes ist) of
-                              [TI _ x _ _] -> x
-                              _ -> False
-                      args = map snd (getArgTys ty) in
-                      map (getRel co nty) (map (fst . unApply . getRetTy) args)
-        where
-          getRel True _ _ = (n, Unknown) -- coinductive
-          getRel _ ty (P _ n' _) | n' == ty = (n, Smaller)
-          getRel _ ty t = (n, Unknown)
-
-      scgAlt x vars szs (ConCase n _ args sc)
-           -- all args smaller than top variable of x in sc
-           -- (as long as they are in the same type family, and it's
-           -- not coinductive)
-         | Just tvar <- lookup x vars
-              = let arel = argRels n
-                    szs' = zipWith (\arg (_,t) -> (arg, (x, t))) args arel
-                                                       ++ szs
-                    vars' = nub (zip args (repeat tvar) ++ vars) in
-                    scg sc vars' szs'
-         | otherwise = scg sc vars szs
-      scgAlt x vars szs (ConstCase _ sc) = scg sc vars szs
-      scgAlt x vars szs (DefaultCase sc) = scg sc vars szs
-
-      scgTerm f@(App _ _) vars szs
-         | (P _ (UN "lazy") _, [_, arg]) <- unApply f
-             = scgTerm arg vars szs
-         | (P _ fn _, args) <- unApply f
-            = let rest = concatMap (\x -> scgTerm x vars szs) args in
-                  case lookup fn vars of
-                       Just _ -> rest
-                       Nothing -> nub $ (fn, map (mkChange szs) args) : rest
-      scgTerm (App f a) vars szs
-            = scgTerm f vars szs ++ scgTerm a vars szs
-      scgTerm (Bind n (Let t v) e) vars szs
-            = scgTerm v vars szs ++ scgTerm e vars szs
-      scgTerm (Bind n _ e) vars szs
-            = scgTerm e (nub ((n, n) : vars)) szs
-      scgTerm (P _ fn _) vars szs
-            = case lookup fn vars of
-                   Just _ -> []
-                   Nothing -> [(fn, [])]
-      scgTerm _ _ _ = []
-
-      mkChange :: [(Name, (Name, SizeChange))] -> Term
-                   -> Maybe (Int, SizeChange)
-      mkChange szs tm
-         | (P _ (UN "lazy") _, [_, arg]) <- unApply tm = mkChange szs arg
-         | (P _ n ty, _) <- unApply tm -- get higher order args too
-          = do sc <- lookup n szs
-               case sc of
-                  (_, Unknown) -> Nothing
-                  (o, sc) -> do i <- getArgPos 0 o args
-                                return (i, sc)
-      mkChange _ _ = Nothing
-
-      getArgPos :: Int -> Name -> [Name] -> Maybe Int
-      getArgPos i n [] = Nothing
-      getArgPos i n (x : xs) | n == x = Just i
-                             | otherwise = getArgPos (i + 1) n xs
--}
 
 checkSizeChange :: Name -> Idris Totality
 checkSizeChange n = do
