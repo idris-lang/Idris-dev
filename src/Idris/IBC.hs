@@ -28,8 +28,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 64
-
+ibcVersion = 65
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -64,7 +63,8 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_metainformation :: [(Name, MetaInformation)],
                          ibc_errorhandlers :: [Name],
                          ibc_function_errorhandlers :: [(Name, Name, Name)], -- fn, arg, handler
-                         ibc_metavars :: [(Name, (Maybe Name, Int, Bool))]
+                         ibc_metavars :: [(Name, (Maybe Name, Int, Bool))],
+                         ibc_patdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))]
                        }
    deriving Show
 {-!
@@ -72,7 +72,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do iLOG $ "Loading ibc " ++ fp
@@ -145,10 +145,14 @@ ibc i (IBCLib tgt n) f = return f { ibc_libs = (tgt, n) : ibc_libs f }
 ibc i (IBCCGFlag tgt n) f = return f { ibc_cgflags = (tgt, n) : ibc_cgflags f }
 ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
-ibc i (IBCDef n) f = case lookupDef n (tt_ctxt i) of
-                        [v] -> do (v', (f', _)) <- runStateT (updateDef v) (f, length (symbols f))
-                                  return f' { ibc_defs = (n,v) : ibc_defs f'     }
-                        _ -> ifail "IBC write failed"
+ibc i (IBCDef n) f 
+   = do f' <- case lookupDef n (tt_ctxt i) of
+                   [v] -> do (v', (f', _)) <- runStateT (updateDef v) (f, length (symbols f))
+                             return f' { ibc_defs = (n,v) : ibc_defs f'     }
+                   _ -> ifail "IBC write failed"
+        case lookupCtxt n (idris_patdefs i) of
+                   [v] -> return f' { ibc_patdefs = (n,v) : ibc_patdefs f' }
+                   _ -> return f' -- Not a pattern definition
   where 
     updateDef :: Def -> StateT (IBCFile, Int) Idris Def
     updateDef (CaseOp c t args o s cd)
@@ -256,6 +260,7 @@ process i fn
                pDyLibs (ibc_dynamic_libs i)
                pHdrs (ibc_hdrs i)
                pDefs (symbols i) (ibc_defs i)
+               pPatdefs (ibc_patdefs i)
                pAccess (ibc_access i)
                pTotal (ibc_total i)
                pCG (ibc_cg i)
@@ -380,6 +385,13 @@ pDyLibs ls = do res <- mapM (addDyLib . return) ls
 
 pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs
+
+pPatdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))] -> Idris ()
+pPatdefs ds 
+   = mapM_ (\ (n, d) -> 
+                do i <- getIState
+                   putIState (i { idris_patdefs = addDef n d (idris_patdefs i) }))
+           ds
 
 pDefs :: [Name] -> [(Name, Def)] -> Idris ()
 pDefs syms ds 
@@ -1137,7 +1149,7 @@ instance Binary MetaInformation where
                      return (DataMI x1)
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -1173,6 +1185,7 @@ instance Binary IBCFile where
                put x32
                put x33
                put x34
+               put x35
 
         get
           = do x1 <- get
@@ -1210,7 +1223,8 @@ instance Binary IBCFile where
                     x32 <- get
                     x33 <- get
                     x34 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34)
+                    x35 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where
