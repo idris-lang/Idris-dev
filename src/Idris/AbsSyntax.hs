@@ -1554,9 +1554,9 @@ stripLinear i tm = evalState (sl tm) [] where
                                      return (PPatvar fc f)
     sl t@(PAlternative _ (a : as)) = do sl a
                                         return t
-    sl (PApp fc fn args) = do fn' <- sl fn
+    sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var 
                               args' <- mapM slA args
-                              return $ PApp fc fn' args'
+                              return $ PApp fc fn args'
        where slA (PImp p m l n t) = do t' <- sl t
                                        return $ PImp p m l n t'
              slA (PExp p l t) = do t' <- sl t

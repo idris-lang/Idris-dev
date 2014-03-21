@@ -611,10 +611,10 @@ simple_app fun arg appstr =
        hs <- get_holes
        env <- get_env
        -- We don't need a and b in the hole queue any more since they were
-       -- just for checking f, so discard them if they are still there.
-       -- If they haven't been solved, regret will fail
-       when (a `elem` hs) $ do focus a; regretWith (CantInferType appstr)
-       when (b `elem` hs) $ do focus b; regretWith (CantInferType appstr)
+       -- just for checking f, so move them to the end. If they never end up
+       -- getting solved, we'll get an 'Incomplete term' error.
+       when (a `elem` hs) $ do movelast a
+       when (b `elem` hs) $ do movelast b
        end_unify
   where regretWith err = try regret
                              (lift $ tfail err)
