@@ -1461,6 +1461,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         def' <- checkDef fc defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
+        mapM_ (\(n, _) -> addIBC (IBCDef n)) def''
 
         when (not (null def')) $ do
            mapM_ defer_totcheck (map (\x -> (fc, fst x)) def'')
