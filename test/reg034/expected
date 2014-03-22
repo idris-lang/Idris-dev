@@ -1,5 +1,5 @@
 reg034.idr:6:5:When elaborating left hand side of bar:
-When elaborating an application of function main.bar:
+When elaborating an application of main.bar:
         Can't unify
                 [95mx[0m [94m=[0m [95mx[0m
         with
@@ -11,7 +11,7 @@ When elaborating an application of function main.bar:
                 with
                         [92mlength[0m [95mxs[0m
 reg034.idr:9:5:When elaborating left hand side of foo:
-When elaborating an application of function main.foo:
+When elaborating an application of main.foo:
         Can't unify
                 [95mx[0m [94m=[0m [95mx[0m
         with

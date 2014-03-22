@@ -20,7 +20,7 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
 
@@ -191,7 +191,7 @@ elab ist info pattern opts fn tm
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
             ht == txt "Lazy'" = True
     forceErr env (Elaborating _ _ t) = forceErr env t
-    forceErr env (ElaboratingArg _ _ t) = forceErr env t
+    forceErr env (ElaboratingArg _ _ _ t) = forceErr env t
     forceErr env (At _ t) = forceErr env t
     forceErr env t = False
 
@@ -727,10 +727,7 @@ elab ist info pattern opts fn tm
              -> Bool -- ^ under a 'force'
              -> [(Bool, PTerm)] -- ^ (Laziness, argument)
              -> ElabD ()
-    elabArgs ist ina failed fc retry f [] force _
---         | retry = let (ns, ts) = unzip (reverse failed) in
---                       elabArgs ina [] False ns ts
-        | otherwise = return ()
+    elabArgs ist ina failed fc retry f [] force _ = return ()
     elabArgs ist ina failed fc r f (n:ns) force ((_, Placeholder) : args)
         = elabArgs ist ina failed fc r f ns force args
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force ((lazy, t) : args)
@@ -741,54 +738,30 @@ elab ist info pattern opts fn tm
         | otherwise = elabArg argName holeName t
       where elabArg argName holeName t =
               do now_elaborating fc f argName
-                 hs <- get_holes
-                 tm <- get_term
-                 -- No coercing under an explicit Force (or it can Force/Delay
-                 -- recursively!)
-                 let elab = if force then elab' else elabE
-                 failed' <- -- trace (show (n, t, hs, tm)) $
-                            -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
-                            case holeName `elem` hs of
-                              True -> do focus holeName; elab ina t; return failed
-                              False -> return failed
-                 done_elaborating_arg f argName
-                 elabArgs ist ina failed fc r f ns force args
+                 wrapErr f argName $ do
+                   hs <- get_holes
+                   tm <- get_term
+                   -- No coercing under an explicit Force (or it can Force/Delay
+                   -- recursively!)
+                   let elab = if force then elab' else elabE
+                   failed' <- -- trace (show (n, t, hs, tm)) $
+                              -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
+                              case holeName `elem` hs of
+                                True -> do focus holeName; elab ina t; return failed
+                                False -> return failed
+                   done_elaborating_arg f argName
+                   elabArgs ist ina failed fc r f ns force args
+            wrapErr f argName action =
+              do elabState <- get
+                 while <- elaborating_app
+                 let while' = map (\(x, y, z)-> (y, z)) while
+                 (result, newState) <- case runStateT action elabState of
+                                         OK (res, newState) -> return (res, newState)
+                                         Error e -> do done_elaborating_arg f argName
+                                                       lift (tfail (elaboratingArgErr while' e))
+                 put newState
+                 return result
 
--- | Perform error reflection for function applicaitons with specific error handlers
-reflectFunctionErrors :: IState -> Name -> Name -> ElabD a -> ElabD a
-reflectFunctionErrors ist f arg action =
-  do elabState <- get
-     (result, newState) <- case runStateT action elabState of
-                             OK (res, newState) -> return (res, newState)
-                             Error e@(ReflectionError _ _) -> (lift . tfail) e
-                             Error e@(ReflectionFailed _ _) -> (lift . tfail) e
-                             Error e -> handle e >>= lift . tfail
-     put newState
-     return result
-  where handle :: Err -> ElabD Err
-        handle e = do let funhandlers = (maybe M.empty id . lookupCtxtExact f . idris_function_errorhandlers) ist
-                          handlers = (maybe [] S.toList . M.lookup arg) funhandlers
-                          reports  = map (\n -> RApp (Var n) (reflectErr e)) handlers
-
-
-                      -- Typecheck error handlers - if this fails, then something else was wrong earlier!
-                      handlers <- case mapM (check (tt_ctxt ist) []) reports of
-                                      Error e -> lift . tfail $
-                                                 ReflectionFailed "Type error while constructing reflected error" e
-                                      OK hs   -> return hs
-
-                      -- Normalize error handler terms to produce the new messages
-                      let ctxt    = tt_ctxt ist
-                          results = map (normalise ctxt []) (map fst handlers)
-
-                      -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
-                      let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
-                      errorparts <- case mapM (mapM reifyReportPart) errorpartsTT of
-                                      Left err -> lift (tfail err)
-                                      Right ok -> return ok
-                      return $ case errorparts of
-                                   []    -> e
-                                   parts -> ReflectionError errorparts e
 
 -- For every alternative, look at the function at the head. Automatically resolve
 -- any nested alternatives where that function is also at the head
@@ -1631,6 +1604,14 @@ reflectErr (LoadingFailed str err) =
   raw_apply (Var $ reflErrName "LoadingFailed") [RConstant (Str str)]
 reflectErr x = raw_apply (Var (sNS (sUN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
 
+elaboratingArgErr :: [(Name, Name)] -> Err -> Err
+elaboratingArgErr [] err = err
+elaboratingArgErr ((f,x):during) err = fromMaybe err (rewrite err)
+  where rewrite (ElaboratingArg _ _ _ _) = Nothing
+        rewrite (ProofSearchFail e) = fmap ProofSearchFail (rewrite e)
+        rewrite (At fc e) = fmap (At fc) (rewrite e)
+        rewrite err = Just (ElaboratingArg f x during err)
+
 
 withErrorReflection :: Idris a -> Idris a
 withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
@@ -1646,35 +1627,50 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
           handle e@(Elaborating what n err) = do logLvl 3 "Reflecting body of Elaborating"
                                                  err' <- handle err
                                                  return (Elaborating what n err')
-          handle e@(ElaboratingArg f a err) = do logLvl 3 "Reflecting body of ElaboratingArg"
-                                                 err' <- handle err
-                                                 return (ElaboratingArg f a err')
+          handle e@(ElaboratingArg f a prev err) = do logLvl 3 "Reflecting body of ElaboratingArg"
+                                                      hs <- getFnHandlers f a
+                                                      err' <- if null hs
+                                                                 then handle err
+                                                                 else applyHandlers err hs
+                                                      return (ElaboratingArg f a prev err')
           -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
-                        let err = fmap (errReverse ist) e
                         logLvl 2 "Starting error reflection"
                         let handlers = idris_errorhandlers ist
-                        logLvl 3 $ "Using reflection handlers " ++ concat (intersperse ", " (map show handlers))
-                        let reports = map (\n -> RApp (Var n) (reflectErr err)) handlers
+                        applyHandlers e handlers
+          getFnHandlers :: Name -> Name -> Idris [Name]
+          getFnHandlers f arg = do ist <- getIState
+                                   let funHandlers = maybe M.empty id .
+                                                     lookupCtxtExact f .
+                                                     idris_function_errorhandlers $ ist
+                                   return . maybe [] S.toList . M.lookup arg $ funHandlers
 
-                        -- Typecheck error handlers - if this fails, then something else was wrong earlier!
-                        handlers <- case mapM (check (tt_ctxt ist) []) reports of
-                                      Error e -> ierror $ ReflectionFailed "Type error while constructing reflected error" e
-                                      OK hs   -> return hs
 
-                        -- Normalize error handler terms to produce the new messages
-                        ctxt <- getContext
-                        let results = map (normalise ctxt []) (map fst handlers)
-                        logLvl 3 $ "New error message info: " ++ concat (intersperse " and " (map show results))
+          applyHandlers e handlers =
+                      do ist <- getIState
+                         let err = fmap (errReverse ist) e
+                         logLvl 3 $ "Using reflection handlers " ++
+                                    concat (intersperse ", " (map show handlers))
+                         let reports = map (\n -> RApp (Var n) (reflectErr err)) handlers
 
-                        -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
-                        let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
-                        errorparts <- case mapM (mapM reifyReportPart) errorpartsTT of
-                                        Left err -> ierror err
-                                        Right ok -> return ok
-                        return $ case errorparts of
-                                   []    -> e
-                                   parts -> ReflectionError errorparts e
+                         -- Typecheck error handlers - if this fails, then something else was wrong earlier!
+                         handlers <- case mapM (check (tt_ctxt ist) []) reports of
+                                       Error e -> ierror $ ReflectionFailed "Type error while constructing reflected error" e
+                                       OK hs   -> return hs
+
+                         -- Normalize error handler terms to produce the new messages
+                         ctxt <- getContext
+                         let results = map (normalise ctxt []) (map fst handlers)
+                         logLvl 3 $ "New error message info: " ++ concat (intersperse " and " (map show results))
+
+                         -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
+                         let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
+                         errorparts <- case mapM (mapM reifyReportPart) errorpartsTT of
+                                         Left err -> ierror err
+                                         Right ok -> return ok
+                         return $ case errorparts of
+                                    []    -> e
+                                    parts -> ReflectionError errorparts e
 
 fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
 fromTTMaybe (App (App (P (DCon _ _) (NS (UN just) _) _) ty) tm)

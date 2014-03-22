@@ -91,8 +91,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          -- if the type is not complete, note that we'll need to infer
          -- things later (for solving metavariables)
          when (not (null ds)) $ addTyInferred n
---          let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
---          addDeferred ds'
+
          mapM_ (elabCaseBlock info opts) is
          ctxt <- getContext
          logLvl 5 $ "Rechecking"
@@ -1270,10 +1269,6 @@ checkPossible info fc tcgen fname lhs_in
                   case recheck ctxt [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
                        err -> return False
-
---                   b <- inferredDiff fc (delab' i lhs_tm True) lhs
---                   return (not b) -- then return (Just lhs_tm) else return Nothing
---                   trace (show (delab' i lhs_tm True) ++ "\n" ++ show lhs) $ return (not b)
             Error err -> if tcgen then return False
                                   else return (impossibleError err)
     where impossibleError (CantUnify _ topx topy e _ _) 
@@ -1281,7 +1276,7 @@ checkPossible info fc tcgen fname lhs_in
           impossibleError (CantConvert _ _ _) = False
           impossibleError (At _ e) = impossibleError e
           impossibleError (Elaborating _ _ e) = impossibleError e
-          impossibleError (ElaboratingArg _ _ e) = impossibleError e
+          impossibleError (ElaboratingArg _ _ _ e) = impossibleError e
           impossibleError _ = True
 
           sameFam topx topy 
@@ -1980,10 +1975,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
          iLOG (show idecls)
          mapM_ (elabDecl EAll info) idecls
          addIBC (IBCInstance intInst n iname)
---          -- for each constraint, build a top level function to chase it
---          logLvl 5 $ "Building functions"
---          fns <- mapM (cfun (instanceName ci) constraint syn idecls) cs
---          mapM_ (elabDecl EAll info) (concat fns)
+
   where
     intInst = case ps of
                 [PConstant (AType (ATInt ITNative))] -> True
