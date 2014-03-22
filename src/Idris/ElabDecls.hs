@@ -144,8 +144,6 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
                          addIBC (IBCErrorHandler n)
                  else ifail $ "The type " ++ show nty' ++ " is invalid for an error handler"
              else ifail "Error handlers can only be defined when the ErrorReflection language extension is enabled."
-         when corec $ do setAccessibility n Frozen
-                         addIBC (IBCAccess n Frozen)
          return usety
   where
     -- for making an internalapp, we only want the explicit ones, and don't

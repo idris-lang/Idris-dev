@@ -262,6 +262,19 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                n' b' (\x -> ev ntimes stk False ((n', x):env) sc)
        where vbind env t
                      = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
+    -- block reduction immediately under codata (and not forced)
+    ev ntimes stk top env 
+              (App (App (App d@(P _ (UN dly) _) l@(P _ (UN lco) _)) t) arg)
+       | dly == txt "Delay" && lco == txt "LazyCodata" 
+            = do let (f, _) = unApply arg
+                 let ntimes' = case f of
+                                    P _ fn _ -> (fn, 0) : ntimes
+                                    _ -> ntimes
+                 d' <- ev ntimes' stk False env d
+                 l' <- ev ntimes' stk False env l
+                 t' <- ev ntimes' stk False env t
+                 arg' <- ev ntimes' stk False env arg
+                 evApply ntimes' stk top env [l',t',arg'] d'
     -- Treat "assert_total" specially, as long as it's defined!
     ev ntimes stk top env (App (App (P _ n@(UN at) _) _) arg)
        | [(CaseOp _ _ _ _ _ _, _)] <- lookupDefAcc n (spec || atRepl) ctxt,
