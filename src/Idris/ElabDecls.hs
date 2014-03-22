@@ -254,7 +254,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          let metainf = DataMI params
          addIBC (IBCMetaInformation n metainf)
          -- TMP HACK! Make this a data option
-         when (n /= sUN "Lazy") $ collapseCons n cons
+         when (n /= sUN "Lazy'") $ collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
          updateContext (setMetaInformation n metainf)
          mapM_ (checkPositive n) cons
@@ -874,7 +874,9 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
 
     mkLazy (PPi pl n ty sc) 
         = let ty' = if getTyName ty
-                       then PApp fc (PRef fc (sUN "Lazy")) [pexp ty]
+                       then PApp fc (PRef fc (sUN "Lazy'")) 
+                            [pexp (PRef fc (sUN "LazyCodata")),
+                             pexp ty]
                        else ty in
               PPi pl n ty' (mkLazy sc)
     mkLazy t = t

@@ -20,7 +20,7 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
 
@@ -173,25 +173,27 @@ elab ist info pattern opts fn tm
                      --         ++ "\n-----------\n") $
                      --trace ("ELAB " ++ show t') $ 
                      let fc = fileFC "Force"
-                     handleError forceErr 
+                     env <- get_env
+                     handleError (forceErr env)
                          (elab' ina t')
                          (elab' ina (PApp fc (PRef fc (sUN "Force"))
-                                       [pimp (sUN "a") Placeholder True, 
+                                       [pimp (sUN "t") Placeholder True,
+                                        pimp (sUN "a") Placeholder True, 
                                         pexp ct])) True
 
-    forceErr (CantUnify _ t t' _ _ _)
-       | (P _ (UN ht) _, _) <- unApply t,
-            ht == txt "Lazy" = True
-    forceErr (CantUnify _ t t' _ _ _)
-       | (P _ (UN ht) _, _) <- unApply t',
-            ht == txt "Lazy" = True
-    forceErr (InfiniteUnify _ t _)
-       | (P _ (UN ht) _, _) <- unApply t,
-            ht == txt "Lazy" = True
-    forceErr (Elaborating _ _ t) = forceErr t
-    forceErr (ElaboratingArg _ _ _ t) = forceErr t
-    forceErr (At _ t) = forceErr t
-    forceErr t = False
+    forceErr env (CantUnify _ t t' _ _ _)
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
+            ht == txt "Lazy'" = True
+    forceErr env (CantUnify _ t t' _ _ _)
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t'),
+            ht == txt "Lazy'" = True
+    forceErr env (InfiniteUnify _ t _)
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
+            ht == txt "Lazy'" = True
+    forceErr env (Elaborating _ _ t) = forceErr env t
+    forceErr env (ElaboratingArg _ _ _ t) = forceErr env t
+    forceErr env (At _ t) = forceErr env t
+    forceErr env t = False
 
     local f = do e <- get_env
                  return (f `elem` map fst e)
@@ -688,13 +690,14 @@ elab ist info pattern opts fn tm
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
            let tries = if pattern then [t, mkDelay t] else [mkDelay t, t]
            case tyh of
-                P _ (UN l) _ | l == txt "Lazy"
+                P _ (UN l) _ | l == txt "Lazy'"
                     -> return (PAlternative False tries)
                 _ -> return t
       where
         mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
         mkDelay t = let fc = fileFC "Delay" in
-                        addImpl ist (PApp fc (PRef fc (sUN "Delay")) [pexp t])
+                        addImpl ist (PApp fc (PRef fc (sUN "Delay")) 
+                                          [pexp t])
 
     insertCoerce ina t =
         do ty <- goal
@@ -724,10 +727,7 @@ elab ist info pattern opts fn tm
              -> Bool -- ^ under a 'force'
              -> [(Bool, PTerm)] -- ^ (Laziness, argument)
              -> ElabD ()
-    elabArgs ist ina failed fc retry f [] force _
---         | retry = let (ns, ts) = unzip (reverse failed) in
---                       elabArgs ina [] False ns ts
-        | otherwise = return ()
+    elabArgs ist ina failed fc retry f [] force _ = return ()
     elabArgs ist ina failed fc r f (n:ns) force ((_, Placeholder) : args)
         = elabArgs ist ina failed fc r f ns force args
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force ((lazy, t) : args)
@@ -738,18 +738,30 @@ elab ist info pattern opts fn tm
         | otherwise = elabArg argName holeName t
       where elabArg argName holeName t =
               do now_elaborating fc f argName
-                 hs <- get_holes
-                 tm <- get_term
-                 -- No coercing under an explicit Force (or it can Force/Delay
-                 -- recursively!)
-                 let elab = if force then elab' else elabE
-                 failed' <- -- trace (show (n, t, hs, tm)) $
-                            -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
-                            case holeName `elem` hs of
-                              True -> do focus holeName; elab ina t; return failed
-                              False -> return failed
-                 done_elaborating_arg f argName
-                 elabArgs ist ina failed fc r f ns force args
+                 wrapErr f argName $ do
+                   hs <- get_holes
+                   tm <- get_term
+                   -- No coercing under an explicit Force (or it can Force/Delay
+                   -- recursively!)
+                   let elab = if force then elab' else elabE
+                   failed' <- -- trace (show (n, t, hs, tm)) $
+                              -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
+                              case holeName `elem` hs of
+                                True -> do focus holeName; elab ina t; return failed
+                                False -> return failed
+                   done_elaborating_arg f argName
+                   elabArgs ist ina failed fc r f ns force args
+            wrapErr f argName action =
+              do elabState <- get
+                 while <- elaborating_app
+                 let while' = map (\(x, y, z)-> (y, z)) while
+                 (result, newState) <- case runStateT action elabState of
+                                         OK (res, newState) -> return (res, newState)
+                                         Error e -> do done_elaborating_arg f argName
+                                                       lift (tfail (elaboratingArgErr while' e))
+                 put newState
+                 return result
+
 
 -- | Perform error reflection for function applicaitons with specific error handlers
 reflectFunctionErrors :: IState -> Name -> Name -> ElabD a -> ElabD a
@@ -1627,6 +1639,14 @@ reflectErr (ProviderError str) =
 reflectErr (LoadingFailed str err) =
   raw_apply (Var $ reflErrName "LoadingFailed") [RConstant (Str str)]
 reflectErr x = raw_apply (Var (sNS (sUN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
+
+elaboratingArgErr :: [(Name, Name)] -> Err -> Err
+elaboratingArgErr [] err = err
+elaboratingArgErr ((f,x):during) err = fromMaybe err (rewrite err)
+  where rewrite (ElaboratingArg _ _ _ _) = Nothing
+        rewrite (ProofSearchFail e) = fmap ProofSearchFail (rewrite e)
+        rewrite (At fc e) = fmap (At fc) (rewrite e)
+        rewrite err = Just (ElaboratingArg f x during err)
 
 
 withErrorReflection :: Idris a -> Idris a

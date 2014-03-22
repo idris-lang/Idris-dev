@@ -402,12 +402,12 @@ buildSCG (_, n) = do
        x -> error $ "buildSCG: " ++ show (n, x)
 
 delazy t@(App f a)
-     | (P _ (UN l) _, [_, arg]) <- unApply t,
+     | (P _ (UN l) _, [_, _, arg]) <- unApply t,
        l == txt "Force" = delazy arg
-     | (P _ (UN l) _, [_, arg]) <- unApply t,
+     | (P _ (UN l) _, [_, _, arg]) <- unApply t,
        l == txt "Delay" = delazy arg
-     | (P _ (UN l) _, [arg]) <- unApply t,
-       l == txt "Lazy" = delazy arg
+     | (P _ (UN l) _, [_, arg]) <- unApply t,
+       l == txt "Lazy'" = delazy arg
 delazy (App f a) = App (delazy f) (delazy a)
 delazy (Bind n b sc) = Bind n (fmap delazy b) (delazy sc)
 delazy t = t

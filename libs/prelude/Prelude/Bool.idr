@@ -1,5 +1,7 @@
 module Prelude.Bool
 
+import Builtins
+
 ||| Boolean Data Type
 data Bool = False | True
 

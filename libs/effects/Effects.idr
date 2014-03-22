@@ -4,35 +4,57 @@ import Language.Reflection
 import Control.Catchable
 import Effect.Default
 
+--- Effectful computations are described as algebraic data types that
+--- explain how an effect is interpreted in some underlying context.
+
 %access public
-
----- Effects
-
+-- ----------------------------------------------------------------- [ Effects ]
+||| The Effect type describes effectful computations.
+||| 
+||| This type is parameterised by:
+||| + The input resource.
+||| + The return type of the computation.
+||| + The computation to run on the resource.
 Effect : Type
 Effect = (x : Type) -> Type -> (x -> Type) -> Type
 
+||| The `EFFECT` Data type describes how to promote the Effect
+||| description into a concrete effect.
 %error_reverse
 data EFFECT : Type where
      MkEff : Type -> Effect -> EFFECT
 
+||| Handler classes describe how an effect `e` is translated to the
+||| underlying computation context `m` for execution.
 class Handler (e : Effect) (m : Type -> Type) where
-     handle : res -> (eff : e t res resk) -> 
-              ((x : t) -> resk x -> m a) -> m a
+  ||| How to handle the effect.
+  ||| 
+  ||| @ r The resource being handled.
+  ||| @ eff The effect to be applied.
+  ||| @ ctxt The context in which to handle the effect.
+  handle : (r : res) -> (eff : e t res resk) -> 
+           (ctxt : ((x : t) -> resk x -> m a)) -> m a
 
--- Get the resource type (handy at the REPL to find out about an effect)
+||| Get the resource type (handy at the REPL to find out about an effect)
 resourceType : EFFECT -> Type
 resourceType (MkEff t e) = t
+
+-- --------------------------------------------------------- [ Syntactic Sugar ]
 
 -- A bit of syntactic sugar ('syntax' is not very flexible so we only go
 -- up to a small number of parameters...)
 
+-- No state transition
 syntax "{" [inst] "}" [eff] = eff inst (\result => inst)
+
+-- The state transition is dependent on a result `b`, a bound variable.
 syntax "{" [inst] "==>" "{" {b} "}" [outst] "}" [eff] 
        = eff inst (\b => outst)
+
+--- A simple state transition
 syntax "{" [inst] "==>" [outst] "}" [eff] = eff inst (\result => outst)
 
----- Properties and proof construction
-
+-- --------------------------------------- [ Properties and Proof Construction ]
 using (xs : List a, ys : List a)
   data SubList : List a -> List a -> Type where
        SubNil : SubList {a} [] []
@@ -53,7 +75,7 @@ data EffElem : Effect -> Type ->
      Here : EffElem x a (MkEff a x :: xs)
      There : EffElem x a xs -> EffElem x a (y :: xs)
 
--- make an environment corresponding to a sub-list
+||| make an environment corresponding to a sub-list
 dropEnv : Env m ys -> SubList xs ys -> Env m xs
 dropEnv [] SubNil = []
 dropEnv (v :: vs) (Keep rest) = v :: dropEnv vs rest
@@ -67,7 +89,7 @@ updateWith []        []        SubNil      = []
 updateWith (y :: ys) []        SubNil      = y :: ys
 updateWith []        (x :: xs) (Keep rest) = []
 
--- put things back, replacing old with new in the sub-environment
+||| Put things back, replacing old with new in the sub-environment
 rebuildEnv : Env m ys' -> (prf : SubList ys xs) ->
              Env m xs -> Env m (updateWith ys' xs prf)
 rebuildEnv []        SubNil      env = env
@@ -75,8 +97,7 @@ rebuildEnv (x :: xs) (Keep rest) (y :: env) = x :: rebuildEnv xs rest env
 rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
 rebuildEnv (x :: xs) SubNil      [] = x :: xs
 
----- The Effect EDSL itself ----
-
+-- -------------------------------------------------- [ The Effect EDSL itself ]
 -- some proof automation
 
 %reflection
@@ -131,11 +152,6 @@ updateResTy : (val : t) ->
 updateResTy {b} val (MkEff a e :: xs) Here n = (MkEff (b val) e) :: xs
 updateResTy     val (x :: xs)    (There p) n = x :: updateResTy val xs p n
 
--- updateResTyImm : (xs : List EFFECT) -> EffElem e a xs -> Type ->
---                  List EFFECT
--- updateResTyImm (MkEff a e :: xs) Here b = (MkEff b e) :: xs
--- updateResTyImm (x :: xs)    (There p) b = x :: updateResTyImm xs p b
-
 infix 5 :::, :-, :=
 
 data LRes : lbl -> Type -> Type where
@@ -157,11 +173,17 @@ relabel : (l : ty) -> Env m xs -> Env m (map (\x => l ::: x) xs)
 relabel {xs = []} l [] = []
 relabel {xs = (MkEff a e :: xs)} l (v :: vs) = (l := v) :: relabel l vs
 
--- the language of Effects
-
-data Eff : (m : Type -> Type) ->
-           (x : Type) ->
-           List EFFECT -> (x -> List EFFECT) -> Type where
+-- ------------------------------------------------- [ The Language of Effects ]
+||| Definition of an Effect.
+||| 
+||| @ m The computation context
+||| @ x The return type of the result.
+||| @ es The list of allowed side-effects.
+||| @ ce Function to compute a new list of allowed side-effects.
+data Eff : (m : Type -> Type)
+           -> (x : Type)
+           -> (es : List EFFECT)
+           -> (ce : x -> List EFFECT) -> Type where
      value    : a -> Eff m a xs (\v => xs)
      with_val : (val : a) -> Eff m () xs (\v => xs' val) ->
                 Eff m a xs xs'
@@ -192,7 +214,7 @@ data Eff : (m : Type -> Type) ->
 return : a -> Eff m a xs (\v => xs)
 return x = value x
 
--- for idiom brackets
+-- ------------------------------------------------------ [ for idiom brackets ]
 
 infixl 2 <$>
 
@@ -207,7 +229,7 @@ syntax pureM [val] = with_val val (pure ())
                   arg <- v
                   return (fn arg)
 
--- an interpreter
+-- ---------------------------------------------------------- [ an interpreter ]
 
 private
 execEff : Env m xs -> (p : EffElem e res xs) ->
@@ -276,6 +298,9 @@ new : Handler e m =>
       Eff m a xs (\v => xs')
 new {r} e = newInit r e
 
+-- --------------------------------------------------------- [ Running Effects ]
+
+||| Run an effectful program
 run : Applicative m => {default MkDefaultEnv env : Env m xs} -> Eff m a xs xs' -> m a
 run {env} prog = eff env prog (\r, env => pure r)
 
@@ -295,7 +320,7 @@ runEnv : Applicative m => Env m xs -> Eff m a xs xs' ->
          m (x : a ** Env m (xs' x))
 runEnv env prog = eff env prog (\r, env => pure (r ** env))
 
--- some higher order things
+-- ----------------------------------------------- [ some higher order things ]
 
 mapE : Applicative m => (a -> {xs} Eff m b) -> List a -> {xs} Eff m (List b)
 mapE f []        = pure []
@@ -314,3 +339,4 @@ when : Applicative m => Bool -> ({xs} Eff m ()) -> {xs} Eff m ()
 when True  e = e
 when False e = pure ()
 
+-- --------------------------------------------------------------------- [ EOF ]
