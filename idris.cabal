@@ -381,6 +381,9 @@ Extra-source-files:
                        test/totality003/run
                        test/totality003/*.idr
                        test/totality003/expected
+                       test/totality004/run
+                       test/totality004/*.idr
+                       test/totality004/expected
 
                        test/tutorial001/run
                        test/tutorial001/*.idr

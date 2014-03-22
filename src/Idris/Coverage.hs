@@ -410,18 +410,20 @@ delazy' all t@(App f a)
        l == txt "Force" = delazy' all arg
      | (P _ (UN l) _, [P _ (UN lty) _, _, arg]) <- unApply t,
        l == txt "Delay" && (all || lty == txt "LazyEval") = delazy arg
-     | (P _ (UN l) _, [_, arg]) <- unApply t,
-       l == txt "Lazy'" = delazy' all arg
+     | (P _ (UN l) _, [P _ (UN lty) _, arg]) <- unApply t,
+       l == txt "Lazy'" && (all || lty == txt "LazyEval") = delazy' all arg
 delazy' all (App f a) = App (delazy' all f) (delazy' all a)
 delazy' all (Bind n b sc) = Bind n (fmap (delazy' all) b) (delazy' all sc)
 delazy' all t = t
+
+data Guardedness = Toplevel | Unguarded | Guarded
 
 buildSCG' :: IState -> [(Term, Term)] -> [Name] -> [SCGEntry]
 buildSCG' ist pats args = nub $ concatMap scgPat pats where
   scgPat (lhs, rhs) = let lhs' = delazy lhs
                           rhs' = delazy rhs
                           (f, pargs) = unApply (dePat lhs') in
-                          findCalls True (dePat rhs') (patvars lhs') pargs
+                          findCalls Toplevel (dePat rhs') (patvars lhs') pargs
 
   findCalls guarded ap@(App f a) pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
@@ -431,15 +433,20 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
      -- under a call to "Delay LazyCodata", don't do any checking as long
      -- as the call is guarded
      | (P _ (UN del) _, [_,_,_]) <- unApply ap,
-       guarded && del == txt "Delay" = []
+       guarded <- Guarded,
+       del == txt "Delay" = []
      | (P _ n _, args) <- unApply ap
-        = let nguarded = isConName n (tt_ctxt ist) in
+        = let nguarded = case guarded of
+                              Unguarded -> Unguarded
+                              _ -> if isConName n (tt_ctxt ist)
+                                      then Guarded
+                                      else Unguarded in
               mkChange n args pargs ++
                  concatMap (\x -> findCalls nguarded x pvs pargs) args
   findCalls guarded (App f a) pvs pargs
-        = findCalls False f pvs pargs ++ findCalls False a pvs pargs
+        = findCalls Unguarded f pvs pargs ++ findCalls Unguarded a pvs pargs
   findCalls guarded (Bind n (Let t v) e) pvs pargs
-        = findCalls False v pvs pargs ++ findCalls guarded e (n : pvs) pargs
+        = findCalls Unguarded v pvs pargs ++ findCalls guarded e (n : pvs) pargs
   findCalls guarded (Bind n _ e) pvs pargs
         = findCalls guarded e (n : pvs) pargs
   findCalls guarded (P _ f _ ) pvs pargs

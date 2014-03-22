@@ -1,0 +1,2 @@
+[1, 2, 2, 4, 3, 6, 4, 8, 5, 10]
+totality004a.idr:13:1:Main.process is possibly not total due to recursive path Main.process --> Main.process --> Main.process
