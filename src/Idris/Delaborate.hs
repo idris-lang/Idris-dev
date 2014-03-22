@@ -221,11 +221,19 @@ pprintErr' i (ElaboratingArg f x _ e)
   | isUN x =
      text "When elaborating argument" <+>
      annotate (AnnBoundName x False) (text (showbasic x)) <+> --TODO check plicity
-     text "to function" <+> annName f <> colon <>
+     text "to" <+> whatIsName <> annName f <> colon <>
      indented (pprintErr' i e)
   | otherwise =
-     text "When elaborating an application of function" <+>
+     text "When elaborating an application of" <+> whatIsName <>
      annName f <> colon <> indented (pprintErr' i e)
+  where whatIsName = let ctxt = tt_ctxt i
+                     in if isTConName f ctxt
+                           then text "type constructor" <> space
+                           else if isConName f ctxt
+                                   then text "constructor" <> space
+                                   else if isFnName f ctxt
+                                           then text "function" <> space
+                                           else empty
 pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
 pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
 pprintErr' i (ReflectionError parts orig) =

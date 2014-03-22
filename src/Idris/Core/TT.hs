@@ -198,6 +198,7 @@ instance Show Err where
     show (At f e) = show f ++ ":" ++ show e
     show (ElaboratingArg f x prev e) = "Elaborating " ++ show f ++ " arg " ++
                                        show x ++ ": " ++ show e
+    show (Elaborating what n e) = "Elaborating " ++ what ++ show n ++ ":" ++ show e
     show _ = "Error"
 
 instance Pretty Err OutputAnnotation where

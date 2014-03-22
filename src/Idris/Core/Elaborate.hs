@@ -167,6 +167,10 @@ done_elaborating_app :: Name -> Elab' aux ()
 done_elaborating_app f = updatePS (doneElaboratingAppPS f)
 done_elaborating_arg :: Name -> Name -> Elab' aux ()
 done_elaborating_arg f a = updatePS (doneElaboratingArgPS f a)
+elaborating_app :: Elab' aux [(FC, Name, Name)]
+elaborating_app = do ES (ps, _) _ _ <- get
+                     return $ map (\ (FailContext x y z) -> (x, y, z))
+                                  (while_elaborating ps)
 
 -- Some handy gadgets for pulling out bits of state
 
