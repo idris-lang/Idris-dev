@@ -96,7 +96,8 @@ match_unify ctxt env topx topy inj holes from =
     un names x y
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
         | otherwise = do UI s f <- get
-                         let r = recoverable x y
+                         let r = recoverable (normalise ctxt env x) 
+                                             (normalise ctxt env y)
                          let err = cantUnify from r
                                      topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
@@ -110,7 +111,8 @@ match_unify ctxt env topx topy inj holes from =
     uB bnames (Lam tx) (Lam ty) = un bnames tx ty
     uB bnames (Pi tx) (Pi ty) = un bnames tx ty
     uB bnames x y = do UI s f <- get
-                       let r = recoverable (binderTy x) (binderTy y)
+                       let r = recoverable (normalise ctxt env (binderTy x)) 
+                                           (normalise ctxt env (binderTy y))
                        let err = cantUnify from r topx topy
                                    (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
                                    (errEnv env) s
@@ -124,7 +126,8 @@ match_unify ctxt env topx topy inj holes from =
               put (UI (s+i) f)
 
     unifyFail x y = do UI s f <- get
-                       let r = recoverable x y
+                       let r = recoverable (normalise ctxt env x) 
+                                           (normalise ctxt env y)
                        let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                        put (UI s ((x, y, env, err, from, Match) : f))
@@ -377,7 +380,8 @@ unify ctxt env topx topy inj holes from =
     un' fn bnames x y
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
         | otherwise = do UI s f <- get
-                         let r = recoverable x y
+                         let r = recoverable (normalise ctxt env x) 
+                                             (normalise ctxt env y)
                          let err = cantUnify from r
                                      topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
@@ -477,7 +481,7 @@ unify ctxt env topx topy inj holes from =
     unifyTmpFail :: Term -> Term -> StateT UInfo TC [(Name, TT Name)]
     unifyTmpFail x y
                   = do UI s f <- get
-                       let r = recoverable x y
+                       let r = recoverable (normalise ctxt env x) (normalise ctxt env y)
                        let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                        put (UI s ((topx, topy, env, err, from, Unify) : f))
@@ -485,7 +489,7 @@ unify ctxt env topx topy inj holes from =
 
     -- shortcut failure, if we *know* nothing can fix it
     unifyFail x y = do UI s f <- get
-                       let r = recoverable x y
+                       let r = recoverable (normalise ctxt env x) (normalise ctxt env y)
                        let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                        put (UI s ((topx, topy, env, err, from, Unify) : f))
@@ -507,7 +511,8 @@ unify ctxt env topx topy inj holes from =
     uB bnames (Hole tx) (Hole ty) = un' False bnames tx ty
     uB bnames (PVar tx) (PVar ty) = un' False bnames tx ty
     uB bnames x y = do UI s f <- get
-                       let r = recoverable (binderTy x) (binderTy y)
+                       let r = recoverable (normalise ctxt env (binderTy x)) 
+                                           (normalise ctxt env (binderTy y))
                        let err = cantUnify from r topx topy
                                    (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
                                    (errEnv env) s
@@ -577,6 +582,7 @@ envPos x i ((y, _) : ys) | x == y = i
 -- more work may help.
 -- FIXME: Depending on how overloading gets used, this may cause problems. Better
 -- rethink overloading properly...
+-- ASSUMPTION: inputs are in normal form
 
 recoverable t@(App _ _) _
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
@@ -597,7 +603,7 @@ recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
 recoverable p@(Constant _) (App f a) = recoverable p f
 recoverable (App f a) p@(Constant _) = recoverable f p
 recoverable p@(P _ n _) (App f a) = recoverable p f
---     recoverable (App f a) p@(P _ _ _) = recoverable f p
+recoverable (App f a) p@(P _ _ _) = recoverable f p
 recoverable (App f a) (App f' a')
     = recoverable f f' -- && recoverable a a'
 recoverable f (Bind _ (Pi _) sc)

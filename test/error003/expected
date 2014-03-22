@@ -1,2 +1,2 @@
 ErrorReflection.idr:67:5:When elaborating right hand side of bad:
-DSL type error: (t'(504) => t'(504)) doesn't match ()
+DSL type error: (t(503) => t'(504)) doesn't match ()

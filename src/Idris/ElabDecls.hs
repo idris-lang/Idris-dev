@@ -116,6 +116,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
                                         [TI _ True _ _] -> True
                                         _ -> False
                         _ -> False
+         -- Productivity checking now via checking for guarded 'Delay' 
          let opts' = if corec then (Coinductive : opts) else opts
          let usety = if norm then nty' else nty
          ds <- checkDef fc [(n, (-1, Nothing, usety))]
@@ -127,8 +128,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          addDocStr n doc argDocs
          addIBC (IBCDoc n)
          addIBC (IBCFlags n opts')
-         when (Implicit `elem` opts) $ do addCoercion n
-                                          addIBC (IBCCoercion n)
+         when (Implicit `elem` opts') $ do addCoercion n
+                                           addIBC (IBCCoercion n)
          -- If the function is declared as an error handler and the language
          -- extension is enabled, then add it to the list of error handlers.
          errorReflection <- fmap (elem ErrorReflection . idris_language_extensions) getIState
@@ -882,6 +883,7 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
     mkLazy t = t
 
     getTyName (PApp _ (PRef _ n) _) = n == nsroot tn
+    getTyName (PRef _ n) = n == nsroot tn
     getTyName _ = False
 
 

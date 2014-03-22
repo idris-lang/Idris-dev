@@ -256,7 +256,7 @@ calcProd i fc topn pats
 
      prodRec :: Name -> [Name] -> ([Name], Term, Term) -> Idris Bool
      prodRec n done _ | n `elem` done = return True
-     prodRec n done (_, _, tm) = prod n done False (delazy tm)
+     prodRec n done (_, _, tm) = prod n done False (delazy' True tm)
 
      prod :: Name -> [Name] -> Bool -> Term -> Idris Bool
      prod n done ok ap@(App _ _)
@@ -292,9 +292,12 @@ calcProd i fc topn pats
                    _ -> False
      cotype nt n ty = False
 
-calcTotality :: [Name] -> FC -> Name -> [([Name], Term, Term)]
-                -> Idris Totality
-calcTotality path fc n pats
+-- Calculate the totality of a function from its patterns.
+-- Either follow the size change graph (if inductive) or check for
+-- productivity (if coinductive)
+
+calcTotality :: FC -> Name -> [([Name], Term, Term)] -> Idris Totality
+calcTotality fc n pats
     = do i <- getIState
          let opts = case lookupCtxt n (idris_flags i) of
                             [fs] -> fs
@@ -329,7 +332,7 @@ checkTotality path fc n
                         [CaseOp _ _ _ _ pats _] ->
                             do t' <- if AssertTotal `elem` opts
                                         then return $ Total []
-                                        else calcTotality path fc n pats
+                                        else calcTotality fc n pats
                                setTotality n t'
                                addIBC (IBCTotal n t')
                                return t'
@@ -401,41 +404,47 @@ buildSCG (_, n) = do
        [] -> logLvl 5 $ "Could not build SCG for " ++ show n ++ "\n"
        x -> error $ "buildSCG: " ++ show (n, x)
 
-delazy t@(App f a)
+delazy = delazy' False -- not lazy codata
+delazy' all t@(App f a)
      | (P _ (UN l) _, [_, _, arg]) <- unApply t,
-       l == txt "Force" = delazy arg
-     | (P _ (UN l) _, [_, _, arg]) <- unApply t,
-       l == txt "Delay" = delazy arg
+       l == txt "Force" = delazy' all arg
+     | (P _ (UN l) _, [P _ (UN lty) _, _, arg]) <- unApply t,
+       l == txt "Delay" && (all || lty == txt "LazyEval") = delazy arg
      | (P _ (UN l) _, [_, arg]) <- unApply t,
-       l == txt "Lazy'" = delazy arg
-delazy (App f a) = App (delazy f) (delazy a)
-delazy (Bind n b sc) = Bind n (fmap delazy b) (delazy sc)
-delazy t = t
+       l == txt "Lazy'" = delazy' all arg
+delazy' all (App f a) = App (delazy' all f) (delazy' all a)
+delazy' all (Bind n b sc) = Bind n (fmap (delazy' all) b) (delazy' all sc)
+delazy' all t = t
 
 buildSCG' :: IState -> [(Term, Term)] -> [Name] -> [SCGEntry]
 buildSCG' ist pats args = nub $ concatMap scgPat pats where
   scgPat (lhs, rhs) = let lhs' = delazy lhs
                           rhs' = delazy rhs
                           (f, pargs) = unApply (dePat lhs') in
-                          findCalls (dePat rhs') (patvars lhs') pargs
+                          findCalls True (dePat rhs') (patvars lhs') pargs
 
-  findCalls ap@(App f a) pvs pargs
+  findCalls guarded ap@(App f a) pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
      -- that it is total.
      | (P _ (UN at) _, [_, _]) <- unApply ap,
        at == txt "assert_total" = []
+     -- under a call to "Delay LazyCodata", don't do any checking as long
+     -- as the call is guarded
+     | (P _ (UN del) _, [_,_,_]) <- unApply ap,
+       guarded && del == txt "Delay" = []
      | (P _ n _, args) <- unApply ap
-        = mkChange n args pargs ++
-              concatMap (\x -> findCalls x pvs pargs) args
-  findCalls (App f a) pvs pargs
-        = findCalls f pvs pargs ++ findCalls a pvs pargs
-  findCalls (Bind n (Let t v) e) pvs pargs
-        = findCalls v pvs pargs ++ findCalls e (n : pvs) pargs
-  findCalls (Bind n _ e) pvs pargs
-        = findCalls e (n : pvs) pargs
-  findCalls (P _ f _ ) pvs pargs
+        = let nguarded = isConName n (tt_ctxt ist) in
+              mkChange n args pargs ++
+                 concatMap (\x -> findCalls nguarded x pvs pargs) args
+  findCalls guarded (App f a) pvs pargs
+        = findCalls False f pvs pargs ++ findCalls False a pvs pargs
+  findCalls guarded (Bind n (Let t v) e) pvs pargs
+        = findCalls False v pvs pargs ++ findCalls guarded e (n : pvs) pargs
+  findCalls guarded (Bind n _ e) pvs pargs
+        = findCalls guarded e (n : pvs) pargs
+  findCalls guarded (P _ f _ ) pvs pargs
       | not (f `elem` pvs) = [(f, [])]
-  findCalls _ _ _ = []
+  findCalls _ _ _ _ = []
 
   expandToArity n args 
      = case lookupTy n (tt_ctxt ist) of
