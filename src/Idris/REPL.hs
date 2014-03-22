@@ -420,7 +420,7 @@ edit f orig
          env <- runIO $ getEnvironment
          let editor = getEditor env
          let line = case errSpan i of
-                        Just l -> " +" ++ show l ++ " "
+                        Just l -> " +" ++ show (fst (fc_start l)) ++ " "
                         Nothing -> " "
          let cmd = editor ++ line ++ fixName f
          runIO $ system cmd
