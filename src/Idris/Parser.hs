@@ -1115,7 +1115,8 @@ findFC x = let s = show (plain x) in
              case span (/= ':') s of
                (failname, ':':rest) -> case span isDigit rest of
                  (line, ':':rest') -> case span isDigit rest' of
-                   (col, ':':msg) -> (FC failname (read line) (read col), msg)
+                   (col, ':':msg) -> let pos = (read line, read col) in
+                                         (FC failname pos pos, msg)
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
