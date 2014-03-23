@@ -430,11 +430,14 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
      -- that it is total.
      | (P _ (UN at) _, [_, _]) <- unApply ap,
        at == txt "assert_total" = []
-     -- under a call to "Delay LazyCodata", don't do any checking as long
-     -- as the call is guarded
-     | (P _ (UN del) _, [_,_,_]) <- unApply ap,
+     -- under a call to "Delay LazyCodata", don't do any checking of the
+     -- immediate call, as long as the call is guarded. 
+     -- Then check its arguments
+     | (P _ (UN del) _, [_,_,arg]) <- unApply ap,
        guarded <- Guarded,
-       del == txt "Delay" = []
+       del == txt "Delay" 
+           = let (capp, args) = unApply arg in
+                 concatMap (\x -> findCalls Toplevel x pvs pargs) args
      | (P _ n _, args) <- unApply ap
         = let nguarded = case guarded of
                               Unguarded -> Unguarded
