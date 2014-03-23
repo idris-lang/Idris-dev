@@ -889,12 +889,12 @@ isDConName n ctxt
 
 isFnName :: Name -> Context -> Bool
 isFnName n ctxt
-     = or $ do def <- lookupCtxt n (definitions ctxt)
-               case tfst def of
-                    (Function _ _) -> return True
-                    (Operator _ _ _) -> return True
-                    (CaseOp _ _ _ _ _ _) -> return True
-                    _ -> return False
+     = let def = lookupCtxtExact n (definitions ctxt) in
+          case def of
+               Just (Function _ _, _, _, _) -> True
+               Just (Operator _ _ _, _, _, _) -> True
+               Just (CaseOp _ _ _ _ _ _, _, _, _) -> True
+               _ -> False
 
 lookupP :: Name -> Context -> [Term]
 lookupP n ctxt
