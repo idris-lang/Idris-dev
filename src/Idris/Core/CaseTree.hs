@@ -601,7 +601,9 @@ prune proj (Case n alts)
             --    | proj -> mkProj n 0 args (prune proj sc)
 
             as@[SucCase cn sc]
-                | proj -> mkProj n (-1) [cn] (prune proj sc)
+                | proj
+                , not (cn `improjectibleSC` sc)
+                -> projRep cn n (-1) $ prune proj sc
 
             as@[ConstCase _ sc]
                 -> prune proj sc
@@ -641,6 +643,21 @@ prune proj (Case n alts)
              = SucCase sn (mkForce n arg rhs)
           mkForceAlt n arg (DefaultCase rhs)
              = DefaultCase (mkForce n arg rhs)
+
+          -- Figure out whether the SC is improjectible:
+          -- For example, (Case n _) only admits /names/ as "n"
+          -- so we cannot replace n with a projection of anything.
+          improjectibleSC :: Name -> SC -> Bool
+          n `improjectibleSC` Case x alts = n == x || (n `improjectibleAlt`) `any` alts
+          n `improjectibleSC` ProjCase t alt = n `improjectibleAlt` alt
+          n `improjectibleSC` _ = False  -- we can replace freely in terms
+
+          improjectibleAlt :: Name -> CaseAlt -> Bool
+          n `improjectibleAlt` ConCase   cn t args sc = n `improjectibleSC` sc
+          n `improjectibleAlt` FnCase    cn   args sc = n `improjectibleSC` sc
+          n `improjectibleAlt` ConstCase    t      sc = n `improjectibleSC` sc
+          n `improjectibleAlt` SucCase   cn        sc = n `improjectibleSC` sc
+          n `improjectibleAlt` DefaultCase         sc = n `improjectibleSC` sc
          
           forceTm n arg t = subst arg (forceArg n) t
 
