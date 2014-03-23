@@ -325,7 +325,7 @@ data Opt = Filename String
          | DefaultTotal
          | DefaultPartial
          | WarnPartial
-         | NoWarnReach
+         | WarnReach
          | NoCoverage
          | ErrContext
          | ShowImpl

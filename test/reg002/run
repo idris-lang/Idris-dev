@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-idris reg002.idr -o reg002 --nowarnreach
+idris reg002.idr -o reg002
 ./reg002
 rm -f reg002 *.ibc

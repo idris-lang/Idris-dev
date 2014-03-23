@@ -108,7 +108,7 @@ usagemsg = usagemsghdr ++ "\n" ++
            "\t    --check                 Undocumented\n" ++
            "\t    --total                 Require functions to be total by default\n" ++
            "\t    --partial               Undocumented\n" ++
-           "\t    --nowarnreach           Do not warn about reachable but inaccessible arguments\n" ++
+           "\t    --warnreach             Warn about reachable but inaccessible arguments\n" ++
            "\t    --warnpartial           Warn about undeclared partial functions.\n" ++
            "\t    --warn                  Undocumented\n" ++
            "\t    --typecase              Undocumented\n" ++
