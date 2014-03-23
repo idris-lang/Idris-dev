@@ -191,11 +191,11 @@ irTerm vs env tm@(App f a) = case unApply tm of
         -> LForce <$> irTerm vs env arg
 
     -- Laziness, the new way
-    (P _ (UN l) _, [_, arg])
+    (P _ (UN l) _, [_, _, arg])
         | l == txt "Delay"
         -> LLazyExp <$> irTerm vs env arg
 
-    (P _ (UN l) _, [_, arg])
+    (P _ (UN l) _, [_, _, arg])
         | l == txt "Force"
         -> LForce <$> irTerm vs env arg
 
