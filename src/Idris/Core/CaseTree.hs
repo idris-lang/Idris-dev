@@ -595,7 +595,6 @@ prune proj (Case n alts)
             --   f (X x) = ...  x  ...
             -- vs.
             --   f  x    = ... x!0 ...
-            -- There's currently no code to handle this stuff. (TODO)
             --
             --as@[ConCase cn i args sc]
             --    | proj -> mkProj n 0 args (prune proj sc)
@@ -644,7 +643,7 @@ prune proj (Case n alts)
           mkForceAlt n arg (DefaultCase rhs)
              = DefaultCase (mkForce n arg rhs)
 
-          -- Figure out whether the SC is improjectible:
+          -- Figure out whether the name is improjectible in the SC:
           -- For example, (Case n _) only admits /names/ as "n"
           -- so we cannot replace n with a projection of anything.
           improjectibleSC :: Name -> SC -> Bool
