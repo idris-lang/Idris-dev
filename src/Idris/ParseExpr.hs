@@ -247,7 +247,7 @@ ProofExpr ::=
 -}
 proofExpr :: SyntaxInfo -> IdrisParser PTerm
 proofExpr syn = do reserved "proof"
-                   ts <- indentedBlock (tactic syn)
+                   ts <- indentedBlock1 (tactic syn)
                    return $ PProof ts
                 <?> "proof block"
 
@@ -260,7 +260,7 @@ TacticsExpr :=
 -}
 tacticsExpr :: SyntaxInfo -> IdrisParser PTerm
 tacticsExpr syn = do reserved "tactics"
-                     ts <- indentedBlock (tactic syn)
+                     ts <- indentedBlock1 (tactic syn)
                      return $ PTactics ts
                   <?> "tactics block"
 
