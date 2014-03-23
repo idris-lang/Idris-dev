@@ -391,6 +391,21 @@ Extra-source-files:
                        test/tutorial001/run
                        test/tutorial001/*.idr
                        test/tutorial001/expected
+                       test/tutorial002/run
+                       test/tutorial002/*.idr
+                       test/tutorial002/expected
+                       test/tutorial003/run
+                       test/tutorial003/*.idr
+                       test/tutorial003/expected
+                       test/tutorial004/run
+                       test/tutorial004/*.idr
+                       test/tutorial004/expected
+                       test/tutorial005/run
+                       test/tutorial005/*.idr
+                       test/tutorial005/expected
+                       test/tutorial006/run
+                       test/tutorial006/*.idr
+                       test/tutorial006/expected
 
 source-repository head
   type:     git

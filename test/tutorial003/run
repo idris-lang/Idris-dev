@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris $@ tutorial003.idr --check 
+rm -f *.ibc
