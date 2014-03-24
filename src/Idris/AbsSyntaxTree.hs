@@ -293,6 +293,7 @@ data Command = Quit
              | ListErrorHandlers
              | SetConsoleWidth ConsoleWidth
              | Apropos String
+             | MakeDoc String                      -- IdrisDoc
 
 data Opt = Filename String
          | Ver

@@ -474,6 +474,7 @@ Library
                 , Idris.Help
                 , Idris.IBC
                 , Idris.IdeSlave
+                , Idris.IdrisDoc
                 , Idris.Imports
                 , Idris.Inliner
                 , Idris.Parser

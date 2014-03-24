@@ -12,6 +12,7 @@ import Idris.Error
 import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Docstrings (Docstring, overview, renderDocstring)
+import Idris.IdrisDoc
 import Idris.Prover
 import Idris.Parser
 import Idris.Primitives
@@ -974,6 +975,24 @@ process h fn (Apropos a) =
         isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
+
+-- IdrisDoc
+process h fn (MakeDoc s) =
+  do     istate       <- getIState
+         outputTarget <- runIO $ getCurrentDirectory
+     let trim          = dropWhile isSpace
+         s'            = trim s
+         (trace, s'')  = case (stripPrefix "notrace" s') of Just x  -> (False, trim x)
+                                                            Nothing -> (True,  s')
+         target        = let (front, back) = span (not . isSpace) s''
+                         in  if      front == "ns"  then Namespace (trim back)
+                             else if front == "dir" then Dir (trim back)
+                             else if null s''       then Dir outputTarget
+                             else                        Namespace (s'')
+         result       <- runIO $ generateDocs istate target outputTarget trace
+         case result of Right _   -> iputStrLn "IdrisDoc generated"
+                        Left  err -> let u = "Usage: :mkdoc [notrace] [ns | dir] [TARGET]"
+                                     in  iPrintError err ++ "\n" ++ u
 
 classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"
