@@ -833,23 +833,7 @@ data TIData = TIPartial -- ^ a function with a partially defined type
             | TISolution [Term] -- ^ possible solutions to a metavariable in a type 
     deriving Show
 
--- An argument is conditionally forceable iff its forceability
--- depends on the collapsibility of the whole type.
-data Forceability = Conditional | Unconditional deriving (Show, Enum, Bounded, Eq, Ord)
-
-{-!
-deriving instance Binary Forceability
-deriving instance NFData Forceability
-!-}
-
-data OptInfo = Optimise { collapsible :: Bool,
-                          isnewtype :: Bool,
-                          -- The following should actually be (IntMap Forceability)
-                          -- but the corresponding Binary instance seems to be broken.
-                          -- Let's store a list and convert it to IntMap whenever needed.
-                          forceable :: [(Int, Forceability)],
-                          recursive :: [Int],
-                          inaccessible :: [(Int,Name)],  -- names for error reporting 
+data OptInfo = Optimise { inaccessible :: [(Int,Name)],  -- includes names for error reporting 
                           detaggable :: Bool }
     deriving Show
 {-!

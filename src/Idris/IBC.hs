@@ -1093,10 +1093,6 @@ safeToEnum label x' = result
             = error $ label ++ ": corrupted binary representation in IBC"
         | otherwise = toEnum x
 
-instance Binary Forceability where
-    put = putWord8 . fromIntegral . fromEnum
-    get = safeToEnum "Forceability" `fmap` getWord8
-
 instance Binary PReason where
         put x
           = case x of
@@ -2100,21 +2096,13 @@ instance Binary ClassInfo where
                return (CI x1 x2 x3 x4 x5 [])
 
 instance Binary OptInfo where
-        put (Optimise x1 x2 x3 x4 x5 x6)
+        put (Optimise x1 x2)
           = do put x1
                put x2
-               put x3
-               put x4
-               put x5
-               put x6
         get
           = do x1 <- get
                x2 <- get
-               x3 <- get
-               x4 <- get
-               x5 <- get
-               x6 <- get
-               return (Optimise x1 x2 x3 x4 x5 x6)
+               return (Optimise x1 x2)
 
 instance Binary TypeInfo where
         put (TI x1 x2 x3 x4) = do put x1

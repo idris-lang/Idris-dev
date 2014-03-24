@@ -189,7 +189,7 @@ saveInaccArgs n is = do
 
         _ -> do
             putIState ist{ idris_optimisation =
-                addDef n (Optimise False False [] [] is False) (idris_optimisation ist) }
+                addDef n (Optimise is False) (idris_optimisation ist) }
             addIBC (IBCOpt n)
 
 -- Get the list of (index, name) of inaccessible arguments from the type.
@@ -211,29 +211,6 @@ elabPostulate info syn doc fc opts n ty = do
 
     -- remove it from the deferred definitions list
     solveDeferred n
-
-{- NB. this check has been superseded by usage analysis
- -
-         -- make sure it's collapsible, so it is never needed at run time
-         -- start by getting the elaborated type
-         ctxt <- getContext
-         fty <- case lookupTy n ctxt of
-            [] -> tclift $ tfail $ (At fc (NoTypeDecl n)) -- can't happen!
-            [ty] -> return ty
-         ist <- getIState
-         let (ap, _) = unApply (getRetTy (normalise ctxt [] fty))
-
-         logLvl 5 $ "Checking collapsibility of " ++ show (ap, fty)
-         let postOK = case ap of
-                            P _ tn _ -> case lookupCtxt tn
-                                                (idris_optimisation ist) of
-                                            [oi] -> collapsible oi
-                                            _ -> False
-                            _ -> False
-         when (not postOK)
-            $ tclift $ tfail (At fc (NonCollapsiblePostulate n))
--}
-
 
 elabData :: ElabInfo -> SyntaxInfo -> Docstring -> [(Name, Docstring)] -> FC -> DataOpts -> PData -> Idris ()
 elabData info syn doc argDocs fc opts (PLaterdecl n t_in)
@@ -296,12 +273,12 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          let metainf = DataMI params
          addIBC (IBCMetaInformation n metainf)
          -- TMP HACK! Make this a data option
-         when (n /= sUN "Lazy'") $ collapseCons n cons
          updateContext (addDatatype (Data n ttag cty cons))
          updateContext (setMetaInformation n metainf)
          mapM_ (checkPositive n) cons
 
-         -- if there's exactly one constructor, mark both the type and the constructor
+         -- if there's exactly one constructor,
+         -- mark both the type and the constructor as detaggable
          case cons of
             [(cn,ct)] -> setDetaggable cn >> setDetaggable n
                 >> addIBC (IBCOpt cn) >> addIBC (IBCOpt n)
@@ -317,7 +294,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
             let opt = idris_optimisation ist
             case lookupCtxt n opt of
                 [oi] -> putIState ist{ idris_optimisation = addDef n oi{ detaggable = True } opt }
-                _    -> putIState ist{ idris_optimisation = addDef n (Optimise False False [] [] [] True) opt }
+                _    -> putIState ist{ idris_optimisation = addDef n (Optimise [] True) opt }
 
         checkDefinedAs fc n t ctxt 
             = case lookupDef n ctxt of
@@ -907,6 +884,11 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
                                                       (map pexp rhsArgs)) []
             return (pn, pfnTy, PClauses fc [] setname [pclause])
 
+-- FIXME: 'forcenames' is an almighty hack! Need a better way of
+-- erasing non-forceable things
+-- ^^^
+-- TODO: the above is a comment from the past;
+-- forcenames is probably no longer needed
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
            (Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name]) -> Idris (Name, Type)
 elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
@@ -937,10 +919,6 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
          addIBC (IBCDoc n)
          saveInaccArgs n inacc
          addIBC (IBCOpt n)
-         let fs = map (getNamePos 0 t) forcenames
-         -- FIXME: 'forcenames' is an almighty hack! Need a better way of
-         -- erasing non-forceable things
-         forceArgs tn n (mapMaybe (getNamePos 0 t) forcenames) cty'
          return (n, cty')
   where
     tyIs (Bind n b sc) = tyIs sc
@@ -975,7 +953,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
       do ctxt <- getContext
          ist  <- getIState
          let inacc = case lookupCtxt n (idris_optimisation ist) of
-               [Optimise _ _ _ _ inacc _] -> map fst inacc
+               [Optimise inacc _] -> map fst inacc
                _ -> []
          -- Check n actually exists, with no definition yet
          let tys = lookupTy n ctxt
@@ -994,29 +972,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            logLvl 3 $ "Elaborated patterns:\n" ++ show pats_in
 
-           -- if the return type of 'ty' is collapsible, the optimised version should
-           -- just do nothing
-           ist <- getIState
-           let (ap, _) = unApply (getRetTy fty)
-           logLvl 5 $ "Checking collapsibility of " ++ show (ap, fty)
-           -- FIXME: Really ought to only do this for total functions!
-           let doNothing = case ap of
-                              P _ tn _ -> case lookupCtxt tn
-                                                  (idris_optimisation ist) of
-                                              [oi] -> collapsible oi
-                                              _ -> False
-                              _ -> False
            solveDeferred n
+
            ist <- getIState
-           when doNothing $
-              case lookupCtxt n (idris_optimisation ist) of
-                 [oi] -> do let opts = addDef n (oi { collapsible = True })
-                                           (idris_optimisation ist)
-                            putIState (ist { idris_optimisation = opts })
-                 _ -> do let opts = addDef n (Optimise True False [] [] [] False)
-                                           (idris_optimisation ist)
-                         putIState (ist { idris_optimisation = opts })
-                         addIBC (IBCOpt n)
+           let opts = addDef n (Optimise [] False) (idris_optimisation ist)
+             in putIState (ist { idris_optimisation = opts })
+           addIBC (IBCOpt n)
+
            ist <- getIState
            let pats = map (simple_lhs (tt_ctxt ist)) $ doTransforms ist pats_in
 
@@ -1026,11 +988,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let tcase = opt_typecase (idris_options ist)
 
            -- Summary of what's about to happen: Definitions go:
-
-           -- pats_in -> pats -> optpats
-           -- pdef comes from pats,
-           -- optpdef comes from optpats
-           -- Then pdef' is optpdef with forcing/collapsing applied everywhere
+           --
+           -- pats_in -> pats -> pdef -> pdef'
 
            -- addCaseDef builds case trees from <pdef> and <pdef'>
 
@@ -1059,18 +1018,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            numArgs <- tclift $ sameLength pdef
 
-           -- patterns after collapsing optimisation applied
-           -- (i.e. check if the function should do nothing at run time)
-           optpats <- if doNothing
-                         then return $ [Right (mkApp (P Bound n Erased)
-                                                    (take numArgs (repeat Erased)), Erased)]
-                         else stripCollapsed pats
-
            case specNames opts of
                 Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats
                 _ -> return ()
 
-           let optpdef = map debind optpats -- \$ map (simple_lhs (tt_ctxt ist)) optpats
            tree@(CaseDef scargs sc _) <- tclift $
                    simpleCase tcase False reflect CompileTime fc inacc atys pdef
            cov <- coverage
@@ -1094,7 +1045,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let pcover = null pmissing
 
            -- pdef' is the version that gets compiled for run-time
-           pdef_in' <- applyOpts optpdef
+           pdef_in' <- applyOpts pdef
            let pdef' = map (simple_rt (tt_ctxt ist)) pdef_in'
 
            logLvl 5 $ "After data structure transformations:\n" ++ show pdef'
