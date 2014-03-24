@@ -1253,6 +1253,7 @@ instance Binary FnOpt where
                 Reflection -> putWord8 8
                 ErrorHandler -> putWord8 9
                 ErrorReverse -> putWord8 10
+                CoveringFn -> putWord8 11
         get
           = do i <- getWord8
                case i of
@@ -1268,6 +1269,7 @@ instance Binary FnOpt where
                    8 -> return Reflection
                    9 -> return ErrorHandler
                    10 -> return ErrorReverse
+                   11 -> return CoveringFn
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where

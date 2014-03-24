@@ -384,6 +384,7 @@ fnOpts :: [FnOpt] -> IdrisParser [FnOpt]
 fnOpts opts
         = do reserved "total"; fnOpts (TotalFn : opts)
       <|> do reserved "partial"; fnOpts (PartialFn : (opts \\ [TotalFn]))
+      <|> do reserved "covering"; fnOpts (CoveringFn : (opts \\ [TotalFn]))
       <|> do try (lchar '%' *> reserved "export"); c <- stringLiteral;
                   fnOpts (CExport c : opts)
       <|> do try (lchar '%' *> reserved "assert_total");

@@ -1020,6 +1020,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let tot = if pcover || AssertTotal `elem` opts
                       then Unchecked -- finish checking later
                       else Partial NotCovering -- already know it's not total
+
   --          case lookupCtxt (namespace info) n (idris_flags ist) of
   --             [fs] -> if TotalFn `elem` fs
   --                       then case tot of
@@ -1075,7 +1076,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                           return ()
   --                         addIBC (IBCTotal n tot)
                [] -> return ()
-           return ()
+           -- Check it's covering, if 'covering' option is used. Chase
+           -- all called functions, and fail if any of them are also
+           -- 'Partial NotCovering'
+           when (CoveringFn `elem` opts) $ checkAllCovering fc [] n n
   where
     noMatch i cs tm = all (\x -> case matchClause i (delab' i x True True) tm of
                                       Right _ -> False

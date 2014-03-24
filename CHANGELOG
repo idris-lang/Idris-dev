@@ -23,6 +23,8 @@ New in 0.9.12:
 * New :apropos command at REPL to search documentation, names, and types
 * Unification errors are now slightly more informative
 * Support mixed induction/coinduction with 'Inf' type
+* Add 'covering' function option, which checks whether a function and all
+  descendants cover all possible inputs
 
 New in 0.9.11:
 --------------

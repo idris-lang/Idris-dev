@@ -218,6 +218,23 @@ genAll i args
 
 upd p' p = p { getTm = p' }
 
+-- Check whether function and all descendants cover all cases (partial is
+-- okay, as long as it's due to recursion)
+
+checkAllCovering :: FC -> [Name] -> Name -> Name -> Idris ()
+checkAllCovering fc done top n | not (n `elem` done)
+   = do i <- get
+        case lookupTotal n (tt_ctxt i) of
+             [tot@(Partial NotCovering)] -> 
+                  tclift $ tfail (At fc (Msg (show top ++ " is " ++ show tot
+                                     ++ " due to " ++ show n)))
+             _ -> return ()
+        case lookupCtxt n (idris_callgraph i) of
+             [cg] -> mapM_ (checkAllCovering fc (n : done) top) 
+                           (map fst (calls cg))
+             _ -> return ()
+checkAllCovering _ _ _ _ = return ()
+
 -- Check if, in a given type n, the constructor cn : ty is strictly positive,
 -- and update the context accordingly
 
