@@ -44,23 +44,22 @@ pprintFD imp (FD n doc args ty f)
                 then nest 4 $ text "Arguments:" <$> vsep argshow
                 else empty)
 
-    where showArgs ((n, ty, Exp {}, d):args) bnd
+    where showArgs ((n, ty, Exp {}, Just d):args) bnd
              = bindingOf n False <+> colon <+>
                pprintPTerm imp bnd [] ty <>
-               showDoc (maybe emptyDocstring id d) <> line
+               showDoc d <> line
                :
                showArgs args ((n, False):bnd)
-          showArgs ((n, ty, Constraint {}, d):args) bnd
+          showArgs ((n, ty, Constraint {}, Just d):args) bnd
              = text "Class constraint" <+>
-               pprintPTerm imp bnd [] ty <> showDoc (maybe emptyDocstring id d) <> line
+               pprintPTerm imp bnd [] ty <> showDoc d <> line
                :
                showArgs args ((n, True):bnd)
-          showArgs ((n, ty, Imp {}, d):args) bnd
-           | Just d' <- d
+          showArgs ((n, ty, Imp {}, Just d):args) bnd
              = text "(implicit)" <+>
                bindingOf n True <+> colon <+>
                pprintPTerm imp bnd [] ty <>
-               showDoc d' <> line
+               showDoc d <> line
                :
                showArgs args ((n, True):bnd)
           showArgs ((n, _, _, _):args) bnd = showArgs args ((n, True):bnd)
