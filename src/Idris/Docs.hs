@@ -12,6 +12,7 @@ import Util.Pretty
 
 import Data.Maybe
 import Data.List
+import qualified Data.Text as T
 
 -- TODO: Only include names with public/abstract accessibility
 
@@ -33,7 +34,9 @@ showDoc d | nullDocstring d = empty
 
 pprintFD :: Bool -> FunDoc -> Doc OutputAnnotation
 pprintFD imp (FD n doc args ty f)
-    = nest 4 (prettyName imp [] n <+> colon <+> pprintPTerm imp [] (map (\(n,_,_,_) -> n) args) ty <$>
+    = nest 4 (prettyName imp [] n <+> colon <+>
+              pprintPTerm imp [] [ n | (n@(UN n'),_,_,_) <- args
+                                     , not (T.isPrefixOf (T.pack "__") n') ] ty <$>
               renderDocstring doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
               let argshow = showArgs args [] in
