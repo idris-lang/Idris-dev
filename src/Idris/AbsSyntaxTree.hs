@@ -1085,14 +1085,15 @@ consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
 prettyImp :: Bool -- ^^ whether to show implicits
           -> PTerm -- ^^ the term to pretty-print
           -> Doc OutputAnnotation
-prettyImp impl = pprintPTerm impl []
+prettyImp impl = pprintPTerm impl [] []
 
 -- | Pretty-print a high-level Idris term in some bindings context
 pprintPTerm :: Bool -- ^^ whether to show implicits
             -> [(Name, Bool)] -- ^^ the currently-bound names and whether they are implicit
+            -> [Name] -- ^^ names to always show in pi, even if not used
             -> PTerm -- ^^ the term to pretty-print
             -> Doc OutputAnnotation
-pprintPTerm impl bnd = prettySe 10 bnd
+pprintPTerm impl bnd docArgs = prettySe 10 bnd
   where
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =
@@ -1112,7 +1113,7 @@ pprintPTerm impl bnd = prettySe 10 bnd
       prettySe 10 bnd v <+> kwd "in" </>
       prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PPi (Exp l s _) n ty sc)
-      | n `elem` allNamesIn sc || impl =
+      | n `elem` allNamesIn sc || impl || n `elem` docArgs =
           let open = if Lazy `elem` l then text "|" <> lparen else lparen in
             bracket p 2 . group $
             enclose open rparen (group . align $ bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
