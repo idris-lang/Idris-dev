@@ -549,7 +549,7 @@ Library
                 , text
                 , time >= 1.4
                 , transformers
-                , trifecta >= 1.4
+                , trifecta >= 1.1
                 , unordered-containers
                 , utf8-string
                 , vector
