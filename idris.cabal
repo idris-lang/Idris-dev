@@ -540,6 +540,7 @@ Library
                 , filepath
                 , haskeline >= 0.7
                 , language-java >= 0.2.6
+                , lens >= 4.1.1
                 , mtl
                 , parsers >= 0.9
                 , pretty
@@ -548,7 +549,7 @@ Library
                 , text
                 , time >= 1.4
                 , transformers
-                , trifecta >= 1.1
+                , trifecta >= 1.4
                 , unordered-containers
                 , utf8-string
                 , vector
