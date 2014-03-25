@@ -158,9 +158,11 @@ instance Ord Nat where
   compare (S k) Z     = GT
   compare (S x) (S y) = compare x y
 
-instance Num Nat where
+instance Additive Nat where
   (+) = plus
   (-) = minus
+
+instance Num Nat where
   (*) = mult
 
   abs x = x

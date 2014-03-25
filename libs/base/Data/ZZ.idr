@@ -73,9 +73,11 @@ fromInt n = if n < 0
 instance Cast Nat ZZ where
   cast n = Pos n
 
-instance Num ZZ where
+instance Additive ZZ where
   (+) = plusZ
   (-) = subZ
+
+instance Num ZZ where
   (*) = multZ
   abs = cast . absZ
   fromInteger = fromInt

@@ -130,11 +130,41 @@ instance (Ord a, Ord b) => Ord (a, b) where
       then compare xl yl
       else compare xr yr
 
--- --------------------------------------------------------- [ Numerical Class ]
-||| The Num class defines basic numerical arithmetic.
-class Num a where
+class Additive a where
     (+) : a -> a -> a
     (-) : a -> a -> a
+
+instance Additive Integer where
+    (+) = prim__addBigInt
+    (-) = prim__subBigInt
+
+instance Additive Int where
+    (+) = prim__addInt
+    (-) = prim__subInt
+
+instance Additive Float where
+    (+) = prim__addFloat
+    (-) = prim__subFloat
+
+instance Additive Bits8 where
+    (+) = prim__addB8
+    (-) = prim__subB8
+
+instance Additive Bits16 where
+    (+) = prim__addB16
+    (-) = prim__subB16
+
+instance Additive Bits32 where
+    (+) = prim__addB32
+    (-) = prim__subB32
+
+instance Additive Bits64 where
+    (+) = prim__addB64
+    (-) = prim__subB64
+
+-- --------------------------------------------------------- [ Numerical Class ]
+||| The Num class defines basic numerical arithmetic.
+class Additive a => Num a where
     (*) : a -> a -> a
     ||| Absolute value
     abs : a -> a
@@ -142,16 +172,12 @@ class Num a where
     fromInteger : Integer -> a
 
 instance Num Integer where
-    (+) = prim__addBigInt
-    (-) = prim__subBigInt
     (*) = prim__mulBigInt
 
     abs x = if x < 0 then -x else x
     fromInteger = id
 
 instance Num Int where
-    (+) = prim__addInt
-    (-) = prim__subInt
     (*) = prim__mulInt
 
     fromInteger = prim__truncBigInt_Int
@@ -159,37 +185,27 @@ instance Num Int where
 
 
 instance Num Float where
-    (+) = prim__addFloat
-    (-) = prim__subFloat
     (*) = prim__mulFloat
 
     abs x = if x < (prim__toFloatBigInt 0) then -x else x
     fromInteger = prim__toFloatBigInt
 
 instance Num Bits8 where
-  (+) = prim__addB8
-  (-) = prim__subB8
   (*) = prim__mulB8
   abs = id
   fromInteger = prim__truncBigInt_B8
 
 instance Num Bits16 where
-  (+) = prim__addB16
-  (-) = prim__subB16
   (*) = prim__mulB16
   abs = id
   fromInteger = prim__truncBigInt_B16
 
 instance Num Bits32 where
-  (+) = prim__addB32
-  (-) = prim__subB32
   (*) = prim__mulB32
   abs = id
   fromInteger = prim__truncBigInt_B32
 
 instance Num Bits64 where
-  (+) = prim__addB64
-  (-) = prim__subB64
   (*) = prim__mulB64
   abs = id
   fromInteger = prim__truncBigInt_B64
