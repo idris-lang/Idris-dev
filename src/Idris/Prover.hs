@@ -104,7 +104,7 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
   where
     showImplicits = opt_showimp (idris_options ist)
 
-    tPretty bnd t = pprintPTerm showImplicits bnd $ delab ist t
+    tPretty bnd t = pprintPTerm showImplicits bnd [] $ delab ist t
 
     assumptionNames :: Env -> [Name]
     assumptionNames = map fst
@@ -236,8 +236,8 @@ ploop fn d prompt prf e h
                           TType _ ->
                             ihPrintTermWithType h (prettyImp imp PType) type1Doc
                           _ -> let bnd = map (\x -> (fst x, False)) env in
-                               ihPrintTermWithType h (pprintPTerm imp bnd (delab ist tm))
-                                                     (pprintPTerm imp bnd (delab ist ty))
+                               ihPrintTermWithType h (pprintPTerm imp bnd [] (delab ist tm))
+                                                     (pprintPTerm imp bnd [] (delab ist ty))
                        putIState ist
                        return (False, e, False, prf))
                      (\err -> do putIState ist { tt_ctxt = ctxt } ; ierror err)
@@ -254,8 +254,8 @@ ploop fn d prompt prf e h
                                            let tm'    = force (normaliseAll ctxt' env tm)
                                                ty'    = force (normaliseAll ctxt' env ty)
                                                imp    = opt_showimp (idris_options ist')
-                                               tmDoc  = pprintPTerm imp bnd (delab ist' tm')
-                                               tyDoc  = pprintPTerm imp bnd (delab ist' ty')
+                                               tmDoc  = pprintPTerm imp bnd [] (delab ist' tm')
+                                               tyDoc  = pprintPTerm imp bnd [] (delab ist' ty')
                                            ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
                                            putIState ist
                                            return (False, e, False, prf))

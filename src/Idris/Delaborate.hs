@@ -138,7 +138,7 @@ pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
 pprintTerm ist = pprintTerm' ist []
 
 pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
-pprintTerm' ist = pprintPTerm (opt_showimp (idris_options ist)) 
+pprintTerm' ist bnd tm = pprintPTerm (opt_showimp (idris_options ist)) bnd [] tm
 
 pshow :: IState -> Err -> String
 pshow ist err = displayDecorated (consoleDecorate ist) .

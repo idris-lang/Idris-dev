@@ -33,7 +33,8 @@ showDoc d | nullDocstring d = empty
 
 pprintFD :: Bool -> FunDoc -> Doc OutputAnnotation
 pprintFD imp (FD n doc args ty f)
-    = nest 4 (prettyName imp [] n <+> colon <+> prettyImp imp ty <$> renderDocstring doc <$>
+    = nest 4 (prettyName imp [] n <+> colon <+> pprintPTerm imp [] (map (\(n,_,_,_) -> n) args) ty <$>
+              renderDocstring doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
               let argshow = showArgs args [] in
               if not (null argshow)
@@ -42,20 +43,20 @@ pprintFD imp (FD n doc args ty f)
 
     where showArgs ((n, ty, Exp {}, d):args) bnd
              = bindingOf n False <+> colon <+>
-               pprintPTerm imp bnd ty <>
+               pprintPTerm imp bnd [] ty <>
                showDoc (maybe emptyDocstring id d) <> line
                :
                showArgs args ((n, False):bnd)
           showArgs ((n, ty, Constraint {}, d):args) bnd
              = text "Class constraint" <+>
-               pprintPTerm imp bnd ty <> showDoc (maybe emptyDocstring id d) <> line
+               pprintPTerm imp bnd [] ty <> showDoc (maybe emptyDocstring id d) <> line
                :
                showArgs args ((n, True):bnd)
           showArgs ((n, ty, Imp {}, d):args) bnd
            | Just d' <- d
              = text "(implicit)" <+>
                bindingOf n True <+> colon <+>
-               pprintPTerm imp bnd ty <>
+               pprintPTerm imp bnd [] ty <>
                showDoc d' <> line
                :
                showArgs args ((n, True):bnd)
