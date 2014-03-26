@@ -159,7 +159,7 @@ directUse fn@(App f a)
     | (P Ref (UN pfk) _, [App e w]) <- unApply fn,
          pfk == txt "prim_fork"
              = directUse e ++ directUse w -- HACK so that fork works
-    | (P Ref (UN fce) _, [_, a]) <- unApply fn,
+    | (P Ref (UN fce) _, [_, _, a]) <- unApply fn,
          fce == txt "Force"
              = directUse a -- forcing a value counts as a use
     | (P Ref n _, args) <- unApply fn = [] -- need to know what n does with them
@@ -626,7 +626,7 @@ prune proj (Case n alts)
          
           forceTm n arg t = subst arg (forceArg n) t
 
-          forceArg n = App (App (P Ref (sUN "Force") Erased) Erased) 
+          forceArg n = App (App (App (P Ref (sUN "Force") Erased) Erased) Erased)
                            (P Bound n Erased)
 
           mkProj n i []       sc = prune proj sc
