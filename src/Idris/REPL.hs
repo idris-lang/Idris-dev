@@ -978,20 +978,12 @@ process h fn (Apropos a) =
 
 -- IdrisDoc
 process h fn (MakeDoc s) =
-  do     istate           <- getIState
-         outputTarget     <- runIO $ getCurrentDirectory
-         let trim          = dropWhile isSpace
-             s'            = trim s
-             (trace, s'')  = case (stripPrefix "notrace" s') of Just x  -> (False, trim x)
-                                                                Nothing -> (True,  s')
-             target        = let (front, back) = span (not . isSpace) s''
-                             in  if      front == "ns"  then Namespace (trim back)
-                                 else if front == "dir" then Dir (trim back)
-                                 else if null s''       then Dir outputTarget
-                                 else                        Namespace (s'')
-         result           <- runIO $ generateDocs istate target outputTarget trace
+  do     istate    <- getIState
+         let nss    = words s
+         outputDir <- runIO $ getCurrentDirectory
+         result    <- runIO $ generateDocs istate nss outputDir
          case result of Right _   -> iputStrLn "IdrisDoc generated"
-                        Left  err -> iPrintError (err ++ "\n" ++ idrisDocUsage)
+                        Left  err -> iPrintError err
 
 classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"

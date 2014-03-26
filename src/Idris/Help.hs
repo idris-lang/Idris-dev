@@ -4,6 +4,7 @@ data CmdArg = ExprArg -- ^ The command takes an expression
             | NameArg -- ^ The command takes a name
             | FileArg -- ^ The command takes a file
             | ModuleArg -- ^ The command takes a module name
+            | NamespaceArg -- ^ The command takes a namespace name
             | OptionArg -- ^ The command takes an option
             | MetaVarArg -- ^ The command takes a metavariable
             | ColourArg  -- ^ The command is the colour-setting command
@@ -16,6 +17,7 @@ instance Show CmdArg where
     show NameArg          = "<name>"
     show FileArg          = "<filename>"
     show ModuleArg        = "<module>"
+    show NamespaceArg     = "<namespace>"
     show OptionArg        = "<option>"
     show MetaVarArg       = "<metavar>"
     show ColourArg        = "<option>"
@@ -29,9 +31,7 @@ help =
     ([":t"], ExprArg, "Check the type of an expression"),
     ([":miss", ":missing"], NameArg, "Show missing clauses"),
     ([":doc"], NameArg, "Show internal documentation"),
-    ([":mkdoc"], NoArg, "Generate IdrisDoc for all .idr files in working directory and subdirectories"),
-    ([":mkdoc"], NameArg, "Generate IdrisDoc for target namespace"),
-    ([":mkdoc"], OptionArg, "Generate IdrisDoc. Options: [notrace] [ns | dir] [TARGET]"),
+    ([":mkdoc"], NamespaceArg, "Generate IdrisDoc for namespace(s) and dependencies"),
     ([":apropos"], NoArg, "Search names, types, and documentation"),
     ([":i", ":info"], NameArg, "Display information about a type class"),
     ([":total"], NameArg, "Check the totality of a name"),

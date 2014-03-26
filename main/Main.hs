@@ -95,6 +95,7 @@ usagemsg = usagemsghdr ++ "\n" ++
            "\t    --install IPKG          Install package\n" ++
            "\t    --clean IPKG            Clean package\n" ++
            "\t    --build IPKG            Build package\n" ++
+           "\t    --mkdoc IPKG            Generate IdrisDoc for package\n" ++
            "\t    --exec EXPR             Execute as idris\n" ++
            "\t    --libdir                Display library directory\n" ++
            "\t    --link                  Display link directory\n" ++
