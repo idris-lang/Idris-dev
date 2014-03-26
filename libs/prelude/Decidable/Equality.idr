@@ -190,39 +190,44 @@ instance DecEq a => DecEq (Vect n a) where
 --------------------------------------------------------------------------------
 
 instance DecEq Int where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
 -- Char
 --------------------------------------------------------------------------------
 
 instance DecEq Char where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
 -- Integer
 --------------------------------------------------------------------------------
 
 instance DecEq Integer where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
 -- Float
 --------------------------------------------------------------------------------
 
 instance DecEq Float where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
 -- String
 --------------------------------------------------------------------------------
 
 instance DecEq String where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 
