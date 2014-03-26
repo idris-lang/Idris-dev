@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
-module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable) where
+module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..)) where
 
 import Text.Printf
 import Numeric
@@ -130,6 +130,8 @@ quotedChar = try (string "\\\\" >> return '\\')
 parseSExp :: String -> Result SExp
 parseSExp = parseString pSExp (Directed (UTF8.fromString "(unknown)") 0 0 0 0)
 
+data Opt = ShowImpl | ErrContext deriving Show
+
 data IdeSlaveCommand = REPLCompletions String
                      | Interpret String
                      | TypeOf String
@@ -142,6 +144,8 @@ data IdeSlaveCommand = REPLCompletions String
                      | LoadFile String
                      | DocsFor String
                      | Apropos String
+                     | GetOpts
+                     | SetOpt Opt Bool
   deriving Show
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
@@ -161,6 +165,10 @@ sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom
                                  _            -> Nothing)
 sexpToCommand (SexpList [SymbolAtom "docs-for", StringAtom name])                       = Just (DocsFor name)
 sexpToCommand (SexpList [SymbolAtom "apropos", StringAtom search])                      = Just (Apropos search)
+sexpToCommand (SymbolAtom "get-options")                                                = Just GetOpts
+sexpToCommand (SexpList [SymbolAtom "set-option", SymbolAtom s, BoolAtom b])
+  | Just opt <- lookup s opts                                                           = Just (SetOpt opt b)
+    where opts = [("show-implicits", ShowImpl), ("error-context", ErrContext)] --TODO support more
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)
