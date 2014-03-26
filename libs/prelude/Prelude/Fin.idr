@@ -95,9 +95,9 @@ instance MaxBound (Fin (S n)) where
 
 ||| Substract two Fins, keeping the bound of the minuend
 (-) : Fin n -> Fin m -> Fin n
-(-) fZ _ = fZ
-(-) f fZ = f
-(-) (fS f) (fS f') = weaken $ f - f'
+fZ - _ = fZ
+f - fZ = f
+(fS f) - (fS f') = weaken $ f - f'
 
 ||| Multiply two Fins, extending the bound
 (*) : Fin n -> Fin m -> Fin (n * m)
