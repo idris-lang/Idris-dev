@@ -268,6 +268,23 @@ ideslave orig mods
                        process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
                      Just (IdeSlave.Apropos a) ->
                        process stdout fn (Apropos a)
+                     Just (IdeSlave.GetOpts) ->
+                       do ist <- getIState
+                          let opts = idris_options ist
+                          let impshow = opt_showimp opts
+                          let errCtxt = opt_errContext opts
+                          let options = (IdeSlave.SymbolAtom "ok",
+                                         [(IdeSlave.SymbolAtom "show-implicits", impshow),
+                                          (IdeSlave.SymbolAtom "error-context", errCtxt)])
+                          runIO . putStrLn $ IdeSlave.convSExp "return" options id
+                     Just (IdeSlave.SetOpt IdeSlave.ShowImpl b) ->
+                       do setImpShow b
+                          let msg = (IdeSlave.SymbolAtom "ok", b)
+                          runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+                     Just (IdeSlave.SetOpt IdeSlave.ErrContext b) ->
+                       do setErrContext b
+                          let msg = (IdeSlave.SymbolAtom "ok", b)
+                          runIO . putStrLn $ IdeSlave.convSExp "return" msg id
                      Nothing -> do iPrintError "did not understand")
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
