@@ -427,7 +427,7 @@ split p xs =
 ||| It is equivalent to (take n xs, drop n xs)
 ||| @ n   the index to split at
 ||| @ xs  the list to split in two
-splitAt : Nat -> List a -> (List a, List a)
+splitAt : (n : Nat) -> (xs : List a) -> (List a, List a)
 splitAt n xs = (take n xs, drop n xs)
 
 partition : (a -> Bool) -> List a -> (List a, List a)
