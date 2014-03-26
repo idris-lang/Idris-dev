@@ -567,7 +567,7 @@ ihPrintFunTypes h bnd n overloads = do imp <- impShow
                                          RawOutput -> consoleDisplayAnnotated h output
                                          IdeSlave n -> ideSlaveReturnAnnotated n h output
   where fullName n = prettyName True bnd n
-        ppOverload imp n tm = fullName n <+> colon <+> align (pprintPTerm imp bnd tm)
+        ppOverload imp n tm = fullName n <+> colon <+> align (pprintPTerm imp bnd [] tm)
 
 ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderResult h d = do ist <- getIState

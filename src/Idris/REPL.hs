@@ -519,7 +519,7 @@ process h fn (Check (PRef _ n))
                  annotate (AnnName n Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
 
-    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd t
+    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] t
 
 
 process h fn (Check t)
