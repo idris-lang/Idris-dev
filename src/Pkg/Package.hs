@@ -11,12 +11,18 @@ import System.Directory (createDirectoryIfMissing, copyFile)
 import Util.System
 
 import Control.Monad
+import Control.Monad.Trans.State.Strict (execStateT)
+import Control.Monad.Error (runErrorT)
+
 import Data.List
 import Data.List.Split(splitOn)
 
 import Idris.Core.TT
 import Idris.REPL
+import Idris.Parser (loadModule)
+import Idris.Delaborate (pshow)
 import Idris.AbsSyntax
+import Idris.IdrisDoc
 
 import IRTS.System
 
@@ -73,7 +79,7 @@ checkPkg :: Bool         -- ^ Show Warnings
             -> FilePath  -- ^ Path to ipkg file.
             -> IO ()
 checkPkg warnonly quit fpath
-  = do pkgdesc <-parseDesc fpath
+  = do pkgdesc <- parseDesc fpath
        ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
        when (and ok) $
          do dir <- getCurrentDirectory
@@ -121,6 +127,33 @@ cleanPkg fp
                Nothing -> return ()
                Just s -> rmFile $ dir </> s
 
+-- | Generate IdrisDoc for package
+documentPkg :: FilePath -- ^ Path to .ipkg file.
+            -> IO ()
+documentPkg fp =
+  do pkgdesc        <- parseDesc fp
+     cd             <- getCurrentDirectory
+     let outputDir   = cd </> (pkgname pkgdesc) ++ "_doc"
+         mods        = modules pkgdesc
+         fs          = map (foldl1' (</>) . splitOn "." . showCG) mods
+         opts        = NoREPL : Verbose : idris_opts pkgdesc
+     setCurrentDirectory $ cd </> sourcedir pkgdesc
+     make (makefile pkgdesc)
+     let run l       = runErrorT . (execStateT l)
+         load []     = return () 
+         load (f:fs) = do loadModule stdout f; load fs
+         loader      = do idrisMain opts; load fs
+     idrisInstance  <- run loader idrisInit
+     case idrisInstance of
+          Left  err -> do putStrLn $ pshow idrisInit err; exitWith (ExitFailure 1)
+          Right ist ->
+                do docRes <- generateDocs ist mods outputDir
+                   case docRes of
+                        Right _  -> putStrLn "IdrisDoc generated"
+                        Left msg -> do putStrLn msg
+                                       exitWith (ExitFailure 1)
+
+
 -- | Install package
 installPkg :: PkgDesc -> IO ()
 installPkg pkgdesc
@@ -130,7 +163,6 @@ installPkg pkgdesc
               Nothing -> mapM_ (installIBC (pkgname pkgdesc)) (modules pkgdesc)
               Just o -> return () -- do nothing, keep executable locally, for noe
           mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
-
 
 -- ---------------------------------------------------------- [ Helper Methods ]
 -- Methods for building, testing, installing, and removal of idris

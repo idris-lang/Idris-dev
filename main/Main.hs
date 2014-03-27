@@ -61,6 +61,10 @@ runIdris opts = do
            [] -> return ()
            fs -> do runIO $ mapM_ cleanPkg fs
                     runIO $ exitWith ExitSuccess
+       case opt getPkgMkDoc opts of                -- IdrisDoc
+           [] -> return ()
+           fs -> do runIO $ mapM_ documentPkg fs
+                    runIO $ exitWith ExitSuccess
        case opt getPkg opts of
            [] -> case opt getPkgREPL opts of
                       [] -> idrisMain opts
