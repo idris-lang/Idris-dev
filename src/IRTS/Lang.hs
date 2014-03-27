@@ -239,8 +239,14 @@ instance Show LExp where
         = show n ++ "(" ++ showSep ", " (map (show' env ind) args) ++ ")"
 
      show' env ind (LCase e alts)
-        = "case " ++ show' env ind e ++ " of \n" ++
-               intercalate "\n" ["\t" ++ ind ++ " | " ++ showAlt env ("    " ++ ind) alt | alt <- alts]
+        = "case " ++ show' env ind e ++ " of \n" ++ fmt alts
+       where
+         fmt [] = ""
+         fmt [alt]
+            = "\t" ++ ind ++ " | " ++ showAlt env (ind ++ "    ") alt 
+         fmt (alt:as)
+            = "\t" ++ ind ++ " | " ++ showAlt env (ind ++ " `  ") alt
+                ++ "\n" ++ fmt as
 
      show' env ind (LConst c) = show c
 
