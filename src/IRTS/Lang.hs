@@ -245,7 +245,7 @@ instance Show LExp where
          fmt [alt]
             = "\t" ++ ind ++ " | " ++ showAlt env (ind ++ "    ") alt 
          fmt (alt:as)
-            = "\t" ++ ind ++ " | " ++ showAlt env (ind ++ " `  ") alt
+            = "\t" ++ ind ++ " | " ++ showAlt env (ind ++ " .  ") alt
                 ++ "\n" ++ fmt as
 
      show' env ind (LConst c) = show c
