@@ -93,7 +93,7 @@ performUsageAnalysis = do
         -- Check that no postulates are reachable.
         reachablePostulates <- S.intersection reachableNames . idris_postulates <$> getIState
         when (not . S.null $ reachablePostulates)
-            $ ifail ("reachable postulates: " ++ (show $ S.toList reachablePostulates))
+            $ ifail ("reachable postulates:\n" ++ intercalate "\n" ["  " ++ show n | n <- S.toList reachablePostulates])
 
         -- Store the usage info in the internal state.
         mapM_ (storeUsage cg) usage
