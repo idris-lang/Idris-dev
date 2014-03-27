@@ -207,7 +207,6 @@ elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring ->
                  FC -> FnOpts -> Name -> PTerm -> Idris ()
 elabPostulate info syn doc fc opts n ty = do
     elabType info syn doc [] fc opts n ty
-    logLvl (-10) $ "adding postulate " ++ show n
     putIState . (\ist -> ist{ idris_postulates = S.insert n (idris_postulates ist) }) =<< getIState
     addIBC (IBCPostulate n)
 
