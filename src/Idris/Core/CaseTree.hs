@@ -592,69 +592,47 @@ depatt ns tm = dp [] tm
 -- FIXME: Do this for SucCase too
 prune :: Bool -- ^ Convert single branches to projections (only useful at runtime)
       -> SC -> SC
-prune proj (Case n alts)
-    = let alts' = filter notErased $ map pruneAlt alts
-        in case alts' of
-            [] -> ImpossibleCase
+prune proj (Case n alts) = case alts' of
+    [] -> ImpossibleCase
 
-            -- This will be done in irSC in Compiler.hs.
-            --
-            --[ConCase (UN delay) i [t, a, arg] sc]
-            --    | proj
-            --    , delay == txt "Delay"
-            --    -> mkForce n arg sc
+    -- Projection transformations prevent us from seeing some uses of ctor fields
+    -- because they delete information about which ctor is being used.
+    -- Consider:
+    --   f (X x) = ...  x  ...
+    -- vs.
+    --   f  x    = ... x!0 ...
+    --
+    -- Hence, we disable this step.
+    --
+    -- as@[ConCase cn i args sc]
+    --     | proj -> mkProj n 0 args (prune proj sc)
+    -- mkProj n i xs sc = foldr (\x -> projRep x n i) sc xs
 
-            -- Projection transformations prevent us from seeing some uses of ctor fields
-            -- because they delete information about which ctor is being used.
-            -- Consider:
-            --   f (X x) = ...  x  ...
-            -- vs.
-            --   f  x    = ... x!0 ...
-            --
-            --as@[ConCase cn i args sc]
-            --    | proj -> mkProj n 0 args (prune proj sc)
+    [SucCase cn sc]
+        | proj
+        -> projRep cn n (-1) $ prune proj sc
 
-            [SucCase cn sc]
-                | proj
-                , cn `projectibleInSC` sc  -- TODO: remove this and use the almighty ProjCase
-                -> projRep cn n (-1) $ prune proj sc
+    [ConstCase _ sc]
+        -> prune proj sc
 
-            [ConstCase _ sc]
-                -> prune proj sc
+    -- Bit of a hack here! The default case will always be 0, make sure
+    -- it gets caught first.
+    [s@(SucCase _ _), DefaultCase dc]
+        -> Case n [ConstCase (BI 0) dc, s]
 
-            -- Bit of a hack here! The default case will always be 0, make sure
-            -- it gets caught first.
-            [s@(SucCase _ _), DefaultCase dc]
-                -> Case n [ConstCase (BI 0) dc, s]
-
-            as  -> Case n as
+    as  -> Case n as
   where
+    alts' = filter (not . erased) $ map pruneAlt alts
+
     pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune proj sc)
     pruneAlt (FnCase cn ns sc) = FnCase cn ns (prune proj sc)
     pruneAlt (ConstCase c sc) = ConstCase c (prune proj sc)
     pruneAlt (SucCase n sc) = SucCase n (prune proj sc)
     pruneAlt (DefaultCase sc) = DefaultCase (prune proj sc)
 
-    notErased (DefaultCase (STerm Erased)) = False
-    notErased (DefaultCase ImpossibleCase) = False
-    notErased _ = True
-
-    -- Figure out whether the name is projectible in the SC:
-    -- For example, (Case n _) only admits /names/ as "n"
-    -- so we cannot replace n with a projection of anything.
-    projectibleInSC :: Name -> SC -> Bool
-    n `projectibleInSC` Case x alts = (n /= x) && (n `projectibleInAlt`) `all` alts
-    n `projectibleInSC` ProjCase t alts = (n `projectibleInAlt`) `all` alts
-    n `projectibleInSC` _ = True  -- we can replace freely in terms
-
-    projectibleInAlt :: Name -> CaseAlt -> Bool
-    n `projectibleInAlt` ConCase   cn t args sc = n `projectibleInSC` sc
-    n `projectibleInAlt` FnCase    cn   args sc = n `projectibleInSC` sc
-    n `projectibleInAlt` ConstCase    t      sc = n `projectibleInSC` sc
-    n `projectibleInAlt` SucCase   cn        sc = n `projectibleInSC` sc
-    n `projectibleInAlt` DefaultCase         sc = n `projectibleInSC` sc
-    
-    mkProj n i xs sc = foldr (\x -> projRep x n i) sc xs
+    erased (DefaultCase (STerm Erased)) = True
+    erased (DefaultCase ImpossibleCase) = True
+    erased _ = False
 
     projRep :: Name -> Name -> Int -> SC -> SC
     projRep arg n i (Case x alts) | x == arg
