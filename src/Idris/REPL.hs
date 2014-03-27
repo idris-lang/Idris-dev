@@ -77,6 +77,7 @@ import Data.List
 import Data.Char
 import Data.Version
 import Data.Word (Word)
+import Data.Either (partitionEithers)
 import Control.DeepSeq
 
 import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
@@ -978,10 +979,15 @@ process h fn (Apropos a) =
 
 -- IdrisDoc
 process h fn (MakeDoc s) =
-  do     istate    <- getIState
-         let nss    = words s
-         outputDir <- runIO $ getCurrentDirectory
-         result    <- runIO $ generateDocs istate nss outputDir
+  do     istate        <- getIState
+         let names      = words s
+             parse n    | Success x <- runparser name istate fn n = Right x
+             parse n    = Left n
+             (bad, nss) = partitionEithers $ map parse names
+         cd            <- runIO $ getCurrentDirectory
+         let outputDir  = cd </> "doc"
+         result        <- if null bad then runIO $ generateDocs istate nss outputDir
+                                      else return . Left $ "Illegal name: " ++ head bad
          case result of Right _   -> iputStrLn "IdrisDoc generated"
                         Left  err -> iPrintError err
 
@@ -1070,6 +1076,7 @@ parseArgs ("--build":n:ns)       = PkgBuild n : (parseArgs ns)
 parseArgs ("--install":n:ns)     = PkgInstall n : (parseArgs ns)
 parseArgs ("--repl":n:ns)        = PkgREPL n : (parseArgs ns)
 parseArgs ("--clean":n:ns)       = PkgClean n : (parseArgs ns)
+parseArgs ("--mkdoc":n:ns)       = PkgMkDoc n : (parseArgs ns)        -- IdrisDoc
 parseArgs ("--checkpkg":n:ns)    = PkgCheck n : (parseArgs ns)
 -- Misc Options
 parseArgs ("--bytecode":n:ns)    = NoREPL : BCAsm n : (parseArgs ns)
@@ -1394,6 +1401,11 @@ getPkgREPL _ = Nothing
 getPkgCheck :: Opt -> Maybe String
 getPkgCheck (PkgCheck str) = Just str
 getPkgCheck _              = Nothing
+
+-- IdrisDoc
+getPkgMkDoc :: Opt -> Maybe String
+getPkgMkDoc (PkgMkDoc str) = Just str
+getPkgMkDoc _              = Nothing
 
 getCodegen :: Opt -> Maybe Codegen
 getCodegen (UseCodegen x) = Just x
