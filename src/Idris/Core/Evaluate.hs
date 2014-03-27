@@ -389,9 +389,9 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
              etm' <- ev ntimes stk (not (conHeaded tm))
                                    (amap ++ env) etm
              return $ Just etm'
-    evTree ntimes stk top env amap (ProjCase t alt)
+    evTree ntimes stk top env amap (ProjCase t alts)
         = do t' <- ev ntimes stk top env t 
-             doCase ntimes stk top env amap t' [alt]
+             doCase ntimes stk top env amap t' alts
     evTree ntimes stk top env amap (Case n alts)
         = case lookup n amap of
             Just v -> doCase ntimes stk top env amap v alts

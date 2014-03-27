@@ -16,7 +16,7 @@ data CaseDef = CaseDef [Name] !SC [Term]
     deriving Show
 
 data SC' t = Case Name [CaseAlt' t]  -- ^ invariant: lowest tags first
-           | ProjCase t (CaseAlt' t) -- ^ special case for projections
+           | ProjCase t [CaseAlt' t] -- ^ special case for projections/thunk-forcing before inspection
            | STerm !t
            | UnmatchedCase String -- ^ error message
            | ImpossibleCase -- ^ already checked to be impossible
@@ -46,8 +46,8 @@ instance Show t => Show (SC' t) where
       where
         show' i (Case n alts) = "case " ++ show n ++ " of\n" ++ indent i ++
                                     showSep ("\n" ++ indent i) (map (showA i) alts)
-        show' i (ProjCase tm alt) = "case " ++ show tm ++ " of " ++
-                                      showSep ("\n" ++ indent i) (map (showA i) [alt])
+        show' i (ProjCase tm alts) = "case " ++ show tm ++ " of " ++
+                                      showSep ("\n" ++ indent i) (map (showA i) alts)
         show' i (STerm tm) = show tm
         show' i (UnmatchedCase str) = "error " ++ show str
         show' i ImpossibleCase = "impossible"
@@ -97,7 +97,7 @@ small n args t = let as = findAllUsedArgs t args in
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where
     nu' ps (Case n alts) = nub (concatMap (nua ps) alts) \\ [n]
-    nu' ps (ProjCase t alt) = nub $ nut ps t ++ nua ps alt
+    nu' ps (ProjCase t alts) = nub $ nut ps t ++ concatMap (nua ps) alts
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
 
@@ -122,7 +122,7 @@ namesUsed sc = nub $ nu' [] sc where
 findCalls :: SC -> [Name] -> [(Name, [[Name]])]
 findCalls sc topargs = nub $ nu' topargs sc where
     nu' ps (Case n alts) = nub (concatMap (nua (n : ps)) alts)
-    nu' ps (ProjCase t alt) = nub (nut ps t ++ nua ps alt)
+    nu' ps (ProjCase t alts) = nub $ nut ps t ++ concatMap (nua ps) alts
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
 
@@ -175,7 +175,7 @@ findUsedArgs sc topargs = nub (findAllUsedArgs sc topargs)
 
 findAllUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nu' sc) where
     nu' (Case n alts) = n : concatMap nua alts
-    nu' (ProjCase t alt) = directUse t ++ nua alt
+    nu' (ProjCase t alts) = directUse t ++ concatMap nua alts
     nu' (STerm t)     = directUse t
     nu' _             = []
 
@@ -581,13 +581,14 @@ depatt ns tm = dp [] tm
 prune :: Bool -- ^ Convert single branches to projections (only useful at runtime)
       -> SC -> SC
 prune proj (Case n alts)
-    = let alts' = filter notErased (map pruneAlt alts) in
-          case alts' of
+    = let alts' = filter notErased $ map pruneAlt alts
+        in case alts' of
             [] -> ImpossibleCase
-            as@(ConCase (UN delay) i [arg] sc : _)
-                | delay == txt "Delay"
-                   -> if proj then mkForce n arg sc
-                              else Case n as
+
+            [ConCase (UN delay) i [t, a, arg] sc]
+                | proj
+                , delay == txt "Delay"
+                -> mkForce n arg sc
 
             -- Projection transformations prevent us from seeing some uses of ctor fields
             -- because they delete information about which ctor is being used.
@@ -599,12 +600,12 @@ prune proj (Case n alts)
             --as@[ConCase cn i args sc]
             --    | proj -> mkProj n 0 args (prune proj sc)
 
-            as@[SucCase cn sc]
+            [SucCase cn sc]
                 | proj
-                , not (cn `improjectibleSC` sc)
+                , cn `projectibleInSC` sc  -- TODO: remove this and use the almighty ProjCase
                 -> projRep cn n (-1) $ prune proj sc
 
-            as@[ConstCase _ sc]
+            [ConstCase _ sc]
                 -> prune proj sc
 
             -- Bit of a hack here! The default case will always be 0, make sure
@@ -613,87 +614,86 @@ prune proj (Case n alts)
                 -> Case n [ConstCase (BI 0) dc, s]
 
             as  -> Case n as
-    where pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune proj sc)
-          pruneAlt (FnCase cn ns sc) = FnCase cn ns (prune proj sc)
-          pruneAlt (ConstCase c sc) = ConstCase c (prune proj sc)
-          pruneAlt (SucCase n sc) = SucCase n (prune proj sc)
-          pruneAlt (DefaultCase sc) = DefaultCase (prune proj sc)
+  where
+    pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune proj sc)
+    pruneAlt (FnCase cn ns sc) = FnCase cn ns (prune proj sc)
+    pruneAlt (ConstCase c sc) = ConstCase c (prune proj sc)
+    pruneAlt (SucCase n sc) = SucCase n (prune proj sc)
+    pruneAlt (DefaultCase sc) = DefaultCase (prune proj sc)
 
-          notErased (DefaultCase (STerm Erased)) = False
-          notErased (DefaultCase ImpossibleCase) = False
-          notErased _ = True
+    notErased (DefaultCase (STerm Erased)) = False
+    notErased (DefaultCase ImpossibleCase) = False
+    notErased _ = True
 
-          mkForce n arg (Case x [alt])
-                | x == arg = ProjCase (forceArg n) (mkForceAlt n arg alt)
-          mkForce n arg (Case x alts)
-                 = Case x (map (mkForceAlt n arg) alts)
-          mkForce n arg (ProjCase t alt)
-             = ProjCase (forceTm n arg t) (mkForceAlt n arg alt)
-          mkForce n arg (STerm t) = STerm (forceTm n arg t)
-          mkForce n arg c = c
+    -- single-alternative case on a forced value
+    -- can be translated to a ProjCase directly
+    mkForce n arg (Case x alts) | x == arg
+        = ProjCase (forceArg n) $ map (mkForceAlt n arg) alts
 
-          mkForceAlt n arg (ConCase cn t args rhs)
-             = ConCase cn t args (mkForce n arg rhs)
-          mkForceAlt n arg (FnCase cn args rhs)
-             = FnCase cn args (mkForce n arg rhs)
-          mkForceAlt n arg (ConstCase t rhs)
-             = ConstCase t (mkForce n arg rhs)
-          mkForceAlt n arg (SucCase sn rhs)
-             = SucCase sn (mkForce n arg rhs)
-          mkForceAlt n arg (DefaultCase rhs)
-             = DefaultCase (mkForce n arg rhs)
+    mkForce n arg (Case x alts)
+        = Case x (map (mkForceAlt n arg) alts)
 
-          -- Figure out whether the name is improjectible in the SC:
-          -- For example, (Case n _) only admits /names/ as "n"
-          -- so we cannot replace n with a projection of anything.
-          improjectibleSC :: Name -> SC -> Bool
-          n `improjectibleSC` Case x alts = n == x || (n `improjectibleAlt`) `any` alts
-          n `improjectibleSC` ProjCase t alt = n `improjectibleAlt` alt
-          n `improjectibleSC` _ = False  -- we can replace freely in terms
+    mkForce n arg (ProjCase t alts)
+        = ProjCase (forceTm n arg t) $ map (mkForceAlt n arg) alts
 
-          improjectibleAlt :: Name -> CaseAlt -> Bool
-          n `improjectibleAlt` ConCase   cn t args sc = n `improjectibleSC` sc
-          n `improjectibleAlt` FnCase    cn   args sc = n `improjectibleSC` sc
-          n `improjectibleAlt` ConstCase    t      sc = n `improjectibleSC` sc
-          n `improjectibleAlt` SucCase   cn        sc = n `improjectibleSC` sc
-          n `improjectibleAlt` DefaultCase         sc = n `improjectibleSC` sc
-         
-          forceTm n arg t = subst arg (forceArg n) t
+    mkForce n arg (STerm t) = STerm (forceTm n arg t)
+    mkForce n arg c = c
 
-          forceArg n = App (App (App (P Ref (sUN "Force") Erased) Erased) Erased)
-                           (P Bound n Erased)
+    mkForceAlt n arg (ConCase cn t args rhs)
+        = ConCase cn t args (mkForce n arg rhs)
+    mkForceAlt n arg (FnCase cn args rhs)
+        = FnCase cn args (mkForce n arg rhs)
+    mkForceAlt n arg (ConstCase t rhs)
+        = ConstCase t (mkForce n arg rhs)
+    mkForceAlt n arg (SucCase sn rhs)
+        = SucCase sn (mkForce n arg rhs)
+    mkForceAlt n arg (DefaultCase rhs)
+        = DefaultCase (mkForce n arg rhs)
 
-          mkProj n i xs sc = foldr (\x -> projRep x n i) sc xs
+    -- Figure out whether the name is projectible in the SC:
+    -- For example, (Case n _) only admits /names/ as "n"
+    -- so we cannot replace n with a projection of anything.
+    projectibleInSC :: Name -> SC -> Bool
+    n `projectibleInSC` Case x alts = (n /= x) && (n `projectibleInAlt`) `all` alts
+    n `projectibleInSC` ProjCase t alts = (n `projectibleInAlt`) `all` alts
+    n `projectibleInSC` _ = True  -- we can replace freely in terms
 
-          -- Change every 'n' in sc to 'n-1'
---           mkProjS n cn sc = prune proj (fmap projn sc) where
---              projn pn@(P _ n' _) 
---                 | cn == n' = App (App (P Ref (UN "prim__subBigInt") Erased)
---                                       (P Bound n Erased)) (Constant (BI 1))
---              projn t = t
+    projectibleInAlt :: Name -> CaseAlt -> Bool
+    n `projectibleInAlt` ConCase   cn t args sc = n `projectibleInSC` sc
+    n `projectibleInAlt` FnCase    cn   args sc = n `projectibleInSC` sc
+    n `projectibleInAlt` ConstCase    t      sc = n `projectibleInSC` sc
+    n `projectibleInAlt` SucCase   cn        sc = n `projectibleInSC` sc
+    n `projectibleInAlt` DefaultCase         sc = n `projectibleInSC` sc
+    
+    forceTm n arg t = subst arg (forceArg n) t
 
-          projRep :: Name -> Name -> Int -> SC -> SC
-          projRep arg n i (Case x [alt]) | x == arg
-                = ProjCase (Proj (P Bound n Erased) i) (projRepAlt arg n i alt)
-          projRep arg n i (Case x alts)
-                = Case x (map (projRepAlt arg n i) alts)
-          projRep arg n i (ProjCase t alt)
-                = ProjCase (projRepTm arg n i t) (projRepAlt arg n i alt)
-          projRep arg n i (STerm t) = STerm (projRepTm arg n i t)
-          projRep arg n i c = c -- unmatched
+    forceArg n = App (App (App (P Ref (sUN "Force") Erased) Erased) Erased)
+                    (P Bound n Erased)
 
-          projRepAlt arg n i (ConCase cn t args rhs)
-              = ConCase cn t args (projRep arg n i rhs)
-          projRepAlt arg n i (FnCase cn args rhs)
-              = FnCase cn args (projRep arg n i rhs)
-          projRepAlt arg n i (ConstCase t rhs)
-              = ConstCase t (projRep arg n i rhs)
-          projRepAlt arg n i (SucCase sn rhs)
-              = SucCase sn (projRep arg n i rhs)
-          projRepAlt arg n i (DefaultCase rhs)
-              = DefaultCase (projRep arg n i rhs)
+    mkProj n i xs sc = foldr (\x -> projRep x n i) sc xs
 
-          projRepTm arg n i t = subst arg (Proj (P Bound n Erased) i) t
+    projRep :: Name -> Name -> Int -> SC -> SC
+    projRep arg n i (Case x alts) | x == arg
+        = ProjCase (Proj (P Bound n Erased) i) $ map (projRepAlt arg n i) alts
+    projRep arg n i (Case x alts)
+        = Case x (map (projRepAlt arg n i) alts)
+    projRep arg n i (ProjCase t alts)
+        = ProjCase (projRepTm arg n i t) $ map (projRepAlt arg n i) alts
+    projRep arg n i (STerm t) = STerm (projRepTm arg n i t)
+    projRep arg n i c = c
+
+    projRepAlt arg n i (ConCase cn t args rhs)
+        = ConCase cn t args (projRep arg n i rhs)
+    projRepAlt arg n i (FnCase cn args rhs)
+        = FnCase cn args (projRep arg n i rhs)
+    projRepAlt arg n i (ConstCase t rhs)
+        = ConstCase t (projRep arg n i rhs)
+    projRepAlt arg n i (SucCase sn rhs)
+        = SucCase sn (projRep arg n i rhs)
+    projRepAlt arg n i (DefaultCase rhs)
+        = DefaultCase (projRep arg n i rhs)
+
+    projRepTm arg n i t = subst arg (Proj (P Bound n Erased) i) t
 
 prune _ t = t
 

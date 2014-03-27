@@ -418,10 +418,10 @@ irTree args tree = do
 irSC :: Vars -> SC -> Idris LExp
 irSC vs (STerm t) = irTerm vs [] t
 irSC vs (UnmatchedCase str) = return $ LError str
-irSC vs (ProjCase tm alt) = do
-    tm'  <- irTerm vs [] tm
-    alt' <- irAlt vs tm' alt
-    return $ LCase tm' [alt']
+irSC vs (ProjCase tm alts) = do
+    tm'   <- irTerm vs [] tm
+    alts' <- mapM (irAlt vs tm') alts
+    return $ LCase tm' alts'
 
 -- There are two transformations in this case:
 --
