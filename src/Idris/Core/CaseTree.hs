@@ -3,7 +3,7 @@
 module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..),
                      Phase(..), CaseTree,
                      simpleCase, small, namesUsed, findCalls, findUsedArgs,
-                     substSC, substAlt) where
+                     substSC, substAlt, mkForce) where
 
 import Idris.Core.TT
 
@@ -585,10 +585,12 @@ prune proj (Case n alts)
         in case alts' of
             [] -> ImpossibleCase
 
-            [ConCase (UN delay) i [t, a, arg] sc]
-                | proj
-                , delay == txt "Delay"
-                -> mkForce n arg sc
+            -- This will be done in irSC in Compiler.hs.
+            --
+            --[ConCase (UN delay) i [t, a, arg] sc]
+            --    | proj
+            --    , delay == txt "Delay"
+            --    -> mkForce n arg sc
 
             -- Projection transformations prevent us from seeing some uses of ctor fields
             -- because they delete information about which ctor is being used.
@@ -625,31 +627,6 @@ prune proj (Case n alts)
     notErased (DefaultCase ImpossibleCase) = False
     notErased _ = True
 
-    -- single-alternative case on a forced value
-    -- can be translated to a ProjCase directly
-    mkForce n arg (Case x alts) | x == arg
-        = ProjCase (forceArg n) $ map (mkForceAlt n arg) alts
-
-    mkForce n arg (Case x alts)
-        = Case x (map (mkForceAlt n arg) alts)
-
-    mkForce n arg (ProjCase t alts)
-        = ProjCase (forceTm n arg t) $ map (mkForceAlt n arg) alts
-
-    mkForce n arg (STerm t) = STerm (forceTm n arg t)
-    mkForce n arg c = c
-
-    mkForceAlt n arg (ConCase cn t args rhs)
-        = ConCase cn t args (mkForce n arg rhs)
-    mkForceAlt n arg (FnCase cn args rhs)
-        = FnCase cn args (mkForce n arg rhs)
-    mkForceAlt n arg (ConstCase t rhs)
-        = ConstCase t (mkForce n arg rhs)
-    mkForceAlt n arg (SucCase sn rhs)
-        = SucCase sn (mkForce n arg rhs)
-    mkForceAlt n arg (DefaultCase rhs)
-        = DefaultCase (mkForce n arg rhs)
-
     -- Figure out whether the name is projectible in the SC:
     -- For example, (Case n _) only admits /names/ as "n"
     -- so we cannot replace n with a projection of anything.
@@ -665,11 +642,6 @@ prune proj (Case n alts)
     n `projectibleInAlt` SucCase   cn        sc = n `projectibleInSC` sc
     n `projectibleInAlt` DefaultCase         sc = n `projectibleInSC` sc
     
-    forceTm n arg t = subst arg (forceArg n) t
-
-    forceArg n = App (App (App (P Ref (sUN "Force") Erased) Erased) Erased)
-                    (P Bound n Erased)
-
     mkProj n i xs sc = foldr (\x -> projRep x n i) sc xs
 
     projRep :: Name -> Name -> Int -> SC -> SC
@@ -702,7 +674,6 @@ stripLambdas (CaseDef ns (STerm (Bind x (Lam _) sc)) tm)
     = stripLambdas (CaseDef (ns ++ [x]) (STerm (instantiate (P Bound x Erased) sc)) tm)
 stripLambdas x = x
 
-
 substSC :: Name -> Name -> SC -> SC
 substSC n repl (Case n' alts)
     | n == n'   = Case repl (map (substAlt n repl) alts)
@@ -718,3 +689,34 @@ substAlt n repl (SucCase n' sc)
     | n == n'   = SucCase n  (substSC n repl sc)
     | otherwise = SucCase n' (substSC n repl sc)
 substAlt n repl (DefaultCase sc)     = DefaultCase (substSC n repl sc)
+
+mkForce :: Name -> Name -> SC -> SC
+mkForce = mkForceSC
+  where
+    mkForceSC n arg (Case x alts) | x == arg
+        = ProjCase (forceArg n) $ map (mkForceAlt n arg) alts
+
+    mkForceSC n arg (Case x alts)
+        = Case x (map (mkForceAlt n arg) alts)
+
+    mkForceSC n arg (ProjCase t alts)
+        = ProjCase (forceTm n arg t) $ map (mkForceAlt n arg) alts
+
+    mkForceSC n arg (STerm t) = STerm (forceTm n arg t)
+    mkForceSC n arg c = c
+
+    mkForceAlt n arg (ConCase cn t args rhs)
+        = ConCase cn t args (mkForceSC n arg rhs)
+    mkForceAlt n arg (FnCase cn args rhs)
+        = FnCase cn args (mkForceSC n arg rhs)
+    mkForceAlt n arg (ConstCase t rhs)
+        = ConstCase t (mkForceSC n arg rhs)
+    mkForceAlt n arg (SucCase sn rhs)
+        = SucCase sn (mkForceSC n arg rhs)
+    mkForceAlt n arg (DefaultCase rhs)
+        = DefaultCase (mkForceSC n arg rhs)
+
+    forceTm n arg t = subst arg (forceArg n) t
+
+    forceArg n = App (App (App (P Ref (sUN "Force") Erased) Erased) Erased)
+                    (P Bound n Erased)

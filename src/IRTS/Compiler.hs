@@ -423,6 +423,11 @@ irSC vs (ProjCase tm alts) = do
     alts' <- mapM (irAlt vs tm') alts
     return $ LCase tm' alts'
 
+-- Transform matching on Delay to applications of Force.
+irSC vs (Case n [ConCase (UN delay) i [_, _, n'] sc])
+    | delay == txt "Delay"
+    = irSC vs $ mkForce n n' sc
+
 -- There are two transformations in this case:
 --
 --  1. Newtype-case elimination:
@@ -440,7 +445,7 @@ irSC vs (ProjCase tm alts) = do
 --
 -- In the example above, {e0} will most probably have been erased
 -- so this vain projection would make the resulting program segfault
--- because the code generator still emits a PROJECT(...) STG instruction.
+-- because the code generator still emits a PROJECT(...) G-machine instruction.
 --
 -- Hence, we check whether the variables are used at all
 -- and erase the casesplit if they are not.
