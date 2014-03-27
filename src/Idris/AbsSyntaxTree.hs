@@ -226,6 +226,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCLineApp FilePath Int PTerm
               | IBCErrorHandler Name
               | IBCFunctionErrorHandler Name Name Name
+              | IBCPostulate Name
   deriving Show
 
 -- | The initial state for the compiler

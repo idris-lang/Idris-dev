@@ -92,6 +92,7 @@ performUsageAnalysis = do
 
         -- Check that no postulates are reachable.
         reachablePostulates <- S.intersection reachableNames . idris_postulates <$> getIState
+        logLvl (-10) . show . idris_postulates =<< getIState
         when (not . S.null $ reachablePostulates)
             $ ifail ("reachable postulates: " ++ (show $ S.toList reachablePostulates))
 
