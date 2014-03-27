@@ -15,6 +15,18 @@ import Debug.Trace
 data CaseDef = CaseDef [Name] !SC [Term]
     deriving Show
 
+-- Note: The case-tree elaborator only produces (Case n alts)-cases;
+-- in other words, it never inspects anything else than variables.
+--
+-- ProjCase is a special powerful case construct that allows inspection
+-- of compound terms. Occurences of ProjCase arise no earlier than
+-- in the function `prune` as a means of optimisation
+-- of already built case trees.
+--
+-- While the intermediate representation (follows in the pipeline)
+-- allows casing on arbitrary terms, here we choose to maintain the distinction
+-- in order to allow for better optimisation opportunities.
+--
 data SC' t = Case Name [CaseAlt' t]  -- ^ invariant: lowest tags first
            | ProjCase t [CaseAlt' t] -- ^ special case for projections/thunk-forcing before inspection
            | STerm !t
