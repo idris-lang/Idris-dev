@@ -5,7 +5,7 @@ import System.Process
 import System.Directory
 import System.Exit
 import System.IO
-import System.FilePath ((</>), addTrailingPathSeparator, takeFileName)
+import System.FilePath ((</>), addTrailingPathSeparator, takeFileName, takeDirectory)
 import System.Directory (createDirectoryIfMissing, copyFile)
 
 import Util.System
@@ -133,17 +133,20 @@ documentPkg :: FilePath -- ^ Path to .ipkg file.
 documentPkg fp =
   do pkgdesc        <- parseDesc fp
      cd             <- getCurrentDirectory
-     let outputDir   = cd </> (pkgname pkgdesc) ++ "_doc"
+     let pkgDir      = cd </> takeDirectory fp
+         outputDir   = cd </> (pkgname pkgdesc) ++ "_doc"
+         opts        = NoREPL : Verbose : idris_opts pkgdesc
          mods        = modules pkgdesc
          fs          = map (foldl1' (</>) . splitOn "." . showCG) mods
-         opts        = NoREPL : Verbose : idris_opts pkgdesc
-     setCurrentDirectory $ cd </> sourcedir pkgdesc
+     setCurrentDirectory $ pkgDir </> sourcedir pkgdesc
      make (makefile pkgdesc)
+     setCurrentDirectory $ pkgDir
      let run l       = runErrorT . (execStateT l)
          load []     = return () 
          load (f:fs) = do loadModule stdout f; load fs
          loader      = do idrisMain opts; load fs
      idrisInstance  <- run loader idrisInit
+     setCurrentDirectory cd
      case idrisInstance of
           Left  err -> do putStrLn $ pshow idrisInit err; exitWith (ExitFailure 1)
           Right ist ->
