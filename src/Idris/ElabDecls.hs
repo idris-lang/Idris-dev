@@ -524,13 +524,13 @@ elabEliminator paramPos n ty cons info = do
         findRecArgs (ty:rs)                                                            = findRecArgs rs
 
         applyCons :: Name -> [(Name, Plicity, PTerm)] -> PTerm
-        applyCons tn targs = PApp elimFC (PRef elimFC tn) (map convertArg targs)
+        applyCons tn targs = PApp elimFC (PRef elimFC tn) (map convertArg targs) -- ipapp
 
         convertArg :: (Name, Plicity, PTerm) -> PArg
         convertArg (n, _, _)      = pexp (PRef elimFC n)
 
         applyMotive :: [PTerm] -> PTerm -> PTerm
-        applyMotive idxs t = PApp elimFC (PRef elimFC motiveName) (map pexp idxs ++ [pexp t])
+        applyMotive idxs t = PApp elimFC (PRef elimFC motiveName) (map pexp idxs ++ [pexp t]) -- ipapp
 
         getPiName :: (Name, Plicity, PTerm) -> Name
         getPiName (name,_,_) = name
@@ -548,13 +548,13 @@ elabEliminator paramPos n ty cons info = do
           let (_, generalIdxs') = splitArgPms resTy
           let generalIdxs = map pexp generalIdxs'
           consArgs <- namePis True args
-          let lhsPattern = PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ generalIdxs ++ [pexp $ applyCons cnm consArgs])
+          let lhsPattern = PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ generalIdxs ++ [pexp $ applyCons cnm consArgs]) -- ipapp
           let recArgs = findRecArgs consArgs
           let recElims = map applyRecElim recArgs
-          let rhsExpr    = PApp elimFC (PRef elimFC cnsElim) (map convertArg implidxs ++ map convertArg consArgs ++ recElims)
+          let rhsExpr    = PApp elimFC (PRef elimFC cnsElim) (map convertArg implidxs ++ map convertArg consArgs ++ recElims) -- ipapp
           return $ PClause elimFC elimDeclName lhsPattern [] rhsExpr []
             where applyRecElim :: (Name, Plicity, PTerm) -> PArg
-                  applyRecElim (constr@(recCnm,_,recTy)) = pexp $ PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ map pexp idxs ++ [pexp $ PRef elimFC recCnm])
+                  applyRecElim (constr@(recCnm,_,recTy)) = pexp $ PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ map pexp idxs ++ [pexp $ PRef elimFC recCnm]) -- ipapp
                     where (_, idxs) = splitArgPms recTy
 
 -- | Elaborate primitives
@@ -666,7 +666,7 @@ elabProvider info syn fc what n ty tm
              | what `elem` [ProvTerm, ProvAny] ->
                do -- Finally add a top-level definition of the provided term
                   elabType info syn "" [] fc [] n ty
-                  elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
+                  elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []] -- ipapp
                   logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
              | otherwise ->
                ierror . Msg $ "Attempted to provide a term where a postulate was expected."
@@ -739,7 +739,7 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
          let ptys_u = getProjs [] cty
          let recty = getRecTy cty
          logLvl 6 $ show (recty, ptys)
-         let substs = map (\ (n, _) -> (n, PApp fc (PRef fc n)
+         let substs = map (\ (n, _) -> (n, PApp fc (PRef fc n) -- ipapp
                                                 [pexp (PRef fc rec)])) ptys
          proj_decls <- mapM (mkProj recty substs cimp) (zip ptys [0..])
          let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
@@ -805,8 +805,8 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
              let after = length substs - (pos + 1)
              let args = take before pls ++ PRef fc (mkp pn) : take after pls
              let iargs = map implicitise (zip cimp args)
-             let lhs = PApp fc (PRef fc pn)
-                        [pexp (PApp fc (PRef fc cn) iargs)]
+             let lhs = PApp fc (PRef fc pn) -- ipapp
+                        [pexp (PApp fc (PRef fc cn) iargs)] -- ipapp
              let rhs = PRef fc (mkp pn)
              let pclause = PClause fc pn lhs [] rhs []
              return [pfnTy, PClauses fc [] pn [pclause]]
@@ -824,12 +824,12 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
             let rhsArgs = take pos pls ++ (PRef fc valname) :
                                drop (pos + 1) pls
             let before = pos
-            let pclause = PClause fc setname (PApp fc (PRef fc setname)
+            let pclause = PClause fc setname (PApp fc (PRef fc setname) -- ipapp
                                               [pexp (PRef fc valname),
-                                               pexp (PApp fc (PRef fc cn)
+                                               pexp (PApp fc (PRef fc cn) -- ipapp
                                                         (map pexp lhsArgs))])
                                              []
-                                             (PApp fc (PRef fc cn)
+                                             (PApp fc (PRef fc cn) -- ipapp
                                                       (map pexp rhsArgs)) []
             return (pn, pfnTy, PClauses fc [] setname [pclause])
 
@@ -873,7 +873,7 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
 
     mkLazy (PPi pl n ty sc) 
         = let ty' = if getTyName ty
-                       then PApp fc (PRef fc (sUN "Lazy")) [pexp ty]
+                       then PApp fc (PRef fc (sUN "Lazy")) [pexp ty] -- ipapp
                        else ty in
               PPi pl n ty' (mkLazy sc)
     mkLazy t = t
@@ -1330,7 +1330,7 @@ paramNames args env (p : ps)
 
 propagateParams :: [Name] -> Type -> PTerm -> PTerm
 propagateParams ps t tm@(PApp _ (PRef fc n) args)
-     = PApp fc (PRef fc n) (addP t args)
+     = PApp fc (PRef fc n) (addP t args) -- tpapp
    where addP (Bind n _ sc) (t : ts)
               | Placeholder <- getTm t,
                 n `elem` ps,
@@ -1339,7 +1339,7 @@ propagateParams ps t tm@(PApp _ (PRef fc n) args)
          addP (Bind n _ sc) (t : ts) = t : addP sc ts
          addP _ ts = ts
 propagateParams ps t (PRef fc n)
-     = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps)
+     = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps) -- ipapp
 propagateParams ps t x = x
 
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
@@ -1492,7 +1492,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
            addErrRev (crhs, clhs) 
         return $ Right (clhs, crhs)
   where
-    mkLHSapp t@(PRef _ _) = trace ("APP " ++ show t) $ PApp fc t []
+    mkLHSapp t@(PRef _ _) = trace ("APP " ++ show t) $ PApp fc t [] -- ipapp
     mkLHSapp t = t
 
     decorate (NS x ns)
@@ -1636,7 +1636,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         mapM_ (elabDecl EAll info) wb
 
         -- rhs becomes: fname' ps wval
-        let rhs = PApp fc (PRef fc wname)
+        let rhs = PApp fc (PRef fc wname) -- ipapp
                     (map (pexp . (PRef fc) . fst) bargs_pre ++
                         pexp wval :
                     (map (pexp . (PRef fc) . fst) bargs_post))
@@ -1693,14 +1693,14 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
     mkAux wname toplhs ns ns' c
         = ifail $ show fc ++ "badly formed with clause"
 
-    addArg (PApp fc f args) w = PApp fc f (args ++ [pexp w])
-    addArg (PRef fc f) w = PApp fc (PRef fc f) [pexp w]
+    addArg (PApp fc f args) w = PApp fc f (args ++ [pexp w]) -- tpapp
+    addArg (PRef fc f) w = PApp fc (PRef fc f) [pexp w] -- ipapp
 
     updateLHS n wname mvars ns_in ns_in' (PApp fc (PRef fc' n') args) w
         = let ns = map (keepMvar (map fst mvars) fc') ns_in
               ns' = map (keepMvar (map fst mvars) fc') ns_in' in
               return $ substMatches mvars $
-                  PApp fc (PRef fc' wname)
+                  PApp fc (PRef fc' wname) -- tpapp
                       (map pexp ns ++ pexp w : (map pexp ns'))
     updateLHS n wname mvars ns ns' tm w
         = ifail $ "Not implemented match " ++ show tm
@@ -1708,7 +1708,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
     keepMvar mvs fc v | v `elem` mvs = PRef fc v
                       | otherwise = Placeholder
 
-    fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
+    fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs)) -- tpapp
     fullApp x = x
 
     split [] rest pre = (reverse pre, rest)
@@ -1727,7 +1727,7 @@ elabClass :: ElabInfo -> SyntaxInfo -> String ->
 elabClass info syn doc fc constraints tn ps ds
     = do let cn = SN (InstanceCtorN tn) -- sUN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
          let tty = pibind ps PType
-         let constraint = PApp fc (PRef fc tn)
+         let constraint = PApp fc (PRef fc tn) -- ipapp
                                   (map (pexp . PRef fc) (map fst ps))
          -- build data declaration
          let mdecls = filter tydecl ds -- method declarations
@@ -1778,7 +1778,7 @@ elabClass info syn doc fc constraints tn ps ds
         = do when (not $ null cs) . tclift
                 $ tfail (At fc (Msg $ "Default superclass instances can't have constraints."))
              i <- getIState
-             let t = PApp fc (PRef fc n) (map pexp ps)
+             let t = PApp fc (PRef fc n) (map pexp ps) -- ipapp
              let isConstrained = any (== t) constraints
              when (not isConstrained) . tclift
                 $ tfail (At fc (Msg $ "Default instances must be for a superclass constraint on the containing class."))
@@ -1825,8 +1825,8 @@ elabClass info syn doc fc constraints tn ps ds
         = do let cfn = sUN ('@':'@':show cn ++ "#" ++ show con)
                        -- SN (ParentN cn (show con))
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
-             let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
-             let lhs = PApp fc (PRef fc cfn) [pconst capp]
+             let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames) -- ipapp
+             let lhs = PApp fc (PRef fc cfn) [pconst capp] -- ipapp
              let rhs = PResolveTC (fileFC "HACK")
              let ty = PPi constraint (sMN 0 "pc") c con
              iLOG (showTmImpls ty)
@@ -1849,11 +1849,11 @@ elabClass info syn doc fc constraints tn ps ds
     tfun cn c syn all (m, (doc, o, ty))
         = do let ty' = insertConstraint c ty
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
-             let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
+             let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames) -- ipapp
              let margs = getMArgs ty
              let anames = map (\x -> sMN x "arg") [0..]
-             let lhs = PApp fc (PRef fc m) (pconst capp : lhsArgs margs anames)
-             let rhs = PApp fc (getMeth mnames all m) (rhsArgs margs anames)
+             let lhs = PApp fc (PRef fc m) (pconst capp : lhsArgs margs anames) -- ipapp
+             let rhs = PApp fc (getMeth mnames all m) (rhsArgs margs anames) -- ipapp
              iLOG (showTmImpls ty)
              iLOG (show (m, ty', capp, margs))
              iLOG (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
@@ -1902,7 +1902,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
     (n, ci) <- case lookupCtxtName n (idris_classes i) of
                   [c] -> return c
                   _ -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
-    let constraint = PApp fc (PRef fc n) (map pexp ps)
+    let constraint = PApp fc (PRef fc n) (map pexp ps) -- ipapp
     let iname = mkiname n ps expn
     when (what /= EDefns) $ do
          nty <- elabType' True info syn "" [] fc [] iname t
@@ -1957,9 +1957,9 @@ elabInstance info syn what fc cs n ps t expn ds = do
                                                   _ -> Nothing
                                            _ -> Nothing) ps
 --          let lhs = PRef fc iname
-         let lhs = PApp fc (PRef fc iname)
+         let lhs = PApp fc (PRef fc iname) -- ipapp
                            (map (\n -> pimp n (PRef fc n) True) headVars)
-         let rhs = PApp fc (PRef fc (instanceName ci))
+         let rhs = PApp fc (PRef fc (instanceName ci)) -- ipapp
                            (map (pexp . mkMethApp) mtys)
 
          logLvl 5 $ "Instance LHS " ++ show lhs
@@ -2042,7 +2042,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
     methArgs i _ = []
 
     papp fc f [] = f
-    papp fc f as = PApp fc f as
+    papp fc f as = PApp fc f as -- ipapp
 
     getWParams [] = return []
     getWParams (p : ps)
@@ -2127,7 +2127,7 @@ decorateid decorate (PClauses f o n cs)
           dc (PWith   fc n t as w ds)
                  = PWith fc (decorate n) (dappname t) as w
                             (map (decorateid decorate) ds)
-          dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
+          dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as -- tpapp
           dappname t = t
 
 

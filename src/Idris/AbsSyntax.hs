@@ -1388,7 +1388,7 @@ addImpl' inpat env infns ist ptm
               PApp fc (PInferRef fc f) as'
     ai env ds (PApp fc ftm@(PRef _ f) as)
         | f `elem` infns = ai env ds (PApp fc (PInferRef fc f) as)
-        | not (f `elem` map fst env)
+        | not (f `elem` map fst env) -- notelocal
                           = let as' = map (fmap (ai env ds)) as in
                                 handleErr $ aiFn inpat False ist fc f ds as'
         | Just (Just ty) <- lookup f env =
