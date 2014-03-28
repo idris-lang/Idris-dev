@@ -131,14 +131,17 @@ force_term :: Elab' aux ()
 force_term = do ES (ps, a) l p <- get
                 put (ES (ps { pterm = force (pterm ps) }, a) l p)
 
+-- | Modify the auxiliary state
 updateAux :: (aux -> aux) -> Elab' aux ()
 updateAux f = do ES (ps, a) l p <- get
                  put (ES (ps, f a) l p)
 
+-- | Get the auxiliary state
 getAux :: Elab' aux aux
 getAux = do ES (ps, a) _ _ <- get
             return $! a
 
+-- | Set whether to show the unifier log
 unifyLog :: Bool -> Elab' aux ()
 unifyLog log = do ES (ps, a) l p <- get
                   put (ES (ps { unifylog = log }, a) l p)
@@ -147,10 +150,27 @@ getUnifyLog :: Elab' aux Bool
 getUnifyLog = do ES (ps, a) l p <- get
                  return (unifylog ps)
 
+-- | Process a tactic within the current elaborator state
+processTactic' :: Tactic -> Elab' aux ()
 processTactic' t = do ES (p, a) logs prev <- get
                       (p', log) <- lift $ processTactic t p
                       put (ES (p', a) (logs ++ log) prev)
                       return $! ()
+
+updatePS :: (ProofState -> ProofState) -> Elab' aux ()
+updatePS f = do ES (ps, a) logs prev <- get
+                put $ ES (f ps, a) logs prev
+
+now_elaborating :: FC -> Name -> Name -> Elab' aux ()
+now_elaborating fc f a = updatePS (nowElaboratingPS fc f a)
+done_elaborating_app :: Name -> Elab' aux ()
+done_elaborating_app f = updatePS (doneElaboratingAppPS f)
+done_elaborating_arg :: Name -> Name -> Elab' aux ()
+done_elaborating_arg f a = updatePS (doneElaboratingArgPS f a)
+elaborating_app :: Elab' aux [(FC, Name, Name)]
+elaborating_app = do ES (ps, _) _ _ <- get
+                     return $ map (\ (FailContext x y z) -> (x, y, z))
+                                  (while_elaborating ps)
 
 -- Some handy gadgets for pulling out bits of state
 
@@ -595,10 +615,10 @@ simple_app fun arg appstr =
        hs <- get_holes
        env <- get_env
        -- We don't need a and b in the hole queue any more since they were
-       -- just for checking f, so discard them if they are still there.
-       -- If they haven't been solved, regret will fail
-       when (a `elem` hs) $ do focus a; regretWith (CantInferType appstr)
-       when (b `elem` hs) $ do focus b; regretWith (CantInferType appstr)
+       -- just for checking f, so move them to the end. If they never end up
+       -- getting solved, we'll get an 'Incomplete term' error.
+       when (a `elem` hs) $ do movelast a
+       when (b `elem` hs) $ do movelast b
        end_unify
   where regretWith err = try regret
                              (lift $ tfail err)
@@ -625,9 +645,12 @@ no_errors tac err
             ps' <- get_probs
             if (length ps' > length ps) then
                case reverse ps' of
-                    ((x,y,env,err,_) : _) ->
+                    ((x, y, env, inerr, while, _) : _) ->
                        let env' = map (\(x, b) -> (x, binderTy b)) env in
-                                  lift $ tfail $ CantUnify False x y err env' 0
+                                  lift $ tfail $ 
+                                         case err of
+                                              Nothing -> CantUnify False x y inerr env' 0
+                                              Just e -> e
                else return $! ()
 
 -- Try a tactic, if it fails, try another
@@ -668,6 +691,8 @@ try' t1 t2 proofSearch
                r || proofSearch
         recoverableErr (CantSolveGoal _ _) = False
         recoverableErr (ProofSearchFail _) = False
+        recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
+        recoverableErr (At _ e) = recoverableErr e
         recoverableErr _ = True
 
 tryWhen :: Bool -> Elab' aux a -> Elab' aux a -> Elab' aux a
@@ -716,12 +741,12 @@ prunStateT pmax zok ps x s
                      newpmax = if newps < 0 then 0 else newps in
                  if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
-                            ((_,_,_,e,_):_) -> Error e
+                            ((_,_,_,e,_,_):_) -> Error e
                     else OK ((v, newpmax, problems p), s')
              Error e -> Error e
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, _, _, _) -> (x, y)) fs)
+qshow fs = show (map (\ (x, y, _, _, _, _) -> (x, y)) fs)
 
 dumpprobs [] = ""
 dumpprobs ((_,_,_,e):es) = show e ++ "\n" ++ dumpprobs es

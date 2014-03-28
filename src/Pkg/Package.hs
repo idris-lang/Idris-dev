@@ -52,7 +52,7 @@ buildPkg warnonly (install, fp)
                     Nothing -> exitWith (ExitFailure 1)
                     Just ist -> do
                        -- Quit with error code if there was a problem
-                       case errLine ist of
+                       case errSpan ist of
                             Just _ -> exitWith (ExitFailure 1)
                             _ -> return ()
                        -- Also give up if there are metavariables to solve
@@ -85,7 +85,7 @@ checkPkg warnonly quit fpath
             when quit $ case res of
                           Nothing -> exitWith (ExitFailure 1)
                           Just res' -> do
-                            case errLine res' of
+                            case errSpan res' of
                               Just _ -> exitWith (ExitFailure 1)
                               _ -> return ()
 

@@ -3,7 +3,7 @@ module Language.Reflection.Errors
 import Language.Reflection
 
 data SourceLocation : Type where
-  FileLoc : (filename : String) -> (line : Int) -> (col : Int) -> SourceLocation
+  FileLoc : (filename : String) -> (start : (Int, Int)) -> (end : (Int, Int)) -> SourceLocation
 
 %name SourceLocation loc
 
@@ -35,8 +35,6 @@ data Err = Msg String
          | AlreadyDefined TTName
          | ProofSearchFail Err
          | NoRewriting TT
-         | At SourceLocation Err
-         | Elaborating String TTName Err
          | ProviderError String
          | LoadingFailed String Err
 

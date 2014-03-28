@@ -163,7 +163,7 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
             return (declArgs [] (case_inlinable ci) n e)
 mkLDecl n (TyDecl (DCon t a) _) = return $ LConstructor n t a
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
-mkLDecl n _ = return (LFun [] n [] (LError ("Impossible declaration " ++ show n)))
+mkLDecl n _ = return $ (declArgs [] True n LNothing) -- postulate, never run
 
 instance ToIR (TT Name) where
     ir tm = ir' [] tm where
@@ -193,7 +193,7 @@ instance ToIR (TT Name) where
             l == txt "Delay"
               = do arg' <- ir' env arg
                    return $ LLazyExp arg'
-          | (P _ (UN l) _, [_, arg]) <- unApply tm,
+          | (P _ (UN l) _, [_, _, arg]) <- unApply tm,
             l == txt "Force"
               = do arg' <- ir' env arg
                    return $ LForce arg'

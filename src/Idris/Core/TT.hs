@@ -44,8 +44,8 @@ data Option = TTypeInTType
 
 -- | Source location. These are typically produced by the parser 'Idris.Parser.getFC'
 data FC = FC { fc_fname :: String, -- ^ Filename
-               fc_line :: Int, -- ^ Line number
-               fc_column :: Int -- ^ Column number
+               fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
+               fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
              }
 
 -- | Ignore source location equality (so deriving classes do not compare FCs)
@@ -57,7 +57,7 @@ newtype FC' = FC' { unwrapFC :: FC }
 
 instance Eq FC' where
   FC' fc == FC' fc' = fcEq fc fc'
-    where fcEq (FC n l c) (FC n' l' c') = n == n' && l == l' && c == c'
+    where fcEq (FC n s e) (FC n' s' e') = n == n' && s == s' && e == e'
 
 -- | Empty source location
 emptyFC :: FC
@@ -65,7 +65,7 @@ emptyFC = fileFC ""
 
 -- | Source location with file only
 fileFC :: String -> FC
-fileFC s = FC s 0 0
+fileFC s = FC s (0, 0) (0, 0)
 
 {-!
 deriving instance Binary FC
@@ -73,20 +73,28 @@ deriving instance NFData FC
 !-}
 
 instance Sized FC where
-  size (FC f l c) = 1 + length f
+  size (FC f s e) = 4 + length f
 
 instance Show FC where
-    show (FC f l c) = f ++ ":" ++ show l ++ ":" ++ show c
+    show (FC f s e) = f ++ ":" ++ showLC s e
+      where showLC (sl, sc) (el, ec) | sl == el && sc == ec = show sl ++ ":" ++ show sc
+                                     | sl == el             = show sl ++ ":" ++ show sc ++ "-" ++ show ec
+                                     | otherwise            = show sl ++ ":" ++ show sc ++ "-" ++ show el ++ ":" ++ show ec
 
 -- | Output annotation for pretty-printed name - decides colour
 data NameOutput = TypeOutput | FunOutput | DataOutput
+
+-- | Text formatting output
+data TextFormatting = BoldText | ItalicText | UnderlineText
 
 -- | Output annotations for pretty-printing
 data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe Type)
                       | AnnBoundName Name Bool
                       | AnnConstData
                       | AnnConstType
+                      | AnnKeyword
                       | AnnFC FC
+                      | AnnTextFmt TextFormatting
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String
@@ -132,6 +140,7 @@ data Err' t
           | NoRewriting t
           | At FC (Err' t)
           | Elaborating String Name (Err' t)
+          | ElaboratingArg Name Name [(Name, Name)] (Err' t)
           | ProviderError String
           | LoadingFailed String (Err' t)
           | ReflectionError [[ErrorReportPart]] (Err' t)
@@ -162,6 +171,7 @@ instance Sized Err where
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
   size (Elaborating _ n err) = size err
+  size (ElaboratingArg _ _ _ err) = size err
   size (ProviderError msg) = length msg
   size (LoadingFailed fn e) = 1 + length fn + size e
   size _ = 1
@@ -186,6 +196,9 @@ instance Show Err where
     show (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: (TT) " ++ show e
     show ProgramLineComment = "Program line next to comment"
     show (At f e) = show f ++ ":" ++ show e
+    show (ElaboratingArg f x prev e) = "Elaborating " ++ show f ++ " arg " ++
+                                       show x ++ ": " ++ show e
+    show (Elaborating what n e) = "Elaborating " ++ what ++ show n ++ ":" ++ show e
     show _ = "Error"
 
 instance Pretty Err OutputAnnotation where

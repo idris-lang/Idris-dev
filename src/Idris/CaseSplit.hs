@@ -51,6 +51,8 @@ names over '_', patterns over names, etc.
 split :: Name -> PTerm -> Idris [[(Name, PTerm)]]
 split n t'
    = do ist <- getIState
+        -- Make sure all the names in the term are accessible
+        mapM_ (\n -> setAccessibility n Public) (allNamesIn t')
         (tm, ty, pats) <- elabValBind toplevel True (addImplPat ist t')
         logLvl 4 ("Elaborated:\n" ++ show tm ++ " : " ++ show ty ++ "\n" ++ show pats)
 --         iputStrLn (show (delab ist tm) ++ " : " ++ show (delab ist ty))

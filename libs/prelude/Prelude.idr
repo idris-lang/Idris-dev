@@ -439,26 +439,32 @@ uniformB64x2 x = prim__mkB64x2 x x
 
 ---- some basic io
 
+||| Output a string to stdout without a trailing newline
 partial
 putStr : String -> IO ()
 putStr x = mkForeign (FFun "putStr" [FString] FUnit) x
 
+||| Output a string to stdout with a trailing newline
 partial
 putStrLn : String -> IO ()
 putStrLn x = putStr (x ++ "\n")
 
+||| Output something showable to stdout, with a trailing newline
 partial
 print : Show a => a -> IO ()
 print x = putStrLn (show x)
 
+||| Read one line of input from stdin
 partial
 getLine : IO String
 getLine = prim_fread prim__stdin
 
+||| Write a single character to stdout
 partial
 putChar : Char -> IO ()
 putChar c = mkForeign (FFun "putchar" [FInt] FUnit) (cast c)
 
+||| Read a single character from stdin
 partial
 getChar : IO Char
 getChar = map cast $ mkForeign (FFun "getchar" [] FInt)
@@ -468,21 +474,30 @@ getChar = map cast $ mkForeign (FFun "getchar" [] FInt)
 abstract
 data File = FHandle Ptr
 
+||| Standard input
 partial stdin : File
 stdin = FHandle prim__stdin
 
+||| Call the RTS's file opening function
 do_fopen : String -> String -> IO Ptr
 do_fopen f m
    = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m
 
-fopen : String -> String -> IO File
+||| Open a file
+||| @ f the filename
+||| @ m the mode as a String (`"r"`, `"w"`, or `"r+"`)
+fopen : (f : String) -> (m : String) -> IO File
 fopen f m = do h <- do_fopen f m
                return (FHandle h)
 
+||| Modes for opening files
 data Mode = Read | Write | ReadWrite
 
+||| Open a file
+||| @ f the filename
+||| @ m the mode
 partial
-openFile : String -> Mode -> IO File
+openFile : (f : String) -> (m : Mode) -> IO File
 openFile f m = fopen f (modeStr m) where
   modeStr Read  = "r"
   modeStr Write = "w"
@@ -567,15 +582,18 @@ nullPtr : Ptr -> IO Bool
 nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
                return (ok /= 0)
 
+||| Check if a supposed string was actually a null pointer
 partial
 nullStr : String -> IO Bool
 nullStr p = do ok <- mkForeign (FFun "isNull" [FString] FInt) p
                return (ok /= 0)
 
+||| Pointer equality
 eqPtr : Ptr -> Ptr -> IO Bool
 eqPtr x y = do eq <- mkForeign (FFun "idris_eqPtr" [FPtr, FPtr] FInt) x y
                return (eq /= 0)
 
+||| Check whether a file handle is actually a null pointer
 partial
 validFile : File -> IO Bool
 validFile (FHandle h) = do x <- nullPtr h

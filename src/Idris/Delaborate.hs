@@ -1,5 +1,4 @@
 {-# LANGUAGE PatternGuards #-}
-
 module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pshow, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
@@ -13,6 +12,7 @@ import Idris.Core.Evaluate
 import Idris.ErrReverse
 
 import Data.List (intersperse)
+import qualified Data.Text as T
 
 import Debug.Trace
 
@@ -138,7 +138,7 @@ pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
 pprintTerm ist = pprintTerm' ist []
 
 pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
-pprintTerm' ist = pprintPTerm (opt_showimp (idris_options ist)) 
+pprintTerm' ist bnd tm = pprintPTerm (opt_showimp (idris_options ist)) bnd [] tm
 
 pshow :: IState -> Err -> String
 pshow ist err = displayDecorated (consoleDecorate ist) .
@@ -200,7 +200,7 @@ pprintErr' i (NotInjective p x y) =
   pprintTerm i (delab i y)
 pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
-                                    cat (punctuate (comma <> space) (map text as))
+                                    align (cat (punctuate (comma <> space) (map text as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> pprintTerm i (delab i t)
@@ -217,16 +217,33 @@ pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr
 pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
                                    pprintErr' i e
+pprintErr' i (ElaboratingArg f x _ e)
+  | isUN x =
+     text "When elaborating argument" <+>
+     annotate (AnnBoundName x False) (text (showbasic x)) <+> --TODO check plicity
+     text "to" <+> whatIsName <> annName f <> colon <>
+     indented (pprintErr' i e)
+  | otherwise =
+     text "When elaborating an application of" <+> whatIsName <>
+     annName f <> colon <> indented (pprintErr' i e)
+  where whatIsName = let ctxt = tt_ctxt i
+                     in if isTConName f ctxt
+                           then text "type constructor" <> space
+                           else if isConName f ctxt
+                                   then text "constructor" <> space
+                                   else if isFnName f ctxt
+                                           then text "function" <> space
+                                           else empty
 pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
 pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
 pprintErr' i (ReflectionError parts orig) =
-  let parts' = map (hsep . map showPart) parts in
-  vsep parts' <>
+  let parts' = map (fillSep . map showPart) parts in
+  align (fillSep parts') <>
   if (opt_origerr (idris_options i))
     then line <> line <> text "Original error:" <$> indented (pprintErr' i orig)
     else empty
   where showPart :: ErrorReportPart -> Doc OutputAnnotation
-        showPart (TextPart str) = text str
+        showPart (TextPart str) = fillSep . map text . words $ str
         showPart (NamePart n)   = annName n
         showPart (TermPart tm)  = pprintTerm i (delab i tm)
         showPart (SubReport rs) = indented . hsep . map showPart $ rs
@@ -234,6 +251,11 @@ pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
+
+isUN :: Name -> Bool
+isUN (UN n) = not $ T.isPrefixOf (T.pack "__") n -- TODO figure out why MNs are getting rewritte to UNs for top-level pattern-matching functions
+isUN (NS n _) = isUN n
+isUN _ = False
 
 annName :: Name -> Doc OutputAnnotation
 annName n = annName' n (showbasic n)
@@ -259,6 +281,7 @@ showqual i n = showName (Just i) [] False False (dens n)
                               _ -> ns
     dens n = n
 
+showbasic :: Name -> String
 showbasic n@(UN _) = show n
 showbasic (MN _ s) = str s
 showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n

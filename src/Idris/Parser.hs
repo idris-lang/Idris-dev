@@ -35,6 +35,8 @@ import Idris.ParseOps
 import Idris.ParseExpr
 import Idris.ParseData
 
+import Idris.Docstrings
+
 import Paths_idris
 
 import Util.DynamicLinker
@@ -315,7 +317,7 @@ fnDecl' syn = checkFixity $
               do (doc, fc, opts', n, acc) <- try (do
                         pushIndent
                         ist <- get
-                        doc <- option ("", []) docComment
+                        doc <- option noDocs docComment
                         ist <- get
                         let initOpts = if default_total ist
                                           then [TotalFn]
@@ -382,6 +384,7 @@ fnOpts :: [FnOpt] -> IdrisParser [FnOpt]
 fnOpts opts
         = do reserved "total"; fnOpts (TotalFn : opts)
       <|> do reserved "partial"; fnOpts (PartialFn : (opts \\ [TotalFn]))
+      <|> do reserved "covering"; fnOpts (CoveringFn : (opts \\ [TotalFn]))
       <|> do try (lchar '%' *> reserved "export"); c <- stringLiteral;
                   fnOpts (CExport c : opts)
       <|> do try (lchar '%' *> reserved "assert_total");
@@ -413,7 +416,7 @@ Postulate ::=
 @
 -}
 postulate :: SyntaxInfo -> IdrisParser PDecl
-postulate syn = do doc <- try $ do doc <- option ("", []) docComment
+postulate syn = do doc <- try $ do doc <- option noDocs docComment
                                    pushIndent
                                    reserved "postulate"
                                    return doc
@@ -561,7 +564,7 @@ Class ::=
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
 class_ syn = do (doc, acc) <- try (do
-                  doc <- option ("", []) docComment
+                  doc <- option noDocs docComment
                   acc <- optional accessibility
                   return (doc, acc))
                 reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- fnName
@@ -1003,8 +1006,8 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                                            mapM_ (addNameHint ty') ns
                                            mapM_ (\n -> addIBC (IBCNameHint (ty', n))) ns)]
              <|> do try (lchar '%' *> reserved "error_handlers")
-                    fn <- iName []
-                    arg <- iName []
+                    fn <- fnName
+                    arg <- fnName
                     ns <- sepBy1 name (lchar ',')
                     return [PDirective (do fn' <- disambiguate fn
                                            ns' <- mapM disambiguate ns
@@ -1113,7 +1116,8 @@ findFC x = let s = show (plain x) in
              case span (/= ':') s of
                (failname, ':':rest) -> case span isDigit rest of
                  (line, ':':rest') -> case span isDigit rest' of
-                   (col, ':':msg) -> (FC failname (read line) (read col), msg)
+                   (col, ':':msg) -> let pos = (read line, read col) in
+                                         (FC failname pos pos, msg)
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
@@ -1129,7 +1133,7 @@ parseProg syn fname input mrk
                                   case idris_outputmode i of
                                     RawOutput -> ihputStrLn (idris_outh i) (show doc)
                                     IdeSlave n -> ihWarn (idris_outh i) fc (P.text msg)
-                                  putIState (i { errLine = Just (fc_line fc) }) -- Just errl })
+                                  putIState (i { errSpan = Just fc })
                                   return []
             Success (x, i)  -> do putIState i
                                   reportParserWarnings
@@ -1147,7 +1151,7 @@ parseProg syn fname input mrk
 loadModule :: Handle -> FilePath -> Idris String
 loadModule outh f
    = idrisCatch (loadModule' outh f)
-                (\e -> do setErrLine (getErrLine e)
+                (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
                           msg <- showErr e
                           ihputStrLn outh msg
@@ -1195,7 +1199,7 @@ loadFromIFile h (LIDR fn) = loadSource' h True fn
 loadSource' :: Handle -> Bool -> FilePath -> Idris ()
 loadSource' h lidr r
    = idrisCatch (loadSource h lidr r)
-                (\e -> do setErrLine (getErrLine e)
+                (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
                           ihRenderError h (pprintErr ist e))
 

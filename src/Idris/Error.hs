@@ -23,7 +23,7 @@ iucheck = do tit <- typeInType
              when (not tit) $
                 do ist <- getIState
                    (tclift $ ucheck (idris_constraints ist)) `idrisCatch`
-                              (\e -> do setErrLine (getErrLine e)
+                              (\e -> do setErrSpan (getErrSpan e)
                                         iputStrLn (pshow ist e))
 
 showErr :: Err -> Idris String
@@ -43,9 +43,9 @@ setAndReport :: Err -> Idris ()
 setAndReport e = do ist <- getIState
                     let h = idris_outh ist
                     case e of
-                      At fc@(FC f l c) e -> do setErrLine l
-                                               ihWarn h fc $ pprintErr ist e
-                      _ -> do setErrLine (getErrLine e)
+                      At fc e -> do setErrSpan fc
+                                    ihWarn h fc $ pprintErr ist e
+                      _ -> do setErrSpan (getErrSpan e)
                               ihputStrLn h $ pshow ist e
 
 ifail :: String -> Idris a
@@ -56,7 +56,7 @@ ierror = throwError
 
 tclift :: TC a -> Idris a
 tclift (OK v) = return v
-tclift (Error err@(At (FC f l c) e)) = do setErrLine l ; throwError err
+tclift (Error err@(At fc e)) = do setErrSpan fc; throwError err
 tclift (Error err) = throwError err
 
 tctry :: TC a -> TC a -> Idris a
@@ -65,11 +65,6 @@ tctry tc1 tc2
            OK v -> return v
            Error err -> tclift tc2
 
-getErrLine :: Err -> Int
-getErrLine (At (FC _ l _) _) = l
-getErrLine _ = 0
-
-getErrColumn :: Err -> Int
-getErrColumn (At (FC _ _ c) _) = c
-getErrColumn _ = 0
-
+getErrSpan :: Err -> FC
+getErrSpan (At fc _) = fc
+getErrSpan _ = emptyFC

@@ -98,6 +98,7 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["patt"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Pattelab t))
               <|> try (do cmd ["errorhandlers"]; eof ; return ListErrorHandlers)
               <|> try (do cmd ["consolewidth"]; w <- pConsoleWidth ; return (SetConsoleWidth w))
+              <|> try (do cmd ["apropos"]; str <- many anyChar ; return (Apropos str))
               <|> do P.whiteSpace; do eof; return NOP
                              <|> do t <- P.fullExpr defaultSyntax; return (Eval t)
 
@@ -107,6 +108,7 @@ pOption :: P.IdrisParser Opt
 pOption = do discard (P.symbol "errorcontext"); return ErrContext
       <|> do discard (P.symbol "showimplicits"); return ShowImpl
       <|> do discard (P.symbol "originalerrors"); return ShowOrigErr
+      <|> do discard (P.symbol "autosolve"); return AutoSolve
 
 pConsoleWidth :: P.IdrisParser ConsoleWidth
 pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth

@@ -1,5 +1,7 @@
 module Prelude.Bool
 
+import Builtins
+
 ||| Boolean Data Type
 data Bool = False | True
 
@@ -14,7 +16,7 @@ boolElim False t e = e
 ||| Defines a predicate on Bool which guarantees that the value is true.
 data so : Bool -> Type where oh : so True
 
--- Syntaxtic sugar for boolean elimination.
+-- Syntactic sugar for boolean elimination.
 syntax if [test] then [t] else [e] = boolElim test (Delay t) (Delay e)
 
 -- Boolean Operator Precedence

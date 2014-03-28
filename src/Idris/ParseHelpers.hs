@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards, OverlappingInstances, StandaloneDeriving #-}
 module Idris.ParseHelpers where
 
 import Prelude hiding (pi)
@@ -16,6 +16,7 @@ import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Delaborate (pprintErr)
+import Idris.Docstrings
 
 import qualified Util.Pretty as Pretty (text)
 
@@ -41,11 +42,19 @@ import Debug.Trace
 type IdrisParser = StateT IState IdrisInnerParser
 
 newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
-  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, Parsing, DeltaParsing, MarkParsing Delta, Monoid)
+  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, DeltaParsing, MarkParsing Delta, Monoid, TokenParsing)
 
-instance TokenParsing IdrisInnerParser where
+deriving instance Parsing IdrisInnerParser
+
+instance TokenParsing IdrisParser where
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
-
+  token p = do s <- get
+               (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
+               r <- p
+               (FC fn _ (el, ec)) <- getFC
+               whiteSpace
+               put (s { lastTokenSpan = Just (FC fn (sl, sc) (el, ec)) })
+               return r
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
@@ -139,25 +148,26 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
 {-| Parses a documentation comment (similar to haddoc) given a marker character
 
 @
-  DocComment_t ::=   '--' DocCommentMarker_t ~EOL_t* EOL_t
-                  | '{ -' DocCommentMarket_t ~'- }'* '- }'
+  DocComment_t ::=   '|||' ~EOL_t* EOL_t
                  ;
 @
  -}
-docComment :: IdrisParser (String, [(Name, String)])
+docComment :: IdrisParser (Docstring, [(Name, Docstring)])
 docComment = do dc <- pushIndent *> docCommentLine
                 rest <- many (indented docCommentLine)
                 args <- many (indented argDocCommentLine)
                 popIndent
-                return (T.unpack $ T.strip $ T.pack (dc ++ concat rest), args)
+                return (parseDocstring $ T.pack (concat . intersperse "\n" $ dc:rest),
+                        map (\(n, d) -> (n, parseDocstring (T.pack d))) args)
 
   where docCommentLine :: MonadicParsing m => m String
         docCommentLine = try (do string "|||"
-                                 many (satisfy isSpace)
-                                 first <- satisfy (\c -> not (isEol c || c == '@'))
-                                 res <- many (satisfy (not . isEol))
+                                 many (satisfy (==' '))
+                                 contents <- option "" (do first <- satisfy (\c -> not (isEol c || c == '@'))
+                                                           res <- many (satisfy (not . isEol))
+                                                           return $ first:res)
                                  eol ; someSpace
-                                 return (first:res))-- ++ concat rest))
+                                 return contents)-- ++ concat rest))
                         <?> ""
         argDocCommentLine = do string "|||"
                                many (satisfy isSpace)
@@ -328,7 +338,7 @@ getFC :: MonadicParsing m => m FC
 getFC = do s <- position
            let (dir, file) = splitFileName (fileName s)
            let f = if dir == addTrailingPathSeparator "." then file else fileName s
-           return $ FC f (lineNum s) (columnNum s)
+           return $ FC f (lineNum s, columnNum s) (lineNum s, columnNum s) -- TODO: Change to actual spanning
 
 {-* Syntax helpers-}
 -- | Bind constraints to term

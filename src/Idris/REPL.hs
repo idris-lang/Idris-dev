@@ -4,12 +4,14 @@
 module Idris.REPL where
 
 import Idris.AbsSyntax
+import Idris.Apropos (apropos)
 import Idris.REPLParser
 import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.Error
 import Idris.ErrReverse
 import Idris.Delaborate
+import Idris.Docstrings (Docstring, overview, renderDocstring)
 import Idris.Prover
 import Idris.Parser
 import Idris.Primitives
@@ -21,7 +23,7 @@ import Idris.Completion
 import qualified Idris.IdeSlave as IdeSlave
 import Idris.Chaser
 import Idris.Imports
-import Idris.Colours
+import Idris.Colours hiding (colourise)
 import Idris.Inliner
 import Idris.CaseSplit
 import Idris.DeepSeq
@@ -42,6 +44,7 @@ import IRTS.Compiler
 import IRTS.CodegenCommon
 
 import Data.List.Split (splitOn)
+import qualified Data.Text as T
 
 import Text.Trifecta.Result(Result(..))
 
@@ -238,7 +241,7 @@ ideslave orig mods
                           isetPrompt (mkPrompt [filename])
                           -- Report either success or failure
                           i <- getIState
-                          case (errLine i) of
+                          case (errSpan i) of
                             Nothing -> iPrintResult $ "loaded " ++ filename
                             Just x -> iPrintError $ "didn't load " ++ filename
                           ideslave orig [filename]
@@ -246,7 +249,7 @@ ideslave orig mods
                        case splitName name of
                          Left err -> iPrintError err
                          Right n -> process stdout "(ideslave)"
-                                      (Check (PRef (FC "(ideslave)" 0 0) n))
+                                      (Check (PRef (FC "(ideslave)" (0,0) (0,0)) n))
                      Just (IdeSlave.DocsFor name) ->
                        case splitName name of
                          Left err -> iPrintError err
@@ -263,6 +266,25 @@ ideslave orig mods
                        process stdout fn (MakeWith False line (sUN name))
                      Just (IdeSlave.ProofSearch line name hints) ->
                        process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
+                     Just (IdeSlave.Apropos a) ->
+                       process stdout fn (Apropos a)
+                     Just (IdeSlave.GetOpts) ->
+                       do ist <- getIState
+                          let opts = idris_options ist
+                          let impshow = opt_showimp opts
+                          let errCtxt = opt_errContext opts
+                          let options = (IdeSlave.SymbolAtom "ok",
+                                         [(IdeSlave.SymbolAtom "show-implicits", impshow),
+                                          (IdeSlave.SymbolAtom "error-context", errCtxt)])
+                          runIO . putStrLn $ IdeSlave.convSExp "return" options id
+                     Just (IdeSlave.SetOpt IdeSlave.ShowImpl b) ->
+                       do setImpShow b
+                          let msg = (IdeSlave.SymbolAtom "ok", b)
+                          runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+                     Just (IdeSlave.SetOpt IdeSlave.ErrContext b) ->
+                       do setErrContext b
+                          let msg = (IdeSlave.SymbolAtom "ok", b)
+                          runIO . putStrLn $ IdeSlave.convSExp "return" msg id
                      Nothing -> do iPrintError "did not understand")
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
@@ -334,6 +356,8 @@ ideslaveProcess fn (MakeWith False pos str) = process stdout fn (MakeWith False 
 ideslaveProcess fn (DoProofSearch False pos str xs) = process stdout fn (DoProofSearch False pos str xs)
 ideslaveProcess fn (SetConsoleWidth w) = do process stdout fn (SetConsoleWidth w)
                                             iPrintResult ""
+ideslaveProcess fn (Apropos a) = do process stdout fn (Apropos a)
+                                    iPrintResult ""
 ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
@@ -412,8 +436,8 @@ edit f orig
     = do i <- getIState
          env <- runIO $ getEnvironment
          let editor = getEditor env
-         let line = case errLine i of
-                        Just l -> " +" ++ show l ++ " "
+         let line = case errSpan i of
+                        Just l -> " +" ++ show (fst (fc_start l)) ++ " "
                         Nothing -> " "
          let cmd = editor ++ line ++ fixName f
          runIO $ system cmd
@@ -511,7 +535,7 @@ process h fn (Check (PRef _ n))
                  annotate (AnnName n Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
 
-    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd t
+    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] t
 
 
 process h fn (Check t)
@@ -710,7 +734,7 @@ process h fn (MakeWith updatefile l n)
               runIO $ copyFile fb fn
            else ihPrintResult h with
   where getIndent s = length (takeWhile isSpace s)
-    
+
 process h fn (DoProofSearch updatefile l n hints)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
@@ -932,6 +956,8 @@ process h fn (SetOpt ShowImpl)      = setImpShow True
 process h fn (UnsetOpt ShowImpl)    = setImpShow False
 process h fn (SetOpt ShowOrigErr)   = setShowOrigErr True
 process h fn (UnsetOpt ShowOrigErr) = setShowOrigErr False
+process h fn (SetOpt AutoSolve)     = setAutoSolve True
+process h fn (UnsetOpt AutoSolve)   = setAutoSolve False
 
 process h fn (SetOpt _) = iPrintError "Not a valid option"
 process h fn (UnsetOpt _) = iPrintError "Not a valid option"
@@ -950,6 +976,21 @@ process h fn ListErrorHandlers =
            iPrintResult $ "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
 process h fn (SetConsoleWidth w) = setWidth w
 
+process h fn (Apropos a) =
+  do ist <- getIState
+     let impl = opt_showimp (idris_options ist)
+     let names = apropos ist (T.pack a)
+     let aproposInfo = [ (n,
+                          delabTy ist n,
+                          fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
+                       | n <- sort names, isUN n ]
+     ihRenderResult h $ vsep (map (renderApropos impl) aproposInfo)
+  where renderApropos impl (name, ty, docs) =
+          prettyName True [] name <+> colon <+> align (prettyImp impl ty) <$>
+          fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
+        isUN (UN _) = True
+        isUN (NS n _) = isUN n
+        isUN _ = False
 
 classInfo :: ClassInfo -> Idris ()
 classInfo ci = do iputStrLn "Methods:\n"
@@ -1123,7 +1164,7 @@ loadInputs h inputs
            -- to check everything worked consistently (in particular, will catch
            -- if the ibc version is out of date) if we weren't loading per
            -- module
-           case errLine inew of
+           case errSpan inew of
               Nothing ->
                 do putIState ist
                    when (not loadCode) $ tryLoad $ nub (concat ifiles)
@@ -1131,10 +1172,10 @@ loadInputs h inputs
            putIState inew)
         (\e -> do i <- getIState
                   case e of
-                    At f _ -> do setErrLine (fc_line f)
+                    At f _ -> do setErrSpan f
                                  ihRenderError stdout $ pprintErr i e
                     ProgramLineComment -> return () -- fail elsewhere
-                    _ -> do setErrLine 3 -- FIXME! Propagate it
+                    _ -> do setErrSpan emptyFC -- FIXME! Propagate it
                             iputStrLn (pshow i e))
    where -- load all files, stop if any fail
          tryLoad :: [IFileType] -> Idris ()

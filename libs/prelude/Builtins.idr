@@ -23,7 +23,9 @@ FalseElim : _|_ -> a
 data Symbol_ : String -> Type where
 
 -- ------------------------------------------------------ [ For rewrite tactic ]
-||| Perform substitution in a term. This is used by the `rewrite` tactic and term.
+||| Perform substitution in a term according to some equality.
+|||
+||| This is used by the `rewrite` tactic and term.
 replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Type} -> x = y -> P x -> P y
 replace refl prf = prf
 
@@ -41,14 +43,23 @@ lazy x = x -- compiled specially
 force : a -> a
 force x = x -- compiled specially
 
-data Lazy : Type -> Type where
-     Delay : (val : a) -> Lazy a
+data LazyType = LazyCodata | LazyEval
 
-Force : Lazy a -> a
+data Lazy' : LazyType -> Type -> Type where
+     Delay : {t, a : _} -> (val : a) -> Lazy' t a
+
+Force : {t, a : _} -> Lazy' t a -> a
 Force (Delay x) = x
 
-par : Lazy a -> a
-par (Delay x) = x -- compiled specially
+Lazy : Type -> Type
+Lazy t = Lazy' LazyEval t
+
+Inf : Type -> Type
+Inf t = Lazy' LazyCodata t
+
+par : Lazy a -> a -- Doesn't actually do anything yet. Maybe a 'Par a' type
+                  -- is better in any case?
+par (Delay x) = x 
 
 malloc : Int -> a -> a
 malloc size x = x -- compiled specially

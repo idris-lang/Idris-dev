@@ -3,9 +3,8 @@ module Idris.Colours (
   ColourTheme(..),
   defaultTheme,
   colouriseKwd, colouriseBound, colouriseImplicit,
-  colouriseType, colouriseFun, colouriseData,
-  colourisePrompt,
-  ColourType(..)) where
+  colouriseType, colouriseFun, colouriseData, colouriseKeyword,
+  colourisePrompt, colourise, ColourType(..)) where
 
 import System.Console.ANSI
 
@@ -30,8 +29,9 @@ data ColourTheme = ColourTheme { keywordColour  :: IdrisColour
                                }
                    deriving (Eq, Show)
 
+-- | Idris's default console colour theme
 defaultTheme :: ColourTheme
-defaultTheme = ColourTheme { keywordColour = IdrisColour Nothing True True True False
+defaultTheme = ColourTheme { keywordColour = IdrisColour Nothing True False True False
                            , boundVarColour = mkColour Magenta
                            , implicitColour = IdrisColour (Just Magenta) True True False False
                            , functionColour = mkColour Green
@@ -40,7 +40,7 @@ defaultTheme = ColourTheme { keywordColour = IdrisColour Nothing True True True 
                            , promptColour = IdrisColour Nothing True False True False
                            }
 
--- Set the colour of a string using POSIX escape codes
+-- | Set the colour of a string using POSIX escape codes
 colourise :: IdrisColour -> String -> String
 colourise (IdrisColour c v u b i) str = setSGRCode sgr ++ str ++ setSGRCode [Reset]
     where sgr = fg c ++
@@ -71,6 +71,8 @@ colouriseData t = colourise (dataColour t)
 colourisePrompt :: ColourTheme -> String -> String
 colourisePrompt t = colourise (promptColour t)
 
+colouriseKeyword :: ColourTheme -> String -> String
+colouriseKeyword t = colourise (keywordColour t)
 
 data ColourType = KeywordColour
                 | BoundVarColour

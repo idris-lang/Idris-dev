@@ -1,5 +1,5 @@
 reg007.lidr:8:1:A.n is already defined
-reg007.lidr:12:9:When elaborating right hand side of hurrah:
+reg007.lidr:12:11:When elaborating right hand side of hurrah:
 Can't unify
         n = lala
 with

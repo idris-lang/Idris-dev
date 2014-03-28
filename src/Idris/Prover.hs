@@ -89,10 +89,10 @@ elabStep st e = do case runStateT e st of
                      Error a -> ierror a
 
 dumpState :: IState -> ProofState -> Idris ()
-dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
+dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
   do rendered <- iRender $ prettyName False [] nm <> colon <+> text "No more goals."
      iputGoal rendered
-dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = do
+dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) = do
   let OK ty  = goalAtFocus ps
   let OK env = envAtFocus ps
   let state = prettyOtherGoals hs <> line <>
@@ -104,7 +104,7 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _) = d
   where
     showImplicits = opt_showimp (idris_options ist)
 
-    tPretty bnd t = pprintPTerm showImplicits bnd $ delab ist t
+    tPretty bnd t = pprintPTerm showImplicits bnd [] $ delab ist t
 
     assumptionNames :: Env -> [Name]
     assumptionNames = map fst
@@ -164,6 +164,7 @@ receiveInput e =
 ploop :: Name -> Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
 ploop fn d prompt prf e h
     = do i <- getIState
+         let autoSolve = opt_autoSolve (idris_options i)
          when d $ dumpState i (proof e)
          (x, h') <-
            case idris_outputmode i of
@@ -235,8 +236,8 @@ ploop fn d prompt prf e h
                           TType _ ->
                             ihPrintTermWithType h (prettyImp imp PType) type1Doc
                           _ -> let bnd = map (\x -> (fst x, False)) env in
-                               ihPrintTermWithType h (pprintPTerm imp bnd (delab ist tm))
-                                                     (pprintPTerm imp bnd (delab ist ty))
+                               ihPrintTermWithType h (pprintPTerm imp bnd [] (delab ist tm))
+                                                     (pprintPTerm imp bnd [] (delab ist ty))
                        putIState ist
                        return (False, e, False, prf))
                      (\err -> do putIState ist { tt_ctxt = ctxt } ; ierror err)
@@ -253,14 +254,14 @@ ploop fn d prompt prf e h
                                            let tm'    = force (normaliseAll ctxt' env tm)
                                                ty'    = force (normaliseAll ctxt' env ty)
                                                imp    = opt_showimp (idris_options ist')
-                                               tmDoc  = pprintPTerm imp bnd (delab ist' tm')
-                                               tyDoc  = pprintPTerm imp bnd (delab ist' ty')
+                                               tmDoc  = pprintPTerm imp bnd [] (delab ist' tm')
+                                               tyDoc  = pprintPTerm imp bnd [] (delab ist' ty')
                                            ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
                                            putIState ist
                                            return (False, e, False, prf))
                                          (\err -> do putIState ist ; ierror err)
               Success tac -> do (_, e) <- elabStep e saveState
-                                (_, st) <- elabStep e (runTac True i fn tac)
+                                (_, st) <- elabStep e (runTac autoSolve i fn tac)
 --                               trace (show (problems (proof st))) $
                                 iPrintResult ""
                                 return (True, st, False, prf ++ [step]))

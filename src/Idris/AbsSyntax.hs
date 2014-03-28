@@ -9,7 +9,8 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Typecheck
 import Idris.AbsSyntaxTree
 import Idris.Colours
-import Idris.IdeSlave
+import Idris.Docstrings
+import Idris.IdeSlave hiding (Opt(..))
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
@@ -262,7 +263,7 @@ addCoercion :: Name -> Idris ()
 addCoercion n = do i <- getIState
                    putIState $ i { idris_coercions = nub $ n : idris_coercions i }
 
-addDocStr :: Name -> String -> [(Name, String)] -> Idris ()
+addDocStr :: Name -> Docstring -> [(Name, Docstring)] -> Idris ()
 addDocStr n doc args
    = do i <- getIState
         putIState $ i { idris_docstrings = addDef n (doc, args) (idris_docstrings i) }
@@ -356,15 +357,15 @@ addNameIdx' i n
 getHdrs :: Codegen -> Idris [String]
 getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)
 
-setErrLine :: Int -> Idris ()
-setErrLine x = do i <- getIState;
-                  case (errLine i) of
-                      Nothing -> putIState $ i { errLine = Just x }
+setErrSpan :: FC -> Idris ()
+setErrSpan x = do i <- getIState;
+                  case (errSpan i) of
+                      Nothing -> putIState $ i { errSpan = Just x }
                       Just _ -> return ()
 
 clearErr :: Idris ()
 clearErr = do i <- getIState
-              putIState $ i { errLine = Nothing }
+              putIState $ i { errSpan = Nothing }
 
 getSO :: Idris (Maybe String)
 getSO = do i <- getIState
@@ -391,6 +392,8 @@ getName = do i <- getIState;
              putIState $ (i { idris_name = idx + 1 })
              return idx
 
+-- InternalApp keeps track of the real function application for making case splits from, not the application the
+-- programmer wrote, which doesn't have the whole context in any case other than top level definitions
 addInternalApp :: FilePath -> Int -> PTerm -> Idris ()
 addInternalApp fp l t
     = do i <- getIState
@@ -564,7 +567,7 @@ ihPrintFunTypes h bnd n overloads = do imp <- impShow
                                          RawOutput -> consoleDisplayAnnotated h output
                                          IdeSlave n -> ideSlaveReturnAnnotated n h output
   where fullName n = prettyName True bnd n
-        ppOverload imp n tm = fullName n <+> colon <+> align (pprintPTerm imp bnd tm)
+        ppOverload imp n tm = fullName n <+> colon <+> align (pprintPTerm imp bnd [] tm)
 
 ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderResult h d = do ist <- getIState
@@ -640,15 +643,16 @@ isetPrompt p = do i <- getIState
 
 ihWarn :: Handle -> FC -> Doc OutputAnnotation -> Idris ()
 ihWarn h fc err = do i <- getIState
-                     err' <- iRender . fmap (fancifyAnnots i) $ err
                      case idris_outputmode i of
                        RawOutput ->
-                         runIO $
-                         hPutStrLn h (show fc ++ ":" ++ displayDecorated (consoleDecorate i) err')
+                         do err' <- iRender . fmap (fancifyAnnots i) $
+                                    text (show fc) <> colon <//> err
+                            runIO . hPutStrLn h $ displayDecorated (consoleDecorate i) err'
                        IdeSlave n ->
-                         do let (str, spans) = displaySpans err'
+                         do err' <- iRender . fmap (fancifyAnnots i) $ err
+                            let (str, spans) = displaySpans err'
                             runIO . hPutStrLn h $
-                              convSExp "warning" (fc_fname fc, fc_line fc, fc_column fc, str, spans) n
+                              convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
@@ -712,6 +716,12 @@ setShowOrigErr b = do i <- getIState
                       let opts = idris_options i
                       let opt' = opts { opt_origerr = b }
                       putIState $ i { idris_options = opt' }
+
+setAutoSolve :: Bool -> Idris ()
+setAutoSolve b = do i <- getIState
+                    let opts = idris_options i
+                    let opt' = opts { opt_autoSolve = b }
+                    putIState $ i { idris_options = opt' }
 
 setNoBanner :: Bool -> Idris ()
 setNoBanner n = do i <- getIState
@@ -899,7 +909,7 @@ iLOG = logLvl 1
 
 noErrors :: Idris Bool
 noErrors = do i <- getIState
-              case errLine i of
+              case errSpan i of
                 Nothing -> return True
                 _       -> return False
 
@@ -1061,14 +1071,14 @@ expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
                            (map econ cons)
             else PDatadecl n (expandParams dec ps ns [] ty) (map econ cons)
     econ (doc, argDocs, n, t, fc, fs)
-       = (doc, argDocs, dec n, piBindp impl ps (expandParams dec ps ns [] t), fc, fs)
+       = (doc, argDocs, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
 expandParamsD rhs ist dec ps ns (PRecord doc syn fc tn tty cdoc cn cty)
    = if tn `elem` ns
         then PRecord doc syn fc (dec tn) (piBind ps (expandParams dec ps ns [] tty))
                      cdoc (dec cn) conty
         else PRecord doc syn fc (dec tn) (expandParams dec ps ns [] tty)
                      cdoc (dec cn) conty
-   where conty = piBindp impl ps (expandParams dec ps ns [] cty)
+   where conty = piBindp expl ps (expandParams dec ps ns [] cty)
 expandParamsD rhs ist dec ps ns (PParams f params pds)
    = PParams f (ps ++ map (mapsnd (expandParams dec ps ns [])) params)
                (map (expandParamsD True ist dec ps ns) pds)
@@ -1544,9 +1554,9 @@ stripLinear i tm = evalState (sl tm) [] where
                                      return (PPatvar fc f)
     sl t@(PAlternative _ (a : as)) = do sl a
                                         return t
-    sl (PApp fc fn args) = do fn' <- sl fn
+    sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var 
                               args' <- mapM slA args
-                              return $ PApp fc fn' args'
+                              return $ PApp fc fn args'
        where slA (PImp p m l n t) = do t' <- sl t
                                        return $ PImp p m l n t'
              slA (PExp p l t) = do t' <- sl t

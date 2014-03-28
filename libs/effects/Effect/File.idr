@@ -6,62 +6,55 @@ import Control.IOExcept
 data OpenFile : Mode -> Type where
      FH : File -> OpenFile m
 
+openOK : Mode -> Bool -> Type
+openOK m True = OpenFile m
+openOK m False = ()
+
 data FileIO : Effect where
-     Open  : String -> (m : Mode) -> FileIO () (Either () (OpenFile m)) Bool
-     Close :                         FileIO (OpenFile m) () ()
+     Open  : String -> (m : Mode) -> 
+             {() ==> {res} if res then OpenFile m else ()} FileIO Bool
+     Close : {OpenFile m ==> ()}               FileIO () 
 
-     ReadLine  :           FileIO (OpenFile Read)  (OpenFile Read) String
-     WriteLine : String -> FileIO (OpenFile Write) (OpenFile Write) ()
-     EOF       :           FileIO (OpenFile Read)  (OpenFile Read) Bool
-
+     ReadLine  :           {OpenFile Read}  FileIO String 
+     WriteLine : String -> {OpenFile Write} FileIO ()
+     EOF       :           {OpenFile Read}  FileIO Bool
 
 instance Handler FileIO IO where
     handle () (Open fname m) k = do h <- openFile fname m
                                     valid <- validFile h
-                                    if valid then k (Right (FH h)) True
-                                             else k (Left ()) False
+                                    if valid then k True (FH h) 
+                                             else k False ()
     handle (FH h) Close      k = do closeFile h
                                     k () ()
     handle (FH h) ReadLine        k = do str <- fread h
-                                         k (FH h) str
+                                         k str (FH h)
     handle (FH h) (WriteLine str) k = do fwrite h str
-                                         k (FH h) ()
+                                         k () (FH h)
     handle (FH h) EOF             k = do e <- feof h
-                                         k (FH h) e
-
-instance Handler FileIO (IOExcept String) where
-    handle () (Open fname m) k
-       = do h <- ioe_lift (openFile fname m)
-            valid <- ioe_lift (validFile h)
-            if valid then k (Right (FH h)) True
-                     else k (Left ()) False
-    handle (FH h) Close           k = do ioe_lift (closeFile h); k () ()
-    handle (FH h) ReadLine        k = do str <- ioe_lift (fread h)
-                                         k (FH h) str
-    handle (FH h) (WriteLine str) k = do ioe_lift (fwrite h str)
-                                         k (FH h) ()
-    handle (FH h) EOF             k = do e <- ioe_lift (feof h)
-                                         k (FH h) e
+                                         k e (FH h)
 
 FILE_IO : Type -> EFFECT
 FILE_IO t = MkEff t FileIO
 
 open : Handler FileIO e =>
-       String -> (m : Mode) -> EffM e [FILE_IO ()]
-                                      [FILE_IO (Either () (OpenFile m))] Bool
+       String -> (m : Mode) -> 
+       { [FILE_IO ()] ==> [FILE_IO (if result then OpenFile m else ())] } Eff e Bool
 open f m = Open f m
 
 close : Handler FileIO e =>
-        EffM e [FILE_IO (OpenFile m)] [FILE_IO ()] ()
+        { [FILE_IO (OpenFile m)] ==> [FILE_IO ()] } Eff e ()
 close = Close
 
-readLine : Handler FileIO e => Eff e [FILE_IO (OpenFile Read)] String
+readLine : Handler FileIO e => 
+           { [FILE_IO (OpenFile Read)] } Eff e String 
 readLine = ReadLine
 
-writeLine : Handler FileIO e => String -> Eff e [FILE_IO (OpenFile Write)] ()
+writeLine : Handler FileIO e => 
+            String -> { [FILE_IO (OpenFile Write)] } Eff e ()
 writeLine str = WriteLine str
 
-eof : Handler FileIO e => Eff e [FILE_IO (OpenFile Read)] Bool
+eof : Handler FileIO e => 
+      { [FILE_IO (OpenFile Read)] } Eff e Bool 
 eof = EOF
 
 
