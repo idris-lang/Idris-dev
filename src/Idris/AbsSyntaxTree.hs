@@ -1482,7 +1482,7 @@ getPArity _ = 0
 
 allNamesIn :: PTerm -> [Name]
 allNamesIn tm = nub $ ni [] tm
-  where
+  where -- FIXME added niTacImp, but is it right?
     ni env (PRef _ n)
         | not (n `elem` env) = [n]
     ni env (PPatvar _ n) = [n]
@@ -1490,7 +1490,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
     ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
@@ -1504,16 +1504,19 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PNoImplicits tm)    = ni env tm
     ni env _               = []
 
+    niTacImp env (TacImp _ _ scr) = ni env scr
+    niTacImp _                    = []
+
 -- Return all names defined in binders in the given term
 boundNamesIn :: PTerm -> [Name]
 boundNamesIn tm = nub $ ni tm
-  where
+  where -- FIXME Added niTacImp, but is it right?
     ni (PApp _ f as)   = ni f ++ concatMap (ni) (map getTm as)
     ni (PAppBind _ f as)   = ni f ++ concatMap (ni) (map getTm as)
     ni (PCase _ c os)  = ni c ++ concatMap (ni) (map snd os)
     ni (PLam n ty sc)  = n : (ni ty ++ ni sc)
     ni (PLet n ty val sc)  = n : (ni ty ++ ni val ++ ni sc)
-    ni (PPi _ n ty sc) = n : (ni ty ++ ni sc)
+    ni (PPi p n ty sc) = niTacImp p ++ (n : (ni ty ++ ni sc))
     ni (PEq _ l r)     = ni l ++ ni r
     ni (PRewrite _ l r _) = ni l ++ ni r
     ni (PTyped l r)    = ni l ++ ni r
@@ -1526,6 +1529,9 @@ boundNamesIn tm = nub $ ni tm
     ni (PDisamb _ tm)    = ni tm
     ni (PNoImplicits tm) = ni tm
     ni _               = []
+
+    niTacImp (TacImp _ _ scr) = ni scr
+    niTacImp _                = []
 
 -- Return names which are free in the given term.
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
@@ -1540,7 +1546,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
@@ -1554,11 +1560,14 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
 
+    niTacImp env (TacImp _ _ scr) = ni env scr
+    niTacImp _ _                  = []
+
 -- Return which of the given names are used in the given term.
 
 usedNamesIn :: [Name] -> IState -> PTerm -> [Name]
 usedNamesIn vars ist tm = nub $ ni [] tm
-  where
+  where -- FIXME added niTacImp, but is it right?
     ni env (PRef _ n)
         | n `elem` vars && not (n `elem` env)
             = case lookupTy n (tt_ctxt ist) of
@@ -1568,7 +1577,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi _ n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
@@ -1581,4 +1590,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
+
+    niTacImp (TacImp _ _ scr) = ni scr
+    niTacImp _                = []
 
