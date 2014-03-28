@@ -1458,7 +1458,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
 
         logLvl 5 "DONE CHECK"
         logLvl 2 $ "---> " ++ show rhs'
-        when (not (null defer)) $ iLOG $ "DEFERRED " ++ show (map fst defer)
+        when (not (null defer)) $ iLOG $ "DEFERRED " ++ 
+                    show (map (\ (n, (_,_,t)) -> (n, t)) defer)
         def' <- checkDef fc defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''

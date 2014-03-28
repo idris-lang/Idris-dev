@@ -10,7 +10,7 @@ import Idris.Core.Typecheck
 import Idris.AbsSyntaxTree
 import Idris.Colours
 import Idris.Docstrings
-import Idris.IdeSlave
+import Idris.IdeSlave hiding (Opt(..))
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
