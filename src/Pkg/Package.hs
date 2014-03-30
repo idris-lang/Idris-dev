@@ -17,6 +17,7 @@ import Data.List.Split(splitOn)
 import Idris.Core.TT
 import Idris.REPL
 import Idris.AbsSyntax
+import Idris.Output
 
 import IRTS.System
 

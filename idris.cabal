@@ -476,6 +476,7 @@ Library
                 , Idris.IdeSlave
                 , Idris.Imports
                 , Idris.Inliner
+                , Idris.Output
                 , Idris.Parser
                 , Idris.ParseHelpers
                 , Idris.ParseOps

@@ -27,6 +27,7 @@ import Idris.Colours hiding (colourise)
 import Idris.Inliner
 import Idris.CaseSplit
 import Idris.DeepSeq
+import Idris.Output
 
 import Paths_idris
 import Version_idris (gitHash)
@@ -532,7 +533,7 @@ process h fn (Check (PRef _ n))
     putTy imp ist _ bnd sc = putGoal imp ist ((n,False):bnd) sc
     putGoal imp ist bnd g
                = text "--------------------------------------" <$>
-                 annotate (AnnName n Nothing Nothing) (text $ show n) <+> colon <+>
+                 annotate (AnnName n Nothing Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
 
     tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] t

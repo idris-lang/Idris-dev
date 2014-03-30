@@ -9,6 +9,7 @@ import Idris.Core.CaseTree
 import Idris.AbsSyntax
 import Idris.Delaborate
 import Idris.Error
+import Idris.Output (iputStrLn)
 
 import Data.List
 import Data.Either
