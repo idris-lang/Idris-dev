@@ -490,6 +490,12 @@ getUndefined :: Idris [Name]
 getUndefined = do i <- getIState
                   return (map fst (idris_metavars i) \\ primDefs)
 
+isMetavarName :: Name -> IState -> Bool
+isMetavarName n ist
+     = case lookupNames n (tt_ctxt ist) of
+            (t:_) -> isJust $ lookup t (idris_metavars ist)
+            _     -> False
+
 getWidth :: Idris ConsoleWidth
 getWidth = fmap idris_consolewidth getIState
 
@@ -579,10 +585,11 @@ fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
 fancifyAnnots ist annot@(AnnName n _ _) =
   do let ctxt = tt_ctxt ist
      case () of
-       _ | isDConName n ctxt -> AnnName n (Just DataOutput) Nothing
-       _ | isFnName   n ctxt -> AnnName n (Just FunOutput) Nothing
-       _ | isTConName n ctxt -> AnnName n (Just TypeOutput) Nothing
-       _ | otherwise         -> annot
+       _ | isDConName    n ctxt -> AnnName n (Just DataOutput) Nothing
+       _ | isFnName      n ctxt -> AnnName n (Just FunOutput) Nothing
+       _ | isTConName    n ctxt -> AnnName n (Just TypeOutput) Nothing
+       _ | isMetavarName n ist  -> AnnName n (Just MetavarOutput) Nothing
+       _ | otherwise            -> annot
 fancifyAnnots _ annot = annot
 
 type1Doc :: Doc OutputAnnotation

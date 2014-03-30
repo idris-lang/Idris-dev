@@ -74,9 +74,10 @@ instance (SExpable a, SExpable b, SExpable c, SExpable d, SExpable e) =>
    toSExp (l, m, n, o, p) = SexpList [toSExp l, toSExp m, toSExp n, toSExp o, toSExp p]
 
 instance SExpable NameOutput where
-  toSExp TypeOutput = SymbolAtom "type"
-  toSExp FunOutput  = SymbolAtom "function"
-  toSExp DataOutput = SymbolAtom "data"
+  toSExp TypeOutput    = SymbolAtom "type"
+  toSExp FunOutput     = SymbolAtom "function"
+  toSExp DataOutput    = SymbolAtom "data"
+  toSExp MetavarOutput = SymbolAtom "metavar"
 
 instance SExpable OutputAnnotation where
   toSExp (AnnName n Nothing   _) = toSExp [(SymbolAtom "name", StringAtom (show n)),
