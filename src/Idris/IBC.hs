@@ -10,6 +10,7 @@ import Idris.Imports
 import Idris.Error
 import Idris.Delaborate
 import Idris.Docstrings
+import Idris.Output
 
 import qualified Cheapskate.Types as CT
 

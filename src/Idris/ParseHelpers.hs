@@ -17,6 +17,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Delaborate (pprintErr)
 import Idris.Docstrings
+import Idris.Output (ihWarn)
 
 import qualified Util.Pretty as Pretty (text)
 

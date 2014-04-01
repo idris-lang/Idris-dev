@@ -14,6 +14,7 @@ import Idris.ElabTerm
 import Idris.Delaborate
 import Idris.Parser
 import Idris.Error
+import Idris.Output
 
 import Idris.Core.TT
 import Idris.Core.Typecheck

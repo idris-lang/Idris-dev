@@ -29,6 +29,7 @@ import Idris.Coverage
 import Idris.IBC
 import Idris.Unlit
 import Idris.Providers
+import Idris.Output
 
 import Idris.ParseHelpers
 import Idris.ParseOps

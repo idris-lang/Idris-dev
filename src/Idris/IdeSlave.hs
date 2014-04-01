@@ -79,12 +79,16 @@ instance SExpable NameOutput where
   toSExp DataOutput    = SymbolAtom "data"
   toSExp MetavarOutput = SymbolAtom "metavar"
 
+maybeProps :: SExpable a => [(String, Maybe a)] -> [(SExp, SExp)]
+maybeProps [] = []
+maybeProps ((n, Just p):ps) = (SymbolAtom n, toSExp p) : maybeProps ps
+maybeProps ((n, Nothing):ps) = maybeProps ps
+
 instance SExpable OutputAnnotation where
-  toSExp (AnnName n Nothing   _) = toSExp [(SymbolAtom "name", StringAtom (show n)),
-                                           (SymbolAtom "implicit", BoolAtom False)]
-  toSExp (AnnName n (Just ty) _) = toSExp [(SymbolAtom "name", StringAtom (show n)),
-                                           (SymbolAtom "decor", toSExp ty),
-                                           (SymbolAtom "implicit", BoolAtom False)]
+  toSExp (AnnName n ty d t) = toSExp $ [(SymbolAtom "name", StringAtom (show n)),
+                                        (SymbolAtom "implicit", BoolAtom False)] ++
+                                       maybeProps [("decor", ty)] ++
+                                       maybeProps [("doc-overview", d), ("type", t)]
   toSExp (AnnBoundName n imp)    = toSExp [(SymbolAtom "name", StringAtom (show n)),
                                            (SymbolAtom "decor", SymbolAtom "bound"),
                                            (SymbolAtom "implicit", BoolAtom imp)]

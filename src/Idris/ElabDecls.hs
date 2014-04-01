@@ -16,6 +16,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
+import Idris.Output (iputStrLn, pshow, iWarn)
 import IRTS.Lang
 import Paths_idris
 
