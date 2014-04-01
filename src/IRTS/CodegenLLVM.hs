@@ -70,7 +70,7 @@ codegenLLVM' :: [(TT.Name, SDecl)] ->
                 FilePath -> -- output file name
                 OutputType ->
                 IO ()
-codegenLLVM defs triple cpu optimize file outty = withContext $ \context -> do
+codegenLLVM' defs triple cpu optimize file outty = withContext $ \context -> do
   initializeAllTargets
   (target, _) <- failInIO $ lookupTarget Nothing triple
   withTargetOptions $ \options ->
