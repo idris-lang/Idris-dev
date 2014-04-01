@@ -1533,8 +1533,6 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
             = do mf <- match' f f'
                  ms <- zipWithM matchArg args args'
                  return (mf ++ concat ms)
---     match (PRef _ n) (PRef _ n') | n == n' = return []
---                                  | otherwise = Nothing
     match (PRef f n) (PApp _ x []) = match (PRef f n) x
     match (PPatvar f n) xr = match (PRef f n) xr
     match xr (PPatvar f n) = match xr (PRef f n)
@@ -1544,7 +1542,10 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
           (not (isConName n (tt_ctxt i) || isFnName n (tt_ctxt i)) 
                 || tm == Placeholder)
             = return [(n, tm)]
-        | n == n' = return []
+        -- if one namespace is missing, drop the other
+        | n == n' || n == dropNS n' || dropNS n == n' = return []
+       where dropNS (NS n _) = n
+             dropNS n = n
     match (PRef _ n) tm
         | not names && (not (isConName n (tt_ctxt i) ||
                              isFnName n (tt_ctxt i)) || tm == Placeholder)
