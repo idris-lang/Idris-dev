@@ -32,6 +32,7 @@ import Control.Applicative
 import Control.Monad.State
 import Data.Maybe
 import Data.List
+import Data.Ord
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IS
 import qualified Data.Map as M
@@ -117,12 +118,32 @@ mkDecls t used
          return decls
 
 showCaseTrees :: [(Name, LDecl)] -> String
-showCaseTrees ds = showSep "\n\n" (map showCT ds)
+showCaseTrees = showSep "\n\n" . map showCT . sortBy (comparing defnRank)
   where
     showCT (n, LFun _ f args lexp)
-       = show n ++ " " ++ showSep " " (map show args) ++ " =\n\t "
+       = show n ++ " " ++ showSep " " (map show args) ++ " =\n\t"
             ++ show lexp
     showCT (n, LConstructor c t a) = "data " ++ show n ++ " " ++ show a
+
+    defnRank :: (Name, LDecl) -> String
+    defnRank (n, LFun _ _ _ _)       = "1" ++ nameRank n
+    defnRank (n, LConstructor _ _ _) = "2" ++ nameRank n
+
+    nameRank :: Name -> String
+    nameRank (UN s)   = "1" ++ show s
+    nameRank (MN i s) = "2" ++ show s ++ show i
+    nameRank (NS n ns) = "3" ++ concatMap show (reverse ns) ++ nameRank n
+    nameRank (SN sn) = "4" ++ snRank sn
+    nameRank n = "5" ++ show n
+
+    snRank :: SpecialName -> String
+    snRank (WhereN i n n') = "1" ++ nameRank n' ++ nameRank n ++ show i
+    snRank (InstanceN n args) = "2" ++ nameRank n ++ concatMap show args
+    snRank (ParentN n s) = "3" ++ nameRank n ++ show s
+    snRank (MethodN n) = "4" ++ nameRank n
+    snRank (CaseN n) = "5" ++ nameRank n
+    snRank (ElimN n) = "6" ++ nameRank n
+    snRank (InstanceCtorN n) = "7" ++ nameRank n
 
 isCon (TyDecl _ _) = True
 isCon _ = False
