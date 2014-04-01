@@ -19,7 +19,7 @@ data CaseDef = CaseDef [Name] !SC [Term]
 -- in other words, it never inspects anything else than variables.
 --
 -- ProjCase is a special powerful case construct that allows inspection
--- of compound terms. Occurences of ProjCase arise no earlier than
+-- of compound terms. Occurrences of ProjCase arise no earlier than
 -- in the function `prune` as a means of optimisation
 -- of already built case trees.
 --
@@ -603,6 +603,7 @@ prune proj (Case n alts) = case alts' of
     --   f  x    = ... x!0 ...
     --
     -- Hence, we disable this step.
+    -- TODO: re-enable this in toIR
     --
     -- as@[ConCase cn i args sc]
     --     | proj -> mkProj n 0 args (prune proj sc)

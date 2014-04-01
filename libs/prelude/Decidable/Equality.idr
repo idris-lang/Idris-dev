@@ -176,11 +176,21 @@ vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} refl = refl
 
 instance DecEq a => DecEq (Vect n a) where
   decEq [] [] = Yes refl
+  decEq (x :: xs) (y :: ys) with (decEq x y)
+    decEq (x :: xs) (x :: ys)   | Yes refl with (decEq xs ys)
+      decEq (x :: xs) (x :: xs) | Yes refl | Yes refl = Yes refl
+      decEq (x :: xs) (x :: ys) | Yes refl | No  neq  = No (neq . vectInjective2)
+    decEq (x :: xs) (y :: ys)   | No  neq             = No (neq . vectInjective1)
+
+{- The following definition is elaborated in a wrong case-tree. Examination pending.
+
+instance DecEq a => DecEq (Vect n a) where
+  decEq [] [] = Yes refl
   decEq (x :: xs) (y :: ys) with (decEq x y, decEq xs ys)
     decEq (x :: xs) (x :: xs) | (Yes refl, Yes refl) = Yes refl
     decEq (x :: xs) (y :: ys) | (_, No nEqTl) = No (\p => nEqTl (vectInjective2 p))
     decEq (x :: xs) (y :: ys) | (No nEqHd, _) = No (\p => nEqHd (vectInjective1 p))
-    
+-}
 
 -- For the primitives, we have to cheat because we don't have access to their
 -- internal implementations.
