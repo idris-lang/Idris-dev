@@ -58,13 +58,18 @@ import Debug.Trace
 
 data Target = Target { triple :: String, dataLayout :: DataLayout }
 
-codegenLLVM :: [(TT.Name, SDecl)] ->
-               String -> -- target triple
-               String -> -- target CPU
-               Word -> -- Optimization degree
-               FilePath -> -- output file name
-               OutputType ->
-               IO ()
+codegenLLVM :: CodeGenerator
+codegenLLVM ci = codegenLLVM' (simpleDecls ci) (targetTriple ci)
+                              (targetCPU ci) (optimisation ci)
+                              (outputFile ci) (outputType ci)
+
+codegenLLVM' :: [(TT.Name, SDecl)] ->
+                String -> -- target triple
+                String -> -- target CPU
+                Word -> -- Optimization degree
+                FilePath -> -- output file name
+                OutputType ->
+                IO ()
 codegenLLVM defs triple cpu optimize file outty = withContext $ \context -> do
   initializeAllTargets
   (target, _) <- failInIO $ lookupTarget Nothing triple
