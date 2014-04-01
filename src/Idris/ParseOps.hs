@@ -37,9 +37,14 @@ table fixes
         [pexp (PApp fc (PRef fc (sUN "fromInteger")) [pexp (PConstant (BI 0))]), pexp x])]]
        ++ toTable (reverse fixes) ++
       [[backtick],
-       [binary "$" (\fc x y -> PApp fc x [pexp y]) AssocRight],
+       [binary "$" (\fc x y -> flatten $ PApp fc x [pexp y]) AssocRight],
        [binary "="  PEq AssocLeft],
        [binary "->" (\fc x y -> PPi expl (sUN "__pi_arg") x y) AssocRight]]
+  where
+    flatten :: PTerm -> PTerm -- flatten application
+    flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
+    flatten t = t
+
 
 -- | Calculates table for fixtiy declarations
 toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
