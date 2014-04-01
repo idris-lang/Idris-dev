@@ -320,8 +320,6 @@ ideslaveProcess fn (HNF t) = process stdout fn (HNF t)
 --ideslaveProcess fn TTShell = process stdout fn TTShell -- need some prove mode!
 ideslaveProcess fn (TestInline t) = process stdout fn (TestInline t)
 
---that most likely does not work, since we need to wrap
---input/output of the executed binary...
 ideslaveProcess fn Execute = do process stdout fn Execute
                                 iPrintResult ""
 ideslaveProcess fn (Compile codegen f) = do process stdout fn (Compile codegen f)
@@ -892,17 +890,19 @@ process h fn (TestInline t)
                                 c <- colourise
                                 iPrintResult (showTm ist (delab ist tm'))
 process h fn Execute
-                   = do (m, _) <- elabVal toplevel False
+                   = do ist <- getIState
+                        (m, _) <- elabVal toplevel False
                                         (PApp fc
                                            (PRef fc (sUN "run__IO"))
                                            [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
---                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
                         (tmpn, tmph) <- runIO tempfile
                         runIO $ hClose tmph
                         t <- codegen
                         compile t tmpn m
-                        runIO $ system tmpn
-                        return ()
+                        case idris_outputmode ist of
+                          RawOutput -> do runIO $ system tmpn
+                                          return ()
+                          IdeSlave n -> do runIO . hPutStrLn h $ IdeSlave.convSExp "run-program" tmpn n
   where fc = fileFC "main"
 process h fn (Compile codegen f)
       = do (m, _) <- elabVal toplevel False
