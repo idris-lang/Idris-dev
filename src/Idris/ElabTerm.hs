@@ -36,6 +36,9 @@ data ElabInfo = EInfo { params :: [(Name, PTerm)],
 
 toplevel = EInfo [] emptyContext id Nothing
 
+eInfoNames :: ElabInfo -> [Name]
+eInfoNames info = map fst (params info) ++ keys (inblock info)
+
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
 --

@@ -771,9 +771,11 @@ data PArg' t = PImp { priority :: Int,
                       pname :: Name, getTm :: t }
              | PExp { priority :: Int,
                       argopts :: [ArgOpt],
+                      pname :: Name,
                       getTm :: t }
              | PConstraint { priority :: Int,
                              argopts :: [ArgOpt],
+                             pname :: Name,
                              getTm :: t }
              | PTacImplicit { priority :: Int,
                               argopts :: [ArgOpt],
@@ -790,8 +792,8 @@ lazyarg tm = Lazy `elem` argopts tm
 
 instance Sized a => Sized (PArg' a) where
   size (PImp p _ l nm trm) = 1 + size nm + size trm
-  size (PExp p l trm) = 1 + size trm
-  size (PConstraint p l trm) = 1 + size trm
+  size (PExp p l nm trm) = 1 + size nm + size trm
+  size (PConstraint p l nm trm) = 1 + size nm +size nm +  size trm
   size (PTacImplicit p l nm scr trm) = 1 + size nm + size scr + size trm
 
 {-!
@@ -800,8 +802,8 @@ deriving instance NFData PArg'
 !-}
 
 pimp n t mach = PImp 1 mach [Lazy] n t
-pexp t = PExp 1 [] t
-pconst t = PConstraint 1 [] t
+pexp t = PExp 1 [] (sMN 0 "arg") t
+pconst t = PConstraint 1 [] (sMN 0 "carg") t
 ptacimp n s t = PTacImplicit 2 [Lazy] n s t
 
 type PArg = PArg' PTerm
@@ -1259,8 +1261,8 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
     prettySe p bnd _ = text "test"
 
     prettyArgS bnd (PImp _ _ _ n tm) = prettyArgSi bnd (n, tm)
-    prettyArgS bnd (PExp _ _ tm)   = prettyArgSe bnd tm
-    prettyArgS bnd (PConstraint _ _ tm) = prettyArgSc bnd tm
+    prettyArgS bnd (PExp _ _ _ tm)   = prettyArgSe bnd tm
+    prettyArgS bnd (PConstraint _ _ _ tm) = prettyArgSc bnd tm
     prettyArgS bnd (PTacImplicit _ _ n _ tm) = prettyArgSti bnd (n, tm)
 
     prettyArgSe bnd arg = prettySe 0 bnd arg
@@ -1389,12 +1391,12 @@ getImps (_ : xs) = getImps xs
 
 getExps :: [PArg] -> [PTerm]
 getExps [] = []
-getExps (PExp _ _ tm : xs) = tm : getExps xs
+getExps (PExp _ _ _ tm : xs) = tm : getExps xs
 getExps (_ : xs) = getExps xs
 
 getConsts :: [PArg] -> [PTerm]
 getConsts [] = []
-getConsts (PConstraint _ _ tm : xs) = tm : getConsts xs
+getConsts (PConstraint _ _ _ tm : xs) = tm : getConsts xs
 getConsts (_ : xs) = getConsts xs
 
 getAll :: [PArg] -> [PTerm]

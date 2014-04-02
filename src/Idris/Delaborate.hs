@@ -58,7 +58,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
           = PLam n (de env [] ty) (de ((n,n):env) [] sc)
     de env ((PImp { argopts = opts }):is) (Bind n (Pi ty) sc)
           = PPi (Imp opts Dynamic False) n (de env [] ty) (de ((n,n):env) is sc)
-    de env (PConstraint _ _ _:is) (Bind n (Pi ty) sc)
+    de env (PConstraint _ _ _ _:is) (Bind n (Pi ty) sc)
           = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
     de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi ty) sc)
           = PPi (tacimpl tac) n (de env [] ty) (de ((n,n):env) is sc)
@@ -121,8 +121,8 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
         | otherwise = PApp un (PRef un n) (map pexp args)
 
     imp (PImp p m l n _) arg = PImp p m l n arg
-    imp (PExp p l _)   arg = PExp p l arg
-    imp (PConstraint p l _) arg = PConstraint p l arg
+    imp (PExp p l n _)   arg = PExp p l n arg
+    imp (PConstraint p l n _) arg = PConstraint p l n arg
     imp (PTacImplicit p l n sc _) arg = PTacImplicit p l n sc arg
 
 -- | How far to indent sub-errors

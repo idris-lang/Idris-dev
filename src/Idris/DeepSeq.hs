@@ -276,10 +276,10 @@ instance (NFData t) => NFData (PDo' t) where
 instance (NFData t) => NFData (PArg' t) where
         rnf (PImp x1 x2 x3 x4 x5)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
-        rnf (PExp x1 x2 x3)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (PConstraint x1 x2 x3)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (PExp x1 x2 x3 x4)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (PConstraint x1 x2 x3 x4)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PTacImplicit x1 x2 x3 x4 x5)
           = rnf x1 `seq`
               rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
