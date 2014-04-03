@@ -462,14 +462,14 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
         | otherwise = error $ "unknown instance constructor: " ++ show ctorName
 
-    getArity n = case lookupDef n ctx of
-        [CaseOp ci ty tys def tot cdefs] -> length tys
-        [TyDecl (DCon tag arity) _]      -> arity
-        [TyDecl (Ref) ty]                -> length $ getArgTys ty
-        [Operator ty arity op]           -> arity
-        [] -> error $ "Erasure/getArity: definition not found for " ++ show n
-        df -> error $ "Erasure/getArity: unrecognised entity '"
-                        ++ show n ++ "' with definition: "  ++ show df
+    getArity n = case lookupDefExact n ctx of
+        Just (CaseOp ci ty tys def tot cdefs) -> length tys
+        Just (TyDecl (DCon tag arity) _)      -> arity
+        Just (TyDecl (Ref) ty)                -> length $ getArgTys ty
+        Just (Operator ty arity op)           -> arity
+        Just df -> error $ "Erasure/getArity: unrecognised entity '"
+                             ++ show n ++ "' with definition: "  ++ show df
+        Nothing -> error $ "Erasure/getArity: definition not found for " ++ show n
 
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering

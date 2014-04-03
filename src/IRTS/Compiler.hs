@@ -304,13 +304,13 @@ irTerm vs env tm@(App f a) = case unApply tm of
                 | i >= arity || i `elem` used = x
                 | otherwise = Erased
 
-            arity = case fst4 <$> lookupCtxt n (definitions . tt_ctxt $ ist) of
-                [CaseOp ci ty tys def tot cdefs] -> length tys
-                [TyDecl (DCon tag ar) _]         -> ar
-                [TyDecl Ref ty]                  -> length $ getArgTys ty
-                [Operator ty ar op]              -> ar
-                []  -> 0  -- no definition, probably local name => can't erase anything
-                def -> error $ "unknown arity: " ++ show (n, def)
+            arity = case fst4 <$> lookupCtxtExact n (definitions . tt_ctxt $ ist) of
+                Just (CaseOp ci ty tys def tot cdefs) -> length tys
+                Just (TyDecl (DCon tag ar) _)         -> ar
+                Just (TyDecl Ref ty)                  -> length $ getArgTys ty
+                Just (Operator ty ar op)              -> ar
+                Just def -> error $ "unknown arity: " ++ show (n, def)
+                Nothing  -> 0  -- no definition, probably local name => can't erase anything
 
             -- name for purposes of usage info lookup
             uName

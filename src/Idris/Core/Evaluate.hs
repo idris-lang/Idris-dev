@@ -8,12 +8,13 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
-                lookupNames, lookupTy, lookupP, lookupDef, lookupDefAcc, lookupVal,
+                lookupNames, lookupTy, lookupP, lookupDef, lookupDefExact, lookupDefAcc, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, definitions) where
 
 import Debug.Trace
+import Control.Applicative hiding (Const)
 import Control.Monad.State -- not Strict!
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
@@ -909,8 +910,11 @@ lookupP n ctxt
             Hidden -> []
             _ -> return (fst p)
 
+lookupDefExact :: Name -> Context -> Maybe Def
+lookupDefExact n ctxt = tfst <$> lookupCtxtExact n (definitions ctxt)
+
 lookupDef :: Name -> Context -> [Def]
-lookupDef n ctxt = map tfst $ lookupCtxt n (definitions ctxt)
+lookupDef n ctxt = tfst <$> lookupCtxt n (definitions ctxt)
 
 lookupDefAcc :: Name -> Bool -> Context ->
                 [(Def, Accessibility)]
