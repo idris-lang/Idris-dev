@@ -232,10 +232,9 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDeps :: Name -> Deps
     getDeps (SN (WhereN i (SN (InstanceCtorN classN)) (MN i' field)))
         = M.empty  -- these deps are created when applying instance ctors
-    getDeps n = case lookupDef n ctx of
-        [def] -> getDepsDef n def
-        []    -> error $ "erasure checker: unknown reference: " ++ show n
-        _     -> error $ "erasure checker: ambiguous reference: " ++ show n
+    getDeps n = case lookupDefExact n ctx of
+        Just def -> getDepsDef n def
+        Nothing  -> error $ "erasure checker: unknown reference: " ++ show n
 
     getDepsDef :: Name -> Def -> Deps
     getDepsDef fn (Function ty t) = error "a function encountered"  -- TODO
