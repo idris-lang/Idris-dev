@@ -23,6 +23,7 @@ import Idris.Parser (loadModule)
 import Idris.Delaborate (pshow)
 import Idris.AbsSyntax
 import Idris.IdrisDoc
+import Idris.Output
 
 import IRTS.System
 

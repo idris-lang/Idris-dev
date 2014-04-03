@@ -71,25 +71,22 @@ compile codegen f tm
         case dumpDefun of
             Nothing -> return ()
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
-        triple <- targetTriple
-        cpu <- targetCPU
-        optimize <- optLevel
+        triple <- Idris.AbsSyntax.targetTriple
+        cpu <- Idris.AbsSyntax.targetCPU
+        optimise <- optLevel
         iLOG "Building output"
+
         case checked of
-            OK c -> runIO $ case codegen of
-                              ViaC ->
-                                  codegenC c f outty hdrs
-                                    (concatMap mkObj objs)
-                                    (concatMap mkLib libs)
-                                    (concatMap mkFlag flags ++
-                                     concatMap incdir impdirs) NONE
-                              ViaJava ->
-                                  codegenJava [] c f hdrs libs outty
-                              ViaJavaScript ->
-                                  codegenJavaScript JavaScript c hdrs f outty
-                              ViaNode ->
-                                  codegenJavaScript Node c hdrs f outty
-                              ViaLLVM -> codegenLLVM c triple cpu optimize f outty
+            OK c -> do let cginfo = CodegenInfo f outty triple cpu optimise
+                                                hdrs impdirs objs libs flags
+                                                NONE c (toAlist defuns)
+                                                tagged
+                       runIO $ case codegen of
+                              ViaC -> codegenC cginfo
+                              ViaJava -> codegenJava cginfo 
+                              ViaJavaScript -> codegenJavaScript cginfo
+                              ViaNode -> codegenNode cginfo
+                              ViaLLVM -> codegenLLVM cginfo
                               Bytecode -> dumpBC c f
             Error e -> ierror e
   where checkMVs = do i <- getIState
@@ -99,12 +96,6 @@ compile codegen f tm
         inDir d h = do let f = d </> h
                        ex <- doesFileExist f
                        if ex then return f else return h
-        mkObj f = f ++ " "
-        mkLib l = "-l" ++ l ++ " "
-        mkFlag l = l ++ " "
-
-        incdir i = "-I" ++ i ++ " "
-
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do i <- ir tm

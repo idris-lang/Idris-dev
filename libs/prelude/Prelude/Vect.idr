@@ -7,6 +7,7 @@ import Prelude.List
 import Prelude.Classes
 import Prelude.Nat
 import Prelude.Bool
+import Prelude.Uninhabited
 
 %access public
 %default total
@@ -71,6 +72,7 @@ index fZ     [] impossible
 deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
 deleteAt           fZ     (x::xs) = xs
 deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
+deleteAt {n = Z}   (fS k) (x::xs) = absurd k
 deleteAt           _      [] impossible
 
 ||| Replace an element at a particlar index with another

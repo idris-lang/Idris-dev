@@ -6,6 +6,7 @@ import Prelude.Algebra
 import Prelude.Bool
 import Prelude.Cast
 import Prelude.Classes
+import Prelude.Uninhabited
 
 %access public
 %default total
@@ -19,6 +20,9 @@ import Prelude.Classes
 
 -- name hints for interactive editing
 %name Nat k,j,i,n,m
+
+instance Uninhabited (Z = S n) where
+  uninhabited refl impossible
 
 --------------------------------------------------------------------------------
 -- Syntactic tests

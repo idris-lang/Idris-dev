@@ -7,6 +7,7 @@ import Idris.DSL
 import Idris.Delaborate
 import Idris.Error
 import Idris.ProofSearch
+import Idris.Output (pshow)
 
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT

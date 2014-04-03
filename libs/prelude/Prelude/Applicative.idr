@@ -1,6 +1,8 @@
 module Prelude.Applicative
 
 import Builtins
+import Prelude.Basics
+import Prelude.Classes
 import Prelude.Functor
 
 ---- Applicative functors/Idioms

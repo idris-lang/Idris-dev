@@ -6,7 +6,6 @@ import Language.Reflection.Utils
 
 %language ErrorReflection
 
-
 total
 cadr :  (xs : List a)
      -> {auto cons1 : isCons xs = True}
@@ -14,6 +13,7 @@ cadr :  (xs : List a)
      -> a
 cadr (x :: (y :: _)) {cons1=refl} {cons2=refl} = y
 cadr (x :: [])       {cons1=refl} {cons2=refl} impossible
+cadr []              {cons1=refl} {cons2=refl} impossible
 
 extractList : TT -> Maybe TT
 extractList (App (App reflCon (App isCons lst)) _) = Just lst

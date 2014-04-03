@@ -2,6 +2,7 @@ module Prelude.Fin
 
 import Prelude.Nat
 import Prelude.Either
+import Prelude.Uninhabited
 
 %default total
 
@@ -10,6 +11,10 @@ import Prelude.Either
 data Fin : (n : Nat) -> Type where
     fZ : Fin (S k)
     fS : Fin k -> Fin (S k)
+
+instance Uninhabited (Fin Z) where
+  uninhabited fZ impossible
+  uninhabited (fS f) impossible
 
 fSInjective : (m : Fin k) -> (n : Fin k) -> fS m = fS n -> m = n
 fSInjective left _ refl = refl

@@ -16,6 +16,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
+import Idris.Output (iputStrLn, pshow, iWarn)
 import IRTS.Lang
 import Paths_idris
 
@@ -58,7 +59,8 @@ checkAddDef add toplvl fc [] = return []
 checkAddDef add toplvl fc ((n, (i, top, t)) : ns) 
                = do ctxt <- getContext
                     (t', _) <- recheckC fc [] t
-                    when add $ addDeferred [(n, (i, top, t, toplvl))]
+                    when add $ do addDeferred [(n, (i, top, t, toplvl))]
+                                  addIBC (IBCDef n)
                     ns' <- checkAddDef add toplvl fc ns
                     return ((n, (i, top, t')) : ns')
 --                     mapM (\(n, (i, top, t)) -> do (t', _) <- recheckC fc [] t

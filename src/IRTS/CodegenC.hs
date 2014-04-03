@@ -20,16 +20,32 @@ import System.Directory
 import System.FilePath ((</>), (<.>))
 import Control.Monad
 
-codegenC :: [(Name, SDecl)] ->
-            String -> -- output file name
-            OutputType ->   -- generate executable if True, only .o if False
-            [FilePath] -> -- include files
-            String -> -- extra object files
-            String -> -- extra compiler flags (libraries)
-            String -> -- extra compiler flags (anything)
-            DbgLevel ->
-            IO ()
-codegenC defs out exec incs objs libs flags dbg
+codegenC :: CodeGenerator
+codegenC ci = codegenC' (simpleDecls ci)
+                        (outputFile ci)
+                        (outputType ci)
+                        (includes ci)
+                        (concatMap mkObj (compileObjs ci))
+                        (concatMap mkLib (compileLibs ci) ++
+                            concatMap incdir (importDirs ci))
+                        (concatMap mkFlag (compilerFlags ci))
+                        (debugLevel ci)
+
+  where mkObj f = f ++ " "
+        mkLib l = "-l" ++ l ++ " "
+        mkFlag l = l ++ " "
+        incdir i = "-I" ++ i ++ " "
+
+codegenC' :: [(Name, SDecl)] ->
+             String -> -- output file name
+             OutputType ->   -- generate executable if True, only .o if False
+             [FilePath] -> -- include files
+             String -> -- extra object files
+             String -> -- extra compiler flags (libraries)
+             String -> -- extra compiler flags (anything)
+             DbgLevel ->
+             IO ()
+codegenC' defs out exec incs objs libs flags dbg
     = do -- print defs
          let bc = map toBC defs
          let h = concatMap toDecl (map fst bc)
