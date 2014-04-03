@@ -400,8 +400,11 @@ pPatdefs ds
 pDefs :: [Name] -> [(Name, Def)] -> Idris ()
 pDefs syms ds 
    = mapM_ (\ (n, d) ->
-               do i <- getIState
-                  let d' = updateDef d
+               do let d' = updateDef d
+                  case d' of
+                       TyDecl _ _ -> return () 
+                       _ -> solveDeferred n 
+                  i <- getIState
                   logLvl 5 $ "Added " ++ show (n, d')
                   putIState (i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })) ds
   where

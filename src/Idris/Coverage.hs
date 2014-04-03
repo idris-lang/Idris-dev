@@ -51,13 +51,18 @@ mkPatTm t = do i <- getIState
 -- This will only work after the given clauses have been typechecked and the
 -- names are fully explicit!
 
-genClauses :: FC -> Name -> [Term] -> [PClause] -> Idris [PTerm]
+genClauses :: FC -> Name -> [Term] -> [PTerm] -> Idris [PTerm]
 genClauses fc n xs given
    = do i <- getIState
-        let lhss = map (getLHS i) xs
+        let lhs_tms = map (\x -> delab' i x True True) xs
+        -- if a placeholder was given, don't bother generating cases for it
+        let lhs_tms' = zipWith mergePlaceholders lhs_tms given
+        let lhss = map pUnApply lhs_tms'
+
         let argss = transpose lhss
         let all_args = map (genAll i) argss
         logLvl 5 $ "COVERAGE of " ++ show n
+        logLvl 5 $ show lhss
         logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 1 $ "Original: \n" ++
@@ -82,8 +87,8 @@ genClauses fc n xs given
             | (f, args) <- unApply term = map (\t -> delab' i t True True) args
             | otherwise = []
 
-        lhsApp (PClause _ _ l _ _ _) = l
-        lhsApp (PWith _ _ l _ _ _) = l
+        pUnApply (PApp _ _ args) = map getTm args
+        pUnApply _ = []
 
         -- Return whether the given clause matches none of the input clauses
         -- (xs)
@@ -91,6 +96,14 @@ genClauses fc n xs given
                                        Right ms -> False
                                        Left miss -> True) xs
 
+
+        mergePlaceholders :: PTerm -> PTerm -> PTerm
+        mergePlaceholders x Placeholder = Placeholder
+        mergePlaceholders (PApp fc f args) (PApp fc' f' args')
+            = PApp fc' f' (zipWith mergePArg args args')
+           where mergePArg x y = let xtm = mergePlaceholders (getTm x) (getTm y) in
+                                     x { getTm = xtm}
+        mergePlaceholders x _ = x
 
         mkClauses :: [PArg] -> [[PTerm]] -> [PTerm]
         mkClauses parg args
@@ -114,6 +127,7 @@ fnub' acc [] = acc
 
 -- quick check for constructor equality
 quickEq :: PTerm -> PTerm -> Bool
+quickEq (PConstant n) (PConstant n') = n == n'
 quickEq (PRef _ n) (PRef _ n') = n == n'
 quickEq (PApp _ t as) (PApp _ t' as')
     | length as == length as'
