@@ -76,9 +76,12 @@ initIBC :: IBCFile
 initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
-loadIBC fp = do iLOG $ "Loading ibc " ++ fp
-                ibcf <- runIO $ (bdecode fp :: IO IBCFile)
-                process ibcf fp
+loadIBC fp = do imps <- getImported
+                when (not (fp `elem` imps)) $
+                  do iLOG $ "Loading ibc " ++ fp
+                     ibcf <- runIO $ (bdecode fp :: IO IBCFile)
+                     process ibcf fp
+                     addImported fp
 
 bencode :: Binary a => FilePath -> a -> IO ()
 bencode f d = B.writeFile f (compress (encode d))

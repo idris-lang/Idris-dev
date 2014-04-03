@@ -88,6 +88,10 @@ addDyLib libs = do i <- getIState
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 
+addImported :: FilePath -> Idris ()
+addImported f = do i <- getIState
+                   putIState $ i { idris_imported = nub $ f : idris_imported i }
+
 addLangExt :: LanguageExt -> Idris ()
 addLangExt TypeProviders = do i <- getIState
                               putIState $ i {
@@ -356,6 +360,9 @@ addNameIdx' i n
 
 getHdrs :: Codegen -> Idris [String]
 getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)
+
+getImported ::  Idris [FilePath]
+getImported = do i <- getIState; return (idris_imported i)
 
 setErrSpan :: FC -> Idris ()
 setErrSpan x = do i <- getIState;

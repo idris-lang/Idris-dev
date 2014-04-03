@@ -91,11 +91,6 @@ data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines sh
                   | ColsWide Int -- ^ Manually specified - must be positive
                   | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
 
--- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
--- without typechecking).
--- This will include all the functions and data declarations, plus fixity declarations
--- and syntax macros.
-
 -- | The global state used in the Idris monad
 data IState = IState {
     tt_ctxt :: Context, -- ^ All the currently defined names and their terms
@@ -134,6 +129,7 @@ data IState = IState {
     idris_libs :: [(Codegen, String)],
     idris_cgflags :: [(Codegen, String)],
     idris_hdrs :: [(Codegen, String)],
+    idris_imported :: [FilePath], -- ^ Imported ibc file names
     proof_list :: [(Name, [String])],
     errSpan :: Maybe FC,
     parserWarnings :: [(FC, Err)],
@@ -225,7 +221,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
-                   [] Nothing [] Nothing [] [] Nothing [] Hidden False [] Nothing [] [] RawOutput
+                   [] [] Nothing [] Nothing [] [] Nothing [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth
 

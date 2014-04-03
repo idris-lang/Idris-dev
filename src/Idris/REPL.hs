@@ -1147,30 +1147,32 @@ loadInputs h inputs
            let ninputs = zip [1..] inputs
            ifiles <- mapWhileOK (\(num, input) ->
                 do putIState ist
-                   v <- verbose
-    --                           when v $ iputStrLn $ "(" ++ show num ++ "/" ++
-    --                                                show (length inputs) ++
-    --                                                ") " ++ input
                    modTree <- buildTree
                                    (map snd (take (num-1) ninputs))
                                    input
                    let ifiles = getModuleFiles modTree
                    iLOG ("MODULE TREE : " ++ show modTree)
                    iLOG ("RELOAD: " ++ show ifiles)
-                   when (not (all ibc ifiles) || loadCode) $ tryLoad ifiles
+                   when (not (all ibc ifiles) || loadCode) $ 
+                        tryLoad False (filter (not . ibc) ifiles)
                    -- return the files that need rechecking
-                   return (if (all ibc ifiles) then ifiles else []))
+                   return ifiles) 
                       ninputs
            inew <- getIState
-           -- to check everything worked consistently (in particular, will catch
-           -- if the ibc version is out of date) if we weren't loading per
-           -- module
+           let tidata = idris_tyinfodata inew
+           let lineapps = idris_lineapps inew
+           let patdefs = idris_patdefs inew
+           -- If it worked, load the whole thing from all the ibcs together
            case errSpan inew of
               Nothing ->
-                do putIState ist
-                   when (not loadCode) $ tryLoad $ nub (concat ifiles)
+                do putIState (ist { idris_tyinfodata = tidata })
+                   ibcfiles <- mapM findNewIBC (nub (concat ifiles))
+                   tryLoad True (mapMaybe id ibcfiles)
               _ -> return ()
-           putIState inew)
+           ist <- getIState
+           putIState (ist { idris_tyinfodata = tidata,
+                            idris_lineapps = lineapps,
+                            idris_patdefs = patdefs }))
         (\e -> do i <- getIState
                   case e of
                     At f _ -> do setErrSpan f
@@ -1179,14 +1181,42 @@ loadInputs h inputs
                     _ -> do setErrSpan emptyFC -- FIXME! Propagate it
                             iputStrLn (pshow i e))
    where -- load all files, stop if any fail
-         tryLoad :: [IFileType] -> Idris ()
-         tryLoad [] = return ()
-         tryLoad (f : fs) = do loadFromIFile h f
-                               ok <- noErrors
-                               when ok $ tryLoad fs
+         tryLoad :: Bool -> [IFileType] -> Idris ()
+         tryLoad keepstate [] = return ()
+         tryLoad keepstate (f : fs) 
+                 = do ist <- getIState
+                      loadFromIFile h f
+                      inew <- getIState
+                      -- FIXME: Save these in IBC to avoid this hack! Need to
+                      -- preserve it all from source inputs
+                      let tidata = idris_tyinfodata inew
+                      let lineapps = idris_lineapps inew
+                      let patdefs = idris_patdefs inew
+                      ok <- noErrors
+                      when ok $ do when (not keepstate) $ putIState ist
+                                   ist <- getIState
+                                   putIState (ist { idris_tyinfodata = tidata,
+                                                    idris_lineapps = lineapps,
+                                                    idris_patdefs = patdefs })
+                                   tryLoad keepstate fs
 
          ibc (IBC _ _) = True
          ibc _ = False
+
+         findNewIBC :: IFileType -> Idris (Maybe IFileType)
+         findNewIBC i@(IBC _ _) = return (Just i)
+         findNewIBC s@(IDR f) = do ist <- get
+                                   ibcsd <- valIBCSubDir ist
+                                   let ibc = ibcPathNoFallback ibcsd f
+                                   ok <- runIO $ doesFileExist ibc
+                                   if ok then return (Just (IBC ibc s))
+                                         else return Nothing
+         findNewIBC s@(LIDR f) = do ist <- get
+                                    ibcsd <- valIBCSubDir ist
+                                    let ibc = ibcPathNoFallback ibcsd f
+                                    ok <- runIO $ doesFileExist ibc
+                                    if ok then return (Just (IBC ibc s))
+                                          else return Nothing
 
          -- Like mapM, but give up when there's an error
          mapWhileOK f [] = return []
