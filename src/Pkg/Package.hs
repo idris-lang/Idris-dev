@@ -128,6 +128,8 @@ cleanPkg fp
                Just s -> rmFile $ dir </> s
 
 -- | Generate IdrisDoc for package
+-- TODO: Handle case where module does not contain a matching namespace
+--       E.g. from prelude.ipkg: IO, Prelude.Chars, Builtins
 documentPkg :: FilePath -- ^ Path to .ipkg file.
             -> IO ()
 documentPkg fp =
@@ -152,7 +154,7 @@ documentPkg fp =
           Right ist ->
                 do docRes <- generateDocs ist mods outputDir
                    case docRes of
-                        Right _  -> putStrLn "IdrisDoc generated"
+                        Right _  -> return ()
                         Left msg -> do putStrLn msg
                                        exitWith (ExitFailure 1)
 
