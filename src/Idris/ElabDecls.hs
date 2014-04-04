@@ -1431,10 +1431,6 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let (wbefore, wafter) = sepBlocks wb
 
         logLvl 2 $ "Where block:\n " ++ show wbefore ++ "\n" ++ show wafter
-        -- FIXME Changed info to winfo. Make sure that breaksn't things!
-        --       - Changed it back for now; possibly want a differently
-        --         modified ElabInfo.
-        --         - Changed back back after modifying pinfo.
         mapM_ (elabDecl' EAll winfo) wbefore
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- getIState -- new implicits from where block
