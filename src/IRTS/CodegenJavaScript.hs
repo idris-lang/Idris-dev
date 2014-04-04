@@ -1154,7 +1154,7 @@ unfoldLookupTable input =
 
 removeInstanceChecks :: JS -> JS
 removeInstanceChecks (JSCond conds) =
-  JSCond $ eliminateDeadBranches $ map (
+  removeNoopConds $ JSCond $ eliminateDeadBranches $ map (
     removeHelper *** removeInstanceChecks
   ) conds
   where
@@ -1168,6 +1168,11 @@ removeInstanceChecks (JSCond conds) =
     eliminateDeadBranches [(_, js)]         = [(JSNoop, js)]
     eliminateDeadBranches (x:xs)            = x : eliminateDeadBranches xs
     eliminateDeadBranches []                = []
+
+
+    removeNoopConds :: JS -> JS
+    removeNoopConds (JSCond [(JSNoop, js)]) = js
+    removeNoopConds js                      = js
 
 removeInstanceChecks js = transformJS removeInstanceChecks js
 
