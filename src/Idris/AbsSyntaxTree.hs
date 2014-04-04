@@ -36,6 +36,19 @@ import Debug.Trace
 
 import Text.PrettyPrint.Annotated.Leijen
 
+-- Data to pass to recursively called elaborators; e.g. for where blocks,
+-- paramaterised declarations, etc.
+
+data ElabInfo = EInfo { params :: [(Name, PTerm)],
+                        inblock :: Ctxt [Name], -- names in the block, and their params
+                        liftname :: Name -> Name,
+                        namespace :: Maybe [String] }
+
+toplevel = EInfo [] emptyContext id Nothing
+
+eInfoNames :: ElabInfo -> [Name]
+eInfoNames info = map fst (params info) ++ M.keys (inblock info)
+
 data IOption = IOption { opt_logLevel   :: Int,
                          opt_typecase   :: Bool,
                          opt_typeintype :: Bool,
@@ -1507,7 +1520,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env _               = []
 
     niTacImp env (TacImp _ _ scr) = ni env scr
-    niTacImp _                    = []
+    niTacImp _ _                   = []
 
 -- Return all names defined in binders in the given term
 boundNamesIn :: PTerm -> [Name]
@@ -1593,6 +1606,6 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
 
-    niTacImp (TacImp _ _ scr) = ni scr
-    niTacImp _                = []
+    niTacImp env (TacImp _ _ scr) = ni env scr
+    niTacImp _ _                = []
 

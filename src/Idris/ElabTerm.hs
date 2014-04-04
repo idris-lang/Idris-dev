@@ -3,6 +3,7 @@
 module Idris.ElabTerm where
 
 import Idris.AbsSyntax
+import Idris.AbsSyntaxTree
 import Idris.DSL
 import Idris.Delaborate
 import Idris.Error
@@ -25,19 +26,6 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 
 import Debug.Trace
-
--- Data to pass to recursively called elaborators; e.g. for where blocks,
--- paramaterised declarations, etc.
-
-data ElabInfo = EInfo { params :: [(Name, PTerm)],
-                        inblock :: Ctxt [Name], -- names in the block, and their params
-                        liftname :: Name -> Name,
-                        namespace :: Maybe [String] }
-
-toplevel = EInfo [] emptyContext id Nothing
-
-eInfoNames :: ElabInfo -> [Name]
-eInfoNames info = map fst (params info) ++ keys (inblock info)
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.

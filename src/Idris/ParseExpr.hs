@@ -150,15 +150,23 @@ extension syn (Rule ssym ptm _)
     update ns (PRef fc n) = case lookup n ns of
                               Just (SynTm t) -> t
                               _ -> PRef fc n
-    update ns (PLam n ty sc) = PLam (updateB ns n) (update ns ty) (update (dropn n ns) sc)
-    update ns (PPi p n ty sc) = PPi p (updateB ns n) (update ns ty) (update (dropn n ns) sc)
-    update ns (PLet n ty val sc) = PLet (updateB ns n) (update ns ty) (update ns val)
-                                          (update (dropn n ns) sc)
-    update ns (PApp fc t args) = PApp fc (update ns t) (map (fmap (update ns)) args)
-    update ns (PAppBind fc t args) = PAppBind fc (update ns t) (map (fmap (update ns)) args)
-    update ns (PCase fc c opts) = PCase fc (update ns c) (map (pmap (update ns)) opts)
+    update ns (PLam n ty sc)
+      = PLam (updateB ns n) (update ns ty) (update (dropn n ns) sc)
+    update ns (PPi p n ty sc)
+      = PPi (updTacImp ns p) (updateB ns n)
+            (update ns ty) (update (dropn n ns) sc)
+    update ns (PLet n ty val sc) 
+      = PLet  (updateB ns n) (update ns ty)
+              (update ns val) (update (dropn n ns) sc)
+    update ns (PApp fc t args)
+      = PApp fc (update ns t) (map (fmap (update ns)) args)
+    update ns (PAppBind fc t args)
+      = PAppBind fc (update ns t) (map (fmap (update ns)) args)
+    update ns (PCase fc c opts)
+      = PCase fc (update ns c) (map (pmap (update ns)) opts)
     update ns (PPair fc p l r) = PPair fc p (update ns l) (update ns r)
-    update ns (PDPair fc p l t r) = PDPair fc p (update ns l) (update ns t) (update ns r)
+    update ns (PDPair fc p l t r)
+      = PDPair fc p (update ns l) (update ns t) (update ns r)
     update ns (PAlternative a as) = PAlternative a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
@@ -175,6 +183,9 @@ extension syn (Rule ssym ptm _)
                                                 : upd ns ds
     update ns (PGoal fc r n sc) = PGoal fc (update ns r) n (update ns sc)
     update ns t = t
+
+    updTacImp ns (TacImp o st scr)  = TacImp o st (update ns scr)
+    updTacImp _  x                  = x
 
 {- | Parses a (normal) built-in expression
 @

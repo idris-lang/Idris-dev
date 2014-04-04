@@ -18,13 +18,13 @@ import qualified Text.Parser.Token.Highlight as Hi
 
 import Text.PrettyPrint.ANSI.Leijen (Doc, plain)
 
-import Idris.AbsSyntax
+import Idris.AbsSyntax hiding (namespace, params)
 import Idris.DSL
 import Idris.Imports
 import Idris.Delaborate
 import Idris.Error
 import Idris.ElabDecls
-import Idris.ElabTerm hiding (namespace, params)
+import Idris.ElabTerm
 import Idris.Coverage
 import Idris.IBC
 import Idris.Unlit

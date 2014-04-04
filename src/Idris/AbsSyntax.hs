@@ -1205,7 +1205,7 @@ addUsingConstraints syn fc t
              | otherwise = doAdd cs ns t
 
          mkConst c args = PApp fc (PRef fc c)
-                           (map (\n -> PExp 0 [] (sMN 0 "carg" (PRef fc n)) args)
+                           (map (\n -> PExp 0 [] (sMN 0 "carg") (PRef fc n)) args)
 
          getConstraints (PPi (Constraint _ _) _ c sc)
              = getcapp c ++ getConstraints sc
@@ -1232,8 +1232,7 @@ implicit' :: ElabInfo -> SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
 implicit' info syn ignore n ptm
     = do i <- getIState
          let (tm', impdata) = implicitise syn ignore i ptm
-         -- TODO WIP check impdata for unknown vars in default args
-         defaultArgCheck (eInfoNames info ++ keys (idris_implicits i)) impdata
+         defaultArgCheck (eInfoNames info ++ M.keys (idris_implicits i)) impdata
 --          let (tm'', spos) = findStatics i tm'
          putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
          addIBC (IBCImp n)
@@ -1244,21 +1243,20 @@ implicit' info syn ignore n ptm
   where
     --  Detect unknown names in default arguments and throw error if found.
     defaultArgCheck :: [Name] -> [PArg] -> Idris ()
-    defaultArgCheck names params = foldM_ names params unknownInDefault
+    defaultArgCheck knowns params = foldM_ notFoundInDefault knowns params 
 
-    unknownInDefault :: [Name] -> PArg -> Idris [Name]
-    unknownInDefault ns (PTacImplicit _ _ n script _)
-      = case notFound (namesIn script) ns of
-          Nothing     -> return (n:ns)
-          Just name   -> throwError (NoSuchVariable name)
-    --  TODO See if PConstraint in addition to PExp can reasonably have
-    --  a name. Until then, 'pname p' worksn't.
-    unknownInDefault ns p = return (pname p):ns
+    notFoundInDefault :: [Name] -> PArg -> Idris [Name]
+    notFoundInDefault kns (PTacImplicit _ _ n script _)
+      = do  i <- getIState 
+            case notFound kns (namesIn [] i script) of
+              Nothing     -> return (n:kns)
+              Just name   -> throwError (NoSuchVariable name)
+    notFoundInDefault kns p = return ((pname p):kns)
 
-    unknown :: [Name] -> [Name] -> Maybe Name
-    unknown [] _ = Nothing
-    unknown (SN (WhereN _ _ _)):as bs = unknown as bs
-    unknown a:as bs = if elem a bs then unknown as bs else Just a
+    notFound :: [Name] -> [Name] -> Maybe Name
+    notFound kns [] = Nothing
+    notFound kns (SN (WhereN _ _ _) : ns) = notFound kns ns -- Known already
+    notFound kns (n:ns) = if elem n kns then notFound kns ns else Just n
 
 implicitise :: SyntaxInfo -> [Name] -> IState -> PTerm -> (PTerm, [PArg])
 implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
@@ -1525,6 +1523,9 @@ aiFn inpat expat ist fc f ds as
                     [(n,t)] -> t
                     _ -> Public
 
+    insertImpl :: [PArg] -> [PArg] -> [PArg]
+    insertImpl ps as = insImpAcc M.empty ps as
+
     --  TODO WIP substitution into default arg expressions.
     --  - An extra accumulator parameter here?
     --    - Accumulator of what?
@@ -1534,38 +1535,38 @@ aiFn inpat expat ist fc f ds as
     --        function?
     --        - Check for existing call sites of insertImpl.
     --          - Well, easy: this is in a where block :-).
-    insertImpl :: M.Map Name PTerm  -- accumulated param names & arg terms
-               -> [PArg]            -- parameters
-               -> [PArg]            -- arguments
-               -> [PArg]
-    insertImpl pnas (PExp p l n ty : ps) (PExp _ _ _ tm : given) =
-      PExp p l n tm : insertImpl (M.insert n tm pnas) ps given
-    insertImpl pnas (PConstraint p l n ty : ps) (PConstraint _ _ _ tm : given) =
-      PConstraint p l n tm : insertImpl (M.insert n tm pnas) ps given
-    insertImpl pnas (PConstraint p l n ty : ps) given =
+    insImpAcc :: M.Map Name PTerm   -- accumulated param names & arg terms
+              -> [PArg]            -- parameters
+              -> [PArg]            -- arguments
+              -> [PArg]
+    insImpAcc pnas (PExp p l n ty : ps) (PExp _ _ _ tm : given) =
+      PExp p l n tm : insImpAcc (M.insert n tm pnas) ps given
+    insImpAcc pnas (PConstraint p l n ty : ps) (PConstraint _ _ _ tm : given) =
+      PConstraint p l n tm : insImpAcc (M.insert n tm pnas) ps given
+    insImpAcc pnas (PConstraint p l n ty : ps) given =
       let rtc = PResolveTC fc in
-        PConstraint p l n rtc : insertImpl (M.insert n rtc pnas) ps given
-    insertImpl pnas (PImp p _ l n ty : ps) given =
+        PConstraint p l n rtc : insImpAcc (M.insert n rtc pnas) ps given
+    insImpAcc pnas (PImp p _ l n ty : ps) given =
         case find n given [] of
             Just (tm, given') ->
-              PImp p False l n tm : insertImpl (M.insert n tm pnas) ps given'
+              PImp p False l n tm : insImpAcc (M.insert n tm pnas) ps given'
             Nothing ->
               PImp p True l n Placeholder :
-                insertImpl (M.insert n Placeholder pnas) ps given
-    insertImpl pnas (PTacImplicit p l n sc' ty : ps) given =
-      let sc = addImpl ist (substMatches (toList pnas) sc') in
+                insImpAcc (M.insert n Placeholder pnas) ps given
+    insImpAcc pnas (PTacImplicit p l n sc' ty : ps) given =
+      let sc = addImpl ist (substMatches (M.toList pnas) sc') in
         case find n given [] of
             Just (tm, given') ->
               PTacImplicit p l n sc tm :
-                insertImpl (M.insert n tm pnas) ps given'
+                insImpAcc (M.insert n tm pnas) ps given'
             Nothing ->
               if inpat
                 then PTacImplicit p l n sc Placeholder :
-                  insertImpl (M.insert n Placeholder pnas) ps given
+                  insImpAcc (M.insert n Placeholder pnas) ps given
                 else PTacImplicit p l n sc sc :
-                  insertImpl (M.insert n sc pnas) ps given
-    insertImpl expected [] = []
-    insertImpl _        given  = given
+                  insImpAcc (M.insert n sc pnas) ps given
+    insImpAcc _ expected [] = []
+    insImpAcc _ _        given  = given
 
     find n []               acc = Nothing
     find n (PImp _ _ _ n' t : gs) acc
@@ -1602,8 +1603,8 @@ stripLinear i tm = evalState (sl tm) [] where
                               return $ PApp fc fn args'
        where slA (PImp p m l n t) = do t' <- sl t
                                        return $ PImp p m l n t'
-             slA (PExp p l n t) = do t' <- sl t
-                                   return $ PExp p l n t'
+             slA (PExp p l n t) = do  t' <- sl t
+                                      return $ PExp p l n t'
              slA (PConstraint p l n t)
                                 = do t' <- sl t
                                      return $ PConstraint p l n t'

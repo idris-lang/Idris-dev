@@ -1795,7 +1795,7 @@ elabClass info syn doc fc constraints tn ps ds
 
     getMName (PTy _ _ _ _ _ n _) = nsroot n
     tdecl allmeths (PTy doc _ syn _ o n t)
-           = do t' <- implicit' syn allmeths n t
+           = do t' <- implicit' info syn allmeths n t
                 logLvl 5 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map fst ps) Exp t')),
                          (n, (doc, o, (toExp (map fst ps) Imp t'))),
