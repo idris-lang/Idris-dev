@@ -192,7 +192,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             [ [] ==> concat
                 -- These two, Main.main and run__IO, are always evaluated
                 -- but they elude analysis since they come from the seed term.
-                [ [(sUN "main" `sNS` ["Main"],  Result)] 
+                [ [(mainName,  Result)] 
                 , [(sUN "run__IO", Result), (sUN "run__IO", Arg 0)]
 
                 -- MkIO is read by run__IO,
