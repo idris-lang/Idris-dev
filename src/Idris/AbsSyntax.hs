@@ -1695,6 +1695,12 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   mkUniqA arg = do t' <- mkUniq (getTm arg)
                    return (arg { getTm = t' })
 
+  -- Initialise the unique name with the environment length (so we're not
+  -- looking for too long...)
+  initN (UN n) l = UN $ txt (str n ++ show l)
+  initN (MN i s) l = MN (i+l) s
+  initN n l = n
+
   -- FIXME: Probably ought to do this for completeness! It's fine as
   -- long as there are no bindings inside tactics though.
   mkUniqT tac = return tac
@@ -1704,7 +1710,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
          = do env <- get
               (n', sc') <-
                     if n `elem` env
-                       then do let n' = uniqueName n (env ++ inScope)
+                       then do let n' = uniqueName (initN n (length env))
+                                                   (env ++ inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
               put (n' : env)
@@ -1715,7 +1722,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
          = do env <- get
               (n', sc') <-
                     if n `elem` env
-                       then do let n' = uniqueName n (env ++ inScope)
+                       then do let n' = uniqueName (initN n (length env))
+                                                   (env ++ inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
               put (n' : env)
@@ -1726,7 +1734,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
          = do env <- get
               (n', sc') <-
                     if n `elem` env
-                       then do let n' = uniqueName n (env ++ inScope)
+                       then do let n' = uniqueName (initN n (length env))
+                                                   (env ++ inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
               put (n' : env)
