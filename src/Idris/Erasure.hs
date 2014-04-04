@@ -64,16 +64,17 @@ type Vars = Map Name VarInfo
 performUsageAnalysis :: Idris [Name]
 performUsageAnalysis = do
     ctx <- tt_ctxt <$> getIState
+    mainName <- getMainName <$> getIState
 
-    case lookupCtxt mainName (definitions ctx) of
-      [] -> return []  -- no main -> not compiling -> reachability irrelevant
-      _  -> do
+    case mainName of
+      Left reason -> return []  -- no main -> not compiling -> reachability irrelevant
+      Right main  -> do
         ci  <- idris_classes <$> getIState
         cg  <- idris_callgraph <$> getIState
         opt <- idris_optimisation <$> getIState
 
         -- Build the dependency graph.
-        let depMap = buildDepMap ci ctx mainName
+        let depMap = buildDepMap ci ctx main
 
         -- Search for reachable nodes in the graph.
         let (residDeps, (reachableNames, minUse)) = minimalUsage depMap
@@ -100,7 +101,14 @@ performUsageAnalysis = do
 
         return $ S.toList reachableNames
   where
-    mainName = sNS (sUN "main") ["Main"]
+    getMainName :: IState -> Either Err Name
+    getMainName ist = case lookupCtxtName n (idris_implicits ist) of
+        [(n', _)] -> Right n'
+        []        -> Left (NoSuchVariable n)
+        more      -> Left (CantResolveAlts (map (show . fst) more))
+      where
+        n = sNS (sUN "main") ["Main"]
+
     indent = ("  " ++)
 
     fmtItem :: (Cond, DepSet) -> String
@@ -118,7 +126,7 @@ performUsageAnalysis = do
 
     storeUsage :: Ctxt CGInfo -> (Name, IntMap (Set Reason)) -> Idris ()
     storeUsage cg (n, args)
-        | [x] <- lookupCtxt n cg
+        | Just x <- lookupCtxtExact n cg
         = addToCG n x{ usedpos = flat }        -- functions
 
         | otherwise
@@ -128,7 +136,7 @@ performUsageAnalysis = do
 
     checkAccessibility :: Ctxt OptInfo -> (Name, IntMap (Set Reason)) -> Idris ()
     checkAccessibility opt (n, reachable)
-        | [Optimise inaccessible dt] <- lookupCtxt n opt
+        | Just (Optimise inaccessible dt) <- lookupCtxtExact n opt
         , eargs@(_:_) <- [fmt n (S.toList rs) | (i,n) <- inaccessible, rs <- maybeToList $ IM.lookup i reachable]
         = warn $ show n ++ ": inaccessible arguments reachable:\n  " ++ intercalate "\n  " eargs
 
@@ -453,7 +461,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     -- Get the number of arguments that might be considered for erasure.
     getArity :: Name -> Int
     getArity (SN (WhereN i' ctorName (MN i field)))
-        | [TyDecl (DCon _ _) ty] <- lookupDef ctorName ctx
+        | Just (TyDecl (DCon _ _) ty) <- lookupDefExact ctorName ctx
         = let argTys = map snd $ getArgTys ty
             in if i <= length argTys
                 then length $ getArgTys (argTys !! i)
