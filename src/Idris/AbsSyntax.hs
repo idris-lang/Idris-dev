@@ -945,7 +945,7 @@ expandParams dec ps ns infs tm = en tm
        | otherwise = PLam n (en t) (en s)
     en (PPi p n t s)
        | n `elem` (map fst ps ++ ns)
-               = let n' = mkShadow n in -- FIXME THINK SHADOWING TacImp?
+               = let n' = mkShadow n in -- TODO THINK SHADOWING TacImp?
                      PPi (enTacImp p) n' (en t) (en (shadow n n' s))
        | otherwise = PPi (enTacImp p) n (en t) (en s)
     en (PLet n ty v s)
