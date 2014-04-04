@@ -167,7 +167,7 @@ elab ist info pattern opts fn tm
                      env <- get_env
                      handleError (forceErr env)
                          (elab' ina t')
-                         (elab' ina (PApp fc (PRef fc (sUN "Force")) -- ipapp
+                         (elab' ina (PApp fc (PRef fc (sUN "Force"))
                                        [pimp (sUN "t") Placeholder True,
                                         pimp (sUN "a") Placeholder True, 
                                         pexp ct])) True
@@ -220,9 +220,9 @@ elab ist info pattern opts fn tm
                           (do c <- getNameFrom (sMN 0 "class")
                               instanceArg c)
     elab' ina (PRefl fc t)
-        = elab' ina (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True, -- ipapp
+        = elab' ina (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True,
                                               pimp (sMN 0 "x") t False])
-    elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy) -- ipapp
+    elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy)
                                     [pimp (sMN 0 "A") Placeholder True,
                                      pimp (sMN 0 "B") Placeholder False,
                                      pexp l, pexp r])
@@ -230,9 +230,9 @@ elab ist info pattern opts fn tm
         = do hnf_compute
              g <- goal
              case g of
-                TType _ -> elabE (True, a,inty) (PApp fc (PRef fc pairTy) -- ipapp
+                TType _ -> elabE (True, a,inty) (PApp fc (PRef fc pairTy)
                                                   [pexp l,pexp r])
-                _ -> elabE (True, a, inty) (PApp fc (PRef fc pairCon) -- ipapp
+                _ -> elabE (True, a, inty) (PApp fc (PRef fc pairCon)
                                             [pimp (sMN 0 "A") Placeholder True,
                                              pimp (sMN 0 "B") Placeholder True,
                                              pexp l, pexp r])
@@ -245,14 +245,14 @@ elab ist info pattern opts fn tm
                          TType _ -> asType
                          _ -> asValue
                 _ -> asType
-         where asType = elab' ina (PApp fc (PRef fc sigmaTy) -- ipapp
+         where asType = elab' ina (PApp fc (PRef fc sigmaTy)
                                         [pexp t,
                                          pexp (PLam n Placeholder r)])
-               asValue = elab' ina (PApp fc (PRef fc existsCon) -- ipapp
+               asValue = elab' ina (PApp fc (PRef fc existsCon)
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
                                           pexp l, pexp r])
-    elab' ina (PDPair fc p l t r) = elab' ina (PApp fc (PRef fc existsCon) -- ipapp
+    elab' ina (PDPair fc p l t r) = elab' ina (PApp fc (PRef fc existsCon)
                                               [pimp (sMN 0 "a") t False,
                                                pimp (sMN 0 "P") Placeholder True,
                                                pexp l, pexp r])
@@ -295,7 +295,7 @@ elab ist info pattern opts fn tm
       where inparamBlock n = case lookupCtxtName n (inblock info) of
                                 [] -> False
                                 _ -> True
-    elab' ina f@(PInferRef fc n) = elab' ina (PApp fc f []) -- ipapp
+    elab' ina f@(PInferRef fc n) = elab' ina (PApp fc f [])
     elab' ina (PRef fc n) = erun fc $ do apply (Var n) []; solve
     elab' ina@(_, a, inty) (PLam n Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
@@ -367,7 +367,7 @@ elab ist info pattern opts fn tm
          claim valn (Var tyn)
          letbind n (Var tyn) (Var valn)
          focus valn
-         elabE (True, a, True) (PApp fc r [pexp (delab ist rty)]) -- ipapp
+         elabE (True, a, True) (PApp fc r [pexp (delab ist rty)])
          env <- get_env
          computeLet n
          elabE (True, a, inty) sc
@@ -432,7 +432,7 @@ elab ist info pattern opts fn tm
     -- if f is local, just do a simple_app
     elab' (ina, g, inty) tm@(PApp fc (PRef _ f) args)
        = do env <- get_env
-            if (f `elem` map fst env && length args == 1) -- notelocal
+            if (f `elem` map fst env && length args == 1)
                then -- simple app, as below
                     do simple_app (elabE (ina, g, inty) (PRef fc f))
                                   (elabE (True, g, inty) (getTm (head args)))
@@ -656,7 +656,7 @@ elab ist info pattern opts fn tm
              -- old ones with an _
              mkClause args (l, r)
                    = let args' = map (shadowed (allNamesIn l)) args
-                         lhs = PApp (getFC fc l) (PRef (getFC fc l) n) -- ipapp
+                         lhs = PApp (getFC fc l) (PRef (getFC fc l) n)
                                  (map (mkLHSarg l) args') in
                             PClause (getFC fc l) n lhs [] r []
 
@@ -672,8 +672,8 @@ elab ist info pattern opts fn tm
     getFC d x = d
 
     insertLazy :: PTerm -> ElabD PTerm
-    insertLazy t@(PApp _ (PRef _ (UN l)) _) | l == txt "Delay" = return t -- tpapp
-    insertLazy t@(PApp _ (PRef _ (UN l)) _) | l == txt "Force" = return t -- tpapp
+    insertLazy t@(PApp _ (PRef _ (UN l)) _) | l == txt "Delay" = return t
+    insertLazy t@(PApp _ (PRef _ (UN l)) _) | l == txt "Force" = return t
     insertLazy (PCoerced t) = return t
     insertLazy t =
         do ty <- goal
@@ -687,7 +687,7 @@ elab ist info pattern opts fn tm
       where
         mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
         mkDelay t = let fc = fileFC "Delay" in
-                        addImpl ist (PApp fc (PRef fc (sUN "Delay")) -- ipapp
+                        addImpl ist (PApp fc (PRef fc (sUN "Delay"))
                                           [pexp t])
 
     insertCoerce ina t =
@@ -705,7 +705,7 @@ elab ist info pattern opts fn tm
            return t'
        where
          mkCoerce t n = let fc = fileFC "Coercion" in -- line never appears!
-                            addImpl ist (PApp fc (PRef fc n) [pexp (PCoerced t)]) -- ipapp
+                            addImpl ist (PApp fc (PRef fc n) [pexp (PCoerced t)])
 
     -- | Elaborate the arguments to a function
     elabArgs :: IState -- ^ The current Idris state
@@ -723,7 +723,7 @@ elab ist info pattern opts fn tm
         = elabArgs ist ina failed fc r f ns force args
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force ((lazy, t) : args)
         | lazy && not pattern
-          = elabArg argName holeName (PApp bi (PRef bi (sUN "lazy")) -- ipapp
+          = elabArg argName holeName (PApp bi (PRef bi (sUN "lazy"))
                                            [pimp (sUN "a") Placeholder True,
                                             pexp t])
         | otherwise = elabArg argName holeName t
@@ -761,7 +761,7 @@ pruneAlt :: [PTerm] -> [PTerm]
 pruneAlt xs = map prune xs
   where
     prune (PApp fc1 (PRef fc2 f) as)
-        = PApp fc1 (PRef fc2 f) (fmap (fmap (choose f)) as) -- tpapp
+        = PApp fc1 (PRef fc2 f) (fmap (fmap (choose f)) as)
     prune t = t
 
     choose f (PAlternative a as)
@@ -771,7 +771,7 @@ pruneAlt xs = map prune xs
                  [a] -> a
                  _ -> PAlternative a as'
 
-    choose f (PApp fc f' as) = PApp fc (choose f f') (fmap (fmap (choose f)) as) -- tpapp
+    choose f (PApp fc f' as) = PApp fc (choose f f') (fmap (fmap (choose f)) as)
     choose f t = t
 
     headIs f (PApp _ (PRef _ f') _) = f == f'
@@ -1097,7 +1097,7 @@ runTac autoSolve ist fn tac
              focus script
              ptm <- get_term
              elab ist toplevel False [] (sMN 0 "tac") 
-                  (PApp emptyFC tm [pexp (delabTy' ist [] tgoal True True)]) -- ipapp
+                  (PApp emptyFC tm [pexp (delabTy' ist [] tgoal True True)])
              (script', _) <- get_type_val (Var scriptvar)
              -- now that we have the script apply
              -- it to the reflected goal 

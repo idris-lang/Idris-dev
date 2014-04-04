@@ -1497,7 +1497,7 @@ getPArity _ = 0
 
 allNamesIn :: PTerm -> [Name]
 allNamesIn tm = nub $ ni [] tm
-  where -- FIXME added niTacImp, but is it right?
+  where -- TODO THINK added niTacImp, but is it right?
     ni env (PRef _ n)
         | not (n `elem` env) = [n]
     ni env (PPatvar _ n) = [n]
@@ -1525,7 +1525,7 @@ allNamesIn tm = nub $ ni [] tm
 -- Return all names defined in binders in the given term
 boundNamesIn :: PTerm -> [Name]
 boundNamesIn tm = nub $ ni tm
-  where -- FIXME Added niTacImp, but is it right?
+  where -- TODO THINK Added niTacImp, but is it right?
     ni (PApp _ f as)   = ni f ++ concatMap (ni) (map getTm as)
     ni (PAppBind _ f as)   = ni f ++ concatMap (ni) (map getTm as)
     ni (PCase _ c os)  = ni c ++ concatMap (ni) (map snd os)
@@ -1582,7 +1582,7 @@ namesIn uvars ist tm = nub $ ni [] tm
 
 usedNamesIn :: [Name] -> IState -> PTerm -> [Name]
 usedNamesIn vars ist tm = nub $ ni [] tm
-  where -- FIXME added niTacImp, but is it right?
+  where -- TODO THINK added niTacImp, but is it right?
     ni env (PRef _ n)
         | n `elem` vars && not (n `elem` env)
             = case lookupTy n (tt_ctxt ist) of

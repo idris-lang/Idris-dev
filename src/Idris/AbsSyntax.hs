@@ -1419,7 +1419,7 @@ addImpl' inpat env infns ist ptm
               PApp fc (PInferRef fc f) as'
     ai env ds (PApp fc ftm@(PRef _ f) as)
         | f `elem` infns = ai env ds (PApp fc (PInferRef fc f) as)
-        | not (f `elem` map fst env) -- notelocal
+        | not (f `elem` map fst env)
                           = let as' = map (fmap (ai env ds)) as in
                                 handleErr $ aiFn inpat False ist fc f ds as'
         | Just (Just ty) <- lookup f env =
@@ -1526,18 +1526,9 @@ aiFn inpat expat ist fc f ds as
     insertImpl :: [PArg] -> [PArg] -> [PArg]
     insertImpl ps as = insImpAcc M.empty ps as
 
-    --  TODO WIP substitution into default arg expressions.
-    --  - An extra accumulator parameter here?
-    --    - Accumulator of what?
-    --      - Map of param names and their corresponding arg terms?
-    --    - Perhaps in an 'inner' function, though?
-    --      - Though OTOH perhaps this one should become the inner
-    --        function?
-    --        - Check for existing call sites of insertImpl.
-    --          - Well, easy: this is in a where block :-).
-    insImpAcc :: M.Map Name PTerm   -- accumulated param names & arg terms
-              -> [PArg]            -- parameters
-              -> [PArg]            -- arguments
+    insImpAcc :: M.Map Name PTerm -- accumulated param names & arg terms
+              -> [PArg]           -- parameters
+              -> [PArg]           -- arguments
               -> [PArg]
     insImpAcc pnas (PExp p l n ty : ps) (PExp _ _ _ tm : given) =
       PExp p l n tm : insImpAcc (M.insert n tm pnas) ps given
