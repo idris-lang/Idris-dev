@@ -1804,7 +1804,7 @@ elabClass info syn doc fc constraints tn ps ds
 
     getMName (PTy _ _ _ _ _ n _) = nsroot n
     tdecl allmeths (PTy doc _ syn _ o n t)
-           = do t' <- implicit' info syn allmeths n t
+           = do t' <- implicit' (minfo info allmeths) syn allmeths n t
                 logLvl 5 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map fst ps) Exp t')),
                          (n, (doc, o, (toExp (map fst ps) Imp t'))),
@@ -1901,6 +1901,19 @@ elabClass info syn doc fc constraints tn ps ds
         | otherwise = PPi (e l s p) n ty (toExp ns e sc)
     toExp ns e (PPi p n ty sc) = PPi p n ty (toExp ns e sc)
     toExp ns e sc = sc
+
+    --  Abuse of ElabInfo.
+    --  TODO: Contemplate whether the ElabInfo type should be modified.
+    minfo :: ElabInfo -> [Name] -> ElabInfo
+    minfo info ds
+      = let newps = params info
+            dsParams = map (\n -> (n, [])) ds
+            newb = addAlist dsParams (inblock info)
+            l = liftname info in
+            info { params = newps,
+                   inblock = newb,
+                   liftname = id -- Is this appropriate?
+                 }
 
 elabInstance :: ElabInfo -> SyntaxInfo ->
                 ElabWhat -> -- phase
