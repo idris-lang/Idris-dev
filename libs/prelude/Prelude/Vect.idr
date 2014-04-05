@@ -7,6 +7,7 @@ import Prelude.List
 import Prelude.Classes
 import Prelude.Nat
 import Prelude.Bool
+import Prelude.Uninhabited
 
 %access public
 %default total
@@ -71,6 +72,7 @@ index fZ     [] impossible
 deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
 deleteAt           fZ     (x::xs) = xs
 deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
+deleteAt {n = Z}   (fS k) (x::xs) = absurd k
 deleteAt           _      [] impossible
 
 ||| Replace an element at a particlar index with another
@@ -378,6 +380,14 @@ nub = nubBy (==)
 --------------------------------------------------------------------------------
 -- Splitting and breaking lists
 --------------------------------------------------------------------------------
+
+||| A tuple where the first element is a Vect of the n first elements and
+||| the second element is a Vect of the remaining elements of the original Vect
+||| It is equivalent to (take n xs, drop n xs)
+||| @ m   the index to split at
+||| @ xs  the Vect to split in two
+splitAt : {n : Nat} -> (m : Fin (S n)) -> (xs : Vect n a) -> (Vect (cast m) a, Vect (n - cast m) a)
+splitAt n xs = (take n xs, drop n xs)
 
 --------------------------------------------------------------------------------
 -- Predicates

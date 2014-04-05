@@ -82,14 +82,16 @@ instance Show FC where
                                      | otherwise            = show sl ++ ":" ++ show sc ++ "-" ++ show el ++ ":" ++ show ec
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput
 
 -- | Text formatting output
 data TextFormatting = BoldText | ItalicText | UnderlineText
 
 -- | Output annotations for pretty-printing
-data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe Type)
+data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe String)
+                        -- ^^ The name, classification, docs overview, and pretty-printed type
                       | AnnBoundName Name Bool
+                        -- ^^ The name and whether it is implicit
                       | AnnConstData
                       | AnnConstType
                       | AnnKeyword
@@ -312,11 +314,11 @@ instance Sized Name where
   size _ = 1
 
 instance Pretty Name OutputAnnotation where
-  pretty n@(UN n') = annotate (AnnName n Nothing Nothing) $ text (T.unpack n')
-  pretty n@(NS un s) = annotate (AnnName n Nothing Nothing) . noAnnotate $ pretty un
-  pretty n@(MN i s) = annotate (AnnName n Nothing Nothing) $
+  pretty n@(UN n') = annotate (AnnName n Nothing Nothing Nothing) $ text (T.unpack n')
+  pretty n@(NS un s) = annotate (AnnName n Nothing Nothing Nothing) . noAnnotate $ pretty un
+  pretty n@(MN i s) = annotate (AnnName n Nothing Nothing Nothing) $
                       lbrace <+> text (T.unpack s) <+> (text . show $ i) <+> rbrace
-  pretty n@(SN s) = annotate (AnnName n Nothing Nothing) $ text (show s)
+  pretty n@(SN s) = annotate (AnnName n Nothing Nothing Nothing) $ text (show s)
 
 instance Pretty [Name] OutputAnnotation where
   pretty = encloseSep empty empty comma . map pretty

@@ -16,6 +16,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
+import Idris.Output (iputStrLn, pshow, iWarn)
 import IRTS.Lang
 import Paths_idris
 
@@ -58,7 +59,8 @@ checkAddDef add toplvl fc [] = return []
 checkAddDef add toplvl fc ((n, (i, top, t)) : ns) 
                = do ctxt <- getContext
                     (t', _) <- recheckC fc [] t
-                    when add $ addDeferred [(n, (i, top, t, toplvl))]
+                    when add $ do addDeferred [(n, (i, top, t, toplvl))]
+                                  addIBC (IBCDef n)
                     ns' <- checkAddDef add toplvl fc ns
                     return ((n, (i, top, t')) : ns')
 --                     mapM (\(n, (i, top, t)) -> do (t', _) <- recheckC fc [] t
@@ -925,8 +927,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                     tclift $ tfail $ At fc (NoTypeDecl n)
               [ty] -> return ty
            let atys = map snd (getArgTys fty)
-           pats_in <- mapM (elabClause info opts)
+           cs_elab <- mapM (elabClause info opts)
                            (zip [0..] cs)
+           let (pats_in, cs_full) = unzip cs_elab
+
            logLvl 3 $ "Elaborated patterns:\n" ++ show pats_in
 
            -- if the return type of 'ty' is collapsible, the optimised version should
@@ -1011,7 +1015,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            cov <- coverage
            pmissing <-
                    if cov && not (hasDefault cs)
-                      then do missing <- genClauses fc n (map getLHS pdef) cs
+                      then do missing <- genClauses fc n (map getLHS pdef) cs_full
                               -- missing <- genMissing n scargs sc
                               missing' <- filterM (checkPossible info fc True n) missing
                               let clhs = map getLHS pdef
@@ -1369,16 +1373,19 @@ propagateParams ps t (PRef fc n)
      = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps)
 propagateParams ps t x = x
 
+-- Return the elaborated LHS/RHS, and the original LHS with implicits added
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
-              Idris (Either Term (Term, Term))
+              Idris (Either Term (Term, Term), PTerm)
 elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
    = do let tcgen = Dictionary `elem` opts
+        i <- get
+        let lhs = addImpl i lhs_in
         b <- checkPossible info fc tcgen fname lhs_in
         case b of
             True -> tclift $ tfail (At fc 
                                 (Msg $ show lhs_in ++ " is a valid case"))
             False -> do ptm <- mkPatTm lhs_in
-                        return (Left ptm)
+                        return (Left ptm, lhs)
 elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
    = do let tcgen = Dictionary `elem` opts
         ctxt <- getContext
@@ -1519,7 +1526,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         when (rev || ErrorReverse `elem` opts) $ do
            addIBC (IBCErrRev (crhs, clhs))
            addErrRev (crhs, clhs) 
-        return $ Right (clhs, crhs)
+        return $ (Right (clhs, crhs), lhs)
   where
     pinfo :: ElabInfo -> [(Name, PTerm)] -> [Name] -> Int -> ElabInfo
     pinfo info ns ds i
@@ -1686,7 +1693,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         mapM_ (elabCaseBlock info opts) is
         logLvl 5 ("Checked RHS " ++ show rhs')
         (crhs, crhsty) <- recheckC fc [] rhs'
-        return $ Right (clhs, crhs)
+        return $ (Right (clhs, crhs), lhs)
   where
     getImps (Bind n (Pi _) t) = pexp Placeholder : getImps t
     getImps _ = []

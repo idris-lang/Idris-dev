@@ -9,6 +9,7 @@ import Idris.Core.CaseTree
 import Idris.AbsSyntax
 import Idris.Delaborate
 import Idris.Error
+import Idris.Output (iputStrLn)
 
 import Data.List
 import Data.Either
@@ -17,10 +18,14 @@ import Debug.Trace
 
 import Control.Monad.State.Strict
 
+-- Generate a pattern from an 'impossible' LHS. (Need this to eliminate the
+-- pattern clauses which have been provided explicitly from new clause
+-- generation.)
+
 mkPatTm :: PTerm -> Idris Term
 mkPatTm t = do i <- getIState
                let timp = addImpl' True [] [] i t
-               evalStateT (toTT timp) 0
+               evalStateT (toTT (mapPT deNS timp)) 0
   where
     toTT (PRef _ n) = do i <- lift getIState
                          case lookupDef n (tt_ctxt i) of
@@ -29,9 +34,15 @@ mkPatTm t = do i <- getIState
     toTT (PApp _ t args) = do t' <- toTT t
                               args' <- mapM (toTT . getTm) args
                               return $ mkApp t' args'
+    -- For alternatives, pick the first and drop the namespaces. It doesn't
+    -- really matter which is taken since matching will ignore the namespace.
+    toTT (PAlternative _ (a : as)) = toTT a
     toTT _ = do v <- get
                 put (v + 1)
                 return (P Bound (sMN v "imp") Erased)
+
+    deNS (PRef f (NS n _)) = PRef f n
+    deNS t = t
 
 -- Given a list of LHSs, generate a extra clauses which cover the remaining
 -- cases. The ones which haven't been provided are marked 'absurd' so that the
@@ -40,19 +51,24 @@ mkPatTm t = do i <- getIState
 -- This will only work after the given clauses have been typechecked and the
 -- names are fully explicit!
 
-genClauses :: FC -> Name -> [Term] -> [PClause] -> Idris [PTerm]
+genClauses :: FC -> Name -> [Term] -> [PTerm] -> Idris [PTerm]
 genClauses fc n xs given
    = do i <- getIState
-        let lhss = map (getLHS i) xs
+        let lhs_tms = map (\x -> delab' i x True True) xs
+        -- if a placeholder was given, don't bother generating cases for it
+        let lhs_tms' = zipWith mergePlaceholders lhs_tms given
+        let lhss = map pUnApply lhs_tms'
+
         let argss = transpose lhss
         let all_args = map (genAll i) argss
         logLvl 5 $ "COVERAGE of " ++ show n
+        logLvl 5 $ show lhss
         logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logLvl 10 $ show argss ++ "\n" ++ show all_args
-        logLvl 10 $ "Original: \n" ++
+        logLvl 1 $ "Original: \n" ++
              showSep "\n" (map (\t -> showTm i (delab' i t True True)) xs)
         -- add an infinite supply of explicit arguments to update the possible
-        -- cases for (the return type may be variadic, or function type, sp
+        -- cases for (the return type may be variadic, or function type, so
         -- there may be more case splitting that the idris_implicits record
         -- suggests)
         let parg = case lookupCtxt n (idris_implicits i) of
@@ -61,10 +77,10 @@ genClauses fc n xs given
                         _       -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
         logLvl 2 $ show (length tryclauses) ++ " initially to check"
-        logLvl 5 $ showSep "\n" (map (showTm i) tryclauses)
+        logLvl 1 $ showSep "\n" (map (showTm i) tryclauses)
         let new = filter (noMatch i) (nub tryclauses)
         logLvl 1 $ show (length new) ++ " clauses to check for impossibility"
-        logLvl 5 $ "New clauses: \n" ++ showSep "\n" (map (showTm i) new)
+        logLvl 3 $ "New clauses: \n" ++ showSep "\n" (map (showTm i) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses)
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)
@@ -72,13 +88,23 @@ genClauses fc n xs given
             | (f, args) <- unApply term = map (\t -> delab' i t True True) args
             | otherwise = []
 
-        lhsApp (PClause _ _ l _ _ _) = l
-        lhsApp (PWith _ _ l _ _ _) = l
+        pUnApply (PApp _ _ args) = map getTm args
+        pUnApply _ = []
 
+        -- Return whether the given clause matches none of the input clauses
+        -- (xs)
         noMatch i tm = all (\x -> case matchClause i (delab' i x True True) tm of
-                                          Right _ -> False
-                                          Left miss -> True) xs
+                                       Right ms -> False
+                                       Left miss -> True) xs
 
+
+        mergePlaceholders :: PTerm -> PTerm -> PTerm
+        mergePlaceholders x Placeholder = Placeholder
+        mergePlaceholders (PApp fc f args) (PApp fc' f' args')
+            = PApp fc' f' (zipWith mergePArg args args')
+           where mergePArg x y = let xtm = mergePlaceholders (getTm x) (getTm y) in
+                                     x { getTm = xtm}
+        mergePlaceholders x _ = x
 
         mkClauses :: [PArg] -> [[PTerm]] -> [PTerm]
         mkClauses parg args
@@ -102,6 +128,7 @@ fnub' acc [] = acc
 
 -- quick check for constructor equality
 quickEq :: PTerm -> PTerm -> Bool
+quickEq (PConstant n) (PConstant n') = n == n'
 quickEq (PRef _ n) (PRef _ n') = n == n'
 quickEq (PApp _ t as) (PApp _ t' as')
     | length as == length as'

@@ -10,6 +10,7 @@ import Idris.Imports
 import Idris.Error
 import Idris.Delaborate
 import Idris.Docstrings
+import Idris.Output
 
 import qualified Cheapskate.Types as CT
 
@@ -75,9 +76,12 @@ initIBC :: IBCFile
 initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
-loadIBC fp = do iLOG $ "Loading ibc " ++ fp
-                ibcf <- runIO $ (bdecode fp :: IO IBCFile)
-                process ibcf fp
+loadIBC fp = do imps <- getImported
+                when (not (fp `elem` imps)) $
+                  do iLOG $ "Loading ibc " ++ fp
+                     ibcf <- runIO $ (bdecode fp :: IO IBCFile)
+                     process ibcf fp
+                     addImported fp
 
 bencode :: Binary a => FilePath -> a -> IO ()
 bencode f d = B.writeFile f (compress (encode d))
@@ -396,8 +400,11 @@ pPatdefs ds
 pDefs :: [Name] -> [(Name, Def)] -> Idris ()
 pDefs syms ds 
    = mapM_ (\ (n, d) ->
-               do i <- getIState
-                  let d' = updateDef d
+               do let d' = updateDef d
+                  case d' of
+                       TyDecl _ _ -> return () 
+                       _ -> solveDeferred n 
+                  i <- getIState
                   logLvl 5 $ "Added " ++ show (n, d')
                   putIState (i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })) ds
   where

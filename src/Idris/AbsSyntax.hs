@@ -88,6 +88,10 @@ addDyLib libs = do i <- getIState
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 
+addImported :: FilePath -> Idris ()
+addImported f = do i <- getIState
+                   putIState $ i { idris_imported = nub $ f : idris_imported i }
+
 addLangExt :: LanguageExt -> Idris ()
 addLangExt TypeProviders = do i <- getIState
                               putIState $ i {
@@ -357,6 +361,9 @@ addNameIdx' i n
 getHdrs :: Codegen -> Idris [String]
 getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)
 
+getImported ::  Idris [FilePath]
+getImported = do i <- getIState; return (idris_imported i)
+
 setErrSpan :: FC -> Idris ()
 setErrSpan x = do i <- getIState;
                   case (errSpan i) of
@@ -490,6 +497,12 @@ getUndefined :: Idris [Name]
 getUndefined = do i <- getIState
                   return (map fst (idris_metavars i) \\ primDefs)
 
+isMetavarName :: Name -> IState -> Bool
+isMetavarName n ist
+     = case lookupNames n (tt_ctxt ist) of
+            (t:_) -> isJust $ lookup t (idris_metavars ist)
+            _     -> False
+
 getWidth :: Idris ConsoleWidth
 getWidth = fmap idris_consolewidth getIState
 
@@ -505,154 +518,15 @@ renderWidth = do iw <- getWidth
                    AutomaticWidth -> runIO getScreenWidth
 
 
-iRender :: Doc a -> Idris (SimpleDoc a)
-iRender d = do w <- getWidth
-               ist <- getIState
-               let ideSlave = case idris_outputmode ist of
-                                IdeSlave _ -> True
-                                _          -> False
-               case w of
-                 InfinitelyWide -> return $ renderPretty 1.0 1000000000 d
-                 ColsWide n -> return $
-                               if n < 1
-                                 then renderPretty 1.0 1000000000 d
-                                 else renderPretty 0.8 n d
-                 AutomaticWidth | ideSlave  -> return $ renderPretty 1.0 1000000000 d
-                                | otherwise -> do width <- runIO getScreenWidth
-                                                  return $ renderPretty 0.8 width d
-
-ihPrintResult :: Handle -> String -> Idris ()
-ihPrintResult h s = do i <- getIState
-                       case idris_outputmode i of
-                         RawOutput -> case s of
-                                        "" -> return ()
-                                        s  -> runIO $ hPutStrLn h s
-                         IdeSlave n ->
-                             let good = SexpList [SymbolAtom "ok", toSExp s] in
-                             runIO $ hPutStrLn h $ convSExp "return" good n
-
--- | Write a pretty-printed term to the console with semantic coloring
-consoleDisplayAnnotated :: Handle -> Doc OutputAnnotation -> Idris ()
-consoleDisplayAnnotated h output = do ist <- getIState
-                                      rendered <- iRender $ output
-                                      runIO . hPutStrLn h .
-                                        displayDecorated (consoleDecorate ist) $
-                                        rendered
-
-
--- | Write pretty-printed output to IDESlave with semantic annotations
-ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
-ideSlaveReturnAnnotated n h out = do ist <- getIState
-                                     (str, spans) <- fmap displaySpans .
-                                                     iRender .
-                                                     fmap (fancifyAnnots ist) $
-                                                     out
-                                     let good = [SymbolAtom "ok", toSExp str, toSExp spans]
-                                     runIO . hPutStrLn h $ convSExp "return" good n
-
-ihPrintTermWithType :: Handle -> Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
-ihPrintTermWithType h tm ty = do ist <- getIState
-                                 let output = tm <+> colon <+> ty
-                                 case idris_outputmode ist of
-                                   RawOutput -> consoleDisplayAnnotated h output
-                                   IdeSlave n -> ideSlaveReturnAnnotated n h output
-
--- | Pretty-print a collection of overloadings to REPL or IDESlave - corresponds to :t name
-ihPrintFunTypes :: Handle -> [(Name, Bool)] -> Name -> [(Name, PTerm)] -> Idris ()
-ihPrintFunTypes h bnd n []        = ihPrintError h $ "No such variable " ++ show n
-ihPrintFunTypes h bnd n overloads = do imp <- impShow
-                                       ist <- getIState
-                                       let output = vsep (map (uncurry (ppOverload imp)) overloads)
-                                       case idris_outputmode ist of
-                                         RawOutput -> consoleDisplayAnnotated h output
-                                         IdeSlave n -> ideSlaveReturnAnnotated n h output
-  where fullName n = prettyName True bnd n
-        ppOverload imp n tm = fullName n <+> colon <+> align (pprintPTerm imp bnd [] tm)
-
-ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
-ihRenderResult h d = do ist <- getIState
-                        case idris_outputmode ist of
-                          RawOutput -> consoleDisplayAnnotated h d
-                          IdeSlave n -> ideSlaveReturnAnnotated n h d
-
-fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
-fancifyAnnots ist annot@(AnnName n _ _) =
-  do let ctxt = tt_ctxt ist
-     case () of
-       _ | isDConName n ctxt -> AnnName n (Just DataOutput) Nothing
-       _ | isFnName   n ctxt -> AnnName n (Just FunOutput) Nothing
-       _ | isTConName n ctxt -> AnnName n (Just TypeOutput) Nothing
-       _ | otherwise         -> annot
-fancifyAnnots _ annot = annot
 
 type1Doc :: Doc OutputAnnotation
 type1Doc = (annotate AnnConstType $ text "Type 1")
 
--- | Show an error with semantic highlighting
-ihRenderError :: Handle -> Doc OutputAnnotation -> Idris ()
-ihRenderError h e = do ist <- getIState
-                       case idris_outputmode ist of
-                         RawOutput -> consoleDisplayAnnotated h e
-                         IdeSlave n -> do
-                           (str, spans) <- fmap displaySpans .
-                                           iRender .
-                                           fmap (fancifyAnnots ist) $
-                                           e
-                           let good = [SymbolAtom "error", toSExp str, toSExp spans]
-                           runIO . hPutStrLn h $ convSExp "return" good n
-
-ihPrintError :: Handle -> String -> Idris ()
-ihPrintError h s = do i <- getIState
-                      case idris_outputmode i of
-                        RawOutput -> case s of
-                                          "" -> return ()
-                                          s  -> runIO $ hPutStrLn h s
-                        IdeSlave n ->
-                          let good = SexpList [SymbolAtom "error", toSExp s] in
-                          runIO . hPutStrLn h $ convSExp "return" good n
-
-ihputStrLn :: Handle -> String -> Idris ()
-ihputStrLn h s = do i <- getIState
-                    case idris_outputmode i of
-                      RawOutput -> runIO $ hPutStrLn h s
-                      IdeSlave n -> runIO . hPutStrLn h $ convSExp "write-string" s n
-
-iputStrLn = ihputStrLn stdout
-iPrintError = ihPrintError stdout
-iPrintResult = ihPrintResult stdout
-iWarn = ihWarn stdout
-
-ideslavePutSExp :: SExpable a => String -> a -> Idris ()
-ideslavePutSExp cmd info = do i <- getIState
-                              case idris_outputmode i of
-                                   IdeSlave n -> runIO . putStrLn $ convSExp cmd info n
-                                   _ -> return ()
-
--- this needs some typing magic and more structured output towards emacs
-iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
-iputGoal g = do i <- getIState
-                case idris_outputmode i of
-                  RawOutput -> runIO $ putStrLn (displayDecorated (consoleDecorate i) g)
-                  IdeSlave n -> runIO . putStrLn $
-                                convSExp "write-goal" (displayS (fmap (fancifyAnnots i) g) "") n
 
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
                   case idris_outputmode i of
                     IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
-
-ihWarn :: Handle -> FC -> Doc OutputAnnotation -> Idris ()
-ihWarn h fc err = do i <- getIState
-                     case idris_outputmode i of
-                       RawOutput ->
-                         do err' <- iRender . fmap (fancifyAnnots i) $
-                                    text (show fc) <> colon <//> err
-                            runIO . hPutStrLn h $ displayDecorated (consoleDecorate i) err'
-                       IdeSlave n ->
-                         do err' <- iRender . fmap (fancifyAnnots i) $ err
-                            let (str, spans) = displaySpans err'
-                            runIO . hPutStrLn h $
-                              convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
@@ -1701,8 +1575,6 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
             = do mf <- match' f f'
                  ms <- zipWithM matchArg args args'
                  return (mf ++ concat ms)
---     match (PRef _ n) (PRef _ n') | n == n' = return []
---                                  | otherwise = Nothing
     match (PRef f n) (PApp _ x []) = match (PRef f n) x
     match (PPatvar f n) xr = match (PRef f n) xr
     match xr (PPatvar f n) = match xr (PRef f n)
@@ -1712,7 +1584,10 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
           (not (isConName n (tt_ctxt i) || isFnName n (tt_ctxt i)) 
                 || tm == Placeholder)
             = return [(n, tm)]
-        | n == n' = return []
+        -- if one namespace is missing, drop the other
+        | n == n' || n == dropNS n' || dropNS n == n' = return []
+       where dropNS (NS n _) = n
+             dropNS n = n
     match (PRef _ n) tm
         | not names && (not (isConName n (tt_ctxt i) ||
                              isFnName n (tt_ctxt i)) || tm == Placeholder)
@@ -1855,6 +1730,12 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   mkUniqA arg = do t' <- mkUniq (getTm arg)
                    return (arg { getTm = t' })
 
+  -- Initialise the unique name with the environment length (so we're not
+  -- looking for too long...)
+  initN (UN n) l = UN $ txt (str n ++ show l)
+  initN (MN i s) l = MN (i+l) s
+  initN n l = n
+
   -- FIXME: Probably ought to do this for completeness! It's fine as
   -- long as there are no bindings inside tactics though.
   mkUniqT tac = return tac
@@ -1864,7 +1745,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
          = do env <- get
               (n', sc') <-
                     if n `elem` env
-                       then do let n' = uniqueName n (env ++ inScope)
+                       then do let n' = uniqueName (initN n (length env))
+                                                   (env ++ inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
               put (n' : env)
@@ -1875,7 +1757,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
          = do env <- get
               (n', sc') <-
                     if n `elem` env
-                       then do let n' = uniqueName n (env ++ inScope)
+                       then do let n' = uniqueName (initN n (length env))
+                                                   (env ++ inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
               put (n' : env)
@@ -1886,7 +1769,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
          = do env <- get
               (n', sc') <-
                     if n `elem` env
-                       then do let n' = uniqueName n (env ++ inScope)
+                       then do let n' = uniqueName (initN n (length env))
+                                                   (env ++ inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
               put (n' : env)

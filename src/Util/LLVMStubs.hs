@@ -20,12 +20,5 @@ getHostCPUName :: IO String
 getHostCPUName = return ""
 
 
-codegenLLVM :: [(TT.Name, SDecl)] ->
-               String -> -- target triple
-               String -> -- target CPU
-               Word -> -- Optimization degree
-               FilePath -> -- output file name
-               OutputType ->
-               IO ()
-
-codegenLLVM _ _ _ _ _ _ = fail "This Idris was compiled without the LLVM backend."
+codegenLLVM :: CodeGenerator
+codegenLLVM _ = fail "This Idris was compiled without the LLVM backend."

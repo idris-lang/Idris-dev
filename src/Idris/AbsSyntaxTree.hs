@@ -104,11 +104,6 @@ data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines sh
                   | ColsWide Int -- ^ Manually specified - must be positive
                   | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
 
--- TODO: Add 'module data' to IState, which can be saved out and reloaded quickly (i.e
--- without typechecking).
--- This will include all the functions and data declarations, plus fixity declarations
--- and syntax macros.
-
 -- | The global state used in the Idris monad
 data IState = IState {
     tt_ctxt :: Context, -- ^ All the currently defined names and their terms
@@ -147,6 +142,7 @@ data IState = IState {
     idris_libs :: [(Codegen, String)],
     idris_cgflags :: [(Codegen, String)],
     idris_hdrs :: [(Codegen, String)],
+    idris_imported :: [FilePath], -- ^ Imported ibc file names
     proof_list :: [(Name, [String])],
     errSpan :: Maybe FC,
     parserWarnings :: [(FC, Err)],
@@ -238,7 +234,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext
                    [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
-                   [] Nothing [] Nothing [] [] Nothing [] Hidden False [] Nothing [] [] RawOutput
+                   [] [] Nothing [] Nothing [] [] Nothing [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth
 
@@ -1083,13 +1079,13 @@ consoleDecorate ist AnnConstType = let theme = idris_colourTheme ist
 consoleDecorate ist (AnnBoundName _ True) = colouriseImplicit (idris_colourTheme ist)
 consoleDecorate ist (AnnBoundName _ False) = colouriseBound (idris_colourTheme ist)
 consoleDecorate ist AnnKeyword = colouriseKeyword (idris_colourTheme ist)
-consoleDecorate ist (AnnName n _ _) = let ctxt  = tt_ctxt ist
-                                          theme = idris_colourTheme ist
-                                      in case () of
-                                           _ | isDConName n ctxt -> colouriseData theme
-                                           _ | isFnName n ctxt   -> colouriseFun theme
-                                           _ | isTConName n ctxt -> colouriseType theme
-                                           _ | otherwise         -> id -- don't colourise unknown names
+consoleDecorate ist (AnnName n _ _ _) = let ctxt  = tt_ctxt ist
+                                            theme = idris_colourTheme ist
+                                        in case () of
+                                             _ | isDConName n ctxt -> colouriseData theme
+                                             _ | isFnName n ctxt   -> colouriseFun theme
+                                             _ | isTConName n ctxt -> colouriseType theme
+                                             _ | otherwise         -> id -- don't colourise unknown names
 consoleDecorate ist (AnnFC _) = id
 consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
   where colour BoldText      = IdrisColour Nothing True False True False
@@ -1204,16 +1200,16 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
 
         sc (l, r) = nest nestingSize $ prettySe 10 bnd l <+> text "=>" <+> prettySe 10 bnd r
     prettySe p bnd (PHidden tm) = text "." <> prettySe 0 bnd tm
-    prettySe p bnd (PRefl _ _) = annotate (AnnName eqCon Nothing Nothing) $ text "refl"
+    prettySe p bnd (PRefl _ _) = annName eqCon $ text "refl"
     prettySe p bnd (PResolveTC _) = text "resolvetc"
-    prettySe p bnd (PTrue _ IsType) = annotate (AnnName unitTy Nothing Nothing) $ text "()"
-    prettySe p bnd (PTrue _ IsTerm) = annotate (AnnName unitCon Nothing Nothing) $ text "()"
+    prettySe p bnd (PTrue _ IsType) = annName unitTy $ text "()"
+    prettySe p bnd (PTrue _ IsTerm) = annName unitCon $ text "()"
     prettySe p bnd (PTrue _ TypeOrTerm) = text "()"
-    prettySe p bnd (PFalse _) = annotate (AnnName falseTy Nothing Nothing) $ text "_|_"
+    prettySe p bnd (PFalse _) = annName falseTy $ text "_|_"
     prettySe p bnd (PEq _ l r) =
       bracket p 2 . align . group $
       prettySe 10 bnd l <+> eq <$> group (prettySe 10 bnd r)
-      where eq = annotate (AnnName eqTy Nothing Nothing) (text "=")
+      where eq = annName eqTy (text "=")
     prettySe p bnd (PRewrite _ l r _) =
       bracket p 2 $
       text "rewrite" <+> prettySe 10 bnd l <+> text "in" <+> prettySe 10 bnd r
@@ -1225,28 +1221,28 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
                                      map (prettySe 10 bnd) elts
         where ann = case pun of
                       TypeOrTerm -> id
-                      IsType -> annotate (AnnName pairTy Nothing Nothing)
-                      IsTerm -> annotate (AnnName pairCon Nothing Nothing)
+                      IsType -> annName pairTy
+                      IsTerm -> annName pairCon
     prettySe p bnd (PDPair _ TypeOrTerm l t r) =
       lparen <> prettySe 10 bnd l <+> text "**" <+> prettySe 10 bnd r <> rparen
     prettySe p bnd (PDPair _ IsType (PRef _ n) t r) =
-      annotate (AnnName sigmaTy Nothing Nothing) lparen <>
+      annName sigmaTy lparen <>
       bindingOf n False <+>
-      annotate (AnnName sigmaTy Nothing Nothing) (text "**") <+>
+      annName sigmaTy (text "**") <+>
       prettySe 10 ((n, False):bnd) r <>
-      annotate (AnnName sigmaTy Nothing Nothing) rparen
+      annName sigmaTy rparen
     prettySe p bnd (PDPair _ IsType l t r) =
-      annotate (AnnName sigmaTy Nothing Nothing) lparen <>
+      annName sigmaTy lparen <>
       prettySe 10 bnd l <+>
-      annotate (AnnName sigmaTy Nothing Nothing) (text "**") <+>
+      annName sigmaTy (text "**") <+>
       prettySe 10 bnd r <>
-      annotate (AnnName sigmaTy Nothing Nothing) rparen
+      annName sigmaTy rparen
     prettySe p bnd (PDPair _ IsTerm l t r) =
-      annotate (AnnName existsCon Nothing Nothing) lparen <>
+      annName existsCon lparen <>
       prettySe 10 bnd l <+>
-      annotate (AnnName existsCon Nothing Nothing) (text "**") <+>
+      annName existsCon (text "**") <+>
       prettySe 10 bnd r <>
-      annotate (AnnName existsCon Nothing Nothing) rparen
+      annName existsCon rparen
     prettySe p bnd (PAlternative a as) =
       lparen <> text "|" <> prettyAs <> text "|" <> rparen
         where
@@ -1282,6 +1278,9 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
     prettyArgSi bnd (n, val) = lbrace <> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
     prettyArgSc bnd val = lbrace <> lbrace <> prettySe 10 bnd val <> rbrace <> rbrace
     prettyArgSti bnd (n, val) = lbrace <> kwd "auto" <+> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
+
+    annName :: Name -> Doc OutputAnnotation -> Doc OutputAnnotation
+    annName n = annotate (AnnName n Nothing Nothing Nothing)
 
     basename :: Name -> Name
     basename (NS n _) = basename n
@@ -1348,7 +1347,7 @@ prettyName :: Bool -- ^^ whether to show namespaces
            -> Name -- ^^ the name to pprint
            -> Doc OutputAnnotation
 prettyName showNS bnd n | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) (text (strName n))
-                        | otherwise = annotate (AnnName n Nothing Nothing) (text (strName n))
+                        | otherwise = annotate (AnnName n Nothing Nothing Nothing) (text (strName n))
   where strName (UN n) = T.unpack n
         strName (NS n ns) | showNS    = (concatMap (++ ".") . map T.unpack . reverse) ns ++ strName n
                           | otherwise = strName n

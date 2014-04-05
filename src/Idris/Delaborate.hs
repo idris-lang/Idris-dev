@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pshow, pprintErr) where
+module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
@@ -140,11 +140,6 @@ pprintTerm ist = pprintTerm' ist []
 pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
 pprintTerm' ist bnd tm = pprintPTerm (opt_showimp (idris_options ist)) bnd [] tm
 
-pshow :: IState -> Err -> String
-pshow ist err = displayDecorated (consoleDecorate ist) .
-                renderPretty 1.0 80 .
-                fmap (fancifyAnnots ist) $ pprintErr ist err
-
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)
 
@@ -261,7 +256,7 @@ annName :: Name -> Doc OutputAnnotation
 annName n = annName' n (showbasic n)
 
 annName' :: Name -> String -> Doc OutputAnnotation
-annName' n str = annotate (AnnName n Nothing Nothing) (text str)
+annName' n str = annotate (AnnName n Nothing Nothing Nothing) (text str)
 
 showSc :: IState -> [(Name, Term)] -> Doc OutputAnnotation
 showSc i [] = empty

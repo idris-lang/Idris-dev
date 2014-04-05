@@ -29,6 +29,7 @@ import Idris.Coverage
 import Idris.IBC
 import Idris.Unlit
 import Idris.Providers
+import Idris.Output
 
 import Idris.ParseHelpers
 import Idris.ParseOps
@@ -1212,6 +1213,14 @@ loadSource h lidr f
                   file_in <- runIO $ readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, imports, pos) <- parseImports f file
+                  ids <- allImportDirs
+                  ibcsd <- valIBCSubDir i
+                  mapM_ (\f -> do fp <- runIO $ findImport ids ibcsd f
+                                  case fp of
+                                      LIDR fn -> ifail $ "No ibc for " ++ f
+                                      IDR fn -> ifail $ "No ibc for " ++ f
+                                      IBC fn src -> loadIBC fn) 
+                        [fn | (fn, _, _) <- imports]
                   reportParserWarnings
 
                   -- process and check module aliases

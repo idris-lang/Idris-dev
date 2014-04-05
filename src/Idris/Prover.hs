@@ -15,6 +15,7 @@ import Idris.Error
 import Idris.DataOpts
 import Idris.Completion
 import Idris.IdeSlave
+import Idris.Output
 
 import Text.Trifecta.Result(Result(..))
 

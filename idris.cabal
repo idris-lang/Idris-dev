@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.11.2
+Version:        0.9.12
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -476,6 +476,7 @@ Library
                 , Idris.IdeSlave
                 , Idris.Imports
                 , Idris.Inliner
+                , Idris.Output
                 , Idris.Parser
                 , Idris.ParseHelpers
                 , Idris.ParseOps
