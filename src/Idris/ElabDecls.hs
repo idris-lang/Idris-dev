@@ -1505,6 +1505,19 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
            addErrRev (crhs, clhs) 
         return $ Right (clhs, crhs)
   where
+    pinfo :: ElabInfo -> [(Name, PTerm)] -> [Name] -> Int -> ElabInfo
+    pinfo info ns ds i
+          = let newps = params info ++ ns
+                dsParams = map (\n -> (n, map fst newps)) ds
+                newb = addAlist dsParams (inblock info)
+                l = liftname info in
+                info { params = newps,
+                       inblock = newb,
+                       liftname = id -- (\n -> case lookupCtxt n newb of
+                                     --      Nothing -> n
+                                     --      _ -> MN i (show n)) . l
+                     }
+
     mkLHSapp t@(PRef _ _) = trace ("APP " ++ show t) $ PApp fc t []
     mkLHSapp t = t
 
@@ -2156,18 +2169,6 @@ psolve tm = return ()
 
 pvars ist (Bind n (PVar t) sc) = (n, delab ist t) : pvars ist sc
 pvars ist _ = []
-
-pinfo info ns ds i
-      = let newps = params info ++ ns
-            dsParams = map (\n -> (n, map fst newps)) ds
-            newb = addAlist dsParams (inblock info)
-            l = liftname info in
-            info { params = newps,
-                   inblock = newb,
-                   liftname = id -- (\n -> case lookupCtxt n newb of
-                                 --      Nothing -> n
-                                 --      _ -> MN i (show n)) . l
-                 }
 
 data ElabWhat = ETypes | EDefns | EAll
   deriving (Show, Eq)
