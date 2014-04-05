@@ -237,7 +237,9 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          logLvl 2 $ "---> " ++ show cty
          -- temporary, to check cons
          when undef $ updateContext (addTyDecl n (TCon 0 0) cty)
-         cons <- mapM (elabCon info syn n codata) dcons
+         --TODO WIP modify info for constructor names
+         let cnameinfo = cinfo info (map cname dcons)
+         cons <- mapM (elabCon cnameinfo syn n codata) dcons
          ttag <- getName
          i <- getIState
          let as = map (const Nothing) (getArgTys cty)
@@ -319,6 +321,21 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
                        | n `elem` freeNames t = 1 + count n ts
                        | otherwise = count n ts
         mParam args (_ : rest) = Nothing : mParam args rest
+
+        cname (_, _, n, _, _, _) = n
+
+        -- Abuse of ElabInfo.
+        -- TODO Contemplate whether the ElabInfo type needs modification.
+        cinfo :: ElabInfo -> [Name] -> ElabInfo
+        cinfo info ds
+          = let newps = params info
+                dsParams = map (\n -> (n, [])) ds
+                newb = addAlist dsParams (inblock info)
+                l = liftname info in
+                info { params = newps,
+                       inblock = newb,
+                       liftname = id -- Is this appropriate?
+                     }
 
 type EliminatorState = StateT (Map.Map String Int) Idris
 
@@ -841,7 +858,6 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
     = do checkUndefined fc n
          ctxt <- getContext
          i <- getIState
-         -- TODO think: something more in info?
          t_in <- implicit info syn n (if codata then mkLazy t_in else t_in)
          let t = addImpl i t_in
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t
