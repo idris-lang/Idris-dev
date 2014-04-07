@@ -58,20 +58,20 @@ data ExecVal = EP NameType Name ExecVal
              | EErased
              | EConstant Const
              | forall a. EPtr (Ptr a)
-             | EThunk ExecEnv Term
+             | EThunk Context ExecEnv Term
              | EHandle Handle
 
 instance Show ExecVal where
-  show (EP _ n _)       = show n
-  show (EV i)           = "!!V" ++ show i ++ "!!"
-  show (EBind n b body) = "EBind " ++ show b ++ " <<fn>>"
-  show (EApp e1 e2)     = show e1 ++ " (" ++ show e2 ++ ")"
-  show (EType _)        = "Type"
-  show EErased          = "[__]"
-  show (EConstant c)    = show c
-  show (EPtr p)         = "<<ptr " ++ show p ++ ">>"
-  show (EThunk env tm)  = "<<thunk " ++ show env ++ "||||" ++ show tm ++ ">>"
-  show (EHandle h)      = "<<handle " ++ show h ++ ">>"
+  show (EP _ n _)        = show n
+  show (EV i)            = "!!V" ++ show i ++ "!!"
+  show (EBind n b body)  = "EBind " ++ show b ++ " <<fn>>"
+  show (EApp e1 e2)      = show e1 ++ " (" ++ show e2 ++ ")"
+  show (EType _)         = "Type"
+  show EErased           = "[__]"
+  show (EConstant c)     = show c
+  show (EPtr p)          = "<<ptr " ++ show p ++ ">>"
+  show (EThunk _ env tm) = "<<thunk " ++ show env ++ "||||" ++ show tm ++ ">>"
+  show (EHandle h)       = "<<handle " ++ show h ++ ">>"
 
 toTT :: ExecVal -> Exec Term
 toTT (EP nt n ty) = (P nt n) <$> (toTT ty)
@@ -79,22 +79,25 @@ toTT (EV i) = return $ V i
 toTT (EBind n b body) = do body' <- body $ EP Bound n EErased
                            b' <- fixBinder b
                            Bind n b' <$> toTT body'
-    where fixBinder (Lam t)       = Lam   <$> toTT t
-          fixBinder (Pi t)        = Pi    <$> toTT t
-          fixBinder (Let t1 t2)   = Let   <$> toTT t1 <*> toTT t2
-          fixBinder (NLet t1 t2)  = NLet  <$> toTT t1 <*> toTT t2
-          fixBinder (Hole t)      = Hole  <$> toTT t
+    where fixBinder (Lam t)       = Lam     <$> toTT t
+          fixBinder (Pi t)        = Pi      <$> toTT t
+          fixBinder (Let t1 t2)   = Let     <$> toTT t1 <*> toTT t2
+          fixBinder (NLet t1 t2)  = NLet    <$> toTT t1 <*> toTT t2
+          fixBinder (Hole t)      = Hole    <$> toTT t
           fixBinder (GHole i t)   = GHole i <$> toTT t
-          fixBinder (Guess t1 t2) = Guess <$> toTT t1 <*> toTT t2
-          fixBinder (PVar t)      = PVar  <$> toTT t
-          fixBinder (PVTy t)      = PVTy  <$> toTT t
+          fixBinder (Guess t1 t2) = Guess   <$> toTT t1 <*> toTT t2
+          fixBinder (PVar t)      = PVar    <$> toTT t
+          fixBinder (PVTy t)      = PVTy    <$> toTT t
 toTT (EApp e1 e2) = do e1' <- toTT e1
                        e2' <- toTT e2
                        return $ App e1' e2'
 toTT (EType u) = return $ TType u
 toTT EErased = return Erased
 toTT (EConstant c) = return (Constant c)
-toTT (EThunk env tm) = return tm
+toTT (EThunk ctxt env tm) = do env' <- mapM toBinder env
+                               return $ normalise ctxt env' tm
+  where toBinder (n, v) = do v' <- toTT v
+                             return (n, Let Erased v')
 toTT (EHandle _) = return Erased
 
 unApplyV :: ExecVal -> (ExecVal, [ExecVal])
@@ -181,7 +184,7 @@ doExec env ctxt a@(App _ _) =
                   case args of
                     [t,a,tm] -> do t' <- doExec env ctxt t
                                    a' <- doExec env ctxt a
-                                   return [t', a', EThunk env tm]
+                                   return [t', a', EThunk ctxt env tm]
                     _ -> mapM (doExec env ctxt) args -- partial applications are fine to evaluate
                 fun' -> do mapM (doExec env ctxt) args
      execApp env ctxt f' args'
@@ -197,8 +200,8 @@ execApp :: ExecEnv -> Context -> ExecVal -> [ExecVal] -> Exec ExecVal
 execApp env ctxt v [] = return v -- no args is just a constant! can result from function calls
 execApp env ctxt (EP _ f _) (t:a:delayed:rest)
   | f == force
-  , (_, [_, _, EThunk tmEnv tm]) <- unApplyV delayed =
-    do tm' <- doExec tmEnv ctxt tm
+  , (_, [_, _, EThunk tmCtxt tmEnv tm]) <- unApplyV delayed =
+    do tm' <- doExec tmEnv tmCtxt tm
        execApp env ctxt tm' rest
 execApp env ctxt (EP _ fp _) (ty:action:rest)
   | fp == upio,
