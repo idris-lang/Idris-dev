@@ -1432,7 +1432,9 @@ showName ist bnd impl colour n = case ist of
 showTm :: IState -- ^^ the Idris state, for information about identifiers and colours
        -> PTerm  -- ^^ the term to show
        -> String
-showTm ist = displayDecorated (consoleDecorate ist) . renderCompact . prettyImp (opt_showimp (idris_options ist))
+showTm ist = displayDecorated (consoleDecorate ist) .
+             renderPretty 0.8 100000 .
+             prettyImp (opt_showimp (idris_options ist))
 
 -- | Show a term with implicits, no colours
 showTmImpls :: PTerm -> String
