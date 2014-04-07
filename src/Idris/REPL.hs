@@ -1009,7 +1009,7 @@ classInfo ci = do ist <- getIState
         dumpDefaultInstance :: IState -> PDecl -> Doc OutputAnnotation
         dumpDefaultInstance ist (PInstance _ _ _ _ _ t _ _) = pp ist t
         dumpInstance :: IState -> Context -> Name -> Doc OutputAnnotation
-        dumpInstance ist ctxt n = vsep . map (\t -> pp ist (delab ist t)) $ lookupTy n ctxt
+        dumpInstance ist ctxt n = pp ist $ delabTy ist n
         pp ist = prettyImp (opt_showimp (idris_options ist))
 
 showTotal :: Totality -> IState -> String
