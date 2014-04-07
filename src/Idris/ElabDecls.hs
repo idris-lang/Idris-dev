@@ -239,7 +239,6 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          logLvl 2 $ "---> " ++ show cty
          -- temporary, to check cons
          when undef $ updateContext (addTyDecl n (TCon 0 0) cty)
-         --TODO WIP modify info for constructor names
          let cnameinfo = cinfo info (map cname dcons)
          cons <- mapM (elabCon cnameinfo syn n codata) dcons
          ttag <- getName
