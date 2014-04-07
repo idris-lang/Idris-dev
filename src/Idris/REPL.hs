@@ -13,7 +13,7 @@ import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Docstrings (Docstring, overview, renderDocstring)
 import Idris.Prover
-import Idris.Parser
+import Idris.Parser hiding (indent)
 import Idris.Primitives
 import Idris.Coverage
 import Idris.UnusedArgs
@@ -998,19 +998,26 @@ classInfo :: ClassInfo -> Idris (Doc OutputAnnotation)
 classInfo ci = do ist <- getIState
                   ctxt <- getContext
                   return $
+                    text "Parameters:" <+>
+                    hsep (punctuate comma (map (prettyName False params') params)) <>
+                    line <> line <>
                     text "Methods:" <> line <>
-                    vsep (map (dumpMethod ist) (class_methods ci)) <> line <> line <>
-                    text "Default superclass instances:" <> line <>
-                    vsep (map (dumpDefaultInstance ist) (class_default_superclasses ci)) <> line <>
+                    indent 2 (vsep (map (dumpMethod ist) (class_methods ci))) <> line <> line <>
+                    text "Default superclass instances:" <>
+                    line <>
+                    indent 2 (vsep (map (dumpDefaultInstance ist) (class_default_superclasses ci))) <>
+                    line <>
                     text "Instances:" <> line <>
-                    vsep (map (dumpInstance ist ctxt) (class_instances ci))
+                    indent 2 (vsep (map (dumpInstance ist ctxt) (class_instances ci)))
   where dumpMethod :: IState -> (Name, (FnOpts, PTerm)) -> Doc OutputAnnotation
         dumpMethod ist (n, (_, t)) = prettyName False [] n <+> colon <+> pp ist t
         dumpDefaultInstance :: IState -> PDecl -> Doc OutputAnnotation
         dumpDefaultInstance ist (PInstance _ _ _ _ _ t _ _) = pp ist t
         dumpInstance :: IState -> Context -> Name -> Doc OutputAnnotation
         dumpInstance ist ctxt n = pp ist $ delabTy ist n
-        pp ist = prettyImp (opt_showimp (idris_options ist))
+        params = class_params ci
+        params' = zip params (repeat False)
+        pp ist = pprintPTerm (opt_showimp (idris_options ist)) params' []
 
 showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i
