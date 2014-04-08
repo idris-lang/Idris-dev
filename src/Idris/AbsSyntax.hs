@@ -1129,7 +1129,7 @@ implicit' info syn ignore n ptm
 
     notFound :: [Name] -> [Name] -> Maybe Name
     notFound kns [] = Nothing
-    notFound kns (SN (WhereN _ _ _) : ns) = notFound kns ns -- Known already
+    notFound kns (SN (WhereN _ _ _) : ns) = notFound kns ns --  Known already
     notFound kns (n:ns) = if elem n kns then notFound kns ns else Just n
 
 implicitise :: SyntaxInfo -> [Name] -> IState -> PTerm -> (PTerm, [PArg])
