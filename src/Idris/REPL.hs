@@ -284,6 +284,16 @@ ideslave orig mods
                        do setErrContext b
                           let msg = (IdeSlave.SymbolAtom "ok", b)
                           runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+                     Just (IdeSlave.Metavariables cols) ->
+                       do ist <- getIState
+                          let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
+                          imp <- impShow
+                          let mvarTys = map (delabTy ist) mvs
+                          let res = (IdeSlave.SymbolAtom "ok",
+                                     zipWith (\ n (prems, concl) -> (n, prems, concl))
+                                             (map (IdeSlave.StringAtom . show) mvs)
+                                             (map (sexpGoal ist cols imp [] . getGoal) mvarTys))
+                          runIO . putStrLn $ IdeSlave.convSExp "return" res id
                      Nothing -> do iPrintError "did not understand")
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
@@ -293,6 +303,27 @@ ideslave orig mods
                         [] -> Left ("Didn't understand name '" ++ s ++ "'")
                         [n] -> Right $ sUN n
                         (n:ns) -> Right $ sNS (sUN n) ns
+        getGoal :: PTerm -> ([(Name, PTerm)], PTerm)
+        getGoal (PPi _ n t sc) = let (prems, conc) = getGoal sc
+                                 in ((n, t):prems, conc)
+        getGoal tm = ([], tm)
+        sexpGoal :: IState -> Int -> Bool -> [Name] -> ([(Name, PTerm)], PTerm)
+                 -> ([(String, String, SpanList OutputAnnotation)],
+                     (String, SpanList OutputAnnotation))
+        sexpGoal ist cols imp ns ([],        concl) =
+          let concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
+                       pprintPTerm imp (zip ns (repeat False)) [] concl
+          in ([], concl')
+        sexpGoal ist cols imp ns ((n, t):ps, concl) =
+          let n'          = case n of
+                              NS (UN nm) ns -> str nm
+                              UN nm | ('_':'_':_) <- str nm -> "_"
+                                    | otherwise -> str nm
+                              _ -> "_"
+              (t', spans) = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
+                            pprintPTerm imp (zip ns (repeat False)) [] t
+              rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
+          in ((n', t', spans) : fst rest, snd rest)
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
 ideslaveProcess fn Help = process stdout fn Help
