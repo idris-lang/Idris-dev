@@ -124,7 +124,7 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
          | imparg imp = (ImplicitD, tm)
          | otherwise = (ExplicitD, (P Ref (sUN (show n ++ "arg")) Erased))
 
-    imparg (PExp _ _ _) = False
+    imparg (PExp _ _ _ _) = False
     imparg _ = True
 
     buildApp env [] [] _ _ = []

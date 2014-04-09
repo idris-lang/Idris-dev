@@ -13,7 +13,7 @@ import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Docstrings (Docstring, overview, renderDocstring)
 import Idris.Prover
-import Idris.Parser
+import Idris.Parser hiding (indent)
 import Idris.Primitives
 import Idris.Coverage
 import Idris.UnusedArgs
@@ -78,8 +78,6 @@ import Data.Char
 import Data.Version
 import Data.Word (Word)
 import Control.DeepSeq
-
-import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
 
 import Debug.Trace
 
@@ -286,6 +284,16 @@ ideslave orig mods
                        do setErrContext b
                           let msg = (IdeSlave.SymbolAtom "ok", b)
                           runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+                     Just (IdeSlave.Metavariables cols) ->
+                       do ist <- getIState
+                          let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
+                          imp <- impShow
+                          let mvarTys = map (delabTy ist) mvs
+                          let res = (IdeSlave.SymbolAtom "ok",
+                                     zipWith (\ n (prems, concl) -> (n, prems, concl))
+                                             (map (IdeSlave.StringAtom . show) mvs)
+                                             (map (sexpGoal ist cols imp [] . getGoal) mvarTys))
+                          runIO . putStrLn $ IdeSlave.convSExp "return" res id
                      Nothing -> do iPrintError "did not understand")
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
@@ -295,6 +303,27 @@ ideslave orig mods
                         [] -> Left ("Didn't understand name '" ++ s ++ "'")
                         [n] -> Right $ sUN n
                         (n:ns) -> Right $ sNS (sUN n) ns
+        getGoal :: PTerm -> ([(Name, PTerm)], PTerm)
+        getGoal (PPi _ n t sc) = let (prems, conc) = getGoal sc
+                                 in ((n, t):prems, conc)
+        getGoal tm = ([], tm)
+        sexpGoal :: IState -> Int -> Bool -> [Name] -> ([(Name, PTerm)], PTerm)
+                 -> ([(String, String, SpanList OutputAnnotation)],
+                     (String, SpanList OutputAnnotation))
+        sexpGoal ist cols imp ns ([],        concl) =
+          let concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
+                       pprintPTerm imp (zip ns (repeat False)) [] concl
+          in ([], concl')
+        sexpGoal ist cols imp ns ((n, t):ps, concl) =
+          let n'          = case n of
+                              NS (UN nm) ns -> str nm
+                              UN nm | ('_':'_':_) <- str nm -> "_"
+                                    | otherwise -> str nm
+                              _ -> "_"
+              (t', spans) = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
+                            pprintPTerm imp (zip ns (repeat False)) [] t
+              rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
+          in ((n', t', spans) : fst rest, snd rest)
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
 ideslaveProcess fn Help = process stdout fn Help
@@ -617,7 +646,8 @@ process h fn (DebugInfo n)
 process h fn (Info n)
                     = do i <- getIState
                          case lookupCtxt n (idris_classes i) of
-                              [c] -> classInfo c
+                              [c] -> do info <- classInfo c
+                                        ihRenderResult h info
                               _ -> iPrintError "Not a class"
 process h fn (Search t) = iPrintError "Not implemented"
 -- FIXME: There is far too much repetition in the cases below!
@@ -993,28 +1023,30 @@ process h fn (Apropos a) =
         isUN (NS n _) = isUN n
         isUN _ = False
 
-classInfo :: ClassInfo -> Idris ()
-classInfo ci = do iputStrLn "Methods:\n"
-                  mapM_ dumpMethod (class_methods ci)
-                  iputStrLn ""
-                  iputStrLn "Default superclass instances:\n"
-                  mapM_ dumpDefaultInstance (class_default_superclasses ci)
-                  iputStrLn ""
-                  iputStrLn "Instances:\n"
-                  mapM_ dumpInstance (class_instances ci)
-                  iPrintResult ""
-
-dumpMethod :: (Name, (FnOpts, PTerm)) -> Idris ()
-dumpMethod (n, (_, t)) = iputStrLn $ show n ++ " : " ++ show t
-
-dumpDefaultInstance :: PDecl -> Idris ()
-dumpDefaultInstance (PInstance _ _ _ _ _ t _ _) = iputStrLn $ show t
-
-dumpInstance :: Name -> Idris ()
-dumpInstance n = do i <- getIState
-                    ctxt <- getContext
-                    case lookupTy n ctxt of
-                         ts -> mapM_ (\t -> iputStrLn $ showTm i (delab i t)) ts
+classInfo :: ClassInfo -> Idris (Doc OutputAnnotation)
+classInfo ci = do ist <- getIState
+                  ctxt <- getContext
+                  return $
+                    text "Parameters:" <+>
+                    hsep (punctuate comma (map (prettyName False params') params)) <>
+                    line <> line <>
+                    text "Methods:" <> line <>
+                    indent 2 (vsep (map (dumpMethod ist) (class_methods ci))) <> line <> line <>
+                    text "Default superclass instances:" <>
+                    line <>
+                    indent 2 (vsep (map (dumpDefaultInstance ist) (class_default_superclasses ci))) <>
+                    line <>
+                    text "Instances:" <> line <>
+                    indent 2 (vsep (map (dumpInstance ist ctxt) (class_instances ci)))
+  where dumpMethod :: IState -> (Name, (FnOpts, PTerm)) -> Doc OutputAnnotation
+        dumpMethod ist (n, (_, t)) = prettyName False [] n <+> colon <+> pp ist t
+        dumpDefaultInstance :: IState -> PDecl -> Doc OutputAnnotation
+        dumpDefaultInstance ist (PInstance _ _ _ _ _ t _ _) = pp ist t
+        dumpInstance :: IState -> Context -> Name -> Doc OutputAnnotation
+        dumpInstance ist ctxt n = pp ist $ delabTy ist n
+        params = class_params ci
+        params' = zip params (repeat False)
+        pp ist = pprintPTerm (opt_showimp (idris_options ist)) params' []
 
 showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i
@@ -1348,11 +1380,6 @@ execScript expr = do i <- getIState
                                              (tm, _) <- elabVal toplevel False term
                                              res <- execute tm
                                              runIO $ exitWith ExitSuccess
-
--- | Check if the coloring matches the options and corrects if necessary
-fixColour :: Bool -> ANSI.Doc -> ANSI.Doc
-fixColour False doc = ANSI.plain doc
-fixColour True doc  = doc
 
 -- | Get the platform-specific, user-specific Idris dir
 getIdrisUserDataDir :: Idris FilePath

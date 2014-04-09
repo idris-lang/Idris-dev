@@ -72,8 +72,9 @@ genClauses fc n xs given
         -- there may be more case splitting that the idris_implicits record
         -- suggests)
         let parg = case lookupCtxt n (idris_implicits i) of
-                        (p : _) -> p ++ repeat (PExp 0 [] Placeholder)
-                        _ -> repeat (pexp Placeholder)
+                        (p : _) -> 
+                          p ++ repeat (PExp 0 [] (sMN 0 "gcarg") Placeholder)
+                        _       -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
         logLvl 2 $ show (length tryclauses) ++ " initially to check"
         logLvl 1 $ showSep "\n" (map (showTm i) tryclauses)
