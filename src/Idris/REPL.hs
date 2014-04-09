@@ -79,8 +79,6 @@ import Data.Version
 import Data.Word (Word)
 import Control.DeepSeq
 
-import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
-
 import Debug.Trace
 
 -- | Run the REPL
@@ -1348,11 +1346,6 @@ execScript expr = do i <- getIState
                                              (tm, _) <- elabVal toplevel False term
                                              res <- execute tm
                                              runIO $ exitWith ExitSuccess
-
--- | Check if the coloring matches the options and corrects if necessary
-fixColour :: Bool -> ANSI.Doc -> ANSI.Doc
-fixColour False doc = ANSI.plain doc
-fixColour True doc  = doc
 
 -- | Get the platform-specific, user-specific Idris dir
 getIdrisUserDataDir :: Idris FilePath
