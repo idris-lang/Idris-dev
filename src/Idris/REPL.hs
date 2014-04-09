@@ -13,7 +13,7 @@ import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Docstrings (Docstring, overview, renderDocstring)
 import Idris.Prover
-import Idris.Parser
+import Idris.Parser hiding (indent)
 import Idris.Primitives
 import Idris.Coverage
 import Idris.UnusedArgs
@@ -615,7 +615,8 @@ process h fn (DebugInfo n)
 process h fn (Info n)
                     = do i <- getIState
                          case lookupCtxt n (idris_classes i) of
-                              [c] -> classInfo c
+                              [c] -> do info <- classInfo c
+                                        ihRenderResult h info
                               _ -> iPrintError "Not a class"
 process h fn (Search t) = iPrintError "Not implemented"
 -- FIXME: There is far too much repetition in the cases below!
@@ -991,28 +992,30 @@ process h fn (Apropos a) =
         isUN (NS n _) = isUN n
         isUN _ = False
 
-classInfo :: ClassInfo -> Idris ()
-classInfo ci = do iputStrLn "Methods:\n"
-                  mapM_ dumpMethod (class_methods ci)
-                  iputStrLn ""
-                  iputStrLn "Default superclass instances:\n"
-                  mapM_ dumpDefaultInstance (class_default_superclasses ci)
-                  iputStrLn ""
-                  iputStrLn "Instances:\n"
-                  mapM_ dumpInstance (class_instances ci)
-                  iPrintResult ""
-
-dumpMethod :: (Name, (FnOpts, PTerm)) -> Idris ()
-dumpMethod (n, (_, t)) = iputStrLn $ show n ++ " : " ++ show t
-
-dumpDefaultInstance :: PDecl -> Idris ()
-dumpDefaultInstance (PInstance _ _ _ _ _ t _ _) = iputStrLn $ show t
-
-dumpInstance :: Name -> Idris ()
-dumpInstance n = do i <- getIState
-                    ctxt <- getContext
-                    case lookupTy n ctxt of
-                         ts -> mapM_ (\t -> iputStrLn $ showTm i (delab i t)) ts
+classInfo :: ClassInfo -> Idris (Doc OutputAnnotation)
+classInfo ci = do ist <- getIState
+                  ctxt <- getContext
+                  return $
+                    text "Parameters:" <+>
+                    hsep (punctuate comma (map (prettyName False params') params)) <>
+                    line <> line <>
+                    text "Methods:" <> line <>
+                    indent 2 (vsep (map (dumpMethod ist) (class_methods ci))) <> line <> line <>
+                    text "Default superclass instances:" <>
+                    line <>
+                    indent 2 (vsep (map (dumpDefaultInstance ist) (class_default_superclasses ci))) <>
+                    line <>
+                    text "Instances:" <> line <>
+                    indent 2 (vsep (map (dumpInstance ist ctxt) (class_instances ci)))
+  where dumpMethod :: IState -> (Name, (FnOpts, PTerm)) -> Doc OutputAnnotation
+        dumpMethod ist (n, (_, t)) = prettyName False [] n <+> colon <+> pp ist t
+        dumpDefaultInstance :: IState -> PDecl -> Doc OutputAnnotation
+        dumpDefaultInstance ist (PInstance _ _ _ _ _ t _ _) = pp ist t
+        dumpInstance :: IState -> Context -> Name -> Doc OutputAnnotation
+        dumpInstance ist ctxt n = pp ist $ delabTy ist n
+        params = class_params ci
+        params' = zip params (repeat False)
+        pp ist = pprintPTerm (opt_showimp (idris_options ist)) params' []
 
 showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i
