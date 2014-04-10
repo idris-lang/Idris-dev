@@ -212,6 +212,7 @@ elabData info syn doc argDocs fc opts (PLaterdecl n t_in)
          def' <- checkDef fc defer
          let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
          addDeferredTyCon def''
+         addIBC (IBCDef n)
          mapM_ (elabCaseBlock info []) is
          (cty, _)  <- recheckC fc [] t'
          logLvl 2 $ "---> " ++ show cty
