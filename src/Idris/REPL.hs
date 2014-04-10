@@ -216,94 +216,112 @@ ideslave orig mods
                               (f:_) -> f
                               _ -> ""
                    case IdeSlave.sexpToCommand sexp of
-                     Just (IdeSlave.Interpret cmd) ->
-                       do c <- colourise
-                          case parseCmd i "(input)" cmd of
-                            Failure err -> iPrintError $ show (fixColour c err)
-                            Success (Prove n') -> do iPrintResult ""
-                                                     idrisCatch
-                                                       (process stdout fn (Prove n'))
-                                                       (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
-                                                     isetPrompt (mkPrompt mods)
-                            Success cmd -> idrisCatch
-                                             (ideslaveProcess fn cmd)
-                                             (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
-                     Just (IdeSlave.REPLCompletions str) ->
-                       do (unused, compls) <- replCompletion (reverse str, "")
-                          let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
-                          runIO $ putStrLn $ IdeSlave.convSExp "return" good id
-                     Just (IdeSlave.LoadFile filename) ->
-                       do clearErr
-                          putIState (orig { idris_options = idris_options i,
-                                            idris_outputmode = (IdeSlave id) })
-                          loadInputs stdout [filename]
-                          isetPrompt (mkPrompt [filename])
-                          -- Report either success or failure
-                          i <- getIState
-                          case (errSpan i) of
-                            Nothing -> iPrintResult $ "loaded " ++ filename
-                            Just x -> iPrintError $ "didn't load " ++ filename
-                          ideslave orig [filename]
-                     Just (IdeSlave.TypeOf name) ->
-                       case splitName name of
-                         Left err -> iPrintError err
-                         Right n -> process stdout "(ideslave)"
-                                      (Check (PRef (FC "(ideslave)" (0,0) (0,0)) n))
-                     Just (IdeSlave.DocsFor name) ->
-                       case splitName name of
-                         Left err -> iPrintError err
-                         Right n -> process stdout "(ideslave)" (DocStr n)
-                     Just (IdeSlave.CaseSplit line name) ->
-                       process stdout fn (CaseSplitAt False line (sUN name))
-                     Just (IdeSlave.AddClause line name) ->
-                       process stdout fn (AddClauseFrom False line (sUN name))
-                     Just (IdeSlave.AddProofClause line name) ->
-                       process stdout fn (AddProofClauseFrom False line (sUN name))
-                     Just (IdeSlave.AddMissing line name) ->
-                       process stdout fn (AddMissing False line (sUN name))
-                     Just (IdeSlave.MakeWithBlock line name) ->
-                       process stdout fn (MakeWith False line (sUN name))
-                     Just (IdeSlave.ProofSearch line name hints) ->
-                       process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
-                     Just (IdeSlave.Apropos a) ->
-                       process stdout fn (Apropos a)
-                     Just (IdeSlave.GetOpts) ->
-                       do ist <- getIState
-                          let opts = idris_options ist
-                          let impshow = opt_showimp opts
-                          let errCtxt = opt_errContext opts
-                          let options = (IdeSlave.SymbolAtom "ok",
-                                         [(IdeSlave.SymbolAtom "show-implicits", impshow),
-                                          (IdeSlave.SymbolAtom "error-context", errCtxt)])
-                          runIO . putStrLn $ IdeSlave.convSExp "return" options id
-                     Just (IdeSlave.SetOpt IdeSlave.ShowImpl b) ->
-                       do setImpShow b
-                          let msg = (IdeSlave.SymbolAtom "ok", b)
-                          runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-                     Just (IdeSlave.SetOpt IdeSlave.ErrContext b) ->
-                       do setErrContext b
-                          let msg = (IdeSlave.SymbolAtom "ok", b)
-                          runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-                     Just (IdeSlave.Metavariables cols) ->
-                       do ist <- getIState
-                          let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
-                          imp <- impShow
-                          let mvarTys = map (delabTy ist) mvs
-                          let res = (IdeSlave.SymbolAtom "ok",
-                                     zipWith (\ n (prems, concl) -> (n, prems, concl))
-                                             (map (IdeSlave.StringAtom . show) mvs)
-                                             (map (sexpGoal ist cols imp [] . getGoal) mvarTys))
-                          runIO . putStrLn $ IdeSlave.convSExp "return" res id
-                     Nothing -> do iPrintError "did not understand")
+                     Just cmd -> runIdeSlaveCommand id orig fn mods cmd
+                     Nothing  -> iPrintError "did not understand" )
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
        ideslave orig mods
+
+-- | Run IDESlave commands
+runIdeSlaveCommand :: Integer -- ^^ The continuation ID for the client
+                   -> IState -- ^^ The original IState
+                   -> FilePath -- ^^ The current open file
+                   -> [FilePath] -- ^^ The currently loaded modules
+                   -> IdeSlave.IdeSlaveCommand -- ^^ The command to process
+                   -> Idris ()
+runIdeSlaveCommand id orig fn mods (IdeSlave.Interpret cmd) =
+  do c <- colourise
+     i <- getIState
+     case parseCmd i "(input)" cmd of
+       Failure err -> iPrintError $ show (fixColour c err)
+       Success (Prove n') -> do iPrintResult ""
+                                idrisCatch
+                                  (process stdout fn (Prove n'))
+                                  (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
+                                isetPrompt (mkPrompt mods)
+       Success cmd -> idrisCatch
+                        (ideslaveProcess fn cmd)
+                        (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
+runIdeSlaveCommand id orig fn mods (IdeSlave.REPLCompletions str) =
+  do (unused, compls) <- replCompletion (reverse str, "")
+     let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok",
+                                   IdeSlave.toSExp (map replacement compls,
+                                   reverse unused)]
+     runIO $ putStrLn $ IdeSlave.convSExp "return" good id
+runIdeSlaveCommand id orig fn mods (IdeSlave.LoadFile filename) =
+  do i <- getIState
+     clearErr
+     putIState (orig { idris_options = idris_options i,
+                       idris_outputmode = (IdeSlave id) })
+     loadInputs stdout [filename]
+     isetPrompt (mkPrompt [filename])
+     -- Report either success or failure
+     i <- getIState
+     case (errSpan i) of
+       Nothing -> iPrintResult $ "loaded " ++ filename
+       Just x -> iPrintError $ "didn't load " ++ filename
+     ideslave orig [filename]
+runIdeSlaveCommand id orig fn mods (IdeSlave.TypeOf name) =
+  case splitName name of
+    Left err -> iPrintError err
+    Right n -> process stdout "(ideslave)"
+                 (Check (PRef (FC "(ideslave)" (0,0) (0,0)) n))
   where splitName :: String -> Either String Name
         splitName s = case reverse $ splitOn "." s of
                         [] -> Left ("Didn't understand name '" ++ s ++ "'")
                         [n] -> Right $ sUN n
                         (n:ns) -> Right $ sNS (sUN n) ns
-        getGoal :: PTerm -> ([(Name, PTerm)], PTerm)
+runIdeSlaveCommand id orig fn mods (IdeSlave.DocsFor name) =
+  case splitName name of
+    Left err -> iPrintError err
+    Right n -> process stdout "(ideslave)" (DocStr n)
+  where splitName :: String -> Either String Name
+        splitName s = case reverse $ splitOn "." s of
+                        [] -> Left ("Didn't understand name '" ++ s ++ "'")
+                        [n] -> Right $ sUN n
+                        (n:ns) -> Right $ sNS (sUN n) ns
+runIdeSlaveCommand id orig fn mods (IdeSlave.CaseSplit line name) =
+  process stdout fn (CaseSplitAt False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.AddClause line name) =
+  process stdout fn (AddClauseFrom False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.AddProofClause line name) =
+  process stdout fn (AddProofClauseFrom False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.AddMissing line name) =
+  process stdout fn (AddMissing False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.MakeWithBlock line name) =
+  process stdout fn (MakeWith False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.ProofSearch line name hints) =
+  process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
+runIdeSlaveCommand id orig fn mods (IdeSlave.Apropos a) =
+  process stdout fn (Apropos a)
+runIdeSlaveCommand id orig fn mods (IdeSlave.GetOpts) =
+  do ist <- getIState
+     let opts = idris_options ist
+     let impshow = opt_showimp opts
+     let errCtxt = opt_errContext opts
+     let options = (IdeSlave.SymbolAtom "ok",
+                    [(IdeSlave.SymbolAtom "show-implicits", impshow),
+                     (IdeSlave.SymbolAtom "error-context", errCtxt)])
+     runIO . putStrLn $ IdeSlave.convSExp "return" options id
+runIdeSlaveCommand id orig fn mods (IdeSlave.SetOpt IdeSlave.ShowImpl b) =
+  do setImpShow b
+     let msg = (IdeSlave.SymbolAtom "ok", b)
+     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand id orig fn mods (IdeSlave.SetOpt IdeSlave.ErrContext b) =
+  do setErrContext b
+     let msg = (IdeSlave.SymbolAtom "ok", b)
+     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
+  do ist <- getIState
+     let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
+     imp <- impShow
+     let mvarTys = map (delabTy ist) mvs
+     let res = (IdeSlave.SymbolAtom "ok",
+                zipWith (\ n (prems, concl) -> (n, prems, concl))
+                        (map (IdeSlave.StringAtom . show) mvs)
+                        (map (sexpGoal ist cols imp [] . getGoal) mvarTys))
+     runIO . putStrLn $ IdeSlave.convSExp "return" res id
+  where getGoal :: PTerm -> ([(Name, PTerm)], PTerm)
         getGoal (PPi _ n t sc) = let (prems, conc) = getGoal sc
                                  in ((n, t):prems, conc)
         getGoal tm = ([], tm)
@@ -324,6 +342,7 @@ ideslave orig mods
                             pprintPTerm imp (zip ns (repeat False)) [] t
               rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
           in ((n', t', spans) : fst rest, snd rest)
+
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
 ideslaveProcess fn Help = process stdout fn Help
