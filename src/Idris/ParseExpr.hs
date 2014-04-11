@@ -201,7 +201,6 @@ InternalExpr ::=
   | CaseExpr
   | DoBlock
   | App
-  | MatchApp
   ;
 @
 -}
