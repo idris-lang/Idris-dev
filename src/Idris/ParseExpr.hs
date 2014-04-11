@@ -209,9 +209,9 @@ internalExpr :: SyntaxInfo -> IdrisParser PTerm
 internalExpr syn =
          try (app syn)
      <|> try (matchApp syn)
-     <|> try (unifyLog syn)
+     <|> unifyLog syn
      <|> try (disamb syn)
-     <|> try (noImplicits syn)
+     <|> noImplicits syn
      <|> recordType syn
      <|> lambda syn
      <|> quoteGoal syn
@@ -289,7 +289,7 @@ SimpleExpr ::=
   | Comprehension
   | Alt
   | Idiom
-  | '(' Bracketed
+  | Bracketed
   | Constant
   | Type
   | '_|_'
@@ -328,8 +328,7 @@ simpleExpr syn =
                s <- simpleExpr syn
                fc <- getFC
                return (PAppBind fc s [])
-        <|> do lchar '('
-               bracketed (disallowImp syn)
+        <|> bracketed (disallowImp syn)
         <|> do symbol "_|_"
                fc <- getFC
                return (PFalse fc)
@@ -337,10 +336,16 @@ simpleExpr syn =
         <|> simpleExternalExpr syn
         <?> "expression"
 
-
+{- |Parses an expression in braces
+@
+Bracketed ::= '(' Bracketed'
+ -}
+bracketed :: SyntaxInfo -> IdrisParser PTerm
+bracketed syn = do lchar '(' <?> "parenthesized expression"
+                   bracketed' syn
 {- |Parses the rest of an expression in braces
 @
-Bracketed ::=
+Bracketed' ::=
   ')'
   | Expr ')'
   | ExprList ')'
@@ -351,8 +356,8 @@ Bracketed ::=
   ;
 @
 -}
-bracketed :: SyntaxInfo -> IdrisParser PTerm
-bracketed syn =
+bracketed' :: SyntaxInfo -> IdrisParser PTerm
+bracketed' syn =
             do lchar ')'
                fc <- getFC
                return $ PTrue fc TypeOrTerm
@@ -502,7 +507,7 @@ UnifyLog ::=
   ;
 -}
 unifyLog :: SyntaxInfo -> IdrisParser PTerm
-unifyLog syn = do lchar '%'; reserved "unifyLog";
+unifyLog syn = do try (lchar '%' *> reserved "unifyLog")
                   tm <- simpleExpr syn
                   return (PUnifyLog tm)
                <?> "unification log expression"
@@ -528,7 +533,7 @@ NoImplicits ::=
 @
 -}
 noImplicits :: SyntaxInfo -> IdrisParser PTerm
-noImplicits syn = do lchar '%'; reserved "noImplicits";
+noImplicits syn = do try (lchar '%' *> reserved "noImplicits")
                      tm <- simpleExpr syn
                      return (PNoImplicits tm)
                  <?> "no implicits expression"
@@ -700,17 +705,17 @@ SimpleExprList ::=
 @
 -}
 lambda :: SyntaxInfo -> IdrisParser PTerm
-lambda syn = do lchar '\\'
-                try (do xt <- tyOptDeclList syn
-                        symbol "=>"
-                        sc <- expr syn
-                        return (bindList PLam xt sc)
-                 <|> (do ps <- sepBy (do fc <- getFC
-                                         e <- simpleExpr syn
-                                         return (fc, e)) (lchar ',')
-                         symbol "=>"
-                         sc <- expr syn
-                         return (pmList (zip [0..] ps) sc)))
+lambda syn = do lchar '\\' <?> "lambda expression"
+                (do xt <- try $ tyOptDeclList syn
+                    symbol "=>"
+                    sc <- expr syn
+                    return (bindList PLam xt sc)) <|> do
+                      ps <- sepBy (do fc <- getFC
+                                      e <- simpleExpr syn
+                                      return (fc, e)) (lchar ',')
+                      symbol "=>"
+                      sc <- expr syn
+                      return (pmList (zip [0..] ps) sc)
                  <?> "lambda expression"
     where pmList :: [(Int, (FC, PTerm))] -> PTerm -> PTerm
           pmList [] sc = sc
