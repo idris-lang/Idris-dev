@@ -799,18 +799,15 @@ Pi ::=
 
 pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
-     do opts <- -- if implicitAllowed syn -- laziness is top level only
-                -- then option [] (do lchar '|'; return [Lazy])
-                -- else return []
-                return []
-        st <- static
+     do opts <- piOpts syn
+        st   <- static
         (do try (lchar '('); xt <- typeDeclList syn; lchar ')'
             symbol "->"
             sc <- expr syn
             return (bindList (PPi (Exp opts st False)) xt sc)) <|> (do
                lchar '{'
                (do reserved "auto"
-                   when (Lazy `elem` opts || (st == Static)) $ fail "auto type constraints can not be lazy or static"
+                   when (st == Static) $ fail "auto type constraints can not be lazy or static"
                    xt <- typeDeclList syn
                    lchar '}'
                    symbol "->"
@@ -819,7 +816,7 @@ pi syn =
                      (TacImp [] Dynamic (PTactics [Trivial]))) xt sc)) 
                  <|> (do
                        reserved "default"
-                       when (Lazy `elem` opts || (st == Static)) $ fail "default tactic constraints can not be lazy or static"
+                       when (st == Static) $ fail "default tactic constraints can not be lazy or static"
                        script <- simpleExpr syn
                        xt <- typeDeclList syn
                        lchar '}'
@@ -834,6 +831,12 @@ pi syn =
                             return (bindList (PPi (Imp opts st False)) xt sc)
                        else do fail "no implicit arguments allowed here"))
   <?> "dependent type signature"
+
+piOpts :: SyntaxInfo -> IdrisParser [ArgOpt]
+piOpts syn | implicitAllowed syn =
+        lchar '.' *> return [InaccessibleArg]
+    <|> return []
+piOpts syn = return []
 
 {- | Parses a type constraint list
 

@@ -8,6 +8,7 @@ import Idris.Apropos (apropos)
 import Idris.REPLParser
 import Idris.ElabDecls
 import Idris.ElabTerm
+import Idris.Erasure
 import Idris.Error
 import Idris.ErrReverse
 import Idris.Delaborate
@@ -16,7 +17,6 @@ import Idris.Prover
 import Idris.Parser hiding (indent)
 import Idris.Primitives
 import Idris.Coverage
-import Idris.UnusedArgs
 import Idris.Docs hiding (Doc)
 import Idris.Help
 import Idris.Completion
@@ -655,7 +655,6 @@ process h fn (DebugInfo n)
         let d = lookupDef n (tt_ctxt i)
         when (not (null d)) $ iputStrLn $ "Definition: " ++ (show (head d))
         let cg = lookupCtxtName n (idris_callgraph i)
-        findUnusedArgs (map fst cg)
         i <- getIState
         let cg' = lookupCtxtName n (idris_callgraph i)
         sc <- checkSizeChange n
@@ -1111,6 +1110,7 @@ parseArgs ("--typeintype":ns)    = TypeInType : (parseArgs ns)
 parseArgs ("--total":ns)         = DefaultTotal : (parseArgs ns)
 parseArgs ("--partial":ns)       = DefaultPartial : (parseArgs ns)
 parseArgs ("--warnpartial":ns)   = WarnPartial : (parseArgs ns)
+parseArgs ("--warnreach":ns)     = WarnReach : (parseArgs ns)
 parseArgs ("--nocoverage":ns)    = NoCoverage : (parseArgs ns)
 parseArgs ("--errorcontext":ns)  = ErrContext : (parseArgs ns)
 parseArgs ("--help":ns)          = Usage : (parseArgs ns)
@@ -1353,9 +1353,13 @@ idrisMain opts =
 
        ok <- noErrors
        when ok $ case output of
-                    [] -> return ()
+                    -- just do the checks
+                    [] -> performUsageAnalysis >> return ()
+
+                    -- the compiler will run usage analysis itself
                     (o:_) -> idrisCatch (process stdout "" (Compile cgn o))
                                (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
+
        case script of
          Nothing -> return ()
          Just expr -> execScript expr

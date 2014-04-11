@@ -469,6 +469,7 @@ Library
                 , Idris.Docstrings
                 , Idris.ElabDecls
                 , Idris.ElabTerm
+                , Idris.Erasure
                 , Idris.Error
                 , Idris.ErrReverse
                 , Idris.Help
@@ -491,7 +492,6 @@ Library
                 , Idris.REPLParser
                 , Idris.Transforms
                 , Idris.Unlit
-                , Idris.UnusedArgs
 
                 , IRTS.BCImp
                 , IRTS.Bytecode
