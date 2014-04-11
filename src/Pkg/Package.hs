@@ -20,7 +20,7 @@ import Data.List.Split(splitOn)
 import Idris.Core.TT
 import Idris.REPL
 import Idris.Parser (loadModule)
-import Idris.Delaborate (pshow)
+import Idris.Output (pshow)
 import Idris.AbsSyntax
 import Idris.IdrisDoc
 import Idris.Output

@@ -2,7 +2,8 @@
 
 module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..),
                      Phase(..), CaseTree,
-                     simpleCase, small, namesUsed, findCalls, findUsedArgs) where
+                     simpleCase, small, namesUsed, findCalls, findUsedArgs,
+                     substSC, substAlt, mkForce) where
 
 import Idris.Core.TT
 
@@ -14,8 +15,20 @@ import Debug.Trace
 data CaseDef = CaseDef [Name] !SC [Term]
     deriving Show
 
-data SC' t = Case Name [CaseAlt' t] -- ^ invariant: lowest tags first
-           | ProjCase t [CaseAlt' t] -- ^ special case for projections
+-- Note: The case-tree elaborator only produces (Case n alts)-cases;
+-- in other words, it never inspects anything else than variables.
+--
+-- ProjCase is a special powerful case construct that allows inspection
+-- of compound terms. Occurrences of ProjCase arise no earlier than
+-- in the function `prune` as a means of optimisation
+-- of already built case trees.
+--
+-- While the intermediate representation (follows in the pipeline)
+-- allows casing on arbitrary terms, here we choose to maintain the distinction
+-- in order to allow for better optimisation opportunities.
+--
+data SC' t = Case Name [CaseAlt' t]  -- ^ invariant: lowest tags first
+           | ProjCase t [CaseAlt' t] -- ^ special case for projections/thunk-forcing before inspection
            | STerm !t
            | UnmatchedCase String -- ^ error message
            | ImpossibleCase -- ^ already checked to be impossible
@@ -96,8 +109,7 @@ small n args t = let as = findAllUsedArgs t args in
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where
     nu' ps (Case n alts) = nub (concatMap (nua ps) alts) \\ [n]
-    nu' ps (ProjCase t alts) = nub $ (nut ps t ++
-                                      (concatMap (nua ps) alts))
+    nu' ps (ProjCase t alts) = nub $ nut ps t ++ concatMap (nua ps) alts
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
 
@@ -122,7 +134,7 @@ namesUsed sc = nub $ nu' [] sc where
 findCalls :: SC -> [Name] -> [(Name, [[Name]])]
 findCalls sc topargs = nub $ nu' topargs sc where
     nu' ps (Case n alts) = nub (concatMap (nua (n : ps)) alts)
-    nu' ps (ProjCase t alts) = nub (nut ps t ++ concatMap (nua ps) alts)
+    nu' ps (ProjCase t alts) = nub $ nut ps t ++ concatMap (nua ps) alts
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
 
@@ -192,10 +204,10 @@ data Phase = CompileTime | RunTime
 -- Work Right to Left
 
 simpleCase :: Bool -> Bool -> Bool ->
-              Phase -> FC -> [Type] ->
+              Phase -> FC -> [Int] -> [Type] ->
               [([Name], Term, Term)] ->
               TC CaseDef
-simpleCase tc cover reflect phase fc argtys cs
+simpleCase tc cover reflect phase fc inacc argtys cs
       = sc' tc cover phase fc (filter (\(_, _, r) ->
                                           case r of
                                             Impossible -> False
@@ -213,7 +225,7 @@ simpleCase tc cover reflect phase fc argtys cs
                 OK pats ->
                     let numargs    = length (fst (head pats))
                         ns         = take numargs args
-                        (ns', ps') = order ns pats
+                        (ns', ps') = order [(n, i `elem` inacc) | (i,n) <- zip [0..] ns] pats
                         (tree, st) = runState
                                          (match ns' ps' (defaultCase cover)) 
                                          ([], numargs, [])
@@ -382,21 +394,25 @@ partition xs = error $ "Partition " ++ show xs
 -- reorder the patterns so that the one with most distinct names
 -- comes next. Take rightmost first, otherwise (i.e. pick value rather
 -- than dependency)
+--
+-- The first argument means [(Name, IsInaccessible)].
 
-order :: [Name] -> [Clause] -> ([Name], [Clause])
-order [] cs = ([], cs)
-order ns [] = (ns, [])
-order ns cs = let patnames = transpose (map (zip ns) (map fst cs))
-                  pats' = transpose (sortBy moreDistinct (reverse patnames)) in
-                  (getNOrder pats', zipWith rebuild pats' cs)
+order :: [(Name, Bool)] -> [Clause] -> ([Name], [Clause])
+order []  cs = ([], cs)
+order ns' [] = (map fst ns', [])
+order ns' cs = let patnames = transpose (map (zip ns') (map fst cs))
+                   -- note: sortBy . reverse is not nonsense because sortBy is stable
+                   pats' = transpose (sortBy moreDistinct (reverse patnames)) in
+                   (getNOrder pats', zipWith rebuild pats' cs)
   where
-    getNOrder [] = error $ "Failed order on " ++ show (ns, cs)
-    getNOrder (c : _) = map fst c
+    getNOrder [] = error $ "Failed order on " ++ show (map fst ns', cs)
+    getNOrder (c : _) = map (fst . fst) c
 
     rebuild patnames clause = (map snd patnames, snd clause)
 
-    moreDistinct xs ys = compare (numNames [] (map snd ys))
-                                 (numNames [] (map snd xs))
+    -- this compares (+isInaccessible, -numberOfCases)
+    moreDistinct xs ys = compare (snd . fst . head $ xs, numNames [] (map snd ys))
+                                 (snd . fst . head $ ys, numNames [] (map snd xs))
 
     numNames xs (PCon n _ _ : ps)
         | not (Left n `elem` xs) = numNames (Left n : xs) ps
@@ -576,91 +592,71 @@ depatt ns tm = dp [] tm
 -- FIXME: Do this for SucCase too
 prune :: Bool -- ^ Convert single branches to projections (only useful at runtime)
       -> SC -> SC
-prune proj (Case n alts)
-    = let alts' = filter notErased (map pruneAlt alts) in
-          case alts' of
-            [] -> ImpossibleCase
-            as@(ConCase (UN delay) i [arg] sc : _)
-                | delay == txt "Delay"
-                   -> if proj then mkForce n arg sc
-                              else Case n as
-            as@[ConCase cn i args sc] -> if proj then mkProj n 0 args sc
-                                                 else Case n as
-            as@[SucCase cn sc] -> if proj then mkProj n (-1) [cn] sc 
-                                          else Case n as
-            as@[ConstCase _ sc] -> prune proj sc
-            -- Bit of a hack here! The default case will always be 0, make sure
-            -- it gets caught first.
-            [s@(SucCase _ _), DefaultCase dc]
-                -> Case n [ConstCase (BI 0) dc, s]
-            as  -> Case n as
-    where pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune proj sc)
-          pruneAlt (FnCase cn ns sc) = FnCase cn ns (prune proj sc)
-          pruneAlt (ConstCase c sc) = ConstCase c (prune proj sc)
-          pruneAlt (SucCase n sc) = SucCase n (prune proj sc)
-          pruneAlt (DefaultCase sc) = DefaultCase (prune proj sc)
+prune proj (Case n alts) = case alts' of
+    [] -> ImpossibleCase
 
-          notErased (DefaultCase (STerm Erased)) = False
-          notErased (DefaultCase ImpossibleCase) = False
-          notErased _ = True
+    -- Projection transformations prevent us from seeing some uses of ctor fields
+    -- because they delete information about which ctor is being used.
+    -- Consider:
+    --   f (X x) = ...  x  ...
+    -- vs.
+    --   f  x    = ... x!0 ...
+    --
+    -- Hence, we disable this step.
+    -- TODO: re-enable this in toIR
+    --
+    -- as@[ConCase cn i args sc]
+    --     | proj -> mkProj n 0 args (prune proj sc)
+    -- mkProj n i xs sc = foldr (\x -> projRep x n i) sc xs
 
-          mkForce n arg (Case x alts)
-                | x == arg = ProjCase (forceArg n)
-                                      (map (mkForceAlt n arg) alts)
-                | otherwise = Case x (map (mkForceAlt n arg) alts)
-          mkForce n arg (ProjCase t alts)
-             = ProjCase (forceTm n arg t) (map (mkForceAlt n arg) alts)
-          mkForce n arg (STerm t) = STerm (forceTm n arg t)
-          mkForce n arg c = c
+    [SucCase cn sc]
+        | proj
+        -> projRep cn n (-1) $ prune proj sc
 
-          mkForceAlt n arg (ConCase cn t args rhs)
-             = ConCase cn t args (mkForce n arg rhs)
-          mkForceAlt n arg (FnCase cn args rhs)
-             = FnCase cn args (mkForce n arg rhs)
-          mkForceAlt n arg (ConstCase t rhs)
-             = ConstCase t (mkForce n arg rhs)
-          mkForceAlt n arg (SucCase sn rhs)
-             = SucCase sn (mkForce n arg rhs)
-          mkForceAlt n arg (DefaultCase rhs)
-             = DefaultCase (mkForce n arg rhs)
-         
-          forceTm n arg t = subst arg (forceArg n) t
+    [ConstCase _ sc]
+        -> prune proj sc
 
-          forceArg n = App (App (App (P Ref (sUN "Force") Erased) Erased) Erased)
-                           (P Bound n Erased)
+    -- Bit of a hack here! The default case will always be 0, make sure
+    -- it gets caught first.
+    [s@(SucCase _ _), DefaultCase dc]
+        -> Case n [ConstCase (BI 0) dc, s]
 
-          mkProj n i []       sc = prune proj sc
-          mkProj n i (x : xs) sc = mkProj n (i + 1) xs (projRep x n i sc)
+    as  -> Case n as
+  where
+    alts' = filter (not . erased) $ map pruneAlt alts
 
-          -- Change every 'n' in sc to 'n-1'
---           mkProjS n cn sc = prune proj (fmap projn sc) where
---              projn pn@(P _ n' _) 
---                 | cn == n' = App (App (P Ref (UN "prim__subBigInt") Erased)
---                                       (P Bound n Erased)) (Constant (BI 1))
---              projn t = t
+    pruneAlt (ConCase cn i ns sc) = ConCase cn i ns (prune proj sc)
+    pruneAlt (FnCase cn ns sc) = FnCase cn ns (prune proj sc)
+    pruneAlt (ConstCase c sc) = ConstCase c (prune proj sc)
+    pruneAlt (SucCase n sc) = SucCase n (prune proj sc)
+    pruneAlt (DefaultCase sc) = DefaultCase (prune proj sc)
 
-          projRep :: Name -> Name -> Int -> SC -> SC
-          projRep arg n i (Case x alts)
-                | x == arg = ProjCase (Proj (P Bound n Erased) i)
-                                      (map (projRepAlt arg n i) alts)
-                | otherwise = Case x (map (projRepAlt arg n i) alts)
-          projRep arg n i (ProjCase t alts)
-                = ProjCase (projRepTm arg n i t) (map (projRepAlt arg n i) alts)
-          projRep arg n i (STerm t) = STerm (projRepTm arg n i t)
-          projRep arg n i c = c -- unmatched
+    erased (DefaultCase (STerm Erased)) = True
+    erased (DefaultCase ImpossibleCase) = True
+    erased _ = False
 
-          projRepAlt arg n i (ConCase cn t args rhs)
-              = ConCase cn t args (projRep arg n i rhs)
-          projRepAlt arg n i (FnCase cn args rhs)
-              = FnCase cn args (projRep arg n i rhs)
-          projRepAlt arg n i (ConstCase t rhs)
-              = ConstCase t (projRep arg n i rhs)
-          projRepAlt arg n i (SucCase sn rhs)
-              = SucCase sn (projRep arg n i rhs)
-          projRepAlt arg n i (DefaultCase rhs)
-              = DefaultCase (projRep arg n i rhs)
+    projRep :: Name -> Name -> Int -> SC -> SC
+    projRep arg n i (Case x alts) | x == arg
+        = ProjCase (Proj (P Bound n Erased) i) $ map (projRepAlt arg n i) alts
+    projRep arg n i (Case x alts)
+        = Case x (map (projRepAlt arg n i) alts)
+    projRep arg n i (ProjCase t alts)
+        = ProjCase (projRepTm arg n i t) $ map (projRepAlt arg n i) alts
+    projRep arg n i (STerm t) = STerm (projRepTm arg n i t)
+    projRep arg n i c = c
 
-          projRepTm arg n i t = subst arg (Proj (P Bound n Erased) i) t
+    projRepAlt arg n i (ConCase cn t args rhs)
+        = ConCase cn t args (projRep arg n i rhs)
+    projRepAlt arg n i (FnCase cn args rhs)
+        = FnCase cn args (projRep arg n i rhs)
+    projRepAlt arg n i (ConstCase t rhs)
+        = ConstCase t (projRep arg n i rhs)
+    projRepAlt arg n i (SucCase sn rhs)
+        = SucCase sn (projRep arg n i rhs)
+    projRepAlt arg n i (DefaultCase rhs)
+        = DefaultCase (projRep arg n i rhs)
+
+    projRepTm arg n i t = subst arg (Proj (P Bound n Erased) i) t
 
 prune _ t = t
 
@@ -669,6 +665,49 @@ stripLambdas (CaseDef ns (STerm (Bind x (Lam _) sc)) tm)
     = stripLambdas (CaseDef (ns ++ [x]) (STerm (instantiate (P Bound x Erased) sc)) tm)
 stripLambdas x = x
 
+substSC :: Name -> Name -> SC -> SC
+substSC n repl (Case n' alts)
+    | n == n'   = Case repl (map (substAlt n repl) alts)
+    | otherwise = Case n'   (map (substAlt n repl) alts)
+substSC n repl (STerm t) = STerm $ subst n (P Bound repl Erased) t
+substSC n repl sc = error $ "unsupported in substSC: " ++ show sc
 
+substAlt :: Name -> Name -> CaseAlt -> CaseAlt
+substAlt n repl (ConCase cn a ns sc) = ConCase cn a ns (substSC n repl sc)
+substAlt n repl (FnCase fn ns sc)    = FnCase fn ns (substSC n repl sc)
+substAlt n repl (ConstCase c sc)     = ConstCase c (substSC n repl sc)
+substAlt n repl (SucCase n' sc)
+    | n == n'   = SucCase n  (substSC n repl sc)
+    | otherwise = SucCase n' (substSC n repl sc)
+substAlt n repl (DefaultCase sc)     = DefaultCase (substSC n repl sc)
 
+mkForce :: Name -> Name -> SC -> SC
+mkForce = mkForceSC
+  where
+    mkForceSC n arg (Case x alts) | x == arg
+        = ProjCase (forceArg n) $ map (mkForceAlt n arg) alts
 
+    mkForceSC n arg (Case x alts)
+        = Case x (map (mkForceAlt n arg) alts)
+
+    mkForceSC n arg (ProjCase t alts)
+        = ProjCase (forceTm n arg t) $ map (mkForceAlt n arg) alts
+
+    mkForceSC n arg (STerm t) = STerm (forceTm n arg t)
+    mkForceSC n arg c = c
+
+    mkForceAlt n arg (ConCase cn t args rhs)
+        = ConCase cn t args (mkForceSC n arg rhs)
+    mkForceAlt n arg (FnCase cn args rhs)
+        = FnCase cn args (mkForceSC n arg rhs)
+    mkForceAlt n arg (ConstCase t rhs)
+        = ConstCase t (mkForceSC n arg rhs)
+    mkForceAlt n arg (SucCase sn rhs)
+        = SucCase sn (mkForceSC n arg rhs)
+    mkForceAlt n arg (DefaultCase rhs)
+        = DefaultCase (mkForceSC n arg rhs)
+
+    forceTm n arg t = subst arg (forceArg n) t
+
+    forceArg n = App (App (App (P Ref (sUN "Force") Erased) Erased) Erased)
+                    (P Bound n Erased)

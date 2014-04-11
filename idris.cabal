@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.11.2
+Version:        0.9.12
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -469,6 +469,7 @@ Library
                 , Idris.Docstrings
                 , Idris.ElabDecls
                 , Idris.ElabTerm
+                , Idris.Erasure
                 , Idris.Error
                 , Idris.ErrReverse
                 , Idris.Help
@@ -492,7 +493,6 @@ Library
                 , Idris.REPLParser
                 , Idris.Transforms
                 , Idris.Unlit
-                , Idris.UnusedArgs
 
                 , IRTS.BCImp
                 , IRTS.Bytecode

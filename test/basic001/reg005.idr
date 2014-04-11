@@ -1,17 +1,22 @@
 module Main
 
+%flag C "-g3 -ggdb -O0"
+
 rep : (n : Nat) -> Char -> Vect n Char
 rep Z     x = []
 rep (S k) x = x :: rep k x
 
 data RLE : Vect n Char -> Type where
      REnd  : RLE []
-     RChar : {xs : Vect k Char} ->
-             (n : Nat) -> (x : Char) -> RLE xs ->
-             RLE (rep (S n) x ++ xs)
+     RChar : .{k : Nat}
+             -> {xs : Vect k Char}
+             -> (n : Nat)
+             -> (x : Char)
+             -> RLE xs
+             -> RLE (rep (S n) x ++ xs)
 
 eq : (x : Char) -> (y : Char) -> Maybe (x = y)
-eq x y = if x == y then Just ?eqCharOK else Nothing
+eq x y = if x == y then Just (believe_me (refl {x})) else Nothing
 
 ------------
 
@@ -32,20 +37,14 @@ compress xs with (rle xs)
          = let ni : Integer = cast (S n) in
                show ni ++ strCons x (compress xs)
 
+{-
+fmt : {xs : Vect n Char} -> RLE xs -> String
+fmt  REnd          = ""
+fmt (RChar n c xs) = show n ++ show c ++ fmt xs
+-}
+
 compressString : String -> String
 compressString xs = compress (fromList (unpack xs))
 
 main : IO ()
 main = putStrLn (compressString "foooobaaaarbaaaz")
-
-
-
----------- Proofs ----------
-
-Main.eqCharOK = proof {
-  intros;
-  refine believe_me;
-  exact x = x;
-}
-
-

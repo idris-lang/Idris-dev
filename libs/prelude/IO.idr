@@ -132,16 +132,13 @@ io_return : a -> IO a
 io_return x = MkIO (\w => prim_io_return x)
 
 liftPrimIO : (World -> PrimIO a) -> IO a
-liftPrimIO f = MkIO (\w => prim_io_bind (f w)
-                         (\x => prim_io_return x))
+liftPrimIO = MkIO
 
 run__IO : IO () -> PrimIO ()
-run__IO (MkIO f) = prim_io_bind (f TheWorld)
-                        (\ b => prim_io_return b)
+run__IO (MkIO f) = f TheWorld
 
 run__provider : IO a -> PrimIO a
-run__provider (MkIO f) = prim_io_bind (f TheWorld)
-                            (\ b => prim_io_return b)
+run__provider (MkIO f) = f TheWorld
 
 -- io_bind v (\v' => io_return v')
 

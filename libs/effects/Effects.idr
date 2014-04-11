@@ -96,6 +96,8 @@ rebuildEnv []        SubNil      env = env
 rebuildEnv (x :: xs) (Keep rest) (y :: env) = x :: rebuildEnv xs rest env
 rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
 rebuildEnv (x :: xs) SubNil      [] = x :: xs
+rebuildEnv []        (Keep x)    (x :: xs) = []
+
 
 -- -------------------------------------------------- [ The Effect EDSL itself ]
 -- some proof automation

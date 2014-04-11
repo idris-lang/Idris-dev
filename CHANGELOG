@@ -1,3 +1,7 @@
+New in 0.9.13:
+--------------
+* IDE support for retrieving structured information about metavariables
+
 New in 0.9.12:
 --------------
 
@@ -5,7 +9,7 @@ New in 0.9.12:
   type inference.
 * New 'Lazy' type, replacing laziness annotations.
 * JavaScript and Node codegen now understand the %include directive.
-* Concept up 'null' is now understood in the JavaScript and Node codegen.
+* Concept of 'null' is now understood in the JavaScript and Node codegen.
 * Lots of performance patches for generated JavaScript.
 * New commands :eval (:e) and :type (:t) in the prover, which either normalise
   or show the type of expressions.
@@ -17,8 +21,8 @@ New in 0.9.12:
   ||| @ n the first number (examined by the function)
   ||| @ m the second number (not examined)
   plus (n, m : Nat) -> Nat
-* Allow the auto-solve behavior in the prover to be disabled, for easier debugging
-  of proof automation. Use ":set autosolve" and ":unset autosolve".
+* Allow the auto-solve behaviour in the prover to be disabled, for easier 
+  debugging of proof automation. Use ":set autosolve" and ":unset autosolve".
 * Updated 'effects' library
 * New :apropos command at REPL to search documentation, names, and types
 * Unification errors are now slightly more informative

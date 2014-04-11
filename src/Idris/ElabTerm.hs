@@ -3,6 +3,7 @@
 module Idris.ElabTerm where
 
 import Idris.AbsSyntax
+import Idris.AbsSyntaxTree
 import Idris.DSL
 import Idris.Delaborate
 import Idris.Error
@@ -26,16 +27,6 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 
 import Debug.Trace
-
--- Data to pass to recursively called elaborators; e.g. for where blocks,
--- paramaterised declarations, etc.
-
-data ElabInfo = EInfo { params :: [(Name, PTerm)],
-                        inblock :: Ctxt [Name], -- names in the block, and their params
-                        liftname :: Name -> Name,
-                        namespace :: Maybe [String] }
-
-toplevel = EInfo [] emptyContext id Nothing
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
@@ -474,7 +465,7 @@ elab ist info pattern opts fn tm
                     elabArgs ist (ina || not isinf, guarded, inty)
                            [] fc False f ns' 
                              (f == sUN "Force")
-                             (map (\x -> (lazyarg x, getTm x)) eargs)
+                             (map (\x -> (False, getTm x)) eargs) -- TODO: remove this False arg
                     solve
                     ivs' <- get_instances
                     -- Attempt to resolve any type classes which have 'complete' types,
@@ -697,7 +688,7 @@ elab ist info pattern opts fn tm
       where
         mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
         mkDelay t = let fc = fileFC "Delay" in
-                        addImpl ist (PApp fc (PRef fc (sUN "Delay")) 
+                        addImpl ist (PApp fc (PRef fc (sUN "Delay"))
                                           [pexp t])
 
     insertCoerce ina t =
@@ -733,7 +724,7 @@ elab ist info pattern opts fn tm
         = elabArgs ist ina failed fc r f ns force args
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force ((lazy, t) : args)
         | lazy && not pattern
-          = elabArg argName holeName (PApp bi (PRef bi (sUN "lazy"))
+          = elabArg argName holeName (PApp bi (PRef bi (sUN "Delay"))
                                            [pimp (sUN "a") Placeholder True,
                                             pexp t])
         | otherwise = elabArg argName holeName t

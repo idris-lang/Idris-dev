@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris --check $@ DefaultArgSubstitutionSuccess.idr
+rm -f *.ibc
