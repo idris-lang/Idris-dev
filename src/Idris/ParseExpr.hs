@@ -190,9 +190,7 @@ extension syn (Rule ssym ptm _)
 {- | Parses a (normal) built-in expression
 @
 InternalExpr ::=
-  App
-  | MatchApp
-  | UnifyLog
+    UnifyLog
   | RecordType
   | SimpleExpr
   | Lambda
@@ -202,14 +200,14 @@ InternalExpr ::=
   | Pi
   | CaseExpr
   | DoBlock
+  | App
+  | MatchApp
   ;
 @
 -}
 internalExpr :: SyntaxInfo -> IdrisParser PTerm
 internalExpr syn =
-         try (app syn)
-     <|> try (matchApp syn)
-     <|> unifyLog syn
+         unifyLog syn
      <|> try (disamb syn)
      <|> noImplicits syn
      <|> recordType syn
@@ -220,7 +218,7 @@ internalExpr syn =
      <|> try (pi syn)
      <|> doBlock syn
      <|> caseExpr syn
-     <|> simpleExpr syn
+     <|> app syn
      <?> "expression"
 
 {- | Parses a case expression
@@ -483,24 +481,6 @@ hsimpleExpr syn =
   <|> simpleExpr syn
   <?> "expression"
 
-{- | Parses a matching application expression
-@
-MatchApp ::=
-  SimpleExpr '<==' FnName
-  ;
-@
--}
-matchApp :: SyntaxInfo -> IdrisParser PTerm
-matchApp syn = do ty <- simpleExpr syn
-                  symbol "<=="
-                  fc <- getFC
-                  f <- fnName
-                  return (PLet (sMN 0 "match")
-                                ty
-                                (PMatchApp fc f)
-                                (PRef fc (sMN 0 "match")))
-               <?> "matching application expression"
-
 {- | Parses a unification log expression
 UnifyLog ::=
   '%' 'unifyLog' SimpleExpr
@@ -542,7 +522,11 @@ noImplicits syn = do try (lchar '%' *> reserved "noImplicits")
 @
 App ::=
   'mkForeign' Arg Arg*
-  | SimpleExpr Arg+
+  | MatchApp
+  | SimpleExpr Arg*
+  ;
+MatchApp ::=
+  SimpleExpr '<==' FnName
   ;
 @
 -}
@@ -552,8 +536,6 @@ app syn = do f <- reserved "mkForeign"
              fn <- arg syn
              args <- many (do notEndApp; arg syn)
              i <- get
-             -- mkForeign f args ==>
-             -- liftPrimIO (\w => mkForeignPrim f args w)
              let ap = PApp fc (PRef fc (sUN "liftPrimIO"))
                        [pexp (PLam (sMN 0 "w")
                              Placeholder
@@ -563,13 +545,20 @@ app syn = do f <- reserved "mkForeign"
              return (dslify i ap)
 
        <|> do f <- simpleExpr syn
+              (do try $ symbol "<=="
+                  fc <- getFC
+                  ff <- fnName
+                  return (PLet (sMN 0 "match")
+                                f
+                                (PMatchApp fc ff)
+                                (PRef fc (sMN 0 "match")))
+               <?> "matching application expression") <|> (do
               fc <- getFC
-              args <- some (do notEndApp; arg syn)
               i <- get
---               case f of
---                    PAppBind fc ref [] ->
---                       return (dslify i (PAppBind fc ref args))
-              return (dslify i (PApp fc f args))
+              args <- many (do notEndApp; arg syn)
+              case args of
+                [] -> return f
+                _  -> return (dslify i (PApp fc f args)))
        <?> "function application"
   where
     dslify :: IState -> PTerm -> PTerm
