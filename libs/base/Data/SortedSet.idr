@@ -23,3 +23,6 @@ fromList l = SetWrapper (Data.SortedMap.fromList (map (\i => (i, ())) l))
 
 toList : SortedSet k -> List k
 toList (SetWrapper m) = map (\(i, _) => i) (Data.SortedMap.toList m)
+
+instance Foldable SortedSet where
+  foldr f e xs = foldr f e (Data.SortedSet.toList xs)
