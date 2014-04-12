@@ -183,10 +183,10 @@ treeDelete {n=(S (S _))} k (Branch3 t1 k1 t2 k2 t3) =
       Left t3' => Left (Branch3 t1 k1 t2 k2 t3')
       Right t3' => Left (merge3 t1 k1 t2 k2 t3')
 
-treeToList : Ord k => Tree n k v -> List (k, v)
+treeToList : Tree n k v -> List (k, v)
 treeToList = treeToList' (:: [])
   where
-    treeToList' : Ord k => ((k, v) -> List (k, v)) -> Tree n k v -> List (k, v)
+    treeToList' : ((k, v) -> List (k, v)) -> Tree n k v -> List (k, v)
     treeToList' cont (Leaf k v) = cont (k, v)
     treeToList' cont (Branch2 t1 _ t2) = treeToList' (:: treeToList' cont t2) t1
     treeToList' cont (Branch3 t1 _ t2 _ t3) = treeToList' (:: treeToList' (:: treeToList' cont t3) t2) t1
@@ -223,7 +223,7 @@ delete k (M (S _) t) =
 fromList : Ord k => List (k, v) -> SortedMap k v
 fromList l = foldl (flip (uncurry insert)) empty l
 
-toList : Ord k => SortedMap k v -> List (k, v)
+toList : SortedMap k v -> List (k, v)
 toList Empty = []
 toList (M _ t) = treeToList t
 
