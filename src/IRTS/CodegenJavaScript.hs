@@ -54,7 +54,9 @@ data JSNum = JSInt Int
            deriving Eq
 
 
-data JSWord = JSWord8 Word8 deriving Eq
+data JSWord = JSWord8 Word8
+            | JSWord16 Word16
+            deriving Eq
 
 
 data JSAnnotation = JSConstructor deriving Eq
@@ -263,7 +265,8 @@ compileJS (JSWhile cond body) =
   ++ "\n}"
 
 compileJS (JSWord word)
-  | JSWord8 b <- word = show b
+  | JSWord8  b <- word = show b
+  | JSWord16 b <- word = show b
 
 jsTailcall :: JS -> JS
 jsTailcall call =
@@ -1642,6 +1645,7 @@ translateConstant PtrType                  = JSType JSPtrTy
 translateConstant Forgot                   = JSType JSForgotTy
 translateConstant (BI i)                   = jsBigInt $ JSString (show i)
 translateConstant (B8 b)                   = JSWord (JSWord8 b)
+translateConstant (B16 b)                  = JSWord (JSWord16 b)
 translateConstant c =
   jsError $ "Unimplemented Constant: " ++ show c
 
