@@ -197,6 +197,22 @@ findAllUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nu' sc) where
     nua (SucCase _ sc)        = nu' sc
     nua (DefaultCase sc)      = nu' sc
 
+-- Return whether name is used anywhere in a case tree
+isUsed :: SC -> Name -> Bool
+isUsed sc n = used sc where
+
+  used (Case n' alts) = n == n' || or (map usedA alts)
+  used (ProjCase t alts) = n `elem` freeNames t || or (map usedA alts)
+  used (STerm t) = n `elem` freeNames t
+  used _ = False
+
+  usedA (ConCase _ _ args sc) = used sc
+  usedA (FnCase _ args sc) = used sc
+  usedA (ConstCase _ sc) = used sc
+  usedA (SucCase _ sc) = used sc
+  usedA (DefaultCase sc) = used sc
+
+
 data Phase = CompileTime | RunTime
     deriving (Show, Eq)
 
@@ -608,6 +624,14 @@ prune proj (Case n alts) = case alts' of
     -- as@[ConCase cn i args sc]
     --     | proj -> mkProj n 0 args (prune proj sc)
     -- mkProj n i xs sc = foldr (\x -> projRep x n i) sc xs
+
+    -- If none of the args are used in the sc, however, we can just replace it
+    -- with sc
+    as@[ConCase cn i args sc]
+        | proj -> let sc' = prune proj sc in
+                      if any (isUsed sc') args  
+                         then Case n [ConCase cn i args sc']
+                         else sc' 
 
     [SucCase cn sc]
         | proj

@@ -93,10 +93,10 @@ updateWith []        (x :: xs) (Keep rest) = []
 rebuildEnv : Env m ys' -> (prf : SubList ys xs) ->
              Env m xs -> Env m (updateWith ys' xs prf)
 rebuildEnv []        SubNil      env = env
+rebuildEnv (x :: xs) SubNil      env = x :: xs
+rebuildEnv []        (Keep rest) (y :: env) = []
 rebuildEnv (x :: xs) (Keep rest) (y :: env) = x :: rebuildEnv xs rest env
 rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
-rebuildEnv (x :: xs) SubNil      [] = x :: xs
-rebuildEnv []        (Keep x)    (x :: xs) = []
 
 
 -- -------------------------------------------------- [ The Effect EDSL itself ]
