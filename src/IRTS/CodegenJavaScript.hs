@@ -56,6 +56,8 @@ data JSNum = JSInt Int
 
 data JSWord = JSWord8 Word8
             | JSWord16 Word16
+            | JSWord32 Word32
+            | JSWord64 Word64
             deriving Eq
 
 
@@ -267,6 +269,9 @@ compileJS (JSWhile cond body) =
 compileJS (JSWord word)
   | JSWord8  b <- word = show b
   | JSWord16 b <- word = show b
+  | JSWord32 b <- word = show b
+  | JSWord64 b <- word = idrRTNamespace ++ "bigInt(\"" ++ show b ++ "\")"
+
 
 jsTailcall :: JS -> JS
 jsTailcall call =
@@ -1452,6 +1457,7 @@ codegenJS_all target definitions includes filename outputType = do
 
         match :: JS -> Bool
         match (JSIdent "__IDRRT__bigInt") = True
+        match (JSWord (JSWord64 _))       = True
         match (JSNum (JSInteger _))       = True
         match js                          = False
 
@@ -1646,6 +1652,8 @@ translateConstant Forgot                   = JSType JSForgotTy
 translateConstant (BI i)                   = jsBigInt $ JSString (show i)
 translateConstant (B8 b)                   = JSWord (JSWord8 b)
 translateConstant (B16 b)                  = JSWord (JSWord16 b)
+translateConstant (B32 b)                  = JSWord (JSWord32 b)
+translateConstant (B64 b)                  = JSWord (JSWord64 b)
 translateConstant c =
   jsError $ "Unimplemented Constant: " ++ show c
 
@@ -1827,6 +1835,16 @@ translateExpression (SOp op vars)
   | (LLSHR (ITFixed IT8)) <- op
   , (lhs:rhs:_)           <- vars = translateBinaryOp ">>" lhs rhs
 
+  | (LLSHR (ITFixed IT16)) <- op
+  , (lhs:rhs:_)            <- vars = translateBinaryOp ">>" lhs rhs
+
+  | (LLSHR (ITFixed IT32)) <- op
+  , (lhs:rhs:_)            <- vars = translateBinaryOp ">>" lhs rhs
+
+  | (LLSHR (ITFixed IT64)) <- op
+  , (lhs:rhs:_)            <- vars =
+      jsMeth (jsMeth (JSVar lhs) "shiftRight" [JSVar rhs]) "intValue" []
+
   | (LZExt _ ITBig)        <- op = jsBigInt $ jsCall "String" [JSVar (last vars)]
   | (LPlus (ATInt ITBig))  <- op
   , (lhs:rhs:_)            <- vars = invokeMeth lhs "add" [rhs]
@@ -1877,6 +1895,18 @@ translateExpression (SOp op vars)
           jsCall "__IDRRT__charCode" [JSVar rhs]
         )
       ]
+
+  | (LTrunc (ITFixed IT16) (ITFixed IT8)) <- op
+  , (arg:_)                               <- vars =
+      JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFF))
+
+  | (LTrunc (ITFixed IT32) (ITFixed IT16)) <- op
+  , (arg:_)                                <- vars =
+      JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFFFF))
+
+  | (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op
+  , (arg:_)                                <- vars =
+      jsMeth (JSVar arg) "and" [jsBigInt (JSString $ show 0xFFFFFFFF)]
 
   | (LPlus _)   <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
