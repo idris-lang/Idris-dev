@@ -1843,7 +1843,7 @@ translateExpression (SOp op vars)
 
   | (LLSHR (ITFixed IT64)) <- op
   , (lhs:rhs:_)            <- vars =
-      jsMeth (jsMeth (JSVar lhs) "shiftRight" [JSVar rhs]) "intValue" []
+      jsMeth (JSVar lhs) "shiftRight" [JSVar rhs]
 
   | (LZExt _ ITBig)        <- op = jsBigInt $ jsCall "String" [JSVar (last vars)]
   | (LPlus (ATInt ITBig))  <- op
@@ -1898,15 +1898,33 @@ translateExpression (SOp op vars)
 
   | (LTrunc (ITFixed IT16) (ITFixed IT8)) <- op
   , (arg:_)                               <- vars =
-      JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFF))
+      JSParens $ JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFF))
 
   | (LTrunc (ITFixed IT32) (ITFixed IT16)) <- op
   , (arg:_)                                <- vars =
-      JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFFFF))
+      JSParens $ JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFFFF))
 
   | (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op
   , (arg:_)                                <- vars =
-      jsMeth (JSVar arg) "and" [jsBigInt (JSString $ show 0xFFFFFFFF)]
+      jsMeth (jsMeth (JSVar arg) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFF)
+      ]) "intValue" []
+
+  | (LTrunc ITBig (ITFixed IT64)) <- op
+  , (arg:_)                       <- vars =
+      jsMeth (JSVar arg) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFF)
+      ]
+
+  | (LAnd (ITFixed IT64)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsMeth (JSVar lhs) "and" [JSVar rhs]
+
+  | (LPlus (ATInt (ITFixed IT64))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsMeth (jsMeth (JSVar lhs) "add" [JSVar rhs]) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+      ]
 
   | (LPlus _)   <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
@@ -2017,7 +2035,7 @@ translateExpression (SOp op vars)
 
   where
     translateBinaryOp :: String -> LVar -> LVar -> JS
-    translateBinaryOp f lhs rhs = JSBinOp f (JSVar lhs) (JSVar rhs)
+    translateBinaryOp f lhs rhs = JSParens $ JSBinOp f (JSVar lhs) (JSVar rhs)
 
 
     invokeMeth :: LVar -> String -> [LVar] -> JS
