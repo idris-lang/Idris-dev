@@ -439,6 +439,16 @@ partition p (x::xs) =
     else
       (lefts, x::rights)
 
+inits : List a -> List (List a)
+inits xs = [] :: case xs of
+  []        => []
+  x :: xs'  => map (x ::) (inits xs')
+
+tails : List a -> List (List a)
+tails xs = xs :: case xs of
+  []        => []
+  _ :: xs'  => tails xs'
+
 --------------------------------------------------------------------------------
 -- Predicates
 --------------------------------------------------------------------------------
