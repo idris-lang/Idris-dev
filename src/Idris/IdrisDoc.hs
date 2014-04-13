@@ -1,22 +1,27 @@
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- | Generation of HTML documentation for Idris code
 module Idris.IdrisDoc (generateDocs) where
 
-import Idris.Core.TT (Name (..), txt, str, nsroot)
+import Idris.Core.TT (Name (..), SpecialName (..), txt, str, nsroot)
 import Idris.Core.Evaluate (ctxtAlist, Def (..), lookupDefAcc,
                             Accessibility (..))
 import Idris.AbsSyntax
 import Idris.Docs
 
+import Paths_idris (getDataFileName)
+
+import Control.Monad (forM_)
 import Control.Monad.Trans.Error
 import Control.Monad.Trans.State.Strict
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BS2
 import qualified Data.Text.Encoding as E
 import qualified Data.List as L
 import qualified Data.List.Split as LS
-import qualified Data.Map as M
+import qualified Data.Map as M hiding ((!))
 import qualified Data.Set as S
 import qualified Data.Text as T
 
@@ -24,6 +29,12 @@ import System.IO
 import System.IO.Error
 import System.FilePath
 import System.Directory
+
+import Text.Blaze (toValue)
+import Text.Blaze.Html5 ((!), toHtml)
+import qualified Text.Blaze.Html5 as H
+import Text.Blaze.Html5.Attributes
+import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 
 -- ---------------------------------------------------------------- [ Public ]
 
@@ -69,6 +80,9 @@ data DocInfo = DocInfo {
 err :: String -> IO (Failable ())
 err s = return $ Left s
 
+-- | IdrisDoc version
+version :: String
+version = "1.0"
 
 -- | Converts a Name into a [Text] corresponding to the namespace
 --   part of a NS Name.
@@ -109,8 +123,31 @@ fetchInfo :: IState    -- ^ IState to fetch info from
 fetchInfo ist nss =
   do let originNss  = S.fromList nss
      info          <- nsDict ist
-     let reachedNss = traceNss info originNss S.empty
-     return $ M.filterWithKey (\k _ -> S.member k reachedNss) info
+     let info'      = M.map (filter (filterName . (\(n, _, _) -> n))) info
+         info''     = M.map removeOrphans info'
+         reachedNss = traceNss info'' originNss S.empty
+     return $ M.filterWithKey (\k _ -> S.member k reachedNss) info''
+
+
+-- | Removes loose class methods and data constructors,
+-- leaving them documented only under their parent.
+removeOrphans :: [NsItem] -- ^ List to remove orphans from
+              -> [NsItem] -- ^ Orphan-free list
+removeOrphans list =
+  let children = S.fromList $ concatMap (names . (\(_, d, _) -> d)) list
+  in  filter ((`S.notMember` children) . (\(n, _, _) -> n)) list
+
+  where names (Just (DataDoc _ fds))    = map (\(FD n _ _ _ _) -> n) fds
+        names (Just (ClassDoc _ _ fds)) = map (\(FD n _ _ _ _) -> n) fds
+        names _                         = []
+
+-- | Whether a Name names something which should be documented
+filterName :: Name -- ^ Name to check
+           -> Bool -- ^ Predicate result
+filterName (UN n)     | '@':'@':_ <- str n = False
+filterName (UN _)     = True
+filterName (NS n _)   = filterName n
+filterName _          = False
 
 
 -- | Finds all namespaces indirectly referred by a set of namespaces.
@@ -303,6 +340,7 @@ createDocs nsd out =
 --                else putStrLn "Updating IdrisDoc index"
          createIndex nss out
          writeDocInfo out (docInfo' { namespaces = nss })
+         copyDependencies out
          return $ Right ()
 
   where docGen out io (n, c) =
@@ -320,7 +358,14 @@ createIndex :: S.Set NsName -- ^ Set of namespace names to
             -> IO ()
 createIndex nss out =
   do (path, h) <- openTempFile out "index.html"
-     hPutStr h $ show $ nss     -- TODO: Generate HTML instead
+     BS2.hPut h $ renderHtml $ wrapper Nothing $ do
+       H.h1 $ "Namespaces"
+       H.ul ! class_ "names" $ do
+         let path ns = genRelNsPath ns "ns.html" 
+             item ns = do let n    = toHtml $ nsName2Str ns
+                              link = toValue $ path ns
+                          H.li $ H.a ! href link ! class_ "code" $ n
+         forM_ (S.toList nss) item
      hClose h
      renameFile path (out </> "index.html")
 
@@ -334,12 +379,22 @@ createNsDoc :: NsName   -- ^ The name of the namespace to
                         --   documentation will be written.
             -> IO ()
 createNsDoc ns content out =
-  do let tpath   = out </> (genRelNsPath ns "ns.html")
-         dir     = takeDirectory tpath
-         file    = takeFileName tpath 
+  do let tpath                    = out </> (genRelNsPath ns "ns.html")
+         dir                      = takeDirectory tpath
+         file                     = takeFileName tpath 
+         nonHidden (_, _, Hidden) = False
+         nonHidden _              = True
+         haveDocs (_, Nothing, _) = False
+         haveDocs _               = True
+                                  -- Do not document private members
+         content'                 = filter nonHidden content
+                                  -- We cannot do anything without a Doc
+         content''                = filter haveDocs content'
      createDirectoryIfMissing True dir
      (path, h) <- openTempFile dir file
-     hPutStr h $ show $ content -- TODO: Generate HTML instead
+     BS2.hPut h $ renderHtml $ wrapper (Just ns) $ do
+       H.h1 $ toHtml (nsName2Str ns)
+       forM_ content'' (\(n,_,_) -> H.p $ toHtml $ show n)
      hClose h
      renameFile path tpath
 
@@ -351,6 +406,51 @@ genRelNsPath :: NsName   -- ^ Namespace to generate a path for
 genRelNsPath ns suffix = subpath ns <.> suffix
 
   where subpath = L.foldl1' (</>) . LS.splitOn "." . nsName2Str
+
+
+-- | Generates everything but the actual content of the page
+wrapper :: Maybe NsName -- ^ Namespace name, unless it is the index
+        -> H.Html         -- ^ Inner HTML
+        -> H.Html
+wrapper ns inner =
+  let (index, str, nestings) = extract ns
+      base                   = if nestings > 0
+                                 then foldl1 (</>) (replicate nestings "..")
+                                 else "."
+  in  H.docTypeHtml $ do
+    H.head $ do
+      H.title $ do
+        "IdrisDoc"
+        if index then " Index" else do
+          ": "
+          toHtml str
+      H.base ! href (toValue base)
+      H.link ! type_ "text/css" ! rel "stylesheet" ! href "styles.css"
+    H.body ! class_ (if index then "index" else "namespace") $ do
+      H.div ! class_ "wrapper" $ do
+        H.header $ do
+          H.strong "IdrisDoc"
+          if index then "" else do
+            ": "
+            toHtml str
+          H.nav $ H.a ! href "index.html" $ "Index"
+        H.div ! class_ "container" $ inner
+      H.footer $ do
+        "Produced by IdrisDoc version "
+        toHtml version
+          
+
+  where extract (Just ns) = let nestings = if null ns then 1 else length ns
+                            in (False, nsName2Str ns, nestings-1)
+        extract _         =    (True,  "",            0)
+
+
+-- | Copies IdrisDoc dependencies such as stylesheets to a directory
+copyDependencies :: FilePath
+                 -> IO ()
+copyDependencies dir =
+  do styles <- getDataFileName $ "idrisdoc" </> "styles.css"
+     copyFile styles (dir </> "styles.css")
 
 -- ---------------------------------------------------- [ DocInfo Read/Write ]
 

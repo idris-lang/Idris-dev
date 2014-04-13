@@ -46,7 +46,8 @@ Cabal-Version:  >= 1.8
 
 Build-type:     Custom
 
-Data-files:            jsrts/Runtime-browser.js
+Data-files:            idrisdoc/styles.css
+                       jsrts/Runtime-browser.js
                        jsrts/Runtime-common.js
                        jsrts/Runtime-node.js
                        jsrts/jsbn/jsbn.js
@@ -534,6 +535,8 @@ Library
                 , ansi-terminal
                 , ansi-wl-pprint
                 , binary
+                , blaze-html >= 0.6.1.3
+                , blaze-markup >= 0.5.2.1 && < 0.6.0.0
                 , bytestring
                 , cheapskate
                 , containers >= 0.5
