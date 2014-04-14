@@ -88,7 +88,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          let ty    = addImpl i ty'
              inacc = inaccessibleArgs 0 ty
          logLvl 3 $ show n ++ " type " ++ showTmImpls ty
-         logLvl 5 $ "Inaccessible arguments: " ++ show inacc
+         logLvl 3 $ show n ++ ": inaccessible arguments: " ++ show inacc
 
          ((tyT, defer, is), log) <-
                tclift $ elaborate ctxt n (TType (UVal 0)) []
@@ -182,12 +182,12 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
 saveInaccArgs :: Name -> [(Int,Name)] -> Idris ()
 saveInaccArgs n is = do
     ist <- getIState
-    case lookupCtxt n (idris_optimisation ist) of
-        [oi] -> do
+    case lookupCtxtExact n (idris_optimisation ist) of
+        Just oi -> do
             putIState ist{ idris_optimisation =
                 addDef n oi{ inaccessible = is } (idris_optimisation ist) }
 
-        _ -> do
+        Nothing -> do
             putIState ist{ idris_optimisation =
                 addDef n (Optimise is False) (idris_optimisation ist) }
             addIBC (IBCOpt n)
@@ -195,7 +195,7 @@ saveInaccArgs n is = do
 -- Get the list of (index, name) of inaccessible arguments from the type.
 inaccessibleArgs :: Int -> PTerm -> [(Int, Name)]
 inaccessibleArgs i (PPi (Imp _ _ _) n Placeholder t)
-    = (i,n) : inaccessibleArgs (i+1) t      -- unbound implicit
+        = (i,n) : inaccessibleArgs (i+1) t  -- unbound implicit
 inaccessibleArgs i (PPi plicity n ty t)
     | InaccessibleArg `elem` pargopts plicity
         = (i,n) : inaccessibleArgs (i+1) t  -- an .{erased : Implicit}
