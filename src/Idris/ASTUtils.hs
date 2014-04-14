@@ -5,6 +5,27 @@ module Idris.ASTUtils where
 --
 -- We don't include an explicit export list
 -- because everything here is meant to be exported.
+--
+-- Short synopsis:
+-- ---------------
+--
+-- f :: Idris ()
+-- f = do
+--      -- these two steps:
+--      detaggable <- fgetState (opt_detaggable . ist_optimisation typeName)
+--      fputState (opt_detaggable . ist_optimisation typeName) (not detaggable)
+--
+--      -- are equivalent to:
+--      fmodifyState (opt_detaggable . ist_optimisation typeName) not
+--
+--      -- of course, the long accessor can be put in a variable;
+--      -- everything is first-class
+--      let detag n = opt_detaggable . ist_optimisation n
+--      fputState (detag n1) True
+--      fputState (detag n2) False
+--
+--      -- Note that all these operations handle missing items consistently
+--      -- and transparently, as prescribed by the typeclass InitialValue.
 
 import Control.Category
 import Control.Applicative
@@ -54,6 +75,9 @@ ctxt_lookupExact n = Field
 -----------------------------------
 -- Individual records and fields --
 -----------------------------------
+--
+-- These could probably be generated; let's use lazy addition for now.
+--
 
 
 -- OptInfo
