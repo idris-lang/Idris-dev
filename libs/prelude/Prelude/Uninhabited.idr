@@ -8,6 +8,9 @@ class Uninhabited t where
   ||| @ t the uninhabited type
   total uninhabited : t -> _|_
 
+instance Uninhabited _|_ where
+  uninhabited a = a
+
 ||| Use an absurd assumption to discharge a proof obligation
 ||| @ t some empty type
 ||| @ a the goal type
