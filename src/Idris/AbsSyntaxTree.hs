@@ -177,12 +177,13 @@ deriving instance NFData SizeChange
 !-}
 
 type SCGEntry = (Name, [Maybe (Int, SizeChange)])
+type UsageReason = (Name, Int)  -- fn_name, its_arg_number
 
 data CGInfo = CGInfo { argsdef :: [Name],
                        calls :: [(Name, [[Name]])],
                        scg :: [SCGEntry],
                        argsused :: [Name],
-                       usedpos :: [(Int, [(Name, Int)])] } -- (used_arg#, [(using_fn, its_arg#)])
+                       usedpos :: [(Int, [UsageReason])] }
     deriving Show
 {-!
 deriving instance Binary CGInfo
