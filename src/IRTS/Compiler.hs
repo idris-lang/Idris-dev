@@ -473,8 +473,8 @@ irSC vs (Case n [ConCase (UN delay) i [_, _, n'] sc])
 irSC vs (Case n [alt]) = do
     replacement <- case alt of
         ConCase cn a ns sc -> do
-            detag <- fgetState (opt_detaggable . ist_optimisation n)
-            used  <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
+            detag <- fgetState (opt_detaggable . ist_optimisation cn)
+            used  <- map fst <$> fgetState (cg_usedpos . ist_callgraph cn)
             if detag && length used == 1
                 then return . Just $ substSC (ns !! head used) n sc
                 else return Nothing
