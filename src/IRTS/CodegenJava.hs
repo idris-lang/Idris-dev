@@ -312,6 +312,7 @@ mkCompilationUnit globalInit defs hdrs out = do
                             , ImportDecl True idrisPrelude True
                             , ImportDecl False bigInteger False
                             , ImportDecl False runtimeException False
+                            , ImportDecl False byteBuffer False
                             ] ++ otherHdrs
                           )
                           <$> mkTypeDecl clsName globalInit defs
@@ -320,6 +321,7 @@ mkCompilationUnit globalInit defs hdrs out = do
     idrisPrelude = J.Name $ map Ident ["org", "idris", "rts", "Prelude"]
     bigInteger = J.Name $ map Ident ["java", "math", "BigInteger"]
     runtimeException = J.Name $ map Ident ["java", "lang", "RuntimeException"]
+    byteBuffer = J.Name $ map Ident ["java", "nio", "ByteBuffer"]
     otherHdrs = map ( (\ name -> ImportDecl False name False)
                       . J.Name
                       . map (Ident . T.unpack)
@@ -707,6 +709,7 @@ mkConstant c@(AType    x) = ClassLit (Just $ box (constType c))
 mkConstant c@(StrType   ) = ClassLit (Just $ stringType)
 mkConstant c@(PtrType   ) = ClassLit (Just $ objectType)
 mkConstant c@(ManagedPtrType) = ClassLit (Just $ objectType)
+mkConstant c@(BufferType) = ClassLit (Just $ bufferType)
 mkConstant c@(VoidType  ) = ClassLit (Just $ voidType)
 mkConstant c@(Forgot    ) = ClassLit (Just $ objectType)
 
@@ -744,7 +747,7 @@ mkForeign pp (LANG_JAVA callType) resTy text params
 
 mkPrimitiveFunction :: PrimFn -> [LVar] -> CodeGeneration Exp
 mkPrimitiveFunction op args =
-  (\ args -> (primFnType ~> opName op) args)
+  (\ args -> (primFnType ~> opName op) (endiannessArguments op ++ args))
   <$> sequence (zipWith (\ a t -> (Just t) <>@! a) args (sourceTypes op))
 
 mkThread :: LVar -> CodeGeneration Exp
