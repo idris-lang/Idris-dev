@@ -1,8 +1,8 @@
 module Main
 
 data Parity : Nat -> Type where
-   even : Parity (n + n)
-   odd  : Parity (S (n + n))
+    even : {n : Nat} -> Parity (n + n)
+    odd  : {n : Nat} -> Parity (S (n + n))
 
 parity : (n:Nat) -> Parity n
 parity Z     = even {n=Z}

@@ -17,18 +17,20 @@ import qualified Text.Parser.Char as Chr
 import qualified Text.Parser.Token.Highlight as Hi
 
 import Text.PrettyPrint.ANSI.Leijen (Doc, plain)
+import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
 
-import Idris.AbsSyntax
+import Idris.AbsSyntax hiding (namespace, params)
 import Idris.DSL
 import Idris.Imports
 import Idris.Delaborate
 import Idris.Error
 import Idris.ElabDecls
-import Idris.ElabTerm hiding (namespace, params)
+import Idris.ElabTerm
 import Idris.Coverage
 import Idris.IBC
 import Idris.Unlit
 import Idris.Providers
+import Idris.Output
 
 import Idris.ParseHelpers
 import Idris.ParseOps
@@ -1119,6 +1121,11 @@ findFC x = let s = show (plain x) in
                    (col, ':':msg) -> let pos = (read line, read col) in
                                          (FC failname pos pos, msg)
 
+-- | Check if the coloring matches the options and corrects if necessary
+fixColour :: Bool -> ANSI.Doc -> ANSI.Doc
+fixColour False doc = ANSI.plain doc
+fixColour True doc  = doc
+
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
 parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
@@ -1131,7 +1138,7 @@ parseProg syn fname input mrk
                                   let (fc, msg) = findFC doc
                                   i <- getIState
                                   case idris_outputmode i of
-                                    RawOutput -> ihputStrLn (idris_outh i) (show doc)
+                                    RawOutput -> ihputStrLn (idris_outh i) (show $ fixColour (idris_colourRepl i) doc)
                                     IdeSlave n -> ihWarn (idris_outh i) fc (P.text msg)
                                   putIState (i { errSpan = Just fc })
                                   return []
@@ -1212,6 +1219,14 @@ loadSource h lidr f
                   file_in <- runIO $ readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, imports, pos) <- parseImports f file
+                  ids <- allImportDirs
+                  ibcsd <- valIBCSubDir i
+                  mapM_ (\f -> do fp <- runIO $ findImport ids ibcsd f
+                                  case fp of
+                                      LIDR fn -> ifail $ "No ibc for " ++ f
+                                      IDR fn -> ifail $ "No ibc for " ++ f
+                                      IBC fn src -> loadIBC fn) 
+                        [fn | (fn, _, _) <- imports]
                   reportParserWarnings
 
                   -- process and check module aliases

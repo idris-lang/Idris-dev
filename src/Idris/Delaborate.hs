@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pshow, pprintErr) where
+module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
@@ -58,7 +58,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
           = PLam n (de env [] ty) (de ((n,n):env) [] sc)
     de env ((PImp { argopts = opts }):is) (Bind n (Pi ty) sc)
           = PPi (Imp opts Dynamic False) n (de env [] ty) (de ((n,n):env) is sc)
-    de env (PConstraint _ _ _:is) (Bind n (Pi ty) sc)
+    de env (PConstraint _ _ _ _:is) (Bind n (Pi ty) sc)
           = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
     de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi ty) sc)
           = PPi (tacimpl tac) n (de env [] ty) (de ((n,n):env) is sc)
@@ -121,8 +121,8 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
         | otherwise = PApp un (PRef un n) (map pexp args)
 
     imp (PImp p m l n _) arg = PImp p m l n arg
-    imp (PExp p l _)   arg = PExp p l arg
-    imp (PConstraint p l _) arg = PConstraint p l arg
+    imp (PExp p l n _)   arg = PExp p l n arg
+    imp (PConstraint p l n _) arg = PConstraint p l n arg
     imp (PTacImplicit p l n sc _) arg = PTacImplicit p l n sc arg
 
 -- | How far to indent sub-errors
@@ -139,11 +139,6 @@ pprintTerm ist = pprintTerm' ist []
 
 pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
 pprintTerm' ist bnd tm = pprintPTerm (opt_showimp (idris_options ist)) bnd [] tm
-
-pshow :: IState -> Err -> String
-pshow ist err = displayDecorated (consoleDecorate ist) .
-                renderPretty 1.0 80 .
-                fmap (fancifyAnnots ist) $ pprintErr ist err
 
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)
@@ -261,7 +256,7 @@ annName :: Name -> Doc OutputAnnotation
 annName n = annName' n (showbasic n)
 
 annName' :: Name -> String -> Doc OutputAnnotation
-annName' n str = annotate (AnnName n Nothing Nothing) (text str)
+annName' n str = annotate (AnnName n Nothing Nothing Nothing) (text str)
 
 showSc :: IState -> [(Name, Term)] -> Doc OutputAnnotation
 showSc i [] = empty

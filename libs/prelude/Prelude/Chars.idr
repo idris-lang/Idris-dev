@@ -1,6 +1,9 @@
 module Prelude.Char
 -- Functions operating over Chars
 
+import Prelude.Bool
+import Prelude.Classes
+import Prelude.List
 import Builtins
 
 ||| Return the ASCII representation of the character.

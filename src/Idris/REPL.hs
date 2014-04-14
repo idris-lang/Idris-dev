@@ -8,15 +8,15 @@ import Idris.Apropos (apropos)
 import Idris.REPLParser
 import Idris.ElabDecls
 import Idris.ElabTerm
+import Idris.Erasure
 import Idris.Error
 import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Docstrings (Docstring, overview, renderDocstring)
 import Idris.Prover
-import Idris.Parser
+import Idris.Parser hiding (indent)
 import Idris.Primitives
 import Idris.Coverage
-import Idris.UnusedArgs
 import Idris.Docs hiding (Doc)
 import Idris.Help
 import Idris.Completion
@@ -27,6 +27,7 @@ import Idris.Colours hiding (colourise)
 import Idris.Inliner
 import Idris.CaseSplit
 import Idris.DeepSeq
+import Idris.Output
 
 import Paths_idris
 import Version_idris (gitHash)
@@ -77,8 +78,6 @@ import Data.Char
 import Data.Version
 import Data.Word (Word)
 import Control.DeepSeq
-
-import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
 
 import Debug.Trace
 
@@ -217,83 +216,133 @@ ideslave orig mods
                               (f:_) -> f
                               _ -> ""
                    case IdeSlave.sexpToCommand sexp of
-                     Just (IdeSlave.Interpret cmd) ->
-                       do c <- colourise
-                          case parseCmd i "(input)" cmd of
-                            Failure err -> iPrintError $ show (fixColour c err)
-                            Success (Prove n') -> do iPrintResult ""
-                                                     idrisCatch
-                                                       (process stdout fn (Prove n'))
-                                                       (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
-                                                     isetPrompt (mkPrompt mods)
-                            Success cmd -> idrisCatch
-                                             (ideslaveProcess fn cmd)
-                                             (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
-                     Just (IdeSlave.REPLCompletions str) ->
-                       do (unused, compls) <- replCompletion (reverse str, "")
-                          let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
-                          runIO $ putStrLn $ IdeSlave.convSExp "return" good id
-                     Just (IdeSlave.LoadFile filename) ->
-                       do clearErr
-                          putIState (orig { idris_options = idris_options i,
-                                            idris_outputmode = (IdeSlave id) })
-                          loadInputs stdout [filename]
-                          isetPrompt (mkPrompt [filename])
-                          -- Report either success or failure
-                          i <- getIState
-                          case (errSpan i) of
-                            Nothing -> iPrintResult $ "loaded " ++ filename
-                            Just x -> iPrintError $ "didn't load " ++ filename
-                          ideslave orig [filename]
-                     Just (IdeSlave.TypeOf name) ->
-                       case splitName name of
-                         Left err -> iPrintError err
-                         Right n -> process stdout "(ideslave)"
-                                      (Check (PRef (FC "(ideslave)" (0,0) (0,0)) n))
-                     Just (IdeSlave.DocsFor name) ->
-                       case splitName name of
-                         Left err -> iPrintError err
-                         Right n -> process stdout "(ideslave)" (DocStr n)
-                     Just (IdeSlave.CaseSplit line name) ->
-                       process stdout fn (CaseSplitAt False line (sUN name))
-                     Just (IdeSlave.AddClause line name) ->
-                       process stdout fn (AddClauseFrom False line (sUN name))
-                     Just (IdeSlave.AddProofClause line name) ->
-                       process stdout fn (AddProofClauseFrom False line (sUN name))
-                     Just (IdeSlave.AddMissing line name) ->
-                       process stdout fn (AddMissing False line (sUN name))
-                     Just (IdeSlave.MakeWithBlock line name) ->
-                       process stdout fn (MakeWith False line (sUN name))
-                     Just (IdeSlave.ProofSearch line name hints) ->
-                       process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
-                     Just (IdeSlave.Apropos a) ->
-                       process stdout fn (Apropos a)
-                     Just (IdeSlave.GetOpts) ->
-                       do ist <- getIState
-                          let opts = idris_options ist
-                          let impshow = opt_showimp opts
-                          let errCtxt = opt_errContext opts
-                          let options = (IdeSlave.SymbolAtom "ok",
-                                         [(IdeSlave.SymbolAtom "show-implicits", impshow),
-                                          (IdeSlave.SymbolAtom "error-context", errCtxt)])
-                          runIO . putStrLn $ IdeSlave.convSExp "return" options id
-                     Just (IdeSlave.SetOpt IdeSlave.ShowImpl b) ->
-                       do setImpShow b
-                          let msg = (IdeSlave.SymbolAtom "ok", b)
-                          runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-                     Just (IdeSlave.SetOpt IdeSlave.ErrContext b) ->
-                       do setErrContext b
-                          let msg = (IdeSlave.SymbolAtom "ok", b)
-                          runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-                     Nothing -> do iPrintError "did not understand")
+                     Just cmd -> runIdeSlaveCommand id orig fn mods cmd
+                     Nothing  -> iPrintError "did not understand" )
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
        ideslave orig mods
+
+-- | Run IDESlave commands
+runIdeSlaveCommand :: Integer -- ^^ The continuation ID for the client
+                   -> IState -- ^^ The original IState
+                   -> FilePath -- ^^ The current open file
+                   -> [FilePath] -- ^^ The currently loaded modules
+                   -> IdeSlave.IdeSlaveCommand -- ^^ The command to process
+                   -> Idris ()
+runIdeSlaveCommand id orig fn mods (IdeSlave.Interpret cmd) =
+  do c <- colourise
+     i <- getIState
+     case parseCmd i "(input)" cmd of
+       Failure err -> iPrintError $ show (fixColour c err)
+       Success (Prove n') -> do iPrintResult ""
+                                idrisCatch
+                                  (process stdout fn (Prove n'))
+                                  (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
+                                isetPrompt (mkPrompt mods)
+       Success cmd -> idrisCatch
+                        (ideslaveProcess fn cmd)
+                        (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
+runIdeSlaveCommand id orig fn mods (IdeSlave.REPLCompletions str) =
+  do (unused, compls) <- replCompletion (reverse str, "")
+     let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok",
+                                   IdeSlave.toSExp (map replacement compls,
+                                   reverse unused)]
+     runIO $ putStrLn $ IdeSlave.convSExp "return" good id
+runIdeSlaveCommand id orig fn mods (IdeSlave.LoadFile filename) =
+  do i <- getIState
+     clearErr
+     putIState (orig { idris_options = idris_options i,
+                       idris_outputmode = (IdeSlave id) })
+     loadInputs stdout [filename]
+     isetPrompt (mkPrompt [filename])
+     -- Report either success or failure
+     i <- getIState
+     case (errSpan i) of
+       Nothing -> iPrintResult $ "loaded " ++ filename
+       Just x -> iPrintError $ "didn't load " ++ filename
+     ideslave orig [filename]
+runIdeSlaveCommand id orig fn mods (IdeSlave.TypeOf name) =
+  case splitName name of
+    Left err -> iPrintError err
+    Right n -> process stdout "(ideslave)"
+                 (Check (PRef (FC "(ideslave)" (0,0) (0,0)) n))
   where splitName :: String -> Either String Name
         splitName s = case reverse $ splitOn "." s of
                         [] -> Left ("Didn't understand name '" ++ s ++ "'")
                         [n] -> Right $ sUN n
                         (n:ns) -> Right $ sNS (sUN n) ns
+runIdeSlaveCommand id orig fn mods (IdeSlave.DocsFor name) =
+  case splitName name of
+    Left err -> iPrintError err
+    Right n -> process stdout "(ideslave)" (DocStr n)
+  where splitName :: String -> Either String Name
+        splitName s = case reverse $ splitOn "." s of
+                        [] -> Left ("Didn't understand name '" ++ s ++ "'")
+                        [n] -> Right $ sUN n
+                        (n:ns) -> Right $ sNS (sUN n) ns
+runIdeSlaveCommand id orig fn mods (IdeSlave.CaseSplit line name) =
+  process stdout fn (CaseSplitAt False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.AddClause line name) =
+  process stdout fn (AddClauseFrom False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.AddProofClause line name) =
+  process stdout fn (AddProofClauseFrom False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.AddMissing line name) =
+  process stdout fn (AddMissing False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.MakeWithBlock line name) =
+  process stdout fn (MakeWith False line (sUN name))
+runIdeSlaveCommand id orig fn mods (IdeSlave.ProofSearch line name hints) =
+  process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
+runIdeSlaveCommand id orig fn mods (IdeSlave.Apropos a) =
+  process stdout fn (Apropos a)
+runIdeSlaveCommand id orig fn mods (IdeSlave.GetOpts) =
+  do ist <- getIState
+     let opts = idris_options ist
+     let impshow = opt_showimp opts
+     let errCtxt = opt_errContext opts
+     let options = (IdeSlave.SymbolAtom "ok",
+                    [(IdeSlave.SymbolAtom "show-implicits", impshow),
+                     (IdeSlave.SymbolAtom "error-context", errCtxt)])
+     runIO . putStrLn $ IdeSlave.convSExp "return" options id
+runIdeSlaveCommand id orig fn mods (IdeSlave.SetOpt IdeSlave.ShowImpl b) =
+  do setImpShow b
+     let msg = (IdeSlave.SymbolAtom "ok", b)
+     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand id orig fn mods (IdeSlave.SetOpt IdeSlave.ErrContext b) =
+  do setErrContext b
+     let msg = (IdeSlave.SymbolAtom "ok", b)
+     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
+  do ist <- getIState
+     let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
+     imp <- impShow
+     let mvarTys = map (delabTy ist) mvs
+     let res = (IdeSlave.SymbolAtom "ok",
+                zipWith (\ n (prems, concl) -> (n, prems, concl))
+                        (map (IdeSlave.StringAtom . show) mvs)
+                        (map (sexpGoal ist cols imp [] . getGoal) mvarTys))
+     runIO . putStrLn $ IdeSlave.convSExp "return" res id
+  where getGoal :: PTerm -> ([(Name, PTerm)], PTerm)
+        getGoal (PPi _ n t sc) = let (prems, conc) = getGoal sc
+                                 in ((n, t):prems, conc)
+        getGoal tm = ([], tm)
+        sexpGoal :: IState -> Int -> Bool -> [Name] -> ([(Name, PTerm)], PTerm)
+                 -> ([(String, String, SpanList OutputAnnotation)],
+                     (String, SpanList OutputAnnotation))
+        sexpGoal ist cols imp ns ([],        concl) =
+          let concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
+                       pprintPTerm imp (zip ns (repeat False)) [] concl
+          in ([], concl')
+        sexpGoal ist cols imp ns ((n, t):ps, concl) =
+          let n'          = case n of
+                              NS (UN nm) ns -> str nm
+                              UN nm | ('_':'_':_) <- str nm -> "_"
+                                    | otherwise -> str nm
+                              _ -> "_"
+              (t', spans) = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
+                            pprintPTerm imp (zip ns (repeat False)) [] t
+              rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
+          in ((n', t', spans) : fst rest, snd rest)
+
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
 ideslaveProcess fn Help = process stdout fn Help
@@ -319,8 +368,6 @@ ideslaveProcess fn (HNF t) = process stdout fn (HNF t)
 --ideslaveProcess fn TTShell = process stdout fn TTShell -- need some prove mode!
 ideslaveProcess fn (TestInline t) = process stdout fn (TestInline t)
 
---that most likely does not work, since we need to wrap
---input/output of the executed binary...
 ideslaveProcess fn Execute = do process stdout fn Execute
                                 iPrintResult ""
 ideslaveProcess fn (Compile codegen f) = do process stdout fn (Compile codegen f)
@@ -532,7 +579,7 @@ process h fn (Check (PRef _ n))
     putTy imp ist _ bnd sc = putGoal imp ist ((n,False):bnd) sc
     putGoal imp ist bnd g
                = text "--------------------------------------" <$>
-                 annotate (AnnName n Nothing Nothing) (text $ show n) <+> colon <+>
+                 annotate (AnnName n Nothing Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
 
     tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] t
@@ -608,7 +655,6 @@ process h fn (DebugInfo n)
         let d = lookupDef n (tt_ctxt i)
         when (not (null d)) $ iputStrLn $ "Definition: " ++ (show (head d))
         let cg = lookupCtxtName n (idris_callgraph i)
-        findUnusedArgs (map fst cg)
         i <- getIState
         let cg' = lookupCtxtName n (idris_callgraph i)
         sc <- checkSizeChange n
@@ -618,7 +664,8 @@ process h fn (DebugInfo n)
 process h fn (Info n)
                     = do i <- getIState
                          case lookupCtxt n (idris_classes i) of
-                              [c] -> classInfo c
+                              [c] -> do info <- classInfo c
+                                        ihRenderResult h info
                               _ -> iPrintError "Not a class"
 process h fn (Search t) = iPrintError "Not implemented"
 -- FIXME: There is far too much repetition in the cases below!
@@ -891,17 +938,19 @@ process h fn (TestInline t)
                                 c <- colourise
                                 iPrintResult (showTm ist (delab ist tm'))
 process h fn Execute
-                   = do (m, _) <- elabVal toplevel False
+                   = do ist <- getIState
+                        (m, _) <- elabVal toplevel False
                                         (PApp fc
                                            (PRef fc (sUN "run__IO"))
                                            [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
---                                      (PRef (FC "main" 0) (NS (UN "main") ["main"]))
                         (tmpn, tmph) <- runIO tempfile
                         runIO $ hClose tmph
                         t <- codegen
                         compile t tmpn m
-                        runIO $ system tmpn
-                        return ()
+                        case idris_outputmode ist of
+                          RawOutput -> do runIO $ system tmpn
+                                          return ()
+                          IdeSlave n -> do runIO . hPutStrLn h $ IdeSlave.convSExp "run-program" tmpn n
   where fc = fileFC "main"
 process h fn (Compile codegen f)
       = do (m, _) <- elabVal toplevel False
@@ -992,28 +1041,30 @@ process h fn (Apropos a) =
         isUN (NS n _) = isUN n
         isUN _ = False
 
-classInfo :: ClassInfo -> Idris ()
-classInfo ci = do iputStrLn "Methods:\n"
-                  mapM_ dumpMethod (class_methods ci)
-                  iputStrLn ""
-                  iputStrLn "Default superclass instances:\n"
-                  mapM_ dumpDefaultInstance (class_default_superclasses ci)
-                  iputStrLn ""
-                  iputStrLn "Instances:\n"
-                  mapM_ dumpInstance (class_instances ci)
-                  iPrintResult ""
-
-dumpMethod :: (Name, (FnOpts, PTerm)) -> Idris ()
-dumpMethod (n, (_, t)) = iputStrLn $ show n ++ " : " ++ show t
-
-dumpDefaultInstance :: PDecl -> Idris ()
-dumpDefaultInstance (PInstance _ _ _ _ _ t _ _) = iputStrLn $ show t
-
-dumpInstance :: Name -> Idris ()
-dumpInstance n = do i <- getIState
-                    ctxt <- getContext
-                    case lookupTy n ctxt of
-                         ts -> mapM_ (\t -> iputStrLn $ showTm i (delab i t)) ts
+classInfo :: ClassInfo -> Idris (Doc OutputAnnotation)
+classInfo ci = do ist <- getIState
+                  ctxt <- getContext
+                  return $
+                    text "Parameters:" <+>
+                    hsep (punctuate comma (map (prettyName False params') params)) <>
+                    line <> line <>
+                    text "Methods:" <> line <>
+                    indent 2 (vsep (map (dumpMethod ist) (class_methods ci))) <> line <> line <>
+                    text "Default superclass instances:" <>
+                    line <>
+                    indent 2 (vsep (map (dumpDefaultInstance ist) (class_default_superclasses ci))) <>
+                    line <>
+                    text "Instances:" <> line <>
+                    indent 2 (vsep (map (dumpInstance ist ctxt) (class_instances ci)))
+  where dumpMethod :: IState -> (Name, (FnOpts, PTerm)) -> Doc OutputAnnotation
+        dumpMethod ist (n, (_, t)) = prettyName False [] n <+> colon <+> pp ist t
+        dumpDefaultInstance :: IState -> PDecl -> Doc OutputAnnotation
+        dumpDefaultInstance ist (PInstance _ _ _ _ _ t _ _) = pp ist t
+        dumpInstance :: IState -> Context -> Name -> Doc OutputAnnotation
+        dumpInstance ist ctxt n = pp ist $ delabTy ist n
+        params = class_params ci
+        params' = zip params (repeat False)
+        pp ist = pprintPTerm (opt_showimp (idris_options ist)) params' []
 
 showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i
@@ -1059,6 +1110,7 @@ parseArgs ("--typeintype":ns)    = TypeInType : (parseArgs ns)
 parseArgs ("--total":ns)         = DefaultTotal : (parseArgs ns)
 parseArgs ("--partial":ns)       = DefaultPartial : (parseArgs ns)
 parseArgs ("--warnpartial":ns)   = WarnPartial : (parseArgs ns)
+parseArgs ("--warnreach":ns)     = WarnReach : (parseArgs ns)
 parseArgs ("--nocoverage":ns)    = NoCoverage : (parseArgs ns)
 parseArgs ("--errorcontext":ns)  = ErrContext : (parseArgs ns)
 parseArgs ("--help":ns)          = Usage : (parseArgs ns)
@@ -1146,30 +1198,32 @@ loadInputs h inputs
            let ninputs = zip [1..] inputs
            ifiles <- mapWhileOK (\(num, input) ->
                 do putIState ist
-                   v <- verbose
-    --                           when v $ iputStrLn $ "(" ++ show num ++ "/" ++
-    --                                                show (length inputs) ++
-    --                                                ") " ++ input
                    modTree <- buildTree
                                    (map snd (take (num-1) ninputs))
                                    input
                    let ifiles = getModuleFiles modTree
                    iLOG ("MODULE TREE : " ++ show modTree)
                    iLOG ("RELOAD: " ++ show ifiles)
-                   when (not (all ibc ifiles) || loadCode) $ tryLoad ifiles
+                   when (not (all ibc ifiles) || loadCode) $ 
+                        tryLoad False (filter (not . ibc) ifiles)
                    -- return the files that need rechecking
-                   return (if (all ibc ifiles) then ifiles else []))
+                   return ifiles) 
                       ninputs
            inew <- getIState
-           -- to check everything worked consistently (in particular, will catch
-           -- if the ibc version is out of date) if we weren't loading per
-           -- module
+           let tidata = idris_tyinfodata inew
+           let lineapps = idris_lineapps inew
+           let patdefs = idris_patdefs inew
+           -- If it worked, load the whole thing from all the ibcs together
            case errSpan inew of
               Nothing ->
-                do putIState ist
-                   when (not loadCode) $ tryLoad $ nub (concat ifiles)
+                do putIState (ist { idris_tyinfodata = tidata })
+                   ibcfiles <- mapM findNewIBC (nub (concat ifiles))
+                   tryLoad True (mapMaybe id ibcfiles)
               _ -> return ()
-           putIState inew)
+           ist <- getIState
+           putIState (ist { idris_tyinfodata = tidata,
+                            idris_lineapps = lineapps,
+                            idris_patdefs = patdefs }))
         (\e -> do i <- getIState
                   case e of
                     At f _ -> do setErrSpan f
@@ -1178,14 +1232,42 @@ loadInputs h inputs
                     _ -> do setErrSpan emptyFC -- FIXME! Propagate it
                             iputStrLn (pshow i e))
    where -- load all files, stop if any fail
-         tryLoad :: [IFileType] -> Idris ()
-         tryLoad [] = return ()
-         tryLoad (f : fs) = do loadFromIFile h f
-                               ok <- noErrors
-                               when ok $ tryLoad fs
+         tryLoad :: Bool -> [IFileType] -> Idris ()
+         tryLoad keepstate [] = return ()
+         tryLoad keepstate (f : fs) 
+                 = do ist <- getIState
+                      loadFromIFile h f
+                      inew <- getIState
+                      -- FIXME: Save these in IBC to avoid this hack! Need to
+                      -- preserve it all from source inputs
+                      let tidata = idris_tyinfodata inew
+                      let lineapps = idris_lineapps inew
+                      let patdefs = idris_patdefs inew
+                      ok <- noErrors
+                      when ok $ do when (not keepstate) $ putIState ist
+                                   ist <- getIState
+                                   putIState (ist { idris_tyinfodata = tidata,
+                                                    idris_lineapps = lineapps,
+                                                    idris_patdefs = patdefs })
+                                   tryLoad keepstate fs
 
          ibc (IBC _ _) = True
          ibc _ = False
+
+         findNewIBC :: IFileType -> Idris (Maybe IFileType)
+         findNewIBC i@(IBC _ _) = return (Just i)
+         findNewIBC s@(IDR f) = do ist <- get
+                                   ibcsd <- valIBCSubDir ist
+                                   let ibc = ibcPathNoFallback ibcsd f
+                                   ok <- runIO $ doesFileExist ibc
+                                   if ok then return (Just (IBC ibc s))
+                                         else return Nothing
+         findNewIBC s@(LIDR f) = do ist <- get
+                                    ibcsd <- valIBCSubDir ist
+                                    let ibc = ibcPathNoFallback ibcsd f
+                                    ok <- runIO $ doesFileExist ibc
+                                    if ok then return (Just (IBC ibc s))
+                                          else return Nothing
 
          -- Like mapM, but give up when there's an error
          mapWhileOK f [] = return []
@@ -1271,9 +1353,13 @@ idrisMain opts =
 
        ok <- noErrors
        when ok $ case output of
-                    [] -> return ()
+                    -- just do the checks
+                    [] -> performUsageAnalysis >> return ()
+
+                    -- the compiler will run usage analysis itself
                     (o:_) -> idrisCatch (process stdout "" (Compile cgn o))
                                (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
+
        case script of
          Nothing -> return ()
          Just expr -> execScript expr
@@ -1317,11 +1403,6 @@ execScript expr = do i <- getIState
                                              (tm, _) <- elabVal toplevel False term
                                              res <- execute tm
                                              runIO $ exitWith ExitSuccess
-
--- | Check if the coloring matches the options and corrects if necessary
-fixColour :: Bool -> ANSI.Doc -> ANSI.Doc
-fixColour False doc = ANSI.plain doc
-fixColour True doc  = doc
 
 -- | Get the platform-specific, user-specific Idris dir
 getIdrisUserDataDir :: Idris FilePath

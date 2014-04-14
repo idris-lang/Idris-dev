@@ -74,16 +74,21 @@ instance (SExpable a, SExpable b, SExpable c, SExpable d, SExpable e) =>
    toSExp (l, m, n, o, p) = SexpList [toSExp l, toSExp m, toSExp n, toSExp o, toSExp p]
 
 instance SExpable NameOutput where
-  toSExp TypeOutput = SymbolAtom "type"
-  toSExp FunOutput  = SymbolAtom "function"
-  toSExp DataOutput = SymbolAtom "data"
+  toSExp TypeOutput    = SymbolAtom "type"
+  toSExp FunOutput     = SymbolAtom "function"
+  toSExp DataOutput    = SymbolAtom "data"
+  toSExp MetavarOutput = SymbolAtom "metavar"
+
+maybeProps :: SExpable a => [(String, Maybe a)] -> [(SExp, SExp)]
+maybeProps [] = []
+maybeProps ((n, Just p):ps) = (SymbolAtom n, toSExp p) : maybeProps ps
+maybeProps ((n, Nothing):ps) = maybeProps ps
 
 instance SExpable OutputAnnotation where
-  toSExp (AnnName n Nothing   _) = toSExp [(SymbolAtom "name", StringAtom (show n)),
-                                           (SymbolAtom "implicit", BoolAtom False)]
-  toSExp (AnnName n (Just ty) _) = toSExp [(SymbolAtom "name", StringAtom (show n)),
-                                           (SymbolAtom "decor", toSExp ty),
-                                           (SymbolAtom "implicit", BoolAtom False)]
+  toSExp (AnnName n ty d t) = toSExp $ [(SymbolAtom "name", StringAtom (show n)),
+                                        (SymbolAtom "implicit", BoolAtom False)] ++
+                                       maybeProps [("decor", ty)] ++
+                                       maybeProps [("doc-overview", d), ("type", t)]
   toSExp (AnnBoundName n imp)    = toSExp [(SymbolAtom "name", StringAtom (show n)),
                                            (SymbolAtom "decor", SymbolAtom "bound"),
                                            (SymbolAtom "implicit", BoolAtom imp)]
@@ -146,6 +151,7 @@ data IdeSlaveCommand = REPLCompletions String
                      | Apropos String
                      | GetOpts
                      | SetOpt Opt Bool
+                     | Metavariables Int -- ^^ the Int is the column count for pretty-printing
   deriving Show
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
@@ -169,6 +175,7 @@ sexpToCommand (SymbolAtom "get-options")                                        
 sexpToCommand (SexpList [SymbolAtom "set-option", SymbolAtom s, BoolAtom b])
   | Just opt <- lookup s opts                                                           = Just (SetOpt opt b)
     where opts = [("show-implicits", ShowImpl), ("error-context", ErrContext)] --TODO support more
+sexpToCommand (SexpList [SymbolAtom "metavariables", IntegerAtom cols])                 = Just (Metavariables (fromIntegral cols))
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)

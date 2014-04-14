@@ -7,6 +7,7 @@ import Idris.Core.CaseTree
 import Idris.Core.Typecheck
 
 import Idris.AbsSyntax
+import Idris.AbsSyntaxTree
 import Idris.Delaborate
 import Idris.ElabDecls
 import Idris.ElabTerm
@@ -15,6 +16,7 @@ import Idris.Error
 import Idris.DataOpts
 import Idris.Completion
 import Idris.IdeSlave
+import Idris.Output
 
 import Text.Trifecta.Result(Result(..))
 
@@ -32,7 +34,7 @@ prover lit x =
               i <- getIState
               case lookupTy x ctxt of
                   [t] -> if elem x (map fst (idris_metavars i))
-                               then prove ctxt lit x t
+                               then prove (idris_optimisation i) ctxt lit x t
                                else ifail $ show x ++ " is not a metavariable"
                   _ -> fail "No such metavariable"
 
@@ -55,8 +57,8 @@ assumptionNames e
         names ((MN _ _, _) : bs) = names bs
         names ((n, _) : bs) = show n : names bs
 
-prove :: Context -> Bool -> Name -> Type -> Idris ()
-prove ctxt lit n ty
+prove :: Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
+prove opt ctxt lit n ty
     = do let ps = initElaborator n ctxt ty
          ideslavePutSExp "start-proof-mode" n
          (tm, prf) <- ploop n True ("-" ++ show n) [] (ES (ps, []) "" Nothing) Nothing
@@ -66,7 +68,7 @@ prove ctxt lit n ty
          ideslavePutSExp "end-proof-mode" n
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
-         let tree = simpleCase False True False CompileTime (fileFC "proof") [] [([], P Ref n ty, tm)]
+         let tree = simpleCase False True False CompileTime (fileFC "proof") [] [] [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC (fileFC "proof") [] tm
          logLvl 5 ("Proof type: " ++ show pty ++ "\n" ++
@@ -76,7 +78,7 @@ prove ctxt lit n ty
               Error e -> ierror (CantUnify False ty pty e [] 0)
          ptm' <- applyOpts ptm
          updateContext (addCasedef n (CaseInfo True False) False False True False
-                                 []
+                                 [] []  -- argtys, inaccArgs
                                  [Right (P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)]

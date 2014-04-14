@@ -422,6 +422,14 @@ split p xs =
     (chunk, [])          => [chunk]
     (chunk, (c :: rest)) => chunk :: split p (assert_smaller xs rest)
 
+||| A tuple where the first element is a List of the n first elements and
+||| the second element is a List of the remaining elements of the list
+||| It is equivalent to (take n xs, drop n xs)
+||| @ n   the index to split at
+||| @ xs  the list to split in two
+splitAt : (n : Nat) -> (xs : List a) -> (List a, List a)
+splitAt n xs = (take n xs, drop n xs)
+
 partition : (a -> Bool) -> List a -> (List a, List a)
 partition p []      = ([], [])
 partition p (x::xs) =

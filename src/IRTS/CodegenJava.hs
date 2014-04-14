@@ -34,14 +34,19 @@ import           System.Process
 
 -----------------------------------------------------------------------
 -- Main function
-codegenJava :: [(Name, SExp)] -> -- initialization of globals
-               [(Name, SDecl)] -> -- decls
-               FilePath -> -- output file name
-               [String] -> -- headers
-               [String] -> -- libs
-               OutputType ->
-               IO ()
-codegenJava globalInit defs out hdrs libs exec =
+codegenJava :: CodeGenerator
+codegenJava cg = codegenJava' [] (simpleDecls cg) (outputFile cg)
+                                 (includes cg) (compileLibs cg)
+                                 (outputType cg)
+
+codegenJava' :: [(Name, SExp)] -> -- initialization of globals
+                [(Name, SDecl)] -> -- decls
+                FilePath -> -- output file name
+                [String] -> -- headers
+                [String] -> -- libs
+                OutputType ->
+                IO ()
+codegenJava' globalInit defs out hdrs libs exec =
   withTgtDir exec out (codegenJava' exec)
   where
     codegenJava' :: OutputType -> FilePath -> IO ()

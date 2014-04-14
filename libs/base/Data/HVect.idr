@@ -19,6 +19,7 @@ using (k : Nat, ts : Vect k Type)
   deleteAt : {us : Vect (S l) Type} -> (i : Fin (S l)) -> HVect us -> HVect (deleteAt i us)
   deleteAt fZ (x::xs) = xs
   deleteAt {l = S m} (fS j) (x::xs) = x :: deleteAt j xs
+  deleteAt {l = Z}   (fS j) (x::xs) = absurd j
   deleteAt _ [] impossible
 
   replaceAt : (i : Fin k) -> t -> HVect ts -> HVect (replaceAt i t ts)

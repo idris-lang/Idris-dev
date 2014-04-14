@@ -2,6 +2,7 @@ module Prelude.Fin
 
 import Prelude.Nat
 import Prelude.Either
+import Prelude.Uninhabited
 
 %default total
 
@@ -10,6 +11,10 @@ import Prelude.Either
 data Fin : (n : Nat) -> Type where
     fZ : Fin (S k)
     fS : Fin k -> Fin (S k)
+
+instance Uninhabited (Fin Z) where
+  uninhabited fZ impossible
+  uninhabited (fS f) impossible
 
 fSInjective : (m : Fin k) -> (n : Fin k) -> fS m = fS n -> m = n
 fSInjective left _ refl = refl
@@ -92,6 +97,12 @@ instance MaxBound (Fin (S n)) where
 (+) : Fin n -> Fin m -> Fin (n + m)
 (+) {n=S n} {m=m} fZ f' = rewrite plusCommutative n m in weaken (weakenN n f')
 (+) (fS f) f' = fS (f + f')
+
+||| Substract two Fins, keeping the bound of the minuend
+(-) : Fin n -> Fin m -> Fin n
+fZ - _ = fZ
+f - fZ = f
+(fS f) - (fS f') = weaken $ f - f'
 
 ||| Multiply two Fins, extending the bound
 (*) : Fin n -> Fin m -> Fin (n * m)

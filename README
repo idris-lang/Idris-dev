@@ -1,4 +1,4 @@
-Idris (http://idris-lang.org/) is an experimental functional programming 
+Idris (http://idris-lang.org/) is a general-purpose functional programming 
 language with dependent types.
 
 To configure, edit config.mk. The default values should work for most people.

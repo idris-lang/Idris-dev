@@ -1,4 +1,4 @@
 module Main
 
 main : IO ()
-main = nullPtr null >>= (putStrLn . show)
+main = nullPtr null >>= print

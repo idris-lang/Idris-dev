@@ -1,4 +1,4 @@
-module Prelude.Catchable
+module Control.Catchable
 
 import Control.IOExcept
 

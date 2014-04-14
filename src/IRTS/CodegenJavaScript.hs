@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module IRTS.CodegenJavaScript (codegenJavaScript, JSTarget(..)) where
+module IRTS.CodegenJavaScript (codegenJavaScript, codegenNode, JSTarget(..)) where
 
 import Idris.AbsSyntax hiding (TypeCase)
 import IRTS.Bytecode
@@ -1154,7 +1154,7 @@ unfoldLookupTable input =
 
 removeInstanceChecks :: JS -> JS
 removeInstanceChecks (JSCond conds) =
-  JSCond $ eliminateDeadBranches $ map (
+  removeNoopConds $ JSCond $ eliminateDeadBranches $ map (
     removeHelper *** removeInstanceChecks
   ) conds
   where
@@ -1168,6 +1168,11 @@ removeInstanceChecks (JSCond conds) =
     eliminateDeadBranches [(_, js)]         = [(JSNoop, js)]
     eliminateDeadBranches (x:xs)            = x : eliminateDeadBranches xs
     eliminateDeadBranches []                = []
+
+
+    removeNoopConds :: JS -> JS
+    removeNoopConds (JSCond [(JSNoop, js)]) = js
+    removeNoopConds js                      = js
 
 removeInstanceChecks js = transformJS removeInstanceChecks js
 
@@ -1389,14 +1394,22 @@ getGlobalCons js = foldJS match (++) [] js
 getIncludes :: [FilePath] -> IO [String]
 getIncludes = mapM readFile
 
-codegenJavaScript
+codegenJavaScript :: CodeGenerator
+codegenJavaScript ci = codegenJS_all JavaScript (simpleDecls ci)
+                              (includes ci) (outputFile ci) (outputType ci)
+
+codegenNode :: CodeGenerator
+codegenNode ci = codegenJS_all Node (simpleDecls ci)
+                        (includes ci) (outputFile ci) (outputType ci)
+
+codegenJS_all
   :: JSTarget
   -> [(Name, SDecl)]
   -> [FilePath]
   -> FilePath
   -> OutputType
   -> IO ()
-codegenJavaScript target definitions includes filename outputType = do
+codegenJS_all target definitions includes filename outputType = do
   let (header, rt) = case target of
                                Node ->
                                  ("#!/usr/bin/env node\n", "-node")
