@@ -19,6 +19,7 @@ import IRTS.Inliner
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
+import Idris.ASTUtils
 import Idris.Erasure
 import Idris.Error
 
@@ -27,6 +28,9 @@ import Debug.Trace
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.CaseTree
+
+import Control.Category
+import Prelude hiding (id, (.))
 
 import Control.Applicative
 import Control.Monad.State
@@ -172,10 +176,7 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
     (args, sc) = cases_runtime cd
 
 mkLDecl n (TyDecl (DCon tag arity) _) =
-    LConstructor n tag . erasedArity . lookup n <$> getIState
-  where
-    lookup n = lookupCtxtExact n . idris_callgraph
-    erasedArity = maybe 0 (length . usedpos)
+    LConstructor n tag . length <$> fgetState (cg_usedpos . ist_callgraph n)
 
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n _ = return $ (declArgs [] True n LNothing) -- postulate, never run
@@ -262,14 +263,13 @@ irTerm vs env tm@(App f a) = case unApply tm of
                              ])
 
     (P (DCon t arity) n _, args) -> do
-        ist <- getIState
-        let detag = maybe False detaggable . lookupCtxtExact n $ idris_optimisation ist
-            used  = maybe [] (map fst . usedpos) . lookupCtxtExact n $ idris_callgraph ist
-            args' = [a | (i,a) <- zip [0..] args, i `elem` used]
+        detag <- fgetState (opt_detaggable . ist_optimisation n)
+        used  <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
 
         when (length args > arity) $
             ifail ("oversaturated data ctor: " ++ show tm)
 
+        let args' = [a | (i,a) <- zip [0..] args, i `elem` used]
         if length args' == 1 && detag -- detaggable
             then irTerm vs env (head args')  -- newtype
             else irCon vs env (length used) n args'
@@ -473,8 +473,8 @@ irSC vs (Case n [ConCase (UN delay) i [_, _, n'] sc])
 irSC vs (Case n [alt]) = do
     replacement <- case alt of
         ConCase cn a ns sc -> do
-            detag <- maybe False detaggable . lookupCtxtExact cn . idris_optimisation <$> getIState
-            used  <- maybe [] (map fst . usedpos) . lookupCtxtExact cn . idris_callgraph <$> getIState
+            detag <- fgetState (opt_detaggable . ist_optimisation n)
+            used  <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
             if detag && length used == 1
                 then return . Just $ substSC (ns !! head used) n sc
                 else return Nothing
@@ -505,13 +505,10 @@ irAlt :: Vars -> LExp -> CaseAlt -> Idris LAlt
 
 -- this leaves out all unused arguments of the constructor
 irAlt vs _ (ConCase n t args sc) = do
-    used <- getUsed . lookup n <$> getIState
+    used <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
     let usedArgs = [a | (i,a) <- zip [0..] args, i `elem` used]
     LConCase (-1) n usedArgs <$> irSC (methodVars `M.union` vs) sc
   where
-    lookup n = lookupCtxtExact n . idris_callgraph
-    getUsed  = maybe [] (map fst . usedpos)
-
     methodVars = case n of
         SN (InstanceCtorN className)
             -> M.fromList [(v, VI
