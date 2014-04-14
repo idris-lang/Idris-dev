@@ -897,16 +897,16 @@ ExprList ::=
  -}
 listExpr :: SyntaxInfo -> IdrisParser PTerm
 listExpr syn = do lchar '['; fc <- getFC;
-                  try (lchar ']' *> return (mkList fc [])) <|> (do
-                    x <- expr syn
-                    (do try (lchar '|')
+                  try ((lchar ']' <?> "end of list expression") *> return (mkList fc [])) <|> (do
+                    x <- expr syn <?> "expression"
+                    (do try (lchar '|') <?> "list comprehension"
                         qs <- sepBy1 (do_ syn) (lchar ',')
                         lchar ']'
                         return (PDoBlock (map addGuard qs ++
                                    [DoExp fc (PApp fc (PRef fc (sUN "return"))
                                                 [pexp x])]))) <|> (do
-                          xs <- many (lchar ',' *> expr syn)
-                          lchar ']'
+                          xs <- many ((lchar ',' <?> "list element") *> expr syn)
+                          lchar ']' <?> "end of list expression"
                           return (mkList fc (x:xs))))
                 <?> "list expression"
   where
