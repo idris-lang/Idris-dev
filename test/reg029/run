@@ -2,6 +2,13 @@
 idris $@ reg029.idr -o reg029
 unset IDRIS_REG029_NONEXISTENT_VAR
 export IDRIS_REG029_EXISTENT_VAR='exists!'
-./reg029
+case "$@" in
+*\-\-codegen\ Java*)
+  javac -cp reg029 Reg029Wrapper.java
+  java -cp .:reg029 Reg029Wrapper
+  ;;
+*)
+  ./reg029
+esac
 idris $@ reg029.idr --exec
-rm -f reg029 *.ibc
+rm -f reg029 *.ibc *.class
