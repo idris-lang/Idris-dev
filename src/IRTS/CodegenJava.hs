@@ -164,7 +164,7 @@ jarHeader =
   ++ "if test -n \"$JAVA_HOME\"; then\n"
   ++ "  java=\"$JAVA_HOME/bin/java\"\n"
   ++ "fi\n"
-  ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\""
+  ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\"\n"
   ++ "exit 1\n"
 
 -----------------------------------------------------------------------
@@ -381,9 +381,7 @@ mkMainMethod =
     "main"
     [FormalParam [] (array stringType) False (VarId $ Ident "args")]
     $ Block [ BlockStmt . ExpStmt
-              $ call "idris_initArgs" [ (threadType ~> "currentThread") []
-                                      , jConst "args"
-                                      ]
+              $ call "idris_initArgs" [ jConst "args" ]
             , BlockStmt . ExpStmt $ call (mangle' (sMN 0 "runMain")) []
             ]
 
