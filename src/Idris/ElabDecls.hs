@@ -4,6 +4,7 @@
 module Idris.ElabDecls where
 
 import Idris.AbsSyntax
+import Idris.ASTUtils
 import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
@@ -29,6 +30,10 @@ import Idris.Core.CaseTree
 
 import Idris.Docstrings
 
+import Prelude hiding (id, (.))
+import Control.Category
+
+import Control.Applicative hiding (Const)
 import Control.DeepSeq
 import Control.Monad
 import Control.Monad.State.Strict as State
@@ -134,7 +139,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          addDocStr n doc argDocs
          addIBC (IBCDoc n)
          addIBC (IBCFlags n opts')
-         saveInaccArgs n inacc
+         fputState (opt_inaccessible . ist_optimisation n) inacc
+         addIBC (IBCOpt n)
          when (Implicit `elem` opts') $ do addCoercion n
                                            addIBC (IBCCoercion n)
 
@@ -177,20 +183,6 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
         , ns3 == map txt ["List", "Prelude"]
         , ns4 == map txt ["Errors","Reflection","Language"] = True
     tyIsHandler _                                           = False
-
--- Store the list of inaccessible arguments in the internal state.
-saveInaccArgs :: Name -> [(Int,Name)] -> Idris ()
-saveInaccArgs n is = do
-    ist <- getIState
-    case lookupCtxtExact n (idris_optimisation ist) of
-        Just oi -> do
-            putIState ist{ idris_optimisation =
-                addDef n oi{ inaccessible = is } (idris_optimisation ist) }
-
-        Nothing -> do
-            putIState ist{ idris_optimisation =
-                addDef n (Optimise is False) (idris_optimisation ist) }
-            addIBC (IBCOpt n)
 
 -- Get the list of (index, name) of inaccessible arguments from the type.
 inaccessibleArgs :: Int -> PTerm -> [(Int, Name)]
@@ -918,7 +910,7 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
          checkDocs fc argDocs t_in
          addDocStr n doc argDocs
          addIBC (IBCDoc n)
-         saveInaccArgs n inacc
+         fputState (opt_inaccessible . ist_optimisation n) inacc
          addIBC (IBCOpt n)
          return (n, cty')
   where
@@ -953,9 +945,8 @@ elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in
       do ctxt <- getContext
          ist  <- getIState
-         let inacc = case lookupCtxt n (idris_optimisation ist) of
-               [Optimise inacc _] -> map fst inacc
-               _ -> []
+         inacc <- map fst <$> fgetState (opt_inaccessible . ist_optimisation n)
+
          -- Check n actually exists, with no definition yet
          let tys = lookupTy n ctxt
          let reflect = Reflection `elem` opts
@@ -975,9 +966,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            solveDeferred n
 
-           ist <- getIState
-           let opts = addDef n (Optimise [] False) (idris_optimisation ist)
-             in putIState (ist { idris_optimisation = opts })
+           -- just ensure that the structure exists
+           fmodifyState (ist_optimisation n) id
            addIBC (IBCOpt n)
 
            ist <- getIState

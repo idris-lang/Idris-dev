@@ -52,9 +52,15 @@ ctxt_lookupExact n = Field
 instance InitialValue OptInfo where
     initialValue = Optimise [] False
 
-ist_optimisation :: Field IState (Ctxt OptInfo)
-ist_optimisation = Field idris_optimisation (\v ist -> ist{ idris_optimisation = v })
+-- raw context, probably won't be used much
+ist_optimisation_ctxt :: Field IState (Ctxt OptInfo)
+ist_optimisation_ctxt = Field idris_optimisation (\v ist -> ist{ idris_optimisation = v })
 
+-- the optimisation record for the given name
+ist_optimisation :: Name -> Field IState OptInfo
+ist_optimisation n = ctxt_lookupExact n . ist_optimisation_ctxt
+
+-- two fields of the optimisation record
 opt_inaccessible :: Field OptInfo [(Int, Name)]
 opt_inaccessible = Field inaccessible (\v opt -> opt{ inaccessible = v })
 
