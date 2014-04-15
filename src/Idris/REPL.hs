@@ -338,53 +338,27 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
                             pprintPTerm imp (zip ns (repeat False)) [] t
               rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
           in ((n', t', spans) : fst rest, snd rest)
-runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n d) =
+runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
   case splitName n of
        Left err -> iPrintError err
-       Right n -> do res <- findCallers d n
-                     let msg = (IdeSlave.SymbolAtom "ok", res)
+       Right n -> do calls <- whoCalls n
+                     ist <- getIState
+                     let msg = (IdeSlave.SymbolAtom "ok",
+                                map (\ (n,ns) -> (pn ist n, map (pn ist) ns)) calls)
                      runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-  where findCallers d n | d > 1 = do calls <- whoCalls n
-                                     ist <- getIState
-                                     out <- mapM (\(n, ns) ->
-                                                  do ns' <- mapM (findCallers (d-1)) ns
-                                                     return (pn ist n, zip (map (pn ist) ns) ns'))
-                                                 calls
-                                     return $ IdeSlave.toSExp out
-                        | otherwise = do calls <- whoCalls n
-                                         ist <- getIState
-                                         return . IdeSlave.toSExp $
-                                           map (\(n, ns) ->
-                                                (pn ist n,
-                                                 map (\n -> (pn ist n, nil)) ns))
-                                               calls
-        nil = IdeSlave.SexpList []
-        pn ist = displaySpans .
+  where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
                  prettyName True []
-runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n d) =
+runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
   case splitName n of
        Left err -> iPrintError err
-       Right n -> do res <- findCallees d n
-                     let msg = (IdeSlave.SymbolAtom "ok", res)
+       Right n -> do calls <- callsWho n
+                     ist <- getIState
+                     let msg = (IdeSlave.SymbolAtom "ok",
+                                map (\ (n,ns) -> (pn ist n, map (pn ist) ns)) calls)
                      runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-  where findCallees d n | d > 1 = do calls <- callsWho n
-                                     ist <- getIState
-                                     out <- mapM (\(n, ns) ->
-                                                  do ns' <- mapM (findCallees (d-1)) ns
-                                                     return (pn ist n, zip (map (pn ist) ns) ns'))
-                                                 calls
-                                     return $ IdeSlave.toSExp out
-                        | otherwise = do calls <- callsWho n
-                                         ist <- getIState
-                                         return . IdeSlave.toSExp $
-                                           map (\(n, ns) ->
-                                                (pn ist n,
-                                                 map (\n -> (pn ist n, nil)) ns))
-                                               calls
-        nil = IdeSlave.SexpList []
-        pn ist = displaySpans .
+  where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
                  prettyName True []
