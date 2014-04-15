@@ -633,26 +633,26 @@ data PTerm = PQuote Raw
            | PInferRef FC Name -- ^ A name to be defined later
            | PPatvar FC Name
            | PLam Name PTerm PTerm
-           | PPi  Plicity Name PTerm PTerm
+           | PPi  Plicity Name PTerm PTerm -- ^ (n : t1) -> t2
            | PLet Name PTerm PTerm PTerm
            | PTyped PTerm PTerm -- ^ Term with explicit type
-           | PApp FC PTerm [PArg]
+           | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
            | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
            | PMatchApp FC Name -- ^ Make an application by type matching
            | PCase FC PTerm [(PTerm, PTerm)]
-           | PTrue FC PunInfo
-           | PFalse FC
+           | PTrue FC PunInfo -- ^ Unit type..?
+           | PFalse FC -- ^ _|_
            | PRefl FC PTerm
            | PResolveTC FC
-           | PEq FC PTerm PTerm
+           | PEq FC PTerm PTerm -- ^ Equality type: A = B
            | PRewrite FC PTerm PTerm (Maybe PTerm)
            | PPair FC PunInfo PTerm PTerm
            | PDPair FC PunInfo PTerm PTerm PTerm
            | PAlternative Bool [PTerm] -- True if only one may work
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
-           | PType
+           | PType -- ^ 'Type' type
            | PGoal FC PTerm Name PTerm
-           | PConstant Const
+           | PConstant Const -- ^ Builtin types
            | Placeholder
            | PDoBlock [PDo]
            | PIdiom FC PTerm
