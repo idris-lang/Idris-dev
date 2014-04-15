@@ -456,6 +456,8 @@ ideslaveProcess fn (SetConsoleWidth w) = do process stdout fn (SetConsoleWidth w
                                             iPrintResult ""
 ideslaveProcess fn (Apropos a) = do process stdout fn (Apropos a)
                                     iPrintResult ""
+ideslaveProcess fn (WhoCalls n) = process stdout fn (WhoCalls n)
+ideslaveProcess fn (CallsWho n) = process stdout fn (CallsWho n)
 ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
@@ -1091,6 +1093,24 @@ process h fn (Apropos a) =
         isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
+
+process h fn (WhoCalls n) =
+  do calls <- whoCalls n
+     ist <- getIState
+     ihRenderResult h . vsep $
+       map (\(n, ns) ->
+             text "Callers of" <+> prettyName True [] n <$>
+             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True []) ns)))
+           calls
+
+process h fn (CallsWho n) =
+  do calls <- callsWho n
+     ist <- getIState
+     ihRenderResult h . vsep $
+       map (\(n, ns) ->
+             prettyName True [] n <+> text "calls:" <$>
+             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True []) ns)))
+           calls
 
 classInfo :: ClassInfo -> Idris (Doc OutputAnnotation)
 classInfo ci = do ist <- getIState

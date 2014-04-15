@@ -306,6 +306,8 @@ data Command = Quit
              | ListErrorHandlers
              | SetConsoleWidth ConsoleWidth
              | Apropos String
+             | WhoCalls Name
+             | CallsWho Name
 
 data Opt = Filename String
          | Ver
