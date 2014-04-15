@@ -155,13 +155,13 @@ p {
   margin-bottom: 8px;
 }
 
-.decls > dd > dl:not(.decls):last-child {
+.decls > dd > dl:not(.decls):not(:first-child) {
   
   padding-top: 5px;
   border-top: 1px solid #EEE;
 }
 
-.decls > dd > dl:not(.decls):last-child > dt {
+.decls > dd > dl:not(.decls) > dt {
 
   display: block;
   min-width: 70px;
@@ -171,7 +171,7 @@ p {
   font-weight: bold;
 }
 
-.decls > dd > dl:not(.decls):last-child > dd {
+.decls > dd > dl:not(.decls) > dd {
 
   margin-bottom: 2px;
 }
@@ -185,6 +185,10 @@ p {
 .name, .arg, .type {
 
   cursor: default;
+}
+
+.arg {
+  font-weight: bold;
 }
 
 a.type, a.name {
