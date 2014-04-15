@@ -8,7 +8,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
-                lookupNames, lookupTy, lookupP, lookupDef, lookupDefExact, lookupDefAcc, lookupVal,
+                lookupNames, lookupTy, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, definitions) where
@@ -915,6 +915,11 @@ lookupDefExact n ctxt = tfst <$> lookupCtxtExact n (definitions ctxt)
 
 lookupDef :: Name -> Context -> [Def]
 lookupDef n ctxt = tfst <$> lookupCtxt n (definitions ctxt)
+
+lookupNameDef :: Name -> Context -> [(Name, Def)]
+lookupNameDef n ctxt = mapSnd tfst $ lookupCtxtName n (definitions ctxt)
+  where mapSnd f [] = []
+        mapSnd f ((x,y):xys) = (x, f y) : mapSnd f xys
 
 lookupDefAcc :: Name -> Bool -> Context ->
                 [(Def, Accessibility)]

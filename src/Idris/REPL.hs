@@ -28,6 +28,7 @@ import Idris.Inliner
 import Idris.CaseSplit
 import Idris.DeepSeq
 import Idris.Output
+import Idris.WhoCalls
 
 import Paths_idris
 import Version_idris (gitHash)
@@ -275,11 +276,6 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.DocsFor name) =
   case splitName name of
     Left err -> iPrintError err
     Right n -> process stdout "(ideslave)" (DocStr n)
-  where splitName :: String -> Either String Name
-        splitName s = case reverse $ splitOn "." s of
-                        [] -> Left ("Didn't understand name '" ++ s ++ "'")
-                        [n] -> Right $ sUN n
-                        (n:ns) -> Right $ sNS (sUN n) ns
 runIdeSlaveCommand id orig fn mods (IdeSlave.CaseSplit line name) =
   process stdout fn (CaseSplitAt False line (sUN name))
 runIdeSlaveCommand id orig fn mods (IdeSlave.AddClause line name) =
@@ -342,7 +338,62 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
                             pprintPTerm imp (zip ns (repeat False)) [] t
               rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
           in ((n', t', spans) : fst rest, snd rest)
+runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n d) =
+  case splitName n of
+       Left err -> iPrintError err
+       Right n -> do res <- findCallers d n
+                     let msg = (IdeSlave.SymbolAtom "ok", res)
+                     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+  where findCallers d n | d > 1 = do calls <- whoCalls n
+                                     ist <- getIState
+                                     out <- mapM (\(n, ns) ->
+                                                  do ns' <- mapM (findCallers (d-1)) ns
+                                                     return (pn ist n, zip (map (pn ist) ns) ns'))
+                                                 calls
+                                     return $ IdeSlave.toSExp out
+                        | otherwise = do calls <- whoCalls n
+                                         ist <- getIState
+                                         return . IdeSlave.toSExp $
+                                           map (\(n, ns) ->
+                                                (pn ist n,
+                                                 map (\n -> (pn ist n, nil)) ns))
+                                               calls
+        nil = IdeSlave.SexpList []
+        pn ist = displaySpans .
+                 renderPretty 0.9 1000 .
+                 fmap (fancifyAnnots ist) .
+                 prettyName True []
+runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n d) =
+  case splitName n of
+       Left err -> iPrintError err
+       Right n -> do res <- findCallees d n
+                     let msg = (IdeSlave.SymbolAtom "ok", res)
+                     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+  where findCallees d n | d > 1 = do calls <- callsWho n
+                                     ist <- getIState
+                                     out <- mapM (\(n, ns) ->
+                                                  do ns' <- mapM (findCallees (d-1)) ns
+                                                     return (pn ist n, zip (map (pn ist) ns) ns'))
+                                                 calls
+                                     return $ IdeSlave.toSExp out
+                        | otherwise = do calls <- callsWho n
+                                         ist <- getIState
+                                         return . IdeSlave.toSExp $
+                                           map (\(n, ns) ->
+                                                (pn ist n,
+                                                 map (\n -> (pn ist n, nil)) ns))
+                                               calls
+        nil = IdeSlave.SexpList []
+        pn ist = displaySpans .
+                 renderPretty 0.9 1000 .
+                 fmap (fancifyAnnots ist) .
+                 prettyName True []
 
+splitName :: String -> Either String Name
+splitName s = case reverse $ splitOn "." s of
+                [] -> Left ("Didn't understand name '" ++ s ++ "'")
+                [n] -> Right $ sUN n
+                (n:ns) -> Right $ sNS (sUN n) ns
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
 ideslaveProcess fn Help = process stdout fn Help
