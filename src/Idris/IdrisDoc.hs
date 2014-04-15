@@ -4,11 +4,14 @@
 -- | Generation of HTML documentation for Idris code
 module Idris.IdrisDoc (generateDocs) where
 
-import Idris.Core.TT (Name (..), SpecialName (..), txt, str, nsroot)
+import Idris.Core.TT (Name (..), sUN, SpecialName (..), OutputAnnotation (..),
+                      txt, str, nsroot)
 import Idris.Core.Evaluate (ctxtAlist, Def (..), lookupDefAcc,
                             Accessibility (..))
+import Idris.ParseHelpers (opChars)
 import Idris.AbsSyntax
 import Idris.Docs
+import Idris.Docstrings (nullDocstring)
 
 import Paths_idris (getDataFileName)
 
@@ -16,12 +19,15 @@ import Control.Monad (forM_)
 import Control.Monad.Trans.Error
 import Control.Monad.Trans.State.Strict
 
+import Data.Maybe
+
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BS2
 import qualified Data.Text.Encoding as E
 import qualified Data.List as L
 import qualified Data.List.Split as LS
 import qualified Data.Map as M hiding ((!))
+import qualified Data.Ord (compare)
 import qualified Data.Set as S
 import qualified Data.Text as T
 
@@ -30,15 +36,22 @@ import System.IO.Error
 import System.FilePath
 import System.Directory
 
-import Text.Blaze (toValue)
-import Text.Blaze.Html5 ((!), toHtml)
+import Cheapskate.Html (renderDoc)
+import Text.PrettyPrint.Annotated.Leijen (displayDecorated, renderCompact)
+
+import Text.Blaze (toValue, contents)
+import Text.Blaze.Internal (MarkupM (Empty))
+import Text.Blaze.Html5 ((!), toHtml, preEscapedToHtml)
 import qualified Text.Blaze.Html5 as H
-import Text.Blaze.Html5.Attributes
+import Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
+import qualified Text.Blaze.Html.Renderer.String as R
+import Text.Blaze.Renderer.String (renderMarkup)
 
 -- ---------------------------------------------------------------- [ Public ]
 
--- | Generates HTML documentation for a series of loaded namespaces and their dependencies.
+-- | Generates HTML documentation for a series of loaded namespaces
+--   and their dependencies.
 generateDocs :: IState   -- ^ IState where all necessary information is
                          --   extracted from.
              -> [Name]   -- ^ List of namespaces to generate
@@ -130,7 +143,7 @@ fetchInfo ist nss =
 
 
 -- | Removes loose class methods and data constructors,
--- leaving them documented only under their parent.
+--   leaving them documented only under their parent.
 removeOrphans :: [NsItem] -- ^ List to remove orphans from
               -> [NsItem] -- ^ Orphan-free list
 removeOrphans list =
@@ -214,7 +227,7 @@ hasDoc _              = False
 
 
 -- | Predicate saying whether a Name possibly may have docs defined
--- | Without this, getDocs from Idris.Docs may fail a pattern match.
+--   Without this, getDocs from Idris.Docs may fail a pattern match.
 mayHaveDocs :: Name -- ^ The Name to test
             -> Bool -- ^ The result
 mayHaveDocs (UN _)   = True
@@ -234,8 +247,8 @@ loadDocs ist n
 
 
 -- | Extracts names referred from a type.
---   The covering of all PTerms ensures that we avoid unanticipated cases.
---   All of them are probably not needed.
+--   The covering of all PTerms ensures that we avoid unanticipated cases, though
+--   all of them are not needed. The author just did not know which!
 --   TODO: Remove unnecessary cases
 extractPTermNames :: PTerm  -- ^ Where to extract names from
                   -> [Name] -- ^ Extracted names
@@ -319,8 +332,9 @@ extractPTactic _                  = []
 --   A merge of the new docs and any existing docs located in the output dir
 --   is attempted.
 --   TODO: Ensure the merge always succeeds.
---         Currently the content of '<builtins>.ns.html' may change between runs,
---         thus not always containing all items referred from other .ns.html files.
+--         Currently the content of '<builtins>.ns.html' may change between
+--         runs, thus not always containing all items referred from other
+--         .ns.html files.
 createDocs :: NsDict   -- ^ All info from which to generate docs
            -> FilePath -- ^ The base directory to which
                        --   documentation will be written.
@@ -335,18 +349,13 @@ createDocs nsd out =
                                   " already in use for other than IdrisDoc."
        else do
          createDirectoryIfMissing True out
-         foldl (docGen out) (return ()) (M.toList nsd)
---         if new then putStrLn "Creating IdrisDoc index"
---                else putStrLn "Updating IdrisDoc index"
+         foldl docGen (return ()) (M.toList nsd)
          createIndex nss out
          writeDocInfo out (docInfo' { namespaces = nss })
          copyDependencies out
          return $ Right ()
 
-  where docGen out io (n, c) =
-          do io
---             putStrLn $ "Creating IdrisDoc for '" ++ (nsName2Str n) ++ "'"
-             createNsDoc n c out
+  where docGen io (n, c) = do io; createNsDoc nsd n c out
 
 
 -- | (Over)writes the 'index.html' file in the given directory with
@@ -361,40 +370,42 @@ createIndex nss out =
      BS2.hPut h $ renderHtml $ wrapper Nothing $ do
        H.h1 $ "Namespaces"
        H.ul ! class_ "names" $ do
-         let path ns = genRelNsPath ns "ns.html" 
-             item ns = do let n    = toHtml $ nsName2Str ns
-                              link = toValue $ path ns
-                          H.li $ H.a ! href link ! class_ "code" $ n
-         forM_ (S.toList nss) item
+         let path ns  = genRelNsPath ns "ns.html" 
+             item ns  = do let n    = toHtml $ nsName2Str ns
+                               link = toValue $ path ns
+                           H.li $ H.a ! href link ! class_ "code" $ n
+             sort     = L.sortBy (\n1 n2 -> reverse n1 `compare` reverse n2)
+         forM_ (sort $ S.toList nss) item
      hClose h
      renameFile path (out </> "index.html")
 
 
 -- | Generates a HTML file for a namespace and its contents.
 --   The location for e.g. Prelude.Algebra is <base>/Prelude/Algebra.html
-createNsDoc :: NsName   -- ^ The name of the namespace to
+createNsDoc :: NsDict   -- ^ Information about other namespaces
+            -> NsName   -- ^ The name of the namespace to
                         --   create documentation for
             -> NsInfo   -- ^ The contents of the namespace
             -> FilePath -- ^ The base directory to which
                         --   documentation will be written.
             -> IO ()
-createNsDoc ns content out =
+createNsDoc nsd ns content out =
   do let tpath                    = out </> (genRelNsPath ns "ns.html")
          dir                      = takeDirectory tpath
          file                     = takeFileName tpath 
          nonHidden (_, _, Hidden) = False
          nonHidden _              = True
-         haveDocs (_, Nothing, _) = False
-         haveDocs _               = True
+         haveDocs (_, Nothing, _) = []
+         haveDocs (_, Just d, _)  = [d]
                                   -- Do not document private members
          content'                 = filter nonHidden content
                                   -- We cannot do anything without a Doc
-         content''                = filter haveDocs content'
+         content''                = concatMap haveDocs content'
      createDirectoryIfMissing True dir
      (path, h) <- openTempFile dir file
      BS2.hPut h $ renderHtml $ wrapper (Just ns) $ do
        H.h1 $ toHtml (nsName2Str ns)
-       forM_ content'' (\(n,_,_) -> H.p $ toHtml $ show n)
+       H.dl ! class_ "decls" $ forM_ content'' (createOtherDoc nsd)
      hClose h
      renameFile path tpath
 
@@ -406,6 +417,123 @@ genRelNsPath :: NsName   -- ^ Namespace to generate a path for
 genRelNsPath ns suffix = subpath ns <.> suffix
 
   where subpath = L.foldl1' (</>) . LS.splitOn "." . nsName2Str
+
+
+-- | Generates a HTML type signature with proper tags
+--   TODO: Turn docstrings into title attributes more robustly
+genTypeHeader :: NsDict -- ^ Information about namespaces
+              -> FunDoc -- ^ Type to generate type declaration for
+              -> H.Html -- ^ Resulting HTML
+genTypeHeader nsd (FD n _ args ftype _) = do
+  H.span ! class_ "name" ! title (toValue $ show n) $ toHtml $ name $ nsroot n
+  " : "
+  preEscapedToHtml htmlSignature
+
+  where 
+        htmlSignature  = displayDecorated decorator $ renderCompact signature
+        signature      = pprintPTerm False [] names ftype
+        names          = [ n | (n@(UN n'), _, _, _) <- args,
+                           not (T.isPrefixOf (txt "__") n') ]
+
+        decorator (AnnName n _ _ _) str | filterName n, isFun n = do
+          R.renderHtml $ H.a ! class_ "name"
+                       ! title (toValue $ show n) ! href (toValue $ link n)
+                       $ toHtml $ show $ nsroot n
+        decorator (AnnName n _ _ _) str | filterName n = do
+          R.renderHtml $ H.a ! class_ "type"
+                       ! title (toValue $ show n) ! href (toValue $ link n)
+                       $ toHtml $ show $ nsroot n
+        decorator (AnnBoundName n _) str | Just t <- M.lookup n docs = do
+          R.renderHtml $ H.span ! class_ "arg" ! title (toValue t)
+                       $ toHtml $ show n
+        decorator _ str = str
+
+        docs           = M.fromList $ mapMaybe docExtractor args
+        docExtractor (_, _, _, Nothing) = Nothing
+        docExtractor (n, _, _, Just d)  = Just (n, doc2Txt d)
+                         -- TODO: Remove <p> tags more robustly
+        doc2Txt d      = let dirty = renderMarkup $ contents $ renderDoc $ d
+                         in  take (length dirty - 8) $ drop 3 dirty
+
+        name (NS n ns) = show (NS (sUN $ name n) ns)
+        name n         = let n' = show n
+                         in  if (head n') `elem` opChars
+                                then '(':(n' ++ ")")
+                                else n'
+
+        link n         = let path = genRelNsPath (getNs n) "ns.html"
+                         in  path ++ "#" ++ (show n)
+
+        isFun n        =
+          let ns = getNs n
+          in case M.lookup ns nsd of
+            Nothing  -> False -- Should never happen
+            Just nsi -> case L.find (\(n', d, a) -> n == n') nsi of
+              Just (_, Just (FunDoc _), _) -> True
+              _                            -> False
+
+-- | Generates HTML documentation for a function.
+createFunDoc :: NsDict -- ^ Information about other namespaces
+             -> FunDoc -- ^ Function to generate block for
+             -> H.Html -- ^ Resulting HTML
+createFunDoc nsd fd@(FD name docstring args ftype fixity) = do
+  H.dt ! (A.id $ toValue $ show name) $ genTypeHeader nsd fd
+  H.dd $ do
+    (if nullDocstring docstring then Empty else renderDoc docstring)
+    let args'             = filter (\(_, _, _, d) -> isJust d) args
+    if (not $ null args') || (isJust fixity)
+       then H.dl $ do
+         if (isJust fixity) then do
+             H.dt ! class_ "fixity" $ "Fixity"
+             let f = fromJust fixity
+             H.dd ! class_ "fixity" ! title (toValue $ show f) $ genFix f
+           else Empty
+         forM_ args' genArg
+       else Empty
+
+  where genFix (Infixl {prec=p})  =
+          toHtml $ "Left associative, precedence " ++ show p
+        genFix (Infixr {prec=p})  =
+          toHtml $ "Left associative, precedence " ++ show p
+        genFix (InfixN {prec=p})  =
+          toHtml $ "Non-associative, precedence " ++ show p
+        genFix (PrefixN {prec=p}) =
+          toHtml $ "Prefix, precedence " ++ show p
+        genArg (_, _, _, Nothing)           = Empty
+        genArg (name, _, _, Just docstring) = do
+          H.dt $ toHtml $ show name
+          H.dd $ renderDoc docstring
+
+
+-- | Generates HTML documentation for any Docs type
+--   TODO: Generate actual signatures for typeclasses
+createOtherDoc :: NsDict -- ^ Information about other namespaces
+               -> Docs   -- ^ Namespace item to generate HTML block for
+               -> H.Html -- ^ Resulting HTML
+createOtherDoc nsd (FunDoc fd)                = createFunDoc nsd fd
+createOtherDoc nsd (ClassDoc n docstring fds) = do
+  H.dt ! (A.id $ toValue $ show n) $ do
+    "class "
+    toHtml $ show n
+  H.dd $ do
+    (if nullDocstring docstring then Empty else renderDoc docstring)
+    H.dl ! class_ "decls" $ forM_ fds (createFunDoc nsd)
+createOtherDoc nsd (DataDoc fd@(FD n docstring args _ _) fds) = do
+  H.dt ! (A.id $ toValue $ show n) $ do
+    "data "
+    genTypeHeader nsd fd
+  H.dd $ do
+    (if nullDocstring docstring then Empty else renderDoc docstring)
+    let args' = filter (\(_, _, _, d) -> isJust d) args
+    if not $ null args'
+       then H.dl $ forM_ args' genArg
+       else Empty
+    H.dl ! class_ "decls" $ forM_ fds (createFunDoc nsd)
+
+  where genArg (_, _, _, Nothing)           = Empty
+        genArg (name, _, _, Just docstring) = do
+          H.dt $ toHtml $ show name
+          H.dd $ renderDoc docstring
 
 
 -- | Generates everything but the actual content of the page
@@ -430,7 +558,7 @@ wrapper ns inner =
       H.div ! class_ "wrapper" $ do
         H.header $ do
           H.strong "IdrisDoc"
-          if index then "" else do
+          if index then Empty else do
             ": "
             toHtml str
           H.nav $ H.a ! href "index.html" $ "Index"
