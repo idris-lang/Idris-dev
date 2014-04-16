@@ -72,12 +72,12 @@ footer {
   padding: 10px 10px 41px 20px;
 }
 
-.container a:visited {
+body.index .container a:visited {
 
   color: #666;
 }
 
-.container a:hover {
+body.index .container a:hover {
 
   color: #04819E;
 }
@@ -135,11 +135,25 @@ p {
 
   font-family: "Lucida Console", Monaco, monospace;
   font-size: 10pt;
+  line-height: 20px;
   
-  padding: 4px 6px;
+  padding: 2px 0;
   
   border: 1px solid #CCC;
   background-color: #F0F0F0;
+  
+  display: table;
+  width: 100%;
+}
+
+.decls > dt > :first-child {
+
+  padding-left: 6px;
+}
+
+.decls > dt > :last-child {
+
+  padding-right: 6px;
 }
 
 .decls > dd {
@@ -182,34 +196,100 @@ p {
   font-weight: normal !important;
 }
 
-.name, .arg, .type {
+dd.fixity {
 
   cursor: default;
 }
 
-.arg {
+.word {
+
+  display: table-cell;
+  white-space: nowrap;
+  width: 0;
+}
+
+.signature {
+
+  display: table-cell;
+  width: 100%;
+}
+
+.name {
+  
+  display: table-cell;
+  white-space: nowrap;
+  width: 0;
+}
+
+.documented, .name {
+
+  cursor: default;
+}
+
+.documented {
+
   font-weight: bold;
 }
 
-a.type, a.name {
+a.function {
 
-  cursor: pointer;
+  color: #00BA00;
+}
+
+.function {
+
+  color: #007C21;
+}
+
+a.constructor {
+
+  color: #FF0000;
+}
+
+.constructor {
+
+  color: #BF3030;
+}
+
+a.type {
+
+  color: #0000FF;
 }
 
 .type {
 
+  color: #050599;
+}
+
+.keyword {
+
+  color: inherit;
+}
+
+.boundvar {
+
+  color: #BF30BF; /* Too much colour makes it hard to differ the rest of the colours */
+  color: inherit;
+}
+
+.boundvar.implicit {
+
+  text-decoration: underline;
+}
+
+/******************* Old colours
+
+a {
+
   color: #04819E;
 }
 
-a.type:visited {
+a:visited {
 
   color: #26A3BF;
 }
 
-a.name {
-
-  color: #666;
-}
+********************/
 
 ul.names {
 
