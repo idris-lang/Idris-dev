@@ -122,6 +122,7 @@ rootNsStr = "<builtins>"
 nsName2Str :: NsName -- ^ NsName to convert
            -> String
 nsName2Str n = if null n then rootNsStr else name n
+
   where name []       = []
         name [ns]     = str ns
         name (ns:nss) = (name nss) ++ ('.' : str ns)
@@ -189,6 +190,7 @@ referredNss (n, Just d, _) =
       ts     = concatMap types fds
       names  = concatMap (extractPTermNames) ts
   in  S.map getNs $ S.fromList names
+
   where getFunDocs (FunDoc f)        = [f]
         getFunDocs (DataDoc f fs)    = f:fs
         getFunDocs (ClassDoc _ _ fs) = fs       
@@ -217,7 +219,7 @@ getAccess ist n =
   let res = lookupDefAcc n False (tt_ctxt ist)
   in case res of
      [(_, acc)] -> acc
-     _          -> Public   -- Does this default make sense?
+     _          -> Public
 
 -- | Simple predicate for whether an NsItem has Docs
 hasDoc :: NsItem -- ^ The NsItem to test
@@ -247,8 +249,8 @@ loadDocs ist n
 
 
 -- | Extracts names referred from a type.
---   The covering of all PTerms ensures that we avoid unanticipated cases, though
---   all of them are not needed. The author just did not know which!
+--   The covering of all PTerms ensures that we avoid unanticipated cases,
+--   though all of them are not needed. The author just did not know which!
 --   TODO: Remove unnecessary cases
 extractPTermNames :: PTerm  -- ^ Where to extract names from
                   -> [Name] -- ^ Extracted names
@@ -435,17 +437,18 @@ genTypeHeader nsd (FD n _ args ftype _) = do
         names          = [ n | (n@(UN n'), _, _, _) <- args,
                            not (T.isPrefixOf (txt "__") n') ]
 
+        decorator (AnnName n _ _ _) str | str /= show (nsroot n) = str
         decorator (AnnName n _ _ _) str | filterName n, isFun n = do
           R.renderHtml $ H.a ! class_ "name"
                        ! title (toValue $ show n) ! href (toValue $ link n)
-                       $ toHtml $ show $ nsroot n
+                       $ toHtml $ str
         decorator (AnnName n _ _ _) str | filterName n = do
           R.renderHtml $ H.a ! class_ "type"
                        ! title (toValue $ show n) ! href (toValue $ link n)
-                       $ toHtml $ show $ nsroot n
+                       $ toHtml $ str
         decorator (AnnBoundName n _) str | Just t <- M.lookup n docs = do
           R.renderHtml $ H.span ! class_ "arg" ! title (toValue t)
-                       $ toHtml $ show n
+                       $ toHtml $ str
         decorator _ str = str
 
         docs           = M.fromList $ mapMaybe docExtractor args
@@ -511,6 +514,7 @@ createOtherDoc :: NsDict -- ^ Information about other namespaces
                -> Docs   -- ^ Namespace item to generate HTML block for
                -> H.Html -- ^ Resulting HTML
 createOtherDoc nsd (FunDoc fd)                = createFunDoc nsd fd
+
 createOtherDoc nsd (ClassDoc n docstring fds) = do
   H.dt ! (A.id $ toValue $ show n) $ do
     "class "
@@ -518,6 +522,7 @@ createOtherDoc nsd (ClassDoc n docstring fds) = do
   H.dd $ do
     (if nullDocstring docstring then Empty else renderDoc docstring)
     H.dl ! class_ "decls" $ forM_ fds (createFunDoc nsd)
+
 createOtherDoc nsd (DataDoc fd@(FD n docstring args _ _) fds) = do
   H.dt ! (A.id $ toValue $ show n) $ do
     "data "
@@ -566,7 +571,6 @@ wrapper ns inner =
       H.footer $ do
         "Produced by IdrisDoc version "
         toHtml version
-          
 
   where extract (Just ns) = let nestings = if null ns then 1 else length ns
                             in (False, nsName2Str ns, nestings-1)
