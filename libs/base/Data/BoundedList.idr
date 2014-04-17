@@ -3,10 +3,12 @@ module Data.BoundedList
 %access public
 %default total
 
+||| A list with an upper bound on its length.
 data BoundedList : Type -> Nat -> Type where
   Nil : BoundedList a n
   (::) : a -> BoundedList a n -> BoundedList a (S n)
 
+||| Compute the length of a list.
 length : BoundedList a n -> Fin (S n)
 length [] = fZ
 length (x :: xs) = fS (length xs)
@@ -24,6 +26,7 @@ index (fS f) (_ :: xs) = index f xs
 -- Adjusting bounds
 --------------------------------------------------------------------------------
 
+||| Loosen the bounds on a list's length.
 weaken : BoundedList a n -> BoundedList a (n + m)
 weaken []        = []
 weaken (x :: xs) = x :: weaken xs
@@ -77,6 +80,7 @@ map f (x :: xs) = f x :: map f xs
 -- Misc
 --------------------------------------------------------------------------------
 
+||| Extend a bounded list to the maximum size by padding on the left.
 pad : (xs : BoundedList a n) -> (padding : a) -> BoundedList a n
 pad {n=Z}    []        _       = []
 pad {n=S n'} []        padding = padding :: (pad {n=n'} [] padding)

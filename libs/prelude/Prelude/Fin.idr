@@ -6,7 +6,10 @@ import Prelude.Uninhabited
 
 %default total
 
-||| Numbers strictly less than some bound.  The name comes from "finite sets"
+||| Numbers strictly less than some bound.  The name comes from "finite sets".
+|||
+||| It's probably not a good idea to use `Fin` for arithmetic, and they will be
+||| exceedingly inefficient at run time.
 ||| @ n the upper bound
 data Fin : (n : Nat) -> Type where
     fZ : Fin (S k)
@@ -24,16 +27,19 @@ instance Eq (Fin n) where
     (==) (fS k) (fS k') = k == k'
     (==) _ _ = False
 
+||| There are no elements of `Fin Z`
 FinZAbsurd : Fin Z -> _|_
 FinZAbsurd fZ impossible
 
 FinZElim : Fin Z -> a
 FinZElim x = FalseElim (FinZAbsurd x)
 
+||| Convert a Fin to a Nat
 finToNat : Fin n -> Nat
 finToNat fZ = Z
 finToNat (fS k) = S (finToNat k)
 
+||| `finToNat` is injective
 finToNatInjective : (fm : Fin k) -> (fn : Fin k) -> (finToNat fm) = (finToNat fn) -> fm = fn
 finToNatInjective fZ     fZ     refl = refl
 finToNatInjective (fS m) fZ     refl impossible
@@ -44,6 +50,7 @@ finToNatInjective (fS m) (fS n) prf  =
 instance Cast (Fin n) Nat where
     cast x = finToNat x
 
+||| Convert a Fin to an Integer
 finToInteger : Fin n -> Integer
 finToInteger fZ     = 0
 finToInteger (fS k) = 1 + finToInteger k
@@ -123,9 +130,13 @@ natToFin _ _ = Nothing
 integerToFin : Integer -> (n : Nat) -> Maybe (Fin n)
 integerToFin x n = if x >= 0 then natToFin (cast x) n else Nothing
 
+||| Proof that some `Maybe` is actually `Just`
 data IsJust : Maybe a -> Type where
   ItIsJust : IsJust {a} (Just x)
 
+||| Allow overloading of Integer literals for Fin.
+||| @ x the Integer that the user typed
+||| @ prf an automatically-constructed proof that `x` is in bounds
 fromInteger : (x : Integer) ->
               {default ItIsJust
                prf : (IsJust (integerToFin x n))} ->

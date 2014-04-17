@@ -17,6 +17,7 @@ getWitness (a ** v) = a
 getProof : {P : a -> Type} -> (s : Exists a P) -> P (getWitness s)
 getProof (a ** v) = v
 
+||| The eliminator for the empty type.
 FalseElim : _|_ -> a
 
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
@@ -43,17 +44,35 @@ lazy x = x -- compiled specially
 force : a -> a
 force x = x -- compiled specially
 
+||| There are two types of laziness: that arising from lazy functions, and that
+||| arising from codata. They differ in their totality condition.
 data LazyType = LazyCodata | LazyEval
 
+||| The underlying implementation of Lazy and Inf.
 data Lazy' : LazyType -> Type -> Type where
+     ||| A delayed computation.
+     |||
+     |||Delay is inserted automatically by the elaborator where necessary.
+     |||
+     ||| Note that compiled code gives `Delay` special semantics.
+     ||| @ t   whether this is laziness from codata or normal lazy evaluation
+     ||| @ a   the type of the eventual value
+     ||| @ val a computation that will produce a value
      Delay : {t, a : _} -> (val : a) -> Lazy' t a
 
+||| Compute a value from a delayed computation.
+|||
+||| Inserted by the elaborator where necessary.
 Force : {t, a : _} -> Lazy' t a -> a
 Force (Delay x) = x
 
+||| Lazily evaluated values. This has special evaluation semantics.
 Lazy : Type -> Type
 Lazy t = Lazy' LazyEval t
 
+||| Recursive parameters to codata. Inserted automatically by the elaborator
+||| on a "codata" definition but is necessary by hand if mixing inductive and
+||| coinductive parameters.
 Inf : Type -> Type
 Inf t = Lazy' LazyCodata t
 
