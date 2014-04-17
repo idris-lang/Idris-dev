@@ -831,7 +831,6 @@ clause syn
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
                    reserved "with"
-                   lchar '(' <?> "parenthesized expression"
                    wval <- bracketed syn
                    openBlock
                    ds <- some $ fnDecl syn
@@ -865,7 +864,6 @@ clause syn
                    reserved "with"
                    ist <- get
                    put (ist { lastParse = Just n })
-                   lchar '(' <?> "parenthesized expression"
                    wval <- bracketed syn
                    openBlock
                    ds <- some $ fnDecl syn

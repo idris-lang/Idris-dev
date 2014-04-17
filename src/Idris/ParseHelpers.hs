@@ -214,7 +214,7 @@ idrisStyle :: MonadicParsing m => IdentifierStyle m
 idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved Hi.Identifier Hi.ReservedIdentifier
   where _styleName = "Idris"
         _styleStart = satisfy isAlpha
-        _styleLetter = satisfy isAlphaNum <|> oneOf "_'" <|> (lchar '.')
+        _styleLetter = satisfy isAlphaNum <|> oneOf "_'."
         _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "Type",
                                       "do", "dsl", "import", "impossible",
                                       "case", "of", "total", "partial", "mutual",
