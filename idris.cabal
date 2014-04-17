@@ -456,6 +456,7 @@ Library
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
                 , Idris.Apropos
+                , Idris.ASTUtils
                 , Idris.CaseSplit
                 , Idris.Chaser
                 , Idris.Colours

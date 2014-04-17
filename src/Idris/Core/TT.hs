@@ -383,6 +383,7 @@ implicitable _ = False
 nsroot (NS n _) = n
 nsroot n = n
 
+-- this will overwrite already existing definitions
 addDef :: Name -> a -> Ctxt a -> Ctxt a
 addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
                         Nothing -> Map.insert (nsroot n)

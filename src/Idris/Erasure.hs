@@ -3,6 +3,7 @@
 module Idris.Erasure (performUsageAnalysis, mkFieldName) where
 
 import Idris.AbsSyntax
+import Idris.ASTUtils
 import Idris.Core.CaseTree
 import Idris.Core.TT
 import Idris.Core.Evaluate
@@ -11,6 +12,9 @@ import Idris.Error
 
 import Debug.Trace
 import System.IO.Unsafe
+
+import Control.Category
+import Prelude hiding (id, (.))
 
 import Control.Arrow
 import Control.Applicative
@@ -97,7 +101,7 @@ performUsageAnalysis = do
             $ ifail ("reachable postulates:\n" ++ intercalate "\n" ["  " ++ show n | n <- S.toList reachablePostulates])
 
         -- Store the usage info in the internal state.
-        mapM_ (storeUsage cg) usage
+        mapM_ storeUsage usage
 
         return $ S.toList reachableNames
   where
@@ -124,13 +128,8 @@ performUsageAnalysis = do
             | S.null rs = show i
             | otherwise = show i ++ " from " ++ intercalate ", " (map show $ S.toList rs)
 
-    storeUsage :: Ctxt CGInfo -> (Name, IntMap (Set Reason)) -> Idris ()
-    storeUsage cg (n, args)
-        | Just x <- lookupCtxtExact n cg
-        = addToCG n x{ usedpos = flat }        -- functions
-
-        | otherwise
-        = addToCG n (CGInfo [] [] [] [] flat)  -- data ctors
+    storeUsage :: (Name, IntMap (Set Reason)) -> Idris ()
+    storeUsage (n, args) = fputState (cg_usedpos . ist_callgraph n) flat
       where
         flat = [(i, S.toList rs) | (i,rs) <- IM.toList args]
 
