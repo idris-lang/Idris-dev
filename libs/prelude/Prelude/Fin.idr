@@ -92,7 +92,12 @@ last {n=S _} = fS last
 total fSinjective : {f : Fin n} -> {f' : Fin n} -> (fS f = fS f') -> f = f'
 fSinjective refl = refl
 
-
+instance Ord (Fin n) where
+  compare  fZ     fZ    = EQ
+  compare  fZ    (fS _) = LT
+  compare (fS _)  fZ    = GT
+  compare (fS x) (fS y) = compare x y
+  
 instance MinBound (Fin (S n)) where
   minBound = fZ
 
