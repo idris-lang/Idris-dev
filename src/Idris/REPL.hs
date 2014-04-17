@@ -13,6 +13,7 @@ import Idris.Error
 import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Docstrings (Docstring, overview, renderDocstring)
+import Idris.IdrisDoc
 import Idris.Prover
 import Idris.Parser hiding (indent)
 import Idris.Primitives
@@ -77,6 +78,7 @@ import Data.List
 import Data.Char
 import Data.Version
 import Data.Word (Word)
+import Data.Either (partitionEithers)
 import Control.DeepSeq
 
 import Debug.Trace
@@ -1041,6 +1043,21 @@ process h fn (Apropos a) =
         isUN (NS n _) = isUN n
         isUN _ = False
 
+-- IdrisDoc
+process h fn (MakeDoc s) =
+  do     istate        <- getIState
+         let names      = words s
+             parse n    | Success x <- runparser name istate fn n = Right x
+             parse n    = Left n
+             (bad, nss) = partitionEithers $ map parse names
+         cd            <- runIO $ getCurrentDirectory
+         let outputDir  = cd </> "doc"
+         result        <- if null bad then runIO $ generateDocs istate nss outputDir
+                                      else return . Left $ "Illegal name: " ++ head bad
+         case result of Right _   -> iputStrLn "IdrisDoc generated"
+                        Left  err -> iPrintError err
+
+
 classInfo :: ClassInfo -> Idris (Doc OutputAnnotation)
 classInfo ci = do ist <- getIState
                   ctxt <- getContext
@@ -1129,6 +1146,7 @@ parseArgs ("--build":n:ns)       = PkgBuild n : (parseArgs ns)
 parseArgs ("--install":n:ns)     = PkgInstall n : (parseArgs ns)
 parseArgs ("--repl":n:ns)        = PkgREPL n : (parseArgs ns)
 parseArgs ("--clean":n:ns)       = PkgClean n : (parseArgs ns)
+parseArgs ("--mkdoc":n:ns)       = PkgMkDoc n : (parseArgs ns)        -- IdrisDoc
 parseArgs ("--checkpkg":n:ns)    = PkgCheck n : (parseArgs ns)
 -- Misc Options
 parseArgs ("--bytecode":n:ns)    = NoREPL : BCAsm n : (parseArgs ns)
@@ -1482,6 +1500,11 @@ getPkgREPL _ = Nothing
 getPkgCheck :: Opt -> Maybe String
 getPkgCheck (PkgCheck str) = Just str
 getPkgCheck _              = Nothing
+
+-- IdrisDoc
+getPkgMkDoc :: Opt -> Maybe String
+getPkgMkDoc (PkgMkDoc str) = Just str
+getPkgMkDoc _              = Nothing
 
 getCodegen :: Opt -> Maybe Codegen
 getCodegen (UseCodegen x) = Just x

@@ -256,7 +256,7 @@ traceWhen False _  a = a
 data Name = UN T.Text -- ^ User-provided name
           | NS Name [T.Text] -- ^ Root, namespaces
           | MN Int T.Text -- ^ Machine chosen names
-          | NErased -- ^ Name of somethng which is never used in scope
+          | NErased -- ^ Name of something which is never used in scope
           | SN SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
   deriving (Eq, Ord)
@@ -432,7 +432,7 @@ updateDef n f ctxt
 
 toAlist :: Ctxt a -> [(Name, a)]
 toAlist ctxt = let allns = map snd (Map.toList ctxt) in
-                concat (map (Map.toList) allns)
+                concatMap (Map.toList) allns
 
 addAlist :: Show a => [(Name, a)] -> Ctxt a -> Ctxt a
 addAlist [] ctxt = ctxt

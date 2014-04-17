@@ -5,18 +5,24 @@ import System.Process
 import System.Directory
 import System.Exit
 import System.IO
-import System.FilePath ((</>), addTrailingPathSeparator, takeFileName)
+import System.FilePath ((</>), addTrailingPathSeparator, takeFileName, takeDirectory)
 import System.Directory (createDirectoryIfMissing, copyFile)
 
 import Util.System
 
 import Control.Monad
+import Control.Monad.Trans.State.Strict (execStateT)
+import Control.Monad.Error (runErrorT)
+
 import Data.List
 import Data.List.Split(splitOn)
 
 import Idris.Core.TT
 import Idris.REPL
+import Idris.Parser (loadModule)
+import Idris.Output (pshow)
 import Idris.AbsSyntax
+import Idris.IdrisDoc
 import Idris.Output
 
 import IRTS.System
@@ -74,7 +80,7 @@ checkPkg :: Bool         -- ^ Show Warnings
             -> FilePath  -- ^ Path to ipkg file.
             -> IO ()
 checkPkg warnonly quit fpath
-  = do pkgdesc <-parseDesc fpath
+  = do pkgdesc <- parseDesc fpath
        ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
        when (and ok) $
          do dir <- getCurrentDirectory
@@ -122,6 +128,38 @@ cleanPkg fp
                Nothing -> return ()
                Just s -> rmFile $ dir </> s
 
+-- | Generate IdrisDoc for package
+-- TODO: Handle case where module does not contain a matching namespace
+--       E.g. from prelude.ipkg: IO, Prelude.Chars, Builtins
+documentPkg :: FilePath -- ^ Path to .ipkg file.
+            -> IO ()
+documentPkg fp =
+  do pkgdesc        <- parseDesc fp
+     cd             <- getCurrentDirectory
+     let pkgDir      = cd </> takeDirectory fp
+         outputDir   = cd </> (pkgname pkgdesc) ++ "_doc"
+         opts        = NoREPL : Verbose : idris_opts pkgdesc
+         mods        = modules pkgdesc
+         fs          = map (foldl1' (</>) . splitOn "." . showCG) mods
+     setCurrentDirectory $ pkgDir </> sourcedir pkgdesc
+     make (makefile pkgdesc)
+     setCurrentDirectory $ pkgDir
+     let run l       = runErrorT . (execStateT l)
+         load []     = return () 
+         load (f:fs) = do loadModule stdout f; load fs
+         loader      = do idrisMain opts; load fs
+     idrisInstance  <- run loader idrisInit
+     setCurrentDirectory cd
+     case idrisInstance of
+          Left  err -> do putStrLn $ pshow idrisInit err; exitWith (ExitFailure 1)
+          Right ist ->
+                do docRes <- generateDocs ist mods outputDir
+                   case docRes of
+                        Right _  -> return ()
+                        Left msg -> do putStrLn msg
+                                       exitWith (ExitFailure 1)
+
+
 -- | Install package
 installPkg :: PkgDesc -> IO ()
 installPkg pkgdesc
@@ -131,7 +169,6 @@ installPkg pkgdesc
               Nothing -> mapM_ (installIBC (pkgname pkgdesc)) (modules pkgdesc)
               Just o -> return () -- do nothing, keep executable locally, for noe
           mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
-
 
 -- ---------------------------------------------------------- [ Helper Methods ]
 -- Methods for building, testing, installing, and removal of idris
