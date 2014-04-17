@@ -22,5 +22,11 @@ timeout() {
 
 }
 
-timeout 60 "idris $@ --nocolour reg039.idr --exec go"
+declare -a extraargs
+for arg in "$@"
+do
+    extraargs=("${extraargs[@]}" "'$arg'")
+done
+
+timeout 60 "idris ${extraargs[*]} --nocolour reg039.idr --exec go"
 rm -f reg039 *.ibc

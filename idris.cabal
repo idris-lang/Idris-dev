@@ -227,6 +227,9 @@ Extra-source-files:
                        test/reg038/run
                        test/reg038/*.idr
                        test/reg038/expected
+                       test/reg039/run
+                       test/reg039/*.idr
+                       test/reg039/expected
 
                        test/basic001/run
                        test/basic001/*.idr
