@@ -244,11 +244,11 @@ instance Ord Bits64 where
 
 -- ------------------------------------------------------------- [ Bounded ]
 
-class MinBound b where
+class Ord b => MinBound b where
   ||| The lower bound for the type
   minBound : b
 
-class MaxBound b where
+class Ord b => MaxBound b where
   ||| The upper bound for the type
   maxBound : b
 
