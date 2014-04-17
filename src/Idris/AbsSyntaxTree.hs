@@ -297,7 +297,9 @@ data Command = Quit
              | AddProofClauseFrom Bool Int Name
              | AddMissing Bool Int Name
              | MakeWith Bool Int Name
-             | DoProofSearch Bool Int Name [Name]
+             | DoProofSearch Bool -- ^ update
+                             Bool -- ^ recursive (i.e. do arguments too) 
+                             Int Name [Name]
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -710,7 +712,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
-                | ProofSearch (Maybe Name) [Name]
+                | ProofSearch Bool -- ^ recursive
+                              (Maybe Name) [Name]
                 | Solve
                 | Attack
                 | ProofState | ProofTerm | Undo

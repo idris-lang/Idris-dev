@@ -87,8 +87,13 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["ps", "proofsearch"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name;
-                          hints <- many P.name
-                          return (DoProofSearch upd (fromInteger l) n hints))
+                          hints <- many P.fnName
+                          return (DoProofSearch upd True (fromInteger l) n hints))
+              <|> try (do cmd ["ref", "refine"]; P.whiteSpace;
+                          upd <- option False (do P.lchar '!'; return True)
+                          l <- P.natural; n <- P.name;
+                          hint <- P.fnName
+                          return (DoProofSearch upd False (fromInteger l) n [hint]))
               <|> try (do cmd ["p", "prove"]; n <- P.name; eof; return (Prove n))
               <|> try (do cmd ["m", "metavars"]; eof; return Metavars)
               <|> try (do cmd ["a", "addproof"]; do n <- option Nothing (do x <- P.name;

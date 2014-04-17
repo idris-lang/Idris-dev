@@ -1939,6 +1939,10 @@ instance (Binary t) => Binary (PTactic' t) where
                                    put x1
                 ByReflection x1 -> do putWord8 20
                                       put x1
+                ProofSearch x1 x2 x3 -> do putWord8 21
+                                           put x1
+                                           put x2
+                                           put x3
         get
           = do i <- getWord8
                case i of
@@ -1980,6 +1984,10 @@ instance (Binary t) => Binary (PTactic' t) where
                             return (Induction x1)
                    20 -> do x1 <- get
                             return (ByReflection x1)
+                   21 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            return (ProofSearch x1 x2 x3)
                    _ -> error "Corrupted binary data for PTactic'"
 
 

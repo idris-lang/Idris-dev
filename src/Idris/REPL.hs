@@ -286,8 +286,8 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.AddMissing line name) =
   process stdout fn (AddMissing False line (sUN name))
 runIdeSlaveCommand id orig fn mods (IdeSlave.MakeWithBlock line name) =
   process stdout fn (MakeWith False line (sUN name))
-runIdeSlaveCommand id orig fn mods (IdeSlave.ProofSearch line name hints) =
-  process stdout fn (DoProofSearch False line (sUN name) (map sUN hints))
+runIdeSlaveCommand id orig fn mods (IdeSlave.ProofSearch r line name hints) =
+  process stdout fn (DoProofSearch False r line (sUN name) (map sUN hints))
 runIdeSlaveCommand id orig fn mods (IdeSlave.Apropos a) =
   process stdout fn (Apropos a)
 runIdeSlaveCommand id orig fn mods (IdeSlave.GetOpts) =
@@ -425,7 +425,7 @@ ideslaveProcess fn (AddProofClauseFrom False pos str) = process stdout fn (AddPr
 ideslaveProcess fn (AddClauseFrom False pos str) = process stdout fn (AddClauseFrom False pos str)
 ideslaveProcess fn (AddMissing False pos str) = process stdout fn (AddMissing False pos str)
 ideslaveProcess fn (MakeWith False pos str) = process stdout fn (MakeWith False pos str)
-ideslaveProcess fn (DoProofSearch False pos str xs) = process stdout fn (DoProofSearch False pos str xs)
+ideslaveProcess fn (DoProofSearch False r pos str xs) = process stdout fn (DoProofSearch False r pos str xs)
 ideslaveProcess fn (SetConsoleWidth w) = do process stdout fn (SetConsoleWidth w)
                                             iPrintResult ""
 ideslaveProcess fn (Apropos a) = do process stdout fn (Apropos a)
@@ -809,7 +809,7 @@ process h fn (MakeWith updatefile l n)
            else ihPrintResult h with
   where getIndent s = length (takeWhile isSpace s)
 
-process h fn (DoProofSearch updatefile l n hints)
+process h fn (DoProofSearch updatefile rec l n hints)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
          ctxt <- getContext
@@ -822,8 +822,8 @@ process h fn (DoProofSearch updatefile l n hints)
                                   Just (t, e, False) -> (t, e, False)
                                   _ -> (Nothing, 0, True)
          let fc = fileFC fn
-         let body t = PProof [Try (TSeq Intros (ProofSearch t hints))
-                                  (ProofSearch t hints)]
+         let body t = PProof [Try (TSeq Intros (ProofSearch rec t hints))
+                                  (ProofSearch rec t hints)]
          let def = PClause fc mn (PRef fc mn) [] (body top) []
          newmv <- idrisCatch
              (do elabDecl' EAll toplevel (PClauses fc [] mn [def])

@@ -245,7 +245,7 @@ instance (NFData t) => NFData (PTactic' t) where
         rnf (Exact x1) = rnf x1 `seq` ()
         rnf Compute = ()
         rnf Trivial = ()
-        rnf (ProofSearch x1 x2)
+        rnf (ProofSearch r x1 x2)
           = rnf x1 `seq` rnf x2 `seq` ()
         rnf Solve = ()
         rnf Attack = ()

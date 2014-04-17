@@ -145,7 +145,7 @@ data IdeSlaveCommand = REPLCompletions String
                      | AddProofClause Int String
                      | AddMissing Int String
                      | MakeWithBlock Int String
-                     | ProofSearch Int String [String]
+                     | ProofSearch Bool Int String [String]
                      | LoadFile String
                      | DocsFor String
                      | Apropos String
@@ -166,7 +166,10 @@ sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom n
 sexpToCommand (SexpList [SymbolAtom "add-proof-clause", IntegerAtom line, StringAtom name])   = Just (AddProofClause (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "add-missing", IntegerAtom line, StringAtom name])  = Just (AddMissing (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "make-with", IntegerAtom line, StringAtom name])    = Just (MakeWithBlock (fromInteger line) name)
-sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom name, SexpList hintexp]) | Just hints <- getHints hintexp = Just (ProofSearch (fromInteger line) name hints)
+-- XXX: The Boolean in ProofSearch means "search recursively"
+-- If it's False, that means "refine", i.e. apply the name and fill in any
+-- arguments which can be done by unification.
+sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom name, SexpList hintexp]) | Just hints <- getHints hintexp = Just (ProofSearch True (fromInteger line) name hints)
   where getHints = mapM (\h -> case h of
                                  StringAtom s -> Just s
                                  _            -> Nothing)
