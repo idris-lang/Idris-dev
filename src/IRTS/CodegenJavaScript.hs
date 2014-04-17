@@ -17,6 +17,7 @@ import Data.Char
 import Numeric
 import Data.List
 import Data.Maybe
+import Data.Word
 import System.IO
 import System.Directory
 
@@ -53,6 +54,13 @@ data JSNum = JSInt Int
            deriving Eq
 
 
+data JSWord = JSWord8 Word8
+            | JSWord16 Word16
+            | JSWord32 Word32
+            | JSWord64 Word64
+            deriving Eq
+
+
 data JSAnnotation = JSConstructor deriving Eq
 
 
@@ -81,6 +89,7 @@ data JS = JSRaw String
         | JSArray [JS]
         | JSString String
         | JSNum JSNum
+        | JSWord JSWord
         | JSAssign JS JS
         | JSAlloc String (Maybe JS)
         | JSIndex JS JS
@@ -256,6 +265,13 @@ compileJS (JSWhile cond body) =
      "while (" ++ compileJS cond ++ ") {\n"
   ++ compileJS body
   ++ "\n}"
+
+compileJS (JSWord word)
+  | JSWord8  b <- word = show b
+  | JSWord16 b <- word = show b
+  | JSWord32 b <- word = show b
+  | JSWord64 b <- word = idrRTNamespace ++ "bigInt(\"" ++ show b ++ "\")"
+
 
 jsTailcall :: JS -> JS
 jsTailcall call =
@@ -1441,6 +1457,7 @@ codegenJS_all target definitions includes filename outputType = do
 
         match :: JS -> Bool
         match (JSIdent "__IDRRT__bigInt") = True
+        match (JSWord (JSWord64 _))       = True
         match (JSNum (JSInteger _))       = True
         match js                          = False
 
@@ -1633,6 +1650,10 @@ translateConstant (AType (ATInt ITChar))   = JSType JSCharTy
 translateConstant PtrType                  = JSType JSPtrTy
 translateConstant Forgot                   = JSType JSForgotTy
 translateConstant (BI i)                   = jsBigInt $ JSString (show i)
+translateConstant (B8 b)                   = JSWord (JSWord8 b)
+translateConstant (B16 b)                  = JSWord (JSWord16 b)
+translateConstant (B32 b)                  = JSWord (JSWord32 b)
+translateConstant (B64 b)                  = JSWord (JSWord64 b)
 translateConstant c =
   jsError $ "Unimplemented Constant: " ++ show c
 
@@ -1809,6 +1830,21 @@ translateExpression (SApp tc name vars)
 translateExpression (SOp op vars)
   | LNoOp <- op = JSVar (last vars)
 
+  | (LZExt (ITFixed IT8) ITNative) <- op = JSVar (last vars)
+
+  | (LLSHR (ITFixed IT8)) <- op
+  , (lhs:rhs:_)           <- vars = translateBinaryOp ">>" lhs rhs
+
+  | (LLSHR (ITFixed IT16)) <- op
+  , (lhs:rhs:_)            <- vars = translateBinaryOp ">>" lhs rhs
+
+  | (LLSHR (ITFixed IT32)) <- op
+  , (lhs:rhs:_)            <- vars = translateBinaryOp ">>" lhs rhs
+
+  | (LLSHR (ITFixed IT64)) <- op
+  , (lhs:rhs:_)            <- vars =
+      jsMeth (JSVar lhs) "shiftRight" [JSVar rhs]
+
   | (LZExt _ ITBig)        <- op = jsBigInt $ jsCall "String" [JSVar (last vars)]
   | (LPlus (ATInt ITBig))  <- op
   , (lhs:rhs:_)            <- vars = invokeMeth lhs "add" [rhs]
@@ -1850,6 +1886,46 @@ translateExpression (SOp op vars)
   | (LSGe ATFloat)   <- op
   , (lhs:rhs:_)      <- vars = translateBinaryOp ">=" lhs rhs
 
+  | (LPlus (ATInt ITChar)) <- op
+  , (lhs:rhs:_)            <- vars =
+      jsCall "__IDRRT__fromCharCode" [
+        JSBinOp "+" (
+          jsCall "__IDRRT__charCode" [JSVar lhs]
+        ) (
+          jsCall "__IDRRT__charCode" [JSVar rhs]
+        )
+      ]
+
+  | (LTrunc (ITFixed IT16) (ITFixed IT8)) <- op
+  , (arg:_)                               <- vars =
+      JSParens $ JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFF))
+
+  | (LTrunc (ITFixed IT32) (ITFixed IT16)) <- op
+  , (arg:_)                                <- vars =
+      JSParens $ JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFFFF))
+
+  | (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op
+  , (arg:_)                                <- vars =
+      jsMeth (jsMeth (JSVar arg) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFF)
+      ]) "intValue" []
+
+  | (LTrunc ITBig (ITFixed IT64)) <- op
+  , (arg:_)                       <- vars =
+      jsMeth (JSVar arg) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFF)
+      ]
+
+  | (LAnd (ITFixed IT64)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsMeth (JSVar lhs) "and" [JSVar rhs]
+
+  | (LPlus (ATInt (ITFixed IT64))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsMeth (jsMeth (JSVar lhs) "add" [JSVar rhs]) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+      ]
+
   | (LPlus _)   <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
   | (LMinus _)  <- op
@@ -1884,7 +1960,7 @@ translateExpression (SOp op vars)
   , (arg:_)     <- vars = JSPreOp "~" (JSVar arg)
 
   | LStrConcat  <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "concat" [rhs]
   | LStrEq      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
   | LStrLt      <- op
@@ -1913,9 +1989,9 @@ translateExpression (SOp op vars)
   | (LFloatInt ITNative)    <- op
   , (arg:_)                 <- vars = JSVar arg
   | (LChInt ITNative)       <- op
-  , (arg:_)                 <- vars = JSProj (JSVar arg) "charCodeAt(0)"
+  , (arg:_)                 <- vars = jsCall "__IDRRT__charCode" [JSVar arg]
   | (LIntCh ITNative)       <- op
-  , (arg:_)                 <- vars = jsCall "String.fromCharCode" [JSVar arg]
+  , (arg:_)                 <- vars = jsCall "__IDRRT__fromCharCode" [JSVar arg]
 
   | LFExp       <- op
   , (arg:_)     <- vars = jsCall "Math.exp" [JSVar arg]
@@ -1941,7 +2017,7 @@ translateExpression (SOp op vars)
   , (arg:_)     <- vars = jsCall "Math.ceil" [JSVar arg]
 
   | LStrCons    <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "concat" [rhs]
   | LStrHead    <- op
   , (arg:_)     <- vars = JSIndex (JSVar arg) (JSNum (JSInt 0))
   | LStrRev     <- op
@@ -1959,7 +2035,7 @@ translateExpression (SOp op vars)
 
   where
     translateBinaryOp :: String -> LVar -> LVar -> JS
-    translateBinaryOp f lhs rhs = JSBinOp f (JSVar lhs) (JSVar rhs)
+    translateBinaryOp f lhs rhs = JSParens $ JSBinOp f (JSVar lhs) (JSVar rhs)
 
 
     invokeMeth :: LVar -> String -> [LVar] -> JS
