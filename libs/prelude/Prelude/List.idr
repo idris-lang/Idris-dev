@@ -12,6 +12,7 @@ import Prelude.Nat
 %access public
 %default total
 
+infix 5 \\
 infixr 7 ::,++
 
 %elim data List a
@@ -399,6 +400,22 @@ nubBy = nubBy' []
 nub : Eq a => List a -> List a
 nub = nubBy (==)
 
+deleteBy : (a -> a -> Bool) -> a -> List a -> List a
+deleteBy _  _ []      = []
+deleteBy eq x (y::ys) = if x `eq` y then ys else y :: deleteBy eq x ys
+
+delete : (Eq a) => a -> List a -> List a
+delete = deleteBy (==)
+
+(\\) : (Eq a) => List a -> List a -> List a
+(\\) =  foldl (flip delete)
+
+unionBy : (a -> a -> Bool) -> List a -> List a -> List a
+unionBy eq xs ys =  xs ++ foldl (flip (deleteBy eq)) (nubBy eq ys) xs
+
+union : (Eq a) => List a -> List a -> List a
+union = unionBy (==)
+
 --------------------------------------------------------------------------------
 -- Splitting and breaking lists
 --------------------------------------------------------------------------------
@@ -438,6 +455,16 @@ partition p (x::xs) =
       (x::lefts, rights)
     else
       (lefts, x::rights)
+
+inits : List a -> List (List a)
+inits xs = [] :: case xs of
+  []        => []
+  x :: xs'  => map (x ::) (inits xs')
+
+tails : List a -> List (List a)
+tails xs = xs :: case xs of
+  []        => []
+  _ :: xs'  => tails xs'
 
 --------------------------------------------------------------------------------
 -- Predicates
