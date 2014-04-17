@@ -496,6 +496,7 @@ Library
                 , Idris.REPLParser
                 , Idris.Transforms
                 , Idris.Unlit
+                , Idris.WhoCalls
 
                 , IRTS.BCImp
                 , IRTS.Bytecode

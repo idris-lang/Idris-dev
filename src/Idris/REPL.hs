@@ -28,6 +28,7 @@ import Idris.Inliner
 import Idris.CaseSplit
 import Idris.DeepSeq
 import Idris.Output
+import Idris.WhoCalls
 
 import Paths_idris
 import Version_idris (gitHash)
@@ -275,11 +276,6 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.DocsFor name) =
   case splitName name of
     Left err -> iPrintError err
     Right n -> process stdout "(ideslave)" (DocStr n)
-  where splitName :: String -> Either String Name
-        splitName s = case reverse $ splitOn "." s of
-                        [] -> Left ("Didn't understand name '" ++ s ++ "'")
-                        [n] -> Right $ sUN n
-                        (n:ns) -> Right $ sNS (sUN n) ns
 runIdeSlaveCommand id orig fn mods (IdeSlave.CaseSplit line name) =
   process stdout fn (CaseSplitAt False line (sUN name))
 runIdeSlaveCommand id orig fn mods (IdeSlave.AddClause line name) =
@@ -342,7 +338,36 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
                             pprintPTerm imp (zip ns (repeat False)) [] t
               rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
           in ((n', t', spans) : fst rest, snd rest)
+runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
+  case splitName n of
+       Left err -> iPrintError err
+       Right n -> do calls <- whoCalls n
+                     ist <- getIState
+                     let msg = (IdeSlave.SymbolAtom "ok",
+                                map (\ (n,ns) -> (pn ist n, map (pn ist) ns)) calls)
+                     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+  where pn ist = displaySpans .
+                 renderPretty 0.9 1000 .
+                 fmap (fancifyAnnots ist) .
+                 prettyName True []
+runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
+  case splitName n of
+       Left err -> iPrintError err
+       Right n -> do calls <- callsWho n
+                     ist <- getIState
+                     let msg = (IdeSlave.SymbolAtom "ok",
+                                map (\ (n,ns) -> (pn ist n, map (pn ist) ns)) calls)
+                     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+  where pn ist = displaySpans .
+                 renderPretty 0.9 1000 .
+                 fmap (fancifyAnnots ist) .
+                 prettyName True []
 
+splitName :: String -> Either String Name
+splitName s = case reverse $ splitOn "." s of
+                [] -> Left ("Didn't understand name '" ++ s ++ "'")
+                [n] -> Right $ sUN n
+                (n:ns) -> Right $ sNS (sUN n) ns
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
 ideslaveProcess fn Help = process stdout fn Help
@@ -405,6 +430,8 @@ ideslaveProcess fn (SetConsoleWidth w) = do process stdout fn (SetConsoleWidth w
                                             iPrintResult ""
 ideslaveProcess fn (Apropos a) = do process stdout fn (Apropos a)
                                     iPrintResult ""
+ideslaveProcess fn (WhoCalls n) = process stdout fn (WhoCalls n)
+ideslaveProcess fn (CallsWho n) = process stdout fn (CallsWho n)
 ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
@@ -1040,6 +1067,24 @@ process h fn (Apropos a) =
         isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
+
+process h fn (WhoCalls n) =
+  do calls <- whoCalls n
+     ist <- getIState
+     ihRenderResult h . vsep $
+       map (\(n, ns) ->
+             text "Callers of" <+> prettyName True [] n <$>
+             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True []) ns)))
+           calls
+
+process h fn (CallsWho n) =
+  do calls <- callsWho n
+     ist <- getIState
+     ihRenderResult h . vsep $
+       map (\(n, ns) ->
+             prettyName True [] n <+> text "calls:" <$>
+             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True []) ns)))
+           calls
 
 classInfo :: ClassInfo -> Idris (Doc OutputAnnotation)
 classInfo ci = do ist <- getIState

@@ -152,7 +152,8 @@ data IdeSlaveCommand = REPLCompletions String
                      | GetOpts
                      | SetOpt Opt Bool
                      | Metavariables Int -- ^^ the Int is the column count for pretty-printing
-  deriving Show
+                     | WhoCalls String
+                     | CallsWho String
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
@@ -176,6 +177,8 @@ sexpToCommand (SexpList [SymbolAtom "set-option", SymbolAtom s, BoolAtom b])
   | Just opt <- lookup s opts                                                           = Just (SetOpt opt b)
     where opts = [("show-implicits", ShowImpl), ("error-context", ErrContext)] --TODO support more
 sexpToCommand (SexpList [SymbolAtom "metavariables", IntegerAtom cols])                 = Just (Metavariables (fromIntegral cols))
+sexpToCommand (SexpList [SymbolAtom "who-calls", StringAtom name])                      = Just (WhoCalls name)
+sexpToCommand (SexpList [SymbolAtom "calls-who", StringAtom name])                      = Just (CallsWho name)
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)
