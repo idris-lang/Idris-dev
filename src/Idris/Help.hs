@@ -35,9 +35,9 @@ help =
     ([":r",":reload"], NoArg, "Reload current file"),
     ([":l",":load"], FileArg, "Load a new file"),
     ([":cd"], FileArg, "Change working directory"),
-    ([":m",":module"], ModuleArg, "Import an extra module"), -- NOTE: dragons
+    ([":module"], ModuleArg, "Import an extra module"), -- NOTE: dragons
     ([":e",":edit"], NoArg, "Edit current file using $EDITOR or $VISUAL"),
-    ([":m",":metavars"], MetaVarArg, "Show remaining proof obligations (metavariables)"),
+    ([":m",":metavars"], NoArg, "Show remaining proof obligations (metavariables)"),
     ([":p",":prove"], MetaVarArg, "Prove a metavariable"),
     ([":a",":addproof"], NameArg, "Add proof to source file"),
     ([":rmproof"], NameArg, "Remove proof from proof stack"),
