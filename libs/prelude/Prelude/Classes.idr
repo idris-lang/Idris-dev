@@ -252,6 +252,12 @@ class MaxBound b where
   ||| The upper bound for the type
   maxBound : b
 
+instance MinBound Bits8 where
+  minBound = 0x0
+
+instance MaxBound Bits8 where
+  maxBound = 0xff
+
 instance MinBound Bits16 where
   minBound = 0x0
 
