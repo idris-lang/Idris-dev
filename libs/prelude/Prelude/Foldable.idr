@@ -10,9 +10,8 @@ import Prelude.Algebra
 
 class Foldable (t : Type -> Type) where
   foldr : (elt -> acc -> acc) -> acc -> t elt -> acc
-
-foldl : Foldable t => (acc -> elt -> acc) -> acc -> t elt -> acc
-foldl f z t = foldr (flip (.) . flip f) id t z
+  foldl : Foldable t => (acc -> elt -> acc) -> acc -> t elt -> acc
+  foldl f z t = foldr (flip (.) . flip f) id t z
 
 concat : (Foldable t, Monoid a) => t a -> a
 concat = foldr (<+>) neutral
