@@ -267,9 +267,9 @@ compileJS (JSWhile cond body) =
   ++ "\n}"
 
 compileJS (JSWord word)
-  | JSWord8  b <- word = show b
-  | JSWord16 b <- word = show b
-  | JSWord32 b <- word = show b
+  | JSWord8  b <- word = "new Uint8Array([" ++ show b ++ "])"
+  | JSWord16 b <- word = "new Uint16Array([" ++ show b ++ "])"
+  | JSWord32 b <- word = "new Uint32Array([" ++ show b ++ "])"
   | JSWord64 b <- word = idrRTNamespace ++ "bigInt(\"" ++ show b ++ "\")"
 
 
@@ -342,6 +342,19 @@ jsLet name value body =
 
 jsError :: String -> JS
 jsError err = JSApp (JSFunction [] (JSError err)) []
+
+jsUnPackBits :: JS -> JS
+jsUnPackBits js = JSIndex js $ JSNum (JSInt 0)
+
+
+jsPackBits8 :: JS -> JS
+jsPackBits8 js = JSNew "Uint8Array" [JSArray [js]]
+
+jsPackBits16 :: JS -> JS
+jsPackBits16 js = JSNew "Uint16Array" [JSArray [js]]
+
+jsPackBits32 :: JS -> JS
+jsPackBits32 js = JSNew "Uint32Array" [JSArray [js]]
 
 
 foldJS :: (JS -> a) -> (a -> a -> a) -> a -> JS -> a
@@ -1830,16 +1843,25 @@ translateExpression (SApp tc name vars)
 translateExpression (SOp op vars)
   | LNoOp <- op = JSVar (last vars)
 
-  | (LZExt (ITFixed IT8) ITNative) <- op = JSVar (last vars)
+  | (LZExt (ITFixed IT8) ITNative) <- op = jsUnPackBits $ JSVar (last vars)
 
   | (LLSHR (ITFixed IT8)) <- op
-  , (lhs:rhs:_)           <- vars = translateBinaryOp ">>" lhs rhs
+  , (lhs:rhs:_)           <- vars =
+      jsPackBits8 (
+        JSBinOp ">>" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)
+      )
 
   | (LLSHR (ITFixed IT16)) <- op
-  , (lhs:rhs:_)            <- vars = translateBinaryOp ">>" lhs rhs
+  , (lhs:rhs:_)            <- vars =
+      jsPackBits16 (
+        JSBinOp ">>" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)
+      )
 
   | (LLSHR (ITFixed IT32)) <- op
-  , (lhs:rhs:_)            <- vars = translateBinaryOp ">>" lhs rhs
+  , (lhs:rhs:_)            <- vars =
+      jsPackBits32  (
+        JSBinOp ">>" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)
+      )
 
   | (LLSHR (ITFixed IT64)) <- op
   , (lhs:rhs:_)            <- vars =
@@ -1898,23 +1920,47 @@ translateExpression (SOp op vars)
 
   | (LTrunc (ITFixed IT16) (ITFixed IT8)) <- op
   , (arg:_)                               <- vars =
-      JSParens $ JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFF))
+      jsPackBits8 (
+        JSBinOp "&" (jsUnPackBits $ JSVar arg) (JSNum (JSInt 0xFF))
+      )
 
   | (LTrunc (ITFixed IT32) (ITFixed IT16)) <- op
   , (arg:_)                                <- vars =
-      JSParens $ JSBinOp "&" (JSVar arg) (JSNum (JSInt 0xFFFF))
+      jsPackBits16 (
+        JSBinOp "&" (jsUnPackBits $ JSVar arg) (JSNum (JSInt 0xFFFF))
+      )
 
   | (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op
   , (arg:_)                                <- vars =
-      jsMeth (jsMeth (JSVar arg) "and" [
-        jsBigInt (JSString $ show 0xFFFFFFFF)
-      ]) "intValue" []
+      jsPackBits32 (
+        jsMeth (jsMeth (JSVar arg) "and" [
+          jsBigInt (JSString $ show 0xFFFFFFFF)
+        ]) "intValue" []
+      )
 
   | (LTrunc ITBig (ITFixed IT64)) <- op
   , (arg:_)                       <- vars =
       jsMeth (JSVar arg) "and" [
-        jsBigInt (JSString $ show 0xFFFFFFFF)
+        jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
       ]
+
+  | (LAnd (ITFixed IT8))  <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackBits8 (
+        JSBinOp "&" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LAnd (ITFixed IT16))  <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackBits16 (
+        JSBinOp "&" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LAnd (ITFixed IT32))  <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackBits32 (
+        JSBinOp "&" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
 
   | (LAnd (ITFixed IT64)) <- op
   , (lhs:rhs:_)           <- vars =
