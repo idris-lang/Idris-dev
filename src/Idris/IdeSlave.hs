@@ -166,13 +166,14 @@ sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom n
 sexpToCommand (SexpList [SymbolAtom "add-proof-clause", IntegerAtom line, StringAtom name])   = Just (AddProofClause (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "add-missing", IntegerAtom line, StringAtom name])  = Just (AddMissing (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "make-with", IntegerAtom line, StringAtom name])    = Just (MakeWithBlock (fromInteger line) name)
--- XXX: The Boolean in ProofSearch means "search recursively"
+-- The Boolean in ProofSearch means "search recursively"
 -- If it's False, that means "refine", i.e. apply the name and fill in any
 -- arguments which can be done by unification.
 sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom name, SexpList hintexp]) | Just hints <- getHints hintexp = Just (ProofSearch True (fromInteger line) name hints)
   where getHints = mapM (\h -> case h of
                                  StringAtom s -> Just s
                                  _            -> Nothing)
+sexpToCommand (SexpList [SymbolAtom "refine", IntegerAtom line, StringAtom name, StringAtom hint]) = Just (ProofSearch False (fromInteger line) name [hint])
 sexpToCommand (SexpList [SymbolAtom "docs-for", StringAtom name])                       = Just (DocsFor name)
 sexpToCommand (SexpList [SymbolAtom "apropos", StringAtom search])                      = Just (Apropos search)
 sexpToCommand (SymbolAtom "get-options")                                                = Just GetOpts
