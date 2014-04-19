@@ -19,12 +19,12 @@ homosapiens = [('a',0.3029549426680),('c',0.1979883004921)
               ,('g',0.1975473066391),('t',0.3015094502008)]
 
 
-takeRepeat : Nat -> String -> String
+takeRepeat : Int -> String -> String
 takeRepeat n s = if n > m
                  then s ++ takeRepeat (n-m) s
-                 else pack $ take n $ unpack s
+                 else pack $ take (cast n) $ unpack s
   where
-    m = length s
+    m = cast $ length s
 
 splitAt' : Nat -> String -> (String, String)
 splitAt' n s = let s' = unpack s in (pack $ take n s', pack $ drop n s')
@@ -35,9 +35,9 @@ writeAlu name s0 = putStrLn name $> go s0
     go "" = return ()
     go s  = let (h,t) = splitAt' 60 s in putStrLn h $> go t
 
-replicate : Nat -> Char -> String
-replicate Z       c = ""
-replicate (S n) c = singleton c <+> replicate n c
+replicate : Int -> Char -> String
+replicate 0 c = ""
+replicate n c = singleton c <+> replicate (n-1) c
 
 inits : List a -> List a -> List (List a)
 inits xs []     = [xs]
@@ -49,22 +49,15 @@ scanl f acc l = map (foldl f acc) $ inits [] l
 accum : (Char,Float) -> (Char,Float) -> (Char,Float)
 accum (_,p) (c,q) = (c,p+q)
 
-instance Cast Nat Float where
-  cast = cast . cast . cast
-
-instance Cast Float Nat where
-  cast = fromInteger . cast . cast . floor
-
-
-make : String -> Nat -> List (Char, Float) -> Nat -> IO Nat
+make : String -> Int -> List (Char, Float) -> Int -> IO Int
 make name n0 tbl seed0 = do
     putStrLn name
-    make' n0 Z seed0 ""
+    make' n0 0 seed0 ""
   where
-    modulus : Nat
+    modulus : Int
     modulus = 139968
 
-    fill : List (Char,Float) -> Nat -> List String
+    fill : List (Char,Float) -> Int -> List String
     fill ((c,p) :: cps) j =
       let k = min modulus (cast (cast modulus * p + 1))
       in replicate (k - j) c :: fill cps k
@@ -73,17 +66,14 @@ make name n0 tbl seed0 = do
     lookupTable : String
     lookupTable = Foldable.concat (fill (drop 1 $ scanl accum ('a',0) tbl) 0)
 
-    make' : Nat -> Nat -> Nat -> String -> IO Nat
-    make' Z     col seed buf = when (col > 0) (putStrLn buf) $> return seed
-    make' (S n) col seed buf = do
-      print (S n)
-      let newseed  = modNat (seed * 3877 + 39573) modulus
-      print newseed
-      let nextchar = strIndex lookupTable (cast newseed)
-      print nextchar
+    make' : Int -> Int -> Int -> String -> IO Int
+    make' 0 col seed buf = when (col > 0) (putStrLn buf) $> return seed
+    make' n col seed buf = do
+      let newseed  = modInt (seed * 3877 + 39573) modulus
+      let nextchar = strIndex lookupTable newseed
       if col+1 >= 60
-        then putStrLn buf $> make' n Z newseed (singleton nextchar)
-        else make' n (S col) newseed (strCons nextchar buf)
+        then putStrLn buf $> make' (n-1) 0 newseed (singleton nextchar)
+        else make' (n-1) (col+1) newseed (strCons nextchar buf)
 
 
 main : IO ()
