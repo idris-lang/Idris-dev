@@ -39,12 +39,10 @@ replicate : Int -> Char -> String
 replicate 0 c = ""
 replicate n c = singleton c <+> replicate (n-1) c
 
-inits : List a -> List a -> List (List a)
-inits xs []     = [xs]
-inits xs (h::t) = let xs' = xs ++ [h] in xs :: inits xs' t
-
-scanl : (f : acc -> a -> acc) -> acc -> (l : List a) -> List acc
-scanl f acc l = map (foldl f acc) $ inits [] l
+scanl : (f : acc -> a -> acc) -> acc -> List a -> List acc
+scanl f q ls = q :: (case ls of
+                        []    => []
+                        x::xs => scanl f (f q x) xs)
 
 accum : (Char,Float) -> (Char,Float) -> (Char,Float)
 accum (_,p) (c,q) = (c,p+q)
