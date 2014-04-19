@@ -62,16 +62,17 @@ make name n0 tbl seed0 = do
     fill _ _ = []
 
     lookupTable : String
-    lookupTable = Foldable.concat (fill (drop 1 $ scanl accum ('a',0) tbl) 0)
+    lookupTable = Foldable.concat (fill (scanl accum ('a',0) tbl) 0)
 
     make' : Int -> Int -> Int -> String -> IO Int
     make' 0 col seed buf = when (col > 0) (putStrLn buf) $> return seed
     make' n col seed buf = do
-      let newseed  = modInt (seed * 3877 + 39573) modulus
+      let newseed  = modInt (seed * 3877 + 29573) modulus
       let nextchar = strIndex lookupTable newseed
+      let newbuf   = buf <+> singleton nextchar
       if col+1 >= 60
-        then putStrLn buf $> make' (n-1) 0 newseed (singleton nextchar)
-        else make' (n-1) (col+1) newseed (strCons nextchar buf)
+        then putStrLn newbuf $> make' (n-1) 0 newseed ""
+        else make' (n-1) (col+1) newseed newbuf
 
 
 main : IO ()
