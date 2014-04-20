@@ -203,6 +203,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 -- among Idris.Primitives.primitives
                 , mn "__MkPair"     [2,3]
                 , it "prim_fork"    [0]
+                , it "unsafePerformPrimIO"  [1]
 
                 -- believe_me is a primitive but it only uses its third argument
                 -- it is special-cased in usedNames above
