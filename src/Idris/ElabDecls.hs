@@ -1335,7 +1335,12 @@ checkPossible info fc tcgen fname lhs_in
 
           checkRec (App f a) p@(P _ _ _) = checkRec f p
           checkRec p@(P _ _ _) (App f a) = checkRec p f
-          checkRec (App f a) (App f' a') = checkRec f f' && checkRec a a'
+          checkRec fa@(App _ _) fa'@(App _ _) 
+              | (f, as) <- unApply fa,
+                (f', as') <- unApply fa'
+                   = if (length as /= length as') 
+                        then checkRec f f' 
+                        else checkRec f f' && and (zipWith checkRec as as')
           checkRec (P xt x _) (P yt y _) = x == y || ntRec xt yt
           checkRec _ _ = False
 
