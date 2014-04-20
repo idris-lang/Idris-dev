@@ -517,7 +517,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
       -- find which argument in pargs <a> is smaller than, if any
       checkSize a (p : ps) i
           | a == p = Just (i, Same)
-          | (P _ (UN as) _, [_,arg,_]) <- unApply a,
+          | (P _ (UN as) _, [_,_,arg,_]) <- unApply a,
             as == txt "assert_smaller" && arg == p
                   = Just (i, Smaller)
           | smaller Nothing a (p, Nothing) = Just (i, Smaller)

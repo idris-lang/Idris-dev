@@ -221,7 +221,7 @@ irTerm vs env tm@(App f a) = case unApply tm of
         | l == txt "Force"
         -> LForce <$> irTerm vs env arg
 
-    (P _ (UN a) _, [_, _, arg])
+    (P _ (UN a) _, [_, _, _, arg])
         | a == txt "assert_smaller"
         -> irTerm vs env arg
 
