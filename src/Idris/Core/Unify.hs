@@ -588,12 +588,8 @@ recoverable t@(App _ _) _
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
 recoverable _ t@(App _ _)
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
-recoverable (P (DCon _ _) x _) (P (DCon _ _) y _)
-    | x == y = True
-    | otherwise = False
-recoverable (P (TCon _ _) x _) (P (TCon _ _) y _)
-    | x == y = True
-    | otherwise = False
+recoverable (P (DCon _ _) x _) (P (DCon _ _) y _) = x == y
+recoverable (P (TCon _ _) x _) (P (TCon _ _) y _) = x == y
 recoverable (Constant _) (P (DCon _ _) y _) = False
 recoverable (P (DCon _ _) x _) (Constant _) = False
 recoverable (Constant _) (P (TCon _ _) y _) = False

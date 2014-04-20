@@ -1292,7 +1292,7 @@ checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris Bool
 checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
         i <- getIState
-        let lhs = addImpl i lhs_in
+        let lhs = addImplPat i lhs_in
         -- if the LHS type checks, it is possible
         case elaborate ctxt (sMN 0 "patLHS") infP []
                             (erun fc (buildTC i info True [] fname (infTerm lhs))) of
@@ -1301,20 +1301,47 @@ checkPossible info fc tcgen fname lhs_in
                   case recheck ctxt [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
                        err -> return False
-            Error err -> if tcgen then return False
-                                  else return (impossibleError err)
-    where impossibleError (CantUnify _ topx topy e _ _) 
-              = not (sameFam topx topy || not (impossibleError e))
-          impossibleError (CantConvert _ _ _) = False
-          impossibleError (At _ e) = impossibleError e
-          impossibleError (Elaborating _ _ e) = impossibleError e
-          impossibleError (ElaboratingArg _ _ _ e) = impossibleError e
-          impossibleError _ = True
+            -- if it's a recoverable error, the case may become possible
+            Error err -> if tcgen then return (recoverable ctxt err)
+                                  else return (validCase ctxt err ||
+                                                 recoverable ctxt err)
+    where validCase ctxt (CantUnify _ topx topy e _ _)
+              = let topx' = normalise ctxt [] topx
+                    topy' = normalise ctxt [] topy in
+                    not (sameFam topx' topy' || not (validCase ctxt e))
+          validCase ctxt (CantConvert _ _ _) = False
+          validCase ctxt (At _ e) = validCase ctxt e
+          validCase ctxt (Elaborating _ _ e) = validCase ctxt e
+          validCase ctxt (ElaboratingArg _ _ _ e) = validCase ctxt e
+          validCase ctxt _ = True
+           
+          recoverable ctxt (CantUnify r topx topy e _ _) 
+              = let topx' = normalise ctxt [] topx
+                    topy' = normalise ctxt [] topy in
+                    checkRec topx' topy'
+          recoverable ctxt (At _ e) = recoverable ctxt e
+          recoverable ctxt (Elaborating _ _ e) = recoverable ctxt e
+          recoverable ctxt (ElaboratingArg _ _ _ e) = recoverable ctxt e
+          recoverable _ _ = False
 
           sameFam topx topy 
               = case (unApply topx, unApply topy) of
                      ((P _ x _, _), (P _ y _, _)) -> x == y
                      _ -> False
+
+          -- different notion of recoverable than in unification, since we
+          -- have no metavars -- just looking to see if a constructor is failing
+          -- to unify with a function that may be reduced later
+
+          checkRec (App f a) p@(P _ _ _) = checkRec f p
+          checkRec p@(P _ _ _) (App f a) = checkRec p f
+          checkRec (App f a) (App f' a') = checkRec f f' && checkRec a a'
+          checkRec (P xt x _) (P yt y _) = x == y || ntRec xt yt
+          checkRec _ _ = False
+
+          ntRec x y | Ref <- x = True
+                    | Ref <- y = True
+                    | otherwise = False -- name is different, unrecoverable
 
 getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi t) sc)
     = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
