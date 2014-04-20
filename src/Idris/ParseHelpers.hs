@@ -156,9 +156,11 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
 docComment :: IdrisParser (Docstring, [(Name, Docstring)])
 docComment = do dc <- pushIndent *> docCommentLine
                 rest <- many (indented docCommentLine)
-                args <- many (indented argDocCommentLine)
+                args <- many $ do (name, first) <- indented argDocCommentLine
+                                  rest <- many (indented docCommentLine)
+                                  return (name, concat (intersperse "\n" (first:rest)))
                 popIndent
-                return (parseDocstring $ T.pack (concat . intersperse "\n" $ dc:rest),
+                return (parseDocstring $ T.pack (concat (intersperse "\n" (dc:rest))),
                         map (\(n, d) -> (n, parseDocstring (T.pack d))) args)
 
   where docCommentLine :: MonadicParsing m => m String
@@ -170,6 +172,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                                  eol ; someSpace
                                  return contents)-- ++ concat rest))
                         <?> ""
+
         argDocCommentLine = do string "|||"
                                many (satisfy isSpace)
                                char '@'
