@@ -10,6 +10,7 @@ import Idris.Core.TT
 import Control.Monad.State
 import Data.Maybe
 import Data.List hiding (partition)
+import qualified Data.List(partition)
 import Debug.Trace
 
 data CaseDef = CaseDef [Name] !SC [Term]
@@ -417,14 +418,31 @@ order :: [(Name, Bool)] -> [Clause] -> ([Name], [Clause])
 order []  cs = ([], cs)
 order ns' [] = (map fst ns', [])
 order ns' cs = let patnames = transpose (map (zip ns') (map fst cs))
+                   -- only sort the arguments where there is no clash in
+                   -- constructor tags between families, and no constructor/constant
+                   -- clash, because otherwise we can't reliable make the
+                   -- case distinction on evaluation
+                   (patnames_ord, patnames_rest) 
+                        = Data.List.partition (noClash . map snd) patnames
                    -- note: sortBy . reverse is not nonsense because sortBy is stable
-                   pats' = transpose (sortBy moreDistinct (reverse patnames)) in
+                   pats' = transpose (sortBy moreDistinct (reverse patnames_ord) 
+                                         ++ patnames_rest) in
                    (getNOrder pats', zipWith rebuild pats' cs)
   where
     getNOrder [] = error $ "Failed order on " ++ show (map fst ns', cs)
     getNOrder (c : _) = map (fst . fst) c
 
     rebuild patnames clause = (map snd patnames, snd clause)
+
+    noClash [] = True
+    noClash (p : ps) = not (any (clashPat p) ps) && noClash ps
+
+    clashPat (PCon _ _ _) (PConst _) = True
+    clashPat (PConst _) (PCon _ _ _) = True
+    clashPat (PCon _ _ _) (PSuc _) = True
+    clashPat (PSuc _) (PCon _ _ _) = True
+    clashPat (PCon n i _) (PCon n' i' _) | i == i' = n /= n'
+    clashPat _ _ = False
 
     -- this compares (+isInaccessible, -numberOfCases)
     moreDistinct xs ys = compare (snd . fst . head $ xs, numNames [] (map snd ys))
