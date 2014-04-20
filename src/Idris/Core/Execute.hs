@@ -11,6 +11,8 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.CaseTree
 
+import Idris.Error
+
 import Debug.Trace
 
 import Util.DynamicLinker
@@ -113,9 +115,9 @@ initState :: Idris ExecState
 initState = do ist <- getIState
                return $ ExecState (idris_dynamic_libs ist)
 
-type Exec = ErrorT String (StateT ExecState IO)
+type Exec = ErrorT Err (StateT ExecState IO)
 
-runExec :: Exec a -> ExecState -> IO (Either String a)
+runExec :: Exec a -> ExecState -> IO (Either Err a)
 runExec ex st = fst <$> runStateT (runErrorT ex) st
 
 getExecState :: Exec ExecState
@@ -124,7 +126,7 @@ getExecState = lift get
 putExecState :: ExecState -> Exec ()
 putExecState = lift . put
 
-execFail :: String -> Exec a
+execFail :: Err -> Exec a
 execFail = throwError
 
 execIO :: IO a -> Exec a
@@ -138,7 +140,7 @@ execute tm = do est <- initState
                          do res <- doExec [] ctxt tm
                             toTT res
                 case res of
-                  Left err -> fail err
+                  Left err -> ierror err
                   Right tm' -> return tm'
 
 ioWrap :: ExecVal -> ExecVal
@@ -160,16 +162,16 @@ doExec env ctxt p@(P Ref n ty) =
          [CaseOp _ _ _ _ _ (CaseDefs _ ([], STerm tm) _ _)] -> -- nullary fun
              doExec env ctxt tm
          [CaseOp _ _ _ _ _ (CaseDefs _ (ns, sc) _ _)] -> return (EP Ref n EErased)
-         [] -> execFail $ "Could not find " ++ show n ++ " in definitions."
+         [] -> execFail . Msg $ "Could not find " ++ show n ++ " in definitions."
          thing -> trace (take 200 $ "got to " ++ show thing ++ " lookup up " ++ show n) $ undefined
 doExec env ctxt p@(P Bound n ty) =
   case lookup n env of
-    Nothing -> execFail "not found"
+    Nothing -> execFail . Msg $ "not found"
     Just tm -> return tm
 doExec env ctxt (P (DCon a b) n _) = return (EP (DCon a b) n EErased)
 doExec env ctxt (P (TCon a b) n _) = return (EP (TCon a b) n EErased)
 doExec env ctxt v@(V i) | i < length env = return (snd (env !! i))
-                        | otherwise      = execFail "env too small"
+                        | otherwise      = execFail . Msg $ "env too small"
 doExec env ctxt (Bind n (Let t v) body) = do v' <- doExec env ctxt v
                                              doExec ((n, v'):env) ctxt body
 doExec env ctxt (Bind n (NLet t v) body) = trace "NLet" $ undefined
@@ -216,71 +218,95 @@ execApp env ctxt con@(EP _ fp _) args@(tp:v:rest)
   | fp == pioret = execApp env ctxt (mkEApp con [tp, v]) rest
 
 -- Special cases arising from not having access to the C RTS in the interpreter
-execApp env ctxt (EP _ fp _) (_:fn:EConstant (Str arg):_:rest)
+execApp env ctxt (EP _ fp _) (_:fn:str:_:rest)
     | fp == mkfprim,
       Just (FFun "putStr" _ _) <- foreignFromTT fn 
-           = do execIO (putStr arg)
-                execApp env ctxt ioUnit rest
-execApp env ctxt (EP _ fp _) (_:fn:_:EHandle h:_:rest)
+           = case str of
+               EConstant (Str arg) -> do execIO (putStr arg)
+                                         execApp env ctxt ioUnit rest
+               _ -> execFail . Msg $
+                      "The argument to putStr should be a constant string, but it was " ++
+                      show str ++
+                      ". Are all cases covered?"
+execApp env ctxt (EP _ fp _) (_:fn:_:handle:_:rest)
     | fp == mkfprim,
       Just (FFun "idris_readStr" _ _) <- foreignFromTT fn
-           = do contents <- execIO $ hGetLine h
-                execApp env ctxt (EConstant (Str (contents ++ "\n"))) rest
-execApp env ctxt (EP _ fp _) (_:fn:EConstant (Str f):EConstant (Str mode):rest)
+           = case handle of
+               EHandle h -> do contents <- execIO $ hGetLine h
+                               execApp env ctxt (EConstant (Str (contents ++ "\n"))) rest
+               _ -> execFail . Msg $
+                      "The argument to idris_readStr should be a handle, but it was " ++
+                      show handle ++
+                      ". Are all cases covered?"
+execApp env ctxt (EP _ fp _) (_:fn:fileStr:modeStr:rest)
     | fp == mkfprim,
       Just (FFun "fileOpen" _ _) <- foreignFromTT fn
-           = do f <- execIO $
-                     catch (do let m = case mode of
-                                         "r"  -> Right ReadMode
-                                         "w"  -> Right WriteMode
-                                         "a"  -> Right AppendMode
-                                         "rw" -> Right ReadWriteMode
-                                         "wr" -> Right ReadWriteMode
-                                         "r+" -> Right ReadWriteMode
-                                         _    -> Left ("Invalid mode for " ++ f ++ ": " ++ mode)
-                               case fmap (openFile f) m of
-                                 Right h -> do h' <- h; return $ Right (ioWrap (EHandle h'), tail rest)
-                                 Left err -> return $ Left err)
-                           (\e -> let _ = ( e::SomeException)
-                                  in return $ Right (ioWrap (EPtr nullPtr), tail rest))
-                case f of
-                  Left err -> execFail err
-                  Right (res, rest) -> execApp env ctxt res rest
+           = case (fileStr, modeStr) of
+               (EConstant (Str f), EConstant (Str mode)) ->
+                 do f <- execIO $
+                         catch (do let m = case mode of
+                                             "r"  -> Right ReadMode
+                                             "w"  -> Right WriteMode
+                                             "a"  -> Right AppendMode
+                                             "rw" -> Right ReadWriteMode
+                                             "wr" -> Right ReadWriteMode
+                                             "r+" -> Right ReadWriteMode
+                                             _    -> Left ("Invalid mode for " ++ f ++ ": " ++ mode)
+                                   case fmap (openFile f) m of
+                                     Right h -> do h' <- h; return $ Right (ioWrap (EHandle h'), tail rest)
+                                     Left err -> return $ Left err)
+                               (\e -> let _ = ( e::SomeException)
+                                      in return $ Right (ioWrap (EPtr nullPtr), tail rest))
+                    case f of
+                      Left err -> execFail . Msg $ err
+                      Right (res, rest) -> execApp env ctxt res rest
+               _ -> execFail . Msg $
+                      "The arguments to fileOpen should be constant strings, but they were " ++
+                      show fileStr ++ " and " ++ show modeStr ++
+                      ". Are all cases covered?"
 
-execApp env ctxt (EP _ fp _) (_:fn:(EHandle h):rest)
+execApp env ctxt (EP _ fp _) (_:fn:handle:rest)
     | fp == mkfprim,
       Just (FFun "fileEOF" _ _) <- foreignFromTT fn
-           = do eofp <- execIO $ hIsEOF h
-                let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
-                execApp env ctxt res (tail rest)
+           = case handle of
+               EHandle h -> do eofp <- execIO $ hIsEOF h
+                               let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
+                               execApp env ctxt res (tail rest)
+               _ -> execFail . Msg $
+                      "The argument to fileEOF should be a file handle, but it was " ++
+                      show handle ++
+                      ". Are all cases covered?"
 
-execApp env ctxt (EP _ fp _) (_:fn:(EHandle h):rest)
+execApp env ctxt (EP _ fp _) (_:fn:handle:rest)
     | fp == mkfprim,
       Just (FFun "fileClose" _ _) <- foreignFromTT fn
-           = do execIO $ hClose h
-                execApp env ctxt ioUnit (tail rest)
+           = case handle of
+               EHandle h -> do execIO $ hClose h
+                               execApp env ctxt ioUnit (tail rest)
+               _ -> execFail . Msg $
+                      "The argument to fileClose should be a file handle, but it was " ++
+                      show handle ++
+                      ". Are all cases covered?"
 
-execApp env ctxt (EP _ fp _) (_:fn:(EPtr p):rest)
+execApp env ctxt (EP _ fp _) (_:fn:ptr:rest)
     | fp == mkfprim,
       Just (FFun "isNull" _ _) <- foreignFromTT fn
-           = let res = ioWrap . EConstant . I $
-                       if p == nullPtr then 1 else 0
-             in execApp env ctxt res (tail rest)
+           = case ptr of
+               EPtr p -> let res = ioWrap . EConstant . I $
+                                   if p == nullPtr then 1 else 0
+                         in execApp env ctxt res (tail rest)
+               -- Handles will be checked as null pointers sometimes - but if we got a
+               -- real Handle, then it's valid, so just return 1.
+               EHandle h -> let res = ioWrap . EConstant . I $ 0
+                            in execApp env ctxt res (tail rest)
+               -- A foreign-returned char* has to be tested for NULL sometimes
+               EConstant (Str s) -> let res = ioWrap . EConstant . I $ 0
+                                    in execApp env ctxt res (tail rest)
+               _ -> execFail . Msg $
+                      "The argument to isNull should be a pointer or file handle or string, but it was " ++
+                      show ptr ++
+                      ". Are all cases covered?"
 
--- Handles will be checked as null pointers sometimes - but if we got a
--- real Handle, then it's valid, so just return 1.
-execApp env ctxt (EP _ fp _) (_:fn:(EHandle h):rest)
-    | fp == mkfprim,
-      Just (FFun "isNull" _ _) <- foreignFromTT fn
-           = let res = ioWrap . EConstant . I $ 0
-             in execApp env ctxt res (tail rest)
-
--- A foreign-returned char* has to be tested for NULL sometimes
-execApp env ctxt (EP _ fp _) (_:fn:EConstant (Str s):rest)
-    | fp == mkfprim,
-      Just (FFun "isNull" _ _) <- foreignFromTT fn
-           = let res = ioWrap . EConstant . I $ 0
-                 in execApp env ctxt res (tail rest)
 
 -- Right now, there's no way to send command-line arguments to the executor,
 -- so just return 0.
@@ -289,7 +315,6 @@ execApp env ctxt (EP _ fp _) (_:fn:rest)
       Just (FFun "idris_numArgs" _ _) <- foreignFromTT fn
            = let res = ioWrap . EConstant . I $ 0
              in execApp env ctxt res (tail rest)
--- Throw away the 'World' argument to the foreign function
 
 execApp env ctxt f@(EP _ fp _) args@(ty:fn:xs) | fp == mkfprim
    = case foreignFromTT fn of
