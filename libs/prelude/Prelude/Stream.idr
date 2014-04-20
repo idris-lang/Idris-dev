@@ -67,4 +67,31 @@ unzip xs = (map fst xs, map snd xs)
 diag : Stream (Stream a) -> Stream a
 diag ((x::xs)::xss) = x :: diag (map tail xss)
 
+||| Fold a Stream corecursively. Since there is no Nil, no initial value is used.
+||| @ f the combining function
+||| @ xs the Stream to fold up
+foldr : (f : a -> Inf b -> b) -> (xs : Stream a) -> b
+foldr f (x :: xs) = f x (foldr f xs)
+
+||| Produce a Stream of left folds of prefixes of the given Stream
+||| @ f the combining function
+||| @ acc the initial value
+||| @ xs the Stream to process
+scanl : (f : a -> b -> a) -> (acc : a) -> (xs : Stream b) -> Stream a
+scanl f acc (x :: xs) = acc :: scanl f (f acc x) xs
+
+||| Produce a Stream of (corecursive) right folds of tails of the given Stream
+||| @ f the combining function
+||| @ xs the Stream to fold up
+-- Reusing the head of the corecursion in the obvious way doesn’t productivity check
+scanr : (f : a -> Inf b -> b) -> (xs : Stream a) -> Stream b
+scanr f (x :: Delay xs) = f x (foldr f xs) :: scanr f xs
+
+||| Produce a Stream repeating a sequence
+||| @ xs the sequence to repeat
+cycle : (xs : Vect (S n) a) -> Stream a
+cycle xs = cycle_ xs xs
+  where cycle_ : Vect (S n) a -> Vect m a -> Stream a
+        cycle_ (x :: xs) [] = x :: cycle_ (x :: xs) xs
+        cycle_ xs (x :: ys) = x :: cycle_ xs ys
 
