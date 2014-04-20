@@ -106,6 +106,7 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["apropos"]; str <- many anyChar ; return (Apropos str))
               <|> try (do cmd ["wc", "whocalls"]; P.whiteSpace; n <- P.fnName ; return (WhoCalls n))
               <|> try (do cmd ["cw", "callswho"]; P.whiteSpace; n <- P.fnName ; return (CallsWho n))
+              <|> try (do cmd ["mkdoc"]; str <- many anyChar; return (MakeDoc str))
               <|> do P.whiteSpace; do eof; return NOP
                              <|> do t <- P.fullExpr defaultSyntax; return (Eval t)
 
