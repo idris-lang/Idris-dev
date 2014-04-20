@@ -1,6 +1,7 @@
 New in 0.9.13:
 --------------
 * IDE support for retrieving structured information about metavariables
+* Experimental Bits support for JavaScript
 
 New in 0.9.12:
 --------------
