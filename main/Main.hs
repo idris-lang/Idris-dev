@@ -61,6 +61,10 @@ runIdris opts = do
            [] -> return ()
            fs -> do runIO $ mapM_ cleanPkg fs
                     runIO $ exitWith ExitSuccess
+       case opt getPkgMkDoc opts of                -- IdrisDoc
+           [] -> return ()
+           fs -> do runIO $ mapM_ documentPkg fs
+                    runIO $ exitWith ExitSuccess
        case opt getPkg opts of
            [] -> case opt getPkgREPL opts of
                       [] -> idrisMain opts
@@ -95,6 +99,7 @@ usagemsg = usagemsghdr ++ "\n" ++
            "\t    --install IPKG          Install package\n" ++
            "\t    --clean IPKG            Clean package\n" ++
            "\t    --build IPKG            Build package\n" ++
+           "\t    --mkdoc IPKG            Generate IdrisDoc for package\n" ++
            "\t    --exec EXPR             Execute as idris\n" ++
            "\t    --libdir                Display library directory\n" ++
            "\t    --link                  Display link directory\n" ++
