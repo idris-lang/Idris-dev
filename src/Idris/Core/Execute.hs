@@ -11,6 +11,8 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.CaseTree
 
+import Idris.Error
+
 import Debug.Trace
 
 import Util.DynamicLinker
@@ -113,9 +115,9 @@ initState :: Idris ExecState
 initState = do ist <- getIState
                return $ ExecState (idris_dynamic_libs ist)
 
-type Exec = ErrorT String (StateT ExecState IO)
+type Exec = ErrorT Err (StateT ExecState IO)
 
-runExec :: Exec a -> ExecState -> IO (Either String a)
+runExec :: Exec a -> ExecState -> IO (Either Err a)
 runExec ex st = fst <$> runStateT (runErrorT ex) st
 
 getExecState :: Exec ExecState
@@ -124,7 +126,7 @@ getExecState = lift get
 putExecState :: ExecState -> Exec ()
 putExecState = lift . put
 
-execFail :: String -> Exec a
+execFail :: Err -> Exec a
 execFail = throwError
 
 execIO :: IO a -> Exec a
@@ -138,7 +140,7 @@ execute tm = do est <- initState
                          do res <- doExec [] ctxt tm
                             toTT res
                 case res of
-                  Left err -> fail err
+                  Left err -> ierror err
                   Right tm' -> return tm'
 
 ioWrap :: ExecVal -> ExecVal
@@ -160,16 +162,16 @@ doExec env ctxt p@(P Ref n ty) =
          [CaseOp _ _ _ _ _ (CaseDefs _ ([], STerm tm) _ _)] -> -- nullary fun
              doExec env ctxt tm
          [CaseOp _ _ _ _ _ (CaseDefs _ (ns, sc) _ _)] -> return (EP Ref n EErased)
-         [] -> execFail $ "Could not find " ++ show n ++ " in definitions."
+         [] -> execFail . Msg $ "Could not find " ++ show n ++ " in definitions."
          thing -> trace (take 200 $ "got to " ++ show thing ++ " lookup up " ++ show n) $ undefined
 doExec env ctxt p@(P Bound n ty) =
   case lookup n env of
-    Nothing -> execFail "not found"
+    Nothing -> execFail . Msg $ "not found"
     Just tm -> return tm
 doExec env ctxt (P (DCon a b) n _) = return (EP (DCon a b) n EErased)
 doExec env ctxt (P (TCon a b) n _) = return (EP (TCon a b) n EErased)
 doExec env ctxt v@(V i) | i < length env = return (snd (env !! i))
-                        | otherwise      = execFail "env too small"
+                        | otherwise      = execFail . Msg $ "env too small"
 doExec env ctxt (Bind n (Let t v) body) = do v' <- doExec env ctxt v
                                              doExec ((n, v'):env) ctxt body
 doExec env ctxt (Bind n (NLet t v) body) = trace "NLet" $ undefined
@@ -244,7 +246,7 @@ execApp env ctxt (EP _ fp _) (_:fn:EConstant (Str f):EConstant (Str mode):rest)
                            (\e -> let _ = ( e::SomeException)
                                   in return $ Right (ioWrap (EPtr nullPtr), tail rest))
                 case f of
-                  Left err -> execFail err
+                  Left err -> execFail . Msg $ err
                   Right (res, rest) -> execApp env ctxt res rest
 
 execApp env ctxt (EP _ fp _) (_:fn:(EHandle h):rest)
