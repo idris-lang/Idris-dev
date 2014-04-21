@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-echo "example" | idris $@ --quiet ott.idr 
+idris $@ --quiet ott.idr -e example
 idris $@ showu.idr -o reg040
 ./reg040
 rm -f reg040 *.ibc

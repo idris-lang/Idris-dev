@@ -357,6 +357,7 @@ data Opt = Filename String
          | OutputTy OutputType
          | Extension LanguageExt
          | InterpretScript String
+         | EvalExpr String
          | TargetTriple String
          | TargetCPU String
          | OptLevel Word
@@ -986,40 +987,80 @@ primNames = [unitTy, unitCon,
              falseTy, pairTy, pairCon,
              eqTy, eqCon, inferTy, inferCon]
 
+unitDoc = parseDocstring . T.pack $ "The canonical single-element type, also known as the trivially true proposition."
 unitTy   = sMN 0 "__Unit"
 unitCon  = sMN 0 "__II"
 unitDecl = PDatadecl unitTy PType
-                     [(emptyDocstring, [], unitCon, PRef bi unitTy, bi, [])]
+                     [(parseDocstring . T.pack $ "The trivial constructor for `()`. ", [], unitCon, PRef bi unitTy, bi, [])]
 unitOpts = [DefaultEliminator]
 
+falseDoc = parseDocstring . T.pack $
+             "The empty type, also known as the trivially false proposition." ++
+             "\n\n" ++
+             "Use `FalseElim` or `absurd` to prove anything if you have a variable " ++
+             "of type `_|_` in scope."
 falseTy   = sMN 0 "__False"
 falseDecl = PDatadecl falseTy PType []
 falseOpts = []
 
+pairDoc   = parseDocstring . T.pack $ "The non-dependent pair type, also known as conjunction."
 pairTy    = sMN 0 "__Pair"
 pairCon   = sMN 0 "__MkPair"
 pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
-            [(emptyDocstring, [], pairCon, PPi impl (n "A") PType (
-                                       PPi impl (n "B") PType (
-                                       PPi expl (n "a") (PRef bi (n "A")) (
-                                       PPi expl (n "b") (PRef bi (n "B"))
-                                           (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
-                                                                pexp (PRef bi (n "B"))])))), bi, [])]
+            [(pairConDoc, pairConParamDoc,
+             pairCon, PPi impl (n "A") PType (
+                               PPi impl (n "B") PType (
+                               PPi expl (n "a") (PRef bi (n "A")) (
+                               PPi expl (n "b") (PRef bi (n "B"))
+                                (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
+                                                           pexp (PRef bi (n "B"))])))), bi, [])]
     where n a = sMN 0 a
+          pairConDoc      = parseDocstring . T.pack $ "A pair of elements"
+          pairConParamDoc = [(n "a", parseDocstring . T.pack $ "the left element of the pair"),
+                             (n "b", parseDocstring . T.pack $ "the right element of the pair")]
 pairOpts = []
+pairParamDoc = [(n "A", parseDocstring . T.pack $ "the type of the left elements in the pair"),
+                (n "B", parseDocstring . T.pack $ "the type of the left elements in the pair")]
+    where n a = sMN 0 a
 
 eqTy = sUN "="
 eqCon = sUN "refl"
+eqDoc = parseDocstring . T.pack $
+          "The propositional equality type. A proof that `x` = `y`." ++
+          "\n\n" ++
+          "To use such a proof, pattern-match on it, and the two equal things will " ++
+          "then need to be the _same_ pattern." ++
+          "\n\n" ++
+          "**Note**: Idris's equality type is _heterogeneous_, which means that it " ++
+          "is possible to state equalities between values of potentially different " ++
+          "types. This is sometimes referred to in the literature as \"John Major\" " ++
+          "equality." ++
+          "\n\n" ++
+          "Thus, if Idris can't infer the type of one side of the equality, then " ++
+          "you may need to annotate it. See the function `the`."
+
 eqDecl = PDatadecl eqTy (piBind [(n "A", PType), (n "B", PType),
                                  (n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
                                  PType)
-                [(emptyDocstring, [], eqCon, PPi impl (n "A") PType (
-                                         PPi impl (n "x") (PRef bi (n "A"))
-                                           (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
-                                                                    pimp (n "B") Placeholder False,
-                                                                    pexp (PRef bi (n "x")),
-                                                                    pexp (PRef bi (n "x"))])), bi, [])]
+                [(reflDoc, reflParamDoc,
+                  eqCon, PPi impl (n "A") PType (
+                                  PPi impl (n "x") (PRef bi (n "A"))
+                                      (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
+                                                               pimp (n "B") Placeholder False,
+                                                               pexp (PRef bi (n "x")),
+                                                               pexp (PRef bi (n "x"))])), bi, [])]
     where n a = sMN 0 a
+          reflDoc = parseDocstring . T.pack $
+                      "A proof that `x` in fact equals `x`. To construct this, you must have already " ++
+                      "shown that both sides are in fact equal."
+          reflParamDoc = [(n "A", parseDocstring . T.pack $ "the type at which the equality is proven"),
+                          (n "x", parseDocstring . T.pack $ "the element shown to be equal to itself.")]
+
+eqParamDoc = [(n "A", parseDocstring . T.pack $ "the type of the left side of the equality"),
+              (n "B", parseDocstring . T.pack $ "the type of the right side of the equality")
+              ]
+    where n a = sMN 0 a
+
 eqOpts = []
 
 elimName       = sUN "__Elim"

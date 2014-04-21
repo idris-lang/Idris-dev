@@ -605,10 +605,12 @@ elabEliminator paramPos n ty cons info = do
 
 elabPrims :: Idris ()
 elabPrims = do mapM_ (elabDecl EAll toplevel)
-                     (map (\(opt, decl) -> PData emptyDocstring [] defaultSyntax (fileFC "builtin") opt decl)
-                        (zip
+                     (map (\(opt, decl, docs, argdocs) -> PData docs argdocs defaultSyntax (fileFC "builtin") opt decl)
+                        (zip4
                          [inferOpts, unitOpts, falseOpts, pairOpts, eqOpts]
-                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl]))
+                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl]
+                         [emptyDocstring, unitDoc, falseDoc, pairDoc, eqDoc]
+                         [[], [], [], pairParamDoc, eqParamDoc]))
                addNameHint eqTy (sUN "prf")
                elabDecl EAll toplevel elimDecl
                mapM_ elabPrim primitives
