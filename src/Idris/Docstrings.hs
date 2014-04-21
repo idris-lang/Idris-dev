@@ -68,7 +68,7 @@ renderInlines = F.foldr (<>) empty . fmap renderInline
 
 renderInline :: CT.Inline -> Doc OutputAnnotation
 renderInline (CT.Str s) = text $ T.unpack s
-renderInline CT.Space = space
+renderInline CT.Space = softline
 renderInline CT.SoftBreak = softline
 renderInline CT.LineBreak = line
 renderInline (CT.Emph txt) = annotate (AnnTextFmt ItalicText) $ renderInlines txt -- TODO

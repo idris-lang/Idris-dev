@@ -160,6 +160,7 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
           completeArg NameArg = completeExpr [] (prev, next) -- FIXME only complete one name
           completeArg OptionArg = completeOption (prev, next)
           completeArg ModuleArg = noCompletion (prev, next) -- FIXME do later
+          completeArg NamespaceArg = noCompletion (prev, next) -- FIXME do later
           completeArg ExprArg = completeExpr [] (prev, next)
           completeArg MetaVarArg = completeMetaVar (prev, next) -- FIXME only complete one name
           completeArg ColourArg = completeColour (prev, next)
