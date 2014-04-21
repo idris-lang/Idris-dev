@@ -1273,7 +1273,6 @@ loadInputs h inputs
                       ninputs
            inew <- getIState
            let tidata = idris_tyinfodata inew
-           let lineapps = idris_lineapps inew
            let patdefs = idris_patdefs inew
            -- If it worked, load the whole thing from all the ibcs together
            case errSpan inew of
@@ -1284,7 +1283,6 @@ loadInputs h inputs
               _ -> return ()
            ist <- getIState
            putIState (ist { idris_tyinfodata = tidata,
-                            idris_lineapps = lineapps,
                             idris_patdefs = patdefs }))
         (\e -> do i <- getIState
                   case e of
@@ -1303,13 +1301,11 @@ loadInputs h inputs
                       -- FIXME: Save these in IBC to avoid this hack! Need to
                       -- preserve it all from source inputs
                       let tidata = idris_tyinfodata inew
-                      let lineapps = idris_lineapps inew
                       let patdefs = idris_patdefs inew
                       ok <- noErrors
                       when ok $ do when (not keepstate) $ putIState ist
                                    ist <- getIState
                                    putIState (ist { idris_tyinfodata = tidata,
-                                                    idris_lineapps = lineapps,
                                                     idris_patdefs = patdefs })
                                    tryLoad keepstate fs
 
