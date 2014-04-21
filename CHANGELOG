@@ -5,6 +5,7 @@ New in 0.9.13:
 * IdrisDoc: a Haddock- and JavaDoc-like HTML documentation generator
 * Command line option -e (or --eval) to evaluate expressions without loading the
   REPL. This is useful for writing more portable tests.
+* Many more of the basic functions and datatypes are documented.
 
 Internal changes
 
