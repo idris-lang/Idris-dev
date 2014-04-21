@@ -357,6 +357,7 @@ data Opt = Filename String
          | OutputTy OutputType
          | Extension LanguageExt
          | InterpretScript String
+         | EvalExpr String
          | TargetTriple String
          | TargetCPU String
          | OptLevel Word

@@ -1200,6 +1200,8 @@ parseArgs ("--mvn":ns)           = OutputTy MavenProject : (parseArgs ns)
 parseArgs ("--dumpdefuns":n:ns)  = DumpDefun n : (parseArgs ns)
 parseArgs ("--dumpcases":n:ns)   = DumpCases n : (parseArgs ns)
 parseArgs ("--codegen":n:ns)     = UseCodegen (parseCodegen n) : (parseArgs ns)
+parseArgs ("--eval":expr:ns)     = EvalExpr expr : parseArgs ns
+parseArgs ("-e":expr:ns)         = EvalExpr expr : parseArgs ns
 parseArgs ["--exec"]             = InterpretScript "Main.main" : []
 parseArgs ("--exec":expr:ns)     = InterpretScript expr : parseArgs ns
 parseArgs (('-':'X':extName):ns) = case maybeRead extName of
@@ -1372,13 +1374,15 @@ idrisMain opts =
                    x:y:xs -> do iputStrLn "More than one interpreter expression found."
                                 runIO $ exitWith (ExitFailure 1)
                    [expr] -> return (Just expr)
+       let immediate = opt getEvalExpr opts
+
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
        setColourise $ not quiet && last (True : opt getColour opts)
        when (not runrepl) $ setWidth InfinitelyWide
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
-       setQuiet (quiet || isJust script)
+       setQuiet (quiet || isJust script || not (null immediate))
        setIdeSlave idesl
        setVerbose verbose
        setCmdLine opts
@@ -1406,7 +1410,13 @@ idrisMain opts =
                                                 return ()
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule stdout "Prelude"
                                                return ()
-       when (runrepl && not quiet && not idesl && not (isJust script) && not nobanner) $ iputStrLn banner
+       when (runrepl &&
+             not quiet &&
+             not idesl &&
+             not (isJust script) &&
+             not nobanner &&
+             null immediate) $
+         iputStrLn banner
 
        orig <- getIState
        loadInputs stdout inputs
@@ -1421,6 +1431,19 @@ idrisMain opts =
                     -- the compiler will run usage analysis itself
                     (o:_) -> idrisCatch (process stdout "" (Compile cgn o))
                                (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
+
+       case immediate of
+         [] -> return ()
+         exprs -> do setWidth InfinitelyWide
+                     mapM_ (\str -> do ist <- getIState
+                                       c <- colourise
+                                       case parseExpr ist str of
+                                         Failure err -> do iputStrLn $ show (fixColour c err)
+                                                           runIO $ exitWith (ExitFailure 1)
+                                         Success e -> process stdout "" (Eval e))
+                           exprs
+                     runIO $ exitWith ExitSuccess
+
 
        case script of
          Nothing -> return ()
@@ -1557,6 +1580,10 @@ getCodegen _ = Nothing
 getExecScript :: Opt -> Maybe String
 getExecScript (InterpretScript expr) = Just expr
 getExecScript _ = Nothing
+
+getEvalExpr :: Opt -> Maybe String
+getEvalExpr (EvalExpr expr) = Just expr
+getEvalExpr _ = Nothing
 
 getOutputTy :: Opt -> Maybe OutputType
 getOutputTy (OutputTy t) = Just t
