@@ -54,7 +54,10 @@ split n t'
    = do ist <- getIState
         -- Make sure all the names in the term are accessible
         mapM_ (\n -> setAccessibility n Public) (allNamesIn t')
-        (tm, ty, pats) <- elabValBind toplevel True (addImplPat ist t')
+        (tm, ty, pats) <- elabValBind toplevel True True (addImplPat ist t')
+        -- ASSUMPTION: tm is in normal form after elabValBind, so we don't
+        -- need to do anything special to find out what family each argument
+        -- is in
         logLvl 4 ("Elaborated:\n" ++ show tm ++ " : " ++ show ty ++ "\n" ++ show pats)
 --         iputStrLn (show (delab ist tm) ++ " : " ++ show (delab ist ty))
 --         iputStrLn (show pats)

@@ -1249,8 +1249,8 @@ elabPE info fc caller r =
 
 -- Elaborate a value, returning any new bindings created (this will only
 -- happen if elaborating as a pattern clause)
-elabValBind :: ElabInfo -> Bool -> PTerm -> Idris (Term, Type, [(Name, Type)])
-elabValBind info aspat tm_in
+elabValBind :: ElabInfo -> Bool -> Bool -> PTerm -> Idris (Term, Type, [(Name, Type)])
+elabValBind info aspat norm tm_in
    = do ctxt <- getContext
         i <- getIState
         let tm = addImpl i tm_in
@@ -1275,14 +1275,17 @@ elabValBind info aspat tm_in
         logLvl 3 ("Value: " ++ show vtm)
 --         recheckC (fileFC "(input)") [] tm'
 --         logLvl 2 (show vtm)
-        (vtm, vty) <- recheckC (fileFC "(input)") [] vtm
+        (vtm_in, vty) <- recheckC (fileFC "(input)") [] vtm
+
+        let vtm = if norm then normalise (tt_ctxt i) [] vtm_in
+                          else vtm_in
         let bargs = getPBtys vtm
 
         return (vtm, vty, bargs)
 
 elabVal :: ElabInfo -> Bool -> PTerm -> Idris (Term, Type)
 elabVal info aspat tm_in
-   = do (tm, ty, _) <- elabValBind info aspat tm_in
+   = do (tm, ty, _) <- elabValBind info aspat False tm_in
         return (tm, ty)
 
 -- checks if the clause is a possible left hand side. Returns the term if
