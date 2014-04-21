@@ -1028,6 +1028,9 @@ eqCon = sUN "refl"
 eqDoc = parseDocstring . T.pack $
           "The propositional equality type. A proof that `x` = `y`." ++
           "\n\n" ++
+          "To use such a proof, pattern-match on it, and the two equal things will " ++
+          "then need to be the _same_ pattern." ++
+          "\n\n" ++
           "**Note**: Idris's equality type is _heterogeneous_, which means that it " ++
           "is possible to state equalities between values of potentially different " ++
           "types. This is sometimes referred to in the literature as \"John Major\" " ++
