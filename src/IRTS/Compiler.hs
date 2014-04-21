@@ -262,20 +262,67 @@ irTerm vs env tm@(App f a) = case unApply tm of
                              ,LConCase 1 (sNS (sUN "True" ) ["Bool","Prelude"]) [] t'
                              ])
 
+    -- data constructor
     (P (DCon t arity) n _, args) -> do
         detag <- fgetState (opt_detaggable . ist_optimisation n)
         used  <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
 
-        when (length args > arity) $
-            ifail ("oversaturated data ctor: " ++ show tm)
+        let isNewtype = length used == 1 && detag
+        let argsPruned = [a | (i,a) <- zip [0..] args, i `elem` used]
 
-        let args' = [a | (i,a) <- zip [0..] args, i `elem` used]
-        if length args' == 1 && detag -- detaggable
-            then irTerm vs env (head args')  -- newtype
-            else irCon vs env (length used) n args'
+        -- The following code removes fields from data constructors
+        -- and performs the newtype optimisation.
+        --
+        -- The general rule here is:
+        -- Everything we get as input is not touched by erasure,
+        -- so it conforms to the official arities and types
+        -- and we can reason about it like it's plain TT.
+        --
+        -- It's only the data that leaves this point that's erased
+        -- and possibly no longer typed as the original TT version.
+        --
+        -- Especially, underapplied constructors must yield functions
+        -- even if all the remaining arguments are erased
+        -- (the resulting function *will* be applied, to NULLs).
+        --
+        -- This will probably need rethinking when we get erasure from functions.
 
+        -- "padLams" will wrap our term in LLam-bdas and give us
+        -- the "list of future unerased args" coming from these lambdas.
+        --
+        -- We can do whatever we like with the list of unerased args,
+        -- hence it takes a lambda: \unerased_argname_list -> resulting_LExp.
+        let padLams = padLambdas used (length args) arity
+
+        case compare arity (length args) of
+
+            -- overapplied
+            GT  -> ifail ("overapplied data constructor: " ++ show tm)
+
+            -- exactly saturated
+            EQ  | isNewtype
+                -> irTerm vs env (head argsPruned)
+
+                | otherwise  -- not newtype, plain data ctor
+                -> buildApp (LV $ Glob n) argsPruned
+
+            -- not saturated, underapplied
+            LT  | isNewtype               -- newtype
+                , length argsPruned == 1  -- and we already have the value
+                -> padLams . (\tm [] -> tm)  -- the [] asserts there are no unerased args
+                    <$> irTerm vs env (head argsPruned)
+
+                | isNewtype  -- newtype but the value is not among args yet
+                -> return . padLams $ \[vn] -> LApp False (LV $ Glob n) [LV $ Glob vn]
+
+                -- not a newtype, just apply to a constructor
+                | otherwise
+                -> padLams . applyToNames <$> buildApp (LV $ Glob n) argsPruned
+
+    -- type constructor
     (P (TCon t a) n _, args) -> return LNothing
 
+    -- a name applied to arguments
     (P _ n _, args) -> do
         ist <- getIState
         case lookup n (idris_scprims ist) of
@@ -296,9 +343,24 @@ irTerm vs env tm@(App f a) = case unApply tm of
             <*> mapM (irTerm vs env) args
 
   where
+    buildApp :: LExp -> [Term] -> Idris LExp
+    buildApp e [] = return e
+    buildApp e xs = LApp False e <$> mapM (irTerm vs env) xs
+
+    applyToNames :: LExp -> [Name] -> LExp
+    applyToNames tm [] = tm
+    applyToNames tm ns = LApp False tm $ map (LV . Glob) ns
+
+    padLambdas :: [Int] -> Int -> Int -> ([Name] -> LExp) -> LExp
+    padLambdas used startIdx endSIdx mkTerm
+        = LLam allNames $ mkTerm nonerasedNames
+      where
+        allNames       = [sMN i "sat" | i <- [startIdx .. endSIdx-1]]
+        nonerasedNames = [sMN i "sat" | i <- [startIdx .. endSIdx-1], i `elem` used]
+
     applyName :: Name -> IState -> [Term] -> Idris LExp
     applyName n ist args =
-        LApp False (LV $ Glob n) <$> mapM (irTerm vs env . erase) (zip [0..] args)
+            LApp False (LV $ Glob n) <$> mapM (irTerm vs env . erase) (zip [0..] args)
         where
             erase (i, x)
                 | i >= arity || i `elem` used = x
@@ -344,24 +406,6 @@ irTerm vs env (Constant c) = return $ LConst c
 irTerm vs env (TType _)    = return $ LNothing
 irTerm vs env Erased       = return $ LNothing
 irTerm vs env Impossible   = return $ LNothing
-
-irCon :: Vars -> [Name] -> Int -> Name -> [Term] -> Idris LExp
-irCon vs env arity n args
-    | length args > arity
-    = error $ "oversaturated data constructor: " ++ show (n, args)
-
-    -- saturated
-    | length args == arity
-    = buildApp (LV (Glob n)) args
-
-    -- undersaturated, wrap in lambdas
-    | otherwise
-    = let extraNs = [sMN i "sat" | i <- [length args .. arity-1]]
-          extraTs = [P Bound n undefined | n <- extraNs]
-        in LLam extraNs <$> irCon vs env arity n (args ++ extraTs)
-  where
-    buildApp e [] = return e
-    buildApp e xs = LApp False e <$> mapM (irTerm vs env) xs
 
 doForeign :: Vars -> [Name] -> [TT Name] -> Idris LExp
 doForeign vs env (_ : fgn : args)
