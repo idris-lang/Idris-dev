@@ -1,0 +1,6 @@
+Expect 1 for error: 1
+Expects 2 lines of output:
+       2 lines
+Expects the first line to be type checking:
+Type checking ./A.idr
+Cannot check the second line as it contains a host-dependent string.

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+ghc -v0 idrisdoc007.hs
+./idrisdoc007 > lines
+echo Expect 1 for error: $?
+echo Expects 2 lines of output:
+wc -l lines
+echo Expects the first line to be type checking:
+grep "Type checking \\./A\\.idr" lines
+echo Cannot check the second line as it contains a host-dependent string.
+rm -rf idrisdoc007 idrisdoc007.hi idrisdoc007.o *.ibc lines

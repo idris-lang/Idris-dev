@@ -1,0 +1,3 @@
+Type checking ./TestEmpty.idr
+Warning: Ignoring empty or non-existing namespace 'TestEmpty'
+No namespaces to generate documentation for
