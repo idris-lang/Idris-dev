@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+ghc -v0 idrisdoc001.hs
+./idrisdoc001
+rm -rf idrisdoc001 idrisdoc001.hi idrisdoc001.o *.ibc *_doc
