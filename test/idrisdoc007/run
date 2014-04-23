@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Tests that documentation only is written when safe
+mkdir do_not_delete_doc
 idris --mkdoc package.ipkg > lines
 echo Expects exit status 1: $?
 echo Expects 2 lines of output:
@@ -7,4 +8,4 @@ wc -l lines
 echo Expects the first line to be type checking:
 grep "Type checking \\./A\\.idr" lines
 echo Cannot check the second line as it contains a host-dependent string.
-rm -f *.ibc lines
+rm -rf do_not_delete_doc *.ibc lines
