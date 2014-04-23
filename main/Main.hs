@@ -103,8 +103,8 @@ usagemsg = usagemsghdr ++ "\n" ++
            "\t -e --eval EXPR             Evaluate an expression without loading the REPL" ++
            "\t    --exec EXPR             Execute as idris\n" ++
            "\t    --libdir                Display library directory\n" ++
-           "\t    --link                  Display link directory\n" ++
-           "\t    --include               Display the includes directory\n" ++
+           "\t    --link                  Display link flags\n" ++
+           "\t    --include               Display the includes flags\n" ++
            "\t    --nobanner              Suppress the banner\n" ++
            "\t    --color, --colour       Force coloured output\n" ++
            "\t    --nocolor, --nocolour   Disable coloured output\n" ++
