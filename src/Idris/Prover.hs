@@ -86,9 +86,14 @@ prove opt ctxt lit n ty
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
-elabStep st e = do case runStateT e st of
+elabStep st e = case runStateT eCheck st of
                      OK (a, st') -> return (a, st')
                      Error a -> ierror a
+  where eCheck = do res <- e
+                    tm <- get_term
+                    ctxt <- get_context
+                    lift $ check ctxt [] (forget tm)
+                    return res
 
 dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
