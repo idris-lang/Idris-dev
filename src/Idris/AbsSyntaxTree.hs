@@ -1174,7 +1174,7 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
     prettySe p bnd (PPi (Imp l s _) n ty sc)
       | impl =
           bracket p 2 $
-          lparen <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
+          lbrace <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
           st <> text "->" </> prettySe 10 ((n, True):bnd) sc
       | otherwise = prettySe 10 ((n, True):bnd) sc
       where
