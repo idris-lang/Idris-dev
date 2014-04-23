@@ -35,7 +35,7 @@ sym : {l:a} -> {r:a} -> l = r -> r = l
 sym refl = refl
 
 ||| Transitivity of propositional equality
-trans : {a:x} -> {b:x} -> {c:x} -> a = b -> b = c -> a = c
+trans : {a:x} -> {b:y} -> {c:z} -> a = b -> b = c -> a = c
 trans refl refl = refl
 
 lazy : a -> a
