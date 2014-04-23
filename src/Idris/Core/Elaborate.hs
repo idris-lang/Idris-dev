@@ -328,6 +328,10 @@ start_unify n = processTactic' (StartUnify n)
 end_unify :: Elab' aux ()
 end_unify = processTactic' EndUnify
 
+-- Clear the list of variables not to unify, and try to solve them
+unify_all :: Elab' aux ()
+unify_all = processTactic' UnifyAll
+
 regret :: Elab' aux ()
 regret = processTactic' Regret
 

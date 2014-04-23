@@ -1943,6 +1943,7 @@ instance (Binary t) => Binary (PTactic' t) where
                                            put x1
                                            put x2
                                            put x3
+                DoUnify -> putWord8 22
         get
           = do i <- getWord8
                case i of
@@ -1988,6 +1989,7 @@ instance (Binary t) => Binary (PTactic' t) where
                             x2 <- get
                             x3 <- get
                             return (ProofSearch x1 x2 x3)
+                   22 -> return DoUnify
                    _ -> error "Corrupted binary data for PTactic'"
 
 

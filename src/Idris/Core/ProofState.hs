@@ -59,6 +59,7 @@ data Tactic = Attack
             | Solve
             | StartUnify Name
             | EndUnify
+            | UnifyAll
             | Compute
             | ComputeLet Name
             | Simplify
@@ -781,6 +782,7 @@ keepGiven du (u@(n, _) : us) hs
    | n `elem` du = u : keepGiven du us hs
 keepGiven du (u : us) hs = keepGiven du us hs
 
+updateSolved :: [(Name, Term)] -> Term -> Term 
 updateSolved xs x = updateSolved' xs x
 updateSolved' [] x = x
 updateSolved' xs (Bind n (Hole ty) t)
@@ -874,6 +876,12 @@ processTactic EndUnify ps
                        problems = probs',
                        notunified = updateNotunified ns'' (notunified ps),
                        holes = holes ps \\ map fst ns'' }, "")
+processTactic UnifyAll ps
+    = trace (show (notunified ps)) $ 
+      let tm' = updateSolved (notunified ps) (pterm ps) in
+          return (ps { pterm = tm',
+                       notunified = [],
+                       holes = holes ps \\ map fst (notunified ps) }, "")
 processTactic (Reorder n) ps
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
          return (ps' { previous = Just ps, plog = "" }, plog ps')

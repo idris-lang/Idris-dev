@@ -995,6 +995,8 @@ runTac autoSolve ist fn tac
                                _ -> return []
     runT (Refine fn imps) = do ns <- apply (Var fn) (map (\x -> (x,0)) imps)
                                when autoSolve solveAll
+    runT DoUnify = do unify_all
+                      when autoSolve solveAll
     runT (Equiv tm) -- let bind tm, then
               = do attack
                    tyn <- getNameFrom (sMN 0 "ety")

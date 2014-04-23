@@ -710,7 +710,7 @@ mapPT f t = f (mpt t) where
 
 
 data PTactic' t = Intro [Name] | Intros | Focus Name
-                | Refine Name [Bool] | Rewrite t
+                | Refine Name [Bool] | Rewrite t | DoUnify
                 | Induction Name
                 | Equiv t
                 | MatchRefine Name

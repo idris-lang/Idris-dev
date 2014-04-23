@@ -1180,6 +1180,7 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
                  return $ TSeq t (mergeSeq ts)
           <|> do reserved "compute"; return Compute
           <|> do reserved "trivial"; return Trivial
+          <|> do reserved "unify"; return DoUnify
           <|> do reserved "search"; return (ProofSearch True Nothing [])
           <|> do reserved "instance"; return TCInstance
           <|> do reserved "solve"; return Solve
