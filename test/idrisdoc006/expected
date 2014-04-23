@@ -1,0 +1,6 @@
+Type checking ./A.idr
+Type checking ./B.idr
+A: Check
+B: Check
+A
+B

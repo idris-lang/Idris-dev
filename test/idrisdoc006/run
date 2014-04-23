@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Tests that documentation properly is merged with existing
+idris --mkdoc package_a.ipkg
+idris --mkdoc package_b.ipkg
+[ -f test_merge_doc/docs/A.html ] && echo "A: Check"
+[ -f test_merge_doc/docs/B.html ] && echo "B: Check"
+cat test_merge_doc/IdrisDoc
+rm -rf *.ibc *_doc
