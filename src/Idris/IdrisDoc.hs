@@ -637,7 +637,7 @@ readDocInfo dir =
   where reader h           = let converter = text2DocInfo . E.decodeUtf8
                              in  converter `fmap` BS.hGetContents h
         onlyValid out ns s = do s'     <- s
-                                let end = (genRelNsPath ns "html")
+                                let end = "docs" </> (genRelNsPath ns "html")
                                 exists <- doesFileExist $ out </> end
                                 if exists then return $ S.insert ns s'
                                           else s
