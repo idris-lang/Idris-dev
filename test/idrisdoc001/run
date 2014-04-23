@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-ghc -v0 idrisdoc001.hs
-./idrisdoc001
-rm -rf idrisdoc001 idrisdoc001.hi idrisdoc001.o *.ibc *_doc
+# Tests that no documentation is built for empty namespaces
+idris --mkdoc test_empty.ipkg
+rm -rf *.ibc *_doc

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
-ghc -v0 idrisdoc003.hs
-./idrisdoc003
-rm -rf idrisdoc003 idrisdoc003.hi idrisdoc003.o *.ibc *_doc
+# Tests that documentation is generated for data types
+idris --mkdoc test_datatypes.ipkg
+[ -d test_datatypes_doc ] && echo "Data types are documented"
+rm -rf *.ibc *_doc

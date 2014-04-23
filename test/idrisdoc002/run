@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
-ghc -v0 idrisdoc002.hs
-./idrisdoc002
-rm -rf idrisdoc002 idrisdoc002.hi idrisdoc002.o *.ibc *_doc
+# Tests that documentation is generated for functions
+idris --mkdoc test_functions.ipkg
+[ -d test_functions_doc ] && echo "Functions are documented"
+rm -rf *.ibc *_doc

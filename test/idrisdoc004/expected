@@ -1,2 +1,2 @@
 Type checking ./TestTypeclasses.idr
-True
+Typeclasses are documented

@@ -319,48 +319,34 @@ Extra-source-files:
                        test/ffi005/run
                        test/ffi005/expected
 
+                       test/idrisdoc001/run
+                       test/idrisdoc001/expected
                        test/idrisdoc001/*.idr
                        test/idrisdoc001/*.ipkg
-                       test/idrisdoc001/idrisdoc001.hs
-                       test/idrisdoc001/run
-                       test/idrisdoc001/run_backup
-                       test/idrisdoc001/expected
+                       test/idrisdoc002/run
+                       test/idrisdoc002/expected
                        test/idrisdoc002/*.idr
                        test/idrisdoc002/*.ipkg
-                       test/idrisdoc002/idrisdoc002.hs
-                       test/idrisdoc002/run
-                       test/idrisdoc002/run_backup
-                       test/idrisdoc002/expected
+                       test/idrisdoc003/run
+                       test/idrisdoc003/expected
                        test/idrisdoc003/*.idr
                        test/idrisdoc003/*.ipkg
-                       test/idrisdoc003/idrisdoc003.hs
-                       test/idrisdoc003/run
-                       test/idrisdoc003/run_backup
-                       test/idrisdoc003/expected
+                       test/idrisdoc004/run
+                       test/idrisdoc004/expected
                        test/idrisdoc004/*.idr
                        test/idrisdoc004/*.ipkg
-                       test/idrisdoc004/idrisdoc004.hs
-                       test/idrisdoc004/run
-                       test/idrisdoc004/run_backup
-                       test/idrisdoc004/expected
+                       test/idrisdoc005/run
+                       test/idrisdoc005/expected
                        test/idrisdoc005/*.idr
                        test/idrisdoc005/*.ipkg
-                       test/idrisdoc005/idrisdoc005.hs
-                       test/idrisdoc005/run
-                       test/idrisdoc005/run_backup
-                       test/idrisdoc005/expected
+                       test/idrisdoc006/run
+                       test/idrisdoc006/expected
                        test/idrisdoc006/*.idr
                        test/idrisdoc006/*.ipkg
-                       test/idrisdoc006/idrisdoc006.hs
-                       test/idrisdoc006/run
-                       test/idrisdoc006/run_backup
-                       test/idrisdoc006/expected
+                       test/idrisdoc007/run
+                       test/idrisdoc007/expected
                        test/idrisdoc007/*.idr
                        test/idrisdoc007/*.ipkg
-                       test/idrisdoc007/idrisdoc007.hs
-                       test/idrisdoc007/run
-                       test/idrisdoc007/run_backup
-                       test/idrisdoc007/expected
 
                        test/interactive001/run
                        test/interactive001/input

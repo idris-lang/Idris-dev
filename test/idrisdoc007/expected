@@ -1,4 +1,4 @@
-Expect 1 for error: 1
+Expects exit status 1: 1
 Expects 2 lines of output:
        2 lines
 Expects the first line to be type checking:
