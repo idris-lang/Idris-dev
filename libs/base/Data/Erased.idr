@@ -22,7 +22,7 @@ instance Monad Erased where
   (>>=) (Erase x) f = f x
 
 ||| Project the erased value out of the monad.
-||| 
+|||
 ||| This is usable only in types and other erased contexts,
 ||| where it won't cause erasure violations.
 unerase : Erased a -> a
