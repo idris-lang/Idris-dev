@@ -543,21 +543,31 @@ irSC vs (Case n [alt]) = do
     subexpr (LConstCase _   e) = e
     subexpr (LDefaultCase   e) = e
 
--- When we have a non-singleton case-tree of the form
+-- FIXME: When we have a non-singleton case-tree of the form
 --
 --     case {e0} of
 --         C(x) => ...
 --         ...  => ...
 --
--- and C is detaggable (= the only constructor of the family), 
--- something has gone wrong.
+-- and C is detaggable (the only constructor of the family), we can be sure
+-- that the first branch will be always taken -- so we add special handling
+-- to remove the dead default branch.
 --
--- Especially, if C is newtype-optimisable, we will miss this newtype
+-- If we don't do so and C is newtype-optimisable, we will miss this newtype
 -- transformation and the resulting code will probably segfault.
 --
--- Therefore we first have to check that all alts here are non-trivial.
+-- This work-around is not entirely optimal; the best approach would be
+-- to ensure that such case trees don't arise in the first place.
 --
+irSC vs (Case n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
+    detag <- fgetState (opt_detaggable . ist_optimisation cn)
+    if detag
+        then irSC vs (Case n [ConCase cn a ns sc])
+        else LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+
 irSC vs sc@(Case n alts) = do
+    -- check that neither alternative needs the newtype optimisation,
+    -- see comment above
     goneWrong <- or <$> mapM isDetaggable alts
     when goneWrong
         $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
