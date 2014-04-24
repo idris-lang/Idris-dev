@@ -54,14 +54,22 @@ fullExpr syn = do x <- expr syn
                   return $ debindApp syn (desugar syn i x)
 
 
-{- |Parses an expression
+{- | Parses an expression
 @
-  Expr ::= Expr';
+  Expr ::= Pi
+@
+ -}
+expr :: SyntaxInfo -> IdrisParser PTerm
+expr = pi
+
+{- | Parses an expression with possible operator applied
+@
+  OpExpr ::= {- Expression Parser with Operators based on Expr' -};
 @
 -}
-expr :: SyntaxInfo -> IdrisParser PTerm
-expr syn = do i <- get
-              buildExpressionParser (table (idris_infixes i)) (expr' syn)
+opExpr :: SyntaxInfo -> IdrisParser PTerm
+opExpr syn = do i <- get
+                buildExpressionParser (table (idris_infixes i)) (expr' syn)
 
 {- | Parses either an internally defined expression or
     a user-defined one
@@ -70,16 +78,10 @@ Expr' ::=  "External (User-defined) Syntax"
       |   InternalExpr;
 @
  -}
-expr' syn = doexpr' syn
---    = do l <- restOfLine
---         f <- getFC
---         e <- trace (show (f, l)) $ doexpr' syn
---         return e
-
-doexpr' :: SyntaxInfo -> IdrisParser PTerm
-doexpr' syn =     try (externalExpr syn)
-              <|> internalExpr syn
-              <?> "expression"
+expr' :: SyntaxInfo -> IdrisParser PTerm
+expr' syn = try (externalExpr syn)
+            <|> internalExpr syn
+            <?> "expression"
 
 {- | Parses a user-defined expression -}
 externalExpr :: SyntaxInfo -> IdrisParser PTerm
@@ -197,7 +199,6 @@ InternalExpr ::=
   | QuoteGoal
   | Let
   | RewriteTerm
-  | Pi
   | CaseExpr
   | DoBlock
   | App
@@ -214,7 +215,6 @@ internalExpr syn =
      <|> quoteGoal syn
      <|> let_ syn
      <|> rewriteTerm syn
-     <|> try (pi syn)
      <|> doBlock syn
      <|> caseExpr syn
      <|> app syn
@@ -363,7 +363,7 @@ bracketed' syn =
                     return (PDPair fc TypeOrTerm (PRef fc ln) lty r))
         <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
                     -- No prefix operators! (bit of a hack here...)
-                    if (o == "-" || o == "!") 
+                    if (o == "-" || o == "!")
                       then fail "minus not allowed in section"
                       else return $ PLam (sMN 1000 "ARG") Placeholder
                          (PApp fc (PRef fc (sUN o)) [pexp (PRef fc (sMN 1000 "ARG")),
@@ -754,11 +754,16 @@ quoteGoal syn = do reserved "quoteGoal"; n <- name;
 {- | Parses a dependent type signature
 
 @
-Pi ::=
-    '|'? Static? '('           TypeDeclList ')' DocComment '->' Expr
-  | '|'? Static? '{'           TypeDeclList '}'            '->' Expr
-  |              '{' 'auto'    TypeDeclList '}'            '->' Expr
-  |              '{' 'default' TypeDeclList '}'            '->' Expr
+Pi ::= PiOpts Static? Pi'
+@
+
+@
+Pi' ::=
+    OpExpr ('->' Pi)?
+  | '(' TypeDeclList           ')'            '->' Pi
+  | '{' TypeDeclList           '}'            '->' Pi
+  | '{' 'auto'    TypeDeclList '}'            '->' Pi
+  | '{' 'default' SimpleExpr TypeDeclList '}' '->' Pi
   ;
 @
  -}
@@ -767,37 +772,44 @@ pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
      do opts <- piOpts syn
         st   <- static
-        (do try (lchar '('); xt <- typeDeclList syn; lchar ')'
+        (do xt <- try (lchar '(' *> typeDeclList syn <* lchar ')')
             symbol "->"
             sc <- expr syn
             return (bindList (PPi (Exp opts st False)) xt sc)) <|> (do
-               lchar '{'
-               (do reserved "auto"
+               (do try (lchar '{' *> reserved "auto")
                    when (st == Static) $ fail "auto type constraints can not be lazy or static"
                    xt <- typeDeclList syn
                    lchar '}'
                    symbol "->"
                    sc <- expr syn
                    return (bindList (PPi
-                     (TacImp [] Dynamic (PTactics [Trivial]))) xt sc)) 
-                 <|> (do
-                       reserved "default"
+                     (TacImp [] Dynamic (PTactics [Trivial]))) xt sc)) <|> (do
+                       try (lchar '{' *> reserved "default")
                        when (st == Static) $ fail "default tactic constraints can not be lazy or static"
                        script <- simpleExpr syn
                        xt <- typeDeclList syn
                        lchar '}'
                        symbol "->"
                        sc <- expr syn
-                       return (bindList (PPi (TacImp [] Dynamic script)) xt sc)) 
+                       return (bindList (PPi (TacImp [] Dynamic script)) xt sc))
                  <|> (if implicitAllowed syn then do
-                            xt <- typeDeclList syn
-                            lchar '}'
+                            xt <- try (lchar '{' *> typeDeclList syn <* lchar '}')
                             symbol "->"
                             sc <- expr syn
                             return (bindList (PPi (Imp opts st False)) xt sc)
                        else do fail "no implicit arguments allowed here"))
+                 <|> (do x <- opExpr syn
+                         (do symbol "->"
+                             sc <- expr syn
+                             return (PPi (Exp opts st False) (sMN 0 "__pi_arg") x sc))
+                          <|> return x)
   <?> "dependent type signature"
 
+{- | Parses Possible Options for Pi Expressions
+@
+  PiOpts ::= '.'?
+@
+-}
 piOpts :: SyntaxInfo -> IdrisParser [ArgOpt]
 piOpts syn | implicitAllowed syn =
         lchar '.' *> return [InaccessibleArg]
@@ -1079,7 +1091,7 @@ Static ::=
 @
 -}
 static :: IdrisParser Static
-static =     do lchar '['; reserved "static"; lchar ']'; return Static
+static =     do reserved "[static]"; return Static
          <|> return Dynamic
          <?> "static modifier"
 
