@@ -801,7 +801,7 @@ pi syn =
                  <|> (do x <- opExpr syn
                          (do symbol "->"
                              sc <- expr syn
-                             return (PPi (Exp opts st False) (sMN 0 "__pi_arg") x sc))
+                             return (PPi (Exp opts st False) (sUN "__pi_arg") x sc))
                           <|> return x)
   <?> "dependent type signature"
 
