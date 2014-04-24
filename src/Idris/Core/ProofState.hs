@@ -212,10 +212,11 @@ unify' ctxt env topx topy =
                                               (fails ++ problems ps)
                                               (injective ps)
                                               (holes ps)
-           put (ps { problems = probs',
+           let (notu', probs_notu) = mergeNotunified env (notu ++ notunified ps)
+           put (ps { problems = probs' ++ probs_notu,
                      unified = (h, ns'),
                      injective = updateInj u (injective ps),
-                     notunified = notu ++ notunified ps })
+                     notunified = notu' })
            return u
   where updateInj ((n, a) : us) inj
               | (P _ n' _, _) <- unApply a,
@@ -812,6 +813,14 @@ solveInProblems x val ((l, r, env, err) : ps)
    = ((psubst x val l, psubst x val r, 
        updateEnv [(x, val)] env, err) : solveInProblems x val ps)
 
+mergeNotunified :: Env -> [(Name, Term)] -> ([(Name, Term)], Fails)
+mergeNotunified env ns = mnu ns [] [] where
+  mnu [] ns_acc ps_acc = (reverse ns_acc, reverse ps_acc)
+  mnu ((n, t):ns) ns_acc ps_acc
+      | Just t' <- lookup n ns = mnu ns ((n,t) : ns_acc)
+                                        ((t,t',env,Msg "", [],Match) : ps_acc)
+      | otherwise = mnu ns ((n,t) : ns_acc) ps_acc
+
 updateNotunified [] nu = nu
 updateNotunified ns nu = up nu where
   up [] = []
@@ -877,8 +886,7 @@ processTactic EndUnify ps
                        notunified = updateNotunified ns'' (notunified ps),
                        holes = holes ps \\ map fst ns'' }, "")
 processTactic UnifyAll ps
-    = trace (show (notunified ps)) $ 
-      let tm' = updateSolved (notunified ps) (pterm ps) in
+    = let tm' = updateSolved (notunified ps) (pterm ps) in
           return (ps { pterm = tm',
                        notunified = [],
                        holes = holes ps \\ map fst (notunified ps) }, "")

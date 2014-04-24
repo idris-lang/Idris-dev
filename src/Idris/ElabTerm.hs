@@ -69,7 +69,7 @@ build ist info pattern opts fn tm
 
          when (not pattern) $ 
            traceWhen u ("Remaining problems:\n" ++ show probs) $ 
-             do matchProblems True; unifyProblems
+             do unify_all; matchProblems True; unifyProblems
          probs <- get_probs
          case probs of
             [] -> return ()
@@ -123,6 +123,7 @@ elab ist info pattern opts fn tm
          end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
+                  unify_all
                   matchProblems False -- only the ones we matched earlier
                   unifyProblems
                   mkPat)
