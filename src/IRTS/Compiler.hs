@@ -514,6 +514,7 @@ irSC vs (Case n [ConCase (UN delay) i [_, _, n'] sc])
 --
 -- Hence, we check whether the variables are used at all
 -- and erase the casesplit if they are not.
+--
 irSC vs (Case n [alt]) = do
     replacement <- case alt of
         ConCase cn a ns sc -> do
@@ -542,7 +543,31 @@ irSC vs (Case n [alt]) = do
     subexpr (LConstCase _   e) = e
     subexpr (LDefaultCase   e) = e
 
-irSC vs (Case n alts)  = LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+-- When we have a non-singleton case-tree of the form
+--
+--     case {e0} of
+--         C(x) => ...
+--         ...  => ...
+--
+-- and C is detaggable (= the only constructor of the family), 
+-- something has gone wrong.
+--
+-- Especially, if C is newtype-optimisable, we will miss this newtype
+-- transformation and the resulting code will probably segfault.
+--
+-- Therefore we first have to check that all alts here are non-trivial.
+--
+irSC vs sc@(Case n alts) = do
+    goneWrong <- or <$> mapM isDetaggable alts
+    when goneWrong
+        $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
+
+    -- everything okay
+    LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+  where
+    isDetaggable (ConCase cn _ _ _) = fgetState $ opt_detaggable . ist_optimisation cn
+    isDetaggable  _                 = return False
+
 irSC vs ImpossibleCase = return LNothing
 
 irAlt :: Vars -> LExp -> CaseAlt -> Idris LAlt
