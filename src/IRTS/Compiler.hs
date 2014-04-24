@@ -360,27 +360,27 @@ irTerm vs env tm@(App f a) = case unApply tm of
 
     applyName :: Name -> IState -> [Term] -> Idris LExp
     applyName n ist args =
-            LApp False (LV $ Glob n) <$> mapM (irTerm vs env . erase) (zip [0..] args)
-        where
-            erase (i, x)
-                | i >= arity || i `elem` used = x
-                | otherwise = Erased
+        LApp False (LV $ Glob n) <$> mapM (irTerm vs env . erase) (zip [0..] args)
+      where
+        erase (i, x)
+            | i >= arity || i `elem` used = x
+            | otherwise = Erased
 
-            arity = case fst4 <$> lookupCtxtExact n (definitions . tt_ctxt $ ist) of
-                Just (CaseOp ci ty tys def tot cdefs) -> length tys
-                Just (TyDecl (DCon tag ar) _)         -> ar
-                Just (TyDecl Ref ty)                  -> length $ getArgTys ty
-                Just (Operator ty ar op)              -> ar
-                Just def -> error $ "unknown arity: " ++ show (n, def)
-                Nothing  -> 0  -- no definition, probably local name => can't erase anything
+        arity = case fst4 <$> lookupCtxtExact n (definitions . tt_ctxt $ ist) of
+            Just (CaseOp ci ty tys def tot cdefs) -> length tys
+            Just (TyDecl (DCon tag ar) _)         -> ar
+            Just (TyDecl Ref ty)                  -> length $ getArgTys ty
+            Just (Operator ty ar op)              -> ar
+            Just def -> error $ "unknown arity: " ++ show (n, def)
+            Nothing  -> 0  -- no definition, probably local name => can't erase anything
 
-            -- name for purposes of usage info lookup
-            uName
-                | Just n' <- viMethod =<< M.lookup n vs = n'
-                | otherwise = n
+        -- name for purposes of usage info lookup
+        uName
+            | Just n' <- viMethod =<< M.lookup n vs = n'
+            | otherwise = n
 
-            used = maybe [] (map fst . usedpos) $ lookupCtxtExact uName (idris_callgraph ist)
-            fst4 (x,_,_,_) = x
+        used = maybe [] (map fst . usedpos) $ lookupCtxtExact uName (idris_callgraph ist)
+        fst4 (x,_,_,_) = x
 
 irTerm vs env (P _ n _) = return $ LV (Glob n)
 irTerm vs env (V i)
