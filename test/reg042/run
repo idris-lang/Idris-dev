@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ reg042 -o reg042 --warnreach
+./reg042
+rm -f reg042 *.ibc
