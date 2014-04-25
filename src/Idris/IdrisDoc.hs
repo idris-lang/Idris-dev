@@ -83,12 +83,6 @@ type NsItem   = (Name, Maybe Docs, Accessibility)
 type NsInfo   = [NsItem]
 type NsDict   = M.Map NsName NsInfo
 
--- Information stored together with IdrisDoc documentation
-data DocInfo = DocInfo {
-                         -- Namespaces already documented
-                         namespaces :: S.Set NsName
-                       }
-
 -- --------------------------------------------------------------- [ Utility ]
 
 -- | Make an error message
@@ -291,14 +285,21 @@ extractPTermNames (PUnifyLog p)      = extract p
 extractPTermNames (PNoImplicits p)   = extract p
 extractPTermNames _                  = []
 
+-- | Shorter name for extractPTermNames
+extract :: PTerm  -- ^ Where to extract names from
+        -> [Name] -- ^ Extracted names
 extract                               = extractPTermNames
 
+-- | Helper function for extractPTermNames
+extractPArg :: PArg -> [Name]
 extractPArg (PImp {pname=n, getTm=p}) = n : extract p
 extractPArg (PExp {getTm=p})          = extract p
 extractPArg (PConstraint {getTm=p})   = extract p
 extractPArg (PTacImplicit {pname=n, getScript=p1, getTm=p2})
                                       = n : (concatMap extract [p1, p2])
 
+-- | Helper function for extractPTermNames
+extractPDo :: PDo -> [Name]
 extractPDo (DoExp   _ p)        = extract p
 extractPDo (DoBind  _ n p)      = n : extract p
 extractPDo (DoBindP _ p1 p2 ps) = let (ps1, ps2) = unzip ps
@@ -307,6 +308,8 @@ extractPDo (DoBindP _ p1 p2 ps) = let (ps1, ps2) = unzip ps
 extractPDo (DoLet   _ n p1 p2)  = n : concatMap extract [p1, p2]
 extractPDo (DoLetP  _ p1 p2)    = concatMap extract [p1, p2]
 
+-- | Helper function for extractPTermNames
+extractPTactic :: PTactic -> [Name]
 extractPTactic (Intro ns)         = ns
 extractPTactic (Focus n)          = [n]
 extractPTactic (Refine n _)       = [n]
@@ -345,10 +348,9 @@ createDocs :: IState -- ^ Needed to determine the types of names
                        --   documentation will be written.
            -> IO (Failable ())
 createDocs ist nsd out =
-  do docInfo            <- readDocInfo out
-     let (new, docInfo') = case docInfo of Nothing -> (True, DocInfo S.empty)
-                                           Just di -> (False, di)
-         nss             = S.union (M.keysSet nsd) (namespaces docInfo')
+  do new                <- not `fmap` (doesFileExist $ out </> "IdrisDoc")
+     existing_nss       <- existingNamespaces out
+     let nss             = S.union (M.keysSet nsd) existing_nss
      dExists            <- doesDirectoryExist out
      if new && dExists then err $ "Output directory (" ++ out ++ ") is" ++
                                   " already in use for other than IdrisDoc."
@@ -356,7 +358,10 @@ createDocs ist nsd out =
          createDirectoryIfMissing True out
          foldl docGen (return ()) (M.toList nsd)
          createIndex nss out
-         writeDocInfo out (docInfo' { namespaces = nss })
+         -- Create an empty IdrisDoc file to signal 'out' is used for IdrisDoc
+         if new -- But only if it not already existed...
+            then withFile (out </> "IdrisDoc") WriteMode ((flip hPutStr) "")
+            else return ()
          copyDependencies out
          return $ Right ()
 
@@ -607,66 +612,32 @@ nbsp :: H.Html
 nbsp = preEscapedToHtml ("&nbsp;" :: String)
 
 
+-- | Returns a list of namespaces already documented in a IdrisDoc directory
+existingNamespaces :: FilePath -- ^ The base directory containing the
+                               --   'docs' directory with existing
+                               --   namespace pages
+                   -> IO (S.Set NsName)
+existingNamespaces out = do
+  let docs     = out </> "docs"
+      str2Ns s | s == rootNsStr = []
+      str2Ns s = reverse $ T.splitOn (T.singleton '.') (txt s)
+      toNs  fp = do isFile    <- doesFileExist $ docs </> fp
+                    let isHtml = ".html" == takeExtension fp
+                        name   = dropExtension fp
+                        ns     = str2Ns name
+                    return $ if isFile && isHtml then Just ns else Nothing
+  docsExists  <- doesDirectoryExist docs
+  if not docsExists
+     then    return S.empty
+     else do contents    <- getDirectoryContents docs
+             namespaces  <- catMaybes `fmap` (sequence $ map toNs contents)
+             return $ S.fromList namespaces
+
+
 -- | Copies IdrisDoc dependencies such as stylesheets to a directory
-copyDependencies :: FilePath
+copyDependencies :: FilePath -- ^ The base directory to which
+                             --   dependencies should be written
                  -> IO ()
 copyDependencies dir =
   do styles <- getDataFileName $ "idrisdoc" </> "styles.css"
      copyFile styles (dir </> "styles.css")
-
--- ---------------------------------------------------- [ DocInfo Read/Write ]
-
--- | Name of the DocInfo file
-docInfoFile :: String
-docInfoFile = "IdrisDoc"
-
-
--- | Reads the 'IdrisDoc' file from the given directory, if it is there
---   The info within is converted to a DocInfo
-readDocInfo :: FilePath -- ^ The IdrisDoc directory also containing the info
-            -> IO (Maybe DocInfo)
-readDocInfo dir =
-  do exists <- doesFileExist (dir </> docInfoFile)
-     if not exists
-        then return Nothing
-        -- Filter out namespaces for which documentation no longer exists
-        else do di <- (withFile (dir </> docInfoFile) ReadMode reader)
-                s  <- S.fold (onlyValid dir) (return S.empty) (namespaces di)
-                return . Just . DocInfo $ s 
-
-  where reader h           = let converter = text2DocInfo . E.decodeUtf8
-                             in  converter `fmap` BS.hGetContents h
-        onlyValid out ns s = do s'     <- s
-                                let end = "docs" </> (genRelNsPath ns "html")
-                                exists <- doesFileExist $ out </> end
-                                if exists then return $ S.insert ns s'
-                                          else s
-
--- | Writes a DocInfo to the 'IdrisDoc' file in the given directory
-writeDocInfo :: FilePath -- ^ The directory to write to
-             -> DocInfo  -- ^ The DocInfo to write
-             -> IO ()
-writeDocInfo dir info = withFile (dir </> docInfoFile) WriteMode writer
-
-  where writer h = BS.hPut h $ E.encodeUtf8 $ docInfo2Text info
-
-
--- | Converts a DocInfo to Text for easy writing
-docInfo2Text :: DocInfo
-             -> T.Text
-docInfo2Text (DocInfo {namespaces=nss}) = S.fold folder T.empty nss
-
-  where folder [] res = T.append (txt rootNsStr) (T.cons '\n' res)
-        folder ns res = let base = (T.append (head ns) $ T.cons '\n' res)
-                        in  foldr joiner base (tail ns)
-        joiner n r    = T.append n (T.cons '.' r)
-
-
--- | Converts an unmodified Text created by 'docInfo2Text' to DocInfo
-text2DocInfo :: T.Text
-             -> DocInfo
-text2DocInfo text = DocInfo $ foldl nsAdder S.empty (T.lines text)
-
-  where nsAdder set text = S.insert (txt2Ns text) set
-        txt2Ns t         | t == (txt rootNsStr) = []
-        txt2Ns t         = reverse $ T.splitOn (T.singleton '.') t

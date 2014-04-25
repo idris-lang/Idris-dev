@@ -4,5 +4,14 @@ idris --mkdoc package_a.ipkg
 idris --mkdoc package_b.ipkg
 [ -f test_merge_doc/docs/A.html ] && echo "A: Check"
 [ -f test_merge_doc/docs/B.html ] && echo "B: Check"
-cat test_merge_doc/IdrisDoc
+if grep -q "href\\=\"docs/A\\.html\"" test_merge_doc/index.html; then
+  echo A
+else
+  echo A is not in the index
+fi
+if grep -q "href\\=\"docs/B\\.html\"" test_merge_doc/index.html; then
+  echo B
+else
+  echo B is not in the index
+fi
 rm -rf *.ibc *_doc
