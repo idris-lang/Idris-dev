@@ -646,6 +646,7 @@ no_errors tac err
                           Error _ -> lift $ Error e
                           OK (a, s') -> do put s'
                                            return a
+            unifyProblems
             ps' <- get_probs
             if (length ps' > length ps) then
                case reverse ps' of
