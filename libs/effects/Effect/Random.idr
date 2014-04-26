@@ -32,6 +32,15 @@ rndFin k = do let v = !getRandom `prim__sremBigInt` (cast (S k))
                       Just v => v
                       Nothing => toFin (assert_smaller x (x - cast (S k)))
 
+||| Select a random element from a vector, or Nothing if the vector is empty
+rndSelect' : Vect n a -> { [RND] } Eff IO (Maybe a)
+rndSelect' {n=Z}     _  = return Nothing
+rndSelect' {n=(S k)} xs = return (Just (Vect.index !(rndFin k)  xs))
+
+||| Select a random element from a list, or Nothing if the list is empty
+rndSelect : List a -> { [RND] } Eff IO (Maybe a)
+rndSelect l = rndSelect' (fromList l)
+
 ||| Sets the random seed
 srand : Integer -> { [RND] } Eff m ()
 srand n = setSeed n
