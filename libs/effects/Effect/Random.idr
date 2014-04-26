@@ -16,10 +16,14 @@ using (m : Type -> Type)
 RND : EFFECT
 RND = MkEff Integer Random
 
+||| Generates a random Integer in a given range
 rndInt : Integer -> Integer -> { [RND] } Eff m Integer
 rndInt lower upper = do v <- getRandom
                         return (v `prim__sremBigInt` (upper - lower) + lower)
 
+||| Generate a random number in Fin (S `k`)
+||| 
+||| Note that rndFin k takes values 0, 1, ..., k.
 rndFin : (k : Nat) -> { [RND] } Eff m (Fin (S k))
 rndFin k = do let v = !getRandom `prim__sremBigInt` (cast (S k))
               return (toFin v)
@@ -28,6 +32,7 @@ rndFin k = do let v = !getRandom `prim__sremBigInt` (cast (S k))
                       Just v => v
                       Nothing => toFin (assert_smaller x (x - cast (S k)))
 
+||| Sets the random seed
 srand : Integer -> { [RND] } Eff m ()
 srand n = setSeed n
 
