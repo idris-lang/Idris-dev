@@ -123,6 +123,12 @@ f - fZ = f
 (*) {n=S n} {m=S m} fZ     f' = fZ
 (*) {n=S n} {m=S m} (fS f) f' = f' + (f * f')
 
+mod : Fin n -> Fin n -> Fin n
+mod left   fZ      = left
+mod fZ     _       = fZ
+mod _      (fS fZ) = fZ
+mod (fS p) (fS m)  = fS (mod p m)
+
 -- Construct a Fin from an integer literal which must fit in the given Fin
 
 natToFin : Nat -> (n : Nat) -> Maybe (Fin n)
