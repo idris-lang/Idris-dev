@@ -110,9 +110,9 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
   iputGoal rendered
 
   where
-    showImplicits = opt_showimp (idris_options ist)
+    ppo = ppOption (idris_options ist)
 
-    tPretty bnd t = pprintPTerm showImplicits bnd [] (idris_infixes ist) $ delab ist t
+    tPretty bnd t = pprintPTerm ppo bnd [] (idris_infixes ist) $ delab ist t
 
     assumptionNames :: Env -> [Name]
     assumptionNames = map fst
@@ -237,16 +237,16 @@ ploop fn d prompt prf e h
                            ctxt'  = envCtxt env ctxt
                        putIState ist { tt_ctxt = ctxt' }
                        (tm, ty) <- elabVal toplevel False t
-                       let imp     = opt_showimp (idris_options ist)
+                       let ppo = ppOption (idris_options ist)
                            ty'     = normaliseC ctxt [] ty
                            h       = idris_outh ist
                            infixes = idris_infixes ist
                        case tm of
                           TType _ ->
-                            ihPrintTermWithType h (prettyImp imp PType) type1Doc
+                            ihPrintTermWithType h (prettyImp ppo PType) type1Doc
                           _ -> let bnd = map (\x -> (fst x, False)) env in
-                               ihPrintTermWithType h (pprintPTerm imp bnd [] infixes (delab ist tm))
-                                                     (pprintPTerm imp bnd [] infixes (delab ist ty))
+                               ihPrintTermWithType h (pprintPTerm ppo bnd [] infixes (delab ist tm))
+                                                     (pprintPTerm ppo bnd [] infixes (delab ist ty))
                        putIState ist
                        return (False, e, False, prf))
                      (\err -> do putIState ist { tt_ctxt = ctxt } ; ierror err)
@@ -262,10 +262,10 @@ ploop fn d prompt prf e h
                                            (tm, ty) <- elabVal toplevel False t
                                            let tm'     = force (normaliseAll ctxt' env tm)
                                                ty'     = force (normaliseAll ctxt' env ty)
-                                               imp     = opt_showimp (idris_options ist')
+                                               ppo     = ppOption (idris_options ist')
                                                infixes = idris_infixes ist
-                                               tmDoc   = pprintPTerm imp bnd [] infixes (delab ist' tm')
-                                               tyDoc   = pprintPTerm imp bnd [] infixes (delab ist' ty')
+                                               tmDoc   = pprintPTerm ppo bnd [] infixes (delab ist' tm')
+                                               tyDoc   = pprintPTerm ppo bnd [] infixes (delab ist' ty')
                                            ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
                                            putIState ist
                                            return (False, e, False, prf))

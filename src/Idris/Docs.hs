@@ -36,8 +36,8 @@ showDoc d | nullDocstring d = empty
 
 pprintFD :: IState -> FunDoc -> Doc OutputAnnotation
 pprintFD ist (FD n doc args ty f)
-    = nest 4 (prettyName imp [] n <+> colon <+>
-              pprintPTerm imp [] [ n | (n@(UN n'),_,_,_) <- args
+    = nest 4 (prettyName (ppopt_impl ppo) [] n <+> colon <+>
+              pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
                                      , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
               renderDocstring doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
@@ -46,23 +46,23 @@ pprintFD ist (FD n doc args ty f)
                 then nest 4 $ text "Arguments:" <$> vsep argshow
                 else empty)
 
-    where imp = opt_showimp (idris_options ist)
+    where ppo = ppOption (idris_options ist)
           infixes = idris_infixes ist
           showArgs ((n, ty, Exp {}, Just d):args) bnd
              = bindingOf n False <+> colon <+>
-               pprintPTerm imp bnd [] infixes ty <>
+               pprintPTerm ppo bnd [] infixes ty <>
                showDoc d <> line
                :
                showArgs args ((n, False):bnd)
           showArgs ((n, ty, Constraint {}, Just d):args) bnd
              = text "Class constraint" <+>
-               pprintPTerm imp bnd [] infixes ty <> showDoc d <> line
+               pprintPTerm ppo bnd [] infixes ty <> showDoc d <> line
                :
                showArgs args ((n, True):bnd)
           showArgs ((n, ty, Imp {}, Just d):args) bnd
              = text "(implicit)" <+>
                bindingOf n True <+> colon <+>
-               pprintPTerm imp bnd [] infixes ty <>
+               pprintPTerm ppo bnd [] infixes ty <>
                showDoc d <> line
                :
                showArgs args ((n, True):bnd)
@@ -77,7 +77,7 @@ pprintDocs ist (DataDoc t args)
              nest 4 (text "Constructors:" <> line <>
                      vsep (map (pprintFD ist) args))
 pprintDocs ist (ClassDoc n doc meths params instances)
-           = nest 4 (text "Type class" <+> prettyName imp [] n <>
+           = nest 4 (text "Type class" <+> prettyName (ppopt_impl ppo) [] n <>
                      if nullDocstring doc then empty else line <> renderDocstring doc)
              <> line <$>
              nest 4 (text "Parameters:" <$> prettyParameters)
@@ -97,11 +97,11 @@ pprintDocs ist (ClassDoc n doc meths params instances)
 
     pNames  = map fst params
 
-    imp = opt_showimp (idris_options ist)
+    ppo = ppOption (idris_options ist)
     infixes = idris_infixes ist
 
     dumpInstance :: PTerm -> Doc OutputAnnotation
-    dumpInstance = pprintPTerm imp params' [] infixes
+    dumpInstance = pprintPTerm ppo params' [] infixes
 
     prettifySubclasses (PPi (Constraint _ _) _ tm _)   = prettifySubclasses tm
     prettifySubclasses (PPi plcity           nm t1 t2) = PPi plcity (safeHead nm pNames) (prettifySubclasses t1) (prettifySubclasses t2)

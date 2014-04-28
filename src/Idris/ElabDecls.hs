@@ -393,7 +393,7 @@ elabEliminator paramPos n ty cons info = do
   elimLog elimSig
   eliminatorClauses <- mapM (\(cns, cnsElim) -> generateEliminatorClauses cns cnsElim clauseGeneralArgs generalParams) (zip cons clauseConsElimArgs)
   let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
-  elimLog $ "-- eliminator definition: " ++ (show . showDeclImp True) eliminatorDef
+  elimLog $ "-- eliminator definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
   State.lift $ idrisCatch (elabDecl EAll info eliminatorTyDecl) (\err -> return ())
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
@@ -1863,7 +1863,7 @@ elabClass info syn doc fc constraints tn ps pDocs ds
                                constraint
          let cons = [(emptyDocstring, [], cn, cty, fc, [])]
          let ddecl = PDatadecl tn tty cons
-         logLvl 5 $ "Class data " ++ show (showDImp True ddecl)
+         logLvl 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
          elabData info (syn { no_imp = no_imp syn ++ mnames }) doc pDocs fc [] ddecl
          -- for each constraint, build a top level function to chase it
          logLvl 5 $ "Building functions"
@@ -2059,7 +2059,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
          let wbTys = map mkTyDecl mtys
          let wbVals = map (decorateid (decorate ns iname)) ds'
          let wb = wbTys ++ wbVals
-         logLvl 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp True . mkTyDecl) mtys)
+         logLvl 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp verbosePPOption . mkTyDecl) mtys)
          logLvl 3 $ "Instance is " ++ show ps ++ " implicits " ++
                                       show (concat (nub wparams))
 

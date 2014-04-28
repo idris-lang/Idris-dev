@@ -457,7 +457,7 @@ genTypeHeader ist (FD n _ args ftype _) = do
 
   where 
         htmlSignature  = displayDecorated decorator $ renderCompact signature
-        signature      = pprintPTerm False [] names (idris_infixes ist) ftype
+        signature      = pprintPTerm defaultPPOption [] names (idris_infixes ist) ftype
         names          = [ n | (n@(UN n'), _, _, _) <- args,
                            not (T.isPrefixOf (txt "__") n') ]
 
