@@ -361,15 +361,18 @@ getProofClause l fn fp
 
 mkWith :: String -> Name -> String
 mkWith str n = let str' = replaceRHS str "with (_)"
-                   newpat = "  " ++
-                            replaceRHS str "| with_pat = ?" ++ show n ++ "_rhs" in
-                   str' ++ "\n" ++ newpat
+               in str' ++ "\n" ++ newpat str
 
    where replaceRHS [] str = str
          replaceRHS ('?':'=': rest) str = str
-         replaceRHS ('=': rest) str 
+         replaceRHS ('=': rest) str
               | not ('=' `elem` rest) = str
          replaceRHS (x : rest) str = x : replaceRHS rest str
+
+         newpat ('>':patstr) = '>':newpat patstr
+         newpat patstr =
+           "  " ++
+           replaceRHS patstr "| with_pat = ?" ++ show n ++ "_rhs"
 
 -- Replace _ with names in missing clauses
 
