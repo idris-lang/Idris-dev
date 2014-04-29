@@ -182,7 +182,7 @@ dropWhile p (x::xs) = if p x then dropWhile p xs else x::xs
 ||| @ nil what to return at the end of the list
 ||| @ cons what to do at each step of recursion
 ||| @ xs the list to recurse over
-list : (nil : a) -> (cons : a -> List a -> a) -> (xs : List a) -> a
+list : (nil : b) -> (cons : a -> List a -> b) -> (xs : List a) -> b
 list nil cons []      = nil
 list nil cons (x::xs) = cons x xs
 
