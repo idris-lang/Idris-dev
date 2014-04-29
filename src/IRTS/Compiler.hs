@@ -6,10 +6,20 @@ import IRTS.Lang
 import IRTS.Defunctionalise
 import IRTS.Simplified
 import IRTS.CodegenCommon
+#ifdef IDRIS_CEE
 import IRTS.CodegenC
+#endif
+
+#ifdef IDRIS_JAVA
 import IRTS.CodegenJava
+#endif
+
 import IRTS.DumpBC
+
+#ifdef IDRIS_JAVASCRIPT
 import IRTS.CodegenJavaScript
+#endif
+
 #ifdef IDRIS_LLVM
 import IRTS.CodegenLLVM
 #else
@@ -48,6 +58,23 @@ import System.Environment
 import System.FilePath ((</>), addTrailingPathSeparator)
 
 import Paths_idris
+
+codegenFail :: String -> CodeGenerator
+codegenFail backend _ = fail msg
+    where msg = "This Idris was compiled without the " ++ backend ++ " backend."
+
+#ifndef IDRIS_CEE
+codegenC = codegenFail "C"
+#endif
+
+#ifndef IDRIS_JAVA
+codegenJava = codegenFail "Java"
+#endif
+
+#ifndef IDRIS_JAVASCRIPT
+codegenJavaScript = codegenFail "JavaScript"
+codegenNode = codegenFail "JavaScript"
+#endif
 
 compile :: Codegen -> FilePath -> Term -> Idris ()
 compile codegen f tm
