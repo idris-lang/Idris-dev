@@ -77,10 +77,19 @@ generateDocs ist nss' out =
 
 -- ----------------------------------------------------------------- [ Types ]
 
+-- | Either an error message or a result
 type Failable = Either String
+
+-- | Internal representation of a fully qualified namespace name
 type NsName   = [T.Text]
+
+-- | All information to be documented about a single namespace member
 type NsItem   = (Name, Maybe Docs, Accessibility)
+
+-- | All information to be documented about a namespace
 type NsInfo   = [NsItem]
+
+-- | A map from namespace names to information about them
 type NsDict   = M.Map NsName NsInfo
 
 -- --------------------------------------------------------------- [ Utility ]
