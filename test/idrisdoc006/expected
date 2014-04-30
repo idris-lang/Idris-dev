@@ -1,4 +1,5 @@
 Type checking ./A.idr
+IdrisDoc file written
 Type checking ./B.idr
 A: Check
 B: Check

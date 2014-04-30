@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Tests that documentation properly is merged with existing
+# Tests that documentation properly is merged with existent
+# Also tests that an IdrisDoc is written
 idris --mkdoc package_a.ipkg
+[ -f test_merge_doc/IdrisDoc ] && echo "IdrisDoc file written"
 idris --mkdoc package_b.ipkg
 [ -f test_merge_doc/docs/A.html ] && echo "A: Check"
 [ -f test_merge_doc/docs/B.html ] && echo "B: Check"
