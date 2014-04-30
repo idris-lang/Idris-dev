@@ -27,6 +27,8 @@ data Docs = FunDoc FunDoc
                     [FunDoc] -- data constructor docs
           | ClassDoc Name Docstring -- class docs
                      [FunDoc] -- method docs
+                     [Name] -- parameter docs
+                     [PTerm] -- instances
   deriving Show
 
 showDoc d | nullDocstring d = empty
@@ -66,16 +68,35 @@ pprintFD imp (FD n doc args ty f)
           showArgs []                  _ = []
 
 
-
+pprintDocs :: Bool -> Docs -> Doc OutputAnnotation
 pprintDocs imp (FunDoc d) = pprintFD imp d
 pprintDocs imp (DataDoc t args)
            = text "Data type" <+> pprintFD imp t <$>
              nest 4 (text "Constructors:" <> line <>
                      vsep (map (pprintFD imp) args))
-pprintDocs imp (ClassDoc n doc meths)
-           = text "Type class" <+> prettyName imp [] n <$> -- parameters?
+pprintDocs imp (ClassDoc n doc meths params instances)
+           = nest 4 (text "Type class" <+> prettyName imp [] n <>
+                     if nullDocstring doc then empty else line <> renderDocstring doc)
+             <> line <$>
+             nest 4 (text "Parameters:" <$>
+                      hsep (punctuate comma (map (prettyName False params') params)))
+             <> line <$>
              nest 4 (text "Methods:" <$>
-                     vsep (map (pprintFD imp) meths))
+                      vsep (map (pprintFD imp) meths))
+             <$>
+             nest 4 (text "Instances:" <$>
+                      let instances' = filter (not . hasConstraint) instances
+                      in vsep (if null instances' then [text "<no instances>"]
+                               else map dumpInstance instances'))
+  where
+    params' = zip params (repeat False)
+
+    dumpInstance :: PTerm -> Doc OutputAnnotation
+    dumpInstance = pprintPTerm imp params' []
+
+    hasConstraint (PPi (Constraint _ _) _ _ _)  = True
+    hasConstraint (PPi _                _ _ pt) = hasConstraint pt
+    hasConstraint _                             = False
 
 getDocs :: Name -> Idris Docs
 getDocs n
@@ -96,11 +117,14 @@ docData n ti
 docClass :: Name -> ClassInfo -> Idris Docs
 docClass n ci
   = do i <- getIState
+       ctxt <- getContext
        let docstr = case lookupCtxt n (idris_docstrings i) of
                          [str] -> fst str
                          _ -> emptyDocstring
+           params = class_params ci
+           instances = map (delabTy i) (class_instances ci)
        mdocs <- mapM docFun (map fst (class_methods ci))
-       return (ClassDoc n docstr mdocs)
+       return $ ClassDoc n docstr mdocs params instances
 
 docFun :: Name -> Idris FunDoc
 docFun n
