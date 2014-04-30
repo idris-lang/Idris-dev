@@ -39,7 +39,8 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["e", "edit"]; eof; return Edit)
               <|> try (do cmd ["exec", "execute"]; eof; return Execute)
               <|> try (do cmd ["c", "compile"]
-                          c <- option ViaC codegenOption
+                          i <- get
+                          c <- option (opt_codegen $ idris_options i) codegenOption
                           f <- P.identifier
                           eof
                           return (Compile c f))
