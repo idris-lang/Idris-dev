@@ -62,8 +62,8 @@ conjugate (r:+i) = (r :+ (0-i))
 -- We can't do "instance Num a => Num (Complex a)" because
 -- we need "abs" which needs "magnitude" which needs "sqrt" which needs Float
 instance Num (Complex Float) where
-    (+) (a:+b) (c:+d) = ((a+b):+(c+d))
-    (-) (a:+b) (c:+d) = ((a-b):+(c-d))
+    (+) (a:+b) (c:+d) = ((a+c):+(b+d))
+    (-) (a:+b) (c:+d) = ((a-c):+(b-d))
     (*) (a:+b) (c:+d) = ((a*c-b*d):+(b*c+a*d))
     fromInteger x = (fromInteger x:+0)
     abs (a:+b) = (magnitude (a:+b):+0)
