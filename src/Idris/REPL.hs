@@ -386,7 +386,6 @@ ideslaveProcess fn (Defn n) = do process stdout fn (Defn n)
 ideslaveProcess fn (TotCheck n) = process stdout fn (TotCheck n)
 ideslaveProcess fn (DebugInfo n) = do process stdout fn (DebugInfo n)
                                       iPrintResult ""
-ideslaveProcess fn (Info n) = process stdout fn (Info n)
 ideslaveProcess fn (Search t) = process stdout fn (Search t)
 ideslaveProcess fn (Spec t) = process stdout fn (Spec t)
 -- RmProof and AddProof not supported!
@@ -690,12 +689,6 @@ process h fn (DebugInfo n)
         iputStrLn $ "Size change: " ++ show sc
         when (not (null cg')) $ do iputStrLn "Call graph:\n"
                                    iputStrLn (show cg')
-process h fn (Info n)
-                    = do i <- getIState
-                         case lookupCtxt n (idris_classes i) of
-                              [c] -> do info <- classInfo c
-                                        ihRenderResult h info
-                              _ -> iPrintError "Not a class"
 process h fn (Search t) = iPrintError "Not implemented"
 -- FIXME: There is far too much repetition in the cases below!
 process h fn (CaseSplitAt updatefile l n)
