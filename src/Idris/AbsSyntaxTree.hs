@@ -124,7 +124,7 @@ data IState = IState {
     idris_calledgraph :: Ctxt [Name],
     idris_docstrings :: Ctxt (Docstring, [(Name, Docstring)]),
     idris_tyinfodata :: Ctxt TIData,
-    idris_totcheck :: [(FC, Name)], -- names to check totality on 
+    idris_totcheck :: [(FC, Name)], -- names to check totality on
     idris_defertotcheck :: [(FC, Name)], -- names to check at the end
     idris_options :: IOption,
     idris_name :: Int,
@@ -298,7 +298,7 @@ data Command = Quit
              | AddMissing Bool Int Name
              | MakeWith Bool Int Name
              | DoProofSearch Bool -- ^ update
-                             Bool -- ^ recursive (i.e. do arguments too) 
+                             Bool -- ^ recursive (i.e. do arguments too)
                              Int Name [Name]
              | SetOpt Opt
              | UnsetOpt Opt
@@ -440,7 +440,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | Implicit -- implicit coercion
            | CExport String    -- export, with a C name
            | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
-           | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error 
+           | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error
            | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
     deriving (Show, Eq)
@@ -843,10 +843,10 @@ deriving instance NFData ClassInfo
 -- Type inference data
 
 data TIData = TIPartial -- ^ a function with a partially defined type
-            | TISolution [Term] -- ^ possible solutions to a metavariable in a type 
+            | TISolution [Term] -- ^ possible solutions to a metavariable in a type
     deriving Show
 
-data OptInfo = Optimise { inaccessible :: [(Int,Name)],  -- includes names for error reporting 
+data OptInfo = Optimise { inaccessible :: [(Int,Name)],  -- includes names for error reporting
                           detaggable :: Bool }
     deriving Show
 {-!
