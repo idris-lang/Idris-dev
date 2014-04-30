@@ -78,4 +78,6 @@ pClause = do reserved "executable"; lchar '=';
              mk <- iName []
              st <- get
              put (st { makefile = Just (show mk) })
+      <|> do string "--"; many (satisfy (not . isEol)) ; satisfy isEol
+             return ()
 
