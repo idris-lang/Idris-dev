@@ -817,8 +817,9 @@ mergeNotunified :: Env -> [(Name, Term)] -> ([(Name, Term)], Fails)
 mergeNotunified env ns = mnu ns [] [] where
   mnu [] ns_acc ps_acc = (reverse ns_acc, reverse ps_acc)
   mnu ((n, t):ns) ns_acc ps_acc
-      | Just t' <- lookup n ns = mnu ns ((n,t) : ns_acc)
-                                        ((t,t',env,Msg "", [],Match) : ps_acc)
+      | Just t' <- lookup n ns, t /= t'
+             = mnu ns ((n,t') : ns_acc)
+                      ((t,t',env,Msg "", [],Unify) : ps_acc)
       | otherwise = mnu ns ((n,t) : ns_acc) ps_acc
 
 updateNotunified [] nu = nu

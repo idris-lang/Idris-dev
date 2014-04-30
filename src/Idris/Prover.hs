@@ -85,6 +85,7 @@ prove opt ctxt lit n ty
                                  [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
+
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
 elabStep st e = case runStateT eCheck st of
                      OK (a, st') -> return (a, st')

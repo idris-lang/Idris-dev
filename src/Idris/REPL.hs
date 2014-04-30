@@ -900,14 +900,15 @@ process h fn (RmProof n')
 
 process h fn' (AddProof prf)
   = do fn <- do
-         ex <- runIO $ doesFileExist fn'
-         let fnExt = fn' <.> "idr"
+         let fn'' = takeWhile (/= ' ') fn'
+         ex <- runIO $ doesFileExist fn''
+         let fnExt = fn'' <.> "idr"
          exExt <- runIO $ doesFileExist fnExt
          if ex
-            then return fn'
+            then return fn''
             else if exExt
                     then return fnExt
-                    else ifail $ "Neither \""++fn'++"\" nor \""++fnExt++"\" exist"
+                    else ifail $ "Neither \""++fn''++"\" nor \""++fnExt++"\" exist"
        let fb = fn ++ "~"
        runIO $ copyFile fn fb -- make a backup in case something goes wrong!
        prog <- runIO $ readFile fb

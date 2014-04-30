@@ -103,11 +103,6 @@ Extra-source-files:
                        libs/oldeffects/Effect/*.idr
                        libs/oldeffects/*.idr
 
-                       libs/javascript/*.idr
-                       libs/javascript/JavaScript/*.idr
-                       libs/javascript/Makefile
-                       libs/javascript/javascript.ipkg
-
                        llvm/*.c
                        llvm/Makefile
 
@@ -237,6 +232,9 @@ Extra-source-files:
                        test/reg041/run
                        test/reg041/*.idr
                        test/reg041/expected
+                       test/reg042/run
+                       test/reg042/*.idr
+                       test/reg042/expected
 
                        test/basic001/run
                        test/basic001/*.idr
