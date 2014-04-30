@@ -38,9 +38,12 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
                           return (ModImport (toPath f)))
               <|> try (do cmd ["e", "edit"]; eof; return Edit)
               <|> try (do cmd ["exec", "execute"]; eof; return Execute)
-              <|> try (do cmd ["c", "compile"]; f <- P.identifier; eof; return (Compile ViaC f))
-              <|> try (do cmd ["jc", "newcompile"]; f <- P.identifier; eof; return (Compile ViaJava f))
-              <|> try (do cmd ["js", "javascript"]; f <- P.identifier; eof; return (Compile ViaJavaScript f))
+              <|> try (do cmd ["c", "compile"]
+                          i <- get
+                          c <- option (opt_codegen $ idris_options i) codegenOption
+                          f <- P.identifier
+                          eof
+                          return (Compile c f))
               <|> try (do cmd ["proofs"]; eof; return Proofs)
               <|> try (do cmd ["rmproof"]; n <- P.name; eof; return (RmProof n))
               <|> try (do cmd ["showproof"]; n <- P.name; eof; return (ShowProof n))
@@ -50,7 +53,7 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["spec"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Spec t))
               <|> try (do cmd ["hnf"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (HNF t))
               <|> try (do cmd ["inline"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (TestInline t))
-              <|> try (do cmd ["doc"]; n <- P.fnName; eof; return (DocStr n))
+              <|> try (do cmd ["doc"]; n <- (P.fnName <|> (P.string "_|_" >> return falseTy)); eof; return (DocStr n))
               <|> try (do cmd ["d", "def"]; some (P.char ' ') ; n <- P.fnName; eof; return (Defn n))
               <|> try (do cmd ["total"]; do n <- P.fnName; eof; return (TotCheck n))
               <|> try (do cmd ["t", "type"]; do P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Check t))
@@ -117,6 +120,14 @@ pOption = do discard (P.symbol "errorcontext"); return ErrContext
       <|> do discard (P.symbol "showimplicits"); return ShowImpl
       <|> do discard (P.symbol "originalerrors"); return ShowOrigErr
       <|> do discard (P.symbol "autosolve"); return AutoSolve
+
+codegenOption :: P.IdrisParser Codegen
+codegenOption = do discard (P.symbol "javascript"); return ViaJavaScript
+            <|> do discard (P.symbol "node"); return ViaNode
+            <|> do discard (P.symbol "Java"); return ViaJava
+            <|> do discard (P.symbol "llvm"); return ViaLLVM
+            <|> do discard (P.symbol "bytecode"); return Bytecode
+            <|> do discard (P.symbol "C"); return ViaC
 
 pConsoleWidth :: P.IdrisParser ConsoleWidth
 pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth

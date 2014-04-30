@@ -608,7 +608,9 @@ recoverable f (Bind _ (Pi _) sc)
 recoverable (Bind _ (Pi _) sc) f
     | (P (DCon _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
-recoverable _ _ = True
+recoverable (Bind _ (Lam _) sc) f = recoverable sc f
+recoverable f (Bind _ (Lam _) sc) = recoverable f sc
+recoverable x y = True
 
 errEnv = map (\(x, b) -> (x, binderTy b))
 

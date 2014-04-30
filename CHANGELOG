@@ -7,6 +7,7 @@ New in 0.9.13:
   REPL. This is useful for writing more portable tests.
 * Many more of the basic functions and datatypes are documented.
 * Removed javascript lib in favor of idris-hackers/iQuery
+* Specify codegen for :compile REPL command (e.g. :compile javascript program.js)
 
 Internal changes
 
