@@ -142,10 +142,11 @@ fetchInfo :: IState    -- ^ IState to fetch info from
 fetchInfo ist nss =
   do let originNss  = S.fromList nss
      info          <- nsDict ist
-     let info'      = M.map (filter (filterName . (\(n, _, _) -> n))) info
+     let info'      = M.map (filter filterInclude) info
          info''     = M.map removeOrphans info'
-         reachedNss = traceNss info'' originNss S.empty
-     return $ M.filterWithKey (\k _ -> S.member k reachedNss) info''
+         info'''    = M.filter (not . null) info''
+         reachedNss = traceNss info''' originNss S.empty
+     return $ M.filterWithKey (\k _ -> S.member k reachedNss) info'''
 
 
 -- | Removes loose class methods and data constructors,
@@ -167,6 +168,16 @@ filterName (UN n)     | '@':'@':_ <- str n = False
 filterName (UN _)     = True
 filterName (NS n _)   = filterName n
 filterName _          = False
+
+
+-- | Whether a NsItem should be included in the documentation.
+--   It must not be Hidden and filterName must return True for the name.
+--   Also it must have Docs -- without Docs, nothing can be done.
+filterInclude :: NsItem -- ^ Accessibility to check
+              -> Bool   -- ^ Predicate result
+filterInclude (name, Just _, Public) | filterName name = True
+filterInclude (name, Just _, Frozen) | filterName name = True
+filterInclude _                                        = False
 
 
 -- | Finds all namespaces indirectly referred by a set of namespaces.
@@ -224,7 +235,7 @@ getAccess ist n =
   let res = lookupDefAcc n False (tt_ctxt ist)
   in case res of
      [(_, acc)] -> acc
-     _          -> Public
+     _          -> Hidden
 
 -- | Simple predicate for whether an NsItem has Docs
 hasDoc :: NsItem -- ^ The NsItem to test
@@ -412,19 +423,15 @@ createNsDoc ist ns content out =
   do let tpath                   = out </> "docs" </> (genRelNsPath ns "html")
          dir                     = takeDirectory tpath
          file                    = takeFileName tpath 
-         visible (_, _, Hidden)  = False
-         visible _               = True
          haveDocs (_, Just d, _) = [d]
          haveDocs _              = []
-                                 -- Do not document private members
-         content'                = filter visible content
                                  -- We cannot do anything without a Doc
-         content''               = concatMap haveDocs content'
+         content'                = concatMap haveDocs content
      createDirectoryIfMissing True dir
      (path, h) <- openTempFile dir file
      BS2.hPut h $ renderHtml $ wrapper (Just ns) $ do
        H.h1 $ toHtml (nsName2Str ns)
-       H.dl ! class_ "decls" $ forM_ content'' (createOtherDoc ist)
+       H.dl ! class_ "decls" $ forM_ content' (createOtherDoc ist)
      hClose h
      renameFile path tpath
 
