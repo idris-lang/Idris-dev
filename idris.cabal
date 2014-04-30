@@ -103,11 +103,6 @@ Extra-source-files:
                        libs/oldeffects/Effect/*.idr
                        libs/oldeffects/*.idr
 
-                       libs/javascript/*.idr
-                       libs/javascript/JavaScript/*.idr
-                       libs/javascript/Makefile
-                       libs/javascript/javascript.ipkg
-
                        llvm/*.c
                        llvm/Makefile
 
