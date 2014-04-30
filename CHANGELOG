@@ -6,6 +6,7 @@ New in 0.9.13:
 * Command line option -e (or --eval) to evaluate expressions without loading the
   REPL. This is useful for writing more portable tests.
 * Many more of the basic functions and datatypes are documented.
+* Specify codegen for :compile REPL command (e.g. :compile javascript program.js)
 
 Internal changes
 
