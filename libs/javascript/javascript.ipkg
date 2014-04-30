@@ -1,5 +1,0 @@
-package javascript
-
-opts    = "--nobasepkgs -i ../prelude -i ../base"
-modules = JavaScript, JavaScript.JSON
-

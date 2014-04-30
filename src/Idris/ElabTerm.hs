@@ -1187,8 +1187,8 @@ reifyApp _ t [x]
 reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist r)
 reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
-reifyApp _ t [Constant (Str n)]
-           | t == reflm "Intro" = return $ Intro [sUN n]
+reifyApp _ t [n] | t == reflm "Intro" = liftM (Intro . (:[])) (reifyTTName n)
+reifyApp _ t [n] | t == reflm "Induction" = liftM Induction (reifyTTName n)
 reifyApp ist t [t']
              | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
 reifyApp ist t [t']
