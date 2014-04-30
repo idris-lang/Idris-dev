@@ -1,7 +1,7 @@
-Type checking ./A.idr
+Type checking ./A/fully/Qualified/NAME.idr
 IdrisDoc file written
 Type checking ./B.idr
-A: Check
-B: Check
-A
-B
+A.fully.Qualified.NAME.html
+B.html
+A.fully.Qualified.NAME is in the index
+B is in the index

@@ -1,4 +1,4 @@
 package test_merge
 
-modules = A
+modules = A.fully.Qualified.NAME
 

@@ -339,6 +339,7 @@ Extra-source-files:
                        test/idrisdoc005/*.ipkg
                        test/idrisdoc006/run
                        test/idrisdoc006/expected
+                       test/idrisdoc006/A/fully/Qualified/NAME.idr
                        test/idrisdoc006/*.idr
                        test/idrisdoc006/*.ipkg
                        test/idrisdoc007/run
