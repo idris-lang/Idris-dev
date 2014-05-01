@@ -487,6 +487,7 @@ data PDecl' t
               [t] -- constraints
               Name
               [(Name, t)] -- parameters
+              [(Name, Docstring)] -- parameter docstrings
               [PDecl' t] -- declarations
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
               -- class name, parameters, method declarations
@@ -569,7 +570,7 @@ declared (PData _ _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
 declared (PRecord _ _ _ n _ _ _ c _) = [n, c]
-declared (PClass _ _ _ _ n _ ms) = n : concatMap declared ms
+declared (PClass _ _ _ _ n _ _ ms) = n : concatMap declared ms
 declared (PInstance _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
@@ -588,7 +589,7 @@ tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
-tldeclared (PClass _ _ _ _ n _ ms) = concatMap tldeclared ms
+tldeclared (PClass _ _ _ _ n _ _ ms) = concatMap tldeclared ms
 tldeclared (PInstance _ _ _ _ _ _ _ _) = []
 tldeclared _ = []
 
@@ -604,7 +605,7 @@ defined (PData _ _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
 defined (PRecord _ _ _ n _ _ _ c _) = [n, c]
-defined (PClass _ _ _ _ n _ ms) = n : concatMap defined ms
+defined (PClass _ _ _ _ n _ _ ms) = n : concatMap defined ms
 defined (PInstance _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
 defined (PSyntax _ _) = []
@@ -1065,7 +1066,7 @@ eqOpts = []
 elimName       = sUN "__Elim"
 elimMethElimTy = sUN "__elimTy"
 elimMethElim   = sUN "elim"
-elimDecl = PClass (parseDocstring . T.pack $ "Type class for eliminators") defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)]
+elimDecl = PClass (parseDocstring . T.pack $ "Type class for eliminators") defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)] []
                      [PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElimTy PType,
                       PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
@@ -1419,7 +1420,7 @@ showDeclImp _ (PData _ _ _ _ _ d) = showDImp True d
 showDeclImp i (PParams _ ns ps) = text "params" <+> braces (text (show ns) <> line <> showDecls i ps <> line)
 showDeclImp i (PNamespace n ps) = text "namespace" <+> text n <> braces (line <> showDecls i ps <> line)
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
-showDeclImp i (PClass _ _ _ cs n ps ds)
+showDeclImp i (PClass _ _ _ cs n ps _ ds)
    = text "class" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls i ds
 showDeclImp i (PInstance _ _ cs n _ t _ ds)
    = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp i t <> line <> showDecls i ds
