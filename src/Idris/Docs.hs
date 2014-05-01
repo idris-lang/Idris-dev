@@ -84,10 +84,13 @@ pprintDocs imp (ClassDoc n doc meths params instances)
              nest 4 (text "Methods:" <$>
                       vsep (map (pprintFD imp) meths))
              <$>
-             nest 4 (text "Instances:" <$>
-                      let instances' = filter (not . hasConstraint) instances
-                      in vsep (if null instances' then [text "<no instances>"]
-                               else map dumpInstance instances'))
+             nest 4 (text "Defined instances:" <$>
+                     vsep (if null definedInstances then [text "<no instances>"]
+                           else map dumpInstance definedInstances))
+             <>
+             if null generatedInstances then empty
+             else line <$> nest 4 (text "Instances generated from subclasses:" <$>
+                                   vsep (map dumpInstance generatedInstances))
   where
     params' = zip params (repeat False)
 
@@ -97,6 +100,8 @@ pprintDocs imp (ClassDoc n doc meths params instances)
     hasConstraint (PPi (Constraint _ _) _ _ _)  = True
     hasConstraint (PPi _                _ _ pt) = hasConstraint pt
     hasConstraint _                             = False
+
+    (generatedInstances, definedInstances) = partition hasConstraint instances
 
 getDocs :: Name -> Idris Docs
 getDocs n
