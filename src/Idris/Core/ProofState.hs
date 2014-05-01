@@ -872,7 +872,7 @@ processTactic QED ps = case holes ps of
                            _  -> fail "Still holes to fill."
 processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
 processTactic Undo ps = case previous ps of
-                            Nothing -> fail "Nothing to undo."
+                            Nothing -> Error . Msg $ "Nothing to undo."
                             Just pold -> return (pold, "")
 processTactic EndUnify ps
     = let (h, ns_in) = unified ps
