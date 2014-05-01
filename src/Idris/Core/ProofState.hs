@@ -15,7 +15,7 @@ import Idris.Core.Unify
 
 import Control.Monad.State.Strict
 import Control.Applicative hiding (empty)
-import Control.Arrow (first)
+import Control.Arrow ((***))
 import Data.List
 import Debug.Trace
 
@@ -666,7 +666,7 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              let scr      = last $ tail args'
              let indxnames = makeIndexNames indicies
              prop <- replaceIndicies indxnames indicies $ Bind nm (Lam tmt') t
-             consargs' <- query (\ps -> map (first $ flip (uniqueNameCtxt (context ps)) (holes ps)) consargs)
+             consargs' <- query (\ps -> map (flip (uniqueNameCtxt (context ps)) (holes ps ++ allTTNames (pterm ps)) *** uniqueBindersCtxt (context ps) (holes ps ++ allTTNames (pterm ps))) consargs)
              let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs' (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0)))
                                                         (params ++ [prop] ++ map makeConsArg consargs' ++ indicies ++ [tmv])))
              action (\ps -> ps {holes = holes ps \\ [x]})

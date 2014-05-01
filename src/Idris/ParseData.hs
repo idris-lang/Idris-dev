@@ -42,11 +42,12 @@ Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
-record syn = do (doc, acc) <- try (do
+record syn = do (doc, acc, opts) <- try (do
                       doc <- option noDocs docComment
                       acc <- optional accessibility
+                      opts <- dataOpts []
                       reserved "record"
-                      return (doc, acc))
+                      return (doc, acc, opts))
                 fc <- getFC
                 tyn_in <- fnName
                 lchar ':'
@@ -59,7 +60,7 @@ record syn = do (doc, acc) <- try (do
                                                     syn_namespace syn }
                 let fns = getRecNames rsyn cty
                 mapM_ (\n -> addAcc n acc) fns
-                return $ PRecord (fst doc) rsyn fc tyn ty cdoc cn cty
+                return $ PRecord (fst doc) rsyn fc tyn ty opts cdoc cn cty
              <?> "record type declaration"
   where
     getRecNames :: SyntaxInfo -> PTerm -> [Name]
