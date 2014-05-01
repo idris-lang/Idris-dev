@@ -28,15 +28,15 @@ isJust (Just j) = True
 -- Misc
 --------------------------------------------------------------------------------
 
-maybe : Lazy b -> (a -> b) -> Maybe a -> b
+maybe : Lazy b -> Lazy (a -> b) -> Maybe a -> b
 maybe n j Nothing  = n
-maybe n j (Just x) = j x
+maybe n j (Just x) = (Force j) x
 
 fromMaybe : (Lazy a) -> Maybe a -> a
 fromMaybe def Nothing  = def
 fromMaybe def (Just j) = j
 
-toMaybe : Bool -> a -> Maybe a
+toMaybe : Bool -> Lazy a -> Maybe a
 toMaybe True  j = Just j
 toMaybe False j = Nothing
 

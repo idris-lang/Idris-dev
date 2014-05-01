@@ -23,12 +23,12 @@ syntax if [test] then [t] else [e] = boolElim test (Delay t) (Delay e)
 infixl 4 &&, ||
 
 ||| Boolean OR
-(||) : Bool -> Bool -> Bool
+(||) : Bool -> Lazy Bool -> Bool
 (||) False x = x
 (||) True _  = True
 
 ||| Boolean AND
-(&&) : Bool -> Bool -> Bool
+(&&) : Bool -> Lazy Bool -> Bool
 (&&) True x  = x
 (&&) False _ = False
 

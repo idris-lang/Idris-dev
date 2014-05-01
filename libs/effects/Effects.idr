@@ -337,8 +337,8 @@ mapVE f []        = pure []
 mapVE f (x :: xs) = [| f x :: mapVE f xs |]
 
 
-when : Applicative m => Bool -> ({xs} Eff m ()) -> {xs} Eff m ()
-when True  e = e
+when : Applicative m => Bool -> Lazy ({xs} Eff m ()) -> {xs} Eff m ()
+when True  e = Force e
 when False e = pure ()
 
 -- --------------------------------------------------------------------- [ EOF ]
