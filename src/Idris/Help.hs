@@ -35,7 +35,6 @@ help =
     ([":apropos"], NoArg, "Search names, types, and documentation"),
     ([":whocalls", ":wc"], NameArg, "List the callers of some name"),
     ([":callswho", ":cw"], NameArg, "List the callees of some name"),
-    ([":i", ":info"], NameArg, "Display information about a type class"),
     ([":total"], NameArg, "Check the totality of a name"),
     ([":r",":reload"], NoArg, "Reload current file"),
     ([":l",":load"], FileArg, "Load a new file"),

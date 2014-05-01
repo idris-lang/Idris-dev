@@ -285,7 +285,6 @@ data Command = Quit
              | HNF PTerm
              | TestInline PTerm
              | Defn Name
-             | Info Name
              | Missing Name
              | DynamicLink FilePath
              | ListDynamic
