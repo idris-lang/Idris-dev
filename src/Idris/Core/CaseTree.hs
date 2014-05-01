@@ -712,6 +712,8 @@ substSC n repl (Case n' alts)
     | n == n'   = Case repl (map (substAlt n repl) alts)
     | otherwise = Case n'   (map (substAlt n repl) alts)
 substSC n repl (STerm t) = STerm $ subst n (P Bound repl Erased) t
+substSC n repl (UnmatchedCase errmsg) = UnmatchedCase errmsg
+substSC n repl  ImpossibleCase = ImpossibleCase
 substSC n repl sc = error $ "unsupported in substSC: " ++ show sc
 
 substAlt :: Name -> Name -> CaseAlt -> CaseAlt

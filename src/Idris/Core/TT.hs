@@ -1223,3 +1223,12 @@ orderPats tm = op [] tm
             = (n', t') : insert n t ps
         | otherwise = (n,t):(n',t'):ps
 
+allTTNames :: Eq n => TT n -> [n]
+allTTNames = nub . allNamesIn
+  where allNamesIn (P _ n _) = [n]
+        allNamesIn (Bind n b t) = [n] ++ nb b ++ allNamesIn t
+          where nb (Let   t v) = allNamesIn t ++ allNamesIn v
+                nb (Guess t v) = allNamesIn t ++ allNamesIn v
+                nb t = allNamesIn (binderTy t)
+        allNamesIn (App f a) = allNamesIn f ++ allNamesIn a
+        allNamesIn _ = []

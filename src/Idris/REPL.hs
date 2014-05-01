@@ -1533,8 +1533,10 @@ getPkgCheck :: Opt -> Maybe String
 getPkgCheck (PkgCheck str) = Just str
 getPkgCheck _              = Nothing
 
--- IdrisDoc
-getPkgMkDoc :: Opt -> Maybe String
+-- | Returns None if given an Opt which is not PkgMkDoc
+--   Otherwise returns Just x, where x is the contents of PkgMkDoc
+getPkgMkDoc :: Opt          -- ^ Opt to extract
+            -> Maybe String -- ^ Result
 getPkgMkDoc (PkgMkDoc str) = Just str
 getPkgMkDoc _              = Nothing
 

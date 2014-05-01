@@ -86,13 +86,14 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          ctxt <- getContext
          i <- getIState
 
-         logLvl 3 $ show n ++ " pre-type " ++ showTmImpls ty'
+         logLvl 5 $ show n ++ " pre-type " ++ showTmImpls ty'
          ty' <- addUsingConstraints syn fc ty'
          ty' <- implicit info syn n ty'
 
          let ty    = addImpl i ty'
              inacc = inaccessibleArgs 0 ty
-         logLvl 3 $ show n ++ " type " ++ showTmImpls ty
+         logLvl 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
+         logLvl 5 $ show n ++ " type " ++ showTmImpls ty
          logLvl 3 $ show n ++ ": inaccessible arguments: " ++ show inacc
 
          ((tyT, defer, is), log) <-
@@ -770,9 +771,9 @@ elabTransform info fc safe lhs_in rhs_in
 
 
 elabRecord :: ElabInfo -> SyntaxInfo -> Docstring -> FC -> Name ->
-              PTerm -> Docstring -> Name -> PTerm -> Idris ()
-elabRecord info syn doc fc tyn ty cdoc cn cty
-    = do elabData info syn doc [] fc [] (PDatadecl tyn ty [(cdoc, [], cn, cty, fc, [])])
+              PTerm -> DataOpts -> Docstring -> Name -> PTerm -> Idris ()
+elabRecord info syn doc fc tyn ty opts cdoc cn cty
+    = do elabData info syn doc [] fc opts (PDatadecl tyn ty [(cdoc, [], cn, cty, fc, [])])
          -- TODO think: something more in info?
          cty' <- implicit info syn cn cty
          i <- getIState
@@ -1671,6 +1672,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
+        logLvl 5 ("Checked wval " ++ show wval')
         (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
         let cwvaltyN = explicitNames cwvalty
         let cwvalN = explicitNames cwval
@@ -2318,10 +2320,10 @@ elabDecl' what info (PClass doc s f cs n ps ds)
 elabDecl' what info (PInstance s f cs n ps t expn ds)
     = do iLOG $ "Elaborating instance " ++ show n
          elabInstance info s what f cs n ps t expn ds
-elabDecl' what info (PRecord doc s f tyn ty cdoc cn cty)
+elabDecl' what info (PRecord doc s f tyn ty opts cdoc cn cty)
   | what /= ETypes
     = do iLOG $ "Elaborating record " ++ show tyn
-         elabRecord info s doc f tyn ty cdoc cn cty
+         elabRecord info s doc f tyn ty opts cdoc cn cty
   | otherwise
     = do iLOG $ "Elaborating [type of] " ++ show tyn
          elabData info s doc [] f [] (PLaterdecl tyn ty)

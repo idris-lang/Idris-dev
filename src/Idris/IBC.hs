@@ -30,7 +30,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 67
+ibcVersion = 68
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1425,7 +1425,7 @@ instance (Binary t) => Binary (PDecl' t) where
                 PNamespace x1 x2 -> do putWord8 5
                                        put x1
                                        put x2
-                PRecord x1 x2 x3 x4 x5 x6 x7 x8 ->
+                PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9 ->
                                              do putWord8 6
                                                 put x1
                                                 put x2
@@ -1435,6 +1435,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                                 put x6
                                                 put x7
                                                 put x8
+                                                put x9
                 PClass x1 x2 x3 x4 x5 x6 x7
                                          -> do putWord8 7
                                                put x1
@@ -1513,7 +1514,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x6 <- get
                            x7 <- get
                            x8 <- get
-                           return (PRecord x1 x2 x3 x4 x5 x6 x7 x8)
+                           x9 <- get
+                           return (PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9)
                    7 -> do x1 <- get
                            x2 <- get
                            x3 <- get

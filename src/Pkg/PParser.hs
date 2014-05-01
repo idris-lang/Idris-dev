@@ -1,3 +1,5 @@
+{-# LANGUAGE OverlappingInstances #-}
+
 module Pkg.PParser where
 
 import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
@@ -26,6 +28,10 @@ data PkgDesc = PkgDesc { pkgname :: String,
                          execout :: Maybe String
                        }
     deriving Show
+
+instance TokenParsing PParser where
+  someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+
 
 defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (sUN "") Nothing
 
@@ -78,6 +84,4 @@ pClause = do reserved "executable"; lchar '=';
              mk <- iName []
              st <- get
              put (st { makefile = Just (show mk) })
-      <|> do string "--"; many (satisfy (not . isEol)) ; satisfy isEol
-             return ()
 
