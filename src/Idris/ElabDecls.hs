@@ -771,9 +771,9 @@ elabTransform info fc safe lhs_in rhs_in
 
 
 elabRecord :: ElabInfo -> SyntaxInfo -> Docstring -> FC -> Name ->
-              PTerm -> Docstring -> Name -> PTerm -> Idris ()
-elabRecord info syn doc fc tyn ty cdoc cn cty
-    = do elabData info syn doc [] fc [] (PDatadecl tyn ty [(cdoc, [], cn, cty, fc, [])])
+              PTerm -> DataOpts -> Docstring -> Name -> PTerm -> Idris ()
+elabRecord info syn doc fc tyn ty opts cdoc cn cty
+    = do elabData info syn doc [] fc opts (PDatadecl tyn ty [(cdoc, [], cn, cty, fc, [])])
          -- TODO think: something more in info?
          cty' <- implicit info syn cn cty
          i <- getIState
@@ -2320,10 +2320,10 @@ elabDecl' what info (PClass doc s f cs n ps ds)
 elabDecl' what info (PInstance s f cs n ps t expn ds)
     = do iLOG $ "Elaborating instance " ++ show n
          elabInstance info s what f cs n ps t expn ds
-elabDecl' what info (PRecord doc s f tyn ty cdoc cn cty)
+elabDecl' what info (PRecord doc s f tyn ty opts cdoc cn cty)
   | what /= ETypes
     = do iLOG $ "Elaborating record " ++ show tyn
-         elabRecord info s doc f tyn ty cdoc cn cty
+         elabRecord info s doc f tyn ty opts cdoc cn cty
   | otherwise
     = do iLOG $ "Elaborating [type of] " ++ show tyn
          elabData info s doc [] f [] (PLaterdecl tyn ty)
