@@ -64,7 +64,7 @@ loadState :: Elab' aux ()
 loadState = do (ES p s e) <- get
                case e of
                   Just st -> put st
-                  _ -> fail "Nothing to undo"
+                  _ -> lift $ Error . Msg $ "Nothing to undo"
 
 getNameFrom :: Name -> Elab' aux Name
 getNameFrom n = do (ES (p, a) s e) <- get
