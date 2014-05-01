@@ -1620,8 +1620,8 @@ usedNamesIn vars ist tm = nub $ ni [] tm
   where -- TODO THINK added niTacImp, but is it right?
     ni env (PRef _ n)
         | n `elem` vars && not (n `elem` env)
-            = case lookupTy n (tt_ctxt ist) of
-                [] -> [n]
+            = case lookupDefExact n (tt_ctxt ist) of
+                Nothing -> [n]
                 _ -> []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)

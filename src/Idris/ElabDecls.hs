@@ -86,13 +86,14 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          ctxt <- getContext
          i <- getIState
 
-         logLvl 3 $ show n ++ " pre-type " ++ showTmImpls ty'
+         logLvl 5 $ show n ++ " pre-type " ++ showTmImpls ty'
          ty' <- addUsingConstraints syn fc ty'
          ty' <- implicit info syn n ty'
 
          let ty    = addImpl i ty'
              inacc = inaccessibleArgs 0 ty
-         logLvl 3 $ show n ++ " type " ++ showTmImpls ty
+         logLvl 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
+         logLvl 5 $ show n ++ " type " ++ showTmImpls ty
          logLvl 3 $ show n ++ ": inaccessible arguments: " ++ show inacc
 
          ((tyT, defer, is), log) <-
@@ -1671,6 +1672,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
+        logLvl 5 ("Checked wval " ++ show wval')
         (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
         let cwvaltyN = explicitNames cwvalty
         let cwvalN = explicitNames cwval
