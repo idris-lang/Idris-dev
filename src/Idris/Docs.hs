@@ -27,7 +27,7 @@ data Docs = FunDoc FunDoc
                     [FunDoc] -- data constructor docs
           | ClassDoc Name Docstring -- class docs
                      [FunDoc] -- method docs
-                     [Name] -- parameter docs
+                     [(Name, Maybe Docstring)] -- parameters and their docstrings
                      [PTerm] -- instances
   deriving Show
 
@@ -78,30 +78,37 @@ pprintDocs imp (ClassDoc n doc meths params instances)
            = nest 4 (text "Type class" <+> prettyName imp [] n <>
                      if nullDocstring doc then empty else line <> renderDocstring doc)
              <> line <$>
-             nest 4 (text "Parameters:" <$>
-                      hsep (punctuate comma (map (prettyName False params') params)))
+             nest 4 (text "Parameters:" <$> prettyParameters)
              <> line <$>
              nest 4 (text "Methods:" <$>
                       vsep (map (pprintFD imp) meths))
              <$>
-             nest 4 (text "Defined instances:" <$>
-                     vsep (if null definedInstances then [text "<no instances>"]
-                           else map dumpInstance definedInstances))
+             nest 4 (text "Instances:" <$>
+                     vsep (if null instances' then [text "<no instances>"]
+                           else map dumpInstance instances'))
              <>
-             if null generatedInstances then empty
-             else line <$> nest 4 (text "Instances generated from subclasses:" <$>
-                                   vsep (map dumpInstance generatedInstances))
+             if null subclasses then empty
+             else line <$> nest 4 (text "Subclasses:" <$>
+                                   vsep (map (dumpInstance . remConstraint) subclasses))
   where
-    params' = zip params (repeat False)
+    params' = map (\x -> (fst x, False)) params
 
     dumpInstance :: PTerm -> Doc OutputAnnotation
     dumpInstance = pprintPTerm imp params' []
+
+    remConstraint (PPi (Constraint _ _) _ tm _)  = tm
+    remConstraint (PPi x                y z  pt) = PPi x y z (remConstraint pt)
+    remConstraint p                              = p
 
     hasConstraint (PPi (Constraint _ _) _ _ _)  = True
     hasConstraint (PPi _                _ _ pt) = hasConstraint pt
     hasConstraint _                             = False
 
-    (generatedInstances, definedInstances) = partition hasConstraint instances
+    (subclasses, instances') = partition hasConstraint instances
+
+    prettyParameters = if any (isJust . snd) params
+                       then vsep (map (\(n,md) -> prettyName False params' n <+> maybe empty showDoc md) params)
+                       else hsep (punctuate comma (map (prettyName False params' . fst) params))
 
 getDocs :: Name -> Idris Docs
 getDocs n
@@ -123,12 +130,11 @@ docClass :: Name -> ClassInfo -> Idris Docs
 docClass n ci
   = do i <- getIState
        ctxt <- getContext
-       let docstr = case lookupCtxt n (idris_docstrings i) of
-                         [str] -> fst str
-                         _ -> emptyDocstring
-           params = class_params ci
+       let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
+           docstr = maybe emptyDocstring fst docStrings
+           params = map (\pn -> (pn, docStrings >>= (lookup pn . snd))) (class_params ci)
            instances = map (delabTy i) (class_instances ci)
-       mdocs <- mapM docFun (map fst (class_methods ci))
+       mdocs <- mapM (docFun .fst) (class_methods ci)
        return $ ClassDoc n docstr mdocs params instances
 
 docFun :: Name -> Idris FunDoc
