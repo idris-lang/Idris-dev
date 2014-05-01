@@ -303,6 +303,6 @@ mapE : Applicative m => (a -> Eff m xs b) -> List a -> Eff m xs (List b)
 mapE f []        = pure []
 mapE f (x :: xs) = [| f x :: mapE f xs |]
 
-when : Applicative m => Bool -> Eff m xs () -> Eff m xs ()
+when : Applicative m => Bool -> Lazy (Eff m xs ()) -> Eff m xs ()
 when True  e = e
 when False e = pure ()

@@ -41,5 +41,5 @@ class Applicative f => Alternative (f : Type -> Type) where
 guard : Alternative f => Bool -> f ()
 guard a = if a then pure () else empty
 
-when : Applicative f => Bool -> f () -> f ()
-when a f = if a then f else pure ()
+when : Applicative f => Bool -> Lazy (f ()) -> f ()
+when a f = if a then Force f else pure ()
