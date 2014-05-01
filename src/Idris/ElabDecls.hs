@@ -792,16 +792,14 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty
          let index_names_in = getRecNameMap "_in" recty
          let recty_in = substMatches index_names_in recty
 
-         let index_names_out = getRecNameMap "'" recty
-         let recty_out = substMatches index_names_out recty
-
          logLvl 1 $ show (recty, ptys)
          let substs = map (\ (n, _) -> (n, PApp fc (PRef fc n)
                                                 [pexp (PRef fc rec)])) ptys
          proj_decls <- mapM (mkProj recty_in substs cimp) (zip ptys [0..])
          let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
          let implBinds = getImplB id cty'
-         update_decls <- mapM (mkUpdate recty 
+         update_decls <- mapM (mkUpdate recty index_names_in
+                                   (getFieldNames cty')
                                    implBinds (length nonImp)) (zip nonImp [0..])
          mapM_ (elabDecl EAll info) (concat proj_decls)
          logLvl 1 $ show update_decls
@@ -837,6 +835,10 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty
 
     getProjs acc (PPi _ n ty s) = getProjs ((n, ty) : acc) s
     getProjs acc r = reverse acc
+
+    getFieldNames (PPi (Exp _ _ _) n _ s) = n : getFieldNames s 
+    getFieldNames (PPi _ _ _ s) = getFieldNames s
+    getFieldNames _ = []
 
     getRecTy (PPi _ n ty s) = getRecTy s
     getRecTy t = t
@@ -882,13 +884,20 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty
     -- If the 'pty' we're updating includes anything in 'substs', we're
     -- updating the type as well, so use recty', otherwise just use
     -- recty
-    mkUpdate recty k num ((pn, pty), pos)
+    mkUpdate recty inames fnames k num ((pn, pty), pos)
        = do let setname = expandNS syn $ mkType pn
             let valname = sMN 0 "updateval"
-            let pt = k (PPi expl pn pty
-                           (PPi expl rec recty recty))
+            let pn_out = sMN 0 (show pn ++ "_out")
+            let pn_in = sMN 0 (show pn ++ "_in")
+            let recty_in = substMatches [(pn, PRef fc pn_in)] recty
+            let recty_out = substMatches [(pn, PRef fc pn_out)] recty
+            let pt = substMatches inames $ 
+                       k (PPi expl pn_out pty
+                           (PPi expl rec recty_in recty_out))
             let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] setname pt
-            let pls = map (\x -> PRef fc (sMN x ("field" ++ show x))) [0..num-1]
+--             let pls = map (\x -> PRef fc (sMN x ("field" ++ show x))) [0..num-1]
+            let inames_imp = map (\ (x,_) -> (x, Placeholder)) inames
+            let pls = map (\x -> substMatches inames_imp (PRef fc x)) fnames
             let lhsArgs = pls
             let rhsArgs = take pos pls ++ (PRef fc valname) :
                                drop (pos + 1) pls

@@ -407,6 +407,9 @@ Extra-source-files:
                        test/records001/run
                        test/records001/*.idr
                        test/records001/expected
+                       test/records002/run
+                       test/records002/*.idr
+                       test/records002/expected
 
                        test/sugar001/run
                        test/sugar001/*.idr
