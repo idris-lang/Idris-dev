@@ -11,7 +11,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 lookupNames, lookupTy, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
-                Value(..), Quote(..), initEval, uniqueNameCtxt, definitions) where
+                Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions) where
 
 import Debug.Trace
 import Control.Applicative hiding (Const)
@@ -961,3 +961,10 @@ uniqueNameCtxt ctxt n hs
     | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
     | [_] <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
     | otherwise = n
+
+uniqueBindersCtxt :: Context -> [Name] -> TT Name -> TT Name
+uniqueBindersCtxt ctxt ns (Bind n b sc)
+    = let n' = uniqueNameCtxt ctxt n ns in
+          Bind n' (fmap (uniqueBindersCtxt ctxt (n':ns)) b) (uniqueBindersCtxt ctxt ns sc)
+uniqueBindersCtxt ctxt ns (App f a) = App (uniqueBindersCtxt ctxt ns f) (uniqueBindersCtxt ctxt ns a)
+uniqueBindersCtxt ctxt ns t = t

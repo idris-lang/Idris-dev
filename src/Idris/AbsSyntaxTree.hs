@@ -285,7 +285,6 @@ data Command = Quit
              | HNF PTerm
              | TestInline PTerm
              | Defn Name
-             | Info Name
              | Missing Name
              | DynamicLink FilePath
              | ListDynamic
@@ -483,7 +482,7 @@ data PDecl' t
    | PData    Docstring [(Name, Docstring)] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
    | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
    | PNamespace String [PDecl' t] -- ^ New namespace
-   | PRecord  Docstring SyntaxInfo FC Name t Docstring Name t  -- ^ Record declaration
+   | PRecord  Docstring SyntaxInfo FC Name t DataOpts Docstring Name t  -- ^ Record declaration
    | PClass   Docstring SyntaxInfo FC
               [t] -- constraints
               Name
@@ -569,7 +568,7 @@ declared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 declared (PData _ _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
-declared (PRecord _ _ _ n _ _ c _) = [n, c]
+declared (PRecord _ _ _ n _ _ _ c _) = [n, c]
 declared (PClass _ _ _ _ n _ ms) = n : concatMap declared ms
 declared (PInstance _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
@@ -583,7 +582,7 @@ tldeclared (PFix _ _ _) = []
 tldeclared (PTy _ _ _ _ _ n t) = [n]
 tldeclared (PPostulate _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
-tldeclared (PRecord _ _ _ n _ _ c _) = [n, c]
+tldeclared (PRecord _ _ _ n _ _ _ c _) = [n, c]
 tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (_, _, a, _, _, _) = a
 tldeclared (PParams _ _ ds) = []
@@ -604,7 +603,7 @@ defined (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 defined (PData _ _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
-defined (PRecord _ _ _ n _ _ c _) = [n, c]
+defined (PRecord _ _ _ n _ _ _ c _) = [n, c]
 defined (PClass _ _ _ _ n _ ms) = n : concatMap defined ms
 defined (PInstance _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
