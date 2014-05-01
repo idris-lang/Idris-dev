@@ -785,14 +785,26 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
          let ptys = getProjs [] (renameBs cimp cty)
          let ptys_u = getProjs [] cty
          let recty = getRecTy cty
-         logLvl 6 $ show (recty, ptys)
+
+         -- rename indices when we generate the getter/setter types, so
+         -- that they don't clash with the names of the projections
+         -- we're generating
+         let index_names_in = getRecNameMap "_in" recty
+         let recty_in = substMatches index_names_in recty
+
+         let index_names_out = getRecNameMap "'" recty
+         let recty_out = substMatches index_names_out recty
+
+         logLvl 1 $ show (recty, ptys)
          let substs = map (\ (n, _) -> (n, PApp fc (PRef fc n)
                                                 [pexp (PRef fc rec)])) ptys
-         proj_decls <- mapM (mkProj recty substs cimp) (zip ptys [0..])
+         proj_decls <- mapM (mkProj recty_in substs cimp) (zip ptys [0..])
          let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
          let implBinds = getImplB id cty'
-         update_decls <- mapM (mkUpdate recty implBinds (length nonImp)) (zip nonImp [0..])
+         update_decls <- mapM (mkUpdate recty 
+                                   implBinds (length nonImp)) (zip nonImp [0..])
          mapM_ (elabDecl EAll info) (concat proj_decls)
+         logLvl 1 $ show update_decls
          mapM_ (tryElabDecl info) (update_decls)
   where
 --     syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
@@ -807,6 +819,7 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
                         (\v -> do iputStrLn $ show fc ++
                                       ":Warning - can't generate setter for " ++
                                       show fn ++ " (" ++ show ty ++ ")"
+--                                       ++ "\n" ++ pshow i v
                                   putIState i)
 
     getImplB k (PPi (Imp l s _) n Placeholder sc)
@@ -827,6 +840,12 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
 
     getRecTy (PPi _ n ty s) = getRecTy s
     getRecTy t = t
+
+    getRecNameMap x (PApp fc t args) = mapMaybe (toMN . getTm) args
+      where
+        toMN (PRef fc n) = Just (n, PRef fc (sMN 0 (show n ++ x)))
+        toMN _ = Nothing
+    getRecNameMap x _ = []
 
     rec = sMN 0 "rec"
 
@@ -860,13 +879,16 @@ elabRecord info syn doc fc tyn ty cdoc cn cty
 
     implicitise (pa, t) = pa { getTm = t }
 
+    -- If the 'pty' we're updating includes anything in 'substs', we're
+    -- updating the type as well, so use recty', otherwise just use
+    -- recty
     mkUpdate recty k num ((pn, pty), pos)
        = do let setname = expandNS syn $ mkType pn
             let valname = sMN 0 "updateval"
             let pt = k (PPi expl pn pty
                            (PPi expl rec recty recty))
             let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] setname pt
-            let pls = map (\x -> PRef fc (sMN x "field")) [0..num-1]
+            let pls = map (\x -> PRef fc (sMN x ("field" ++ show x))) [0..num-1]
             let lhsArgs = pls
             let rhsArgs = take pos pls ++ (PRef fc valname) :
                                drop (pos + 1) pls
