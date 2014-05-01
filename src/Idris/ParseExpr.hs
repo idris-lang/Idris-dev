@@ -618,16 +618,23 @@ recordType syn
                             (applyAll fc fields (PRef fc (sMN 0 "fldx"))))
             Just v -> return (applyAll fc fields v)
        <?> "record setting expression"
-   where fieldType :: IdrisParser (Name, PTerm)
-         fieldType = do n <- fnName
+   where fieldType :: IdrisParser ([Name], PTerm)
+         fieldType = do n <- sepBy1 fnName (symbol "->")
                         lchar '='
                         e <- expr syn
                         return (n, e)
                      <?> "field setter"
-         applyAll :: FC -> [(Name, PTerm)] -> PTerm -> PTerm
+         applyAll :: FC -> [([Name], PTerm)] -> PTerm -> PTerm
          applyAll fc [] x = x
-         applyAll fc ((n, e) : es) x
-            = applyAll fc es (PApp fc (PRef fc (mkType n)) [pexp e, pexp x])
+         applyAll fc ((ns, e) : es) x
+            = applyAll fc es (doUpdate fc ns e x)
+            
+         doUpdate fc [n] e get
+              = PApp fc (PRef fc (mkType n)) [pexp e, pexp get]
+         doUpdate fc (n : ns) e get
+              = PApp fc (PRef fc (mkType n)) 
+                  [pexp (doUpdate fc ns e (PApp fc (PRef fc n) [pexp get])), 
+                   pexp get]
 
 -- | Creates setters for record types on necessary functions
 mkType :: Name -> Name

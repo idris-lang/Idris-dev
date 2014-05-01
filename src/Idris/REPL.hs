@@ -552,7 +552,8 @@ process h fn (ChangeDirectory f)
                  = do runIO $ setCurrentDirectory f
                       return ()
 process h fn (Eval t)
-                 = withErrorReflection $ do (tm, ty) <- elabVal toplevel False t
+                 = withErrorReflection $ do logLvl 5 $ show t
+                                            (tm, ty) <- elabVal toplevel False t
                                             ctxt <- getContext
                                             let tm' = force (normaliseAll ctxt [] tm)
                                             let ty' = force (normaliseAll ctxt [] ty)
