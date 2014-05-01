@@ -100,7 +100,7 @@ usagemsg = usagemsghdr ++ "\n" ++
            "\t    --clean IPKG            Clean package\n" ++
            "\t    --build IPKG            Build package\n" ++
            "\t    --mkdoc IPKG            Generate IdrisDoc for package\n" ++
-           "\t -e --eval EXPR             Evaluate an expression without loading the REPL" ++
+           "\t -e --eval EXPR             Evaluate an expression without loading the REPL\n" ++
            "\t    --exec EXPR             Execute as idris\n" ++
            "\t    --libdir                Display library directory\n" ++
            "\t    --link                  Display link flags\n" ++
