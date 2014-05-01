@@ -21,16 +21,16 @@ concatMap : (Foldable t, Monoid m) => (a -> m) -> t a -> m
 concatMap f = foldr ((<+>) . f) neutral
 
 and : Foldable t => t (Lazy Bool) -> Bool
-and = foldr (flip (&&)) True
+and = foldl (&&) True
 
 or : Foldable t => t (Lazy Bool) -> Bool
-or = foldr (flip (||)) False
+or = foldl (||) False
 
 any : Foldable t => (a -> Bool) -> t a -> Bool
-any p = foldr (flip (||) . Delay . p) False
+any p = foldl (\x => \y => x || p y) False
 
 all : Foldable t => (a -> Bool) -> t a -> Bool
-all p = foldr (flip (&&) . Delay . p) True
+all p = foldl (\x => \y => x && p y)  True
 
 sum : (Foldable t, Num a) => t a -> a
 sum = foldr (+) 0
