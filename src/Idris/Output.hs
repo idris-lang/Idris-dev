@@ -78,7 +78,7 @@ ideSlaveReturnAnnotated n h out = do ist <- getIState
 
 ihPrintTermWithType :: Handle -> Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
 ihPrintTermWithType h tm ty = do ist <- getIState
-                                 let output = tm <+> colon <+> ty
+                                 let output = tm <+> colon <+> align ty
                                  case idris_outputmode ist of
                                    RawOutput -> consoleDisplayAnnotated h output
                                    IdeSlave n -> ideSlaveReturnAnnotated n h output
