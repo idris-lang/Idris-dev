@@ -89,16 +89,29 @@ pprintDocs imp (ClassDoc n doc meths params instances)
              <>
              if null subclasses then empty
              else line <$> nest 4 (text "Subclasses:" <$>
-                                   vsep (map (dumpInstance . remConstraint) subclasses))
+                                   vsep (map (dumpInstance . prettifySubclasses) subclasses))
   where
-    params' = map (\x -> (fst x, False)) params
+    params' = zip pNames (repeat False)
 
+    pNames  = map fst params
+    
     dumpInstance :: PTerm -> Doc OutputAnnotation
     dumpInstance = pprintPTerm imp params' []
 
-    remConstraint (PPi (Constraint _ _) _ tm _)  = tm
-    remConstraint (PPi x                y z  pt) = PPi x y z (remConstraint pt)
-    remConstraint p                              = p
+    prettifySubclasses (PPi (Constraint _ _) _ tm _)   = prettifySubclasses tm
+    prettifySubclasses (PPi plcity           nm t1 t2) = PPi plcity (safeHead nm pNames) (prettifySubclasses t1) (prettifySubclasses t2)
+    prettifySubclasses (PApp fc ref args)              = PApp fc ref $ updateArgs pNames args
+    prettifySubclasses tm                              = tm
+
+    safeHead _ (y:_) = y
+    safeHead x []    = x
+
+    updateArgs (p:ps) ((PExp prty opts _ ref):as) = (PExp prty opts p (updateRef p ref)) : updateArgs ps as
+    updateArgs ps     (a:as)                      = a : updateArgs ps as
+    updateArgs _      _                           = []
+
+    updateRef nm (PRef fc _) = PRef fc nm
+    updateRef _  pt          = pt
 
     hasConstraint (PPi (Constraint _ _) _ _ _)  = True
     hasConstraint (PPi _                _ _ pt) = hasConstraint pt
@@ -107,7 +120,7 @@ pprintDocs imp (ClassDoc n doc meths params instances)
     (subclasses, instances') = partition hasConstraint instances
 
     prettyParameters = if any (isJust . snd) params
-                       then vsep (map (\(n,md) -> prettyName False params' n <+> maybe empty showDoc md) params)
+                       then vsep (map (\(nm,md) -> prettyName False params' nm <+> maybe empty showDoc md) params)
                        else hsep (punctuate comma (map (prettyName False params' . fst) params))
 
 getDocs :: Name -> Idris Docs
