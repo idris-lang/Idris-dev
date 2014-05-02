@@ -220,12 +220,24 @@ execApp env ctxt con@(EP _ fp _) args@(tp:v:rest)
 -- Special cases arising from not having access to the C RTS in the interpreter
 execApp env ctxt (EP _ fp _) (_:fn:str:_:rest)
     | fp == mkfprim,
-      Just (FFun "putStr" _ _) <- foreignFromTT fn 
+      Just (FFun "putStr" _ _) <- foreignFromTT fn
            = case str of
                EConstant (Str arg) -> do execIO (putStr arg)
                                          execApp env ctxt ioUnit rest
                _ -> execFail . Msg $
                       "The argument to putStr should be a constant string, but it was " ++
+                      show str ++
+                      ". Are all cases covered?"
+execApp env ctxt (EP _ fp _) (_:fn:ch:_:rest)
+    | fp == mkfprim,
+      Just (FFun "putchar" _ _) <- foreignFromTT fn
+           = case ch of
+               EConstant (Ch c) -> do execIO (putChar c)
+                                      execApp env ctxt ioUnit rest
+               EConstant (I i)  -> do execIO (putChar (toEnum i))
+                                      execApp env ctxt ioUnit rest
+               _ -> execFail . Msg $
+                      "The argument to putchar should be a constant character, but it was " ++
                       show str ++
                       ". Are all cases covered?"
 execApp env ctxt (EP _ fp _) (_:fn:_:handle:_:rest)
