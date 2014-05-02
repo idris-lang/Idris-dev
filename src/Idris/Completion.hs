@@ -112,6 +112,7 @@ completeOption = completeWord Nothing " \t" completeOpt
                                               , "showimplicits"
                                               , "originalerrors"
                                               , "autosolve"
+                                              , "nobanner"
                                               ]
 
 completeConsoleWidth :: CompletionFunc Idris
