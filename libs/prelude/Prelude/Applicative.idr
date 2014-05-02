@@ -44,5 +44,5 @@ guard a = if a then pure () else empty
 
 ||| Conditionally execute an applicative expression
 when : Applicative f => Bool -> Lazy (f ()) -> f ()
-when True f = f
+when True f = Force f
 when False f = pure ()
