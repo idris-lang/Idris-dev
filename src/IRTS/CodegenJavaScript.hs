@@ -740,17 +740,17 @@ removeIDs js =
                            JSReturn (JSApp (JSIdent fun) args)
                          )])
           | Just pos <- lookup fun ids
-          , pos < length args  = args !! pos
+          , pos < length args  = removeIDCall ids (args !! pos)
 
         removeIDCall ids (JSNew _ [JSFunction [] (
                            JSReturn (JSApp (JSIdent fun) args)
                          )])
           | Just pos <- lookup fun ids
-          , pos < length args = args !! pos
+          , pos < length args = removeIDCall ids (args !! pos)
 
         removeIDCall ids js@(JSApp id@(JSIdent fun) args)
           | Just pos <- lookup fun ids
-          , pos < length args  = args !! pos
+          , pos < length args  = removeIDCall ids (args !! pos)
 
         removeIDCall ids js = transformJS (removeIDCall ids) js
 
