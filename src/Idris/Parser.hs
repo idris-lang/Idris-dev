@@ -574,7 +574,7 @@ class_ syn = do (doc, acc) <- try (do
                 cs <- many carg
                 ds <- option [] (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass (fst doc) syn fc cons n cs ds]
+                return [PClass (fst doc) syn fc cons n cs (snd doc) ds]
              <?> "type-class declaration"
   where
     carg :: IdrisParser (Name, PTerm)
@@ -1309,7 +1309,7 @@ loadSource h lidr f
     toMutual x = let r = PMutual (fileFC "single mutual") [x] in
                  case x of
                    PClauses _ _ _ _ -> r
-                   PClass _ _ _ _ _ _ _ -> r
+                   PClass _ _ _ _ _ _ _ _ -> r
                    PInstance _ _ _ _ _ _ _ _ -> r
                    _ -> x
 

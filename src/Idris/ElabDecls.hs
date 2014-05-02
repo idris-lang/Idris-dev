@@ -1834,8 +1834,8 @@ data MArgTy = IA | EA | CA deriving Show
 
 elabClass :: ElabInfo -> SyntaxInfo -> Docstring ->
              FC -> [PTerm] ->
-             Name -> [(Name, PTerm)] -> [PDecl] -> Idris ()
-elabClass info syn doc fc constraints tn ps ds
+             Name -> [(Name, PTerm)] -> [(Name, Docstring)] -> [PDecl] -> Idris ()
+elabClass info syn doc fc constraints tn ps pDocs ds
     = do let cn = SN (InstanceCtorN tn) -- sUN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
          let tty = pibind ps PType
          let constraint = PApp fc (PRef fc tn)
@@ -1862,7 +1862,7 @@ elabClass info syn doc fc constraints tn ps ds
          let cons = [(emptyDocstring, [], cn, cty, fc, [])]
          let ddecl = PDatadecl tn tty cons
          logLvl 5 $ "Class data " ++ show (showDImp True ddecl)
-         elabData info (syn { no_imp = no_imp syn ++ mnames }) doc [] fc [] ddecl
+         elabData info (syn { no_imp = no_imp syn ++ mnames }) doc pDocs fc [] ddecl
          -- for each constraint, build a top level function to chase it
          logLvl 5 $ "Building functions"
          let usyn = syn { using = map (\ (x,y) -> UImplicit x y) ps
@@ -2344,10 +2344,10 @@ elabDecl' what info (PNamespace n ps) = mapM_ (elabDecl' what ninfo) ps
     ninfo = case namespace info of
                 Nothing -> info { namespace = Just [n] }
                 Just ns -> info { namespace = Just (n:ns) }
-elabDecl' what info (PClass doc s f cs n ps ds)
+elabDecl' what info (PClass doc s f cs n ps pdocs ds)
   | what /= EDefns
     = do iLOG $ "Elaborating class " ++ show n
-         elabClass info (s { syn_params = [] }) doc f cs n ps ds
+         elabClass info (s { syn_params = [] }) doc f cs n ps pdocs ds
 elabDecl' what info (PInstance s f cs n ps t expn ds)
     = do iLOG $ "Elaborating instance " ++ show n
          elabInstance info s what f cs n ps t expn ds
