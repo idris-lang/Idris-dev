@@ -327,8 +327,9 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
                  -> ([(String, String, SpanList OutputAnnotation)],
                      (String, SpanList OutputAnnotation))
         sexpGoal ist cols imp ns ([],        concl) =
-          let concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                       pprintPTerm imp (zip ns (repeat False)) [] concl
+          let infixes = idris_infixes ist
+              concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
+                       pprintPTerm imp (zip ns (repeat False)) [] infixes concl
           in ([], concl')
         sexpGoal ist cols imp ns ((n, t):ps, concl) =
           let n'          = case n of
@@ -337,7 +338,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
                                     | otherwise -> str nm
                               _ -> "_"
               (t', spans) = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                            pprintPTerm imp (zip ns (repeat False)) [] t
+                            pprintPTerm imp (zip ns (repeat False)) [] (idris_infixes ist) t
               rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
           in ((n', t', spans) : fst rest, snd rest)
 runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
@@ -562,21 +563,19 @@ process h fn (Eval t)
                                             ist <- getIState
                                             logLvl 3 $ "Raw: " ++ show (tm', ty')
                                             logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
-                                            let imp = opt_showimp (idris_options ist)
-                                                tmDoc = prettyImp imp (delab ist tm')
-                                                tyDoc = prettyImp imp (delab ist ty')
+                                            let tmDoc = prettyIst ist (delab ist tm')
+                                                tyDoc = prettyIst ist (delab ist ty')
                                             ihPrintTermWithType h tmDoc tyDoc
 
 process h fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
-                       let imp = opt_showimp (idris_options ist)
                        (tm, ty) <- elabVal toplevel False t
 --                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
                        res <- execute tm
-                       let (resOut, tyOut) = (prettyImp imp (delab ist res),
-                                              prettyImp imp (delab ist ty'))
+                       let (resOut, tyOut) = (prettyIst ist (delab ist res),
+                                              prettyIst ist (delab ist ty'))
                        ihPrintTermWithType h resOut tyOut
 
 process h fn (Check (PRef _ n))
@@ -611,7 +610,7 @@ process h fn (Check (PRef _ n))
                  annotate (AnnName n Nothing Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
 
-    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] t
+    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] (idris_infixes ist) t
 
 
 process h fn (Check t)
@@ -622,19 +621,18 @@ process h fn (Check t)
             ty' = normaliseC ctxt [] ty
         case tm of
            TType _ ->
-             ihPrintTermWithType h (prettyImp imp PType) type1Doc
-           _ -> ihPrintTermWithType h (prettyImp imp (delab ist tm))
-                                      (prettyImp imp (delab ist ty))
+             ihPrintTermWithType h (prettyIst ist PType) type1Doc
+           _ -> ihPrintTermWithType h (prettyIst ist (delab ist tm))
+                                      (prettyIst ist (delab ist ty))
 
 process h fn (DocStr n)
-   = do i <- getIState
-        let imp = opt_showimp (idris_options i)
-        case lookupCtxtName n (idris_docstrings i) of
+   = do ist <- getIState
+        case lookupCtxtName n (idris_docstrings ist) of
           [] -> iPrintError $ "No documentation for " ++ show n
-          ns -> do toShow <- mapM (showDoc imp) ns
+          ns -> do toShow <- mapM (showDoc ist) ns
                    ihRenderResult h (vsep toShow)
-    where showDoc imp (n, d) = do doc <- getDocs n
-                                  return $ pprintDocs imp doc
+    where showDoc ist (n, d) = do doc <- getDocs n
+                                  return $ pprintDocs ist doc
 process h fn Universes
                      = do i <- getIState
                           let cs = idris_constraints i
@@ -826,9 +824,11 @@ process h fn (DoProofSearch updatefile rec l n hints)
                  (tm, ty) <- elabVal toplevel False (PRef fc mn)
                  ctxt <- getContext
                  i <- getIState
-                 return $ show (stripNS
-                           (dropCtxt envlen
-                              (delab i (specialise ctxt [] [(mn, 1)] tm)))))
+                 return . flip displayS "" . renderPretty 1.0 80 $
+                   pprintPTerm False [] [] (idris_infixes i)
+                     (stripNS
+                        (dropCtxt envlen
+                           (delab i (specialise ctxt [] [(mn, 1)] tm)))))
              (\e -> return ("?" ++ show n))
          if updatefile then
             do let fb = fn ++ "~"
@@ -1051,15 +1051,14 @@ process h fn (SetConsoleWidth w) = setWidth w
 
 process h fn (Apropos a) =
   do ist <- getIState
-     let impl = opt_showimp (idris_options ist)
      let names = apropos ist (T.pack a)
      let aproposInfo = [ (n,
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
                        | n <- sort names, isUN n ]
-     ihRenderResult h $ vsep (map (renderApropos impl) aproposInfo)
-  where renderApropos impl (name, ty, docs) =
-          prettyName True [] name <+> colon <+> align (prettyImp impl ty) <$>
+     ihRenderResult h $ vsep (map (renderApropos ist) aproposInfo)
+  where renderApropos ist (name, ty, docs) =
+          prettyName True [] name <+> colon <+> align (prettyIst ist ty) <$>
           fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
         isUN (UN _) = True
         isUN (NS n _) = isUN n

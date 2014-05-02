@@ -1,5 +1,5 @@
 Type checking ./interactive003.idr
 ys
-x :: (app xs ys)
+x :: app xs ys
 []
-f x y :: (vzipWith f xs ys)
+f x y :: vzipWith f xs ys
