@@ -31,8 +31,10 @@ take : (n : Nat) -> (xs : Stream a) -> Vect n a
 take Z _ = []
 take (S n) (x :: xs) = x :: (take n xs)
 
+||| Drop the first n elements from the stream
+||| @ n how many elements to drop
 %assert_total
-drop : Nat -> Stream a -> Stream a
+drop : (n : Nat) -> Stream a -> Stream a
 drop Z     xs = xs
 drop (S k) (x::xs) = drop k xs
 

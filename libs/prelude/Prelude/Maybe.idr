@@ -32,10 +32,14 @@ maybe : Lazy b -> Lazy (a -> b) -> Maybe a -> b
 maybe n j Nothing  = n
 maybe n j (Just x) = (Force j) x
 
+||| Convert a `Maybe a` value to an `a` value by providing a default `a` value
+||| in the case that the `Maybe` value is `Nothing`.
 fromMaybe : (Lazy a) -> Maybe a -> a
 fromMaybe def Nothing  = def
 fromMaybe def (Just j) = j
 
+||| Returns `Just` the given value if the conditional is `True`
+||| and `Nothing` if the conditional is `False`.
 toMaybe : Bool -> Lazy a -> Maybe a
 toMaybe True  j = Just j
 toMaybe False j = Nothing
@@ -43,10 +47,13 @@ toMaybe False j = Nothing
 justInjective : {x : t} -> {y : t} -> (Just x = Just y) -> x = y
 justInjective refl = refl
 
+||| Convert a `Maybe a` value to an `a` value, using `neutral` in the case
+||| that the `Maybe` value is `Nothing`.
 lowerMaybe : Monoid a => Maybe a -> a
 lowerMaybe Nothing = neutral
 lowerMaybe (Just x) = x
 
+||| Returns `Nothing` when applied to `neutral`, and `Just` the value otherwise.
 raiseToMaybe : (Monoid a, Eq a) => a -> Maybe a
 raiseToMaybe x = if x == neutral then Nothing else Just x
 
