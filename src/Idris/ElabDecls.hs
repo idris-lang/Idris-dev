@@ -365,12 +365,13 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
 
 type EliminatorState = StateT (Map.Map String Int) Idris
 
--- TODO: Use uniqueName for generating names, rewrite everything to use idris_implicits instead of manual splitting, generally just rewrite
+-- TODO: Rewrite everything to use idris_implicits instead of manual splitting (or in TT)
 elabEliminator :: [Int] -> Name -> PTerm ->
                   [(Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name])] ->
                   ElabInfo -> EliminatorState ()
 elabEliminator paramPos n ty cons info = do
   elimLog $ "Elaborating eliminator"
+  put (Map.fromList $ zip (concatMap (\(_, p, _, ty, _, _) -> (map show $ boundNamesIn ty) ++ map (show . fst) p) cons ++ (map show $ boundNamesIn ty)) (repeat 0))
   let (cnstrs, _) = splitPi ty
   let (splittedTy@(pms, idxs)) = splitPms cnstrs
   generalParams <- namePis False pms
@@ -389,13 +390,14 @@ elabEliminator paramPos n ty cons info = do
   let clauseGeneralArgs' = map getPiName generalParams ++ [motiveName] ++ clauseConsElimArgs
   let clauseGeneralArgs  = map (\arg -> pexp (PRef elimFC arg)) clauseGeneralArgs'
   let elimSig = "-- eliminator signature: " ++ showTmImpls eliminatorTy
+  elimLog elimSig
   eliminatorClauses <- mapM (\(cns, cnsElim) -> generateEliminatorClauses cns cnsElim clauseGeneralArgs generalParams) (zip cons clauseConsElimArgs)
   let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
   elimLog $ "-- eliminator definition: " ++ (show . showDeclImp True) eliminatorDef
   State.lift $ idrisCatch (elabDecl EAll info eliminatorTyDecl) (\err -> return ())
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
-    [] -> return ()
+    [] -> State.lift $ solveDeferred elimDeclName -- Remove meta-variable for type
     _  -> State.lift $ idrisCatch (elabDecl EAll info eliminatorDef) (\err -> return ())
   where elimLog :: String -> EliminatorState ()
         elimLog s = State.lift (logLvl 2 s)
@@ -458,9 +460,9 @@ elabEliminator paramPos n ty cons info = do
         freshName key = do
           nameMap <- get
           let i = fromMaybe 0 (Map.lookup key nameMap)
-          let name = key ++ show i
+          let name = uniqueName (sUN (key ++ show i)) (map (\(nm, nb) -> sUN (nm ++ show nb)) $ Map.toList nameMap)
           put $ Map.insert key (i+1) nameMap
-          return (sUN name)
+          return name
 
         scrutineeName :: Name
         scrutineeName = sUN "scrutinee"
@@ -553,7 +555,7 @@ elabEliminator paramPos n ty cons info = do
           let cons' = replaceParams paramPos generalParameters ty
           let (args, resTy) = splitPi cons'
           implidxs <- implicitIndexes (doc, cnm, ty, fc, fs)
-          consArgs <- namePis True args
+          consArgs <- namePis False args
           let recArgs = findRecArgs consArgs
           let recMotives = map applyRecMotive recArgs
           let (_, consIdxs) = splitArgPms resTy
@@ -592,7 +594,7 @@ elabEliminator paramPos n ty cons info = do
           implidxs <- implicitIndexes (doc, cnm, ty, fc, fs)
           let (_, generalIdxs') = splitArgPms resTy
           let generalIdxs = map pexp generalIdxs'
-          consArgs <- namePis True args
+          consArgs <- namePis False args
           let lhsPattern = PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ generalIdxs ++ [pexp $ applyCons cnm consArgs])
           let recArgs = findRecArgs consArgs
           let recElims = map applyRecElim recArgs
