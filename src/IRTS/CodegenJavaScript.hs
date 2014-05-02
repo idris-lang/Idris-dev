@@ -1449,6 +1449,21 @@ elimConds js =
       )) = map (inlineFunction fun args (JSTernary c t f)) js
 
 
+removeUselessCons :: [JS] -> [JS]
+removeUselessCons js =
+  let (cons, rest) = partition isUseless js in
+      foldl' eraseCon rest cons
+  where
+    isUseless :: JS -> Bool
+    isUseless (JSAlloc fun (Just JSNull))      = True
+    isUseless (JSAlloc fun (Just (JSIdent _))) = True
+    isUseless _                                = False
+
+
+    eraseCon :: [JS] -> JS -> [JS]
+    eraseCon js (JSAlloc fun (Just val))  = map (jsSubst (JSIdent fun) val) js
+
+
 getGlobalCons :: JS -> [(String, JS)]
 getGlobalCons js = foldJS match (++) [] js
   where
@@ -1551,6 +1566,7 @@ codegenJS_all target definitions includes filename outputType = do
           , unfoldLookupTable
           , evalCons
           , elimConds
+          , removeUselessCons
           ]
 
     functions :: [String]
