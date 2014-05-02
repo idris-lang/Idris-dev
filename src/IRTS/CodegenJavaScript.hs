@@ -755,6 +755,29 @@ removeIDs js =
         removeIDCall ids js = transformJS (removeIDCall ids) js
 
 
+inlineFunction :: String -> [String] -> JS -> JS -> JS
+inlineFunction fun args body js = inline' js
+  where
+    inline' :: JS -> JS
+    inline' (JSApp (JSIdent name) vals)
+      | name == fun =
+          let (js, phs) = insertPlaceHolders args body in
+              inline' $ foldr (uncurry jsSubst) js (zip phs vals)
+
+    inline' js = transformJS inline' js
+
+    insertPlaceHolders :: [String] -> JS -> (JS, [JS])
+    insertPlaceHolders args body = insertPlaceHolders' args body []
+      where
+        insertPlaceHolders' :: [String] -> JS -> [JS] -> (JS, [JS])
+        insertPlaceHolders' (a:as) body ph
+          | (body', ph') <- insertPlaceHolders' as body ph =
+              let phvar = JSIdent $ "__PH_" ++ show (length ph') in
+                  (jsSubst (JSIdent a) phvar body', phvar : ph')
+
+        insertPlaceHolders' [] body ph = (body, ph)
+
+
 inlineFunctions :: [JS] -> [JS]
 inlineFunctions js =
   inlineHelper ([], js)
@@ -766,7 +789,7 @@ inlineFunctions js =
       | Just new <- inlineAble (
             countAll fun front + countAll fun back
           ) fun args body =
-              let f = map (inline fun args new) in
+              let f = map (inlineFunction fun args new) in
                   inlineHelper (f front, f back)
 
     inlineHelper (front, next:back) = inlineHelper (front ++ [next], back)
@@ -781,29 +804,6 @@ inlineFunctions js =
              else Nothing
 
     inlineAble _ _ _ _ = Nothing
-
-
-    inline :: String -> [String] -> JS -> JS -> JS
-    inline fun args body js = inline' js
-      where
-        inline' :: JS -> JS
-        inline' (JSApp (JSIdent name) vals)
-          | name == fun =
-              let (js, phs) = insertPlaceHolders args body in
-                  inline' $ foldr (uncurry jsSubst) js (zip phs vals)
-
-        inline' js = transformJS inline' js
-
-        insertPlaceHolders :: [String] -> JS -> (JS, [JS])
-        insertPlaceHolders args body = insertPlaceHolders' args body []
-          where
-            insertPlaceHolders' :: [String] -> JS -> [JS] -> (JS, [JS])
-            insertPlaceHolders' (a:as) body ph
-              | (body', ph') <- insertPlaceHolders' as body ph =
-                  let phvar = JSIdent $ "__PH_" ++ show (length ph') in
-                      (jsSubst (JSIdent a) phvar body', phvar : ph')
-
-            insertPlaceHolders' [] body ph = (body, ph)
 
 
     nonRecur :: String -> JS -> Bool
@@ -1416,6 +1416,54 @@ evalCons js =
         match js = transformJS match js
 
 
+elimConds :: [JS] -> [JS]
+elimConds js =
+  let (conds, rest) = partition isCond js in
+      foldl' eraseCond rest conds
+  where
+    isCond :: JS -> Bool
+    isCond (JSAlloc
+      fun (Just (JSFunction args (JSCond
+        [ (JSBinOp "==" (JSNum (JSInt tag)) _, JSReturn (JSIdent _))
+        , (JSNoop, JSReturn (JSIdent _))
+        ]))
+      )) = True
+
+    isCond (JSAlloc
+      fun (Just (JSFunction args (JSCond
+        [ (JSBinOp "==" _ (JSNum (JSInt tag)), JSReturn (JSIdent _))
+        , (JSNoop, JSReturn (JSIdent _))
+        ]))
+      )) = True
+
+    isCond _ = False
+
+
+    eraseCond :: [JS] -> JS -> [JS]
+    eraseCond js (JSAlloc
+      fun (Just (JSFunction args (JSCond
+                  [ (c, JSReturn t)
+                  , (_, JSReturn f)
+                  ])
+                )
+      )) = map (inlineFunction fun args (JSTernary c t f)) js
+
+
+removeUselessCons :: [JS] -> [JS]
+removeUselessCons js =
+  let (cons, rest) = partition isUseless js in
+      foldl' eraseCon rest cons
+  where
+    isUseless :: JS -> Bool
+    isUseless (JSAlloc fun (Just JSNull))      = True
+    isUseless (JSAlloc fun (Just (JSIdent _))) = True
+    isUseless _                                = False
+
+
+    eraseCon :: [JS] -> JS -> [JS]
+    eraseCon js (JSAlloc fun (Just val))  = map (jsSubst (JSIdent fun) val) js
+
+
 getGlobalCons :: JS -> [(String, JS)]
 getGlobalCons js = foldJS match (++) [] js
   where
@@ -1517,6 +1565,8 @@ codegenJS_all target definitions includes filename outputType = do
           , extractLocalConstructors
           , unfoldLookupTable
           , evalCons
+          , elimConds
+          , removeUselessCons
           ]
 
     functions :: [String]
