@@ -9,6 +9,9 @@ New in 0.9.13:
 * Removed javascript lib in favor of idris-hackers/iQuery
 * Specify codegen for :compile REPL command (e.g. :compile javascript program.js)
 * Remove :info REPL command, subsume and enhance its functionality in the :doc command
+* New (first class) nested record update/access syntax:
+  record { a->b->c = val } x -- sets field accessed by c (b (a x)) to val
+  record { a->b->c } x -- accesses field, equivalent to c (b (a x))
 
 Internal changes
 
