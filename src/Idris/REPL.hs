@@ -1260,10 +1260,10 @@ loadInputs h inputs
         (\e -> do i <- getIState
                   case e of
                     At f _ -> do setErrSpan f
-                                 ihRenderError stdout $ pprintErr i e
+                                 ihWarn stdout f $ pprintErr i e
                     ProgramLineComment -> return () -- fail elsewhere
                     _ -> do setErrSpan emptyFC -- FIXME! Propagate it
-                            iputStrLn (pshow i e))
+                            ihWarn stdout emptyFC $ pprintErr i e)
    where -- load all files, stop if any fail
          tryLoad :: Bool -> [IFileType] -> Idris ()
          tryLoad keepstate [] = return ()

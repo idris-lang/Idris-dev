@@ -1158,8 +1158,7 @@ loadModule outh f
    = idrisCatch (loadModule' outh f)
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
-                          msg <- showErr e
-                          ihputStrLn outh msg
+                          ihWarn outh (getErrSpan e) $ pprintErr ist e
                           return "")
 
 {- | Load idris module -}
@@ -1206,7 +1205,7 @@ loadSource' h lidr r
    = idrisCatch (loadSource h lidr r)
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
-                          ihRenderError h (pprintErr ist e))
+                          ihWarn h (getErrSpan e) (pprintErr ist e))
 
 {- | Load Idris source code-}
 loadSource :: Handle -> Bool -> FilePath -> Idris ()
