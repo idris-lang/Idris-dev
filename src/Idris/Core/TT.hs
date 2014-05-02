@@ -426,6 +426,9 @@ lookupCtxt n ctxt = map snd (lookupCtxtName n ctxt)
 lookupCtxtExact :: Name -> Ctxt a -> Maybe a
 lookupCtxtExact n ctxt = listToMaybe [ v | (nm, v) <- lookupCtxtName n ctxt, nm == n]
 
+deleteDefExact :: Name -> Ctxt a -> Ctxt a
+deleteDefExact n = Map.adjust (Map.delete n) (nsroot n)
+
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt
   = let ds = lookupCtxtName n ctxt in

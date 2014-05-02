@@ -57,19 +57,21 @@ fputState field x = fmodifyState field (const x)
 fmodifyState :: MonadState s m => Field s a -> (a -> a) -> m ()
 fmodifyState field f = modify $ fmodify field f
 
--- Until now, we'd have just ad-hoc empty lists and Falses thrown around
--- whenever a new instance of a record was to be created.
---
--- This class formalises the notion of an initial value for a record.
-class InitialValue a where
-    initialValue :: a
-
--- Exact-name context lookup; uses the initial value if needed.
-ctxt_lookupExact :: InitialValue a => Name -> Field (Ctxt a) a
-ctxt_lookupExact n = Field
-    { fget = fromMaybe initialValue . lookupCtxtExact n
-    , fset = addDef n
+-- Exact-name context lookup; uses Nothing for deleted values (read+write!).
+-- 
+-- Reading a non-existing value yields Nothing,
+-- writing Nothing deletes the value (if it existed).
+ctxt_lookup :: Name -> Field (Ctxt a) (Maybe a)
+ctxt_lookup n = Field
+    { fget = lookupCtxtExact n
+    , fset = \newVal -> case newVal of
+        Just x  -> addDef n x
+        Nothing -> deleteDefExact n
     }
+
+-- Maybe-lens with a default value.
+maybe_default :: a -> Field (Maybe a) a
+maybe_default dflt = Field (fromMaybe dflt) (const . Just)
 
 
 -----------------------------------
@@ -83,12 +85,14 @@ ctxt_lookupExact n = Field
 -- OptInfo
 ----------
 
-instance InitialValue OptInfo where
-    initialValue = Optimise [] False
-
 -- the optimisation record for the given (exact) name
 ist_optimisation :: Name -> Field IState OptInfo
-ist_optimisation n = ctxt_lookupExact n
+ist_optimisation n =
+      maybe_default Optimise
+        { inaccessible = []
+        , detaggable = False
+        }
+    . ctxt_lookup n
     . Field idris_optimisation (\v ist -> ist{ idris_optimisation = v })
 
 -- two fields of the optimisation record
@@ -102,12 +106,14 @@ opt_detaggable = Field detaggable (\v opt -> opt{ detaggable = v })
 -- CGInfo
 ---------
 
-instance InitialValue CGInfo where
-    initialValue = CGInfo [] [] [] [] []
-
 -- callgraph record for the given (exact) name
 ist_callgraph :: Name -> Field IState CGInfo
-ist_callgraph n = ctxt_lookupExact n
+ist_callgraph n =
+      maybe_default CGInfo
+        { argsdef = [], calls = [], scg = []
+        , argsused = [], usedpos = []
+        }
+    . ctxt_lookup n
     . Field idris_callgraph (\v ist -> ist{ idris_callgraph = v })
 
 -- some fields of the CGInfo record
