@@ -563,21 +563,19 @@ process h fn (Eval t)
                                             ist <- getIState
                                             logLvl 3 $ "Raw: " ++ show (tm', ty')
                                             logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
-                                            let imp = opt_showimp (idris_options ist)
-                                                tmDoc = prettyImp imp (delab ist tm')
-                                                tyDoc = prettyImp imp (delab ist ty')
+                                            let tmDoc = prettyIst ist (delab ist tm')
+                                                tyDoc = prettyIst ist (delab ist ty')
                                             ihPrintTermWithType h tmDoc tyDoc
 
 process h fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
-                       let imp = opt_showimp (idris_options ist)
                        (tm, ty) <- elabVal toplevel False t
 --                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
                        res <- execute tm
-                       let (resOut, tyOut) = (prettyImp imp (delab ist res),
-                                              prettyImp imp (delab ist ty'))
+                       let (resOut, tyOut) = (prettyIst ist (delab ist res),
+                                              prettyIst ist (delab ist ty'))
                        ihPrintTermWithType h resOut tyOut
 
 process h fn (Check (PRef _ n))
@@ -623,9 +621,9 @@ process h fn (Check t)
             ty' = normaliseC ctxt [] ty
         case tm of
            TType _ ->
-             ihPrintTermWithType h (prettyImp imp PType) type1Doc
-           _ -> ihPrintTermWithType h (prettyImp imp (delab ist tm))
-                                      (prettyImp imp (delab ist ty))
+             ihPrintTermWithType h (prettyIst ist PType) type1Doc
+           _ -> ihPrintTermWithType h (prettyIst ist (delab ist tm))
+                                      (prettyIst ist (delab ist ty))
 
 process h fn (DocStr n)
    = do ist <- getIState
@@ -1051,15 +1049,14 @@ process h fn (SetConsoleWidth w) = setWidth w
 
 process h fn (Apropos a) =
   do ist <- getIState
-     let impl = opt_showimp (idris_options ist)
      let names = apropos ist (T.pack a)
      let aproposInfo = [ (n,
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
                        | n <- sort names, isUN n ]
-     ihRenderResult h $ vsep (map (renderApropos impl) aproposInfo)
-  where renderApropos impl (name, ty, docs) =
-          prettyName True [] name <+> colon <+> align (prettyImp impl ty) <$>
+     ihRenderResult h $ vsep (map (renderApropos ist) aproposInfo)
+  where renderApropos ist (name, ty, docs) =
+          prettyName True [] name <+> colon <+> align (prettyIst ist ty) <$>
           fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
         isUN (UN _) = True
         isUN (NS n _) = isUN n

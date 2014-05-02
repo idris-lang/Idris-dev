@@ -31,6 +31,7 @@ import qualified Data.Map as M
 import Data.Either
 import qualified Data.Set as S
 import Data.Word (Word)
+import Data.Maybe (fromMaybe)
 
 import Debug.Trace
 
@@ -1133,6 +1134,10 @@ prettyImp :: Bool -- ^^ whether to show implicits
           -> Doc OutputAnnotation
 prettyImp impl = pprintPTerm impl [] [] []
 
+-- | Do the right thing for rendering a term in an IState
+prettyIst ::  IState -> PTerm -> Doc OutputAnnotation
+prettyIst ist = pprintPTerm (opt_showimp (idris_options ist)) [] [] (idris_infixes ist)
+
 -- | Pretty-print a high-level Idris term in some bindings context with infix info
 pprintPTerm :: Bool -- ^^ whether to show implicits
             -> [(Name, Bool)] -- ^^ the currently-bound names and whether they are implicit
@@ -1205,13 +1210,23 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
           case getExps args of
             [] -> enclose lparen rparen opName
             [x] -> group (enclose lparen rparen opName <$> group (prettySe 0 bnd x))
-            [l,r] -> bracket p 1 $ inFix l r
+            [l,r] -> let precedence = fromMaybe 20 (fmap prec f)
+                     in trace ("p=" ++ show p++",prec="++show precedence) (bracket p precedence $ inFix l r)
             (l:r:rest) -> bracket p 1 $
                           enclose lparen rparen (inFix l r) <+>
                           align (group (vsep (map (prettyArgSe bnd) rest)))
           where opName = prettyName impl bnd op
+                f = getFixity (opStr op)
+                left l = case f of
+                           Nothing -> prettySe (-1) bnd l
+                           Just (Infixl p') -> prettySe p' bnd l
+                           Just f' -> prettySe (prec f'-1) bnd l
+                right r = case f of
+                            Nothing -> prettySe (-1) bnd r
+                            Just (Infixr p') -> prettySe p' bnd r
+                            Just f' -> prettySe (prec f'-1) bnd r
                 inFix l r = align . group $
-                            (prettySe 1 bnd l <+> opName) <$> group (prettySe 0 bnd r)
+                              (left l <+> opName) <$> group (right r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm])
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
@@ -1316,6 +1331,10 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
     annName :: Name -> Doc OutputAnnotation -> Doc OutputAnnotation
     annName n = annotate (AnnName n Nothing Nothing Nothing)
 
+    opStr :: Name -> String
+    opStr (NS n _) = opStr n
+    opStr (UN n) = T.unpack n
+
     basename :: Name -> Name
     basename (NS n _) = basename n
     basename n = n
@@ -1368,6 +1387,12 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
       | otherwise     = doc
 
     kwd = annotate AnnKeyword . text
+
+    fixities :: M.Map String Fixity
+    fixities = M.fromList [(s, f) | (Fix f s) <- infixes]
+
+    getFixity :: String -> Maybe Fixity
+    getFixity = flip M.lookup fixities
 
 -- | Pretty-printer helper for the binding site of a name
 bindingOf :: Name -- ^^ the bound name
