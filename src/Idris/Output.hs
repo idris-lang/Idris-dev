@@ -23,7 +23,9 @@ ihWarn h fc err = do i <- getIState
                      case idris_outputmode i of
                        RawOutput ->
                          do err' <- iRender . fmap (fancifyAnnots i) $
-                                    text (show fc) <> colon <//> err
+                                    if fc_fname fc /= ""
+                                      then text (show fc) <> colon <//> err
+                                      else err
                             runIO . hPutStrLn h $ displayDecorated (consoleDecorate i) err'
                        IdeSlave n ->
                          do err' <- iRender . fmap (fancifyAnnots i) $ err
