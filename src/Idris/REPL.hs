@@ -1259,8 +1259,8 @@ loadInputs h inputs
                             idris_patdefs = patdefs }))
         (\e -> do i <- getIState
                   case e of
-                    At f _ -> do setErrSpan f
-                                 ihWarn stdout f $ pprintErr i e
+                    At f e' -> do setErrSpan f
+                                  ihWarn stdout f $ pprintErr i e'
                     ProgramLineComment -> return () -- fail elsewhere
                     _ -> do setErrSpan emptyFC -- FIXME! Propagate it
                             ihWarn stdout emptyFC $ pprintErr i e)

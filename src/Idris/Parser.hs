@@ -1205,7 +1205,9 @@ loadSource' h lidr r
    = idrisCatch (loadSource h lidr r)
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
-                          ihWarn h (getErrSpan e) (pprintErr ist e))
+                          case e of
+                            At f e' -> ihWarn h f (pprintErr ist e')
+                            _ -> ihWarn h (getErrSpan e) (pprintErr ist e))
 
 {- | Load Idris source code-}
 loadSource :: Handle -> Bool -> FilePath -> Idris ()
