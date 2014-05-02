@@ -22,6 +22,7 @@ import Idris.Core.Evaluate
 
 import Data.Maybe
 import Data.Char
+import Data.List (isPrefixOf, isSuffixOf)
 import Control.Monad
 import Control.Monad.State.Strict
 
@@ -299,7 +300,9 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
                  else c : updatePat (not (isAlphaNum c)) n tm rest
     updatePat start n tm (c:rest) = c : updatePat (not (isAlpha c)) n tm rest
 
-    addBrackets tm | ' ' `elem` tm = "(" ++ tm ++ ")"
+    addBrackets tm | ' ' `elem` tm
+                   , not (isPrefixOf "(" tm)
+                   , not (isSuffixOf ")" tm) = "(" ++ tm ++ ")"
                    | otherwise = tm
 
 getUniq nm i

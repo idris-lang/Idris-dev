@@ -1211,7 +1211,7 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
             [] -> enclose lparen rparen opName
             [x] -> group (enclose lparen rparen opName <$> group (prettySe 0 bnd x))
             [l,r] -> let precedence = fromMaybe 20 (fmap prec f)
-                     in trace ("p=" ++ show p++",prec="++show precedence) (bracket p precedence $ inFix l r)
+                     in bracket p precedence $ inFix l r
             (l:r:rest) -> bracket p 1 $
                           enclose lparen rparen (inFix l r) <+>
                           align (group (vsep (map (prettyArgSe bnd) rest)))

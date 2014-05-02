@@ -824,9 +824,11 @@ process h fn (DoProofSearch updatefile rec l n hints)
                  (tm, ty) <- elabVal toplevel False (PRef fc mn)
                  ctxt <- getContext
                  i <- getIState
-                 return $ show (stripNS
-                           (dropCtxt envlen
-                              (delab i (specialise ctxt [] [(mn, 1)] tm)))))
+                 return . flip displayS "" . renderPretty 1.0 80 $
+                   pprintPTerm False [] [] (idris_infixes i)
+                     (stripNS
+                        (dropCtxt envlen
+                           (delab i (specialise ctxt [] [(mn, 1)] tm)))))
              (\e -> return ("?" ++ show n))
          if updatefile then
             do let fb = fn ++ "~"
