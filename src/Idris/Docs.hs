@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Docs where
+module Idris.Docs (pprintDocs, getDocs, FunDoc(..), Docs (..)) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -34,11 +34,11 @@ data Docs = FunDoc FunDoc
 showDoc d | nullDocstring d = empty
           | otherwise       = text "  -- " <> renderDocstring d
 
-pprintFD :: Bool -> FunDoc -> Doc OutputAnnotation
-pprintFD imp (FD n doc args ty f)
+pprintFD :: IState -> FunDoc -> Doc OutputAnnotation
+pprintFD ist (FD n doc args ty f)
     = nest 4 (prettyName imp [] n <+> colon <+>
               pprintPTerm imp [] [ n | (n@(UN n'),_,_,_) <- args
-                                     , not (T.isPrefixOf (T.pack "__") n') ] ty <$>
+                                     , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
               renderDocstring doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
               let argshow = showArgs args [] in
@@ -46,21 +46,23 @@ pprintFD imp (FD n doc args ty f)
                 then nest 4 $ text "Arguments:" <$> vsep argshow
                 else empty)
 
-    where showArgs ((n, ty, Exp {}, Just d):args) bnd
+    where imp = opt_showimp (idris_options ist)
+          infixes = idris_infixes ist
+          showArgs ((n, ty, Exp {}, Just d):args) bnd
              = bindingOf n False <+> colon <+>
-               pprintPTerm imp bnd [] ty <>
+               pprintPTerm imp bnd [] infixes ty <>
                showDoc d <> line
                :
                showArgs args ((n, False):bnd)
           showArgs ((n, ty, Constraint {}, Just d):args) bnd
              = text "Class constraint" <+>
-               pprintPTerm imp bnd [] ty <> showDoc d <> line
+               pprintPTerm imp bnd [] infixes ty <> showDoc d <> line
                :
                showArgs args ((n, True):bnd)
           showArgs ((n, ty, Imp {}, Just d):args) bnd
              = text "(implicit)" <+>
                bindingOf n True <+> colon <+>
-               pprintPTerm imp bnd [] ty <>
+               pprintPTerm imp bnd [] infixes ty <>
                showDoc d <> line
                :
                showArgs args ((n, True):bnd)
@@ -68,20 +70,20 @@ pprintFD imp (FD n doc args ty f)
           showArgs []                  _ = []
 
 
-pprintDocs :: Bool -> Docs -> Doc OutputAnnotation
-pprintDocs imp (FunDoc d) = pprintFD imp d
-pprintDocs imp (DataDoc t args)
-           = text "Data type" <+> pprintFD imp t <$>
+pprintDocs :: IState -> Docs -> Doc OutputAnnotation
+pprintDocs ist (FunDoc d) = pprintFD ist d
+pprintDocs ist (DataDoc t args)
+           = text "Data type" <+> pprintFD ist t <$>
              nest 4 (text "Constructors:" <> line <>
-                     vsep (map (pprintFD imp) args))
-pprintDocs imp (ClassDoc n doc meths params instances)
+                     vsep (map (pprintFD ist) args))
+pprintDocs ist (ClassDoc n doc meths params instances)
            = nest 4 (text "Type class" <+> prettyName imp [] n <>
                      if nullDocstring doc then empty else line <> renderDocstring doc)
              <> line <$>
              nest 4 (text "Parameters:" <$> prettyParameters)
              <> line <$>
              nest 4 (text "Methods:" <$>
-                      vsep (map (pprintFD imp) meths))
+                      vsep (map (pprintFD ist) meths))
              <$>
              nest 4 (text "Instances:" <$>
                      vsep (if null instances' then [text "<no instances>"]
@@ -94,9 +96,12 @@ pprintDocs imp (ClassDoc n doc meths params instances)
     params' = zip pNames (repeat False)
 
     pNames  = map fst params
-    
+
+    imp = opt_showimp (idris_options ist)
+    infixes = idris_infixes ist
+
     dumpInstance :: PTerm -> Doc OutputAnnotation
-    dumpInstance = pprintPTerm imp params' []
+    dumpInstance = pprintPTerm imp params' [] infixes
 
     prettifySubclasses (PPi (Constraint _ _) _ tm _)   = prettifySubclasses tm
     prettifySubclasses (PPi plcity           nm t1 t2) = PPi plcity (safeHead nm pNames) (prettifySubclasses t1) (prettifySubclasses t2)

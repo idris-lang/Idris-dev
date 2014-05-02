@@ -1127,19 +1127,20 @@ consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
         colour UnderlineText = IdrisColour Nothing True True False False
         colour ItalicText    = IdrisColour Nothing True False False True
 
--- | Pretty-print a high-level closed Idris term
+-- | Pretty-print a high-level closed Idris term with no information about precedence/associativity
 prettyImp :: Bool -- ^^ whether to show implicits
           -> PTerm -- ^^ the term to pretty-print
           -> Doc OutputAnnotation
-prettyImp impl = pprintPTerm impl [] []
+prettyImp impl = pprintPTerm impl [] [] []
 
--- | Pretty-print a high-level Idris term in some bindings context
+-- | Pretty-print a high-level Idris term in some bindings context with infix info
 pprintPTerm :: Bool -- ^^ whether to show implicits
             -> [(Name, Bool)] -- ^^ the currently-bound names and whether they are implicit
             -> [Name] -- ^^ names to always show in pi, even if not used
+            -> [FixDecl] -- ^^ Fixity declarations
             -> PTerm -- ^^ the term to pretty-print
             -> Doc OutputAnnotation
-pprintPTerm impl bnd docArgs = prettySe 10 bnd
+pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
   where
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =

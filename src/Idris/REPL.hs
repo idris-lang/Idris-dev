@@ -327,8 +327,9 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
                  -> ([(String, String, SpanList OutputAnnotation)],
                      (String, SpanList OutputAnnotation))
         sexpGoal ist cols imp ns ([],        concl) =
-          let concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                       pprintPTerm imp (zip ns (repeat False)) [] concl
+          let infixes = idris_infixes ist
+              concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
+                       pprintPTerm imp (zip ns (repeat False)) [] infixes concl
           in ([], concl')
         sexpGoal ist cols imp ns ((n, t):ps, concl) =
           let n'          = case n of
@@ -337,7 +338,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
                                     | otherwise -> str nm
                               _ -> "_"
               (t', spans) = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                            pprintPTerm imp (zip ns (repeat False)) [] t
+                            pprintPTerm imp (zip ns (repeat False)) [] (idris_infixes ist) t
               rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
           in ((n', t', spans) : fst rest, snd rest)
 runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
@@ -611,7 +612,7 @@ process h fn (Check (PRef _ n))
                  annotate (AnnName n Nothing Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
 
-    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] t
+    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] (idris_infixes ist) t
 
 
 process h fn (Check t)
@@ -627,14 +628,13 @@ process h fn (Check t)
                                       (prettyImp imp (delab ist ty))
 
 process h fn (DocStr n)
-   = do i <- getIState
-        let imp = opt_showimp (idris_options i)
-        case lookupCtxtName n (idris_docstrings i) of
+   = do ist <- getIState
+        case lookupCtxtName n (idris_docstrings ist) of
           [] -> iPrintError $ "No documentation for " ++ show n
-          ns -> do toShow <- mapM (showDoc imp) ns
+          ns -> do toShow <- mapM (showDoc ist) ns
                    ihRenderResult h (vsep toShow)
-    where showDoc imp (n, d) = do doc <- getDocs n
-                                  return $ pprintDocs imp doc
+    where showDoc ist (n, d) = do doc <- getDocs n
+                                  return $ pprintDocs ist doc
 process h fn Universes
                      = do i <- getIState
                           let cs = idris_constraints i
