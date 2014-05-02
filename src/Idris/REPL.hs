@@ -1031,6 +1031,8 @@ process h fn (SetOpt ShowOrigErr)   = setShowOrigErr True
 process h fn (UnsetOpt ShowOrigErr) = setShowOrigErr False
 process h fn (SetOpt AutoSolve)     = setAutoSolve True
 process h fn (UnsetOpt AutoSolve)   = setAutoSolve False
+process h fn (SetOpt NoBanner)      = setNoBanner True
+process h fn (UnsetOpt NoBanner)    = setNoBanner False
 
 process h fn (SetOpt _) = iPrintError "Not a valid option"
 process h fn (UnsetOpt _) = iPrintError "Not a valid option"
@@ -1353,6 +1355,7 @@ idrisMain opts =
        setVerbose verbose
        setCmdLine opts
        setOutputTy outty
+       setNoBanner nobanner
        setCodegen cgn
        setTargetTriple trpl
        setTargetCPU tcpu
@@ -1367,6 +1370,8 @@ idrisMain opts =
          (d:_) -> setIBCSubDir d
        setImportDirs importdirs
 
+       setNoBanner nobanner
+
        when (not (NoBasePkgs `elem` opts)) $ do
            addPkgDir "prelude"
            addPkgDir "base"
@@ -1376,6 +1381,11 @@ idrisMain opts =
                                                 return ()
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule stdout "Prelude"
                                                return ()
+
+       when (runrepl && not idesl) initScript
+
+       nobanner <- getNoBanner
+
        when (runrepl &&
              not quiet &&
              not idesl &&
@@ -1426,7 +1436,6 @@ idrisMain opts =
 
        when (runrepl && not idesl) $ do
 --          clearOrigPats
-         initScript
          startServer orig inputs
          runInputT (replSettings (Just historyFile)) $ repl orig inputs
        when (idesl) $ ideslaveStart orig inputs

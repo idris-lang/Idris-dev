@@ -12,6 +12,7 @@ New in 0.9.13:
 * New (first class) nested record update/access syntax:
   record { a->b->c = val } x -- sets field accessed by c (b (a x)) to val
   record { a->b->c } x -- accesses field, equivalent to c (b (a x))
+* The banner at startup can be suppressed by adding :set nobanner to the initialisation script.
 
 Internal changes
 
