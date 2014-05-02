@@ -605,25 +605,45 @@ FieldType ::=
 @
 -}
 recordType :: SyntaxInfo -> IdrisParser PTerm
-recordType syn
-    = do reserved "record"
+recordType syn = 
+      do reserved "record"
          lchar '{'
-         fields <- sepBy1 fieldType (lchar ',')
+         fgs <- fieldGetOrSet
          lchar '}'
          fc <- getFC
          rec <- optional (simpleExpr syn)
-         case rec of
-            Nothing ->
-                return (PLam (sMN 0 "fldx") Placeholder
-                            (applyAll fc fields (PRef fc (sMN 0 "fldx"))))
-            Just v -> return (applyAll fc fields v)
+         case fgs of
+              Left fields ->
+                case rec of
+                   Nothing ->
+                       return (PLam (sMN 0 "fldx") Placeholder
+                                   (applyAll fc fields (PRef fc (sMN 0 "fldx"))))
+                   Just v -> return (applyAll fc fields v)
+              Right fields ->
+                case rec of
+                   Nothing ->
+                       return (PLam (sMN 0 "fldx") Placeholder
+                                 (getAll fc (reverse fields) 
+                                     (PRef fc (sMN 0 "fldx"))))
+                   Just v -> return (getAll fc (reverse fields) v)
+
        <?> "record setting expression"
-   where fieldType :: IdrisParser ([Name], PTerm)
-         fieldType = do n <- sepBy1 fnName (symbol "->")
-                        lchar '='
-                        e <- expr syn
-                        return (n, e)
-                     <?> "field setter"
+   where fieldSet :: IdrisParser ([Name], PTerm)
+         fieldSet = do ns <- fieldGet
+                       lchar '='
+                       e <- expr syn
+                       return (ns, e)
+                    <?> "field setter"
+
+         fieldGet :: IdrisParser [Name]
+         fieldGet = sepBy1 fnName (symbol "->")
+
+         fieldGetOrSet :: IdrisParser (Either [([Name], PTerm)] [Name])
+         fieldGetOrSet = try (do fs <- sepBy1 fieldSet (lchar ',')
+                                 return (Left fs))
+                     <|> do f <- fieldGet
+                            return (Right f)
+
          applyAll :: FC -> [([Name], PTerm)] -> PTerm -> PTerm
          applyAll fc [] x = x
          applyAll fc ((ns, e) : es) x
@@ -635,6 +655,11 @@ recordType syn
               = PApp fc (PRef fc (mkType n)) 
                   [pexp (doUpdate fc ns e (PApp fc (PRef fc n) [pexp get])), 
                    pexp get]
+
+         getAll :: FC -> [Name] -> PTerm -> PTerm
+         getAll fc [n] e = PApp fc (PRef fc n) [pexp e]
+         getAll fc (n:ns) e = PApp fc (PRef fc n) [pexp (getAll fc ns e)]
+
 
 -- | Creates setters for record types on necessary functions
 mkType :: Name -> Name

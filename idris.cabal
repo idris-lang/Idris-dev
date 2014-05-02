@@ -410,6 +410,9 @@ Extra-source-files:
                        test/records002/run
                        test/records002/*.idr
                        test/records002/expected
+                       test/records003/run
+                       test/records003/*.idr
+                       test/records003/expected
 
                        test/sugar001/run
                        test/sugar001/*.idr
