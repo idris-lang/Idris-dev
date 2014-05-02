@@ -25,7 +25,11 @@ module Idris.ASTUtils where
 --      fputState (detag n2) False
 --
 --      -- Note that all these operations handle missing items consistently
---      -- and transparently, as prescribed by the typeclass InitialValue.
+--      -- and transparently, as prescribed by the default values included
+--      -- in the definitions of the ist_* functions.
+--      --
+--      -- Especially, it's no longer necessary to have initial values of
+--      -- data structures copied (possibly inconsistently) all over the compiler.
 
 import Control.Category
 import Control.Applicative
