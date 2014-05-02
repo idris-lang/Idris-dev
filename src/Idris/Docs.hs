@@ -129,7 +129,6 @@ docData n ti
 docClass :: Name -> ClassInfo -> Idris Docs
 docClass n ci
   = do i <- getIState
-       ctxt <- getContext
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
            docstr = maybe emptyDocstring fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd))) (class_params ci)
