@@ -1169,7 +1169,7 @@ loadModule' outh f
         let file = takeWhile (/= ' ') f
         ibcsd <- valIBCSubDir i
         ids <- allImportDirs
-        fp <- liftIO $ findImport ids ibcsd file
+        fp <- findImport ids ibcsd file
         if file `elem` imported i
           then iLOG $ "Already read " ++ file
           else do putIState (i { imported = file : imported i })
@@ -1219,7 +1219,7 @@ loadSource h lidr f
                   (mname, imports, pos) <- parseImports f file
                   ids <- allImportDirs
                   ibcsd <- valIBCSubDir i
-                  mapM_ (\f -> do fp <- runIO $ findImport ids ibcsd f
+                  mapM_ (\f -> do fp <- findImport ids ibcsd f
                                   case fp of
                                       LIDR fn -> ifail $ "No ibc for " ++ f
                                       IDR fn -> ifail $ "No ibc for " ++ f
