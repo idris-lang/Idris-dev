@@ -29,6 +29,7 @@ data Docs = FunDoc FunDoc
                      [FunDoc] -- method docs
                      [(Name, Maybe Docstring)] -- parameters and their docstrings
                      [PTerm] -- instances
+                     [PTerm] -- superclasses
   deriving Show
 
 showDoc d | nullDocstring d = empty
@@ -76,7 +77,7 @@ pprintDocs ist (DataDoc t args)
            = text "Data type" <+> pprintFD ist t <$>
              nest 4 (text "Constructors:" <> line <>
                      vsep (map (pprintFD ist) args))
-pprintDocs ist (ClassDoc n doc meths params instances)
+pprintDocs ist (ClassDoc n doc meths params instances superclasses)
            = nest 4 (text "Type class" <+> prettyName imp [] n <>
                      if nullDocstring doc then empty else line <> renderDocstring doc)
              <> line <$>
@@ -92,6 +93,10 @@ pprintDocs ist (ClassDoc n doc meths params instances)
              if null subclasses then empty
              else line <$> nest 4 (text "Subclasses:" <$>
                                    vsep (map (dumpInstance . prettifySubclasses) subclasses))
+             <>
+             if null superclasses then empty
+             else line <$> nest 4 (text "Default superclass instances:" <$>
+                                   vsep (map dumpInstance superclasses))
   where
     params' = zip pNames (repeat False)
 
@@ -151,8 +156,12 @@ docClass n ci
            docstr = maybe emptyDocstring fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd))) (class_params ci)
            instances = map (delabTy i) (class_instances ci)
-       mdocs <- mapM (docFun .fst) (class_methods ci)
-       return $ ClassDoc n docstr mdocs params instances
+           superclasses = catMaybes $ map getDInst (class_default_superclasses ci)
+       mdocs <- mapM (docFun . fst) (class_methods ci)
+       return $ ClassDoc n docstr mdocs params instances superclasses
+  where
+    getDInst (PInstance _ _ _ _ _ t _ _) = Just t
+    getDInst _                           = Nothing
 
 docFun :: Name -> Idris FunDoc
 docFun n
