@@ -46,7 +46,7 @@ pprintFD ist (FD n doc args ty f)
                 then nest 4 $ text "Arguments:" <$> vsep argshow
                 else empty)
 
-    where ppo = ppOption (idris_options ist)
+    where ppo = ppOptionIst ist
           infixes = idris_infixes ist
           showArgs ((n, ty, Exp {}, Just d):args) bnd
              = bindingOf n False <+> colon <+>
@@ -97,7 +97,7 @@ pprintDocs ist (ClassDoc n doc meths params instances)
 
     pNames  = map fst params
 
-    ppo = ppOption (idris_options ist)
+    ppo = ppOptionIst ist
     infixes = idris_infixes ist
 
     dumpInstance :: PTerm -> Doc OutputAnnotation

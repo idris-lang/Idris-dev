@@ -87,7 +87,7 @@ ihPrintTermWithType h tm ty = do ist <- getIState
 ihPrintFunTypes :: Handle -> [(Name, Bool)] -> Name -> [(Name, PTerm)] -> Idris ()
 ihPrintFunTypes h bnd n []        = ihPrintError h $ "No such variable " ++ show n
 ihPrintFunTypes h bnd n overloads = do ist <- getIState
-                                       let ppo = ppOption (idris_options ist)
+                                       let ppo = ppOptionIst ist
                                        let infixes = idris_infixes ist
                                        let output = vsep (map (uncurry (ppOverload ppo infixes)) overloads)
                                        case idris_outputmode ist of
@@ -121,7 +121,7 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
                                    out = displayS . renderPretty 1.0 50 $ renderDocstring o
                                return (out "")
         getTy :: IState -> Name -> String -- fails if name not already extant!
-        getTy ist n = let theTy = pprintPTerm (ppOption (idris_options ist)) [] [] (idris_infixes ist) $
+        getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
                                   delabTy ist n
                       in (displayS . renderPretty 1.0 50 $ theTy) ""
 fancifyAnnots _ annot = annot

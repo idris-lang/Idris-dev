@@ -312,7 +312,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.SetOpt IdeSlave.ErrContext b) =
 runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
   do ist <- getIState
      let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
-     let ppo = ppOption (idris_options ist)
+     let ppo = ppOptionIst ist
      let mvarTys = map (delabTy ist) mvs
      let res = (IdeSlave.SymbolAtom "ok",
                 zipWith (\ n (prems, concl) -> (n, prems, concl))
@@ -581,7 +581,7 @@ process h fn (ExecVal t)
 process h fn (Check (PRef _ n))
    = do ctxt <- getContext
         ist <- getIState
-        let ppo = ppOption (idris_options ist)
+        let ppo = ppOptionIst ist
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
@@ -610,14 +610,14 @@ process h fn (Check (PRef _ n))
                  annotate (AnnName n Nothing Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
 
-    tPretty bnd ist t = pprintPTerm (ppOption (idris_options ist)) bnd [] (idris_infixes ist) t
+    tPretty bnd ist t = pprintPTerm (ppOptionIst ist) bnd [] (idris_infixes ist) t
 
 
 process h fn (Check t)
    = do (tm, ty) <- elabVal toplevel False t
         ctxt <- getContext
         ist <- getIState
-        let ppo = ppOption (idris_options ist)
+        let ppo = ppOptionIst ist
             ty' = normaliseC ctxt [] ty
         case tm of
            TType _ ->
@@ -664,7 +664,7 @@ process h fn (TotCheck n)
                                 []  -> ihPrintError h $ "Unknown operator " ++ show n
                                 ts  -> do ist <- getIState
                                           c <- colourise
-                                          let ppo =  ppOption (idris_options ist)
+                                          let ppo =  ppOptionIst ist
                                           let showN = showName (Just ist) [] ppo c
                                           ihPrintResult h . concat . intersperse "\n" .
                                             map (\(n, t) -> showN n ++ " is " ++ showTotal t i) $

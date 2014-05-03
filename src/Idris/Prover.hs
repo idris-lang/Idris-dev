@@ -110,7 +110,7 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
   iputGoal rendered
 
   where
-    ppo = ppOption (idris_options ist)
+    ppo = ppOptionIst ist
 
     tPretty bnd t = pprintPTerm ppo bnd [] (idris_infixes ist) $ delab ist t
 
@@ -237,7 +237,7 @@ ploop fn d prompt prf e h
                            ctxt'  = envCtxt env ctxt
                        putIState ist { tt_ctxt = ctxt' }
                        (tm, ty) <- elabVal toplevel False t
-                       let ppo = ppOption (idris_options ist)
+                       let ppo = ppOptionIst ist
                            ty'     = normaliseC ctxt [] ty
                            h       = idris_outh ist
                            infixes = idris_infixes ist

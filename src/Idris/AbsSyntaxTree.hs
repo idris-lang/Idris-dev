@@ -113,6 +113,10 @@ ppOption opt = PPOption {
     ppopt_impl = opt_showimp opt
 }
 
+-- | Get pretty printing options from an idris state record.
+ppOptionIst :: IState -> PPOption
+ppOptionIst = ppOption . idris_options
+
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
 
 -- | The output mode in use
@@ -1154,7 +1158,7 @@ prettyImp impl = pprintPTerm impl [] [] []
 
 -- | Do the right thing for rendering a term in an IState
 prettyIst ::  IState -> PTerm -> Doc OutputAnnotation
-prettyIst ist = pprintPTerm (ppOption (idris_options ist)) [] [] (idris_infixes ist)
+prettyIst ist = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist)
 
 -- | Pretty-print a high-level Idris term in some bindings context with infix info
 pprintPTerm :: PPOption -- ^^ pretty printing options 
@@ -1527,7 +1531,7 @@ showTm :: IState -- ^^ the Idris state, for information about identifiers and co
        -> String
 showTm ist = displayDecorated (consoleDecorate ist) .
              renderPretty 0.8 100000 .
-             prettyImp (ppOption (idris_options ist))
+             prettyImp (ppOptionIst ist)
 
 -- | Show a term with implicits, no colours
 showTmImpls :: PTerm -> String
