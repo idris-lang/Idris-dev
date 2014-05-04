@@ -52,10 +52,10 @@ instance Apropos Def where
   isApropos str (CaseOp _ ty ty' _ _ _) = isApropos str ty
 
 instance Apropos (Binder (TT Name)) where
-  isApropos str (Lam ty)      = isApropos str ty
-  isApropos str (Pi ty)       = isApropos str ty
-  isApropos str (Let ty val)  = isApropos str ty || isApropos str val
-  isApropos str (NLet ty val) = isApropos str ty || isApropos str val
+  isApropos str (Lam ty)      = str == T.pack "\\" || isApropos str ty
+  isApropos str (Pi ty)       = str == T.pack "->" || isApropos str ty
+  isApropos str (Let ty val)  = str == T.pack "let" || isApropos str ty || isApropos str val
+  isApropos str (NLet ty val) = str == T.pack "let" || isApropos str ty || isApropos str val
   isApropos str _             = False -- these shouldn't occur in defined libraries
 
 instance Apropos (TT Name) where
