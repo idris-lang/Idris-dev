@@ -249,8 +249,8 @@ irTerm vs env tm@(App f a) = case unApply tm of
 
     -- This case is here until we get more general inlining. It's just
     -- a really common case, and the laziness hurts...
-    (P _ (NS (UN be) [b,p]) _, [_,x,(App (P _ (UN d) _) t),
-                                        (App (P _ (UN d') _) e)])
+    (P _ (NS (UN be) [b,p]) _, [_,x,(App (App (App (P _ (UN d) _) _) _) t),
+                                    (App (App (App (P _ (UN d') _) _) _) e)])
         | be == txt "boolElim"
         , d  == txt "Delay"
         , d' == txt "Delay"
