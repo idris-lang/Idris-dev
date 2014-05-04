@@ -1193,7 +1193,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
           st <> text "->" <$> prettySe 10 ((n, False):bnd) sc
       | otherwise                      =
           bracket p 2 . group $
-          group (prettySe 0 bnd ty <+> st) <> text "->" <$> group (prettySe 10 ((n, False):bnd) sc)
+          group (prettySe 1 bnd ty <+> st) <> text "->" <$> group (prettySe 10 ((n, False):bnd) sc)
       where
         st =
           case s of
@@ -1253,7 +1253,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = annotate AnnConstType $
                                char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
-    prettySe p bnd (PApp _ f as) =
+    prettySe p bnd (PApp _ f as) = -- Normal prefix applications
       let args = getExps as
           fp   = prettySe 1 bnd f
       in
