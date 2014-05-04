@@ -1,0 +1,1 @@
+take : (m : Fin 3) -> Vect 2 Nat -> Vect (finToNat m) Nat

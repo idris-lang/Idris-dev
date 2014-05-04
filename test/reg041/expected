@@ -1,3 +1,3 @@
 Type checking ./ott.idr
-?prf : (x : Bool) -> (x1 : Bool) -> (El (EQ two x two x1)) -> El (EQ two x two x1)
+?prf : (x : Bool) -> (x1 : Bool) -> El (EQ two x two x1) -> El (EQ two x two x1)
 Z
