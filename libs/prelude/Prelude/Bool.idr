@@ -27,13 +27,13 @@ syntax if [test] then [t] else [e] = boolElim test (Delay t) (Delay e)
 -- Boolean Operator Precedence
 infixl 4 &&, ||
 
-||| Boolean OR
-(||) : Bool -> Bool -> Bool
+||| Boolean OR only evaluates the second argument if the first is `False`.
+(||) : Bool -> Lazy Bool -> Bool
 (||) False x = x
 (||) True _  = True
 
-||| Boolean AND
-(&&) : Bool -> Bool -> Bool
+||| Boolean AND only evaluates the second argument if the first is `True`.
+(&&) : Bool -> Lazy Bool -> Bool
 (&&) True x  = x
 (&&) False _ = False
 

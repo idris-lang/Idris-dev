@@ -138,7 +138,7 @@ pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
 pprintTerm ist = pprintTerm' ist []
 
 pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
-pprintTerm' ist bnd = pprintPTerm (opt_showimp (idris_options ist)) bnd [] (idris_infixes ist)
+pprintTerm' ist bnd tm = pprintPTerm (ppOptionIst ist) bnd [] (idris_infixes ist) tm
 
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)
@@ -269,7 +269,7 @@ showSc i xs = line <> line <> text "In context:" <>
 
 
 showqual :: IState -> Name -> String
-showqual i n = showName (Just i) [] False False (dens n)
+showqual i n = showName (Just i) [] (ppOptionIst i) { ppopt_impl = False } False (dens n)
   where
     dens ns@(NS n _) = case lookupCtxt n (idris_implicits i) of
                               [_] -> n -- just one thing

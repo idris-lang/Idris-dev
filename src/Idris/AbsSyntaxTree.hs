@@ -95,6 +95,28 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_autoSolve  = True
                       }
 
+data PPOption = PPOption {
+    ppopt_impl :: Bool -- ^^ whether to show implicits
+} deriving (Show)
+
+-- | Pretty printing options with default verbosity.
+defaultPPOption :: PPOption
+defaultPPOption = PPOption { ppopt_impl = False }
+
+-- | Pretty printing options with the most verbosity.
+verbosePPOption :: PPOption
+verbosePPOption = PPOption { ppopt_impl = True }
+
+-- | Get pretty printing options from the big options record.
+ppOption :: IOption -> PPOption
+ppOption opt = PPOption {
+    ppopt_impl = opt_showimp opt
+}
+
+-- | Get pretty printing options from an idris state record.
+ppOptionIst :: IState -> PPOption
+ppOptionIst = ppOption . idris_options
+
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
 
 -- | The output mode in use
@@ -1089,19 +1111,19 @@ piBindp p ((n, ty):ns) t = PPi p n ty (piBindp p ns t)
 -- could interfere with interactive editing, which calls "show".
 
 instance Show PTerm where
-  showsPrec _ tm = (displayS . renderPretty 1.0 10000000 . prettyImp False) tm
+  showsPrec _ tm = (displayS . renderPretty 1.0 10000000 . prettyImp defaultPPOption) tm
 
 instance Show PDecl where
-  showsPrec _ d = (displayS . renderPretty 1.0 10000000 . showDeclImp False) d
+  showsPrec _ d = (displayS . renderPretty 1.0 10000000 . showDeclImp defaultPPOption) d
 
 instance Show PClause where
-  showsPrec _ c = (displayS . renderPretty 1.0 10000000 . showCImp True) c
+  showsPrec _ c = (displayS . renderPretty 1.0 10000000 . showCImp verbosePPOption) c
 
 instance Show PData where
-  showsPrec _ d = (displayS . renderPretty 1.0 10000000 . showDImp False) d
+  showsPrec _ d = (displayS . renderPretty 1.0 10000000 . showDImp defaultPPOption) d
 
 instance Pretty PTerm OutputAnnotation where
-  pretty = prettyImp False
+  pretty = prettyImp defaultPPOption
 
 -- | Colourise annotations according to an Idris state. It ignores the names
 -- in the annotation, as there's no good way to show extended information on a
@@ -1129,23 +1151,23 @@ consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
         colour ItalicText    = IdrisColour Nothing True False False True
 
 -- | Pretty-print a high-level closed Idris term with no information about precedence/associativity
-prettyImp :: Bool -- ^^ whether to show implicits
+prettyImp :: PPOption -- ^^ pretty printing options 
           -> PTerm -- ^^ the term to pretty-print
           -> Doc OutputAnnotation
 prettyImp impl = pprintPTerm impl [] [] []
 
 -- | Do the right thing for rendering a term in an IState
 prettyIst ::  IState -> PTerm -> Doc OutputAnnotation
-prettyIst ist = pprintPTerm (opt_showimp (idris_options ist)) [] [] (idris_infixes ist)
+prettyIst ist = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist)
 
 -- | Pretty-print a high-level Idris term in some bindings context with infix info
-pprintPTerm :: Bool -- ^^ whether to show implicits
+pprintPTerm :: PPOption -- ^^ pretty printing options 
             -> [(Name, Bool)] -- ^^ the currently-bound names and whether they are implicit
             -> [Name] -- ^^ names to always show in pi, even if not used
             -> [FixDecl] -- ^^ Fixity declarations
             -> PTerm -- ^^ the term to pretty-print
             -> Doc OutputAnnotation
-pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
+pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
   where
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =
@@ -1154,7 +1176,7 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd e
       | Just str <- slist p bnd e = str
       | Just n <- snat p e = annotate AnnConstData (text (show n))
-    prettySe p bnd (PRef fc n) = prettyName impl bnd n
+    prettySe p bnd (PRef fc n) = prettyName (ppopt_impl ppo) bnd n
     prettySe p bnd (PLam n ty sc) =
       bracket p 2 . group . align . hang 2 $
       text "\\" <> bindingOf n False <+> text "=>" <$>
@@ -1165,7 +1187,7 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
       prettySe 10 bnd v <+> kwd "in" </>
       prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PPi (Exp l s _) n ty sc)
-      | n `elem` allNamesIn sc || impl || n `elem` docArgs =
+      | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
           bracket p 2 . group $
           enclose lparen rparen (group . align $ bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
           st <> text "->" <$> prettySe 10 ((n, False):bnd) sc
@@ -1178,7 +1200,7 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
             Static -> text "[static]" <> space
             _      -> empty
     prettySe p bnd (PPi (Imp l s _) n ty sc)
-      | impl =
+      | ppopt_impl ppo =
           bracket p 2 $
           lbrace <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
           st <> text "->" </> prettySe 10 ((n, True):bnd) sc
@@ -1197,16 +1219,16 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
       rbrace <+> text "->" </> prettySe 10 ((n, True):bnd) sc
     prettySe p bnd (PApp _ (PRef _ f) args) -- normal names, no explicit args
       | UN nm <- basename f
-      , not impl && null (getExps args) = if isAlpha (thead nm)
-                                            then prettyName impl bnd f
-                                            else enclose lparen rparen $
-                                                 prettyName impl bnd f
+      , not (ppopt_impl ppo) && null (getExps args) =
+          if isAlpha (thead nm)
+              then prettyName (ppopt_impl ppo) bnd f
+              else enclose lparen rparen $ prettyName (ppopt_impl ppo) bnd f
     prettySe p bnd (PAppBind _ (PRef _ f) [])
-      | not impl = text "!" <> prettyName impl bnd f
+      | not (ppopt_impl ppo) = text "!" <> prettyName (ppopt_impl ppo) bnd f
     prettySe p bnd (PApp _ (PRef _ op) args)
       | UN nm <- basename op
       , not (tnull nm) &&
-        (not impl) && (not $ isAlpha (thead nm)) =
+        (not (ppopt_impl ppo)) && (not $ isAlpha (thead nm)) =
           case getExps args of
             [] -> enclose lparen rparen opName
             [x] -> group (enclose lparen rparen opName <$> group (prettySe 0 bnd x))
@@ -1215,7 +1237,7 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
             (l:r:rest) -> bracket p 1 $
                           enclose lparen rparen (inFix l r) <+>
                           align (group (vsep (map (prettyArgSe bnd) rest)))
-          where opName = prettyName impl bnd op
+          where opName = prettyName (ppopt_impl ppo) bnd op
                 f = getFixity (opStr op)
                 left l = case f of
                            Nothing -> prettySe (-1) bnd l
@@ -1235,7 +1257,7 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
           fp   = prettySe 1 bnd f
       in
         bracket p 1 . group $
-          if impl
+          if ppopt_impl ppo
             then if null as
                    then fp
                    else fp <+> align (vsep (map (prettyArgS bnd) as))
@@ -1340,9 +1362,9 @@ pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
     basename n = n
 
     slist' p bnd (PApp _ (PRef _ nil) _)
-      | not impl && nsroot nil == sUN "Nil" = Just []
+      | not (ppopt_impl ppo) && nsroot nil == sUN "Nil" = Just []
     slist' p bnd (PRef _ nil)
-      | not impl && nsroot nil == sUN "Nil" = Just []
+      | not (ppopt_impl ppo) && nsroot nil == sUN "Nil" = Just []
     slist' p bnd (PApp _ (PRef _ cons) args)
       | nsroot cons == sUN "::",
         (PExp {getTm=tl}):(PExp {getTm=hd}):imps <- reverse args,
@@ -1415,43 +1437,43 @@ prettyName showNS bnd n | Just imp <- lookup n bnd = annotate (AnnBoundName n im
         strName other = show other
 
 
-showCImp :: Bool -> PClause -> Doc OutputAnnotation
-showCImp impl (PClause _ n l ws r w)
- = prettyImp impl l <+> showWs ws <+> text "=" <+> prettyImp impl r
+showCImp :: PPOption -> PClause -> Doc OutputAnnotation
+showCImp ppo (PClause _ n l ws r w)
+ = prettyImp ppo l <+> showWs ws <+> text "=" <+> prettyImp ppo r
              <+> text "where" <+> text (show w)
   where
     showWs [] = empty
-    showWs (x : xs) = text "|" <+> prettyImp impl x <+> showWs xs
-showCImp impl (PWith _ n l ws r w)
- = prettyImp impl l <+> showWs ws <+> text "with" <+> prettyImp impl r
+    showWs (x : xs) = text "|" <+> prettyImp ppo x <+> showWs xs
+showCImp ppo (PWith _ n l ws r w)
+ = prettyImp ppo l <+> showWs ws <+> text "with" <+> prettyImp ppo r
                  <+> braces (text (show w))
   where
     showWs [] = empty
-    showWs (x : xs) = text "|" <+> prettyImp impl x <+> showWs xs
+    showWs (x : xs) = text "|" <+> prettyImp ppo x <+> showWs xs
 
 
-showDImp :: Bool -> PData -> Doc OutputAnnotation
-showDImp impl (PDatadecl n ty cons)
- = text "data" <+> text (show n) <+> colon <+> prettyImp impl ty <+> text "where" <$>
-    (indent 2 $ vsep (map (\ (_, _, n, t, _, _) -> pipe <+> prettyName False [] n <+> colon <+> prettyImp impl t) cons))
+showDImp :: PPOption -> PData -> Doc OutputAnnotation
+showDImp ppo (PDatadecl n ty cons)
+ = text "data" <+> text (show n) <+> colon <+> prettyImp ppo ty <+> text "where" <$>
+    (indent 2 $ vsep (map (\ (_, _, n, t, _, _) -> pipe <+> prettyName False [] n <+> colon <+> prettyImp ppo t) cons))
 
-showDecls :: Bool -> [PDecl] -> Doc OutputAnnotation
-showDecls i ds = vsep (map (showDeclImp i) ds)
+showDecls :: PPOption -> [PDecl] -> Doc OutputAnnotation
+showDecls o ds = vsep (map (showDeclImp o) ds)
 
 showDeclImp _ (PFix _ f ops) = text (show f) <+> cat (punctuate (text ",") (map text ops))
-showDeclImp i (PTy _ _ _ _ _ n t) = text "tydecl" <+> text (showCG n) <+> colon <+> prettyImp i t
-showDeclImp i (PClauses _ _ n cs) = text "pat" <+> text (showCG n) <+> text "\t" <+>
-                                      indent 2 (vsep (map (showCImp i) cs))
-showDeclImp _ (PData _ _ _ _ _ d) = showDImp True d
-showDeclImp i (PParams _ ns ps) = text "params" <+> braces (text (show ns) <> line <> showDecls i ps <> line)
-showDeclImp i (PNamespace n ps) = text "namespace" <+> text n <> braces (line <> showDecls i ps <> line)
+showDeclImp o (PTy _ _ _ _ _ n t) = text "tydecl" <+> text (showCG n) <+> colon <+> prettyImp o t
+showDeclImp o (PClauses _ _ n cs) = text "pat" <+> text (showCG n) <+> text "\t" <+>
+                                      indent 2 (vsep (map (showCImp o) cs))
+showDeclImp o (PData _ _ _ _ _ d) = showDImp o { ppopt_impl = True } d
+showDeclImp o (PParams _ ns ps) = text "params" <+> braces (text (show ns) <> line <> showDecls o ps <> line)
+showDeclImp o (PNamespace n ps) = text "namespace" <+> text n <> braces (line <> showDecls o ps <> line)
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
-showDeclImp i (PClass _ _ _ cs n ps _ ds)
-   = text "class" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls i ds
-showDeclImp i (PInstance _ _ cs n _ t _ ds)
-   = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp i t <> line <> showDecls i ds
+showDeclImp o (PClass _ _ _ cs n ps _ ds)
+   = text "class" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
+showDeclImp o (PInstance _ _ cs n _ t _ ds)
+   = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
--- showDeclImp (PImport i) = "import " ++ i
+-- showDeclImp (PImport o) = "import " ++ o
 
 instance Show (Doc OutputAnnotation) where
   show = flip (displayS . renderCompact) ""
@@ -1478,14 +1500,14 @@ getAll = map getTm
 -- | Show Idris name
 showName :: Maybe IState   -- ^^ the Idris state, for information about names and colours
          -> [(Name, Bool)] -- ^^ the bound variables and whether they're implicit
-         -> Bool           -- ^^ whether to show implicits
+         -> PPOption         -- ^^ pretty printing options
          -> Bool           -- ^^ whether to colourise
          -> Name           -- ^^ the term to show
          -> String
-showName ist bnd impl colour n = case ist of
+showName ist bnd ppo colour n = case ist of
                                    Just i -> if colour then colourise n (idris_colourTheme i) else showbasic n
                                    Nothing -> showbasic n
-    where name = if impl then show n else showbasic n
+    where name = if ppopt_impl ppo then show n else showbasic n
           showbasic n@(UN _) = showCG n
           showbasic (MN _ s) = str s
           showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n
@@ -1509,11 +1531,11 @@ showTm :: IState -- ^^ the Idris state, for information about identifiers and co
        -> String
 showTm ist = displayDecorated (consoleDecorate ist) .
              renderPretty 0.8 100000 .
-             prettyImp (opt_showimp (idris_options ist))
+             prettyImp (ppOptionIst ist)
 
 -- | Show a term with implicits, no colours
 showTmImpls :: PTerm -> String
-showTmImpls = flip (displayS . renderCompact . prettyImp True) ""
+showTmImpls = flip (displayS . renderCompact . prettyImp verbosePPOption) ""
 
 
 instance Sized PTerm where
