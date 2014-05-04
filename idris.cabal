@@ -550,6 +550,7 @@ Library
                 , Idris.Transforms
                 , Idris.Unlit
                 , Idris.WhoCalls
+                , Idris.CmdOptions
 
                 , IRTS.BCImp
                 , IRTS.Bytecode
@@ -619,6 +620,7 @@ Library
                 , xml
                 , deepseq
                 , zlib
+                , optparse-applicative
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleContexts

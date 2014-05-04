@@ -315,8 +315,6 @@ data Command = Quit
 
 
 data Opt = Filename String
-         | Ver
-         | Usage
          | Quiet
          | NoBanner
          | ColourREPL Bool

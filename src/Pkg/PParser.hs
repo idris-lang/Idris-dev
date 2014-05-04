@@ -8,6 +8,7 @@ import Idris.Core.TT
 import Idris.REPL
 import Idris.AbsSyntaxTree
 import Idris.ParseHelpers
+import Idris.CmdOptions
 
 import Paths_idris
 
@@ -66,7 +67,7 @@ pClause = do reserved "executable"; lchar '=';
       <|> do reserved "opts"; lchar '=';
              opts <- stringLiteral
              st <- get
-             let args = parseArgs (words opts)
+             let args = pureArgParser (words opts)
              put (st { idris_opts = args })
       <|> do reserved "modules"; lchar '=';
              ms <- sepBy1 (iName []) (lchar ',')
