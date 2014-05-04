@@ -122,10 +122,11 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
     prettyPs bnd ((n@(MN _ r), _) : bs)
         | r == txt "rewrite_rule" = prettyPs ((n, False):bnd) bs
     prettyPs bnd ((n, Let t v) : bs) =
-      nest nestingSize (bindingOf n False <+> text "=" <+> tPretty bnd v <> colon <+>
-        tPretty ((n, False):bnd) t <> line <> prettyPs ((n, False):bnd) bs)
+      line <> bindingOf n False <+> text "=" <+> tPretty bnd v <+> colon <+>
+        align (tPretty bnd t) <> prettyPs ((n, False):bnd) bs
     prettyPs bnd ((n, b) : bs) =
-      line <> bindingOf n False <+> colon <+> align (tPretty bnd (binderTy b)) <> prettyPs ((n, False):bnd) bs
+      line <> bindingOf n False <+> colon <+>
+      align (tPretty bnd (binderTy b)) <> prettyPs ((n, False):bnd) bs
 
     prettyG bnd (Guess t v) = tPretty bnd t <+> text "=?=" <+> tPretty bnd v
     prettyG bnd b = tPretty bnd $ binderTy b
