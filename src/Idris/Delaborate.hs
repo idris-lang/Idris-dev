@@ -138,7 +138,7 @@ pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
 pprintTerm ist = pprintTerm' ist []
 
 pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
-pprintTerm' ist bnd tm = pprintPTerm (opt_showimp (idris_options ist)) bnd [] tm
+pprintTerm' ist bnd = pprintPTerm (opt_showimp (idris_options ist)) bnd [] (idris_infixes ist)
 
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)

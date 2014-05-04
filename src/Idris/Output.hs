@@ -23,7 +23,9 @@ ihWarn h fc err = do i <- getIState
                      case idris_outputmode i of
                        RawOutput ->
                          do err' <- iRender . fmap (fancifyAnnots i) $
-                                    text (show fc) <> colon <//> err
+                                    if fc_fname fc /= ""
+                                      then text (show fc) <> colon <//> err
+                                      else err
                             runIO . hPutStrLn h $ displayDecorated (consoleDecorate i) err'
                        IdeSlave n ->
                          do err' <- iRender . fmap (fancifyAnnots i) $ err
@@ -78,7 +80,7 @@ ideSlaveReturnAnnotated n h out = do ist <- getIState
 
 ihPrintTermWithType :: Handle -> Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
 ihPrintTermWithType h tm ty = do ist <- getIState
-                                 let output = tm <+> colon <+> ty
+                                 let output = tm <+> colon <+> align ty
                                  case idris_outputmode ist of
                                    RawOutput -> consoleDisplayAnnotated h output
                                    IdeSlave n -> ideSlaveReturnAnnotated n h output
@@ -88,12 +90,14 @@ ihPrintFunTypes :: Handle -> [(Name, Bool)] -> Name -> [(Name, PTerm)] -> Idris 
 ihPrintFunTypes h bnd n []        = ihPrintError h $ "No such variable " ++ show n
 ihPrintFunTypes h bnd n overloads = do imp <- impShow
                                        ist <- getIState
-                                       let output = vsep (map (uncurry (ppOverload imp)) overloads)
+                                       let infixes = idris_infixes ist
+                                       let output = vsep (map (uncurry (ppOverload imp infixes)) overloads)
                                        case idris_outputmode ist of
                                          RawOutput -> consoleDisplayAnnotated h output
                                          IdeSlave n -> ideSlaveReturnAnnotated n h output
   where fullName n = prettyName True bnd n
-        ppOverload imp n tm = fullName n <+> colon <+> align (pprintPTerm imp bnd [] tm)
+        ppOverload imp infixes n tm =
+          fullName n <+> colon <+> align (pprintPTerm imp bnd [] infixes tm)
 
 ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderResult h d = do ist <- getIState
@@ -119,7 +123,7 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
                                    out = displayS . renderPretty 1.0 50 $ renderDocstring o
                                return (out "")
         getTy :: IState -> Name -> String -- fails if name not already extant!
-        getTy ist n = let theTy = pprintPTerm (opt_showimp (idris_options ist)) [] [] $
+        getTy ist n = let theTy = pprintPTerm (opt_showimp (idris_options ist)) [] [] (idris_infixes ist) $
                                   delabTy ist n
                       in (displayS . renderPretty 1.0 50 $ theTy) ""
 fancifyAnnots _ annot = annot

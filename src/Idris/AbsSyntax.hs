@@ -947,6 +947,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     bnames (PDPair _ _ l Placeholder r) = bnames l ++ bnames r
     bnames _ = []
 
+-- | Expands parameters defined in parameter and where blocks inside of declarations
 expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
     = PData doc argDocs syn fc co (expandPData pd)
   where
@@ -972,11 +973,12 @@ expandParamsD rhs ist dec ps ns (PParams f params pds)
 --                (map (expandParamsD ist dec ps ns) pds)
 expandParamsD rhs ist dec ps ns (PMutual f pds)
    = PMutual f (map (expandParamsD rhs ist dec ps ns) pds)
-expandParamsD rhs ist dec ps ns (PClass doc info f cs n params decls)
+expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs decls)
    = PClass doc info f
            (map (expandParams dec ps ns []) cs)
            n
            (map (mapsnd (expandParams dec ps ns [])) params)
+           pDocs
            (map (expandParamsD rhs ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns (PInstance info f cs n params ty cn decls)
    = PInstance info f

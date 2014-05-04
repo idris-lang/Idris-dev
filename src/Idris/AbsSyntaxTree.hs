@@ -31,6 +31,7 @@ import qualified Data.Map as M
 import Data.Either
 import qualified Data.Set as S
 import Data.Word (Word)
+import Data.Maybe (fromMaybe)
 
 import Debug.Trace
 
@@ -487,6 +488,7 @@ data PDecl' t
               [t] -- constraints
               Name
               [(Name, t)] -- parameters
+              [(Name, Docstring)] -- parameter docstrings
               [PDecl' t] -- declarations
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
               -- class name, parameters, method declarations
@@ -569,7 +571,7 @@ declared (PData _ _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
 declared (PRecord _ _ _ n _ _ _ c _) = [n, c]
-declared (PClass _ _ _ _ n _ ms) = n : concatMap declared ms
+declared (PClass _ _ _ _ n _ _ ms) = n : concatMap declared ms
 declared (PInstance _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
@@ -588,7 +590,7 @@ tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
-tldeclared (PClass _ _ _ _ n _ ms) = concatMap tldeclared ms
+tldeclared (PClass _ _ _ _ n _ _ ms) = concatMap tldeclared ms
 tldeclared (PInstance _ _ _ _ _ _ _ _) = []
 tldeclared _ = []
 
@@ -604,7 +606,7 @@ defined (PData _ _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
 defined (PRecord _ _ _ n _ _ _ c _) = [n, c]
-defined (PClass _ _ _ _ n _ ms) = n : concatMap defined ms
+defined (PClass _ _ _ _ n _ _ ms) = n : concatMap defined ms
 defined (PInstance _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
 defined (PSyntax _ _) = []
@@ -1065,7 +1067,7 @@ eqOpts = []
 elimName       = sUN "__Elim"
 elimMethElimTy = sUN "__elimTy"
 elimMethElim   = sUN "elim"
-elimDecl = PClass (parseDocstring . T.pack $ "Type class for eliminators") defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)]
+elimDecl = PClass (parseDocstring . T.pack $ "Type class for eliminators") defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)] []
                      [PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElimTy PType,
                       PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
@@ -1126,19 +1128,24 @@ consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
         colour UnderlineText = IdrisColour Nothing True True False False
         colour ItalicText    = IdrisColour Nothing True False False True
 
--- | Pretty-print a high-level closed Idris term
+-- | Pretty-print a high-level closed Idris term with no information about precedence/associativity
 prettyImp :: Bool -- ^^ whether to show implicits
           -> PTerm -- ^^ the term to pretty-print
           -> Doc OutputAnnotation
-prettyImp impl = pprintPTerm impl [] []
+prettyImp impl = pprintPTerm impl [] [] []
 
--- | Pretty-print a high-level Idris term in some bindings context
+-- | Do the right thing for rendering a term in an IState
+prettyIst ::  IState -> PTerm -> Doc OutputAnnotation
+prettyIst ist = pprintPTerm (opt_showimp (idris_options ist)) [] [] (idris_infixes ist)
+
+-- | Pretty-print a high-level Idris term in some bindings context with infix info
 pprintPTerm :: Bool -- ^^ whether to show implicits
             -> [(Name, Bool)] -- ^^ the currently-bound names and whether they are implicit
             -> [Name] -- ^^ names to always show in pi, even if not used
+            -> [FixDecl] -- ^^ Fixity declarations
             -> PTerm -- ^^ the term to pretty-print
             -> Doc OutputAnnotation
-pprintPTerm impl bnd docArgs = prettySe 10 bnd
+pprintPTerm impl bnd docArgs infixes = prettySe 10 bnd
   where
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =
@@ -1203,13 +1210,23 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
           case getExps args of
             [] -> enclose lparen rparen opName
             [x] -> group (enclose lparen rparen opName <$> group (prettySe 0 bnd x))
-            [l,r] -> bracket p 1 $ inFix l r
+            [l,r] -> let precedence = fromMaybe 20 (fmap prec f)
+                     in bracket p precedence $ inFix l r
             (l:r:rest) -> bracket p 1 $
                           enclose lparen rparen (inFix l r) <+>
                           align (group (vsep (map (prettyArgSe bnd) rest)))
           where opName = prettyName impl bnd op
+                f = getFixity (opStr op)
+                left l = case f of
+                           Nothing -> prettySe (-1) bnd l
+                           Just (Infixl p') -> prettySe p' bnd l
+                           Just f' -> prettySe (prec f'-1) bnd l
+                right r = case f of
+                            Nothing -> prettySe (-1) bnd r
+                            Just (Infixr p') -> prettySe p' bnd r
+                            Just f' -> prettySe (prec f'-1) bnd r
                 inFix l r = align . group $
-                            (prettySe 1 bnd l <+> opName) <$> group (prettySe 0 bnd r)
+                              (left l <+> opName) <$> group (right r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm])
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
@@ -1314,6 +1331,10 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
     annName :: Name -> Doc OutputAnnotation -> Doc OutputAnnotation
     annName n = annotate (AnnName n Nothing Nothing Nothing)
 
+    opStr :: Name -> String
+    opStr (NS n _) = opStr n
+    opStr (UN n) = T.unpack n
+
     basename :: Name -> Name
     basename (NS n _) = basename n
     basename n = n
@@ -1367,6 +1388,12 @@ pprintPTerm impl bnd docArgs = prettySe 10 bnd
 
     kwd = annotate AnnKeyword . text
 
+    fixities :: M.Map String Fixity
+    fixities = M.fromList [(s, f) | (Fix f s) <- infixes]
+
+    getFixity :: String -> Maybe Fixity
+    getFixity = flip M.lookup fixities
+
 -- | Pretty-printer helper for the binding site of a name
 bindingOf :: Name -- ^^ the bound name
           -> Bool -- ^^ whether the name is implicit
@@ -1419,7 +1446,7 @@ showDeclImp _ (PData _ _ _ _ _ d) = showDImp True d
 showDeclImp i (PParams _ ns ps) = text "params" <+> braces (text (show ns) <> line <> showDecls i ps <> line)
 showDeclImp i (PNamespace n ps) = text "namespace" <+> text n <> braces (line <> showDecls i ps <> line)
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
-showDeclImp i (PClass _ _ _ cs n ps ds)
+showDeclImp i (PClass _ _ _ cs n ps _ ds)
    = text "class" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls i ds
 showDeclImp i (PInstance _ _ cs n _ t _ ds)
    = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp i t <> line <> showDecls i ds
