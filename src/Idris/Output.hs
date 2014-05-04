@@ -88,16 +88,16 @@ ihPrintTermWithType h tm ty = do ist <- getIState
 -- | Pretty-print a collection of overloadings to REPL or IDESlave - corresponds to :t name
 ihPrintFunTypes :: Handle -> [(Name, Bool)] -> Name -> [(Name, PTerm)] -> Idris ()
 ihPrintFunTypes h bnd n []        = ihPrintError h $ "No such variable " ++ show n
-ihPrintFunTypes h bnd n overloads = do imp <- impShow
-                                       ist <- getIState
+ihPrintFunTypes h bnd n overloads = do ist <- getIState
+                                       let ppo = ppOptionIst ist
                                        let infixes = idris_infixes ist
-                                       let output = vsep (map (uncurry (ppOverload imp infixes)) overloads)
+                                       let output = vsep (map (uncurry (ppOverload ppo infixes)) overloads)
                                        case idris_outputmode ist of
                                          RawOutput -> consoleDisplayAnnotated h output
                                          IdeSlave n -> ideSlaveReturnAnnotated n h output
   where fullName n = prettyName True bnd n
-        ppOverload imp infixes n tm =
-          fullName n <+> colon <+> align (pprintPTerm imp bnd [] infixes tm)
+        ppOverload ppo infixes n tm =
+          fullName n <+> colon <+> align (pprintPTerm ppo bnd [] infixes tm)
 
 ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderResult h d = do ist <- getIState
@@ -123,7 +123,7 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
                                    out = displayS . renderPretty 1.0 50 $ renderDocstring o
                                return (out "")
         getTy :: IState -> Name -> String -- fails if name not already extant!
-        getTy ist n = let theTy = pprintPTerm (opt_showimp (idris_options ist)) [] [] (idris_infixes ist) $
+        getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
                                   delabTy ist n
                       in (displayS . renderPretty 1.0 50 $ theTy) ""
 fancifyAnnots _ annot = annot

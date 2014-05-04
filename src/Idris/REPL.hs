@@ -312,34 +312,34 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.SetOpt IdeSlave.ErrContext b) =
 runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
   do ist <- getIState
      let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
-     imp <- impShow
+     let ppo = ppOptionIst ist
      let mvarTys = map (delabTy ist) mvs
      let res = (IdeSlave.SymbolAtom "ok",
                 zipWith (\ n (prems, concl) -> (n, prems, concl))
                         (map (IdeSlave.StringAtom . show) mvs)
-                        (map (sexpGoal ist cols imp [] . getGoal) mvarTys))
+                        (map (sexpGoal ist cols ppo [] . getGoal) mvarTys))
      runIO . putStrLn $ IdeSlave.convSExp "return" res id
   where getGoal :: PTerm -> ([(Name, PTerm)], PTerm)
         getGoal (PPi _ n t sc) = let (prems, conc) = getGoal sc
                                  in ((n, t):prems, conc)
         getGoal tm = ([], tm)
-        sexpGoal :: IState -> Int -> Bool -> [Name] -> ([(Name, PTerm)], PTerm)
+        sexpGoal :: IState -> Int -> PPOption -> [Name] -> ([(Name, PTerm)], PTerm)
                  -> ([(String, String, SpanList OutputAnnotation)],
                      (String, SpanList OutputAnnotation))
-        sexpGoal ist cols imp ns ([],        concl) =
+        sexpGoal ist cols ppo ns ([],        concl) =
           let infixes = idris_infixes ist
               concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                       pprintPTerm imp (zip ns (repeat False)) [] infixes concl
+                       pprintPTerm ppo (zip ns (repeat False)) [] infixes concl
           in ([], concl')
-        sexpGoal ist cols imp ns ((n, t):ps, concl) =
+        sexpGoal ist cols ppo ns ((n, t):ps, concl) =
           let n'          = case n of
                               NS (UN nm) ns -> str nm
                               UN nm | ('_':'_':_) <- str nm -> "_"
                                     | otherwise -> str nm
                               _ -> "_"
               (t', spans) = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                            pprintPTerm imp (zip ns (repeat False)) [] (idris_infixes ist) t
-              rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
+                            pprintPTerm ppo (zip ns (repeat False)) [] (idris_infixes ist) t
+              rest        = sexpGoal ist cols ppo (n:ns) (ps, concl)
           in ((n', t', spans) : fst rest, snd rest)
 runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
   case splitName n of
@@ -581,21 +581,21 @@ process h fn (ExecVal t)
 process h fn (Check (PRef _ n))
    = do ctxt <- getContext
         ist <- getIState
-        imp <- impShow
+        let ppo = ppOptionIst ist
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
                 Just (_, i, _) -> ihRenderResult h . fmap (fancifyAnnots ist) $
-                                  showMetavarInfo imp ist n i
+                                  showMetavarInfo ppo ist n i
                 Nothing -> ihPrintFunTypes h [] n (map (\n -> (n, delabTy ist n)) ts)
           [] -> ihPrintError h $ "No such variable " ++ show n
   where
-    showMetavarInfo imp ist n i
+    showMetavarInfo ppo ist n i
          = case lookupTy n (tt_ctxt ist) of
-                (ty:_) -> putTy imp ist i [] (delab ist (errReverse ist ty))
-    putTy :: Bool -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
-    putTy imp ist 0 bnd sc = putGoal imp ist bnd sc
-    putTy imp ist i bnd (PPi _ n t sc)
+                (ty:_) -> putTy ppo ist i [] (delab ist (errReverse ist ty))
+    putTy :: PPOption -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
+    putTy ppo ist 0 bnd sc = putGoal ppo ist bnd sc
+    putTy ppo ist i bnd (PPi _ n t sc)
                = let current = text "  " <>
                                (case n of
                                    MN _ _ -> text "_"
@@ -603,21 +603,21 @@ process h fn (Check (PRef _ n))
                                    _ -> bindingOf n False) <+>
                                colon <+> align (tPretty bnd ist t) <> line
                  in
-                    current <> putTy imp ist (i-1) ((n,False):bnd) sc
-    putTy imp ist _ bnd sc = putGoal imp ist ((n,False):bnd) sc
-    putGoal imp ist bnd g
+                    current <> putTy ppo ist (i-1) ((n,False):bnd) sc
+    putTy ppo ist _ bnd sc = putGoal ppo ist ((n,False):bnd) sc
+    putGoal ppo ist bnd g
                = text "--------------------------------------" <$>
                  annotate (AnnName n Nothing Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
 
-    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] (idris_infixes ist) t
+    tPretty bnd ist t = pprintPTerm (ppOptionIst ist) bnd [] (idris_infixes ist) t
 
 
 process h fn (Check t)
    = do (tm, ty) <- elabVal toplevel False t
         ctxt <- getContext
         ist <- getIState
-        let imp = opt_showimp (idris_options ist)
+        let ppo = ppOptionIst ist
             ty' = normaliseC ctxt [] ty
         case tm of
            TType _ ->
@@ -664,8 +664,8 @@ process h fn (TotCheck n)
                                 []  -> ihPrintError h $ "Unknown operator " ++ show n
                                 ts  -> do ist <- getIState
                                           c <- colourise
-                                          imp <- impShow
-                                          let showN = showName (Just ist) [] imp c
+                                          let ppo =  ppOptionIst ist
+                                          let showN = showName (Just ist) [] ppo c
                                           ihPrintResult h . concat . intersperse "\n" .
                                             map (\(n, t) -> showN n ++ " is " ++ showTotal t i) $
                                             ts
@@ -825,7 +825,7 @@ process h fn (DoProofSearch updatefile rec l n hints)
                  ctxt <- getContext
                  i <- getIState
                  return . flip displayS "" . renderPretty 1.0 80 $
-                   pprintPTerm False [] [] (idris_infixes i)
+                   pprintPTerm defaultPPOption [] [] (idris_infixes i)
                      (stripNS
                         (dropCtxt envlen
                            (delab i (specialise ctxt [] [(mn, 1)] tm)))))
@@ -958,7 +958,6 @@ process h fn (TestInline t)
                                 ctxt <- getContext
                                 ist <- getIState
                                 let tm' = inlineTerm ist tm
-                                imp <- impShow
                                 c <- colourise
                                 iPrintResult (showTm ist (delab ist tm'))
 process h fn Execute

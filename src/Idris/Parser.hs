@@ -1248,7 +1248,7 @@ loadSource h lidr f
                   -- Parsing done, now process declarations
 
                   let ds = namespaces mname ds'
-                  logLvl 3 (show $ showDecls True ds)
+                  logLvl 3 (show $ showDecls verbosePPOption ds)
                   i <- getIState
                   logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))
