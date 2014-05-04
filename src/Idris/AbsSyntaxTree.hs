@@ -1251,7 +1251,8 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
                               (left l <+> opName) <$> group (right r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm]) -- symbols, like 'foo
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
-        f == sUN "Symbol_" = char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
+        f == sUN "Symbol_" = annotate AnnConstType $
+                               char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
     prettySe p bnd (PApp _ f as) =
       let args = getExps as
           fp   = prettySe 1 bnd f
