@@ -1225,7 +1225,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
               else enclose lparen rparen $ prettyName (ppopt_impl ppo) bnd f
     prettySe p bnd (PAppBind _ (PRef _ f) [])
       | not (ppopt_impl ppo) = text "!" <> prettyName (ppopt_impl ppo) bnd f
-    prettySe p bnd (PApp _ (PRef _ op) args)
+    prettySe p bnd (PApp _ (PRef _ op) args) -- infix operators
       | UN nm <- basename op
       , not (tnull nm) &&
         (not (ppopt_impl ppo)) && (not $ isAlpha (thead nm)) =
@@ -1249,7 +1249,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
                             Just f' -> prettySe (prec f'-1) bnd r
                 inFix l r = align . group $
                               (left l <+> opName) <$> group (right r)
-    prettySe p bnd (PApp _ hd@(PRef fc f) [tm])
+    prettySe p bnd (PApp _ hd@(PRef fc f) [tm]) -- symbols, like 'foo
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
     prettySe p bnd (PApp _ f as) =
