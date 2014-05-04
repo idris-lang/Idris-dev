@@ -15,7 +15,15 @@ boolElim : (b : Bool) -> (t : Lazy a) -> (e : Lazy a) -> a
 boolElim True  t e = t
 boolElim False t e = e
 
-||| Defines a predicate on Bool which guarantees that the value is true.
+||| Ensure that some run-time Boolean test has been performed.
+|||
+||| This lifts a Boolean predicate to the type level. See the function `choose`
+||| if you need to perform a Boolean test and convince the type checker of this
+||| fact.
+|||
+||| If you find yourself using `so` for something other than primitive types,
+||| it may be appropriate to define a type of evidence for the property that you
+||| care about instead.
 data so : Bool -> Type where oh : so True
 
 instance Uninhabited (so False) where
