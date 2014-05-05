@@ -1424,17 +1424,30 @@ elimConds js =
     isCond :: JS -> Bool
     isCond (JSAlloc
       fun (Just (JSFunction args (JSCond
-        [ (JSBinOp "==" (JSNum (JSInt tag)) _, JSReturn (JSIdent _))
-        , (JSNoop, JSReturn (JSIdent _))
-        ]))
-      )) = True
+          [ (JSBinOp "==" (JSNum (JSInt tag)) (JSProj (JSIdent _) "tag"), JSReturn t)
+          , (JSNoop, JSReturn f)
+          ])))
+      )
+      | isJSConstant t && isJSConstant f =
+          True
+
+      | JSIdent _ <- t
+      , JSIdent _ <- f =
+          True
 
     isCond (JSAlloc
       fun (Just (JSFunction args (JSCond
-        [ (JSBinOp "==" _ (JSNum (JSInt tag)), JSReturn (JSIdent _))
-        , (JSNoop, JSReturn (JSIdent _))
-        ]))
-      )) = True
+        [ (JSBinOp "==" (JSIdent _) c, JSReturn t)
+        , (JSNoop, JSReturn f)
+        ])))
+      )
+      | isJSConstant t && isJSConstant f && isJSConstant c =
+          True
+
+      | JSIdent _ <- t
+      , JSIdent _ <- f
+      , isJSConstant c =
+          True
 
     isCond _ = False
 
