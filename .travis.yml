@@ -19,11 +19,11 @@ before_script:
   - cd idris*
 script:
   - cabal configure -f FFI -f LLVM
-  - cabal build
-  - cabal copy
+  - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
+  - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
   - make -j2 $TESTS
 env:
-  - TESTS=doc
-  - TESTS=test_c
-  - TESTS=test_llvm
-  - TESTS=test_js
+  - TESTS="doc"
+  - TESTS="test_c"
+  - TESTS="test_llvm"
+  - TESTS="test_js"
