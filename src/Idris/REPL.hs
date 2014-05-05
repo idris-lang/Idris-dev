@@ -4,6 +4,7 @@
 module Idris.REPL where
 
 import Idris.AbsSyntax
+import Idris.ASTUtils
 import Idris.Apropos (apropos)
 import Idris.REPLParser
 import Idris.ElabDecls
@@ -1032,6 +1033,8 @@ process h fn (SetOpt AutoSolve)     = setAutoSolve True
 process h fn (UnsetOpt AutoSolve)   = setAutoSolve False
 process h fn (SetOpt NoBanner)      = setNoBanner True
 process h fn (UnsetOpt NoBanner)    = setNoBanner False
+process h fn (SetOpt WarnReach)     = fmodifyState opts_idrisCmdline $ nub . (WarnReach:)
+process h fn (UnsetOpt WarnReach)   = fmodifyState opts_idrisCmdline $ delete WarnReach
 
 process h fn (SetOpt _) = iPrintError "Not a valid option"
 process h fn (UnsetOpt _) = iPrintError "Not a valid option"

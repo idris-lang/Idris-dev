@@ -120,6 +120,7 @@ pOption = do discard (P.symbol "errorcontext"); return ErrContext
       <|> do discard (P.symbol "originalerrors"); return ShowOrigErr
       <|> do discard (P.symbol "autosolve"); return AutoSolve
       <|> do discard (P.symbol "nobanner") ; return NoBanner
+      <|> do discard (P.symbol "warnreach"); return WarnReach
 
 codegenOption :: P.IdrisParser Codegen
 codegenOption = do discard (P.symbol "javascript"); return ViaJavaScript
