@@ -447,6 +447,18 @@ range : Vect n (Fin n)
 range {n=Z} = []
 range {n=S _} = fZ :: map fS range
 
+
+--------------------------------------------------------------------------------
+-- Properties
+--------------------------------------------------------------------------------
+
+vectNilRightNeutral : (xs : Vect n a) -> xs ++ [] = xs
+vectNilRightNeutral [] = refl
+vectNilRightNeutral (x :: xs) = tailCong _ _ (vectNilRightNeutral xs)
+  where tailCong : (xs : Vect n a) -> (ys : Vect m a) -> (xs = ys) -> (x :: xs = x :: ys)
+        tailCong xs xs refl = refl
+
+
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
