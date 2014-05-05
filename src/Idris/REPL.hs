@@ -1255,7 +1255,13 @@ loadInputs h inputs
               _ -> return ()
            ist <- getIState
            putIState (ist { idris_tyinfodata = tidata,
-                            idris_patdefs = patdefs }))
+                            idris_patdefs = patdefs })
+
+           case opt getOutput opts of
+               [] -> performUsageAnalysis  -- interactive
+               _  -> return []  -- batch, will be checked by the compiler
+
+           return ())
         (\e -> do i <- getIState
                   case e of
                     At f e' -> do setErrSpan f
@@ -1399,10 +1405,7 @@ idrisMain opts =
 
        ok <- noErrors
        when ok $ case output of
-                    -- just do the checks
-                    [] -> performUsageAnalysis >> return ()
-
-                    -- the compiler will run usage analysis itself
+                    [] -> return ()
                     (o:_) -> idrisCatch (process stdout "" (Compile cgn o))
                                (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
 
