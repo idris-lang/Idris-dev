@@ -332,6 +332,7 @@ simpleExpr syn =
 {- |Parses an expression in braces
 @
 Bracketed ::= '(' Bracketed'
+@
  -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
 bracketed syn = do lchar '(' <?> "parenthesized expression"
