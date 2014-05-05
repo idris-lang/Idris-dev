@@ -319,9 +319,9 @@ data Command = Quit
              | AddProofClauseFrom Bool Int Name
              | AddMissing Bool Int Name
              | MakeWith Bool Int Name
-             | DoProofSearch Bool -- ^ update
-                             Bool -- ^ recursive (i.e. do arguments too)
-                             Int Name [Name]
+             | DoProofSearch Bool Bool Int Name [Name]
+               -- ^ the first bool is whether to update,
+               -- the second is whether to search recursively (i.e. for the arguments)
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -739,8 +739,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
-                | ProofSearch Bool -- ^ recursive
-                              (Maybe Name) [Name]
+                | ProofSearch Bool (Maybe Name) [Name]
+                  -- ^ the bool is whether to search recursively
                 | Solve
                 | Attack
                 | ProofState | ProofTerm | Undo
