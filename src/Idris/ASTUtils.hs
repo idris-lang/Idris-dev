@@ -123,3 +123,12 @@ ist_callgraph n =
 -- some fields of the CGInfo record
 cg_usedpos :: Field CGInfo [(Int, [UsageReason])]
 cg_usedpos = Field usedpos (\v cg -> cg{ usedpos = v })
+
+
+-- Commandline flags
+--------------------
+
+opts_idrisCmdline :: Field IState [Opt]
+opts_idrisCmdline =
+      Field opt_cmdline (\v opts -> opts{ opt_cmdline = v })
+    . Field idris_options (\v ist -> ist{ idris_options = v })

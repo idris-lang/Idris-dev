@@ -4,6 +4,7 @@
 module Idris.REPL where
 
 import Idris.AbsSyntax
+import Idris.ASTUtils
 import Idris.Apropos (apropos)
 import Idris.REPLParser
 import Idris.ElabDecls
@@ -1032,6 +1033,8 @@ process h fn (SetOpt AutoSolve)     = setAutoSolve True
 process h fn (UnsetOpt AutoSolve)   = setAutoSolve False
 process h fn (SetOpt NoBanner)      = setNoBanner True
 process h fn (UnsetOpt NoBanner)    = setNoBanner False
+process h fn (SetOpt WarnReach)     = fmodifyState opts_idrisCmdline $ nub . (WarnReach:)
+process h fn (UnsetOpt WarnReach)   = fmodifyState opts_idrisCmdline $ delete WarnReach
 
 process h fn (SetOpt _) = iPrintError "Not a valid option"
 process h fn (UnsetOpt _) = iPrintError "Not a valid option"
@@ -1255,7 +1258,13 @@ loadInputs h inputs
               _ -> return ()
            ist <- getIState
            putIState (ist { idris_tyinfodata = tidata,
-                            idris_patdefs = patdefs }))
+                            idris_patdefs = patdefs })
+
+           case opt getOutput opts of
+               [] -> performUsageAnalysis  -- interactive
+               _  -> return []  -- batch, will be checked by the compiler
+
+           return ())
         (\e -> do i <- getIState
                   case e of
                     At f e' -> do setErrSpan f
@@ -1399,10 +1408,7 @@ idrisMain opts =
 
        ok <- noErrors
        when ok $ case output of
-                    -- just do the checks
-                    [] -> performUsageAnalysis >> return ()
-
-                    -- the compiler will run usage analysis itself
+                    [] -> return ()
                     (o:_) -> idrisCatch (process stdout "" (Compile cgn o))
                                (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
 
