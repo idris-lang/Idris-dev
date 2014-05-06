@@ -74,8 +74,9 @@ pprintDocs :: IState -> Docs -> Doc OutputAnnotation
 pprintDocs ist (FunDoc d) = pprintFD ist d
 pprintDocs ist (DataDoc t args)
            = text "Data type" <+> pprintFD ist t <$>
-             nest 4 (text "Constructors:" <> line <>
-                     vsep (map (pprintFD ist) args))
+             if null args then text "No constructors."
+             else nest 4 (text "Constructors:" <> line <>
+                          vsep (map (pprintFD ist) args))
 pprintDocs ist (ClassDoc n doc meths params instances)
            = nest 4 (text "Type class" <+> prettyName (ppopt_impl ppo) [] n <>
                      if nullDocstring doc then empty else line <> renderDocstring doc)
