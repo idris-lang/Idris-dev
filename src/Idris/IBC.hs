@@ -30,7 +30,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 69
+ibcVersion = 70
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -53,6 +53,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_hdrs :: [(Codegen, String)],
                          ibc_access :: [(Name, Accessibility)],
                          ibc_total :: [(Name, Totality)],
+                         ibc_totcheckfail :: [(FC, String)],
                          ibc_flags :: [(Name, [FnOpt])],
                          ibc_cg :: [(Name, CGInfo)],
                          ibc_defs :: [(Name, Def)],
@@ -75,7 +76,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do imps <- getImported
@@ -234,11 +235,12 @@ ibc i (IBCMetaInformation n m) f = return f { ibc_metainformation = (n,m) : ibc_
 ibc i (IBCErrorHandler n) f = return f { ibc_errorhandlers = n : ibc_errorhandlers f }
 ibc i (IBCFunctionErrorHandler fn a n) f =
   return f { ibc_function_errorhandlers = (fn, a, n) : ibc_function_errorhandlers f }
-ibc i (IBCMetavar n) f = 
+ibc i (IBCMetavar n) f =
      case lookup n (idris_metavars i) of
           Nothing -> return f
           Just t -> return f { ibc_metavars = (n, t) : ibc_metavars f }
 ibc i (IBCPostulate n) f = return f { ibc_postulates = n : ibc_postulates f }
+ibc i (IBCTotCheckErr fc err) f = return f { ibc_totcheckfail = (fc, err) : ibc_totcheckfail f }
 
 process :: IBCFile -> FilePath -> Idris ()
 process i fn
@@ -246,7 +248,7 @@ process i fn
                               ifail "Incorrect ibc version --- please rebuild"
    | otherwise =
             do srcok <- runIO $ doesFileExist (sourcefile i)
-               when srcok $ runIO $ timestampOlder (sourcefile i) fn
+               when srcok $ timestampOlder (sourcefile i) fn
                v <- verbose
                quiet <- getQuiet
 --                when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
@@ -270,6 +272,7 @@ process i fn
                pPatdefs (ibc_patdefs i)
                pAccess (ibc_access i)
                pTotal (ibc_total i)
+               pTotCheckErr (ibc_totcheckfail i)
                pCG (ibc_cg i)
                pDocs (ibc_docstrings i)
                pCoercions (ibc_coercions i)
@@ -283,11 +286,11 @@ process i fn
                pMetavars (ibc_metavars i)
                pPostulates (ibc_postulates i)
 
-timestampOlder :: FilePath -> FilePath -> IO ()
-timestampOlder src ibc = do srct <- getModificationTime src
-                            ibct <- getModificationTime ibc
+timestampOlder :: FilePath -> FilePath -> Idris ()
+timestampOlder src ibc = do srct <- runIO $ getModificationTime src
+                            ibct <- runIO $ getModificationTime ibc
                             if (srct > ibct)
-                               then fail "Needs reloading"
+                               then ifail "Needs reloading"
                                else return ()
 
 pPostulates :: [Name] -> Idris ()
@@ -453,6 +456,10 @@ pTotal ds = mapM_ (\ (n, a) ->
                       do i <- getIState
                          putIState (i { tt_ctxt = setTotal n a (tt_ctxt i) }))
                    ds
+
+pTotCheckErr :: [(FC, String)] -> Idris ()
+pTotCheckErr es = do ist <- getIState
+                     putIState ist { idris_totcheckfail = idris_totcheckfail ist ++ es }
 
 pCG :: [(Name, CGInfo)] -> Idris ()
 pCG ds = mapM_ (\ (n, a) -> addToCG n a) ds
@@ -1161,7 +1168,7 @@ instance Binary MetaInformation where
                      return (DataMI x1)
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -1199,6 +1206,7 @@ instance Binary IBCFile where
                put x34
                put x35
                put x36
+               put x37
 
         get
           = do x1 <- get
@@ -1238,7 +1246,8 @@ instance Binary IBCFile where
                     x34 <- get
                     x35 <- get
                     x36 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36)
+                    x37 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where

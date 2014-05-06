@@ -11,7 +11,11 @@ import Idris.IdeSlave
 import Util.Pretty
 import Util.ScreenSize (getScreenWidth)
 
+import Debug.Trace
+
 import System.IO (stdout, Handle, hPutStrLn)
+
+import Data.List (nub)
 
 pshow :: IState -> Err -> String
 pshow ist err = displayDecorated (consoleDecorate ist) .
@@ -175,3 +179,9 @@ iputGoal g = do i <- getIState
                   RawOutput -> runIO $ putStrLn (displayDecorated (consoleDecorate i) g)
                   IdeSlave n -> runIO . putStrLn $
                                 convSExp "write-goal" (displayS (fmap (fancifyAnnots i) g) "") n
+
+-- | Warn about totality problems without failing to compile
+warnTotality :: Idris ()
+warnTotality = do ist <- getIState
+                  mapM_ (warn ist) (nub (idris_totcheckfail ist))
+  where warn ist (fc, e) = iWarn fc (pprintErr ist (Msg e))

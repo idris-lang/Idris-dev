@@ -149,6 +149,7 @@ data IState = IState {
     idris_tyinfodata :: Ctxt TIData,
     idris_totcheck :: [(FC, Name)], -- names to check totality on
     idris_defertotcheck :: [(FC, Name)], -- names to check at the end
+    idris_totcheckfail :: [(FC, String)],
     idris_options :: IOption,
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)],
@@ -253,6 +254,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCErrorHandler Name
               | IBCFunctionErrorHandler Name Name Name
               | IBCPostulate Name
+              | IBCTotCheckErr FC String
   deriving Show
 
 -- | The initial state for the compiler
@@ -261,7 +263,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext
-                   [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
+                   [] [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty Nothing Nothing

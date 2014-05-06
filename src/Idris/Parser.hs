@@ -1224,7 +1224,7 @@ loadSource h lidr f
                                   case fp of
                                       LIDR fn -> ifail $ "No ibc for " ++ f
                                       IDR fn -> ifail $ "No ibc for " ++ f
-                                      IBC fn src -> loadIBC fn) 
+                                      IBC fn src -> loadIBC fn)
                         [fn | (fn, _, _) <- imports]
                   reportParserWarnings
 
@@ -1290,7 +1290,6 @@ loadSource h lidr f
                   addHides (hide_list i)
 
                   -- Finally, write an ibc if checking was successful
-
                   ok <- noErrors
                   when ok $
                     idrisCatch (do writeIBC f ibc; clearIBC)
