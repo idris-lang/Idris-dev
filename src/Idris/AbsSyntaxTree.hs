@@ -1130,10 +1130,12 @@ instance Pretty PTerm OutputAnnotation where
 -- terminal.
 consoleDecorate :: IState -> OutputAnnotation -> String -> String
 consoleDecorate ist _ | not (idris_colourRepl ist) = id
-consoleDecorate ist AnnConstData = let theme = idris_colourTheme ist
-                                   in colouriseData theme
-consoleDecorate ist AnnConstType = let theme = idris_colourTheme ist
-                                   in colouriseType theme
+consoleDecorate ist (AnnConst c) = let theme = idris_colourTheme ist
+                                   in if constIsType c
+                                        then colouriseType theme
+                                        else colouriseData theme
+consoleDecorate ist (AnnData _ _) = colouriseData (idris_colourTheme ist)
+consoleDecorate ist (AnnType _ _) = colouriseType (idris_colourTheme ist)
 consoleDecorate ist (AnnBoundName _ True) = colouriseImplicit (idris_colourTheme ist)
 consoleDecorate ist (AnnBoundName _ False) = colouriseBound (idris_colourTheme ist)
 consoleDecorate ist AnnKeyword = colouriseKeyword (idris_colourTheme ist)
@@ -1175,7 +1177,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PPatvar fc n) = pretty n
     prettySe p bnd e
       | Just str <- slist p bnd e = str
-      | Just n <- snat p e = annotate AnnConstData (text (show n))
+      | Just n <- snat p e = annotate (AnnData "Nat" "") (text (show n))
     prettySe p bnd (PRef fc n) = prettyName (ppopt_impl ppo) bnd n
     prettySe p bnd (PLam n ty sc) =
       bracket p 2 . group . align . hang 2 $
@@ -1251,7 +1253,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
                               (left l <+> opName) <$> group (right r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm]) -- symbols, like 'foo
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
-        f == sUN "Symbol_" = annotate AnnConstType $
+        f == sUN "Symbol_" = annotate (AnnType ("'" ++ str) ("The symbol " ++ str)) $
                                char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
     prettySe p bnd (PApp _ f as) = -- Normal prefix applications
       let args = getExps as
@@ -1320,13 +1322,8 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
         where
           prettyAs =
             foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe 10 bnd) as
-    prettySe p bnd PType = annotate AnnConstType $ text "Type"
-    prettySe p bnd (PConstant c) = annotate (annot c) (text (show c))
-      where annot (AType _) = AnnConstType
-            annot StrType   = AnnConstType
-            annot PtrType   = AnnConstType
-            annot VoidType  = AnnConstType
-            annot _         = AnnConstData
+    prettySe p bnd PType = annotate (AnnType "Type" "The type of types") $ text "Type"
+    prettySe p bnd (PConstant c) = annotate (AnnConst c) (text (show c))
     -- XXX: add pretty for tactics
     prettySe p bnd (PProof ts) =
       text "proof" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
@@ -1378,16 +1375,16 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     slist' _ _ tm = Nothing
 
     slist p bnd e | Just es <- slist' p bnd e = Just $
-      case es of [] -> annotate AnnConstData $ text "[]"
+      case es of [] -> annotate (AnnData "" "") $ text "[]"
                  [x] -> enclose left right . group $
                         prettySe p bnd x
                  xs -> (enclose left right .
                         align . group . vsep .
                         punctuate comma .
                         map (prettySe p bnd)) xs
-      where left  = (annotate AnnConstData (text "["))
-            right = (annotate AnnConstData (text "]"))
-            comma = (annotate AnnConstData (text ","))
+      where left  = (annotate (AnnData "" "") (text "["))
+            right = (annotate (AnnData "" "") (text "]"))
+            comma = (annotate (AnnData "" "") (text ","))
     slist _ _ _ = Nothing
 
     pairElts :: PTerm -> Maybe [PTerm]
