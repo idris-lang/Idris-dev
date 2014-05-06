@@ -12,7 +12,7 @@ import Text.Trifecta.Delta
 
 import Idris.Core.TT
 
-import Control.Applicative
+import Control.Applicative hiding (Const)
 
 data SExp = SexpList [SExp]
           | StringAtom String
@@ -84,6 +84,22 @@ maybeProps [] = []
 maybeProps ((n, Just p):ps) = (SymbolAtom n, toSExp p) : maybeProps ps
 maybeProps ((n, Nothing):ps) = maybeProps ps
 
+constTy :: Const -> String
+constTy (I _) = "Int"
+constTy (BI _) = "Integer"
+constTy (Fl _) = "Float"
+constTy (Ch _) = "Char"
+constTy (Str _) = "String"
+constTy (B8 _) = "Bits8"
+constTy (B16 _) = "Bits16"
+constTy (B32 _) = "Bits32"
+constTy (B64 _) = "Bits64"
+constTy (B8V _) = "Bits8x16"
+constTy (B16V _) = "Bits16x8"
+constTy (B32V _) = "Bits32x4"
+constTy (B64V _) = "Bits64x2"
+constTy _ = "Type"
+
 instance SExpable OutputAnnotation where
   toSExp (AnnName n ty d t) = toSExp $ [(SymbolAtom "name", StringAtom (show n)),
                                         (SymbolAtom "implicit", BoolAtom False)] ++
@@ -92,8 +108,18 @@ instance SExpable OutputAnnotation where
   toSExp (AnnBoundName n imp)    = toSExp [(SymbolAtom "name", StringAtom (show n)),
                                            (SymbolAtom "decor", SymbolAtom "bound"),
                                            (SymbolAtom "implicit", BoolAtom imp)]
-  toSExp AnnConstData            = toSExp [(SymbolAtom "decor", SymbolAtom "data")]
-  toSExp AnnConstType            = toSExp [(SymbolAtom "decor", SymbolAtom "type")]
+  toSExp (AnnConst c)            = toSExp [(SymbolAtom "decor",
+                                            SymbolAtom (if constIsType c then "type" else "data")),
+                                           (SymbolAtom "type", StringAtom (constTy c)),
+                                           (SymbolAtom "doc-overview", StringAtom "Primitive"),
+                                           (SymbolAtom "name", StringAtom (show c))]
+  toSExp (AnnData ty doc)        = toSExp [(SymbolAtom "decor", SymbolAtom "data"),
+                                           (SymbolAtom "type", StringAtom ty),
+                                           (SymbolAtom "doc-overview", StringAtom doc)]
+  toSExp (AnnType name doc)      = toSExp $ [(SymbolAtom "decor", SymbolAtom "type"),
+                                             (SymbolAtom "type", StringAtom "Type"),
+                                             (SymbolAtom "doc-overview", StringAtom doc)] ++
+                                             if not (null name) then [(SymbolAtom "name", StringAtom name)] else []
   toSExp AnnKeyword              = toSExp [(SymbolAtom "decor", SymbolAtom "keyword")]
   toSExp (AnnFC (FC f (sl, sc) (el, ec)))      = toSExp [(SymbolAtom "source-loc",
                                                     ((SymbolAtom "filename", StringAtom f),

@@ -92,8 +92,9 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                         -- ^^ The name, classification, docs overview, and pretty-printed type
                       | AnnBoundName Name Bool
                         -- ^^ The name and whether it is implicit
-                      | AnnConstData
-                      | AnnConstType
+                      | AnnConst Const
+                      | AnnData String String -- ^ type, doc overview
+                      | AnnType String String -- ^ name, doc overview
                       | AnnKeyword
                       | AnnFC FC
                       | AnnTextFmt TextFormatting
@@ -523,6 +524,23 @@ instance Pretty Const OutputAnnotation where
   pretty (B16 w) = text . show $ w
   pretty (B32 w) = text . show $ w
   pretty (B64 w) = text . show $ w
+
+-- | Determines whether the input constant represents a type
+constIsType :: Const -> Bool
+constIsType (I _) = False
+constIsType (BI _) = False
+constIsType (Fl _) = False
+constIsType (Ch _) = False
+constIsType (Str _) = False
+constIsType (B8 _) = False
+constIsType (B16 _) = False
+constIsType (B32 _) = False
+constIsType (B64 _) = False
+constIsType (B8V _) = False
+constIsType (B16V _) = False
+constIsType (B32V _) = False
+constIsType (B64V _) = False
+constIsType _ = True
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw

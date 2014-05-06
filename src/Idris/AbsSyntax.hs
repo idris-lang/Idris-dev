@@ -530,7 +530,7 @@ renderWidth = do iw <- getWidth
 
 
 type1Doc :: Doc OutputAnnotation
-type1Doc = (annotate AnnConstType $ text "Type 1")
+type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "Type 1")
 
 
 isetPrompt :: String -> Idris ()
