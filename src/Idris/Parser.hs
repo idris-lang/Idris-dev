@@ -1000,7 +1000,7 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                                              Right msg ->
                                                  fail $ msg)]
              <|> do try (lchar '%' *> reserved "name")
-                    ty <- iName []
+                    ty <- fnName
                     ns <- sepBy1 name (lchar ',')
                     return [PDirective (do ty' <- disambiguate ty
                                            mapM_ (addNameHint ty') ns
