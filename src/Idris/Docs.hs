@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Docs (pprintDocs, getDocs, FunDoc(..), Docs (..)) where
+module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, FunDoc(..), Docs (..)) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -179,3 +179,18 @@ getPArgNames :: PTerm -> [(Name, Docstring)] -> [(Name, PTerm, Plicity, Maybe Do
 getPArgNames (PPi plicity name ty body) ds =
   (name, ty, plicity, lookup name ds) : getPArgNames body ds
 getPArgNames _ _ = []
+
+pprintConstDocs :: IState -> Const -> String -> Doc OutputAnnotation
+pprintConstDocs ist c str = text "Primitive" <+> text (if constIsType c then "type" else "value") <+>
+                            pprintPTerm (ppOptionIst ist) [] [] [] (PConstant c) <+> colon <+>
+                            pprintPTerm (ppOptionIst ist) [] [] [] (t c) <>
+                            nest 4 (line <> text str)
+
+  where t (Fl _)  = PConstant $ AType ATFloat
+        t (BI _)  = PConstant $ AType (ATInt ITBig)
+        t (Str _) = PConstant StrType
+        t (Ch c)  = PConstant $ AType (ATInt ITChar)
+        t _       = PType
+
+
+

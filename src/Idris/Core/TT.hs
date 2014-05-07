@@ -27,6 +27,7 @@ import Control.Monad.Trans.Error (Error(..))
 import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
+import Numeric (showIntAtBase)
 import qualified Data.Text as T
 import Data.List
 import Data.Maybe (listToMaybe)
@@ -541,6 +542,43 @@ constIsType (B16V _) = False
 constIsType (B32V _) = False
 constIsType (B64V _) = False
 constIsType _ = True
+
+-- | Get the docstring for a Const
+constDocs :: Const -> String
+constDocs c@(AType (ATInt ITBig))          = "Arbitrary-precision integers"
+constDocs c@(AType (ATInt ITNative))       = "Fixed-precision integers of undefined size"
+constDocs c@(AType (ATInt ITChar))         = "Characters in some unspecified encoding"
+constDocs c@(AType ATFloat)                = "Double-precision floating-point numbers"
+constDocs StrType                          = "Strings in some unspecified encoding"
+constDocs PtrType                          = "Foreign pointers"
+constDocs ManagedPtrType                   = "Managed pointers"
+constDocs BufferType                       = "Copy-on-write buffers"
+constDocs c@(AType (ATInt (ITFixed IT8)))  = "Eight bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT16))) = "Sixteen bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT32))) = "Thirty-two bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT64))) = "Sixty-four bits (unsigned)"
+constDocs c@(AType (ATInt (ITVec IT8 16))) = "Vectors of sixteen eight-bit values"
+constDocs c@(AType (ATInt (ITVec IT16 8))) = "Vectors of eight sixteen-bit values"
+constDocs c@(AType (ATInt (ITVec IT32 4))) = "Vectors of four thirty-two-bit values"
+constDocs c@(AType (ATInt (ITVec IT64 2))) = "Vectors of two sixty-four-bit values"
+constDocs (Fl f)                           = "A float"
+constDocs (I i)                            = "A fixed-precision integer"
+constDocs (BI i)                           = "An arbitrary-precision integer"
+constDocs (Str s)                          = "A string of length " ++ show (length s)
+constDocs (Ch c)                           = "A character"
+constDocs (B8 w)                           = "The eight-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B16 w)                          = "The sixteen-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B32 w)                          = "The thirty-two-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B64 w)                          = "The sixty-four-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B8V v)                          = "A vector of eight-bit values"
+constDocs (B16V v)                         = "A vector of sixteen-bit values"
+constDocs (B32V v)                         = "A vector of thirty-two-bit values"
+constDocs (B64V v)                         = "A vector of sixty-four-bit values"
+constDocs prim                             = "Undocumented"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
