@@ -452,11 +452,18 @@ range {n=S _} = fZ :: map fS range
 -- Properties
 --------------------------------------------------------------------------------
 
+vectConsCong : (x : a) -> (xs : Vect n a) -> (ys : Vect m a) -> (xs = ys) -> (x :: xs = x :: ys)
+vectConsCong x xs xs refl = refl
+
 vectNilRightNeutral : (xs : Vect n a) -> xs ++ [] = xs
 vectNilRightNeutral [] = refl
-vectNilRightNeutral (x :: xs) = tailCong _ _ (vectNilRightNeutral xs)
-  where tailCong : (xs : Vect n a) -> (ys : Vect m a) -> (xs = ys) -> (x :: xs = x :: ys)
-        tailCong xs xs refl = refl
+vectNilRightNeutral (x :: xs) =
+  vectConsCong _ _ _ (vectNilRightNeutral xs)
+
+vectAppendAssociative : (x : Vect xLen a) -> (y : Vect yLen a) -> (z : Vect zLen a) -> x ++ (y ++ z) = (x ++ y) ++ z
+vectAppendAssociative [] y z = refl
+vectAppendAssociative (x :: xs) ys zs =
+  vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
 
 
 --------------------------------------------------------------------------------
