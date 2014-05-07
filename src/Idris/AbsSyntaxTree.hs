@@ -286,7 +286,7 @@ data Command = Quit
              | Help
              | Eval PTerm
              | Check PTerm
-             | DocStr Name
+             | DocStr (Either Name Const)
              | TotCheck Name
              | Reload
              | Load FilePath
@@ -1534,6 +1534,7 @@ showTm ist = displayDecorated (consoleDecorate ist) .
 -- | Show a term with implicits, no colours
 showTmImpls :: PTerm -> String
 showTmImpls = flip (displayS . renderCompact . prettyImp verbosePPOption) ""
+
 
 
 instance Sized PTerm where

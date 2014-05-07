@@ -47,7 +47,7 @@ import qualified Util.Pretty as P
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
-import Control.Applicative
+import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.Error (throwError, catchError)
 import Control.Monad.State.Strict
@@ -1085,6 +1085,10 @@ transform syn = do try (lchar '%' *> reserved "transform")
 {- | Parses an expression from input -}
 parseExpr :: IState -> String -> Result PTerm
 parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
+
+{- | Parses a constant form input -}
+parseConst :: IState -> String -> Result Const
+parseConst st = runparser constant st "(input)"
 
 {- | Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic

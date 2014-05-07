@@ -276,9 +276,12 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.TypeOf name) =
                         [n] -> Right $ sUN n
                         (n:ns) -> Right $ sNS (sUN n) ns
 runIdeSlaveCommand id orig fn mods (IdeSlave.DocsFor name) =
-  case splitName name of
-    Left err -> iPrintError err
-    Right n -> process stdout "(ideslave)" (DocStr n)
+  case parseConst orig name of
+    Success c -> process stdout "(ideslave)" (DocStr (Right c))
+    Failure _ ->
+     case splitName name of
+       Left err -> iPrintError err
+       Right n -> process stdout "(ideslave)" (DocStr (Left n))
 runIdeSlaveCommand id orig fn mods (IdeSlave.CaseSplit line name) =
   process stdout fn (CaseSplitAt False line (sUN name))
 runIdeSlaveCommand id orig fn mods (IdeSlave.AddClause line name) =
@@ -626,7 +629,7 @@ process h fn (Check t)
            _ -> ihPrintTermWithType h (prettyIst ist (delab ist tm))
                                       (prettyIst ist (delab ist ty))
 
-process h fn (DocStr n)
+process h fn (DocStr (Left n))
    = do ist <- getIState
         case lookupCtxtName n (idris_docstrings ist) of
           [] -> iPrintError $ "No documentation for " ++ show n
@@ -634,6 +637,11 @@ process h fn (DocStr n)
                    ihRenderResult h (vsep toShow)
     where showDoc ist (n, d) = do doc <- getDocs n
                                   return $ pprintDocs ist doc
+
+process h fn (DocStr (Right c))
+   = do ist <- getIState
+        ihRenderResult h $ pprintConstDocs ist c (constDocs c)
+
 process h fn Universes
                      = do i <- getIState
                           let cs = idris_constraints i

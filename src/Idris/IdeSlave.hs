@@ -111,7 +111,7 @@ instance SExpable OutputAnnotation where
   toSExp (AnnConst c)            = toSExp [(SymbolAtom "decor",
                                             SymbolAtom (if constIsType c then "type" else "data")),
                                            (SymbolAtom "type", StringAtom (constTy c)),
-                                           (SymbolAtom "doc-overview", StringAtom "Primitive"),
+                                           (SymbolAtom "doc-overview", StringAtom (constDocs c)),
                                            (SymbolAtom "name", StringAtom (show c))]
   toSExp (AnnData ty doc)        = toSExp [(SymbolAtom "decor", SymbolAtom "data"),
                                            (SymbolAtom "type", StringAtom ty),

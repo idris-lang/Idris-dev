@@ -3,3 +3,4 @@ idris $@ reg018a.idr --check
 idris $@ reg018b.idr --check
 idris $@ reg018c.idr --check
 idris $@ reg018d.idr --check
+rm *.ibc
