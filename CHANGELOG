@@ -17,6 +17,9 @@ New in 0.9.13:
 * :apropos now accepts space-delimited lists of query items, and searches for the conjunction
   of its inputs. It also accepts binder syntax as search strings - for instance, -> finds
   functions.
+* Totality errors are now treated as warnings until code generation time, when they become
+  errors again. This allows users to use the interactive editing features to fix totality
+  issues, but no programs that violate the stated assumptions will actually run.
 
 Internal changes
 

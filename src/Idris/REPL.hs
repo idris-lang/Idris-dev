@@ -955,6 +955,7 @@ process h fn (Prove n')
           totcheck (fileFC "(input)", n)
           mapM_ (\ (f,n) -> setTotality n Unchecked) (idris_totcheck i)
           mapM_ checkDeclTotality (idris_totcheck i)
+          warnTotality
 
 process h fn (HNF t)
                     = do (tm, ty) <- elabVal toplevel False t
@@ -970,19 +971,22 @@ process h fn (TestInline t)
                                 c <- colourise
                                 iPrintResult (showTm ist (delab ist tm'))
 process h fn Execute
-                   = do ist <- getIState
-                        (m, _) <- elabVal toplevel False
-                                        (PApp fc
-                                           (PRef fc (sUN "run__IO"))
-                                           [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
-                        (tmpn, tmph) <- runIO tempfile
-                        runIO $ hClose tmph
-                        t <- codegen
-                        compile t tmpn m
-                        case idris_outputmode ist of
-                          RawOutput -> do runIO $ system tmpn
-                                          return ()
-                          IdeSlave n -> do runIO . hPutStrLn h $ IdeSlave.convSExp "run-program" tmpn n
+                   = idrisCatch
+                       (do ist <- getIState
+                           (m, _) <- elabVal toplevel False
+                                           (PApp fc
+                                              (PRef fc (sUN "run__IO"))
+                                              [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
+                           (tmpn, tmph) <- runIO tempfile
+                           runIO $ hClose tmph
+                           t <- codegen
+                           compile t tmpn m
+                           case idris_outputmode ist of
+                             RawOutput -> do runIO $ system tmpn
+                                             return ()
+                             IdeSlave n -> runIO . hPutStrLn h $
+                                           IdeSlave.convSExp "run-program" tmpn n)
+                       (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
   where fc = fileFC "main"
 process h fn (Compile codegen f)
       = do (m, _) <- elabVal toplevel False
@@ -1282,8 +1286,8 @@ loadInputs h inputs
                             ihWarn stdout emptyFC $ pprintErr i e)
    where -- load all files, stop if any fail
          tryLoad :: Bool -> [IFileType] -> Idris ()
-         tryLoad keepstate [] = return ()
-         tryLoad keepstate (f : fs) 
+         tryLoad keepstate [] = warnTotality >> return ()
+         tryLoad keepstate (f : fs)
                  = do ist <- getIState
                       loadFromIFile h f
                       inew <- getIState

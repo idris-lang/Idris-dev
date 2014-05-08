@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-idris $@ test010.idr -o test010
-idris $@ test010a.idr -o test010
-idris $@ test010b.idr -o test010
+idris $@ --check test010.idr
+idris $@ --check test010a.idr
+idris $@ --check test010b.idr
 
 rm -f *.ibc

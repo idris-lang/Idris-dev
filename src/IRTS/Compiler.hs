@@ -52,6 +52,7 @@ import Paths_idris
 compile :: Codegen -> FilePath -> Term -> Idris ()
 compile codegen f tm
    = do checkMVs  -- check for undefined metavariables
+        checkTotality -- refuse to compile if there are totality problems
         reachableNames <- performUsageAnalysis
         maindef <- irMain tm
         iLOG $ "MAIN: " ++ show maindef
@@ -105,6 +106,10 @@ compile codegen f tm
                       case map fst (idris_metavars i) \\ primDefs of
                             [] -> return ()
                             ms -> ifail $ "There are undefined metavariables: " ++ show ms
+        checkTotality = do i <- getIState
+                           case idris_totcheckfail i of
+                             [] -> return ()
+                             ((fc, msg):fs) -> ierror . At fc . Msg $ "Cannot compile:\n  " ++ msg
         inDir d h = do let f = d </> h
                        ex <- doesFileExist f
                        if ex then return f else return h
