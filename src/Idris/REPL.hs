@@ -1218,13 +1218,18 @@ replSettings hFile = setComplete replCompletion $ defaultSettings {
                        historyFile = hFile
                      }
 
--- invoke as if from command line
+-- | Invoke as if from command line. It is an error if there are unresolved totality problems.
 idris :: [Opt] -> IO (Maybe IState)
-idris opts = do res <- runErrorT $ execStateT (idrisMain opts) idrisInit
+idris opts = do res <- runErrorT $ execStateT totalMain idrisInit
                 case res of
                   Left err -> do putStrLn $ pshow idrisInit err
                                  return Nothing
                   Right ist -> return (Just ist)
+    where totalMain = do idrisMain opts
+                         ist <- getIState
+                         case idris_totcheckfail ist of
+                           ((fc, msg):_) -> ierror . At fc . Msg $ "Could not build: "++  msg
+                           [] -> return ()
 
 
 loadInputs :: Handle -> [FilePath] -> Idris ()

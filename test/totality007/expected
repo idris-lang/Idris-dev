@@ -1,0 +1,3 @@
+Type checking ./Totality.idr
+Totality.idr:4:1:Totality.foo is not total as there are missing cases
+Totality.idr:4:1:Could not build: Totality.foo is not total as there are missing cases

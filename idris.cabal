@@ -444,6 +444,10 @@ Extra-source-files:
                        test/totality006/run
                        test/totality006/*.idr
                        test/totality006/expected
+                       test/totality007/run
+                       test/totality007/*.ipkg
+                       test/totality007/src/*.idr
+                       test/totality007/expected
 
                        test/tutorial001/run
                        test/tutorial001/*.idr
