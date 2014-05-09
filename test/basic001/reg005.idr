@@ -8,7 +8,7 @@ rep (S k) x = x :: rep k x
 
 data RLE : Vect n Char -> Type where
      REnd  : RLE []
-     RChar : .{k : Nat}
+     RChar : {k : Nat}
              -> {xs : Vect k Char}
              -> (n : Nat)
              -> (x : Char)
