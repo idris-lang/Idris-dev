@@ -90,13 +90,13 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
                      vsep (if null instances' then [text "<no instances>"]
                            else map dumpInstance instances'))
              <>
-             if null subclasses then empty
-             else line <$> nest 4 (text "Subclasses:" <$>
-                                   vsep (map (dumpInstance . prettifySubclasses) subclasses))
+             (if null subclasses then empty
+              else line <$> nest 4 (text "Subclasses:" <$>
+                                    vsep (map (dumpInstance . prettifySubclasses) subclasses)))
              <>
-             if null superclasses then empty
-             else line <$> nest 4 (text "Default superclass instances:" <$>
-                                   vsep (map dumpInstance superclasses))
+             (if null superclasses then empty
+              else line <$> nest 4 (text "Default superclass instances:" <$>
+                                     vsep (map dumpInstance superclasses)))
   where
     params' = zip pNames (repeat False)
 
