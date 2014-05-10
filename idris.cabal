@@ -540,6 +540,7 @@ Library
                 , Idris.IdrisDoc
                 , Idris.Imports
                 , Idris.Inliner
+                , Idris.Interactive
                 , Idris.Output
                 , Idris.Parser
                 , Idris.ParseHelpers
