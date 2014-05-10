@@ -828,7 +828,7 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
                         (\v -> do iputStrLn $ show fc ++
                                       ":Warning - can't generate setter for " ++
                                       show fn ++ " (" ++ show ty ++ ")"
-                                      ++ "\n" ++ pshow i v
+--                                       ++ "\n" ++ pshow i v
                                   putIState i)
 
     getBoundImpls (PPi (Imp _ _ _) n ty sc) = (n, ty) : getBoundImpls sc
