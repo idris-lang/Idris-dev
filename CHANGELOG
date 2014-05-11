@@ -20,6 +20,8 @@ New in 0.9.13:
 * Totality errors are now treated as warnings until code generation time, when they become
   errors again. This allows users to use the interactive editing features to fix totality
   issues, but no programs that violate the stated assumptions will actually run.
+* Added :makelemma command, which adds a new top level definition to solve
+  a metavariable.
 
 Internal changes
 

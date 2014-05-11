@@ -240,7 +240,7 @@ makeLemma h fn updatefile l n
 
         appArgs (Bind n@(UN c) (Pi _) sc) 
            | thead c /= '_' = " " ++ show n ++ appArgs sc
-        appArgs (Bind _ (Pi _) sc) = " " ++ appArgs sc
+        appArgs (Bind _ (Pi _) sc) = appArgs sc
         appArgs _ = ""
 
         stripMNBind (PPi b n@(UN c) ty sc) 
