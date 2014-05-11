@@ -123,12 +123,9 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
     updateRef nm (PRef fc _) = PRef fc nm
     updateRef _  pt          = pt
 
-    isSubclass (PPi (Constraint _ _) _ _ (PApp _ (PRef _ nm) ((PExp _ _ _ tm):_))) = nm == n && not (isApp tm)
+    isSubclass (PPi (Constraint _ _) _ (PApp _ _ args) (PApp _ (PRef _ nm) args')) = nm == n && map getTm args == map getTm args'
     isSubclass (PPi _                _ _ pt)                                       = isSubclass pt
     isSubclass _                                                                   = False
-
-    isApp (PApp _ _ _) = True
-    isApp _            = False
 
     (subclasses, instances') = partition isSubclass instances
 
