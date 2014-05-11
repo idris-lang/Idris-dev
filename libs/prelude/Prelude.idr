@@ -478,6 +478,14 @@ data File = FHandle Ptr
 partial stdin : File
 stdin = FHandle prim__stdin
 
+||| Standard output
+partial stdout : File
+stdout = FHandle prim__stdout
+
+||| Standard output
+partial stderr : File
+stderr = FHandle prim__stderr
+
 ||| Call the RTS's file opening function
 do_fopen : String -> String -> IO Ptr
 do_fopen f m

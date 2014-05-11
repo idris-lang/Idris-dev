@@ -170,6 +170,10 @@ primitives =
    -- Streams
    Prim (sUN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
     (0, LStdIn) partial,
+   Prim (sUN "prim__stdout") (ty [] PtrType) 0 (p_cantreduce)
+    (0, LStdOut) partial,
+   Prim (sUN "prim__stderr") (ty [] PtrType) 0 (p_cantreduce)
+    (0, LStdErr) partial,
    Prim (sUN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
     (0, LNullPtr) total,
    -- Managed pointer registration
