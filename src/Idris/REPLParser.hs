@@ -87,6 +87,10 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name;
                           return (MakeWith upd (fromInteger l) n))
+              <|> try (do cmd ["ml", "makelemma"]; P.whiteSpace;
+                          upd <- option False (do P.lchar '!'; return True)
+                          l <- P.natural; n <- P.name;
+                          return (MakeLemma upd (fromInteger l) n))
               <|> try (do cmd ["ps", "proofsearch"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name;

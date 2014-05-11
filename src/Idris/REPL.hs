@@ -709,6 +709,8 @@ process h fn (AddMissing updatefile l n)
     = addMissing h fn updatefile l n
 process h fn (MakeWith updatefile l n)
     = makeWith h fn updatefile l n
+process h fn (MakeLemma updatefile l n)
+    = makeLemma h fn updatefile l n
 process h fn (DoProofSearch updatefile rec l n hints)
     = doProofSearch h fn updatefile rec l n hints
 process h fn (Spec t)

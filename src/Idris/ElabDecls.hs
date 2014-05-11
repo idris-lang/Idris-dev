@@ -805,6 +805,7 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
 
          -- Generate projection functions
          proj_decls <- mapM (mkProj recty_in substs cimp) (zip ptys [0..])
+         logLvl 3 $ show proj_decls
          let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
          let implBinds = getImplB id cty'
 

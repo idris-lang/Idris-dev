@@ -560,7 +560,7 @@ elab ist info pattern opts fn tm
              claim tyn RType
              valn <- getNameFrom (sMN 0 "rval")
              claim valn (Var tyn)
-             letn <- getNameFrom (sMN 0 "rewrite_rule")
+             letn <- getNameFrom (sMN 0 "_rewrite_rule")
              letbind letn (Var tyn) (Var valn)
              focus valn
              elab' ina r

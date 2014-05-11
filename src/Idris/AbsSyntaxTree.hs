@@ -321,6 +321,7 @@ data Command = Quit
              | AddProofClauseFrom Bool Int Name
              | AddMissing Bool Int Name
              | MakeWith Bool Int Name
+             | MakeLemma Bool Int Name
              | DoProofSearch Bool Bool Int Name [Name]
                -- ^ the first bool is whether to update,
                -- the second is whether to search recursively (i.e. for the arguments)

@@ -1,5 +1,6 @@
 module Idris.Interactive(caseSplitAt, addClauseFrom, addProofClauseFrom,
-                         addMissing, makeWith, doProofSearch) where
+                         addMissing, makeWith, doProofSearch,
+                         makeLemma) where
 
 {- Bits and pieces for editing source files interactively, called from
    the REPL -}
@@ -195,26 +196,67 @@ doProofSearch h fn updatefile rec l n hints
           nsroot (SN (WhereN _ _ n)) = nsroot n
           nsroot n = n
 
-          updateMeta brack ('?':cs) n new
-            | length cs >= length n
-              = case splitAt (length n) cs of
-                     (mv, c:cs) ->
-                          if ((isSpace c || c == ')' || c == '}') && mv == n)
-                             then addBracket brack new ++ (c : cs)
-                             else '?' : mv ++ c : updateMeta True cs n new
-                     (mv, []) -> if (mv == n) then addBracket brack new else '?' : mv
-          updateMeta brack ('=':cs) n new = '=':updateMeta False cs n new
-          updateMeta brack (c:cs) n new 
-              = c : updateMeta (brack || not (isSpace c)) cs n new
-          updateMeta brack [] n new = ""
+updateMeta brack ('?':cs) n new
+    | length cs >= length n
+      = case splitAt (length n) cs of
+             (mv, c:cs) ->
+                  if ((isSpace c || c == ')' || c == '}') && mv == n)
+                     then addBracket brack new ++ (c : cs)
+                     else '?' : mv ++ c : updateMeta True cs n new
+             (mv, []) -> if (mv == n) then addBracket brack new else '?' : mv
+updateMeta brack ('=':cs) n new = '=':updateMeta False cs n new
+updateMeta brack (c:cs) n new 
+  = c : updateMeta (brack || not (isSpace c)) cs n new
+updateMeta brack [] n new = ""
 
-          addBracket False new = new
-          addBracket True new@('(':xs) | last xs == ')' = new
-          addBracket True new | any isSpace new = '(' : new ++ ")"
-                              | otherwise = new
+addBracket False new = new
+addBracket True new@('(':xs) | last xs == ')' = new
+addBracket True new | any isSpace new = '(' : new ++ ")"
+                    | otherwise = new
 
 
+makeLemma :: Handle -> FilePath -> Bool -> Int -> Name -> Idris ()
+makeLemma h fn updatefile l n
+   = do src <- runIO $ readFile fn
+        let (before, tyline : later) = splitAt (l-1) (lines src)
 
+        ctxt <- getContext
+        mty <- case lookupTy n ctxt of
+                    [t] -> return t
+                    [] -> ierror (NoSuchVariable n)
+                    ns -> ierror (CantResolveAlts (map show ns))
+
+        i <- getIState
+        let lem = show n ++ " : " ++ show (stripMNBind (delab i mty))
+        let lem_app = show n ++ appArgs mty
+
+        if updatefile then
+           do let fb = fn ++ "~"
+              runIO $ writeFile fb (addLem before tyline lem lem_app later)
+              runIO $ copyFile fb fn
+           else ihPrintResult h $ lem ++ "\n" ++ lem_app
+
+  where getIndent s = length (takeWhile isSpace s)
+
+        appArgs (Bind n@(UN c) (Pi _) sc) 
+           | thead c /= '_' = " " ++ show n ++ appArgs sc
+        appArgs (Bind _ (Pi _) sc) = " " ++ appArgs sc
+        appArgs _ = ""
+
+        stripMNBind (PPi b n@(UN c) ty sc) 
+           | thead c /= '_' = PPi b n ty (stripMNBind sc)
+        stripMNBind (PPi b _ ty sc) = stripMNBind sc
+        stripMNBind t = t
+
+        blank = all isSpace
+
+        addLem before tyline lem lem_app later
+            = let (bef_end, blankline : bef_start) 
+                       = span (not . blank) (reverse before)
+                  mvline = updateMeta False tyline (show n) lem_app in
+                unlines $ reverse bef_start ++
+                          [blankline, lem, blankline] ++
+                          reverse bef_end ++ mvline : later
 
 
 
