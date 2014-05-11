@@ -9,8 +9,8 @@ import Idris.Docstrings (Docstring, containsText)
 import Data.List (nub)
 import qualified Data.Text as T
 
--- | Find definitions that are relevant to some string. Relevance is one or
--- more of the following:
+-- | Find definitions that are relevant to all space-delimited components of
+-- some string. Relevance is one or more of the following:
 --
 -- * the string is a substring of the name
 --
@@ -20,8 +20,12 @@ import qualified Data.Text as T
 apropos :: IState -> T.Text -> [Name]
 apropos ist what = let defs = ctxtAlist (tt_ctxt ist)
                        docs = toAlist (idris_docstrings ist)
-                   in nub (map fst (filter (isApropos what) defs) ++
-                           map fst (filter (isApropos what) docs))
+                   in nub (map fst (isAproposAll parts defs) ++
+                           map fst (isAproposAll parts docs))
+  where isAproposAll [] xs = xs
+        isAproposAll (what:more) xs = filter (isApropos what)
+                                             (isAproposAll more xs)
+        parts = filter ((> 0) . T.length) . T.splitOn (T.pack " ") $ what
 
 textIn :: T.Text -> T.Text -> Bool
 textIn a b = T.isInfixOf (T.toLower a) (T.toLower b)
@@ -48,10 +52,10 @@ instance Apropos Def where
   isApropos str (CaseOp _ ty ty' _ _ _) = isApropos str ty
 
 instance Apropos (Binder (TT Name)) where
-  isApropos str (Lam ty)      = isApropos str ty
-  isApropos str (Pi ty)       = isApropos str ty
-  isApropos str (Let ty val)  = isApropos str ty || isApropos str val
-  isApropos str (NLet ty val) = isApropos str ty || isApropos str val
+  isApropos str (Lam ty)      = str == T.pack "\\" || isApropos str ty
+  isApropos str (Pi ty)       = str == T.pack "->" || isApropos str ty
+  isApropos str (Let ty val)  = str == T.pack "let" || isApropos str ty || isApropos str val
+  isApropos str (NLet ty val) = str == T.pack "let" || isApropos str ty || isApropos str val
   isApropos str _             = False -- these shouldn't occur in defined libraries
 
 instance Apropos (TT Name) where

@@ -235,6 +235,8 @@ Extra-source-files:
                        test/reg042/run
                        test/reg042/*.idr
                        test/reg042/expected
+                       test/reg043/run
+                       test/reg043/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -442,6 +444,10 @@ Extra-source-files:
                        test/totality006/run
                        test/totality006/*.idr
                        test/totality006/expected
+                       test/totality007/run
+                       test/totality007/*.ipkg
+                       test/totality007/src/*.idr
+                       test/totality007/expected
 
                        test/tutorial001/run
                        test/tutorial001/*.idr
@@ -534,6 +540,7 @@ Library
                 , Idris.IdrisDoc
                 , Idris.Imports
                 , Idris.Inliner
+                , Idris.Interactive
                 , Idris.Output
                 , Idris.Parser
                 , Idris.ParseHelpers
@@ -592,7 +599,7 @@ Library
                 , ansi-wl-pprint
                 , binary
                 , blaze-html >= 0.6.1.3
-                , blaze-markup >= 0.5.2.1 && < 0.6.0.0
+                , blaze-markup >= 0.5.2.1 && < 0.7.0.0
                 , bytestring
                 , cheapskate
                 , containers >= 0.5

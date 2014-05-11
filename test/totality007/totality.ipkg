@@ -1,0 +1,7 @@
+package totality
+
+-- totality007
+-- Test that the package builder doesn't allow totality errors in a build
+opts = ""
+sourcedir = src
+modules = Totality

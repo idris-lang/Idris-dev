@@ -393,7 +393,7 @@ elabEliminator paramPos n ty cons info = do
   elimLog elimSig
   eliminatorClauses <- mapM (\(cns, cnsElim) -> generateEliminatorClauses cns cnsElim clauseGeneralArgs generalParams) (zip cons clauseConsElimArgs)
   let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
-  elimLog $ "-- eliminator definition: " ++ (show . showDeclImp True) eliminatorDef
+  elimLog $ "-- eliminator definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
   State.lift $ idrisCatch (elabDecl EAll info eliminatorTyDecl) (\err -> return ())
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
@@ -774,11 +774,16 @@ elabTransform info fc safe lhs_in rhs_in
 
 elabRecord :: ElabInfo -> SyntaxInfo -> Docstring -> FC -> Name ->
               PTerm -> DataOpts -> Docstring -> Name -> PTerm -> Idris ()
-elabRecord info syn doc fc tyn ty opts cdoc cn cty
-    = do elabData info syn doc [] fc opts (PDatadecl tyn ty [(cdoc, [], cn, cty, fc, [])])
+elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
+    = do elabData info syn doc [] fc opts (PDatadecl tyn ty [(cdoc, [], cn, cty_in, fc, [])])
          -- TODO think: something more in info?
-         cty' <- implicit info syn cn cty
+         cty' <- implicit info syn cn cty_in
          i <- getIState
+
+         -- get bound implicits and propagate to setters (in case they
+         -- provide useful information for inference)
+         let extraImpls = getBoundImpls cty'
+
          cty <- case lookupTy cn (tt_ctxt i) of
                     [t] -> return (delab i t)
                     _ -> ifail "Something went inexplicably wrong"
@@ -797,14 +802,18 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty
          logLvl 1 $ show (recty, ptys)
          let substs = map (\ (n, _) -> (n, PApp fc (PRef fc n)
                                                 [pexp (PRef fc rec)])) ptys
+
+         -- Generate projection functions
          proj_decls <- mapM (mkProj recty_in substs cimp) (zip ptys [0..])
          let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
          let implBinds = getImplB id cty'
-         update_decls <- mapM (mkUpdate recty index_names_in
+
+         -- Generate update functions
+         update_decls <- mapM (mkUpdate recty index_names_in extraImpls
                                    (getFieldNames cty')
                                    implBinds (length nonImp)) (zip nonImp [0..])
          mapM_ (elabDecl EAll info) (concat proj_decls)
-         logLvl 1 $ show update_decls
+         logLvl 3 $ show update_decls
          mapM_ (tryElabDecl info) (update_decls)
   where
 --     syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
@@ -821,6 +830,9 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty
                                       show fn ++ " (" ++ show ty ++ ")"
 --                                       ++ "\n" ++ pshow i v
                                   putIState i)
+
+    getBoundImpls (PPi (Imp _ _ _) n ty sc) = (n, ty) : getBoundImpls sc
+    getBoundImpls _ = []
 
     getImplB k (PPi (Imp l s _) n Placeholder sc)
         = getImplB k sc
@@ -886,7 +898,7 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty
     -- If the 'pty' we're updating includes anything in 'substs', we're
     -- updating the type as well, so use recty', otherwise just use
     -- recty
-    mkUpdate recty inames fnames k num ((pn, pty), pos)
+    mkUpdate recty inames extras fnames k num ((pn, pty), pos)
        = do let setname = expandNS syn $ mkType pn
             let valname = sMN 0 "updateval"
             let pn_out = sMN 0 (show pn ++ "_out")
@@ -894,8 +906,8 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty
             let recty_in = substMatches [(pn, PRef fc pn_in)] recty
             let recty_out = substMatches [(pn, PRef fc pn_out)] recty
             let pt = substMatches inames $ 
-                       k (PPi expl pn_out pty
-                           (PPi expl rec recty_in recty_out))
+                       k (implBindUp extras inames (PPi expl pn_out pty
+                           (PPi expl rec recty_in recty_out)))
             let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] setname pt
 --             let pls = map (\x -> PRef fc (sMN x ("field" ++ show x))) [0..num-1]
             let inames_imp = map (\ (x,_) -> (x, Placeholder)) inames
@@ -912,6 +924,15 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty
                                              (PApp fc (PRef fc cn)
                                                       (map pexp rhsArgs)) []
             return (pn, pfnTy, PClauses fc [] setname [pclause])
+
+    implBindUp [] is t = t
+    implBindUp ((n, ty):ns) is t 
+         = let n' = case lookup n is of
+                         Just (PRef _ x) -> x
+                         _ -> n in
+               if n `elem` allNamesIn t 
+                  then PPi impl n' ty (implBindUp ns is t)
+                  else implBindUp ns is t
 
 -- FIXME: 'forcenames' is an almighty hack! Need a better way of
 -- erasing non-forceable things
@@ -1863,7 +1884,7 @@ elabClass info syn doc fc constraints tn ps pDocs ds
                                constraint
          let cons = [(emptyDocstring, [], cn, cty, fc, [])]
          let ddecl = PDatadecl tn tty cons
-         logLvl 5 $ "Class data " ++ show (showDImp True ddecl)
+         logLvl 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
          elabData info (syn { no_imp = no_imp syn ++ mnames }) doc pDocs fc [] ddecl
          -- for each constraint, build a top level function to chase it
          logLvl 5 $ "Building functions"
@@ -2059,7 +2080,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
          let wbTys = map mkTyDecl mtys
          let wbVals = map (decorateid (decorate ns iname)) ds'
          let wb = wbTys ++ wbVals
-         logLvl 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp True . mkTyDecl) mtys)
+         logLvl 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp verbosePPOption . mkTyDecl) mtys)
          logLvl 3 $ "Instance is " ++ show ps ++ " implicits " ++
                                       show (concat (nub wparams))
 

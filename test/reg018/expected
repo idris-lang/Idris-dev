@@ -1,4 +1,5 @@
 reg018a.idr:16:1:conat.minusCoNat is possibly not total due to recursive path conat.minusCoNat
+reg018a.idr:21:1:conat.loopForever is possibly not total due to: conat.minusCoNat
 reg018b.idr:8:1:A.showB is possibly not total due to recursive path A.showB
 reg018c.idr:19:1:CodataTest.inf is possibly not total due to: {CodataTest.inf19}
 reg018d.idr:5:1:Main.pull is not total as there are missing cases

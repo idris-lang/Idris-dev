@@ -53,7 +53,8 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["spec"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Spec t))
               <|> try (do cmd ["hnf"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (HNF t))
               <|> try (do cmd ["inline"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (TestInline t))
-              <|> try (do cmd ["doc"]; n <- (P.fnName <|> (P.string "_|_" >> return falseTy)); eof; return (DocStr n))
+              <|> try (do cmd ["doc"]; c <- P.constant; eof; return (DocStr (Right c)))
+              <|> try (do cmd ["doc"]; n <- (P.fnName <|> (P.string "_|_" >> return falseTy)); eof; return (DocStr (Left n)))
               <|> try (do cmd ["d", "def"]; some (P.char ' ') ; n <- P.fnName; eof; return (Defn n))
               <|> try (do cmd ["total"]; do n <- P.fnName; eof; return (TotCheck n))
               <|> try (do cmd ["t", "type"]; do P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Check t))
@@ -120,6 +121,7 @@ pOption = do discard (P.symbol "errorcontext"); return ErrContext
       <|> do discard (P.symbol "originalerrors"); return ShowOrigErr
       <|> do discard (P.symbol "autosolve"); return AutoSolve
       <|> do discard (P.symbol "nobanner") ; return NoBanner
+      <|> do discard (P.symbol "warnreach"); return WarnReach
 
 codegenOption :: P.IdrisParser Codegen
 codegenOption = do discard (P.symbol "javascript"); return ViaJavaScript

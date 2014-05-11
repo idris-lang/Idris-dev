@@ -47,7 +47,7 @@ import qualified Util.Pretty as P
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
-import Control.Applicative
+import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.Error (throwError, catchError)
 import Control.Monad.State.Strict
@@ -1000,7 +1000,7 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                                              Right msg ->
                                                  fail $ msg)]
              <|> do try (lchar '%' *> reserved "name")
-                    ty <- iName []
+                    ty <- fnName
                     ns <- sepBy1 name (lchar ',')
                     return [PDirective (do ty' <- disambiguate ty
                                            mapM_ (addNameHint ty') ns
@@ -1085,6 +1085,10 @@ transform syn = do try (lchar '%' *> reserved "transform")
 {- | Parses an expression from input -}
 parseExpr :: IState -> String -> Result PTerm
 parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
+
+{- | Parses a constant form input -}
+parseConst :: IState -> String -> Result Const
+parseConst st = runparser constant st "(input)"
 
 {- | Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic
@@ -1224,7 +1228,7 @@ loadSource h lidr f
                                   case fp of
                                       LIDR fn -> ifail $ "No ibc for " ++ f
                                       IDR fn -> ifail $ "No ibc for " ++ f
-                                      IBC fn src -> loadIBC fn) 
+                                      IBC fn src -> loadIBC fn)
                         [fn | (fn, _, _) <- imports]
                   reportParserWarnings
 
@@ -1248,7 +1252,7 @@ loadSource h lidr f
                   -- Parsing done, now process declarations
 
                   let ds = namespaces mname ds'
-                  logLvl 3 (show $ showDecls True ds)
+                  logLvl 3 (show $ showDecls verbosePPOption ds)
                   i <- getIState
                   logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))
@@ -1290,7 +1294,6 @@ loadSource h lidr f
                   addHides (hide_list i)
 
                   -- Finally, write an ibc if checking was successful
-
                   ok <- noErrors
                   when ok $
                     idrisCatch (do writeIBC f ibc; clearIBC)

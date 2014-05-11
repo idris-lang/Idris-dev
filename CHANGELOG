@@ -6,6 +6,7 @@ New in 0.9.13:
 * Command line option -e (or --eval) to evaluate expressions without loading the
   REPL. This is useful for writing more portable tests.
 * Many more of the basic functions and datatypes are documented.
+* Primitive types such as Int and String are documented
 * Removed javascript lib in favor of idris-hackers/iQuery
 * Specify codegen for :compile REPL command (e.g. :compile javascript program.js)
 * Remove :info REPL command, subsume and enhance its functionality in the :doc command
@@ -13,6 +14,12 @@ New in 0.9.13:
   record { a->b->c = val } x -- sets field accessed by c (b (a x)) to val
   record { a->b->c } x -- accesses field, equivalent to c (b (a x))
 * The banner at startup can be suppressed by adding :set nobanner to the initialisation script.
+* :apropos now accepts space-delimited lists of query items, and searches for the conjunction
+  of its inputs. It also accepts binder syntax as search strings - for instance, -> finds
+  functions.
+* Totality errors are now treated as warnings until code generation time, when they become
+  errors again. This allows users to use the interactive editing features to fix totality
+  issues, but no programs that violate the stated assumptions will actually run.
 
 Internal changes
 

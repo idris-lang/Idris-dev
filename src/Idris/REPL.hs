@@ -4,6 +4,7 @@
 module Idris.REPL where
 
 import Idris.AbsSyntax
+import Idris.ASTUtils
 import Idris.Apropos (apropos)
 import Idris.REPLParser
 import Idris.ElabDecls
@@ -29,6 +30,7 @@ import Idris.Inliner
 import Idris.CaseSplit
 import Idris.DeepSeq
 import Idris.Output
+import Idris.Interactive
 import Idris.WhoCalls
 
 import Paths_idris
@@ -275,9 +277,12 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.TypeOf name) =
                         [n] -> Right $ sUN n
                         (n:ns) -> Right $ sNS (sUN n) ns
 runIdeSlaveCommand id orig fn mods (IdeSlave.DocsFor name) =
-  case splitName name of
-    Left err -> iPrintError err
-    Right n -> process stdout "(ideslave)" (DocStr n)
+  case parseConst orig name of
+    Success c -> process stdout "(ideslave)" (DocStr (Right c))
+    Failure _ ->
+     case splitName name of
+       Left err -> iPrintError err
+       Right n -> process stdout "(ideslave)" (DocStr (Left n))
 runIdeSlaveCommand id orig fn mods (IdeSlave.CaseSplit line name) =
   process stdout fn (CaseSplitAt False line (sUN name))
 runIdeSlaveCommand id orig fn mods (IdeSlave.AddClause line name) =
@@ -312,34 +317,34 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.SetOpt IdeSlave.ErrContext b) =
 runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
   do ist <- getIState
      let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
-     imp <- impShow
+     let ppo = ppOptionIst ist
      let mvarTys = map (delabTy ist) mvs
      let res = (IdeSlave.SymbolAtom "ok",
                 zipWith (\ n (prems, concl) -> (n, prems, concl))
                         (map (IdeSlave.StringAtom . show) mvs)
-                        (map (sexpGoal ist cols imp [] . getGoal) mvarTys))
+                        (map (sexpGoal ist cols ppo [] . getGoal) mvarTys))
      runIO . putStrLn $ IdeSlave.convSExp "return" res id
   where getGoal :: PTerm -> ([(Name, PTerm)], PTerm)
         getGoal (PPi _ n t sc) = let (prems, conc) = getGoal sc
                                  in ((n, t):prems, conc)
         getGoal tm = ([], tm)
-        sexpGoal :: IState -> Int -> Bool -> [Name] -> ([(Name, PTerm)], PTerm)
+        sexpGoal :: IState -> Int -> PPOption -> [Name] -> ([(Name, PTerm)], PTerm)
                  -> ([(String, String, SpanList OutputAnnotation)],
                      (String, SpanList OutputAnnotation))
-        sexpGoal ist cols imp ns ([],        concl) =
+        sexpGoal ist cols ppo ns ([],        concl) =
           let infixes = idris_infixes ist
               concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                       pprintPTerm imp (zip ns (repeat False)) [] infixes concl
+                       pprintPTerm ppo (zip ns (repeat False)) [] infixes concl
           in ([], concl')
-        sexpGoal ist cols imp ns ((n, t):ps, concl) =
+        sexpGoal ist cols ppo ns ((n, t):ps, concl) =
           let n'          = case n of
                               NS (UN nm) ns -> str nm
                               UN nm | ('_':'_':_) <- str nm -> "_"
                                     | otherwise -> str nm
                               _ -> "_"
               (t', spans) = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                            pprintPTerm imp (zip ns (repeat False)) [] (idris_infixes ist) t
-              rest        = sexpGoal ist cols imp (n:ns) (ps, concl)
+                            pprintPTerm ppo (zip ns (repeat False)) [] (idris_infixes ist) t
+              rest        = sexpGoal ist cols ppo (n:ns) (ps, concl)
           in ((n', t', spans) : fst rest, snd rest)
 runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
   case splitName n of
@@ -581,21 +586,21 @@ process h fn (ExecVal t)
 process h fn (Check (PRef _ n))
    = do ctxt <- getContext
         ist <- getIState
-        imp <- impShow
+        let ppo = ppOptionIst ist
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
                 Just (_, i, _) -> ihRenderResult h . fmap (fancifyAnnots ist) $
-                                  showMetavarInfo imp ist n i
+                                  showMetavarInfo ppo ist n i
                 Nothing -> ihPrintFunTypes h [] n (map (\n -> (n, delabTy ist n)) ts)
           [] -> ihPrintError h $ "No such variable " ++ show n
   where
-    showMetavarInfo imp ist n i
+    showMetavarInfo ppo ist n i
          = case lookupTy n (tt_ctxt ist) of
-                (ty:_) -> putTy imp ist i [] (delab ist (errReverse ist ty))
-    putTy :: Bool -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
-    putTy imp ist 0 bnd sc = putGoal imp ist bnd sc
-    putTy imp ist i bnd (PPi _ n t sc)
+                (ty:_) -> putTy ppo ist i [] (delab ist (errReverse ist ty))
+    putTy :: PPOption -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
+    putTy ppo ist 0 bnd sc = putGoal ppo ist bnd sc
+    putTy ppo ist i bnd (PPi _ n t sc)
                = let current = text "  " <>
                                (case n of
                                    MN _ _ -> text "_"
@@ -603,21 +608,21 @@ process h fn (Check (PRef _ n))
                                    _ -> bindingOf n False) <+>
                                colon <+> align (tPretty bnd ist t) <> line
                  in
-                    current <> putTy imp ist (i-1) ((n,False):bnd) sc
-    putTy imp ist _ bnd sc = putGoal imp ist ((n,False):bnd) sc
-    putGoal imp ist bnd g
+                    current <> putTy ppo ist (i-1) ((n,False):bnd) sc
+    putTy ppo ist _ bnd sc = putGoal ppo ist ((n,False):bnd) sc
+    putGoal ppo ist bnd g
                = text "--------------------------------------" <$>
                  annotate (AnnName n Nothing Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
 
-    tPretty bnd ist t = pprintPTerm (opt_showimp (idris_options ist)) bnd [] (idris_infixes ist) t
+    tPretty bnd ist t = pprintPTerm (ppOptionIst ist) bnd [] (idris_infixes ist) t
 
 
 process h fn (Check t)
    = do (tm, ty) <- elabVal toplevel False t
         ctxt <- getContext
         ist <- getIState
-        let imp = opt_showimp (idris_options ist)
+        let ppo = ppOptionIst ist
             ty' = normaliseC ctxt [] ty
         case tm of
            TType _ ->
@@ -625,7 +630,7 @@ process h fn (Check t)
            _ -> ihPrintTermWithType h (prettyIst ist (delab ist tm))
                                       (prettyIst ist (delab ist ty))
 
-process h fn (DocStr n)
+process h fn (DocStr (Left n))
    = do ist <- getIState
         case lookupCtxtName n (idris_docstrings ist) of
           [] -> iPrintError $ "No documentation for " ++ show n
@@ -633,6 +638,11 @@ process h fn (DocStr n)
                    ihRenderResult h (vsep toShow)
     where showDoc ist (n, d) = do doc <- getDocs n
                                   return $ pprintDocs ist doc
+
+process h fn (DocStr (Right c))
+   = do ist <- getIState
+        ihRenderResult h $ pprintConstDocs ist c (constDocs c)
+
 process h fn Universes
                      = do i <- getIState
                           let cs = idris_constraints i
@@ -664,8 +674,8 @@ process h fn (TotCheck n)
                                 []  -> ihPrintError h $ "Unknown operator " ++ show n
                                 ts  -> do ist <- getIState
                                           c <- colourise
-                                          imp <- impShow
-                                          let showN = showName (Just ist) [] imp c
+                                          let ppo =  ppOptionIst ist
+                                          let showN = showName (Just ist) [] ppo c
                                           ihPrintResult h . concat . intersperse "\n" .
                                             map (\(n, t) -> showN n ++ " is " ++ showTotal t i) $
                                             ts
@@ -689,186 +699,18 @@ process h fn (DebugInfo n)
         when (not (null cg')) $ do iputStrLn "Call graph:\n"
                                    iputStrLn (show cg')
 process h fn (Search t) = iPrintError "Not implemented"
--- FIXME: There is far too much repetition in the cases below!
-process h fn (CaseSplitAt updatefile l n)
-   = do src <- runIO $ readFile fn
-        res <- splitOnLine l n fn
-        iLOG (showSep "\n" (map show res))
-        let (before, (ap : later)) = splitAt (l-1) (lines src)
-        res' <- replaceSplits ap res
-        let new = concat res'
-        if updatefile
-          then do let fb = fn ++ "~" -- make a backup!
-                  runIO $ writeFile fb (unlines before ++ new ++ unlines later)
-                  runIO $ copyFile fb fn
-          else -- do ihputStrLn h (show res)
-            ihPrintResult h new
+process h fn (CaseSplitAt updatefile l n) 
+    = caseSplitAt h fn updatefile l n
 process h fn (AddClauseFrom updatefile l n)
-   = do src <- runIO $ readFile fn
-        let (before, tyline : later) = splitAt (l-1) (lines src)
-        let indent = getIndent 0 (show n) tyline
-        cl <- getClause l n fn
-        -- add clause before first blank line in 'later'
-        let (nonblank, rest) = span (not . all isSpace) (tyline:later)
-        if updatefile
-          then do let fb = fn ++ "~"
-                  runIO $ writeFile fb (unlines (before ++ nonblank) ++
-                                        replicate indent ' ' ++
-                                        cl ++ "\n" ++
-                                        unlines rest)
-                  runIO $ copyFile fb fn
-          else ihPrintResult h cl
-    where
-       getIndent i n [] = 0
-       getIndent i n xs | take (length n) xs == n = i
-       getIndent i n (x : xs) = getIndent (i + 1) n xs
+    = addClauseFrom h fn updatefile l n
 process h fn (AddProofClauseFrom updatefile l n)
-   = do src <- runIO $ readFile fn
-        let (before, tyline : later) = splitAt (l-1) (lines src)
-        let indent = getIndent 0 (show n) tyline
-        cl <- getProofClause l n fn
-        -- add clause before first blank line in 'later'
-        let (nonblank, rest) = span (not . all isSpace) (tyline:later)
-        if updatefile
-          then do let fb = fn ++ "~"
-                  runIO $ writeFile fb (unlines (before ++ nonblank) ++
-                                        replicate indent ' ' ++
-                                        cl ++ "\n" ++
-                                        unlines rest)
-                  runIO $ copyFile fb fn
-          else ihPrintResult h cl
-    where
-       getIndent i n [] = 0
-       getIndent i n xs | take (length n) xs == n = i
-       getIndent i n (x : xs) = getIndent (i + 1) n xs
+    = addProofClauseFrom h fn updatefile l n
 process h fn (AddMissing updatefile l n)
-   = do src <- runIO $ readFile fn
-        let (before, tyline : later) = splitAt (l-1) (lines src)
-        let indent = getIndent 0 (show n) tyline
-        i <- getIState
-        cl <- getInternalApp fn l
-        let n' = getAppName cl
-
-        extras <- case lookupCtxt n' (idris_patdefs i) of
-                       [] -> return ""
-                       [(_, tms)] -> do tms' <- nameMissing tms
-                                        showNew (show n ++ "_rhs") 1 indent tms'
-        let (nonblank, rest) = span (not . all isSpace) (tyline:later)
-        if updatefile
-          then do let fb = fn ++ "~"
-                  runIO $ writeFile fb (unlines (before ++ nonblank)
-                                        ++ extras ++ unlines rest)
-                  runIO $ copyFile fb fn
-          else ihPrintResult h extras
-    where showPat = show . stripNS
-          stripNS tm = mapPT dens tm where
-              dens (PRef fc n) = PRef fc (nsroot n)
-              dens t = t
-
-          nsroot (NS n _) = nsroot n
-          nsroot (SN (WhereN _ _ n)) = nsroot n
-          nsroot n = n
-
-          getAppName (PApp _ r _) = getAppName r
-          getAppName (PRef _ r) = r
-          getAppName _ = n
-
-          showNew nm i ind (tm : tms)
-                        = do (nm', i') <- getUniq nm i
-                             rest <- showNew nm i' ind tms
-                             return (replicate ind ' ' ++
-                                     showPat tm ++ " = ?" ++ nm' ++
-                                     "\n" ++ rest)
-          showNew nm i _ [] = return ""
-
-          getIndent i n [] = 0
-          getIndent i n xs | take (length n) xs == n = i
-          getIndent i n (x : xs) = getIndent (i + 1) n xs
-
+    = addMissing h fn updatefile l n
 process h fn (MakeWith updatefile l n)
-   = do src <- runIO $ readFile fn
-        let (before, tyline : later) = splitAt (l-1) (lines src)
-        let ind = getIndent tyline
-        let with = mkWith tyline n
-        -- add clause before first blank line in 'later',
-        -- or (TODO) before first line with same indentation as tyline
-        let (nonblank, rest) = span (\x -> not (all isSpace x) &&
-                                           not (ind == getIndent x)) later
-        if updatefile then
-           do let fb = fn ++ "~"
-              runIO $ writeFile fb (unlines (before ++ nonblank)
-                                        ++ with ++ "\n" ++
-                                    unlines rest)
-              runIO $ copyFile fb fn
-           else ihPrintResult h with
-  where getIndent s = length (takeWhile isSpace s)
-
+    = makeWith h fn updatefile l n
 process h fn (DoProofSearch updatefile rec l n hints)
-    = do src <- runIO $ readFile fn
-         let (before, tyline : later) = splitAt (l-1) (lines src)
-         ctxt <- getContext
-         mn <- case lookupNames n ctxt of
-                    [x] -> return x
-                    [] -> return n
-                    ns -> ierror (CantResolveAlts (map show ns))
-         i <- getIState
-         let (top, envlen, _) = case lookup mn (idris_metavars i) of
-                                  Just (t, e, False) -> (t, e, False)
-                                  _ -> (Nothing, 0, True)
-         let fc = fileFC fn
-         let body t = PProof [Try (TSeq Intros (ProofSearch rec t hints))
-                                  (ProofSearch rec t hints)]
-         let def = PClause fc mn (PRef fc mn) [] (body top) []
-         newmv <- idrisCatch
-             (do elabDecl' EAll toplevel (PClauses fc [] mn [def])
-                 (tm, ty) <- elabVal toplevel False (PRef fc mn)
-                 ctxt <- getContext
-                 i <- getIState
-                 return . flip displayS "" . renderPretty 1.0 80 $
-                   pprintPTerm False [] [] (idris_infixes i)
-                     (stripNS
-                        (dropCtxt envlen
-                           (delab i (specialise ctxt [] [(mn, 1)] tm)))))
-             (\e -> return ("?" ++ show n))
-         if updatefile then
-            do let fb = fn ++ "~"
-               runIO $ writeFile fb (unlines before ++
-                                     updateMeta False tyline (show n) newmv ++ "\n"
-                                       ++ unlines later)
-               runIO $ copyFile fb fn
-            else ihPrintResult h newmv
-    where dropCtxt 0 sc = sc
-          dropCtxt i (PPi _ _ _ sc) = dropCtxt (i - 1) sc
-          dropCtxt i (PLet _ _ _ sc) = dropCtxt (i - 1) sc
-          dropCtxt i (PLam _ _ sc) = dropCtxt (i - 1) sc
-          dropCtxt _ t = t
-
-          stripNS tm = mapPT dens tm where
-              dens (PRef fc n) = PRef fc (nsroot n)
-              dens t = t
-
-          nsroot (NS n _) = nsroot n
-          nsroot (SN (WhereN _ _ n)) = nsroot n
-          nsroot n = n
-
-          updateMeta brack ('?':cs) n new
-            | length cs >= length n
-              = case splitAt (length n) cs of
-                     (mv, c:cs) ->
-                          if ((isSpace c || c == ')' || c == '}') && mv == n)
-                             then addBracket brack new ++ (c : cs)
-                             else '?' : mv ++ c : updateMeta True cs n new
-                     (mv, []) -> if (mv == n) then addBracket brack new else '?' : mv
-          updateMeta brack ('=':cs) n new = '=':updateMeta False cs n new
-          updateMeta brack (c:cs) n new 
-              = c : updateMeta (brack || not (isSpace c)) cs n new
-          updateMeta brack [] n new = ""
-
-          addBracket False new = new
-          addBracket True new@('(':xs) | last xs == ')' = new
-          addBracket True new | any isSpace new = '(' : new ++ ")"
-                              | otherwise = new
-
+    = doProofSearch h fn updatefile rec l n hints
 process h fn (Spec t)
                     = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext
@@ -946,6 +788,7 @@ process h fn (Prove n')
           totcheck (fileFC "(input)", n)
           mapM_ (\ (f,n) -> setTotality n Unchecked) (idris_totcheck i)
           mapM_ checkDeclTotality (idris_totcheck i)
+          warnTotality
 
 process h fn (HNF t)
                     = do (tm, ty) <- elabVal toplevel False t
@@ -958,23 +801,25 @@ process h fn (TestInline t)
                                 ctxt <- getContext
                                 ist <- getIState
                                 let tm' = inlineTerm ist tm
-                                imp <- impShow
                                 c <- colourise
                                 iPrintResult (showTm ist (delab ist tm'))
 process h fn Execute
-                   = do ist <- getIState
-                        (m, _) <- elabVal toplevel False
-                                        (PApp fc
-                                           (PRef fc (sUN "run__IO"))
-                                           [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
-                        (tmpn, tmph) <- runIO tempfile
-                        runIO $ hClose tmph
-                        t <- codegen
-                        compile t tmpn m
-                        case idris_outputmode ist of
-                          RawOutput -> do runIO $ system tmpn
-                                          return ()
-                          IdeSlave n -> do runIO . hPutStrLn h $ IdeSlave.convSExp "run-program" tmpn n
+                   = idrisCatch
+                       (do ist <- getIState
+                           (m, _) <- elabVal toplevel False
+                                           (PApp fc
+                                              (PRef fc (sUN "run__IO"))
+                                              [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
+                           (tmpn, tmph) <- runIO tempfile
+                           runIO $ hClose tmph
+                           t <- codegen
+                           compile t tmpn m
+                           case idris_outputmode ist of
+                             RawOutput -> do runIO $ system tmpn
+                                             return ()
+                             IdeSlave n -> runIO . hPutStrLn h $
+                                           IdeSlave.convSExp "run-program" tmpn n)
+                       (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
   where fc = fileFC "main"
 process h fn (Compile codegen f)
       = do (m, _) <- elabVal toplevel False
@@ -1033,6 +878,8 @@ process h fn (SetOpt AutoSolve)     = setAutoSolve True
 process h fn (UnsetOpt AutoSolve)   = setAutoSolve False
 process h fn (SetOpt NoBanner)      = setNoBanner True
 process h fn (UnsetOpt NoBanner)    = setNoBanner False
+process h fn (SetOpt WarnReach)     = fmodifyState opts_idrisCmdline $ nub . (WarnReach:)
+process h fn (UnsetOpt WarnReach)   = fmodifyState opts_idrisCmdline $ delete WarnReach
 
 process h fn (SetOpt _) = iPrintError "Not a valid option"
 process h fn (UnsetOpt _) = iPrintError "Not a valid option"
@@ -1204,13 +1051,18 @@ replSettings hFile = setComplete replCompletion $ defaultSettings {
                        historyFile = hFile
                      }
 
--- invoke as if from command line
+-- | Invoke as if from command line. It is an error if there are unresolved totality problems.
 idris :: [Opt] -> IO (Maybe IState)
-idris opts = do res <- runErrorT $ execStateT (idrisMain opts) idrisInit
+idris opts = do res <- runErrorT $ execStateT totalMain idrisInit
                 case res of
                   Left err -> do putStrLn $ pshow idrisInit err
                                  return Nothing
                   Right ist -> return (Just ist)
+    where totalMain = do idrisMain opts
+                         ist <- getIState
+                         case idris_totcheckfail ist of
+                           ((fc, msg):_) -> ierror . At fc . Msg $ "Could not build: "++  msg
+                           [] -> return ()
 
 
 loadInputs :: Handle -> [FilePath] -> Idris ()
@@ -1256,7 +1108,13 @@ loadInputs h inputs
               _ -> return ()
            ist <- getIState
            putIState (ist { idris_tyinfodata = tidata,
-                            idris_patdefs = patdefs }))
+                            idris_patdefs = patdefs })
+
+           case opt getOutput opts of
+               [] -> performUsageAnalysis  -- interactive
+               _  -> return []  -- batch, will be checked by the compiler
+
+           return ())
         (\e -> do i <- getIState
                   case e of
                     At f e' -> do setErrSpan f
@@ -1266,8 +1124,8 @@ loadInputs h inputs
                             ihWarn stdout emptyFC $ pprintErr i e)
    where -- load all files, stop if any fail
          tryLoad :: Bool -> [IFileType] -> Idris ()
-         tryLoad keepstate [] = return ()
-         tryLoad keepstate (f : fs) 
+         tryLoad keepstate [] = warnTotality >> return ()
+         tryLoad keepstate (f : fs)
                  = do ist <- getIState
                       loadFromIFile h f
                       inew <- getIState
@@ -1400,10 +1258,7 @@ idrisMain opts =
 
        ok <- noErrors
        when ok $ case output of
-                    -- just do the checks
-                    [] -> performUsageAnalysis >> return ()
-
-                    -- the compiler will run usage analysis itself
+                    [] -> return ()
                     (o:_) -> idrisCatch (process stdout "" (Compile cgn o))
                                (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
 

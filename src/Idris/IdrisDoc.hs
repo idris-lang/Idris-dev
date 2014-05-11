@@ -5,7 +5,7 @@
 module Idris.IdrisDoc (generateDocs) where
 
 import Idris.Core.TT (Name (..), sUN, SpecialName (..), OutputAnnotation (..),
-                      TextFormatting (..), txt, str, nsroot)
+                      TextFormatting (..), txt, str, nsroot, constIsType)
 import Idris.Core.Evaluate (ctxtAlist, Def (..), lookupDefAcc,
                             Accessibility (..), isDConName, isFnName,
                             isTConName)
@@ -455,15 +455,17 @@ genTypeHeader ist (FD n _ args ftype _) = do
   H.span ! class_ "word"     $ do nbsp; ":"; nbsp
   H.span ! class_ "signature" $ preEscapedToHtml htmlSignature
 
-  where 
+  where
         htmlSignature  = displayDecorated decorator $ renderCompact signature
-        signature      = pprintPTerm False [] names (idris_infixes ist) ftype
+        signature      = pprintPTerm defaultPPOption [] names (idris_infixes ist) ftype
         names          = [ n | (n@(UN n'), _, _, _) <- args,
                            not (T.isPrefixOf (txt "__") n') ]
 
-        decorator AnnConstData str = htmlSpan str "data"    str
-        decorator AnnConstType str = htmlSpan str "type"    str
-        decorator AnnKeyword   str = htmlSpan ""  "keyword" str
+        decorator (AnnConst c) str | constIsType c = htmlSpan str "type" str
+                                   | otherwise     = htmlSpan str "data" str
+        decorator (AnnData _ _) str = htmlSpan str "data"    str
+        decorator (AnnType _ _)   str = htmlSpan str "type"    str
+        decorator AnnKeyword    str = htmlSpan ""  "keyword" str
         decorator (AnnBoundName n i) str | Just t <- M.lookup n docs =
           let cs = (if i then "implicit " else "") ++ "documented boundvar"
           in  htmlSpan t cs str

@@ -23,6 +23,7 @@ modules = System,
           Data.Vect, Data.HVect, Data.Vect.Quantifiers,
           Data.Floats, Data.Complex, Data.Heap, Data.Fun,
           Data.Rel, Data.Buffer, Data.Erased,
+          Data.List,
 
           Control.Isomorphism, Control.Isomorphism.Primitives,
           Control.Monad.Identity,

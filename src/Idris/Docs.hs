@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Docs (pprintDocs, getDocs, FunDoc(..), Docs (..)) where
+module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, FunDoc(..), Docs (..)) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -37,8 +37,8 @@ showDoc d | nullDocstring d = empty
 
 pprintFD :: IState -> FunDoc -> Doc OutputAnnotation
 pprintFD ist (FD n doc args ty f)
-    = nest 4 (prettyName imp [] n <+> colon <+>
-              pprintPTerm imp [] [ n | (n@(UN n'),_,_,_) <- args
+    = nest 4 (prettyName (ppopt_impl ppo) [] n <+> colon <+>
+              pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
                                      , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
               renderDocstring doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
@@ -47,23 +47,23 @@ pprintFD ist (FD n doc args ty f)
                 then nest 4 $ text "Arguments:" <$> vsep argshow
                 else empty)
 
-    where imp = opt_showimp (idris_options ist)
+    where ppo = ppOptionIst ist
           infixes = idris_infixes ist
           showArgs ((n, ty, Exp {}, Just d):args) bnd
              = bindingOf n False <+> colon <+>
-               pprintPTerm imp bnd [] infixes ty <>
+               pprintPTerm ppo bnd [] infixes ty <>
                showDoc d <> line
                :
                showArgs args ((n, False):bnd)
           showArgs ((n, ty, Constraint {}, Just d):args) bnd
              = text "Class constraint" <+>
-               pprintPTerm imp bnd [] infixes ty <> showDoc d <> line
+               pprintPTerm ppo bnd [] infixes ty <> showDoc d <> line
                :
                showArgs args ((n, True):bnd)
           showArgs ((n, ty, Imp {}, Just d):args) bnd
              = text "(implicit)" <+>
                bindingOf n True <+> colon <+>
-               pprintPTerm imp bnd [] infixes ty <>
+               pprintPTerm ppo bnd [] infixes ty <>
                showDoc d <> line
                :
                showArgs args ((n, True):bnd)
@@ -75,10 +75,11 @@ pprintDocs :: IState -> Docs -> Doc OutputAnnotation
 pprintDocs ist (FunDoc d) = pprintFD ist d
 pprintDocs ist (DataDoc t args)
            = text "Data type" <+> pprintFD ist t <$>
-             nest 4 (text "Constructors:" <> line <>
-                     vsep (map (pprintFD ist) args))
+             if null args then text "No constructors."
+             else nest 4 (text "Constructors:" <> line <>
+                          vsep (map (pprintFD ist) args))
 pprintDocs ist (ClassDoc n doc meths params instances superclasses)
-           = nest 4 (text "Type class" <+> prettyName imp [] n <>
+           = nest 4 (text "Type class" <+> prettyName (ppopt_impl ppo) [] n <>
                      if nullDocstring doc then empty else line <> renderDocstring doc)
              <> line <$>
              nest 4 (text "Parameters:" <$> prettyParameters)
@@ -102,11 +103,11 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
 
     pNames  = map fst params
 
-    imp = opt_showimp (idris_options ist)
+    ppo = ppOptionIst ist
     infixes = idris_infixes ist
 
     dumpInstance :: PTerm -> Doc OutputAnnotation
-    dumpInstance = pprintPTerm imp params' [] infixes
+    dumpInstance = pprintPTerm ppo params' [] infixes
 
     prettifySubclasses (PPi (Constraint _ _) _ tm _)   = prettifySubclasses tm
     prettifySubclasses (PPi plcity           nm t1 t2) = PPi plcity (safeHead nm pNames) (prettifySubclasses t1) (prettifySubclasses t2)
@@ -188,3 +189,15 @@ getPArgNames :: PTerm -> [(Name, Docstring)] -> [(Name, PTerm, Plicity, Maybe Do
 getPArgNames (PPi plicity name ty body) ds =
   (name, ty, plicity, lookup name ds) : getPArgNames body ds
 getPArgNames _ _ = []
+
+pprintConstDocs :: IState -> Const -> String -> Doc OutputAnnotation
+pprintConstDocs ist c str = text "Primitive" <+> text (if constIsType c then "type" else "value") <+>
+                            pprintPTerm (ppOptionIst ist) [] [] [] (PConstant c) <+> colon <+>
+                            pprintPTerm (ppOptionIst ist) [] [] [] (t c) <>
+                            nest 4 (line <> text str)
+
+  where t (Fl _)  = PConstant $ AType ATFloat
+        t (BI _)  = PConstant $ AType (ATInt ITBig)
+        t (Str _) = PConstant StrType
+        t (Ch c)  = PConstant $ AType (ATInt ITChar)
+        t _       = PType

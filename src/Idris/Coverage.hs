@@ -9,7 +9,7 @@ import Idris.Core.CaseTree
 import Idris.AbsSyntax
 import Idris.Delaborate
 import Idris.Error
-import Idris.Output (iputStrLn)
+import Idris.Output (iWarn)
 
 import Data.List
 import Data.Either
@@ -253,9 +253,10 @@ checkAllCovering :: FC -> [Name] -> Name -> Name -> Idris ()
 checkAllCovering fc done top n | not (n `elem` done)
    = do i <- get
         case lookupTotal n (tt_ctxt i) of
-             [tot@(Partial NotCovering)] -> 
-                  tclift $ tfail (At fc (Msg (show top ++ " is " ++ show tot
-                                     ++ " due to " ++ show n)))
+             [tot@(Partial NotCovering)] ->
+                    do let msg = show top ++ " is " ++ show tot ++ " due to " ++ show n
+                       addIBC (IBCTotCheckErr fc msg)
+                       putIState i { idris_totcheckfail = (fc, msg) : idris_totcheckfail i }
              _ -> return ()
         case lookupCtxt n (idris_callgraph i) of
              [cg] -> mapM_ (checkAllCovering fc (n : done) top) 
@@ -388,18 +389,21 @@ checkTotality path fc n
             Productive -> return t'
             e -> do w <- cmdOptType WarnPartial
                     if TotalFn `elem` opts
-                       then totalityError t'
+                       then do totalityError t'; return t'
                        else do when (w && not (PartialFn `elem` opts)) $
                                    warnPartial n t'
                                return t'
   where
-    totalityError t = tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
+    totalityError t = do i <- getIState
+                         let msg = show n ++ " is " ++ show t
+                         putIState i { idris_totcheckfail = (fc, msg) : idris_totcheckfail i}
+                         addIBC (IBCTotCheckErr fc msg)
 
     warnPartial n t
        = do i <- getIState
             case lookupDef n (tt_ctxt i) of
                [x] -> do
-                  iputStrLn $ show fc ++ ":Warning - " ++ show n ++ " is " ++ show t
+                  iWarn fc . pprintErr i . Msg $ "Warning - " ++ show n ++ " is " ++ show t
 --                                ++ "\n" ++ show x
 --                   let cg = lookupCtxtName Nothing n (idris_callgraph i)
 --                   iputStrLn (show cg)
@@ -410,7 +414,7 @@ checkDeclTotality (fc, n)
     = do logLvl 2 $ "Checking " ++ show n ++ " for totality"
 --          buildSCG (fc, n)
 --          logLvl 2 $ "Built SCG"
-         i <- getIState 
+         i <- getIState
          t <- checkTotality [] fc n
          case t of
               -- if it's not total, it can't reduce, to keep

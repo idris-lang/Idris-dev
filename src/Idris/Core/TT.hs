@@ -27,6 +27,7 @@ import Control.Monad.Trans.Error (Error(..))
 import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
+import Numeric (showIntAtBase)
 import qualified Data.Text as T
 import Data.List
 import Data.Maybe (listToMaybe)
@@ -92,8 +93,9 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                         -- ^^ The name, classification, docs overview, and pretty-printed type
                       | AnnBoundName Name Bool
                         -- ^^ The name and whether it is implicit
-                      | AnnConstData
-                      | AnnConstType
+                      | AnnConst Const
+                      | AnnData String String -- ^ type, doc overview
+                      | AnnType String String -- ^ name, doc overview
                       | AnnKeyword
                       | AnnFC FC
                       | AnnTextFmt TextFormatting
@@ -426,6 +428,9 @@ lookupCtxt n ctxt = map snd (lookupCtxtName n ctxt)
 lookupCtxtExact :: Name -> Ctxt a -> Maybe a
 lookupCtxtExact n ctxt = listToMaybe [ v | (nm, v) <- lookupCtxtName n ctxt, nm == n]
 
+deleteDefExact :: Name -> Ctxt a -> Ctxt a
+deleteDefExact n = Map.adjust (Map.delete n) (nsroot n)
+
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt
   = let ds = lookupCtxtName n ctxt in
@@ -520,6 +525,60 @@ instance Pretty Const OutputAnnotation where
   pretty (B16 w) = text . show $ w
   pretty (B32 w) = text . show $ w
   pretty (B64 w) = text . show $ w
+
+-- | Determines whether the input constant represents a type
+constIsType :: Const -> Bool
+constIsType (I _) = False
+constIsType (BI _) = False
+constIsType (Fl _) = False
+constIsType (Ch _) = False
+constIsType (Str _) = False
+constIsType (B8 _) = False
+constIsType (B16 _) = False
+constIsType (B32 _) = False
+constIsType (B64 _) = False
+constIsType (B8V _) = False
+constIsType (B16V _) = False
+constIsType (B32V _) = False
+constIsType (B64V _) = False
+constIsType _ = True
+
+-- | Get the docstring for a Const
+constDocs :: Const -> String
+constDocs c@(AType (ATInt ITBig))          = "Arbitrary-precision integers"
+constDocs c@(AType (ATInt ITNative))       = "Fixed-precision integers of undefined size"
+constDocs c@(AType (ATInt ITChar))         = "Characters in some unspecified encoding"
+constDocs c@(AType ATFloat)                = "Double-precision floating-point numbers"
+constDocs StrType                          = "Strings in some unspecified encoding"
+constDocs PtrType                          = "Foreign pointers"
+constDocs ManagedPtrType                   = "Managed pointers"
+constDocs BufferType                       = "Copy-on-write buffers"
+constDocs c@(AType (ATInt (ITFixed IT8)))  = "Eight bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT16))) = "Sixteen bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT32))) = "Thirty-two bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT64))) = "Sixty-four bits (unsigned)"
+constDocs c@(AType (ATInt (ITVec IT8 16))) = "Vectors of sixteen eight-bit values"
+constDocs c@(AType (ATInt (ITVec IT16 8))) = "Vectors of eight sixteen-bit values"
+constDocs c@(AType (ATInt (ITVec IT32 4))) = "Vectors of four thirty-two-bit values"
+constDocs c@(AType (ATInt (ITVec IT64 2))) = "Vectors of two sixty-four-bit values"
+constDocs (Fl f)                           = "A float"
+constDocs (I i)                            = "A fixed-precision integer"
+constDocs (BI i)                           = "An arbitrary-precision integer"
+constDocs (Str s)                          = "A string of length " ++ show (length s)
+constDocs (Ch c)                           = "A character"
+constDocs (B8 w)                           = "The eight-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B16 w)                          = "The sixteen-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B32 w)                          = "The thirty-two-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B64 w)                          = "The sixty-four-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B8V v)                          = "A vector of eight-bit values"
+constDocs (B16V v)                         = "A vector of sixteen-bit values"
+constDocs (B32V v)                         = "A vector of thirty-two-bit values"
+constDocs (B64V v)                         = "A vector of sixty-four-bit values"
+constDocs prim                             = "Undocumented"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw

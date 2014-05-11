@@ -2,6 +2,7 @@
 
 module Idris.Core.TC(TC'(..)) where
 
+import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.Error(Error(..))
 
@@ -26,3 +27,11 @@ instance Error e => MonadPlus (TC' e) where
     _ `mplus` (OK y) = OK y
     err `mplus` _    = err
 
+
+instance Error e => Applicative (TC' e) where
+    pure = return
+    (<*>) = ap
+
+instance Error e => Alternative (TC' e) where
+    empty = mzero
+    (<|>) = mplus
