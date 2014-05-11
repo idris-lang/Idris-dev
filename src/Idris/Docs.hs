@@ -123,11 +123,14 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
     updateRef nm (PRef fc _) = PRef fc nm
     updateRef _  pt          = pt
 
-    hasConstraint (PPi (Constraint _ _) _ _ _)  = True
-    hasConstraint (PPi _                _ _ pt) = hasConstraint pt
-    hasConstraint _                             = False
+    isSubclass (PPi (Constraint _ _) _ _ (PApp _ (PRef _ nm) ((PExp _ _ _ tm):_))) = nm == n && not (isApp tm)
+    isSubclass (PPi _                _ _ pt)                                       = isSubclass pt
+    isSubclass _                                                                   = False
 
-    (subclasses, instances') = partition hasConstraint instances
+    isApp (PApp _ _ _) = True
+    isApp _            = False
+
+    (subclasses, instances') = partition isSubclass instances
 
     prettyParameters = if any (isJust . snd) params
                        then vsep (map (\(nm,md) -> prettyName False params' nm <+> maybe empty showDoc md) params)
