@@ -212,6 +212,15 @@ updateMeta brack (c:cs) n new
   = c : updateMeta (brack || not (isSpace c)) cs n new
 updateMeta brack [] n new = ""
 
+checkProv line n = isProv' False line n
+  where
+    isProv' p cs n | take (length n) cs == n = p
+    isProv' _ ('?':cs) n = isProv' False cs n
+    isProv' _ ('{':cs) n = isProv' True cs n
+    isProv' _ ('}':cs) n = isProv' True cs n
+    isProv' p (_:cs) n = isProv' p cs n
+    isProv' _ [] n = False
+    
 addBracket False new = new
 addBracket True new@('(':xs) | last xs == ')' = new
 addBracket True new | any isSpace new = '(' : new ++ ")"
@@ -223,23 +232,37 @@ makeLemma h fn updatefile l n
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
 
+        -- if the name is in braces, rather than preceded by a ?, treat it
+        -- as a lemma in a provisional definition
+        
+        let isProv = checkProv tyline (show n)
+
         ctxt <- getContext
         mty <- case lookupTy n ctxt of
                     [t] -> return t
                     [] -> ierror (NoSuchVariable n)
                     ns -> ierror (CantResolveAlts (map show ns))
-
         i <- getIState
-        let skip = guessImps (tt_ctxt i) mty
 
-        let lem = show n ++ " : " ++ show (stripMNBind skip (delab i mty))
-        let lem_app = show n ++ appArgs skip mty
+        if (not isProv) then do
+            let skip = guessImps (tt_ctxt i) mty
 
-        if updatefile then
-           do let fb = fn ++ "~"
-              runIO $ writeFile fb (addLem before tyline lem lem_app later)
-              runIO $ copyFile fb fn
-           else ihPrintResult h $ lem ++ "\n" ++ lem_app
+            let lem = show n ++ " : " ++ show (stripMNBind skip (delab i mty))
+            let lem_app = show n ++ appArgs skip mty
+
+            if updatefile then
+               do let fb = fn ++ "~"
+                  runIO $ writeFile fb (addLem before tyline lem lem_app later)
+                  runIO $ copyFile fb fn
+               else ihPrintResult h $ lem ++ "\n" ++ lem_app
+          else do -- provisional definition
+            let lem_app = show n ++ appArgs [] mty ++ 
+                                 " = ?" ++ show n ++ "_rhs"
+            if updatefile then
+               do let fb = fn ++ "~"
+                  runIO $ writeFile fb (addProv before tyline lem_app later)
+                  runIO $ copyFile fb fn
+               else ihPrintResult h $ lem_app
 
   where getIndent s = length (takeWhile isSpace s)
 
@@ -279,11 +302,21 @@ makeLemma h fn updatefile l n
 
         addLem before tyline lem lem_app later
             = let (bef_end, blankline : bef_start) 
-                       = span (not . blank) (reverse before)
+                       = case span (not . blank) (reverse before) of
+                              (bef, []) -> (bef, "" : [])
+                              x -> x
                   mvline = updateMeta False tyline (show n) lem_app in
                 unlines $ reverse bef_start ++
                           [blankline, lem, blankline] ++
                           reverse bef_end ++ mvline : later
 
-
+        addProv before tyline lem_app later
+            = let (later_bef, blankline : later_end)
+                      = case span (not . blank) later of
+                             (bef, []) -> (bef, "" : [])
+                             x -> x in
+                  unlines $ before ++ tyline : 
+                            (later_bef ++ [blankline, lem_app, blankline] ++
+                                      later_end)
+                           
 
