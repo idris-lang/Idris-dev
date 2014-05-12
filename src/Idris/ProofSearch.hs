@@ -57,7 +57,7 @@ proofSearch False fromProver elab _ nroot [fn] ist
             tryAllFns all_imps
   where
     -- if nothing worked, make a new metavariable
-    tryAllFns _ | fromProver = cantSolveGoal  
+    tryAllFns [] | fromProver = cantSolveGoal  
     tryAllFns [] = do attack; defer nroot; solve
     tryAllFns (f : fs) = try' (tryFn f) (tryAllFns fs) True
 
@@ -96,7 +96,7 @@ proofSearch rec fromProver elab fn nroot hints ist
     toUN (App f a) = App (toUN f) (toUN a)
     toUN t = t
 
-    psRec _ _ | fromProver = cantSolveGoal
+    psRec _ 0 | fromProver = cantSolveGoal
     psRec rec 0 = do attack; defer nroot; solve --fail "Maximum depth reached"
     psRec False d = tryCons d hints 
     psRec True d = try' (trivial elab ist)
