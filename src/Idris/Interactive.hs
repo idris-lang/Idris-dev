@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.Interactive(caseSplitAt, addClauseFrom, addProofClauseFrom,
                          addMissing, makeWith, doProofSearch,
                          makeLemma) where
@@ -228,8 +230,10 @@ makeLemma h fn updatefile l n
                     ns -> ierror (CantResolveAlts (map show ns))
 
         i <- getIState
-        let lem = show n ++ " : " ++ show (stripMNBind (delab i mty))
-        let lem_app = show n ++ appArgs mty
+        let skip = guessImps (tt_ctxt i) mty
+
+        let lem = show n ++ " : " ++ show (stripMNBind skip (delab i mty))
+        let lem_app = show n ++ appArgs skip mty
 
         if updatefile then
            do let fb = fn ++ "~"
@@ -239,15 +243,37 @@ makeLemma h fn updatefile l n
 
   where getIndent s = length (takeWhile isSpace s)
 
-        appArgs (Bind n@(UN c) (Pi _) sc) 
-           | thead c /= '_' = " " ++ show n ++ appArgs sc
-        appArgs (Bind _ (Pi _) sc) = appArgs sc
-        appArgs _ = ""
+        appArgs skip (Bind n@(UN c) (Pi _) sc) 
+           | thead c /= '_' && n `notElem` skip
+                = " " ++ show n ++ appArgs skip sc
+        appArgs skip (Bind _ (Pi _) sc) = appArgs skip sc
+        appArgs skip _ = ""
 
-        stripMNBind (PPi b n@(UN c) ty sc) 
-           | thead c /= '_' = PPi b n ty (stripMNBind sc)
-        stripMNBind (PPi b _ ty sc) = stripMNBind sc
-        stripMNBind t = t
+        stripMNBind skip (PPi b n@(UN c) ty sc) 
+           | thead c /= '_' && 
+             n `notElem` skip = PPi b n ty (stripMNBind skip sc)
+        stripMNBind skip (PPi b _ ty sc) = stripMNBind skip sc
+        stripMNBind skip t = t
+
+        -- Guess which binders should be implicits in the generated lemma.
+        -- Make them implicit if they appear guarded by a top level constructor,
+        -- or at the top level themselves.
+        guessImps :: Context -> Term -> [Name]
+        guessImps ctxt (Bind n (Pi _) sc)
+           | guarded ctxt n (substV (P Bound n Erased) sc) 
+                = n : guessImps ctxt sc
+           | otherwise = guessImps ctxt sc
+        guessImps ctxt _ = []
+
+        guarded ctxt n (P _ n' _) | n == n' = True
+        guarded ctxt n ap@(App _ _)
+            | (P _ f _, args) <- unApply ap,
+              isConName f ctxt = any (guarded ctxt n) args
+--         guarded ctxt n (Bind (UN cn) (Pi t) sc) -- ignore shadows
+--             | thead cn /= '_' = guarded ctxt n t || guarded ctxt n sc
+        guarded ctxt n (Bind _ (Pi t) sc) 
+            = guarded ctxt n t || guarded ctxt n sc
+        guarded ctxt n _ = False
 
         blank = all isSpace
 
