@@ -532,7 +532,6 @@ break : (a -> Bool) -> List a -> (List a, List a)
 break p = span (not . p)
 
 split : (a -> Bool) -> List a -> List (List a)
-split p [] = []
 split p xs =
   case break p xs of
     (chunk, [])          => [chunk]
