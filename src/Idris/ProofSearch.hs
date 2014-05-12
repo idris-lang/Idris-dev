@@ -14,6 +14,7 @@ import Idris.Error
 
 import Control.Applicative ((<$>))
 import Control.Monad
+import Control.Monad.State.Strict
 import Data.List
 import Debug.Trace
 
@@ -37,16 +38,26 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
                              (tryAll xs) True
                    else tryAll xs
 
-proofSearch :: Bool ->
+cantSolveGoal :: ElabD ()
+cantSolveGoal = do g <- goal
+                   env <- get_env
+                   lift $ tfail $
+                      CantSolveGoal g (map (\(n,b) -> (n, binderTy b)) env) 
+
+proofSearch :: Bool -> 
+               Bool -> -- invoked from a tactic proof. If so, making
+                       -- new metavariables is meaningless, and there shoudl
+                       -- be an error reported instead.
                (PTerm -> ElabD ()) -> Maybe Name -> Name -> [Name] ->
                IState -> ElabD ()
-proofSearch False elab _ nroot [fn] ist
+proofSearch False fromProver elab _ nroot [fn] ist
        = do -- get all possible versions of the name, take the first one that
             -- works
             let all_imps = lookupCtxtName fn (idris_implicits ist)
             tryAllFns all_imps
   where
     -- if nothing worked, make a new metavariable
+    tryAllFns _ | fromProver = cantSolveGoal  
     tryAllFns [] = do attack; defer nroot; solve
     tryAllFns (f : fs) = try' (tryFn f) (tryAllFns fs) True
 
@@ -60,15 +71,17 @@ proofSearch False elab _ nroot [fn] ist
                          -- Make metavariables for new holes 
                          hs' <- get_holes
                          ptm <- get_term
-                         mapM_ (\ h -> do focus h
-                                          attack; defer nroot; solve) 
-                             (hs' \\ hs)
---                              (filter (\ (x, y) -> not x) (zip (map fst imps) args))
-                         solve
+                         if fromProver then cantSolveGoal
+                           else do
+                             mapM_ (\ h -> do focus h
+                                              attack; defer nroot; solve) 
+                                 (hs' \\ hs)
+--                                  (filter (\ (x, y) -> not x) (zip (map fst imps) args))
+                             solve
 
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (True, priority arg) -- try to get all of them by unification
-proofSearch rec elab fn nroot hints ist 
+proofSearch rec fromProver elab fn nroot hints ist 
        = case lookupCtxt nroot (idris_tyinfodata ist) of
               [TISolution ts] -> findInferredTy ts
               _ -> psRec rec maxDepth
@@ -83,13 +96,16 @@ proofSearch rec elab fn nroot hints ist
     toUN (App f a) = App (toUN f) (toUN a)
     toUN t = t
 
+    psRec _ _ | fromProver = cantSolveGoal
     psRec rec 0 = do attack; defer nroot; solve --fail "Maximum depth reached"
     psRec False d = tryCons d hints 
     psRec True d = try' (trivial elab ist)
                         (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
                               True)
              -- if all else fails, make a new metavariable
-                         (do attack; defer nroot; solve) True) True
+                         (if fromProver 
+                             then cantSolveGoal
+                             else do attack; defer nroot; solve) True) True
 
     getFn d Nothing = []
     getFn d (Just f) | d < maxDepth-1 = [f]

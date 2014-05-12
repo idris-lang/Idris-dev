@@ -742,7 +742,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
-                | ProofSearch Bool (Maybe Name) [Name]
+                | ProofSearch Bool Bool (Maybe Name) [Name]
                   -- ^ the bool is whether to search recursively
                 | Solve
                 | Attack

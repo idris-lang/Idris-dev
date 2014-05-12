@@ -30,7 +30,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 70
+ibcVersion = 71
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1952,10 +1952,11 @@ instance (Binary t) => Binary (PTactic' t) where
                                    put x1
                 ByReflection x1 -> do putWord8 20
                                       put x1
-                ProofSearch x1 x2 x3 -> do putWord8 21
-                                           put x1
-                                           put x2
-                                           put x3
+                ProofSearch x1 x2 x3 x4 -> do putWord8 21
+                                              put x1
+                                              put x2
+                                              put x3
+                                              put x4
                 DoUnify -> putWord8 22
         get
           = do i <- getWord8
@@ -2001,7 +2002,8 @@ instance (Binary t) => Binary (PTactic' t) where
                    21 -> do x1 <- get
                             x2 <- get
                             x3 <- get
-                            return (ProofSearch x1 x2 x3)
+                            x4 <- get
+                            return (ProofSearch x1 x2 x3 x4)
                    22 -> return DoUnify
                    _ -> error "Corrupted binary data for PTactic'"
 
