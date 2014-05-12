@@ -22,6 +22,7 @@ New in 0.9.13:
   issues, but no programs that violate the stated assumptions will actually run.
 * Added :makelemma command, which adds a new top level definition to solve
   a metavariable.
+* Extend :addclause to add instance bodies as well as definitions
 
 Internal changes
 
