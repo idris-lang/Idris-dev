@@ -56,6 +56,7 @@ addClauseFrom h fn updatefile l n
           else ihPrintResult h cl
     where
        getIndent i n [] = 0
+       getIndent i n xs | take 9 xs == "instance " = i
        getIndent i n xs | take (length n) xs == n = i
        getIndent i n (x : xs) = getIndent (i + 1) n xs
 

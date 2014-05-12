@@ -322,12 +322,17 @@ getClause :: Int      -- ^ line number that the type is declared on
           -> Name     -- ^ Function name
           -> FilePath -- ^ Source file name
           -> Idris String
-getClause l fn fp = do ty <- getInternalApp fp l
-                       ist <- get
-                       let ap = mkApp ist ty []
-                       return (show fn ++ " " ++ ap ++
-                                   "= ?" ++ show fn ++ "_rhs")
-   where mkApp i (PPi (Exp _ _ False) (MN _ _) ty sc) used
+getClause l fn fp 
+    = do i <- getIState
+         case lookupCtxt fn (idris_classes i) of
+              [c] -> return (mkClassBodies i (class_methods c))
+              _ -> do ty <- getInternalApp fp l
+                      ist <- get
+                      let ap = mkApp ist ty []
+                      return (show fn ++ " " ++ ap ++ "= ?" 
+                                      ++ show fn ++ "_rhs")
+   where mkApp :: IState -> PTerm -> [Name] -> String
+         mkApp i (PPi (Exp _ _ False) (MN _ _) ty sc) used
                = let n = getNameFrom i used ty in
                      show n ++ " " ++ mkApp i sc (n : used) 
          mkApp i (PPi (Exp _ _ False) (UN n) ty sc) used
@@ -348,6 +353,19 @@ getClause l fn fp = do ty <- getInternalApp fp l
                    [] -> uniqueName (sUN "x") used
                    ns -> uniqueNameFrom (mkSupply ns) used
          getNameFrom i used _ = uniqueName (sUN "x") used 
+
+         -- write method declarations, indent with 4 spaces
+         mkClassBodies :: IState -> [(Name, (FnOpts, PTerm))] -> String
+         mkClassBodies i ns 
+             = showSep "\n"
+                  (zipWith (\(n, (_, ty)) m -> "    " ++ 
+                            def (show (nsroot n)) ++ " "
+                                 ++ mkApp i ty []
+                                 ++ "= ?" 
+                                 ++ show fn ++ "_rhs_" ++ show m) ns [1..])
+
+         def n@(x:xs) | not (isAlphaNum x) = "(" ++ n ++ ")"
+         def n = n
 
 getProofClause :: Int      -- ^ line number that the type is declared
                -> Name     -- ^ Function name

@@ -2041,7 +2041,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
                            (CantResolveAlts (map (show . fst) cs))
     let constraint = PApp fc (PRef fc n) (map pexp ps)
     let iname = mkiname n ps expn
-    when (what /= EDefns) $ do
+    when (what /= EDefns || null ds) $ do
          nty <- elabType' True info syn emptyDocstring [] fc [] iname t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
@@ -2050,7 +2050,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
                                 (class_instances ci)
                           addInstance intInst n iname
             Just _ -> addInstance intInst n iname
-    when (what /= ETypes) $ do 
+    when (what /= ETypes && (not (null ds))) $ do 
          let ips = zip (class_params ci) ps
          let ns = case n of
                     NS n ns' -> ns'
