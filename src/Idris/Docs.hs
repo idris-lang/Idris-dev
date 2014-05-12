@@ -29,6 +29,7 @@ data Docs = FunDoc FunDoc
                      [FunDoc] -- method docs
                      [(Name, Maybe Docstring)] -- parameters and their docstrings
                      [PTerm] -- instances
+                     [PTerm] -- superclasses
   deriving Show
 
 showDoc d | nullDocstring d = empty
@@ -77,7 +78,7 @@ pprintDocs ist (DataDoc t args)
              if null args then text "No constructors."
              else nest 4 (text "Constructors:" <> line <>
                           vsep (map (pprintFD ist) args))
-pprintDocs ist (ClassDoc n doc meths params instances)
+pprintDocs ist (ClassDoc n doc meths params instances superclasses)
            = nest 4 (text "Type class" <+> prettyName (ppopt_impl ppo) [] n <>
                      if nullDocstring doc then empty else line <> renderDocstring doc)
              <> line <$>
@@ -90,9 +91,13 @@ pprintDocs ist (ClassDoc n doc meths params instances)
                      vsep (if null instances' then [text "<no instances>"]
                            else map dumpInstance instances'))
              <>
-             if null subclasses then empty
-             else line <$> nest 4 (text "Subclasses:" <$>
-                                   vsep (map (dumpInstance . prettifySubclasses) subclasses))
+             (if null subclasses then empty
+              else line <$> nest 4 (text "Subclasses:" <$>
+                                    vsep (map (dumpInstance . prettifySubclasses) subclasses)))
+             <>
+             (if null superclasses then empty
+              else line <$> nest 4 (text "Default superclass instances:" <$>
+                                     vsep (map dumpInstance superclasses)))
   where
     params' = zip pNames (repeat False)
 
@@ -119,11 +124,11 @@ pprintDocs ist (ClassDoc n doc meths params instances)
     updateRef nm (PRef fc _) = PRef fc nm
     updateRef _  pt          = pt
 
-    hasConstraint (PPi (Constraint _ _) _ _ _)  = True
-    hasConstraint (PPi _                _ _ pt) = hasConstraint pt
-    hasConstraint _                             = False
+    isSubclass (PPi (Constraint _ _) _ (PApp _ _ args) (PApp _ (PRef _ nm) args')) = nm == n && map getTm args == map getTm args'
+    isSubclass (PPi _                _ _ pt)                                       = isSubclass pt
+    isSubclass _                                                                   = False
 
-    (subclasses, instances') = partition hasConstraint instances
+    (subclasses, instances') = partition isSubclass instances
 
     prettyParameters = if any (isJust . snd) params
                        then vsep (map (\(nm,md) -> prettyName False params' nm <+> maybe empty showDoc md) params)
@@ -152,8 +157,12 @@ docClass n ci
            docstr = maybe emptyDocstring fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd))) (class_params ci)
            instances = map (delabTy i) (class_instances ci)
-       mdocs <- mapM (docFun .fst) (class_methods ci)
-       return $ ClassDoc n docstr mdocs params instances
+           superclasses = catMaybes $ map getDInst (class_default_superclasses ci)
+       mdocs <- mapM (docFun . fst) (class_methods ci)
+       return $ ClassDoc n docstr mdocs params instances superclasses
+  where
+    getDInst (PInstance _ _ _ _ _ t _ _) = Just t
+    getDInst _                           = Nothing
 
 docFun :: Name -> Idris FunDoc
 docFun n
@@ -192,6 +201,3 @@ pprintConstDocs ist c str = text "Primitive" <+> text (if constIsType c then "ty
         t (Str _) = PConstant StrType
         t (Ch c)  = PConstant $ AType (ATInt ITChar)
         t _       = PType
-
-
-
