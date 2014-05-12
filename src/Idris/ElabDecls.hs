@@ -2003,12 +2003,12 @@ elabClass info syn doc fc constraints tn ps pDocs ds
     getMeth (m:ms) (a:as) x | x == a = PRef fc m
                             | otherwise = getMeth ms as x
 
-    lhsArgs (EA : xs) (n : ns) = pexp (PRef fc n) : lhsArgs xs ns
+    lhsArgs (EA : xs) (n : ns) = [] -- pexp (PRef fc n) : lhsArgs xs ns
     lhsArgs (IA : xs) ns = lhsArgs xs ns
     lhsArgs (CA : xs) ns = lhsArgs xs ns
     lhsArgs [] _ = []
 
-    rhsArgs (EA : xs) (n : ns) = pexp (PRef fc n) : rhsArgs xs ns
+    rhsArgs (EA : xs) (n : ns) = [] -- pexp (PRef fc n) : rhsArgs xs ns
     rhsArgs (IA : xs) ns = pexp Placeholder : rhsArgs xs ns
     rhsArgs (CA : xs) ns = pconst (PResolveTC fc) : rhsArgs xs ns
     rhsArgs [] _ = []
