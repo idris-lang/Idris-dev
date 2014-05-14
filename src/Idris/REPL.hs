@@ -295,6 +295,10 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.MakeWithBlock line name) =
   process stdout fn (MakeWith False line (sUN name))
 runIdeSlaveCommand id orig fn mods (IdeSlave.ProofSearch r line name hints) =
   process stdout fn (DoProofSearch False r line (sUN name) (map sUN hints))
+runIdeSlaveCommand id orig fn mods (IdeSlave.MakeLemma line name) =
+  case splitName name of
+    Left err -> iPrintError err
+    Right n -> process stdout fn (MakeLemma False line n)
 runIdeSlaveCommand id orig fn mods (IdeSlave.Apropos a) =
   process stdout fn (Apropos a)
 runIdeSlaveCommand id orig fn mods (IdeSlave.GetOpts) =
