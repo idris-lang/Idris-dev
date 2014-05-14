@@ -15,6 +15,7 @@ import Idris.ElabDecls
 import Idris.Error
 import Idris.Delaborate
 import Idris.Output
+import Idris.IdeSlave hiding (IdeSlaveCommand(..))
 
 import Util.Pretty
 import Util.System
@@ -23,6 +24,7 @@ import System.FilePath
 import System.Directory
 import System.IO
 import Data.Char
+import Data.Maybe (fromMaybe)
 
 
 caseSplitAt :: Handle -> FilePath -> Bool -> Int -> Name -> Idris ()
@@ -254,15 +256,32 @@ makeLemma h fn updatefile l n
                do let fb = fn ++ "~"
                   runIO $ writeFile fb (addLem before tyline lem lem_app later)
                   runIO $ copyFile fb fn
-               else ihPrintResult h $ lem ++ "\n" ++ lem_app
+               else case idris_outputmode i of
+                      RawOutput -> ihPrintResult h $ lem ++ "\n" ++ lem_app
+                      IdeSlave n ->
+                        let good = SexpList [SymbolAtom "ok",
+                                             SexpList [SymbolAtom "metavariable-lemma",
+                                                       SexpList [SymbolAtom "replace-metavariable",
+                                                                 StringAtom lem_app],
+                                                       SexpList [SymbolAtom "definition-type",
+                                                                 StringAtom lem]]]
+                        in runIO . hPutStrLn h $ convSExp "return" good n
+
           else do -- provisional definition
-            let lem_app = show n ++ appArgs [] mty ++ 
+            let lem_app = show n ++ appArgs [] mty ++
                                  " = ?" ++ show n ++ "_rhs"
             if updatefile then
                do let fb = fn ++ "~"
                   runIO $ writeFile fb (addProv before tyline lem_app later)
                   runIO $ copyFile fb fn
-               else ihPrintResult h $ lem_app
+               else case idris_outputmode i of
+                      RawOutput -> ihPrintResult h $ lem_app
+                      IdeSlave n ->
+                        let good = SexpList [SymbolAtom "ok",
+                                             SexpList [SymbolAtom "provisional-definition-lemma",
+                                                       SexpList [SymbolAtom "definition-clause",
+                                                                 StringAtom lem_app]]]
+                        in runIO . hPutStrLn h $ convSExp "return" good n
 
   where getIndent s = length (takeWhile isSpace s)
 
@@ -318,5 +337,3 @@ makeLemma h fn updatefile l n
                   unlines $ before ++ tyline : 
                             (later_bef ++ [blankline, lem_app, blankline] ++
                                       later_end)
-                           
-
