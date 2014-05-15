@@ -66,6 +66,8 @@ Extra-source-files:
 
                        rts/*.c
                        rts/*.h
+                       rts/windows/*.c
+                       rts/windows/*.h
                        rts/Makefile
 
                        libs/Makefile
