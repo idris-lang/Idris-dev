@@ -347,27 +347,38 @@ natRange n = List.reverse (go n)
   where go Z = []
         go (S n) = n :: go n
 
+-- predifine Nat versions of Enum, so we can use them in the default impls
+total natEnumFromThen : Nat -> Nat -> Stream Nat
+natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
+total natEnumFromTo : Nat -> Nat -> List Nat
+natEnumFromTo n m = map (plus n) (natRange ((S m) - n))
+total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
+natEnumFromThenTo _ Z   _ = []
+natEnumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
+
 class Enum a where
   total pred : a -> a
   total succ : a -> a
+  succ e = fromNat (S (toNat e))
   total toNat : a -> Nat
   total fromNat : Nat -> a
   total enumFrom : a -> Stream a
   enumFrom n = n :: enumFrom (succ n)
   total enumFromThen : a -> a -> Stream a
+  enumFromThen x y = map fromNat (natEnumFromThen (toNat x) (toNat y))
   total enumFromTo : a -> a -> List a
+  enumFromTo x y = map fromNat (natEnumFromTo (toNat x) (toNat y))
   total enumFromThenTo : a -> a -> a -> List a
-
+  enumFromThenTo x1 x2 y = map fromNat (natEnumFromThenTo (toNat x1) (toNat x2) (toNat y))
 
 instance Enum Nat where
-  pred = Nat.pred
-  succ = S
-  toNat = id
-  fromNat = id
-  enumFromThen n inc = n :: enumFromThen (fromNat (plus (toNat inc) (toNat n))) inc
-  enumFromThenTo _ Z   _ = []
-  enumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
-  enumFromTo n m = map (plus n) (natRange ((S m) - n))
+  pred n = Nat.pred n
+  succ n = S n
+  toNat x = id x
+  fromNat x = id x
+  enumFromThen x y = natEnumFromThen x y
+  enumFromThenTo x y z = natEnumFromThenTo x y z
+  enumFromTo x y = natEnumFromTo x y
 
 instance Enum Integer where
   pred n = n - 1
@@ -406,6 +417,17 @@ instance Enum Int where
     where go : List Nat -> List Int
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
+
+instance Enum (Fin (S n)) where
+  pred fZ = fZ
+  pred (fS n) = weaken n
+  succ n = case strengthen (fS n) of
+    Left _ => last
+    Right k => k
+  toNat n = cast n
+  fromNat {n=n} m = case natToFin m (S n) of
+    Just k => k
+    Nothing => last
 
 syntax "[" [start] ".." [end] "]"
      = enumFromTo start end
