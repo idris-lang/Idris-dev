@@ -180,9 +180,9 @@ primitives =
    Prim (sUN "prim__registerPtr") (ty [PtrType, AType (ATInt ITNative)] ManagedPtrType) 2 (p_cantreduce)
     (2, LRegisterPtr) total,
    -- Buffers
-   Prim (sUN "prim__allocate") (ty [AType (ATInt (ITFixed IT64))] BufferType) 1 (p_cantreduce)
+   Prim (sUN "prim__allocate") (ty [AType (ATInt (ITFixed IT64))] BufferType) 1 (p_allocate)
     (1, LAllocate) total,
-   Prim (sUN "prim__appendBuffer") (ty [BufferType, AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), BufferType] BufferType) 6 (p_cantreduce)
+   Prim (sUN "prim__appendBuffer") (ty [BufferType, AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), BufferType] BufferType) 6 (p_appendBuffer)
     (6, LAppendBuffer) partial
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
     ++ concatMap vecOps vecTypes
@@ -291,10 +291,10 @@ fixedOps ity@(ITFixed _) =
       thisTy = AType $ ATInt ity
       appendFun en = Prim (sUN $ "prim__append" ++ tyName ++ show en)
                          (ty [BufferType, b64, b64, thisTy] BufferType)
-                         4 (p_cantreduce) (4, LAppend ity en) partial
+                         4 (p_append en) (4, LAppend ity en) partial
       peekFun en = Prim (sUN $ "prim__peek" ++ tyName ++ show en)
                          (ty [BufferType, b64] thisTy)
-                         2 (p_cantreduce) (2, LPeek ity en) partial
+                         2 (p_peek ity en) (2, LPeek ity en) partial
 
 mapHalf :: (V.Unbox a, V.Unbox b) => ((a, a) -> b) -> Vector a -> Vector b
 mapHalf f xs = V.generate (V.length xs `div` 2) (\i -> f (xs V.! (i*2), xs V.! (i*2+1)))
@@ -697,6 +697,53 @@ p_strCons _ = Nothing
 p_strRev [Str xs] = Just $ Str (reverse xs)
 p_strRev _ = Nothing
 
+p_allocate, p_appendBuffer :: [Const] -> Maybe Const
+p_allocate [B64 _] = Just $ B8V V.empty
+p_allocate n = Nothing
+p_appendBuffer [B8V vect1, B64 size1, B64 count, B64 size2, B64 off, B8V vect2] =
+    Just $ B8V (foldl (V.++)
+                      (V.slice 0 (fromIntegral size1) vect1)
+                      (replicate (fromIntegral count) (V.slice (fromIntegral off) (fromIntegral size2) vect2)))
+p_appendBuffer n = Nothing
+p_append :: Endianness -> [Const] -> Maybe Const
+p_append en [B8V vect, B64 size, B64 count, val] =
+    let bytes = case val of
+                  B8 x -> [x]
+                  B16 x -> [fromIntegral x, fromIntegral (shiftR x 8)]
+                  B32 x -> map (fromIntegral . shiftR x) [0,8..24]
+                  B64 x -> map (fromIntegral . shiftR x) [0,8..56]
+    in Just $ B8V (foldl V.snoc
+                         (V.slice 0 (fromIntegral size) vect)
+                         (concat (replicate (fromIntegral count)
+                                            (case en of
+                                               BE -> reverse bytes
+                                               _  -> bytes))))
+p_append _ _ = Nothing
+
+p_peek :: IntTy -> Endianness -> [Const] -> Maybe Const
+p_peek (ITFixed IT8)  _ [B8V vect, B64 offset] = Just $ B8 (vect V.! fromIntegral offset)
+p_peek (ITFixed IT16) en [B8V vect, B64 offset] =
+    let bytes = [0..1]
+    in Just $ B16 (foldl (\full byte -> shiftL full 8 .|. fromIntegral (vect V.! (fromIntegral offset+byte)))
+                         0
+                         (case en of
+                            BE -> bytes
+                            _  -> reverse bytes))
+p_peek (ITFixed IT32) en [B8V vect, B64 offset] =
+    let bytes = [0..1]
+    in Just $ B32 (foldl (\full byte -> shiftL full 8 .|. fromIntegral (vect V.! (fromIntegral offset+byte)))
+                         0
+                         (case en of
+                            BE -> bytes
+                            _  -> reverse bytes))
+p_peek (ITFixed IT64) en [B8V vect, B64 offset] =
+    let bytes = [0..1]
+    in Just $ B64 (foldl (\full byte -> shiftL full 8 .|. fromIntegral (vect V.! (fromIntegral offset+byte)))
+                         0
+                         (case en of
+                            BE -> bytes
+                            _  -> reverse bytes))
+p_peek _ _ _ = Nothing
+
 p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
-
