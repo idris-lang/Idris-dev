@@ -1,7 +1,7 @@
 // C-Side of the Idris network library
 // (C) Simon Fowler, 2014
 // MIT Licensed. Have fun!
-#include "idris_net.h"
+#include "../idris_net.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -10,6 +10,12 @@
 #include <string.h>
 #include <Winsock2.h>
 #include <Ws2tcpip.h>
+
+
+// inet_ntop isn't defined in the old mingw delivered with GHC, 
+// so put the prototype here, cribbed from a newer version of it
+WINSOCK_API_LINKAGE LPCSTR WSAAPI InetNtopA(INT Family, PVOID pAddr,
+        LPSTR pStringBuf, size_t StringBufSize);
 
 static int socket_inited = 0;
 static WSADATA wsa_data;
@@ -22,12 +28,17 @@ void idrnet_free(void* ptr) {
     free(ptr);
 }
 
-static int check_init()
+static void clean_sockets(void) {
+    WSACleanup();
+}
+
+static int check_init(void)
 {
     if (!socket_inited) {
         int result = WSAStartup(MAKEWORD(2, 2), &wsa_data);
         if (result == NO_ERROR) {
             socket_inited = 1;
+            atexit(clean_sockets);
         }
     }
     return socket_inited;
@@ -104,7 +115,7 @@ int idrnet_sockaddr_family(void* sockaddr) {
 char* idrnet_sockaddr_ipv4(void* sockaddr) {
     struct sockaddr_in* addr = (struct sockaddr_in*) sockaddr;
     char* ip_addr = (char*) malloc(sizeof(char) * INET_ADDRSTRLEN);
-    inet_ntop(AF_INET, &(addr->sin_addr), ip_addr, INET_ADDRSTRLEN);
+    InetNtopA(AF_INET, &(addr->sin_addr), ip_addr, INET_ADDRSTRLEN);
     return ip_addr;
 }
 
@@ -139,7 +150,7 @@ int idrnet_send_buf(int sockfd, void* data, int len) {
 
 void* idrnet_recv(int sockfd, int len) {
     if (!check_init()) {
-        return -1;
+        return NULL;
     }
     idrnet_recv_result* res_struct = 
         (idrnet_recv_result*) malloc(sizeof(idrnet_recv_result));
