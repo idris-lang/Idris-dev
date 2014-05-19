@@ -195,7 +195,7 @@ toCons ns (n, i)
                 (DApp False n (map (DV . Glob) (take i (genArgs 0))))))))
           : [] -- mkApplyCase n 0 i
     | otherwise = []
-  where dupdate tlarg x = x
+  where dupdate tlarg x = DUpdate tlarg x
 
 toConsA :: [(Name, Int)] -> (Name, Int) -> [(Name, Int, EvalApply DAlt)]
 toConsA ns (n, i)
