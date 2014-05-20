@@ -1826,7 +1826,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                     do lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
                        return $ PWith fc wname lhs ws wval withs'
     mkAux wname toplhs ns ns' c
-        = ifail $ show fc ++ "badly formed with clause"
+        = ifail $ show fc ++ ":badly formed with clause"
 
     addArg (PApp fc f args) w = PApp fc f (args ++ [pexp w])
     addArg (PRef fc f) w = PApp fc (PRef fc f) [pexp w]
@@ -1837,8 +1837,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
               return $ substMatches mvars $
                   PApp fc (PRef fc' wname)
                       (map pexp ns ++ pexp w : (map pexp ns'))
-    updateLHS n wname mvars ns ns' tm w
-        = ifail $ "Not implemented match " ++ show tm
+    updateLHS n wname mvars ns_in ns_in' tm w
+        = updateLHS n wname mvars ns_in ns_in' (PApp fc tm []) w
 
     keepMvar mvs fc v | v `elem` mvs = PRef fc v
                       | otherwise = Placeholder

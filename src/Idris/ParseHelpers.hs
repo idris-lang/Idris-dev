@@ -316,7 +316,7 @@ operatorLetter = oneOf opChars
 -- | Parses an operator
 operator :: MonadicParsing m => m String
 operator = do op <- token . some $ operatorLetter
-              when (op `elem` [":", "=>", "->", "<-", "=", "?="]) $ 
+              when (op `elem` [":", "=>", "->", "<-", "=", "?=", "|"]) $ 
                    fail $ op ++ " is not a valid operator"
               return op
 
