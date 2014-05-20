@@ -347,7 +347,7 @@ natRange n = List.reverse (go n)
   where go Z = []
         go (S n) = n :: go n
 
--- predifine Nat versions of Enum, so we can use them in the default impls
+-- predefine Nat versions of Enum, so we can use them in the default impls
 total natEnumFromThen : Nat -> Nat -> Stream Nat
 natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
 total natEnumFromTo : Nat -> Nat -> List Nat
