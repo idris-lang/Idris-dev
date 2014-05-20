@@ -1,8 +1,18 @@
 // C-Side of the Idris network library
 // (C) Simon Fowler, 2014
 // MIT Licensed. Have fun!
-#include "idris_net.h"
+#include <errno.h>
+#include <netdb.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
+
+#include "idris_net.h"
 
 void* idrnet_malloc(int size) {
     return malloc(size);
