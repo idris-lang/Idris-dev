@@ -296,6 +296,8 @@ jsInstanceOf = JSBinOp "instanceof"
 jsEq :: JS -> JS -> JS
 jsEq = JSBinOp "=="
 
+jsNotEq :: JS -> JS -> JS
+jsNotEq = JSBinOp "!="
 
 jsAnd :: JS -> JS -> JS
 jsAnd = JSBinOp "&&"
@@ -1601,23 +1603,36 @@ codegenJS_all target definitions includes filename outputType = do
 
     mainLoop :: JS
     mainLoop =
-      JSAlloc "main" $ Just $ JSFunction [] (
-        case target of
-             Node       -> mainFun
-             JavaScript -> JSCond [(isReady, mainFun), (JSTrue, jsMeth (JSIdent "window") "addEventListener" [
-                 JSString "DOMContentLoaded", JSFunction [] (
-                   mainFun
-                 ), JSFalse
-               ])]
+        JSAlloc "main" $ Just $ JSFunction [] (
+          case target of
+              Node       -> mainFun
+              JavaScript -> JSCond [ (exists document `jsAnd` isReady, mainFun)
+                                   , (exists window, windowMainFun)
+                                   , (JSTrue, mainFun)
+                                   ]
       )
       where
+        exists :: JS -> JS
+        exists js = (JSPreOp "typeof " js) `jsNotEq` JSString "undefined"
+
         mainFun :: JS
         mainFun = jsTailcall $ jsCall runMain []
 
+        window :: JS
+        window = JSIdent "window"
+
+        document :: JS
+        document = JSIdent "document"
+
+        windowMainFun :: JS
+        windowMainFun = jsMeth window "addEventListener" [
+            JSString "DOMContentLoaded"
+            , JSFunction [] ( mainFun )
+            , JSFalse
+            ]
 
         isReady :: JS
-        isReady = readyState `jsEq` JSString "complete" `jsOr` readyState `jsEq` JSString "loaded"
-
+        isReady = JSParens $ readyState `jsEq` JSString "complete" `jsOr` readyState `jsEq` JSString "loaded"
 
         readyState :: JS
         readyState = JSProj (JSIdent "document") "readyState"

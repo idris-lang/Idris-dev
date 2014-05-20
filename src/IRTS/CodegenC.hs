@@ -62,7 +62,6 @@ codegenC' defs out exec incs objs libs flags dbg
              hPutStr tmph cout
              hFlush tmph
              hClose tmph
-             let useclang = False
              comp <- getCC
              libFlags <- getLibFlags
              incFlags <- getIncFlags
@@ -175,15 +174,15 @@ bcc i (CASE True r code def)
     | length code < 4 = showCase i def code
   where
     showCode :: Int -> [BC] -> String
-    showCode i bc = "{\n" ++ indent i ++ concatMap (bcc (i + 1)) bc ++
+    showCode i bc = "{\n" ++ concatMap (bcc (i + 1)) bc ++
                     indent i ++ "}\n"
 
     showCase :: Int -> Maybe [BC] -> [(Int, [BC])] -> String
     showCase i Nothing [(t, c)] = showCode i c
     showCase i (Just def) [] = showCode i def
     showCase i def ((t, c) : cs)
-        = "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
-           ++ "else " ++ showCase i def cs
+        = indent i ++ "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
+           ++ indent i ++ "else " ++ showCase i def cs
 
 bcc i (CASE safe r code def)
     = indent i ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n" ++

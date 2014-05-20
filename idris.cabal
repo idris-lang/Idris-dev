@@ -66,6 +66,8 @@ Extra-source-files:
 
                        rts/*.c
                        rts/*.h
+                       rts/windows/*.c
+                       rts/windows/*.h
                        rts/Makefile
 
                        libs/Makefile
@@ -557,6 +559,7 @@ Library
                 , Idris.Transforms
                 , Idris.Unlit
                 , Idris.WhoCalls
+                , Idris.CmdOptions
 
                 , IRTS.BCImp
                 , IRTS.Bytecode
@@ -626,6 +629,7 @@ Library
                 , xml
                 , deepseq
                 , zlib
+                , optparse-applicative
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleContexts

@@ -172,6 +172,7 @@ data IdeSlaveCommand = REPLCompletions String
                      | AddMissing Int String
                      | MakeWithBlock Int String
                      | ProofSearch Bool Int String [String]
+                     | MakeLemma Int String
                      | LoadFile String
                      | DocsFor String
                      | Apropos String
@@ -199,6 +200,7 @@ sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom
   where getHints = mapM (\h -> case h of
                                  StringAtom s -> Just s
                                  _            -> Nothing)
+sexpToCommand (SexpList [SymbolAtom "make-lemma", IntegerAtom line, StringAtom name])   = Just (MakeLemma (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "refine", IntegerAtom line, StringAtom name, StringAtom hint]) = Just (ProofSearch False (fromInteger line) name [hint])
 sexpToCommand (SexpList [SymbolAtom "docs-for", StringAtom name])                       = Just (DocsFor name)
 sexpToCommand (SexpList [SymbolAtom "apropos", StringAtom search])                      = Just (Apropos search)
