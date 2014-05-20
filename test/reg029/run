@@ -3,5 +3,5 @@ idris $@ reg029.idr -o reg029
 unset IDRIS_REG029_NONEXISTENT_VAR
 export IDRIS_REG029_EXISTENT_VAR='exists!'
 ./reg029
-idris $@ reg029.idr --exec
+idris $@ reg029.idr --execute
 rm -f reg029 *.ibc
