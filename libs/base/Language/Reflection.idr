@@ -167,6 +167,8 @@ data Tactic = Try Tactic Tactic
             -- ^ apply both tactics in sequence
             | Trivial
             -- ^ intelligently construct the proof target from the context
+            | Search Int
+            -- ^ build a proof by applying contructors up to a maximum depth 
             | Instance
             -- ^ resolve a type class 
             | Solve

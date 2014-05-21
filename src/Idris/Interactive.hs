@@ -166,8 +166,8 @@ doProofSearch h fn updatefile rec l n hints
                                   Just (t, e, False) -> (t, e, False)
                                   _ -> (Nothing, 0, True)
          let fc = fileFC fn
-         let body t = PProof [Try (TSeq Intros (ProofSearch rec False t hints))
-                                  (ProofSearch rec False t hints)]
+         let body t = PProof [Try (TSeq Intros (ProofSearch rec False 10 t hints))
+                                  (ProofSearch rec False 10 t hints)]
          let def = PClause fc mn (PRef fc mn) [] (body top) []
          newmv <- idrisCatch
              (do elabDecl' EAll toplevel (PClauses fc [] mn [def])

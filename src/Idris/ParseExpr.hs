@@ -1226,7 +1226,9 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
           <|> do reserved "compute"; return Compute
           <|> do reserved "trivial"; return Trivial
           <|> do reserved "unify"; return DoUnify
-          <|> do reserved "search"; return (ProofSearch True True Nothing [])
+          <|> do reserved "search"
+                 depth <- option 10 natural
+                 return (ProofSearch True True (fromInteger depth) Nothing [])
           <|> do reserved "instance"; return TCInstance
           <|> do reserved "solve"; return Solve
           <|> do reserved "attack"; return Attack

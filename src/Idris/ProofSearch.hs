@@ -48,9 +48,10 @@ proofSearch :: Bool ->
                Bool -> -- invoked from a tactic proof. If so, making
                        -- new metavariables is meaningless, and there shoudl
                        -- be an error reported instead.
+               Int -> -- maximum depth
                (PTerm -> ElabD ()) -> Maybe Name -> Name -> [Name] ->
                IState -> ElabD ()
-proofSearch False fromProver elab _ nroot [fn] ist
+proofSearch False fromProver depth elab _ nroot [fn] ist
        = do -- get all possible versions of the name, take the first one that
             -- works
             let all_imps = lookupCtxtName fn (idris_implicits ist)
@@ -81,13 +82,11 @@ proofSearch False fromProver elab _ nroot [fn] ist
 
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (True, priority arg) -- try to get all of them by unification
-proofSearch rec fromProver elab fn nroot hints ist 
+proofSearch rec fromProver maxDepth elab fn nroot hints ist 
        = case lookupCtxt nroot (idris_tyinfodata ist) of
               [TISolution ts] -> findInferredTy ts
               _ -> psRec rec maxDepth
   where
-    maxDepth = 6
-
     findInferredTy (t : _) = elab (delab ist (toUN t)) 
 
     toUN t@(P nt (MN i n) ty) 

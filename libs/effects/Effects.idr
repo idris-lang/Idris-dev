@@ -100,53 +100,6 @@ rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
 
 
 -- -------------------------------------------------- [ The Effect EDSL itself ]
--- some proof automation
-
-%reflection
-reflectListEffElem : List a -> Tactic
-reflectListEffElem [] = Refine "Here" `Seq` Solve
-reflectListEffElem (x :: xs)
-     = Try (Refine "Here" `Seq` Solve)
-           (Refine "There" `Seq` (Solve `Seq` reflectListEffElem xs))
--- TMP HACK! FIXME!
--- The evaluator needs a 'function case' to know its a reflection function
--- until we propagate that information! Without this, the _ case won't get
--- matched. 
-reflectListEffElem (x ++ y) = Refine "Here" `Seq` Solve
-reflectListEffElem _ = Refine "Here" `Seq` Solve
-
-%reflection
-reflectSubList : List a -> Tactic
-reflectSubList [] = Refine "subListId" `Seq` Solve
-reflectSubList (x :: xs)
-     = Try (Refine "subListId" `Seq` Solve)
-           (Try (Refine "Keep" `Seq` (Solve `Seq` reflectSubList xs))
-                (Refine "Drop" `Seq` (Solve `Seq` reflectSubList xs)))
-reflectSubList (x ++ y) = Refine "subListId" `Seq` Solve
-reflectSubList _ = Refine "subListId" `Seq` Solve
-
-%reflection
-reflectDefaultList : List a -> Tactic
-reflectDefaultList [] = Refine "enil" `Seq` Solve
-reflectDefaultList (x :: xs)
-     = Refine "econs" `Seq` 
-         (Solve `Seq`
-           (Instance `Seq` 
-         (Refine "default" `Seq`
-           (Solve `Seq`
-             (Instance `Seq`
-              (reflectDefaultList xs))))))
-reflectDefaultList (x ++ y) = Refine "Nil" `Seq` Solve
-reflectDefaultList _ = Refine "Nil" `Seq` Solve
-
-%reflection
-reflectEff : (P : Type) -> Tactic
-reflectEff (EffElem m a xs)
-     = reflectListEffElem xs `Seq` Solve
-reflectEff (SubList xs ys)
-     = reflectSubList ys `Seq` Solve
-reflectEff (Env m xs)
-     = reflectDefaultList xs `Seq` Solve
 
 updateResTy : (val : t) ->
               (xs : List EFFECT) -> EffElem e a xs -> e t a b ->
@@ -269,7 +222,8 @@ eff {xs = [l ::: x]} env (l :- prog) k
          eff env' prog (\p', envk => k p' (relabel l envk))
 
 -- yuck :) Haven't got type class instances working nicely in tactic
--- proofs yet, so just brute force it.
+-- proofs yet, and 'search' can't be told about any hints yet,
+-- so just brute force it.
 syntax MkDefaultEnv = with Env
                        (| [], [default], [default, default],
                           [default, default, default],
@@ -281,7 +235,7 @@ syntax MkDefaultEnv = with Env
 
 implicit
 lift' : Eff m t ys ys' ->
-        {default tactics { byReflection reflectEff; }
+        {default tactics { search 100; }
            prf : SubList ys xs} ->
         Eff m t xs (\v => updateWith (ys' v) xs prf)
 lift' e {prf} = lift prf e
@@ -289,7 +243,7 @@ lift' e {prf} = lift prf e
 implicit
 effect' : {a, b: _} -> {e : Effect} ->
           (eff : e t a b) ->
-          {default tactics { byReflection reflectEff; }
+          {default tactics { search 100; }
              prf : EffElem e a xs} ->
          Eff m t xs (\v => updateResTy v xs prf eff)
 effect' e {prf} = effect prf e
