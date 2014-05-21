@@ -1,4 +1,4 @@
-.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib test_c test
+.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib test_c test lib_doc lib_doc_clean
 
 include config.mk
 -include custom.mk
@@ -45,6 +45,11 @@ linecount:
 doc: dist/setup-config
 	$(CABAL) haddock --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
 
+lib_doc:
+    $(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc
+
+lib_doc_clean:
+    $(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc_clean
 
 dist/setup-config:
 	$(CABAL) configure $(CABALFLAGS)
