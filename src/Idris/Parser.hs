@@ -132,6 +132,10 @@ prog syn = do whiteSpace
               case maxline syn of
                    Nothing -> do notOpenBraces; eof
                    _ -> return ()
+              ist <- get
+              fc <- getFC
+              put ist { idris_parsedSpan = Just (FC (fc_fname fc) (0,0) (fc_end fc)),
+                        ibc_write = IBCParsedRegion fc : ibc_write ist }
               return c
 
 {-| Parses a top-level declaration
@@ -158,12 +162,12 @@ decl syn = do fc <- getFC
               -- if we're after maxline, stop here
               let continue = case maxline syn of
                                 Nothing -> True
-                                Just l -> if fst (fc_end fc) > l 
+                                Just l -> if fst (fc_end fc) > l
                                              then False
                                              else True
               if continue then do notEndBlock
                                   declBody
-                          else fail "End of readable input" 
+                          else fail "End of readable input"
   where declBody :: IdrisParser [PDecl]
         declBody =     declBody'
                    <|> using_ syn
