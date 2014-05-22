@@ -538,6 +538,18 @@ isetPrompt p = do i <- getIState
                   case idris_outputmode i of
                     IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
 
+-- | Tell clients how much was parsed and loaded
+isetLoadedRegion :: Idris ()
+isetLoadedRegion = do i <- getIState
+                      let span = idris_parsedSpan i
+                      case span of
+                        Just fc ->
+                          case idris_outputmode i of
+                            IdeSlave n ->
+                              runIO . putStrLn $
+                                convSExp "set-loaded-region" fc n
+                        Nothing -> return ()
+
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
                    let opts = idris_options i

@@ -121,15 +121,18 @@ instance SExpable OutputAnnotation where
                                              (SymbolAtom "doc-overview", StringAtom doc)] ++
                                              if not (null name) then [(SymbolAtom "name", StringAtom name)] else []
   toSExp AnnKeyword              = toSExp [(SymbolAtom "decor", SymbolAtom "keyword")]
-  toSExp (AnnFC (FC f (sl, sc) (el, ec)))      = toSExp [(SymbolAtom "source-loc",
-                                                    ((SymbolAtom "filename", StringAtom f),
-                                                     (SymbolAtom "start",  IntegerAtom (toInteger sl), IntegerAtom (toInteger sc)),
-                                                     (SymbolAtom "end", IntegerAtom (toInteger el), IntegerAtom (toInteger ec))))]
+  toSExp (AnnFC fc)      = toSExp [(SymbolAtom "source-loc", toSExp fc)]
   toSExp (AnnTextFmt fmt) = toSExp [(SymbolAtom "text-formatting", SymbolAtom format)]
       where format = case fmt of
                        BoldText      -> "bold"
                        ItalicText    -> "italic"
                        UnderlineText -> "underline"
+
+instance SExpable FC where
+  toSExp (FC f (sl, sc) (el, ec)) =
+    toSExp ((SymbolAtom "filename", StringAtom f),
+            (SymbolAtom "start",  IntegerAtom (toInteger sl), IntegerAtom (toInteger sc)),
+            (SymbolAtom "end", IntegerAtom (toInteger el), IntegerAtom (toInteger ec)))
 
 escape :: String -> String
 escape = concatMap escapeChar
@@ -173,7 +176,7 @@ data IdeSlaveCommand = REPLCompletions String
                      | MakeWithBlock Int String
                      | ProofSearch Bool Int String [String] (Maybe Int) -- ^^ Recursive?, line, name, hints, depth
                      | MakeLemma Int String
-                     | LoadFile String
+                     | LoadFile String (Maybe Int)
                      | DocsFor String
                      | Apropos String
                      | GetOpts
@@ -186,7 +189,8 @@ sexpToCommand :: SExp -> Maybe IdeSlaveCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
 sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])                       = Just (Interpret cmd)
 sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix])             = Just (REPLCompletions prefix)
-sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])                  = Just (LoadFile filename)
+sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename, IntegerAtom line])                  = Just (LoadFile filename (Just (fromInteger line)))
+sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])                  = Just (LoadFile filename Nothing)
 sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])                        = Just (TypeOf name)
 sexpToCommand (SexpList [SymbolAtom "case-split", IntegerAtom line, StringAtom name])   = Just (CaseSplit (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom name])   = Just (AddClause (fromInteger line) name)

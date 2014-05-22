@@ -253,17 +253,22 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.REPLCompletions str) =
                                    IdeSlave.toSExp (map replacement compls,
                                    reverse unused)]
      runIO $ putStrLn $ IdeSlave.convSExp "return" good id
-runIdeSlaveCommand id orig fn mods (IdeSlave.LoadFile filename) =
+runIdeSlaveCommand id orig fn mods (IdeSlave.LoadFile filename toline) =
   do i <- getIState
      clearErr
      putIState (orig { idris_options = idris_options i,
                        idris_outputmode = (IdeSlave id) })
-     loadInputs stdout [filename] Nothing
+     loadInputs stdout [filename] toline
      isetPrompt (mkPrompt [filename])
      -- Report either success or failure
      i <- getIState
      case (errSpan i) of
-       Nothing -> iPrintResult $ "loaded " ++ filename
+       Nothing -> let msg = maybe (IdeSlave.SexpList [IdeSlave.SymbolAtom "ok",
+                                                      IdeSlave.SexpList []])
+                                  (\fc -> IdeSlave.SexpList [IdeSlave.SymbolAtom "ok",
+                                                             IdeSlave.toSExp fc])
+                                  (idris_parsedSpan i)
+                  in runIO . putStrLn $ IdeSlave.convSExp "return" msg id
        Just x -> iPrintError $ "didn't load " ++ filename
      ideslave orig [filename]
 runIdeSlaveCommand id orig fn mods (IdeSlave.TypeOf name) =
@@ -1056,7 +1061,7 @@ loadInputs h inputs toline -- furthest line to read in input source files
          tryLoad keepstate [] = warnTotality >> return ()
          tryLoad keepstate (f : fs)
                  = do ist <- getIState
-                      let maxline 
+                      let maxline
                             = case toline of
                                 Nothing -> Nothing
                                 Just l -> case f of

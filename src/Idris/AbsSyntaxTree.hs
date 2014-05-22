@@ -174,6 +174,7 @@ data IState = IState {
     indent_stack :: [Int],
     brace_stack :: [Maybe Int],
     lastTokenSpan :: Maybe FC, -- ^ What was the span of the latest token parsed?
+    idris_parsedSpan :: Maybe FC,
     hide_list :: [(Name, Maybe Accessibility)],
     default_access :: Accessibility,
     default_total :: Bool,
@@ -255,6 +256,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCFunctionErrorHandler Name Name Name
               | IBCPostulate Name
               | IBCTotCheckErr FC String
+              | IBCParsedRegion FC
   deriving Show
 
 -- | The initial state for the compiler
@@ -264,7 +266,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
-                   [] [] Nothing [] Nothing [] [] Nothing [] Hidden False [] Nothing [] [] RawOutput
+                   [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] [] RawOutput
                    True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty Nothing Nothing
 
