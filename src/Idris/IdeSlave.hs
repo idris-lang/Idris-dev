@@ -171,7 +171,7 @@ data IdeSlaveCommand = REPLCompletions String
                      | AddProofClause Int String
                      | AddMissing Int String
                      | MakeWithBlock Int String
-                     | ProofSearch Bool Int String [String]
+                     | ProofSearch Bool Int String [String] (Maybe Int) -- ^^ Recursive?, line, name, hints, depth
                      | MakeLemma Int String
                      | LoadFile String
                      | DocsFor String
@@ -196,12 +196,17 @@ sexpToCommand (SexpList [SymbolAtom "make-with", IntegerAtom line, StringAtom na
 -- The Boolean in ProofSearch means "search recursively"
 -- If it's False, that means "refine", i.e. apply the name and fill in any
 -- arguments which can be done by unification.
-sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom name, SexpList hintexp]) | Just hints <- getHints hintexp = Just (ProofSearch True (fromInteger line) name hints)
-  where getHints = mapM (\h -> case h of
-                                 StringAtom s -> Just s
-                                 _            -> Nothing)
+sexpToCommand (SexpList (SymbolAtom "proof-search" : IntegerAtom line : StringAtom name : rest))
+  | [] <- rest = Just (ProofSearch True (fromInteger line) name [] Nothing)
+  | [SexpList hintexp] <- rest
+  ,  Just hints <- getHints hintexp = Just (ProofSearch True (fromInteger line) name hints Nothing)
+  | [SexpList hintexp, IntegerAtom depth] <- rest
+ , Just hints <- getHints hintexp = Just (ProofSearch True (fromInteger line) name hints (Just (fromInteger depth)))
+ where getHints = mapM (\h -> case h of
+                                StringAtom s -> Just s
+                                _            -> Nothing)
 sexpToCommand (SexpList [SymbolAtom "make-lemma", IntegerAtom line, StringAtom name])   = Just (MakeLemma (fromInteger line) name)
-sexpToCommand (SexpList [SymbolAtom "refine", IntegerAtom line, StringAtom name, StringAtom hint]) = Just (ProofSearch False (fromInteger line) name [hint])
+sexpToCommand (SexpList [SymbolAtom "refine", IntegerAtom line, StringAtom name, StringAtom hint]) = Just (ProofSearch False (fromInteger line) name [hint] Nothing)
 sexpToCommand (SexpList [SymbolAtom "docs-for", StringAtom name])                       = Just (DocsFor name)
 sexpToCommand (SexpList [SymbolAtom "apropos", StringAtom search])                      = Just (Apropos search)
 sexpToCommand (SymbolAtom "get-options")                                                = Just GetOpts
