@@ -3,19 +3,12 @@
 %access public
 %default total
 
-||| Dependent pairs, in their internal representation
+||| Dependent pairs, in their internal representation.
+||| Nothing is erased in this variant; for alternatives see Prelude.Pairs.
 ||| @ a the type of the witness
 ||| @ P the type of the proof
-data Exists : (a : Type) -> (P : a -> Type) -> Type where
-    Ex_intro : {P : a -> Type} -> (x : a) -> P x -> Exists a P
-
-||| The first projection from a dependent pair
-getWitness : {P : a -> Type} -> Exists a P -> a
-getWitness (a ** v) = a
-
-||| The second projection from a dependent pair
-getProof : {P : a -> Type} -> (s : Exists a P) -> P (getWitness s)
-getProof (a ** v) = v
+data Pair : (a : Type) -> (P : a -> Type) -> Type where
+    pair : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Pair a P
 
 ||| The eliminator for the empty type.
 FalseElim : _|_ -> a
