@@ -1,0 +1,11 @@
+reg044.idr:4:4:When elaborating right hand side of Main.pf:
+Can't unify
+        [95mb[0m [94m=[0m [95mb[0m
+with
+        [95ma[0m [94m=[0m [95mb[0m
+
+Specifically:
+        Can't unify
+                [95mb[0m
+        with
+                [95ma[0m
