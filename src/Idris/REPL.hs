@@ -293,8 +293,8 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.AddMissing line name) =
   process stdout fn (AddMissing False line (sUN name))
 runIdeSlaveCommand id orig fn mods (IdeSlave.MakeWithBlock line name) =
   process stdout fn (MakeWith False line (sUN name))
-runIdeSlaveCommand id orig fn mods (IdeSlave.ProofSearch r line name hints) =
-  process stdout fn (DoProofSearch False r line (sUN name) (map sUN hints))
+runIdeSlaveCommand id orig fn mods (IdeSlave.ProofSearch r line name hints depth) =
+  doProofSearch stdout fn False r line (sUN name) (map sUN hints) depth
 runIdeSlaveCommand id orig fn mods (IdeSlave.MakeLemma line name) =
   case splitName name of
     Left err -> iPrintError err
@@ -716,7 +716,7 @@ process h fn (MakeWith updatefile l n)
 process h fn (MakeLemma updatefile l n)
     = makeLemma h fn updatefile l n
 process h fn (DoProofSearch updatefile rec l n hints)
-    = doProofSearch h fn updatefile rec l n hints
+    = doProofSearch h fn updatefile rec l n hints Nothing
 process h fn (Spec t)
                     = do (tm, ty) <- elabVal toplevel False t
                          ctxt <- getContext

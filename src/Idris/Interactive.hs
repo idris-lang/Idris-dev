@@ -152,8 +152,10 @@ makeWith h fn updatefile l n
 
 
 doProofSearch :: Handle -> FilePath -> Bool -> Bool -> 
-                 Int -> Name -> [Name] -> Idris ()
-doProofSearch h fn updatefile rec l n hints
+                 Int -> Name -> [Name] -> Maybe Int -> Idris ()
+doProofSearch h fn updatefile rec l n hints Nothing
+    = doProofSearch h fn updatefile rec l n hints (Just 10)
+doProofSearch h fn updatefile rec l n hints (Just depth)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
          ctxt <- getContext
@@ -166,8 +168,8 @@ doProofSearch h fn updatefile rec l n hints
                                   Just (t, e, False) -> (t, e, False)
                                   _ -> (Nothing, 0, True)
          let fc = fileFC fn
-         let body t = PProof [Try (TSeq Intros (ProofSearch rec False 10 t hints))
-                                  (ProofSearch rec False 10 t hints)]
+         let body t = PProof [Try (TSeq Intros (ProofSearch rec False depth t hints))
+                                  (ProofSearch rec False depth t hints)]
          let def = PClause fc mn (PRef fc mn) [] (body top) []
          newmv <- idrisCatch
              (do elabDecl' EAll toplevel (PClauses fc [] mn [def])
