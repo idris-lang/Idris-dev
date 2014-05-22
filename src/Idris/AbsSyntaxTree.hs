@@ -291,7 +291,7 @@ data Command = Quit
              | DocStr (Either Name Const)
              | TotCheck Name
              | Reload
-             | Load FilePath
+             | Load FilePath (Maybe Int) -- up to maximum line number
              | ChangeDirectory FilePath
              | ModImport String
              | Edit
@@ -960,6 +960,7 @@ data SyntaxInfo = Syn { using :: [Using],
                         decoration :: Name -> Name,
                         inPattern :: Bool,
                         implicitAllowed :: Bool,
+                        maxline :: Maybe Int,
                         dsl_info :: DSL }
     deriving Show
 {-!
@@ -967,7 +968,7 @@ deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] id False False initDSL
+defaultSyntax = Syn [] [] [] [] id False False Nothing initDSL
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n

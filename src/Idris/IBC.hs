@@ -1573,7 +1573,7 @@ instance Binary Using where
                     1 -> do x1 <- get; x2 <- get; return (UConstraint x1 x2)
 
 instance Binary SyntaxInfo where
-        put (Syn x1 x2 x3 x4 _ x5 x6 x7)
+        put (Syn x1 x2 x3 x4 _ x5 x6 _ x7)
           = do put x1
                put x2
                put x3
@@ -1589,7 +1589,7 @@ instance Binary SyntaxInfo where
                x5 <- get
                x6 <- get
                x7 <- get
-               return (Syn x1 x2 x3 x4 id x5 x6 x7)
+               return (Syn x1 x2 x3 x4 id x5 x6 Nothing x7)
 
 instance (Binary t) => Binary (PClause' t) where
         put x

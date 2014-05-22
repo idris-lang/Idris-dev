@@ -48,7 +48,12 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["rmproof"]; n <- P.name; eof; return (RmProof n))
               <|> try (do cmd ["showproof"]; n <- P.name; eof; return (ShowProof n))
               <|> try (do cmd ["log"]; i <- P.natural; eof; return (LogLvl (fromIntegral i)))
-              <|> try (do cmd ["l", "load"]; f <- many anyChar; return (Load f))
+              <|> try (do cmd ["lto", "loadto"]; 
+                          toline <- P.natural
+                          f <- many anyChar; 
+                          return (Load f (Just (fromInteger toline))))
+              <|> try (do cmd ["l", "load"]; f <- many anyChar; 
+                          return (Load f Nothing))
               <|> try (do cmd ["cd"]; f <- many anyChar; return (ChangeDirectory f))
               <|> try (do cmd ["spec"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Spec t))
               <|> try (do cmd ["hnf"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (HNF t))

@@ -166,8 +166,8 @@ processNetCmd orig i h fn cmd
               Left err -> do hPutStrLn h (show err)
                              return (i, fn)
   where
-    processNet fn Reload = processNet fn (Load fn)
-    processNet fn (Load f) =
+    processNet fn Reload = processNet fn (Load fn Nothing)
+    processNet fn (Load f toline) =
         do let ist = orig { idris_options = idris_options i
                           , idris_colourTheme = idris_colourTheme i
                           , idris_colourRepl = False
@@ -177,7 +177,7 @@ processNetCmd orig i h fn cmd
            setOutH h
            setQuiet True
            setVerbose False
-           mods <- loadInputs h [f]
+           mods <- loadInputs h [f] toline
            ist <- getIState
            return (ist, f)
     processNet fn c = do process h fn c
@@ -258,7 +258,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.LoadFile filename) =
      clearErr
      putIState (orig { idris_options = idris_options i,
                        idris_outputmode = (IdeSlave id) })
-     loadInputs stdout [filename]
+     loadInputs stdout [filename] Nothing
      isetPrompt (mkPrompt [filename])
      -- Report either success or failure
      i <- getIState
@@ -474,14 +474,14 @@ processInput cmd orig inputs
                                     , idris_colourTheme = idris_colourTheme i
                                     }
                    clearErr
-                   mods <- loadInputs stdout inputs
+                   mods <- loadInputs stdout inputs Nothing
                    return (Just inputs)
-            Success (Load f) ->
+            Success (Load f toline) ->
                 do putIState orig { idris_options = idris_options i
                                   , idris_colourTheme = idris_colourTheme i
                                   }
                    clearErr
-                   mod <- loadInputs stdout [f]
+                   mod <- loadInputs stdout [f] toline
                    return (Just [f])
             Success (ModImport f) ->
                 do clearErr
@@ -530,7 +530,7 @@ edit f orig
          putIState $ orig { idris_options = idris_options i
                           , idris_colourTheme = idris_colourTheme i
                           }
-         loadInputs stdout [f]
+         loadInputs stdout [f] Nothing
 --          clearOrigPats
          iucheck
          return ()
@@ -994,8 +994,8 @@ idris opts = do res <- runErrorT $ execStateT totalMain idrisInit
                            [] -> return ()
 
 
-loadInputs :: Handle -> [FilePath] -> Idris ()
-loadInputs h inputs
+loadInputs :: Handle -> [FilePath] -> Maybe Int -> Idris ()
+loadInputs h inputs toline -- furthest line to read in input source files
   = idrisCatch
        (do ist <- getIState
            -- if we're in --check and not outputting anything, don't bother
@@ -1056,7 +1056,18 @@ loadInputs h inputs
          tryLoad keepstate [] = warnTotality >> return ()
          tryLoad keepstate (f : fs)
                  = do ist <- getIState
-                      loadFromIFile h f
+                      let maxline 
+                            = case toline of
+                                Nothing -> Nothing
+                                Just l -> case f of
+                                            IDR fn -> if any (fmatch fn) inputs
+                                                         then Just l
+                                                         else Nothing
+                                            LIDR fn -> if any (fmatch fn) inputs
+                                                          then Just l
+                                                          else Nothing
+                                            _ -> Nothing
+                      loadFromIFile h f maxline
                       inew <- getIState
                       -- FIXME: Save these in IBC to avoid this hack! Need to
                       -- preserve it all from source inputs
@@ -1071,6 +1082,10 @@ loadInputs h inputs
 
          ibc (IBC _ _) = True
          ibc _ = False
+
+         fmatch ('.':'/':xs) ys = fmatch xs ys
+         fmatch xs ('.':'/':ys) = fmatch xs ys
+         fmatch xs ys = xs == ys
 
          findNewIBC :: IFileType -> Idris (Maybe IFileType)
          findNewIBC i@(IBC _ _) = return (Just i)
@@ -1181,7 +1196,7 @@ idrisMain opts =
          iputStrLn banner
 
        orig <- getIState
-       loadInputs stdout inputs
+       loadInputs stdout inputs Nothing
 
        runIO $ hSetBuffering stdout LineBuffering
 
@@ -1278,7 +1293,7 @@ initScript = do script <- getInitScript
               case parseCmd i input cmd of
                    Failure err -> runIO $ print (fixColour clr err)
                    Success Reload -> iPrintError "Init scripts cannot reload the file"
-                   Success (Load f) -> iPrintError "Init scripts cannot load files"
+                   Success (Load f _) -> iPrintError "Init scripts cannot load files"
                    Success (ModImport f) -> iPrintError "Init scripts cannot import modules"
                    Success Edit -> iPrintError "Init scripts cannot invoke the editor"
                    Success Proofs -> proofs i

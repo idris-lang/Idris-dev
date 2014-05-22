@@ -128,9 +128,10 @@ import_ = do fc <- getFC
 prog :: SyntaxInfo -> IdrisParser [PDecl]
 prog syn = do whiteSpace
               decls <- many (decl syn)
-              notOpenBraces
-              eof
               let c = (concat decls)
+              case maxline syn of
+                   Nothing -> do notOpenBraces; eof
+                   _ -> return ()
               return c
 
 {-| Parses a top-level declaration
@@ -153,8 +154,16 @@ Decl ::=
 @
 -}
 decl :: SyntaxInfo -> IdrisParser [PDecl]
-decl syn = do notEndBlock
-              declBody
+decl syn = do fc <- getFC
+              -- if we're after maxline, stop here
+              let continue = case maxline syn of
+                                Nothing -> True
+                                Just l -> if fst (fc_end fc) > l 
+                                             then False
+                                             else True
+              if continue then do notEndBlock
+                                  declBody
+                          else fail "End of readable input" 
   where declBody :: IdrisParser [PDecl]
         declBody =     declBody'
                    <|> using_ syn
@@ -1177,21 +1186,21 @@ loadModule' outh f
           then iLOG $ "Already read " ++ file
           else do putIState (i { imported = file : imported i })
                   case fp of
-                    IDR fn  -> loadSource outh False fn
-                    LIDR fn -> loadSource outh True  fn
+                    IDR fn  -> loadSource outh False fn Nothing
+                    LIDR fn -> loadSource outh True  fn Nothing
                     IBC fn src ->
                       idrisCatch (loadIBC fn)
                                  (\c -> do iLOG $ fn ++ " failed " ++ pshow i c
                                            case src of
-                                             IDR sfn -> loadSource outh False sfn
-                                             LIDR sfn -> loadSource outh True sfn)
+                                             IDR sfn -> loadSource outh False sfn Nothing
+                                             LIDR sfn -> loadSource outh True sfn Nothing)
         let (dir, fh) = splitFileName file
         return (dropExtension fh)
 
 
 {- | Load idris code from file -}
-loadFromIFile :: Handle -> IFileType -> Idris ()
-loadFromIFile h i@(IBC fn src)
+loadFromIFile :: Handle -> IFileType -> Maybe Int -> Idris ()
+loadFromIFile h i@(IBC fn src) maxline
    = do iLOG $ "Skipping " ++ getSrcFile i
         idrisCatch (loadIBC fn)
                 (\err -> ierror $ LoadingFailed fn err)
@@ -1200,13 +1209,13 @@ loadFromIFile h i@(IBC fn src)
     getSrcFile (LIDR fn) = fn
     getSrcFile (IBC f src) = getSrcFile src
 
-loadFromIFile h (IDR fn) = loadSource' h False fn
-loadFromIFile h (LIDR fn) = loadSource' h True fn
+loadFromIFile h (IDR fn) maxline = loadSource' h False fn maxline
+loadFromIFile h (LIDR fn) maxline = loadSource' h True fn maxline
 
 {-| Load idris source code and show error if something wrong happens -}
-loadSource' :: Handle -> Bool -> FilePath -> Idris ()
-loadSource' h lidr r
-   = idrisCatch (loadSource h lidr r)
+loadSource' :: Handle -> Bool -> FilePath -> Maybe Int -> Idris ()
+loadSource' h lidr r maxline
+   = idrisCatch (loadSource h lidr r maxline)
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
                           case e of
@@ -1214,8 +1223,8 @@ loadSource' h lidr r
                             _ -> ihWarn h (getErrSpan e) (pprintErr ist e))
 
 {- | Load Idris source code-}
-loadSource :: Handle -> Bool -> FilePath -> Idris ()
-loadSource h lidr f
+loadSource :: Handle -> Bool -> FilePath -> Maybe Int -> Idris ()
+loadSource h lidr f toline
              = do iLOG ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
@@ -1246,7 +1255,8 @@ loadSource h lidr f
                   putIState (i { default_access = Hidden, module_aliases = modAliases })
                   clearIBC -- start a new .ibc file
                   mapM_ (addIBC . IBCImport) [realName | (realName, alias, fc) <- imports]
-                  let syntax = defaultSyntax{ syn_namespace = reverse mname }
+                  let syntax = defaultSyntax{ syn_namespace = reverse mname,
+                                              maxline = toline }
                   ds' <- parseProg syntax f file pos
 
                   -- Parsing done, now process declarations
