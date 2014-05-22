@@ -8,7 +8,7 @@ isSubsetOf {univ} a b = (c : univ) -> (member c a) -> (member c b)
 
 class Set univ => HasPower univ where
   Powerset : (a : univ) -> 
-             Exists univ (\Pa => (c : univ) -> 
+             Pair univ (\Pa => (c : univ) ->
                                  (isSubsetOf c a) -> member c Pa)
 
 powerset : HasPower univ => univ -> univ

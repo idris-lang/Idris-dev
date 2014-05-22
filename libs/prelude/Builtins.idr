@@ -47,7 +47,7 @@ data LazyType = LazyCodata | LazyEval
 data Lazy' : LazyType -> Type -> Type where
      ||| A delayed computation.
      |||
-     |||Delay is inserted automatically by the elaborator where necessary.
+     ||| Delay is inserted automatically by the elaborator where necessary.
      |||
      ||| Note that compiled code gives `Delay` special semantics.
      ||| @ t   whether this is laziness from codata or normal lazy evaluation
