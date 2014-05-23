@@ -1632,6 +1632,8 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                                                  then handle err
                                                                  else applyHandlers err hs
                                                       return (ElaboratingArg f a prev err')
+          -- ProofSearchFail is an internal detail - so don't expose it
+          handle (ProofSearchFail e) = handle e
           -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         logLvl 2 "Starting error reflection"
