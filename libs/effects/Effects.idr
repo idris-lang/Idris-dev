@@ -31,9 +31,9 @@ class Handler (e : Effect) (m : Type -> Type) where
   ||| 
   ||| @ r The resource being handled.
   ||| @ eff The effect to be applied.
-  ||| @ ctxt The context in which to handle the effect.
-  handle : (r : res) -> (eff : e t res resk) -> 
-           (ctxt : ((x : t) -> resk x -> m a)) -> m a
+  ||| @ k The continuation to pass the result of the effect
+  covering handle : (r : res) -> (eff : e t res resk) -> 
+                    (k : ((x : t) -> resk x -> m a)) -> m a
 
 ||| Get the resource type (handy at the REPL to find out about an effect)
 resourceType : EFFECT -> Type

@@ -9,7 +9,7 @@ import Idris.Core.CaseTree
 import Idris.AbsSyntax
 import Idris.Delaborate
 import Idris.Error
-import Idris.Output (iWarn)
+import Idris.Output (iWarn, iputStrLn)
 
 import Data.List
 import Data.Either
@@ -255,13 +255,14 @@ checkAllCovering fc done top n | not (n `elem` done)
         case lookupTotal n (tt_ctxt i) of
              [tot@(Partial NotCovering)] ->
                     do let msg = show top ++ " is " ++ show tot ++ " due to " ++ show n
-                       addIBC (IBCTotCheckErr fc msg)
                        putIState i { idris_totcheckfail = (fc, msg) : idris_totcheckfail i }
-             _ -> return ()
-        case lookupCtxt n (idris_callgraph i) of
-             [cg] -> mapM_ (checkAllCovering fc (n : done) top) 
-                           (map fst (calls cg))
-             _ -> return ()
+                       addIBC (IBCTotCheckErr fc msg)
+             [Partial _] ->
+                case lookupCtxt n (idris_callgraph i) of
+                     [cg] -> mapM_ (checkAllCovering fc (n : done) top) 
+                                   (map fst (calls cg))
+                     _ -> return ()
+             x -> return () -- stop if total
 checkAllCovering _ _ _ _ = return ()
 
 -- Check if, in a given type n, the constructor cn : ty is strictly positive,
@@ -415,6 +416,10 @@ checkDeclTotality (fc, n)
 --          buildSCG (fc, n)
 --          logLvl 2 $ "Built SCG"
          i <- getIState
+         let opts = case lookupCtxt n (idris_flags i) of
+                              [fs] -> fs
+                              _ -> []         
+         when (CoveringFn `elem` opts) $ checkAllCovering fc [] n n
          t <- checkTotality [] fc n
          case t of
               -- if it's not total, it can't reduce, to keep

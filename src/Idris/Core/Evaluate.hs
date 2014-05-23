@@ -678,7 +678,7 @@ data Totality = Total [Int] -- ^ well-founded arguments
 
 -- | Reasons why a function may not be total
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
-             | BelieveMe | Mutual [Name] | NotProductive
+             | ExternalIO | BelieveMe | Mutual [Name] | NotProductive
     deriving (Show, Eq)
 
 instance Show Totality where
@@ -688,6 +688,7 @@ instance Show Totality where
     show (Partial Itself) = "possibly not total as it is not well founded"
     show (Partial NotCovering) = "not total as there are missing cases"
     show (Partial NotPositive) = "not strictly positive"
+    show (Partial ExternalIO) = "an external IO primitive"
     show (Partial NotProductive) = "not productive"
     show (Partial BelieveMe) = "not total due to use of believe_me in proof"
     show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
