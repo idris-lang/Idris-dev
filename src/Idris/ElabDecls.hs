@@ -2089,19 +2089,19 @@ elabInstance info syn what fc cs n ps t expn ds = do
 
          -- Bring variables in instance head into scope
          ist <- getIState
-         let headVars = mapMaybe (\p -> case p of
-                                           PRef _ n -> 
-                                              case lookupTy n (tt_ctxt ist) of
-                                                  [] -> Just n
-                                                  _ -> Nothing
-                                           _ -> Nothing) ps
+         let headVars = nub $ mapMaybe (\p -> case p of
+                                               PRef _ n -> 
+                                                  case lookupTy n (tt_ctxt ist) of
+                                                      [] -> Just n
+                                                      _ -> Nothing
+                                               _ -> Nothing) ps
 --          let lhs = PRef fc iname
          let lhs = PApp fc (PRef fc iname)
                            (map (\n -> pimp n (PRef fc n) True) headVars)
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
 
-         logLvl 5 $ "Instance LHS " ++ show lhs
+         logLvl 5 $ "Instance LHS " ++ show lhs ++ " " ++ show headVars
          logLvl 5 $ "Instance RHS " ++ show rhs
 
          let idecls = [PClauses fc [Dictionary] iname
