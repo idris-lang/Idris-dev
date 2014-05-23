@@ -1195,7 +1195,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                             force (normalisePats ctxt [] y))
     simple_lhs ctxt t = t
 
-    simple_rt ctxt (p, x, y) = (p, x, force (rt_simplify ctxt [] y))
+    simple_rt ctxt (p, x, y) = (p, x, force (uniqueBinders p 
+                                                (rt_simplify ctxt [] y)))
 
     -- this is so pattern types are in the right form for erasure
     normalisePats ctxt env (Bind n (PVar t) sc) 
