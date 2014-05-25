@@ -1338,6 +1338,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd PImpossible = kwd "impossible"
     prettySe p bnd Placeholder = text "_"
     prettySe p bnd (PDoBlock _) = text "do block pretty not implemented"
+    prettySe p bnd (PCoerced t) = prettySe p bnd t
     prettySe p bnd (PElabError s) = pretty s
 
     prettySe p bnd _ = text "test"

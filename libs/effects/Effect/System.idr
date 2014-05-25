@@ -28,11 +28,11 @@ SYSTEM : EFFECT
 SYSTEM = MkEff () System
 
 getArgs : Handler System e => { [SYSTEM] } Eff e (List String)
-getArgs = Args
+getArgs = effect Args
 
 time : Handler System e => { [SYSTEM] } Eff e Int
-time = Time
+time = effect Time
 
 getEnv : Handler System e => String -> { [SYSTEM] } Eff e (Maybe String)
-getEnv s = GetEnv s
+getEnv s = effect $ GetEnv s
 

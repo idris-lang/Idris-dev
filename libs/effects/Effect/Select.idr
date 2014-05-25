@@ -19,5 +19,5 @@ SELECT : EFFECT
 SELECT = MkEff () Selection
 
 select : List a -> { [SELECT] } Eff m a 
-select xs = Select xs
+select xs = effect $ Select xs
 

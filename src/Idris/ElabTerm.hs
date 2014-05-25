@@ -495,6 +495,7 @@ elab ist info pattern opts fn tm
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
                                    PAlternative True _ -> 1
+                                   PTactics _ -> 150
                                    PLam _ _ _ -> 2
                                    PRewrite _ _ _ _ -> 3
                                    _ -> 0
@@ -822,9 +823,9 @@ findInstances ist t
 trivial' ist
     = trivial (elab ist toplevel False [] (sMN 0 "tac")) ist
 proofSearch' ist rec depth prv top n hints
-    = proofSearch rec prv depth 
-          (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
-
+    = do unifyProblems
+         proofSearch rec prv depth 
+                     (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
 
 resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
 resolveTC = resTC' [] 

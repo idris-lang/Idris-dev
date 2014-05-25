@@ -18,14 +18,14 @@ RND = MkEff Integer Random
 
 ||| Generates a random Integer in a given range
 rndInt : Integer -> Integer -> { [RND] } Eff m Integer
-rndInt lower upper = do v <- getRandom
+rndInt lower upper = do v <- effect $ getRandom
                         return (v `prim__sremBigInt` (upper - lower) + lower)
 
 ||| Generate a random number in Fin (S `k`)
 ||| 
 ||| Note that rndFin k takes values 0, 1, ..., k.
 rndFin : (k : Nat) -> { [RND] } Eff m (Fin (S k))
-rndFin k = do let v = assert_total $ !getRandom `prim__sremBigInt` (cast (S k))
+rndFin k = do let v = assert_total $ !(effect getRandom) `prim__sremBigInt` (cast (S k))
               return (toFin v)
  where toFin : Integer -> Fin (S k) 
        toFin x = case integerToFin x (S k) of
@@ -43,5 +43,5 @@ rndSelect (x::xs) = return (Just !(rndSelect' (x::(fromList xs))))
 
 ||| Sets the random seed
 srand : Integer -> { [RND] } Eff m ()
-srand n = setSeed n
+srand n = effect $ setSeed n
 

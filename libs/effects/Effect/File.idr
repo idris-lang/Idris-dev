@@ -107,27 +107,27 @@ open : Handler FileIO e =>
        -> { [FILE_IO ()] ==> [FILE_IO (if result
                                           then OpenFile m
                                           else ())] } Eff e Bool
-open f m = Open f m
+open f m = effect $ Open f m
 
 
 ||| Close a file.
 close : Handler FileIO e =>
         { [FILE_IO (OpenFile m)] ==> [FILE_IO ()] } Eff e ()
-close = Close
+close = effect $ Close
 
 ||| Read a line from the file.
 readLine : Handler FileIO e => 
            { [FILE_IO (OpenFile Read)] } Eff e String 
-readLine = ReadLine
+readLine = effect $ ReadLine
 
 ||| Write a line to a file.
 writeLine : Handler FileIO e => 
             String -> { [FILE_IO (OpenFile Write)] } Eff e ()
-writeLine str = WriteLine str
+writeLine str = effect $ WriteLine str
 
 ||| End of file?
 eof : Handler FileIO e => 
       { [FILE_IO (OpenFile Read)] } Eff e Bool 
-eof = EOF
+eof = effect $ EOF
 
 -- --------------------------------------------------------------------- [ EOF ]
