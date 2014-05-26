@@ -537,7 +537,7 @@ wknV i t              = return t
 convEq' ctxt hs x y = evalStateT (convEq ctxt hs x y) (0, [])
 
 convEq :: Context -> [Name] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
-convEq ctxt holes = ceq [] where
+convEq ctxt holes topx topy = ceq [] topx topy where
     ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
     ceq ps (P xt x _) (P yt y _)
         | x `elem` holes || y `elem` holes = return True
@@ -550,8 +550,12 @@ convEq ctxt holes = ceq [] where
     ceq ps (Bind n (Lam t) (App x (P Bound n' _))) y
         | n == n' = ceq ps x y
     ceq ps (V x)      (V y)      = return (x == y)
-    ceq ps (V x)      (P _ y _)  = return (fst (ps!!x) == y)
-    ceq ps (P _ x _)  (V y)      = return (x == snd (ps!!y))
+    ceq ps (V x)      (P _ y _)  
+        | x >= 0 && length ps > x = return (fst (ps!!x) == y)
+        | otherwise = return False
+    ceq ps (P _ x _)  (V y)      
+        | y >= 0 && length ps > y = return (x == snd (ps!!y))
+        | otherwise = return False
     ceq ps (Bind n xb xs) (Bind n' yb ys)
                              = liftM2 (&&) (ceqB ps xb yb) (ceq ((n,n'):ps) xs ys)
         where
