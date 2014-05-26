@@ -70,11 +70,13 @@ build ist info pattern opts fn tm
          when (not pattern) $ 
            traceWhen u ("Remaining problems:\n" ++ show probs) $ 
              do unify_all; matchProblems True; unifyProblems
+
          probs <- get_probs
          case probs of
             [] -> return ()
-            ((_,_,_,e,_,_):es) -> if inf then return ()
-                                         else lift (Error e)
+            ((_,_,_,e,_,_):es) -> traceWhen u ("Final problems:\n" ++ show probs) $
+                                   if inf then return ()
+                                          else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []

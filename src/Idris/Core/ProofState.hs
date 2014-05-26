@@ -789,8 +789,9 @@ updateSolved' [] x = x
 updateSolved' xs (Bind n (Hole ty) t)
     | Just v <- lookup n xs 
         = case xs of
-               [_] -> psubst n v t
-               _ -> psubst n v (updateSolved' xs t)
+               [_] -> substV v $ psubst n v t -- some may be Vs! Can't assume
+                                              -- explicit names
+               _ -> substV v $ psubst n v (updateSolved' xs t)
 updateSolved' xs (Bind n b t)
     | otherwise = Bind n (fmap (updateSolved' xs) b) (updateSolved' xs t)
 updateSolved' xs (App f a) 
@@ -838,7 +839,7 @@ updateProblems ctxt ns ps inj holes = up ns ps where
         y' = updateSolved ns y
         err' = updateError ns err
         env' = updateEnv ns env in
---         trace ("Updating " ++ show (x',y')) $ 
+--          trace ("Updating " ++ show (x',y')) $ 
           case unify ctxt env' x' y' inj holes while of
             OK (v, []) -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
