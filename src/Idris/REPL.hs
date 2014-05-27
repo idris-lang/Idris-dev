@@ -848,7 +848,7 @@ process h fn (Missing n)
     = do i <- getIState
          let i' = i { idris_options = (idris_options i) { opt_showimp = True } }
          case lookupCtxt n (idris_patdefs i) of
-                  [] -> return ()
+                  [] -> ihPrintError h $ "Unknown operator " ++ show n
                   [(_, tms)] ->
                        iPrintResult (showSep "\n" (map (showTm i') tms))
                   _ -> iPrintError $ "Ambiguous name"
