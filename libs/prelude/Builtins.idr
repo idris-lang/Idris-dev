@@ -38,17 +38,12 @@ sym refl = refl
 trans : {a:x} -> {b:y} -> {c:z} -> a = b -> b = c -> a = c
 trans refl refl = refl
 
-lazy : a -> a
-lazy x = x -- compiled specially
-
-force : a -> a
-force x = x -- compiled specially
-
 ||| There are two types of laziness: that arising from lazy functions, and that
 ||| arising from codata. They differ in their totality condition.
 data LazyType = LazyCodata | LazyEval
 
 ||| The underlying implementation of Lazy and Inf.
+%error_reverse
 data Lazy' : LazyType -> Type -> Type where
      ||| A delayed computation.
      |||
