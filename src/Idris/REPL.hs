@@ -32,6 +32,7 @@ import Idris.DeepSeq
 import Idris.Output
 import Idris.Interactive
 import Idris.WhoCalls
+import Idris.TypeSearch (searchByType, searchPred, defaultScoreFunction)
 
 import Paths_idris
 import Version_idris (gitHash)
@@ -707,7 +708,7 @@ process h fn (DebugInfo n)
         iputStrLn $ "Size change: " ++ show sc
         when (not (null cg')) $ do iputStrLn "Call graph:\n"
                                    iputStrLn (show cg')
-process h fn (Search t) = iPrintError "Not implemented"
+process h fn (Search t) = searchByType h (searchPred defaultScoreFunction) t
 process h fn (CaseSplitAt updatefile l n) 
     = caseSplitAt h fn updatefile l n
 process h fn (AddClauseFrom updatefile l n)
