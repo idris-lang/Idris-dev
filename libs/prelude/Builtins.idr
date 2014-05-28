@@ -9,14 +9,6 @@
 data Pair : (a : Type) -> (P : a -> Type) -> Type where
     pair : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Pair a P
 
-||| The first projection from a dependent pair
-getWitness : {P : a -> Type} -> Pair a P -> a
-getWitness (a ** v) = a
-
-||| The second projection from a dependent pair
-getProof : {P : a -> Type} -> (s : Pair a P) -> P (getWitness s)
-getProof (a ** v) = v
-
 ||| The eliminator for the empty type.
 FalseElim : _|_ -> a
 

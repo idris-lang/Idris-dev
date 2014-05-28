@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ Main.idr --nocolour --check --warnreach -o basic010
+./basic010
+rm -f *.ibc basic010
