@@ -265,7 +265,8 @@ elab ist info pattern opts fn tm
              ty <- goal
              ctxt <- get_context
              let (tc, _) = unApply ty
-             let as' = pruneByType tc ctxt as
+             env <- get_env
+             let as' = pruneByType (map fst env) tc ctxt as
 --              trace (show as ++ "\n ==> " ++ showSep ", " (map showTmImpls as')) $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ (PRef _ n) _) = show n
@@ -785,8 +786,21 @@ pruneAlt xs = map prune xs
 
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
-pruneByType :: Term -> Context -> [PTerm] -> [PTerm]
-pruneByType (P _ n _) c as
+pruneByType :: [Name] -> Term -> Context -> [PTerm] -> [PTerm]
+-- if an alternative has a locally bound name at the head, take it
+pruneByType env t c as
+   | Just a <- locallyBound as = [a]
+  where
+    locallyBound [] = Nothing
+    locallyBound (t:ts)
+       | Just n <- getName t,
+         n `elem` env = Just t
+       | otherwise = locallyBound ts
+    getName (PRef _ n) = Just n
+    getName (PApp _ f _) = getName f
+    getName _ = Nothing
+                      
+pruneByType env (P _ n _) c as
 -- if the goal type is polymorphic, keep e
    | [] <- lookupTy n c = as
    | otherwise
@@ -812,7 +826,7 @@ pruneByType (P _ n _) c as
                                     _ -> False
                        _ -> False
 
-pruneByType t _ as = as
+pruneByType _ t _ as = as
 
 findInstances :: IState -> Term -> [Name]
 findInstances ist t
