@@ -884,7 +884,8 @@ deriving instance NFData OptInfo
 data TypeInfo = TI { con_names :: [Name],
                      codata :: Bool,
                      data_opts :: DataOpts,
-                     param_pos :: [Int] }
+                     param_pos :: [Int],
+                     mutual_types :: [Name] }
     deriving Show
 {-!
 deriving instance Binary TypeInfo

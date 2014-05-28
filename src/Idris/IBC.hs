@@ -30,7 +30,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 73
+ibcVersion = 74
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -2152,15 +2152,17 @@ instance Binary OptInfo where
                return (Optimise x1 x2)
 
 instance Binary TypeInfo where
-        put (TI x1 x2 x3 x4) = do put x1
-                                  put x2
-                                  put x3
-                                  put x4
+        put (TI x1 x2 x3 x4 x5) = do put x1
+                                     put x2
+                                     put x3
+                                     put x4
+                                     put x5
         get = do x1 <- get
                  x2 <- get
                  x3 <- get
                  x4 <- get
-                 return (TI x1 x2 x3 x4)
+                 x5 <- get
+                 return (TI x1 x2 x3 x4 x5)
 
 instance Binary SynContext where
         put x
