@@ -1060,8 +1060,9 @@ uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
 
 uniqueBinders :: [Name] -> TT Name -> TT Name
 uniqueBinders ns (Bind n b sc)
-    = let n' = uniqueName n ns in
-          Bind n' (fmap (uniqueBinders (n':ns)) b) (uniqueBinders ns sc)
+    = let n' = uniqueName n ns
+          ns' = n' : ns in
+          Bind n' (fmap (uniqueBinders ns') b) (uniqueBinders ns' sc)
 uniqueBinders ns (App f a) = App (uniqueBinders ns f) (uniqueBinders ns a)
 uniqueBinders ns t = t
 
