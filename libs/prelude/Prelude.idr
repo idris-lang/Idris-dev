@@ -21,6 +21,7 @@ import Prelude.Traversable
 import Prelude.Bits
 import Prelude.Stream
 import Prelude.Uninhabited
+import Prelude.Pairs
 
 import Decidable.Equality
 
