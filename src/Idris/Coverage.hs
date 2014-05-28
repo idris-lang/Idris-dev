@@ -271,7 +271,7 @@ checkAllCovering _ _ _ _ = return ()
 
 checkPositive :: [Name] -> (Name, Type) -> Idris Totality
 checkPositive mut_ns (cn, ty')
-    = do let ty = delazy ty'
+    = do let ty = delazy' True ty'
          let p = cp ty
          i <- getIState
          let tot = if p then Total (args ty) else Partial NotPositive
@@ -284,12 +284,19 @@ checkPositive mut_ns (cn, ty')
     args t = [0..length (getArgTys t)-1]
 
     cp (Bind n (Pi aty) sc) = posArg aty && cp sc
-    cp t = True
+    cp t | (P _ n' _, args) <- unApply t,
+           n' `elem` mut_ns = all noRec args 
+    cp _ = True
 
     posArg (Bind _ (Pi nty) sc)
         | (P _ n' _, args) <- unApply nty
-            = n' `notElem` mut_ns && posArg sc
-    posArg t = True
+            = n' `notElem` mut_ns && all noRec args && posArg sc
+    posArg t | (P _ n' _, args) <- unApply t,
+               n' `elem` mut_ns = all noRec args
+    posArg _ = True
+
+    noRec arg = all (\x -> x `notElem` mut_ns) (allTTNames arg)
+
 
 calcProd :: IState -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
 calcProd i fc topn pats
