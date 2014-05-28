@@ -695,6 +695,7 @@ try' t1 t2 proofSearch
              = -- traceWhen r (show err) $
                r || proofSearch
         recoverableErr (CantSolveGoal _ _) = False
+        recoverableErr (ProofSearchFail (Msg _)) = True
         recoverableErr (ProofSearchFail _) = False
         recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
         recoverableErr (At _ e) = recoverableErr e
@@ -724,7 +725,7 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
        = do s <- get
             ps <- get_probs
             case prunStateT pmax True ps x s of
-                OK ((v, newps, probs), s') ->
+                OK ((v, newps, probs), s') -> 
                     do let cs' = if (newps < pmax)
                                     then [do put s'; return $! v]
                                     else (do put s'; return $! v) : cs

@@ -70,11 +70,13 @@ build ist info pattern opts fn tm
          when (not pattern) $ 
            traceWhen u ("Remaining problems:\n" ++ show probs) $ 
              do unify_all; matchProblems True; unifyProblems
+
          probs <- get_probs
          case probs of
             [] -> return ()
-            ((_,_,_,e,_,_):es) -> if inf then return ()
-                                         else lift (Error e)
+            ((_,_,_,e,_,_):es) -> traceWhen u ("Final problems:\n" ++ show probs) $
+                                   if inf then return ()
+                                          else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -495,6 +497,7 @@ elab ist info pattern opts fn tm
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
                                    PAlternative True _ -> 1
+                                   PTactics _ -> 150
                                    PLam _ _ _ -> 2
                                    PRewrite _ _ _ _ -> 3
                                    _ -> 0
@@ -822,9 +825,9 @@ findInstances ist t
 trivial' ist
     = trivial (elab ist toplevel False [] (sMN 0 "tac")) ist
 proofSearch' ist rec depth prv top n hints
-    = proofSearch rec prv depth 
-          (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
-
+    = do unifyProblems
+         proofSearch rec prv depth 
+                     (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
 
 resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
 resolveTC = resTC' [] 
@@ -1632,6 +1635,8 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                                                  then handle err
                                                                  else applyHandlers err hs
                                                       return (ElaboratingArg f a prev err')
+          -- ProofSearchFail is an internal detail - so don't expose it
+          handle (ProofSearchFail e) = handle e
           -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         logLvl 2 "Starting error reflection"

@@ -184,9 +184,12 @@ score :: Err -> Int
 score (CantUnify _ _ _ m _ s) = s + score m
 score (CantResolve _) = 20
 score (NoSuchVariable _) = 1000
-score (ProofSearchFail _) = 10000
-score (CantSolveGoal _ _) = 10000
+score (ProofSearchFail e) = score e
+score (CantSolveGoal _ _) = 100000
 score (InternalMsg _) = -1
+score (At _ e) = score e
+score (ElaboratingArg _ _ _ e) = score e
+score (Elaborating _ _ e) = score e
 score _ = 0
 
 instance Show Err where
@@ -203,6 +206,7 @@ instance Show Err where
     show (ElaboratingArg f x prev e) = "Elaborating " ++ show f ++ " arg " ++
                                        show x ++ ": " ++ show e
     show (Elaborating what n e) = "Elaborating " ++ what ++ show n ++ ":" ++ show e
+    show (ProofSearchFail e) = "Proof search fail: " ++ show e
     show _ = "Error"
 
 instance Pretty Err OutputAnnotation where
@@ -1056,8 +1060,9 @@ uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
 
 uniqueBinders :: [Name] -> TT Name -> TT Name
 uniqueBinders ns (Bind n b sc)
-    = let n' = uniqueName n ns in
-          Bind n' (fmap (uniqueBinders (n':ns)) b) (uniqueBinders ns sc)
+    = let n' = uniqueName n ns
+          ns' = n' : ns in
+          Bind n' (fmap (uniqueBinders ns') b) (uniqueBinders ns' sc)
 uniqueBinders ns (App f a) = App (uniqueBinders ns f) (uniqueBinders ns a)
 uniqueBinders ns t = t
 

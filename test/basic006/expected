@@ -1,5 +1,5 @@
-When elaborating right hand side of foo:
-test020a.idr:14:18:When elaborating an application of function Prelude.List.reverse:
+test020a.idr:14:18:When elaborating right hand side of foo:
+When elaborating an application of function Prelude.List.reverse:
         Can't unify
                 Vect n a
         with

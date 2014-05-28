@@ -85,7 +85,7 @@ match_unify ctxt env topx topy inj holes from =
         | length bnames > i,
           fst (fst (bnames!!i)) == x || 
           snd (fst (bnames!!i)) == x = do sc 1; return []
-    un bnames (Bind x bx sx) (Bind y by sy)
+    un bnames (Bind x bx sx) (Bind y by sy) | notHole bx && notHole by
         = do h1 <- uB bnames bx by
              h2 <- un (((x, y), binderTy bx) : bnames) sx sy
              combine bnames h1 h2
@@ -118,6 +118,9 @@ match_unify ctxt env topx topy inj holes from =
                                    (errEnv env) s
                        put (UI s ((binderTy x, binderTy y, env, err, from, Match) : f))
                        return []
+
+    notHole (Hole _) = False
+    notHole _ = True
 
     -- TODO: there's an annoying amount of repetition between this and the
     -- main unification function. Consider lifting it out.
@@ -173,7 +176,7 @@ renameBindersTm env tm = uniqueBinders (map fst env) tm
     uniqueBinders env (Bind n b sc)
         | n `elem` env 
              = let n' = uniqueName n env in
-                   Bind n' (fmap (uniqueBinders env) b)
+                   explicitHole $ Bind n' (fmap (uniqueBinders env) b)
                            (uniqueBinders (n':env) (rename n n' sc))
         | otherwise = Bind n (fmap (uniqueBinders (n:env)) b) 
                              (uniqueBinders (n:env) sc)
@@ -184,6 +187,10 @@ renameBindersTm env tm = uniqueBinders (map fst env) tm
     rename n n' (Bind x b sc) = Bind x (fmap (rename n n') b) (rename n n' sc)
     rename n n' (App f a) = App (rename n n' f) (rename n n' a)
     rename n n' t = t
+
+    explicitHole (Bind n (Hole ty) sc) 
+       = Bind n (Hole ty) (instantiate (P Bound n ty) sc)
+    explicitHole t = t
 
 trimSolutions ns = dropPairs ns
   where dropPairs [] = []
@@ -204,11 +211,16 @@ expandLets env (x, tm) = (x, doSubst (reverse env) tm)
     doSubst (_ : env) tm
         = doSubst env tm
 
+hasv (V x) = True
+hasv (App f a) = hasv f || hasv a
+hasv (Bind x b sc) = hasv (binderTy b) || hasv sc
+hasv _ = False
 
 unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] -> [FailContext] ->
          TC ([(Name, TT Name)], Fails)
 unify ctxt env topx topy inj holes from =
---      trace ("Unifying " ++ show (topx, topy)) $
+--      traceWhen (hasv topx || hasv topy) 
+--           ("Unifying " ++ show topx ++ "\nAND\n" ++ show topy ++ "\n") $
              -- don't bother if topx and topy are different at the head
       case runStateT (un False [] (renameBindersTm env topx) 
                                   (renameBindersTm env topy)) (UI 0 []) of
@@ -295,7 +307,7 @@ unify ctxt env topx topy inj holes from =
         | injective ty && not (holeIn env x || x `elem` holes)
              = unifyTmpFail tx ty
     un' fn bnames xtm@(P _ x _) tm
-        | holeIn env x || x `elem` holes
+        | pureTerm tm, holeIn env x || x `elem` holes
                        = do UI s f <- get
                             -- injectivity check
                             x <- checkCycle bnames (x, tm)
@@ -305,11 +317,11 @@ unify ctxt env topx topy inj holes from =
                                  then unifyTmpFail xtm tm
                                  else do sc 1
                                          return x
-        | not (injective xtm) && injective tm 
+        | pureTerm tm, not (injective xtm) && injective tm 
                        = do checkCycle bnames (x, tm)
                             unifyTmpFail xtm tm
     un' fn bnames tm ytm@(P _ y _)
-        | holeIn env y || y `elem` holes
+        | pureTerm tm, holeIn env y || y `elem` holes
                        = do UI s f <- get
                             -- injectivity check
                             x <- checkCycle bnames (y, tm)
@@ -319,7 +331,7 @@ unify ctxt env topx topy inj holes from =
                                  then unifyTmpFail tm ytm
                                  else do sc 1
                                          return x
-        | not (injective ytm) && injective tm 
+        | pureTerm tm, not (injective ytm) && injective tm 
                        = do checkCycle bnames (y, tm)
                             unifyTmpFail tm ytm
     un' fn bnames (V i) (P _ x _)
@@ -524,7 +536,7 @@ unify ctxt env topx topy inj holes from =
         | not (x `elem` freeNames tm) = checkScope ns (x, tm)
         | otherwise = lift $ tfail (InfiniteUnify x tm (errEnv env))
 
-    checkScope ns (x, tm) =
+    checkScope ns (x, tm) | pureTerm tm =
 --           case boundVs (envPos x 0 env) tm of
 --                [] -> return [(x, tm)]
 --                (i:_) -> lift $ tfail (UnifyScope x (fst (fst (ns!!i)))
@@ -535,6 +547,7 @@ unify ctxt env topx topy inj holes from =
                else return [(x, bind v ns tm)]
       where inst [] tm = tm
             inst (((n, _), _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
+    checkScope ns (x, tm) = lift $ tfail (Msg "HOLE ERROR") 
 
     bind i ns tm 
       | i < 0 = tm
