@@ -9,7 +9,7 @@ using (a : Type, P : a -> Type)
 
     ||| Dependent pair where the first field is erased.
     data Exists : (P : a -> Type) -> Type where
-        evidence : .{x : a} -> (pf : P x) -> Exists P
+        evidence : .(x : a) -> (pf : P x) -> Exists P
 
     ||| Dependent pair where the second field is erased. 
     data Subset : (a : Type) -> (P : a -> Type) -> Type where
@@ -25,8 +25,8 @@ using (a : Type, P : a -> Type)
         getProof : (x : T) -> P (getWitness x)
 
     instance DepPair a P (Exists {a} P) where
-        getWitness (evidence {x=x} pf) = x
-        getProof   (evidence {x=x} pf) = pf
+        getWitness (evidence x pf) = x
+        getProof   (evidence x pf) = pf
 
     instance DepPair a P (Subset a P) where
         getWitness (element x pf) = x
