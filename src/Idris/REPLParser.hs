@@ -71,7 +71,8 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["color", "colour"]; pSetColourCmd)
               <|> try (do cmd ["set"]; o <- pOption; return (SetOpt o))
               <|> try (do cmd ["unset"]; o <- pOption; return (UnsetOpt o))
-              <|> try (do cmd ["s", "search"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Search t))
+              <|> try (do cmd ["s", "search"]; P.whiteSpace; 
+                          t <- P.typeExpr (defaultSyntax { implicitAllowed = True }); return (Search t))
               <|> try (do cmd ["cs", "casesplit"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name;

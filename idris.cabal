@@ -562,6 +562,7 @@ Library
                 , Idris.REPL
                 , Idris.REPLParser
                 , Idris.Transforms
+                , Idris.TypeSearch
                 , Idris.Unlit
                 , Idris.WhoCalls
                 , Idris.CmdOptions
