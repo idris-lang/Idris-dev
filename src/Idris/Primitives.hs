@@ -184,7 +184,9 @@ primitives =
    Prim (sUN "prim__allocate") (ty [AType (ATInt (ITFixed IT64))] BufferType) 1 (p_allocate)
     (1, LAllocate) total,
    Prim (sUN "prim__appendBuffer") (ty [BufferType, AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), BufferType] BufferType) 6 (p_appendBuffer)
-    (6, LAppendBuffer) partial
+    (6, LAppendBuffer) partial,
+    Prim (sUN "prim__systemInfo") (ty [AType (ATInt ITNative)] StrType) 1 (p_cantreduce)
+        (1, LSystemInfo) total
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
     ++ concatMap vecOps vecTypes
     ++ concatMap fixedOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64] -- ITNative, ITChar, ATFloat ] ++ vecTypes
