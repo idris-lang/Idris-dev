@@ -9,26 +9,28 @@ import Control.Monad (forM_, guard)
 import Data.Function (on)
 import Data.List (find, sortBy, (\\))
 import qualified Data.Map as M
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Monoid (Monoid (mempty, mappend))
 import Data.Set (Set)
 import qualified Data.Set as S
 
 import Idris.AbsSyntax (addUsingConstraints, addImpl, getContext, getIState, putIState, implicit)
-import Idris.AbsSyntaxTree (defaultSyntax, Idris, implicitAllowed, prettyIst, PTerm, toplevel)
+import Idris.AbsSyntaxTree (class_instances, defaultSyntax, Idris, 
+  IState (idris_classes, tt_ctxt),
+  implicitAllowed, prettyIst, PTerm, toplevel)
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
 import Idris.Core.TT
-import Idris.Core.Unify (unify)
-import Idris.Delaborate (delabTy)
+import Idris.Core.Unify (match_unify)
+import Idris.Delaborate (delab, delabTy)
 import Idris.Docstrings (noDocs)
 import Idris.ElabDecls (elabType')
-import Idris.Output (ihRenderResult, ihPrintResult)
+import Idris.Output (ihRenderResult, ihPrintResult, ihPrintFunTypes)
 
 import System.IO (Handle)
 
 
-searchByType :: (Ord a, Show a) => Handle -> (Context -> Type -> Type -> Maybe a) -> PTerm -> Idris ()
-searchByType h pred pterm = do
+searchByType :: (Ord a, Show a) => Handle -> (IState -> Type -> Type -> Maybe a) -> a -> PTerm -> Idris ()
+searchByType h pred scoreLimit pterm = do
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn n pterm'
   i <- getIState
@@ -36,26 +38,29 @@ searchByType h pred pterm = do
   ty <- elabType' False toplevel syn (fst noDocs) (snd noDocs) emptyFC [] n pterm'
   putIState i -- don't actually make any changes
   ihRenderResult h (prettyIst i pterm)
-  ctxt <- getContext 
-  let names = searchUsing pred ctxt ty
-  let names' = sortBy (compare `on` (snd . snd)) names
+  let names = searchUsing pred i ty
+  let names' = take numLimit . takeWhile ((< scoreLimit) . snd . snd) $ 
+         sortBy (compare `on` (snd . snd)) names
   forM_ names' $ \(name, (typ, val)) -> do
-    ihPrintResult h ("Score: " ++ show val ++ "\t" ++ show name)
-    ihRenderResult h (prettyIst i (delabTy i name))
+    ihPrintFunTypes h [] name [(name, delabTy i name)]
+    ihPrintResult h ("\tScore: " ++ show val ++ "\n")
   where 
+    numLimit = 50
     syn = defaultSyntax { implicitAllowed = True } -- syntax
     n = sMN 0 "searchType" -- name
 
 
-searchUsing :: (Context -> Type -> Type -> Maybe a) -> Context -> Type -> [(Name, (Type, a))]
-searchUsing pred ctxt ty = 
+searchUsing :: (IState -> Type -> Type -> Maybe a) -> IState -> Type -> [(Name, (Type, a))]
+searchUsing pred istate ty = 
   concat . M.elems $ M.mapWithKey (\key -> M.toAscList . M.mapMaybe (f key)) (definitions ctxt)
   where
+  ctxt = tt_ctxt istate
   f k x = do
+    guard $ not (special k)
     y <- get (fst4 x)
     let ny = normaliseC ctxt [] y
   --  traceShow k False `seq` return ()
-    val <- pred ctxt nty ny
+    val <- pred istate nty ny
     return (y, val)
   nty = normaliseC ctxt [] ty
   fst4 :: (a,b,c,d) -> a
@@ -66,6 +71,9 @@ searchUsing pred ctxt ty =
  -- get (Operator ty _ _) = Just ty
   get (CaseOp _ ty _ _ _ _)  = Just ty
   get _ = Nothing
+  special :: Name -> Bool
+  special (SN _) = True
+  special _ = False
 
 
 tcToMaybe :: TC' e a -> Maybe a
@@ -74,12 +82,12 @@ tcToMaybe (Error _) = Nothing
 
 
 
-searchPred :: (Score -> Int) -> Context -> Type -> Type -> Maybe Int
-searchPred scoref ctxt ty1 = \ty2 -> case matcher ty2 of
+searchPred :: (Score -> Int) -> IState -> Type -> Type -> Maybe Int
+searchPred scoref istate ty1 = \ty2 -> case matcher ty2 of
   Nothing -> Nothing
   Just xs -> guard (not (null xs)) >> return (minimum (map scoref xs))
   where
-  matcher = unifyWithHoles True ctxt ty1
+  matcher = unifyWithHoles True istate ty1
 
 
 
@@ -124,20 +132,22 @@ deleteFromDag name (((name2, ty), (ix, set)) : xs) = (if name == name2
 data Score = Score
   { transposition :: Int
   , leftApplied   :: Int
-  , rightApplied  :: Int } deriving (Eq, Show)
+  , rightApplied  :: Int
+  , leftTypeClass :: Int
+  , rightTypeClass :: Int } deriving (Eq, Show)
 
 
 scoreCriterion :: Score -> Bool
-scoreCriterion (Score a b c) = True {- not
+scoreCriterion (Score a b c d e) = True {- not
   ( (b > 0 && c > 0) || (b + c) > 2 ) -}
 
 defaultScoreFunction :: Score -> Int
-defaultScoreFunction (Score a b c) = a + 10*b + 10*c + 100*b*c
+defaultScoreFunction (Score a b c d e) = a + 9*b + 3*c + 12*d + 4*e + 100*(2*b + d)*(2*c + e)
   -- it's very bad to have *both* upcasting and downcasting
 
 instance Monoid Score where
-  mempty = Score 0 0 0
-  (Score a b c) `mappend` (Score d e f) = Score (a + d) (b + e) (c + f)
+  mempty = Score 0 0 0 0 0
+  (Score a b c d e) `mappend` (Score a' b' c' d' e') = Score (a + a') (b + b') (c + c') (d + d') (e + e')
 
 
 type ArgsDAG = [((Name, Type), (Int, Set Name))]
@@ -152,9 +162,9 @@ data State = State
 
 
 --DONT run vToP first!
-unifyWithHoles :: Bool -> Context -> Type -> Type -> Maybe [Score]
-unifyWithHoles debugParam ctxt type1 = \type2 -> let
-  (dag2, retTy2) = makeDag (uniqueBinders' argNames1 type2)
+unifyWithHoles :: Bool -> IState -> Type -> Type -> Maybe [Score]
+unifyWithHoles debugParam istate type1 = \type2 -> let
+  (dag2, retTy2) = makeDag (uniqueBinders argNames1 type2)
   argNames2 = map (fst . fst) dag2
   startingHoles = argNames1 ++ argNames2
 
@@ -163,6 +173,8 @@ unifyWithHoles debugParam ctxt type1 = \type2 -> let
   state <- go (State startingHoles dag1 dag2 mempty) startingTypes
   return $ processDags state
   where
+  ctxt = tt_ctxt istate
+  classInfo = idris_classes istate
   (dag1, retTy1) = makeDag type1
   argNames1 = map (fst . fst) dag1
   makeDag = first (zipWith (\i (ty, deps) -> (ty, (i, deps))) [0..] . reverseDag) . computeDagP . vToP
@@ -174,15 +186,15 @@ unifyWithHoles debugParam ctxt type1 = \type2 -> let
   -- update our state with the unification resolutions
   updateDags :: [(Name, Type)] -> ResType -> Maybe (ResType, [(Type, Type)], Score)
   updateDags [] res = Just (res, [], mempty)
-  updateDags ((name, term@(P Bound name2 _)) : xs) (holes, args1, args2) = do
-    ((ty1, ix1), (ty2, ix2)) <-
-      ((,) <$> mgetType name args1 <*> mgetType name2 args2) <|>
-      ((,) <$> mgetType name2 args1 <*> mgetType name args2)
+  updateDags ((name, term@(P Bound name2 _)) : xs) (holes, args1, args2) | isJust findArgs = do
+    ((ty1, ix1), (ty2, ix2)) <- findArgs
 
     (res, queue, score) <- updateDags xs (holes', args1'', args2'')
     --traceShow (ty1, ty2) False `seq` return ()
     return $ (res, (ty1, ty2) : queue , score { transposition = transposition score + abs (ix2 - ix1) })
     where
+    findArgs = ((,) <$> mgetType name args1 <*> mgetType name2 args2) <|>
+               ((,) <$> mgetType name2 args1 <*> mgetType name args2)
     matchnames = [name, name2]
     holes' = holes \\ matchnames
     substf = deleteFromDag name . deleteFromDag name2
@@ -208,12 +220,12 @@ unifyWithHoles debugParam ctxt type1 = \type2 -> let
 
 
   go :: State -> [(Type, Type)] -> Maybe State
---  go (State holes args1 args2 score) queue | trace ("go\n\t" ++ show holes ++ "\n\t" ++ show args1 ++ "\n\t" ++ show args2 ++ "\n\t" ++ show queue) False = undefined
+  --go (State holes args1 args2 score) queue | trace ("go\n\t" ++ show holes ++ "\n\t" ++ show args1 ++ "\n\t" ++ show args2 ++ "\n\t" ++ show queue) False = undefined
   go state [] = return state
   go (State holes args1 args2 score) ((ty1, ty2) : queue) = do
-    (res, errors) <- tcToMaybe $ unify ctxt [] ty1 ty2 [] holes []
+    res <- tcToMaybe $ match_unify ctxt [] ty1 ty2 [] holes []
     --trace ("UnifyResult: " ++ show (ty1, ty2, res, errors)) False `seq` return ()
-    guard (null errors)
+    --guard (null errors)
     ((holes', args1', args2'), queueAdditions, scoreAdditions) <- updateDags res (holes, args1, args2)
     let newScore = score `mappend` scoreAdditions
     guard $ scoreCriterion newScore
@@ -222,13 +234,34 @@ unifyWithHoles debugParam ctxt type1 = \type2 -> let
 
   processDags :: State -> [Score]
   processDags (State [] [] [] scoreAcc) = [scoreAcc]
-  processDags (State holes (_:_) [] scoreAcc) = []
-  processDags (State holes [] (_:_) scoreAcc) = []
-  processDags (State holes dag1 dag2 scoreAcc) = concat [ processDags state | state <- results ] where
+  --processDags (State holes (_:_) [] scoreAcc) = []
+  --processDags (State holes [] (_:_) scoreAcc) = []
+  processDags (State holes dag1 dag2 scoreAcc) = concat [ processDags state | state <- allResults ] where
 
     results = catMaybes [ go (State (holes \\ (map nameOf [ty1, ty2])) (deleteFromDag (nameOf ty1) dag1)
          (inArgTys (psubst (nameOf ty2) (P Bound (nameOf ty1) (typeOf ty1))) $ deleteFromDag (nameOf ty2) dag2) scoreAcc) [(typeOf ty1, typeOf ty2)] 
      | ty1 <- canBeFirst dag1, ty2 <- canBeFirst dag2 {-, exactTypeEquality ctxt (typeOf ty1) (typeOf ty2) -} ]
+
+    results2 = [ State (holes \\ [nameOf ty]) 
+               (deleteFromDag (nameOf ty) dag1) dag2
+               (scoreAcc `mappend` (mempty { leftTypeClass = 1 }))
+               | ty <- typeClassArgs1 ]
+
+    typeClassArgs1 = filter (isSaturatedClass . typeOf) dag1
+    typeClassArgs2 = filter (isSaturatedClass . typeOf) dag2
+
+
+    results3 = [ State (holes \\ [nameOf ty]) 
+               dag1 (deleteFromDag (nameOf ty) dag2)
+               (scoreAcc `mappend` (mempty { rightTypeClass = 1 }))
+               | ty <- typeClassArgs2 ]
+
+    allResults :: [State]
+    allResults = {- (if not (null typeClasses) then (traceShow typeClasses False `seq` id) else id ) -}
+                 (results ++ results2 ++ results3)
+      where
+      typeClasses = filter (isSaturatedClass . typeOf) (dag1 ++ dag2)
+               
 
     -- check if the canBeFirst thing is losing any possibilities
 
@@ -244,13 +277,14 @@ unifyWithHoles debugParam ctxt type1 = \type2 -> let
     deleteIdx _ [] = []
     deleteIdx idx l@(x@(i,_,_) : xs) = if i == idx then xs else x : deleteIdx idx xs
 
+  isSaturatedClass :: Type -> Bool
+  isSaturatedClass ty = fromMaybe False $ do
+    className <- getClassName clss
+    let possInstances = concatMap class_instances $ lookupCtxt className classInfo 
+    return $ (SN (sInstanceN className (map argToName args))) `elem` possInstances
+    where
+    (clss, args) = unApply ty
+    getClassName (P (TCon _ _) className _) = Just className
+    getClassName _ = Nothing
+    argToName arg = show (delab istate arg)
 
-
-
-uniqueBinders' :: [Name] -> TT Name -> TT Name
-uniqueBinders' ns (Bind n b sc)
-    = let n' = uniqueName n ns
-          ns' = n' : ns in
-          Bind n' (fmap (uniqueBinders' ns') b) (uniqueBinders' ns' sc)
-uniqueBinders' ns (App f a) = App (uniqueBinders' ns f) (uniqueBinders' ns a)
-uniqueBinders' ns t = t
