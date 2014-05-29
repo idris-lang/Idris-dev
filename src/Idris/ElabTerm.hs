@@ -66,9 +66,11 @@ build ist info pattern opts fn tm
          ctxt <- get_context
          probs <- get_probs
          u <- getUnifyLog
+         hs <- get_holes
 
          when (not pattern) $ 
-           traceWhen u ("Remaining problems:\n" ++ show probs) $ 
+           traceWhen u ("Remaining holes:\n" ++ show hs ++ "\n" ++
+                        "Remaining problems:\n" ++ show probs) $ 
              do unify_all; matchProblems True; unifyProblems
 
          probs <- get_probs

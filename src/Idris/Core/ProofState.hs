@@ -180,6 +180,19 @@ match_unify' ctxt env topx topy =
 -- --              ++ show (pterm ps)
 --              ++ "\n----------") $
 
+mergeSolutions :: Env -> [(Name, TT Name)] -> StateT TState TC [(Name, TT Name)]
+mergeSolutions env ns = merge [] ns
+  where
+    merge acc [] = return (reverse acc)
+    merge acc ((n, t) : ns)
+          | Just t' <- lookup n ns
+              = do ps <- get
+                   let probs = problems ps
+                   put (ps { problems = probs ++ [(t,t',env,Msg "New problem",
+                                                     [], Unify)] })
+                   merge acc ns
+          | otherwise = merge ((n, t): acc) ns
+
 unify' :: Context -> Env -> TT Name -> TT Name ->
           StateT TState TC [(Name, TT Name)]
 unify' ctxt env topx topy =
@@ -206,17 +219,22 @@ unify' ctxt env topx topy =
              ++ "\nCurrent problems:\n" ++ qshow (problems ps)
 --              ++ show (pterm ps)
              ++ "\n----------") $
-        do ps <- get
-           let (h, ns) = unified ps
-           let (ns', probs') = updateProblems (context ps) (u ++ ns)
+        do let (h, ns) = unified ps
+           -- if a metavar has multiple solutions, make a new unification
+           -- problem for each.
+           uns <- mergeSolutions env (u ++ ns)
+           ps <- get
+           let (ns', probs') = updateProblems (context ps) uns
                                               (fails ++ problems ps)
                                               (injective ps)
                                               (holes ps)
            let (notu', probs_notu) = mergeNotunified env (notu ++ notunified ps)
-           put (ps { problems = probs' ++ probs_notu,
-                     unified = (h, ns'),
-                     injective = updateInj u (injective ps),
-                     notunified = notu' })
+           traceWhen (unifylog ps)
+            ("Now solved: " ++ show ns') $
+             put (ps { problems = probs' ++ probs_notu,
+                       unified = (h, ns'),
+                       injective = updateInj u (injective ps),
+                       notunified = notu' })
            return u
   where updateInj ((n, a) : us) inj
               | (P _ n' _, _) <- unApply a,
