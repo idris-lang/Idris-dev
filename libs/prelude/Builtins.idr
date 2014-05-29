@@ -6,8 +6,8 @@
 ||| Dependent pairs, in their internal representation
 ||| @ a the type of the witness
 ||| @ P the type of the proof
-data Pair : (a : Type) -> (P : a -> Type) -> Type where
-    pair : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Pair a P
+data Sigma : (a : Type) -> (P : a -> Type) -> Type where
+    Sg_intro : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
 
 ||| The eliminator for the empty type.
 FalseElim : _|_ -> a

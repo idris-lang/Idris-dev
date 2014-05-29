@@ -92,13 +92,13 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
          | n == eqCon     = PRefl un (de env [] r)
          | n == sUN "lazy" = de env [] r
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
-         | n == sUN "Pair"
+         | n == sUN "Sigma"
                = PDPair un IsType (PRef un x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [_,_,l,r]
          | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
-         | n == sUN "pair" = PDPair un IsTerm (de env [] l) Placeholder
+         | n == sUN "Sg_intro" = PDPair un IsTerm (de env [] l) Placeholder
                                            (de env [] r)
     deFn env f@(P _ n _) args 
          | n `elem` map snd env 

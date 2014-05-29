@@ -31,12 +31,12 @@ using (a : Type, P : a -> Type)
     getProof : (x : Subset a P) -> P (getWitness x)
     getProof (element x pf) = pf
 
-  namespace Pair
-    getWitness : Pair a P -> a
-    getWitness (pair x pf) = x
+  namespace Sigma
+    getWitness : Sigma a P -> a
+    getWitness (x ** pf) = x
 
-    getProof : (x : Pair a P) -> P (getWitness x)
-    getProof (pair x pf) = pf
+    getProof : (x : Sigma a P) -> P (getWitness x)
+    getProof (x ** pf) = pf
 
   -- Polymorphic (class-based) projections have been removed
   -- because type-directed name disambiguation works better.

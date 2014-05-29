@@ -1098,8 +1098,8 @@ elimDecl = PClass (parseDocstring . T.pack $ "Type class for eliminators") defau
                       PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
 -- Defined in builtins.idr
-sigmaTy   = sUN "Pair"
-existsCon = sUN "pair"
+sigmaTy   = sUN "Sigma"
+existsCon = sUN "Sg_intro"
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind = piBindp expl
