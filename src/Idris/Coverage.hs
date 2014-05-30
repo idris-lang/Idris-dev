@@ -211,7 +211,7 @@ genAll i args
                  let p = resugar (PApp fc (PRef fc n) (zipWith upd xs' xs))
                  let tyn = getTy n (tt_ctxt i)
                  case lookupCtxt tyn (idris_datatypes i) of
-                         (TI ns _ _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
+                         (TI ns _ _ _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
     ops fc n arg o = return Placeholder
 
@@ -265,29 +265,38 @@ checkAllCovering fc done top n | not (n `elem` done)
              x -> return () -- stop if total
 checkAllCovering _ _ _ _ = return ()
 
--- Check if, in a given type n, the constructor cn : ty is strictly positive,
+-- Check if, in a given group of type declarations mut_ns, 
+-- the constructor cn : ty is strictly positive,
 -- and update the context accordingly
 
-checkPositive :: Name -> (Name, Type) -> Idris ()
-checkPositive n (cn, ty')
-    = do let ty = delazy ty'
+checkPositive :: [Name] -> (Name, Type) -> Idris Totality
+checkPositive mut_ns (cn, ty')
+    = do let ty = delazy' True ty'
          let p = cp ty
          i <- getIState
          let tot = if p then Total (args ty) else Partial NotPositive
          let ctxt' = setTotal cn tot (tt_ctxt i)
          putIState (i { tt_ctxt = ctxt' })
-         logLvl 5 $ "Constructor " ++ show cn ++ " is " ++ show tot
+         logLvl 5 $ "Constructor " ++ show cn ++ " is " ++ show tot ++ " with " ++ show mut_ns
          addIBC (IBCTotal cn tot)
+         return tot
   where
     args t = [0..length (getArgTys t)-1]
 
     cp (Bind n (Pi aty) sc) = posArg aty && cp sc
-    cp t = True
+    cp t | (P _ n' _, args) <- unApply t,
+           n' `elem` mut_ns = all noRec args 
+    cp _ = True
 
     posArg (Bind _ (Pi nty) sc)
         | (P _ n' _, args) <- unApply nty
-            = n /= n' && posArg sc
-    posArg t = True
+            = n' `notElem` mut_ns && all noRec args && posArg sc
+    posArg t | (P _ n' _, args) <- unApply t,
+               n' `elem` mut_ns = all noRec args
+    posArg _ = True
+
+    noRec arg = all (\x -> x `notElem` mut_ns) (allTTNames arg)
+
 
 calcProd :: IState -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
 calcProd i fc topn pats
@@ -335,7 +344,7 @@ calcProd i fc topn pats
      cotype (DCon _ _) n ty
         | (P _ t _, _) <- unApply (getRetTy ty)
             = case lookupCtxt t (idris_datatypes i) of
-                   [TI _ True _ _] -> True
+                   [TI _ True _ _ _] -> True
                    _ -> False
      cotype nt n ty = False
 
@@ -383,6 +392,14 @@ checkTotality path fc n
                                setTotality n t'
                                addIBC (IBCTotal n t')
                                return t'
+                        [TyDecl (DCon _ _) ty] ->
+                            case unApply (getRetTy ty) of
+                              (P _ tyn _, _) -> do
+                                 let ms = case lookupCtxt tyn (idris_datatypes i) of
+                                       [TI _ _ _ _ xs@(_:_)] -> xs
+                                       ts -> [tyn]
+                                 checkPositive ms (n, ty)
+                              _-> return $ Total []
                         _ -> return $ Total []
                 x -> return x
         case t' of
@@ -556,7 +573,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
 
       isInductive (P _ nty _) (P _ nty' _) =
           let co = case lookupCtxt nty (idris_datatypes ist) of
-                        [TI _ x _ _] -> x
+                        [TI _ x _ _ _] -> x
                         _ -> False in
               nty == nty' && not co
       isInductive _ _ = False
@@ -639,7 +656,7 @@ checkMP ist i mp = if i > 0
             = case lookupTotal f (tt_ctxt ist) of
                    [Total _] -> Unchecked -- okay so far
                    [Partial _] -> Partial (Other [f])
-                   x -> error (show x)
+                   x -> error $ "CAN'T HAPPEN: " ++ (show x)
         | [TyDecl (TCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = Total []
     tryPath desc path (e@(f, args) : es) arg

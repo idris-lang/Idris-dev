@@ -884,7 +884,8 @@ deriving instance NFData OptInfo
 data TypeInfo = TI { con_names :: [Name],
                      codata :: Bool,
                      data_opts :: DataOpts,
-                     param_pos :: [Int] }
+                     param_pos :: [Int],
+                     mutual_types :: [Name] }
     deriving Show
 {-!
 deriving instance Binary TypeInfo
@@ -963,6 +964,7 @@ data SyntaxInfo = Syn { using :: [Using],
                         inPattern :: Bool,
                         implicitAllowed :: Bool,
                         maxline :: Maybe Int,
+                        mut_nesting :: Int,
                         dsl_info :: DSL }
     deriving Show
 {-!
@@ -970,7 +972,7 @@ deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] id False False Nothing initDSL
+defaultSyntax = Syn [] [] [] [] id False False Nothing 0 initDSL
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n

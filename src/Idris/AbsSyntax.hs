@@ -1329,9 +1329,11 @@ addImpl' inpat env infns ist ptm
             as' = map (fmap (ai env ds)) as in
          mkPApp fc 1 f' as'
     ai env ds (PCase fc c os) 
-      = let c' = ai env ds c
-            os' = map (pmap (ai env ds)) os in
-            PCase fc c' os'
+      = let c' = ai env ds c in
+        -- leave os alone, because they get lifted into a new pattern match
+        -- definition which is passed through addImpl again with more scope
+        -- information
+            PCase fc c' os
     ai env ds (PLam n ty sc) 
       = let ty' = ai env ds ty
             sc' = ai ((n, Just ty):env) ds sc in
