@@ -698,6 +698,9 @@ elab ist info pattern opts fn tm
                         addImpl ist (PApp fc (PRef fc (sUN "Delay"))
                                           [pexp t])
 
+    -- case is tricky enough without implicit coercions! If they are needed,
+    -- they can go in the branches separately.
+    insertCoerce ina t@(PCase _ _ _) = return t
     insertCoerce ina t =
         do ty <- goal
            -- Check for possible coercions to get to the goal

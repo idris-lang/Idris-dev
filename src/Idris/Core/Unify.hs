@@ -69,7 +69,20 @@ match_unify ctxt env topx topy inj holes from =
                               return (map (renameBinders env) (trimSolutions v))
                            _ -> tfail e
   where
-
+    -- This rule is highly dubious... it certainly produces a valid answer
+    -- but it scares me. However, matching is never guaranteed to give a unique
+    -- answer, merely a valid one, so perhaps we're okay.
+    -- In other words: it may vanish without warning some day :)
+    un names x tm@(App (P _ f (Bind fn (Pi t) sc)) a)
+        | (P (DCon _ _) _ _, _) <- unApply x,
+          holeIn env f || f `elem` holes
+           = let n' = uniqueName (sMN 0 "mv") (map fst env) in
+                 checkCycle names (f, Bind n' (Lam t) x) 
+    un names tm@(App (P _ f (Bind fn (Pi t) sc)) a) x
+        | (P (DCon _ _) _ _, _) <- unApply x,
+          holeIn env f || f `elem` holes
+           = let n' = uniqueName fn (map fst env) in
+                 checkCycle names (f, Bind n' (Lam t) x) 
 
     un names (P _ x _) tm
         | holeIn env x || x `elem` holes
