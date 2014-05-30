@@ -166,6 +166,20 @@ data Eff : (m : Type -> Type)
           ((val : a) -> Eff m b (xs' val) xs'') -> Eff m b xs xs''
 (>>=) = ebind 
 
+-- namespace SimpleBind
+--   (>>=) : Eff m a xs (\v => xs) -> 
+--           ((val : a) -> Eff m b xs xs') -> Eff m b xs xs'
+--   (>>=) = ebind 
+
+||| Run a subprogram which results in an effect state the same as the input.
+staticEff : Eff m a xs (\v => xs) -> Eff m a xs (\v => xs)
+staticEff = id
+
+||| Explicitly give the expected set of result effects for an effectful
+||| operation.
+toEff : .(xs' : List EFFECT) -> Eff m a xs (\v => xs') -> Eff m a xs (\v => xs')
+toEff xs' = id
+
 return : a -> Eff m a xs (\v => xs)
 return x = value x
 

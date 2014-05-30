@@ -25,6 +25,7 @@ New in 0.9.13:
 * Extend :addclause to add instance bodies as well as definitions
 * Reverse parameters to BoundedList -- now matches Vect, and is easier to instantiate classes.
 * Move foldl into Foldable so it can be overridden.
+* Experimental :search REPL command for finding functions by type
 
 Internal changes
 
