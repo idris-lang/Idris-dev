@@ -8,6 +8,7 @@ import Control.Monad (forM_, guard)
 
 import Data.Function (on)
 import Data.List (find, sortBy, (\\))
+import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Monoid (Monoid (mempty, mappend))
@@ -102,7 +103,7 @@ reverseDag xs = map f xs where
 computeDagP :: Ord n => TT n -> ([((n, TT n), Set n)], TT n)
 computeDagP t = (reverse (map f args), retTy) where
 
-  f (n, t) = ((n, t), usedVars t)
+  f (n, t) = ((n, t), M.keysSet (usedVars t))
 
   (numArgs, args, retTy) = go 0 [] t
 
@@ -110,17 +111,17 @@ computeDagP t = (reverse (map f args), retTy) where
   go k args (Bind n (Pi t) sc) = go (succ k) ( (n, t) : args ) sc
   go k args retTy = (k, args, retTy)
 
-  usedVars :: Ord n => TT n -> Set n
-  usedVars (V j) = error "unexpected! run vToP first"
-  usedVars (P Bound n t) = S.singleton n `S.union` usedVars t
-  usedVars (Bind n binder t2) = (S.delete n (usedVars t2) `S.union`) $ case binder of
-    Let t v ->   usedVars t `S.union` usedVars v
-    Guess t v -> usedVars t `S.union` usedVars v
-    b -> usedVars (binderTy b)
-  usedVars (App t1 t2) = usedVars t1 `S.union` usedVars t2
-  usedVars (Proj t _) = usedVars t
-  usedVars _ = S.empty
 
+usedVars :: Ord n => TT n -> Map n (TT n)
+usedVars (V j) = error "unexpected! run vToP first"
+usedVars (P Bound n t) = M.singleton n t `M.union` usedVars t
+usedVars (Bind n binder t2) = (M.delete n (usedVars t2) `M.union`) $ case binder of
+  Let t v ->   usedVars t `M.union` usedVars v
+  Guess t v -> usedVars t `M.union` usedVars v
+  b -> usedVars (binderTy b)
+usedVars (App t1 t2) = usedVars t1 `M.union` usedVars t2
+usedVars (Proj t _) = usedVars t
+usedVars _ = M.empty
 
 deleteFromDag :: Ord n => n -> [((n, TT n), (a, Set n))] -> [((n, TT n), (a, Set n))]
 deleteFromDag name [] = []
@@ -205,18 +206,17 @@ unifyWithHoles debugParam istate type1 = \type2 -> let
     mgetType name xs = fmap ((snd . fst) &&& (fst . snd)) . find ((name ==) . fst . fst) $ xs
 
   updateDags ((name, term) : xs) (holes, args1, args2) = case (mgetType name args1, mgetType name args2) of
-        (Just _, Nothing) -> thrd (\score -> score { leftApplied = succ (leftApplied score) }) <$> 
-          updateDags xs (holes', updatef args1, args2)
-        (Nothing, Just _) -> thrd (\score -> score { rightApplied = succ (rightApplied score) }) <$>
-          updateDags xs (holes', args1, updatef args2)
-        _ -> error "Shouldn't happen. Watch the alpha conversion!"
+        (Just (_,ix), Nothing) -> thrd (\score -> score { leftApplied = succ (leftApplied score) }) <$> nextStep
+        (Nothing, Just (_, ix)) -> thrd (\score -> score { rightApplied = succ (rightApplied score) }) <$> nextStep
+        (Nothing, Nothing) -> nextStep
+        _ -> error ("Shouldn't happen. Watch the alpha conversion!\n" ++ show args1 ++ "\n\n" ++ show args2)
     where
+    varsInTy = map fst $ M.toList (usedVars term)
+    deleteMany = foldr (.) id $ map deleteFromDag (name : varsInTy)
     thrd f (a,b,c) = (a,b,f c)
-    holes' = holes \\ [name]
-    updatef = map (first . second $ subst name term) . deleteFromDag name
-    args1' = deleteFromDag name args1
-    args1'' = map (first . second $ subst name term) args1'
-    mgetType name xs = fmap (snd . fst) . find ((name ==) . fst . fst) $ xs
+    nextStep = updateDags xs (holes \\ [name], updatef args1, updatef args2 )
+    updatef = map (first . second $ subst name term) . deleteMany
+    mgetType name xs = fmap ((snd . fst) &&& (fst . snd)) . find ((name ==) . fst . fst) $ xs
 
 
   go :: State -> [(Type, Type)] -> Maybe State
