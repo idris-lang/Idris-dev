@@ -3,10 +3,10 @@ module reg014
 Matrix : Type -> Nat -> Nat -> Type
 Matrix a n m = Vect n (Vect m a)
 
-transpose : Matrix a (S n) (S m) -> Matrix a (S m) (S n)
-transpose ((x:: []) :: []) = [[x]]
-transpose [x :: y :: xs] = [x] :: (transpose [y :: xs])
-transpose (x :: y :: xs)
-    = let tx = transpose [x] in
-      let ux = transpose (y :: xs) in zipWith (++) tx ux
+mytranspose : Matrix a (S n) (S m) -> Matrix a (S m) (S n)
+mytranspose ((x:: []) :: []) = [[x]]
+mytranspose [x :: y :: xs] = [x] :: (mytranspose [y :: xs])
+mytranspose (x :: y :: xs)
+    = let tx = mytranspose [x] in
+      let ux = mytranspose (y :: xs) in zipWith (++) tx ux
 
