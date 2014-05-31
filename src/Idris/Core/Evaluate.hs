@@ -8,7 +8,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
-                lookupNames, lookupTy, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
+                lookupNames, lookupTyName, lookupTy, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions) where
@@ -863,14 +863,19 @@ lookupNames n ctxt
                 = let ns = lookupCtxtName n (definitions ctxt) in
                       map fst ns
 
-lookupTy :: Name -> Context -> [Type]
-lookupTy n ctxt
-                = do def <- lookupCtxt n (definitions ctxt)
-                     case tfst def of
+lookupTyName :: Name -> Context -> [(Name, Type)]
+lookupTyName n ctxt = do 
+  (name, def) <- lookupCtxtName n (definitions ctxt)
+  ty <- case tfst def of
                        (Function ty _) -> return ty
                        (TyDecl _ ty) -> return ty
                        (Operator ty _ _) -> return ty
                        (CaseOp _ ty _ _ _ _) -> return ty
+  return (name, ty)
+
+
+lookupTy :: Name -> Context -> [Type]
+lookupTy n ctxt = map snd (lookupTyName n ctxt)
 
 isConName :: Name -> Context -> Bool
 isConName n ctxt = isTConName n ctxt || isDConName n ctxt

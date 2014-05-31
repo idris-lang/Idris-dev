@@ -2038,7 +2038,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
                   [c] -> return c
                   [] -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
                   cs -> tclift $ tfail $ At fc 
-                           (CantResolveAlts (map (show . fst) cs))
+                           (CantResolveAlts (map fst cs))
     let constraint = PApp fc (PRef fc n) (map pexp ps)
     let iname = mkiname n ps expn
     let emptyclass = null (class_methods ci)

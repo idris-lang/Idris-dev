@@ -710,7 +710,7 @@ tryAll :: [(Elab' aux a, String)] -> Elab' aux a
 tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
   where
     cantResolve :: Elab' aux a
-    cantResolve = lift $ tfail $ CantResolveAlts (map snd xs)
+    cantResolve = lift $ tfail $ CantResolveTactics (map snd xs)
 
     tryAll' :: [Elab' aux a] -> -- successes
                Int -> -- most problems

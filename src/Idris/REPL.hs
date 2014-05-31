@@ -510,7 +510,7 @@ resolveProof n'
        n <- case lookupNames n' ctxt of
                  [x] -> return x
                  [] -> return n'
-                 ns -> ierror (CantResolveAlts (map show ns))
+                 ns -> ierror (CantResolveAlts ns)
        return n
 
 removeProof :: Name -> Idris ()
@@ -792,7 +792,7 @@ process h fn (Prove n')
               [] -> ierror (Msg $ "Cannot find metavariable " ++ show n')
               [(n, (_,_,False))] -> return n
               [(_, (_,_,True))]  -> ierror (Msg $ "Declarations not solvable using prover")
-              ns -> ierror (CantResolveAlts (map show ns))
+              ns -> ierror (CantResolveAlts (map fst ns))
           prover (lit fn) n
           -- recheck totality
           i <- getIState

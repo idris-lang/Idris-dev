@@ -1034,7 +1034,7 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                             case lookupCtxtName n (idris_implicits i) of
                               [(n', _)] -> return n'
                               []        -> throwError (NoSuchVariable n)
-                              more      -> throwError (CantResolveAlts (map (show . fst) more))
+                              more      -> throwError (CantResolveAlts (map fst more))
 
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)

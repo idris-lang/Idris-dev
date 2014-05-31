@@ -1587,7 +1587,10 @@ reflectErr (NotInjective t1 t2 t3) =
             ]
 reflectErr (CantResolve t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
 reflectErr (CantResolveAlts ss) =
-  raw_apply (Var $ reflErrName "CantResolve")
+  raw_apply (Var $ reflErrName "CantResolveAlts")
+            [rawList (Var $ (sUN "String")) (map Var ss)]
+reflectErr (CantResolveTactics ss) =
+  raw_apply (Var $ reflErrName "CantResolveTactics")
             [rawList (Var $ (sUN "String")) (map (RConstant . Str) ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
 reflectErr UniverseError = Var $ reflErrName "UniverseError"
