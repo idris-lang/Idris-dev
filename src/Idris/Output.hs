@@ -109,29 +109,6 @@ ihRenderResult h d = do ist <- getIState
                           RawOutput -> consoleDisplayAnnotated h d
                           IdeSlave n -> ideSlaveReturnAnnotated n h d
 
-fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
-fancifyAnnots ist annot@(AnnName n _ _ _) =
-  do let ctxt = tt_ctxt ist
-         docs = docOverview ist n
-         ty   = Just (getTy ist n)
-     case () of
-       _ | isDConName    n ctxt -> AnnName n (Just DataOutput) docs ty
-       _ | isFnName      n ctxt -> AnnName n (Just FunOutput) docs ty
-       _ | isTConName    n ctxt -> AnnName n (Just TypeOutput) docs ty
-       _ | isMetavarName n ist  -> AnnName n (Just MetavarOutput) docs ty
-       _ | otherwise            -> annot
-  where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
-        docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
-                               let o   = overview (fst docs)
-                                   -- TODO make width configurable
-                                   out = displayS . renderPretty 1.0 50 $ renderDocstring o
-                               return (out "")
-        getTy :: IState -> Name -> String -- fails if name not already extant!
-        getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
-                                  delabTy ist n
-                      in (displayS . renderPretty 1.0 50 $ theTy) ""
-fancifyAnnots _ annot = annot
-
 -- | Show an error with semantic highlighting
 ihRenderError :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderError h e = do ist <- getIState

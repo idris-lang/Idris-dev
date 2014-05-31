@@ -134,7 +134,6 @@ data Err' t
           | NotInjective t t t
           | CantResolve t
           | CantResolveAlts [Name]
-          | CantResolveTactics [String]
           | IncompleteTerm t
           | UniverseError
           | ProgramLineComment
