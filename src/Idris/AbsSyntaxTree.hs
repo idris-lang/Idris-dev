@@ -1421,6 +1421,11 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     getFixity :: String -> Maybe Fixity
     getFixity = flip M.lookup fixities
 
+prettyDocumentedIst :: IState -> (Name, PTerm, Maybe Docstring) -> Doc OutputAnnotation
+prettyDocumentedIst ist (name, ty, docs) = 
+          prettyName True [] name <+> colon <+> align (prettyIst ist ty) <$>
+          fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
+
 -- | Pretty-printer helper for the binding site of a name
 bindingOf :: Name -- ^^ the bound name
           -> Bool -- ^^ whether the name is implicit

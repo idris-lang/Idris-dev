@@ -32,7 +32,7 @@ import Idris.DeepSeq
 import Idris.Output
 import Idris.Interactive
 import Idris.WhoCalls
-import Idris.TypeSearch (searchByType, searchPred, defaultScoreFunction)
+import Idris.TypeSearch (searchByType)
 
 import Paths_idris
 import Version_idris (gitHash)
@@ -708,8 +708,7 @@ process h fn (DebugInfo n)
         iputStrLn $ "Size change: " ++ show sc
         when (not (null cg')) $ do iputStrLn "Call graph:\n"
                                    iputStrLn (show cg')
-process h fn (Search t) = searchByType h (searchPred defaultScoreFunction) scoreLimit t where
-  scoreLimit = 100
+process h fn (Search t) = searchByType h t
 process h fn (CaseSplitAt updatefile l n) 
     = caseSplitAt h fn updatefile l n
 process h fn (AddClauseFrom updatefile l n)
@@ -905,10 +904,9 @@ process h fn ColourOff
                           putIState $ ist { idris_colourRepl = False }
 process h fn ListErrorHandlers =
   do ist <- getIState
-     case idris_errorhandlers ist of
-       [] -> iPrintResult "No registered error handlers"
-       handlers ->
-           iPrintResult $ "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
+     iPrintResult $ case idris_errorhandlers ist of
+       []       -> "No registered error handlers"
+       handlers -> "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
 process h fn (SetConsoleWidth w) = setWidth w
 
 process h fn (Apropos a) =
@@ -918,11 +916,8 @@ process h fn (Apropos a) =
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
                        | n <- sort names, isUN n ]
-     ihRenderResult h $ vsep (map (renderApropos ist) aproposInfo)
-  where renderApropos ist (name, ty, docs) =
-          prettyName True [] name <+> colon <+> align (prettyIst ist ty) <$>
-          fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
-        isUN (UN _) = True
+     ihRenderResult h $ vsep (map (prettyDocumentedIst ist) aproposInfo)
+  where isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
 

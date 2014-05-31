@@ -7,7 +7,7 @@ import Control.Arrow (first, second, (&&&))
 import Control.Monad (forM_, guard)
 
 import Data.Function (on)
-import Data.List (find, sortBy, (\\))
+import Data.List (find, minimumBy, sortBy, (\\))
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust)
@@ -17,39 +17,43 @@ import qualified Data.Set as S
 
 import Idris.AbsSyntax (addUsingConstraints, addImpl, getContext, getIState, putIState, implicit)
 import Idris.AbsSyntaxTree (class_instances, defaultSyntax, Idris, 
-  IState (idris_classes, tt_ctxt),
-  implicitAllowed, prettyIst, PTerm, toplevel)
+  IState (idris_classes, idris_docstrings, tt_ctxt),
+  implicitAllowed, prettyDocumentedIst, prettyIst, PTerm, toplevel)
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
 import Idris.Core.TT
 import Idris.Core.Unify (match_unify)
 import Idris.Delaborate (delab, delabTy)
-import Idris.Docstrings (noDocs)
+import Idris.Docstrings (noDocs, overview)
 import Idris.ElabDecls (elabType')
 import Idris.Output (ihRenderResult, ihPrintResult, ihPrintFunTypes)
 
 import System.IO (Handle)
 
+import Util.Pretty (text, vsep, char, (<>), Doc)
 
-searchByType :: (Ord a, Show a) => Handle -> (IState -> Type -> Type -> Maybe a) -> a -> PTerm -> Idris ()
-searchByType h pred scoreLimit pterm = do
+searchByType :: Handle -> PTerm -> Idris ()
+searchByType h pterm = do
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn n pterm'
   i <- getIState
   let pterm'''  = addImpl i pterm''
   ty <- elabType' False toplevel syn (fst noDocs) (snd noDocs) emptyFC [] n pterm'
   putIState i -- don't actually make any changes
-  ihRenderResult h (prettyIst i pterm)
-  let names = searchUsing pred i ty
-  let names' = take numLimit . takeWhile ((< scoreLimit) . snd . snd) $ 
-         sortBy (compare `on` (snd . snd)) names
-  forM_ names' $ \(name, (typ, val)) -> do
-    ihPrintFunTypes h [] name [(name, delabTy i name)]
-    ihPrintResult h ("\tScore: " ++ show val ++ "\n")
+  let names = searchUsing searchPred i ty
+  let names' = take numLimit . takeWhile ((< scoreLimit) . getScore) $ 
+         sortBy (compare `on` getScore) names
+  let docs =
+       [ let docInfo = (n, delabTy i n, fmap (overview . fst) (lookupCtxtExact n (idris_docstrings i))) in
+         displayScore score <> char ' ' <> prettyDocumentedIst i docInfo
+                | (n, (_,score)) <- names']
+  ihRenderResult h $ vsep docs
   where 
+    getScore = defaultScoreFunction . snd . snd
     numLimit = 50
+    scoreLimit = 100
     syn = defaultSyntax { implicitAllowed = True } -- syntax
     n = sMN 0 "searchType" -- name
-
+  
 
 searchUsing :: (IState -> Type -> Type -> Maybe a) -> IState -> Type -> [(Name, (Type, a))]
 searchUsing pred istate ty = 
@@ -83,10 +87,10 @@ tcToMaybe (Error _) = Nothing
 
 
 
-searchPred :: (Score -> Int) -> IState -> Type -> Type -> Maybe Int
-searchPred scoref istate ty1 = \ty2 -> case matcher ty2 of
+searchPred :: IState -> Type -> Type -> Maybe Score
+searchPred istate ty1 = \ty2 -> case matcher ty2 of
   Nothing -> Nothing
-  Just xs -> guard (not (null xs)) >> return (minimum (map scoref xs))
+  Just xs -> guard (not (null xs)) >> return (minimumBy (compare `on` defaultScoreFunction) xs)
   where
   matcher = unifyWithHoles True istate ty1
 
@@ -136,6 +140,15 @@ data Score = Score
   , rightApplied  :: Int
   , leftTypeClass :: Int
   , rightTypeClass :: Int } deriving (Eq, Show)
+
+displayScore :: Score -> Doc a
+displayScore (Score trans lapp rapp lclass rclass) = text $ case (lt, gt) of
+  (True , True ) -> "="
+  (True , False) -> "<"
+  (False, True ) -> ">"
+  (False, False) -> " "
+  where lt = lapp + lclass == 0
+        gt = rapp + rclass == 0
 
 
 scoreCriterion :: Score -> Bool
