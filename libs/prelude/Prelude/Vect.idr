@@ -68,6 +68,12 @@ index fZ     (x::xs) = x
 index (fS k) (x::xs) = index k xs
 index fZ     [] impossible
 
+||| Insert an element at a particular index
+insertAt : Fin (S n) -> a -> Vect n a -> Vect (S n) a
+insertAt fZ     y xs      = y :: xs
+insertAt (fS k) y (x::xs) = x :: insertAt k y xs
+insertAt (fS k) y []      = absurd k
+
 ||| Construct a new vector consisting of all but the indicated element
 deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
 deleteAt           fZ     (x::xs) = xs
