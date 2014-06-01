@@ -33,6 +33,7 @@ help =
     ([":doc"], NameArg, "Show internal documentation"),
     ([":mkdoc"], NamespaceArg, "Generate IdrisDoc for namespace(s) and dependencies"),
     ([":apropos"], NoArg, "Search names, types, and documentation"),
+    ([":search", ":s"], ExprArg, "Search for values by type"),
     ([":whocalls", ":wc"], NameArg, "List the callers of some name"),
     ([":callswho", ":cw"], NameArg, "List the callees of some name"),
     ([":total"], NameArg, "Check the totality of a name"),
