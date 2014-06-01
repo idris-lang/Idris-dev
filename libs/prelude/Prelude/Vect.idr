@@ -451,6 +451,12 @@ range : Vect n (Fin n)
 range {n=Z} = []
 range {n=S _} = fZ :: map fS range
 
+||| Transpose a Vect of Vects, turning rows into columns and vice versa.
+|||
+||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
+transpose : Vect m (Vect n a) -> Vect n (Vect m a)
+transpose [] = replicate _ []
+transpose (x :: xs) = zipWith (::) x (transpose xs)
 
 --------------------------------------------------------------------------------
 -- Properties
