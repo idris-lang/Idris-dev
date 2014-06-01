@@ -620,7 +620,7 @@ Library
                 , language-java >= 0.2.6
                 , lens >= 4.1.1
                 , mtl
-                , parsers >= 0.9
+                , parsers >= 0.9 && < 11.0.2 
                 , pretty
                 , process
                 , split
