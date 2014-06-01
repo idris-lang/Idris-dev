@@ -90,6 +90,7 @@ Extra-source-files:
                        libs/base/Language/Reflection/*.idr
                        libs/base/Makefile
                        libs/base/Network/*.idr
+                       libs/base/System/*.idr
                        libs/base/System/Concurrency/*.idr
                        libs/base/Syntax/*.idr
 

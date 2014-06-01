@@ -6,6 +6,7 @@ modules = System,
           Network.Cgi, Network.Socket,
           Debug.Trace,
 
+          System.Info,
           System.Concurrency.Raw, System.Concurrency.Process,
 
           Decidable.Decidable, Decidable.Order,

@@ -55,6 +55,8 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             -- Buffers
             | LAllocate
             | LAppendBuffer
+            -- system info
+            | LSystemInfo
             -- Note that for Bits8 only Native endianness is actually used
             -- and the user-exposed interface for Bits8 doesn't mention
             -- endianness
