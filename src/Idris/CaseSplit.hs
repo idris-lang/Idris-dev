@@ -298,7 +298,7 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
               if (before == n && not (isAlphaNum next))
                  then addBrackets tm ++ updatePat False n tm after
                  else c : updatePat (not (isAlphaNum c)) n tm rest
-    updatePat start n tm (c:rest) = c : updatePat (not (isAlpha c)) n tm rest
+    updatePat start n tm (c:rest) = c : updatePat (not ((isAlphaNum c) || c == '_')) n tm rest
 
     addBrackets tm | ' ' `elem` tm
                    , not (isPrefixOf "(" tm)
