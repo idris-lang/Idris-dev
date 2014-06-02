@@ -549,9 +549,9 @@ fgetc : File -> IO Char
 fgetc (FHandle h) = return (cast !(mkForeign (FFun "fgetc" [FPtr] FInt) h))
 
 fgetc' : File -> IO (Maybe Char)
-fgetc' (FHandle h) 
+fgetc' (FHandle h)
    = do x <- mkForeign (FFun "fgetc" [FPtr] FInt) h
-        if (x < 0) then return Nothing 
+        if (x < 0) then return Nothing
                    else return (Just (cast x))
 
 fflush : File -> IO ()
@@ -650,4 +650,3 @@ readFile fn = do h <- openFile fn Read
           if not x then do l <- fread h
                            readFile' h (contents ++ l)
                    else return contents
-

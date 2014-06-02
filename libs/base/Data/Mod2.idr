@@ -4,7 +4,7 @@ import Data.Bits
 
 %default total
 
--- Integers modulo 2^n
+||| Integers modulo 2^n
 public
 data Mod2 : Nat -> Type where
     MkMod2 : {n : Nat} -> Bits n -> Mod2 n

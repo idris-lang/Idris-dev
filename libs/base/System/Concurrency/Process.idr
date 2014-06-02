@@ -9,9 +9,8 @@ import System.Concurrency.Raw
 abstract
 data ProcID msg = MkPID Ptr
 
--- Type safe message passing programs. Parameterised over the type of
--- message which can be send, and the return type.
-
+||| Type safe message passing programs. Parameterised over the type of
+||| message which can be send, and the return type.
 data Process : (msgType : Type) -> Type -> Type where
      lift : IO a -> Process msg a
 
@@ -30,31 +29,26 @@ instance Monad (Process msg) where
 run : Process msg x -> IO x
 run (lift prog) = prog
 
--- Get current process ID
-
+||| Get current process ID
 myID : Process msg (ProcID msg)
 myID = lift (return (MkPID prim__vm))
 
--- Send a message to another process
-
+||| Send a message to another process
 send : ProcID msg -> msg -> Process msg ()
 send (MkPID p) m = lift (sendToThread p (prim__vm, m))
 
--- Return whether a message is waiting in the queue
-
+||| Return whether a message is waiting in the queue
 msgWaiting : Process msg Bool
 msgWaiting = lift checkMsgs
 
--- Receive a message - blocks if there is no message waiting
-
+||| Receive a message - blocks if there is no message waiting
 recv : Process msg msg
 recv {msg} = do (senderid, m) <- lift get
                 return m
   where get : IO (Ptr, msg)
         get = getMsg
 
--- receive a message, and return with the sender's process ID.
-
+||| receive a message, and return with the sender's process ID.
 recvWithSender : Process msg (ProcID msg, msg)
 recvWithSender {msg}
      = do (senderid, m) <- lift get
@@ -65,4 +59,3 @@ recvWithSender {msg}
 create : Process msg () -> Process msg (ProcID msg)
 create (lift p) = do ptr <- lift (fork p)
                      return (MkPID ptr)
-
