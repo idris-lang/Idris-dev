@@ -1397,9 +1397,9 @@ banner = "     ____    __     _                                          \n" ++
          "    /  _/___/ /____(_)____                                     \n" ++
          "    / // __  / ___/ / ___/     Version " ++ ver ++ "\n" ++
          "  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      \n" ++
-         " /___/\\__,_/_/  /_/____/       Type :? for help                \n" ++
+         " /___/\\__,_/_/  /_/____/       Type :? for help               \n" ++
          "\n" ++
-         "Idris is a research tool distributed with ABSOLUTELY NO WARRANTY.\n" ++
+         "Idris is free software with ABSOLUTELY NO WARRANTY.            \n" ++
          "For details type :warranty."
 
 warranty = "\n"                                                                          ++
