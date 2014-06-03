@@ -26,7 +26,8 @@ data PkgDesc = PkgDesc { pkgname :: String,
                          sourcedir :: String,
                          modules :: [Name],
                          idris_main :: Name,
-                         execout :: Maybe String
+                         execout :: Maybe String,
+                         idris_tests :: [Name]
                        }
     deriving Show
 
@@ -34,7 +35,7 @@ instance TokenParsing PParser where
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
 
-defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (sUN "") Nothing
+defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (sUN "") Nothing []
 
 parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do p <- readFile fp
@@ -85,4 +86,8 @@ pClause = do reserved "executable"; lchar '=';
              mk <- iName []
              st <- get
              put (st { makefile = Just (show mk) })
+      <|> do reserved "tests"; lchar '=';
+             ts <- sepBy1 (iName []) (lchar ',')
+             st <- get
+             put st { idris_tests = idris_tests st ++ ts }
 

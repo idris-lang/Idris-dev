@@ -373,6 +373,7 @@ data Opt = Filename String
          | PkgCheck String
          | PkgREPL String
          | PkgMkDoc String     -- IdrisDoc
+         | PkgTest String
          | WarnOnly
          | Pkg String
          | BCAsm String

@@ -1350,6 +1350,11 @@ getPkgMkDoc :: Opt          -- ^ Opt to extract
 getPkgMkDoc (PkgMkDoc str) = Just str
 getPkgMkDoc _              = Nothing
 
+getPkgTest :: Opt          -- ^ the option to extract
+           -> Maybe String -- ^ the package file to test
+getPkgTest (PkgTest f) = Just f
+getPkgTest _ = Nothing
+
 getCodegen :: Opt -> Maybe Codegen
 getCodegen (UseCodegen x) = Just x
 getCodegen _ = Nothing
