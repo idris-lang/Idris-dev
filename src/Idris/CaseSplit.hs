@@ -280,6 +280,8 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
     nshow t = show t
 
     -- if there's any {n} replace with {n=n}
+    -- but don't replace it in comments
+    expandBraces ('{' : '-' : xs) = '{' : '-' : xs
     expandBraces ('{' : xs)
         = let (brace, (_:rest)) = span (/= '}') xs in
               if (not ('=' `elem` brace))
