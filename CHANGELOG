@@ -1,3 +1,9 @@
+New in 0.9.14:
+--------------
+* Support for running tests for a package with the tests section of .ipkg files and the
+  --testpkg command-line option
+
+
 New in 0.9.13:
 --------------
 * IDE support for retrieving structured information about metavariables
