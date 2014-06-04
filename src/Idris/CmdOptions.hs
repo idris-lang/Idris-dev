@@ -10,10 +10,50 @@ import Options.Applicative
 import Options.Applicative.Arrows
 import Data.Maybe
 
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+
 runArgParser :: IO [Opt]
-runArgParser = do opts <- execParser $ info parser $
-                    header ("Idris version " ++ ver ++ ", (C) The Idris Community 2014")
+runArgParser = do opts <- execParser $ info parser
+                          (fullDesc
+                           <> headerDoc   (Just idrisHeader)
+                           <> progDescDoc (Just idrisProgDesc)
+                           <> footerDoc   (Just idrisFooter)
+                          )
                   return $ preProcOpts opts []
+               where
+                 idrisHeader = PP.hsep [PP.text "Idris version", PP.text ver, PP.text ", (C) The Idris Community 2014"]
+                 idrisProgDesc = PP.vsep [PP.text "Idris is a general purpose pure functional programming language with dependent",
+                                          PP.text "types. Dependent types allow types to be predicated on values, meaning that",
+                                          PP.text "some aspects of a program’s behaviour can be specified precisely in the type.",
+                                          PP.text "It is compiled, with eager evaluation. Its features are influenced by Haskell",
+                                          PP.text "and ML.",
+                                          PP.empty,
+                                          PP.vsep $ map (\x -> PP.indent 4 (PP.text x)) [
+                                            "+ Full dependent types with dependent pattern matching",
+                                            "+ where clauses, with rule, simple case expressions",
+                                            "+ pattern matching let and lambda bindings",
+                                            "+ Type classes, monad comprehensions",
+                                            "+ do notation, idiom brackets",
+                                            "+ syntactic conveniences for lists, tuples, dependent pairs",
+                                            "+ Totality checking",
+                                            "+ Coinductive types",
+                                            "+ Indentation significant syntax, extensible syntax",
+                                            "+ Tactic based theorem proving (influenced by Coq)",
+                                            "+ Cumulative universes",
+                                            "+ Simple foreign function interface (to C)",
+                                            "+ Hugs style interactive environment"
+                                            ],
+                                          PP.empty]
+                 idrisFooter = PP.vsep [PP.text "It is important to note that Idris is first and foremost a research tool",
+                                        PP.text "and project. Thus the tooling provided and resulting programs created",
+                                        PP.text "should not necessarily be seen as production ready nor for industrial use.",
+                                        PP.empty,
+                                        PP.text "More details over Idris can be found online here:",
+                                        PP.empty,
+                                        PP.indent 4 (PP.text "http://www.idris-lang.org/")]
+
+
+
 
 pureArgParser :: [String] -> [Opt]
 pureArgParser args = case execParserMaybe (info parser idm) args of
