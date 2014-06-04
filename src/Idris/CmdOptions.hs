@@ -101,6 +101,7 @@ parseFlags = many $
   <|> (PkgClean <$> strOption (long "clean" <> metavar "IPKG" <> help "Clean package"))
   <|> (PkgMkDoc <$> strOption (long "mkdoc" <> metavar "IPKG" <> help "Generate IdrisDoc for package"))
   <|> (PkgCheck <$> strOption (long "checkpkg" <> metavar "IPKG" <> help "Check package only"))
+  <|> (PkgTest <$> strOption (long "testpkg" <> metavar "IPKG" <> help "Run tests for package"))
   -- Misc options
   <|> (BCAsm <$> strOption (long "bytecode"))
   <|> flag' (OutputTy Raw) (short 'S' <> long "codegenonly" <> help "Do no further compilation of code generator output")
