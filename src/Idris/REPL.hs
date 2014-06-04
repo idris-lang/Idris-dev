@@ -110,7 +110,7 @@ repl orig mods
                           return ()
             Just input -> -- H.catch
                 do ms <- H.catch (lift $ processInput input orig mods)
-                                 (ctrlC (return (Just mods))) 
+                                 (ctrlC (return (Just mods)))
                    case ms of
                         Just mods -> repl orig mods
                         Nothing -> return ()
@@ -121,7 +121,7 @@ repl orig mods
                           act -- repl orig mods
 
          showMVs c thm [] = ""
-         showMVs c thm ms = "Metavariables: " ++ 
+         showMVs c thm ms = "Metavariables: " ++
                                  show' 4 c thm (map fst ms) ++ "\n"
 
          show' 0 c thm ms = let l = length ms in
@@ -129,7 +129,7 @@ repl orig mods
                              ++ " other"
                              ++ if l == 1 then ")" else "s)"
          show' n c thm [m] = showM c thm m
-         show' n c thm (m : ms) = showM c thm m ++ ", " ++ 
+         show' n c thm (m : ms) = showM c thm m ++ ", " ++
                                   show' (n - 1) c thm ms
 
          showM c thm n = if c then colouriseFun thm (show n)
@@ -388,6 +388,7 @@ splitName s = case reverse $ splitOn "." s of
                 (n:ns) -> Right $ sNS (sUN n) ns
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
+ideslaveProcess fn Warranty = process stdout fn Warranty
 ideslaveProcess fn Help = process stdout fn Help
 ideslaveProcess fn (ChangeDirectory f) = do process stdout fn (ChangeDirectory f)
                                             iPrintResult "changed directory to"
@@ -564,6 +565,7 @@ insertScript prf (x : xs) = x : insertScript prf xs
 
 process :: Handle -> FilePath -> Command -> Idris ()
 process h fn Help = iPrintResult displayHelp
+process h fn Warranty = iPrintResult warranty
 process h fn (ChangeDirectory f)
                  = do runIO $ setCurrentDirectory f
                       return ()
@@ -709,7 +711,7 @@ process h fn (DebugInfo n)
         when (not (null cg')) $ do iputStrLn "Call graph:\n"
                                    iputStrLn (show cg')
 process h fn (Search t) = searchByType h t
-process h fn (CaseSplitAt updatefile l n) 
+process h fn (CaseSplitAt updatefile l n)
     = caseSplitAt h fn updatefile l n
 process h fn (AddClauseFrom updatefile l n)
     = addClauseFrom h fn updatefile l n
@@ -1022,10 +1024,10 @@ loadInputs h inputs toline -- furthest line to read in input source files
                    let ifiles = getModuleFiles modTree
                    iLOG ("MODULE TREE : " ++ show modTree)
                    iLOG ("RELOAD: " ++ show ifiles)
-                   when (not (all ibc ifiles) || loadCode) $ 
+                   when (not (all ibc ifiles) || loadCode) $
                         tryLoad False (filter (not . ibc) ifiles)
                    -- return the files that need rechecking
-                   return ifiles) 
+                   return ifiles)
                       ninputs
            inew <- getIState
            let tidata = idris_tyinfodata inew
@@ -1395,6 +1397,20 @@ banner = "     ____    __     _                                          \n" ++
          "    /  _/___/ /____(_)____                                     \n" ++
          "    / // __  / ___/ / ___/     Version " ++ ver ++ "\n" ++
          "  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      \n" ++
-         " /___/\\__,_/_/  /_/____/       Type :? for help                \n"
+         " /___/\\__,_/_/  /_/____/       Type :? for help               \n" ++
+         "\n" ++
+         "Idris is free software with ABSOLUTELY NO WARRANTY.            \n" ++
+         "For details type :warranty."
 
-
+warranty = "\n"                                                                          ++
+           "\t THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY  \n" ++
+           "\t EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE     \n" ++
+           "\t IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR    \n" ++
+           "\t PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE   \n" ++
+           "\t LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR   \n" ++
+           "\t CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF  \n" ++
+           "\t SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR       \n" ++
+           "\t BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, \n" ++
+           "\t WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE  \n" ++
+           "\t OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN\n" ++
+           "\t IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n"
