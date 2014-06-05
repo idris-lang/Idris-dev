@@ -1061,19 +1061,20 @@ ProviderWhat ::= 'proof' | 'term' | 'type' | 'postulate'
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do try (lchar '%' *> reserved "provide");
-                  what <- provideWhat
-                  lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
-                  fc <- getFC
-                  reserved "with"
-                  e <- expr syn
-                  return  [PProvider syn fc what n t e]
+                  provideTerm <|> providePostulate
                <?> "type provider"
-  where provideWhat :: IdrisParser ProvideWhat
-        provideWhat = option ProvAny
-                        (      ((reserved "proof" <|> reserved "term" <|> reserved "type") *>
-                                pure ProvTerm)
-                           <|> (reserved "postulate" *> pure ProvPostulate)
-                   <?> "provider variety")
+  where provideTerm = do lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
+                         fc <- getFC
+                         reserved "with"
+                         e <- expr syn <?> "provider expression"
+                         return  [PProvider syn fc (ProvTerm t e) n]
+        providePostulate = do reserved "postulate"
+                              n <- fnName
+                              fc <- getFC
+                              reserved "with"
+                              e <- expr syn <?> "provider expression"
+                              return [PProvider syn fc (ProvPostulate e) n]
+
 {- | Parses a transform
 
 @
