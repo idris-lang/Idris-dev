@@ -681,8 +681,8 @@ elabPrims = do mapM_ (elabDecl EAll toplevel)
 
 
 -- | Elaborate a type provider
-elabProvider :: ElabInfo -> SyntaxInfo -> FC -> ProvideWhat -> Name -> PTerm -> PTerm -> Idris ()
-elabProvider info syn fc what n ty tm
+elabProvider :: ElabInfo -> SyntaxInfo -> FC -> ProvideWhat -> Name -> Idris ()
+elabProvider info syn fc what n
     = do i <- getIState
          -- Ensure that the experimental extension is enabled
          unless (TypeProviders `elem` idris_language_extensions i) $
@@ -692,12 +692,17 @@ elabProvider info syn fc what n ty tm
          ctxt <- getContext
 
          -- First elaborate the expected type (and check that it's a type)
-         (ty', typ) <- elabVal toplevel False ty
+         -- The goal type for a postulate is always Type.
+         (ty', typ) <- case what of
+                         ProvTerm ty p   -> elabVal toplevel False ty
+                         ProvPostulate _ -> elabVal toplevel False PType
          unless (isTType typ) $
            ifail ("Expected a type, got " ++ show ty' ++ " : " ++ show typ)
 
          -- Elaborate the provider term to TT and check that the type matches
-         (e, et) <- elabVal toplevel False tm
+         (e, et) <- case what of
+                      ProvTerm _ tm    -> elabVal toplevel False tm
+                      ProvPostulate tm -> elabVal toplevel False tm
          unless (isProviderOf (normalise ctxt [] ty') et) $
            ifail $ "Expected provider type IO (Provider (" ++
                    show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
@@ -715,17 +720,14 @@ elabProvider info syn fc what n ty tm
 
          case provided of
            Provide tm
-             | what `elem` [ProvTerm, ProvAny] ->
+             | ProvTerm ty _ <- what ->
                do -- Finally add a top-level definition of the provided term
                   elabType info syn emptyDocstring [] fc [] n ty
                   elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
                   logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
-             | otherwise ->
-               ierror . Msg $ "Attempted to provide a term where a postulate was expected."
-           Postulate
-             | what `elem` [ProvPostulate, ProvAny] ->
+             | ProvPostulate _ <- what ->
                do -- Add the postulate
-                  elabPostulate info syn (parseDocstring $ T.pack "Provided postulate") fc [] n ty
+                  elabPostulate info syn (parseDocstring $ T.pack "Provided postulate") fc [] n (delab i tm)
                   logLvl 3 $ "Elaborated provided postulate " ++ show n
              | otherwise ->
                ierror . Msg $ "Attempted to provide a postulate where a term was expected."
@@ -2408,10 +2410,10 @@ elabDecl' _ info (PDSL n dsl)
          addIBC (IBCDSL n)
 elabDecl' what info (PDirective i)
   | what /= EDefns = i
-elabDecl' what info (PProvider syn fc provWhat n tp tm)
+elabDecl' what info (PProvider syn fc provWhat n)
   | what /= EDefns
     = do iLOG $ "Elaborating type provider " ++ show n
-         elabProvider info syn fc provWhat n tp tm
+         elabProvider info syn fc provWhat n
 elabDecl' what info (PTransform fc safety old new)
     = elabTransform info fc safety old new
 elabDecl' _ _ _ = return () -- skipped this time

@@ -156,16 +156,14 @@ instance (NFData t) => NFData (PDecl' t) where
         rnf (PSyntax x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PMutual x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PDirective x1) = ()
-        rnf (PProvider x1 x2 x3 x4 x5 x6)
-          = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
+        rnf (PProvider x1 x2 x3 x4)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PTransform x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
 
-instance NFData ProvideWhat where
-        rnf ProvAny       = ()
-        rnf ProvTerm      = ()
-        rnf ProvPostulate = ()
+instance NFData t => NFData (ProvideWhat' t)  where
+        rnf (ProvTerm ty tm)   = rnf ty `seq` rnf tm `seq` ()
+        rnf (ProvPostulate tm) = rnf tm `seq` ()
 
 instance NFData PunInfo where
         rnf x = x `seq` ()
