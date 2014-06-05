@@ -70,7 +70,7 @@ build ist info pattern opts fn tm
 
          when (not pattern) $ 
            traceWhen u ("Remaining holes:\n" ++ show hs ++ "\n" ++
-                        "Remaining problems:\n" ++ show probs) $ 
+                        "Remaining problems:\n" ++ qshow probs) $ 
              do unify_all; matchProblems True; unifyProblems
 
          probs <- get_probs

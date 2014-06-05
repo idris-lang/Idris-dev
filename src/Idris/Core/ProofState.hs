@@ -823,6 +823,10 @@ updateEnv ns [] = []
 updateEnv ns ((n, b) : env) = (n, fmap (updateSolved ns) b) : updateEnv ns env
 
 updateError [] err = err
+updateError ns (At f e) = At f (updateError ns e)
+updateError ns (Elaborating s n e) = Elaborating s n (updateError ns e)
+updateError ns (ElaboratingArg f a env e) 
+ = ElaboratingArg f a env (updateError ns e)
 updateError ns (CantUnify b l r e xs sc)
  = CantUnify b (updateSolved ns l) (updateSolved ns r) (updateError ns e) xs sc
 updateError ns e = e
