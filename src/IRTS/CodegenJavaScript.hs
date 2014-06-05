@@ -2508,6 +2508,8 @@ translateExpression (SOp op vars)
                                 JSNum (JSInt 1),
                                 JSBinOp "-" (JSProj (JSIdent v) "length") (JSNum (JSInt 1))
                               ]
+  | LSystemInfo <- op
+  , (arg:_) <- vars = jsCall "__IDRRT__systemInfo"  [JSVar arg]
   | LNullPtr    <- op
   , (_)         <- vars = JSNull
 

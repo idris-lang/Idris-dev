@@ -68,6 +68,12 @@ index fZ     (x::xs) = x
 index (fS k) (x::xs) = index k xs
 index fZ     [] impossible
 
+||| Insert an element at a particular index
+insertAt : Fin (S n) -> a -> Vect n a -> Vect (S n) a
+insertAt fZ     y xs      = y :: xs
+insertAt (fS k) y (x::xs) = x :: insertAt k y xs
+insertAt (fS k) y []      = absurd k
+
 ||| Construct a new vector consisting of all but the indicated element
 deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
 deleteAt           fZ     (x::xs) = xs
@@ -253,6 +259,10 @@ instance Foldable (Vect n) where
 concat : Vect m (Vect n a) -> Vect (m * n) a
 concat []      = []
 concat (v::vs) = v ++ concat vs
+
+||| Fold without seeding the accumulator
+foldr1 : (t -> t -> t) -> Vect (S n) t -> t
+foldr1 f (x::xs) = foldr f x xs
 
 --------------------------------------------------------------------------------
 -- Scans
@@ -447,6 +457,12 @@ range : Vect n (Fin n)
 range {n=Z} = []
 range {n=S _} = fZ :: map fS range
 
+||| Transpose a Vect of Vects, turning rows into columns and vice versa.
+|||
+||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
+transpose : Vect m (Vect n a) -> Vect n (Vect m a)
+transpose [] = replicate _ []
+transpose (x :: xs) = zipWith (::) x (transpose xs)
 
 --------------------------------------------------------------------------------
 -- Properties

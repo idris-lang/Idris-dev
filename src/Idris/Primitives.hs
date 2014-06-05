@@ -28,9 +28,10 @@ ty :: [Const] -> Const -> Type
 ty []     x = Constant x
 ty (t:ts) x = Bind (sMN 0 "T") (Pi (Constant t)) (ty ts x)
 
-total, partial :: Totality
+total, partial, iopartial :: Totality
 total = Total []
 partial = Partial NotCovering
+iopartial = Partial ExternalIO
 
 primitives :: [Prim]
 primitives =
@@ -164,16 +165,16 @@ primitives =
    Prim (sUN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
     (1, LStrRev) total,
    Prim (sUN "prim__readString") (ty [PtrType] StrType) 1 (p_cantreduce)
-     (1, LReadStr) partial,
+     (1, LReadStr) iopartial,
    Prim (sUN "prim__vm") (ty [] PtrType) 0 (p_cantreduce)
      (0, LVMPtr) total,
    -- Streams
    Prim (sUN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdIn) partial,
+    (0, LStdIn) iopartial,
    Prim (sUN "prim__stdout") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdOut) partial,
+    (0, LStdOut) iopartial,
    Prim (sUN "prim__stderr") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdErr) partial,
+    (0, LStdErr) iopartial,
    Prim (sUN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
     (0, LNullPtr) total,
    -- Managed pointer registration
@@ -183,7 +184,9 @@ primitives =
    Prim (sUN "prim__allocate") (ty [AType (ATInt (ITFixed IT64))] BufferType) 1 (p_allocate)
     (1, LAllocate) total,
    Prim (sUN "prim__appendBuffer") (ty [BufferType, AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), BufferType] BufferType) 6 (p_appendBuffer)
-    (6, LAppendBuffer) partial
+    (6, LAppendBuffer) partial,
+    Prim (sUN "prim__systemInfo") (ty [AType (ATInt ITNative)] StrType) 1 (p_cantreduce)
+        (1, LSystemInfo) total
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
     ++ concatMap vecOps vecTypes
     ++ concatMap fixedOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64] -- ITNative, ITChar, ATFloat ] ++ vecTypes

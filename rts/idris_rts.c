@@ -506,6 +506,19 @@ VAL idris_strRev(VM* vm, VAL str) {
     return cl;
 }
 
+VAL idris_systemInfo(VM* vm, VAL index) {
+    int i = GETINT(index);
+    switch(i) {
+        case 0: // backend
+            return MKSTR(vm, "c");
+        case 1:
+            return MKSTR(vm, IDRIS_TARGET_OS);
+        case 2:
+            return MKSTR(vm, IDRIS_TARGET_TRIPLE);
+    }
+    return MKSTR(vm, "");
+}
+
 VAL MKBUFFERc(VM* vm, Buffer* buf) {
     Closure* cl = allocate(vm, sizeof(Closure) + sizeof *buf + buf->cap, 1);
     SETTY(cl, BUFFER);

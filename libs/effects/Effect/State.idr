@@ -17,13 +17,13 @@ STATE : Type -> EFFECT
 STATE t = MkEff t State
 
 get : { [STATE x] } Eff m x
-get = Get
+get = call $ Get
 
 put : x -> { [STATE x] } Eff m () 
-put val = Put val
+put val = call $ Put val
 
 putM : y -> { [STATE x] ==> [STATE y] } Eff m () 
-putM val = Put val
+putM val = call $ Put val
 
 update : (x -> x) -> { [STATE x] } Eff m () 
 update f = put (f !get)

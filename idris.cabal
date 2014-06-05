@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.12
+Version:        0.9.13
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -90,6 +90,7 @@ Extra-source-files:
                        libs/base/Language/Reflection/*.idr
                        libs/base/Makefile
                        libs/base/Network/*.idr
+                       libs/base/System/*.idr
                        libs/base/System/Concurrency/*.idr
                        libs/base/Syntax/*.idr
 
@@ -270,6 +271,9 @@ Extra-source-files:
                        test/basic009/*.idr
                        test/basic009/expected
                        test/basic009/B/*.idr
+                       test/basic010/run
+                       test/basic010/*.idr
+                       test/basic010/expected
 
                        test/buffer001-disabled/*.idr
                        test/buffer001-disabled/run
@@ -452,6 +456,9 @@ Extra-source-files:
                        test/totality007/*.ipkg
                        test/totality007/src/*.idr
                        test/totality007/expected
+                       test/totality008/run
+                       test/totality008/*.idr
+                       test/totality008/expected
 
                        test/tutorial001/run
                        test/tutorial001/*.idr
@@ -559,6 +566,7 @@ Library
                 , Idris.REPL
                 , Idris.REPLParser
                 , Idris.Transforms
+                , Idris.TypeSearch
                 , Idris.Unlit
                 , Idris.WhoCalls
                 , Idris.CmdOptions
@@ -615,7 +623,7 @@ Library
                 , language-java >= 0.2.6
                 , lens >= 4.1.1
                 , mtl
-                , parsers >= 0.9
+                , parsers >= 0.9 && < 0.11.0.2 
                 , pretty
                 , process
                 , split

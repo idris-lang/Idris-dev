@@ -32,6 +32,7 @@ import Idris.DeepSeq
 import Idris.Output
 import Idris.Interactive
 import Idris.WhoCalls
+import Idris.TypeSearch (searchByType)
 
 import Paths_idris
 import Version_idris (gitHash)
@@ -109,7 +110,7 @@ repl orig mods
                           return ()
             Just input -> -- H.catch
                 do ms <- H.catch (lift $ processInput input orig mods)
-                                 (ctrlC (return (Just mods))) 
+                                 (ctrlC (return (Just mods)))
                    case ms of
                         Just mods -> repl orig mods
                         Nothing -> return ()
@@ -120,7 +121,7 @@ repl orig mods
                           act -- repl orig mods
 
          showMVs c thm [] = ""
-         showMVs c thm ms = "Metavariables: " ++ 
+         showMVs c thm ms = "Metavariables: " ++
                                  show' 4 c thm (map fst ms) ++ "\n"
 
          show' 0 c thm ms = let l = length ms in
@@ -128,7 +129,7 @@ repl orig mods
                              ++ " other"
                              ++ if l == 1 then ")" else "s)"
          show' n c thm [m] = showM c thm m
-         show' n c thm (m : ms) = showM c thm m ++ ", " ++ 
+         show' n c thm (m : ms) = showM c thm m ++ ", " ++
                                   show' (n - 1) c thm ms
 
          showM c thm n = if c then colouriseFun thm (show n)
@@ -387,6 +388,7 @@ splitName s = case reverse $ splitOn "." s of
                 (n:ns) -> Right $ sNS (sUN n) ns
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
+ideslaveProcess fn Warranty = process stdout fn Warranty
 ideslaveProcess fn Help = process stdout fn Help
 ideslaveProcess fn (ChangeDirectory f) = do process stdout fn (ChangeDirectory f)
                                             iPrintResult "changed directory to"
@@ -563,6 +565,7 @@ insertScript prf (x : xs) = x : insertScript prf xs
 
 process :: Handle -> FilePath -> Command -> Idris ()
 process h fn Help = iPrintResult displayHelp
+process h fn Warranty = iPrintResult warranty
 process h fn (ChangeDirectory f)
                  = do runIO $ setCurrentDirectory f
                       return ()
@@ -707,8 +710,8 @@ process h fn (DebugInfo n)
         iputStrLn $ "Size change: " ++ show sc
         when (not (null cg')) $ do iputStrLn "Call graph:\n"
                                    iputStrLn (show cg')
-process h fn (Search t) = iPrintError "Not implemented"
-process h fn (CaseSplitAt updatefile l n) 
+process h fn (Search t) = searchByType h t
+process h fn (CaseSplitAt updatefile l n)
     = caseSplitAt h fn updatefile l n
 process h fn (AddClauseFrom updatefile l n)
     = addClauseFrom h fn updatefile l n
@@ -848,7 +851,7 @@ process h fn (Missing n)
     = do i <- getIState
          let i' = i { idris_options = (idris_options i) { opt_showimp = True } }
          case lookupCtxt n (idris_patdefs i) of
-                  [] -> return ()
+                  [] -> ihPrintError h $ "Unknown operator " ++ show n
                   [(_, tms)] ->
                        iPrintResult (showSep "\n" (map (showTm i') tms))
                   _ -> iPrintError $ "Ambiguous name"
@@ -903,10 +906,9 @@ process h fn ColourOff
                           putIState $ ist { idris_colourRepl = False }
 process h fn ListErrorHandlers =
   do ist <- getIState
-     case idris_errorhandlers ist of
-       [] -> iPrintResult "No registered error handlers"
-       handlers ->
-           iPrintResult $ "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
+     iPrintResult $ case idris_errorhandlers ist of
+       []       -> "No registered error handlers"
+       handlers -> "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
 process h fn (SetConsoleWidth w) = setWidth w
 
 process h fn (Apropos a) =
@@ -916,11 +918,8 @@ process h fn (Apropos a) =
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
                        | n <- sort names, isUN n ]
-     ihRenderResult h $ vsep (map (renderApropos ist) aproposInfo)
-  where renderApropos ist (name, ty, docs) =
-          prettyName True [] name <+> colon <+> align (prettyIst ist ty) <$>
-          fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
-        isUN (UN _) = True
+     ihRenderResult h $ vsep (map (prettyDocumentedIst ist) aproposInfo)
+  where isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
 
@@ -1025,10 +1024,10 @@ loadInputs h inputs toline -- furthest line to read in input source files
                    let ifiles = getModuleFiles modTree
                    iLOG ("MODULE TREE : " ++ show modTree)
                    iLOG ("RELOAD: " ++ show ifiles)
-                   when (not (all ibc ifiles) || loadCode) $ 
+                   when (not (all ibc ifiles) || loadCode) $
                         tryLoad False (filter (not . ibc) ifiles)
                    -- return the files that need rechecking
-                   return ifiles) 
+                   return ifiles)
                       ninputs
            inew <- getIState
            let tidata = idris_tyinfodata inew
@@ -1353,6 +1352,11 @@ getPkgMkDoc :: Opt          -- ^ Opt to extract
 getPkgMkDoc (PkgMkDoc str) = Just str
 getPkgMkDoc _              = Nothing
 
+getPkgTest :: Opt          -- ^ the option to extract
+           -> Maybe String -- ^ the package file to test
+getPkgTest (PkgTest f) = Just f
+getPkgTest _ = Nothing
+
 getCodegen :: Opt -> Maybe Codegen
 getCodegen (UseCodegen x) = Just x
 getCodegen _ = Nothing
@@ -1398,6 +1402,20 @@ banner = "     ____    __     _                                          \n" ++
          "    /  _/___/ /____(_)____                                     \n" ++
          "    / // __  / ___/ / ___/     Version " ++ ver ++ "\n" ++
          "  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      \n" ++
-         " /___/\\__,_/_/  /_/____/       Type :? for help                \n"
+         " /___/\\__,_/_/  /_/____/       Type :? for help               \n" ++
+         "\n" ++
+         "Idris is free software with ABSOLUTELY NO WARRANTY.            \n" ++
+         "For details type :warranty."
 
-
+warranty = "\n"                                                                          ++
+           "\t THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY  \n" ++
+           "\t EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE     \n" ++
+           "\t IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR    \n" ++
+           "\t PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE   \n" ++
+           "\t LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR   \n" ++
+           "\t CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF  \n" ++
+           "\t SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR       \n" ++
+           "\t BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, \n" ++
+           "\t WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE  \n" ++
+           "\t OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN\n" ++
+           "\t IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n"

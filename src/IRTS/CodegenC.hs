@@ -493,6 +493,8 @@ doOp v (LChInt ITNative) args = v ++ creg (last args)
 doOp v (LChInt ITChar) args = doOp v (LChInt ITNative) args
 doOp v (LIntCh ITNative) args = v ++ creg (last args)
 doOp v (LIntCh ITChar) args = doOp v (LIntCh ITNative) args
+
+doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
 doOp v LNoOp args = v ++ creg (last args)
 doOp _ op _ = "FAIL /* " ++ show op ++ " */"
 

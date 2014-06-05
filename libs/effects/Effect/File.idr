@@ -101,33 +101,28 @@ FILE_IO t = MkEff t FileIO
 ||| 
 ||| @ fname The file name to be opened.
 ||| @ m The file mode.
-open : Handler FileIO e =>
-       (fname : String)
+open : (fname : String)
        -> (m : Mode)
        -> { [FILE_IO ()] ==> [FILE_IO (if result
                                           then OpenFile m
                                           else ())] } Eff e Bool
-open f m = Open f m
+open f m = call $ Open f m
 
 
 ||| Close a file.
-close : Handler FileIO e =>
-        { [FILE_IO (OpenFile m)] ==> [FILE_IO ()] } Eff e ()
-close = Close
+close : { [FILE_IO (OpenFile m)] ==> [FILE_IO ()] } Eff e ()
+close = call $ Close
 
 ||| Read a line from the file.
-readLine : Handler FileIO e => 
-           { [FILE_IO (OpenFile Read)] } Eff e String 
-readLine = ReadLine
+readLine : { [FILE_IO (OpenFile Read)] } Eff e String 
+readLine = call $ ReadLine
 
 ||| Write a line to a file.
-writeLine : Handler FileIO e => 
-            String -> { [FILE_IO (OpenFile Write)] } Eff e ()
-writeLine str = WriteLine str
+writeLine : String -> { [FILE_IO (OpenFile Write)] } Eff e ()
+writeLine str = call $ WriteLine str
 
 ||| End of file?
-eof : Handler FileIO e => 
-      { [FILE_IO (OpenFile Read)] } Eff e Bool 
-eof = EOF
+eof : { [FILE_IO (OpenFile Read)] } Eff e Bool 
+eof = call $ EOF
 
 -- --------------------------------------------------------------------- [ EOF ]

@@ -163,7 +163,7 @@ decl syn = do fc <- getFC
               let continue = case maxline syn of
                                 Nothing -> True
                                 Just l -> if fst (fc_end fc) > l
-                                             then False
+                                             then mut_nesting syn /= 0
                                              else True
               if continue then do notEndBlock
                                   declBody
@@ -502,7 +502,7 @@ mutual syn =
     do reserved "mutual"
        openBlock
        let pvars = syn_params syn
-       ds <- many (decl syn)
+       ds <- many (decl (syn { mut_nesting = mut_nesting syn + 1 } ))
        closeBlock
        fc <- getFC
        return [PMutual fc (concat ds)]

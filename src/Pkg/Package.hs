@@ -5,7 +5,7 @@ import System.Process
 import System.Directory
 import System.Exit
 import System.IO
-import System.FilePath ((</>), addTrailingPathSeparator, takeFileName, takeDirectory)
+import System.FilePath ((</>), addTrailingPathSeparator, takeFileName, takeDirectory, normalise)
 import System.Directory (createDirectoryIfMissing, copyFile)
 
 import Util.System
@@ -159,6 +159,42 @@ documentPkg fp =
                         Left msg -> do putStrLn msg
                                        exitWith (ExitFailure 1)
 
+-- | Build a package with a sythesized main function that runs the tests
+testPkg :: FilePath -> IO ()
+testPkg fp
+     = do pkgdesc <- parseDesc fp
+          ok <- mapM (testLib True (pkgname pkgdesc)) (libdeps pkgdesc)
+          when (and ok) $
+            do dir <- getCurrentDirectory
+               setCurrentDirectory $ dir </> sourcedir pkgdesc
+               make (makefile pkgdesc)
+               -- Get a temporary file to save the tests' source in
+               (tmpn, tmph) <- tempIdr
+               hPutStrLn tmph $
+                 "module Test_______\n" ++
+                 concat ["import " ++ show m ++ "\n"
+                         | m <- modules pkgdesc] ++
+                 "namespace Main\n" ++
+                 "  main : IO ()\n" ++
+                 "  main = do " ++
+                 concat [show t ++ "\n            "
+                         | t <- idris_tests pkgdesc]
+               hClose tmph
+               (tmpn', tmph') <- tempfile
+               hClose tmph'
+               m_ist <- idris (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
+               system tmpn'
+               setCurrentDirectory dir
+               case m_ist of
+                 Nothing -> exitWith (ExitFailure 1)
+                 Just ist -> do
+                    -- Quit with error code if problem building
+                    case errSpan ist of
+                      Just _ -> exitWith (ExitFailure 1)
+                      _      -> return ()
+  where tempIdr :: IO (FilePath, Handle)
+        tempIdr = do dir <- getTemporaryDirectory
+                     openTempFile (normalise dir) "idristests.idr"
 
 -- | Install package
 installPkg :: PkgDesc -> IO ()

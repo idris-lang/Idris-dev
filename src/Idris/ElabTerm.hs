@@ -66,15 +66,19 @@ build ist info pattern opts fn tm
          ctxt <- get_context
          probs <- get_probs
          u <- getUnifyLog
+         hs <- get_holes
 
          when (not pattern) $ 
-           traceWhen u ("Remaining problems:\n" ++ show probs) $ 
+           traceWhen u ("Remaining holes:\n" ++ show hs ++ "\n" ++
+                        "Remaining problems:\n" ++ show probs) $ 
              do unify_all; matchProblems True; unifyProblems
+
          probs <- get_probs
          case probs of
             [] -> return ()
-            ((_,_,_,e,_,_):es) -> if inf then return ()
-                                         else lift (Error e)
+            ((_,_,_,e,_,_):es) -> traceWhen u ("Final problems:\n" ++ show probs) $
+                                   if inf then return ()
+                                          else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -263,7 +267,8 @@ elab ist info pattern opts fn tm
              ty <- goal
              ctxt <- get_context
              let (tc, _) = unApply ty
-             let as' = pruneByType tc ctxt as
+             env <- get_env
+             let as' = pruneByType (map fst env) tc ctxt as
 --              trace (show as ++ "\n ==> " ++ showSep ", " (map showTmImpls as')) $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ (PRef _ n) _) = n
@@ -495,6 +500,7 @@ elab ist info pattern opts fn tm
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
                                    PAlternative True _ -> 1
+                                   PTactics _ -> 150
                                    PLam _ _ _ -> 2
                                    PRewrite _ _ _ _ -> 3
                                    _ -> 0
@@ -692,6 +698,9 @@ elab ist info pattern opts fn tm
                         addImpl ist (PApp fc (PRef fc (sUN "Delay"))
                                           [pexp t])
 
+    -- case is tricky enough without implicit coercions! If they are needed,
+    -- they can go in the branches separately.
+    insertCoerce ina t@(PCase _ _ _) = return t
     insertCoerce ina t =
         do ty <- goal
            -- Check for possible coercions to get to the goal
@@ -782,8 +791,21 @@ pruneAlt xs = map prune xs
 
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
-pruneByType :: Term -> Context -> [PTerm] -> [PTerm]
-pruneByType (P _ n _) c as
+pruneByType :: [Name] -> Term -> Context -> [PTerm] -> [PTerm]
+-- if an alternative has a locally bound name at the head, take it
+pruneByType env t c as
+   | Just a <- locallyBound as = [a]
+  where
+    locallyBound [] = Nothing
+    locallyBound (t:ts)
+       | Just n <- getName t,
+         n `elem` env = Just t
+       | otherwise = locallyBound ts
+    getName (PRef _ n) = Just n
+    getName (PApp _ f _) = getName f
+    getName _ = Nothing
+                      
+pruneByType env (P _ n _) c as
 -- if the goal type is polymorphic, keep e
    | [] <- lookupTy n c = as
    | otherwise
@@ -809,7 +831,7 @@ pruneByType (P _ n _) c as
                                     _ -> False
                        _ -> False
 
-pruneByType t _ as = as
+pruneByType _ t _ as = as
 
 findInstances :: IState -> Term -> [Name]
 findInstances ist t
@@ -822,9 +844,9 @@ findInstances ist t
 trivial' ist
     = trivial (elab ist toplevel False [] (sMN 0 "tac")) ist
 proofSearch' ist rec depth prv top n hints
-    = proofSearch rec prv depth 
-          (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
-
+    = do unifyProblems
+         proofSearch rec prv depth 
+                     (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
 
 resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
 resolveTC = resTC' [] 
@@ -1632,6 +1654,8 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                                                  then handle err
                                                                  else applyHandlers err hs
                                                       return (ElaboratingArg f a prev err')
+          -- ProofSearchFail is an internal detail - so don't expose it
+          handle (ProofSearchFail e) = handle e
           -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         logLvl 2 "Starting error reflection"

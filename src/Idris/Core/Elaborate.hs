@@ -681,11 +681,13 @@ try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
 try' t1 t2 proofSearch
           = do s <- get
                ps <- get_probs
+               ulog <- getUnifyLog
                case prunStateT 999999 False ps t1 s of
                     OK ((v, _, _), s') -> do put s'
                                              return $! v
-                    Error e1 -> if recoverableErr e1 then
-                                   do case runStateT t2 s of
+                    Error e1 -> traceWhen ulog ("try failed " ++ show e1) $
+                                 if recoverableErr e1 then
+                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return $! v
                                          Error e2 -> if score e1 >= score e2
                                                         then lift (tfail e1)
@@ -695,6 +697,7 @@ try' t1 t2 proofSearch
              = -- traceWhen r (show err) $
                r || proofSearch
         recoverableErr (CantSolveGoal _ _) = False
+        recoverableErr (ProofSearchFail (Msg _)) = True
         recoverableErr (ProofSearchFail _) = False
         recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
         recoverableErr (At _ e) = recoverableErr e
@@ -724,7 +727,7 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
        = do s <- get
             ps <- get_probs
             case prunStateT pmax True ps x s of
-                OK ((v, newps, probs), s') ->
+                OK ((v, newps, probs), s') -> 
                     do let cs' = if (newps < pmax)
                                     then [do put s'; return $! v]
                                     else (do put s'; return $! v) : cs

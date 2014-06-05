@@ -31,9 +31,9 @@ class Handler (e : Effect) (m : Type -> Type) where
   ||| 
   ||| @ r The resource being handled.
   ||| @ eff The effect to be applied.
-  ||| @ ctxt The context in which to handle the effect.
-  handle : (r : res) -> (eff : e t res resk) -> 
-           (ctxt : ((x : t) -> resk x -> m a)) -> m a
+  ||| @ k The continuation to pass the result of the effect
+  covering handle : (r : res) -> (eff : e t res resk) -> 
+                    (k : ((x : t) -> resk x -> m a)) -> m a
 
 ||| Get the resource type (handy at the REPL to find out about an effect)
 resourceType : EFFECT -> Type
@@ -144,11 +144,11 @@ data Eff : (m : Type -> Type)
                 Eff m a xs xs'
      ebind    : Eff m a xs xs' -> 
                 ((val : a) -> Eff m b (xs' val) xs'') -> Eff m b xs xs''
-     effect   : (prf : EffElem e a xs) ->
+     callP    : (prf : EffElem e a xs) ->
                 (eff : e t a b) ->
                 Eff m t xs (\v => updateResTy v xs prf eff)
 
-     lift     : (prf : SubList ys xs) ->
+     liftP    : (prf : SubList ys xs) ->
                 Eff m t ys ys' -> Eff m t xs (\v => updateWith (ys' v) xs prf)
      newInit  : Handler e m =>
                 res -> 
@@ -165,6 +165,20 @@ data Eff : (m : Type -> Type)
 (>>=)   : Eff m a xs xs' -> 
           ((val : a) -> Eff m b (xs' val) xs'') -> Eff m b xs xs''
 (>>=) = ebind 
+
+-- namespace SimpleBind
+--   (>>=) : Eff m a xs (\v => xs) -> 
+--           ((val : a) -> Eff m b xs xs') -> Eff m b xs xs'
+--   (>>=) = ebind 
+
+||| Run a subprogram which results in an effect state the same as the input.
+staticEff : Eff m a xs (\v => xs) -> Eff m a xs (\v => xs)
+staticEff = id
+
+||| Explicitly give the expected set of result effects for an effectful
+||| operation.
+toEff : .(xs' : List EFFECT) -> Eff m a xs (\v => xs') -> Eff m a xs (\v => xs')
+toEff xs' = id
 
 return : a -> Eff m a xs (\v => xs)
 return x = value x
@@ -204,8 +218,8 @@ eff env (value x) k = k x env
 eff env (with_val x prog) k = eff env prog (\p', env' => k x env') 
 eff env (prog `ebind` c) k
    = eff env prog (\p', env' => eff env' (c p') k)
-eff env (effect prf effP) k = execEff env prf effP k
-eff env (lift prf effP) k
+eff env (callP prf effP) k = execEff env prf effP k
+eff env (liftP prf effP) k
    = let env' = dropEnv env prf in
          eff env' effP (\p', envk => k p' (rebuildEnv envk prf env))
 eff env (newInit r prog) k
@@ -233,20 +247,20 @@ syntax MkDefaultEnv = with Env
                           [default, default, default, default, default, default, default],
                           [default, default, default, default, default, default, default, default] |)
 
-implicit
-lift' : Eff m t ys ys' ->
-        {default tactics { search 100; }
-           prf : SubList ys xs} ->
-        Eff m t xs (\v => updateWith (ys' v) xs prf)
-lift' e {prf} = lift prf e
+call : {a, b: _} -> {e : Effect} ->
+       (eff : e t a b) ->
+       {default tactics { search 100; }
+          prf : EffElem e a xs} ->
+      Eff m t xs (\v => updateResTy v xs prf eff)
+call e {prf} = callP prf e
 
 implicit
-effect' : {a, b: _} -> {e : Effect} ->
-          (eff : e t a b) ->
-          {default tactics { search 100; }
-             prf : EffElem e a xs} ->
-         Eff m t xs (\v => updateResTy v xs prf eff)
-effect' e {prf} = effect prf e
+lift : Eff m t ys ys' ->
+       {default tactics { search 100; }
+          prf : SubList ys xs} ->
+       Eff m t xs (\v => updateWith (ys' v) xs prf)
+lift e {prf} = liftP prf e
+
 
 new : Handler e m =>
       {default default r : res} -> 

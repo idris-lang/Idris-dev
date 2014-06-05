@@ -33,6 +33,7 @@ cmd xs = do P.lchar ':'; docmd (sortBy (\x y -> compare (length y) (length x)) x
 pCmd :: P.IdrisParser Command
 pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["h", "?", "help"]; eof; return Help)
+              <|> try (do cmd ["w", "warranty"]; eof; return Warranty)
               <|> try (do cmd ["r", "reload"]; eof; return Reload)
               <|> try (do cmd ["module"]; f <- P.identifier; eof;
                           return (ModImport (toPath f)))
@@ -48,11 +49,11 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["rmproof"]; n <- P.name; eof; return (RmProof n))
               <|> try (do cmd ["showproof"]; n <- P.name; eof; return (ShowProof n))
               <|> try (do cmd ["log"]; i <- P.natural; eof; return (LogLvl (fromIntegral i)))
-              <|> try (do cmd ["lto", "loadto"]; 
+              <|> try (do cmd ["lto", "loadto"];
                           toline <- P.natural
-                          f <- many anyChar; 
+                          f <- many anyChar;
                           return (Load f (Just (fromInteger toline))))
-              <|> try (do cmd ["l", "load"]; f <- many anyChar; 
+              <|> try (do cmd ["l", "load"]; f <- many anyChar;
                           return (Load f Nothing))
               <|> try (do cmd ["cd"]; f <- many anyChar; return (ChangeDirectory f))
               <|> try (do cmd ["spec"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Spec t))
@@ -71,7 +72,8 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["color", "colour"]; pSetColourCmd)
               <|> try (do cmd ["set"]; o <- pOption; return (SetOpt o))
               <|> try (do cmd ["unset"]; o <- pOption; return (UnsetOpt o))
-              <|> try (do cmd ["s", "search"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Search t))
+              <|> try (do cmd ["s", "search"]; P.whiteSpace;
+                          t <- P.typeExpr (defaultSyntax { implicitAllowed = True }); return (Search t))
               <|> try (do cmd ["cs", "casesplit"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name;

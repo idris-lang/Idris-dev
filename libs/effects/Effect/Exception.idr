@@ -27,7 +27,7 @@ EXCEPTION : Type -> EFFECT
 EXCEPTION t = MkEff () (Exception t)
 
 raise : a -> { [EXCEPTION a ] } Eff m b 
-raise err = Raise err
+raise err = call $ Raise err
 
 
 

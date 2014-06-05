@@ -339,7 +339,7 @@ data Command = Quit
              | WhoCalls Name
              | CallsWho Name
              | MakeDoc String                      -- IdrisDoc
-
+             | Warranty
 
 data Opt = Filename String
          | Quiet
@@ -373,6 +373,7 @@ data Opt = Filename String
          | PkgCheck String
          | PkgREPL String
          | PkgMkDoc String     -- IdrisDoc
+         | PkgTest String
          | WarnOnly
          | Pkg String
          | BCAsm String
@@ -884,7 +885,8 @@ deriving instance NFData OptInfo
 data TypeInfo = TI { con_names :: [Name],
                      codata :: Bool,
                      data_opts :: DataOpts,
-                     param_pos :: [Int] }
+                     param_pos :: [Int],
+                     mutual_types :: [Name] }
     deriving Show
 {-!
 deriving instance Binary TypeInfo
@@ -963,6 +965,7 @@ data SyntaxInfo = Syn { using :: [Using],
                         inPattern :: Bool,
                         implicitAllowed :: Bool,
                         maxline :: Maybe Int,
+                        mut_nesting :: Int,
                         dsl_info :: DSL }
     deriving Show
 {-!
@@ -970,7 +973,7 @@ deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] id False False Nothing initDSL
+defaultSyntax = Syn [] [] [] [] id False False Nothing 0 initDSL
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n
@@ -1098,8 +1101,8 @@ elimDecl = PClass (parseDocstring . T.pack $ "Type class for eliminators") defau
                       PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
 -- Defined in builtins.idr
-sigmaTy   = sUN "Exists"
-existsCon = sUN "Ex_intro"
+sigmaTy   = sUN "Sigma"
+existsCon = sUN "Sg_intro"
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind = piBindp expl
@@ -1157,7 +1160,7 @@ consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
         colour ItalicText    = IdrisColour Nothing True False False True
 
 -- | Pretty-print a high-level closed Idris term with no information about precedence/associativity
-prettyImp :: PPOption -- ^^ pretty printing options 
+prettyImp :: PPOption -- ^^ pretty printing options
           -> PTerm -- ^^ the term to pretty-print
           -> Doc OutputAnnotation
 prettyImp impl = pprintPTerm impl [] [] []
@@ -1167,7 +1170,7 @@ prettyIst ::  IState -> PTerm -> Doc OutputAnnotation
 prettyIst ist = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist)
 
 -- | Pretty-print a high-level Idris term in some bindings context with infix info
-pprintPTerm :: PPOption -- ^^ pretty printing options 
+pprintPTerm :: PPOption -- ^^ pretty printing options
             -> [(Name, Bool)] -- ^^ the currently-bound names and whether they are implicit
             -> [Name] -- ^^ names to always show in pi, even if not used
             -> [FixDecl] -- ^^ Fixity declarations
@@ -1338,6 +1341,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd PImpossible = kwd "impossible"
     prettySe p bnd Placeholder = text "_"
     prettySe p bnd (PDoBlock _) = text "do block pretty not implemented"
+    prettySe p bnd (PCoerced t) = prettySe p bnd t
     prettySe p bnd (PElabError s) = pretty s
 
     prettySe p bnd _ = text "test"
@@ -1418,6 +1422,11 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     getFixity :: String -> Maybe Fixity
     getFixity = flip M.lookup fixities
 
+prettyDocumentedIst :: IState -> (Name, PTerm, Maybe Docstring) -> Doc OutputAnnotation
+prettyDocumentedIst ist (name, ty, docs) =
+          prettyName True [] name <+> colon <+> align (prettyIst ist ty) <$>
+          fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
+
 -- | Pretty-printer helper for the binding site of a name
 bindingOf :: Name -- ^^ the bound name
           -> Bool -- ^^ whether the name is implicit
@@ -1435,7 +1444,7 @@ prettyName showNS bnd n | Just imp <- lookup n bnd = annotate (AnnBoundName n im
         strName (NS n ns) | showNS    = (concatMap (++ ".") . map T.unpack . reverse) ns ++ strName n
                           | otherwise = strName n
         strName n | n == falseTy = "_|_"
-        strName (MN i s) = T.unpack s 
+        strName (MN i s) = T.unpack s
         strName other = show other
 
 
@@ -1694,4 +1703,3 @@ usedNamesIn vars ist tm = nub $ ni [] tm
 
     niTacImp env (TacImp _ _ scr) = ni env scr
     niTacImp _ _                = []
-

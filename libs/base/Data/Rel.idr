@@ -2,9 +2,8 @@ module Data.Rel
 
 import Data.Fun
 
---------------------------------------------------------------------------------
--- Build an n-ary relation type from a Vect of Types
---------------------------------------------------------------------------------
+
+||| Build an n-ary relation type from a Vect of Types
 Rel : Vect n Type -> Type
 Rel ts = Fun ts Type
 

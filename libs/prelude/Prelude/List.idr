@@ -195,13 +195,6 @@ list nil cons (x::xs) = (Force cons) x xs
 (++) []      right = right
 (++) (x::xs) right = x :: (xs ++ right)
 
-||| Create an infinite sequence of some item.
-|||
-||| Consider using a `Stream` instead.
-partial
-repeat : a -> List a
-repeat x = x :: lazy (repeat x)
-
 ||| Construct a list with `n` copies of `x`
 ||| @ n how many copies
 ||| @ x the element to replicate

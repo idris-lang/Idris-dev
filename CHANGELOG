@@ -1,3 +1,9 @@
+New in 0.9.14:
+--------------
+* Support for running tests for a package with the tests section of .ipkg files and the
+  --testpkg command-line option
+
+
 New in 0.9.13:
 --------------
 * IDE support for retrieving structured information about metavariables
@@ -25,6 +31,7 @@ New in 0.9.13:
 * Extend :addclause to add instance bodies as well as definitions
 * Reverse parameters to BoundedList -- now matches Vect, and is easier to instantiate classes.
 * Move foldl into Foldable so it can be overridden.
+* Experimental :search REPL command for finding functions by type
 
 Internal changes
 

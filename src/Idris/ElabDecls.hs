@@ -125,7 +125,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          let (t, _) = unApply (getRetTy nty')
          let corec = case t of
                         P _ rcty _ -> case lookupCtxt rcty (idris_datatypes i) of
-                                        [TI _ True _ _] -> True
+                                        [TI _ True _ _ _] -> True
                                         _ -> False
                         _ -> False
          -- Productivity checking now via checking for guarded 'Delay' 
@@ -256,8 +256,10 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          let as = map (const Nothing) (getArgTys cty)
          let params = findParams  (map snd cons)
          logLvl 2 $ "Parameters : " ++ show params
+         -- TI contains information about mutually declared types - this will
+         -- be updated when the mutual block is complete
          putIState (i { idris_datatypes =
-                          addDef n (TI (map fst cons) codata opts params)
+                          addDef n (TI (map fst cons) codata opts params [n])
                                              (idris_datatypes i) })
          addIBC (IBCDef n)
          addIBC (IBCData n)
@@ -269,7 +271,8 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          -- TMP HACK! Make this a data option
          updateContext (addDatatype (Data n ttag cty cons))
          updateContext (setMetaInformation n metainf)
-         mapM_ (checkPositive n) cons
+         mapM_ totcheck (zip (repeat fc) (map fst cons))
+--          mapM_ (checkPositive n) cons
 
          -- if there's exactly one constructor,
          -- mark both the type and the constructor as detaggable
@@ -1195,7 +1198,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                             force (normalisePats ctxt [] y))
     simple_lhs ctxt t = t
 
-    simple_rt ctxt (p, x, y) = (p, x, force (rt_simplify ctxt [] y))
+    simple_rt ctxt (p, x, y) = (p, x, force (uniqueBinders p 
+                                                (rt_simplify ctxt [] y)))
 
     -- this is so pattern types are in the right form for erasure
     normalisePats ctxt env (Bind n (PVar t) sc) 
@@ -1616,7 +1620,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         rev <- case ret_fam of
                     P _ rfamn _ -> 
                         case lookupCtxt rfamn (idris_datatypes i) of
-                             [TI _ _ dopts _] -> 
+                             [TI _ _ dopts _ _] -> 
                                  return (DataErrRev `elem` dopts)
                              _ -> return False
                     _ -> return False
@@ -2088,19 +2092,19 @@ elabInstance info syn what fc cs n ps t expn ds = do
 
          -- Bring variables in instance head into scope
          ist <- getIState
-         let headVars = mapMaybe (\p -> case p of
-                                           PRef _ n -> 
-                                              case lookupTy n (tt_ctxt ist) of
-                                                  [] -> Just n
-                                                  _ -> Nothing
-                                           _ -> Nothing) ps
+         let headVars = nub $ mapMaybe (\p -> case p of
+                                               PRef _ n -> 
+                                                  case lookupTy n (tt_ctxt ist) of
+                                                      [] -> Just n
+                                                      _ -> Nothing
+                                               _ -> Nothing) ps
 --          let lhs = PRef fc iname
          let lhs = PApp fc (PRef fc iname)
                            (map (\n -> pimp n (PRef fc n) True) headVars)
          let rhs = PApp fc (PRef fc (instanceName ci))
                            (map (pexp . mkMethApp) mtys)
 
-         logLvl 5 $ "Instance LHS " ++ show lhs
+         logLvl 5 $ "Instance LHS " ++ show lhs ++ " " ++ show headVars
          logLvl 5 $ "Instance RHS " ++ show rhs
 
          let idecls = [PClauses fc [Dictionary] iname
@@ -2339,6 +2343,11 @@ elabDecl' what info (PMutual f ps)
               [p] -> elabDecl what info p
               _ -> do mapM_ (elabDecl ETypes info) ps
                       mapM_ (elabDecl EDefns info) ps
+         -- record mutually defined data definitions
+         let datans = concatMap declared (filter isDataDecl ps)
+         mapM_ (setMutData datans) datans
+         iLOG $ "Rechecking for positivity " ++ show datans
+         mapM_ (\x -> do setTotality x Unchecked) datans
          -- Do totality checking after entire mutual block
          i <- get
          mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
@@ -2347,6 +2356,16 @@ elabDecl' what info (PMutual f ps)
          mapM_ buildSCG (idris_totcheck i)
          mapM_ checkDeclTotality (idris_totcheck i)
          clear_totcheck
+  where isDataDecl (PData _ _ _ _ _ _) = True
+        isDataDecl _ = False
+
+        setMutData ns n 
+           = do i <- getIState
+                case lookupCtxt n (idris_datatypes i) of
+                   [x] -> do let x' = x { mutual_types = ns }
+                             putIState $ i { idris_datatypes 
+                                                = addDef n x' (idris_datatypes i) }
+                   _ -> return ()
 
 elabDecl' what info (PParams f ns ps)
     = do i <- getIState
