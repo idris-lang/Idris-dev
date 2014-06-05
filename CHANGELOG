@@ -2,7 +2,7 @@ New in 0.9.14:
 --------------
 * Support for running tests for a package with the tests section of .ipkg files and the
   --testpkg command-line option
-
+* Clearly distinguish between type providers and postulate providers at the use site
 
 New in 0.9.13:
 --------------

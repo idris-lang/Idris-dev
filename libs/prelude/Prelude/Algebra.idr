@@ -106,7 +106,7 @@ class AbelianGroup a => Ring a where
 class (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
   total ringOpIsAssociative   : (l, c, r : a) -> l <*> (c <*> r) = (l <*> c) <*> r
   total ringOpIsDistributiveL : (l, c, r : a) -> l <*> (c <+> r) = (l <*> c) <+> (l <*> r)
-  total ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <*> r = (l <*> r) <+> (l <*> c)
+  total ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <*> r = (l <*> r) <+> (c <*> r)
 
 ||| Sets equipped with two binary operations, one associative and commutative
 ||| supplied with a neutral element, and the other associative supplied with a

@@ -278,7 +278,7 @@ addNameHint ty n
         ty' <- case lookupCtxtName ty (idris_implicits i) of
                        [(tyn, _)] -> return tyn
                        [] -> throwError (NoSuchVariable ty)
-                       tyns -> throwError (CantResolveAlts (map show (map fst tyns)))
+                       tyns -> throwError (CantResolveAlts (map fst tyns))
         let ns' = case lookupCtxt ty' (idris_namehints i) of
                        [ns] -> ns ++ [n]
                        _ -> [n]

@@ -109,7 +109,7 @@ performUsageAnalysis = do
     getMainName ist = case lookupCtxtName n (idris_implicits ist) of
         [(n', _)] -> Right n'
         []        -> Left (NoSuchVariable n)
-        more      -> Left (CantResolveAlts (map (show . fst) more))
+        more      -> Left (CantResolveAlts (map fst more))
       where
         n = sNS (sUN "main") ["Main"]
 
