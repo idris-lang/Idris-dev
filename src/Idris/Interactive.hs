@@ -162,7 +162,7 @@ doProofSearch h fn updatefile rec l n hints (Just depth)
          mn <- case lookupNames n ctxt of
                     [x] -> return x
                     [] -> return n
-                    ns -> ierror (CantResolveAlts (map show ns))
+                    ns -> ierror (CantResolveAlts ns)
          i <- getIState
          let (top, envlen, _) = case lookup mn (idris_metavars i) of
                                   Just (t, e, False) -> (t, e, False)
@@ -242,10 +242,10 @@ makeLemma h fn updatefile l n
         let isProv = checkProv tyline (show n)
 
         ctxt <- getContext
-        mty <- case lookupTy n ctxt of
-                    [t] -> return t
+        mty <- case lookupTyName n ctxt of
+                    [(_,t)] -> return t
                     [] -> ierror (NoSuchVariable n)
-                    ns -> ierror (CantResolveAlts (map show ns))
+                    ns -> ierror (CantResolveAlts (map fst ns))
         i <- getIState
 
         if (not isProv) then do

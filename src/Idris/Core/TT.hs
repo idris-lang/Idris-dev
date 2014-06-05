@@ -133,7 +133,7 @@ data Err' t
           | NoTypeDecl Name
           | NotInjective t t t
           | CantResolve t
-          | CantResolveAlts [String]
+          | CantResolveAlts [Name]
           | IncompleteTerm t
           | UniverseError
           | ProgramLineComment
