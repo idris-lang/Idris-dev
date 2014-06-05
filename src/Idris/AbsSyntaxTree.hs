@@ -1149,15 +1149,19 @@ consoleDecorate ist AnnKeyword = colouriseKeyword (idris_colourTheme ist)
 consoleDecorate ist (AnnName n _ _ _) = let ctxt  = tt_ctxt ist
                                             theme = idris_colourTheme ist
                                         in case () of
-                                             _ | isDConName n ctxt -> colouriseData theme
-                                             _ | isFnName n ctxt   -> colouriseFun theme
-                                             _ | isTConName n ctxt -> colouriseType theme
-                                             _ | otherwise         -> id -- don't colourise unknown names
+                                             _ | isDConName n ctxt     -> colouriseData theme
+                                             _ | isFnName n ctxt       -> colouriseFun theme
+                                             _ | isTConName n ctxt     -> colouriseType theme
+                                             _ | isPostulateName n ist -> colourisePostulate theme
+                                             _ | otherwise             -> id -- don't colourise unknown names
 consoleDecorate ist (AnnFC _) = id
 consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
   where colour BoldText      = IdrisColour Nothing True False True False
         colour UnderlineText = IdrisColour Nothing True True False False
         colour ItalicText    = IdrisColour Nothing True False False True
+
+isPostulateName :: Name -> IState -> Bool
+isPostulateName n ist = S.member n (idris_postulates ist)
 
 -- | Pretty-print a high-level closed Idris term with no information about precedence/associativity
 prettyImp :: PPOption -- ^^ pretty printing options

@@ -83,7 +83,7 @@ instance Show FC where
                                      | otherwise            = show sl ++ ":" ++ show sc ++ "-" ++ show el ++ ":" ++ show ec
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput
 
 -- | Text formatting output
 data TextFormatting = BoldText | ItalicText | UnderlineText

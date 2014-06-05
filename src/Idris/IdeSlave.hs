@@ -74,10 +74,11 @@ instance (SExpable a, SExpable b, SExpable c, SExpable d, SExpable e) =>
    toSExp (l, m, n, o, p) = SexpList [toSExp l, toSExp m, toSExp n, toSExp o, toSExp p]
 
 instance SExpable NameOutput where
-  toSExp TypeOutput    = SymbolAtom "type"
-  toSExp FunOutput     = SymbolAtom "function"
-  toSExp DataOutput    = SymbolAtom "data"
-  toSExp MetavarOutput = SymbolAtom "metavar"
+  toSExp TypeOutput      = SymbolAtom "type"
+  toSExp FunOutput       = SymbolAtom "function"
+  toSExp DataOutput      = SymbolAtom "data"
+  toSExp MetavarOutput   = SymbolAtom "metavar"
+  toSExp PostulateOutput = SymbolAtom "postulate"
 
 maybeProps :: SExpable a => [(String, Maybe a)] -> [(SExp, SExp)]
 maybeProps [] = []

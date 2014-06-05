@@ -184,7 +184,7 @@ pColourMod = try (P.symbol "vivid" >> return doVivid)
           doNoItalic i    = i { italic = False }
           doSetColour c i = i { colour = c }
 
-
+-- | Generate the colour type names using the default Show instance.
 colourTypes :: [(String, ColourType)]
 colourTypes = map (\x -> ((map toLower . reverse . drop 6 . reverse . show) x, x)) $
               enumFromTo minBound maxBound
