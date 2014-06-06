@@ -25,6 +25,7 @@
 \RequirePackage{listings}
 \RequirePackage{xspace}
 \RequirePackage{textcomp}
+\RequirePackage{setspace}
 %% ----------------------------------------------------------------- [ Options ]
 \newboolean{literate}
 \setboolean{literate}{false}
@@ -117,7 +118,9 @@
         \lstset{language=idris}}
         \ifthenelse{\boolean{numbers}}{%
           \lstset{style=numbers, #1}}{%
-          \lstset{style=default, #1}}}{}
+          \lstset{style=default, #1}}
+    \singlespacing
+    }{}
 %% ---------------------------------------------------------- [ Input Listings ]
 %% Command to add externally defined Idris code to the document.
 \newcommand{\inputIdrisListing}[2][]{%
