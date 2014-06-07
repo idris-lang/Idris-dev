@@ -15,7 +15,7 @@ import Idris.Core.Unify
 
 import Control.Monad.State.Strict
 import Control.Applicative hiding (empty)
-import Control.Arrow (first)
+import Control.Arrow ((***))
 import Data.List
 import Debug.Trace
 
@@ -59,6 +59,7 @@ data Tactic = Attack
             | Solve
             | StartUnify Name
             | EndUnify
+            | UnifyAll
             | Compute
             | ComputeLet Name
             | Simplify
@@ -179,6 +180,19 @@ match_unify' ctxt env topx topy =
 -- --              ++ show (pterm ps)
 --              ++ "\n----------") $
 
+mergeSolutions :: Env -> [(Name, TT Name)] -> StateT TState TC [(Name, TT Name)]
+mergeSolutions env ns = merge [] ns
+  where
+    merge acc [] = return (reverse acc)
+    merge acc ((n, t) : ns)
+          | Just t' <- lookup n ns
+              = do ps <- get
+                   let probs = problems ps
+                   put (ps { problems = probs ++ [(t,t',env,Msg "New problem",
+                                                     [], Unify)] })
+                   merge acc ns
+          | otherwise = merge ((n, t): acc) ns
+
 unify' :: Context -> Env -> TT Name -> TT Name ->
           StateT TState TC [(Name, TT Name)]
 unify' ctxt env topx topy =
@@ -205,16 +219,22 @@ unify' ctxt env topx topy =
              ++ "\nCurrent problems:\n" ++ qshow (problems ps)
 --              ++ show (pterm ps)
              ++ "\n----------") $
-        do ps <- get
-           let (h, ns) = unified ps
-           let (ns', probs') = updateProblems (context ps) (u ++ ns)
+        do let (h, ns) = unified ps
+           -- if a metavar has multiple solutions, make a new unification
+           -- problem for each.
+           uns <- mergeSolutions env (u ++ ns)
+           ps <- get
+           let (ns', probs') = updateProblems (context ps) uns
                                               (fails ++ problems ps)
                                               (injective ps)
                                               (holes ps)
-           put (ps { problems = probs',
-                     unified = (h, ns'),
-                     injective = updateInj u (injective ps),
-                     notunified = notu ++ notunified ps })
+           let (notu', probs_notu) = mergeNotunified env (notu ++ notunified ps)
+           traceWhen (unifylog ps)
+            ("Now solved: " ++ show ns') $
+             put (ps { problems = probs' ++ probs_notu,
+                       unified = (h, ns'),
+                       injective = updateInj u (injective ps),
+                       notunified = notu' })
            return u
   where updateInj ((n, a) : us) inj
               | (P _ n' _, _) <- unApply a,
@@ -664,7 +684,7 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              let scr      = last $ tail args'
              let indxnames = makeIndexNames indicies
              prop <- replaceIndicies indxnames indicies $ Bind nm (Lam tmt') t
-             consargs' <- query (\ps -> map (first $ flip (uniqueNameCtxt (context ps)) (holes ps)) consargs)
+             consargs' <- query (\ps -> map (flip (uniqueNameCtxt (context ps)) (holes ps ++ allTTNames (pterm ps)) *** uniqueBindersCtxt (context ps) (holes ps ++ allTTNames (pterm ps))) consargs)
              let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs' (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0)))
                                                         (params ++ [prop] ++ map makeConsArg consargs' ++ indicies ++ [tmv])))
              action (\ps -> ps {holes = holes ps \\ [x]})
@@ -781,13 +801,15 @@ keepGiven du (u@(n, _) : us) hs
    | n `elem` du = u : keepGiven du us hs
 keepGiven du (u : us) hs = keepGiven du us hs
 
+updateSolved :: [(Name, Term)] -> Term -> Term 
 updateSolved xs x = updateSolved' xs x
 updateSolved' [] x = x
 updateSolved' xs (Bind n (Hole ty) t)
     | Just v <- lookup n xs 
         = case xs of
-               [_] -> psubst n v t
-               _ -> psubst n v (updateSolved' xs t)
+               [_] -> substV v $ psubst n v t -- some may be Vs! Can't assume
+                                              -- explicit names
+               _ -> substV v $ psubst n v (updateSolved' xs t)
 updateSolved' xs (Bind n b t)
     | otherwise = Bind n (fmap (updateSolved' xs) b) (updateSolved' xs t)
 updateSolved' xs (App f a) 
@@ -801,6 +823,10 @@ updateEnv ns [] = []
 updateEnv ns ((n, b) : env) = (n, fmap (updateSolved ns) b) : updateEnv ns env
 
 updateError [] err = err
+updateError ns (At f e) = At f (updateError ns e)
+updateError ns (Elaborating s n e) = Elaborating s n (updateError ns e)
+updateError ns (ElaboratingArg f a env e) 
+ = ElaboratingArg f a env (updateError ns e)
 updateError ns (CantUnify b l r e xs sc)
  = CantUnify b (updateSolved ns l) (updateSolved ns r) (updateError ns e) xs sc
 updateError ns e = e
@@ -809,6 +835,15 @@ solveInProblems x val [] = []
 solveInProblems x val ((l, r, env, err) : ps)
    = ((psubst x val l, psubst x val r, 
        updateEnv [(x, val)] env, err) : solveInProblems x val ps)
+
+mergeNotunified :: Env -> [(Name, Term)] -> ([(Name, Term)], Fails)
+mergeNotunified env ns = mnu ns [] [] where
+  mnu [] ns_acc ps_acc = (reverse ns_acc, reverse ps_acc)
+  mnu ((n, t):ns) ns_acc ps_acc
+      | Just t' <- lookup n ns, t /= t'
+             = mnu ns ((n,t') : ns_acc)
+                      ((t,t',env,Msg "", [],Unify) : ps_acc)
+      | otherwise = mnu ns ((n,t) : ns_acc) ps_acc
 
 updateNotunified [] nu = nu
 updateNotunified ns nu = up nu where
@@ -826,7 +861,7 @@ updateProblems ctxt ns ps inj holes = up ns ps where
         y' = updateSolved ns y
         err' = updateError ns err
         env' = updateEnv ns env in
---         trace ("Updating " ++ show (x',y')) $ 
+--          trace ("Updating " ++ show (x',y')) $ 
           case unify ctxt env' x' y' inj holes while of
             OK (v, []) -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
@@ -860,7 +895,7 @@ processTactic QED ps = case holes ps of
                            _  -> fail "Still holes to fill."
 processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
 processTactic Undo ps = case previous ps of
-                            Nothing -> fail "Nothing to undo."
+                            Nothing -> Error . Msg $ "Nothing to undo."
                             Just pold -> return (pold, "")
 processTactic EndUnify ps
     = let (h, ns_in) = unified ps
@@ -874,6 +909,11 @@ processTactic EndUnify ps
                        problems = probs',
                        notunified = updateNotunified ns'' (notunified ps),
                        holes = holes ps \\ map fst ns'' }, "")
+processTactic UnifyAll ps
+    = let tm' = updateSolved (notunified ps) (pterm ps) in
+          return (ps { pterm = tm',
+                       notunified = [],
+                       holes = holes ps \\ map fst (notunified ps) }, "")
 processTactic (Reorder n) ps
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
          return (ps' { previous = Just ps, plog = "" }, plog ps')

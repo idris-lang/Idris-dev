@@ -3,11 +3,13 @@ module Data.BoundedList
 %access public
 %default total
 
-data BoundedList : Type -> Nat -> Type where
-  Nil : BoundedList a n
-  (::) : a -> BoundedList a n -> BoundedList a (S n)
+||| A list with an upper bound on its length.
+data BoundedList : Nat -> Type -> Type where
+  Nil : BoundedList n a
+  (::) : a -> BoundedList n a -> BoundedList (S n) a
 
-length : BoundedList a n -> Fin (S n)
+||| Compute the length of a list.
+length : BoundedList n a -> Fin (S n)
 length [] = fZ
 length (x :: xs) = fS (length xs)
 
@@ -15,7 +17,7 @@ length (x :: xs) = fS (length xs)
 -- Indexing into bounded lists
 --------------------------------------------------------------------------------
 
-index : Fin (S n) -> BoundedList a n -> Maybe a
+index : Fin (S n) -> BoundedList n a -> Maybe a
 index _      []        = Nothing
 index fZ     (x :: _)  = Just x
 index (fS f) (_ :: xs) = index f xs
@@ -24,7 +26,8 @@ index (fS f) (_ :: xs) = index f xs
 -- Adjusting bounds
 --------------------------------------------------------------------------------
 
-weaken : BoundedList a n -> BoundedList a (n + m)
+||| Loosen the bounds on a list's length.
+weaken : BoundedList n a -> BoundedList (n + m) a
 weaken []        = []
 weaken (x :: xs) = x :: weaken xs
 
@@ -32,16 +35,16 @@ weaken (x :: xs) = x :: weaken xs
 -- Conversions to and from list
 --------------------------------------------------------------------------------
 
-take : (n : Nat) -> List a -> BoundedList a n
+take : (n : Nat) -> List a -> BoundedList n a
 take _ [] = []
 take Z _ = []
 take (S n') (x :: xs) = x :: take n' xs
 
-toList : BoundedList a n -> List a
+toList : BoundedList n a -> List a
 toList [] = []
-toList (x :: xs) = x :: toList xs
+toList (x :: xs) = x :: Data.BoundedList.toList xs
 
-fromList : (xs : List a) -> BoundedList a (length xs)
+fromList : (xs : List a) -> BoundedList (length xs) a
 fromList [] = []
 fromList (x :: xs) = x :: fromList xs
 
@@ -49,7 +52,7 @@ fromList (x :: xs) = x :: fromList xs
 -- Building (bigger) bounded lists
 --------------------------------------------------------------------------------
 
-replicate : (n : Nat) -> a -> BoundedList a n
+replicate : (n : Nat) -> a -> BoundedList n a
 replicate Z _ = []
 replicate (S n) x = x :: replicate n x
 
@@ -57,27 +60,26 @@ replicate (S n) x = x :: replicate n x
 -- Folds
 --------------------------------------------------------------------------------
 
-foldl : (a -> b -> a) -> a -> BoundedList b n -> a
-foldl f e []      = e
-foldl f e (x::xs) = foldl f (f e x) xs
-
-foldr : (a -> b -> b) -> b -> BoundedList a n -> b
-foldr f e []      = e
-foldr f e (x::xs) = f x (foldr f e xs)
+instance Foldable (BoundedList n) where
+  foldr f e []      = e
+  foldr f e (x::xs) = f x (foldr f e xs)
+  foldl f e []      = e
+  foldl f e (x::xs) = foldl f (f e x) xs
 
 --------------------------------------------------------------------------------
 -- Maps
 --------------------------------------------------------------------------------
 
-map : (a -> b) -> BoundedList a n -> BoundedList b n
-map f [] = []
-map f (x :: xs) = f x :: map f xs
+instance Functor (BoundedList n) where
+  map f [] = []
+  map f (x :: xs) = f x :: map f xs
 
 --------------------------------------------------------------------------------
 -- Misc
 --------------------------------------------------------------------------------
 
-pad : (xs : BoundedList a n) -> (padding : a) -> BoundedList a n
+||| Extend a bounded list to the maximum size by padding on the left.
+pad : BoundedList n a -> a -> BoundedList n a
 pad {n=Z}    []        _       = []
 pad {n=S n'} []        padding = padding :: (pad {n=n'} [] padding)
 pad {n=S n'} (x :: xs) padding = x :: pad {n=n'} xs padding
@@ -87,6 +89,6 @@ pad {n=S n'} (x :: xs) padding = x :: pad {n=n'} xs padding
 -- Simple properties
 --------------------------------------------------------------------------------
 
-zeroBoundIsEmpty : (xs : BoundedList a 0) -> xs = the (BoundedList a 0) []
+zeroBoundIsEmpty : (xs : BoundedList 0 a) -> xs = the (BoundedList 0 a) []
 zeroBoundIsEmpty [] = refl
 zeroBoundIsEmpty (_ :: _) impossible

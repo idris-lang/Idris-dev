@@ -3,6 +3,7 @@
 module Idris.Erasure (performUsageAnalysis, mkFieldName) where
 
 import Idris.AbsSyntax
+import Idris.ASTUtils
 import Idris.Core.CaseTree
 import Idris.Core.TT
 import Idris.Core.Evaluate
@@ -11,6 +12,9 @@ import Idris.Error
 
 import Debug.Trace
 import System.IO.Unsafe
+
+import Control.Category
+import Prelude hiding (id, (.))
 
 import Control.Arrow
 import Control.Applicative
@@ -97,7 +101,7 @@ performUsageAnalysis = do
             $ ifail ("reachable postulates:\n" ++ intercalate "\n" ["  " ++ show n | n <- S.toList reachablePostulates])
 
         -- Store the usage info in the internal state.
-        mapM_ (storeUsage cg) usage
+        mapM_ storeUsage usage
 
         return $ S.toList reachableNames
   where
@@ -105,7 +109,7 @@ performUsageAnalysis = do
     getMainName ist = case lookupCtxtName n (idris_implicits ist) of
         [(n', _)] -> Right n'
         []        -> Left (NoSuchVariable n)
-        more      -> Left (CantResolveAlts (map (show . fst) more))
+        more      -> Left (CantResolveAlts (map fst more))
       where
         n = sNS (sUN "main") ["Main"]
 
@@ -124,13 +128,8 @@ performUsageAnalysis = do
             | S.null rs = show i
             | otherwise = show i ++ " from " ++ intercalate ", " (map show $ S.toList rs)
 
-    storeUsage :: Ctxt CGInfo -> (Name, IntMap (Set Reason)) -> Idris ()
-    storeUsage cg (n, args)
-        | Just x <- lookupCtxtExact n cg
-        = addToCG n x{ usedpos = flat }        -- functions
-
-        | otherwise
-        = addToCG n (CGInfo [] [] [] [] flat)  -- data ctors
+    storeUsage :: (Name, IntMap (Set Reason)) -> Idris ()
+    storeUsage (n, args) = fputState (cg_usedpos . ist_callgraph n) flat
       where
         flat = [(i, S.toList rs) | (i,rs) <- IM.toList args]
 
@@ -204,6 +203,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 -- among Idris.Primitives.primitives
                 , mn "__MkPair"     [2,3]
                 , it "prim_fork"    [0]
+                , it "unsafePerformPrimIO"  [1]
 
                 -- believe_me is a primitive but it only uses its third argument
                 -- it is special-cased in usedNames above
@@ -294,7 +294,6 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         -- that the result of this function is used at all
         = addTagDep $ unionMap (getDepsAlt fn es vs casedVar) alts  -- coming from the whole subtree
       where
-        
         addTagDep = case alts of
             [_] -> id  -- single branch, tag not used
             _   -> M.insertWith (M.unionWith S.union) (S.singleton (fn, Result)) (viDeps casedVar)
@@ -329,11 +328,15 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
              | otherwise = \j -> Nothing
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
-    getDepsTerm :: Vars -> [Cond -> Deps] -> Cond -> Term -> Deps
+    getDepsTerm :: Vars -> [(Name, Cond -> Deps)] -> Cond -> Term -> Deps
 
     -- named variables introduce dependencies as described in `vs'
     getDepsTerm vs bs cd (P _ n _)
-        -- local variables
+        -- de bruijns (lambda-bound, let-bound vars)
+        | Just deps <- lookup n bs
+        = deps cd
+
+        -- ctor-bound/arg-bound variables
         | Just var <- M.lookup n vs
         = M.singleton cd (viDeps var)
 
@@ -348,18 +351,18 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         specialMNs = map (sMN 0 . ("__" ++)) $ words "Unit True False II"
     
     -- dependencies of de bruijn variables are described in `bs'
-    getDepsTerm vs bs cd (V i) = (bs !! i) cd
+    getDepsTerm vs bs cd (V i) = snd (bs !! i) cd
 
     getDepsTerm vs bs cd (Bind n bdr t)
         -- here we just push IM.empty on the de bruijn stack
         -- the args will be marked as used at the usage site
-        | Lam ty <- bdr = getDepsTerm vs (const M.empty : bs) cd t
-        | Pi  ty <- bdr = getDepsTerm vs (const M.empty : bs) cd t
+        | Lam ty <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd t
+        | Pi  ty <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd t
 
         -- let-bound variables can get partially evaluated
         -- it is sufficient just to plug the Cond in when the bound names are used
-        |  Let ty t <- bdr = getDepsTerm vs (var t : bs) cd t
-        | NLet ty t <- bdr = getDepsTerm vs (var t : bs) cd t
+        |  Let ty t <- bdr = getDepsTerm vs ((n, var t) : bs) cd t
+        | NLet ty t <- bdr = getDepsTerm vs ((n, var t) : bs) cd t
       where
         var t cd = getDepsTerm vs bs cd t
 
@@ -386,6 +389,10 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used
             P _ n _
+                -- debruijn-bound name
+                | Just deps <- lookup n bs
+                    -> deps cd `union` unconditionalDeps args
+
                 -- local name that refers to a method
                 | Just var  <- M.lookup n vs
                 , Just meth <- viMethod var
@@ -402,7 +409,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                     -> conditionalDeps n args
 
             -- TODO: could we somehow infer how bound variables use their arguments?
-            V i -> M.unionWith (M.unionWith S.union) ((bs !! i) cd) (unconditionalDeps args)
+            V i -> snd (bs !! i) cd `union` unconditionalDeps args
 
             -- we interpret applied lambdas as lets in order to reuse code here
             Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
@@ -418,6 +425,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
             _ -> error $ "cannot analyse application of " ++ show fun ++ " to " ++ show args
       where
+        union = M.unionWith $ M.unionWith S.union
         ins = M.insertWith (M.unionWith S.union) cd
 
         unconditionalDeps :: [Term] -> Deps
@@ -441,7 +449,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 , viMethod = Nothing
                 }) | (v, i) <- zip args [0..]]
             deps i   = M.singleton (metameth, Arg i) S.empty
-            bruijns  = reverse [\cd -> M.singleton cd (deps i) | i <- [0 .. length args - 1]]
+            bruijns  = reverse [(n, \cd -> M.singleton cd (deps i)) | (i, n) <- zip [0..] args]
             cond     = S.singleton (metameth, Result)
             metameth = mkFieldName ctorName methNo
             (args, body) = unfoldLams t

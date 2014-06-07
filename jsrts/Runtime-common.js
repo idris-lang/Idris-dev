@@ -34,3 +34,19 @@ var __IDRRT__tailcall = function(k) {
 
   return ret;
 };
+
+var __IDRRT__charCode = function(str) {
+  var type = typeof str;
+  if (type == "string")
+    return str.charCodeAt(0);
+  else
+    return str;
+}
+
+var __IDRRT__fromCharCode = function(chr) {
+  var type = typeof chr;
+  if (type == "string")
+    return chr;
+  else
+    return String.fromCharCode(chr);
+}

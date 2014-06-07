@@ -31,9 +31,9 @@ class Handler (e : Effect) (m : Type -> Type) where
   ||| 
   ||| @ r The resource being handled.
   ||| @ eff The effect to be applied.
-  ||| @ ctxt The context in which to handle the effect.
-  handle : (r : res) -> (eff : e t res resk) -> 
-           (ctxt : ((x : t) -> resk x -> m a)) -> m a
+  ||| @ k The continuation to pass the result of the effect
+  covering handle : (r : res) -> (eff : e t res resk) -> 
+                    (k : ((x : t) -> resk x -> m a)) -> m a
 
 ||| Get the resource type (handy at the REPL to find out about an effect)
 resourceType : EFFECT -> Type
@@ -100,53 +100,6 @@ rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
 
 
 -- -------------------------------------------------- [ The Effect EDSL itself ]
--- some proof automation
-
-%reflection
-reflectListEffElem : List a -> Tactic
-reflectListEffElem [] = Refine "Here" `Seq` Solve
-reflectListEffElem (x :: xs)
-     = Try (Refine "Here" `Seq` Solve)
-           (Refine "There" `Seq` (Solve `Seq` reflectListEffElem xs))
--- TMP HACK! FIXME!
--- The evaluator needs a 'function case' to know its a reflection function
--- until we propagate that information! Without this, the _ case won't get
--- matched. 
-reflectListEffElem (x ++ y) = Refine "Here" `Seq` Solve
-reflectListEffElem _ = Refine "Here" `Seq` Solve
-
-%reflection
-reflectSubList : List a -> Tactic
-reflectSubList [] = Refine "subListId" `Seq` Solve
-reflectSubList (x :: xs)
-     = Try (Refine "subListId" `Seq` Solve)
-           (Try (Refine "Keep" `Seq` (Solve `Seq` reflectSubList xs))
-                (Refine "Drop" `Seq` (Solve `Seq` reflectSubList xs)))
-reflectSubList (x ++ y) = Refine "subListId" `Seq` Solve
-reflectSubList _ = Refine "subListId" `Seq` Solve
-
-%reflection
-reflectDefaultList : List a -> Tactic
-reflectDefaultList [] = Refine "enil" `Seq` Solve
-reflectDefaultList (x :: xs)
-     = Refine "econs" `Seq` 
-         (Solve `Seq`
-           (Instance `Seq` 
-         (Refine "default" `Seq`
-           (Solve `Seq`
-             (Instance `Seq`
-              (reflectDefaultList xs))))))
-reflectDefaultList (x ++ y) = Refine "Nil" `Seq` Solve
-reflectDefaultList _ = Refine "Nil" `Seq` Solve
-
-%reflection
-reflectEff : (P : Type) -> Tactic
-reflectEff (EffElem m a xs)
-     = reflectListEffElem xs `Seq` Solve
-reflectEff (SubList xs ys)
-     = reflectSubList ys `Seq` Solve
-reflectEff (Env m xs)
-     = reflectDefaultList xs `Seq` Solve
 
 updateResTy : (val : t) ->
               (xs : List EFFECT) -> EffElem e a xs -> e t a b ->
@@ -191,11 +144,11 @@ data Eff : (m : Type -> Type)
                 Eff m a xs xs'
      ebind    : Eff m a xs xs' -> 
                 ((val : a) -> Eff m b (xs' val) xs'') -> Eff m b xs xs''
-     effect   : (prf : EffElem e a xs) ->
+     callP    : (prf : EffElem e a xs) ->
                 (eff : e t a b) ->
                 Eff m t xs (\v => updateResTy v xs prf eff)
 
-     lift     : (prf : SubList ys xs) ->
+     liftP    : (prf : SubList ys xs) ->
                 Eff m t ys ys' -> Eff m t xs (\v => updateWith (ys' v) xs prf)
      newInit  : Handler e m =>
                 res -> 
@@ -212,6 +165,20 @@ data Eff : (m : Type -> Type)
 (>>=)   : Eff m a xs xs' -> 
           ((val : a) -> Eff m b (xs' val) xs'') -> Eff m b xs xs''
 (>>=) = ebind 
+
+-- namespace SimpleBind
+--   (>>=) : Eff m a xs (\v => xs) -> 
+--           ((val : a) -> Eff m b xs xs') -> Eff m b xs xs'
+--   (>>=) = ebind 
+
+||| Run a subprogram which results in an effect state the same as the input.
+staticEff : Eff m a xs (\v => xs) -> Eff m a xs (\v => xs)
+staticEff = id
+
+||| Explicitly give the expected set of result effects for an effectful
+||| operation.
+toEff : .(xs' : List EFFECT) -> Eff m a xs (\v => xs') -> Eff m a xs (\v => xs')
+toEff xs' = id
 
 return : a -> Eff m a xs (\v => xs)
 return x = value x
@@ -251,8 +218,8 @@ eff env (value x) k = k x env
 eff env (with_val x prog) k = eff env prog (\p', env' => k x env') 
 eff env (prog `ebind` c) k
    = eff env prog (\p', env' => eff env' (c p') k)
-eff env (effect prf effP) k = execEff env prf effP k
-eff env (lift prf effP) k
+eff env (callP prf effP) k = execEff env prf effP k
+eff env (liftP prf effP) k
    = let env' = dropEnv env prf in
          eff env' effP (\p', envk => k p' (rebuildEnv envk prf env))
 eff env (newInit r prog) k
@@ -269,7 +236,8 @@ eff {xs = [l ::: x]} env (l :- prog) k
          eff env' prog (\p', envk => k p' (relabel l envk))
 
 -- yuck :) Haven't got type class instances working nicely in tactic
--- proofs yet, so just brute force it.
+-- proofs yet, and 'search' can't be told about any hints yet,
+-- so just brute force it.
 syntax MkDefaultEnv = with Env
                        (| [], [default], [default, default],
                           [default, default, default],
@@ -279,20 +247,20 @@ syntax MkDefaultEnv = with Env
                           [default, default, default, default, default, default, default],
                           [default, default, default, default, default, default, default, default] |)
 
-implicit
-lift' : Eff m t ys ys' ->
-        {default tactics { byReflection reflectEff; }
-           prf : SubList ys xs} ->
-        Eff m t xs (\v => updateWith (ys' v) xs prf)
-lift' e {prf} = lift prf e
+call : {a, b: _} -> {e : Effect} ->
+       (eff : e t a b) ->
+       {default tactics { search 100; }
+          prf : EffElem e a xs} ->
+      Eff m t xs (\v => updateResTy v xs prf eff)
+call e {prf} = callP prf e
 
 implicit
-effect' : {a, b: _} -> {e : Effect} ->
-          (eff : e t a b) ->
-          {default tactics { byReflection reflectEff; }
-             prf : EffElem e a xs} ->
-         Eff m t xs (\v => updateResTy v xs prf eff)
-effect' e {prf} = effect prf e
+lift : Eff m t ys ys' ->
+       {default tactics { search 100; }
+          prf : SubList ys xs} ->
+       Eff m t xs (\v => updateWith (ys' v) xs prf)
+lift e {prf} = liftP prf e
+
 
 new : Handler e m =>
       {default default r : res} -> 
@@ -337,8 +305,8 @@ mapVE f []        = pure []
 mapVE f (x :: xs) = [| f x :: mapVE f xs |]
 
 
-when : Applicative m => Bool -> ({xs} Eff m ()) -> {xs} Eff m ()
-when True  e = e
+when : Applicative m => Bool -> Lazy ({xs} Eff m ()) -> {xs} Eff m ()
+when True  e = Force e
 when False e = pure ()
 
 -- --------------------------------------------------------------------- [ EOF ]

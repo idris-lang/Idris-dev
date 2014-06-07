@@ -39,9 +39,9 @@ choose False = Right oh
 ||| @ f the action to take on Left
 ||| @ g the action to take on Right
 ||| @ e the sum to analyze
-either : (f : a -> c) -> (g : b -> c) -> (e : Either a b) -> c
-either l r (Left x)  = l x
-either l r (Right x) = r x
+either : (f : Lazy (a -> c)) -> (g : Lazy (b -> c)) -> (e : Either a b) -> c
+either l r (Left x)  = (Force l) x
+either l r (Right x) = (Force r) x
 
 ||| Keep the payloads of all Left constructors in a list of Eithers
 lefts : List (Either a b) -> List a
@@ -74,7 +74,7 @@ fromEither (Right r) = r
 
 ||| Convert a Maybe to an Either by using a default value in case of Nothing
 ||| @ e the default value
-maybeToEither : (def : e) -> Maybe a -> Either e a
+maybeToEither : (def : Lazy e) -> Maybe a -> Either e a
 maybeToEither def (Just j) = Right j
 maybeToEither def Nothing  = Left  def
 

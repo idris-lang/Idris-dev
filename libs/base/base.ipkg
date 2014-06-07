@@ -6,6 +6,7 @@ modules = System,
           Network.Cgi, Network.Socket,
           Debug.Trace,
 
+          System.Info,
           System.Concurrency.Raw, System.Concurrency.Process,
 
           Decidable.Decidable, Decidable.Order,
@@ -22,7 +23,8 @@ modules = System,
           Data.SortedMap, Data.SortedSet, Data.BoundedList,
           Data.Vect, Data.HVect, Data.Vect.Quantifiers,
           Data.Floats, Data.Complex, Data.Heap, Data.Fun,
-          Data.Rel, Data.Buffer,
+          Data.Rel, Data.Buffer, Data.Erased,
+          Data.List,
 
           Control.Isomorphism, Control.Isomorphism.Primitives,
           Control.Monad.Identity,

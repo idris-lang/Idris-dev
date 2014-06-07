@@ -21,6 +21,7 @@ import Prelude.Traversable
 import Prelude.Bits
 import Prelude.Stream
 import Prelude.Uninhabited
+import Prelude.Pairs
 
 import Decidable.Equality
 
@@ -347,27 +348,38 @@ natRange n = List.reverse (go n)
   where go Z = []
         go (S n) = n :: go n
 
+-- predefine Nat versions of Enum, so we can use them in the default impls
+total natEnumFromThen : Nat -> Nat -> Stream Nat
+natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
+total natEnumFromTo : Nat -> Nat -> List Nat
+natEnumFromTo n m = map (plus n) (natRange ((S m) - n))
+total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
+natEnumFromThenTo _ Z   _ = []
+natEnumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
+
 class Enum a where
   total pred : a -> a
   total succ : a -> a
+  succ e = fromNat (S (toNat e))
   total toNat : a -> Nat
   total fromNat : Nat -> a
   total enumFrom : a -> Stream a
   enumFrom n = n :: enumFrom (succ n)
   total enumFromThen : a -> a -> Stream a
+  enumFromThen x y = map fromNat (natEnumFromThen (toNat x) (toNat y))
   total enumFromTo : a -> a -> List a
+  enumFromTo x y = map fromNat (natEnumFromTo (toNat x) (toNat y))
   total enumFromThenTo : a -> a -> a -> List a
-
+  enumFromThenTo x1 x2 y = map fromNat (natEnumFromThenTo (toNat x1) (toNat x2) (toNat y))
 
 instance Enum Nat where
-  pred = Nat.pred
-  succ = S
-  toNat = id
-  fromNat = id
-  enumFromThen n inc = n :: enumFromThen (fromNat (plus (toNat inc) (toNat n))) inc
-  enumFromThenTo _ Z   _ = []
-  enumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
-  enumFromTo n m = map (plus n) (natRange ((S m) - n))
+  pred n = Nat.pred n
+  succ n = S n
+  toNat x = id x
+  fromNat x = id x
+  enumFromThen x y = natEnumFromThen x y
+  enumFromThenTo x y z = natEnumFromThenTo x y z
+  enumFromTo x y = natEnumFromTo x y
 
 instance Enum Integer where
   pred n = n - 1
@@ -407,14 +419,25 @@ instance Enum Int where
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
 
+instance Enum (Fin (S n)) where
+  pred fZ = fZ
+  pred (fS n) = weaken n
+  succ n = case strengthen (fS n) of
+    Left _ => last
+    Right k => k
+  toNat n = cast n
+  fromNat {n=n} m = case natToFin m (S n) of
+    Just k => k
+    Nothing => last
+
 syntax "[" [start] ".." [end] "]"
      = enumFromTo start end
 syntax "[" [start] "," [next] ".." [end] "]"
      = enumFromThenTo start (next - start) end
 
-syntax "[" [start] "..]"
+syntax "[" [start] ".." "]"
      = enumFrom start
-syntax "[" [start] "," [next] "..]"
+syntax "[" [start] "," [next] ".." "]"
      = enumFromThen start (next - start)
 
 ---- More utilities
@@ -478,6 +501,14 @@ data File = FHandle Ptr
 partial stdin : File
 stdin = FHandle prim__stdin
 
+||| Standard output
+partial stdout : File
+stdout = FHandle prim__stdout
+
+||| Standard output
+partial stderr : File
+stderr = FHandle prim__stderr
+
 ||| Call the RTS's file opening function
 do_fopen : String -> String -> IO Ptr
 do_fopen f m
@@ -519,9 +550,9 @@ fgetc : File -> IO Char
 fgetc (FHandle h) = return (cast !(mkForeign (FFun "fgetc" [FPtr] FInt) h))
 
 fgetc' : File -> IO (Maybe Char)
-fgetc' (FHandle h) 
+fgetc' (FHandle h)
    = do x <- mkForeign (FFun "fgetc" [FPtr] FInt) h
-        if (x < 0) then return Nothing 
+        if (x < 0) then return Nothing
                    else return (Just (cast x))
 
 fflush : File -> IO ()
@@ -620,4 +651,3 @@ readFile fn = do h <- openFile fn Read
           if not x then do l <- fread h
                            readFile' h (contents ++ l)
                    else return contents
-

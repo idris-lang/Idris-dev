@@ -47,7 +47,7 @@ import qualified Util.Pretty as P
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
-import Control.Applicative
+import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.Error (throwError, catchError)
 import Control.Monad.State.Strict
@@ -128,9 +128,14 @@ import_ = do fc <- getFC
 prog :: SyntaxInfo -> IdrisParser [PDecl]
 prog syn = do whiteSpace
               decls <- many (decl syn)
-              notOpenBraces
-              eof
               let c = (concat decls)
+              case maxline syn of
+                   Nothing -> do notOpenBraces; eof
+                   _ -> return ()
+              ist <- get
+              fc <- getFC
+              put ist { idris_parsedSpan = Just (FC (fc_fname fc) (0,0) (fc_end fc)),
+                        ibc_write = IBCParsedRegion fc : ibc_write ist }
               return c
 
 {-| Parses a top-level declaration
@@ -153,8 +158,16 @@ Decl ::=
 @
 -}
 decl :: SyntaxInfo -> IdrisParser [PDecl]
-decl syn = do notEndBlock
-              declBody
+decl syn = do fc <- getFC
+              -- if we're after maxline, stop here
+              let continue = case maxline syn of
+                                Nothing -> True
+                                Just l -> if fst (fc_end fc) > l
+                                             then mut_nesting syn /= 0
+                                             else True
+              if continue then do notEndBlock
+                                  declBody
+                          else fail "End of readable input"
   where declBody :: IdrisParser [PDecl]
         declBody =     declBody'
                    <|> using_ syn
@@ -489,7 +502,7 @@ mutual syn =
     do reserved "mutual"
        openBlock
        let pvars = syn_params syn
-       ds <- many (decl syn)
+       ds <- many (decl (syn { mut_nesting = mut_nesting syn + 1 } ))
        closeBlock
        fc <- getFC
        return [PMutual fc (concat ds)]
@@ -574,7 +587,7 @@ class_ syn = do (doc, acc) <- try (do
                 cs <- many carg
                 ds <- option [] (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass (fst doc) syn fc cons n cs ds]
+                return [PClass (fst doc) syn fc cons n cs (snd doc) ds]
              <?> "type-class declaration"
   where
     carg :: IdrisParser (Name, PTerm)
@@ -831,7 +844,6 @@ clause syn
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
                    reserved "with"
-                   lchar '(' <?> "parenthesized expression"
                    wval <- bracketed syn
                    openBlock
                    ds <- some $ fnDecl syn
@@ -865,7 +877,6 @@ clause syn
                    reserved "with"
                    ist <- get
                    put (ist { lastParse = Just n })
-                   lchar '(' <?> "parenthesized expression"
                    wval <- bracketed syn
                    openBlock
                    ds <- some $ fnDecl syn
@@ -1002,7 +1013,7 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                                              Right msg ->
                                                  fail $ msg)]
              <|> do try (lchar '%' *> reserved "name")
-                    ty <- iName []
+                    ty <- fnName
                     ns <- sepBy1 name (lchar ',')
                     return [PDirective (do ty' <- disambiguate ty
                                            mapM_ (addNameHint ty') ns
@@ -1023,7 +1034,7 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                             case lookupCtxtName n (idris_implicits i) of
                               [(n', _)] -> return n'
                               []        -> throwError (NoSuchVariable n)
-                              more      -> throwError (CantResolveAlts (map (show . fst) more))
+                              more      -> throwError (CantResolveAlts (map fst more))
 
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)
@@ -1050,19 +1061,20 @@ ProviderWhat ::= 'proof' | 'term' | 'type' | 'postulate'
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do try (lchar '%' *> reserved "provide");
-                  what <- provideWhat
-                  lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
-                  fc <- getFC
-                  reserved "with"
-                  e <- expr syn
-                  return  [PProvider syn fc what n t e]
+                  provideTerm <|> providePostulate
                <?> "type provider"
-  where provideWhat :: IdrisParser ProvideWhat
-        provideWhat = option ProvAny
-                        (      ((reserved "proof" <|> reserved "term" <|> reserved "type") *>
-                                pure ProvTerm)
-                           <|> (reserved "postulate" *> pure ProvPostulate)
-                   <?> "provider variety")
+  where provideTerm = do lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
+                         fc <- getFC
+                         reserved "with"
+                         e <- expr syn <?> "provider expression"
+                         return  [PProvider syn fc (ProvTerm t e) n]
+        providePostulate = do reserved "postulate"
+                              n <- fnName
+                              fc <- getFC
+                              reserved "with"
+                              e <- expr syn <?> "provider expression"
+                              return [PProvider syn fc (ProvPostulate e) n]
+
 {- | Parses a transform
 
 @
@@ -1087,6 +1099,10 @@ transform syn = do try (lchar '%' *> reserved "transform")
 {- | Parses an expression from input -}
 parseExpr :: IState -> String -> Result PTerm
 parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
+
+{- | Parses a constant form input -}
+parseConst :: IState -> String -> Result Const
+parseConst st = runparser constant st "(input)"
 
 {- | Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic
@@ -1160,8 +1176,7 @@ loadModule outh f
    = idrisCatch (loadModule' outh f)
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
-                          msg <- showErr e
-                          ihputStrLn outh msg
+                          ihWarn outh (getErrSpan e) $ pprintErr ist e
                           return "")
 
 {- | Load idris module -}
@@ -1171,26 +1186,26 @@ loadModule' outh f
         let file = takeWhile (/= ' ') f
         ibcsd <- valIBCSubDir i
         ids <- allImportDirs
-        fp <- liftIO $ findImport ids ibcsd file
+        fp <- findImport ids ibcsd file
         if file `elem` imported i
           then iLOG $ "Already read " ++ file
           else do putIState (i { imported = file : imported i })
                   case fp of
-                    IDR fn  -> loadSource outh False fn
-                    LIDR fn -> loadSource outh True  fn
+                    IDR fn  -> loadSource outh False fn Nothing
+                    LIDR fn -> loadSource outh True  fn Nothing
                     IBC fn src ->
                       idrisCatch (loadIBC fn)
                                  (\c -> do iLOG $ fn ++ " failed " ++ pshow i c
                                            case src of
-                                             IDR sfn -> loadSource outh False sfn
-                                             LIDR sfn -> loadSource outh True sfn)
+                                             IDR sfn -> loadSource outh False sfn Nothing
+                                             LIDR sfn -> loadSource outh True sfn Nothing)
         let (dir, fh) = splitFileName file
         return (dropExtension fh)
 
 
 {- | Load idris code from file -}
-loadFromIFile :: Handle -> IFileType -> Idris ()
-loadFromIFile h i@(IBC fn src)
+loadFromIFile :: Handle -> IFileType -> Maybe Int -> Idris ()
+loadFromIFile h i@(IBC fn src) maxline
    = do iLOG $ "Skipping " ++ getSrcFile i
         idrisCatch (loadIBC fn)
                 (\err -> ierror $ LoadingFailed fn err)
@@ -1199,20 +1214,22 @@ loadFromIFile h i@(IBC fn src)
     getSrcFile (LIDR fn) = fn
     getSrcFile (IBC f src) = getSrcFile src
 
-loadFromIFile h (IDR fn) = loadSource' h False fn
-loadFromIFile h (LIDR fn) = loadSource' h True fn
+loadFromIFile h (IDR fn) maxline = loadSource' h False fn maxline
+loadFromIFile h (LIDR fn) maxline = loadSource' h True fn maxline
 
 {-| Load idris source code and show error if something wrong happens -}
-loadSource' :: Handle -> Bool -> FilePath -> Idris ()
-loadSource' h lidr r
-   = idrisCatch (loadSource h lidr r)
+loadSource' :: Handle -> Bool -> FilePath -> Maybe Int -> Idris ()
+loadSource' h lidr r maxline
+   = idrisCatch (loadSource h lidr r maxline)
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
-                          ihRenderError h (pprintErr ist e))
+                          case e of
+                            At f e' -> ihWarn h f (pprintErr ist e')
+                            _ -> ihWarn h (getErrSpan e) (pprintErr ist e))
 
 {- | Load Idris source code-}
-loadSource :: Handle -> Bool -> FilePath -> Idris ()
-loadSource h lidr f
+loadSource :: Handle -> Bool -> FilePath -> Maybe Int -> Idris ()
+loadSource h lidr f toline
              = do iLOG ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
@@ -1221,11 +1238,11 @@ loadSource h lidr f
                   (mname, imports, pos) <- parseImports f file
                   ids <- allImportDirs
                   ibcsd <- valIBCSubDir i
-                  mapM_ (\f -> do fp <- runIO $ findImport ids ibcsd f
+                  mapM_ (\f -> do fp <- findImport ids ibcsd f
                                   case fp of
                                       LIDR fn -> ifail $ "No ibc for " ++ f
                                       IDR fn -> ifail $ "No ibc for " ++ f
-                                      IBC fn src -> loadIBC fn) 
+                                      IBC fn src -> loadIBC fn)
                         [fn | (fn, _, _) <- imports]
                   reportParserWarnings
 
@@ -1243,13 +1260,14 @@ loadSource h lidr f
                   putIState (i { default_access = Hidden, module_aliases = modAliases })
                   clearIBC -- start a new .ibc file
                   mapM_ (addIBC . IBCImport) [realName | (realName, alias, fc) <- imports]
-                  let syntax = defaultSyntax{ syn_namespace = reverse mname }
+                  let syntax = defaultSyntax{ syn_namespace = reverse mname,
+                                              maxline = toline }
                   ds' <- parseProg syntax f file pos
 
                   -- Parsing done, now process declarations
 
                   let ds = namespaces mname ds'
-                  logLvl 3 (show $ showDecls True ds)
+                  logLvl 3 (show $ showDecls verbosePPOption ds)
                   i <- getIState
                   logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))
@@ -1291,7 +1309,6 @@ loadSource h lidr f
                   addHides (hide_list i)
 
                   -- Finally, write an ibc if checking was successful
-
                   ok <- noErrors
                   when ok $
                     idrisCatch (do writeIBC f ibc; clearIBC)
@@ -1311,7 +1328,7 @@ loadSource h lidr f
     toMutual x = let r = PMutual (fileFC "single mutual") [x] in
                  case x of
                    PClauses _ _ _ _ -> r
-                   PClass _ _ _ _ _ _ _ -> r
+                   PClass _ _ _ _ _ _ _ _ -> r
                    PInstance _ _ _ _ _ _ _ _ -> r
                    _ -> x
 

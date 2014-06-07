@@ -156,9 +156,11 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
 docComment :: IdrisParser (Docstring, [(Name, Docstring)])
 docComment = do dc <- pushIndent *> docCommentLine
                 rest <- many (indented docCommentLine)
-                args <- many (indented argDocCommentLine)
+                args <- many $ do (name, first) <- indented argDocCommentLine
+                                  rest <- many (indented docCommentLine)
+                                  return (name, concat (intersperse "\n" (first:rest)))
                 popIndent
-                return (parseDocstring $ T.pack (concat . intersperse "\n" $ dc:rest),
+                return (parseDocstring $ T.pack (concat (intersperse "\n" (dc:rest))),
                         map (\(n, d) -> (n, parseDocstring (T.pack d))) args)
 
   where docCommentLine :: MonadicParsing m => m String
@@ -170,6 +172,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                                  eol ; someSpace
                                  return contents)-- ++ concat rest))
                         <?> ""
+
         argDocCommentLine = do string "|||"
                                many (satisfy isSpace)
                                char '@'
@@ -214,7 +217,7 @@ idrisStyle :: MonadicParsing m => IdentifierStyle m
 idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved Hi.Identifier Hi.ReservedIdentifier
   where _styleName = "Idris"
         _styleStart = satisfy isAlpha
-        _styleLetter = satisfy isAlphaNum <|> oneOf "_'" <|> (lchar '.')
+        _styleLetter = satisfy isAlphaNum <|> oneOf "_'."
         _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "Type",
                                       "do", "dsl", "import", "impossible",
                                       "case", "of", "total", "partial", "mutual",
@@ -313,7 +316,7 @@ operatorLetter = oneOf opChars
 -- | Parses an operator
 operator :: MonadicParsing m => m String
 operator = do op <- token . some $ operatorLetter
-              when (op `elem` [":", "=>", "->", "<-", "=", "?="]) $ 
+              when (op `elem` [":", "=>", "->", "<-", "=", "?=", "|"]) $ 
                    fail $ op ++ " is not a valid operator"
               return op
 
@@ -563,8 +566,8 @@ collect (c@(PClauses _ o _ _) : ds)
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
 collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
 collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
-collect (PClass doc f s cs n ps ds : ds')
-    = PClass doc f s cs n ps (collect ds) : collect ds'
+collect (PClass doc f s cs n ps pdocs ds : ds')
+    = PClass doc f s cs n ps pdocs (collect ds) : collect ds'
 collect (PInstance f s cs n ps t en ds : ds')
     = PInstance f s cs n ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds

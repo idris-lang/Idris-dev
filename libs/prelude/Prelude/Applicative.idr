@@ -38,8 +38,11 @@ class Applicative f => Alternative (f : Type -> Type) where
     empty : f a
     (<|>) : f a -> f a -> f a
 
+||| `guard a` is `pure ()` if `a` is `True` and `empty` if `a` is `False`
 guard : Alternative f => Bool -> f ()
 guard a = if a then pure () else empty
 
-when : Applicative f => Bool -> f () -> f ()
-when a f = if a then f else pure ()
+||| Conditionally execute an applicative expression
+when : Applicative f => Bool -> Lazy (f ()) -> f ()
+when True f = Force f
+when False f = pure ()

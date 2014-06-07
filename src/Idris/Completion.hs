@@ -51,7 +51,7 @@ tacticArgs = [ ("intro", Nothing) -- FIXME syntax for intro (fresh name)
              , (":eval", Just ExprTArg)
              ] ++ map (\x -> (x, Nothing)) [
               "intros", "compute", "trivial", "search", "solve", "attack",
-              "state", "term", "undo", "qed", "abandon", ":q"
+              "unify", "state", "term", "undo", "qed", "abandon", ":q"
              ]
 tactics = map fst tacticArgs
 
@@ -112,6 +112,7 @@ completeOption = completeWord Nothing " \t" completeOpt
                                               , "showimplicits"
                                               , "originalerrors"
                                               , "autosolve"
+                                              , "nobanner"
                                               ]
 
 completeConsoleWidth :: CompletionFunc Idris
@@ -160,6 +161,7 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
           completeArg NameArg = completeExpr [] (prev, next) -- FIXME only complete one name
           completeArg OptionArg = completeOption (prev, next)
           completeArg ModuleArg = noCompletion (prev, next) -- FIXME do later
+          completeArg NamespaceArg = noCompletion (prev, next) -- FIXME do later
           completeArg ExprArg = completeExpr [] (prev, next)
           completeArg MetaVarArg = completeMetaVar (prev, next) -- FIXME only complete one name
           completeArg ColourArg = completeColour (prev, next)

@@ -33,37 +33,47 @@ cmd xs = do P.lchar ':'; docmd (sortBy (\x y -> compare (length y) (length x)) x
 pCmd :: P.IdrisParser Command
 pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["h", "?", "help"]; eof; return Help)
+              <|> try (do cmd ["w", "warranty"]; eof; return Warranty)
               <|> try (do cmd ["r", "reload"]; eof; return Reload)
               <|> try (do cmd ["module"]; f <- P.identifier; eof;
                           return (ModImport (toPath f)))
               <|> try (do cmd ["e", "edit"]; eof; return Edit)
               <|> try (do cmd ["exec", "execute"]; eof; return Execute)
-              <|> try (do cmd ["c", "compile"]; f <- P.identifier; eof; return (Compile ViaC f))
-              <|> try (do cmd ["jc", "newcompile"]; f <- P.identifier; eof; return (Compile ViaJava f))
-              <|> try (do cmd ["js", "javascript"]; f <- P.identifier; eof; return (Compile ViaJavaScript f))
+              <|> try (do cmd ["c", "compile"]
+                          i <- get
+                          c <- option (opt_codegen $ idris_options i) codegenOption
+                          f <- P.identifier
+                          eof
+                          return (Compile c f))
               <|> try (do cmd ["proofs"]; eof; return Proofs)
               <|> try (do cmd ["rmproof"]; n <- P.name; eof; return (RmProof n))
               <|> try (do cmd ["showproof"]; n <- P.name; eof; return (ShowProof n))
               <|> try (do cmd ["log"]; i <- P.natural; eof; return (LogLvl (fromIntegral i)))
-              <|> try (do cmd ["l", "load"]; f <- many anyChar; return (Load f))
+              <|> try (do cmd ["lto", "loadto"];
+                          toline <- P.natural
+                          f <- many anyChar;
+                          return (Load f (Just (fromInteger toline))))
+              <|> try (do cmd ["l", "load"]; f <- many anyChar;
+                          return (Load f Nothing))
               <|> try (do cmd ["cd"]; f <- many anyChar; return (ChangeDirectory f))
               <|> try (do cmd ["spec"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Spec t))
               <|> try (do cmd ["hnf"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (HNF t))
               <|> try (do cmd ["inline"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (TestInline t))
-              <|> try (do cmd ["doc"]; n <- P.fnName; eof; return (DocStr n))
+              <|> try (do cmd ["doc"]; c <- P.constant; eof; return (DocStr (Right c)))
+              <|> try (do cmd ["doc"]; n <- (P.fnName <|> (P.string "_|_" >> return falseTy)); eof; return (DocStr (Left n)))
               <|> try (do cmd ["d", "def"]; some (P.char ' ') ; n <- P.fnName; eof; return (Defn n))
               <|> try (do cmd ["total"]; do n <- P.fnName; eof; return (TotCheck n))
               <|> try (do cmd ["t", "type"]; do P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Check t))
               <|> try (do cmd ["u", "universes"]; eof; return Universes)
               <|> try (do cmd ["di", "dbginfo"]; n <- P.fnName; eof; return (DebugInfo n))
-              <|> try (do cmd ["i", "info"]; n <- P.fnName; eof; return (Info n))
               <|> try (do cmd ["miss", "missing"]; n <- P.fnName; eof; return (Missing n))
               <|> try (do cmd ["dynamic"]; eof; return ListDynamic)
               <|> try (do cmd ["dynamic"]; l <- many anyChar; return (DynamicLink l))
               <|> try (do cmd ["color", "colour"]; pSetColourCmd)
               <|> try (do cmd ["set"]; o <- pOption; return (SetOpt o))
               <|> try (do cmd ["unset"]; o <- pOption; return (UnsetOpt o))
-              <|> try (do cmd ["s", "search"]; P.whiteSpace; t <- P.fullExpr defaultSyntax; return (Search t))
+              <|> try (do cmd ["s", "search"]; P.whiteSpace;
+                          t <- P.typeExpr (defaultSyntax { implicitAllowed = True }); return (Search t))
               <|> try (do cmd ["cs", "casesplit"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name;
@@ -84,11 +94,20 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name;
                           return (MakeWith upd (fromInteger l) n))
+              <|> try (do cmd ["ml", "makelemma"]; P.whiteSpace;
+                          upd <- option False (do P.lchar '!'; return True)
+                          l <- P.natural; n <- P.name;
+                          return (MakeLemma upd (fromInteger l) n))
               <|> try (do cmd ["ps", "proofsearch"]; P.whiteSpace;
                           upd <- option False (do P.lchar '!'; return True)
                           l <- P.natural; n <- P.name;
-                          hints <- many P.name
-                          return (DoProofSearch upd (fromInteger l) n hints))
+                          hints <- many P.fnName
+                          return (DoProofSearch upd True (fromInteger l) n hints))
+              <|> try (do cmd ["ref", "refine"]; P.whiteSpace;
+                          upd <- option False (do P.lchar '!'; return True)
+                          l <- P.natural; n <- P.name;
+                          hint <- P.fnName
+                          return (DoProofSearch upd False (fromInteger l) n [hint]))
               <|> try (do cmd ["p", "prove"]; n <- P.name; eof; return (Prove n))
               <|> try (do cmd ["m", "metavars"]; eof; return Metavars)
               <|> try (do cmd ["a", "addproof"]; do n <- option Nothing (do x <- P.name;
@@ -99,6 +118,9 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["errorhandlers"]; eof ; return ListErrorHandlers)
               <|> try (do cmd ["consolewidth"]; w <- pConsoleWidth ; return (SetConsoleWidth w))
               <|> try (do cmd ["apropos"]; str <- many anyChar ; return (Apropos str))
+              <|> try (do cmd ["wc", "whocalls"]; P.whiteSpace; n <- P.fnName ; return (WhoCalls n))
+              <|> try (do cmd ["cw", "callswho"]; P.whiteSpace; n <- P.fnName ; return (CallsWho n))
+              <|> try (do cmd ["mkdoc"]; str <- many anyChar; return (MakeDoc str))
               <|> do P.whiteSpace; do eof; return NOP
                              <|> do t <- P.fullExpr defaultSyntax; return (Eval t)
 
@@ -109,6 +131,16 @@ pOption = do discard (P.symbol "errorcontext"); return ErrContext
       <|> do discard (P.symbol "showimplicits"); return ShowImpl
       <|> do discard (P.symbol "originalerrors"); return ShowOrigErr
       <|> do discard (P.symbol "autosolve"); return AutoSolve
+      <|> do discard (P.symbol "nobanner") ; return NoBanner
+      <|> do discard (P.symbol "warnreach"); return WarnReach
+
+codegenOption :: P.IdrisParser Codegen
+codegenOption = do discard (P.symbol "javascript"); return ViaJavaScript
+            <|> do discard (P.symbol "node"); return ViaNode
+            <|> do discard (P.symbol "Java"); return ViaJava
+            <|> do discard (P.symbol "llvm"); return ViaLLVM
+            <|> do discard (P.symbol "bytecode"); return Bytecode
+            <|> do discard (P.symbol "C"); return ViaC
 
 pConsoleWidth :: P.IdrisParser ConsoleWidth
 pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth
@@ -152,7 +184,7 @@ pColourMod = try (P.symbol "vivid" >> return doVivid)
           doNoItalic i    = i { italic = False }
           doSetColour c i = i { colour = c }
 
-
+-- | Generate the colour type names using the default Show instance.
 colourTypes :: [(String, ColourType)]
 colourTypes = map (\x -> ((map toLower . reverse . drop 6 . reverse . show) x, x)) $
               enumFromTo minBound maxBound

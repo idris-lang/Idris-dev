@@ -17,6 +17,7 @@ import Data.Char
 import Numeric
 import Data.List
 import Data.Maybe
+import Data.Word
 import System.IO
 import System.Directory
 
@@ -53,6 +54,13 @@ data JSNum = JSInt Int
            deriving Eq
 
 
+data JSWord = JSWord8 Word8
+            | JSWord16 Word16
+            | JSWord32 Word32
+            | JSWord64 Word64
+            deriving Eq
+
+
 data JSAnnotation = JSConstructor deriving Eq
 
 
@@ -81,6 +89,7 @@ data JS = JSRaw String
         | JSArray [JS]
         | JSString String
         | JSNum JSNum
+        | JSWord JSWord
         | JSAssign JS JS
         | JSAlloc String (Maybe JS)
         | JSIndex JS JS
@@ -257,6 +266,13 @@ compileJS (JSWhile cond body) =
   ++ compileJS body
   ++ "\n}"
 
+compileJS (JSWord word)
+  | JSWord8  b <- word = "new Uint8Array([" ++ show b ++ "])"
+  | JSWord16 b <- word = "new Uint16Array([" ++ show b ++ "])"
+  | JSWord32 b <- word = "new Uint32Array([" ++ show b ++ "])"
+  | JSWord64 b <- word = idrRTNamespace ++ "bigInt(\"" ++ show b ++ "\")"
+
+
 jsTailcall :: JS -> JS
 jsTailcall call =
   jsCall (idrRTNamespace ++ "tailcall") [
@@ -280,6 +296,8 @@ jsInstanceOf = JSBinOp "instanceof"
 jsEq :: JS -> JS -> JS
 jsEq = JSBinOp "=="
 
+jsNotEq :: JS -> JS -> JS
+jsNotEq = JSBinOp "!="
 
 jsAnd :: JS -> JS -> JS
 jsAnd = JSBinOp "&&"
@@ -326,6 +344,28 @@ jsLet name value body =
 
 jsError :: String -> JS
 jsError err = JSApp (JSFunction [] (JSError err)) []
+
+jsUnPackBits :: JS -> JS
+jsUnPackBits js = JSIndex js $ JSNum (JSInt 0)
+
+
+jsPackUBits8 :: JS -> JS
+jsPackUBits8 js = JSNew "Uint8Array" [JSArray [js]]
+
+jsPackUBits16 :: JS -> JS
+jsPackUBits16 js = JSNew "Uint16Array" [JSArray [js]]
+
+jsPackUBits32 :: JS -> JS
+jsPackUBits32 js = JSNew "Uint32Array" [JSArray [js]]
+
+jsPackSBits8 :: JS -> JS
+jsPackSBits8 js = JSNew "Int8Array" [JSArray [js]]
+
+jsPackSBits16 :: JS -> JS
+jsPackSBits16 js = JSNew "Int16Array" [JSArray [js]]
+
+jsPackSBits32 :: JS -> JS
+jsPackSBits32 js = JSNew "Int32Array" [JSArray [js]]
 
 
 foldJS :: (JS -> a) -> (a -> a -> a) -> a -> JS -> a
@@ -702,19 +742,42 @@ removeIDs js =
                            JSReturn (JSApp (JSIdent fun) args)
                          )])
           | Just pos <- lookup fun ids
-          , pos < length args  = args !! pos
+          , pos < length args  = removeIDCall ids (args !! pos)
 
         removeIDCall ids (JSNew _ [JSFunction [] (
                            JSReturn (JSApp (JSIdent fun) args)
                          )])
           | Just pos <- lookup fun ids
-          , pos < length args = args !! pos
+          , pos < length args = removeIDCall ids (args !! pos)
 
         removeIDCall ids js@(JSApp id@(JSIdent fun) args)
           | Just pos <- lookup fun ids
-          , pos < length args  = args !! pos
+          , pos < length args  = removeIDCall ids (args !! pos)
 
         removeIDCall ids js = transformJS (removeIDCall ids) js
+
+
+inlineFunction :: String -> [String] -> JS -> JS -> JS
+inlineFunction fun args body js = inline' js
+  where
+    inline' :: JS -> JS
+    inline' (JSApp (JSIdent name) vals)
+      | name == fun =
+          let (js, phs) = insertPlaceHolders args body in
+              inline' $ foldr (uncurry jsSubst) js (zip phs vals)
+
+    inline' js = transformJS inline' js
+
+    insertPlaceHolders :: [String] -> JS -> (JS, [JS])
+    insertPlaceHolders args body = insertPlaceHolders' args body []
+      where
+        insertPlaceHolders' :: [String] -> JS -> [JS] -> (JS, [JS])
+        insertPlaceHolders' (a:as) body ph
+          | (body', ph') <- insertPlaceHolders' as body ph =
+              let phvar = JSIdent $ "__PH_" ++ show (length ph') in
+                  (jsSubst (JSIdent a) phvar body', phvar : ph')
+
+        insertPlaceHolders' [] body ph = (body, ph)
 
 
 inlineFunctions :: [JS] -> [JS]
@@ -728,7 +791,7 @@ inlineFunctions js =
       | Just new <- inlineAble (
             countAll fun front + countAll fun back
           ) fun args body =
-              let f = map (inline fun args new) in
+              let f = map (inlineFunction fun args new) in
                   inlineHelper (f front, f back)
 
     inlineHelper (front, next:back) = inlineHelper (front ++ [next], back)
@@ -743,29 +806,6 @@ inlineFunctions js =
              else Nothing
 
     inlineAble _ _ _ _ = Nothing
-
-
-    inline :: String -> [String] -> JS -> JS -> JS
-    inline fun args body js = inline' js
-      where
-        inline' :: JS -> JS
-        inline' (JSApp (JSIdent name) vals)
-          | name == fun =
-              let (js, phs) = insertPlaceHolders args body in
-                  inline' $ foldr (uncurry jsSubst) js (zip phs vals)
-
-        inline' js = transformJS inline' js
-
-        insertPlaceHolders :: [String] -> JS -> (JS, [JS])
-        insertPlaceHolders args body = insertPlaceHolders' args body []
-          where
-            insertPlaceHolders' :: [String] -> JS -> [JS] -> (JS, [JS])
-            insertPlaceHolders' (a:as) body ph
-              | (body', ph') <- insertPlaceHolders' as body ph =
-                  let phvar = JSIdent $ "__PH_" ++ show (length ph') in
-                      (jsSubst (JSIdent a) phvar body', phvar : ph')
-
-            insertPlaceHolders' [] body ph = (body, ph)
 
 
     nonRecur :: String -> JS -> Bool
@@ -1378,6 +1418,67 @@ evalCons js =
         match js = transformJS match js
 
 
+elimConds :: [JS] -> [JS]
+elimConds js =
+  let (conds, rest) = partition isCond js in
+      foldl' eraseCond rest conds
+  where
+    isCond :: JS -> Bool
+    isCond (JSAlloc
+      fun (Just (JSFunction args (JSCond
+          [ (JSBinOp "==" (JSNum (JSInt tag)) (JSProj (JSIdent _) "tag"), JSReturn t)
+          , (JSNoop, JSReturn f)
+          ])))
+      )
+      | isJSConstant t && isJSConstant f =
+          True
+
+      | JSIdent _ <- t
+      , JSIdent _ <- f =
+          True
+
+    isCond (JSAlloc
+      fun (Just (JSFunction args (JSCond
+        [ (JSBinOp "==" (JSIdent _) c, JSReturn t)
+        , (JSNoop, JSReturn f)
+        ])))
+      )
+      | isJSConstant t && isJSConstant f && isJSConstant c =
+          True
+
+      | JSIdent _ <- t
+      , JSIdent _ <- f
+      , isJSConstant c =
+          True
+
+    isCond _ = False
+
+
+    eraseCond :: [JS] -> JS -> [JS]
+    eraseCond js (JSAlloc
+      fun (Just (JSFunction args (JSCond
+                  [ (c, JSReturn t)
+                  , (_, JSReturn f)
+                  ])
+                )
+      )) = map (inlineFunction fun args (JSTernary c t f)) js
+
+
+removeUselessCons :: [JS] -> [JS]
+removeUselessCons js =
+  let (cons, rest) = partition isUseless js in
+      foldl' eraseCon rest cons
+  where
+    isUseless :: JS -> Bool
+    isUseless (JSAlloc fun (Just JSNull))      = True
+    isUseless (JSAlloc fun (Just (JSIdent _))) = True
+    isUseless _                                = False
+
+
+    eraseCon :: [JS] -> JS -> [JS]
+    eraseCon js (JSAlloc fun (Just val))  = map (jsSubst (JSIdent fun) val) js
+
+
 getGlobalCons :: JS -> [(String, JS)]
 getGlobalCons js = foldJS match (++) [] js
   where
@@ -1441,6 +1542,7 @@ codegenJS_all target definitions includes filename outputType = do
 
         match :: JS -> Bool
         match (JSIdent "__IDRRT__bigInt") = True
+        match (JSWord (JSWord64 _))       = True
         match (JSNum (JSInteger _))       = True
         match js                          = False
 
@@ -1478,6 +1580,8 @@ codegenJS_all target definitions includes filename outputType = do
           , extractLocalConstructors
           , unfoldLookupTable
           , evalCons
+          , elimConds
+          , removeUselessCons
           ]
 
     functions :: [String]
@@ -1499,23 +1603,36 @@ codegenJS_all target definitions includes filename outputType = do
 
     mainLoop :: JS
     mainLoop =
-      JSAlloc "main" $ Just $ JSFunction [] (
-        case target of
-             Node       -> mainFun
-             JavaScript -> JSCond [(isReady, mainFun), (JSTrue, jsMeth (JSIdent "window") "addEventListener" [
-                 JSString "DOMContentLoaded", JSFunction [] (
-                   mainFun
-                 ), JSFalse
-               ])]
+        JSAlloc "main" $ Just $ JSFunction [] (
+          case target of
+              Node       -> mainFun
+              JavaScript -> JSCond [ (exists document `jsAnd` isReady, mainFun)
+                                   , (exists window, windowMainFun)
+                                   , (JSTrue, mainFun)
+                                   ]
       )
       where
+        exists :: JS -> JS
+        exists js = (JSPreOp "typeof " js) `jsNotEq` JSString "undefined"
+
         mainFun :: JS
         mainFun = jsTailcall $ jsCall runMain []
 
+        window :: JS
+        window = JSIdent "window"
+
+        document :: JS
+        document = JSIdent "document"
+
+        windowMainFun :: JS
+        windowMainFun = jsMeth window "addEventListener" [
+            JSString "DOMContentLoaded"
+            , JSFunction [] ( mainFun )
+            , JSFalse
+            ]
 
         isReady :: JS
-        isReady = readyState `jsEq` JSString "complete" `jsOr` readyState `jsEq` JSString "loaded"
-
+        isReady = JSParens $ readyState `jsEq` JSString "complete" `jsOr` readyState `jsEq` JSString "loaded"
 
         readyState :: JS
         readyState = JSProj (JSIdent "document") "readyState"
@@ -1633,6 +1750,10 @@ translateConstant (AType (ATInt ITChar))   = JSType JSCharTy
 translateConstant PtrType                  = JSType JSPtrTy
 translateConstant Forgot                   = JSType JSForgotTy
 translateConstant (BI i)                   = jsBigInt $ JSString (show i)
+translateConstant (B8 b)                   = JSWord (JSWord8 b)
+translateConstant (B16 b)                  = JSWord (JSWord16 b)
+translateConstant (B32 b)                  = JSWord (JSWord32 b)
+translateConstant (B64 b)                  = JSWord (JSWord64 b)
 translateConstant c =
   jsError $ "Unimplemented Constant: " ++ show c
 
@@ -1809,6 +1930,10 @@ translateExpression (SApp tc name vars)
 translateExpression (SOp op vars)
   | LNoOp <- op = JSVar (last vars)
 
+  | (LZExt (ITFixed IT8) ITNative)  <- op = jsUnPackBits $ JSVar (last vars)
+  | (LZExt (ITFixed IT16) ITNative) <- op = jsUnPackBits $ JSVar (last vars)
+  | (LZExt (ITFixed IT32) ITNative) <- op = jsUnPackBits $ JSVar (last vars)
+
   | (LZExt _ ITBig)        <- op = jsBigInt $ jsCall "String" [JSVar (last vars)]
   | (LPlus (ATInt ITBig))  <- op
   , (lhs:rhs:_)            <- vars = invokeMeth lhs "add" [rhs]
@@ -1850,6 +1975,435 @@ translateExpression (SOp op vars)
   | (LSGe ATFloat)   <- op
   , (lhs:rhs:_)      <- vars = translateBinaryOp ">=" lhs rhs
 
+  | (LPlus (ATInt ITChar)) <- op
+  , (lhs:rhs:_)            <- vars =
+      jsCall "__IDRRT__fromCharCode" [
+        JSBinOp "+" (
+          jsCall "__IDRRT__charCode" [JSVar lhs]
+        ) (
+          jsCall "__IDRRT__charCode" [JSVar rhs]
+        )
+      ]
+
+  | (LTrunc (ITFixed IT16) (ITFixed IT8)) <- op
+  , (arg:_)                               <- vars =
+      jsPackUBits8 (
+        JSBinOp "&" (jsUnPackBits $ JSVar arg) (JSNum (JSInt 0xFF))
+      )
+
+  | (LTrunc (ITFixed IT32) (ITFixed IT16)) <- op
+  , (arg:_)                                <- vars =
+      jsPackUBits16 (
+        JSBinOp "&" (jsUnPackBits $ JSVar arg) (JSNum (JSInt 0xFFFF))
+      )
+
+  | (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op
+  , (arg:_)                                <- vars =
+      jsPackUBits32 (
+        jsMeth (jsMeth (JSVar arg) "and" [
+          jsBigInt (JSString $ show 0xFFFFFFFF)
+        ]) "intValue" []
+      )
+
+  | (LTrunc ITBig (ITFixed IT64)) <- op
+  , (arg:_)                       <- vars =
+      jsMeth (JSVar arg) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+      ]
+
+  | (LLSHR (ITFixed IT8)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackUBits8 (
+        JSBinOp ">>" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)
+      )
+
+  | (LLSHR (ITFixed IT16)) <- op
+  , (lhs:rhs:_)            <- vars =
+      jsPackUBits16 (
+        JSBinOp ">>" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)
+      )
+
+  | (LLSHR (ITFixed IT32)) <- op
+  , (lhs:rhs:_)            <- vars =
+      jsPackUBits32  (
+        JSBinOp ">>" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)
+      )
+
+  | (LLSHR (ITFixed IT64)) <- op
+  , (lhs:rhs:_)            <- vars =
+      jsMeth (JSVar lhs) "shiftRight" [JSVar rhs]
+
+  | (LSHL (ITFixed IT8)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits8 (
+        JSBinOp "<<" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)
+      )
+
+  | (LSHL (ITFixed IT16)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackUBits16 (
+        JSBinOp "<<" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)
+      )
+
+  | (LSHL (ITFixed IT32)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackUBits32  (
+        JSBinOp "<<" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)
+      )
+
+  | (LSHL (ITFixed IT64)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsMeth (jsMeth (JSVar lhs) "shiftLeft" [JSVar rhs]) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+      ]
+
+  | (LAnd (ITFixed IT8)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits8 (
+        JSBinOp "&" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LAnd (ITFixed IT16)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackUBits16 (
+        JSBinOp "&" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LAnd (ITFixed IT32)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackUBits32 (
+        JSBinOp "&" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LAnd (ITFixed IT64)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsMeth (JSVar lhs) "and" [JSVar rhs]
+
+  | (LOr (ITFixed IT8)) <- op
+  , (lhs:rhs:_)         <- vars =
+      jsPackUBits8 (
+        JSBinOp "|" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LOr (ITFixed IT16)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits16 (
+        JSBinOp "|" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LOr (ITFixed IT32)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits32 (
+        JSBinOp "|" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LOr (ITFixed IT64)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsMeth (JSVar lhs) "or" [JSVar rhs]
+
+  | (LXOr (ITFixed IT8)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits8 (
+        JSBinOp "^" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LXOr (ITFixed IT16)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackUBits16 (
+        JSBinOp "^" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LXOr (ITFixed IT32)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackUBits32 (
+        JSBinOp "^" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LXOr (ITFixed IT64)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsMeth (JSVar lhs) "xor" [JSVar rhs]
+
+  | (LPlus (ATInt (ITFixed IT8))) <- op
+  , (lhs:rhs:_)                   <- vars =
+      jsPackUBits8 (
+        JSBinOp "+" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LPlus (ATInt (ITFixed IT16))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsPackUBits16 (
+        JSBinOp "+" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LPlus (ATInt (ITFixed IT32))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsPackUBits32 (
+        JSBinOp "+" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LPlus (ATInt (ITFixed IT64))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsMeth (jsMeth (JSVar lhs) "add" [JSVar rhs]) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+      ]
+
+  | (LMinus (ATInt (ITFixed IT8))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsPackUBits8 (
+        JSBinOp "-" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LMinus (ATInt (ITFixed IT16))) <- op
+  , (lhs:rhs:_)                     <- vars =
+      jsPackUBits16 (
+        JSBinOp "-" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LMinus (ATInt (ITFixed IT32))) <- op
+  , (lhs:rhs:_)                     <- vars =
+      jsPackUBits32 (
+        JSBinOp "-" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LMinus (ATInt (ITFixed IT64))) <- op
+  , (lhs:rhs:_)                     <- vars =
+      jsMeth (jsMeth (JSVar lhs) "subtract" [JSVar rhs]) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+      ]
+
+  | (LTimes (ATInt (ITFixed IT8))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsPackUBits8 (
+        JSBinOp "*" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LTimes (ATInt (ITFixed IT16))) <- op
+  , (lhs:rhs:_)                     <- vars =
+      jsPackUBits16 (
+        JSBinOp "*" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LTimes (ATInt (ITFixed IT32))) <- op
+  , (lhs:rhs:_)                     <- vars =
+      jsPackUBits32 (
+        JSBinOp "*" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LTimes (ATInt (ITFixed IT64))) <- op
+  , (lhs:rhs:_)                     <- vars =
+      jsMeth (jsMeth (JSVar lhs) "multiply" [JSVar rhs]) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+      ]
+
+  | (LEq (ATInt (ITFixed IT8))) <- op
+  , (lhs:rhs:_)                 <- vars =
+      jsPackUBits8 (
+        JSBinOp "==" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LEq (ATInt (ITFixed IT16))) <- op
+  , (lhs:rhs:_)                  <- vars =
+      jsPackUBits16 (
+        JSBinOp "==" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LEq (ATInt (ITFixed IT32))) <- op
+  , (lhs:rhs:_)                  <- vars =
+      jsPackUBits32 (
+        JSBinOp "==" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LEq (ATInt (ITFixed IT64))) <- op
+  , (lhs:rhs:_)                   <- vars =
+      jsMeth (jsMeth (JSVar lhs) "equals" [JSVar rhs]) "and" [
+        jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+      ]
+
+  | (LLt (ITFixed IT8)) <- op
+  , (lhs:rhs:_)         <- vars =
+      jsPackUBits8 (
+        JSBinOp "<" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LLt (ITFixed IT16)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits16 (
+        JSBinOp "<" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LLt (ITFixed IT32)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits32 (
+        JSBinOp "<" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LLt (ITFixed IT64)) <- op
+  , (lhs:rhs:_)          <- vars = invokeMeth lhs "lesser" [rhs]
+
+  | (LLe (ITFixed IT8)) <- op
+  , (lhs:rhs:_)         <- vars =
+      jsPackUBits8 (
+        JSBinOp "<=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LLe (ITFixed IT16)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits16 (
+        JSBinOp "<=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LLe (ITFixed IT32)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits32 (
+        JSBinOp "<=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LLe (ITFixed IT64)) <- op
+  , (lhs:rhs:_)          <- vars = invokeMeth lhs "lesserOrEquals" [rhs]
+
+  | (LGt (ITFixed IT8)) <- op
+  , (lhs:rhs:_)         <- vars =
+      jsPackUBits8 (
+        JSBinOp ">" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LGt (ITFixed IT16)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits16 (
+        JSBinOp ">" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+  | (LGt (ITFixed IT32)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits32 (
+        JSBinOp ">" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LGt (ITFixed IT64)) <- op
+  , (lhs:rhs:_)          <- vars = invokeMeth lhs "greater" [rhs]
+
+  | (LGe (ITFixed IT8)) <- op
+  , (lhs:rhs:_)         <- vars =
+      jsPackUBits8 (
+        JSBinOp ">=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LGe (ITFixed IT16)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits16 (
+        JSBinOp ">=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+  | (LGe (ITFixed IT32)) <- op
+  , (lhs:rhs:_)          <- vars =
+      jsPackUBits32 (
+        JSBinOp ">=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LGe (ITFixed IT64)) <- op
+  , (lhs:rhs:_)          <- vars = invokeMeth lhs "greaterOrEquals" [rhs]
+
+  | (LUDiv (ITFixed IT8)) <- op
+  , (lhs:rhs:_)           <- vars =
+      jsPackUBits8 (
+        JSBinOp "/" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LUDiv (ITFixed IT16)) <- op
+  , (lhs:rhs:_)            <- vars =
+      jsPackUBits16 (
+        JSBinOp "/" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LUDiv (ITFixed IT32)) <- op
+  , (lhs:rhs:_)            <- vars =
+      jsPackUBits32 (
+        JSBinOp "/" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))
+      )
+
+  | (LUDiv (ITFixed IT64)) <- op
+  , (lhs:rhs:_)            <- vars = invokeMeth lhs "divide" [rhs]
+
+  | (LSDiv (ATInt (ITFixed IT8))) <- op
+  , (lhs:rhs:_)                   <- vars =
+      jsPackSBits8 (
+        JSBinOp "/" (
+          jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (JSVar lhs)
+        ) (
+          jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (JSVar rhs)
+        )
+      )
+
+  | (LSDiv (ATInt (ITFixed IT16))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsPackSBits16 (
+        JSBinOp "/" (
+          jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (JSVar lhs)
+        ) (
+          jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (JSVar rhs)
+        )
+      )
+
+  | (LSDiv (ATInt (ITFixed IT32))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsPackSBits32 (
+        JSBinOp "/" (
+          jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (JSVar lhs)
+        ) (
+          jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (JSVar rhs)
+        )
+      )
+
+  | (LSDiv (ATInt (ITFixed IT64))) <- op
+  , (lhs:rhs:_)                    <- vars = invokeMeth lhs "divide" [rhs]
+
+  | (LSRem (ATInt (ITFixed IT8))) <- op
+  , (lhs:rhs:_)                   <- vars =
+      jsPackSBits8 (
+        JSBinOp "%" (
+          jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (JSVar lhs)
+        ) (
+          jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (JSVar rhs)
+        )
+      )
+
+  | (LSRem (ATInt (ITFixed IT16))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsPackSBits16 (
+        JSBinOp "%" (
+          jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (JSVar lhs)
+        ) (
+          jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (JSVar rhs)
+        )
+      )
+
+  | (LSRem (ATInt (ITFixed IT32))) <- op
+  , (lhs:rhs:_)                    <- vars =
+      jsPackSBits32 (
+        JSBinOp "%" (
+          jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (JSVar lhs)
+        ) (
+          jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (JSVar rhs)
+        )
+      )
+
+  | (LSRem (ATInt (ITFixed IT64))) <- op
+  , (lhs:rhs:_)                    <- vars = invokeMeth lhs "mod" [rhs]
+
+  | (LCompl (ITFixed IT8)) <- op
+  , (arg:_)                <- vars =
+      jsPackSBits8 $ JSPreOp "~" $ jsUnPackBits (JSVar arg)
+
+  | (LCompl (ITFixed IT16)) <- op
+  , (arg:_)                 <- vars =
+      jsPackSBits16 $ JSPreOp "~" $ jsUnPackBits (JSVar arg)
+
+  | (LCompl (ITFixed IT32)) <- op
+  , (arg:_)                 <- vars =
+      jsPackSBits32 $ JSPreOp "~" $ jsUnPackBits (JSVar arg)
+
+  | (LCompl (ITFixed IT64)) <- op
+  , (arg:_)     <- vars =
+      invokeMeth arg "not" []
+
   | (LPlus _)   <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
   | (LMinus _)  <- op
@@ -1884,7 +2438,7 @@ translateExpression (SOp op vars)
   , (arg:_)     <- vars = JSPreOp "~" (JSVar arg)
 
   | LStrConcat  <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "concat" [rhs]
   | LStrEq      <- op
   , (lhs:rhs:_) <- vars = translateBinaryOp "==" lhs rhs
   | LStrLt      <- op
@@ -1913,9 +2467,9 @@ translateExpression (SOp op vars)
   | (LFloatInt ITNative)    <- op
   , (arg:_)                 <- vars = JSVar arg
   | (LChInt ITNative)       <- op
-  , (arg:_)                 <- vars = JSProj (JSVar arg) "charCodeAt(0)"
+  , (arg:_)                 <- vars = jsCall "__IDRRT__charCode" [JSVar arg]
   | (LIntCh ITNative)       <- op
-  , (arg:_)                 <- vars = jsCall "String.fromCharCode" [JSVar arg]
+  , (arg:_)                 <- vars = jsCall "__IDRRT__fromCharCode" [JSVar arg]
 
   | LFExp       <- op
   , (arg:_)     <- vars = jsCall "Math.exp" [JSVar arg]
@@ -1941,7 +2495,7 @@ translateExpression (SOp op vars)
   , (arg:_)     <- vars = jsCall "Math.ceil" [JSVar arg]
 
   | LStrCons    <- op
-  , (lhs:rhs:_) <- vars = translateBinaryOp "+" lhs rhs
+  , (lhs:rhs:_) <- vars = invokeMeth lhs "concat" [rhs]
   | LStrHead    <- op
   , (arg:_)     <- vars = JSIndex (JSVar arg) (JSNum (JSInt 0))
   | LStrRev     <- op
@@ -1954,12 +2508,14 @@ translateExpression (SOp op vars)
                                 JSNum (JSInt 1),
                                 JSBinOp "-" (JSProj (JSIdent v) "length") (JSNum (JSInt 1))
                               ]
+  | LSystemInfo <- op
+  , (arg:_) <- vars = jsCall "__IDRRT__systemInfo"  [JSVar arg]
   | LNullPtr    <- op
   , (_)         <- vars = JSNull
 
   where
     translateBinaryOp :: String -> LVar -> LVar -> JS
-    translateBinaryOp f lhs rhs = JSBinOp f (JSVar lhs) (JSVar rhs)
+    translateBinaryOp f lhs rhs = JSParens $ JSBinOp f (JSVar lhs) (JSVar rhs)
 
 
     invokeMeth :: LVar -> String -> [LVar] -> JS

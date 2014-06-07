@@ -14,6 +14,8 @@ import Idris.Error
 
 import Control.Applicative ((<$>))
 import Control.Monad
+import Control.Monad.State.Strict
+import Data.List
 import Debug.Trace
 
 -- Pass in a term elaborator to avoid a cyclic dependency with ElabTerm
@@ -36,15 +38,55 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
                              (tryAll xs) True
                    else tryAll xs
 
-proofSearch :: (PTerm -> ElabD ()) -> Maybe Name -> Name -> [Name] ->
+cantSolveGoal :: ElabD ()
+cantSolveGoal = do g <- goal
+                   env <- get_env
+                   lift $ tfail $
+                      CantSolveGoal g (map (\(n,b) -> (n, binderTy b)) env) 
+
+proofSearch :: Bool -> 
+               Bool -> -- invoked from a tactic proof. If so, making
+                       -- new metavariables is meaningless, and there shoudl
+                       -- be an error reported instead.
+               Int -> -- maximum depth
+               (PTerm -> ElabD ()) -> Maybe Name -> Name -> [Name] ->
                IState -> ElabD ()
-proofSearch elab fn nroot hints ist 
+proofSearch False fromProver depth elab _ nroot [fn] ist
+       = do -- get all possible versions of the name, take the first one that
+            -- works
+            let all_imps = lookupCtxtName fn (idris_implicits ist)
+            tryAllFns all_imps
+  where
+    -- if nothing worked, make a new metavariable
+    tryAllFns [] | fromProver = cantSolveGoal  
+    tryAllFns [] = do attack; defer nroot; solve
+    tryAllFns (f : fs) = try' (tryFn f) (tryAllFns fs) True
+
+    tryFn (f, args) = do let imps = map isImp args
+                         ps <- get_probs
+                         hs <- get_holes
+                         args <- map snd <$> try' (apply (Var f) imps)
+                                                  (match_apply (Var f) imps) True
+                         ps' <- get_probs
+--                          when (length ps < length ps') $ fail "Can't apply constructor"
+                         -- Make metavariables for new holes 
+                         hs' <- get_holes
+                         ptm <- get_term
+                         if fromProver then cantSolveGoal
+                           else do
+                             mapM_ (\ h -> do focus h
+                                              attack; defer nroot; solve) 
+                                 (hs' \\ hs)
+--                                  (filter (\ (x, y) -> not x) (zip (map fst imps) args))
+                             solve
+
+    isImp (PImp p _ _ _ _) = (True, p)
+    isImp arg = (True, priority arg) -- try to get all of them by unification
+proofSearch rec fromProver maxDepth elab fn nroot hints ist 
        = case lookupCtxt nroot (idris_tyinfodata ist) of
               [TISolution ts] -> findInferredTy ts
-              _ -> psRec maxDepth
+              _ -> psRec rec maxDepth
   where
-    maxDepth = 6
-
     findInferredTy (t : _) = elab (delab ist (toUN t)) 
 
     toUN t@(P nt (MN i n) ty) 
@@ -53,12 +95,16 @@ proofSearch elab fn nroot hints ist
     toUN (App f a) = App (toUN f) (toUN a)
     toUN t = t
 
-    psRec 0 = do attack; defer nroot; solve --fail "Maximum depth reached"
-    psRec d = try' (trivial elab ist)
-                   (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
-                               True)
+    psRec _ 0 | fromProver = cantSolveGoal
+    psRec rec 0 = do attack; defer nroot; solve --fail "Maximum depth reached"
+    psRec False d = tryCons d hints 
+    psRec True d = try' (trivial elab ist)
+                        (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
+                              True)
              -- if all else fails, make a new metavariable
-                         (do attack; defer nroot; solve) True) True
+                         (if fromProver 
+                             then cantSolveGoal
+                             else do attack; defer nroot; solve) True) True
 
     getFn d Nothing = []
     getFn d (Just f) | d < maxDepth-1 = [f]
@@ -91,7 +137,7 @@ proofSearch elab fn nroot hints ist
 
     tryLocalArg d n 0 = elab (PRef (fileFC "prf") n)
     tryLocalArg d n i = simple_app (tryLocalArg d n (i - 1))
-                                   (psRec d) "proof search local apply"
+                                   (psRec True d) "proof search local apply"
 
     -- Like type class resolution, but searching with constructors
     tryCon d n =
@@ -100,15 +146,17 @@ proofSearch elab fn nroot hints ist
                             [args] -> map isImp (snd args)
                             _ -> fail "Ambiguous name"
             ps <- get_probs
+            hs <- get_holes
             args <- map snd <$> try' (apply (Var n) imps)
                                      (match_apply (Var n) imps) True
             ps' <- get_probs
+            hs' <- get_holes
             when (length ps < length ps') $ fail "Can't apply constructor"
             mapM_ (\ (_, h) -> do focus h
-                                  psRec d)
+                                  psRec True d) 
                   (filter (\ (x, y) -> not x) (zip (map fst imps) args))
             solve
 
     isImp (PImp p _ _ _ _) = (True, p)
-    isImp arg = (False, priority arg)
+    isImp arg = (False, priority arg) 
 

@@ -30,7 +30,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 67
+ibcVersion = 74
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -53,6 +53,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_hdrs :: [(Codegen, String)],
                          ibc_access :: [(Name, Accessibility)],
                          ibc_total :: [(Name, Totality)],
+                         ibc_totcheckfail :: [(FC, String)],
                          ibc_flags :: [(Name, [FnOpt])],
                          ibc_cg :: [(Name, CGInfo)],
                          ibc_defs :: [(Name, Def)],
@@ -67,7 +68,8 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_function_errorhandlers :: [(Name, Name, Name)], -- fn, arg, handler
                          ibc_metavars :: [(Name, (Maybe Name, Int, Bool))],
                          ibc_patdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))],
-                         ibc_postulates :: [Name]
+                         ibc_postulates :: [Name],
+                         ibc_parsedSpan :: Maybe FC
                        }
    deriving Show
 {-!
@@ -75,7 +77,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do imps <- getImported
@@ -234,11 +236,13 @@ ibc i (IBCMetaInformation n m) f = return f { ibc_metainformation = (n,m) : ibc_
 ibc i (IBCErrorHandler n) f = return f { ibc_errorhandlers = n : ibc_errorhandlers f }
 ibc i (IBCFunctionErrorHandler fn a n) f =
   return f { ibc_function_errorhandlers = (fn, a, n) : ibc_function_errorhandlers f }
-ibc i (IBCMetavar n) f = 
+ibc i (IBCMetavar n) f =
      case lookup n (idris_metavars i) of
           Nothing -> return f
           Just t -> return f { ibc_metavars = (n, t) : ibc_metavars f }
 ibc i (IBCPostulate n) f = return f { ibc_postulates = n : ibc_postulates f }
+ibc i (IBCTotCheckErr fc err) f = return f { ibc_totcheckfail = (fc, err) : ibc_totcheckfail f }
+ibc i (IBCParsedRegion fc) f = return f { ibc_parsedSpan = Just fc }
 
 process :: IBCFile -> FilePath -> Idris ()
 process i fn
@@ -246,7 +250,7 @@ process i fn
                               ifail "Incorrect ibc version --- please rebuild"
    | otherwise =
             do srcok <- runIO $ doesFileExist (sourcefile i)
-               when srcok $ runIO $ timestampOlder (sourcefile i) fn
+               when srcok $ timestampOlder (sourcefile i) fn
                v <- verbose
                quiet <- getQuiet
 --                when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
@@ -270,6 +274,7 @@ process i fn
                pPatdefs (ibc_patdefs i)
                pAccess (ibc_access i)
                pTotal (ibc_total i)
+               pTotCheckErr (ibc_totcheckfail i)
                pCG (ibc_cg i)
                pDocs (ibc_docstrings i)
                pCoercions (ibc_coercions i)
@@ -282,12 +287,13 @@ process i fn
                pFunctionErrorHandlers (ibc_function_errorhandlers i)
                pMetavars (ibc_metavars i)
                pPostulates (ibc_postulates i)
+               pParsedSpan (ibc_parsedSpan i)
 
-timestampOlder :: FilePath -> FilePath -> IO ()
-timestampOlder src ibc = do srct <- getModificationTime src
-                            ibct <- getModificationTime ibc
+timestampOlder :: FilePath -> FilePath -> Idris ()
+timestampOlder src ibc = do srct <- runIO $ getModificationTime src
+                            ibct <- runIO $ getModificationTime ibc
                             if (srct > ibct)
-                               then fail "Needs reloading"
+                               then ifail "Needs reloading"
                                else return ()
 
 pPostulates :: [Name] -> Idris ()
@@ -295,12 +301,16 @@ pPostulates ns = do
     i <- getIState
     putIState i{ idris_postulates = idris_postulates i `S.union` S.fromList ns }
 
+pParsedSpan :: Maybe FC -> Idris ()
+pParsedSpan fc = do ist <- getIState
+                    putIState ist { idris_parsedSpan = fc }
+
 pImports :: [FilePath] -> Idris ()
 pImports fs
   = do mapM_ (\f -> do i <- getIState
                        ibcsd <- valIBCSubDir i
                        ids <- allImportDirs
-                       fp <- runIO $ findImport ids ibcsd f
+                       fp <- findImport ids ibcsd f
                        if (f `elem` imported i)
                         then iLOG $ "Already read " ++ f
                         else do putIState (i { imported = f : imported i })
@@ -453,6 +463,10 @@ pTotal ds = mapM_ (\ (n, a) ->
                       do i <- getIState
                          putIState (i { tt_ctxt = setTotal n a (tt_ctxt i) }))
                    ds
+
+pTotCheckErr :: [(FC, String)] -> Idris ()
+pTotCheckErr es = do ist <- getIState
+                     putIState ist { idris_totcheckfail = idris_totcheckfail ist ++ es }
 
 pCG :: [(Name, CGInfo)] -> Idris ()
 pCG ds = mapM_ (\ (n, a) -> addToCG n a) ds
@@ -1161,7 +1175,7 @@ instance Binary MetaInformation where
                      return (DataMI x1)
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -1199,6 +1213,8 @@ instance Binary IBCFile where
                put x34
                put x35
                put x36
+               put x37
+               put x38
 
         get
           = do x1 <- get
@@ -1238,7 +1254,9 @@ instance Binary IBCFile where
                     x34 <- get
                     x35 <- get
                     x36 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36)
+                    x37 <- get
+                    x38 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where
@@ -1425,7 +1443,7 @@ instance (Binary t) => Binary (PDecl' t) where
                 PNamespace x1 x2 -> do putWord8 5
                                        put x1
                                        put x2
-                PRecord x1 x2 x3 x4 x5 x6 x7 x8 ->
+                PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9 ->
                                              do putWord8 6
                                                 put x1
                                                 put x2
@@ -1435,7 +1453,8 @@ instance (Binary t) => Binary (PDecl' t) where
                                                 put x6
                                                 put x7
                                                 put x8
-                PClass x1 x2 x3 x4 x5 x6 x7
+                                                put x9
+                PClass x1 x2 x3 x4 x5 x6 x7 x8
                                          -> do putWord8 7
                                                put x1
                                                put x2
@@ -1444,6 +1463,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                                put x5
                                                put x6
                                                put x7
+                                               put x8
                 PInstance x1 x2 x3 x4 x5 x6 x7 x8 -> do putWord8 8
                                                         put x1
                                                         put x2
@@ -1513,7 +1533,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x6 <- get
                            x7 <- get
                            x8 <- get
-                           return (PRecord x1 x2 x3 x4 x5 x6 x7 x8)
+                           x9 <- get
+                           return (PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9)
                    7 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1521,7 +1542,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x5 <- get
                            x6 <- get
                            x7 <- get
-                           return (PClass x1 x2 x3 x4 x5 x6 x7)
+                           x8 <- get
+                           return (PClass x1 x2 x3 x4 x5 x6 x7 x8)
                    8 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1560,7 +1582,7 @@ instance Binary Using where
                     1 -> do x1 <- get; x2 <- get; return (UConstraint x1 x2)
 
 instance Binary SyntaxInfo where
-        put (Syn x1 x2 x3 x4 _ x5 x6 x7)
+        put (Syn x1 x2 x3 x4 _ x5 x6 _ _ x7)
           = do put x1
                put x2
                put x3
@@ -1576,7 +1598,7 @@ instance Binary SyntaxInfo where
                x5 <- get
                x6 <- get
                x7 <- get
-               return (Syn x1 x2 x3 x4 id x5 x6 x7)
+               return (Syn x1 x2 x3 x4 id x5 x6 Nothing 0 x7)
 
 instance (Binary t) => Binary (PClause' t) where
         put x
@@ -1939,6 +1961,13 @@ instance (Binary t) => Binary (PTactic' t) where
                                    put x1
                 ByReflection x1 -> do putWord8 20
                                       put x1
+                ProofSearch x1 x2 x3 x4 x5 -> do putWord8 21
+                                                 put x1
+                                                 put x2
+                                                 put x3
+                                                 put x4
+                                                 put x5
+                DoUnify -> putWord8 22
         get
           = do i <- getWord8
                case i of
@@ -1980,6 +2009,13 @@ instance (Binary t) => Binary (PTactic' t) where
                             return (Induction x1)
                    20 -> do x1 <- get
                             return (ByReflection x1)
+                   21 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            x4 <- get
+                            x5 <- get
+                            return (ProofSearch x1 x2 x3 x4 x5)
+                   22 -> return DoUnify
                    _ -> error "Corrupted binary data for PTactic'"
 
 
@@ -2116,15 +2152,17 @@ instance Binary OptInfo where
                return (Optimise x1 x2)
 
 instance Binary TypeInfo where
-        put (TI x1 x2 x3 x4) = do put x1
-                                  put x2
-                                  put x3
-                                  put x4
+        put (TI x1 x2 x3 x4 x5) = do put x1
+                                     put x2
+                                     put x3
+                                     put x4
+                                     put x5
         get = do x1 <- get
                  x2 <- get
                  x3 <- get
                  x4 <- get
-                 return (TI x1 x2 x3 x4)
+                 x5 <- get
+                 return (TI x1 x2 x3 x4 x5)
 
 instance Binary SynContext where
         put x

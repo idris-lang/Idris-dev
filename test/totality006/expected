@@ -1,0 +1,2 @@
+totality006.idr:6:1:Main.prf is not total as there are missing cases
+totality006a.idr:9:6:prf' (S _) (S _) oh is a valid case

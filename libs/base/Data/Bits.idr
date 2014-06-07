@@ -356,8 +356,8 @@ bitsToInt : Bits n -> Integer
 bitsToInt (MkBits x) = bitsToInt' x
 
 -- Zero out the high bits of a truncated bitstring
---zeroUnused : machineTy (nextBytes n) -> machineTy (nextBytes n)
---zeroUnused {n} x = x `and'` complement' (intToBits' {n=n} 0)
+zeroUnused : machineTy (nextBytes n) -> machineTy (nextBytes n)
+zeroUnused {n} x = x `and'` complement' (intToBits' {n=n} 0)
 
 --instance Cast Nat (Bits n) where
 --    cast x = MkBits (zeroUnused (natToBits n))
@@ -399,8 +399,8 @@ sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
 
 -- TODO: Prove
 %assert_total -- can't verify coverage of with block
-trunc' : machineTy (nextBytes (n+m)) -> machineTy (nextBytes n)
-trunc' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
+trunc' : machineTy (nextBytes (m+n)) -> machineTy (nextBytes n)
+trunc' {m=m} {n=n} x with (nextBytes n, nextBytes (m+n))
     | (Z, Z) = believe_me x
     | (Z, S Z) = believe_me (prim__truncB16_B8 (believe_me x))
     | (Z, S (S Z)) = believe_me (prim__truncB32_B8 (believe_me x))
@@ -412,9 +412,9 @@ trunc' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (S (S Z), S (S (S _))) = believe_me (prim__truncB64_B32 (believe_me x))
     | (S (S (S _)), S (S (S _))) = believe_me x
 
---public
---truncate : Bits (n+m) -> Bits n
---truncate (MkBits x) = MkBits (zeroUnused (trunc' x))
+public
+truncate : Bits (m+n) -> Bits n
+truncate (MkBits x) = MkBits (zeroUnused (trunc' x))
 
 public
 bitAt : Fin n -> Bits n

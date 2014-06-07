@@ -278,7 +278,7 @@ addNameHint ty n
         ty' <- case lookupCtxtName ty (idris_implicits i) of
                        [(tyn, _)] -> return tyn
                        [] -> throwError (NoSuchVariable ty)
-                       tyns -> throwError (CantResolveAlts (map show (map fst tyns)))
+                       tyns -> throwError (CantResolveAlts (map fst tyns))
         let ns' = case lookupCtxt ty' (idris_namehints i) of
                        [ns] -> ns ++ [n]
                        _ -> [n]
@@ -530,13 +530,25 @@ renderWidth = do iw <- getWidth
 
 
 type1Doc :: Doc OutputAnnotation
-type1Doc = (annotate AnnConstType $ text "Type 1")
+type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "Type 1")
 
 
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
                   case idris_outputmode i of
                     IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
+
+-- | Tell clients how much was parsed and loaded
+isetLoadedRegion :: Idris ()
+isetLoadedRegion = do i <- getIState
+                      let span = idris_parsedSpan i
+                      case span of
+                        Just fc ->
+                          case idris_outputmode i of
+                            IdeSlave n ->
+                              runIO . putStrLn $
+                                convSExp "set-loaded-region" fc n
+                        Nothing -> return ()
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
@@ -766,13 +778,14 @@ setColour :: ColourType -> IdrisColour -> Idris ()
 setColour ct c = do i <- getIState
                     let newTheme = setColour' ct c (idris_colourTheme i)
                     putIState $ i { idris_colourTheme = newTheme }
-    where setColour' KeywordColour  c t = t { keywordColour = c }
-          setColour' BoundVarColour c t = t { boundVarColour = c }
-          setColour' ImplicitColour c t = t { implicitColour = c }
-          setColour' FunctionColour c t = t { functionColour = c }
-          setColour' TypeColour     c t = t { typeColour = c }
-          setColour' DataColour     c t = t { dataColour = c }
-          setColour' PromptColour   c t = t { promptColour = c }
+    where setColour' KeywordColour   c t = t { keywordColour = c }
+          setColour' BoundVarColour  c t = t { boundVarColour = c }
+          setColour' ImplicitColour  c t = t { implicitColour = c }
+          setColour' FunctionColour  c t = t { functionColour = c }
+          setColour' TypeColour      c t = t { typeColour = c }
+          setColour' DataColour      c t = t { dataColour = c }
+          setColour' PromptColour    c t = t { promptColour = c }
+          setColour' PostulateColour c t = t { postulateColour = c }
 
 logLvl :: Int -> String -> Idris ()
 logLvl l str = do i <- getIState
@@ -937,7 +950,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
-        | otherwise = (sMN i (show n ++ "_u"), t) : updateps yn nm as
+        | otherwise = (sMN i ('_' : show n ++ "_u"), t) : updateps yn nm as
 
     removeBound lhs ns = ns \\ nub (bnames lhs)
 
@@ -947,6 +960,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     bnames (PDPair _ _ l Placeholder r) = bnames l ++ bnames r
     bnames _ = []
 
+-- | Expands parameters defined in parameter and where blocks inside of declarations
 expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
     = PData doc argDocs syn fc co (expandPData pd)
   where
@@ -959,12 +973,12 @@ expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
             else PDatadecl n (expandParams dec ps ns [] ty) (map econ cons)
     econ (doc, argDocs, n, t, fc, fs)
        = (doc, argDocs, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
-expandParamsD rhs ist dec ps ns (PRecord doc syn fc tn tty cdoc cn cty)
+expandParamsD rhs ist dec ps ns (PRecord doc syn fc tn tty opts cdoc cn cty)
    = if tn `elem` ns
         then PRecord doc syn fc (dec tn) (piBind ps (expandParams dec ps ns [] tty))
-                     cdoc (dec cn) conty
+                     opts cdoc (dec cn) conty
         else PRecord doc syn fc (dec tn) (expandParams dec ps ns [] tty)
-                     cdoc (dec cn) conty
+                     opts cdoc (dec cn) conty
    where conty = piBindp expl ps (expandParams dec ps ns [] cty)
 expandParamsD rhs ist dec ps ns (PParams f params pds)
    = PParams f (ps ++ map (mapsnd (expandParams dec ps ns [])) params)
@@ -972,11 +986,12 @@ expandParamsD rhs ist dec ps ns (PParams f params pds)
 --                (map (expandParamsD ist dec ps ns) pds)
 expandParamsD rhs ist dec ps ns (PMutual f pds)
    = PMutual f (map (expandParamsD rhs ist dec ps ns) pds)
-expandParamsD rhs ist dec ps ns (PClass doc info f cs n params decls)
+expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs decls)
    = PClass doc info f
            (map (expandParams dec ps ns []) cs)
            n
            (map (mapsnd (expandParams dec ps ns [])) params)
+           pDocs
            (map (expandParamsD rhs ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns (PInstance info f cs n params ty cn decls)
    = PInstance info f
@@ -1315,9 +1330,11 @@ addImpl' inpat env infns ist ptm
             as' = map (fmap (ai env ds)) as in
          mkPApp fc 1 f' as'
     ai env ds (PCase fc c os) 
-      = let c' = ai env ds c
-            os' = map (pmap (ai env ds)) os in
-            PCase fc c' os'
+      = let c' = ai env ds c in
+        -- leave os alone, because they get lifted into a new pattern match
+        -- definition which is passed through addImpl again with more scope
+        -- information
+            PCase fc c' os
     ai env ds (PLam n ty sc) 
       = let ty' = ai env ds ty
             sc' = ai ((n, Just ty):env) ds sc in

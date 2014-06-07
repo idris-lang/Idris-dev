@@ -2,7 +2,7 @@ module Idris.Colours (
   IdrisColour(..),
   ColourTheme(..),
   defaultTheme,
-  colouriseKwd, colouriseBound, colouriseImplicit,
+  colouriseKwd, colouriseBound, colouriseImplicit, colourisePostulate,
   colouriseType, colouriseFun, colouriseData, colouriseKeyword,
   colourisePrompt, colourise, ColourType(..)) where
 
@@ -19,13 +19,14 @@ data IdrisColour = IdrisColour { colour    :: Maybe Color
 mkColour :: Color -> IdrisColour
 mkColour c = IdrisColour (Just c) True False False False
 
-data ColourTheme = ColourTheme { keywordColour  :: IdrisColour
-                               , boundVarColour :: IdrisColour
-                               , implicitColour :: IdrisColour
-                               , functionColour :: IdrisColour
-                               , typeColour     :: IdrisColour
-                               , dataColour     :: IdrisColour
-                               , promptColour   :: IdrisColour
+data ColourTheme = ColourTheme { keywordColour   :: IdrisColour
+                               , boundVarColour  :: IdrisColour
+                               , implicitColour  :: IdrisColour
+                               , functionColour  :: IdrisColour
+                               , typeColour      :: IdrisColour
+                               , dataColour      :: IdrisColour
+                               , promptColour    :: IdrisColour
+                               , postulateColour :: IdrisColour
                                }
                    deriving (Eq, Show)
 
@@ -38,6 +39,7 @@ defaultTheme = ColourTheme { keywordColour = IdrisColour Nothing True False True
                            , typeColour = mkColour Blue
                            , dataColour = mkColour Red
                            , promptColour = IdrisColour Nothing True False True False
+                           , postulateColour = IdrisColour (Just Green) True False True False
                            }
 
 -- | Set the colour of a string using POSIX escape codes
@@ -74,6 +76,10 @@ colourisePrompt t = colourise (promptColour t)
 colouriseKeyword :: ColourTheme -> String -> String
 colouriseKeyword t = colourise (keywordColour t)
 
+colourisePostulate :: ColourTheme -> String -> String
+colourisePostulate t = colourise (postulateColour t)
+
+
 data ColourType = KeywordColour
                 | BoundVarColour
                 | ImplicitColour
@@ -81,4 +87,5 @@ data ColourType = KeywordColour
                 | TypeColour
                 | DataColour
                 | PromptColour
+                | PostulateColour
                   deriving (Eq, Show, Bounded, Enum)

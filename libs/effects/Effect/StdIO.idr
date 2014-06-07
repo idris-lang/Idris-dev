@@ -3,11 +3,21 @@ module Effect.StdIO
 import Effects
 import Control.IOExcept
 
+-------------------------------------------------------------
+-- IO effects internals
+-------------------------------------------------------------
+
+||| The internal representation of StdIO effects
 data StdIO : Effect where
      PutStr : String -> { () } StdIO () 
      GetStr : { () } StdIO String 
      PutCh : Char -> { () } StdIO ()
      GetCh : { () } StdIO Char
+
+
+-------------------------------------------------------------
+-- IO effects handlers
+-------------------------------------------------------------
 
 instance Handler StdIO IO where
     handle () (PutStr s) k = do putStr s; k () ()
@@ -21,23 +31,30 @@ instance Handler StdIO (IOExcept a) where
     handle () (PutCh c)  k = do ioe_lift $ putChar c; k () () 
     handle () GetCh      k = do x <- ioe_lift $ getChar; k x ()
 
+-------------------------------------------------------------
 --- The Effect and associated functions
+-------------------------------------------------------------
 
 STDIO : EFFECT
 STDIO = MkEff () StdIO
 
-putStr : Handler StdIO e => String -> { [STDIO] } Eff e ()
-putStr s = PutStr s
+||| Write a string to standard output.
+putStr : String -> { [STDIO] } Eff e ()
+putStr s = call $ PutStr s
 
-putChar : Handler StdIO e => Char -> { [STDIO] } Eff e ()
-putChar c = PutCh c
+||| Write a character to standard output.
+putChar : Char -> { [STDIO] } Eff e ()
+putChar c = call $ PutCh c
 
-putStrLn : Handler StdIO e => String -> { [STDIO] } Eff e ()
+||| Write a string to standard output, terminating with a newline.
+putStrLn : String -> { [STDIO] } Eff e ()
 putStrLn s = putStr (s ++ "\n")
 
-getStr : Handler StdIO e => { [STDIO] } Eff e String
-getStr = GetStr
+||| Read a string from standard input.
+getStr : { [STDIO] } Eff e String
+getStr = call $ GetStr
 
-getChar : Handler StdIO e => { [STDIO] } Eff e Char
-getChar = GetCh
+||| Read a character from standard input.
+getChar : { [STDIO] } Eff e Char
+getChar = call $ GetCh
 

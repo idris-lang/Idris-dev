@@ -11,7 +11,12 @@ import Idris.IdeSlave
 import Util.Pretty
 import Util.ScreenSize (getScreenWidth)
 
+import Debug.Trace
+
 import System.IO (stdout, Handle, hPutStrLn)
+
+import Data.List (nub)
+import Data.Maybe (fromMaybe)
 
 pshow :: IState -> Err -> String
 pshow ist err = displayDecorated (consoleDecorate ist) .
@@ -23,7 +28,9 @@ ihWarn h fc err = do i <- getIState
                      case idris_outputmode i of
                        RawOutput ->
                          do err' <- iRender . fmap (fancifyAnnots i) $
-                                    text (show fc) <> colon <//> err
+                                    if fc_fname fc /= ""
+                                      then text (show fc) <> colon <//> err
+                                      else err
                             runIO . hPutStrLn h $ displayDecorated (consoleDecorate i) err'
                        IdeSlave n ->
                          do err' <- iRender . fmap (fancifyAnnots i) $ err
@@ -47,16 +54,6 @@ iRender d = do w <- getWidth
                                 | otherwise -> do width <- runIO getScreenWidth
                                                   return $ renderPretty 0.8 width d
 
-ihPrintResult :: Handle -> String -> Idris ()
-ihPrintResult h s = do i <- getIState
-                       case idris_outputmode i of
-                         RawOutput -> case s of
-                                        "" -> return ()
-                                        s  -> runIO $ hPutStrLn h s
-                         IdeSlave n ->
-                             let good = SexpList [SymbolAtom "ok", toSExp s] in
-                             runIO $ hPutStrLn h $ convSExp "return" good n
-
 -- | Write a pretty-printed term to the console with semantic coloring
 consoleDisplayAnnotated :: Handle -> Doc OutputAnnotation -> Idris ()
 consoleDisplayAnnotated h output = do ist <- getIState
@@ -65,35 +62,20 @@ consoleDisplayAnnotated h output = do ist <- getIState
                                         displayDecorated (consoleDecorate ist) $
                                         rendered
 
-
--- | Write pretty-printed output to IDESlave with semantic annotations
-ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
-ideSlaveReturnAnnotated n h out = do ist <- getIState
-                                     (str, spans) <- fmap displaySpans .
-                                                     iRender .
-                                                     fmap (fancifyAnnots ist) $
-                                                     out
-                                     let good = [SymbolAtom "ok", toSExp str, toSExp spans]
-                                     runIO . hPutStrLn h $ convSExp "return" good n
-
 ihPrintTermWithType :: Handle -> Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
-ihPrintTermWithType h tm ty = do ist <- getIState
-                                 let output = tm <+> colon <+> ty
-                                 case idris_outputmode ist of
-                                   RawOutput -> consoleDisplayAnnotated h output
-                                   IdeSlave n -> ideSlaveReturnAnnotated n h output
+ihPrintTermWithType h tm ty = ihRenderResult h (tm <+> colon <+> align ty)
 
 -- | Pretty-print a collection of overloadings to REPL or IDESlave - corresponds to :t name
 ihPrintFunTypes :: Handle -> [(Name, Bool)] -> Name -> [(Name, PTerm)] -> Idris ()
 ihPrintFunTypes h bnd n []        = ihPrintError h $ "No such variable " ++ show n
-ihPrintFunTypes h bnd n overloads = do imp <- impShow
-                                       ist <- getIState
-                                       let output = vsep (map (uncurry (ppOverload imp)) overloads)
-                                       case idris_outputmode ist of
-                                         RawOutput -> consoleDisplayAnnotated h output
-                                         IdeSlave n -> ideSlaveReturnAnnotated n h output
+ihPrintFunTypes h bnd n overloads = do ist <- getIState
+                                       let ppo = ppOptionIst ist
+                                       let infixes = idris_infixes ist
+                                       let output = vsep (map (uncurry (ppOverload ppo infixes)) overloads)
+                                       ihRenderResult h output
   where fullName n = prettyName True bnd n
-        ppOverload imp n tm = fullName n <+> colon <+> align (pprintPTerm imp bnd [] tm)
+        ppOverload ppo infixes n tm =
+          fullName n <+> colon <+> align (pprintPTerm ppo bnd [] infixes tm)
 
 ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderResult h d = do ist <- getIState
@@ -101,51 +83,45 @@ ihRenderResult h d = do ist <- getIState
                           RawOutput -> consoleDisplayAnnotated h d
                           IdeSlave n -> ideSlaveReturnAnnotated n h d
 
-fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
-fancifyAnnots ist annot@(AnnName n _ _ _) =
-  do let ctxt = tt_ctxt ist
-         docs = docOverview ist n
-         ty   = Just (getTy ist n)
-     case () of
-       _ | isDConName    n ctxt -> AnnName n (Just DataOutput) docs ty
-       _ | isFnName      n ctxt -> AnnName n (Just FunOutput) docs ty
-       _ | isTConName    n ctxt -> AnnName n (Just TypeOutput) docs ty
-       _ | isMetavarName n ist  -> AnnName n (Just MetavarOutput) docs ty
-       _ | otherwise            -> annot
-  where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
-        docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
-                               let o   = overview (fst docs)
-                                   -- TODO make width configurable
-                                   out = displayS . renderPretty 1.0 50 $ renderDocstring o
-                               return (out "")
-        getTy :: IState -> Name -> String -- fails if name not already extant!
-        getTy ist n = let theTy = pprintPTerm (opt_showimp (idris_options ist)) [] [] $
-                                  delabTy ist n
-                      in (displayS . renderPretty 1.0 50 $ theTy) ""
-fancifyAnnots _ annot = annot
+ideSlaveReturnWithStatus :: String -> Integer -> Handle -> Doc OutputAnnotation -> Idris ()
+ideSlaveReturnWithStatus status n h out = do 
+  ist <- getIState
+  (str, spans) <- fmap displaySpans .
+                  iRender .
+                  fmap (fancifyAnnots ist) $
+                  out
+  let good = [SymbolAtom status, toSExp str, toSExp spans]
+  runIO . hPutStrLn h $ convSExp "return" good n
+
+
+-- | Write pretty-printed output to IDESlave with semantic annotations
+ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
+ideSlaveReturnAnnotated = ideSlaveReturnWithStatus "ok"
 
 -- | Show an error with semantic highlighting
 ihRenderError :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderError h e = do ist <- getIState
                        case idris_outputmode ist of
                          RawOutput -> consoleDisplayAnnotated h e
-                         IdeSlave n -> do
-                           (str, spans) <- fmap displaySpans .
-                                           iRender .
-                                           fmap (fancifyAnnots ist) $
-                                           e
-                           let good = [SymbolAtom "error", toSExp str, toSExp spans]
-                           runIO . hPutStrLn h $ convSExp "return" good n
+                         IdeSlave n -> ideSlaveReturnWithStatus "error" n h e
+
+ihPrintWithStatus :: String -> Handle -> String -> Idris ()
+ihPrintWithStatus status h s = do 
+  i <- getIState
+  case idris_outputmode i of
+    RawOutput -> case s of
+      "" -> return ()
+      s  -> runIO $ hPutStrLn h s
+    IdeSlave n ->
+      let good = SexpList [SymbolAtom status, toSExp s] in
+      runIO $ hPutStrLn h $ convSExp "return" good n
+
+
+ihPrintResult :: Handle -> String -> Idris ()
+ihPrintResult = ihPrintWithStatus "ok"
 
 ihPrintError :: Handle -> String -> Idris ()
-ihPrintError h s = do i <- getIState
-                      case idris_outputmode i of
-                        RawOutput -> case s of
-                                          "" -> return ()
-                                          s  -> runIO $ hPutStrLn h s
-                        IdeSlave n ->
-                          let good = SexpList [SymbolAtom "error", toSExp s] in
-                          runIO . hPutStrLn h $ convSExp "return" good n
+ihPrintError = ihPrintWithStatus "error"
 
 ihputStrLn :: Handle -> String -> Idris ()
 ihputStrLn h s = do i <- getIState
@@ -171,3 +147,9 @@ iputGoal g = do i <- getIState
                   RawOutput -> runIO $ putStrLn (displayDecorated (consoleDecorate i) g)
                   IdeSlave n -> runIO . putStrLn $
                                 convSExp "write-goal" (displayS (fmap (fancifyAnnots i) g) "") n
+
+-- | Warn about totality problems without failing to compile
+warnTotality :: Idris ()
+warnTotality = do ist <- getIState
+                  mapM_ (warn ist) (nub (idris_totcheckfail ist))
+  where warn ist (fc, e) = iWarn fc (pprintErr ist (Msg e))

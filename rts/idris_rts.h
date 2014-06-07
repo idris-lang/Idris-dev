@@ -279,6 +279,12 @@ VAL idris_peekB64Native(VM* vm, VAL buf, VAL off);
 VAL idris_peekB64LE(VM* vm, VAL buf, VAL off);
 VAL idris_peekB64BE(VM* vm, VAL buf, VAL off);
 
+// system infox
+// used indices:
+//   0 returns backend
+//   1 returns OS
+VAL idris_systemInfo(VM* vm, VAL index);
+
 // Command line args
 
 extern int __idris_argc;

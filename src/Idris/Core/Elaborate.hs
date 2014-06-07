@@ -64,7 +64,7 @@ loadState :: Elab' aux ()
 loadState = do (ES p s e) <- get
                case e of
                   Just st -> put st
-                  _ -> fail "Nothing to undo"
+                  _ -> lift $ Error . Msg $ "Nothing to undo"
 
 getNameFrom :: Name -> Elab' aux Name
 getNameFrom n = do (ES (p, a) s e) <- get
@@ -327,6 +327,10 @@ start_unify n = processTactic' (StartUnify n)
 
 end_unify :: Elab' aux ()
 end_unify = processTactic' EndUnify
+
+-- Clear the list of variables not to unify, and try to solve them
+unify_all :: Elab' aux ()
+unify_all = processTactic' UnifyAll
 
 regret :: Elab' aux ()
 regret = processTactic' Regret
@@ -642,6 +646,7 @@ no_errors tac err
                           Error _ -> lift $ Error e
                           OK (a, s') -> do put s'
                                            return a
+            unifyProblems
             ps' <- get_probs
             if (length ps' > length ps) then
                case reverse ps' of
@@ -676,11 +681,13 @@ try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
 try' t1 t2 proofSearch
           = do s <- get
                ps <- get_probs
+               ulog <- getUnifyLog
                case prunStateT 999999 False ps t1 s of
                     OK ((v, _, _), s') -> do put s'
                                              return $! v
-                    Error e1 -> if recoverableErr e1 then
-                                   do case runStateT t2 s of
+                    Error e1 -> traceWhen ulog ("try failed " ++ show e1) $
+                                 if recoverableErr e1 then
+                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return $! v
                                          Error e2 -> if score e1 >= score e2
                                                         then lift (tfail e1)
@@ -690,6 +697,7 @@ try' t1 t2 proofSearch
              = -- traceWhen r (show err) $
                r || proofSearch
         recoverableErr (CantSolveGoal _ _) = False
+        recoverableErr (ProofSearchFail (Msg _)) = True
         recoverableErr (ProofSearchFail _) = False
         recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
         recoverableErr (At _ e) = recoverableErr e
@@ -701,7 +709,7 @@ tryWhen False a b = a
 
 
 -- Try a selection of tactics. Exactly one must work, all others must fail
-tryAll :: [(Elab' aux a, String)] -> Elab' aux a
+tryAll :: [(Elab' aux a, Name)] -> Elab' aux a
 tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
   where
     cantResolve :: Elab' aux a
@@ -710,7 +718,7 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
     tryAll' :: [Elab' aux a] -> -- successes
                Int -> -- most problems
                (Elab' aux a, Int) -> -- smallest failure
-               [(Elab' aux a, String)] -> -- still to try
+               [(Elab' aux a, Name)] -> -- still to try
                Elab' aux a
     tryAll' [res] pmax _   [] = res
     tryAll' (_:_) pmax _   [] = cantResolve
@@ -719,7 +727,7 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
        = do s <- get
             ps <- get_probs
             case prunStateT pmax True ps x s of
-                OK ((v, newps, probs), s') ->
+                OK ((v, newps, probs), s') -> 
                     do let cs' = if (newps < pmax)
                                     then [do put s'; return $! v]
                                     else (do put s'; return $! v) : cs

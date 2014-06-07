@@ -4,6 +4,7 @@ data CmdArg = ExprArg -- ^ The command takes an expression
             | NameArg -- ^ The command takes a name
             | FileArg -- ^ The command takes a file
             | ModuleArg -- ^ The command takes a module name
+            | NamespaceArg -- ^ The command takes a namespace name
             | OptionArg -- ^ The command takes an option
             | MetaVarArg -- ^ The command takes a metavariable
             | ColourArg  -- ^ The command is the colour-setting command
@@ -16,6 +17,7 @@ instance Show CmdArg where
     show NameArg          = "<name>"
     show FileArg          = "<filename>"
     show ModuleArg        = "<module>"
+    show NamespaceArg     = "<namespace>"
     show OptionArg        = "<option>"
     show MetaVarArg       = "<metavar>"
     show ColourArg        = "<option>"
@@ -29,23 +31,25 @@ help =
     ([":t"], ExprArg, "Check the type of an expression"),
     ([":miss", ":missing"], NameArg, "Show missing clauses"),
     ([":doc"], NameArg, "Show internal documentation"),
+    ([":mkdoc"], NamespaceArg, "Generate IdrisDoc for namespace(s) and dependencies"),
     ([":apropos"], NoArg, "Search names, types, and documentation"),
-    ([":i", ":info"], NameArg, "Display information about a type class"),
+    ([":search", ":s"], ExprArg, "Search for values by type"),
+    ([":whocalls", ":wc"], NameArg, "List the callers of some name"),
+    ([":callswho", ":cw"], NameArg, "List the callees of some name"),
     ([":total"], NameArg, "Check the totality of a name"),
     ([":r",":reload"], NoArg, "Reload current file"),
     ([":l",":load"], FileArg, "Load a new file"),
     ([":cd"], FileArg, "Change working directory"),
-    ([":m",":module"], ModuleArg, "Import an extra module"), -- NOTE: dragons
+    ([":module"], ModuleArg, "Import an extra module"), -- NOTE: dragons
     ([":e",":edit"], NoArg, "Edit current file using $EDITOR or $VISUAL"),
-    ([":m",":metavars"], MetaVarArg, "Show remaining proof obligations (metavariables)"),
+    ([":m",":metavars"], NoArg, "Show remaining proof obligations (metavariables)"),
     ([":p",":prove"], MetaVarArg, "Prove a metavariable"),
     ([":a",":addproof"], NameArg, "Add proof to source file"),
     ([":rmproof"], NameArg, "Remove proof from proof stack"),
     ([":showproof"], NameArg, "Show proof"),
     ([":proofs"], NoArg, "Show available proofs"),
     ([":x"], ExprArg, "Execute IO actions resulting from an expression using the interpreter"),
-    ([":c",":compile"], FileArg, "Compile to an executable <filename>"),
-    ([":js", ":javascript"], FileArg, "Compile to JavaScript <filename>"),
+    ([":c",":compile"], FileArg, "Compile to an executable [codegen] <filename>"),
     ([":exec",":execute"], NoArg, "Compile to an executable and run"),
     ([":dynamic"], FileArg, "Dynamically load a C library (similar to %dynamic)"),
     ([":dynamic"], NoArg, "List dynamically loaded C libraries"),
@@ -54,7 +58,8 @@ help =
     ([":unset"], OptionArg, "Unset an option"),
     ([":colour", ":color"], ColourArg, "Turn REPL colours on or off; set a specific colour"),
     ([":consolewidth"], ConsoleWidthArg, "Set the width of the console"),
-    ([":q",":quit"], NoArg, "Exit the Idris system")
+    ([":q",":quit"], NoArg, "Exit the Idris system"),
+    ([":w", ":warranty"], NoArg, "Displays warranty information")
   ]
 
 -- | Use these for completion, but don't show them in :help

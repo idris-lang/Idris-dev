@@ -68,6 +68,12 @@ index fZ     (x::xs) = x
 index (fS k) (x::xs) = index k xs
 index fZ     [] impossible
 
+||| Insert an element at a particular index
+insertAt : Fin (S n) -> a -> Vect n a -> Vect (S n) a
+insertAt fZ     y xs      = y :: xs
+insertAt (fS k) y (x::xs) = x :: insertAt k y xs
+insertAt (fS k) y []      = absurd k
+
 ||| Construct a new vector consisting of all but the indicated element
 deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
 deleteAt           fZ     (x::xs) = xs
@@ -254,6 +260,18 @@ concat : Vect m (Vect n a) -> Vect (m * n) a
 concat []      = []
 concat (v::vs) = v ++ concat vs
 
+||| Fold without seeding the accumulator
+foldr1 : (t -> t -> t) -> Vect (S n) t -> t
+foldr1 f (x::xs) = foldr f x xs
+
+--------------------------------------------------------------------------------
+-- Scans
+--------------------------------------------------------------------------------
+
+scanl : (b -> a -> b) -> b -> Vect n a -> Vect (S n) b
+scanl f q []      = [q]
+scanl f q (x::xs) = q :: scanl f (f q x) xs
+
 --------------------------------------------------------------------------------
 -- Membership tests
 --------------------------------------------------------------------------------
@@ -438,6 +456,31 @@ diag ((x::xs)::xss) = x :: diag (map tail xss)
 range : Vect n (Fin n)
 range {n=Z} = []
 range {n=S _} = fZ :: map fS range
+
+||| Transpose a Vect of Vects, turning rows into columns and vice versa.
+|||
+||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
+transpose : Vect m (Vect n a) -> Vect n (Vect m a)
+transpose [] = replicate _ []
+transpose (x :: xs) = zipWith (::) x (transpose xs)
+
+--------------------------------------------------------------------------------
+-- Properties
+--------------------------------------------------------------------------------
+
+vectConsCong : (x : a) -> (xs : Vect n a) -> (ys : Vect m a) -> (xs = ys) -> (x :: xs = x :: ys)
+vectConsCong x xs xs refl = refl
+
+vectNilRightNeutral : (xs : Vect n a) -> xs ++ [] = xs
+vectNilRightNeutral [] = refl
+vectNilRightNeutral (x :: xs) =
+  vectConsCong _ _ _ (vectNilRightNeutral xs)
+
+vectAppendAssociative : (x : Vect xLen a) -> (y : Vect yLen a) -> (z : Vect zLen a) -> x ++ (y ++ z) = (x ++ y) ++ z
+vectAppendAssociative [] y z = refl
+vectAppendAssociative (x :: xs) ys zs =
+  vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
+
 
 --------------------------------------------------------------------------------
 -- Proofs

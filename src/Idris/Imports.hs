@@ -1,6 +1,7 @@
 module Idris.Imports where
 
 import Idris.AbsSyntax
+import Idris.Error
 
 import Idris.Core.TT
 import Paths_idris
@@ -43,15 +44,15 @@ ibcPathWithFallback ibcsd fp = do let ibcp = ibcPath ibcsd True fp
 ibcPathNoFallback :: FilePath -> FilePath -> FilePath
 ibcPathNoFallback ibcsd fp = ibcPath ibcsd True fp
 
-findImport :: [FilePath] -> FilePath -> FilePath -> IO IFileType
-findImport []     ibcsd fp = fail $ "Can't find import " ++ fp
+findImport :: [FilePath] -> FilePath -> FilePath -> Idris IFileType
+findImport []     ibcsd fp = ierror . Msg $ "Can't find import " ++ fp
 findImport (d:ds) ibcsd fp = do let fp_full = d </> fp
-                                ibcp <- ibcPathWithFallback ibcsd fp_full
+                                ibcp <- runIO $ ibcPathWithFallback ibcsd fp_full
                                 let idrp = srcPath fp_full
                                 let lidrp = lsrcPath fp_full
-                                ibc <- doesFileExist ibcp
-                                idr  <- doesFileExist idrp
-                                lidr <- doesFileExist lidrp
+                                ibc <- runIO $ doesFileExist ibcp
+                                idr  <- runIO $ doesFileExist idrp
+                                lidr <- runIO $ doesFileExist lidrp
 --                              when idr $ putStrLn $ idrp ++ " ok"
 --                              when lidr $ putStrLn $ lidrp ++ " ok"
 --                              when ibc $ putStrLn $ ibcp ++ " ok"

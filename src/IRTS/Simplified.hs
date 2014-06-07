@@ -125,15 +125,17 @@ checkDefs ctxt (con@(n, DConstructor _ _ _) : xs)
          return xs'
 checkDefs ctxt ((n, DFun n' args exp) : xs)
     = do let sexp = evalState (simplify True exp) (ctxt, 0)
-         (exp', locs) <- runStateT (scopecheck ctxt (zip args [0..]) sexp) (length args)
+         (exp', locs) <- runStateT (scopecheck n ctxt (zip args [0..]) sexp) (length args)
          xs' <- checkDefs ctxt xs
          return ((n, SFun n' args ((locs + 1) - length args) exp') : xs')
 
 lvar v = do i <- get
             put (max i v)
 
-scopecheck :: DDefs -> [(Name, Int)] -> SExp -> StateT Int TC SExp
-scopecheck ctxt envTop tm = sc envTop tm where
+scopecheck :: Name -> DDefs -> [(Name, Int)] -> SExp -> StateT Int TC SExp
+scopecheck fn ctxt envTop tm = sc envTop tm where
+    failsc err = fail $ "Codegen error in " ++ show fn ++ ":" ++ err
+
     sc env (SV (Glob n)) =
        case lookup n (reverse env) of -- most recent first
               Just i -> do lvar i; return (SV (Loc i))
@@ -141,20 +143,20 @@ scopecheck ctxt envTop tm = sc envTop tm where
                               Just (DConstructor _ i ar) ->
                                   if True -- ar == 0
                                      then return (SCon i n [])
-                                     else fail $ "Codegen error: Constructor " ++ show n ++
+                                     else failsc $ "Constructor " ++ show n ++
                                                  " has arity " ++ show ar
                               Just _ -> return (SV (Glob n))
-                              Nothing -> fail $ "Codegen error: No such variable " ++ show n
+                              Nothing -> failsc $ "No such variable " ++ show n
     sc env (SApp tc f args)
        = do args' <- mapM (scVar env) args
             case lookupCtxtExact f ctxt of
                 Just (DConstructor n tag ar) ->
                     if True -- (ar == length args)
                        then return $ SCon tag n args'
-                       else fail $ "Codegen error: Constructor " ++ show f ++
+                       else failsc $ "Constructor " ++ show f ++
                                    " has arity " ++ show ar
                 Just _ -> return $ SApp tc f args'
-                Nothing -> fail $ "Codegen error: No such variable " ++ show f
+                Nothing -> failsc $ "No such variable " ++ show f
     sc env (SForeign l ty f args)
        = do args' <- mapM (\ (t, a) -> do a' <- scVar env a
                                           return (t, a')) args
@@ -165,9 +167,9 @@ scopecheck ctxt envTop tm = sc envTop tm where
                 Just (DConstructor n tag ar) ->
                     if True -- (ar == length args)
                        then return $ SCon tag n args'
-                       else fail $ "Codegen error: Constructor " ++ show f ++
-                                   " has arity " ++ show ar
-                _ -> fail $ "Codegen error: No such constructor " ++ show f
+                       else failsc $ "Constructor " ++ show f ++
+                                     " has arity " ++ show ar
+                _ -> failsc $ "No such constructor " ++ show f
     sc env (SProj e i)
        = do e' <- scVar env e
             return (SProj e' i)
@@ -200,9 +202,9 @@ scopecheck ctxt envTop tm = sc envTop tm where
               Just i -> do lvar i; return (Loc i)
               Nothing -> case lookupCtxtExact n ctxt of
                               Just (DConstructor _ i ar) ->
-                                  fail $ "Codegen error : can't pass constructor here"
+                                  failsc $ "can't pass constructor here"
                               Just _ -> return (Glob n)
-                              Nothing -> fail $ "Codegen error: No such variable " ++ show n ++
+                              Nothing -> failsc $ "No such variable " ++ show n ++
                                                " in " ++ show tm ++ " " ++ show envTop
     scVar _ x = return x
 
@@ -212,9 +214,9 @@ scopecheck ctxt envTop tm = sc envTop tm where
                         Just (DConstructor _ i ar) ->
                              if True -- (length args == ar)
                                 then return i
-                                else fail $ "Codegen error: Constructor " ++ show n ++
+                                else failsc $ "Constructor " ++ show n ++
                                             " has arity " ++ show ar
-                        _ -> fail $ "Codegen error: No constructor " ++ show n
+                        _ -> failsc $ "No constructor " ++ show n
             e' <- sc env' e
             return (SConCase (length env) tag n args e')
     scalt env (SConstCase c e) = do e' <- sc env e

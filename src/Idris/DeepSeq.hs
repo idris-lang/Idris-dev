@@ -138,15 +138,15 @@ instance (NFData t) => NFData (PDecl' t) where
                 rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
         rnf (PParams x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PNamespace x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (PRecord x1 x2 x3 x4 x5 x6 x7 x8)
+        rnf (PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9)
           = rnf x1 `seq`
               rnf x2 `seq`
                 rnf x3 `seq`
-                  rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` ()
-        rnf (PClass x1 x2 x3 x4 x5 x6 x7)
+                  rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` ()
+        rnf (PClass x1 x2 x3 x4 x5 x6 x8 x7)
           = rnf x1 `seq`
               rnf x2 `seq`
-                rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()
+                rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` ()
         rnf (PInstance x1 x2 x3 x4 x5 x6 x7 x8)
           = rnf x1 `seq`
               rnf x2 `seq`
@@ -156,16 +156,14 @@ instance (NFData t) => NFData (PDecl' t) where
         rnf (PSyntax x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PMutual x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PDirective x1) = ()
-        rnf (PProvider x1 x2 x3 x4 x5 x6)
-          = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
+        rnf (PProvider x1 x2 x3 x4)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PTransform x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
 
-instance NFData ProvideWhat where
-        rnf ProvAny       = ()
-        rnf ProvTerm      = ()
-        rnf ProvPostulate = ()
+instance NFData t => NFData (ProvideWhat' t)  where
+        rnf (ProvTerm ty tm)   = rnf ty `seq` rnf tm `seq` ()
+        rnf (ProvPostulate tm) = rnf tm `seq` ()
 
 instance NFData PunInfo where
         rnf x = x `seq` ()
@@ -245,7 +243,7 @@ instance (NFData t) => NFData (PTactic' t) where
         rnf (Exact x1) = rnf x1 `seq` ()
         rnf Compute = ()
         rnf Trivial = ()
-        rnf (ProofSearch x1 x2)
+        rnf (ProofSearch r r1 r2 x1 x2)
           = rnf x1 `seq` rnf x2 `seq` ()
         rnf Solve = ()
         rnf Attack = ()
@@ -290,7 +288,7 @@ instance NFData OptInfo where
           = rnf x1 `seq` rnf x2 `seq` ()
 
 instance NFData TypeInfo where
-        rnf (TI x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (TI x1 x2 x3 x4 x5) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
 
 instance (NFData t) => NFData (DSL' t) where
         rnf (DSL x1 x2 x3 x4 x5 x6 x7 x8 x9)
@@ -321,11 +319,11 @@ instance NFData Using where
 
  
 instance NFData SyntaxInfo where
-        rnf (Syn x1 x2 x3 x4 x5 x6 x7 x8)
+        rnf (Syn x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)
           = rnf x1 `seq`
               rnf x2 `seq`
                 rnf x3 `seq`
-                  rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` ()
+                  rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` rnf x10 `seq` ()
 
 
 

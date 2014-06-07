@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ records003.idr -o records003
+./records003
+rm -f records003 *.ibc

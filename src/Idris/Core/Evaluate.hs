@@ -8,10 +8,10 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
-                lookupNames, lookupTy, lookupP, lookupDef, lookupDefExact, lookupDefAcc, lookupVal,
+                lookupNames, lookupTyName, lookupTy, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
-                Value(..), Quote(..), initEval, uniqueNameCtxt, definitions) where
+                Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions) where
 
 import Debug.Trace
 import Control.Applicative hiding (Const)
@@ -537,7 +537,7 @@ wknV i t              = return t
 convEq' ctxt hs x y = evalStateT (convEq ctxt hs x y) (0, [])
 
 convEq :: Context -> [Name] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
-convEq ctxt holes = ceq [] where
+convEq ctxt holes topx topy = ceq [] topx topy where
     ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
     ceq ps (P xt x _) (P yt y _)
         | x `elem` holes || y `elem` holes = return True
@@ -550,8 +550,12 @@ convEq ctxt holes = ceq [] where
     ceq ps (Bind n (Lam t) (App x (P Bound n' _))) y
         | n == n' = ceq ps x y
     ceq ps (V x)      (V y)      = return (x == y)
-    ceq ps (V x)      (P _ y _)  = return (fst (ps!!x) == y)
-    ceq ps (P _ x _)  (V y)      = return (x == snd (ps!!y))
+    ceq ps (V x)      (P _ y _)  
+        | x >= 0 && length ps > x = return (fst (ps!!x) == y)
+        | otherwise = return False
+    ceq ps (P _ x _)  (V y)      
+        | y >= 0 && length ps > y = return (x == snd (ps!!y))
+        | otherwise = return False
     ceq ps (Bind n xb xs) (Bind n' yb ys)
                              = liftM2 (&&) (ceqB ps xb yb) (ceq ((n,n'):ps) xs ys)
         where
@@ -678,7 +682,7 @@ data Totality = Total [Int] -- ^ well-founded arguments
 
 -- | Reasons why a function may not be total
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
-             | BelieveMe | Mutual [Name] | NotProductive
+             | ExternalIO | BelieveMe | Mutual [Name] | NotProductive
     deriving (Show, Eq)
 
 instance Show Totality where
@@ -688,6 +692,7 @@ instance Show Totality where
     show (Partial Itself) = "possibly not total as it is not well founded"
     show (Partial NotCovering) = "not total as there are missing cases"
     show (Partial NotPositive) = "not strictly positive"
+    show (Partial ExternalIO) = "an external IO primitive"
     show (Partial NotProductive) = "not productive"
     show (Partial BelieveMe) = "not total due to use of believe_me in proof"
     show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
@@ -863,14 +868,19 @@ lookupNames n ctxt
                 = let ns = lookupCtxtName n (definitions ctxt) in
                       map fst ns
 
-lookupTy :: Name -> Context -> [Type]
-lookupTy n ctxt
-                = do def <- lookupCtxt n (definitions ctxt)
-                     case tfst def of
+lookupTyName :: Name -> Context -> [(Name, Type)]
+lookupTyName n ctxt = do 
+  (name, def) <- lookupCtxtName n (definitions ctxt)
+  ty <- case tfst def of
                        (Function ty _) -> return ty
                        (TyDecl _ ty) -> return ty
                        (Operator ty _ _) -> return ty
                        (CaseOp _ ty _ _ _ _) -> return ty
+  return (name, ty)
+
+
+lookupTy :: Name -> Context -> [Type]
+lookupTy n ctxt = map snd (lookupTyName n ctxt)
 
 isConName :: Name -> Context -> Bool
 isConName n ctxt = isTConName n ctxt || isDConName n ctxt
@@ -916,6 +926,11 @@ lookupDefExact n ctxt = tfst <$> lookupCtxtExact n (definitions ctxt)
 lookupDef :: Name -> Context -> [Def]
 lookupDef n ctxt = tfst <$> lookupCtxt n (definitions ctxt)
 
+lookupNameDef :: Name -> Context -> [(Name, Def)]
+lookupNameDef n ctxt = mapSnd tfst $ lookupCtxtName n (definitions ctxt)
+  where mapSnd f [] = []
+        mapSnd f ((x,y):xys) = (x, f y) : mapSnd f xys
+
 lookupDefAcc :: Name -> Bool -> Context ->
                 [(Def, Accessibility)]
 lookupDefAcc n mkpublic ctxt
@@ -956,3 +971,10 @@ uniqueNameCtxt ctxt n hs
     | n `elem` hs = uniqueNameCtxt ctxt (nextName n) hs
     | [_] <- lookupTy n ctxt = uniqueNameCtxt ctxt (nextName n) hs
     | otherwise = n
+
+uniqueBindersCtxt :: Context -> [Name] -> TT Name -> TT Name
+uniqueBindersCtxt ctxt ns (Bind n b sc)
+    = let n' = uniqueNameCtxt ctxt n ns in
+          Bind n' (fmap (uniqueBindersCtxt ctxt (n':ns)) b) (uniqueBindersCtxt ctxt ns sc)
+uniqueBindersCtxt ctxt ns (App f a) = App (uniqueBindersCtxt ctxt ns f) (uniqueBindersCtxt ctxt ns a)
+uniqueBindersCtxt ctxt ns t = t

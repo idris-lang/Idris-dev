@@ -22,6 +22,7 @@ import Idris.Core.Evaluate
 
 import Data.Maybe
 import Data.Char
+import Data.List (isPrefixOf, isSuffixOf)
 import Control.Monad
 import Control.Monad.State.Strict
 
@@ -54,7 +55,10 @@ split n t'
    = do ist <- getIState
         -- Make sure all the names in the term are accessible
         mapM_ (\n -> setAccessibility n Public) (allNamesIn t')
-        (tm, ty, pats) <- elabValBind toplevel True (addImplPat ist t')
+        (tm, ty, pats) <- elabValBind toplevel True True (addImplPat ist t')
+        -- ASSUMPTION: tm is in normal form after elabValBind, so we don't
+        -- need to do anything special to find out what family each argument
+        -- is in
         logLvl 4 ("Elaborated:\n" ++ show tm ++ " : " ++ show ty ++ "\n" ++ show pats)
 --         iputStrLn (show (delab ist tm) ++ " : " ++ show (delab ist ty))
 --         iputStrLn (show pats)
@@ -276,6 +280,8 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
     nshow t = show t
 
     -- if there's any {n} replace with {n=n}
+    -- but don't replace it in comments
+    expandBraces ('{' : '-' : xs) = '{' : '-' : xs
     expandBraces ('{' : xs)
         = let (brace, (_:rest)) = span (/= '}') xs in
               if (not ('=' `elem` brace))
@@ -294,9 +300,11 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
               if (before == n && not (isAlphaNum next))
                  then addBrackets tm ++ updatePat False n tm after
                  else c : updatePat (not (isAlphaNum c)) n tm rest
-    updatePat start n tm (c:rest) = c : updatePat (not (isAlpha c)) n tm rest
+    updatePat start n tm (c:rest) = c : updatePat (not ((isAlphaNum c) || c == '_')) n tm rest
 
-    addBrackets tm | ' ' `elem` tm = "(" ++ tm ++ ")"
+    addBrackets tm | ' ' `elem` tm
+                   , not (isPrefixOf "(" tm)
+                   , not (isSuffixOf ")" tm) = "(" ++ tm ++ ")"
                    | otherwise = tm
 
 getUniq nm i
@@ -316,12 +324,17 @@ getClause :: Int      -- ^ line number that the type is declared on
           -> Name     -- ^ Function name
           -> FilePath -- ^ Source file name
           -> Idris String
-getClause l fn fp = do ty <- getInternalApp fp l
-                       ist <- get
-                       let ap = mkApp ist ty []
-                       return (show fn ++ " " ++ ap ++
-                                   "= ?" ++ show fn ++ "_rhs")
-   where mkApp i (PPi (Exp _ _ False) (MN _ _) ty sc) used
+getClause l fn fp 
+    = do i <- getIState
+         case lookupCtxt fn (idris_classes i) of
+              [c] -> return (mkClassBodies i (class_methods c))
+              _ -> do ty <- getInternalApp fp l
+                      ist <- get
+                      let ap = mkApp ist ty []
+                      return (show fn ++ " " ++ ap ++ "= ?" 
+                                      ++ show fn ++ "_rhs")
+   where mkApp :: IState -> PTerm -> [Name] -> String
+         mkApp i (PPi (Exp _ _ False) (MN _ _) ty sc) used
                = let n = getNameFrom i used ty in
                      show n ++ " " ++ mkApp i sc (n : used) 
          mkApp i (PPi (Exp _ _ False) (UN n) ty sc) used
@@ -343,6 +356,19 @@ getClause l fn fp = do ty <- getInternalApp fp l
                    ns -> uniqueNameFrom (mkSupply ns) used
          getNameFrom i used _ = uniqueName (sUN "x") used 
 
+         -- write method declarations, indent with 4 spaces
+         mkClassBodies :: IState -> [(Name, (FnOpts, PTerm))] -> String
+         mkClassBodies i ns 
+             = showSep "\n"
+                  (zipWith (\(n, (_, ty)) m -> "    " ++ 
+                            def (show (nsroot n)) ++ " "
+                                 ++ mkApp i ty []
+                                 ++ "= ?" 
+                                 ++ show fn ++ "_rhs_" ++ show m) ns [1..])
+
+         def n@(x:xs) | not (isAlphaNum x) = "(" ++ n ++ ")"
+         def n = n
+
 getProofClause :: Int      -- ^ line number that the type is declared
                -> Name     -- ^ Function name
                -> FilePath -- ^ Source file name
@@ -358,15 +384,18 @@ getProofClause l fn fp
 
 mkWith :: String -> Name -> String
 mkWith str n = let str' = replaceRHS str "with (_)"
-                   newpat = "  " ++
-                            replaceRHS str "| with_pat = ?" ++ show n ++ "_rhs" in
-                   str' ++ "\n" ++ newpat
+               in str' ++ "\n" ++ newpat str
 
    where replaceRHS [] str = str
          replaceRHS ('?':'=': rest) str = str
-         replaceRHS ('=': rest) str 
+         replaceRHS ('=': rest) str
               | not ('=' `elem` rest) = str
          replaceRHS (x : rest) str = x : replaceRHS rest str
+
+         newpat ('>':patstr) = '>':newpat patstr
+         newpat patstr =
+           "  " ++
+           replaceRHS patstr "| with_pat = ?" ++ show n ++ "_rhs"
 
 -- Replace _ with names in missing clauses
 

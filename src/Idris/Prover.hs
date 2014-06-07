@@ -85,10 +85,19 @@ prove opt ctxt lit n ty
                                  [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
+
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
-elabStep st e = do case runStateT e st of
+elabStep st e = case runStateT eCheck st of
                      OK (a, st') -> return (a, st')
                      Error a -> ierror a
+  where eCheck = do res <- e
+                    probs' <- get_probs
+                    case probs' of
+                         [] -> do tm <- get_term
+                                  ctxt <- get_context
+                                  lift $ check ctxt [] (forget tm)
+                                  return res
+                         ((_,_,_,e,_,_):_) -> lift $ Error e
 
 dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
@@ -104,9 +113,9 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
   iputGoal rendered
 
   where
-    showImplicits = opt_showimp (idris_options ist)
+    ppo = ppOptionIst ist
 
-    tPretty bnd t = pprintPTerm showImplicits bnd [] $ delab ist t
+    tPretty bnd t = pprintPTerm ppo bnd [] (idris_infixes ist) $ delab ist t
 
     assumptionNames :: Env -> [Name]
     assumptionNames = map fst
@@ -116,10 +125,11 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
     prettyPs bnd ((n@(MN _ r), _) : bs)
         | r == txt "rewrite_rule" = prettyPs ((n, False):bnd) bs
     prettyPs bnd ((n, Let t v) : bs) =
-      nest nestingSize (bindingOf n False <+> text "=" <+> tPretty bnd v <> colon <+>
-        tPretty ((n, False):bnd) t <> line <> prettyPs ((n, False):bnd) bs)
+      line <> bindingOf n False <+> text "=" <+> tPretty bnd v <+> colon <+>
+        align (tPretty bnd t) <> prettyPs ((n, False):bnd) bs
     prettyPs bnd ((n, b) : bs) =
-      line <> bindingOf n False <+> colon <+> align (tPretty bnd (binderTy b)) <> prettyPs ((n, False):bnd) bs
+      line <> bindingOf n False <+> colon <+>
+      align (tPretty bnd (binderTy b)) <> prettyPs ((n, False):bnd) bs
 
     prettyG bnd (Guess t v) = tPretty bnd t <+> text "=?=" <+> tPretty bnd v
     prettyG bnd b = tPretty bnd $ binderTy b
@@ -231,15 +241,16 @@ ploop fn d prompt prf e h
                            ctxt'  = envCtxt env ctxt
                        putIState ist { tt_ctxt = ctxt' }
                        (tm, ty) <- elabVal toplevel False t
-                       let imp = opt_showimp (idris_options ist)
-                           ty' = normaliseC ctxt [] ty
-                           h   = idris_outh ist
+                       let ppo = ppOptionIst ist
+                           ty'     = normaliseC ctxt [] ty
+                           h       = idris_outh ist
+                           infixes = idris_infixes ist
                        case tm of
                           TType _ ->
-                            ihPrintTermWithType h (prettyImp imp PType) type1Doc
+                            ihPrintTermWithType h (prettyImp ppo PType) type1Doc
                           _ -> let bnd = map (\x -> (fst x, False)) env in
-                               ihPrintTermWithType h (pprintPTerm imp bnd [] (delab ist tm))
-                                                     (pprintPTerm imp bnd [] (delab ist ty))
+                               ihPrintTermWithType h (pprintPTerm ppo bnd [] infixes (delab ist tm))
+                                                     (pprintPTerm ppo bnd [] infixes (delab ist ty))
                        putIState ist
                        return (False, e, False, prf))
                      (\err -> do putIState ist { tt_ctxt = ctxt } ; ierror err)
@@ -253,11 +264,12 @@ ploop fn d prompt prf e h
                                                bnd    = map (\x -> (fst x, False)) env
                                            putIState ist'
                                            (tm, ty) <- elabVal toplevel False t
-                                           let tm'    = force (normaliseAll ctxt' env tm)
-                                               ty'    = force (normaliseAll ctxt' env ty)
-                                               imp    = opt_showimp (idris_options ist')
-                                               tmDoc  = pprintPTerm imp bnd [] (delab ist' tm')
-                                               tyDoc  = pprintPTerm imp bnd [] (delab ist' ty')
+                                           let tm'     = force (normaliseAll ctxt' env tm)
+                                               ty'     = force (normaliseAll ctxt' env ty)
+                                               ppo     = ppOption (idris_options ist')
+                                               infixes = idris_infixes ist
+                                               tmDoc   = pprintPTerm ppo bnd [] infixes (delab ist' tm')
+                                               tyDoc   = pprintPTerm ppo bnd [] infixes (delab ist' ty')
                                            ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
                                            putIState ist
                                            return (False, e, False, prf))

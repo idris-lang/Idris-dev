@@ -27,6 +27,7 @@ import Control.Monad.Trans.Error (Error(..))
 import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
+import Numeric (showIntAtBase)
 import qualified Data.Text as T
 import Data.List
 import Data.Maybe (listToMaybe)
@@ -82,7 +83,7 @@ instance Show FC where
                                      | otherwise            = show sl ++ ":" ++ show sc ++ "-" ++ show el ++ ":" ++ show ec
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput
 
 -- | Text formatting output
 data TextFormatting = BoldText | ItalicText | UnderlineText
@@ -92,8 +93,9 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                         -- ^^ The name, classification, docs overview, and pretty-printed type
                       | AnnBoundName Name Bool
                         -- ^^ The name and whether it is implicit
-                      | AnnConstData
-                      | AnnConstType
+                      | AnnConst Const
+                      | AnnData String String -- ^ type, doc overview
+                      | AnnType String String -- ^ name, doc overview
                       | AnnKeyword
                       | AnnFC FC
                       | AnnTextFmt TextFormatting
@@ -131,7 +133,7 @@ data Err' t
           | NoTypeDecl Name
           | NotInjective t t t
           | CantResolve t
-          | CantResolveAlts [String]
+          | CantResolveAlts [Name]
           | IncompleteTerm t
           | UniverseError
           | ProgramLineComment
@@ -182,9 +184,12 @@ score :: Err -> Int
 score (CantUnify _ _ _ m _ s) = s + score m
 score (CantResolve _) = 20
 score (NoSuchVariable _) = 1000
-score (ProofSearchFail _) = 10000
-score (CantSolveGoal _ _) = 10000
+score (ProofSearchFail e) = score e
+score (CantSolveGoal _ _) = 100000
 score (InternalMsg _) = -1
+score (At _ e) = score e
+score (ElaboratingArg _ _ _ e) = score e
+score (Elaborating _ _ e) = score e
 score _ = 0
 
 instance Show Err where
@@ -201,6 +206,7 @@ instance Show Err where
     show (ElaboratingArg f x prev e) = "Elaborating " ++ show f ++ " arg " ++
                                        show x ++ ": " ++ show e
     show (Elaborating what n e) = "Elaborating " ++ what ++ show n ++ ":" ++ show e
+    show (ProofSearchFail e) = "Proof search fail: " ++ show e
     show _ = "Error"
 
 instance Pretty Err OutputAnnotation where
@@ -256,7 +262,7 @@ traceWhen False _  a = a
 data Name = UN T.Text -- ^ User-provided name
           | NS Name [T.Text] -- ^ Root, namespaces
           | MN Int T.Text -- ^ Machine chosen names
-          | NErased -- ^ Name of somethng which is never used in scope
+          | NErased -- ^ Name of something which is never used in scope
           | SN SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
   deriving (Eq, Ord)
@@ -383,6 +389,7 @@ implicitable _ = False
 nsroot (NS n _) = n
 nsroot n = n
 
+-- this will overwrite already existing definitions
 addDef :: Name -> a -> Ctxt a -> Ctxt a
 addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
                         Nothing -> Map.insert (nsroot n)
@@ -425,6 +432,9 @@ lookupCtxt n ctxt = map snd (lookupCtxtName n ctxt)
 lookupCtxtExact :: Name -> Ctxt a -> Maybe a
 lookupCtxtExact n ctxt = listToMaybe [ v | (nm, v) <- lookupCtxtName n ctxt, nm == n]
 
+deleteDefExact :: Name -> Ctxt a -> Ctxt a
+deleteDefExact n = Map.adjust (Map.delete n) (nsroot n)
+
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt
   = let ds = lookupCtxtName n ctxt in
@@ -432,7 +442,7 @@ updateDef n f ctxt
 
 toAlist :: Ctxt a -> [(Name, a)]
 toAlist ctxt = let allns = map snd (Map.toList ctxt) in
-                concat (map (Map.toList) allns)
+                concatMap (Map.toList) allns
 
 addAlist :: Show a => [(Name, a)] -> Ctxt a -> Ctxt a
 addAlist [] ctxt = ctxt
@@ -519,6 +529,60 @@ instance Pretty Const OutputAnnotation where
   pretty (B16 w) = text . show $ w
   pretty (B32 w) = text . show $ w
   pretty (B64 w) = text . show $ w
+
+-- | Determines whether the input constant represents a type
+constIsType :: Const -> Bool
+constIsType (I _) = False
+constIsType (BI _) = False
+constIsType (Fl _) = False
+constIsType (Ch _) = False
+constIsType (Str _) = False
+constIsType (B8 _) = False
+constIsType (B16 _) = False
+constIsType (B32 _) = False
+constIsType (B64 _) = False
+constIsType (B8V _) = False
+constIsType (B16V _) = False
+constIsType (B32V _) = False
+constIsType (B64V _) = False
+constIsType _ = True
+
+-- | Get the docstring for a Const
+constDocs :: Const -> String
+constDocs c@(AType (ATInt ITBig))          = "Arbitrary-precision integers"
+constDocs c@(AType (ATInt ITNative))       = "Fixed-precision integers of undefined size"
+constDocs c@(AType (ATInt ITChar))         = "Characters in some unspecified encoding"
+constDocs c@(AType ATFloat)                = "Double-precision floating-point numbers"
+constDocs StrType                          = "Strings in some unspecified encoding"
+constDocs PtrType                          = "Foreign pointers"
+constDocs ManagedPtrType                   = "Managed pointers"
+constDocs BufferType                       = "Copy-on-write buffers"
+constDocs c@(AType (ATInt (ITFixed IT8)))  = "Eight bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT16))) = "Sixteen bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT32))) = "Thirty-two bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT64))) = "Sixty-four bits (unsigned)"
+constDocs c@(AType (ATInt (ITVec IT8 16))) = "Vectors of sixteen eight-bit values"
+constDocs c@(AType (ATInt (ITVec IT16 8))) = "Vectors of eight sixteen-bit values"
+constDocs c@(AType (ATInt (ITVec IT32 4))) = "Vectors of four thirty-two-bit values"
+constDocs c@(AType (ATInt (ITVec IT64 2))) = "Vectors of two sixty-four-bit values"
+constDocs (Fl f)                           = "A float"
+constDocs (I i)                            = "A fixed-precision integer"
+constDocs (BI i)                           = "An arbitrary-precision integer"
+constDocs (Str s)                          = "A string of length " ++ show (length s)
+constDocs (Ch c)                           = "A character"
+constDocs (B8 w)                           = "The eight-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B16 w)                          = "The sixteen-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B32 w)                          = "The thirty-two-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B64 w)                          = "The sixty-four-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B8V v)                          = "A vector of eight-bit values"
+constDocs (B16V v)                         = "A vector of sixteen-bit values"
+constDocs (B32V v)                         = "A vector of thirty-two-bit values"
+constDocs (B64V v)                         = "A vector of sixty-four-bit values"
+constDocs prim                             = "Undocumented"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
@@ -996,8 +1060,9 @@ uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
 
 uniqueBinders :: [Name] -> TT Name -> TT Name
 uniqueBinders ns (Bind n b sc)
-    = let n' = uniqueName n ns in
-          Bind n' (fmap (uniqueBinders (n':ns)) b) (uniqueBinders ns sc)
+    = let n' = uniqueName n ns
+          ns' = n' : ns in
+          Bind n' (fmap (uniqueBinders ns') b) (uniqueBinders ns' sc)
 uniqueBinders ns (App f a) = App (uniqueBinders ns f) (uniqueBinders ns a)
 uniqueBinders ns t = t
 
@@ -1222,3 +1287,12 @@ orderPats tm = op [] tm
             = (n', t') : insert n t ps
         | otherwise = (n,t):(n',t'):ps
 
+allTTNames :: Eq n => TT n -> [n]
+allTTNames = nub . allNamesIn
+  where allNamesIn (P _ n _) = [n]
+        allNamesIn (Bind n b t) = [n] ++ nb b ++ allNamesIn t
+          where nb (Let   t v) = allNamesIn t ++ allNamesIn v
+                nb (Guess t v) = allNamesIn t ++ allNamesIn v
+                nb t = allNamesIn (binderTy t)
+        allNamesIn (App f a) = allNamesIn f ++ allNamesIn a
+        allNamesIn _ = []

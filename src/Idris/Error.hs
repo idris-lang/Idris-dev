@@ -43,11 +43,13 @@ idrisCatch = catchError
 setAndReport :: Err -> Idris ()
 setAndReport e = do ist <- getIState
                     let h = idris_outh ist
-                    case e of
+                    case (unwrap e) of
                       At fc e -> do setErrSpan fc
                                     ihWarn h fc $ pprintErr ist e
                       _ -> do setErrSpan (getErrSpan e)
-                              ihputStrLn h $ pshow ist e
+                              ihWarn h emptyFC $ pprintErr ist e
+  where unwrap (ProofSearchFail e) = e -- remove bookkeeping constructor
+        unwrap e = e
 
 ifail :: String -> Idris a
 ifail = throwError . Msg

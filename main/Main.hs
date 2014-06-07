@@ -24,6 +24,7 @@ import Idris.ElabDecls
 import Idris.Primitives
 import Idris.Imports
 import Idris.Error
+import Idris.CmdOptions
 
 import IRTS.System ( getLibFlags, getIdrisLibDir, getIncFlags )
 
@@ -36,8 +37,7 @@ import Paths_idris
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.
 
-main = do xs <- getArgs
-          let opts = parseArgs xs
+main = do opts <- runArgParser
           result <- runErrorT $ execStateT (runIdris opts) idrisInit
           case result of
             Left err -> putStrLn $ "Uncaught error: " ++ show err
@@ -48,8 +48,6 @@ runIdris [Client c] = do setVerbose False
                          setQuiet True
                          runIO $ runClient c
 runIdris opts = do
-       when (Ver `elem` opts) $ runIO showver
-       when (Usage `elem` opts) $ runIO usage
        when (ShowIncs `elem` opts) $ runIO showIncs
        when (ShowLibs `elem` opts) $ runIO showLibs
        when (ShowLibdir `elem` opts) $ runIO showLibdir
@@ -61,15 +59,20 @@ runIdris opts = do
            [] -> return ()
            fs -> do runIO $ mapM_ cleanPkg fs
                     runIO $ exitWith ExitSuccess
+       case opt getPkgMkDoc opts of                -- IdrisDoc
+           [] -> return ()
+           fs -> do runIO $ mapM_ documentPkg fs
+                    runIO $ exitWith ExitSuccess
+       case opt getPkgTest opts of
+           [] -> return ()
+           fs -> do runIO $ mapM_ testPkg fs
+                    runIO $ exitWith ExitSuccess
        case opt getPkg opts of
            [] -> case opt getPkgREPL opts of
                       [] -> idrisMain opts
                       [f] -> replPkg f
                       _ -> ifail "Too many packages"
            fs -> runIO $ mapM_ (buildPkg (WarnOnly `elem` opts)) fs
-
-usage = do putStrLn usagemsg
-           exitWith ExitSuccess
 
 showver = do putStrLn $ "Idris version " ++ ver
              exitWith ExitSuccess
@@ -85,57 +88,3 @@ showLibdir = do dir <- getIdrisLibDir
 showIncs = do incFlags <- getIncFlags
               putStrLn incFlags
               exitWith ExitSuccess
-
-usagemsghdr = "Idris version " ++ ver ++ ", (C) The Idris Community 2014"
-
-usagemsg = usagemsghdr ++ "\n" ++ 
-           map (\x -> '-') usagemsghdr ++ "\n" ++  
-           "idris [OPTIONS] [FILE]\n\n" ++
-           "Common flags:\n" ++
-           "\t    --install IPKG          Install package\n" ++
-           "\t    --clean IPKG            Clean package\n" ++
-           "\t    --build IPKG            Build package\n" ++
-           "\t    --exec EXPR             Execute as idris\n" ++
-           "\t    --libdir                Display library directory\n" ++
-           "\t    --link                  Display link directory\n" ++
-           "\t    --include               Display the includes directory\n" ++
-           "\t    --nobanner              Suppress the banner\n" ++
-           "\t    --color, --colour       Force coloured output\n" ++
-           "\t    --nocolor, --nocolour   Disable coloured output\n" ++
-           "\t    --errorcontent          Undocumented\n" ++
-           "\t    --nocoverage            Undocumented\n" ++
-           "\t -o --output FILE           Specify output file\n" ++
-           "\t    --check                 Undocumented\n" ++
-           "\t    --total                 Require functions to be total by default\n" ++
-           "\t    --partial               Undocumented\n" ++
-           "\t    --warnreach             Warn about reachable but inaccessible arguments\n" ++
-           "\t    --warnpartial           Warn about undeclared partial functions.\n" ++
-           "\t    --warn                  Undocumented\n" ++
-           "\t    --typecase              Undocumented\n" ++
-           "\t    --typeintype            Undocumented\n" ++
-           "\t    --nobasepkgs            Undocumented\n" ++
-           "\t    --noprelude             Undocumented\n" ++
-           "\t    --nobuiltins            Undocumented\n" ++
-           "\t -O --level LEVEL           Undocumented\n" ++
-           "\t -i --idrispath DIR         Add directory to the list of import paths\n" ++
-           "\t    --package ITEM          Undocumented\n" ++
-           "\t    --ibcsubdir FILE        Write IBC files into sub directory\n" ++
-           "\t    --codegen TARGET        Select code generator: C, Java, bytecode,\n" ++
-           "\t                            javascript, node, or llvm\n" ++
-           "\t    --mvn                   Create a maven project (for Java codegen)\n" ++
-           "\t    --cpu=CPU               Select target CPU e.g. corei7 or cortex-m3\n" ++
-           "\t                            (for LLVM codegen)\n" ++
-           "\t    --target=TRIPLE         Select target triple (for llvm codegen)\n" ++
-           "\t -S --codegenonly           Do no further compilation of code generator output\n" ++
-           "\t -c --compileonly           Compile to object files rather than an executable\n" ++
-           "\t -X --extension EXT         Turn on langage extension (TypeProviders or ErrorReflection)\n" ++
-           "\t    --dumpdefuns            Undocumented\n" ++
-           "\t    --dumpcases             Undocumented\n" ++
-           "\t    --log LEVEL --loglevel  Debugging log level\n" ++
-           "\t    --ideslave              Undocumented\n" ++
-           "\t    --client                Undocumented\n" ++
-           "\t -h --help                  Display help message\n" ++
-           "\t -v --version               Print version information\n" ++
-           "\t -V --verbose               Loud verbosity\n" ++
-           "\t -q --quiet                 Quiet verbosity\n"
-

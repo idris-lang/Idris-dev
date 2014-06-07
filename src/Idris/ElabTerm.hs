@@ -66,15 +66,19 @@ build ist info pattern opts fn tm
          ctxt <- get_context
          probs <- get_probs
          u <- getUnifyLog
+         hs <- get_holes
 
          when (not pattern) $ 
-           traceWhen u ("Remaining problems:\n" ++ show probs) $ 
-             do matchProblems True; unifyProblems
+           traceWhen u ("Remaining holes:\n" ++ show hs ++ "\n" ++
+                        "Remaining problems:\n" ++ qshow probs) $ 
+             do unify_all; matchProblems True; unifyProblems
+
          probs <- get_probs
          case probs of
             [] -> return ()
-            ((_,_,_,e,_,_):es) -> if inf then return ()
-                                         else lift (Error e)
+            ((_,_,_,e,_,_):es) -> traceWhen u ("Final problems:\n" ++ show probs) $
+                                   if inf then return ()
+                                          else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -123,6 +127,7 @@ elab ist info pattern opts fn tm
          end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
+                  unify_all
                   matchProblems False -- only the ones we matched earlier
                   unifyProblems
                   mkPat)
@@ -262,13 +267,14 @@ elab ist info pattern opts fn tm
              ty <- goal
              ctxt <- get_context
              let (tc, _) = unApply ty
-             let as' = pruneByType tc ctxt as
+             env <- get_env
+             let as' = pruneByType (map fst env) tc ctxt as
 --              trace (show as ++ "\n ==> " ++ showSep ", " (map showTmImpls as')) $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
-        where showHd (PApp _ (PRef _ n) _) = show n
-              showHd (PRef _ n) = show n
-              showHd (PApp _ h _) = show h
-              showHd x = show x
+        where showHd (PApp _ (PRef _ n) _) = n
+              showHd (PRef _ n) = n
+              showHd (PApp _ h _) = showHd h
+              showHd x = NErased -- We probably should do something better than this here
     elab' ina (PAlternative False as)
         = trySeq as
         where -- if none work, take the error from the first
@@ -494,6 +500,7 @@ elab ist info pattern opts fn tm
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
                                    PAlternative True _ -> 1
+                                   PTactics _ -> 150
                                    PLam _ _ _ -> 2
                                    PRewrite _ _ _ _ -> 3
                                    _ -> 0
@@ -559,7 +566,7 @@ elab ist info pattern opts fn tm
              claim tyn RType
              valn <- getNameFrom (sMN 0 "rval")
              claim valn (Var tyn)
-             letn <- getNameFrom (sMN 0 "rewrite_rule")
+             letn <- getNameFrom (sMN 0 "_rewrite_rule")
              letbind letn (Var tyn) (Var valn)
              focus valn
              elab' ina r
@@ -691,6 +698,9 @@ elab ist info pattern opts fn tm
                         addImpl ist (PApp fc (PRef fc (sUN "Delay"))
                                           [pexp t])
 
+    -- case is tricky enough without implicit coercions! If they are needed,
+    -- they can go in the branches separately.
+    insertCoerce ina t@(PCase _ _ _) = return t
     insertCoerce ina t =
         do ty <- goal
            -- Check for possible coercions to get to the goal
@@ -781,8 +791,21 @@ pruneAlt xs = map prune xs
 
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
-pruneByType :: Term -> Context -> [PTerm] -> [PTerm]
-pruneByType (P _ n _) c as
+pruneByType :: [Name] -> Term -> Context -> [PTerm] -> [PTerm]
+-- if an alternative has a locally bound name at the head, take it
+pruneByType env t c as
+   | Just a <- locallyBound as = [a]
+  where
+    locallyBound [] = Nothing
+    locallyBound (t:ts)
+       | Just n <- getName t,
+         n `elem` env = Just t
+       | otherwise = locallyBound ts
+    getName (PRef _ n) = Just n
+    getName (PApp _ f _) = getName f
+    getName _ = Nothing
+                      
+pruneByType env (P _ n _) c as
 -- if the goal type is polymorphic, keep e
    | [] <- lookupTy n c = as
    | otherwise
@@ -808,7 +831,7 @@ pruneByType (P _ n _) c as
                                     _ -> False
                        _ -> False
 
-pruneByType t _ as = as
+pruneByType _ t _ as = as
 
 findInstances :: IState -> Term -> [Name]
 findInstances ist t
@@ -820,9 +843,10 @@ findInstances ist t
 
 trivial' ist
     = trivial (elab ist toplevel False [] (sMN 0 "tac")) ist
-proofSearch' ist top n hints
-    = proofSearch (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
-
+proofSearch' ist rec depth prv top n hints
+    = do unifyProblems
+         proofSearch rec prv depth 
+                     (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
 
 resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
 resolveTC = resTC' [] 
@@ -967,7 +991,7 @@ runTac autoSolve ist fn tac
                     ns -> return (map (\ (n, a) -> (n, map (const True) a)) ns)
              let tacs = map (\ (fn', imps) ->
                                  (match_apply (Var fn') (map (\x -> (x, 0)) imps),
-                                     show fn')) fnimps
+                                     fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
        where envArgs n = do e <- get_env
@@ -983,7 +1007,7 @@ runTac autoSolve ist fn tac
                     ns -> return (map (\ (n, a) -> (n, map isImp a)) ns)
              let tacs = map (\ (fn', imps) ->
                                  (apply (Var fn') (map (\x -> (x, 0)) imps),
-                                     show fn')) fnimps
+                                     fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
        where isImp (PImp _ _ _ _ _) = True
@@ -995,6 +1019,8 @@ runTac autoSolve ist fn tac
                                _ -> return []
     runT (Refine fn imps) = do ns <- apply (Var fn) (map (\x -> (x,0)) imps)
                                when autoSolve solveAll
+    runT DoUnify = do unify_all
+                      when autoSolve solveAll
     runT (Equiv tm) -- let bind tm, then
               = do attack
                    tyn <- getNameFrom (sMN 0 "ety")
@@ -1050,8 +1076,9 @@ runTac autoSolve ist fn tac
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
     runT TCInstance = runT (Exact (PResolveTC emptyFC))
-    runT (ProofSearch top hints)
-         = do proofSearch' ist top fn hints; when autoSolve solveAll
+    runT (ProofSearch rec prover depth top hints)
+         = do proofSearch' ist rec depth prover top fn hints
+              when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True
@@ -1178,14 +1205,16 @@ reify _ t = fail ("Unknown tactic " ++ show t)
 
 reifyApp :: IState -> Name -> [Term] -> ElabD PTactic
 reifyApp ist t [l, r] | t == reflm "Try" = liftM2 Try (reify ist l) (reify ist r)
+reifyApp _ t [Constant (I i)] 
+           | t == reflm "Search" = return (ProofSearch True True i Nothing [])
 reifyApp _ t [x]
            | t == reflm "Refine" = do n <- reifyTTName x
                                       return $ Refine n []
 reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist r)
 reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
-reifyApp _ t [Constant (Str n)]
-           | t == reflm "Intro" = return $ Intro [sUN n]
+reifyApp _ t [n] | t == reflm "Intro" = liftM (Intro . (:[])) (reifyTTName n)
+reifyApp _ t [n] | t == reflm "Induction" = liftM Induction (reifyTTName n)
 reifyApp ist t [t']
              | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
 reifyApp ist t [t']
@@ -1580,8 +1609,8 @@ reflectErr (NotInjective t1 t2 t3) =
             ]
 reflectErr (CantResolve t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
 reflectErr (CantResolveAlts ss) =
-  raw_apply (Var $ reflErrName "CantResolve")
-            [rawList (Var $ (sUN "String")) (map (RConstant . Str) ss)]
+  raw_apply (Var $ reflErrName "CantResolveAlts")
+            [rawList (Var $ (sUN "String")) (map Var ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
 reflectErr UniverseError = Var $ reflErrName "UniverseError"
 reflectErr ProgramLineComment = Var $ reflErrName "ProgramLineComment"
@@ -1625,6 +1654,8 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                                                  then handle err
                                                                  else applyHandlers err hs
                                                       return (ElaboratingArg f a prev err')
+          -- ProofSearchFail is an internal detail - so don't expose it
+          handle (ProofSearchFail e) = handle e
           -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         logLvl 2 "Starting error reflection"
