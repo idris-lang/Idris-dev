@@ -55,7 +55,7 @@ pom clsName artifactName dependencies = unode "project" ([
       unode "skipTest" "true"
     ],
     unode "dependencies" (
-      dependency "org.idris-lang" "idris" "0.9.11-alpha-2-SNAPSHOT" :
+      dependency "org.idris-lang" "idris" "0.9.14" :
       map parseToDep dependencies
     ),
     unode "build" [
