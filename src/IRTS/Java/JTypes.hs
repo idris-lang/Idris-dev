@@ -305,6 +305,7 @@ sourceTypes (LStdErr) = []
 sourceTypes (LAllocate) = [addressType]
 sourceTypes (LAppendBuffer) =
   [bufferType, addressType, addressType, addressType, addressType, bufferType]
+sourceTypes (LSystemInfo) = [integerType]
 sourceTypes (LAppend nt _) = [bufferType, intTyToJType nt, addressType]
 sourceTypes (LPeek _ _) = [bufferType, addressType]
 sourceTypes (LFork) = [objectType]
@@ -319,7 +320,7 @@ sourceTypes (LNoOp) = repeat objectType
 endiannessConstant :: Endianness -> Exp
 endiannessConstant c =
   ExpName . Name . map Ident $ ["java", "nio", "ByteOrder", endiannessConstant' c]
-  where    
+  where
     endiannessConstant' BE                 = "BIG_ENDIAN"
     endiannessConstant' LE                 = "LITTLE_ENDIAN"
     endiannessConstant' (IRTS.Lang.Native) = endiannessConstant' BE
