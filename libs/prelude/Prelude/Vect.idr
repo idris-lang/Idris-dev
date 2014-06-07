@@ -430,6 +430,9 @@ isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
 isSuffixOf : Eq a => Vect m a -> Vect n a -> Bool
 isSuffixOf = isSuffixOfBy (==)
 
+isInfixOf : Eq a => Vect m a -> Vect n a -> Bool
+isInfixOf n h = any (isPrefixOf n) (tails h)
+
 --------------------------------------------------------------------------------
 -- Conversions
 --------------------------------------------------------------------------------
