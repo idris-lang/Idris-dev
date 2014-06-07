@@ -218,8 +218,12 @@ lines s = map pack $ lines' $ unpack s
 
 partial
 foldr1 : (a -> a -> a) -> List a -> a
-foldr1 f [x] = x
+foldr1 _ [x] = x
 foldr1 f (x::xs) = f x (foldr1 f xs)
+
+partial
+foldl1 : (a -> a -> a) -> List a -> a
+foldl1 f (x::xs) = foldl f x xs
 
 ||| Joins the character lists by spaces into a single character list.
 |||
