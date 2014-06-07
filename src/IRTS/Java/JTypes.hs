@@ -306,7 +306,7 @@ sourceTypes (LAllocate) = [addressType]
 sourceTypes (LAppendBuffer) =
   [bufferType, addressType, addressType, addressType, addressType, bufferType]
 sourceTypes (LSystemInfo) = [integerType]
-sourceTypes (LAppend nt _) = [bufferType, intTyToJType nt, addressType]
+sourceTypes (LAppend nt _) = [bufferType, addressType, addressType, intTyToJType nt]
 sourceTypes (LPeek _ _) = [bufferType, addressType]
 sourceTypes (LFork) = [objectType]
 sourceTypes (LPar) = [objectType]
