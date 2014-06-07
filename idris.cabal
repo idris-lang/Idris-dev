@@ -639,7 +639,7 @@ Library
                 , xml
                 , deepseq
                 , zlib
-                , optparse-applicative
+                , optparse-applicative >= 0.8
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleContexts
