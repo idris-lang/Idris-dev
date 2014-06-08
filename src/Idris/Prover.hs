@@ -204,34 +204,35 @@ ploop fn d prompt prf e h
          case cmd of
             Success Abandon -> do iPrintError ""; ifail "Abandoned"
             _ -> return ()
-         (d, st, done, prf') <- idrisCatch
+         (d, st, done, prf', res) <- idrisCatch
            (case cmd of
-              Failure err -> do iPrintError (show err)
-                                return (False, e, False, prf)
+              Failure err -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
               Success Undo -> do (_, st) <- elabStep e loadState
-                                 return (True, st, False, init prf)
-              Success ProofState -> return (True, e, False, prf)
+                                 return (True, st, False, init prf, Right "")
+              Success ProofState -> return (True, e, False, prf, Right "")
               Success ProofTerm -> do tm <- lifte e get_term
                                       iputStrLn $ "TT: " ++ show tm ++ "\n"
-                                      return (False, e, False, prf)
+                                      return (False, e, False, prf, Right "")
               Success Qed -> do hs <- lifte e get_holes
                                 when (not (null hs)) $ ifail "Incomplete proof"
                                 iputStrLn "Proof completed!"
-                                return (False, e, True, prf)
+                                return (False, e, True, prf, Right "")
               Success (TCheck (PRef _ n)) -> checkNameType n
               Success (TCheck t) -> checkType t
               Success (TEval t)  -> evalTerm t e
               Success tac -> do (_, e) <- elabStep e saveState
                                 (_, st) <- elabStep e (runTac autoSolve i fn tac)
---                               trace (show (problems (proof st))) $
-                                return (True, st, False, prf ++ [step]))
-           (\err -> do iPrintError (pshow i err)
-                       return (False, e, False, prf))
+                                return (True, st, False, prf ++ [step], Right ""))
+           (\err -> return (False, e, False, prf, Left err))
          ideslavePutSExp "write-proof-state" (prf', length prf')
-         if done then do (tm, _) <- elabStep st get_term
-                         return (tm, prf')
-                 else do iPrintResult ""
-                         ploop fn d prompt prf' st h'
+         case res of
+           Left err -> do iPrintError (pshow i err)
+                          ploop fn d prompt prf' st h'
+           Right ok ->
+             if done then do (tm, _) <- elabStep st get_term
+                             return (tm, prf')
+                     else do iPrintResult ok
+                             ploop fn d prompt prf' st h'
   where envCtxt env ctxt = foldl (\c (n, b) -> addTyDecl n Bound (binderTy b) c) ctxt env
         checkNameType n = do
           ctxt <- getContext
@@ -250,7 +251,7 @@ ploop fn d prompt prf e h
                 [] -> ihPrintError h $ "No such variable " ++ show n
                 ts -> ihPrintFunTypes h bnd n (map (\n -> (n, delabTy ist' n)) ts)
               putIState ist
-              return (False, e, False, prf))
+              return (False, e, False, prf, Right ""))
             (\err -> do putIState ist ; ierror err)
 
         checkType t = do
@@ -272,7 +273,7 @@ ploop fn d prompt prf e h
                       ihPrintTermWithType h (pprintPTerm ppo bnd [] infixes (delab ist tm))
                                             (pprintPTerm ppo bnd [] infixes (delab ist ty))
               putIState ist
-              return (False, e, False, prf))
+              return (False, e, False, prf, Right ""))
             (\err -> do putIState ist { tt_ctxt = ctxt } ; ierror err)
 
         evalTerm t e = withErrorReflection $
@@ -293,5 +294,5 @@ ploop fn d prompt prf e h
                    tyDoc   = pprintPTerm ppo bnd [] infixes (delab ist' ty')
                ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
                putIState ist
-               return (False, e, False, prf))
+               return (False, e, False, prf, Right ""))
               (\err -> do putIState ist ; ierror err)
