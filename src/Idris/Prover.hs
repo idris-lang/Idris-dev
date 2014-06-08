@@ -204,89 +204,95 @@ ploop fn d prompt prf e h
          case cmd of
             Success Abandon -> do iPrintError ""; ifail "Abandoned"
             _ -> return ()
-         (d, st, done, prf') <- idrisCatch
+         (d, st, done, prf', res) <- idrisCatch
            (case cmd of
-              Failure err -> do iPrintError (show err)
-                                return (False, e, False, prf)
+              Failure err -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
               Success Undo -> do (_, st) <- elabStep e loadState
-                                 return (True, st, False, init prf)
-              Success ProofState -> return (True, e, False, prf)
+                                 return (True, st, False, init prf, Right "")
+              Success ProofState -> return (True, e, False, prf, Right "")
               Success ProofTerm -> do tm <- lifte e get_term
                                       iputStrLn $ "TT: " ++ show tm ++ "\n"
-                                      return (False, e, False, prf)
+                                      return (False, e, False, prf, Right "")
               Success Qed -> do hs <- lifte e get_holes
                                 when (not (null hs)) $ ifail "Incomplete proof"
                                 iputStrLn "Proof completed!"
-                                return (False, e, True, prf)
-              Success (TCheck (PRef _ n)) ->
-                do ctxt <- getContext
-                   ist <- getIState
-                   imp <- impShow
-                   idrisCatch (do
-                       let h      = idris_outh ist
-                           OK env = envAtFocus (proof e)
-                           ctxt'  = envCtxt env ctxt
-                           bnd    = map (\x -> (fst x, False)) env
-                           ist'   = ist { tt_ctxt = ctxt' }
-                       putIState ist'
-                       -- Unlike the REPL, metavars have no special treatment, to
-                       -- make it easier to see how to prove with them.
-                       case lookupNames n ctxt' of
-                         [] -> ihPrintError h $ "No such variable " ++ show n
-                         ts -> ihPrintFunTypes h bnd n (map (\n -> (n, delabTy ist' n)) ts)
-                       putIState ist
-                       return (False, e, False, prf))
-                     (\err -> do putIState ist ; ierror err)
-              Success (TCheck t) ->
-                do ist <- getIState
-                   ctxt <- getContext
-                   idrisCatch (do
-                       let OK env = envAtFocus (proof e)
-                           ctxt'  = envCtxt env ctxt
-                       putIState ist { tt_ctxt = ctxt' }
-                       (tm, ty) <- elabVal toplevel False t
-                       let ppo = ppOptionIst ist
-                           ty'     = normaliseC ctxt [] ty
-                           h       = idris_outh ist
-                           infixes = idris_infixes ist
-                       case tm of
-                          TType _ ->
-                            ihPrintTermWithType h (prettyImp ppo PType) type1Doc
-                          _ -> let bnd = map (\x -> (fst x, False)) env in
-                               ihPrintTermWithType h (pprintPTerm ppo bnd [] infixes (delab ist tm))
-                                                     (pprintPTerm ppo bnd [] infixes (delab ist ty))
-                       putIState ist
-                       return (False, e, False, prf))
-                     (\err -> do putIState ist { tt_ctxt = ctxt } ; ierror err)
-              Success (TEval t)  -> withErrorReflection $
-                                    do ctxt <- getContext
-                                       ist <- getIState
-                                       idrisCatch (do
-                                           let OK env = envAtFocus (proof e)
-                                               ctxt'  = envCtxt env ctxt
-                                               ist'   = ist { tt_ctxt = ctxt' }
-                                               bnd    = map (\x -> (fst x, False)) env
-                                           putIState ist'
-                                           (tm, ty) <- elabVal toplevel False t
-                                           let tm'     = force (normaliseAll ctxt' env tm)
-                                               ty'     = force (normaliseAll ctxt' env ty)
-                                               ppo     = ppOption (idris_options ist')
-                                               infixes = idris_infixes ist
-                                               tmDoc   = pprintPTerm ppo bnd [] infixes (delab ist' tm')
-                                               tyDoc   = pprintPTerm ppo bnd [] infixes (delab ist' ty')
-                                           ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
-                                           putIState ist
-                                           return (False, e, False, prf))
-                                         (\err -> do putIState ist ; ierror err)
+                                return (False, e, True, prf, Right "")
+              Success (TCheck (PRef _ n)) -> checkNameType n
+              Success (TCheck t) -> checkType t
+              Success (TEval t)  -> evalTerm t e
               Success tac -> do (_, e) <- elabStep e saveState
                                 (_, st) <- elabStep e (runTac autoSolve i fn tac)
---                               trace (show (problems (proof st))) $
-                                return (True, st, False, prf ++ [step]))
-           (\err -> do iPrintError (pshow i err)
-                       return (False, e, False, prf))
+                                return (True, st, False, prf ++ [step], Right ""))
+           (\err -> return (False, e, False, prf, Left err))
          ideslavePutSExp "write-proof-state" (prf', length prf')
-         if done then do (tm, _) <- elabStep st get_term
-                         return (tm, prf')
-                 else do iPrintResult ""
-                         ploop fn d prompt prf' st h'
+         case res of
+           Left err -> do iPrintError (pshow i err)
+                          ploop fn d prompt prf' st h'
+           Right ok ->
+             if done then do (tm, _) <- elabStep st get_term
+                             return (tm, prf')
+                     else do iPrintResult ok
+                             ploop fn d prompt prf' st h'
   where envCtxt env ctxt = foldl (\c (n, b) -> addTyDecl n Bound (binderTy b) c) ctxt env
+        checkNameType n = do
+          ctxt <- getContext
+          ist <- getIState
+          imp <- impShow
+          idrisCatch (do
+              let h      = idris_outh ist
+                  OK env = envAtFocus (proof e)
+                  ctxt'  = envCtxt env ctxt
+                  bnd    = map (\x -> (fst x, False)) env
+                  ist'   = ist { tt_ctxt = ctxt' }
+              putIState ist'
+              -- Unlike the REPL, metavars have no special treatment, to
+              -- make it easier to see how to prove with them.
+              case lookupNames n ctxt' of
+                [] -> ihPrintError h $ "No such variable " ++ show n
+                ts -> ihPrintFunTypes h bnd n (map (\n -> (n, delabTy ist' n)) ts)
+              putIState ist
+              return (False, e, False, prf, Right ""))
+            (\err -> do putIState ist ; ierror err)
+
+        checkType t = do
+          ist <- getIState
+          ctxt <- getContext
+          idrisCatch (do
+              let OK env = envAtFocus (proof e)
+                  ctxt'  = envCtxt env ctxt
+              putIState ist { tt_ctxt = ctxt' }
+              (tm, ty) <- elabVal toplevel False t
+              let ppo = ppOptionIst ist
+                  ty'     = normaliseC ctxt [] ty
+                  h       = idris_outh ist
+                  infixes = idris_infixes ist
+              case tm of
+                 TType _ ->
+                   ihPrintTermWithType h (prettyImp ppo PType) type1Doc
+                 _ -> let bnd = map (\x -> (fst x, False)) env in
+                      ihPrintTermWithType h (pprintPTerm ppo bnd [] infixes (delab ist tm))
+                                            (pprintPTerm ppo bnd [] infixes (delab ist ty))
+              putIState ist
+              return (False, e, False, prf, Right ""))
+            (\err -> do putIState ist { tt_ctxt = ctxt } ; ierror err)
+
+        evalTerm t e = withErrorReflection $
+          do ctxt <- getContext
+             ist <- getIState
+             idrisCatch (do
+               let OK env = envAtFocus (proof e)
+                   ctxt'  = envCtxt env ctxt
+                   ist'   = ist { tt_ctxt = ctxt' }
+                   bnd    = map (\x -> (fst x, False)) env
+               putIState ist'
+               (tm, ty) <- elabVal toplevel False t
+               let tm'     = force (normaliseAll ctxt' env tm)
+                   ty'     = force (normaliseAll ctxt' env ty)
+                   ppo     = ppOption (idris_options ist')
+                   infixes = idris_infixes ist
+                   tmDoc   = pprintPTerm ppo bnd [] infixes (delab ist' tm')
+                   tyDoc   = pprintPTerm ppo bnd [] infixes (delab ist' ty')
+               ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
+               putIState ist
+               return (False, e, False, prf, Right ""))
+              (\err -> do putIState ist ; ierror err)
