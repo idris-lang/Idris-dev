@@ -177,7 +177,7 @@ receiveInput e =
             ideslavePutSExp "return" good
             receiveInput e
        Just (Interpret cmd) -> return (Just cmd)
-       Nothing -> return Nothing
+       _ -> return Nothing
 
 ploop :: Name -> Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
 ploop fn d prompt prf e h
