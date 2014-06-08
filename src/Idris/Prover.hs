@@ -63,9 +63,10 @@ prove opt ctxt lit n ty
          ideslavePutSExp "start-proof-mode" n
          (tm, prf) <- ploop n True ("-" ++ show n) [] (ES (ps, []) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm
-         iputStrLn $ showProof lit n prf
          i <- getIState
-         ideslavePutSExp "end-proof-mode" n
+         case idris_outputmode i of
+           IdeSlave _ -> ideslavePutSExp "end-proof-mode" (n, showProof lit n prf)
+           _          -> iputStrLn $ showProof lit n prf
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
          let tree = simpleCase False True False CompileTime (fileFC "proof") [] [] [([], P Ref n ty, tm)]
@@ -85,6 +86,11 @@ prove opt ctxt lit n ty
                                  [([], P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
+         case idris_outputmode i of
+           IdeSlave n ->
+             runIO . putStrLn $
+               convSExp "return" (SymbolAtom "ok", "") n
+           _ -> return ()
 
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
 elabStep st e = case runStateT eCheck st of
@@ -203,16 +209,14 @@ ploop fn d prompt prf e h
               Failure err -> do iPrintError (show err)
                                 return (False, e, False, prf)
               Success Undo -> do (_, st) <- elabStep e loadState
-                                 iPrintResult ""
                                  return (True, st, False, init prf)
-              Success ProofState -> do iPrintResult ""
-                                       return (True, e, False, prf)
+              Success ProofState -> return (True, e, False, prf)
               Success ProofTerm -> do tm <- lifte e get_term
-                                      iPrintResult $ "TT: " ++ show tm ++ "\n"
+                                      iputStrLn $ "TT: " ++ show tm ++ "\n"
                                       return (False, e, False, prf)
               Success Qed -> do hs <- lifte e get_holes
                                 when (not (null hs)) $ ifail "Incomplete proof"
-                                iPrintResult "Proof completed!"
+                                iputStrLn "Proof completed!"
                                 return (False, e, True, prf)
               Success (TCheck (PRef _ n)) ->
                 do ctxt <- getContext
@@ -277,12 +281,12 @@ ploop fn d prompt prf e h
               Success tac -> do (_, e) <- elabStep e saveState
                                 (_, st) <- elabStep e (runTac autoSolve i fn tac)
 --                               trace (show (problems (proof st))) $
-                                iPrintResult ""
                                 return (True, st, False, prf ++ [step]))
            (\err -> do iPrintError (pshow i err)
                        return (False, e, False, prf))
          ideslavePutSExp "write-proof-state" (prf', length prf')
          if done then do (tm, _) <- elabStep st get_term
                          return (tm, prf')
-                 else ploop fn d prompt prf' st h'
+                 else do iPrintResult ""
+                         ploop fn d prompt prf' st h'
   where envCtxt env ctxt = foldl (\c (n, b) -> addTyDecl n Bound (binderTy b) c) ctxt env
