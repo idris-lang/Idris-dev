@@ -1,4 +1,4 @@
-CC              :=cc
+CC              ?=cc
 CABAL           :=cabal
 CFLAGS          :=-O2 -Wall -DHAS_PTHREAD $(CFLAGS)
 #CABALFLAGS	:=

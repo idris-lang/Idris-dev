@@ -6,6 +6,10 @@ before_install:
   - sudo apt-get install -qq libghc-unordered-containers-dev libghc-mtl-dev libghc-network-dev libghc-xml-dev libghc-transformers-dev libghc-text-dev libghc-utf8-string-dev libghc-vector-dev libghc-split-dev libghc-ansi-terminal-dev libghc-ansi-wl-pprint-dev
   # trifecta dependencies
   - sudo apt-get install -qq libghc-blaze-builder-dev libghc-blaze-html-dev libghc-data-lens-dev libghc-bifunctors-dev libghc-hashable-dev libghc-semigroups-dev libghc-semigroupoids-dev libghc-parallel-dev libghc-comonad-dev libghc-terminfo-dev libghc-keys-dev
+  # Haddock dependencies
+  - sudo apt-get install hscolour
+  # test dependency
+  - sudo apt-get install -qq expect
 install:
   - cabal install -f FFI -f LLVM --only-dependencies --enable-tests
 before_script:
@@ -15,12 +19,11 @@ before_script:
   - cd idris*
 script:
   - cabal configure -f FFI -f LLVM
-  - cabal build
-  - cabal copy
+  - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
+  - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
   - make -j2 $TESTS
 env:
-  # TESTS=doc
-  - TESTS=test_c
-  - TESTS=test_java
-  - TESTS=test_llvm
-  - TESTS=test_js
+  - TESTS="doc"
+  - TESTS="test_c"
+  - TESTS="test_llvm"
+  - TESTS="test_js"

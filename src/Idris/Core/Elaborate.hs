@@ -64,7 +64,7 @@ loadState :: Elab' aux ()
 loadState = do (ES p s e) <- get
                case e of
                   Just st -> put st
-                  _ -> fail "Nothing to undo"
+                  _ -> lift $ Error . Msg $ "Nothing to undo"
 
 getNameFrom :: Name -> Elab' aux Name
 getNameFrom n = do (ES (p, a) s e) <- get
@@ -131,14 +131,17 @@ force_term :: Elab' aux ()
 force_term = do ES (ps, a) l p <- get
                 put (ES (ps { pterm = force (pterm ps) }, a) l p)
 
+-- | Modify the auxiliary state
 updateAux :: (aux -> aux) -> Elab' aux ()
 updateAux f = do ES (ps, a) l p <- get
                  put (ES (ps, f a) l p)
 
+-- | Get the auxiliary state
 getAux :: Elab' aux aux
 getAux = do ES (ps, a) _ _ <- get
             return $! a
 
+-- | Set whether to show the unifier log
 unifyLog :: Bool -> Elab' aux ()
 unifyLog log = do ES (ps, a) l p <- get
                   put (ES (ps { unifylog = log }, a) l p)
@@ -147,10 +150,27 @@ getUnifyLog :: Elab' aux Bool
 getUnifyLog = do ES (ps, a) l p <- get
                  return (unifylog ps)
 
+-- | Process a tactic within the current elaborator state
+processTactic' :: Tactic -> Elab' aux ()
 processTactic' t = do ES (p, a) logs prev <- get
                       (p', log) <- lift $ processTactic t p
                       put (ES (p', a) (logs ++ log) prev)
                       return $! ()
+
+updatePS :: (ProofState -> ProofState) -> Elab' aux ()
+updatePS f = do ES (ps, a) logs prev <- get
+                put $ ES (f ps, a) logs prev
+
+now_elaborating :: FC -> Name -> Name -> Elab' aux ()
+now_elaborating fc f a = updatePS (nowElaboratingPS fc f a)
+done_elaborating_app :: Name -> Elab' aux ()
+done_elaborating_app f = updatePS (doneElaboratingAppPS f)
+done_elaborating_arg :: Name -> Name -> Elab' aux ()
+done_elaborating_arg f a = updatePS (doneElaboratingArgPS f a)
+elaborating_app :: Elab' aux [(FC, Name, Name)]
+elaborating_app = do ES (ps, _) _ _ <- get
+                     return $ map (\ (FailContext x y z) -> (x, y, z))
+                                  (while_elaborating ps)
 
 -- Some handy gadgets for pulling out bits of state
 
@@ -307,6 +327,10 @@ start_unify n = processTactic' (StartUnify n)
 
 end_unify :: Elab' aux ()
 end_unify = processTactic' EndUnify
+
+-- Clear the list of variables not to unify, and try to solve them
+unify_all :: Elab' aux ()
+unify_all = processTactic' UnifyAll
 
 regret :: Elab' aux ()
 regret = processTactic' Regret
@@ -595,10 +619,10 @@ simple_app fun arg appstr =
        hs <- get_holes
        env <- get_env
        -- We don't need a and b in the hole queue any more since they were
-       -- just for checking f, so discard them if they are still there.
-       -- If they haven't been solved, regret will fail
-       when (a `elem` hs) $ do focus a; regretWith (CantInferType appstr)
-       when (b `elem` hs) $ do focus b; regretWith (CantInferType appstr)
+       -- just for checking f, so move them to the end. If they never end up
+       -- getting solved, we'll get an 'Incomplete term' error.
+       when (a `elem` hs) $ do movelast a
+       when (b `elem` hs) $ do movelast b
        end_unify
   where regretWith err = try regret
                              (lift $ tfail err)
@@ -622,12 +646,16 @@ no_errors tac err
                           Error _ -> lift $ Error e
                           OK (a, s') -> do put s'
                                            return a
+            unifyProblems
             ps' <- get_probs
             if (length ps' > length ps) then
                case reverse ps' of
-                    ((x,y,env,err,_) : _) ->
+                    ((x, y, env, inerr, while, _) : _) ->
                        let env' = map (\(x, b) -> (x, binderTy b)) env in
-                                  lift $ tfail $ CantUnify False x y err env' 0
+                                  lift $ tfail $ 
+                                         case err of
+                                              Nothing -> CantUnify False x y inerr env' 0
+                                              Just e -> e
                else return $! ()
 
 -- Try a tactic, if it fails, try another
@@ -653,11 +681,13 @@ try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
 try' t1 t2 proofSearch
           = do s <- get
                ps <- get_probs
+               ulog <- getUnifyLog
                case prunStateT 999999 False ps t1 s of
                     OK ((v, _, _), s') -> do put s'
                                              return $! v
-                    Error e1 -> if recoverableErr e1 then
-                                   do case runStateT t2 s of
+                    Error e1 -> traceWhen ulog ("try failed " ++ show e1) $
+                                 if recoverableErr e1 then
+                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return $! v
                                          Error e2 -> if score e1 >= score e2
                                                         then lift (tfail e1)
@@ -667,7 +697,10 @@ try' t1 t2 proofSearch
              = -- traceWhen r (show err) $
                r || proofSearch
         recoverableErr (CantSolveGoal _ _) = False
+        recoverableErr (ProofSearchFail (Msg _)) = True
         recoverableErr (ProofSearchFail _) = False
+        recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
+        recoverableErr (At _ e) = recoverableErr e
         recoverableErr _ = True
 
 tryWhen :: Bool -> Elab' aux a -> Elab' aux a -> Elab' aux a
@@ -676,7 +709,7 @@ tryWhen False a b = a
 
 
 -- Try a selection of tactics. Exactly one must work, all others must fail
-tryAll :: [(Elab' aux a, String)] -> Elab' aux a
+tryAll :: [(Elab' aux a, Name)] -> Elab' aux a
 tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
   where
     cantResolve :: Elab' aux a
@@ -685,7 +718,7 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
     tryAll' :: [Elab' aux a] -> -- successes
                Int -> -- most problems
                (Elab' aux a, Int) -> -- smallest failure
-               [(Elab' aux a, String)] -> -- still to try
+               [(Elab' aux a, Name)] -> -- still to try
                Elab' aux a
     tryAll' [res] pmax _   [] = res
     tryAll' (_:_) pmax _   [] = cantResolve
@@ -694,7 +727,7 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
        = do s <- get
             ps <- get_probs
             case prunStateT pmax True ps x s of
-                OK ((v, newps, probs), s') ->
+                OK ((v, newps, probs), s') -> 
                     do let cs' = if (newps < pmax)
                                     then [do put s'; return $! v]
                                     else (do put s'; return $! v) : cs
@@ -716,12 +749,12 @@ prunStateT pmax zok ps x s
                      newpmax = if newps < 0 then 0 else newps in
                  if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
-                            ((_,_,_,e,_):_) -> Error e
+                            ((_,_,_,e,_,_):_) -> Error e
                     else OK ((v, newpmax, problems p), s')
              Error e -> Error e
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, _, _, _) -> (x, y)) fs)
+qshow fs = show (map (\ (x, y, _, _, _, _) -> (x, y)) fs)
 
 dumpprobs [] = ""
 dumpprobs ((_,_,_,e):es) = show e ++ "\n" ++ dumpprobs es

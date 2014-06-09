@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Core.Unify(match_unify, unify, Fails, FailAt(..)) where
+module Idris.Core.Unify(match_unify, unify, Fails, FailContext(..), FailAt(..)) where
 
 import Idris.Core.TT
 import Idris.Core.Evaluate
@@ -21,8 +21,14 @@ import Debug.Trace
 data FailAt = Match | Unify
      deriving (Show, Eq)
 
+data FailContext = FailContext { fail_sourceloc :: FC,
+                                 fail_fn        :: Name,
+                                 fail_param     :: Name
+                               }
+  deriving (Eq, Show)
+
 type Injs = [(TT Name, TT Name, TT Name)]
-type Fails = [(TT Name, TT Name, Env, Err, FailAt)]
+type Fails = [(TT Name, TT Name, Env, Err, [FailContext], FailAt)]
 
 data UInfo = UI Int Fails
      deriving Show
@@ -31,17 +37,26 @@ data UResult a = UOK a
                | UPartOK a
                | UFail Err
 
+-- | Smart constructor for unification errors that takes into account the FailContext
+cantUnify :: [FailContext] -> Bool -> t -> t -> (Err' t) -> [(Name, t)] -> Int -> Err' t
+cantUnify [] r t1 t2 e ctxt i = CantUnify r t1 t2 e ctxt i
+cantUnify (FailContext fc f x : prev) r t1 t2 e ctxt i =
+  At fc (ElaboratingArg f x
+          (map (\(FailContext _ f' x') -> (f', x')) prev)
+          (CantUnify r t1 t2 e ctxt i))
+
 -- Solve metavariables by matching terms against each other
 -- Not really unification, of course!
 
-match_unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
+match_unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] -> [FailContext] ->
                TC [(Name, TT Name)]
-match_unify ctxt env topx topy inj holes =
-     case runStateT (un [] topx topy) (UI 0 []) of
+match_unify ctxt env topx topy inj holes from =
+     case runStateT (un [] (renameBindersTm env topx)
+                           (renameBindersTm env topy)) (UI 0 []) of
         OK (v, UI _ []) -> return (map (renameBinders env) (trimSolutions v))
         res ->
-               let topxn = normalise ctxt env topx
-                   topyn = normalise ctxt env topy in
+               let topxn = renameBindersTm env (normalise ctxt env topx)
+                   topyn = renameBindersTm env (normalise ctxt env topy) in
                      case runStateT (un [] topxn topyn)
         	  	        (UI 0 []) of
                        OK (v, UI _ fails) ->
@@ -54,7 +69,20 @@ match_unify ctxt env topx topy inj holes =
                               return (map (renameBinders env) (trimSolutions v))
                            _ -> tfail e
   where
-
+    -- This rule is highly dubious... it certainly produces a valid answer
+    -- but it scares me. However, matching is never guaranteed to give a unique
+    -- answer, merely a valid one, so perhaps we're okay.
+    -- In other words: it may vanish without warning some day :)
+    un names x tm@(App (P _ f (Bind fn (Pi t) sc)) a)
+        | (P (DCon _ _) _ _, _) <- unApply x,
+          holeIn env f || f `elem` holes
+           = let n' = uniqueName (sMN 0 "mv") (map fst env) in
+                 checkCycle names (f, Bind n' (Lam t) x) 
+    un names tm@(App (P _ f (Bind fn (Pi t) sc)) a) x
+        | (P (DCon _ _) _ _, _) <- unApply x,
+          holeIn env f || f `elem` holes
+           = let n' = uniqueName fn (map fst env) in
+                 checkCycle names (f, Bind n' (Lam t) x) 
 
     un names (P _ x _) tm
         | holeIn env x || x `elem` holes
@@ -70,7 +98,7 @@ match_unify ctxt env topx topy inj holes =
         | length bnames > i,
           fst (fst (bnames!!i)) == x || 
           snd (fst (bnames!!i)) == x = do sc 1; return []
-    un bnames (Bind x bx sx) (Bind y by sy)
+    un bnames (Bind x bx sx) (Bind y by sy) | notHole bx && notHole by
         = do h1 <- uB bnames bx by
              h2 <- un (((x, y), binderTy bx) : bnames) sx sy
              combine bnames h1 h2
@@ -81,11 +109,12 @@ match_unify ctxt env topx topy inj holes =
     un names x y
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
         | otherwise = do UI s f <- get
-                         let r = recoverable x y
-                         let err = CantUnify r
+                         let r = recoverable (normalise ctxt env x) 
+                                             (normalise ctxt env y)
+                         let err = cantUnify from r
                                      topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
-                           else do put (UI s ((x, y, env, err, Match) : f))
+                           else do put (UI s ((x, y, env, err, from, Match) : f))
                                    lift $ tfail err
 
 
@@ -95,12 +124,16 @@ match_unify ctxt env topx topy inj holes =
     uB bnames (Lam tx) (Lam ty) = un bnames tx ty
     uB bnames (Pi tx) (Pi ty) = un bnames tx ty
     uB bnames x y = do UI s f <- get
-                       let r = recoverable (binderTy x) (binderTy y)
-                       let err = CantUnify r topx topy
-                                  (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
-                                  (errEnv env) s
-                       put (UI s ((binderTy x, binderTy y, env, err, Match) : f))
+                       let r = recoverable (normalise ctxt env (binderTy x)) 
+                                           (normalise ctxt env (binderTy y))
+                       let err = cantUnify from r topx topy
+                                   (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
+                                   (errEnv env) s
+                       put (UI s ((binderTy x, binderTy y, env, err, from, Match) : f))
                        return []
+
+    notHole (Hole _) = False
+    notHole _ = True
 
     -- TODO: there's an annoying amount of repetition between this and the
     -- main unification function. Consider lifting it out.
@@ -109,10 +142,11 @@ match_unify ctxt env topx topy inj holes =
               put (UI (s+i) f)
 
     unifyFail x y = do UI s f <- get
-                       let r = recoverable x y
-                       let err = CantUnify r
+                       let r = recoverable (normalise ctxt env x) 
+                                           (normalise ctxt env y)
+                       let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
-                       put (UI s ((x, y, env, err, Match) : f))
+                       put (UI s ((x, y, env, err, from, Match) : f))
                        lift $ tfail err
     combine bnames as [] = return as
     combine bnames as ((n, t) : bs)
@@ -147,22 +181,29 @@ match_unify ctxt env topx topy inj holes =
                         App (Bind y (Lam ty) (bind (i-1) ns tm))
                             (P Bound x ty)
     
-renameBinders :: Env -> (Name, TT Name) -> (Name, TT Name)
-renameBinders env (x, tm) = (x, uniqueBinders tm)
+renameBinders env (x, t) = (x, renameBindersTm env t)
+
+renameBindersTm :: Env -> TT Name -> TT Name
+renameBindersTm env tm = uniqueBinders (map fst env) tm
   where
-    uniqueBinders (Bind n b sc)
-        | n `elem` map fst env 
-             = let n' = uniqueName n (map fst env) in
-                   Bind n' (fmap uniqueBinders b)
-                           (uniqueBinders (rename n n' sc))
-        | otherwise = Bind n (fmap uniqueBinders b) (uniqueBinders sc)
-    uniqueBinders (App f a) = App (uniqueBinders f) (uniqueBinders a)
-    uniqueBinders t = t
+    uniqueBinders env (Bind n b sc)
+        | n `elem` env 
+             = let n' = uniqueName n env in
+                   explicitHole $ Bind n' (fmap (uniqueBinders env) b)
+                           (uniqueBinders (n':env) (rename n n' sc))
+        | otherwise = Bind n (fmap (uniqueBinders (n:env)) b) 
+                             (uniqueBinders (n:env) sc)
+    uniqueBinders env (App f a) = App (uniqueBinders env f) (uniqueBinders env a)
+    uniqueBinders env t = t
 
     rename n n' (P nt x ty) | n == x = P nt n' ty
     rename n n' (Bind x b sc) = Bind x (fmap (rename n n') b) (rename n n' sc)
     rename n n' (App f a) = App (rename n n' f) (rename n n' a)
     rename n n' t = t
+
+    explicitHole (Bind n (Hole ty) sc) 
+       = Bind n (Hole ty) (instantiate (P Bound n ty) sc)
+    explicitHole t = t
 
 trimSolutions ns = dropPairs ns
   where dropPairs [] = []
@@ -183,18 +224,24 @@ expandLets env (x, tm) = (x, doSubst (reverse env) tm)
     doSubst (_ : env) tm
         = doSubst env tm
 
+hasv (V x) = True
+hasv (App f a) = hasv f || hasv a
+hasv (Bind x b sc) = hasv (binderTy b) || hasv sc
+hasv _ = False
 
-unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] ->
+unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] -> [FailContext] ->
          TC ([(Name, TT Name)], Fails)
-unify ctxt env topx topy inj holes =
---      trace ("Unifying " ++ show (topx, topy)) $
+unify ctxt env topx topy inj holes from =
+--      traceWhen (hasv topx || hasv topy) 
+--           ("Unifying " ++ show topx ++ "\nAND\n" ++ show topy ++ "\n") $
              -- don't bother if topx and topy are different at the head
-      case runStateT (un False [] topx topy) (UI 0 []) of
+      case runStateT (un False [] (renameBindersTm env topx) 
+                                  (renameBindersTm env topy)) (UI 0 []) of
         OK (v, UI _ []) -> return (map (renameBinders env) (trimSolutions v),
                                    [])
         res ->
-               let topxn = normalise ctxt env topx
-                   topyn = normalise ctxt env topy in
+               let topxn = renameBindersTm env (normalise ctxt env topx)
+                   topyn = renameBindersTm env (normalise ctxt env topy) in
 --                     trace ("Unifying " ++ show (topx, topy) ++ "\n\n==>\n" ++ show (topxn, topyn) ++ "\n\n" ++ show res ++ "\n\n") $
                      case runStateT (un False [] topxn topyn)
         	  	        (UI 0 []) of
@@ -273,7 +320,7 @@ unify ctxt env topx topy inj holes =
         | injective ty && not (holeIn env x || x `elem` holes)
              = unifyTmpFail tx ty
     un' fn bnames xtm@(P _ x _) tm
-        | holeIn env x || x `elem` holes
+        | pureTerm tm, holeIn env x || x `elem` holes
                        = do UI s f <- get
                             -- injectivity check
                             x <- checkCycle bnames (x, tm)
@@ -283,11 +330,11 @@ unify ctxt env topx topy inj holes =
                                  then unifyTmpFail xtm tm
                                  else do sc 1
                                          return x
-        | not (injective xtm) && injective tm 
+        | pureTerm tm, not (injective xtm) && injective tm 
                        = do checkCycle bnames (x, tm)
                             unifyTmpFail xtm tm
     un' fn bnames tm ytm@(P _ y _)
-        | holeIn env y || y `elem` holes
+        | pureTerm tm, holeIn env y || y `elem` holes
                        = do UI s f <- get
                             -- injectivity check
                             x <- checkCycle bnames (y, tm)
@@ -297,7 +344,7 @@ unify ctxt env topx topy inj holes =
                                  then unifyTmpFail tm ytm
                                  else do sc 1
                                          return x
-        | not (injective ytm) && injective tm 
+        | pureTerm tm, not (injective ytm) && injective tm 
                        = do checkCycle bnames (y, tm)
                             unifyTmpFail tm ytm
     un' fn bnames (V i) (P _ x _)
@@ -358,17 +405,18 @@ unify ctxt env topx topy inj holes =
     un' fn bnames x y
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
         | otherwise = do UI s f <- get
-                         let r = recoverable x y
-                         let err = CantUnify r
+                         let r = recoverable (normalise ctxt env x) 
+                                             (normalise ctxt env y)
+                         let err = cantUnify from r
                                      topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
-                           else do put (UI s ((x, y, env, err, Unify) : f))
+                           else do put (UI s ((x, y, env, err, from, Unify) : f))
                                    return [] -- lift $ tfail err
 
     unApp fn bnames appx@(App fx ax) appy@(App fy ay)
          | (injectiveApp fx && injectiveApp fy)
-        || (injectiveApp fx && rigid appx && metavarApp appy)
-        || (injectiveApp fy && rigid appy && metavarApp appx)
+        || (injectiveApp fx && rigid appx && metavarApp appy && numArgs appx == numArgs appy)
+        || (injectiveApp fy && rigid appy && metavarApp appx && numArgs appx == numArgs appy)
         || (injectiveApp fx && metavarApp fy && ax == ay)
         || (injectiveApp fy && metavarApp fx && ax == ay)
          = do let (headx, _) = unApply fx
@@ -413,6 +461,8 @@ unify ctxt env topx topy inj holes =
                      vs <- combine bnames as as'
                      unArgs vs xs ys
 
+            numArgs tm = let (f, args) = unApply tm in length args
+
             metavarApp tm = let (f, args) = unApply tm in
                                 (metavar f &&
                                  all (\x -> metavarApp x) args
@@ -456,18 +506,18 @@ unify ctxt env topx topy inj holes =
     unifyTmpFail :: Term -> Term -> StateT UInfo TC [(Name, TT Name)]
     unifyTmpFail x y
                   = do UI s f <- get
-                       let r = recoverable x y
-                       let err = CantUnify r
+                       let r = recoverable (normalise ctxt env x) (normalise ctxt env y)
+                       let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
-                       put (UI s ((topx, topy, env, err, Unify) : f))
+                       put (UI s ((topx, topy, env, err, from, Unify) : f))
                        return []
 
     -- shortcut failure, if we *know* nothing can fix it
     unifyFail x y = do UI s f <- get
-                       let r = recoverable x y
-                       let err = CantUnify r
+                       let r = recoverable (normalise ctxt env x) (normalise ctxt env y)
+                       let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
-                       put (UI s ((topx, topy, env, err, Unify) : f))
+                       put (UI s ((topx, topy, env, err, from, Unify) : f))
                        lift $ tfail err
 
 
@@ -486,11 +536,12 @@ unify ctxt env topx topy inj holes =
     uB bnames (Hole tx) (Hole ty) = un' False bnames tx ty
     uB bnames (PVar tx) (PVar ty) = un' False bnames tx ty
     uB bnames x y = do UI s f <- get
-                       let r = recoverable (binderTy x) (binderTy y)
-                       let err = CantUnify r topx topy
-                                  (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
-                                  (errEnv env) s
-                       put (UI s ((binderTy x, binderTy y, env, err, Unify) : f))
+                       let r = recoverable (normalise ctxt env (binderTy x)) 
+                                           (normalise ctxt env (binderTy y))
+                       let err = cantUnify from r topx topy
+                                   (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
+                                   (errEnv env) s
+                       put (UI s ((binderTy x, binderTy y, env, err, from, Unify) : f))
                        return [] -- lift $ tfail err
 
     checkCycle ns p@(x, P _ _ _) = return [p]
@@ -498,7 +549,7 @@ unify ctxt env topx topy inj holes =
         | not (x `elem` freeNames tm) = checkScope ns (x, tm)
         | otherwise = lift $ tfail (InfiniteUnify x tm (errEnv env))
 
-    checkScope ns (x, tm) =
+    checkScope ns (x, tm) | pureTerm tm =
 --           case boundVs (envPos x 0 env) tm of
 --                [] -> return [(x, tm)]
 --                (i:_) -> lift $ tfail (UnifyScope x (fst (fst (ns!!i)))
@@ -509,6 +560,7 @@ unify ctxt env topx topy inj holes =
                else return [(x, bind v ns tm)]
       where inst [] tm = tm
             inst (((n, _), _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
+    checkScope ns (x, tm) = lift $ tfail (Msg "HOLE ERROR") 
 
     bind i ns tm 
       | i < 0 = tm
@@ -556,17 +608,14 @@ envPos x i ((y, _) : ys) | x == y = i
 -- more work may help.
 -- FIXME: Depending on how overloading gets used, this may cause problems. Better
 -- rethink overloading properly...
+-- ASSUMPTION: inputs are in normal form
 
 recoverable t@(App _ _) _
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
 recoverable _ t@(App _ _)
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
-recoverable (P (DCon _ _) x _) (P (DCon _ _) y _)
-    | x == y = True
-    | otherwise = False
-recoverable (P (TCon _ _) x _) (P (TCon _ _) y _)
-    | x == y = True
-    | otherwise = False
+recoverable (P (DCon _ _) x _) (P (DCon _ _) y _) = x == y
+recoverable (P (TCon _ _) x _) (P (TCon _ _) y _) = x == y
 recoverable (Constant _) (P (DCon _ _) y _) = False
 recoverable (P (DCon _ _) x _) (Constant _) = False
 recoverable (Constant _) (P (TCon _ _) y _) = False
@@ -576,7 +625,7 @@ recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
 recoverable p@(Constant _) (App f a) = recoverable p f
 recoverable (App f a) p@(Constant _) = recoverable f p
 recoverable p@(P _ n _) (App f a) = recoverable p f
---     recoverable (App f a) p@(P _ _ _) = recoverable f p
+recoverable (App f a) p@(P _ _ _) = recoverable f p
 recoverable (App f a) (App f' a')
     = recoverable f f' -- && recoverable a a'
 recoverable f (Bind _ (Pi _) sc)
@@ -585,7 +634,9 @@ recoverable f (Bind _ (Pi _) sc)
 recoverable (Bind _ (Pi _) sc) f
     | (P (DCon _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
-recoverable _ _ = True
+recoverable (Bind _ (Lam _) sc) f = recoverable sc f
+recoverable f (Bind _ (Lam _) sc) = recoverable f sc
+recoverable x y = True
 
 errEnv = map (\(x, b) -> (x, binderTy b))
 

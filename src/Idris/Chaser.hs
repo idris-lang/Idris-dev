@@ -82,7 +82,7 @@ buildTree built fp = btree [] fp
        iLOG $ "CHASING " ++ show file
        ibcsd <- valIBCSubDir i
        ids <- allImportDirs
-       fp <- runIO $ findImport ids ibcsd file
+       fp <- findImport ids ibcsd file
        iLOG $ "Found " ++ show fp
        mt <- runIO $ getIModTime fp
        if (file `elem` built)

@@ -38,9 +38,18 @@ VM* init_vm(int stack_size, size_t heap_size,
     vm->inbox_ptr = vm->inbox;
     vm->inbox_write = vm->inbox;
 
+    // The allocation lock must be reentrant. The lock exists to ensure that
+    // no memory is allocated during the message sending process, but we also
+    // check the lock in calls to allocate.
+    // The problem comes when we use requireAlloc to guarantee a chunk of memory
+    // first: this sets the lock, and since it is not reentrant, we get a deadlock.
+    pthread_mutexattr_t rec_attr;
+    pthread_mutexattr_init(&rec_attr);
+    pthread_mutexattr_settype(&rec_attr, PTHREAD_MUTEX_RECURSIVE);
+
     pthread_mutex_init(&(vm->inbox_lock), NULL);
     pthread_mutex_init(&(vm->inbox_block), NULL);
-    pthread_mutex_init(&(vm->alloc_lock), NULL);
+    pthread_mutex_init(&(vm->alloc_lock), &rec_attr);
     pthread_cond_init(&(vm->inbox_waiting), NULL);
 
     vm->max_threads = max_threads;
@@ -75,7 +84,7 @@ void idris_requireAlloc(VM* vm, size_t size) {
     }
 #ifdef HAS_PTHREAD
     int lock = vm->processes > 0;
-    if (lock) { // not message passing
+    if (lock) { // We only need to lock if we're in concurrent mode
        pthread_mutex_lock(&vm->alloc_lock); 
     }
 #endif
@@ -84,7 +93,7 @@ void idris_requireAlloc(VM* vm, size_t size) {
 void idris_doneAlloc(VM* vm) {
 #ifdef HAS_PTHREAD
     int lock = vm->processes > 0;
-    if (lock) { // not message passing
+    if (lock) { // We only need to lock if we're in concurrent mode
        pthread_mutex_unlock(&vm->alloc_lock); 
     }
 #endif
@@ -506,6 +515,19 @@ VAL idris_strRev(VM* vm, VAL str) {
         cl -> info.str[y++] = xstr[--x];
     }
     return cl;
+}
+
+VAL idris_systemInfo(VM* vm, VAL index) {
+    int i = GETINT(index);
+    switch(i) {
+        case 0: // backend
+            return MKSTR(vm, "c");
+        case 1:
+            return MKSTR(vm, IDRIS_TARGET_OS);
+        case 2:
+            return MKSTR(vm, IDRIS_TARGET_TRIPLE);
+    }
+    return MKSTR(vm, "");
 }
 
 VAL MKBUFFERc(VM* vm, Buffer* buf) {

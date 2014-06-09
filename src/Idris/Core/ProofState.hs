@@ -5,8 +5,8 @@
    evaluation/checking inside the proof system, etc. --}
 
 module Idris.Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
-                  Tactic(..), Goal(..), processTactic,
-                  dropGiven, keepGiven) where
+                  Tactic(..), Goal(..), processTactic, nowElaboratingPS, doneElaboratingAppPS,
+                  doneElaboratingArgPS, dropGiven, keepGiven) where
 
 import Idris.Core.Typecheck
 import Idris.Core.Evaluate
@@ -15,6 +15,7 @@ import Idris.Core.Unify
 
 import Control.Monad.State.Strict
 import Control.Applicative hiding (empty)
+import Control.Arrow ((***))
 import Data.List
 import Debug.Trace
 
@@ -38,7 +39,8 @@ data ProofState = PS { thname   :: Name,
                        context  :: Context,
                        plog     :: String,
                        unifylog :: Bool,
-                       done     :: Bool
+                       done     :: Bool,
+                       while_elaborating :: [FailContext]
                      }
 
 data Goal = GD { premises :: Env,
@@ -57,6 +59,7 @@ data Tactic = Attack
             | Solve
             | StartUnify Name
             | EndUnify
+            | UnifyAll
             | Compute
             | ComputeLet Name
             | Simplify
@@ -89,9 +92,9 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+    show (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
           = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _ _)
+    show (PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _ _ _)
           = let OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
@@ -114,9 +117,9 @@ instance Show ProofState where
                showG ps b = showEnv ps (binderTy b)
 
 instance Pretty ProofState OutputAnnotation where
-  pretty (PS nm [] _ _ trm _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
+  pretty (PS nm [] _ _ trm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
     pretty nm <+> colon <+> text " no more goals."
-  pretty p@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _ _) =
+  pretty p@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ ctxt _ _ _ _) =
     let OK g  = goal (Just h) tm in
     let wkEnv = premises g in
       text "Other goals" <+> colon <+> pretty hs <+>
@@ -147,12 +150,13 @@ hole _           = False
 holeName i = sMN i "hole"
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, _, _, t) -> (t, x, y)) fs)
+qshow fs = show (map (\ (x, y, _, _, _, t) -> (t, x, y)) fs)
 
 match_unify' :: Context -> Env -> TT Name -> TT Name ->
                 StateT TState TC [(Name, TT Name)]
 match_unify' ctxt env topx topy =
    do ps <- get
+      let while = while_elaborating ps
       let dont = dontunify ps
       let inj = injective ps
       traceWhen (unifylog ps)
@@ -162,11 +166,11 @@ match_unify' ctxt env topx topy =
                   ++ "\n" 
                   ++ "\n" ++ show (pterm ps) ++ "\n\n"
                  ) $
-       case match_unify ctxt env topx topy inj (holes ps) of
+       case match_unify ctxt env topx topy inj (holes ps) while of
             OK u -> do let (h, ns) = unified ps
                        put (ps { unified = (h, u ++ ns) })
                        return u
-            Error e -> do put (ps { problems = (topx, topy, env, e, Match) :
+            Error e -> do put (ps { problems = (topx, topy, env, e, while, Match) :
                                                   problems ps })
                           return []
 --       traceWhen (unifylog ps)
@@ -176,41 +180,61 @@ match_unify' ctxt env topx topy =
 -- --              ++ show (pterm ps)
 --              ++ "\n----------") $
 
+mergeSolutions :: Env -> [(Name, TT Name)] -> StateT TState TC [(Name, TT Name)]
+mergeSolutions env ns = merge [] ns
+  where
+    merge acc [] = return (reverse acc)
+    merge acc ((n, t) : ns)
+          | Just t' <- lookup n ns
+              = do ps <- get
+                   let probs = problems ps
+                   put (ps { problems = probs ++ [(t,t',env,Msg "New problem",
+                                                     [], Unify)] })
+                   merge acc ns
+          | otherwise = merge ((n, t): acc) ns
+
 unify' :: Context -> Env -> TT Name -> TT Name ->
           StateT TState TC [(Name, TT Name)]
 unify' ctxt env topx topy =
    do ps <- get
+      let while = while_elaborating ps
       let dont = dontunify ps
       let inj = injective ps
       (u, fails) <- traceWhen (unifylog ps)
                         ("Trying " ++ show (topx, topy) ++
                          "\nNormalised " ++ show (normalise ctxt env topx,
-                                                  normalise ctxt env topy) ++ 
+                                                  normalise ctxt env topy) ++
                          " in " ++ show env ++
                          "\nHoles: " ++ show (holes ps)
-                         ++ "\nInjective: " ++ show (injective ps) 
+                         ++ "\nInjective: " ++ show (injective ps)
                          ++ "\n") $
-                     lift $ unify ctxt env topx topy inj (holes ps)
+                     lift $ unify ctxt env topx topy inj (holes ps) while
       let notu = filter (\ (n, t) -> case t of
                                         P _ _ _ -> False
                                         _ -> n `elem` dont) u
       traceWhen (unifylog ps)
             ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
              "\nSolved: " ++ show u ++ "\nNew problems: " ++ qshow fails
-             ++ "\nNot unified:\n" ++ show (notunified ps) 
+             ++ "\nNot unified:\n" ++ show (notunified ps)
              ++ "\nCurrent problems:\n" ++ qshow (problems ps)
 --              ++ show (pterm ps)
              ++ "\n----------") $
-        do ps <- get
-           let (h, ns) = unified ps
-           let (ns', probs') = updateProblems (context ps) (u ++ ns)
+        do let (h, ns) = unified ps
+           -- if a metavar has multiple solutions, make a new unification
+           -- problem for each.
+           uns <- mergeSolutions env (u ++ ns)
+           ps <- get
+           let (ns', probs') = updateProblems (context ps) uns
                                               (fails ++ problems ps)
                                               (injective ps)
                                               (holes ps)
-           put (ps { problems = probs',
-                     unified = (h, ns'),
-                     injective = updateInj u (injective ps),
-                     notunified = notu ++ notunified ps })
+           let (notu', probs_notu) = mergeNotunified env (notu ++ notunified ps)
+           traceWhen (unifylog ps)
+            ("Now solved: " ++ show ns') $
+             put (ps { problems = probs' ++ probs_notu,
+                       unified = (h, ns'),
+                       injective = updateInj u (injective ps),
+                       notunified = notu' })
            return u
   where updateInj ((n, a) : us) inj
               | (P _ n' _, _) <- unApply a,
@@ -219,6 +243,24 @@ unify' ctxt env topx topy =
                 n' `elem` inj = updateInj us (n:inj)
         updateInj (_ : us) inj = updateInj us inj
         updateInj [] inj = inj
+
+nowElaboratingPS :: FC -> Name -> Name -> ProofState -> ProofState
+nowElaboratingPS fc f arg ps = ps { while_elaborating = FailContext fc f arg : while_elaborating ps }
+
+dropUntil :: (a -> Bool) -> [a] -> [a]
+dropUntil p [] = []
+dropUntil p (x:xs) | p x       = xs
+                   | otherwise = dropUntil p xs
+
+doneElaboratingAppPS :: Name -> ProofState -> ProofState
+doneElaboratingAppPS f ps = let while = while_elaborating ps
+                                while' = dropUntil (\ (FailContext _ f' _) -> f == f') while
+                            in ps { while_elaborating = while' }
+
+doneElaboratingArgPS :: Name -> Name -> ProofState -> ProofState
+doneElaboratingArgPS f x ps = let while = while_elaborating ps
+                                  while' = dropUntil (\ (FailContext _ f' x') -> f == f' && x == x') while
+                              in ps { while_elaborating = while' }
 
 getName :: Monad m => String -> StateT TState m Name
 getName tag = do ps <- get
@@ -230,6 +272,10 @@ action :: Monad m => (ProofState -> ProofState) -> StateT TState m ()
 action a = do ps <- get
               put (a ps)
 
+query :: Monad m => (ProofState -> r) -> StateT TState m r
+query q = do ps <- get
+             return $ q ps
+
 addLog :: Monad m => String -> StateT TState m ()
 addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 
@@ -240,7 +286,7 @@ newProof n ctxt ty = let h = holeName 0
                             (P Bound h ty')) ty [] (h, []) []
                             Nothing [] []
                             [] []
-                            Nothing ctxt "" False False
+                            Nothing ctxt "" False False []
 
 type TState = ProofState -- [TacticAction])
 type RunTactic = Context -> Env -> Term -> StateT TState TC Term
@@ -491,7 +537,8 @@ solve ctxt env (Bind x (Guess ty val) sc)
    = do ps <- get
         let (uh, uns) = unified ps
         case lookup x (notunified ps) of
-            Just tm -> match_unify' ctxt env tm val
+            Just tm -> -- trace ("NEED MATCH: " ++ show (tm, val)) $
+                         match_unify' ctxt env tm val
             _ -> return []
         action (\ps -> ps { holes = holes ps \\ [x],
                             solved = Just (x, val),
@@ -637,10 +684,11 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              let scr      = last $ tail args'
              let indxnames = makeIndexNames indicies
              prop <- replaceIndicies indxnames indicies $ Bind nm (Lam tmt') t
-             let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0)))
-                                                        (params ++ [prop] ++ map makeConsArg consargs ++ indicies ++ [tmv])))
+             consargs' <- query (\ps -> map (flip (uniqueNameCtxt (context ps)) (holes ps ++ allTTNames (pterm ps)) *** uniqueBindersCtxt (context ps) (holes ps ++ allTTNames (pterm ps))) consargs)
+             let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs' (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0)))
+                                                        (params ++ [prop] ++ map makeConsArg consargs' ++ indicies ++ [tmv])))
              action (\ps -> ps {holes = holes ps \\ [x]})
-             mapM_ addConsHole (reverse consargs)
+             mapM_ addConsHole (reverse consargs')
              let res' = forget $ res
              (scv, sct) <- lift $ check ctxt env res'
              let scv' = specialise ctxt env [] scv
@@ -753,13 +801,15 @@ keepGiven du (u@(n, _) : us) hs
    | n `elem` du = u : keepGiven du us hs
 keepGiven du (u : us) hs = keepGiven du us hs
 
+updateSolved :: [(Name, Term)] -> Term -> Term 
 updateSolved xs x = updateSolved' xs x
 updateSolved' [] x = x
 updateSolved' xs (Bind n (Hole ty) t)
     | Just v <- lookup n xs 
         = case xs of
-               [_] -> psubst n v t
-               _ -> psubst n v (updateSolved' xs t)
+               [_] -> substV v $ psubst n v t -- some may be Vs! Can't assume
+                                              -- explicit names
+               _ -> substV v $ psubst n v (updateSolved' xs t)
 updateSolved' xs (Bind n b t)
     | otherwise = Bind n (fmap (updateSolved' xs) b) (updateSolved' xs t)
 updateSolved' xs (App f a) 
@@ -773,6 +823,10 @@ updateEnv ns [] = []
 updateEnv ns ((n, b) : env) = (n, fmap (updateSolved ns) b) : updateEnv ns env
 
 updateError [] err = err
+updateError ns (At f e) = At f (updateError ns e)
+updateError ns (Elaborating s n e) = Elaborating s n (updateError ns e)
+updateError ns (ElaboratingArg f a env e) 
+ = ElaboratingArg f a env (updateError ns e)
 updateError ns (CantUnify b l r e xs sc)
  = CantUnify b (updateSolved ns l) (updateSolved ns r) (updateError ns e) xs sc
 updateError ns e = e
@@ -782,42 +836,53 @@ solveInProblems x val ((l, r, env, err) : ps)
    = ((psubst x val l, psubst x val r, 
        updateEnv [(x, val)] env, err) : solveInProblems x val ps)
 
+mergeNotunified :: Env -> [(Name, Term)] -> ([(Name, Term)], Fails)
+mergeNotunified env ns = mnu ns [] [] where
+  mnu [] ns_acc ps_acc = (reverse ns_acc, reverse ps_acc)
+  mnu ((n, t):ns) ns_acc ps_acc
+      | Just t' <- lookup n ns, t /= t'
+             = mnu ns ((n,t') : ns_acc)
+                      ((t,t',env,Msg "", [],Unify) : ps_acc)
+      | otherwise = mnu ns ((n,t) : ns_acc) ps_acc
+
 updateNotunified [] nu = nu
 updateNotunified ns nu = up nu where
   up [] = []
   up ((n, t) : nus) = let t' = updateSolved ns t in
                           ((n, t') : up nus)
 
+updateProblems :: Context -> [(Name, TT Name)] -> Fails -> [Name] -> [Name]
+               -> ([(Name, TT Name)], Fails)
 updateProblems ctxt [] ps inj holes = ([], ps)
 updateProblems ctxt ns ps inj holes = up ns ps where
   up ns [] = (ns, [])
-  up ns ((x, y, env, err, um) : ps) =
+  up ns ((x, y, env, err, while, um) : ps) =
     let x' = updateSolved ns x
         y' = updateSolved ns y
         err' = updateError ns err
         env' = updateEnv ns env in
---         trace ("Updating " ++ show (x',y')) $ 
-          case unify ctxt env' x' y' inj holes of
+--          trace ("Updating " ++ show (x',y')) $ 
+          case unify ctxt env' x' y' inj holes while of
             OK (v, []) -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
             e -> -- trace ("Failed " ++ show e) $
                   let (ns', ps') = up ns ps in
-                     (ns', (x',y',env',err', um) : ps')
+                     (ns', (x',y',env',err', while, um) : ps')
 
 -- attempt to solve remaining problems with match_unify
 matchProblems all ns ctxt ps inj holes = up ns ps where
   up ns [] = (ns, [])
-  up ns ((x, y, env, err, um) : ps) 
+  up ns ((x, y, env, err, while, um) : ps)
        | all || um == Match =
     let x' = updateSolved ns x
         y' = updateSolved ns y
         err' = updateError ns err
         env' = updateEnv ns env in
-        case match_unify ctxt env' x' y' inj holes of
+        case match_unify ctxt env' x' y' inj holes while of
             OK v -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
             _ -> let (ns', ps') = up ns ps in
-                     (ns', (x',y',env',err',um) : ps')
+                     (ns', (x', y', env', err', while, um) : ps')
   up ns (p : ps) = let (ns', ps') = up ns ps in
                        (ns', p : ps')
 
@@ -830,7 +895,7 @@ processTactic QED ps = case holes ps of
                            _  -> fail "Still holes to fill."
 processTactic ProofState ps = return (ps, showEnv [] (pterm ps))
 processTactic Undo ps = case previous ps of
-                            Nothing -> fail "Nothing to undo."
+                            Nothing -> Error . Msg $ "Nothing to undo."
                             Just pold -> return (pold, "")
 processTactic EndUnify ps
     = let (h, ns_in) = unified ps
@@ -844,6 +909,11 @@ processTactic EndUnify ps
                        problems = probs',
                        notunified = updateNotunified ns'' (notunified ps),
                        holes = holes ps \\ map fst ns'' }, "")
+processTactic UnifyAll ps
+    = let tm' = updateSolved (notunified ps) (pterm ps) in
+          return (ps { pterm = tm',
+                       notunified = [],
+                       holes = holes ps \\ map fst (notunified ps) }, "")
 processTactic (Reorder n) ps
     = do ps' <- execStateT (tactic (Just n) reorder_claims) ps
          return (ps' { previous = Just ps, plog = "" }, plog ps')

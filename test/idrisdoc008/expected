@@ -1,0 +1,4 @@
+Type checking ./Abstract.idr
+Type checking ./Visible.idr
+Abstract members are documented
+Public members are documented

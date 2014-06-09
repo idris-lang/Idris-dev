@@ -12,6 +12,7 @@ import Prelude.Maybe
 -- Utility lemmas
 --------------------------------------------------------------------------------
 
+||| The negation of equality is symmetric (follows from symmetry of equality)
 total negEqSym : {a : t} -> {b : t} -> (a = b -> _|_) -> (b = a -> _|_)
 negEqSym p h = p (sym h)
 
@@ -20,7 +21,9 @@ negEqSym p h = p (sym h)
 -- Decidable equality
 --------------------------------------------------------------------------------
 
+||| Decision procedures for propositional equality
 class DecEq t where
+  ||| Decide whether two elements of `t` are propositionally equal
   total decEq : (x1 : t) -> (x2 : t) -> Dec (x1 = x2)
 
 --------------------------------------------------------------------------------
@@ -33,7 +36,6 @@ instance DecEq () where
 --------------------------------------------------------------------------------
 -- Booleans
 --------------------------------------------------------------------------------
-
 total trueNotFalse : True = False -> _|_
 trueNotFalse refl impossible
 
@@ -122,13 +124,13 @@ lemma_fst_neq_snd_eq : {x : a, x' : b, y : c, y' : d} ->
 lemma_fst_neq_snd_eq p_x_not_x' refl refl = p_x_not_x' refl
 
 instance (DecEq a, DecEq b) => DecEq (a, b) where
-  decEq (a, b) (a', b') with (decEq a a')
-    decEq (a, b) (a, b') | (Yes refl) with (decEq b b')
-      decEq (a, b) (a, b) | (Yes refl) | (Yes refl) = Yes refl
-      decEq (a, b) (a, b') | (Yes refl) | (No p) = No (\eq => lemma_snd_neq refl p eq)
-    decEq (a, b) (a', b') | (No p) with (decEq b b')
-      decEq (a, b) (a', b) | (No p) | (Yes refl) =  No (\eq => lemma_fst_neq_snd_eq p refl eq)
-      decEq (a, b) (a', b') | (No p) | (No p') = No (\eq => lemma_both_neq p p' eq)
+  decEq (a, b) (a', b')     with (decEq a a')
+    decEq (a, b) (a, b')    | (Yes refl) with (decEq b b')
+      decEq (a, b) (a, b)   | (Yes refl) | (Yes refl) = Yes refl
+      decEq (a, b) (a, b')  | (Yes refl) | (No p) = No (\eq => lemma_snd_neq refl p eq)
+    decEq (a, b) (a', b')   | (No p)     with (decEq b b')
+      decEq (a, b) (a', b)  | (No p)     | (Yes refl) =  No (\eq => lemma_fst_neq_snd_eq p refl eq)
+      decEq (a, b) (a', b') | (No p)     | (No p') = No (\eq => lemma_both_neq p p' eq)
 
 
 --------------------------------------------------------------------------------
@@ -174,11 +176,21 @@ vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} refl = refl
 
 instance DecEq a => DecEq (Vect n a) where
   decEq [] [] = Yes refl
+  decEq (x :: xs) (y :: ys) with (decEq x y)
+    decEq (x :: xs) (x :: ys)   | Yes refl with (decEq xs ys)
+      decEq (x :: xs) (x :: xs) | Yes refl | Yes refl = Yes refl
+      decEq (x :: xs) (x :: ys) | Yes refl | No  neq  = No (neq . vectInjective2)
+    decEq (x :: xs) (y :: ys)   | No  neq             = No (neq . vectInjective1)
+
+{- The following definition is elaborated in a wrong case-tree. Examination pending.
+
+instance DecEq a => DecEq (Vect n a) where
+  decEq [] [] = Yes refl
   decEq (x :: xs) (y :: ys) with (decEq x y, decEq xs ys)
     decEq (x :: xs) (x :: xs) | (Yes refl, Yes refl) = Yes refl
     decEq (x :: xs) (y :: ys) | (_, No nEqTl) = No (\p => nEqTl (vectInjective2 p))
     decEq (x :: xs) (y :: ys) | (No nEqHd, _) = No (\p => nEqHd (vectInjective1 p))
-    
+-}
 
 -- For the primitives, we have to cheat because we don't have access to their
 -- internal implementations.
@@ -188,39 +200,44 @@ instance DecEq a => DecEq (Vect n a) where
 --------------------------------------------------------------------------------
 
 instance DecEq Int where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
 -- Char
 --------------------------------------------------------------------------------
 
 instance DecEq Char where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
 -- Integer
 --------------------------------------------------------------------------------
 
 instance DecEq Integer where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
 -- Float
 --------------------------------------------------------------------------------
 
 instance DecEq Float where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
 -- String
 --------------------------------------------------------------------------------
 
 instance DecEq String where
-    decEq x y = if x == y then Yes (really_believe_me {a = x=x} {b = x=y} refl)
-                          else No (really_believe_me _|_)
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where postulate primitiveEq : x = y
+             postulate primitiveNotEq : x = y -> _|_
 
 

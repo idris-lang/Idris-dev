@@ -103,7 +103,7 @@ mkPE_TermDecl ist newname sname ns
   deImp (PApp fc t as) = PApp fc t (map deImpArg as)
   deImp t = t
 
-  deImpArg a@(PImp _ _ _ _ _ _) = a { getTm = Placeholder }
+  deImpArg a@(PImp _ _ _ _ _) = a { getTm = Placeholder }
   deImpArg a = a
 
 data PEArgType = ImplicitS | ImplicitD

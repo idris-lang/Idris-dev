@@ -11,15 +11,14 @@ import Debug.Trace
 
 -- | Wrap a type provider in the type of type providers
 providerTy :: FC -> PTerm -> PTerm
-providerTy fc tm = PApp fc (PRef fc $ sUN "Provider") [PExp 0 [] tm ""]
+providerTy fc tm
+  = PApp fc (PRef fc $ sUN "Provider") [PExp 0 [] (sMN 0 "pvarg") tm]
 
 ioret = sUN "prim_io_return"
 ermod = sNS (sUN "Error") ["Providers"]
 prmod = sNS (sUN "Provide") ["Providers"]
-posmod = sNS (sUN "Postulate") ["Providers"]
 
 data Provided a = Provide a
-                | Postulate
   deriving (Show, Eq, Functor)
 
 -- | Handle an error, if the type provider returned an error. Otherwise return the provided term.
@@ -34,10 +33,6 @@ getProvided fc tm | (P _ pioret _, [tp, result]) <- unApply tm
                   , (P _ nm _, [_, res]) <- unApply result
                   , pioret == ioret && nm == prmod
                       = return . Provide $ res
-                  | (P _ pioret _, [tp, result]) <- unApply tm
-                  , (P _ nm _, [_]) <- unApply result
-                  , pioret == ioret && nm == posmod
-                      = return Postulate
                   | otherwise = ifail $ "Internal type provider error: result was not " ++
                                         "IO (Provider a), or perhaps missing normalisation."
 

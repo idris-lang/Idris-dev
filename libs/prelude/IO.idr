@@ -4,8 +4,10 @@ import Prelude.List
 
 %access public
 
+||| Idris's primitive IO, for building abstractions on top of
 abstract data PrimIO a = prim__IO a
 
+||| A token representing the world, for use in `IO`
 abstract data World = TheWorld
 
 abstract WorldRes : Type -> Type
@@ -26,7 +28,10 @@ abstract
 prim_io_return : a -> PrimIO a
 prim_io_return x = prim__IO x
 
+||| Descriptions of the various sorts of Ints that Idris supports
 data IntTy = ITChar | ITNative | IT8 | IT16 | IT32 | IT64 | IT8x16 | IT16x8 | IT32x4 | IT64x2
+
+||| Types available for foreign function calls
 data FTy = FIntT IntTy
          | FFunction FTy FTy
          | FFloat
@@ -75,6 +80,7 @@ FBits32x4 = FIntT IT32x4
 FBits64x2 : FTy
 FBits64x2 = FIntT IT64x2
 
+||| Interpret an FFI type as the type of the Idris function that it will become
 interpFTy : FTy -> Type
 interpFTy (FIntT ITNative) = Int
 interpFTy (FIntT ITChar)   = Char
@@ -95,7 +101,10 @@ interpFTy FUnit            = ()
 
 interpFTy (FFunction a b) = interpFTy a -> interpFTy b
 
-ForeignTy : (xs:List FTy) -> (t:FTy) -> Type
+||| Type signatures for foreign functions
+||| @ xs the argument types
+||| @ t the return type
+ForeignTy : (xs : List FTy) -> (t : FTy) -> Type
 ForeignTy Nil     rt = World -> PrimIO (interpFTy rt)
 ForeignTy (t::ts) rt = interpFTy t -> ForeignTy ts rt
 
@@ -123,16 +132,13 @@ io_return : a -> IO a
 io_return x = MkIO (\w => prim_io_return x)
 
 liftPrimIO : (World -> PrimIO a) -> IO a
-liftPrimIO f = MkIO (\w => prim_io_bind (f w)
-                         (\x => prim_io_return x))
+liftPrimIO = MkIO
 
 run__IO : IO () -> PrimIO ()
-run__IO (MkIO f) = prim_io_bind (f TheWorld)
-                        (\ b => prim_io_return b)
+run__IO (MkIO f) = f TheWorld
 
 run__provider : IO a -> PrimIO a
-run__provider (MkIO f) = prim_io_bind (f TheWorld)
-                            (\ b => prim_io_return b)
+run__provider (MkIO f) = f TheWorld
 
 -- io_bind v (\v' => io_return v')
 

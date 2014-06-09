@@ -1,0 +1,8 @@
+package oldeffects
+
+opts    = "--nobasepkgs -i ../prelude -i ../base"
+modules = Effects, 
+          Effect.Exception, Effect.File, Effect.State,
+          Effect.Random, Effect.StdIO, Effect.Select,
+          Effect.Memory, Effect.Monad
+

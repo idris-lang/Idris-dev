@@ -4,10 +4,10 @@ import Providers
 
 %language TypeProviders
 
-bad : IO (Provider _|_)
-bad = pure Postulate
+bad : IO (Provider Type)
+bad = return $ pure _|_
 
-%provide (oops : _|_) with bad
+%provide postulate oops with bad
 
 main : IO ()
 main = putStrLn "oops"

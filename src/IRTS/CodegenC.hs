@@ -20,16 +20,32 @@ import System.Directory
 import System.FilePath ((</>), (<.>))
 import Control.Monad
 
-codegenC :: [(Name, SDecl)] ->
-            String -> -- output file name
-            OutputType ->   -- generate executable if True, only .o if False
-            [FilePath] -> -- include files
-            String -> -- extra object files
-            String -> -- extra compiler flags (libraries)
-            String -> -- extra compiler flags (anything)
-            DbgLevel ->
-            IO ()
-codegenC defs out exec incs objs libs flags dbg
+codegenC :: CodeGenerator
+codegenC ci = codegenC' (simpleDecls ci)
+                        (outputFile ci)
+                        (outputType ci)
+                        (includes ci)
+                        (concatMap mkObj (compileObjs ci))
+                        (concatMap mkLib (compileLibs ci) ++
+                            concatMap incdir (importDirs ci))
+                        (concatMap mkFlag (compilerFlags ci))
+                        (debugLevel ci)
+
+  where mkObj f = f ++ " "
+        mkLib l = "-l" ++ l ++ " "
+        mkFlag l = l ++ " "
+        incdir i = "-I" ++ i ++ " "
+
+codegenC' :: [(Name, SDecl)] ->
+             String -> -- output file name
+             OutputType ->   -- generate executable if True, only .o if False
+             [FilePath] -> -- include files
+             String -> -- extra object files
+             String -> -- extra compiler flags (libraries)
+             String -> -- extra compiler flags (anything)
+             DbgLevel ->
+             IO ()
+codegenC' defs out exec incs objs libs flags dbg
     = do -- print defs
          let bc = map toBC defs
          let h = concatMap toDecl (map fst bc)
@@ -46,7 +62,6 @@ codegenC defs out exec incs objs libs flags dbg
              hPutStr tmph cout
              hFlush tmph
              hClose tmph
-             let useclang = False
              comp <- getCC
              libFlags <- getLibFlags
              incFlags <- getIncFlags
@@ -132,10 +147,10 @@ bcc i (ASSIGNCONST l c)
     mkConst (Fl f) = "MKFLOAT(vm, " ++ show f ++ ")"
     mkConst (Ch c) = "MKINT(" ++ show (fromEnum c) ++ ")"
     mkConst (Str s) = "MKSTR(vm, " ++ showCStr s ++ ")"
-    mkConst (B8  x) = "idris_b8const(vm, "  ++ show x ++ ")"
-    mkConst (B16 x) = "idris_b16const(vm, " ++ show x ++ ")"
-    mkConst (B32 x) = "idris_b32const(vm, " ++ show x ++ ")"
-    mkConst (B64 x) = "idris_b64const(vm, " ++ show x ++ ")"
+    mkConst (B8  x) = "idris_b8const(vm, "  ++ show x ++ "U)"
+    mkConst (B16 x) = "idris_b16const(vm, " ++ show x ++ "U)"
+    mkConst (B32 x) = "idris_b32const(vm, " ++ show x ++ "UL)"
+    mkConst (B64 x) = "idris_b64const(vm, " ++ show x ++ "ULL)"
     mkConst _ = "MKINT(42424242)"
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
 bcc i (MKCON l tag args)
@@ -159,15 +174,15 @@ bcc i (CASE True r code def)
     | length code < 4 = showCase i def code
   where
     showCode :: Int -> [BC] -> String
-    showCode i bc = "{\n" ++ indent i ++ concatMap (bcc (i + 1)) bc ++
+    showCode i bc = "{\n" ++ concatMap (bcc (i + 1)) bc ++
                     indent i ++ "}\n"
 
     showCase :: Int -> Maybe [BC] -> [(Int, [BC])] -> String
     showCase i Nothing [(t, c)] = showCode i c
     showCase i (Just def) [] = showCode i def
     showCase i def ((t, c) : cs)
-        = "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
-           ++ "else " ++ showCase i def cs
+        = indent i ++ "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
+           ++ indent i ++ "else " ++ showCase i def cs
 
 bcc i (CASE safe r code def)
     = indent i ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n" ++
@@ -478,6 +493,8 @@ doOp v (LChInt ITNative) args = v ++ creg (last args)
 doOp v (LChInt ITChar) args = doOp v (LChInt ITNative) args
 doOp v (LIntCh ITNative) args = v ++ creg (last args)
 doOp v (LIntCh ITChar) args = doOp v (LIntCh ITNative) args
+
+doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
 doOp v LNoOp args = v ++ creg (last args)
 doOp _ op _ = "FAIL /* " ++ show op ++ " */"
 

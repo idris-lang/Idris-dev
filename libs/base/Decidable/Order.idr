@@ -10,7 +10,7 @@ import Decidable.Equality
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
--- Preorders, Posets and total Orders
+-- Preorders, Posets, total Orders, Equivalencies, Congruencies
 --------------------------------------------------------------------------------
 
 class Preorder t (po : t -> t -> Type) where
@@ -21,7 +21,16 @@ class (Preorder t po) => Poset t (po : t -> t -> Type) where
   total antisymmetric : (a : t) -> (b : t) -> po a b -> po b a -> a = b
 
 class (Poset t to) => Ordered t (to : t -> t -> Type) where
-  total order : (a : t) -> (b : t) -> Either (to a b) (to b a) 
+  total order : (a : t) -> (b : t) -> Either (to a b) (to b a)
+
+class (Preorder t eq) => Equivalence t (eq : t -> t -> Type) where
+  total symmetric : (a : t) -> (b : t) -> eq a b -> eq b a
+
+class (Equivalence t eq) => Congruence t (f : t -> t) (eq : t -> t -> Type) where
+  total congruent : (a : t) -> 
+                    (b : t) -> 
+                    eq a b -> 
+                    eq (f a) (f b)
 
 minimum : (Ordered t to) => t -> t -> t
 minimum x y with (order x y)
@@ -32,6 +41,20 @@ maximum : (Ordered t to) => t -> t -> t
 maximum x y with (order x y)
   | Left _ = y
   | Right _ = x
+
+--------------------------------------------------------------------------------
+-- Syntactic equivalence (=)
+--------------------------------------------------------------------------------
+
+instance Preorder t ((=) {A = t} {B = t}) where
+  transitive a b c = trans {a = a} {b = b} {c = c}
+  reflexive a = refl
+
+instance Equivalence t ((=) {A = t} {B = t}) where
+  symmetric a b prf = sym prf
+
+instance Congruence t f ((=) {A = t} {B = t}) where
+  congruent a b = cong {a = a} {b = b} {f = f}
 
 --------------------------------------------------------------------------------
 -- Natural numbers

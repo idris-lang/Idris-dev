@@ -1,22 +1,24 @@
 reg034.idr:6:5:When elaborating left hand side of bar:
-Can't unify
-        [92mlength[0m [95mys[0m [94m=[0m [92mlength[0m [95mys[0m
-with
-        [92mlength[0m [95mxs[0m [94m=[0m [92mlength[0m [95mys[0m
-
-Specifically:
+When elaborating an application of main.bar:
         Can't unify
-                [92mlength[0m [95mys[0m
+                [92mlength[0m [95mys[0m [94m=[0m [92mlength[0m [95mys[0m
         with
-                [92mlength[0m [95mxs[0m
+                [92mlength[0m [95mxs[0m [94m=[0m [92mlength[0m [95mys[0m
+        
+        Specifically:
+                Can't unify
+                        [92mlength[0m [95mys[0m
+                with
+                        [92mlength[0m [95mxs[0m
 reg034.idr:9:5:When elaborating left hand side of foo:
-Can't unify
-        [95mf[0m [95my[0m [94m=[0m [95mf[0m [95my[0m
-with
-        [95mf[0m [95mx[0m [94m=[0m [95mf[0m [95my[0m
-
-Specifically:
+When elaborating an application of main.foo:
         Can't unify
-                [95mf[0m [95my[0m
+                [95mf[0m [95my[0m [94m=[0m [95mf[0m [95my[0m
         with
-                [95mf[0m [95mx[0m
+                [95mf[0m [95mx[0m [94m=[0m [95mf[0m [95my[0m
+        
+        Specifically:
+                Can't unify
+                        [95mf[0m [95my[0m
+                with
+                        [95mf[0m [95mx[0m

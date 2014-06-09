@@ -55,6 +55,8 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             -- Buffers
             | LAllocate
             | LAppendBuffer
+            -- system info
+            | LSystemInfo
             -- Note that for Bits8 only Native endianness is actually used
             -- and the user-exposed interface for Bits8 doesn't mention
             -- endianness
@@ -213,36 +215,61 @@ usedIn env (LOp f args) = concatMap (usedIn env) args
 usedIn env _ = []
 
 instance Show LExp where
-   show e = show' [] e where
-     show' env (LV (Loc i)) = env!!i
-     show' env (LV (Glob n)) = show n
-     show' env (LLazyApp e args) = show e ++ "|(" ++
-                                     showSep ", " (map (show' env) args) ++")"
-     show' env (LApp _ e args) = show' env e ++ "(" ++
-                                   showSep ", " (map (show' env) args) ++")"
-     show' env (LLazyExp e) = "%lazy(" ++ show' env e ++ ")"
-     show' env (LForce e) = "%force(" ++ show' env e ++ ")"
-     show' env (LLet n v e) = "let " ++ show n ++ " = " ++ show' env v ++ " in " ++
-                               show' (env ++ [show n]) e
-     show' env (LLam args e) = "\\ " ++ showSep "," (map show args) ++ " => " ++
-                                 show' (env ++ (map show args)) e
-     show' env (LProj t i) = show t ++ "!" ++ show i
-     show' env (LCon i n args) = show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
-     show' env (LCase e alts) = "case " ++ show' env e ++ " of {\n\t" ++
-                                    showSep "\n\t| " (map (showAlt env) alts)
-     show' env (LConst c) = show c
-     show' env (LForeign lang ty n args)
-           = "foreign " ++ n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
-     show' env (LOp f args) = show f ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
-     show' env (LError str) = "error " ++ show str
-     show' env LNothing = "____"
+   show e = show' [] "" e where
+     show' env ind (LV (Loc i)) = env!!i
+     show' env ind (LV (Glob n)) = show n
 
-     showAlt env (LConCase _ n args e)
+     show' env ind (LLazyApp e args)
+        = show e ++ "|(" ++ showSep ", " (map (show' env ind) args) ++")"
+
+     show' env ind (LApp _ e args)
+        = show' env ind e ++ "(" ++ showSep ", " (map (show' env ind) args) ++")"
+
+     show' env ind (LLazyExp e) = "lazy{ "  ++ show' env ind e ++ " }"
+     show' env ind (LForce   e) = "force{ " ++ show' env ind e ++ " }"
+     show' env ind (LLet n v e)
+        = "let " ++ show n ++ " = " ++ show' env ind v
+            ++ " in " ++ show' (env ++ [show n]) ind e
+
+     show' env ind (LLam args e)
+        = "\\ " ++ showSep "," (map show args)
+            ++ " => " ++ show' (env ++ (map show args)) ind e
+
+     show' env ind (LProj t i) = show t ++ "!" ++ show i
+
+     show' env ind (LCon i n args)
+        = show n ++ "(" ++ showSep ", " (map (show' env ind) args) ++ ")"
+
+     show' env ind (LCase e alts)
+        = "case " ++ show' env ind e ++ " of \n" ++ fmt alts
+       where
+         fmt [] = ""
+         fmt [alt]
+            = "\t" ++ ind ++ "| " ++ showAlt env (ind ++ "    ") alt 
+         fmt (alt:as)
+            = "\t" ++ ind ++ "| " ++ showAlt env (ind ++ ".   ") alt
+                ++ "\n" ++ fmt as
+
+     show' env ind (LConst c) = show c
+
+     show' env ind (LForeign lang ty n args) = concat
+            [ "foreign{ "
+            ,       n ++ "("
+            ,           showSep ", " (map (\(ty,x) -> show' env ind x ++ " : " ++ show ty) args)
+            ,       ") : "
+            ,       show ty
+            , " }"
+            ]
+
+     show' env ind (LOp f args)
+        = show f ++ "(" ++ showSep ", " (map (show' env ind) args) ++ ")"
+
+     show' env ind (LError str) = "error " ++ show str
+     show' env ind LNothing = "____"
+
+     showAlt env ind (LConCase _ n args e)
           = show n ++ "(" ++ showSep ", " (map show args) ++ ") => "
-             ++ show' env e
-     showAlt env (LConstCase c e) = show c ++ " => " ++ show' env e
-     showAlt env (LDefaultCase e) = "_ => " ++ show' env e
+             ++ show' env ind e
 
-
-
-
+     showAlt env ind (LConstCase c e) = show c ++ " => " ++ show' env ind e
+     showAlt env ind (LDefaultCase e) = "_ => " ++ show' env ind e

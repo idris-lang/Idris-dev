@@ -1233,3 +1233,6 @@ return function(val) {
   return new BigInteger(val);
 }
 })();
+
+var __IDRRT__ZERO = __IDRRT__bigInt("0");
+var __IDRRT__ONE = __IDRRT__bigInt("1");

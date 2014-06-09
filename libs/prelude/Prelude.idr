@@ -21,6 +21,7 @@ import Prelude.Traversable
 import Prelude.Bits
 import Prelude.Stream
 import Prelude.Uninhabited
+import Prelude.Pairs
 
 import Decidable.Equality
 
@@ -347,27 +348,38 @@ natRange n = List.reverse (go n)
   where go Z = []
         go (S n) = n :: go n
 
+-- predefine Nat versions of Enum, so we can use them in the default impls
+total natEnumFromThen : Nat -> Nat -> Stream Nat
+natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
+total natEnumFromTo : Nat -> Nat -> List Nat
+natEnumFromTo n m = map (plus n) (natRange ((S m) - n))
+total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
+natEnumFromThenTo _ Z   _ = []
+natEnumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
+
 class Enum a where
   total pred : a -> a
   total succ : a -> a
+  succ e = fromNat (S (toNat e))
   total toNat : a -> Nat
   total fromNat : Nat -> a
   total enumFrom : a -> Stream a
   enumFrom n = n :: enumFrom (succ n)
   total enumFromThen : a -> a -> Stream a
+  enumFromThen x y = map fromNat (natEnumFromThen (toNat x) (toNat y))
   total enumFromTo : a -> a -> List a
+  enumFromTo x y = map fromNat (natEnumFromTo (toNat x) (toNat y))
   total enumFromThenTo : a -> a -> a -> List a
-
+  enumFromThenTo x1 x2 y = map fromNat (natEnumFromThenTo (toNat x1) (toNat x2) (toNat y))
 
 instance Enum Nat where
-  pred = Nat.pred
-  succ = S
-  toNat = id
-  fromNat = id
-  enumFromThen n inc = n :: enumFromThen (fromNat (plus (toNat inc) (toNat n))) inc
-  enumFromThenTo _ Z   _ = []
-  enumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
-  enumFromTo n m = map (plus n) (natRange ((S m) - n))
+  pred n = Nat.pred n
+  succ n = S n
+  toNat x = id x
+  fromNat x = id x
+  enumFromThen x y = natEnumFromThen x y
+  enumFromThenTo x y z = natEnumFromThenTo x y z
+  enumFromTo x y = natEnumFromTo x y
 
 instance Enum Integer where
   pred n = n - 1
@@ -407,14 +419,25 @@ instance Enum Int where
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
 
+instance Enum (Fin (S n)) where
+  pred fZ = fZ
+  pred (fS n) = weaken n
+  succ n = case strengthen (fS n) of
+    Left _ => last
+    Right k => k
+  toNat n = cast n
+  fromNat {n=n} m = case natToFin m (S n) of
+    Just k => k
+    Nothing => last
+
 syntax "[" [start] ".." [end] "]"
      = enumFromTo start end
 syntax "[" [start] "," [next] ".." [end] "]"
      = enumFromThenTo start (next - start) end
 
-syntax "[" [start] "..]"
+syntax "[" [start] ".." "]"
      = enumFrom start
-syntax "[" [start] "," [next] "..]"
+syntax "[" [start] "," [next] ".." "]"
      = enumFromThen start (next - start)
 
 ---- More utilities
@@ -439,26 +462,32 @@ uniformB64x2 x = prim__mkB64x2 x x
 
 ---- some basic io
 
+||| Output a string to stdout without a trailing newline
 partial
 putStr : String -> IO ()
 putStr x = mkForeign (FFun "putStr" [FString] FUnit) x
 
+||| Output a string to stdout with a trailing newline
 partial
 putStrLn : String -> IO ()
 putStrLn x = putStr (x ++ "\n")
 
+||| Output something showable to stdout, with a trailing newline
 partial
 print : Show a => a -> IO ()
 print x = putStrLn (show x)
 
+||| Read one line of input from stdin
 partial
 getLine : IO String
 getLine = prim_fread prim__stdin
 
+||| Write a single character to stdout
 partial
 putChar : Char -> IO ()
 putChar c = mkForeign (FFun "putchar" [FInt] FUnit) (cast c)
 
+||| Read a single character from stdin
 partial
 getChar : IO Char
 getChar = map cast $ mkForeign (FFun "getchar" [] FInt)
@@ -468,21 +497,38 @@ getChar = map cast $ mkForeign (FFun "getchar" [] FInt)
 abstract
 data File = FHandle Ptr
 
+||| Standard input
 partial stdin : File
 stdin = FHandle prim__stdin
 
+||| Standard output
+partial stdout : File
+stdout = FHandle prim__stdout
+
+||| Standard output
+partial stderr : File
+stderr = FHandle prim__stderr
+
+||| Call the RTS's file opening function
 do_fopen : String -> String -> IO Ptr
 do_fopen f m
    = mkForeign (FFun "fileOpen" [FString, FString] FPtr) f m
 
-fopen : String -> String -> IO File
+||| Open a file
+||| @ f the filename
+||| @ m the mode as a String (`"r"`, `"w"`, or `"r+"`)
+fopen : (f : String) -> (m : String) -> IO File
 fopen f m = do h <- do_fopen f m
                return (FHandle h)
 
+||| Modes for opening files
 data Mode = Read | Write | ReadWrite
 
+||| Open a file
+||| @ f the filename
+||| @ m the mode
 partial
-openFile : String -> Mode -> IO File
+openFile : (f : String) -> (m : Mode) -> IO File
 openFile f m = fopen f (modeStr m) where
   modeStr Read  = "r"
   modeStr Write = "w"
@@ -504,9 +550,9 @@ fgetc : File -> IO Char
 fgetc (FHandle h) = return (cast !(mkForeign (FFun "fgetc" [FPtr] FInt) h))
 
 fgetc' : File -> IO (Maybe Char)
-fgetc' (FHandle h) 
+fgetc' (FHandle h)
    = do x <- mkForeign (FFun "fgetc" [FPtr] FInt) h
-        if (x < 0) then return Nothing 
+        if (x < 0) then return Nothing
                    else return (Just (cast x))
 
 fflush : File -> IO ()
@@ -567,15 +613,18 @@ nullPtr : Ptr -> IO Bool
 nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
                return (ok /= 0)
 
+||| Check if a supposed string was actually a null pointer
 partial
 nullStr : String -> IO Bool
 nullStr p = do ok <- mkForeign (FFun "isNull" [FString] FInt) p
                return (ok /= 0)
 
+||| Pointer equality
 eqPtr : Ptr -> Ptr -> IO Bool
 eqPtr x y = do eq <- mkForeign (FFun "idris_eqPtr" [FPtr, FPtr] FInt) x y
                return (eq /= 0)
 
+||| Check whether a file handle is actually a null pointer
 partial
 validFile : File -> IO Bool
 validFile (FHandle h) = do x <- nullPtr h
@@ -602,4 +651,3 @@ readFile fn = do h <- openFile fn Read
           if not x then do l <- fread h
                            readFile' h (contents ++ l)
                    else return contents
-

@@ -20,6 +20,8 @@ import Idris.DSL
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
+import Idris.Docstrings
+
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
@@ -33,29 +35,32 @@ import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
 
+import Debug.Trace
+
 {- |Parses a record type declaration
 Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
-record syn = do (doc, acc) <- try (do
-                      doc <- option "" (docComment '|')
+record syn = do (doc, acc, opts) <- try (do
+                      doc <- option noDocs docComment
                       acc <- optional accessibility
+                      opts <- dataOpts []
                       reserved "record"
-                      return (doc, acc))
+                      return (doc, acc, opts))
                 fc <- getFC
                 tyn_in <- fnName
                 lchar ':'
                 ty <- typeExpr (allowImp syn)
                 let tyn = expandNS syn tyn_in
                 reserved "where"
-                (cdoc, cn, cty, _, _) <- indentedBlockS (constructor syn)
+                (cdoc, argDocs, cn, cty, _, _) <- indentedBlockS (constructor syn)
                 accData acc tyn [cn]
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
                 let fns = getRecNames rsyn cty
                 mapM_ (\n -> addAcc n acc) fns
-                return $ PRecord doc rsyn fc tyn ty cdoc cn cty
+                return $ PRecord (fst doc) rsyn fc tyn ty opts cdoc cn cty
              <?> "record type declaration"
   where
     getRecNames :: SyntaxInfo -> PTerm -> [Name]
@@ -100,29 +105,29 @@ SimpleConstructorList ::=
   ;
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
-data_ syn = do (doc, acc, dataOpts) <- try (do
-                    doc <- option "" (docComment '|')
+data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
+                    (doc, argDocs) <- option noDocs docComment
                     pushIndent
                     acc <- optional accessibility
                     elim <- dataOpts []
                     co <- dataI
                     let dataOpts = combineDataOpts(elim ++ co)
-                    return (doc, acc, dataOpts))
+                    return (doc, argDocs, acc, dataOpts))
                fc <- getFC
                tyn_in <- fnName
                (do try (lchar ':')
                    popIndent
                    ty <- typeExpr (allowImp syn)
                    let tyn = expandNS syn tyn_in
-                   option (PData doc syn fc dataOpts (PLaterdecl tyn ty)) (do
+                   option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn ty)) (do
                      reserved "where"
                      cons <- indentedBlock (constructor syn)
-                     accData acc tyn (map (\ (_, n, _, _, _) -> n) cons)
-                     return $ PData doc syn fc dataOpts (PDatadecl tyn ty cons))) <|> (do
+                     accData acc tyn (map (\ (_, _, n, _, _, _) -> n) cons)
+                     return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn ty cons))) <|> (do
                     args <- many name
                     let ty = bindArgs (map (const PType) args) PType
                     let tyn = expandNS syn tyn_in
-                    option (PData doc syn fc dataOpts (PLaterdecl tyn ty)) (do
+                    option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn ty)) (do
                       try (lchar '=') <|> do reserved "where"
                                              let kw = (if DefaultEliminator `elem` dataOpts then "" else "%noelim ") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
                                              let n  = show tyn_in ++ " "
@@ -134,14 +139,14 @@ data_ syn = do (doc, acc, dataOpts) <- try (do
                                              let fix2 = s ++ ": " ++ ns ++ " -> Type where\n  ..."
                                              let fix3 = s ++ ": " ++ ss ++ " -> Type where\n  ..."
                                              fail $ fixErrorMsg "unexpected \"where\"" [fix1, fix2, fix3]
-                      cons <- sepBy1 (simpleConstructor syn) (lchar '|')
+                      cons <- sepBy1 (simpleConstructor syn) (reservedOp "|")
                       terminator
                       let conty = mkPApp fc (PRef fc tyn) (map (PRef fc) args)
-                      cons' <- mapM (\ (doc, x, cargs, cfc, fs) ->
+                      cons' <- mapM (\ (doc, argDocs, x, cargs, cfc, fs) ->
                                    do let cty = bindArgs cargs conty
-                                      return (doc, x, cty, cfc, fs)) cons
-                      accData acc tyn (map (\ (_, n, _, _, _) -> n) cons')
-                      return $ PData doc syn fc dataOpts (PDatadecl tyn ty cons')))
+                                      return (doc, argDocs, x, cty, cfc, fs)) cons
+                      accData acc tyn (map (\ (_, _, n, _, _, _) -> n) cons')
+                      return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn ty cons')))
            <?> "data type declaration"
   where
     mkPApp :: FC -> PTerm -> [PTerm] -> PTerm
@@ -150,17 +155,17 @@ data_ syn = do (doc, acc, dataOpts) <- try (do
     bindArgs :: [PTerm] -> PTerm -> PTerm
     bindArgs xs t = foldr (PPi expl (sMN 0 "_t")) t xs
     combineDataOpts :: DataOpts -> DataOpts
-    combineDataOpts opts = if Codata `elem` opts 
-                              then delete DefaultEliminator opts 
+    combineDataOpts opts = if Codata `elem` opts
+                              then delete DefaultEliminator opts
                               else opts
 
 
 {- | Parses a type constructor declaration
   Constructor ::= DocComment? FnName TypeSig;
 -}
-constructor :: SyntaxInfo -> IdrisParser (String, Name, PTerm, FC, [Name])
+constructor :: SyntaxInfo -> IdrisParser (Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name])
 constructor syn
-    = do doc <- option "" (docComment '|')
+    = do (doc, argDocs) <- option noDocs docComment
          cn_in <- fnName; fc <- getFC
          let cn = expandNS syn cn_in
          lchar ':'
@@ -169,21 +174,21 @@ constructor syn
          fs <- option [] (do lchar '%'; reserved "erase"
                              sepBy1 name (lchar ','))
          ty <- typeExpr (allowImp syn)
-         return (doc, cn, ty, fc, fs)
+         return (doc, argDocs, cn, ty, fc, fs)
       <?> "constructor"
 
 {- | Parses a constructor for simple discriminative union data types
   SimpleConstructor ::= FnName SimpleExpr* DocComment?
 -}
-simpleConstructor :: SyntaxInfo -> IdrisParser (String, Name, [PTerm], FC, [Name])
+simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring, [(Name, Docstring)], Name, [PTerm], FC, [Name])
 simpleConstructor syn
-     = do cn_in <- fnName
+     = do doc <- option noDocs (try docComment)
+          cn_in <- fnName
           let cn = expandNS syn cn_in
           fc <- getFC
           args <- many (do notEndApp
                            simpleExpr syn)
-          doc <- option "" (try $ docComment '^')
-          return (doc, cn, args, fc, [])
+          return (fst doc, [], cn, args, fc, [])
        <?> "constructor"
 
 {- | Parses a dsl block declaration

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris $@ --build totality.ipkg
+rm -f src/*.ibc

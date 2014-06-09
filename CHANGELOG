@@ -1,15 +1,69 @@
+New in 0.9.14:
+--------------
+* Support for running tests for a package with the tests section of .ipkg files and the
+  --testpkg command-line option
+* Clearly distinguish between type providers and postulate providers at the use site
+
+New in 0.9.13:
+--------------
+* IDE support for retrieving structured information about metavariables
+* Experimental Bits support for JavaScript
+* IdrisDoc: a Haddock- and JavaDoc-like HTML documentation generator
+* Command line option -e (or --eval) to evaluate expressions without loading the
+  REPL. This is useful for writing more portable tests.
+* Many more of the basic functions and datatypes are documented.
+* Primitive types such as Int and String are documented
+* Removed javascript lib in favor of idris-hackers/iQuery
+* Specify codegen for :compile REPL command (e.g. :compile javascript program.js)
+* Remove :info REPL command, subsume and enhance its functionality in the :doc command
+* New (first class) nested record update/access syntax:
+  record { a->b->c = val } x -- sets field accessed by c (b (a x)) to val
+  record { a->b->c } x -- accesses field, equivalent to c (b (a x))
+* The banner at startup can be suppressed by adding :set nobanner to the initialisation script.
+* :apropos now accepts space-delimited lists of query items, and searches for the conjunction
+  of its inputs. It also accepts binder syntax as search strings - for instance, -> finds
+  functions.
+* Totality errors are now treated as warnings until code generation time, when they become
+  errors again. This allows users to use the interactive editing features to fix totality
+  issues, but no programs that violate the stated assumptions will actually run.
+* Added :makelemma command, which adds a new top level definition to solve
+  a metavariable.
+* Extend :addclause to add instance bodies as well as definitions
+* Reverse parameters to BoundedList -- now matches Vect, and is easier to instantiate classes.
+* Move foldl into Foldable so it can be overridden.
+* Experimental :search REPL command for finding functions by type
+
+Internal changes
+
+* New implementation of erasure
+
 New in 0.9.12:
 --------------
 
 * Proof search now works for metavariables in types, giving some interactive
   type inference.
 * New 'Lazy' type, replacing laziness annotations.
-* JavaScript and Node codegen now understand the %include directive
-* Concept up 'null' is now understood in the JavaScript and Node codegen
-* Lots of performance patches for generated JavaScript
+* JavaScript and Node codegen now understand the %include directive.
+* Concept of 'null' is now understood in the JavaScript and Node codegen.
+* Lots of performance patches for generated JavaScript.
 * New commands :eval (:e) and :type (:t) in the prover, which either normalise
-  or show the type of expressions
-* Allow type providers to return postulates in addition to terms
+  or show the type of expressions.
+* Allow type providers to return postulates in addition to terms.
+* Syntax for dealing with match failure in <- and pattern matching let.
+* New syntax for inline documentation. Documentation starts with |||, and
+  arguments are documented by preceding their name with @. Example:
+  ||| Add two natural numbers
+  ||| @ n the first number (examined by the function)
+  ||| @ m the second number (not examined)
+  plus (n, m : Nat) -> Nat
+* Allow the auto-solve behaviour in the prover to be disabled, for easier 
+  debugging of proof automation. Use ":set autosolve" and ":unset autosolve".
+* Updated 'effects' library
+* New :apropos command at REPL to search documentation, names, and types
+* Unification errors are now slightly more informative
+* Support mixed induction/coinduction with 'Inf' type
+* Add 'covering' function option, which checks whether a function and all
+  descendants cover all possible inputs
 
 New in 0.9.11:
 --------------

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverlappingInstances #-}
+
 module Pkg.PParser where
 
 import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
@@ -6,6 +8,7 @@ import Idris.Core.TT
 import Idris.REPL
 import Idris.AbsSyntaxTree
 import Idris.ParseHelpers
+import Idris.CmdOptions
 
 import Paths_idris
 
@@ -23,11 +26,16 @@ data PkgDesc = PkgDesc { pkgname :: String,
                          sourcedir :: String,
                          modules :: [Name],
                          idris_main :: Name,
-                         execout :: Maybe String
+                         execout :: Maybe String,
+                         idris_tests :: [Name]
                        }
     deriving Show
 
-defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (sUN "") Nothing
+instance TokenParsing PParser where
+  someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+
+
+defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (sUN "") Nothing []
 
 parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do p <- readFile fp
@@ -60,7 +68,7 @@ pClause = do reserved "executable"; lchar '=';
       <|> do reserved "opts"; lchar '=';
              opts <- stringLiteral
              st <- get
-             let args = parseArgs (words opts)
+             let args = pureArgParser (words opts)
              put (st { idris_opts = args })
       <|> do reserved "modules"; lchar '=';
              ms <- sepBy1 (iName []) (lchar ',')
@@ -78,4 +86,8 @@ pClause = do reserved "executable"; lchar '=';
              mk <- iName []
              st <- get
              put (st { makefile = Just (show mk) })
+      <|> do reserved "tests"; lchar '=';
+             ts <- sepBy1 (iName []) (lchar ',')
+             st <- get
+             put st { idris_tests = idris_tests st ++ ts }
 

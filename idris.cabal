@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.11.2
+Version:        0.9.13
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -46,7 +46,8 @@ Cabal-Version:  >= 1.8
 
 Build-type:     Custom
 
-Data-files:            jsrts/Runtime-browser.js
+Data-files:            idrisdoc/styles.css
+                       jsrts/Runtime-browser.js
                        jsrts/Runtime-common.js
                        jsrts/Runtime-node.js
                        jsrts/jsbn/jsbn.js
@@ -65,6 +66,7 @@ Extra-source-files:
 
                        rts/*.c
                        rts/*.h
+                       rts/windows/*.c
                        rts/Makefile
 
                        libs/Makefile
@@ -88,6 +90,7 @@ Extra-source-files:
                        libs/base/Language/Reflection/*.idr
                        libs/base/Makefile
                        libs/base/Network/*.idr
+                       libs/base/System/*.idr
                        libs/base/System/Concurrency/*.idr
                        libs/base/Syntax/*.idr
 
@@ -97,15 +100,10 @@ Extra-source-files:
                        libs/effects/Effect/*.idr
                        libs/effects/*.idr
 
-                       libs/neweffects/Makefile
-                       libs/neweffects/neweffects.ipkg
-                       libs/neweffects/Effect/*.idr
-                       libs/neweffects/*.idr
-
-                       libs/javascript/*.idr
-                       libs/javascript/JavaScript/*.idr
-                       libs/javascript/Makefile
-                       libs/javascript/javascript.ipkg
+                       libs/oldeffects/Makefile
+                       libs/oldeffects/oldeffects.ipkg
+                       libs/oldeffects/Effect/*.idr
+                       libs/oldeffects/*.idr
 
                        llvm/*.c
                        llvm/Makefile
@@ -221,6 +219,29 @@ Extra-source-files:
                        test/reg036/run
                        test/reg036/*.idr
                        test/reg036/expected
+                       test/reg037/run
+                       test/reg037/*.idr
+                       test/reg037/expected
+                       test/reg038/run
+                       test/reg038/*.idr
+                       test/reg038/expected
+                       test/reg039/run
+                       test/reg039/*.idr
+                       test/reg039/expected
+                       test/reg040/run
+                       test/reg040/*.idr
+                       test/reg040/expected
+                       test/reg041/run
+                       test/reg041/*.idr
+                       test/reg041/expected
+                       test/reg042/run
+                       test/reg042/*.idr
+                       test/reg042/expected
+                       test/reg043/run
+                       test/reg043/expected
+                       test/reg044/run
+                       test/reg044/*.idr
+                       test/reg044/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -250,6 +271,9 @@ Extra-source-files:
                        test/basic009/*.idr
                        test/basic009/expected
                        test/basic009/B/*.idr
+                       test/basic010/run
+                       test/basic010/*.idr
+                       test/basic010/expected
 
                        test/buffer001-disabled/*.idr
                        test/buffer001-disabled/run
@@ -303,6 +327,40 @@ Extra-source-files:
                        test/ffi005/run
                        test/ffi005/expected
 
+                       test/idrisdoc001/run
+                       test/idrisdoc001/expected
+                       test/idrisdoc001/*.idr
+                       test/idrisdoc001/*.ipkg
+                       test/idrisdoc002/run
+                       test/idrisdoc002/expected
+                       test/idrisdoc002/*.idr
+                       test/idrisdoc002/*.ipkg
+                       test/idrisdoc003/run
+                       test/idrisdoc003/expected
+                       test/idrisdoc003/*.idr
+                       test/idrisdoc003/*.ipkg
+                       test/idrisdoc004/run
+                       test/idrisdoc004/expected
+                       test/idrisdoc004/*.idr
+                       test/idrisdoc004/*.ipkg
+                       test/idrisdoc005/run
+                       test/idrisdoc005/expected
+                       test/idrisdoc005/*.idr
+                       test/idrisdoc005/*.ipkg
+                       test/idrisdoc006/run
+                       test/idrisdoc006/expected
+                       test/idrisdoc006/A/fully/Qualified/NAME.idr
+                       test/idrisdoc006/*.idr
+                       test/idrisdoc006/*.ipkg
+                       test/idrisdoc007/run
+                       test/idrisdoc007/expected
+                       test/idrisdoc007/*.idr
+                       test/idrisdoc007/*.ipkg
+                       test/idrisdoc008/run
+                       test/idrisdoc008/expected
+                       test/idrisdoc008/*.idr
+                       test/idrisdoc008/*.ipkg
+
                        test/interactive001/run
                        test/interactive001/input
                        test/interactive001/*.idr
@@ -315,6 +373,10 @@ Extra-source-files:
                        test/interactive003/input
                        test/interactive003/*.idr
                        test/interactive003/expected
+                       test/interactive004/run
+                       test/interactive004/input
+                       test/interactive004/*.idr
+                       test/interactive004/expected
 
                        test/io001/run
                        test/io001/*.idr
@@ -355,6 +417,12 @@ Extra-source-files:
                        test/records001/run
                        test/records001/*.idr
                        test/records001/expected
+                       test/records002/run
+                       test/records002/*.idr
+                       test/records002/expected
+                       test/records003/run
+                       test/records003/*.idr
+                       test/records003/expected
 
                        test/sugar001/run
                        test/sugar001/*.idr
@@ -375,6 +443,41 @@ Extra-source-files:
                        test/totality003/run
                        test/totality003/*.idr
                        test/totality003/expected
+                       test/totality004/run
+                       test/totality004/*.idr
+                       test/totality004/expected
+                       test/totality005/run
+                       test/totality005/*.idr
+                       test/totality005/expected
+                       test/totality006/run
+                       test/totality006/*.idr
+                       test/totality006/expected
+                       test/totality007/run
+                       test/totality007/*.ipkg
+                       test/totality007/src/*.idr
+                       test/totality007/expected
+                       test/totality008/run
+                       test/totality008/*.idr
+                       test/totality008/expected
+
+                       test/tutorial001/run
+                       test/tutorial001/*.idr
+                       test/tutorial001/expected
+                       test/tutorial002/run
+                       test/tutorial002/*.idr
+                       test/tutorial002/expected
+                       test/tutorial003/run
+                       test/tutorial003/*.idr
+                       test/tutorial003/expected
+                       test/tutorial004/run
+                       test/tutorial004/*.idr
+                       test/tutorial004/expected
+                       test/tutorial005/run
+                       test/tutorial005/*.idr
+                       test/tutorial005/expected
+                       test/tutorial006/run
+                       test/tutorial006/*.idr
+                       test/tutorial006/expected
 
 source-repository head
   type:     git
@@ -424,6 +527,8 @@ Library
 
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
+                , Idris.Apropos
+                , Idris.ASTUtils
                 , Idris.CaseSplit
                 , Idris.Chaser
                 , Idris.Colours
@@ -434,15 +539,20 @@ Library
                 , Idris.DeepSeq
                 , Idris.Delaborate
                 , Idris.Docs
+                , Idris.Docstrings
                 , Idris.ElabDecls
                 , Idris.ElabTerm
+                , Idris.Erasure
                 , Idris.Error
                 , Idris.ErrReverse
                 , Idris.Help
                 , Idris.IBC
                 , Idris.IdeSlave
+                , Idris.IdrisDoc
                 , Idris.Imports
                 , Idris.Inliner
+                , Idris.Interactive
+                , Idris.Output
                 , Idris.Parser
                 , Idris.ParseHelpers
                 , Idris.ParseOps
@@ -456,8 +566,10 @@ Library
                 , Idris.REPL
                 , Idris.REPLParser
                 , Idris.Transforms
+                , Idris.TypeSearch
                 , Idris.Unlit
-                , Idris.UnusedArgs
+                , Idris.WhoCalls
+                , Idris.CmdOptions
 
                 , IRTS.BCImp
                 , IRTS.Bytecode
@@ -499,15 +611,19 @@ Library
                 , ansi-terminal
                 , ansi-wl-pprint
                 , binary
+                , blaze-html >= 0.6.1.3
+                , blaze-markup >= 0.5.2.1 && < 0.7.0.0
                 , bytestring
+                , cheapskate
                 , containers >= 0.5
                 , directory
                 , directory >= 1.2
                 , filepath
                 , haskeline >= 0.7
                 , language-java >= 0.2.6
+                , lens >= 4.1.1
                 , mtl
-                , parsers >= 0.9
+                , parsers >= 0.9 && < 0.11.0.2 
                 , pretty
                 , process
                 , split
@@ -523,6 +639,7 @@ Library
                 , xml
                 , deepseq
                 , zlib
+                , optparse-applicative >= 0.8
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleContexts

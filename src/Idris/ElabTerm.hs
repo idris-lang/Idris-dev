@@ -3,37 +3,30 @@
 module Idris.ElabTerm where
 
 import Idris.AbsSyntax
+import Idris.AbsSyntaxTree
 import Idris.DSL
 import Idris.Delaborate
 import Idris.Error
 import Idris.ProofSearch
+import Idris.Output (pshow)
 
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
 import Idris.Core.Typecheck (check)
+import Idris.ErrReverse (errReverse)
 
 import Control.Applicative ((<$>))
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
 
 import Debug.Trace
-
--- Data to pass to recursively called elaborators; e.g. for where blocks,
--- paramaterised declarations, etc.
-
-data ElabInfo = EInfo { params :: [(Name, PTerm)],
-                        inblock :: Ctxt [Name], -- names in the block, and their params
-                        liftname :: Name -> Name,
-                        namespace :: Maybe [String] }
-
-toplevel = EInfo [] emptyContext id Nothing
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
@@ -72,13 +65,20 @@ build ist info pattern opts fn tm
          tm <- get_term
          ctxt <- get_context
          probs <- get_probs
+         u <- getUnifyLog
+         hs <- get_holes
 
-         when (not pattern) $ do matchProblems True; unifyProblems
+         when (not pattern) $ 
+           traceWhen u ("Remaining holes:\n" ++ show hs ++ "\n" ++
+                        "Remaining problems:\n" ++ qshow probs) $ 
+             do unify_all; matchProblems True; unifyProblems
+
          probs <- get_probs
          case probs of
             [] -> return ()
-            ((_,_,_,e,_):es) -> if inf then return ()
-                                       else lift (Error e)
+            ((_,_,_,e,_,_):es) -> traceWhen u ("Final problems:\n" ++ show probs) $
+                                   if inf then return ()
+                                          else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -105,8 +105,8 @@ buildTC ist info pattern opts fn tm
          tm <- get_term
          case probs of
             [] -> return ()
-            ((_,_,_,e,_):es) -> if inf then return ()
-                                       else lift (Error e)
+            ((_,_,_,e,_,_):es) -> if inf then return ()
+                                         else lift (Error e)
          is <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -127,6 +127,7 @@ elab ist info pattern opts fn tm
          end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
+                  unify_all
                   matchProblems False -- only the ones we matched earlier
                   unifyProblems
                   mkPat)
@@ -154,39 +155,42 @@ elab ist info pattern opts fn tm
 
     elabE :: (Bool, Bool, Bool) -> PTerm -> ElabD ()
     elabE ina t = 
---               do g <- goal
---                  trace ("Elaborating " ++ show t ++ " : " ++ show g) $
+               --do g <- goal
+                  --trace ("Elaborating " ++ show t ++ " : " ++ show g) $
                   do ct <- insertCoerce ina t
                      t' <- insertLazy ct
                      g <- goal
                      tm <- get_term
                      ps <- get_probs
                      hs <- get_holes
---                      trace ("Elaborating " ++ show t' ++ " in " ++ show g
--- --                             ++ "\n" ++ show tm
---                             ++ "\nholes " ++ show hs
---                             ++ "\nproblems " ++ show ps
---                             ++ "\n-----------\n") $
---                      trace ("ELAB " ++ show t') $ 
+                     --trace ("Elaborating " ++ show t' ++ " in " ++ show g
+                     --         ++ "\n" ++ show tm
+                     --         ++ "\nholes " ++ show hs
+                     --         ++ "\nproblems " ++ show ps
+                     --         ++ "\n-----------\n") $
+                     --trace ("ELAB " ++ show t') $ 
                      let fc = fileFC "Force"
-                     handleError forceErr 
+                     env <- get_env
+                     handleError (forceErr env)
                          (elab' ina t')
                          (elab' ina (PApp fc (PRef fc (sUN "Force"))
-                                       [pimp (sUN "a") Placeholder True, 
+                                       [pimp (sUN "t") Placeholder True,
+                                        pimp (sUN "a") Placeholder True, 
                                         pexp ct])) True
 
-    forceErr (CantUnify _ t t' _ _ _)
-       | (P _ (UN ht) _, _) <- unApply t,
-            ht == txt "Lazy" = True
-    forceErr (CantUnify _ t t' _ _ _)
-       | (P _ (UN ht) _, _) <- unApply t',
-            ht == txt "Lazy" = True
-    forceErr (InfiniteUnify _ t _)
-       | (P _ (UN ht) _, _) <- unApply t,
-            ht == txt "Lazy" = True
-    forceErr (Elaborating _ _ t) = forceErr t
-    forceErr (At _ t) = forceErr t
-    forceErr t = False
+    forceErr env (CantUnify _ t t' _ _ _)
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
+            ht == txt "Lazy'" = True
+    forceErr env (CantUnify _ t t' _ _ _)
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t'),
+            ht == txt "Lazy'" = True
+    forceErr env (InfiniteUnify _ t _)
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
+            ht == txt "Lazy'" = True
+    forceErr env (Elaborating _ _ t) = forceErr env t
+    forceErr env (ElaboratingArg _ _ _ t) = forceErr env t
+    forceErr env (At _ t) = forceErr env t
+    forceErr env t = False
 
     local f = do e <- get_env
                  return (f `elem` map fst e)
@@ -263,13 +267,14 @@ elab ist info pattern opts fn tm
              ty <- goal
              ctxt <- get_context
              let (tc, _) = unApply ty
-             let as' = pruneByType tc ctxt as
+             env <- get_env
+             let as' = pruneByType (map fst env) tc ctxt as
 --              trace (show as ++ "\n ==> " ++ showSep ", " (map showTmImpls as')) $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
-        where showHd (PApp _ (PRef _ n) _) = show n
-              showHd (PRef _ n) = show n
-              showHd (PApp _ h _) = show h
-              showHd x = show x
+        where showHd (PApp _ (PRef _ n) _) = n
+              showHd (PRef _ n) = n
+              showHd (PApp _ h _) = showHd h
+              showHd x = NErased -- We probably should do something better than this here
     elab' ina (PAlternative False as)
         = trySeq as
         where -- if none work, take the error from the first
@@ -458,13 +463,15 @@ elab ist info pattern opts fn tm
 --                    trace ("ns is " ++ show ns) $ return ()
                     -- mark any type class arguments as injective
                     mapM_ checkIfInjective (map snd ns)
+                    unifyProblems -- try again with the new information,
+                                  -- to help with disambiguation
                     -- Sort so that the implicit tactics and alternatives go last
                     let (ns', eargs) = unzip $
                              sortBy cmpArg (zip ns args)
                     elabArgs ist (ina || not isinf, guarded, inty)
                            [] fc False f ns' 
                              (f == sUN "Force")
-                             (map (\x -> (lazyarg x, getTm x)) eargs)
+                             (map (\x -> (False, getTm x)) eargs) -- TODO: remove this False arg
                     solve
                     ivs' <- get_instances
                     -- Attempt to resolve any type classes which have 'complete' types,
@@ -480,12 +487,22 @@ elab ist info pattern opts fn tm
                                                   (movelast n)
                                          else movelast n)
                               (ivs' \\ ivs)
-      where -- normal < tactic < default tactic
+      where -- normal < alternatives < lambdas < rewrites < tactic < default tactic
+            -- reason for lambdas after alternatives is that having 
+            -- the alternative resolved can help with typechecking the lambda
+            -- or the rewrite. Rewrites/tactics need as much information
+            -- as possible about the type.
+            -- FIXME: Better would be to allow alternative resolution to be
+            -- retried after more information is in.
             cmpArg (_, x) (_, y)
                    = compare (conDepth 0 (getTm x) + priority x + alt x) 
                              (conDepth 0 (getTm y) + priority y + alt y)
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
+                                   PAlternative True _ -> 1
+                                   PTactics _ -> 150
+                                   PLam _ _ _ -> 2
+                                   PRewrite _ _ _ _ -> 3
                                    _ -> 0
 
             -- Score a point for every level where there is a non-constructor
@@ -549,7 +566,7 @@ elab ist info pattern opts fn tm
              claim tyn RType
              valn <- getNameFrom (sMN 0 "rval")
              claim valn (Var tyn)
-             letn <- getNameFrom (sMN 0 "rewrite_rule")
+             letn <- getNameFrom (sMN 0 "_rewrite_rule")
              letbind letn (Var tyn) (Var valn)
              focus valn
              elab' ina r
@@ -672,15 +689,18 @@ elab ist info pattern opts fn tm
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
            let tries = if pattern then [t, mkDelay t] else [mkDelay t, t]
            case tyh of
-                P _ (UN l) _ | l == txt "Lazy"
+                P _ (UN l) _ | l == txt "Lazy'"
                     -> return (PAlternative False tries)
                 _ -> return t
       where
         mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
         mkDelay t = let fc = fileFC "Delay" in
-                        addImpl ist (PApp fc (PRef fc (sUN "Delay")) [pexp t])
-                                            
+                        addImpl ist (PApp fc (PRef fc (sUN "Delay"))
+                                          [pexp t])
 
+    -- case is tricky enough without implicit coercions! If they are needed,
+    -- they can go in the branches separately.
+    insertCoerce ina t@(PCase _ _ _) = return t
     insertCoerce ina t =
         do ty <- goal
            -- Check for possible coercions to get to the goal
@@ -709,67 +729,41 @@ elab ist info pattern opts fn tm
              -> Bool -- ^ under a 'force'
              -> [(Bool, PTerm)] -- ^ (Laziness, argument)
              -> ElabD ()
-    elabArgs ist ina failed fc retry f [] force _
---         | retry = let (ns, ts) = unzip (reverse failed) in
---                       elabArgs ina [] False ns ts
-        | otherwise = return ()
+    elabArgs ist ina failed fc retry f [] force _ = return ()
     elabArgs ist ina failed fc r f (n:ns) force ((_, Placeholder) : args)
         = elabArgs ist ina failed fc r f ns force args
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force ((lazy, t) : args)
         | lazy && not pattern
-          = elabArg argName holeName (PApp bi (PRef bi (sUN "lazy"))
+          = elabArg argName holeName (PApp bi (PRef bi (sUN "Delay"))
                                            [pimp (sUN "a") Placeholder True,
                                             pexp t])
         | otherwise = elabArg argName holeName t
       where elabArg argName holeName t =
-              reflectFunctionErrors ist f argName $
-              do hs <- get_holes
-                 tm <- get_term
-                 -- No coercing under an explicit Force (or it can Force/Delay
-                 -- recursively!)
-                 let elab = if force then elab' else elabE
-                 failed' <- -- trace (show (n, t, hs, tm)) $
-                            -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
-                            case holeName `elem` hs of
-                              True -> do focus holeName; elab ina t; return failed
-                              False -> return failed
-                 elabArgs ist ina failed fc r f ns force args
+              do now_elaborating fc f argName
+                 wrapErr f argName $ do
+                   hs <- get_holes
+                   tm <- get_term
+                   -- No coercing under an explicit Force (or it can Force/Delay
+                   -- recursively!)
+                   let elab = if force then elab' else elabE
+                   failed' <- -- trace (show (n, t, hs, tm)) $
+                              -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
+                              case holeName `elem` hs of
+                                True -> do focus holeName; elab ina t; return failed
+                                False -> return failed
+                   done_elaborating_arg f argName
+                   elabArgs ist ina failed fc r f ns force args
+            wrapErr f argName action =
+              do elabState <- get
+                 while <- elaborating_app
+                 let while' = map (\(x, y, z)-> (y, z)) while
+                 (result, newState) <- case runStateT action elabState of
+                                         OK (res, newState) -> return (res, newState)
+                                         Error e -> do done_elaborating_arg f argName
+                                                       lift (tfail (elaboratingArgErr while' e))
+                 put newState
+                 return result
 
--- | Perform error reflection for function applicaitons with specific error handlers
-reflectFunctionErrors :: IState -> Name -> Name -> ElabD a -> ElabD a
-reflectFunctionErrors ist f arg action =
-  do elabState <- get
-     (result, newState) <- case runStateT action elabState of
-                             OK (res, newState) -> return (res, newState)
-                             Error e@(ReflectionError _ _) -> (lift . tfail) e
-                             Error e@(ReflectionFailed _ _) -> (lift . tfail) e
-                             Error e -> handle e >>= lift . tfail
-     put newState
-     return result
-  where handle :: Err -> ElabD Err
-        handle e = do let funhandlers = (maybe M.empty id . lookupCtxtExact f . idris_function_errorhandlers) ist
-                          handlers = (maybe [] S.toList . M.lookup arg) funhandlers
-                          reports  = map (\n -> RApp (Var n) (reflectErr e)) handlers
-
-
-                      -- Typecheck error handlers - if this fails, then something else was wrong earlier!
-                      handlers <- case mapM (check (tt_ctxt ist) []) reports of
-                                      Error e -> lift . tfail $
-                                                 ReflectionFailed "Type error while constructing reflected error" e
-                                      OK hs   -> return hs
-
-                      -- Normalize error handler terms to produce the new messages
-                      let ctxt    = tt_ctxt ist
-                          results = map (normalise ctxt []) (map fst handlers)
-
-                      -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
-                      let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
-                      errorparts <- case mapM (mapM reifyReportPart) errorpartsTT of
-                                      Left err -> lift (tfail err)
-                                      Right ok -> return ok
-                      return $ case errorparts of
-                                   []    -> e
-                                   parts -> ReflectionError errorparts e
 
 -- For every alternative, look at the function at the head. Automatically resolve
 -- any nested alternatives where that function is also at the head
@@ -787,6 +781,7 @@ pruneAlt xs = map prune xs
               case fs of
                  [a] -> a
                  _ -> PAlternative a as'
+
     choose f (PApp fc f' as) = PApp fc (choose f f') (fmap (fmap (choose f)) as)
     choose f t = t
 
@@ -796,8 +791,21 @@ pruneAlt xs = map prune xs
 
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
-pruneByType :: Term -> Context -> [PTerm] -> [PTerm]
-pruneByType (P _ n _) c as
+pruneByType :: [Name] -> Term -> Context -> [PTerm] -> [PTerm]
+-- if an alternative has a locally bound name at the head, take it
+pruneByType env t c as
+   | Just a <- locallyBound as = [a]
+  where
+    locallyBound [] = Nothing
+    locallyBound (t:ts)
+       | Just n <- getName t,
+         n `elem` env = Just t
+       | otherwise = locallyBound ts
+    getName (PRef _ n) = Just n
+    getName (PApp _ f _) = getName f
+    getName _ = Nothing
+                      
+pruneByType env (P _ n _) c as
 -- if the goal type is polymorphic, keep e
    | [] <- lookupTy n c = as
    | otherwise
@@ -823,7 +831,7 @@ pruneByType (P _ n _) c as
                                     _ -> False
                        _ -> False
 
-pruneByType t _ as = as
+pruneByType _ t _ as = as
 
 findInstances :: IState -> Term -> [Name]
 findInstances ist t
@@ -835,9 +843,10 @@ findInstances ist t
 
 trivial' ist
     = trivial (elab ist toplevel False [] (sMN 0 "tac")) ist
-proofSearch' ist top n hints
-    = proofSearch (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
-
+proofSearch' ist rec depth prv top n hints
+    = do unifyProblems
+         proofSearch rec prv depth 
+                     (elab ist toplevel False [] (sMN 0 "tac")) top n hints ist
 
 resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
 resolveTC = resTC' [] 
@@ -926,7 +935,7 @@ resTC' tcs depth topg fn ist
                 ulog <- getUnifyLog
                 solve
                 traceWhen ulog ("Got " ++ show n) $ return ()
-       where isImp (PImp p _ _ _ _ _) = (True, p)
+       where isImp (PImp p _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
 collectDeferred :: Maybe Name ->
@@ -982,7 +991,7 @@ runTac autoSolve ist fn tac
                     ns -> return (map (\ (n, a) -> (n, map (const True) a)) ns)
              let tacs = map (\ (fn', imps) ->
                                  (match_apply (Var fn') (map (\x -> (x, 0)) imps),
-                                     show fn')) fnimps
+                                     fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
        where envArgs n = do e <- get_env
@@ -998,10 +1007,10 @@ runTac autoSolve ist fn tac
                     ns -> return (map (\ (n, a) -> (n, map isImp a)) ns)
              let tacs = map (\ (fn', imps) ->
                                  (apply (Var fn') (map (\x -> (x, 0)) imps),
-                                     show fn')) fnimps
+                                     fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
-       where isImp (PImp _ _ _ _ _ _) = True
+       where isImp (PImp _ _ _ _ _) = True
              isImp _ = False
              envArgs n = do e <- get_env
                             case lookup n e of
@@ -1010,6 +1019,8 @@ runTac autoSolve ist fn tac
                                _ -> return []
     runT (Refine fn imps) = do ns <- apply (Var fn) (map (\x -> (x,0)) imps)
                                when autoSolve solveAll
+    runT DoUnify = do unify_all
+                      when autoSolve solveAll
     runT (Equiv tm) -- let bind tm, then
               = do attack
                    tyn <- getNameFrom (sMN 0 "ety")
@@ -1065,8 +1076,9 @@ runTac autoSolve ist fn tac
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
     runT TCInstance = runT (Exact (PResolveTC emptyFC))
-    runT (ProofSearch top hints)
-         = do proofSearch' ist top fn hints; when autoSolve solveAll
+    runT (ProofSearch rec prover depth top hints)
+         = do proofSearch' ist rec depth prover top fn hints
+              when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True
@@ -1098,9 +1110,9 @@ runTac autoSolve ist fn tac
                                runReflected tactic
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (sNS (sUN "List") ["List", "Prelude"])
-              scriptTy = (RBind (sUN "__pi_arg")
+              scriptTy = (RBind (sMN 0 "__pi_arg")
                                 (Pi (RApp listTy envTupleType))
-                                    (RBind (sUN "__pi_arg1")
+                                    (RBind (sMN 1 "__pi_arg")
                                            (Pi (Var $ reflm "TT")) tacticTy))
     runT (ByReflection tm) -- run the reflection function 'tm' on the
                            -- goal, then apply the resulting reflected Tactic
@@ -1193,18 +1205,22 @@ reify _ t = fail ("Unknown tactic " ++ show t)
 
 reifyApp :: IState -> Name -> [Term] -> ElabD PTactic
 reifyApp ist t [l, r] | t == reflm "Try" = liftM2 Try (reify ist l) (reify ist r)
+reifyApp _ t [Constant (I i)] 
+           | t == reflm "Search" = return (ProofSearch True True i Nothing [])
 reifyApp _ t [x]
            | t == reflm "Refine" = do n <- reifyTTName x
                                       return $ Refine n []
 reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist r)
 reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
-reifyApp _ t [Constant (Str n)]
-           | t == reflm "Intro" = return $ Intro [sUN n]
+reifyApp _ t [n] | t == reflm "Intro" = liftM (Intro . (:[])) (reifyTTName n)
+reifyApp _ t [n] | t == reflm "Induction" = liftM Induction (reifyTTName n)
 reifyApp ist t [t']
              | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
 reifyApp ist t [t']
              | t == reflm "Reflect" = liftM (Reflect . delab ist) (reifyTT t')
+reifyApp ist t [t']
+             | t == reflm "ByReflection" = liftM (ByReflection . delab ist) (reifyTT t')
 reifyApp _ t [t']
            | t == reflm "Fill" = liftM (Fill . PQuote) (reifyRaw t')
 reifyApp ist t [t']
@@ -1593,8 +1609,8 @@ reflectErr (NotInjective t1 t2 t3) =
             ]
 reflectErr (CantResolve t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
 reflectErr (CantResolveAlts ss) =
-  raw_apply (Var $ reflErrName "CantResolve")
-            [rawList (Var $ (sUN "String")) (map (RConstant . Str) ss)]
+  raw_apply (Var $ reflErrName "CantResolveAlts")
+            [rawList (Var $ (sUN "String")) (map Var ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
 reflectErr UniverseError = Var $ reflErrName "UniverseError"
 reflectErr ProgramLineComment = Var $ reflErrName "ProgramLineComment"
@@ -1603,23 +1619,19 @@ reflectErr (NonCollapsiblePostulate n) = raw_apply (Var $ reflErrName "NonCollab
 reflectErr (AlreadyDefined n) = raw_apply (Var $ reflErrName "AlreadyDefined") [reflectName n]
 reflectErr (ProofSearchFail e) = raw_apply (Var $ reflErrName "ProofSearchFail") [reflectErr e]
 reflectErr (NoRewriting tm) = raw_apply (Var $ reflErrName "NoRewriting") [reflect tm]
-reflectErr (At fc err) = raw_apply (Var $ reflErrName "At") [reflectFC fc, reflectErr err]
-           where reflectFC (FC source line col) = raw_apply (Var $ reflErrName "FileLoc")
-                                                            [ RConstant (Str source)
-                                                            , RConstant (I line)
-                                                            , RConstant (I col)
-                                                            ]
-reflectErr (Elaborating str n e) =
-  raw_apply (Var $ reflErrName "Elaborating")
-            [ RConstant (Str str)
-            , reflectName n
-            , reflectErr e
-            ]
 reflectErr (ProviderError str) =
   raw_apply (Var $ reflErrName "ProviderError") [RConstant (Str str)]
 reflectErr (LoadingFailed str err) =
   raw_apply (Var $ reflErrName "LoadingFailed") [RConstant (Str str)]
 reflectErr x = raw_apply (Var (sNS (sUN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
+
+elaboratingArgErr :: [(Name, Name)] -> Err -> Err
+elaboratingArgErr [] err = err
+elaboratingArgErr ((f,x):during) err = fromMaybe err (rewrite err)
+  where rewrite (ElaboratingArg _ _ _ _) = Nothing
+        rewrite (ProofSearchFail e) = fmap ProofSearchFail (rewrite e)
+        rewrite (At fc e) = fmap (At fc) (rewrite e)
+        rewrite err = Just (ElaboratingArg f x during err)
 
 
 withErrorReflection :: Idris a -> Idris a
@@ -1629,30 +1641,59 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                                return e -- Don't do meta-reflection of errors
           handle e@(ReflectionFailed _ _) = do logLvl 3 "Skipping reflection of reflection failure"
                                                return e
+          -- At and Elaborating are just plumbing - error reflection shouldn't rewrite them
+          handle e@(At fc err) = do logLvl 3 "Reflecting body of At"
+                                    err' <- handle err
+                                    return (At fc err')
+          handle e@(Elaborating what n err) = do logLvl 3 "Reflecting body of Elaborating"
+                                                 err' <- handle err
+                                                 return (Elaborating what n err')
+          handle e@(ElaboratingArg f a prev err) = do logLvl 3 "Reflecting body of ElaboratingArg"
+                                                      hs <- getFnHandlers f a
+                                                      err' <- if null hs
+                                                                 then handle err
+                                                                 else applyHandlers err hs
+                                                      return (ElaboratingArg f a prev err')
+          -- ProofSearchFail is an internal detail - so don't expose it
+          handle (ProofSearchFail e) = handle e
+          -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         logLvl 2 "Starting error reflection"
                         let handlers = idris_errorhandlers ist
-                        logLvl 3 $ "Using reflection handlers " ++ concat (intersperse ", " (map show handlers))
-                        let reports = map (\n -> RApp (Var n) (reflectErr e)) handlers
+                        applyHandlers e handlers
+          getFnHandlers :: Name -> Name -> Idris [Name]
+          getFnHandlers f arg = do ist <- getIState
+                                   let funHandlers = maybe M.empty id .
+                                                     lookupCtxtExact f .
+                                                     idris_function_errorhandlers $ ist
+                                   return . maybe [] S.toList . M.lookup arg $ funHandlers
 
-                        -- Typecheck error handlers - if this fails, then something else was wrong earlier!
-                        handlers <- case mapM (check (tt_ctxt ist) []) reports of
-                                      Error e -> ierror $ ReflectionFailed "Type error while constructing reflected error" e
-                                      OK hs   -> return hs
 
-                        -- Normalize error handler terms to produce the new messages
-                        ctxt <- getContext
-                        let results = map (normalise ctxt []) (map fst handlers)
-                        logLvl 3 $ "New error message info: " ++ concat (intersperse " and " (map show results))
+          applyHandlers e handlers =
+                      do ist <- getIState
+                         let err = fmap (errReverse ist) e
+                         logLvl 3 $ "Using reflection handlers " ++
+                                    concat (intersperse ", " (map show handlers))
+                         let reports = map (\n -> RApp (Var n) (reflectErr err)) handlers
 
-                        -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
-                        let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
-                        errorparts <- case mapM (mapM reifyReportPart) errorpartsTT of
-                                        Left err -> ierror err
-                                        Right ok -> return ok
-                        return $ case errorparts of
-                                   []    -> e
-                                   parts -> ReflectionError errorparts e
+                         -- Typecheck error handlers - if this fails, then something else was wrong earlier!
+                         handlers <- case mapM (check (tt_ctxt ist) []) reports of
+                                       Error e -> ierror $ ReflectionFailed "Type error while constructing reflected error" e
+                                       OK hs   -> return hs
+
+                         -- Normalize error handler terms to produce the new messages
+                         ctxt <- getContext
+                         let results = map (normalise ctxt []) (map fst handlers)
+                         logLvl 3 $ "New error message info: " ++ concat (intersperse " and " (map show results))
+
+                         -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
+                         let errorpartsTT = mapMaybe unList (mapMaybe fromTTMaybe results)
+                         errorparts <- case mapM (mapM reifyReportPart) errorpartsTT of
+                                         Left err -> ierror err
+                                         Right ok -> return ok
+                         return $ case errorparts of
+                                    []    -> e
+                                    parts -> ReflectionError errorparts e
 
 fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
 fromTTMaybe (App (App (P (DCon _ _) (NS (UN just) _) _) ty) tm)

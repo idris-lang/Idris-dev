@@ -5,6 +5,7 @@ dsl:         Embedded DSLs and features to support DSL development
 effects:     Effects package
 error:       Error messages and error reflection
 ffi:         FFI calls, including type providers
+idrisdoc:    Documentation tool functionality
 interactive: Interactive editing, proof search
 io:          IO monad
 literate:    .lidr files; literate programming
@@ -12,5 +13,6 @@ primitives:  Primitive types
 proof:       Theorem proving, tactics
 sugar:       Syntactic sugar, syntax extensions
 totality:    Totality checking
+tutorial:    Examples from the tutorial
 
 reg:         Regression tests, covering previous bug fixes

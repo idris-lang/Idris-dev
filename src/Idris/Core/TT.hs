@@ -27,6 +27,7 @@ import Control.Monad.Trans.Error (Error(..))
 import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
+import Numeric (showIntAtBase)
 import qualified Data.Text as T
 import Data.List
 import Data.Maybe (listToMaybe)
@@ -44,8 +45,8 @@ data Option = TTypeInTType
 
 -- | Source location. These are typically produced by the parser 'Idris.Parser.getFC'
 data FC = FC { fc_fname :: String, -- ^ Filename
-               fc_line :: Int, -- ^ Line number
-               fc_column :: Int -- ^ Column number
+               fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
+               fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
              }
 
 -- | Ignore source location equality (so deriving classes do not compare FCs)
@@ -57,7 +58,7 @@ newtype FC' = FC' { unwrapFC :: FC }
 
 instance Eq FC' where
   FC' fc == FC' fc' = fcEq fc fc'
-    where fcEq (FC n l c) (FC n' l' c') = n == n' && l == l' && c == c'
+    where fcEq (FC n s e) (FC n' s' e') = n == n' && s == s' && e == e'
 
 -- | Empty source location
 emptyFC :: FC
@@ -65,7 +66,7 @@ emptyFC = fileFC ""
 
 -- | Source location with file only
 fileFC :: String -> FC
-fileFC s = FC s 0 0
+fileFC s = FC s (0, 0) (0, 0)
 
 {-!
 deriving instance Binary FC
@@ -73,20 +74,31 @@ deriving instance NFData FC
 !-}
 
 instance Sized FC where
-  size (FC f l c) = 1 + length f
+  size (FC f s e) = 4 + length f
 
 instance Show FC where
-    show (FC f l c) = f ++ ":" ++ show l ++ ":" ++ show c
+    show (FC f s e) = f ++ ":" ++ showLC s e
+      where showLC (sl, sc) (el, ec) | sl == el && sc == ec = show sl ++ ":" ++ show sc
+                                     | sl == el             = show sl ++ ":" ++ show sc ++ "-" ++ show ec
+                                     | otherwise            = show sl ++ ":" ++ show sc ++ "-" ++ show el ++ ":" ++ show ec
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput
+
+-- | Text formatting output
+data TextFormatting = BoldText | ItalicText | UnderlineText
 
 -- | Output annotations for pretty-printing
-data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe Type)
+data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe String)
+                        -- ^^ The name, classification, docs overview, and pretty-printed type
                       | AnnBoundName Name Bool
-                      | AnnConstData
-                      | AnnConstType
+                        -- ^^ The name and whether it is implicit
+                      | AnnConst Const
+                      | AnnData String String -- ^ type, doc overview
+                      | AnnType String String -- ^ name, doc overview
+                      | AnnKeyword
                       | AnnFC FC
+                      | AnnTextFmt TextFormatting
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String
@@ -121,7 +133,7 @@ data Err' t
           | NoTypeDecl Name
           | NotInjective t t t
           | CantResolve t
-          | CantResolveAlts [String]
+          | CantResolveAlts [Name]
           | IncompleteTerm t
           | UniverseError
           | ProgramLineComment
@@ -132,6 +144,7 @@ data Err' t
           | NoRewriting t
           | At FC (Err' t)
           | Elaborating String Name (Err' t)
+          | ElaboratingArg Name Name [(Name, Name)] (Err' t)
           | ProviderError String
           | LoadingFailed String (Err' t)
           | ReflectionError [[ErrorReportPart]] (Err' t)
@@ -162,6 +175,7 @@ instance Sized Err where
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
   size (Elaborating _ n err) = size err
+  size (ElaboratingArg _ _ _ err) = size err
   size (ProviderError msg) = length msg
   size (LoadingFailed fn e) = 1 + length fn + size e
   size _ = 1
@@ -170,9 +184,12 @@ score :: Err -> Int
 score (CantUnify _ _ _ m _ s) = s + score m
 score (CantResolve _) = 20
 score (NoSuchVariable _) = 1000
-score (ProofSearchFail _) = 10000
-score (CantSolveGoal _ _) = 10000
+score (ProofSearchFail e) = score e
+score (CantSolveGoal _ _) = 100000
 score (InternalMsg _) = -1
+score (At _ e) = score e
+score (ElaboratingArg _ _ _ e) = score e
+score (Elaborating _ _ e) = score e
 score _ = 0
 
 instance Show Err where
@@ -186,6 +203,10 @@ instance Show Err where
     show (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: (TT) " ++ show e
     show ProgramLineComment = "Program line next to comment"
     show (At f e) = show f ++ ":" ++ show e
+    show (ElaboratingArg f x prev e) = "Elaborating " ++ show f ++ " arg " ++
+                                       show x ++ ": " ++ show e
+    show (Elaborating what n e) = "Elaborating " ++ what ++ show n ++ ":" ++ show e
+    show (ProofSearchFail e) = "Proof search fail: " ++ show e
     show _ = "Error"
 
 instance Pretty Err OutputAnnotation where
@@ -241,7 +262,7 @@ traceWhen False _  a = a
 data Name = UN T.Text -- ^ User-provided name
           | NS Name [T.Text] -- ^ Root, namespaces
           | MN Int T.Text -- ^ Machine chosen names
-          | NErased -- ^ Name of somethng which is never used in scope
+          | NErased -- ^ Name of something which is never used in scope
           | SN SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
   deriving (Eq, Ord)
@@ -299,11 +320,11 @@ instance Sized Name where
   size _ = 1
 
 instance Pretty Name OutputAnnotation where
-  pretty n@(UN n') = annotate (AnnName n Nothing Nothing) $ text (T.unpack n')
-  pretty n@(NS un s) = annotate (AnnName n Nothing Nothing) . noAnnotate $ pretty un
-  pretty n@(MN i s) = annotate (AnnName n Nothing Nothing) $
+  pretty n@(UN n') = annotate (AnnName n Nothing Nothing Nothing) $ text (T.unpack n')
+  pretty n@(NS un s) = annotate (AnnName n Nothing Nothing Nothing) . noAnnotate $ pretty un
+  pretty n@(MN i s) = annotate (AnnName n Nothing Nothing Nothing) $
                       lbrace <+> text (T.unpack s) <+> (text . show $ i) <+> rbrace
-  pretty n@(SN s) = annotate (AnnName n Nothing Nothing) $ text (show s)
+  pretty n@(SN s) = annotate (AnnName n Nothing Nothing Nothing) $ text (show s)
 
 instance Pretty [Name] OutputAnnotation where
   pretty = encloseSep empty empty comma . map pretty
@@ -368,6 +389,7 @@ implicitable _ = False
 nsroot (NS n _) = n
 nsroot n = n
 
+-- this will overwrite already existing definitions
 addDef :: Name -> a -> Ctxt a -> Ctxt a
 addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
                         Nothing -> Map.insert (nsroot n)
@@ -410,6 +432,9 @@ lookupCtxt n ctxt = map snd (lookupCtxtName n ctxt)
 lookupCtxtExact :: Name -> Ctxt a -> Maybe a
 lookupCtxtExact n ctxt = listToMaybe [ v | (nm, v) <- lookupCtxtName n ctxt, nm == n]
 
+deleteDefExact :: Name -> Ctxt a -> Ctxt a
+deleteDefExact n = Map.adjust (Map.delete n) (nsroot n)
+
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt
   = let ds = lookupCtxtName n ctxt in
@@ -417,7 +442,7 @@ updateDef n f ctxt
 
 toAlist :: Ctxt a -> [(Name, a)]
 toAlist ctxt = let allns = map snd (Map.toList ctxt) in
-                concat (map (Map.toList) allns)
+                concatMap (Map.toList) allns
 
 addAlist :: Show a => [(Name, a)] -> Ctxt a -> Ctxt a
 addAlist [] ctxt = ctxt
@@ -504,6 +529,60 @@ instance Pretty Const OutputAnnotation where
   pretty (B16 w) = text . show $ w
   pretty (B32 w) = text . show $ w
   pretty (B64 w) = text . show $ w
+
+-- | Determines whether the input constant represents a type
+constIsType :: Const -> Bool
+constIsType (I _) = False
+constIsType (BI _) = False
+constIsType (Fl _) = False
+constIsType (Ch _) = False
+constIsType (Str _) = False
+constIsType (B8 _) = False
+constIsType (B16 _) = False
+constIsType (B32 _) = False
+constIsType (B64 _) = False
+constIsType (B8V _) = False
+constIsType (B16V _) = False
+constIsType (B32V _) = False
+constIsType (B64V _) = False
+constIsType _ = True
+
+-- | Get the docstring for a Const
+constDocs :: Const -> String
+constDocs c@(AType (ATInt ITBig))          = "Arbitrary-precision integers"
+constDocs c@(AType (ATInt ITNative))       = "Fixed-precision integers of undefined size"
+constDocs c@(AType (ATInt ITChar))         = "Characters in some unspecified encoding"
+constDocs c@(AType ATFloat)                = "Double-precision floating-point numbers"
+constDocs StrType                          = "Strings in some unspecified encoding"
+constDocs PtrType                          = "Foreign pointers"
+constDocs ManagedPtrType                   = "Managed pointers"
+constDocs BufferType                       = "Copy-on-write buffers"
+constDocs c@(AType (ATInt (ITFixed IT8)))  = "Eight bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT16))) = "Sixteen bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT32))) = "Thirty-two bits (unsigned)"
+constDocs c@(AType (ATInt (ITFixed IT64))) = "Sixty-four bits (unsigned)"
+constDocs c@(AType (ATInt (ITVec IT8 16))) = "Vectors of sixteen eight-bit values"
+constDocs c@(AType (ATInt (ITVec IT16 8))) = "Vectors of eight sixteen-bit values"
+constDocs c@(AType (ATInt (ITVec IT32 4))) = "Vectors of four thirty-two-bit values"
+constDocs c@(AType (ATInt (ITVec IT64 2))) = "Vectors of two sixty-four-bit values"
+constDocs (Fl f)                           = "A float"
+constDocs (I i)                            = "A fixed-precision integer"
+constDocs (BI i)                           = "An arbitrary-precision integer"
+constDocs (Str s)                          = "A string of length " ++ show (length s)
+constDocs (Ch c)                           = "A character"
+constDocs (B8 w)                           = "The eight-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B16 w)                          = "The sixteen-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B32 w)                          = "The thirty-two-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B64 w)                          = "The sixty-four-bit value 0x" ++
+                                             showIntAtBase 16 intToDigit w ""
+constDocs (B8V v)                          = "A vector of eight-bit values"
+constDocs (B16V v)                         = "A vector of sixteen-bit values"
+constDocs (B32V v)                         = "A vector of thirty-two-bit values"
+constDocs (B64V v)                         = "A vector of sixty-four-bit values"
+constDocs prim                             = "Undocumented"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
@@ -981,8 +1060,9 @@ uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
 
 uniqueBinders :: [Name] -> TT Name -> TT Name
 uniqueBinders ns (Bind n b sc)
-    = let n' = uniqueName n ns in
-          Bind n' (fmap (uniqueBinders (n':ns)) b) (uniqueBinders ns sc)
+    = let n' = uniqueName n ns
+          ns' = n' : ns in
+          Bind n' (fmap (uniqueBinders ns') b) (uniqueBinders ns' sc)
 uniqueBinders ns (App f a) = App (uniqueBinders ns f) (uniqueBinders ns a)
 uniqueBinders ns t = t
 
@@ -1207,3 +1287,12 @@ orderPats tm = op [] tm
             = (n', t') : insert n t ps
         | otherwise = (n,t):(n',t'):ps
 
+allTTNames :: Eq n => TT n -> [n]
+allTTNames = nub . allNamesIn
+  where allNamesIn (P _ n _) = [n]
+        allNamesIn (Bind n b t) = [n] ++ nb b ++ allNamesIn t
+          where nb (Let   t v) = allNamesIn t ++ allNamesIn v
+                nb (Guess t v) = allNamesIn t ++ allNamesIn v
+                nb t = allNamesIn (binderTy t)
+        allNamesIn (App f a) = allNamesIn f ++ allNamesIn a
+        allNamesIn _ = []

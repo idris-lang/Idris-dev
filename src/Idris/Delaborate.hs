@@ -1,6 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-
-module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pshow, pprintErr) where
+module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
@@ -10,9 +9,11 @@ import Util.Pretty
 import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Docstrings (overview, renderDocstring)
 import Idris.ErrReverse
 
 import Data.List (intersperse)
+import qualified Data.Text as T
 
 import Debug.Trace
 
@@ -56,19 +57,24 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                                   _ -> PRef un n
     de env _ (Bind n (Lam ty) sc)
           = PLam n (de env [] ty) (de ((n,n):env) [] sc)
-    de env (PImp _ _ _ _ _ _:is) (Bind n (Pi ty) sc)
-          = PPi impl n (de env [] ty) (de ((n,n):env) is sc)
+    de env ((PImp { argopts = opts }):is) (Bind n (Pi ty) sc)
+          = PPi (Imp opts Dynamic False) n (de env [] ty) (de ((n,n):env) is sc)
     de env (PConstraint _ _ _ _:is) (Bind n (Pi ty) sc)
           = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
-    de env (PTacImplicit _ _ _ tac _ _:is) (Bind n (Pi ty) sc)
+    de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi ty) sc)
           = PPi (tacimpl tac) n (de env [] ty) (de ((n,n):env) is sc)
-    de env _ (Bind n (Pi ty) sc)
+    de env (plic:is) (Bind n (Pi ty) sc)
+          = PPi (Exp (argopts plic) Dynamic False)
+                n
+                (de env [] ty)
+                (de ((n,n):env) is sc)
+    de env [] (Bind n (Pi ty) sc)
           = PPi expl n (de env [] ty) (de ((n,n):env) [] sc)
     de env _ (Bind n (Let ty val) sc)
         = PLet n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
     de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
     de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
-    de env _ (Bind n _ sc) = de ((n,n):env) [] sc
+    de env plic (Bind n bb sc) = de ((n,n):env) [] sc
     de env _ (Constant i) = PConstant i
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
@@ -87,19 +93,22 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
          | n == eqCon     = PRefl un (de env [] r)
          | n == sUN "lazy" = de env [] r
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
-         | n == sUN "Exists"
+         | n == sUN "Sigma"
                = PDPair un IsType (PRef un x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [_,_,l,r]
          | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
-         | n == sUN "Ex_intro" = PDPair un IsTerm (de env [] l) Placeholder
+         | n == sUN "Sg_intro" = PDPair un IsTerm (de env [] l) Placeholder
                                            (de env [] r)
-    deFn env (P _ n _) args | not mvs
-         = case lookup n (idris_metavars ist) of
-                Just (Just _, mi, _) ->
-                     mkMVApp n (drop mi (map (de env []) args))
-                _ -> mkPApp n (map (de env []) args)
+    deFn env f@(P _ n _) args 
+         | n `elem` map snd env 
+              = PApp un (de env [] f) (map pexp (map (de env []) args))
+    deFn env (P _ n _) args 
+         | not mvs = case lookup n (idris_metavars ist) of
+                        Just (Just _, mi, _) ->
+                            mkMVApp n (drop mi (map (de env []) args))
+                        _ -> mkPApp n (map (de env []) args)
          | otherwise = mkPApp n (map (de env []) args)
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 
@@ -108,14 +117,14 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     mkMVApp n args
             = PApp un (PMetavar n) (map pexp args)
     mkPApp n args
-        | [imps] <- lookupCtxt n (idris_implicits ist)
+        | Just imps <- lookupCtxtExact n (idris_implicits ist)
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un n) (map pexp args)
 
-    imp (PImp p m l n _ d) arg = PImp p m l n arg d
-    imp (PExp p l _ d)   arg = PExp p l arg d
-    imp (PConstraint p l _ d) arg = PConstraint p l arg d
-    imp (PTacImplicit p l n sc _ d) arg = PTacImplicit p l n sc arg d
+    imp (PImp p m l n _) arg = PImp p m l n arg
+    imp (PExp p l n _)   arg = PExp p l n arg
+    imp (PConstraint p l n _) arg = PConstraint p l n arg
+    imp (PTacImplicit p l n sc _) arg = PTacImplicit p l n sc arg
 
 -- | How far to indent sub-errors
 errorIndent :: Int
@@ -130,12 +139,7 @@ pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
 pprintTerm ist = pprintTerm' ist []
 
 pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
-pprintTerm' ist = pprintPTerm (opt_showimp (idris_options ist)) 
-
-pshow :: IState -> Err -> String
-pshow ist err = displayDecorated (consoleDecorate ist) .
-                renderPretty 1.0 80 .
-                fmap (fancifyAnnots ist) $ pprintErr ist err
+pprintTerm' ist bnd tm = pprintPTerm (ppOptionIst ist) bnd [] (idris_infixes ist) tm
 
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)
@@ -192,7 +196,7 @@ pprintErr' i (NotInjective p x y) =
   pprintTerm i (delab i y)
 pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
-                                    cat (punctuate (comma <> space) (map text as))
+                                    align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i) . annName) as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> pprintTerm i (delab i t)
@@ -209,16 +213,33 @@ pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr
 pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
                                    pprintErr' i e
+pprintErr' i (ElaboratingArg f x _ e)
+  | isUN x =
+     text "When elaborating argument" <+>
+     annotate (AnnBoundName x False) (text (showbasic x)) <+> --TODO check plicity
+     text "to" <+> whatIsName <> annName f <> colon <>
+     indented (pprintErr' i e)
+  | otherwise =
+     text "When elaborating an application of" <+> whatIsName <>
+     annName f <> colon <> indented (pprintErr' i e)
+  where whatIsName = let ctxt = tt_ctxt i
+                     in if isTConName f ctxt
+                           then text "type constructor" <> space
+                           else if isConName f ctxt
+                                   then text "constructor" <> space
+                                   else if isFnName f ctxt
+                                           then text "function" <> space
+                                           else empty
 pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
 pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
 pprintErr' i (ReflectionError parts orig) =
-  let parts' = map (hsep . map showPart) parts in
-  vsep parts' <>
+  let parts' = map (fillSep . map showPart) parts in
+  align (fillSep parts') <>
   if (opt_origerr (idris_options i))
     then line <> line <> text "Original error:" <$> indented (pprintErr' i orig)
     else empty
   where showPart :: ErrorReportPart -> Doc OutputAnnotation
-        showPart (TextPart str) = text str
+        showPart (TextPart str) = fillSep . map text . words $ str
         showPart (NamePart n)   = annName n
         showPart (TermPart tm)  = pprintTerm i (delab i tm)
         showPart (SubReport rs) = indented . hsep . map showPart $ rs
@@ -227,11 +248,40 @@ pprintErr' i (ReflectionFailed msg err) =
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
 
+isUN :: Name -> Bool
+isUN (UN n) = not $ T.isPrefixOf (T.pack "__") n -- TODO figure out why MNs are getting rewritte to UNs for top-level pattern-matching functions
+isUN (NS n _) = isUN n
+isUN _ = False
+
 annName :: Name -> Doc OutputAnnotation
-annName n = annName' n (show n)
+annName n = annName' n (showbasic n)
 
 annName' :: Name -> String -> Doc OutputAnnotation
-annName' n str = annotate (AnnName n Nothing Nothing) (text str)
+annName' n str = annotate (AnnName n Nothing Nothing Nothing) (text str)
+
+fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
+fancifyAnnots ist annot@(AnnName n _ _ _) =
+  do let ctxt = tt_ctxt ist
+         docs = docOverview ist n
+         ty   = Just (getTy ist n)
+     case () of
+       _ | isDConName      n ctxt -> AnnName n (Just DataOutput) docs ty
+       _ | isFnName        n ctxt -> AnnName n (Just FunOutput) docs ty
+       _ | isTConName      n ctxt -> AnnName n (Just TypeOutput) docs ty
+       _ | isMetavarName   n ist  -> AnnName n (Just MetavarOutput) docs ty
+       _ | isPostulateName n ist  -> AnnName n (Just PostulateOutput) docs ty
+       _ | otherwise            -> annot
+  where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
+        docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
+                               let o   = overview (fst docs)
+                                   -- TODO make width configurable
+                                   out = displayS . renderPretty 1.0 50 $ renderDocstring o
+                               return (out "")
+        getTy :: IState -> Name -> String -- fails if name not already extant!
+        getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
+                                  delabTy ist n
+                      in (displayS . renderPretty 1.0 50 $ theTy) ""
+fancifyAnnots _ annot = annot
 
 showSc :: IState -> [(Name, Term)] -> Doc OutputAnnotation
 showSc i [] = empty
@@ -244,13 +294,14 @@ showSc i xs = line <> line <> text "In context:" <>
 
 
 showqual :: IState -> Name -> String
-showqual i n = showName (Just i) [] False False (dens n)
+showqual i n = showName (Just i) [] (ppOptionIst i) { ppopt_impl = False } False (dens n)
   where
     dens ns@(NS n _) = case lookupCtxt n (idris_implicits i) of
                               [_] -> n -- just one thing
                               _ -> ns
     dens n = n
 
+showbasic :: Name -> String
 showbasic n@(UN _) = show n
 showbasic (MN _ s) = str s
 showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n

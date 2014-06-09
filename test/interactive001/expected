@@ -4,7 +4,7 @@ isElem x (y :: xs) = ?isElem_rhs_3
 
    localZipWith f (_ :: _) (x :: ys) = ?localZipWith_rhs_1
 
-f x :: (map f xs)
+f x :: map f xs
 isElem2 x (y :: ys) with (_)
   isElem2 x (y :: ys) | with_pat = ?isElem2_rhs
   isElem3 x (x :: ys) | (Yes refl) = ?isElem3_rhs_3

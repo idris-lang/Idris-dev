@@ -39,11 +39,11 @@ relib: lib_clean
 	$(CABAL) install $(CABALFLAGS)
 
 linecount:
-	wc -l src/Idris/*.hs src/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs
+	wc -l src/Idris/*.hs src/Idris/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs
 
 #Note: this doesn't yet link to Hackage properly
 doc: dist/setup-config
-	$(CABAL) haddock --executables --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
+	$(CABAL) haddock --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
 
 
 dist/setup-config:

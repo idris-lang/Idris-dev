@@ -1,0 +1,5 @@
+Type checking ./TestEmpty.idr
+Type checking ./TestPrivate.idr
+Warning: Ignoring empty or non-existing namespace 'TestEmpty'
+Warning: Ignoring empty or non-existing namespace 'TestPrivate'
+No namespaces to generate documentation for

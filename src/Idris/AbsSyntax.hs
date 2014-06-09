@@ -9,7 +9,8 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Typecheck
 import Idris.AbsSyntaxTree
 import Idris.Colours
-import Idris.IdeSlave
+import Idris.Docstrings
+import Idris.IdeSlave hiding (Opt(..))
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
@@ -86,6 +87,10 @@ addDyLib libs = do i <- getIState
 
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
+
+addImported :: FilePath -> Idris ()
+addImported f = do i <- getIState
+                   putIState $ i { idris_imported = nub $ f : idris_imported i }
 
 addLangExt :: LanguageExt -> Idris ()
 addLangExt TypeProviders = do i <- getIState
@@ -262,10 +267,10 @@ addCoercion :: Name -> Idris ()
 addCoercion n = do i <- getIState
                    putIState $ i { idris_coercions = nub $ n : idris_coercions i }
 
-addDocStr :: Name -> String -> Idris ()
-addDocStr n doc
+addDocStr :: Name -> Docstring -> [(Name, Docstring)] -> Idris ()
+addDocStr n doc args
    = do i <- getIState
-        putIState $ i { idris_docstrings = addDef n doc (idris_docstrings i) }
+        putIState $ i { idris_docstrings = addDef n (doc, args) (idris_docstrings i) }
 
 addNameHint :: Name -> Name -> Idris ()
 addNameHint ty n
@@ -273,7 +278,7 @@ addNameHint ty n
         ty' <- case lookupCtxtName ty (idris_implicits i) of
                        [(tyn, _)] -> return tyn
                        [] -> throwError (NoSuchVariable ty)
-                       tyns -> throwError (CantResolveAlts (map show (map fst tyns)))
+                       tyns -> throwError (CantResolveAlts (map fst tyns))
         let ns' = case lookupCtxt ty' (idris_namehints i) of
                        [ns] -> ns ++ [n]
                        _ -> [n]
@@ -356,15 +361,18 @@ addNameIdx' i n
 getHdrs :: Codegen -> Idris [String]
 getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)
 
-setErrLine :: Int -> Idris ()
-setErrLine x = do i <- getIState;
-                  case (errLine i) of
-                      Nothing -> putIState $ i { errLine = Just x }
+getImported ::  Idris [FilePath]
+getImported = do i <- getIState; return (idris_imported i)
+
+setErrSpan :: FC -> Idris ()
+setErrSpan x = do i <- getIState;
+                  case (errSpan i) of
+                      Nothing -> putIState $ i { errSpan = Just x }
                       Just _ -> return ()
 
 clearErr :: Idris ()
 clearErr = do i <- getIState
-              putIState $ i { errLine = Nothing }
+              putIState $ i { errSpan = Nothing }
 
 getSO :: Idris (Maybe String)
 getSO = do i <- getIState
@@ -380,6 +388,16 @@ getIState = get
 putIState :: IState -> Idris ()
 putIState = put
 
+withContext :: (IState -> Ctxt a) -> Name -> b -> (a -> Idris b) -> Idris b
+withContext ctx name dflt action = do
+    ist <- getIState
+    case lookupCtxt name (ctx ist) of
+        [x] -> action x
+        _   -> return dflt
+
+withContext_ :: (IState -> Ctxt a) -> Name -> (a -> Idris ()) -> Idris ()
+withContext_ ctx name action = withContext ctx name () action
+
 -- | A version of liftIO that puts errors into the exception type of the Idris monad
 runIO :: IO a -> Idris a
 runIO x = liftIO (tryIOError x) >>= either (throwError . Msg . show) return
@@ -391,6 +409,8 @@ getName = do i <- getIState;
              putIState $ (i { idris_name = idx + 1 })
              return idx
 
+-- InternalApp keeps track of the real function application for making case splits from, not the application the
+-- programmer wrote, which doesn't have the whole context in any case other than top level definitions
 addInternalApp :: FilePath -> Int -> PTerm -> Idris ()
 addInternalApp fp l t
     = do i <- getIState
@@ -487,6 +507,12 @@ getUndefined :: Idris [Name]
 getUndefined = do i <- getIState
                   return (map fst (idris_metavars i) \\ primDefs)
 
+isMetavarName :: Name -> IState -> Bool
+isMetavarName n ist
+     = case lookupNames n (tt_ctxt ist) of
+            (t:_) -> isJust $ lookup t (idris_metavars ist)
+            _     -> False
+
 getWidth :: Idris ConsoleWidth
 getWidth = fmap idris_consolewidth getIState
 
@@ -502,153 +528,27 @@ renderWidth = do iw <- getWidth
                    AutomaticWidth -> runIO getScreenWidth
 
 
-iRender :: Doc a -> Idris (SimpleDoc a)
-iRender d = do w <- getWidth
-               ist <- getIState
-               let ideSlave = case idris_outputmode ist of
-                                IdeSlave _ -> True
-                                _          -> False
-               case w of
-                 InfinitelyWide -> return $ renderPretty 1.0 1000000000 d
-                 ColsWide n -> return $
-                               if n < 1
-                                 then renderPretty 1.0 1000000000 d
-                                 else renderPretty 0.8 n d
-                 AutomaticWidth | ideSlave  -> return $ renderPretty 1.0 1000000000 d
-                                | otherwise -> do width <- runIO getScreenWidth
-                                                  return $ renderPretty 0.8 width d
-
-ihPrintResult :: Handle -> String -> Idris ()
-ihPrintResult h s = do i <- getIState
-                       case idris_outputmode i of
-                         RawOutput -> case s of
-                                        "" -> return ()
-                                        s  -> runIO $ hPutStrLn h s
-                         IdeSlave n ->
-                             let good = SexpList [SymbolAtom "ok", toSExp s] in
-                             runIO $ hPutStrLn h $ convSExp "return" good n
-
--- | Write a pretty-printed term to the console with semantic coloring
-consoleDisplayAnnotated :: Handle -> Doc OutputAnnotation -> Idris ()
-consoleDisplayAnnotated h output = do ist <- getIState
-                                      rendered <- iRender $ output
-                                      runIO . hPutStrLn h .
-                                        displayDecorated (consoleDecorate ist) $
-                                        rendered
-
-
--- | Write pretty-printed output to IDESlave with semantic annotations
-ideSlaveReturnAnnotated :: Integer -> Handle -> Doc OutputAnnotation -> Idris ()
-ideSlaveReturnAnnotated n h out = do ist <- getIState
-                                     (str, spans) <- fmap displaySpans .
-                                                     iRender .
-                                                     fmap (fancifyAnnots ist) $
-                                                     out
-                                     let good = [SymbolAtom "ok", toSExp str, toSExp spans]
-                                     runIO . hPutStrLn h $ convSExp "return" good n
-
-ihPrintTermWithType :: Handle -> Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
-ihPrintTermWithType h tm ty = do ist <- getIState
-                                 let output = tm <+> colon <+> ty
-                                 case idris_outputmode ist of
-                                   RawOutput -> consoleDisplayAnnotated h output
-                                   IdeSlave n -> ideSlaveReturnAnnotated n h output
-
--- | Pretty-print a collection of overloadings to REPL or IDESlave - corresponds to :t name
-ihPrintFunTypes :: Handle -> [(Name, Bool)] -> Name -> [(Name, PTerm)] -> Idris ()
-ihPrintFunTypes h bnd n []        = ihPrintError h $ "No such variable " ++ show n
-ihPrintFunTypes h bnd n overloads = do imp <- impShow
-                                       ist <- getIState
-                                       let output = vsep (map (uncurry (ppOverload imp)) overloads)
-                                       case idris_outputmode ist of
-                                         RawOutput -> consoleDisplayAnnotated h output
-                                         IdeSlave n -> ideSlaveReturnAnnotated n h output
-  where fullName n = prettyName True bnd n
-        ppOverload imp n tm = fullName n <+> colon <+> align (pprintPTerm imp bnd tm)
-
-ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
-ihRenderResult h d = do ist <- getIState
-                        case idris_outputmode ist of
-                          RawOutput -> consoleDisplayAnnotated h d
-                          IdeSlave n -> ideSlaveReturnAnnotated n h d
-
-fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
-fancifyAnnots ist annot@(AnnName n _ _) =
-  do let ctxt = tt_ctxt ist
-     case () of
-       _ | isDConName n ctxt -> AnnName n (Just DataOutput) Nothing
-       _ | isFnName   n ctxt -> AnnName n (Just FunOutput) Nothing
-       _ | isTConName n ctxt -> AnnName n (Just TypeOutput) Nothing
-       _ | otherwise         -> annot
-fancifyAnnots _ annot = annot
 
 type1Doc :: Doc OutputAnnotation
-type1Doc = (annotate AnnConstType $ text "Type 1")
+type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "Type 1")
 
--- | Show an error with semantic highlighting
-ihRenderError :: Handle -> Doc OutputAnnotation -> Idris ()
-ihRenderError h e = do ist <- getIState
-                       case idris_outputmode ist of
-                         RawOutput -> consoleDisplayAnnotated h e
-                         IdeSlave n -> do
-                           (str, spans) <- fmap displaySpans .
-                                           iRender .
-                                           fmap (fancifyAnnots ist) $
-                                           e
-                           let good = [SymbolAtom "error", toSExp str, toSExp spans]
-                           runIO . hPutStrLn h $ convSExp "return" good n
-
-ihPrintError :: Handle -> String -> Idris ()
-ihPrintError h s = do i <- getIState
-                      case idris_outputmode i of
-                        RawOutput -> case s of
-                                          "" -> return ()
-                                          s  -> runIO $ hPutStrLn h s
-                        IdeSlave n ->
-                          let good = SexpList [SymbolAtom "error", toSExp s] in
-                          runIO . hPutStrLn h $ convSExp "return" good n
-
-ihputStrLn :: Handle -> String -> Idris ()
-ihputStrLn h s = do i <- getIState
-                    case idris_outputmode i of
-                      RawOutput -> runIO $ hPutStrLn h s
-                      IdeSlave n -> runIO . hPutStrLn h $ convSExp "write-string" s n
-
-iputStrLn = ihputStrLn stdout
-iPrintError = ihPrintError stdout
-iPrintResult = ihPrintResult stdout
-iWarn = ihWarn stdout
-
-ideslavePutSExp :: SExpable a => String -> a -> Idris ()
-ideslavePutSExp cmd info = do i <- getIState
-                              case idris_outputmode i of
-                                   IdeSlave n -> runIO . putStrLn $ convSExp cmd info n
-                                   _ -> return ()
-
--- this needs some typing magic and more structured output towards emacs
-iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
-iputGoal g = do i <- getIState
-                case idris_outputmode i of
-                  RawOutput -> runIO $ putStrLn (displayDecorated (consoleDecorate i) g)
-                  IdeSlave n -> runIO . putStrLn $
-                                convSExp "write-goal" (displayS (fmap (fancifyAnnots i) g) "") n
 
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
                   case idris_outputmode i of
                     IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
 
-ihWarn :: Handle -> FC -> Doc OutputAnnotation -> Idris ()
-ihWarn h fc err = do i <- getIState
-                     err' <- iRender . fmap (fancifyAnnots i) $ err
-                     case idris_outputmode i of
-                       RawOutput ->
-                         runIO $
-                         hPutStrLn h (show fc ++ ":" ++ displayDecorated (consoleDecorate i) err')
-                       IdeSlave n ->
-                         do let (str, spans) = displaySpans err'
-                            runIO . hPutStrLn h $
-                              convSExp "warning" (fc_fname fc, fc_line fc, fc_column fc, str, spans) n
+-- | Tell clients how much was parsed and loaded
+isetLoadedRegion :: Idris ()
+isetLoadedRegion = do i <- getIState
+                      let span = idris_parsedSpan i
+                      case span of
+                        Just fc ->
+                          case idris_outputmode i of
+                            IdeSlave n ->
+                              runIO . putStrLn $
+                                convSExp "set-loaded-region" fc n
+                        Nothing -> return ()
 
 setLogLevel :: Int -> Idris ()
 setLogLevel l = do i <- getIState
@@ -712,6 +612,12 @@ setShowOrigErr b = do i <- getIState
                       let opts = idris_options i
                       let opt' = opts { opt_origerr = b }
                       putIState $ i { idris_options = opt' }
+
+setAutoSolve :: Bool -> Idris ()
+setAutoSolve b = do i <- getIState
+                    let opts = idris_options i
+                    let opt' = opts { opt_autoSolve = b }
+                    putIState $ i { idris_options = opt' }
 
 setNoBanner :: Bool -> Idris ()
 setNoBanner n = do i <- getIState
@@ -872,13 +778,14 @@ setColour :: ColourType -> IdrisColour -> Idris ()
 setColour ct c = do i <- getIState
                     let newTheme = setColour' ct c (idris_colourTheme i)
                     putIState $ i { idris_colourTheme = newTheme }
-    where setColour' KeywordColour  c t = t { keywordColour = c }
-          setColour' BoundVarColour c t = t { boundVarColour = c }
-          setColour' ImplicitColour c t = t { implicitColour = c }
-          setColour' FunctionColour c t = t { functionColour = c }
-          setColour' TypeColour     c t = t { typeColour = c }
-          setColour' DataColour     c t = t { dataColour = c }
-          setColour' PromptColour   c t = t { promptColour = c }
+    where setColour' KeywordColour   c t = t { keywordColour = c }
+          setColour' BoundVarColour  c t = t { boundVarColour = c }
+          setColour' ImplicitColour  c t = t { implicitColour = c }
+          setColour' FunctionColour  c t = t { functionColour = c }
+          setColour' TypeColour      c t = t { typeColour = c }
+          setColour' DataColour      c t = t { dataColour = c }
+          setColour' PromptColour    c t = t { promptColour = c }
+          setColour' PostulateColour c t = t { postulateColour = c }
 
 logLvl :: Int -> String -> Idris ()
 logLvl l str = do i <- getIState
@@ -899,7 +806,7 @@ iLOG = logLvl 1
 
 noErrors :: Idris Bool
 noErrors = do i <- getIState
-              case errLine i of
+              case errSpan i of
                 Nothing -> return True
                 _       -> return False
 
@@ -935,9 +842,9 @@ expandParams dec ps ns infs tm = en tm
        | otherwise = PLam n (en t) (en s)
     en (PPi p n t s)
        | n `elem` (map fst ps ++ ns)
-               = let n' = mkShadow n in
-                     PPi p n' (en t) (en (shadow n n' s))
-       | otherwise = PPi p n (en t) (en s)
+               = let n' = mkShadow n in -- TODO THINK SHADOWING TacImp?
+                     PPi (enTacImp p) n' (en t) (en (shadow n n' s))
+       | otherwise = PPi (enTacImp p) n (en t) (en s)
     en (PLet n ty v s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
@@ -996,15 +903,18 @@ expandParams dec ps ns infs tm = en tm
 
     nseq x y = nsroot x == nsroot y
 
+    enTacImp (TacImp aos st scr)  = TacImp aos st (en scr)
+    enTacImp other                = other
+
 expandParamsD :: Bool -> -- True = RHS only
                  IState ->
                  (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PDecl -> PDecl
-expandParamsD rhsonly ist dec ps ns (PTy doc syn fc o n ty)
+expandParamsD rhsonly ist dec ps ns (PTy doc argdocs syn fc o n ty)
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc syn fc o (dec n) (piBindp expl_param ps (expandParams dec ps ns [] ty))
+              PTy doc argdocs syn fc o (dec n) (piBindp expl_param ps (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc syn fc o n (expandParams dec ps ns [] ty)
+              PTy doc argdocs syn fc o n (expandParams dec ps ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PPostulate doc syn fc o n ty)
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
@@ -1040,7 +950,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
-        | otherwise = (sMN i (show n ++ "_u"), t) : updateps yn nm as
+        | otherwise = (sMN i ('_' : show n ++ "_u"), t) : updateps yn nm as
 
     removeBound lhs ns = ns \\ nub (bnames lhs)
 
@@ -1050,8 +960,9 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     bnames (PDPair _ _ l Placeholder r) = bnames l ++ bnames r
     bnames _ = []
 
-expandParamsD rhs ist dec ps ns (PData doc syn fc co pd)
-    = PData doc syn fc co (expandPData pd)
+-- | Expands parameters defined in parameter and where blocks inside of declarations
+expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
+    = PData doc argDocs syn fc co (expandPData pd)
   where
     -- just do the type decl, leave constructors alone (parameters will be
     -- added implicitly)
@@ -1060,26 +971,27 @@ expandParamsD rhs ist dec ps ns (PData doc syn fc co pd)
             then PDatadecl (dec n) (piBind ps (expandParams dec ps ns [] ty))
                            (map econ cons)
             else PDatadecl n (expandParams dec ps ns [] ty) (map econ cons)
-    econ (doc, n, t, fc, fs)
-       = (doc, dec n, piBindp impl ps (expandParams dec ps ns [] t), fc, fs)
-expandParamsD rhs ist dec ps ns (PRecord doc syn fc tn tty cdoc cn cty) 
-   = if tn `elem` ns 
+    econ (doc, argDocs, n, t, fc, fs)
+       = (doc, argDocs, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
+expandParamsD rhs ist dec ps ns (PRecord doc syn fc tn tty opts cdoc cn cty)
+   = if tn `elem` ns
         then PRecord doc syn fc (dec tn) (piBind ps (expandParams dec ps ns [] tty))
-                     cdoc (dec cn) conty
+                     opts cdoc (dec cn) conty
         else PRecord doc syn fc (dec tn) (expandParams dec ps ns [] tty)
-                     cdoc (dec cn) conty
-   where conty = piBindp impl ps (expandParams dec ps ns [] cty)
+                     opts cdoc (dec cn) conty
+   where conty = piBindp expl ps (expandParams dec ps ns [] cty)
 expandParamsD rhs ist dec ps ns (PParams f params pds)
    = PParams f (ps ++ map (mapsnd (expandParams dec ps ns [])) params)
                (map (expandParamsD True ist dec ps ns) pds)
 --                (map (expandParamsD ist dec ps ns) pds)
 expandParamsD rhs ist dec ps ns (PMutual f pds)
    = PMutual f (map (expandParamsD rhs ist dec ps ns) pds)
-expandParamsD rhs ist dec ps ns (PClass doc info f cs n params decls)
+expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs decls)
    = PClass doc info f
            (map (expandParams dec ps ns []) cs)
            n
            (map (mapsnd (expandParams dec ps ns [])) params)
+           pDocs
            (map (expandParamsD rhs ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns (PInstance info f cs n params ty cn decls)
    = PInstance info f
@@ -1125,6 +1037,7 @@ getPriority i tm = 1 -- pri tm
     pri Placeholder = 1
     pri _ = 3
 
+
 addStatics :: Name -> Term -> PTerm -> Idris ()
 addStatics n tm ptm =
     do let (statics, dynamics) = initStatics tm ptm
@@ -1158,8 +1071,8 @@ addStatics n tm ptm =
     -- if a name appears in a type class or tactic implicit index, it doesn't
     -- affect its 'uniquely inferrable' from a static status since these are
     -- resolved by searching.
-    searchArg (Constraint _ _ _) = True
-    searchArg (TacImp _ _ _ _) = True
+    searchArg (Constraint _ _) = True
+    searchArg (TacImp _ _ _) = True
     searchArg _ = False
 
     staticList sts (Bind n (Pi _) sc) = (n `elem` sts) : staticList sts sc
@@ -1186,14 +1099,14 @@ addUsingConstraints syn fc t
          -- if all of args in ns, then add it
          doAdd (UConstraint c args : cs) ns t
              | all (\n -> elem n ns) args
-                   = PPi (Constraint [] Dynamic "") (sMN 0 "cu")
+                   = PPi (Constraint [] Dynamic) (sMN 0 "cu")
                          (mkConst c args) (doAdd cs ns t)
              | otherwise = doAdd cs ns t
 
          mkConst c args = PApp fc (PRef fc c)
-                             (map (\n -> PExp 0 [] (PRef fc n) "") args)
+                           (map (\n -> PExp 0 [] (sMN 0 "carg") (PRef fc n)) args)
 
-         getConstraints (PPi (Constraint _ _ _) _ c sc)
+         getConstraints (PPi (Constraint _ _) _ c sc)
              = getcapp c ++ getConstraints sc
          getConstraints (PPi _ _ c sc) = getConstraints sc
          getConstraints _ = []
@@ -1203,7 +1116,7 @@ addUsingConstraints syn fc t
                   return (UConstraint c ns)
          getcapp _ = []
 
-         getName (PExp _ _ (PRef _ n) _) = return n
+         getName (PExp _ _ _ (PRef _ n)) = return n
          getName _ = []
 
 -- Add implicit Pi bindings for any names in the term which appear in an
@@ -1211,13 +1124,14 @@ addUsingConstraints syn fc t
 
 -- This has become a right mess already. Better redo it some time...
 
-implicit :: SyntaxInfo -> Name -> PTerm -> Idris PTerm
-implicit syn n ptm = implicit' syn [] n ptm
+implicit :: ElabInfo -> SyntaxInfo -> Name -> PTerm -> Idris PTerm
+implicit info syn n ptm = implicit' info syn [] n ptm
 
-implicit' :: SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
-implicit' syn ignore n ptm
+implicit' :: ElabInfo -> SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
+implicit' info syn ignore n ptm
     = do i <- getIState
          let (tm', impdata) = implicitise syn ignore i ptm
+         defaultArgCheck (eInfoNames info ++ M.keys (idris_implicits i)) impdata
 --          let (tm'', spos) = findStatics i tm'
          putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
          addIBC (IBCImp n)
@@ -1225,6 +1139,23 @@ implicit' syn ignore n ptm
 --          i <- get
 --          putIState $ i { idris_statics = addDef n spos (idris_statics i) }
          return tm'
+  where
+    --  Detect unknown names in default arguments and throw error if found.
+    defaultArgCheck :: [Name] -> [PArg] -> Idris ()
+    defaultArgCheck knowns params = foldM_ notFoundInDefault knowns params 
+
+    notFoundInDefault :: [Name] -> PArg -> Idris [Name]
+    notFoundInDefault kns (PTacImplicit _ _ n script _)
+      = do  i <- getIState 
+            case notFound kns (namesIn [] i script) of
+              Nothing     -> return (n:kns)
+              Just name   -> throwError (NoSuchVariable name)
+    notFoundInDefault kns p = return ((pname p):kns)
+
+    notFound :: [Name] -> [Name] -> Maybe Name
+    notFound kns [] = Nothing
+    notFound kns (SN (WhereN _ _ _) : ns) = notFound kns ns --  Known already
+    notFound kns (n:ns) = if elem n kns then notFound kns ns else Just n
 
 implicitise :: SyntaxInfo -> [Name] -> IState -> PTerm -> (PTerm, [PArg])
 implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
@@ -1249,38 +1180,44 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
                       | otherwise   = x : dropAll xs ys
     dropAll [] ys = []
 
+    -- Find names in argument position in a type, suitable for implicit
+    -- binding
+    -- Not the function position, but do everything else...
+    implNamesIn uv (PApp fc f args) = concatMap (implNamesIn uv) (map getTm args)
+    implNamesIn uv t = namesIn uv ist t
+
     imps top env (PApp _ f as)
        = do (decls, ns) <- get
             let isn = concatMap (namesIn uvars ist) (map getTm as)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PPi (Imp l _ doc _) n ty sc)
-        = do let isn = nub (namesIn uvars ist ty) `dropAll` [n]
+    imps top env (PPi (Imp l _ _) n ty sc)
+        = do let isn = nub (implNamesIn uvars ty) `dropAll` [n]
              (decls , ns) <- get
-             put (PImp (getPriority ist ty) True l n Placeholder doc : decls,
+             put (PImp (getPriority ist ty) True l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Exp l _ doc _) n ty sc)
-        = do let isn = nub (namesIn uvars ist ty ++ case sc of
+    imps top env (PPi (Exp l _ _) n ty sc)
+        = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PExp (getPriority ist ty) l Placeholder doc : decls,
+             put (PExp (getPriority ist ty) l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Constraint l _ doc) n ty sc)
-        = do let isn = nub (namesIn uvars ist ty ++ case sc of
+    imps top env (PPi (Constraint l _) n ty sc)
+        = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PConstraint 10 l Placeholder doc : decls,
+             put (PConstraint 10 l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (TacImp l _ scr doc) n ty sc)
-        = do let isn = nub (namesIn uvars ist ty ++ case sc of
+    imps top env (PPi (TacImp l _ scr) n ty sc)
+        = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
              (decls, ns) <- get -- ignore decls in HO types
-             put (PTacImplicit 10 l n scr Placeholder doc : decls,
+             put (PTacImplicit 10 l n scr Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
     imps top env (PEq _ l r)
@@ -1321,8 +1258,8 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     pibind using []     sc = sc
     pibind using (n:ns) sc
       = case lookup n using of
-            Just ty -> PPi (Imp [] Dynamic "" False) n ty (pibind using ns sc)
-            Nothing -> PPi (Imp [] Dynamic "" False) n Placeholder
+            Just ty -> PPi (Imp [] Dynamic False) n ty (pibind using ns sc)
+            Nothing -> PPi (Imp [] Dynamic False) n Placeholder
                                    (pibind using ns sc)
 
 -- Add implicit arguments in function calls
@@ -1393,9 +1330,11 @@ addImpl' inpat env infns ist ptm
             as' = map (fmap (ai env ds)) as in
          mkPApp fc 1 f' as'
     ai env ds (PCase fc c os) 
-      = let c' = ai env ds c
-            os' = map (pmap (ai env ds)) os in
-            PCase fc c' os'
+      = let c' = ai env ds c in
+        -- leave os alone, because they get lifted into a new pattern match
+        -- definition which is passed through addImpl again with more scope
+        -- information
+            PCase fc c' os
     ai env ds (PLam n ty sc) 
       = let ty' = ai env ds ty
             sc' = ai ((n, Just ty):env) ds sc in
@@ -1485,32 +1424,46 @@ aiFn inpat expat ist fc f ds as
                     [(n,t)] -> t
                     _ -> Public
 
-
     insertImpl :: [PArg] -> [PArg] -> [PArg]
-    insertImpl (PExp p l ty _ : ps) (PExp _ _ tm d : given) =
-                                 PExp p l tm d : insertImpl ps given
-    insertImpl (PConstraint p l ty _ : ps) (PConstraint _ _ tm d : given) =
-                                 PConstraint p l tm d : insertImpl ps given
-    insertImpl (PConstraint p l ty d : ps) given =
-                 PConstraint p l (PResolveTC fc) d : insertImpl ps given
-    insertImpl (PImp p _ l n ty d : ps) given =
+    insertImpl ps as = insImpAcc M.empty ps as
+
+    insImpAcc :: M.Map Name PTerm -- accumulated param names & arg terms
+              -> [PArg]           -- parameters
+              -> [PArg]           -- arguments
+              -> [PArg]
+    insImpAcc pnas (PExp p l n ty : ps) (PExp _ _ _ tm : given) =
+      PExp p l n tm : insImpAcc (M.insert n tm pnas) ps given
+    insImpAcc pnas (PConstraint p l n ty : ps) (PConstraint _ _ _ tm : given) =
+      PConstraint p l n tm : insImpAcc (M.insert n tm pnas) ps given
+    insImpAcc pnas (PConstraint p l n ty : ps) given =
+      let rtc = PResolveTC fc in
+        PConstraint p l n rtc : insImpAcc (M.insert n rtc pnas) ps given
+    insImpAcc pnas (PImp p _ l n ty : ps) given =
         case find n given [] of
-            Just (tm, given') -> PImp p False l n tm "" : insertImpl ps given'
-            Nothing ->           PImp p True l n Placeholder "" : insertImpl ps given
-    insertImpl (PTacImplicit p l n sc' ty d : ps) given =
-      let sc = addImpl ist sc' in
+            Just (tm, given') ->
+              PImp p False l n tm : insImpAcc (M.insert n tm pnas) ps given'
+            Nothing ->
+              PImp p True l n Placeholder :
+                insImpAcc (M.insert n Placeholder pnas) ps given
+    insImpAcc pnas (PTacImplicit p l n sc' ty : ps) given =
+      let sc = addImpl ist (substMatches (M.toList pnas) sc') in
         case find n given [] of
-            Just (tm, given') -> PTacImplicit p l n sc tm "" : insertImpl ps given'
-            Nothing -> if inpat
-                          then PTacImplicit p l n sc Placeholder "" : insertImpl ps given
-                          else PTacImplicit p l n sc sc "" : insertImpl ps given
-    insertImpl expected [] = []
-    insertImpl _        given  = given
+            Just (tm, given') ->
+              PTacImplicit p l n sc tm :
+                insImpAcc (M.insert n tm pnas) ps given'
+            Nothing ->
+              if inpat
+                then PTacImplicit p l n sc Placeholder :
+                  insImpAcc (M.insert n Placeholder pnas) ps given
+                else PTacImplicit p l n sc sc :
+                  insImpAcc (M.insert n sc pnas) ps given
+    insImpAcc _ expected [] = []
+    insImpAcc _ _        given  = given
 
     find n []               acc = Nothing
-    find n (PImp _ _ _ n' t _ : gs) acc
+    find n (PImp _ _ _ n' t : gs) acc
          | n == n' = Just (t, reverse acc ++ gs)
-    find n (PTacImplicit _ _ n' _ t _ : gs) acc
+    find n (PTacImplicit _ _ n' _ t : gs) acc
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
 
@@ -1537,19 +1490,19 @@ stripLinear i tm = evalState (sl tm) [] where
                                      return (PPatvar fc f)
     sl t@(PAlternative _ (a : as)) = do sl a
                                         return t
-    sl (PApp fc fn args) = do fn' <- sl fn
+    sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var 
                               args' <- mapM slA args
-                              return $ PApp fc fn' args'
-       where slA (PImp p m l n t d) = do t' <- sl t
-                                         return $ PImp p m l n t' d
-             slA (PExp p l t d) = do t' <- sl t
-                                     return $ PExp p l t' d
-             slA (PConstraint p l t d)
+                              return $ PApp fc fn args'
+       where slA (PImp p m l n t) = do t' <- sl t
+                                       return $ PImp p m l n t'
+             slA (PExp p l n t) = do  t' <- sl t
+                                      return $ PExp p l n t'
+             slA (PConstraint p l n t)
                                 = do t' <- sl t
-                                     return $ PConstraint p l t' d
-             slA (PTacImplicit p l n sc t d)
+                                     return $ PConstraint p l n t'
+             slA (PTacImplicit p l n sc t)
                                 = do t' <- sl t
-                                     return $ PTacImplicit p l n sc t' d
+                                     return $ PTacImplicit p l n sc t'
     sl x = return x
 
 -- Remove functions which aren't applied to anything, which must then
@@ -1649,8 +1602,6 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
             = do mf <- match' f f'
                  ms <- zipWithM matchArg args args'
                  return (mf ++ concat ms)
---     match (PRef _ n) (PRef _ n') | n == n' = return []
---                                  | otherwise = Nothing
     match (PRef f n) (PApp _ x []) = match (PRef f n) x
     match (PPatvar f n) xr = match (PRef f n) xr
     match xr (PPatvar f n) = match xr (PRef f n)
@@ -1660,7 +1611,10 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
           (not (isConName n (tt_ctxt i) || isFnName n (tt_ctxt i)) 
                 || tm == Placeholder)
             = return [(n, tm)]
-        | n == n' = return []
+        -- if one namespace is missing, drop the other
+        | n == n' || n == dropNS n' || dropNS n == n' = return []
+       where dropNS (NS n _) = n
+             dropNS n = n
     match (PRef _ n) tm
         | not names && (not (isConName n (tt_ctxt i) ||
                              isFnName n (tt_ctxt i)) || tm == Placeholder)
@@ -1803,6 +1757,12 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   mkUniqA arg = do t' <- mkUniq (getTm arg)
                    return (arg { getTm = t' })
 
+  -- Initialise the unique name with the environment length (so we're not
+  -- looking for too long...)
+  initN (UN n) l = UN $ txt (str n ++ show l)
+  initN (MN i s) l = MN (i+l) s
+  initN n l = n
+
   -- FIXME: Probably ought to do this for completeness! It's fine as
   -- long as there are no bindings inside tactics though.
   mkUniqT tac = return tac
@@ -1812,7 +1772,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
          = do env <- get
               (n', sc') <-
                     if n `elem` env
-                       then do let n' = uniqueName n (env ++ inScope)
+                       then do let n' = uniqueName (initN n (length env))
+                                                   (env ++ inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
               put (n' : env)
@@ -1823,7 +1784,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
          = do env <- get
               (n', sc') <-
                     if n `elem` env
-                       then do let n' = uniqueName n (env ++ inScope)
+                       then do let n' = uniqueName (initN n (length env))
+                                                   (env ++ inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
               put (n' : env)
@@ -1834,7 +1796,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
          = do env <- get
               (n', sc') <-
                     if n `elem` env
-                       then do let n' = uniqueName n (env ++ inScope)
+                       then do let n' = uniqueName (initN n (length env))
+                                                   (env ++ inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
               put (n' : env)

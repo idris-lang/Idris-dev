@@ -1,4 +1,4 @@
-module Category.Arrow
+module Control.Arrow
 
 import Data.Morphisms
 import Control.Category
@@ -37,4 +37,3 @@ instance Monad m => Arrow (Kleislimorphism m) where
   (Kleisli f) &&& (Kleisli g) = Kleisli $ \a => do x <- f a
                                                    y <- g a
                                                    return (x, y)
-

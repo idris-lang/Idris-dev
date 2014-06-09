@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ totality006.idr --check
+idris $@ totality006a.idr --check
+rm -f *.ibc

@@ -8,7 +8,7 @@ modules = Builtins, Prelude, IO,
           Prelude.Maybe, Prelude.Monad, Prelude.Applicative, Prelude.Either,
           Prelude.Vect, Prelude.Strings, Prelude.Chars, Prelude.Functor,
           Prelude.Foldable, Prelude.Traversable, Prelude.Bits, Prelude.Stream,
-          Prelude.Uninhabited,
+          Prelude.Uninhabited, Prelude.Pairs,
 
           Decidable.Equality
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
-module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable) where
+module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..)) where
 
 import Text.Printf
 import Numeric
@@ -12,7 +12,7 @@ import Text.Trifecta.Delta
 
 import Idris.Core.TT
 
-import Control.Applicative
+import Control.Applicative hiding (Const)
 
 data SExp = SexpList [SExp]
           | StringAtom String
@@ -74,25 +74,66 @@ instance (SExpable a, SExpable b, SExpable c, SExpable d, SExpable e) =>
    toSExp (l, m, n, o, p) = SexpList [toSExp l, toSExp m, toSExp n, toSExp o, toSExp p]
 
 instance SExpable NameOutput where
-  toSExp TypeOutput = SymbolAtom "type"
-  toSExp FunOutput  = SymbolAtom "function"
-  toSExp DataOutput = SymbolAtom "data"
+  toSExp TypeOutput      = SymbolAtom "type"
+  toSExp FunOutput       = SymbolAtom "function"
+  toSExp DataOutput      = SymbolAtom "data"
+  toSExp MetavarOutput   = SymbolAtom "metavar"
+  toSExp PostulateOutput = SymbolAtom "postulate"
+
+maybeProps :: SExpable a => [(String, Maybe a)] -> [(SExp, SExp)]
+maybeProps [] = []
+maybeProps ((n, Just p):ps) = (SymbolAtom n, toSExp p) : maybeProps ps
+maybeProps ((n, Nothing):ps) = maybeProps ps
+
+constTy :: Const -> String
+constTy (I _) = "Int"
+constTy (BI _) = "Integer"
+constTy (Fl _) = "Float"
+constTy (Ch _) = "Char"
+constTy (Str _) = "String"
+constTy (B8 _) = "Bits8"
+constTy (B16 _) = "Bits16"
+constTy (B32 _) = "Bits32"
+constTy (B64 _) = "Bits64"
+constTy (B8V _) = "Bits8x16"
+constTy (B16V _) = "Bits16x8"
+constTy (B32V _) = "Bits32x4"
+constTy (B64V _) = "Bits64x2"
+constTy _ = "Type"
 
 instance SExpable OutputAnnotation where
-  toSExp (AnnName n Nothing   _) = toSExp [(SymbolAtom "name", StringAtom (show n)),
-                                           (SymbolAtom "implicit", BoolAtom False)]
-  toSExp (AnnName n (Just ty) _) = toSExp [(SymbolAtom "name", StringAtom (show n)),
-                                           (SymbolAtom "decor", toSExp ty),
-                                           (SymbolAtom "implicit", BoolAtom False)]
+  toSExp (AnnName n ty d t) = toSExp $ [(SymbolAtom "name", StringAtom (show n)),
+                                        (SymbolAtom "implicit", BoolAtom False)] ++
+                                       maybeProps [("decor", ty)] ++
+                                       maybeProps [("doc-overview", d), ("type", t)]
   toSExp (AnnBoundName n imp)    = toSExp [(SymbolAtom "name", StringAtom (show n)),
                                            (SymbolAtom "decor", SymbolAtom "bound"),
                                            (SymbolAtom "implicit", BoolAtom imp)]
-  toSExp AnnConstData            = toSExp [(SymbolAtom "decor", SymbolAtom "data")]
-  toSExp AnnConstType            = toSExp [(SymbolAtom "decor", SymbolAtom "type")]
-  toSExp (AnnFC (FC f l c))      = toSExp [(SymbolAtom "source-loc",
-                                           ((SymbolAtom "filename", StringAtom f),
-                                            (SymbolAtom "line", IntegerAtom (toInteger l)),
-                                            (SymbolAtom "column", IntegerAtom (toInteger c))))]
+  toSExp (AnnConst c)            = toSExp [(SymbolAtom "decor",
+                                            SymbolAtom (if constIsType c then "type" else "data")),
+                                           (SymbolAtom "type", StringAtom (constTy c)),
+                                           (SymbolAtom "doc-overview", StringAtom (constDocs c)),
+                                           (SymbolAtom "name", StringAtom (show c))]
+  toSExp (AnnData ty doc)        = toSExp [(SymbolAtom "decor", SymbolAtom "data"),
+                                           (SymbolAtom "type", StringAtom ty),
+                                           (SymbolAtom "doc-overview", StringAtom doc)]
+  toSExp (AnnType name doc)      = toSExp $ [(SymbolAtom "decor", SymbolAtom "type"),
+                                             (SymbolAtom "type", StringAtom "Type"),
+                                             (SymbolAtom "doc-overview", StringAtom doc)] ++
+                                             if not (null name) then [(SymbolAtom "name", StringAtom name)] else []
+  toSExp AnnKeyword              = toSExp [(SymbolAtom "decor", SymbolAtom "keyword")]
+  toSExp (AnnFC fc)      = toSExp [(SymbolAtom "source-loc", toSExp fc)]
+  toSExp (AnnTextFmt fmt) = toSExp [(SymbolAtom "text-formatting", SymbolAtom format)]
+      where format = case fmt of
+                       BoldText      -> "bold"
+                       ItalicText    -> "italic"
+                       UnderlineText -> "underline"
+
+instance SExpable FC where
+  toSExp (FC f (sl, sc) (el, ec)) =
+    toSExp ((SymbolAtom "filename", StringAtom f),
+            (SymbolAtom "start",  IntegerAtom (toInteger sl), IntegerAtom (toInteger sc)),
+            (SymbolAtom "end", IntegerAtom (toInteger el), IntegerAtom (toInteger ec)))
 
 escape :: String -> String
 escape = concatMap escapeChar
@@ -124,6 +165,8 @@ quotedChar = try (string "\\\\" >> return '\\')
 parseSExp :: String -> Result SExp
 parseSExp = parseString pSExp (Directed (UTF8.fromString "(unknown)") 0 0 0 0)
 
+data Opt = ShowImpl | ErrContext deriving Show
+
 data IdeSlaveCommand = REPLCompletions String
                      | Interpret String
                      | TypeOf String
@@ -132,27 +175,52 @@ data IdeSlaveCommand = REPLCompletions String
                      | AddProofClause Int String
                      | AddMissing Int String
                      | MakeWithBlock Int String
-                     | ProofSearch Int String [String]
-                     | LoadFile String
+                     | ProofSearch Bool Int String [String] (Maybe Int) -- ^^ Recursive?, line, name, hints, depth
+                     | MakeLemma Int String
+                     | LoadFile String (Maybe Int)
                      | DocsFor String
-  deriving Show
+                     | Apropos String
+                     | GetOpts
+                     | SetOpt Opt Bool
+                     | Metavariables Int -- ^^ the Int is the column count for pretty-printing
+                     | WhoCalls String
+                     | CallsWho String
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
 sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])                       = Just (Interpret cmd)
 sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix])             = Just (REPLCompletions prefix)
-sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])                  = Just (LoadFile filename)
+sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename, IntegerAtom line])                  = Just (LoadFile filename (Just (fromInteger line)))
+sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])                  = Just (LoadFile filename Nothing)
 sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])                        = Just (TypeOf name)
 sexpToCommand (SexpList [SymbolAtom "case-split", IntegerAtom line, StringAtom name])   = Just (CaseSplit (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom name])   = Just (AddClause (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "add-proof-clause", IntegerAtom line, StringAtom name])   = Just (AddProofClause (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "add-missing", IntegerAtom line, StringAtom name])  = Just (AddMissing (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "make-with", IntegerAtom line, StringAtom name])    = Just (MakeWithBlock (fromInteger line) name)
-sexpToCommand (SexpList [SymbolAtom "proof-search", IntegerAtom line, StringAtom name, SexpList hintexp]) | Just hints <- getHints hintexp = Just (ProofSearch (fromInteger line) name hints)
-  where getHints = mapM (\h -> case h of
-                                 StringAtom s -> Just s
-                                 _            -> Nothing)
+-- The Boolean in ProofSearch means "search recursively"
+-- If it's False, that means "refine", i.e. apply the name and fill in any
+-- arguments which can be done by unification.
+sexpToCommand (SexpList (SymbolAtom "proof-search" : IntegerAtom line : StringAtom name : rest))
+  | [] <- rest = Just (ProofSearch True (fromInteger line) name [] Nothing)
+  | [SexpList hintexp] <- rest
+  ,  Just hints <- getHints hintexp = Just (ProofSearch True (fromInteger line) name hints Nothing)
+  | [SexpList hintexp, IntegerAtom depth] <- rest
+ , Just hints <- getHints hintexp = Just (ProofSearch True (fromInteger line) name hints (Just (fromInteger depth)))
+ where getHints = mapM (\h -> case h of
+                                StringAtom s -> Just s
+                                _            -> Nothing)
+sexpToCommand (SexpList [SymbolAtom "make-lemma", IntegerAtom line, StringAtom name])   = Just (MakeLemma (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "refine", IntegerAtom line, StringAtom name, StringAtom hint]) = Just (ProofSearch False (fromInteger line) name [hint] Nothing)
 sexpToCommand (SexpList [SymbolAtom "docs-for", StringAtom name])                       = Just (DocsFor name)
+sexpToCommand (SexpList [SymbolAtom "apropos", StringAtom search])                      = Just (Apropos search)
+sexpToCommand (SymbolAtom "get-options")                                                = Just GetOpts
+sexpToCommand (SexpList [SymbolAtom "set-option", SymbolAtom s, BoolAtom b])
+  | Just opt <- lookup s opts                                                           = Just (SetOpt opt b)
+    where opts = [("show-implicits", ShowImpl), ("error-context", ErrContext)] --TODO support more
+sexpToCommand (SexpList [SymbolAtom "metavariables", IntegerAtom cols])                 = Just (Metavariables (fromIntegral cols))
+sexpToCommand (SexpList [SymbolAtom "who-calls", StringAtom name])                      = Just (WhoCalls name)
+sexpToCommand (SexpList [SymbolAtom "calls-who", StringAtom name])                      = Just (CallsWho name)
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)

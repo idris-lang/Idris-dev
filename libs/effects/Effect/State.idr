@@ -5,33 +5,33 @@ import Effects
 %access public
 
 data State : Effect where
-     Get :      State a a a
-     Put : b -> State a b ()
+  Get :      { a }       State a
+  Put : b -> { a ==> b } State () 
 
 using (m : Type -> Type)
   instance Handler State m where
      handle st Get     k = k st st
-     handle st (Put n) k = k n ()
+     handle st (Put n) k = k () n
 
 STATE : Type -> EFFECT
 STATE t = MkEff t State
 
-get : Eff m [STATE x] x
-get = Get
+get : { [STATE x] } Eff m x
+get = call $ Get
 
-put : x -> Eff m [STATE x] ()
-put val = Put val
+put : x -> { [STATE x] } Eff m () 
+put val = call $ Put val
 
-putM : y -> EffM m [STATE x] [STATE y] ()
-putM val = Put val
+putM : y -> { [STATE x] ==> [STATE y] } Eff m () 
+putM val = call $ Put val
 
-update : (x -> x) -> Eff m [STATE x] ()
+update : (x -> x) -> { [STATE x] } Eff m () 
 update f = put (f !get)
 
-updateM : (x -> y) -> EffM m [STATE x] [STATE y] ()
+updateM : (x -> y) -> { [STATE x] ==> [STATE y] } Eff m () 
 updateM f = putM (f !get)
 
-locally : x -> Eff m [STATE x] t -> Eff m [STATE y] t
+locally : x -> ({ [STATE x] } Eff m t) -> { [STATE y] } Eff m t 
 locally newst prog = do st <- get
                         putM newst
                         val <- prog

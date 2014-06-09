@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards, OverlappingInstances, StandaloneDeriving #-}
 module Idris.ParseHelpers where
 
 import Prelude hiding (pi)
@@ -16,6 +16,10 @@ import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Delaborate (pprintErr)
+import Idris.Docstrings
+import Idris.Output (ihWarn)
+
+import qualified Util.Pretty as Pretty (text)
 
 import Control.Applicative
 import Control.Monad
@@ -33,15 +37,25 @@ import qualified Data.ByteString.UTF8 as UTF8
 
 import System.FilePath
 
+import Debug.Trace
+
 -- | Idris parser with state used during parsing
 type IdrisParser = StateT IState IdrisInnerParser
 
 newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
-  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, Parsing, DeltaParsing, MarkParsing Delta, Monoid)
+  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, CharParsing, LookAheadParsing, DeltaParsing, MarkParsing Delta, Monoid, TokenParsing)
 
-instance TokenParsing IdrisInnerParser where
+deriving instance Parsing IdrisInnerParser
+
+instance TokenParsing IdrisParser where
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
-
+  token p = do s <- get
+               (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
+               r <- p
+               (FC fn _ (el, ec)) <- getFC
+               whiteSpace
+               put (s { lastTokenSpan = Just (FC fn (sl, sc) (el, ec)) })
+               return r
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
@@ -51,10 +65,10 @@ runparser p i inputname =
   parseString (runInnerParser (evalStateT p i))
               (Directed (UTF8.fromString inputname) 0 0 0 0)
 
-noDocCommentHere :: Char -> String -> IdrisParser ()
-noDocCommentHere c msg =
+noDocCommentHere :: String -> IdrisParser ()
+noDocCommentHere msg =
   optional (do fc <- getFC
-               docComment c
+               docComment
                ist <- get
                put ist { parserWarnings = (fc, Msg msg) : parserWarnings ist}) *>
   pure ()
@@ -86,12 +100,6 @@ isEol  _   = False
 eol :: MonadicParsing m => m ()
 eol = (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
 
--- | Checks if a character is a documentation comment marker
-isDocCommentMarker :: Char -> Bool
-isDocCommentMarker '|' = True
-isDocCommentMarker '^' = True
-isDocCommentMarker   _  = False
-
 {- | Consumes a single-line comment
 
 @
@@ -103,7 +111,6 @@ isDocCommentMarker   _  = False
 singleLineComment :: MonadicParsing m => m ()
 singleLineComment =     try (string "--" *> eol *> pure ())
                     <|> try (string "--" *> many simpleWhiteSpace *>
-                             satisfy (not . isDocCommentMarker) *>
                              many (satisfy (not . isEol)) *>
                              eol *> pure ())
                     <?> ""
@@ -127,13 +134,12 @@ singleLineComment =     try (string "--" *> eol *> pure ())
 -}
 multiLineComment :: MonadicParsing m => m ()
 multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
-                   <|> string "{-" *> satisfy (not . isDocCommentMarker) *> inCommentChars
+                   <|> string "{-" *> inCommentChars
                    <?> ""
   where inCommentChars :: MonadicParsing m => m ()
         inCommentChars =     string "-}" *> pure ()
                          <|> try (multiLineComment) *> inCommentChars
-                         <|> try (docComment '|') *> inCommentChars
-                         <|> try (docComment '^') *> inCommentChars
+                         <|> string "|||" *> many (satisfy (not . isEol)) *> eol *> inCommentChars
                          <|> skipSome (noneOf startEnd) *> inCommentChars
                          <|> oneOf startEnd *> inCommentChars
                          <?> "end of comment"
@@ -143,32 +149,41 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
 {-| Parses a documentation comment (similar to haddoc) given a marker character
 
 @
-  DocComment_t ::=   '--' DocCommentMarker_t ~EOL_t* EOL_t
-                  | '{ -' DocCommentMarket_t ~'- }'* '- }'
+  DocComment_t ::=   '|||' ~EOL_t* EOL_t
                  ;
 @
  -}
-docComment :: MonadicParsing m => Char -> m String
-docComment marker | isDocCommentMarker marker = do dc <- docComment' marker
-                                                   return (T.unpack $ T.strip $ T.pack dc)
-                  | otherwise                 = fail "internal error: tried to parse a documentation comment with invalid marker"
-  where docComment' :: MonadicParsing m => Char -> m String
-        docComment' marker = (do string "--"
-                                 many (satisfy isSpace)
-                                 char marker
-                                 res <- many (satisfy (not . isEol))
-                                 eol
-                                 rest <- many (do string "--"
-                                                  stuff <- many (satisfy (not . isEol))
-                                                  eol
-                                                  return stuff)
-                                 someSpace
-                                 return (res ++ concat rest))-- ++ concat rest))
-                         <|> (do string "{-"
-                                 many (satisfy isSpace)
-                                 char marker
-                                 (manyTill anyChar (try (string "-}")) <?> "end of comment"))
-                         <?> ""
+docComment :: IdrisParser (Docstring, [(Name, Docstring)])
+docComment = do dc <- pushIndent *> docCommentLine
+                rest <- many (indented docCommentLine)
+                args <- many $ do (name, first) <- indented argDocCommentLine
+                                  rest <- many (indented docCommentLine)
+                                  return (name, concat (intersperse "\n" (first:rest)))
+                popIndent
+                return (parseDocstring $ T.pack (concat (intersperse "\n" (dc:rest))),
+                        map (\(n, d) -> (n, parseDocstring (T.pack d))) args)
+
+  where docCommentLine :: MonadicParsing m => m String
+        docCommentLine = try (do string "|||"
+                                 many (satisfy (==' '))
+                                 contents <- option "" (do first <- satisfy (\c -> not (isEol c || c == '@'))
+                                                           res <- many (satisfy (not . isEol))
+                                                           return $ first:res)
+                                 eol ; someSpace
+                                 return contents)-- ++ concat rest))
+                        <?> ""
+
+        argDocCommentLine = do string "|||"
+                               many (satisfy isSpace)
+                               char '@'
+                               many (satisfy isSpace)
+                               n <- name
+                               many (satisfy isSpace)
+                               docs <- many (satisfy (not . isEol))
+                               eol ; someSpace
+                               return (n, docs)
+
+
 
 -- | Parses some white space
 whiteSpace :: MonadicParsing m => m ()
@@ -202,7 +217,7 @@ idrisStyle :: MonadicParsing m => IdentifierStyle m
 idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved Hi.Identifier Hi.ReservedIdentifier
   where _styleName = "Idris"
         _styleStart = satisfy isAlpha
-        _styleLetter = satisfy isAlphaNum <|> oneOf "_'" <|> (lchar '.')
+        _styleLetter = satisfy isAlphaNum <|> oneOf "_'."
         _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "Type",
                                       "do", "dsl", "import", "impossible",
                                       "case", "of", "total", "partial", "mutual",
@@ -301,7 +316,7 @@ operatorLetter = oneOf opChars
 -- | Parses an operator
 operator :: MonadicParsing m => m String
 operator = do op <- token . some $ operatorLetter
-              when (op `elem` [":", "=>", "->", "<-", "=", "?="]) $ 
+              when (op `elem` [":", "=>", "->", "<-", "=", "?=", "|"]) $ 
                    fail $ op ++ " is not a valid operator"
               return op
 
@@ -327,7 +342,7 @@ getFC :: MonadicParsing m => m FC
 getFC = do s <- position
            let (dir, file) = splitFileName (fileName s)
            let f = if dir == addTrailingPathSeparator "." then file else fileName s
-           return $ FC f (lineNum s) (columnNum s)
+           return $ FC f (lineNum s, columnNum s) (lineNum s, columnNum s) -- TODO: Change to actual spanning
 
 {-* Syntax helpers-}
 -- | Bind constraints to term
@@ -551,8 +566,8 @@ collect (c@(PClauses _ o _ _) : ds)
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
 collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
 collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
-collect (PClass doc f s cs n ps ds : ds')
-    = PClass doc f s cs n ps (collect ds) : collect ds'
+collect (PClass doc f s cs n ps pdocs ds : ds')
+    = PClass doc f s cs n ps pdocs (collect ds) : collect ds'
 collect (PInstance f s cs n ps t en ds : ds')
     = PInstance f s cs n ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
