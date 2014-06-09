@@ -240,11 +240,25 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Interpret cmd) =
      i <- getIState
      case parseCmd i "(input)" cmd of
        Failure err -> iPrintError $ show (fixColour c err)
-       Success (Prove n') -> do iPrintResult ""
-                                idrisCatch
-                                  (process stdout fn (Prove n'))
-                                  (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
-                                isetPrompt (mkPrompt mods)
+       Success (Prove n') ->
+         idrisCatch
+           (do process stdout fn (Prove n')
+               isetPrompt (mkPrompt mods)
+               case idris_outputmode i of
+                 IdeSlave n -> -- signal completion of proof to ide
+                   runIO . hPutStrLn stdout $
+                     IdeSlave.convSExp "return"
+                       (IdeSlave.SymbolAtom "ok", "")
+                       n
+                 _ -> return ())
+           (\e -> do ist <- getIState
+                     isetPrompt (mkPrompt mods)
+                     case idris_outputmode i of
+                       IdeSlave n ->
+                         runIO . hPutStrLn stdout $
+                           IdeSlave.convSExp "abandon-proof" "Abandoned" n
+                       _ -> return ()
+                     ihRenderError stdout $ pprintErr ist e)
        Success cmd -> idrisCatch
                         (ideslaveProcess fn cmd)
                         (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
