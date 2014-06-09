@@ -579,6 +579,9 @@ isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
 isSuffixOf : Eq a => List a -> List a -> Bool
 isSuffixOf = isSuffixOfBy (==)
 
+isInfixOf : Eq a => List a -> List a -> Bool
+isInfixOf n h = any (isPrefixOf n) (tails h)
+
 --------------------------------------------------------------------------------
 -- Sorting
 --------------------------------------------------------------------------------
