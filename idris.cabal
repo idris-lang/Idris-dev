@@ -289,6 +289,9 @@ Extra-source-files:
                        test/dsl002/test
                        test/dsl002/*.idr
                        test/dsl002/expected
+                       test/dsl003/run
+                       test/dsl003/*.idr
+                       test/dsl003/expected
 
                        test/effects001/run
                        test/effects001/*.idr

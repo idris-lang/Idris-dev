@@ -1,0 +1,2 @@
+ForAll INT (ForAll INT (ItHolds (Var (fS fZ) === Var fZ))) : Spec []
+refl : ARR BOOL (ARR INT UNIT) = ARR BOOL (ARR INT UNIT)
