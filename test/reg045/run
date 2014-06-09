@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ reg045.idr -o reg045
+./reg045
+rm -f reg045 *.ibc
