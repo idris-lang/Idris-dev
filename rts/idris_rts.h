@@ -4,9 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdarg.h>
+#ifdef HAS_PTHREAD
 #include <pthread.h>
+#endif
 #include <stdint.h>
 
 #include "idris_heap.h"
@@ -23,13 +24,13 @@ typedef enum {
 typedef struct Closure *VAL;
 
 typedef struct {
-    int tag_arity;
+    uint32_t tag_arity;
     VAL args[];
 } con;
 
 typedef struct {
     VAL str;
-    int offset;
+    size_t offset;
 } StrOffset;
 
 typedef struct {
@@ -49,7 +50,10 @@ typedef struct {
 typedef struct Closure {
 // Use top 16 bits of ty for saying which heap value is in
 // Bottom 16 bits for closure type
-    ClosureType ty;
+//
+// NOTE: ty can not have type ClosureType because ty must be a
+// uint32_t but enum is platform dependent
+    uint32_t ty;
     union {
         con c;
         int i;
@@ -73,7 +77,7 @@ typedef struct {
     VAL* stack_max;
     
     Heap heap;
-
+#ifdef HAS_PTHREAD
     pthread_mutex_t inbox_lock;
     pthread_mutex_t inbox_block;
     pthread_mutex_t alloc_lock;
@@ -87,7 +91,7 @@ typedef struct {
 
     int processes; // Number of child processes
     int max_threads; // maximum number of threads to run in parallel
-    
+#endif
     Stats stats;
 
     VAL ret;
@@ -170,7 +174,7 @@ typedef intptr_t i_int;
 VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, const char* str);
 VAL MKPTR(VM* vm, void* ptr);
-VAL MKMPTR(VM* vm, void* ptr, int size);
+VAL MKMPTR(VM* vm, void* ptr, size_t size);
 VAL MKB8(VM* vm, uint8_t b);
 VAL MKB16(VM* vm, uint16_t b);
 VAL MKB32(VM* vm, uint32_t b);
@@ -181,7 +185,7 @@ VAL MKFLOATc(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
-VAL MKMPTRc(VM* vm, void* ptr, int size);
+VAL MKMPTRc(VM* vm, void* ptr, size_t size);
 VAL MKBUFFERc(VM* vm, Buffer* buf);
 
 char* GETSTROFF(VAL stroff);
@@ -208,7 +212,7 @@ void idris_doneAlloc(VM* vm);
 #define allocCon(cl, vm, t, a, o) \
   cl = allocate(vm, sizeof(Closure) + sizeof(VAL)*a, o); \
   SETTY(cl, CON); \
-  cl->info.c.tag_arity = ((t) << 8) + (a);
+  cl->info.c.tag_arity = ((t) << 8) | (a);
 
 void* vmThread(VM* callvm, func f, VAL arg);
 
