@@ -904,7 +904,8 @@ data DSL' t = DSL { dsl_bind    :: t,
                     index_first :: Maybe t,
                     index_next  :: Maybe t,
                     dsl_lambda  :: Maybe t,
-                    dsl_let     :: Maybe t
+                    dsl_let     :: Maybe t,
+                    dsl_pi      :: Maybe t
                   }
     deriving (Show, Functor)
 {-!
@@ -943,6 +944,7 @@ initDSL = DSL (PRef f (sUN ">>="))
               (PRef f (sUN "return"))
               (PRef f (sUN "<$>"))
               (PRef f (sUN "pure"))
+              Nothing
               Nothing
               Nothing
               Nothing

@@ -29,6 +29,10 @@ expandDo dsl (PLet n ty v tm)
         = let sc = PApp (fileFC "(dsl)") letb [pexp v, pexp (var dsl n tm 0)] in
               expandDo dsl sc
 expandDo dsl (PLet n ty v tm) = PLet n (expandDo dsl ty) (expandDo dsl v) (expandDo dsl tm)
+expandDo dsl (PPi p n ty tm)
+    | Just pi <- dsl_pi dsl
+        = let sc = PApp (fileFC "(dsl)") pi [pexp ty, pexp (var dsl n tm 0)] in
+              expandDo dsl sc
 expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
                                         (map (fmap (expandDo dsl)) args)
@@ -88,7 +92,10 @@ var dsl n t i = v' i t where
         | Nothing <- dsl_let dsl
             = PLet n (v' i ty) (v' i val) (v' i sc)
         | otherwise = PLet n (v' i ty) (v' i val) (v' (i + 1) sc)
-    v' i (PPi p n ty sc) = PPi p n (v' i ty) (v' i sc)
+    v' i (PPi p n ty sc)
+        | Nothing <- dsl_pi dsl
+            = PPi p n (v' i ty) (v' i sc)
+        | otherwise = PPi p n (v' i ty) (v' (i+1) sc)
     v' i (PTyped l r)    = PTyped (v' i l) (v' i r)
     v' i (PApp f x as)   = PApp f (v' i x) (fmap (fmap (v' i)) as)
     v' i (PCase f t as)  = PCase f (v' i t) (fmap (pmap (v' i)) as)
