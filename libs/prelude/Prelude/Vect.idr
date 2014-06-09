@@ -410,11 +410,6 @@ nub = nubBy (==)
 splitAt : {n : Nat} -> (m : Fin (S n)) -> (xs : Vect n a) -> (Vect (cast m) a, Vect (n - cast m) a)
 splitAt n xs = (take n xs, drop n xs)
 
-tails : Vect m a -> Vect m (Vect n a)
-tails xs = xs :: case xs of
-  []        => []
-  _ :: xs'  => tails xs'
-
 --------------------------------------------------------------------------------
 -- Predicates
 --------------------------------------------------------------------------------
@@ -434,9 +429,6 @@ isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
 
 isSuffixOf : Eq a => Vect m a -> Vect n a -> Bool
 isSuffixOf = isSuffixOfBy (==)
-
-isInfixOf : Eq a => Vect m a -> Vect n a -> Bool
-isInfixOf n h = any (isPrefixOf n) (with Vect tails h)
 
 --------------------------------------------------------------------------------
 -- Conversions
