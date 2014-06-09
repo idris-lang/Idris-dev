@@ -72,7 +72,7 @@ data Tactic = Attack
             | LetBind Name Raw Raw
             | ExpandLet Name Term
             | Rewrite Raw
-            | Induction Name
+            | Induction Raw
             | Equiv Raw
             | PatVar Name
             | PatBind Name
@@ -661,9 +661,9 @@ mkP lt l r (Bind n b sc)
                              b { binderTy = ty' }
 mkP lt l r x = x
 
-induction :: Name -> RunTactic
-induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
-  (tmv, tmt) <- lift $ check ctxt env (Var nm)
+induction :: Raw -> RunTactic
+induction tm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
+  (tmv, tmt) <- lift $ check ctxt env tm
   let tmt' = normalise ctxt env tmt
   case unApply tmt' of
     (P _ tnm _, tyargs) -> do
@@ -683,7 +683,12 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              let indxargs = drop (length restargs - length indicies) $ restargs
              let scr      = last $ tail args'
              let indxnames = makeIndexNames indicies
-             prop <- replaceIndicies indxnames indicies $ Bind nm (Lam tmt') t
+             currentNames <- query $ allTTNames . pterm
+             let tmnm = case tm of
+                         Var nm -> uniqueNameCtxt ctxt nm currentNames
+                         _ -> uniqueNameCtxt ctxt (sMN 0 "iv") currentNames
+             let tmvar = P Bound tmnm tmt'
+             prop <- replaceIndicies indxnames indicies $ Bind tmnm (Lam tmt') (mkP tmvar tmv tmvar t)
              consargs' <- query (\ps -> map (flip (uniqueNameCtxt (context ps)) (holes ps ++ allTTNames (pterm ps)) *** uniqueBindersCtxt (context ps) (holes ps ++ allTTNames (pterm ps))) consargs)
              let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs' (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0)))
                                                         (params ++ [prop] ++ map makeConsArg consargs' ++ indicies ++ [tmv])))

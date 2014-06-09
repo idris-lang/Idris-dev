@@ -1046,8 +1046,20 @@ runTac autoSolve ist fn tac
                    elab ist toplevel False [] (sMN 0 "tac") tm
                    rewrite (Var letn)
                    when autoSolve solveAll
-    runT (Induction nm)
-              = do induction nm
+    runT (Induction tm) -- let bind tm, similar to the others
+              = do attack
+                   tyn <- getNameFrom (sMN 0 "ity")
+                   claim tyn RType
+                   valn <- getNameFrom (sMN 0 "ival")
+                   claim valn (Var tyn)
+                   letn <- getNameFrom (sMN 0 "irule")
+                   letbind letn (Var tyn) (Var valn)
+                   focus valn
+                   elab ist toplevel False [] (sMN 0 "tac") tm
+                   env <- get_env
+                   let (Just binding) = lookup letn env
+                   let val = binderVal binding
+                   induction (forget val)
                    when autoSolve solveAll
     runT (LetTac n tm)
               = do attack
@@ -1214,7 +1226,7 @@ reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist 
 reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
 reifyApp _ t [n] | t == reflm "Intro" = liftM (Intro . (:[])) (reifyTTName n)
-reifyApp _ t [n] | t == reflm "Induction" = liftM Induction (reifyTTName n)
+reifyApp ist t [t'] | t == reflm "Induction" = liftM (Induction . delab ist) (reifyTT t')
 reifyApp ist t [t']
              | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
 reifyApp ist t [t']

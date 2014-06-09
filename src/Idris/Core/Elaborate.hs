@@ -371,8 +371,8 @@ expandLet n v = processTactic' (ExpandLet n v)
 rewrite :: Raw -> Elab' aux ()
 rewrite tm = processTactic' (Rewrite tm)
 
-induction :: Name -> Elab' aux ()
-induction nm = processTactic' (Induction nm)
+induction :: Raw -> Elab' aux ()
+induction tm = processTactic' (Induction tm)
 
 equiv :: Raw -> Elab' aux ()
 equiv tm = processTactic' (Equiv tm)

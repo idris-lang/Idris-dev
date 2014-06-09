@@ -192,7 +192,7 @@ data Tactic = Try Tactic Tactic
             -- ^ focus a named hole
             | Rewrite TT
             -- ^ rewrite using the reflected rep. of a equality proof
-            | Induction TTName
+            | Induction TT
             -- ^ do induction on the particular expression
             | LetTac TTName TT
             -- ^ name a reflected term
