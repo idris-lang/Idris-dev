@@ -16,7 +16,14 @@ void alloc_heap(Heap * h, size_t heap_size)
     }
 
     h->heap = mem;
-    h->next = h->heap;
+#ifdef FORCE_ALIGNMENT
+    if (((i_int)(h->heap)&1) == 1) {
+        h->next = h->heap + 1;
+    } else
+#endif
+    {
+        h->next = h->heap;
+    }
     h->end  = h->heap + heap_size;
 
     h->size   = heap_size;
