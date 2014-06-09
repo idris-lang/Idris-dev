@@ -8,7 +8,7 @@ test: $(TESTS)
 	@perl ./runtest.pl $(patsubst %.test,%,$@)
 
 test_java:
-	perl ./runtest.pl without sugar004 buffer001 --codegen Java
+	@perl ./runtest.pl without --codegen Java
 
 test_js:
 	@perl ./runtest.pl without sugar004 reg029 io001 dsl002 io003 effects001 effects002 buffer001 --codegen node
