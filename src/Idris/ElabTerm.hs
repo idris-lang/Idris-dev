@@ -1234,6 +1234,7 @@ reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
 reifyApp _ t [n] | t == reflm "Intro" = liftM (Intro . (:[])) (reifyTTName n)
 reifyApp ist t [t'] | t == reflm "Induction" = liftM (Induction . delab ist) (reifyTT t')
+reifyApp ist t [t'] | t == reflm "Case" = liftM (Induction . delab ist) (reifyTT t')
 reifyApp ist t [t']
              | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
 reifyApp ist t [t']

@@ -335,6 +335,7 @@ extractPTactic (Focus n)          = [n]
 extractPTactic (Refine n _)       = [n]
 extractPTactic (Rewrite p)        = extract p
 extractPTactic (Induction p)      = extract p
+extractPTactic (CaseTac p)        = extract p
 extractPTactic (Equiv p)          = extract p
 extractPTactic (MatchRefine n)    = [n]
 extractPTactic (LetTac n p)       = n : extract p

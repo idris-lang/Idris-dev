@@ -1,3 +1,7 @@
+New in 0.9.14:
+* Tactic for case analysis in proofs
+* Induction and case tactic now work on expressions
+
 New in 0.9.13:
 --------------
 * IDE support for retrieving structured information about metavariables
