@@ -194,6 +194,8 @@ data Tactic = Try Tactic Tactic
             -- ^ rewrite using the reflected rep. of a equality proof
             | Induction TT
             -- ^ do induction on the particular expression
+            | Case TT
+            -- ^ do case analysis on particular expression
             | LetTac TTName TT
             -- ^ name a reflected term
             | LetTacTy TTName TT TT

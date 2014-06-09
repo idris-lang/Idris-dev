@@ -283,7 +283,10 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
 
          -- create an eliminator
          when (DefaultEliminator `elem` opts) $
-            evalStateT (elabEliminator params n t dcons info) Map.empty
+            evalStateT (elabCaseFun True params n t dcons info) Map.empty
+         -- create a case function
+         when (DefaultCaseFun `elem` opts) $
+            evalStateT (elabCaseFun False params n t dcons info) Map.empty
   where
         setDetaggable :: Name -> Idris ()
         setDetaggable n = do
@@ -369,11 +372,13 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
 type EliminatorState = StateT (Map.Map String Int) Idris
 
 -- TODO: Rewrite everything to use idris_implicits instead of manual splitting (or in TT)
-elabEliminator :: [Int] -> Name -> PTerm ->
+-- FIXME: Many things have name starting with elim internally since this was the only purpose in the first edition of the function
+-- rename to caseFun to match updated intend
+elabCaseFun :: Bool -> [Int] -> Name -> PTerm ->
                   [(Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name])] ->
                   ElabInfo -> EliminatorState ()
-elabEliminator paramPos n ty cons info = do
-  elimLog $ "Elaborating eliminator"
+elabCaseFun ind paramPos n ty cons info = do
+  elimLog $ "Elaborating case function"
   put (Map.fromList $ zip (concatMap (\(_, p, _, ty, _, _) -> (map show $ boundNamesIn ty) ++ map (show . fst) p) cons ++ (map show $ boundNamesIn ty)) (repeat 0))
   let (cnstrs, _) = splitPi ty
   let (splittedTy@(pms, idxs)) = splitPms cnstrs
@@ -381,7 +386,8 @@ elabEliminator paramPos n ty cons info = do
   motiveIdxs    <- namePis False idxs
   let motive = mkMotive n paramPos generalParams motiveIdxs
   consTerms <- mapM (\(c@(_, _, cnm, _, _, _)) -> do
-                               name <- freshName $ "elim_" ++ simpleName cnm
+                               let casefunt = if ind then "elim_" else "case_"
+                               name <- freshName $ casefunt ++ simpleName cnm
                                consTerm <- extractConsTerm c generalParams
                                return (name, expl, consTerm)) cons
   scrutineeIdxs <- namePis False idxs
@@ -392,11 +398,11 @@ elabEliminator paramPos n ty cons info = do
   let clauseConsElimArgs = map getPiName consTerms
   let clauseGeneralArgs' = map getPiName generalParams ++ [motiveName] ++ clauseConsElimArgs
   let clauseGeneralArgs  = map (\arg -> pexp (PRef elimFC arg)) clauseGeneralArgs'
-  let elimSig = "-- eliminator signature: " ++ showTmImpls eliminatorTy
+  let elimSig = "-- case function signature: " ++ showTmImpls eliminatorTy
   elimLog elimSig
   eliminatorClauses <- mapM (\(cns, cnsElim) -> generateEliminatorClauses cns cnsElim clauseGeneralArgs generalParams) (zip cons clauseConsElimArgs)
   let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
-  elimLog $ "-- eliminator definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
+  elimLog $ "-- case function definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
   State.lift $ idrisCatch (elabDecl EAll info eliminatorTyDecl) (\err -> return ())
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
@@ -406,10 +412,10 @@ elabEliminator paramPos n ty cons info = do
         elimLog s = State.lift (logLvl 2 s)
 
         elimFC :: FC
-        elimFC = fileFC "(eliminator)"
+        elimFC = fileFC "(casefun)"
 
         elimDeclName :: Name
-        elimDeclName = SN $ ElimN n
+        elimDeclName = if ind then SN . ElimN $ n else SN . CaseN $ n
 
         applyNS :: Name -> [String] -> Name
         applyNS n []  = n
@@ -560,7 +566,7 @@ elabEliminator paramPos n ty cons info = do
           implidxs <- implicitIndexes (doc, cnm, ty, fc, fs)
           consArgs <- namePis False args
           let recArgs = findRecArgs consArgs
-          let recMotives = map applyRecMotive recArgs
+          let recMotives = if ind then map applyRecMotive recArgs else []
           let (_, consIdxs) = splitArgPms resTy
           return $ piConstr (implidxs ++ consArgs ++ recMotives) (applyMotive consIdxs (applyCons cnm consArgs))
             where applyRecMotive :: (Name, Plicity, PTerm) -> (Name, Plicity, PTerm)
@@ -600,7 +606,7 @@ elabEliminator paramPos n ty cons info = do
           consArgs <- namePis False args
           let lhsPattern = PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ generalIdxs ++ [pexp $ applyCons cnm consArgs])
           let recArgs = findRecArgs consArgs
-          let recElims = map applyRecElim recArgs
+          let recElims = if ind then map applyRecElim recArgs else []
           let rhsExpr    = PApp elimFC (PRef elimFC cnsElim) (map convertArg implidxs ++ map convertArg consArgs ++ recElims)
           return $ PClause elimFC elimDeclName lhsPattern [] rhsExpr []
             where applyRecElim :: (Name, Plicity, PTerm) -> PArg
