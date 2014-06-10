@@ -52,7 +52,7 @@ using (k : Nat, ts : Vect k Type)
     shows (x::xs) = show x :: shows xs
 
   instance (Shows k ts) => Show (HVect ts) where
-    show xs = show (shows xs)
+    show xs = "[" ++ (pack . intercalate [','] . map unpack . toList $ shows xs) ++ "]"
 
   ||| Extract an arbitrary element of the correct type.
   ||| @ t the goal type
