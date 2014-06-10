@@ -131,9 +131,6 @@ Extra-source-files:
                        test/reg007/run
                        test/reg007/*.lidr
                        test/reg007/expected
-                       test/reg008/run
-                       test/reg008/*.idr
-                       test/reg008/expected
                        test/reg009/run
                        test/reg009/*.lidr
                        test/reg009/expected
