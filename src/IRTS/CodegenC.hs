@@ -68,6 +68,7 @@ codegenC' defs out exec incs objs libs flags dbg
              let gcc = comp ++ " " ++
                        gccDbg dbg ++ " " ++
                        gccFlags ++
+                       " -DHAS_PTHREAD " ++
                        " -I. " ++ objs ++ " -x c " ++
                        (if (exec == Executable) then "" else " -c ") ++
                        " " ++ tmpn ++
