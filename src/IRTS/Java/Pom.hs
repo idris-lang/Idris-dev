@@ -3,6 +3,9 @@ module IRTS.Java.Pom (pomString) where
 import Data.List (unfoldr)
 import Text.XML.Light
 
+-----------------------------------------------------------------------
+-- String <-> XML processing
+
 uattr :: String -> String -> Attr
 uattr k v = Attr (QName k Nothing Nothing) v
 
@@ -31,6 +34,9 @@ groupArtifactVersion g a v = [
 pomString :: String -> String -> [String] -> String
 pomString c a d = ppElement $ pom c a d
 
+-----------------------------------------------------------------------
+-- The pom template for idris projects
+
 pom :: String -> String -> [String] -> Element
 pom clsName artifactName dependencies = unode "project" ([
     uattr "xmlns" "http://maven.apache.org/POM/4.0.0",
@@ -49,7 +55,7 @@ pom clsName artifactName dependencies = unode "project" ([
       unode "skipTest" "true"
     ],
     unode "dependencies" (
-      dependency "org.idris-lang" "idris" "0.9.10-alpha-2" :
+      dependency "org.idris-lang" "idris" "0.9.14" :
       map parseToDep dependencies
     ),
     unode "build" [

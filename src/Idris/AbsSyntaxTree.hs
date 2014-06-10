@@ -339,7 +339,7 @@ data Command = Quit
              | WhoCalls Name
              | CallsWho Name
              | MakeDoc String                      -- IdrisDoc
-
+             | Warranty
 
 data Opt = Filename String
          | Quiet
@@ -373,6 +373,7 @@ data Opt = Filename String
          | PkgCheck String
          | PkgREPL String
          | PkgMkDoc String     -- IdrisDoc
+         | PkgTest String
          | WarnOnly
          | Pkg String
          | BCAsm String
@@ -493,10 +494,11 @@ data DataOpt = Codata -- ^ Set if the the data-type is coinductive
 type DataOpts = [DataOpt]
 
 -- | Type provider - what to provide
-data ProvideWhat = ProvTerm      -- ^ only allow providing terms
-                 | ProvPostulate -- ^ only allow postulates
-                 | ProvAny       -- ^ either is ok
-    deriving (Show, Eq)
+data ProvideWhat' t = ProvTerm t t     -- ^ the first is the goal type, the second is the term
+                    | ProvPostulate t  -- ^ goal type must be Type, so only term
+    deriving (Show, Eq, Functor)
+
+type ProvideWhat = ProvideWhat' PTerm
 
 -- | Top-level declarations such as compiler directives, definitions,
 -- datatypes and typeclasses.
@@ -530,7 +532,7 @@ data PDecl' t
    | PSyntax  FC Syntax -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
    | PDirective (Idris ()) -- ^ Compiler directive. The parser inserts the corresponding action in the Idris monad.
-   | PProvider SyntaxInfo FC ProvideWhat Name t t -- ^ Type provider. The first t is the type, the second is the term
+   | PProvider SyntaxInfo FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term
    | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
                             -- bool is True, lhs and rhs must be convertible
  deriving Functor
@@ -904,7 +906,8 @@ data DSL' t = DSL { dsl_bind    :: t,
                     index_first :: Maybe t,
                     index_next  :: Maybe t,
                     dsl_lambda  :: Maybe t,
-                    dsl_let     :: Maybe t
+                    dsl_let     :: Maybe t,
+                    dsl_pi      :: Maybe t
                   }
     deriving (Show, Functor)
 {-!
@@ -943,6 +946,7 @@ initDSL = DSL (PRef f (sUN ">>="))
               (PRef f (sUN "return"))
               (PRef f (sUN "<$>"))
               (PRef f (sUN "pure"))
+              Nothing
               Nothing
               Nothing
               Nothing
@@ -1102,8 +1106,8 @@ elimDecl = PClass (parseDocstring . T.pack $ "Type class for eliminators") defau
                       PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
 
 -- Defined in builtins.idr
-sigmaTy   = sUN "Exists"
-existsCon = sUN "Ex_intro"
+sigmaTy   = sUN "Sigma"
+existsCon = sUN "Sg_intro"
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind = piBindp expl
@@ -1150,18 +1154,22 @@ consoleDecorate ist AnnKeyword = colouriseKeyword (idris_colourTheme ist)
 consoleDecorate ist (AnnName n _ _ _) = let ctxt  = tt_ctxt ist
                                             theme = idris_colourTheme ist
                                         in case () of
-                                             _ | isDConName n ctxt -> colouriseData theme
-                                             _ | isFnName n ctxt   -> colouriseFun theme
-                                             _ | isTConName n ctxt -> colouriseType theme
-                                             _ | otherwise         -> id -- don't colourise unknown names
+                                             _ | isDConName n ctxt     -> colouriseData theme
+                                             _ | isFnName n ctxt       -> colouriseFun theme
+                                             _ | isTConName n ctxt     -> colouriseType theme
+                                             _ | isPostulateName n ist -> colourisePostulate theme
+                                             _ | otherwise             -> id -- don't colourise unknown names
 consoleDecorate ist (AnnFC _) = id
 consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
   where colour BoldText      = IdrisColour Nothing True False True False
         colour UnderlineText = IdrisColour Nothing True True False False
         colour ItalicText    = IdrisColour Nothing True False False True
 
+isPostulateName :: Name -> IState -> Bool
+isPostulateName n ist = S.member n (idris_postulates ist)
+
 -- | Pretty-print a high-level closed Idris term with no information about precedence/associativity
-prettyImp :: PPOption -- ^^ pretty printing options 
+prettyImp :: PPOption -- ^^ pretty printing options
           -> PTerm -- ^^ the term to pretty-print
           -> Doc OutputAnnotation
 prettyImp impl = pprintPTerm impl [] [] []
@@ -1171,7 +1179,7 @@ prettyIst ::  IState -> PTerm -> Doc OutputAnnotation
 prettyIst ist = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist)
 
 -- | Pretty-print a high-level Idris term in some bindings context with infix info
-pprintPTerm :: PPOption -- ^^ pretty printing options 
+pprintPTerm :: PPOption -- ^^ pretty printing options
             -> [(Name, Bool)] -- ^^ the currently-bound names and whether they are implicit
             -> [Name] -- ^^ names to always show in pi, even if not used
             -> [FixDecl] -- ^^ Fixity declarations
@@ -1424,7 +1432,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     getFixity = flip M.lookup fixities
 
 prettyDocumentedIst :: IState -> (Name, PTerm, Maybe Docstring) -> Doc OutputAnnotation
-prettyDocumentedIst ist (name, ty, docs) = 
+prettyDocumentedIst ist (name, ty, docs) =
           prettyName True [] name <+> colon <+> align (prettyIst ist ty) <$>
           fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
 
@@ -1445,7 +1453,7 @@ prettyName showNS bnd n | Just imp <- lookup n bnd = annotate (AnnBoundName n im
         strName (NS n ns) | showNS    = (concatMap (++ ".") . map T.unpack . reverse) ns ++ strName n
                           | otherwise = strName n
         strName n | n == falseTy = "_|_"
-        strName (MN i s) = T.unpack s 
+        strName (MN i s) = T.unpack s
         strName other = show other
 
 
@@ -1704,4 +1712,3 @@ usedNamesIn vars ist tm = nub $ ni [] tm
 
     niTacImp env (TacImp _ _ scr) = ni env scr
     niTacImp _ _                = []
-

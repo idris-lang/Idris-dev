@@ -33,6 +33,9 @@ doubleType = PrimType DoubleT
 array :: J.Type -> J.Type
 array t = RefType . ArrayType $ t
 
+addressType :: J.Type
+addressType = longType
+
 -----------------------------------------------------------------------
 -- Boxed types
 
@@ -47,6 +50,10 @@ bigIntegerType =
 stringType :: J.Type
 stringType =
   RefType . ClassRefType $ ClassType [(Ident "String", [])]
+
+bufferType :: J.Type
+bufferType =
+  RefType . ClassRefType $ ClassType [(Ident "ByteBuffer", [])]
 
 threadType :: J.Type
 threadType =
@@ -131,6 +138,9 @@ exceptionType =
 runtimeExceptionType :: J.Type
 runtimeExceptionType =
   RefType . ClassRefType $ ClassType [(Ident "RuntimeException", [])]
+
+-----------------------------------------------------------------------
+-- Integer types
 
 nativeTyToJType :: NativeTy -> J.Type
 nativeTyToJType IT8  = byteType
@@ -219,6 +229,7 @@ opName x
   | (LFloatInt to) <- x = "LFloatInt" ++ (suffixFor to)
   | (LStrInt to)   <- x = "LStrInt" ++ (suffixFor to)
   | (LChInt to)    <- x = "LChInt" ++ (suffixFor to)
+  | (LPeek to _)   <- x = "LPeek" ++ (suffixFor to)
   | otherwise = takeWhile ((/=) ' ') $ show x
   where
     suffixFor (ITFixed nt) = show nt
@@ -291,10 +302,30 @@ sourceTypes (LStrRev) = [stringType]
 sourceTypes (LStdIn) = []
 sourceTypes (LStdOut) = []
 sourceTypes (LStdErr) = []
+sourceTypes (LAllocate) = [addressType]
+sourceTypes (LAppendBuffer) =
+  [bufferType, addressType, addressType, addressType, addressType, bufferType]
+sourceTypes (LSystemInfo) = [integerType]
+sourceTypes (LAppend nt _) = [bufferType, addressType, addressType, intTyToJType nt]
+sourceTypes (LPeek _ _) = [bufferType, addressType]
 sourceTypes (LFork) = [objectType]
 sourceTypes (LPar) = [objectType]
 sourceTypes (LVMPtr) = []
 sourceTypes (LNullPtr) = [objectType]
 sourceTypes (LNoOp) = repeat objectType
 
+-----------------------------------------------------------------------
+-- Endianess markers
 
+endiannessConstant :: Endianness -> Exp
+endiannessConstant c =
+  ExpName . Name . map Ident $ ["java", "nio", "ByteOrder", endiannessConstant' c]
+  where
+    endiannessConstant' BE                 = "BIG_ENDIAN"
+    endiannessConstant' LE                 = "LITTLE_ENDIAN"
+    endiannessConstant' (IRTS.Lang.Native) = endiannessConstant' BE
+
+endiannessArguments :: PrimFn -> [Exp]
+endiannessArguments (LAppend _ end) = [endiannessConstant end]
+endiannessArguments (LPeek _ end)   = [endiannessConstant end]
+endiannessArguments _               = []

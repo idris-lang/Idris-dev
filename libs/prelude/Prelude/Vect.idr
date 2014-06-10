@@ -260,10 +260,13 @@ concat : Vect m (Vect n a) -> Vect (m * n) a
 concat []      = []
 concat (v::vs) = v ++ concat vs
 
-||| Fold without seeding the accumulator
+||| Foldr without seeding the accumulator
 foldr1 : (t -> t -> t) -> Vect (S n) t -> t
 foldr1 f (x::xs) = foldr f x xs
 
+||| Foldl without seeding the accumulator
+foldl1 : (t -> t -> t) -> Vect (S n) t -> t
+foldl1 f (x::xs) = foldl f x xs
 --------------------------------------------------------------------------------
 -- Scans
 --------------------------------------------------------------------------------

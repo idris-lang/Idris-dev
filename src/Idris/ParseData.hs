@@ -210,12 +210,14 @@ dsl syn = do reserved "dsl"
                              first  = lookup "index_first" bs
                              next   = lookup "index_next" bs
                              leto   = lookup "let" bs
-                             lambda = lookup "lambda" bs in
+                             lambda = lookup "lambda" bs
+                             pi     = lookup "pi" bs in
                              initDSL { dsl_var = var,
                                        index_first = first,
                                        index_next = next,
                                        dsl_lambda = lambda,
-                                       dsl_let = leto }
+                                       dsl_let = leto,
+                                       dsl_pi = pi }
 
 {- | Checks DSL for errors -}
 -- FIXME: currently does nothing, check if DSL is really sane
@@ -236,6 +238,6 @@ overload syn = do o <- identifier <|> do reserved "let"
                        t <- expr syn
                        return (o, t)
                <?> "dsl overload declaratioN"
-    where overloadable = ["let","lambda","index_first","index_next","variable"]
+    where overloadable = ["let","lambda","pi","index_first","index_next","variable"]
 
 

@@ -1,7 +1,11 @@
 module Prelude.Cast
 
+||| Type class for transforming a instance of a data type to another type.
 class Cast from to where
-    cast : from -> to
+    ||| Perform a cast operation.
+    |||
+    ||| @orig The original type.
+    cast : (orig : from) -> to
 
 -- String casts
 
@@ -45,5 +49,3 @@ instance Cast Integer String where
 
 instance Cast Char Int where
     cast = prim__charToInt
-
-

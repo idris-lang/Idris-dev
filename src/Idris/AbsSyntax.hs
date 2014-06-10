@@ -278,7 +278,7 @@ addNameHint ty n
         ty' <- case lookupCtxtName ty (idris_implicits i) of
                        [(tyn, _)] -> return tyn
                        [] -> throwError (NoSuchVariable ty)
-                       tyns -> throwError (CantResolveAlts (map show (map fst tyns)))
+                       tyns -> throwError (CantResolveAlts (map fst tyns))
         let ns' = case lookupCtxt ty' (idris_namehints i) of
                        [ns] -> ns ++ [n]
                        _ -> [n]
@@ -778,13 +778,14 @@ setColour :: ColourType -> IdrisColour -> Idris ()
 setColour ct c = do i <- getIState
                     let newTheme = setColour' ct c (idris_colourTheme i)
                     putIState $ i { idris_colourTheme = newTheme }
-    where setColour' KeywordColour  c t = t { keywordColour = c }
-          setColour' BoundVarColour c t = t { boundVarColour = c }
-          setColour' ImplicitColour c t = t { implicitColour = c }
-          setColour' FunctionColour c t = t { functionColour = c }
-          setColour' TypeColour     c t = t { typeColour = c }
-          setColour' DataColour     c t = t { dataColour = c }
-          setColour' PromptColour   c t = t { promptColour = c }
+    where setColour' KeywordColour   c t = t { keywordColour = c }
+          setColour' BoundVarColour  c t = t { boundVarColour = c }
+          setColour' ImplicitColour  c t = t { implicitColour = c }
+          setColour' FunctionColour  c t = t { functionColour = c }
+          setColour' TypeColour      c t = t { typeColour = c }
+          setColour' DataColour      c t = t { dataColour = c }
+          setColour' PromptColour    c t = t { promptColour = c }
+          setColour' PostulateColour c t = t { postulateColour = c }
 
 logLvl :: Int -> String -> Idris ()
 logLvl l str = do i <- getIState

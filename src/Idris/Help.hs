@@ -58,7 +58,8 @@ help =
     ([":unset"], OptionArg, "Unset an option"),
     ([":colour", ":color"], ColourArg, "Turn REPL colours on or off; set a specific colour"),
     ([":consolewidth"], ConsoleWidthArg, "Set the width of the console"),
-    ([":q",":quit"], NoArg, "Exit the Idris system")
+    ([":q",":quit"], NoArg, "Exit the Idris system"),
+    ([":w", ":warranty"], NoArg, "Displays warranty information")
   ]
 
 -- | Use these for completion, but don't show them in :help

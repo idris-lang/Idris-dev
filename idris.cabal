@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.12
+Version:        0.9.13.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -242,6 +242,9 @@ Extra-source-files:
                        test/reg044/run
                        test/reg044/*.idr
                        test/reg044/expected
+                       test/reg045/run
+                       test/reg045/*.idr
+                       test/reg045/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -271,6 +274,9 @@ Extra-source-files:
                        test/basic009/*.idr
                        test/basic009/expected
                        test/basic009/B/*.idr
+                       test/basic010/run
+                       test/basic010/*.idr
+                       test/basic010/expected
 
                        test/buffer001-disabled/*.idr
                        test/buffer001-disabled/run
@@ -283,6 +289,9 @@ Extra-source-files:
                        test/dsl002/test
                        test/dsl002/*.idr
                        test/dsl002/expected
+                       test/dsl003/run
+                       test/dsl003/*.idr
+                       test/dsl003/expected
 
                        test/effects001/run
                        test/effects001/*.idr
@@ -636,7 +645,7 @@ Library
                 , xml
                 , deepseq
                 , zlib
-                , optparse-applicative
+                , optparse-applicative >= 0.8
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleContexts

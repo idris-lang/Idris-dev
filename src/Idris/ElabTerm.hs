@@ -70,7 +70,7 @@ build ist info pattern opts fn tm
 
          when (not pattern) $ 
            traceWhen u ("Remaining holes:\n" ++ show hs ++ "\n" ++
-                        "Remaining problems:\n" ++ show probs) $ 
+                        "Remaining problems:\n" ++ qshow probs) $ 
              do unify_all; matchProblems True; unifyProblems
 
          probs <- get_probs
@@ -271,10 +271,10 @@ elab ist info pattern opts fn tm
              let as' = pruneByType (map fst env) tc ctxt as
 --              trace (show as ++ "\n ==> " ++ showSep ", " (map showTmImpls as')) $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
-        where showHd (PApp _ (PRef _ n) _) = show n
-              showHd (PRef _ n) = show n
-              showHd (PApp _ h _) = show h
-              showHd x = show x
+        where showHd (PApp _ (PRef _ n) _) = n
+              showHd (PRef _ n) = n
+              showHd (PApp _ h _) = showHd h
+              showHd x = NErased -- We probably should do something better than this here
     elab' ina (PAlternative False as)
         = trySeq as
         where -- if none work, take the error from the first
@@ -1009,7 +1009,7 @@ runTac autoSolve ist fn tac
                     ns -> return (map (\ (n, a) -> (n, map (const True) a)) ns)
              let tacs = map (\ (fn', imps) ->
                                  (match_apply (Var fn') (map (\x -> (x, 0)) imps),
-                                     show fn')) fnimps
+                                     fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
        where envArgs n = do e <- get_env
@@ -1025,7 +1025,7 @@ runTac autoSolve ist fn tac
                     ns -> return (map (\ (n, a) -> (n, map isImp a)) ns)
              let tacs = map (\ (fn', imps) ->
                                  (apply (Var fn') (map (\x -> (x, 0)) imps),
-                                     show fn')) fnimps
+                                     fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
        where isImp (PImp _ _ _ _ _) = True
@@ -1629,8 +1629,8 @@ reflectErr (NotInjective t1 t2 t3) =
             ]
 reflectErr (CantResolve t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
 reflectErr (CantResolveAlts ss) =
-  raw_apply (Var $ reflErrName "CantResolve")
-            [rawList (Var $ (sUN "String")) (map (RConstant . Str) ss)]
+  raw_apply (Var $ reflErrName "CantResolveAlts")
+            [rawList (Var $ (sUN "String")) (map Var ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
 reflectErr UniverseError = Var $ reflErrName "UniverseError"
 reflectErr ProgramLineComment = Var $ reflErrName "ProgramLineComment"

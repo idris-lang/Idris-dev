@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pprintErr) where
+module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
@@ -9,6 +9,7 @@ import Util.Pretty
 import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Docstrings (overview, renderDocstring)
 import Idris.ErrReverse
 
 import Data.List (intersperse)
@@ -92,13 +93,13 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
          | n == eqCon     = PRefl un (de env [] r)
          | n == sUN "lazy" = de env [] r
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
-         | n == sUN "Exists"
+         | n == sUN "Sigma"
                = PDPair un IsType (PRef un x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [_,_,l,r]
          | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
          | n == eqTy    = PEq un (de env [] l) (de env [] r)
-         | n == sUN "Ex_intro" = PDPair un IsTerm (de env [] l) Placeholder
+         | n == sUN "Sg_intro" = PDPair un IsTerm (de env [] l) Placeholder
                                            (de env [] r)
     deFn env f@(P _ n _) args 
          | n `elem` map snd env 
@@ -195,7 +196,7 @@ pprintErr' i (NotInjective p x y) =
   pprintTerm i (delab i y)
 pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
-                                    align (cat (punctuate (comma <> space) (map text as)))
+                                    align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i) . annName) as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> pprintTerm i (delab i t)
@@ -257,6 +258,30 @@ annName n = annName' n (showbasic n)
 
 annName' :: Name -> String -> Doc OutputAnnotation
 annName' n str = annotate (AnnName n Nothing Nothing Nothing) (text str)
+
+fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
+fancifyAnnots ist annot@(AnnName n _ _ _) =
+  do let ctxt = tt_ctxt ist
+         docs = docOverview ist n
+         ty   = Just (getTy ist n)
+     case () of
+       _ | isDConName      n ctxt -> AnnName n (Just DataOutput) docs ty
+       _ | isFnName        n ctxt -> AnnName n (Just FunOutput) docs ty
+       _ | isTConName      n ctxt -> AnnName n (Just TypeOutput) docs ty
+       _ | isMetavarName   n ist  -> AnnName n (Just MetavarOutput) docs ty
+       _ | isPostulateName n ist  -> AnnName n (Just PostulateOutput) docs ty
+       _ | otherwise            -> annot
+  where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
+        docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
+                               let o   = overview (fst docs)
+                                   -- TODO make width configurable
+                                   out = displayS . renderPretty 1.0 50 $ renderDocstring o
+                               return (out "")
+        getTy :: IState -> Name -> String -- fails if name not already extant!
+        getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
+                                  delabTy ist n
+                      in (displayS . renderPretty 1.0 50 $ theTy) ""
+fancifyAnnots _ annot = annot
 
 showSc :: IState -> [(Name, Term)] -> Doc OutputAnnotation
 showSc i [] = empty

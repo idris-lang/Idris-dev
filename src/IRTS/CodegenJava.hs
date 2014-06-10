@@ -169,7 +169,7 @@ jarHeader =
   ++ "if test -n \"$JAVA_HOME\"; then\n"
   ++ "  java=\"$JAVA_HOME/bin/java\"\n"
   ++ "fi\n"
-  ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\""
+  ++ "exec \"$java\" $java_args -jar $MYSELF \"$@\"\n"
   ++ "exit 1\n"
 
 -----------------------------------------------------------------------
@@ -312,6 +312,7 @@ mkCompilationUnit globalInit defs hdrs out = do
                             , ImportDecl True idrisPrelude True
                             , ImportDecl False bigInteger False
                             , ImportDecl False runtimeException False
+                            , ImportDecl False byteBuffer False
                             ] ++ otherHdrs
                           )
                           <$> mkTypeDecl clsName globalInit defs
@@ -320,6 +321,7 @@ mkCompilationUnit globalInit defs hdrs out = do
     idrisPrelude = J.Name $ map Ident ["org", "idris", "rts", "Prelude"]
     bigInteger = J.Name $ map Ident ["java", "math", "BigInteger"]
     runtimeException = J.Name $ map Ident ["java", "lang", "RuntimeException"]
+    byteBuffer = J.Name $ map Ident ["java", "nio", "ByteBuffer"]
     otherHdrs = map ( (\ name -> ImportDecl False name False)
                       . J.Name
                       . map (Ident . T.unpack)
@@ -386,9 +388,7 @@ mkMainMethod =
     "main"
     [FormalParam [] (array stringType) False (VarId $ Ident "args")]
     $ Block [ BlockStmt . ExpStmt
-              $ call "idris_initArgs" [ (threadType ~> "currentThread") []
-                                      , jConst "args"
-                                      ]
+              $ call "idris_initArgs" [ jConst "args" ]
             , BlockStmt . ExpStmt $ call (mangle' (sMN 0 "runMain")) []
             ]
 
@@ -484,6 +484,8 @@ mkExp pp (SOp LFork [arg]) =
   (mkThread arg) >>= ppExp pp
 mkExp pp (SOp LPar [arg]) =
   (Nothing <>@! arg) >>= ppExp pp
+mkExp pp (SOp LRegisterPtr [ptr, i]) =
+  (Nothing <>@! ptr) >>= ppExp pp
 mkExp pp (SOp LNoOp args) =
   (Nothing <>@! (last args)) >>= ppExp pp
 mkExp pp (SOp LNullPtr args) =
@@ -707,6 +709,7 @@ mkConstant c@(AType    x) = ClassLit (Just $ box (constType c))
 mkConstant c@(StrType   ) = ClassLit (Just $ stringType)
 mkConstant c@(PtrType   ) = ClassLit (Just $ objectType)
 mkConstant c@(ManagedPtrType) = ClassLit (Just $ objectType)
+mkConstant c@(BufferType) = ClassLit (Just $ bufferType)
 mkConstant c@(VoidType  ) = ClassLit (Just $ voidType)
 mkConstant c@(Forgot    ) = ClassLit (Just $ objectType)
 
@@ -744,7 +747,7 @@ mkForeign pp (LANG_JAVA callType) resTy text params
 
 mkPrimitiveFunction :: PrimFn -> [LVar] -> CodeGeneration Exp
 mkPrimitiveFunction op args =
-  (\ args -> (primFnType ~> opName op) args)
+  (\ args -> (primFnType ~> opName op) (endiannessArguments op ++ args))
   <$> sequence (zipWith (\ a t -> (Just t) <>@! a) args (sourceTypes op))
 
 mkThread :: LVar -> CodeGeneration Exp
