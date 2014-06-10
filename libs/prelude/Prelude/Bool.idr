@@ -5,7 +5,7 @@ import Builtins
 import Prelude.Uninhabited
 
 ||| Boolean Data Type
-data Bool = False | True
+%case data Bool = False | True
 
 ||| The underlying implementation of the if ... then ... else ... syntax
 ||| @ b the condition on the if

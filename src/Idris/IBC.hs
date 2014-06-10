@@ -1264,11 +1264,13 @@ instance Binary DataOpt where
     Codata -> putWord8 0
     DefaultEliminator -> putWord8 1
     DataErrRev -> putWord8 2
+    DefaultCaseFun -> putWord8 3
   get = do i <- getWord8
            case i of
             0 -> return Codata
             1 -> return DefaultEliminator
             2 -> return DataErrRev
+            3 -> return DefaultCaseFun
 
 instance Binary FnOpt where
         put x
@@ -1968,6 +1970,8 @@ instance (Binary t) => Binary (PTactic' t) where
                                                  put x4
                                                  put x5
                 DoUnify -> putWord8 22
+                CaseTac x1 -> do putWord8 23
+                                 put x1
         get
           = do i <- getWord8
                case i of
@@ -2016,6 +2020,8 @@ instance (Binary t) => Binary (PTactic' t) where
                             x5 <- get
                             return (ProofSearch x1 x2 x3 x4 x5)
                    22 -> return DoUnify
+                   23 -> do x1 <- get
+                            return (CaseTac x1)
                    _ -> error "Corrupted binary data for PTactic'"
 
 

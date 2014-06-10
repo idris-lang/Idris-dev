@@ -1,10 +1,13 @@
 New in 0.9.14:
 --------------
+* Tactic for case analysis in proofs
+* Induction and case tactic now work on expressions
 * Support for running tests for a package with the tests section of .ipkg files and the
   --testpkg command-line option
 * Clearly distinguish between type providers and postulate providers at the use site
 * Allow dependent function syntax to be overridden in dsl blocks, similarly to
   functions and let. The keyword for this is "pi".
+
 
 New in 0.9.13:
 --------------

@@ -485,8 +485,9 @@ dictionary = elem Dictionary
 
 
 -- | Data declaration options
-data DataOpt = Codata -- Set if the the data-type is coinductive
-             | DefaultEliminator -- Set if an eliminator should be generated for data type
+data DataOpt = Codata -- ^ Set if the the data-type is coinductive
+             | DefaultEliminator -- ^ Set if an eliminator should be generated for data type
+             | DefaultCaseFun -- ^ Set if a case function should be generated for data type
              | DataErrRev
     deriving (Show, Eq)
 
@@ -739,7 +740,8 @@ mapPT f t = f (mpt t) where
 
 data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Refine Name [Bool] | Rewrite t | DoUnify
-                | Induction Name
+                | Induction t
+                | CaseTac t
                 | Equiv t
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t

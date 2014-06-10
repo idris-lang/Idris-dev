@@ -72,7 +72,8 @@ data Tactic = Attack
             | LetBind Name Raw Raw
             | ExpandLet Name Term
             | Rewrite Raw
-            | Induction Name
+            | Induction Raw
+            | CaseTac Raw
             | Equiv Raw
             | PatVar Name
             | PatBind Name
@@ -661,13 +662,16 @@ mkP lt l r (Bind n b sc)
                              b { binderTy = ty' }
 mkP lt l r x = x
 
-induction :: Name -> RunTactic
-induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
-  (tmv, tmt) <- lift $ check ctxt env (Var nm)
+casetac :: Raw -> Bool -> RunTactic
+casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
+  (tmv, tmt) <- lift $ check ctxt env tm
   let tmt' = normalise ctxt env tmt
+  let (tacn, tacstr, tactt) = if induction
+              then (ElimN, "an eliminator", "induction")
+              else (CaseN, "a case function", "case analysis")
   case unApply tmt' of
     (P _ tnm _, tyargs) -> do
-        case lookupTy (SN (ElimN tnm)) ctxt of
+        case lookupTy (SN (tacn tnm)) ctxt of
           [elimTy] -> do
              param_pos <- case lookupMetaInformation tnm ctxt of
                                [DataMI param_pos] -> return param_pos
@@ -683,9 +687,14 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              let indxargs = drop (length restargs - length indicies) $ restargs
              let scr      = last $ tail args'
              let indxnames = makeIndexNames indicies
-             prop <- replaceIndicies indxnames indicies $ Bind nm (Lam tmt') t
+             currentNames <- query $ allTTNames . pterm
+             let tmnm = case tm of
+                         Var nm -> uniqueNameCtxt ctxt nm currentNames
+                         _ -> uniqueNameCtxt ctxt (sMN 0 "iv") currentNames
+             let tmvar = P Bound tmnm tmt'
+             prop <- replaceIndicies indxnames indicies $ Bind tmnm (Lam tmt') (mkP tmvar tmv tmvar t)
              consargs' <- query (\ps -> map (flip (uniqueNameCtxt (context ps)) (holes ps ++ allTTNames (pterm ps)) *** uniqueBindersCtxt (context ps) (holes ps ++ allTTNames (pterm ps))) consargs)
-             let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs' (mkApp (P Ref (SN (ElimN tnm)) (TType (UVal 0)))
+             let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs' (mkApp (P Ref (SN (tacn tnm)) (TType (UVal 0)))
                                                         (params ++ [prop] ++ map makeConsArg consargs' ++ indicies ++ [tmv])))
              action (\ps -> ps {holes = holes ps \\ [x]})
              mapM_ addConsHole (reverse consargs')
@@ -693,9 +702,9 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              (scv, sct) <- lift $ check ctxt env res'
              let scv' = specialise ctxt env [] scv
              return scv'
-          [] -> fail $ "Induction needs an eliminator for " ++ show tnm
-          xs -> fail $ "Multiple definitions found when searching for the eliminator of " ++ show tnm
-    _ -> fail "Unkown type for induction"
+          [] -> fail $ tactt ++ " needs " ++ tacstr ++ " for " ++ show tnm
+          xs -> fail $ "Multiple definitions found when searching for " ++ tacstr ++ "of " ++ show tnm
+    _ -> fail $ "Unkown type for " ++ if induction then "induction" else "case analysis"
     where scname = sMN 0 "scarg"
           makeConsArg (nm, ty) = P Bound nm ty
           bindConsArgs ((nm, ty):args) v = Bind nm (Hole ty) $ bindConsArgs args v
@@ -709,7 +718,7 @@ induction nm ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
           replaceIndicies idnms idxs prop = foldM (\t (idnm, idx) -> do (idxv, idxt) <- lift $ check ctxt env (forget idx)
                                                                         let var = P Bound idnm idxt
                                                                         return $ Bind idnm (Lam idxt) (mkP var idxv var t)) prop $ zip idnms idxs
-induction tm ctxt env _ = do fail "Can't do induction here"
+induction tm induction ctxt env _ = do fail "Can't do induction here"
 
 
 equiv :: Raw -> RunTactic
@@ -991,7 +1000,8 @@ process t h = tactic (Just h) (mktac t)
          mktac (LetBind n t v)   = letbind n t v
          mktac (ExpandLet n b)   = expandLet n b
          mktac (Rewrite t)       = rewrite t
-         mktac (Induction t)     = induction t
+         mktac (Induction t)     = casetac t True
+         mktac (CaseTac t)       = casetac t False
          mktac (Equiv t)         = equiv t
          mktac (PatVar n)        = patvar n
          mktac (PatBind n)       = patbind n

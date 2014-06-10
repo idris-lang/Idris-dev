@@ -1136,6 +1136,7 @@ Tactic ::= 'intro' NameList?
        |   'refine'      Name Imp+
        |   'mrefine'     Name
        |   'rewrite'     Expr
+       |   'induction'   Expr
        |   'equiv'       Expr
        |   'let'         Name ':' Expr' '=' Expr
        |   'let'         Name           '=' Expr
@@ -1183,8 +1184,12 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
           <|> do reserved "rewrite"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Rewrite (desugar syn i t)
-          <|> do reserved "induction"; nm <- (indentPropHolds gtProp *> fnName);
-                 return $ Induction nm
+          <|> do reserved "case"; t <- (indentPropHolds gtProp *> expr syn);
+                 i <- get
+                 return $ CaseTac (desugar syn i t)
+          <|> do reserved "induction"; t <- (indentPropHolds gtProp *> expr syn);
+                 i <- get
+                 return $ Induction (desugar syn i t)
           <|> do reserved "equiv"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Equiv (desugar syn i t)
