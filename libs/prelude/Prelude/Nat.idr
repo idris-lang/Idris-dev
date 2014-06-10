@@ -312,6 +312,24 @@ lcm _ Z = Z
 lcm Z _ = Z
 lcm x y = divNat (x * y) (gcd x y)
 
+
+--------------------------------------------------------------------------------
+-- An informative comparison view 
+--------------------------------------------------------------------------------
+data CmpNat : Nat -> Nat -> Type where
+     cmpLT : (y : _) -> CmpNat x (x + S y)
+     cmpEQ : CmpNat x x
+     cmpGT : (x : _) -> CmpNat (y + S x) y
+
+total cmp : (x, y : Nat) -> CmpNat x y
+cmp Z Z     = cmpEQ
+cmp Z (S k) = cmpLT _
+cmp (S k) Z = cmpGT _
+cmp (S x) (S y) with (cmp x y)
+  cmp (S x) (S (x + (S k))) | cmpLT k = cmpLT k
+  cmp (S x) (S x)           | cmpEQ   = cmpEQ
+  cmp (S (y + (S k))) (S y) | cmpGT k = cmpGT k
+
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
