@@ -65,7 +65,7 @@ using (k : Nat, ts : Vect k Type)
   put {p = Here} y (x::xs) = y :: xs
   put {p = There p'} y (x::xs) = x :: put {p = p'} y xs
 
-  ||| Replace an element with the correct type.
+  ||| Update an element with the correct type.
   update : {default tactics { search 100; } p : Elem t ts} -> (t -> u) -> HVect ts -> HVect (replaceByElem ts p u)
   update {p = Here} f (x::xs) = f x :: xs
   update {p = There p'} f (x::xs) = x :: update {p = p'} f xs
