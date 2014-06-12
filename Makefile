@@ -46,10 +46,10 @@ doc: dist/setup-config
 	$(CABAL) haddock --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
 
 lib_doc:
-    $(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc
+	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc
 
 lib_doc_clean:
-    $(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc_clean
+	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc_clean
 
 dist/setup-config:
 	$(CABAL) configure $(CABALFLAGS)
