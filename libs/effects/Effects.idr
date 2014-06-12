@@ -249,15 +249,13 @@ syntax MkDefaultEnv = with Env
 
 call : {a, b: _} -> {e : Effect} ->
        (eff : e t a b) ->
-       {default tactics { search 100; }
-          prf : EffElem e a xs} ->
+       {auto prf : EffElem e a xs} ->
       Eff m t xs (\v => updateResTy v xs prf eff)
 call e {prf} = callP prf e
 
 implicit
 lift : Eff m t ys ys' ->
-       {default tactics { search 100; }
-          prf : SubList ys xs} ->
+       {auto prf : SubList ys xs} ->
        Eff m t xs (\v => updateWith (ys' v) xs prf)
 lift e {prf} = liftP prf e
 

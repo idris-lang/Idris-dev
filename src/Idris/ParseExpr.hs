@@ -816,7 +816,7 @@ pi syn =
                    symbol "->"
                    sc <- expr syn
                    return (bindList (PPi
-                     (TacImp [] Dynamic (PTactics [Trivial]))) xt sc)) <|> (do
+                     (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc)) <|> (do
                        try (lchar '{' *> reserved "default")
                        when (st == Static) $ fail "default tactic constraints can not be lazy or static"
                        script <- simpleExpr syn
