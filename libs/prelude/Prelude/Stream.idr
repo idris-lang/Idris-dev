@@ -85,7 +85,7 @@ scanl f acc (x :: xs) = acc :: scanl f (f acc x) xs
 ||| Produce a Stream of (corecursive) right folds of tails of the given Stream
 ||| @ f the combining function
 ||| @ xs the Stream to fold up
--- Reusing the head of the corecursion in the obvious way doesn’t productivity check
+-- Reusing the head of the corecursion in the obvious way doesn't productivity check
 scanr : (f : a -> Inf b -> b) -> (xs : Stream a) -> Stream b
 scanr f (x :: Delay xs) = f x (foldr f xs) :: scanr f xs
 
