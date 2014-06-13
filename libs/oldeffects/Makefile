@@ -1,14 +1,21 @@
-IDRIS     := idris
+IDRIS := idris
+PKG   := oldeffects
 
 build:
-	$(IDRIS) --build oldeffects.ipkg
+	$(IDRIS) --build ${PKG}.ipkg
 
 clean:
-	$(IDRIS) --clean oldeffects.ipkg
+	$(IDRIS) --clean ${PKG}.ipkg
 
 install:
-	$(IDRIS) --install oldeffects.ipkg
+	$(IDRIS) --install ${PKG}.ipkg
 
 rebuild: clean build
 
-.PHONY: build clean install rebuild
+doc:
+	$(IDRIS) --mkdoc ${PKG}.ipkg
+
+doc_clean:
+    rm -rf ${PKG}_doc
+
+.PHONY: build clean install rebuild doc
