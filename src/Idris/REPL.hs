@@ -594,8 +594,8 @@ process h fn (Eval t)
                                             ist <- getIState
                                             logLvl 3 $ "Raw: " ++ show (tm', ty')
                                             logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
-                                            let tmDoc = prettyIst ist (delab ist tm')
-                                                tyDoc = prettyIst ist (delab ist ty')
+                                            let tmDoc = pprintDelab ist tm'
+                                                tyDoc = pprintDelab ist ty'
                                             ihPrintTermWithType h tmDoc tyDoc
 
 process h fn (ExecVal t)
@@ -653,8 +653,8 @@ process h fn (Check t)
         case tm of
            TType _ ->
              ihPrintTermWithType h (prettyIst ist PType) type1Doc
-           _ -> ihPrintTermWithType h (prettyIst ist (delab ist tm))
-                                      (prettyIst ist (delab ist ty))
+           _ -> ihPrintTermWithType h (pprintDelab ist tm)
+                                      (pprintDelab ist ty)
 
 process h fn (DocStr (Left n))
    = do ist <- getIState

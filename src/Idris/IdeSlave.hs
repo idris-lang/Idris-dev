@@ -5,12 +5,16 @@ module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand
 import Text.Printf
 import Numeric
 import Data.List
+import qualified Data.Binary as Binary
+import qualified Data.ByteString.Base64 as Base64
+import qualified Data.ByteString.Lazy as Lazy
 import qualified Data.ByteString.UTF8 as UTF8
 -- import qualified Data.Text as T
 import Text.Trifecta hiding (Err)
 import Text.Trifecta.Delta
 
 import Idris.Core.TT
+import Idris.Core.Binary
 
 import Control.Applicative hiding (Const)
 
@@ -128,6 +132,8 @@ instance SExpable OutputAnnotation where
                        BoldText      -> "bold"
                        ItalicText    -> "italic"
                        UnderlineText -> "underline"
+  toSExp (AnnTerm tm) = toSExp [(SymbolAtom "tt-term", StringAtom encoded)]
+    where encoded = (UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode) tm
 
 instance SExpable FC where
   toSExp (FC f (sl, sc) (el, ec)) =

@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintErr) where
+module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintDelabTy, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
@@ -134,6 +134,20 @@ errorIndent = 8
 -- multiple layers of indent
 indented :: Doc a -> Doc a
 indented = nest errorIndent . (line <>)
+
+-- | Pretty-print a core term using delaboration
+pprintDelab :: IState -> Term -> Doc OutputAnnotation
+pprintDelab ist tm = annotate (AnnTerm tm)
+                              (prettyIst ist (delab ist tm))
+
+-- | Pretty-print the type of some name
+pprintDelabTy :: IState -> Name -> Doc OutputAnnotation
+pprintDelabTy i n
+    = case lookupTy n (tt_ctxt i) of
+           (ty:_) -> annotate (AnnTerm ty) . prettyIst i $
+                     case lookupCtxt n (idris_implicits i) of
+                         (imps:_) -> delabTy' i imps ty False False
+                         _ -> delabTy' i [] ty False False
 
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
 pprintTerm ist = pprintTerm' ist []
