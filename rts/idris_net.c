@@ -5,14 +5,16 @@
 
 void buf_htonl(void* buf, int len) {
     int* buf_i = (int*) buf;
-    for (int i = 0; i < (len / sizeof(int)) + 1; i++) {
+    int i;
+    for (i = 0; i < (len / sizeof(int)) + 1; i++) {
         buf_i[i] = htonl(buf_i[i]);
     }
 }
 
 void buf_ntohl(void* buf, int len) {
     int* buf_i = (int*) buf;
-    for (int i = 0; i < (len / sizeof(int)) + 1; i++) {
+    int i;
+    for (i = 0; i < (len / sizeof(int)) + 1; i++) {
         buf_i[i] = ntohl(buf_i[i]);
     }
 }
