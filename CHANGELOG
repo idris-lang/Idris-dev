@@ -7,7 +7,7 @@ New in 0.9.14:
 * Clearly distinguish between type providers and postulate providers at the use site
 * Allow dependent function syntax to be overridden in dsl blocks, similarly to
   functions and let. The keyword for this is "pi".
-
+* Experimental 'neweffects' library, with simplified API
 
 New in 0.9.13:
 --------------
