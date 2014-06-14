@@ -1033,9 +1033,10 @@ do_ syn
    <?> "do block expression"
 
 do_alt syn = do l <- expr' syn
-                symbol "=>"
-                r <- expr' syn
-                return (l, r)
+                option (Placeholder, l)
+                       (do symbol "=>"
+                           r <- expr' syn
+                           return (l, r))
 
 {- | Parses an expression in idiom brackets
 @
