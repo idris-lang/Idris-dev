@@ -394,6 +394,36 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
                  prettyName True []
+runIdeSlaveCommand id orig fn modes (IdeSlave.TermNormalise tm) =
+  do ctxt <- getContext
+     ist <- getIState
+     let tm' = force (normaliseAll ctxt [] tm)
+         ptm = annotate (AnnTerm tm')
+               (pprintDelab ist tm')
+         msg = (IdeSlave.SymbolAtom "ok",
+                displaySpans .
+                renderPretty 0.9 80 .
+                fmap (fancifyAnnots ist) $ ptm)
+     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand id orig fn modes (IdeSlave.TermShowImplicits tm) =
+  ideSlaveForceTermImplicits id True tm
+runIdeSlaveCommand id orig fn modes (IdeSlave.TermNoImplicits tm) =
+  ideSlaveForceTermImplicits id False tm
+
+-- | Show a term for IDESlave with the specified implicitness
+ideSlaveForceTermImplicits :: Integer -> Bool -> Term -> Idris ()
+ideSlaveForceTermImplicits id impl tm =
+  do ist <- getIState
+     let expl = annotate (AnnTerm tm)
+                (pprintPTerm ((ppOptionIst ist) { ppopt_impl = impl })
+                             [] [] (idris_infixes ist)
+                             (delab ist tm))
+         msg = (IdeSlave.SymbolAtom "ok",
+                displaySpans .
+                renderPretty 0.9 80 .
+                fmap (fancifyAnnots ist) $ expl)
+     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+
 
 splitName :: String -> Either String Name
 splitName s = case reverse $ splitOn "." s of

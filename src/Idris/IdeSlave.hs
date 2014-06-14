@@ -132,8 +132,13 @@ instance SExpable OutputAnnotation where
                        BoldText      -> "bold"
                        ItalicText    -> "italic"
                        UnderlineText -> "underline"
-  toSExp (AnnTerm tm) = toSExp [(SymbolAtom "tt-term", StringAtom encoded)]
-    where encoded = (UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode) tm
+  toSExp (AnnTerm tm) = toSExp [(SymbolAtom "tt-term", StringAtom (encodeTerm tm))]
+
+encodeTerm :: Term -> String
+encodeTerm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode
+
+decodeTerm :: String -> Term
+decodeTerm = Binary.decode . Lazy.fromStrict . Base64.decodeLenient . UTF8.fromString
 
 instance SExpable FC where
   toSExp (FC f (sl, sc) (el, ec)) =
@@ -191,6 +196,9 @@ data IdeSlaveCommand = REPLCompletions String
                      | Metavariables Int -- ^^ the Int is the column count for pretty-printing
                      | WhoCalls String
                      | CallsWho String
+                     | TermNormalise Term
+                     | TermShowImplicits Term
+                     | TermNoImplicits Term
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
@@ -227,6 +235,9 @@ sexpToCommand (SexpList [SymbolAtom "set-option", SymbolAtom s, BoolAtom b])
 sexpToCommand (SexpList [SymbolAtom "metavariables", IntegerAtom cols])                 = Just (Metavariables (fromIntegral cols))
 sexpToCommand (SexpList [SymbolAtom "who-calls", StringAtom name])                      = Just (WhoCalls name)
 sexpToCommand (SexpList [SymbolAtom "calls-who", StringAtom name])                      = Just (CallsWho name)
+sexpToCommand (SexpList [SymbolAtom "normalise-term", StringAtom encoded])              = Just (TermNormalise (decodeTerm encoded))
+sexpToCommand (SexpList [SymbolAtom "show-term-implicits", StringAtom encoded])         = Just (TermShowImplicits (decodeTerm encoded))
+sexpToCommand (SexpList [SymbolAtom "hide-term-implicits", StringAtom encoded])         = Just (TermNoImplicits (decodeTerm encoded))
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)
