@@ -165,8 +165,8 @@ pprintErr' i (InternalMsg s) =
          text ("Please consider reporting at " ++ bugaddr)
        ]
 pprintErr' i (CantUnify _ x y e sc s) =
-  text "Can't unify" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i x)) <$>
-  text "with" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i y)) <>
+  text "Can't unify" <> indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i x))) <$>
+  text "with" <> indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i y))) <>
   case e of
     Msg "" -> empty
     _ -> line <> line <> text "Specifically:" <>
@@ -174,46 +174,46 @@ pprintErr' i (CantUnify _ x y e sc s) =
          if (opt_errContext (idris_options i)) then showSc i sc else empty
 pprintErr' i (CantConvert x y env) =
   text "Can't convert" <>
-  indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x)) <$>
+  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x))) <$>
   text "with" <>
-  indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i y)) <>
+  indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i y))) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (CantSolveGoal x env) =
   text "Can't solve goal " <>
-  indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x)) <>
+  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x))) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (UnifyScope n out tm env) =
   text "Can't unify" <> indented (annName n) <+>
-  text "with" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm)) <+>
-  text "as" <> indented (annName out) <> text "is not in scope" <>
+  text "with" <> indented (annTm tm (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm))) <+>
+ text "as" <> indented (annName out) <> text "is not in scope" <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (CantInferType t) = text "Can't infer type for" <+> text t
 pprintErr' i (NonFunctionType f ty) =
-  pprintTerm i (delab i f) <+>
+  annTm f (pprintTerm i (delab i f)) <+>
   text "does not have a function type" <+>
   parens (pprintTerm i (delab i ty))
 pprintErr' i (NotEquality tm ty) =
-  pprintTerm i (delab i tm) <+>
+  annTm tm (pprintTerm i (delab i tm)) <+>
   text "does not have an equality type" <+>
-  parens (pprintTerm i (delab i ty))
+  annTm ty (parens (pprintTerm i (delab i ty)))
 pprintErr' i (TooManyArguments f) = text "Too many arguments for" <+> annName f
 pprintErr' i (CantIntroduce ty) =
-  text "Can't use lambda here: type is" <+> pprintTerm i (delab i ty)
+  text "Can't use lambda here: type is" <+> annTm ty (pprintTerm i (delab i ty))
 pprintErr' i (InfiniteUnify x tm env) =
   text "Unifying" <+> annName' x (showbasic x) <+> text "and" <+>
-  pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm) <+>
+  annTm tm (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm)) <+>
   text "would lead to infinite value" <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (NotInjective p x y) =
-  text "Can't verify injectivity of" <+> pprintTerm i (delab i p) <+>
-  text " when unifying" <+> pprintTerm i (delab i x) <+> text "and" <+>
-  pprintTerm i (delab i y)
+  text "Can't verify injectivity of" <+> annTm p (pprintTerm i (delab i p)) <+>
+  text " when unifying" <+> annTm x (pprintTerm i (delab i x)) <+> text "and" <+>
+  annTm y (pprintTerm i (delab i y))
 pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
                                     align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i) . annName) as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
-pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> pprintTerm i (delab i t)
+pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i UniverseError = text "Universe inconsistency"
 pprintErr' i ProgramLineComment = text "Program line next to comment"
 pprintErr' i (Inaccessible n) = annName n <+> text "is not an accessible pattern variable"
@@ -222,7 +222,7 @@ pprintErr' i (NonCollapsiblePostulate n) = text "The return type of postulate" <
 pprintErr' i (AlreadyDefined n) = annName n<+>
                                   text "is already defined"
 pprintErr' i (ProofSearchFail e) = pprintErr' i e
-pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> pprintTerm i (delab i tm)
+pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> annTm tm (pprintTerm i (delab i tm))
 pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr' i e
 pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
@@ -272,6 +272,9 @@ annName n = annName' n (showbasic n)
 
 annName' :: Name -> String -> Doc OutputAnnotation
 annName' n str = annotate (AnnName n Nothing Nothing Nothing) (text str)
+
+annTm :: Term -> Doc OutputAnnotation -> Doc OutputAnnotation
+annTm tm = annotate (AnnTerm tm)
 
 fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
 fancifyAnnots ist annot@(AnnName n _ _ _) =
