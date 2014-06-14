@@ -1663,7 +1663,10 @@ namesIn uvars ist tm = nub $ ni [] tm
                 _ -> if n `elem` (map fst uvars) then [n] else []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
+    ni env (PCase _ c os)  = ni env c ++ 
+    -- names in 'os', not counting the names bound in the cases
+                                (nub (concatMap (ni env) (map snd os))
+                                     \\ nub (concatMap (ni env) (map fst os)))
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r

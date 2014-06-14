@@ -969,6 +969,8 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
          def' <- checkDef fc defer
          let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
          addDeferred def''
+         mapM_ (\(n, _) -> addIBC (IBCDef n)) def''
+
          mapM_ (elabCaseBlock info []) is
          ctxt <- getContext
          (cty, _)  <- recheckC fc [] t'
