@@ -385,7 +385,8 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
             displaySpans .
             renderPretty 0.9 cols .
             fmap (fancifyAnnots ist) .
-            annotate (AnnTerm t) $ prettyT
+            annotate (AnnTerm (zip bnd (take (length bnd) (repeat False))) t) $
+              prettyT
 
         -- | Juggle the bits of a premise to prepare for output.
         processPremise :: IState
@@ -422,29 +423,33 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
                  prettyName True []
-runIdeSlaveCommand id orig fn modes (IdeSlave.TermNormalise tm) =
+runIdeSlaveCommand id orig fn modes (IdeSlave.TermNormalise bnd tm) =
   do ctxt <- getContext
      ist <- getIState
      let tm' = force (normaliseAll ctxt [] tm)
-         ptm = annotate (AnnTerm tm')
-               (pprintDelab ist tm')
+         ptm = annotate (AnnTerm bnd tm')
+               (pprintPTerm (ppOptionIst ist)
+                            bnd
+                            []
+                            (idris_infixes ist)
+                            (delab ist tm'))
          msg = (IdeSlave.SymbolAtom "ok",
                 displaySpans .
                 renderPretty 0.9 80 .
                 fmap (fancifyAnnots ist) $ ptm)
      runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-runIdeSlaveCommand id orig fn modes (IdeSlave.TermShowImplicits tm) =
-  ideSlaveForceTermImplicits id True tm
-runIdeSlaveCommand id orig fn modes (IdeSlave.TermNoImplicits tm) =
-  ideSlaveForceTermImplicits id False tm
+runIdeSlaveCommand id orig fn modes (IdeSlave.TermShowImplicits bnd tm) =
+  ideSlaveForceTermImplicits id bnd True tm
+runIdeSlaveCommand id orig fn modes (IdeSlave.TermNoImplicits bnd tm) =
+  ideSlaveForceTermImplicits id bnd False tm
 
 -- | Show a term for IDESlave with the specified implicitness
-ideSlaveForceTermImplicits :: Integer -> Bool -> Term -> Idris ()
-ideSlaveForceTermImplicits id impl tm =
+ideSlaveForceTermImplicits :: Integer -> [(Name, Bool)] -> Bool -> Term -> Idris ()
+ideSlaveForceTermImplicits id bnd impl tm =
   do ist <- getIState
-     let expl = annotate (AnnTerm tm)
+     let expl = annotate (AnnTerm [] tm)
                 (pprintPTerm ((ppOptionIst ist) { ppopt_impl = impl })
-                             [] [] (idris_infixes ist)
+                             bnd [] (idris_infixes ist)
                              (delab ist tm))
          msg = (IdeSlave.SymbolAtom "ok",
                 displaySpans .

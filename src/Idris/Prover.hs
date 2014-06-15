@@ -121,7 +121,7 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
   where
     ppo = ppOptionIst ist
 
-    tPretty bnd t = annotate (AnnTerm t) .
+    tPretty bnd t = annotate (AnnTerm bnd t) .
                     pprintPTerm ppo bnd [] (idris_infixes ist) $
                     delab ist t
 

@@ -99,7 +99,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                       | AnnKeyword
                       | AnnFC FC
                       | AnnTextFmt TextFormatting
-                      | AnnTerm (TT Name)
+                      | AnnTerm [(Name, Bool)] (TT Name) -- ^ pprint bound vars, original term
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String

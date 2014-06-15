@@ -1164,7 +1164,7 @@ consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
   where colour BoldText      = IdrisColour Nothing True False True False
         colour UnderlineText = IdrisColour Nothing True True False False
         colour ItalicText    = IdrisColour Nothing True False False True
-consoleDecorate ist (AnnTerm _) = id
+consoleDecorate ist (AnnTerm _ _) = id
 
 isPostulateName :: Name -> IState -> Bool
 isPostulateName n ist = S.member n (idris_postulates ist)

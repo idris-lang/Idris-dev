@@ -137,14 +137,14 @@ indented = nest errorIndent . (line <>)
 
 -- | Pretty-print a core term using delaboration
 pprintDelab :: IState -> Term -> Doc OutputAnnotation
-pprintDelab ist tm = annotate (AnnTerm tm)
+pprintDelab ist tm = annotate (AnnTerm [] tm)
                               (prettyIst ist (delab ist tm))
 
 -- | Pretty-print the type of some name
 pprintDelabTy :: IState -> Name -> Doc OutputAnnotation
 pprintDelabTy i n
     = case lookupTy n (tt_ctxt i) of
-           (ty:_) -> annotate (AnnTerm ty) . prettyIst i $
+           (ty:_) -> annotate (AnnTerm [] ty) . prettyIst i $
                      case lookupCtxt n (idris_implicits i) of
                          (imps:_) -> delabTy' i imps ty False False
                          _ -> delabTy' i [] ty False False
@@ -274,7 +274,7 @@ annName' :: Name -> String -> Doc OutputAnnotation
 annName' n str = annotate (AnnName n Nothing Nothing Nothing) (text str)
 
 annTm :: Term -> Doc OutputAnnotation -> Doc OutputAnnotation
-annTm tm = annotate (AnnTerm tm)
+annTm tm = annotate (AnnTerm [] tm)
 
 fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
 fancifyAnnots ist annot@(AnnName n _ _ _) =
