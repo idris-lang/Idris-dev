@@ -447,7 +447,7 @@ runIdeSlaveCommand id orig fn modes (IdeSlave.TermNoImplicits bnd tm) =
 ideSlaveForceTermImplicits :: Integer -> [(Name, Bool)] -> Bool -> Term -> Idris ()
 ideSlaveForceTermImplicits id bnd impl tm =
   do ist <- getIState
-     let expl = annotate (AnnTerm [] tm)
+     let expl = annotate (AnnTerm bnd tm)
                 (pprintPTerm ((ppOptionIst ist) { ppopt_impl = impl })
                              bnd [] (idris_infixes ist)
                              (delab ist tm))
