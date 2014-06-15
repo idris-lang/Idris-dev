@@ -514,7 +514,8 @@ Flag release
 Library
   hs-source-dirs: src
   Exposed-modules:
-                  Idris.Core.CaseTree
+                  Idris.Core.Binary
+                , Idris.Core.CaseTree
                 , Idris.Core.Constraints
                 , Idris.Core.DeepSeq
                 , Idris.Core.Elaborate
@@ -611,6 +612,7 @@ Library
                 , annotated-wl-pprint >= 0.5.3
                 , ansi-terminal
                 , ansi-wl-pprint
+                , base64-bytestring
                 , binary
                 , blaze-html >= 0.6.1.3
                 , blaze-markup >= 0.5.2.1 && < 0.7.0.0

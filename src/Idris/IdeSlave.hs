@@ -5,12 +5,16 @@ module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand
 import Text.Printf
 import Numeric
 import Data.List
+import qualified Data.Binary as Binary
+import qualified Data.ByteString.Base64 as Base64
+import qualified Data.ByteString.Lazy as Lazy
 import qualified Data.ByteString.UTF8 as UTF8
 -- import qualified Data.Text as T
 import Text.Trifecta hiding (Err)
 import Text.Trifecta.Delta
 
 import Idris.Core.TT
+import Idris.Core.Binary
 
 import Control.Applicative hiding (Const)
 
@@ -128,6 +132,14 @@ instance SExpable OutputAnnotation where
                        BoldText      -> "bold"
                        ItalicText    -> "italic"
                        UnderlineText -> "underline"
+  toSExp (AnnTerm bnd tm) = toSExp [(SymbolAtom "tt-term", StringAtom (encodeTerm bnd tm))]
+
+encodeTerm :: [(Name, Bool)] -> Term -> String
+encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $
+                    (bnd, tm)
+
+decodeTerm :: String -> ([(Name, Bool)], Term)
+decodeTerm = Binary.decode . Lazy.fromStrict . Base64.decodeLenient . UTF8.fromString
 
 instance SExpable FC where
   toSExp (FC f (sl, sc) (el, ec)) =
@@ -185,6 +197,9 @@ data IdeSlaveCommand = REPLCompletions String
                      | Metavariables Int -- ^^ the Int is the column count for pretty-printing
                      | WhoCalls String
                      | CallsWho String
+                     | TermNormalise [(Name, Bool)] Term
+                     | TermShowImplicits [(Name, Bool)] Term
+                     | TermNoImplicits [(Name, Bool)] Term
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
@@ -221,6 +236,12 @@ sexpToCommand (SexpList [SymbolAtom "set-option", SymbolAtom s, BoolAtom b])
 sexpToCommand (SexpList [SymbolAtom "metavariables", IntegerAtom cols])                 = Just (Metavariables (fromIntegral cols))
 sexpToCommand (SexpList [SymbolAtom "who-calls", StringAtom name])                      = Just (WhoCalls name)
 sexpToCommand (SexpList [SymbolAtom "calls-who", StringAtom name])                      = Just (CallsWho name)
+sexpToCommand (SexpList [SymbolAtom "normalise-term", StringAtom encoded])              = let (bnd, tm) = decodeTerm encoded in
+                                                                                          Just (TermNormalise bnd tm)
+sexpToCommand (SexpList [SymbolAtom "show-term-implicits", StringAtom encoded])         = let (bnd, tm) = decodeTerm encoded in
+                                                                                          Just (TermShowImplicits bnd tm)
+sexpToCommand (SexpList [SymbolAtom "hide-term-implicits", StringAtom encoded])         = let (bnd, tm) = decodeTerm encoded in
+                                                                                          Just (TermNoImplicits bnd tm)
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)

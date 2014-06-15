@@ -342,34 +342,63 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
   do ist <- getIState
      let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
      let ppo = ppOptionIst ist
-     let mvarTys = map (delabTy ist) mvs
-     let res = (IdeSlave.SymbolAtom "ok",
-                zipWith (\ n (prems, concl) -> (n, prems, concl))
-                        (map (IdeSlave.StringAtom . show) mvs)
-                        (map (sexpGoal ist cols ppo [] . getGoal) mvarTys))
-     runIO . putStrLn $ IdeSlave.convSExp "return" res id
-  where getGoal :: PTerm -> ([(Name, PTerm)], PTerm)
-        getGoal (PPi _ n t sc) = let (prems, conc) = getGoal sc
-                                 in ((n, t):prems, conc)
-        getGoal tm = ([], tm)
-        sexpGoal :: IState -> Int -> PPOption -> [Name] -> ([(Name, PTerm)], PTerm)
-                 -> ([(String, String, SpanList OutputAnnotation)],
-                     (String, SpanList OutputAnnotation))
-        sexpGoal ist cols ppo ns ([],        concl) =
-          let infixes = idris_infixes ist
-              concl' = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                       pprintPTerm ppo (zip ns (repeat False)) [] infixes concl
-          in ([], concl')
-        sexpGoal ist cols ppo ns ((n, t):ps, concl) =
-          let n'          = case n of
-                              NS (UN nm) ns -> str nm
-                              UN nm | ('_':'_':_) <- str nm -> "_"
-                                    | otherwise -> str nm
-                              _ -> "_"
-              (t', spans) = displaySpans . renderPretty 0.9 cols . fmap (fancifyAnnots ist) $
-                            pprintPTerm ppo (zip ns (repeat False)) [] (idris_infixes ist) t
-              rest        = sexpGoal ist cols ppo (n:ns) (ps, concl)
-          in ((n', t', spans) : fst rest, snd rest)
+     -- splitMvs is a list of pairs of names and their split types
+     let splitMvs = mapSnd (splitPi ist) (mvTys ist mvs)
+     -- mvOutput is the pretty-printed version ready for conversion to SExpr
+     let mvOutput = map (\(n, (hs, c)) -> (n, hs, c)) $
+                    mapPair show
+                            (\(hs, c, pc) ->
+                             let bnd = [ n | (n,_,_) <- hs ] in
+                             let bnds = inits bnd in
+                             (map (\(bnd, h) -> processPremise ist bnd h)
+                                  (zip bnds hs),
+                              render ist bnd c pc))
+                            splitMvs
+     runIO . putStrLn $
+       IdeSlave.convSExp "return" (IdeSlave.SymbolAtom "ok", mvOutput) id
+  where mapPair f g xs = zip (map (f . fst) xs) (map (g . snd) xs)
+        mapSnd f xs = zip (map fst xs) (map (f . snd) xs)
+
+        -- | Split a function type into a pair of premises, conclusion.
+        -- Each maintains both the original and delaborated versions.
+        splitPi :: IState -> Type -> ([(Name, Type, PTerm)], Type, PTerm)
+        splitPi ist (Bind n (Pi t) rest) =
+          let (hs, c, pc) = splitPi ist rest in
+            ((n, t, delabTy' ist [] t False False):hs,
+             c, delabTy' ist [] c False False)
+        splitPi ist tm = ([], tm, delabTy' ist [] tm False False)
+
+        -- | Get the types of a list of metavariable names
+        mvTys :: IState -> [Name] -> [(Name, Type)]
+        mvTys ist = mapSnd vToP . mapMaybe (flip lookupTyNameExact (tt_ctxt ist))
+
+        -- | Show a type and its corresponding PTerm in a format suitable
+        -- for the IDE - that is, pretty-printed and annotated.
+        render :: IState -> [Name] -> Type -> PTerm -> (String, SpanList OutputAnnotation)
+        render ist bnd t pt =
+          let prettyT = pprintPTerm (ppOptionIst ist)
+                                    (zip bnd (repeat False))
+                                    []
+                                    (idris_infixes ist)
+                                    pt
+          in
+            displaySpans .
+            renderPretty 0.9 cols .
+            fmap (fancifyAnnots ist) .
+            annotate (AnnTerm (zip bnd (take (length bnd) (repeat False))) t) $
+              prettyT
+
+        -- | Juggle the bits of a premise to prepare for output.
+        processPremise :: IState
+                       -> [Name] -- ^ the names to highlight as bound
+                       -> (Name, Type, PTerm)
+                       -> (String,
+                           String,
+                           SpanList OutputAnnotation)
+        processPremise ist bnd (n, t, pt) =
+          let (out, spans) = render ist bnd t pt in
+          (show n , out, spans)
+
 runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
   case splitName n of
        Left err -> iPrintError err
@@ -394,6 +423,40 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
                  prettyName True []
+runIdeSlaveCommand id orig fn modes (IdeSlave.TermNormalise bnd tm) =
+  do ctxt <- getContext
+     ist <- getIState
+     let tm' = force (normaliseAll ctxt [] tm)
+         ptm = annotate (AnnTerm bnd tm')
+               (pprintPTerm (ppOptionIst ist)
+                            bnd
+                            []
+                            (idris_infixes ist)
+                            (delab ist tm'))
+         msg = (IdeSlave.SymbolAtom "ok",
+                displaySpans .
+                renderPretty 0.9 80 .
+                fmap (fancifyAnnots ist) $ ptm)
+     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand id orig fn modes (IdeSlave.TermShowImplicits bnd tm) =
+  ideSlaveForceTermImplicits id bnd True tm
+runIdeSlaveCommand id orig fn modes (IdeSlave.TermNoImplicits bnd tm) =
+  ideSlaveForceTermImplicits id bnd False tm
+
+-- | Show a term for IDESlave with the specified implicitness
+ideSlaveForceTermImplicits :: Integer -> [(Name, Bool)] -> Bool -> Term -> Idris ()
+ideSlaveForceTermImplicits id bnd impl tm =
+  do ist <- getIState
+     let expl = annotate (AnnTerm bnd tm)
+                (pprintPTerm ((ppOptionIst ist) { ppopt_impl = impl })
+                             bnd [] (idris_infixes ist)
+                             (delab ist tm))
+         msg = (IdeSlave.SymbolAtom "ok",
+                displaySpans .
+                renderPretty 0.9 80 .
+                fmap (fancifyAnnots ist) $ expl)
+     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+
 
 splitName :: String -> Either String Name
 splitName s = case reverse $ splitOn "." s of
@@ -594,8 +657,8 @@ process h fn (Eval t)
                                             ist <- getIState
                                             logLvl 3 $ "Raw: " ++ show (tm', ty')
                                             logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
-                                            let tmDoc = prettyIst ist (delab ist tm')
-                                                tyDoc = prettyIst ist (delab ist ty')
+                                            let tmDoc = pprintDelab ist tm'
+                                                tyDoc = pprintDelab ist ty'
                                             ihPrintTermWithType h tmDoc tyDoc
 
 process h fn (ExecVal t)
@@ -653,8 +716,8 @@ process h fn (Check t)
         case tm of
            TType _ ->
              ihPrintTermWithType h (prettyIst ist PType) type1Doc
-           _ -> ihPrintTermWithType h (prettyIst ist (delab ist tm))
-                                      (prettyIst ist (delab ist ty))
+           _ -> ihPrintTermWithType h (pprintDelab ist tm)
+                                      (pprintDelab ist ty)
 
 process h fn (DocStr (Left n))
    = do ist <- getIState
