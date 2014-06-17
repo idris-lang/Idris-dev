@@ -1,16 +1,8 @@
 #ifndef IDRISNET_H
 #define IDRISNET_H
 
-#include <errno.h>
-#include <netdb.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+struct sockaddr_storage;
+struct addrinfo;
 
 typedef struct idrnet_recv_result {
     int result;

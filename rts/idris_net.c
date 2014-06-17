@@ -2,6 +2,16 @@
 // (C) Simon Fowler, 2014
 // MIT Licensed. Have fun!
 #include "idris_net.h"
+#include <errno.h>
+#include <netdb.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 void buf_htonl(void* buf, int len) {
     int* buf_i = (int*) buf;
