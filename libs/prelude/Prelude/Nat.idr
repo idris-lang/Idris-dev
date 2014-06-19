@@ -110,6 +110,22 @@ LT left right = LTE (S left) right
 total GT : Nat -> Nat -> Type
 GT left right = LT right left
 
+||| A successor is never less than or equal zero
+succNotLTEzero : Not (S m `LTE` Z)
+succNotLTEzero lteZero impossible
+
+||| If two numbers are ordered, their predecessors are too
+fromLteSucc : (S m `LTE` S n) -> (m `LTE` n)
+fromLteSucc (lteSucc x) = x
+
+||| A decision procedure for `LTE`
+isLTE : (m, n : Nat) -> Dec (m `LTE` n)
+isLTE Z n = Yes lteZero
+isLTE (S k) Z = No succNotLTEzero
+isLTE (S k) (S j) with (isLTE k j)
+  isLTE (S k) (S j) | (Yes prf) = Yes (lteSucc prf)
+  isLTE (S k) (S j) | (No contra) = No (contra . fromLteSucc)
+
 ||| Boolean test than one Nat is less than or equal to another
 total lte : Nat -> Nat -> Bool
 lte Z        right     = True
