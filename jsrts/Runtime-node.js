@@ -1,4 +1,4 @@
-var __IDRRT__print = (function() {
+var putStr = (function() {
   var util = require('util');
   return function(s) {
     util.print(s);

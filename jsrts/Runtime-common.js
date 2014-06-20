@@ -1,52 +1,30 @@
 /** @constructor */
-var __IDRRT__Type = function(type) {
-  this.type = type;
-};
+var i$VM = function() {
+  this.valstack = [];
+  this.valstack_top = 0;
+  this.valstack_base = 0;
 
-var __IDRRT__Int = new __IDRRT__Type('Int');
-var __IDRRT__Char = new __IDRRT__Type('Char');
-var __IDRRT__String = new __IDRRT__Type('String');
-var __IDRRT__Integer = new __IDRRT__Type('Integer');
-var __IDRRT__Float = new __IDRRT__Type('Float');
-var __IDRRT__Ptr = new __IDRRT__Type('Pointer');
-var __IDRRT__Forgot = new __IDRRT__Type('Forgot');
-
-var __IDRRT__ffiWrap = function(fid) {
-  return function(){
-    var res = fid;
-    var i = 0;
-    var arg;
-    while (res instanceof __IDRRT__Con){
-      arg = arguments[i];
-      res = __IDRRT__tailcall(function(){
-        return __IDR__mAPPLY0(res, arg);
-      });
-      ++i;
-    }
-    return res;
-  }
-};
-
-var __IDRRT__tailcall = function(k) {
-  var ret = k();
-  while (ret instanceof __IDRRT__Cont)
-    ret = ret.k();
-
-  return ret;
-};
-
-var __IDRRT__charCode = function(str) {
-  var type = typeof str;
-  if (type == "string")
-    return str.charCodeAt(0);
-  else
-    return str;
+  this.ret = null;
+  this.reg1 = null;
 }
 
-var __IDRRT__fromCharCode = function(chr) {
-  var type = typeof chr;
-  if (type == "string")
-    return chr;
-  else
-    return String.fromCharCode(chr);
+/** @constructor */
+var i$CON = function(tag,args) {
+  this.tag = tag;
+  this.args = args;
+}
+
+var i$SLIDE = function(vm,args) {
+  for (var i = 0; i < args; ++i)
+    vm.valstack[vm.valstack_base + i] = vm.valstack[vm.valstack_top + i];
+}
+
+var i$PROJECT = function(vm,val,loc,arity) {
+  for (var i = 0; i < arity; ++i)
+    vm.valstack[i + loc] = val.args[i];
+}
+
+var i$RESERVE = function(vm,n) {
+  for (var i = 0; i < n; ++i)
+    vm.valstack[vm.valstack_top + i] = null;
 }
