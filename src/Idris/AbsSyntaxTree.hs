@@ -1069,9 +1069,9 @@ eqDoc = parseDocstring . T.pack $
           "Thus, if Idris can't infer the type of one side of the equality, then " ++
           "you may need to annotate it. See the function `the`."
 
-eqDecl = PDatadecl eqTy (piBind [(n "A", PType), (n "B", PType),
-                                 (n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
-                                 PType)
+eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType), (n "B", PType)]
+                                 (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
+                                 PType))
                 [(reflDoc, reflParamDoc,
                   eqCon, PPi impl (n "A") PType (
                                   PPi impl (n "x") (PRef bi (n "A"))
