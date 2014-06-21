@@ -81,7 +81,6 @@ data JS = JSRaw String
         | JSPreOp String JS
         | JSPostOp String JS
         | JSProj JS String
-        | JSVar LVar
         | JSNull
         | JSThis
         | JSTrue
@@ -170,9 +169,6 @@ compileJS (JSProj obj field)
     concat ["(", compileJS obj, ").", field]
   | otherwise =
     compileJS obj ++ '.' : field
-
-{-compileJS (JSVar var) =-}
-  {-translateVariableName var-}
 
 compileJS JSNull =
   "null"
@@ -705,430 +701,430 @@ jsOP reg op args = JSAssign (translateReg reg) jsOP'
       | (LSGe ATFloat)   <- op
       , (lhs:rhs:_)      <- args = translateBinaryOp ">=" lhs rhs
 
-      {-| (LPlus (ATInt ITChar)) <- op-}
-      {-, (lhs:rhs:_)            <- args =-}
-          {-jsCall "__IDRRT__fromCharCode" [-}
-            {-JSBinOp "+" (-}
-              {-jsCall "__IDRRT__charCode" [JSVar lhs]-}
-            {-) (-}
-              {-jsCall "__IDRRT__charCode" [JSVar rhs]-}
-            {-)-}
-          {-]-}
+      | (LPlus (ATInt ITChar)) <- op
+      , (lhs:rhs:_)            <- args =
+          jsCall "__IDRRT__fromCharCode" [
+            JSBinOp "+" (
+              jsCall "__IDRRT__charCode" [translateReg lhs]
+            ) (
+              jsCall "__IDRRT__charCode" [translateReg rhs]
+            )
+          ]
 
-      {-| (LTrunc (ITFixed IT16) (ITFixed IT8)) <- op-}
-      {-, (arg:_)                               <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "&" (jsUnPackBits $ JSVar arg) (JSNum (JSInt 0xFF))-}
-          {-)-}
+      | (LTrunc (ITFixed IT16) (ITFixed IT8)) <- op
+      , (arg:_)                               <- args =
+          jsPackUBits8 (
+            JSBinOp "&" (jsUnPackBits $ translateReg arg) (JSNum (JSInt 0xFF))
+          )
 
-      {-| (LTrunc (ITFixed IT32) (ITFixed IT16)) <- op-}
-      {-, (arg:_)                                <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "&" (jsUnPackBits $ JSVar arg) (JSNum (JSInt 0xFFFF))-}
-          {-)-}
+      | (LTrunc (ITFixed IT32) (ITFixed IT16)) <- op
+      , (arg:_)                                <- args =
+          jsPackUBits16 (
+            JSBinOp "&" (jsUnPackBits $ translateReg arg) (JSNum (JSInt 0xFFFF))
+          )
 
-      {-| (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op-}
-      {-, (arg:_)                                <- args =-}
-          {-jsPackUBits32 (-}
-            {-jsMeth (jsMeth (JSVar arg) "and" [-}
-              {-jsBigInt (JSString $ show 0xFFFFFFFF)-}
-            {-]) "intValue" []-}
-          {-)-}
+      | (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op
+      , (arg:_)                                <- args =
+          jsPackUBits32 (
+            jsMeth (jsMeth (translateReg arg) "and" [
+              jsBigInt (JSString $ show 0xFFFFFFFF)
+            ]) "intValue" []
+          )
 
-      {-| (LTrunc ITBig (ITFixed IT64)) <- op-}
-      {-, (arg:_)                       <- args =-}
-          {-jsMeth (JSVar arg) "and" [-}
-            {-jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)-}
-          {-]-}
+      | (LTrunc ITBig (ITFixed IT64)) <- op
+      , (arg:_)                       <- args =
+          jsMeth (translateReg arg) "and" [
+            jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+          ]
 
-      {-| (LLSHR (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)           <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp ">>" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)-}
-          {-)-}
+      | (LLSHR (ITFixed IT8)) <- op
+      , (lhs:rhs:_)           <- args =
+          jsPackUBits8 (
+            JSBinOp ">>" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
+          )
 
-      {-| (LLSHR (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)            <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp ">>" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)-}
-          {-)-}
+      | (LLSHR (ITFixed IT16)) <- op
+      , (lhs:rhs:_)            <- args =
+          jsPackUBits16 (
+            JSBinOp ">>" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
+          )
 
-      {-| (LLSHR (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)            <- args =-}
-          {-jsPackUBits32  (-}
-            {-JSBinOp ">>" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)-}
-          {-)-}
+      | (LLSHR (ITFixed IT32)) <- op
+      , (lhs:rhs:_)            <- args =
+          jsPackUBits32  (
+            JSBinOp ">>" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
+          )
 
       | (LLSHR (ITFixed IT64)) <- op
       , (lhs:rhs:_)            <- args =
           jsMeth (translateReg lhs) "shiftRight" [translateReg rhs]
 
-      {-| (LSHL (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "<<" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)-}
-          {-)-}
+      | (LSHL (ITFixed IT8)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits8 (
+            JSBinOp "<<" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
+          )
 
-      {-| (LSHL (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)           <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "<<" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)-}
-          {-)-}
+      | (LSHL (ITFixed IT16)) <- op
+      , (lhs:rhs:_)           <- args =
+          jsPackUBits16 (
+            JSBinOp "<<" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
+          )
 
-      {-| (LSHL (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)           <- args =-}
-          {-jsPackUBits32  (-}
-            {-JSBinOp "<<" (jsUnPackBits $ JSVar lhs) (jsUnPackBits $ JSVar rhs)-}
-          {-)-}
+      | (LSHL (ITFixed IT32)) <- op
+      , (lhs:rhs:_)           <- args =
+          jsPackUBits32  (
+            JSBinOp "<<" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
+          )
 
-      {-| (LSHL (ITFixed IT64)) <- op-}
-      {-, (lhs:rhs:_)           <- args =-}
-          {-jsMeth (jsMeth (JSVar lhs) "shiftLeft" [JSVar rhs]) "and" [-}
-            {-jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)-}
-          {-]-}
+      | (LSHL (ITFixed IT64)) <- op
+      , (lhs:rhs:_)           <- args =
+          jsMeth (jsMeth (translateReg lhs) "shiftLeft" [translateReg rhs]) "and" [
+            jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+          ]
 
-      {-| (LAnd (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "&" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LAnd (ITFixed IT8)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits8 (
+            JSBinOp "&" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LAnd (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)           <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "&" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LAnd (ITFixed IT16)) <- op
+      , (lhs:rhs:_)           <- args =
+          jsPackUBits16 (
+            JSBinOp "&" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LAnd (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)           <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "&" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LAnd (ITFixed IT32)) <- op
+      , (lhs:rhs:_)           <- args =
+          jsPackUBits32 (
+            JSBinOp "&" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
       | (LAnd (ITFixed IT64)) <- op
       , (lhs:rhs:_)           <- args =
           jsMeth (translateReg lhs) "and" [translateReg rhs]
 
-      {-| (LOr (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)         <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "|" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LOr (ITFixed IT8)) <- op
+      , (lhs:rhs:_)         <- args =
+          jsPackUBits8 (
+            JSBinOp "|" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LOr (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "|" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LOr (ITFixed IT16)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits16 (
+            JSBinOp "|" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LOr (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "|" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LOr (ITFixed IT32)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits32 (
+            JSBinOp "|" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
       | (LOr (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args =
           jsMeth (translateReg lhs) "or" [translateReg rhs]
 
-      {-| (LXOr (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "^" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LXOr (ITFixed IT8)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits8 (
+            JSBinOp "^" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LXOr (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)           <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "^" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LXOr (ITFixed IT16)) <- op
+      , (lhs:rhs:_)           <- args =
+          jsPackUBits16 (
+            JSBinOp "^" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LXOr (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)           <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "^" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LXOr (ITFixed IT32)) <- op
+      , (lhs:rhs:_)           <- args =
+          jsPackUBits32 (
+            JSBinOp "^" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
       | (LXOr (ITFixed IT64)) <- op
       , (lhs:rhs:_)           <- args =
           jsMeth (translateReg lhs) "xor" [translateReg rhs]
 
-      {-| (LPlus (ATInt (ITFixed IT8))) <- op-}
-      {-, (lhs:rhs:_)                   <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "+" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LPlus (ATInt (ITFixed IT8))) <- op
+      , (lhs:rhs:_)                   <- args =
+          jsPackUBits8 (
+            JSBinOp "+" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LPlus (ATInt (ITFixed IT16))) <- op-}
-      {-, (lhs:rhs:_)                    <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "+" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LPlus (ATInt (ITFixed IT16))) <- op
+      , (lhs:rhs:_)                    <- args =
+          jsPackUBits16 (
+            JSBinOp "+" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LPlus (ATInt (ITFixed IT32))) <- op-}
-      {-, (lhs:rhs:_)                    <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "+" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LPlus (ATInt (ITFixed IT32))) <- op
+      , (lhs:rhs:_)                    <- args =
+          jsPackUBits32 (
+            JSBinOp "+" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LPlus (ATInt (ITFixed IT64))) <- op-}
-      {-, (lhs:rhs:_)                    <- args =-}
-          {-jsMeth (jsMeth (JSVar lhs) "add" [JSVar rhs]) "and" [-}
-            {-jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)-}
-          {-]-}
+      | (LPlus (ATInt (ITFixed IT64))) <- op
+      , (lhs:rhs:_)                    <- args =
+          jsMeth (jsMeth (translateReg lhs) "add" [translateReg rhs]) "and" [
+            jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+          ]
 
-      {-| (LMinus (ATInt (ITFixed IT8))) <- op-}
-      {-, (lhs:rhs:_)                    <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "-" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LMinus (ATInt (ITFixed IT8))) <- op
+      , (lhs:rhs:_)                    <- args =
+          jsPackUBits8 (
+            JSBinOp "-" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LMinus (ATInt (ITFixed IT16))) <- op-}
-      {-, (lhs:rhs:_)                     <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "-" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LMinus (ATInt (ITFixed IT16))) <- op
+      , (lhs:rhs:_)                     <- args =
+          jsPackUBits16 (
+            JSBinOp "-" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LMinus (ATInt (ITFixed IT32))) <- op-}
-      {-, (lhs:rhs:_)                     <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "-" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LMinus (ATInt (ITFixed IT32))) <- op
+      , (lhs:rhs:_)                     <- args =
+          jsPackUBits32 (
+            JSBinOp "-" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LMinus (ATInt (ITFixed IT64))) <- op-}
-      {-, (lhs:rhs:_)                     <- args =-}
-          {-jsMeth (jsMeth (JSVar lhs) "subtract" [JSVar rhs]) "and" [-}
-            {-jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)-}
-          {-]-}
+      | (LMinus (ATInt (ITFixed IT64))) <- op
+      , (lhs:rhs:_)                     <- args =
+          jsMeth (jsMeth (translateReg lhs) "subtract" [translateReg rhs]) "and" [
+            jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+          ]
 
-      {-| (LTimes (ATInt (ITFixed IT8))) <- op-}
-      {-, (lhs:rhs:_)                    <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "*" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LTimes (ATInt (ITFixed IT8))) <- op
+      , (lhs:rhs:_)                    <- args =
+          jsPackUBits8 (
+            JSBinOp "*" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LTimes (ATInt (ITFixed IT16))) <- op-}
-      {-, (lhs:rhs:_)                     <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "*" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LTimes (ATInt (ITFixed IT16))) <- op
+      , (lhs:rhs:_)                     <- args =
+          jsPackUBits16 (
+            JSBinOp "*" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LTimes (ATInt (ITFixed IT32))) <- op-}
-      {-, (lhs:rhs:_)                     <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "*" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LTimes (ATInt (ITFixed IT32))) <- op
+      , (lhs:rhs:_)                     <- args =
+          jsPackUBits32 (
+            JSBinOp "*" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LTimes (ATInt (ITFixed IT64))) <- op-}
-      {-, (lhs:rhs:_)                     <- args =-}
-          {-jsMeth (jsMeth (JSVar lhs) "multiply" [JSVar rhs]) "and" [-}
-            {-jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)-}
-          {-]-}
+      | (LTimes (ATInt (ITFixed IT64))) <- op
+      , (lhs:rhs:_)                     <- args =
+          jsMeth (jsMeth (translateReg lhs) "multiply" [translateReg rhs]) "and" [
+            jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+          ]
 
-      {-| (LEq (ATInt (ITFixed IT8))) <- op-}
-      {-, (lhs:rhs:_)                 <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "==" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LEq (ATInt (ITFixed IT8))) <- op
+      , (lhs:rhs:_)                 <- args =
+          jsPackUBits8 (
+            JSBinOp "==" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LEq (ATInt (ITFixed IT16))) <- op-}
-      {-, (lhs:rhs:_)                  <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "==" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LEq (ATInt (ITFixed IT16))) <- op
+      , (lhs:rhs:_)                  <- args =
+          jsPackUBits16 (
+            JSBinOp "==" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LEq (ATInt (ITFixed IT32))) <- op-}
-      {-, (lhs:rhs:_)                  <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "==" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LEq (ATInt (ITFixed IT32))) <- op
+      , (lhs:rhs:_)                  <- args =
+          jsPackUBits32 (
+            JSBinOp "==" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LEq (ATInt (ITFixed IT64))) <- op-}
-      {-, (lhs:rhs:_)                   <- args =-}
-          {-jsMeth (jsMeth (JSVar lhs) "equals" [JSVar rhs]) "and" [-}
-            {-jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)-}
-          {-]-}
+      | (LEq (ATInt (ITFixed IT64))) <- op
+      , (lhs:rhs:_)                   <- args =
+          jsMeth (jsMeth (translateReg lhs) "equals" [translateReg rhs]) "and" [
+            jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
+          ]
 
-      {-| (LLt (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)         <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "<" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LLt (ITFixed IT8)) <- op
+      , (lhs:rhs:_)         <- args =
+          jsPackUBits8 (
+            JSBinOp "<" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LLt (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "<" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LLt (ITFixed IT16)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits16 (
+            JSBinOp "<" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LLt (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "<" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LLt (ITFixed IT32)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits32 (
+            JSBinOp "<" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
       | (LLt (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args = invokeMeth lhs "lesser" [rhs]
 
-      {-| (LLe (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)         <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "<=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LLe (ITFixed IT8)) <- op
+      , (lhs:rhs:_)         <- args =
+          jsPackUBits8 (
+            JSBinOp "<=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LLe (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "<=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LLe (ITFixed IT16)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits16 (
+            JSBinOp "<=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LLe (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "<=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LLe (ITFixed IT32)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits32 (
+            JSBinOp "<=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
       | (LLe (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args = invokeMeth lhs "lesserOrEquals" [rhs]
 
-      {-| (LGt (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)         <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp ">" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LGt (ITFixed IT8)) <- op
+      , (lhs:rhs:_)         <- args =
+          jsPackUBits8 (
+            JSBinOp ">" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LGt (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp ">" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
-      {-| (LGt (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp ">" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LGt (ITFixed IT16)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits16 (
+            JSBinOp ">" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
+      | (LGt (ITFixed IT32)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits32 (
+            JSBinOp ">" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
       | (LGt (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args = invokeMeth lhs "greater" [rhs]
 
-      {-| (LGe (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)         <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp ">=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LGe (ITFixed IT8)) <- op
+      , (lhs:rhs:_)         <- args =
+          jsPackUBits8 (
+            JSBinOp ">=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LGe (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp ">=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
-      {-| (LGe (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)          <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp ">=" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LGe (ITFixed IT16)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits16 (
+            JSBinOp ">=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
+      | (LGe (ITFixed IT32)) <- op
+      , (lhs:rhs:_)          <- args =
+          jsPackUBits32 (
+            JSBinOp ">=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
       | (LGe (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args = invokeMeth lhs "greaterOrEquals" [rhs]
 
-      {-| (LUDiv (ITFixed IT8)) <- op-}
-      {-, (lhs:rhs:_)           <- args =-}
-          {-jsPackUBits8 (-}
-            {-JSBinOp "/" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LUDiv (ITFixed IT8)) <- op
+      , (lhs:rhs:_)           <- args =
+          jsPackUBits8 (
+            JSBinOp "/" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LUDiv (ITFixed IT16)) <- op-}
-      {-, (lhs:rhs:_)            <- args =-}
-          {-jsPackUBits16 (-}
-            {-JSBinOp "/" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LUDiv (ITFixed IT16)) <- op
+      , (lhs:rhs:_)            <- args =
+          jsPackUBits16 (
+            JSBinOp "/" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LUDiv (ITFixed IT32)) <- op-}
-      {-, (lhs:rhs:_)            <- args =-}
-          {-jsPackUBits32 (-}
-            {-JSBinOp "/" (jsUnPackBits (JSVar lhs)) (jsUnPackBits (JSVar rhs))-}
-          {-)-}
+      | (LUDiv (ITFixed IT32)) <- op
+      , (lhs:rhs:_)            <- args =
+          jsPackUBits32 (
+            JSBinOp "/" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+          )
 
-      {-| (LUDiv (ITFixed IT64)) <- op-}
-      {-, (lhs:rhs:_)            <- args = invokeMeth lhs "divide" [rhs]-}
+      | (LUDiv (ITFixed IT64)) <- op
+      , (lhs:rhs:_)            <- args = invokeMeth lhs "divide" [rhs]
 
-      {-| (LSDiv (ATInt (ITFixed IT8))) <- op-}
-      {-, (lhs:rhs:_)                   <- args =-}
-          {-jsPackSBits8 (-}
-            {-JSBinOp "/" (-}
-              {-jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (JSVar lhs)-}
-            {-) (-}
-              {-jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (JSVar rhs)-}
-            {-)-}
-          {-)-}
+      | (LSDiv (ATInt (ITFixed IT8))) <- op
+      , (lhs:rhs:_)                   <- args =
+          jsPackSBits8 (
+            JSBinOp "/" (
+              jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (translateReg lhs)
+            ) (
+              jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (translateReg rhs)
+            )
+          )
 
-      {-| (LSDiv (ATInt (ITFixed IT16))) <- op-}
-      {-, (lhs:rhs:_)                    <- args =-}
-          {-jsPackSBits16 (-}
-            {-JSBinOp "/" (-}
-              {-jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (JSVar lhs)-}
-            {-) (-}
-              {-jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (JSVar rhs)-}
-            {-)-}
-          {-)-}
+      | (LSDiv (ATInt (ITFixed IT16))) <- op
+      , (lhs:rhs:_)                    <- args =
+          jsPackSBits16 (
+            JSBinOp "/" (
+              jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (translateReg lhs)
+            ) (
+              jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (translateReg rhs)
+            )
+          )
 
-      {-| (LSDiv (ATInt (ITFixed IT32))) <- op-}
-      {-, (lhs:rhs:_)                    <- args =-}
-          {-jsPackSBits32 (-}
-            {-JSBinOp "/" (-}
-              {-jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (JSVar lhs)-}
-            {-) (-}
-              {-jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (JSVar rhs)-}
-            {-)-}
-          {-)-}
+      | (LSDiv (ATInt (ITFixed IT32))) <- op
+      , (lhs:rhs:_)                    <- args =
+          jsPackSBits32 (
+            JSBinOp "/" (
+              jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (translateReg lhs)
+            ) (
+              jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (translateReg rhs)
+            )
+          )
 
       | (LSDiv (ATInt (ITFixed IT64))) <- op
       , (lhs:rhs:_)                    <- args = invokeMeth lhs "divide" [rhs]
 
-      {-| (LSRem (ATInt (ITFixed IT8))) <- op-}
-      {-, (lhs:rhs:_)                   <- args =-}
-          {-jsPackSBits8 (-}
-            {-JSBinOp "%" (-}
-              {-jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (JSVar lhs)-}
-            {-) (-}
-              {-jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (JSVar rhs)-}
-            {-)-}
-          {-)-}
+      | (LSRem (ATInt (ITFixed IT8))) <- op
+      , (lhs:rhs:_)                   <- args =
+          jsPackSBits8 (
+            JSBinOp "%" (
+              jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (translateReg lhs)
+            ) (
+              jsUnPackBits $ jsPackSBits8 $ jsUnPackBits (translateReg rhs)
+            )
+          )
 
-      {-| (LSRem (ATInt (ITFixed IT16))) <- op-}
-      {-, (lhs:rhs:_)                    <- args =-}
-          {-jsPackSBits16 (-}
-            {-JSBinOp "%" (-}
-              {-jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (JSVar lhs)-}
-            {-) (-}
-              {-jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (JSVar rhs)-}
-            {-)-}
-          {-)-}
+      | (LSRem (ATInt (ITFixed IT16))) <- op
+      , (lhs:rhs:_)                    <- args =
+          jsPackSBits16 (
+            JSBinOp "%" (
+              jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (translateReg lhs)
+            ) (
+              jsUnPackBits $ jsPackSBits16 $ jsUnPackBits (translateReg rhs)
+            )
+          )
 
-      {-| (LSRem (ATInt (ITFixed IT32))) <- op-}
-      {-, (lhs:rhs:_)                    <- args =-}
-          {-jsPackSBits32 (-}
-            {-JSBinOp "%" (-}
-              {-jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (JSVar lhs)-}
-            {-) (-}
-              {-jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (JSVar rhs)-}
-            {-)-}
-          {-)-}
+      | (LSRem (ATInt (ITFixed IT32))) <- op
+      , (lhs:rhs:_)                    <- args =
+          jsPackSBits32 (
+            JSBinOp "%" (
+              jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (translateReg lhs)
+            ) (
+              jsUnPackBits $ jsPackSBits32 $ jsUnPackBits (translateReg rhs)
+            )
+          )
 
       | (LSRem (ATInt (ITFixed IT64))) <- op
       , (lhs:rhs:_)                    <- args = invokeMeth lhs "mod" [rhs]
 
-      {-| (LCompl (ITFixed IT8)) <- op-}
-      {-, (arg:_)                <- args =-}
-          {-jsPackSBits8 $ JSPreOp "~" $ jsUnPackBits (JSVar arg)-}
+      | (LCompl (ITFixed IT8)) <- op
+      , (arg:_)                <- args =
+          jsPackSBits8 $ JSPreOp "~" $ jsUnPackBits (translateReg arg)
 
-      {-| (LCompl (ITFixed IT16)) <- op-}
-      {-, (arg:_)                 <- args =-}
-          {-jsPackSBits16 $ JSPreOp "~" $ jsUnPackBits (JSVar arg)-}
+      | (LCompl (ITFixed IT16)) <- op
+      , (arg:_)                 <- args =
+          jsPackSBits16 $ JSPreOp "~" $ jsUnPackBits (translateReg arg)
 
-      {-| (LCompl (ITFixed IT32)) <- op-}
-      {-, (arg:_)                 <- args =-}
-          {-jsPackSBits32 $ JSPreOp "~" $ jsUnPackBits (JSVar arg)-}
+      | (LCompl (ITFixed IT32)) <- op
+      , (arg:_)                 <- args =
+          jsPackSBits32 $ JSPreOp "~" $ jsUnPackBits (translateReg arg)
 
       | (LCompl (ITFixed IT64)) <- op
       , (arg:_)     <- args =
@@ -1232,13 +1228,15 @@ jsOP reg op args = JSAssign (translateReg reg) jsOP'
       | LStrIndex   <- op
       , (lhs:rhs:_) <- args = JSIndex (translateReg lhs) (translateReg rhs)
       | LStrTail    <- op
-      , (arg:_)     <- args = let v = translateReg arg in
-                                  JSApp (JSProj v "substr") [
-                                    JSNum (JSInt 1),
-                                    JSBinOp "-" (JSProj v "length") (JSNum (JSInt 1))
-                                  ]
-      {-| LSystemInfo <- op-}
-      {-, (arg:_) <- args = jsCall "__IDRRT__systemInfo"  [JSVar arg]-}
+      , (arg:_)     <- args =
+          let v = translateReg arg in
+              JSApp (JSProj v "substr") [
+                JSNum (JSInt 1),
+                JSBinOp "-" (JSProj v "length") (JSNum (JSInt 1))
+              ]
+
+      | LSystemInfo <- op
+      , (arg:_) <- args = jsCall "__IDRRT__systemInfo"  [translateReg arg]
       | LNullPtr    <- op
       , (_)         <- args = JSNull
       | otherwise = JSError $ "Not implemented: " ++ show op
@@ -1257,8 +1255,6 @@ jsOP reg op args = JSAssign (translateReg reg) jsOP'
 
           jsCall :: String -> [JS] -> JS
           jsCall fun args = JSApp (JSIdent fun) args
-
-
 
 jsRESERVE :: Int -> JS
 jsRESERVE n = JSApp (JSIdent "i$RESERVE") [JSIdent "vm", JSNum $ JSInt n]
