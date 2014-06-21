@@ -1,5 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
-
+{-# LANGUAGE PatternGuards #-} 
 module IRTS.CodegenJavaScript (codegenJavaScript, codegenNode, JSTarget(..)) where
 
 import Idris.AbsSyntax hiding (TypeCase)
@@ -290,6 +289,10 @@ codegenJS_all target definitions includes filename outputType = do
   jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
   let runtime = header ++ jsbn ++ idrRuntime ++ tgtRuntime
   writeFile filename $ runtime ++ concat code ++ main ++ invokeMain
+  setPermissions filename (emptyPermissions { readable   = True
+                                             , executable = target == Node
+                                             , writable   = True
+                                             })
     where
       main :: String
       main = compileJS $
@@ -585,6 +588,28 @@ jsIsNull js = JSBinOp "==" js JSNull
 jsBigInt :: JS -> JS
 jsBigInt = JSNum . JSInteger . JSBigIntExpr
 
+jsUnPackBits :: JS -> JS
+jsUnPackBits js = JSIndex js $ JSNum (JSInt 0)
+
+
+jsPackUBits8 :: JS -> JS
+jsPackUBits8 js = JSNew "Uint8Array" [JSArray [js]]
+
+jsPackUBits16 :: JS -> JS
+jsPackUBits16 js = JSNew "Uint16Array" [JSArray [js]]
+
+jsPackUBits32 :: JS -> JS
+jsPackUBits32 js = JSNew "Uint32Array" [JSArray [js]]
+
+jsPackSBits8 :: JS -> JS
+jsPackSBits8 js = JSNew "Int8Array" [JSArray [js]]
+
+jsPackSBits16 :: JS -> JS
+jsPackSBits16 js = JSNew "Int16Array" [JSArray [js]]
+
+jsPackSBits32 :: JS -> JS
+jsPackSBits32 js = JSNew "Int32Array" [JSArray [js]]
+
 jsTAG :: JS -> JS
 jsTAG js =
   JSTernary (jsIsNumber js `jsOr` jsIsNull js) (
@@ -635,9 +660,9 @@ jsOP reg op args = JSAssign (translateReg reg) jsOP'
     jsOP'
       | LNoOp <- op = translateReg (last args)
 
-      {-| (LZExt (ITFixed IT8) ITNative)  <- op = jsUnPackBits $ JSVar (last args)-}
-      {-| (LZExt (ITFixed IT16) ITNative) <- op = jsUnPackBits $ JSVar (last args)-}
-      {-| (LZExt (ITFixed IT32) ITNative) <- op = jsUnPackBits $ JSVar (last args)-}
+      | (LZExt (ITFixed IT8) ITNative)  <- op = jsUnPackBits $ translateReg (last args)
+      | (LZExt (ITFixed IT16) ITNative) <- op = jsUnPackBits $ translateReg (last args)
+      | (LZExt (ITFixed IT32) ITNative) <- op = jsUnPackBits $ translateReg (last args)
 
       | (LZExt _ ITBig)        <- op = jsBigInt $ JSApp  (JSIdent "String") [translateReg (last args)]
       | (LPlus (ATInt ITBig))  <- op
@@ -1206,16 +1231,17 @@ jsOP reg op args = JSAssign (translateReg reg) jsOP'
       , (arg:_)     <- args = JSProj (translateReg arg) "split('').reverse().join('')"
       | LStrIndex   <- op
       , (lhs:rhs:_) <- args = JSIndex (translateReg lhs) (translateReg rhs)
-      {-| LStrTail    <- op-}
-      {-, (arg:_)     <- args = let v = translateVariableName arg in-}
-                                  {-JSApp (JSProj (JSIdent v) "substr") [-}
-                                    {-JSNum (JSInt 1),-}
-                                    {-JSBinOp "-" (JSProj (JSIdent v) "length") (JSNum (JSInt 1))-}
-                                  {-]-}
+      | LStrTail    <- op
+      , (arg:_)     <- args = let v = translateReg arg in
+                                  JSApp (JSProj v "substr") [
+                                    JSNum (JSInt 1),
+                                    JSBinOp "-" (JSProj v "length") (JSNum (JSInt 1))
+                                  ]
       {-| LSystemInfo <- op-}
       {-, (arg:_) <- args = jsCall "__IDRRT__systemInfo"  [JSVar arg]-}
       | LNullPtr    <- op
       , (_)         <- args = JSNull
+      | otherwise = JSError $ "Not implemented: " ++ show op
         where
           translateBinaryOp :: String -> Reg -> Reg -> JS
           translateBinaryOp op lhs rhs =
@@ -1258,7 +1284,7 @@ translateBC bc
   | CONSTCASE r c d       <- bc = jsCONSTCASE r c d
   | PROJECT r l a         <- bc = jsPROJECT r l a
   | OP r o a              <- bc = jsOP r o a
+  | ERROR e               <- bc = jsERROR e
   | otherwise                   = JSRaw $ show bc
   {-| PROJECTINTO _ _ _     <- bc = undefined-}
-  {-| ERROR e               <- bc = jsERROR e-}
 

@@ -28,3 +28,23 @@ var i$RESERVE = function(vm,n) {
   for (var i = 0; i < n; ++i)
     vm.valstack[vm.valstack_top + i] = null;
 }
+
+var __IDRRT__charCode = function(str) {
+  var type = typeof str;
+  if (type == "string")
+    return str.charCodeAt(0);
+  else
+    return str;
+}
+
+var __IDRRT__fromCharCode = function(chr) {
+  var type = typeof chr;
+  if (type == "string")
+    return chr;
+  else
+    return String.fromCharCode(chr);
+}
+
+var isNull = function(v) {
+  return v == null;
+}
