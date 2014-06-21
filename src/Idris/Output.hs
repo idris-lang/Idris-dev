@@ -15,6 +15,7 @@ import Debug.Trace
 
 import System.IO (stdout, Handle, hPutStrLn)
 
+import Data.Char (isAlpha)
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
 
@@ -73,7 +74,7 @@ ihPrintFunTypes h bnd n overloads = do ist <- getIState
                                        let infixes = idris_infixes ist
                                        let output = vsep (map (uncurry (ppOverload ppo infixes)) overloads)
                                        ihRenderResult h output
-  where fullName n = prettyName True bnd n
+  where fullName n = prettyNamePossParen True bnd n
         ppOverload ppo infixes n tm =
           fullName n <+> colon <+> align (pprintPTerm ppo bnd [] infixes tm)
 

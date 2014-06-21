@@ -1424,7 +1424,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
 
 prettyDocumentedIst :: IState -> (Name, PTerm, Maybe Docstring) -> Doc OutputAnnotation
 prettyDocumentedIst ist (name, ty, docs) =
-          prettyName True [] name <+> colon <+> align (prettyIst ist ty) <$>
+          prettyNamePossParen True [] name <+> colon <+> align (prettyIst ist ty) <$>
           fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
 
 -- | Pretty-printer helper for the binding site of a name
@@ -1446,6 +1446,14 @@ prettyName showNS bnd n | Just imp <- lookup n bnd = annotate (AnnBoundName n im
         strName n | n == falseTy = "_|_"
         strName (MN i s) = T.unpack s
         strName other = show other
+
+prettyNamePossParen :: Bool -> [(Name, Bool)] -> Name -> Doc OutputAnnotation
+prettyNamePossParen showNS bnd n = parenthasize (prettyName showNS bnd n) where
+  UN basename = case n of
+    NS n' _ -> n'
+    _       -> n
+  isInfix = not (isAlpha (thead basename))
+  parenthasize = if isInfix then enclose lparen rparen else id
 
 
 showCImp :: PPOption -> PClause -> Doc OutputAnnotation
