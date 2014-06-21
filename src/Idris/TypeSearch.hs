@@ -14,6 +14,7 @@ import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Monoid (Monoid (mempty, mappend))
 import Data.Set (Set)
 import qualified Data.Set as S
+import qualified Data.Text as T (pack, isPrefixOf)
 
 import Idris.AbsSyntax (addUsingConstraints, addImpl, getContext, getIState, putIState, implicit)
 import Idris.AbsSyntaxTree (class_instances, defaultSyntax, Idris, 
@@ -76,7 +77,9 @@ searchUsing pred istate ty =
   get (CaseOp _ ty _ _ _ _)  = Just ty
   get _ = Nothing
   special :: Name -> Bool
+  special (NS n ns) = special n
   special (SN _) = True
+  special (UN n) = T.pack "default#" `T.isPrefixOf` n
   special _ = False
 
 -- Our default search predicate.
@@ -181,7 +184,7 @@ data State = State
   , args1 :: !ArgsDAG -- ^ arguments for the left  type which have yet to be resolved
   , args2 :: !ArgsDAG -- ^ arguments for the right type which have yet to be resolved
   , classes1 :: ![(Name, Type)] -- ^ typeclass arguments for the left  type which haven't been resolved
-  , classes2 :: ![(Name, Type)] -- & typeclass arguments for the right type which haven't been resolved
+  , classes2 :: ![(Name, Type)] -- ^ typeclass arguments for the right type which haven't been resolved
   , score :: !Score -- ^ the score so far
   , usedNames :: ![Name] -- ^ all names that have been used
   } deriving Show
