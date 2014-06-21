@@ -21,7 +21,7 @@ var i$SLIDE = function(vm,args) {
 
 var i$PROJECT = function(vm,val,loc,arity) {
   for (var i = 0; i < arity; ++i)
-    vm.valstack[i + loc] = val.args[i];
+    vm.valstack[vm.valstack_base + i + loc] = val.args[i];
 }
 
 var i$RESERVE = function(vm,n) {
