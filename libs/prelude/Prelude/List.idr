@@ -557,6 +557,12 @@ tails xs = xs :: case xs of
   []        => []
   _ :: xs'  => tails xs'
 
+splitOn : Eq a => a -> List a -> List (List a)
+splitOn a = split (== a)
+
+replaceOn : Eq a => a -> a -> List a -> List a
+replaceOn a b l = map (\c => if c == a then b else c) l
+
 --------------------------------------------------------------------------------
 -- Predicates
 --------------------------------------------------------------------------------
@@ -578,6 +584,9 @@ isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
 
 isSuffixOf : Eq a => List a -> List a -> Bool
 isSuffixOf = isSuffixOfBy (==)
+
+isInfixOf : Eq a => List a -> List a -> Bool
+isInfixOf n h = any (isPrefixOf n) (tails h)
 
 --------------------------------------------------------------------------------
 -- Sorting

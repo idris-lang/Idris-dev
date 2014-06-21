@@ -110,6 +110,22 @@ LT left right = LTE (S left) right
 total GT : Nat -> Nat -> Type
 GT left right = LT right left
 
+||| A successor is never less than or equal zero
+succNotLTEzero : Not (S m `LTE` Z)
+succNotLTEzero lteZero impossible
+
+||| If two numbers are ordered, their predecessors are too
+fromLteSucc : (S m `LTE` S n) -> (m `LTE` n)
+fromLteSucc (lteSucc x) = x
+
+||| A decision procedure for `LTE`
+isLTE : (m, n : Nat) -> Dec (m `LTE` n)
+isLTE Z n = Yes lteZero
+isLTE (S k) Z = No succNotLTEzero
+isLTE (S k) (S j) with (isLTE k j)
+  isLTE (S k) (S j) | (Yes prf) = Yes (lteSucc prf)
+  isLTE (S k) (S j) | (No contra) = No (contra . fromLteSucc)
+
 ||| Boolean test than one Nat is less than or equal to another
 total lte : Nat -> Nat -> Bool
 lte Z        right     = True
@@ -311,6 +327,24 @@ total lcm : Nat -> Nat -> Nat
 lcm _ Z = Z
 lcm Z _ = Z
 lcm x y = divNat (x * y) (gcd x y)
+
+
+--------------------------------------------------------------------------------
+-- An informative comparison view 
+--------------------------------------------------------------------------------
+data CmpNat : Nat -> Nat -> Type where
+     cmpLT : (y : _) -> CmpNat x (x + S y)
+     cmpEQ : CmpNat x x
+     cmpGT : (x : _) -> CmpNat (y + S x) y
+
+total cmp : (x, y : Nat) -> CmpNat x y
+cmp Z Z     = cmpEQ
+cmp Z (S k) = cmpLT _
+cmp (S k) Z = cmpGT _
+cmp (S x) (S y) with (cmp x y)
+  cmp (S x) (S (x + (S k))) | cmpLT k = cmpLT k
+  cmp (S x) (S x)           | cmpEQ   = cmpEQ
+  cmp (S (y + (S k))) (S y) | cmpGT k = cmpGT k
 
 --------------------------------------------------------------------------------
 -- Properties

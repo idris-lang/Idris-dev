@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', pprintErr) where
+module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintDelabTy, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
@@ -9,6 +9,7 @@ import Util.Pretty
 import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Docstrings (overview, renderDocstring)
 import Idris.ErrReverse
 
 import Data.List (intersperse)
@@ -134,6 +135,20 @@ errorIndent = 8
 indented :: Doc a -> Doc a
 indented = nest errorIndent . (line <>)
 
+-- | Pretty-print a core term using delaboration
+pprintDelab :: IState -> Term -> Doc OutputAnnotation
+pprintDelab ist tm = annotate (AnnTerm [] tm)
+                              (prettyIst ist (delab ist tm))
+
+-- | Pretty-print the type of some name
+pprintDelabTy :: IState -> Name -> Doc OutputAnnotation
+pprintDelabTy i n
+    = case lookupTy n (tt_ctxt i) of
+           (ty:_) -> annotate (AnnTerm [] ty) . prettyIst i $
+                     case lookupCtxt n (idris_implicits i) of
+                         (imps:_) -> delabTy' i imps ty False False
+                         _ -> delabTy' i [] ty False False
+
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
 pprintTerm ist = pprintTerm' ist []
 
@@ -150,8 +165,8 @@ pprintErr' i (InternalMsg s) =
          text ("Please consider reporting at " ++ bugaddr)
        ]
 pprintErr' i (CantUnify _ x y e sc s) =
-  text "Can't unify" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i x)) <$>
-  text "with" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i y)) <>
+  text "Can't unify" <> indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i x))) <$>
+  text "with" <> indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i y))) <>
   case e of
     Msg "" -> empty
     _ -> line <> line <> text "Specifically:" <>
@@ -159,46 +174,46 @@ pprintErr' i (CantUnify _ x y e sc s) =
          if (opt_errContext (idris_options i)) then showSc i sc else empty
 pprintErr' i (CantConvert x y env) =
   text "Can't convert" <>
-  indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x)) <$>
+  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x))) <$>
   text "with" <>
-  indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i y)) <>
+  indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i y))) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (CantSolveGoal x env) =
   text "Can't solve goal " <>
-  indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x)) <>
+  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x))) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (UnifyScope n out tm env) =
   text "Can't unify" <> indented (annName n) <+>
-  text "with" <> indented (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm)) <+>
-  text "as" <> indented (annName out) <> text "is not in scope" <>
+  text "with" <> indented (annTm tm (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm))) <+>
+ text "as" <> indented (annName out) <> text "is not in scope" <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (CantInferType t) = text "Can't infer type for" <+> text t
 pprintErr' i (NonFunctionType f ty) =
-  pprintTerm i (delab i f) <+>
+  annTm f (pprintTerm i (delab i f)) <+>
   text "does not have a function type" <+>
   parens (pprintTerm i (delab i ty))
 pprintErr' i (NotEquality tm ty) =
-  pprintTerm i (delab i tm) <+>
+  annTm tm (pprintTerm i (delab i tm)) <+>
   text "does not have an equality type" <+>
-  parens (pprintTerm i (delab i ty))
+  annTm ty (parens (pprintTerm i (delab i ty)))
 pprintErr' i (TooManyArguments f) = text "Too many arguments for" <+> annName f
 pprintErr' i (CantIntroduce ty) =
-  text "Can't use lambda here: type is" <+> pprintTerm i (delab i ty)
+  text "Can't use lambda here: type is" <+> annTm ty (pprintTerm i (delab i ty))
 pprintErr' i (InfiniteUnify x tm env) =
   text "Unifying" <+> annName' x (showbasic x) <+> text "and" <+>
-  pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm) <+>
+  annTm tm (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm)) <+>
   text "would lead to infinite value" <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (NotInjective p x y) =
-  text "Can't verify injectivity of" <+> pprintTerm i (delab i p) <+>
-  text " when unifying" <+> pprintTerm i (delab i x) <+> text "and" <+>
-  pprintTerm i (delab i y)
+  text "Can't verify injectivity of" <+> annTm p (pprintTerm i (delab i p)) <+>
+  text " when unifying" <+> annTm x (pprintTerm i (delab i x)) <+> text "and" <+>
+  annTm y (pprintTerm i (delab i y))
 pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
-                                    align (cat (punctuate (comma <> space) (map text as)))
+                                    align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i) . annName) as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
-pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> pprintTerm i (delab i t)
+pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i UniverseError = text "Universe inconsistency"
 pprintErr' i ProgramLineComment = text "Program line next to comment"
 pprintErr' i (Inaccessible n) = annName n <+> text "is not an accessible pattern variable"
@@ -207,7 +222,7 @@ pprintErr' i (NonCollapsiblePostulate n) = text "The return type of postulate" <
 pprintErr' i (AlreadyDefined n) = annName n<+>
                                   text "is already defined"
 pprintErr' i (ProofSearchFail e) = pprintErr' i e
-pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> pprintTerm i (delab i tm)
+pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> annTm tm (pprintTerm i (delab i tm))
 pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr' i e
 pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
@@ -257,6 +272,33 @@ annName n = annName' n (showbasic n)
 
 annName' :: Name -> String -> Doc OutputAnnotation
 annName' n str = annotate (AnnName n Nothing Nothing Nothing) (text str)
+
+annTm :: Term -> Doc OutputAnnotation -> Doc OutputAnnotation
+annTm tm = annotate (AnnTerm [] tm)
+
+fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
+fancifyAnnots ist annot@(AnnName n _ _ _) =
+  do let ctxt = tt_ctxt ist
+         docs = docOverview ist n
+         ty   = Just (getTy ist n)
+     case () of
+       _ | isDConName      n ctxt -> AnnName n (Just DataOutput) docs ty
+       _ | isFnName        n ctxt -> AnnName n (Just FunOutput) docs ty
+       _ | isTConName      n ctxt -> AnnName n (Just TypeOutput) docs ty
+       _ | isMetavarName   n ist  -> AnnName n (Just MetavarOutput) docs ty
+       _ | isPostulateName n ist  -> AnnName n (Just PostulateOutput) docs ty
+       _ | otherwise            -> annot
+  where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
+        docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
+                               let o   = overview (fst docs)
+                                   -- TODO make width configurable
+                                   out = displayS . renderPretty 1.0 50 $ renderDocstring o
+                               return (out "")
+        getTy :: IState -> Name -> String -- fails if name not already extant!
+        getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
+                                  delabTy ist n
+                      in (displayS . renderPretty 1.0 50 $ theTy) ""
+fancifyAnnots _ annot = annot
 
 showSc :: IState -> [(Name, Term)] -> Doc OutputAnnotation
 showSc i [] = empty

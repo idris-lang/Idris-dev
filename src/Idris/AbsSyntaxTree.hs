@@ -485,18 +485,20 @@ dictionary = elem Dictionary
 
 
 -- | Data declaration options
-data DataOpt = Codata -- Set if the the data-type is coinductive
-             | DefaultEliminator -- Set if an eliminator should be generated for data type
+data DataOpt = Codata -- ^ Set if the the data-type is coinductive
+             | DefaultEliminator -- ^ Set if an eliminator should be generated for data type
+             | DefaultCaseFun -- ^ Set if a case function should be generated for data type
              | DataErrRev
     deriving (Show, Eq)
 
 type DataOpts = [DataOpt]
 
 -- | Type provider - what to provide
-data ProvideWhat = ProvTerm      -- ^ only allow providing terms
-                 | ProvPostulate -- ^ only allow postulates
-                 | ProvAny       -- ^ either is ok
-    deriving (Show, Eq)
+data ProvideWhat' t = ProvTerm t t     -- ^ the first is the goal type, the second is the term
+                    | ProvPostulate t  -- ^ goal type must be Type, so only term
+    deriving (Show, Eq, Functor)
+
+type ProvideWhat = ProvideWhat' PTerm
 
 -- | Top-level declarations such as compiler directives, definitions,
 -- datatypes and typeclasses.
@@ -530,7 +532,7 @@ data PDecl' t
    | PSyntax  FC Syntax -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
    | PDirective (Idris ()) -- ^ Compiler directive. The parser inserts the corresponding action in the Idris monad.
-   | PProvider SyntaxInfo FC ProvideWhat Name t t -- ^ Type provider. The first t is the type, the second is the term
+   | PProvider SyntaxInfo FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term
    | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
                             -- bool is True, lhs and rhs must be convertible
  deriving Functor
@@ -738,7 +740,8 @@ mapPT f t = f (mpt t) where
 
 data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Refine Name [Bool] | Rewrite t | DoUnify
-                | Induction Name
+                | Induction t
+                | CaseTac t
                 | Equiv t
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
@@ -903,7 +906,8 @@ data DSL' t = DSL { dsl_bind    :: t,
                     index_first :: Maybe t,
                     index_next  :: Maybe t,
                     dsl_lambda  :: Maybe t,
-                    dsl_let     :: Maybe t
+                    dsl_let     :: Maybe t,
+                    dsl_pi      :: Maybe t
                   }
     deriving (Show, Functor)
 {-!
@@ -942,6 +946,7 @@ initDSL = DSL (PRef f (sUN ">>="))
               (PRef f (sUN "return"))
               (PRef f (sUN "<$>"))
               (PRef f (sUN "pure"))
+              Nothing
               Nothing
               Nothing
               Nothing
@@ -1149,21 +1154,28 @@ consoleDecorate ist AnnKeyword = colouriseKeyword (idris_colourTheme ist)
 consoleDecorate ist (AnnName n _ _ _) = let ctxt  = tt_ctxt ist
                                             theme = idris_colourTheme ist
                                         in case () of
-                                             _ | isDConName n ctxt -> colouriseData theme
-                                             _ | isFnName n ctxt   -> colouriseFun theme
-                                             _ | isTConName n ctxt -> colouriseType theme
-                                             _ | otherwise         -> id -- don't colourise unknown names
+                                             _ | isDConName n ctxt     -> colouriseData theme
+                                             _ | isFnName n ctxt       -> colouriseFun theme
+                                             _ | isTConName n ctxt     -> colouriseType theme
+                                             _ | isPostulateName n ist -> colourisePostulate theme
+                                             _ | otherwise             -> id -- don't colourise unknown names
 consoleDecorate ist (AnnFC _) = id
 consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
   where colour BoldText      = IdrisColour Nothing True False True False
         colour UnderlineText = IdrisColour Nothing True True False False
         colour ItalicText    = IdrisColour Nothing True False False True
+consoleDecorate ist (AnnTerm _ _) = id
+
+isPostulateName :: Name -> IState -> Bool
+isPostulateName n ist = S.member n (idris_postulates ist)
 
 -- | Pretty-print a high-level closed Idris term with no information about precedence/associativity
 prettyImp :: PPOption -- ^^ pretty printing options
           -> PTerm -- ^^ the term to pretty-print
           -> Doc OutputAnnotation
 prettyImp impl = pprintPTerm impl [] [] []
+
+-- | Serialise something to base64 using its Binary instance.
 
 -- | Do the right thing for rendering a term in an IState
 prettyIst ::  IState -> PTerm -> Doc OutputAnnotation
@@ -1185,7 +1197,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd e
       | Just str <- slist p bnd e = str
       | Just n <- snat p e = annotate (AnnData "Nat" "") (text (show n))
-    prettySe p bnd (PRef fc n) = prettyNamePossParen True (ppopt_impl ppo) bnd n
+    prettySe p bnd (PRef fc n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe p bnd (PLam n ty sc) =
       bracket p 2 . group . align . hang 2 $
       text "\\" <> bindingOf n False <+> text "=>" <$>
@@ -1229,9 +1241,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PApp _ (PRef _ f) args) -- normal names, no explicit args
       | UN nm <- basename f
       , not (ppopt_impl ppo) && null (getExps args) =
-          prettyNamePossParen True (ppopt_impl ppo) bnd f
+          prettyName True (ppopt_impl ppo) bnd f
     prettySe p bnd (PAppBind _ (PRef _ f) [])
-      | not (ppopt_impl ppo) = text "!" <> prettyNamePossParen True (ppopt_impl ppo) bnd f
+      | not (ppopt_impl ppo) = text "!" <> prettyName True (ppopt_impl ppo) bnd f
     prettySe p bnd (PApp _ (PRef _ op) args) -- infix operators
       | UN nm <- basename op
       , not (tnull nm) &&
@@ -1244,7 +1256,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
             (l:r:rest) -> bracket p 1 $
                           enclose lparen rparen (inFix l r) <+>
                           align (group (vsep (map (prettyArgSe bnd) rest)))
-          where opName isPrefix = prettyNamePossParen isPrefix (ppopt_impl ppo) bnd op
+          where opName isPrefix = prettyName isPrefix (ppopt_impl ppo) bnd op
                 f = getFixity (opStr op)
                 left l = case f of
                            Nothing -> prettySe (-1) bnd l
@@ -1422,7 +1434,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
 
 prettyDocumentedIst :: IState -> (Name, PTerm, Maybe Docstring) -> Doc OutputAnnotation
 prettyDocumentedIst ist (name, ty, docs) =
-          prettyNamePossParen True True [] name <+> colon <+> align (prettyIst ist ty) <$>
+          prettyName True True [] name <+> colon <+> align (prettyIst ist ty) <$>
           fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
 
 -- | Pretty-printer helper for the binding site of a name
@@ -1432,13 +1444,13 @@ bindingOf :: Name -- ^^ the bound name
 bindingOf n imp = annotate (AnnBoundName n imp) (text (show n))
 
 -- | Pretty-printer helper for names that attaches the correct annotations
-prettyNamePossParen
+prettyName
   :: Bool -- ^^ whether the name should be parenthasized if it is an infix operator
   -> Bool -- ^^ whether to show namespaces
   -> [(Name, Bool)] -- ^^ the current bound variables and whether they are implicit
   -> Name -- ^^ the name to pprint
   -> Doc OutputAnnotation
-prettyNamePossParen infixParen showNS bnd n 
+prettyName infixParen showNS bnd n 
     | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) fullName
     | otherwise                = annotate (AnnName n Nothing Nothing Nothing) fullName
   where fullName = text nameSpace <> parenthasize (text (baseName n))
@@ -1454,10 +1466,6 @@ prettyNamePossParen infixParen showNS bnd n
           ""      -> False
           (c : _) -> not (isAlpha c)
         parenthasize = if isInfix && infixParen then enclose lparen rparen else id
-
-
-prettyName :: Bool -> [(Name, Bool)] -> Name -> Doc OutputAnnotation
-prettyName = prettyNamePossParen False
 
 
 showCImp :: PPOption -> PClause -> Doc OutputAnnotation
@@ -1478,7 +1486,7 @@ showCImp ppo (PWith _ n l ws r w)
 showDImp :: PPOption -> PData -> Doc OutputAnnotation
 showDImp ppo (PDatadecl n ty cons)
  = text "data" <+> text (show n) <+> colon <+> prettyImp ppo ty <+> text "where" <$>
-    (indent 2 $ vsep (map (\ (_, _, n, t, _, _) -> pipe <+> prettyNamePossParen True False [] n <+> colon <+> prettyImp ppo t) cons))
+    (indent 2 $ vsep (map (\ (_, _, n, t, _, _) -> pipe <+> prettyName True False [] n <+> colon <+> prettyImp ppo t) cons))
 
 showDecls :: PPOption -> [PDecl] -> Doc OutputAnnotation
 showDecls o ds = vsep (map (showDeclImp o) ds)
@@ -1666,7 +1674,10 @@ namesIn uvars ist tm = nub $ ni [] tm
                 _ -> if n `elem` (map fst uvars) then [n] else []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
+    ni env (PCase _ c os)  = ni env c ++ 
+    -- names in 'os', not counting the names bound in the cases
+                                (nub (concatMap (ni env) (map snd os))
+                                     \\ nub (concatMap (ni env) (map fst os)))
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ l r)     = ni env l ++ ni env r

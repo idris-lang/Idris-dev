@@ -816,7 +816,7 @@ pi syn =
                    symbol "->"
                    sc <- expr syn
                    return (bindList (PPi
-                     (TacImp [] Dynamic (PTactics [Trivial]))) xt sc)) <|> (do
+                     (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc)) <|> (do
                        try (lchar '{' *> reserved "default")
                        when (st == Static) $ fail "default tactic constraints can not be lazy or static"
                        script <- simpleExpr syn
@@ -1033,9 +1033,10 @@ do_ syn
    <?> "do block expression"
 
 do_alt syn = do l <- expr' syn
-                symbol "=>"
-                r <- expr' syn
-                return (l, r)
+                option (Placeholder, l)
+                       (do symbol "=>"
+                           r <- expr' syn
+                           return (l, r))
 
 {- | Parses an expression in idiom brackets
 @
@@ -1136,6 +1137,7 @@ Tactic ::= 'intro' NameList?
        |   'refine'      Name Imp+
        |   'mrefine'     Name
        |   'rewrite'     Expr
+       |   'induction'   Expr
        |   'equiv'       Expr
        |   'let'         Name ':' Expr' '=' Expr
        |   'let'         Name           '=' Expr
@@ -1183,8 +1185,12 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
           <|> do reserved "rewrite"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Rewrite (desugar syn i t)
-          <|> do reserved "induction"; nm <- (indentPropHolds gtProp *> fnName);
-                 return $ Induction nm
+          <|> do reserved "case"; t <- (indentPropHolds gtProp *> expr syn);
+                 i <- get
+                 return $ CaseTac (desugar syn i t)
+          <|> do reserved "induction"; t <- (indentPropHolds gtProp *> expr syn);
+                 i <- get
+                 return $ Induction (desugar syn i t)
           <|> do reserved "equiv"; t <- (indentPropHolds gtProp *> expr syn);
                  i <- get
                  return $ Equiv (desugar syn i t)

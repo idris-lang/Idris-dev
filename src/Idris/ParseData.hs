@@ -79,12 +79,13 @@ dataI :: IdrisParser DataOpts
 dataI = do reserved "data"; return []
     <|> do reserved "codata"; return [Codata]
 
-{- | Parses if a data should not have a default eliminator 
+{- | Parses if a data should not have a default eliminator
 DefaultEliminator ::= 'noelim'?
  -}
 dataOpts :: DataOpts -> IdrisParser DataOpts
 dataOpts opts
-    = do reserved "%elim"; dataOpts (DefaultEliminator : opts)
+    = do reserved "%elim"; dataOpts (DefaultEliminator : DefaultCaseFun : opts)
+  <|> do reserved "%case"; dataOpts (DefaultCaseFun : opts)
   <|> do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
   <|> return opts
   <?> "data options"
@@ -129,7 +130,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                     let tyn = expandNS syn tyn_in
                     option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn ty)) (do
                       try (lchar '=') <|> do reserved "where"
-                                             let kw = (if DefaultEliminator `elem` dataOpts then "" else "%noelim ") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
+                                             let kw = (if DefaultEliminator `elem` dataOpts then "%elim" else "") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
                                              let n  = show tyn_in ++ " "
                                              let s  = kw ++ n
                                              let as = concat (intersperse " " $ map show args) ++ " "
@@ -209,12 +210,14 @@ dsl syn = do reserved "dsl"
                              first  = lookup "index_first" bs
                              next   = lookup "index_next" bs
                              leto   = lookup "let" bs
-                             lambda = lookup "lambda" bs in
+                             lambda = lookup "lambda" bs
+                             pi     = lookup "pi" bs in
                              initDSL { dsl_var = var,
                                        index_first = first,
                                        index_next = next,
                                        dsl_lambda = lambda,
-                                       dsl_let = leto }
+                                       dsl_let = leto,
+                                       dsl_pi = pi }
 
 {- | Checks DSL for errors -}
 -- FIXME: currently does nothing, check if DSL is really sane
@@ -235,6 +238,6 @@ overload syn = do o <- identifier <|> do reserved "let"
                        t <- expr syn
                        return (o, t)
                <?> "dsl overload declaratioN"
-    where overloadable = ["let","lambda","index_first","index_next","variable"]
+    where overloadable = ["let","lambda","pi","index_first","index_next","variable"]
 
 

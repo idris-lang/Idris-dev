@@ -8,7 +8,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
-                lookupNames, lookupTy, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
+                lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions) where
@@ -868,14 +868,32 @@ lookupNames n ctxt
                 = let ns = lookupCtxtName n (definitions ctxt) in
                       map fst ns
 
-lookupTy :: Name -> Context -> [Type]
-lookupTy n ctxt
-                = do def <- lookupCtxt n (definitions ctxt)
-                     case tfst def of
+-- | Get the list of pairs of fully-qualified names and their types that match some name
+lookupTyName :: Name -> Context -> [(Name, Type)]
+lookupTyName n ctxt = do
+  (name, def) <- lookupCtxtName n (definitions ctxt)
+  ty <- case tfst def of
                        (Function ty _) -> return ty
                        (TyDecl _ ty) -> return ty
                        (Operator ty _ _) -> return ty
                        (CaseOp _ ty _ _ _ _) -> return ty
+  return (name, ty)
+
+-- | Get the pair of a fully-qualified name and its type, if there is a unique one matching the name used as a key.
+lookupTyNameExact :: Name -> Context -> Maybe (Name, Type)
+lookupTyNameExact n ctxt = case lookupTyName n ctxt of
+                             [x] -> Just x
+                             _   -> Nothing
+
+-- | Get the types that match some name
+lookupTy :: Name -> Context -> [Type]
+lookupTy n ctxt = map snd (lookupTyName n ctxt)
+
+-- | Get the single type that matches some name precisely
+lookupTyExact :: Name -> Context -> Maybe Type
+lookupTyExact n ctxt = case lookupTy n ctxt of
+                         [t] -> Just t
+                         _   -> Nothing
 
 isConName :: Name -> Context -> Bool
 isConName n ctxt = isTConName n ctxt || isDConName n ctxt

@@ -100,17 +100,15 @@ updateAt (fS k) f (x::xs) = x :: updateAt k f xs
 
 ||| Get the first m elements of a Vect
 ||| @ m the number of elements to take
-take : {n : Nat} -> (m : Fin (S n)) -> Vect n a -> Vect (cast m) a
-take (fS k) []      = FinZElim k
-take fZ     _       = []
-take (fS k) (x::xs) = x :: take k xs
+take : (n : Nat) -> Vect (n + m) a -> Vect n a
+take Z xs = []
+take (S k) (x :: xs) = x :: take k xs
 
 ||| Remove the first m elements of a Vect
 ||| @ m the number of elements to remove
-drop : (m : Fin (S n)) -> Vect n a -> Vect (n - cast m) a
-drop (fS k) []      = FinZElim k
-drop fZ     xs      ?= xs
-drop (fS k) (x::xs) = drop k xs
+drop : (n : Nat) -> Vect (n + m) a -> Vect m a
+drop Z xs = xs
+drop (S k) (x :: xs) = drop k xs
 
 --------------------------------------------------------------------------------
 -- Transformations
@@ -260,10 +258,13 @@ concat : Vect m (Vect n a) -> Vect (m * n) a
 concat []      = []
 concat (v::vs) = v ++ concat vs
 
-||| Fold without seeding the accumulator
+||| Foldr without seeding the accumulator
 foldr1 : (t -> t -> t) -> Vect (S n) t -> t
 foldr1 f (x::xs) = foldr f x xs
 
+||| Foldl without seeding the accumulator
+foldl1 : (t -> t -> t) -> Vect (S n) t -> t
+foldl1 f (x::xs) = foldl f x xs
 --------------------------------------------------------------------------------
 -- Scans
 --------------------------------------------------------------------------------
@@ -404,7 +405,7 @@ nub = nubBy (==)
 ||| It is equivalent to (take n xs, drop n xs)
 ||| @ m   the index to split at
 ||| @ xs  the Vect to split in two
-splitAt : {n : Nat} -> (m : Fin (S n)) -> (xs : Vect n a) -> (Vect (cast m) a, Vect (n - cast m) a)
+splitAt : (n : Nat) -> (xs : Vect (n + m) a) -> (Vect n a, Vect m a)
 splitAt n xs = (take n xs, drop n xs)
 
 --------------------------------------------------------------------------------
@@ -485,12 +486,6 @@ vectAppendAssociative (x :: xs) ys zs =
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
-
-Prelude.Vect.drop_lemma_1 = proof {
-  intros;
-  rewrite sym (minusZeroRight n);
-  trivial;
-}
 
 Prelude.Vect.reverse'_lemma_1 = proof {
     intros;

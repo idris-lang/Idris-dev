@@ -177,7 +177,7 @@ int idrnet_get_recv_res(void* res_struct) {
     return (((idrnet_recv_result*) res_struct)->result);
 }
 
-void* idrnet_get_recv_payload(void* res_struct) {
+char* idrnet_get_recv_payload(void* res_struct) {
     return (((idrnet_recv_result*) res_struct)->payload);
 }
 

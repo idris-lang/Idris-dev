@@ -74,7 +74,7 @@ ihPrintFunTypes h bnd n overloads = do ist <- getIState
                                        let infixes = idris_infixes ist
                                        let output = vsep (map (uncurry (ppOverload ppo infixes)) overloads)
                                        ihRenderResult h output
-  where fullName n = prettyNamePossParen True True bnd n
+  where fullName n = prettyName True True bnd n
         ppOverload ppo infixes n tm =
           fullName n <+> colon <+> align (pprintPTerm ppo bnd [] infixes tm)
 
@@ -83,38 +83,6 @@ ihRenderResult h d = do ist <- getIState
                         case idris_outputmode ist of
                           RawOutput -> consoleDisplayAnnotated h d
                           IdeSlave n -> ideSlaveReturnAnnotated n h d
-
-makeAnnName :: IState -> Name -> Maybe OutputAnnotation
-makeAnnName ist n
-  | isDConName    n ctxt = annName DataOutput
-  | isFnName      n ctxt = annName FunOutput
-  | isTConName    n ctxt = annName TypeOutput
-  | isMetavarName n ist  = annName MetavarOutput
-  | otherwise            = Nothing
-  where ctxt = tt_ctxt ist
-        docs = docOverview ist n
-        ty   = Just (getTy ist n)
-        
-        annName :: NameOutput -> Maybe OutputAnnotation
-        annName nameType = Just (AnnName n (Just nameType) docs ty)
-        docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
-        docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
-                               let o   = overview (fst docs)
-                                   -- TODO make width configurable
-                                   out = displayS . renderPretty 1.0 50 $ renderDocstring o
-                               return (out "")
-        getTy :: IState -> Name -> String -- fails if name not already extant!
-        getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
-                                  delabTy ist n
-                      in (displayS . renderPretty 1.0 50 $ theTy) ""
-
-
-fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
-fancifyAnnots ist annot@(AnnName n _ _ _) = case makeAnnName ist n of
-  Just fancyAnnot -> fancyAnnot
-  Nothing         -> annot 
-fancifyAnnots _ annot = annot
-
 
 ideSlaveReturnWithStatus :: String -> Integer -> Handle -> Doc OutputAnnotation -> Idris ()
 ideSlaveReturnWithStatus status n h out = do 

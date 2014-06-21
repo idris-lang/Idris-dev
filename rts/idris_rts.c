@@ -1,10 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdarg.h>
 #include <assert.h>
+#ifdef HAS_PTHREAD
 #include <pthread.h>
+#endif
 
 #include "idris_rts.h"
 #include "idris_gc.h"
@@ -30,7 +31,7 @@ VM* init_vm(int stack_size, size_t heap_size,
 
     vm->ret = NULL;
     vm->reg1 = NULL;
-
+#ifdef HAS_PTHREAD
     vm->inbox = malloc(1024*sizeof(VAL));
     memset(vm->inbox, 0, 1024*sizeof(VAL));
     vm->inbox_end = vm->inbox + 1024;
@@ -53,7 +54,7 @@ VM* init_vm(int stack_size, size_t heap_size,
 
     vm->max_threads = max_threads;
     vm->processes = 0;
-
+#endif
     STATS_LEAVE_INIT(vm->stats)
     return vm;
 }
@@ -61,14 +62,16 @@ VM* init_vm(int stack_size, size_t heap_size,
 Stats terminate(VM* vm) {
     Stats stats = vm->stats;
     STATS_ENTER_EXIT(stats)
-
+#ifdef HAS_PTHREAD
     free(vm->inbox);
+#endif
     free(vm->valstack);
     free_heap(&(vm->heap));
-
+#ifdef HAS_PTHREAD
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
     pthread_cond_destroy(&(vm -> inbox_waiting));
+#endif
     free(vm);
 
     STATS_LEAVE_EXIT(stats)
@@ -79,18 +82,21 @@ void idris_requireAlloc(VM* vm, size_t size) {
     if (!(vm->heap.next + size < vm->heap.end)) {
         idris_gc(vm);
     }
-
+#ifdef HAS_PTHREAD
     int lock = vm->processes > 0;
     if (lock) { // We only need to lock if we're in concurrent mode
        pthread_mutex_lock(&vm->alloc_lock); 
     }
+#endif
 }
 
 void idris_doneAlloc(VM* vm) {
+#ifdef HAS_PTHREAD
     int lock = vm->processes > 0;
     if (lock) { // We only need to lock if we're in concurrent mode
        pthread_mutex_unlock(&vm->alloc_lock); 
     }
+#endif
 }
 
 int space(VM* vm, size_t size) {
@@ -99,16 +105,18 @@ int space(VM* vm, size_t size) {
 
 void* allocate(VM* vm, size_t size, int outerlock) {
 //    return malloc(size);
+#ifdef HAS_PTHREAD
     int lock = vm->processes > 0 && !outerlock;
 
     if (lock) { // not message passing
        pthread_mutex_lock(&vm->alloc_lock); 
     }
+#endif
 
     if ((size & 7)!=0) {
 	size = 8 + ((size >> 3) << 3);
     }
-    
+
     size_t chunk_size = size + sizeof(size_t);
 
     if (vm->heap.next + chunk_size < vm->heap.end) {
@@ -120,16 +128,19 @@ void* allocate(VM* vm, size_t size, int outerlock) {
         assert(vm->heap.next <= vm->heap.end);
 
         memset(ptr, 0, size);
-
+#ifdef HAS_PTHREAD
         if (lock) { // not message passing
            pthread_mutex_unlock(&vm->alloc_lock); 
         }
+#endif
         return ptr;
     } else {
         idris_gc(vm);
+#ifdef HAS_PTHREAD
         if (lock) { // not message passing
            pthread_mutex_unlock(&vm->alloc_lock); 
         }
+#endif
         return allocate(vm, size, 0);
     }
 
@@ -187,7 +198,7 @@ VAL MKPTR(VM* vm, void* ptr) {
     return cl;
 }
 
-VAL MKMPTR(VM* vm, void* ptr, int size) {
+VAL MKMPTR(VM* vm, void* ptr, size_t size) {
     Closure* cl = allocate(vm, sizeof(Closure) +
                                sizeof(ManagedPtr) + size, 0);
     SETTY(cl, MANAGEDPTR);
@@ -222,7 +233,7 @@ VAL MKPTRc(VM* vm, void* ptr) {
     return cl;
 }
 
-VAL MKMPTRc(VM* vm, void* ptr, int size) {
+VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
     Closure* cl = allocate(vm, sizeof(Closure) +
                                sizeof(ManagedPtr) + size, 1);
     SETTY(cl, MANAGEDPTR);
@@ -760,6 +771,7 @@ typedef struct {
     VAL arg;
 } ThreadData;
 
+#ifdef HAS_PTHREAD
 void* runThread(void* arg) {
     ThreadData* td = (ThreadData*)arg;
     VM* vm = td->vm;
@@ -949,7 +961,7 @@ VAL idris_recvMessage(VM* vm) {
 
     return msg;
 }
-
+#endif
 int __idris_argc;
 char **__idris_argv;
 

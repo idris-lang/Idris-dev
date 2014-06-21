@@ -336,6 +336,9 @@ toPats reflect tc f = reverse (toPat reflect tc (getArgs f)) where
 toPat :: Bool -> Bool -> [Term] -> [Pat]
 toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
   where
+    toPat' (P (DCon t a) nm@(UN n) _) [_,_,arg]
+           | n == txt "Delay" = do arg' <- toPat' arg []
+                                   return $ PCon nm t [PAny, PAny, arg']
     toPat' (P (DCon t a) n _) args = do args' <- mapM (\x -> toPat' x []) args
                                         return $ PCon n t args'
     -- n + 1

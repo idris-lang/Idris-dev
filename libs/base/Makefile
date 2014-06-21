@@ -1,15 +1,22 @@
 IDRIS := idris
+PKG := base
 
 build:
-	$(IDRIS) --build base.ipkg
+	$(IDRIS) --build ${PKG}.ipkg
 
 install: 
-	$(IDRIS) --install base.ipkg
+	$(IDRIS) --install ${PKG}.ipkg
 
 clean:
-	$(IDRIS) --clean base.ipkg
+	$(IDRIS) --clean ${PKG}.ipkg
 
 rebuild: clean build
+
+doc:
+	${IDRIS} --mkdoc ${PKG}.ipkg
+
+doc_clean:
+	rm -rf ${PKG}_doc
 
 linecount:
 	find . -name '*.idr' | xargs wc -l

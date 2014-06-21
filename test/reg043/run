@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-idris $@ --nocolour -e "Vect.take {n=2} {a=Nat}"
-

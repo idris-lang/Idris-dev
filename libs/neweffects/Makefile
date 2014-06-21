@@ -1,13 +1,13 @@
 IDRIS     := idris
 
 build:
-	$(IDRIS) --build oldeffects.ipkg
+	$(IDRIS) --build effects.ipkg
 
 clean:
-	$(IDRIS) --clean oldeffects.ipkg
+	$(IDRIS) --clean effects.ipkg
 
 install:
-	$(IDRIS) --install oldeffects.ipkg
+	$(IDRIS) --install effects.ipkg
 
 rebuild: clean build
 

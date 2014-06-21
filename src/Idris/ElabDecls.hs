@@ -283,7 +283,10 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
 
          -- create an eliminator
          when (DefaultEliminator `elem` opts) $
-            evalStateT (elabEliminator params n t dcons info) Map.empty
+            evalStateT (elabCaseFun True params n t dcons info) Map.empty
+         -- create a case function
+         when (DefaultCaseFun `elem` opts) $
+            evalStateT (elabCaseFun False params n t dcons info) Map.empty
   where
         setDetaggable :: Name -> Idris ()
         setDetaggable n = do
@@ -369,11 +372,13 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
 type EliminatorState = StateT (Map.Map String Int) Idris
 
 -- TODO: Rewrite everything to use idris_implicits instead of manual splitting (or in TT)
-elabEliminator :: [Int] -> Name -> PTerm ->
+-- FIXME: Many things have name starting with elim internally since this was the only purpose in the first edition of the function
+-- rename to caseFun to match updated intend
+elabCaseFun :: Bool -> [Int] -> Name -> PTerm ->
                   [(Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name])] ->
                   ElabInfo -> EliminatorState ()
-elabEliminator paramPos n ty cons info = do
-  elimLog $ "Elaborating eliminator"
+elabCaseFun ind paramPos n ty cons info = do
+  elimLog $ "Elaborating case function"
   put (Map.fromList $ zip (concatMap (\(_, p, _, ty, _, _) -> (map show $ boundNamesIn ty) ++ map (show . fst) p) cons ++ (map show $ boundNamesIn ty)) (repeat 0))
   let (cnstrs, _) = splitPi ty
   let (splittedTy@(pms, idxs)) = splitPms cnstrs
@@ -381,7 +386,8 @@ elabEliminator paramPos n ty cons info = do
   motiveIdxs    <- namePis False idxs
   let motive = mkMotive n paramPos generalParams motiveIdxs
   consTerms <- mapM (\(c@(_, _, cnm, _, _, _)) -> do
-                               name <- freshName $ "elim_" ++ simpleName cnm
+                               let casefunt = if ind then "elim_" else "case_"
+                               name <- freshName $ casefunt ++ simpleName cnm
                                consTerm <- extractConsTerm c generalParams
                                return (name, expl, consTerm)) cons
   scrutineeIdxs <- namePis False idxs
@@ -392,11 +398,11 @@ elabEliminator paramPos n ty cons info = do
   let clauseConsElimArgs = map getPiName consTerms
   let clauseGeneralArgs' = map getPiName generalParams ++ [motiveName] ++ clauseConsElimArgs
   let clauseGeneralArgs  = map (\arg -> pexp (PRef elimFC arg)) clauseGeneralArgs'
-  let elimSig = "-- eliminator signature: " ++ showTmImpls eliminatorTy
+  let elimSig = "-- case function signature: " ++ showTmImpls eliminatorTy
   elimLog elimSig
   eliminatorClauses <- mapM (\(cns, cnsElim) -> generateEliminatorClauses cns cnsElim clauseGeneralArgs generalParams) (zip cons clauseConsElimArgs)
   let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
-  elimLog $ "-- eliminator definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
+  elimLog $ "-- case function definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
   State.lift $ idrisCatch (elabDecl EAll info eliminatorTyDecl) (\err -> return ())
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
@@ -406,10 +412,10 @@ elabEliminator paramPos n ty cons info = do
         elimLog s = State.lift (logLvl 2 s)
 
         elimFC :: FC
-        elimFC = fileFC "(eliminator)"
+        elimFC = fileFC "(casefun)"
 
         elimDeclName :: Name
-        elimDeclName = SN $ ElimN n
+        elimDeclName = if ind then SN . ElimN $ n else SN . CaseN $ n
 
         applyNS :: Name -> [String] -> Name
         applyNS n []  = n
@@ -560,7 +566,7 @@ elabEliminator paramPos n ty cons info = do
           implidxs <- implicitIndexes (doc, cnm, ty, fc, fs)
           consArgs <- namePis False args
           let recArgs = findRecArgs consArgs
-          let recMotives = map applyRecMotive recArgs
+          let recMotives = if ind then map applyRecMotive recArgs else []
           let (_, consIdxs) = splitArgPms resTy
           return $ piConstr (implidxs ++ consArgs ++ recMotives) (applyMotive consIdxs (applyCons cnm consArgs))
             where applyRecMotive :: (Name, Plicity, PTerm) -> (Name, Plicity, PTerm)
@@ -600,7 +606,7 @@ elabEliminator paramPos n ty cons info = do
           consArgs <- namePis False args
           let lhsPattern = PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ generalIdxs ++ [pexp $ applyCons cnm consArgs])
           let recArgs = findRecArgs consArgs
-          let recElims = map applyRecElim recArgs
+          let recElims = if ind then map applyRecElim recArgs else []
           let rhsExpr    = PApp elimFC (PRef elimFC cnsElim) (map convertArg implidxs ++ map convertArg consArgs ++ recElims)
           return $ PClause elimFC elimDeclName lhsPattern [] rhsExpr []
             where applyRecElim :: (Name, Plicity, PTerm) -> PArg
@@ -681,8 +687,8 @@ elabPrims = do mapM_ (elabDecl EAll toplevel)
 
 
 -- | Elaborate a type provider
-elabProvider :: ElabInfo -> SyntaxInfo -> FC -> ProvideWhat -> Name -> PTerm -> PTerm -> Idris ()
-elabProvider info syn fc what n ty tm
+elabProvider :: ElabInfo -> SyntaxInfo -> FC -> ProvideWhat -> Name -> Idris ()
+elabProvider info syn fc what n
     = do i <- getIState
          -- Ensure that the experimental extension is enabled
          unless (TypeProviders `elem` idris_language_extensions i) $
@@ -692,12 +698,17 @@ elabProvider info syn fc what n ty tm
          ctxt <- getContext
 
          -- First elaborate the expected type (and check that it's a type)
-         (ty', typ) <- elabVal toplevel False ty
+         -- The goal type for a postulate is always Type.
+         (ty', typ) <- case what of
+                         ProvTerm ty p   -> elabVal toplevel False ty
+                         ProvPostulate _ -> elabVal toplevel False PType
          unless (isTType typ) $
            ifail ("Expected a type, got " ++ show ty' ++ " : " ++ show typ)
 
          -- Elaborate the provider term to TT and check that the type matches
-         (e, et) <- elabVal toplevel False tm
+         (e, et) <- case what of
+                      ProvTerm _ tm    -> elabVal toplevel False tm
+                      ProvPostulate tm -> elabVal toplevel False tm
          unless (isProviderOf (normalise ctxt [] ty') et) $
            ifail $ "Expected provider type IO (Provider (" ++
                    show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
@@ -715,17 +726,14 @@ elabProvider info syn fc what n ty tm
 
          case provided of
            Provide tm
-             | what `elem` [ProvTerm, ProvAny] ->
+             | ProvTerm ty _ <- what ->
                do -- Finally add a top-level definition of the provided term
                   elabType info syn emptyDocstring [] fc [] n ty
                   elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
                   logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
-             | otherwise ->
-               ierror . Msg $ "Attempted to provide a term where a postulate was expected."
-           Postulate
-             | what `elem` [ProvPostulate, ProvAny] ->
+             | ProvPostulate _ <- what ->
                do -- Add the postulate
-                  elabPostulate info syn (parseDocstring $ T.pack "Provided postulate") fc [] n ty
+                  elabPostulate info syn (parseDocstring $ T.pack "Provided postulate") fc [] n (delab i tm)
                   logLvl 3 $ "Elaborated provided postulate " ++ show n
              | otherwise ->
                ierror . Msg $ "Attempted to provide a postulate where a term was expected."
@@ -961,6 +969,8 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
          def' <- checkDef fc defer
          let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
          addDeferred def''
+         mapM_ (\(n, _) -> addIBC (IBCDef n)) def''
+
          mapM_ (elabCaseBlock info []) is
          ctxt <- getContext
          (cty, _)  <- recheckC fc [] t'
@@ -2042,7 +2052,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
                   [c] -> return c
                   [] -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
                   cs -> tclift $ tfail $ At fc 
-                           (CantResolveAlts (map (show . fst) cs))
+                           (CantResolveAlts (map fst cs))
     let constraint = PApp fc (PRef fc n) (map pexp ps)
     let iname = mkiname n ps expn
     let emptyclass = null (class_methods ci)
@@ -2408,10 +2418,10 @@ elabDecl' _ info (PDSL n dsl)
          addIBC (IBCDSL n)
 elabDecl' what info (PDirective i)
   | what /= EDefns = i
-elabDecl' what info (PProvider syn fc provWhat n tp tm)
+elabDecl' what info (PProvider syn fc provWhat n)
   | what /= EDefns
     = do iLOG $ "Elaborating type provider " ++ show n
-         elabProvider info syn fc provWhat n tp tm
+         elabProvider info syn fc provWhat n
 elabDecl' what info (PTransform fc safety old new)
     = elabTransform info fc safety old new
 elabDecl' _ _ _ = return () -- skipped this time

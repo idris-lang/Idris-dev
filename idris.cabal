@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.13
+Version:        0.9.13.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -100,10 +100,10 @@ Extra-source-files:
                        libs/effects/Effect/*.idr
                        libs/effects/*.idr
 
-                       libs/oldeffects/Makefile
-                       libs/oldeffects/oldeffects.ipkg
-                       libs/oldeffects/Effect/*.idr
-                       libs/oldeffects/*.idr
+                       libs/neweffects/Makefile
+                       libs/neweffects/effects.ipkg
+                       libs/neweffects/Effect/*.idr
+                       libs/neweffects/*.idr
 
                        llvm/*.c
                        llvm/Makefile
@@ -131,9 +131,6 @@ Extra-source-files:
                        test/reg007/run
                        test/reg007/*.lidr
                        test/reg007/expected
-                       test/reg008/run
-                       test/reg008/*.idr
-                       test/reg008/expected
                        test/reg009/run
                        test/reg009/*.lidr
                        test/reg009/expected
@@ -237,11 +234,12 @@ Extra-source-files:
                        test/reg042/run
                        test/reg042/*.idr
                        test/reg042/expected
-                       test/reg043/run
-                       test/reg043/expected
                        test/reg044/run
                        test/reg044/*.idr
                        test/reg044/expected
+                       test/reg045/run
+                       test/reg045/*.idr
+                       test/reg045/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -286,6 +284,9 @@ Extra-source-files:
                        test/dsl002/test
                        test/dsl002/*.idr
                        test/dsl002/expected
+                       test/dsl003/run
+                       test/dsl003/*.idr
+                       test/dsl003/expected
 
                        test/effects001/run
                        test/effects001/*.idr
@@ -513,7 +514,8 @@ Flag release
 Library
   hs-source-dirs: src
   Exposed-modules:
-                  Idris.Core.CaseTree
+                  Idris.Core.Binary
+                , Idris.Core.CaseTree
                 , Idris.Core.Constraints
                 , Idris.Core.DeepSeq
                 , Idris.Core.Elaborate
@@ -610,6 +612,7 @@ Library
                 , annotated-wl-pprint >= 0.5.3
                 , ansi-terminal
                 , ansi-wl-pprint
+                , base64-bytestring
                 , binary
                 , blaze-html >= 0.6.1.3
                 , blaze-markup >= 0.5.2.1 && < 0.7.0.0
@@ -639,7 +642,7 @@ Library
                 , xml
                 , deepseq
                 , zlib
-                , optparse-applicative
+                , optparse-applicative >= 0.8
   Extensions:     MultiParamTypeClasses
                 , FunctionalDependencies
                 , FlexibleContexts

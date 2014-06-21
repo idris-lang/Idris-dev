@@ -2,6 +2,7 @@ module Main
 
 import System
 
+-- necessary to find the getenv symbol
 %dynamic "libm"
 
 main : IO ()

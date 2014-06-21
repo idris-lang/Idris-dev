@@ -371,8 +371,11 @@ expandLet n v = processTactic' (ExpandLet n v)
 rewrite :: Raw -> Elab' aux ()
 rewrite tm = processTactic' (Rewrite tm)
 
-induction :: Name -> Elab' aux ()
-induction nm = processTactic' (Induction nm)
+induction :: Raw -> Elab' aux ()
+induction tm = processTactic' (Induction tm)
+
+casetac :: Raw -> Elab' aux ()
+casetac tm = processTactic' (CaseTac tm)
 
 equiv :: Raw -> Elab' aux ()
 equiv tm = processTactic' (Equiv tm)
@@ -709,7 +712,7 @@ tryWhen False a b = a
 
 
 -- Try a selection of tactics. Exactly one must work, all others must fail
-tryAll :: [(Elab' aux a, String)] -> Elab' aux a
+tryAll :: [(Elab' aux a, Name)] -> Elab' aux a
 tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
   where
     cantResolve :: Elab' aux a
@@ -718,7 +721,7 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
     tryAll' :: [Elab' aux a] -> -- successes
                Int -> -- most problems
                (Elab' aux a, Int) -> -- smallest failure
-               [(Elab' aux a, String)] -> -- still to try
+               [(Elab' aux a, Name)] -> -- still to try
                Elab' aux a
     tryAll' [res] pmax _   [] = res
     tryAll' (_:_) pmax _   [] = cantResolve

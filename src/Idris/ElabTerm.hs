@@ -70,7 +70,7 @@ build ist info pattern opts fn tm
 
          when (not pattern) $ 
            traceWhen u ("Remaining holes:\n" ++ show hs ++ "\n" ++
-                        "Remaining problems:\n" ++ show probs) $ 
+                        "Remaining problems:\n" ++ qshow probs) $ 
              do unify_all; matchProblems True; unifyProblems
 
          probs <- get_probs
@@ -271,10 +271,10 @@ elab ist info pattern opts fn tm
              let as' = pruneByType (map fst env) tc ctxt as
 --              trace (show as ++ "\n ==> " ++ showSep ", " (map showTmImpls as')) $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
-        where showHd (PApp _ (PRef _ n) _) = show n
-              showHd (PRef _ n) = show n
-              showHd (PApp _ h _) = show h
-              showHd x = show x
+        where showHd (PApp _ (PRef _ n) _) = n
+              showHd (PRef _ n) = n
+              showHd (PApp _ h _) = showHd h
+              showHd x = NErased -- We probably should do something better than this here
     elab' ina (PAlternative False as)
         = trySeq as
         where -- if none work, take the error from the first
@@ -956,6 +956,24 @@ collectDeferred top (Bind n b t) = do b' <- cdb b
 collectDeferred top (App f a) = liftM2 App (collectDeferred top f) (collectDeferred top a)
 collectDeferred top t = return t
 
+case_ :: Bool -> Bool -> IState -> Name -> PTerm -> ElabD ()
+case_ ind autoSolve ist fn tm = do
+  attack
+  tyn <- getNameFrom (sMN 0 "ity")
+  claim tyn RType
+  valn <- getNameFrom (sMN 0 "ival")
+  claim valn (Var tyn)
+  letn <- getNameFrom (sMN 0 "irule")
+  letbind letn (Var tyn) (Var valn)
+  focus valn
+  elab ist toplevel False [] (sMN 0 "tac") tm
+  env <- get_env
+  let (Just binding) = lookup letn env
+  let val = binderVal binding
+  if ind then induction (forget val)
+         else casetac (forget val)
+  when autoSolve solveAll
+
 -- Running tactics directly
 -- if a tactic adds unification problems, return an error
 
@@ -991,7 +1009,7 @@ runTac autoSolve ist fn tac
                     ns -> return (map (\ (n, a) -> (n, map (const True) a)) ns)
              let tacs = map (\ (fn', imps) ->
                                  (match_apply (Var fn') (map (\x -> (x, 0)) imps),
-                                     show fn')) fnimps
+                                     fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
        where envArgs n = do e <- get_env
@@ -1007,7 +1025,7 @@ runTac autoSolve ist fn tac
                     ns -> return (map (\ (n, a) -> (n, map isImp a)) ns)
              let tacs = map (\ (fn', imps) ->
                                  (apply (Var fn') (map (\x -> (x, 0)) imps),
-                                     show fn')) fnimps
+                                     fn')) fnimps
              tryAll tacs
              when autoSolve solveAll
        where isImp (PImp _ _ _ _ _) = True
@@ -1046,9 +1064,10 @@ runTac autoSolve ist fn tac
                    elab ist toplevel False [] (sMN 0 "tac") tm
                    rewrite (Var letn)
                    when autoSolve solveAll
-    runT (Induction nm)
-              = do induction nm
-                   when autoSolve solveAll
+    runT (Induction tm) -- let bind tm, similar to the others
+              = case_ True autoSolve ist fn tm
+    runT (CaseTac tm)
+              = case_ False autoSolve ist fn tm
     runT (LetTac n tm)
               = do attack
                    tyn <- getNameFrom (sMN 0 "letty")
@@ -1214,7 +1233,8 @@ reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist 
 reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
 reifyApp _ t [n] | t == reflm "Intro" = liftM (Intro . (:[])) (reifyTTName n)
-reifyApp _ t [n] | t == reflm "Induction" = liftM Induction (reifyTTName n)
+reifyApp ist t [t'] | t == reflm "Induction" = liftM (Induction . delab ist) (reifyTT t')
+reifyApp ist t [t'] | t == reflm "Case" = liftM (Induction . delab ist) (reifyTT t')
 reifyApp ist t [t']
              | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
 reifyApp ist t [t']
@@ -1609,8 +1629,8 @@ reflectErr (NotInjective t1 t2 t3) =
             ]
 reflectErr (CantResolve t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
 reflectErr (CantResolveAlts ss) =
-  raw_apply (Var $ reflErrName "CantResolve")
-            [rawList (Var $ (sUN "String")) (map (RConstant . Str) ss)]
+  raw_apply (Var $ reflErrName "CantResolveAlts")
+            [rawList (Var $ (sUN "String")) (map Var ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
 reflectErr UniverseError = Var $ reflErrName "UniverseError"
 reflectErr ProgramLineComment = Var $ reflErrName "ProgramLineComment"
