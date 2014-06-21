@@ -94,6 +94,7 @@ data JS = JSRaw String
         | JSAlloc String (Maybe JS)
         | JSIndex JS JS
         | JSSwitch JS [(JS, JS)] (Maybe JS)
+        | JSCond [(JS, JS)]
         | JSTernary JS JS JS
         | JSParens JS
         | JSWhile JS JS
@@ -207,8 +208,20 @@ compileJS (JSAlloc name val) =
 compileJS (JSIndex lhs rhs) =
   compileJS lhs ++ "[" ++ compileJS rhs ++ "]"
 
-compileJS (JSSwitch cond branches def) =
-     "switch(" ++ compileJS cond ++ "){\n"
+compileJS (JSCond branches) =
+  intercalate " else " $ map createIfBlock branches
+  where
+    createIfBlock (JSNoop, e) =
+         "{\n"
+      ++ compileJS e
+      ++ ";\n}"
+    createIfBlock (cond, e) =
+         "if (" ++ compileJS cond ++") {\n"
+      ++ compileJS e
+      ++ ";\n}"
+
+compileJS (JSSwitch val branches def) =
+     "switch(" ++ compileJS val ++ "){\n"
   ++ concatMap mkBranch branches
   ++ mkDefault def
   ++ "}"
@@ -594,9 +607,9 @@ jsCASE safe reg cases def =
 
 jsCONSTCASE :: Reg -> [(Const, [BC])] -> Maybe [BC] -> JS
 jsCONSTCASE reg cases def =
-  JSSwitch (translateReg reg) (
-    map (translateConstant *** prepBranch) cases
-  ) (fmap prepBranch def)
+  JSCond $ (
+    map (jsEq (translateReg reg) . translateConstant *** prepBranch) cases
+  ) ++ (maybe [] ((:[]) . ((,) JSNoop) . prepBranch) def)
     where
       prepBranch :: [BC] -> JS
       prepBranch bc = JSSeq $ map translateBC bc
