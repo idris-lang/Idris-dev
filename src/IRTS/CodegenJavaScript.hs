@@ -45,6 +45,7 @@ data JSType = JSIntTy
 data JSInteger = JSBigZero
                | JSBigOne
                | JSBigInt Integer
+               | JSBigIntExpr JS
                deriving Eq
 
 
@@ -193,11 +194,12 @@ compileJS (JSString str) =
   "\"" ++ str ++ "\""
 
 compileJS (JSNum num)
-  | JSInt i                <- num = show i
-  | JSFloat f              <- num = show f
-  | JSInteger JSBigZero    <- num = "__IDRRT__ZERO"
-  | JSInteger JSBigOne     <- num = "__IDRRT__ONE"
-  | JSInteger (JSBigInt i) <- num = show i
+  | JSInt i                    <- num = show i
+  | JSFloat f                  <- num = show f
+  | JSInteger JSBigZero        <- num = "__IDRRT__ZERO"
+  | JSInteger JSBigOne         <- num = "__IDRRT__ONE"
+  | JSInteger (JSBigInt i)     <- num = show i
+  | JSInteger (JSBigIntExpr e) <- num = "__IDRRT__bigInt(" ++ compileJS e ++ ")"
 
 compileJS (JSAssign lhs rhs) =
   compileJS lhs ++ " = " ++ compileJS rhs
@@ -348,7 +350,9 @@ translateConstant (AType ATFloat)          = JSType JSFloatTy
 translateConstant (AType (ATInt ITChar))   = JSType JSCharTy
 translateConstant PtrType                  = JSType JSPtrTy
 translateConstant Forgot                   = JSType JSForgotTy
-translateConstant (BI i)                   = jsBigInt $ JSString (show i)
+translateConstant (BI i)                   = jsBigInt (JSString $ show i)
+translateConstant (BI 0)                   = JSNum (JSInteger JSBigZero)
+translateConstant (BI 1)                   = JSNum (JSInteger JSBigOne)
 translateConstant (B8 b)                   = JSWord (JSWord8 b)
 translateConstant (B16 b)                  = JSWord (JSWord16 b)
 translateConstant (B32 b)                  = JSWord (JSWord32 b)
@@ -568,7 +572,9 @@ jsTypeOf :: JS -> JS
 jsTypeOf js = JSPreOp "typeof " js
 
 jsEq :: JS -> JS -> JS
-jsEq = JSBinOp "=="
+jsEq lhs@(JSNum (JSInteger _)) rhs = JSApp (JSProj lhs "equals") [rhs]
+jsEq lhs rhs@(JSNum (JSInteger _)) = JSApp (JSProj lhs "equals") [rhs]
+jsEq lhs rhs = JSBinOp "==" lhs rhs
 
 jsIsNumber :: JS -> JS
 jsIsNumber js = (jsTypeOf js) `jsEq` (JSString "number")
@@ -577,7 +583,7 @@ jsIsNull :: JS -> JS
 jsIsNull js = JSBinOp "==" js JSNull
 
 jsBigInt :: JS -> JS
-jsBigInt arg = JSApp (JSIdent "__IDRRT__bigInt") [arg]
+jsBigInt = JSNum . JSInteger . JSBigIntExpr
 
 jsTAG :: JS -> JS
 jsTAG js =
