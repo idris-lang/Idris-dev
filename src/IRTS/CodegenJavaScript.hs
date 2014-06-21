@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-} 
+{-# LANGUAGE PatternGuards #-}
 module IRTS.CodegenJavaScript (codegenJavaScript, codegenNode, JSTarget(..)) where
 
 import Idris.AbsSyntax hiding (TypeCase)
@@ -582,7 +582,9 @@ jsIsNull :: JS -> JS
 jsIsNull js = JSBinOp "==" js JSNull
 
 jsBigInt :: JS -> JS
-jsBigInt = JSNum . JSInteger . JSBigIntExpr
+jsBigInt (JSString "0") = JSNum (JSInteger JSBigZero)
+jsBigInt (JSString "1") = JSNum (JSInteger JSBigOne)
+jsBigInt js             = JSNum $ JSInteger $ JSBigIntExpr js
 
 jsUnPackBits :: JS -> JS
 jsUnPackBits js = JSIndex js $ JSNum (JSInt 0)
@@ -606,31 +608,31 @@ jsPackSBits16 js = JSNew "Int16Array" [JSArray [js]]
 jsPackSBits32 :: JS -> JS
 jsPackSBits32 js = JSNew "Int32Array" [JSArray [js]]
 
-jsTAG :: JS -> JS
-jsTAG js =
-  JSTernary (jsIsNumber js `jsOr` jsIsNull js) (
-    JSNum (JSInt $ negate 1)
-  ) (JSTernary (js `jsInstanceOf` "i$CON") (
-      JSProj js "tag"
-    ) (JSNum (JSInt $ negate 1)))
-
-jsCTAG :: JS -> JS
-jsCTAG js = JSProj js "tag"
-
 -- TODO unsafe
 jsCASE :: Bool -> Reg -> [(Int, [BC])] -> Maybe [BC] -> JS
 jsCASE safe reg cases def =
-  {-JSSwitch (tag safe (translateReg reg)) (-}
-  JSSwitch (JSTernary (translateReg reg `jsInstanceOf` "i$CON") (
-  JSProj (translateReg reg) "tag") (JSNum (JSInt $ negate 1))) (
+  JSSwitch (tag safe $ translateReg reg) (
     map ((JSNum . JSInt) *** prepBranch) cases
   ) (fmap prepBranch def)
     where
       tag :: Bool -> JS -> JS
       tag True  = jsCTAG
       tag False = jsTAG
+
       prepBranch :: [BC] -> JS
       prepBranch bc = JSSeq $ map translateBC bc
+
+      jsTAG :: JS -> JS
+      jsTAG js =
+        JSTernary (jsIsNumber js `jsOr` jsIsNull js) (
+          JSNum (JSInt $ negate 1)
+        ) (JSTernary (js `jsInstanceOf` "i$CON") (
+            JSProj js "tag"
+          ) (JSNum (JSInt $ negate 1)))
+
+      jsCTAG :: JS -> JS
+      jsCTAG js = JSProj js "tag"
+
 
 jsCONSTCASE :: Reg -> [(Const, [BC])] -> Maybe [BC] -> JS
 jsCONSTCASE reg cases def =

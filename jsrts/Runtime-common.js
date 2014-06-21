@@ -30,16 +30,14 @@ var i$RESERVE = function(vm,n) {
 }
 
 var __IDRRT__charCode = function(str) {
-  var type = typeof str;
-  if (type == "string")
+  if (typeof str == "string")
     return str.charCodeAt(0);
   else
     return str;
 }
 
 var __IDRRT__fromCharCode = function(chr) {
-  var type = typeof chr;
-  if (type == "string")
+  if (typeof chr == "string")
     return chr;
   else
     return String.fromCharCode(chr);
