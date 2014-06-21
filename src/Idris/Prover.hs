@@ -101,7 +101,7 @@ elabStep st e = case runStateT eCheck st of
 
 dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
-  do rendered <- iRender $ prettyName False [] nm <> colon <+> text "No more goals."
+  do rendered <- iRender $ prettyNamePossParen True False [] nm <> colon <+> text "No more goals."
      iputGoal rendered
 dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) = do
   let OK ty  = goalAtFocus ps

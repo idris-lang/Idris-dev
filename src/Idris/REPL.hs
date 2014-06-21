@@ -367,7 +367,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
   where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
-                 prettyName True []
+                 prettyNamePossParen True True []
 runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
   case splitName n of
        Left err -> iPrintError err
@@ -379,7 +379,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
   where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
-                 prettyName True []
+                 prettyNamePossParen True True []
 
 splitName :: String -> Either String Name
 splitName s = case reverse $ splitOn "." s of
@@ -928,8 +928,8 @@ process h fn (WhoCalls n) =
      ist <- getIState
      ihRenderResult h . vsep $
        map (\(n, ns) ->
-             text "Callers of" <+> prettyName True [] n <$>
-             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True []) ns)))
+             text "Callers of" <+> prettyNamePossParen True True [] n <$>
+             indent 1 (vsep (map ((text "*" <+>) . align . prettyNamePossParen True True []) ns)))
            calls
 
 process h fn (CallsWho n) =
@@ -937,8 +937,8 @@ process h fn (CallsWho n) =
      ist <- getIState
      ihRenderResult h . vsep $
        map (\(n, ns) ->
-             prettyName True [] n <+> text "calls:" <$>
-             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True []) ns)))
+             prettyNamePossParen True True [] n <+> text "calls:" <$>
+             indent 1 (vsep (map ((text "*" <+>) . align . prettyNamePossParen True True []) ns)))
            calls
 -- IdrisDoc
 process h fn (MakeDoc s) =
