@@ -37,7 +37,7 @@ showDoc d | nullDocstring d = empty
 
 pprintFD :: IState -> FunDoc -> Doc OutputAnnotation
 pprintFD ist (FD n doc args ty f)
-    = nest 4 (prettyName (ppopt_impl ppo) [] n <+> colon <+>
+    = nest 4 (prettyName True (ppopt_impl ppo) [] n <+> colon <+>
               pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
                                      , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
               renderDocstring doc <$>
@@ -79,7 +79,7 @@ pprintDocs ist (DataDoc t args)
              else nest 4 (text "Constructors:" <> line <>
                           vsep (map (pprintFD ist) args))
 pprintDocs ist (ClassDoc n doc meths params instances superclasses)
-           = nest 4 (text "Type class" <+> prettyName (ppopt_impl ppo) [] n <>
+           = nest 4 (text "Type class" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc then empty else line <> renderDocstring doc)
              <> line <$>
              nest 4 (text "Parameters:" <$> prettyParameters)
@@ -131,8 +131,8 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
     (subclasses, instances') = partition isSubclass instances
 
     prettyParameters = if any (isJust . snd) params
-                       then vsep (map (\(nm,md) -> prettyName False params' nm <+> maybe empty showDoc md) params)
-                       else hsep (punctuate comma (map (prettyName False params' . fst) params))
+                       then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty showDoc md) params)
+                       else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
 getDocs :: Name -> Idris Docs
 getDocs n

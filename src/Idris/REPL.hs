@@ -410,7 +410,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
   where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
-                 prettyName True []
+                 prettyName True True []
 runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
   case splitName n of
        Left err -> iPrintError err
@@ -422,7 +422,8 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
   where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
-                 prettyName True []
+                 prettyName True True []
+
 runIdeSlaveCommand id orig fn modes (IdeSlave.TermNormalise bnd tm) =
   do ctxt <- getContext
      ist <- getIState
@@ -456,7 +457,6 @@ ideSlaveForceTermImplicits id bnd impl tm =
                 renderPretty 0.9 80 .
                 fmap (fancifyAnnots ist) $ expl)
      runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-
 
 splitName :: String -> Either String Name
 splitName s = case reverse $ splitOn "." s of
@@ -1005,8 +1005,8 @@ process h fn (WhoCalls n) =
      ist <- getIState
      ihRenderResult h . vsep $
        map (\(n, ns) ->
-             text "Callers of" <+> prettyName True [] n <$>
-             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True []) ns)))
+             text "Callers of" <+> prettyName True True [] n <$>
+             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True True []) ns)))
            calls
 
 process h fn (CallsWho n) =
@@ -1014,8 +1014,8 @@ process h fn (CallsWho n) =
      ist <- getIState
      ihRenderResult h . vsep $
        map (\(n, ns) ->
-             prettyName True [] n <+> text "calls:" <$>
-             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True []) ns)))
+             prettyName True True [] n <+> text "calls:" <$>
+             indent 1 (vsep (map ((text "*" <+>) . align . prettyName True True []) ns)))
            calls
 -- IdrisDoc
 process h fn (MakeDoc s) =

@@ -1197,7 +1197,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd e
       | Just str <- slist p bnd e = str
       | Just n <- snat p e = annotate (AnnData "Nat" "") (text (show n))
-    prettySe p bnd (PRef fc n) = prettyName (ppopt_impl ppo) bnd n
+    prettySe p bnd (PRef fc n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe p bnd (PLam n ty sc) =
       bracket p 2 . group . align . hang 2 $
       text "\\" <> bindingOf n False <+> text "=>" <$>
@@ -1241,24 +1241,22 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PApp _ (PRef _ f) args) -- normal names, no explicit args
       | UN nm <- basename f
       , not (ppopt_impl ppo) && null (getExps args) =
-          if isAlpha (thead nm)
-              then prettyName (ppopt_impl ppo) bnd f
-              else enclose lparen rparen $ prettyName (ppopt_impl ppo) bnd f
+          prettyName True (ppopt_impl ppo) bnd f
     prettySe p bnd (PAppBind _ (PRef _ f) [])
-      | not (ppopt_impl ppo) = text "!" <> prettyName (ppopt_impl ppo) bnd f
+      | not (ppopt_impl ppo) = text "!" <> prettyName True (ppopt_impl ppo) bnd f
     prettySe p bnd (PApp _ (PRef _ op) args) -- infix operators
       | UN nm <- basename op
       , not (tnull nm) &&
         (not (ppopt_impl ppo)) && (not $ isAlpha (thead nm)) =
           case getExps args of
-            [] -> enclose lparen rparen opName
-            [x] -> group (enclose lparen rparen opName <$> group (prettySe 0 bnd x))
+            [] -> opName True
+            [x] -> group (opName True <$> group (prettySe 0 bnd x))
             [l,r] -> let precedence = fromMaybe 20 (fmap prec f)
                      in bracket p precedence $ inFix l r
             (l:r:rest) -> bracket p 1 $
                           enclose lparen rparen (inFix l r) <+>
                           align (group (vsep (map (prettyArgSe bnd) rest)))
-          where opName = prettyName (ppopt_impl ppo) bnd op
+          where opName isPrefix = prettyName isPrefix (ppopt_impl ppo) bnd op
                 f = getFixity (opStr op)
                 left l = case f of
                            Nothing -> prettySe (-1) bnd l
@@ -1269,7 +1267,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
                             Just (Infixr p') -> prettySe p' bnd r
                             Just f' -> prettySe (prec f'-1) bnd r
                 inFix l r = align . group $
-                              (left l <+> opName) <$> group (right r)
+                              (left l <+> opName False) <$> group (right r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm]) -- symbols, like 'foo
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = annotate (AnnType ("'" ++ str) ("The symbol " ++ str)) $
@@ -1436,7 +1434,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
 
 prettyDocumentedIst :: IState -> (Name, PTerm, Maybe Docstring) -> Doc OutputAnnotation
 prettyDocumentedIst ist (name, ty, docs) =
-          prettyName True [] name <+> colon <+> align (prettyIst ist ty) <$>
+          prettyName True True [] name <+> colon <+> align (prettyIst ist ty) <$>
           fromMaybe empty (fmap (\d -> renderDocstring d <> line) docs)
 
 -- | Pretty-printer helper for the binding site of a name
@@ -1446,18 +1444,28 @@ bindingOf :: Name -- ^^ the bound name
 bindingOf n imp = annotate (AnnBoundName n imp) (text (show n))
 
 -- | Pretty-printer helper for names that attaches the correct annotations
-prettyName :: Bool -- ^^ whether to show namespaces
-           -> [(Name, Bool)] -- ^^ the current bound variables and whether they are implicit
-           -> Name -- ^^ the name to pprint
-           -> Doc OutputAnnotation
-prettyName showNS bnd n | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) (text (strName n))
-                        | otherwise = annotate (AnnName n Nothing Nothing Nothing) (text (strName n))
-  where strName (UN n) = T.unpack n
-        strName (NS n ns) | showNS    = (concatMap (++ ".") . map T.unpack . reverse) ns ++ strName n
-                          | otherwise = strName n
-        strName n | n == falseTy = "_|_"
-        strName (MN i s) = T.unpack s
-        strName other = show other
+prettyName
+  :: Bool -- ^^ whether the name should be parenthasized if it is an infix operator
+  -> Bool -- ^^ whether to show namespaces
+  -> [(Name, Bool)] -- ^^ the current bound variables and whether they are implicit
+  -> Name -- ^^ the name to pprint
+  -> Doc OutputAnnotation
+prettyName infixParen showNS bnd n 
+    | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) fullName
+    | otherwise                = annotate (AnnName n Nothing Nothing Nothing) fullName
+  where fullName = text nameSpace <> parenthasize (text (baseName n))
+        baseName (UN n) = T.unpack n
+        baseName (NS n ns) = baseName n
+        baseName (MN i s) = T.unpack s
+        baseName n | n == falseTy = "_|_"
+        baseName other = show other
+        nameSpace = case n of
+          (NS n' ns) -> if showNS then (concatMap (++ ".") . map T.unpack . reverse) ns else ""
+          _ -> ""
+        isInfix = case baseName n of
+          ""      -> False
+          (c : _) -> not (isAlpha c)
+        parenthasize = if isInfix && infixParen then enclose lparen rparen else id
 
 
 showCImp :: PPOption -> PClause -> Doc OutputAnnotation
@@ -1478,7 +1486,7 @@ showCImp ppo (PWith _ n l ws r w)
 showDImp :: PPOption -> PData -> Doc OutputAnnotation
 showDImp ppo (PDatadecl n ty cons)
  = text "data" <+> text (show n) <+> colon <+> prettyImp ppo ty <+> text "where" <$>
-    (indent 2 $ vsep (map (\ (_, _, n, t, _, _) -> pipe <+> prettyName False [] n <+> colon <+> prettyImp ppo t) cons))
+    (indent 2 $ vsep (map (\ (_, _, n, t, _, _) -> pipe <+> prettyName True False [] n <+> colon <+> prettyImp ppo t) cons))
 
 showDecls :: PPOption -> [PDecl] -> Doc OutputAnnotation
 showDecls o ds = vsep (map (showDeclImp o) ds)
