@@ -9,10 +9,11 @@ var i$VM = function() {
 }
 
 /** @constructor */
-var i$CON = function(tag,args,app) {
+var i$CON = function(tag,args,app,ev) {
   this.tag = tag;
   this.args = args;
   this.app = app;
+  this.ev = ev;
 }
 
 var i$SLIDE = function(vm,args) {

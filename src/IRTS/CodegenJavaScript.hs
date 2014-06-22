@@ -33,15 +33,16 @@ data CompileInfo = CompileInfo { compileInfoApplyCases :: [Int]
 
 
 initCompileInfo :: [(Name, [BC])] -> CompileInfo
-initCompileInfo bc = CompileInfo (collectApplyCases bc) []
+initCompileInfo bc =
+  CompileInfo (collectCases "APPLY" bc) (collectCases "EVAL" bc)
   where
-    collectApplyCases :: [(Name, [BC])] -> [Int]
-    collectApplyCases bc = getCases $ findApply bc
+    collectCases :: String ->  [(Name, [BC])] -> [Int]
+    collectCases fun bc = getCases $ findFunction fun bc
 
-    findApply :: [(Name, [BC])] -> [BC]
-    findApply ((MN 0 fun, bc):_)
-      | fun == txt "APPLY" = bc
-    findApply (_:bc) = findApply bc
+    findFunction :: String -> [(Name, [BC])] -> [BC]
+    findFunction f ((MN 0 fun, bc):_)
+      | fun == txt f = bc
+    findFunction f (_:bc) = findFunction f bc
 
     getCases :: [BC] -> [Int]
     getCases = concatMap analyze
@@ -343,11 +344,32 @@ translateDecl info (name@(MN 0 fun), bc)
                translateName name
            ) (Just $ JSFunction ["vm", "oldbase"] (
                JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info) (fst body) ++ [
-                 JSCond [ ( (translateReg $ caseReg (snd body)) `jsInstanceOf` "i$CON"
+                 JSCond [ ( (translateReg $ caseReg (snd body)) `jsInstanceOf` "i$CON" `jsAnd` (JSProj (translateReg $ caseReg (snd body)) "app")
                           , JSApp (JSProj (translateReg $ caseReg (snd body)) "app") [ JSIdent "vm"
                                                                                      , JSIdent "oldbase"
                                                                                      , JSIdent "myoldbase"
                                                                                      ]
+                          )
+                          , ( JSNoop
+                            , JSSeq $ map (translateBC info) (defaultCase (snd body))
+                            )
+                        ]
+               ]
+             )
+           )
+         ]
+
+  | txt "EVAL" == fun =
+         allocCaseFunctions (snd body)
+      ++ [ JSAlloc (
+               translateName name
+           ) (Just $ JSFunction ["vm", "oldbase"] (
+               JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info) (fst body) ++ [
+                 JSCond [ ( (translateReg $ caseReg (snd body)) `jsInstanceOf` "i$CON" `jsAnd` (JSProj (translateReg $ caseReg (snd body)) "ev")
+                          , JSApp (JSProj (translateReg $ caseReg (snd body)) "ev") [ JSIdent "vm"
+                                                                                    , JSIdent "oldbase"
+                                                                                    , JSIdent "myoldbase"
+                                                                                    ]
                           )
                           , ( JSNoop
                             , JSSeq $ map (translateBC info) (defaultCase (snd body))
@@ -568,6 +590,9 @@ jsMKCON info r t rs =
                   , if t `elem` compileInfoApplyCases info
                        then JSIdent $ translateName (sMN 0 "APPLY") ++ "$" ++ show t
                        else JSNull
+                  , if t `elem` compileInfoEvalCases info
+                       then JSIdent $ translateName (sMN 0 "EVAL") ++ "$" ++ show t
+                       else JSNull
                   ]
   )
 
@@ -638,11 +663,9 @@ jsCASE info safe reg cases def =
 
       jsTAG :: JS -> JS
       jsTAG js =
-        JSTernary (jsIsNumber js `jsOr` jsIsNull js) (
-          JSNum (JSInt $ negate 1)
-        ) (JSTernary (js `jsInstanceOf` "i$CON") (
-            JSProj js "tag"
-          ) (JSNum (JSInt $ negate 1)))
+        (JSTernary (js `jsInstanceOf` "i$CON") (
+          JSProj js "tag"
+        ) (JSNum (JSInt $ negate 1)))
 
       jsCTAG :: JS -> JS
       jsCTAG js = JSProj js "tag"
