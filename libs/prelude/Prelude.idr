@@ -596,6 +596,10 @@ feof : File -> IO Bool
 feof (FHandle h) = do eof <- do_feof h
                       return (not (eof == 0))
 
+isEOF : IO Bool
+isEOF = do eof <- do_feof prim__stdin
+           return (not (eof == 0))
+
 partial
 do_ferror : Ptr -> IO Int
 do_ferror h = mkForeign (FFun "fileError" [FPtr] FInt) h
