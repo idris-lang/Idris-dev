@@ -27,6 +27,29 @@ idrRTNamespace  = "__IDRRT__"
 idrLTNamespace  = "__IDRLT__"
 idrCTRNamespace = "__IDRCTR__"
 
+data CompileInfo = CompileInfo { compileInfoApplyCases :: [Int]
+                               , compileInfoEvalCases  :: [Int]
+                               }
+
+
+initCompileInfo :: [(Name, [BC])] -> CompileInfo
+initCompileInfo bc = CompileInfo (collectApplyCases bc) []
+  where
+    collectApplyCases :: [(Name, [BC])] -> [Int]
+    collectApplyCases bc = getCases $ findApply bc
+
+    findApply :: [(Name, [BC])] -> [BC]
+    findApply ((MN 0 fun, bc):_)
+      | fun == txt "APPLY" = bc
+    findApply (_:bc) = findApply bc
+
+    getCases :: [BC] -> [Int]
+    getCases = concatMap analyze
+      where
+        analyze :: BC -> [Int]
+        analyze (CASE _ _ b _) = map fst b
+        analyze _              = []
+
 
 data JSTarget = Node | JavaScript deriving Eq
 
@@ -82,6 +105,7 @@ data JS = JSRaw String
         | JSPostOp String JS
         | JSProj JS String
         | JSNull
+        | JSUndefined
         | JSThis
         | JSTrue
         | JSFalse
@@ -172,6 +196,9 @@ compileJS (JSProj obj field)
 
 compileJS JSNull =
   "null"
+
+compileJS JSUndefined =
+  "undefined"
 
 compileJS JSThis =
   "this"
@@ -273,7 +300,9 @@ codegenJS_all
   -> OutputType
   -> IO ()
 codegenJS_all target definitions includes filename outputType = do
-  let code = map (compileJS . translateDecl . toBC) definitions
+  let bytecode = map toBC definitions
+  let info = initCompileInfo bytecode
+  let code = concat $ map ((concatMap compileJS) . (translateDecl info)) bytecode
   let (header, rt) = case target of
                                Node ->
                                  ("#!/usr/bin/env node\n", "-node")
@@ -284,7 +313,7 @@ codegenJS_all target definitions includes filename outputType = do
   tgtRuntime <- readFile $ concat [path, "Runtime", rt, ".js"]
   jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
   let runtime = header ++ jsbn ++ idrRuntime ++ tgtRuntime
-  writeFile filename $ runtime ++ concat code ++ main ++ invokeMain
+  writeFile filename $ runtime ++ code ++ main ++ invokeMain
   setPermissions filename (emptyPermissions { readable   = True
                                              , executable = target == Node
                                              , writable   = True
@@ -306,13 +335,68 @@ codegenJS_all target definitions includes filename outputType = do
       invokeMain = compileJS $ JSApp (JSIdent "main") []
 
 
-translateDecl :: (Name, [BC]) -> JS
-translateDecl (name, bc) =
-  JSAlloc (
-    translateName name
-  ) (Just $ JSFunction ["vm", "oldbase"] (
-      JSSeq $ JSAlloc "myoldbase" Nothing : map translateBC bc)
-    )
+translateDecl :: CompileInfo -> (Name, [BC]) -> [JS]
+translateDecl info (name@(MN 0 fun), bc)
+  | txt "APPLY" == fun =
+         allocCaseFunctions (snd body)
+      ++ [ JSAlloc (
+               translateName name
+           ) (Just $ JSFunction ["vm", "oldbase"] (
+               JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info) (fst body) ++ [
+                 JSCond [ ( (translateReg $ caseReg (snd body)) `jsInstanceOf` "i$CON"
+                          , JSApp (JSProj (translateReg $ caseReg (snd body)) "app") [ JSIdent "vm"
+                                                                                     , JSIdent "oldbase"
+                                                                                     , JSIdent "myoldbase"
+                                                                                     ]
+                          )
+                          , ( JSNoop
+                            , JSSeq $ map (translateBC info) (defaultCase (snd body))
+                            )
+                        ]
+               ]
+             )
+           )
+         ]
+  where
+    body :: ([BC], [BC])
+    body = break isCase bc
+
+    isCase :: BC -> Bool
+    isCase bc
+      | CASE _ _ _ _ <- bc = True
+      | otherwise          = False
+
+    defaultCase :: [BC] -> [BC]
+    defaultCase ((CASE _ _ _ (Just d)):_) = d
+
+    caseReg :: [BC] -> Reg
+    caseReg ((CASE _ r _ _):_) = r
+
+    allocCaseFunctions :: [BC] -> [JS]
+    allocCaseFunctions ((CASE _ _ c _):_) = splitBranches c
+    allocCaseFunctions _                  = []
+
+    splitBranches :: [(Int, [BC])] -> [JS]
+    splitBranches = map prepBranch
+
+    prepBranch :: (Int, [BC]) -> JS
+    prepBranch (tag, code) =
+      JSAlloc (
+        translateName name ++ "$" ++ show tag
+      ) (Just $ JSFunction ["vm", "oldbase", "myoldbase"] (
+          JSSeq $ map (translateBC info) code
+        )
+      )
+
+translateDecl info (name, bc) =
+  [ JSAlloc (
+       translateName name
+     ) (Just $ JSFunction ["vm", "oldbase"] (
+         JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info)bc
+       )
+     )
+  ]
+
 
 translateReg :: Reg -> JS
 translateReg reg
@@ -359,7 +443,7 @@ translateConstant (B16 b)                  = JSWord (JSWord16 b)
 translateConstant (B32 b)                  = JSWord (JSWord32 b)
 translateConstant (B64 b)                  = JSWord (JSWord64 b)
 translateConstant c =
-  jsERROR $ "Unimplemented Constant: " ++ show c
+  JSError $ "Unimplemented Constant: " ++ show c
 
 
 translateChar :: Char -> String
@@ -395,50 +479,50 @@ translateName n = "_idris_" ++ concatMap cchar (showCG n)
   where cchar x | isAlpha x || isDigit x = [x]
                 | otherwise = "_" ++ show (fromEnum x) ++ "_"
 
-jsASSIGN :: Reg -> Reg -> JS
-jsASSIGN r1 r2 = JSAssign (translateReg r1) (translateReg r2)
+jsASSIGN :: CompileInfo -> Reg -> Reg -> JS
+jsASSIGN _ r1 r2 = JSAssign (translateReg r1) (translateReg r2)
 
-jsASSIGNCONST :: Reg -> Const -> JS
-jsASSIGNCONST r c = JSAssign (translateReg r) (translateConstant c)
+jsASSIGNCONST :: CompileInfo -> Reg -> Const -> JS
+jsASSIGNCONST _ r c = JSAssign (translateReg r) (translateConstant c)
 
-jsCALL :: Name -> JS
-jsCALL n = JSApp (JSIdent (translateName n)) [JSIdent "vm", JSIdent "myoldbase"]
+jsCALL :: CompileInfo -> Name -> JS
+jsCALL _ n = JSApp (JSIdent (translateName n)) [JSIdent "vm", JSIdent "myoldbase"]
 
-jsTAILCALL :: Name -> JS
-jsTAILCALL n = JSApp (JSIdent (translateName n)) [JSIdent "vm", JSIdent "oldbase"]
+jsTAILCALL :: CompileInfo -> Name -> JS
+jsTAILCALL _ n = JSApp (JSIdent (translateName n)) [JSIdent "vm", JSIdent "oldbase"]
 
-jsFOREIGN :: Reg -> String -> [(FType, Reg)] -> JS
-jsFOREIGN reg n args =
+jsFOREIGN :: CompileInfo -> Reg -> String -> [(FType, Reg)] -> JS
+jsFOREIGN _ reg n args =
   JSAssign (
     translateReg reg
   ) (
     JSApp (JSIdent n) (map (translateReg . snd) args)
   )
 
-jsREBASE :: JS
-jsREBASE =
+jsREBASE :: CompileInfo -> JS
+jsREBASE _ =
   JSAssign (
     JSProj (JSIdent "vm") "valstack_base"
   ) (
     JSIdent "oldbase"
   )
 
-jsSTOREOLD :: JS
-jsSTOREOLD =
+jsSTOREOLD :: CompileInfo ->JS
+jsSTOREOLD _ =
   JSAssign (
     JSIdent "myoldbase"
   ) (
     JSProj (JSIdent "vm") "valstack_base"
   )
 
-jsADDTOP :: Int -> JS
-jsADDTOP n
+jsADDTOP :: CompileInfo -> Int -> JS
+jsADDTOP info n
   | 0 <- n    = JSNoop
   | otherwise =
       JSBinOp "+=" (JSProj (JSIdent "vm") "valstack_top") (JSNum (JSInt n))
 
-jsTOPBASE :: Int -> JS
-jsTOPBASE n
+jsTOPBASE :: CompileInfo -> Int -> JS
+jsTOPBASE info n
   | 0 <- n =
       JSAssign (
         JSProj (JSIdent "vm") "valstack_top"
@@ -452,8 +536,8 @@ jsTOPBASE n
         JSBinOp "+" (JSProj (JSIdent "vm") "valstack_base") (JSNum (JSInt n))
       )
 
-jsBASETOP :: Int -> JS
-jsBASETOP n
+jsBASETOP :: CompileInfo -> Int -> JS
+jsBASETOP info n
   | 0 <- n =
       JSAssign (
         JSProj (JSIdent "vm") "valstack_base"
@@ -467,19 +551,24 @@ jsBASETOP n
         JSBinOp "+" (JSProj (JSIdent "vm") "valstack_top") (JSNum (JSInt n))
       )
 
-jsNULL :: Reg -> JS
-jsNULL r = JSAssign (translateReg r) JSNull
+jsNULL :: CompileInfo -> Reg -> JS
+jsNULL _ r = JSAssign (translateReg r) JSNull
 
-jsERROR :: String -> JS
-jsERROR = JSError
+jsERROR :: CompileInfo -> String -> JS
+jsERROR _ = JSError
 
-jsSLIDE :: Int -> JS
-jsSLIDE n = JSApp (JSIdent "i$SLIDE") [JSIdent "vm", JSNum (JSInt n)]
+jsSLIDE :: CompileInfo -> Int -> JS
+jsSLIDE _ n = JSApp (JSIdent "i$SLIDE") [JSIdent "vm", JSNum (JSInt n)]
 
-jsMKCON :: Reg -> Int -> [Reg] -> JS
-jsMKCON r t rs =
+jsMKCON :: CompileInfo -> Reg -> Int -> [Reg] -> JS
+jsMKCON info r t rs =
   JSAssign (translateReg r) (
-    JSNew "i$CON" [JSNum (JSInt t), JSArray (map translateReg rs)]
+    JSNew "i$CON" [ JSNum (JSInt t)
+                  , JSArray (map translateReg rs)
+                  , if t `elem` compileInfoApplyCases info
+                       then JSIdent $ translateName (sMN 0 "APPLY") ++ "$" ++ show t
+                       else JSNull
+                  ]
   )
 
 jsInstanceOf :: JS -> String -> JS
@@ -488,6 +577,9 @@ jsInstanceOf obj cls = JSBinOp "instanceof" obj (JSIdent cls)
 jsOr :: JS -> JS -> JS
 jsOr lhs rhs = JSBinOp "||" lhs rhs
 
+jsAnd :: JS -> JS -> JS
+jsAnd lhs rhs = JSBinOp "&&" lhs rhs
+
 jsTypeOf :: JS -> JS
 jsTypeOf js = JSPreOp "typeof " js
 
@@ -495,6 +587,9 @@ jsEq :: JS -> JS -> JS
 jsEq lhs@(JSNum (JSInteger _)) rhs = JSApp (JSProj lhs "equals") [rhs]
 jsEq lhs rhs@(JSNum (JSInteger _)) = JSApp (JSProj lhs "equals") [rhs]
 jsEq lhs rhs = JSBinOp "==" lhs rhs
+
+jsNotEq :: JS -> JS -> JS
+jsNotEq lhs rhs = JSBinOp "!=" lhs rhs
 
 jsIsNumber :: JS -> JS
 jsIsNumber js = (jsTypeOf js) `jsEq` (JSString "number")
@@ -528,8 +623,8 @@ jsPackSBits16 js = JSNew "Int16Array" [JSArray [js]]
 jsPackSBits32 :: JS -> JS
 jsPackSBits32 js = JSNew "Int32Array" [JSArray [js]]
 
-jsCASE :: Bool -> Reg -> [(Int, [BC])] -> Maybe [BC] -> JS
-jsCASE safe reg cases def =
+jsCASE :: CompileInfo -> Bool -> Reg -> [(Int, [BC])] -> Maybe [BC] -> JS
+jsCASE info safe reg cases def =
   JSSwitch (tag safe $ translateReg reg) (
     map ((JSNum . JSInt) *** prepBranch) cases
   ) (fmap prepBranch def)
@@ -539,7 +634,7 @@ jsCASE safe reg cases def =
       tag False = jsTAG
 
       prepBranch :: [BC] -> JS
-      prepBranch bc = JSSeq $ map translateBC bc
+      prepBranch bc = JSSeq $ map (translateBC info) bc
 
       jsTAG :: JS -> JS
       jsTAG js =
@@ -553,25 +648,25 @@ jsCASE safe reg cases def =
       jsCTAG js = JSProj js "tag"
 
 
-jsCONSTCASE :: Reg -> [(Const, [BC])] -> Maybe [BC] -> JS
-jsCONSTCASE reg cases def =
+jsCONSTCASE :: CompileInfo -> Reg -> [(Const, [BC])] -> Maybe [BC] -> JS
+jsCONSTCASE info reg cases def =
   JSCond $ (
     map (jsEq (translateReg reg) . translateConstant *** prepBranch) cases
   ) ++ (maybe [] ((:[]) . ((,) JSNoop) . prepBranch) def)
     where
       prepBranch :: [BC] -> JS
-      prepBranch bc = JSSeq $ map translateBC bc
+      prepBranch bc = JSSeq $ map (translateBC info) bc
 
-jsPROJECT :: Reg -> Int -> Int -> JS
-jsPROJECT reg loc ar =
+jsPROJECT :: CompileInfo -> Reg -> Int -> Int -> JS
+jsPROJECT _ reg loc ar =
   JSApp (JSIdent "i$PROJECT") [ JSIdent "vm"
                               , translateReg reg
                               , JSNum (JSInt loc)
                               , JSNum (JSInt ar)
                               ]
 
-jsOP :: Reg -> PrimFn -> [Reg] -> JS
-jsOP reg op args = JSAssign (translateReg reg) jsOP'
+jsOP :: CompileInfo -> Reg -> PrimFn -> [Reg] -> JS
+jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
   where
     jsOP' :: JS
     jsOP'
@@ -1177,31 +1272,31 @@ jsOP reg op args = JSAssign (translateReg reg) jsOP'
           jsCall :: String -> [JS] -> JS
           jsCall fun args = JSApp (JSIdent fun) args
 
-jsRESERVE :: Int -> JS
-jsRESERVE n = JSApp (JSIdent "i$RESERVE") [JSIdent "vm", JSNum $ JSInt n]
+jsRESERVE :: CompileInfo -> Int -> JS
+jsRESERVE _ _ = JSNoop
 
-translateBC :: BC -> JS
-translateBC bc
-  | ASSIGN r1 r2          <- bc = jsASSIGN r1 r2
-  | ASSIGNCONST r c       <- bc = jsASSIGNCONST r c
-  | UPDATE r1 r2          <- bc = jsASSIGN r1 r2
-  | ADDTOP n              <- bc = jsADDTOP n
-  | NULL r                <- bc = jsNULL r
-  | CALL n                <- bc = jsCALL n
-  | TAILCALL n            <- bc = jsTAILCALL n
-  | FOREIGNCALL r _ _ n a <- bc = jsFOREIGN r n a
-  | TOPBASE n             <- bc = jsTOPBASE n
-  | BASETOP n             <- bc = jsBASETOP n
-  | STOREOLD              <- bc = jsSTOREOLD
-  | SLIDE n               <- bc = jsSLIDE n
-  | REBASE                <- bc = jsREBASE
-  | RESERVE n             <- bc = jsRESERVE n
-  | MKCON r t rs          <- bc = jsMKCON r t rs
-  | CASE s r c d          <- bc = jsCASE s r c d
-  | CONSTCASE r c d       <- bc = jsCONSTCASE r c d
-  | PROJECT r l a         <- bc = jsPROJECT r l a
-  | OP r o a              <- bc = jsOP r o a
-  | ERROR e               <- bc = jsERROR e
+translateBC :: CompileInfo -> BC -> JS
+translateBC info bc
+  | ASSIGN r1 r2          <- bc = jsASSIGN info r1 r2
+  | ASSIGNCONST r c       <- bc = jsASSIGNCONST info r c
+  | UPDATE r1 r2          <- bc = jsASSIGN info r1 r2
+  | ADDTOP n              <- bc = jsADDTOP info n
+  | NULL r                <- bc = jsNULL info r
+  | CALL n                <- bc = jsCALL info n
+  | TAILCALL n            <- bc = jsTAILCALL info n
+  | FOREIGNCALL r _ _ n a <- bc = jsFOREIGN info r n a
+  | TOPBASE n             <- bc = jsTOPBASE info n
+  | BASETOP n             <- bc = jsBASETOP info n
+  | STOREOLD              <- bc = jsSTOREOLD info
+  | SLIDE n               <- bc = jsSLIDE info n
+  | REBASE                <- bc = jsREBASE info
+  | RESERVE n             <- bc = jsRESERVE info n
+  | MKCON r t rs          <- bc = jsMKCON info r t rs
+  | CASE s r c d          <- bc = jsCASE info s r c d
+  | CONSTCASE r c d       <- bc = jsCONSTCASE info r c d
+  | PROJECT r l a         <- bc = jsPROJECT info r l a
+  | OP r o a              <- bc = jsOP info r o a
+  | ERROR e               <- bc = jsERROR info e
   | otherwise                   = JSRaw $ show bc
   {-| PROJECTINTO _ _ _     <- bc = undefined-}
 
