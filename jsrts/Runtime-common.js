@@ -26,6 +26,10 @@ var i$PROJECT = function(vm,val,loc,arity) {
     vm.valstack[vm.valstack_base + i + loc] = val.args[i];
 }
 
+var i$CALL = function(vm,fun,args) {
+  fun.apply(this,args);
+}
+
 var __IDRRT__charCode = function(str) {
   if (typeof str == "string")
     return str.charCodeAt(0);

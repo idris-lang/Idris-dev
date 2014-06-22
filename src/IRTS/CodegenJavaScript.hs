@@ -12,6 +12,7 @@ import Util.System
 
 import Control.Arrow
 import Control.Applicative ((<$>), (<*>), pure)
+import Control.Monad.RWS
 import Data.Char
 import Numeric
 import Data.List
@@ -303,7 +304,8 @@ codegenJS_all
 codegenJS_all target definitions includes filename outputType = do
   let bytecode = map toBC definitions
   let info = initCompileInfo bytecode
-  let code = concat $ map ((concatMap compileJS) . (translateDecl info)) bytecode
+  let js = concatMap (translateDecl info) bytecode
+  let code = concatMap ((map compileJS) . collectSplitFunctions . (\x -> evalRWS (splitFunction x) () 0)) js
   let (header, rt) = case target of
                                Node ->
                                  ("#!/usr/bin/env node\n", "-node")
@@ -314,7 +316,7 @@ codegenJS_all target definitions includes filename outputType = do
   tgtRuntime <- readFile $ concat [path, "Runtime", rt, ".js"]
   jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
   let runtime = header ++ jsbn ++ idrRuntime ++ tgtRuntime
-  writeFile filename $ runtime ++ code ++ main ++ invokeMain
+  writeFile filename $ runtime ++ concat code ++ main ++ invokeMain
   setPermissions filename (emptyPermissions { readable   = True
                                              , executable = target == Node
                                              , writable   = True
@@ -326,14 +328,58 @@ codegenJS_all target definitions includes filename outputType = do
           JSSeq [ JSAlloc "vm" (Just $ JSNew "i$VM" [])
                 , JSApp (
                     JSIdent (translateName (sMN 0 "runMain"))
-                   ) [ JSIdent "vm"
-                     , JSNum (JSInt 0)
-                     ]
+                  ) [ JSIdent "vm"
+                    , JSNum (JSInt 0)
+                    ]
                 ]
         )
 
       invokeMain :: String
       invokeMain = compileJS $ JSApp (JSIdent "main") []
+
+collectSplitFunctions :: (JS, [(Int,JS)]) -> [JS]
+collectSplitFunctions (fun, splits) = map generateSplitFunction splits ++ [fun]
+  where
+    generateSplitFunction :: (Int,JS) -> JS
+    generateSplitFunction (depth, JSAlloc name fun) =
+      JSAlloc (name ++ "$" ++ show depth) fun
+
+splitFunction :: JS -> RWS () [(Int,JS)] Int JS
+splitFunction (JSAlloc name (Just (JSFunction args body))) = do
+  b <- splitSequence body
+  return $ JSAlloc name (Just (JSFunction args b))
+    where 
+      splitSequence :: JS -> RWS () [(Int, JS)] Int JS
+      splitSequence js@(JSSeq seq) = do
+        let (pre,post) = break isCall seq in
+            case post of
+                 []  -> return js
+                 [_] -> return js
+                 (call:rest) -> do
+                   depth <- get
+                   put (depth + 1)
+                   new <- splitFunction (newFun rest)
+                   tell [(depth, new)]
+                   {-return $ JSSeq (pre ++ [newCall depth, call])-}
+                   return $ JSSeq (pre ++ [call, newCall depth])
+
+      isCall :: JS -> Bool
+      isCall (JSApp (JSIdent "i$CALL") _) = True
+      isCall _                            = False
+
+      newCall :: Int -> JS
+      newCall depth =
+        JSApp (JSIdent "i$CALL") [ JSIdent "vm"
+                                 , JSIdent $ name ++ "$" ++ show depth
+                                 , JSArray [JSIdent "vm"
+                                           , JSIdent "oldbase"
+                                           , JSIdent "myoldbase"
+                                           ]
+                                 ]
+
+      newFun :: [JS] -> JS
+      newFun seq =
+        JSAlloc name (Just $ JSFunction ["vm", "oldbase", "myoldbase"] (JSSeq seq))
 
 
 translateDecl :: CompileInfo -> (Name, [BC]) -> [JS]
@@ -457,9 +503,9 @@ translateConstant (AType ATFloat)          = JSType JSFloatTy
 translateConstant (AType (ATInt ITChar))   = JSType JSCharTy
 translateConstant PtrType                  = JSType JSPtrTy
 translateConstant Forgot                   = JSType JSForgotTy
-translateConstant (BI i)                   = jsBigInt (JSString $ show i)
 translateConstant (BI 0)                   = JSNum (JSInteger JSBigZero)
 translateConstant (BI 1)                   = JSNum (JSInteger JSBigOne)
+translateConstant (BI i)                   = jsBigInt (JSString $ show i)
 translateConstant (B8 b)                   = JSWord (JSWord8 b)
 translateConstant (B16 b)                  = JSWord (JSWord16 b)
 translateConstant (B32 b)                  = JSWord (JSWord32 b)
@@ -508,10 +554,22 @@ jsASSIGNCONST :: CompileInfo -> Reg -> Const -> JS
 jsASSIGNCONST _ r c = JSAssign (translateReg r) (translateConstant c)
 
 jsCALL :: CompileInfo -> Name -> JS
-jsCALL _ n = JSApp (JSIdent (translateName n)) [JSIdent "vm", JSIdent "myoldbase"]
+jsCALL _ n =
+  JSApp (
+    JSIdent "i$CALL"
+  ) [ JSIdent "vm", JSIdent (translateName n), JSArray [ JSIdent "vm"
+                                                       , JSIdent "myoldbase"
+                                                       ]
+    ]
 
 jsTAILCALL :: CompileInfo -> Name -> JS
-jsTAILCALL _ n = JSApp (JSIdent (translateName n)) [JSIdent "vm", JSIdent "oldbase"]
+jsTAILCALL _ n =
+  JSApp (
+    JSIdent "i$CALL"
+  ) [ JSIdent "vm", JSIdent (translateName n), JSArray [ JSIdent "vm"
+                                                       , JSIdent "oldbase"
+                                                       ]
+    ]
 
 jsFOREIGN :: CompileInfo -> Reg -> String -> [(FType, Reg)] -> JS
 jsFOREIGN _ reg n args =
