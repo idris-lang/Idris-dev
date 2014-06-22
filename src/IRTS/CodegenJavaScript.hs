@@ -294,9 +294,11 @@ codegenJS_all target definitions includes filename outputType = do
       main = compileJS $
         JSAlloc "main" $ Just $ JSFunction [] (
           JSSeq [ JSAlloc "vm" (Just $ JSNew "i$VM" [])
-                , JSApp (JSIdent "mrunMain0") [ JSIdent "vm"
-                                              , JSNum (JSInt 0)
-                                              ]
+                , JSApp (
+                    JSIdent (translateName (sMN 0 "runMain"))
+                   ) [ JSIdent "vm"
+                     , JSNum (JSInt 0)
+                     ]
                 ]
         )
 
@@ -387,92 +389,11 @@ translateChar ch
        '\BS',  '\HT',  '\LF',  '\VT',  '\FF',  '\CR',  '\SO',  '\SI',
        '\DLE', '\DC1', '\DC2', '\DC3', '\DC4', '\NAK', '\SYN', '\ETB',
        '\CAN', '\EM',  '\SUB', '\ESC', '\FS',  '\GS',  '\RS',  '\US']
-translateIdentifier :: String -> String
-translateIdentifier =
-  replaceReserved . concatMap replaceBadChars
-  where replaceBadChars :: Char -> String
-        replaceBadChars c
-          | ' ' <- c  = "_"
-          | '_' <- c  = "__"
-          | isDigit c = '_' : show (ord c)
-          | not (isLetter c && isAscii c) = '_' : show (ord c)
-          | otherwise = [c]
-        replaceReserved s
-          | s `elem` reserved = '_' : s
-          | otherwise         = s
-
-
-        reserved = [ "break"
-                   , "case"
-                   , "catch"
-                   , "continue"
-                   , "debugger"
-                   , "default"
-                   , "delete"
-                   , "do"
-                   , "else"
-                   , "finally"
-                   , "for"
-                   , "function"
-                   , "if"
-                   , "in"
-                   , "instanceof"
-                   , "new"
-                   , "return"
-                   , "switch"
-                   , "this"
-                   , "throw"
-                   , "try"
-                   , "typeof"
-                   , "var"
-                   , "void"
-                   , "while"
-                   , "with"
-
-                   , "class"
-                   , "enum"
-                   , "export"
-                   , "extends"
-                   , "import"
-                   , "super"
-
-                   , "implements"
-                   , "interface"
-                   , "let"
-                   , "package"
-                   , "private"
-                   , "protected"
-                   , "public"
-                   , "static"
-                   , "yield"
-                   ]
-
-translateNamespace :: Name -> String
-translateNamespace (UN _)    = idrNamespace
-translateNamespace (NS _ ns) = idrNamespace ++ concatMap (translateIdentifier . str) ns
-translateNamespace (MN _ _)  = idrNamespace
-translateNamespace (SN name) = idrNamespace ++ translateSpecialName name
-translateNamespace NErased   = idrNamespace
 
 translateName :: Name -> String
-translateName (UN name)   = 'u' : translateIdentifier (str name)
-translateName (NS name _) = 'n' : translateName name
-translateName (MN i name) = 'm' : translateIdentifier (str name) ++ show i
-translateName (SN name)   = 's' : translateSpecialName name
-translateName NErased     = "e"
-
-translateSpecialName :: SpecialName -> String
-translateSpecialName name
-  | WhereN i m n  <- name =
-    'w' : translateName m ++ translateName n ++ show i
-  | InstanceN n s <- name =
-    'i' : translateName n ++ concatMap (translateIdentifier . str) s
-  | ParentN n s   <- name =
-    'p' : translateName n ++ translateIdentifier (str s)
-  | MethodN n     <- name =
-    'm' : translateName n
-  | CaseN n       <- name =
-    'c' : translateName n
+translateName n = "_idris_" ++ concatMap cchar (showCG n)
+  where cchar x | isAlpha x || isDigit x = [x]
+                | otherwise = "_" ++ show (fromEnum x) ++ "_"
 
 jsASSIGN :: Reg -> Reg -> JS
 jsASSIGN r1 r2 = JSAssign (translateReg r1) (translateReg r2)
@@ -589,7 +510,6 @@ jsBigInt js             = JSNum $ JSInteger $ JSBigIntExpr js
 jsUnPackBits :: JS -> JS
 jsUnPackBits js = JSIndex js $ JSNum (JSInt 0)
 
-
 jsPackUBits8 :: JS -> JS
 jsPackUBits8 js = JSNew "Uint8Array" [JSArray [js]]
 
@@ -608,7 +528,6 @@ jsPackSBits16 js = JSNew "Int16Array" [JSArray [js]]
 jsPackSBits32 :: JS -> JS
 jsPackSBits32 js = JSNew "Int32Array" [JSArray [js]]
 
--- TODO unsafe
 jsCASE :: Bool -> Reg -> [(Int, [BC])] -> Maybe [BC] -> JS
 jsCASE safe reg cases def =
   JSSwitch (tag safe $ translateReg reg) (
