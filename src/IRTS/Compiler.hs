@@ -47,8 +47,6 @@ import System.Directory
 import System.Environment
 import System.FilePath ((</>), addTrailingPathSeparator)
 
-import Paths_idris
-
 compile :: Codegen -> FilePath -> Term -> Idris ()
 compile codegen f tm
    = do checkMVs  -- check for undefined metavariables

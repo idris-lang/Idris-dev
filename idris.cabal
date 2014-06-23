@@ -511,6 +511,11 @@ Flag release
   Default:      False
   manual:       True
 
+Flag freestanding
+  Description:  Build an Idris that doesn't use cabal
+  Default:      False
+  manual:       True
+
 Library
   hs-source-dirs: src
   Exposed-modules:
@@ -683,6 +688,9 @@ Library
   if flag(curses)
      build-depends: hscurses
      cpp-options:   -DCURSES
+  if flag(freestanding)
+     other-modules: Target_idris
+     cpp-options:   -DFREESTANDING
 
 Executable idris
   Main-is:        Main.hs

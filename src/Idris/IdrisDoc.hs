@@ -14,7 +14,7 @@ import Idris.AbsSyntax
 import Idris.Docs
 import Idris.Docstrings (nullDocstring)
 
-import Paths_idris (getDataFileName)
+import IRTS.System (getDataFileName)
 
 import Control.Monad (forM_)
 import Control.Monad.Trans.Error

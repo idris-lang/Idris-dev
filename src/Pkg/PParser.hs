@@ -10,8 +10,6 @@ import Idris.AbsSyntaxTree
 import Idris.ParseHelpers
 import Idris.CmdOptions
 
-import Paths_idris
-
 import Control.Monad.State.Strict
 import Control.Applicative
 

@@ -4,7 +4,6 @@ import Idris.AbsSyntax
 import Idris.Error
 
 import Idris.Core.TT
-import Paths_idris
 
 import System.FilePath
 import System.Directory

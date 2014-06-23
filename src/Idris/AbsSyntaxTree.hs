@@ -15,8 +15,6 @@ import Util.DynamicLinker
 
 import Idris.Colours
 
-import Paths_idris
-
 import System.Console.Haskeline
 import System.IO
 

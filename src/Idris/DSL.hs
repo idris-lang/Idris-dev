@@ -3,7 +3,6 @@
 module Idris.DSL where
 
 import Idris.AbsSyntax
-import Paths_idris
 
 import Idris.Core.TT
 import Idris.Core.Evaluate
