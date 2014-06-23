@@ -241,6 +241,10 @@ compileJS' indent (JSIndex lhs rhs) =
 compileJS' indent (JSCond branches) =
   intercalate " else " $ map createIfBlock branches
   where
+    createIfBlock (JSNoop, e@(JSSeq _)) =
+         "{\n"
+      ++ compileJS' (indent + 2) e
+      ++ "\n" ++ replicate indent ' ' ++ "}"
     createIfBlock (JSNoop, e) =
          "{\n"
       ++ compileJS' (indent + 2) e
@@ -248,7 +252,7 @@ compileJS' indent (JSCond branches) =
     createIfBlock (cond, e@(JSSeq _)) =
          "if (" ++ compileJS' indent cond ++") {\n"
       ++ compileJS' (indent + 2) e
-      ++ ";\n" ++ replicate indent ' ' ++ "}"
+      ++ "\n" ++ replicate indent ' ' ++ "}"
     createIfBlock (cond, e) =
          "if (" ++ compileJS' indent cond ++") {\n"
       ++ replicate (indent + 2) ' ' ++ compileJS' (indent + 2) e
