@@ -133,28 +133,31 @@ data JS = JSRaw String
 data FFI = FFICode Char | FFIArg Int | FFIError String
 
 compileJS :: JS -> String
-compileJS JSNoop = ""
+compileJS = compileJS' 0
 
-compileJS (JSAnnotation annotation js) =
-  "/** @" ++ show annotation ++ " */\n" ++ compileJS js
+compileJS' :: Int -> JS -> String
+compileJS' indent JSNoop = ""
 
-{-compileJS (JSFFI raw args) =-}
-  {-ffi raw (map compileJS args)-}
+compileJS' indent (JSAnnotation annotation js) =
+  "/** @" ++ show annotation ++ " */\n" ++ compileJS' indent js
 
-compileJS (JSRaw code) =
+{-compileJS' indent (JSFFI raw args) =-}
+  {-ffi raw (map compileJS' indent args)-}
+
+compileJS' indent (JSRaw code) =
   code
 
-compileJS (JSIdent ident) =
+compileJS' indent (JSIdent ident) =
   ident
 
-compileJS (JSFunction args body) =
-     "function("
+compileJS' indent (JSFunction args body) =
+      replicate indent ' ' ++ "function("
    ++ intercalate "," args
    ++ "){\n"
-   ++ compileJS body
+   ++ compileJS' (indent + 2) body
    ++ "\n}\n"
 
-compileJS (JSType ty)
+compileJS' indent (JSType ty)
   | JSIntTy     <- ty = idrRTNamespace ++ "Int"
   | JSStringTy  <- ty = idrRTNamespace ++ "String"
   | JSIntegerTy <- ty = idrRTNamespace ++ "Integer"
@@ -163,125 +166,129 @@ compileJS (JSType ty)
   | JSPtrTy     <- ty = idrRTNamespace ++ "Ptr"
   | JSForgotTy  <- ty = idrRTNamespace ++ "Forgot"
 
-compileJS (JSSeq seq) =
-  intercalate ";\n" (map compileJS $ filter (/= JSNoop) seq) ++ ";"
+compileJS' indent (JSSeq seq) =
+  intercalate ";\n" (map (((replicate indent ' ') ++) . (compileJS' indent)) $ filter (/= JSNoop) seq) ++ ";"
 
-compileJS (JSReturn val) =
-  "return " ++ compileJS val
+compileJS' indent (JSReturn val) =
+  "return " ++ compileJS' indent val
 
-compileJS (JSApp lhs rhs)
+compileJS' indent (JSApp lhs rhs)
   | JSFunction {} <- lhs =
-    concat ["(", compileJS lhs, ")(", args, ")"]
+    concat ["(", compileJS' indent lhs, ")(", args, ")"]
   | otherwise =
-    concat [compileJS lhs, "(", args, ")"]
+    concat [compileJS' indent lhs, "(", args, ")"]
   where args :: String
-        args = intercalate "," $ map compileJS rhs
+        args = intercalate "," $ map (compileJS' 0) rhs
 
-compileJS (JSNew name args) =
-  "new " ++ name ++ "(" ++ intercalate "," (map compileJS args) ++ ")"
+compileJS' indent (JSNew name args) =
+  "new " ++ name ++ "(" ++ intercalate "," (map (compileJS' 0) args) ++ ")"
 
-compileJS (JSError exc) =
+compileJS' indent (JSError exc) =
   "throw new Error(\"" ++ exc ++ "\")"
 
-compileJS (JSBinOp op lhs rhs) =
-  compileJS lhs ++ " " ++ op ++ " " ++ compileJS rhs
+compileJS' indent (JSBinOp op lhs rhs) =
+  compileJS' indent lhs ++ " " ++ op ++ " " ++ compileJS' indent rhs
 
-compileJS (JSPreOp op val) =
-  op ++ compileJS val
+compileJS' indent (JSPreOp op val) =
+  op ++ compileJS' indent val
 
-compileJS (JSProj obj field)
+compileJS' indent (JSProj obj field)
   | JSFunction {} <- obj =
-    concat ["(", compileJS obj, ").", field]
+    concat ["(", compileJS' indent obj, ").", field]
   | JSAssign {} <- obj =
-    concat ["(", compileJS obj, ").", field]
+    concat ["(", compileJS' indent obj, ").", field]
   | otherwise =
-    compileJS obj ++ '.' : field
+    compileJS' indent obj ++ '.' : field
 
-compileJS JSNull =
+compileJS' indent JSNull =
   "null"
 
-compileJS JSUndefined =
+compileJS' indent JSUndefined =
   "undefined"
 
-compileJS JSThis =
+compileJS' indent JSThis =
   "this"
 
-compileJS JSTrue =
+compileJS' indent JSTrue =
   "true"
 
-compileJS JSFalse =
+compileJS' indent JSFalse =
   "false"
 
-compileJS (JSArray elems) =
-  "[" ++ intercalate "," (map compileJS elems) ++ "]"
+compileJS' indent (JSArray elems) =
+  "[" ++ intercalate "," (map (compileJS' 0) elems) ++ "]"
 
-compileJS (JSString str) =
+compileJS' indent (JSString str) =
   "\"" ++ str ++ "\""
 
-compileJS (JSNum num)
+compileJS' indent (JSNum num)
   | JSInt i                    <- num = show i
   | JSFloat f                  <- num = show f
   | JSInteger JSBigZero        <- num = "__IDRRT__ZERO"
   | JSInteger JSBigOne         <- num = "__IDRRT__ONE"
   | JSInteger (JSBigInt i)     <- num = show i
-  | JSInteger (JSBigIntExpr e) <- num = "__IDRRT__bigInt(" ++ compileJS e ++ ")"
+  | JSInteger (JSBigIntExpr e) <- num = "__IDRRT__bigInt(" ++ compileJS' indent e ++ ")"
 
-compileJS (JSAssign lhs rhs) =
-  compileJS lhs ++ " = " ++ compileJS rhs
+compileJS' indent (JSAssign lhs rhs) =
+  compileJS' indent lhs ++ " = " ++ compileJS' indent rhs
 
-compileJS (JSAlloc name val) =
-  "var " ++ name ++ maybe "" ((" = " ++) . compileJS) val
+compileJS' indent (JSAlloc name val) =
+  "var " ++ name ++ maybe "" ((" = " ++) . compileJS' indent) val
 
-compileJS (JSIndex lhs rhs) =
-  compileJS lhs ++ "[" ++ compileJS rhs ++ "]"
+compileJS' indent (JSIndex lhs rhs) =
+  compileJS' indent lhs ++ "[" ++ compileJS' indent rhs ++ "]"
 
-compileJS (JSCond branches) =
+compileJS' indent (JSCond branches) =
   intercalate " else " $ map createIfBlock branches
   where
     createIfBlock (JSNoop, e) =
          "{\n"
-      ++ compileJS e
-      ++ ";\n}"
+      ++ compileJS' (indent + 2) e
+      ++ ";\n" ++ replicate indent ' ' ++ "}"
+    createIfBlock (cond, e@(JSSeq _)) =
+         "if (" ++ compileJS' indent cond ++") {\n"
+      ++ compileJS' (indent + 2) e
+      ++ ";\n" ++ replicate indent ' ' ++ "}"
     createIfBlock (cond, e) =
-         "if (" ++ compileJS cond ++") {\n"
-      ++ compileJS e
-      ++ ";\n}"
+         "if (" ++ compileJS' indent cond ++") {\n"
+      ++ replicate (indent + 2) ' ' ++ compileJS' (indent + 2) e
+      ++ ";\n" ++ replicate indent ' ' ++ "}"
 
-compileJS (JSSwitch val branches def) =
-     "switch(" ++ compileJS val ++ "){\n"
+compileJS' indent (JSSwitch val branches def) =
+     "switch(" ++ compileJS' indent val ++ "){\n"
   ++ concatMap mkBranch branches
   ++ mkDefault def
-  ++ "}"
+  ++ (replicate indent ' ') ++ "}"
   where
     mkBranch :: (JS, JS) -> String
     mkBranch (tag, code) =
-         "case " ++ compileJS tag ++ ":\n"
-      ++ compileJS code
-      ++ "\nbreak;\n"
+         replicate (indent + 2) ' ' ++ "case " ++ compileJS' indent tag ++ ":\n"
+      ++ compileJS' (indent + 4) code
+      ++ "\n" ++ (replicate (indent + 4) ' ' ++ "break;\n")
 
     mkDefault :: Maybe JS -> String
     mkDefault Nothing = ""
     mkDefault (Just def) =
-         "default:\n"
-      ++ compileJS def
+         replicate (indent + 2) ' ' ++ "default:\n"
+      ++ compileJS' (indent + 4)def
       ++ "\n"
 
 
-compileJS (JSTernary cond true false) =
-  let c = compileJS cond
-      t = compileJS true
-      f = compileJS false in
+compileJS' indent (JSTernary cond true false) =
+  let c = compileJS' indent cond
+      t = compileJS' indent true
+      f = compileJS' indent false in
       "(" ++ c ++ ")?(" ++ t ++ "):(" ++ f ++ ")"
 
-compileJS (JSParens js) =
-  "(" ++ compileJS js ++ ")"
+compileJS' indent (JSParens js) =
+  "(" ++ compileJS' indent js ++ ")"
 
-compileJS (JSWhile cond body) =
-     "while (" ++ compileJS cond ++ ") {\n"
-  ++ compileJS body
-  ++ "\n}"
+compileJS' indent (JSWhile cond body) =
+     "while (" ++ compileJS' indent cond ++ ") {\n"
+  ++ compileJS' (indent + 2) body
+  ++ "\n" ++ replicate indent ' ' ++ "}"
 
-compileJS (JSWord word)
+compileJS' indent (JSWord word)
   | JSWord8  b <- word = "new Uint8Array([" ++ show b ++ "])"
   | JSWord16 b <- word = "new Uint16Array([" ++ show b ++ "])"
   | JSWord32 b <- word = "new Uint32Array([" ++ show b ++ "])"
@@ -355,7 +362,7 @@ splitFunction :: JS -> RWS () [(Int,JS)] Int JS
 splitFunction (JSAlloc name (Just (JSFunction args body@(JSSeq _)))) = do
   body' <- splitSequence body
   return $ JSAlloc name (Just (JSFunction args body'))
-    where 
+    where
       splitCondition :: JS -> RWS () [(Int,JS)] Int JS
       splitCondition js
         | JSCond branches <- js =
