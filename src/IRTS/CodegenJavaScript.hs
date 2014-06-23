@@ -18,6 +18,7 @@ import Numeric
 import Data.List
 import Data.Maybe
 import Data.Word
+import Data.Traversable
 import System.IO
 import System.Directory
 
@@ -345,23 +346,41 @@ collectSplitFunctions (fun, splits) = map generateSplitFunction splits ++ [fun]
       JSAlloc (name ++ "$" ++ show depth) fun
 
 splitFunction :: JS -> RWS () [(Int,JS)] Int JS
-splitFunction (JSAlloc name (Just (JSFunction args body))) = do
-  b <- splitSequence body
-  return $ JSAlloc name (Just (JSFunction args b))
+splitFunction (JSAlloc name (Just (JSFunction args body@(JSSeq _)))) = do
+  body' <- splitSequence body
+  return $ JSAlloc name (Just (JSFunction args body'))
     where 
+      splitCondition :: JS -> RWS () [(Int,JS)] Int JS
+      splitCondition js
+        | JSCond branches <- js =
+            JSCond <$> processBranches branches
+        | JSSwitch cond branches def <- js =
+            JSSwitch cond <$> (processBranches branches) <*> (traverse splitSequence def)
+        | otherwise = return js
+        where
+          processBranches :: [(JS,JS)] -> RWS () [(Int,JS)] Int [(JS,JS)]
+          processBranches =
+            traverse (runKleisli (arr id *** (Kleisli splitSequence)))
+
+      splitCondition js = return js
+
       splitSequence :: JS -> RWS () [(Int, JS)] Int JS
       splitSequence js@(JSSeq seq) = do
         let (pre,post) = break isCall seq in
             case post of
-                 []  -> return js
-                 [_] -> return js
+                 []                    -> JSSeq <$> traverse splitCondition seq
+                 [js@(JSCond _)]       -> splitCondition js
+                 [js@(JSSwitch _ _ _)] -> splitCondition js
+                 [_]                   -> return js
                  (call:rest) -> do
                    depth <- get
                    put (depth + 1)
                    new <- splitFunction (newFun rest)
                    tell [(depth, new)]
                    {-return $ JSSeq (pre ++ [newCall depth, call])-}
-                   return $ JSSeq (pre ++ [call, newCall depth])
+                   return $ JSSeq (pre ++ (call : [newCall depth]))
+
+      splitSequence js = return js
 
       isCall :: JS -> Bool
       isCall (JSApp (JSIdent "i$CALL") _) = True
@@ -381,6 +400,7 @@ splitFunction (JSAlloc name (Just (JSFunction args body))) = do
       newFun seq =
         JSAlloc name (Just $ JSFunction ["vm", "oldbase", "myoldbase"] (JSSeq seq))
 
+splitFunction js = return js
 
 translateDecl :: CompileInfo -> (Name, [BC]) -> [JS]
 translateDecl info (name@(MN 0 fun), bc)
