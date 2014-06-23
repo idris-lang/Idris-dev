@@ -6,12 +6,12 @@ var putStr = (function() {
 })();
 
 var __IDRRT__systemInfo = function(index) {
-    var os = require('os')
+  var os = require('os')
     switch(index) {
-        case 0:
-            return "node";
-        case 1:
-            return os.platform();
+      case 0:
+        return "node";
+      case 1:
+        return os.platform();
     }
-    return "";
+  return "";
 }
