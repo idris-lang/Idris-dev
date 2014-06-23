@@ -6,6 +6,8 @@ var i$VM = function() {
 
   this.ret = null;
   this.reg1 = null;
+
+  this.callstack = [];
 }
 
 /** @constructor */
@@ -27,7 +29,8 @@ var i$PROJECT = function(vm,val,loc,arity) {
 }
 
 var i$CALL = function(vm,fun,args) {
-  fun.apply(this,args);
+  vm.callstack.push(args);
+  vm.callstack.push(fun);
 }
 
 var __IDRRT__charCode = function(str) {

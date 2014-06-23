@@ -332,6 +332,12 @@ codegenJS_all target definitions includes filename outputType = do
                   ) [ JSIdent "vm"
                     , JSNum (JSInt 0)
                     ]
+                , JSWhile (JSProj (JSProj (JSIdent ("vm")) "callstack") "length") (
+                    JSSeq [ JSAlloc "func" (Just (JSApp (JSProj (JSProj (JSIdent ("vm")) "callstack") "pop") []))
+                          , JSAlloc "args" (Just (JSApp (JSProj (JSProj (JSIdent ("vm")) "callstack") "pop") []))
+                          , JSApp (JSProj (JSIdent "func") "apply") [JSThis, JSIdent "args"]
+                          ]
+                  )
                 ]
         )
 
@@ -377,8 +383,7 @@ splitFunction (JSAlloc name (Just (JSFunction args body@(JSSeq _)))) = do
                    put (depth + 1)
                    new <- splitFunction (newFun rest)
                    tell [(depth, new)]
-                   {-return $ JSSeq (pre ++ [newCall depth, call])-}
-                   return $ JSSeq (pre ++ (call : [newCall depth]))
+                   return $ JSSeq (pre ++ (newCall depth : [call]))
 
       splitSequence js = return js
 
