@@ -338,14 +338,13 @@ codegenJS_all target definitions includes filename outputType = do
       main = compileJS $
         JSAlloc "main" $ Just $ JSFunction [] (
           JSSeq [ JSAlloc "vm" (Just $ JSNew "i$VM" [])
+                , JSApp (JSIdent "i$SCHED") [JSIdent "vm"]
                 , JSApp (
                     JSIdent (translateName (sMN 0 "runMain"))
-                  ) [ JSIdent "vm"
-                    , JSNum (JSInt 0)
-                    ]
-                , JSWhile (JSProj (JSProj (JSIdent ("vm")) "callstack") "length") (
-                    JSSeq [ JSAlloc "func" (Just (JSApp (JSProj (JSProj (JSIdent ("vm")) "callstack") "pop") []))
-                          , JSAlloc "args" (Just (JSApp (JSProj (JSProj (JSIdent ("vm")) "callstack") "pop") []))
+                  ) [JSNum (JSInt 0)]
+                , JSWhile (JSProj jsCALLSTACK "length") (
+                    JSSeq [ JSAlloc "func" (Just (JSApp (JSProj jsCALLSTACK "pop") []))
+                          , JSAlloc "args" (Just (JSApp (JSProj jsCALLSTACK "pop") []))
                           , JSApp (JSProj (JSIdent "func") "apply") [JSThis, JSIdent "args"]
                           ]
                   )
@@ -404,17 +403,13 @@ splitFunction (JSAlloc name (Just (JSFunction args body@(JSSeq _)))) = do
 
       newCall :: Int -> JS
       newCall depth =
-        JSApp (JSIdent "i$CALL") [ JSIdent "vm"
-                                 , JSIdent $ name ++ "$" ++ show depth
-                                 , JSArray [JSIdent "vm"
-                                           , JSIdent "oldbase"
-                                           , JSIdent "myoldbase"
-                                           ]
+        JSApp (JSIdent "i$CALL") [ JSIdent $ name ++ "$" ++ show depth
+                                 , JSArray [jsOLDBASE, jsMYOLDBASE]
                                  ]
 
       newFun :: [JS] -> JS
       newFun seq =
-        JSAlloc name (Just $ JSFunction ["vm", "oldbase", "myoldbase"] (JSSeq seq))
+        JSAlloc name (Just $ JSFunction ["oldbase", "myoldbase"] (JSSeq seq))
 
 splitFunction js = return js
 
@@ -424,13 +419,10 @@ translateDecl info (name@(MN 0 fun), bc)
          allocCaseFunctions (snd body)
       ++ [ JSAlloc (
                translateName name
-           ) (Just $ JSFunction ["vm", "oldbase"] (
+           ) (Just $ JSFunction ["oldbase"] (
                JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info) (fst body) ++ [
                  JSCond [ ( (translateReg $ caseReg (snd body)) `jsInstanceOf` "i$CON" `jsAnd` (JSProj (translateReg $ caseReg (snd body)) "app")
-                          , JSApp (JSProj (translateReg $ caseReg (snd body)) "app") [ JSIdent "vm"
-                                                                                     , JSIdent "oldbase"
-                                                                                     , JSIdent "myoldbase"
-                                                                                     ]
+                          , JSApp (JSProj (translateReg $ caseReg (snd body)) "app") [jsOLDBASE, jsMYOLDBASE]
                           )
                           , ( JSNoop
                             , JSSeq $ map (translateBC info) (defaultCase (snd body))
@@ -445,13 +437,10 @@ translateDecl info (name@(MN 0 fun), bc)
          allocCaseFunctions (snd body)
       ++ [ JSAlloc (
                translateName name
-           ) (Just $ JSFunction ["vm", "oldbase"] (
+           ) (Just $ JSFunction ["oldbase"] (
                JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info) (fst body) ++ [
                  JSCond [ ( (translateReg $ caseReg (snd body)) `jsInstanceOf` "i$CON" `jsAnd` (JSProj (translateReg $ caseReg (snd body)) "ev")
-                          , JSApp (JSProj (translateReg $ caseReg (snd body)) "ev") [ JSIdent "vm"
-                                                                                    , JSIdent "oldbase"
-                                                                                    , JSIdent "myoldbase"
-                                                                                    ]
+                          , JSApp (JSProj (translateReg $ caseReg (snd body)) "ev") [jsOLDBASE, jsMYOLDBASE]
                           )
                           , ( JSNoop
                             , JSSeq $ map (translateBC info) (defaultCase (snd body))
@@ -487,7 +476,7 @@ translateDecl info (name@(MN 0 fun), bc)
     prepBranch (tag, code) =
       JSAlloc (
         translateName name ++ "$" ++ show tag
-      ) (Just $ JSFunction ["vm", "oldbase", "myoldbase"] (
+      ) (Just $ JSFunction ["oldbase", "myoldbase"] (
           JSSeq $ map (translateBC info) code
         )
       )
@@ -495,7 +484,7 @@ translateDecl info (name@(MN 0 fun), bc)
 translateDecl info (name, bc) =
   [ JSAlloc (
        translateName name
-     ) (Just $ JSFunction ["vm", "oldbase"] (
+     ) (Just $ JSFunction ["oldbase"] (
          JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info)bc
        )
      )
@@ -504,28 +493,10 @@ translateDecl info (name, bc) =
 
 translateReg :: Reg -> JS
 translateReg reg
-  | RVal <- reg = JSProj (JSIdent "vm") "ret"
+  | RVal <- reg = jsRET
   | Tmp  <- reg = JSProj (JSIdent "vm") "reg1"
-  | L 0  <- reg =
-      JSIndex (
-        JSProj (JSIdent "vm") "valstack"
-      ) (JSProj (JSIdent "vm") "valstack_base")
-  | L n  <- reg =
-      JSIndex (
-        JSProj (JSIdent "vm") "valstack"
-      ) (
-        JSBinOp "+" (JSProj (JSIdent "vm") "valstack_base") (JSNum (JSInt n))
-      )
-  | T 0  <- reg =
-      JSIndex (
-        JSProj (JSIdent "vm") "valstack"
-      ) (JSProj (JSIdent "vm") "valstack_top")
-  | T n  <- reg =
-      JSIndex (
-        JSProj (JSIdent "vm") "valstack"
-      ) (
-        JSBinOp "+" (JSProj (JSIdent "vm") "valstack_top") (JSNum (JSInt n))
-      )
+  | L n  <- reg = jsLOC n
+  | T n  <- reg = jsTOP n
 
 translateConstant :: Const -> JS
 translateConstant (I i)                    = JSNum (JSInt i)
@@ -593,19 +564,13 @@ jsCALL :: CompileInfo -> Name -> JS
 jsCALL _ n =
   JSApp (
     JSIdent "i$CALL"
-  ) [ JSIdent "vm", JSIdent (translateName n), JSArray [ JSIdent "vm"
-                                                       , JSIdent "myoldbase"
-                                                       ]
-    ]
+  ) [JSIdent (translateName n), JSArray [jsMYOLDBASE]]
 
 jsTAILCALL :: CompileInfo -> Name -> JS
 jsTAILCALL _ n =
   JSApp (
     JSIdent "i$CALL"
-  ) [ JSIdent "vm", JSIdent (translateName n), JSArray [ JSIdent "vm"
-                                                       , JSIdent "oldbase"
-                                                       ]
-    ]
+  ) [JSIdent (translateName n), JSArray [jsOLDBASE]]
 
 jsFOREIGN :: CompileInfo -> Reg -> String -> [(FType, Reg)] -> JS
 jsFOREIGN _ reg n args =
@@ -616,56 +581,25 @@ jsFOREIGN _ reg n args =
   )
 
 jsREBASE :: CompileInfo -> JS
-jsREBASE _ =
-  JSAssign (
-    JSProj (JSIdent "vm") "valstack_base"
-  ) (
-    JSIdent "oldbase"
-  )
+jsREBASE _ = JSAssign jsSTACKBASE jsOLDBASE
 
 jsSTOREOLD :: CompileInfo ->JS
-jsSTOREOLD _ =
-  JSAssign (
-    JSIdent "myoldbase"
-  ) (
-    JSProj (JSIdent "vm") "valstack_base"
-  )
+jsSTOREOLD _ = JSAssign jsMYOLDBASE jsSTACKBASE
 
 jsADDTOP :: CompileInfo -> Int -> JS
 jsADDTOP info n
   | 0 <- n    = JSNoop
   | otherwise =
-      JSBinOp "+=" (JSProj (JSIdent "vm") "valstack_top") (JSNum (JSInt n))
+      JSBinOp "+=" jsSTACKTOP (JSNum (JSInt n))
 
 jsTOPBASE :: CompileInfo -> Int -> JS
-jsTOPBASE info n
-  | 0 <- n =
-      JSAssign (
-        JSProj (JSIdent "vm") "valstack_top"
-      ) (
-        JSProj (JSIdent "vm") "valstack_base"
-      )
-  | otherwise =
-      JSAssign (
-        JSProj (JSIdent "vm") "valstack_top"
-      ) (
-        JSBinOp "+" (JSProj (JSIdent "vm") "valstack_base") (JSNum (JSInt n))
-      )
+jsTOPBASE _ 0  = JSAssign jsSTACKTOP jsSTACKBASE
+jsTOPBASE _ n  = JSAssign jsSTACKTOP (JSBinOp "+" jsSTACKBASE (JSNum (JSInt n)))
+
 
 jsBASETOP :: CompileInfo -> Int -> JS
-jsBASETOP info n
-  | 0 <- n =
-      JSAssign (
-        JSProj (JSIdent "vm") "valstack_base"
-      ) (
-        JSProj (JSIdent "vm") "valstack_top"
-      )
-  | otherwise =
-      JSAssign (
-        JSProj (JSIdent "vm") "valstack_base"
-      ) (
-        JSBinOp "+" (JSProj (JSIdent "vm") "valstack_top") (JSNum (JSInt n))
-      )
+jsBASETOP _ 0 = JSAssign jsSTACKBASE jsSTACKTOP
+jsBASETOP _ n = JSAssign jsSTACKBASE (JSBinOp "+" jsSTACKTOP (JSNum (JSInt n)))
 
 jsNULL :: CompileInfo -> Reg -> JS
 jsNULL _ r = JSAssign (translateReg r) JSNull
@@ -674,7 +608,7 @@ jsERROR :: CompileInfo -> String -> JS
 jsERROR _ = JSError
 
 jsSLIDE :: CompileInfo -> Int -> JS
-jsSLIDE _ n = JSApp (JSIdent "i$SLIDE") [JSIdent "vm", JSNum (JSInt n)]
+jsSLIDE _ n = JSApp (JSIdent "i$SLIDE") [JSNum (JSInt n)]
 
 jsMKCON :: CompileInfo -> Reg -> Int -> [Reg] -> JS
 jsMKCON info r t rs =
@@ -776,8 +710,7 @@ jsCONSTCASE info reg cases def =
 
 jsPROJECT :: CompileInfo -> Reg -> Int -> Int -> JS
 jsPROJECT _ reg loc ar =
-  JSApp (JSIdent "i$PROJECT") [ JSIdent "vm"
-                              , translateReg reg
+  JSApp (JSIdent "i$PROJECT") [ translateReg reg
                               , JSNum (JSInt loc)
                               , JSNum (JSInt ar)
                               ]
@@ -1391,6 +1324,35 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
 
 jsRESERVE :: CompileInfo -> Int -> JS
 jsRESERVE _ _ = JSNoop
+
+jsSTACK :: JS
+jsSTACK = JSIdent "i$valstack"
+
+jsCALLSTACK :: JS
+jsCALLSTACK = JSIdent "i$callstack"
+
+jsSTACKBASE :: JS
+jsSTACKBASE = JSIdent "i$valstack_base"
+
+jsSTACKTOP :: JS
+jsSTACKTOP = JSIdent "i$valstack_top"
+
+jsOLDBASE :: JS
+jsOLDBASE = JSIdent "oldbase"
+
+jsMYOLDBASE :: JS
+jsMYOLDBASE = JSIdent "myoldbase"
+
+jsRET :: JS
+jsRET = JSIdent "i$ret"
+
+jsLOC :: Int -> JS
+jsLOC 0 = JSIndex jsSTACK jsSTACKBASE
+jsLOC n = JSIndex jsSTACK (JSBinOp "+" jsSTACKBASE (JSNum (JSInt n)))
+
+jsTOP :: Int -> JS
+jsTOP 0 = JSIndex jsSTACK jsSTACKTOP
+jsTOP n = JSIndex jsSTACK (JSBinOp "+" jsSTACKTOP (JSNum (JSInt n)))
 
 translateBC :: CompileInfo -> BC -> JS
 translateBC info bc
