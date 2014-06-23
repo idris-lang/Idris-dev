@@ -1445,7 +1445,7 @@ bindingOf n imp = annotate (AnnBoundName n imp) (text (show n))
 
 -- | Pretty-printer helper for names that attaches the correct annotations
 prettyName
-  :: Bool -- ^^ whether the name should be parenthasized if it is an infix operator
+  :: Bool -- ^^ whether the name should be parenthesised if it is an infix operator
   -> Bool -- ^^ whether to show namespaces
   -> [(Name, Bool)] -- ^^ the current bound variables and whether they are implicit
   -> Name -- ^^ the name to pprint
@@ -1453,7 +1453,7 @@ prettyName
 prettyName infixParen showNS bnd n 
     | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) fullName
     | otherwise                = annotate (AnnName n Nothing Nothing Nothing) fullName
-  where fullName = text nameSpace <> parenthasize (text (baseName n))
+  where fullName = text nameSpace <> parenthesise (text (baseName n))
         baseName (UN n) = T.unpack n
         baseName (NS n ns) = baseName n
         baseName (MN i s) = T.unpack s
@@ -1465,7 +1465,7 @@ prettyName infixParen showNS bnd n
         isInfix = case baseName n of
           ""      -> False
           (c : _) -> not (isAlpha c)
-        parenthasize = if isInfix && infixParen then enclose lparen rparen else id
+        parenthesise = if isInfix && infixParen then enclose lparen rparen else id
 
 
 showCImp :: PPOption -> PClause -> Doc OutputAnnotation
