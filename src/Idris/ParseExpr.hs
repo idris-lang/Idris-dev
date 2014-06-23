@@ -289,6 +289,8 @@ SimpleExpr ::=
   | Constant
   | Type
   | '_|_'
+  | Quasiquote
+  | Unquote
   | '_'
   ;
 @
@@ -326,6 +328,8 @@ simpleExpr syn =
         <|> do symbol "_|_"
                fc <- getFC
                return (PFalse fc)
+        <|> quasiquote syn
+        <|> unquote syn
         <|> do lchar '_'; return Placeholder
         <?> "expression"
 
@@ -586,6 +590,31 @@ constraintArg syn = do symbol "@{"
                        symbol "}"
                        return (pconst e)
                     <?> "constraint argument"
+
+{-| Parses a quasiquote expression (for building reflected terms using the elaborator)
+
+> Quasiquote ::= '`(' Expr ')'
+
+-}
+quasiquote :: SyntaxInfo -> IdrisParser PTerm
+quasiquote syn = do guard (not (syn_in_quasiquote syn))
+                    symbol "`("
+                    e <- expr syn { syn_in_quasiquote = True }
+                    symbol ")"
+                    return $ PQuasiquote e
+                 <?> "quasiquotation"
+
+{-| Parses an unquoting inside a quasiquotation (for building reflected terms using the elaborator)
+
+> Unquote ::= ',' Expr
+
+-}
+unquote :: SyntaxInfo -> IdrisParser PTerm
+unquote syn = do guard (syn_in_quasiquote syn)
+                 symbol "~"
+                 e <- simpleExpr syn { syn_in_quasiquote = False }
+                 return $ PUnquote e
+              <?> "unquotation"
 
 
 {-| Parses a record field setter expression

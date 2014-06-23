@@ -704,6 +704,8 @@ data PTerm = PQuote Raw
            | PDisamb [[T.Text]] PTerm -- ^ Preferences for explicit namespaces
            | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
+           | PQuasiquote PTerm -- ^ `(Term)
+           | PUnquote PTerm -- ^ ,Term
        deriving Eq
 
 
@@ -971,14 +973,15 @@ data SyntaxInfo = Syn { using :: [Using],
                         implicitAllowed :: Bool,
                         maxline :: Maybe Int,
                         mut_nesting :: Int,
-                        dsl_info :: DSL }
+                        dsl_info :: DSL,
+                        syn_in_quasiquote :: Bool }
     deriving Show
 {-!
 deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] id False False Nothing 0 initDSL
+defaultSyntax = Syn [] [] [] [] id False False Nothing 0 initDSL False
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n
@@ -1353,8 +1356,10 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PDoBlock _) = text "do block pretty not implemented"
     prettySe p bnd (PCoerced t) = prettySe p bnd t
     prettySe p bnd (PElabError s) = pretty s
+    prettySe p bnd (PQuasiquote t) = text "`(" <> prettySe p bnd t <> text ")"
+    prettySe p bnd (PUnquote t) = text "~" <> prettySe p bnd t
 
-    prettySe p bnd _ = text "test"
+    prettySe p bnd _ = text "missing pretty-printer for term"
 
     prettyArgS bnd (PImp _ _ _ n tm) = prettyArgSi bnd (n, tm)
     prettyArgS bnd (PExp _ _ _ tm)   = prettyArgSe bnd tm
