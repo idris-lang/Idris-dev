@@ -11,14 +11,15 @@ import Paths_idris
 import Util.System
 
 import Control.Arrow
+import Control.Monad (mapM)
 import Control.Applicative ((<$>), (<*>), pure)
-import Control.Monad.RWS
+import Control.Monad.RWS hiding (mapM)
 import Data.Char
 import Numeric
 import Data.List
 import Data.Maybe
 import Data.Word
-import Data.Traversable
+import Data.Traversable hiding (mapM)
 import System.IO
 import System.Directory
 
@@ -358,17 +359,21 @@ codegenJS_all target definitions includes filename outputType = do
                                  ("#!/usr/bin/env node\n", "-node")
                                JavaScript ->
                                  ("", "-browser")
+  included   <- concat <$> getIncludes includes
   path       <- (++) <$> getDataDir <*> (pure "/jsrts/")
   idrRuntime <- readFile $ path ++ "Runtime-common.js"
   tgtRuntime <- readFile $ concat [path, "Runtime", rt, ".js"]
   jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
-  let runtime = header ++ jsbn ++ idrRuntime ++ tgtRuntime
+  let runtime = header ++ included ++ jsbn ++ idrRuntime ++ tgtRuntime
   writeFile filename $ runtime ++ concat code ++ main ++ invokeMain
   setPermissions filename (emptyPermissions { readable   = True
                                              , executable = target == Node
                                              , writable   = True
                                              })
     where
+      getIncludes :: [FilePath] -> IO [String]
+      getIncludes = mapM readFile
+
       main :: String
       main = compileJS $
         JSAlloc "main" $ Just $ JSFunction [] (
