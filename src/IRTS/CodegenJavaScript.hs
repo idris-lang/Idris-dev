@@ -347,8 +347,8 @@ codegenJS_all target definitions includes filename outputType = do
                     JSIdent (translateName (sMN 0 "runMain"))
                   ) [JSNum (JSInt 0)]
                 , JSWhile (JSProj jsCALLSTACK "length") (
-                    JSSeq [ JSAlloc "func" (Just (JSApp (JSProj jsCALLSTACK "pop") []))
-                          , JSAlloc "args" (Just (JSApp (JSProj jsCALLSTACK "pop") []))
+                    JSSeq [ JSAlloc "func" (Just jsPOP)
+                          , JSAlloc "args" (Just jsPOP)
                           , JSApp (JSProj (JSIdent "func") "apply") [JSThis, JSIdent "args"]
                           ]
                   )
@@ -1357,6 +1357,12 @@ jsLOC n = JSIndex jsSTACK (JSBinOp "+" jsSTACKBASE (JSNum (JSInt n)))
 jsTOP :: Int -> JS
 jsTOP 0 = JSIndex jsSTACK jsSTACKTOP
 jsTOP n = JSIndex jsSTACK (JSBinOp "+" jsSTACKTOP (JSNum (JSInt n)))
+
+jsPUSH :: [JS] -> JS
+jsPUSH args = JSApp (JSProj jsCALLSTACK "push") args
+
+jsPOP :: JS
+jsPOP = JSApp (JSProj jsCALLSTACK "pop") []
 
 translateBC :: CompileInfo -> BC -> JS
 translateBC info bc
