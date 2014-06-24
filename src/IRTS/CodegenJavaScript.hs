@@ -577,12 +577,30 @@ jsTAILCALL _ n =
   ) [JSIdent (translateName n), JSArray [jsOLDBASE]]
 
 jsFOREIGN :: CompileInfo -> Reg -> String -> [(FType, Reg)] -> JS
-jsFOREIGN _ reg n args =
-  JSAssign (
-    translateReg reg
-  ) (
-    JSApp (JSIdent n) (map (translateReg . snd) args)
-  )
+jsFOREIGN _ reg n args
+  | n == "putStr"
+  , [(FString, arg)] <- args =
+      JSAssign (
+        translateReg reg
+      ) (
+        JSApp (JSIdent n) [translateReg arg]
+      )
+
+  | n == "isNull"
+  , [(FPtr, arg)] <- args =
+      JSAssign (
+        translateReg reg
+      ) (
+        JSBinOp "==" (translateReg arg) JSNull
+      )
+
+  | n == "idris_eqPtr"
+  , [(_, lhs),(_, rhs)] <- args =
+      JSAssign (
+        translateReg reg
+      ) (
+        JSBinOp "==" (translateReg lhs) (translateReg rhs)
+      )
 
 jsREBASE :: CompileInfo -> JS
 jsREBASE _ = JSAssign jsSTACKBASE jsOLDBASE

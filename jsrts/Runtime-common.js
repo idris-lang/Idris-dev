@@ -62,7 +62,3 @@ var __IDRRT__fromCharCode = function(chr) {
   else
     return String.fromCharCode(chr);
 }
-
-var isNull = function(v) {
-  return v == null;
-}
