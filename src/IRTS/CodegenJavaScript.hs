@@ -358,10 +358,9 @@ codegenJS_all target definitions includes filename outputType = do
   let js = concatMap (translateDecl info) bytecode
   let code = concatMap ((map compileJS) . collectSplitFunctions . (\x -> evalRWS (splitFunction x) () 0)) js
   let (header, rt) = case target of
-                               Node ->
-                                 ("#!/usr/bin/env node\n", "-node")
-                               JavaScript ->
-                                 ("", "-browser")
+                          Node -> ("#!/usr/bin/env node\n", "-node")
+                          JavaScript -> ("", "-browser")
+
   included   <- concat <$> getIncludes includes
   path       <- (++) <$> getDataDir <*> (pure "/jsrts/")
   idrRuntime <- readFile $ path ++ "Runtime-common.js"
@@ -378,21 +377,58 @@ codegenJS_all target definitions includes filename outputType = do
       getIncludes = mapM readFile
 
       main :: String
-      main = compileJS $
-        JSAlloc "main" $ Just $ JSFunction [] (
-          JSSeq [ JSAlloc "vm" (Just $ JSNew "i$VM" [])
-                , JSApp (JSIdent "i$SCHED") [JSIdent "vm"]
-                , JSApp (
-                    JSIdent (translateName (sMN 0 "runMain"))
-                  ) [JSNum (JSInt 0)]
-                , JSWhile (JSProj jsCALLSTACK "length") (
-                    JSSeq [ JSAlloc "func" (Just jsPOP)
-                          , JSAlloc "args" (Just jsPOP)
-                          , JSApp (JSProj (JSIdent "func") "apply") [JSThis, JSIdent "args"]
-                          ]
-                  )
-                ]
+      main =
+        compileJS $ JSAlloc "main" (Just $
+          JSFunction [] (
+            case target of
+                 Node       -> mainFun
+                 JavaScript -> jsMain
+          )
         )
+
+      jsMain :: JS
+      jsMain =
+        JSCond [ (exists document `jsAnd` isReady, mainFun)
+               , (exists window, windowMainFun)
+               , (JSTrue, mainFun)
+               ]
+        where
+          exists :: JS -> JS
+          exists js = jsTypeOf js `jsNotEq` JSString "undefined"
+
+          window :: JS
+          window = JSIdent "window"
+
+          document :: JS
+          document = JSIdent "document"
+
+          windowMainFun :: JS
+          windowMainFun =
+            jsMeth window "addEventListener" [ JSString "DOMContentLoaded"
+                                             , JSFunction [] ( mainFun )
+                                             , JSFalse
+                                             ]
+
+          isReady :: JS
+          isReady = JSParens $ readyState `jsEq` JSString "complete" `jsOr` readyState `jsEq` JSString "loaded"
+
+          readyState :: JS
+          readyState = JSProj (JSIdent "document") "readyState"
+
+      mainFun :: JS
+      mainFun =
+        JSSeq [ JSAlloc "vm" (Just $ JSNew "i$VM" [])
+              , JSApp (JSIdent "i$SCHED") [JSIdent "vm"]
+              , JSApp (
+                  JSIdent (translateName (sMN 0 "runMain"))
+                ) [JSNum (JSInt 0)]
+              , JSWhile (JSProj jsCALLSTACK "length") (
+                  JSSeq [ JSAlloc "func" (Just jsPOP)
+                        , JSAlloc "args" (Just jsPOP)
+                        , JSApp (JSProj (JSIdent "func") "apply") [JSThis, JSIdent "args"]
+                        ]
+                )
+              ]
 
       invokeMain :: String
       invokeMain = compileJS $ JSApp (JSIdent "main") []
@@ -420,8 +456,6 @@ splitFunction (JSAlloc name (Just (JSFunction args body@(JSSeq _)))) = do
           processBranches :: [(JS,JS)] -> RWS () [(Int,JS)] Int [(JS,JS)]
           processBranches =
             traverse (runKleisli (arr id *** (Kleisli splitSequence)))
-
-      splitCondition js = return js
 
       splitSequence :: JS -> RWS () [(Int, JS)] Int JS
       splitSequence js@(JSSeq seq) = do
@@ -715,6 +749,12 @@ jsOr lhs rhs = JSBinOp "||" lhs rhs
 
 jsAnd :: JS -> JS -> JS
 jsAnd lhs rhs = JSBinOp "&&" lhs rhs
+
+jsMeth :: JS -> String -> [JS] -> JS
+jsMeth obj meth args = JSApp (JSProj obj meth) args
+
+jsCall :: String -> [JS] -> JS
+jsCall fun args = JSApp (JSIdent fun) args
 
 jsTypeOf :: JS -> JS
 jsTypeOf js = JSPreOp "typeof " js
@@ -1398,12 +1438,6 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
           invokeMeth obj meth args =
             JSApp (JSProj (translateReg obj) meth) $ map translateReg args
 
-          jsMeth :: JS -> String -> [JS] -> JS
-          jsMeth obj meth args = JSApp (JSProj obj meth) args
-
-
-          jsCall :: String -> [JS] -> JS
-          jsCall fun args = JSApp (JSIdent fun) args
 
 jsRESERVE :: CompileInfo -> Int -> JS
 jsRESERVE _ _ = JSNoop
