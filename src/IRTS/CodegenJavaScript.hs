@@ -167,7 +167,11 @@ compileJS' indent (JSType ty)
   | JSForgotTy  <- ty = idrRTNamespace ++ "Forgot"
 
 compileJS' indent (JSSeq seq) =
-  intercalate ";\n" (map (((replicate indent ' ') ++) . (compileJS' indent)) $ filter (/= JSNoop) seq) ++ ";"
+  intercalate ";\n" (
+    map (
+      ((replicate indent ' ') ++) . (compileJS' indent)
+    ) $ filter (/= JSNoop) seq
+  ) ++ ";"
 
 compileJS' indent (JSReturn val) =
   "return " ++ compileJS' indent val
