@@ -49,14 +49,14 @@ var i$CALL = function(fun,args) {
   i$callstack.push(fun);
 }
 
-var __IDRRT__charCode = function(str) {
+var i$charCode = function(str) {
   if (typeof str == "string")
     return str.charCodeAt(0);
   else
     return str;
 }
 
-var __IDRRT__fromCharCode = function(chr) {
+var i$fromCharCode = function(chr) {
   if (typeof chr == "string")
     return chr;
   else

@@ -1,9 +1,9 @@
-var __IDRRT__print = function(s) {
+var i$putStr = function(s) {
   console.log(s);
 };
 
 
-var __IDRRT__systemInfo = function(index) {
+var i$systemInfo = function(index) {
   switch(index) {
     case 0:
       return "javascript";

@@ -583,7 +583,7 @@ jsFOREIGN _ reg n args
       JSAssign (
         translateReg reg
       ) (
-        JSApp (JSIdent n) [translateReg arg]
+        JSApp (JSIdent "i$putStr") [translateReg arg]
       )
 
   | n == "isNull"
@@ -791,11 +791,11 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
 
       | (LPlus (ATInt ITChar)) <- op
       , (lhs:rhs:_)            <- args =
-          jsCall "__IDRRT__fromCharCode" [
+          jsCall "i$fromCharCode" [
             JSBinOp "+" (
-              jsCall "__IDRRT__charCode" [translateReg lhs]
+              jsCall "i$charCode" [translateReg lhs]
             ) (
-              jsCall "__IDRRT__charCode" [translateReg rhs]
+              jsCall "i$charCode" [translateReg rhs]
             )
           ]
 
@@ -1280,9 +1280,9 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       | (LFloatInt ITNative)    <- op
       , (arg:_)                 <- args = translateReg arg
       | (LChInt ITNative)       <- op
-      , (arg:_)                 <- args = jsCall "__IDRRT__charCode" [translateReg arg]
+      , (arg:_)                 <- args = jsCall "i$charCode" [translateReg arg]
       | (LIntCh ITNative)       <- op
-      , (arg:_)                 <- args = jsCall "__IDRRT__fromCharCode" [translateReg arg]
+      , (arg:_)                 <- args = jsCall "i$fromCharCode" [translateReg arg]
 
       | LFExp       <- op
       , (arg:_)     <- args = jsCall "Math.exp" [translateReg arg]
@@ -1324,7 +1324,7 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
               ]
 
       | LSystemInfo <- op
-      , (arg:_) <- args = jsCall "__IDRRT__systemInfo"  [translateReg arg]
+      , (arg:_) <- args = jsCall "i$systemInfo"  [translateReg arg]
       | LNullPtr    <- op
       , (_)         <- args = JSNull
       | otherwise = JSError $ "Not implemented: " ++ show op
