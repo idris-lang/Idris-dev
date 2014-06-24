@@ -132,6 +132,37 @@ data JS = JSRaw String
 
 data FFI = FFICode Char | FFIArg Int | FFIError String
 
+ffi :: String -> [String] -> String
+ffi code args = let parsed = ffiParse code in
+                    case ffiError parsed of
+                         Just err -> error err
+                         Nothing  -> renderFFI parsed args
+  where
+    ffiParse :: String -> [FFI]
+    ffiParse ""           = []
+    ffiParse ['%']        = [FFIError $ "FFI - Invalid positional argument"]
+    ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
+    ffiParse ('%':s:ss)
+      | isDigit s =
+         FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
+      | otherwise =
+          [FFIError $ "FFI - Invalid positional argument"]
+    ffiParse (s:ss) = FFICode s : ffiParse ss
+
+
+    ffiError :: [FFI] -> Maybe String
+    ffiError []                 = Nothing
+    ffiError ((FFIError s):xs)  = Just s
+    ffiError (x:xs)             = ffiError xs
+
+
+    renderFFI :: [FFI] -> [String] -> String
+    renderFFI [] _ = ""
+    renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
+    renderFFI ((FFIArg i) : fs) args
+      | i < length args && i >= 0 = args !! i ++ renderFFI fs args
+      | otherwise = error "FFI - Argument index out of bounds"
+
 compileJS :: JS -> String
 compileJS = compileJS' 0
 
@@ -141,8 +172,8 @@ compileJS' indent JSNoop = ""
 compileJS' indent (JSAnnotation annotation js) =
   "/** @" ++ show annotation ++ " */\n" ++ compileJS' indent js
 
-{-compileJS' indent (JSFFI raw args) =-}
-  {-ffi raw (map compileJS' indent args)-}
+compileJS' indent (JSFFI raw args) =
+  ffi raw (map (compileJS' indent) args)
 
 compileJS' indent (JSRaw code) =
   code
@@ -601,6 +632,28 @@ jsFOREIGN _ reg n args
       ) (
         JSBinOp "==" (translateReg lhs) (translateReg rhs)
       )
+  | otherwise =
+     JSAssign (
+       translateReg reg
+     ) (
+       JSFFI n (map generateWrapper args)
+     )
+    where
+      generateWrapper :: (FType, Reg) -> JS
+      generateWrapper (ty, reg)
+        | FFunction   <- ty =
+            JSApp (JSIdent "i$ffiWrap") [ translateReg reg
+                                        , JSIdent "oldbase"
+                                        , JSIdent "myoldbase"
+                                        ]
+        | FFunctionIO <- ty =
+            JSApp (JSIdent "i$ffiWrap") [ translateReg reg
+                                        , JSIdent "oldbase"
+                                        , JSIdent "myoldbase"
+                                        ]
+
+      generateWrapper (_, reg) =
+        translateReg reg
 
 jsREBASE :: CompileInfo -> JS
 jsREBASE _ = JSAssign jsSTACKBASE jsOLDBASE

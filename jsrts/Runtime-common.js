@@ -49,6 +49,30 @@ var i$CALL = function(fun,args) {
   i$callstack.push(fun);
 }
 
+var i$ffiWrap = function(fid,oldbase,myoldbase) {
+  return function() {
+    i$callstack = [];
+
+    i$valstack_top += arguments.length;
+    i$valstack[i$valstack_top] = fid
+    for (var i = 1; i <= arguments.length; ++i)
+      i$valstack[i$valstack_top + i] = arguments[i - 1];
+    i$SLIDE(arguments.length + 1);
+
+    fid.app(oldbase,myoldbase);
+
+    while (i$callstack.length) {
+      var func = i$callstack.pop();
+      var args = i$callstack.pop();
+      func.apply(this,args);
+    }
+
+    i$callstack = i$vm.callstack;
+
+    return i$ret;
+  }
+}
+
 var i$charCode = function(str) {
   if (typeof str == "string")
     return str.charCodeAt(0);
