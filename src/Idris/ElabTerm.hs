@@ -630,7 +630,14 @@ elab ist info pattern opts fn tm
                                  elab' ina t
                                  unifyLog False
     elab' ina (PQuasiquote t)
-        = do -- Establish holes for the type and value of the term to be quasiquoted
+        = do -- Save the old state - we need a fresh proof state for this to
+             -- avoid capture
+             ctxt <- get_context
+             saveState
+             updatePS (const $ newProof (sMN 0 "q") ctxt (P Ref (sNS (sUN "TT") ["Reflection", "Language"]) Erased))
+
+             -- Establish holes for the type and value of the term to be
+             -- quasiquoted
              qTy <- getNameFrom (sMN 0 "qquoteTy")
              claim qTy RType
              qTm <- getNameFrom (sMN 0 "qquoteTm")
@@ -644,12 +651,16 @@ elab ist info pattern opts fn tm
              -- Elaborate the quasiquoted term into the hole that was
              focus qTm
              elab' ina t
-             -- We now have an elaborated term. Reflect it and solve the original goal
-             ctxt <- get_context
+             -- We now have an elaborated term. Reflect it and solve the
+             -- original goal
              env <- get_env
-             let qTerm = normalise ctxt env (P Bound nTm Erased)
-             fill $ reflect qTerm
-             solve
+             let qTerm = fmap (reflect . binderVal) $ lookup nTm env
+             case qTerm of
+               Just q -> do loadState
+                            fill q
+                            solve
+               Nothing -> fail "Broken elaboration of quasiquote"
+
     elab' ina (PUnquote t) = fail "Elaboration of unquotes not yet implemented"
     elab' ina x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 

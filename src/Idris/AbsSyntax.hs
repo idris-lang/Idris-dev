@@ -1272,6 +1272,7 @@ addImplBound ist ns = addImpl' False ns [] ist
 addImplBoundInf :: IState -> [Name] -> [Name] -> PTerm -> PTerm
 addImplBoundInf ist ns inf = addImpl' False ns inf ist
 
+-- | Add the implicit arguments to applications in the term
 addImpl :: IState -> PTerm -> PTerm
 addImpl = addImpl' False [] []
 
@@ -1358,6 +1359,7 @@ addImpl' inpat env infns ist ptm
     ai env ds (PRefl fc tm) = PRefl fc (ai env ds tm)
     ai env ds (PUnifyLog tm) = PUnifyLog (ai env ds tm)
     ai env ds (PNoImplicits tm) = PNoImplicits (ai env ds tm)
+    ai env ds (PQuasiquote tm) = PQuasiquote (ai env ds tm)
     ai env ds tm = tm
 
     handleErr (Left err) = PElabError err
