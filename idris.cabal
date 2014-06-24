@@ -489,6 +489,21 @@ Flag LLVM
   Default:      False
   manual:       True
 
+Flag Cee
+  Description:  Build the C backend
+  Default:      True
+  manual:       True
+
+Flag Java
+  Description:  Build the Java backend
+  Default:      False
+  manual:       True
+
+Flag JavaScript
+  Description:  Build the JavaScript backend
+  Default:      False
+  manual:       True
+
 Flag FFI
   Description:  Build support for libffi
   Default:      False
@@ -575,18 +590,11 @@ Library
 
                 , IRTS.BCImp
                 , IRTS.Bytecode
-                , IRTS.CodegenC
                 , IRTS.CodegenCommon
-                , IRTS.CodegenJava
-                , IRTS.CodegenJavaScript
                 , IRTS.Compiler
                 , IRTS.Defunctionalise
                 , IRTS.DumpBC
                 , IRTS.Inliner
-                , IRTS.Java.ASTBuilding
-                , IRTS.Java.JTypes
-                , IRTS.Java.Mangling
-                , IRTS.Java.Pom
                 , IRTS.Lang
                 , IRTS.Simplified
                 , IRTS.System
@@ -623,7 +631,6 @@ Library
                 , directory >= 1.2
                 , filepath
                 , haskeline >= 0.7
-                , language-java >= 0.2.6
                 , lens >= 4.1.1
                 , mtl
                 , parsers >= 0.9 && < 0.11.0.2 
@@ -674,6 +681,20 @@ Library
                   , llvm-general-pure == 3.3.8.*
   else
      other-modules: Util.LLVMStubs
+  if flag(Cee)
+     exposed-modules: IRTS.CodegenC
+     cpp-options:     -DIDRIS_CEE
+  if flag(Java)
+     exposed-modules: IRTS.CodegenJava
+                    , IRTS.Java.ASTBuilding
+                    , IRTS.Java.JTypes
+                    , IRTS.Java.Mangling
+                    , IRTS.Java.Pom
+     build-depends:   language-java >= 0.2.6
+     cpp-options:     -DIDRIS_JAVA
+  if flag(JavaScript)
+     exposed-modules: IRTS.CodegenJavaScript
+     cpp-options:     -DIDRIS_JAVASCRIPT
   if flag(FFI)
      build-depends: libffi
      cpp-options:   -DIDRIS_FFI
