@@ -53,18 +53,23 @@ var i$ffiWrap = function(fid,oldbase,myoldbase) {
   return function() {
     i$callstack = [];
 
-    i$valstack_top += arguments.length;
-    i$valstack[i$valstack_top] = fid
-    for (var i = 1; i <= arguments.length; ++i)
-      i$valstack[i$valstack_top + i] = arguments[i - 1];
-    i$SLIDE(arguments.length + 1);
+    var res = fid;
 
-    fid.app(oldbase,myoldbase);
-
-    while (i$callstack.length) {
-      var func = i$callstack.pop();
-      var args = i$callstack.pop();
-      func.apply(this,args);
+    for(var i = 0; i < arguments.length; ++i) {
+      while (res instanceof i$CON) {
+        i$valstack_top += 1;
+        i$valstack[i$valstack_top] = res;
+        i$valstack[i$valstack_top + 1] = arguments[i];
+        i$SLIDE(2);
+        i$valstack_top = i$valstack_base + 2;
+        i$CALL(_idris__123_APPLY0_125_,[oldbase])
+        while (i$callstack.length) {
+          var func = i$callstack.pop();
+          var args = i$callstack.pop();
+          func.apply(this,args);
+        }
+        res = i$ret;
+      }
     }
 
     i$callstack = i$vm.callstack;
