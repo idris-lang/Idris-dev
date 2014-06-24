@@ -133,7 +133,7 @@ elab ist info pattern opts fn tm
                   mkPat)
   where
     tcgen = Dictionary `elem` opts
-    reflect = Reflection `elem` opts
+    reflection = Reflection `elem` opts
 
     isph arg = case getTm arg of
         Placeholder -> (True, priority arg)
@@ -209,7 +209,7 @@ elab ist info pattern opts fn tm
     elab' ina (PNoImplicits t) = elab' ina t -- skip elabE step
     elab' ina PType           = do apply RType []; solve
 --  elab' (_,_,inty) (PConstant c) 
---     | constType c && pattern && not reflect && not inty
+--     | constType c && pattern && not reflection && not inty
 --       = lift $ tfail (Msg "Typecase is not allowed") 
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve
@@ -285,7 +285,7 @@ elab ist info pattern opts fn tm
                   = try' (elab' ina x) (trySeq' deferr xs) True
     elab' ina (PPatvar fc n) | pattern = patvar n
 --    elab' (_, _, inty) (PRef fc f)
---       | isTConName f (tt_ctxt ist) && pattern && not reflect && not inty
+--       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed") 
     elab' (ina, guarded, inty) (PRef fc n) | pattern && not (inparamBlock n)
         = do ctxt <- get_context
@@ -434,7 +434,7 @@ elab ist info pattern opts fn tm
             ns <- match_apply (Var fn') (map (\x -> (x,0)) imps)
             solve
     elab' (_, _, inty) (PApp fc (PRef _ f) args')
-       | isTConName f (tt_ctxt ist) && pattern && not reflect && not inty
+       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
           = lift $ tfail (Msg "Typecase is not allowed")
     -- if f is local, just do a simple_app
     elab' (ina, g, inty) tm@(PApp fc (PRef _ f) args)
@@ -629,6 +629,28 @@ elab ist info pattern opts fn tm
     elab' ina (PUnifyLog t) = do unifyLog True
                                  elab' ina t
                                  unifyLog False
+    elab' ina (PQuasiquote t)
+        = do -- Establish holes for the type and value of the term to be quasiquoted
+             qTy <- getNameFrom (sMN 0 "qquoteTy")
+             claim qTy RType
+             qTm <- getNameFrom (sMN 0 "qquoteTm")
+             claim qTm (Var qTy)
+             -- Let-bind the result of elaborating the contained term, so that
+             -- the hole doesn't disappear
+             nTm <- getNameFrom (sMN 0 "quotedTerm")
+             letbind nTm (Var qTy) (Var qTm)
+             -- We must solve the type later through unification
+             movelast qTy
+             -- Elaborate the quasiquoted term into the hole that was
+             focus qTm
+             elab' ina t
+             -- We now have an elaborated term. Reflect it and solve the original goal
+             ctxt <- get_context
+             env <- get_env
+             let qTerm = normalise ctxt env (P Bound nTm Erased)
+             fill $ reflect qTerm
+             solve
+    elab' ina (PUnquote t) = fail "Elaboration of unquotes not yet implemented"
     elab' ina x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
     isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))
