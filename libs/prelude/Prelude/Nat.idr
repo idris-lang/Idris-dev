@@ -146,19 +146,15 @@ gt left right = lt right left
 
 ||| Find the least of two natural numbers
 total minimum : Nat -> Nat -> Nat
-minimum left right =
-  if lte left right then
-    left
-  else
-    right
+minimum Z m = Z
+minimum (S n) Z = Z
+minimum (S n) (S m) = S (minimum n m)
 
 ||| Find the greatest of two natural numbers
 total maximum : Nat -> Nat -> Nat
-maximum left right =
-  if lte left right then
-    right
-  else
-    left
+maximum Z m = m
+maximum (S n) Z = S n
+maximum (S n) (S m) = S (maximum n m)
 
 --------------------------------------------------------------------------------
 -- Type class instances
