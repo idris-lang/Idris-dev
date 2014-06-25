@@ -543,6 +543,7 @@ Library
                 , Idris.Docs
                 , Idris.Docstrings
                 , Idris.ElabDecls
+                , Idris.ElabQuasiquote
                 , Idris.ElabTerm
                 , Idris.Erasure
                 , Idris.Error

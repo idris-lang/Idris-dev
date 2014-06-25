@@ -16,6 +16,7 @@ import Idris.Core.Evaluate
 import Idris.Core.Unify
 import Idris.Core.Typecheck (check)
 import Idris.ErrReverse (errReverse)
+import Idris.ElabQuasiquote (extractUnquotes)
 
 import Control.Applicative ((<$>))
 import Control.Monad
@@ -630,11 +631,22 @@ elab ist info pattern opts fn tm
                                  elab' ina t
                                  unifyLog False
     elab' ina (PQuasiquote t)
-        = do -- Save the old state - we need a fresh proof state for this to
+        = do -- First elaborate the unquoted subterms, replacing them with
+             -- fresh names in the quasiquoted term
+             (t, unq) <- extractUnquotes t
+             mapM_ elabUnquote unq
+             let unquoteNames = map fst unq
+
+             -- Save the old state - we need a fresh proof state for this to
              -- avoid capture
              ctxt <- get_context
              saveState
-             updatePS (const $ newProof (sMN 0 "q") ctxt (P Ref (sNS (sUN "TT") ["Reflection", "Language"]) Erased))
+             updatePS (const .
+                       newProof (sMN 0 "q") ctxt $
+                       P Ref (sNS (sUN "TT") ["Reflection", "Language"]) Erased)
+
+             -- Re-add the unquotes
+             mapM_ (flip claim (Var (sNS (sUN "TT") ["Reflection", "Language"]))) unquoteNames
 
              -- Establish holes for the type and value of the term to be
              -- quasiquoted
@@ -654,14 +666,20 @@ elab ist info pattern opts fn tm
              -- We now have an elaborated term. Reflect it and solve the
              -- original goal
              env <- get_env
-             let qTerm = fmap (reflect . binderVal) $ lookup nTm env
+             let qTerm = fmap (reflectQuote unquoteNames . binderVal) $ lookup nTm env
              case qTerm of
                Just q -> do loadState
                             fill q
                             solve
                Nothing -> fail "Broken elaboration of quasiquote"
-
-    elab' ina (PUnquote t) = fail "Elaboration of unquotes not yet implemented"
+      where elabUnquote (n, tm)
+              = do qn <- getNameFrom (sMN 0 "unquotHole")
+                   let tt = sNS (sUN "TT") ["Reflection", "Language"]
+                   claim qn (Var tt)
+                   letbind n (Var tt) (Var qn)
+                   focus qn
+                   elab' ina tm
+    elab' ina (PUnquote t) = fail "Found unquote outside of quasiquote"
     elab' ina x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
     isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))
@@ -1474,21 +1492,26 @@ reflCall funName args
 
 -- | Lift a term into its Language.Reflection.TT representation
 reflect :: Term -> Raw
-reflect (P nt n t)
-  = reflCall "P" [reflectNameType nt, reflectName n, reflect t]
-reflect (V n)
+reflect = reflectQuote []
+
+-- | Create a reflected term, but leave refs to the provided name intact
+reflectQuote :: [Name] -> Term -> Raw
+reflectQuote unq (P nt n t)
+  | n `elem` unq = Var n
+  | otherwise = reflCall "P" [reflectNameType nt, reflectName n, reflectQuote unq t]
+reflectQuote unq (V n)
   = reflCall "V" [RConstant (I n)]
-reflect (Bind n b x)
-  = reflCall "Bind" [reflectName n, reflectBinder b, reflect x]
-reflect (App f x)
-  = reflCall "App" [reflect f, reflect x]
-reflect (Constant c)
+reflectQuote unq (Bind n b x)
+  = reflCall "Bind" [reflectName n, reflectBinder b, reflectQuote unq x]
+reflectQuote unq (App f x)
+  = reflCall "App" [reflectQuote unq f, reflectQuote unq x]
+reflectQuote unq (Constant c)
   = reflCall "TConst" [reflectConstant c]
-reflect (Proj t i)
-  = reflCall "Proj" [reflect t, RConstant (I i)]
-reflect (Erased) = Var (reflm "Erased")
-reflect (Impossible) = Var (reflm "Impossible")
-reflect (TType exp) = reflCall "TType" [reflectUExp exp]
+reflectQuote unq (Proj t i)
+  = reflCall "Proj" [reflectQuote unq t, RConstant (I i)]
+reflectQuote unq (Erased) = Var (reflm "Erased")
+reflectQuote unq (Impossible) = Var (reflm "Impossible")
+reflectQuote unq (TType exp) = reflCall "TType" [reflectUExp exp]
 
 reflectNameType :: NameType -> Raw
 reflectNameType (Bound) = Var (reflm "Bound")
@@ -1516,24 +1539,27 @@ reflectName (NErased) = Var (reflm "NErased")
 reflectName n = Var (reflm "NErased") -- special name, not yet implemented
 
 reflectBinder :: Binder Term -> Raw
-reflectBinder (Lam t)
-   = reflCall "Lam" [Var (reflm "TT"), reflect t]
-reflectBinder (Pi t)
-   = reflCall "Pi" [Var (reflm "TT"), reflect t]
-reflectBinder (Let x y)
-   = reflCall "Let" [Var (reflm "TT"), reflect x, reflect y]
-reflectBinder (NLet x y)
-   = reflCall "NLet" [Var (reflm "TT"), reflect x, reflect y]
-reflectBinder (Hole t)
-   = reflCall "Hole" [Var (reflm "TT"), reflect t]
-reflectBinder (GHole _ t)
-   = reflCall "GHole" [Var (reflm "TT"), reflect t]
-reflectBinder (Guess x y)
-   = reflCall "Guess" [Var (reflm "TT"), reflect x, reflect y]
-reflectBinder (PVar t)
-   = reflCall "PVar" [Var (reflm "TT"), reflect t]
-reflectBinder (PVTy t)
-   = reflCall "PVTy" [Var (reflm "TT"), reflect t]
+reflectBinder = reflectBinderQuote []
+
+reflectBinderQuote :: [Name] -> Binder Term -> Raw
+reflectBinderQuote unq (Lam t)
+   = reflCall "Lam" [Var (reflm "TT"), reflectQuote unq t]
+reflectBinderQuote unq (Pi t)
+   = reflCall "Pi" [Var (reflm "TT"), reflectQuote unq t]
+reflectBinderQuote unq (Let x y)
+   = reflCall "Let" [Var (reflm "TT"), reflectQuote unq x, reflectQuote unq y]
+reflectBinderQuote unq (NLet x y)
+   = reflCall "NLet" [Var (reflm "TT"), reflectQuote unq x, reflectQuote unq y]
+reflectBinderQuote unq (Hole t)
+   = reflCall "Hole" [Var (reflm "TT"), reflectQuote unq t]
+reflectBinderQuote unq (GHole _ t)
+   = reflCall "GHole" [Var (reflm "TT"), reflectQuote unq t]
+reflectBinderQuote unq (Guess x y)
+   = reflCall "Guess" [Var (reflm "TT"), reflectQuote unq x, reflectQuote unq y]
+reflectBinderQuote unq (PVar t)
+   = reflCall "PVar" [Var (reflm "TT"), reflectQuote unq t]
+reflectBinderQuote unq (PVTy t)
+   = reflCall "PVTy" [Var (reflm "TT"), reflectQuote unq t]
 
 reflectConstant :: Const -> Raw
 reflectConstant c@(I  _) = reflCall "I"  [RConstant c]
