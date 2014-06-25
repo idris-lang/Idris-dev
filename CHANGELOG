@@ -8,6 +8,7 @@ New in 0.9.14:
 * Allow dependent function syntax to be overridden in dsl blocks, similarly to
   functions and let. The keyword for this is "pi".
 * Experimental 'neweffects' library, with simplified API
+* All new JavaScript backend (avoids callstack overflows)
 
 New in 0.9.13:
 --------------
