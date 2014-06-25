@@ -1500,5 +1500,5 @@ translateBC info bc
   | OP r o a              <- bc = jsOP info r o a
   | ERROR e               <- bc = jsERROR info e
   | otherwise                   = JSRaw $ show bc
-  {-| PROJECTINTO _ _ _     <- bc = undefined-}
+  {- PROJECTINTO _ _ _     <- bc = undefined -}
 
