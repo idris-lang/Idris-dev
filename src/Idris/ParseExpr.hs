@@ -599,7 +599,7 @@ constraintArg syn = do symbol "@{"
 quasiquote :: SyntaxInfo -> IdrisParser PTerm
 quasiquote syn = do guard (not (syn_in_quasiquote syn))
                     symbol "`("
-                    e <- expr syn { syn_in_quasiquote = True }
+                    e <- expr syn { syn_in_quasiquote = True , inPattern = False}
                     symbol ")"
                     return $ PQuasiquote e
                  <?> "quasiquotation"

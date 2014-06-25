@@ -154,8 +154,12 @@ elab ist info pattern opts fn tm
                   (h: hs) -> do patvar h; mkPat
                   [] -> return ()
 
+    -- | elabE elaborates an expression, possibly wrapping implicit coercions
+    -- and forces/delays.  If you make a recursive call in elab', it is
+    -- normally correct to call elabE - the ones that don't are desugarings
+    -- typically
     elabE :: (Bool, Bool, Bool) -> PTerm -> ElabD ()
-    elabE ina t = 
+    elabE ina t =
                --do g <- goal
                   --trace ("Elaborating " ++ show t ++ " : " ++ show g) $
                   do ct <- insertCoerce ina t
@@ -203,6 +207,8 @@ elab ist info pattern opts fn tm
     constType PtrType = True
     constType VoidType = True
     constType _ = False
+
+    -- "guarded" means immediately under a constructor, to help find patvars
 
     elab' :: (Bool, Bool, Bool)  -- ^ (in an argument, guarded, in a type)
           -> PTerm -- ^ The term to elaborate
@@ -634,7 +640,7 @@ elab ist info pattern opts fn tm
         = do -- First elaborate the unquoted subterms, replacing them with
              -- fresh names in the quasiquoted term
              (t, unq) <- extractUnquotes t
-             mapM_ elabUnquote unq
+             mapM_ (flip claim (Var tt) . fst) unq
              let unquoteNames = map fst unq
 
              -- Save the old state - we need a fresh proof state for this to
@@ -643,10 +649,15 @@ elab ist info pattern opts fn tm
              saveState
              updatePS (const .
                        newProof (sMN 0 "q") ctxt $
-                       P Ref (sNS (sUN "TT") ["Reflection", "Language"]) Erased)
+                       P Ref tt Erased)
 
-             -- Re-add the unquotes
-             mapM_ (flip claim (Var (sNS (sUN "TT") ["Reflection", "Language"]))) unquoteNames
+             -- Re-add the unquotes, letting Idris infer the types
+             mapM_ (\n -> do ty <- getNameFrom (sMN 0 "unqTy")
+                             claim ty RType
+                             movelast ty
+                             claim n (Var ty)
+                             movelast n)
+                   unquoteNames
 
              -- Establish holes for the type and value of the term to be
              -- quasiquoted
@@ -658,27 +669,31 @@ elab ist info pattern opts fn tm
              -- the hole doesn't disappear
              nTm <- getNameFrom (sMN 0 "quotedTerm")
              letbind nTm (Var qTy) (Var qTm)
+
              -- We must solve the type later through unification
              movelast qTy
-             -- Elaborate the quasiquoted term into the hole that was
+             -- Elaborate the quasiquoted term into the hole
              focus qTm
-             elab' ina t
+             elabE ina t
+             end_unify
              -- We now have an elaborated term. Reflect it and solve the
              -- original goal
              env <- get_env
              let qTerm = fmap (reflectQuote unquoteNames . binderVal) $ lookup nTm env
+
              case qTerm of
                Just q -> do loadState
                             fill q
                             solve
+                            mapM_ elabUnquote unq
                Nothing -> fail "Broken elaboration of quasiquote"
-      where elabUnquote (n, tm)
-              = do qn <- getNameFrom (sMN 0 "unquotHole")
-                   let tt = sNS (sUN "TT") ["Reflection", "Language"]
-                   claim qn (Var tt)
-                   letbind n (Var tt) (Var qn)
-                   focus qn
-                   elab' ina tm
+      where tt = sNS (sUN "TT") ["Reflection", "Language"]
+
+            elabUnquote (n, tm)
+                = do focus n
+                     elabE ina tm
+
+
     elab' ina (PUnquote t) = fail "Found unquote outside of quasiquote"
     elab' ina x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
