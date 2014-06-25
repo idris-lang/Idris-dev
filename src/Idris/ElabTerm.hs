@@ -124,7 +124,7 @@ elab ist info pattern opts fn tm
     = do let loglvl = opt_logLevel (idris_options ist)
          when (loglvl > 5) $ unifyLog True
          compute -- expand type synonyms, etc
-         elabE (False, False, False) tm -- (in argument, guarded, in type)
+         elabE (False, False, False, False) tm -- (in argument, guarded, in type, in qquote)
          end_unify
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
@@ -158,7 +158,7 @@ elab ist info pattern opts fn tm
     -- and forces/delays.  If you make a recursive call in elab', it is
     -- normally correct to call elabE - the ones that don't are desugarings
     -- typically
-    elabE :: (Bool, Bool, Bool) -> PTerm -> ElabD ()
+    elabE :: (Bool, Bool, Bool, Bool) -> PTerm -> ElabD ()
     elabE ina t =
                --do g <- goal
                   --trace ("Elaborating " ++ show t ++ " : " ++ show g) $
@@ -210,7 +210,7 @@ elab ist info pattern opts fn tm
 
     -- "guarded" means immediately under a constructor, to help find patvars
 
-    elab' :: (Bool, Bool, Bool)  -- ^ (in an argument, guarded, in a type)
+    elab' :: (Bool, Bool, Bool, Bool)  -- ^ (in an argument, guarded, in a type, in a quasiquote)
           -> PTerm -- ^ The term to elaborate
           -> ElabD ()
     elab' ina (PNoImplicits t) = elab' ina t -- skip elabE step
@@ -239,16 +239,16 @@ elab ist info pattern opts fn tm
                                     [pimp (sMN 0 "A") Placeholder True,
                                      pimp (sMN 0 "B") Placeholder False,
                                      pexp l, pexp r])
-    elab' ina@(_, a, inty) (PPair fc _ l r)
+    elab' ina@(_, a, inty, qq) (PPair fc _ l r)
         = do hnf_compute
              g <- goal
              case g of
-                TType _ -> elabE (True, a,inty) (PApp fc (PRef fc pairTy)
-                                                  [pexp l,pexp r])
-                _ -> elabE (True, a, inty) (PApp fc (PRef fc pairCon)
-                                            [pimp (sMN 0 "A") Placeholder True,
-                                             pimp (sMN 0 "B") Placeholder True,
-                                             pexp l, pexp r])
+                TType _ -> elabE (True, a,inty, qq) (PApp fc (PRef fc pairTy)
+                                                      [pexp l,pexp r])
+                _ -> elabE (True, a, inty, qq) (PApp fc (PRef fc pairCon)
+                                                [pimp (sMN 0 "A") Placeholder True,
+                                                 pimp (sMN 0 "B") Placeholder True,
+                                                 pexp l, pexp r])
     elab' ina (PDPair fc p l@(PRef _ n) t r)
             = case t of
                 Placeholder ->
@@ -294,7 +294,7 @@ elab ist info pattern opts fn tm
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed") 
-    elab' (ina, guarded, inty) (PRef fc n) | pattern && not (inparamBlock n)
+    elab' (ina, guarded, inty, qq) (PRef fc n) | pattern && not (inparamBlock n)
         = do ctxt <- get_context
              let defined = case lookupTy n ctxt of
                                [] -> False
@@ -311,7 +311,7 @@ elab ist info pattern opts fn tm
                                 _ -> True
     elab' ina f@(PInferRef fc n) = elab' ina (PApp fc f [])
     elab' ina (PRef fc n) = erun fc $ do apply (Var n) []; solve
-    elab' ina@(_, a, inty) (PLam n Placeholder sc)
+    elab' ina@(_, a, inty, qq) (PLam n Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
                when (isTConName n ctxt) $
@@ -319,8 +319,8 @@ elab ist info pattern opts fn tm
                checkPiGoal n
                attack; intro (Just n);
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm)
-               elabE (True, a, inty) sc; solve
-    elab' ina@(_, a, inty) (PLam n ty sc)
+               elabE (True, a, inty, qq) sc; solve
+    elab' ina@(_, a, inty, qq) (PLam n ty sc)
           = do tyn <- getNameFrom (sMN 0 "lamty")
                -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
@@ -334,12 +334,12 @@ elab ist info pattern opts fn tm
                hs <- get_holes
                introTy (Var tyn) (Just n)
                focus tyn
-               elabE (True, a, True) ty
-               elabE (True, a, inty) sc
+               elabE (True, a, True, qq) ty
+               elabE (True, a, inty, qq) sc
                solve
-    elab' ina@(_, a, _) (PPi _ n Placeholder sc)
-          = do attack; arg n (sMN 0 "ty"); elabE (True, a, True) sc; solve
-    elab' ina@(_, a, _) (PPi _ n ty sc)
+    elab' ina@(_, a, _, qq) (PPi _ n Placeholder sc)
+          = do attack; arg n (sMN 0 "ty"); elabE (True, a, True, qq) sc; solve
+    elab' ina@(_, a, _, qq) (PPi _ n ty sc)
           = do attack; tyn <- getNameFrom (sMN 0 "ty")
                claim tyn RType
                n' <- case n of
@@ -347,10 +347,10 @@ elab ist info pattern opts fn tm
                         _ -> return n
                forall n' (Var tyn)
                focus tyn
-               elabE (True, a, True) ty
-               elabE (True, a, True) sc
+               elabE (True, a, True, qq) ty
+               elabE (True, a, True, qq) sc
                solve
-    elab' ina@(_, a, inty) (PLet n ty val sc)
+    elab' ina@(_, a, inty, qq) (PLet n ty val sc)
           = do attack;
                tyn <- getNameFrom (sMN 0 "letty")
                claim tyn RType
@@ -362,17 +362,17 @@ elab ist info pattern opts fn tm
                    Placeholder -> return ()
                    _ -> do focus tyn
                            explicit tyn
-                           elabE (True, a, True) ty
+                           elabE (True, a, True, qq) ty
                focus valn
-               elabE (True, a, True) val
+               elabE (True, a, True, qq) val
                env <- get_env
-               elabE (True, a, inty) sc
+               elabE (True, a, inty, qq) sc
                -- HACK: If the name leaks into its type, it may leak out of
                -- scope outside, so substitute in the outer scope.
                expandLet n (case lookup n env of
                                  Just (Let t v) -> v)
                solve
-    elab' ina@(_, a, inty) (PGoal fc r n sc) = do
+    elab' ina@(_, a, inty, qq) (PGoal fc r n sc) = do
          rty <- goal
          attack
          tyn <- getNameFrom (sMN 0 "letty")
@@ -381,10 +381,10 @@ elab ist info pattern opts fn tm
          claim valn (Var tyn)
          letbind n (Var tyn) (Var valn)
          focus valn
-         elabE (True, a, True) (PApp fc r [pexp (delab ist rty)])
+         elabE (True, a, True, qq) (PApp fc r [pexp (delab ist rty)])
          env <- get_env
          computeLet n
-         elabE (True, a, inty) sc
+         elabE (True, a, inty, qq) sc
          solve
 --          elab' ina (PLet n Placeholder
 --              (PApp fc r [pexp (delab ist rty)]) sc)
@@ -440,16 +440,16 @@ elab ist info pattern opts fn tm
                              _ -> lift $ tfail (NoSuchVariable fn)
             ns <- match_apply (Var fn') (map (\x -> (x,0)) imps)
             solve
-    elab' (_, _, inty) (PApp fc (PRef _ f) args')
-       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
+    elab' (_, _, inty, qq) (PApp fc (PRef _ f) args')
+       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty && not qq
           = lift $ tfail (Msg "Typecase is not allowed")
     -- if f is local, just do a simple_app
-    elab' (ina, g, inty) tm@(PApp fc (PRef _ f) args)
+    elab' (ina, g, inty, qq) tm@(PApp fc (PRef _ f) args)
        = do env <- get_env
             if (f `elem` map fst env && length args == 1)
                then -- simple app, as below
-                    do simple_app (elabE (ina, g, inty) (PRef fc f))
-                                  (elabE (True, g, inty) (getTm (head args)))
+                    do simple_app (elabE (ina, g, inty, qq) (PRef fc f))
+                                  (elabE (True, g, inty, qq) (getTm (head args)))
                                   (show tm)
                        solve
                else
@@ -475,7 +475,7 @@ elab ist info pattern opts fn tm
                     -- Sort so that the implicit tactics and alternatives go last
                     let (ns', eargs) = unzip $
                              sortBy cmpArg (zip ns args)
-                    elabArgs ist (ina || not isinf, guarded, inty)
+                    elabArgs ist (ina || not isinf, guarded, inty, qq)
                            [] fc False f ns' 
                              (f == sUN "Force")
                              (map (\x -> (False, getTm x)) eargs) -- TODO: remove this False arg
@@ -549,9 +549,9 @@ elab ist info pattern opts fn tm
             setInjective (PApp _ (PRef _ n) _) = setinj n
             setInjective _ = return ()
 
-    elab' ina@(_, a, inty) tm@(PApp fc f [arg])
+    elab' ina@(_, a, inty, qq) tm@(PApp fc f [arg])
           = erun fc $
-             do simple_app (elabE ina f) (elabE (True, a, inty) (getTm arg))
+             do simple_app (elabE ina f) (elabE (True, a, inty, qq) (getTm arg))
                            (show tm)
                 solve
     elab' ina Placeholder = do (h : hs) <- get_holes
@@ -600,7 +600,7 @@ elab ist info pattern opts fn tm
                    elab' ina sc
                    elab' ina (PRef fc letn)
                    solve
-    elab' ina@(_, a, inty) c@(PCase fc scr opts)
+    elab' ina@(_, a, inty, qq) c@(PCase fc scr opts)
         = do attack
              tyn <- getNameFrom (sMN 0 "scty")
              claim tyn RType
@@ -609,7 +609,7 @@ elab ist info pattern opts fn tm
              claim valn (Var tyn)
              letbind scvn (Var tyn) (Var valn)
              focus valn
-             elabE (True, a, inty) scr
+             elabE (True, a, inty, qq) scr
              args <- get_env
              cname <- unique_hole' True (mkCaseName fn)
              let cname' = mkN cname
@@ -636,7 +636,7 @@ elab ist info pattern opts fn tm
     elab' ina (PUnifyLog t) = do unifyLog True
                                  elab' ina t
                                  unifyLog False
-    elab' ina (PQuasiquote t)
+    elab' (ina, g, inty, qq) (PQuasiquote t)
         = do -- First elaborate the unquoted subterms, replacing them with
              -- fresh names in the quasiquoted term
              (t, unq) <- extractUnquotes t
@@ -651,7 +651,7 @@ elab ist info pattern opts fn tm
                        newProof (sMN 0 "q") ctxt $
                        P Ref tt Erased)
 
-             -- Re-add the unquotes, letting Idris infer the types
+             -- Re-add the unquotes, letting Idris infer the (fictional) types
              mapM_ (\n -> do ty <- getNameFrom (sMN 0 "unqTy")
                              claim ty RType
                              movelast ty
@@ -674,7 +674,7 @@ elab ist info pattern opts fn tm
              movelast qTy
              -- Elaborate the quasiquoted term into the hole
              focus qTm
-             elabE ina t
+             elabE (ina, g, inty, True) t
              end_unify
              -- We now have an elaborated term. Reflect it and solve the
              -- original goal
@@ -691,7 +691,7 @@ elab ist info pattern opts fn tm
 
             elabUnquote (n, tm)
                 = do focus n
-                     elabE ina tm
+                     elabE (ina, g, inty, False) tm
 
 
     elab' ina (PUnquote t) = fail "Found unquote outside of quasiquote"
@@ -786,7 +786,7 @@ elab ist info pattern opts fn tm
 
     -- | Elaborate the arguments to a function
     elabArgs :: IState -- ^ The current Idris state
-             -> (Bool, Bool, Bool) -- ^ (in an argument, guarded, in a type)
+             -> (Bool, Bool, Bool, Bool) -- ^ (in an argument, guarded, in a type, in a qquote)
              -> [Bool]
              -> FC -- ^ Source location
              -> Bool
