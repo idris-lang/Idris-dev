@@ -293,8 +293,8 @@ elab ist info pattern opts fn tm
     elab' ina (PPatvar fc n) | pattern = patvar n
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
---          = lift $ tfail (Msg "Typecase is not allowed") 
-    elab' (ina, guarded, inty, qq) (PRef fc n) | pattern && not (inparamBlock n)
+--          = lift $ tfail (Msg "Typecase is not allowed")
+    elab' (ina, guarded, inty, qq) (PRef fc n) | pattern && not (inparamBlock n) && not qq
         = do ctxt <- get_context
              let defined = case lookupTy n ctxt of
                                [] -> False
@@ -640,8 +640,9 @@ elab ist info pattern opts fn tm
         = do -- First elaborate the unquoted subterms, replacing them with
              -- fresh names in the quasiquoted term
              (t, unq) <- extractUnquotes t
-             mapM_ (flip claim (Var tt) . fst) unq
              let unquoteNames = map fst unq
+             mapM_ (flip claim (Var tt)) unquoteNames
+
 
              -- Save the old state - we need a fresh proof state for this to
              -- avoid capture
@@ -676,17 +677,18 @@ elab ist info pattern opts fn tm
              focus qTm
              elabE (ina, g, inty, True) t
              end_unify
+
              -- We now have an elaborated term. Reflect it and solve the
              -- original goal
              env <- get_env
-             let qTerm = fmap (reflectQuote unquoteNames . binderVal) $ lookup nTm env
-
-             case qTerm of
-               Just q -> do loadState
-                            fill q
-                            solve
-                            mapM_ elabUnquote unq
+             loadState
+             case fmap (explicitNames . binderVal) $ lookup nTm env of
+               Just q
+                 | pattern   -> reflectQuotePattern unquoteNames q
+                 | otherwise -> do fill $ reflectQuote unquoteNames q
+                                   solve
                Nothing -> fail "Broken elaboration of quasiquote"
+             mapM_ elabUnquote unq
       where tt = sNS (sUN "TT") ["Reflection", "Language"]
 
             elabUnquote (n, tm)
@@ -1509,6 +1511,138 @@ reflCall funName args
 reflect :: Term -> Raw
 reflect = reflectQuote []
 
+claimTT :: Name -> ElabD Name
+claimTT n = do n' <- getNameFrom n
+               claim n' (Var (sNS (sUN "TT") ["Reflection", "Language"]))
+               return n'
+
+-- | Convert a reflected term to a more suitable form for pattern-matching.
+-- In particular, the less-interesting bits are elaborated to _ patterns. This
+-- happens to NameTypes, universe levels, names that are bound but not used,
+-- and the type annotation field of the P constructor.
+reflectQuotePattern :: [Name] -> Term -> ElabD ()
+reflectQuotePattern unq (P _ n _)
+  | n `elem` unq = -- the unquoted names have been claimed as TT already - just use them
+    do fill (Var n) ; solve
+  | otherwise =
+    do tyannot <- claimTT (sMN 0 "pTyAnnot")
+       movelast tyannot  -- use a _ pattern here
+       nt <- getNameFrom (sMN 0 "nt")
+       claim nt (Var (reflm "NameType"))
+       movelast nt       -- use a _ pattern here
+       n' <- getNameFrom (sMN 0 "n")
+       claim n' (Var (reflm "TTName"))
+       fill $ reflCall "P" [Var nt, Var n', Var tyannot]
+       solve
+       focus n'; reflectNameQuotePattern n
+reflectQuotePattern unq (V n)
+  = do fill $ reflCall "V" [RConstant (I n)]
+       solve
+reflectQuotePattern unq (Bind n b x)
+  = do x' <- claimTT (sMN 0 "sc")
+       movelast x'
+       b' <- getNameFrom (sMN 0 "binder")
+       claim b' (RApp (Var (sNS (sUN "Binder") ["Reflection", "Language"]))
+                      (Var (sNS (sUN "TT") ["Reflection", "Language"])))
+       if n `elem` freeNames x
+         then do fill $ reflCall "Bind"
+                                 [reflectName n,
+                                  Var b',
+                                  Var x']
+                 solve
+         else do any <- claimTT (sMN 0 "any")
+                 movelast any
+                 fill $ reflCall "Bind"
+                                 [Var any,
+                                  Var b',
+                                  Var x']
+                 solve
+       focus x'; reflectQuotePattern unq x
+       focus b'; reflectBinderQuotePattern unq b
+
+  where
+    reflectBinderQuotePattern :: [Name] -> Binder Term -> ElabD ()
+    reflectBinderQuotePattern unq (Lam t)
+       = do t' <- claimTT (sMN 0 "ty"); movelast t'
+            fill $ reflCall "Lam" [Var (reflm "TT"), Var t']
+            solve
+            focus t'; reflectQuotePattern unq t
+    reflectBinderQuotePattern unq (Pi t)
+       = do t' <- claimTT (sMN 0 "ty") ; movelast t'
+            fill $ reflCall "Pi" [Var (reflm "TT"), Var t']
+            solve
+            focus t'; reflectQuotePattern unq t
+    reflectBinderQuotePattern unq (Let x y)
+       = do x' <- claimTT (sMN 0 "ty"); movelast x';
+            y' <- claimTT (sMN 0 "v"); movelast y';
+            fill $ reflCall "Let" [Var (reflm "TT"), Var x', Var y']
+            solve
+            focus x'; reflectQuotePattern unq x
+            focus y'; reflectQuotePattern unq y
+    reflectBinderQuotePattern unq (NLet x y)
+       = do x' <- claimTT (sMN 0 "ty"); movelast x'
+            y' <- claimTT (sMN 0 "v"); movelast y'
+            fill $ reflCall "NLet" [Var (reflm "TT"), Var x', Var y']
+            solve
+            focus x'; reflectQuotePattern unq x
+            focus y'; reflectQuotePattern unq y
+    reflectBinderQuotePattern unq (Hole t)
+       = do t' <- claimTT (sMN 0 "ty"); movelast t'
+            fill $ reflCall "Hole" [Var (reflm "TT"), Var t']
+            solve
+            focus t'; reflectQuotePattern unq t
+    reflectBinderQuotePattern unq (GHole _ t)
+       = do t' <- claimTT (sMN 0 "ty"); movelast t'
+            fill $ reflCall "GHole" [Var (reflm "TT"), Var t']
+            solve
+            focus t'; reflectQuotePattern unq t
+    reflectBinderQuotePattern unq (Guess x y)
+       = do x' <- claimTT (sMN 0 "ty"); movelast x'
+            y' <- claimTT (sMN 0 "v"); movelast y'
+            fill $ reflCall "Guess" [Var (reflm "TT"), Var x', Var y']
+            solve
+            focus x'; reflectQuotePattern unq x
+            focus y'; reflectQuotePattern unq y
+    reflectBinderQuotePattern unq (PVar t)
+       = do t' <- claimTT (sMN 0 "ty"); movelast t'
+            fill $ reflCall "PVar" [Var (reflm "TT"), Var t']
+            solve
+            focus t'; reflectQuotePattern unq t
+    reflectBinderQuotePattern unq (PVTy t)
+       = do t' <- claimTT (sMN 0 "ty"); movelast t'
+            fill $ reflCall "PVTy" [Var (reflm "TT"), Var t']
+            solve
+            focus t'; reflectQuotePattern unq t
+reflectQuotePattern unq (App f x)
+  = do f' <- claimTT (sMN 0 "f"); movelast f'
+       x' <- claimTT (sMN 0 "x"); movelast x'
+       fill $ reflCall "App" [Var f', Var x']
+       solve
+       focus f'; reflectQuotePattern unq f
+       focus x'; reflectQuotePattern unq x
+reflectQuotePattern unq (Constant c)
+  = do fill $ reflCall "TConst" [reflectConstant c]
+       solve
+reflectQuotePattern unq (Proj t i)
+  = do t' <- claimTT (sMN 0 "t"); movelast t'
+       fill $ reflCall "Proj" [Var t', RConstant (I i)]
+       solve
+       focus t'; reflectQuotePattern unq t
+reflectQuotePattern unq (Erased)
+  = do erased <- claimTT (sMN 0 "erased")
+       movelast erased
+       fill $ (Var erased)
+       solve
+reflectQuotePattern unq (Impossible)
+  = do fill $ Var (reflm "Impossible")
+       solve
+reflectQuotePattern unq (TType exp)
+  = do ue <- getNameFrom (sMN 0 "uexp")
+       claim ue (Var (sNS (sUN "TTUExp") ["Reflection", "Language"]))
+       movelast ue
+       fill $ reflCall "TType" [Var ue]
+       solve
+
 -- | Create a reflected term, but leave refs to the provided name intact
 reflectQuote :: [Name] -> Term -> Raw
 reflectQuote unq (P nt n t)
@@ -1517,7 +1651,7 @@ reflectQuote unq (P nt n t)
 reflectQuote unq (V n)
   = reflCall "V" [RConstant (I n)]
 reflectQuote unq (Bind n b x)
-  = reflCall "Bind" [reflectName n, reflectBinder b, reflectQuote unq x]
+  = reflCall "Bind" [reflectName n, reflectBinderQuote unq b, reflectQuote unq x]
 reflectQuote unq (App f x)
   = reflCall "App" [reflectQuote unq f, reflectQuote unq x]
 reflectQuote unq (Constant c)
@@ -1552,6 +1686,22 @@ reflectName (MN i n)
   = reflCall "MN" [RConstant (I i), RConstant (Str (str n))]
 reflectName (NErased) = Var (reflm "NErased")
 reflectName n = Var (reflm "NErased") -- special name, not yet implemented
+
+-- | Elaborate a name to a pattern. This means that NS and UN will be intact,
+-- while all others become _
+reflectNameQuotePattern :: Name -> ElabD ()
+reflectNameQuotePattern n@(UN s)
+  = do fill $ reflectName n
+       solve
+reflectNameQuotePattern n@(NS _ _)
+  = do fill $ reflectName n
+       solve
+reflectNameQuotePattern _ -- for all other names, match any
+  = do nameHole <- getNameFrom (sMN 0 "name")
+       claim nameHole (Var (reflm "TTName"))
+       movelast nameHole
+       fill (Var nameHole)
+       solve
 
 reflectBinder :: Binder Term -> Raw
 reflectBinder = reflectBinderQuote []

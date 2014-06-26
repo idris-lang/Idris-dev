@@ -1280,87 +1280,89 @@ addImpl = addImpl' False [] []
 -- and *not* inside a PHidden
 
 addImpl' :: Bool -> [Name] -> [Name] -> IState -> PTerm -> PTerm
-addImpl' inpat env infns ist ptm 
-         = mkUniqueNames env (ai (zip env (repeat Nothing)) [] ptm)
+addImpl' inpat env infns ist ptm
+         = mkUniqueNames env (ai False (zip env (repeat Nothing)) [] ptm)
   where
-    ai env ds (PRef fc f)
+    ai :: Bool -> [(Name, Maybe PTerm)] -> [[T.Text]] -> PTerm -> PTerm
+    ai qq env ds (PRef fc f)
         | f `elem` infns = PInferRef fc f
-        | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat ist fc f ds []
-    ai env ds (PHidden (PRef fc f))
-        | not (f `elem` map fst env) = handleErr $ aiFn inpat False ist fc f ds []
-    ai env ds (PEq fc l r)   
-      = let l' = ai env ds l
-            r' = ai env ds r in
+        | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat qq ist fc f ds []
+    ai qq env ds (PHidden (PRef fc f))
+        | not (f `elem` map fst env) = handleErr $ aiFn inpat False qq ist fc f ds []
+    ai qq env ds (PEq fc l r)
+      = let l' = ai qq env ds l
+            r' = ai qq env ds r in
             PEq fc l' r'
-    ai env ds (PRewrite fc l r g)   
-       = let l' = ai env ds l
-             r' = ai env ds r
-             g' = fmap (ai env ds) g in
+    ai qq env ds (PRewrite fc l r g)
+       = let l' = ai qq env ds l
+             r' = ai qq env ds r
+             g' = fmap (ai qq env ds) g in
          PRewrite fc l' r' g'
-    ai env ds (PTyped l r) 
-      = let l' = ai env ds l
-            r' = ai env ds r in
+    ai qq env ds (PTyped l r)
+      = let l' = ai qq env ds l
+            r' = ai qq env ds r in
             PTyped l' r'
-    ai env ds (PPair fc p l r) 
-      = let l' = ai env ds l
-            r' = ai env ds r in
+    ai qq env ds (PPair fc p l r)
+      = let l' = ai qq env ds l
+            r' = ai qq env ds r in
             PPair fc p l' r'
-    ai env ds (PDPair fc p l t r)
-         = let l' = ai env ds l
-               t' = ai env ds t
-               r' = ai env ds r in
+    ai qq env ds (PDPair fc p l t r)
+         = let l' = ai qq env ds l
+               t' = ai qq env ds t
+               r' = ai qq env ds r in
            PDPair fc p l' t' r'
-    ai env ds (PAlternative a as) 
-           = let as' = map (ai env ds) as in
+    ai qq env ds (PAlternative a as)
+           = let as' = map (ai qq env ds) as in
                  PAlternative a as'
-    ai env _ (PDisamb ds' as) = ai env ds' as
-    ai env ds (PApp fc (PInferRef _ f) as)
-        = let as' = map (fmap (ai env ds)) as in
+    ai qq env _ (PDisamb ds' as) = ai qq env ds' as
+    ai qq env ds (PApp fc (PInferRef _ f) as)
+        = let as' = map (fmap (ai qq env ds)) as in
               PApp fc (PInferRef fc f) as'
-    ai env ds (PApp fc ftm@(PRef _ f) as)
-        | f `elem` infns = ai env ds (PApp fc (PInferRef fc f) as)
+    ai qq env ds (PApp fc ftm@(PRef _ f) as)
+        | f `elem` infns = ai qq env ds (PApp fc (PInferRef fc f) as)
         | not (f `elem` map fst env)
-                          = let as' = map (fmap (ai env ds)) as in
-                                handleErr $ aiFn inpat False ist fc f ds as'
+                          = let as' = map (fmap (ai qq env ds)) as in
+                                handleErr $ aiFn inpat False qq ist fc f ds as'
         | Just (Just ty) <- lookup f env =
-             let as' = map (fmap (ai env ds)) as
+             let as' = map (fmap (ai qq env ds)) as
                  arity = getPArity ty in
               mkPApp fc arity ftm as'
-    ai env ds (PApp fc f as) 
-      = let f' = ai env ds f
-            as' = map (fmap (ai env ds)) as in
+    ai qq env ds (PApp fc f as)
+      = let f' = ai qq env ds f
+            as' = map (fmap (ai qq env ds)) as in
          mkPApp fc 1 f' as'
-    ai env ds (PCase fc c os) 
-      = let c' = ai env ds c in
+    ai qq env ds (PCase fc c os)
+      = let c' = ai qq env ds c in
         -- leave os alone, because they get lifted into a new pattern match
         -- definition which is passed through addImpl again with more scope
         -- information
             PCase fc c' os
-    ai env ds (PLam n ty sc) 
-      = let ty' = ai env ds ty
-            sc' = ai ((n, Just ty):env) ds sc in
+    ai qq env ds (PLam n ty sc)
+      = let ty' = ai qq env ds ty
+            sc' = ai qq ((n, Just ty):env) ds sc in
             PLam n ty' sc'
-    ai env ds (PLet n ty val sc)
-      = let ty' = ai env ds ty
-            val' = ai env ds val
-            sc' = ai ((n, Just ty):env) ds sc in
+    ai qq env ds (PLet n ty val sc)
+      = let ty' = ai qq env ds ty
+            val' = ai qq env ds val
+            sc' = ai qq ((n, Just ty):env) ds sc in
             PLet n ty' val' sc'
-    ai env ds (PPi p n ty sc) 
-      = let ty' = ai env ds ty
-            sc' = ai ((n, Just ty):env) ds sc in
+    ai qq env ds (PPi p n ty sc)
+      = let ty' = ai qq env ds ty
+            sc' = ai qq ((n, Just ty):env) ds sc in
             PPi p n ty' sc'
-    ai env ds (PGoal fc r n sc) 
-      = let r' = ai env ds r
-            sc' = ai ((n, Nothing):env) ds sc in
+    ai qq env ds (PGoal fc r n sc)
+      = let r' = ai qq env ds r
+            sc' = ai qq ((n, Nothing):env) ds sc in
             PGoal fc r' n sc'
-    ai env ds (PHidden tm) = PHidden (ai env ds tm)
-    ai env ds (PProof ts) = PProof (map (fmap (ai env ds)) ts)
-    ai env ds (PTactics ts) = PTactics (map (fmap (ai env ds)) ts)
-    ai env ds (PRefl fc tm) = PRefl fc (ai env ds tm)
-    ai env ds (PUnifyLog tm) = PUnifyLog (ai env ds tm)
-    ai env ds (PNoImplicits tm) = PNoImplicits (ai env ds tm)
-    ai env ds (PQuasiquote tm) = PQuasiquote (ai env ds tm)
-    ai env ds tm = tm
+    ai qq env ds (PHidden tm) = PHidden (ai qq env ds tm)
+    ai qq env ds (PProof ts) = PProof (map (fmap (ai qq env ds)) ts)
+    ai qq env ds (PTactics ts) = PTactics (map (fmap (ai qq env ds)) ts)
+    ai qq env ds (PRefl fc tm) = PRefl fc (ai qq env ds tm)
+    ai qq env ds (PUnifyLog tm) = PUnifyLog (ai qq env ds tm)
+    ai qq env ds (PNoImplicits tm) = PNoImplicits (ai qq env ds tm)
+    ai qq env ds (PQuasiquote tm) = PQuasiquote (ai True env ds tm)
+    ai qq env ds (PUnquote tm) = PUnquote (ai False env ds tm)
+    ai qq env ds tm = tm
 
     handleErr (Left err) = PElabError err
     handleErr (Right x) = x
@@ -1368,8 +1370,8 @@ addImpl' inpat env infns ist ptm
 -- if in a pattern, and there are no arguments, and there's no possible
 -- names with zero explicit arguments, don't add implicits.
 
-aiFn :: Bool -> Bool -> IState -> FC -> Name -> [[T.Text]] -> [PArg] -> Either Err PTerm
-aiFn inpat True ist fc f ds []
+aiFn :: Bool -> Bool -> Bool -> IState -> FC -> Name -> [[T.Text]] -> [PArg] -> Either Err PTerm
+aiFn inpat True qq ist fc f ds []
   = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar fc f
         alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
@@ -1377,7 +1379,7 @@ aiFn inpat True ist fc f ds []
                     if (not (vname f) || tcname f
                            || any (conCaf (tt_ctxt ist)) ialts)
 --                            any constructor alts || any allImp ialts))
-                        then aiFn inpat False ist fc f ds [] -- use it as a constructor
+                        then aiFn inpat False qq ist fc f ds [] -- use it as a constructor
                         else Right $ PPatvar fc f
     where imp (PExp _ _ _ _) = False
           imp _ = True
@@ -1386,14 +1388,14 @@ aiFn inpat True ist fc f ds []
           constructor (TyDecl (DCon _ _) _) = True
           constructor _ = False
 
-          conCaf ctxt (n, cia) = isDConName n ctxt && allImp cia
+          conCaf ctxt (n, cia) = (isDConName n ctxt || (qq && isTConName n ctxt)) && allImp cia
 
           vname (UN n) = True -- non qualified
           vname _ = False
 
-aiFn inpat expat ist fc f ds as
+aiFn inpat expat qq ist fc f ds as
     | f `elem` primNames = Right $ PApp fc (PRef fc f) as
-aiFn inpat expat ist fc f ds as
+aiFn inpat expat qq ist fc f ds as
           -- This is where namespaces get resolved by adding PAlternative
      = do let ns = lookupCtxtName f (idris_implicits ist)
           let nh = filter (\(n, _) -> notHidden n) ns
