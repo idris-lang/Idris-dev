@@ -1,12 +1,42 @@
 module Idris.ElabQuasiquote (extractUnquotes) where
 
-import Idris.Core.Elaborate
+import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.AbsSyntax
 
 
+extract1 :: (PTerm -> a) -> PTerm -> Elab' aux (a, [(Name, PTerm)])
+extract1 c tm = do (tm', ex) <- extractUnquotes tm
+                   return (c tm', ex)
+
+extract2 :: (PTerm -> PTerm -> a) -> PTerm -> PTerm -> Elab' aux (a, [(Name, PTerm)])
+extract2 c a b = do (a', ex1) <- extractUnquotes a
+                    (b', ex2) <- extractUnquotes b
+                    return (c a' b', ex1 ++ ex2)
+
 extractTUnquotes :: PTactic -> Elab' aux (PTactic, [(Name, PTerm)])
-extractTUnquotes = undefined -- TODO
+extractTUnquotes (Rewrite t) = extract1 Rewrite t
+extractTUnquotes (Induction t) = extract1 Induction t
+extractTUnquotes (LetTac n t) = extract1 (LetTac n) t
+extractTUnquotes (LetTacTy n t1 t2) = extract2 (LetTacTy n) t1 t2
+extractTUnquotes (Exact tm) = extract1 Exact tm
+extractTUnquotes (Try tac1 tac2)
+  = do (tac1', ex1) <- extractTUnquotes tac1
+       (tac2', ex2) <- extractTUnquotes tac2
+       return (Try tac1' tac2', ex1 ++ ex2)
+extractTUnquotes (TSeq tac1 tac2)
+  = do (tac1', ex1) <- extractTUnquotes tac1
+       (tac2', ex2) <- extractTUnquotes tac2
+       return (TSeq tac1' tac2', ex1 ++ ex2)
+extractTUnquotes (ApplyTactic t) = extract1 ApplyTactic t
+extractTUnquotes (ByReflection t) = extract1 ByReflection t
+extractTUnquotes (Reflect t) = extract1 Reflect t
+extractTUnquotes (GoalType s tac)
+  = do (tac', ex) <- extractTUnquotes tac
+       return (GoalType s tac', ex)
+extractTUnquotes (TCheck t) = extract1 TCheck t
+extractTUnquotes (TEval t) = extract1 TEval t
+extractTUnquotes tac = return (tac, []) -- the rest don't contain PTerms
 
 extractPArgUnquotes :: PArg -> Elab' aux (PArg, [(Name, PTerm)])
 extractPArgUnquotes (PImp p m opts n t) =
@@ -31,9 +61,12 @@ extractDoUnquotes (DoBind fc n tm)
   = do (tm', ex) <- extractUnquotes tm
        return (DoBind fc n tm', ex)
 extractDoUnquotes (DoBindP fc t t' alts)
-  = fail "not done yet" -- TODO
-extractDoUnquotes (DoLet  fc n t t') = fail "not done yet" -- TODO
-extractDoUnquotes (DoLetP fc t t') = fail "not done yet" -- TODO
+  = fail "Pattern-matching binds cannot be quasiquoted"
+extractDoUnquotes (DoLet  fc n v b)
+  = do (v', ex1) <- extractUnquotes v
+       (b', ex2) <- extractUnquotes b
+       return (DoLet fc n v' b', ex1 ++ ex2)
+extractDoUnquotes (DoLetP fc t t') = fail "Pattern-matching lets cannot be quasiquoted"
 
 
 extractUnquotes :: PTerm -> Elab' aux (PTerm, [(Name, PTerm)])
@@ -110,11 +143,19 @@ extractUnquotes (PDoBlock steps)
        return (PDoBlock steps'', concat exs)
 extractUnquotes (PIdiom fc tm)
   = fmap (\(tm', ex) -> (PIdiom fc tm', ex)) $ extractUnquotes tm
-extractUnquotes (PProof tacs) = fail "not implemented yet"
-extractUnquotes (PTactics tacs) = fail "not implemented yet"
-extractUnquotes (PElabError err) = fail "not implemented yet"
-extractUnquotes (PCoerced tm) = fail "not implemented yet"
-extractUnquotes (PDisamb xs tm) = fail "not implemented yet"
+extractUnquotes (PProof tacs)
+  = do (tacs', exs) <- fmap unzip $ mapM extractTUnquotes tacs
+       return (PProof tacs', concat exs)
+extractUnquotes (PTactics tacs)
+  = do (tacs', exs) <- fmap unzip $ mapM extractTUnquotes tacs
+       return (PTactics tacs', concat exs)
+extractUnquotes (PElabError err) = fail "Can't quasiquote an error"
+extractUnquotes (PCoerced tm)
+  = do (tm', ex) <- extractUnquotes tm
+       return (PCoerced tm', ex)
+extractUnquotes (PDisamb ns tm)
+  = do (tm', ex) <- extractUnquotes tm
+       return (PDisamb ns tm', ex)
 extractUnquotes (PUnifyLog tm)
   = fmap (\(tm', ex) -> (PUnifyLog tm', ex)) $ extractUnquotes tm
 extractUnquotes (PNoImplicits tm)
