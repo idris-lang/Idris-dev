@@ -12,6 +12,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, maybeToList)
 import Data.Monoid (Monoid (mempty, mappend))
+import qualified Data.PriorityQueue.FingerTree as Q
 import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Text as T (pack, isPrefixOf)
@@ -41,7 +42,7 @@ searchByType h pterm = do
   ty <- elabType' False toplevel syn (fst noDocs) (snd noDocs) emptyFC [] n pterm'
   putIState i -- don't actually make any changes
   let names = searchUsing searchPred i ty
-  let names' = take numLimit . takeWhile ((< scoreLimit) . getScore) $ 
+  let names' = take numLimit $ 
          sortBy (compare `on` getScore) names
   let docs =
        [ let docInfo = (n, delabTy i n, fmap (overview . fst) (lookupCtxtExact n (idris_docstrings i))) in
@@ -51,7 +52,6 @@ searchByType h pterm = do
   where 
     getScore = defaultScoreFunction . snd . snd
     numLimit = 50
-    scoreLimit = 100
     syn = defaultSyntax { implicitAllowed = True } -- syntax
     n = sMN 0 "searchType" -- name
   
@@ -84,10 +84,9 @@ searchUsing pred istate ty =
 
 -- Our default search predicate.
 searchPred :: IState -> Type -> Type -> Maybe Score
-searchPred istate ty1 = \ty2 -> case matcher ty2 of
-  xs -> guard (not (null xs)) >> return (minimumBy (compare `on` defaultScoreFunction) xs)
-  where
-  matcher = unifyWithHoles istate ty1
+searchPred istate ty1 = matcher where
+  maxScore = 100
+  matcher = unifyWithHoles istate maxScore ty1
 
 
 typeFromDef :: (Def, b, c, d) -> Maybe Type
@@ -237,22 +236,25 @@ isTypeClassArg classInfo ty = not (null (getClassName clss >>= flip lookupCtxt c
   getClassName _ = []
 
 
+instance Ord Score where
+  compare = compare `on` defaultScoreFunction
+
 --DONT run vToP first!
 -- | Try to match two types together in a unification-like procedure.
 -- Returns a list of possible scores representing ways in which the two
 -- types can be matched.
-unifyWithHoles :: IState -> Type -> Type -> [Score]
-unifyWithHoles istate type1 = \type2 -> let
+unifyWithHoles :: IState -> Int -> Type -> Type -> Maybe Score
+unifyWithHoles istate maxScore type1 = \type2 -> let
   (dag2, typeClassArgs2, retTy2) = makeDag (uniqueBinders argNames1 type2)
   argNames2 = map (fst . fst) dag2
   startingHoles = argNames1 ++ argNames2
 
   startingTypes = (retTy1, retTy2) : [] 
-  in case unifyQueue (State startingHoles dag1 dag2 
+  in do
+  state <- unifyQueue (State startingHoles dag1 dag2 
               typeClassArgs1 typeClassArgs2
               mempty startingHoles) startingTypes
-     of Nothing    -> []
-        Just state -> possibleMatches state
+  getResults (Q.singleton (score state) state)
   where
   ctxt = tt_ctxt istate
   classInfo = idris_classes istate
@@ -327,20 +329,29 @@ unifyWithHoles istate type1 = \type2 -> let
     getClassName _ = []
 
 
-  collect :: [State] -> [Score]
-  collect states = concat [ possibleMatches state | state <- states, scoreCriterion (score state) ]
+  getResults :: Q.PQueue Score State -> Maybe Score
+  getResults queue = do
+    ((nextScore, next), rest) <- Q.minViewWithKey queue
+    if isFinal next 
+      then return nextScore
+      else do
+        guard (defaultScoreFunction nextScore <= maxScore)
+        let additions = if scoreCriterion nextScore
+              then Q.fromList [ (score state, state) | state <- nextSteps next ]
+              else Q.empty
+        getResults (Q.union rest additions)
+    where
+    isFinal (State [] [] [] [] [] score _) = True
+    isFinal _ = False
 
   -- | Find all possible matches starting from a given state.
   -- We go in stages rather than concatenating all three results in hopes of narrowing
   -- the search tree. Once we advance in a phase, there should be no going back.
-  possibleMatches :: State -> [Score]
-
-  -- Stage 3 - we're done!
-  possibleMatches (State [] [] [] [] [] scoreAcc _) = [scoreAcc]
+  nextSteps :: State -> [State]
 
   -- Stage 2 - match typeclasses
-  possibleMatches (State [] [] [] c1 c2 scoreAcc usedNames) = 
-    collect (if null results2 then results3 else results2)
+  nextSteps (State [] [] [] c1 c2 scoreAcc usedNames) = 
+    if null results2 then results3 else results2
     where
     -- try to match a typeclass argument from the left with a typeclass argument from the right
     results2 =
@@ -367,7 +378,7 @@ unifyWithHoles istate type1 = \type2 -> let
                 , let newHoles = map fst newClassArgs ]
 
   -- Stage 1 - match arguments
-  possibleMatches (State holes dag1 dag2 c1 c2 scoreAcc usedNames) = collect results1 where
+  nextSteps (State holes dag1 dag2 c1 c2 scoreAcc usedNames) = results1 where
 
     -- we only try to match arguments whose names don't appear in the types
     -- of any other arguments

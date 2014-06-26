@@ -622,6 +622,7 @@ Library
                 , directory
                 , directory >= 1.2
                 , filepath
+                , fingertree >= 0.1
                 , haskeline >= 0.7
                 , language-java >= 0.2.6
                 , lens >= 4.1.1
