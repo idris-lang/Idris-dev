@@ -80,3 +80,6 @@ time = mkForeign (FFun "idris_time" [] FInt)
 usleep : Int -> IO ()
 usleep i = mkForeign (FFun "usleep" [FInt] FUnit) i
 
+system : String -> IO Int
+system cmd = mkForeign (FFun "system" [FString] FInt) cmd
+
