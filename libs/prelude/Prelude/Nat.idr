@@ -631,8 +631,40 @@ lteSuccZeroFalse Z     = refl
 lteSuccZeroFalse (S n) = refl
 
 -- Minimum and maximum
+total maximumAssociative : (l,c,r : Nat) -> maximum l (maximum c r) = maximum (maximum l c) r
+maximumAssociative Z c r = refl
+maximumAssociative (S k) Z r = refl
+maximumAssociative (S k) (S j) Z = refl
+maximumAssociative (S k) (S j) (S i) = rewrite maximumAssociative k j i in refl
+
+total maximumCommutative : (l, r : Nat) -> maximum l r = maximum r l
+maximumCommutative Z Z = refl
+maximumCommutative Z (S k) = refl
+maximumCommutative (S k) Z = refl
+maximumCommutative (S k) (S j) = rewrite maximumCommutative k j in refl
+
+total maximumIdempotent : (n : Nat) -> maximum n n = n
+maximumIdempotent Z = refl
+maximumIdempotent (S k) = cong (maximumIdempotent k)
+
+total minimumAssociative : (l,c,r : Nat) -> minimum l (minimum c r) = minimum (minimum l c) r
+minimumAssociative Z c r = refl
+minimumAssociative (S k) Z r = refl
+minimumAssociative (S k) (S j) Z = refl
+minimumAssociative (S k) (S j) (S i) = rewrite minimumAssociative k j i in refl
+
+total minimumCommutative : (l, r : Nat) -> minimum l r = minimum r l
+minimumCommutative Z Z = refl
+minimumCommutative Z (S k) = refl
+minimumCommutative (S k) Z = refl
+minimumCommutative (S k) (S j) = rewrite minimumCommutative k j in refl
+
+total minimumIdempotent : (n : Nat) -> minimum n n = n
+minimumIdempotent Z = refl
+minimumIdempotent (S k) = cong (minimumIdempotent k)
+
 total minimumZeroZeroRight : (right : Nat) -> minimum 0 right = Z
-minimumZeroZeroRight Z         = refl
+minimumZeroZeroRight Z = refl
 minimumZeroZeroRight (S right) = minimumZeroZeroRight right
 
 total minimumZeroZeroLeft : (left : Nat) -> minimum left 0 = Z
@@ -647,15 +679,6 @@ minimumSuccSucc Z        (S right) = refl
 minimumSuccSucc (S left) (S right) =
   let inductiveHypothesis = minimumSuccSucc left right in
     ?minimumSuccSuccStepCase
-
-total minimumCommutative : (left : Nat) -> (right : Nat) ->
-  minimum left right = minimum right left
-minimumCommutative Z        Z         = refl
-minimumCommutative Z        (S right) = refl
-minimumCommutative (S left) Z         = refl
-minimumCommutative (S left) (S right) =
-  let inductiveHypothesis = minimumCommutative left right in
-    ?minimumCommutativeStepCase
 
 total maximumZeroNRight : (right : Nat) -> maximum Z right = right
 maximumZeroNRight Z         = refl
@@ -673,15 +696,6 @@ maximumSuccSucc Z        (S right) = refl
 maximumSuccSucc (S left) (S right) =
   let inductiveHypothesis = maximumSuccSucc left right in
     ?maximumSuccSuccStepCase
-
-total maximumCommutative : (left : Nat) -> (right : Nat) ->
-  maximum left right = maximum right left
-maximumCommutative Z        Z         = refl
-maximumCommutative (S left) Z         = refl
-maximumCommutative Z        (S right) = refl
-maximumCommutative (S left) (S right) =
-  let inductiveHypothesis = maximumCommutative left right in
-    ?maximumCommutativeStepCase
 
 -- div and mod
 total modZeroZero : (n : Nat) -> mod 0 n = Z
@@ -848,25 +862,9 @@ plusZeroRightNeutralStepCase = proof {
     trivial;
 }
 
-maximumCommutativeStepCase = proof {
-    intros;
-    rewrite (boolElimSuccSucc (lte left right) right left);
-    rewrite (boolElimSuccSucc (lte right left) left right);
-    rewrite inductiveHypothesis;
-    trivial;
-}
-
 maximumSuccSuccStepCase = proof {
     intros;
     rewrite sym (boolElimSuccSucc (lte left right) (S right) (S left));
-    trivial;
-}
-
-minimumCommutativeStepCase = proof {
-    intros;
-    rewrite (boolElimSuccSucc (lte left right) left right);
-    rewrite (boolElimSuccSucc (lte right left) right left);
-    rewrite inductiveHypothesis;
     trivial;
 }
 
