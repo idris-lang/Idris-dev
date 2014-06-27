@@ -9,6 +9,7 @@ New in 0.9.14:
   functions and let. The keyword for this is "pi".
 * Experimental 'neweffects' library, with simplified API
 * All new JavaScript backend (avoids callstack overflows)
+* Add support for %lib directive for NodeJS
 
 New in 0.9.13:
 --------------

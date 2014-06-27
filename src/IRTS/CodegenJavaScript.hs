@@ -338,21 +338,24 @@ compileJS' indent (JSWord word)
   | JSWord64 b <- word = idrRTNamespace ++ "bigInt(\"" ++ show b ++ "\")"
 
 codegenJavaScript :: CodeGenerator
-codegenJavaScript ci = codegenJS_all JavaScript (simpleDecls ci)
-                              (includes ci) (outputFile ci) (outputType ci)
+codegenJavaScript ci =
+  codegenJS_all JavaScript (simpleDecls ci)
+    (includes ci) [] (outputFile ci) (outputType ci)
 
 codegenNode :: CodeGenerator
-codegenNode ci = codegenJS_all Node (simpleDecls ci)
-                        (includes ci) (outputFile ci) (outputType ci)
+codegenNode ci =
+  codegenJS_all Node (simpleDecls ci)
+    (includes ci) (compileLibs ci) (outputFile ci) (outputType ci)
 
 codegenJS_all
   :: JSTarget
   -> [(Name, SDecl)]
   -> [FilePath]
+  -> [String]
   -> FilePath
   -> OutputType
   -> IO ()
-codegenJS_all target definitions includes filename outputType = do
+codegenJS_all target definitions includes libs filename outputType = do
   let bytecode = map toBC definitions
   let info = initCompileInfo bytecode
   let js = concatMap (translateDecl info) bytecode
@@ -366,13 +369,23 @@ codegenJS_all target definitions includes filename outputType = do
   idrRuntime <- readFile $ path ++ "Runtime-common.js"
   tgtRuntime <- readFile $ concat [path, "Runtime", rt, ".js"]
   jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
-  let runtime = header ++ included ++ jsbn ++ idrRuntime ++ tgtRuntime
+  let runtime = (  header
+                ++ includeLibs libs
+                ++ included
+                ++ jsbn
+                ++ idrRuntime
+                ++ tgtRuntime
+                )
   writeFile filename $ runtime ++ concat code ++ main ++ invokeMain
   setPermissions filename (emptyPermissions { readable   = True
                                              , executable = target == Node
                                              , writable   = True
                                              })
     where
+      includeLibs :: [String] -> String
+      includeLibs =
+        concatMap (\lib -> "var " ++ lib ++ " = require(\"" ++ lib ++"\");\n")
+
       getIncludes :: [FilePath] -> IO [String]
       getIncludes = mapM readFile
 
