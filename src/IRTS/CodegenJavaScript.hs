@@ -318,8 +318,10 @@ compileJS' indent (JSCond branches) =
       ++ replicate (indent + 2) ' ' ++ compileJS' (indent + 2) e
       ++ ";\n" ++ replicate indent ' ' ++ "}"
 
-compileJS' indent (JSSwitch val [(_,seq)] Nothing) =
-  compileJS' indent seq
+compileJS' indent (JSSwitch val [(_,JSSeq seq)] Nothing) =
+  let (h,t) = splitAt 1 seq in
+         (concatMap (compileJS' indent) h ++ ";\n")
+      ++ (intercalate ";\n" $ map ((replicate indent ' ' ++) . compileJS' indent) t)
 
 compileJS' indent (JSSwitch val branches def) =
      "switch(" ++ compileJS' indent val ++ "){\n"
