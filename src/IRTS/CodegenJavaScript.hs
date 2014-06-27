@@ -30,15 +30,39 @@ idrRTNamespace  = "__IDRRT__"
 idrLTNamespace  = "__IDRLT__"
 idrCTRNamespace = "__IDRCTR__"
 
-data CompileInfo = CompileInfo { compileInfoApplyCases :: [Int]
-                               , compileInfoEvalCases  :: [Int]
+data CompileInfo = CompileInfo { compileInfoApplyCases  :: [Int]
+                               , compileInfoEvalCases   :: [Int]
+                               , compileInfoNeedsBigInt :: Bool
                                }
 
 
 initCompileInfo :: [(Name, [BC])] -> CompileInfo
 initCompileInfo bc =
-  CompileInfo (collectCases "APPLY" bc) (collectCases "EVAL" bc)
+  CompileInfo (collectCases "APPLY" bc) (collectCases "EVAL" bc) (lookupBigInt bc)
   where
+    lookupBigInt :: [(Name, [BC])] -> Bool
+    lookupBigInt = any (needsBigInt . snd)
+      where
+        needsBigInt :: [BC] -> Bool
+        needsBigInt bc = any id $ map testBCForBigInt bc
+          where
+            testBCForBigInt :: BC -> Bool
+            testBCForBigInt (ASSIGNCONST _ c)  =
+              testConstForBigInt c
+
+            testBCForBigInt (CONSTCASE _ c d) =
+                 (maybe False needsBigInt d)
+              || (any id $ map (needsBigInt . snd) c)
+              || (any id $ map (testConstForBigInt . fst) c)
+
+            testBCForBigInt _ = False
+
+            testConstForBigInt :: Const -> Bool
+            testConstForBigInt (BI _)  = True
+            testConstForBigInt (B64 _) = True
+            testConstForBigInt _       = False
+
+
     collectCases :: String ->  [(Name, [BC])] -> [Int]
     collectCases fun bc = getCases $ findFunction fun bc
 
@@ -368,7 +392,9 @@ codegenJS_all target definitions includes libs filename outputType = do
   path       <- (++) <$> getDataDir <*> (pure "/jsrts/")
   idrRuntime <- readFile $ path ++ "Runtime-common.js"
   tgtRuntime <- readFile $ concat [path, "Runtime", rt, ".js"]
-  jsbn       <- readFile $ path ++ "jsbn/jsbn.js"
+  jsbn       <- if compileInfoNeedsBigInt info
+                   then readFile $ path ++ "jsbn/jsbn.js"
+                   else return ""
   let runtime = (  header
                 ++ includeLibs libs
                 ++ included
