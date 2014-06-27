@@ -637,22 +637,25 @@ elab ist info pattern opts fn tm
                                  elab' ina t
                                  unifyLog False
     elab' (ina, g, inty, qq) (PQuasiquote t)
-        = do -- First elaborate the unquoted subterms, replacing them with
-             -- fresh names in the quasiquoted term
+        = do -- First extract the unquoted subterms, replacing them with fresh
+             -- names in the quasiquoted term. Claim their reflections to be
+             -- of type TT.
              (t, unq) <- extractUnquotes t
              let unquoteNames = map fst unq
              mapM_ (flip claim (Var tt)) unquoteNames
 
 
-             -- Save the old state - we need a fresh proof state for this to
-             -- avoid capture
+             -- Save the old state - we need a fresh proof state to avoid
+             -- capturing lexically available variables in the quoted term.
              ctxt <- get_context
              saveState
              updatePS (const .
                        newProof (sMN 0 "q") ctxt $
                        P Ref tt Erased)
 
-             -- Re-add the unquotes, letting Idris infer the (fictional) types
+             -- Re-add the unquotes, letting Idris infer the (fictional)
+             -- types. Here, they represent the real type rather than the type
+             -- of their reflection.
              mapM_ (\n -> do ty <- getNameFrom (sMN 0 "unqTy")
                              claim ty RType
                              movelast ty
@@ -670,16 +673,17 @@ elab ist info pattern opts fn tm
              -- the hole doesn't disappear
              nTm <- getNameFrom (sMN 0 "quotedTerm")
              letbind nTm (Var qTy) (Var qTm)
-
              -- We must solve the type later through unification
              movelast qTy
+
+
              -- Elaborate the quasiquoted term into the hole
              focus qTm
              elabE (ina, g, inty, True) t
              end_unify
 
              -- We now have an elaborated term. Reflect it and solve the
-             -- original goal
+             -- original goal in the original proof state.
              env <- get_env
              loadState
              case fmap (explicitNames . binderVal) $ lookup nTm env of
@@ -688,6 +692,10 @@ elab ist info pattern opts fn tm
                  | otherwise -> do fill $ reflectQuote unquoteNames q
                                    solve
                Nothing -> fail "Broken elaboration of quasiquote"
+
+             -- Finally fill in the terms or patterns from the unquotes. This
+             -- happens last so that their holes still exist while elaborating
+             -- the main quotation.
              mapM_ elabUnquote unq
       where tt = sNS (sUN "TT") ["Reflection", "Language"]
 
