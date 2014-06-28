@@ -1,4 +1,4 @@
-var __IDRRT__bigInt = (function() {
+var i$bigInt = (function() {
 // Copyright (c) 2005  Tom Wu
 // All Rights Reserved.
 // See "LICENSE" for details.
@@ -1234,5 +1234,5 @@ return function(val) {
 }
 })();
 
-var __IDRRT__ZERO = __IDRRT__bigInt("0");
-var __IDRRT__ONE = __IDRRT__bigInt("1");
+var i$ZERO = i$bigInt("0");
+var i$ONE = i$bigInt("1");

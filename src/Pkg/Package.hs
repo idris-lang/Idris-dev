@@ -29,8 +29,6 @@ import IRTS.System
 
 import Pkg.PParser
 
-import Paths_idris (getDataDir)
-
 -- To build a package:
 -- * read the package description
 -- * check all the library dependencies exist

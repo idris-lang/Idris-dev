@@ -19,7 +19,6 @@ import Idris.PartialEval
 import Idris.DeepSeq
 import Idris.Output (iputStrLn, pshow, iWarn)
 import IRTS.Lang
-import Paths_idris
 
 import Idris.Core.TT
 import Idris.Core.Elaborate hiding (Tactic(..))

@@ -10,14 +10,15 @@ import Data.Function (on)
 import Data.List (find, minimumBy, partition, sortBy, (\\))
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Maybe (catMaybes, fromMaybe, isJust, maybeToList)
 import Data.Monoid (Monoid (mempty, mappend))
+import qualified Data.PriorityQueue.FingerTree as Q
 import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Text as T (pack, isPrefixOf)
 
 import Idris.AbsSyntax (addUsingConstraints, addImpl, getContext, getIState, putIState, implicit)
-import Idris.AbsSyntaxTree (class_instances, defaultSyntax, Idris, 
+import Idris.AbsSyntaxTree (class_instances, ClassInfo, defaultSyntax, Idris, 
   IState (idris_classes, idris_docstrings, tt_ctxt),
   implicitAllowed, prettyDocumentedIst, prettyIst, PTerm, toplevel)
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
@@ -41,7 +42,7 @@ searchByType h pterm = do
   ty <- elabType' False toplevel syn (fst noDocs) (snd noDocs) emptyFC [] n pterm'
   putIState i -- don't actually make any changes
   let names = searchUsing searchPred i ty
-  let names' = take numLimit . takeWhile ((< scoreLimit) . getScore) $ 
+  let names' = take numLimit $ 
          sortBy (compare `on` getScore) names
   let docs =
        [ let docInfo = (n, delabTy i n, fmap (overview . fst) (lookupCtxtExact n (idris_docstrings i))) in
@@ -51,7 +52,6 @@ searchByType h pterm = do
   where 
     getScore = defaultScoreFunction . snd . snd
     numLimit = 50
-    scoreLimit = 100
     syn = defaultSyntax { implicitAllowed = True } -- syntax
     n = sMN 0 "searchType" -- name
   
@@ -84,10 +84,9 @@ searchUsing pred istate ty =
 
 -- Our default search predicate.
 searchPred :: IState -> Type -> Type -> Maybe Score
-searchPred istate ty1 = \ty2 -> case matcher ty2 of
-  xs -> guard (not (null xs)) >> return (minimumBy (compare `on` defaultScoreFunction) xs)
-  where
-  matcher = unifyWithHoles istate ty1
+searchPred istate ty1 = matcher where
+  maxScore = 100
+  matcher = unifyWithHoles istate maxScore ty1
 
 
 typeFromDef :: (Def, b, c, d) -> Maybe Type
@@ -218,36 +217,53 @@ inArgTys :: (Type -> Type) -> ArgsDAG -> ArgsDAG
 inArgTys = map . first . second
 
 
+typeclassUnify :: Ctxt ClassInfo -> Context -> Type -> Type -> Maybe [(Name, Type)]
+typeclassUnify classInfo ctxt ty tyTry = do
+  res <- tcToMaybe $ match_unify ctxt [] ty retTy [] holes []
+  guard $ null (holes \\ map fst res)
+  let argTys' = map (second $ foldr (.) id [ subst n t | (n, t) <- res ]) tcArgs
+  return argTys'
+  where
+  tyTry' = vToP tyTry
+  holes = map fst nonTcArgs
+  retTy = getRetTy tyTry'
+  (tcArgs, nonTcArgs) = partition (isTypeClassArg classInfo . snd) $ getArgTys tyTry'
+
+isTypeClassArg :: Ctxt ClassInfo -> Type -> Bool
+isTypeClassArg classInfo ty = not (null (getClassName clss >>= flip lookupCtxt classInfo)) where
+  (clss, args) = unApply ty
+  getClassName (P (TCon _ _) className _) = [className]
+  getClassName _ = []
+
+
+instance Ord Score where
+  compare = compare `on` defaultScoreFunction
+
 --DONT run vToP first!
 -- | Try to match two types together in a unification-like procedure.
 -- Returns a list of possible scores representing ways in which the two
 -- types can be matched.
-unifyWithHoles :: IState -> Type -> Type -> [Score]
-unifyWithHoles istate type1 = \type2 -> let
+unifyWithHoles :: IState -> Int -> Type -> Type -> Maybe Score
+unifyWithHoles istate maxScore type1 = \type2 -> let
   (dag2, typeClassArgs2, retTy2) = makeDag (uniqueBinders argNames1 type2)
   argNames2 = map (fst . fst) dag2
   startingHoles = argNames1 ++ argNames2
 
   startingTypes = (retTy1, retTy2) : [] 
-  in case unifyQueue (State startingHoles dag1 dag2 
+  in do
+  state <- unifyQueue (State startingHoles dag1 dag2 
               typeClassArgs1 typeClassArgs2
               mempty startingHoles) startingTypes
-     of Nothing    -> []
-        Just state -> possibleMatches state
+  getResults (Q.singleton (score state) state)
   where
   ctxt = tt_ctxt istate
   classInfo = idris_classes istate
 
-  isTypeClassArg :: Type -> Bool
-  isTypeClassArg ty = not (null (getClassName clss >>= flip lookupCtxt classInfo)) where
-    (clss, args) = unApply ty
-    getClassName (P (TCon _ _) className _) = [className]
-    getClassName _ = []
-
   (dag1, typeClassArgs1, retTy1) = makeDag type1
   argNames1 = map (fst . fst) dag1
   makeDag :: Type -> (ArgsDAG, [(Name, Type)], Type)
-  makeDag = first3 (zipWith (\i (ty, deps) -> (ty, (i, deps))) [0..] . reverseDag) . computeDagP isTypeClassArg . vToP
+  makeDag = first3 (zipWith (\i (ty, deps) -> (ty, (i, deps))) [0..] . reverseDag) . 
+    computeDagP (isTypeClassArg classInfo) . vToP
   first3 f (a,b,c) = (f a, b, c)
   
   -- update our state with the unification resolutions
@@ -278,9 +294,13 @@ unifyWithHoles istate type1 = \type2 -> let
         (Nothing, Nothing) -> nextStep
         _ -> error ("Shouldn't happen. Watch the alpha conversion!\n" ++ show args1 ++ "\n\n" ++ show args2)
     where
+    varsInTy = map fst $ M.toList (usedVars term) --[]
+    toDelete = name : varsInTy
+    deleteMany = foldr (.) id $ [ deleteLeft t . deleteRight t | t <- toDelete ]
+
     inScore f state = state { score = f (score state) }
-    state' = modifyTypes (subst name term) . deleteLeft name . deleteRight name $ 
-               state { holes = holes \\ [name]}
+    state' = modifyTypes (subst name term) . deleteMany $ 
+               state { holes = holes \\ toDelete }
     nextStep = resolveUnis xs state'
 
 
@@ -288,12 +308,13 @@ unifyWithHoles istate type1 = \type2 -> let
   unifyQueue :: State -> [(Type, Type)] -> Maybe State
   unifyQueue state [] = return state
   unifyQueue state ((ty1, ty2) : queue) = do
+    --trace ("go: \n" ++ show state) True `seq` return ()
     res <- tcToMaybe $ match_unify ctxt [] ty1 ty2 [] (holes state) []
     (state', queueAdditions) <- resolveUnis res state
     guard $ scoreCriterion (score state')
     unifyQueue state' (queue ++ queueAdditions)
 
-  possClassInstances :: [Name] -> Type -> [([(Name, Type)], Type)]
+  possClassInstances :: [Name] -> Type -> [Type]
   possClassInstances usedNames ty = do
     className <- getClassName clss
     classDef <- lookupCtxt className classInfo
@@ -301,57 +322,70 @@ unifyWithHoles istate type1 = \type2 -> let
     def <- lookupCtxt n (definitions ctxt)
     ty <- normaliseC ctxt [] <$> (case typeFromDef def of Just x -> [x]; Nothing -> [])
     let ty' = vToP (uniqueBinders usedNames ty)
-    return (getArgTys ty', getRetTy ty')
+    return ty'
     where
-    (clss, args) = unApply ty
+    (clss, _) = unApply ty
     getClassName (P (TCon _ _) className _) = [className]
     getClassName _ = []
 
+
+  getResults :: Q.PQueue Score State -> Maybe Score
+  getResults queue = do
+    ((nextScore, next), rest) <- Q.minViewWithKey queue
+    if isFinal next 
+      then return nextScore
+      else do
+        guard (defaultScoreFunction nextScore <= maxScore)
+        let additions = if scoreCriterion nextScore
+              then Q.fromList [ (score state, state) | state <- nextSteps next ]
+              else Q.empty
+        getResults (Q.union rest additions)
+    where
+    isFinal (State [] [] [] [] [] score _) = True
+    isFinal _ = False
+
   -- | Find all possible matches starting from a given state.
-  possibleMatches :: State -> [Score]
-  possibleMatches (State [] [] [] [] [] scoreAcc _) = [scoreAcc]
-  possibleMatches (State holes dag1 dag2 c1 c2 scoreAcc usedNames) = 
-    concat [ possibleMatches state | state <- results, scoreCriterion (score state) ] where
+  -- We go in stages rather than concatenating all three results in hopes of narrowing
+  -- the search tree. Once we advance in a phase, there should be no going back.
+  nextSteps :: State -> [State]
+
+  -- Stage 2 - match typeclasses
+  nextSteps (State [] [] [] c1 c2 scoreAcc usedNames) = 
+    if null results2 then results3 else results2
+    where
+    -- try to match a typeclass argument from the left with a typeclass argument from the right
+    results2 =
+         catMaybes [ unifyQueue (State [] [] []
+         (deleteFromArgList n1 c1) (map (second subst2for1) (deleteFromArgList n2 c2)) scoreAcc usedNames) [(ty1, ty2)] 
+     | (n1, ty1) <- c1, (n2, ty2) <- c2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
+
+    -- try to hunt match a typeclass constraint by replacing it with an instance
+    results3 = results3A ++ results3B
+    typeClassArgs classes = [ ((n, ty), inst) | (n, ty) <- classes, inst <- possClassInstances usedNames ty ]
+    results3A = [ State [] [] []
+                  (deleteFromArgList n c1 ++ newClassArgs) c2
+                  (scoreAcc `mappend` (mempty { leftTypeClass = 1 }))
+                  (usedNames ++ newHoles)
+                | ((n, ty), inst) <- typeClassArgs c1
+                , newClassArgs <- maybeToList $ typeclassUnify classInfo ctxt ty inst
+                , let newHoles = map fst newClassArgs ]
+    results3B = [ State [] [] []
+                  c1 (deleteFromArgList n c2 ++ newClassArgs)
+                  (scoreAcc `mappend` (mempty { rightTypeClass = 1 }))
+                  (usedNames ++ newHoles)
+                | ((n, ty), inst) <- typeClassArgs c2
+                , newClassArgs <- maybeToList $ typeclassUnify classInfo ctxt ty inst
+                , let newHoles = map fst newClassArgs ]
+
+  -- Stage 1 - match arguments
+  nextSteps (State holes dag1 dag2 c1 c2 scoreAcc usedNames) = results1 where
 
     -- we only try to match arguments whose names don't appear in the types
     -- of any other arguments
     canBeFirst :: ArgsDAG -> [(Name, Type)]
     canBeFirst = map fst . filter (S.null . snd . snd)
 
-    -- this is done rather than concatenating all three results in hopes of narrowing
-    -- the search tree
-    results = fromMaybe [] $ find (not . null) [results1, results2, results3]
-
     -- try to match an argument from the left with an argument from the right
     results1 = catMaybes [ unifyQueue (State (holes \\ [n1, n2]) (deleteFromDag n1 dag1)
          ((inArgTys subst2for1) $ deleteFromDag n2 dag2) c1 (map (second subst2for1) c2) scoreAcc usedNames) [(ty1, ty2)] 
      | (n1, ty1) <- canBeFirst dag1, (n2, ty2) <- canBeFirst dag2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
-
-    -- try to match a typeclass argument from the left with a typeclass argument from the right
-    results2 = catMaybes [ unifyQueue (State (holes \\ [n1, n2]) dag1 (inArgTys subst2for1 dag2)
-         (deleteFromArgList n1 c1) (map (second subst2for1) (deleteFromArgList n2 c2)) scoreAcc usedNames) [(ty1, ty2)] 
-     | (n1, ty1) <- c1, (n2, ty2) <- c2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
-
-    -- try to hunt match a typeclass constraint by replacing it with an instance
-    results3 = if null dag1 || null dag2 then catMaybes (results3A ++ results3B) else []
-    typeClassArgs classes = [ ((n, ty), inst) | (n, ty) <- classes, inst <- possClassInstances usedNames ty ]
-    noDeps (n, ty) = ((n, ty), (0, S.empty))
-    results3A = [ unifyQueue
-                 (State ((holes \\ [n]) ++ newHoles) (dag1 ++ map noDeps newNonClassArgs) dag2
-                   (deleteFromArgList n c1 ++ newClassArgs) c2
-                   (scoreAcc `mappend` (mempty { leftTypeClass = 1 }))
-                   (usedNames ++ newHoles)
-                 )
-                 [(ty, inst)]
-               | ((n, ty), (newArgs, inst)) <- typeClassArgs c1, let newHoles = map fst newArgs
-                , let (newClassArgs, newNonClassArgs) = partition (isTypeClassArg . snd) newArgs ]
-    results3B = [ unifyQueue
-                 (State ((holes \\ [n]) ++ newHoles) dag1 (dag2 ++ map noDeps newNonClassArgs)
-                   c1 (deleteFromArgList n c2 ++ newClassArgs)
-                   (scoreAcc `mappend` (mempty { rightTypeClass = 1 }))
-                   (usedNames ++ newHoles)
-                 )
-                 [(ty, inst)]
-               | ((n, ty), (newArgs, inst)) <- typeClassArgs c2, let newHoles = map fst newArgs
-                 , let (newClassArgs, newNonClassArgs) = partition (isTypeClassArg . snd) newArgs ]
-
