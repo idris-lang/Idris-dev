@@ -38,16 +38,16 @@ initCompileInfo bc =
     lookupBigInt = any (needsBigInt . snd)
       where
         needsBigInt :: [BC] -> Bool
-        needsBigInt bc = any id $ map testBCForBigInt bc
+        needsBigInt bc = or $ map testBCForBigInt bc
           where
             testBCForBigInt :: BC -> Bool
             testBCForBigInt (ASSIGNCONST _ c)  =
               testConstForBigInt c
 
             testBCForBigInt (CONSTCASE _ c d) =
-                 (maybe False needsBigInt d)
-              || (any id $ map (needsBigInt . snd) c)
-              || (any id $ map (testConstForBigInt . fst) c)
+                 maybe False needsBigInt d
+              || (or $ map (needsBigInt . snd) c)
+              || (or $ map (testConstForBigInt . fst) c)
 
             testBCForBigInt _ = False
 
@@ -165,7 +165,7 @@ ffi code args = let parsed = ffiParse code in
       | isDigit s =
          FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
       | otherwise =
-          [FFIError $ "FFI - Invalid positional argument"]
+          [FFIError "FFI - Invalid positional argument"]
     ffiParse (s:ss) = FFICode s : ffiParse ss
 
 
@@ -177,8 +177,8 @@ ffi code args = let parsed = ffiParse code in
 
     renderFFI :: [FFI] -> [String] -> String
     renderFFI [] _ = ""
-    renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
-    renderFFI ((FFIArg i) : fs) args
+    renderFFI (FFICode c : fs) args = c : renderFFI fs args
+    renderFFI (FFIArg i : fs) args
       | i < length args && i >= 0 = args !! i ++ renderFFI fs args
       | otherwise = error "FFI - Argument index out of bounds"
 
@@ -219,7 +219,7 @@ compileJS' indent (JSType ty)
 compileJS' indent (JSSeq seq) =
   intercalate ";\n" (
     map (
-      ((replicate indent ' ') ++) . (compileJS' indent)
+      (replicate indent ' ' ++) . (compileJS' indent)
     ) $ filter (/= JSNoop) seq
   ) ++ ";"
 
@@ -321,7 +321,7 @@ compileJS' indent (JSSwitch val branches def) =
      "switch(" ++ compileJS' indent val ++ "){\n"
   ++ concatMap mkBranch branches
   ++ mkDefault def
-  ++ (replicate indent ' ') ++ "}"
+  ++ replicate indent ' ' ++ "}"
   where
     mkBranch :: (JS, JS) -> String
     mkBranch (tag, code) =
@@ -400,9 +400,9 @@ codegenJS_all target definitions includes libs filename outputType = do
                 )
   writeFile filename $ runtime ++ concat code ++ main ++ invokeMain
   setPermissions filename (emptyPermissions { readable   = True
-                                             , executable = target == Node
-                                             , writable   = True
-                                             })
+                                            , executable = target == Node
+                                            , writable   = True
+                                            })
     where
       includeLibs :: [String] -> String
       includeLibs =
@@ -490,15 +490,15 @@ splitFunction (JSAlloc name (Just (JSFunction args body@(JSSeq _)))) = do
         where
           processBranches :: [(JS,JS)] -> RWS () [(Int,JS)] Int [(JS,JS)]
           processBranches =
-            traverse (runKleisli (arr id *** (Kleisli splitSequence)))
+            traverse (runKleisli (arr id *** Kleisli splitSequence))
 
       splitSequence :: JS -> RWS () [(Int, JS)] Int JS
-      splitSequence js@(JSSeq seq) = do
+      splitSequence js@(JSSeq seq) =
         let (pre,post) = break isCall seq in
             case post of
                  []                    -> JSSeq <$> traverse splitCondition seq
                  [js@(JSCond _)]       -> splitCondition js
-                 [js@(JSSwitch _ _ _)] -> splitCondition js
+                 [js@(JSSwitch {})] -> splitCondition js
                  [_]                   -> return js
                  (call:rest) -> do
                    depth <- get
@@ -568,7 +568,7 @@ translateDecl info (name@(MN 0 fun), bc)
 
     isCase :: BC -> Bool
     isCase bc
-      | CASE _ _ _ _ <- bc = True
+      | CASE {} <- bc = True
       | otherwise          = False
 
     defaultCase :: [BC] -> [BC]
@@ -647,7 +647,7 @@ translateChar ch
   | '\\'   <- ch       = "\\\\"
   | '\"'   <- ch       = "\\\""
   | '\''   <- ch       = "\\\'"
-  | ch `elem` asciiTab = "\\u00" ++ fill (showIntAtBase 16 intToDigit (ord ch) "")
+  | ch `elem` asciiTab = "\\u00" ++ fill (showHex (ord ch) "")
   | otherwise          = [ch]
   where
     fill :: String -> String
@@ -663,8 +663,8 @@ translateChar ch
 
 translateName :: Name -> String
 translateName n = "_idris_" ++ concatMap cchar (showCG n)
-  where cchar x | isAlpha x || isDigit x = [x]
-                | otherwise = "_" ++ show (fromEnum x) ++ "_"
+  where cchar x | isAlphaNum x = [x]
+                | otherwise    = "_" ++ show (fromEnum x) ++ "_"
 
 jsASSIGN :: CompileInfo -> Reg -> Reg -> JS
 jsASSIGN _ r1 r2 = JSAssign (translateReg r1) (translateReg r2)
