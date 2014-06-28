@@ -1,13 +1,13 @@
-module Idris.TypeSearch (
+module Idris.TypeSearch {- (
   searchByType, searchPred, defaultScoreFunction
-) where
+) -} where
 
 import Control.Applicative ((<$>), (<*>), (<|>))
 import Control.Arrow (first, second, (&&&))
 import Control.Monad (forM_, guard)
 
 import Data.Function (on)
-import Data.List (find, minimumBy, partition, sortBy, (\\))
+import Data.List (find, delete, deleteBy, minimumBy, partition, sortBy, (\\))
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, maybeToList)
@@ -112,7 +112,7 @@ computeDagP :: Ord n
   -> TT n
   -> ([((n, TT n), Set n)], [(n, TT n)], TT n)
 computeDagP removePred t = (reverse (map f args), reverse removedArgs , retTy) where
-  f (n, t) = ((n, t), M.keysSet (usedVars t))
+  f (n, t) = ((n, t), M.keysSet (usedVars False t))
 
   (numArgs, args, removedArgs, retTy) = go 0 [] [] t
 
@@ -124,16 +124,19 @@ computeDagP removePred t = (reverse (map f args), reverse removedArgs , retTy) w
   go k args removedArgs retTy = (k, args, removedArgs, retTy)
 
 -- | Collect the names and types of all the free variables
-usedVars :: Ord n => TT n -> Map n (TT n)
-usedVars (V j) = error "unexpected! run vToP first"
-usedVars (P Bound n t) = M.singleton n t `M.union` usedVars t
-usedVars (Bind n binder t2) = (M.delete n (usedVars t2) `M.union`) $ case binder of
-  Let t v ->   usedVars t `M.union` usedVars v
-  Guess t v -> usedVars t `M.union` usedVars v
-  b -> usedVars (binderTy b)
-usedVars (App t1 t2) = usedVars t1 `M.union` usedVars t2
-usedVars (Proj t _) = usedVars t
-usedVars _ = M.empty
+usedVars :: Ord n 
+  => Bool -- ^ only collect variables which must be determined due to injectivity
+  -> TT n -> Map n (TT n)
+usedVars inj = f where
+  f (P Bound n t) = M.singleton n t `M.union` f t
+  f (Bind n binder t2) = (M.delete n (f t2) `M.union`) $ case binder of
+    Let t v ->   f t `M.union` f v
+    Guess t v -> f t `M.union` f v
+    b -> f (binderTy b)
+  f (App t1 t2) = f t1 `M.union` (if not inj || isInjective t1 then f t2 else M.empty)
+  f (Proj t _) = f t
+  f (V j) = error "unexpected! run vToP first"
+  f _ = M.empty
 
 deleteFromDag :: Ord n => n -> [((n, TT n), (a, Set n))] -> [((n, TT n), (a, Set n))]
 deleteFromDag name [] = []
@@ -179,7 +182,7 @@ type ArgsDAG = [((Name, Type), (Int, Set Name))]
 
 -- | The state corresponding to an attempted match of two types.
 data State = State
-  { holes :: ![Name] -- ^ names which have yet to be resolved
+  { holes :: ![(Name, Type)] -- ^ names which have yet to be resolved
   , args1 :: !ArgsDAG -- ^ arguments for the left  type which have yet to be resolved
   , args2 :: !ArgsDAG -- ^ arguments for the right type which have yet to be resolved
   , classes1 :: ![(Name, Type)] -- ^ typeclass arguments for the left  type which haven't been resolved
@@ -245,22 +248,23 @@ instance Ord Score where
 -- types can be matched.
 unifyWithHoles :: IState -> Int -> Type -> Type -> Maybe Score
 unifyWithHoles istate maxScore type1 = \type2 -> let
-  (dag2, typeClassArgs2, retTy2) = makeDag (uniqueBinders argNames1 type2)
-  argNames2 = map (fst . fst) dag2
+  (dag2, typeClassArgs2, retTy2) = makeDag (uniqueBinders (map fst argNames1) type2)
+  argNames2 = map fst dag2
+  usedNames = map fst (argNames1 ++ argNames2)
   startingHoles = argNames1 ++ argNames2
 
   startingTypes = (retTy1, retTy2) : [] 
   in do
   state <- unifyQueue (State startingHoles dag1 dag2 
               typeClassArgs1 typeClassArgs2
-              mempty startingHoles) startingTypes
+              mempty usedNames) startingTypes
   getResults (Q.singleton (score state) state)
   where
   ctxt = tt_ctxt istate
   classInfo = idris_classes istate
 
   (dag1, typeClassArgs1, retTy1) = makeDag type1
-  argNames1 = map (fst . fst) dag1
+  argNames1 = map fst dag1
   makeDag :: Type -> (ArgsDAG, [(Name, Type)], Type)
   makeDag = first3 (zipWith (\i (ty, deps) -> (ty, (i, deps))) [0..] . reverseDag) . 
     computeDagP (isTypeClassArg classInfo) . vToP
@@ -282,7 +286,7 @@ unifyWithHoles istate maxScore type1 = \type2 -> let
     findArgs = ((,) <$> findLeft name state <*> findRight name2 state) <|>
                ((,) <$> findLeft name2 state <*> findRight name state)
     matchnames = [name, name2]
-    holes' = holes \\ matchnames
+    holes' = filter (not . (`elem` matchnames) . fst) holes
     deleteArgs = deleteLeft name . deleteLeft name2 . deleteRight name . deleteRight name2
     state' = modifyTypes (subst name term) $ deleteArgs
               (state { holes = holes'})
@@ -294,13 +298,15 @@ unifyWithHoles istate maxScore type1 = \type2 -> let
         (Nothing, Nothing) -> nextStep
         _ -> error ("Shouldn't happen. Watch the alpha conversion!\n" ++ show args1 ++ "\n\n" ++ show args2)
     where
-    varsInTy = map fst $ M.toList (usedVars term) --[]
+    -- find variables which are determined uniquely by the type
+    -- due to injectivity
+    varsInTy = M.keys $ usedVars True term --[]
     toDelete = name : varsInTy
     deleteMany = foldr (.) id $ [ deleteLeft t . deleteRight t | t <- toDelete ]
 
     inScore f state = state { score = f (score state) }
     state' = modifyTypes (subst name term) . deleteMany $ 
-               state { holes = holes \\ toDelete }
+               state { holes = filter (not . (`elem` toDelete) . fst) holes }
     nextStep = resolveUnis xs state'
 
 
@@ -309,7 +315,7 @@ unifyWithHoles istate maxScore type1 = \type2 -> let
   unifyQueue state [] = return state
   unifyQueue state ((ty1, ty2) : queue) = do
     --trace ("go: \n" ++ show state) True `seq` return ()
-    res <- tcToMaybe $ match_unify ctxt [] ty1 ty2 [] (holes state) []
+    res <- tcToMaybe $ match_unify ctxt [ (n, Pi ty) | (n, ty) <- holes state] ty1 ty2 [] (map fst $ holes state) []
     (state', queueAdditions) <- resolveUnis res state
     guard $ scoreCriterion (score state')
     unifyQueue state' (queue ++ queueAdditions)
@@ -386,6 +392,6 @@ unifyWithHoles istate maxScore type1 = \type2 -> let
     canBeFirst = map fst . filter (S.null . snd . snd)
 
     -- try to match an argument from the left with an argument from the right
-    results1 = catMaybes [ unifyQueue (State (holes \\ [n1, n2]) (deleteFromDag n1 dag1)
+    results1 = catMaybes [ unifyQueue (State (filter (not . (`elem` [n1,n2]) . fst) holes) (deleteFromDag n1 dag1)
          ((inArgTys subst2for1) $ deleteFromDag n2 dag2) c1 (map (second subst2for1) c2) scoreAcc usedNames) [(ty1, ty2)] 
      | (n1, ty1) <- canBeFirst dag1, (n2, ty2) <- canBeFirst dag2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
