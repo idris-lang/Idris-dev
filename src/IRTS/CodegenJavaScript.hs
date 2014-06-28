@@ -24,12 +24,6 @@ import System.IO
 import System.Directory
 
 
-idrNamespace :: String
-idrNamespace    = "__IDR__"
-idrRTNamespace  = "__IDRRT__"
-idrLTNamespace  = "__IDRLT__"
-idrCTRNamespace = "__IDRCTR__"
-
 data CompileInfo = CompileInfo { compileInfoApplyCases  :: [Int]
                                , compileInfoEvalCases   :: [Int]
                                , compileInfoNeedsBigInt :: Bool
@@ -44,16 +38,16 @@ initCompileInfo bc =
     lookupBigInt = any (needsBigInt . snd)
       where
         needsBigInt :: [BC] -> Bool
-        needsBigInt bc = any id $ map testBCForBigInt bc
+        needsBigInt bc = or $ map testBCForBigInt bc
           where
             testBCForBigInt :: BC -> Bool
             testBCForBigInt (ASSIGNCONST _ c)  =
               testConstForBigInt c
 
             testBCForBigInt (CONSTCASE _ c d) =
-                 (maybe False needsBigInt d)
-              || (any id $ map (needsBigInt . snd) c)
-              || (any id $ map (testConstForBigInt . fst) c)
+                 maybe False needsBigInt d
+              || (or $ map (needsBigInt . snd) c)
+              || (or $ map (testConstForBigInt . fst) c)
 
             testBCForBigInt _ = False
 
@@ -171,7 +165,7 @@ ffi code args = let parsed = ffiParse code in
       | isDigit s =
          FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
       | otherwise =
-          [FFIError $ "FFI - Invalid positional argument"]
+          [FFIError "FFI - Invalid positional argument"]
     ffiParse (s:ss) = FFICode s : ffiParse ss
 
 
@@ -183,8 +177,8 @@ ffi code args = let parsed = ffiParse code in
 
     renderFFI :: [FFI] -> [String] -> String
     renderFFI [] _ = ""
-    renderFFI ((FFICode c) : fs) args = c : renderFFI fs args
-    renderFFI ((FFIArg i) : fs) args
+    renderFFI (FFICode c : fs) args = c : renderFFI fs args
+    renderFFI (FFIArg i : fs) args
       | i < length args && i >= 0 = args !! i ++ renderFFI fs args
       | otherwise = error "FFI - Argument index out of bounds"
 
@@ -214,18 +208,18 @@ compileJS' indent (JSFunction args body) =
    ++ "\n}\n"
 
 compileJS' indent (JSType ty)
-  | JSIntTy     <- ty = idrRTNamespace ++ "Int"
-  | JSStringTy  <- ty = idrRTNamespace ++ "String"
-  | JSIntegerTy <- ty = idrRTNamespace ++ "Integer"
-  | JSFloatTy   <- ty = idrRTNamespace ++ "Float"
-  | JSCharTy    <- ty = idrRTNamespace ++ "Char"
-  | JSPtrTy     <- ty = idrRTNamespace ++ "Ptr"
-  | JSForgotTy  <- ty = idrRTNamespace ++ "Forgot"
+  | JSIntTy     <- ty = "i$Int"
+  | JSStringTy  <- ty = "i$String"
+  | JSIntegerTy <- ty = "i$Integer"
+  | JSFloatTy   <- ty = "i$Float"
+  | JSCharTy    <- ty = "i$Char"
+  | JSPtrTy     <- ty = "i$Ptr"
+  | JSForgotTy  <- ty = "i$Forgot"
 
 compileJS' indent (JSSeq seq) =
   intercalate ";\n" (
     map (
-      ((replicate indent ' ') ++) . (compileJS' indent)
+      (replicate indent ' ' ++) . (compileJS' indent)
     ) $ filter (/= JSNoop) seq
   ) ++ ";"
 
@@ -284,10 +278,10 @@ compileJS' indent (JSString str) =
 compileJS' indent (JSNum num)
   | JSInt i                    <- num = show i
   | JSFloat f                  <- num = show f
-  | JSInteger JSBigZero        <- num = "__IDRRT__ZERO"
-  | JSInteger JSBigOne         <- num = "__IDRRT__ONE"
+  | JSInteger JSBigZero        <- num = "i$ZERO"
+  | JSInteger JSBigOne         <- num = "i$ONE"
   | JSInteger (JSBigInt i)     <- num = show i
-  | JSInteger (JSBigIntExpr e) <- num = "__IDRRT__bigInt(" ++ compileJS' indent e ++ ")"
+  | JSInteger (JSBigIntExpr e) <- num = "i$bigInt(" ++ compileJS' indent e ++ ")"
 
 compileJS' indent (JSAssign lhs rhs) =
   compileJS' indent lhs ++ " = " ++ compileJS' indent rhs
@@ -318,14 +312,16 @@ compileJS' indent (JSCond branches) =
       ++ replicate (indent + 2) ' ' ++ compileJS' (indent + 2) e
       ++ ";\n" ++ replicate indent ' ' ++ "}"
 
-compileJS' indent (JSSwitch val [(_,seq)] Nothing) =
-  compileJS' indent seq
+compileJS' indent (JSSwitch val [(_,JSSeq seq)] Nothing) =
+  let (h,t) = splitAt 1 seq in
+         (concatMap (compileJS' indent) h ++ ";\n")
+      ++ (intercalate ";\n" $ map ((replicate indent ' ' ++) . compileJS' indent) t)
 
 compileJS' indent (JSSwitch val branches def) =
      "switch(" ++ compileJS' indent val ++ "){\n"
   ++ concatMap mkBranch branches
   ++ mkDefault def
-  ++ (replicate indent ' ') ++ "}"
+  ++ replicate indent ' ' ++ "}"
   where
     mkBranch :: (JS, JS) -> String
     mkBranch (tag, code) =
@@ -359,7 +355,7 @@ compileJS' indent (JSWord word)
   | JSWord8  b <- word = "new Uint8Array([" ++ show b ++ "])"
   | JSWord16 b <- word = "new Uint16Array([" ++ show b ++ "])"
   | JSWord32 b <- word = "new Uint32Array([" ++ show b ++ "])"
-  | JSWord64 b <- word = idrRTNamespace ++ "bigInt(\"" ++ show b ++ "\")"
+  | JSWord64 b <- word = "i$bigInt(\"" ++ show b ++ "\")"
 
 codegenJavaScript :: CodeGenerator
 codegenJavaScript ci =
@@ -404,9 +400,9 @@ codegenJS_all target definitions includes libs filename outputType = do
                 )
   writeFile filename $ runtime ++ concat code ++ main ++ invokeMain
   setPermissions filename (emptyPermissions { readable   = True
-                                             , executable = target == Node
-                                             , writable   = True
-                                             })
+                                            , executable = target == Node
+                                            , writable   = True
+                                            })
     where
       includeLibs :: [String] -> String
       includeLibs =
@@ -494,15 +490,15 @@ splitFunction (JSAlloc name (Just (JSFunction args body@(JSSeq _)))) = do
         where
           processBranches :: [(JS,JS)] -> RWS () [(Int,JS)] Int [(JS,JS)]
           processBranches =
-            traverse (runKleisli (arr id *** (Kleisli splitSequence)))
+            traverse (runKleisli (arr id *** Kleisli splitSequence))
 
       splitSequence :: JS -> RWS () [(Int, JS)] Int JS
-      splitSequence js@(JSSeq seq) = do
+      splitSequence js@(JSSeq seq) =
         let (pre,post) = break isCall seq in
             case post of
                  []                    -> JSSeq <$> traverse splitCondition seq
                  [js@(JSCond _)]       -> splitCondition js
-                 [js@(JSSwitch _ _ _)] -> splitCondition js
+                 [js@(JSSwitch {})] -> splitCondition js
                  [_]                   -> return js
                  (call:rest) -> do
                    depth <- get
@@ -572,7 +568,7 @@ translateDecl info (name@(MN 0 fun), bc)
 
     isCase :: BC -> Bool
     isCase bc
-      | CASE _ _ _ _ <- bc = True
+      | CASE {} <- bc = True
       | otherwise          = False
 
     defaultCase :: [BC] -> [BC]
@@ -610,7 +606,7 @@ translateDecl info (name, bc) =
 translateReg :: Reg -> JS
 translateReg reg
   | RVal <- reg = jsRET
-  | Tmp  <- reg = JSProj (JSIdent "vm") "reg1"
+  | Tmp  <- reg = JSRaw "//TMPREG"
   | L n  <- reg = jsLOC n
   | T n  <- reg = jsTOP n
 
@@ -651,7 +647,7 @@ translateChar ch
   | '\\'   <- ch       = "\\\\"
   | '\"'   <- ch       = "\\\""
   | '\''   <- ch       = "\\\'"
-  | ch `elem` asciiTab = "\\u00" ++ fill (showIntAtBase 16 intToDigit (ord ch) "")
+  | ch `elem` asciiTab = "\\u00" ++ fill (showHex (ord ch) "")
   | otherwise          = [ch]
   where
     fill :: String -> String
@@ -667,8 +663,8 @@ translateChar ch
 
 translateName :: Name -> String
 translateName n = "_idris_" ++ concatMap cchar (showCG n)
-  where cchar x | isAlpha x || isDigit x = [x]
-                | otherwise = "_" ++ show (fromEnum x) ++ "_"
+  where cchar x | isAlphaNum x = [x]
+                | otherwise    = "_" ++ show (fromEnum x) ++ "_"
 
 jsASSIGN :: CompileInfo -> Reg -> Reg -> JS
 jsASSIGN _ r1 r2 = JSAssign (translateReg r1) (translateReg r2)
@@ -1538,6 +1534,5 @@ translateBC info bc
   | PROJECT r l a         <- bc = jsPROJECT info r l a
   | OP r o a              <- bc = jsOP info r o a
   | ERROR e               <- bc = jsERROR info e
-  | otherwise                   = JSRaw $ show bc
-  {- PROJECTINTO _ _ _     <- bc = undefined -}
+  | otherwise                   = JSRaw $ "//" ++ show bc
 
