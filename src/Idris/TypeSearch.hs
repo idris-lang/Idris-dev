@@ -1,6 +1,6 @@
-module Idris.TypeSearch {- (
+module Idris.TypeSearch (
   searchByType, searchPred, defaultScoreFunction
-) -} where
+) where
 
 import Control.Applicative ((<$>), (<*>), (<|>))
 import Control.Arrow (first, second, (&&&))
@@ -148,33 +148,36 @@ deleteFromArgList :: Ord n => n -> [(n, TT n)] -> [(n, TT n)]
 deleteFromArgList n = filter ((/= n) . fst)
 
 data Score = Score
-  { transposition :: Int
-  , leftApplied   :: Int
-  , rightApplied  :: Int
-  , leftTypeClass :: Int
-  , rightTypeClass :: Int } deriving (Eq, Show)
+  { transposition       :: Int
+  , leftApplied         :: Int
+  , rightApplied        :: Int
+  , leftTypeClassApp    :: Int
+  , rightTypeClassApp   :: Int
+  , leftTypeClassIntro  :: Int
+  , rightTypeClassIntro :: Int } deriving (Eq, Show)
 
 displayScore :: Score -> Doc a
-displayScore (Score trans lapp rapp lclass rclass) = text $ case (lt, gt) of
+displayScore (Score trans lapp rapp lclassapp rclassapp lclassintro rclassintro) = text $ case (lt, gt) of
   (True , True ) -> "=" -- types are isomorphic
   (True , False) -> "<" -- found type is more general than searched type
   (False, True ) -> ">" -- searched type is more general than found type
-  (False, False) -> " "
-  where lt = lapp + lclass == 0
-        gt = rapp + rclass == 0
+  (False, False) -> "_"
+  where lt = lapp + lclassapp + lclassintro == 0
+        gt = rapp + rclassapp + rclassintro == 0
 
 
 scoreCriterion :: Score -> Bool
-scoreCriterion (Score a b c d e) = not
+scoreCriterion (Score a b c d e f g) = not
   ( (b > 0 && c > 0) || (b + c) > 4 || d > 3 || e > 3 )
 
 defaultScoreFunction :: Score -> Int
-defaultScoreFunction (Score a b c d e) = a + 9*b + 3*c + 12*d + 4*e + 100*(2*b + d)*(2*c + e)
+defaultScoreFunction (Score a b c d e f g) = a + 9*b + 3*c + 12*d + 4*e + 6*f + 2*g + 100*(2*b + d + f)*(2*c + e + g)
   -- it's very bad to have *both* upcasting and downcasting
 
 instance Monoid Score where
-  mempty = Score 0 0 0 0 0
-  (Score a b c d e) `mappend` (Score a' b' c' d' e') = Score (a + a') (b + b') (c + c') (d + d') (e + e')
+  mempty = Score 0 0 0 0 0 0 0
+  (Score a b c d e f g) `mappend` (Score a' b' c' d' e' f' g') =
+    Score (a + a') (b + b') (c + c') (d + d') (e + e') (f + f') (g + g')
 
 -- | A directed acyclic graph representing the arguments to a function
 -- The 'Int' represents the position of the argument (1st argument, 2nd, etc.)
@@ -241,6 +244,11 @@ isTypeClassArg classInfo ty = not (null (getClassName clss >>= flip lookupCtxt c
 
 instance Ord Score where
   compare = compare `on` defaultScoreFunction
+
+subsets :: [a] -> [[a]]
+subsets [] = [[]]
+subsets (x : xs) = let ss = subsets xs in map (x :) ss ++ ss
+
 
 --DONT run vToP first!
 -- | Try to match two types together in a unification-like procedure.
@@ -338,14 +346,13 @@ unifyWithHoles istate maxScore type1 = \type2 -> let
   getResults :: Q.PQueue Score State -> Maybe Score
   getResults queue = do
     ((nextScore, next), rest) <- Q.minViewWithKey queue
+    guard (defaultScoreFunction nextScore <= maxScore)
     if isFinal next 
       then return nextScore
-      else do
-        guard (defaultScoreFunction nextScore <= maxScore)
-        let additions = if scoreCriterion nextScore
-              then Q.fromList [ (score state, state) | state <- nextSteps next ]
-              else Q.empty
-        getResults (Q.union rest additions)
+      else let additions = if scoreCriterion nextScore
+                 then Q.fromList [ (score state, state) | state <- nextSteps next ]
+                 else Q.empty in
+           getResults (Q.union rest additions)
     where
     isFinal (State [] [] [] [] [] score _) = True
     isFinal _ = False
@@ -355,36 +362,39 @@ unifyWithHoles istate maxScore type1 = \type2 -> let
   -- the search tree. Once we advance in a phase, there should be no going back.
   nextSteps :: State -> [State]
 
-  -- Stage 2 - match typeclasses
+  -- Stage 3 - match typeclasses
   nextSteps (State [] [] [] c1 c2 scoreAcc usedNames) = 
-    if null results2 then results3 else results2
+    if null results3 then results4 else results3
     where
     -- try to match a typeclass argument from the left with a typeclass argument from the right
-    results2 =
+    results3 =
          catMaybes [ unifyQueue (State [] [] []
          (deleteFromArgList n1 c1) (map (second subst2for1) (deleteFromArgList n2 c2)) scoreAcc usedNames) [(ty1, ty2)] 
      | (n1, ty1) <- c1, (n2, ty2) <- c2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
 
     -- try to hunt match a typeclass constraint by replacing it with an instance
-    results3 = results3A ++ results3B
+    results4 = results4A ++ results4B
     typeClassArgs classes = [ ((n, ty), inst) | (n, ty) <- classes, inst <- possClassInstances usedNames ty ]
-    results3A = [ State [] [] []
+    results4A = [ State [] [] []
                   (deleteFromArgList n c1 ++ newClassArgs) c2
-                  (scoreAcc `mappend` (mempty { leftTypeClass = 1 }))
+                  (scoreAcc `mappend` (mempty { leftTypeClassApp = 1 }))
                   (usedNames ++ newHoles)
                 | ((n, ty), inst) <- typeClassArgs c1
                 , newClassArgs <- maybeToList $ typeclassUnify classInfo ctxt ty inst
                 , let newHoles = map fst newClassArgs ]
-    results3B = [ State [] [] []
+    results4B = [ State [] [] []
                   c1 (deleteFromArgList n c2 ++ newClassArgs)
-                  (scoreAcc `mappend` (mempty { rightTypeClass = 1 }))
+                  (scoreAcc `mappend` (mempty { rightTypeClassApp = 1 }))
                   (usedNames ++ newHoles)
                 | ((n, ty), inst) <- typeClassArgs c2
                 , newClassArgs <- maybeToList $ typeclassUnify classInfo ctxt ty inst
                 , let newHoles = map fst newClassArgs ]
 
+
   -- Stage 1 - match arguments
-  nextSteps (State holes dag1 dag2 c1 c2 scoreAcc usedNames) = results1 where
+  nextSteps (State holes dag1 dag2 c1 c2 scoreAcc usedNames) = results where
+
+    results = concatMap takeSomeClasses results1
 
     -- we only try to match arguments whose names don't appear in the types
     -- of any other arguments
@@ -395,3 +405,15 @@ unifyWithHoles istate maxScore type1 = \type2 -> let
     results1 = catMaybes [ unifyQueue (State (filter (not . (`elem` [n1,n2]) . fst) holes) (deleteFromDag n1 dag1)
          ((inArgTys subst2for1) $ deleteFromDag n2 dag2) c1 (map (second subst2for1) c2) scoreAcc usedNames) [(ty1, ty2)] 
      | (n1, ty1) <- canBeFirst dag1, (n2, ty2) <- canBeFirst dag2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
+
+
+    -- Stage 2 - simply introduce a subset of the typeclasses
+    -- we've finished, so take some classes
+    takeSomeClasses (State [] [] [] c1 c2 scoreAcc usedNames) = 
+      let lc1 = length c1; lc2 = length c2 in
+       [ State [] [] [] c1' c2' (scoreAcc `mappend` 
+           mempty { rightTypeClassIntro = lc1 - length c1',
+                    leftTypeClassIntro  = lc2 - length c2' }) usedNames
+       | c1' <- subsets c1, c2' <- subsets c2 ]
+    -- still have arguments to match, so just be the identity
+    takeSomeClasses s = [s]
