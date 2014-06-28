@@ -70,7 +70,8 @@ searchUsing pred istate ty = pred istate nty . concat . M.elems $
   special :: Name -> Bool
   special (NS n ns) = special n
   special (SN _) = True
-  special (UN n) = T.pack "default#" `T.isPrefixOf` n
+  special (UN n) =    T.pack "default#" `T.isPrefixOf` n 
+                   || n `elem` map T.pack ["believe_me", "really_believe_me"]
   special _ = False
 
 -- Our default search predicate.
