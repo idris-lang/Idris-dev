@@ -10,6 +10,11 @@ New in 0.9.14:
 * Experimental 'neweffects' library, with simplified API
 * All new JavaScript backend (avoids callstack overflows)
 * Add support for %lib directive for NodeJS
+* Quasiquotes and quasiquote patterns allow easier work with reflected terms.
+  `(EXPR) quasiquotes EXPR, causing the elaborator to be used to produce a reflected
+  version of it. Subterms prefixed with ~ are unquoted - on the RHS, they are reflected
+  terms to splice in, while on the LHS they are patterns.
+
 
 New in 0.9.13:
 --------------

@@ -380,6 +380,7 @@ casetac tm = processTactic' (CaseTac tm)
 equiv :: Raw -> Elab' aux ()
 equiv tm = processTactic' (Equiv tm)
 
+-- | Turn the current hole into a pattern variable with the provided name, made unique if MN
 patvar :: Name -> Elab' aux ()
 patvar n = do env <- get_env
               hs <- get_holes
