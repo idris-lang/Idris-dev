@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Idris.TypeSearch (
   searchByType, searchPred, defaultScoreFunction
 ) where
@@ -6,12 +8,12 @@ import Control.Applicative ((<$>), (<*>), (<|>))
 import Control.Arrow (first, second, (&&&))
 import Control.Monad (forM_, guard)
 
-import Data.Function (on)
 import Data.List (find, delete, deleteBy, minimumBy, partition, sortBy, (\\))
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (catMaybes, fromMaybe, isJust, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isJust, maybeToList, mapMaybe)
 import Data.Monoid (Monoid (mempty, mappend))
+import Data.Ord (comparing)
 import qualified Data.PriorityQueue.FingerTree as Q
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -24,14 +26,14 @@ import Idris.AbsSyntaxTree (class_instances, ClassInfo, defaultSyntax, Idris,
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
 import Idris.Core.TT hiding (score)
 import Idris.Core.Unify (match_unify)
-import Idris.Delaborate (delab, delabTy)
+import Idris.Delaborate (delabTy)
 import Idris.Docstrings (noDocs, overview)
 import Idris.ElabDecls (elabType')
-import Idris.Output (ihRenderResult, ihPrintResult, ihPrintFunTypes)
+import Idris.Output (ihRenderResult)
 
 import System.IO (Handle)
 
-import Util.Pretty (text, vsep, char, (<>), Doc)
+import Util.Pretty (text, char, (<>), Doc)
 
 searchByType :: Handle -> PTerm -> Idris ()
 searchByType h pterm = do
@@ -42,40 +44,29 @@ searchByType h pterm = do
   ty <- elabType' False toplevel syn (fst noDocs) (snd noDocs) emptyFC [] n pterm'
   putIState i -- don't actually make any changes
   let names = searchUsing searchPred i ty
-  let names' = take numLimit $ 
-         sortBy (compare `on` getScore) names
+  let names' = take numLimit $ names
   let docs =
        [ let docInfo = (n, delabTy i n, fmap (overview . fst) (lookupCtxtExact n (idris_docstrings i))) in
          displayScore score <> char ' ' <> prettyDocumentedIst i docInfo
-                | (n, (_,score)) <- names']
-  ihRenderResult h $ vsep docs
+                | (n, score) <- names']
+  mapM_ (ihRenderResult h) docs
   where 
-    getScore = defaultScoreFunction . snd . snd
     numLimit = 50
     syn = defaultSyntax { implicitAllowed = True } -- syntax
     n = sMN 0 "searchType" -- name
   
 -- | Conduct a type-directed search using a given match predicate
-searchUsing :: (IState -> Type -> Type -> Maybe a) -> IState -> Type -> [(Name, (Type, a))]
-searchUsing pred istate ty = 
-  concat . M.elems $ M.mapWithKey (\key -> M.toAscList . M.mapMaybe (f key)) (definitions ctxt)
+searchUsing :: (IState -> Type -> [(Name, Type)] -> [(Name, a)]) 
+  -> IState -> Type -> [(Name, a)]
+searchUsing pred istate ty = pred istate nty . concat . M.elems $ 
+  M.mapWithKey (\key -> M.toAscList . M.mapMaybe (f key)) (definitions ctxt)
   where
+  nty = normaliseC ctxt [] ty
   ctxt = tt_ctxt istate
   f k x = do
     guard $ not (special k)
-    y <- get (fst4 x)
-    let ny = normaliseC ctxt [] y
-    val <- pred istate nty ny
-    return (y, val)
-  nty = normaliseC ctxt [] ty
-  fst4 :: (a,b,c,d) -> a
-  fst4 (w,x,y,z) = w
-  get :: Def -> Maybe Type
-  get (Function ty tm) = Just ty
-  get (TyDecl _ ty) = Just ty
- -- get (Operator ty _ _) = Just ty
-  get (CaseOp _ ty _ _ _ _)  = Just ty
-  get _ = Nothing
+    type2 <- typeFromDef x
+    return $ normaliseC ctxt [] type2
   special :: Name -> Bool
   special (NS n ns) = special n
   special (SN _) = True
@@ -83,10 +74,10 @@ searchUsing pred istate ty =
   special _ = False
 
 -- Our default search predicate.
-searchPred :: IState -> Type -> Type -> Maybe Score
+searchPred :: IState -> Type -> [(Name, Type)] -> [(Name, Score)]
 searchPred istate ty1 = matcher where
   maxScore = 100
-  matcher = unifyWithHoles istate maxScore ty1
+  matcher = matchTypesBulk istate maxScore ty1
 
 
 typeFromDef :: (Def, b, c, d) -> Maybe Type
@@ -98,6 +89,8 @@ typeFromDef (def, _, _, _) = get def where
   get (CaseOp _ ty _ _ _ _)  = Just ty
   get _ = Nothing
 
+
+-- | reverse the edges for a directed acyclic graph
 reverseDag :: Ord k => [((k, a), Set k)] -> [((k, a), Set k)]
 reverseDag xs = map f xs where
   f ((k, v), _) = ((k, v), S.fromList . map (fst . fst) $ filter (S.member k . snd) xs)
@@ -138,6 +131,7 @@ usedVars inj = f where
   f (V j) = error "unexpected! run vToP first"
   f _ = M.empty
 
+-- | Remove a node from a directed acyclic graph
 deleteFromDag :: Ord n => n -> [((n, TT n), (a, Set n))] -> [((n, TT n), (a, Set n))]
 deleteFromDag name [] = []
 deleteFromDag name (((name2, ty), (ix, set)) : xs) = (if name == name2
@@ -148,13 +142,13 @@ deleteFromArgList :: Ord n => n -> [(n, TT n)] -> [(n, TT n)]
 deleteFromArgList n = filter ((/= n) . fst)
 
 data Score = Score
-  { transposition       :: Int
-  , leftApplied         :: Int
-  , rightApplied        :: Int
-  , leftTypeClassApp    :: Int
-  , rightTypeClassApp   :: Int
-  , leftTypeClassIntro  :: Int
-  , rightTypeClassIntro :: Int } deriving (Eq, Show)
+  { transposition       :: !Int
+  , leftApplied         :: !Int
+  , rightApplied        :: !Int
+  , leftTypeClassApp    :: !Int
+  , rightTypeClassApp   :: !Int
+  , leftTypeClassIntro  :: !Int
+  , rightTypeClassIntro :: !Int } deriving (Eq, Show)
 
 displayScore :: Score -> Doc a
 displayScore (Score trans lapp rapp lclassapp rclassapp lclassintro rclassintro) = text $ case (lt, gt) of
@@ -168,7 +162,7 @@ displayScore (Score trans lapp rapp lclassapp rclassapp lclassintro rclassintro)
 
 scoreCriterion :: Score -> Bool
 scoreCriterion (Score a b c d e f g) = not
-  ( (b > 0 && c > 0) || (b + c) > 4 || d > 3 || e > 3 )
+  ( (b > 0 && c > 0) || (b + c) > 4 || any (> 3) [d,e,f,g])
 
 defaultScoreFunction :: Score -> Int
 defaultScoreFunction (Score a b c d e f g) = a + 9*b + 3*c + 12*d + 4*e + 6*f + 2*g + 100*(2*b + d + f)*(2*c + e + g)
@@ -185,12 +179,12 @@ type ArgsDAG = [((Name, Type), (Int, Set Name))]
 
 -- | The state corresponding to an attempted match of two types.
 data State = State
-  { holes :: ![(Name, Type)] -- ^ names which have yet to be resolved
-  , args1 :: !ArgsDAG -- ^ arguments for the left  type which have yet to be resolved
-  , args2 :: !ArgsDAG -- ^ arguments for the right type which have yet to be resolved
-  , classes1 :: ![(Name, Type)] -- ^ typeclass arguments for the left  type which haven't been resolved
-  , classes2 :: ![(Name, Type)] -- ^ typeclass arguments for the right type which haven't been resolved
-  , score :: !Score -- ^ the score so far
+  { holes     :: ![(Name, Type)] -- ^ names which have yet to be resolved
+  , args1     :: !ArgsDAG -- ^ arguments for the left  type which have yet to be resolved
+  , args2     :: !ArgsDAG -- ^ arguments for the right type which have yet to be resolved
+  , classes1  :: ![(Name, Type)] -- ^ typeclass arguments for the left  type which haven't been resolved
+  , classes2  :: ![(Name, Type)] -- ^ typeclass arguments for the right type which haven't been resolved
+  , score     :: !Score -- ^ the score so far
   , usedNames :: ![Name] -- ^ all names that have been used
   } deriving Show
 
@@ -243,8 +237,9 @@ isTypeClassArg classInfo ty = not (null (getClassName clss >>= flip lookupCtxt c
 
 
 instance Ord Score where
-  compare = compare `on` defaultScoreFunction
+  compare = comparing defaultScoreFunction
 
+-- | Compute the power set
 subsets :: [a] -> [[a]]
 subsets [] = [[]]
 subsets (x : xs) = let ss = subsets xs in map (x :) ss ++ ss
@@ -252,22 +247,43 @@ subsets (x : xs) = let ss = subsets xs in map (x :) ss ++ ss
 
 --DONT run vToP first!
 -- | Try to match two types together in a unification-like procedure.
--- Returns a list of possible scores representing ways in which the two
--- types can be matched.
-unifyWithHoles :: IState -> Int -> Type -> Type -> Maybe Score
-unifyWithHoles istate maxScore type1 = \type2 -> let
-  (dag2, typeClassArgs2, retTy2) = makeDag (uniqueBinders (map fst argNames1) type2)
-  argNames2 = map fst dag2
-  usedNames = map fst (argNames1 ++ argNames2)
-  startingHoles = argNames1 ++ argNames2
-
-  startingTypes = (retTy1, retTy2) : [] 
-  in do
-  state <- unifyQueue (State startingHoles dag1 dag2 
+-- Returns a list of types and their minimum scores, sorted in order
+-- of increasing score.
+matchTypesBulk :: forall info. IState -> Int -> Type -> [(info, Type)] -> [(info, Score)]
+matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues where
+  getStartQueue :: (info, Type) -> Maybe (Score, (info, Q.PQueue Score State))
+  getStartQueue nty@(info, type2) = do
+    state <- unifyQueue (State startingHoles dag1 dag2 
               typeClassArgs1 typeClassArgs2
               mempty usedNames) startingTypes
-  getResults (Q.singleton (score state) state)
-  where
+    let sc = score state
+    return $ (sc, (info, Q.singleton sc state))
+    where
+    (dag2, typeClassArgs2, retTy2) = makeDag (uniqueBinders (map fst argNames1) type2)
+    argNames2 = map fst dag2
+    usedNames = map fst (argNames1 ++ argNames2)
+    startingHoles = argNames1 ++ argNames2
+
+    startingTypes = (retTy1, retTy2) : [] 
+
+
+  startQueueOfQueues :: Q.PQueue Score (info, Q.PQueue Score State)
+  startQueueOfQueues = Q.fromList $ mapMaybe getStartQueue types
+
+  getAllResults :: Q.PQueue Score (info, Q.PQueue Score State) -> [(info, Score)]
+  getAllResults q = case Q.minViewWithKey q of
+    Nothing -> []
+    Just ((nextScore, (info, stateQ)), q') ->
+      if defaultScoreFunction nextScore <= maxScore
+        then case nextStepsQueue stateQ of
+          Nothing -> getAllResults q'
+          Just (Left stateQ') -> case Q.minViewWithKey stateQ' of
+             Nothing -> getAllResults q'
+             Just ((newQscore,_), _) -> getAllResults (Q.add newQscore (info, stateQ') q')
+          Just (Right score) -> (info, score) : getAllResults q'
+        else []
+
+
   ctxt = tt_ctxt istate
   classInfo = idris_classes istate
 
@@ -301,14 +317,14 @@ unifyWithHoles istate maxScore type1 = \type2 -> let
 
   resolveUnis ((name, term) : xs)
     state@(State holes args1 args2 _ _ _ _) = case (findLeft name state, findRight name state) of
-        (Just (_,ix), Nothing) -> first (inScore (\score -> score { leftApplied = succ (leftApplied score) })) <$> nextStep
-        (Nothing, Just (_, ix)) -> first (inScore (\score -> score { rightApplied = succ (rightApplied score) })) <$> nextStep
-        (Nothing, Nothing) -> nextStep
-        _ -> error ("Shouldn't happen. Watch the alpha conversion!\n" ++ show args1 ++ "\n\n" ++ show args2)
+      (Just (_,ix), Nothing) -> first (inScore (\score -> score { leftApplied = succ (leftApplied score) })) <$> nextStep
+      (Nothing, Just (_, ix)) -> first (inScore (\score -> score { rightApplied = succ (rightApplied score) })) <$> nextStep
+      (Nothing, Nothing) -> nextStep
+      _ -> error ("Idris internal error: TypeSearch.resolveUnis")
     where
     -- find variables which are determined uniquely by the type
     -- due to injectivity
-    varsInTy = M.keys $ usedVars True term --[]
+    varsInTy = M.keys $ usedVars True term
     toDelete = name : varsInTy
     deleteMany = foldr (.) id $ [ deleteLeft t . deleteRight t | t <- toDelete ]
 
@@ -342,17 +358,17 @@ unifyWithHoles istate maxScore type1 = \type2 -> let
     getClassName (P (TCon _ _) className _) = [className]
     getClassName _ = []
 
-
-  getResults :: Q.PQueue Score State -> Maybe Score
-  getResults queue = do
+  -- Just if the computation hasn't totally failed yet, Nothing if it has
+  -- Left if we haven't found a terminal state, Right if we have
+  nextStepsQueue :: Q.PQueue Score State -> Maybe (Either (Q.PQueue Score State) Score)
+  nextStepsQueue queue = do
     ((nextScore, next), rest) <- Q.minViewWithKey queue
-    guard (defaultScoreFunction nextScore <= maxScore)
     if isFinal next 
-      then return nextScore
+      then Just $ Right nextScore
       else let additions = if scoreCriterion nextScore
                  then Q.fromList [ (score state, state) | state <- nextSteps next ]
                  else Q.empty in
-           getResults (Q.union rest additions)
+           Just $ Left (Q.union rest additions)
     where
     isFinal (State [] [] [] [] [] score _) = True
     isFinal _ = False
