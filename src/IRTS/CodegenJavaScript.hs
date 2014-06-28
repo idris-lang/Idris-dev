@@ -24,12 +24,6 @@ import System.IO
 import System.Directory
 
 
-idrNamespace :: String
-idrNamespace    = "__IDR__"
-idrRTNamespace  = "__IDRRT__"
-idrLTNamespace  = "__IDRLT__"
-idrCTRNamespace = "__IDRCTR__"
-
 data CompileInfo = CompileInfo { compileInfoApplyCases  :: [Int]
                                , compileInfoEvalCases   :: [Int]
                                , compileInfoNeedsBigInt :: Bool
@@ -214,13 +208,13 @@ compileJS' indent (JSFunction args body) =
    ++ "\n}\n"
 
 compileJS' indent (JSType ty)
-  | JSIntTy     <- ty = idrRTNamespace ++ "Int"
-  | JSStringTy  <- ty = idrRTNamespace ++ "String"
-  | JSIntegerTy <- ty = idrRTNamespace ++ "Integer"
-  | JSFloatTy   <- ty = idrRTNamespace ++ "Float"
-  | JSCharTy    <- ty = idrRTNamespace ++ "Char"
-  | JSPtrTy     <- ty = idrRTNamespace ++ "Ptr"
-  | JSForgotTy  <- ty = idrRTNamespace ++ "Forgot"
+  | JSIntTy     <- ty = "i$Int"
+  | JSStringTy  <- ty = "i$String"
+  | JSIntegerTy <- ty = "i$Integer"
+  | JSFloatTy   <- ty = "i$Float"
+  | JSCharTy    <- ty = "i$Char"
+  | JSPtrTy     <- ty = "i$Ptr"
+  | JSForgotTy  <- ty = "i$Forgot"
 
 compileJS' indent (JSSeq seq) =
   intercalate ";\n" (
@@ -284,10 +278,10 @@ compileJS' indent (JSString str) =
 compileJS' indent (JSNum num)
   | JSInt i                    <- num = show i
   | JSFloat f                  <- num = show f
-  | JSInteger JSBigZero        <- num = "__IDRRT__ZERO"
-  | JSInteger JSBigOne         <- num = "__IDRRT__ONE"
+  | JSInteger JSBigZero        <- num = "i$ZERO"
+  | JSInteger JSBigOne         <- num = "i$ONE"
   | JSInteger (JSBigInt i)     <- num = show i
-  | JSInteger (JSBigIntExpr e) <- num = "__IDRRT__bigInt(" ++ compileJS' indent e ++ ")"
+  | JSInteger (JSBigIntExpr e) <- num = "i$bigInt(" ++ compileJS' indent e ++ ")"
 
 compileJS' indent (JSAssign lhs rhs) =
   compileJS' indent lhs ++ " = " ++ compileJS' indent rhs
@@ -361,7 +355,7 @@ compileJS' indent (JSWord word)
   | JSWord8  b <- word = "new Uint8Array([" ++ show b ++ "])"
   | JSWord16 b <- word = "new Uint16Array([" ++ show b ++ "])"
   | JSWord32 b <- word = "new Uint32Array([" ++ show b ++ "])"
-  | JSWord64 b <- word = idrRTNamespace ++ "bigInt(\"" ++ show b ++ "\")"
+  | JSWord64 b <- word = "i$bigInt(\"" ++ show b ++ "\")"
 
 codegenJavaScript :: CodeGenerator
 codegenJavaScript ci =
