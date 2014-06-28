@@ -7,7 +7,6 @@ import IRTS.Simplified
 import IRTS.System
 import IRTS.CodegenCommon
 import Idris.Core.TT
-import Paths_idris
 import Util.System
 
 import Numeric

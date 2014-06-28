@@ -34,7 +34,6 @@ import Idris.Interactive
 import Idris.WhoCalls
 import Idris.TypeSearch (searchByType)
 
-import Paths_idris
 import Version_idris (gitHash)
 import Util.System
 import Util.DynamicLinker
@@ -48,6 +47,7 @@ import Idris.Core.Constraints
 
 import IRTS.Compiler
 import IRTS.CodegenCommon
+import IRTS.System
 
 import Data.List.Split (splitOn)
 import qualified Data.Text as T

@@ -9,7 +9,6 @@ import qualified Idris.Core.TT as TT
 import Idris.Core.TT (ArithTy(..), IntTy(..), NativeTy(..), nativeTyWidth)
 
 import Util.System
-import Paths_idris
 
 import LLVM.General.Context
 import LLVM.General.Diagnostic

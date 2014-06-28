@@ -14,8 +14,6 @@ import Idris.IdeSlave hiding (Opt(..))
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
-import Paths_idris
-
 import System.Console.Haskeline
 import System.IO
 

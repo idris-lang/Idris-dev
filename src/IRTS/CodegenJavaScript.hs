@@ -7,7 +7,7 @@ import IRTS.Lang
 import IRTS.Simplified
 import IRTS.CodegenCommon
 import Idris.Core.TT
-import Paths_idris
+import IRTS.System
 import Util.System
 
 import Control.Arrow

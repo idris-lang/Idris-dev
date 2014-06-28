@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
-module IRTS.System(getTargetDir,getCC,getLibFlags,getIdrisLibDir,
-                   getIncFlags,getMvn,getExecutablePom) where
+module IRTS.System(getDataFileName, getDataDir, getTargetDir,getCC,getLibFlags,getIdrisLibDir,
+                   getIncFlags,getMvn,getExecutablePom, version) where
 
 import Util.System
 
@@ -9,7 +9,12 @@ import Data.Maybe (fromMaybe)
 import System.FilePath ((</>), addTrailingPathSeparator)
 import System.Environment
 
+#ifdef FREESTANDING
+import Target_idris
+import Paths_idris (version)
+#else
 import Paths_idris
+#endif
 
 getCC :: IO String
 getCC = fromMaybe "gcc" <$> environment "IDRIS_CC"

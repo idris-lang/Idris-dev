@@ -13,8 +13,9 @@ import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile)
 import Distribution.PackageDescription
 import Distribution.Text
 
+import System.Environment
 import System.Exit
-import System.FilePath ((</>), splitDirectories)
+import System.FilePath ((</>), splitDirectories,isAbsolute)
 import System.Directory
 import qualified System.FilePath.Posix as Px
 import System.Process
@@ -70,6 +71,12 @@ isRelease flags =
       Just False -> False
       Nothing -> False
 
+isFreestanding :: S.ConfigFlags -> Bool
+isFreestanding flags =
+  case lookup (FlagName "freestanding") (S.configConfigurationsFlags flags) of
+    Just True -> True
+    Just False -> False
+    Nothing -> False
 -- -----------------------------------------------------------------------------
 -- Clean
 
@@ -98,12 +105,12 @@ gitHash = do h <- Control.Exception.catch (readProcess "git" ["rev-parse", "--sh
 -- Put the Git hash into a module for use in the program
 -- For release builds, just put the empty string in the module
 generateVersionModule verbosity dir release = do
-  hash <- gitHash
-  let versionModulePath = dir </> "Version_idris" Px.<.> "hs"
-  putStrLn $ "Generating " ++ versionModulePath ++
+    hash <- gitHash
+    let versionModulePath = dir </> "Version_idris" Px.<.> "hs"
+    putStrLn $ "Generating " ++ versionModulePath ++
              if release then " for release" else (" for prerelease " ++ hash)
-  createDirectoryIfMissingVerbose verbosity True dir
-  rewriteFile versionModulePath (versionModuleContents hash)
+    createDirectoryIfMissingVerbose verbosity True dir
+    rewriteFile versionModulePath (versionModuleContents hash)
 
   where versionModuleContents h = "module Version_idris where\n\n" ++
                                   "gitHash :: String\n" ++
@@ -111,9 +118,38 @@ generateVersionModule verbosity dir release = do
                                     then "gitHash = \"\"\n"
                                     else "gitHash = \"-git:" ++ h ++ "\"\n"
 
+-- Generate a module that contains the lib path for a freestanding Idris
+generateTargetModule verbosity dir targetDir = do
+    absPath <- return $ isAbsolute targetDir
+    let targetModulePath = dir </> "Target_idris" Px.<.> "hs"
+    putStrLn $ "Generating " ++ targetModulePath
+    createDirectoryIfMissingVerbose verbosity True dir
+    rewriteFile targetModulePath (versionModuleContents absPath targetDir)
+            where versionModuleContents absolute td = "module Target_idris where\n\n" ++
+                                    "import System.FilePath\n" ++
+                                    "import System.Environment\n" ++
+                                    "getDataDir :: IO String\n" ++
+                                    if absolute
+                                        then "getDataDir = return \"" ++ td ++ "\"\n"
+                                        else "getDataDir = do \n" ++
+                                             "   expath <- getExecutablePath\n" ++
+                                             "   execDir <- return $ dropFileName expath\n" ++
+                                             "   return $ execDir ++ \"" ++ td ++ "\"\n"
+                                    ++ "getDataFileName :: FilePath -> IO FilePath\n"
+                                    ++ "getDataFileName name = do\n"
+                                    ++ "   dir <- getDataDir\n"
+                                    ++ "   return (dir ++ \"/\" ++ name)"
+
+
 idrisConfigure _ flags _ local = do
       configureRTS
       generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
+      when (isFreestanding $ configFlags local) (do
+                targetDir <- lookupEnv "IDRIS_INSTALL_DIR"
+                case targetDir of
+                     Just d -> generateTargetModule verbosity (autogenModulesDir local) d
+                     Nothing -> error $ "Trying to build freestanding without a target directory."
+                                  ++ " Set it by defining IDRIS_INSTALL_DIR.")
    where
       verbosity = S.fromFlag $ S.configVerbosity flags
       version   = pkgVersion . package $ localPkgDescr local
@@ -128,12 +164,16 @@ idrisPreSDist args flags = do
   let dir = S.fromFlag (S.sDistDirectory flags)
   let verb = S.fromFlag (S.sDistVerbosity flags)
   generateVersionModule verb ("src") True
+  generateTargetModule verb "src" "./libs"
   preSDist simpleUserHooks args flags
 
 idrisPostSDist args flags desc lbi = do
   Control.Exception.catch (do let file = "src" </> "Version_idris" Px.<.> "hs"
-                              putStrLn $ "Removing generated module " ++ file
-                              removeFile file)
+                              let targetFile = "src" </> "Target_idris" Px.<.> "hs"
+                              putStrLn $ "Removing generated modules:\n "
+                                        ++ file ++ "\n" ++ targetFile
+                              removeFile file
+                              removeFile targetFile)
              (\e -> let e' = (e :: SomeException) in return ())
   postSDist simpleUserHooks args flags desc lbi
 
@@ -166,6 +206,7 @@ idrisBuild _ flags _ local = do
 
       gmpflag False = []
       gmpflag True = ["GMP=-DIDRIS_GMP"]
+
 
 
 -- -----------------------------------------------------------------------------
