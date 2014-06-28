@@ -606,7 +606,7 @@ translateDecl info (name, bc) =
 translateReg :: Reg -> JS
 translateReg reg
   | RVal <- reg = jsRET
-  | Tmp  <- reg = JSProj (JSIdent "vm") "reg1"
+  | Tmp  <- reg = JSRaw "//TMPREG"
   | L n  <- reg = jsLOC n
   | T n  <- reg = jsTOP n
 
@@ -1534,6 +1534,5 @@ translateBC info bc
   | PROJECT r l a         <- bc = jsPROJECT info r l a
   | OP r o a              <- bc = jsOP info r o a
   | ERROR e               <- bc = jsERROR info e
-  | otherwise                   = JSRaw $ show bc
-  {- PROJECTINTO _ _ _     <- bc = undefined -}
+  | otherwise                   = JSRaw $ "//" ++ show bc
 

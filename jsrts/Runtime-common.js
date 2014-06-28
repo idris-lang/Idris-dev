@@ -5,7 +5,6 @@ var i$VM = function() {
   this.valstack_base = 0;
 
   this.ret = null;
-  this.reg1 = null;
 
   this.callstack = [];
 }
