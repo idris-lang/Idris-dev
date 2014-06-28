@@ -1558,7 +1558,8 @@ reflectQuotePattern unq (Bind n b x)
                                   Var b',
                                   Var x']
                  solve
-         else do any <- claimTT (sMN 0 "any")
+         else do any <- getNameFrom (sMN 0 "anyName")
+                 claim any (Var (reflm "TTName"))
                  movelast any
                  fill $ reflCall "Bind"
                                  [Var any,
