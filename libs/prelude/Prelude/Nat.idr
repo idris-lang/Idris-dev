@@ -697,6 +697,22 @@ maximumSuccSucc (S left) (S right) =
   let inductiveHypothesis = maximumSuccSucc left right in
     ?maximumSuccSuccStepCase
 
+total sucMaxL : (l : Nat) -> maximum (S l) l = (S l)
+sucMaxL Z = refl
+sucMaxL (S l) = cong (sucMaxL l)
+
+total sucMaxR : (l : Nat) -> maximum l (S l) = (S l)
+sucMaxR Z = refl
+sucMaxR (S l) = cong (sucMaxR l)
+
+total sucMinL : (l : Nat) -> minimum (S l) l = l
+sucMinL Z = refl
+sucMinL (S l) = cong (sucMinL l)
+
+total sucMinR : (l : Nat) -> minimum l (S l) = l
+sucMinR Z = refl
+sucMinR (S l) = cong (sucMinR l)
+
 -- div and mod
 total modZeroZero : (n : Nat) -> mod 0 n = Z
 modZeroZero Z     = refl
