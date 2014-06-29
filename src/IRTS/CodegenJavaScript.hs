@@ -289,8 +289,8 @@ compileJS' indent (JSNum num)
 compileJS' indent (JSAssign lhs rhs) =
   compileJS' indent lhs ++ " = " ++ compileJS' indent rhs
 
-compileJS' indent (JSAlloc name (Just val@(JSNew _ _))) =
-  "var " ++ name ++ " = " ++ compileJS' indent val ++ ";\n"
+compileJS' 0 (JSAlloc name (Just val@(JSNew _ _))) =
+  "var " ++ name ++ " = " ++ compileJS' 0 val ++ ";\n"
 
 compileJS' indent (JSAlloc name val) =
   "var " ++ name ++ maybe "" ((" = " ++) . compileJS' indent) val
