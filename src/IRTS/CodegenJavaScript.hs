@@ -824,6 +824,7 @@ jsERROR :: CompileInfo -> String -> JS
 jsERROR _ = JSError
 
 jsSLIDE :: CompileInfo -> Int -> JS
+jsSLIDE _ 1 = JSAssign (jsLOC 0) (jsTOP 0)
 jsSLIDE _ n = JSApp (JSIdent "i$SLIDE") [JSNum (JSInt n)]
 
 jsMKCON :: CompileInfo -> Reg -> Int -> [Reg] -> JS
@@ -931,6 +932,15 @@ jsCONSTCASE info reg cases def =
       prepBranch bc = JSSeq $ map (translateBC info) bc
 
 jsPROJECT :: CompileInfo -> Reg -> Int -> Int -> JS
+jsPROJECT _ reg loc 0  = JSNoop
+jsPROJECT _ reg loc 1  =
+  JSAssign (jsLOC loc) (
+    JSIndex (
+      JSProj (translateReg reg) "args"
+    ) (
+      JSNum (JSInt 0)
+    )
+  )
 jsPROJECT _ reg loc ar =
   JSApp (JSIdent "i$PROJECT") [ translateReg reg
                               , JSNum (JSInt loc)
