@@ -1358,7 +1358,8 @@ addImpl' inpat env infns ist ptm
     ai qq env ds (PRefl fc tm) = PRefl fc (ai qq env ds tm)
     ai qq env ds (PUnifyLog tm) = PUnifyLog (ai qq env ds tm)
     ai qq env ds (PNoImplicits tm) = PNoImplicits (ai qq env ds tm)
-    ai qq env ds (PQuasiquote tm) = PQuasiquote (ai True env ds tm)
+    ai qq env ds (PQuasiquote tm g) = PQuasiquote (ai True env ds tm)
+                                                  (fmap (ai True env ds) g)
     ai qq env ds (PUnquote tm) = PUnquote (ai False env ds tm)
     ai qq env ds tm = tm
 

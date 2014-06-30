@@ -636,7 +636,7 @@ elab ist info pattern opts fn tm
     elab' ina (PUnifyLog t) = do unifyLog True
                                  elab' ina t
                                  unifyLog False
-    elab' (ina, g, inty, qq) (PQuasiquote t)
+    elab' (ina, g, inty, qq) (PQuasiquote t goal) -- TODO: goal type
         = do -- First extract the unquoted subterms, replacing them with fresh
              -- names in the quasiquoted term. Claim their reflections to be
              -- of type TT.
@@ -663,19 +663,25 @@ elab ist info pattern opts fn tm
                              movelast n)
                    unquoteNames
 
+             -- Determine whether there's an explicit goal type, and act accordingly
              -- Establish holes for the type and value of the term to be
              -- quasiquoted
              qTy <- getNameFrom (sMN 0 "qquoteTy")
              claim qTy RType
+             movelast qTy
              qTm <- getNameFrom (sMN 0 "qquoteTm")
              claim qTm (Var qTy)
+
              -- Let-bind the result of elaborating the contained term, so that
              -- the hole doesn't disappear
              nTm <- getNameFrom (sMN 0 "quotedTerm")
              letbind nTm (Var qTy) (Var qTm)
-             -- We must solve the type later through unification
-             movelast qTy
 
+             -- Fill out the goal type, if relevant
+             case goal of
+               Nothing  -> return ()
+               Just gTy -> do focus qTy
+                              elabE (ina, g, inty, True) gTy
 
              -- Elaborate the quasiquoted term into the hole
              focus qTm
