@@ -106,7 +106,7 @@ computeDagP :: Ord n
   -> TT n
   -> ([((n, TT n), Set n)], [(n, TT n)], TT n)
 computeDagP removePred t = (reverse (map f args), reverse removedArgs , retTy) where
-  f (n, t) = ((n, t), M.keysSet (usedVars False t))
+  f (n, t) = ((n, t), M.keysSet (usedVars t))
 
   (numArgs, args, removedArgs, retTy) = go 0 [] [] t
 
@@ -118,19 +118,19 @@ computeDagP removePred t = (reverse (map f args), reverse removedArgs , retTy) w
   go k args removedArgs retTy = (k, args, removedArgs, retTy)
 
 -- | Collect the names and types of all the free variables
-usedVars :: Ord n 
-  => Bool -- ^ only collect variables which must be determined due to injectivity
-  -> TT n -> Map n (TT n)
-usedVars inj = f where
-  f (P Bound n t) = M.singleton n t `M.union` f t
-  f (Bind n binder t2) = (M.delete n (f t2) `M.union`) $ case binder of
-    Let t v ->   f t `M.union` f v
-    Guess t v -> f t `M.union` f v
-    b -> f (binderTy b)
-  f (App t1 t2) = f t1 `M.union` (if not inj || isInjective t1 then f t2 else M.empty)
-  f (Proj t _) = f t
-  f (V j) = error "unexpected! run vToP first"
-  f _ = M.empty
+-- The Boolean indicates those variables which are determined due to injectivity
+-- I have not given nearly enough thought to know whether this is correct
+usedVars :: Ord n => TT n -> Map n (TT n, Bool)
+usedVars = f True where
+  f b (P Bound n t) = M.singleton n (t, b) `M.union` f b t
+  f b (Bind n binder t2) = (M.delete n (f b t2) `M.union`) $ case binder of
+    Let t v ->   f b t `M.union` f b v
+    Guess t v -> f b t `M.union` f b v
+    bind -> f b (binderTy bind)
+  f b (App t1 t2) = f b t1 `M.union` f (b && isInjective t1) t2
+  f b (Proj t _) = f b t
+  f _ (V j) = error "unexpected! run vToP first"
+  f _ _ = M.empty
 
 -- | Remove a node from a directed acyclic graph
 deleteFromDag :: Ord n => n -> [((n, TT n), (a, Set n))] -> [((n, TT n), (a, Set n))]
@@ -318,18 +318,23 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
 
   resolveUnis ((name, term) : xs)
     state@(State holes args1 args2 _ _ _ _) = case (findLeft name state, findRight name state) of
-      (Just (_,ix), Nothing) -> first (inScore (\score -> score { leftApplied = succ (leftApplied score) })) <$> nextStep
-      (Nothing, Just (_, ix)) -> first (inScore (\score -> score { rightApplied = succ (rightApplied score) })) <$> nextStep
+      (Just (_,ix), Nothing) -> first (addScore (mempty { leftApplied  = 1, rightApplied = otherApplied})) <$> nextStep
+      (Nothing, Just (_,ix)) -> first (addScore (mempty { rightApplied = 1, leftApplied  = otherApplied})) <$> nextStep
       (Nothing, Nothing) -> nextStep
       _ -> error ("Idris internal error: TypeSearch.resolveUnis")
     where
     -- find variables which are determined uniquely by the type
     -- due to injectivity
-    varsInTy = M.keys $ usedVars True term
+    matchedVarMap = usedVars term
+    both f (x, y) = (f x, f y)
+    (injUsedVars, notInjUsedVars) = both M.keys . M.partition id . M.filterWithKey (\k _-> k `elem` map fst holes) $ M.map snd matchedVarMap 
+    varsInTy = injUsedVars ++ notInjUsedVars
     toDelete = name : varsInTy
     deleteMany = foldr (.) id $ [ deleteLeft t . deleteRight t | t <- toDelete ]
 
-    inScore f state = state { score = f (score state) }
+    otherApplied = length notInjUsedVars
+
+    addScore additions state = state { score = score state `mappend` additions }
     state' = modifyTypes (subst name term) . deleteMany $ 
                state { holes = filter (not . (`elem` toDelete) . fst) holes }
     nextStep = resolveUnis xs state'
