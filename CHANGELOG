@@ -14,6 +14,10 @@ New in 0.9.14:
   `(EXPR) quasiquotes EXPR, causing the elaborator to be used to produce a reflected
   version of it. Subterms prefixed with ~ are unquoted - on the RHS, they are reflected
   terms to splice in, while on the LHS they are patterns.
+  A quasiquote expression can be given a goal type for the elaborator, which helps with
+  disambiguation. For instance, `(() : ()) quotes the unit constructor, while `(() : Type)
+  quotes the unit type.
+  Both goal types and quasiquote are typechecked in the global environment.
 
 
 New in 0.9.13:

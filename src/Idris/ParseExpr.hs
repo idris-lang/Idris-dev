@@ -600,8 +600,11 @@ quasiquote :: SyntaxInfo -> IdrisParser PTerm
 quasiquote syn = do guard (not (syn_in_quasiquote syn))
                     symbol "`("
                     e <- expr syn { syn_in_quasiquote = True , inPattern = False}
+                    g <- optional $ do
+                           symbol ":"
+                           expr syn { inPattern = False } -- don't allow antiquotes
                     symbol ")"
-                    return $ PQuasiquote e
+                    return $ PQuasiquote e g
                  <?> "quasiquotation"
 
 {-| Parses an unquoting inside a quasiquotation (for building reflected terms using the elaborator)

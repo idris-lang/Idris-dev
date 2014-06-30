@@ -702,7 +702,7 @@ data PTerm = PQuote Raw
            | PDisamb [[T.Text]] PTerm -- ^ Preferences for explicit namespaces
            | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
-           | PQuasiquote PTerm -- ^ `(Term)
+           | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
            | PUnquote PTerm -- ^ ,Term
        deriving Eq
 
@@ -1354,7 +1354,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PDoBlock _) = text "do block pretty not implemented"
     prettySe p bnd (PCoerced t) = prettySe p bnd t
     prettySe p bnd (PElabError s) = pretty s
-    prettySe p bnd (PQuasiquote t) = text "`(" <> prettySe p bnd t <> text ")"
+    -- Quasiquote pprinting ignores bound vars
+    prettySe p bnd (PQuasiquote t Nothing) = text "`(" <> prettySe p [] t <> text ")"
+    prettySe p bnd (PQuasiquote t (Just g)) = text "`(" <> prettySe p [] t <+> colon <+> prettySe p [] g <> text ")"
     prettySe p bnd (PUnquote t) = text "~" <> prettySe p bnd t
 
     prettySe p bnd _ = text "missing pretty-printer for term"

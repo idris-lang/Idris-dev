@@ -160,7 +160,7 @@ extractUnquotes (PUnifyLog tm)
   = fmap (\(tm', ex) -> (PUnifyLog tm', ex)) $ extractUnquotes tm
 extractUnquotes (PNoImplicits tm)
   = fmap (\(tm', ex) -> (PNoImplicits tm', ex)) $ extractUnquotes tm
-extractUnquotes (PQuasiquote tm) = fail "Nested quasiquotes not supported"
+extractUnquotes (PQuasiquote _ _) = fail "Nested quasiquotes not supported"
 extractUnquotes (PUnquote tm) =
   do n <- getNameFrom (sMN 0 "unquotation")
      return (PRef (fileFC "(unquote)") n, [(n, tm)])
