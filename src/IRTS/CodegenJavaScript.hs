@@ -14,6 +14,7 @@ import Control.Arrow
 import Control.Monad (mapM)
 import Control.Applicative ((<$>), (<*>), pure)
 import Control.Monad.RWS hiding (mapM)
+import Control.Monad.State
 import Data.Char
 import Numeric
 import Data.List
@@ -22,6 +23,8 @@ import Data.Word
 import Data.Traversable hiding (mapM)
 import System.IO
 import System.Directory
+
+import qualified Data.Map.Strict as M
 
 
 data CompileInfo = CompileInfo { compileInfoApplyCases  :: [Int]
@@ -286,6 +289,9 @@ compileJS' indent (JSNum num)
 compileJS' indent (JSAssign lhs rhs) =
   compileJS' indent lhs ++ " = " ++ compileJS' indent rhs
 
+compileJS' 0 (JSAlloc name (Just val@(JSNew _ _))) =
+  "var " ++ name ++ " = " ++ compileJS' 0 val ++ ";\n"
+
 compileJS' indent (JSAlloc name val) =
   "var " ++ name ++ maybe "" ((" = " ++) . compileJS' indent) val
 
@@ -379,7 +385,8 @@ codegenJS_all target definitions includes libs filename outputType = do
   let bytecode = map toBC definitions
   let info = initCompileInfo bytecode
   let js = concatMap (translateDecl info) bytecode
-  let code = concatMap ((map compileJS) . collectSplitFunctions . (\x -> evalRWS (splitFunction x) () 0)) js
+  let code = concatMap processFunction js
+  let (cons, opt) = optimizeConstructors code
   let (header, rt) = case target of
                           Node -> ("#!/usr/bin/env node\n", "-node")
                           JavaScript -> ("", "-browser")
@@ -398,12 +405,23 @@ codegenJS_all target definitions includes libs filename outputType = do
                 ++ idrRuntime
                 ++ tgtRuntime
                 )
-  writeFile filename $ runtime ++ concat code ++ main ++ invokeMain
+  writeFile filename (  runtime
+                     ++ concatMap compileJS opt
+                     ++ concatMap compileJS cons
+                     ++ main
+                     ++ invokeMain
+                     )
   setPermissions filename (emptyPermissions { readable   = True
                                             , executable = target == Node
                                             , writable   = True
                                             })
     where
+      processFunction :: JS -> [JS]
+      processFunction js =
+        (
+          collectSplitFunctions . (\x -> evalRWS (splitFunction x) () 0)
+        ) js
+
       includeLibs :: [String] -> String
       includeLibs =
         concatMap (\lib -> "var " ++ lib ++ " = require(\"" ++ lib ++"\");\n")
@@ -467,6 +485,52 @@ codegenJS_all target definitions includes libs filename outputType = do
 
       invokeMain :: String
       invokeMain = compileJS $ JSApp (JSIdent "main") []
+
+optimizeConstructors :: [JS] -> ([JS], [JS])
+optimizeConstructors js =
+    let (js', cons) = runState (traverse optimizeConstructor' js) M.empty in
+        (map (allocCon . snd) (M.toList cons), js')
+  where
+    allocCon :: (String, JS) -> JS
+    allocCon (name, con) = JSAlloc name (Just con)
+
+    newConstructor :: Int -> String
+    newConstructor n = "i$CON$" ++ show n
+
+    optimizeConstructor' :: JS -> State (M.Map Int (String, JS)) JS
+    optimizeConstructor' js@(JSNew "i$CON" [ JSNum (JSInt tag)
+                                           , JSArray []
+                                           , a
+                                           , e
+                                           ]) = do
+      s <- get
+      case M.lookup tag s of
+           Just (i, c) -> return $ JSIdent i
+           Nothing     -> do let n = newConstructor tag
+                             put $ M.insert tag (n, js) s
+                             return $ JSIdent n
+
+    optimizeConstructor' (JSSeq seq) =
+      JSSeq <$> traverse optimizeConstructor' seq
+
+    optimizeConstructor' (JSSwitch reg cond def) = do
+      cond' <- traverse (runKleisli $ arr id *** Kleisli optimizeConstructor') cond
+      def'  <- traverse optimizeConstructor' def
+      return $ JSSwitch reg cond' def'
+
+    optimizeConstructor' (JSCond cond) =
+      JSCond <$> traverse (runKleisli $ arr id *** Kleisli optimizeConstructor') cond
+
+    optimizeConstructor' (JSAlloc fun (Just (JSFunction args body))) = do
+      body' <- optimizeConstructor' body
+      return $ JSAlloc fun (Just (JSFunction args body'))
+
+    optimizeConstructor' (JSAssign lhs rhs) = do
+      lhs' <- optimizeConstructor' lhs
+      rhs' <- optimizeConstructor' rhs
+      return $ JSAssign lhs' rhs'
+
+    optimizeConstructor' js = return js
 
 collectSplitFunctions :: (JS, [(Int,JS)]) -> [JS]
 collectSplitFunctions (fun, splits) = map generateSplitFunction splits ++ [fun]
@@ -760,6 +824,7 @@ jsERROR :: CompileInfo -> String -> JS
 jsERROR _ = JSError
 
 jsSLIDE :: CompileInfo -> Int -> JS
+jsSLIDE _ 1 = JSAssign (jsLOC 0) (jsTOP 0)
 jsSLIDE _ n = JSApp (JSIdent "i$SLIDE") [JSNum (JSInt n)]
 
 jsMKCON :: CompileInfo -> Reg -> Int -> [Reg] -> JS
@@ -867,6 +932,15 @@ jsCONSTCASE info reg cases def =
       prepBranch bc = JSSeq $ map (translateBC info) bc
 
 jsPROJECT :: CompileInfo -> Reg -> Int -> Int -> JS
+jsPROJECT _ reg loc 0  = JSNoop
+jsPROJECT _ reg loc 1  =
+  JSAssign (jsLOC loc) (
+    JSIndex (
+      JSProj (translateReg reg) "args"
+    ) (
+      JSNum (JSInt 0)
+    )
+  )
 jsPROJECT _ reg loc ar =
   JSApp (JSIdent "i$PROJECT") [ translateReg reg
                               , JSNum (JSInt loc)
