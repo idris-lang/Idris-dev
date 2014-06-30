@@ -110,7 +110,7 @@ char* idrnet_sockaddr_ipv4(void* sockaddr) {
 }
 
 int idrnet_sockaddr_ipv4_port(void* sockaddr) {
-    struct sockaddr_in* addr = (struct sockaddr_in*) addr;
+    struct sockaddr_in* addr = (struct sockaddr_in*) sockaddr;
     return ((int) ntohs(addr->sin_port));  
 }
 
