@@ -385,7 +385,8 @@ codegenJS_all target definitions includes libs filename outputType = do
   let bytecode = map toBC definitions
   let info = initCompileInfo bytecode
   let js = concatMap (translateDecl info) bytecode
-  let code = concatMap processFunction js
+  let full = concatMap processFunction js
+  let code = deadCodeElim full
   let (cons, opt) = optimizeConstructors code
   let (header, rt) = case target of
                           Node -> ("#!/usr/bin/env node\n", "-node")
@@ -416,11 +417,59 @@ codegenJS_all target definitions includes libs filename outputType = do
                                             , writable   = True
                                             })
     where
+      deadCodeElim :: [JS] -> [JS]
+      deadCodeElim js = concatMap collectFunctions js
+        where
+          collectFunctions :: JS -> [JS]
+          collectFunctions fun@(JSAlloc name _)
+            | name == translateName (sMN 0 "runMain") = [fun]
+
+          collectFunctions fun@(JSAlloc name (Just (JSFunction _ body))) =
+            let invokations = sum $ map (
+                    \x -> execState (countInvokations name x) 0
+                  ) js
+             in if invokations == 0
+                   then []
+                   else [fun]
+
+          countInvokations :: String -> JS -> State Int ()
+          countInvokations name (JSAlloc _ (Just (JSFunction _ body))) =
+            countInvokations name body
+
+          countInvokations name (JSSeq seq) =
+            void $ traverse (countInvokations name) seq
+
+          countInvokations name (JSAssign _ rhs) =
+            countInvokations name rhs
+
+          countInvokations name (JSCond conds) =
+            void $ traverse (
+                runKleisli $ arr id *** Kleisli (countInvokations name)
+              ) conds
+
+          countInvokations name (JSSwitch _ conds def) =
+            void $ traverse (
+              runKleisli $ arr id *** Kleisli (countInvokations name)
+            ) conds >> traverse (countInvokations name) def
+
+          countInvokations name (JSApp lhs rhs) =
+            void $ countInvokations name lhs >> traverse (countInvokations name) rhs
+
+          countInvokations name (JSNew _ args) =
+            void $ traverse (countInvokations name) args
+
+          countInvokations name (JSArray args) =
+            void $ traverse (countInvokations name) args
+
+          countInvokations name (JSIdent name')
+            | name == name' = get >>= put . (+1)
+            | otherwise     = return ()
+
+          countInvokations _ _ = return ()
+
       processFunction :: JS -> [JS]
-      processFunction js =
-        (
-          collectSplitFunctions . (\x -> evalRWS (splitFunction x) () 0)
-        ) js
+      processFunction =
+        collectSplitFunctions . (\x -> evalRWS (splitFunction x) () 0)
 
       includeLibs :: [String] -> String
       includeLibs =
