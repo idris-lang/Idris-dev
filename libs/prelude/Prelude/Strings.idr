@@ -271,4 +271,16 @@ toUpper x with (strM x)
   strToLower ""             | StrNil = ""
   strToLower (strCons c cs) | (StrCons c cs) =
     strCons (toUpper c) (toUpper (assert_smaller (strCons c cs) cs ))
+   
+--------------------------------------------------------------------------------
+-- Predicates
+--------------------------------------------------------------------------------
 
+isPrefixOf : String -> String -> Bool
+isPrefixOf a b = isPrefixOf (unpack a) (unpack b)
+
+isSuffixOf : String -> String -> Bool
+isSuffixOf a b = isSuffixOf (unpack a) (unpack b)
+
+isInfixOf : String -> String -> Bool
+isInfixOf a b = isInfixOf (unpack a) (unpack b)
