@@ -36,6 +36,7 @@ import Foreign.Ptr
 #endif
 
 import System.IO
+import qualified System.IO.UTF8 as UTF8
 
 #ifndef IDRIS_FFI
 execute :: Term -> Idris Term
@@ -244,7 +245,7 @@ execApp env ctxt (EP _ fp _) (_:fn:_:handle:_:rest)
     | fp == mkfprim,
       Just (FFun "idris_readStr" _ _) <- foreignFromTT fn
            = case handle of
-               EHandle h -> do contents <- execIO $ hGetLine h
+               EHandle h -> do contents <- execIO $ UTF8.hGetLine h
                                execApp env ctxt (EConstant (Str (contents ++ "\n"))) rest
                _ -> execFail . Msg $
                       "The argument to idris_readStr should be a handle, but it was " ++
@@ -395,7 +396,7 @@ getOp fn [EP _ fn' _]
                         return (EConstant (Str line))
 getOp fn [EHandle h]
     | fn == prs =
-              Just $ do contents <- execIO $ hGetLine h
+              Just $ do contents <- execIO $ UTF8.hGetLine h
                         return (EConstant (Str (contents ++ "\n")))
 getOp n args = getPrim n primitives >>= flip applyPrim args
     where getPrim :: Name -> [Prim] -> Maybe ([ExecVal] -> Maybe ExecVal)

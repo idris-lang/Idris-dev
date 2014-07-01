@@ -68,7 +68,9 @@ import qualified Data.Set as S
 import Debug.Trace
 
 import System.FilePath
-import System.IO
+import System.IO (Handle(..))
+import qualified System.IO.UTF8 as UTF8
+
 
 {-
 @
@@ -1233,7 +1235,7 @@ loadSource h lidr f toline
              = do iLOG ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
-                  file_in <- runIO $ readFile f
+                  file_in <- runIO $ UTF8.readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, imports, pos) <- parseImports f file
                   ids <- allImportDirs
