@@ -151,6 +151,7 @@ startServer orig fn_in = do tid <- runIO $ forkOS serverLoop
 
         loop fn ist sock
             = do (h,_,_) <- accept sock
+                 hSetEncoding h utf8
                  cmd <- hGetLine h
                  (ist', fn) <- processNetCmd orig ist h fn cmd
                  hClose h
@@ -189,6 +190,7 @@ processNetCmd orig i h fn cmd
 runClient :: String -> IO ()
 runClient str = withSocketsDo $ do
                   h <- connectTo "localhost" (PortNumber 4294)
+                  hSetEncoding h utf8
                   hPutStrLn h str
                   resp <- hGetResp "" h
                   putStr resp
