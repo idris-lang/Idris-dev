@@ -30,6 +30,7 @@ import           System.Directory
 import           System.Exit
 import           System.FilePath
 import           System.IO
+import qualified System.IO.UTF8 as UTF8
 import           System.Process
 
 -----------------------------------------------------------------------
@@ -97,7 +98,7 @@ generateJavaFile globalInit defs hdrs srcDir out = do
     let code = either error
                       (prettyPrint)-- flatIndent . prettyPrint)
                       (evalStateT (mkCompilationUnit globalInit defs hdrs out) mkCodeGenEnv)
-    writeFile (javaFileName srcDir out) code
+    UTF8.writeFile (javaFileName srcDir out) code
 
 pomFileName :: FilePath -> FilePath
 pomFileName tgtDir = tgtDir </> "pom.xml"
@@ -106,7 +107,7 @@ generatePom :: FilePath -> -- tgt dir
                FilePath -> -- output target
                [String] -> -- libs
                IO ()
-generatePom tgtDir out libs = writeFile (pomFileName tgtDir) execPom
+generatePom tgtDir out libs = UTF8.writeFile (pomFileName tgtDir) execPom
   where
     (Ident clsName) = either error id (mkClassName out)
     execPom = pomString clsName (takeBaseName out) libs

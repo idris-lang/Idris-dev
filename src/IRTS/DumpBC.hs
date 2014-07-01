@@ -6,6 +6,7 @@ import Idris.Core.TT
 
 import IRTS.Bytecode
 import Data.List
+import qualified System.IO.UTF8 as UTF8
 
 interMap :: [a] -> [b] -> (a -> [b]) -> [b]
 interMap xs y f = concat (intersperse y (map f xs))
@@ -73,4 +74,4 @@ serialize decls =
       show name ++ ":\n" ++ interMap bcs "\n" (serializeBC 1)
 
 dumpBC :: [(Name, SDecl)] -> String -> IO ()
-dumpBC c output = writeFile output $ serialize $ map toBC c
+dumpBC c output = UTF8.writeFile output $ serialize $ map toBC c

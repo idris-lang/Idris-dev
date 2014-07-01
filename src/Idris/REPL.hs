@@ -51,6 +51,7 @@ import IRTS.System
 
 import Data.List.Split (splitOn)
 import qualified Data.Text as T
+import qualified System.IO.UTF8 as UTF8
 
 import Text.Trifecta.Result(Result(..))
 
@@ -151,7 +152,7 @@ startServer orig fn_in = do tid <- runIO $ forkOS serverLoop
 
         loop fn ist sock
             = do (h,_,_) <- accept sock
-                 cmd <- hGetLine h
+                 cmd <- UTF8.hGetLine h
                  (ist', fn) <- processNetCmd orig ist h fn cmd
                  hClose h
                  loop fn ist' sock
@@ -164,7 +165,7 @@ processNetCmd orig i h fn cmd
                   Success c -> runErrorT $ evalStateT (processNet fn c) i
          case res of
               Right x -> return x
-              Left err -> do hPutStrLn h (show err)
+              Left err -> do UTF8.hPutStrLn h (show err)
                              return (i, fn)
   where
     processNet fn Reload = processNet fn (Load fn Nothing)
@@ -189,13 +190,13 @@ processNetCmd orig i h fn cmd
 runClient :: String -> IO ()
 runClient str = withSocketsDo $ do
                   h <- connectTo "localhost" (PortNumber 4294)
-                  hPutStrLn h str
+                  UTF8.hPutStrLn h str
                   resp <- hGetResp "" h
-                  putStr resp
+                  UTF8.putStr resp
                   hClose h
     where hGetResp acc h = do eof <- hIsEOF h
                               if eof then return acc
-                                     else do l <- hGetLine h
+                                     else do l <- UTF8.hGetLine h
                                              hGetResp (acc ++ l ++ "\n") h
 
 -- | Run the IdeSlave
@@ -246,7 +247,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Interpret cmd) =
                isetPrompt (mkPrompt mods)
                case idris_outputmode i of
                  IdeSlave n -> -- signal completion of proof to ide
-                   runIO . hPutStrLn stdout $
+                   runIO . UTF8.hPutStrLn stdout $
                      IdeSlave.convSExp "return"
                        (IdeSlave.SymbolAtom "ok", "")
                        n
@@ -255,7 +256,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Interpret cmd) =
                      isetPrompt (mkPrompt mods)
                      case idris_outputmode i of
                        IdeSlave n ->
-                         runIO . hPutStrLn stdout $
+                         runIO . UTF8.hPutStrLn stdout $
                            IdeSlave.convSExp "abandon-proof" "Abandoned" n
                        _ -> return ()
                      ihRenderError stdout $ pprintErr ist e)
@@ -838,7 +839,7 @@ process h fn' (AddProof prf)
                     else ifail $ "Neither \""++fn''++"\" nor \""++fnExt++"\" exist"
        let fb = fn ++ "~"
        runIO $ copyFile fn fb -- make a backup in case something goes wrong!
-       prog <- runIO $ readFile fb
+       prog <- runIO $ UTF8.readFile fb
        i <- getIState
        let proofs = proof_list i
        n' <- case prf of
@@ -850,7 +851,7 @@ process h fn' (AddProof prf)
        case lookup n proofs of
             Nothing -> iputStrLn "No proof to add"
             Just p  -> do let prog' = insertScript (showProof (lit fn) n p) ls
-                          runIO $ writeFile fn (unlines prog')
+                          runIO $ UTF8.writeFile fn (unlines prog')
                           removeProof n
                           iputStrLn $ "Added proof " ++ show n
                           where ls = (lines prog)
@@ -908,7 +909,7 @@ process h fn Execute
                            case idris_outputmode ist of
                              RawOutput -> do runIO $ system tmpn
                                              return ()
-                             IdeSlave n -> runIO . hPutStrLn h $
+                             IdeSlave n -> runIO . UTF8.hPutStrLn h $
                                            IdeSlave.convSExp "run-program" tmpn n)
                        (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
   where fc = fileFC "main"
@@ -1365,7 +1366,7 @@ initScript = do script <- getInitScript
           runInit h = do eof <- lift . lift $ hIsEOF h
                          ist <- getIState
                          unless eof $ do
-                           line <- runIO $ hGetLine h
+                           line <- runIO $ UTF8.hGetLine h
                            script <- getInitScript
                            c <- colourise
                            processLine ist line script c

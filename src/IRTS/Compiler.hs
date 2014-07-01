@@ -46,6 +46,7 @@ import System.IO
 import System.Directory
 import System.Environment
 import System.FilePath ((</>), addTrailingPathSeparator)
+import qualified System.IO.UTF8 as UTF8
 
 compile :: Codegen -> FilePath -> Term -> Idris ()
 compile codegen f tm
@@ -78,10 +79,10 @@ compile codegen f tm
         dumpDefun <- getDumpDefun
         case dumpCases of
             Nothing -> return ()
-            Just f -> runIO $ writeFile f (showCaseTrees defs)
+            Just f -> runIO $ UTF8.writeFile f (showCaseTrees defs)
         case dumpDefun of
             Nothing -> return ()
-            Just f -> runIO $ writeFile f (dumpDefuns defuns)
+            Just f -> runIO $ UTF8.writeFile f (dumpDefuns defuns)
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
         optimise <- optLevel

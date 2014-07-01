@@ -12,7 +12,7 @@ import Idris.CmdOptions
 
 import Control.Monad.State.Strict
 import Control.Applicative
-
+import qualified System.IO.UTF8 as UTF8
 
 type PParser = StateT PkgDesc IdrisInnerParser
 
@@ -36,7 +36,7 @@ instance TokenParsing PParser where
 defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (sUN "") Nothing []
 
 parseDesc :: FilePath -> IO PkgDesc
-parseDesc fp = do p <- readFile fp
+parseDesc fp = do p <- UTF8.readFile fp
                   case runparser pPkg defaultPkg fp p of
                        Failure err -> fail (show err)
                        Success x -> return x

@@ -31,6 +31,7 @@ import qualified Data.Map as M hiding ((!))
 import qualified Data.Ord (compare)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified System.IO.UTF8 as UTF8
 
 import System.IO
 import System.IO.Error
@@ -381,7 +382,7 @@ createDocs ist nsd out =
          createIndex nss out
          -- Create an empty IdrisDoc file to signal 'out' is used for IdrisDoc
          if new -- But only if it not already existed...
-            then withFile (out </> "IdrisDoc") WriteMode ((flip hPutStr) "")
+            then withFile (out </> "IdrisDoc") WriteMode ((flip UTF8.hPutStr) "")
             else return ()
          copyDependencies out
          return $ Right ()

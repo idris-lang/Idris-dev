@@ -7,6 +7,7 @@ import System.Exit
 import System.IO
 import System.FilePath ((</>), addTrailingPathSeparator, takeFileName, takeDirectory, normalise)
 import System.Directory (createDirectoryIfMissing, copyFile)
+import qualified System.IO.UTF8 as UTF8
 
 import Util.System
 
@@ -168,7 +169,7 @@ testPkg fp
                make (makefile pkgdesc)
                -- Get a temporary file to save the tests' source in
                (tmpn, tmph) <- tempIdr
-               hPutStrLn tmph $
+               UTF8.hPutStrLn tmph $
                  "module Test_______\n" ++
                  concat ["import " ++ show m ++ "\n"
                          | m <- modules pkgdesc] ++

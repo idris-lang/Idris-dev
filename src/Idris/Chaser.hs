@@ -13,6 +13,7 @@ import Data.Time.Clock
 import Control.Monad.Trans
 import Control.Monad.State
 import Data.List
+import qualified System.IO.UTF8 as UTF8
 
 import Debug.Trace
 
@@ -129,7 +130,7 @@ buildTree built fp = btree [] fp
   children lit f done = -- idrisCatch
      do exist <- runIO $ doesFileExist f
         if exist then do
-            file_in <- runIO $ readFile f
+            file_in <- runIO $ UTF8.readFile f
             file <- if lit then tclift $ unlit f file_in else return file_in
             (_, modules, _) <- parseImports f file
             -- The chaser should never report warnings from sub-modules

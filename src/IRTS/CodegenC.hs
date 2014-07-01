@@ -17,6 +17,7 @@ import System.Exit
 import System.IO
 import System.Directory
 import System.FilePath ((</>), (<.>))
+import qualified System.IO.UTF8 as UTF8
 import Control.Monad
 
 codegenC :: CodeGenerator
@@ -50,12 +51,12 @@ codegenC' defs out exec incs objs libs flags dbg
          let h = concatMap toDecl (map fst bc)
          let cc = concatMap (uncurry toC) bc
          d <- getDataDir
-         mprog <- readFile (d </> "rts" </> "idris_main" <.> "c")
+         mprog <- UTF8.readFile (d </> "rts" </> "idris_main" <.> "c")
          let cout = headers incs ++ debug dbg ++ h ++ cc ++
                      (if (exec == Executable) then mprog else "")
          case exec of
            MavenProject -> putStrLn ("FAILURE: output type not supported")
-           Raw -> writeFile out cout
+           Raw -> UTF8.writeFile out cout
            _ -> do
              (tmpn, tmph) <- tempfile
              hPutStr tmph cout

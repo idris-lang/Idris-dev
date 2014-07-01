@@ -23,6 +23,7 @@ import Data.Word
 import Data.Traversable hiding (mapM)
 import System.IO
 import System.Directory
+import qualified System.IO.UTF8 as UTF8
 
 import qualified Data.Map.Strict as M
 
@@ -394,10 +395,10 @@ codegenJS_all target definitions includes libs filename outputType = do
 
   included   <- concat <$> getIncludes includes
   path       <- (++) <$> getDataDir <*> (pure "/jsrts/")
-  idrRuntime <- readFile $ path ++ "Runtime-common.js"
-  tgtRuntime <- readFile $ concat [path, "Runtime", rt, ".js"]
+  idrRuntime <- UTF8.readFile $ path ++ "Runtime-common.js"
+  tgtRuntime <- UTF8.readFile $ concat [path, "Runtime", rt, ".js"]
   jsbn       <- if compileInfoNeedsBigInt info
-                   then readFile $ path ++ "jsbn/jsbn.js"
+                   then UTF8.readFile $ path ++ "jsbn/jsbn.js"
                    else return ""
   let runtime = (  header
                 ++ includeLibs libs
@@ -406,7 +407,7 @@ codegenJS_all target definitions includes libs filename outputType = do
                 ++ idrRuntime
                 ++ tgtRuntime
                 )
-  writeFile filename (  runtime
+  UTF8.writeFile filename (  runtime
                      ++ concatMap compileJS opt
                      ++ concatMap compileJS cons
                      ++ main
@@ -476,7 +477,7 @@ codegenJS_all target definitions includes libs filename outputType = do
         concatMap (\lib -> "var " ++ lib ++ " = require(\"" ++ lib ++"\");\n")
 
       getIncludes :: [FilePath] -> IO [String]
-      getIncludes = mapM readFile
+      getIncludes = mapM UTF8.readFile
 
       main :: String
       main =
