@@ -287,6 +287,7 @@ data Codegen = ViaC
 data Command = Quit
              | Help
              | Eval PTerm
+             | NewDefn Name PTerm
              | Check PTerm
              | DocStr (Either Name Const)
              | TotCheck Name

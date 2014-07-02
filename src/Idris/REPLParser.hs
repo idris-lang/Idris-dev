@@ -49,6 +49,12 @@ pCmd = do P.whiteSpace; try (do cmd ["q", "quit"]; eof; return Quit)
               <|> try (do cmd ["rmproof"]; n <- P.name; eof; return (RmProof n))
               <|> try (do cmd ["showproof"]; n <- P.name; eof; return (ShowProof n))
               <|> try (do cmd ["log"]; i <- P.natural; eof; return (LogLvl (fromIntegral i)))
+              <|> try (do cmd ["let"]
+                          name <- P.name
+                          P.lchar '='
+                          val <- P.fullExpr defaultSyntax
+                          eof
+                          return (NewDefn name val))
               <|> try (do cmd ["lto", "loadto"];
                           toline <- P.natural
                           f <- many anyChar;

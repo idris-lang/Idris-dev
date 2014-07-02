@@ -663,6 +663,13 @@ process h fn (Eval t)
                                                 tyDoc = pprintDelab ist ty'
                                             ihPrintTermWithType h tmDoc tyDoc
 
+process h fn (NewDefn name val)
+                  = do (tm, ty) <- elabVal toplevel False val
+                       ctxt <- getContext
+                       let tm' = force (normaliseAll ctxt [] tm)
+                       let ty' = force (normaliseAll ctxt [] ty)
+                       updateContext (addCtxtDef name (Function ty' tm')) 
+
 process h fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
