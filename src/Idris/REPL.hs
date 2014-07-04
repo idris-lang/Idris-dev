@@ -670,6 +670,7 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
   getName :: PDecl -> Maybe Name
   getName (PTy docs argdocs syn fc opts name ty) = Just name
   getName (PClauses fc opts name (clause:clauses)) = Just (getClauseName clause)
+  getName (PData doc argdocs syn fc opts dataDecl) = Just (d_name dataDecl)
   getName _ = Nothing
   -- getClauseName is partial and I am not sure it's used safely! -- trillioneyes
   getClauseName (PClause fc name whole with rhs whereBlock) = name
@@ -685,6 +686,8 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
     let tm' = force (normaliseAll ctxt [] tm)
     let ty' = force (normaliseAll ctxt [] ty)
     updateContext (addCtxtDef (getClauseName clause) (Function ty' tm'))
+  defineName [PData doc argdocs syn fc opts decl] = do
+    elabData toplevel syn doc argdocs fc opts decl
   getClauses (PClauses fc opts name clauses) = clauses
   getClauses _ = []
   getRHS :: PClause -> PTerm
