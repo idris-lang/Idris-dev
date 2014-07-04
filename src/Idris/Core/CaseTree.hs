@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances #-}
 
-module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..),
+module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo,
                      Phase(..), CaseTree,
                      simpleCase, small, namesUsed, findCalls, findUsedArgs,
                      substSC, substAlt, mkForce) where
@@ -229,8 +229,9 @@ data Phase = CompileTime | RunTime
 simpleCase :: Bool -> Bool -> Bool ->
               Phase -> FC -> [Int] -> [Type] ->
               [([Name], Term, Term)] ->
+              ErasureInfo ->
               TC CaseDef
-simpleCase tc cover reflect phase fc inacc argtys cs
+simpleCase tc cover reflect phase fc inacc argtys cs erInfo
       = sc' tc cover phase fc (filter (\(_, _, r) ->
                                           case r of
                                             Impossible -> False
@@ -249,8 +250,7 @@ simpleCase tc cover reflect phase fc inacc argtys cs
                     let numargs    = length (fst (head pats))
                         ns         = take numargs args
                         (ns', ps') = order [(n, i `elem` inacc) | (i,n) <- zip [0..] ns] pats
-                        (tree, st) = runCaseBuilder
-                                         undefined  -- TODO
+                        (tree, st) = runCaseBuilder erInfo
                                          (match ns' ps' (defaultCase cover)) 
                                          ([], numargs, [])
                         t          = CaseDef ns (prune proj (depatt ns' tree)) (fstT st) in

@@ -1083,8 +1083,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                 Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats
                 _ -> return ()
 
+           erInfo <- getErasureInfo <$> getIState
            tree@(CaseDef scargs sc _) <- tclift $
-                   simpleCase tcase False reflect CompileTime fc inacc atys pdef
+                   simpleCase tcase False reflect CompileTime fc inacc atys pdef erInfo
            cov <- coverage
            pmissing <-
                    if cov && not (hasDefault cs)
@@ -1133,7 +1134,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let knowncovering = (pcover && cov) || AssertTotal `elem` opts
 
            tree' <- tclift $ simpleCase tcase knowncovering reflect
-                                        RunTime fc inacc atys pdef'
+                                        RunTime fc inacc atys pdef' erInfo
            logLvl 3 $ "Unoptimised " ++ show n ++ ": " ++ show tree
            logLvl 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
@@ -1143,7 +1144,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (dictionary opts)
            case lookupTy n ctxt of
-               [ty] -> do updateContext (addCasedef n caseInfo
+               [ty] -> do updateContext (addCasedef n erInfo caseInfo
                                                        tcase knowncovering
                                                        reflect
                                                        (AssertTotal `elem` opts)
@@ -2360,7 +2361,7 @@ elabDecl' what info (PMutual f ps)
          -- Do totality checking after entire mutual block
          i <- get
          mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
-                         updateContext (simplifyCasedef n))
+                         updateContext (simplifyCasedef n $ getErasureInfo i))
                  (map snd (idris_totcheck i))
          mapM_ buildSCG (idris_totcheck i)
          mapM_ checkDeclTotality (idris_totcheck i)

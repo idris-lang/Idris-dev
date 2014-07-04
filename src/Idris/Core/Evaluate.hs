@@ -788,7 +788,8 @@ addDatatype (Data n tag ty cons) uctxt
                   (TyDecl (DCon tag (arity ty')) ty, Public, Unchecked, EmptyMI) ctxt)
 
 -- FIXME: Too many arguments! Refactor all these Bools.
-addCasedef :: Name -> CaseInfo -> Bool -> Bool -> Bool -> Bool ->
+addCasedef :: Name -> ErasureInfo -> CaseInfo ->
+              Bool -> Bool -> Bool -> Bool ->
               [Type] -> -- argument types
               [Int] ->  -- inaccessible arguments
               [Either Term (Term, Term)] ->
@@ -797,17 +798,17 @@ addCasedef :: Name -> CaseInfo -> Bool -> Bool -> Bool -> Bool ->
               [([Name], Term, Term)] -> -- inlined
               [([Name], Term, Term)] -> -- run time
               Type -> Context -> Context
-addCasedef n ci@(CaseInfo alwaysInline tcdict)
+addCasedef n ei ci@(CaseInfo alwaysInline tcdict)
            tcase covering reflect asserted argtys inacc
            ps_in ps_tot ps_inl ps_ct ps_rt ty uctxt
     = let ctxt = definitions uctxt
           access = case lookupDefAcc n False uctxt of
                         [(_, acc)] -> acc
                         _ -> Public
-          ctxt' = case (simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_tot,
-                        simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_ct,
-                        simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_inl,
-                        simpleCase tcase covering reflect RunTime emptyFC inacc argtys ps_rt) of
+          ctxt' = case (simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_tot ei,
+                        simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_ct ei,
+                        simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_inl ei,
+                        simpleCase tcase covering reflect RunTime emptyFC inacc argtys ps_rt ei) of
                     (OK (CaseDef args_tot sc_tot _),
                      OK (CaseDef args_ct sc_ct _),
                      OK (CaseDef args_inl sc_inl _),
@@ -825,8 +826,8 @@ addCasedef n ci@(CaseInfo alwaysInline tcdict)
           uctxt { definitions = ctxt' }
 
 -- simplify a definition for totality checking
-simplifyCasedef :: Name -> Context -> Context
-simplifyCasedef n uctxt
+simplifyCasedef :: Name -> ErasureInfo -> Context -> Context
+simplifyCasedef n ei uctxt
    = let ctxt = definitions uctxt
          ctxt' = case lookupCtxt n ctxt of
               [(CaseOp ci ty atys [] ps _, acc, tot, metainf)] ->
@@ -834,7 +835,7 @@ simplifyCasedef n uctxt
               [(CaseOp ci ty atys ps_in ps cd, acc, tot, metainf)] ->
                  let ps_in' = map simpl ps_in
                      pdef = map debind ps_in' in
-                     case simpleCase False True False CompileTime emptyFC [] atys pdef of
+                     case simpleCase False True False CompileTime emptyFC [] atys pdef ei of
                        OK (CaseDef args sc _) ->
                           addDef n (CaseOp ci
                                            ty atys ps_in' ps (cd { cases_totcheck = (args, sc) }),

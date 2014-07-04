@@ -1733,8 +1733,8 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     niTacImp _ _                = []
 
 -- Return the list of unused positions for a name.
-getInaccessibleArgs :: IState -> Name -> [Int]
-getInaccessibleArgs ist n =
+getErasureInfo :: IState -> Name -> [Int]
+getErasureInfo ist n =
     case lookupCtxtExact n (idris_optimisation ist) of
         Just (Optimise inacc detagg) -> map fst inacc
         Nothing -> []

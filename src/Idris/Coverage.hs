@@ -376,7 +376,8 @@ checkTotality path fc n
     | n `elem` path = return (Partial (Mutual (n : path)))
     | otherwise = do
         t <- getTotality n
-        updateContext (simplifyCasedef n)
+        i <- getIState
+        updateContext (simplifyCasedef n $ getErasureInfo i)
         ctxt <- getContext
         i <- getIState
         let opts = case lookupCtxt n (idris_flags i) of
