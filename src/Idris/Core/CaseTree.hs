@@ -8,6 +8,7 @@ module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..),
 import Idris.Core.TT
 
 import Control.Monad.State
+import Control.Monad.Reader
 import Data.Maybe
 import Data.List hiding (partition)
 import qualified Data.List(partition)
@@ -213,7 +214,11 @@ isUsed sc n = used sc where
   usedA (SucCase _ sc) = used sc
   usedA (DefaultCase sc) = used sc
 
-type CaseBuilder a = State CS a
+type ErasureInfo = Name -> [Int]  -- name to list of inaccessible arguments; empty list if name not found
+type CaseBuilder a = ReaderT ErasureInfo (State CS) a
+
+runCaseBuilder :: ErasureInfo -> CaseBuilder a -> (CS -> (a, CS))
+runCaseBuilder ei bld = runState $ runReaderT bld ei
 
 data Phase = CompileTime | RunTime
     deriving (Show, Eq)
@@ -244,7 +249,8 @@ simpleCase tc cover reflect phase fc inacc argtys cs
                     let numargs    = length (fst (head pats))
                         ns         = take numargs args
                         (ns', ps') = order [(n, i `elem` inacc) | (i,n) <- zip [0..] ns] pats
-                        (tree, st) = runState
+                        (tree, st) = runCaseBuilder
+                                         undefined  -- TODO
                                          (match ns' ps' (defaultCase cover)) 
                                          ([], numargs, [])
                         t          = CaseDef ns (prune proj (depatt ns' tree)) (fstT st) in
