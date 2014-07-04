@@ -213,6 +213,7 @@ isUsed sc n = used sc where
   usedA (SucCase _ sc) = used sc
   usedA (DefaultCase sc) = used sc
 
+type CaseBuilder a = State CS a
 
 data Phase = CompileTime | RunTime
     deriving (Show, Eq)
@@ -459,7 +460,7 @@ order ns' cs = let patnames = transpose (map (zip ns') (map fst cs))
     numNames xs [] = length xs
 
 match :: [Name] -> [Clause] -> SC -- error case
-                            -> State CS SC
+                            -> CaseBuilder SC
 match [] (([], ret) : xs) err
     = do (ts, v, ntys) <- get
          put (ts ++ (map (fst.snd) xs), v, ntys)
@@ -469,7 +470,7 @@ match [] (([], ret) : xs) err
 match vs cs err = do let ps = partition cs
                      mixture vs ps err
 
-mixture :: [Name] -> [Partition] -> SC -> State CS SC
+mixture :: [Name] -> [Partition] -> SC -> CaseBuilder SC
 mixture vs [] err = return err
 mixture vs (Cons ms : ps) err = do fallthrough <- mixture vs ps err
                                    conRule vs ms fallthrough
@@ -486,11 +487,11 @@ data Group = ConGroup ConType -- Constructor
                       [([Pat], Clause)] -- arguments and rest of alternative
    deriving Show
 
-conRule :: [Name] -> [Clause] -> SC -> State CS SC
+conRule :: [Name] -> [Clause] -> SC -> CaseBuilder SC
 conRule (v:vs) cs err = do groups <- groupCons cs
                            caseGroups (v:vs) groups err
 
-caseGroups :: [Name] -> [Group] -> SC -> State CS SC
+caseGroups :: [Name] -> [Group] -> SC -> CaseBuilder SC
 caseGroups (v:vs) gs err = do g <- altGroups gs
                               return $ Case v (sort g)
   where
@@ -525,7 +526,7 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
                             matchCs <- match vs nextCs err
                             return $ ConstCase n matchCs
 
-argsToAlt :: [([Pat], Clause)] -> State CS ([Name], [Clause])
+argsToAlt :: [([Pat], Clause)] -> CaseBuilder ([Name], [Clause])
 argsToAlt [] = return ([], [])
 argsToAlt rs@((r, m) : rest)
     = do newArgs <- getNewVars r
@@ -552,10 +553,10 @@ argsToAlt rs@((r, m) : rest)
     uniq i (UN n) = MN i n
     uniq i n = n
 
-getVar :: String -> State CS Name
+getVar :: String -> CaseBuilder Name
 getVar b = do (t, v, ntys) <- get; put (t, v+1, ntys); return (sMN v b)
 
-groupCons :: [Clause] -> State CS [Group]
+groupCons :: [Clause] -> CaseBuilder [Group]
 groupCons cs = gc [] cs
   where
     gc acc [] = return acc
@@ -581,7 +582,7 @@ groupCons cs = gc [] cs
 --         | otherwise = g : addConG con res gs
     addConG con res (g : gs) = g : addConG con res gs
 
-varRule :: [Name] -> [Clause] -> SC -> State CS SC
+varRule :: [Name] -> [Clause] -> SC -> CaseBuilder SC
 varRule (v : vs) alts err =
     do alts' <- mapM (repVar v) alts
        match vs alts' err
