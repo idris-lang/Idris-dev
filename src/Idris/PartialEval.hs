@@ -12,11 +12,14 @@ import Idris.Core.Evaluate
 import Control.Monad.State
 import Debug.Trace
 
+-- | Partially evaluates given terms under the given context.
 partial_eval :: Context -> [(Name, Maybe Int)] ->
                 [Either Term (Term, Term)] ->
                 [Either Term (Term, Term)]
 partial_eval ctxt ns tms = map peClause tms where
+   -- If the term is not a clause, it is simply kept as is
    peClause (Left t) = Left t
+   -- If the term is a clause, specialise the right hand side
    peClause (Right (lhs, rhs))
        = let rhs' = specialise ctxt [] (map toLimit ns) rhs in
              Right (lhs, rhs')
@@ -24,20 +27,28 @@ partial_eval ctxt ns tms = map peClause tms where
    toLimit (n, Nothing) = (n, 65536) -- somewhat arbitrary reduction limit
    toLimit (n, Just l) = (n, l)
 
+-- | Specialises the type of a partially evaluated TT function returning
+-- a pair of the specialised type and the types of expected arguments.
 specType :: [(PEArgType, Term)] -> Type -> (Type, [(PEArgType, Term)])
 specType args ty = let (t, args') = runState (unifyEq args ty) [] in
                        (st (map fst args') t, map fst args')
   where
+    -- Specialise static argument in type by let-binding provided value instead
+    -- of expecting it as a function argument
     st ((ExplicitS, v) : xs) (Bind n (Pi t) sc)
          = Bind n (Let t v) (st xs sc)
     st ((ImplicitS, v) : xs) (Bind n (Pi t) sc)
          = Bind n (Let t v) (st xs sc)
+    -- Erase argument from function type
     st ((UnifiedD, _) : xs) (Bind n (Pi t) sc)
          = st xs sc
+    -- Keep types as is
     st (_ : xs) (Bind n (Pi t) sc)
          = Bind n (Pi t) (st xs sc)
     st _ t = t
 
+    -- Erase implicit dynamic argument if existing argument shares it value,
+    -- by substituting the value of previous argument
     unifyEq (imp@(ImplicitD, v) : xs) (Bind n (Pi t) sc)
          = do amap <- get
               case lookup imp amap of
@@ -57,6 +68,8 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
                       put (args ++ (zip xs (repeat (sUN "_"))))
                       return t
 
+-- | Creates an Idris type declaration given current state and a specialised TT function application type.
+-- Can be used in combination with the output of 'specType'.
 mkPE_TyDecl :: IState -> [(PEArgType, Term)] -> Type -> PTerm
 mkPE_TyDecl ist args ty = mkty args ty
   where
@@ -71,12 +84,15 @@ mkPE_TyDecl ist args ty = mkty args ty
        = mkty xs t
     mkty [] t = delab ist t
 
+-- | Checks if a given argument is a type class constraint argument
 classConstraint ist v
     | (P _ c _, args) <- unApply v = case lookupCtxt c (idris_classes ist) of
                                           [_] -> True
                                           _ -> False
     | otherwise = False
 
+-- | Checks if the given arguments of a type class constraint are all either constants
+-- or references (i.e. that it doesn't contain any complex terms).
 concreteClass ist v
     | not (classConstraint ist v) = False
     | (P _ c _, args) <- unApply v = all concrete args
@@ -88,6 +104,7 @@ concreteClass ist v
                                  _ -> False
                     | otherwise = False
 
+-- | Creates a new clause for a specialised function application
 mkPE_TermDecl :: IState -> Name -> Name ->
                  [(PEArgType, Term)] -> [(PTerm, PTerm)]
 mkPE_TermDecl ist newname sname ns 
@@ -106,11 +123,15 @@ mkPE_TermDecl ist newname sname ns
   deImpArg a@(PImp _ _ _ _ _) = a { getTm = Placeholder }
   deImpArg a = a
 
-data PEArgType = ImplicitS | ImplicitD
-               | ExplicitS | ExplicitD
-               | UnifiedD
+-- | Data type representing binding-time annotations for partial evaluation of arguments
+data PEArgType = ImplicitS -- ^ Implicit static argument
+               | ImplicitD -- ^ Implicit dynamic argument
+               | ExplicitS -- ^ Explicit static argument
+               | ExplicitD -- ^ Explicit dynamic argument
+               | UnifiedD  -- ^ Erasable dynamic argument (found under unification)
   deriving (Eq, Show)
 
+-- | Get specialised applications for a given function
 getSpecApps :: IState -> [Name] -> Term -> 
                [(Name, [(PEArgType, Term)])]
 getSpecApps ist env tm = ga env (explicitNames tm) where
