@@ -50,6 +50,7 @@ import IRTS.CodegenCommon
 import IRTS.System
 
 import Data.List.Split (splitOn)
+import Data.List (groupBy)
 import qualified Data.Text as T
 
 import Text.Trifecta.Result(Result(..))
@@ -663,25 +664,55 @@ process h fn (Eval t)
                                                 tyDoc = pprintDelab ist ty'
                                             ihPrintTermWithType h tmDoc tyDoc
 
-process h fn (NewDefn fc (tyDecl:decls)) 
-   | isTyDecl tyDecl = do
-        elabDecl EAll toplevel tyDecl
-        name <- getName tyDecl
-        logLvl 3 $ "Defining " ++ show name ++ " with this type decl: " ++ show tyDecl
-        logLvl 5 $ "Using this definition: " ++ show decls
-        elabClauses toplevel fc [] name defn
- where getName (PTy docs argdocs syn fc opts name ty) = return name
-       getName _ = fail "New definitions must begin with a type declaration"
-       isTyDecl PTy{} = True
-       isTyDecl _ = False
-       defn = concatMap getClauses decls
-       getClauses (PClauses fc opts name clauses) = clauses
-       getClauses _ = []
-                  -- = do (tm, ty) <- elabVal toplevel False val
-                  --      ctxt <- getContext
-                  --      let tm' = force (normaliseAll ctxt [] tm)
-                  --      let ty' = force (normaliseAll ctxt [] ty)
-                  --      updateContext (addCtxtDef name (Function ty' tm')) 
+
+process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++ show namedGroups) >> mapM_ defineName namedGroups where
+  namedGroups = groupBy (\d1 d2 -> getName d1 == getName d2) decls
+  getName :: PDecl -> Maybe Name
+  getName (PTy docs argdocs syn fc opts name ty) = Just name
+  getName (PClauses fc opts name (clause:clauses)) = Just (getClauseName clause)
+  getName _ = Nothing
+  -- getClauseName is partial and I am not sure it's used safely! -- trillioneyes
+  getClauseName (PClause fc name whole with rhs whereBlock) = name
+  getClauseName (PWith fc name whole with rhs whereBlock) = name
+  defineName :: [PDecl] -> Idris ()
+  defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do 
+    elabDecl EAll toplevel tyDecl
+    elabClauses toplevel fc opts name (concatMap getClauses decls)
+  defineName [PClauses fc opts _ [clause]] = do
+    let pterm = getRHS clause
+    (tm,ty) <- elabVal toplevel False pterm
+    ctxt <- getContext
+    let tm' = force (normaliseAll ctxt [] tm)
+    let ty' = force (normaliseAll ctxt [] ty)
+    updateContext (addCtxtDef (getClauseName clause) (Function ty' tm'))
+  getClauses (PClauses fc opts name clauses) = clauses
+  getClauses _ = []
+  getRHS :: PClause -> PTerm
+  getRHS (PClause fc name whole with rhs whereBlock) = rhs
+  getRHS (PWith fc name whole with rhs whereBlock) = rhs
+  getRHS (PClauseR fc with rhs whereBlock) = rhs
+  getRHS (PWithR fc with rhs whereBlock) = rhs
+
+-- process h fn (NewDefn (tyDecl:decls)) | isTyDecl tyDecl = do
+--         elabDecl EAll toplevel tyDecl
+--         (name, fc) <- getInfo tyDecl
+--         logLvl 3 $ "Defining " ++ show name ++ " with this type decl: " ++ show tyDecl
+--         logLvl 5 $ "Using this definition: " ++ show decls
+--         elabClauses toplevel fc [] name defn
+--  where getInfo (PTy docs argdocs syn fc opts name ty) = return (name, fc)
+--        getInfo _ = fail "New definitions must begin with a type declaration"
+--        isTyDecl PTy{} = True
+--        isTyDecl _ = False
+--        defn = concatMap getClauses decls
+--        getClauses (PClauses fc opts name clauses) = clauses
+--        getClauses _ = []
+
+-- process h fn (NewDefn [PCAF fc name val])
+--                   = do (tm, ty) <- elabVal toplevel False val
+--                        ctxt <- getContext
+--                        let tm' = force (normaliseAll ctxt [] tm)
+--                        let ty' = force (normaliseAll ctxt [] ty)
+--                        updateContext (addCtxtDef name (Function ty' tm'))
 
 process h fn (ExecVal t)
                   = do ctxt <- getContext
