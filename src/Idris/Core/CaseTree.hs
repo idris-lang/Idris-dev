@@ -368,12 +368,20 @@ toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
 --         | tc = return $ PCon (UN "Integer") 6 []
 --     toPat' (Constant (AType (ATInt (ITFixed n)))) []
 --         | tc = return $ PCon (UN (fixedN n)) (7 + fromEnum n) [] -- 7-10 inclusive
+--
+{-
     toPat' (P Bound n ty)     []   = -- trace (show (n, ty)) $
                                      do ns <- get
                                         if n `elem` ns
                                           then return PAny
                                           else do put (n : ns)
                                                   return (PV n ty)
+-}
+    toPat' (P Bound n ty) [] = do
+        ns <- get
+        put $ nub (n : ns)
+        return (PV n ty)
+
     toPat' (App f a)  args = toPat' f (a : args)
     toPat' (Constant (AType _)) [] = return PTyPat
     toPat' (Constant StrType) [] = return PTyPat
