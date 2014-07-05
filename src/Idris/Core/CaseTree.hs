@@ -549,8 +549,10 @@ argsToAlt _ [] = return ([], [], [], [])
 argsToAlt inacc rs@((r, m) : rest) = do
     newVars <- getNewVars r
     return $ case inacc of
-        [] -> (newVars, newVars, [], addRs rs)  -- no inaccessible arguments
-        _  -> error "inaccessible data ctor args not implemented"
+        [] -> (newVars, newVars, [], addRs rs)  -- no inaccessible arguments, simple.
+
+        _   | (accVars, inaccVars) <- partitionAcc newVars
+           -> (newVars, accVars, inaccVars, addRs rs)
   where
     -- Create names for new variables arising from the given patterns.
     getNewVars :: [Pat] -> CaseBuilder [Name]
@@ -575,8 +577,17 @@ argsToAlt inacc rs@((r, m) : rest) = do
     getNewVars (PTyPat : ns) = (:) <$> getVar "t" <*> getNewVars ns
     getNewVars (_      : ns) = (:) <$> getVar "e" <*> getNewVars ns
 
+    -- Partition a list of things into (accessible, inaccessible) things,
+    -- according to the list of inaccessible indices.
+    partitionAcc xs =
+        ( [x | (i,x) <- zip [0..] xs, i `notElem` inacc]
+        , [x | (i,x) <- zip [0..] xs, i    `elem` inacc]
+        )
+
     addRs [] = []
-    addRs ((r, (ps, res)) : rs) = ((r++ps, res) : addRs rs)
+    addRs ((r, (ps, res)) : rs) = ((acc++ps++inacc, res) : addRs rs)
+      where
+        (acc, inacc) = partitionAcc r
 
     uniq i (UN n) = MN i n
     uniq i n = n
