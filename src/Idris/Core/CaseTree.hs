@@ -523,30 +523,32 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
         = (:) <$> altConstGroup c args <*> altGroups cs
 
     altGroup n i args = do inacc <- inaccessibleArgs n
-                           (newArgs, nextCs, [], []) <- argsToAlt args
-                           matchCs <- match (newArgs ++ vs) nextCs err
-                           return $ ConCase n i newArgs matchCs
+                           (newVars, accVars, inaccVars, nextCs) <- argsToAlt inacc args
+                           matchCs <- match (accVars ++ vs ++ inaccVars) nextCs err
+                           return $ ConCase n i newVars matchCs
 
-    altFnGroup n args = do (newArgs, nextCs, [], []) <- argsToAlt args
-                           matchCs <- match (newArgs ++ vs) nextCs err
-                           return $ FnCase n newArgs matchCs
+    altFnGroup n args = do (newVars, _, [], nextCs) <- argsToAlt [] args
+                           matchCs <- match (newVars ++ vs) nextCs err
+                           return $ FnCase n newVars matchCs
 
-    altSucGroup args = do ([newArg], nextCs, [], []) <- argsToAlt args
-                          matchCs <- match (newArg:vs) nextCs err
-                          return $ SucCase newArg matchCs
+    altSucGroup args = do ([newVar], _, [], nextCs) <- argsToAlt [] args
+                          matchCs <- match (newVar:vs) nextCs err
+                          return $ SucCase newVar matchCs
 
-    altConstGroup n args = do (_, nextCs, [], []) <- argsToAlt args
+    altConstGroup n args = do (_, _, [], nextCs) <- argsToAlt [] args
                               matchCs <- match vs nextCs err
                               return $ ConstCase n matchCs
 
 -- Returns:
---   * names of accessible variables + corresponding clauses
---   * names of inaccessible variables + corresponding clauses
-argsToAlt :: [([Pat], Clause)] -> CaseBuilder ([Name], [Clause], [Name], [Clause])
-argsToAlt [] = return ([], [], [], [])
-argsToAlt rs@((r, m) : rest)
+--   * names of all variables arising from match
+--   * names of accessible variables (subset of all variables)
+--   * names of inaccessible variables (subset of all variables)
+--   * clauses corresponding to (accVars ++ origVars ++ inaccVars)
+argsToAlt :: [Int] -> [([Pat], Clause)] -> CaseBuilder ([Name], [Name], [Name], [Clause])
+argsToAlt _ [] = return ([], [], [], [])
+argsToAlt inacc rs@((r, m) : rest)
     = do newArgs <- getNewVars r
-         return (newArgs, addRs rs, [], [])
+         return (newArgs, newArgs, [], addRs rs)
   where
     getNewVars [] = return []
     getNewVars ((PV n t) : ns) = do v <- getVar "e" 
