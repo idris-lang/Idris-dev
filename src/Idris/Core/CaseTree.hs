@@ -26,7 +26,7 @@ data CaseDef = CaseDef [Name] !SC [Term]
 -- in the function `prune` as a means of optimisation
 -- of already built case trees.
 --
--- While the intermediate representation (follows in the pipeline)
+-- While the intermediate representation (follows in the pipeline, named LExp)
 -- allows casing on arbitrary terms, here we choose to maintain the distinction
 -- in order to allow for better optimisation opportunities.
 --
@@ -546,25 +546,35 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
 --   * clauses corresponding to (accVars ++ origVars ++ inaccVars)
 argsToAlt :: [Int] -> [([Pat], Clause)] -> CaseBuilder ([Name], [Name], [Name], [Clause])
 argsToAlt _ [] = return ([], [], [], [])
-argsToAlt inacc rs@((r, m) : rest)
-    = do newArgs <- getNewVars r
-         return (newArgs, newArgs, [], addRs rs)
+argsToAlt inacc rs@((r, m) : rest) = do
+    newVars <- getNewVars r
+    return $ case inacc of
+        [] -> (newVars, newVars, [], addRs rs)  -- no inaccessible arguments
+        _  -> error "inaccessible data ctor args not implemented"
   where
+    -- Create names for new variables arising from the given patterns.
+    getNewVars :: [Pat] -> CaseBuilder [Name]
     getNewVars [] = return []
     getNewVars ((PV n t) : ns) = do v <- getVar "e" 
+                                    nsv <- getNewVars ns
+
+                                    -- Record the type of the variable.
+                                    --
+                                    -- It seems that the ordering is not important
+                                    -- and we can put (v,t) always in front of "ntys"
+                                    -- (the varName-type pairs seem to represent a mapping).
+                                    --
+                                    -- The code that reads this is currently
+                                    -- commented out, anyway.
                                     (cs, i, ntys) <- get
                                     put (cs, i, (v, t) : ntys)
-                                    nsv <- getNewVars ns
+
                                     return (v : nsv)
-    getNewVars (PAny : ns) = do v <- getVar "i"
-                                nsv <- getNewVars ns
-                                return (v : nsv)
-    getNewVars (PTyPat : ns) = do v <- getVar "t"
-                                  nsv <- getNewVars ns
-                                  return (v : nsv)
-    getNewVars (_ : ns) = do v <- getVar "e"
-                             nsv <- getNewVars ns
-                             return (v : nsv)
+
+    getNewVars (PAny   : ns) = (:) <$> getVar "i" <*> getNewVars ns
+    getNewVars (PTyPat : ns) = (:) <$> getVar "t" <*> getNewVars ns
+    getNewVars (_      : ns) = (:) <$> getVar "e" <*> getNewVars ns
+
     addRs [] = []
     addRs ((r, (ps, res)) : rs) = ((r++ps, res) : addRs rs)
 
