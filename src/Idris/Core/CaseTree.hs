@@ -7,6 +7,7 @@ module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), Eras
 
 import Idris.Core.TT
 
+import Control.Applicative hiding (Const)
 import Control.Monad.State
 import Control.Monad.Reader
 import Data.Maybe
@@ -483,6 +484,12 @@ mixture vs (Cons ms : ps) err = do fallthrough <- mixture vs ps err
 mixture vs (Vars ms : ps) err = do fallthrough <- mixture vs ps err
                                    varRule vs ms fallthrough
 
+-- Return the list of inaccessible arguments of a data constructor.
+inaccessibleArgs :: Name -> CaseBuilder [Int]
+inaccessibleArgs n = do
+    getInaccessiblePositions <- ask  -- this function is the only thing in the environment
+    return $ getInaccessiblePositions n
+
 data ConType = CName Name Int -- named constructor
              | CFn Name -- reflected function name
              | CSuc -- n+1
@@ -502,41 +509,44 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
                               return $ Case v (sort g)
   where
     altGroups [] = return [DefaultCase err]
+
     altGroups (ConGroup (CName n i) args : cs)
-        = do g <- altGroup n i args
-             rest <- altGroups cs
-             return (g : rest)
+        = (:) <$> altGroup n i args <*> altGroups cs
+
     altGroups (ConGroup (CFn n) args : cs)
-        = do g <- altFnGroup n args
-             rest <- altGroups cs
-             return (g : rest)
+        = (:) <$> altFnGroup n args <*> altGroups cs
+
     altGroups (ConGroup CSuc args : cs)
-        = do g <- altSucGroup args
-             rest <- altGroups cs
-             return (g : rest)
+        = (:) <$> altSucGroup args <*> altGroups cs
+
     altGroups (ConGroup (CConst c) args : cs)
-        = do g <- altConstGroup c args
-             rest <- altGroups cs
-             return (g : rest)
+        = (:) <$> altConstGroup c args <*> altGroups cs
 
-    altGroup n i gs = do (newArgs, nextCs) <- argsToAlt gs
-                         matchCs <- match (newArgs ++ vs) nextCs err
-                         return $ ConCase n i newArgs matchCs
-    altFnGroup n gs = do (newArgs, nextCs) <- argsToAlt gs
-                         matchCs <- match (newArgs ++ vs) nextCs err
-                         return $ FnCase n newArgs matchCs
-    altSucGroup gs = do ([newArg], nextCs) <- argsToAlt gs
-                        matchCs <- match (newArg:vs) nextCs err
-                        return $ SucCase newArg matchCs
-    altConstGroup n gs = do (_, nextCs) <- argsToAlt gs
-                            matchCs <- match vs nextCs err
-                            return $ ConstCase n matchCs
+    altGroup n i args = do inacc <- inaccessibleArgs n
+                           (newArgs, nextCs, [], []) <- argsToAlt args
+                           matchCs <- match (newArgs ++ vs) nextCs err
+                           return $ ConCase n i newArgs matchCs
 
-argsToAlt :: [([Pat], Clause)] -> CaseBuilder ([Name], [Clause])
-argsToAlt [] = return ([], [])
+    altFnGroup n args = do (newArgs, nextCs, [], []) <- argsToAlt args
+                           matchCs <- match (newArgs ++ vs) nextCs err
+                           return $ FnCase n newArgs matchCs
+
+    altSucGroup args = do ([newArg], nextCs, [], []) <- argsToAlt args
+                          matchCs <- match (newArg:vs) nextCs err
+                          return $ SucCase newArg matchCs
+
+    altConstGroup n args = do (_, nextCs, [], []) <- argsToAlt args
+                              matchCs <- match vs nextCs err
+                              return $ ConstCase n matchCs
+
+-- Returns:
+--   * names of accessible variables + corresponding clauses
+--   * names of inaccessible variables + corresponding clauses
+argsToAlt :: [([Pat], Clause)] -> CaseBuilder ([Name], [Clause], [Name], [Clause])
+argsToAlt [] = return ([], [], [], [])
 argsToAlt rs@((r, m) : rest)
     = do newArgs <- getNewVars r
-         return (newArgs, addRs rs)
+         return (newArgs, addRs rs, [], [])
   where
     getNewVars [] = return []
     getNewVars ((PV n t) : ns) = do v <- getVar "e" 
