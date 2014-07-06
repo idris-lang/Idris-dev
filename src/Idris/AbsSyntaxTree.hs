@@ -1732,7 +1732,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     niTacImp env (TacImp _ _ scr) = ni env scr
     niTacImp _ _                = []
 
--- Return the list of unused positions for a name.
+-- Return the list of inaccessible (= dotted) positions for a name.
 getErasureInfo :: IState -> Name -> [Int]
 getErasureInfo ist n =
     case lookupCtxtExact n (idris_optimisation ist) of
