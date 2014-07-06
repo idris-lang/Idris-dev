@@ -549,11 +549,8 @@ argsToAlt :: [Int] -> [([Pat], Clause)] -> CaseBuilder ([Name], [Name], [Name], 
 argsToAlt _ [] = return ([], [], [], [])
 argsToAlt inacc rs@((r, m) : rest) = do
     newVars <- getNewVars r
-    return $ case inacc of
-        [] -> (newVars, newVars, [], addRs rs)  -- no inaccessible arguments, simple.
-
-        _   | (accVars, inaccVars) <- partitionAcc newVars
-           -> (newVars, accVars, inaccVars, addRs rs)
+    let (accVars, inaccVars) = partitionAcc newVars
+    return (newVars, accVars, inaccVars, addRs rs)
   where
     -- Create names for new variables arising from the given patterns.
     getNewVars :: [Pat] -> CaseBuilder [Name]
