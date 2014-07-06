@@ -342,18 +342,20 @@ toPats reflect tc f = reverse (toPat reflect tc (getArgs f)) where
    getArgs _ = []
 
 toPat :: Bool -> Bool -> [Term] -> [Pat]
-toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
+toPat reflect tc = map $ toPat' []
   where
-    toPat' (P (DCon t a) nm@(UN n) _) [_,_,arg]
-           | n == txt "Delay" = do arg' <- toPat' arg []
-                                   return $ PCon nm t [PAny, PAny, arg']
-    toPat' (P (DCon t a) n _) args = do args' <- mapM (\x -> toPat' x []) args
-                                        return $ PCon n t args'
+    toPat' [_,_,arg](P (DCon t a) nm@(UN n) _)
+        | n == txt "Delay"
+        = PCon nm t [PAny, PAny, toPat' [] arg]
+
+    toPat' args (P (DCon t a) n _)
+        = PCon n t $ map (toPat' []) args
+
     -- n + 1
-    toPat' (P _ (UN pabi) _)
-                  [p, Constant (BI 1)] | pabi == txt "prim__addBigInt"
-                                   = do p' <- toPat' p []
-                                        return $ PSuc p'
+    toPat' [p, Constant (BI 1)] (P _ (UN pabi) _)
+        | pabi == txt "prim__addBigInt"
+        = PSuc $ toPat' [] p
+
     -- Typecase
 --     toPat' (P (TCon t a) n _) args | tc
 --                                    = do args' <- mapM (\x -> toPat' x []) args
@@ -369,33 +371,24 @@ toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
 --     toPat' (Constant (AType (ATInt (ITFixed n)))) []
 --         | tc = return $ PCon (UN (fixedN n)) (7 + fromEnum n) [] -- 7-10 inclusive
 --
-{-
-    toPat' (P Bound n ty)     []   = -- trace (show (n, ty)) $
-                                     do ns <- get
-                                        if n `elem` ns
-                                          then return PAny
-                                          else do put (n : ns)
-                                                  return (PV n ty)
--}
-    toPat' (P Bound n ty) [] = do
-        ns <- get
-        put $ nub (n : ns)
-        return (PV n ty)
 
-    toPat' (App f a)  args = toPat' f (a : args)
-    toPat' (Constant (AType _)) [] = return PTyPat
-    toPat' (Constant StrType) [] = return PTyPat
-    toPat' (Constant PtrType) [] = return PTyPat
-    toPat' (Constant VoidType) [] = return PTyPat
-    toPat' (Constant x) [] = return $ PConst x
-    toPat' (Bind n (Pi t) sc) [] | reflect && noOccurrence n sc
-          = do t' <- toPat' t []
-               sc' <- toPat' sc []
-               return $ PReflected (sUN "->") (t':sc':[])
-    toPat' (P _ n _) args | reflect
-          = do args' <- mapM (\x -> toPat' x []) args
-               return $ PReflected n args'
-    toPat' t            _  = return PAny
+    toPat' []   (P Bound n ty) = PV n ty
+    toPat' args (App f a)      = toPat' (a : args) f
+    toPat' [] (Constant (AType _)) = PTyPat
+    toPat' [] (Constant StrType)   = PTyPat
+    toPat' [] (Constant PtrType)   = PTyPat
+    toPat' [] (Constant VoidType)  = PTyPat
+    toPat' [] (Constant x)         = PConst x
+
+    toPat' [] (Bind n (Pi t) sc)
+        | reflect && noOccurrence n sc
+        = PReflected (sUN "->") [toPat' [] t, toPat' [] sc]
+
+    toPat' args (P _ n _)
+        | reflect
+        = PReflected n $ map (toPat' []) args
+
+    toPat' _ t = PAny
 
     fixedN IT8 = "Bits8"
     fixedN IT16 = "Bits16"
