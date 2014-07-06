@@ -1237,7 +1237,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                 Nothing -> pats
                 Just ns -> partial_eval (tt_ctxt ist) ns pats
 
--- Find 'static' applications in a term and partially evaluate them
+-- | Find 'static' applications in a term and partially evaluate them
 elabPE :: ElabInfo -> FC -> Name -> Term -> Idris ()
 elabPE info fc caller r =
   do ist <- getIState
@@ -1308,6 +1308,7 @@ elabPE info fc caller r =
 --                             (normalise (tt_ctxt ist) [] (specType args ty))
               _ -> error "Can't happen (getSpecTy)"
 
+    -- get the clause of a specialised application
     getSpecClause ist (n, args)
        = let newnm = sUN ("__"++show (nsroot n) ++ "_" ++ 
                                showSep "_" (map showArg args)) in 
