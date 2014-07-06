@@ -50,6 +50,7 @@ import IRTS.CodegenCommon
 import IRTS.System
 
 import Data.List.Split (splitOn)
+import Data.List (groupBy)
 import qualified Data.Text as T
 
 import Text.Trifecta.Result(Result(..))
@@ -662,6 +663,38 @@ process h fn (Eval t)
                                             let tmDoc = pprintDelab ist tm'
                                                 tyDoc = pprintDelab ist ty'
                                             ihPrintTermWithType h tmDoc tyDoc
+
+
+process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++ show namedGroups) >> mapM_ defineName namedGroups where
+  namedGroups = groupBy (\d1 d2 -> getName d1 == getName d2) decls
+  getName :: PDecl -> Maybe Name
+  getName (PTy docs argdocs syn fc opts name ty) = Just name
+  getName (PClauses fc opts name (clause:clauses)) = Just (getClauseName clause)
+  getName (PData doc argdocs syn fc opts dataDecl) = Just (d_name dataDecl)
+  getName _ = Nothing
+  -- getClauseName is partial and I am not sure it's used safely! -- trillioneyes
+  getClauseName (PClause fc name whole with rhs whereBlock) = name
+  getClauseName (PWith fc name whole with rhs whereBlock) = name
+  defineName :: [PDecl] -> Idris ()
+  defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do 
+    elabDecl EAll toplevel tyDecl
+    elabClauses toplevel fc opts name (concatMap getClauses decls)
+  defineName [PClauses fc opts _ [clause]] = do
+    let pterm = getRHS clause
+    (tm,ty) <- elabVal toplevel False pterm
+    ctxt <- getContext
+    let tm' = force (normaliseAll ctxt [] tm)
+    let ty' = force (normaliseAll ctxt [] ty)
+    updateContext (addCtxtDef (getClauseName clause) (Function ty' tm'))
+  defineName [PData doc argdocs syn fc opts decl] = do
+    elabData toplevel syn doc argdocs fc opts decl
+  getClauses (PClauses fc opts name clauses) = clauses
+  getClauses _ = []
+  getRHS :: PClause -> PTerm
+  getRHS (PClause fc name whole with rhs whereBlock) = rhs
+  getRHS (PWith fc name whole with rhs whereBlock) = rhs
+  getRHS (PClauseR fc with rhs whereBlock) = rhs
+  getRHS (PWithR fc with rhs whereBlock) = rhs
 
 process h fn (ExecVal t)
                   = do ctxt <- getContext

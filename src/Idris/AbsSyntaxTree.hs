@@ -287,6 +287,7 @@ data Codegen = ViaC
 data Command = Quit
              | Help
              | Eval PTerm
+             | NewDefn [PDecl] -- ^ Each 'PDecl' should be either a type declaration (at most one) or a clause defining the same name.
              | Check PTerm
              | DocStr (Either Name Const)
              | TotCheck Name
