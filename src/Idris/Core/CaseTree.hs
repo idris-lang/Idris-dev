@@ -1,13 +1,15 @@
 {-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances #-}
 
-module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..),
+module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo,
                      Phase(..), CaseTree,
                      simpleCase, small, namesUsed, findCalls, findUsedArgs,
                      substSC, substAlt, mkForce) where
 
 import Idris.Core.TT
 
+import Control.Applicative hiding (Const)
 import Control.Monad.State
+import Control.Monad.Reader
 import Data.Maybe
 import Data.List hiding (partition)
 import qualified Data.List(partition)
@@ -24,7 +26,7 @@ data CaseDef = CaseDef [Name] !SC [Term]
 -- in the function `prune` as a means of optimisation
 -- of already built case trees.
 --
--- While the intermediate representation (follows in the pipeline)
+-- While the intermediate representation (follows in the pipeline, named LExp)
 -- allows casing on arbitrary terms, here we choose to maintain the distinction
 -- in order to allow for better optimisation opportunities.
 --
@@ -213,6 +215,11 @@ isUsed sc n = used sc where
   usedA (SucCase _ sc) = used sc
   usedA (DefaultCase sc) = used sc
 
+type ErasureInfo = Name -> [Int]  -- name to list of inaccessible arguments; empty list if name not found
+type CaseBuilder a = ReaderT ErasureInfo (State CS) a
+
+runCaseBuilder :: ErasureInfo -> CaseBuilder a -> (CS -> (a, CS))
+runCaseBuilder ei bld = runState $ runReaderT bld ei
 
 data Phase = CompileTime | RunTime
     deriving (Show, Eq)
@@ -223,8 +230,9 @@ data Phase = CompileTime | RunTime
 simpleCase :: Bool -> Bool -> Bool ->
               Phase -> FC -> [Int] -> [Type] ->
               [([Name], Term, Term)] ->
+              ErasureInfo ->
               TC CaseDef
-simpleCase tc cover reflect phase fc inacc argtys cs
+simpleCase tc cover reflect phase fc inacc argtys cs erInfo
       = sc' tc cover phase fc (filter (\(_, _, r) ->
                                           case r of
                                             Impossible -> False
@@ -243,7 +251,7 @@ simpleCase tc cover reflect phase fc inacc argtys cs
                     let numargs    = length (fst (head pats))
                         ns         = take numargs args
                         (ns', ps') = order [(n, i `elem` inacc) | (i,n) <- zip [0..] ns] pats
-                        (tree, st) = runState
+                        (tree, st) = runCaseBuilder erInfo
                                          (match ns' ps' (defaultCase cover)) 
                                          ([], numargs, [])
                         t          = CaseDef ns (prune proj (depatt ns' tree)) (fstT st) in
@@ -334,18 +342,20 @@ toPats reflect tc f = reverse (toPat reflect tc (getArgs f)) where
    getArgs _ = []
 
 toPat :: Bool -> Bool -> [Term] -> [Pat]
-toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
+toPat reflect tc = map $ toPat' []
   where
-    toPat' (P (DCon t a) nm@(UN n) _) [_,_,arg]
-           | n == txt "Delay" = do arg' <- toPat' arg []
-                                   return $ PCon nm t [PAny, PAny, arg']
-    toPat' (P (DCon t a) n _) args = do args' <- mapM (\x -> toPat' x []) args
-                                        return $ PCon n t args'
+    toPat' [_,_,arg](P (DCon t a) nm@(UN n) _)
+        | n == txt "Delay"
+        = PCon nm t [PAny, PAny, toPat' [] arg]
+
+    toPat' args (P (DCon t a) n _)
+        = PCon n t $ map (toPat' []) args
+
     -- n + 1
-    toPat' (P _ (UN pabi) _)
-                  [p, Constant (BI 1)] | pabi == txt "prim__addBigInt"
-                                   = do p' <- toPat' p []
-                                        return $ PSuc p'
+    toPat' [p, Constant (BI 1)] (P _ (UN pabi) _)
+        | pabi == txt "prim__addBigInt"
+        = PSuc $ toPat' [] p
+
     -- Typecase
 --     toPat' (P (TCon t a) n _) args | tc
 --                                    = do args' <- mapM (\x -> toPat' x []) args
@@ -360,26 +370,25 @@ toPat reflect tc tms = evalState (mapM (\x -> toPat' x []) tms) []
 --         | tc = return $ PCon (UN "Integer") 6 []
 --     toPat' (Constant (AType (ATInt (ITFixed n)))) []
 --         | tc = return $ PCon (UN (fixedN n)) (7 + fromEnum n) [] -- 7-10 inclusive
-    toPat' (P Bound n ty)     []   = -- trace (show (n, ty)) $
-                                     do ns <- get
-                                        if n `elem` ns
-                                          then return PAny
-                                          else do put (n : ns)
-                                                  return (PV n ty)
-    toPat' (App f a)  args = toPat' f (a : args)
-    toPat' (Constant (AType _)) [] = return PTyPat
-    toPat' (Constant StrType) [] = return PTyPat
-    toPat' (Constant PtrType) [] = return PTyPat
-    toPat' (Constant VoidType) [] = return PTyPat
-    toPat' (Constant x) [] = return $ PConst x
-    toPat' (Bind n (Pi t) sc) [] | reflect && noOccurrence n sc
-          = do t' <- toPat' t []
-               sc' <- toPat' sc []
-               return $ PReflected (sUN "->") (t':sc':[])
-    toPat' (P _ n _) args | reflect
-          = do args' <- mapM (\x -> toPat' x []) args
-               return $ PReflected n args'
-    toPat' t            _  = return PAny
+--
+
+    toPat' []   (P Bound n ty) = PV n ty
+    toPat' args (App f a)      = toPat' (a : args) f
+    toPat' [] (Constant (AType _)) = PTyPat
+    toPat' [] (Constant StrType)   = PTyPat
+    toPat' [] (Constant PtrType)   = PTyPat
+    toPat' [] (Constant VoidType)  = PTyPat
+    toPat' [] (Constant x)         = PConst x
+
+    toPat' [] (Bind n (Pi t) sc)
+        | reflect && noOccurrence n sc
+        = PReflected (sUN "->") [toPat' [] t, toPat' [] sc]
+
+    toPat' args (P _ n _)
+        | reflect
+        = PReflected n $ map (toPat' []) args
+
+    toPat' _ t = PAny
 
     fixedN IT8 = "Bits8"
     fixedN IT16 = "Bits16"
@@ -459,7 +468,7 @@ order ns' cs = let patnames = transpose (map (zip ns') (map fst cs))
     numNames xs [] = length xs
 
 match :: [Name] -> [Clause] -> SC -- error case
-                            -> State CS SC
+                            -> CaseBuilder SC
 match [] (([], ret) : xs) err
     = do (ts, v, ntys) <- get
          put (ts ++ (map (fst.snd) xs), v, ntys)
@@ -469,12 +478,18 @@ match [] (([], ret) : xs) err
 match vs cs err = do let ps = partition cs
                      mixture vs ps err
 
-mixture :: [Name] -> [Partition] -> SC -> State CS SC
+mixture :: [Name] -> [Partition] -> SC -> CaseBuilder SC
 mixture vs [] err = return err
 mixture vs (Cons ms : ps) err = do fallthrough <- mixture vs ps err
                                    conRule vs ms fallthrough
 mixture vs (Vars ms : ps) err = do fallthrough <- mixture vs ps err
                                    varRule vs ms fallthrough
+
+-- Return the list of inaccessible arguments of a data constructor.
+inaccessibleArgs :: Name -> CaseBuilder [Int]
+inaccessibleArgs n = do
+    getInaccessiblePositions <- ask  -- this function is the only thing in the environment
+    return $ getInaccessiblePositions n
 
 data ConType = CName Name Int -- named constructor
              | CFn Name -- reflected function name
@@ -486,76 +501,99 @@ data Group = ConGroup ConType -- Constructor
                       [([Pat], Clause)] -- arguments and rest of alternative
    deriving Show
 
-conRule :: [Name] -> [Clause] -> SC -> State CS SC
+conRule :: [Name] -> [Clause] -> SC -> CaseBuilder SC
 conRule (v:vs) cs err = do groups <- groupCons cs
                            caseGroups (v:vs) groups err
 
-caseGroups :: [Name] -> [Group] -> SC -> State CS SC
+caseGroups :: [Name] -> [Group] -> SC -> CaseBuilder SC
 caseGroups (v:vs) gs err = do g <- altGroups gs
                               return $ Case v (sort g)
   where
     altGroups [] = return [DefaultCase err]
+
     altGroups (ConGroup (CName n i) args : cs)
-        = do g <- altGroup n i args
-             rest <- altGroups cs
-             return (g : rest)
+        = (:) <$> altGroup n i args <*> altGroups cs
+
     altGroups (ConGroup (CFn n) args : cs)
-        = do g <- altFnGroup n args
-             rest <- altGroups cs
-             return (g : rest)
+        = (:) <$> altFnGroup n args <*> altGroups cs
+
     altGroups (ConGroup CSuc args : cs)
-        = do g <- altSucGroup args
-             rest <- altGroups cs
-             return (g : rest)
+        = (:) <$> altSucGroup args <*> altGroups cs
+
     altGroups (ConGroup (CConst c) args : cs)
-        = do g <- altConstGroup c args
-             rest <- altGroups cs
-             return (g : rest)
+        = (:) <$> altConstGroup c args <*> altGroups cs
 
-    altGroup n i gs = do (newArgs, nextCs) <- argsToAlt gs
-                         matchCs <- match (newArgs ++ vs) nextCs err
-                         return $ ConCase n i newArgs matchCs
-    altFnGroup n gs = do (newArgs, nextCs) <- argsToAlt gs
-                         matchCs <- match (newArgs ++ vs) nextCs err
-                         return $ FnCase n newArgs matchCs
-    altSucGroup gs = do ([newArg], nextCs) <- argsToAlt gs
-                        matchCs <- match (newArg:vs) nextCs err
-                        return $ SucCase newArg matchCs
-    altConstGroup n gs = do (_, nextCs) <- argsToAlt gs
-                            matchCs <- match vs nextCs err
-                            return $ ConstCase n matchCs
+    altGroup n i args = do inacc <- inaccessibleArgs n
+                           (newVars, accVars, inaccVars, nextCs) <- argsToAlt inacc args
+                           matchCs <- match (accVars ++ vs ++ inaccVars) nextCs err
+                           return $ ConCase n i newVars matchCs
 
-argsToAlt :: [([Pat], Clause)] -> State CS ([Name], [Clause])
-argsToAlt [] = return ([], [])
-argsToAlt rs@((r, m) : rest)
-    = do newArgs <- getNewVars r
-         return (newArgs, addRs rs)
+    altFnGroup n args = do (newVars, _, [], nextCs) <- argsToAlt [] args
+                           matchCs <- match (newVars ++ vs) nextCs err
+                           return $ FnCase n newVars matchCs
+
+    altSucGroup args = do ([newVar], _, [], nextCs) <- argsToAlt [] args
+                          matchCs <- match (newVar:vs) nextCs err
+                          return $ SucCase newVar matchCs
+
+    altConstGroup n args = do (_, _, [], nextCs) <- argsToAlt [] args
+                              matchCs <- match vs nextCs err
+                              return $ ConstCase n matchCs
+
+-- Returns:
+--   * names of all variables arising from match
+--   * names of accessible variables (subset of all variables)
+--   * names of inaccessible variables (subset of all variables)
+--   * clauses corresponding to (accVars ++ origVars ++ inaccVars)
+argsToAlt :: [Int] -> [([Pat], Clause)] -> CaseBuilder ([Name], [Name], [Name], [Clause])
+argsToAlt _ [] = return ([], [], [], [])
+argsToAlt inacc rs@((r, m) : rest) = do
+    newVars <- getNewVars r
+    let (accVars, inaccVars) = partitionAcc newVars
+    return (newVars, accVars, inaccVars, addRs rs)
   where
+    -- Create names for new variables arising from the given patterns.
+    getNewVars :: [Pat] -> CaseBuilder [Name]
     getNewVars [] = return []
     getNewVars ((PV n t) : ns) = do v <- getVar "e" 
+                                    nsv <- getNewVars ns
+
+                                    -- Record the type of the variable.
+                                    --
+                                    -- It seems that the ordering is not important
+                                    -- and we can put (v,t) always in front of "ntys"
+                                    -- (the varName-type pairs seem to represent a mapping).
+                                    --
+                                    -- The code that reads this is currently
+                                    -- commented out, anyway.
                                     (cs, i, ntys) <- get
                                     put (cs, i, (v, t) : ntys)
-                                    nsv <- getNewVars ns
+
                                     return (v : nsv)
-    getNewVars (PAny : ns) = do v <- getVar "i"
-                                nsv <- getNewVars ns
-                                return (v : nsv)
-    getNewVars (PTyPat : ns) = do v <- getVar "t"
-                                  nsv <- getNewVars ns
-                                  return (v : nsv)
-    getNewVars (_ : ns) = do v <- getVar "e"
-                             nsv <- getNewVars ns
-                             return (v : nsv)
+
+    getNewVars (PAny   : ns) = (:) <$> getVar "i" <*> getNewVars ns
+    getNewVars (PTyPat : ns) = (:) <$> getVar "t" <*> getNewVars ns
+    getNewVars (_      : ns) = (:) <$> getVar "e" <*> getNewVars ns
+
+    -- Partition a list of things into (accessible, inaccessible) things,
+    -- according to the list of inaccessible indices.
+    partitionAcc xs =
+        ( [x | (i,x) <- zip [0..] xs, i `notElem` inacc]
+        , [x | (i,x) <- zip [0..] xs, i    `elem` inacc]
+        )
+
     addRs [] = []
-    addRs ((r, (ps, res)) : rs) = ((r++ps, res) : addRs rs)
+    addRs ((r, (ps, res)) : rs) = ((acc++ps++inacc, res) : addRs rs)
+      where
+        (acc, inacc) = partitionAcc r
 
     uniq i (UN n) = MN i n
     uniq i n = n
 
-getVar :: String -> State CS Name
+getVar :: String -> CaseBuilder Name
 getVar b = do (t, v, ntys) <- get; put (t, v+1, ntys); return (sMN v b)
 
-groupCons :: [Clause] -> State CS [Group]
+groupCons :: [Clause] -> CaseBuilder [Group]
 groupCons cs = gc [] cs
   where
     gc acc [] = return acc
@@ -581,7 +619,7 @@ groupCons cs = gc [] cs
 --         | otherwise = g : addConG con res gs
     addConG con res (g : gs) = g : addConG con res gs
 
-varRule :: [Name] -> [Clause] -> SC -> State CS SC
+varRule :: [Name] -> [Clause] -> SC -> CaseBuilder SC
 varRule (v : vs) alts err =
     do alts' <- mapM (repVar v) alts
        match vs alts' err

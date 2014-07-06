@@ -78,7 +78,8 @@ prove opt ctxt lit n ty
               OK _ -> return ()
               Error e -> ierror (CantUnify False ty pty e [] 0)
          ptm' <- applyOpts ptm
-         updateContext (addCasedef n (CaseInfo True False) False False True False
+         ei <- getErasureInfo `fmap` getIState
+         updateContext (addCasedef n ei (CaseInfo True False) False False True False
                                  [] []  -- argtys, inaccArgs
                                  [Right (P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)]
