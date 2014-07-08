@@ -486,6 +486,7 @@ irTree args tree = do
 irSC :: Vars -> SC -> Idris LExp
 irSC vs (STerm t) = irTerm vs [] t
 irSC vs (UnmatchedCase str) = return $ LError str
+
 irSC vs (ProjCase tm alts) = do
     tm'   <- irTerm vs [] tm
     alts' <- mapM (irAlt vs tm') alts
@@ -494,8 +495,9 @@ irSC vs (ProjCase tm alts) = do
 -- Transform matching on Delay to applications of Force.
 irSC vs (Case n [ConCase (UN delay) i [_, _, n'] sc])
     | delay == txt "Delay"
-    = irSC vs $ mkForce n n' sc
-
+    = do sc' <- irSC vs $ mkForce n' n sc
+         return $ LLet n' (LForce (LV (Glob n))) sc'
+    
 -- There are two transformations in this case:
 --
 --  1. Newtype-case elimination:

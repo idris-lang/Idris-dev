@@ -766,19 +766,20 @@ substAlt n repl (SucCase n' sc)
     | otherwise = SucCase n' (substSC n repl sc)
 substAlt n repl (DefaultCase sc)     = DefaultCase (substSC n repl sc)
 
+-- mkForce n' n t updates the tree t under the assumption that
+-- n' = force n (so basically updating n to n')
 mkForce :: Name -> Name -> SC -> SC
 mkForce = mkForceSC
   where
     mkForceSC n arg (Case x alts) | x == arg
-        = ProjCase (forceArg n) $ map (mkForceAlt n arg) alts
+        = Case n $ map (mkForceAlt n arg) alts
 
     mkForceSC n arg (Case x alts)
         = Case x (map (mkForceAlt n arg) alts)
 
     mkForceSC n arg (ProjCase t alts)
-        = ProjCase (forceTm n arg t) $ map (mkForceAlt n arg) alts
+        = ProjCase t $ map (mkForceAlt n arg) alts
 
-    mkForceSC n arg (STerm t) = STerm (forceTm n arg t)
     mkForceSC n arg c = c
 
     mkForceAlt n arg (ConCase cn t args rhs)
@@ -792,7 +793,5 @@ mkForce = mkForceSC
     mkForceAlt n arg (DefaultCase rhs)
         = DefaultCase (mkForceSC n arg rhs)
 
-    forceTm n arg t = subst arg (forceArg n) t
+    forceTm n arg t = subst n arg t
 
-    forceArg n = App (App (App (P Ref (sUN "Force") Erased) Erased) Erased)
-                    (P Bound n Erased)
