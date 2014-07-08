@@ -272,20 +272,19 @@ runEnv env prog = eff env prog (\r, env => pure (r ** env))
 
 -- ----------------------------------------------- [ some higher order things ]
 
-mapE : Applicative m => (a -> {xs} Eff b) -> List a -> {xs} Eff (List b)
+mapE : (a -> {xs} Eff b) -> List a -> {xs} Eff (List b)
 mapE f []        = pure []
 mapE f (x :: xs) = [| f x :: mapE f xs |]
 
 
-mapVE : Applicative m => 
-          (a -> {xs} Eff b) -> 
-          Vect n a -> 
-          {xs} Eff (Vect n b)
+mapVE : (a -> {xs} Eff b) ->
+        Vect n a ->
+        {xs} Eff (Vect n b)
 mapVE f []        = pure []
 mapVE f (x :: xs) = [| f x :: mapVE f xs |]
 
 
-when : Applicative m => Bool -> Lazy ({xs} Eff ()) -> {xs} Eff ()
+when : Bool -> Lazy ({xs} Eff ()) -> {xs} Eff ()
 when True  e = Force e
 when False e = pure ()
 
