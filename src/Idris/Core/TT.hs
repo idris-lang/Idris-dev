@@ -384,7 +384,7 @@ tcname _ = False
 implicitable (NS n _) = implicitable n
 implicitable (UN xs) | T.null xs = False
                      | otherwise = isLower (T.head xs)
-implicitable (MN _ _) = True
+implicitable (MN _ x) = not (tnull x) && thead x /= '_'
 implicitable _ = False
 
 nsroot (NS n _) = n
@@ -1264,8 +1264,11 @@ weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
 orderPats :: Term -> Term
 orderPats tm = op [] tm
   where
+    op [] (App f a) = App f (op [] a) -- for Infer terms
+
     op ps (Bind n (PVar t) sc) = op ((n, PVar t) : ps) sc
     op ps (Bind n (Hole t) sc) = op ((n, Hole t) : ps) sc
+    op ps (Bind n (Pi t)   sc) = op ((n, Pi t) : ps) sc
     op ps sc = bindAll (sortP ps) sc
 
     sortP ps = pick [] (reverse ps)
@@ -1287,6 +1290,44 @@ orderPats tm = op [] tm
                       concatMap namesIn (map (binderTy . snd) ps))
             = (n', t') : insert n t ps
         | otherwise = (n,t):(n',t'):ps
+
+-- Make sure all the pattern bindings are as far out as possible
+liftPats :: Term -> Term
+liftPats tm = let (tm', ps) = runState (getPats tm) [] in
+                  orderPats $ bindPats (reverse ps) tm'
+  where
+    bindPats []          tm = tm
+    bindPats ((n, t):ps) tm 
+         | n `notElem` map fst ps = Bind n (PVar t) (bindPats ps tm)
+         | otherwise = bindPats ps tm
+
+    getPats :: Term -> State [(Name, Type)] Term
+    getPats (Bind n (PVar t) sc) = do ps <- get
+                                      put ((n, t) : ps)
+                                      getPats sc
+    getPats (Bind n (Guess t v) sc) = do t' <- getPats t
+                                         v' <- getPats v
+                                         sc' <- getPats sc
+                                         return (Bind n (Guess t' v') sc')
+    getPats (Bind n (Let t v) sc) = do t' <- getPats t
+                                       v' <- getPats v
+                                       sc' <- getPats sc
+                                       return (Bind n (Let t' v') sc')
+    getPats (Bind n (Pi t) sc) = do t' <- getPats t
+                                    sc' <- getPats sc
+                                    return (Bind n (Pi t') sc')
+    getPats (Bind n (Lam t) sc) = do t' <- getPats t
+                                     sc' <- getPats sc
+                                     return (Bind n (Lam t') sc')
+    getPats (Bind n (Hole t) sc) = do t' <- getPats t
+                                      sc' <- getPats sc
+                                      return (Bind n (Hole t') sc')
+
+
+    getPats (App f a) = do f' <- getPats f
+                           a' <- getPats a
+                           return (App f' a')
+    getPats t = return t
 
 allTTNames :: Eq n => TT n -> [n]
 allTTNames = nub . allNamesIn

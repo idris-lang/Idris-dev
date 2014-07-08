@@ -264,7 +264,7 @@ ploop fn d prompt prf e h
               let OK env = envAtFocus (proof e)
                   ctxt'  = envCtxt env ctxt
               putIState ist { tt_ctxt = ctxt' }
-              (tm, ty) <- elabVal toplevel False t
+              (tm, ty) <- elabVal toplevel ERHS t
               let ppo = ppOptionIst ist
                   ty'     = normaliseC ctxt [] ty
                   h       = idris_outh ist
@@ -288,7 +288,7 @@ ploop fn d prompt prf e h
                    ist'   = ist { tt_ctxt = ctxt' }
                    bnd    = map (\x -> (fst x, False)) env
                putIState ist'
-               (tm, ty) <- elabVal toplevel False t
+               (tm, ty) <- elabVal toplevel ERHS t
                let tm'     = force (normaliseAll ctxt' env tm)
                    ty'     = force (normaliseAll ctxt' env ty)
                    ppo     = ppOption (idris_options ist')

@@ -1669,6 +1669,42 @@ boundNamesIn tm = nub $ ni tm
     niTacImp (TacImp _ _ scr) = ni scr
     niTacImp _                = []
 
+-- Return names which are valid implicits in the given term (type).
+implicitNamesIn :: [Name] -> IState -> PTerm -> [Name]
+implicitNamesIn uvars ist tm = nub $ ni [] tm
+  where
+    ni env (PRef _ n)
+        | not (n `elem` env) 
+            = case lookupTy n (tt_ctxt ist) of
+                [] -> [n]
+                _ -> if n `elem` uvars then [n] else []
+    ni env (PApp _ f@(PRef _ n) as) 
+        | n `elem` uvars = ni env f ++ concatMap (ni env) (map getTm as)
+        | otherwise = concatMap (ni env) (map getTm as)
+    ni env (PApp _ f as) = ni env f ++ concatMap (ni env) (map getTm as)
+    ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
+    ni env (PCase _ c os)  = ni env c ++ 
+    -- names in 'os', not counting the names bound in the cases
+                                (nub (concatMap (ni env) (map snd os))
+                                     \\ nub (concatMap (ni env) (map fst os)))
+    ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PRewrite _ l r _) = ni env l ++ ni env r
+    ni env (PTyped l r)    = ni env l ++ ni env r
+    ni env (PPair _ _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
+    ni env (PDPair _ _ l t r) = ni env l ++ ni env t ++ ni env r
+    ni env (PAlternative a as) = concatMap (ni env) as
+    ni env (PHidden tm)    = ni env tm
+    ni env (PUnifyLog tm)    = ni env tm
+    ni env (PDisamb _ tm)    = ni env tm
+    ni env (PNoImplicits tm) = ni env tm
+    ni env _               = []
+
+    niTacImp env (TacImp _ _ scr) = ni env scr
+    niTacImp _ _                  = []
+
 -- Return names which are free in the given term.
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
 namesIn uvars ist tm = nub $ ni [] tm

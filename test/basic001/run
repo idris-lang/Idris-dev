@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
 idris $@ reg005.idr -o reg005
+idris $@ basic001a.idr -o basic001a
 ./reg005
-rm -f reg005 *.ibc
+./basic001a
+rm -f reg005 basic001a *.ibc

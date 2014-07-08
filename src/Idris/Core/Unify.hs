@@ -84,11 +84,11 @@ match_unify ctxt env topx topy inj holes from =
            = let n' = uniqueName fn (map fst env) in
                  checkCycle names (f, Bind n' (Lam t) x) 
 
-    un names (P _ x _) tm
-        | holeIn env x || x `elem` holes
+    un names tx@(P _ x _) tm
+        | tx /= tm && holeIn env x || x `elem` holes
             = do sc 1; checkCycle names (x, tm)
-    un names tm (P _ y _)
-        | holeIn env y || y `elem` holes
+    un names tm ty@(P _ y _)
+        | ty /= tm && holeIn env y || y `elem` holes
             = do sc 1; checkCycle names (y, tm)
     un bnames (V i) (P _ x _)
         | length bnames > i, 
@@ -153,11 +153,13 @@ match_unify ctxt env topx topy inj holes from =
         = case lookup n as of
             Nothing -> combine bnames (as ++ [(n,t)]) bs
             Just t' -> do ns <- un bnames t t'
-                          -- make sure there's n mapping from n in ns
                           let ns' = filter (\ (x, _) -> x/=n) ns
                           sc 1
                           combine bnames as (ns' ++ bs)
 
+--     substN n tm (var, sol) = (var, subst n tm sol)
+
+    checkCycle ns p@(x, P _ x' _) | x == x' = return []
     checkCycle ns p@(x, P _ _ _) = return [p]
     checkCycle ns (x, tm)
         | not (x `elem` freeNames tm) = checkScope ns (x, tm)

@@ -1,1 +1,2 @@
-No such variable sadgjhsag
+DefaultArgUnknownName.idr:3:18:When elaborating type of DefaultArgUnknownName.funWithBadDefArg:
+Can't infer type for sadgjhsag

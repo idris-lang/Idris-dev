@@ -1078,6 +1078,16 @@ addStatics n tm ptm =
 
 -- Dealing with implicit arguments
 
+-- Add some bound implicits to the using block if they aren't there already
+
+addToUsing :: [Using] -> [(Name, PTerm)] -> [Using]
+addToUsing us [] = us
+addToUsing us ((n, t) : ns)
+   | n `notElem` mapMaybe impName us = addToUsing (us ++ [UImplicit n t]) ns
+   | otherwise = addToUsing us ns
+  where impName (UImplicit n _) = Just n
+        impName _ = Nothing
+
 -- Add constraint bindings from using block
 
 addUsingConstraints :: SyntaxInfo -> FC -> PTerm -> Idris PTerm
@@ -1116,6 +1126,66 @@ addUsingConstraints syn fc t
 
          getName (PExp _ _ _ (PRef _ n)) = return n
          getName _ = []
+
+-- Add implicit bindings from using block, and bind any missing names
+addUsingImpls :: SyntaxInfo -> Name -> FC -> PTerm -> Idris PTerm
+addUsingImpls syn n fc t
+   = do ist <- getIState
+        let ns = implicitNamesIn (map iname uimpls) ist t
+        let badnames = filter (\n -> not (implicitable n) &&
+                                     n `notElem` (map iname uimpls)) ns
+        when (not (null badnames)) $ 
+           throwError (At fc (Elaborating "type of " n 
+                         (NoSuchVariable (head badnames))))
+        let cs = getArgnames t -- get already bound names 
+        let addimpls = filter (\n -> iname n `notElem` cs) uimpls 
+        -- if all names in the arguments of addconsts appear in ns,
+        -- add the constraint implicitly
+        return (bindFree ns (doAdd addimpls ns t))
+   where uimpls = filter uimpl (using syn)
+         uimpl (UImplicit _ _) = True
+         uimpl _ = False
+
+         iname (UImplicit n _) = n
+         iname (UConstraint _ _) = error "Can't happen addUsingImpls"
+
+         doAdd [] _ t = t
+         -- if all of args in ns, then add it
+         doAdd (UImplicit n ty : cs) ns t
+             | elem n ns
+                   = PPi (Imp [] Dynamic False) n ty (doAdd cs ns t)
+             | otherwise = doAdd cs ns t
+
+         -- bind the free names which weren't in the using block
+         bindFree [] tm = tm
+         bindFree (n:ns) tm 
+             | elem n (map iname uimpls) = bindFree ns tm
+             | otherwise 
+                    = PPi (Imp [] Dynamic False) n Placeholder (bindFree ns tm)
+
+         getArgnames (PPi _ n c sc)
+             = n : getArgnames sc
+         getArgnames _ = []
+
+-- Given the original type and the elaborated type, return the implicitness
+-- status of each pi-bound argument, and whether it's inaccessible (True) or not.
+
+getUnboundImplicits :: IState -> Type -> PTerm -> [(Bool, PArg)]
+getUnboundImplicits i (Bind n (Pi t) sc) (PPi p n' t' sc')
+     | n == n' = argInfo n p : getUnboundImplicits i sc sc'
+  where
+    argInfo n (Imp opt _ _) = (True, PImp (getPriority i t') True opt n t')
+    argInfo n (Exp opt _ _) = (InaccessibleArg `elem` opt,
+                                  PExp (getPriority i t') opt n t')
+    argInfo n (Constraint opt _) = (InaccessibleArg `elem` opt,
+                                      PConstraint 10 opt n t')
+    argInfo n (TacImp opt _ scr) = (InaccessibleArg `elem` opt,
+                                      PTacImplicit 10 opt n scr t')
+getUnboundImplicits i (Bind n (Pi t) sc) tm
+     = impBind n t : getUnboundImplicits i sc tm
+  where
+    impBind n t = (True, PImp 1 True [] n Placeholder)
+getUnboundImplicits i sc tm = []
 
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
@@ -1428,40 +1498,46 @@ aiFn inpat expat qq ist fc f ds as
                     _ -> Public
 
     insertImpl :: [PArg] -> [PArg] -> [PArg]
-    insertImpl ps as = insImpAcc M.empty ps as
+    insertImpl ps as = insImpAcc M.empty ps (filter exp as) (filter (not.exp) as)
+
+    exp (PExp _ _ _ _) = True
+    exp (PConstraint _ _ _ _) = True
+    exp _ = False
 
     insImpAcc :: M.Map Name PTerm -- accumulated param names & arg terms
               -> [PArg]           -- parameters
-              -> [PArg]           -- arguments
+              -> [PArg]           -- explicit arguments
+              -> [PArg]           -- implicits given
               -> [PArg]
-    insImpAcc pnas (PExp p l n ty : ps) (PExp _ _ _ tm : given) =
-      PExp p l n tm : insImpAcc (M.insert n tm pnas) ps given
-    insImpAcc pnas (PConstraint p l n ty : ps) (PConstraint _ _ _ tm : given) =
-      PConstraint p l n tm : insImpAcc (M.insert n tm pnas) ps given
-    insImpAcc pnas (PConstraint p l n ty : ps) given =
+    insImpAcc pnas (PExp p l n ty : ps) (PExp _ _ _ tm : given) imps =
+      PExp p l n tm : insImpAcc (M.insert n tm pnas) ps given imps
+    insImpAcc pnas (PConstraint p l n ty : ps) (PConstraint _ _ _ tm : given) imps =
+      PConstraint p l n tm : insImpAcc (M.insert n tm pnas) ps given imps
+    insImpAcc pnas (PConstraint p l n ty : ps) given imps =
       let rtc = PResolveTC fc in
-        PConstraint p l n rtc : insImpAcc (M.insert n rtc pnas) ps given
-    insImpAcc pnas (PImp p _ l n ty : ps) given =
-        case find n given [] of
-            Just (tm, given') ->
-              PImp p False l n tm : insImpAcc (M.insert n tm pnas) ps given'
+        PConstraint p l n rtc : insImpAcc (M.insert n rtc pnas) ps given imps
+    insImpAcc pnas (PImp p _ l n ty : ps) given imps =
+        case find n imps [] of
+            Just (tm, imps') ->
+              PImp p False l n tm : insImpAcc (M.insert n tm pnas) ps given imps'
             Nothing ->
               PImp p True l n Placeholder :
-                insImpAcc (M.insert n Placeholder pnas) ps given
-    insImpAcc pnas (PTacImplicit p l n sc' ty : ps) given =
+                insImpAcc (M.insert n Placeholder pnas) ps given imps
+    insImpAcc pnas (PTacImplicit p l n sc' ty : ps) given imps =
       let sc = addImpl ist (substMatches (M.toList pnas) sc') in
-        case find n given [] of
-            Just (tm, given') ->
+        case find n imps [] of
+            Just (tm, imps') ->
               PTacImplicit p l n sc tm :
-                insImpAcc (M.insert n tm pnas) ps given'
+                insImpAcc (M.insert n tm pnas) ps given imps'
             Nothing ->
               if inpat
                 then PTacImplicit p l n sc Placeholder :
-                  insImpAcc (M.insert n Placeholder pnas) ps given
+                  insImpAcc (M.insert n Placeholder pnas) ps given imps
                 else PTacImplicit p l n sc sc :
-                  insImpAcc (M.insert n sc pnas) ps given
-    insImpAcc _ expected [] = []
-    insImpAcc _ _        given  = given
+                  insImpAcc (M.insert n sc pnas) ps given imps
+    insImpAcc _ expected [] imps = imps -- so that unused implicits give error
+                                     -- TODO: report here, and prune alternatives
+    insImpAcc _ _        given imps = given ++ imps
 
     find n []               acc = Nothing
     find n (PImp _ _ _ n' t : gs) acc

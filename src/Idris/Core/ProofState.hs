@@ -168,12 +168,16 @@ match_unify' ctxt env topx topy =
                   ++ "\n" ++ show (pterm ps) ++ "\n\n"
                  ) $
        case match_unify ctxt env topx topy inj (holes ps) while of
-            OK u -> do let (h, ns) = unified ps
-                       put (ps { unified = (h, u ++ ns) })
-                       return u
-            Error e -> do put (ps { problems = (topx, topy, env, e, while, Match) :
-                                                  problems ps })
-                          return []
+            OK u -> traceWhen (unifylog ps)
+                        ("Matched " ++ show u) $
+                     do let (h, ns) = unified ps
+                        put (ps { unified = (h, u ++ ns) })
+                        return u
+            Error e -> traceWhen (unifylog ps)
+                         ("No match " ++ show e) $
+                        do put (ps { problems = (topx, topy, env, e, while, Match) :
+                                                 problems ps })
+                           return []
 --       traceWhen (unifylog ps)
 --             ("Matched " ++ show (topx, topy) ++ " without " ++ show dont ++
 --              "\nSolved: " ++ show u 
@@ -231,7 +235,8 @@ unify' ctxt env topx topy =
                                               (holes ps)
            let (notu', probs_notu) = mergeNotunified env (notu ++ notunified ps)
            traceWhen (unifylog ps)
-            ("Now solved: " ++ show ns') $
+            ("Now solved: " ++ show ns' ++
+             "\nNow problems: " ++ qshow (probs' ++ probs_notu)) $
              put (ps { problems = probs' ++ probs_notu,
                        unified = (h, ns'),
                        injective = updateInj u (injective ps),
@@ -538,10 +543,11 @@ solve ctxt env (Bind x (Guess ty val) sc)
    = do ps <- get
         let (uh, uns) = unified ps
         case lookup x (notunified ps) of
-            Just tm -> -- trace ("NEED MATCH: " ++ show (tm, val)) $
+            Just tm -> -- trace ("NEED MATCH: " ++ show (x, tm, val) ++ "\nIN " ++ show (pterm ps)) $
                          match_unify' ctxt env tm val
             _ -> return []
-        action (\ps -> ps { holes = holes ps \\ [x],
+        action (\ps -> ps { holes = traceWhen (unifylog ps) ("Dropping hole " ++ show x) $
+                                       holes ps \\ [x],
                             solved = Just (x, val),
                             notunified = updateNotunified [(x,val)]
                                            (notunified ps),
@@ -605,7 +611,9 @@ forall n ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
 patvar n ctxt env (Bind x (Hole t) sc) =
-    do action (\ps -> ps { holes = holes ps \\ [x],
+    do action (\ps -> ps { holes = traceWhen (unifylog ps) ("Dropping pattern hole " ++ show x) $
+                                     holes ps \\ [x],
+                           solved = Just (x, P Bound n t),
                            notunified = updateNotunified [(x,P Bound n t)]
                                           (notunified ps),
                            injective = addInj n x (injective ps) })
@@ -787,7 +795,8 @@ solve_unified ctxt env tm =
     do ps <- get
        let (_, ns) = unified ps
        let unify = dropGiven (dontunify ps) ns (holes ps)
-       action (\ps -> ps { holes = holes ps \\ map fst unify })
+       action (\ps -> ps { holes = traceWhen (unifylog ps) ("Dropping holes " ++ show (map fst unify)) $
+                                     holes ps \\ map fst unify })
        action (\ps -> ps { pterm = updateSolved unify (pterm ps) })
        return (updateSolved unify tm)
 
@@ -913,11 +922,12 @@ processTactic EndUnify ps
           (ns'', probs') = updateProblems (context ps) ns' (problems ps)
                                           (injective ps) (holes ps)
           tm' = updateSolved ns'' (pterm ps) in
-          return (ps { pterm = tm',
-                       unified = (h, []),
-                       problems = probs',
-                       notunified = updateNotunified ns'' (notunified ps),
-                       holes = holes ps \\ map fst ns'' }, "")
+          traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
+            return (ps { pterm = tm',
+                         unified = (h, []),
+                         problems = probs',
+                         notunified = updateNotunified ns'' (notunified ps),
+                         holes = holes ps \\ map fst ns'' }, "")
 processTactic UnifyAll ps
     = let tm' = updateSolved (notunified ps) (pterm ps) in
           return (ps { pterm = tm',
@@ -934,10 +944,11 @@ processTactic UnifyProblems ps
                                          (injective ps)
                                          (holes ps)
           pterm' = updateSolved ns' (pterm ps) in
-      return (ps { pterm = pterm', solved = Nothing, problems = probs',
-                   previous = Just ps, plog = "",
-                   notunified = updateNotunified ns' (notunified ps),
-                   holes = holes ps \\ (map fst ns') }, plog ps)
+      traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns')) $
+        return (ps { pterm = pterm', solved = Nothing, problems = probs',
+                     previous = Just ps, plog = "",
+                     notunified = updateNotunified ns' (notunified ps),
+                     holes = holes ps \\ (map fst ns') }, plog ps)
 processTactic (MatchProblems all) ps
     = let (ns', probs') = matchProblems all [] (context ps)
                                             (problems ps)
@@ -948,6 +959,7 @@ processTactic (MatchProblems all) ps
                                            (injective ps)
                                            (holes ps)
           pterm' = updateSolved ns'' (pterm ps) in
+       traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
         return (ps { pterm = pterm', solved = Nothing, problems = probs'',
                    previous = Just ps, plog = "",
                    notunified = updateNotunified ns'' (notunified ps),
@@ -968,12 +980,13 @@ processTactic t ps
                      -- rechecking problems may find more solutions, so
                      -- apply them here
                      let pterm'' = updateSolved ns' (pterm ps')
-                     return (ps' { pterm = pterm'',
-                                   solved = Nothing,
-                                   problems = probs',
-                                   notunified = updateNotunified ns' (notunified ps'),
-                                   previous = Just ps, plog = "",
-                                   holes = holes ps' \\ (map fst ns')}, plog ps')
+                     traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns')) $
+                       return (ps' { pterm = pterm'',
+                                     solved = Nothing,
+                                     problems = probs',
+                                     notunified = updateNotunified ns' (notunified ps'),
+                                     previous = Just ps, plog = "",
+                                     holes = holes ps' \\ (map fst ns')}, plog ps')
 
 process :: Tactic -> Name -> StateT TState TC ()
 process EndUnify _

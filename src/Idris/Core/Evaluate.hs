@@ -549,6 +549,12 @@ convEq ctxt holes topx topy = ceq [] topx topy where
         | n == n' = ceq ps x y
     ceq ps (Bind n (Lam t) (App x (P Bound n' _))) y
         | n == n' = ceq ps x y
+
+    ceq ps (Bind n (PVar t) sc) y = ceq ps sc y
+    ceq ps x (Bind n (PVar t) sc) = ceq ps x sc
+    ceq ps (Bind n (PVTy t) sc) y = ceq ps sc y
+    ceq ps x (Bind n (PVTy t) sc) = ceq ps x sc
+
     ceq ps (V x)      (V y)      = return (x == y)
     ceq ps (V x)      (P _ y _)  
         | x >= 0 && length ps > x = return (fst (ps!!x) == y)

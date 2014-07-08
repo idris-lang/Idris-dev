@@ -77,6 +77,7 @@ getNameFrom n = do (ES (p, a) s e) <- get
                                      then MN (next+500) x
                                      else MN (next+100) x
                         NS (UN x) s -> MN (next+100) x
+                        _ -> n
                    return $! n'
 
 setNextName :: Elab' aux ()
@@ -456,7 +457,7 @@ prepare_apply fn imps =
              -> [(Name, Name)] -- ^ Accumulator for produced claims
              -> [Name] -- ^ Hypotheses
              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
-    mkClaims (Bind n' (Pi t_in) sc) (i : is) claims hs =
+    mkClaims (Bind n' (Pi t_in) sc) (i : is) claims hs = 
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)

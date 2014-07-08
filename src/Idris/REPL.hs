@@ -651,7 +651,7 @@ process h fn (ChangeDirectory f)
                       return ()
 process h fn (Eval t)
                  = withErrorReflection $ do logLvl 5 $ show t
-                                            (tm, ty) <- elabVal toplevel False t
+                                            (tm, ty) <- elabVal toplevel ERHS t
                                             ctxt <- getContext
                                             let tm' = force (normaliseAll ctxt [] tm)
                                             let ty' = force (normaliseAll ctxt [] ty)
@@ -681,7 +681,7 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
     elabClauses toplevel fc opts name (concatMap getClauses decls)
   defineName [PClauses fc opts _ [clause]] = do
     let pterm = getRHS clause
-    (tm,ty) <- elabVal toplevel False pterm
+    (tm,ty) <- elabVal toplevel ERHS pterm
     ctxt <- getContext
     let tm' = force (normaliseAll ctxt [] tm)
     let ty' = force (normaliseAll ctxt [] ty)
@@ -699,7 +699,7 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
 process h fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
-                       (tm, ty) <- elabVal toplevel False t
+                       (tm, ty) <- elabVal toplevel ERHS t
 --                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
                        res <- execute tm
@@ -743,7 +743,7 @@ process h fn (Check (PRef _ n))
 
 
 process h fn (Check t)
-   = do (tm, ty) <- elabVal toplevel False t
+   = do (tm, ty) <- elabVal toplevel ERHS t
         ctxt <- getContext
         ist <- getIState
         let ppo = ppOptionIst ist
@@ -838,7 +838,7 @@ process h fn (MakeLemma updatefile l n)
 process h fn (DoProofSearch updatefile rec l n hints)
     = doProofSearch h fn updatefile rec l n hints Nothing
 process h fn (Spec t)
-                    = do (tm, ty) <- elabVal toplevel False t
+                    = do (tm, ty) <- elabVal toplevel ERHS t
                          ctxt <- getContext
                          ist <- getIState
                          let tm' = simplify ctxt [] {- (idris_statics ist) -} tm
@@ -917,13 +917,13 @@ process h fn (Prove n')
           warnTotality
 
 process h fn (HNF t)
-                    = do (tm, ty) <- elabVal toplevel False t
+                    = do (tm, ty) <- elabVal toplevel ERHS t
                          ctxt <- getContext
                          ist <- getIState
                          let tm' = hnf ctxt [] tm
                          iPrintResult (show (delab ist tm'))
 process h fn (TestInline t)
-                           = do (tm, ty) <- elabVal toplevel False t
+                           = do (tm, ty) <- elabVal toplevel ERHS t
                                 ctxt <- getContext
                                 ist <- getIState
                                 let tm' = inlineTerm ist tm
@@ -932,7 +932,7 @@ process h fn (TestInline t)
 process h fn Execute
                    = idrisCatch
                        (do ist <- getIState
-                           (m, _) <- elabVal toplevel False
+                           (m, _) <- elabVal toplevel ERHS
                                            (PApp fc
                                               (PRef fc (sUN "run__IO"))
                                               [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
@@ -948,7 +948,7 @@ process h fn Execute
                        (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
   where fc = fileFC "main"
 process h fn (Compile codegen f)
-      = do (m, _) <- elabVal toplevel False
+      = do (m, _) <- elabVal toplevel ERHS
                        (PApp fc (PRef fc (sUN "run__IO"))
                        [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
            compile codegen f m
@@ -956,7 +956,7 @@ process h fn (Compile codegen f)
 process h fn (LogLvl i) = setLogLevel i
 -- Elaborate as if LHS of a pattern (debug command)
 process h fn (Pattelab t)
-     = do (tm, ty) <- elabVal toplevel True t
+     = do (tm, ty) <- elabVal toplevel ELHS t
           iPrintResult $ show tm ++ "\n\n : " ++ show ty
 
 process h fn (Missing n)
@@ -1374,7 +1374,7 @@ execScript expr = do i <- getIState
                           Failure err -> do iputStrLn $ show (fixColour c err)
                                             runIO $ exitWith (ExitFailure 1)
                           Success term -> do ctxt <- getContext
-                                             (tm, _) <- elabVal toplevel False term
+                                             (tm, _) <- elabVal toplevel ERHS term
                                              res <- execute tm
                                              runIO $ exitWith ExitSuccess
 

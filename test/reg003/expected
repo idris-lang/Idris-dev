@@ -1,2 +1,2 @@
-reg003a.idr:4:20:When elaborating constructor Main.ECons:
+reg003a.idr:4:11:When elaborating type of Main.ECons:
 No such variable OddList

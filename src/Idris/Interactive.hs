@@ -12,6 +12,7 @@ import Idris.Core.Evaluate
 import Idris.CaseSplit
 import Idris.AbsSyntax
 import Idris.ElabDecls
+import Idris.ElabTerm
 import Idris.Error
 import Idris.Delaborate
 import Idris.Output
@@ -173,7 +174,7 @@ doProofSearch h fn updatefile rec l n hints (Just depth)
          let def = PClause fc mn (PRef fc mn) [] (body top) []
          newmv <- idrisCatch
              (do elabDecl' EAll toplevel (PClauses fc [] mn [def])
-                 (tm, ty) <- elabVal toplevel False (PRef fc mn)
+                 (tm, ty) <- elabVal toplevel ERHS (PRef fc mn)
                  ctxt <- getContext
                  i <- getIState
                  return . flip displayS "" . renderPretty 1.0 80 $
