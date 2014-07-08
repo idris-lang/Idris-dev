@@ -196,8 +196,9 @@ score _ = 0
 instance Show Err where
     show (Msg s) = s
     show (InternalMsg s) = "Internal error: " ++ show s
-    show (CantUnify _ l r e sc i) = "CantUnify " ++ show l ++ " " ++ show r ++ " "
-                                      ++ show e ++ " in " ++ show sc ++ " " ++ show i
+    show (CantUnify rec l r e sc i) = "CantUnify " ++ show rec ++ " " ++
+                                         show l ++ " " ++ show r ++ " " ++
+                                         show e ++ " in " ++ show sc ++ " " ++ show i
     show (CantSolveGoal g _) = "CantSolve " ++ show g
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show (ProviderError msg) = "Type provider error: " ++ msg

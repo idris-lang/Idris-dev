@@ -1025,7 +1025,8 @@ resTC' tcs depth topg fn ist
                 args <- map snd <$> try' (apply (Var n) imps)
                                          (match_apply (Var n) imps) True
                 ps' <- get_probs
-                when (length ps < length ps') $ fail "Can't apply type class"
+                when (length ps < length ps' || unrecoverable ps') $ 
+                     fail "Can't apply type class"
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
                                      t' <- goal

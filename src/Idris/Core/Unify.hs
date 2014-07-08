@@ -1,6 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Core.Unify(match_unify, unify, Fails, FailContext(..), FailAt(..)) where
+module Idris.Core.Unify(match_unify, unify, Fails, FailContext(..), FailAt(..),
+                        unrecoverable) where
 
 import Idris.Core.TT
 import Idris.Core.Evaluate
@@ -29,6 +30,16 @@ data FailContext = FailContext { fail_sourceloc :: FC,
 
 type Injs = [(TT Name, TT Name, TT Name)]
 type Fails = [(TT Name, TT Name, Env, Err, [FailContext], FailAt)]
+
+unrecoverable :: Fails -> Bool
+unrecoverable = any bad 
+  where bad (_,_,_, err, _, _) = unrec err
+
+        unrec (CantUnify r _ _ _ _ _) = not r
+        unrec (At _ e) = unrec e
+        unrec (Elaborating _ _ e) = unrec e
+        unrec (ElaboratingArg _ _ _ e) = unrec e
+        unrec _ = False
 
 data UInfo = UI Int Fails
      deriving Show
@@ -628,6 +639,8 @@ recoverable p@(Constant _) (App f a) = recoverable p f
 recoverable (App f a) p@(Constant _) = recoverable f p
 recoverable p@(P _ n _) (App f a) = recoverable p f
 recoverable (App f a) p@(P _ _ _) = recoverable f p
+recoverable (App f a) (App f' a')
+    | f == f' = recoverable a a' 
 recoverable (App f a) (App f' a')
     = recoverable f f' -- && recoverable a a'
 recoverable f (Bind _ (Pi _) sc)
