@@ -17,7 +17,7 @@ using (k : Nat, ts : Vect k Type)
   index fZ (x::xs) = x
   index (fS j) (x::xs) = index j xs
 
-  deleteAt : {us : Vect (S l) Type} -> (i : Fin (S l)) -> HVect us -> HVect (deleteAt i us)
+  deleteAt : (i : Fin (S l)) -> HVect us -> HVect (deleteAt i us)
   deleteAt fZ (x::xs) = xs
   deleteAt {l = S m} (fS j) (x::xs) = x :: deleteAt j xs
   deleteAt {l = Z}   (fS j) (x::xs) = absurd j
@@ -32,7 +32,7 @@ using (k : Nat, ts : Vect k Type)
   updateAt (fS j) f (x::xs) = x :: updateAt j f xs
 
   ||| Append two `HVect`s.
-  (++) : {us : Vect l Type} -> HVect ts -> HVect us -> HVect (ts ++ us)
+  (++) : HVect ts -> HVect us -> HVect (ts ++ us)
   (++) [] ys = ys
   (++) (x::xs) ys = x :: (xs ++ ys)
 

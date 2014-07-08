@@ -55,15 +55,14 @@ syntax "{" [inst] "==>" "{" {b} "}" [outst] "}" [eff]
 syntax "{" [inst] "==>" [outst] "}" [eff] = eff inst (\result => outst)
 
 -- --------------------------------------- [ Properties and Proof Construction ]
-using (xs : List a, ys : List a)
-  data SubList : List a -> List a -> Type where
-       SubNil : SubList {a} [] []
-       Keep   : SubList xs ys -> SubList (x :: xs) (x :: ys)
-       Drop   : SubList xs ys -> SubList xs (x :: ys)
+data SubList : List a -> List a -> Type where
+     SubNil : SubList [] []
+     Keep   : SubList xs ys -> SubList (x :: xs) (x :: ys)
+     Drop   : SubList xs ys -> SubList xs (x :: ys)
 
-  subListId : SubList xs xs
-  subListId {xs = Nil} = SubNil
-  subListId {xs = x :: xs} = Keep subListId
+subListId : SubList xs xs
+subListId {xs = Nil} = SubNil
+subListId {xs = x :: xs} = Keep subListId
 
 namespace Env
   data Env  : (m : Type -> Type) -> List EFFECT -> Type where
