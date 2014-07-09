@@ -141,13 +141,15 @@ ideslavePutSExp cmd info = do i <- getIState
                                    IdeSlave n -> runIO . putStrLn $ convSExp cmd info n
                                    _ -> return ()
 
--- this needs some typing magic and more structured output towards emacs
+-- TODO: send structured output similar to the metavariable list
 iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
 iputGoal g = do i <- getIState
                 case idris_outputmode i of
                   RawOutput -> runIO $ putStrLn (displayDecorated (consoleDecorate i) g)
-                  IdeSlave n -> runIO . putStrLn $
-                                convSExp "write-goal" (displayS (fmap (fancifyAnnots i) g) "") n
+                  IdeSlave n ->
+                    let (str, spans) = displaySpans . fmap (fancifyAnnots i) $ g
+                        goal = [toSExp str, toSExp spans]
+                    in runIO . putStrLn $ convSExp "write-goal" goal n
 
 -- | Warn about totality problems without failing to compile
 warnTotality :: Idris ()
