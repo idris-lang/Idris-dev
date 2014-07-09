@@ -164,14 +164,15 @@ pprintErr' i (InternalMsg s) =
          text "This is probably a bug, or a missing error message.",
          text ("Please consider reporting at " ++ bugaddr)
        ]
-pprintErr' i (CantUnify _ x y e sc s) =
-  text "Can't unify" <> indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i x))) <$>
-  text "with" <> indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) (delab i y))) <>
-  case e of
-    Msg "" -> empty
-    _ -> line <> line <> text "Specifically:" <>
-         indented (pprintErr' i e) <>
-         if (opt_errContext (idris_options i)) then showSc i sc else empty
+pprintErr' i (CantUnify _ x_in y_in e sc s) =
+  let (x, y) = addImplicitDiffs (delab i x_in) (delab i y_in) in
+    text "Can't unify" <> indented (annTm x_in (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) x)) <$>
+    text "with" <> indented (annTm y_in (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) y)) <>
+    case e of
+      Msg "" -> empty
+      _ -> line <> line <> text "Specifically:" <>
+           indented (pprintErr' i e) <>
+           if (opt_errContext (idris_options i)) then showSc i sc else empty
 pprintErr' i (CantConvert x y env) =
   text "Can't convert" <>
   indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x))) <$>
@@ -261,6 +262,68 @@ pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
+
+-- If the two terms only differ in their implicits, mark the implicits which
+-- differ as AlwaysShow so that they appear in errors
+addImplicitDiffs :: PTerm -> PTerm -> (PTerm, PTerm)
+addImplicitDiffs x y 
+    = if (x `expLike` y) then addI x y else (x, y)
+  where
+    addI :: PTerm -> PTerm -> (PTerm, PTerm)
+    addI (PApp fc f as) (PApp gc g bs) 
+         = let (as', bs') = addShows as bs in
+               (PApp fc f as', PApp gc g bs')
+       where addShows [] [] = ([], [])
+             addShows (a:as) (b:bs) 
+                = let (as', bs') = addShows as bs
+                      (a', b') = addI (getTm a) (getTm b) in
+                      if (not (a' `expLike` b'))
+                         then (a { argopts = AlwaysShow : argopts a,
+                                   getTm = a' } : as',
+                               b { argopts = AlwaysShow : argopts b,
+                                   getTm = b' } : bs')
+                         else (a { getTm = a' } : as', 
+                               b { getTm = b' } : bs')
+    addI (PLam n a b) (PLam n' c d) 
+         = let (a', c') = addI a c
+               (b', d') = addI b d in
+               (PLam n a' b', PLam n' c' d')
+    addI (PPi p n a b) (PPi p' n' c d) 
+         = let (a', c') = addI a c
+               (b', d') = addI b d in
+               (PPi p n a' b', PPi p' n' c' d')
+    addI (PRefl fc a) (PRefl fc' b) 
+         = let (a', b') = addI a b in
+               (PRefl fc a', PRefl fc' b')
+    addI (PEq fc a b) (PEq fc' c d) 
+         = let (a', c') = addI a c
+               (b', d') = addI b d in
+               (PEq fc a' b', PEq fc' c' d')
+    addI (PPair fc pi a b) (PPair fc' pi' c d) 
+         = let (a', c') = addI a c
+               (b', d') = addI b d in
+               (PPair fc pi a' b', PPair fc' pi' c' d')
+    addI (PDPair fc pi a t b) (PDPair fc' pi' c u d) 
+         = let (a', c') = addI a c
+               (t', u') = addI t u
+               (b', d') = addI b d in
+               (PDPair fc pi a' t' b', PDPair fc' pi' c' u' d')
+    addI x y = (x, y)
+
+    -- Just the ones which appear desugared in errors
+    expLike (PRef _ n) (PRef _ n') = n == n'
+    expLike (PApp _ f as) (PApp _ f' as')
+        = expLike f f' && length as == length as' &&
+          and (zipWith expLike (getExps as) (getExps as'))
+    expLike (PPi _ n s t) (PPi _ n' s' t') 
+        = n == n' && expLike s s' && expLike t t'
+    expLike (PLam n s t) (PLam n' s' t') 
+        = n == n' && expLike s s' && expLike t t'
+    expLike (PPair _ _ x y) (PPair _ _ x' y') = expLike x x' && expLike y y'
+    expLike (PDPair _ _ x _ y) (PDPair _ _ x' _ y') = expLike x x' && expLike y y'
+    expLike (PEq _ x y) (PEq _ x' y') = expLike x x' && expLike y y'
+    expLike (PRefl _ x) (PRefl _ x') = expLike x x'
+    expLike x y = x == y
 
 isUN :: Name -> Bool
 isUN (UN n) = not $ T.isPrefixOf (T.pack "__") n -- TODO figure out why MNs are getting rewritte to UNs for top-level pattern-matching functions

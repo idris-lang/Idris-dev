@@ -836,7 +836,7 @@ data PArg' t = PImp { priority :: Int,
                               getTm :: t }
     deriving (Show, Eq, Functor)
 
-data ArgOpt = HideDisplay | InaccessibleArg
+data ArgOpt = AlwaysShow | HideDisplay | InaccessibleArg
     deriving (Show, Eq)
 
 instance Sized a => Sized (PArg' a) where
@@ -1275,7 +1275,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
         f == sUN "Symbol_" = annotate (AnnType ("'" ++ str) ("The symbol " ++ str)) $
                                char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
     prettySe p bnd (PApp _ f as) = -- Normal prefix applications
-      let args = getExps as
+      let args = getShowArgs as
           fp   = prettySe 1 bnd f
       in
         bracket p 1 . group $
@@ -1285,7 +1285,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
                    else fp <+> align (vsep (map (prettyArgS bnd) as))
             else if null args
                    then fp
-                   else fp <+> align (vsep (map (prettyArgSe bnd) args))
+                   else fp <+> align (vsep (map (prettyArgS bnd) args))
     prettySe p bnd (PCase _ scr opts) =
       kwd "case" <+> prettySe 10 bnd scr <+> kwd "of" <> prettyBody
       where
@@ -1524,6 +1524,12 @@ getExps :: [PArg] -> [PTerm]
 getExps [] = []
 getExps (PExp _ _ _ tm : xs) = tm : getExps xs
 getExps (_ : xs) = getExps xs
+
+getShowArgs :: [PArg] -> [PArg]
+getShowArgs [] = []
+getShowArgs (e@(PExp _ _ _ tm) : xs) = e : getShowArgs xs
+getShowArgs (e : xs) | AlwaysShow `elem` argopts e = e : getShowArgs xs
+getShowArgs (_ : xs) = getShowArgs xs
 
 getConsts :: [PArg] -> [PTerm]
 getConsts [] = []

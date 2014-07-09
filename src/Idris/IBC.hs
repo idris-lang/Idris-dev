@@ -1001,11 +1001,13 @@ instance Binary ArgOpt where
           = case x of
                 HideDisplay -> putWord8 0
                 InaccessibleArg -> putWord8 1
+                AlwaysShow -> putWord8 2
         get
           = do i <- getWord8
                case i of
                    0 -> return HideDisplay
                    1 -> return InaccessibleArg
+                   2 -> return AlwaysShow
                    _ -> error "Corrupted binary data for Static"
 
 instance Binary Static where
