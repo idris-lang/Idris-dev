@@ -9,6 +9,7 @@ import Idris.Core.Typecheck
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Delaborate
+import Idris.Docs (getDocs, pprintDocs, pprintConstDocs)
 import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.Parser hiding (params)
@@ -181,6 +182,7 @@ receiveInput e =
             receiveInput e
        Just (Interpret cmd) -> return (Just cmd)
        Just (TypeOf str) -> return (Just (":t " ++ str))
+       Just (DocsFor str) -> return (Just (":doc " ++ str))
        _ -> return Nothing
 
 ploop :: Name -> Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
@@ -224,6 +226,7 @@ ploop fn d prompt prf e h
               Success (TCheck (PRef _ n)) -> checkNameType n
               Success (TCheck t) -> checkType t
               Success (TEval t)  -> evalTerm t e
+              Success (TDocStr x) -> docStr x
               Success tac -> do (_, e) <- elabStep e saveState
                                 (_, st) <- elabStep e (runTac autoSolve i fn tac)
                                 return (True, st, False, prf ++ [step], Right $ iPrintResult ""))
@@ -300,3 +303,18 @@ ploop fn d prompt prf e h
                putIState ist
                return (False, e, False, prf, Right action))
               (\err -> do putIState ist ; ierror err)
+        docStr :: Either Name Const -> Idris (Bool, ElabState [PDecl], Bool, [String], Either Err (Idris ()))
+        docStr (Left n) = do ist <- getIState
+                             let h = idris_outh ist
+                             idrisCatch (case lookupCtxtName n (idris_docstrings ist) of
+                                           [] -> return (False, e, False, prf,
+                                                         Left . Msg $ "No documentation for " ++ show n)
+                                           ns -> do toShow <- mapM (showDoc ist) ns
+                                                    return (False,  e, False, prf,
+                                                            Right $ ihRenderResult h (vsep toShow)))
+                                        (\err -> do putIState ist ; ierror err)
+               where showDoc ist (n, d) = do doc <- getDocs n
+                                             return $ pprintDocs ist doc
+        docStr (Right c) = do ist <- getIState
+                              let h = idris_outh ist
+                              return (False, e, False, prf, Right . ihRenderResult h $ pprintConstDocs ist c (constDocs c))
