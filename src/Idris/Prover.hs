@@ -9,6 +9,7 @@ import Idris.Core.Typecheck
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Delaborate
+import Idris.Docs (getDocs, pprintDocs, pprintConstDocs)
 import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.Parser hiding (params)
@@ -180,6 +181,8 @@ receiveInput e =
             ideslavePutSExp "return" good
             receiveInput e
        Just (Interpret cmd) -> return (Just cmd)
+       Just (TypeOf str) -> return (Just (":t " ++ str))
+       Just (DocsFor str) -> return (Just (":doc " ++ str))
        _ -> return Nothing
 
 ploop :: Name -> Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
@@ -211,21 +214,22 @@ ploop fn d prompt prf e h
            (case cmd of
               Failure err -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
               Success Undo -> do (_, st) <- elabStep e loadState
-                                 return (True, st, False, init prf, Right "")
-              Success ProofState -> return (True, e, False, prf, Right "")
+                                 return (True, st, False, init prf, Right $ iPrintResult "")
+              Success ProofState -> return (True, e, False, prf, Right $ iPrintResult "")
               Success ProofTerm -> do tm <- lifte e get_term
                                       iputStrLn $ "TT: " ++ show tm ++ "\n"
-                                      return (False, e, False, prf, Right "")
+                                      return (False, e, False, prf, Right $ iPrintResult "")
               Success Qed -> do hs <- lifte e get_holes
                                 when (not (null hs)) $ ifail "Incomplete proof"
                                 iputStrLn "Proof completed!"
-                                return (False, e, True, prf, Right "")
+                                return (False, e, True, prf, Right $ iPrintResult "")
               Success (TCheck (PRef _ n)) -> checkNameType n
               Success (TCheck t) -> checkType t
               Success (TEval t)  -> evalTerm t e
+              Success (TDocStr x) -> docStr x
               Success tac -> do (_, e) <- elabStep e saveState
                                 (_, st) <- elabStep e (runTac autoSolve i fn tac)
-                                return (True, st, False, prf ++ [step], Right ""))
+                                return (True, st, False, prf ++ [step], Right $ iPrintResult ""))
            (\err -> return (False, e, False, prf, Left err))
          ideslavePutSExp "write-proof-state" (prf', length prf')
          case res of
@@ -234,7 +238,7 @@ ploop fn d prompt prf e h
            Right ok ->
              if done then do (tm, _) <- elabStep st get_term
                              return (tm, prf')
-                     else do iPrintResult ok
+                     else do ok
                              ploop fn d prompt prf' st h'
   where envCtxt env ctxt = foldl (\c (n, b) -> addTyDecl n Bound (binderTy b) c) ctxt env
         checkNameType n = do
@@ -250,11 +254,11 @@ ploop fn d prompt prf e h
               putIState ist'
               -- Unlike the REPL, metavars have no special treatment, to
               -- make it easier to see how to prove with them.
-              case lookupNames n ctxt' of
-                [] -> ihPrintError h $ "No such variable " ++ show n
-                ts -> ihPrintFunTypes h bnd n (map (\n -> (n, delabTy ist' n)) ts)
+              let action = case lookupNames n ctxt' of
+                             [] -> ihPrintError h $ "No such variable " ++ show n
+                             ts -> ihPrintFunTypes h bnd n (map (\n -> (n, delabTy ist' n)) ts)
               putIState ist
-              return (False, e, False, prf, Right ""))
+              return (False, e, False, prf, Right action))
             (\err -> do putIState ist ; ierror err)
 
         checkType t = do
@@ -269,14 +273,14 @@ ploop fn d prompt prf e h
                   ty'     = normaliseC ctxt [] ty
                   h       = idris_outh ist
                   infixes = idris_infixes ist
-              case tm of
-                 TType _ ->
-                   ihPrintTermWithType h (prettyImp ppo PType) type1Doc
-                 _ -> let bnd = map (\x -> (fst x, False)) env in
-                      ihPrintTermWithType h (pprintPTerm ppo bnd [] infixes (delab ist tm))
-                                            (pprintPTerm ppo bnd [] infixes (delab ist ty))
+                  action = case tm of
+                    TType _ ->
+                      ihPrintTermWithType h (prettyImp ppo PType) type1Doc
+                    _ -> let bnd = map (\x -> (fst x, False)) env in
+                         ihPrintTermWithType h (pprintPTerm ppo bnd [] infixes (delab ist tm))
+                                               (pprintPTerm ppo bnd [] infixes (delab ist ty))
               putIState ist
-              return (False, e, False, prf, Right ""))
+              return (False, e, False, prf, Right action))
             (\err -> do putIState ist { tt_ctxt = ctxt } ; ierror err)
 
         evalTerm t e = withErrorReflection $
@@ -295,7 +299,22 @@ ploop fn d prompt prf e h
                    infixes = idris_infixes ist
                    tmDoc   = pprintPTerm ppo bnd [] infixes (delab ist' tm')
                    tyDoc   = pprintPTerm ppo bnd [] infixes (delab ist' ty')
-               ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
+                   action  = ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
                putIState ist
-               return (False, e, False, prf, Right ""))
+               return (False, e, False, prf, Right action))
               (\err -> do putIState ist ; ierror err)
+        docStr :: Either Name Const -> Idris (Bool, ElabState [PDecl], Bool, [String], Either Err (Idris ()))
+        docStr (Left n) = do ist <- getIState
+                             let h = idris_outh ist
+                             idrisCatch (case lookupCtxtName n (idris_docstrings ist) of
+                                           [] -> return (False, e, False, prf,
+                                                         Left . Msg $ "No documentation for " ++ show n)
+                                           ns -> do toShow <- mapM (showDoc ist) ns
+                                                    return (False,  e, False, prf,
+                                                            Right $ ihRenderResult h (vsep toShow)))
+                                        (\err -> do putIState ist ; ierror err)
+               where showDoc ist (n, d) = do doc <- getDocs n
+                                             return $ pprintDocs ist doc
+        docStr (Right c) = do ist <- getIState
+                              let h = idris_outh ist
+                              return (False, e, False, prf, Right . ihRenderResult h $ pprintConstDocs ist c (constDocs c))

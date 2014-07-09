@@ -1288,6 +1288,16 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
                           t <- (indentPropHolds gtProp *> expr syn);
                           i <- get
                           return $ TCheck (desugar syn i t))
+                  <|> try (do reserved "doc"
+                              whiteSpace
+                              c <- constant
+                              eof
+                              return (TDocStr (Right c)))
+                  <|> try (do reserved "doc"
+                              whiteSpace
+                              n <- (fnName <|> (string "_|_" >> return falseTy))
+                              eof
+                              return (TDocStr (Left n)))
                   <?> "prover command")
           <?> "tactic"
   where
