@@ -1472,8 +1472,8 @@ paramNames args env (p : ps)
                           _ -> paramNames args env ps
    | otherwise = paramNames args env ps
 
-propagateParams :: [Name] -> Type -> PTerm -> PTerm
-propagateParams ps t tm@(PApp _ (PRef fc n) args)
+propagateParams :: IState -> [Name] -> Type -> PTerm -> PTerm
+propagateParams i ps t tm@(PApp _ (PRef fc n) args)
      = PApp fc (PRef fc n) (addP t args)
    where addP (Bind n _ sc) (t : ts)
               | Placeholder <- getTm t,
@@ -1482,9 +1482,15 @@ propagateParams ps t tm@(PApp _ (PRef fc n) args)
                     = t { getTm = PRef fc n } : addP sc ts
          addP (Bind n _ sc) (t : ts) = t : addP sc ts
          addP _ ts = ts
-propagateParams ps t (PRef fc n)
-     = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps)
-propagateParams ps t x = x
+propagateParams i ps t (PRef fc n)
+     = case lookupCtxt n (idris_implicits i) of
+            [is] -> let ps' = filter (isImplicit is) ps in
+                        PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps')
+            _ -> PRef fc n
+    where isImplicit [] n = False
+          isImplicit (PImp _ _ _ x _ : is) n | x == n = True
+          isImplicit (_ : is) n = isImplicit is n
+propagateParams i ps t x = x
 
 -- Return the elaborated LHS/RHS, and the original LHS with implicits added
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
@@ -1516,7 +1522,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                          _ -> []
         let params = getParamsInType i [] fn_is fn_ty
         let lhs = mkLHSapp $ stripUnmatchable i $
-                    propagateParams params fn_ty (addImplPat i (stripLinear i lhs_in))
+                    propagateParams i params fn_ty (addImplPat i (stripLinear i lhs_in))
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show lhs_in ++
                   "\n" ++ show (fn_ty, fn_is))
@@ -1711,7 +1717,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                          [t] -> t
                          _ -> []
         let params = getParamsInType i [] fn_is fn_ty
-        let lhs = propagateParams params fn_ty (addImplPat i (stripLinear i lhs_in))
+        let lhs = propagateParams i params fn_ty (addImplPat i (stripLinear i lhs_in))
         logLvl 2 ("LHS: " ++ show lhs)
         ((lhs', dlhs, []), _) <-
             tclift $ elaborate ctxt (sMN 0 "patLHS") infP []
