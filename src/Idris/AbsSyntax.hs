@@ -853,7 +853,7 @@ expandParams dec ps ns infs tm = en tm
        | n `elem` (map fst ps ++ ns) && t /= Placeholder
            = let n' = mkShadow n in
                  PDPair f p (PRef f' n') (en t) (en (shadow n n' r))
-    en (PEq f l r) = PEq f (en l) (en r)
+    en (PEq f lt rt l r) = PEq f (en lt) (en r) (en l) (en r)
     en (PRewrite f l r g) = PRewrite f (en l) (en r) (fmap en g)
     en (PTyped l r) = PTyped (en l) (en r)
     en (PPair f p l r) = PPair f p (en l) (en r)
@@ -1022,7 +1022,7 @@ getPriority i tm = 1 -- pri tm
     pri (PTrue _ _) = 0
     pri (PFalse _) = 0
     pri (PRefl _ _) = 1
-    pri (PEq _ l r) = max 1 (max (pri l) (pri r))
+    pri (PEq _ _ _ l r) = max 1 (max (pri l) (pri r))
     pri (PRewrite _ l r _) = max 1 (max (pri l) (pri r))
     pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as)))
     pri (PAppBind _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as)))
@@ -1096,8 +1096,6 @@ addUsingConstraints syn fc t
         let ns = namesIn [] ist t
         let cs = getConstraints t -- check declared constraints
         let addconsts = uconsts \\ cs
-        -- if all names in the arguments of addconsts appear in ns,
-        -- add the constraint implicitly
         return (doAdd addconsts ns t)
    where uconsts = filter uconst (using syn)
          uconst (UConstraint _ _) = True
@@ -1191,7 +1189,8 @@ getUnboundImplicits i sc tm = []
 -- argument position.
 
 -- This has become a right mess already. Better redo it some time...
-
+-- TODO: This is obsoleted by the new way of elaborating types, but there's still
+-- a couple of places which use it. Clean them up!
 implicit :: ElabInfo -> SyntaxInfo -> Name -> PTerm -> Idris PTerm
 implicit info syn n ptm = implicit' info syn [] n ptm
 
@@ -1288,7 +1287,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              put (PTacImplicit 10 l n scr Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PEq _ l r)
+    imps top env (PEq _ _ _ l r)
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist r
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
@@ -1357,10 +1356,12 @@ addImpl' inpat env infns ist ptm
         | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat qq ist fc f ds []
     ai qq env ds (PHidden (PRef fc f))
         | not (f `elem` map fst env) = handleErr $ aiFn inpat False qq ist fc f ds []
-    ai qq env ds (PEq fc l r)
-      = let l' = ai qq env ds l
+    ai qq env ds (PEq fc lt rt l r)
+      = let lt' = ai qq env ds lt
+            rt' = ai qq env ds rt
+            l' = ai qq env ds l
             r' = ai qq env ds r in
-            PEq fc l' r'
+            PEq fc lt' rt' l' r'
     ai qq env ds (PRewrite fc l r g)
        = let l' = ai qq env ds l
              r' = ai qq env ds r
@@ -1698,7 +1699,8 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
         | not names && (not (isConName n (tt_ctxt i) ||
                              isFnName n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]
-    match (PEq _ l r) (PEq _ l' r') = do ml <- match' l l'
+    match (PEq _ _ _ l r) (PEq _ _ _ l' r') 
+                                    = do ml <- match' l l'
                                          mr <- match' r r'
                                          return (ml ++ mr)
     match (PRewrite _ l r _) (PRewrite _ l' r' _)
@@ -1789,7 +1791,7 @@ substMatchShadow n shs tm t = sm shs t where
          | otherwise = PPi p x (sm xs t) (sm (x : xs) sc)
     sm xs (PApp f x as) = fullApp $ PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
-    sm xs (PEq f x y) = PEq f (sm xs x) (sm xs y)
+    sm xs (PEq f xt yt x y) = PEq f (sm xs xt) (sm xs yt) (sm xs x) (sm xs y)
     sm xs (PRewrite f x y tm) = PRewrite f (sm xs x) (sm xs y)
                                            (fmap (sm xs) tm)
     sm xs (PTyped x y) = PTyped (sm xs x) (sm xs y)
@@ -1813,7 +1815,7 @@ shadow n n' t = sm t where
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
     sm (PAppBind f x as) = PAppBind f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
-    sm (PEq f x y) = PEq f (sm x) (sm y)
+    sm (PEq f xt yt x y) = PEq f (sm xt) (sm yt) (sm x) (sm y)
     sm (PRewrite f x y tm) = PRewrite f (sm x) (sm y) (fmap sm tm)
     sm (PTyped x y) = PTyped (sm x) (sm y)
     sm (PPair f p x y) = PPair f p (sm x) (sm y)

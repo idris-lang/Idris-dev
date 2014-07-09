@@ -106,10 +106,12 @@ extractUnquotes (PCase fc expr cases)
 extractUnquotes (PRefl fc x)
   = do (x', ex) <- extractUnquotes x
        return (PRefl fc x', ex)
-extractUnquotes (PEq fc a b)
-  = do (a', ex1) <- extractUnquotes a
+extractUnquotes (PEq fc at bt a b)
+  = do (at', ex1) <- extractUnquotes at
+       (bt', ex2) <- extractUnquotes bt
+       (a', ex1) <- extractUnquotes a
        (b', ex2) <- extractUnquotes b
-       return (PEq fc a' b', ex1 ++ ex2)
+       return (PEq fc at' bt' a' b', ex1 ++ ex2)
 extractUnquotes (PRewrite fc x y z)
   = do (x', ex1) <- extractUnquotes x
        (y', ex2) <- extractUnquotes y

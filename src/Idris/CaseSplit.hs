@@ -231,7 +231,7 @@ replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
         subst (PApp fc (PRef _ t) pats) 
             | isTConName t ctxt = Placeholder -- infer types
         subst (PApp fc f pats) = PApp fc f (map substArg pats)
-        subst (PEq fc l r) = Placeholder -- PEq fc (subst l) (subst r)
+        subst (PEq fc _ _ l r) = Placeholder -- PEq fc (subst l) (subst r)
         subst x = x
 
         substArg arg = arg { getTm = subst (getTm arg) }
@@ -349,7 +349,7 @@ getClause l fn fp
          getNameFrom i used (PPi _ _ _ _) 
               = uniqueNameFrom (mkSupply [sUN "f", sUN "g"]) used
          getNameFrom i used (PApp fc f as) = getNameFrom i used f
-         getNameFrom i used (PEq _ _ _) = uniqueNameFrom [sUN "prf"] used 
+         getNameFrom i used (PEq _ _ _ _ _) = uniqueNameFrom [sUN "prf"] used 
          getNameFrom i used (PRef fc f) 
             = case getNameHints i f of
                    [] -> uniqueName (sUN "x") used

@@ -681,7 +681,7 @@ data PTerm = PQuote Raw
            | PFalse FC -- ^ _|_
            | PRefl FC PTerm
            | PResolveTC FC
-           | PEq FC PTerm PTerm -- ^ Equality type: A = B
+           | PEq FC PTerm PTerm PTerm PTerm -- ^ Heterogeneous equality type: A = B
            | PRewrite FC PTerm PTerm (Maybe PTerm)
            | PPair FC PunInfo PTerm PTerm
            | PDPair FC PunInfo PTerm PTerm PTerm
@@ -723,7 +723,7 @@ mapPT f t = f (mpt t) where
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PAppBind fc t as) = PAppBind fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PCase fc c os) = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
-  mpt (PEq fc l r) = PEq fc (mapPT f l) (mapPT f r)
+  mpt (PEq fc lt rt l r) = PEq fc (mapPT f lt) (mapPT f rt) (mapPT f l) (mapPT f r)
   mpt (PTyped l r) = PTyped (mapPT f l) (mapPT f r)
   mpt (PPair fc p l r) = PPair fc p (mapPT f l) (mapPT f r)
   mpt (PDPair fc p l t r) = PDPair fc p (mapPT f l) (mapPT f t) (mapPT f r)
@@ -1086,7 +1086,7 @@ eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType), (n "B", PType)]
                                                                pimp (n "B") Placeholder False,
                                                                pexp (PRef bi (n "x")),
                                                                pexp (PRef bi (n "x"))])), bi, [])]
-    where n a = sMN 0 a
+    where n a = sUN a
           reflDoc = parseDocstring . T.pack $
                       "A proof that `x` in fact equals `x`. To construct this, you must have already " ++
                       "shown that both sides are in fact equal."
@@ -1096,7 +1096,7 @@ eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType), (n "B", PType)]
 eqParamDoc = [(n "A", parseDocstring . T.pack $ "the type of the left side of the equality"),
               (n "B", parseDocstring . T.pack $ "the type of the right side of the equality")
               ]
-    where n a = sMN 0 a
+    where n a = sUN a
 
 eqOpts = []
 
@@ -1242,7 +1242,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
       rbrace <+> text "->" </> prettySe 10 ((n, True):bnd) sc
     prettySe p bnd (PApp _ (PRef _ f) args) -- normal names, no explicit args
       | UN nm <- basename f
-      , not (ppopt_impl ppo) && null (getExps args) =
+      , not (ppopt_impl ppo) && null (getShowArgs args) =
           prettyName True (ppopt_impl ppo) bnd f
     prettySe p bnd (PAppBind _ (PRef _ f) [])
       | not (ppopt_impl ppo) = text "!" <> prettyName True (ppopt_impl ppo) bnd f
@@ -1250,14 +1250,16 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
       | UN nm <- basename op
       , not (tnull nm) &&
         (not (ppopt_impl ppo)) && (not $ isAlpha (thead nm)) =
-          case getExps args of
+          case getShowArgs args of
             [] -> opName True
-            [x] -> group (opName True <$> group (prettySe 0 bnd x))
+            [x] -> group (opName True <$> group (prettySe 0 bnd (getTm x)))
             [l,r] -> let precedence = fromMaybe 20 (fmap prec f)
-                     in bracket p precedence $ inFix l r
-            (l:r:rest) -> bracket p 1 $
-                          enclose lparen rparen (inFix l r) <+>
-                          align (group (vsep (map (prettyArgSe bnd) rest)))
+                     in bracket p precedence $ inFix (getTm l) (getTm r)
+            (l@(PExp _ _ _ _) : r@(PExp _ _ _ _) : rest) -> 
+                   bracket p 1 $
+                          enclose lparen rparen (inFix (getTm l) (getTm r)) <+>
+                          align (group (vsep (map (prettyArgS bnd) rest)))
+            as -> opName True <+> align (vsep (map (prettyArgS bnd) as))
           where opName isPrefix = prettyName isPrefix (ppopt_impl ppo) bnd op
                 f = getFixity (opStr op)
                 left l = case f of
@@ -1299,7 +1301,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PTrue _ IsTerm) = annName unitCon $ text "()"
     prettySe p bnd (PTrue _ TypeOrTerm) = text "()"
     prettySe p bnd (PFalse _) = annName falseTy $ text "_|_"
-    prettySe p bnd (PEq _ l r) =
+    prettySe p bnd (PEq _ _ _ l r) =
       bracket p 2 . align . group $
       prettySe 10 bnd l <+> eq <$> group (prettySe 10 bnd r)
       where eq = annName eqTy (text "=")
@@ -1596,7 +1598,7 @@ instance Sized PTerm where
   size (PFalse fc) = 1
   size (PRefl fc _) = 1
   size (PResolveTC fc) = 1
-  size (PEq fc left right) = 1 + size left + size right
+  size (PEq fc _ _ left right) = 1 + size left + size right
   size (PRewrite fc left right _) = 1 + size left + size right
   size (PPair fc _ left right) = 1 + size left + size right
   size (PDPair fs _ left ty right) = 1 + size left + size ty + size right
@@ -1634,7 +1636,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
-    ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ _ l r)   = ni env l ++ ni env r
@@ -1659,7 +1661,7 @@ boundNamesIn tm = nub $ ni tm
     ni (PLam n ty sc)  = n : (ni ty ++ ni sc)
     ni (PLet n ty val sc)  = n : (ni ty ++ ni val ++ ni sc)
     ni (PPi p n ty sc) = niTacImp p ++ (n : (ni ty ++ ni sc))
-    ni (PEq _ l r)     = ni l ++ ni r
+    ni (PEq _ _ _ l r)     = ni l ++ ni r
     ni (PRewrite _ l r _) = ni l ++ ni r
     ni (PTyped l r)    = ni l ++ ni r
     ni (PPair _ _ l r)   = ni l ++ ni r
@@ -1695,7 +1697,7 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
                                      \\ nub (concatMap (ni env) (map fst os)))
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
-    ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ _ l r)   = ni env l ++ ni env r
@@ -1728,7 +1730,7 @@ namesIn uvars ist tm = nub $ ni [] tm
                                      \\ nub (concatMap (ni env) (map fst os)))
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
-    ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ _ l r)   = ni env l ++ ni env r
@@ -1759,7 +1761,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
-    ni env (PEq _ l r)     = ni env l ++ ni env r
+    ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ _ l r)   = ni env l ++ ni env r

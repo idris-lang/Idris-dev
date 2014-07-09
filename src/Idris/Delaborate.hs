@@ -12,8 +12,9 @@ import Idris.Core.Evaluate
 import Idris.Docstrings (overview, renderDocstring)
 import Idris.ErrReverse
 
-import Data.List (intersperse)
+import Data.List (intersperse, nub)
 import qualified Data.Text as T
+import Control.Monad.State
 
 import Debug.Trace
 
@@ -96,9 +97,10 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
          | n == sUN "Sigma"
                = PDPair un IsType (PRef un x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
-    deFn env (P _ n _) [_,_,l,r]
+    deFn env (P _ n _) [lt,rt,l,r]
          | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
-         | n == eqTy    = PEq un (de env [] l) (de env [] r)
+         | n == eqTy    = PEq un (de env [] lt) (de env [] rt)
+                                 (de env [] l) (de env [] r)
          | n == sUN "Sg_intro" = PDPair un IsTerm (de env [] l) Placeholder
                                            (de env [] r)
     deFn env f@(P _ n _) args 
@@ -165,9 +167,10 @@ pprintErr' i (InternalMsg s) =
          text ("Please consider reporting at " ++ bugaddr)
        ]
 pprintErr' i (CantUnify _ x_in y_in e sc s) =
-  let (x, y) = addImplicitDiffs (delab i x_in) (delab i y_in) in
-    text "Can't unify" <> indented (annTm x_in (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) x)) <$>
-    text "with" <> indented (annTm y_in (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) y)) <>
+  let (x_ns, y_ns) = renameMNs x_in y_in
+      (x, y) = addImplicitDiffs (delab i x_ns) (delab i y_ns) in
+    text "Can't unify" <> indented (annTm x_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) x)) <$>
+    text "with" <> indented (annTm y_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) y)) <>
     case e of
       Msg "" -> empty
       _ -> line <> line <> text "Specifically:" <>
@@ -263,6 +266,41 @@ pprintErr' i (ReflectionFailed msg err) =
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
 
+-- Make sure the machine invented names are shown helpfully to the user, so
+-- that any names which differ internally also differ visibly
+-- FIXME: I can't actually contrive an error to test this! Will revisit later...
+renameMNs :: Term -> Term -> (Term, Term)
+renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
+                    newnames = execState getRenames (zip ns ns) in
+                      (rename newnames x, rename newnames y)
+  where
+    getRenames :: State [(Name, Name)] ()
+    getRenames = do getRs x; getRs y
+                   
+    getRs :: Term -> State [(Name, Name)] ()
+    getRs (P _ n@(MN i x) _) = do
+        nmap <- get
+        when (n `notElem` map fst nmap) $
+           put $ (n, uniqueName n (map fst nmap)) : nmap
+    getRs (App f a) = do getRs f; getRs a
+    getRs (Bind n b sc) = do
+        nmap <- get
+        when (n `notElem` map fst nmap) $
+           put $ (n, uniqueName n (map fst nmap)) : nmap
+        getRs sc
+    getRs t = return ()
+
+    rename :: [(Name, Name)] -> Term -> Term
+    rename ns (P nt x t) | Just x' <- lookup x ns = P nt x' t
+    rename ns (App f a) = App (rename ns f) (rename ns a)
+    rename ns (Bind x b sc) 
+           = let b' = fmap (rename ns) b
+                 sc' = rename ns sc in
+                 case lookup x ns of
+                      Just x' -> Bind x' b' sc'
+                      Nothing -> Bind x b' sc'
+    rename ns x = x
+
 -- If the two terms only differ in their implicits, mark the implicits which
 -- differ as AlwaysShow so that they appear in errors
 addImplicitDiffs :: PTerm -> PTerm -> (PTerm, PTerm)
@@ -295,10 +333,30 @@ addImplicitDiffs x y
     addI (PRefl fc a) (PRefl fc' b) 
          = let (a', b') = addI a b in
                (PRefl fc a', PRefl fc' b')
-    addI (PEq fc a b) (PEq fc' c d) 
+    addI (PEq fc at bt a b) (PEq fc' ct dt c d) 
+         | trace (show (at,bt)) False = undefined
+         | at `expLike` ct && bt `expLike` dt
          = let (a', c') = addI a c
                (b', d') = addI b d in
-               (PEq fc a' b', PEq fc' c' d')
+               (PEq fc at bt a' b', PEq fc' ct dt c' d')
+         | otherwise
+         = let (at', ct') = addI at ct
+               (bt', dt') = addI bt dt
+               (a', c') = addI a c
+               (b', d') = addI b d 
+               showa = if at `expLike` ct then [] else [AlwaysShow] 
+               showb = if bt `expLike` dt then [] else [AlwaysShow] in
+               (PApp fc (PRef fc eqTy) [(pimp (sUN "A") at' True)
+                                               { argopts = showa },
+                                        (pimp (sUN "B") bt' True)
+                                               { argopts = showb },
+                                        pexp a', pexp b'],
+                PApp fc (PRef fc eqTy) [(pimp (sUN "A") ct' True)
+                                               { argopts = showa },
+                                        (pimp (sUN "B") dt' True)
+                                               { argopts = showb },
+                                        pexp c', pexp d'])
+                                                
     addI (PPair fc pi a b) (PPair fc' pi' c d) 
          = let (a', c') = addI a c
                (b', d') = addI b d in
@@ -321,7 +379,8 @@ addImplicitDiffs x y
         = n == n' && expLike s s' && expLike t t'
     expLike (PPair _ _ x y) (PPair _ _ x' y') = expLike x x' && expLike y y'
     expLike (PDPair _ _ x _ y) (PDPair _ _ x' _ y') = expLike x x' && expLike y y'
-    expLike (PEq _ x y) (PEq _ x' y') = expLike x x' && expLike y y'
+    expLike (PEq _ xt yt x y) (PEq _ xt' yt' x' y') 
+         = expLike x x' && expLike y y'
     expLike (PRefl _ x) (PRefl _ x') = expLike x x'
     expLike x y = x == y
 
