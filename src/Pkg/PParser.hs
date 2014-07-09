@@ -13,6 +13,8 @@ import Idris.CmdOptions
 import Control.Monad.State.Strict
 import Control.Applicative
 
+import System.Info (os)
+
 
 type PParser = StateT PkgDesc IdrisInnerParser
 
@@ -54,7 +56,10 @@ pClause :: PParser ()
 pClause = do reserved "executable"; lchar '=';
              exec <- iName []
              st <- get
-             put (st { execout = Just (show exec) })
+             put (st { execout = Just (if os `elem` ["win32", "mingw32", "cygwin32"] 
+                                          then ((show exec) ++ ".exe")
+                                          else ( show exec )
+                                      ) })
       <|> do reserved "main"; lchar '=';
              main <- iName []
              st <- get
