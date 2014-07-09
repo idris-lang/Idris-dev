@@ -784,12 +784,6 @@ let_ syn = try (do reserved "let"
                    ls <- indentedBlock (let_binding syn)
                    reserved "in";  sc <- expr syn
                    return (buildLets ls sc))
---            <|> (do reserved "let"; fc <- getFC; pat <- expr' (syn { inPattern = True } )
---                    symbol "="; v <- expr syn
---                    ts <- option [] (do lchar '|'
---                                        sepBy1 (do_alt syn) (lchar '|'))
---                    reserved "in"; sc <- expr syn
---                    return (PCase fc v ((pat, sc) : ts)))
            <?> "let binding"
   where buildLets [] sc = sc
         buildLets ((fc,PRef _ n,ty,v,[]):ls) sc
