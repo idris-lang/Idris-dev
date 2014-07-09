@@ -255,8 +255,8 @@ elab ist info emode opts fn tm
         = elab' ina (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True,
                                               pimp (sMN 0 "x") t False])
     elab' ina (PEq fc lt rt l r) = elab' ina (PApp fc (PRef fc eqTy)
-                                    [pimp (sUN "A") Placeholder True,
-                                     pimp (sUN "B") Placeholder False,
+                                    [pimp (sUN "A") lt True,
+                                     pimp (sUN "B") rt False,
                                      pexp l, pexp r])
     elab' ina@(_, a, inty, qq) (PPair fc _ l r)
         = do hnf_compute

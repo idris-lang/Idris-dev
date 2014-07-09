@@ -853,7 +853,7 @@ expandParams dec ps ns infs tm = en tm
        | n `elem` (map fst ps ++ ns) && t /= Placeholder
            = let n' = mkShadow n in
                  PDPair f p (PRef f' n') (en t) (en (shadow n n' r))
-    en (PEq f lt rt l r) = PEq f (en lt) (en r) (en l) (en r)
+    en (PEq f lt rt l r) = PEq f (en lt) (en rt) (en l) (en r)
     en (PRewrite f l r g) = PRewrite f (en l) (en r) (fmap en g)
     en (PTyped l r) = PTyped (en l) (en r)
     en (PPair f p l r) = PPair f p (en l) (en r)
