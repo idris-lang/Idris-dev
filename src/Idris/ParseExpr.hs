@@ -780,23 +780,32 @@ TypeSig' ::=
 @
  -}
 let_ :: SyntaxInfo -> IdrisParser PTerm
-let_ syn = try (do reserved "let"; fc <- getFC; n <- name;
-                   ty <- option Placeholder (do lchar ':'; expr' syn)
-                   lchar '='
-                   v <- expr syn
-                   ts <- option [] (do lchar '|'
-                                       sepBy1 (do_alt syn) (lchar '|'))
+let_ syn = try (do reserved "let"
+                   ls <- indentedBlock (let_binding syn)
                    reserved "in";  sc <- expr syn
-                   case ts of
-                        [] -> return (PLet n ty v sc)
-                        alts -> return (PCase fc v ((PRef fc n, sc) : ts)))
-           <|> (do reserved "let"; fc <- getFC; pat <- expr' (syn { inPattern = True } )
-                   symbol "="; v <- expr syn
-                   ts <- option [] (do lchar '|'
-                                       sepBy1 (do_alt syn) (lchar '|'))
-                   reserved "in"; sc <- expr syn
-                   return (PCase fc v ((pat, sc) : ts)))
+                   return (buildLets ls sc))
+--            <|> (do reserved "let"; fc <- getFC; pat <- expr' (syn { inPattern = True } )
+--                    symbol "="; v <- expr syn
+--                    ts <- option [] (do lchar '|'
+--                                        sepBy1 (do_alt syn) (lchar '|'))
+--                    reserved "in"; sc <- expr syn
+--                    return (PCase fc v ((pat, sc) : ts)))
            <?> "let binding"
+  where buildLets [] sc = sc
+        buildLets ((fc,PRef _ n,ty,v,[]):ls) sc
+          = PLet n ty v (buildLets ls sc)
+        buildLets ((fc,pat,ty,v,alts):ls) sc
+          = PCase fc v ((pat, buildLets ls sc) : alts)
+
+let_binding syn = do fc <- getFC; 
+                     pat <- expr' (syn { inPattern = True })
+                     ty <- option Placeholder (do lchar ':'; expr' syn)
+                     lchar '='
+                     v <- expr syn
+                     ts <- option [] (do lchar '|'
+                                         sepBy1 (do_alt syn) (lchar '|'))
+                     return (fc,pat,ty,v,ts)
+                  
 
 {- | Parses a quote goal
 

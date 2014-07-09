@@ -439,7 +439,8 @@ closeBlock = do ist <- get
                         Nothing : xs -> lchar '}' >> return xs <?> "end of block"
                         Just lvl : xs -> (do i   <- indent
                                              isParen <- lookAheadMatches (char ')')
-                                             if i >= lvl && not isParen
+                                             isIn <- lookAheadMatches (reserved "in")
+                                             if i >= lvl && not (isParen || isIn)
                                                 then fail "not end of block"
                                                 else return xs)
                                           <|> (do notOpenBraces
@@ -462,7 +463,8 @@ keepTerminator =  do lchar ';'; return ()
               <|> do c <- indent; l <- lastIndent
                      unless (c <= l) $ fail "not a terminator"
               <|> do isParen <- lookAheadMatches (oneOf ")}|")
-                     unless isParen $ fail "not a terminator"
+                     isIn <- lookAheadMatches (reserved "in")
+                     unless (isIn || isParen) $ fail "not a terminator"
               <|> lookAhead eof
 
 -- | Checks if application expression does not end
