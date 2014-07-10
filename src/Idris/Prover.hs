@@ -18,6 +18,7 @@ import Idris.DataOpts
 import Idris.Completion
 import Idris.IdeSlave
 import Idris.Output
+import Idris.TypeSearch (searchByType)
 
 import Text.Trifecta.Result(Result(..))
 
@@ -227,6 +228,7 @@ ploop fn d prompt prf e h
               Success (TCheck t) -> checkType t
               Success (TEval t)  -> evalTerm t e
               Success (TDocStr x) -> docStr x
+              Success (TSearch t) -> search t
               Success tac -> do (_, e) <- elabStep e saveState
                                 (_, st) <- elabStep e (runTac autoSolve i fn tac)
                                 return (True, st, False, prf ++ [step], Right $ iPrintResult ""))
@@ -318,3 +320,6 @@ ploop fn d prompt prf e h
         docStr (Right c) = do ist <- getIState
                               let h = idris_outh ist
                               return (False, e, False, prf, Right . ihRenderResult h $ pprintConstDocs ist c (constDocs c))
+        search t = do ist <- getIState
+                      let h = idris_outh ist
+                      return (False, e, False, prf, Right $ searchByType h t)

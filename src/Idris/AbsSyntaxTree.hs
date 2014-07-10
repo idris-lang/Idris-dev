@@ -762,6 +762,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | TCheck t
                 | TEval t
                 | TDocStr (Either Name Const)
+                | TSearch t
                 | Qed | Abandon
     deriving (Show, Eq, Functor)
 {-!
