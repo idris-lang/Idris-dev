@@ -20,20 +20,20 @@ import qualified Data.Set as S
 import qualified Data.Text as T (pack, isPrefixOf)
 
 import Idris.AbsSyntax (addUsingConstraints, addImpl, getContext, getIState, putIState, implicit)
-import Idris.AbsSyntaxTree (class_instances, ClassInfo, defaultSyntax, Idris, 
-  IState (idris_classes, idris_docstrings, tt_ctxt),
-  implicitAllowed, prettyDocumentedIst, prettyIst, PTerm, toplevel)
+import Idris.AbsSyntaxTree (class_instances, ClassInfo, defaultSyntax, Idris,
+  IState (idris_classes, idris_docstrings, tt_ctxt, idris_outputmode),
+  implicitAllowed, OutputMode(..), prettyDocumentedIst, prettyIst, PTerm, toplevel)
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
 import Idris.Core.TT hiding (score)
 import Idris.Core.Unify (match_unify)
 import Idris.Delaborate (delabTy)
 import Idris.Docstrings (noDocs, overview)
 import Idris.ElabDecls (elabType')
-import Idris.Output (ihRenderResult)
+import Idris.Output (ihRenderOutput, ihPrintResult, ihRenderResult)
 
 import System.IO (Handle)
 
-import Util.Pretty (text, char, (<>), Doc)
+import Util.Pretty (text, char, vsep, (<>), Doc)
 
 searchByType :: Handle -> PTerm -> Idris ()
 searchByType h pterm = do
@@ -49,12 +49,15 @@ searchByType h pterm = do
        [ let docInfo = (n, delabTy i n, fmap (overview . fst) (lookupCtxtExact n (idris_docstrings i))) in
          displayScore score <> char ' ' <> prettyDocumentedIst i docInfo
                 | (n, score) <- names']
-  mapM_ (ihRenderResult h) docs
-  where 
+  case idris_outputmode i of
+    RawOutput -> do mapM_ (ihRenderOutput h) docs
+                    ihPrintResult h ""
+    IdeSlave n -> ihRenderResult h (vsep docs)
+  where
     numLimit = 50
     syn = defaultSyntax { implicitAllowed = True } -- syntax
     n = sMN 0 "searchType" -- name
-  
+
 -- | Conduct a type-directed search using a given match predicate
 searchUsing :: (IState -> Type -> [(Name, Type)] -> [(Name, a)]) 
   -> IState -> Type -> [(Name, a)]

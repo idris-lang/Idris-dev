@@ -78,6 +78,17 @@ ihPrintFunTypes h bnd n overloads = do ist <- getIState
         ppOverload ppo infixes n tm =
           fullName n <+> colon <+> align (pprintPTerm ppo bnd [] infixes tm)
 
+ihRenderOutput :: Handle -> Doc OutputAnnotation -> Idris ()
+ihRenderOutput h doc =
+  do i <- getIState
+     case idris_outputmode i of
+       RawOutput -> do out <- iRender doc
+                       runIO $ putStrLn (displayDecorated (consoleDecorate i) out)
+       IdeSlave n ->
+        do (str, spans) <- fmap displaySpans . iRender . fmap (fancifyAnnots i) $ doc
+           let out = [toSExp str, toSExp spans]
+           runIO . putStrLn $ convSExp "write-decorated" out n
+
 ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderResult h d = do ist <- getIState
                         case idris_outputmode ist of
@@ -85,7 +96,7 @@ ihRenderResult h d = do ist <- getIState
                           IdeSlave n -> ideSlaveReturnAnnotated n h d
 
 ideSlaveReturnWithStatus :: String -> Integer -> Handle -> Doc OutputAnnotation -> Idris ()
-ideSlaveReturnWithStatus status n h out = do 
+ideSlaveReturnWithStatus status n h out = do
   ist <- getIState
   (str, spans) <- fmap displaySpans .
                   iRender .
