@@ -1830,7 +1830,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
              logLvl 2 ("Matching " ++ showTmImpls tm ++ " against " ++
                                       showTmImpls toplhs)
              case matchClause i toplhs tm of
-                Left (a,b) -> trace ("matchClause: " ++ show a ++ " =/= " ++ show b) (ifail $ show fc ++ ":with clause does not match top level")
+                Left (a,b) -> ifail $ show fc ++ ":with clause does not match top level"
                 Right mvars ->
                     do logLvl 3 ("Match vars : " ++ show mvars)
                        lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
