@@ -276,7 +276,7 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
     -- this isn't supported in a pattern, so special case here
     nshow (PRef _ (UN z)) | z == txt "Z" = "Z"
     nshow (PApp _ (PRef _ (UN s)) [x]) | s == txt "S" =
-               "S " ++ addBrackets (nshow (getTm x))
+               "(S " ++ addBrackets (nshow (getTm x)) ++ ")"
     nshow t = show t
 
     -- if there's any {n} replace with {n=n}
