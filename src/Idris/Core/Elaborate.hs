@@ -514,8 +514,10 @@ apply' fillt fn imps =
        put (ES (p { dontunify = dont, unified = (n, unify),
                     notunified = notunify ++ notunified p }, a) s prev)
        fillt (raw_apply fn (map (Var . snd) args))
---        trace ("Goal " ++ show g ++ "\n" ++ show (fn,  imps, unify) ++ "\n" ++ show ptm) $
-       end_unify
+       ulog <- getUnifyLog
+       g <- goal
+       traceWhen ulog ("Goal " ++ show g ++ " -- when elaborating " ++ show fn) $
+        end_unify
        return $! (map (\(argName, argHole) -> (argName, updateUnify unify argHole)) args)
   where updateUnify us n = case lookup n us of
                                 Just (P _ t _) -> t

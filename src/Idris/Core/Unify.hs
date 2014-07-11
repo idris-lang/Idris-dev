@@ -428,18 +428,12 @@ unify ctxt env topx topy inj holes from =
 
     unApp fn bnames appx@(App fx ax) appy@(App fy ay)
          | (injectiveApp fx && injectiveApp fy)
-        || (injectiveApp fx && rigid appx && metavarApp appy && numArgs appx == numArgs appy)
-        || (injectiveApp fy && rigid appy && metavarApp appx && numArgs appx == numArgs appy)
         || (injectiveApp fx && metavarApp fy && ax == ay)
         || (injectiveApp fy && metavarApp fx && ax == ay)
          = do let (headx, _) = unApply fx
               let (heady, _) = unApply fy
               -- fail quickly if the heads are disjoint
               checkHeads headx heady
---              if True then -- (injective fx || injective fy || fx == fy) then
---              if (injective fx && metavarApp appy) ||
---                 (injective fy && metavarApp appx) ||
---                 (injective fx && injective fy) || fx == fy
               uplus
                 (do hf <- un' True bnames fx fy
                     let ax' = hnormalise hf ctxt env (substNames hf ax)
@@ -624,9 +618,9 @@ envPos x i ((y, _) : ys) | x == y = i
 -- ASSUMPTION: inputs are in normal form
 
 recoverable t@(App _ _) _
-    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
+    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
 recoverable _ t@(App _ _)
-    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
+    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
 recoverable (P (DCon _ _) x _) (P (DCon _ _) y _) = x == y
 recoverable (P (TCon _ _) x _) (P (TCon _ _) y _) = x == y
 recoverable (Constant _) (P (DCon _ _) y _) = False

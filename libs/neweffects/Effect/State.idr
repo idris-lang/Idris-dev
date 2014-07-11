@@ -8,8 +8,8 @@ data State : Effect where
   Get :      { a }       State a
   Put : b -> { a ==> b } State () 
 
-using (m : Type -> Type)
-  instance Handler State m where
+-- using (m : Type -> Type)
+instance Handler State m where
      handle st Get     k = k st st
      handle st (Put n) k = k () n
 

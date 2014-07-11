@@ -871,7 +871,7 @@ updateNotunified ns nu = up nu where
 
 updateProblems :: Context -> [(Name, TT Name)] -> Fails -> [Name] -> [Name]
                -> ([(Name, TT Name)], Fails)
-updateProblems ctxt [] ps inj holes = ([], ps)
+-- updateProblems ctxt [] ps inj holes = ([], ps)
 updateProblems ctxt ns ps inj holes = up ns ps where
   up ns [] = (ns, [])
   up ns ((x, y, env, err, while, um) : ps) =

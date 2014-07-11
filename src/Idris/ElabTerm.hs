@@ -245,12 +245,8 @@ elab ist info emode opts fn tm
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC 5 g fn ist
     elab' ina (PResolveTC fc)
-        | True = do c <- getNameFrom (sMN 0 "class")
-                    instanceArg c
-        | otherwise = do g <- goal
-                         try (resolveTC 2 g fn ist)
-                          (do c <- getNameFrom (sMN 0 "class")
-                              instanceArg c)
+        = do c <- getNameFrom (sMN 0 "class")
+             instanceArg c
     elab' ina (PRefl fc t)
         = elab' ina (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True,
                                               pimp (sMN 0 "x") t False])
@@ -485,7 +481,9 @@ elab ist info emode opts fn tm
                     -- we can unify with them
                     case lookupCtxt f (idris_classes ist) of
                         [] -> return ()
-                        _ -> mapM_ setInjective (map getTm args)
+                        _ -> do mapM_ setInjective (map getTm args)
+                                -- maybe more things are solvable now
+                                unifyProblems
                     ctxt <- get_context
                     let guarded = isConName f ctxt
 --                    trace ("args is " ++ show args) $ return ()
@@ -498,10 +496,11 @@ elab ist info emode opts fn tm
                     -- Sort so that the implicit tactics and alternatives go last
                     let (ns', eargs) = unzip $
                              sortBy cmpArg (zip ns args)
+                    ulog <- getUnifyLog
                     elabArgs ist (ina || not isinf, guarded, inty, qq)
                            [] fc False f ns' 
                              (f == sUN "Force")
-                             (map (\x -> (False, getTm x)) eargs) -- TODO: remove this False arg
+                             (map (\x -> getTm x) eargs) -- TODO: remove this False arg
                     solve
                     ivs' <- get_instances
                     -- Attempt to resolve any type classes which have 'complete' types,
@@ -525,16 +524,23 @@ elab ist info emode opts fn tm
             -- FIXME: Better would be to allow alternative resolution to be
             -- retried after more information is in.
             cmpArg (_, x) (_, y)
+                | constraint x && not (constraint y) = LT
+                | constraint y && not (constraint x) = GT
+                | otherwise
                    = compare (conDepth 0 (getTm x) + priority x + alt x) 
                              (conDepth 0 (getTm y) + priority y + alt y)
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
-                                   PAlternative True _ -> 1
+                                   PAlternative True _ -> 2
                                    PTactics _ -> 150
-                                   PLam _ _ _ -> 2
-                                   PRewrite _ _ _ _ -> 3
-                                   _ -> 0
+                                   PLam _ _ _ -> 3
+                                   PRewrite _ _ _ _ -> 4
+                                   PResolveTC _ -> 0
+                                   _ -> 1
 
+            constraint (PConstraint _ _ _ _) = True
+            constraint _ = False
+ 
             -- Score a point for every level where there is a non-constructor
             -- function (so higher score --> done later)
             -- Only relevant when on lhs
@@ -546,6 +552,7 @@ elab ist info emode opts fn tm
             conDepth d (PPatvar _ _) = 0
             conDepth d (PAlternative _ as) = maximum (map (conDepth d) as)
             conDepth d Placeholder = 0
+            conDepth d (PResolveTC _) = 0
             conDepth d t = max (100 - d) 1
 
             checkIfInjective n = do
@@ -558,7 +565,14 @@ elab ist info emode opts fn tm
                                 case lookupCtxt c (idris_classes ist) of
                                    [] -> return ()
                                    _ -> -- type class, set as injective
-                                        mapM_ setinjArg args
+                                        do mapM_ setinjArg args
+                                        -- maybe we can solve more things now...
+                                           ulog <- getUnifyLog
+                                           probs <- get_probs
+                                           traceWhen ulog ("Injective now " ++ show args ++ "\n" ++ qshow probs) $
+                                             unifyProblems
+                                           probs <- get_probs
+                                           traceWhen ulog (qshow probs) $ return ()
                             _ -> return ()
                      
             setinjArg (P _ n _) = setinj n
@@ -832,17 +846,13 @@ elab ist info emode opts fn tm
              -> Name -- ^ Name of the function being applied
              -> [(Name, Name)] -- ^ (Argument Name, Hole Name)
              -> Bool -- ^ under a 'force'
-             -> [(Bool, PTerm)] -- ^ (Laziness, argument)
+             -> [PTerm] -- ^ (Laziness, argument)
              -> ElabD ()
     elabArgs ist ina failed fc retry f [] force _ = return ()
-    elabArgs ist ina failed fc r f (n:ns) force ((_, Placeholder) : args)
+    elabArgs ist ina failed fc r f (n:ns) force (Placeholder : args)
         = elabArgs ist ina failed fc r f ns force args
-    elabArgs ist ina failed fc r f ((argName, holeName):ns) force ((lazy, t) : args)
-        | lazy && not pattern
-          = elabArg argName holeName (PApp bi (PRef bi (sUN "Delay"))
-                                           [pimp (sUN "a") Placeholder True,
-                                            pexp t])
-        | otherwise = elabArg argName holeName t
+    elabArgs ist ina failed fc r f ((argName, holeName):ns) force (t : args)
+        = do elabArg argName holeName t
       where elabArg argName holeName t =
               do now_elaborating fc f argName
                  wrapErr f argName $ do
@@ -854,7 +864,11 @@ elab ist info emode opts fn tm
                    failed' <- -- trace (show (n, t, hs, tm)) $
                               -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
                               case holeName `elem` hs of
-                                True -> do focus holeName; elab ina t; return failed
+                                True -> do focus holeName; 
+                                           g <- goal
+                                           ulog <- getUnifyLog
+                                           traceWhen ulog ("Elaborating argument " ++ show (argName, holeName, g)) $ 
+                                             elab ina t; return failed
                                 False -> return failed
                    done_elaborating_arg f argName
                    elabArgs ist ina failed fc r f ns force args
