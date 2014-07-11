@@ -124,6 +124,13 @@ instance Ord String where
                   GT
 
 
+instance Ord Bool where
+    compare True True = EQ
+    compare False False = EQ
+    compare False True = LT
+    compare True False = GT
+
+
 instance (Ord a, Ord b) => Ord (a, b) where
   compare (xl, xr) (yl, yr) =
     if xl /= yl
