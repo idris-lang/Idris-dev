@@ -1399,7 +1399,7 @@ addImpl' inpat env infns ist ptm
     ai qq env ds (PApp fc f as)
       = let f' = ai qq env ds f
             as' = map (fmap (ai qq env ds)) as in
-         mkPApp fc 1 f' as'
+            mkPApp fc 1 f' as'
     ai qq env ds (PCase fc c os)
       = let c' = ai qq env ds c in
         -- leave os alone, because they get lifted into a new pattern match
@@ -1424,8 +1424,8 @@ addImpl' inpat env infns ist ptm
             sc' = ai qq ((n, Nothing):env) ds sc in
             PGoal fc r' n sc'
     ai qq env ds (PHidden tm) = PHidden (ai qq env ds tm)
-    ai qq env ds (PProof ts) = PProof (map (fmap (ai qq env ds)) ts)
-    ai qq env ds (PTactics ts) = PTactics (map (fmap (ai qq env ds)) ts)
+    -- Don't do PProof or PTactics since implicits get added when scope is
+    -- properly known in ElabTerm.runTac
     ai qq env ds (PRefl fc tm) = PRefl fc (ai qq env ds tm)
     ai qq env ds (PUnifyLog tm) = PUnifyLog (ai qq env ds tm)
     ai qq env ds (PNoImplicits tm) = PNoImplicits (ai qq env ds tm)

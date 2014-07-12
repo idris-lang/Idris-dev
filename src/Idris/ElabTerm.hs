@@ -806,16 +806,17 @@ elab ist info emode opts fn tm
         do ty <- goal
            env <- get_env
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
-           let tries = if pattern then [t, mkDelay t] else [mkDelay t, t]
+           let tries = if pattern then [t, mkDelay env t] else [mkDelay env t, t]
            case tyh of
                 P _ (UN l) _ | l == txt "Lazy'"
                     -> return (PAlternative False tries)
                 _ -> return t
       where
-        mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
-        mkDelay t = let fc = fileFC "Delay" in
-                        addImpl ist (PApp fc (PRef fc (sUN "Delay"))
-                                          [pexp t])
+        mkDelay env (PAlternative b xs) = PAlternative b (map (mkDelay env) xs)
+        mkDelay env t 
+            = let fc = fileFC "Delay" in
+                  addImplBound ist (map fst env) (PApp fc (PRef fc (sUN "Delay"))
+                                                 [pexp t])
 
     -- case is tricky enough without implicit coercions! If they are needed,
     -- they can go in the branches separately.
@@ -831,11 +832,12 @@ elab ist info emode opts fn tm
                          (PCoerced tm, _) -> tm
                          (_, []) -> t
                          (_, cs) -> PAlternative False [t ,
-                                       PAlternative True (map (mkCoerce t) cs)]
+                                       PAlternative True (map (mkCoerce env t) cs)]
            return t'
        where
-         mkCoerce t n = let fc = fileFC "Coercion" in -- line never appears!
-                            addImpl ist (PApp fc (PRef fc n) [pexp (PCoerced t)])
+         mkCoerce env t n = let fc = fileFC "Coercion" in -- line never appears!
+                                addImplBound ist (map fst env)
+                                  (PApp fc (PRef fc n) [pexp (PCoerced t)])
 
     -- | Elaborate the arguments to a function
     elabArgs :: IState -- ^ The current Idris state
@@ -1101,9 +1103,10 @@ runTac :: Bool -> IState -> Name -> PTactic -> ElabD ()
 runTac autoSolve ist fn tac 
     = do env <- get_env
          g <- goal
+         let tac' = fmap (addImplBound ist (map fst env)) tac
          if autoSolve 
-            then runT (fmap (addImplBound ist (map fst env)) tac)
-            else no_errors (runT (fmap (addImplBound ist (map fst env)) tac))
+            then runT tac'
+            else no_errors (runT tac')
                    (Just (CantSolveGoal g (map (\(n, b) -> (n, binderTy b)) env)))
   where
     runT (Intro []) = do g <- goal
