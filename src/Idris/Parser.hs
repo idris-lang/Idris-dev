@@ -739,7 +739,9 @@ rhs syn n = do lchar '='; expr syn
         <|> do reserved "impossible"; return PImpossible
         <?> "function right hand side"
   where mkN :: Name -> Name
-        mkN (UN x)   = sUN (str x++"_lemma_1")
+        mkN (UN x)   = if (tnull x || not (isAlpha (thead x)))
+                         then sUN "infix_op_lemma_1"
+                         else sUN (str x++"_lemma_1")
         mkN (NS x n) = NS (mkN x) n
         n' :: Name
         n' = mkN n
