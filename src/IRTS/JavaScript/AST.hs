@@ -180,7 +180,7 @@ compileJS' indent (JSNew name args) =
   `T.append` ")"
 
 compileJS' indent (JSError exc) =
-  "throw new Error(\"" `T.append` T.pack exc `T.append` "\")"
+  "(function(){throw new Error(\"" `T.append` T.pack exc `T.append` "\")})()"
 
 compileJS' indent (JSBinOp op lhs rhs) =
     compileJS' indent lhs
