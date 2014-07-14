@@ -750,11 +750,6 @@ elab ist info emode opts fn tm
                 = do focus n
                      elabE (ina, g, inty, False) tm
 
-            holesInTerm tm = do hs <- get_holes
-                                return $ intersect (freeNames tm) hs
-            removeAll xs [] = []
-            removeAll xs (y:ys) | y `elem` xs = removeAll xs ys
-                                | otherwise   = y : removeAll xs ys
 
     elab' ina (PUnquote t) = fail "Found unquote outside of quasiquote"
     elab' ina x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
