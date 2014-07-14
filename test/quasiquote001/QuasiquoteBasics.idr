@@ -13,22 +13,18 @@ twoElems : TT
 twoElems = `(with List [(), ()])
 
 copy : TT -> TT
-copy q = `((~q,~q))
+copy q = `((~q,~q) : (Type, Type))
 
 thing : TT -> TT
 thing tm = `(with List [Type, ~tm])
-
-getTyArg : TT -> Maybe TT
-getTyArg `(~f ~x) = Just x
-getTyArg _ = Nothing
 
 
 
 
 namespace Main
   main : IO ()
-  main = do putStrLn . show $ thing (copy nat)
+  main = do putStrLn . show $ twoElems
             putStrLn "--------------"
-            putStrLn . show $ getTyArg nat
+            putStrLn . show . thing $ copy nat
             putStrLn "--------------"
-            putStrLn . show $ getTyArg (twoElems)
+            putStrLn . show . copy . copy $ `(Type)

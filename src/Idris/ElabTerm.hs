@@ -14,7 +14,7 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
-import Idris.Core.Typecheck (check)
+import Idris.Core.Typecheck (check, recheck)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
 
@@ -729,12 +729,16 @@ elab ist info emode opts fn tm
              -- original goal in the original proof state.
              env <- get_env
              loadState
-             case fmap (explicitNames . binderVal) $ lookup nTm env of
-               Just q
-                 | pattern   -> reflectQuotePattern unquoteNames q
-                 | otherwise -> do fill $ reflectQuote unquoteNames q
-                                   solve
-               Nothing -> fail "Broken elaboration of quasiquote"
+             let quoted = fmap (explicitNames . binderVal) $ lookup nTm env
+
+             case quoted of
+               Just q -> do ctxt <- get_context
+                            (q', _, _) <- lift $ recheck ctxt [(uq, Lam Erased) | uq <- unquoteNames] (forget q) q
+                            if pattern
+                              then reflectQuotePattern unquoteNames q'
+                              else do fill $ reflectQuote unquoteNames q'
+                                      solve
+               Nothing -> lift . tfail . Msg $ "Broken elaboration of quasiquote"
 
              -- Finally fill in the terms or patterns from the unquotes. This
              -- happens last so that their holes still exist while elaborating
