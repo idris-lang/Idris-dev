@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE OverloadedStrings #-}
 module IRTS.CodegenJavaScript (codegenJavaScript, codegenNode, JSTarget(..)) where
 
 import Idris.AbsSyntax hiding (TypeCase)
@@ -25,6 +26,8 @@ import System.IO
 import System.Directory
 
 import qualified Data.Map.Strict as M
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 
 
 data CompileInfo = CompileInfo { compileInfoApplyCases  :: [Int]
@@ -154,7 +157,7 @@ data JS = JSRaw String
 
 data FFI = FFICode Char | FFIArg Int | FFIError String
 
-ffi :: String -> [String] -> String
+ffi :: String -> [String] -> T.Text
 ffi code args = let parsed = ffiParse code in
                     case ffiError parsed of
                          Just err -> error err
@@ -178,37 +181,37 @@ ffi code args = let parsed = ffiParse code in
     ffiError (x:xs)             = ffiError xs
 
 
-    renderFFI :: [FFI] -> [String] -> String
+    renderFFI :: [FFI] -> [String] -> T.Text
     renderFFI [] _ = ""
-    renderFFI (FFICode c : fs) args = c : renderFFI fs args
+    renderFFI (FFICode c : fs) args = c `T.cons` renderFFI fs args
     renderFFI (FFIArg i : fs) args
-      | i < length args && i >= 0 = args !! i ++ renderFFI fs args
+      | i < length args && i >= 0 = T.pack (args !! i) `T.append` renderFFI fs args
       | otherwise = error "FFI - Argument index out of bounds"
 
-compileJS :: JS -> String
+compileJS :: JS -> T.Text
 compileJS = compileJS' 0
 
-compileJS' :: Int -> JS -> String
+compileJS' :: Int -> JS -> T.Text
 compileJS' indent JSNoop = ""
 
 compileJS' indent (JSAnnotation annotation js) =
-  "/** @" ++ show annotation ++ " */\n" ++ compileJS' indent js
+  "/** @" `T.append` T.pack (show annotation) `T.append` " */\n" `T.append` compileJS' indent js
 
 compileJS' indent (JSFFI raw args) =
-  ffi raw (map (compileJS' indent) args)
+  ffi raw (map (T.unpack . compileJS' indent) args)
 
 compileJS' indent (JSRaw code) =
-  code
+  T.pack code
 
 compileJS' indent (JSIdent ident) =
-  ident
+  T.pack ident
 
 compileJS' indent (JSFunction args body) =
-      replicate indent ' ' ++ "function("
-   ++ intercalate "," args
-   ++ "){\n"
-   ++ compileJS' (indent + 2) body
-   ++ "\n}\n"
+      T.replicate indent " " `T.append` "function("
+   `T.append` T.intercalate "," (map T.pack args)
+   `T.append` "){\n"
+   `T.append` compileJS' (indent + 2) body
+   `T.append` "\n}\n"
 
 compileJS' indent (JSType ty)
   | JSIntTy     <- ty = "i$Int"
@@ -220,42 +223,42 @@ compileJS' indent (JSType ty)
   | JSForgotTy  <- ty = "i$Forgot"
 
 compileJS' indent (JSSeq seq) =
-  intercalate ";\n" (
+  T.intercalate ";\n" (
     map (
-      (replicate indent ' ' ++) . (compileJS' indent)
+      (T.replicate indent " " `T.append`) . (compileJS' indent)
     ) $ filter (/= JSNoop) seq
-  ) ++ ";"
+  ) `T.append` ";"
 
 compileJS' indent (JSReturn val) =
-  "return " ++ compileJS' indent val
+  "return " `T.append` compileJS' indent val
 
 compileJS' indent (JSApp lhs rhs)
   | JSFunction {} <- lhs =
-    concat ["(", compileJS' indent lhs, ")(", args, ")"]
+    T.concat ["(", compileJS' indent lhs, ")(", args, ")"]
   | otherwise =
-    concat [compileJS' indent lhs, "(", args, ")"]
-  where args :: String
-        args = intercalate "," $ map (compileJS' 0) rhs
+    T.concat [compileJS' indent lhs, "(", args, ")"]
+  where args :: T.Text
+        args = T.intercalate "," $ map (compileJS' 0) rhs
 
 compileJS' indent (JSNew name args) =
-  "new " ++ name ++ "(" ++ intercalate "," (map (compileJS' 0) args) ++ ")"
+  "new " `T.append` T.pack name `T.append` "(" `T.append` T.intercalate "," (map (compileJS' 0) args) `T.append` ")"
 
 compileJS' indent (JSError exc) =
-  "throw new Error(\"" ++ exc ++ "\")"
+  "throw new Error(\"" `T.append` T.pack exc `T.append` "\")"
 
 compileJS' indent (JSBinOp op lhs rhs) =
-  compileJS' indent lhs ++ " " ++ op ++ " " ++ compileJS' indent rhs
+  compileJS' indent lhs `T.append` " " `T.append` T.pack op `T.append` " " `T.append` compileJS' indent rhs
 
 compileJS' indent (JSPreOp op val) =
-  op ++ compileJS' indent val
+  T.pack op `T.append` compileJS' indent val
 
 compileJS' indent (JSProj obj field)
   | JSFunction {} <- obj =
-    concat ["(", compileJS' indent obj, ").", field]
+    T.concat ["(", compileJS' indent obj, ").", T.pack field]
   | JSAssign {} <- obj =
-    concat ["(", compileJS' indent obj, ").", field]
+    T.concat ["(", compileJS' indent obj, ").", T.pack field]
   | otherwise =
-    compileJS' indent obj ++ '.' : field
+    compileJS' indent obj `T.append` ('.' `T.cons` T.pack field)
 
 compileJS' indent JSNull =
   "null"
@@ -273,95 +276,95 @@ compileJS' indent JSFalse =
   "false"
 
 compileJS' indent (JSArray elems) =
-  "[" ++ intercalate "," (map (compileJS' 0) elems) ++ "]"
+  "[" `T.append` T.intercalate "," (map (compileJS' 0) elems) `T.append` "]"
 
 compileJS' indent (JSString str) =
-  "\"" ++ str ++ "\""
+  "\"" `T.append` T.pack str `T.append` "\""
 
 compileJS' indent (JSNum num)
-  | JSInt i                    <- num = show i
-  | JSFloat f                  <- num = show f
-  | JSInteger JSBigZero        <- num = "i$ZERO"
-  | JSInteger JSBigOne         <- num = "i$ONE"
-  | JSInteger (JSBigInt i)     <- num = show i
-  | JSInteger (JSBigIntExpr e) <- num = "i$bigInt(" ++ compileJS' indent e ++ ")"
+  | JSInt i                    <- num = T.pack (show i)
+  | JSFloat f                  <- num = T.pack (show f)
+  | JSInteger JSBigZero        <- num = T.pack "i$ZERO"
+  | JSInteger JSBigOne         <- num = T.pack "i$ONE"
+  | JSInteger (JSBigInt i)     <- num = T.pack (show i)
+  | JSInteger (JSBigIntExpr e) <- num = "i$bigInt(" `T.append` compileJS' indent e `T.append` ")"
 
 compileJS' indent (JSAssign lhs rhs) =
-  compileJS' indent lhs ++ " = " ++ compileJS' indent rhs
+  compileJS' indent lhs `T.append` " = " `T.append` compileJS' indent rhs
 
 compileJS' 0 (JSAlloc name (Just val@(JSNew _ _))) =
-  "var " ++ name ++ " = " ++ compileJS' 0 val ++ ";\n"
+  "var " `T.append` T.pack name `T.append` " = " `T.append` compileJS' 0 val `T.append` ";\n"
 
 compileJS' indent (JSAlloc name val) =
-  "var " ++ name ++ maybe "" ((" = " ++) . compileJS' indent) val
+  "var " `T.append` T.pack name `T.append` maybe "" ((" = " `T.append`) . compileJS' indent) val
 
 compileJS' indent (JSIndex lhs rhs) =
-  compileJS' indent lhs ++ "[" ++ compileJS' indent rhs ++ "]"
+  compileJS' indent lhs `T.append` "[" `T.append` compileJS' indent rhs `T.append` "]"
 
 compileJS' indent (JSCond branches) =
-  intercalate " else " $ map createIfBlock branches
+  T.intercalate " else " $ map createIfBlock branches
   where
     createIfBlock (JSNoop, e@(JSSeq _)) =
          "{\n"
-      ++ compileJS' (indent + 2) e
-      ++ "\n" ++ replicate indent ' ' ++ "}"
+      `T.append` compileJS' (indent + 2) e
+      `T.append` "\n" `T.append` T.replicate indent " " `T.append` "}"
     createIfBlock (JSNoop, e) =
          "{\n"
-      ++ compileJS' (indent + 2) e
-      ++ ";\n" ++ replicate indent ' ' ++ "}"
+      `T.append` compileJS' (indent + 2) e
+      `T.append` ";\n" `T.append` T.replicate indent " " `T.append` "}"
     createIfBlock (cond, e@(JSSeq _)) =
-         "if (" ++ compileJS' indent cond ++") {\n"
-      ++ compileJS' (indent + 2) e
-      ++ "\n" ++ replicate indent ' ' ++ "}"
+         "if (" `T.append` compileJS' indent cond `T.append`") {\n"
+      `T.append` compileJS' (indent + 2) e
+      `T.append` "\n" `T.append` T.replicate indent " " `T.append` "}"
     createIfBlock (cond, e) =
-         "if (" ++ compileJS' indent cond ++") {\n"
-      ++ replicate (indent + 2) ' ' ++ compileJS' (indent + 2) e
-      ++ ";\n" ++ replicate indent ' ' ++ "}"
+         "if (" `T.append` compileJS' indent cond `T.append`") {\n"
+      `T.append` T.replicate (indent + 2) " " `T.append` compileJS' (indent + 2) e
+      `T.append` ";\n" `T.append` T.replicate indent " " `T.append` "}"
 
 compileJS' indent (JSSwitch val [(_,JSSeq seq)] Nothing) =
   let (h,t) = splitAt 1 seq in
-         (concatMap (compileJS' indent) h ++ ";\n")
-      ++ (intercalate ";\n" $ map ((replicate indent ' ' ++) . compileJS' indent) t)
+         (T.concat (map (compileJS' indent) h) `T.append` ";\n")
+      `T.append` (T.intercalate ";\n" $ map ((T.replicate indent " " `T.append`) . compileJS' indent) t)
 
 compileJS' indent (JSSwitch val branches def) =
-     "switch(" ++ compileJS' indent val ++ "){\n"
-  ++ concatMap mkBranch branches
-  ++ mkDefault def
-  ++ replicate indent ' ' ++ "}"
+     "switch(" `T.append` compileJS' indent val `T.append` "){\n"
+  `T.append` T.concat (map mkBranch branches)
+  `T.append` mkDefault def
+  `T.append` T.replicate indent " " `T.append` "}"
   where
-    mkBranch :: (JS, JS) -> String
+    mkBranch :: (JS, JS) -> T.Text
     mkBranch (tag, code) =
-         replicate (indent + 2) ' ' ++ "case " ++ compileJS' indent tag ++ ":\n"
-      ++ compileJS' (indent + 4) code
-      ++ "\n" ++ (replicate (indent + 4) ' ' ++ "break;\n")
+         T.replicate (indent + 2) " " `T.append` "case " `T.append` compileJS' indent tag `T.append` ":\n"
+      `T.append` compileJS' (indent + 4) code
+      `T.append` "\n" `T.append` (T.replicate (indent + 4) " " `T.append` "break;\n")
 
-    mkDefault :: Maybe JS -> String
+    mkDefault :: Maybe JS -> T.Text
     mkDefault Nothing = ""
     mkDefault (Just def) =
-         replicate (indent + 2) ' ' ++ "default:\n"
-      ++ compileJS' (indent + 4)def
-      ++ "\n"
+         T.replicate (indent + 2) " " `T.append` "default:\n"
+      `T.append` compileJS' (indent + 4)def
+      `T.append` "\n"
 
 
 compileJS' indent (JSTernary cond true false) =
   let c = compileJS' indent cond
       t = compileJS' indent true
       f = compileJS' indent false in
-      "(" ++ c ++ ")?(" ++ t ++ "):(" ++ f ++ ")"
+      "(" `T.append` c `T.append` ")?(" `T.append` t `T.append` "):(" `T.append` f `T.append` ")"
 
 compileJS' indent (JSParens js) =
-  "(" ++ compileJS' indent js ++ ")"
+  "(" `T.append` compileJS' indent js `T.append` ")"
 
 compileJS' indent (JSWhile cond body) =
-     "while (" ++ compileJS' indent cond ++ ") {\n"
-  ++ compileJS' (indent + 2) body
-  ++ "\n" ++ replicate indent ' ' ++ "}"
+     "while (" `T.append` compileJS' indent cond `T.append` ") {\n"
+  `T.append` compileJS' (indent + 2) body
+  `T.append` "\n" `T.append` T.replicate indent " " `T.append` "}"
 
 compileJS' indent (JSWord word)
-  | JSWord8  b <- word = "new Uint8Array([" ++ show b ++ "])"
-  | JSWord16 b <- word = "new Uint16Array([" ++ show b ++ "])"
-  | JSWord32 b <- word = "new Uint32Array([" ++ show b ++ "])"
-  | JSWord64 b <- word = "i$bigInt(\"" ++ show b ++ "\")"
+  | JSWord8  b <- word = "new Uint8Array([" `T.append` T.pack (show b) `T.append` "])"
+  | JSWord16 b <- word = "new Uint16Array([" `T.append` T.pack (show b) `T.append` "])"
+  | JSWord32 b <- word = "new Uint32Array([" `T.append` T.pack (show b) `T.append` "])"
+  | JSWord64 b <- word = "i$bigInt(\"" `T.append` T.pack (show b) `T.append` "\")"
 
 codegenJavaScript :: CodeGenerator
 codegenJavaScript ci =
@@ -406,12 +409,12 @@ codegenJS_all target definitions includes libs filename outputType = do
                 ++ idrRuntime
                 ++ tgtRuntime
                 )
-  writeFile filename (  runtime
-                     ++ concatMap compileJS opt
-                     ++ concatMap compileJS cons
-                     ++ main
-                     ++ invokeMain
-                     )
+  TIO.writeFile filename (  T.pack runtime
+                         `T.append` T.concat (map compileJS opt)
+                         `T.append` T.concat (map compileJS cons)
+                         `T.append` main
+                         `T.append` invokeMain
+                         )
   setPermissions filename (emptyPermissions { readable   = True
                                             , executable = target == Node
                                             , writable   = True
@@ -478,7 +481,7 @@ codegenJS_all target definitions includes libs filename outputType = do
       getIncludes :: [FilePath] -> IO [String]
       getIncludes = mapM readFile
 
-      main :: String
+      main :: T.Text
       main =
         compileJS $ JSAlloc "main" (Just $
           JSFunction [] (
@@ -532,7 +535,7 @@ codegenJS_all target definitions includes libs filename outputType = do
                 )
               ]
 
-      invokeMain :: String
+      invokeMain :: T.Text
       invokeMain = compileJS $ JSApp (JSIdent "main") []
 
 optimizeConstructors :: [JS] -> ([JS], [JS])
