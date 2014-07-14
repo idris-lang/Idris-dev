@@ -599,6 +599,7 @@ Library
                 , IRTS.CodegenCommon
                 , IRTS.CodegenJava
                 , IRTS.CodegenJavaScript
+                , IRTS.JavaScript.AST
                 , IRTS.Compiler
                 , IRTS.Defunctionalise
                 , IRTS.DumpBC
