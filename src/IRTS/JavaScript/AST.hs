@@ -94,7 +94,9 @@ ffi code args = let parsed = ffiParse code in
     ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
     ffiParse ('%':s:ss)
       | isDigit s =
-         FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
+         FFIArg (
+           read $ s : takeWhile isDigit ss
+          ) : ffiParse (dropWhile isDigit ss)
       | otherwise =
           [FFIError "FFI - Invalid positional argument"]
     ffiParse (s:ss) = FFICode s : ffiParse ss
@@ -110,7 +112,9 @@ ffi code args = let parsed = ffiParse code in
     renderFFI [] _ = ""
     renderFFI (FFICode c : fs) args = c `T.cons` renderFFI fs args
     renderFFI (FFIArg i : fs) args
-      | i < length args && i >= 0 = T.pack (args !! i) `T.append` renderFFI fs args
+      | i < length args && i >= 0 =
+            T.pack (args !! i)
+          `T.append` renderFFI fs args
       | otherwise = error "FFI - Argument index out of bounds"
 
 compileJS :: JS -> T.Text
@@ -120,7 +124,10 @@ compileJS' :: Int -> JS -> T.Text
 compileJS' indent JSNoop = ""
 
 compileJS' indent (JSAnnotation annotation js) =
-  "/** @" `T.append` T.pack (show annotation) `T.append` " */\n" `T.append` compileJS' indent js
+    "/** @"
+  `T.append` T.pack (show annotation)
+  `T.append` " */\n"
+  `T.append` compileJS' indent js
 
 compileJS' indent (JSFFI raw args) =
   ffi raw (map (T.unpack . compileJS' indent) args)
@@ -166,13 +173,21 @@ compileJS' indent (JSApp lhs rhs)
         args = T.intercalate "," $ map (compileJS' 0) rhs
 
 compileJS' indent (JSNew name args) =
-  "new " `T.append` T.pack name `T.append` "(" `T.append` T.intercalate "," (map (compileJS' 0) args) `T.append` ")"
+    "new "
+  `T.append` T.pack name
+  `T.append` "("
+  `T.append` T.intercalate "," (map (compileJS' 0) args)
+  `T.append` ")"
 
 compileJS' indent (JSError exc) =
   "throw new Error(\"" `T.append` T.pack exc `T.append` "\")"
 
 compileJS' indent (JSBinOp op lhs rhs) =
-  compileJS' indent lhs `T.append` " " `T.append` T.pack op `T.append` " " `T.append` compileJS' indent rhs
+    compileJS' indent lhs
+  `T.append` " "
+  `T.append` T.pack op
+  `T.append` " "
+  `T.append` compileJS' indent rhs
 
 compileJS' indent (JSPreOp op val) =
   T.pack op `T.append` compileJS' indent val
@@ -212,19 +227,29 @@ compileJS' indent (JSNum num)
   | JSInteger JSBigZero        <- num = T.pack "i$ZERO"
   | JSInteger JSBigOne         <- num = T.pack "i$ONE"
   | JSInteger (JSBigInt i)     <- num = T.pack (show i)
-  | JSInteger (JSBigIntExpr e) <- num = "i$bigInt(" `T.append` compileJS' indent e `T.append` ")"
+  | JSInteger (JSBigIntExpr e) <- num =
+      "i$bigInt(" `T.append` compileJS' indent e `T.append` ")"
 
 compileJS' indent (JSAssign lhs rhs) =
   compileJS' indent lhs `T.append` " = " `T.append` compileJS' indent rhs
 
 compileJS' 0 (JSAlloc name (Just val@(JSNew _ _))) =
-  "var " `T.append` T.pack name `T.append` " = " `T.append` compileJS' 0 val `T.append` ";\n"
+    "var "
+  `T.append` T.pack name
+  `T.append` " = "
+  `T.append` compileJS' 0 val
+  `T.append` ";\n"
 
 compileJS' indent (JSAlloc name val) =
-  "var " `T.append` T.pack name `T.append` maybe "" ((" = " `T.append`) . compileJS' indent) val
+    "var "
+  `T.append` T.pack name
+  `T.append` maybe "" ((" = " `T.append`) . compileJS' indent) val
 
 compileJS' indent (JSIndex lhs rhs) =
-  compileJS' indent lhs `T.append` "[" `T.append` compileJS' indent rhs `T.append` "]"
+    compileJS' indent lhs
+  `T.append` "["
+  `T.append` compileJS' indent rhs
+  `T.append` "]"
 
 compileJS' indent (JSCond branches) =
   T.intercalate " else " $ map createIfBlock branches
@@ -243,13 +268,20 @@ compileJS' indent (JSCond branches) =
       `T.append` "\n" `T.append` T.replicate indent " " `T.append` "}"
     createIfBlock (cond, e) =
          "if (" `T.append` compileJS' indent cond `T.append`") {\n"
-      `T.append` T.replicate (indent + 2) " " `T.append` compileJS' (indent + 2) e
-      `T.append` ";\n" `T.append` T.replicate indent " " `T.append` "}"
+      `T.append` T.replicate (indent + 2) " "
+      `T.append` compileJS' (indent + 2) e
+      `T.append` ";\n"
+      `T.append` T.replicate indent " "
+      `T.append` "}"
 
 compileJS' indent (JSSwitch val [(_,JSSeq seq)] Nothing) =
   let (h,t) = splitAt 1 seq in
          (T.concat (map (compileJS' indent) h) `T.append` ";\n")
-      `T.append` (T.intercalate ";\n" $ map ((T.replicate indent " " `T.append`) . compileJS' indent) t)
+      `T.append` (
+        T.intercalate ";\n" $ map (
+          (T.replicate indent " " `T.append`) . compileJS' indent
+        ) t
+      )
 
 compileJS' indent (JSSwitch val branches def) =
      "switch(" `T.append` compileJS' indent val `T.append` "){\n"
@@ -259,9 +291,13 @@ compileJS' indent (JSSwitch val branches def) =
   where
     mkBranch :: (JS, JS) -> T.Text
     mkBranch (tag, code) =
-         T.replicate (indent + 2) " " `T.append` "case " `T.append` compileJS' indent tag `T.append` ":\n"
+         T.replicate (indent + 2) " "
+      `T.append` "case "
+      `T.append` compileJS' indent tag
+      `T.append` ":\n"
       `T.append` compileJS' (indent + 4) code
-      `T.append` "\n" `T.append` (T.replicate (indent + 4) " " `T.append` "break;\n")
+      `T.append` "\n"
+      `T.append` (T.replicate (indent + 4) " " `T.append` "break;\n")
 
     mkDefault :: Maybe JS -> T.Text
     mkDefault Nothing = ""
@@ -275,7 +311,13 @@ compileJS' indent (JSTernary cond true false) =
   let c = compileJS' indent cond
       t = compileJS' indent true
       f = compileJS' indent false in
-      "(" `T.append` c `T.append` ")?(" `T.append` t `T.append` "):(" `T.append` f `T.append` ")"
+        "("
+      `T.append` c
+      `T.append` ")?("
+      `T.append` t
+      `T.append` "):("
+      `T.append` f
+      `T.append` ")"
 
 compileJS' indent (JSParens js) =
   "(" `T.append` compileJS' indent js `T.append` ")"
