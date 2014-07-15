@@ -482,7 +482,10 @@ addDeferred' nt ns
        i <- getIState
        putIState $ i { idris_metavars = map (\(n, (i, top, _, isTopLevel)) -> (n, (top, i, isTopLevel))) ns ++
                                             idris_metavars i }
-  where tidyNames used (Bind (MN i x) b sc)
+  where 
+        -- 'tidyNames' is to generate user accessible names in case they are
+        -- needed in tactic scripts
+        tidyNames used (Bind (MN i x) b sc)
             = let n' = uniqueName (UN x) used in
                   Bind n' b $ tidyNames (n':used) sc
         tidyNames used (Bind n b sc)

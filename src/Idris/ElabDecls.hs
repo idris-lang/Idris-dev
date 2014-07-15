@@ -136,11 +136,11 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          (cty, ty, inacc) <- buildType info syn fc opts n ty'
 
          addStatics n cty ty
-         logLvl 2 $ "Rechecked to " ++ show cty
          let nty = cty -- normalise ctxt [] cty
          -- if the return type is something coinductive, freeze the definition
          ctxt <- getContext
          let nty' = normalise ctxt [] nty
+         logLvl 2 $ "Rechecked to " ++ show nty'
 
          -- Add normalised type to internals
          i <- getIState
@@ -863,14 +863,18 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
                     _ -> ifail "Something went inexplicably wrong"
          cimp <- case lookupCtxt cn (idris_implicits i) of
                     [imps] -> return imps
-         let ptys = getProjs [] (renameBs cimp cty)
+         ppos <- case lookupCtxt tyn (idris_datatypes i) of
+                    [ti] -> return $ param_pos ti
+         let cty_imp = renameBs cimp cty
+         let ptys = getProjs [] cty_imp
          let ptys_u = getProjs [] cty
-         let recty = getRecTy cty
+         let recty = getRecTy cty_imp
+         let recty_u = getRecTy cty
 
          -- rename indices when we generate the getter/setter types, so
          -- that they don't clash with the names of the projections
          -- we're generating
-         let index_names_in = getRecNameMap "_in" recty
+         let index_names_in = getRecNameMap "_in" ppos recty
          let recty_in = substMatches index_names_in recty
 
          logLvl 1 $ show (recty, ptys)
@@ -884,7 +888,7 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
          let implBinds = getImplB id cty'
 
          -- Generate update functions
-         update_decls <- mapM (mkUpdate recty index_names_in extraImpls
+         update_decls <- mapM (mkUpdate recty_u index_names_in extraImpls
                                    (getFieldNames cty')
                                    implBinds (length nonImp)) (zip nonImp [0..])
          mapM_ (elabDecl EAll info) (concat proj_decls)
@@ -932,15 +936,21 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
     getRecTy (PPi _ n ty s) = getRecTy s
     getRecTy t = t
 
-    getRecNameMap x (PApp fc t args) = mapMaybe (toMN . getTm) args
+    -- make sure we pick a consistent name for parameters; any name will do
+    -- otherwise
+    getRecNameMap x ppos (PApp fc t args) 
+         = mapMaybe toMN (zip [0..] (map getTm args))
       where
-        toMN (PRef fc n) = Just (n, PRef fc (sMN 0 (show n ++ x)))
+        toMN (i, PRef fc n) 
+             | i `elem` ppos = Just (n, PRef fc (mkp n))
+             | otherwise = Just (n, PRef fc (sMN 0 (show n ++ x)))
         toMN _ = Nothing
-    getRecNameMap x _ = []
+    getRecNameMap x _ _ = []
 
     rec = sMN 0 "rec"
 
-    mkp (UN n) = sMN 0 ("p_" ++ str n)
+    -- only UNs propagate properly as parameters (bit of a hack then...)
+    mkp (UN n) = sUN ("_p_" ++ str n)
     mkp (MN i n) = sMN i ("p_" ++ str n)
     mkp (NS n s) = NS (mkp n) s
 
@@ -953,18 +963,19 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
     mkType (NS n s) = NS (mkType n) s
 
     mkProj recty substs cimp ((pn_in, pty), pos)
-        = do let pn = expandNS syn pn_in
+        = do let pn = expandNS syn pn_in -- projection name
+             -- use pn_in in the indices, consistently, to avoid clash
              let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] pn
                             (PPi expl rec recty
                                (substMatches substs pty))
              let pls = repeat Placeholder
              let before = pos
              let after = length substs - (pos + 1)
-             let args = take before pls ++ PRef fc (mkp pn) : take after pls
+             let args = take before pls ++ PRef fc (mkp pn_in) : take after pls
              let iargs = map implicitise (zip cimp args)
              let lhs = PApp fc (PRef fc pn)
                         [pexp (PApp fc (PRef fc cn) iargs)]
-             let rhs = PRef fc (mkp pn)
+             let rhs = PRef fc (mkp pn_in)
              let pclause = PClause fc pn lhs [] rhs []
              return [pfnTy, PClauses fc [] pn [pclause]]
 
@@ -1425,7 +1436,8 @@ checkPossible info fc tcgen fname lhs_in
                     | otherwise = False -- name is different, unrecoverable
 
 getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi t) sc)
-    = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
+    = nub $ getFixedInType i env [] t ++
+            getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
 getFixedInType i env (_ : is) (Bind n (Pi t) sc)
     = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
 getFixedInType i env is tm@(App f a)

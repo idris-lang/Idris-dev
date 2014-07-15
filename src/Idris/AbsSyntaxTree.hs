@@ -1130,7 +1130,7 @@ instance Show PTerm where
   showsPrec _ tm = (displayS . renderPretty 1.0 10000000 . prettyImp defaultPPOption) tm
 
 instance Show PDecl where
-  showsPrec _ d = (displayS . renderPretty 1.0 10000000 . showDeclImp defaultPPOption) d
+  showsPrec _ d = (displayS . renderPretty 1.0 10000000 . showDeclImp verbosePPOption) d
 
 instance Show PClause where
   showsPrec _ c = (displayS . renderPretty 1.0 10000000 . showCImp verbosePPOption) c
@@ -1466,7 +1466,7 @@ prettyName infixParen showNS bnd n
   where fullName = text nameSpace <> parenthesise (text (baseName n))
         baseName (UN n) = T.unpack n
         baseName (NS n ns) = baseName n
-        baseName (MN i s) = T.unpack s
+        baseName (MN i s) = T.unpack s 
         baseName n | n == falseTy = "_|_"
         baseName other = show other
         nameSpace = case n of
@@ -1556,7 +1556,7 @@ showName ist bnd ppo colour n = case ist of
                                    Nothing -> showbasic n
     where name = if ppopt_impl ppo then show n else showbasic n
           showbasic n@(UN _) = showCG n
-          showbasic (MN _ s) = str s
+          showbasic (MN i s) = str s
           showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n
           showbasic (SN s) = show s
           fst3 (x, _, _) = x
