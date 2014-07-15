@@ -1,4 +1,4 @@
-package neweffects
+package oldeffects
 
 opts    = "--nobasepkgs -i ../prelude -i ../base"
 modules = Effects, Effect.Default,

@@ -26,7 +26,7 @@ instance Handler (Exception a) (Either a) where
 EXCEPTION : Type -> EFFECT
 EXCEPTION t = MkEff () (Exception t)
 
-raise : a -> { [EXCEPTION a ] } Eff m b 
+raise : a -> { [EXCEPTION a ] } Eff b 
 raise err = call $ Raise err
 
 
