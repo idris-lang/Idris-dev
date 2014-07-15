@@ -624,6 +624,7 @@ recoverable _ t@(App _ _)
 recoverable (P (DCon _ _) x _) (P (DCon _ _) y _) = x == y
 recoverable (P (TCon _ _) x _) (P (TCon _ _) y _) = x == y
 recoverable (Constant _) (P (DCon _ _) y _) = False
+recoverable (Constant x) (Constant y) = x == y
 recoverable (P (DCon _ _) x _) (Constant _) = False
 recoverable (Constant _) (P (TCon _ _) y _) = False
 recoverable (P (TCon _ _) x _) (Constant _) = False
