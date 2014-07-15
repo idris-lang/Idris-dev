@@ -177,7 +177,7 @@ class MeetSemilattice a => VerifiedMeetSemilattice a where
   total meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
 
 ||| Sets equipped with a binary operation that is commutative, associative and
-||| idempotent and supplied with a neutral element.  Must satisfy the following
+||| idempotent and supplied with a unitary element.  Must satisfy the following
 ||| laws:
 |||
 ||| + Associativity of join:
@@ -186,7 +186,7 @@ class MeetSemilattice a => VerifiedMeetSemilattice a where
 |||     forall a b,   join a b          == join b a
 ||| + Idempotency of join:
 |||     forall a,     join a a          == a
-||| + Bottom:
+||| + Bottom (Unitary Element):
 |||     forall a,     join a bottom     == a
 |||
 |||  Join semilattices capture the notion of sets with a "least upper bound"
@@ -198,7 +198,7 @@ class (VerifiedJoinSemilattice a, BoundedJoinSemilattice a) => VerifiedBoundedJo
   total boundedJoinSemilatticeBottomIsBottom : (e : a) -> join e bottom = e
 
 ||| Sets equipped with a binary operation that is commutative, associative and
-||| idempotent and supplied with a neutral element.  Must satisfy the following
+||| idempotent and supplied with a unitary element.  Must satisfy the following
 ||| laws:
 |||
 ||| + Associativity of meet:
@@ -207,7 +207,7 @@ class (VerifiedJoinSemilattice a, BoundedJoinSemilattice a) => VerifiedBoundedJo
 |||     forall a b,   meet a b          == meet b a
 ||| + Idempotency of meet:
 |||     forall a,     meet a a          == a
-||| +  Top:
+||| +  Top (Unitary Element):
 |||     forall a,     meet a top        == a
 |||
 ||| Meet semilattices capture the notion of sets with a "greatest lower bound"
