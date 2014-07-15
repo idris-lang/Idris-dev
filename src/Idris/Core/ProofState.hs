@@ -558,7 +558,7 @@ solve _ _ h@(Bind x t sc)
    = do ps <- get
         case findType x sc of
              Just t -> lift $ tfail (CantInferType (show t))
-             _ -> fail $ "Not a guess " ++ show h ++ "\n" ++ show (holes ps, pterm ps)
+             _ -> lift $ tfail (IncompleteTerm h)
    where findType x (Bind n (Let t v) sc)
               = findType x v `mplus` findType x sc
          findType x (Bind n t sc) 
@@ -859,8 +859,8 @@ mergeNotunified env ns = mnu ns [] [] where
   mnu [] ns_acc ps_acc = (reverse ns_acc, reverse ps_acc)
   mnu ((n, t):ns) ns_acc ps_acc
       | Just t' <- lookup n ns, t /= t'
-             = mnu ns ((n,t') : ns_acc)
-                      ((t,t',env,Msg "", [],Unify) : ps_acc)
+             = mnu ns ((n,t') : ns_acc) 
+                      ((t,t',env,CantUnify True t t' (Msg "") [] 0, [],Match) : ps_acc)
       | otherwise = mnu ns ((n,t) : ns_acc) ps_acc
 
 updateNotunified [] nu = nu
