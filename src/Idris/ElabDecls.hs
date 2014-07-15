@@ -1737,7 +1737,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                 (erun fc (buildTC i info ELHS opts fname (infTerm lhs))) )
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
-        let ret_ty = getRetTy lhs_ty
+        let ret_ty = getRetTy (explicitNames (normalise ctxt [] lhs_ty))
         logLvl 3 (show lhs_tm)
         (clhs, clhsty) <- recheckC fc [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
@@ -1762,7 +1762,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         mapM_ (elabCaseBlock info opts) is
         logLvl 5 ("Checked wval " ++ show wval')
         (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
-        let cwvaltyN = explicitNames cwvalty
+        let cwvaltyN = explicitNames (normalise ctxt [] cwvalty)
         let cwvalN = explicitNames cwval
         logLvl 5 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
         let pvars = map fst (getPBtys cwvalty)
@@ -1778,12 +1778,12 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- (ps : Xs) -> (withval : cwvalty) -> (ps' : Xs') -> ret_ty
         let wargval = getRetTy cwvalN
         let wargtype = getRetTy cwvaltyN
-        logLvl 5 ("Abstract over " ++ show wargval)
+        logLvl 5 ("Abstract over " ++ show wargval ++ " in " ++ show wargtype)
         let wtype = bindTyArgs Pi (bargs_pre ++
                      (sMN 0 "warg", wargtype) :
                      map (abstract (sMN 0 "warg") wargval wargtype) bargs_post)
                      (substTerm wargval (P Bound (sMN 0 "warg") wargtype) ret_ty)
-        logLvl 3 ("New function type " ++ show wtype)
+        logLvl 5 ("New function type " ++ show wtype)
         let wname = sMN windex (show fname)
 
         let imps = getImps wtype -- add to implicits context
