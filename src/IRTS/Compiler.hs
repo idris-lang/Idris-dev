@@ -297,7 +297,7 @@ irTerm vs env tm@(App f a) = case unApply tm of
         -- hence it takes a lambda: \unerased_argname_list -> resulting_LExp.
         let padLams = padLambdas used (length args) arity
 
-        case compare arity (length args) of
+        case compare (length args) arity of
 
             -- overapplied
             GT  -> ifail ("overapplied data constructor: " ++ show tm)
