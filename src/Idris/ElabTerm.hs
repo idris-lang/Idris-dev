@@ -250,6 +250,25 @@ elab ist info emode opts fn tm
     elab' ina (PRefl fc t)
         = elab' ina (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True,
                                               pimp (sMN 0 "x") t False])
+    elab' ina (PEq fc Placeholder Placeholder l r)
+       = try (do tyn <- getNameFrom (sMN 0 "aqty")
+                 claim tyn RType
+                 movelast tyn
+                 elab' ina (PApp fc (PRef fc eqTy)
+                              [pimp (sUN "A") (PRef fc tyn) True,
+                               pimp (sUN "B") (PRef fc tyn) False,
+                               pexp l, pexp r]))
+             (do atyn <- getNameFrom (sMN 0 "aqty")
+                 btyn <- getNameFrom (sMN 0 "bqty")
+                 claim atyn RType
+                 movelast atyn
+                 claim btyn RType
+                 movelast btyn
+                 elab' ina (PApp fc (PRef fc eqTy)
+                              [pimp (sUN "A") (PRef fc atyn) True,
+                               pimp (sUN "B") (PRef fc btyn) False,
+                               pexp l, pexp r]))
+
     elab' ina (PEq fc lt rt l r) = elab' ina (PApp fc (PRef fc eqTy)
                                     [pimp (sUN "A") lt True,
                                      pimp (sUN "B") rt False,

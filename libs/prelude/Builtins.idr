@@ -15,6 +15,14 @@ FalseElim : _|_ -> a
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where
 
+-- Eq_ : a -> a -> Type
+-- Eq_ x y = (=) _ _ x y
+ 
+infix 5 ~=~
+
+(~=~) : a -> b -> Type
+(~=~) x y = (=) _ _ x y
+
 -- ------------------------------------------------------ [ For rewrite tactic ]
 ||| Perform substitution in a term according to some equality.
 |||
