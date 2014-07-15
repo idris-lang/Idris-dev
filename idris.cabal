@@ -100,11 +100,6 @@ Extra-source-files:
                        libs/effects/Effect/*.idr
                        libs/effects/*.idr
 
-                       libs/neweffects/Makefile
-                       libs/neweffects/effects.ipkg
-                       libs/neweffects/Effect/*.idr
-                       libs/neweffects/*.idr
-
                        llvm/*.c
                        llvm/Makefile
 
