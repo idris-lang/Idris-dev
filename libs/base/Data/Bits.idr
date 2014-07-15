@@ -18,9 +18,6 @@ nextPow2 x = if x == (2 `power` l2x)
 nextBytes : Nat -> Nat
 nextBytes bits = (nextPow2 (bits `divCeil` 8))
 
--- TMP HACK while I find a better way to do 'with' abstraction
-%freeze nextBytes
-
 machineTy : Nat -> Type
 machineTy Z = Bits8
 machineTy (S Z) = Bits16

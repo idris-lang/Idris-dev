@@ -1741,7 +1741,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         logLvl 3 (show lhs_tm)
         (clhs, clhsty) <- recheckC fc [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
-        let bargs = getPBtys lhs_tm
+        let bargs = getPBtys (explicitNames (normalise ctxt [] lhs_tm))
         let wval = addImplBound i (map fst bargs) wval_in
         logLvl 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
@@ -1763,7 +1763,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         logLvl 5 ("Checked wval " ++ show wval')
         (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
         let cwvaltyN = explicitNames (normalise ctxt [] cwvalty)
-        let cwvalN = explicitNames cwval
+        let cwvalN = explicitNames (normalise ctxt [] cwval)
         logLvl 5 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
         let pvars = map fst (getPBtys cwvalty)
         -- we need the unelaborated term to get the names it depends on
