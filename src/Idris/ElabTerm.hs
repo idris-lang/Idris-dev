@@ -370,7 +370,8 @@ elab ist info emode opts fn tm
                elabE (True, a, True, qq) sc
                solve
     elab' ina@(_, a, inty, qq) (PLet n ty val sc)
-          = do attack;
+          = do attack
+               ivs <- get_instances
                tyn <- getNameFrom (sMN 0 "letty")
                claim tyn RType
                valn <- getNameFrom (sMN 0 "letval")
@@ -384,6 +385,17 @@ elab ist info emode opts fn tm
                            elabE (True, a, True, qq) ty
                focus valn
                elabE (True, a, True, qq) val
+               ivs' <- get_instances
+               when (not pattern) $
+                   mapM_ (\n -> do focus n
+                                   g <- goal
+                                   hs <- get_holes
+                                   if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
+                                   -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+                                    then try (resolveTC 7 g fn ist)
+                                             (movelast n)
+                                    else movelast n)
+                         (ivs' \\ ivs)
                env <- get_env
                elabE (True, a, inty, qq) sc
                -- HACK: If the name leaks into its type, it may leak out of
