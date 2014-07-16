@@ -1,6 +1,8 @@
 CC              ?=cc
 CABAL           :=cabal
-CFLAGS          :=-O2 -Wall -DHAS_PTHREAD $(CFLAGS)
+# IDRIS_ENABLE_STATS should not be set in final release
+CFLAGS          :=-O2 -Wall -DHAS_PTHREAD -DIDRIS_ENABLE_STATS $(CFLAGS)
+
 #CABALFLAGS	:=
 ## Disable building of Effects
 #CABALFLAGS :=-f NoEffects
