@@ -72,6 +72,7 @@ diag ((x::xs)::xss) = x :: diag (map tail xss)
 ||| Fold a Stream corecursively. Since there is no Nil, no initial value is used.
 ||| @ f the combining function
 ||| @ xs the Stream to fold up
+partial -- the recursive call isn't guarded!
 foldr : (f : a -> Inf b -> b) -> (xs : Stream a) -> b
 foldr f (x :: xs) = f x (foldr f xs)
 
@@ -86,8 +87,9 @@ scanl f acc (x :: xs) = acc :: scanl f (f acc x) xs
 ||| @ f the combining function
 ||| @ xs the Stream to fold up
 -- Reusing the head of the corecursion in the obvious way doesn't productivity check
+partial -- and the call to foldr isn't guarded anyway!
 scanr : (f : a -> Inf b -> b) -> (xs : Stream a) -> Stream b
-scanr f (x :: Delay xs) = f x (foldr f xs) :: scanr f xs
+scanr f (x :: xs) = f x (foldr f xs) :: scanr f xs
 
 ||| Produce a Stream repeating a sequence
 ||| @ xs the sequence to repeat

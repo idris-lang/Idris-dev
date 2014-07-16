@@ -360,9 +360,7 @@ calcTotality fc n pats
                             _ -> []
          case mapMaybe (checkLHS i) (map (\ (_, l, r) -> l) pats) of
             (failure : _) -> return failure
-            _ -> if (Coinductive `elem` opts)
-                      then calcProd i fc n pats
-                      else checkSizeChange n
+            _ -> checkSizeChange n
   where
     checkLHS i (P _ fn _)
         = case lookupTotal fn (tt_ctxt i) of
@@ -471,7 +469,7 @@ buildSCG (_, n) = do
                do logLvl 2 $ "Building SCG for " ++ show n ++ " from\n"
                                 ++ show pats ++ "\n" ++ show sc
                   let newscg = buildSCG' ist (rights pats) args
-                  logLvl 5 $ show newscg
+                  logLvl 5 $ "SCG is: " ++ show newscg
                   addToCG n ( cg { scg = newscg } )
        [] -> logLvl 5 $ "Could not build SCG for " ++ show n ++ "\n"
        x -> error $ "buildSCG: " ++ show (n, x)
@@ -489,13 +487,14 @@ delazy' all (Bind n b sc) = Bind n (fmap (delazy' all) b) (delazy' all sc)
 delazy' all t = t
 
 data Guardedness = Toplevel | Unguarded | Guarded
+  deriving Show
 
 buildSCG' :: IState -> [(Term, Term)] -> [Name] -> [SCGEntry]
 buildSCG' ist pats args = nub $ concatMap scgPat pats where
   scgPat (lhs, rhs) = let lhs' = delazy lhs
                           rhs' = delazy rhs
                           (f, pargs) = unApply (dePat lhs') in
-                          findCalls Toplevel (dePat rhs') (patvars lhs') pargs
+                            findCalls Toplevel (dePat rhs') (patvars lhs') pargs
 
   findCalls guarded ap@(App f a) pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
@@ -506,10 +505,10 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
      -- immediate call, as long as the call is guarded. 
      -- Then check its arguments
      | (P _ (UN del) _, [_,_,arg]) <- unApply ap,
-       guarded <- Guarded,
+       Guarded <- guarded,
        del == txt "Delay" 
            = let (capp, args) = unApply arg in
-                 concatMap (\x -> findCalls Toplevel x pvs pargs) args
+                 concatMap (\x -> findCalls guarded x pvs pargs) args
      | (P _ n _, args) <- unApply ap
         = let nguarded = case guarded of
                               Unguarded -> Unguarded
