@@ -14,7 +14,7 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
-import Idris.Core.Typecheck (check)
+import Idris.Core.Typecheck (check, recheck)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
 
@@ -245,18 +245,33 @@ elab ist info emode opts fn tm
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC 5 g fn ist
     elab' ina (PResolveTC fc)
-        | True = do c <- getNameFrom (sMN 0 "class")
-                    instanceArg c
-        | otherwise = do g <- goal
-                         try (resolveTC 2 g fn ist)
-                          (do c <- getNameFrom (sMN 0 "class")
-                              instanceArg c)
+        = do c <- getNameFrom (sMN 0 "class")
+             instanceArg c
     elab' ina (PRefl fc t)
         = elab' ina (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True,
                                               pimp (sMN 0 "x") t False])
-    elab' ina (PEq fc l r)   = elab' ina (PApp fc (PRef fc eqTy)
-                                    [pimp (sMN 0 "A") Placeholder True,
-                                     pimp (sMN 0 "B") Placeholder False,
+    elab' ina (PEq fc Placeholder Placeholder l r)
+       = try (do tyn <- getNameFrom (sMN 0 "aqty")
+                 claim tyn RType
+                 movelast tyn
+                 elab' ina (PApp fc (PRef fc eqTy)
+                              [pimp (sUN "A") (PRef fc tyn) True,
+                               pimp (sUN "B") (PRef fc tyn) False,
+                               pexp l, pexp r]))
+             (do atyn <- getNameFrom (sMN 0 "aqty")
+                 btyn <- getNameFrom (sMN 0 "bqty")
+                 claim atyn RType
+                 movelast atyn
+                 claim btyn RType
+                 movelast btyn
+                 elab' ina (PApp fc (PRef fc eqTy)
+                              [pimp (sUN "A") (PRef fc atyn) True,
+                               pimp (sUN "B") (PRef fc btyn) False,
+                               pexp l, pexp r]))
+
+    elab' ina (PEq fc lt rt l r) = elab' ina (PApp fc (PRef fc eqTy)
+                                    [pimp (sUN "A") lt True,
+                                     pimp (sUN "B") rt False,
                                      pexp l, pexp r])
     elab' ina@(_, a, inty, qq) (PPair fc _ l r)
         = do hnf_compute
@@ -374,7 +389,8 @@ elab ist info emode opts fn tm
                elabE (True, a, True, qq) sc
                solve
     elab' ina@(_, a, inty, qq) (PLet n ty val sc)
-          = do attack;
+          = do attack
+               ivs <- get_instances
                tyn <- getNameFrom (sMN 0 "letty")
                claim tyn RType
                valn <- getNameFrom (sMN 0 "letval")
@@ -388,6 +404,17 @@ elab ist info emode opts fn tm
                            elabE (True, a, True, qq) ty
                focus valn
                elabE (True, a, True, qq) val
+               ivs' <- get_instances
+               when (not pattern) $
+                   mapM_ (\n -> do focus n
+                                   g <- goal
+                                   hs <- get_holes
+                                   if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
+                                   -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
+                                    then try (resolveTC 7 g fn ist)
+                                             (movelast n)
+                                    else movelast n)
+                         (ivs' \\ ivs)
                env <- get_env
                elabE (True, a, inty, qq) sc
                -- HACK: If the name leaks into its type, it may leak out of
@@ -485,7 +512,9 @@ elab ist info emode opts fn tm
                     -- we can unify with them
                     case lookupCtxt f (idris_classes ist) of
                         [] -> return ()
-                        _ -> mapM_ setInjective (map getTm args)
+                        _ -> do mapM_ setInjective (map getTm args)
+                                -- maybe more things are solvable now
+                                unifyProblems
                     ctxt <- get_context
                     let guarded = isConName f ctxt
 --                    trace ("args is " ++ show args) $ return ()
@@ -498,10 +527,11 @@ elab ist info emode opts fn tm
                     -- Sort so that the implicit tactics and alternatives go last
                     let (ns', eargs) = unzip $
                              sortBy cmpArg (zip ns args)
+                    ulog <- getUnifyLog
                     elabArgs ist (ina || not isinf, guarded, inty, qq)
                            [] fc False f ns' 
                              (f == sUN "Force")
-                             (map (\x -> (False, getTm x)) eargs) -- TODO: remove this False arg
+                             (map (\x -> getTm x) eargs) -- TODO: remove this False arg
                     solve
                     ivs' <- get_instances
                     -- Attempt to resolve any type classes which have 'complete' types,
@@ -525,16 +555,23 @@ elab ist info emode opts fn tm
             -- FIXME: Better would be to allow alternative resolution to be
             -- retried after more information is in.
             cmpArg (_, x) (_, y)
+                | constraint x && not (constraint y) = LT
+                | constraint y && not (constraint x) = GT
+                | otherwise
                    = compare (conDepth 0 (getTm x) + priority x + alt x) 
                              (conDepth 0 (getTm y) + priority y + alt y)
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
-                                   PAlternative True _ -> 1
+                                   PAlternative True _ -> 2
                                    PTactics _ -> 150
-                                   PLam _ _ _ -> 2
-                                   PRewrite _ _ _ _ -> 3
-                                   _ -> 0
+                                   PLam _ _ _ -> 3
+                                   PRewrite _ _ _ _ -> 4
+                                   PResolveTC _ -> 0
+                                   _ -> 1
 
+            constraint (PConstraint _ _ _ _) = True
+            constraint _ = False
+ 
             -- Score a point for every level where there is a non-constructor
             -- function (so higher score --> done later)
             -- Only relevant when on lhs
@@ -546,6 +583,7 @@ elab ist info emode opts fn tm
             conDepth d (PPatvar _ _) = 0
             conDepth d (PAlternative _ as) = maximum (map (conDepth d) as)
             conDepth d Placeholder = 0
+            conDepth d (PResolveTC _) = 0
             conDepth d t = max (100 - d) 1
 
             checkIfInjective n = do
@@ -558,7 +596,14 @@ elab ist info emode opts fn tm
                                 case lookupCtxt c (idris_classes ist) of
                                    [] -> return ()
                                    _ -> -- type class, set as injective
-                                        mapM_ setinjArg args
+                                        do mapM_ setinjArg args
+                                        -- maybe we can solve more things now...
+                                           ulog <- getUnifyLog
+                                           probs <- get_probs
+                                           traceWhen ulog ("Injective now " ++ show args ++ "\n" ++ qshow probs) $
+                                             unifyProblems
+                                           probs <- get_probs
+                                           traceWhen ulog (qshow probs) $ return ()
                             _ -> return ()
                      
             setinjArg (P _ n _) = setinj n
@@ -715,12 +760,16 @@ elab ist info emode opts fn tm
              -- original goal in the original proof state.
              env <- get_env
              loadState
-             case fmap (explicitNames . binderVal) $ lookup nTm env of
-               Just q
-                 | pattern   -> reflectQuotePattern unquoteNames q
-                 | otherwise -> do fill $ reflectQuote unquoteNames q
-                                   solve
-               Nothing -> fail "Broken elaboration of quasiquote"
+             let quoted = fmap (explicitNames . binderVal) $ lookup nTm env
+
+             case quoted of
+               Just q -> do ctxt <- get_context
+                            (q', _, _) <- lift $ recheck ctxt [(uq, Lam Erased) | uq <- unquoteNames] (forget q) q
+                            if pattern
+                              then reflectQuotePattern unquoteNames q'
+                              else do fill $ reflectQuote unquoteNames q'
+                                      solve
+               Nothing -> lift . tfail . Msg $ "Broken elaboration of quasiquote"
 
              -- Finally fill in the terms or patterns from the unquotes. This
              -- happens last so that their holes still exist while elaborating
@@ -792,16 +841,17 @@ elab ist info emode opts fn tm
         do ty <- goal
            env <- get_env
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
-           let tries = if pattern then [t, mkDelay t] else [mkDelay t, t]
+           let tries = if pattern then [t, mkDelay env t] else [mkDelay env t, t]
            case tyh of
                 P _ (UN l) _ | l == txt "Lazy'"
                     -> return (PAlternative False tries)
                 _ -> return t
       where
-        mkDelay (PAlternative b xs) = PAlternative b (map mkDelay xs)
-        mkDelay t = let fc = fileFC "Delay" in
-                        addImpl ist (PApp fc (PRef fc (sUN "Delay"))
-                                          [pexp t])
+        mkDelay env (PAlternative b xs) = PAlternative b (map (mkDelay env) xs)
+        mkDelay env t 
+            = let fc = fileFC "Delay" in
+                  addImplBound ist (map fst env) (PApp fc (PRef fc (sUN "Delay"))
+                                                 [pexp t])
 
     -- case is tricky enough without implicit coercions! If they are needed,
     -- they can go in the branches separately.
@@ -817,11 +867,12 @@ elab ist info emode opts fn tm
                          (PCoerced tm, _) -> tm
                          (_, []) -> t
                          (_, cs) -> PAlternative False [t ,
-                                       PAlternative True (map (mkCoerce t) cs)]
+                                       PAlternative True (map (mkCoerce env t) cs)]
            return t'
        where
-         mkCoerce t n = let fc = fileFC "Coercion" in -- line never appears!
-                            addImpl ist (PApp fc (PRef fc n) [pexp (PCoerced t)])
+         mkCoerce env t n = let fc = fileFC "Coercion" in -- line never appears!
+                                addImplBound ist (map fst env)
+                                  (PApp fc (PRef fc n) [pexp (PCoerced t)])
 
     -- | Elaborate the arguments to a function
     elabArgs :: IState -- ^ The current Idris state
@@ -832,17 +883,13 @@ elab ist info emode opts fn tm
              -> Name -- ^ Name of the function being applied
              -> [(Name, Name)] -- ^ (Argument Name, Hole Name)
              -> Bool -- ^ under a 'force'
-             -> [(Bool, PTerm)] -- ^ (Laziness, argument)
+             -> [PTerm] -- ^ (Laziness, argument)
              -> ElabD ()
     elabArgs ist ina failed fc retry f [] force _ = return ()
-    elabArgs ist ina failed fc r f (n:ns) force ((_, Placeholder) : args)
+    elabArgs ist ina failed fc r f (n:ns) force (Placeholder : args)
         = elabArgs ist ina failed fc r f ns force args
-    elabArgs ist ina failed fc r f ((argName, holeName):ns) force ((lazy, t) : args)
-        | lazy && not pattern
-          = elabArg argName holeName (PApp bi (PRef bi (sUN "Delay"))
-                                           [pimp (sUN "a") Placeholder True,
-                                            pexp t])
-        | otherwise = elabArg argName holeName t
+    elabArgs ist ina failed fc r f ((argName, holeName):ns) force (t : args)
+        = do elabArg argName holeName t
       where elabArg argName holeName t =
               do now_elaborating fc f argName
                  wrapErr f argName $ do
@@ -854,7 +901,11 @@ elab ist info emode opts fn tm
                    failed' <- -- trace (show (n, t, hs, tm)) $
                               -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
                               case holeName `elem` hs of
-                                True -> do focus holeName; elab ina t; return failed
+                                True -> do focus holeName; 
+                                           g <- goal
+                                           ulog <- getUnifyLog
+                                           traceWhen ulog ("Elaborating argument " ++ show (argName, holeName, g)) $ 
+                                             elab ina t; return failed
                                 False -> return failed
                    done_elaborating_arg f argName
                    elabArgs ist ina failed fc r f ns force args
@@ -1087,9 +1138,10 @@ runTac :: Bool -> IState -> Name -> PTactic -> ElabD ()
 runTac autoSolve ist fn tac 
     = do env <- get_env
          g <- goal
+         let tac' = fmap (addImplBound ist (map fst env)) tac
          if autoSolve 
-            then runT (fmap (addImplBound ist (map fst env)) tac)
-            else no_errors (runT (fmap (addImplBound ist (map fst env)) tac))
+            then runT tac'
+            else no_errors (runT tac')
                    (Just (CantSolveGoal g (map (\(n, b) -> (n, binderTy b)) env)))
   where
     runT (Intro []) = do g <- goal

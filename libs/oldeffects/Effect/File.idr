@@ -105,24 +105,24 @@ open : (fname : String)
        -> (m : Mode)
        -> { [FILE_IO ()] ==> [FILE_IO (if result
                                           then OpenFile m
-                                          else ())] } Eff Bool
+                                          else ())] } Eff e Bool
 open f m = call $ Open f m
 
 
 ||| Close a file.
-close : { [FILE_IO (OpenFile m)] ==> [FILE_IO ()] } Eff ()
+close : { [FILE_IO (OpenFile m)] ==> [FILE_IO ()] } Eff e ()
 close = call $ Close
 
 ||| Read a line from the file.
-readLine : { [FILE_IO (OpenFile Read)] } Eff String 
+readLine : { [FILE_IO (OpenFile Read)] } Eff e String 
 readLine = call $ ReadLine
 
 ||| Write a line to a file.
-writeLine : String -> { [FILE_IO (OpenFile Write)] } Eff ()
+writeLine : String -> { [FILE_IO (OpenFile Write)] } Eff e ()
 writeLine str = call $ WriteLine str
 
 ||| End of file?
-eof : { [FILE_IO (OpenFile Read)] } Eff Bool 
+eof : { [FILE_IO (OpenFile Read)] } Eff e Bool 
 eof = call $ EOF
 
 -- --------------------------------------------------------------------- [ EOF ]

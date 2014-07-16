@@ -384,7 +384,7 @@ tcname _ = False
 
 implicitable (NS n _) = implicitable n
 implicitable (UN xs) | T.null xs = False
-                     | otherwise = isLower (T.head xs)
+                     | otherwise = isLower (T.head xs) || T.head xs == '_'
 implicitable (MN _ x) = not (tnull x) && thead x /= '_'
 implicitable _ = False
 

@@ -136,11 +136,11 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          (cty, ty, inacc) <- buildType info syn fc opts n ty'
 
          addStatics n cty ty
-         logLvl 2 $ "Rechecked to " ++ show cty
          let nty = cty -- normalise ctxt [] cty
          -- if the return type is something coinductive, freeze the definition
          ctxt <- getContext
          let nty' = normalise ctxt [] nty
+         logLvl 2 $ "Rechecked to " ++ show nty'
 
          -- Add normalised type to internals
          i <- getIState
@@ -863,19 +863,31 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
                     _ -> ifail "Something went inexplicably wrong"
          cimp <- case lookupCtxt cn (idris_implicits i) of
                     [imps] -> return imps
-         let ptys = getProjs [] (renameBs cimp cty)
+         ppos <- case lookupCtxt tyn (idris_datatypes i) of
+                    [ti] -> return $ param_pos ti
+         let cty_imp = renameBs cimp cty
+         let ptys = getProjs [] cty_imp
          let ptys_u = getProjs [] cty
-         let recty = getRecTy cty
+         let recty = getRecTy cty_imp
+         let recty_u = getRecTy cty
+
+         let paramNames = getPNames recty ppos
 
          -- rename indices when we generate the getter/setter types, so
          -- that they don't clash with the names of the projections
          -- we're generating
-         let index_names_in = getRecNameMap "_in" recty
+         let index_names_in = getRecNameMap "_in" ppos recty
          let recty_in = substMatches index_names_in recty
 
-         logLvl 1 $ show (recty, ptys)
-         let substs = map (\ (n, _) -> (n, PApp fc (PRef fc n)
-                                                [pexp (PRef fc rec)])) ptys
+         logLvl 3 $ show (recty, recty_u, ppos, paramNames, ptys)
+         -- Substitute indices with projection functions, and parameters with
+         -- the updated parameter name
+         let substs = map (\ (n, _) -> 
+                             if n `elem` paramNames
+                                then (n, PRef fc (mkp n))
+                                else (n, PApp fc (PRef fc n)
+                                                [pexp (PRef fc rec)])) 
+                          ptys 
 
          -- Generate projection functions
          proj_decls <- mapM (mkProj recty_in substs cimp) (zip ptys [0..])
@@ -884,7 +896,7 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
          let implBinds = getImplB id cty'
 
          -- Generate update functions
-         update_decls <- mapM (mkUpdate recty index_names_in extraImpls
+         update_decls <- mapM (mkUpdate recty_u index_names_in extraImpls
                                    (getFieldNames cty')
                                    implBinds (length nonImp)) (zip nonImp [0..])
          mapM_ (elabDecl EAll info) (concat proj_decls)
@@ -896,6 +908,14 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
     isNonImp (PExp _ _ _ _, a) = Just a
     isNonImp _ = Nothing
 
+    getPNames (PApp _ _ as) ppos = getpn as ppos
+      where
+        getpn as [] = []
+        getpn as (i:is) | length as > i,
+                          PRef _ n <- getTm (as!!i) = n : getpn as is
+                        | otherwise = getpn as is
+    getPNames _ _ = []
+   
     tryElabDecl info (fn, ty, val)
         = do i <- getIState
              idrisCatch (do elabDecl' EAll info ty
@@ -932,15 +952,21 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
     getRecTy (PPi _ n ty s) = getRecTy s
     getRecTy t = t
 
-    getRecNameMap x (PApp fc t args) = mapMaybe (toMN . getTm) args
+    -- make sure we pick a consistent name for parameters; any name will do
+    -- otherwise
+    getRecNameMap x ppos (PApp fc t args) 
+         = mapMaybe toMN (zip [0..] (map getTm args))
       where
-        toMN (PRef fc n) = Just (n, PRef fc (sMN 0 (show n ++ x)))
+        toMN (i, PRef fc n) 
+             | i `elem` ppos = Just (n, PRef fc (mkp n))
+             | otherwise = Just (n, PRef fc (sMN 0 (show n ++ x)))
         toMN _ = Nothing
-    getRecNameMap x _ = []
+    getRecNameMap x _ _ = []
 
     rec = sMN 0 "rec"
 
-    mkp (UN n) = sMN 0 ("p_" ++ str n)
+    -- only UNs propagate properly as parameters (bit of a hack then...)
+    mkp (UN n) = sUN ("_p_" ++ str n)
     mkp (MN i n) = sMN i ("p_" ++ str n)
     mkp (NS n s) = NS (mkp n) s
 
@@ -953,18 +979,19 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
     mkType (NS n s) = NS (mkType n) s
 
     mkProj recty substs cimp ((pn_in, pty), pos)
-        = do let pn = expandNS syn pn_in
+        = do let pn = expandNS syn pn_in -- projection name
+             -- use pn_in in the indices, consistently, to avoid clash
              let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] pn
                             (PPi expl rec recty
                                (substMatches substs pty))
              let pls = repeat Placeholder
              let before = pos
              let after = length substs - (pos + 1)
-             let args = take before pls ++ PRef fc (mkp pn) : take after pls
+             let args = take before pls ++ PRef fc (mkp pn_in) : take after pls
              let iargs = map implicitise (zip cimp args)
              let lhs = PApp fc (PRef fc pn)
                         [pexp (PApp fc (PRef fc cn) iargs)]
-             let rhs = PRef fc (mkp pn)
+             let rhs = PRef fc (mkp pn_in)
              let pclause = PClause fc pn lhs [] rhs []
              return [pfnTy, PClauses fc [] pn [pclause]]
 
@@ -1425,7 +1452,8 @@ checkPossible info fc tcgen fname lhs_in
                     | otherwise = False -- name is different, unrecoverable
 
 getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi t) sc)
-    = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
+    = nub $ getFixedInType i env [] t ++
+            getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
 getFixedInType i env (_ : is) (Bind n (Pi t) sc)
     = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
 getFixedInType i env is tm@(App f a)
@@ -1472,8 +1500,8 @@ paramNames args env (p : ps)
                           _ -> paramNames args env ps
    | otherwise = paramNames args env ps
 
-propagateParams :: [Name] -> Type -> PTerm -> PTerm
-propagateParams ps t tm@(PApp _ (PRef fc n) args)
+propagateParams :: IState -> [Name] -> Type -> PTerm -> PTerm
+propagateParams i ps t tm@(PApp _ (PRef fc n) args)
      = PApp fc (PRef fc n) (addP t args)
    where addP (Bind n _ sc) (t : ts)
               | Placeholder <- getTm t,
@@ -1482,9 +1510,15 @@ propagateParams ps t tm@(PApp _ (PRef fc n) args)
                     = t { getTm = PRef fc n } : addP sc ts
          addP (Bind n _ sc) (t : ts) = t : addP sc ts
          addP _ ts = ts
-propagateParams ps t (PRef fc n)
-     = PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps)
-propagateParams ps t x = x
+propagateParams i ps t (PRef fc n)
+     = case lookupCtxt n (idris_implicits i) of
+            [is] -> let ps' = filter (isImplicit is) ps in
+                        PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps')
+            _ -> PRef fc n
+    where isImplicit [] n = False
+          isImplicit (PImp _ _ _ x _ : is) n | x == n = True
+          isImplicit (_ : is) n = isImplicit is n
+propagateParams i ps t x = x
 
 -- Return the elaborated LHS/RHS, and the original LHS with implicits added
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
@@ -1516,7 +1550,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                          _ -> []
         let params = getParamsInType i [] fn_is fn_ty
         let lhs = mkLHSapp $ stripUnmatchable i $
-                    propagateParams params fn_ty (addImplPat i (stripLinear i lhs_in))
+                    propagateParams i params fn_ty (addImplPat i (stripLinear i lhs_in))
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show lhs_in ++
                   "\n" ++ show (fn_ty, fn_is))
@@ -1711,7 +1745,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                          [t] -> t
                          _ -> []
         let params = getParamsInType i [] fn_is fn_ty
-        let lhs = propagateParams params fn_ty (addImplPat i (stripLinear i lhs_in))
+        let lhs = propagateParams i params fn_ty (addImplPat i (stripLinear i lhs_in))
         logLvl 2 ("LHS: " ++ show lhs)
         ((lhs', dlhs, []), _) <-
             tclift $ elaborate ctxt (sMN 0 "patLHS") infP []
@@ -1719,11 +1753,11 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                 (erun fc (buildTC i info ELHS opts fname (infTerm lhs))) )
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
-        let ret_ty = getRetTy lhs_ty
+        let ret_ty = getRetTy (explicitNames (normalise ctxt [] lhs_ty))
         logLvl 3 (show lhs_tm)
         (clhs, clhsty) <- recheckC fc [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
-        let bargs = getPBtys lhs_tm
+        let bargs = getPBtys (explicitNames (normalise ctxt [] lhs_tm))
         let wval = addImplBound i (map fst bargs) wval_in
         logLvl 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
@@ -1744,8 +1778,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         mapM_ (elabCaseBlock info opts) is
         logLvl 5 ("Checked wval " ++ show wval')
         (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
-        let cwvaltyN = explicitNames cwvalty
-        let cwvalN = explicitNames cwval
+        let cwvaltyN = explicitNames (normalise ctxt [] cwvalty)
+        let cwvalN = explicitNames (normalise ctxt [] cwval)
         logLvl 5 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
         let pvars = map fst (getPBtys cwvalty)
         -- we need the unelaborated term to get the names it depends on
@@ -1760,12 +1794,12 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- (ps : Xs) -> (withval : cwvalty) -> (ps' : Xs') -> ret_ty
         let wargval = getRetTy cwvalN
         let wargtype = getRetTy cwvaltyN
-        logLvl 5 ("Abstract over " ++ show wargval)
+        logLvl 5 ("Abstract over " ++ show wargval ++ " in " ++ show wargtype)
         let wtype = bindTyArgs Pi (bargs_pre ++
                      (sMN 0 "warg", wargtype) :
                      map (abstract (sMN 0 "warg") wargval wargtype) bargs_post)
                      (substTerm wargval (P Bound (sMN 0 "warg") wargtype) ret_ty)
-        logLvl 3 ("New function type " ++ show wtype)
+        logLvl 5 ("New function type " ++ show wtype)
         let wname = sMN windex (show fname)
 
         let imps = getImps wtype -- add to implicits context
@@ -1824,7 +1858,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
              logLvl 2 ("Matching " ++ showTmImpls tm ++ " against " ++
                                       showTmImpls toplhs)
              case matchClause i toplhs tm of
-                Left (a,b) -> trace ("matchClause: " ++ show a ++ " =/= " ++ show b) (ifail $ show fc ++ ":with clause does not match top level")
+                Left (a,b) -> ifail $ show fc ++ ":with clause does not match top level"
                 Right mvars ->
                     do logLvl 3 ("Match vars : " ++ show mvars)
                        lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w

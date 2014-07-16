@@ -101,7 +101,7 @@ RAW_MEMORY : Type -> EFFECT
 RAW_MEMORY t = MkEff t RawMemory
 
 allocate : (n : Nat) -> 
-           Eff m () [RAW_MEMORY ()] (\v => [RAW_MEMORY (MemoryChunk n 0)])
+           Eff () [RAW_MEMORY ()] (\v => [RAW_MEMORY (MemoryChunk n 0)])
 allocate size = call $ Allocate size
 
 initialize : {i : Nat} ->
@@ -109,18 +109,18 @@ initialize : {i : Nat} ->
              Bits8 ->
              (size : Nat) ->
              so (i + size <= n) ->
-             Eff m () [RAW_MEMORY (MemoryChunk n i)] 
+             Eff () [RAW_MEMORY (MemoryChunk n i)] 
                        (\v => [RAW_MEMORY (MemoryChunk n (i + size))])
 initialize c size prf = call $ Initialize c size prf
 
-free : Eff m () [RAW_MEMORY (MemoryChunk n i)] (\v => [RAW_MEMORY ()])
+free : Eff () [RAW_MEMORY (MemoryChunk n i)] (\v => [RAW_MEMORY ()])
 free = call Free
 
 peek : {i : Nat} ->
        (offset : Nat) ->
        (size : Nat) ->
        so (offset + size <= i) ->
-       { [RAW_MEMORY (MemoryChunk n i)] } Eff m (Vect size Bits8) 
+       { [RAW_MEMORY (MemoryChunk n i)] } Eff (Vect size Bits8) 
 peek offset size prf = call $ Peek offset size prf
 
 poke : {n : Nat} ->
@@ -128,12 +128,12 @@ poke : {n : Nat} ->
        (offset : Nat) ->
        Vect size Bits8 ->
        so (offset <= i && offset + size <= n) ->
-       Eff m () [RAW_MEMORY (MemoryChunk n i)] 
+       Eff () [RAW_MEMORY (MemoryChunk n i)] 
               (\v => [RAW_MEMORY (MemoryChunk n (max i (offset + size)))])
 poke offset content prf = call $ Poke offset content prf
 
 private
-getRawPtr : { [RAW_MEMORY (MemoryChunk n i)] } Eff m (MemoryChunk n i) 
+getRawPtr : { [RAW_MEMORY (MemoryChunk n i)] } Eff (MemoryChunk n i) 
 getRawPtr = call $ GetRawPtr
 
 private
@@ -146,7 +146,7 @@ move' : {dst_size : Nat} ->
         (size : Nat) ->
         so (dst_offset <= dst_init && dst_offset + size <= dst_size) ->
         so (src_offset + size <= src_init) ->
-        Eff m () [RAW_MEMORY (MemoryChunk dst_size dst_init)]
+        Eff () [RAW_MEMORY (MemoryChunk dst_size dst_init)]
                (\v => [RAW_MEMORY (MemoryChunk dst_size (max dst_init (dst_offset + size)))])
 move' src_ptr dst_offset src_offset size dst_bounds src_bounds
   = call $ Move src_ptr dst_offset src_offset size dst_bounds src_bounds
@@ -162,7 +162,7 @@ move : {dst_size : Nat} ->
        (size : Nat) ->
        so (dst_offset <= dst_init && dst_offset + size <= dst_size) ->
        so (src_offset + size <= src_init) ->
-       Eff m ()
+       Eff ()
               [ Dst ::: RAW_MEMORY (MemoryChunk dst_size dst_init)
               , Src ::: RAW_MEMORY (MemoryChunk src_size src_init)]
               (\v =>

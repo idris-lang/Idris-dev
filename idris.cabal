@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.13.1
+Version:        0.9.14
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -116,11 +116,6 @@ Extra-source-files:
                        libs/effects/effects.ipkg
                        libs/effects/Effect/*.idr
                        libs/effects/*.idr
-
-                       libs/neweffects/Makefile
-                       libs/neweffects/effects.ipkg
-                       libs/neweffects/Effect/*.idr
-                       libs/neweffects/*.idr
 
                        llvm/*.c
                        llvm/Makefile
@@ -257,6 +252,12 @@ Extra-source-files:
                        test/reg045/run
                        test/reg045/*.idr
                        test/reg045/expected
+                       test/reg046/run
+                       test/reg046/*.idr
+                       test/reg046/expected
+                       test/reg047/run
+                       test/reg047/*.idr
+                       test/reg047/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -438,6 +439,10 @@ Extra-source-files:
                        test/quasiquote002/run
                        test/quasiquote002/*.idr
                        test/quasiquote002/expected
+                       test/quasiquote003/run
+                       test/quasiquote003/*.idr
+                       test/quasiquote003/expected
+
 
                        test/records001/run
                        test/records001/*.idr
@@ -609,6 +614,7 @@ Library
                 , IRTS.CodegenCommon
                 , IRTS.CodegenJava
                 , IRTS.CodegenJavaScript
+                , IRTS.JavaScript.AST
                 , IRTS.Compiler
                 , IRTS.Defunctionalise
                 , IRTS.DumpBC

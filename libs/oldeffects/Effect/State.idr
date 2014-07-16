@@ -16,22 +16,22 @@ using (m : Type -> Type)
 STATE : Type -> EFFECT
 STATE t = MkEff t State
 
-get : { [STATE x] } Eff x
+get : { [STATE x] } Eff m x
 get = call $ Get
 
-put : x -> { [STATE x] } Eff () 
+put : x -> { [STATE x] } Eff m () 
 put val = call $ Put val
 
-putM : y -> { [STATE x] ==> [STATE y] } Eff () 
+putM : y -> { [STATE x] ==> [STATE y] } Eff m () 
 putM val = call $ Put val
 
-update : (x -> x) -> { [STATE x] } Eff () 
+update : (x -> x) -> { [STATE x] } Eff m () 
 update f = put (f !get)
 
-updateM : (x -> y) -> { [STATE x] ==> [STATE y] } Eff () 
+updateM : (x -> y) -> { [STATE x] ==> [STATE y] } Eff m () 
 updateM f = putM (f !get)
 
-locally : x -> ({ [STATE x] } Eff t) -> { [STATE y] } Eff t 
+locally : x -> ({ [STATE x] } Eff m t) -> { [STATE y] } Eff m t 
 locally newst prog = do st <- get
                         putM newst
                         val <- prog

@@ -473,6 +473,8 @@ ideslaveProcess fn Help = process stdout fn Help
 ideslaveProcess fn (ChangeDirectory f) = do process stdout fn (ChangeDirectory f)
                                             iPrintResult "changed directory to"
 ideslaveProcess fn (Eval t) = process stdout fn (Eval t)
+ideslaveProcess fn (NewDefn decls) = do process stdout fn (NewDefn decls)
+                                        iPrintResult "defined"
 ideslaveProcess fn (ExecVal t) = process stdout fn (ExecVal t)
 ideslaveProcess fn (Check (PRef x n)) = process stdout fn (Check (PRef x n))
 ideslaveProcess fn (Check t) = process stdout fn (Check t)

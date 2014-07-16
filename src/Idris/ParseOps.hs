@@ -38,7 +38,7 @@ table fixes
        ++ toTable (reverse fixes) ++
       [[backtick],
        [binary "$" (\fc x y -> flatten $ PApp fc x [pexp y]) AssocRight],
-       [binary "="  PEq AssocLeft]]
+       [binary "="  (\fc x y -> PEq fc Placeholder Placeholder x y) AssocLeft]]
   where
     flatten :: PTerm -> PTerm -- flatten application
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))

@@ -39,22 +39,22 @@ STDIO : EFFECT
 STDIO = MkEff () StdIO
 
 ||| Write a string to standard output.
-putStr : String -> { [STDIO] } Eff e ()
+putStr : String -> { [STDIO] } Eff ()
 putStr s = call $ PutStr s
 
 ||| Write a character to standard output.
-putChar : Char -> { [STDIO] } Eff e ()
+putChar : Char -> { [STDIO] } Eff ()
 putChar c = call $ PutCh c
 
 ||| Write a string to standard output, terminating with a newline.
-putStrLn : String -> { [STDIO] } Eff e ()
+putStrLn : String -> { [STDIO] } Eff ()
 putStrLn s = putStr (s ++ "\n")
 
 ||| Read a string from standard input.
-getStr : { [STDIO] } Eff e String
+getStr : { [STDIO] } Eff String
 getStr = call $ GetStr
 
 ||| Read a character from standard input.
-getChar : { [STDIO] } Eff e Char
+getChar : { [STDIO] } Eff Char
 getChar = call $ GetCh
 

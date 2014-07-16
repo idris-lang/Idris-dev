@@ -285,7 +285,7 @@ extractPTermNames (PMatchApp _ n)    = [n]
 extractPTermNames (PCase _ p ps)     = let (ps1, ps2) = unzip ps
                                        in  concatMap extract (p:(ps1 ++ ps2))
 extractPTermNames (PRefl _ p)        = extract p
-extractPTermNames (PEq _ p1 p2)      = concatMap extract [p1, p2]
+extractPTermNames (PEq _ _ _ p1 p2)  = concatMap extract [p1, p2]
 extractPTermNames (PRewrite _ a b m) | Just c <- m =
                                        concatMap extract [a, b, c]
 extractPTermNames (PRewrite _ a b _) = concatMap extract [a, b]

@@ -242,9 +242,10 @@ hasv (App f a) = hasv f || hasv a
 hasv (Bind x b sc) = hasv (binderTy b) || hasv sc
 hasv _ = False
 
-unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] -> [FailContext] ->
+unify :: Context -> Env -> TT Name -> TT Name -> 
+         [Name] -> [Name] -> [Name] -> [FailContext] ->
          TC ([(Name, TT Name)], Fails)
-unify ctxt env topx topy inj holes from =
+unify ctxt env topx topy inj holes usersupp from =
 --      traceWhen (hasv topx || hasv topy) 
 --           ("Unifying " ++ show topx ++ "\nAND\n" ++ show topy ++ "\n") $
              -- don't bother if topx and topy are different at the head
@@ -428,18 +429,12 @@ unify ctxt env topx topy inj holes from =
 
     unApp fn bnames appx@(App fx ax) appy@(App fy ay)
          | (injectiveApp fx && injectiveApp fy)
-        || (injectiveApp fx && rigid appx && metavarApp appy && numArgs appx == numArgs appy)
-        || (injectiveApp fy && rigid appy && metavarApp appx && numArgs appx == numArgs appy)
         || (injectiveApp fx && metavarApp fy && ax == ay)
         || (injectiveApp fy && metavarApp fx && ax == ay)
          = do let (headx, _) = unApply fx
               let (heady, _) = unApply fy
               -- fail quickly if the heads are disjoint
               checkHeads headx heady
---              if True then -- (injective fx || injective fy || fx == fy) then
---              if (injective fx && metavarApp appy) ||
---                 (injective fy && metavarApp appx) ||
---                 (injective fx && injective fy) || fx == fy
               uplus
                 (do hf <- un' True bnames fx fy
                     let ax' = hnormalise hf ctxt env (substNames hf ax)
@@ -503,7 +498,8 @@ unify ctxt env topx topy inj holes from =
                                 _ -> False
 
             metavar t = case t of
-                             P _ x _ -> (x `elem` holes || holeIn env x)
+                             P _ x _ -> (x `notElem` usersupp && 
+                                             (x `elem` holes || holeIn env x))
                                           || globmetavar t
                              _ -> False
             pat t = case t of
@@ -624,12 +620,13 @@ envPos x i ((y, _) : ys) | x == y = i
 -- ASSUMPTION: inputs are in normal form
 
 recoverable t@(App _ _) _
-    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
+    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
 recoverable _ t@(App _ _)
-    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy" = False
+    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
 recoverable (P (DCon _ _) x _) (P (DCon _ _) y _) = x == y
 recoverable (P (TCon _ _) x _) (P (TCon _ _) y _) = x == y
 recoverable (Constant _) (P (DCon _ _) y _) = False
+recoverable (Constant x) (Constant y) = x == y
 recoverable (P (DCon _ _) x _) (Constant _) = False
 recoverable (Constant _) (P (TCon _ _) y _) = False
 recoverable (P (TCon _ _) x _) (Constant _) = False

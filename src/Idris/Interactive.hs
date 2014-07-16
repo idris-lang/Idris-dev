@@ -27,6 +27,7 @@ import System.IO
 import Data.Char
 import Data.Maybe (fromMaybe)
 
+import Debug.Trace
 
 caseSplitAt :: Handle -> FilePath -> Bool -> Int -> Name -> Idris ()
 caseSplitAt h fn updatefile l n
@@ -248,12 +249,15 @@ makeLemma h fn updatefile l n
                     [] -> ierror (NoSuchVariable n)
                     ns -> ierror (CantResolveAlts (map fst ns))
         i <- getIState
+        margs <- case lookup n (idris_metavars i) of
+                      Just (_, arity, _) -> return arity
+                      _ -> return (-1)
 
         if (not isProv) then do
             let skip = guessImps (tt_ctxt i) mty
 
             let lem = show n ++ " : " ++ show (stripMNBind skip (delab i mty))
-            let lem_app = show n ++ appArgs skip mty
+            let lem_app = show n ++ appArgs skip margs mty
 
             if updatefile then
                do let fb = fn ++ "~"
@@ -271,7 +275,7 @@ makeLemma h fn updatefile l n
                         in runIO . hPutStrLn h $ convSExp "return" good n
 
           else do -- provisional definition
-            let lem_app = show n ++ appArgs [] mty ++
+            let lem_app = show n ++ appArgs [] (-1) mty ++
                                  " = ?" ++ show n ++ "_rhs"
             if updatefile then
                do let fb = fn ++ "~"
@@ -288,15 +292,17 @@ makeLemma h fn updatefile l n
 
   where getIndent s = length (takeWhile isSpace s)
 
-        appArgs skip (Bind n@(UN c) (Pi _) sc) 
-           | thead c /= '_' && n `notElem` skip
-                = " " ++ show n ++ appArgs skip sc
-        appArgs skip (Bind _ (Pi _) sc) = appArgs skip sc
-        appArgs skip _ = ""
+        appArgs skip 0 _ = ""
+        appArgs skip i (Bind n@(UN c) (Pi _) sc) 
+           | (thead c /= '_' && n `notElem` skip)
+                = " " ++ show n ++ appArgs skip (i - 1) sc
+        appArgs skip i (Bind _ (Pi _) sc) = appArgs skip (i - 1) sc
+        appArgs skip i _ = ""
 
         stripMNBind skip (PPi b n@(UN c) ty sc) 
-           | thead c /= '_' && 
-             n `notElem` skip = PPi b n ty (stripMNBind skip sc)
+           | (thead c /= '_' && n `notElem` skip) ||
+               take 4 (str c) == "__pi" -- keep in type, but not in app
+                = PPi b n ty (stripMNBind skip sc)
         stripMNBind skip (PPi b _ ty sc) = stripMNBind skip sc
         stripMNBind skip t = t
 

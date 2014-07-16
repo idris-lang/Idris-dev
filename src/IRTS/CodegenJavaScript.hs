@@ -1,5 +1,8 @@
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE OverloadedStrings #-}
 module IRTS.CodegenJavaScript (codegenJavaScript, codegenNode, JSTarget(..)) where
+
+import IRTS.JavaScript.AST
 
 import Idris.AbsSyntax hiding (TypeCase)
 import IRTS.Bytecode
@@ -25,6 +28,8 @@ import System.IO
 import System.Directory
 
 import qualified Data.Map.Strict as M
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 
 
 data CompileInfo = CompileInfo { compileInfoApplyCases  :: [Int]
@@ -79,290 +84,6 @@ initCompileInfo bc =
 data JSTarget = Node | JavaScript deriving Eq
 
 
-data JSType = JSIntTy
-            | JSStringTy
-            | JSIntegerTy
-            | JSFloatTy
-            | JSCharTy
-            | JSPtrTy
-            | JSForgotTy
-            deriving Eq
-
-
-data JSInteger = JSBigZero
-               | JSBigOne
-               | JSBigInt Integer
-               | JSBigIntExpr JS
-               deriving Eq
-
-
-data JSNum = JSInt Int
-           | JSFloat Double
-           | JSInteger JSInteger
-           deriving Eq
-
-
-data JSWord = JSWord8 Word8
-            | JSWord16 Word16
-            | JSWord32 Word32
-            | JSWord64 Word64
-            deriving Eq
-
-
-data JSAnnotation = JSConstructor deriving Eq
-
-
-instance Show JSAnnotation where
-  show JSConstructor = "constructor"
-
-
-data JS = JSRaw String
-        | JSIdent String
-        | JSFunction [String] JS
-        | JSType JSType
-        | JSSeq [JS]
-        | JSReturn JS
-        | JSApp JS [JS]
-        | JSNew String [JS]
-        | JSError String
-        | JSBinOp String JS JS
-        | JSPreOp String JS
-        | JSPostOp String JS
-        | JSProj JS String
-        | JSNull
-        | JSUndefined
-        | JSThis
-        | JSTrue
-        | JSFalse
-        | JSArray [JS]
-        | JSString String
-        | JSNum JSNum
-        | JSWord JSWord
-        | JSAssign JS JS
-        | JSAlloc String (Maybe JS)
-        | JSIndex JS JS
-        | JSSwitch JS [(JS, JS)] (Maybe JS)
-        | JSCond [(JS, JS)]
-        | JSTernary JS JS JS
-        | JSParens JS
-        | JSWhile JS JS
-        | JSFFI String [JS]
-        | JSAnnotation JSAnnotation JS
-        | JSNoop
-        deriving Eq
-
-
-data FFI = FFICode Char | FFIArg Int | FFIError String
-
-ffi :: String -> [String] -> String
-ffi code args = let parsed = ffiParse code in
-                    case ffiError parsed of
-                         Just err -> error err
-                         Nothing  -> renderFFI parsed args
-  where
-    ffiParse :: String -> [FFI]
-    ffiParse ""           = []
-    ffiParse ['%']        = [FFIError $ "FFI - Invalid positional argument"]
-    ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
-    ffiParse ('%':s:ss)
-      | isDigit s =
-         FFIArg (read $ s : takeWhile isDigit ss) : ffiParse (dropWhile isDigit ss)
-      | otherwise =
-          [FFIError "FFI - Invalid positional argument"]
-    ffiParse (s:ss) = FFICode s : ffiParse ss
-
-
-    ffiError :: [FFI] -> Maybe String
-    ffiError []                 = Nothing
-    ffiError ((FFIError s):xs)  = Just s
-    ffiError (x:xs)             = ffiError xs
-
-
-    renderFFI :: [FFI] -> [String] -> String
-    renderFFI [] _ = ""
-    renderFFI (FFICode c : fs) args = c : renderFFI fs args
-    renderFFI (FFIArg i : fs) args
-      | i < length args && i >= 0 = args !! i ++ renderFFI fs args
-      | otherwise = error "FFI - Argument index out of bounds"
-
-compileJS :: JS -> String
-compileJS = compileJS' 0
-
-compileJS' :: Int -> JS -> String
-compileJS' indent JSNoop = ""
-
-compileJS' indent (JSAnnotation annotation js) =
-  "/** @" ++ show annotation ++ " */\n" ++ compileJS' indent js
-
-compileJS' indent (JSFFI raw args) =
-  ffi raw (map (compileJS' indent) args)
-
-compileJS' indent (JSRaw code) =
-  code
-
-compileJS' indent (JSIdent ident) =
-  ident
-
-compileJS' indent (JSFunction args body) =
-      replicate indent ' ' ++ "function("
-   ++ intercalate "," args
-   ++ "){\n"
-   ++ compileJS' (indent + 2) body
-   ++ "\n}\n"
-
-compileJS' indent (JSType ty)
-  | JSIntTy     <- ty = "i$Int"
-  | JSStringTy  <- ty = "i$String"
-  | JSIntegerTy <- ty = "i$Integer"
-  | JSFloatTy   <- ty = "i$Float"
-  | JSCharTy    <- ty = "i$Char"
-  | JSPtrTy     <- ty = "i$Ptr"
-  | JSForgotTy  <- ty = "i$Forgot"
-
-compileJS' indent (JSSeq seq) =
-  intercalate ";\n" (
-    map (
-      (replicate indent ' ' ++) . (compileJS' indent)
-    ) $ filter (/= JSNoop) seq
-  ) ++ ";"
-
-compileJS' indent (JSReturn val) =
-  "return " ++ compileJS' indent val
-
-compileJS' indent (JSApp lhs rhs)
-  | JSFunction {} <- lhs =
-    concat ["(", compileJS' indent lhs, ")(", args, ")"]
-  | otherwise =
-    concat [compileJS' indent lhs, "(", args, ")"]
-  where args :: String
-        args = intercalate "," $ map (compileJS' 0) rhs
-
-compileJS' indent (JSNew name args) =
-  "new " ++ name ++ "(" ++ intercalate "," (map (compileJS' 0) args) ++ ")"
-
-compileJS' indent (JSError exc) =
-  "throw new Error(\"" ++ exc ++ "\")"
-
-compileJS' indent (JSBinOp op lhs rhs) =
-  compileJS' indent lhs ++ " " ++ op ++ " " ++ compileJS' indent rhs
-
-compileJS' indent (JSPreOp op val) =
-  op ++ compileJS' indent val
-
-compileJS' indent (JSProj obj field)
-  | JSFunction {} <- obj =
-    concat ["(", compileJS' indent obj, ").", field]
-  | JSAssign {} <- obj =
-    concat ["(", compileJS' indent obj, ").", field]
-  | otherwise =
-    compileJS' indent obj ++ '.' : field
-
-compileJS' indent JSNull =
-  "null"
-
-compileJS' indent JSUndefined =
-  "undefined"
-
-compileJS' indent JSThis =
-  "this"
-
-compileJS' indent JSTrue =
-  "true"
-
-compileJS' indent JSFalse =
-  "false"
-
-compileJS' indent (JSArray elems) =
-  "[" ++ intercalate "," (map (compileJS' 0) elems) ++ "]"
-
-compileJS' indent (JSString str) =
-  "\"" ++ str ++ "\""
-
-compileJS' indent (JSNum num)
-  | JSInt i                    <- num = show i
-  | JSFloat f                  <- num = show f
-  | JSInteger JSBigZero        <- num = "i$ZERO"
-  | JSInteger JSBigOne         <- num = "i$ONE"
-  | JSInteger (JSBigInt i)     <- num = show i
-  | JSInteger (JSBigIntExpr e) <- num = "i$bigInt(" ++ compileJS' indent e ++ ")"
-
-compileJS' indent (JSAssign lhs rhs) =
-  compileJS' indent lhs ++ " = " ++ compileJS' indent rhs
-
-compileJS' 0 (JSAlloc name (Just val@(JSNew _ _))) =
-  "var " ++ name ++ " = " ++ compileJS' 0 val ++ ";\n"
-
-compileJS' indent (JSAlloc name val) =
-  "var " ++ name ++ maybe "" ((" = " ++) . compileJS' indent) val
-
-compileJS' indent (JSIndex lhs rhs) =
-  compileJS' indent lhs ++ "[" ++ compileJS' indent rhs ++ "]"
-
-compileJS' indent (JSCond branches) =
-  intercalate " else " $ map createIfBlock branches
-  where
-    createIfBlock (JSNoop, e@(JSSeq _)) =
-         "{\n"
-      ++ compileJS' (indent + 2) e
-      ++ "\n" ++ replicate indent ' ' ++ "}"
-    createIfBlock (JSNoop, e) =
-         "{\n"
-      ++ compileJS' (indent + 2) e
-      ++ ";\n" ++ replicate indent ' ' ++ "}"
-    createIfBlock (cond, e@(JSSeq _)) =
-         "if (" ++ compileJS' indent cond ++") {\n"
-      ++ compileJS' (indent + 2) e
-      ++ "\n" ++ replicate indent ' ' ++ "}"
-    createIfBlock (cond, e) =
-         "if (" ++ compileJS' indent cond ++") {\n"
-      ++ replicate (indent + 2) ' ' ++ compileJS' (indent + 2) e
-      ++ ";\n" ++ replicate indent ' ' ++ "}"
-
-compileJS' indent (JSSwitch val [(_,JSSeq seq)] Nothing) =
-  let (h,t) = splitAt 1 seq in
-         (concatMap (compileJS' indent) h ++ ";\n")
-      ++ (intercalate ";\n" $ map ((replicate indent ' ' ++) . compileJS' indent) t)
-
-compileJS' indent (JSSwitch val branches def) =
-     "switch(" ++ compileJS' indent val ++ "){\n"
-  ++ concatMap mkBranch branches
-  ++ mkDefault def
-  ++ replicate indent ' ' ++ "}"
-  where
-    mkBranch :: (JS, JS) -> String
-    mkBranch (tag, code) =
-         replicate (indent + 2) ' ' ++ "case " ++ compileJS' indent tag ++ ":\n"
-      ++ compileJS' (indent + 4) code
-      ++ "\n" ++ (replicate (indent + 4) ' ' ++ "break;\n")
-
-    mkDefault :: Maybe JS -> String
-    mkDefault Nothing = ""
-    mkDefault (Just def) =
-         replicate (indent + 2) ' ' ++ "default:\n"
-      ++ compileJS' (indent + 4)def
-      ++ "\n"
-
-
-compileJS' indent (JSTernary cond true false) =
-  let c = compileJS' indent cond
-      t = compileJS' indent true
-      f = compileJS' indent false in
-      "(" ++ c ++ ")?(" ++ t ++ "):(" ++ f ++ ")"
-
-compileJS' indent (JSParens js) =
-  "(" ++ compileJS' indent js ++ ")"
-
-compileJS' indent (JSWhile cond body) =
-     "while (" ++ compileJS' indent cond ++ ") {\n"
-  ++ compileJS' (indent + 2) body
-  ++ "\n" ++ replicate indent ' ' ++ "}"
-
-compileJS' indent (JSWord word)
-  | JSWord8  b <- word = "new Uint8Array([" ++ show b ++ "])"
-  | JSWord16 b <- word = "new Uint16Array([" ++ show b ++ "])"
-  | JSWord32 b <- word = "new Uint32Array([" ++ show b ++ "])"
-  | JSWord64 b <- word = "i$bigInt(\"" ++ show b ++ "\")"
-
 codegenJavaScript :: CodeGenerator
 codegenJavaScript ci =
   codegenJS_all JavaScript (simpleDecls ci)
@@ -406,12 +127,12 @@ codegenJS_all target definitions includes libs filename outputType = do
                 ++ idrRuntime
                 ++ tgtRuntime
                 )
-  writeFile filename (  runtime
-                     ++ concatMap compileJS opt
-                     ++ concatMap compileJS cons
-                     ++ main
-                     ++ invokeMain
-                     )
+  TIO.writeFile filename (  T.pack runtime
+                         `T.append` T.concat (map compileJS opt)
+                         `T.append` T.concat (map compileJS cons)
+                         `T.append` main
+                         `T.append` invokeMain
+                         )
   setPermissions filename (emptyPermissions { readable   = True
                                             , executable = target == Node
                                             , writable   = True
@@ -478,7 +199,7 @@ codegenJS_all target definitions includes libs filename outputType = do
       getIncludes :: [FilePath] -> IO [String]
       getIncludes = mapM readFile
 
-      main :: String
+      main :: T.Text
       main =
         compileJS $ JSAlloc "main" (Just $
           JSFunction [] (
@@ -532,7 +253,7 @@ codegenJS_all target definitions includes libs filename outputType = do
                 )
               ]
 
-      invokeMain :: String
+      invokeMain :: T.Text
       invokeMain = compileJS $ JSApp (JSIdent "main") []
 
 optimizeConstructors :: [JS] -> ([JS], [JS])
@@ -889,64 +610,6 @@ jsMKCON info r t rs =
                        else JSNull
                   ]
   )
-
-jsInstanceOf :: JS -> String -> JS
-jsInstanceOf obj cls = JSBinOp "instanceof" obj (JSIdent cls)
-
-jsOr :: JS -> JS -> JS
-jsOr lhs rhs = JSBinOp "||" lhs rhs
-
-jsAnd :: JS -> JS -> JS
-jsAnd lhs rhs = JSBinOp "&&" lhs rhs
-
-jsMeth :: JS -> String -> [JS] -> JS
-jsMeth obj meth args = JSApp (JSProj obj meth) args
-
-jsCall :: String -> [JS] -> JS
-jsCall fun args = JSApp (JSIdent fun) args
-
-jsTypeOf :: JS -> JS
-jsTypeOf js = JSPreOp "typeof " js
-
-jsEq :: JS -> JS -> JS
-jsEq lhs@(JSNum (JSInteger _)) rhs = JSApp (JSProj lhs "equals") [rhs]
-jsEq lhs rhs@(JSNum (JSInteger _)) = JSApp (JSProj lhs "equals") [rhs]
-jsEq lhs rhs = JSBinOp "==" lhs rhs
-
-jsNotEq :: JS -> JS -> JS
-jsNotEq lhs rhs = JSBinOp "!=" lhs rhs
-
-jsIsNumber :: JS -> JS
-jsIsNumber js = (jsTypeOf js) `jsEq` (JSString "number")
-
-jsIsNull :: JS -> JS
-jsIsNull js = JSBinOp "==" js JSNull
-
-jsBigInt :: JS -> JS
-jsBigInt (JSString "0") = JSNum (JSInteger JSBigZero)
-jsBigInt (JSString "1") = JSNum (JSInteger JSBigOne)
-jsBigInt js             = JSNum $ JSInteger $ JSBigIntExpr js
-
-jsUnPackBits :: JS -> JS
-jsUnPackBits js = JSIndex js $ JSNum (JSInt 0)
-
-jsPackUBits8 :: JS -> JS
-jsPackUBits8 js = JSNew "Uint8Array" [JSArray [js]]
-
-jsPackUBits16 :: JS -> JS
-jsPackUBits16 js = JSNew "Uint16Array" [JSArray [js]]
-
-jsPackUBits32 :: JS -> JS
-jsPackUBits32 js = JSNew "Uint32Array" [JSArray [js]]
-
-jsPackSBits8 :: JS -> JS
-jsPackSBits8 js = JSNew "Int8Array" [JSArray [js]]
-
-jsPackSBits16 :: JS -> JS
-jsPackSBits16 js = JSNew "Int16Array" [JSArray [js]]
-
-jsPackSBits32 :: JS -> JS
-jsPackSBits32 js = JSNew "Int32Array" [JSArray [js]]
 
 jsCASE :: CompileInfo -> Bool -> Reg -> [(Int, [BC])] -> Maybe [BC] -> JS
 jsCASE info safe reg cases def =

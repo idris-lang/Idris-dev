@@ -58,7 +58,7 @@ dslerr (CantUnify _ tm1 tm2 _ _ _) = do tm1' <- getTmTy tm1
                                         tm2' <- getTmTy tm2
                                         ty1 <- reifyTy tm1'
                                         ty2 <- reifyTy tm2'
-                                        return [TextPart $ "DSL type error: " ++ (show ty1) ++ " doesn't match " ++(show ty2)]
+                                        Just [TextPart $ "DSL type error: " ++ (show ty1) ++ " doesn't match " ++(show ty2)]
 dslerr _ = Nothing
 
 

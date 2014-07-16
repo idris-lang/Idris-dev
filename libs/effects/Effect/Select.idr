@@ -18,6 +18,6 @@ instance Handler Selection List where
 SELECT : EFFECT
 SELECT = MkEff () Selection
 
-select : List a -> { [SELECT] } Eff m a 
+select : List a -> { [SELECT] } Eff a 
 select xs = call $ Select xs
 
