@@ -45,4 +45,3 @@ main = do print (record { event->organiser->name } test)
           print (record { organiser->age } idm_gbg)
           print (record { year } idm_gbg)
 
-

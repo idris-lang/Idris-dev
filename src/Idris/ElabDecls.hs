@@ -871,15 +871,23 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
          let recty = getRecTy cty_imp
          let recty_u = getRecTy cty
 
+         let paramNames = getPNames recty ppos
+
          -- rename indices when we generate the getter/setter types, so
          -- that they don't clash with the names of the projections
          -- we're generating
          let index_names_in = getRecNameMap "_in" ppos recty
          let recty_in = substMatches index_names_in recty
 
-         logLvl 1 $ show (recty, ptys)
-         let substs = map (\ (n, _) -> (n, PApp fc (PRef fc n)
-                                                [pexp (PRef fc rec)])) ptys
+         logLvl 3 $ show (recty, recty_u, ppos, paramNames, ptys)
+         -- Substitute indices with projection functions, and parameters with
+         -- the updated parameter name
+         let substs = map (\ (n, _) -> 
+                             if n `elem` paramNames
+                                then (n, PRef fc (mkp n))
+                                else (n, PApp fc (PRef fc n)
+                                                [pexp (PRef fc rec)])) 
+                          ptys 
 
          -- Generate projection functions
          proj_decls <- mapM (mkProj recty_in substs cimp) (zip ptys [0..])
@@ -900,6 +908,14 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
     isNonImp (PExp _ _ _ _, a) = Just a
     isNonImp _ = Nothing
 
+    getPNames (PApp _ _ as) ppos = getpn as ppos
+      where
+        getpn as [] = []
+        getpn as (i:is) | length as > i,
+                          PRef _ n <- getTm (as!!i) = n : getpn as is
+                        | otherwise = getpn as is
+    getPNames _ _ = []
+   
     tryElabDecl info (fn, ty, val)
         = do i <- getIState
              idrisCatch (do elabDecl' EAll info ty
