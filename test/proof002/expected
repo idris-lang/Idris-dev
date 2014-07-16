@@ -1,7 +1,7 @@
 Reflect.idr:207:38:When elaborating right hand side of testReflect1:
 When elaborating an application of function Reflect.getJust:
         Can't unify
-                IsJust (Just x)
+                IsJust (Just x2)
         with
                 IsJust (prove (getProof x))
         

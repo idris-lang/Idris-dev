@@ -167,10 +167,14 @@ pprintErr' i (InternalMsg s) =
          text ("Please consider reporting at " ++ bugaddr)
        ]
 pprintErr' i (CantUnify _ x_in y_in e sc s) =
-  let (x_ns, y_ns) = renameMNs x_in y_in
+  let (x_ns, y_ns, nms) = renameMNs x_in y_in
       (x, y) = addImplicitDiffs (delab i x_ns) (delab i y_ns) in
-    text "Can't unify" <> indented (annTm x_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) x)) <$>
-    text "with" <> indented (annTm y_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) sc) y)) <>
+    text "Can't unify" <> indented (annTm x_ns 
+                      (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
+                                        ++ zip nms (repeat False)) x)) <$>
+    text "with" <> indented (annTm y_ns 
+                      (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
+                                        ++ zip nms (repeat False)) y)) <>
     case e of
       Msg "" -> empty
       _ -> line <> line <> text "Specifically:" <>
@@ -269,26 +273,19 @@ pprintErr' i (ReflectionFailed msg err) =
 -- Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly
 -- FIXME: I can't actually contrive an error to test this! Will revisit later...
-renameMNs :: Term -> Term -> (Term, Term)
+renameMNs :: Term -> Term -> (Term, Term, [Name])
 renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
-                    newnames = execState getRenames (zip ns ns) in
-                      (rename newnames x, rename newnames y)
+                    newnames = evalState (getRenames [] ns) 1 in
+                      (rename newnames x, rename newnames y, map snd newnames)
   where
-    getRenames :: State [(Name, Name)] ()
-    getRenames = do getRs x; getRs y
-                   
-    getRs :: Term -> State [(Name, Name)] ()
-    getRs (P _ n@(MN i x) _) = do
-        nmap <- get
-        when (n `notElem` map fst nmap) $
-           put $ (n, uniqueName n (map fst nmap)) : nmap
-    getRs (App f a) = do getRs f; getRs a
-    getRs (Bind n b sc) = do
-        nmap <- get
-        when (n `notElem` map fst nmap) $
-           put $ (n, uniqueName n (map fst nmap)) : nmap
-        getRs sc
-    getRs t = return ()
+    getRenames :: [(Name, Name)] -> [Name] -> State Int [(Name, Name)]
+    getRenames acc [] = return acc
+    getRenames acc (n@(MN i x) : xs) | UN x `elem` xs
+         = do idx <- get
+              put (idx + 1)
+              let x' = sUN (str x ++ show idx)
+              getRenames ((n, x') : acc) xs
+    getRenames acc (x : xs) = getRenames acc xs
 
     rename :: [(Name, Name)] -> Term -> Term
     rename ns (P nt x t) | Just x' <- lookup x ns = P nt x' t
