@@ -213,7 +213,8 @@ unify' ctxt env topx topy =
                          "\nHoles: " ++ show (holes ps)
                          ++ "\nInjective: " ++ show (injective ps)
                          ++ "\n") $
-                     lift $ unify ctxt env topx topy inj (holes ps) while
+                     lift $ unify ctxt env topx topy inj (holes ps) 
+                                  (map fst (notunified ps)) while
       let notu = filter (\ (n, t) -> case t of
                                         P _ _ _ -> False
                                         _ -> n `elem` dont) u
@@ -233,6 +234,7 @@ unify' ctxt env topx topy =
                                               (fails ++ problems ps)
                                               (injective ps)
                                               (holes ps)
+                                              (map fst (notunified ps))
            let (notu', probs_notu) = mergeNotunified env (notu ++ notunified ps)
            traceWhen (unifylog ps)
             ("Now solved: " ++ show ns' ++
@@ -869,10 +871,11 @@ updateNotunified ns nu = up nu where
   up ((n, t) : nus) = let t' = updateSolved ns t in
                           ((n, t') : up nus)
 
-updateProblems :: Context -> [(Name, TT Name)] -> Fails -> [Name] -> [Name]
+-- FIXME: Why not just pass the whole proof state?
+updateProblems :: Context -> [(Name, TT Name)] -> Fails -> [Name] -> [Name] -> [Name]
                -> ([(Name, TT Name)], Fails)
 -- updateProblems ctxt [] ps inj holes = ([], ps)
-updateProblems ctxt ns ps inj holes = up ns ps where
+updateProblems ctxt ns ps inj holes usupp = up ns ps where
   up ns [] = (ns, [])
   up ns ((x, y, env, err, while, um) : ps) =
     let x' = updateSolved ns x
@@ -880,7 +883,7 @@ updateProblems ctxt ns ps inj holes = up ns ps where
         err' = updateError ns err
         env' = updateEnv ns env in
 --          trace ("Updating " ++ show (x',y')) $ 
-          case unify ctxt env' x' y' inj holes while of
+          case unify ctxt env' x' y' inj holes usupp while of
             OK (v, []) -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
             e -> -- trace ("Failed " ++ show e) $
@@ -921,6 +924,7 @@ processTactic EndUnify ps
           ns' = map (\ (n, t) -> (n, updateSolved ns t)) ns
           (ns'', probs') = updateProblems (context ps) ns' (problems ps)
                                           (injective ps) (holes ps)
+                                          (map fst (notunified ps))
           tm' = updateSolved ns'' (pterm ps) in
           traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
             return (ps { pterm = tm',
@@ -943,6 +947,7 @@ processTactic UnifyProblems ps
                                          (problems ps)
                                          (injective ps)
                                          (holes ps)
+                                         (map fst (notunified ps))
           pterm' = updateSolved ns' (pterm ps) in
       traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns')) $
         return (ps { pterm = pterm', solved = Nothing, problems = probs',
@@ -976,6 +981,7 @@ processTactic t ps
                                                       [s] (problems ps')
                                                       (injective ps')
                                                       (holes ps')
+                                                      (map fst (notunified ps))
                                     _ -> ([], problems ps')
                      -- rechecking problems may find more solutions, so
                      -- apply them here

@@ -242,9 +242,10 @@ hasv (App f a) = hasv f || hasv a
 hasv (Bind x b sc) = hasv (binderTy b) || hasv sc
 hasv _ = False
 
-unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] -> [FailContext] ->
+unify :: Context -> Env -> TT Name -> TT Name -> 
+         [Name] -> [Name] -> [Name] -> [FailContext] ->
          TC ([(Name, TT Name)], Fails)
-unify ctxt env topx topy inj holes from =
+unify ctxt env topx topy inj holes usersupp from =
 --      traceWhen (hasv topx || hasv topy) 
 --           ("Unifying " ++ show topx ++ "\nAND\n" ++ show topy ++ "\n") $
              -- don't bother if topx and topy are different at the head
@@ -497,7 +498,8 @@ unify ctxt env topx topy inj holes from =
                                 _ -> False
 
             metavar t = case t of
-                             P _ x _ -> (x `elem` holes || holeIn env x)
+                             P _ x _ -> (x `notElem` usersupp && 
+                                             (x `elem` holes || holeIn env x))
                                           || globmetavar t
                              _ -> False
             pat t = case t of
