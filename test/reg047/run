@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ reg047.idr --check --nobuiltins
+idris $@ reg047a.idr --check
+rm -f *.ibc
