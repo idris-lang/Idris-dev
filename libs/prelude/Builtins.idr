@@ -15,12 +15,16 @@ FalseElim : _|_ -> a
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where
 
--- Eq_ : a -> a -> Type
--- Eq_ x y = (=) _ _ x y
- 
+
 infix 5 ~=~
 
-(~=~) : a -> b -> Type
+||| Explicit heterogeneous ("John Major") equality. Use this when Idris
+||| incorrectly chooses homogeneous equality for `(=)`.
+||| @ a the type of the left side
+||| @ b the type of the right side
+||| @ x the left side
+||| @ y the right side
+(~=~) : (x : a) -> (y : b) -> Type
 (~=~) x y = (=) _ _ x y
 
 -- ------------------------------------------------------ [ For rewrite tactic ]
