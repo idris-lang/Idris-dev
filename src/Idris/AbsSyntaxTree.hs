@@ -1070,13 +1070,11 @@ eqDoc = parseDocstring . T.pack $
           "To use such a proof, pattern-match on it, and the two equal things will " ++
           "then need to be the _same_ pattern." ++
           "\n\n" ++
-          "**Note**: Idris's equality type is _heterogeneous_, which means that it " ++
+          "**Note**: Idris's equality type is potentially _heterogeneous_, which means that it " ++
           "is possible to state equalities between values of potentially different " ++
-          "types. This is sometimes referred to in the literature as \"John Major\" " ++
-          "equality." ++
+          "types. However, Idris will attempt the homogeneous case unless it fails to typecheck." ++
           "\n\n" ++
-          "Thus, if Idris can't infer the type of one side of the equality, then " ++
-          "you may need to annotate it. See the function `the`."
+          "You may need to use `(~=~)` to explicitly request heterogeneous equality."
 
 eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType), (n "B", PType)]
                                  (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
