@@ -57,7 +57,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                try (resolveTC 7 g fn ist)
+                                try (resolveTC True 7 g fn ist)
                                     (movelast n)) ivs
          ivs <- get_instances
          hs <- get_holes
@@ -65,7 +65,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                resolveTC 7 g fn ist) ivs
+                                resolveTC True 7 g fn ist) ivs
          tm <- get_term
          ctxt <- get_context
          probs <- get_probs
@@ -243,7 +243,7 @@ elab ist info emode opts fn tm
                                     (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = do g <- goal; resolveTC 5 g fn ist
+       = do g <- goal; resolveTC False 5 g fn ist
     elab' ina (PResolveTC fc)
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
@@ -405,18 +405,18 @@ elab ist info emode opts fn tm
                focus valn
                elabE (True, a, True, qq) val
                ivs' <- get_instances
+               env <- get_env
+               elabE (True, a, inty, qq) sc
                when (not pattern) $
                    mapM_ (\n -> do focus n
                                    g <- goal
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
                                    -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
-                                    then try (resolveTC 7 g fn ist)
+                                    then try (resolveTC True 7 g fn ist)
                                              (movelast n)
                                     else movelast n)
                          (ivs' \\ ivs)
-               env <- get_env
-               elabE (True, a, inty, qq) sc
                -- HACK: If the name leaks into its type, it may leak out of
                -- scope outside, so substitute in the outer scope.
                expandLet n (case lookup n env of
@@ -543,7 +543,7 @@ elab ist info emode opts fn tm
                                         hs <- get_holes
                                         if all (\n -> not (n `elem` hs)) (freeNames g)
                                         -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
-                                         then try (resolveTC 7 g fn ist)
+                                         then try (resolveTC False 7 g fn ist)
                                                   (movelast n)
                                          else movelast n)
                               (ivs' \\ ivs)
@@ -1004,12 +1004,12 @@ proofSearch' ist rec depth prv top n hints
          proofSearch rec prv depth 
                      (elab ist toplevel ERHS [] (sMN 0 "tac")) top n hints ist
 
-resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
+resolveTC :: Bool -> Int -> Term -> Name -> IState -> ElabD ()
 resolveTC = resTC' [] 
 
-resTC' tcs 0 topg fn ist = fail $ "Can't resolve type class"
-resTC' tcs 1 topg fn ist = try' (trivial' ist) (resolveTC 0 topg fn ist) True
-resTC' tcs depth topg fn ist
+resTC' tcs def 0 topg fn ist = fail $ "Can't resolve type class"
+resTC' tcs def 1 topg fn ist = try' (trivial' ist) (resolveTC def 0 topg fn ist) True
+resTC' tcs defaultOn depth topg fn ist
       = do hnf_compute
            g <- goal
            ptm <- get_term
@@ -1040,7 +1040,7 @@ resTC' tcs depth topg fn ist
 
     numclass = sNS (sUN "Num") ["Classes","Prelude"]
 
-    needsDefault t num@(P _ nc _) [P Bound a _] | nc == numclass
+    needsDefault t num@(P _ nc _) [P Bound a _] | nc == numclass && defaultOn
         = do focus a
              fill (RConstant (AType (ATInt ITBig))) -- default Integer
              solve
@@ -1085,7 +1085,7 @@ resTC' tcs depth topg fn ist
                                      let got = fst (unApply t)
                                      let depth' = if tc' `elem` tcs
                                                      then depth - 1 else depth 
-                                     resTC' (got : tcs)  depth' topg fn ist)
+                                     resTC' (got : tcs) defaultOn depth' topg fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
