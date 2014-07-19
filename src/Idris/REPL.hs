@@ -706,7 +706,7 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
   setReplDefined Nothing = return ()
   setReplDefined (Just n) = do
     oldState <- get
-    put oldState { idris_repl_defs = n : idris_repl_defs oldState }
+    fmodifyState repl_definitions (n:)
 
 process h fn (Undefine names) = undefine names
   where
