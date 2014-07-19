@@ -114,7 +114,7 @@ treeInsert' k v (Branch3 t1 k1 t2 k2 t3) =
     else
       case treeInsert' k v t3 of
         Left t3' => Left (Branch3 t1 k1 t2 k2 t3')
-        Right (a, b, c) => Right (Branch2 t1 k2 t2, k2, Branch2 a b c)
+        Right (a, b, c) => Right (Branch2 t1 k1 t2, k2, Branch2 a b c)
 
 treeInsert : Ord k => k -> v -> Tree n k v -> Either (Tree n k v) (Tree (S n) k v)
 treeInsert k v t =
