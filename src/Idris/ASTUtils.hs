@@ -38,6 +38,7 @@ import Data.Maybe
 import Prelude hiding (id, (.))
 
 import Idris.Core.TT
+import Idris.Core.Evaluate
 import Idris.AbsSyntaxTree
 
 data Field rec fld = Field
@@ -132,3 +133,17 @@ opts_idrisCmdline :: Field IState [Opt]
 opts_idrisCmdline =
       Field opt_cmdline (\v opts -> opts{ opt_cmdline = v })
     . Field idris_options (\v ist -> ist{ idris_options = v })
+
+-- TT Context
+-------------
+-- This has a terrible name, but I'm not sure of a better one that isn't
+-- confusingly close to tt_ctxt
+known_terms :: Field IState (Ctxt (Def, Accessibility, Totality, MetaInformation))
+known_terms = Field (definitions . tt_ctxt)
+                    (\v state -> state {tt_ctxt = (tt_ctxt state) {definitions = v}})
+
+
+-- Names defined at the repl
+----------------------------
+repl_definitions :: Field IState [Name]
+repl_definitions = Field idris_repl_defs (\v state -> state {idris_repl_defs = v})

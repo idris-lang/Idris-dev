@@ -49,6 +49,8 @@ import IRTS.Compiler
 import IRTS.CodegenCommon
 import IRTS.System
 
+import Control.Category
+import Prelude hiding ((.), id)
 import Data.List.Split (splitOn)
 import Data.List (groupBy)
 import qualified Data.Text as T
@@ -681,6 +683,7 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
   defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do 
     elabDecl EAll toplevel tyDecl
     elabClauses toplevel fc opts name (concatMap getClauses decls)
+    setReplDefined (getName tyDecl)
   defineName [PClauses fc opts _ [clause]] = do
     let pterm = getRHS clause
     (tm,ty) <- elabVal toplevel ERHS pterm
@@ -688,8 +691,10 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
     let tm' = force (normaliseAll ctxt [] tm)
     let ty' = force (normaliseAll ctxt [] ty)
     updateContext (addCtxtDef (getClauseName clause) (Function ty' tm'))
-  defineName [PData doc argdocs syn fc opts decl] = do
+    setReplDefined (Just $ getClauseName clause)
+  defineName [def @ (PData doc argdocs syn fc opts decl)] = do
     elabData toplevel syn doc argdocs fc opts decl
+    setReplDefined (getName def)
   getClauses (PClauses fc opts name clauses) = clauses
   getClauses _ = []
   getRHS :: PClause -> PTerm
@@ -697,6 +702,27 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
   getRHS (PWith fc name whole with rhs whereBlock) = rhs
   getRHS (PClauseR fc with rhs whereBlock) = rhs
   getRHS (PWithR fc with rhs whereBlock) = rhs
+  setReplDefined :: Maybe Name -> Idris ()
+  setReplDefined Nothing = return ()
+  setReplDefined (Just n) = do
+    oldState <- get
+    put oldState { idris_repl_defs = n : idris_repl_defs oldState }
+
+process h fn (Undefine names) = undefine names
+  where
+    undefine :: [Name] -> Idris ()
+    undefine [] = do
+      allDefined <- idris_repl_defs `fmap` get
+      undefine' allDefined
+    undefine names = undefine' names
+    undefine' [] = return ()
+    undefine' (n:names) = do
+      allDefined <- idris_repl_defs `fmap` get
+      if n `elem` allDefined
+         then fputState (ctxt_lookup n . known_terms) Nothing
+         else tclift $ tfail $ Msg ("Can't undefine " ++ show n ++ " because it wasn't defined at the repl")
+      fmodifyState repl_definitions (delete n)
+      undefine' names
 
 process h fn (ExecVal t)
                   = do ctxt <- getContext
