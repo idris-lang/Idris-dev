@@ -522,7 +522,7 @@ app syn = do f <- reserved "mkForeign"
              return (dslify i ap)
 
        <|> do f <- simpleExpr syn
-              (do try $ symbol "<=="
+              (do try $ reservedOp "<=="
                   fc <- getFC
                   ff <- fnName
                   return (PLet (sMN 0 "match")
