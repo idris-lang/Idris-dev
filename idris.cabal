@@ -653,7 +653,7 @@ Library
                 , text
                 , time >= 1.4
                 , transformers
-                , trifecta >= 1.1
+                , trifecta >= 1.1 && <= 1.4.2
                 , unordered-containers
                 , utf8-string
                 , vector
