@@ -194,6 +194,10 @@ data IState = IState {
     idris_callswho :: Maybe (M.Map Name [Name])
    }
 
+-- Required for parsers library, and therefore trifecta
+instance Show IState where
+  show = const "{internal state}"
+
 data SizeChange = Smaller | Same | Bigger | Unknown
     deriving (Show, Eq)
 {-!

@@ -12,6 +12,7 @@ before_install:
   - sudo apt-get install -qq expect
 install:
   - cabal install -f FFI -f LLVM --only-dependencies --enable-tests
+  - ghc-pkg list
 before_script:
   - cabal sdist
   - cd ..
