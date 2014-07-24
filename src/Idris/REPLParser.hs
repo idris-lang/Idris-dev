@@ -29,7 +29,7 @@ parseCmd i inputname = P.runparser pCmd i inputname
 cmd :: [String] -> P.IdrisParser ()
 cmd xs = try (do P.lchar ':'; docmd (sortBy (\x y -> compare (length y) (length x)) xs))
     where docmd [] = fail "No such command"
-          docmd (x:xs) = try (discard (P.symbol x)) <|> docmd xs
+          docmd (x:xs) = try (discard (P.reserved x)) <|> docmd xs
 
 pCmd :: P.IdrisParser Command
 pCmd = do P.whiteSpace; do cmd ["q", "quit"]; eof; return Quit
@@ -77,7 +77,7 @@ pCmd = do P.whiteSpace; do cmd ["q", "quit"]; eof; return Quit
               <|> do cmd ["set"]; o <- pOption; return (SetOpt o)
               <|> do cmd ["unset"]; o <- pOption; return (UnsetOpt o)
               <|> do cmd ["s", "search"]; P.whiteSpace;
-                          t <- P.typeExpr (defaultSyntax { implicitAllowed = True }); return (Search t)
+                     t <- P.typeExpr (defaultSyntax { implicitAllowed = True }); return (Search t)
               <|> do cmd ["cs", "casesplit"]; P.whiteSpace;
                      upd <- option False (do P.lchar '!'; return True)
                      l <- P.natural; n <- P.name;
