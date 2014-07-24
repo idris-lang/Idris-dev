@@ -156,6 +156,13 @@ data Raw = Var TTName
 
 %name Raw tm, tm'
 
+||| Error reports are a list of report parts
+data ErrorReportPart = TextPart String
+                     | NamePart TTName
+                     | TermPart TT
+                     | SubReport (List ErrorReportPart)
+%name ErrorReportPart part, p
+
 data Tactic = Try Tactic Tactic
             -- ^ try the first tactic and resort to the second one on failure
             | GoalType String Tactic
@@ -202,4 +209,7 @@ data Tactic = Try Tactic Tactic
             -- ^ name a reflected term and type it
             | Compute
             -- ^ normalise the context
+            | Skip
+            -- ^ do nothing
+            | Fail (List ErrorReportPart)
 %name Tactic tac, tac'
