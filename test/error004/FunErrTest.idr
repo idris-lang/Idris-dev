@@ -9,7 +9,7 @@ import Language.Reflection.Utils
 total
 cadr :  (xs : List a)
      -> {auto cons1 : isCons xs = True}
-     -> {auto cons2 : isCons (tail xs cons1) = True}
+     -> {auto cons2 : isCons (tail xs) = True}
      -> a
 cadr (x :: (y :: _)) {cons1=refl} {cons2=refl} = y
 cadr (x :: [])       {cons1=refl} {cons2=refl} impossible
