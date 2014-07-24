@@ -675,6 +675,7 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
   getName (PTy docs argdocs syn fc opts name ty) = Just name
   getName (PClauses fc opts name (clause:clauses)) = Just (getClauseName clause)
   getName (PData doc argdocs syn fc opts dataDecl) = Just (d_name dataDecl)
+  getName (PClass doc syn fc constraints name parms parmdocs decls) = Just name
   getName _ = Nothing
   -- getClauseName is partial and I am not sure it's used safely! -- trillioneyes
   getClauseName (PClause fc name whole with rhs whereBlock) = name
@@ -683,7 +684,7 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
   defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do 
     elabDecl EAll toplevel tyDecl
     elabClauses toplevel fc opts name (concatMap getClauses decls)
-    setReplDefined (getName tyDecl)
+    setReplDefined (Just name)
   defineName [PClauses fc opts _ [clause]] = do
     let pterm = getRHS clause
     (tm,ty) <- elabVal toplevel ERHS pterm
