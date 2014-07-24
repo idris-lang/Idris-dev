@@ -195,6 +195,10 @@ data IState = IState {
     idris_repl_defs :: [Name] -- ^ List of names that were defined in the repl, and can be re-/un-defined
    }
 
+-- Required for parsers library, and therefore trifecta
+instance Show IState where
+  show = const "{internal state}"
+
 data SizeChange = Smaller | Same | Bigger | Unknown
     deriving (Show, Eq)
 {-!
