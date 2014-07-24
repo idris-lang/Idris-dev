@@ -209,7 +209,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
         , ns1 == map txt ["Errors","Reflection","Language"]
         , ns2 == map txt ["Maybe", "Prelude"]
         , ns3 == map txt ["List", "Prelude"]
-        , ns4 == map txt ["Errors","Reflection","Language"] = True
+        , ns4 == map txt ["Reflection","Language"] = True
     tyIsHandler _                                           = False
 
 -- Get the list of (index, name) of inaccessible arguments from an elaborated

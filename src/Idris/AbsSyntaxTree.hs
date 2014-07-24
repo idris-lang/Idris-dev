@@ -767,6 +767,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | TEval t
                 | TDocStr (Either Name Const)
                 | TSearch t
+                | Skip
+                | TFail [ErrorReportPart]
                 | Qed | Abandon
     deriving (Show, Eq, Functor)
 {-!
@@ -796,6 +798,8 @@ instance Sized a => Sized (PTactic' a) where
   size (Fill t) = 1 + size t
   size Qed = 1
   size Abandon = 1
+  size Skip = 1
+  size (TFail ts) = 1 + size ts
 
 type PTactic = PTactic' PTerm
 

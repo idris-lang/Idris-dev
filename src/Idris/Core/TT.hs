@@ -158,6 +158,12 @@ type Err = Err' Term
 deriving instance NFData Err
 !-}
 
+instance Sized ErrorReportPart where
+  size (TextPart msg) = 1 + length msg
+  size (TermPart t) = 1 + size t
+  size (NamePart n) = 1 + size n
+  size (SubReport rs) = 1 + size rs
+
 instance Sized Err where
   size (Msg msg) = length msg
   size (InternalMsg msg) = length msg

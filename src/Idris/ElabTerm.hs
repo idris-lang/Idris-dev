@@ -1359,6 +1359,8 @@ runTac autoSolve ist fn tac
                                     _ -> fail "Wrong goal type"
     runT ProofState = do g <- goal
                          return ()
+    runT Skip = return ()
+    runT (TFail err) = lift . tfail $ ReflectionError [err] (Msg "")
     runT x = fail $ "Not implemented " ++ show x
 
     runReflected t = do t' <- reify ist t
@@ -1376,6 +1378,7 @@ reify _ (P _ n _) | n == reflm "Trivial" = return Trivial
 reify _ (P _ n _) | n == reflm "Instance" = return TCInstance
 reify _ (P _ n _) | n == reflm "Solve" = return Solve
 reify _ (P _ n _) | n == reflm "Compute" = return Compute
+reify _ (P _ n _) | n == reflm "Skip" = return Skip
 reify ist t@(App _ _)
           | (P _ f _, args) <- unApply t = reifyApp ist f args
 reify _ t = fail ("Unknown tactic " ++ show t)
@@ -1416,6 +1419,15 @@ reifyApp ist t [n, tt', t']
                                           tt'' <- reifyTT tt'
                                           t''  <- reifyTT t'
                                           return $ LetTacTy n' (delab ist tt'') (delab ist t'')
+reifyApp ist t [errs]
+             | t == reflm "Fail" = case unList errs of
+                                     Nothing -> fail "Failed to reify errors"
+                                     Just errs' ->
+                                       let parts = mapM reifyReportPart errs' in
+                                       case parts of
+                                         Left err -> fail $ "Couldn't reify \"Fail\" tactic - " ++ show err
+                                         Right errs'' ->
+                                           return $ TFail errs''
 reifyApp _ f args = fail ("Unknown tactic " ++ show (f, args)) -- shouldn't happen
 
 -- | Reify terms from their reflected representation
@@ -2042,10 +2054,10 @@ reflErrName n = sNS (sUN n) ["Errors", "Reflection", "Language"]
 -- representation. Not in Idris or ElabD monads because it should be usable
 -- from either.
 reifyReportPart :: Term -> Either Err ErrorReportPart
-reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflErrName "TextPart" =
+reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflm "TextPart" =
     Right (TextPart msg)
 reifyReportPart (App (P (DCon _ _) n _) ttn)
-  | n == reflErrName "NamePart" =
+  | n == reflm "NamePart" =
     case runElab [] (reifyTTName ttn) (initElaborator NErased initContext Erased) of
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
@@ -2053,7 +2065,7 @@ reifyReportPart (App (P (DCon _ _) n _) ttn)
        " when reflecting an error:" ++ show e
       OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App (P (DCon _ _) n _) tm)
-  | n == reflErrName "TermPart" =
+  | n == reflm "TermPart" =
   case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
@@ -2061,7 +2073,7 @@ reifyReportPart (App (P (DCon _ _) n _) tm)
       " when reflecting an error:" ++ show e
     OK (tm', _) -> Right $ TermPart tm'
 reifyReportPart (App (P (DCon _ _) n _) tm)
-  | n == reflErrName "SubReport" =
+  | n == reflm "SubReport" =
   case unList tm of
     Just xs -> do subParts <- mapM reifyReportPart xs
                   Right (SubReport subParts)
