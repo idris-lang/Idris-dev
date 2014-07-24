@@ -147,3 +147,7 @@ known_terms = Field (definitions . tt_ctxt)
 ----------------------------
 repl_definitions :: Field IState [Name]
 repl_definitions = Field idris_repl_defs (\v state -> state {idris_repl_defs = v})
+
+-- Fixity declarations in an IState
+idris_fixities :: Field IState [FixDecl]
+idris_fixities = Field idris_infixes (\v state -> state {idris_infixes = v})

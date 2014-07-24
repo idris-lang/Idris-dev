@@ -696,7 +696,9 @@ process h fn (NewDefn decls) = do
     updateContext (addCtxtDef (getClauseName clause) (Function ty' tm'))
     setReplDefined (Just $ getClauseName clause)
   -- fixity and syntax declarations are ignored by elabDecls, so they'll have to be handled some other way
-  defineName (PFix{}:_) = tclift $ tfail (Msg "That kind of declaration is not supported. If you feel it should be supported, please submit an issue at https://github.com/idris-lang/Idris-dev.")
+  defineName (PFix fc fixity strs : defns) = do
+    fmodifyState idris_fixities (map (Fix fixity) strs ++)
+    unless (null defns) $ defineName defns
   defineName (PSyntax{}:_) = tclift $ tfail (Msg "That kind of declaration is not supported. If you feel it should be supported, please submit an issue at https://github.com/idris-lang/Idris-dev.")
   defineName decls = do
     elabDecls toplevel decls
