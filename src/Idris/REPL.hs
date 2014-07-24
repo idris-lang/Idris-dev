@@ -701,7 +701,7 @@ process h fn (NewDefn decls) = do
     unless (null defns) $ defineName defns
   defineName (PSyntax{}:_) = tclift $ tfail (Msg "That kind of declaration is not supported. If you feel it should be supported, please submit an issue at https://github.com/idris-lang/Idris-dev.")
   defineName decls = do
-    elabDecls toplevel decls
+    elabDecls toplevel (map fixClauses decls)
     setReplDefined (getName (head decls))
   getClauses (PClauses fc opts name clauses) = clauses
   getClauses _ = []
@@ -715,6 +715,16 @@ process h fn (NewDefn decls) = do
   setReplDefined (Just n) = do
     oldState <- get
     fmodifyState repl_definitions (n:)
+  -- the "name" field of PClauses seems to always be MN 2 "__", so we need to
+  -- retrieve the actual name from deeper inside.
+  -- This should really be a full recursive walk through the structure of PDecl, but
+  -- I think it should work this way and I want to test sooner. Also lazy.
+  fixClauses :: PDecl' t -> PDecl' t
+  fixClauses (PClauses fc opts _ css@(clause:cs)) =
+    PClauses fc opts (getClauseName clause) css
+  fixClauses (PInstance syn fc constraints cls parms ty instName decls) = 
+    PInstance syn fc constraints cls parms ty instName (map fixClauses decls)
+  fixClauses decl = decl
 
 process h fn (Undefine names) = undefine names
   where
