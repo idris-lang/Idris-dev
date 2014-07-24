@@ -683,10 +683,6 @@ process h fn (NewDefn decls) = do
   getClauseName (PClause fc name whole with rhs whereBlock) = name
   getClauseName (PWith fc name whole with rhs whereBlock) = name
   defineName :: [PDecl] -> Idris ()
-  defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do 
-    elabDecl EAll toplevel tyDecl
-    elabClauses toplevel fc opts name (concatMap getClauses decls)
-    setReplDefined (Just name)
   defineName [PClauses fc opts _ [clause]] = do
     let pterm = getRHS clause
     (tm,ty) <- elabVal toplevel ERHS pterm
