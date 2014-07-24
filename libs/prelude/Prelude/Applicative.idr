@@ -13,6 +13,10 @@ class Functor f => Applicative (f : Type -> Type) where
     pure  : a -> f a
     (<$>) : f (a -> b) -> f a -> f b
 
+instance Applicative id where
+    pure a = a
+    f <$> a = f a
+
 infixl 2 <$
 (<$) : Applicative f => f a -> f b -> f a
 a <$ b = map const a <$> b
