@@ -692,9 +692,12 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
     let ty' = force (normaliseAll ctxt [] ty)
     updateContext (addCtxtDef (getClauseName clause) (Function ty' tm'))
     setReplDefined (Just $ getClauseName clause)
-  defineName [def @ (PData doc argdocs syn fc opts decl)] = do
-    elabData toplevel syn doc argdocs fc opts decl
-    setReplDefined (getName def)
+  -- fixity and syntax declarations are ignored by elabDecls, so they'll have to be handled some other way
+  defineName (PFix{}:_) = tclift $ tfail (Msg "That kind of declaration is not supported. If you feel it should be supported, please submit an issue at https://github.com/idris-lang/Idris-dev.")
+  defineName (PSyntax{}:_) = tclift $ tfail (Msg "That kind of declaration is not supported. If you feel it should be supported, please submit an issue at https://github.com/idris-lang/Idris-dev.")
+  defineName decls = do
+    elabDecls toplevel decls
+    setReplDefined (getName (head decls))
   getClauses (PClauses fc opts name clauses) = clauses
   getClauses _ = []
   getRHS :: PClause -> PTerm
