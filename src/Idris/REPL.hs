@@ -669,7 +669,9 @@ process h fn (Eval t)
                                             ihPrintTermWithType h tmDoc tyDoc
 
 
-process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++ show namedGroups) >> mapM_ defineName namedGroups where
+process h fn (NewDefn decls) = do
+        logLvl 3 ("Defining names using these decls: " ++ show (showDecls verbosePPOption decls))
+        mapM_ defineName namedGroups where
   namedGroups = groupBy (\d1 d2 -> getName d1 == getName d2) decls
   getName :: PDecl -> Maybe Name
   getName (PTy docs argdocs syn fc opts name ty) = Just name

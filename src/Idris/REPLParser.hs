@@ -55,7 +55,7 @@ pCmd = do P.whiteSpace; do cmd ["q", "quit"]; eof; return Quit
                      defn <- concat <$> many (P.decl defaultSyntax)
                      return (NewDefn defn)
               <|> do cmd ["unlet","undefine"]
-                          Undefine `fmap` many P.name
+                     Undefine `fmap` many P.name
               <|> do cmd ["lto", "loadto"];
                      toline <- P.natural
                      f <- many anyChar;
