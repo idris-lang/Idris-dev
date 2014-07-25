@@ -245,81 +245,92 @@ instance Functor (Either e) where
 
 ---- Applicative instances
 
+instance Apply PrimIO where
+    am <$> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
 instance Applicative PrimIO where
     pure = prim_io_return
 
-    am <$> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
-
-instance Applicative IO where
-    pure x = io_return x
+instance Apply IO where
     f <$> a = io_bind f (\f' =>
                 io_bind a (\a' =>
                   io_return (f' a')))
+instance Applicative IO where
+    pure x = io_return x
 
+instance Apply Maybe where
+    (Just f) <$> (Just a) = Just (f a)
+    _        <$> _        = Nothing
 instance Applicative Maybe where
     pure = Just
 
-    (Just f) <$> (Just a) = Just (f a)
-    _        <$> _        = Nothing
-
-instance Applicative (Either e) where
-    pure = Right
-
+instance Apply (Either e) where
     (Left a) <$> _          = Left a
     (Right f) <$> (Right r) = Right (f r)
     (Right _) <$> (Left l)  = Left l
+instance Applicative (Either e) where
+    pure = Right
 
+instance Apply List where
+    fs <$> vs = concatMap (\f => map f vs) fs
 instance Applicative List where
     pure x = [x]
 
-    fs <$> vs = concatMap (\f => map f vs) fs
-
+instance Apply (Vect k) where
+    fs <$> vs = zipWith apply fs vs
 instance Applicative (Vect k) where
     pure = replicate _
 
-    fs <$> vs = zipWith apply fs vs
-
+instance Apply Stream where
+  (<$>) = zipWith apply
 instance Applicative Stream where
   pure = repeat
-  (<$>) = zipWith apply
 
 ---- Alternative instances
 
-instance Alternative Maybe where
-    empty = Nothing
-
+instance Alt Maybe where
     (Just x) <|> _ = Just x
     Nothing  <|> v = v
+instance Plus Maybe where
+    empty = Nothing
+instance Alternative Maybe
 
-instance Alternative List where
-    empty = []
-
+instance Alt List where
     (<|>) = (++)
+instance Plus List where
+    empty = []
+instance Alternative List
 
 ---- Monad instances
 
-instance Monad PrimIO where
+instance Bind PrimIO where
     b >>= k = prim_io_bind b k
+instance Monad PrimIO
 
-instance Monad IO where
+instance Bind IO where
     b >>= k = io_bind b k
+instance Monad IO
 
-instance Monad Maybe where
+instance Bind Maybe where
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
+instance Monad Maybe
 
-instance Monad (Either e) where
+instance Bind (Either e) where
     (Left n) >>= _ = Left n
     (Right r) >>= f = f r
+instance Monad (Either e)
 
-instance Monad List where
+instance Bind List where
     m >>= f = concatMap f m
+instance Monad List
 
-instance Monad (Vect n) where
+instance Bind (Vect n) where
     m >>= f = diag (map f m)
+instance Monad (Vect n)
 
-instance Monad Stream where
+instance Bind Stream where
   s >>= f = diag (map f s)
+instance Monad Stream
 
 ---- Traversable instances
 

@@ -16,12 +16,14 @@ instance Functor Provider where
   map f (Provide a) = Provide (f a)
   map f (Error err) = Error err
 
-instance Applicative Provider where
+instance Apply Provider where
   (Provide f) <$> (Provide x) = Provide (f x)
   (Provide f) <$> (Error err) = Error err
   (Error err) <$> _           = Error err
+instance Applicative Provider where
   pure = Provide
 
-instance Monad Provider where
+instance Bind Provider where
   (Provide x) >>= f = f x
   (Error err) >>= _ = Error err
+instance Monad Provider

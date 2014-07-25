@@ -17,20 +17,23 @@ record WriterT : Type -> (Type -> Type) -> Type -> Type where
 instance Functor f => Functor (WriterT w f) where
     map f (WR g) = WR $ map (\w => (f . fst $ w, snd w)) g
 
-instance (Monoid w, Applicative m) => Applicative (WriterT w m) where
-    pure a            = WR $ pure (a, neutral)
+instance (Monoid w, Apply m) => Apply (WriterT w m) where
     (WR f) <$> (WR v) = WR $ liftA2 merge f v where
         merge (fn, w) (a, w') = (fn a, w <+> w')
+instance (Monoid w, Applicative m) => Applicative (WriterT w m) where
+    pure a            = WR $ pure (a, neutral)
 
-instance (Monoid w, Alternative m) => Alternative (WriterT w m) where
-    empty             = WR empty
+instance (Alt m) => Alt (WriterT w m) where
     (WR m) <|> (WR n) = WR $ m <|> n
+instance (Plus m) => Plus (WriterT w m) where
+    empty             = WR empty
 
-instance (Monoid w, Monad m) => Monad (WriterT w m) where
+instance (Monoid w, Monad m) => Bind (WriterT w m) where
     (WR m) >>= k = WR $ do (a, w) <- m
                            let WR ka = k a
                            (b, w') <- ka
                            return (b, w <+> w')
+instance (Monoid w, Monad m) => Monad (WriterT w m) where
 
 instance (Monoid w, Monad m) => MonadWriter w (WriterT w m) where
     tell w        = WR $ return ((), w)
