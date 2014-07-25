@@ -10,6 +10,7 @@ import IRTS.CodegenC
 import IRTS.CodegenJava
 import IRTS.DumpBC
 import IRTS.CodegenJavaScript
+import IRTS.CodegenRuby
 #ifdef IDRIS_LLVM
 import IRTS.CodegenLLVM
 #else
@@ -99,6 +100,7 @@ compile codegen f tm
                               ViaNode -> codegenNode cginfo
                               ViaLLVM -> codegenLLVM cginfo
                               Bytecode -> dumpBC c f
+                              ViaRuby -> codegenRuby cginfo 
             Error e -> ierror e
   where checkMVs = do i <- getIState
                       case map fst (idris_metavars i) \\ primDefs of

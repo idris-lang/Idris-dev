@@ -285,6 +285,7 @@ data Codegen = ViaC
              | ViaJavaScript
              | ViaLLVM
              | Bytecode
+             | ViaRuby
     deriving (Show, Eq)
 
 -- | REPL commands

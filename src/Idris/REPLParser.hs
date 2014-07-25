@@ -145,6 +145,7 @@ codegenOption = do discard (P.symbol "javascript"); return ViaJavaScript
             <|> do discard (P.symbol "llvm"); return ViaLLVM
             <|> do discard (P.symbol "bytecode"); return Bytecode
             <|> do discard (P.symbol "C"); return ViaC
+            <|> do discard (P.symbol "Ruby"); return ViaRuby
 
 pConsoleWidth :: P.IdrisParser ConsoleWidth
 pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth

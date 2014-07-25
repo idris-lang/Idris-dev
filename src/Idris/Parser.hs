@@ -944,6 +944,7 @@ codegen_ = do reserved "C"; return ViaC
        <|> do reserved "Node"; return ViaNode
        <|> do reserved "LLVM"; return ViaLLVM
        <|> do reserved "Bytecode"; return Bytecode
+       <|> do reserved "Ruby"; return ViaRuby
        <?> "code generation language"
 
 {- |Parses a compiler directive
