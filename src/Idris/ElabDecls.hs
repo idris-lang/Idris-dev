@@ -395,6 +395,9 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
          ctxt <- getContext
          let cty' = normalise ctxt [] cty
 
+         -- Check that the constructor type is, in fact, a part of the family being defined
+         tyIs n cty'
+
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t
          logLvl 5 $ "Inaccessible args: " ++ show inacc
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty'
@@ -407,11 +410,11 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
          addIBC (IBCOpt n)
          return (n, cty')
   where
-    tyIs (Bind n b sc) = tyIs sc
-    tyIs t | (P _ n' _, _) <- unApply t
-        = if n' /= tn then tclift $ tfail (At fc (Msg (show n' ++ " is not " ++ show tn)))
+    tyIs con (Bind n b sc) = tyIs con sc
+    tyIs con t | (P _ n' _, _) <- unApply t
+        = if n' /= tn then tclift $ tfail (At fc (Elaborating "constructor " con (Msg (show n' ++ " is not " ++ show tn))))
              else return ()
-    tyIs t = tclift $ tfail (At fc (Msg (show t ++ " is not " ++ show tn)))
+    tyIs con t = tclift $ tfail (At fc (Elaborating "constructor " con (Msg (show t ++ " is not " ++ show tn))))
 
     mkLazy (PPi pl n ty sc) 
         = let ty' = if getTyName ty
