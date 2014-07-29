@@ -22,12 +22,20 @@ data TTUExp = UVar Int
             -- ^ explicit universe variable
 %name TTUExp uexp
 
+data NativeTy = IT8 | IT16 | IT32 | IT64
+
+data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
+           | ITVec NativeTy Int
+
+data ArithTy = ATInt Language.Reflection.IntTy | ATFloat
+
 ||| Primitive constants
 data Const = I Int | BI Integer | Fl Float | Ch Char | Str String
-           | IType | BIType | FlType   | ChType  | StrType
            | B8 Bits8 | B16 Bits16 | B32 Bits32 | B64 Bits64
-           | B8Type   | B16Type    | B32Type    | B64Type
-           | PtrType | VoidType | Forgot
+           | B8V Bits8x16 | B16V Bits16x8
+           | B32V Bits32x4 | B64V Bits64x2
+           | AType ArithTy | StrType
+           | PtrType | ManagedPtrType | BufferType | VoidType | Forgot
 
 %name Const c, c'
 
@@ -213,3 +221,5 @@ data Tactic = Try Tactic Tactic
             -- ^ do nothing
             | Fail (List ErrorReportPart)
 %name Tactic tac, tac'
+
+
