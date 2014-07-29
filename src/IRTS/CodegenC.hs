@@ -291,6 +291,7 @@ irts_c FPtr x = "GETPTR(" ++ x ++ ")"
 irts_c FManagedPtr x = "GETMPTR(" ++ x ++ ")"
 irts_c (FArith ATFloat) x = "GETFLOAT(" ++ x ++ ")"
 irts_c FAny x = x
+irts_c (FFunction aty rty) x = x ++ " ~ " ++ show aty ++ " -> " ++ show rty ++ " ~ "
 
 bitOp v op ty args = v ++ "idris_b" ++ show (nativeTyWidth ty) ++ op ++ "(vm, " ++ intercalate ", " (map creg args) ++ ")"
 
