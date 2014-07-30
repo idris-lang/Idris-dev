@@ -53,7 +53,7 @@ def i_ffiWrap(fid,oldbase,myoldbase)
     $i_callstack = []
     res = fid
     arguments.each do |arg|
-      while res.instance_of?(I_CON) do
+      if res.instance_of?(I_CON) then
         $i_valstack_top += 1
         $i_valstack[$i_valstack_top] = res
         $i_valstack[$i_valstack_top + 1] = arg

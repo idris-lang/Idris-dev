@@ -512,7 +512,7 @@ rbFOREIGN _ reg n args
     where
       generateWrapper :: (FType, Reg) -> Ruby
       generateWrapper (ty, reg)
-        | FFunction   <- ty =
+        | FFunction _ _ <- ty =
             RubyApp (RubyIdent "i_ffiWrap") [ translateReg reg
                                         , RubyIdent "oldbase"
                                         , RubyIdent "myoldbase"
