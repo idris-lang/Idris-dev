@@ -2,24 +2,28 @@ module Language.Reflection
 
 %access public
 
-data TTName = UN String
-            -- ^ User-provided name
-            | NS TTName (List String)
-            -- ^ Root, namespaces
-            | MN Int String
-            -- ^ Machine chosen names
-            | NErased
-            -- ^ Name of somethng which is never used in scope
+data TTName =
+            ||| A user-provided name
+            UN String |
+            ||| A name in some namespace.
+            |||
+            ||| The namespace is in reverse order, so `(NS (UN "foo") ["B", "A"])` represents the name `A.B.foo`
+            NS TTName (List String) |
+            ||| Machine-chosen names
+            MN Int String |
+            ||| Name of something which is never used in scope
+            NErased
 %name TTName n, n'
 
 implicit
 userSuppliedName : String -> TTName
 userSuppliedName = UN
 
-data TTUExp = UVar Int
-            -- ^ universe variable
-            | UVal Int
-            -- ^ explicit universe variable
+data TTUExp =
+            ||| Universe variable
+            UVar Int |
+            ||| Explicit universe level
+            UVal Int
 %name TTUExp uexp
 
 data NativeTy = IT8 | IT16 | IT32 | IT64
@@ -133,98 +137,125 @@ instance Traversable Binder where
 
 
 ||| Reflection of the well typed core language
-data TT = P NameType TTName TT
-        -- ^ named binders
-        | V Int
-        -- ^ variables
-        | Bind TTName (Binder TT) TT
-        -- ^ type annotated named bindings
-        | App TT TT
-        -- ^ (named) application of a function to a value
-        | TConst Const
-        -- ^ constants
-        | Proj TT Int
-        -- ^ argument projection; runtime only
-        | Erased
-        -- ^ erased terms
-        | Impossible
-        -- ^ impossible terms
-        | TType TTUExp
-        -- ^ types
-
+data TT =
+        ||| A reference to some name (P for Parameter)
+        P NameType TTName TT |
+        ||| de Bruijn variables
+        V Int |
+        ||| Bind a variable
+        Bind TTName (Binder TT) TT |
+        ||| Apply one term to another
+        App TT TT |
+        ||| Embed a constant
+        TConst Const |
+        ||| Argument projection; runtime only
+        Proj TT Int |
+        ||| Erased terms
+        Erased |
+        ||| Impossible terms
+        Impossible |
+        ||| The type of types along (with universe constraints)
+        TType TTUExp
 %name TT tm, tm'
 
 ||| Raw terms without types
-data Raw = Var TTName
-         | RBind TTName (Binder Raw) Raw
-         | RApp Raw Raw
-         | RType
-         | RForce Raw
-         | RConstant Const
-
+data Raw =
+         ||| Variables, global or local
+         Var TTName |
+         ||| Bind a variable
+         RBind TTName (Binder Raw) Raw |
+         ||| Application
+         RApp Raw Raw |
+         ||| The type of types
+         RType |
+         RForce Raw |
+         ||| Embed a constant
+         RConstant Const
 %name Raw tm, tm'
 
 ||| Error reports are a list of report parts
-data ErrorReportPart = TextPart String
-                     | NamePart TTName
-                     | TermPart TT
-                     | SubReport (List ErrorReportPart)
+data ErrorReportPart =
+                     ||| A human-readable string
+                     TextPart String |
+                     ||| An Idris name (to be semantically coloured)
+                     NamePart TTName |
+                     ||| An Idris term, to be pretty printed
+                     TermPart TT |
+                     ||| An indented sub-report, to provide more details
+                     SubReport (List ErrorReportPart)
 %name ErrorReportPart part, p
 
-data Tactic = Try Tactic Tactic
-            -- ^ try the first tactic and resort to the second one on failure
-            | GoalType String Tactic
-            -- ^ only run if the goal has the right type
-            | Refine TTName
-            -- ^ resolve function name, find matching arguments in the
-            -- context and compute the proof target
-            | Seq Tactic Tactic
-            -- ^ apply both tactics in sequence
-            | Trivial
-            -- ^ intelligently construct the proof target from the context
-            | Search Int
-            -- ^ build a proof by applying contructors up to a maximum depth 
-            | Instance
-            -- ^ resolve a type class 
-            | Solve
-            -- ^ infer the proof target from the context
-            | Intros
-            -- ^ introduce all variables into the context
-            | Intro TTName
-            -- ^ introduce a named variable into the context, use the
-            -- first one if the given name is not found
-            | ApplyTactic TT
-            -- ^ invoke the reflected rep. of another tactic
-            | Reflect TT
-            -- ^ turn a value into its reflected representation
-            | ByReflection TT
-            -- ^ use a %reflection function
-            | Fill Raw
-            -- ^ turn a raw value back into a term
-            | Exact TT
-            -- ^ use the given value to conclude the proof
-            | Focus TTName
-            -- ^ focus a named hole
-            | Rewrite TT
-            -- ^ rewrite using the reflected rep. of a equality proof
-            | Induction TT
-            -- ^ do induction on the particular expression
-            | Case TT
-            -- ^ do case analysis on particular expression
-            | LetTac TTName TT
-            -- ^ name a reflected term
-            | LetTacTy TTName TT TT
-            -- ^ name a reflected term and type it
-            | Compute
-            -- ^ normalise the context
-            | Skip
-            -- ^ do nothing
-            | Fail (List ErrorReportPart)
+||| A representation of Idris's tactics that can be returned from custom
+||| tactic implementations. Generate these using `applyTactic`.
+data Tactic =
+            ||| Try the first tactic and resort to the second one on failure
+            Try Tactic Tactic |
+            ||| Only run if the goal has the right type
+            GoalType String Tactic |
+            ||| Resolve function name, find matching arguments in the
+            ||| context and compute the proof target
+            Refine TTName |
+            ||| Apply both tactics in sequence
+            Seq Tactic Tactic |
+            ||| Intelligently construct the proof target from the context
+            Trivial |
+            ||| Build a proof by applying contructors up to a maximum depth
+            Search Int |
+            ||| Resolve a type class
+            Instance |
+            ||| Infer the proof target from the context
+            Solve |
+            ||| introduce all variables into the context
+            Intros |
+            ||| Introduce a named variable into the context, use the
+            ||| first one if the given name is not found
+            Intro TTName |
+            ||| Invoke the reflected rep. of another tactic
+            ApplyTactic TT |
+            ||| Turn a value into its reflected representation
+            Reflect TT |
+            ||| Use a `%reflection` function
+            ByReflection TT |
+            ||| Turn a raw value back into a term
+            Fill Raw |
+            ||| Use the given value to conclude the proof
+            Exact TT |
+            ||| Focus on a particular hole
+            Focus TTName |
+            ||| Rewrite with an equality
+            Rewrite TT |
+            ||| Perform induction on a particular expression
+            Induction TT |
+            ||| Perform case analysis on a particular expression
+            Case TT |
+            ||| Name a reflected term
+            LetTac TTName TT |
+            ||| Name a reflected term and type it
+            LetTacTy TTName TT TT |
+            ||| Normalise the goal
+            Compute |
+            ||| Do nothing
+            Skip |
+            ||| Fail with an error message
+            Fail (List ErrorReportPart)
 %name Tactic tac, tac'
 
 
+||| Things with a canonical representation in the TT datatype.
+|||
+||| This type class is intended to be used during proof automation and the
+||| construction of custom tactics.
+|||
+||| @ a the type to be quoted
 class Quotable a where
+  ||| A representation of the type `a`.
+  |||
+  ||| This is to enable quoting polymorphic datatypes
   quotedTy : TT
+
+  ||| Quote a particular element of `a`.
+  |||
+  ||| Each equation should look something like ```quote (Foo x y) = `(Foo ~(quote x) ~(quote y))```
   quote : a -> TT
 
 instance Quotable Nat where
@@ -382,3 +413,64 @@ mutual
     quote (PVTy x) = `(PVTy {a=TT} ~(assert_total (quote x)))
 
 
+instance Quotable ErrorReportPart where
+  quotedTy = `(ErrorReportPart)
+  quote (TextPart x) = `(TextPart ~(quote x))
+  quote (NamePart n) = `(NamePart ~(quote n))
+  quote (TermPart tm) = `(TermPart ~(quote tm))
+  quote (SubReport xs) = `(SubReport ~(assert_total $ quote xs))
+
+mutual
+  quoteRaw : Raw -> TT
+  quoteRaw (Var n) = `(Var ~(quote n))
+  quoteRaw (RBind n b tm) = `(RBind ~(quote n) ~(assert_total $ quoteRawBinder b) ~(quoteRaw tm))
+  quoteRaw (RApp tm tm') = `(RApp ~(quoteRaw tm) ~(quoteRaw tm'))
+  quoteRaw RType = `(RType)
+  quoteRaw (RForce tm) = `(RForce ~(quoteRaw tm))
+  quoteRaw (RConstant c) = `(RConstant ~(quote c))
+
+  quoteRawBinder : Binder Raw -> TT
+  quoteRawBinder (Lam x) = `(Lam {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (Pi x) = `(Pi {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (Let x y) = `(Let {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
+  quoteRawBinder (NLet x y) = `(NLet {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
+  quoteRawBinder (Hole x) = `(Hole {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (GHole x) = `(GHole {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (Guess x y) = `(Guess {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
+  quoteRawBinder (PVar x) = `(PVar {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (PVTy x) = `(PVTy {a=Raw} ~(quoteRaw x))
+
+instance Quotable Raw where
+  quotedTy = `(Raw)
+  quote = quoteRaw
+
+instance Quotable (Binder Raw) where
+  quotedTy = `(Binder Raw)
+  quote = quoteRawBinder
+
+instance Quotable Tactic where
+  quotedTy = `(Tactic)
+  quote (Try tac tac') = `(Try ~(quote tac) ~(quote tac'))
+  quote (GoalType x tac) = `(GoalType ~(quote x) ~(quote tac))
+  quote (Refine n) = `(Refine ~(quote n))
+  quote (Seq tac tac') = `(Seq ~(quote tac) ~(quote tac'))
+  quote Trivial = `(Trivial)
+  quote (Search x) = `(Search ~(quote x))
+  quote Instance = `(Instance)
+  quote Solve = `(Solve)
+  quote Intros = `(Intros)
+  quote (Intro n) = `(Intro ~(quote n))
+  quote (ApplyTactic tm) = `(ApplyTactic ~(quote tm))
+  quote (Reflect tm) = `(Reflect ~(quote tm))
+  quote (ByReflection tm) = `(ByReflection ~(quote tm))
+  quote (Fill tm) = `(Fill ~(quote tm))
+  quote (Exact tm) = `(Exact ~(quote tm))
+  quote (Focus n) = `(Focus ~(quote n))
+  quote (Rewrite tm) = `(Rewrite ~(quote tm))
+  quote (Induction tm) = `(Induction ~(quote tm))
+  quote (Case tm) = `(Case ~(quote tm))
+  quote (LetTac n tm) = `(LetTac ~(quote n) ~(quote tm))
+  quote (LetTacTy n tm tm') = `(LetTacTy ~(quote n) ~(quote tm) ~(quote tm'))
+  quote Compute = `(Compute)
+  quote Skip = `(Skip)
+  quote (Fail xs) = `(Fail ~(quote xs))
