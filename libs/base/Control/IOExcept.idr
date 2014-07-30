@@ -8,17 +8,19 @@ data IOExcept : Type -> Type -> Type where
 instance Functor (IOExcept e) where
      map f (ioM fn) = ioM (map (map f) fn)
 
-instance Applicative (IOExcept e) where
-     pure x = ioM (pure (pure x))
+instance Apply (IOExcept e) where
      (ioM f) <$> (ioM a) = ioM (do f' <- f; a' <- a
                                    return (f' <$> a'))
+instance Applicative (IOExcept e) where
+     pure x = ioM (pure (pure x))
 
-instance Monad (IOExcept e) where
+instance Bind (IOExcept e) where
      (ioM x) >>= k = ioM (do x' <- x;
                              case x' of
                                   Right a => let (ioM ka) = k a in
                                                  ka
                                   Left err => return (Left err))
+instance Monad (IOExcept e) where
 
 ioe_lift : IO a -> IOExcept err a
 ioe_lift op = ioM (do op' <- op

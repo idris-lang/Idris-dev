@@ -19,18 +19,21 @@ liftReaderT m = RD $ const m
 instance Functor f => Functor (ReaderT r f) where
     map f (RD g) = RD $ (map f) . g
 
+instance Apply m => Apply (ReaderT r m) where
+    (RD f) <$> (RD v) = RD $ \r => f r <$> v r
 instance Applicative m => Applicative (ReaderT r m) where
     pure              = liftReaderT . pure
-    (RD f) <$> (RD v) = RD $ \r => f r <$> v r
 
-instance Alternative m => Alternative (ReaderT r m) where
-    empty             = liftReaderT empty
+instance Alt m => Alt (ReaderT r m) where
     (RD m) <|> (RD n) = RD $ \r => m r <|> n r
+instance Plus m => Plus (ReaderT r m) where
+    empty             = liftReaderT empty
 
-instance Monad m => Monad (ReaderT r m) where
+instance Bind m => Bind (ReaderT r m) where
     (RD f) >>= k = RD $ \r => do a <- f r
                                  let RD ka = k a
                                  ka r
+instance Monad m => Monad (ReaderT r m) where
 
 instance Monad m => MonadReader r (ReaderT r m) where
     ask            = RD return

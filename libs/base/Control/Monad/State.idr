@@ -17,17 +17,19 @@ instance Functor f => Functor (StateT s f) where
        mapFst : (a -> x) -> (a, s) -> (x, s)
        mapFst fn (a, b) = (fn a, b)
 
-instance Monad f => Applicative (StateT s f) where
-    pure x = ST (\st => pure (x, st))
-
+instance Monad f => Apply (StateT s f) where
     (ST f) <$> (ST a) = ST (\st => do (g, r) <- f st
                                       (b, t) <- a r
                                       return (g b, t))
 
-instance Monad m => Monad (StateT s m) where
+instance Monad f => Applicative (StateT s f) where
+    pure x = ST (\st => pure (x, st))
+
+instance Monad m => Bind (StateT s m) where
     (ST f) >>= k = ST (\st => do (v, st') <- f st
                                  let ST kv = k v
                                  kv st')
+instance Monad m => Monad (StateT s m)
 
 instance Monad m => MonadState s (StateT s m) where
     get   = ST (\x => return (x, x))

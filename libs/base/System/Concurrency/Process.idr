@@ -17,14 +17,16 @@ data Process : (msgType : Type) -> Type -> Type where
 instance Functor (Process msg) where
      map f (lift a) = lift (map f a)
 
+instance Apply (Process msg) where
+     (lift f) <$> (lift a) = lift (f <$> a)
 instance Applicative (Process msg) where
      pure = lift . return
-     (lift f) <$> (lift a) = lift (f <$> a)
 
-instance Monad (Process msg) where
+instance Bind (Process msg) where
      (lift io) >>= k = lift (do x <- io
                                 case k x of
                                      lift v => v)
+instance Monad (Process msg) where
 
 run : Process msg x -> IO x
 run (lift prog) = prog

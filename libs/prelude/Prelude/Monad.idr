@@ -11,14 +11,16 @@ import Prelude.Basics
 
 infixl 5 >>=
 
-class Applicative m => Monad (m : Type -> Type) where
+class Apply m => Bind (m : Type -> Type) where
     (>>=)  : m a -> (a -> m b) -> m b
 
-instance Monad id where
+class (Applicative m, Bind m) => Monad (m : Type -> Type)
+
+instance Bind id where
     a >>= f = f a
 
 ||| Also called `join` or mu
-flatten : Monad m => m (m a) -> m a
+flatten : Bind m => m (m a) -> m a
 flatten a = a >>= id
 
 ||| For compatibility with Haskell. Note that monads are **not** free to

@@ -13,6 +13,12 @@ class Foldable (t : Type -> Type) where
   foldl : Foldable t => (acc -> elt -> acc) -> acc -> t elt -> acc
   foldl f z t = foldr (flip (.) . flip f) id t z
 
+class Foldable t => Foldable1 (t : Type -> Type) where
+  foldMap1 : Semigroup acc => (elt -> acc) -> t elt -> acc
+
+fold1 : (Semigroup elt, Foldable1 t) => t elt -> elt
+fold1 = foldMap1 id
+
 ||| Combine each element of a structure into a monoid
 concat : (Foldable t, Monoid a) => t a -> a
 concat = foldr (<+>) neutral

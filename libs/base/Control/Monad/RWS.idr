@@ -17,17 +17,19 @@ instance Monad m => Functor (RWST r w s m) where
     map f (MkRWST m) = MkRWST $ \r => \s => do (a, s', w) <- m r s
                                                return (f a, s', w)
 
-instance (Monoid w, Monad m) => Applicative (RWST r w s m) where
-    pure a = MkRWST $ \_ => \s => return (a, s, neutral)
+instance (Monoid w, Monad m) => Apply (RWST r w s m) where
     (MkRWST f) <$> (MkRWST v) = MkRWST $ \r => \s => do (a, s', w)   <- v r s
                                                         (fn, ss, w') <- f r s
                                                         return (fn a, ss, w <+> w)
+instance (Monoid w, Monad m) => Applicative (RWST r w s m) where
+    pure a = MkRWST $ \_ => \s => return (a, s, neutral)
 
-instance (Monoid w, Monad m) => Monad (RWST r w s m) where
+instance (Monoid w, Monad m) => Bind (RWST r w s m) where
     (MkRWST m) >>= k = MkRWST $ \r => \s => do (a, s', w) <- m r s
                                                let MkRWST ka = k a
                                                (b, ss, w') <- ka r s'
                                                return (b, ss, w <+> w')
+instance (Monoid w, Monad m) => Monad (RWST r w s m) where
 
 instance (Monoid w, Monad m) => MonadReader r (RWST r w s m) where
     ask                = MkRWST $ \r => \s => return (r, s, neutral)

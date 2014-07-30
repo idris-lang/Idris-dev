@@ -12,12 +12,16 @@ IntFn = \x => Int -> x
 instance Functor IntFn where -- (\x => Int -> x) where
   map f intf = \x => f (intf x)
 
-instance Applicative (\x => Int -> x) where
-  pure v = \x => v
+instance Apply (\x => Int -> x) where
   (<$>) f a = \x => f x (a x)
 
-instance Monad IntFn where 
+instance Applicative (\x => Int -> x) where
+  pure v = \x => v
+
+instance Bind IntFn where 
   f >>= k = \x => k (f x) x
+
+instance Monad IntFn where
 
 dbl : IntFn Int
 dbl x = x * 2 
