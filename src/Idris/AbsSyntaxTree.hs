@@ -476,6 +476,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | Dictionary -- type class dictionary, eval only when
                         -- a function argument, and further evaluation resutls
            | Implicit -- implicit coercion
+           | NoImplicit -- do not apply implicit coercions
            | CExport String    -- export, with a C name
            | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
            | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error

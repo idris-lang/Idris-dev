@@ -855,9 +855,23 @@ elab ist info emode opts fn tm
                   addImplBound ist (map fst env) (PApp fc (PRef fc (sUN "Delay"))
                                                  [pexp t])
 
+
+    -- Don't put implicit coercions around applications which are marked
+    -- as '%noImplicit', or around case blocks, otherwise we get exponential
+    -- blowup especially where there are errors deep in large expressions.
+    notImplicitable (PApp _ f _) = notImplicitable f
+    -- TMP HACK no coercing on bind (make this configurable)
+    notImplicitable (PRef _ n)
+        | [opts] <- lookupCtxt n (idris_flags ist)
+            = NoImplicit `elem` opts
+    notImplicitable (PAlternative True as) = any notImplicitable as
     -- case is tricky enough without implicit coercions! If they are needed,
     -- they can go in the branches separately.
+    notImplicitable (PCase _ _ _) = True
+    notImplicitable _ = False
+
     insertCoerce ina t@(PCase _ _ _) = return t
+    insertCoerce ina t | notImplicitable t = return t
     insertCoerce ina t =
         do ty <- goal
            -- Check for possible coercions to get to the goal

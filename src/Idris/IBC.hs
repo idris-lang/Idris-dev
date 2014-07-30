@@ -274,6 +274,7 @@ process i fn
                pDefs (symbols i) (ibc_defs i)
                pPatdefs (ibc_patdefs i)
                pAccess (ibc_access i)
+               pFlags (ibc_flags i)
                pTotal (ibc_total i)
                pTotCheckErr (ibc_totcheckfail i)
                pCG (ibc_cg i)
@@ -943,6 +944,7 @@ instance Binary FnOpt where
                 ErrorHandler -> putWord8 9
                 ErrorReverse -> putWord8 10
                 CoveringFn -> putWord8 11
+                NoImplicit -> putWord8 12
         get
           = do i <- getWord8
                case i of
@@ -959,6 +961,7 @@ instance Binary FnOpt where
                    9 -> return ErrorHandler
                    10 -> return ErrorReverse
                    11 -> return CoveringFn
+                   12 -> return NoImplicit
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where
