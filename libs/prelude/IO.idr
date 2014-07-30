@@ -33,7 +33,7 @@ data IntTy = ITChar | ITNative | IT8 | IT16 | IT32 | IT64 | IT8x16 | IT16x8 | IT
 
 ||| Types available for foreign function calls
 data FTy = FIntT IntTy
-         | FFunction FTy FTy
+         | FFunction (List FTy) FTy
          | FFloat
          | FString
          | FPtr
@@ -99,7 +99,12 @@ interpFTy (FIntT IT32x4)   = Bits32x4
 interpFTy (FIntT IT64x2)   = Bits64x2
 interpFTy FUnit            = ()
 
-interpFTy (FFunction a b) = interpFTy a -> interpFTy b
+interpFTy (FFunction args ret) = interpFTyList args -> interpFTy ret
+                                 where
+                                   interpFTyList : List FTy -> Type
+                                   interpFTyList []      = ()
+                                   interpFTyList [a]     = interpFTy a
+                                   interpFTyList (x::xs) = interpFTy x -> interpFTyList xs
 
 ||| Type signatures for foreign functions
 ||| @ xs the argument types
