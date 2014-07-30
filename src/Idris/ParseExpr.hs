@@ -320,7 +320,7 @@ simpleExpr syn =
         <|> idiom syn
         <|> listExpr syn
         <|> alt syn
-        <|> do lchar '!'
+        <|> do reservedOp "!"
                s <- simpleExpr syn
                fc <- getFC
                return (PAppBind fc s [])
