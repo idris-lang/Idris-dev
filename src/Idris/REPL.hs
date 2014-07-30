@@ -34,6 +34,11 @@ import Idris.Interactive
 import Idris.WhoCalls
 import Idris.TypeSearch (searchByType)
 
+import Idris.Elab.Type
+import Idris.Elab.Clause
+import Idris.Elab.Data
+import Idris.Elab.Value
+
 import Version_idris (gitHash)
 import Util.System
 import Util.DynamicLinker
@@ -653,7 +658,7 @@ process h fn (ChangeDirectory f)
                       return ()
 process h fn (Eval t)
                  = withErrorReflection $ do logLvl 5 $ show t
-                                            (tm, ty) <- elabVal toplevel ERHS t
+                                            (tm, ty) <- elabVal recinfo ERHS t
                                             ctxt <- getContext
                                             let tm' = force (normaliseAll ctxt [] tm)
                                             let ty' = force (normaliseAll ctxt [] ty)
@@ -679,17 +684,17 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
   getClauseName (PWith fc name whole with rhs whereBlock) = name
   defineName :: [PDecl] -> Idris ()
   defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do 
-    elabDecl EAll toplevel tyDecl
-    elabClauses toplevel fc opts name (concatMap getClauses decls)
+    elabDecl EAll recinfo tyDecl
+    elabClauses recinfo fc opts name (concatMap getClauses decls)
   defineName [PClauses fc opts _ [clause]] = do
     let pterm = getRHS clause
-    (tm,ty) <- elabVal toplevel ERHS pterm
+    (tm,ty) <- elabVal recinfo ERHS pterm
     ctxt <- getContext
     let tm' = force (normaliseAll ctxt [] tm)
     let ty' = force (normaliseAll ctxt [] ty)
     updateContext (addCtxtDef (getClauseName clause) (Function ty' tm'))
   defineName [PData doc argdocs syn fc opts decl] = do
-    elabData toplevel syn doc argdocs fc opts decl
+    elabData recinfo syn doc argdocs fc opts decl
   getClauses (PClauses fc opts name clauses) = clauses
   getClauses _ = []
   getRHS :: PClause -> PTerm
@@ -701,7 +706,7 @@ process h fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++
 process h fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
-                       (tm, ty) <- elabVal toplevel ERHS t
+                       (tm, ty) <- elabVal recinfo ERHS t
 --                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
                        res <- execute tm
@@ -745,7 +750,7 @@ process h fn (Check (PRef _ n))
 
 
 process h fn (Check t)
-   = do (tm, ty) <- elabVal toplevel ERHS t
+   = do (tm, ty) <- elabVal recinfo ERHS t
         ctxt <- getContext
         ist <- getIState
         let ppo = ppOptionIst ist
@@ -840,7 +845,7 @@ process h fn (MakeLemma updatefile l n)
 process h fn (DoProofSearch updatefile rec l n hints)
     = doProofSearch h fn updatefile rec l n hints Nothing
 process h fn (Spec t)
-                    = do (tm, ty) <- elabVal toplevel ERHS t
+                    = do (tm, ty) <- elabVal recinfo ERHS t
                          ctxt <- getContext
                          ist <- getIState
                          let tm' = simplify ctxt [] {- (idris_statics ist) -} tm
@@ -919,13 +924,13 @@ process h fn (Prove n')
           warnTotality
 
 process h fn (HNF t)
-                    = do (tm, ty) <- elabVal toplevel ERHS t
+                    = do (tm, ty) <- elabVal recinfo ERHS t
                          ctxt <- getContext
                          ist <- getIState
                          let tm' = hnf ctxt [] tm
                          iPrintResult (show (delab ist tm'))
 process h fn (TestInline t)
-                           = do (tm, ty) <- elabVal toplevel ERHS t
+                           = do (tm, ty) <- elabVal recinfo ERHS t
                                 ctxt <- getContext
                                 ist <- getIState
                                 let tm' = inlineTerm ist tm
@@ -934,7 +939,7 @@ process h fn (TestInline t)
 process h fn Execute
                    = idrisCatch
                        (do ist <- getIState
-                           (m, _) <- elabVal toplevel ERHS
+                           (m, _) <- elabVal recinfo ERHS
                                            (PApp fc
                                               (PRef fc (sUN "run__IO"))
                                               [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
@@ -950,7 +955,7 @@ process h fn Execute
                        (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
   where fc = fileFC "main"
 process h fn (Compile codegen f)
-      = do (m, _) <- elabVal toplevel ERHS
+      = do (m, _) <- elabVal recinfo ERHS
                        (PApp fc (PRef fc (sUN "run__IO"))
                        [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
            compile codegen f m
@@ -958,7 +963,7 @@ process h fn (Compile codegen f)
 process h fn (LogLvl i) = setLogLevel i
 -- Elaborate as if LHS of a pattern (debug command)
 process h fn (Pattelab t)
-     = do (tm, ty) <- elabVal toplevel ELHS t
+     = do (tm, ty) <- elabVal recinfo ELHS t
           iPrintResult $ show tm ++ "\n\n : " ++ show ty
 
 process h fn (Missing n)
@@ -1376,7 +1381,7 @@ execScript expr = do i <- getIState
                           Failure err -> do iputStrLn $ show (fixColour c err)
                                             runIO $ exitWith (ExitFailure 1)
                           Success term -> do ctxt <- getContext
-                                             (tm, _) <- elabVal toplevel ERHS term
+                                             (tm, _) <- elabVal recinfo ERHS term
                                              res <- execute tm
                                              runIO $ exitWith ExitSuccess
 

@@ -35,15 +35,24 @@ import Debug.Trace
 
 import Text.PrettyPrint.Annotated.Leijen
 
+data ElabWhat = ETypes | EDefns | EAll
+  deriving (Show, Eq)
+
 -- Data to pass to recursively called elaborators; e.g. for where blocks,
 -- paramaterised declarations, etc.
 
+-- rec_elabDecl is used to pass the top level elaborator into other elaborators,
+-- so that we can have mutually recursive elaborators in separate modules without
+-- having to much about with cyclic modules.
 data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         inblock :: Ctxt [Name], -- names in the block, and their params
                         liftname :: Name -> Name,
-                        namespace :: Maybe [String] }
+                        namespace :: Maybe [String], 
+                        rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl -> 
+                                        Idris () }
 
-toplevel = EInfo [] emptyContext id Nothing
+toplevel :: ElabInfo
+toplevel = EInfo [] emptyContext id Nothing (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)

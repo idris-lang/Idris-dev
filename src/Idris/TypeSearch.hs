@@ -28,7 +28,7 @@ import Idris.Core.TT hiding (score)
 import Idris.Core.Unify (match_unify)
 import Idris.Delaborate (delabTy)
 import Idris.Docstrings (noDocs, overview)
-import Idris.ElabDecls (elabType')
+import Idris.Elab.Type (elabType)
 import Idris.Output (ihRenderOutput, ihPrintResult, ihRenderResult)
 
 import System.IO (Handle)
@@ -41,7 +41,7 @@ searchByType h pterm = do
   pterm'' <- implicit toplevel syn n pterm'
   i <- getIState
   let pterm'''  = addImpl i pterm''
-  ty <- elabType' False toplevel syn (fst noDocs) (snd noDocs) emptyFC [] n pterm'
+  ty <- elabType toplevel syn (fst noDocs) (snd noDocs) emptyFC [] n pterm'
   putIState i -- don't actually make any changes
   let names = searchUsing searchPred i ty
   let names' = take numLimit $ names

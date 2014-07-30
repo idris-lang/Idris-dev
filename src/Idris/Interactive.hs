@@ -18,6 +18,8 @@ import Idris.Delaborate
 import Idris.Output
 import Idris.IdeSlave hiding (IdeSlaveCommand(..))
 
+import Idris.Elab.Value
+
 import Util.Pretty
 import Util.System
 
@@ -174,8 +176,8 @@ doProofSearch h fn updatefile rec l n hints (Just depth)
                                   (ProofSearch rec False depth t hints)]
          let def = PClause fc mn (PRef fc mn) [] (body top) []
          newmv <- idrisCatch
-             (do elabDecl' EAll toplevel (PClauses fc [] mn [def])
-                 (tm, ty) <- elabVal toplevel ERHS (PRef fc mn)
+             (do elabDecl' EAll recinfo (PClauses fc [] mn [def])
+                 (tm, ty) <- elabVal recinfo ERHS (PRef fc mn)
                  ctxt <- getContext
                  i <- getIState
                  return . flip displayS "" . renderPretty 1.0 80 $

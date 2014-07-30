@@ -553,6 +553,16 @@ Library
                 , Idris.Core.Typecheck
                 , Idris.Core.Unify
 
+                , Idris.Elab.Utils
+                , Idris.Elab.Type
+                , Idris.Elab.Clause
+                , Idris.Elab.Data
+                , Idris.Elab.Record
+                , Idris.Elab.Class
+                , Idris.Elab.Instance
+                , Idris.Elab.Provider
+                , Idris.Elab.Value
+
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
                 , Idris.Apropos
