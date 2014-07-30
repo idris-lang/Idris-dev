@@ -22,12 +22,20 @@ data TTUExp = UVar Int
             -- ^ explicit universe variable
 %name TTUExp uexp
 
+data NativeTy = IT8 | IT16 | IT32 | IT64
+
+data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
+           | ITVec NativeTy Int
+
+data ArithTy = ATInt Language.Reflection.IntTy | ATFloat
+
 ||| Primitive constants
 data Const = I Int | BI Integer | Fl Float | Ch Char | Str String
-           | IType | BIType | FlType   | ChType  | StrType
            | B8 Bits8 | B16 Bits16 | B32 Bits32 | B64 Bits64
-           | B8Type   | B16Type    | B32Type    | B64Type
-           | PtrType | VoidType | Forgot
+           | B8V Bits8x16 | B16V Bits16x8
+           | B32V Bits32x4 | B64V Bits64x2
+           | AType ArithTy | StrType
+           | PtrType | ManagedPtrType | BufferType | VoidType | Forgot
 
 %name Const c, c'
 
@@ -213,3 +221,164 @@ data Tactic = Try Tactic Tactic
             -- ^ do nothing
             | Fail (List ErrorReportPart)
 %name Tactic tac, tac'
+
+
+class Quotable a where
+  quotedTy : TT
+  quote : a -> TT
+
+instance Quotable Nat where
+  quotedTy = `(Nat)
+
+  quote Z     = `(Z)
+  quote (S k) = `(S ~(quote k))
+
+instance Quotable Int where
+  quotedTy = `(Int)
+  quote x = TConst (I x)
+
+instance Quotable Float where
+  quotedTy = `(Float)
+  quote x = TConst (Fl x)
+
+instance Quotable Char where
+  quotedTy = `(Char)
+  quote x = TConst (Ch x)
+
+instance Quotable Bits8 where
+  quotedTy = `(Bits8)
+  quote x = TConst (B8 x)
+
+instance Quotable Bits16 where
+  quotedTy = `(Bits16)
+  quote x = TConst (B16 x)
+
+instance Quotable Bits32 where
+  quotedTy = `(Bits32)
+  quote x = TConst (B32 x)
+
+instance Quotable Bits64 where
+  quotedTy = `(Bits64)
+  quote x = TConst (B64 x)
+
+instance Quotable Integer where
+  quotedTy = `(Integer)
+  quote x = TConst (BI x)
+
+instance Quotable Bits8x16 where
+  quotedTy = `(Bits8x16)
+  quote x = TConst (B8V x)
+
+instance Quotable Bits16x8 where
+  quotedTy = `(Bits16x8)
+  quote x = TConst (B16V x)
+
+instance Quotable Bits32x4 where
+  quotedTy = `(Bits32x4)
+  quote x = TConst (B32V x)
+
+instance Quotable Bits64x2 where
+  quotedTy = `(Bits64x2)
+  quote x = TConst (B64V x)
+
+instance Quotable String where
+  quotedTy = `(String)
+  quote x = TConst (Str x)
+
+instance Quotable NameType where
+  quotedTy = `(NameType)
+  quote Bound = `(Bound)
+  quote Ref = `(Ref)
+  quote (DCon x y) = `(DCon ~(quote x) ~(quote y))
+  quote (TCon x y) = `(TCon ~(quote x) ~(quote y))
+
+instance Quotable a => Quotable (List a) where
+  quotedTy = `(List ~(quotedTy {a=a}))
+  quote [] = `(List.Nil {a=~quotedTy})
+  quote (x :: xs) = `(List.(::) {a=~quotedTy} ~(quote x) ~(quote xs))
+
+instance Quotable TTName where
+  quotedTy = `(TTName)
+  quote (UN x) = `(UN ~(quote x))
+  quote (NS n xs) = `(NS ~(quote n) ~(quote xs))
+  quote (MN x y) = `(MN ~(quote x) ~(quote y))
+  quote NErased = `(NErased)
+
+instance Quotable NativeTy where
+    quotedTy = `(NativeTy)
+    quote IT8 = `(Reflection.IT8)
+    quote IT16 = `(Reflection.IT16)
+    quote IT32 = `(Reflection.IT32)
+    quote IT64 = `(Reflection.IT64)
+
+instance Quotable Reflection.IntTy where
+  quotedTy = `(Reflection.IntTy)
+  quote (ITFixed x) = `(ITFixed ~(quote x))
+  quote ITNative = `(Reflection.ITNative)
+  quote ITBig = `(ITBig)
+  quote ITChar = `(Reflection.ITChar)
+  quote (ITVec x y) = `(ITVec ~(quote x) ~(quote y))
+
+instance Quotable ArithTy where
+  quotedTy = `(ArithTy)
+  quote (ATInt x) = `(ATInt ~(quote x))
+  quote ATFloat = `(ATFloat)
+
+instance Quotable Const where
+  quotedTy = `(Const)
+  quote (I x) = `(I ~(quote x))
+  quote (BI x) = `(BI ~(quote x))
+  quote (Fl x) = `(Fl ~(quote x))
+  quote (Ch x) = `(Ch ~(quote x))
+  quote (Str x) = `(Str ~(quote x))
+  quote (B8 x) = `(B8 ~(quote x))
+  quote (B16 x) = `(B16 ~(quote x))
+  quote (B32 x) = `(B32 ~(quote x))
+  quote (B64 x) = `(B64 ~(quote x))
+  quote (B8V xs) = `(B8V ~(quote xs))
+  quote (B16V xs) = `(B16V ~(quote xs))
+  quote (B32V xs) = `(B32V ~(quote xs))
+  quote (B64V xs) = `(B64V ~(quote xs))
+  quote (AType x) = `(AType ~(quote x))
+  quote StrType = `(StrType)
+  quote PtrType = `(PtrType)
+  quote ManagedPtrType = `(ManagedPtrType)
+  quote BufferType = `(BufferType)
+  quote VoidType = `(VoidType)
+  quote Forgot = `(Forgot)
+
+
+instance Quotable TTUExp where
+  quotedTy = `(TTUExp)
+  quote (UVar x) = `(UVar ~(quote x))
+  quote (UVal x) = `(UVal ~(quote x))
+
+mutual
+  instance Quotable TT where
+    quotedTy = `(TT)
+    quote (P nt n tm) = `(P ~(quote nt) ~(quote n) ~(quote tm))
+    quote (V x) = `(V ~(quote x))
+    quote (Bind n b tm) = `(Bind ~(quote n) ~(assert_total (quote b)) ~(quote tm))
+    quote (App f x) = `(App ~(quote f) ~(quote x))
+    quote (TConst c) = `(TConst ~(quote c))
+    quote (Proj tm x) = `(Proj ~(quote tm) ~(quote x))
+    quote Erased = `(Erased)
+    quote Impossible = `(Impossible)
+    quote (TType uexp) = `(TType ~(quote uexp))
+
+  instance Quotable (Binder TT) where
+    quotedTy = `(Binder TT)
+    quote (Lam x) = `(Lam {a=TT} ~(assert_total (quote x)))
+    quote (Pi x) = `(Pi {a=TT} ~(assert_total (quote x)))
+    quote (Let x y) = `(Let {a=TT} ~(assert_total (quote x))
+                                           ~(assert_total (quote y)))
+    quote (NLet x y) = `(NLet {a=TT} ~(assert_total (quote x))
+                                           ~(assert_total (quote y)))
+    quote (Hole x) = `(Hole {a=TT} ~(assert_total (quote x)))
+    quote (GHole x) = `(GHole {a=TT} ~(assert_total (quote x)))
+    quote (Guess x y) = `(Guess {a=TT} ~(assert_total (quote x))
+                                             ~(assert_total (quote y)))
+    quote (PVar x) = `(PVar {a=TT} ~(assert_total (quote x)))
+    quote (PVTy x) = `(PVTy {a=TT} ~(assert_total (quote x)))
+
+

@@ -26,6 +26,8 @@ import qualified Data.Map as M
 import Data.Maybe (mapMaybe, fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import Data.Vector.Unboxed (Vector)
+import qualified Data.Vector.Unboxed as V
 
 import Debug.Trace
 
@@ -1559,15 +1561,7 @@ reifyTTBinderApp reif f [t]
 reifyTTBinderApp _ f args = fail ("Unknown reflection binder: " ++ show (f, args))
 
 reifyTTConst :: Term -> ElabD Const
-reifyTTConst (P _ n _) | n == reflm "IType"    = return (AType (ATInt ITNative))
-reifyTTConst (P _ n _) | n == reflm "BIType"   = return (AType (ATInt ITBig))
-reifyTTConst (P _ n _) | n == reflm "FlType"   = return (AType ATFloat)
-reifyTTConst (P _ n _) | n == reflm "ChType"   = return (AType (ATInt ITChar))
 reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
-reifyTTConst (P _ n _) | n == reflm "B8Type"   = return (AType (ATInt (ITFixed IT8)))
-reifyTTConst (P _ n _) | n == reflm "B16Type"  = return (AType (ATInt (ITFixed IT16)))
-reifyTTConst (P _ n _) | n == reflm "B32Type"  = return (AType (ATInt (ITFixed IT32)))
-reifyTTConst (P _ n _) | n == reflm "B64Type"  = return (AType (ATInt (ITFixed IT64)))
 reifyTTConst (P _ n _) | n == reflm "PtrType"  = return $ PtrType
 reifyTTConst (P _ n _) | n == reflm "VoidType" = return $ VoidType
 reifyTTConst (P _ n _) | n == reflm "Forgot"   = return $ Forgot
@@ -1576,6 +1570,8 @@ reifyTTConst t@(App _ _)
 reifyTTConst t = fail ("Unknown reflection constant: " ++ show t)
 
 reifyTTConstApp :: Name -> Term -> ElabD Const
+reifyTTConstApp f aty
+                | f == reflm "AType" = fmap AType (reifyArithTy aty)
 reifyTTConstApp f (Constant c@(I _))
                 | f == reflm "I"   = return $ c
 reifyTTConstApp f (Constant c@(BI _))
@@ -1595,6 +1591,26 @@ reifyTTConstApp f (Constant c@(B32 _))
 reifyTTConstApp f (Constant c@(B64 _))
                 | f == reflm "B64" = return $ c
 reifyTTConstApp f arg = fail ("Unknown reflection constant: " ++ show (f, arg))
+
+reifyArithTy :: Term -> ElabD ArithTy
+reifyArithTy (App (P _ n _) intTy) | n == reflm "ATInt"   = fmap ATInt (reifyIntTy intTy)
+reifyArithTy (P _ n _)             | n == reflm "ATFloat" = return ATFloat
+reifyArithTy x = fail ("Couldn't reify reflected ArithTy: " ++ show x)
+
+reifyNativeTy :: Term -> ElabD NativeTy
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy x = fail $ "Couldn't reify reflected NativeTy " ++ show x
+
+reifyIntTy :: Term -> ElabD IntTy
+reifyIntTy (App (P _ n _) nt) | n == reflm "ITFixed" = fmap ITFixed (reifyNativeTy nt)
+reifyIntTy (P _ n _) | n == reflm "ITNative" = return ITNative
+reifyIntTy (P _ n _) | n == reflm "ITBig" = return ITBig
+reifyIntTy (P _ n _) | n == reflm "ITChar" = return ITChar
+reifyIntTy (App (App (P _ n _) nt) (Constant (I i))) | n == reflm "ITVec" = fmap (flip ITVec i)
+                                                                                 (reifyNativeTy nt)
 
 reifyTTUExp :: Term -> ElabD UExp
 reifyTTUExp t@(App _ _)
@@ -1829,28 +1845,45 @@ reflectBinderQuote unq (PVar t)
 reflectBinderQuote unq (PVTy t)
    = reflCall "PVTy" [Var (reflm "TT"), reflectQuote unq t]
 
+mkList :: Raw -> [Raw] -> Raw
+mkList ty []      = RApp (Var (sNS (sUN "Nil") ["List", "Prelude"])) ty
+mkList ty (x:xs) = RApp (RApp (RApp (Var (sNS (sUN "::") ["List", "Prelude"])) ty)
+                              x)
+                        (mkList ty xs)
+
 reflectConstant :: Const -> Raw
 reflectConstant c@(I  _) = reflCall "I"  [RConstant c]
 reflectConstant c@(BI _) = reflCall "BI" [RConstant c]
 reflectConstant c@(Fl _) = reflCall "Fl" [RConstant c]
 reflectConstant c@(Ch _) = reflCall "Ch" [RConstant c]
 reflectConstant c@(Str _) = reflCall "Str" [RConstant c]
-reflectConstant (AType (ATInt ITNative)) = Var (reflm "IType")
-reflectConstant (AType (ATInt ITBig)) = Var (reflm "BIType")
-reflectConstant (AType ATFloat) = Var (reflm "FlType")
-reflectConstant (AType (ATInt ITChar)) = Var (reflm "ChType")
-reflectConstant (StrType) = Var (reflm "StrType")
 reflectConstant c@(B8 _) = reflCall "B8" [RConstant c]
 reflectConstant c@(B16 _) = reflCall "B16" [RConstant c]
 reflectConstant c@(B32 _) = reflCall "B32" [RConstant c]
 reflectConstant c@(B64 _) = reflCall "B64" [RConstant c]
-reflectConstant (AType (ATInt (ITFixed IT8)))  = Var (reflm "B8Type")
-reflectConstant (AType (ATInt (ITFixed IT16))) = Var (reflm "B16Type")
-reflectConstant (AType (ATInt (ITFixed IT32))) = Var (reflm "B32Type")
-reflectConstant (AType (ATInt (ITFixed IT64))) = Var (reflm "B64Type")
-reflectConstant (PtrType) = Var (reflm "PtrType")
-reflectConstant (VoidType) = Var (reflm "VoidType")
-reflectConstant (Forgot) = Var (reflm "Forgot")
+reflectConstant (B8V ws) = reflCall "B8V" [mkList (Var (sUN "Bits8")) . map (RConstant . B8) . V.toList $ ws]
+reflectConstant (B16V ws) = reflCall "B8V" [mkList (Var (sUN "Bits16")) . map (RConstant . B16) . V.toList $ ws]
+reflectConstant (B32V ws) = reflCall "B8V" [mkList (Var (sUN "Bits32")) . map (RConstant . B32) . V.toList $ ws]
+reflectConstant (B64V ws) = reflCall "B8V" [mkList (Var (sUN "Bits64")) . map (RConstant . B64) . V.toList $ ws]
+reflectConstant (AType (ATInt ITNative)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITNative")]]
+reflectConstant (AType (ATInt ITBig)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITBig")]]
+reflectConstant (AType ATFloat) = reflCall "AType" [Var (reflm "ATFloat")]
+reflectConstant (AType (ATInt ITChar)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITChar")]]
+reflectConstant StrType = Var (reflm "StrType")
+reflectConstant (AType (ATInt (ITFixed IT8)))  = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT8")]]]
+reflectConstant (AType (ATInt (ITFixed IT16))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT16")]]]
+reflectConstant (AType (ATInt (ITFixed IT32))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT32")]]]
+reflectConstant (AType (ATInt (ITFixed IT64))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT64")]]]
+reflectConstant (AType (ATInt (ITVec IT8 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT8"), RConstant (I c)]]]
+reflectConstant (AType (ATInt (ITVec IT16 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT16"), RConstant (I c)]]]
+reflectConstant (AType (ATInt (ITVec IT32 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT32"), RConstant (I c)]]]
+reflectConstant (AType (ATInt (ITVec IT64 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT64"), RConstant (I c)]]]
+reflectConstant PtrType = Var (reflm "PtrType")
+reflectConstant ManagedPtrType = Var (reflm "ManagedPtrType")
+reflectConstant BufferType = Var (reflm "BufferType")
+reflectConstant VoidType = Var (reflm "VoidType")
+reflectConstant Forgot = Var (reflm "Forgot")
+
 
 reflectUExp :: UExp -> Raw
 reflectUExp (UVar i) = reflCall "UVar" [RConstant (I i)]
