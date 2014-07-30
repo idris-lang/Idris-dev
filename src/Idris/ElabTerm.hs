@@ -1806,14 +1806,21 @@ reflectName (MN i n)
 reflectName (NErased) = Var (reflm "NErased")
 reflectName n = Var (reflm "NErased") -- special name, not yet implemented
 
--- | Elaborate a name to a pattern. This means that NS and UN will be intact,
--- while all others become _
+-- | Elaborate a name to a pattern.  This means that NS and UN will be intact.
+-- MNs corresponding to will care about the string but not the number.  All
+-- others become _.
 reflectNameQuotePattern :: Name -> ElabD ()
 reflectNameQuotePattern n@(UN s)
   = do fill $ reflectName n
        solve
 reflectNameQuotePattern n@(NS _ _)
   = do fill $ reflectName n
+       solve
+reflectNameQuotePattern (MN _ n)
+  = do i <- getNameFrom (sMN 0 "mnCounter")
+       claim i (RConstant (AType (ATInt ITNative)))
+       movelast i
+       fill $ reflCall "MN" [Var i, RConstant (Str $ T.unpack n)]
        solve
 reflectNameQuotePattern _ -- for all other names, match any
   = do nameHole <- getNameFrom (sMN 0 "name")
