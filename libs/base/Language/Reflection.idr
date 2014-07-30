@@ -382,3 +382,64 @@ mutual
     quote (PVTy x) = `(PVTy {a=TT} ~(assert_total (quote x)))
 
 
+instance Quotable ErrorReportPart where
+  quotedTy = `(ErrorReportPart)
+  quote (TextPart x) = `(TextPart ~(quote x))
+  quote (NamePart n) = `(NamePart ~(quote n))
+  quote (TermPart tm) = `(TermPart ~(quote tm))
+  quote (SubReport xs) = `(SubReport ~(assert_total $ quote xs))
+
+mutual
+  quoteRaw : Raw -> TT
+  quoteRaw (Var n) = `(Var ~(quote n))
+  quoteRaw (RBind n b tm) = `(RBind ~(quote n) ~(assert_total $ quoteRawBinder b) ~(quoteRaw tm))
+  quoteRaw (RApp tm tm') = `(RApp ~(quoteRaw tm) ~(quoteRaw tm'))
+  quoteRaw RType = `(RType)
+  quoteRaw (RForce tm) = `(RForce ~(quoteRaw tm))
+  quoteRaw (RConstant c) = `(RConstant ~(quote c))
+
+  quoteRawBinder : Binder Raw -> TT
+  quoteRawBinder (Lam x) = `(Lam {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (Pi x) = `(Pi {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (Let x y) = `(Let {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
+  quoteRawBinder (NLet x y) = `(NLet {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
+  quoteRawBinder (Hole x) = `(Hole {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (GHole x) = `(GHole {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (Guess x y) = `(Guess {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
+  quoteRawBinder (PVar x) = `(PVar {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (PVTy x) = `(PVTy {a=Raw} ~(quoteRaw x))
+
+instance Quotable Raw where
+  quotedTy = `(Raw)
+  quote = quoteRaw
+
+instance Quotable (Binder Raw) where
+  quotedTy = `(Binder Raw)
+  quote = quoteRawBinder
+
+instance Quotable Tactic where
+  quotedTy = `(Tactic)
+  quote (Try tac tac') = `(Try ~(quote tac) ~(quote tac'))
+  quote (GoalType x tac) = `(GoalType ~(quote x) ~(quote tac))
+  quote (Refine n) = `(Refine ~(quote n))
+  quote (Seq tac tac') = `(Seq ~(quote tac) ~(quote tac'))
+  quote Trivial = `(Trivial)
+  quote (Search x) = `(Search ~(quote x))
+  quote Instance = `(Instance)
+  quote Solve = `(Solve)
+  quote Intros = `(Intros)
+  quote (Intro n) = `(Intro ~(quote n))
+  quote (ApplyTactic tm) = `(ApplyTactic ~(quote tm))
+  quote (Reflect tm) = `(Reflect ~(quote tm))
+  quote (ByReflection tm) = `(ByReflection ~(quote tm))
+  quote (Fill tm) = `(Fill ~(quote tm))
+  quote (Exact tm) = `(Exact ~(quote tm))
+  quote (Focus n) = `(Focus ~(quote n))
+  quote (Rewrite tm) = `(Rewrite ~(quote tm))
+  quote (Induction tm) = `(Induction ~(quote tm))
+  quote (Case tm) = `(Case ~(quote tm))
+  quote (LetTac n tm) = `(LetTac ~(quote n) ~(quote tm))
+  quote (LetTacTy n tm tm') = `(LetTacTy ~(quote n) ~(quote tm) ~(quote tm'))
+  quote Compute = `(Compute)
+  quote Skip = `(Skip)
+  quote (Fail xs) = `(Fail ~(quote xs))
