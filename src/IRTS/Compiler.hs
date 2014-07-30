@@ -440,9 +440,9 @@ doForeign vs env (_ : fgn : args)
         , io == txt "IO" 
         = FFunctionIO
 
-    mkIty' (App (App (P _ (UN ff) _) fargs) fret)
+    mkIty' (App (App (P _ (UN ff) _) fArgs) fRet)
         | ff == txt "FFunction"
-        = FFunction [mkIty' fargs] (mkIty' fret)
+        = FFunction (maybe [] id (getFTypes fArgs)) (mkIty' fRet)
 
     mkIty' _ = FAny
 

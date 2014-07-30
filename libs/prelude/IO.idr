@@ -99,12 +99,12 @@ interpFTy (FIntT IT32x4)   = Bits32x4
 interpFTy (FIntT IT64x2)   = Bits64x2
 interpFTy FUnit            = ()
 
-interpFTy (FFunction args ret) = interpFTyList args -> interpFTy ret
+interpFTy (FFunction args ret) = interpFTyList args ret
                                  where
-                                   interpFTyList : List FTy -> Type
-                                   interpFTyList []      = ()
-                                   interpFTyList [a]     = interpFTy a
-                                   interpFTyList (x::xs) = interpFTy x -> interpFTyList xs
+                                   interpFTyList : List FTy -> FTy -> Type
+                                   interpFTyList [] r       = ()
+                                   interpFTyList [a] r      = interpFTy a -> interpFTy r
+                                   interpFTyList (x::xs) r  = interpFTy x -> interpFTyList xs r
 
 ||| Type signatures for foreign functions
 ||| @ xs the argument types
