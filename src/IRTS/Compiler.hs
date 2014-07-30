@@ -442,9 +442,9 @@ doForeign vs env (_ : fgn : args)
         , io == txt "IO" 
         = FFunctionIO
 
-    mkIty' (App (App (P _ (UN ff) _) _) _) 
+    mkIty' (App (App (P _ (UN ff) _) fArgs) fRet)
         | ff == txt "FFunction"
-        = FFunction
+        = FFunction (maybe [] id (getFTypes fArgs)) (mkIty' fRet)
 
     mkIty' _ = FAny
 
@@ -465,7 +465,7 @@ doForeign vs env (_ : fgn : args)
     mkIty "FPtr"        = FPtr
     mkIty "FManagedPtr" = FManagedPtr
     mkIty "FUnit"       = FUnit
-    mkIty "FFunction"   = FFunction
+    mkIty "FFunction"   = FFunction [FUnit] FUnit
     mkIty "FFunctionIO" = FFunctionIO
     mkIty "FBits8x16"   = FArith (ATInt (ITVec IT8 16))
     mkIty "FBits16x8"   = FArith (ATInt (ITVec IT16 8))
