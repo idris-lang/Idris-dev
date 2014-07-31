@@ -698,7 +698,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
           rbPackUBits32 (
             rbMeth (rbMeth (translateReg arg) "and" [
               rbBigInt (RubyString $ show 0xFFFFFFFF)
-            ]) "intValue" []
+            ]) "to_i" []
           )
 
       | (LTrunc ITBig (ITFixed IT64)) <- op
@@ -1142,21 +1142,21 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | LStrLen     <- op
       , (arg:_)     <- args = RubyProj (translateReg arg) "length"
       | (LStrInt ITNative)      <- op
-      , (arg:_)                 <- args = rbCall "parseInt" [translateReg arg]
+      , (arg:_)                 <- args = rbMeth (translateReg arg) "to_i" []
       | (LIntStr ITNative)      <- op
-      , (arg:_)                 <- args = rbCall "String" [translateReg arg]
+      , (arg:_)                 <- args = rbMeth (translateReg arg) "to_s" []
       | (LSExt ITNative ITBig)  <- op
-      , (arg:_)                 <- args = rbBigInt $ rbCall "String" [translateReg arg]
+      , (arg:_)                 <- args = rbMeth (translateReg arg) "to_s" []
       | (LTrunc ITBig ITNative) <- op
-      , (arg:_)                 <- args = rbMeth (translateReg arg) "intValue" []
+      , (arg:_)                 <- args = rbMeth (translateReg arg) "to_i" []
       | (LIntStr ITBig)         <- op
-      , (arg:_)                 <- args = rbMeth (translateReg arg) "toString" []
+      , (arg:_)                 <- args = rbMeth (translateReg arg) "to_s" []
       | (LStrInt ITBig)         <- op
       , (arg:_)                 <- args = rbBigInt $ translateReg arg
       | LFloatStr               <- op
-      , (arg:_)                 <- args = rbCall "String" [translateReg arg]
+      , (arg:_)                 <- args = rbMeth (translateReg arg) "to_s" []
       | LStrFloat               <- op
-      , (arg:_)                 <- args = rbCall "parseFloat" [translateReg arg]
+      , (arg:_)                 <- args = rbMeth (translateReg arg) "to_f" []
       | (LIntFloat ITNative)    <- op
       , (arg:_)                 <- args = translateReg arg
       | (LFloatInt ITNative)    <- op
