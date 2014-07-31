@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris $@ --check --nocolour Quasiquote004.idr
+rm -f *.ibc

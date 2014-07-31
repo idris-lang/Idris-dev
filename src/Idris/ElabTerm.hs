@@ -26,6 +26,8 @@ import qualified Data.Map as M
 import Data.Maybe (mapMaybe, fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import Data.Vector.Unboxed (Vector)
+import qualified Data.Vector.Unboxed as V
 
 import Debug.Trace
 
@@ -853,9 +855,23 @@ elab ist info emode opts fn tm
                   addImplBound ist (map fst env) (PApp fc (PRef fc (sUN "Delay"))
                                                  [pexp t])
 
+
+    -- Don't put implicit coercions around applications which are marked
+    -- as '%noImplicit', or around case blocks, otherwise we get exponential
+    -- blowup especially where there are errors deep in large expressions.
+    notImplicitable (PApp _ f _) = notImplicitable f
+    -- TMP HACK no coercing on bind (make this configurable)
+    notImplicitable (PRef _ n)
+        | [opts] <- lookupCtxt n (idris_flags ist)
+            = NoImplicit `elem` opts
+    notImplicitable (PAlternative True as) = any notImplicitable as
     -- case is tricky enough without implicit coercions! If they are needed,
     -- they can go in the branches separately.
+    notImplicitable (PCase _ _ _) = True
+    notImplicitable _ = False
+
     insertCoerce ina t@(PCase _ _ _) = return t
+    insertCoerce ina t | notImplicitable t = return t
     insertCoerce ina t =
         do ty <- goal
            -- Check for possible coercions to get to the goal
@@ -1359,6 +1375,8 @@ runTac autoSolve ist fn tac
                                     _ -> fail "Wrong goal type"
     runT ProofState = do g <- goal
                          return ()
+    runT Skip = return ()
+    runT (TFail err) = lift . tfail $ ReflectionError [err] (Msg "")
     runT x = fail $ "Not implemented " ++ show x
 
     runReflected t = do t' <- reify ist t
@@ -1376,6 +1394,7 @@ reify _ (P _ n _) | n == reflm "Trivial" = return Trivial
 reify _ (P _ n _) | n == reflm "Instance" = return TCInstance
 reify _ (P _ n _) | n == reflm "Solve" = return Solve
 reify _ (P _ n _) | n == reflm "Compute" = return Compute
+reify _ (P _ n _) | n == reflm "Skip" = return Skip
 reify ist t@(App _ _)
           | (P _ f _, args) <- unApply t = reifyApp ist f args
 reify _ t = fail ("Unknown tactic " ++ show t)
@@ -1416,6 +1435,15 @@ reifyApp ist t [n, tt', t']
                                           tt'' <- reifyTT tt'
                                           t''  <- reifyTT t'
                                           return $ LetTacTy n' (delab ist tt'') (delab ist t'')
+reifyApp ist t [errs]
+             | t == reflm "Fail" = case unList errs of
+                                     Nothing -> fail "Failed to reify errors"
+                                     Just errs' ->
+                                       let parts = mapM reifyReportPart errs' in
+                                       case parts of
+                                         Left err -> fail $ "Couldn't reify \"Fail\" tactic - " ++ show err
+                                         Right errs'' ->
+                                           return $ TFail errs''
 reifyApp _ f args = fail ("Unknown tactic " ++ show (f, args)) -- shouldn't happen
 
 -- | Reify terms from their reflected representation
@@ -1547,15 +1575,7 @@ reifyTTBinderApp reif f [t]
 reifyTTBinderApp _ f args = fail ("Unknown reflection binder: " ++ show (f, args))
 
 reifyTTConst :: Term -> ElabD Const
-reifyTTConst (P _ n _) | n == reflm "IType"    = return (AType (ATInt ITNative))
-reifyTTConst (P _ n _) | n == reflm "BIType"   = return (AType (ATInt ITBig))
-reifyTTConst (P _ n _) | n == reflm "FlType"   = return (AType ATFloat)
-reifyTTConst (P _ n _) | n == reflm "ChType"   = return (AType (ATInt ITChar))
 reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
-reifyTTConst (P _ n _) | n == reflm "B8Type"   = return (AType (ATInt (ITFixed IT8)))
-reifyTTConst (P _ n _) | n == reflm "B16Type"  = return (AType (ATInt (ITFixed IT16)))
-reifyTTConst (P _ n _) | n == reflm "B32Type"  = return (AType (ATInt (ITFixed IT32)))
-reifyTTConst (P _ n _) | n == reflm "B64Type"  = return (AType (ATInt (ITFixed IT64)))
 reifyTTConst (P _ n _) | n == reflm "PtrType"  = return $ PtrType
 reifyTTConst (P _ n _) | n == reflm "VoidType" = return $ VoidType
 reifyTTConst (P _ n _) | n == reflm "Forgot"   = return $ Forgot
@@ -1564,6 +1584,8 @@ reifyTTConst t@(App _ _)
 reifyTTConst t = fail ("Unknown reflection constant: " ++ show t)
 
 reifyTTConstApp :: Name -> Term -> ElabD Const
+reifyTTConstApp f aty
+                | f == reflm "AType" = fmap AType (reifyArithTy aty)
 reifyTTConstApp f (Constant c@(I _))
                 | f == reflm "I"   = return $ c
 reifyTTConstApp f (Constant c@(BI _))
@@ -1583,6 +1605,26 @@ reifyTTConstApp f (Constant c@(B32 _))
 reifyTTConstApp f (Constant c@(B64 _))
                 | f == reflm "B64" = return $ c
 reifyTTConstApp f arg = fail ("Unknown reflection constant: " ++ show (f, arg))
+
+reifyArithTy :: Term -> ElabD ArithTy
+reifyArithTy (App (P _ n _) intTy) | n == reflm "ATInt"   = fmap ATInt (reifyIntTy intTy)
+reifyArithTy (P _ n _)             | n == reflm "ATFloat" = return ATFloat
+reifyArithTy x = fail ("Couldn't reify reflected ArithTy: " ++ show x)
+
+reifyNativeTy :: Term -> ElabD NativeTy
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy x = fail $ "Couldn't reify reflected NativeTy " ++ show x
+
+reifyIntTy :: Term -> ElabD IntTy
+reifyIntTy (App (P _ n _) nt) | n == reflm "ITFixed" = fmap ITFixed (reifyNativeTy nt)
+reifyIntTy (P _ n _) | n == reflm "ITNative" = return ITNative
+reifyIntTy (P _ n _) | n == reflm "ITBig" = return ITBig
+reifyIntTy (P _ n _) | n == reflm "ITChar" = return ITChar
+reifyIntTy (App (App (P _ n _) nt) (Constant (I i))) | n == reflm "ITVec" = fmap (flip ITVec i)
+                                                                                 (reifyNativeTy nt)
 
 reifyTTUExp :: Term -> ElabD UExp
 reifyTTUExp t@(App _ _)
@@ -1778,14 +1820,21 @@ reflectName (MN i n)
 reflectName (NErased) = Var (reflm "NErased")
 reflectName n = Var (reflm "NErased") -- special name, not yet implemented
 
--- | Elaborate a name to a pattern. This means that NS and UN will be intact,
--- while all others become _
+-- | Elaborate a name to a pattern.  This means that NS and UN will be intact.
+-- MNs corresponding to will care about the string but not the number.  All
+-- others become _.
 reflectNameQuotePattern :: Name -> ElabD ()
 reflectNameQuotePattern n@(UN s)
   = do fill $ reflectName n
        solve
 reflectNameQuotePattern n@(NS _ _)
   = do fill $ reflectName n
+       solve
+reflectNameQuotePattern (MN _ n)
+  = do i <- getNameFrom (sMN 0 "mnCounter")
+       claim i (RConstant (AType (ATInt ITNative)))
+       movelast i
+       fill $ reflCall "MN" [Var i, RConstant (Str $ T.unpack n)]
        solve
 reflectNameQuotePattern _ -- for all other names, match any
   = do nameHole <- getNameFrom (sMN 0 "name")
@@ -1817,28 +1866,45 @@ reflectBinderQuote unq (PVar t)
 reflectBinderQuote unq (PVTy t)
    = reflCall "PVTy" [Var (reflm "TT"), reflectQuote unq t]
 
+mkList :: Raw -> [Raw] -> Raw
+mkList ty []      = RApp (Var (sNS (sUN "Nil") ["List", "Prelude"])) ty
+mkList ty (x:xs) = RApp (RApp (RApp (Var (sNS (sUN "::") ["List", "Prelude"])) ty)
+                              x)
+                        (mkList ty xs)
+
 reflectConstant :: Const -> Raw
 reflectConstant c@(I  _) = reflCall "I"  [RConstant c]
 reflectConstant c@(BI _) = reflCall "BI" [RConstant c]
 reflectConstant c@(Fl _) = reflCall "Fl" [RConstant c]
 reflectConstant c@(Ch _) = reflCall "Ch" [RConstant c]
 reflectConstant c@(Str _) = reflCall "Str" [RConstant c]
-reflectConstant (AType (ATInt ITNative)) = Var (reflm "IType")
-reflectConstant (AType (ATInt ITBig)) = Var (reflm "BIType")
-reflectConstant (AType ATFloat) = Var (reflm "FlType")
-reflectConstant (AType (ATInt ITChar)) = Var (reflm "ChType")
-reflectConstant (StrType) = Var (reflm "StrType")
 reflectConstant c@(B8 _) = reflCall "B8" [RConstant c]
 reflectConstant c@(B16 _) = reflCall "B16" [RConstant c]
 reflectConstant c@(B32 _) = reflCall "B32" [RConstant c]
 reflectConstant c@(B64 _) = reflCall "B64" [RConstant c]
-reflectConstant (AType (ATInt (ITFixed IT8)))  = Var (reflm "B8Type")
-reflectConstant (AType (ATInt (ITFixed IT16))) = Var (reflm "B16Type")
-reflectConstant (AType (ATInt (ITFixed IT32))) = Var (reflm "B32Type")
-reflectConstant (AType (ATInt (ITFixed IT64))) = Var (reflm "B64Type")
-reflectConstant (PtrType) = Var (reflm "PtrType")
-reflectConstant (VoidType) = Var (reflm "VoidType")
-reflectConstant (Forgot) = Var (reflm "Forgot")
+reflectConstant (B8V ws) = reflCall "B8V" [mkList (Var (sUN "Bits8")) . map (RConstant . B8) . V.toList $ ws]
+reflectConstant (B16V ws) = reflCall "B8V" [mkList (Var (sUN "Bits16")) . map (RConstant . B16) . V.toList $ ws]
+reflectConstant (B32V ws) = reflCall "B8V" [mkList (Var (sUN "Bits32")) . map (RConstant . B32) . V.toList $ ws]
+reflectConstant (B64V ws) = reflCall "B8V" [mkList (Var (sUN "Bits64")) . map (RConstant . B64) . V.toList $ ws]
+reflectConstant (AType (ATInt ITNative)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITNative")]]
+reflectConstant (AType (ATInt ITBig)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITBig")]]
+reflectConstant (AType ATFloat) = reflCall "AType" [Var (reflm "ATFloat")]
+reflectConstant (AType (ATInt ITChar)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITChar")]]
+reflectConstant StrType = Var (reflm "StrType")
+reflectConstant (AType (ATInt (ITFixed IT8)))  = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT8")]]]
+reflectConstant (AType (ATInt (ITFixed IT16))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT16")]]]
+reflectConstant (AType (ATInt (ITFixed IT32))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT32")]]]
+reflectConstant (AType (ATInt (ITFixed IT64))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT64")]]]
+reflectConstant (AType (ATInt (ITVec IT8 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT8"), RConstant (I c)]]]
+reflectConstant (AType (ATInt (ITVec IT16 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT16"), RConstant (I c)]]]
+reflectConstant (AType (ATInt (ITVec IT32 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT32"), RConstant (I c)]]]
+reflectConstant (AType (ATInt (ITVec IT64 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT64"), RConstant (I c)]]]
+reflectConstant PtrType = Var (reflm "PtrType")
+reflectConstant ManagedPtrType = Var (reflm "ManagedPtrType")
+reflectConstant BufferType = Var (reflm "BufferType")
+reflectConstant VoidType = Var (reflm "VoidType")
+reflectConstant Forgot = Var (reflm "Forgot")
+
 
 reflectUExp :: UExp -> Raw
 reflectUExp (UVar i) = reflCall "UVar" [RConstant (I i)]
@@ -2042,10 +2108,10 @@ reflErrName n = sNS (sUN n) ["Errors", "Reflection", "Language"]
 -- representation. Not in Idris or ElabD monads because it should be usable
 -- from either.
 reifyReportPart :: Term -> Either Err ErrorReportPart
-reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflErrName "TextPart" =
+reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflm "TextPart" =
     Right (TextPart msg)
 reifyReportPart (App (P (DCon _ _) n _) ttn)
-  | n == reflErrName "NamePart" =
+  | n == reflm "NamePart" =
     case runElab [] (reifyTTName ttn) (initElaborator NErased initContext Erased) of
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
@@ -2053,7 +2119,7 @@ reifyReportPart (App (P (DCon _ _) n _) ttn)
        " when reflecting an error:" ++ show e
       OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App (P (DCon _ _) n _) tm)
-  | n == reflErrName "TermPart" =
+  | n == reflm "TermPart" =
   case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
@@ -2061,7 +2127,7 @@ reifyReportPart (App (P (DCon _ _) n _) tm)
       " when reflecting an error:" ++ show e
     OK (tm', _) -> Right $ TermPart tm'
 reifyReportPart (App (P (DCon _ _) n _) tm)
-  | n == reflErrName "SubReport" =
+  | n == reflm "SubReport" =
   case unList tm of
     Just xs -> do subParts <- mapM reifyReportPart xs
                   Right (SubReport subParts)

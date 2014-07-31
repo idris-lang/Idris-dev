@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.14
+Version:        0.9.14.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -241,6 +241,15 @@ Extra-source-files:
                        test/reg047/run
                        test/reg047/*.idr
                        test/reg047/expected
+                       test/reg048/run
+                       test/reg048/*.idr
+                       test/reg048/expected
+                       test/reg049/run
+                       test/reg049/*.idr
+                       test/reg049/expected
+                       test/reg050/run
+                       test/reg050/*.idr
+                       test/reg050/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -425,6 +434,9 @@ Extra-source-files:
                        test/quasiquote003/run
                        test/quasiquote003/*.idr
                        test/quasiquote003/expected
+                       test/quasiquote004/run
+                       test/quasiquote004/*.idr
+                       test/quasiquote004/expected
 
 
                        test/records001/run
@@ -539,10 +551,21 @@ Library
                 , Idris.Core.Evaluate
                 , Idris.Core.Execute
                 , Idris.Core.ProofState
+                , Idris.Core.ProofTerm
                 , Idris.Core.TC
                 , Idris.Core.TT
                 , Idris.Core.Typecheck
                 , Idris.Core.Unify
+
+                , Idris.Elab.Utils
+                , Idris.Elab.Type
+                , Idris.Elab.Clause
+                , Idris.Elab.Data
+                , Idris.Elab.Record
+                , Idris.Elab.Class
+                , Idris.Elab.Instance
+                , Idris.Elab.Provider
+                , Idris.Elab.Value
 
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
@@ -646,7 +669,7 @@ Library
                 , language-java >= 0.2.6
                 , lens >= 4.1.1
                 , mtl
-                , parsers >= 0.9 && < 0.11.0.2 
+                , parsers >= 0.9 && < 0.13
                 , pretty
                 , process
                 , split

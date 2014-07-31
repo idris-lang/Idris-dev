@@ -320,7 +320,7 @@ simpleExpr syn =
         <|> idiom syn
         <|> listExpr syn
         <|> alt syn
-        <|> do lchar '!'
+        <|> do reservedOp "!"
                s <- simpleExpr syn
                fc <- getFC
                return (PAppBind fc s [])
@@ -1278,6 +1278,10 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
           <|> do reserved "undo"; return Undo
           <|> do reserved "qed"; return Qed
           <|> do reserved "abandon"; return Abandon
+          <|> do reserved "skip"; return Skip
+          <|> do reserved "fail"
+                 msg <- stringLiteral
+                 return $ TFail [Idris.Core.TT.TextPart msg]
           <|> do lchar ':';
                  (    (do reserved "q"; return Abandon)
                   <|> (do (reserved "e" <|> reserved "eval");

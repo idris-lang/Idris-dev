@@ -35,15 +35,24 @@ import Debug.Trace
 
 import Text.PrettyPrint.Annotated.Leijen
 
+data ElabWhat = ETypes | EDefns | EAll
+  deriving (Show, Eq)
+
 -- Data to pass to recursively called elaborators; e.g. for where blocks,
 -- paramaterised declarations, etc.
 
+-- rec_elabDecl is used to pass the top level elaborator into other elaborators,
+-- so that we can have mutually recursive elaborators in separate modules without
+-- having to much about with cyclic modules.
 data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         inblock :: Ctxt [Name], -- names in the block, and their params
                         liftname :: Name -> Name,
-                        namespace :: Maybe [String] }
+                        namespace :: Maybe [String], 
+                        rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl -> 
+                                        Idris () }
 
-toplevel = EInfo [] emptyContext id Nothing
+toplevel :: ElabInfo
+toplevel = EInfo [] emptyContext id Nothing (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
@@ -469,6 +478,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | Dictionary -- type class dictionary, eval only when
                         -- a function argument, and further evaluation resutls
            | Implicit -- implicit coercion
+           | NoImplicit -- do not apply implicit coercions
            | CExport String    -- export, with a C name
            | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
            | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error
@@ -769,6 +779,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | TEval t
                 | TDocStr (Either Name Const)
                 | TSearch t
+                | Skip
+                | TFail [ErrorReportPart]
                 | Qed | Abandon
     deriving (Show, Eq, Functor)
 {-!
@@ -798,6 +810,8 @@ instance Sized a => Sized (PTactic' a) where
   size (Fill t) = 1 + size t
   size Qed = 1
   size Abandon = 1
+  size Skip = 1
+  size (TFail ts) = 1 + size ts
 
 type PTactic = PTactic' PTerm
 

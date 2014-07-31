@@ -12,6 +12,7 @@ module Idris.Core.Elaborate(module Idris.Core.Elaborate,
                             module Idris.Core.ProofState) where
 
 import Idris.Core.ProofState
+import Idris.Core.ProofTerm(bound_in, getProofTerm, mkProofTerm, bound_in_term)
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Typecheck
@@ -128,10 +129,6 @@ elaborate ctxt n ty d elab = do let ps = initElaborator n ctxt ty
                                 (a, ES ps' str _) <- runElab d elab ps
                                 return $! (a, str)
 
-force_term :: Elab' aux ()
-force_term = do ES (ps, a) l p <- get
-                put (ES (ps { pterm = force (pterm ps) }, a) l p)
-
 -- | Modify the auxiliary state
 updateAux :: (aux -> aux) -> Elab' aux ()
 updateAux f = do ES (ps, a) l p <- get
@@ -190,12 +187,12 @@ set_context ctxt = do ES (p, a) logs prev <- get
 -- get the proof term
 get_term :: Elab' aux Term
 get_term = do ES p _ _ <- get
-              return $! (pterm (fst p))
+              return $! (getProofTerm (pterm (fst p)))
 
 -- get the proof term
 update_term :: (Term -> Term) -> Elab' aux ()
 update_term f = do ES (p,a) logs prev <- get
-                   let p' = p { pterm = f (pterm p) }
+                   let p' = p { pterm = mkProofTerm (f (getProofTerm (pterm p))) }
                    put (ES (p', a) logs prev)
 
 -- get the local context at the currently in focus hole
@@ -271,7 +268,7 @@ unique_hole' :: Bool -> Name -> Elab' aux Name
 unique_hole' reusable n
       = do ES p _ _ <- get
            let bs = bound_in (pterm (fst p)) ++
-                    bound_in (ptype (fst p))
+                    bound_in_term (ptype (fst p))
            let nouse = holes (fst p) ++ bs ++ dontunify (fst p) ++ usedns (fst p)
            n' <- return $! uniqueNameCtxt (context (fst p)) n nouse
            ES (p, a) s u <- get
@@ -280,14 +277,6 @@ unique_hole' reusable n
                             put (ES (p { nextname = i + 1 }, a) s u)
                 _ -> return $! ()
            return $! n'
-  where
-    bound_in (Bind n b sc) = n : bi b ++ bound_in sc
-      where
-        bi (Let t v) = bound_in t ++ bound_in v
-        bi (Guess t v) = bound_in t ++ bound_in v
-        bi b = bound_in (binderTy b)
-    bound_in (App f a) = bound_in f ++ bound_in a
-    bound_in _ = []
 
 elog :: String -> Elab' aux ()
 elog str = do ES p logs prev <- get
@@ -429,7 +418,7 @@ reorder_claims n = processTactic' (Reorder n)
 qed :: Elab' aux Term
 qed = do processTactic' QED
          ES p _ _ <- get
-         return $! (pterm (fst p))
+         return $! (getProofTerm (pterm (fst p)))
 
 undo :: Elab' aux ()
 undo = processTactic' Undo

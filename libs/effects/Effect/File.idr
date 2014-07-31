@@ -60,10 +60,10 @@ data FileIO : Effect where
   ||| Only files that are open for reading can be read.
   ReadLine : {OpenFile Read}  FileIO String 
   
-  ||| Write a line to a file.
+  ||| Write a string to a file.
   ||| 
   ||| Only file that are open for writing can be written to.
-  WriteLine : String -> {OpenFile Write} FileIO ()
+  WriteString : String -> {OpenFile Write} FileIO ()
 
   ||| End of file?
   ||| 
@@ -82,8 +82,8 @@ instance Handler FileIO IO where
                                     k () ()
     handle (FH h) ReadLine        k = do str <- fread h
                                          k str (FH h)
-    handle (FH h) (WriteLine str) k = do fwrite h str
-                                         k () (FH h)
+    handle (FH h) (WriteString str) k = do fwrite h str
+                                           k () (FH h)
     handle (FH h) EOF             k = do e <- feof h
                                          k e (FH h)
 
@@ -117,9 +117,13 @@ close = call $ Close
 readLine : { [FILE_IO (OpenFile Read)] } Eff String 
 readLine = call $ ReadLine
 
+||| Write a string to a file.
+writeString : String -> { [FILE_IO (OpenFile Write)] } Eff ()
+writeString str = call $ WriteString str
+
 ||| Write a line to a file.
 writeLine : String -> { [FILE_IO (OpenFile Write)] } Eff ()
-writeLine str = call $ WriteLine str
+writeLine str = call $ WriteString (str ++ "\n")
 
 ||| End of file?
 eof : { [FILE_IO (OpenFile Read)] } Eff Bool 
