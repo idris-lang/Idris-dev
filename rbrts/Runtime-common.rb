@@ -51,6 +51,7 @@ def i_CALL(fun,args)
 def i_ffiWrap(fid,oldbase,myoldbase)
   return Proc.new do |*arguments|
     $i_callstack = []
+    $i_valstack = []
     res = fid
     arguments.each do |arg|
       if res.instance_of?(I_CON) then
@@ -69,6 +70,7 @@ def i_ffiWrap(fid,oldbase,myoldbase)
       end
     end
     $i_callstack = $i_vm.callstack
+    $i_valstack = $i_vm.valstack
     $i_ret
   end
 end
