@@ -251,28 +251,46 @@ compileRuby' indent (RubyIndex lhs rhs) =
   `T.append` compileRuby' indent rhs
   `T.append` "]"
 
-compileRuby' indent (RubyCond branches) =
-  T.intercalate "els" $ map createIfBlock branches
-  where
-    createIfBlock (RubyNoop, e@(RubySeq _)) =
-         "e\n"
-      `T.append` compileRuby' (indent + 2) e
-      `T.append` "\n" `T.append` T.replicate indent " " `T.append` "end"
-    createIfBlock (RubyNoop, e) =
-         "e\n"
-      `T.append` compileRuby' (indent + 2) e
-      `T.append` "\n" `T.append` T.replicate indent " " `T.append` "end"
-    createIfBlock (cond, e@(RubySeq _)) =
-         "if " `T.append` compileRuby' indent cond `T.append`" then\n"
-      `T.append` compileRuby' (indent + 2) e
-      `T.append` "\n" `T.append` T.replicate indent " " `T.append` "end"
-    createIfBlock (cond, e) =
-         "if " `T.append` compileRuby' indent cond `T.append`" then\n"
-      `T.append` T.replicate (indent + 2) " "
-      `T.append` compileRuby' (indent + 2) e
-      `T.append` "\n"
-      `T.append` T.replicate indent " "
-      `T.append` ""
+compileRuby' indent (RubyCond branches) = createIfBlock branches
+  where    
+    createIfBlock [] =
+      createEndExpr
+
+    createIfBlock [(RubyNoop,RubyNoop)] =
+      createIfBlock []
+
+    createIfBlock [(cond,e)] =
+      createIfExpr cond e `T.append`
+      createIfBlock []
+
+    createIfBlock ((RubyNoop,RubyNoop):(RubyNoop,e):[]) =
+      createElseExpr e `T.append`
+      createIfBlock []
+    
+    createIfBlock ((RubyNoop,RubyNoop):(cond,e):branches) =
+      createElseIfExpr cond e `T.append`
+      createIfBlock ((RubyNoop,RubyNoop):branches)
+
+    createIfBlock ((cond, expr):branches) =
+      createIfExpr cond expr `T.append`
+      createIfBlock ((RubyNoop,RubyNoop):branches)
+
+    createExpr e@(RubySeq _) = compileRuby' (indent + 2) e
+    createExpr e = T.replicate (indent + 2) " " `T.append` compileRuby' 0 e
+
+    createIfExpr' stmt cond e = 
+      stmt `T.append` " " `T.append` compileRuby' indent cond `T.append`"\n"
+          `T.append` createExpr e
+
+    createIfExpr cond e = createIfExpr' "if" cond e `T.append` "\n"
+
+    createElseIfExpr cond e = T.replicate indent " " `T.append` 
+                              createIfExpr' "elsif" cond e `T.append` "\n"
+
+    createElseExpr e = T.replicate indent " " `T.append` 
+                       "else\n" `T.append` createExpr e
+    
+    createEndExpr = "\n" `T.append` T.replicate indent " " `T.append` "end"
 
 compileRuby' indent (RubySwitch val [(_,RubySeq seq)] Nothing) =
   let (h,t) = splitAt 1 seq in
