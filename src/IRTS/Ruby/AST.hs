@@ -224,11 +224,10 @@ compileRuby' indent (RubyString str) =
 compileRuby' indent (RubyNum num)
   | RubyInt i                    <- num = T.pack (show i)
   | RubyFloat f                  <- num = T.pack (show f)
-  | RubyInteger RubyBigZero        <- num = T.pack "i_ZERO"
-  | RubyInteger RubyBigOne         <- num = T.pack "i_ONE"
+  | RubyInteger RubyBigZero        <- num = T.pack "0"
+  | RubyInteger RubyBigOne         <- num = T.pack "1"
   | RubyInteger (RubyBigInt i)     <- num = T.pack (show i)
-  | RubyInteger (RubyBigIntExpr e) <- num =
-      "i_bigInt(" `T.append` compileRuby' indent e `T.append` ")"
+  | RubyInteger (RubyBigIntExpr e) <- num = compileRuby' indent e
 
 compileRuby' indent (RubyAssign lhs rhs) =
   compileRuby' indent lhs `T.append` " = " `T.append` compileRuby' indent rhs
@@ -352,8 +351,7 @@ compileRuby' indent (RubyWord word)
       "new Uint16Array([" `T.append` T.pack (show b) `T.append` "])"
   | RubyWord32 b <- word =
       "new Uint32Array([" `T.append` T.pack (show b) `T.append` "])"
-  | RubyWord64 b <- word =
-      "i_bigInt(\"" `T.append` T.pack (show b) `T.append` "\")"
+  | RubyWord64 b <- word = T.pack (show b)
 
 rbInstanceOf :: Ruby -> String -> Ruby
 rbInstanceOf obj cls = rbMeth obj "instance_of?" [(RubyIdent cls)]
@@ -390,19 +388,25 @@ rbIsNull rb = RubyBinOp "==" rb RubyNull
 rbBigInt :: Ruby -> Ruby
 rbBigInt (RubyString "0") = RubyNum (RubyInteger RubyBigZero)
 rbBigInt (RubyString "1") = RubyNum (RubyInteger RubyBigOne)
-rbBigInt rb             = RubyNum $ RubyInteger $ RubyBigIntExpr rb
+rbBigInt rb               = RubyNum $ RubyInteger $ RubyBigIntExpr rb
 
 rbUnPackBits :: Ruby -> Ruby
 rbUnPackBits rb = RubyIndex rb $ RubyNum (RubyInt 0)
 
 rbPackUBits8 :: Ruby -> Ruby
-rbPackUBits8 rb = RubyNew "Uint8Array" [RubyArray [rb]]
+-- rbPackUBits8 rb = RubyNew "Uint8Array" [RubyArray [rb]]
+rbPackUBits8 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "C*")]
 
 rbPackUBits16 :: Ruby -> Ruby
-rbPackUBits16 rb = RubyNew "Uint16Array" [RubyArray [rb]]
+-- rbPackUBits16 rb = RubyNew "Uint16Array" [RubyArray [rb]]
+rbPackUBits16 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "L*")]
 
 rbPackUBits32 :: Ruby -> Ruby
-rbPackUBits32 rb = RubyNew "Uint32Array" [RubyArray [rb]]
+-- rbPackUBits32 rb = RubyNew "Uint32Array" [RubyArray [rb]]
+rbPackUBits32 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "C*")]
+
+rbPackUBits64 :: Ruby -> Ruby
+rbPackUBits64 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "Q*")]
 
 rbPackSBits8 :: Ruby -> Ruby
 rbPackSBits8 rb = RubyNew "Int8Array" [RubyArray [rb]]

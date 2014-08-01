@@ -416,9 +416,9 @@ translateConstant (AType ATFloat)          = RubyType RubyFloatTy
 translateConstant (AType (ATInt ITChar))   = RubyType RubyCharTy
 translateConstant PtrType                  = RubyType RubyPtrTy
 translateConstant Forgot                   = RubyType RubyForgotTy
-translateConstant (BI 0)                   = RubyNum (RubyInteger RubyBigZero)
-translateConstant (BI 1)                   = RubyNum (RubyInteger RubyBigOne)
-translateConstant (BI i)                   = rbBigInt (RubyString $ show i)
+translateConstant (BI 0)                   = RubyNum (RubyInt 0)
+translateConstant (BI 1)                   = RubyNum (RubyInt 1)
+translateConstant (BI i)                   = RubyNum $ RubyInteger (RubyBigInt i)
 translateConstant (B8 b)                   = RubyWord (RubyWord8 b)
 translateConstant (B16 b)                  = RubyWord (RubyWord16 b)
 translateConstant (B32 b)                  = RubyWord (RubyWord32 b)
@@ -630,7 +630,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LZExt (ITFixed IT16) ITNative) <- op = rbUnPackBits $ translateReg (last args)
       | (LZExt (ITFixed IT32) ITNative) <- op = rbUnPackBits $ translateReg (last args)
 
-      | (LZExt _ ITBig)        <- op = rbBigInt $ RubyApp  (RubyIdent "String") [translateReg (last args)]
+      | (LZExt _ ITBig)        <- op = rbUnPackBits $ translateReg (last args)
       | (LPlus (ATInt ITBig))  <- op
       , (lhs:rhs:_)            <- args = invokeMeth lhs "add" [rhs]
       | (LMinus (ATInt ITBig)) <- op
@@ -696,9 +696,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op
       , (arg:_)                                <- args =
           rbPackUBits32 (
-            rbMeth (rbMeth (translateReg arg) "and" [
-              rbBigInt (RubyString $ show 0xFFFFFFFF)
-            ]) "to_i" []
+            RubyBinOp "&" (rbUnPackBits $ translateReg arg) (RubyNum (RubyInt 0xFFFFFFFF))
           )
 
       | (LTrunc ITBig (ITFixed IT64)) <- op
@@ -1152,7 +1150,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LIntStr ITBig)         <- op
       , (arg:_)                 <- args = rbMeth (translateReg arg) "to_s" []
       | (LStrInt ITBig)         <- op
-      , (arg:_)                 <- args = rbBigInt $ translateReg arg
+      , (arg:_)                 <- args = rbMeth (translateReg arg) "to_i" []
       | LFloatStr               <- op
       , (arg:_)                 <- args = rbMeth (translateReg arg) "to_s" []
       | LStrFloat               <- op
