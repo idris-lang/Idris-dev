@@ -691,6 +691,7 @@ process h fn (NewDefn decls) = do
   defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do 
     elabDecl EAll recinfo tyDecl
     elabClauses recinfo fc opts name (concatMap getClauses decls)
+    setReplDefined (Just name)
   defineName [PClauses fc opts _ [clause]] = do
     let pterm = getRHS clause
     (tm,ty) <- elabVal recinfo ERHS pterm
@@ -736,16 +737,33 @@ process h fn (Undefine names) = undefine names
     undefine :: [Name] -> Idris ()
     undefine [] = do
       allDefined <- idris_repl_defs `fmap` get
-      undefine' allDefined
-    undefine names = undefine' names
-    undefine' [] = return ()
-    undefine' (n:names) = do
+      undefine' allDefined []
+    -- Keep track of which names you've removed so you can 
+    -- print them out to the user afterward
+    undefine names = undefine' names []
+    undefine' [] list = do ihputStrLn h (show list)
+                           return ()
+    undefine' (n:names) already = do
       allDefined <- idris_repl_defs `fmap` get
       if n `elem` allDefined
-         then fputState (ctxt_lookup n . known_terms) Nothing
-         else tclift $ tfail $ Msg ("Can't undefine " ++ show n ++ " because it wasn't defined at the repl")
-      fmodifyState repl_definitions (delete n)
-      undefine' names
+         then do undefinedJustNow <- undefClosure n
+                 undefine' names (undefinedJustNow ++ already)
+         else do tclift $ tfail $ Msg ("Can't undefine " ++ show n ++ " because it wasn't defined at the repl")
+                 undefine' names already
+    undefOne n = do fputState (ctxt_lookup n . known_terms) Nothing
+                    fmodifyState repl_definitions (delete n)
+    undefClosure n = 
+      do replDefs <- idris_repl_defs `fmap` get
+         callGraph <- whoCalls n
+         let users' = case lookup n callGraph of
+                        Just ns -> ns
+                        Nothing -> fail ("Tried to undefine nonexistent name" ++ show n) 
+             users = filter (`elem` replDefs) users'
+         undefinedJustNow <- concat `fmap` mapM undefClosure users
+         undefOne n
+         return (n : undefinedJustNow)
+
+
 
 process h fn (ExecVal t)
                   = do ctxt <- getContext
