@@ -17,9 +17,7 @@ data RubyType = RubyIntTy
             deriving Eq
 
 
-data RubyInteger = RubyBigZero
-               | RubyBigOne
-               | RubyBigInt Integer
+data RubyInteger = RubyBigInt Integer
                | RubyBigIntExpr Ruby
                deriving Eq
 
@@ -224,8 +222,6 @@ compileRuby' indent (RubyString str) =
 compileRuby' indent (RubyNum num)
   | RubyInt i                    <- num = T.pack (show i)
   | RubyFloat f                  <- num = T.pack (show f)
-  | RubyInteger RubyBigZero        <- num = T.pack "0"
-  | RubyInteger RubyBigOne         <- num = T.pack "1"
   | RubyInteger (RubyBigInt i)     <- num = T.pack (show i)
   | RubyInteger (RubyBigIntExpr e) <- num = compileRuby' indent e
 
@@ -385,35 +381,30 @@ rbIsNumber rb = (rbTypeOf rb) `rbEq` (RubyString "number")
 rbIsNull :: Ruby -> Ruby
 rbIsNull rb = RubyBinOp "==" rb RubyNull
 
-rbBigInt :: Ruby -> Ruby
-rbBigInt (RubyString "0") = RubyNum (RubyInteger RubyBigZero)
-rbBigInt (RubyString "1") = RubyNum (RubyInteger RubyBigOne)
-rbBigInt rb               = RubyNum $ RubyInteger $ RubyBigIntExpr rb
-
 rbUnPackBits :: Ruby -> Ruby
 rbUnPackBits rb = RubyIndex rb $ RubyNum (RubyInt 0)
 
 rbPackUBits8 :: Ruby -> Ruby
--- rbPackUBits8 rb = RubyNew "Uint8Array" [RubyArray [rb]]
 rbPackUBits8 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "C*")]
 
 rbPackUBits16 :: Ruby -> Ruby
--- rbPackUBits16 rb = RubyNew "Uint16Array" [RubyArray [rb]]
-rbPackUBits16 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "L*")]
+rbPackUBits16 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "S*")]
 
 rbPackUBits32 :: Ruby -> Ruby
--- rbPackUBits32 rb = RubyNew "Uint32Array" [RubyArray [rb]]
-rbPackUBits32 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "C*")]
+rbPackUBits32 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "L*")]
 
 rbPackUBits64 :: Ruby -> Ruby
 rbPackUBits64 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "Q*")]
 
 rbPackSBits8 :: Ruby -> Ruby
-rbPackSBits8 rb = RubyNew "Int8Array" [RubyArray [rb]]
+rbPackSBits8 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "c*")]
 
 rbPackSBits16 :: Ruby -> Ruby
-rbPackSBits16 rb = RubyNew "Int16Array" [RubyArray [rb]]
+rbPackSBits16 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "s*")]
 
 rbPackSBits32 :: Ruby -> Ruby
-rbPackSBits32 rb = RubyNew "Int32Array" [RubyArray [rb]]
+rbPackSBits32 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "l*")]
+
+rbPackSBits64 :: Ruby -> Ruby
+rbPackSBits64 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "q*")]
 
