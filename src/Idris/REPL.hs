@@ -755,10 +755,9 @@ process h fn (Undefine names) = undefine names
     undefClosure n = 
       do replDefs <- idris_repl_defs `fmap` get
          callGraph <- whoCalls n
-         let users' = case lookup n callGraph of
+         let users = case lookup n callGraph of
                         Just ns -> ns
                         Nothing -> fail ("Tried to undefine nonexistent name" ++ show n) 
-             users = filter (`elem` replDefs) users'
          undefinedJustNow <- concat `fmap` mapM undefClosure users
          undefOne n
          return (n : undefinedJustNow)
