@@ -1221,9 +1221,9 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | LFSqrt      <- op
       , (arg:_)     <- args = rbCall "Math.sqrt" [translateReg arg]
       | LFFloor     <- op
-      , (arg:_)     <- args = rbCall "Math.floor" [translateReg arg]
+      , (arg:_)     <- args = rbMeth (translateReg arg) "floor" []
       | LFCeil      <- op
-      , (arg:_)     <- args = rbCall "Math.ceil" [translateReg arg]
+      , (arg:_)     <- args = rbMeth (translateReg arg) "ceil" []
 
       | LStrCons    <- op
       , (lhs:rhs:_) <- args = invokeMeth lhs "concat" [rhs]
@@ -1236,7 +1236,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | LStrTail    <- op
       , (arg:_)     <- args =
           let v = translateReg arg in
-              RubyApp (RubyProj v "substr") [
+              RubyApp (RubyProj v "slice") [
                 RubyNum (RubyInt 1),
                 RubyBinOp "-" (RubyProj v "length") (RubyNum (RubyInt 1))
               ]

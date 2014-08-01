@@ -61,7 +61,10 @@ def i_ffiWrap(fid,oldbase,myoldbase)
         i_SLIDE(2)
         $i_valstack_top = $i_valstack_base + 2
         i_CALL($_idris__123_APPLY0_125_,[oldbase])
-        while $i_callstack.length > 0 do
+        while $i_callstack.length > 0 doi_systemInfo()
+          
+        end
+        
           func = $i_callstack.pop()
           args = $i_callstack.pop()
           func.call(*args)
@@ -76,18 +79,16 @@ def i_ffiWrap(fid,oldbase,myoldbase)
 end
 
 
-# var i$charCode = function(str) {
-#   if (typeof str == "string")
-#     return str.charCodeAt(0);
-#   else
-#     return str;
-# }
-#
-# var i$fromCharCode = function(chr) {
-#   if (typeof chr == "string")
-#     return chr;
-#   else
-#     return String.fromCharCode(chr);
-# }
+def i_charCode(s)
+  s.class == String ? s.ord : s[0]
+end
+
+def i_fromCharCode(c)
+  c.class == String ? c : c.chr  
+end
+
+def i_systemInfo()
+  "Ruby #{RUBY_VERSION} [#{RUBY_PLATFORM}]" 
+end
 
 
