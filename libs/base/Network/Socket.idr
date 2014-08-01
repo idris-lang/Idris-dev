@@ -163,15 +163,18 @@ bind sock addr port = do
     getErrno
   else return 0 -- Success
 
--- Connects to a given address and port.
--- Returns 0 on success, and an error number on error.
-connect : Socket -> SocketAddress -> Port -> IO Int
-connect sock addr port = do
+connect' : Socket -> String -> Port -> IO Int
+connect' sock addr port = do
   conn_res <- (mkForeign (FFun "idrnet_connect" [FInt, FInt, FInt, FString, FInt] FInt)
-                           (descriptor sock) (toCode $ family sock) (toCode $ socketType sock) (show addr) port)
+                           (descriptor sock) (toCode $ family sock) (toCode $ socketType sock) addr port)
   if conn_res == (-1) then
     getErrno
   else return 0
+
+-- Connects to a given address and port.
+-- Returns 0 on success, and an error number on error.
+connect : Socket -> SocketAddress -> Port -> IO Int
+connect sock addr port = connect' sock (show addr) port
 
 -- Listens on a bound socket.
 listen : Socket -> IO Int
