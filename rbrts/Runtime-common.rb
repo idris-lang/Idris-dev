@@ -1,4 +1,5 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
+
 
 class I_VM 
   attr_accessor :valstack, :valstack_top, :valstack_base, :ret, :callstack
