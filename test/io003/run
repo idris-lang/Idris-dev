@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 idris $@ test018.idr -o test018
 idris $@ test018a.idr -o test018a
+chmod +x ./test018
+chmod +x ./test018a
 ./test018
 #./test018a
 rm -f test018 test018a *.ibc
