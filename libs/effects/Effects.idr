@@ -152,6 +152,7 @@ data Eff : (x : Type)
                 Eff t [x] xs' -> -- [x] (\v => xs) ->
                 Eff t [l ::: x] (\v => map (l :::) (xs' v))
 
+%no_implicit
 (>>=)   : Eff a xs xs' ->
           ((val : a) -> Eff b (xs' val) xs'') -> Eff b xs xs''
 (>>=) = ebind

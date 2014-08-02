@@ -260,6 +260,14 @@ instance (NFData t) => NFData (PTactic' t) where
         rnf (GoalType x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf Qed = ()
         rnf Abandon = ()
+        rnf Skip = ()
+        rnf (TFail x1) = rnf x1 `seq` ()
+
+instance NFData ErrorReportPart where
+        rnf (TermPart x1) = rnf x1 `seq` ()
+        rnf (TextPart x1) = rnf x1 `seq` ()
+        rnf (NamePart x1) = rnf x1 `seq` ()
+        rnf (SubReport x1) = rnf x1 `seq` ()
 
 instance (NFData t) => NFData (PDo' t) where
         rnf (DoExp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()

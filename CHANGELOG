@@ -1,3 +1,9 @@
+New in 0.9.15:
+--------------
+* Two new tactics: skip and fail. Skip does nothing, and fail takes a string as an argument and produces it as an error.
+* Corresponding reflected tactics Skip and Fail. Reflected Fail takes a list of ErrorReportParts as an argument, like error handlers produce, allowing access to the pretty-printer.
+* Stop showing irrelevant and inaccessible internal names in the interactive prover
+
 New in 0.9.14:
 --------------
 * Tactic for case analysis in proofs

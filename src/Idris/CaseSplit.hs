@@ -16,6 +16,8 @@ import Idris.Parser
 import Idris.Error
 import Idris.Output
 
+import Idris.Elab.Value
+
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.Evaluate
@@ -55,7 +57,7 @@ split n t'
    = do ist <- getIState
         -- Make sure all the names in the term are accessible
         mapM_ (\n -> setAccessibility n Public) (allNamesIn t')
-        (tm, ty, pats) <- elabValBind toplevel ELHS True (addImplPat ist t')
+        (tm, ty, pats) <- elabValBind recinfo ELHS True (addImplPat ist t')
         -- ASSUMPTION: tm is in normal form after elabValBind, so we don't
         -- need to do anything special to find out what family each argument
         -- is in
@@ -201,7 +203,7 @@ tidy ist tm ty = return tm
 --         tidyVar t = t
 
 elabNewPat :: PTerm -> Idris (Maybe PTerm)
-elabNewPat t = idrisCatch (do (tm, ty) <- elabVal toplevel ELHS t
+elabNewPat t = idrisCatch (do (tm, ty) <- elabVal recinfo ELHS t
                               i <- getIState
                               return (Just (delab i tm)))
                           (\e -> do i <- getIState

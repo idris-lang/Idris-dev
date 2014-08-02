@@ -376,6 +376,7 @@ fnDecl' syn = checkFixity $
 FnOpts ::= 'total'
   | 'partial'
   | 'implicit'
+  | '%' 'no_implicit'
   | '%' 'assert_total'
   | '%' 'error_handler'
   | '%' 'reflection'
@@ -402,6 +403,8 @@ fnOpts opts
       <|> do reserved "covering"; fnOpts (CoveringFn : (opts \\ [TotalFn]))
       <|> do try (lchar '%' *> reserved "export"); c <- stringLiteral;
                   fnOpts (CExport c : opts)
+      <|> do try (lchar '%' *> reserved "no_implicit");
+                  fnOpts (NoImplicit : opts)
       <|> do try (lchar '%' *> reserved "assert_total");
                   fnOpts (AssertTotal : opts)
       <|> do try (lchar '%' *> reserved "error_handler");

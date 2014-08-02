@@ -6,6 +6,9 @@ import Idris.Core.Evaluate
 import Idris.Core.CaseTree
 import Idris.Core.Typecheck
 
+import Idris.Elab.Utils
+import Idris.Elab.Value
+
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Delaborate
@@ -137,6 +140,8 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
     prettyPs bnd [] = empty
     prettyPs bnd ((n@(MN _ r), _) : bs)
         | r == txt "rewrite_rule" = prettyPs ((n, False):bnd) bs
+    prettyPs bnd ((n@(MN _ _), _) : bs)
+        | not (n `elem` freeEnvNames bs) = prettyPs bnd bs
     prettyPs bnd ((n, Let t v) : bs) =
       line <> bindingOf n False <+> text "=" <+> tPretty bnd v <+> colon <+>
         align (tPretty bnd t) <> prettyPs ((n, False):bnd) bs
@@ -164,6 +169,9 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
       else
         text "----------              Other goals:              ----------" <$$>
         nest nestingSize (align . cat . punctuate (text ",") . map (flip bindingOf False) $ hs)
+
+    freeEnvNames :: Env -> [Name]
+    freeEnvNames = foldl (++) [] . map (\(n, b) -> freeNames (Bind n b Erased))
 
 lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
@@ -272,7 +280,7 @@ ploop fn d prompt prf e h
               let OK env = envAtFocus (proof e)
                   ctxt'  = envCtxt env ctxt
               putIState ist { tt_ctxt = ctxt' }
-              (tm, ty) <- elabVal toplevel ERHS t
+              (tm, ty) <- elabVal recinfo ERHS t
               let ppo = ppOptionIst ist
                   ty'     = normaliseC ctxt [] ty
                   h       = idris_outh ist
@@ -296,7 +304,7 @@ ploop fn d prompt prf e h
                    ist'   = ist { tt_ctxt = ctxt' }
                    bnd    = map (\x -> (fst x, False)) env
                putIState ist'
-               (tm, ty) <- elabVal toplevel ERHS t
+               (tm, ty) <- elabVal recinfo ERHS t
                let tm'     = force (normaliseAll ctxt' env tm)
                    ty'     = force (normaliseAll ctxt' env ty)
                    ppo     = ppOption (idris_options ist')
