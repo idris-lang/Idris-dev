@@ -358,6 +358,7 @@ data Opt = Filename String
          | NoBanner
          | ColourREPL Bool
          | Ideslave
+         | IdeslaveSocket
          | ShowLibs
          | ShowLibdir
          | ShowIncs
