@@ -336,18 +336,18 @@ compileRuby' indent (RubyParens rb) =
   "(" `T.append` compileRuby' indent rb `T.append` ")"
 
 compileRuby' indent (RubyWhile cond body) =
-     "while " `T.append` compileRuby' indent cond `T.append` " do\n"
+     "while " `T.append` compileRuby' indent cond `T.append` "\n"
   `T.append` compileRuby' (indent + 2) body
   `T.append` "\n" `T.append` T.replicate indent " " `T.append` "end"
 
 compileRuby' indent (RubyWord word)
-  | RubyWord8  b <- word =
-      "new Uint8Array([" `T.append` T.pack (show b) `T.append` "])"
-  | RubyWord16 b <- word =
-      "new Uint16Array([" `T.append` T.pack (show b) `T.append` "])"
-  | RubyWord32 b <- word =
-      "new Uint32Array([" `T.append` T.pack (show b) `T.append` "])"
-  | RubyWord64 b <- word = T.pack (show b)
+  | RubyWord8  b <- word = compileRuby' indent (rbPackUBits8 $ fromInt b)
+  | RubyWord16 b <- word = compileRuby' indent (rbPackUBits16 $ fromInt b)
+  | RubyWord32 b <- word = compileRuby' indent (rbPackUBits32 $ fromInt b)
+  | RubyWord64 b <- word = compileRuby' indent (rbPackUBits64 $ fromBigInt b)
+    where 
+      fromInt n = RubyNum $ RubyInt (fromIntegral n)
+      fromBigInt n = RubyNum . RubyInteger . RubyBigInt $ fromIntegral n
 
 rbInstanceOf :: Ruby -> String -> Ruby
 rbInstanceOf obj cls = rbMeth obj "instance_of?" [(RubyIdent cls)]
@@ -364,19 +364,14 @@ rbMeth obj meth args = RubyApp (RubyProj obj meth) args
 rbCall :: String -> [Ruby] -> Ruby
 rbCall fun args = RubyApp (RubyIdent fun) args
 
-rbTypeOf :: Ruby -> Ruby
-rbTypeOf rb = RubyPreOp ".is_a? " rb
-
 rbEq :: Ruby -> Ruby -> Ruby
-rbEq lhs@(RubyNum (RubyInteger _)) rhs = RubyApp (RubyProj lhs "equals") [rhs]
-rbEq lhs rhs@(RubyNum (RubyInteger _)) = RubyApp (RubyProj lhs "equals") [rhs]
 rbEq lhs rhs = RubyBinOp "==" lhs rhs
 
 rbNotEq :: Ruby -> Ruby -> Ruby
 rbNotEq lhs rhs = RubyBinOp "!=" lhs rhs
 
 rbIsNumber :: Ruby -> Ruby
-rbIsNumber rb = (rbTypeOf rb) `rbEq` (RubyString "number")
+rbIsNumber rb = rbMeth rb "is_a?" [(RubyIdent "Numeric")]
 
 rbIsNull :: Ruby -> Ruby
 rbIsNull rb = RubyBinOp "==" rb RubyNull

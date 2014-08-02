@@ -1147,7 +1147,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LSRem _)   <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "%" lhs rhs
       | (LEq _)     <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "==" lhs rhs
+      , (lhs:rhs:_) <- args = RubyTernary (translateBinaryOp "==" lhs rhs) (RubyNum $ RubyInt 1) (RubyNum $ RubyInt 0)
       | (LSLt _)    <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "<" lhs rhs
       | (LSLe _)    <- op
@@ -1172,7 +1172,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | LStrConcat  <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "+" lhs rhs
       | LStrEq      <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "==" lhs rhs
+      , (lhs:rhs:_) <- args = RubyTernary (translateBinaryOp "==" lhs rhs) (RubyNum $ RubyInt 1) (RubyNum $ RubyInt 0)
       | LStrLt      <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "<" lhs rhs
       | LStrLen     <- op

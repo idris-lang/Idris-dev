@@ -61,10 +61,7 @@ def i_ffiWrap(fid,oldbase,myoldbase)
         i_SLIDE(2)
         $i_valstack_top = $i_valstack_base + 2
         i_CALL($_idris__123_APPLY0_125_,[oldbase])
-        while $i_callstack.length > 0 doi_systemInfo()
-          
-        end
-        
+        while $i_callstack.length > 0 do
           func = $i_callstack.pop()
           args = $i_callstack.pop()
           func.call(*args)
