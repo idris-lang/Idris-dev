@@ -42,7 +42,7 @@ import Idris.Elab.Value
 import Version_idris (gitHash)
 import Util.System
 import Util.DynamicLinker
-import Util.Net (listenOnLocalhost)
+import Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort)
 import Util.Pretty hiding ((</>))
 
 import Idris.Core.Evaluate
@@ -90,6 +90,8 @@ import Data.Version
 import Data.Word (Word)
 import Data.Either (partitionEithers)
 import Control.DeepSeq
+
+import Numeric ( readHex )
 
 import Debug.Trace
 
@@ -206,44 +208,68 @@ runClient str = withSocketsDo $ do
                                      else do l <- hGetLine h
                                              hGetResp (acc ++ l ++ "\n") h
 
+initIdeslaveSocket :: IO (Handle)
+initIdeslaveSocket = do
+  (sock, port) <- listenOnLocalhostAnyPort
+  putStrLn $ show port
+  (h, _, _) <- accept sock
+  hSetEncoding h utf8
+  return h
+
 -- | Run the IdeSlave
-ideslaveStart :: IState -> [FilePath] -> Idris ()
-ideslaveStart orig mods
-  = do i <- getIState
+ideslaveStart :: Bool -> IState -> [FilePath] -> Idris ()
+ideslaveStart s orig mods
+  = do h <- runIO $ if s then initIdeslaveSocket else return stdout
+       setIdeSlave True h
+       i <- getIState
        case idris_outputmode i of
-         IdeSlave n ->
-           when (mods /= []) (do isetPrompt (mkPrompt mods))
-       ideslave orig mods
+         IdeSlave n h ->
+           do runIO $ hPutStrLn h $ IdeSlave.convSExp "protocol-version" IdeSlave.ideSlaveEpoch n
+              when (mods /= []) (do isetPrompt (mkPrompt mods))
+       ideslave h orig mods
 
+getNChar :: Handle -> Int -> String -> IO (String)
+getNChar _ 0 s = return (reverse s)
+getNChar h n s = do c <- hGetChar h
+                    getNChar h (n - 1) (c : s)
 
-ideslave :: IState -> [FilePath] -> Idris ()
-ideslave orig mods
+getLen :: Handle -> Idris (Int)
+getLen h = do s <- runIO $ getNChar h 6 ""
+              case readHex s of
+                ((num, ""):_) -> return num
+                _             -> ierror (Msg $ "Couldn't read length " ++ s)
+
+ideslave :: Handle -> IState -> [FilePath] -> Idris ()
+ideslave h orig mods
   = do idrisCatch
-         (do l <- runIO $ getLine
+         (do let inh = if h == stdout then stdin else h
+             len <- getLen inh
+             l <- runIO $ getNChar inh len ""
              (sexp, id) <- case IdeSlave.parseMessage l of
                              Left err -> ierror err
                              Right (sexp, id) -> return (sexp, id)
              i <- getIState
-             putIState $ i { idris_outputmode = (IdeSlave id) }
+             putIState $ i { idris_outputmode = (IdeSlave id h) }
              idrisCatch -- to report correct id back!
                (do let fn = case mods of
                               (f:_) -> f
-                              _ -> ""
+                              _     -> ""
                    case IdeSlave.sexpToCommand sexp of
-                     Just cmd -> runIdeSlaveCommand id orig fn mods cmd
+                     Just cmd -> runIdeSlaveCommand h id orig fn mods cmd
                      Nothing  -> iPrintError "did not understand" )
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
-       ideslave orig mods
+       ideslave h orig mods
 
 -- | Run IDESlave commands
-runIdeSlaveCommand :: Integer -- ^^ The continuation ID for the client
+runIdeSlaveCommand :: Handle -- ^^ The handle for communication
+                   -> Integer -- ^^ The continuation ID for the client
                    -> IState -- ^^ The original IState
                    -> FilePath -- ^^ The current open file
                    -> [FilePath] -- ^^ The currently loaded modules
                    -> IdeSlave.IdeSlaveCommand -- ^^ The command to process
                    -> Idris ()
-runIdeSlaveCommand id orig fn mods (IdeSlave.Interpret cmd) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.Interpret cmd) =
   do c <- colourise
      i <- getIState
      case parseCmd i "(input)" cmd of
@@ -253,8 +279,8 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Interpret cmd) =
            (do process stdout fn (Prove n')
                isetPrompt (mkPrompt mods)
                case idris_outputmode i of
-                 IdeSlave n -> -- signal completion of proof to ide
-                   runIO . hPutStrLn stdout $
+                 IdeSlave n h -> -- signal completion of proof to ide
+                   runIO . hPutStrLn h $
                      IdeSlave.convSExp "return"
                        (IdeSlave.SymbolAtom "ok", "")
                        n
@@ -262,25 +288,25 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Interpret cmd) =
            (\e -> do ist <- getIState
                      isetPrompt (mkPrompt mods)
                      case idris_outputmode i of
-                       IdeSlave n ->
-                         runIO . hPutStrLn stdout $
+                       IdeSlave n h ->
+                         runIO . hPutStrLn h $
                            IdeSlave.convSExp "abandon-proof" "Abandoned" n
                        _ -> return ()
-                     ihRenderError stdout $ pprintErr ist e)
+                     ihRenderError h $ pprintErr ist e)
        Success cmd -> idrisCatch
                         (ideslaveProcess fn cmd)
-                        (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
-runIdeSlaveCommand id orig fn mods (IdeSlave.REPLCompletions str) =
+                        (\e -> getIState >>= ihRenderError h . flip pprintErr e)
+runIdeSlaveCommand h id orig fn mods (IdeSlave.REPLCompletions str) =
   do (unused, compls) <- replCompletion (reverse str, "")
      let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok",
                                    IdeSlave.toSExp (map replacement compls,
                                    reverse unused)]
-     runIO $ putStrLn $ IdeSlave.convSExp "return" good id
-runIdeSlaveCommand id orig fn mods (IdeSlave.LoadFile filename toline) =
+     runIO . hPutStrLn h $ IdeSlave.convSExp "return" good id
+runIdeSlaveCommand h id orig fn mods (IdeSlave.LoadFile filename toline) =
   do i <- getIState
      clearErr
      putIState (orig { idris_options = idris_options i,
-                       idris_outputmode = (IdeSlave id) })
+                       idris_outputmode = (IdeSlave id h) })
      loadInputs stdout [filename] toline
      isetPrompt (mkPrompt [filename])
      -- Report either success or failure
@@ -291,10 +317,10 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.LoadFile filename toline) =
                                   (\fc -> IdeSlave.SexpList [IdeSlave.SymbolAtom "ok",
                                                              IdeSlave.toSExp fc])
                                   (idris_parsedSpan i)
-                  in runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+                  in runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
        Just x -> iPrintError $ "didn't load " ++ filename
-     ideslave orig [filename]
-runIdeSlaveCommand id orig fn mods (IdeSlave.TypeOf name) =
+     ideslave h orig [filename]
+runIdeSlaveCommand h id orig fn mods (IdeSlave.TypeOf name) =
   case splitName name of
     Left err -> iPrintError err
     Right n -> process stdout "(ideslave)"
@@ -304,32 +330,32 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.TypeOf name) =
                         [] -> Left ("Didn't understand name '" ++ s ++ "'")
                         [n] -> Right $ sUN n
                         (n:ns) -> Right $ sNS (sUN n) ns
-runIdeSlaveCommand id orig fn mods (IdeSlave.DocsFor name) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.DocsFor name) =
   case parseConst orig name of
     Success c -> process stdout "(ideslave)" (DocStr (Right c))
     Failure _ ->
      case splitName name of
        Left err -> iPrintError err
        Right n -> process stdout "(ideslave)" (DocStr (Left n))
-runIdeSlaveCommand id orig fn mods (IdeSlave.CaseSplit line name) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.CaseSplit line name) =
   process stdout fn (CaseSplitAt False line (sUN name))
-runIdeSlaveCommand id orig fn mods (IdeSlave.AddClause line name) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.AddClause line name) =
   process stdout fn (AddClauseFrom False line (sUN name))
-runIdeSlaveCommand id orig fn mods (IdeSlave.AddProofClause line name) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.AddProofClause line name) =
   process stdout fn (AddProofClauseFrom False line (sUN name))
-runIdeSlaveCommand id orig fn mods (IdeSlave.AddMissing line name) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.AddMissing line name) =
   process stdout fn (AddMissing False line (sUN name))
-runIdeSlaveCommand id orig fn mods (IdeSlave.MakeWithBlock line name) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.MakeWithBlock line name) =
   process stdout fn (MakeWith False line (sUN name))
-runIdeSlaveCommand id orig fn mods (IdeSlave.ProofSearch r line name hints depth) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.ProofSearch r line name hints depth) =
   doProofSearch stdout fn False r line (sUN name) (map sUN hints) depth
-runIdeSlaveCommand id orig fn mods (IdeSlave.MakeLemma line name) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.MakeLemma line name) =
   case splitName name of
     Left err -> iPrintError err
     Right n -> process stdout fn (MakeLemma False line n)
-runIdeSlaveCommand id orig fn mods (IdeSlave.Apropos a) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.Apropos a) =
   process stdout fn (Apropos a)
-runIdeSlaveCommand id orig fn mods (IdeSlave.GetOpts) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.GetOpts) =
   do ist <- getIState
      let opts = idris_options ist
      let impshow = opt_showimp opts
@@ -337,16 +363,16 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.GetOpts) =
      let options = (IdeSlave.SymbolAtom "ok",
                     [(IdeSlave.SymbolAtom "show-implicits", impshow),
                      (IdeSlave.SymbolAtom "error-context", errCtxt)])
-     runIO . putStrLn $ IdeSlave.convSExp "return" options id
-runIdeSlaveCommand id orig fn mods (IdeSlave.SetOpt IdeSlave.ShowImpl b) =
+     runIO . hPutStrLn h $ IdeSlave.convSExp "return" options id
+runIdeSlaveCommand h id orig fn mods (IdeSlave.SetOpt IdeSlave.ShowImpl b) =
   do setImpShow b
      let msg = (IdeSlave.SymbolAtom "ok", b)
-     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-runIdeSlaveCommand id orig fn mods (IdeSlave.SetOpt IdeSlave.ErrContext b) =
+     runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand h id orig fn mods (IdeSlave.SetOpt IdeSlave.ErrContext b) =
   do setErrContext b
      let msg = (IdeSlave.SymbolAtom "ok", b)
-     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
+     runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand h id orig fn mods (IdeSlave.Metavariables cols) =
   do ist <- getIState
      let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
      let ppo = ppOptionIst ist
@@ -362,7 +388,7 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
                                   (zip bnds hs),
                               render ist bnd c pc))
                             splitMvs
-     runIO . putStrLn $
+     runIO . hPutStrLn h $
        IdeSlave.convSExp "return" (IdeSlave.SymbolAtom "ok", mvOutput) id
   where mapPair f g xs = zip (map (f . fst) xs) (map (g . snd) xs)
         mapSnd f xs = zip (map fst xs) (map (f . snd) xs)
@@ -407,32 +433,32 @@ runIdeSlaveCommand id orig fn mods (IdeSlave.Metavariables cols) =
           let (out, spans) = render ist bnd t pt in
           (show n , out, spans)
 
-runIdeSlaveCommand id orig fn mods (IdeSlave.WhoCalls n) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.WhoCalls n) =
   case splitName n of
        Left err -> iPrintError err
        Right n -> do calls <- whoCalls n
                      ist <- getIState
                      let msg = (IdeSlave.SymbolAtom "ok",
                                 map (\ (n,ns) -> (pn ist n, map (pn ist) ns)) calls)
-                     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+                     runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
   where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
                  prettyName True True []
-runIdeSlaveCommand id orig fn mods (IdeSlave.CallsWho n) =
+runIdeSlaveCommand h id orig fn mods (IdeSlave.CallsWho n) =
   case splitName n of
        Left err -> iPrintError err
        Right n -> do calls <- callsWho n
                      ist <- getIState
                      let msg = (IdeSlave.SymbolAtom "ok",
                                 map (\ (n,ns) -> (pn ist n, map (pn ist) ns)) calls)
-                     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+                     runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
   where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
                  prettyName True True []
 
-runIdeSlaveCommand id orig fn modes (IdeSlave.TermNormalise bnd tm) =
+runIdeSlaveCommand h id orig fn modes (IdeSlave.TermNormalise bnd tm) =
   do ctxt <- getContext
      ist <- getIState
      let tm' = force (normaliseAll ctxt [] tm)
@@ -446,15 +472,15 @@ runIdeSlaveCommand id orig fn modes (IdeSlave.TermNormalise bnd tm) =
                 displaySpans .
                 renderPretty 0.9 80 .
                 fmap (fancifyAnnots ist) $ ptm)
-     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
-runIdeSlaveCommand id orig fn modes (IdeSlave.TermShowImplicits bnd tm) =
-  ideSlaveForceTermImplicits id bnd True tm
-runIdeSlaveCommand id orig fn modes (IdeSlave.TermNoImplicits bnd tm) =
-  ideSlaveForceTermImplicits id bnd False tm
+     runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand h id orig fn modes (IdeSlave.TermShowImplicits bnd tm) =
+  ideSlaveForceTermImplicits h id bnd True tm
+runIdeSlaveCommand h id orig fn modes (IdeSlave.TermNoImplicits bnd tm) =
+  ideSlaveForceTermImplicits h id bnd False tm
 
 -- | Show a term for IDESlave with the specified implicitness
-ideSlaveForceTermImplicits :: Integer -> [(Name, Bool)] -> Bool -> Term -> Idris ()
-ideSlaveForceTermImplicits id bnd impl tm =
+ideSlaveForceTermImplicits :: Handle -> Integer -> [(Name, Bool)] -> Bool -> Term -> Idris ()
+ideSlaveForceTermImplicits h id bnd impl tm =
   do ist <- getIState
      let expl = annotate (AnnTerm bnd tm)
                 (pprintPTerm ((ppOptionIst ist) { ppopt_impl = impl })
@@ -464,7 +490,7 @@ ideSlaveForceTermImplicits id bnd impl tm =
                 displaySpans .
                 renderPretty 0.9 80 .
                 fmap (fancifyAnnots ist) $ expl)
-     runIO . putStrLn $ IdeSlave.convSExp "return" msg id
+     runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
 
 splitName :: String -> Either String Name
 splitName s = case reverse $ splitOn "." s of
@@ -950,8 +976,8 @@ process h fn Execute
                            case idris_outputmode ist of
                              RawOutput -> do runIO $ system tmpn
                                              return ()
-                             IdeSlave n -> runIO . hPutStrLn h $
-                                           IdeSlave.convSExp "run-program" tmpn n)
+                             IdeSlave n h -> runIO . hPutStrLn h $
+                                             IdeSlave.convSExp "run-program" tmpn n)
                        (\e -> getIState >>= ihRenderError stdout . flip pprintErr e)
   where fc = fileFC "main"
 process h fn (Compile codegen f)
@@ -1275,7 +1301,6 @@ idrisMain opts =
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
        setQuiet (quiet || isJust script || not (null immediate))
-       setIdeSlave idesl
        setVerbose verbose
        setCmdLine opts
        setOutputTy outty
@@ -1359,7 +1384,8 @@ idrisMain opts =
 --          clearOrigPats
          startServer orig inputs
          runInputT (replSettings (Just historyFile)) $ repl orig inputs
-       when (idesl) $ ideslaveStart orig inputs
+       let idesock = IdeslaveSocket `elem` opts
+       when (idesl) $ ideslaveStart idesock orig inputs
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))
   where

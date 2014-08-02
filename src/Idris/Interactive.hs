@@ -266,8 +266,8 @@ makeLemma h fn updatefile l n
                   runIO $ writeFile fb (addLem before tyline lem lem_app later)
                   runIO $ copyFile fb fn
                else case idris_outputmode i of
-                      RawOutput -> ihPrintResult h $ lem ++ "\n" ++ lem_app
-                      IdeSlave n ->
+                      RawOutput    -> ihPrintResult h $ lem ++ "\n" ++ lem_app
+                      IdeSlave n h ->
                         let good = SexpList [SymbolAtom "ok",
                                              SexpList [SymbolAtom "metavariable-lemma",
                                                        SexpList [SymbolAtom "replace-metavariable",
@@ -284,8 +284,8 @@ makeLemma h fn updatefile l n
                   runIO $ writeFile fb (addProv before tyline lem_app later)
                   runIO $ copyFile fb fn
                else case idris_outputmode i of
-                      RawOutput -> ihPrintResult h $ lem_app
-                      IdeSlave n ->
+                      RawOutput    -> ihPrintResult h $ lem_app
+                      IdeSlave n h ->
                         let good = SexpList [SymbolAtom "ok",
                                              SexpList [SymbolAtom "provisional-definition-lemma",
                                                        SexpList [SymbolAtom "definition-clause",

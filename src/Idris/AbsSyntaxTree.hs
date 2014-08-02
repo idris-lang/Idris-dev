@@ -127,7 +127,7 @@ ppOptionIst = ppOption . idris_options
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
 
 -- | The output mode in use
-data OutputMode = RawOutput | IdeSlave Integer deriving Show
+data OutputMode = RawOutput | IdeSlave Integer Handle deriving Show
 
 -- | How wide is the console?
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken

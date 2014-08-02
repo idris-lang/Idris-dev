@@ -50,9 +50,9 @@ searchByType h pterm = do
          displayScore score <> char ' ' <> prettyDocumentedIst i docInfo
                 | (n, score) <- names']
   case idris_outputmode i of
-    RawOutput -> do mapM_ (ihRenderOutput h) docs
-                    ihPrintResult h ""
-    IdeSlave n -> ihRenderResult h (vsep docs)
+    RawOutput    -> do mapM_ (ihRenderOutput h) docs
+                       ihPrintResult h ""
+    IdeSlave n h -> ihRenderResult h (vsep docs)
   where
     numLimit = 50
     syn = defaultSyntax { implicitAllowed = True } -- syntax

@@ -1159,8 +1159,8 @@ parseProg syn fname input mrk
                                   let (fc, msg) = findFC doc
                                   i <- getIState
                                   case idris_outputmode i of
-                                    RawOutput -> ihputStrLn (idris_outh i) (show $ fixColour (idris_colourRepl i) doc)
-                                    IdeSlave n -> ihWarn (idris_outh i) fc (P.text msg)
+                                    RawOutput    -> ihputStrLn (idris_outh i) (show $ fixColour (idris_colourRepl i) doc)
+                                    IdeSlave n h -> ihWarn h fc (P.text msg)
                                   putIState (i { errSpan = Just fc })
                                   return []
             Success (x, i)  -> do putIState i

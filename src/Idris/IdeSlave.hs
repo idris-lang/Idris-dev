@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
-module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..)) where
+module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideSlaveEpoch) where
 
 import Text.Printf
 import Numeric
@@ -251,15 +251,9 @@ parseMessage x = case receiveString x of
 
 receiveString :: String -> Either Err SExp
 receiveString x =
-  case readHex (take 6 x) of
-    ((num, ""):_) ->
-      let msg = drop 6 x in
-        if (length msg) /= (num - 1)
-           then Left . Msg $ "bad input length"
-           else (case parseSExp msg of
-                      Failure _ -> Left . Msg $ "parse failure"
-                      Success r -> Right r)
-    _ -> Left . Msg $ "readHex failed"
+  case parseSExp x of
+    Failure _ -> Left . Msg $ "parse failure"
+    Success r -> Right r
 
 convSExp :: SExpable a => String -> a -> Integer -> String
 convSExp pre s id =
@@ -269,3 +263,6 @@ convSExp pre s id =
 
 getHexLength :: String -> String
 getHexLength s = printf "%06x" (1 + (length s))
+
+ideSlaveEpoch :: Int
+ideSlaveEpoch = 1

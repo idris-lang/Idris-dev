@@ -33,7 +33,7 @@ ihWarn h fc err = do i <- getIState
                                       then text (show fc) <> colon <//> err
                                       else err
                             runIO . hPutStrLn h $ displayDecorated (consoleDecorate i) err'
-                       IdeSlave n ->
+                       IdeSlave n h ->
                          do err' <- iRender . fmap (fancifyAnnots i) $ err
                             let (str, spans) = displaySpans err'
                             runIO . hPutStrLn h $
@@ -43,8 +43,8 @@ iRender :: Doc a -> Idris (SimpleDoc a)
 iRender d = do w <- getWidth
                ist <- getIState
                let ideSlave = case idris_outputmode ist of
-                                IdeSlave _ -> True
-                                _          -> False
+                                IdeSlave _ _ -> True
+                                _            -> False
                case w of
                  InfinitelyWide -> return $ renderPretty 1.0 1000000000 d
                  ColsWide n -> return $
@@ -84,16 +84,16 @@ ihRenderOutput h doc =
      case idris_outputmode i of
        RawOutput -> do out <- iRender doc
                        runIO $ putStrLn (displayDecorated (consoleDecorate i) out)
-       IdeSlave n ->
+       IdeSlave n h ->
         do (str, spans) <- fmap displaySpans . iRender . fmap (fancifyAnnots i) $ doc
            let out = [toSExp str, toSExp spans]
-           runIO . putStrLn $ convSExp "write-decorated" out n
+           runIO . hPutStrLn h $ convSExp "write-decorated" out n
 
 ihRenderResult :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderResult h d = do ist <- getIState
                         case idris_outputmode ist of
-                          RawOutput -> consoleDisplayAnnotated h d
-                          IdeSlave n -> ideSlaveReturnAnnotated n h d
+                          RawOutput    -> consoleDisplayAnnotated h d
+                          IdeSlave n h -> ideSlaveReturnAnnotated n h d
 
 ideSlaveReturnWithStatus :: String -> Integer -> Handle -> Doc OutputAnnotation -> Idris ()
 ideSlaveReturnWithStatus status n h out = do
@@ -114,17 +114,17 @@ ideSlaveReturnAnnotated = ideSlaveReturnWithStatus "ok"
 ihRenderError :: Handle -> Doc OutputAnnotation -> Idris ()
 ihRenderError h e = do ist <- getIState
                        case idris_outputmode ist of
-                         RawOutput -> consoleDisplayAnnotated h e
-                         IdeSlave n -> ideSlaveReturnWithStatus "error" n h e
+                         RawOutput    -> consoleDisplayAnnotated h e
+                         IdeSlave n h -> ideSlaveReturnWithStatus "error" n h e
 
 ihPrintWithStatus :: String -> Handle -> String -> Idris ()
-ihPrintWithStatus status h s = do 
+ihPrintWithStatus status h s = do
   i <- getIState
   case idris_outputmode i of
     RawOutput -> case s of
       "" -> return ()
       s  -> runIO $ hPutStrLn h s
-    IdeSlave n ->
+    IdeSlave n h ->
       let good = SexpList [SymbolAtom status, toSExp s] in
       runIO $ hPutStrLn h $ convSExp "return" good n
 
@@ -138,8 +138,8 @@ ihPrintError = ihPrintWithStatus "error"
 ihputStrLn :: Handle -> String -> Idris ()
 ihputStrLn h s = do i <- getIState
                     case idris_outputmode i of
-                      RawOutput -> runIO $ hPutStrLn h s
-                      IdeSlave n -> runIO . hPutStrLn h $ convSExp "write-string" s n
+                      RawOutput    -> runIO $ hPutStrLn h s
+                      IdeSlave n h -> runIO . hPutStrLn h $ convSExp "write-string" s n
 
 iputStrLn = ihputStrLn stdout
 iPrintError = ihPrintError stdout
@@ -149,7 +149,7 @@ iWarn = ihWarn stdout
 ideslavePutSExp :: SExpable a => String -> a -> Idris ()
 ideslavePutSExp cmd info = do i <- getIState
                               case idris_outputmode i of
-                                   IdeSlave n -> runIO . putStrLn $ convSExp cmd info n
+                                   IdeSlave n h -> runIO . hPutStrLn h $ convSExp cmd info n
                                    _ -> return ()
 
 -- TODO: send structured output similar to the metavariable list
@@ -157,10 +157,10 @@ iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
 iputGoal g = do i <- getIState
                 case idris_outputmode i of
                   RawOutput -> runIO $ putStrLn (displayDecorated (consoleDecorate i) g)
-                  IdeSlave n ->
+                  IdeSlave n h ->
                     let (str, spans) = displaySpans . fmap (fancifyAnnots i) $ g
                         goal = [toSExp str, toSExp spans]
-                    in runIO . putStrLn $ convSExp "write-goal" goal n
+                    in runIO . hPutStrLn h $ convSExp "write-goal" goal n
 
 -- | Warn about totality problems without failing to compile
 warnTotality :: Idris ()

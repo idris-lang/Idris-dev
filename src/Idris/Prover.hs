@@ -27,6 +27,7 @@ import Text.Trifecta.Result(Result(..))
 
 import System.Console.Haskeline
 import System.Console.Haskeline.History
+import System.IO (Handle)
 import Control.Monad.State.Strict
 import Control.DeepSeq
 
@@ -70,8 +71,8 @@ prove opt ctxt lit n ty
          iLOG $ "Adding " ++ show tm
          i <- getIState
          case idris_outputmode i of
-           IdeSlave _ -> ideslavePutSExp "end-proof-mode" (n, showProof lit n prf)
-           _          -> iputStrLn $ showProof lit n prf
+           IdeSlave _ _ -> ideslavePutSExp "end-proof-mode" (n, showProof lit n prf)
+           _            -> iputStrLn $ showProof lit n prf
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
          let tree = simpleCase False True False CompileTime (fileFC "proof") [] [] [([], P Ref n ty, tm)]
@@ -93,9 +94,8 @@ prove opt ctxt lit n ty
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
          case idris_outputmode i of
-           IdeSlave n ->
-             runIO . putStrLn $
-               convSExp "return" (SymbolAtom "ok", "") n
+           IdeSlave n h ->
+             ihputStrLn h $ convSExp "return" (SymbolAtom "ok", "") n
            _ -> return ()
 
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
@@ -177,20 +177,20 @@ lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
                 return v
 
-receiveInput :: ElabState [PDecl] -> Idris (Maybe String)
-receiveInput e =
+receiveInput :: ElabState [PDecl] -> Handle -> Idris (Maybe String)
+receiveInput e handle =
   do i <- getIState
      l <- runIO $ getLine
      (sexp, id) <- case parseMessage l of
                      Left err -> ierror err
                      Right (sexp, id) -> return (sexp, id)
-     putIState $ i { idris_outputmode = (IdeSlave id) }
+     putIState $ i { idris_outputmode = (IdeSlave id handle) }
      case sexpToCommand sexp of
        Just (REPLCompletions prefix) ->
          do (unused, compls) <- proverCompletion (assumptionNames e) (reverse prefix, "")
             let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
             ideslavePutSExp "return" good
-            receiveInput e
+            receiveInput e handle
        Just (Interpret cmd) -> return (Just cmd)
        Just (TypeOf str) -> return (Just (":t " ++ str))
        Just (DocsFor str) -> return (Just (":doc " ++ str))
@@ -211,9 +211,9 @@ ploop fn d prompt prf e h
                              l <- getInputLine (prompt ++ "> ")
                              h' <- getHistory
                              return (l, Just h')
-             IdeSlave n ->
+             IdeSlave _ handle ->
                do isetPrompt prompt
-                  i <- receiveInput e
+                  i <- receiveInput e handle
                   return (i, h)
          (cmd, step) <- case x of
             Nothing -> do iPrintError ""; ifail "Abandoned"
