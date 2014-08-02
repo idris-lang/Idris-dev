@@ -485,7 +485,7 @@ rbFOREIGN _ reg n args
       RubyAssign (
         translateReg reg
       ) (
-        RubyApp (RubyIdent "puts") [translateReg arg]
+        RubyApp (RubyIdent "print") [translateReg arg]
       )
 
   | n == "isNull"
@@ -631,7 +631,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LZExt (ITFixed IT32) ITNative) <- op = rbUnPackUBits32 $ translateReg (last args)
       | (LZExt (ITFixed IT64) ITNative) <- op = rbUnPackUBits64 $ translateReg (last args)
 
-      | (LZExt _ ITBig)        <- op = rbUnPackUBits64 $ translateReg (last args)
+      | (LZExt _ ITBig)        <- op = translateReg (last args)
       | (LPlus (ATInt ITBig))  <- op
       , (lhs:rhs:_)            <- args = translateBinaryOp "+" lhs rhs
       | (LMinus (ATInt ITBig)) <- op
@@ -1182,7 +1182,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LIntStr ITNative)      <- op
       , (arg:_)                 <- args = rbMeth (translateReg arg) "to_s" []
       | (LSExt ITNative ITBig)  <- op
-      , (arg:_)                 <- args = rbMeth (translateReg arg) "to_s" []
+      , (arg:_)                 <- args = translateReg arg
       | (LTrunc ITBig ITNative) <- op
       , (arg:_)                 <- args = rbMeth (translateReg arg) "to_i" []
       | (LIntStr ITBig)         <- op

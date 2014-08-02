@@ -91,11 +91,5 @@ def i_systemInfo()
 end
 
 
-class String
-  alias_method :lessThan?, "<"
-  def < (rhs)
-    rhs.instance_of?(String) ? self.lessThan?(rhs) : true
-  end
-end
 
 
