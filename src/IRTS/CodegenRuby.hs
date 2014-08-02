@@ -344,7 +344,7 @@ translateDecl info (name@(MN 0 fun), bc)
       ++ [ RubyAlloc (
                translateName name
            ) (Just $ RubyFunction ["oldbase"] (
-               RubySeq $ RubyAlloc "myoldbase" Nothing : map (translateBC info) (fst body) ++ [
+               RubySeq $ RubyAlloc "myoldbase" (Just . RubyNum $ RubyInt 0) : map (translateBC info) (fst body) ++ [
                  RubyCond [ ( (translateReg $ caseReg (snd body)) `rbInstanceOf` "I_CON" `rbAnd` (RubyProj (translateReg $ caseReg (snd body)) "ev")
                           , RubyApp (RubyProj (translateReg $ caseReg (snd body)) "ev.call") [rbOLDBASE, rbMYOLDBASE]
                           )
@@ -626,12 +626,12 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
     rbOP'
       | LNoOp <- op = translateReg (last args)
 
-      | (LZExt (ITFixed IT8) ITNative)  <- op = rbUnPackBits $ translateReg (last args)
-      | (LZExt (ITFixed IT16) ITNative) <- op = rbUnPackBits $ translateReg (last args)
-      | (LZExt (ITFixed IT32) ITNative) <- op = rbUnPackBits $ translateReg (last args)
-      | (LZExt (ITFixed IT64) ITNative) <- op = rbUnPackBits $ translateReg (last args)
+      | (LZExt (ITFixed IT8) ITNative)  <- op = rbUnPackUBits8 $ translateReg (last args)
+      | (LZExt (ITFixed IT16) ITNative) <- op = rbUnPackUBits16 $ translateReg (last args)
+      | (LZExt (ITFixed IT32) ITNative) <- op = rbUnPackUBits32 $ translateReg (last args)
+      | (LZExt (ITFixed IT64) ITNative) <- op = rbUnPackUBits64 $ translateReg (last args)
 
-      | (LZExt _ ITBig)        <- op = rbUnPackBits $ translateReg (last args)
+      | (LZExt _ ITBig)        <- op = rbUnPackUBits64 $ translateReg (last args)
       | (LPlus (ATInt ITBig))  <- op
       , (lhs:rhs:_)            <- args = translateBinaryOp "+" lhs rhs
       | (LMinus (ATInt ITBig)) <- op
@@ -643,15 +643,15 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LSRem (ATInt ITBig))  <- op
       , (lhs:rhs:_)            <- args = translateBinaryOp "%" lhs rhs
       | (LEq (ATInt ITBig))    <- op
-      , (lhs:rhs:_)            <- args = translateBinaryOp "==" lhs rhs
+      , (lhs:rhs:_)            <- args = boolToInt (translateBinaryOp "==" lhs rhs)
       | (LSLt (ATInt ITBig))   <- op
-      , (lhs:rhs:_)            <- args = translateBinaryOp "<" lhs rhs
+      , (lhs:rhs:_)            <- args = boolToInt (translateBinaryOp "<" lhs rhs)
       | (LSLe (ATInt ITBig))   <- op
-      , (lhs:rhs:_)            <- args = translateBinaryOp "<=" lhs rhs
+      , (lhs:rhs:_)            <- args = boolToInt (translateBinaryOp "<=" lhs rhs)
       | (LSGt (ATInt ITBig))   <- op
-      , (lhs:rhs:_)            <- args = translateBinaryOp ">" lhs rhs
+      , (lhs:rhs:_)            <- args = boolToInt (translateBinaryOp ">" lhs rhs)
       | (LSGe (ATInt ITBig))   <- op
-      , (lhs:rhs:_)            <- args = translateBinaryOp ">=" lhs rhs
+      , (lhs:rhs:_)            <- args = boolToInt (translateBinaryOp ">=" lhs rhs)
 
       | (LPlus ATFloat)  <- op
       , (lhs:rhs:_)      <- args = translateBinaryOp "+" lhs rhs
@@ -662,15 +662,15 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LSDiv ATFloat)  <- op
       , (lhs:rhs:_)      <- args = translateBinaryOp "/" lhs rhs
       | (LEq ATFloat)    <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp "==" lhs rhs
+      , (lhs:rhs:_)      <- args = boolToInt (translateBinaryOp "==" lhs rhs)
       | (LSLt ATFloat)   <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp "<" lhs rhs
+      , (lhs:rhs:_)      <- args = boolToInt (translateBinaryOp "<" lhs rhs)
       | (LSLe ATFloat)   <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp "<=" lhs rhs
+      , (lhs:rhs:_)      <- args = boolToInt (translateBinaryOp "<=" lhs rhs)
       | (LSGt ATFloat)   <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp ">" lhs rhs
+      , (lhs:rhs:_)      <- args = boolToInt (translateBinaryOp ">" lhs rhs)
       | (LSGe ATFloat)   <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp ">=" lhs rhs
+      , (lhs:rhs:_)      <- args = boolToInt (translateBinaryOp ">=" lhs rhs)
 
       | (LPlus (ATInt ITChar)) <- op
       , (lhs:rhs:_)            <- args =
@@ -685,368 +685,368 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LTrunc (ITFixed IT16) (ITFixed IT8)) <- op
       , (arg:_)                               <- args =
           rbPackUBits8 (
-            RubyBinOp "&" (rbUnPackBits $ translateReg arg) (RubyNum (RubyInt 0xFF))
+            RubyBinOp "&" (rbUnPackUBits8 $ translateReg arg) (RubyNum (RubyInt 0xFF))
           )
 
       | (LTrunc (ITFixed IT32) (ITFixed IT16)) <- op
       , (arg:_)                                <- args =
           rbPackUBits16 (
-            RubyBinOp "&" (rbUnPackBits $ translateReg arg) (RubyNum (RubyInt 0xFFFF))
+            RubyBinOp "&" (rbUnPackUBits16 $ translateReg arg) (RubyNum (RubyInt 0xFFFF))
           )
 
       | (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op
       , (arg:_)                                <- args =
           rbPackUBits32 (
-            RubyBinOp "&" (rbUnPackBits $ translateReg arg) (RubyNum (RubyInt 0xFFFFFFFF))
+            RubyBinOp "&" (rbUnPackUBits32 $ translateReg arg) (RubyNum (RubyInt 0xFFFFFFFF))
           )
 
       | (LTrunc ITBig (ITFixed IT64)) <- op
       , (arg:_)                       <- args =
           rbPackUBits64 (
-            RubyBinOp "&" (rbUnPackBits $ translateReg arg) (RubyNum $ RubyInteger (RubyBigInt 0xFFFFFFFFFFFFFFFF))
+            RubyBinOp "&" (rbUnPackUBits64 $ translateReg arg) (RubyNum $ RubyInteger (RubyBigInt 0xFFFFFFFFFFFFFFFF))
           )
 
       | (LLSHR (ITFixed IT8)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits8 (
-            RubyBinOp ">>" (rbUnPackBits $ translateReg lhs) (rbUnPackBits $ translateReg rhs)
+            RubyBinOp ">>" (rbUnPackUBits8 $ translateReg lhs) (rbUnPackUBits8 $ translateReg rhs)
           )
 
       | (LLSHR (ITFixed IT16)) <- op
       , (lhs:rhs:_)            <- args =
           rbPackUBits16 (
-            RubyBinOp ">>" (rbUnPackBits $ translateReg lhs) (rbUnPackBits $ translateReg rhs)
+            RubyBinOp ">>" (rbUnPackUBits16 $ translateReg lhs) (rbUnPackUBits16 $ translateReg rhs)
           )
 
       | (LLSHR (ITFixed IT32)) <- op
       , (lhs:rhs:_)            <- args =
           rbPackUBits32  (
-            RubyBinOp ">>" (rbUnPackBits $ translateReg lhs) (rbUnPackBits $ translateReg rhs)
+            RubyBinOp ">>" (rbUnPackUBits32 $ translateReg lhs) (rbUnPackUBits32 $ translateReg rhs)
           )
 
       | (LLSHR (ITFixed IT64)) <- op
       , (lhs:rhs:_)            <- args =
           rbPackUBits64  (
-            RubyBinOp ">>" (rbUnPackBits $ translateReg lhs) (rbUnPackBits $ translateReg rhs)
+            RubyBinOp ">>" (rbUnPackUBits64 $ translateReg lhs) (rbUnPackUBits64 $ translateReg rhs)
           )
 
       | (LSHL (ITFixed IT8)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits8 (
-            RubyBinOp "<<" (rbUnPackBits $ translateReg lhs) (rbUnPackBits $ translateReg rhs)
+            RubyBinOp "<<" (rbUnPackUBits8 $ translateReg lhs) (rbUnPackUBits8 $ translateReg rhs)
           )
 
       | (LSHL (ITFixed IT16)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits16 (
-            RubyBinOp "<<" (rbUnPackBits $ translateReg lhs) (rbUnPackBits $ translateReg rhs)
+            RubyBinOp "<<" (rbUnPackUBits16 $ translateReg lhs) (rbUnPackUBits16 $ translateReg rhs)
           )
 
       | (LSHL (ITFixed IT32)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits32  (
-            RubyBinOp "<<" (rbUnPackBits $ translateReg lhs) (rbUnPackBits $ translateReg rhs)
+            RubyBinOp "<<" (rbUnPackUBits32 $ translateReg lhs) (rbUnPackUBits32 $ translateReg rhs)
           )
 
       | (LSHL (ITFixed IT64)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits64  (
-            RubyBinOp "<<" (rbUnPackBits $ translateReg lhs) (rbUnPackBits $ translateReg rhs)
+            RubyBinOp "<<" (rbUnPackUBits64 $ translateReg lhs) (rbUnPackUBits64 $ translateReg rhs)
           )
 
       | (LAnd (ITFixed IT8)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits8 (
-            RubyBinOp "&" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "&" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LAnd (ITFixed IT16)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits16 (
-            RubyBinOp "&" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "&" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LAnd (ITFixed IT32)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits32 (
-            RubyBinOp "&" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "&" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LAnd (ITFixed IT64)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits64 (
-            RubyBinOp "&" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "&" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LOr (ITFixed IT8)) <- op
       , (lhs:rhs:_)         <- args =
           rbPackUBits8 (
-            RubyBinOp "|" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "|" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LOr (ITFixed IT16)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits16 (
-            RubyBinOp "|" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "|" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LOr (ITFixed IT32)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits32 (
-            RubyBinOp "|" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "|" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LOr (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits64 (
-            RubyBinOp "|" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "|" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LXOr (ITFixed IT8)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits8 (
-            RubyBinOp "^" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "^" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LXOr (ITFixed IT16)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits16 (
-            RubyBinOp "^" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "^" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LXOr (ITFixed IT32)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits32 (
-            RubyBinOp "^" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "^" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LXOr (ITFixed IT64)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits64 (
-            RubyBinOp "^" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "^" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LPlus (ATInt (ITFixed IT8))) <- op
       , (lhs:rhs:_)                   <- args =
           rbPackUBits8 (
-            RubyBinOp "+" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "+" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LPlus (ATInt (ITFixed IT16))) <- op
       , (lhs:rhs:_)                    <- args =
           rbPackUBits16 (
-            RubyBinOp "+" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "+" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LPlus (ATInt (ITFixed IT32))) <- op
       , (lhs:rhs:_)                    <- args =
           rbPackUBits32 (
-            RubyBinOp "+" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "+" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LPlus (ATInt (ITFixed IT64))) <- op
       , (lhs:rhs:_)                    <- args =
           rbPackUBits64 (
-            RubyBinOp "+" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "+" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LMinus (ATInt (ITFixed IT8))) <- op
       , (lhs:rhs:_)                    <- args =
           rbPackUBits8 (
-            RubyBinOp "-" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "-" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LMinus (ATInt (ITFixed IT16))) <- op
       , (lhs:rhs:_)                     <- args =
           rbPackUBits16 (
-            RubyBinOp "-" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "-" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LMinus (ATInt (ITFixed IT32))) <- op
       , (lhs:rhs:_)                     <- args =
           rbPackUBits32 (
-            RubyBinOp "-" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "-" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LMinus (ATInt (ITFixed IT64))) <- op
       , (lhs:rhs:_)                     <- args =
           rbPackUBits64 (
-            RubyBinOp "-" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "-" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LTimes (ATInt (ITFixed IT8))) <- op
       , (lhs:rhs:_)                    <- args =
           rbPackUBits8 (
-            RubyBinOp "*" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "*" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LTimes (ATInt (ITFixed IT16))) <- op
       , (lhs:rhs:_)                     <- args =
           rbPackUBits16 (
-            RubyBinOp "*" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "*" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LTimes (ATInt (ITFixed IT32))) <- op
       , (lhs:rhs:_)                     <- args =
           rbPackUBits32 (
-            RubyBinOp "*" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "*" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LTimes (ATInt (ITFixed IT64))) <- op
       , (lhs:rhs:_)                     <- args =
           rbPackUBits64 (
-            RubyBinOp "*" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "*" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LEq (ATInt (ITFixed IT8))) <- op
       , (lhs:rhs:_)                 <- args =
           rbPackUBits8 (
-            RubyBinOp "==" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "==" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LEq (ATInt (ITFixed IT16))) <- op
       , (lhs:rhs:_)                  <- args =
           rbPackUBits16 (
-            RubyBinOp "==" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "==" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LEq (ATInt (ITFixed IT32))) <- op
       , (lhs:rhs:_)                  <- args =
           rbPackUBits32 (
-            RubyBinOp "==" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "==" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LEq (ATInt (ITFixed IT64))) <- op
       , (lhs:rhs:_)                   <- args =
           rbPackUBits64 (
-            RubyBinOp "==" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "==" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LLt (ITFixed IT8)) <- op
       , (lhs:rhs:_)         <- args =
           rbPackUBits8 (
-            RubyBinOp "<" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "<" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LLt (ITFixed IT16)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits16 (
-            RubyBinOp "<" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "<" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LLt (ITFixed IT32)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits32 (
-            RubyBinOp "<" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "<" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LLt (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits64 (
-            RubyBinOp "<" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "<" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LLe (ITFixed IT8)) <- op
       , (lhs:rhs:_)         <- args =
           rbPackUBits8 (
-            RubyBinOp "<=" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "<=" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LLe (ITFixed IT16)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits16 (
-            RubyBinOp "<=" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "<=" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LLe (ITFixed IT32)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits32 (
-            RubyBinOp "<=" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "<=" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LLe (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits64 (
-            RubyBinOp "<=" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "<=" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LGt (ITFixed IT8)) <- op
       , (lhs:rhs:_)         <- args =
           rbPackUBits8 (
-            RubyBinOp ">" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp ">" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LGt (ITFixed IT16)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits16 (
-            RubyBinOp ">" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp ">" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
       | (LGt (ITFixed IT32)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits32 (
-            RubyBinOp ">" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp ">" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LGt (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits64 (
-            RubyBinOp ">" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp ">" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LGe (ITFixed IT8)) <- op
       , (lhs:rhs:_)         <- args =
           rbPackUBits8 (
-            RubyBinOp ">=" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp ">=" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LGe (ITFixed IT16)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits16 (
-            RubyBinOp ">=" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp ">=" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
       | (LGe (ITFixed IT32)) <- op
       , (lhs:rhs:_)          <- args =
           rbPackUBits32 (
-            RubyBinOp ">=" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp ">=" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LGe (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args = 
           rbPackUBits64 (
-            RubyBinOp ">=" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp ">=" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LUDiv (ITFixed IT8)) <- op
       , (lhs:rhs:_)           <- args =
           rbPackUBits8 (
-            RubyBinOp "/" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "/" (rbUnPackUBits8 (translateReg lhs)) (rbUnPackUBits8 (translateReg rhs))
           )
 
       | (LUDiv (ITFixed IT16)) <- op
       , (lhs:rhs:_)            <- args =
           rbPackUBits16 (
-            RubyBinOp "/" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "/" (rbUnPackUBits16 (translateReg lhs)) (rbUnPackUBits16 (translateReg rhs))
           )
 
       | (LUDiv (ITFixed IT32)) <- op
       , (lhs:rhs:_)            <- args =
           rbPackUBits32 (
-            RubyBinOp "/" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "/" (rbUnPackUBits32 (translateReg lhs)) (rbUnPackUBits32 (translateReg rhs))
           )
 
       | (LUDiv (ITFixed IT64)) <- op
       , (lhs:rhs:_)            <- args =
           rbPackUBits64 (
-            RubyBinOp "/" (rbUnPackBits (translateReg lhs)) (rbUnPackBits (translateReg rhs))
+            RubyBinOp "/" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
 
       | (LSDiv (ATInt (ITFixed IT8))) <- op
       , (lhs:rhs:_)                   <- args =
           rbPackSBits8 (
             RubyBinOp "/" (
-              rbUnPackBits $ rbPackSBits8 $ rbUnPackBits (translateReg lhs)
+              rbUnPackSBits8 $ rbPackSBits8 $ rbUnPackSBits8 (translateReg lhs)
             ) (
-              rbUnPackBits $ rbPackSBits8 $ rbUnPackBits (translateReg rhs)
+              rbUnPackSBits8 $ rbPackSBits8 $ rbUnPackSBits8 (translateReg rhs)
             )
           )
 
@@ -1054,9 +1054,9 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       , (lhs:rhs:_)                    <- args =
           rbPackSBits16 (
             RubyBinOp "/" (
-              rbUnPackBits $ rbPackSBits16 $ rbUnPackBits (translateReg lhs)
+              rbUnPackSBits16 $ rbPackSBits16 $ rbUnPackSBits16 (translateReg lhs)
             ) (
-              rbUnPackBits $ rbPackSBits16 $ rbUnPackBits (translateReg rhs)
+              rbUnPackSBits16 $ rbPackSBits16 $ rbUnPackSBits16 (translateReg rhs)
             )
           )
 
@@ -1064,9 +1064,9 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       , (lhs:rhs:_)                    <- args =
           rbPackSBits32 (
             RubyBinOp "/" (
-              rbUnPackBits $ rbPackSBits32 $ rbUnPackBits (translateReg lhs)
+              rbUnPackSBits32 $ rbPackSBits32 $ rbUnPackSBits32 (translateReg lhs)
             ) (
-              rbUnPackBits $ rbPackSBits32 $ rbUnPackBits (translateReg rhs)
+              rbUnPackSBits32 $ rbPackSBits32 $ rbUnPackSBits32 (translateReg rhs)
             )
           )
 
@@ -1074,9 +1074,9 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       , (lhs:rhs:_)                    <- args =
           rbPackSBits64 (
             RubyBinOp "/" (
-              rbUnPackBits $ rbPackSBits32 $ rbUnPackBits (translateReg lhs)
+              rbUnPackSBits64 $ rbPackSBits64 $ rbUnPackSBits64 (translateReg lhs)
             ) (
-              rbUnPackBits $ rbPackSBits32 $ rbUnPackBits (translateReg rhs)
+              rbUnPackSBits64 $ rbPackSBits64 $ rbUnPackSBits64 (translateReg rhs)
             )
           )
 
@@ -1084,9 +1084,9 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       , (lhs:rhs:_)                   <- args =
           rbPackSBits8 (
             RubyBinOp "%" (
-              rbUnPackBits $ rbPackSBits8 $ rbUnPackBits (translateReg lhs)
+              rbUnPackSBits8 $ rbPackSBits8 $ rbUnPackSBits8 (translateReg lhs)
             ) (
-              rbUnPackBits $ rbPackSBits8 $ rbUnPackBits (translateReg rhs)
+              rbUnPackSBits8 $ rbPackSBits8 $ rbUnPackSBits8 (translateReg rhs)
             )
           )
 
@@ -1094,9 +1094,9 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       , (lhs:rhs:_)                    <- args =
           rbPackSBits16 (
             RubyBinOp "%" (
-              rbUnPackBits $ rbPackSBits16 $ rbUnPackBits (translateReg lhs)
+              rbUnPackSBits16 $ rbPackSBits16 $ rbUnPackSBits16 (translateReg lhs)
             ) (
-              rbUnPackBits $ rbPackSBits16 $ rbUnPackBits (translateReg rhs)
+              rbUnPackSBits16 $ rbPackSBits16 $ rbUnPackSBits16 (translateReg rhs)
             )
           )
 
@@ -1104,9 +1104,9 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       , (lhs:rhs:_)                    <- args =
           rbPackSBits32 (
             RubyBinOp "%" (
-              rbUnPackBits $ rbPackSBits32 $ rbUnPackBits (translateReg lhs)
+              rbUnPackSBits32 $ rbPackSBits32 $ rbUnPackSBits32 (translateReg lhs)
             ) (
-              rbUnPackBits $ rbPackSBits32 $ rbUnPackBits (translateReg rhs)
+              rbUnPackSBits32 $ rbPackSBits32 $ rbUnPackSBits32 (translateReg rhs)
             )
           )
 
@@ -1114,27 +1114,27 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       , (lhs:rhs:_)                    <- args =
           rbPackSBits64 (
             RubyBinOp "%" (
-              rbUnPackBits $ rbPackSBits32 $ rbUnPackBits (translateReg lhs)
+              rbUnPackSBits64 $ rbPackSBits64 $ rbUnPackSBits64 (translateReg lhs)
             ) (
-              rbUnPackBits $ rbPackSBits32 $ rbUnPackBits (translateReg rhs)
+              rbUnPackSBits64 $ rbPackSBits64 $ rbUnPackSBits64 (translateReg rhs)
             )
           )
 
       | (LCompl (ITFixed IT8)) <- op
       , (arg:_)                <- args =
-          rbPackSBits8 $ RubyPreOp "~" $ rbUnPackBits (translateReg arg)
+          rbPackSBits8 $ RubyPreOp "~" $ rbUnPackSBits8 (translateReg arg)
 
       | (LCompl (ITFixed IT16)) <- op
       , (arg:_)                 <- args =
-          rbPackSBits16 $ RubyPreOp "~" $ rbUnPackBits (translateReg arg)
+          rbPackSBits16 $ RubyPreOp "~" $ rbUnPackSBits16 (translateReg arg)
 
       | (LCompl (ITFixed IT32)) <- op
       , (arg:_)                 <- args =
-          rbPackSBits32 $ RubyPreOp "~" $ rbUnPackBits (translateReg arg)
+          rbPackSBits32 $ RubyPreOp "~" $ rbUnPackSBits32 (translateReg arg)
 
       | (LCompl (ITFixed IT64)) <- op
       , (arg:_)     <- args =
-          rbPackSBits64 $ RubyPreOp "~" $ rbUnPackBits (translateReg arg)
+          rbPackSBits64 $ RubyPreOp "~" $ rbUnPackSBits64 (translateReg arg)
 
       | (LPlus _)   <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "+" lhs rhs
@@ -1147,15 +1147,15 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | (LSRem _)   <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "%" lhs rhs
       | (LEq _)     <- op
-      , (lhs:rhs:_) <- args = RubyTernary (translateBinaryOp "==" lhs rhs) (RubyNum $ RubyInt 1) (RubyNum $ RubyInt 0)
+      , (lhs:rhs:_) <- args = boolToInt (translateBinaryOp "==" lhs rhs)
       | (LSLt _)    <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "<" lhs rhs
+      , (lhs:rhs:_) <- args = boolToInt (translateBinaryOp "<" lhs rhs)
       | (LSLe _)    <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "<=" lhs rhs
+      , (lhs:rhs:_) <- args = boolToInt (translateBinaryOp "<=" lhs rhs)
       | (LSGt _)    <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp ">" lhs rhs
+      , (lhs:rhs:_) <- args = boolToInt (translateBinaryOp ">" lhs rhs)
       | (LSGe _)    <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp ">=" lhs rhs
+      , (lhs:rhs:_) <- args = boolToInt (translateBinaryOp ">=" lhs rhs)
       | (LAnd _)    <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "&" lhs rhs
       | (LOr _)     <- op
@@ -1172,9 +1172,9 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
       | LStrConcat  <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "+" lhs rhs
       | LStrEq      <- op
-      , (lhs:rhs:_) <- args = RubyTernary (translateBinaryOp "==" lhs rhs) (RubyNum $ RubyInt 1) (RubyNum $ RubyInt 0)
+      , (lhs:rhs:_) <- args = boolToInt (translateBinaryOp "==" lhs rhs)
       | LStrLt      <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "<" lhs rhs
+      , (lhs:rhs:_) <- args = boolToInt (translateBinaryOp "<" lhs rhs)
       | LStrLen     <- op
       , (arg:_)     <- args = RubyProj (translateReg arg) "length"
       | (LStrInt ITNative)      <- op
@@ -1254,6 +1254,8 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
           invokeMeth :: Reg -> String -> [Reg] -> Ruby
           invokeMeth obj meth args =
             RubyApp (RubyProj (translateReg obj) meth) $ map translateReg args
+            
+          boolToInt e = RubyTernary e (RubyNum $ RubyInt 1) (RubyNum $ RubyInt 0)
 
 
 rbRESERVE :: CompileInfo -> Int -> Ruby

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 idris $@ test019.lidr -o test019
+chmod +x ./test019
 ./test019
 rm -f test019 *.ibc

@@ -1,3 +1,5 @@
+#!/usr/bin/ruby
+
 class I_VM 
   attr_accessor :valstack, :valstack_top, :valstack_base, :ret, :callstack
   def initialize()
@@ -86,6 +88,14 @@ end
 
 def i_systemInfo()
   "Ruby #{RUBY_VERSION} [#{RUBY_PLATFORM}]" 
+end
+
+
+class String
+  alias_method :lessThan?, "<"
+  def < (rhs)
+    rhs.instance_of?(String) ? self.lessThan?(rhs) : true
+  end
 end
 
 

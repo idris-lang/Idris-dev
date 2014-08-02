@@ -14,6 +14,7 @@ open(FOO,">run");
 
 print FOO "#!/usr/bin/env bash\n";
 print FOO "idris \$@ $test.idr -o $test\n";
+print FOO "chmod +x $test\n";
 print FOO "./$test\n";print FOO "rm -f $test *.ibc\n";
 
 close(FOO);

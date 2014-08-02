@@ -178,7 +178,7 @@ compileRuby' indent (RubyNew name args) =
   `T.append` ")"
 
 compileRuby' indent (RubyError exc) =
-  "(function(){throw new Error(\"" `T.append` T.pack exc `T.append` "\")})()"
+  "raise \"" `T.append` T.pack exc `T.append` "\""
 
 compileRuby' indent (RubyBinOp op lhs rhs) =
     compileRuby' indent lhs
@@ -376,30 +376,51 @@ rbIsNumber rb = rbMeth rb "is_a?" [(RubyIdent "Numeric")]
 rbIsNull :: Ruby -> Ruby
 rbIsNull rb = RubyBinOp "==" rb RubyNull
 
-rbUnPackBits :: Ruby -> Ruby
-rbUnPackBits rb = RubyIndex rb $ RubyNum (RubyInt 0)
+rbUnPackUBits8 :: Ruby -> Ruby
+rbUnPackUBits8 rb = RubyIndex (rbMeth rb "unpack" [RubyString "C*"]) (RubyNum $ RubyInt 0)
+
+rbUnPackUBits16 :: Ruby -> Ruby
+rbUnPackUBits16 rb = RubyIndex (rbMeth rb "unpack" [RubyString "S*"]) (RubyNum $ RubyInt 0)
+
+rbUnPackUBits32 :: Ruby -> Ruby
+rbUnPackUBits32 rb = RubyIndex (rbMeth rb "unpack" [RubyString "L*"]) (RubyNum $ RubyInt 0)
+
+rbUnPackUBits64 :: Ruby -> Ruby
+rbUnPackUBits64 rb = RubyIndex (rbMeth rb "unpack" [RubyString "Q*"]) (RubyNum $ RubyInt 0)
+
+rbUnPackSBits8 :: Ruby -> Ruby
+rbUnPackSBits8 rb = RubyIndex (rbMeth rb "unpack" [RubyString "c*"]) (RubyNum $ RubyInt 0)
+
+rbUnPackSBits16 :: Ruby -> Ruby
+rbUnPackSBits16 rb = RubyIndex (rbMeth rb "unpack" [RubyString "s*"]) (RubyNum $ RubyInt 0)
+
+rbUnPackSBits32 :: Ruby -> Ruby
+rbUnPackSBits32 rb = RubyIndex (rbMeth rb "unpack" [RubyString "l*"]) (RubyNum $ RubyInt 0)
+
+rbUnPackSBits64 :: Ruby -> Ruby
+rbUnPackSBits64 rb = RubyIndex (rbMeth rb "unpack" [RubyString "q*"]) (RubyNum $ RubyInt 0)
 
 rbPackUBits8 :: Ruby -> Ruby
-rbPackUBits8 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "C*")]
+rbPackUBits8 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "C*"]
 
 rbPackUBits16 :: Ruby -> Ruby
-rbPackUBits16 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "S*")]
+rbPackUBits16 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "S*"]
 
 rbPackUBits32 :: Ruby -> Ruby
-rbPackUBits32 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "L*")]
+rbPackUBits32 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "L*"]
 
 rbPackUBits64 :: Ruby -> Ruby
-rbPackUBits64 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "Q*")]
+rbPackUBits64 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "Q*"]
 
 rbPackSBits8 :: Ruby -> Ruby
-rbPackSBits8 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "c*")]
+rbPackSBits8 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "c*"]
 
 rbPackSBits16 :: Ruby -> Ruby
-rbPackSBits16 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "s*")]
+rbPackSBits16 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "s*"]
 
 rbPackSBits32 :: Ruby -> Ruby
-rbPackSBits32 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "l*")]
+rbPackSBits32 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "l*"]
 
 rbPackSBits64 :: Ruby -> Ruby
-rbPackSBits64 rb = rbMeth (RubyArray [rb]) "pack" [(RubyString "q*")]
+rbPackSBits64 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "q*"]
 

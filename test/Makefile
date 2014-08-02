@@ -13,6 +13,9 @@ test_java:
 test_js:
 	@perl ./runtest.pl without sugar004 reg029 io001 dsl002 io003 effects001 effects002 buffer001 --codegen node
 
+test_ruby:
+	@perl ./runtest.pl without sugar004 reg029 io001 dsl002 io003 effects001 effects002 buffer001 --codegen ruby
+
 test_llvm:
 	@perl ./runtest.pl without sugar004 io003 buffer001 --codegen llvm
 
