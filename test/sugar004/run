@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 idris $@ sugar004.idr -o sugar004
+chmod +x ./sugar004
 ./sugar004
 ./sugar004 42
 ./sugar004 42 100

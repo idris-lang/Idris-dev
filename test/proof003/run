@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 idris $@ test015.idr -o test015
+chmod +x ./test015
 ./test015
 rm -f test015 Parity.ibc test015.ibc
