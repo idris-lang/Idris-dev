@@ -168,9 +168,11 @@ updateSolved xs pt@(PT path env sub)
           (updateSolvedTerm xs sub) 
 
 goal :: Hole -> ProofTerm -> TC Goal
-goal h pt@(PT path env sub) = do let tm = rebuildTerm sub path
-                                 ginf <- g [] (rebuildTerm sub path) 
-                                 return ginf where
+goal h pt@(PT path env sub) 
+     | OK ginf <- g env sub = return ginf
+     | otherwise = g [] (rebuildTerm sub path)
+  where 
+    g :: Env -> Term -> TC Goal
     g env (Bind n b@(Guess _ _) sc)
                         | same h n = return $ GD env b
                         | otherwise
