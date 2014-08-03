@@ -1011,7 +1011,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
           )
 
       | (LGe (ITFixed IT64)) <- op
-      , (lhs:rhs:_)          <- args = 
+      , (lhs:rhs:_)          <- args =
           rbPackUBits64 (
             RubyBinOp ">=" (rbUnPackUBits64 (translateReg lhs)) (rbUnPackUBits64 (translateReg rhs))
           )
@@ -1254,7 +1254,7 @@ rbOP _ reg op args = RubyAssign (translateReg reg) rbOP'
           invokeMeth :: Reg -> String -> [Reg] -> Ruby
           invokeMeth obj meth args =
             RubyApp (RubyProj (translateReg obj) meth) $ map translateReg args
-            
+
           boolToInt e = RubyTernary e (RubyNum $ RubyInt 1) (RubyNum $ RubyInt 0)
 
 
@@ -1319,4 +1319,3 @@ translateBC info bc
   | OP r o a              <- bc = rbOP info r o a
   | ERROR e               <- bc = rbERROR info e
   | otherwise                   = RubyRaw $ "//" ++ show bc
-

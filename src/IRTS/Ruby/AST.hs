@@ -237,7 +237,7 @@ compileRuby' 0 (RubyAlloc name (Just val@(RubyNew _ _))) =
 compileRuby' indent (RubyAlloc name val) =
     let expr = maybe "" (compileRuby' indent) val
     in case val of (Nothing)               -> ""
-                   (Just (RubyFunction _ _)) -> T.pack name `T.append` " = Proc.new do " `T.append`  expr                   
+                   (Just (RubyFunction _ _)) -> T.pack name `T.append` " = Proc.new do " `T.append`  expr
                    (_)                     -> T.pack name `T.append` " = " `T.append` expr
 
 compileRuby' indent (RubyIndex lhs rhs) =
@@ -247,7 +247,7 @@ compileRuby' indent (RubyIndex lhs rhs) =
   `T.append` "]"
 
 compileRuby' indent (RubyCond branches) = createIfBlock branches
-  where    
+  where
     createIfBlock [] =
       createEndExpr
 
@@ -261,7 +261,7 @@ compileRuby' indent (RubyCond branches) = createIfBlock branches
     createIfBlock ((RubyNoop,RubyNoop):(RubyNoop,e):[]) =
       createElseExpr e `T.append`
       createIfBlock []
-    
+
     createIfBlock ((RubyNoop,RubyNoop):(cond,e):branches) =
       createElseIfExpr cond e `T.append`
       createIfBlock ((RubyNoop,RubyNoop):branches)
@@ -273,18 +273,18 @@ compileRuby' indent (RubyCond branches) = createIfBlock branches
     createExpr e@(RubySeq _) = compileRuby' (indent + 2) e
     createExpr e = T.replicate (indent + 2) " " `T.append` compileRuby' 0 e
 
-    createIfExpr' stmt cond e = 
+    createIfExpr' stmt cond e =
       stmt `T.append` " " `T.append` compileRuby' indent cond `T.append`"\n"
           `T.append` createExpr e
 
     createIfExpr cond e = createIfExpr' "if" cond e `T.append` "\n"
 
-    createElseIfExpr cond e = T.replicate indent " " `T.append` 
+    createElseIfExpr cond e = T.replicate indent " " `T.append`
                               createIfExpr' "elsif" cond e `T.append` "\n"
 
-    createElseExpr e = T.replicate indent " " `T.append` 
+    createElseExpr e = T.replicate indent " " `T.append`
                        "else\n" `T.append` createExpr e
-    
+
     createEndExpr = "\n" `T.append` T.replicate indent " " `T.append` "end"
 
 compileRuby' indent (RubySwitch val [(_,RubySeq seq)] Nothing) =
@@ -345,7 +345,7 @@ compileRuby' indent (RubyWord word)
   | RubyWord16 b <- word = compileRuby' indent (rbPackUBits16 $ fromInt b)
   | RubyWord32 b <- word = compileRuby' indent (rbPackUBits32 $ fromInt b)
   | RubyWord64 b <- word = compileRuby' indent (rbPackUBits64 $ fromBigInt b)
-    where 
+    where
       fromInt n = RubyNum $ RubyInt (fromIntegral n)
       fromBigInt n = RubyNum . RubyInteger . RubyBigInt $ fromIntegral n
 
@@ -423,4 +423,3 @@ rbPackSBits32 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "l*"]
 
 rbPackSBits64 :: Ruby -> Ruby
 rbPackSBits64 rb = rbMeth (RubyArray [rb]) "pack" [RubyString "q*"]
-

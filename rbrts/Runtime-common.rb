@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 
-class I_VM 
+class I_VM
   attr_accessor :valstack, :valstack_top, :valstack_base, :ret, :callstack
   def initialize()
     @valstack = []
@@ -84,13 +84,9 @@ def i_charCode(s)
 end
 
 def i_fromCharCode(c)
-  c.class == String ? c : c.chr  
+  c.class == String ? c : c.chr
 end
 
 def i_systemInfo()
-  "Ruby #{RUBY_VERSION} [#{RUBY_PLATFORM}]" 
+  "Ruby #{RUBY_VERSION} [#{RUBY_PLATFORM}]"
 end
-
-
-
-

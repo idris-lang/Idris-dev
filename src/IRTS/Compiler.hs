@@ -100,7 +100,7 @@ compile codegen f tm
                               ViaNode -> codegenNode cginfo
                               ViaLLVM -> codegenLLVM cginfo
                               Bytecode -> dumpBC c f
-                              ViaRuby -> codegenRuby cginfo 
+                              ViaRuby -> codegenRuby cginfo
             Error e -> ierror e
   where checkMVs = do i <- getIState
                       case map fst (idris_metavars i) \\ primDefs of
