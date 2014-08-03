@@ -1714,7 +1714,7 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PPi p n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
@@ -1727,9 +1727,6 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
     ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
-
-    niTacImp env (TacImp _ _ scr) = ni env scr
-    niTacImp _ _                  = []
 
 -- Return names which are free in the given term.
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]

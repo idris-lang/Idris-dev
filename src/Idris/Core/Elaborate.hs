@@ -628,6 +628,7 @@ simple_app fun arg appstr =
 arg :: Name -> Name -> Elab' aux ()
 arg n tyhole = do ty <- unique_hole tyhole
                   claim ty RType
+                  movelast ty
                   forall n (Var ty)
 
 -- try a tactic, if it adds any unification problem, return an error
