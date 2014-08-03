@@ -102,7 +102,7 @@ interpFTy FUnit            = ()
 interpFTy (FFunction args ret) = interpFTyList args ret
                                  where
                                    interpFTyList : List FTy -> FTy -> Type
-                                   interpFTyList [] r       = ()
+                                   interpFTyList [] r       = () -> interpFTy r
                                    interpFTyList [a] r      = interpFTy a -> interpFTy r
                                    interpFTyList (x::xs) r  = interpFTy x -> interpFTyList xs r
 
