@@ -140,6 +140,8 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
     prettyPs bnd [] = empty
     prettyPs bnd ((n@(MN _ r), _) : bs)
         | r == txt "rewrite_rule" = prettyPs ((n, False):bnd) bs
+    prettyPs bnd ((n@(MN _ _), _) : bs)
+        | not (n `elem` freeEnvNames bs) = prettyPs bnd bs
     prettyPs bnd ((n, Let t v) : bs) =
       line <> bindingOf n False <+> text "=" <+> tPretty bnd v <+> colon <+>
         align (tPretty bnd t) <> prettyPs ((n, False):bnd) bs
@@ -167,6 +169,9 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
       else
         text "----------              Other goals:              ----------" <$$>
         nest nestingSize (align . cat . punctuate (text ",") . map (flip bindingOf False) $ hs)
+
+    freeEnvNames :: Env -> [Name]
+    freeEnvNames = foldl (++) [] . map (\(n, b) -> freeNames (Bind n b Erased))
 
 lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
