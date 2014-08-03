@@ -1635,6 +1635,7 @@ instance Sized PTerm where
   size (PProof tactics) = size tactics
   size (PElabError err) = size err
   size PImpossible = 1
+  size _ = 0
 
 getPArity :: PTerm -> Int
 getPArity (PPi _ _ _ sc) = 1 + getPArity sc

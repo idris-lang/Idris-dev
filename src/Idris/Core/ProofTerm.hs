@@ -6,7 +6,7 @@
 
 module Idris.Core.ProofTerm(ProofTerm, Goal(..), mkProofTerm, getProofTerm,
                             updateSolved, updateSolvedTerm, 
-                            bound_in, bound_in_term,
+                            bound_in, bound_in_term, refocus,
                             Hole, RunTactic',
                             goal, atHole) where
 
@@ -64,8 +64,8 @@ findHole n env t = fh' env Top t where
   fh' env path tm@(Bind x h sc) 
       | hole h && n == x = Just (path, env, tm)
   fh' env path (App f a)
-      | Just (p, env', tm) <- fh' env path f = Just (AppL p a, env', tm)
       | Just (p, env', tm) <- fh' env path a = Just (AppR f p, env', tm)
+      | Just (p, env', tm) <- fh' env path f = Just (AppL p a, env', tm)
   fh' env path (Bind x b sc)
       | Just (bp, env', tm) <- fhB env path b = Just (InBind x bp sc, env', tm)
       | Just (p, env', tm) <- fh' ((x,b):env) path sc = Just (InScope x b p, env', tm)
@@ -85,7 +85,8 @@ findHole n env t = fh' env Top t where
 data ProofTerm = PT { -- wholeterm :: Term,
                       path :: TermPath,
                       subterm_env :: Env,
-                      subterm :: Term }
+                      subterm :: Term,
+                      updates :: [(Name, Term)] }
   deriving Show
 
 type RunTactic' a = Context -> Env -> Term -> StateT a TC Term
@@ -95,11 +96,11 @@ refocus :: Hole -> ProofTerm -> ProofTerm
 refocus h t = let res = refocus' h t in res
 --                   trace ("OLD: " ++ show t ++ "\n" ++
 --                          "REFOCUSSED " ++ show h ++ ": " ++ show res) res
-refocus' (Just n) pt@(PT path env tm)
+refocus' (Just n) pt@(PT path env tm ups)
       | Just (p', env', tm') <- findHole n env tm
-             = PT (replaceTop p' path) env' tm'
-      | Just (p', env', tm') <- findHole n [] (rebuildTerm tm path)
-             = PT p' env' tm'
+             = PT (replaceTop p' path) env' tm' ups
+      | Just (p', env', tm') <- findHole n [] (rebuildTerm tm (updateSolvedPath ups path))
+             = PT p' env' tm' []
       | otherwise = pt
 refocus' _ pt = pt
 
@@ -108,10 +109,10 @@ data Goal = GD { premises :: Env,
                }
 
 mkProofTerm :: Term -> ProofTerm
-mkProofTerm tm = PT Top [] tm
+mkProofTerm tm = PT Top [] tm []
 
 getProofTerm :: ProofTerm -> Term
-getProofTerm (PT path _ sub) = rebuildTerm sub path 
+getProofTerm (PT path _ sub ups) = rebuildTerm sub (updateSolvedPath ups path) 
 
 same Nothing n  = True
 same (Just x) n = x == n
@@ -121,7 +122,14 @@ hole (Guess _ _) = True
 hole _           = False
 
 updateSolvedTerm :: [(Name, Term)] -> Term -> Term 
-updateSolvedTerm xs x = updateSolved' xs x where
+updateSolvedTerm [] x = x
+updateSolvedTerm xs x = -- updateSolved' xs x where
+-- This version below saves allocations, because it doesn't need to reallocate
+-- the term if there are no updates to do, but costs an extra pass. Below
+-- version works better on larger terms... 
+                        if noneOf (map fst xs) x
+                           then x 
+                           else updateSolved' xs x where
     updateSolved' [] x = x
     updateSolved' xs (Bind n (Hole ty) t)
         | Just v <- lookup n xs 
@@ -136,6 +144,16 @@ updateSolvedTerm xs x = updateSolved' xs x where
     updateSolved' xs (P _ n@(MN _ _) _)
         | Just v <- lookup n xs = v
     updateSolved' xs t = t
+
+    noneOf ns (P _ n _) | n `elem` ns = False
+    noneOf ns (App f a) = noneOf ns a && noneOf ns f
+    noneOf ns (Bind n (Hole ty) t) = n `notElem` ns && noneOf ns ty && noneOf ns t
+    noneOf ns (Bind n b t) = noneOf ns t && noneOfB ns b
+      where
+        noneOfB ns (Let t v) = noneOf ns t && noneOf ns v
+        noneOfB ns (Guess t v) = noneOf ns t && noneOf ns v
+        noneOfB ns b = noneOf ns (binderTy b)
+    noneOf ns _ = True
 
 updateEnv [] e = e
 updateEnv ns [] = []
@@ -162,15 +180,16 @@ updateSolvedPath ns (InScope n b sc)
     = InScope n (fmap (updateSolvedTerm ns) b) (updateSolvedPath ns sc)
 
 updateSolved :: [(Name, Term)] -> ProofTerm -> ProofTerm 
-updateSolved xs pt@(PT path env sub) 
-     = PT (updateSolvedPath xs path) 
+updateSolved xs pt@(PT path env sub ups) 
+     = PT path -- (updateSolvedPath xs path) 
           (updateEnv xs (filter (\(n, t) -> n `notElem` map fst xs) env)) 
           (updateSolvedTerm xs sub) 
+          (ups ++ xs)
 
 goal :: Hole -> ProofTerm -> TC Goal
-goal h pt@(PT path env sub) 
-     | OK ginf <- g env sub = return ginf
-     | otherwise = g [] (rebuildTerm sub path)
+goal h pt@(PT path env sub ups) 
+--      | OK ginf <- g env sub = return ginf
+     | otherwise = g [] (rebuildTerm sub (updateSolvedPath ups path))
   where 
     g :: Env -> Term -> TC Goal
     g env (Bind n b@(Guess _ _) sc)
@@ -180,7 +199,7 @@ goal h pt@(PT path env sub)
     g env (Bind n b sc) | hole b && same h n = return $ GD env b
                         | otherwise
                            = g ((n, b):env) sc `mplus` gb env b
-    g env (App f a)   = g env f `mplus` g env a
+    g env (App f a)   = g env a `mplus` g env f
     g env t           = fail "Can't find hole"
 
     gb env (Let t v) = g env v `mplus` g env t
@@ -190,9 +209,13 @@ goal h pt@(PT path env sub)
 atHole :: Hole -> RunTactic' a -> Context -> Env -> ProofTerm -> 
           StateT a TC (ProofTerm, Bool)
 atHole h f c e pt -- @(PT path env sub) 
-     = do let pt'@(PT path env sub) = refocus h pt
-          (tm, u) <- atH f c env sub 
-          return (PT path env tm, u)
+     = do let PT path env sub ups = refocus h pt
+          (tm, u) <- atH f c env sub
+          return (PT path env tm ups, u)
+--           if u then return (PT path env tm ups, u)
+--                else do let PT path env sub ups = refocus h pt
+--                        (tm, u) <- atH f c env sub
+--                        return (PT path env tm ups, u)
   where
     updated o = do o' <- o
                    return (o', True)
@@ -230,7 +253,7 @@ atHole h f c e pt -- @(PT path env sub)
                                   return (t { binderTy = ty' }, u)
 
 bound_in :: ProofTerm -> [Name]
-bound_in (PT path _ tm) = bound_in_term (rebuildTerm tm path)
+bound_in (PT path _ tm ups) = bound_in_term (rebuildTerm tm (updateSolvedPath ups path))
 
 bound_in_term :: Term -> [Name]
 bound_in_term (Bind n b sc) = n : bi b ++ bound_in_term sc

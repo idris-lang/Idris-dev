@@ -17,6 +17,7 @@ import Idris.Core.Unify
 import Idris.Core.Typecheck (check, recheck)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
+import qualified Util.Pretty as U 
 
 import Control.Applicative ((<$>))
 import Control.Monad
@@ -905,7 +906,7 @@ elab ist info emode opts fn tm
     elabArgs ist ina failed fc r f (n:ns) force (Placeholder : args)
         = elabArgs ist ina failed fc r f ns force args
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force (t : args)
-        = do elabArg argName holeName t
+        = elabArg argName holeName t
       where elabArg argName holeName t =
               do now_elaborating fc f argName
                  wrapErr f argName $ do

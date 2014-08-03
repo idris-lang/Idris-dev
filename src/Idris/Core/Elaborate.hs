@@ -12,7 +12,8 @@ module Idris.Core.Elaborate(module Idris.Core.Elaborate,
                             module Idris.Core.ProofState) where
 
 import Idris.Core.ProofState
-import Idris.Core.ProofTerm(bound_in, getProofTerm, mkProofTerm, bound_in_term)
+import Idris.Core.ProofTerm(bound_in, getProofTerm, mkProofTerm, bound_in_term,
+                            refocus)
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Typecheck
@@ -389,6 +390,13 @@ focus n = processTactic' (Focus n)
 
 movelast :: Name -> Elab' aux ()
 movelast n = processTactic' (MoveLast n)
+
+-- | Set the zipper in the proof state to point at the current sub term
+-- (This currently happens automatically, so this will have no effect...)
+zipHere :: Elab' aux ()
+zipHere = do ES (ps, a) s m <- get
+             let pt' = refocus (Just (head (holes ps))) (pterm ps)
+             put (ES (ps { pterm = pt' }, a) s m)
 
 matchProblems :: Bool -> Elab' aux ()
 matchProblems all = processTactic' (MatchProblems all)
