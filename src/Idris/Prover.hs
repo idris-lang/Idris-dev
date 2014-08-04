@@ -251,7 +251,8 @@ ploop fn d prompt prf e h
            (\err -> return (False, e, False, prf, Left err))
          ideslavePutSExp "write-proof-state" (prf', length prf')
          case res of
-           Left err -> do iPrintError (pshow i err)
+           Left err -> do ist <- getIState
+                          iRenderError $ pprintErr ist err
                           ploop fn d prompt prf' st h'
            Right ok ->
              if done then do (tm, _) <- elabStep st get_term
