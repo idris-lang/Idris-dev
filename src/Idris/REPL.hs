@@ -236,23 +236,15 @@ ideslaveStart s orig mods
                 _   -> return ()
        ideslave h orig mods
 
-getNChar :: Handle -> Int -> String -> IO (String)
-getNChar _ 0 s = return (reverse s)
-getNChar h n s = do c <- hGetChar h
-                    getNChar h (n - 1) (c : s)
-
-getLen :: Handle -> Idris (Int)
-getLen h = do s <- runIO $ getNChar h 6 ""
-              case readHex s of
-                ((num, ""):_) -> return num
-                _             -> ierror (Msg $ "Couldn't read length " ++ s)
-
 ideslave :: Handle -> IState -> [FilePath] -> Idris ()
 ideslave h orig mods
   = do idrisCatch
          (do let inh = if h == stdout then stdin else h
-             len <- getLen inh
-             l <- runIO $ getNChar inh len ""
+             len' <- runIO $ IdeSlave.getLen inh
+             len <- case len' of
+               Left err -> ierror err
+               Right n  -> return n
+             l <- runIO $ IdeSlave.getNChar inh len ""
              (sexp, id) <- case IdeSlave.parseMessage l of
                              Left err -> ierror err
                              Right (sexp, id) -> return (sexp, id)

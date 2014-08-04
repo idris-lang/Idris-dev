@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
-module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideSlaveEpoch) where
+module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideSlaveEpoch, getLen, getNChar) where
 
 import Text.Printf
 import Numeric
@@ -12,11 +12,23 @@ import qualified Data.ByteString.UTF8 as UTF8
 -- import qualified Data.Text as T
 import Text.Trifecta hiding (Err)
 import Text.Trifecta.Delta
+import System.IO
 
 import Idris.Core.TT
 import Idris.Core.Binary
 
 import Control.Applicative hiding (Const)
+
+getNChar :: Handle -> Int -> String -> IO (String)
+getNChar _ 0 s = return (reverse s)
+getNChar h n s = do c <- hGetChar h
+                    getNChar h (n - 1) (c : s)
+
+getLen :: Handle -> IO (Either Err Int)
+getLen h = do s <- getNChar h 6 ""
+              case readHex s of
+                ((num, ""):_) -> return $ Right num
+                _             -> return $ Left . Msg $ "Couldn't read length " ++ s
 
 data SExp = SexpList [SExp]
           | StringAtom String
