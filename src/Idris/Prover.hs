@@ -19,13 +19,13 @@ import Idris.Parser hiding (params)
 import Idris.Error
 import Idris.DataOpts
 import Idris.Completion
-import Idris.IdeSlave
+import qualified Idris.IdeSlave as IdeSlave
 import Idris.Output
 import Idris.TypeSearch (searchByType)
 
 import Text.Trifecta.Result(Result(..))
 
-import System.IO (Handle)
+import System.IO (Handle , stdin, stdout)
 import System.Console.Haskeline
 import System.Console.Haskeline.History
 import Control.Monad.State.Strict
@@ -95,7 +95,7 @@ prove opt ctxt lit n ty
          solveDeferred n
          case idris_outputmode i of
            IdeSlave n _ ->
-             iputStrLn $ convSExp "return" (SymbolAtom "ok", "") n
+             iputStrLn $ IdeSlave.convSExp "return" (IdeSlave.SymbolAtom "ok", "") n
            _ -> return ()
 
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
@@ -180,20 +180,25 @@ lifte st e = do (v, _) <- elabStep st e
 receiveInput :: Handle -> ElabState [PDecl] -> Idris (Maybe String)
 receiveInput h e =
   do i <- getIState
-     l <- runIO $ getLine
-     (sexp, id) <- case parseMessage l of
+     let inh = if h == stdout then stdin else h
+     len' <- runIO $ IdeSlave.getLen inh
+     len <- case len' of
+       Left err -> ierror err
+       Right n  -> return n
+     l <- runIO $ IdeSlave.getNChar inh len ""
+     (sexp, id) <- case IdeSlave.parseMessage l of
                      Left err -> ierror err
                      Right (sexp, id) -> return (sexp, id)
      putIState $ i { idris_outputmode = (IdeSlave id h) }
-     case sexpToCommand sexp of
-       Just (REPLCompletions prefix) ->
+     case IdeSlave.sexpToCommand sexp of
+       Just (IdeSlave.REPLCompletions prefix) ->
          do (unused, compls) <- proverCompletion (assumptionNames e) (reverse prefix, "")
-            let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
+            let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
             ideslavePutSExp "return" good
             receiveInput h e
-       Just (Interpret cmd) -> return (Just cmd)
-       Just (TypeOf str) -> return (Just (":t " ++ str))
-       Just (DocsFor str) -> return (Just (":doc " ++ str))
+       Just (IdeSlave.Interpret cmd) -> return (Just cmd)
+       Just (IdeSlave.TypeOf str) -> return (Just (":t " ++ str))
+       Just (IdeSlave.DocsFor str) -> return (Just (":doc " ++ str))
        _ -> return Nothing
 
 ploop :: Name -> Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
