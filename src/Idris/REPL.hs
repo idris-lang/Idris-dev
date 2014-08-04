@@ -151,7 +151,7 @@ startServer orig fn_in = do tid <- runIO $ forkOS serverLoop
         -- TODO: option for port number
         serverLoop = withSocketsDo $
                               do sock <- listenOnLocalhost $ PortNumber 4294
-                                 loop fn orig sock
+                                 loop fn orig { idris_colourRepl = False } sock
 
         fn = case fn_in of
                   (f:_) -> f
@@ -161,7 +161,10 @@ startServer orig fn_in = do tid <- runIO $ forkOS serverLoop
             = do (h,_,_) <- accept sock
                  hSetEncoding h utf8
                  cmd <- hGetLine h
-                 (ist', fn) <- processNetCmd orig ist h fn cmd
+                 let isth = case idris_outputmode ist of
+                              RawOutput _ -> ist {idris_outputmode = RawOutput h}
+                              IdeSlave n _ -> ist {idris_outputmode = IdeSlave n h}
+                 (ist', fn) <- processNetCmd orig isth h fn cmd
                  hClose h
                  loop fn ist' sock
 
@@ -196,9 +199,9 @@ processNetCmd orig i h fn cmd
     setOutH :: Handle -> Idris ()
     setOutH h =
       do ist <- getIState
-         case idris_outputmode ist of
-           RawOutput _ -> putIState ist {idris_outputmode = RawOutput h}
-           IdeSlave n _ -> putIState ist {idris_outputmode = IdeSlave n h}
+         putIState $ case idris_outputmode ist of
+           RawOutput _ -> ist {idris_outputmode = RawOutput h}
+           IdeSlave n _ -> ist {idris_outputmode = IdeSlave n h}
 
 -- | Run a command on the server on localhost
 runClient :: String -> IO ()
