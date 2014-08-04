@@ -231,7 +231,9 @@ ideslaveStart s orig mods
        case idris_outputmode i of
          IdeSlave n h ->
            do runIO $ hPutStrLn h $ IdeSlave.convSExp "protocol-version" IdeSlave.ideSlaveEpoch n
-              when (mods /= []) (do isetPrompt (mkPrompt mods))
+              case mods of
+                a:_ -> runIdeSlaveCommand h n i "" [] (IdeSlave.LoadFile a Nothing)
+                _   -> return ()
        ideslave h orig mods
 
 getNChar :: Handle -> Int -> String -> IO (String)
@@ -1350,7 +1352,7 @@ idrisMain opts =
          iputStrLn banner
 
        orig <- getIState
-       loadInputs inputs Nothing
+       when (not idesl) $ loadInputs inputs Nothing
 
        runIO $ hSetBuffering stdout LineBuffering
 
