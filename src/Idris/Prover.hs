@@ -25,7 +25,7 @@ import Idris.TypeSearch (searchByType)
 
 import Text.Trifecta.Result(Result(..))
 
-import System.IO (Handle , stdin, stdout)
+import System.IO (Handle, stdin, stdout, hPutStrLn)
 import System.Console.Haskeline
 import System.Console.Haskeline.History
 import Control.Monad.State.Strict
@@ -94,8 +94,8 @@ prove opt ctxt lit n ty
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
          case idris_outputmode i of
-           IdeSlave n _ ->
-             iputStrLn $ IdeSlave.convSExp "return" (IdeSlave.SymbolAtom "ok", "") n
+           IdeSlave n h ->
+             runIO . hPutStrLn h $ IdeSlave.convSExp "return" (IdeSlave.SymbolAtom "ok", "") n
            _ -> return ()
 
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
