@@ -144,7 +144,7 @@ documentPkg fp =
      setCurrentDirectory $ pkgDir
      let run l       = runErrorT . (execStateT l)
          load []     = return () 
-         load (f:fs) = do loadModule stdout f; load fs
+         load (f:fs) = do loadModule f; load fs
          loader      = do idrisMain opts; load fs
      idrisInstance  <- run loader idrisInit
      setCurrentDirectory cd

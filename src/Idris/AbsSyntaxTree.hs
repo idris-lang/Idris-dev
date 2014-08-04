@@ -127,7 +127,9 @@ ppOptionIst = ppOption . idris_options
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
 
 -- | The output mode in use
-data OutputMode = RawOutput | IdeSlave Integer deriving Show
+data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
+                | IdeSlave Integer Handle -- ^ Send IDE output for some request ID to the handle
+                deriving Show
 
 -- | How wide is the console?
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
@@ -192,7 +194,6 @@ data IState = IState {
     idris_outputmode :: OutputMode,
     idris_colourRepl :: Bool,
     idris_colourTheme :: ColourTheme,
-    idris_outh :: Handle,
     idris_errorhandlers :: [Name], -- ^ Global error handlers
     idris_nameIdx :: (Int, Ctxt (Int, Name)),
     idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)), -- ^ Specific error handlers
@@ -277,8 +278,8 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
-                   [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
+                   [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
+                   (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty Nothing Nothing
 
 -- | The monad for the main REPL - reading and processing files and updating
@@ -358,6 +359,7 @@ data Opt = Filename String
          | NoBanner
          | ColourREPL Bool
          | Ideslave
+         | IdeslaveSocket
          | ShowLibs
          | ShowLibdir
          | ShowIncs

@@ -31,8 +31,8 @@ import Data.Maybe (fromMaybe)
 
 import Debug.Trace
 
-caseSplitAt :: Handle -> FilePath -> Bool -> Int -> Name -> Idris ()
-caseSplitAt h fn updatefile l n
+caseSplitAt :: FilePath -> Bool -> Int -> Name -> Idris ()
+caseSplitAt fn updatefile l n
    = do src <- runIO $ readFile fn
         res <- splitOnLine l n fn
         iLOG (showSep "\n" (map show res))
@@ -43,11 +43,11 @@ caseSplitAt h fn updatefile l n
           then do let fb = fn ++ "~" -- make a backup!
                   runIO $ writeFile fb (unlines before ++ new ++ unlines later)
                   runIO $ copyFile fb fn
-          else -- do ihputStrLn h (show res)
-            ihPrintResult h new
+          else -- do iputStrLn (show res)
+            iPrintResult new
 
-addClauseFrom :: Handle -> FilePath -> Bool -> Int -> Name -> Idris ()
-addClauseFrom h fn updatefile l n
+addClauseFrom :: FilePath -> Bool -> Int -> Name -> Idris ()
+addClauseFrom fn updatefile l n
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
@@ -61,15 +61,15 @@ addClauseFrom h fn updatefile l n
                                         cl ++ "\n" ++
                                         unlines rest)
                   runIO $ copyFile fb fn
-          else ihPrintResult h cl
+          else iPrintResult cl
     where
        getIndent i n [] = 0
        getIndent i n xs | take 9 xs == "instance " = i
        getIndent i n xs | take (length n) xs == n = i
        getIndent i n (x : xs) = getIndent (i + 1) n xs
 
-addProofClauseFrom :: Handle -> FilePath -> Bool -> Int -> Name -> Idris ()
-addProofClauseFrom h fn updatefile l n
+addProofClauseFrom :: FilePath -> Bool -> Int -> Name -> Idris ()
+addProofClauseFrom fn updatefile l n
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
@@ -83,14 +83,14 @@ addProofClauseFrom h fn updatefile l n
                                         cl ++ "\n" ++
                                         unlines rest)
                   runIO $ copyFile fb fn
-          else ihPrintResult h cl
+          else iPrintResult cl
     where
        getIndent i n [] = 0
        getIndent i n xs | take (length n) xs == n = i
        getIndent i n (x : xs) = getIndent (i + 1) n xs
 
-addMissing :: Handle -> FilePath -> Bool -> Int -> Name -> Idris ()
-addMissing h fn updatefile l n
+addMissing :: FilePath -> Bool -> Int -> Name -> Idris ()
+addMissing fn updatefile l n
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
@@ -108,7 +108,7 @@ addMissing h fn updatefile l n
                   runIO $ writeFile fb (unlines (before ++ nonblank)
                                         ++ extras ++ unlines rest)
                   runIO $ copyFile fb fn
-          else ihPrintResult h extras
+          else iPrintResult extras
     where showPat = show . stripNS
           stripNS tm = mapPT dens tm where
               dens (PRef fc n) = PRef fc (nsroot n)
@@ -135,8 +135,8 @@ addMissing h fn updatefile l n
           getIndent i n (x : xs) = getIndent (i + 1) n xs
 
 
-makeWith :: Handle -> FilePath -> Bool -> Int -> Name -> Idris ()
-makeWith h fn updatefile l n
+makeWith :: FilePath -> Bool -> Int -> Name -> Idris ()
+makeWith fn updatefile l n
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let ind = getIndent tyline
@@ -151,15 +151,15 @@ makeWith h fn updatefile l n
                                         ++ with ++ "\n" ++
                                     unlines rest)
               runIO $ copyFile fb fn
-           else ihPrintResult h with
+           else iPrintResult with
   where getIndent s = length (takeWhile isSpace s)
 
 
-doProofSearch :: Handle -> FilePath -> Bool -> Bool -> 
+doProofSearch :: FilePath -> Bool -> Bool -> 
                  Int -> Name -> [Name] -> Maybe Int -> Idris ()
-doProofSearch h fn updatefile rec l n hints Nothing
-    = doProofSearch h fn updatefile rec l n hints (Just 10)
-doProofSearch h fn updatefile rec l n hints (Just depth)
+doProofSearch fn updatefile rec l n hints Nothing
+    = doProofSearch fn updatefile rec l n hints (Just 10)
+doProofSearch fn updatefile rec l n hints (Just depth)
     = do src <- runIO $ readFile fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
          ctxt <- getContext
@@ -192,7 +192,7 @@ doProofSearch h fn updatefile rec l n hints (Just depth)
                                      updateMeta False tyline (show n) newmv ++ "\n"
                                        ++ unlines later)
                runIO $ copyFile fb fn
-            else ihPrintResult h newmv
+            else iPrintResult newmv
     where dropCtxt 0 sc = sc
           dropCtxt i (PPi _ _ _ sc) = dropCtxt (i - 1) sc
           dropCtxt i (PLet _ _ _ sc) = dropCtxt (i - 1) sc
@@ -235,8 +235,8 @@ addBracket True new | any isSpace new = '(' : new ++ ")"
                     | otherwise = new
 
 
-makeLemma :: Handle -> FilePath -> Bool -> Int -> Name -> Idris ()
-makeLemma h fn updatefile l n
+makeLemma :: FilePath -> Bool -> Int -> Name -> Idris ()
+makeLemma fn updatefile l n
    = do src <- runIO $ readFile fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
 
@@ -266,8 +266,8 @@ makeLemma h fn updatefile l n
                   runIO $ writeFile fb (addLem before tyline lem lem_app later)
                   runIO $ copyFile fb fn
                else case idris_outputmode i of
-                      RawOutput -> ihPrintResult h $ lem ++ "\n" ++ lem_app
-                      IdeSlave n ->
+                      RawOutput _  -> iPrintResult $ lem ++ "\n" ++ lem_app
+                      IdeSlave n h ->
                         let good = SexpList [SymbolAtom "ok",
                                              SexpList [SymbolAtom "metavariable-lemma",
                                                        SexpList [SymbolAtom "replace-metavariable",
@@ -284,8 +284,8 @@ makeLemma h fn updatefile l n
                   runIO $ writeFile fb (addProv before tyline lem_app later)
                   runIO $ copyFile fb fn
                else case idris_outputmode i of
-                      RawOutput -> ihPrintResult h $ lem_app
-                      IdeSlave n ->
+                      RawOutput _  -> iPrintResult $ lem_app
+                      IdeSlave n h ->
                         let good = SexpList [SymbolAtom "ok",
                                              SexpList [SymbolAtom "provisional-definition-lemma",
                                                        SexpList [SymbolAtom "definition-clause",

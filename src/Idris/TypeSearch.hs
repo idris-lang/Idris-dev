@@ -29,14 +29,12 @@ import Idris.Core.Unify (match_unify)
 import Idris.Delaborate (delabTy)
 import Idris.Docstrings (noDocs, overview)
 import Idris.Elab.Type (elabType)
-import Idris.Output (ihRenderOutput, ihPrintResult, ihRenderResult)
-
-import System.IO (Handle)
+import Idris.Output (iRenderOutput, iPrintResult, iRenderResult)
 
 import Util.Pretty (text, char, vsep, (<>), Doc)
 
-searchByType :: Handle -> PTerm -> Idris ()
-searchByType h pterm = do
+searchByType :: PTerm -> Idris ()
+searchByType pterm = do
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn n pterm'
   i <- getIState
@@ -50,9 +48,9 @@ searchByType h pterm = do
          displayScore score <> char ' ' <> prettyDocumentedIst i docInfo
                 | (n, score) <- names']
   case idris_outputmode i of
-    RawOutput -> do mapM_ (ihRenderOutput h) docs
-                    ihPrintResult h ""
-    IdeSlave n -> ihRenderResult h (vsep docs)
+    RawOutput _  -> do mapM_ iRenderOutput docs
+                       iPrintResult ""
+    IdeSlave n h -> iRenderResult (vsep docs)
   where
     numLimit = 50
     syn = defaultSyntax { implicitAllowed = True } -- syntax
