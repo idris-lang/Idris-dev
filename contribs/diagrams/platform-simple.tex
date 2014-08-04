@@ -1,0 +1,51 @@
+% This work is licensed under the Creative Commons
+% Attribution-ShareAlike 4.0 International License. To view a copy of
+% this license, visit http://creativecommons.org/licenses/by-sa/4.0/.
+\documentclass[landscape]{standalone}
+
+\input{./preamble.tex}
+
+\begin{document}
+\centering
+\begin{tikzpicture}[scale=1, shape aspect=1]
+
+\node (center) at (0,0) {};
+
+\node (stdlibs) [Box, WhiteBody,
+                 left = 1mm of center] {Native};
+
+\node (bindings) [Box, WhiteBody,
+                  right = 1mm of center] {Bindings};
+
+\node (core) [Box, WhiteBody,
+              below = of center,
+              minimum width = 50mm] {Core Pkgs};
+
+\begin{pgfonlayer}{background layer}
+
+\node (libs) [BorderBox, WhiteBody,
+              fit=(stdlibs) (bindings) (core),
+              minimum width = 70mm] {};
+\node [BlackTitle, right] at (libs.north west) {Libraries};
+
+\end{pgfonlayer}
+
+\node (ffi) [Box, WhiteBody, rotate = 90] at (libs.east) {FFI};
+\node (extlibs) [Box, WhiteBody,
+                 right = of libs.east,
+                 minimum width = 30mm,
+                 minimum height = 40mm] {External Libs};
+
+%% ---------------------------------------------------------------- [ Compiler ]
+\node (compiler) [Box, WhiteBody, minimum width = 70mm,
+                  below = 5mm of libs] {Compiler};
+\node (backends) [Box, WhiteBody, minimum width = 70mm,
+                  below = 5mm of compiler] {Backends};
+\node (patflorm) [Box, WhiteBody, minimum width = 70mm,
+                  below = 5mm of backends] {Platforms};
+
+%% ------------------------------------------------------------ [ Applications ]
+\node (apps) [Box, WhiteBody, minimum width = 70mm,
+              above = 5mm of libs] {Applications};
+\end{tikzpicture}
+\end{document}

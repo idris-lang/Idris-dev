@@ -1,0 +1,97 @@
+% This work is licensed under the Creative Commons
+% Attribution-ShareAlike 4.0 International License.  To view a copy of
+% this license, visit http://creativecommons.org/licenses/by-sa/4.0/.
+\documentclass[landscape]{standalone}
+
+\input{./preamble.tex}
+
+
+\begin{document}
+\centering
+\begin{tikzpicture}[%
+  scale=1,
+  shape aspect=1,
+]
+
+\node (idr)      [Circle] {.idr};
+\node (idrisp)   [Box, WhiteBody, below = of idr] {Idris$^{\text{--}}$};
+
+\node (ttdev)    [Box, WhiteBody, below = of idrisp] {TT$^{dev}$};
+
+\node (raw)      [Box, WhiteBody, below = of ttdev] {Raw};
+\node (ttpat)    [Box, WhiteBody, below = of raw] {TT$_{Pat}$};
+
+\node (tt)       [Box, WhiteBody, below left  = of ttpat.south west] {TT};
+\node (ibc)      [Circle, left = of tt] {.ibc};
+
+\node (exttpat)  [Box, WhiteBody, below right = of ttpat.south east] {ExTT$_{Pat}$};
+\node (extt)     [Box, WhiteBody, below = of exttpat] {ExTT};
+\node (ir)       [Box, WhiteBody, below = of extt] {IR};
+\node (hol)      [right = of ir] {HOL};
+
+\node (abfuns)   [Box, WhiteBody, below = of ir] {AB-Funs};
+\node (fol)      [right = of abfuns] {FOL};
+
+\node (anf)      [Box, WhiteBody, below = of abfuns] {ANF};
+
+\node (bcode)    [Box, WhiteBody, below left = of anf.south west] {ByteCode};
+
+\node (c)        [Circle, below left = of bcode.south west] {.c};
+\node (exe)      [Circle, below = of c] {.exe};
+
+\node (rts)      [Box, WhiteBody, left = of c] {RTS};
+\node [BlackTitle, right] at (rts.south west) {ext};
+
+\node (java)     [Circle, below right = of bcode.south east] {.java};
+\node (jar)      [Circle, below = of java] {.jar};
+
+\node (jre)      [Box, WhiteBody, right = of java] {JRE};
+\node [BlackTitle, left] at (jre.south east) {ext};
+
+\node (jscript)    [Circle, below right = of anf.south east] {.js};
+
+\draw [ThickLine] (idr) to (idrisp);
+\draw [ThickLine] (idrisp) to node [midway, Label, BlackTitle] {Elab} (ttdev);
+\draw [ThickLine] (ttdev) to node [midway, Label, BlackTitle] {Forget} (raw);
+\draw [ThickLine] (raw) to node [midway, Label, BlackTitle] {Check} (ttpat);
+
+\draw [ThickLine] (ttpat) to (tt);
+\draw [ThickLine] (tt) to (ibc);
+
+\draw [ThickLine] (ttpat) to node [midway, Label, BlackTitle] {Erase} (exttpat);
+\draw [ThickLine] (exttpat) to (extt);
+\draw [ThickLine] (extt) to (ir);
+\draw [ThickLine] (ir) to (abfuns);
+\draw [ThickLine] (abfuns) to (anf);
+\draw [ThickLine] (anf) to (bcode);
+
+\draw [->] (hol) to (ir);
+\draw [->] (fol) to (abfuns);
+
+\draw [ThickLine] (anf) to (jscript);
+\draw [ThickLine] (bcode) to (java);
+\draw [ThickLine] (bcode) to node [midway, Label, BlackTitle] {FFI, Marshalling} (c);
+
+\draw [ThickLine] (rts) to (c);
+\draw [ThickLine] (rts) to (exe);
+\draw [ThickLine] (c) to (exe);
+
+\draw [ThickLine] (java) to (jar);
+\draw [ThickLine] (jre) to (java);
+\draw [ThickLine] (jre) to (jar);
+
+\begin{pgfonlayer}{background layer}
+ \node (comp) [BorderBox, dashed, WhiteBody,
+                fit=(tt) (ttpat) (raw)] {};
+%\node [BlackTitle, right] at (idris.north west) {Idris};
+ \node (magic) [BorderBox, dashed, WhiteBody,
+                fit = (extt) (ir) (abfuns) (anf)] {};
+
+\node (idrisc) [BorderBox, dashed, WhiteBody,
+                fit = (idrisp) (ttdev) (raw) (ttpat) (tt) (exttpat)
+                      (extt) (ir) (abfuns) (anf) (bcode)] {};
+\node [BlackTitle, left] at (idrisc.north east) {Idris Compiler};
+\end{pgfonlayer}
+
+\end{tikzpicture}
+\end{document}

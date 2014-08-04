@@ -1,0 +1,51 @@
+% This work is licensed under the Creative Commons
+% Attribution-ShareAlike 4.0 International License.  To view a copy of
+% this license, visit http://creativecommons.org/licenses/by-sa/4.0/.
+\documentclass[landscape]{standalone}
+
+\input{./preamble.tex}
+
+
+\begin{document}
+\centering
+\begin{tikzpicture}[%
+  scale=1,
+  shape aspect=1,
+]
+
+\node (idr)   [WhiteBody] {Idris};
+\node (elab)  [Box, WhiteBody, right = of idr] {Elaboration};
+\node (check) [Box, WhiteBody, right = of elab] {Type Checker};
+
+\node (ibc) [WhiteBody, below = of check] {idris IBC};
+
+\node (erase) [Box, WhiteBody, right = of check] {Erasure};
+\node (ir)    [WhiteBody, right = of erase] {IR};
+
+\node (cgen) [Box, WhiteBody, right = of ir] {CodeGen};
+
+\node (js)   [WhiteBody, right = of cgen] {Javascript};
+\node (c)    [WhiteBody, below right = of cgen.south east] {C};
+\node (java) [WhiteBody, above right = of cgen.north east] {Java};
+
+\draw [ThickLine] (idr) to (elab);
+\draw [ThickLine] (elab) to (check);
+\draw [ThickLine] (check) to (ibc);
+\draw [ThickLine] (check) to (erase);
+
+\draw [ThickLine, bend right] (ibc) to (erase);
+
+\draw [ThickLine] (erase) to (ir);
+\draw [ThickLine] (ir) to (cgen);
+
+\draw [ThickLine] (cgen) to (js);
+\draw [ThickLine, bend left] (cgen) to (java);
+\draw [ThickLine, bend right] (cgen) to (c);
+
+\begin{pgfonlayer}{background layer}
+ \node (idrisc) [BorderBox, GrayBody,
+                 fit = (elab) (check) (erase) (ir) (cgen)] {};
+\end{pgfonlayer}
+
+\end{tikzpicture}
+\end{document}
