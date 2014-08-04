@@ -17,7 +17,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Delaborate (pprintErr)
 import Idris.Docstrings
-import Idris.Output (ihWarn)
+import Idris.Output (iWarn)
 
 import qualified Util.Pretty as Pretty (text)
 
@@ -79,7 +79,7 @@ clearParserWarnings = do ist <- getIState
 
 reportParserWarnings :: Idris ()
 reportParserWarnings = do ist <- getIState
-                          mapM_ (uncurry $ ihWarn (idris_outh ist))
+                          mapM_ (uncurry iWarn)
                                 (map (\ (fc, err) -> (fc, pprintErr ist err)) .
                                  reverse .
                                  nub $

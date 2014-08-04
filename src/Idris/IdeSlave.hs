@@ -247,6 +247,7 @@ sexpToCommand _                                                                 
 parseMessage :: String -> Either Err (SExp, Integer)
 parseMessage x = case receiveString x of
                    Right (SexpList [cmd, (IntegerAtom id)]) -> Right (cmd, id)
+                   Right x -> Left . Msg $ "Invalid message " ++ show x
                    Left err -> Left err
 
 receiveString :: String -> Either Err SExp

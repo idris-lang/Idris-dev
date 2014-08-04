@@ -761,10 +761,6 @@ setColourise :: Bool -> Idris ()
 setColourise b = do i <- getIState
                     putIState $ i { idris_colourRepl = b }
 
-setOutH :: Handle -> Idris ()
-setOutH h = do i <- getIState
-               putIState $ i { idris_outh = h }
-
 impShow :: Idris Bool
 impShow = do i <- getIState
              return (opt_showimp (idris_options i))
@@ -793,7 +789,7 @@ logLvl l str = do i <- getIState
                   let lvl = opt_logLevel (idris_options i)
                   when (lvl >= l) $
                     case idris_outputmode i of
-                      RawOutput -> do runIO $ putStrLn str
+                      RawOutput h -> do runIO $ hPutStrLn h str
                       IdeSlave n h ->
                         do let good = SexpList [IntegerAtom (toInteger l), toSExp str]
                            runIO . hPutStrLn h $ convSExp "log" good n
