@@ -276,7 +276,7 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.Interpret cmd) =
   do c <- colourise
      i <- getIState
      case parseCmd i "(input)" cmd of
-       Failure err -> iPrintError $ show (fixColour c err)
+       Failure err -> iPrintError $ show (fixColour False err)
        Success (Prove n') ->
          idrisCatch
            (do process fn (Prove n')
