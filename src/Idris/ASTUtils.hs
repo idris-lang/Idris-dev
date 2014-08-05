@@ -142,6 +142,9 @@ known_terms :: Field IState (Ctxt (Def, Accessibility, Totality, MetaInformation
 known_terms = Field (definitions . tt_ctxt)
                     (\v state -> state {tt_ctxt = (tt_ctxt state) {definitions = v}})
 
+known_classes :: Field IState (Ctxt ClassInfo)
+known_classes = Field idris_classes (\v state -> state {idris_classes = idris_classes state})
+
 
 -- Names defined at the repl
 ----------------------------
