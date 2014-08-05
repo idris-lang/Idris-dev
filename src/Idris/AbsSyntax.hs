@@ -537,7 +537,7 @@ type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
                   case idris_outputmode i of
-                    IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
+                    IdeSlave n h -> runIO . hPutStrLn h $ convSExp "set-prompt" p n
 
 -- | Tell clients how much was parsed and loaded
 isetLoadedRegion :: Idris ()
@@ -546,8 +546,8 @@ isetLoadedRegion = do i <- getIState
                       case span of
                         Just fc ->
                           case idris_outputmode i of
-                            IdeSlave n ->
-                              runIO . putStrLn $
+                            IdeSlave n h ->
+                              runIO . hPutStrLn h $
                                 convSExp "set-loaded-region" fc n
                         Nothing -> return ()
 
@@ -662,10 +662,10 @@ outputTy :: Idris OutputType
 outputTy = do i <- getIState
               return $ opt_outputTy $ idris_options i
 
-setIdeSlave :: Bool -> Idris ()
-setIdeSlave True  = do i <- getIState
-                       putIState $ i { idris_outputmode = (IdeSlave 0), idris_colourRepl = False }
-setIdeSlave False = return ()
+setIdeSlave :: Bool -> Handle -> Idris ()
+setIdeSlave True  h = do i <- getIState
+                         putIState $ i { idris_outputmode = (IdeSlave 0 h), idris_colourRepl = False }
+setIdeSlave False _ = return ()
 
 setTargetTriple :: String -> Idris ()
 setTargetTriple t = do i <- getIState
@@ -761,10 +761,6 @@ setColourise :: Bool -> Idris ()
 setColourise b = do i <- getIState
                     putIState $ i { idris_colourRepl = b }
 
-setOutH :: Handle -> Idris ()
-setOutH h = do i <- getIState
-               putIState $ i { idris_outh = h }
-
 impShow :: Idris Bool
 impShow = do i <- getIState
              return (opt_showimp (idris_options i))
@@ -793,10 +789,10 @@ logLvl l str = do i <- getIState
                   let lvl = opt_logLevel (idris_options i)
                   when (lvl >= l) $
                     case idris_outputmode i of
-                      RawOutput -> do runIO $ putStrLn str
-                      IdeSlave n ->
+                      RawOutput h -> do runIO $ hPutStrLn h str
+                      IdeSlave n h ->
                         do let good = SexpList [IntegerAtom (toInteger l), toSExp str]
-                           runIO $ putStrLn $ convSExp "log" good n
+                           runIO . hPutStrLn h $ convSExp "log" good n
 
 cmdOptType :: Opt -> Idris Bool
 cmdOptType x = do i <- getIState

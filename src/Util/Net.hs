@@ -1,6 +1,6 @@
-module Util.Net (listenOnLocalhost) where
+module Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort) where
 
-import Network
+import Network hiding (socketPort)
 import Network.Socket hiding (sClose, PortNumber)
 import Network.BSD (getProtocolNumber)
 import Control.Exception (bracketOnError)
@@ -20,3 +20,16 @@ listenOnLocalhost (PortNumber port) = do
           return sock
       )
 
+listenOnLocalhostAnyPort = do
+    proto <- getProtocolNumber "tcp"
+    localhost <- inet_addr "127.0.0.1"
+    bracketOnError
+      (socket AF_INET Stream proto)
+      (sClose)
+      (\sock -> do
+          setSocketOption sock ReuseAddr 1
+          bindSocket sock (SockAddrInet aNY_PORT localhost)
+          listen sock maxListenQueue
+          port <- socketPort sock
+          return (sock, port)
+      )

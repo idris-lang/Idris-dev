@@ -35,15 +35,24 @@ import Debug.Trace
 
 import Text.PrettyPrint.Annotated.Leijen
 
+data ElabWhat = ETypes | EDefns | EAll
+  deriving (Show, Eq)
+
 -- Data to pass to recursively called elaborators; e.g. for where blocks,
 -- paramaterised declarations, etc.
 
+-- rec_elabDecl is used to pass the top level elaborator into other elaborators,
+-- so that we can have mutually recursive elaborators in separate modules without
+-- having to much about with cyclic modules.
 data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         inblock :: Ctxt [Name], -- names in the block, and their params
                         liftname :: Name -> Name,
-                        namespace :: Maybe [String] }
+                        namespace :: Maybe [String], 
+                        rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl -> 
+                                        Idris () }
 
-toplevel = EInfo [] emptyContext id Nothing
+toplevel :: ElabInfo
+toplevel = EInfo [] emptyContext id Nothing (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
@@ -118,7 +127,9 @@ ppOptionIst = ppOption . idris_options
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
 
 -- | The output mode in use
-data OutputMode = RawOutput | IdeSlave Integer deriving Show
+data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
+                | IdeSlave Integer Handle -- ^ Send IDE output for some request ID to the handle
+                deriving Show
 
 -- | How wide is the console?
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
@@ -183,7 +194,6 @@ data IState = IState {
     idris_outputmode :: OutputMode,
     idris_colourRepl :: Bool,
     idris_colourTheme :: ColourTheme,
-    idris_outh :: Handle,
     idris_errorhandlers :: [Name], -- ^ Global error handlers
     idris_nameIdx :: (Int, Ctxt (Int, Name)),
     idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)), -- ^ Specific error handlers
@@ -268,8 +278,8 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
-                   [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
+                   [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
+                   (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty Nothing Nothing
 
 -- | The monad for the main REPL - reading and processing files and updating
@@ -349,6 +359,7 @@ data Opt = Filename String
          | NoBanner
          | ColourREPL Bool
          | Ideslave
+         | IdeslaveSocket
          | ShowLibs
          | ShowLibdir
          | ShowIncs
@@ -467,6 +478,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | Dictionary -- type class dictionary, eval only when
                         -- a function argument, and further evaluation resutls
            | Implicit -- implicit coercion
+           | NoImplicit -- do not apply implicit coercions
            | CExport String    -- export, with a C name
            | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
            | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error
@@ -1625,6 +1637,7 @@ instance Sized PTerm where
   size (PProof tactics) = size tactics
   size (PElabError err) = size err
   size PImpossible = 1
+  size _ = 0
 
 getPArity :: PTerm -> Int
 getPArity (PPi _ _ _ sc) = 1 + getPArity sc
@@ -1704,7 +1717,7 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PPi p n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
@@ -1717,9 +1730,6 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
     ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
-
-    niTacImp env (TacImp _ _ scr) = ni env scr
-    niTacImp _ _                  = []
 
 -- Return names which are free in the given term.
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
