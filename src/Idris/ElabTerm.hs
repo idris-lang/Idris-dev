@@ -17,6 +17,7 @@ import Idris.Core.Unify
 import Idris.Core.Typecheck (check, recheck)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
+import qualified Util.Pretty as U 
 
 import Control.Applicative ((<$>))
 import Control.Monad
@@ -144,6 +145,7 @@ elab ist info emode opts fn tm
          compute -- expand type synonyms, etc
          elabE (False, False, False, False) tm -- (in argument, guarded, in type, in qquote)
          end_unify
+         ptm <- get_term
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
                   unify_all
@@ -690,7 +692,6 @@ elab ist info emode opts fn tm
                              (caseBlock fc cname'
                                 (map (isScr scr) (reverse args)) opts)
              -- elaborate case
-             env <- get_env
              updateAux (newdef : )
              -- if we haven't got the type yet, hopefully we'll get it later!
              movelast tyn
@@ -905,7 +906,7 @@ elab ist info emode opts fn tm
     elabArgs ist ina failed fc r f (n:ns) force (Placeholder : args)
         = elabArgs ist ina failed fc r f ns force args
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force (t : args)
-        = do elabArg argName holeName t
+        = elabArg argName holeName t
       where elabArg argName holeName t =
               do now_elaborating fc f argName
                  wrapErr f argName $ do

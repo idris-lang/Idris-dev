@@ -333,6 +333,15 @@ unify ctxt env topx topy inj holes usersupp from =
              = unifyTmpFail tx ty
         | injective ty && not (holeIn env x || x `elem` holes)
              = unifyTmpFail tx ty
+        -- pick the one bound earliest if both are holes
+        | tx /= ty && (holeIn env x || x `elem` holes)
+                   && (holeIn env y || y `elem` holes)
+            = case compare (envPos 0 x env) (envPos 0 y env) of
+                   LT -> do sc 1; checkCycle bnames (x, ty)
+                   _ -> do sc 1; checkCycle bnames (y, tx)
+       where envPos i n ((n',_):env) | n == n' = i
+             envPos i n (_:env) = envPos (i+1) n env
+             envPos _ _ _ = 100000
     un' fn bnames xtm@(P _ x _) tm
         | pureTerm tm, holeIn env x || x `elem` holes
                        = do UI s f <- get

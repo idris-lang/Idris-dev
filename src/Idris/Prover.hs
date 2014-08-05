@@ -19,12 +19,13 @@ import Idris.Parser hiding (params)
 import Idris.Error
 import Idris.DataOpts
 import Idris.Completion
-import Idris.IdeSlave
+import qualified Idris.IdeSlave as IdeSlave
 import Idris.Output
 import Idris.TypeSearch (searchByType)
 
 import Text.Trifecta.Result(Result(..))
 
+import System.IO (Handle, stdin, stdout, hPutStrLn)
 import System.Console.Haskeline
 import System.Console.Haskeline.History
 import Control.Monad.State.Strict
@@ -70,8 +71,8 @@ prove opt ctxt lit n ty
          iLOG $ "Adding " ++ show tm
          i <- getIState
          case idris_outputmode i of
-           IdeSlave _ -> ideslavePutSExp "end-proof-mode" (n, showProof lit n prf)
-           _          -> iputStrLn $ showProof lit n prf
+           IdeSlave _ _ -> ideslavePutSExp "end-proof-mode" (n, showProof lit n prf)
+           _            -> iputStrLn $ showProof lit n prf
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
          let tree = simpleCase False True False CompileTime (fileFC "proof") [] [] [([], P Ref n ty, tm)]
@@ -93,9 +94,8 @@ prove opt ctxt lit n ty
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
          case idris_outputmode i of
-           IdeSlave n ->
-             runIO . putStrLn $
-               convSExp "return" (SymbolAtom "ok", "") n
+           IdeSlave n h ->
+             runIO . hPutStrLn h $ IdeSlave.convSExp "return" (IdeSlave.SymbolAtom "ok", "") n
            _ -> return ()
 
 elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
@@ -140,6 +140,8 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
     prettyPs bnd [] = empty
     prettyPs bnd ((n@(MN _ r), _) : bs)
         | r == txt "rewrite_rule" = prettyPs ((n, False):bnd) bs
+    prettyPs bnd ((n@(MN _ _), _) : bs)
+        | not (n `elem` freeEnvNames bs) = prettyPs bnd bs
     prettyPs bnd ((n, Let t v) : bs) =
       line <> bindingOf n False <+> text "=" <+> tPretty bnd v <+> colon <+>
         align (tPretty bnd t) <> prettyPs ((n, False):bnd) bs
@@ -168,27 +170,35 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ ctxy _ _ _ _) =
         text "----------              Other goals:              ----------" <$$>
         nest nestingSize (align . cat . punctuate (text ",") . map (flip bindingOf False) $ hs)
 
+    freeEnvNames :: Env -> [Name]
+    freeEnvNames = foldl (++) [] . map (\(n, b) -> freeNames (Bind n b Erased))
+
 lifte :: ElabState [PDecl] -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
                 return v
 
-receiveInput :: ElabState [PDecl] -> Idris (Maybe String)
-receiveInput e =
+receiveInput :: Handle -> ElabState [PDecl] -> Idris (Maybe String)
+receiveInput h e =
   do i <- getIState
-     l <- runIO $ getLine
-     (sexp, id) <- case parseMessage l of
+     let inh = if h == stdout then stdin else h
+     len' <- runIO $ IdeSlave.getLen inh
+     len <- case len' of
+       Left err -> ierror err
+       Right n  -> return n
+     l <- runIO $ IdeSlave.getNChar inh len ""
+     (sexp, id) <- case IdeSlave.parseMessage l of
                      Left err -> ierror err
                      Right (sexp, id) -> return (sexp, id)
-     putIState $ i { idris_outputmode = (IdeSlave id) }
-     case sexpToCommand sexp of
-       Just (REPLCompletions prefix) ->
+     putIState $ i { idris_outputmode = (IdeSlave id h) }
+     case IdeSlave.sexpToCommand sexp of
+       Just (IdeSlave.REPLCompletions prefix) ->
          do (unused, compls) <- proverCompletion (assumptionNames e) (reverse prefix, "")
-            let good = SexpList [SymbolAtom "ok", toSExp (map replacement compls, reverse unused)]
+            let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
             ideslavePutSExp "return" good
-            receiveInput e
-       Just (Interpret cmd) -> return (Just cmd)
-       Just (TypeOf str) -> return (Just (":t " ++ str))
-       Just (DocsFor str) -> return (Just (":doc " ++ str))
+            receiveInput h e
+       Just (IdeSlave.Interpret cmd) -> return (Just cmd)
+       Just (IdeSlave.TypeOf str) -> return (Just (":t " ++ str))
+       Just (IdeSlave.DocsFor str) -> return (Just (":doc " ++ str))
        _ -> return Nothing
 
 ploop :: Name -> Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
@@ -198,17 +208,18 @@ ploop fn d prompt prf e h
          when d $ dumpState i (proof e)
          (x, h') <-
            case idris_outputmode i of
-             RawOutput -> runInputT (proverSettings e) $
-                          -- Manually track the history so that we can use the proof state
-                          do _ <- case h of
-                               Just history -> putHistory history
-                               Nothing -> return ()
-                             l <- getInputLine (prompt ++ "> ")
-                             h' <- getHistory
-                             return (l, Just h')
-             IdeSlave n ->
+             RawOutput _ ->
+               runInputT (proverSettings e) $
+                 -- Manually track the history so that we can use the proof state
+                 do case h of
+                      Just history -> putHistory history
+                      Nothing -> return ()
+                    l <- getInputLine (prompt ++ "> ")
+                    h' <- getHistory
+                    return (l, Just h')
+             IdeSlave _ handle ->
                do isetPrompt prompt
-                  i <- receiveInput e
+                  i <- receiveInput handle e
                   return (i, h)
          (cmd, step) <- case x of
             Nothing -> do iPrintError ""; ifail "Abandoned"
@@ -240,7 +251,8 @@ ploop fn d prompt prf e h
            (\err -> return (False, e, False, prf, Left err))
          ideslavePutSExp "write-proof-state" (prf', length prf')
          case res of
-           Left err -> do iPrintError (pshow i err)
+           Left err -> do ist <- getIState
+                          iRenderError $ pprintErr ist err
                           ploop fn d prompt prf' st h'
            Right ok ->
              if done then do (tm, _) <- elabStep st get_term
@@ -253,8 +265,7 @@ ploop fn d prompt prf e h
           ist <- getIState
           imp <- impShow
           idrisCatch (do
-              let h      = idris_outh ist
-                  OK env = envAtFocus (proof e)
+              let OK env = envAtFocus (proof e)
                   ctxt'  = envCtxt env ctxt
                   bnd    = map (\x -> (fst x, False)) env
                   ist'   = ist { tt_ctxt = ctxt' }
@@ -262,8 +273,8 @@ ploop fn d prompt prf e h
               -- Unlike the REPL, metavars have no special treatment, to
               -- make it easier to see how to prove with them.
               let action = case lookupNames n ctxt' of
-                             [] -> ihPrintError h $ "No such variable " ++ show n
-                             ts -> ihPrintFunTypes h bnd n (map (\n -> (n, delabTy ist' n)) ts)
+                             [] -> iPrintError $ "No such variable " ++ show n
+                             ts -> iPrintFunTypes bnd n (map (\n -> (n, delabTy ist' n)) ts)
               putIState ist
               return (False, e, False, prf, Right action))
             (\err -> do putIState ist ; ierror err)
@@ -278,14 +289,13 @@ ploop fn d prompt prf e h
               (tm, ty) <- elabVal recinfo ERHS t
               let ppo = ppOptionIst ist
                   ty'     = normaliseC ctxt [] ty
-                  h       = idris_outh ist
                   infixes = idris_infixes ist
                   action = case tm of
                     TType _ ->
-                      ihPrintTermWithType h (prettyImp ppo PType) type1Doc
+                      iPrintTermWithType (prettyImp ppo PType) type1Doc
                     _ -> let bnd = map (\x -> (fst x, False)) env in
-                         ihPrintTermWithType h (pprintPTerm ppo bnd [] infixes (delab ist tm))
-                                               (pprintPTerm ppo bnd [] infixes (delab ist ty))
+                         iPrintTermWithType (pprintPTerm ppo bnd [] infixes (delab ist tm))
+                                             (pprintPTerm ppo bnd [] infixes (delab ist ty))
               putIState ist
               return (False, e, False, prf, Right action))
             (\err -> do putIState ist { tt_ctxt = ctxt } ; ierror err)
@@ -306,25 +316,21 @@ ploop fn d prompt prf e h
                    infixes = idris_infixes ist
                    tmDoc   = pprintPTerm ppo bnd [] infixes (delab ist' tm')
                    tyDoc   = pprintPTerm ppo bnd [] infixes (delab ist' ty')
-                   action  = ihPrintTermWithType (idris_outh ist') tmDoc tyDoc
+                   action  = iPrintTermWithType tmDoc tyDoc
                putIState ist
                return (False, e, False, prf, Right action))
               (\err -> do putIState ist ; ierror err)
         docStr :: Either Name Const -> Idris (Bool, ElabState [PDecl], Bool, [String], Either Err (Idris ()))
         docStr (Left n) = do ist <- getIState
-                             let h = idris_outh ist
                              idrisCatch (case lookupCtxtName n (idris_docstrings ist) of
                                            [] -> return (False, e, False, prf,
                                                          Left . Msg $ "No documentation for " ++ show n)
                                            ns -> do toShow <- mapM (showDoc ist) ns
                                                     return (False,  e, False, prf,
-                                                            Right $ ihRenderResult h (vsep toShow)))
+                                                            Right $ iRenderResult (vsep toShow)))
                                         (\err -> do putIState ist ; ierror err)
                where showDoc ist (n, d) = do doc <- getDocs n
                                              return $ pprintDocs ist doc
         docStr (Right c) = do ist <- getIState
-                              let h = idris_outh ist
-                              return (False, e, False, prf, Right . ihRenderResult h $ pprintConstDocs ist c (constDocs c))
-        search t = do ist <- getIState
-                      let h = idris_outh ist
-                      return (False, e, False, prf, Right $ searchByType h t)
+                              return (False, e, False, prf, Right . iRenderResult $ pprintConstDocs ist c (constDocs c))
+        search t = return (False, e, False, prf, Right $ searchByType t)

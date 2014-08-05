@@ -216,9 +216,11 @@ unify' ctxt env topx topy =
 --              ++ show (pterm ps)
              ++ "\n----------") $
         do let (h, ns) = unified ps
+           -- solve in results (maybe unify should do this itself...)
+           let u' = map (\(n, sol) -> (n, updateSolvedTerm u sol)) u
            -- if a metavar has multiple solutions, make a new unification
            -- problem for each.
-           uns <- mergeSolutions env (u ++ ns)
+           uns <- mergeSolutions env (u' ++ ns)
            ps <- get
            let (ns', probs') = updateProblems (context ps) uns
                                               (fails ++ problems ps)
@@ -550,7 +552,7 @@ forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
 forall n ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
-patvar n ctxt env (Bind x (Hole t) sc) =
+patvar n ctxt env (Bind x (Hole t) sc) = 
     do action (\ps -> ps { holes = traceWhen (unifylog ps) ("Dropping pattern hole " ++ show x) $
                                      holes ps \\ [x],
                            solved = Just (x, P Bound n t),
@@ -900,7 +902,7 @@ processTactic t ps
                                 = case solved ps' of
                                     Just s -> traceWhen (unifylog ps')
                                                 ("SOLVED " ++ show s) $
-                                               updateProblems (context ps')
+                                                updateProblems (context ps')
                                                       [s] (problems ps')
                                                       (injective ps')
                                                       (holes ps')
