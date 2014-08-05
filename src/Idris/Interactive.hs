@@ -28,6 +28,7 @@ import System.Directory
 import System.IO
 import Data.Char
 import Data.Maybe (fromMaybe)
+import Data.List (isSuffixOf)
 
 import Debug.Trace
 
@@ -122,10 +123,13 @@ addMissing fn updatefile l n
           getAppName (PRef _ r) = r
           getAppName _ = n
 
+          makeIndent ind | ".lidr" `isSuffixOf` fn = '>' : ' ' : replicate (ind-2) ' '
+                         | otherwise               = replicate ind ' '
+
           showNew nm i ind (tm : tms)
                         = do (nm', i') <- getUniq nm i
                              rest <- showNew nm i' ind tms
-                             return (replicate ind ' ' ++
+                             return (makeIndent ind ++
                                      showPat tm ++ " = ?" ++ nm' ++
                                      "\n" ++ rest)
           showNew nm i _ [] = return ""
