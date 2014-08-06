@@ -498,10 +498,9 @@ apply' fillt fn imps =
        -- (remove from unified list before calling end_unify)
        hs <- get_holes
        ES (p, a) s prev <- get
-       let dont = head hs : dontunify p ++
-                          if null imps then [] -- do all we can
-                             else
-                             map fst (filter (not . snd) (zip (map snd args) (map fst imps)))
+       let dont = if null imps 
+                     then head hs : dontunify p
+                     else getNonUnify (head hs : dontunify p) imps args
        let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $
                         unified p
        let unify = -- trace ("Not done " ++ show hs) $
@@ -519,6 +518,15 @@ apply' fillt fn imps =
   where updateUnify us n = case lookup n us of
                                 Just (P _ t _) -> t
                                 _ -> n
+
+        getNonUnify acc []     _      = acc
+        getNonUnify acc _      []     = acc
+        getNonUnify acc ((i,_):is) ((a, t):as) 
+           | i = getNonUnify acc is as
+           | otherwise = getNonUnify (t : acc) is as
+
+--         getNonUnify imps args = map fst (filter (not . snd) (zip (map snd args) (map fst imps)))
+
 
 apply2 :: Raw -> [Maybe (Elab' aux ())] -> Elab' aux ()
 apply2 fn elabs =

@@ -935,7 +935,37 @@ subst :: Eq n => n {-^ The id to replace -} ->
          TT n {-^ The replacement term -} ->
          TT n {-^ The term to replace in -} ->
          TT n
-subst n v tm = instantiate v (pToV n tm)
+-- subst n v tm = instantiate v (pToV n tm)
+subst n v tm = fst $ subst' 0 tm
+  where
+    -- keep track of updates to save allocations - this is a big win on
+    -- large terms in particular
+    -- ('Maybe' would be neater here, but >>= is not the right combinator.
+    -- Feel free to tidy up, as long as it still saves allocating when no
+    -- substitution happens...)
+    subst' i (V x) | i == x = (v, True)
+    subst' i (P _ x _) | n == x = (v, True)
+    subst' i t@(Bind x b sc) | x /= n
+         = let (b', ub) = substB' i b
+               (sc', usc) = subst' (i+1) sc in
+               if ub || usc then (Bind x b' sc', True) else (t, False) 
+    subst' i t@(App f a) = let (f', uf) = subst' i f 
+                               (a', ua) = subst' i a in
+                               if uf || ua then (App f' a', True) else (t, False)
+    subst' i t@(Proj x idx) = let (x', u) = subst' i x in
+                                  if u then (Proj x' idx, u) else (t, False)
+    subst' i t = (t, False)
+
+    substB' i b@(Let t v) = let (t', ut) = subst' i t 
+                                (v', uv) = subst' i v in
+                                if ut || uv then (Let t' v', True)
+                                            else (b, False)
+    substB' i b@(Guess t v) = let (t', ut) = subst' i t 
+                                  (v', uv) = subst' i v in
+                                  if ut || uv then (Guess t' v', True)
+                                              else (b, False)
+    substB' i b = let (ty', u) = subst' i (binderTy b) in
+                      if u then (b { binderTy = ty' }, u) else (b, False)
 
 -- If there are no Vs in the term (i.e. in proof state)
 psubst :: Eq n => n -> TT n -> TT n -> TT n

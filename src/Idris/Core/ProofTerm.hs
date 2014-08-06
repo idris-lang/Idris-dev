@@ -125,25 +125,42 @@ updateSolvedTerm :: [(Name, Term)] -> Term -> Term
 updateSolvedTerm [] x = x
 updateSolvedTerm xs x = -- updateSolved' xs x where
 -- This version below saves allocations, because it doesn't need to reallocate
--- the term if there are no updates to do, but costs an extra pass. Below
--- version works better on larger terms... 
-                        if noneOf (map fst xs) x
-                           then x 
-                           else updateSolved' xs x where
-    updateSolved' [] x = x
+-- the term if there are no updates to do. 
+-- The Bool is ugly, and probably 'Maybe' would be less ugly, but >>= is
+-- the wrong combinator. Feel free to tidy up as long as it's still as cheap :).
+                           fst $ updateSolved' xs x where
+    updateSolved' [] x = (x, False)
     updateSolved' xs (Bind n (Hole ty) t)
         | Just v <- lookup n xs 
             = case xs of
-                   [_] -> substV v $ psubst n v t -- some may be Vs! Can't assume
-                                                  -- explicit names
-                   _ -> substV v $ psubst n v (updateSolved' xs t)
-    updateSolved' xs (Bind n b t)
-        | otherwise = Bind n (fmap (updateSolved' xs) b) (updateSolved' xs t)
-    updateSolved' xs (App f a) 
-        = App (updateSolved' xs f) (updateSolved' xs a)
-    updateSolved' xs (P _ n@(MN _ _) _)
-        | Just v <- lookup n xs = v
-    updateSolved' xs t = t
+                   [_] -> (substV v $ psubst n v t, True) -- some may be Vs! Can't assume
+                                                          -- explicit names
+                   _ -> let (t', _) = updateSolved' xs t in
+                            (substV v $ psubst n v t', True)
+    updateSolved' xs tm@(Bind n b t)
+        | otherwise = let (t', ut) = updateSolved' xs t
+                          (b', ub) = updateSolvedB' xs b in
+                          if ut || ub then (Bind n b' t', True)
+                                      else (tm, False)
+    updateSolved' xs t@(App f a) 
+        = let (f', uf) = updateSolved' xs f
+              (a', ua) = updateSolved' xs a in
+              if uf || ua then (App f' a', True)
+                          else (t, False)
+    updateSolved' xs t@(P _ n@(MN _ _) _)
+        | Just v <- lookup n xs = (v, True)
+    updateSolved' xs t = (t, False)
+
+    updateSolvedB' xs b@(Let t v) = let (t', ut) = updateSolved' xs t 
+                                        (v', uv) = updateSolved' xs v in
+                                        if ut || uv then (Let t' v', True)
+                                                    else (b, False)
+    updateSolvedB' xs b@(Guess t v) = let (t', ut) = updateSolved' xs t 
+                                          (v', uv) = updateSolved' xs v in
+                                          if ut || uv then (Guess t' v', True)
+                                                      else (b, False)
+    updateSolvedB' xs b = let (ty', u) = updateSolved' xs (binderTy b) in
+                              if u then (b { binderTy = ty' }, u) else (b, False)
 
     noneOf ns (P _ n _) | n `elem` ns = False
     noneOf ns (App f a) = noneOf ns a && noneOf ns f

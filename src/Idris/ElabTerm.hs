@@ -244,7 +244,7 @@ elab ist info emode opts fn tm
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve
     elab' ina (PTrue fc _)   = try (elab' ina (PRef fc unitCon))
-                                    (elab' ina (PRef fc unitTy))
+                                   (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC False 5 g fn ist
