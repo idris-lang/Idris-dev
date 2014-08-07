@@ -38,10 +38,7 @@ import Paths_idris
 -- on with the REPL.
 
 main = do opts <- runArgParser
-          result <- runErrorT $ execStateT (runIdris opts) idrisInit
-          case result of
-            Left err -> putStrLn $ "Uncaught error: " ++ show err
-            Right _ -> return ()
+          runMain (runIdris opts)
 
 runIdris :: [Opt] -> Idris ()
 runIdris [Client c] = do setVerbose False

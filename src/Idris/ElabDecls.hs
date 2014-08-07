@@ -63,6 +63,14 @@ import Util.Pretty(pretty, text)
 recinfo :: ElabInfo
 recinfo = EInfo [] emptyContext id Nothing elabDecl'
 
+-- | Return the elaborated term which calls 'main'
+elabMain :: Idris Term
+elabMain = do (m, _) <- elabVal recinfo ERHS
+                           (PApp fc (PRef fc (sUN "run__IO"))
+                                [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
+              return m
+  where fc = fileFC "toplevel"
+
 -- | Elaborate primitives
 elabPrims :: Idris ()
 elabPrims = do mapM_ (elabDecl' EAll recinfo)

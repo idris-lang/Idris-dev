@@ -1472,6 +1472,12 @@ idrisMain opts =
                      addImportDir (ddir </> p)
                      addIBC (IBCImportDir (ddir </> p))
 
+runMain :: Idris () -> IO ()
+runMain prog = do res <- runErrorT $ execStateT prog idrisInit
+                  case res of
+                       Left err -> putStrLn $ "Uncaught error: " ++ show err
+                       Right _ -> return ()
+
 execScript :: String -> Idris ()
 execScript expr = do i <- getIState
                      c <- colourise
