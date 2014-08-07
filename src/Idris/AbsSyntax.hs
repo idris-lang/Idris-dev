@@ -1178,21 +1178,28 @@ addUsingImpls syn n fc t
 -- status of each pi-bound argument, and whether it's inaccessible (True) or not.
 
 getUnboundImplicits :: IState -> Type -> PTerm -> [(Bool, PArg)]
-getUnboundImplicits i (Bind n (Pi t) sc) (PPi p n' t' sc')
-     | n == n' = argInfo n p : getUnboundImplicits i sc sc'
-  where
-    argInfo n (Imp opt _ _) = (True, PImp (getPriority i t') True opt n t')
-    argInfo n (Exp opt _ _) = (InaccessibleArg `elem` opt,
-                                  PExp (getPriority i t') opt n t')
-    argInfo n (Constraint opt _) = (InaccessibleArg `elem` opt,
-                                      PConstraint 10 opt n t')
-    argInfo n (TacImp opt _ scr) = (InaccessibleArg `elem` opt,
-                                      PTacImplicit 10 opt n scr t')
-getUnboundImplicits i (Bind n (Pi t) sc) tm
-     = impBind n t : getUnboundImplicits i sc tm
-  where
-    impBind n t = (True, PImp 1 True [] n Placeholder)
-getUnboundImplicits i sc tm = []
+getUnboundImplicits i t tm = getImps t (collectImps tm)
+  where collectImps (PPi p n t sc)
+            = (n, (p, t)) : collectImps sc
+        collectImps _ = []
+
+        getImps (Bind n (Pi t) sc) imps
+            | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
+         where
+            argInfo n (Imp opt _ _) t' 
+                   = (True, PImp (getPriority i t') True opt n t')
+            argInfo n (Exp opt _ _) t'
+                   = (InaccessibleArg `elem` opt,
+                          PExp (getPriority i t') opt n t')
+            argInfo n (Constraint opt _) t' 
+                   = (InaccessibleArg `elem` opt,
+                          PConstraint 10 opt n t')
+            argInfo n (TacImp opt _ scr) t' 
+                   = (InaccessibleArg `elem` opt,
+                          PTacImplicit 10 opt n scr t')
+        getImps (Bind n (Pi t) sc) imps = impBind n t : getImps sc imps
+           where impBind n t = (True, PImp 1 True [] n Placeholder)
+        getImps sc tm = []
 
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.

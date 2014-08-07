@@ -86,7 +86,8 @@ buildType info syn fc opts n ty' = do
          i <- getIState
          let (inaccData, impls) = unzip $ getUnboundImplicits i cty ty
          let inacc = inaccessibleImps 0 cty inaccData
-         logLvl 3 $ show n ++ ": inaccessible arguments: " ++ show inacc
+         logLvl 3 $ show n ++ ": inaccessible arguments: " ++ show inacc ++
+                     " from " ++ show (cty, ty)
 
          putIState $ i { idris_implicits = addDef n impls (idris_implicits i) }
          logLvl 3 ("Implicit " ++ show n ++ " " ++ show impls)
