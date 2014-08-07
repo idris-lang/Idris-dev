@@ -164,3 +164,9 @@ warnTotality :: Idris ()
 warnTotality = do ist <- getIState
                   mapM_ (warn ist) (nub (idris_totcheckfail ist))
   where warn ist (fc, e) = iWarn fc (pprintErr ist (Msg e))
+
+
+printUndefinedNames :: [Name] -> Doc OutputAnnotation
+printUndefinedNames ns = text "Undefined " <> names <> text "."
+  where names = encloseSep empty empty (char ',') $ map ppName ns
+        ppName = prettyName True True []
