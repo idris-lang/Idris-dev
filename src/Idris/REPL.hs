@@ -1040,7 +1040,7 @@ process fn Execute
                            runIO $ hClose tmph
                            t <- codegen
                            ir <- compile t tmpn m
-                           runIO $ generate t ir
+                           runIO $ generate t (head (idris_imported ist)) ir
                            case idris_outputmode ist of
                              RawOutput h -> do runIO $ system tmpn
                                                return ()
@@ -1053,7 +1053,8 @@ process fn (Compile codegen f)
                        (PApp fc (PRef fc (sUN "run__IO"))
                        [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
            ir <- compile codegen f m
-           runIO $ generate codegen ir
+           i <- getIState
+           runIO $ generate codegen (head (idris_imported i)) ir
   where fc = fileFC "main"
 process fn (LogLvl i) = setLogLevel i
 -- Elaborate as if LHS of a pattern (debug command)

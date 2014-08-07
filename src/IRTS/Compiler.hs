@@ -43,6 +43,7 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import System.Process
 import System.IO
+import System.Exit
 import System.Directory
 import System.Environment
 import System.FilePath ((</>), addTrailingPathSeparator)
@@ -114,14 +115,22 @@ compile codegen f tm
                        ex <- doesFileExist f
                        if ex then return f else return h
 
-generate :: Codegen -> CodegenInfo -> IO ()
-generate codegen ir = case codegen of
-                           Via "c" -> codegenC ir
-                           Via "java" -> codegenJava ir 
-                           Via "javascript" -> codegenJavaScript ir
-                           Via "node" -> codegenNode ir
-                           Via "llvm" -> codegenLLVM ir
-                           Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
+generate :: Codegen -> FilePath -> CodegenInfo -> IO ()
+generate codegen mainmod ir 
+  = case codegen of
+       -- Built-in code generators (FIXME: lift these out!)
+       Via "c" -> codegenC ir 
+       Via "java" -> codegenJava ir 
+       Via "javascript" -> codegenJavaScript ir
+       Via "node" -> codegenNode ir
+       Via "llvm" -> codegenLLVM ir
+       -- Any external code generator
+       Via cg -> do let cmd = "idris-" ++ cg ++ " " ++ mainmod ++
+                              " -o " ++ outputFile ir
+                    exit <- system cmd
+                    when (exit /= ExitSuccess) $
+                       putStrLn ("FAILURE: " ++ show cmd)
+       Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do

@@ -41,9 +41,14 @@ pCmd = do P.whiteSpace; do cmd ["q", "quit"]; eof; return Quit
                           return (ModImport (toPath f))
               <|> do cmd ["e", "edit"]; eof; return Edit
               <|> do cmd ["exec", "execute"]; eof; return Execute
+              <|> try (do cmd ["c", "compile"]
+                          i <- get
+                          f <- P.identifier
+                          eof
+                          return (Compile (Via "c") f))
               <|> do cmd ["c", "compile"]
                      i <- get
-                     c <- option (opt_codegen $ idris_options i) codegenOption
+                     c <- codegenOption
                      f <- P.identifier
                      eof
                      return (Compile c f)
