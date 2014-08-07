@@ -54,6 +54,8 @@ import IRTS.Compiler
 import IRTS.CodegenCommon
 import IRTS.System
 
+import Control.Category
+import Prelude hiding ((.), id)
 import Data.List.Split (splitOn)
 import Data.List (groupBy)
 import qualified Data.Text as T
@@ -701,12 +703,15 @@ process fn (Eval t)
                                             iPrintTermWithType tmDoc tyDoc
 
 
-process fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++ show namedGroups) >> mapM_ defineName namedGroups where
+process fn (NewDefn decls) = do
+        logLvl 3 ("Defining names using these decls: " ++ show (showDecls verbosePPOption decls))
+        mapM_ defineName namedGroups where
   namedGroups = groupBy (\d1 d2 -> getName d1 == getName d2) decls
   getName :: PDecl -> Maybe Name
   getName (PTy docs argdocs syn fc opts name ty) = Just name
   getName (PClauses fc opts name (clause:clauses)) = Just (getClauseName clause)
   getName (PData doc argdocs syn fc opts dataDecl) = Just (d_name dataDecl)
+  getName (PClass doc syn fc constraints name parms parmdocs decls) = Just name
   getName _ = Nothing
   -- getClauseName is partial and I am not sure it's used safely! -- trillioneyes
   getClauseName (PClause fc name whole with rhs whereBlock) = name
@@ -715,6 +720,7 @@ process fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++ s
   defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do 
     elabDecl EAll recinfo tyDecl
     elabClauses recinfo fc opts name (concatMap getClauses decls)
+    setReplDefined (Just name)
   defineName [PClauses fc opts _ [clause]] = do
     let pterm = getRHS clause
     (tm,ty) <- elabVal recinfo ERHS pterm
@@ -722,8 +728,16 @@ process fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++ s
     let tm' = force (normaliseAll ctxt [] tm)
     let ty' = force (normaliseAll ctxt [] ty)
     updateContext (addCtxtDef (getClauseName clause) (Function ty' tm'))
-  defineName [PData doc argdocs syn fc opts decl] = do
-    elabData recinfo syn doc argdocs fc opts decl
+    setReplDefined (Just $ getClauseName clause)
+  defineName (PClauses{} : _) = tclift $ tfail (Msg "Only one function body is allowed without a type declaration.")
+  -- fixity and syntax declarations are ignored by elabDecls, so they'll have to be handled some other way
+  defineName (PFix fc fixity strs : defns) = do
+    fmodifyState idris_fixities (map (Fix fixity) strs ++)
+    unless (null defns) $ defineName defns
+  defineName (PSyntax{}:_) = tclift $ tfail (Msg "That kind of declaration is not supported. If you feel it should be supported, please submit an issue at https://github.com/idris-lang/Idris-dev.")
+  defineName decls = do
+    elabDecls toplevel (map fixClauses decls)
+    setReplDefined (getName (head decls))
   getClauses (PClauses fc opts name clauses) = clauses
   getClauses _ = []
   getRHS :: PClause -> PTerm
@@ -731,6 +745,56 @@ process fn (NewDefn decls) = logLvl 3 ("Defining names using these decls: " ++ s
   getRHS (PWith fc name whole with rhs whereBlock) = rhs
   getRHS (PClauseR fc with rhs whereBlock) = rhs
   getRHS (PWithR fc with rhs whereBlock) = rhs
+  setReplDefined :: Maybe Name -> Idris ()
+  setReplDefined Nothing = return ()
+  setReplDefined (Just n) = do
+    oldState <- get
+    fmodifyState repl_definitions (n:)
+  -- the "name" field of PClauses seems to always be MN 2 "__", so we need to
+  -- retrieve the actual name from deeper inside.
+  -- This should really be a full recursive walk through the structure of PDecl, but
+  -- I think it should work this way and I want to test sooner. Also lazy.
+  fixClauses :: PDecl' t -> PDecl' t
+  fixClauses (PClauses fc opts _ css@(clause:cs)) =
+    PClauses fc opts (getClauseName clause) css
+  fixClauses (PInstance syn fc constraints cls parms ty instName decls) = 
+    PInstance syn fc constraints cls parms ty instName (map fixClauses decls)
+  fixClauses decl = decl
+
+process fn (Undefine names) = undefine names
+  where
+    undefine :: [Name] -> Idris ()
+    undefine [] = do
+      allDefined <- idris_repl_defs `fmap` get
+      undefine' allDefined []
+    -- Keep track of which names you've removed so you can 
+    -- print them out to the user afterward
+    undefine names = undefine' names []
+    undefine' [] list = do iRenderOutput $ printUndefinedNames list 
+                           return ()
+    undefine' (n:names) already = do
+      allDefined <- idris_repl_defs `fmap` get
+      if n `elem` allDefined
+         then do undefinedJustNow <- undefClosure n
+                 undefine' names (undefinedJustNow ++ already)
+         else do tclift $ tfail $ Msg ("Can't undefine " ++ show n ++ " because it wasn't defined at the repl")
+                 undefine' names already
+    undefOne n = do fputState (ctxt_lookup n . known_terms) Nothing
+                    -- for now just assume it's a class. Eventually we'll want some kind of
+                    -- smart detection of exactly what kind of name we're undefining.
+                    fputState (ctxt_lookup n . known_classes) Nothing
+                    fmodifyState repl_definitions (delete n)
+    undefClosure n = 
+      do replDefs <- idris_repl_defs `fmap` get
+         callGraph <- whoCalls n
+         let users = case lookup n callGraph of
+                        Just ns -> nub ns
+                        Nothing -> fail ("Tried to undefine nonexistent name" ++ show n) 
+         undefinedJustNow <- concat `fmap` mapM undefClosure users
+         undefOne n
+         return (nub (n : undefinedJustNow))
+
+
 
 process fn (ExecVal t)
                   = do ctxt <- getContext
