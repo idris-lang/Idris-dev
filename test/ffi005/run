@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
 idris $@ Postulate.idr -o postulate
+chmod +x ./postulate
 ./postulate
 rm -f postulate *.ibc

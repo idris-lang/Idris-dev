@@ -44,6 +44,7 @@ do
     echo ${T}
     generate_testfile "tmptest.idr" "${T}"
     idris $@ --quiet tmptest.idr -o tmptest || echo "missing primitive in ${CG}"
+    chmod +x ./tmptest
     ./tmptest
     rm tmptest.idr tmptest.ibc tmptest
 done

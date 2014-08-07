@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 idris $@ bounded001.idr -o bounded001
+chmod +x ./bounded001
 ./bounded001
 rm -f bounded001 *.ibc

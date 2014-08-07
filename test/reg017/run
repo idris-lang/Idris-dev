@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 idris $@ reg017.idr -o reg017
+chmod +x ./reg017
 ./reg017
 rm -f reg017 *.ibc

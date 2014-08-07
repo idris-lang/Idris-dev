@@ -211,7 +211,7 @@ constType _        = objectType
 
 foreignType :: FType -> Maybe J.Type
 foreignType (FArith      at) = Just $ arithTyToJType at
-foreignType (FFunction     ) = Just $ callableType
+foreignType (FFunction _ _ ) = Just $ callableType
 foreignType (FFunctionIO   ) = Just $ callableType
 foreignType (FString       ) = Just $ stringType
 foreignType (FUnit         ) = Nothing

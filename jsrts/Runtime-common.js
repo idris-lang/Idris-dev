@@ -51,11 +51,12 @@ var i$CALL = function(fun,args) {
 var i$ffiWrap = function(fid,oldbase,myoldbase) {
   return function() {
     i$callstack = [];
+    i$valstack = [];
 
     var res = fid;
 
     for(var i = 0; i < arguments.length; ++i) {
-      while (res instanceof i$CON) {
+      if (res instanceof i$CON) {
         i$valstack_top += 1;
         i$valstack[i$valstack_top] = res;
         i$valstack[i$valstack_top + 1] = arguments[i];
@@ -72,6 +73,7 @@ var i$ffiWrap = function(fid,oldbase,myoldbase) {
     }
 
     i$callstack = i$vm.callstack;
+    i$valstack = i$vm.valstack;
 
     return i$ret;
   }

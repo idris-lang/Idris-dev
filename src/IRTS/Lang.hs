@@ -81,7 +81,7 @@ data FLang = LANG_C | LANG_JAVA FCallType
   deriving (Show, Eq)
 
 data FType = FArith ArithTy
-           | FFunction
+           | FFunction [FType] FType
            | FFunctionIO
            | FString
            | FUnit

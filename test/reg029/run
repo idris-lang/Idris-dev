@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 idris $@ reg029.idr -o reg029
+chmod +x ./reg029
 unset IDRIS_REG029_NONEXISTENT_VAR
 export IDRIS_REG029_EXISTENT_VAR='exists!'
 

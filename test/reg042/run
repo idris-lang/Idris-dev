@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 idris $@ reg042 -o reg042 --warnreach
+chmod +x ./reg042
 ./reg042
 rm -f reg042 *.ibc

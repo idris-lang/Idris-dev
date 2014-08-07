@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 idris $@ -o test038 test038.idr --nocolour
+chmod +x ./test038
 ./test038
 rm -f test038 *.ibc
 
