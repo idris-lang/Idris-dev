@@ -116,11 +116,11 @@ compile codegen f tm
 
 generate :: Codegen -> CodegenInfo -> IO ()
 generate codegen ir = case codegen of
-                           ViaC -> codegenC ir
-                           ViaJava -> codegenJava ir 
-                           ViaJavaScript -> codegenJavaScript ir
-                           ViaNode -> codegenNode ir
-                           ViaLLVM -> codegenLLVM ir
+                           Via "c" -> codegenC ir
+                           Via "java" -> codegenJava ir 
+                           Via "javascript" -> codegenJavaScript ir
+                           Via "node" -> codegenNode ir
+                           Via "llvm" -> codegenLLVM ir
                            Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
 
 irMain :: TT Name -> Idris LDecl

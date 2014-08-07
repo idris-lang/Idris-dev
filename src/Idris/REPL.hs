@@ -1354,7 +1354,7 @@ idrisMain opts =
                      [] -> Executable
                      xs -> last xs
        let cgn = case opt getCodegen opts of
-                   [] -> ViaC
+                   [] -> Via "c"
                    xs -> last xs
        script <- case opt getExecScript opts of
                    []     -> return Nothing

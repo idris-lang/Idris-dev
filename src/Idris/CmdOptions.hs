@@ -8,6 +8,7 @@ import IRTS.CodegenCommon
 
 import Options.Applicative
 import Options.Applicative.Arrows
+import Data.Char
 import Data.Maybe
 
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
@@ -141,10 +142,6 @@ preProcOpts (BCAsm s:xs) ys = BCAsm s : NoREPL : preProcOpts xs ys
 preProcOpts (x:xs) ys = preProcOpts xs (x:ys)
 
 parseCodegen :: String -> Codegen
-parseCodegen "C" = ViaC
-parseCodegen "Java" = ViaJava
 parseCodegen "bytecode" = Bytecode
-parseCodegen "javascript" = ViaJavaScript
-parseCodegen "node" = ViaNode
-parseCodegen "llvm" = ViaLLVM
-parseCodegen _ = error "unknown codegen" -- FIXME: partial function
+parseCodegen cg = Via (map toLower cg)
+

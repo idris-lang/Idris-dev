@@ -142,12 +142,9 @@ pOption = do discard (P.symbol "errorcontext"); return ErrContext
       <|> do discard (P.symbol "warnreach"); return WarnReach
 
 codegenOption :: P.IdrisParser Codegen
-codegenOption = do discard (P.symbol "javascript"); return ViaJavaScript
-            <|> do discard (P.symbol "node"); return ViaNode
-            <|> do discard (P.symbol "Java"); return ViaJava
-            <|> do discard (P.symbol "llvm"); return ViaLLVM
-            <|> do discard (P.symbol "bytecode"); return Bytecode
-            <|> do discard (P.symbol "C"); return ViaC
+codegenOption = do discard (P.symbol "bytecode"); return Bytecode
+            <|> do x <- P.identifier
+                   return (Via (map toLower x))
 
 pConsoleWidth :: P.IdrisParser ConsoleWidth
 pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth

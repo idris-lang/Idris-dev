@@ -941,11 +941,7 @@ Codegen ::= 'C'
 @
 -}
 codegen_ :: IdrisParser Codegen
-codegen_ = do reserved "C"; return ViaC
-       <|> do reserved "Java"; return ViaJava
-       <|> do reserved "JavaScript"; return ViaJavaScript
-       <|> do reserved "Node"; return ViaNode
-       <|> do reserved "LLVM"; return ViaLLVM
+codegen_ = do n <- identifier; return (Via (map toLower n))
        <|> do reserved "Bytecode"; return Bytecode
        <?> "code generation language"
 

@@ -91,7 +91,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_verbose    = True
                       , opt_nobanner   = False
                       , opt_quiet      = False
-                      , opt_codegen    = ViaC
+                      , opt_codegen    = Via "c"
                       , opt_outputTy   = Executable
                       , opt_ibcsubdir  = ""
                       , opt_importdirs = []
@@ -293,11 +293,12 @@ type Idris = StateT IState (ErrorT Err IO)
 
 -- Commands in the REPL
 
-data Codegen = ViaC
-             | ViaJava
-             | ViaNode
-             | ViaJavaScript
-             | ViaLLVM
+data Codegen = Via String
+--              | ViaC
+--              | ViaJava
+--              | ViaNode
+--              | ViaJavaScript
+--              | ViaLLVM
              | Bytecode
     deriving (Show, Eq)
 

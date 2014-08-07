@@ -31,7 +31,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 76
+ibcVersion = 77
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1924,18 +1924,14 @@ instance Binary SSymbol where
 instance Binary Codegen where
         put x
           = case x of
-                ViaC -> putWord8 0
-                ViaJava -> putWord8 1
-                ViaNode -> putWord8 2
-                ViaJavaScript -> putWord8 3
-                Bytecode -> putWord8 4
+                Via str -> do putWord8 0
+                              put str
+                Bytecode -> putWord8 1
         get
           = do i <- getWord8
                case i of
-                  0 -> return ViaC
-                  1 -> return ViaJava
-                  2 -> return ViaNode
-                  3 -> return ViaJavaScript
-                  4 -> return Bytecode
+                  0 -> do x1 <- get
+                          return (Via x1)
+                  1 -> return Bytecode
                   _ -> error  "Corrupted binary data for Codegen"
 
