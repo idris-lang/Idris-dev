@@ -76,7 +76,8 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_optLevel   :: Word,
                          opt_cmdline    :: [Opt], -- remember whole command line
                          opt_origerr    :: Bool,
-                         opt_autoSolve  :: Bool -- ^ automatically apply "solve" tactic in prover
+                         opt_autoSolve  :: Bool, -- ^ automatically apply "solve" tactic in prover
+                         opt_autoImport :: [FilePath] -- ^ e.g. Builtins+Prelude
                        }
     deriving (Show, Eq)
 
@@ -100,6 +101,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_cmdline    = []
                       , opt_origerr    = False
                       , opt_autoSolve  = True
+                      , opt_autoImport = []
                       }
 
 data PPOption = PPOption {
@@ -247,6 +249,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCSyntax Syntax
               | IBCKeyword String
               | IBCImport FilePath
+              | IBCImportDir FilePath
               | IBCObj Codegen FilePath
               | IBCLib Codegen String
               | IBCCGFlag Codegen String

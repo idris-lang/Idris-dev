@@ -82,6 +82,16 @@ addDyLib libs = do i <- getIState
           findDyLib (lib:libs) l | l == lib_name lib = Just lib
                                  | otherwise         = findDyLib libs l
 
+getAutoImports :: Idris [FilePath]
+getAutoImports = do i <- getIState
+                    return (opt_autoImport (idris_options i))
+
+addAutoImport :: FilePath -> Idris ()
+addAutoImport fp = do i <- getIState
+                      let opts = idris_options i
+                      let autoimps = opt_autoImport opts
+                      put (i { idris_options = opts { opt_autoImport =
+                                                       fp : opt_autoImport opts } } )
 
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
@@ -739,7 +749,7 @@ valIBCSubDir i = return (opt_ibcsubdir (idris_options i))
 addImportDir :: FilePath -> Idris ()
 addImportDir fp = do i <- getIState
                      let opts = idris_options i
-                     let opt' = opts { opt_importdirs = fp : opt_importdirs opts }
+                     let opt' = opts { opt_importdirs = nub $ fp : opt_importdirs opts }
                      putIState $ i { idris_options = opt' }
 
 setImportDirs :: [FilePath] -> Idris ()

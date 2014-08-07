@@ -31,12 +31,13 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 75
+ibcVersion = 76
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
                          symbols :: [Name],
                          ibc_imports :: [FilePath],
+                         ibc_importdirs :: [FilePath],
                          ibc_implicits :: [(Name, [PArg])],
                          ibc_fixes :: [FixDecl],
                          ibc_statics :: [(Name, [Bool])],
@@ -78,7 +79,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do imps <- getImported
@@ -149,6 +150,7 @@ ibc i (IBCOpt n) f = case lookupCtxt n (idris_optimisation i) of
 ibc i (IBCSyntax n) f = return f { ibc_syntax = n : ibc_syntax f }
 ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
 ibc i (IBCImport n) f = return f { ibc_imports = n : ibc_imports f }
+ibc i (IBCImportDir n) f = return f { ibc_importdirs = n : ibc_importdirs f }
 ibc i (IBCObj tgt n) f = return f { ibc_objs = (tgt, n) : ibc_objs f }
 ibc i (IBCLib tgt n) f = return f { ibc_libs = (tgt, n) : ibc_libs f }
 ibc i (IBCCGFlag tgt n) f = return f { ibc_cgflags = (tgt, n) : ibc_cgflags f }
@@ -255,6 +257,7 @@ process i fn
                v <- verbose
                quiet <- getQuiet
 --                when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
+               pImportDirs (ibc_importdirs i)
                pImports (ibc_imports i)
                pImps (ibc_implicits i)
                pFixes (ibc_fixes i)
@@ -306,6 +309,9 @@ pPostulates ns = do
 pParsedSpan :: Maybe FC -> Idris ()
 pParsedSpan fc = do ist <- getIState
                     putIState ist { idris_parsedSpan = fc }
+
+pImportDirs :: [FilePath] -> Idris ()
+pImportDirs fs = mapM_ addImportDir fs
 
 pImports :: [FilePath] -> Idris ()
 pImports fs
@@ -831,7 +837,7 @@ instance Binary MetaInformation where
                      return (DataMI x1)
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -871,6 +877,7 @@ instance Binary IBCFile where
                put x36
                put x37
                put x38
+               put x39
 
         get
           = do x1 <- get
@@ -912,7 +919,8 @@ instance Binary IBCFile where
                     x36 <- get
                     x37 <- get
                     x38 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38)
+                    x39 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where

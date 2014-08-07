@@ -133,10 +133,10 @@ updateSolvedTerm xs x = -- updateSolved' xs x where
     updateSolved' xs (Bind n (Hole ty) t)
         | Just v <- lookup n xs 
             = case xs of
-                   [_] -> (substV v $ psubst n v t, True) -- some may be Vs! Can't assume
+                   [_] -> (subst n v t, True) -- some may be Vs! Can't assume
                                                           -- explicit names
                    _ -> let (t', _) = updateSolved' xs t in
-                            (substV v $ psubst n v t', True)
+                            (subst n v t', True)
     updateSolved' xs tm@(Bind n b t)
         | otherwise = let (t', ut) = updateSolved' xs t
                           (b', ub) = updateSolvedB' xs b in

@@ -975,7 +975,8 @@ process fn Execute
                            (tmpn, tmph) <- runIO tempfile
                            runIO $ hClose tmph
                            t <- codegen
-                           compile t tmpn m
+                           ir <- compile t tmpn m
+                           runIO $ generate t ir
                            case idris_outputmode ist of
                              RawOutput h -> do runIO $ system tmpn
                                                return ()
@@ -987,7 +988,8 @@ process fn (Compile codegen f)
       = do (m, _) <- elabVal recinfo ERHS
                        (PApp fc (PRef fc (sUN "run__IO"))
                        [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
-           compile codegen f m
+           ir <- compile codegen f m
+           runIO $ generate codegen ir
   where fc = fileFC "main"
 process fn (LogLvl i) = setLogLevel i
 -- Elaborate as if LHS of a pattern (debug command)
@@ -1330,8 +1332,10 @@ idrisMain opts =
        mapM_ addPkgDir pkgdirs
        elabPrims
        when (not (NoBuiltins `elem` opts)) $ do x <- loadModule "Builtins"
+                                                addAutoImport "Builtins"
                                                 return ()
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude"
+                                               addAutoImport "Prelude"
                                                return ()
 
        when (runrepl && not idesl) initScript
@@ -1402,6 +1406,7 @@ idrisMain opts =
     addPkgDir :: String -> Idris ()
     addPkgDir p = do ddir <- runIO $ getDataDir
                      addImportDir (ddir </> p)
+                     addIBC (IBCImportDir (ddir </> p))
 
 execScript :: String -> Idris ()
 execScript expr = do i <- getIState

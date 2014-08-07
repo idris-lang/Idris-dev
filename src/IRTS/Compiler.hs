@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards, TypeSynonymInstances, CPP #-}
 
-module IRTS.Compiler where
+module IRTS.Compiler(compile, generate) where
 
 import IRTS.Lang
 import IRTS.Defunctionalise
@@ -47,7 +47,9 @@ import System.Directory
 import System.Environment
 import System.FilePath ((</>), addTrailingPathSeparator)
 
-compile :: Codegen -> FilePath -> Term -> Idris ()
+-- |  Given a 'main' term to compiler, return the IRs which can be used to
+-- generate code.
+compile :: Codegen -> FilePath -> Term -> Idris CodegenInfo
 compile codegen f tm
    = do checkMVs  -- check for undefined metavariables
         checkTotality -- refuse to compile if there are totality problems
@@ -88,17 +90,17 @@ compile codegen f tm
         iLOG "Building output"
 
         case checked of
-            OK c -> do let cginfo = CodegenInfo f outty triple cpu optimise
-                                                hdrs impdirs objs libs flags
-                                                NONE c (toAlist defuns)
-                                                tagged
-                       runIO $ case codegen of
-                              ViaC -> codegenC cginfo
-                              ViaJava -> codegenJava cginfo 
-                              ViaJavaScript -> codegenJavaScript cginfo
-                              ViaNode -> codegenNode cginfo
-                              ViaLLVM -> codegenLLVM cginfo
-                              Bytecode -> dumpBC c f
+            OK c -> do return $ CodegenInfo f outty triple cpu optimise
+                                            hdrs impdirs objs libs flags
+                                            NONE c (toAlist defuns)
+                                            tagged
+--                        runIO $ case codegen of
+--                               ViaC -> codegenC cginfo
+--                               ViaJava -> codegenJava cginfo 
+--                               ViaJavaScript -> codegenJavaScript cginfo
+--                               ViaNode -> codegenNode cginfo
+--                               ViaLLVM -> codegenLLVM cginfo
+--                               Bytecode -> dumpBC c f
             Error e -> ierror e
   where checkMVs = do i <- getIState
                       case map fst (idris_metavars i) \\ primDefs of
@@ -111,6 +113,15 @@ compile codegen f tm
         inDir d h = do let f = d </> h
                        ex <- doesFileExist f
                        if ex then return f else return h
+
+generate :: Codegen -> CodegenInfo -> IO ()
+generate codegen ir = case codegen of
+                           ViaC -> codegenC ir
+                           ViaJava -> codegenJava ir 
+                           ViaJavaScript -> codegenJavaScript ir
+                           ViaNode -> codegenNode ir
+                           ViaLLVM -> codegenLLVM ir
+                           Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do

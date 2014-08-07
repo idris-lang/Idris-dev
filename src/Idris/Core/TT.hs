@@ -969,13 +969,16 @@ subst n v tm = fst $ subst' 0 tm
 
 -- If there are no Vs in the term (i.e. in proof state)
 psubst :: Eq n => n -> TT n -> TT n -> TT n
-psubst n v tm = s' tm where
-   s' (P _ x _) | n == x = v
-   s' (Bind x b sc) | n == x = Bind x (fmap s' b) sc
-                    | otherwise = Bind x (fmap s' b) (s' sc)
-   s' (App f a) = App (s' f) (s' a)
-   s' (Proj t idx) = Proj (s' t) idx
-   s' t = t
+psubst n v tm = s' 0 tm where
+   s' i (V x) | x > i = V (x - 1)
+              | x == i = v
+              | otherwise = V x
+   s' i (P _ x _) | n == x = v
+   s' i (Bind x b sc) | n == x = Bind x (fmap (s' i) b) sc
+                      | otherwise = Bind x (fmap (s' i) b) (s' (i+1) sc)
+   s' i (App f a) = App (s' i f) (s' i a)
+   s' i (Proj t idx) = Proj (s' i t) idx
+   s' i t = t
 
 -- | As 'subst', but takes a list of (name, substitution) pairs instead
 -- of a single name and substitution
