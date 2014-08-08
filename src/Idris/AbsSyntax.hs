@@ -132,6 +132,9 @@ clear_totcheck  = do i <- getIState; putIState $ i { idris_totcheck = [] }
 setFlags :: Name -> [FnOpt] -> Idris ()
 setFlags n fs = do i <- getIState; putIState $ i { idris_flags = addDef n fs (idris_flags i) }
 
+setFnInfo :: Name -> FnInfo -> Idris ()
+setFnInfo n fs = do i <- getIState; putIState $ i { idris_fninfo = addDef n fs (idris_fninfo i) }
+
 setAccessibility :: Name -> Accessibility -> Idris ()
 setAccessibility n a
          = do i <- getIState

@@ -31,7 +31,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 77
+ibcVersion = 78
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -57,6 +57,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_total :: [(Name, Totality)],
                          ibc_totcheckfail :: [(FC, String)],
                          ibc_flags :: [(Name, [FnOpt])],
+                         ibc_fninfo :: [(Name, FnInfo)],
                          ibc_cg :: [(Name, CGInfo)],
                          ibc_defs :: [(Name, Def)],
                          ibc_docstrings :: [(Name, (Docstring, [(Name, Docstring)]))],
@@ -79,7 +80,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do imps <- getImported
@@ -228,6 +229,7 @@ ibc i (IBCCG n) f = case lookupCtxt n (idris_callgraph i) of
 ibc i (IBCCoercion n) f = return f { ibc_coercions = n : ibc_coercions f }
 ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
 ibc i (IBCFlags n a) f = return f { ibc_flags = (n,a) : ibc_flags f }
+ibc i (IBCFnInfo n a) f = return f { ibc_fninfo = (n,a) : ibc_fninfo f }
 ibc i (IBCTotal n a) f = return f { ibc_total = (n,a) : ibc_total f }
 ibc i (IBCTrans t) f = return f { ibc_transforms = t : ibc_transforms f }
 ibc i (IBCErrRev t) f = return f { ibc_errRev = t : ibc_errRev f }
@@ -278,6 +280,7 @@ process i fn
                pPatdefs (ibc_patdefs i)
                pAccess (ibc_access i)
                pFlags (ibc_flags i)
+               pFnInfo (ibc_fninfo i)
                pTotal (ibc_total i)
                pTotCheckErr (ibc_totcheckfail i)
                pCG (ibc_cg i)
@@ -465,6 +468,9 @@ pAccess ds = mapM_ (\ (n, a) ->
 
 pFlags :: [(Name, [FnOpt])] -> Idris ()
 pFlags ds = mapM_ (\ (n, a) -> setFlags n a) ds
+
+pFnInfo :: [(Name, FnInfo)] -> Idris ()
+pFnInfo ds = mapM_ (\ (n, a) -> setFnInfo n a) ds
 
 pTotal :: [(Name, Totality)] -> Idris ()
 pTotal ds = mapM_ (\ (n, a) ->
@@ -837,7 +843,7 @@ instance Binary MetaInformation where
                      return (DataMI x1)
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -878,6 +884,7 @@ instance Binary IBCFile where
                put x37
                put x38
                put x39
+               put x40
 
         get
           = do x1 <- get
@@ -920,7 +927,8 @@ instance Binary IBCFile where
                     x37 <- get
                     x38 <- get
                     x39 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39)
+                    x40 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where
@@ -953,6 +961,7 @@ instance Binary FnOpt where
                 ErrorReverse -> putWord8 10
                 CoveringFn -> putWord8 11
                 NoImplicit -> putWord8 12
+                Constructor -> putWord8 13
         get
           = do i <- getWord8
                case i of
@@ -970,6 +979,7 @@ instance Binary FnOpt where
                    10 -> return ErrorReverse
                    11 -> return CoveringFn
                    12 -> return NoImplicit
+                   13 -> return Constructor
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where
@@ -1828,6 +1838,13 @@ instance Binary OptInfo where
           = do x1 <- get
                x2 <- get
                return (Optimise x1 x2)
+
+instance Binary FnInfo where
+        put (FnInfo x1)
+          = put x1
+        get
+          = do x1 <- get
+               return (FnInfo x1)
 
 instance Binary TypeInfo where
         put (TI x1 x2 x3 x4 x5) = do put x1

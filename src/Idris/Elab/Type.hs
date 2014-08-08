@@ -93,12 +93,22 @@ buildType info syn fc opts n ty' = do
          logLvl 3 ("Implicit " ++ show n ++ " " ++ show impls)
          addIBC (IBCImp n)
 
+         when (Constructor `notElem` opts) $ do
+             let pnames = getParamsInType i [] impls cty
+             let fninfo = FnInfo (param_pos 0 pnames cty)
+             setFnInfo n fninfo
+             addIBC (IBCFnInfo n fninfo)
+
          return (cty, ty, inacc)
   where
     patToImp (Bind n (PVar t) sc) = Bind n (Pi t) (patToImp sc)
     patToImp (Bind n b sc) = Bind n b (patToImp sc)
     patToImp t = t
 
+    param_pos i ns (Bind n (Pi t) sc) 
+        | n `elem` ns = i : param_pos (i + 1) ns sc
+        | otherwise = param_pos (i + 1) ns sc
+    param_pos i ns t = []
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo -> SyntaxInfo -> Docstring -> [(Name, Docstring)] ->

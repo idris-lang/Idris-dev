@@ -920,8 +920,10 @@ process fn (DebugInfo n)
         let cg' = lookupCtxtName n (idris_callgraph i)
         sc <- checkSizeChange n
         iputStrLn $ "Size change: " ++ show sc
+        let fn = lookupCtxtName n (idris_fninfo i)
         when (not (null cg')) $ do iputStrLn "Call graph:\n"
                                    iputStrLn (show cg')
+        when (not (null fn)) $ iputStrLn (show fn)
 process fn (Search t) = searchByType t
 process fn (CaseSplitAt updatefile l n)
     = caseSplitAt fn updatefile l n

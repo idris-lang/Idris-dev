@@ -422,55 +422,6 @@ checkPossible info fc tcgen fname lhs_in
                     | Ref <- y = True
                     | otherwise = False -- name is different, unrecoverable
 
-getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi t) sc)
-    = nub $ getFixedInType i env [] t ++
-            getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
-getFixedInType i env (_ : is) (Bind n (Pi t) sc)
-    = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
-getFixedInType i env is tm@(App f a)
-    | (P _ tn _, args) <- unApply tm
-       = case lookupCtxt tn (idris_datatypes i) of
-            [t] -> nub $ paramNames args env (param_pos t) ++
-                         getFixedInType i env is f ++
-                         getFixedInType i env is a
-            [] -> nub $ getFixedInType i env is f ++
-                        getFixedInType i env is a
-    | otherwise = nub $ getFixedInType i env is f ++
-                        getFixedInType i env is a
-getFixedInType i _ _ _ = []
-
-getFlexInType i env ps (Bind n (Pi t) sc)
-    = nub $ (if (not (n `elem` ps)) then getFlexInType i env ps t else []) ++
-            getFlexInType i (n : env) ps (instantiate (P Bound n t) sc)
-getFlexInType i env ps tm@(App f a)
-    | (P _ tn _, args) <- unApply tm
-       = case lookupCtxt tn (idris_datatypes i) of
-            [t] -> nub $ paramNames args env [x | x <- [0..length args],
-                                                  not (x `elem` param_pos t)] 
-                          ++ getFlexInType i env ps f ++
-                             getFlexInType i env ps a
-            [] -> nub $ getFlexInType i env ps f ++
-                        getFlexInType i env ps a
-    | otherwise = nub $ getFlexInType i env ps f ++
-                        getFlexInType i env ps a
-getFlexInType i _ _ _ = []
-
--- Treat a name as a parameter if it appears in parameter positions in
--- types, and never in a non-parameter position in a (non-param) argument type.
-
-getParamsInType i env ps t = let fix = getFixedInType i env ps t
-                                 flex = getFlexInType i env fix t in
-                                 [x | x <- fix, not (x `elem` flex)]
-
-paramNames args env [] = []
-paramNames args env (p : ps)
-   | length args > p = case args!!p of
-                          P _ n _ -> if n `elem` env
-                                        then n : paramNames args env ps
-                                        else paramNames args env ps
-                          _ -> paramNames args env ps
-   | otherwise = paramNames args env ps
-
 propagateParams :: IState -> [Name] -> Type -> PTerm -> PTerm
 propagateParams i ps t tm@(PApp _ (PRef fc n) args)
      = PApp fc (PRef fc n) (addP t args)
