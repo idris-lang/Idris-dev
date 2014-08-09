@@ -23,21 +23,21 @@ prim__eqFloat 1.0 1.0
 prim__floatACos 1.0
 0.0
 prim__floatATan 1.0
-0.7853981633974483
+0.78539816
 prim__floatCos 1.0
-0.5403023058681398
+0.54030230
 prim__floatFloor 1.0
 1.0
 prim__floatSin 1.0
-0.8414709848078965
+0.84147098
 prim__floatTan 1.0
-1.5574077246549023
+1.55740772
 prim__floatASin 1.0
-1.5707963267948966
+1.57079632
 prim__floatCeil 1.0
 1.0
 prim__floatExp 1.0
-2.718281828459045
+2.71828182
 prim__floatLog 1.0
 0.0
 prim__floatSqrt 1.0
