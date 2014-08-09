@@ -297,6 +297,7 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
     updatePat start n tm ('{':rest) =
         let (space, rest') = span isSpace rest in
             '{' : space ++ updatePat False n tm rest'
+    updatePat start n tm done@('?':rest) = done
     updatePat True n tm xs@(c:rest) | length xs > length n
         = let (before, after@(next:_)) = splitAt (length n) xs in
               if (before == n && not (isAlphaNum next))
