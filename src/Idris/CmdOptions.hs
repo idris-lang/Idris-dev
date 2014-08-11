@@ -78,7 +78,7 @@ parseFlags = many $
   <|> flag' NoBasePkgs (long "nobasepkgs")
   <|> flag' NoPrelude (long "noprelude")
   <|> flag' NoBuiltins (long "nobuiltins")
-  <|> flag' NoREPL (long "check")
+  <|> flag' NoREPL (long "check" <> help "Typecheck only, don't start the REPL")
   <|> (Output <$> strOption (short 'o' <> long "output" <> metavar "FILE" <> help "Specify output file"))
   <|> flag' TypeCase (long "typecase")
   <|> flag' TypeInType (long "typeintype")
