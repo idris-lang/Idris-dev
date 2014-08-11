@@ -25,30 +25,85 @@ returns) are stored.
 data Reg = RVal | L Int | T Int | Tmp
    deriving (Show, Eq)
 
-data BC = ASSIGN Reg Reg
-        | ASSIGNCONST Reg Const
-        | UPDATE Reg Reg
-        | MKCON Reg Int [Reg]
-        | CASE Bool -- definitely a constructor, no need to check, if true
-               Reg [(Int, [BC])] (Maybe [BC])
-        | PROJECT Reg Int Int -- get all args from reg, put them from Int onwards
-        | PROJECTINTO Reg Reg Int -- project argument from one reg into another
-        | CONSTCASE Reg [(Const, [BC])] (Maybe [BC])
-        | CALL Name
-        | TAILCALL Name
-        | FOREIGNCALL Reg FLang FType String [(FType, Reg)]
-        | SLIDE Int -- move this number from TOP to BASE
-        | REBASE -- set BASE = OLDBASE
-        | RESERVE Int -- reserve n more stack items
-                      -- (i.e. check there's space, grow if necessary)
-        | ADDTOP Int -- move the top of stack up
-        | TOPBASE Int -- set TOP = BASE + n
-        | BASETOP Int -- set BASE = TOP + n
-        | STOREOLD -- set OLDBASE = BASE
-        | OP Reg PrimFn [Reg]
-        | NULL Reg -- clear reg
-        | ERROR String
-    deriving Show
+data BC = 
+    -- reg1 = reg2
+    ASSIGN Reg Reg
+
+    -- reg = const
+  | ASSIGNCONST Reg Const
+
+    -- reg1 = reg2 (same as assign, it seems)
+  | UPDATE Reg Reg
+
+    -- reg = constructor, where constructor consists of a tag and
+    -- values from registers, e.g. (cons tag args)
+  | MKCON Reg Int [Reg]
+
+    -- Matching on value of reg: usually (but not always) there are
+    -- constructors, hence "Int" for patterns (that's a tag on which
+    -- we should match), and the following [BC] is just a list of
+    -- instructions for the corresponding case. The last argument is
+    -- for default case. When it's not necessary a constructor in the
+    -- reg, the Bool should be False, indicating that it's not safe to
+    -- work with that as with a constructor, so a check should be
+    -- added. If it's not a constructor, default case should be used.
+  | CASE Bool
+    Reg [(Int, [BC])] (Maybe [BC])
+
+    -- get a value from register, which should be a constructor, and
+    -- put its arguments into the stack, starting from (base + int1)
+    -- and onwards; second Int provides arity
+  | PROJECT Reg Int Int
+
+    -- probably not used
+  | PROJECTINTO Reg Reg Int -- project argument from one reg into another
+
+    -- same as CASE, but there's an exact value (not constructor) in reg
+  | CONSTCASE Reg [(Const, [BC])] (Maybe [BC])
+
+    -- just call a function, passing MYOLDBASE (see below) to it
+  | CALL Name
+
+    -- same, perhaps exists just for TCO
+  | TAILCALL Name
+
+    -- set reg to (apply string args), 2nd argument could be ignored,
+    -- types could be ignored if they are not required
+  | FOREIGNCALL Reg FLang FType String [(FType, Reg)]
+
+    -- move this number of elements from TOP to BASE
+  | SLIDE Int
+
+    -- set BASE = OLDBASE
+  | REBASE
+
+    -- reserve n more stack items (i.e. check there's space, grow if
+    -- necessary)
+  | RESERVE Int
+
+    -- move the top of stack up
+  | ADDTOP Int
+
+    -- set TOP = BASE + n
+  | TOPBASE Int
+
+    -- set BASE = TOP + n
+  | BASETOP Int
+
+    -- set MYOLDBASE = BASE, where MYOLDBASE is a function-local
+    -- variable, set to OLDBASE by default, and passed on function
+    -- call to called functions as their OLDBASE
+  | STOREOLD
+
+    -- reg = apply primitive_function args
+  | OP Reg PrimFn [Reg]
+
+    -- clear reg
+  | NULL Reg
+
+    -- throw an error
+  | ERROR String
+  deriving Show
 
 toBC :: (Name, SDecl) -> (Name, [BC])
 toBC (n, SFun n' args locs exp)
