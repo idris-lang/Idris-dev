@@ -594,7 +594,11 @@ constDocs (B64V v)                         = "A vector of sixty-four-bit values"
 constDocs prim                             = "Undocumented"
 
 data Universe = UniqueType | AllTypes
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show Universe where
+    show UniqueType = "UniqueType"
+    show AllTypes = "Type*"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
