@@ -275,6 +275,16 @@ instance (Binary b) => Binary (Binder b) where
                    _ -> error "Corrupted binary data for Binder"
 
 
+instance Binary Universe where
+        put x = case x of
+                     UniqueType -> putWord8 0
+                     AllTypes -> putWord8 1
+        get = do i <- getWord8
+                 case i of
+                     0 -> return UniqueType
+                     1 -> return AllTypes
+                     _ -> error "Corrupted binary data for Universe"
+
 instance Binary NameType where
         put x
           = case x of
@@ -325,6 +335,8 @@ instance {- (Binary n) => -} Binary (TT Name) where
                 TType x1 -> do putWord8 7
                                put x1
                 Impossible -> putWord8 8
+                UType x1 -> do putWord8 10
+                               put x1
         get
           = do i <- getWord8
                case i of
@@ -352,5 +364,7 @@ instance {- (Binary n) => -} Binary (TT Name) where
                    8 -> return Impossible
                    9 -> do x1 <- get
                            return (V x1)
+                   10 -> do x1 <- get
+                            return (UType x1)
                    _ -> error "Corrupted binary data for TT"
 

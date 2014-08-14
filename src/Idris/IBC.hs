@@ -1486,6 +1486,8 @@ instance Binary PTerm where
                 PDisamb x1 x2 -> do putWord8 37
                                     put x1
                                     put x2
+                PUniverse x1 -> do putWord8 38
+                                   put x1
 
         get
           = do i <- getWord8
@@ -1602,6 +1604,8 @@ instance Binary PTerm where
                    37 -> do x1 <- get
                             x2 <- get
                             return (PDisamb x1 x2)
+                   38 -> do x1 <- get
+                            return (PUniverse x1)
                    _ -> error "Corrupted binary data for PTerm"
 
 instance (Binary t) => Binary (PTactic' t) where

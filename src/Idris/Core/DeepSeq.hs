@@ -98,6 +98,7 @@ instance (NFData n) => NFData (TT n) where
         rnf Erased = ()
         rnf Impossible = ()
         rnf (TType x1) = rnf x1 `seq` ()
+        rnf (UType _) = ()
 
 instance (NFData t) => NFData (SC' t) where
         rnf (Case x1 x2) = rnf x1 `seq` rnf x2 `seq` ()

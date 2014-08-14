@@ -137,6 +137,7 @@ data Err' t
           | CantResolveAlts [Name]
           | IncompleteTerm t
           | UniverseError
+          | UniqueError Name
           | ProgramLineComment
           | Inaccessible Name
           | NonCollapsiblePostulate Name
@@ -592,10 +593,14 @@ constDocs (B32V v)                         = "A vector of thirty-two-bit values"
 constDocs (B64V v)                         = "A vector of sixty-four-bit values"
 constDocs prim                             = "Undocumented"
 
+data Universe = UniqueType | AllTypes
+  deriving (Show, Eq, Ord)
+
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
          | RApp Raw Raw
          | RType
+         | RUType Universe
          | RForce Raw
          | RConstant Const
   deriving (Show, Eq)
@@ -605,6 +610,7 @@ instance Sized Raw where
   size (RBind name bind right) = 1 + size bind + size right
   size (RApp left right) = 1 + size left + size right
   size RType = 1
+  size (RUType _) = 1
   size (RForce raw) = 1 + size raw
   size (RConstant const) = size const
 
@@ -751,6 +757,7 @@ data TT n = P NameType n (TT n) -- ^ named references with type
           | Erased -- ^ an erased term
           | Impossible -- ^ special case for totality checking
           | TType UExp -- ^ the type of types at some level
+          | UType Universe -- ^ Uniqueness type universe (disjoint from TType)
   deriving (Ord, Functor)
 {-!
 deriving instance Binary TT
@@ -1052,18 +1059,18 @@ unList tm = case unApply tm of
 -- with the corresponding name. It is an error if there are free de
 -- Bruijn indices.
 forget :: TT Name -> Raw
-forget tm = fe [] tm
-  where
-    fe env (P _ n _) = Var n
-    fe env (V i)     = Var (env !! i)
-    fe env (Bind n b sc) = let n' = uniqueName n env in
-                               RBind n' (fmap (fe env) b)
-                                        (fe (n':env) sc)
-    fe env (App f a) = RApp (fe env f) (fe env a)
-    fe env (Constant c)
-                     = RConstant c
-    fe env (TType i)   = RType
-    fe env Erased    = RConstant Forgot
+forget tm = forgetEnv [] tm
+    
+forgetEnv env (P _ n _) = Var n
+forgetEnv env (V i)     = Var (env !! i)
+forgetEnv env (Bind n b sc) = let n' = uniqueName n env in
+                                  RBind n' (fmap (forgetEnv env) b)
+                                           (forgetEnv (n':env) sc)
+forgetEnv env (App f a) = RApp (forgetEnv env f) (forgetEnv env a)
+forgetEnv env (Constant c) = RConstant c
+forgetEnv env (TType i) = RType
+forgetEnv env (UType u) = RUType u
+forgetEnv env Erased    = RConstant Forgot
 
 -- | Introduce a 'Bind' into the given term for each element of the
 -- given list of (name, binder) pairs.
@@ -1244,6 +1251,7 @@ showEnv' env t dbg = se 10 env t where
     se p env Erased = "[__]"
     se p env Impossible = "[impossible]"
     se p env (TType i) = "Type " ++ show i
+    se p env (UType u) = show u
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t

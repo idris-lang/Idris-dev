@@ -238,6 +238,7 @@ elab ist info emode opts fn tm
           -> ElabD ()
     elab' ina (PNoImplicits t) = elab' ina t -- skip elabE step
     elab' ina PType           = do apply RType []; solve
+    elab' ina (PUniverse u)   = do apply (RUType u) []; solve
 --  elab' (_,_,inty) (PConstant c) 
 --     | constType c && pattern && not reflection && not inty
 --       = lift $ tfail (Msg "Typecase is not allowed") 
@@ -629,7 +630,7 @@ elab ist info emode opts fn tm
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h
     elab' ina (PMetavar n) = let n' = mkN n in
-                                 do attack; defer n'; solve
+                                 do attack; defer [] n'; solve
         where mkN n@(NS _ _) = n
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
@@ -683,14 +684,39 @@ elab ist info emode opts fn tm
              focus valn
              elabE (True, a, inty, qq) scr
              args <- get_env
+             envU <- mapM (getKind args) args
+             let namesUsedInRHS = nub $ scvn : concatMap (\(_,rhs) -> allNamesIn rhs) opts
+--                                             ++ allNamesIn scr
+        
+             -- in the definition we build for the case, only pass through
+             -- names which are directly used, type class constraints, and
+             -- variables any of these depend on
+             -- FIXME: This probably doesn't help us, but leaving it in
+             -- temporarily (but commented out). If this comment is still
+             -- here in master, please delete the code!
+--              let directUse = filter (\n -> usedIn namesUsedInRHS n
+--                                             || tcName (binderTy (snd n))) args
+--              let args' = args -- chaseDeps args (map fst directUse) directUse
+--              let argsDropped = map fst $
+--                                  filter (\(n, _) -> case lookup n args' of
+--                                                        Nothing -> True
+--                                                        _ -> False) args
+
+             -- Drop the unique arguments used in the scrutinee (since it's
+             -- not valid to use them again anyway)
+             let argsDropped = filter (isUnique envU) (nub $ allNamesIn scr)
+             let args' = filter (\(n, _) -> n `notElem` argsDropped) args
+
              cname <- unique_hole' True (mkCaseName fn)
              let cname' = mkN cname
-             elab' ina (PMetavar cname')
+--              elab' ina (PMetavar cname')
+             attack; defer argsDropped cname'; solve
+             
              -- if the scrutinee is one of the 'args' in env, we should
              -- inspect it directly, rather than adding it as a new argument
              let newdef = PClauses fc [] cname'
                              (caseBlock fc cname'
-                                (map (isScr scr) (reverse args)) opts)
+                                (map (isScr scr) (reverse args')) opts)
              -- elaborate case
              updateAux (newdef : )
              -- if we haven't got the type yet, hopefully we'll get it later!
@@ -704,6 +730,47 @@ elab ist info emode opts fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
                         _ -> n
+
+              isUnique envk n = case lookup n envk of
+                                     Just u -> u
+                                     _ -> False
+
+              getKind env (n, _) 
+                  = case lookup n env of
+                         Nothing -> return (n, False) -- can't happen, actually...
+                         Just b -> 
+                            do ty <- get_type (forget (binderTy b))
+                               case ty of
+                                    UType UniqueType -> return (n, True)
+                                    UType AllTypes -> return (n, True)
+                                    _ -> return (n, False)
+
+              tcName tm | (P _ n _, _) <- unApply tm
+                  = case lookupCtxt n (idris_classes ist) of
+                         [_] -> True
+                         _ -> False
+              tcName _ = False
+
+              usedIn ns (n, b) 
+                 = n `elem` ns 
+                     || any (\x -> x `elem` ns) (allTTNames (binderTy b))
+
+              -- FIXME: This probably doesn't help us here, but leaving
+              -- it in temporarily... if this comment is still here in master,
+              -- please delete the code!
+              chaseDeps env acc [] = filter (\(n, _) -> n `elem` acc) env
+              chaseDeps env acc ((n,b) : args)
+                 = let ns = allTTNames (binderTy b) in
+                       extendAcc ns acc args
+                where
+                  extendAcc [] acc args = chaseDeps env acc args
+                  extendAcc (n:ns) acc args
+                      | elem n acc = extendAcc ns acc args
+                      | otherwise = case lookup n env of
+                                         Just b -> extendAcc ns (n : acc)
+                                                                 ((n,b) : args)
+                                         Nothing -> extendAcc ns acc args
+
     elab' ina (PUnifyLog t) = do unifyLog True
                                  elab' ina t
                                  unifyLog False

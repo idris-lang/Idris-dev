@@ -11,7 +11,8 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
-                Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions) where
+                Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
+                isUniverse) where
 
 import Debug.Trace
 import Control.Applicative hiding (Const)
@@ -47,6 +48,7 @@ data Value = VP NameType Name Value
            | VBLet Int Name Value Value Value
            | VApp Value Value
            | VType UExp
+           | VUType Universe
            | VErased
            | VImpossible
            | VConstant Const
@@ -298,6 +300,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env Erased    = return VErased
     ev ntimes stk top env Impossible  = return VImpossible
     ev ntimes stk top env (TType i)   = return $ VType i
+    ev ntimes stk top env (UType u)   = return $ VUType u
 
     evApply ntimes stk top env args (VApp f a)
           = evApply ntimes stk top env (a:args) f
@@ -519,6 +522,7 @@ instance Quote Value where
                                 return (Bind n (Let t' v') sc'')
     quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
     quote i (VType u)       = return $ TType u
+    quote i (VUType u)      = return $ UType u
     quote i VErased        = return $ Erased
     quote i VImpossible    = return $ Impossible
     quote i (VProj v j)    = do v' <- quote i v
@@ -533,6 +537,11 @@ wknV i (VBind red n b sc) = do b' <- fmapMB (wknV i) b
                                                                  wknV (i + 1) x')
 wknV i (VApp f a)     = liftM2 VApp (wknV i f) (wknV i a)
 wknV i t              = return t
+
+isUniverse :: Term -> Bool
+isUniverse (TType _) = True
+isUniverse (UType _) = True
+isUniverse _ = False
 
 convEq' ctxt hs x y = evalStateT (convEq ctxt hs x y) (0, [])
 
@@ -573,6 +582,9 @@ convEq ctxt holes topx topy = ceq [] topx topy where
     ceq ps (TType x) (TType y)           = do (v, cs) <- get
                                               put (v, ULE x y : cs)
                                               return True
+    ceq ps (UType AllTypes) x = return (isUniverse x)
+    ceq ps x (UType AllTypes) = return (isUniverse x)
+    ceq ps (UType u) (UType v) = return (u == v)
     ceq ps Erased _ = return True
     ceq ps _ Erased = return True
     ceq ps x y = return False

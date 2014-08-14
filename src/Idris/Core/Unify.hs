@@ -427,6 +427,7 @@ unify ctxt env topx topy inj holes usersupp from =
             sameBinder _ _ = False
     un' fn bnames x y
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
+        | isUniverse x && isUniverse y = do sc 1; return [] 
         | otherwise = do UI s f <- get
                          let r = recoverable (normalise ctxt env x) 
                                              (normalise ctxt env y)

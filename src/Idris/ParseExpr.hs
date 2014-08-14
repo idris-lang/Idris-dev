@@ -308,6 +308,8 @@ simpleExpr syn =
         <|> proofExpr syn
         <|> tacticsExpr syn
         <|> do reserved "Type"; return PType
+        <|> do reserved "UniqueType"; return $ PUniverse UniqueType
+        <|> do reserved "AllTypes"; return $ PUniverse AllTypes
         <|> do c <- constant
                fc <- getFC
                return (modifyConst syn fc (PConstant c))
