@@ -54,7 +54,7 @@ elabData info syn doc argDocs fc opts (PLaterdecl n t_in)
     = do let codata = Codata `elem` opts
          iLOG (show (fc, doc))
          checkUndefined fc n
-         (cty, t, inacc) <- buildType info syn fc [] n t_in
+         (cty, _, t, inacc) <- buildType info syn fc [] n t_in
 
          addIBC (IBCDef n)
          updateContext (addTyDecl n (TCon 0 0) cty) -- temporary, to check cons
@@ -63,7 +63,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
     = do let codata = Codata `elem` opts
          iLOG (show fc)
          undef <- isUndefined fc n
-         (cty, t, inacc) <- buildType info syn fc [] n t_in
+         (cty, _, t, inacc) <- buildType info syn fc [] n t_in
          -- if n is defined already, make sure it is just a type declaration
          -- with the same type we've just elaborated
          i <- getIState
@@ -71,7 +71,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          -- temporary, to check cons
          when undef $ updateContext (addTyDecl n (TCon 0 0) cty)
          let cnameinfo = cinfo info (map cname dcons)
-         cons <- mapM (elabCon cnameinfo syn n codata) dcons
+         cons <- mapM (elabCon cnameinfo syn n codata (getRetTy cty)) dcons
          ttag <- getName
          i <- getIState
          let as = map (const Nothing) (getArgTys cty)
@@ -203,12 +203,15 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
 -- TODO: the above is a comment from the past;
 -- forcenames is probably no longer needed
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
-           (Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name]) -> Idris (Name, Type)
-elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
+           Type -> -- for kind checking
+           (Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name]) -> 
+           Idris (Name, Type)
+elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
     = do checkUndefined fc n
-         (cty, t, inacc) <- buildType info syn fc [Constructor] n (if codata then mkLazy t_in else t_in)
+         (cty, ckind, t, inacc) <- buildType info syn fc [Constructor] n (if codata then mkLazy t_in else t_in)
          ctxt <- getContext
          let cty' = normalise ctxt [] cty
+         checkUniqueKind ckind expkind
 
          -- Check that the constructor type is, in fact, a part of the family being defined
          tyIs n cty'
@@ -249,6 +252,15 @@ elabCon info syn tn codata (doc, argDocs, n, t_in, fc, forcenames)
     getNamePos i (PPi _ n _ sc) x | n == x = Just i
                                   | otherwise = getNamePos (i + 1) sc x
     getNamePos _ _ _ = Nothing
+
+    -- if the constructor is a UniqueType, the datatype must be too
+    -- (Type* is fine, since that is checked for uniqueness too)
+    checkUniqueKind (UType UniqueType) (UType UniqueType) = return ()
+    checkUniqueKind (UType UniqueType) (UType AllTypes) = return ()
+    checkUniqueKind (UType UniqueType) (TType _)
+        = tclift $ tfail (UniqueKindError n)
+    checkUniqueKind (UType AllTypes) _ = return ()
+    checkUniqueKind (TType _) _ = return ()
 
 type EliminatorState = StateT (Map.Map String Int) Idris
 

@@ -138,6 +138,7 @@ data Err' t
           | IncompleteTerm t
           | UniverseError
           | UniqueError Name
+          | UniqueKindError Name
           | ProgramLineComment
           | Inaccessible Name
           | NonCollapsiblePostulate Name

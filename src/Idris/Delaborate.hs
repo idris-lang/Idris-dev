@@ -226,6 +226,8 @@ pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm
 pprintErr' i UniverseError = text "Universe inconsistency"
 pprintErr' i (UniqueError n) = text "Unique name" <+> annName' n (showbasic n)
                                   <+> text "is used more than once"
+pprintErr' i (UniqueKindError n) = text "Constructor" <+> annName' n (showbasic n)
+                                  <+> text "has a UniqueType, but the data type deos not"
 pprintErr' i ProgramLineComment = text "Program line next to comment"
 pprintErr' i (Inaccessible n) = annName n <+> text "is not an accessible pattern variable"
 pprintErr' i (NonCollapsiblePostulate n) = text "The return type of postulate" <+>
