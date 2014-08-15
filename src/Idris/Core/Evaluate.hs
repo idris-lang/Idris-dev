@@ -292,7 +292,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 t' <- ev ntimes stk top env t
 --                 tfull' <- reapply ntimes stk top env t' []
                 return (doProj t' (getValArgs t'))
-       where doProj t' (VP (DCon _ _) _ _, args) 
+       where doProj t' (VP (DCon _ _ _) _ _, args) 
                   | i >= 0 && i < length args = args!!i
              doProj t' _ = VProj t' i
 
@@ -412,7 +412,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                  _ -> return Nothing
 
     conHeaded tm@(App _ _)
-        | (P (DCon _ _) _ _, args) <- unApply tm = True
+        | (P (DCon _ _ _) _ _, args) <- unApply tm = True
     conHeaded t = False
 
     chooseAlt' ntimes  stk env _ (f, args) alts amap
@@ -423,7 +423,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     chooseAlt :: [(Name, Value)] -> Value -> (Value, [Value]) -> [CaseAlt] ->
                  [(Name, Value)] ->
                  Eval (Maybe ([(Name, Value)], SC))
-    chooseAlt env _ (VP (DCon i a) _ _, args) alts amap
+    chooseAlt env _ (VP (DCon i a _) _ _, args) alts amap
         | Just (ns, sc) <- findTag i alts = return $ Just (updateAmap (zip ns args) amap, sc)
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VP (TCon i a) _ _, args) alts amap
@@ -792,7 +792,7 @@ addTyDecl n nt ty uctxt
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
-addDatatype (Data n tag ty cons) uctxt
+addDatatype (Data n tag ty unique cons) uctxt
     = let ctxt = definitions uctxt
           ty' = normalise uctxt [] ty
           ctxt' = addCons 0 cons (addDef n
@@ -803,7 +803,7 @@ addDatatype (Data n tag ty cons) uctxt
     addCons tag ((n, ty) : cons) ctxt
         = let ty' = normalise uctxt [] ty in
               addCons (tag+1) cons (addDef n
-                  (TyDecl (DCon tag (arity ty')) ty, Public, Unchecked, EmptyMI) ctxt)
+                  (TyDecl (DCon tag (arity ty') unique) ty, Public, Unchecked, EmptyMI) ctxt)
 
 -- FIXME: Too many arguments! Refactor all these Bools.
 addCasedef :: Name -> ErasureInfo -> CaseInfo ->
@@ -928,7 +928,7 @@ isDConName :: Name -> Context -> Bool
 isDConName n ctxt
      = or $ do def <- lookupCtxt n (definitions ctxt)
                case tfst def of
-                    (TyDecl (DCon _ _) _) -> return True
+                    (TyDecl (DCon _ _ _) _) -> return True
                     _ -> return False
 
 isFnName :: Name -> Context -> Bool

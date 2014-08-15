@@ -228,7 +228,7 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
                       (P (TCon _ _) n _, P (TCon _ _) n' _) -> errWhen (n/=n) 
                       (P (TCon _ _) n _, Constant _) -> errWhen True
                       (Constant _, P (TCon _ _) n' _) -> errWhen True
-                      (P (DCon _ _) n _, P (DCon _ _) n' _) -> errWhen (n/=n) 
+                      (P (DCon _ _ _) n _, P (DCon _ _ _) n' _) -> errWhen (n/=n) 
                       _ -> return ()
 
               where errWhen True 
@@ -1026,7 +1026,7 @@ getPriority i tm = 1 -- pri tm
   where
     pri (PRef _ n) =
         case lookupP n (tt_ctxt i) of
-            ((P (DCon _ _) _ _):_) -> 1
+            ((P (DCon _ _ _) _ _):_) -> 1
             ((P (TCon _ _) _ _):_) -> 1
             ((P Ref _ _):_) -> 1
             [] -> 0 -- must be locally bound, if it's not an error...
@@ -1474,7 +1474,7 @@ aiFn inpat True qq ist fc f ds []
           imp _ = True
 --           allImp [] = False
           allImp xs = all imp xs
-          constructor (TyDecl (DCon _ _) _) = True
+          constructor (TyDecl (DCon _ _ _) _) = True
           constructor _ = False
 
           conCaf ctxt (n, cia) = (isDConName n ctxt || (qq && isTConName n ctxt)) && allImp cia

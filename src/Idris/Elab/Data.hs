@@ -71,6 +71,9 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          -- temporary, to check cons
          when undef $ updateContext (addTyDecl n (TCon 0 0) cty)
          let cnameinfo = cinfo info (map cname dcons)
+         let unique = case getRetTy cty of
+                           UType UniqueType -> True
+                           _ -> False
          cons <- mapM (elabCon cnameinfo syn n codata (getRetTy cty)) dcons
          ttag <- getName
          i <- getIState
@@ -90,7 +93,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          let metainf = DataMI params
          addIBC (IBCMetaInformation n metainf)
          -- TMP HACK! Make this a data option
-         updateContext (addDatatype (Data n ttag cty cons))
+         updateContext (addDatatype (Data n ttag cty unique cons))
          updateContext (setMetaInformation n metainf)
          mapM_ totcheck (zip (repeat fc) (map fst cons))
 --          mapM_ (checkPositive n) cons
@@ -258,7 +261,7 @@ elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
     checkUniqueKind (UType UniqueType) (UType UniqueType) = return ()
     checkUniqueKind (UType UniqueType) (UType AllTypes) = return ()
     checkUniqueKind (UType UniqueType) (TType _)
-        = tclift $ tfail (UniqueKindError n)
+        = tclift $ tfail (At fc (UniqueKindError n))
     checkUniqueKind (UType AllTypes) _ = return ()
     checkUniqueKind (TType _) _ = return ()
 

@@ -81,23 +81,11 @@ check' holes ctxt env top = chk env top where
                                      _ -> normalise ctxt env fty
            case fty' of
              Bind x (Pi s) t ->
---                trace ("Converting " ++ show aty ++ " and " ++ show s ++
---                       " from " ++ show fv ++ " : " ++ show fty) $
                  do convertsC ctxt env aty s
-                    -- let apty = normalise initContext env
-                                       -- (Bind x (Let aty av) t)
                     let apty = simplify initContext env
                                         (Bind x (Let aty av) t)
                     return (App fv av, apty)
-             t -> lift $ tfail $ NonFunctionType fv fty -- "Can't apply a non-function type"
-    -- This rather unpleasant hack is needed because during incomplete
-    -- proofs, variables are locally bound with an explicit name. If we just
-    -- make sure bound names in function types are locally unique, machine
-    -- generated names, we'll be fine.
-    -- NOTE: now replaced with 'uniqueBinders' above
-    where renameBinders i (Bind x (Pi s) t) = Bind (sMN i "binder") (Pi s)
-                                                   (renameBinders (i+1) t)
-          renameBinders i sc = sc
+             t -> lift $ tfail $ NonFunctionType fv fty 
   chk env RType
     | holes = return (TType (UVal 0), TType (UVal 0))
     | otherwise = do (v, cs) <- get

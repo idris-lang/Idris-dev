@@ -85,7 +85,7 @@ instance NFData UExp where
 instance NFData NameType where
         rnf Bound = ()
         rnf Ref = ()
-        rnf (DCon x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (DCon x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (TCon x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance (NFData n) => NFData (TT n) where

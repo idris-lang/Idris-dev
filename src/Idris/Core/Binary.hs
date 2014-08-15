@@ -290,8 +290,9 @@ instance Binary NameType where
           = case x of
                 Bound -> putWord8 0
                 Ref -> putWord8 1
-                DCon x1 x2 -> do putWord8 2
-                                 put (x1 * 65536 + x2)
+                DCon x1 x2 x3 -> do putWord8 2
+                                    put (x1 * 65536 + x2)
+                                    put x3
                 TCon x1 x2 -> do putWord8 3
                                  put (x1 * 65536 + x2)
         get
@@ -300,7 +301,8 @@ instance Binary NameType where
                    0 -> return Bound
                    1 -> return Ref
                    2 -> do x1x2 <- get
-                           return (DCon (x1x2 `div` 65536) (x1x2 `mod` 65536))
+                           x3 <- get
+                           return (DCon (x1x2 `div` 65536) (x1x2 `mod` 65536) x3)
                    3 -> do x1x2 <- get
                            return (TCon (x1x2 `div` 65536) (x1x2 `mod` 65536))
                    _ -> error "Corrupted binary data for NameType"

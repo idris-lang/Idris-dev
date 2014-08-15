@@ -1608,7 +1608,7 @@ reifyTTNameType t@(P _ n _) | n == reflm "Ref" = return $ Ref
 reifyTTNameType t@(App _ _)
   = case unApply t of
       (P _ f _, [Constant (I tag), Constant (I num)])
-           | f == reflm "DCon" -> return $ DCon tag num
+           | f == reflm "DCon" -> return $ DCon tag num False -- FIXME: Uniqueness!
            | f == reflm "TCon" -> return $ TCon tag num
       _ -> fail ("Unknown reflection name type: " ++ show t)
 reifyTTNameType t = fail ("Unknown reflection name type: " ++ show t)
@@ -1866,8 +1866,8 @@ reflectQuote unq (TType exp) = reflCall "TType" [reflectUExp exp]
 reflectNameType :: NameType -> Raw
 reflectNameType (Bound) = Var (reflm "Bound")
 reflectNameType (Ref) = Var (reflm "Ref")
-reflectNameType (DCon x y)
-  = reflCall "DCon" [RConstant (I x), RConstant (I y)]
+reflectNameType (DCon x y _)
+  = reflCall "DCon" [RConstant (I x), RConstant (I y)] -- FIXME: Uniqueness!
 reflectNameType (TCon x y)
   = reflCall "TCon" [RConstant (I x), RConstant (I y)]
 
@@ -2165,7 +2165,7 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                     parts -> ReflectionError errorparts e
 
 fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
-fromTTMaybe (App (App (P (DCon _ _) (NS (UN just) _) _) ty) tm)
+fromTTMaybe (App (App (P (DCon _ _ _) (NS (UN just) _) _) ty) tm)
   | just == txt "Just" = Just tm
 fromTTMaybe x          = Nothing
 
@@ -2176,9 +2176,9 @@ reflErrName n = sNS (sUN n) ["Errors", "Reflection", "Language"]
 -- representation. Not in Idris or ElabD monads because it should be usable
 -- from either.
 reifyReportPart :: Term -> Either Err ErrorReportPart
-reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflm "TextPart" =
+reifyReportPart (App (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "TextPart" =
     Right (TextPart msg)
-reifyReportPart (App (P (DCon _ _) n _) ttn)
+reifyReportPart (App (P (DCon _ _ _) n _) ttn)
   | n == reflm "NamePart" =
     case runElab [] (reifyTTName ttn) (initElaborator NErased initContext Erased) of
       Error e -> Left . InternalMsg $
@@ -2186,7 +2186,7 @@ reifyReportPart (App (P (DCon _ _) n _) ttn)
        show ttn ++
        " when reflecting an error:" ++ show e
       OK (n', _)-> Right $ NamePart n'
-reifyReportPart (App (P (DCon _ _) n _) tm)
+reifyReportPart (App (P (DCon _ _ _) n _) tm)
   | n == reflm "TermPart" =
   case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
     Error e -> Left . InternalMsg $
@@ -2194,7 +2194,7 @@ reifyReportPart (App (P (DCon _ _) n _) tm)
       show tm ++
       " when reflecting an error:" ++ show e
     OK (tm', _) -> Right $ TermPart tm'
-reifyReportPart (App (P (DCon _ _) n _) tm)
+reifyReportPart (App (P (DCon _ _ _) n _) tm)
   | n == reflm "SubReport" =
   case unList tm of
     Just xs -> do subParts <- mapM reifyReportPart xs

@@ -198,7 +198,7 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
   where
     (args, sc) = cases_runtime cd
 
-mkLDecl n (TyDecl (DCon tag arity) _) =
+mkLDecl n (TyDecl (DCon tag arity _) _) =
     LConstructor n tag . length <$> fgetState (cg_usedpos . ist_callgraph n)
 
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
@@ -286,7 +286,7 @@ irTerm vs env tm@(App f a) = case unApply tm of
                              ])
 
     -- data constructor
-    (P (DCon t arity) n _, args) -> do
+    (P (DCon t arity _) n _, args) -> do
         detag <- fgetState (opt_detaggable . ist_optimisation n)
         used  <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
 
@@ -391,7 +391,7 @@ irTerm vs env tm@(App f a) = case unApply tm of
 
         arity = case fst4 <$> lookupCtxtExact n (definitions . tt_ctxt $ ist) of
             Just (CaseOp ci ty tys def tot cdefs) -> length tys
-            Just (TyDecl (DCon tag ar) _)         -> ar
+            Just (TyDecl (DCon tag ar _) _)       -> ar
             Just (TyDecl Ref ty)                  -> length $ getArgTys ty
             Just (Operator ty ar op)              -> ar
             Just def -> error $ "unknown arity: " ++ show (n, def)

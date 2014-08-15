@@ -85,12 +85,12 @@ match_unify ctxt env topx topy inj holes from =
     -- answer, merely a valid one, so perhaps we're okay.
     -- In other words: it may vanish without warning some day :)
     un names x tm@(App (P _ f (Bind fn (Pi t) sc)) a)
-        | (P (DCon _ _) _ _, _) <- unApply x,
+        | (P (DCon _ _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName (sMN 0 "mv") (map fst env) in
                  checkCycle names (f, Bind n' (Lam t) x) 
     un names tm@(App (P _ f (Bind fn (Pi t) sc)) a) x
-        | (P (DCon _ _) _ _, _) <- unApply x,
+        | (P (DCon _ _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName fn (map fst env) in
                  checkCycle names (f, Bind n' (Lam t) x) 
@@ -265,11 +265,11 @@ unify ctxt env topx topy inj holes usersupp from =
 --         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
         	       Error e -> tfail e
   where
-    headDiff (P (DCon _ _) x _) (P (DCon _ _) y _) = x /= y
+    headDiff (P (DCon _ _ _) x _) (P (DCon _ _ _) y _) = x /= y
     headDiff (P (TCon _ _) x _) (P (TCon _ _) y _) = x /= y
     headDiff _ _ = False
 
-    injective (P (DCon _ _) _ _) = True
+    injective (P (DCon _ _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
 --     injective (App f (P _ _ _))  = injective f
 --     injective (App f (Constant _))  = injective f
@@ -315,13 +315,13 @@ unify ctxt env topx topy inj holes usersupp from =
            StateT UInfo
            TC [(Name, TT Name)]
     un' fn names x y | x == y = return [] -- shortcut
-    un' fn names topx@(P (DCon _ _) x _) topy@(P (DCon _ _) y _)
+    un' fn names topx@(P (DCon _ _ _) x _) topy@(P (DCon _ _ _) y _)
                 | x /= y = unifyFail topx topy
     un' fn names topx@(P (TCon _ _) x _) topy@(P (TCon _ _) y _)
                 | x /= y = unifyFail topx topy
-    un' fn names topx@(P (DCon _ _) x _) topy@(P (TCon _ _) y _)
+    un' fn names topx@(P (DCon _ _ _) x _) topy@(P (TCon _ _) y _)
                 = unifyFail topx topy
-    un' fn names topx@(P (TCon _ _) x _) topy@(P (DCon _ _) y _)
+    un' fn names topx@(P (TCon _ _) x _) topy@(P (DCon _ _ _) y _)
                 = unifyFail topx topy
     un' fn names topx@(Constant _) topy@(P (TCon _ _) y _)
                 = unifyFail topx topy
@@ -461,13 +461,13 @@ unify ctxt env topx topy inj holes usersupp from =
        | otherwise = unifyTmpFail appx appy
       where hnormalise [] _ _ t = t
             hnormalise ns ctxt env t = normalise ctxt env t
-            checkHeads (P (DCon _ _) x _) (P (DCon _ _) y _)
+            checkHeads (P (DCon _ _ _) x _) (P (DCon _ _ _) y _)
                 | x /= y = unifyFail appx appy
             checkHeads (P (TCon _ _) x _) (P (TCon _ _) y _)
                 | x /= y = unifyFail appx appy
-            checkHeads (P (DCon _ _) x _) (P (TCon _ _) y _)
+            checkHeads (P (DCon _ _ _) x _) (P (TCon _ _) y _)
                 = unifyFail appx appy
-            checkHeads (P (TCon _ _) x _) (P (DCon _ _) y _)
+            checkHeads (P (TCon _ _) x _) (P (DCon _ _ _) y _)
                 = unifyFail appx appy
             checkHeads _ _ = return []
 
@@ -493,7 +493,7 @@ unify ctxt env topx topy inj holes usersupp from =
                                  all (\x -> pat x || metavar x) (f : args)
                                    && nub args == args
 
-            rigid (P (DCon _ _) _ _) = True
+            rigid (P (DCon _ _ _) _ _) = True
             rigid (P (TCon _ _) _ _) = True
             rigid t@(P Ref _ _)      = inenv t || globmetavar t
             rigid (Constant _)       = True
@@ -633,15 +633,15 @@ recoverable t@(App _ _) _
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
 recoverable _ t@(App _ _)
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
-recoverable (P (DCon _ _) x _) (P (DCon _ _) y _) = x == y
+recoverable (P (DCon _ _ _) x _) (P (DCon _ _ _) y _) = x == y
 recoverable (P (TCon _ _) x _) (P (TCon _ _) y _) = x == y
-recoverable (Constant _) (P (DCon _ _) y _) = False
+recoverable (Constant _) (P (DCon _ _ _) y _) = False
 recoverable (Constant x) (Constant y) = x == y
-recoverable (P (DCon _ _) x _) (Constant _) = False
+recoverable (P (DCon _ _ _) x _) (Constant _) = False
 recoverable (Constant _) (P (TCon _ _) y _) = False
 recoverable (P (TCon _ _) x _) (Constant _) = False
-recoverable (P (DCon _ _) x _) (P (TCon _ _) y _) = False
-recoverable (P (TCon _ _) x _) (P (DCon _ _) y _) = False
+recoverable (P (DCon _ _ _) x _) (P (TCon _ _) y _) = False
+recoverable (P (TCon _ _) x _) (P (DCon _ _ _) y _) = False
 recoverable p@(Constant _) (App f a) = recoverable p f
 recoverable (App f a) p@(Constant _) = recoverable f p
 recoverable p@(P _ n _) (App f a) = recoverable p f
@@ -651,10 +651,10 @@ recoverable (App f a) (App f' a')
 recoverable (App f a) (App f' a')
     = recoverable f f' -- && recoverable a a'
 recoverable f (Bind _ (Pi _) sc)
-    | (P (DCon _ _) _ _, _) <- unApply f = False
+    | (P (DCon _ _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
 recoverable (Bind _ (Pi _) sc) f
-    | (P (DCon _ _) _ _, _) <- unApply f = False
+    | (P (DCon _ _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
 recoverable (Bind _ (Lam _) sc) f = recoverable sc f
 recoverable f (Bind _ (Lam _) sc) = recoverable f sc

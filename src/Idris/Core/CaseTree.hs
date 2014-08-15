@@ -344,11 +344,11 @@ toPats reflect tc f = reverse (toPat reflect tc (getArgs f)) where
 toPat :: Bool -> Bool -> [Term] -> [Pat]
 toPat reflect tc = map $ toPat' []
   where
-    toPat' [_,_,arg](P (DCon t a) nm@(UN n) _)
+    toPat' [_,_,arg](P (DCon t a _) nm@(UN n) _)
         | n == txt "Delay"
         = PCon nm t [PAny, PAny, toPat' [] arg]
 
-    toPat' args (P (DCon t a) n _)
+    toPat' args (P (DCon t a _) n _)
         = PCon n t $ map (toPat' []) args
 
     -- n + 1

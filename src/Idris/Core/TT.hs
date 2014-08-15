@@ -726,7 +726,7 @@ type UCs = (Int, [UConstraint])
 
 data NameType = Bound
               | Ref
-              | DCon {nt_tag :: Int, nt_arity :: Int} -- ^ Data constructor
+              | DCon {nt_tag :: Int, nt_arity :: Int, nt_unique :: Bool} -- ^ Data constructor
               | TCon {nt_tag :: Int, nt_arity :: Int} -- ^ Type constructor
   deriving (Show, Ord)
 {-!
@@ -743,7 +743,7 @@ instance Pretty NameType OutputAnnotation where
 instance Eq NameType where
     Bound    == Bound    = True
     Ref      == Ref      = True
-    DCon _ a == DCon _ b = (a == b) -- ignore tag
+    DCon _ a _ == DCon _ b _ = (a == b) -- ignore tag
     TCon _ a == TCon _ b = (a == b) -- ignore tag
     _        == _        = False
 
@@ -812,6 +812,7 @@ type EnvTT n = [(n, Binder (TT n))]
 data Datatype n = Data { d_typename :: n,
                          d_typetag  :: Int,
                          d_type     :: (TT n),
+                         d_unique   :: Bool,
                          d_cons     :: [(n, TT n)] }
   deriving (Show, Functor, Eq)
 
@@ -833,7 +834,7 @@ instance Eq n => Eq (TT n) where
 -- constant, the type Type, pi-binding, or an application of an injective
 -- term.
 isInjective :: TT n -> Bool
-isInjective (P (DCon _ _) _ _) = True
+isInjective (P (DCon _ _ _) _ _) = True
 isInjective (P (TCon _ _) _ _) = True
 isInjective (Constant _)       = True
 isInjective (TType x)            = True
