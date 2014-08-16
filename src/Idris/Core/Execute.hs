@@ -434,7 +434,7 @@ execCase' :: ExecEnv -> Context -> [(Name, ExecVal)] -> SC -> Exec (Maybe ExecVa
 execCase' env ctxt amap (UnmatchedCase _) = return Nothing
 execCase' env ctxt amap (STerm tm) =
     Just <$> doExec (map (\(n, v) -> (n, v)) amap ++ env) ctxt tm
-execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap =
+execCase' env ctxt amap (Case sh n alts) | Just tm <- lookup n amap =
        case chooseAlt tm alts of
          Just (newCase, newBindings) ->
              let amap' = newBindings ++ (filter (\(x,_) -> not (elem x (map fst newBindings))) amap) in

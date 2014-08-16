@@ -396,7 +396,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     evTree ntimes stk top env amap (ProjCase t alts)
         = do t' <- ev ntimes stk top env t 
              doCase ntimes stk top env amap t' alts
-    evTree ntimes stk top env amap (Case n alts)
+    evTree ntimes stk top env amap (Case _ n alts)
         = case lookup n amap of
             Just v -> doCase ntimes stk top env amap v alts
             _ -> return Nothing
@@ -589,7 +589,7 @@ convEq ctxt holes topx topy = ceq [] topx topy where
     ceq ps _ Erased = return True
     ceq ps x y = return False
 
-    caseeq ps (Case n cs) (Case n' cs') = caseeqA ((n,n'):ps) cs cs'
+    caseeq ps (Case _ n cs) (Case _ n' cs') = caseeqA ((n,n'):ps) cs cs'
       where
         caseeqA ps (ConCase x i as sc : rest) (ConCase x' i' as' sc' : rest')
             = do q1 <- caseeq (zip as as' ++ ps) sc sc'

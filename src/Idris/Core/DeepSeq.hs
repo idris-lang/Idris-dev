@@ -101,7 +101,7 @@ instance (NFData n) => NFData (TT n) where
         rnf (UType _) = ()
 
 instance (NFData t) => NFData (SC' t) where
-        rnf (Case x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (Case _ x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (ProjCase x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (STerm x1) = rnf x1 `seq` ()
         rnf (UnmatchedCase x1) = rnf x1 `seq` ()

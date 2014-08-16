@@ -281,13 +281,13 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
     -- for the purposes of erasure, we can disregard the projection
     getDepsSC fn es vs (ProjCase (Proj t i) alts) = getDepsSC fn es vs (ProjCase t alts)  -- step
-    getDepsSC fn es vs (ProjCase (P  _ n _) alts) = getDepsSC fn es vs (Case     n alts)  -- base
+    getDepsSC fn es vs (ProjCase (P  _ n _) alts) = getDepsSC fn es vs (Case Shared n alts)  -- base
 
     -- other ProjCase's are not supported
     getDepsSC fn es vs (ProjCase t alts)   = error $ "ProjCase not supported:\n" ++ show (ProjCase t alts)
 
     getDepsSC fn es vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)
-    getDepsSC fn es vs (Case n alts)
+    getDepsSC fn es vs (Case sh n alts)
         -- we case-split on this variable, which marks it as used
         -- (unless there is exactly one case branch)
         -- hence we add a new dependency, whose only precondition is

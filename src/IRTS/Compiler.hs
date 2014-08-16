@@ -513,7 +513,7 @@ irSC vs (ProjCase tm alts) = do
     return $ LCase tm' alts'
 
 -- Transform matching on Delay to applications of Force.
-irSC vs (Case n [ConCase (UN delay) i [_, _, n'] sc])
+irSC vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
     | delay == txt "Delay"
     = do sc' <- irSC vs $ mkForce n' n sc
          return $ LLet n' (LForce (LV (Glob n))) sc'
@@ -540,7 +540,7 @@ irSC vs (Case n [ConCase (UN delay) i [_, _, n'] sc])
 -- Hence, we check whether the variables are used at all
 -- and erase the casesplit if they are not.
 --
-irSC vs (Case n [alt]) = do
+irSC vs (Case up n [alt]) = do
     replacement <- case alt of
         ConCase cn a ns sc -> do
             detag <- fgetState (opt_detaggable . ist_optimisation cn)
@@ -584,13 +584,13 @@ irSC vs (Case n [alt]) = do
 -- This work-around is not entirely optimal; the best approach would be
 -- to ensure that such case trees don't arise in the first place.
 --
-irSC vs (Case n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
+irSC vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
     detag <- fgetState (opt_detaggable . ist_optimisation cn)
     if detag
-        then irSC vs (Case n [ConCase cn a ns sc])
+        then irSC vs (Case up n [ConCase cn a ns sc])
         else LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
 
-irSC vs sc@(Case n alts) = do
+irSC vs sc@(Case up n alts) = do
     -- check that neither alternative needs the newtype optimisation,
     -- see comment above
     goneWrong <- or <$> mapM isDetaggable alts
