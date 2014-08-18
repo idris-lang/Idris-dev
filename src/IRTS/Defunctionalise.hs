@@ -5,6 +5,7 @@ module IRTS.Defunctionalise(module IRTS.Defunctionalise,
 
 import IRTS.Lang
 import Idris.Core.TT
+import Idris.Core.CaseTree
 
 import Debug.Trace
 import Data.Maybe
@@ -18,7 +19,7 @@ data DExp = DV LVar
           | DUpdate Name DExp -- eval expression, then update var with it
           | DProj DExp Int
           | DC Int Name [DExp]
-          | DCase DExp [DAlt]
+          | DCase CaseType DExp [DAlt]
           | DChkCase DExp [DAlt] -- a case where the type is unknown (for EVAL/APPLY)
           | DConst Const
           | DForeign FLang FType String [(FType, DExp)]
@@ -105,9 +106,9 @@ addApps defs (n, LFun _ _ args e)
                             return $ DProj (DUpdate n t') i
     aa env (LProj t i) = do t' <- aa env t
                             return $ DProj t' i
-    aa env (LCase e alts) = do e' <- aa env e
-                               alts' <- mapM (aaAlt env) alts
-                               return $ DCase e' alts'
+    aa env (LCase up e alts) = do e' <- aa env e
+                                  alts' <- mapM (aaAlt env) alts
+                                  return $ DCase up e' alts'
     aa env (LConst c) = return $ DConst c
     aa env (LForeign l t n args) = liftM (DForeign l t n) (mapM (aaF env) args)
     aa env (LOp LFork args) = liftM (DOp LFork) (mapM (aa env) args)
@@ -161,7 +162,7 @@ addApps defs (n, LFun _ _ args e)
 
     needsEval x (DApp _ _ args) = or (map (needsEval x) args)
     needsEval x (DC _ _ args) = or (map (needsEval x) args)
-    needsEval x (DCase e alts) = needsEval x e || or (map nec alts)
+    needsEval x (DCase up e alts) = needsEval x e || or (map nec alts)
       where nec (DConCase _ _ _ e) = needsEval x e
             nec (DConstCase _ e) = needsEval x e
             nec (DDefaultCase e) = needsEval x e
@@ -264,8 +265,11 @@ instance Show DExp where
      show' env (DUpdate n e) = "!update " ++ show n ++ "(" ++ show' env e ++ ")"
      show' env (DC i n args) = show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
      show' env (DProj t i) = show t ++ "!" ++ show i
-     show' env (DCase e alts) = "case " ++ show' env e ++ " of {\n\t" ++
+     show' env (DCase up e alts) = "case" ++ update ++ show' env e ++ " of {\n\t" ++
                                     showSep "\n\t| " (map (showAlt env) alts)
+         where update = case up of
+                           Shared -> " "
+                           Updatable -> "! "
      show' env (DChkCase e alts) = "case' " ++ show' env e ++ " of {\n\t" ++
                                     showSep "\n\t| " (map (showAlt env) alts)
      show' env (DConst c) = show c

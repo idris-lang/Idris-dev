@@ -1,9 +1,10 @@
 module IRTS.Lang where
 
-import           Control.Monad.State hiding (lift)
-import           Idris.Core.TT
-import           Data.List
-import           Debug.Trace
+import Control.Monad.State hiding (lift)
+import Idris.Core.TT
+import Idris.Core.CaseTree
+import Data.List
+import Debug.Trace
 
 data Endianness = Native | BE | LE deriving (Show, Eq)
 
@@ -19,7 +20,7 @@ data LExp = LV LVar
           | LLam [Name] LExp -- lambda, lifted out before compiling
           | LProj LExp Int -- projection
           | LCon Int Name [LExp]
-          | LCase LExp [LAlt]
+          | LCase CaseType LExp [LAlt]
           | LConst Const
           | LForeign FLang FType String [(FType, LExp)]
           | LOp PrimFn [LExp]
@@ -170,9 +171,9 @@ lift env (LProj t i) = do t' <- lift env t
                           return (LProj t' i)
 lift env (LCon i n args) = do args' <- mapM (lift env) args
                               return (LCon i n args')
-lift env (LCase e alts) = do alts' <- mapM liftA alts
-                             e' <- lift env e
-                             return (LCase e' alts')
+lift env (LCase up e alts) = do alts' <- mapM liftA alts
+                                e' <- lift env e
+                                return (LCase up e' alts')
   where
     liftA (LConCase i n args e) = do e' <- lift (env ++ args) e
                                      return (LConCase i n args e')
@@ -206,7 +207,7 @@ usedIn env (LLet n v e) = usedIn env v ++ usedIn (env \\ [n]) e
 usedIn env (LLam ns e) = usedIn (env \\ ns) e
 usedIn env (LCon i n args) = concatMap (usedIn env) args
 usedIn env (LProj t i) = usedIn env t
-usedIn env (LCase e alts) = usedIn env e ++ concatMap (usedInA env) alts
+usedIn env (LCase up e alts) = usedIn env e ++ concatMap (usedInA env) alts
   where usedInA env (LConCase i n ns e) = usedIn env e
         usedInA env (LConstCase c e) = usedIn env e
         usedInA env (LDefaultCase e) = usedIn env e
@@ -240,9 +241,12 @@ instance Show LExp where
      show' env ind (LCon i n args)
         = show n ++ "(" ++ showSep ", " (map (show' env ind) args) ++ ")"
 
-     show' env ind (LCase e alts)
-        = "case " ++ show' env ind e ++ " of \n" ++ fmt alts
+     show' env ind (LCase up e alts)
+        = "case" ++ update ++ show' env ind e ++ " of \n" ++ fmt alts
        where
+         update = case up of
+                       Shared -> " "
+                       Updatable -> "! "
          fmt [] = ""
          fmt [alt]
             = "\t" ++ ind ++ "| " ++ showAlt env (ind ++ "    ") alt 

@@ -464,7 +464,7 @@ mkExp pp (SCon conId _ args) =
   mkIdrisObject conId args >>= ppExp pp
 
 -- Case expressions
-mkExp pp (SCase    var alts) = mkCase pp True var alts
+mkExp pp (SCase up var alts) = mkCase pp True var alts
 mkExp pp (SChkCase var alts) = mkCase pp False var alts
 
 -- Projections

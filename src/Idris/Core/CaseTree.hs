@@ -42,7 +42,7 @@ deriving instance NFData SC'
 !-}
 
 data CaseType = Updatable | Shared   
-   deriving (Eq, Ord)
+   deriving (Eq, Ord, Show)
 
 type SC = SC' Term
 

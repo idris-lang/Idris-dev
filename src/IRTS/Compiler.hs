@@ -281,7 +281,8 @@ irTerm vs env tm@(App f a) = case unApply tm of
             x' <- irTerm vs env x
             t' <- irTerm vs env t
             e' <- irTerm vs env e
-            return (LCase x' [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e'
+            return (LCase Shared x' 
+                             [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e'
                              ,LConCase 1 (sNS (sUN "True" ) ["Bool","Prelude"]) [] t'
                              ])
 
@@ -510,7 +511,7 @@ irSC vs (UnmatchedCase str) = return $ LError str
 irSC vs (ProjCase tm alts) = do
     tm'   <- irTerm vs [] tm
     alts' <- mapM (irAlt vs tm') alts
-    return $ LCase tm' alts'
+    return $ LCase Shared tm' alts'
 
 -- Transform matching on Delay to applications of Force.
 irSC vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
@@ -556,7 +557,7 @@ irSC vs (Case up n [alt]) = do
             alt' <- irAlt vs (LV (Glob n)) alt
             return $ case namesBoundIn alt' `usedIn` subexpr alt' of
                 [] -> subexpr alt'  -- strip the unused top-most case
-                _  -> LCase (LV (Glob n)) [alt']
+                _  -> LCase up (LV (Glob n)) [alt']
   where
     namesBoundIn :: LAlt -> [Name]
     namesBoundIn (LConCase cn i ns sc) = ns
@@ -588,7 +589,7 @@ irSC vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
     detag <- fgetState (opt_detaggable . ist_optimisation cn)
     if detag
         then irSC vs (Case up n [ConCase cn a ns sc])
-        else LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+        else LCase up (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
 
 irSC vs sc@(Case up n alts) = do
     -- check that neither alternative needs the newtype optimisation,
@@ -598,7 +599,7 @@ irSC vs sc@(Case up n alts) = do
         $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
 
     -- everything okay
-    LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+    LCase up (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
   where
     isDetaggable (ConCase cn _ _ _) = fgetState $ opt_detaggable . ist_optimisation cn
     isDetaggable  _                 = return False

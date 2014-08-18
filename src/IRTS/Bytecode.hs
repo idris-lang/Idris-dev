@@ -89,7 +89,7 @@ bc reg (SOp p vs) r = OP reg p (map getL vs) : clean r
     where getL (Loc x) = L x
 bc reg (SError str) r = [ERROR str]
 bc reg SNothing r = NULL reg : clean r
-bc reg (SCase (Loc l) alts) r
+bc reg (SCase up (Loc l) alts) r
    | isConst alts = constCase reg (L l) alts r
    | otherwise = conCase True reg (L l) alts r
 bc reg (SChkCase (Loc l) alts) r

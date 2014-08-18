@@ -2,6 +2,7 @@ module IRTS.Simplified where
 
 import IRTS.Defunctionalise
 import Idris.Core.TT
+import Idris.Core.CaseTree
 import Idris.Core.Typecheck
 import Data.Maybe
 import Control.Monad.State
@@ -16,7 +17,7 @@ data SExp = SV LVar
           | SLet LVar SExp SExp
           | SUpdate LVar SExp
           | SCon Int Name [LVar]
-          | SCase LVar [SAlt]
+          | SCase CaseType LVar [SAlt]
           | SChkCase LVar [SAlt]
           | SProj LVar Int
           | SConst Const
@@ -68,12 +69,12 @@ simplify tl (DProj t i) = do v <- sVar t
                                 (x, Nothing) -> return (SProj x i)
                                 (Glob x, Just e) ->
                                     return (SLet (Glob x) e (SProj (Glob x) i))
-simplify tl (DCase e alts) = do v <- sVar e
-                                alts' <- mapM (sAlt tl) alts
-                                case v of
-                                    (x, Nothing) -> return (SCase x alts')
-                                    (Glob x, Just e) ->
-                                        return (SLet (Glob x) e (SCase (Glob x) alts'))
+simplify tl (DCase up e alts) = do v <- sVar e
+                                   alts' <- mapM (sAlt tl) alts
+                                   case v of
+                                      (x, Nothing) -> return (SCase up x alts')
+                                      (Glob x, Just e) ->
+                                          return (SLet (Glob x) e (SCase up (Glob x) alts'))
 simplify tl (DChkCase e alts)
                            = do v <- sVar e
                                 alts' <- mapM (sAlt tl) alts
@@ -173,10 +174,10 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
     sc env (SProj e i)
        = do e' <- scVar env e
             return (SProj e' i)
-    sc env (SCase e alts)
+    sc env (SCase up e alts)
        = do e' <- scVar env e
             alts' <- mapM (scalt env) alts
-            return (SCase e' alts')
+            return (SCase up e' alts')
     sc env (SChkCase e alts)
        = do e' <- scVar env e
             alts' <- mapM (scalt env) alts
