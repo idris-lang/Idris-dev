@@ -19,7 +19,8 @@ data LExp = LV LVar
           | LLet Name LExp LExp -- name just for pretty printing
           | LLam [Name] LExp -- lambda, lifted out before compiling
           | LProj LExp Int -- projection
-          | LCon Int Name [LExp]
+          | LCon (Maybe LVar) -- Location to reallocate, if available
+                 Int Name [LExp]
           | LCase CaseType LExp [LAlt]
           | LConst Const
           | LForeign FLang FType String [(FType, LExp)]
@@ -169,8 +170,8 @@ lift env (LLam args e) = do e' <- lift (env ++ args) e
                             return (LApp False (LV (Glob fn)) (map (LV . Glob) usedArgs))
 lift env (LProj t i) = do t' <- lift env t
                           return (LProj t' i)
-lift env (LCon i n args) = do args' <- mapM (lift env) args
-                              return (LCon i n args')
+lift env (LCon loc i n args) = do args' <- mapM (lift env) args
+                                  return (LCon loc i n args')
 lift env (LCase up e alts) = do alts' <- mapM liftA alts
                                 e' <- lift env e
                                 return (LCase up e' alts')
@@ -192,6 +193,9 @@ lift env (LOp f args) = do args' <- mapM (lift env) args
 lift env (LError str) = return $ LError str
 lift env LNothing = return $ LNothing
 
+allocUnique :: LDecl -> LDecl
+allocUnique x = x
+
 -- Return variables in list which are used in the expression
 
 usedArg env n | n `elem` env = [n]
@@ -205,7 +209,7 @@ usedIn env (LLazyExp e) = usedIn env e
 usedIn env (LForce e) = usedIn env e
 usedIn env (LLet n v e) = usedIn env v ++ usedIn (env \\ [n]) e
 usedIn env (LLam ns e) = usedIn (env \\ ns) e
-usedIn env (LCon i n args) = concatMap (usedIn env) args
+usedIn env (LCon loc i n args) = concatMap (usedIn env) args
 usedIn env (LProj t i) = usedIn env t
 usedIn env (LCase up e alts) = usedIn env e ++ concatMap (usedInA env) alts
   where usedInA env (LConCase i n ns e) = usedIn env e
@@ -238,8 +242,10 @@ instance Show LExp where
 
      show' env ind (LProj t i) = show t ++ "!" ++ show i
 
-     show' env ind (LCon i n args)
-        = show n ++ "(" ++ showSep ", " (map (show' env ind) args) ++ ")"
+     show' env ind (LCon loc i n args)
+        = atloc loc ++ show n ++ "(" ++ showSep ", " (map (show' env ind) args) ++ ")"
+       where atloc Nothing = ""
+             atloc (Just l) = "@" ++ show (LV l) ++ ":"
 
      show' env ind (LCase up e alts)
         = "case" ++ update ++ show' env ind e ++ " of \n" ++ fmt alts

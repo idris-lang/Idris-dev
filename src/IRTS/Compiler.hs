@@ -75,7 +75,7 @@ compile codegen f tm
         logLvl 5 $ show defuns
         iLOG "Resolving variables for CG"
         -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
-        let checked = checkDefs defuns (toAlist defuns)
+        let checked = simplifyDefs defuns (toAlist defuns)
         outty <- outputTy
         dumpCases <- getDumpCases
         dumpDefun <- getDumpDefun
@@ -194,9 +194,14 @@ mkLDecl n (Function tm _)
     = declArgs [] True n <$> irTerm M.empty [] tm
 
 mkLDecl n (CaseOp ci _ _ _ pats cd)
-    = declArgs [] (case_inlinable ci) n <$> irTree args sc
+    = declArgs [] (case_inlinable ci || caseName n) n <$> irTree args sc
   where
     (args, sc) = cases_runtime cd
+
+    -- Always attempt to inline functions arising from 'case' expressions 
+    caseName (SN (CaseN _)) = True
+    caseName (NS n _) = caseName n
+    caseName _ = False
 
 mkLDecl n (TyDecl (DCon tag arity _) _) =
     LConstructor n tag . length <$> fgetState (cg_usedpos . ist_callgraph n)

@@ -18,7 +18,7 @@ data DExp = DV LVar
           | DLet Name DExp DExp -- name just for pretty printing
           | DUpdate Name DExp -- eval expression, then update var with it
           | DProj DExp Int
-          | DC Int Name [DExp]
+          | DC (Maybe LVar) Int Name [DExp]
           | DCase CaseType DExp [DAlt]
           | DChkCase DExp [DAlt] -- a case where the type is unknown (for EVAL/APPLY)
           | DConst Const
@@ -100,7 +100,7 @@ addApps defs (n, LFun _ _ args e)
     aa env (LForce (LLazyApp n args)) = aa env (LApp False (LV (Glob n)) args)
     aa env (LForce e) = liftM eEVAL (aa env e)
     aa env (LLet n v sc) = liftM2 (DLet n) (aa env v) (aa (n : env) sc)
-    aa env (LCon i n args) = liftM (DC i n) (mapM (aa env) args)
+    aa env (LCon loc i n args) = liftM (DC loc i n) (mapM (aa env) args)
     aa env (LProj t@(LV (Glob n)) i)
         | n `elem` env = do t' <- aa env t
                             return $ DProj (DUpdate n t') i
@@ -161,7 +161,7 @@ addApps defs (n, LFun _ _ args e)
        | otherwise = preEval xs t
 
     needsEval x (DApp _ _ args) = or (map (needsEval x) args)
-    needsEval x (DC _ _ args) = or (map (needsEval x) args)
+    needsEval x (DC _ _ _ args) = or (map (needsEval x) args)
     needsEval x (DCase up e alts) = needsEval x e || or (map nec alts)
       where nec (DConCase _ _ _ e) = needsEval x e
             nec (DConstCase _ e) = needsEval x e
@@ -263,7 +263,9 @@ instance Show DExp where
      show' env (DLet n v e) = "let " ++ show n ++ " = " ++ show' env v ++ " in " ++
                                show' (env ++ [show n]) e
      show' env (DUpdate n e) = "!update " ++ show n ++ "(" ++ show' env e ++ ")"
-     show' env (DC i n args) = show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
+     show' env (DC loc i n args) = atloc loc ++ show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
+       where atloc Nothing = ""
+             atloc (Just l) = "@" ++ show (LV l) ++ ":"
      show' env (DProj t i) = show t ++ "!" ++ show i
      show' env (DCase up e alts) = "case" ++ update ++ show' env e ++ " of {\n\t" ++
                                     showSep "\n\t| " (map (showAlt env) alts)

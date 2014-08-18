@@ -214,6 +214,11 @@ void idris_doneAlloc(VM* vm);
   SETTY(cl, CON); \
   cl->info.c.tag_arity = ((t) << 8) | (a);
 
+#define updateCon(cl, old, t, a) \
+  cl = old; \
+  SETTY(cl, CON); \
+  cl->info.c.tag_arity = ((t) << 8) | (a);
+
 void* vmThread(VM* callvm, func f, VAL arg);
 
 // Copy a structure to another vm's heap

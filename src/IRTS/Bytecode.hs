@@ -28,7 +28,7 @@ data Reg = RVal | L Int | T Int | Tmp
 data BC = ASSIGN Reg Reg
         | ASSIGNCONST Reg Const
         | UPDATE Reg Reg
-        | MKCON Reg Int [Reg]
+        | MKCON Reg (Maybe Reg) Int [Reg]
         | CASE Bool -- definitely a constructor, no need to check, if true
                Reg [(Int, [BC])] (Maybe [BC])
         | PROJECT Reg Int Int -- get all args from reg, put them from Int onwards
@@ -81,8 +81,11 @@ bc reg (SLet (Loc i) e sc) r = bc (L i) e False ++ bc reg sc r
 bc reg (SUpdate (Loc i) sc) r = bc reg sc False ++ [ASSIGN (L i) reg]
                                 ++ clean r
 -- bc reg (SUpdate x sc) r = bc reg sc r -- can't update, just do it
-bc reg (SCon i _ vs) r = MKCON reg i (map getL vs) : clean r
+bc reg (SCon atloc i _ vs) r 
+  = MKCON reg (getAllocLoc atloc) i (map getL vs) : clean r
     where getL (Loc x) = L x
+          getAllocLoc (Just (Loc x)) = Just (L x)
+          getAllocLoc _ = Nothing
 bc reg (SProj (Loc l) i) r = PROJECTINTO reg (L l) i : clean r
 bc reg (SConst i) r = ASSIGNCONST reg i : clean r
 bc reg (SOp p vs) r = OP reg p (map getL vs) : clean r

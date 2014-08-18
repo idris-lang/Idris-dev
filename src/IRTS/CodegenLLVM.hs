@@ -494,7 +494,7 @@ cgExpr (SUpdate (Loc level) expr) = do
   modify $ \s -> s { lexenv = replaceElt level val (lexenv s) }
   return val
 cgExpr (SUpdate x expr) = cgExpr expr
-cgExpr (SCon tag name args) = do
+cgExpr (SCon _ tag name args) = do
   argSlots <- mapM var args
   case sequence argSlots of
     Nothing -> return Nothing

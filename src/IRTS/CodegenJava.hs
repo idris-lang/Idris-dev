@@ -460,7 +460,7 @@ mkExp pp (SUpdate var newExp) =
   mkExp pp newExp
 
 -- Objects
-mkExp pp (SCon conId _ args) =
+mkExp pp (SCon _ conId _ args) =
   mkIdrisObject conId args >>= ppExp pp
 
 -- Case expressions
