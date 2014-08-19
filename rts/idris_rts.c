@@ -828,12 +828,16 @@ VAL copyTo(VM* vm, VAL x) {
     switch(GETTY(x)) {
     case CON:
         ar = CARITY(x);
-        allocCon(cl, vm, CTAG(x), ar, 1);
+        if (ar == 0 && CTAG(x) < 256) { // globally allocated
+            cl = x;
+        } else {
+            allocCon(cl, vm, CTAG(x), ar, 1);
 
-        argptr = (VAL*)(cl->info.c.args);
-        for(i = 0; i < ar; ++i) {
-            *argptr = copyTo(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
-            argptr++;
+            argptr = (VAL*)(cl->info.c.args);
+            for(i = 0; i < ar; ++i) {
+                *argptr = copyTo(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
+                argptr++;
+            }
         }
         break;
     case FLOAT:
@@ -962,6 +966,29 @@ VAL idris_recvMessage(VM* vm) {
     return msg;
 }
 #endif
+
+VAL* nullary_cons;
+
+void initNullaries() {
+    int i;
+    VAL cl;
+    nullary_cons = malloc(256 * sizeof(VAL));
+    for(i = 0; i < 256; ++i) {
+        cl = malloc(sizeof(Closure));
+        SETTY(cl, CON);
+        cl->info.c.tag_arity = i << 8;
+        nullary_cons[i] = cl;
+    }
+}
+
+void freeNullaries() {
+    int i;
+    for(i = 0; i < 256; ++i) {
+        free(nullary_cons[i]);
+    }
+    free(nullary_cons);
+}
+
 int __idris_argc;
 char **__idris_argv;
 

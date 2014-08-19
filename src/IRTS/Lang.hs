@@ -217,7 +217,7 @@ allocUnique defs (n, LFun opts fn args e)
           = findUp (LCon Nothing i n as)
     findUp (LV (Glob n))
        | Just (LConstructor _ i 0) <- lookupCtxtExact n defs
-          = findUp (LCon Nothing i n [])
+          = return $ LCon Nothing i n [] -- nullary cons are global, no need to update
     findUp (LApp t f as) = LApp t <$> findUp f <*> mapM findUp as
     findUp (LLazyApp n as) = LLazyApp n <$> mapM findUp as
     findUp (LLazyExp e) = LLazyExp <$> findUp e

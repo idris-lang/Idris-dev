@@ -153,6 +153,8 @@ bcc i (ASSIGNCONST l c)
     mkConst (B64 x) = "idris_b64const(vm, " ++ show x ++ "ULL)"
     mkConst _ = "MKINT(42424242)"
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
+bcc i (MKCON l loc tag []) | tag < 256
+    = indent i ++ creg l ++ " = NULL_CON(" ++ show tag ++ ");\n"
 bcc i (MKCON l loc tag args)
     = indent i ++ alloc loc tag ++
       indent i ++ setArgs 0 args ++ "\n" ++
