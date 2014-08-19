@@ -263,7 +263,7 @@ instance Show DExp where
      show' env (DLet n v e) = "let " ++ show n ++ " = " ++ show' env v ++ " in " ++
                                show' (env ++ [show n]) e
      show' env (DUpdate n e) = "!update " ++ show n ++ "(" ++ show' env e ++ ")"
-     show' env (DC loc i n args) = atloc loc ++ show n ++ ")" ++ showSep ", " (map (show' env) args) ++ ")"
+     show' env (DC loc i n args) = atloc loc ++ show n ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
        where atloc Nothing = ""
              atloc (Just l) = "@" ++ show (LV l) ++ ":"
      show' env (DProj t i) = show t ++ "!" ++ show i

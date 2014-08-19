@@ -633,6 +633,7 @@ Library
                 , IRTS.Java.Mangling
                 , IRTS.Java.Pom
                 , IRTS.Lang
+                , IRTS.LangOpts
                 , IRTS.Simplified
                 , IRTS.System
 

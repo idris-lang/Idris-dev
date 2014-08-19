@@ -4,8 +4,10 @@ module IRTS.Lang where
 
 import Control.Monad.State hiding (lift)
 import Control.Applicative hiding (Const)
+
 import Idris.Core.TT
 import Idris.Core.CaseTree
+
 import Data.List
 import Debug.Trace
 
@@ -200,98 +202,65 @@ lift env (LOp f args) = do args' <- mapM (lift env) args
 lift env (LError str) = return $ LError str
 lift env LNothing = return $ LNothing
 
-allocUnique :: LDecl -> LDecl
-allocUnique x = x
-
-inlineAll :: [(Name, LDecl)] -> [(Name, LDecl)]
-inlineAll lds = let defs = addAlist lds emptyContext in
-                    map (\ (n, def) -> (n, doInline defs def)) lds
-
-nextN :: State Int Name
-nextN = do i <- get
-           put (i + 1)
-           return $ sMN i "in"
-
--- Inline inside a declaration. Variables are still Name at this stage.
--- Need to preserve uniqueness of variable names in the resulting definition,
--- so invent a new name for every variable we encounter
-doInline :: LDefs -> LDecl -> LDecl
-doInline defs d@(LConstructor _ _ _) = d
-doInline defs (LFun opts topn args exp) 
-      = let res = evalState (inlineWith [topn] (map (\n -> (n, LV (Glob n))) args) exp) 0 in
-            LFun opts topn args res
+allocUnique :: LDefs -> (Name, LDecl) -> (Name, LDecl)
+allocUnique defs p@(n, LConstructor _ _ _) = p
+allocUnique defs (n, LFun opts fn args e)
+    = let e' = evalState (findUp e) [] in
+          (n, LFun opts fn args e')
   where
-    inlineWith :: [Name] -> [(Name, LExp)] -> LExp -> State Int LExp
-    inlineWith done env var@(LV (Glob n)) 
-                                     = case lookup n env of
-                                            Just t -> return t
-                                            Nothing -> return var
-    inlineWith done env (LLazyApp n es) = LLazyApp n <$> (mapM (inlineWith done env) es)
-    inlineWith done env (LForce e) = LForce <$> inlineWith done env e
-    inlineWith done env (LLazyExp e) = LLazyExp <$> inlineWith done env e
-    -- Extend the environment for Let and Lam so that bound names aren't
-    -- expanded with any top level argument definitions they shadow
-    inlineWith done env (LLet n val sc) 
-       = do n' <- nextN
-            LLet n' <$> inlineWith done env val <*>
-                        inlineWith done ((n, LV (Glob n')) : env) sc
-    inlineWith done env (LLam args sc)
-       = do ns' <- mapM (\n -> do n' <- nextN
-                                  return (n, n')) args
-            LLam (map snd ns') <$>
-                 inlineWith done (map (\ (n,n') -> (n, LV (Glob n'))) ns' ++ env) sc
-    inlineWith done env (LProj exp i) = LProj <$> inlineWith done env exp <*> return i
-    inlineWith done env (LCon loc i n es)
-       = LCon loc i n <$> mapM (inlineWith done env) es
-    inlineWith done env (LCase ty e alts) 
-       = LCase ty <$> inlineWith done env e <*> mapM (inlineWithAlt done env) alts
-    inlineWith done env (LOp f es) = LOp f <$> mapM (inlineWith done env) es
-    -- the interesting case!
-    inlineWith done env (LApp t (LV (Glob n)) es)
-       | n `notElem` done,
-         [LFun opts _ args body] <- lookupCtxt n defs,
-         Inline `elem` opts,
-         length es == length args
-           = do es' <- mapM (inlineWith done env) es
-                inlineWith (n : done) (zip args es' ++ env) body
-    inlineWith done env (LApp t f es)
-       = LApp t <$> inlineWith done env f <*> mapM (inlineWith done env) es
-    inlineWith done env (LForeign l t s args)
-       = LForeign l t s <$> mapM (\(t, e) -> do e' <- inlineWith done env e
-                                                return (t, e')) args
-    inlineWith done env t = return t
+    -- Keep track of 'updatable' names in the state, i.e. names whose heap
+    -- entry may be reused, along with the arity which was there
+    findUp :: LExp -> State [(Name, Int)] LExp
+    findUp (LApp t (LV (Glob n)) as) 
+       | Just (LConstructor _ i ar) <- lookupCtxtExact n defs,
+         ar == length as
+          = findUp (LCon Nothing i n as)
+    findUp (LV (Glob n))
+       | Just (LConstructor _ i 0) <- lookupCtxtExact n defs
+          = findUp (LCon Nothing i n [])
+    findUp (LApp t f as) = LApp t <$> findUp f <*> mapM findUp as
+    findUp (LLazyApp n as) = LLazyApp n <$> mapM findUp as
+    findUp (LLazyExp e) = LLazyExp <$> findUp e
+    findUp (LForce e) = LForce <$> findUp e
+    -- use assumption that names are unique!
+    findUp (LLet n val sc) = LLet n <$> findUp val <*> findUp sc
+    findUp (LLam ns sc) = LLam ns <$> findUp sc
+    findUp (LProj e i) = LProj <$> findUp e <*> return i
+    findUp (LCon (Just l) i n es) = LCon (Just l) i n <$> mapM findUp es
+    findUp (LCon Nothing i n es)
+           = do avail <- get
+                v <- findVar [] avail (length es)
+                LCon v i n <$> mapM findUp es
+    findUp (LForeign l t s es)
+           = LForeign l t s <$> mapM (\ (t, e) -> do e' <- findUp e
+                                                     return (t, e')) es
+    findUp (LOp o es) = LOp o <$> mapM findUp es
+    findUp (LCase Updatable e@(LV (Glob n)) as)
+           = LCase Updatable e <$> mapM (doUpAlt n) as
+    findUp (LCase t e as) 
+           = LCase t <$> findUp e <*> mapM findUpAlt as
+    findUp t = return t
 
-    inlineWithAlt done env (LConCase i n es rhs)
-       = do ns' <- mapM (\n -> do n' <- nextN
-                                  return (n, n')) es
-            LConCase i n (map snd ns') <$> 
-              inlineWith done (map (\ (n,n') -> (n, LV (Glob n'))) ns' ++ env) rhs
-    inlineWithAlt done env (LConstCase c e) = LConstCase c <$> inlineWith done env e
-    inlineWithAlt done env (LDefaultCase e) = LDefaultCase <$> inlineWith done env e
+    findUpAlt (LConCase i t args rhs) = do avail <- get
+                                           rhs' <- findUp rhs
+                                           put avail
+                                           return $ LConCase i t args rhs'
+    findUpAlt (LConstCase i rhs) = LConstCase i <$> findUp rhs
+    findUpAlt (LDefaultCase rhs) = LDefaultCase <$> findUp rhs
 
--- substLExp :: [(Name, LExp)] -> LExp -> LExp
--- substLExp env (LV (Glob n)) | Just t <- lookup n env = t
--- substLExp env (LApp t f as) = LApp t (substLExp env f) (map (substLExp env) as)
--- substLExp env (LLazyApp n as) = LLazyApp n (map (substLExp env) as)
--- substLExp env (LLazyExp e) = LLazyExp (substLExp env e)
--- substLExp env (LForce e) = LForce (substLExp env e)
--- substLExp env (LLet n v sc) = LLet n (substLExp env v)
---                                      (substLExp ((n, LV (Glob n)) : env) sc)
--- substLExp env (LLam args sc) 
---     = LLam args (substLExp (map (\n -> (n, LV (Glob n))) args ++ env) sc)
--- substLExp env (LProj e i) = LProj (substLExp env e) i
--- substLExp env (LCon up i n es) = LCon up i n (map (substLExp env) es)
--- substLExp env (LCase ty e alts) = LCase ty (substLExp env e) (map substC alts)
---   where
---     substC (LConCase i n args e) 
---        = LConCase i n args 
---              (substLExp (map (\n -> (n, LV (Glob n))) args ++ env) e)
---     substC (LConstCase i e) = LConstCase i (substLExp env e)
---     substC (LDefaultCase e) = LDefaultCase (substLExp env e)
--- substLExp env (LForeign l t s args)
---     = LForeign l t s (map (\ (ty, e) -> (ty, substLExp env e)) args)
--- substLExp env (LOp fn es) = LOp fn (map (substLExp env) es)
--- substLExp env t = t
+    doUpAlt n (LConCase i t args rhs) 
+           = do avail <- get
+                put ((n, length args) : avail)
+                rhs' <- findUp rhs
+                put avail
+                return $ LConCase i t args rhs'
+    doUpAlt n (LConstCase i rhs) = LConstCase i <$> findUp rhs
+    doUpAlt n (LDefaultCase rhs) = LDefaultCase <$> findUp rhs
+
+    findVar _ [] i = return Nothing
+    findVar acc ((n, l) : ns) i | l == i = do put (reverse acc ++ ns)
+                                              return (Just (Glob n))
+    findVar acc (n : ns) i = findVar (n : acc) ns i
 
 
 -- Return variables in list which are used in the expression

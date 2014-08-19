@@ -3,6 +3,7 @@
 module IRTS.Compiler(compile, generate) where
 
 import IRTS.Lang
+import IRTS.LangOpts
 import IRTS.Defunctionalise
 import IRTS.Simplified
 import IRTS.CodegenCommon
@@ -67,8 +68,10 @@ compile codegen f tm
         -- iputStrLn $ showSep "\n" (map show defs)
         -- Inlined top level LDecl made here
         let defsInlined = inlineAll defs
+        let defsUniq = map (allocUnique (addAlist defsInlined emptyContext)) 
+                           defsInlined
 
-        let (nexttag, tagged) = addTags 65536 (liftAll defsInlined)
+        let (nexttag, tagged) = addTags 65536 (liftAll defsUniq)
         let ctxtIn = addAlist tagged emptyContext
 
         iLOG "Defunctionalising"
