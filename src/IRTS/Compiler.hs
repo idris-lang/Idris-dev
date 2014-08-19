@@ -204,6 +204,7 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
 
     -- Always attempt to inline functions arising from 'case' expressions 
     caseName (SN (CaseN _)) = True
+    caseName (SN (WithN _ _)) = True
     caseName (NS n _) = caseName n
     caseName _ = False
 

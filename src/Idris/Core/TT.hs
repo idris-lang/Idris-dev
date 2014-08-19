@@ -305,6 +305,7 @@ deriving instance NFData Name
 !-}
 
 data SpecialName = WhereN Int Name Name
+                 | WithN Int Name
                  | InstanceN Name [T.Text]
                  | ParentN Name T.Text
                  | MethodN Name
@@ -349,6 +350,7 @@ instance Show Name where
 
 instance Show SpecialName where
     show (WhereN i p c) = show p ++ ", " ++ show c
+    show (WithN i n) = "with block in " ++ show n
     show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " instance of " ++ show cl
     show (MethodN m) = "method " ++ show m
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
@@ -364,6 +366,7 @@ showCG (MN _ u) | u == txt "underscore" = "_"
 showCG (MN i s) = "{" ++ T.unpack s ++ show i ++ "}"
 showCG (SN s) = showCG' s
   where showCG' (WhereN i p c) = showCG p ++ ":" ++ showCG c ++ ":" ++ show i
+        showCG' (WithN i n) = "_" ++ showCG n ++ "_with_" ++ show i
         showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" (map T.unpack inst)
         showCG' (MethodN m) = '!':showCG m
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c

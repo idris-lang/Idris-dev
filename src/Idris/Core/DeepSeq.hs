@@ -14,6 +14,7 @@ instance NFData Name where
 
 instance NFData SpecialName where
         rnf (WhereN x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (WithN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (InstanceN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (ParentN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (MethodN x1) = rnf x1 `seq` ()
