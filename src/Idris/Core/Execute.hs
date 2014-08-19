@@ -27,6 +27,7 @@ import Control.Monad hiding (forM)
 import Data.Maybe
 import Data.Bits
 import Data.Traversable (forM)
+import Data.Time.Clock.POSIX (getPOSIXTime)
 import qualified Data.Map as M
 
 #ifdef IDRIS_FFI
@@ -252,6 +253,10 @@ execApp env ctxt (EP _ fp _) (_:fn:_:handle:_:rest)
                       "The argument to idris_readStr should be a handle, but it was " ++
                       show handle ++
                       ". Are all cases covered?"
+execApp  env ctxt (EP _ fp _) (_:fn:rest)
+    | fp == mkfprim,
+      Just (FFun "idris_time" _ _) <- foreignFromTT fn
+           = do execIO $ fmap (ioWrap . EConstant . I . round) getPOSIXTime
 execApp env ctxt (EP _ fp _) (_:fn:fileStr:modeStr:rest)
     | fp == mkfprim,
       Just (FFun "fileOpen" _ _) <- foreignFromTT fn
