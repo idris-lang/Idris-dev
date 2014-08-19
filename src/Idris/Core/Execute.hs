@@ -265,7 +265,9 @@ execApp env ctxt (EP _ fp _) (_:fn:fileStr:modeStr:rest)
                                              "r+" -> Right ReadWriteMode
                                              _    -> Left ("Invalid mode for " ++ f ++ ": " ++ mode)
                                    case fmap (openFile f) m of
-                                     Right h -> do h' <- h; return $ Right (ioWrap (EHandle h'), tail rest)
+                                     Right h -> do h' <- h
+                                                   hSetBinaryMode h' True
+                                                   return $ Right (ioWrap (EHandle h'), tail rest)
                                      Left err -> return $ Left err)
                                (\e -> let _ = ( e::SomeException)
                                       in return $ Right (ioWrap (EPtr nullPtr), tail rest))
