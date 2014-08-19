@@ -31,6 +31,8 @@ import Numeric (showIntAtBase)
 import qualified Data.Text as T
 import Data.List
 import Data.Maybe (listToMaybe)
+import Data.Foldable (Foldable)
+import Data.Traversable (Traversable)
 import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
 import qualified Data.Binary as B
@@ -638,7 +640,7 @@ data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}
               | PVar  { binderTy  :: !b }
                 -- ^ A pattern variable
               | PVTy  { binderTy  :: !b }
-  deriving (Show, Eq, Ord, Functor)
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 {-!
 deriving instance Binary Binder
 deriving instance NFData Binder

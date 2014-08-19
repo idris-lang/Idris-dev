@@ -23,9 +23,10 @@ import Control.Exception
 import Control.Monad.Trans
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Error
-import Control.Monad
+import Control.Monad hiding (forM)
 import Data.Maybe
 import Data.Bits
+import Data.Traversable (forM)
 import qualified Data.Map as M
 
 #ifdef IDRIS_FFI
@@ -175,9 +176,9 @@ doExec env ctxt v@(V i) | i < length env = return (snd (env !! i))
 doExec env ctxt (Bind n (Let t v) body) = do v' <- doExec env ctxt v
                                              doExec ((n, v'):env) ctxt body
 doExec env ctxt (Bind n (NLet t v) body) = trace "NLet" $ undefined
-doExec env ctxt tm@(Bind n b body) = return $
-                                     EBind n (fmap (\_->EErased) b)
-                                           (\arg -> doExec ((n, arg):env) ctxt body)
+doExec env ctxt tm@(Bind n b body) = do b' <- forM b (doExec env ctxt)
+                                        return $
+                                          EBind n b' (\arg -> doExec ((n, arg):env) ctxt body)
 doExec env ctxt a@(App _ _) =
   do let (f, args) = unApply a
      f' <- doExec env ctxt f
