@@ -445,7 +445,15 @@ execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap =
          Nothing -> return Nothing
 
 chooseAlt :: ExecVal -> [CaseAlt] -> Maybe (SC, [(Name, ExecVal)])
-chooseAlt _ (DefaultCase sc : alts) = Just (sc, [])
+chooseAlt tm (DefaultCase sc : alts) | ok tm = Just (sc, [])
+                                     | otherwise = Nothing
+  where -- Default cases should only work on applications of constructors or on constants
+        ok (EApp f x) = ok f
+        ok (EP Bound _ _) = False
+        ok (EP Ref _ _) = False
+        ok _ = True
+
+
 chooseAlt (EConstant c) (ConstCase c' sc : alts) | c == c' = Just (sc, [])
 chooseAlt tm (ConCase n i ns sc : alts) | ((EP _ cn _), args) <- unApplyV tm
                                         , cn == n = Just (sc, zip ns args)
