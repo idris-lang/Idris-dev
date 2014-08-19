@@ -65,8 +65,12 @@ compile codegen f tm
         defsIn <- mkDecls tm reachableNames
         let defs = defsIn ++ [(sMN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
-        let (nexttag, tagged) = addTags 65536 (liftAll defs)
+        -- Inlined top level LDecl made here
+        let defsInlined = inlineAll defs
+
+        let (nexttag, tagged) = addTags 65536 (liftAll defsInlined)
         let ctxtIn = addAlist tagged emptyContext
+
         iLOG "Defunctionalising"
         let defuns_in = defunctionalise nexttag ctxtIn
         logLvl 5 $ show defuns_in
