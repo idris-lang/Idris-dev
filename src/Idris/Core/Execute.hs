@@ -164,7 +164,8 @@ doExec env ctxt p@(P Ref n ty) =
              doExec env ctxt tm
          [CaseOp _ _ _ _ _ (CaseDefs _ (ns, sc) _ _)] -> return (EP Ref n EErased)
          [] -> execFail . Msg $ "Could not find " ++ show n ++ " in definitions."
-         thing -> trace (take 200 $ "got to " ++ show thing ++ " lookup up " ++ show n) $ undefined
+         other | length other > 1 -> execFail . Msg $ "Multiple definitions found for " ++ show n
+               | otherwise        -> execFail . Msg . take 500 $ "got to " ++ show other ++ " lookup up " ++ show n
 doExec env ctxt p@(P Bound n ty) =
   case lookup n env of
     Nothing -> execFail . Msg $ "not found"
