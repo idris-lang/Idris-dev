@@ -168,6 +168,10 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
           completeArg ColourArg = completeColour (prev, next)
           completeArg NoArg = noCompletion (prev, next)
           completeArg ConsoleWidthArg = completeConsoleWidth (prev, next)
+          completeArg DeclArg = completeExpr [] (prev, next)
+          completeArg (ManyArgs a) = completeArg a
+          completeArg (OptionalArg a) = completeArg a
+          completeArg (SeqArgs a b) = completeArg a
           completeCmdName = return $ ("", completeWith commands cmd)
 
 -- | Complete REPL commands and defined identifiers
