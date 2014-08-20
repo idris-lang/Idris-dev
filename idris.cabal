@@ -639,10 +639,10 @@ Library
                 , Pkg.Package
                 , Util.DynamicLinker
                 , Util.ScreenSize
+                , Util.System
 
   Other-modules:
                   Util.Pretty
-                , Util.System
                 , Util.Net
                 , Util.Zlib
 
@@ -761,3 +761,30 @@ Executable idris-c
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
+Executable idris-llvm
+  Main-is:        Main.hs
+  hs-source-dirs: codegen/idris-llvm
+                  codegen/idris-llvm/src
+
+  Build-depends:  idris
+                , base
+                , containers
+                , directory
+                , filepath
+                , haskeline >= 0.7
+                , mtl
+                , process
+                , transformers
+                , vector
+                , llvm-general == 3.3.8.*
+                , llvm-general-pure == 3.3.8.*
+ 
+  other-modules: IRTS.CodegenLLVM
+  cpp-options:   -DIDRIS_LLVM
+               
+  ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+
+--  Extra-source-files:
+--               llvm/*.c
+--               llvm/Makefile
