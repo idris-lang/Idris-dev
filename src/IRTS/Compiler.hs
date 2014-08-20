@@ -178,6 +178,7 @@ showCaseTrees = showSep "\n\n" . map showCT . sortBy (comparing defnRank)
     snRank (CaseN n) = "5" ++ nameRank n
     snRank (ElimN n) = "6" ++ nameRank n
     snRank (InstanceCtorN n) = "7" ++ nameRank n
+    snRank (WithN i n) = "8" ++ nameRank n ++ show i
 
 isCon (TyDecl _ _) = True
 isCon _ = False
