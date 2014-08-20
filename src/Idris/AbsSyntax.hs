@@ -680,36 +680,6 @@ setIdeSlave True  h = do i <- getIState
                          putIState $ i { idris_outputmode = (IdeSlave 0 h), idris_colourRepl = False }
 setIdeSlave False _ = return ()
 
-setTargetTriple :: String -> Idris ()
-setTargetTriple t = do i <- getIState
-                       let opts = idris_options i
-                           opt' = opts { opt_triple = t }
-                       putIState $ i { idris_options = opt' }
-
-targetTriple :: Idris String
-targetTriple = do i <- getIState
-                  return (opt_triple (idris_options i))
-
-setTargetCPU :: String -> Idris ()
-setTargetCPU t = do i <- getIState
-                    let opts = idris_options i
-                        opt' = opts { opt_cpu = t }
-                    putIState $ i { idris_options = opt' }
-
-targetCPU :: Idris String
-targetCPU = do i <- getIState
-               return (opt_cpu (idris_options i))
-
-setOptLevel :: Word -> Idris ()
-setOptLevel t = do i <- getIState
-                   let opts = idris_options i
-                       opt' = opts { opt_optLevel = t }
-                   putIState $ i { idris_options = opt' }
-
-optLevel :: Idris Word
-optLevel = do i <- getIState
-              return (opt_optLevel (idris_options i))
-
 verbose :: Idris Bool
 verbose = do i <- getIState
              return (opt_verbose (idris_options i))
