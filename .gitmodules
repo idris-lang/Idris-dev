@@ -1,3 +1,0 @@
-[submodule "codegen/idris-llvm"]
-	path = codegen/idris-llvm
-	url = git://github.com/markuspf/idris-llvm
