@@ -691,6 +691,8 @@ Library
                 , zlib
                 , optparse-applicative >= 0.8
   Extensions:     MultiParamTypeClasses
+                , DeriveFoldable
+                , DeriveTraversable
                 , FunctionalDependencies
                 , FlexibleContexts
                 , FlexibleInstances

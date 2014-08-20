@@ -23,9 +23,11 @@ import Control.Exception
 import Control.Monad.Trans
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Error
-import Control.Monad
+import Control.Monad hiding (forM)
 import Data.Maybe
 import Data.Bits
+import Data.Traversable (forM)
+import Data.Time.Clock.POSIX (getPOSIXTime)
 import qualified Data.Map as M
 
 #ifdef IDRIS_FFI
@@ -163,7 +165,8 @@ doExec env ctxt p@(P Ref n ty) =
              doExec env ctxt tm
          [CaseOp _ _ _ _ _ (CaseDefs _ (ns, sc) _ _)] -> return (EP Ref n EErased)
          [] -> execFail . Msg $ "Could not find " ++ show n ++ " in definitions."
-         thing -> trace (take 200 $ "got to " ++ show thing ++ " lookup up " ++ show n) $ undefined
+         other | length other > 1 -> execFail . Msg $ "Multiple definitions found for " ++ show n
+               | otherwise        -> execFail . Msg . take 500 $ "got to " ++ show other ++ " lookup up " ++ show n
 doExec env ctxt p@(P Bound n ty) =
   case lookup n env of
     Nothing -> execFail . Msg $ "not found"
@@ -175,9 +178,9 @@ doExec env ctxt v@(V i) | i < length env = return (snd (env !! i))
 doExec env ctxt (Bind n (Let t v) body) = do v' <- doExec env ctxt v
                                              doExec ((n, v'):env) ctxt body
 doExec env ctxt (Bind n (NLet t v) body) = trace "NLet" $ undefined
-doExec env ctxt tm@(Bind n b body) = return $
-                                     EBind n (fmap (\_->EErased) b)
-                                           (\arg -> doExec ((n, arg):env) ctxt body)
+doExec env ctxt tm@(Bind n b body) = do b' <- forM b (doExec env ctxt)
+                                        return $
+                                          EBind n b' (\arg -> doExec ((n, arg):env) ctxt body)
 doExec env ctxt a@(App _ _) =
   do let (f, args) = unApply a
      f' <- doExec env ctxt f
@@ -250,6 +253,10 @@ execApp env ctxt (EP _ fp _) (_:fn:_:handle:_:rest)
                       "The argument to idris_readStr should be a handle, but it was " ++
                       show handle ++
                       ". Are all cases covered?"
+execApp  env ctxt (EP _ fp _) (_:fn:rest)
+    | fp == mkfprim,
+      Just (FFun "idris_time" _ _) <- foreignFromTT fn
+           = do execIO $ fmap (ioWrap . EConstant . I . round) getPOSIXTime
 execApp env ctxt (EP _ fp _) (_:fn:fileStr:modeStr:rest)
     | fp == mkfprim,
       Just (FFun "fileOpen" _ _) <- foreignFromTT fn
@@ -265,7 +272,9 @@ execApp env ctxt (EP _ fp _) (_:fn:fileStr:modeStr:rest)
                                              "r+" -> Right ReadWriteMode
                                              _    -> Left ("Invalid mode for " ++ f ++ ": " ++ mode)
                                    case fmap (openFile f) m of
-                                     Right h -> do h' <- h; return $ Right (ioWrap (EHandle h'), tail rest)
+                                     Right h -> do h' <- h
+                                                   hSetBinaryMode h' True
+                                                   return $ Right (ioWrap (EHandle h'), tail rest)
                                      Left err -> return $ Left err)
                                (\e -> let _ = ( e::SomeException)
                                       in return $ Right (ioWrap (EPtr nullPtr), tail rest))
@@ -442,7 +451,15 @@ execCase' env ctxt amap (Case sh n alts) | Just tm <- lookup n amap =
          Nothing -> return Nothing
 
 chooseAlt :: ExecVal -> [CaseAlt] -> Maybe (SC, [(Name, ExecVal)])
-chooseAlt _ (DefaultCase sc : alts) = Just (sc, [])
+chooseAlt tm (DefaultCase sc : alts) | ok tm = Just (sc, [])
+                                     | otherwise = Nothing
+  where -- Default cases should only work on applications of constructors or on constants
+        ok (EApp f x) = ok f
+        ok (EP Bound _ _) = False
+        ok (EP Ref _ _) = False
+        ok _ = True
+
+
 chooseAlt (EConstant c) (ConstCase c' sc : alts) | c == c' = Just (sc, [])
 chooseAlt tm (ConCase n i ns sc : alts) | ((EP _ cn _), args) <- unApplyV tm
                                         , cn == n = Just (sc, zip ns args)
