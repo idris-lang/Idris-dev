@@ -24,6 +24,7 @@ nextN = do i <- get
 -- Need to preserve uniqueness of variable names in the resulting definition,
 -- so invent a new name for every variable we encounter
 doInline :: LDefs -> LDecl -> LDecl
+doInline defs d = d
 doInline defs d@(LConstructor _ _ _) = d
 doInline defs (LFun opts topn args exp) 
       = let res = evalState (inlineWith [topn] (map (\n -> (n, LV (Glob n))) args) exp) 0 in
