@@ -31,7 +31,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 78
+ibcVersion = 79
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -183,8 +183,8 @@ ibc i (IBCDef n) f
        = do c' <- updateSC c; r' <- updateSC r
             return (CaseDefs (ts, t) (cs, c') (is, i) (rs, r'))
 
-    updateSC (Case n alts) = do alts' <- mapM updateAlt alts
-                                return (Case n alts')
+    updateSC (Case up n alts) = do alts' <- mapM updateAlt alts
+                                   return (Case up n alts')
     updateSC (ProjCase t alts) = do t' <- update t
                                     alts' <- mapM updateAlt alts
                                     return (ProjCase t' alts')
@@ -631,12 +631,24 @@ instance Binary CGInfo where
                x4 <- get
                x5 <- get
                return (CGInfo x1 x2 [] x4 x5)
+
+instance Binary CaseType where
+        put x = case x of
+                     Updatable -> putWord8 0
+                     Shared -> putWord8 1
+        get = do i <- getWord8
+                 case i of
+                     0 -> return Updatable
+                     1 -> return Shared
+                     _ -> error "Corrupted binary data for CaseType"
+
 instance Binary SC where
         put x
           = case x of
-                Case x1 x2 -> do putWord8 0
-                                 put x1
-                                 put x2
+                Case x1 x2 x3 -> do putWord8 0
+                                    put x1
+                                    put x2
+                                    put x3
                 ProjCase x1 x2 -> do putWord8 1
                                      put x1
                                      put x2
@@ -650,7 +662,8 @@ instance Binary SC where
                case i of
                    0 -> do x1 <- get
                            x2 <- get
-                           return (Case x1 x2)
+                           x3 <- get
+                           return (Case x1 x2 x3)
                    1 -> do x1 <- get
                            x2 <- get
                            return (ProjCase x1 x2)
@@ -1486,6 +1499,8 @@ instance Binary PTerm where
                 PDisamb x1 x2 -> do putWord8 37
                                     put x1
                                     put x2
+                PUniverse x1 -> do putWord8 38
+                                   put x1
 
         get
           = do i <- getWord8
@@ -1602,6 +1617,8 @@ instance Binary PTerm where
                    37 -> do x1 <- get
                             x2 <- get
                             return (PDisamb x1 x2)
+                   38 -> do x1 <- get
+                            return (PUniverse x1)
                    _ -> error "Corrupted binary data for PTerm"
 
 instance (Binary t) => Binary (PTactic' t) where

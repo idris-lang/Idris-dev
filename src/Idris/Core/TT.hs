@@ -139,6 +139,8 @@ data Err' t
           | CantResolveAlts [Name]
           | IncompleteTerm t
           | UniverseError
+          | UniqueError Name
+          | UniqueKindError Name
           | ProgramLineComment
           | Inaccessible Name
           | NonCollapsiblePostulate Name
@@ -305,6 +307,7 @@ deriving instance NFData Name
 !-}
 
 data SpecialName = WhereN Int Name Name
+                 | WithN Int Name
                  | InstanceN Name [T.Text]
                  | ParentN Name T.Text
                  | MethodN Name
@@ -349,6 +352,7 @@ instance Show Name where
 
 instance Show SpecialName where
     show (WhereN i p c) = show p ++ ", " ++ show c
+    show (WithN i n) = "with block in " ++ show n
     show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " instance of " ++ show cl
     show (MethodN m) = "method " ++ show m
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
@@ -364,6 +368,7 @@ showCG (MN _ u) | u == txt "underscore" = "_"
 showCG (MN i s) = "{" ++ T.unpack s ++ show i ++ "}"
 showCG (SN s) = showCG' s
   where showCG' (WhereN i p c) = showCG p ++ ":" ++ showCG c ++ ":" ++ show i
+        showCG' (WithN i n) = "_" ++ showCG n ++ "_with_" ++ show i
         showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" (map T.unpack inst)
         showCG' (MethodN m) = '!':showCG m
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
@@ -594,10 +599,18 @@ constDocs (B32V v)                         = "A vector of thirty-two-bit values"
 constDocs (B64V v)                         = "A vector of sixty-four-bit values"
 constDocs prim                             = "Undocumented"
 
+data Universe = UniqueType | AllTypes
+  deriving (Eq, Ord)
+
+instance Show Universe where
+    show UniqueType = "UniqueType"
+    show AllTypes = "Type*"
+
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
          | RApp Raw Raw
          | RType
+         | RUType Universe
          | RForce Raw
          | RConstant Const
   deriving (Show, Eq)
@@ -607,6 +620,7 @@ instance Sized Raw where
   size (RBind name bind right) = 1 + size bind + size right
   size (RApp left right) = 1 + size left + size right
   size RType = 1
+  size (RUType _) = 1
   size (RForce raw) = 1 + size raw
   size (RConstant const) = size const
 
@@ -717,7 +731,7 @@ type UCs = (Int, [UConstraint])
 
 data NameType = Bound
               | Ref
-              | DCon {nt_tag :: Int, nt_arity :: Int} -- ^ Data constructor
+              | DCon {nt_tag :: Int, nt_arity :: Int, nt_unique :: Bool} -- ^ Data constructor
               | TCon {nt_tag :: Int, nt_arity :: Int} -- ^ Type constructor
   deriving (Show, Ord)
 {-!
@@ -734,7 +748,7 @@ instance Pretty NameType OutputAnnotation where
 instance Eq NameType where
     Bound    == Bound    = True
     Ref      == Ref      = True
-    DCon _ a == DCon _ b = (a == b) -- ignore tag
+    DCon _ a _ == DCon _ b _ = (a == b) -- ignore tag
     TCon _ a == TCon _ b = (a == b) -- ignore tag
     _        == _        = False
 
@@ -753,6 +767,7 @@ data TT n = P NameType n (TT n) -- ^ named references with type
           | Erased -- ^ an erased term
           | Impossible -- ^ special case for totality checking
           | TType UExp -- ^ the type of types at some level
+          | UType Universe -- ^ Uniqueness type universe (disjoint from TType)
   deriving (Ord, Functor)
 {-!
 deriving instance Binary TT
@@ -802,6 +817,7 @@ type EnvTT n = [(n, Binder (TT n))]
 data Datatype n = Data { d_typename :: n,
                          d_typetag  :: Int,
                          d_type     :: (TT n),
+                         d_unique   :: Bool,
                          d_cons     :: [(n, TT n)] }
   deriving (Show, Functor, Eq)
 
@@ -823,7 +839,7 @@ instance Eq n => Eq (TT n) where
 -- constant, the type Type, pi-binding, or an application of an injective
 -- term.
 isInjective :: TT n -> Bool
-isInjective (P (DCon _ _) _ _) = True
+isInjective (P (DCon _ _ _) _ _) = True
 isInjective (P (TCon _ _) _ _) = True
 isInjective (Constant _)       = True
 isInjective (TType x)            = True
@@ -1054,18 +1070,18 @@ unList tm = case unApply tm of
 -- with the corresponding name. It is an error if there are free de
 -- Bruijn indices.
 forget :: TT Name -> Raw
-forget tm = fe [] tm
-  where
-    fe env (P _ n _) = Var n
-    fe env (V i)     = Var (env !! i)
-    fe env (Bind n b sc) = let n' = uniqueName n env in
-                               RBind n' (fmap (fe env) b)
-                                        (fe (n':env) sc)
-    fe env (App f a) = RApp (fe env f) (fe env a)
-    fe env (Constant c)
-                     = RConstant c
-    fe env (TType i)   = RType
-    fe env Erased    = RConstant Forgot
+forget tm = forgetEnv [] tm
+    
+forgetEnv env (P _ n _) = Var n
+forgetEnv env (V i)     = Var (env !! i)
+forgetEnv env (Bind n b sc) = let n' = uniqueName n env in
+                                  RBind n' (fmap (forgetEnv env) b)
+                                           (forgetEnv (n':env) sc)
+forgetEnv env (App f a) = RApp (forgetEnv env f) (forgetEnv env a)
+forgetEnv env (Constant c) = RConstant c
+forgetEnv env (TType i) = RType
+forgetEnv env (UType u) = RUType u
+forgetEnv env Erased    = RConstant Forgot
 
 -- | Introduce a 'Bind' into the given term for each element of the
 -- given list of (name, binder) pairs.
@@ -1246,6 +1262,7 @@ showEnv' env t dbg = se 10 env t where
     se p env Erased = "[__]"
     se p env Impossible = "[impossible]"
     se p env (TType i) = "Type " ++ show i
+    se p env (UType u) = show u
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t

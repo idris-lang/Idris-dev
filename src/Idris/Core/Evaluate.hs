@@ -11,7 +11,8 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
-                Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions) where
+                Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
+                isUniverse) where
 
 import Debug.Trace
 import Control.Applicative hiding (Const)
@@ -47,6 +48,7 @@ data Value = VP NameType Name Value
            | VBLet Int Name Value Value Value
            | VApp Value Value
            | VType UExp
+           | VUType Universe
            | VErased
            | VImpossible
            | VConstant Const
@@ -290,7 +292,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 t' <- ev ntimes stk top env t
 --                 tfull' <- reapply ntimes stk top env t' []
                 return (doProj t' (getValArgs t'))
-       where doProj t' (VP (DCon _ _) _ _, args) 
+       where doProj t' (VP (DCon _ _ _) _ _, args) 
                   | i >= 0 && i < length args = args!!i
              doProj t' _ = VProj t' i
 
@@ -298,6 +300,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env Erased    = return VErased
     ev ntimes stk top env Impossible  = return VImpossible
     ev ntimes stk top env (TType i)   = return $ VType i
+    ev ntimes stk top env (UType u)   = return $ VUType u
 
     evApply ntimes stk top env args (VApp f a)
           = evApply ntimes stk top env (a:args) f
@@ -393,7 +396,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     evTree ntimes stk top env amap (ProjCase t alts)
         = do t' <- ev ntimes stk top env t 
              doCase ntimes stk top env amap t' alts
-    evTree ntimes stk top env amap (Case n alts)
+    evTree ntimes stk top env amap (Case _ n alts)
         = case lookup n amap of
             Just v -> doCase ntimes stk top env amap v alts
             _ -> return Nothing
@@ -409,7 +412,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                  _ -> return Nothing
 
     conHeaded tm@(App _ _)
-        | (P (DCon _ _) _ _, args) <- unApply tm = True
+        | (P (DCon _ _ _) _ _, args) <- unApply tm = True
     conHeaded t = False
 
     chooseAlt' ntimes  stk env _ (f, args) alts amap
@@ -420,7 +423,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     chooseAlt :: [(Name, Value)] -> Value -> (Value, [Value]) -> [CaseAlt] ->
                  [(Name, Value)] ->
                  Eval (Maybe ([(Name, Value)], SC))
-    chooseAlt env _ (VP (DCon i a) _ _, args) alts amap
+    chooseAlt env _ (VP (DCon i a _) _ _, args) alts amap
         | Just (ns, sc) <- findTag i alts = return $ Just (updateAmap (zip ns args) amap, sc)
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VP (TCon i a) _ _, args) alts amap
@@ -519,6 +522,7 @@ instance Quote Value where
                                 return (Bind n (Let t' v') sc'')
     quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
     quote i (VType u)       = return $ TType u
+    quote i (VUType u)      = return $ UType u
     quote i VErased        = return $ Erased
     quote i VImpossible    = return $ Impossible
     quote i (VProj v j)    = do v' <- quote i v
@@ -533,6 +537,11 @@ wknV i (VBind red n b sc) = do b' <- fmapMB (wknV i) b
                                                                  wknV (i + 1) x')
 wknV i (VApp f a)     = liftM2 VApp (wknV i f) (wknV i a)
 wknV i t              = return t
+
+isUniverse :: Term -> Bool
+isUniverse (TType _) = True
+isUniverse (UType _) = True
+isUniverse _ = False
 
 convEq' ctxt hs x y = evalStateT (convEq ctxt hs x y) (0, [])
 
@@ -573,11 +582,14 @@ convEq ctxt holes topx topy = ceq [] topx topy where
     ceq ps (TType x) (TType y)           = do (v, cs) <- get
                                               put (v, ULE x y : cs)
                                               return True
+    ceq ps (UType AllTypes) x = return (isUniverse x)
+    ceq ps x (UType AllTypes) = return (isUniverse x)
+    ceq ps (UType u) (UType v) = return (u == v)
     ceq ps Erased _ = return True
     ceq ps _ Erased = return True
     ceq ps x y = return False
 
-    caseeq ps (Case n cs) (Case n' cs') = caseeqA ((n,n'):ps) cs cs'
+    caseeq ps (Case _ n cs) (Case _ n' cs') = caseeqA ((n,n'):ps) cs cs'
       where
         caseeqA ps (ConCase x i as sc : rest) (ConCase x' i' as' sc' : rest')
             = do q1 <- caseeq (zip as as' ++ ps) sc sc'
@@ -780,7 +792,7 @@ addTyDecl n nt ty uctxt
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
-addDatatype (Data n tag ty cons) uctxt
+addDatatype (Data n tag ty unique cons) uctxt
     = let ctxt = definitions uctxt
           ty' = normalise uctxt [] ty
           ctxt' = addCons 0 cons (addDef n
@@ -791,7 +803,7 @@ addDatatype (Data n tag ty cons) uctxt
     addCons tag ((n, ty) : cons) ctxt
         = let ty' = normalise uctxt [] ty in
               addCons (tag+1) cons (addDef n
-                  (TyDecl (DCon tag (arity ty')) ty, Public, Unchecked, EmptyMI) ctxt)
+                  (TyDecl (DCon tag (arity ty') unique) ty, Public, Unchecked, EmptyMI) ctxt)
 
 -- FIXME: Too many arguments! Refactor all these Bools.
 addCasedef :: Name -> ErasureInfo -> CaseInfo ->
@@ -916,7 +928,7 @@ isDConName :: Name -> Context -> Bool
 isDConName n ctxt
      = or $ do def <- lookupCtxt n (definitions ctxt)
                case tfst def of
-                    (TyDecl (DCon _ _) _) -> return True
+                    (TyDecl (DCon _ _ _) _) -> return True
                     _ -> return False
 
 isFnName :: Name -> Context -> Bool

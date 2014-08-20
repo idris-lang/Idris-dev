@@ -75,7 +75,7 @@ data Tactic = Attack
             | PatVar Name
             | PatBind Name
             | Focus Name
-            | Defer Name
+            | Defer [Name] Name
             | DeferType Name Raw [Name]
             | Instance Name
             | SetInjective Name
@@ -387,12 +387,13 @@ setinj n ctxt env (Bind x b sc)
                             ps { injective = n : is })
          return (Bind x b sc)
 
-defer :: Name -> RunTactic
-defer n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
-    do action (\ps -> let hs = holes ps in
+defer :: [Name] -> Name -> RunTactic
+defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
+    do let env' = filter (\(n, t) -> n `notElem` dropped) env
+       action (\ps -> let hs = holes ps in
                           ps { holes = hs \\ [x] })
-       return (Bind n (GHole (length env) (mkTy (reverse env) t))
-                      (mkApp (P Ref n ty) (map getP (reverse env))))
+       return (Bind n (GHole (length env') (mkTy (reverse env') t))
+                      (mkApp (P Ref n ty) (map getP (reverse env'))))
   where
     mkTy []           t = t
     mkTy ((n,b) : bs) t = Bind n (Pi (binderTy b)) (mkTy bs t)
@@ -952,7 +953,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (CheckIn r)       = check_in r
          mktac (EvalIn r)        = eval_in r
          mktac (Focus n)         = focus n
-         mktac (Defer n)         = defer n
+         mktac (Defer ns n)      = defer ns n
          mktac (DeferType n t a) = deferType n t a
          mktac (Instance n)      = instanceArg n
          mktac (SetInjective n)  = setinj n

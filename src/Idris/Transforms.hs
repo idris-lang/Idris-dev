@@ -25,10 +25,10 @@ instance Transform a => Transform (Binder a) where
 
 instance Transform SC where
     transform o@(CaseTrans t) sc = trans t sc where
-      trans t (Case n alts) = t (Case n (map (transform o) alts))
+      trans t (Case up n alts) = t (Case up n (map (transform o) alts))
       trans t x = t x
     transform o@(TermTrans t) sc = trans t sc where
-      trans t (Case n alts) = Case n (map (transform o) alts)
+      trans t (Case up n alts) = Case up n (map (transform o) alts)
       trans t (STerm tm) = STerm (t tm)
       trans t x = x
 

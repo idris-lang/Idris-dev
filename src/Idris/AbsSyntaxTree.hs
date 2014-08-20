@@ -713,6 +713,7 @@ data PTerm = PQuote Raw
            | PAlternative Bool [PTerm] -- True if only one may work
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
            | PType -- ^ 'Type' type
+           | PUniverse Universe -- ^ Some universe 
            | PGoal FC PTerm Name PTerm
            | PConstant Const -- ^ Builtin types
            | Placeholder
@@ -1380,6 +1381,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
           prettyAs =
             foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe 10 bnd) as
     prettySe p bnd PType = annotate (AnnType "Type" "The type of types") $ text "Type"
+    prettySe p bnd (PUniverse u) = annotate (AnnType (show u) "The type of unique types") $ text (show u) 
     prettySe p bnd (PConstant c) = annotate (AnnConst c) (text (show c))
     -- XXX: add pretty for tactics
     prettySe p bnd (PProof ts) =
@@ -1644,6 +1646,7 @@ instance Sized PTerm where
   size (PDisamb _ tm) = size tm
   size (PNoImplicits tm) = size tm
   size PType = 1
+  size (PUniverse _) = 1
   size (PConstant const) = 1 + size const
   size Placeholder = 1
   size (PDoBlock dos) = 1 + size dos

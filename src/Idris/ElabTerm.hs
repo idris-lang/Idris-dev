@@ -238,6 +238,7 @@ elab ist info emode opts fn tm
           -> ElabD ()
     elab' ina (PNoImplicits t) = elab' ina t -- skip elabE step
     elab' ina PType           = do apply RType []; solve
+    elab' ina (PUniverse u)   = do apply (RUType u) []; solve
 --  elab' (_,_,inty) (PConstant c) 
 --     | constType c && pattern && not reflection && not inty
 --       = lift $ tfail (Msg "Typecase is not allowed") 
@@ -629,7 +630,7 @@ elab ist info emode opts fn tm
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h
     elab' ina (PMetavar n) = let n' = mkN n in
-                                 do attack; defer n'; solve
+                                 do attack; defer [] n'; solve
         where mkN n@(NS _ _) = n
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
@@ -683,14 +684,39 @@ elab ist info emode opts fn tm
              focus valn
              elabE (True, a, inty, qq) scr
              args <- get_env
+             envU <- mapM (getKind args) args
+             let namesUsedInRHS = nub $ scvn : concatMap (\(_,rhs) -> allNamesIn rhs) opts
+--                                             ++ allNamesIn scr
+        
+             -- in the definition we build for the case, only pass through
+             -- names which are directly used, type class constraints, and
+             -- variables any of these depend on
+             -- FIXME: This probably doesn't help us, but leaving it in
+             -- temporarily (but commented out). If this comment is still
+             -- here in master, please delete the code!
+--              let directUse = filter (\n -> usedIn namesUsedInRHS n
+--                                             || tcName (binderTy (snd n))) args
+--              let args' = args -- chaseDeps args (map fst directUse) directUse
+--              let argsDropped = map fst $
+--                                  filter (\(n, _) -> case lookup n args' of
+--                                                        Nothing -> True
+--                                                        _ -> False) args
+
+             -- Drop the unique arguments used in the scrutinee (since it's
+             -- not valid to use them again anyway)
+             let argsDropped = filter (isUnique envU) (nub $ allNamesIn scr)
+             let args' = filter (\(n, _) -> n `notElem` argsDropped) args
+
              cname <- unique_hole' True (mkCaseName fn)
              let cname' = mkN cname
-             elab' ina (PMetavar cname')
+--              elab' ina (PMetavar cname')
+             attack; defer argsDropped cname'; solve
+             
              -- if the scrutinee is one of the 'args' in env, we should
              -- inspect it directly, rather than adding it as a new argument
              let newdef = PClauses fc [] cname'
                              (caseBlock fc cname'
-                                (map (isScr scr) (reverse args)) opts)
+                                (map (isScr scr) (reverse args')) opts)
              -- elaborate case
              updateAux (newdef : )
              -- if we haven't got the type yet, hopefully we'll get it later!
@@ -704,6 +730,47 @@ elab ist info emode opts fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
                         _ -> n
+
+              isUnique envk n = case lookup n envk of
+                                     Just u -> u
+                                     _ -> False
+
+              getKind env (n, _) 
+                  = case lookup n env of
+                         Nothing -> return (n, False) -- can't happen, actually...
+                         Just b -> 
+                            do ty <- get_type (forget (binderTy b))
+                               case ty of
+                                    UType UniqueType -> return (n, True)
+                                    UType AllTypes -> return (n, True)
+                                    _ -> return (n, False)
+
+              tcName tm | (P _ n _, _) <- unApply tm
+                  = case lookupCtxt n (idris_classes ist) of
+                         [_] -> True
+                         _ -> False
+              tcName _ = False
+
+              usedIn ns (n, b) 
+                 = n `elem` ns 
+                     || any (\x -> x `elem` ns) (allTTNames (binderTy b))
+
+              -- FIXME: This probably doesn't help us here, but leaving
+              -- it in temporarily... if this comment is still here in master,
+              -- please delete the code!
+              chaseDeps env acc [] = filter (\(n, _) -> n `elem` acc) env
+              chaseDeps env acc ((n,b) : args)
+                 = let ns = allTTNames (binderTy b) in
+                       extendAcc ns acc args
+                where
+                  extendAcc [] acc args = chaseDeps env acc args
+                  extendAcc (n:ns) acc args
+                      | elem n acc = extendAcc ns acc args
+                      | otherwise = case lookup n env of
+                                         Just b -> extendAcc ns (n : acc)
+                                                                 ((n,b) : args)
+                                         Nothing -> extendAcc ns acc args
+
     elab' ina (PUnifyLog t) = do unifyLog True
                                  elab' ina t
                                  unifyLog False
@@ -1541,7 +1608,7 @@ reifyTTNameType t@(P _ n _) | n == reflm "Ref" = return $ Ref
 reifyTTNameType t@(App _ _)
   = case unApply t of
       (P _ f _, [Constant (I tag), Constant (I num)])
-           | f == reflm "DCon" -> return $ DCon tag num
+           | f == reflm "DCon" -> return $ DCon tag num False -- FIXME: Uniqueness!
            | f == reflm "TCon" -> return $ TCon tag num
       _ -> fail ("Unknown reflection name type: " ++ show t)
 reifyTTNameType t = fail ("Unknown reflection name type: " ++ show t)
@@ -1799,8 +1866,8 @@ reflectQuote unq (TType exp) = reflCall "TType" [reflectUExp exp]
 reflectNameType :: NameType -> Raw
 reflectNameType (Bound) = Var (reflm "Bound")
 reflectNameType (Ref) = Var (reflm "Ref")
-reflectNameType (DCon x y)
-  = reflCall "DCon" [RConstant (I x), RConstant (I y)]
+reflectNameType (DCon x y _)
+  = reflCall "DCon" [RConstant (I x), RConstant (I y)] -- FIXME: Uniqueness!
 reflectNameType (TCon x y)
   = reflCall "TCon" [RConstant (I x), RConstant (I y)]
 
@@ -2098,7 +2165,7 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                     parts -> ReflectionError errorparts e
 
 fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
-fromTTMaybe (App (App (P (DCon _ _) (NS (UN just) _) _) ty) tm)
+fromTTMaybe (App (App (P (DCon _ _ _) (NS (UN just) _) _) ty) tm)
   | just == txt "Just" = Just tm
 fromTTMaybe x          = Nothing
 
@@ -2109,9 +2176,9 @@ reflErrName n = sNS (sUN n) ["Errors", "Reflection", "Language"]
 -- representation. Not in Idris or ElabD monads because it should be usable
 -- from either.
 reifyReportPart :: Term -> Either Err ErrorReportPart
-reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflm "TextPart" =
+reifyReportPart (App (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "TextPart" =
     Right (TextPart msg)
-reifyReportPart (App (P (DCon _ _) n _) ttn)
+reifyReportPart (App (P (DCon _ _ _) n _) ttn)
   | n == reflm "NamePart" =
     case runElab [] (reifyTTName ttn) (initElaborator NErased initContext Erased) of
       Error e -> Left . InternalMsg $
@@ -2119,7 +2186,7 @@ reifyReportPart (App (P (DCon _ _) n _) ttn)
        show ttn ++
        " when reflecting an error:" ++ show e
       OK (n', _)-> Right $ NamePart n'
-reifyReportPart (App (P (DCon _ _) n _) tm)
+reifyReportPart (App (P (DCon _ _ _) n _) tm)
   | n == reflm "TermPart" =
   case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
     Error e -> Left . InternalMsg $
@@ -2127,7 +2194,7 @@ reifyReportPart (App (P (DCon _ _) n _) tm)
       show tm ++
       " when reflecting an error:" ++ show e
     OK (tm', _) -> Right $ TermPart tm'
-reifyReportPart (App (P (DCon _ _) n _) tm)
+reifyReportPart (App (P (DCon _ _ _) n _) tm)
   | n == reflm "SubReport" =
   case unList tm of
     Just xs -> do subParts <- mapM reifyReportPart xs

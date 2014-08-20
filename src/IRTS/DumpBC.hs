@@ -35,8 +35,10 @@ serializeBC n bc = indent n ++
         "ASSIGNCONST " ++ serializeReg a ++ " " ++ show b
       UPDATE a b ->
         "UPDATE " ++ serializeReg a ++ " " ++ serializeReg b
-      MKCON a b xs ->
+      MKCON a Nothing b xs ->
         "MKCON " ++ serializeReg a ++ " " ++ show b ++ " [" ++ (interMap xs ", " serializeReg) ++ "]"
+      MKCON a (Just r) b xs ->
+        "MKCON@" ++ serializeReg r ++ " " ++ serializeReg a ++ " " ++ show b ++ " [" ++ (interMap xs ", " serializeReg) ++ "]"
       CASE safe r cases def ->
         "CASE " ++ serializeReg r ++ ":\n" ++ interMap cases "\n" (serializeCase (n + 1)) ++
         maybe "" (\def' -> "\n" ++ serializeDefault (n + 1) def') def

@@ -494,7 +494,7 @@ cgExpr (SUpdate (Loc level) expr) = do
   modify $ \s -> s { lexenv = replaceElt level val (lexenv s) }
   return val
 cgExpr (SUpdate x expr) = cgExpr expr
-cgExpr (SCon tag name args) = do
+cgExpr (SCon _ tag name args) = do
   argSlots <- mapM var args
   case sequence argSlots of
     Nothing -> return Nothing
@@ -511,7 +511,7 @@ cgExpr (SCon tag name args) = do
       ptrI8 <- inst $ BitCast con (PointerType (IntegerType 8) (AddrSpace 0)) []
       inst' $ simpleCall "llvm.invariant.start" [ConstantOperand $ C.Int 64 (-1), ptrI8]
       Just <$> inst (BitCast con (PointerType valueType (AddrSpace 0)) [])
-cgExpr (SCase inspect alts) = do
+cgExpr (SCase _ inspect alts) = do
   val <- var inspect
   case val of
     Nothing -> return Nothing

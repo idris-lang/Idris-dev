@@ -722,7 +722,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                      map (abstract (sMN 0 "warg") wargval wargtype) bargs_post)
                      (substTerm wargval (P Bound (sMN 0 "warg") wargtype) ret_ty)
         logLvl 5 ("New function type " ++ show wtype)
-        let wname = sMN windex (show fname)
+        let wname = SN (WithN windex fname)
 
         let imps = getImps wtype -- add to implicits context
         putIState (i { idris_implicits = addDef wname imps (idris_implicits i) })

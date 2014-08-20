@@ -37,7 +37,9 @@ data BC =
 
     -- reg = constructor, where constructor consists of a tag and
     -- values from registers, e.g. (cons tag args)
-  | MKCON Reg Int [Reg]
+    -- the 'Maybe Reg', if set, is a register which can be overwritten
+    -- (i.e. safe for mutable update), though this can be ignored
+  | MKCON Reg (Maybe Reg) Int [Reg]
 
     -- Matching on value of reg: usually (but not always) there are
     -- constructors, hence "Int" for patterns (that's a tag on which
@@ -67,8 +69,9 @@ data BC =
     -- same, perhaps exists just for TCO
   | TAILCALL Name
 
-    -- set reg to (apply string args), 2nd argument could be ignored,
-    -- types could be ignored if they are not required
+    -- set reg to (apply string args), FLang argument is the language to
+    -- be called. FType is the foreign language type, which may be used to
+    -- control marshaling.
   | FOREIGNCALL Reg FLang FType String [(FType, Reg)]
 
     -- move this number of elements from TOP to BASE
@@ -136,15 +139,18 @@ bc reg (SLet (Loc i) e sc) r = bc (L i) e False ++ bc reg sc r
 bc reg (SUpdate (Loc i) sc) r = bc reg sc False ++ [ASSIGN (L i) reg]
                                 ++ clean r
 -- bc reg (SUpdate x sc) r = bc reg sc r -- can't update, just do it
-bc reg (SCon i _ vs) r = MKCON reg i (map getL vs) : clean r
+bc reg (SCon atloc i _ vs) r 
+  = MKCON reg (getAllocLoc atloc) i (map getL vs) : clean r
     where getL (Loc x) = L x
+          getAllocLoc (Just (Loc x)) = Just (L x)
+          getAllocLoc _ = Nothing
 bc reg (SProj (Loc l) i) r = PROJECTINTO reg (L l) i : clean r
 bc reg (SConst i) r = ASSIGNCONST reg i : clean r
 bc reg (SOp p vs) r = OP reg p (map getL vs) : clean r
     where getL (Loc x) = L x
 bc reg (SError str) r = [ERROR str]
 bc reg SNothing r = NULL reg : clean r
-bc reg (SCase (Loc l) alts) r
+bc reg (SCase up (Loc l) alts) r
    | isConst alts = constCase reg (L l) alts r
    | otherwise = conCase True reg (L l) alts r
 bc reg (SChkCase (Loc l) alts) r

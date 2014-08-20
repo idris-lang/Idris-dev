@@ -5,7 +5,9 @@ import Prelude.List
 %access public
 
 ||| Idris's primitive IO, for building abstractions on top of
-abstract data PrimIO a = prim__IO a
+abstract 
+data PrimIO : Type -> Type where
+     prim__IO : a -> PrimIO a
 
 ||| A token representing the world, for use in `IO`
 abstract data World = TheWorld
@@ -15,7 +17,9 @@ WorldRes x = x
 
 -- abstract data WorldRes a = MkWR a World
 
-abstract data IO a = MkIO (World -> PrimIO (WorldRes a))
+abstract 
+data IO : Type -> Type where
+     MkIO : (World -> PrimIO (WorldRes a)) -> IO a
 
 abstract
 prim_io_bind : PrimIO a -> (a -> PrimIO b) -> PrimIO b

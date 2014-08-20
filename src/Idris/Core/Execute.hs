@@ -146,7 +146,7 @@ execute tm = do est <- initState
                   Right tm' -> return tm'
 
 ioWrap :: ExecVal -> ExecVal
-ioWrap tm = mkEApp (EP (DCon 0 2) (sUN "prim__IO") EErased) [EErased, tm]
+ioWrap tm = mkEApp (EP (DCon 0 2 False) (sUN "prim__IO") EErased) [EErased, tm]
 
 ioUnit :: ExecVal
 ioUnit = ioWrap (EP Ref unitCon EErased)
@@ -171,7 +171,7 @@ doExec env ctxt p@(P Bound n ty) =
   case lookup n env of
     Nothing -> execFail . Msg $ "not found"
     Just tm -> return tm
-doExec env ctxt (P (DCon a b) n _) = return (EP (DCon a b) n EErased)
+doExec env ctxt (P (DCon a b u) n _) = return (EP (DCon a b u) n EErased)
 doExec env ctxt (P (TCon a b) n _) = return (EP (TCon a b) n EErased)
 doExec env ctxt v@(V i) | i < length env = return (snd (env !! i))
                         | otherwise      = execFail . Msg $ "env too small"
@@ -349,7 +349,7 @@ execApp env ctxt f@(EP _ fp _) args@(ty:fn:xs) | fp == mkfprim
                    Just r -> return (mkEApp r xs')
         Nothing -> return (mkEApp f args)
 
-execApp env ctxt c@(EP (DCon _ arity) n _) args =
+execApp env ctxt c@(EP (DCon _ arity _) n _) args =
     do let args' = take arity args
        let restArgs = drop arity args
        execApp env ctxt (mkEApp c args') restArgs
@@ -443,7 +443,7 @@ execCase' :: ExecEnv -> Context -> [(Name, ExecVal)] -> SC -> Exec (Maybe ExecVa
 execCase' env ctxt amap (UnmatchedCase _) = return Nothing
 execCase' env ctxt amap (STerm tm) =
     Just <$> doExec (map (\(n, v) -> (n, v)) amap ++ env) ctxt tm
-execCase' env ctxt amap (Case n alts) | Just tm <- lookup n amap =
+execCase' env ctxt amap (Case sh n alts) | Just tm <- lookup n amap =
        case chooseAlt tm alts of
          Just (newCase, newBindings) ->
              let amap' = newBindings ++ (filter (\(x,_) -> not (elem x (map fst newBindings))) amap) in

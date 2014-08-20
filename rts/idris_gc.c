@@ -12,10 +12,14 @@ VAL copy(VM* vm, VAL x) {
     switch(GETTY(x)) {
     case CON:
         ar = CARITY(x);
-        allocCon(cl, vm, CTAG(x), ar, 1);
-        for(i = 0; i < ar; ++i) {
-//            *argptr = copy(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
-            cl->info.c.args[i] = x->info.c.args[i];
+        if (ar == 0 && CTAG(x) < 256) {
+            return x;
+        } else {
+            allocCon(cl, vm, CTAG(x), ar, 1);
+            for(i = 0; i < ar; ++i) {
+    //            *argptr = copy(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
+                cl->info.c.args[i] = x->info.c.args[i];
+            }
         }
         break;
     case FLOAT:
@@ -147,4 +151,7 @@ void idris_gcInfo(VM* vm, int doGC) {
     printf("Final heap use          %d\n", (int)(vm->heap.next - vm->heap.heap));
     if (doGC) { idris_gc(vm); }
     printf("Final heap use after GC %d\n", (int)(vm->heap.next - vm->heap.heap));
+
+    printf("Total allocations       %d\n", vm->stats.allocations);
+    printf("Number of collections   %d\n", vm->stats.collections);
 }
