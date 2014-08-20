@@ -511,11 +511,6 @@ source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
 
-Flag LLVM
-  Description:  Build the LLVM backend
-  Default:      False
-  manual:       True
-
 Flag FFI
   Description:  Build support for libffi
   Default:      False
@@ -641,7 +636,7 @@ Library
                 , Util.DynamicLinker
                 , Util.ScreenSize
                 , Util.System
-
+                , Paths_idris
   Other-modules:
                   Util.Pretty
                 , Util.Net
@@ -650,7 +645,7 @@ Library
                 , Pkg.PParser
 
                 -- Auto Generated
-                , Paths_idris
+                -- , Paths_idris
                 , Version_idris
 
   Build-depends:  base >=4 && <5
@@ -716,13 +711,6 @@ Library
   if os(windows)
      cpp-options:   -DWINDOWS
      build-depends: Win32
-  if flag(LLVM)
-     other-modules: IRTS.CodegenLLVM
-     cpp-options:   -DIDRIS_LLVM
-     build-depends: llvm-general == 3.3.8.*
-                  , llvm-general-pure == 3.3.8.*
-  else
-     other-modules: Util.LLVMStubs
   if flag(FFI)
      build-depends: libffi
      cpp-options:   -DIDRIS_FFI
@@ -761,31 +749,3 @@ Executable idris-c
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
-
-Executable idris-llvm
-  Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-llvm
-                  codegen/idris-llvm/src
-
-  Build-depends:  idris
-                , base
-                , containers
-                , directory
-                , filepath
-                , haskeline >= 0.7
-                , mtl
-                , process
-                , transformers
-                , vector
-                , llvm-general == 3.3.8.*
-                , llvm-general-pure == 3.3.8.*
- 
-  other-modules: IRTS.CodegenLLVM
-  cpp-options:   -DIDRIS_LLVM
-               
-  ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
-
---  Extra-source-files:
---               llvm/*.c
---               llvm/Makefile
