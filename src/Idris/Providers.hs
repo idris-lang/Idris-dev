@@ -34,5 +34,6 @@ getProvided fc tm | (P _ pioret _, [tp, result]) <- unApply tm
                   , pioret == ioret && nm == prmod
                       = return . Provide $ res
                   | otherwise = ifail $ "Internal type provider error: result was not " ++
-                                        "IO (Provider a), or perhaps missing normalisation."
+                                        "IO (Provider a), or perhaps missing normalisation." ++
+                                        "Term: " ++ take 1000 (show tm)
 
