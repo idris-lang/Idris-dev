@@ -271,7 +271,7 @@ checkUnique borrowed ctxt env tm
                                            then put ((n, (LendOnly, NullType)) : ns)
                                            else put ((n, (Once, UniqueType)) : ns)
                  UType NullType -> do ns <- get
-                                      put ((n, (LendOnly, NullType)) : ns)
+                                      put ((n, (Many, NullType)) : ns)
                  UType AllTypes -> do ns <- get
                                       put ((n, (Once, AllTypes)) : ns)
                  _ -> return ()

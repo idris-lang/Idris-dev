@@ -1,3 +1,3 @@
 
 steal : {a : UniqueType} -> Borrowed a -> a
-steal x = x
+steal (Read x) = x
