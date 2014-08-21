@@ -285,10 +285,12 @@ instance Binary Universe where
         put x = case x of
                      UniqueType -> putWord8 0
                      AllTypes -> putWord8 1
+                     NullType -> putWord8 2
         get = do i <- getWord8
                  case i of
                      0 -> return UniqueType
                      1 -> return AllTypes
+                     2 -> return NullType
                      _ -> error "Corrupted binary data for Universe"
 
 instance Binary NameType where

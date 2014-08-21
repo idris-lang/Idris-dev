@@ -75,6 +75,17 @@ Lazy t = Lazy' LazyEval t
 Inf : Type -> Type
 Inf t = Lazy' LazyCodata t
 
+namespace Ownership
+  ||| A read-only version of a unique value
+  data Borrowed : UniqueType -> NullType where
+       Read : {a : UniqueType} -> a -> Borrowed a
+         
+  ||| Make a read-only version of a unique value, which can be passed to another
+  ||| function without the unique value being consumed.
+  implicit
+  lend : {a : UniqueType} -> a -> Borrowed a
+  lend x = Read x
+
 par : Lazy a -> a -- Doesn't actually do anything yet. Maybe a 'Par a' type
                   -- is better in any case?
 par (Delay x) = x 

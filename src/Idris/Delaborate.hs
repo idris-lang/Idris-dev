@@ -224,10 +224,14 @@ pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i UniverseError = text "Universe inconsistency"
-pprintErr' i (UniqueError n) = text "Unique name" <+> annName' n (showbasic n)
+pprintErr' i (UniqueError NullType n) 
+           = text "Borrowed name" <+> annName' n (showbasic n)
+                  <+> text "must not be used on RHS"
+pprintErr' i (UniqueError _ n) = text "Unique name" <+> annName' n (showbasic n)
                                   <+> text "is used more than once"
-pprintErr' i (UniqueKindError n) = text "Constructor" <+> annName' n (showbasic n)
-                                  <+> text "has a UniqueType, but the data type deos not"
+pprintErr' i (UniqueKindError k n) = text "Constructor" <+> annName' n (showbasic n)
+                                   <+> text ("has a " ++ show k ++ ",")
+                                   <+> text "but the data type does not"
 pprintErr' i ProgramLineComment = text "Program line next to comment"
 pprintErr' i (Inaccessible n) = annName n <+> text "is not an accessible pattern variable"
 pprintErr' i (NonCollapsiblePostulate n) = text "The return type of postulate" <+>

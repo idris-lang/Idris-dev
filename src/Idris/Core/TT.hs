@@ -139,8 +139,8 @@ data Err' t
           | CantResolveAlts [Name]
           | IncompleteTerm t
           | UniverseError
-          | UniqueError Name
-          | UniqueKindError Name
+          | UniqueError Universe Name
+          | UniqueKindError Universe Name
           | ProgramLineComment
           | Inaccessible Name
           | NonCollapsiblePostulate Name
@@ -599,11 +599,12 @@ constDocs (B32V v)                         = "A vector of thirty-two-bit values"
 constDocs (B64V v)                         = "A vector of sixty-four-bit values"
 constDocs prim                             = "Undocumented"
 
-data Universe = UniqueType | AllTypes
+data Universe = NullType | UniqueType | AllTypes
   deriving (Eq, Ord)
 
 instance Show Universe where
     show UniqueType = "UniqueType"
+    show NullType = "NullType"
     show AllTypes = "Type*"
 
 data Raw = Var Name

@@ -51,13 +51,17 @@ isType ctxt env tm = isType' (normalise ctxt env tm)
                      | otherwise = fail (showEnv env tm ++ " is not a Type")
 
 recheck :: Context -> Env -> Raw -> Term -> TC (Term, Type, UCs)
-recheck ctxt env tm orig
+recheck = recheck_borrowing []
+
+recheck_borrowing :: [Name] -> Context -> Env -> Raw -> Term -> 
+                     TC (Term, Type, UCs)
+recheck_borrowing bs ctxt env tm orig
    = let v = next_tvar ctxt in
        case runStateT (check' False ctxt env tm) (v, []) of -- holes banned
           Error (IncompleteTerm _) -> Error $ IncompleteTerm orig
           Error e -> Error e
           OK ((tm, ty), constraints) ->
-              do checkUnique ctxt env tm
+              do checkUnique bs ctxt env tm
                  return (tm, ty, constraints)
 
 check :: Context -> Env -> Raw -> TC (Term, Type)
@@ -127,12 +131,14 @@ check' holes ctxt env top = chk env top where
                     when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
                     return (Bind n (Pi (uniqueBinders (map fst env) sv))
                               (pToV n tv), TType (UVar v))
-                (UType u, _) ->
+                (u, u') ->
                     return (Bind n (Pi (uniqueBinders (map fst env) sv))
-                                (pToV n tv), UType u)
-                (_, UType u) ->
-                    return (Bind n (Pi (uniqueBinders (map fst env) sv))
-                                (pToV n tv), UType u)
+                                (pToV n tv), smaller u u')
+
+      where smaller (UType NullType) _ = UType NullType
+            smaller _ (UType NullType) = UType NullType
+            smaller (UType u)        _ = UType u
+            smaller _        (UType u) = UType u
   chk env (RBind n b sc)
       = do b' <- checkBinder b
            (scv, sct) <- chk ((n, b'):env) sc
@@ -217,29 +223,57 @@ check' holes ctxt env top = chk env top where
           discharge n (PVTy t) scv sct
             = return (Bind n (PVTy t) scv, sct)
 
+-- Number of times a name can be used
+data UniqueUse = Never -- no more times
+               | Once -- at most once more
+               | LendOnly -- only under 'lend'
+               | Many -- unlimited
+  deriving Eq
+
 -- If any binders are of kind 'UniqueType' or 'AllTypes' and the name appears
 -- in the scope more than once, this is an error.
-checkUnique :: Context -> Env -> Term -> TC ()
-checkUnique ctxt env tm = evalStateT (chkBinders env (explicitNames tm)) []
+checkUnique :: [Name] -> Context -> Env -> Term -> TC ()
+checkUnique borrowed ctxt env tm 
+         = evalStateT (chkBinders env (explicitNames tm)) []
   where 
-    chkBinders :: Env -> Term -> StateT [(Name, Bool)] TC ()
+    isVar (P _ _ _) = True
+    isVar (V _) = True
+    isVar _ = False
+
+    chkBinders :: Env -> Term -> StateT [(Name, (UniqueUse, Universe))] TC ()
     chkBinders env (V i) | length env > i = chkName (fst (env!!i))
     chkBinders env (P _ n _) = chkName n
+    -- 'lending' a unique or nulltype variable doesn't count as a use,
+    -- but we still can't lend something that's already been used.
+    chkBinders env (App (App (P _ (NS (UN lend) [owner]) _) t) a)
+       | isVar a && owner == txt "Ownership" &&
+         (lend == txt "lend" || lend == txt "Read")
+            = do chkBinders env t -- Check the type normally 
+                 st <- get
+                 -- Remove the 'LendOnly' names from the unusable set
+                 put (filter (\(n, (ok, _)) -> ok /= LendOnly) st) 
+                 chkBinders env a
+                 put st -- Reset the old state after checking the argument
     chkBinders env (App f a) = do chkBinders env f; chkBinders env a
     chkBinders env (Bind n b t)
        = do chkBinderName env n b
             chkBinders ((n, b) : env) t
     chkBinders env t = return ()
 
-    chkBinderName :: Env -> Name -> Binder Term -> StateT [(Name, Bool)] TC ()
+    chkBinderName :: Env -> Name -> Binder Term -> 
+                     StateT [(Name, (UniqueUse, Universe))] TC ()
     chkBinderName env n b
        = do let rawty = forgetEnv (map fst env) (binderTy b)
             (_, kind) <- lift $ check ctxt env rawty -- FIXME: Cache in binder?
             case kind of
                  UType UniqueType -> do ns <- get
-                                        put ((n, False) : ns)
+                                        if n `elem` borrowed 
+                                           then put ((n, (LendOnly, NullType)) : ns)
+                                           else put ((n, (Once, UniqueType)) : ns)
+                 UType NullType -> do ns <- get
+                                      put ((n, (Many, NullType)) : ns)
                  UType AllTypes -> do ns <- get
-                                      put ((n, False) : ns)
+                                      put ((n, (Once, AllTypes)) : ns)
                  _ -> return ()
             chkBinders env (binderTy b)
             case b of
@@ -250,6 +284,9 @@ checkUnique ctxt env tm = evalStateT (chkBinders env (explicitNames tm)) []
        = do ns <- get
             case lookup n ns of
                  Nothing -> return ()
-                 Just True -> lift $ tfail (UniqueError n)
-                 Just False -> put ((n, True) : filter (\x -> fst x /= n) ns)
+                 Just (Many, k) -> return ()
+                 Just (Never, k) -> lift $ tfail (UniqueError k n)
+                 Just (LendOnly, k) -> lift $ tfail (UniqueError k n)
+                 Just (Once, k) -> put ((n, (Never, k)) : 
+                                              filter (\x -> fst x /= n) ns)
 
