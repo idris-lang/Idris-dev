@@ -543,6 +543,10 @@ isUniverse (TType _) = True
 isUniverse (UType _) = True
 isUniverse _ = False
 
+isUsableUniverse :: Term -> Bool
+isUsableUniverse (UType NullType) = False
+isUsableUniverse x = isUniverse x
+
 convEq' ctxt hs x y = evalStateT (convEq ctxt hs x y) (0, [])
 
 convEq :: Context -> [Name] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
@@ -582,8 +586,8 @@ convEq ctxt holes topx topy = ceq [] topx topy where
     ceq ps (TType x) (TType y)           = do (v, cs) <- get
                                               put (v, ULE x y : cs)
                                               return True
-    ceq ps (UType AllTypes) x = return (isUniverse x)
-    ceq ps x (UType AllTypes) = return (isUniverse x)
+    ceq ps (UType AllTypes) x = return (isUsableUniverse x)
+    ceq ps x (UType AllTypes) = return (isUsableUniverse x)
     ceq ps (UType u) (UType v) = return (u == v)
     ceq ps Erased _ = return True
     ceq ps _ Erased = return True

@@ -499,6 +499,13 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                                then recheckC fc [] lhs_tm
                                else return (lhs_tm, lhs_ty)
         let clhs = normalise ctxt [] clhs_c
+        let borrowed = borrowedNames [] clhs
+
+        -- These are the names we're not allowed to use on the RHS, because
+        -- they're UniqueTypes and borrowed from another function.
+        -- FIXME: There is surely a nicer way than this...
+        when (not (null borrowed)) $
+          logLvl 5 ("Borrowed names on LHS: " ++ show borrowed)
         
         logLvl 3 ("Normalised LHS: " ++ showTmImpls (delabMV i clhs))
 
@@ -572,8 +579,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         ctxt <- getContext
         logLvl 5 $ "Rechecking"
         logLvl 6 $ " ==> " ++ show (forget rhs')
+
         (crhs, crhsty) <- if not inf 
-                             then recheckC fc [] rhs'
+                             then recheckC_borrowing borrowed fc [] rhs'
                              else return (rhs', clhsty)
         logLvl 6 $ " ==> " ++ show crhsty ++ "   against   " ++ show clhsty
         case  converts ctxt [] clhsty crhsty of
@@ -609,6 +617,22 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
                                      --      Nothing -> n
                                      --      _ -> MN i (show n)) . l
                      }
+
+    -- Find the variable names which appear under a 'Ownership.Read' so that
+    -- we know they can't be used on the RHS
+    borrowedNames :: [Name] -> Term -> [Name]
+    borrowedNames env (App (App (P _ (NS (UN lend) [owner]) _) _) arg)
+        | owner == txt "Ownership" && 
+          (lend == txt "lend" || lend == txt "Read") = getVs arg
+       where
+         getVs (V i) = [env!!i]
+         getVs (App f a) = nub $ getVs f ++ getVs a
+         getVs _ = []
+    borrowedNames env (App f a) = nub $ borrowedNames env f ++ borrowedNames env a
+    borrowedNames env (Bind n b sc) = nub $ borrowedB b ++ borrowedNames (n:env) sc
+       where borrowedB (Let t v) = nub $ borrowedNames env t ++ borrowedNames env v
+             borrowedB b = borrowedNames env (binderTy b)
+    borrowedNames _ _ = []
 
     mkLHSapp t@(PRef _ _) = trace ("APP " ++ show t) $ PApp fc t []
     mkLHSapp t = t
