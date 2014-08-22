@@ -128,7 +128,6 @@ generate codegen mainmod ir
        -- Built-in code generators (FIXME: lift these out!)
        Via "c" -> codegenC ir 
        Via "java" -> codegenJava ir 
-       Via "node" -> codegenNode ir
        Via "llvm" -> codegenLLVM ir
        -- Any external code generator
        Via cg -> do let cmd = "idris-" ++ cg ++ " " ++ mainmod ++
