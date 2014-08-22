@@ -19,13 +19,8 @@ mkUList : Nat -> UList Int
 mkUList Z = []
 mkUList (S k) = cast k :: mkUList k
 
--- showIt : UList Int -> Int -> String
--- showIt xs x = let xs' = umap (*2) xs in ""
-
 showIt : UList Int -> Int -> String
-showIt [] y = "END"
-showIt (x :: xs) y = let z = 0 :: xs in
-                         show x ++ "," ++ showU xs ++ showU z
+showIt xs x = let xs' = umap (*2) xs in ""
 
 printThings : (Int -> String) -> IO ()
 printThings f = do putStrLn (f 10)
