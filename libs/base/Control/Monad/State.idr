@@ -4,10 +4,14 @@ import Control.Monad.Identity
 
 %access public
 
+||| A computation which runs in a context and produces an output
 class Monad m => MonadState s (m : Type -> Type) where
+    ||| Get the context
     get : m s
+    ||| Write a new context/output
     put : s -> m ()
 
+||| The transformer on which the State monad is based
 record StateT : Type -> (Type -> Type) -> Type -> Type where
     ST : {m : Type -> Type} ->
          (runStateT : s -> m (a, s)) -> StateT s m a
@@ -33,13 +37,16 @@ instance Monad m => MonadState s (StateT s m) where
     get   = ST (\x => return (x, x))
     put x = ST (\y => return ((), x))
 
+||| Apply a function to modify the context of this computation
 modify : MonadState s m => (s -> s) -> m ()
 modify f = do s <- get
               put (f s)
 
+||| Evaluate a function in the context held by this computation
 gets : MonadState s m => (s -> a) -> m a
 gets f = do s <- get
             return (f s)
 
+||| The State monad. See the MonadState class
 State : Type -> Type -> Type
 State s a = StateT s Identity a
