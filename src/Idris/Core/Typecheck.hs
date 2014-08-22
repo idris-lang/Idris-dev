@@ -258,6 +258,10 @@ checkUnique borrowed ctxt env tm
     chkBinders env (Bind n b t)
        = do chkBinderName env n b
             chkBinders ((n, b) : env) t
+            chkBinders env (binderTy b)
+            case b of
+                 Let t v -> chkBinders env v
+                 _ -> return ()
     chkBinders env t = return ()
 
     chkBinderName :: Env -> Name -> Binder Term -> 
@@ -274,10 +278,6 @@ checkUnique borrowed ctxt env tm
                                       put ((n, (Many, NullType)) : ns)
                  UType AllTypes -> do ns <- get
                                       put ((n, (Once, AllTypes)) : ns)
-                 _ -> return ()
-            chkBinders env (binderTy b)
-            case b of
-                 Let t v -> chkBinders env v
                  _ -> return ()
 
     chkName n 
