@@ -48,7 +48,7 @@ mkApp tm (a::as) = mkApp (App tm a) as
 
 binderTy : (Eq t) => Binder t -> t
 binderTy (Lam t)       = t
-binderTy (Pi t)        = t
+binderTy (Pi t _)      = t
 binderTy (Let t1 t2)   = t1
 binderTy (NLet t1 t2)  = t1
 binderTy (Hole t)      = t
@@ -160,7 +160,7 @@ instance Eq NameType where
 
 instance (Show a) => Show (Binder a) where
   show (Lam t) = "(Lam " ++ show t ++ ")"
-  show (Pi t) = "(Pi " ++ show t ++ ")"
+  show (Pi t _) = "(Pi " ++ show t ++ ")"
   show (Let t1 t2) = "(Let " ++ show t1 ++ " " ++ show t2 ++ ")"
   show (NLet t1 t2) = "(NLet " ++ show t1 ++ " " ++ show t2 ++ ")"
   show (Hole t) = "(Hole " ++ show t ++ ")"
@@ -171,7 +171,7 @@ instance (Show a) => Show (Binder a) where
 
 instance (Eq a) => Eq (Binder a) where
   (Lam t)       == (Lam t')         = t == t'
-  (Pi t)        == (Pi t')          = t == t'
+  (Pi t k)      == (Pi t' k')       = t == t' && k == k'
   (Let t1 t2)   == (Let t1' t2')    = t1 == t1' && t2 == t2'
   (NLet t1 t2)  == (NLet t1' t2')   = t1 == t1' && t2 == t2'
   (Hole t)      == (Hole t')        = t == t'

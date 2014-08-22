@@ -70,7 +70,7 @@ instance NFData Err where
 
 instance (NFData b) => NFData (Binder b) where
         rnf (Lam x1) = rnf x1 `seq` ()
-        rnf (Pi x1) = rnf x1 `seq` ()
+        rnf (Pi x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (Let x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (NLet x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (Hole x1) = rnf x1 `seq` ()

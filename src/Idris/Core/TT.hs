@@ -640,7 +640,8 @@ deriving instance NFData Raw
 -- the types of bindings (and their values, if any); the attached identifiers are part
 -- of the 'Bind' constructor for the 'TT' type.
 data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
-              | Pi    { binderTy  :: !b }
+              | Pi    { binderTy  :: !b,
+                        binderKind :: !b }
                 {-^ A binding that occurs in a function type expression, e.g. @(x:Int) -> ...@ -}
               | Let   { binderTy  :: !b,
                         binderVal :: b {-^ value for bound variable-}}
@@ -663,7 +664,7 @@ deriving instance NFData Binder
 
 instance Sized a => Sized (Binder a) where
   size (Lam ty) = 1 + size ty
-  size (Pi ty) = 1 + size ty
+  size (Pi ty _) = 1 + size ty
   size (Let ty val) = 1 + size ty + size val
   size (NLet ty val) = 1 + size ty + size val
   size (Hole ty) = 1 + size ty
@@ -677,9 +678,9 @@ fmapMB f (Let t v)   = liftM2 Let (f t) (f v)
 fmapMB f (NLet t v)  = liftM2 NLet (f t) (f v)
 fmapMB f (Guess t v) = liftM2 Guess (f t) (f v)
 fmapMB f (Lam t)     = liftM Lam (f t)
-fmapMB f (Pi t)      = liftM Pi (f t)
+fmapMB f (Pi t k)    = liftM2 Pi (f t) (f k)
 fmapMB f (Hole t)    = liftM Hole (f t)
-fmapMB f (GHole i t)   = liftM (GHole i) (f t)
+fmapMB f (GHole i t) = liftM (GHole i) (f t)
 fmapMB f (PVar t)    = liftM PVar (f t)
 fmapMB f (PVTy t)    = liftM PVTy (f t)
 
@@ -844,7 +845,7 @@ isInjective (P (DCon _ _ _) _ _) = True
 isInjective (P (TCon _ _) _ _) = True
 isInjective (Constant _)       = True
 isInjective (TType x)            = True
-isInjective (Bind _ (Pi _) sc) = True
+isInjective (Bind _ (Pi _ _) sc) = True
 isInjective (App f a)          = isInjective f
 isInjective _                  = False
 
@@ -1017,6 +1018,20 @@ substTerm old new = st where
   st (Bind x b sc) = Bind x (fmap st b) (st sc)
   st t = t
 
+-- | Return number of occurrences of V 0 or bound name i the term
+occurrences :: Eq n => n -> TT n -> Int
+occurrences n t = execState (no' 0 t) 0
+  where
+    no' i (V x) | i == x = do num <- get; put (num + 1)
+    no' i (P Bound x _) | n == x = do num <- get; put (num + 1)
+    no' i (Bind n b sc) = do noB' i b; no' (i+1) sc
+       where noB' i (Let t v) = do no' i t; no' i v
+             noB' i (Guess t v) = do no' i t; no' i v
+             noB' i b = no' i (binderTy b)
+    no' i (App f a) = do no' i f; no' i a
+    no' i (Proj x _) = no' i x
+    no' i _ = return ()
+
 -- | Returns true if V 0 and bound name n do not occur in the term
 noOccurrence :: Eq n => n -> TT n -> Bool
 noOccurrence n t = no' 0 t
@@ -1043,7 +1058,7 @@ freeNames _ = []
 
 -- | Return the arity of a (normalised) type
 arity :: TT n -> Int
-arity (Bind n (Pi t) sc) = 1 + arity sc
+arity (Bind n (Pi t _) sc) = 1 + arity sc
 arity _ = 0
 
 -- | Deconstruct an application; returns the function and a list of arguments
@@ -1100,13 +1115,13 @@ bindTyArgs b xs = bindAll (map (\ (n, ty) -> (n, b ty)) xs)
 -- | Return a list of pairs of the names of the outermost 'Pi'-bound
 -- variables in the given term, together with their types.
 getArgTys :: TT n -> [(n, TT n)]
-getArgTys (Bind n (Pi t) sc) = (n, t) : getArgTys sc
+getArgTys (Bind n (Pi t _) sc) = (n, t) : getArgTys sc
 getArgTys _ = []
 
 getRetTy :: TT n -> TT n
 getRetTy (Bind n (PVar _) sc) = getRetTy sc
 getRetTy (Bind n (PVTy _) sc) = getRetTy sc
-getRetTy (Bind n (Pi _) sc)   = getRetTy sc
+getRetTy (Bind n (Pi _ _) sc)   = getRetTy sc
 getRetTy sc = sc
 
 uniqueNameFrom :: [Name] -> [Name] -> Name
@@ -1212,7 +1227,7 @@ prettyEnv env t = prettyEnv' env t False
         else
           lbracket <+> text (show i) <+> rbracket
       | otherwise      = text "unbound" <+> text (show i) <+> text "!"
-    prettySe p env (Bind n b@(Pi t) sc) debug
+    prettySe p env (Bind n b@(Pi t _) sc) debug
       | noOccurrence n sc && not debug =
           bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, b):env) sc debug
     prettySe p env (Bind n b sc) debug =
@@ -1228,7 +1243,7 @@ prettyEnv env t = prettyEnv' env t False
     -- Render a `Binder` and its name
     prettySb env n (Lam t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
-    prettySb env n (Pi t) = prettyB env "(" ") ->" n t
+    prettySb env n (Pi t _) = prettyB env "(" ") ->" n t
     prettySb env n (PVar t) = prettyB env "pat" "." n t
     prettySb env n (PVTy t) = prettyB env "pty" "." n t
     prettySb env n (Let t v) = prettyBv env "let" "in" n t v
@@ -1254,8 +1269,10 @@ showEnv' env t dbg = se 10 env t where
                                     = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
-    se p env (Bind n b@(Pi t) sc)
-        | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ " -> " ++ se 10 ((n,b):env) sc
+    se p env (Bind n b@(Pi t k) sc)
+        | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ arrow k ++ se 10 ((n,b):env) sc
+       where arrow (TType _) = " -> "
+             arrow u = " [" ++ show u ++ "] -> "
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Proj x i) = se 1 env x ++ "!" ++ show i
@@ -1268,7 +1285,7 @@ showEnv' env t dbg = se 10 env t where
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
     sb env n (GHole i t) = showb env "?defer " ". " n t
-    sb env n (Pi t)   = showb env "(" ") -> " n t
+    sb env n (Pi t _)   = showb env "(" ") -> " n t
     sb env n (PVar t) = showb env "pat " ". " n t
     sb env n (PVTy t) = showb env "pty " ". " n t
     sb env n (Let t v)   = showbv env "let " " in " n t v
@@ -1328,7 +1345,7 @@ orderPats tm = op [] tm
 
     op ps (Bind n (PVar t) sc) = op ((n, PVar t) : ps) sc
     op ps (Bind n (Hole t) sc) = op ((n, Hole t) : ps) sc
-    op ps (Bind n (Pi t)   sc) = op ((n, Pi t) : ps) sc
+    op ps (Bind n (Pi t k) sc) = op ((n, Pi t k) : ps) sc
     op ps sc = bindAll (sortP ps) sc
 
     sortP ps = pick [] (reverse ps)
@@ -1373,9 +1390,10 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
                                        v' <- getPats v
                                        sc' <- getPats sc
                                        return (Bind n (Let t' v') sc')
-    getPats (Bind n (Pi t) sc) = do t' <- getPats t
-                                    sc' <- getPats sc
-                                    return (Bind n (Pi t') sc')
+    getPats (Bind n (Pi t k) sc) = do t' <- getPats t
+                                      k' <- getPats k
+                                      sc' <- getPats sc
+                                      return (Bind n (Pi t' k') sc')
     getPats (Bind n (Lam t) sc) = do t' <- getPats t
                                      sc' <- getPats sc
                                      return (Bind n (Lam t') sc')

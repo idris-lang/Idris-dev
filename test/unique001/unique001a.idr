@@ -19,13 +19,49 @@ mkUList : Nat -> UList Int
 mkUList Z = []
 mkUList (S k) = cast k :: mkUList k
 
+-- showIt : UList Int -> Int -> String
+-- showIt xs x = let xs' = umap (*2) xs in ""
+
+showIt : UList Int -> Int -> String
+showIt [] y = "END"
+showIt (x :: xs) y = let z = 0 :: xs in
+                         show x ++ "," ++ showU xs ++ showU z
+
+printThings : (Int -> String) -> IO ()
+printThings f = do putStrLn (f 10)
+                   putStrLn (f 20)
+
+double : Int -> Int
+double x = x * 2
+
 showStuff : UList Int -> IO ()
 showStuff xs = do
           putStrLn (showU xs)
-          let xs' = umap (*2) xs
           putStrLn (showU xs)
-          putStrLn (showU xs')
+          -- xsFn gets a unique type since we're in a unique context
+          -- now, but function built has a non-unique type
+          (\xsFn : Int -> String =>
+                   do putStrLn "Hello"
+                      putStrLn (xsFn 42))
+                (\dummy => showU (umap double xs))
 
-main : IO ()
-main = showStuff (mkUList 20)
+showStuff' : UList Int -> IO ()
+showStuff' xs = do
+          putStrLn (showU xs)
+          putStrLn (showU xs)
+          -- xsFn gets a unique type since we're in a unique context
+          -- now, but function built has a non-unique type
+          let xsFn = \dummy : Int => showU (umap double xs)
+          putStrLn "Hello"
+          putStrLn (xsFn 42)
+          putStrLn (xsFn 42)
+
+showThings : UList Int -> IO ()
+showThings xs = do
+          putStrLn (showU xs)
+          putStrLn (showU xs)
+          -- showIt has a unique type, printThings wants a non-unique
+          -- type
+          printThings (showIt xs)
+
 

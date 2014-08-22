@@ -92,7 +92,7 @@ data NameType = Bound
 ||| Types annotations for bound variables in different
 ||| binding contexts
 data Binder a = Lam a
-              | Pi a
+              | Pi a a 
               | Let a a
               | NLet a a
               | Hole a
@@ -104,7 +104,7 @@ data Binder a = Lam a
 
 instance Functor Binder where
   map f (Lam x) = Lam (f x)
-  map f (Pi x) = Pi (f x)
+  map f (Pi x k) = Pi (f x) (f k)
   map f (Let x y) = Let (f x) (f y)
   map f (NLet x y) = NLet (f x) (f y)
   map f (Hole x) = Hole (f x)
@@ -115,7 +115,7 @@ instance Functor Binder where
 
 instance Foldable Binder where
   foldr f z (Lam x) = f x z
-  foldr f z (Pi x) = f x z
+  foldr f z (Pi x k) = f x (f k z)
   foldr f z (Let x y) = f x (f y z)
   foldr f z (NLet x y) = f x (f y z)
   foldr f z (Hole x) = f x z
@@ -126,7 +126,7 @@ instance Foldable Binder where
 
 instance Traversable Binder where
   traverse f (Lam x) = [| Lam (f x) |]
-  traverse f (Pi x) = [| Pi (f x) |]
+  traverse f (Pi x k) = [| Pi (f x) (f k) |]
   traverse f (Let x y) = [| Let (f x) (f y) |]
   traverse f (NLet x y) = [| NLet (f x) (f y) |]
   traverse f (Hole x) = [| Hole (f x) |]
@@ -400,7 +400,8 @@ mutual
   instance Quotable (Binder TT) where
     quotedTy = `(Binder TT)
     quote (Lam x) = `(Lam {a=TT} ~(assert_total (quote x)))
-    quote (Pi x) = `(Pi {a=TT} ~(assert_total (quote x)))
+    quote (Pi x k) = `(Pi {a=TT} ~(assert_total (quote x))
+                                 ~(assert_total (quote k)))
     quote (Let x y) = `(Let {a=TT} ~(assert_total (quote x))
                                            ~(assert_total (quote y)))
     quote (NLet x y) = `(NLet {a=TT} ~(assert_total (quote x))
@@ -431,7 +432,7 @@ mutual
 
   quoteRawBinder : Binder Raw -> TT
   quoteRawBinder (Lam x) = `(Lam {a=Raw} ~(quoteRaw x))
-  quoteRawBinder (Pi x) = `(Pi {a=Raw} ~(quoteRaw x))
+  quoteRawBinder (Pi x k) = `(Pi {a=Raw} ~(quoteRaw x) ~(quoteRaw k))
   quoteRawBinder (Let x y) = `(Let {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
   quoteRawBinder (NLet x y) = `(NLet {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
   quoteRawBinder (Hole x) = `(Hole {a=Raw} ~(quoteRaw x))
