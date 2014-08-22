@@ -14,3 +14,7 @@ unique001a.idr:55:12:Can't convert
         UniqueType ([94mInt[0m -> [94mString[0m)
 with
         [94mInt[0m -> [94mString[0m
+unique001b.idr:16:7:Borrowed name xs must not be used on RHS
+unique001c.idr:49:6:Unique name f is used more than once
+unique001d.idr:3:7:Borrowed name x must not be used on RHS
+unique001e.idr:4:11:Constructor Main.:: has a UniqueType, but the data type does not
