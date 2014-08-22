@@ -128,7 +128,6 @@ generate codegen mainmod ir
        -- Built-in code generators (FIXME: lift these out!)
        Via "c" -> codegenC ir 
        Via "java" -> codegenJava ir 
-       Via "javascript" -> codegenJavaScript ir
        Via "node" -> codegenNode ir
        Via "llvm" -> codegenLLVM ir
        -- Any external code generator

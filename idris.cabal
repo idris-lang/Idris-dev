@@ -766,3 +766,15 @@ Executable idris-c
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
+Executable idris-javascript
+  Main-is:        Main.hs
+  hs-source-dirs: codegen/idris-javascript
+
+  Build-depends:  idris
+                , base
+                , filepath
+                , haskeline >= 0.7
+                , transformers
+
+  ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
