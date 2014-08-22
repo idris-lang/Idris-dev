@@ -248,7 +248,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                             force (normalisePats ctxt [] y))
     simple_lhs ctxt t = t
 
-    simple_rt ctxt (p, x, y) = (p, x, force (uniqueBinders p 
+    simple_rt ctxt (p, x, y) = (p, x, force (uniqueBinders p
                                                 (rt_simplify ctxt [] y)))
 
     -- this is so pattern types are in the right form for erasure
@@ -741,7 +741,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         let wargval = getRetTy cwvalN
         let wargtype = getRetTy cwvaltyN
         logLvl 5 ("Abstract over " ++ show wargval ++ " in " ++ show wargtype)
-        let wtype = bindTyArgs Pi (bargs_pre ++
+        let wtype = bindTyArgs (flip Pi (TType (UVar 0))) (bargs_pre ++
                      (sMN 0 "warg", wargtype) :
                      map (abstract (sMN 0 "warg") wargval wargtype) bargs_post)
                      (substTerm wargval (P Bound (sMN 0 "warg") wargtype) ret_ty)
@@ -789,7 +789,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         (crhs, crhsty) <- recheckC fc [] rhs'
         return $ (Right (clhs, crhs), lhs)
   where
-    getImps (Bind n (Pi _) t) = pexp Placeholder : getImps t
+    getImps (Bind n (Pi _ _) t) = pexp Placeholder : getImps t
     getImps _ = []
 
     mkAuxC wname lhs ns ns' (PClauses fc o n cs)

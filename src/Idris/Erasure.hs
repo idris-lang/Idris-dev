@@ -353,16 +353,16 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     -- dependencies of de bruijn variables are described in `bs'
     getDepsTerm vs bs cd (V i) = snd (bs !! i) cd
 
-    getDepsTerm vs bs cd (Bind n bdr t)
+    getDepsTerm vs bs cd (Bind n bdr body)
         -- here we just push IM.empty on the de bruijn stack
         -- the args will be marked as used at the usage site
-        | Lam ty <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd t
-        | Pi  ty <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd t
+        | Lam ty <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd body
+        | Pi ty _ <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd body
 
         -- let-bound variables can get partially evaluated
         -- it is sufficient just to plug the Cond in when the bound names are used
-        |  Let ty t <- bdr = getDepsTerm vs ((n, var t) : bs) cd t
-        | NLet ty t <- bdr = getDepsTerm vs ((n, var t) : bs) cd t
+        |  Let ty t <- bdr = var t cd `union` getDepsTerm vs ((n, var t) : bs) cd body
+        | NLet ty t <- bdr = var t cd `union` getDepsTerm vs ((n, var t) : bs) cd body
       where
         var t cd = getDepsTerm vs bs cd t
 

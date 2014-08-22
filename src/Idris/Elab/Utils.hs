@@ -46,7 +46,7 @@ checkAddDef add toplvl fc ((n, (i, top, t)) : ns)
 -- Get the list of (index, name) of inaccessible arguments from an elaborated
 -- type
 inaccessibleImps :: Int -> Type -> [Bool] -> [(Int, Name)]
-inaccessibleImps i (Bind n (Pi t) sc) (inacc : ins)
+inaccessibleImps i (Bind n (Pi t _) sc) (inacc : ins)
     | inacc = (i, n) : inaccessibleImps (i + 1) sc ins
     | otherwise = inaccessibleImps (i + 1) sc ins
 inaccessibleImps _ _ _ = []
@@ -152,10 +152,10 @@ psolve tm = return ()
 pvars ist (Bind n (PVar t) sc) = (n, delab ist t) : pvars ist sc
 pvars ist _ = []
 
-getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi t) sc)
+getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi t _) sc)
     = nub $ getFixedInType i env [] t ++
             getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
-getFixedInType i env (_ : is) (Bind n (Pi t) sc)
+getFixedInType i env (_ : is) (Bind n (Pi t _) sc)
     = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
 getFixedInType i env is tm@(App f a)
     | (P _ tn _, args) <- unApply tm
@@ -169,7 +169,7 @@ getFixedInType i env is tm@(App f a)
                         getFixedInType i env is a
 getFixedInType i _ _ _ = []
 
-getFlexInType i env ps (Bind n (Pi t) sc)
+getFlexInType i env ps (Bind n (Pi t _) sc)
     = nub $ (if (not (n `elem` ps)) then getFlexInType i env ps t else []) ++
             getFlexInType i (n : env) ps (instantiate (P Bound n t) sc)
 getFlexInType i env ps tm@(App f a)

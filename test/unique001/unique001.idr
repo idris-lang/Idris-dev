@@ -25,6 +25,7 @@ showStuff xs = do
           putStrLn (showU xs)
           let xs' = umap (*2) xs
           putStrLn (showU xs')
+          putStrLn (showU xs')
 
 main : IO ()
 main = showStuff (mkUList 20)

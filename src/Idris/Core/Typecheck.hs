@@ -69,42 +69,51 @@ check ctxt env tm
      = evalStateT (check' True ctxt env tm) (0, []) -- Holes allowed
 
 check' :: Bool -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
-check' holes ctxt env top = chk env top where
-  chk env (Var n)
+check' holes ctxt env top = chk (TType (UVar (-5))) env top where
+
+  smaller (UType NullType) _ = UType NullType
+  smaller _ (UType NullType) = UType NullType
+  smaller (UType u)        _ = UType u
+  smaller _        (UType u) = UType u
+  smaller x        _         = x
+
+  chk :: Type -> -- uniqueness level
+         Env -> Raw -> StateT UCs TC (Term, Type)
+  chk u env (Var n)
       | Just (i, ty) <- lookupTyEnv n env = return (P Bound n ty, ty)
       | (P nt n' ty : _) <- lookupP n ctxt = return (P nt n' ty, ty)
       | otherwise = do lift $ tfail $ NoSuchVariable n
-  chk env (RApp f a)
-      = do (fv, fty) <- chk env f
-           (av, aty) <- chk env a
+  chk u env ap@(RApp f a)
+      = do (fv, fty) <- chk u env f
+           (av, aty) <- chk u env a
            let fty' = case uniqueBinders (map fst env) (finalise fty) of
-                        ty@(Bind x (Pi s) t) -> ty
+                        ty@(Bind x (Pi s k) t) -> ty
                         _ -> uniqueBinders (map fst env)
                                  $ case hnf ctxt env fty of
-                                     ty@(Bind x (Pi s) t) -> ty
+                                     ty@(Bind x (Pi s k) t) -> ty
                                      _ -> normalise ctxt env fty
            case fty' of
-             Bind x (Pi s) t ->
+             Bind x (Pi s k) t -> 
                  do convertsC ctxt env aty s
                     let apty = simplify initContext env
                                         (Bind x (Let aty av) t)
                     return (App fv av, apty)
              t -> lift $ tfail $ NonFunctionType fv fty 
-  chk env RType
+  chk u env RType
     | holes = return (TType (UVal 0), TType (UVal 0))
     | otherwise = do (v, cs) <- get
                      let c = ULT (UVar v) (UVar (v+1))
                      put (v+2, (c:cs))
                      return (TType (UVar v), TType (UVar (v+1)))
-  chk env (RUType u)
-    | holes = return (UType u, TType (UVal 0))
+  chk u env (RUType un)
+    | holes = return (UType un, TType (UVal 0))
     | otherwise = do -- TODO! (v, cs) <- get
                      -- let c = ULT (UVar v) (UVar (v+1))
                      -- put (v+2, (c:cs))
                      -- return (TType (UVar v), TType (UVar (v+1)))
-                     return (UType u, TType (UVal 0))
-  chk env (RConstant Forgot) = return (Erased, Erased)
-  chk env (RConstant c) = return (Constant c, constType c)
+                     return (UType un, TType (UVal 0))
+  chk u env (RConstant Forgot) = return (Erased, Erased)
+  chk u env (RConstant c) = return (Constant c, constType c)
     where constType (I _)   = Constant (AType (ATInt ITNative))
           constType (BI _)  = Constant (AType (ATInt ITBig))
           constType (Fl _)  = Constant (AType ATFloat)
@@ -120,107 +129,122 @@ check' holes ctxt env top = chk env top where
           constType (B64V a) = Constant (AType (ATInt (ITVec IT64 (V.length a))))
           constType Forgot  = Erased
           constType _       = TType (UVal 0)
-  chk env (RForce t) = do (_, ty) <- chk env t
-                          return (Erased, ty)
-  chk env (RBind n (Pi s) t)
-      = do (sv, st) <- chk env s
-           (tv, tt) <- chk ((n, Pi sv) : env) t
+  chk u env (RForce t) = do (_, ty) <- chk u env t
+                            return (Erased, ty)
+  chk u env (RBind n (Pi s k) t)
+      = do (sv, st) <- chk u env s
+           (kv, kt) <- chk u env k
+           (tv, tt) <- chk st ((n, Pi sv kv) : env) t
+--            let tv = mkUniquePi kv tv_in
            (v, cs) <- get
            case (normalise ctxt env st, normalise ctxt env tt) of
                 (TType su, TType tu) -> do
                     when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
-                    return (Bind n (Pi (uniqueBinders (map fst env) sv))
-                              (pToV n tv), TType (UVar v))
-                (u, u') ->
-                    return (Bind n (Pi (uniqueBinders (map fst env) sv))
-                                (pToV n tv), smaller u u')
+                    let k' = st `smaller` kv `smaller` TType (UVar v) `smaller` u
+                    return (Bind n (Pi (uniqueBinders (map fst env) sv) k')
+                              (pToV n tv), k')
+                (un, un') ->
+                   let k' = st `smaller` kv `smaller` un `smaller` un' `smaller` u in
+                    return (Bind n (Pi (uniqueBinders (map fst env) sv) k')
+                                (pToV n tv), k')
 
-      where smaller (UType NullType) _ = UType NullType
-            smaller _ (UType NullType) = UType NullType
-            smaller (UType u)        _ = UType u
-            smaller _        (UType u) = UType u
-  chk env (RBind n b sc)
-      = do b' <- checkBinder b
-           (scv, sct) <- chk ((n, b'):env) sc
-           discharge n b' (pToV n scv) (pToV n sct)
+      where mkUniquePi kv (Bind n (Pi s k) sc) 
+                    = let k' = smaller kv k in
+                          Bind n (Pi s k') (mkUniquePi k' sc)
+            mkUniquePi kv (Bind n (Lam t) sc) 
+                    = Bind n (Lam (mkUniquePi kv t)) (mkUniquePi kv sc)
+            mkUniquePi kv (Bind n (Let t v) sc) 
+                    = Bind n (Let (mkUniquePi kv t) v) (mkUniquePi kv sc)
+            mkUniquePi kv t = t
+
+            -- Kind of the whole thing is the kind of the most unique thing
+            -- in the environment (because uniqueness taints everything...)
+            mostUnique [] k = k
+            mostUnique (Pi _ pk : es) k = mostUnique es (smaller pk k)
+            mostUnique (_ : es) k = mostUnique es k
+
+  chk u env (RBind n b sc)
+      = do (b', bt') <- checkBinder b
+           (scv, sct) <- chk (smaller bt' u) ((n, b'):env) sc
+           discharge n b' bt' (pToV n scv) (pToV n sct)
     where checkBinder (Lam t)
-            = do (tv, tt) <- chk env t
+            = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  lift $ isType ctxt env tt'
-                 return (Lam tv)
+                 return (Lam tv, tt')
           checkBinder (Let t v)
-            = do (tv, tt) <- chk env t
-                 (vv, vt) <- chk env v
+            = do (tv, tt) <- chk u env t
+                 (vv, vt) <- chk u env v
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  convertsC ctxt env vt tv
                  lift $ isType ctxt env tt'
-                 return (Let tv vv)
+                 return (Let tv vv, tt')
           checkBinder (NLet t v)
-            = do (tv, tt) <- chk env t
-                 (vv, vt) <- chk env v
+            = do (tv, tt) <- chk u env t
+                 (vv, vt) <- chk u env v
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  convertsC ctxt env vt tv
                  lift $ isType ctxt env tt'
-                 return (NLet tv vv)
+                 return (NLet tv vv, tt')
           checkBinder (Hole t)
             | not holes = lift $ tfail (IncompleteTerm undefined)
             | otherwise
-                   = do (tv, tt) <- chk env t
+                   = do (tv, tt) <- chk u env t
                         let tv' = normalise ctxt env tv
                         let tt' = normalise ctxt env tt
                         lift $ isType ctxt env tt'
-                        return (Hole tv)
+                        return (Hole tv, tt')
           checkBinder (GHole i t)
-            = do (tv, tt) <- chk env t
+            = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  lift $ isType ctxt env tt'
-                 return (GHole i tv)
+                 return (GHole i tv, tt')
           checkBinder (Guess t v)
             | not holes = lift $ tfail (IncompleteTerm undefined)
             | otherwise
-                   = do (tv, tt) <- chk env t
-                        (vv, vt) <- chk env v
+                   = do (tv, tt) <- chk u env t
+                        (vv, vt) <- chk u env v
                         let tv' = normalise ctxt env tv
                         let tt' = normalise ctxt env tt
                         convertsC ctxt env vt tv
                         lift $ isType ctxt env tt'
-                        return (Guess tv vv)
+                        return (Guess tv vv, tt')
           checkBinder (PVar t)
-            = do (tv, tt) <- chk env t
+            = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  lift $ isType ctxt env tt'
                  -- Normalised version, for erasure purposes (it's easier
                  -- to tell if it's a collapsible variable)
-                 return (PVar tv)
+                 return (PVar tv, tt')
           checkBinder (PVTy t)
-            = do (tv, tt) <- chk env t
+            = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  lift $ isType ctxt env tt'
-                 return (PVTy tv)
+                 return (PVTy tv, tt')
 
-          discharge n (Lam t) scv sct
-            = return (Bind n (Lam t) scv, Bind n (Pi t) sct)
-          discharge n (Pi t) scv sct
-            = return (Bind n (Pi t) scv, sct)
-          discharge n (Let t v) scv sct
+          discharge n (Lam t) bt scv sct
+            = return (Bind n (Lam t) scv, Bind n (Pi t bt) sct)
+          discharge n (Pi t k) bt scv sct
+            = return (Bind n (Pi t k) scv, sct)
+          discharge n (Let t v) bt scv sct
             = return (Bind n (Let t v) scv, Bind n (Let t v) sct)
-          discharge n (NLet t v) scv sct
+          discharge n (NLet t v) bt scv sct
             = return (Bind n (NLet t v) scv, Bind n (Let t v) sct)
-          discharge n (Hole t) scv sct
+          discharge n (Hole t) bt scv sct
             = return (Bind n (Hole t) scv, sct)
-          discharge n (GHole i t) scv sct
+          discharge n (GHole i t) bt scv sct
             = return (Bind n (GHole i t) scv, sct)
-          discharge n (Guess t v) scv sct
+          discharge n (Guess t v) bt scv sct
             = return (Bind n (Guess t v) scv, sct)
-          discharge n (PVar t) scv sct
+          discharge n (PVar t) bt scv sct
             = return (Bind n (PVar t) scv, Bind n (PVTy t) sct)
-          discharge n (PVTy t) scv sct
+          discharge n (PVTy t) bt scv sct
             = return (Bind n (PVTy t) scv, sct)
 
 -- Number of times a name can be used
@@ -257,7 +281,20 @@ checkUnique borrowed ctxt env tm
     chkBinders env (App f a) = do chkBinders env f; chkBinders env a
     chkBinders env (Bind n b t)
        = do chkBinderName env n b
+            -- Must be safe whether we evaluate the scope or binder first
+            -- (Surely there is a tidier rule than this...?)
+            st <- get
+            chkBinders env (binderTy b)
+            case b of
+                 Let t v -> chkBinders env v
+                 _ -> return ()
             chkBinders ((n, b) : env) t
+--             put st
+--             chkBinders env (binderTy b)
+--             case b of
+--                  Let t v -> chkBinders env v
+--                  _ -> return ()
+--             chkBinders ((n, b) : env) t
     chkBinders env t = return ()
 
     chkBinderName :: Env -> Name -> Binder Term -> 
@@ -274,10 +311,6 @@ checkUnique borrowed ctxt env tm
                                       put ((n, (Many, NullType)) : ns)
                  UType AllTypes -> do ns <- get
                                       put ((n, (Once, AllTypes)) : ns)
-                 _ -> return ()
-            chkBinders env (binderTy b)
-            case b of
-                 Let t v -> chkBinders env v
                  _ -> return ()
 
     chkName n 

@@ -1065,7 +1065,7 @@ addStatics n tm ptm =
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
-    initStatics (Bind n (Pi ty) sc) (PPi p _ _ s)
+    initStatics (Bind n (Pi ty _) sc) (PPi p _ _ s)
             = let (static, dynamic) = initStatics (instantiate (P Bound n ty) sc) s in
                   if pstatic p == Static then ((n, ty) : static, dynamic)
                     else if (not (searchArg p)) 
@@ -1073,7 +1073,7 @@ addStatics n tm ptm =
                             else (static, dynamic)
     initStatics t pt = ([], [])
 
-    freeArgNames (Bind n (Pi ty) sc) 
+    freeArgNames (Bind n (Pi ty _) sc) 
           = nub $ freeArgNames ty 
     freeArgNames tm = let (_, args) = unApply tm in
                           concatMap freeNames args
@@ -1085,7 +1085,7 @@ addStatics n tm ptm =
     searchArg (TacImp _ _ _) = True
     searchArg _ = False
 
-    staticList sts (Bind n (Pi _) sc) = (n `elem` sts) : staticList sts sc
+    staticList sts (Bind n (Pi _ _) sc) = (n `elem` sts) : staticList sts sc
     staticList _ _ = []
 
 -- Dealing with implicit arguments
@@ -1186,7 +1186,7 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
             = (n, (p, t)) : collectImps sc
         collectImps _ = []
 
-        getImps (Bind n (Pi t) sc) imps
+        getImps (Bind n (Pi t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
             argInfo n (Imp opt _ _) t' 
@@ -1200,7 +1200,7 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
             argInfo n (TacImp opt _ scr) t' 
                    = (InaccessibleArg `elem` opt,
                           PTacImplicit 10 opt n scr t')
-        getImps (Bind n (Pi t) sc) imps = impBind n t : getImps sc imps
+        getImps (Bind n (Pi t _) sc) imps = impBind n t : getImps sc imps
            where impBind n t = (True, PImp 1 True [] n Placeholder)
         getImps sc tm = []
 
@@ -1612,7 +1612,7 @@ stripUnmatchable :: IState -> PTerm -> PTerm
 stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su :: PTerm -> PTerm
     su (PRef fc f)
-       | (Bind n (Pi t) sc :_) <- lookupTy f (tt_ctxt i) 
+       | (Bind n (Pi t _) sc :_) <- lookupTy f (tt_ctxt i) 
           = Placeholder
     su (PApp fc fn args) 
        = PApp fc fn (fmap (fmap su) args)

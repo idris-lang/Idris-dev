@@ -283,12 +283,12 @@ checkPositive mut_ns (cn, ty')
   where
     args t = [0..length (getArgTys t)-1]
 
-    cp (Bind n (Pi aty) sc) = posArg aty && cp sc
+    cp (Bind n (Pi aty _) sc) = posArg aty && cp sc
     cp t | (P _ n' _, args) <- unApply t,
            n' `elem` mut_ns = all noRec args 
     cp _ = True
 
-    posArg (Bind _ (Pi nty) sc)
+    posArg (Bind _ (Pi nty _) sc)
         | (P _ n' _, args) <- unApply nty
             = n' `notElem` mut_ns && all noRec args && posArg sc
     posArg t | (P _ n' _, args) <- unApply t,
@@ -531,8 +531,8 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
      = case lookupTy n (tt_ctxt ist) of
             [ty] -> expand 0 (normalise (tt_ctxt ist) [] ty) args
             _ -> args
-     where expand i (Bind n (Pi _) sc) (x : xs) = x : expand (i + 1) sc xs
-           expand i (Bind n (Pi _) sc) [] = Just (i, Same) : expand (i + 1) sc []
+     where expand i (Bind n (Pi _ _) sc) (x : xs) = x : expand (i + 1) sc xs
+           expand i (Bind n (Pi _ _) sc) [] = Just (i, Same) : expand (i + 1) sc []
            expand i _ xs = xs
 
   mkChange n args pargs = [(n, expandToArity n (sizes args))]

@@ -370,7 +370,7 @@ toPat reflect tc = map $ toPat' []
     toPat' [] (Constant VoidType)  = PTyPat
     toPat' [] (Constant x)         = PConst x
 
-    toPat' [] (Bind n (Pi t) sc)
+    toPat' [] (Bind n (Pi t _) sc)
         | reflect && noOccurrence n sc
         = PReflected (sUN "->") [toPat' [] t, toPat' [] sc]
 

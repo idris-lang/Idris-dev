@@ -1050,7 +1050,7 @@ getInferTerm (App (App _ _) tm) = tm
 getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n (toTy b) $ getInferType sc
-  where toTy (Lam t) = Pi t
+  where toTy (Lam t) = Pi t (TType (UVar 0))
         toTy (PVar t) = PVTy t
         toTy b = b
 getInferType (App (App _ ty) _) = ty

@@ -239,20 +239,21 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (V i)
                      | i < length env && i >= 0 = return $ snd (env !! i)
                      | otherwise      = return $ VV i
-    ev ntimes stk top env (Bind n (Let t v) sc)
+    ev ntimes stk top env (Bind n (Let t v) sc) 
+        | not runtime || occurrences n sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 sc' <- ev ntimes stk top ((n, v') : env) sc
                 wknV (-1) sc'
---         | otherwise
---            = do t' <- ev ntimes stk top env t
---                 v' <- ev ntimes stk top env v --(finalise v)
---                 -- use Tmp as a placeholder, then make it a variable reference
---                 -- again when evaluation finished
---                 hs <- get
---                 let vd = nexthole hs
---                 put (hs { nexthole = vd + 1 })
---                 sc' <- ev ntimes stk top (VP Bound (MN vd "vlet") VErased : env) sc
---                 return $ VBLet vd n t' v' sc'
+        | otherwise
+           = do t' <- ev ntimes stk top env t
+                v' <- ev ntimes stk top env v --(finalise v)
+                -- use Tmp as a placeholder, then make it a variable reference
+                -- again when evaluation finished
+                hs <- get
+                let vd = nexthole hs
+                put (hs { nexthole = vd + 1 })
+                sc' <- ev ntimes stk top ((n, VP Bound (sMN vd "vlet") VErased) : env) sc
+                return $ VBLet vd n t' v' sc'
     ev ntimes stk top env (Bind n (NLet t v) sc)
            = do t' <- ev ntimes stk top env (finalise t)
                 v' <- ev ntimes stk top env (finalise v)
@@ -437,7 +438,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VP _ n _, args) alts amap
         | Just (ns, sc) <- findFn n alts  = return $ Just (updateAmap (zip ns args) amap, sc)
-    chooseAlt env _ (VBind _ _ (Pi s) t, []) alts amap
+    chooseAlt env _ (VBind _ _ (Pi s k) t, []) alts amap
         | Just (ns, sc) <- findFn (sUN "->") alts
            = do t' <- t (VV 0) -- we know it's not in scope or it's not a pattern
                 return $ Just (updateAmap (zip ns [s, t']) amap, sc)
@@ -580,6 +581,7 @@ convEq ctxt holes topx topy = ceq [] topx topy where
         where
             ceqB ps (Let v t) (Let v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
+            ceqB ps (Pi v t) (Pi v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
     ceq ps (App fx ax) (App fy ay)   = liftM2 (&&) (ceq ps fx fy) (ceq ps ax ay)
     ceq ps (Constant x) (Constant y) = return (x == y)

@@ -58,18 +58,18 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                                   _ -> PRef un n
     de env _ (Bind n (Lam ty) sc)
           = PLam n (de env [] ty) (de ((n,n):env) [] sc)
-    de env ((PImp { argopts = opts }):is) (Bind n (Pi ty) sc)
+    de env ((PImp { argopts = opts }):is) (Bind n (Pi ty _) sc)
           = PPi (Imp opts Dynamic False) n (de env [] ty) (de ((n,n):env) is sc)
-    de env (PConstraint _ _ _ _:is) (Bind n (Pi ty) sc)
+    de env (PConstraint _ _ _ _:is) (Bind n (Pi ty _) sc)
           = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
-    de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi ty) sc)
+    de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi ty _) sc)
           = PPi (tacimpl tac) n (de env [] ty) (de ((n,n):env) is sc)
-    de env (plic:is) (Bind n (Pi ty) sc)
+    de env (plic:is) (Bind n (Pi ty _) sc)
           = PPi (Exp (argopts plic) Dynamic False)
                 n
                 (de env [] ty)
                 (de ((n,n):env) is sc)
-    de env [] (Bind n (Pi ty) sc)
+    de env [] (Bind n (Pi ty _) sc)
           = PPi expl n (de env [] ty) (de ((n,n):env) [] sc)
     de env _ (Bind n (Let ty val) sc)
         = PLet n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
@@ -183,10 +183,18 @@ pprintErr' i (CantUnify _ x_in y_in e sc s) =
            if (opt_errContext (idris_options i)) then showSc i sc else empty
 pprintErr' i (CantConvert x y env) =
   text "Can't convert" <>
-  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x))) <$>
+  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env)  
+               (delab i (flagUnique x)))) <$>
   text "with" <>
-  indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i y))) <>
+  indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) env) 
+               (delab i (flagUnique y)))) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
+    where flagUnique (Bind n (Pi t k@(UType u)) sc)
+              = App (P Ref (sUN (show u)) Erased)
+                    (Bind n (Pi (flagUnique t) k) (flagUnique sc))
+          flagUnique (App f a) = App (flagUnique f) (flagUnique a)
+          flagUnique (Bind n b sc) = Bind n (fmap flagUnique b) (flagUnique sc)
+          flagUnique t = t
 pprintErr' i (CantSolveGoal x env) =
   text "Can't solve goal " <>
   indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x))) <>

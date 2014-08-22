@@ -299,10 +299,10 @@ makeLemma fn updatefile l n
   where getIndent s = length (takeWhile isSpace s)
 
         appArgs skip 0 _ = ""
-        appArgs skip i (Bind n@(UN c) (Pi _) sc) 
+        appArgs skip i (Bind n@(UN c) (Pi _ _) sc) 
            | (thead c /= '_' && n `notElem` skip)
                 = " " ++ show n ++ appArgs skip (i - 1) sc
-        appArgs skip i (Bind _ (Pi _) sc) = appArgs skip (i - 1) sc
+        appArgs skip i (Bind _ (Pi _ _) sc) = appArgs skip (i - 1) sc
         appArgs skip i _ = ""
 
         stripMNBind skip (PPi b n@(UN c) ty sc) 
@@ -316,7 +316,7 @@ makeLemma fn updatefile l n
         -- Make them implicit if they appear guarded by a top level constructor,
         -- or at the top level themselves.
         guessImps :: Context -> Term -> [Name]
-        guessImps ctxt (Bind n (Pi _) sc)
+        guessImps ctxt (Bind n (Pi _ _) sc)
            | guarded ctxt n (substV (P Bound n Erased) sc) 
                 = n : guessImps ctxt sc
            | otherwise = guessImps ctxt sc
@@ -328,7 +328,7 @@ makeLemma fn updatefile l n
               isConName f ctxt = any (guarded ctxt n) args
 --         guarded ctxt n (Bind (UN cn) (Pi t) sc) -- ignore shadows
 --             | thead cn /= '_' = guarded ctxt n t || guarded ctxt n sc
-        guarded ctxt n (Bind _ (Pi t) sc) 
+        guarded ctxt n (Bind _ (Pi t _) sc) 
             = guarded ctxt n t || guarded ctxt n sc
         guarded ctxt n _ = False
 
