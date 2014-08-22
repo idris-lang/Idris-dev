@@ -71,9 +71,6 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_outputTy   :: OutputType,
                          opt_ibcsubdir  :: FilePath,
                          opt_importdirs :: [FilePath],
-                         opt_triple     :: String,
-                         opt_cpu        :: String,
-                         opt_optLevel   :: Word,
                          opt_cmdline    :: [Opt], -- remember whole command line
                          opt_origerr    :: Bool,
                          opt_autoSolve  :: Bool, -- ^ automatically apply "solve" tactic in prover
@@ -95,9 +92,6 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_outputTy   = Executable
                       , opt_ibcsubdir  = ""
                       , opt_importdirs = []
-                      , opt_triple     = ""
-                      , opt_cpu        = ""
-                      , opt_optLevel   = 2
                       , opt_cmdline    = []
                       , opt_origerr    = False
                       , opt_autoSolve  = True
