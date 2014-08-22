@@ -513,6 +513,9 @@ Extra-source-files:
                        test/unique002/run
                        test/unique002/*.idr
                        test/unique002/expected
+                       test/unique003/run
+                       test/unique003/*.idr
+                       test/unique003/expected
 
 source-repository head
   type:     git

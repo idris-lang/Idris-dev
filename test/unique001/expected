@@ -1,7 +1,19 @@
 19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,END
 19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,END
 38,36,34,32,30,28,26,24,22,20,18,16,14,12,10,8,6,4,2,0,END
-unique001a.idr:23:11:Unique name xs is used more than once
+38,36,34,32,30,28,26,24,22,20,18,16,14,12,10,8,6,4,2,0,END
+unique001a.idr:38:11:Can't convert
+        [94mInt[0m -> [94mString[0m
+with
+        UniqueType ([94mInt[0m -> [94mString[0m)
+unique001a.idr:49:12:Can't convert
+        [94mInt[0m -> [94mString[0m
+with
+        UniqueType ([94mInt[0m -> [94mString[0m)
+unique001a.idr:60:12:Can't convert
+        UniqueType ([94mInt[0m -> [94mString[0m)
+with
+        [94mInt[0m -> [94mString[0m
 unique001b.idr:16:7:Borrowed name xs must not be used on RHS
 unique001c.idr:49:6:Unique name f is used more than once
 unique001d.idr:3:7:Borrowed name x must not be used on RHS

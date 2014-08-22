@@ -69,7 +69,7 @@ check ctxt env tm
      = evalStateT (check' True ctxt env tm) (0, []) -- Holes allowed
 
 check' :: Bool -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
-check' holes ctxt env top = chk (TType (UVar 0)) env top where
+check' holes ctxt env top = chk (TType (UVar (-5))) env top where
 
   smaller (UType NullType) _ = UType NullType
   smaller _ (UType NullType) = UType NullType
@@ -140,11 +140,11 @@ check' holes ctxt env top = chk (TType (UVar 0)) env top where
            case (normalise ctxt env st, normalise ctxt env tt) of
                 (TType su, TType tu) -> do
                     when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
-                    let k' = u `smaller` st `smaller` kv `smaller` TType (UVar v)
+                    let k' = st `smaller` kv `smaller` TType (UVar v) `smaller` u
                     return (Bind n (Pi (uniqueBinders (map fst env) sv) k')
                               (pToV n tv), k')
                 (un, un') ->
-                   let k' = u `smaller` st `smaller` kv `smaller` un `smaller` un' in
+                   let k' = st `smaller` kv `smaller` un `smaller` un' `smaller` u in
                     return (Bind n (Pi (uniqueBinders (map fst env) sv) k')
                                 (pToV n tv), k')
 
@@ -284,11 +284,11 @@ checkUnique borrowed ctxt env tm
             -- Must be safe whether we evaluate the scope or binder first
             -- (Surely there is a tidier rule than this...?)
             st <- get
-            chkBinders ((n, b) : env) t
             chkBinders env (binderTy b)
             case b of
                  Let t v -> chkBinders env v
                  _ -> return ()
+            chkBinders ((n, b) : env) t
 --             put st
 --             chkBinders env (binderTy b)
 --             case b of
