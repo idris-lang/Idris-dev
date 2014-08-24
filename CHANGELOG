@@ -11,6 +11,7 @@ New in 0.9.15:
   solved automatically.
 * More efficient representation of proof state, leading to faster elaboration
   of large expressions.
+* EXPERIMENTAL Implementation of uniqueness types 
 
 New in 0.9.14:
 --------------
