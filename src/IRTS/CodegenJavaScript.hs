@@ -244,7 +244,7 @@ codegenJS_all target definitions includes libs filename outputType = do
               , JSApp (JSIdent "i$SCHED") [JSIdent "vm"]
               , JSApp (
                   JSIdent (translateName (sMN 0 "runMain"))
-                ) [JSNum (JSInt 0)]
+                ) [JSNew "i$POINTER" [JSNum (JSInt 0)]]
               , JSWhile (JSProj jsCALLSTACK "length") (
                   JSSeq [ JSAlloc "func" (Just jsPOP)
                         , JSAlloc "args" (Just jsPOP)
@@ -328,24 +328,33 @@ splitFunction (JSAlloc name (Just (JSFunction args body@(JSSeq _)))) = do
 
       splitSequence :: JS -> RWS () [(Int, JS)] Int JS
       splitSequence js@(JSSeq seq) =
-        let (pre,post) = break isCall seq in
+        let (pre,post) = break isBranch seq in
             case post of
-                 []                    -> JSSeq <$> traverse splitCondition seq
-                 [js@(JSCond _)]       -> splitCondition js
-                 [js@(JSSwitch {})] -> splitCondition js
-                 [_]                   -> return js
+                 [_] -> JSSeq <$> traverse splitCondition seq
+                 [call@(JSCond _),rest@(JSApp _ _)]     -> do
+                   rest' <- splitCondition rest
+                   call' <- splitCondition call
+                   return $ JSSeq (pre ++ [rest', call'])
+                 [call@(JSSwitch _ _ _),rest@(JSApp _ _)] -> do
+                   rest' <- splitCondition rest
+                   call' <- splitCondition call
+                   return $ JSSeq (pre ++ [rest', call'])
                  (call:rest) -> do
                    depth <- get
                    put (depth + 1)
                    new <- splitFunction (newFun rest)
                    tell [(depth, new)]
-                   return $ JSSeq (pre ++ (newCall depth : [call]))
+                   call' <- splitCondition call
+                   return $ JSSeq (pre ++ (newCall depth : [call']))
+                 _ -> JSSeq <$> traverse splitCondition seq
 
       splitSequence js = return js
 
-      isCall :: JS -> Bool
-      isCall (JSApp (JSIdent "i$CALL") _) = True
-      isCall _                            = False
+      isBranch :: JS -> Bool
+      isBranch (JSApp (JSIdent "i$CALL") _) = True
+      isBranch (JSCond _)                   = True
+      isBranch (JSSwitch _ _ _)             = True
+      isBranch _                            = False
 
       newCall :: Int -> JS
       newCall depth =
@@ -366,7 +375,7 @@ translateDecl info (name@(MN 0 fun), bc)
       ++ [ JSAlloc (
                translateName name
            ) (Just $ JSFunction ["oldbase"] (
-               JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info) (fst body) ++ [
+               JSSeq $ jsFUNPRELUDE ++ map (translateBC info) (fst body) ++ [
                  JSCond [ ( (translateReg $ caseReg (snd body)) `jsInstanceOf` "i$CON" `jsAnd` (JSProj (translateReg $ caseReg (snd body)) "app")
                           , JSApp (JSProj (translateReg $ caseReg (snd body)) "app") [jsOLDBASE, jsMYOLDBASE]
                           )
@@ -384,7 +393,7 @@ translateDecl info (name@(MN 0 fun), bc)
       ++ [ JSAlloc (
                translateName name
            ) (Just $ JSFunction ["oldbase"] (
-               JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info) (fst body) ++ [
+               JSSeq $ jsFUNPRELUDE ++ map (translateBC info) (fst body) ++ [
                  JSCond [ ( (translateReg $ caseReg (snd body)) `jsInstanceOf` "i$CON" `jsAnd` (JSProj (translateReg $ caseReg (snd body)) "ev")
                           , JSApp (JSProj (translateReg $ caseReg (snd body)) "ev") [jsOLDBASE, jsMYOLDBASE]
                           )
@@ -431,11 +440,16 @@ translateDecl info (name, bc) =
   [ JSAlloc (
        translateName name
      ) (Just $ JSFunction ["oldbase"] (
-         JSSeq $ JSAlloc "myoldbase" Nothing : map (translateBC info)bc
+         JSSeq $ jsFUNPRELUDE ++ map (translateBC info)bc
        )
      )
   ]
 
+jsFUNPRELUDE :: [JS]
+jsFUNPRELUDE = [jsALLOCMYOLDBASE]
+
+jsALLOCMYOLDBASE :: JS
+jsALLOCMYOLDBASE = JSAlloc "myoldbase" (Just $ JSNew "i$POINTER" [])
 
 translateReg :: Reg -> JS
 translateReg reg
@@ -567,10 +581,10 @@ jsFOREIGN _ reg n args
         translateReg reg
 
 jsREBASE :: CompileInfo -> JS
-jsREBASE _ = JSAssign jsSTACKBASE jsOLDBASE
+jsREBASE _ = JSAssign jsSTACKBASE (JSProj jsOLDBASE "addr")
 
 jsSTOREOLD :: CompileInfo ->JS
-jsSTOREOLD _ = JSAssign jsMYOLDBASE jsSTACKBASE
+jsSTOREOLD _ = JSAssign (JSProj jsMYOLDBASE "addr") jsSTACKBASE
 
 jsADDTOP :: CompileInfo -> Int -> JS
 jsADDTOP info n
