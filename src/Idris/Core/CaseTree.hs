@@ -350,9 +350,15 @@ toPats reflect tc f = reverse (toPat reflect tc (getArgs f)) where
 toPat :: Bool -> Bool -> [Term] -> [Pat]
 toPat reflect tc = map $ toPat' []
   where
-    toPat' [_,_,arg](P (DCon t a uniq) nm@(UN n) _)
+    toPat' [_,_,arg] (P (DCon t a uniq) nm@(UN n) _)
         | n == txt "Delay"
         = PCon uniq nm t [PAny, PAny, toPat' [] arg]
+
+    toPat' args (P (DCon t a uniq) nm@(NS (UN n) [own]) _)
+        | n == txt "Read" && own == txt "Ownership"
+        = PCon False nm t (map shareCons (map (toPat' []) args))
+      where shareCons (PCon _ n i ps) = PCon False n i (map shareCons ps)
+            shareCons p = p
 
     toPat' args (P (DCon t a uniq) n _)
         = PCon uniq n t $ map (toPat' []) args
