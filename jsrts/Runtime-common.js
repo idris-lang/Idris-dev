@@ -24,6 +24,11 @@ var i$CON = function(tag,args,app,ev) {
   this.ev = ev;
 }
 
+/** @constructor */
+var i$POINTER = function(addr) {
+  this.addr = addr;
+}
+
 var i$SCHED = function(vm) {
   i$vm = vm;
   i$valstack = vm.valstack;
