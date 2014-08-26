@@ -442,6 +442,18 @@ propagateParams i ps t (PRef fc n)
           isImplicit (_ : is) n = isImplicit is n
 propagateParams i ps t x = x
 
+findUnique :: Context -> Env -> Term -> [Name]
+findUnique ctxt env (Bind n b sc)
+   = let rawTy = forgetEnv (map fst env) (binderTy b)
+         uniq = case check ctxt env rawTy of
+                     OK (_, UType UniqueType) -> True
+                     OK (_, UType NullType) -> True
+                     OK (_, UType AllTypes) -> True
+                     _ -> False in
+         if uniq then n : findUnique ctxt ((n, b) : env) sc
+                 else findUnique ctxt ((n, b) : env) sc
+findUnique _ _ _ = []
+
 -- Return the elaborated LHS/RHS, and the original LHS with implicits added
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
               Idris (Either Term (Term, Term), PTerm)
@@ -520,7 +532,14 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         windex <- getName
         let decls = nub (concatMap declared whereblock)
         let defs = nub (decls ++ concatMap defined whereblock)
-        let newargs = pvars ist lhs_tm
+        let newargs_all = pvars ist lhs_tm
+
+        -- Unique arguments must be passed to the where block explicitly
+        -- (since we can't control "usage" easlily otherwise). Remove them
+        -- from newargs here
+        let uniqargs = findUnique (tt_ctxt ist) [] lhs_tm
+        let newargs = filter (\(n,_) -> n `notElem` uniqargs) newargs_all
+
         let winfo = pinfo info newargs defs windex
         let wb = map (expandParamsD False ist decorate newargs defs) whereblock
 

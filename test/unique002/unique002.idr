@@ -14,7 +14,7 @@ showU xs = "[" ++ showU' xs ++ "]" where
 foo : UList Int -> IO ()
 foo xs = do -- let f = \x : Int => showU xs
             putStrLn $ free xs
-            putStrLn $ f 42
+            putStrLn $ f 42 xs
             return ()
-    where f : Int -> String
-          f x = showU xs
+    where f : Int -> Borrowed (UList Int) -> String
+          f x xs = showU xs

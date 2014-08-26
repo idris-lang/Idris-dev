@@ -13,6 +13,7 @@ import Idris.Core.Evaluate
 import Idris.Core.Typecheck
 
 import Control.Applicative hiding (Const)
+import Control.Monad.State
 import Control.Monad
 import Data.List
 
@@ -205,3 +206,33 @@ paramNames args env (p : ps)
                                         else paramNames args env ps
                           _ -> paramNames args env ps
    | otherwise = paramNames args env ps
+
+getUniqueUsed :: Context -> Term -> [Name]
+getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
+  where
+    getUniq :: Env -> [(Name, Bool)] -> Term -> State [Name] () 
+    getUniq env us (Bind n b sc)
+       = let uniq = case check ctxt env (forgetEnv (map fst env) (binderTy b)) of
+                         OK (_, UType UniqueType) -> True
+                         OK (_, UType NullType) -> True
+                         OK (_, UType AllTypes) -> True
+                         _ -> False in
+             do getUniqB env us b
+                getUniq ((n,b):env) ((n, uniq):us) sc
+    getUniq env us (App f a) = do getUniq env us f; getUniq env us a
+    getUniq env us (V i)
+       | i < length us = if snd (us!!i) then use (fst (us!!i)) else return ()
+    getUniq env us (P _ n _)
+       | Just u <- lookup n us = if u then use n else return ()
+    getUniq env us _ = return ()
+
+    use n = do ns <- get; put (n : ns)
+
+    getUniqB env us (Let t v) = do getUniq env us t; getUniq env us v
+    getUniqB env us (Guess t v) = do getUniq env us t; getUniq env us v
+    getUniqB env us (Pi t v) = do getUniq env us t; getUniq env us v
+    getUniqB env us (NLet t v) = do getUniq env us t; getUniq env us v
+    getUniqB env us b = getUniq env us (binderTy b)
+
+
+
