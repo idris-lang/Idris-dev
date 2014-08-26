@@ -1154,6 +1154,7 @@ nextName (UN x) = let (num', nm') = T.span isDigit (T.reverse x)
 nextName (SN x) = SN (nextName' x)
   where
     nextName' (WhereN i f x) = WhereN i f (nextName x)
+    nextName' (WithN i n) = WithN i (nextName n)
     nextName' (CaseN n) = CaseN (nextName n)
     nextName' (MethodN n) = MethodN (nextName n)
 
