@@ -21,12 +21,12 @@ import Debug.Trace
 
 import qualified Data.Map as Map
 
-recheckC = recheckC_borrowing [] 
+recheckC = recheckC_borrowing False [] 
 
-recheckC_borrowing bs fc env t
+recheckC_borrowing uniq_check bs fc env t
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
          ctxt <- getContext
-         (tm, ty, cs) <- tclift $ case recheck_borrowing bs ctxt env (forget t) t of
+         (tm, ty, cs) <- tclift $ case recheck_borrowing uniq_check bs ctxt env (forget t) t of
                                    Error e -> tfail (At fc e)
                                    OK x -> return x
          addConstraints fc cs

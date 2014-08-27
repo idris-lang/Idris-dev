@@ -51,17 +51,17 @@ isType ctxt env tm = isType' (normalise ctxt env tm)
                      | otherwise = fail (showEnv env tm ++ " is not a Type")
 
 recheck :: Context -> Env -> Raw -> Term -> TC (Term, Type, UCs)
-recheck = recheck_borrowing []
+recheck = recheck_borrowing False []
 
-recheck_borrowing :: [Name] -> Context -> Env -> Raw -> Term -> 
+recheck_borrowing :: Bool -> [Name] -> Context -> Env -> Raw -> Term -> 
                      TC (Term, Type, UCs)
-recheck_borrowing bs ctxt env tm orig
+recheck_borrowing uniq_check bs ctxt env tm orig
    = let v = next_tvar ctxt in
        case runStateT (check' False ctxt env tm) (v, []) of -- holes banned
           Error (IncompleteTerm _) -> Error $ IncompleteTerm orig
           Error e -> Error e
           OK ((tm, ty), constraints) ->
-              do checkUnique bs ctxt env tm
+              do when uniq_check $ checkUnique bs ctxt env tm
                  return (tm, ty, constraints)
 
 check :: Context -> Env -> Raw -> TC (Term, Type)

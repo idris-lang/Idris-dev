@@ -600,7 +600,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         logLvl 6 $ " ==> " ++ show (forget rhs')
 
         (crhs, crhsty) <- if not inf 
-                             then recheckC_borrowing borrowed fc [] rhs'
+                             then recheckC_borrowing True borrowed fc [] rhs'
                              else return (rhs', clhsty)
         logLvl 6 $ " ==> " ++ show crhsty ++ "   against   " ++ show clhsty
         case  converts ctxt [] clhsty crhsty of
