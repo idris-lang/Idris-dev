@@ -281,20 +281,11 @@ checkUnique borrowed ctxt env tm
     chkBinders env (App f a) = do chkBinders env f; chkBinders env a
     chkBinders env (Bind n b t)
        = do chkBinderName env n b
-            -- Must be safe whether we evaluate the scope or binder first
-            -- (Surely there is a tidier rule than this...?)
             st <- get
-            chkBinders env (binderTy b)
             case b of
                  Let t v -> chkBinders env v
                  _ -> return ()
             chkBinders ((n, b) : env) t
---             put st
---             chkBinders env (binderTy b)
---             case b of
---                  Let t v -> chkBinders env v
---                  _ -> return ()
---             chkBinders ((n, b) : env) t
     chkBinders env t = return ()
 
     chkBinderName :: Env -> Name -> Binder Term -> 
