@@ -3,7 +3,7 @@
 include config.mk
 -include custom.mk
 
-install:
+install: lib_clean
 	$(CABAL) install $(CABALFLAGS)
 
 pinstall: CABALFLAGS += --enable-executable-profiling
