@@ -690,6 +690,7 @@ process fn (ChangeDirectory f)
                       return ()
 process fn (Eval t)
                  = withErrorReflection $ do logLvl 5 $ show t
+                                            getIState >>= flip warnDisamb t
                                             (tm, ty) <- elabVal recinfo ERHS t
                                             ctxt <- getContext
                                             let tm' = force (normaliseAll ctxt [] tm)

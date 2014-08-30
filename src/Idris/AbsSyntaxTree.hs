@@ -30,6 +30,8 @@ import Data.Either
 import qualified Data.Set as S
 import Data.Word (Word)
 import Data.Maybe (fromMaybe)
+import Data.Traversable (Traversable)
+import Data.Foldable (Foldable)
 
 import Debug.Trace
 
@@ -792,7 +794,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Skip
                 | TFail [ErrorReportPart]
                 | Qed | Abandon
-    deriving (Show, Eq, Functor)
+    deriving (Show, Eq, Functor, Foldable, Traversable)
 {-!
 deriving instance Binary PTactic'
 deriving instance NFData PTactic'
@@ -1820,3 +1822,4 @@ getErasureInfo ist n =
     case lookupCtxtExact n (idris_optimisation ist) of
         Just (Optimise inacc detagg) -> map fst inacc
         Nothing -> []
+
