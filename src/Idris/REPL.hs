@@ -511,6 +511,7 @@ ideslaveProcess fn (ChangeDirectory f) = do process fn (ChangeDirectory f)
 ideslaveProcess fn (Eval t) = process fn (Eval t)
 ideslaveProcess fn (NewDefn decls) = do process fn (NewDefn decls)
                                         iPrintResult "defined"
+ideslaveProcess fn (Undefine n) = process fn (Undefine n)
 ideslaveProcess fn (ExecVal t) = process fn (ExecVal t)
 ideslaveProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
 ideslaveProcess fn (Check t) = process fn (Check t)
