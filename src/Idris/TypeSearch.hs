@@ -373,7 +373,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
 
   resolveUnis ((name, term) : xs)
     state@(State hs unresolved _ _) = case both (findName name) unresolved of
-      Sided Nothing  Nothing  -> nextStep
+      Sided Nothing  Nothing  -> Nothing
       Sided (Just _) (Just _) -> error "Idris internal error: TypeSearch.resolveUnis"
       oneOfEach -> first (addScore (both scoreFor oneOfEach)) <$> nextStep
     where
