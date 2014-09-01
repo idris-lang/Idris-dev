@@ -4,11 +4,11 @@ module Idris.TypeSearch (
   searchByType, searchPred, defaultScoreFunction
 ) where
 
-import Control.Applicative ((<$>), (<*>), (<|>))
-import Control.Arrow (first, second, (&&&))
-import Control.Monad (forM_, guard)
+import Control.Applicative (Applicative (..), (<$>), (<*>), (<|>))
+import Control.Arrow (first, second, (&&&), (***))
+import Control.Monad (guard)
 
-import Data.List (find, delete, deleteBy, minimumBy, partition, sortBy, (\\))
+import Data.List (find, partition, (\\))
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, maybeToList, mapMaybe)
@@ -19,10 +19,10 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Text as T (pack, isPrefixOf)
 
-import Idris.AbsSyntax (addUsingConstraints, addImpl, getContext, getIState, putIState, implicit)
+import Idris.AbsSyntax (addUsingConstraints, addImpl, getIState, putIState, implicit)
 import Idris.AbsSyntaxTree (class_instances, ClassInfo, defaultSyntax, Idris,
   IState (idris_classes, idris_docstrings, tt_ctxt, idris_outputmode),
-  implicitAllowed, OutputMode(..), prettyDocumentedIst, prettyIst, PTerm, toplevel)
+  implicitAllowed, OutputMode(..), prettyDocumentedIst, PTerm, toplevel)
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
 import Idris.Core.TT hiding (score)
 import Idris.Core.Unify (match_unify)
@@ -31,30 +31,32 @@ import Idris.Docstrings (noDocs, overview)
 import Idris.Elab.Type (elabType)
 import Idris.Output (iRenderOutput, iPrintResult, iRenderResult)
 
+import Prelude hiding (pred)
+
 import Util.Pretty (text, char, vsep, (<>), Doc)
 
 searchByType :: PTerm -> Idris ()
 searchByType pterm = do
   pterm' <- addUsingConstraints syn emptyFC pterm
-  pterm'' <- implicit toplevel syn n pterm'
+  pterm'' <- implicit toplevel syn name pterm'
   i <- getIState
   let pterm'''  = addImpl i pterm''
-  ty <- elabType toplevel syn (fst noDocs) (snd noDocs) emptyFC [] n pterm'
+  ty <- elabType toplevel syn (fst noDocs) (snd noDocs) emptyFC [] name pterm'
   putIState i -- don't actually make any changes
   let names = searchUsing searchPred i ty
-  let names' = take numLimit $ names
+  let names' = take numLimit names
   let docs =
        [ let docInfo = (n, delabTy i n, fmap (overview . fst) (lookupCtxtExact n (idris_docstrings i))) in
-         displayScore score <> char ' ' <> prettyDocumentedIst i docInfo
-                | (n, score) <- names']
+         displayScore theScore <> char ' ' <> prettyDocumentedIst i docInfo
+                | (n, theScore) <- names']
   case idris_outputmode i of
     RawOutput _  -> do mapM_ iRenderOutput docs
                        iPrintResult ""
-    IdeSlave n h -> iRenderResult (vsep docs)
+    IdeSlave _ _ -> iRenderResult (vsep docs)
   where
     numLimit = 50
     syn = defaultSyntax { implicitAllowed = True } -- syntax
-    n = sMN 0 "searchType" -- name
+    name = sMN 0 "searchType" -- name
 
 -- | Conduct a type-directed search using a given match predicate
 searchUsing :: (IState -> Type -> [(Name, Type)] -> [(Name, a)]) 
@@ -69,7 +71,7 @@ searchUsing pred istate ty = pred istate nty . concat . M.elems $
     type2 <- typeFromDef x
     return $ normaliseC ctxt [] type2
   special :: Name -> Bool
-  special (NS n ns) = special n
+  special (NS n _) = special n
   special (SN _) = True
   special (UN n) =    T.pack "default#" `T.isPrefixOf` n 
                    || n `elem` map T.pack ["believe_me", "really_believe_me"]
@@ -85,7 +87,7 @@ searchPred istate ty1 = matcher where
 typeFromDef :: (Def, b, c, d) -> Maybe Type
 typeFromDef (def, _, _, _) = get def where
   get :: Def -> Maybe Type
-  get (Function ty tm) = Just ty
+  get (Function ty _) = Just ty
   get (TyDecl _ ty) = Just ty
  -- get (Operator ty _ _) = Just ty
   get (CaseOp _ ty _ _ _ _)  = Just ty
@@ -106,17 +108,17 @@ computeDagP :: Ord n
   => (TT n -> Bool) -- ^ filter to remove some arguments
   -> TT n
   -> ([((n, TT n), Set n)], [(n, TT n)], TT n)
-computeDagP removePred t = (reverse (map f args), reverse removedArgs , retTy) where
-  f (n, t) = ((n, t), M.keysSet (usedVars t))
+computeDagP removePred t = (reverse (map f arguments), reverse theRemovedArgs , retTy) where
+  f (n, ty) = ((n, ty), M.keysSet (usedVars ty))
 
-  (numArgs, args, removedArgs, retTy) = go 0 [] [] t
+  (arguments, theRemovedArgs, retTy) = go [] [] t
 
   -- NOTE : args are in reverse order
-  go k args removedArgs (Bind n (Pi t _) sc) = let arg = (n, t) in
-    if removePred t
-      then go k        args (arg : removedArgs) sc
-      else go (succ k) (arg : args) removedArgs sc
-  go k args removedArgs retTy = (k, args, removedArgs, retTy)
+  go args removedArgs (Bind n (Pi ty _) sc) = let arg = (n, ty) in
+    if removePred ty
+      then go args (arg : removedArgs) sc
+      else go (arg : args) removedArgs sc
+  go args removedArgs sc = (args, removedArgs, sc)
 
 -- | Collect the names and types of all the free variables
 -- The Boolean indicates those variables which are determined due to injectivity
@@ -130,7 +132,7 @@ usedVars = f True where
     bind -> f b (binderTy bind)
   f b (App t1 t2) = f b t1 `M.union` f (b && isInjective t1) t2
   f b (Proj t _) = f b t
-  f _ (V j) = error "unexpected! run vToP first"
+  f _ (V _) = error "unexpected! run vToP first"
   f _ _ = M.empty
 
 -- | Remove a node from a directed acyclic graph
@@ -143,73 +145,101 @@ deleteFromDag name (((name2, ty), (ix, set)) : xs) = (if name == name2
 deleteFromArgList :: Ord n => n -> [(n, TT n)] -> [(n, TT n)]
 deleteFromArgList n = filter ((/= n) . fst)
 
+-- | Asymmetric modifications to keep track of
+data AsymMods = Mods
+  { argApp         :: !Int
+  , typeClassApp   :: !Int
+  , typeClassIntro :: !Int
+  } deriving (Eq, Show)
+
+
+-- | Homogenous tuples
+data Sided a = Sided
+  { left  :: !a
+  , right :: !a
+  } deriving (Eq, Show)
+
+sided :: (a -> a -> b) -> Sided a -> b
+sided f (Sided l r) = f l r
+
+-- | Could be a functor instance, but let's avoid name overloading
+both :: (a -> b) -> Sided a -> Sided b
+both f (Sided l r) = Sided (f l) (f r)
+
 data Score = Score
-  { transposition       :: !Int
-  , leftApplied         :: !Int
-  , rightApplied        :: !Int
-  , leftTypeClassApp    :: !Int
-  , rightTypeClassApp   :: !Int
-  , leftTypeClassIntro  :: !Int
-  , rightTypeClassIntro :: !Int } deriving (Eq, Show)
+  { transposition :: !Int
+  , asymMods      :: !(Sided AsymMods)
+  } deriving (Eq, Show)
 
 displayScore :: Score -> Doc a
-displayScore (Score trans lapp rapp lclassapp rclassapp lclassintro rclassintro) = text $ case (lt, gt) of
-  (True , True ) -> "=" -- types are isomorphic
-  (True , False) -> "<" -- found type is more general than searched type
-  (False, True ) -> ">" -- searched type is more general than found type
-  (False, False) -> "_"
-  where lt = lapp + lclassapp + lclassintro == 0
-        gt = rapp + rclassapp + rclassintro == 0
-
+displayScore (Score trans amods) = text $ case both noMods amods of
+  Sided True  True  -> "=" -- types are isomorphic
+  Sided True  False -> "<" -- found type is more general than searched type
+  Sided False True  -> ">" -- searched type is more general than found type
+  Sided False False -> "_"
+  where 
+  noMods (Mods app tcApp tcIntro) = app + tcApp + tcIntro == 0
 
 scoreCriterion :: Score -> Bool
-scoreCriterion (Score a b c d e f g) = not
-  ( (b > 0 && c > 0) || (b + c) > 4 || any (> 3) [d,e,f,g])
+scoreCriterion (Score _ amods) = not
+  (  sided (&&) (both ((> 0) . argApp) amods)
+  || sided (+) (both argApp amods) > 4
+  || sided (||) (both (\(Mods _ tcApp tcIntro) -> tcApp > 3 || tcIntro > 3) amods)
+  ) 
 
 defaultScoreFunction :: Score -> Int
-defaultScoreFunction (Score a b c d e f g) = a + 9*b + 3*c + 12*d + 4*e + 6*f + 2*g + 100*(2*b + d + f)*(2*c + e + g)
+defaultScoreFunction (Score trans amods) = 
+  trans + linearPenalty + upAndDowncastPenalty
+  where
+  -- prefer finding a more general type to a less general type
+  linearPenalty = (\(Sided l r) -> 3 * l + r) 
+    (both (\(Mods app tcApp tcIntro) -> 3 * app + 4 * tcApp + 2 * tcIntro) amods)
   -- it's very bad to have *both* upcasting and downcasting
+  upAndDowncastPenalty = 100 * 
+    sided (*) (both (\(Mods app tcApp tcIntro) -> 2 * app + tcApp + tcIntro) amods)
+
+instance Monoid a => Monoid (Sided a) where
+  mempty = Sided mempty mempty
+  (Sided l1 r1) `mappend` (Sided l2 r2) = Sided (l1 `mappend` l2) (r1 `mappend` r2)
+
+instance Monoid AsymMods where
+  mempty = Mods 0 0 0
+  (Mods a b c) `mappend` (Mods a' b' c') = Mods (a + a') (b + b') (c + c')
 
 instance Monoid Score where
-  mempty = Score 0 0 0 0 0 0 0
-  (Score a b c d e f g) `mappend` (Score a' b' c' d' e' f' g') =
-    Score (a + a') (b + b') (c + c') (d + d') (e + e') (f + f') (g + g')
+  mempty = Score 0 mempty
+  (Score t mods) `mappend` (Score t' mods') = Score (t + t') (mods `mappend` mods') 
 
 -- | A directed acyclic graph representing the arguments to a function
 -- The 'Int' represents the position of the argument (1st argument, 2nd, etc.)
 type ArgsDAG = [((Name, Type), (Int, Set Name))]
 
+-- | A list of typeclass constraints
+type Classes = [(Name, Type)]
+
 -- | The state corresponding to an attempted match of two types.
 data State = State
-  { holes     :: ![(Name, Type)] -- ^ names which have yet to be resolved
-  , args1     :: !ArgsDAG -- ^ arguments for the left  type which have yet to be resolved
-  , args2     :: !ArgsDAG -- ^ arguments for the right type which have yet to be resolved
-  , classes1  :: ![(Name, Type)] -- ^ typeclass arguments for the left  type which haven't been resolved
-  , classes2  :: ![(Name, Type)] -- ^ typeclass arguments for the right type which haven't been resolved
+  { holes          :: ![(Name, Type)] -- ^ names which have yet to be resolved
+  , argsAndClasses :: !(Sided (ArgsDAG, Classes))
+     -- ^ arguments and typeclass constraints for each type which have yet to be resolved
   , score     :: !Score -- ^ the score so far
   , usedNames :: ![Name] -- ^ all names that have been used
   } deriving Show
 
-modifyTypes :: (Type -> Type) -> State -> State
-modifyTypes f (State h a1 a2 c1 c2 s un) = 
-  State h (modifyDag a1) (modifyDag a2) 
-          (modifyList c1) (modifyList c2)
-          s un
+modifyTypes :: (Type -> Type) -> (ArgsDAG, Classes) -> (ArgsDAG, Classes)
+modifyTypes f = modifyDag *** modifyList
   where
   modifyDag = map (first (second f))
   modifyList = map (second f)
 
 findNameInArgsDAG :: Name -> ArgsDAG -> Maybe (Type, Maybe Int)
-findNameInArgsDAG name xs = fmap ((snd . fst) &&& (Just . fst . snd)) . find ((name ==) . fst . fst) $ xs
+findNameInArgsDAG name = fmap ((snd . fst) &&& (Just . fst . snd)) . find ((name ==) . fst . fst)
 
-findLeft, findRight :: Name -> State -> Maybe (Type, Maybe Int)
-findLeft  n (State _ a1 a2 c1 c2 _ _) = findNameInArgsDAG n a1 <|> ((,) <$> lookup n c1 <*> Nothing)
-findRight n (State _ a1 a2 c1 c2 _ _) = findNameInArgsDAG n a2 <|> ((,) <$> lookup n c2 <*> Nothing)
+findName :: Name -> (ArgsDAG, Classes) -> Maybe (Type, Maybe Int)
+findName n (args, classes) = findNameInArgsDAG n args <|> ((,) <$> lookup n classes <*> Nothing)
 
-deleteLeft, deleteRight :: Name -> State -> State
-deleteLeft  n state = state { args1 = deleteFromDag n (args1 state) , classes1 = filter ((/= n) . fst) (classes1 state) }
-deleteRight n state = state { args2 = deleteFromDag n (args2 state) , classes2 = filter ((/= n) . fst) (classes2 state) }
-
+deleteName :: Name -> (ArgsDAG, Classes) -> (ArgsDAG, Classes)
+deleteName n (args, classes) = (deleteFromDag n args, filter ((/= n) . fst) classes)
 
 tcToMaybe :: TC' e a -> Maybe a
 tcToMaybe (OK x) = Just x
@@ -221,13 +251,13 @@ inArgTys = map . first . second
 
 typeclassUnify :: Ctxt ClassInfo -> Context -> Type -> Type -> Maybe [(Name, Type)]
 typeclassUnify classInfo ctxt ty tyTry = do
-  res <- tcToMaybe $ match_unify ctxt [] ty retTy [] holes []
-  guard $ null (holes \\ map fst res)
+  res <- tcToMaybe $ match_unify ctxt [] ty retTy [] theHoles []
+  guard $ null (theHoles \\ map fst res)
   let argTys' = map (second $ foldr (.) id [ subst n t | (n, t) <- res ]) tcArgs
   return argTys'
   where
   tyTry' = vToP tyTry
-  holes = map fst nonTcArgs
+  theHoles = map fst nonTcArgs
   retTy = getRetTy tyTry'
   (tcArgs, nonTcArgs) = partition (isTypeClassArg classInfo . snd) $ getArgTys tyTry'
 
@@ -255,18 +285,18 @@ matchTypesBulk :: forall info. IState -> Int -> Type -> [(info, Type)] -> [(info
 matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues where
   getStartQueue :: (info, Type) -> Maybe (Score, (info, Q.PQueue Score State))
   getStartQueue nty@(info, type2) = do
-    state <- unifyQueue (State startingHoles dag1 dag2 
-              typeClassArgs1 typeClassArgs2
-              mempty usedNames) startingTypes
+    state <- unifyQueue (State startingHoles 
+              (Sided (dag1, typeClassArgs1) (dag2, typeClassArgs2))
+              mempty usedns) startingTypes
     let sc = score state
-    return $ (sc, (info, Q.singleton sc state))
+    return (sc, (info, Q.singleton sc state))
     where
     (dag2, typeClassArgs2, retTy2) = makeDag (uniqueBinders (map fst argNames1) type2)
     argNames2 = map fst dag2
-    usedNames = map fst (argNames1 ++ argNames2)
+    usedns = map fst startingHoles
     startingHoles = argNames1 ++ argNames2
 
-    startingTypes = (retTy1, retTy2) : [] 
+    startingTypes = [(retTy1, retTy2)] 
 
 
   startQueueOfQueues :: Q.PQueue Score (info, Q.PQueue Score State)
@@ -282,7 +312,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
           Just (Left stateQ') -> case Q.minViewWithKey stateQ' of
              Nothing -> getAllResults q'
              Just ((newQscore,_), _) -> getAllResults (Q.add newQscore (info, stateQ') q')
-          Just (Right score) -> (info, score) : getAllResults q'
+          Just (Right theScore) -> (info, theScore) : getAllResults q'
         else []
 
 
@@ -291,7 +321,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
 
   (dag1, typeClassArgs1, retTy1) = makeDag type1
   argNames1 = map fst dag1
-  makeDag :: Type -> (ArgsDAG, [(Name, Type)], Type)
+  makeDag :: Type -> (ArgsDAG, Classes, Type)
   makeDag = first3 (zipWith (\i (ty, deps) -> (ty, (i, deps))) [0..] . reverseDag) . 
     computeDagP (isTypeClassArg classInfo) . vToP
   first3 f (a,b,c) = (f a, b, c)
@@ -300,44 +330,45 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
   resolveUnis :: [(Name, Type)] -> State -> Maybe (State, [(Type, Type)])
   resolveUnis [] state = Just (state, [])
   resolveUnis ((name, term@(P Bound name2 _)) : xs) 
-    state@(State holes args1 args2 _ _ _ _) | isJust findArgs = do
+    state | isJust findArgs = do
     ((ty1, ix1), (ty2, ix2)) <- findArgs
 
     (state'', queue) <- resolveUnis xs state'
     let transScore = fromMaybe 0 (abs <$> ((-) <$> ix1 <*> ix2))
-    return $ (inScore (\s -> s { transposition = transposition s + transScore }) state'', (ty1, ty2) : queue)
+    return (inScore (\s -> s { transposition = transposition s + transScore }) state'', (ty1, ty2) : queue)
     where
-    mgetType name xs = fmap ((snd . fst) &&& (fst . snd)) . find ((name ==) . fst . fst) $ xs
-    inScore f state = state { score = f (score state) }
-    findArgs = ((,) <$> findLeft name state <*> findRight name2 state) <|>
-               ((,) <$> findLeft name2 state <*> findRight name state)
+    unresolved = argsAndClasses state
+    inScore f stat = stat { score = f (score stat) }
+    findArgs = ((,) <$> findName name  (left unresolved) <*> findName name2 (right unresolved)) <|>
+               ((,) <$> findName name2 (left unresolved) <*> findName name  (right unresolved))
     matchnames = [name, name2]
-    holes' = filter (not . (`elem` matchnames) . fst) holes
-    deleteArgs = deleteLeft name . deleteLeft name2 . deleteRight name . deleteRight name2
-    state' = modifyTypes (subst name term) $ deleteArgs
-              (state { holes = holes'})
+    deleteArgs = deleteName name . deleteName name2
+    state' = state { holes = filter (not . (`elem` matchnames) . fst) (holes state)
+                   , argsAndClasses = both (modifyTypes (subst name term) . deleteArgs) unresolved}
 
   resolveUnis ((name, term) : xs)
-    state@(State holes args1 args2 _ _ _ _) = case (findLeft name state, findRight name state) of
-      (Just (_,ix), Nothing) -> first (addScore (mempty { leftApplied  = 1, rightApplied = otherApplied})) <$> nextStep
-      (Nothing, Just (_,ix)) -> first (addScore (mempty { rightApplied = 1, leftApplied  = otherApplied})) <$> nextStep
-      (Nothing, Nothing) -> nextStep
-      _ -> error ("Idris internal error: TypeSearch.resolveUnis")
+    state@(State hs unresolved _ _) = case both (findName name) unresolved of
+      Sided Nothing  Nothing  -> nextStep
+      Sided (Just _) (Just _) -> error "Idris internal error: TypeSearch.resolveUnis"
+      oneOfEach -> first (addScore (both scoreFor oneOfEach)) <$> nextStep
     where
+    scoreFor (Just _) = mempty { argApp = 1 }
+    scoreFor Nothing  = mempty { argApp = otherApplied }
     -- find variables which are determined uniquely by the type
     -- due to injectivity
     matchedVarMap = usedVars term
-    both f (x, y) = (f x, f y)
-    (injUsedVars, notInjUsedVars) = both M.keys . M.partition id . M.filterWithKey (\k _-> k `elem` map fst holes) $ M.map snd matchedVarMap 
+    bothT f (x, y) = (f x, f y)
+    (injUsedVars, notInjUsedVars) = bothT M.keys . M.partition id . M.filterWithKey (\k _-> k `elem` map fst hs) $ M.map snd matchedVarMap 
     varsInTy = injUsedVars ++ notInjUsedVars
     toDelete = name : varsInTy
-    deleteMany = foldr (.) id $ [ deleteLeft t . deleteRight t | t <- toDelete ]
+    deleteMany = foldr (.) id (map deleteName toDelete)
 
     otherApplied = length notInjUsedVars
 
-    addScore additions state = state { score = score state `mappend` additions }
-    state' = modifyTypes (subst name term) . deleteMany $ 
-               state { holes = filter (not . (`elem` toDelete) . fst) holes }
+    addScore additions theState = theState { score = let (Score t mods) = score theState in
+      Score t (mods `mappend` additions) }
+    state' = state { holes = filter (not . (`elem` toDelete) . fst) hs  
+                   , argsAndClasses = both (modifyTypes (subst name term) . deleteMany) (argsAndClasses state) }
     nextStep = resolveUnis xs state'
 
 
@@ -352,13 +383,13 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     unifyQueue state' (queue ++ queueAdditions)
 
   possClassInstances :: [Name] -> Type -> [Type]
-  possClassInstances usedNames ty = do
+  possClassInstances usedns ty = do
     className <- getClassName clss
     classDef <- lookupCtxt className classInfo
     n <- class_instances classDef
     def <- lookupCtxt n (definitions ctxt)
-    ty <- normaliseC ctxt [] <$> (case typeFromDef def of Just x -> [x]; Nothing -> [])
-    let ty' = vToP (uniqueBinders usedNames ty)
+    nty <- normaliseC ctxt [] <$> (case typeFromDef def of Just x -> [x]; Nothing -> [])
+    let ty' = vToP (uniqueBinders usedns nty)
     return ty'
     where
     (clss, _) = unApply ty
@@ -377,7 +408,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
                  else Q.empty in
            Just $ Left (Q.union rest additions)
     where
-    isFinal (State [] [] [] [] [] score _) = True
+    isFinal (State [] (Sided ([], []) ([], [])) _ _) = True
     isFinal _ = False
 
   -- | Find all possible matches starting from a given state.
@@ -386,36 +417,40 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
   nextSteps :: State -> [State]
 
   -- Stage 3 - match typeclasses
-  nextSteps (State [] [] [] c1 c2 scoreAcc usedNames) = 
+  nextSteps (State [] unresolved@(Sided ([], c1) ([], c2)) scoreAcc usedns) = 
     if null results3 then results4 else results3
     where
     -- try to match a typeclass argument from the left with a typeclass argument from the right
     results3 =
-         catMaybes [ unifyQueue (State [] [] []
-         (deleteFromArgList n1 c1) (map (second subst2for1) (deleteFromArgList n2 c2)) scoreAcc usedNames) [(ty1, ty2)] 
+         catMaybes [ unifyQueue (State [] 
+         (Sided ([], deleteFromArgList n1 c1)
+                ([], map (second subst2for1) (deleteFromArgList n2 c2)))
+         scoreAcc usedns) [(ty1, ty2)] 
      | (n1, ty1) <- c1, (n2, ty2) <- c2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
 
     -- try to hunt match a typeclass constraint by replacing it with an instance
-    results4 = results4A ++ results4B
-    typeClassArgs classes = [ ((n, ty), inst) | (n, ty) <- classes, inst <- possClassInstances usedNames ty ]
-    results4A = [ State [] [] []
-                  (deleteFromArgList n c1 ++ newClassArgs) c2
-                  (scoreAcc `mappend` (mempty { leftTypeClassApp = 1 }))
-                  (usedNames ++ newHoles)
-                | ((n, ty), inst) <- typeClassArgs c1
-                , newClassArgs <- maybeToList $ typeclassUnify classInfo ctxt ty inst
-                , let newHoles = map fst newClassArgs ]
-    results4B = [ State [] [] []
-                  c1 (deleteFromArgList n c2 ++ newClassArgs)
-                  (scoreAcc `mappend` (mempty { rightTypeClassApp = 1 }))
-                  (usedNames ++ newHoles)
-                | ((n, ty), inst) <- typeClassArgs c2
-                , newClassArgs <- maybeToList $ typeclassUnify classInfo ctxt ty inst
-                , let newHoles = map fst newClassArgs ]
+    results4 = [ State [] (both (\(cs, _, _) -> ([], cs)) sds) 
+               (scoreAcc `mappend` Score 0 (both (\(_, amods, _) -> amods) sds))
+               (usedns ++ sided (++) (both (\(_, _, hs) -> hs) sds))
+               | sds <- allMods ]
+      where
+      allMods = parallel defMod mods
+      mods :: Sided [( Classes, AsymMods, [Name] )]
+      mods = both (instanceMods . snd) unresolved
+      defMod :: Sided (Classes, AsymMods, [Name])
+      defMod = both (\(_, cs) -> (cs, mempty , [])) unresolved
+      parallel :: Sided a -> Sided [a] -> [Sided a]
+      parallel (Sided l r) (Sided ls rs) = map (flip Sided r) ls ++ map (Sided l) rs
+      instanceMods :: Classes -> [( Classes , AsymMods, [Name] )]
+      instanceMods classes = [ ( newClassArgs, mempty { typeClassApp = 1 }, newHoles )
+                      | (_, ty) <- classes
+                      , inst <- possClassInstances usedns ty
+                      , newClassArgs <- maybeToList $ typeclassUnify classInfo ctxt ty inst
+                      , let newHoles = map fst newClassArgs ]
 
 
   -- Stage 1 - match arguments
-  nextSteps (State holes dag1 dag2 c1 c2 scoreAcc usedNames) = results where
+  nextSteps (State hs (Sided (dagL, c1) (dagR, c2)) scoreAcc usedns) = results where
 
     results = concatMap takeSomeClasses results1
 
@@ -425,18 +460,29 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     canBeFirst = map fst . filter (S.null . snd . snd)
 
     -- try to match an argument from the left with an argument from the right
-    results1 = catMaybes [ unifyQueue (State (filter (not . (`elem` [n1,n2]) . fst) holes) (deleteFromDag n1 dag1)
-         ((inArgTys subst2for1) $ deleteFromDag n2 dag2) c1 (map (second subst2for1) c2) scoreAcc usedNames) [(ty1, ty2)] 
-     | (n1, ty1) <- canBeFirst dag1, (n2, ty2) <- canBeFirst dag2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
+    results1 = catMaybes [ unifyQueue (State (filter (not . (`elem` [n1,n2]) . fst) hs) 
+         (Sided (deleteFromDag n1 dagL, c1) 
+                (inArgTys subst2for1 $ deleteFromDag n2 dagR, map (second subst2for1) c2))
+          scoreAcc usedns) [(ty1, ty2)] 
+     | (n1, ty1) <- canBeFirst dagL, (n2, ty2) <- canBeFirst dagR
+     , let subst2for1 = psubst n2 (P Bound n1 ty1)]
 
 
-    -- Stage 2 - simply introduce a subset of the typeclasses
-    -- we've finished, so take some classes
-    takeSomeClasses (State [] [] [] c1 c2 scoreAcc usedNames) = 
-      let lc1 = length c1; lc2 = length c2 in
-       [ State [] [] [] c1' c2' (scoreAcc `mappend` 
-           mempty { rightTypeClassIntro = lc1 - length c1',
-                    leftTypeClassIntro  = lc2 - length c2' }) usedNames
-       | c1' <- subsets c1, c2' <- subsets c2 ]
-    -- still have arguments to match, so just be the identity
-    takeSomeClasses s = [s]
+
+  -- Stage 2 - simply introduce a subset of the typeclasses
+  -- we've finished, so take some classes
+  takeSomeClasses (State [] unresolved@(Sided ([], _) ([], _)) scoreAcc usedns) = 
+    map statesFromMods . prod $ both (classMods . snd) unresolved
+    where
+    swap (Sided l r) = Sided r l
+    statesFromMods :: Sided (Classes, AsymMods) -> State
+    statesFromMods sides = let classes = both (\(c, _) -> ([], c)) sides
+                               mods    = swap (both snd sides) in
+      State [] classes (scoreAcc `mappend` Score 0 mods) usedns
+    classMods :: Classes -> [(Classes, AsymMods)]
+    classMods cs = let lcs = length cs in 
+      [ (cs', mempty { typeClassIntro = lcs - length cs' }) | cs' <- subsets cs ]
+    prod :: Sided [a] -> [Sided a]
+    prod (Sided ls rs) = [Sided l r | l <- ls, r <- rs]
+  -- still have arguments to match, so just be the identity
+  takeSomeClasses s = [s]
