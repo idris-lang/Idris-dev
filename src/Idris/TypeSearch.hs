@@ -18,9 +18,10 @@ import qualified Data.PriorityQueue.FingerTree as Q
 import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Text as T (pack, isPrefixOf)
+import Data.Traversable (traverse)
 
 import Idris.AbsSyntax (addUsingConstraints, addImpl, getIState, putIState, implicit)
-import Idris.AbsSyntaxTree (class_instances, ClassInfo, defaultSyntax, Idris,
+import Idris.AbsSyntaxTree (class_instances, ClassInfo, defaultSyntax, eqTy, Idris,
   IState (idris_classes, idris_docstrings, tt_ctxt, idris_outputmode),
   implicitAllowed, OutputMode(..), prettyDocumentedIst, PTerm, toplevel)
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
@@ -168,11 +169,12 @@ both f (Sided l r) = Sided (f l) (f r)
 
 data Score = Score
   { transposition :: !Int
+  , equalityFlips :: !Int
   , asymMods      :: !(Sided AsymMods)
   } deriving (Eq, Show)
 
 displayScore :: Score -> Doc a
-displayScore (Score trans amods) = text $ case both noMods amods of
+displayScore score = text $ case both noMods (asymMods score) of
   Sided True  True  -> "=" -- types are isomorphic
   Sided True  False -> "<" -- found type is more general than searched type
   Sided False True  -> ">" -- searched type is more general than found type
@@ -181,15 +183,15 @@ displayScore (Score trans amods) = text $ case both noMods amods of
   noMods (Mods app tcApp tcIntro) = app + tcApp + tcIntro == 0
 
 scoreCriterion :: Score -> Bool
-scoreCriterion (Score _ amods) = not
+scoreCriterion (Score _ _ amods) = not
   (  sided (&&) (both ((> 0) . argApp) amods)
   || sided (+) (both argApp amods) > 4
   || sided (||) (both (\(Mods _ tcApp tcIntro) -> tcApp > 3 || tcIntro > 3) amods)
   ) 
 
 defaultScoreFunction :: Score -> Int
-defaultScoreFunction (Score trans amods) = 
-  trans + linearPenalty + upAndDowncastPenalty
+defaultScoreFunction (Score trans eqFlip amods) = 
+  trans + eqFlip + linearPenalty + upAndDowncastPenalty
   where
   -- prefer finding a more general type to a less general type
   linearPenalty = (\(Sided l r) -> 3 * l + r) 
@@ -207,8 +209,8 @@ instance Monoid AsymMods where
   (Mods a b c) `mappend` (Mods a' b' c') = Mods (a + a') (b + b') (c + c')
 
 instance Monoid Score where
-  mempty = Score 0 mempty
-  (Score t mods) `mappend` (Score t' mods') = Score (t + t') (mods `mappend` mods') 
+  mempty = Score 0 0 mempty
+  (Score t e mods) `mappend` (Score t' e' mods') = Score (t + t') (e + e') (mods `mappend` mods') 
 
 -- | A directed acyclic graph representing the arguments to a function
 -- The 'Int' represents the position of the argument (1st argument, 2nd, etc.)
@@ -277,20 +279,43 @@ subsets [] = [[]]
 subsets (x : xs) = let ss = subsets xs in map (x :) ss ++ ss
 
 
+-- not recursive (i.e., doesn't flip iterated identities) at the moment
+-- recalls the number of flips that have been made
+flipEqualities :: Type -> [(Int, Type)]
+flipEqualities t = case t of
+  eq1@(App (App (App (App eq@(P _ eqty _) tyL) tyR) valL) valR) | eqty == eqTy ->
+    [(0, eq1), (1, App (App (App (App eq tyR) tyL) valR) valL)]
+  Bind n binder sc -> (\bind' (j, sc') -> (fst (binderTy bind') + j, Bind n (fmap snd bind') sc'))
+    <$> traverse flipEqualities binder <*> flipEqualities sc
+  App f x -> (\(i, f') (j, x') -> (i + j, App f' x')) 
+    <$> flipEqualities f <*> flipEqualities x
+  t' -> [(0, t')]
+
 --DONT run vToP first!
 -- | Try to match two types together in a unification-like procedure.
 -- Returns a list of types and their minimum scores, sorted in order
 -- of increasing score.
 matchTypesBulk :: forall info. IState -> Int -> Type -> [(info, Type)] -> [(info, Score)]
 matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues where
-  getStartQueue :: (info, Type) -> Maybe (Score, (info, Q.PQueue Score State))
-  getStartQueue nty@(info, type2) = do
-    state <- unifyQueue (State startingHoles 
-              (Sided (dag1, typeClassArgs1) (dag2, typeClassArgs2))
-              mempty usedns) startingTypes
-    let sc = score state
-    return (sc, (info, Q.singleton sc state))
+  getStartQueues :: (info, Type) -> Maybe (Score, (info, Q.PQueue Score State))
+  getStartQueues nty@(info, type2) = case mapMaybe startStates ty2s of
+    [] -> Nothing
+    xs -> Just (minimum (map fst xs), (info, Q.fromList xs))
     where
+    ty2s = (\(i, dag) (j, retTy) -> (i + j, dag, retTy))
+      <$> flipEqualitiesDag dag2 <*> flipEqualities retTy2
+    flipEqualitiesDag dag = case dag of 
+      [] -> [(0, [])]
+      ((n, ty), (pos, deps)) : xs -> 
+         (\(i, ty') (j, xs') -> (i + j , ((n, ty'), (pos, deps)) : xs'))
+           <$> flipEqualities ty <*> flipEqualitiesDag xs
+    startStates (numEqFlips, sndDag, sndRetTy) = do
+      state <- unifyQueue (State startingHoles 
+                (Sided (dag1, typeClassArgs1) (sndDag, typeClassArgs2))
+                (mempty { equalityFlips = numEqFlips }) usedns) [(retTy1, sndRetTy)]
+      return (score state, state)
+
+
     (dag2, typeClassArgs2, retTy2) = makeDag (uniqueBinders (map fst argNames1) type2)
     argNames2 = map fst dag2
     usedns = map fst startingHoles
@@ -300,7 +325,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
 
 
   startQueueOfQueues :: Q.PQueue Score (info, Q.PQueue Score State)
-  startQueueOfQueues = Q.fromList $ mapMaybe getStartQueue types
+  startQueueOfQueues = Q.fromList $ mapMaybe getStartQueues types
 
   getAllResults :: Q.PQueue Score (info, Q.PQueue Score State) -> [(info, Score)]
   getAllResults q = case Q.minViewWithKey q of
@@ -365,8 +390,8 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
 
     otherApplied = length notInjUsedVars
 
-    addScore additions theState = theState { score = let (Score t mods) = score theState in
-      Score t (mods `mappend` additions) }
+    addScore additions theState = theState { score = let s = score theState in
+      s { asymMods = asymMods s `mappend` additions } }
     state' = state { holes = filter (not . (`elem` toDelete) . fst) hs  
                    , argsAndClasses = both (modifyTypes (subst name term) . deleteMany) (argsAndClasses state) }
     nextStep = resolveUnis xs state'
@@ -430,7 +455,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
 
     -- try to hunt match a typeclass constraint by replacing it with an instance
     results4 = [ State [] (both (\(cs, _, _) -> ([], cs)) sds) 
-               (scoreAcc `mappend` Score 0 (both (\(_, amods, _) -> amods) sds))
+               (scoreAcc `mappend` Score 0 0 (both (\(_, amods, _) -> amods) sds))
                (usedns ++ sided (++) (both (\(_, _, hs) -> hs) sds))
                | sds <- allMods ]
       where
@@ -478,7 +503,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     statesFromMods :: Sided (Classes, AsymMods) -> State
     statesFromMods sides = let classes = both (\(c, _) -> ([], c)) sides
                                mods    = swap (both snd sides) in
-      State [] classes (scoreAcc `mappend` Score 0 mods) usedns
+      State [] classes (scoreAcc `mappend` (mempty { asymMods = mods })) usedns
     classMods :: Classes -> [(Classes, AsymMods)]
     classMods cs = let lcs = length cs in 
       [ (cs', mempty { typeClassIntro = lcs - length cs' }) | cs' <- subsets cs ]
