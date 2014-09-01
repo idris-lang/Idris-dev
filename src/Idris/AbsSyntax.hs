@@ -17,6 +17,7 @@ import Util.DynamicLinker
 import System.Console.Haskeline
 import System.IO
 
+import Control.Applicative
 import Control.Monad.State
 import Control.Monad.Error(throwError)
 
@@ -1663,7 +1664,11 @@ findStatics ist tm = trace (show tm) $
         pos ns ss t = return t
 
 -- for 6.12/7 compatibility
-data EitherErr a b = LeftErr a | RightOK b
+data EitherErr a b = LeftErr a | RightOK b deriving ( Functor )
+
+instance Applicative (EitherErr a) where
+    pure  = return
+    (<*>) = ap
 
 instance Monad (EitherErr a) where
     return = RightOK
