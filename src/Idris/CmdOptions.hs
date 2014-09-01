@@ -8,6 +8,7 @@ import IRTS.CodegenCommon
 
 import Options.Applicative
 import Options.Applicative.Arrows
+import Options.Applicative.Builder (prefs, idm)
 import Data.Char
 import Data.Maybe
 
@@ -57,7 +58,7 @@ runArgParser = do opts <- execParser $ info parser
 
 
 pureArgParser :: [String] -> [Opt]
-pureArgParser args = case execParserMaybe (info parser idm) args of
+pureArgParser args = case getParseResult $ execParserPure (prefs idm) (info parser idm) args of
   Just opts -> preProcOpts opts []
   Nothing -> []
 
@@ -74,7 +75,7 @@ parseFlags = many $
   <|> flag' Ideslave (long "ideslave")
   <|> flag' IdeslaveSocket (long "ideslave-socket")
   <|> (Client <$> strOption (long "client"))
-  <|> (OLogging <$> option (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
+  <|> (OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
   <|> flag' NoBasePkgs (long "nobasepkgs")
   <|> flag' NoPrelude (long "noprelude")
   <|> flag' NoBuiltins (long "nobuiltins")
@@ -120,7 +121,7 @@ parseFlags = many $
   <|> flag' (OptLevel 2) (long "O2")
   <|> flag' (OptLevel 1) (long "O1")
   <|> flag' (OptLevel 0) (long "O0")
-  <|> (OptLevel <$> option (short 'O' <> long "level"))
+  <|> (OptLevel <$> option auto (short 'O' <> long "level"))
   <|> (TargetTriple <$> strOption (long "target" <> metavar "TRIPLE" <> help "Select target triple (for llvm codegen)"))
   <|> (TargetCPU <$> strOption (long "cpu" <> metavar "CPU" <> help "Select target CPU e.g. corei7 or cortex-m3 (for LLVM codegen)"))
   <|> flag' (ColourREPL True) (long "colour" <> long "color" <> help "Force coloured output")
@@ -144,4 +145,3 @@ preProcOpts (x:xs) ys = preProcOpts xs (x:ys)
 parseCodegen :: String -> Codegen
 parseCodegen "bytecode" = Bytecode
 parseCodegen cg = Via (map toLower cg)
-
