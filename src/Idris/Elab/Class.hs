@@ -103,11 +103,13 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
     pibind [] x = x
     pibind ((n, ty): ns) x = PPi expl n ty (pibind ns x)
 
+    mdec :: Name -> Name
     mdec (UN n) = SN (MethodN (UN n))
     mdec (NS x n) = NS (mdec x) n
     mdec x = x
 
     -- TODO: probably should normalise
+    checkDefaultSuperclassInstance :: PDecl -> Idris () 
     checkDefaultSuperclassInstance (PInstance _ fc cs n ps _ _ _)
         = do when (not $ null cs) . tclift
                 $ tfail (At fc (Msg $ "Default superclass instances can't have constraints."))
@@ -118,8 +120,11 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
                 $ tfail (At fc (Msg $ "Default instances must be for a superclass constraint on the containing class."))
              return ()
 
+    impbind :: [(Name, PTerm)] -> PTerm -> PTerm 
     impbind [] x = x
     impbind ((n, ty): ns) x = PPi impl n ty (impbind ns x)
+
+    conbind :: [PTerm] -> PTerm -> PTerm 
     conbind (ty : ns) x = PPi constraint (sMN 0 "class") ty (conbind ns x)
     conbind [] x = x
 
@@ -155,6 +160,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
     clause _ = False
 
     -- Generate a function for chasing a dictionary constraint
+    cfun :: Name -> PTerm -> SyntaxInfo -> [a] -> PTerm -> Idris [PDecl' PTerm]
     cfun cn c syn all con
         = do let cfn = sUN ('@':'@':show cn ++ "#" ++ show con)
                        -- SN (ParentN cn (show con))
