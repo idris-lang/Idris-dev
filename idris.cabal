@@ -699,7 +699,7 @@ Library
                 , xml
                 , deepseq
                 , zlib
-                , optparse-applicative >= 0.8
+                , optparse-applicative >= 0.10
   Extensions:     MultiParamTypeClasses
                 , DeriveFoldable
                 , DeriveTraversable
