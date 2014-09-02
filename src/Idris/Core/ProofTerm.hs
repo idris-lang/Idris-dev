@@ -114,9 +114,11 @@ mkProofTerm tm = PT Top [] tm []
 getProofTerm :: ProofTerm -> Term
 getProofTerm (PT path _ sub ups) = rebuildTerm sub (updateSolvedPath ups path) 
 
+same :: Eq a => Maybe a -> a -> Bool
 same Nothing n  = True
 same (Just x) n = x == n
 
+hole :: Binder b -> Bool
 hole (Hole _)    = True
 hole (Guess _ _) = True
 hole _           = False

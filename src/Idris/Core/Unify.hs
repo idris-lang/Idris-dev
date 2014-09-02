@@ -84,6 +84,10 @@ match_unify ctxt env topx topy inj holes from =
     -- but it scares me. However, matching is never guaranteed to give a unique
     -- answer, merely a valid one, so perhaps we're okay.
     -- In other words: it may vanish without warning some day :)
+    un :: [((Name, Name), TT Name)] -> TT Name -> TT Name ->
+          StateT UInfo
+          TC [(Name, TT Name)]
+
     un names x tm@(App (P _ f (Bind fn (Pi t _) sc)) a)
         | (P (DCon _ _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
@@ -237,6 +241,7 @@ expandLets env (x, tm) = (x, doSubst (reverse env) tm)
     doSubst (_ : env) tm
         = doSubst env tm
 
+hasv :: TT Name -> Bool
 hasv (V x) = True
 hasv (App f a) = hasv f || hasv a
 hasv (Bind x b sc) = hasv (binderTy b) || hasv sc
@@ -660,6 +665,7 @@ recoverable (Bind _ (Lam _) sc) f = recoverable sc f
 recoverable f (Bind _ (Lam _) sc) = recoverable f sc
 recoverable x y = True
 
+errEnv :: [(a, Binder b)] -> [(a, b)]
 errEnv = map (\(x, b) -> (x, binderTy b))
 
 holeIn :: Env -> Name -> Bool

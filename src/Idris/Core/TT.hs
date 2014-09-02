@@ -1088,6 +1088,7 @@ unList tm = case unApply tm of
 forget :: TT Name -> Raw
 forget tm = forgetEnv [] tm
     
+forgetEnv :: [Name] -> TT Name -> Raw
 forgetEnv env (P _ n _) = Var n
 forgetEnv env (V i)     = Var (env !! i)
 forgetEnv env (Bind n b sc) = let n' = uniqueName n env in

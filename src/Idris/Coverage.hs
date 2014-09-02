@@ -120,26 +120,6 @@ genClauses fc n xs given
                                 as' <- mkArg as
                                 return (a':as')
 
-fnub xs = fnub' [] xs
-
-fnub' acc (x : xs) | x `qelem` acc = fnub' acc (filter (not.(quickEq x)) xs)
-                   | otherwise = fnub' (x : acc) xs
-fnub' acc [] = acc
-
--- quick check for constructor equality
-quickEq :: PTerm -> PTerm -> Bool
-quickEq (PConstant n) (PConstant n') = n == n'
-quickEq (PRef _ n) (PRef _ n') = n == n'
-quickEq (PApp _ t as) (PApp _ t' as')
-    | length as == length as'
-       = quickEq t t' && and (zipWith quickEq (map getTm as) (map getTm as'))
-quickEq Placeholder Placeholder = True
-quickEq x y = False
-
-qelem x [] = False
-qelem x (y : ys) | x `quickEq` y = True
-                 | otherwise = qelem x ys
-
 -- FIXME: Just look for which one is the deepest, then generate all
 -- possibilities up to that depth.
 
@@ -244,6 +224,31 @@ genAll i args
                          -> PApp fc (PRef fc x) (map (upd Placeholder) pargs)
                       _ -> error "Can't happen - genAll"
 
+    fnub :: [PTerm] -> [PTerm]
+    fnub xs = fnub' [] xs
+
+    fnub' :: [PTerm] -> [PTerm] -> [PTerm]
+    fnub' acc (x : xs) | x `qelem` acc = fnub' acc (filter (not.(quickEq x)) xs)
+                       | otherwise = fnub' (x : acc) xs
+    fnub' acc [] = acc
+
+    -- quick check for constructor equality
+    quickEq :: PTerm -> PTerm -> Bool
+    quickEq (PConstant n) (PConstant n') = n == n'
+    quickEq (PRef _ n) (PRef _ n') = n == n'
+    quickEq (PApp _ t as) (PApp _ t' as')
+        | length as == length as'
+           = quickEq t t' && and (zipWith quickEq (map getTm as) (map getTm as'))
+    quickEq Placeholder Placeholder = True
+    quickEq x y = False
+
+    qelem :: PTerm -> [PTerm] -> Bool
+    qelem x [] = False
+    qelem x (y : ys) | x `quickEq` y = True
+                     | otherwise = qelem x ys
+
+
+upd :: t -> PArg' t -> PArg' t
 upd p' p = p { getTm = p' }
 
 -- Check whether function and all descendants cover all cases (partial is
@@ -706,8 +711,10 @@ checkMP ist i mp = if i > 0
         | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
         | otherwise = Unchecked
 
+allNothing :: [Maybe a] -> Bool
 allNothing xs = null (collapseNothing (zip xs [0..]))
 
+collapseNothing :: [(Maybe a, b)] -> [(Maybe a, b)]
 collapseNothing ((Nothing, _) : xs)
    = filter (\ (x, _) -> case x of
                              Nothing -> False
@@ -715,10 +722,12 @@ collapseNothing ((Nothing, _) : xs)
 collapseNothing (x : xs) = x : collapseNothing xs
 collapseNothing [] = []
 
+noPartial :: [Totality] -> Totality
 noPartial (Partial p : xs) = Partial p
 noPartial (_ : xs)         = noPartial xs
 noPartial []               = Total []
 
+collapse :: [Totality] -> Totality
 collapse xs = collapse' Unchecked xs
 collapse' def (Total r : xs)   = Total r
 collapse' def (Unchecked : xs) = collapse' def xs
