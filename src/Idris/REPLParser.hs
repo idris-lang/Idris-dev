@@ -133,6 +133,7 @@ pCmd = do P.whiteSpace; do cmd ["q", "quit"]; eof; return Quit
               <|> do cmd ["wc", "whocalls"]; P.whiteSpace; n <- P.fnName ; return (WhoCalls n)
               <|> do cmd ["cw", "callswho"]; P.whiteSpace; n <- P.fnName ; return (CallsWho n)
               <|> do cmd ["mkdoc"]; str <- many anyChar; return (MakeDoc str)
+              <|> do cmd ["printdef"]; P.whiteSpace; n <- P.fnName; return (PrintDef n)
               <|> do P.whiteSpace; do eof; return NOP
                              <|> do t <- P.fullExpr defaultSyntax; return (Eval t)
 

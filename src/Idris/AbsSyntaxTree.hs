@@ -363,6 +363,7 @@ data Command = Quit
              | CallsWho Name
              | MakeDoc String                      -- IdrisDoc
              | Warranty
+             | PrintDef Name
 
 data Opt = Filename String
          | Quiet
