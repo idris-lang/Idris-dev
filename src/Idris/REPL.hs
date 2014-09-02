@@ -170,7 +170,8 @@ processNetCmd :: IState -> IState -> Handle -> FilePath -> String ->
 processNetCmd orig i h fn cmd
     = do res <- case parseCmd i "(net)" cmd of
                   Failure err -> return (Left (Msg " invalid command"))
-                  Success c -> runErrorT $ evalStateT (processNet fn c) i
+                  Success (Right c) -> runErrorT $ evalStateT (processNet fn c) i
+                  Success (Left err) -> return (Left (Msg err))
          case res of
               Right x -> return x
               Left err -> do hPutStrLn h (show err)
@@ -274,7 +275,7 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.Interpret cmd) =
      i <- getIState
      case parseCmd i "(input)" cmd of
        Failure err -> iPrintError $ show (fixColour False err)
-       Success (Prove n') ->
+       Success (Right (Prove n')) ->
          idrisCatch
            (do process fn (Prove n')
                isetPrompt (mkPrompt mods)
@@ -293,7 +294,7 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.Interpret cmd) =
                            IdeSlave.convSExp "abandon-proof" "Abandoned" n
                        _ -> return ()
                      iRenderError $ pprintErr ist e)
-       Success cmd -> idrisCatch
+       Success (Right cmd) -> idrisCatch
                         (ideslaveProcess fn cmd)
                         (\e -> getIState >>= iRenderError . flip pprintErr e)
 runIdeSlaveCommand h id orig fn mods (IdeSlave.REPLCompletions str) =
@@ -600,36 +601,38 @@ processInput cmd orig inputs
                         _ -> ""
          c <- colourise
          case parseCmd i "(input)" cmd of
-            Failure err ->   do runIO $ print (fixColour c err)
+            Failure err ->   do runIO $ putStrLn "Command not recognized."
                                 return (Just inputs)
-            Success Reload ->
+            Success (Right Reload) ->
                 do putIState $ orig { idris_options = idris_options i
                                     , idris_colourTheme = idris_colourTheme i
                                     }
                    clearErr
                    mods <- loadInputs inputs Nothing
                    return (Just inputs)
-            Success (Load f toline) ->
+            Success (Right (Load f toline)) ->
                 do putIState orig { idris_options = idris_options i
                                   , idris_colourTheme = idris_colourTheme i
                                   }
                    clearErr
                    mod <- loadInputs [f] toline
                    return (Just [f])
-            Success (ModImport f) ->
+            Success (Right (ModImport f)) ->
                 do clearErr
                    fmod <- loadModule f
                    return (Just (inputs ++ [fmod]))
-            Success Edit -> do -- takeMVar stvar
+            Success (Right Edit) -> do -- takeMVar stvar
                                edit fn orig
                                return (Just inputs)
-            Success Proofs -> do proofs orig
-                                 return (Just inputs)
-            Success Quit -> do when (not quiet) (iputStrLn "Bye bye")
-                               return Nothing
-            Success cmd  -> do idrisCatch (process fn cmd)
+            Success (Right Proofs) -> do proofs orig
+                                         return (Just inputs)
+            Success (Right Quit) -> do when (not quiet) (iputStrLn "Bye bye")
+                                       return Nothing
+            Success (Right cmd ) -> do idrisCatch (process fn cmd)
                                           (\e -> do msg <- showErr e ; iputStrLn msg)
-                               return (Just inputs)
+                                       return (Just inputs)
+            Success (Left err) -> do runIO $ putStrLn err
+                                     return (Just inputs)
 
 resolveProof :: Name -> Idris Name
 resolveProof n'
@@ -1582,13 +1585,14 @@ initScript = do script <- getInitScript
           processLine i cmd input clr =
               case parseCmd i input cmd of
                    Failure err -> runIO $ print (fixColour clr err)
-                   Success Reload -> iPrintError "Init scripts cannot reload the file"
-                   Success (Load f _) -> iPrintError "Init scripts cannot load files"
-                   Success (ModImport f) -> iPrintError "Init scripts cannot import modules"
-                   Success Edit -> iPrintError "Init scripts cannot invoke the editor"
-                   Success Proofs -> proofs i
-                   Success Quit -> iPrintError "Init scripts cannot quit Idris"
-                   Success cmd  -> process [] cmd
+                   Success (Right Reload) -> iPrintError "Init scripts cannot reload the file"
+                   Success (Right (Load f _)) -> iPrintError "Init scripts cannot load files"
+                   Success (Right (ModImport f)) -> iPrintError "Init scripts cannot import modules"
+                   Success (Right Edit) -> iPrintError "Init scripts cannot invoke the editor"
+                   Success (Right Proofs) -> proofs i
+                   Success (Right Quit) -> iPrintError "Init scripts cannot quit Idris"
+                   Success (Right cmd ) -> process [] cmd
+                   Success (Left err) -> runIO $ print err
 
 getFile :: Opt -> Maybe String
 getFile (Filename str) = Just str
