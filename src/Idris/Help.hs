@@ -69,7 +69,8 @@ help =
     ([":q",":quit"], NoArg, "Exit the Idris system"),
     ([":w", ":warranty"], NoArg, "Displays warranty information"),
     ([":let"], ManyArgs DeclArg, "Evaluate a declaration, such as a function definition, instance implementation, or fixity declaration"),
-    ([":undefine",":unlet"], ManyArgs NameArg, "Remove the listed repl definitions, or all repl definitions if no names given")
+    ([":undefine",":unlet"], ManyArgs NameArg, "Remove the listed repl definitions, or all repl definitions if no names given"),
+    ([":printdef"], NameArg, "Show the definition of a function")
   ]
 
 -- | Use these for completion, but don't show them in :help

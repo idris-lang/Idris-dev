@@ -180,7 +180,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            ctxt <- getContext
            ist <- getIState
            let opt = idris_optimisation ist
-           putIState (ist { idris_patdefs = addDef n (force pdef', force pmissing)
+           putIState (ist { idris_patdefs = addDef n (force pdef, force pmissing)
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (dictionary opts)
            case lookupTy n ctxt of
