@@ -8,7 +8,6 @@ import IRTS.CodegenCommon
 
 import Options.Applicative
 import Options.Applicative.Arrows
-import Options.Applicative.Builder (prefs, idm)
 import Data.Char
 import Data.Maybe
 
