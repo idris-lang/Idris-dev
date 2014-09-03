@@ -1,0 +1,21 @@
+the Nat (1 + 2)
+:exec
+:c bytecode hello.bytecode
+:c c hello
+:doc main
+:reload
+:load interactive005.idr
+:total main
+:exec
+:t id
+:set showimplicits
+:t id
+:unset showimplicits
+:t id
+:warranty
+:consolewidth 10
+:doc main
+:consolewidth infinite
+:doc main
+:let data Nat2 = Zero | Succ Nat2
+:t Nat2
