@@ -60,6 +60,7 @@ data ExecVal = EP NameType Name ExecVal
              | EBind Name (Binder ExecVal) (ExecVal -> Exec ExecVal)
              | EApp ExecVal ExecVal
              | EType UExp
+             | EUType Universe
              | EErased
              | EConstant Const
              | forall a. EPtr (Ptr a)
@@ -72,6 +73,7 @@ instance Show ExecVal where
   show (EBind n b body)  = "EBind " ++ show b ++ " <<fn>>"
   show (EApp e1 e2)      = show e1 ++ " (" ++ show e2 ++ ")"
   show (EType _)         = "Type"
+  show (EUType _)        = "UType"
   show EErased           = "[__]"
   show (EConstant c)     = show c
   show (EPtr p)          = "<<ptr " ++ show p ++ ">>"
@@ -102,6 +104,7 @@ toTT (EApp e1 e2) = do e1' <- toTT e1
                        e2' <- toTT e2
                        return $ App e1' e2'
 toTT (EType u) = return $ TType u
+toTT (EUType u) = return $ UType u
 toTT EErased = return Erased
 toTT (EConstant c) = return (Constant c)
 toTT (EThunk ctxt env tm) = do env' <- mapM toBinder env
@@ -205,6 +208,7 @@ doExec env ctxt (Proj tm i) = let (x, xs) = unApply tm in
 doExec env ctxt Erased = return EErased
 doExec env ctxt Impossible = fail "Tried to execute an impossible case"
 doExec env ctxt (TType u) = return (EType u)
+doExec env ctxt (UType u) = return (EUType u)
 
 execApp :: ExecEnv -> Context -> ExecVal -> [ExecVal] -> Exec ExecVal
 execApp env ctxt v [] = return v -- no args is just a constant! can result from function calls
@@ -404,7 +408,7 @@ force = sUN "Force"
 -- | Look up primitive operations in the global table and transform them into ExecVal functions
 getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
 getOp fn [_, _, x] | fn == pbm = Just (return x)
-getOp fn [EP _ fn' _] 
+getOp fn [EP _ fn' _]
     | fn == prs && fn' == pstd =
               Just $ do line <- execIO getLine
                         return (EConstant (Str line))
@@ -548,7 +552,7 @@ foreignFromTT t = case (unApplyV t) of
                     _ -> trace ("failed to construct ffun") Nothing
 
 getFTy :: ExecVal -> Maybe FType
-getFTy (EApp (EP _ (UN fi) _) (EP _ (UN intTy) _)) 
+getFTy (EApp (EP _ (UN fi) _) (EP _ (UN intTy) _))
   | fi == txt "FIntT" =
     case str intTy of
       "ITNative" -> Just (FArith (ATInt ITNative))
