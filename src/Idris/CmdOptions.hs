@@ -115,7 +115,7 @@ parseFlags = many $
   <|> (EvalExpr <$> strOption (long "eval" <> short 'e' <> metavar "EXPR" <> help "Evaluate an expression without loading the REPL"))
   <|> flag' (InterpretScript "Main.main") (long "execute" <> help "Execute as idris")
   <|> (InterpretScript <$> strOption (long "exec" <> metavar "EXPR" <> help "Execute as idris"))
-  <|> ((\s -> Extension $ getExt s) <$> strOption (long "extension" <> short 'X' <> metavar "EXT" <> help "Turn on langage extension (TypeProviders or ErrorReflection)"))
+  <|> ((\s -> Extension $ getExt s) <$> strOption (long "extension" <> short 'X' <> metavar "EXT" <> help "Turn on language extension (TypeProviders or ErrorReflection)"))
   <|> flag' (OptLevel 3) (long "O3")
   <|> flag' (OptLevel 2) (long "O2")
   <|> flag' (OptLevel 1) (long "O1")
