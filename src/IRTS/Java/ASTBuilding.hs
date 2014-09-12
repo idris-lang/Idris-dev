@@ -60,7 +60,7 @@ localVar i = Ident $ "loc" ++ show i
 
 (@!) :: Exp -> Int -> ArrayIndex
 (@!) target pos =
-  ArrayIndex target (Lit $ Int (toInteger pos))
+  ArrayIndex target [Lit $ Int (toInteger pos)]
 
 (@:=) :: Either ArrayIndex Ident -> Exp -> BlockStmt
 (@:=) (Right lhs) rhs =

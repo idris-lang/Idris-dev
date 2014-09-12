@@ -86,6 +86,7 @@ mkPE_TyDecl ist args ty = mkty args ty
     mkty [] t = delab ist t
 
 -- | Checks if a given argument is a type class constraint argument
+classConstraint :: Idris.AbsSyntax.IState -> TT Name -> Bool
 classConstraint ist v
     | (P _ c _, args) <- unApply v = case lookupCtxt c (idris_classes ist) of
                                           [_] -> True
@@ -94,6 +95,7 @@ classConstraint ist v
 
 -- | Checks if the given arguments of a type class constraint are all either constants
 -- or references (i.e. that it doesn't contain any complex terms).
+concreteClass :: IState -> TT Name -> Bool
 concreteClass ist v
     | not (classConstraint ist v) = False
     | (P _ c _, args) <- unApply v = all concrete args

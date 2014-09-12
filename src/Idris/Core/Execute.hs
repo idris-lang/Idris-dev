@@ -51,8 +51,9 @@ readMay s = case reads s of
 
 data Lazy = Delayed ExecEnv Context Term | Forced ExecVal deriving Show
 
-newtype ExecState = ExecState { exec_dynamic_libs :: [DynamicLib] -- ^ Dynamic libs from idris monad
-                              }
+data ExecState = ExecState { exec_dynamic_libs :: [DynamicLib] -- ^ Dynamic libs from idris monad
+                           , binderNames :: [Name] -- ^ Used to uniquify binders when converting to TT
+                           }
 
 data ExecVal = EP NameType Name ExecVal
              | EV Int
@@ -80,9 +81,10 @@ instance Show ExecVal where
 toTT :: ExecVal -> Exec Term
 toTT (EP nt n ty) = (P nt n) <$> (toTT ty)
 toTT (EV i) = return $ V i
-toTT (EBind n b body) = do body' <- body $ EP Bound n EErased
+toTT (EBind n b body) = do n' <- newN n
+                           body' <- body $ EP Bound n' EErased
                            b' <- fixBinder b
-                           Bind n b' <$> toTT body'
+                           Bind n' b' <$> toTT body'
     where fixBinder (Lam t)       = Lam     <$> toTT t
           fixBinder (Pi t k)      = Pi      <$> toTT t <*> toTT k
           fixBinder (Let t1 t2)   = Let     <$> toTT t1 <*> toTT t2
@@ -92,6 +94,10 @@ toTT (EBind n b body) = do body' <- body $ EP Bound n EErased
           fixBinder (Guess t1 t2) = Guess   <$> toTT t1 <*> toTT t2
           fixBinder (PVar t)      = PVar    <$> toTT t
           fixBinder (PVTy t)      = PVTy    <$> toTT t
+          newN n = do (ExecState hs ns) <- lift get
+                      let n' = uniqueName n ns
+                      lift (put (ExecState hs (n':ns)))
+                      return n'
 toTT (EApp e1 e2) = do e1' <- toTT e1
                        e2' <- toTT e2
                        return $ App e1' e2'
@@ -115,7 +121,7 @@ mkEApp f (a:args) = mkEApp (EApp f a) args
 
 initState :: Idris ExecState
 initState = do ist <- getIState
-               return $ ExecState (idris_dynamic_libs ist)
+               return $ ExecState (idris_dynamic_libs ist) []
 
 type Exec = ErrorT Err (StateT ExecState IO)
 

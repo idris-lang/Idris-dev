@@ -511,6 +511,7 @@ ideslaveProcess fn (ChangeDirectory f) = do process fn (ChangeDirectory f)
 ideslaveProcess fn (Eval t) = process fn (Eval t)
 ideslaveProcess fn (NewDefn decls) = do process fn (NewDefn decls)
                                         iPrintResult "defined"
+ideslaveProcess fn (Undefine n) = process fn (Undefine n)
 ideslaveProcess fn (ExecVal t) = process fn (ExecVal t)
 ideslaveProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
 ideslaveProcess fn (Check t) = process fn (Check t)
@@ -568,6 +569,7 @@ ideslaveProcess fn (Apropos a) = do process fn (Apropos a)
                                     iPrintResult ""
 ideslaveProcess fn (WhoCalls n) = process fn (WhoCalls n)
 ideslaveProcess fn (CallsWho n) = process fn (CallsWho n)
+ideslaveProcess fn (PrintDef n) = process fn (PrintDef n)
 ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
@@ -689,6 +691,7 @@ process fn (ChangeDirectory f)
                       return ()
 process fn (Eval t)
                  = withErrorReflection $ do logLvl 5 $ show t
+                                            getIState >>= flip warnDisamb t
                                             (tm, ty) <- elabVal recinfo ERHS t
                                             ctxt <- getContext
                                             let tm' = force (normaliseAll ctxt [] tm)
@@ -1170,6 +1173,27 @@ process fn (MakeDoc s) =
                                       else return . Left $ "Illegal name: " ++ head bad
          case result of Right _   -> iputStrLn "IdrisDoc generated"
                         Left  err -> iPrintError err
+process fn (PrintDef n) =
+  do ist <- getIState
+     let patdefs = idris_patdefs ist
+         result = map (ppDef ist) (lookupCtxtName n patdefs)
+     case result of
+       [] -> iPrintError "Not found"
+       outs -> iRenderResult . vsep $ outs
+  where ppDef :: IState -> (Name, ([([Name], Term, Term)], [PTerm])) -> Doc OutputAnnotation
+        ppDef ist (n, (clauses, missing)) =
+          prettyName True True [] n <+> colon <+>
+          pprintPTerm (ppOptionIst ist) [] [] [] (delabTy ist n) <$>
+          indent 2 (ppClauses ist clauses <> ppMissing missing)
+        ppClauses ist [] = text "No clauses."
+        ppClauses ist cs = vsep (map pp cs)
+          where pp (vars, lhs, rhs) =
+                  let ppTm = pprintPTerm (ppOptionIst ist)
+                                   (zip vars (repeat False))
+                                   [] [] .
+                             delab ist
+                  in ppTm lhs <+> text "=" <+> ppTm rhs
+        ppMissing _ = empty
 
 
 showTotal :: Totality -> IState -> String

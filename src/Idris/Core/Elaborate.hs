@@ -755,6 +755,14 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
                             if (s >= i) then (lift (tfail err), s)
                                         else (f, i)
 
+prunStateT
+  :: Int
+     -> Bool
+     -> [a]
+     -> Control.Monad.State.Strict.StateT
+          (ElabState t) (TC' Err) t1
+     -> ElabState t
+     -> TC' Err ((t1, Int, Idris.Core.Unify.Fails), ElabState t)
 prunStateT pmax zok ps x s
       = case runStateT x s of
              OK (v, s'@(ES (p, _) _ _)) ->

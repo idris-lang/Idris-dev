@@ -1088,6 +1088,7 @@ unList tm = case unApply tm of
 forget :: TT Name -> Raw
 forget tm = forgetEnv [] tm
     
+forgetEnv :: [Name] -> TT Name -> Raw
 forgetEnv env (P _ n _) = Var n
 forgetEnv env (V i)     = Var (env !! i)
 forgetEnv env (Bind n b sc) = let n' = uniqueName n env in
@@ -1154,6 +1155,7 @@ nextName (UN x) = let (num', nm') = T.span isDigit (T.reverse x)
 nextName (SN x) = SN (nextName' x)
   where
     nextName' (WhereN i f x) = WhereN i f (nextName x)
+    nextName' (WithN i n) = WithN i (nextName n)
     nextName' (CaseN n) = CaseN (nextName n)
     nextName' (MethodN n) = MethodN (nextName n)
 

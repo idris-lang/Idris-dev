@@ -201,7 +201,8 @@ instance DecEq a => DecEq (Vect n a) where
 
 instance DecEq Int where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
-       where postulate primitiveEq : x = y
+       where primitiveEq : x = y
+             primitiveEq = believe_me (refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
@@ -210,7 +211,8 @@ instance DecEq Int where
 
 instance DecEq Char where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
-       where postulate primitiveEq : x = y
+       where primitiveEq : x = y
+             primitiveEq = believe_me (refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
@@ -219,7 +221,8 @@ instance DecEq Char where
 
 instance DecEq Integer where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
-       where postulate primitiveEq : x = y
+       where primitiveEq : x = y
+             primitiveEq = believe_me (refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
@@ -228,7 +231,8 @@ instance DecEq Integer where
 
 instance DecEq Float where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
-       where postulate primitiveEq : x = y
+       where primitiveEq : x = y
+             primitiveEq = believe_me (refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
@@ -237,7 +241,8 @@ instance DecEq Float where
 
 instance DecEq String where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
-       where postulate primitiveEq : x = y
+       where primitiveEq : x = y
+             primitiveEq = believe_me (refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 
