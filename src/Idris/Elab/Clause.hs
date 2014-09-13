@@ -653,7 +653,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
              borrowedB b = borrowedNames env (binderTy b)
     borrowedNames _ _ = []
 
-    mkLHSapp t@(PRef _ _) = trace ("APP " ++ show t) $ PApp fc t []
+    mkLHSapp t@(PRef _ _) = PApp fc t []
     mkLHSapp t = t
 
     decorate (NS x ns)

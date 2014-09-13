@@ -124,29 +124,29 @@ mkIBC (i:is) f = do ist <- getIState
 
 ibc :: IState -> IBCWrite -> IBCFile -> Idris IBCFile
 ibc i (IBCFix d) f = return f { ibc_fixes = d : ibc_fixes f }
-ibc i (IBCImp n) f = case lookupCtxt n (idris_implicits i) of
-                        [v] -> return f { ibc_implicits = (n,v): ibc_implicits f     }
+ibc i (IBCImp n) f = case lookupCtxtExact n (idris_implicits i) of
+                        Just v -> return f { ibc_implicits = (n,v): ibc_implicits f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCStatic n) f
-                   = case lookupCtxt n (idris_statics i) of
-                        [v] -> return f { ibc_statics = (n,v): ibc_statics f     }
+                   = case lookupCtxtExact n (idris_statics i) of
+                        Just v -> return f { ibc_statics = (n,v): ibc_statics f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCClass n) f
-                   = case lookupCtxt n (idris_classes i) of
-                        [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
+                   = case lookupCtxtExact n (idris_classes i) of
+                        Just v -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCInstance int n ins) f
                    = return f { ibc_instances = (int,n,ins): ibc_instances f     }
 ibc i (IBCDSL n) f
-                   = case lookupCtxt n (idris_dsls i) of
-                        [v] -> return f { ibc_dsls = (n,v): ibc_dsls f     }
+                   = case lookupCtxtExact n (idris_dsls i) of
+                        Just v -> return f { ibc_dsls = (n,v): ibc_dsls f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCData n) f
-                   = case lookupCtxt n (idris_datatypes i) of
-                        [v] -> return f { ibc_datatypes = (n,v): ibc_datatypes f     }
+                   = case lookupCtxtExact n (idris_datatypes i) of
+                        Just v -> return f { ibc_datatypes = (n,v): ibc_datatypes f     }
                         _ -> ifail "IBC write failed"
-ibc i (IBCOpt n) f = case lookupCtxt n (idris_optimisation i) of
-                        [v] -> return f { ibc_optimise = (n,v): ibc_optimise f     }
+ibc i (IBCOpt n) f = case lookupCtxtExact n (idris_optimisation i) of
+                        Just v -> return f { ibc_optimise = (n,v): ibc_optimise f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCSyntax n) f = return f { ibc_syntax = n : ibc_syntax f }
 ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
@@ -158,12 +158,12 @@ ibc i (IBCCGFlag tgt n) f = return f { ibc_cgflags = (tgt, n) : ibc_cgflags f }
 ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
 ibc i (IBCDef n) f 
-   = do f' <- case lookupDef n (tt_ctxt i) of
-                   [v] -> do (v', (f', _)) <- runStateT (updateDef v) (f, length (symbols f))
-                             return f' { ibc_defs = (n,v) : ibc_defs f'     }
+   = do f' <- case lookupDefExact n (tt_ctxt i) of
+                   Just v -> do (v', (f', _)) <- runStateT (updateDef v) (f, length (symbols f))
+                                return f' { ibc_defs = (n,v) : ibc_defs f'     }
                    _ -> ifail "IBC write failed"
-        case lookupCtxt n (idris_patdefs i) of
-                   [v] -> return f' { ibc_patdefs = (n,v) : ibc_patdefs f' }
+        case lookupCtxtExact n (idris_patdefs i) of
+                   Just v -> return f' { ibc_patdefs = (n,v) : ibc_patdefs f' }
                    _ -> return f' -- Not a pattern definition
   where 
     updateDef :: Def -> StateT (IBCFile, Int) Idris Def
@@ -220,11 +220,11 @@ ibc i (IBCDef n) f
     update t = return t
 
 
-ibc i (IBCDoc n) f = case lookupCtxt n (idris_docstrings i) of
-                        [v] -> return f { ibc_docstrings = (n,v) : ibc_docstrings f }
+ibc i (IBCDoc n) f = case lookupCtxtExact n (idris_docstrings i) of
+                        Just v -> return f { ibc_docstrings = (n,v) : ibc_docstrings f }
                         _ -> ifail "IBC write failed"
-ibc i (IBCCG n) f = case lookupCtxt n (idris_callgraph i) of
-                        [v] -> return f { ibc_cg = (n,v) : ibc_cg f     }
+ibc i (IBCCG n) f = case lookupCtxtExact n (idris_callgraph i) of
+                        Just v -> return f { ibc_cg = (n,v) : ibc_cg f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCCoercion n) f = return f { ibc_coercions = n : ibc_coercions f }
 ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
@@ -336,8 +336,8 @@ pImports fs
 pImps :: [(Name, [PArg])] -> Idris ()
 pImps imps = mapM_ (\ (n, imp) ->
                         do i <- getIState
-                           case lookupDefAcc n False (tt_ctxt i) of
-                              [(n, Hidden)] -> return ()
+                           case lookupDefAccExact n False (tt_ctxt i) of
+                              Just (n, Hidden) -> return ()
                               _ -> putIState (i { idris_implicits
                                             = addDef n imp (idris_implicits i) }))
                    imps
@@ -358,8 +358,8 @@ pClasses cs = mapM_ (\ (n, c) ->
                         do i <- getIState
                            -- Don't lose instances from previous IBCs, which
                            -- could have loaded in any order
-                           let is = case lookupCtxt n (idris_classes i) of
-                                      [CI _ _ _ _ _ ins] -> ins
+                           let is = case lookupCtxtExact n (idris_classes i) of
+                                      Just (CI _ _ _ _ _ ins) -> ins
                                       _ -> []
                            let c' = c { class_instances =
                                           class_instances c ++ is }
@@ -433,9 +433,10 @@ pDefs syms ds
                do let d' = updateDef d
                   case d' of
                        TyDecl _ _ -> return () 
-                       _ -> solveDeferred n 
+                       _ -> do iLOG $ "SOLVING " ++ show n
+                               solveDeferred n 
                   i <- getIState
-                  logLvl 5 $ "Added " ++ show (n, d')
+--                   logLvl 1 $ "Added " ++ show (n, d')
                   putIState (i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })) ds
   where
     updateDef (CaseOp c t args o s cd)
