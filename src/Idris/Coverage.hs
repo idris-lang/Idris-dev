@@ -468,8 +468,8 @@ buildSCG :: (FC, Name) -> Idris ()
 buildSCG (_, n) = do
    ist <- getIState
    case lookupCtxt n (idris_callgraph ist) of
-       [cg] -> case lookupDef n (tt_ctxt ist) of
-           [CaseOp _ _ _ pats _ cd] ->
+       [cg] -> case lookupDefExact n (tt_ctxt ist) of
+           Just (CaseOp _ _ _ pats _ cd) ->
              let (args, sc) = cases_totcheck cd in
                do logLvl 2 $ "Building SCG for " ++ show n ++ " from\n"
                                 ++ show pats ++ "\n" ++ show sc

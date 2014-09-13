@@ -8,7 +8,8 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
-                lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact, lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupVal,
+                lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact, 
+                lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
@@ -973,6 +974,14 @@ lookupDefAcc :: Name -> Bool -> Context ->
                 [(Def, Accessibility)]
 lookupDefAcc n mkpublic ctxt
     = map mkp $ lookupCtxt n (definitions ctxt)
+  -- io_bind a special case for REPL prettiness
+  where mkp (d, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_return"))
+                             then (d, Public) else (d, a)
+
+lookupDefAccExact :: Name -> Bool -> Context ->
+                     Maybe (Def, Accessibility)
+lookupDefAccExact n mkpublic ctxt
+    = fmap mkp $ lookupCtxtExact n (definitions ctxt)
   -- io_bind a special case for REPL prettiness
   where mkp (d, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_return"))
                              then (d, Public) else (d, a)
