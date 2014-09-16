@@ -145,6 +145,12 @@ instance SExpable OutputAnnotation where
                        ItalicText    -> "italic"
                        UnderlineText -> "underline"
   toSExp (AnnTerm bnd tm) = toSExp [(SymbolAtom "tt-term", StringAtom (encodeTerm bnd tm))]
+  toSExp (AnnSearchResult ordr) = toSExp [(SymbolAtom "doc-overview", 
+      StringAtom ("Result type is " ++ descr))]
+      where descr = case ordr of
+	      EQ -> "isomorphic"
+	      LT -> "more general than searched type"
+	      GT -> "more specific than searched type"
 
 encodeTerm :: [(Name, Bool)] -> Term -> String
 encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $
