@@ -42,7 +42,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 .
                 * Hugs style interactive environment
 
-Cabal-Version:  >= 1.8
+Cabal-Version:  >= 1.18
 
 Build-type:     Custom
 
@@ -558,6 +558,7 @@ Flag freestanding
   manual:       True
 
 Library
+  default-language: Haskell2010
   hs-source-dirs: src
   Exposed-modules:
                   Idris.Core.Binary
@@ -668,68 +669,66 @@ Library
                 , Version_idris
 
   Build-depends:  base >=4 && <5
-                , Cabal
-                , annotated-wl-pprint >= 0.5.3
-                , ansi-terminal
-                , ansi-wl-pprint
-                , base64-bytestring
-                , binary
-                , blaze-html >= 0.6.1.3
+                , annotated-wl-pprint >= 0.5.3 && < 0.6
+                , ansi-terminal < 0.7
+                , ansi-wl-pprint < 0.7
+                , base64-bytestring < 1.1
+                , binary < 0.8
+                , blaze-html >= 0.6.1.3 && < 0.8
                 , blaze-markup >= 0.5.2.1 && < 0.7.0.0
-                , bytestring
-                , cheapskate
-                , containers >= 0.5
-                , directory
-                , directory >= 1.2
-                , filepath
-                , fingertree >= 0.1
-                , haskeline >= 0.7
-                , language-java >= 0.2.7
-                , lens >= 4.1.1
-                , mtl
+                , bytestring < 0.11
+                , cheapskate < 0.2
+                , containers >= 0.5 && < 0.6
+                , deepseq < 1.4
+                , directory >= 1.2 && < 1.3
+                , filepath < 1.4
+                , fingertree >= 0.1 && < 0.2
+                , haskeline >= 0.7 && < 0.8
+                , language-java >= 0.2.7 && < 0.3
+                , lens >= 4.1.1 && < 4.5
+                , mtl < 2.3
+                , network < 2.7
+                , optparse-applicative >= 0.10 && < 0.11
                 , parsers >= 0.9 && < 0.13
-                , pretty
-                , process
-                , split
-                , text
-                , time >= 1.4
-                , transformers
-                , trifecta >= 1.1
-                , unordered-containers
-                , utf8-string
-                , vector
-                , vector-binary-instances
-                , network
-                , xml
-                , deepseq
-                , zlib
-                , optparse-applicative >= 0.10
-  Extensions:     MultiParamTypeClasses
-                , DeriveFoldable
-                , DeriveTraversable
-                , FunctionalDependencies
-                , FlexibleContexts
-                , FlexibleInstances
-                , TemplateHaskell
+                , pretty < 1.2
+                , process < 1.3
+                , split < 0.3
+                , text < 1.3
+                , time >= 1.4 && < 1.6
+                , transformers < 0.5
+                , trifecta >= 1.1 && < 1.6
+                , unordered-containers < 0.3
+                , utf8-string < 0.4
+                , vector < 0.11
+                , vector-binary-instances < 0.3
+                , xml < 1.4
+                , zlib < 0.6
+  default-extensions: MultiParamTypeClasses
+                    , FlexibleInstances
+                    , FlexibleContexts
+                    , DeriveFoldable
+                    , DeriveTraversable
+                    , TemplateHaskell
+  other-extensions:   FunctionalDependencies
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts
 
   if os(linux)
      cpp-options:   -DLINUX
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(freebsd)
      cpp-options:   -DFREEBSD
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(dragonfly)
      cpp-options:   -DDRAGONFLY
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(darwin)
      cpp-options:   -DMACOSX
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(windows)
      cpp-options:   -DWINDOWS
-     build-depends: Win32
+     build-depends: Win32 < 2.4
   if flag(LLVM)
      other-modules: IRTS.CodegenLLVM
      cpp-options:   -DIDRIS_LLVM
@@ -738,19 +737,20 @@ Library
   else
      other-modules: Util.LLVMStubs
   if flag(FFI)
-     build-depends: libffi
+     build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_FFI
   if flag(GMP)
-     build-depends: libffi
+     build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_GMP
   if flag(curses)
-     build-depends: hscurses
+     build-depends: hscurses < 1.5
      cpp-options:   -DCURSES
   if flag(freestanding)
      other-modules: Target_idris
      cpp-options:   -DFREESTANDING
 
 Executable idris
+  default-language: Haskell2010
   Main-is:        Main.hs
   hs-source-dirs: main
 
@@ -764,6 +764,7 @@ Executable idris
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-c
+  default-language: Haskell2010
   Main-is:        Main.hs
   hs-source-dirs: codegen/idris-c
 
@@ -777,6 +778,7 @@ Executable idris-c
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-javascript
+  default-language: Haskell2010
   Main-is:        Main.hs
   hs-source-dirs: codegen/idris-javascript
 
@@ -790,6 +792,7 @@ Executable idris-javascript
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-node
+  default-language: Haskell2010
   Main-is:        Main.hs
   hs-source-dirs: codegen/idris-node
 
