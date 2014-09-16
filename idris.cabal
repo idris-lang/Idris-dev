@@ -42,7 +42,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 .
                 * Hugs style interactive environment
 
-Cabal-Version:  >= 1.8
+Cabal-Version:  >= 1.18
 
 Build-type:     Custom
 
@@ -558,6 +558,7 @@ Flag freestanding
   manual:       True
 
 Library
+  default-language: Haskell2010
   hs-source-dirs: src
   Exposed-modules:
                   Idris.Core.Binary
@@ -668,7 +669,6 @@ Library
                 , Version_idris
 
   Build-depends:  base >=4 && <5
-                , Cabal < 1.21
                 , annotated-wl-pprint >= 0.5.3 && < 0.6
                 , ansi-terminal < 0.7
                 , ansi-wl-pprint < 0.7
@@ -703,32 +703,32 @@ Library
                 , vector-binary-instances < 0.3
                 , xml < 1.4
                 , zlib < 0.6
-  Extensions:     MultiParamTypeClasses
-                , DeriveFoldable
-                , DeriveTraversable
-                , FunctionalDependencies
-                , FlexibleContexts
-                , FlexibleInstances
-                , TemplateHaskell
+  default-extensions: MultiParamTypeClasses
+                    , FlexibleInstances
+                    , FlexibleContexts
+                    , DeriveFoldable
+                    , DeriveTraversable
+                    , TemplateHaskell
+  other-extensions:   FunctionalDependencies
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts
 
   if os(linux)
      cpp-options:   -DLINUX
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(freebsd)
      cpp-options:   -DFREEBSD
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(dragonfly)
      cpp-options:   -DDRAGONFLY
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(darwin)
      cpp-options:   -DMACOSX
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(windows)
      cpp-options:   -DWINDOWS
-     build-depends: Win32
+     build-depends: Win32 < 2.4
   if flag(LLVM)
      other-modules: IRTS.CodegenLLVM
      cpp-options:   -DIDRIS_LLVM
@@ -737,19 +737,20 @@ Library
   else
      other-modules: Util.LLVMStubs
   if flag(FFI)
-     build-depends: libffi
+     build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_FFI
   if flag(GMP)
-     build-depends: libffi
+     build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_GMP
   if flag(curses)
-     build-depends: hscurses
+     build-depends: hscurses < 1.5
      cpp-options:   -DCURSES
   if flag(freestanding)
      other-modules: Target_idris
      cpp-options:   -DFREESTANDING
 
 Executable idris
+  default-language: Haskell2010
   Main-is:        Main.hs
   hs-source-dirs: main
 
@@ -763,6 +764,7 @@ Executable idris
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-c
+  default-language: Haskell2010
   Main-is:        Main.hs
   hs-source-dirs: codegen/idris-c
 
@@ -776,6 +778,7 @@ Executable idris-c
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-javascript
+  default-language: Haskell2010
   Main-is:        Main.hs
   hs-source-dirs: codegen/idris-javascript
 
@@ -789,6 +792,7 @@ Executable idris-javascript
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-node
+  default-language: Haskell2010
   Main-is:        Main.hs
   hs-source-dirs: codegen/idris-node
 

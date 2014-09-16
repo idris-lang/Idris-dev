@@ -533,12 +533,12 @@ app syn = do f <- reserved "mkForeign"
                                 (PMatchApp fc ff)
                                 (PRef fc (sMN 0 "match")))
                <?> "matching application expression") <|> (do
-              fc <- getFC
-              i <- get
-              args <- many (do notEndApp; arg syn)
-              case args of
-                [] -> return f
-                _  -> return (dslify i (PApp fc f args)))
+		fc <- getFC
+		i <- get
+		args <- many (do notEndApp; arg syn)
+		case args of
+		  [] -> return f
+		  _  -> return (dslify i (PApp fc f args)))
        <?> "function application"
   where
     dslify :: IState -> PTerm -> PTerm
