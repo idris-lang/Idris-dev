@@ -281,13 +281,13 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
     -- for the purposes of erasure, we can disregard the projection
     getDepsSC fn es vs (ProjCase (Proj t i) alts) = getDepsSC fn es vs (ProjCase t alts)  -- step
-    getDepsSC fn es vs (ProjCase (P  _ n _) alts) = getDepsSC fn es vs (Case     n alts)  -- base
+    getDepsSC fn es vs (ProjCase (P  _ n _) alts) = getDepsSC fn es vs (Case Shared n alts)  -- base
 
     -- other ProjCase's are not supported
     getDepsSC fn es vs (ProjCase t alts)   = error $ "ProjCase not supported:\n" ++ show (ProjCase t alts)
 
     getDepsSC fn es vs (STerm    t)        = getDepsTerm vs [] (S.singleton (fn, Result)) (etaExpand es t)
-    getDepsSC fn es vs (Case n alts)
+    getDepsSC fn es vs (Case sh n alts)
         -- we case-split on this variable, which marks it as used
         -- (unless there is exactly one case branch)
         -- hence we add a new dependency, whose only precondition is
@@ -370,13 +370,13 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     getDepsTerm vs bs cd app@(App _ _)
         | (fun, args) <- unApply app = case fun of
             -- instance constructors -> create metamethod deps
-            P (DCon _ _) ctorName@(SN (InstanceCtorN className)) _
+            P (DCon _ _ _) ctorName@(SN (InstanceCtorN className)) _
                 -> conditionalDeps ctorName args  -- regular data ctor stuff
                     `union` unionMap (methodDeps ctorName) (zip [0..] args)  -- method-specific stuff
 
             -- ordinary constructors
             P (TCon _ _) n _ -> unconditionalDeps args  -- does not depend on anything
-            P (DCon _ _) n _ -> conditionalDeps n args  -- depends on whether (n,#) is used
+            P (DCon _ _ _) n _ -> conditionalDeps n args  -- depends on whether (n,#) is used
 
             -- mkForeign* calls must be special-cased because they are variadic
             -- All arguments must be marked as used, except for the first one,
@@ -469,7 +469,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
     -- Get the number of arguments that might be considered for erasure.
     getArity :: Name -> Int
     getArity (SN (WhereN i' ctorName (MN i field)))
-        | Just (TyDecl (DCon _ _) ty) <- lookupDefExact ctorName ctx
+        | Just (TyDecl (DCon _ _ _) ty) <- lookupDefExact ctorName ctx
         = let argTys = map snd $ getArgTys ty
             in if i <= length argTys
                 then length $ getArgTys (argTys !! i)
@@ -479,7 +479,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
     getArity n = case lookupDefExact n ctx of
         Just (CaseOp ci ty tys def tot cdefs) -> length tys
-        Just (TyDecl (DCon tag arity) _)      -> arity
+        Just (TyDecl (DCon tag arity _) _)    -> arity
         Just (TyDecl (Ref) ty)                -> length $ getArgTys ty
         Just (Operator ty arity op)           -> arity
         Just df -> error $ "Erasure/getArity: unrecognised entity '"

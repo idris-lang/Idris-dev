@@ -3,6 +3,7 @@
 module IRTS.Compiler(compile, generate) where
 
 import IRTS.Lang
+import IRTS.LangOpts
 import IRTS.Defunctionalise
 import IRTS.Simplified
 import IRTS.CodegenCommon
@@ -60,8 +61,14 @@ compile codegen f tm
         defsIn <- mkDecls tm reachableNames
         let defs = defsIn ++ [(sMN 0 "runMain", maindef)]
         -- iputStrLn $ showSep "\n" (map show defs)
-        let (nexttag, tagged) = addTags 65536 (liftAll defs)
+        -- Inlined top level LDecl made here
+        let defsInlined = inlineAll defs
+        let defsUniq = map (allocUnique (addAlist defsInlined emptyContext)) 
+                           defsInlined
+
+        let (nexttag, tagged) = addTags 65536 (liftAll defsUniq)
         let ctxtIn = addAlist tagged emptyContext
+
         iLOG "Defunctionalising"
         let defuns_in = defunctionalise nexttag ctxtIn
         logLvl 5 $ show defuns_in
@@ -70,7 +77,7 @@ compile codegen f tm
         logLvl 5 $ show defuns
         iLOG "Resolving variables for CG"
         -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
-        let checked = checkDefs defuns (toAlist defuns)
+        let checked = simplifyDefs defuns (toAlist defuns)
         outty <- outputTy
         dumpCases <- getDumpCases
         dumpDefun <- getDumpDefun
@@ -163,6 +170,7 @@ showCaseTrees = showSep "\n\n" . map showCT . sortBy (comparing defnRank)
     snRank (CaseN n) = "5" ++ nameRank n
     snRank (ElimN n) = "6" ++ nameRank n
     snRank (InstanceCtorN n) = "7" ++ nameRank n
+    snRank (WithN i n) = "8" ++ nameRank n ++ show i
 
 isCon (TyDecl _ _) = True
 isCon _ = False
@@ -186,11 +194,17 @@ mkLDecl n (Function tm _)
     = declArgs [] True n <$> irTerm M.empty [] tm
 
 mkLDecl n (CaseOp ci _ _ _ pats cd)
-    = declArgs [] (case_inlinable ci) n <$> irTree args sc
+    = declArgs [] (case_inlinable ci || caseName n) n <$> irTree args sc
   where
     (args, sc) = cases_runtime cd
 
-mkLDecl n (TyDecl (DCon tag arity) _) =
+    -- Always attempt to inline functions arising from 'case' expressions 
+    caseName (SN (CaseN _)) = True
+    caseName (SN (WithN _ _)) = True
+    caseName (NS n _) = caseName n
+    caseName _ = False
+
+mkLDecl n (TyDecl (DCon tag arity _) _) =
     LConstructor n tag . length <$> fgetState (cg_usedpos . ist_callgraph n)
 
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
@@ -273,12 +287,13 @@ irTerm vs env tm@(App f a) = case unApply tm of
             x' <- irTerm vs env x
             t' <- irTerm vs env t
             e' <- irTerm vs env e
-            return (LCase x' [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e'
+            return (LCase Shared x' 
+                             [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e'
                              ,LConCase 1 (sNS (sUN "True" ) ["Bool","Prelude"]) [] t'
                              ])
 
     -- data constructor
-    (P (DCon t arity) n _, args) -> do
+    (P (DCon t arity _) n _, args) -> do
         detag <- fgetState (opt_detaggable . ist_optimisation n)
         used  <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
 
@@ -383,7 +398,7 @@ irTerm vs env tm@(App f a) = case unApply tm of
 
         arity = case fst4 <$> lookupCtxtExact n (definitions . tt_ctxt $ ist) of
             Just (CaseOp ci ty tys def tot cdefs) -> length tys
-            Just (TyDecl (DCon tag ar) _)         -> ar
+            Just (TyDecl (DCon tag ar _) _)       -> ar
             Just (TyDecl Ref ty)                  -> length $ getArgTys ty
             Just (Operator ty ar op)              -> ar
             Just def -> error $ "unknown arity: " ++ show (n, def)
@@ -502,10 +517,10 @@ irSC vs (UnmatchedCase str) = return $ LError str
 irSC vs (ProjCase tm alts) = do
     tm'   <- irTerm vs [] tm
     alts' <- mapM (irAlt vs tm') alts
-    return $ LCase tm' alts'
+    return $ LCase Shared tm' alts'
 
 -- Transform matching on Delay to applications of Force.
-irSC vs (Case n [ConCase (UN delay) i [_, _, n'] sc])
+irSC vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
     | delay == txt "Delay"
     = do sc' <- irSC vs $ mkForce n' n sc
          return $ LLet n' (LForce (LV (Glob n))) sc'
@@ -532,7 +547,7 @@ irSC vs (Case n [ConCase (UN delay) i [_, _, n'] sc])
 -- Hence, we check whether the variables are used at all
 -- and erase the casesplit if they are not.
 --
-irSC vs (Case n [alt]) = do
+irSC vs (Case up n [alt]) = do
     replacement <- case alt of
         ConCase cn a ns sc -> do
             detag <- fgetState (opt_detaggable . ist_optimisation cn)
@@ -548,7 +563,7 @@ irSC vs (Case n [alt]) = do
             alt' <- irAlt vs (LV (Glob n)) alt
             return $ case namesBoundIn alt' `usedIn` subexpr alt' of
                 [] -> subexpr alt'  -- strip the unused top-most case
-                _  -> LCase (LV (Glob n)) [alt']
+                _  -> LCase up (LV (Glob n)) [alt']
   where
     namesBoundIn :: LAlt -> [Name]
     namesBoundIn (LConCase cn i ns sc) = ns
@@ -576,13 +591,13 @@ irSC vs (Case n [alt]) = do
 -- This work-around is not entirely optimal; the best approach would be
 -- to ensure that such case trees don't arise in the first place.
 --
-irSC vs (Case n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
+irSC vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
     detag <- fgetState (opt_detaggable . ist_optimisation cn)
     if detag
-        then irSC vs (Case n [ConCase cn a ns sc])
-        else LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+        then irSC vs (Case up n [ConCase cn a ns sc])
+        else LCase up (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
 
-irSC vs sc@(Case n alts) = do
+irSC vs sc@(Case up n alts) = do
     -- check that neither alternative needs the newtype optimisation,
     -- see comment above
     goneWrong <- or <$> mapM isDetaggable alts
@@ -590,7 +605,7 @@ irSC vs sc@(Case n alts) = do
         $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
 
     -- everything okay
-    LCase (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+    LCase up (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
   where
     isDetaggable (ConCase cn _ _ _) = fgetState $ opt_detaggable . ist_optimisation cn
     isDetaggable  _                 = return False

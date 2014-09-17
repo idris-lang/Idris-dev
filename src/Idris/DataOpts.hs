@@ -72,19 +72,19 @@ instance Optimisable (TT Name) where
     applyOpts (P _ (NS (UN fn) mod) _)
        | fn == txt "toIntegerNat" && mod == prel
          = return (App (P Ref (sNS (sUN "id") ["Basics","Prelude"]) Erased) Erased)
-    applyOpts c@(P (DCon t arity) n _)
-        = return $ applyDataOptRT n t arity []
+    applyOpts c@(P (DCon t arity uniq) n _)
+        = return $ applyDataOptRT n t arity uniq []
     applyOpts t@(App f a)
-        | (c@(P (DCon t arity) n _), args) <- unApply t
-            = applyDataOptRT n t arity <$> mapM applyOpts args
+        | (c@(P (DCon t arity uniq) n _), args) <- unApply t
+            = applyDataOptRT n t arity uniq <$> mapM applyOpts args
         | otherwise = App <$> applyOpts f <*> applyOpts a
     applyOpts (Bind n b t) = Bind n <$> applyOpts b <*> applyOpts t
     applyOpts (Proj t i) = Proj <$> applyOpts t <*> pure i
     applyOpts t = return t
 
 -- Need to saturate arguments first to ensure that optimisation happens uniformly
-applyDataOptRT :: Name -> Int -> Int -> [Term] -> Term
-applyDataOptRT n tag arity args
+applyDataOptRT :: Name -> Int -> Int -> Bool -> [Term] -> Term
+applyDataOptRT n tag arity uniq args
     | length args == arity = doOpts n args
     | otherwise = let extra = satArgs (arity - length args)
                       tm = doOpts n (args ++ map (\n -> P Bound n Erased) extra)
@@ -104,4 +104,5 @@ applyDataOptRT n tag arity args
         | s == txt "S" && nat == txt "Nat" && prelude == txt "Prelude"
           = App (App (P Ref (sUN "prim__addBigInt") Erased) k) (Constant (BI 1))
 
-    doOpts n args = mkApp (P (DCon tag arity) n Erased) args
+    doOpts n args = mkApp (P (DCon tag arity uniq) n Erased) args
+

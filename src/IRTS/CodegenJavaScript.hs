@@ -1314,7 +1314,7 @@ translateBC info bc
   | SLIDE n               <- bc = jsSLIDE info n
   | REBASE                <- bc = jsREBASE info
   | RESERVE n             <- bc = jsRESERVE info n
-  | MKCON r t rs          <- bc = jsMKCON info r t rs
+  | MKCON r _ t rs        <- bc = jsMKCON info r t rs
   | CASE s r c d          <- bc = jsCASE info s r c d
   | CONSTCASE r c d       <- bc = jsCONSTCASE info r c d
   | PROJECT r l a         <- bc = jsPROJECT info r l a

@@ -80,6 +80,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
     de env _ (TType i) = PType
+    de env _ (UType u) = PUniverse u
 
     dens x | fullname = x
     dens ns@(NS n _) = case lookupCtxt n (idris_implicits ist) of
@@ -223,6 +224,10 @@ pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i UniverseError = text "Universe inconsistency"
+pprintErr' i (UniqueError n) = text "Unique name" <+> annName' n (showbasic n)
+                                  <+> text "is used more than once"
+pprintErr' i (UniqueKindError n) = text "Constructor" <+> annName' n (showbasic n)
+                                  <+> text "has a UniqueType, but the data type deos not"
 pprintErr' i ProgramLineComment = text "Program line next to comment"
 pprintErr' i (Inaccessible n) = annName n <+> text "is not an accessible pattern variable"
 pprintErr' i (NonCollapsiblePostulate n) = text "The return type of postulate" <+>

@@ -206,7 +206,7 @@ genAll i args
     otherPats arg = return Placeholder
 
     ops fc n xs o
-        | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef n (tt_ctxt i)
+        | (TyDecl c@(DCon _ arity _) ty : _) <- lookupDef n (tt_ctxt i)
             = do xs' <- mapM otherPats (map getExpTm xs)
                  let p = resugar (PApp fc (PRef fc n) (zipWith upd xs' xs))
                  let tyn = getTy n (tt_ctxt i)
@@ -341,7 +341,7 @@ calcProd i fc topn pats
                                 return (and ok)
                _ -> return True -- defined elsewhere, can't call topn
 
-     cotype (DCon _ _) n ty
+     cotype (DCon _ _ _) n ty
         | (P _ t _, _) <- unApply (getRetTy ty)
             = case lookupCtxt t (idris_datatypes i) of
                    [TI _ True _ _ _] -> True
@@ -391,7 +391,7 @@ checkTotality path fc n
                                setTotality n t'
                                addIBC (IBCTotal n t')
                                return t'
-                        [TyDecl (DCon _ _) ty] ->
+                        [TyDecl (DCon _ _ _) ty] ->
                             case unApply (getRetTy ty) of
                               (P _ tyn _, _) -> do
                                  let ms = case lookupCtxt tyn (idris_datatypes i) of
@@ -558,7 +558,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
          | a == t = isInductive (fst (unApply (getRetTy tyn)))
                                 (fst (unApply (getRetTy tyt)))
       smaller ty a (ap@(App f s), _)
-          | (P (DCon _ _) n _, args) <- unApply ap
+          | (P (DCon _ _ _) n _, args) <- unApply ap
                = let tyn = getType n in
                      any (smaller (ty `mplus` Just tyn) a)
                          (zip args (map toJust (getArgTys tyn)))
@@ -652,7 +652,7 @@ checkMP ist i mp = if i > 0
 --             = Partial BelieveMe
     -- if we get to a constructor, it's fine as long as it's strictly positive
     tryPath desc path ((f, _) : es) arg
-        | [TyDecl (DCon _ _) _] <- lookupDef f (tt_ctxt ist)
+        | [TyDecl (DCon _ _ _) _] <- lookupDef f (tt_ctxt ist)
             = case lookupTotal f (tt_ctxt ist) of
                    [Total _] -> Unchecked -- okay so far
                    [Partial _] -> Partial (Other [f])

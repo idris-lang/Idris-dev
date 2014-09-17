@@ -153,9 +153,10 @@ bcc i (ASSIGNCONST l c)
     mkConst (B64 x) = "idris_b64const(vm, " ++ show x ++ "ULL)"
     mkConst _ = "MKINT(42424242)"
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
-bcc i (MKCON l tag args)
-    = indent i ++ "allocCon(" ++ creg Tmp ++ ", vm, " ++ show tag ++ "," ++
-         show (length args) ++ ", 0);\n" ++
+bcc i (MKCON l loc tag []) | tag < 256
+    = indent i ++ creg l ++ " = NULL_CON(" ++ show tag ++ ");\n"
+bcc i (MKCON l loc tag args)
+    = indent i ++ alloc loc tag ++
       indent i ++ setArgs 0 args ++ "\n" ++
       indent i ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
 
@@ -165,6 +166,12 @@ bcc i (MKCON l tag args)
         setArgs i [] = ""
         setArgs i (x : xs) = "SETARG(" ++ creg Tmp ++ ", " ++ show i ++ ", " ++ creg x ++
                              "); " ++ setArgs (i + 1) xs
+        alloc Nothing tag 
+            = "allocCon(" ++ creg Tmp ++ ", vm, " ++ show tag ++ ", " ++
+                    show (length args) ++ ", 0);\n"
+        alloc (Just old) tag
+            = "updateCon(" ++ creg Tmp ++ ", " ++ creg old ++ ", " ++ show tag ++ ", " ++
+                    show (length args) ++ ");\n"
 
 bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++
                                       ", " ++ show a ++ ");\n"

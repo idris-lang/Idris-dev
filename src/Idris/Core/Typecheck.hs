@@ -47,8 +47,8 @@ errEnv = map (\(x, b) -> (x, binderTy b))
 
 isType :: Context -> Env -> Term -> TC ()
 isType ctxt env tm = isType' (normalise ctxt env tm)
-    where isType' (TType _) = return ()
-          isType' tm = fail (showEnv env tm ++ " is not a TType")
+    where isType' tm | isUniverse tm = return ()
+                     | otherwise = fail (showEnv env tm ++ " is not a Type")
 
 recheck :: Context -> Env -> Raw -> Term -> TC (Term, Type, UCs)
 recheck ctxt env tm orig
@@ -57,10 +57,12 @@ recheck ctxt env tm orig
           Error (IncompleteTerm _) -> Error $ IncompleteTerm orig
           Error e -> Error e
           OK ((tm, ty), constraints) ->
-              return (tm, ty, constraints)
+              do checkUnique ctxt env tm
+                 return (tm, ty, constraints)
 
 check :: Context -> Env -> Raw -> TC (Term, Type)
-check ctxt env tm = evalStateT (check' True ctxt env tm) (0, []) -- Holes allowed
+check ctxt env tm 
+     = evalStateT (check' True ctxt env tm) (0, []) -- Holes allowed
 
 check' :: Bool -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
 check' holes ctxt env top = chk env top where
@@ -79,29 +81,24 @@ check' holes ctxt env top = chk env top where
                                      _ -> normalise ctxt env fty
            case fty' of
              Bind x (Pi s) t ->
---                trace ("Converting " ++ show aty ++ " and " ++ show s ++
---                       " from " ++ show fv ++ " : " ++ show fty) $
                  do convertsC ctxt env aty s
-                    -- let apty = normalise initContext env
-                                       -- (Bind x (Let aty av) t)
                     let apty = simplify initContext env
                                         (Bind x (Let aty av) t)
                     return (App fv av, apty)
-             t -> lift $ tfail $ NonFunctionType fv fty -- "Can't apply a non-function type"
-    -- This rather unpleasant hack is needed because during incomplete
-    -- proofs, variables are locally bound with an explicit name. If we just
-    -- make sure bound names in function types are locally unique, machine
-    -- generated names, we'll be fine.
-    -- NOTE: now replaced with 'uniqueBinders' above
-    where renameBinders i (Bind x (Pi s) t) = Bind (sMN i "binder") (Pi s)
-                                                   (renameBinders (i+1) t)
-          renameBinders i sc = sc
+             t -> lift $ tfail $ NonFunctionType fv fty 
   chk env RType
     | holes = return (TType (UVal 0), TType (UVal 0))
     | otherwise = do (v, cs) <- get
                      let c = ULT (UVar v) (UVar (v+1))
                      put (v+2, (c:cs))
                      return (TType (UVar v), TType (UVar (v+1)))
+  chk env (RUType u)
+    | holes = return (UType u, TType (UVal 0))
+    | otherwise = do -- TODO! (v, cs) <- get
+                     -- let c = ULT (UVar v) (UVar (v+1))
+                     -- put (v+2, (c:cs))
+                     -- return (TType (UVar v), TType (UVar (v+1)))
+                     return (UType u, TType (UVal 0))
   chk env (RConstant Forgot) = return (Erased, Erased)
   chk env (RConstant c) = return (Constant c, constType c)
     where constType (I _)   = Constant (AType (ATInt ITNative))
@@ -125,11 +122,17 @@ check' holes ctxt env top = chk env top where
       = do (sv, st) <- chk env s
            (tv, tt) <- chk ((n, Pi sv) : env) t
            (v, cs) <- get
-           let TType su = normalise ctxt env st
-           let TType tu = normalise ctxt env tt
-           when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
-           return (Bind n (Pi (uniqueBinders (map fst env) sv))
+           case (normalise ctxt env st, normalise ctxt env tt) of
+                (TType su, TType tu) -> do
+                    when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
+                    return (Bind n (Pi (uniqueBinders (map fst env) sv))
                               (pToV n tv), TType (UVar v))
+                (UType u, _) ->
+                    return (Bind n (Pi (uniqueBinders (map fst env) sv))
+                                (pToV n tv), UType u)
+                (_, UType u) ->
+                    return (Bind n (Pi (uniqueBinders (map fst env) sv))
+                                (pToV n tv), UType u)
   chk env (RBind n b sc)
       = do b' <- checkBinder b
            (scv, sct) <- chk ((n, b'):env) sc
@@ -140,12 +143,6 @@ check' holes ctxt env top = chk env top where
                  let tt' = normalise ctxt env tt
                  lift $ isType ctxt env tt'
                  return (Lam tv)
-          checkBinder (Pi t)
-            = do (tv, tt) <- chk env t
-                 let tv' = normalise ctxt env tv
-                 let tt' = normalise ctxt env tt
-                 lift $ isType ctxt env tt'
-                 return (Pi tv)
           checkBinder (Let t v)
             = do (tv, tt) <- chk env t
                  (vv, vt) <- chk env v
@@ -219,3 +216,40 @@ check' holes ctxt env top = chk env top where
             = return (Bind n (PVar t) scv, Bind n (PVTy t) sct)
           discharge n (PVTy t) scv sct
             = return (Bind n (PVTy t) scv, sct)
+
+-- If any binders are of kind 'UniqueType' or 'AllTypes' and the name appears
+-- in the scope more than once, this is an error.
+checkUnique :: Context -> Env -> Term -> TC ()
+checkUnique ctxt env tm = evalStateT (chkBinders env (explicitNames tm)) []
+  where 
+    chkBinders :: Env -> Term -> StateT [(Name, Bool)] TC ()
+    chkBinders env (V i) | length env > i = chkName (fst (env!!i))
+    chkBinders env (P _ n _) = chkName n
+    chkBinders env (App f a) = do chkBinders env f; chkBinders env a
+    chkBinders env (Bind n b t)
+       = do chkBinderName env n b
+            chkBinders ((n, b) : env) t
+    chkBinders env t = return ()
+
+    chkBinderName :: Env -> Name -> Binder Term -> StateT [(Name, Bool)] TC ()
+    chkBinderName env n b
+       = do let rawty = forgetEnv (map fst env) (binderTy b)
+            (_, kind) <- lift $ check ctxt env rawty -- FIXME: Cache in binder?
+            case kind of
+                 UType UniqueType -> do ns <- get
+                                        put ((n, False) : ns)
+                 UType AllTypes -> do ns <- get
+                                      put ((n, False) : ns)
+                 _ -> return ()
+            chkBinders env (binderTy b)
+            case b of
+                 Let t v -> chkBinders env v
+                 _ -> return ()
+
+    chkName n 
+       = do ns <- get
+            case lookup n ns of
+                 Nothing -> return ()
+                 Just True -> lift $ tfail (UniqueError n)
+                 Just False -> put ((n, True) : filter (\x -> fst x /= n) ns)
+

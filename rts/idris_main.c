@@ -15,6 +15,8 @@ int main(int argc, char* argv[]) {
     __idris_argv = argv;
 
     VM* vm = init_vm(opts.max_stack_size, opts.init_heap_size, 1);
+    initNullaries();
+
     _idris__123_runMain0_125_(vm, NULL);
 
 #ifdef IDRIS_DEBUG
@@ -29,5 +31,6 @@ int main(int argc, char* argv[]) {
         print_stats(&stats);
     }
 
+    freeNullaries();
     return EXIT_SUCCESS;
 }

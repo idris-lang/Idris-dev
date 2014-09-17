@@ -31,8 +31,8 @@ prefixCallNamespaces name (SFun fname args i e) =
       SLet var (prefixCallNamespacesExp name e1) (prefixCallNamespacesExp name e2)
     prefixCallNamespacesExp name (SUpdate var e) =
       SUpdate var (prefixCallNamespacesExp name e)
-    prefixCallNamespacesExp name (SCase var alts) =
-      SCase var (map (prefixCallNamespacesCase name) alts)
+    prefixCallNamespacesExp name (SCase up var alts) =
+      SCase up var (map (prefixCallNamespacesCase name) alts)
     prefixCallNamespacesExp name (SChkCase var alts) =
       SChkCase var (map (prefixCallNamespacesCase name) alts)
     prefixCallNamespacesExp _ exp = exp
