@@ -66,11 +66,6 @@ import Text.Trifecta.Result(Result(..))
 -- import RTS.Bytecode
 -- import RTS.PreC
 -- import RTS.CodegenC
-#ifdef IDRIS_LLVM
-import LLVM.General.Target
-#else
-import Util.LLVMStubs
-#endif
 import System.Console.Haskeline as H
 import System.FilePath
 import System.Exit
@@ -1371,12 +1366,6 @@ idrisMain opts =
        let optimize = case opt getOptLevel opts of
                         [] -> 2
                         xs -> last xs
-       trpl <- case opt getTriple opts of
-                 [] -> runIO $ getDefaultTargetTriple
-                 xs -> return (last xs)
-       tcpu <- case opt getCPU opts of
-                 [] -> runIO $ getHostCPUName
-                 xs -> return (last xs)
        let outty = case opt getOutputTy opts of
                      [] -> Executable
                      xs -> last xs
@@ -1402,9 +1391,6 @@ idrisMain opts =
        setOutputTy outty
        setNoBanner nobanner
        setCodegen cgn
-       setTargetTriple trpl
-       setTargetCPU tcpu
-       setOptLevel optimize
        mapM_ makeOption opts
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
