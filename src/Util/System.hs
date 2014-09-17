@@ -2,7 +2,6 @@ module Util.System(tempfile,withTempdir,rmFile,catchIO) where
 
 -- System helper functions.
 import Control.Monad (when)
-import Distribution.Text (display)
 import System.Directory (getTemporaryDirectory
                         , removeFile
                         , removeDirectoryRecursive

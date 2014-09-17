@@ -668,7 +668,6 @@ Library
                 , Version_idris
 
   Build-depends:  base >=4 && <5
-                , Cabal < 1.21
                 , annotated-wl-pprint >= 0.5.3 && < 0.6
                 , ansi-terminal < 0.7
                 , ansi-wl-pprint < 0.7
@@ -716,19 +715,19 @@ Library
 
   if os(linux)
      cpp-options:   -DLINUX
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(freebsd)
      cpp-options:   -DFREEBSD
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(dragonfly)
      cpp-options:   -DDRAGONFLY
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(darwin)
      cpp-options:   -DMACOSX
-     build-depends: unix
+     build-depends: unix < 2.8
   if os(windows)
      cpp-options:   -DWINDOWS
-     build-depends: Win32
+     build-depends: Win32 < 2.4
   if flag(LLVM)
      other-modules: IRTS.CodegenLLVM
      cpp-options:   -DIDRIS_LLVM
@@ -737,13 +736,13 @@ Library
   else
      other-modules: Util.LLVMStubs
   if flag(FFI)
-     build-depends: libffi
+     build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_FFI
   if flag(GMP)
-     build-depends: libffi
+     build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_GMP
   if flag(curses)
-     build-depends: hscurses
+     build-depends: hscurses < 1.5
      cpp-options:   -DCURSES
   if flag(freestanding)
      other-modules: Target_idris
