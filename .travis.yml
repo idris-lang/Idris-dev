@@ -23,7 +23,7 @@ script:
   - cabal configure -f FFI
   - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
-  - if [[ "$TESTS" == "test_llvm" ]]; then git clone --depth 1 https://github.com/markuspf/idris-llvm.git ; cd idris-llvm ; cabal install ; cd .. ; fi
+  - if [[ "$TESTS" == "test_llvm" ]]; then git clone --depth 1 https://github.com/idris-hackers/idris-llvm.git ; cd idris-llvm ; cabal install ; cd .. ; fi
   - make -j2 $TESTS
 env:
   - TESTS="doc"
