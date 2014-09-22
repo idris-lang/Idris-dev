@@ -137,21 +137,20 @@ instance (Ord a, Ord b) => Ord (a, b) where
       then compare xl yl
       else compare xr yr
 
-
 -- --------------------------------------------------------- [ Negatable Class ]
 ||| The Negatable class defines a typeclass for which negation works.
 ||| This is used for implementing unary -
-class Negatable a where
+class Neg a where
     negate : a -> a
 
-instance Negatable Integer where
-    negate x = (-1) * x
+instance Neg Integer where
+    negate x = prim__subBigInt 0 x
 
-instance Negatable Int where
-    negate x = (-1) * x
+instance Neg Int where
+    negate x = prim__subInt 0 x
 
-instance Negatable Float where
-    negate x = (-1.) * x
+instance Neg Float where
+    negate x = prim__negFloat x
 
 -- --------------------------------------------------------- [ Numerical Class ]
 ||| The Num class defines basic numerical arithmetic.
