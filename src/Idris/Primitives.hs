@@ -95,9 +95,6 @@ primitives =
    iCoerce ITNative (ITFixed IT64) "trunc" trunc LTrunc,
    iCoerce ITBig ITChar "trunc" trunc LTrunc,
 
-  
-   Prim (sUN "prim__negFloat") (ty [(AType ATFloat)] (AType ATFloat)) 1 (c_negFloat)
-     (1, LNegFloat) total,
    Prim (sUN "prim__addFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (+))
      (2, LPlus ATFloat) total,
    Prim (sUN "prim__subFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (-))
@@ -156,6 +153,8 @@ primitives =
      (1, LFFloor) total,
    Prim (sUN "prim__floatCeil") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatCeil)
      (1, LFCeil) total,
+   Prim (sUN "prim__negFloat") (ty [(AType ATFloat)] (AType ATFloat)) 1 (c_negFloat)
+     (1, LFNegate) total,
 
    Prim (sUN "prim__strHead") (ty [StrType] (AType (ATInt ITChar))) 1 (p_strHead)
      (1, LStrHead) partial,
