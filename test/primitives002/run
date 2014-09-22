@@ -31,6 +31,7 @@ TESTS=("prim__floatToStr 0.0"
 "prim__floatExp 1.0"
 "prim__floatLog 1.0"
 "prim__floatSqrt 1.0"
+"prim__negFloat 1.0"
 )
 
 generate_testfile()

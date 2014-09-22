@@ -12,6 +12,10 @@ New in 0.9.15:
 * More efficient representation of proof state, leading to faster elaboration
   of large expressions.
 * EXPERIMENTAL Implementation of uniqueness types 
+* Unary negation now desugars to "negate", which is a method of the Neg type class.
+  This allows instances of Num that can't be negative, like Nat, and it makes correct
+  IEEE Float operations easier to encode. Additionally, unary negation is now available
+  to DSL authors.
 
 New in 0.9.14:
 --------------
