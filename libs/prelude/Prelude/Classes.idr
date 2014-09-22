@@ -138,9 +138,9 @@ instance (Ord a, Ord b) => Ord (a, b) where
       else compare xr yr
 
 -- --------------------------------------------------------- [ Negatable Class ]
-||| The Negatable class defines a typeclass for which negation works.
-||| This is used for implementing unary -
+||| The `Neg` class defines unary negation (-).
 class Neg a where
+    ||| The underlying implementation of unary minus. `-5` desugars to `negate (fromInteger 5)`.
     negate : a -> a
 
 instance Neg Integer where
