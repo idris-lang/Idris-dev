@@ -34,8 +34,6 @@ import qualified Data.ByteString.UTF8 as UTF8
 table :: [FixDecl] -> OperatorTable IdrisParser PTerm
 table fixes
    =
--- [[prefix "-" (\fc x -> PApp fc (PRef fc (sUN "-"))
---      [pexp (PApp fc (PRef fc (sUN "fromInteger")) [pexp (PConstant (BI 0))]), pexp x])]]
       [[prefix "-" (\fc x -> PApp fc (PRef fc (sUN "negate")) [pexp x])]]
        ++ toTable (reverse fixes) ++
       [[backtick],
