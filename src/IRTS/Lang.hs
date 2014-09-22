@@ -52,7 +52,7 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LBitCast ArithTy ArithTy -- Only for values of equal width
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
-            | LFSqrt | LFFloor | LFCeil
+            | LFSqrt | LFFloor | LFCeil | LNegFloat
 
            -- construction          element extraction     element insertion
             | LMkVec NativeTy Int | LIdxVec NativeTy Int | LUpdateVec NativeTy Int

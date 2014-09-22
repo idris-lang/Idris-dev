@@ -95,6 +95,9 @@ primitives =
    iCoerce ITNative (ITFixed IT64) "trunc" trunc LTrunc,
    iCoerce ITBig ITChar "trunc" trunc LTrunc,
 
+  
+   Prim (sUN "prim__negFloat") (ty [(AType ATFloat)] (AType ATFloat)) 1 (c_negFloat)
+     (1, LNegFloat) total,
    Prim (sUN "prim__addFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (+))
      (2, LPlus ATFloat) total,
    Prim (sUN "prim__subFloat") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (fBin (-))
@@ -659,6 +662,10 @@ c_intToChar [(I x)] = Just . Ch . toEnum $ x
 c_intToChar _ = Nothing
 c_charToInt [(Ch x)] = Just . I . fromEnum $ x
 c_charToInt _ = Nothing
+
+c_negFloat :: [Const] -> Maybe Const
+c_negFloat [Fl x] = Just $ Fl (negate x)
+c_negFloat _      = Nothing
 
 c_floatToStr :: [Const] -> Maybe Const
 c_floatToStr [Fl x] = Just $ Str (show x)
