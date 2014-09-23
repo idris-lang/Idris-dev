@@ -245,8 +245,12 @@ elab ist info emode opts fn tm
 --       = lift $ tfail (Msg "Typecase is not allowed") 
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve
-    elab' ina (PTrue fc _)   = try (elab' ina (PRef fc unitCon))
-                                   (elab' ina (PRef fc unitTy))
+    elab' ina (PTrue fc _)   =
+       do hnf_compute
+          g <- goal
+          case g of
+            TType _ -> elab' ina (PRef fc unitTy)
+            _ -> elab' ina (PRef fc unitCon)
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC False 5 g fn ist
@@ -283,11 +287,11 @@ elab ist info emode opts fn tm
         = do hnf_compute
              g <- goal
              case g of
-                TType _ -> elabE (True, a,inty, qq) (PApp fc (PRef fc pairTy)
+                TType _ -> elab' ina (PApp fc (PRef fc pairTy)
                                                       [pexp l,pexp r])
-                _ -> elabE (True, a, inty, qq) (PApp fc (PRef fc pairCon)
-                                                [pimp (sMN 0 "A") Placeholder True,
-                                                 pimp (sMN 0 "B") Placeholder True,
+                _ -> elab' ina (PApp fc (PRef fc pairCon)
+                                                [pimp (sUN "A") Placeholder False,
+                                                 pimp (sUN "B") Placeholder False,
                                                  pexp l, pexp r])
     elab' ina (PDPair fc p l@(PRef _ n) t r)
             = case t of

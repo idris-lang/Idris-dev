@@ -1,5 +1,7 @@
 module Prelude.Basics
 
+import Builtins
+       
 Not : Type -> Type
 Not a = a -> _|_
 

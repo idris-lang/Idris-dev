@@ -5,18 +5,19 @@
 
 ||| The canonical single-element type, also known as the trivially
 ||| true proposition.
-data Unit = 
+%elim 
+ data Unit = 
    ||| The trivial constructor for `()`.
    MkUnit         
   
 ||| The non-dependent pair type, also known as conjunction.
 ||| @A the type of the left elements in the pair
 ||| @B the type of the left elements in the pair
-data Pair : (A : Type) -> (B : Type) -> Type =
+data Pair : (A : Type) -> (B : Type) -> Type where
    ||| A pair of elements
    ||| @a the left element of the pair
    ||| @b the right element of the pair
-   MkPair : (a : A) -> (b : B) -> Pair A B
+   MkPair : {A, B : Type} -> (a : A) -> (b : B) -> Pair A B
          
 ||| Dependent pairs, in their internal representation
 ||| @ a the type of the witness

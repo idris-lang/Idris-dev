@@ -1065,16 +1065,10 @@ getInferType (App (App _ ty) _) = ty
 
 -- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
 
-primNames = [unitTy, unitCon,
-             falseTy, pairTy, pairCon,
-             eqTy, eqCon, inferTy, inferCon]
+primNames = [falseTy, eqTy, eqCon, inferTy, inferCon]
 
-unitDoc = parseDocstring . T.pack $ "The canonical single-element type, also known as the trivially true proposition."
 unitTy   = sUN "Unit"
 unitCon  = sUN "MkUnit"
-unitDecl = PDatadecl unitTy PType
-                     [(parseDocstring . T.pack $ "The trivial constructor for `()`. ", [], unitCon, PRef bi unitTy, bi, [])]
-unitOpts = [DefaultEliminator]
 
 falseDoc = parseDocstring . T.pack $
              "The empty type, also known as the trivially false proposition." ++
@@ -1085,25 +1079,8 @@ falseTy   = sMN 0 "__False"
 falseDecl = PDatadecl falseTy PType []
 falseOpts = []
 
-pairDoc   = parseDocstring . T.pack $ "The non-dependent pair type, also known as conjunction."
 pairTy    = sUN "Pair"
 pairCon   = sUN "MkPair"
-pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
-            [(pairConDoc, pairConParamDoc,
-             pairCon, PPi impl (n "A") PType (
-                               PPi impl (n "B") PType (
-                               PPi expl (n "a") (PRef bi (n "A")) (
-                               PPi expl (n "b") (PRef bi (n "B"))
-                                (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
-                                                           pexp (PRef bi (n "B"))])))), bi, [])]
-    where n a = sMN 0 a
-          pairConDoc      = parseDocstring . T.pack $ "A pair of elements"
-          pairConParamDoc = [(n "a", parseDocstring . T.pack $ "the left element of the pair"),
-                             (n "b", parseDocstring . T.pack $ "the right element of the pair")]
-pairOpts = []
-pairParamDoc = [(n "A", parseDocstring . T.pack $ "the type of the left elements in the pair"),
-                (n "B", parseDocstring . T.pack $ "the type of the left elements in the pair")]
-    where n a = sMN 0 a
 
 eqTy = sUN "="
 eqCon = sUN "Refl"
