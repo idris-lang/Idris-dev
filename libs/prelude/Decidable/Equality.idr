@@ -31,17 +31,17 @@ class DecEq t where
 --------------------------------------------------------------------------------
 
 instance DecEq () where
-  decEq () () = Yes refl
+  decEq () () = Yes Refl
 
 --------------------------------------------------------------------------------
 -- Booleans
 --------------------------------------------------------------------------------
 total trueNotFalse : True = False -> _|_
-trueNotFalse refl impossible
+trueNotFalse Refl impossible
 
 instance DecEq Bool where
-  decEq True  True  = Yes refl
-  decEq False False = Yes refl
+  decEq True  True  = Yes Refl
+  decEq False False = Yes Refl
   decEq True  False = No trueNotFalse
   decEq False True  = No (negEqSym trueNotFalse)
 
@@ -50,10 +50,10 @@ instance DecEq Bool where
 --------------------------------------------------------------------------------
 
 total OnotS : Z = S n -> _|_
-OnotS refl impossible
+OnotS Refl impossible
 
 instance DecEq Nat where
-  decEq Z     Z     = Yes refl
+  decEq Z     Z     = Yes Refl
   decEq Z     (S _) = No OnotS
   decEq (S _) Z     = No (negEqSym OnotS)
   decEq (S n) (S m) with (decEq n m)
@@ -65,10 +65,10 @@ instance DecEq Nat where
 --------------------------------------------------------------------------------
 
 total nothingNotJust : {x : t} -> (Nothing {a = t} = Just x) -> _|_
-nothingNotJust refl impossible
+nothingNotJust Refl impossible
 
 instance (DecEq t) => DecEq (Maybe t) where
-  decEq Nothing Nothing = Yes refl
+  decEq Nothing Nothing = Yes Refl
   decEq (Just x') (Just y') with (decEq x' y')
     | Yes p = Yes $ cong p
     | No p = No $ \h : Just x' = Just y' => p $ justInjective h
@@ -80,7 +80,7 @@ instance (DecEq t) => DecEq (Maybe t) where
 --------------------------------------------------------------------------------
 
 total leftNotRight : {x : a} -> {y : b} -> Left {b = b} x = Right {a = a} y -> _|_
-leftNotRight refl impossible
+leftNotRight Refl impossible
 
 instance (DecEq a, DecEq b) => DecEq (Either a b) where
   decEq (Left x') (Left y') with (decEq x' y')
@@ -97,10 +97,10 @@ instance (DecEq a, DecEq b) => DecEq (Either a b) where
 --------------------------------------------------------------------------------
 
 total fZNotfS : {f : Fin n} -> fZ {k = n} = fS f -> _|_
-fZNotfS refl impossible
+fZNotfS Refl impossible
 
 instance DecEq (Fin n) where
-  decEq fZ fZ = Yes refl
+  decEq fZ fZ = Yes Refl
   decEq fZ (fS f) = No fZNotfS
   decEq (fS f) fZ = No $ negEqSym fZNotfS
   decEq (fS f) (fS f') with (decEq f f')
@@ -112,24 +112,24 @@ instance DecEq (Fin n) where
 --------------------------------------------------------------------------------
 
 lemma_both_neq : {x : a, y : b, x' : c, y' : d} -> (x = x' -> _|_) -> (y = y' -> _|_) -> ((x, y) = (x', y') -> _|_)
-lemma_both_neq p_x_not_x' p_y_not_y' refl = p_x_not_x' refl
+lemma_both_neq p_x_not_x' p_y_not_y' Refl = p_x_not_x' Refl
 
 lemma_snd_neq : {x : a, y : b, y' : d} -> (x = x) -> (y = y' -> _|_) -> ((x, y) = (x, y') -> _|_)
-lemma_snd_neq refl p refl = p refl
+lemma_snd_neq Refl p Refl = p Refl
 
 lemma_fst_neq_snd_eq : {x : a, x' : b, y : c, y' : d} ->
                        (x = x' -> _|_) ->
                        (y = y') ->
                        ((x, y) = (x', y) -> _|_)
-lemma_fst_neq_snd_eq p_x_not_x' refl refl = p_x_not_x' refl
+lemma_fst_neq_snd_eq p_x_not_x' Refl Refl = p_x_not_x' Refl
 
 instance (DecEq a, DecEq b) => DecEq (a, b) where
   decEq (a, b) (a', b')     with (decEq a a')
-    decEq (a, b) (a, b')    | (Yes refl) with (decEq b b')
-      decEq (a, b) (a, b)   | (Yes refl) | (Yes refl) = Yes refl
-      decEq (a, b) (a, b')  | (Yes refl) | (No p) = No (\eq => lemma_snd_neq refl p eq)
+    decEq (a, b) (a, b')    | (Yes Refl) with (decEq b b')
+      decEq (a, b) (a, b)   | (Yes Refl) | (Yes Refl) = Yes Refl
+      decEq (a, b) (a, b')  | (Yes Refl) | (No p) = No (\eq => lemma_snd_neq Refl p eq)
     decEq (a, b) (a', b')   | (No p)     with (decEq b b')
-      decEq (a, b) (a', b)  | (No p)     | (Yes refl) =  No (\eq => lemma_fst_neq_snd_eq p refl eq)
+      decEq (a, b) (a', b)  | (No p)     | (Yes Refl) =  No (\eq => lemma_fst_neq_snd_eq p Refl eq)
       decEq (a, b) (a', b') | (No p)     | (No p') = No (\eq => lemma_both_neq p p' eq)
 
 
@@ -138,27 +138,27 @@ instance (DecEq a, DecEq b) => DecEq (a, b) where
 --------------------------------------------------------------------------------
 
 lemma_val_not_nil : {x : t, xs : List t} -> ((x :: xs) = Prelude.List.Nil {a = t} -> _|_)
-lemma_val_not_nil refl impossible
+lemma_val_not_nil Refl impossible
 
 lemma_x_eq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y) -> (xs = ys -> _|_) -> ((x :: xs) = (y :: ys) -> _|_)
-lemma_x_eq_xs_neq refl p refl = p refl
+lemma_x_eq_xs_neq Refl p Refl = p Refl
 
 lemma_x_neq_xs_eq : {x : t, xs : List t, y : t, ys : List t} -> (x = y -> _|_) -> (xs = ys) -> ((x :: xs) = (y :: ys) -> _|_)
-lemma_x_neq_xs_eq p refl refl = p refl
+lemma_x_neq_xs_eq p Refl Refl = p Refl
 
 lemma_x_neq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y -> _|_) -> (xs = ys -> _|_) -> ((x :: xs) = (y :: ys) -> _|_)
-lemma_x_neq_xs_neq p p' refl = p refl
+lemma_x_neq_xs_neq p p' Refl = p Refl
 
 instance DecEq a => DecEq (List a) where
-  decEq [] [] = Yes refl
+  decEq [] [] = Yes Refl
   decEq (x :: xs) [] = No lemma_val_not_nil
   decEq [] (x :: xs) = No (negEqSym lemma_val_not_nil)
   decEq (x :: xs) (y :: ys) with (decEq x y)
-    decEq (x :: xs) (x :: ys) | Yes refl with (decEq xs ys)
-      decEq (x :: xs) (x :: xs) | (Yes refl) | (Yes refl) = Yes refl 
-      decEq (x :: xs) (x :: ys) | (Yes refl) | (No p) = No (\eq => lemma_x_eq_xs_neq refl p eq)
+    decEq (x :: xs) (x :: ys) | Yes Refl with (decEq xs ys)
+      decEq (x :: xs) (x :: xs) | (Yes Refl) | (Yes Refl) = Yes Refl 
+      decEq (x :: xs) (x :: ys) | (Yes Refl) | (No p) = No (\eq => lemma_x_eq_xs_neq Refl p eq)
     decEq (x :: xs) (y :: ys) | No p with (decEq xs ys)
-      decEq (x :: xs) (y :: xs) | (No p) | (Yes refl) = No (\eq => lemma_x_neq_xs_eq p refl eq)
+      decEq (x :: xs) (y :: xs) | (No p) | (Yes Refl) = No (\eq => lemma_x_neq_xs_eq p Refl eq)
       decEq (x :: xs) (y :: ys) | (No p) | (No p') = No (\eq => lemma_x_neq_xs_neq p p' eq)
 
 
@@ -168,26 +168,26 @@ instance DecEq a => DecEq (List a) where
 
 total
 vectInjective1 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> x = y
-vectInjective1 {x=x} {y=x} {xs=xs} {ys=xs} refl = refl
+vectInjective1 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
 
 total
 vectInjective2 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> xs = ys
-vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} refl = refl
+vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
 
 instance DecEq a => DecEq (Vect n a) where
-  decEq [] [] = Yes refl
+  decEq [] [] = Yes Refl
   decEq (x :: xs) (y :: ys) with (decEq x y)
-    decEq (x :: xs) (x :: ys)   | Yes refl with (decEq xs ys)
-      decEq (x :: xs) (x :: xs) | Yes refl | Yes refl = Yes refl
-      decEq (x :: xs) (x :: ys) | Yes refl | No  neq  = No (neq . vectInjective2)
+    decEq (x :: xs) (x :: ys)   | Yes Refl with (decEq xs ys)
+      decEq (x :: xs) (x :: xs) | Yes Refl | Yes Refl = Yes Refl
+      decEq (x :: xs) (x :: ys) | Yes Refl | No  neq  = No (neq . vectInjective2)
     decEq (x :: xs) (y :: ys)   | No  neq             = No (neq . vectInjective1)
 
 {- The following definition is elaborated in a wrong case-tree. Examination pending.
 
 instance DecEq a => DecEq (Vect n a) where
-  decEq [] [] = Yes refl
+  decEq [] [] = Yes Refl
   decEq (x :: xs) (y :: ys) with (decEq x y, decEq xs ys)
-    decEq (x :: xs) (x :: xs) | (Yes refl, Yes refl) = Yes refl
+    decEq (x :: xs) (x :: xs) | (Yes Refl, Yes Refl) = Yes Refl
     decEq (x :: xs) (y :: ys) | (_, No nEqTl) = No (\p => nEqTl (vectInjective2 p))
     decEq (x :: xs) (y :: ys) | (No nEqHd, _) = No (\p => nEqHd (vectInjective1 p))
 -}
@@ -202,7 +202,7 @@ instance DecEq a => DecEq (Vect n a) where
 instance DecEq Int where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (refl {x})
+             primitiveEq = believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
@@ -212,7 +212,7 @@ instance DecEq Int where
 instance DecEq Char where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (refl {x})
+             primitiveEq = believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
@@ -222,7 +222,7 @@ instance DecEq Char where
 instance DecEq Integer where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (refl {x})
+             primitiveEq = believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
@@ -232,7 +232,7 @@ instance DecEq Integer where
 instance DecEq Float where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (refl {x})
+             primitiveEq = believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 --------------------------------------------------------------------------------
@@ -242,7 +242,7 @@ instance DecEq Float where
 instance DecEq String where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (refl {x})
+             primitiveEq = believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> _|_
 
 

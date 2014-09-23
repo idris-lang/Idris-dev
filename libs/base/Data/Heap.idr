@@ -83,11 +83,11 @@ insert e = merge $ singleton e
 --------------------------------------------------------------------------------
 
 findMinimum : (h : MaxiphobicHeap a) -> (isEmpty h = False) -> a
-findMinimum Empty          refl   impossible
+findMinimum Empty          Refl   impossible
 findMinimum (Node s l e r) p    = e
 
 deleteMinimum : Ord a => (h : MaxiphobicHeap a) -> (isEmpty h = False) -> MaxiphobicHeap a
-deleteMinimum Empty          refl   impossible
+deleteMinimum Empty          Refl   impossible
 deleteMinimum (Node s l e r) p    = merge l r
 
 --------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ deleteMinimum (Node s l e r) p    = merge l r
 
 toList : Ord a => MaxiphobicHeap a -> List a
 toList Empty          = []
-toList (Node s l e r) = toList' (Node s l e r) refl
+toList (Node s l e r) = toList' (Node s l e r) Refl
   where
     %assert_total -- relies on deleteMinimum making heap smaller
     toList' : Ord a => (h : MaxiphobicHeap a) -> (isEmpty h = False) -> List a
@@ -143,20 +143,20 @@ absurdBoolDischarge p = replace {P = disjointTy} p ()
     disjointTy True   = _|_
 
 total isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h = Z
-isEmptySizeZero Empty          p = refl
+isEmptySizeZero Empty          p = Refl
 isEmptySizeZero (Node s l e r) p = ?isEmptySizeZeroNodeAbsurd
 
 total emptyHeapValid : Ord a => isValidHeap empty = True
-emptyHeapValid = refl
+emptyHeapValid = Refl
 
 total singletonHeapValid : Ord a => (e : a) -> isValidHeap $ singleton e = True
-singletonHeapValid e = refl
+singletonHeapValid e = Refl
 
 {-
 total mergePreservesValidHeaps : Ord a => (left : MaxiphobicHeap a) ->
   (right : MaxiphobicHeap a) -> (leftValid : isValidHeap left = True) ->
   (rightValid : isValidHeap right = True) -> isValidHeap $ merge left right = True
-mergePreservesValidHeaps Empty              Empty              lp rp = refl
+mergePreservesValidHeaps Empty              Empty              lp rp = Refl
 mergePreservesValidHeaps Empty              (Node rs rl re rr) lp rp = rp
 mergePreservesValidHeaps (Node ls ll le lr) Empty              lp rp = lp
 mergePreservesValidHeaps (Node ls ll le lr) (Node rs rl re rr) lp rp =

@@ -19,7 +19,7 @@ instance Show (Binary w k) where
      show (bin # bit) = show bin ++ show bit
 
 pattern syntax bitpair [x] [y] = (_ ** (_ ** (x, y, _)))
-term    syntax bitpair [x] [y] = (_ ** (_ ** (x, y, refl)))
+term    syntax bitpair [x] [y] = (_ ** (_ ** (x, y, Refl)))
 
 addBit : Bit x -> Bit y -> Bit c ->
           (bx ** (by ** (Bit bx, Bit by, c + x + y = by + 2 * bx)))

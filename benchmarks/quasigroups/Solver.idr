@@ -80,7 +80,7 @@ Empty : Cell n -> Type
 Empty {n=n} x = (the (Cell n) Nothing) = x
 
 empty : (cell : Cell n) -> Dec (Empty cell)
-empty Nothing = Yes refl
+empty Nothing = Yes Refl
 empty (Just _) = No nothingNotJust
 
 -- Predicate for legal cell assignments
@@ -107,7 +107,7 @@ Filled {n=n} = (\x => Not (Empty x))
 --Filled {n=n} = \x => the (Maybe (Fin n)) Nothing = x -> _|_
 
 filled : (cell : Cell n) -> Dec (Filled cell)
-filled Nothing = No (\f => f refl)
+filled Nothing = No (\f => f Refl)
 filled (Just _) = Yes nothingNotJust
 
 FullBoard : Board n -> Type
@@ -128,13 +128,13 @@ CompleteBoard : Board n -> Type
 CompleteBoard b = (LegalBoard b, FullBoard b)
 
 indexStep : {i : Fin n} -> {xs : Vect n a} -> {x : a} -> index i xs = index (fS i) (x::xs)
-indexStep = refl
+indexStep = Refl
 
 find : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect n a)
        -> Either (All (\x => Not (P x)) xs) (y : a ** (P y, (i : Fin n ** y = index i xs)))
 find _ Nil = Left Nil
 find d (x::xs) with (d x)
-  | Yes prf = Right (x ** (prf, (fZ ** refl)))
+  | Yes prf = Right (x ** (prf, (fZ ** Refl)))
   | No prf =
     case find d xs of
       Right (y ** (prf', (i ** prf''))) =>

@@ -97,9 +97,9 @@ instance (Eq a, Eq b) => Eq (Either a b) where
 ||| Left is injective
 total leftInjective : {b : Type} -> {x : a} -> {y : a}
                     -> (Left {b = b} x = Left {b = b} y) -> (x = y)
-leftInjective refl = refl
+leftInjective Refl = Refl
 
 ||| Right is injective
 total rightInjective : {a : Type} -> {x : b} -> {y : b}
                      -> (Right {a = a} x = Right {a = a} y) -> (x = y)
-rightInjective refl = refl
+rightInjective Refl = Refl

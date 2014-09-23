@@ -28,8 +28,10 @@ class Eq a where
     x /= y = not (x == y)
     x == y = not (x /= y)
 
+%logging 5
 instance Eq () where
   () == () = True
+%logging 0
 
 instance Eq Int where
     (==) = boolOp prim__eqInt

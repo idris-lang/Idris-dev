@@ -37,8 +37,8 @@ length (x::xs) = 1 + length xs
 
 ||| Show that the length function on vectors in fact calculates the length
 private lengthCorrect : (n : Nat) -> (xs : Vect n a) -> length xs = n
-lengthCorrect Z [] = refl
-lengthCorrect (S n) (x :: xs) = rewrite lengthCorrect n xs in refl
+lengthCorrect Z [] = Refl
+lengthCorrect (S n) (x :: xs) = rewrite lengthCorrect n xs in Refl
 
 --------------------------------------------------------------------------------
 -- Indexing into vectors
@@ -470,15 +470,15 @@ transpose (x :: xs) = zipWith (::) x (transpose xs)
 --------------------------------------------------------------------------------
 
 vectConsCong : (x : a) -> (xs : Vect n a) -> (ys : Vect m a) -> (xs = ys) -> (x :: xs = x :: ys)
-vectConsCong x xs xs refl = refl
+vectConsCong x xs xs Refl = Refl
 
 vectNilRightNeutral : (xs : Vect n a) -> xs ++ [] = xs
-vectNilRightNeutral [] = refl
+vectNilRightNeutral [] = Refl
 vectNilRightNeutral (x :: xs) =
   vectConsCong _ _ _ (vectNilRightNeutral xs)
 
 vectAppendAssociative : (x : Vect xLen a) -> (y : Vect yLen a) -> (z : Vect zLen a) -> x ++ (y ++ z) = (x ++ y) ++ z
-vectAppendAssociative [] y z = refl
+vectAppendAssociative [] y z = Refl
 vectAppendAssociative (x :: xs) ys zs =
   vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
 

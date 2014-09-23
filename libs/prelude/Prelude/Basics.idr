@@ -42,7 +42,7 @@ apply f a = f a
 
 ||| Equality is a congruence.
 cong : {f : t -> u} -> (a = b) -> f a = f b
-cong refl = refl
+cong Refl = Refl
 
 ||| Decidability. A decidable property either holds or is a contradiction.
 data Dec : Type -> Type where

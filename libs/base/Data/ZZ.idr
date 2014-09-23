@@ -101,20 +101,20 @@ natMultZMult : (n : Nat) -> (m : Nat) -> (x : Nat)
 natMultZMult n m x h = cong h
 
 doubleNegElim : (z : ZZ) -> negZ (negZ z) = z
-doubleNegElim (Pos Z) = refl
-doubleNegElim (Pos (S n)) = refl
-doubleNegElim (NegS Z) = refl
-doubleNegElim (NegS (S n)) = refl
+doubleNegElim (Pos Z) = Refl
+doubleNegElim (Pos (S n)) = Refl
+doubleNegElim (NegS Z) = Refl
+doubleNegElim (NegS (S n)) = Refl
 
 -- Injectivity
 posInjective : Pos n = Pos m -> n = m
-posInjective refl = refl
+posInjective Refl = Refl
 
 negSInjective : NegS n = NegS m -> n = m
-negSInjective refl = refl
+negSInjective Refl = Refl
 
 posNotNeg : Pos n = NegS m -> _|_
-posNotNeg refl impossible
+posNotNeg Refl impossible
 
 -- Decidable equality
 instance DecEq ZZ where
@@ -129,16 +129,16 @@ instance DecEq ZZ where
 
 -- Plus
 plusZeroLeftNeutralZ : (right : ZZ) -> 0 + right = right
-plusZeroLeftNeutralZ (Pos n) = refl
-plusZeroLeftNeutralZ (NegS n) = refl
+plusZeroLeftNeutralZ (Pos n) = Refl
+plusZeroLeftNeutralZ (NegS n) = Refl
 
 plusZeroRightNeutralZ : (left : ZZ) -> left + 0 = left
 plusZeroRightNeutralZ (Pos n) = cong $ plusZeroRightNeutral n
-plusZeroRightNeutralZ (NegS n) = refl
+plusZeroRightNeutralZ (NegS n) = Refl
 
 plusCommutativeZ : (left : ZZ) -> (right : ZZ) -> (left + right = right + left)
 plusCommutativeZ (Pos n) (Pos m) = cong $ plusCommutative n m
-plusCommutativeZ (Pos n) (NegS m) = refl
-plusCommutativeZ (NegS n) (Pos m) = refl
+plusCommutativeZ (Pos n) (NegS m) = Refl
+plusCommutativeZ (NegS n) (Pos m) = Refl
 plusCommutativeZ (NegS n) (NegS m) = cong {f=NegS} $ cong {f=S} $ plusCommutative n m
 

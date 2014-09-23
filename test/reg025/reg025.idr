@@ -22,13 +22,13 @@ FullBoard : Board n -> Type
 FullBoard (MkBoard b) = All (All Filled) b
 
 indexStep : {i : Fin n} -> {xs : Vect n a} -> {x : a} -> index i xs = index (fS i) (x::xs)
-indexStep = refl
+indexStep = Refl
 
 find : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect n a)
        -> Either (All (\x => Not (P x)) xs) (y : a ** (P y, (i : Fin n ** y = index i xs)))
 find _ Nil = Left Nil
 find {P} d (x::xs) with (d x)
-  | Yes prf = Right (x ** (prf, (fZ ** refl)))
+  | Yes prf = Right (x ** (prf, (fZ ** Refl)))
   | No prf =
     case find {P} d xs of
       Right (y ** (prf', (i ** prf''))) =>
@@ -36,7 +36,7 @@ find {P} d (x::xs) with (d x)
       Left prf' => Left (prf::prf')
 
 empty : (cell : Cell n) -> Dec (Empty cell)
-empty Nothing = Yes refl
+empty Nothing = Yes Refl
 empty (Just _) = No nothingNotJust
 
 findEmptyInRow : (xs : Vect n (Cell n)) -> Either (All Filled xs) (i : Fin n ** Empty (index i xs))

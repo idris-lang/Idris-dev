@@ -15,7 +15,7 @@ import Decidable.Equality
 
 class Preorder t (po : t -> t -> Type) where
   total transitive : (a : t) -> (b : t) -> (c : t) -> po a b -> po b c -> po a c
-  total reflexive : (a : t) -> po a a
+  total Reflexive : (a : t) -> po a a
 
 class (Preorder t po) => Poset t (po : t -> t -> Type) where
   total antisymmetric : (a : t) -> (b : t) -> po a b -> po b a -> a = b
@@ -48,7 +48,7 @@ maximum x y with (order x y)
 
 instance Preorder t ((=) {A = t} {B = t}) where
   transitive a b c = trans {a = a} {b = b} {c = c}
-  reflexive a = refl
+  Reflexive a = Refl
 
 instance Equivalence t ((=) {A = t} {B = t}) where
   symmetric a b prf = sym prf
@@ -76,11 +76,11 @@ NatLTEIsReflexive _ = nEqn
 
 instance Preorder Nat NatLTE where
   transitive = NatLTEIsTransitive
-  reflexive  = NatLTEIsReflexive
+  Reflexive  = NatLTEIsReflexive
 
 total NatLTEIsAntisymmetric : (m : Nat) -> (n : Nat) ->
                               NatLTE m n -> NatLTE n m -> m = n
-NatLTEIsAntisymmetric n n nEqn nEqn = refl
+NatLTEIsAntisymmetric n n nEqn nEqn = Refl
 NatLTEIsAntisymmetric n m nEqn (nLTESm _) impossible
 NatLTEIsAntisymmetric n m (nLTESm _) nEqn impossible
 NatLTEIsAntisymmetric n m (nLTESm _) (nLTESm _) impossible
@@ -145,7 +145,7 @@ using (k : Nat)
   instance Preorder (Fin k) FinLTE where
     transitive m n o (FromNatPrf p1) (FromNatPrf p2) = 
       FromNatPrf (NatLTEIsTransitive (finToNat m) (finToNat n) (finToNat o) p1 p2)
-    reflexive n = FromNatPrf (NatLTEIsReflexive (finToNat n))
+    Reflexive n = FromNatPrf (NatLTEIsReflexive (finToNat n))
 
   instance Poset (Fin k) FinLTE where
     antisymmetric m n (FromNatPrf p1) (FromNatPrf p2) =

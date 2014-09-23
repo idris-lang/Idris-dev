@@ -12,10 +12,10 @@
 
 > soTrue                  :  so b -> b = True
 > soTrue {b = False} x    =  soFalseElim x
-> soTrue {b = True}  x    =  refl
+> soTrue {b = True}  x    =  Refl
 
 > class Eq alpha => ReflEqEq alpha where
->   reflexive_eqeq : (a : alpha) -> so (a == a)
+>   Reflexive_eqeq : (a : alpha) -> so (a == a)
 
 > modifyFun : (Eq alpha) =>
 >             (alpha -> beta) ->
@@ -28,7 +28,7 @@
 >                  (ab : (alpha, beta)) ->
 >                  modifyFun f ab (fst ab) = snd ab
 > modifyFunLemma f (a,b) =
->   rewrite soTrue (reflexive_eqeq a) in refl
+>   rewrite soTrue (Reflexive_eqeq a) in Refl
 
    replace {P = \ z => boolElim (a == a) b (f a) = boolElim z b (f a)}
-           (soTrue (reflexive_eqeq a)) refl
+           (soTrue (Reflexive_eqeq a)) Refl

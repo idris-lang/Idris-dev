@@ -2,7 +2,7 @@ module Main
 
 test : DecEq a => a -> a -> Bool
 test i1 i2 with (decEq i1 i2)
-  test i1 i1 | Yes refl = True
+  test i1 i1 | Yes Refl = True
   test i1 i2 | No p = False
 
 main : IO ()

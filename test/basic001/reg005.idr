@@ -16,7 +16,7 @@ data RLE : Vect n Char -> Type where
              -> RLE (rep (S n) x ++ xs)
 
 eq : (x : Char) -> (y : Char) -> Maybe (x = y)
-eq x y = if x == y then Just (believe_me (refl {x})) else Nothing
+eq x y = if x == y then Just (believe_me (Refl {x})) else Nothing
 
 ------------
 
@@ -25,7 +25,7 @@ rle [] = REnd
 rle (x :: xs) with (rle xs)
    rle (x :: Vect.Nil)             | REnd = RChar Z x REnd
    rle (x :: rep (S n) yvar ++ ys) | RChar n yvar rs with (eq x yvar)
-     rle (x :: rep (S n) x ++ ys) | RChar n x rs | Just refl
+     rle (x :: rep (S n) x ++ ys) | RChar n x rs | Just Refl
            = RChar (S n) x rs
      rle (x :: rep (S n) y ++ ys) | RChar n y rs | Nothing
            = RChar Z x (RChar n y rs)

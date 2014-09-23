@@ -20,7 +20,7 @@ instance Uninhabited (Fin Z) where
   uninhabited (fS f) impossible
 
 fSInjective : (m : Fin k) -> (n : Fin k) -> fS m = fS n -> m = n
-fSInjective left _ refl = refl
+fSInjective left _ Refl = Refl
 
 instance Eq (Fin n) where
     (==) fZ fZ = True
@@ -41,9 +41,9 @@ finToNat (fS k) = S (finToNat k)
 
 ||| `finToNat` is injective
 finToNatInjective : (fm : Fin k) -> (fn : Fin k) -> (finToNat fm) = (finToNat fn) -> fm = fn
-finToNatInjective fZ     fZ     refl = refl
-finToNatInjective (fS m) fZ     refl impossible
-finToNatInjective fZ     (fS n) refl impossible
+finToNatInjective fZ     fZ     Refl = Refl
+finToNatInjective (fS m) fZ     Refl impossible
+finToNatInjective fZ     (fS n) Refl impossible
 finToNatInjective (fS m) (fS n) prf  =
   cong (finToNatInjective m n (succInjective (finToNat m) (finToNat n) prf)) 
 
@@ -90,7 +90,7 @@ last {n=Z} = fZ
 last {n=S _} = fS last
 
 total fSinjective : {f : Fin n} -> {f' : Fin n} -> (fS f = fS f') -> f = f'
-fSinjective refl = refl
+fSinjective Refl = Refl
 
 instance Ord (Fin n) where
   compare  fZ     fZ    = EQ

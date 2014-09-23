@@ -81,7 +81,6 @@ elabPrims = do mapM_ (elabDecl' EAll recinfo)
                          [emptyDocstring, unitDoc, falseDoc, pairDoc, eqDoc]
                          [[], [], [], pairParamDoc, eqParamDoc]))
                addNameHint eqTy (sUN "prf")
-               elabDecl' EAll recinfo elimDecl
                mapM_ elabPrim primitives
                -- Special case prim__believe_me because it doesn't work on just constants
                elabBelieveMe

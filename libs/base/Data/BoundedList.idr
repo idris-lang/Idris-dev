@@ -90,5 +90,5 @@ pad {n=S n'} (x :: xs) padding = x :: pad {n=n'} xs padding
 --------------------------------------------------------------------------------
 
 zeroBoundIsEmpty : (xs : BoundedList 0 a) -> xs = the (BoundedList 0 a) []
-zeroBoundIsEmpty [] = refl
+zeroBoundIsEmpty [] = Refl
 zeroBoundIsEmpty (_ :: _) impossible

@@ -278,7 +278,7 @@ SimpleExpr ::=
     {- External (User-defined) Simple Expression -}
   | '?' Name
   | % 'instance'
-  | 'refl' ('{' Expr '}')?
+  | 'Refl' ('{' Expr '}')?
   | ProofExpr
   | TacticsExpr
   | FnName
@@ -300,7 +300,7 @@ simpleExpr syn =
             try (simpleExternalExpr syn)
         <|> do x <- try (lchar '?' *> name); return (PMetavar x)
         <|> do lchar '%'; fc <- getFC; reserved "instance"; return (PResolveTC fc)
-        <|> do reserved "refl"; fc <- getFC;
+        <|> do reserved "Refl"; fc <- getFC;
                tm <- option Placeholder (do lchar '{'; t <- expr syn; lchar '}';
                                             return t)
                return (PRefl fc tm)

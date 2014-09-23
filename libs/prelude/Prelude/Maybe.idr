@@ -45,7 +45,7 @@ toMaybe True  j = Just j
 toMaybe False j = Nothing
 
 justInjective : {x : t} -> {y : t} -> (Just x = Just y) -> x = y
-justInjective refl = refl
+justInjective Refl = Refl
 
 ||| Convert a `Maybe a` value to an `a` value, using `neutral` in the case
 ||| that the `Maybe` value is `Nothing`.

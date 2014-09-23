@@ -9,7 +9,7 @@ Id : (A : Type) -> A -> A -> Type
 Id A = (=) {a0 = A} {b0 = A}
 
 Refl : (A : Type) -> (a : A) -> Id A a a
-Refl A a = refl {a}
+Refl A a = Refl {a}
 
 zzz : Id Nat zero zero
 zzz = Refl Nat zero

@@ -6,7 +6,7 @@ dsl simple_type
   pi = ARR
 
 test1 : simple_type (BOOL -> INT -> UNIT) = BOOL `ARR` (INT `ARR` UNIT)
-test1 = refl
+test1 = Refl
 
 using (vars : Vect n Ty)
   infix 2 ===
@@ -35,4 +35,4 @@ test3 : Spec []
 test3 = ForAll INT . ForAll INT . ItHolds $ Var (fS fZ) === Var fZ
 
 test4 : test2 = test3
-test4 = refl
+test4 = Refl
