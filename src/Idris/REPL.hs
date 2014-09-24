@@ -81,7 +81,7 @@ import Control.Concurrent.MVar
 import Network
 import Control.Concurrent
 import Data.Maybe
-import Data.List
+import Data.List hiding (group)
 import Data.Char
 import Data.Version
 import Data.Word (Word)
@@ -1180,16 +1180,18 @@ process fn (PrintDef n) =
   where ppDef :: IState -> (Name, ([([Name], Term, Term)], [PTerm])) -> Doc OutputAnnotation
         ppDef ist (n, (clauses, missing)) =
           prettyName True True [] n <+> colon <+>
-          pprintPTerm (ppOptionIst ist) [] [] [] (delabTy ist n) <$>
+          align (pprintDelabTy ist n) <$>
           indent 2 (ppClauses ist clauses <> ppMissing missing)
         ppClauses ist [] = text "No clauses."
         ppClauses ist cs = vsep (map pp cs)
           where pp (vars, lhs, rhs) =
-                  let ppTm = pprintPTerm (ppOptionIst ist)
-                                   (zip vars (repeat False))
-                                   [] [] .
-                             delab ist
-                  in ppTm lhs <+> text "=" <+> ppTm rhs
+                  let ppTm t = annotate (AnnTerm (zip vars (repeat False)) t) .
+                               pprintPTerm (ppOptionIst ist)
+                                     (zip vars (repeat False))
+                                     [] [] .
+                               delab ist $
+                               t
+                  in group $ ppTm lhs <+> text "=" <$> (group . align . hang 2 $ ppTm rhs)
         ppMissing _ = empty
 
 
