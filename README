@@ -27,6 +27,6 @@ Idris has support for external code generators. A C code generator
 to compile executables, and a JavaScript code generator are supplied with the
 distribution.
 At the point of this writing, there is also a Java code generator and an
-external repository with an llvm based code generator at
+external repository with an LLVM-based code generator which can be found at
 https://github.com/idris-hackers/idris-llvm.
 
