@@ -16,6 +16,8 @@ New in 0.9.15:
   This allows instances of Num that can't be negative, like Nat, and it makes correct
   IEEE Float operations easier to encode. Additionally, unary negation is now available
   to DSL authors.
+* The Java and LLVM backends have been factored out for separate maintenance. Now, the
+  compiler distribution only ships with the C and JavaScript backends.
 
 New in 0.9.14:
 --------------
