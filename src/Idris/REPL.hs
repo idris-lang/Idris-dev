@@ -1173,7 +1173,9 @@ process fn (MakeDoc s) =
 process fn (PrintDef n) =
   do ist <- getIState
      let patdefs = idris_patdefs ist
-         result = map (ppDef ist) (lookupCtxtName n patdefs)
+         tyinfo = idris_datatypes ist
+         result = map (ppDef ist) (lookupCtxtName n patdefs) ++
+                  map (ppTy ist) (lookupCtxtName n tyinfo)
      case result of
        [] -> iPrintError "Not found"
        outs -> iRenderResult . vsep $ outs
@@ -1194,6 +1196,16 @@ process fn (PrintDef n) =
                   in group $ ppTm lhs <+> text "=" <$> (group . align . hang 2 $ ppTm rhs)
         ppMissing _ = empty
 
+        ppTy :: IState -> (Name, TypeInfo) -> Doc OutputAnnotation
+        ppTy ist (n, TI constructors isCodata _ _ _)
+          = kwd key <+> prettyName True True [] n <+> colon <+>
+            align (pprintDelabTy ist n) <+> kwd "where" <$>
+            indent 2 (vsep (map (ppCon ist) constructors))
+          where
+            key | isCodata = "codata"
+                | otherwise = "data"
+            kwd = annotate AnnKeyword . text
+            ppCon ist n = prettyName True False [] n <+> colon <+> align (pprintDelabTy ist n)
 
 showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i
