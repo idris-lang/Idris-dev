@@ -19,3 +19,5 @@ the Nat (1 + 2)
 :doc main
 :let data Nat2 = Zero | Succ Nat2
 :t Nat2
+:compile Test.idr
+:compile a.out

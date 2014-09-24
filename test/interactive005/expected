@@ -31,3 +31,4 @@ main : IO ()
     This is a docstring
     
 Nat2 : Type
+Invalid filename for compiler output "Test.idr"

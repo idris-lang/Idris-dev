@@ -3,3 +3,4 @@ idris --quiet interactive005.idr < input
 rm -f *.ibc
 rm -f hello.bytecode
 rm -f hello
+rm -f a.out
