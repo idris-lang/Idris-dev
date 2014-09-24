@@ -1183,19 +1183,20 @@ process fn (MakeDoc s) =
 process fn (PrintDef n) =
   do ist <- getIState
      ctxt <- getContext
-     let patdefs = idris_patdefs ist
+     let ambiguous = length (lookupNames n ctxt) > 1
+         patdefs = idris_patdefs ist
          tyinfo = idris_datatypes ist
-         result = map (ppDef ist) (lookupCtxtName n patdefs) ++
-                  map (ppTy ist) (lookupCtxtName n tyinfo) ++
-                  map (ppCon ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
+         result = map (ppDef ambiguous ist) (lookupCtxtName n patdefs) ++
+                  map (ppTy ambiguous ist) (lookupCtxtName n tyinfo) ++
+                  map (ppCon ambiguous ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
      case result of
        [] -> iPrintError "Not found"
-       outs -> iRenderResult . vsep $ outs
-  where ppDef :: IState -> (Name, ([([Name], Term, Term)], [PTerm])) -> Doc OutputAnnotation
-        ppDef ist (n, (clauses, missing)) =
-          prettyName True True [] n <+> colon <+>
+       outs -> iRenderResult . vsep . punctuate line $ outs
+  where ppDef :: Bool -> IState -> (Name, ([([Name], Term, Term)], [PTerm])) -> Doc OutputAnnotation
+        ppDef amb ist (n, (clauses, missing)) =
+          prettyName True amb [] n <+> colon <+>
           align (pprintDelabTy ist n) <$>
-          indent 2 (ppClauses ist clauses <> ppMissing missing)
+          ppClauses ist clauses <> ppMissing missing
         ppClauses ist [] = text "No clauses."
         ppClauses ist cs = vsep (map pp cs)
           where pp (vars, lhs, rhs) =
@@ -1208,16 +1209,16 @@ process fn (PrintDef n) =
                   in group $ ppTm lhs <+> text "=" <$> (group . align . hang 2 $ ppTm rhs)
         ppMissing _ = empty
 
-        ppTy :: IState -> (Name, TypeInfo) -> Doc OutputAnnotation
-        ppTy ist (n, TI constructors isCodata _ _ _)
-          = kwd key <+> prettyName True True [] n <+> colon <+>
+        ppTy :: Bool -> IState -> (Name, TypeInfo) -> Doc OutputAnnotation
+        ppTy amb ist (n, TI constructors isCodata _ _ _)
+          = kwd key <+> prettyName True amb [] n <+> colon <+>
             align (pprintDelabTy ist n) <+> kwd "where" <$>
-            indent 2 (vsep (map (ppCon ist) constructors))
+            indent 2 (vsep (map (ppCon False ist) constructors))
           where
             key | isCodata = "codata"
                 | otherwise = "data"
             kwd = annotate AnnKeyword . text
-        ppCon ist n = prettyName True False [] n <+> colon <+> align (pprintDelabTy ist n)
+        ppCon amb ist n = prettyName True amb [] n <+> colon <+> align (pprintDelabTy ist n)
 
 showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i
