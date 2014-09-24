@@ -218,6 +218,7 @@ data IdeSlaveCommand = REPLCompletions String
                      | TermNormalise [(Name, Bool)] Term
                      | TermShowImplicits [(Name, Bool)] Term
                      | TermNoImplicits [(Name, Bool)] Term
+                     | PrintDef String
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
@@ -260,6 +261,7 @@ sexpToCommand (SexpList [SymbolAtom "show-term-implicits", StringAtom encoded]) 
                                                                                           Just (TermShowImplicits bnd tm)
 sexpToCommand (SexpList [SymbolAtom "hide-term-implicits", StringAtom encoded])         = let (bnd, tm) = decodeTerm encoded in
                                                                                           Just (TermNoImplicits bnd tm)
+sexpToCommand (SexpList [SymbolAtom "print-definition", StringAtom name])               = Just (PrintDef name)
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)

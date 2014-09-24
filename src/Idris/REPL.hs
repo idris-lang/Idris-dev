@@ -477,6 +477,16 @@ runIdeSlaveCommand h id orig fn modes (IdeSlave.TermShowImplicits bnd tm) =
   ideSlaveForceTermImplicits h id bnd True tm
 runIdeSlaveCommand h id orig fn modes (IdeSlave.TermNoImplicits bnd tm) =
   ideSlaveForceTermImplicits h id bnd False tm
+runIdeSlaveCommand h id orig fn mods (IdeSlave.PrintDef name) =
+  case splitName name of
+    Left err -> iPrintError err
+    Right n -> process "(ideslave)" (PrintDef n)
+  where splitName :: String -> Either String Name
+        splitName s = case reverse $ splitOn "." s of
+                        [] -> Left ("Didn't understand name '" ++ s ++ "'")
+                        [n] -> Right $ sUN n
+                        (n:ns) -> Right $ sNS (sUN n) ns
+
 
 -- | Show a term for IDESlave with the specified implicitness
 ideSlaveForceTermImplicits :: Handle -> Integer -> [(Name, Bool)] -> Bool -> Term -> Idris ()
