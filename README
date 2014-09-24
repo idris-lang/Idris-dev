@@ -23,9 +23,10 @@ The Idris wiki contains instructions for building on various platforms and for
 getting involved with development. It is located at
 https://github.com/idris-lang/Idris-dev/wiki .
 
-Idris has support for external code generators. A C code generator
-to compile executables, and a JavaScript code generator are supplied with the
-distribution.
+Idris has support for external code generators. Supplied with the distribution
+is C code generator to compile executables, and a JavaScript code generator
+with support for node.js and browser JavaScript.
+
 At the point of this writing, there is also a Java code generator and an
 external repository with an LLVM-based code generator which can be found at
 https://github.com/idris-hackers/idris-llvm.
