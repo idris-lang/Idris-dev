@@ -100,9 +100,6 @@ Extra-source-files:
                        libs/effects/Effect/*.idr
                        libs/effects/*.idr
 
-                       llvm/*.c
-                       llvm/Makefile
-
                        test/Makefile
                        test/runtest.pl
                        test/reg001/run
@@ -525,11 +522,6 @@ source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
 
-Flag LLVM
-  Description:  Build the LLVM backend
-  Default:      False
-  manual:       True
-
 Flag FFI
   Description:  Build support for libffi
   Default:      False
@@ -728,13 +720,6 @@ Library
   if os(windows)
      cpp-options:   -DWINDOWS
      build-depends: Win32 < 2.4
-  if flag(LLVM)
-     other-modules: IRTS.CodegenLLVM
-     cpp-options:   -DIDRIS_LLVM
-     build-depends: llvm-general == 3.3.8.*
-                  , llvm-general-pure == 3.3.8.*
-  else
-     other-modules: Util.LLVMStubs
   if flag(FFI)
      build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_FFI
