@@ -1049,14 +1049,14 @@ process fn Execute
                        (\e -> getIState >>= iRenderError . flip pprintErr e)
   where fc = fileFC "main"
 process fn (Compile codegen f)
-      = if map toLower (takeExtension f) `elem` [".idr", ".idc"]
-           then runIO $ putStrLn ("Will not compile to " ++ f)
-           else do (m, _) <- elabVal recinfo ERHS
-                             (PApp fc (PRef fc (sUN "run__IO"))
-                             [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
-                   ir <- compile codegen f m
-                   i <- getIState
-                   runIO $ generate codegen (head (idris_imported i)) ir
+      | map toLower (takeExtension f) `elem` [".idr", ".lidr", ".idc"] =
+          iPrintError $ "Invalid filename for compiler output \"" ++ f ++"\""
+      | otherwise = do (m, _) <- elabVal recinfo ERHS
+                                   (PApp fc (PRef fc (sUN "run__IO"))
+                                   [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
+                       ir <- compile codegen f m
+                       i <- getIState
+                       runIO $ generate codegen (head (idris_imported i)) ir
   where fc = fileFC "main"
 process fn (LogLvl i) = setLogLevel i
 -- Elaborate as if LHS of a pattern (debug command)
