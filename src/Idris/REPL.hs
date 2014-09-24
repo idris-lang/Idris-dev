@@ -1181,17 +1181,54 @@ process fn (MakeDoc s) =
          case result of Right _   -> iputStrLn "IdrisDoc generated"
                         Left  err -> iPrintError err
 process fn (PrintDef n) =
+  do result <- pprintDef n
+     case result of
+       [] -> iPrintError "Not found"
+       outs -> iRenderResult . vsep $ outs
+
+
+process fn (PPrint fmt width (PRef _ n))
+   = do outs <- pprintDef n
+        iputStrLn =<< renderExternal fmt width (vsep outs)
+
+
+process fn (PPrint fmt width t)
+   = do (tm, ty) <- elabVal recinfo ERHS t
+        ctxt <- getContext
+        ist <- getIState
+        let ppo = ppOptionIst ist
+            ty' = normaliseC ctxt [] ty
+        iputStrLn =<< renderExternal fmt width (pprintDelab ist tm)
+
+
+showTotal :: Totality -> IState -> String
+showTotal t@(Partial (Other ns)) i
+   = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)
+showTotal t i = show t
+showTotalN i n = case lookupTotal n (tt_ctxt i) of
+                        [t] -> showTotal t i
+                        _ -> ""
+
+displayHelp = let vstr = showVersion version in
+              "\nIdris version " ++ vstr ++ "\n" ++
+              "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
+              concatMap cmdInfo helphead ++
+              concatMap cmdInfo help
+  where cmdInfo (cmds, args, text) = "   " ++ col 16 12 (showSep " " cmds) (show args) text
+        col c1 c2 l m r =
+            l ++ take (c1 - length l) (repeat ' ') ++
+            m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
+
+pprintDef :: Name -> Idris [Doc OutputAnnotation]
+pprintDef n =
   do ist <- getIState
      ctxt <- getContext
      let ambiguous = length (lookupNames n ctxt) > 1
          patdefs = idris_patdefs ist
          tyinfo = idris_datatypes ist
-         result = map (ppDef ambiguous ist) (lookupCtxtName n patdefs) ++
-                  map (ppTy ambiguous ist) (lookupCtxtName n tyinfo) ++
-                  map (ppCon ambiguous ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
-     case result of
-       [] -> iPrintError "Not found"
-       outs -> iRenderResult . vsep . punctuate line $ outs
+     return $ map (ppDef ambiguous ist) (lookupCtxtName n patdefs) ++
+              map (ppTy ambiguous ist) (lookupCtxtName n tyinfo) ++
+              map (ppCon ambiguous ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
   where ppDef :: Bool -> IState -> (Name, ([([Name], Term, Term)], [PTerm])) -> Doc OutputAnnotation
         ppDef amb ist (n, (clauses, missing)) =
           prettyName True amb [] n <+> colon <+>
@@ -1220,23 +1257,6 @@ process fn (PrintDef n) =
             kwd = annotate AnnKeyword . text
         ppCon amb ist n = prettyName True amb [] n <+> colon <+> align (pprintDelabTy ist n)
 
-showTotal :: Totality -> IState -> String
-showTotal t@(Partial (Other ns)) i
-   = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)
-showTotal t i = show t
-showTotalN i n = case lookupTotal n (tt_ctxt i) of
-                        [t] -> showTotal t i
-                        _ -> ""
-
-displayHelp = let vstr = showVersion version in
-              "\nIdris version " ++ vstr ++ "\n" ++
-              "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
-              concatMap cmdInfo helphead ++
-              concatMap cmdInfo help
-  where cmdInfo (cmds, args, text) = "   " ++ col 16 12 (showSep " " cmds) (show args) text
-        col c1 c2 l m r =
-            l ++ take (c1 - length l) (repeat ' ') ++
-            m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
 
 helphead =
   [ (["Command"], SpecialHeaderArg, "Purpose"),

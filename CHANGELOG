@@ -18,6 +18,8 @@ New in 0.9.15:
   to DSL authors.
 * The Java and LLVM backends have been factored out for separate maintenance. Now, the
   compiler distribution only ships with the C and JavaScript backends.
+* New REPL command :printdef displays the internal definition of a name
+* New REPL command :pprint pretty-prints a definition or term with LaTeX or HTML highlighting
 
 New in 0.9.14:
 --------------

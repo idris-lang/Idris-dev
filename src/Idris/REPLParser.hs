@@ -134,6 +134,14 @@ pCmd = do P.whiteSpace; do cmd ["q", "quit"]; eof; return Quit
               <|> do cmd ["cw", "callswho"]; P.whiteSpace; n <- P.fnName ; return (CallsWho n)
               <|> do cmd ["mkdoc"]; str <- many anyChar; return (MakeDoc str)
               <|> do cmd ["printdef"]; P.whiteSpace; n <- P.fnName; return (PrintDef n)
+              <|> do cmd ["pp", "pprint"]
+                     P.whiteSpace
+                     fmt <- ppFormat
+                     P.whiteSpace
+                     n <- fmap fromInteger P.natural
+                     P.whiteSpace
+                     t <- P.fullExpr defaultSyntax
+                     return (PPrint fmt n t)
               <|> do P.whiteSpace; do eof; return NOP
                              <|> do t <- P.fullExpr defaultSyntax; return (Eval t)
 
@@ -156,6 +164,10 @@ pConsoleWidth :: P.IdrisParser ConsoleWidth
 pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth
             <|> do discard (P.symbol "infinite"); return InfinitelyWide
             <|> do n <- fmap fromInteger P.natural; return (ColsWide n)
+
+ppFormat :: P.IdrisParser OutputFmt
+ppFormat = (discard (P.symbol "html") >> return HTMLOutput)
+       <|> (discard (P.symbol "latex") >> return LaTeXOutput)
 
 colours :: [(String, Maybe Color)]
 colours = [ ("black", Just Black)

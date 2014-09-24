@@ -364,6 +364,9 @@ data Command = Quit
              | MakeDoc String                      -- IdrisDoc
              | Warranty
              | PrintDef Name
+             | PPrint OutputFmt Int PTerm
+
+data OutputFmt = HTMLOutput | LaTeXOutput
 
 data Opt = Filename String
          | Quiet
