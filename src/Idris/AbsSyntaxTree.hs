@@ -1246,10 +1246,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
       text "\\" <> bindingOf n False <+> text "=>" <$>
       prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PLet n ty v sc) =
-      bracket p 2 $
-      kwd "let" <+> bindingOf n False <+> text "=" </>
-      prettySe 10 bnd v <+> kwd "in" </>
-      prettySe 10 ((n, False):bnd) sc
+      bracket p 2 . group . align $
+      kwd "let" <+> (group . align . hang 2 $ bindingOf n False <+> text "=" <$> prettySe 10 bnd v) </>
+      kwd "in" <+> (group . align . hang 2 $ prettySe 10 ((n, False):bnd) sc)
     prettySe p bnd (PPi (Exp l s _) n ty sc)
       | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
           bracket p 2 . group $

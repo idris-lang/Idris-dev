@@ -81,7 +81,7 @@ import Control.Concurrent.MVar
 import Network
 import Control.Concurrent
 import Data.Maybe
-import Data.List
+import Data.List hiding (group)
 import Data.Char
 import Data.Version
 import Data.Word (Word)
@@ -477,6 +477,16 @@ runIdeSlaveCommand h id orig fn modes (IdeSlave.TermShowImplicits bnd tm) =
   ideSlaveForceTermImplicits h id bnd True tm
 runIdeSlaveCommand h id orig fn modes (IdeSlave.TermNoImplicits bnd tm) =
   ideSlaveForceTermImplicits h id bnd False tm
+runIdeSlaveCommand h id orig fn mods (IdeSlave.PrintDef name) =
+  case splitName name of
+    Left err -> iPrintError err
+    Right n -> process "(ideslave)" (PrintDef n)
+  where splitName :: String -> Either String Name
+        splitName s = case reverse $ splitOn "." s of
+                        [] -> Left ("Didn't understand name '" ++ s ++ "'")
+                        [n] -> Right $ sUN n
+                        (n:ns) -> Right $ sNS (sUN n) ns
+
 
 -- | Show a term for IDESlave with the specified implicitness
 ideSlaveForceTermImplicits :: Handle -> Integer -> [(Name, Bool)] -> Bool -> Term -> Idris ()
@@ -1172,26 +1182,42 @@ process fn (MakeDoc s) =
                         Left  err -> iPrintError err
 process fn (PrintDef n) =
   do ist <- getIState
+     ctxt <- getContext
      let patdefs = idris_patdefs ist
-         result = map (ppDef ist) (lookupCtxtName n patdefs)
+         tyinfo = idris_datatypes ist
+         result = map (ppDef ist) (lookupCtxtName n patdefs) ++
+                  map (ppTy ist) (lookupCtxtName n tyinfo) ++
+                  map (ppCon ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
      case result of
        [] -> iPrintError "Not found"
        outs -> iRenderResult . vsep $ outs
   where ppDef :: IState -> (Name, ([([Name], Term, Term)], [PTerm])) -> Doc OutputAnnotation
         ppDef ist (n, (clauses, missing)) =
           prettyName True True [] n <+> colon <+>
-          pprintPTerm (ppOptionIst ist) [] [] [] (delabTy ist n) <$>
+          align (pprintDelabTy ist n) <$>
           indent 2 (ppClauses ist clauses <> ppMissing missing)
         ppClauses ist [] = text "No clauses."
         ppClauses ist cs = vsep (map pp cs)
           where pp (vars, lhs, rhs) =
-                  let ppTm = pprintPTerm (ppOptionIst ist)
-                                   (zip vars (repeat False))
-                                   [] [] .
-                             delab ist
-                  in ppTm lhs <+> text "=" <+> ppTm rhs
+                  let ppTm t = annotate (AnnTerm (zip vars (repeat False)) t) .
+                               pprintPTerm (ppOptionIst ist)
+                                     (zip vars (repeat False))
+                                     [] [] .
+                               delab ist $
+                               t
+                  in group $ ppTm lhs <+> text "=" <$> (group . align . hang 2 $ ppTm rhs)
         ppMissing _ = empty
 
+        ppTy :: IState -> (Name, TypeInfo) -> Doc OutputAnnotation
+        ppTy ist (n, TI constructors isCodata _ _ _)
+          = kwd key <+> prettyName True True [] n <+> colon <+>
+            align (pprintDelabTy ist n) <+> kwd "where" <$>
+            indent 2 (vsep (map (ppCon ist) constructors))
+          where
+            key | isCodata = "codata"
+                | otherwise = "data"
+            kwd = annotate AnnKeyword . text
+        ppCon ist n = prettyName True False [] n <+> colon <+> align (pprintDelabTy ist n)
 
 showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i
