@@ -274,7 +274,7 @@ ploop fn d prompt prf e h
               -- make it easier to see how to prove with them.
               let action = case lookupNames n ctxt' of
                              [] -> iPrintError $ "No such variable " ++ show n
-                             ts -> iPrintFunTypes bnd n (map (\n -> (n, delabTy ist' n)) ts)
+                             ts -> iPrintFunTypes bnd n (map (\n -> (n, pprintDelabTy ist' n)) ts)
               putIState ist
               return (False, e, False, prf, Right action))
             (\err -> do putIState ist ; ierror err)

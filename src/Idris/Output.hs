@@ -68,7 +68,7 @@ iPrintTermWithType :: Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
 iPrintTermWithType tm ty = iRenderResult (tm <+> colon <+> align ty)
 
 -- | Pretty-print a collection of overloadings to REPL or IDESlave - corresponds to :t name
-iPrintFunTypes :: [(Name, Bool)] -> Name -> [(Name, PTerm)] -> Idris ()
+iPrintFunTypes :: [(Name, Bool)] -> Name -> [(Name, Doc OutputAnnotation)] -> Idris ()
 iPrintFunTypes bnd n []        = iPrintError $ "No such variable " ++ show n
 iPrintFunTypes bnd n overloads = do ist <- getIState
                                     let ppo = ppOptionIst ist
@@ -77,7 +77,7 @@ iPrintFunTypes bnd n overloads = do ist <- getIState
                                     iRenderResult output
   where fullName n = prettyName True True bnd n
         ppOverload ppo infixes n tm =
-          fullName n <+> colon <+> align (pprintPTerm ppo bnd [] infixes tm)
+          fullName n <+> colon <+> align tm
 
 iRenderOutput :: Doc OutputAnnotation -> Idris ()
 iRenderOutput doc =

@@ -1342,9 +1342,18 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PTrue _ IsTerm) = annName unitCon $ text "()"
     prettySe p bnd (PTrue _ TypeOrTerm) = text "()"
     prettySe p bnd (PFalse _) = annName falseTy $ text "_|_"
-    prettySe p bnd (PEq _ _ _ l r) =
-      bracket p 2 . align . group $
-      prettySe 10 bnd l <+> eq <$> group (prettySe 10 bnd r)
+    prettySe p bnd (PEq _ lt rt l r)
+      | ppopt_impl ppo =
+          bracket p 1 $
+            enclose lparen rparen eq <+>
+            align (group (vsep (map (prettyArgS bnd)
+                                    [PImp 0 False [] (sUN "A") lt,
+                                     PImp 0 False [] (sUN "B") rt,
+                                     PExp 0 [] (sUN "x") l,
+                                     PExp 0 [] (sUN "y") r])))
+      | otherwise =
+          bracket p 2 . align . group $
+            prettySe 10 bnd l <+> eq <$> group (prettySe 10 bnd r)
       where eq = annName eqTy (text "=")
     prettySe p bnd (PRewrite _ l r _) =
       bracket p 2 $
