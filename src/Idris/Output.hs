@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+
 module Idris.Output where
 
 import Idris.Core.TT
@@ -13,10 +15,12 @@ import Util.ScreenSize (getScreenWidth)
 
 import Debug.Trace
 
+import Control.Monad.Error (throwError)
+
 import System.IO (stdout, Handle, hPutStrLn)
 
 import Data.Char (isAlpha)
-import Data.List (nub)
+import Data.List (nub, intersperse)
 import Data.Maybe (fromMaybe)
 
 pshow :: IState -> Err -> String
@@ -170,3 +174,94 @@ printUndefinedNames :: [Name] -> Doc OutputAnnotation
 printUndefinedNames ns = text "Undefined " <> names <> text "."
   where names = encloseSep empty empty (char ',') $ map ppName ns
         ppName = prettyName True True []
+
+renderExternal :: OutputFmt -> Int -> Doc OutputAnnotation -> Idris String
+renderExternal fmt width doc
+  | width < 1 = throwError . Msg $ "There must be at least one column for the pretty-printer."
+  | otherwise =
+    do ist <- getIState
+       return . wrap fmt .
+         displayDecorated (decorate fmt) .
+         renderPretty 1.0 width .
+         fmap (fancifyAnnots ist) $
+           doc
+  where
+    decorate _ (AnnFC _) = id
+
+    decorate HTMLOutput (AnnName _ (Just TypeOutput) d _) =
+      tag "idris-type" d
+    decorate HTMLOutput (AnnName _ (Just FunOutput) d _) =
+      tag "idris-function" d
+    decorate HTMLOutput (AnnName _ (Just DataOutput) d _) =
+      tag "idris-data" d
+    decorate HTMLOutput (AnnName _ (Just MetavarOutput) d _) =
+      tag "idris-metavar" d
+    decorate HTMLOutput (AnnName _ (Just PostulateOutput) d _) =
+      tag "idris-postulate" d
+    decorate HTMLOutput (AnnName _ _ _ _) = id
+    decorate HTMLOutput (AnnBoundName _ True) = tag "idris-bound idris-implicit" Nothing
+    decorate HTMLOutput (AnnBoundName _ False) = tag "idris-bound" Nothing
+    decorate HTMLOutput (AnnConst _) = id -- TODO
+    decorate HTMLOutput (AnnData _ _) = tag "idris-data" Nothing
+    decorate HTMLOutput (AnnType _ _) = tag "idris-type" Nothing
+    decorate HTMLOutput AnnKeyword = tag "idris-keyword" Nothing
+    decorate HTMLOutput (AnnTextFmt _) = id -- TODO
+    decorate HTMLOutput (AnnTerm _ _) = id
+    decorate HTMLOutput (AnnSearchResult _) = id
+
+    decorate LaTeXOutput (AnnName _ (Just TypeOutput) _ _) =
+      latex "IdrisType"
+    decorate LaTeXOutput (AnnName _ (Just FunOutput) _ _) =
+      latex "IdrisFunction"
+    decorate LaTeXOutput (AnnName _ (Just DataOutput) _ _) =
+      latex "IdrisData"
+    decorate LaTeXOutput (AnnName _ (Just MetavarOutput) _ _) =
+      latex "IdrisMetavar"
+    decorate LaTeXOutput (AnnName _ (Just PostulateOutput) _ _) =
+      latex "IdrisPostulate"
+    decorate LaTeXOutput (AnnName _ _ _ _) = id
+    decorate LaTeXOutput (AnnBoundName _ True) = latex "IdrisImplicit"
+    decorate LaTeXOutput (AnnBoundName _ False) = latex "IdrisBound"
+    decorate LaTeXOutput (AnnConst _) = id -- TODO
+    decorate LaTeXOutput (AnnData _ _) = latex "IdrisData"
+    decorate LaTeXOutput (AnnType _ _) = latex "IdrisType"
+    decorate LaTeXOutput AnnKeyword = latex "IdrisKeyword"
+    decorate LaTeXOutput (AnnTextFmt _) = id -- TODO
+    decorate LaTeXOutput (AnnTerm _ _) = id
+    decorate LaTeXOutput (AnnSearchResult _) = id
+
+    tag cls docs str = "<span class=\""++cls++"\""++title++">" ++ str ++ "</span>"
+      where title = maybe "" (\d->" title=\"" ++ d ++ "\"") docs
+
+    latex cmd str = "\\"++cmd++"{"++str++"}"
+
+    wrap HTMLOutput str =
+      "<!doctype html><html><head><style>" ++ css ++ "</style></head>" ++
+      "<body><!-- START CODE --><pre>" ++ str ++ "</pre><!-- END CODE --></body></html>"
+      where css = concat . intersperse "\n" $
+                    [".idris-data { color: red; } ",
+                     ".idris-type { color: blue; }",
+                     ".idris-function {color: green; }",
+                     ".idris-keyword { font-weight: bold; }",
+                     ".idris-bound { color: purple; }",
+                     ".idris-implicit { font-style: italic; }"]
+    wrap LaTeXOutput str =
+      concat . intersperse "\n" $
+        ["\\documentclass{article}",
+         "\\usepackage{fancyvrb}",
+         "\\usepackage[usenames]{xcolor}"] ++
+        map (\(cmd, color) ->
+               "\\newcommand{\\"++ cmd ++
+               "}[1]{\\textcolor{"++ color ++"}{#1}}")
+             [("IdrisData", "red"), ("IdrisType", "blue"),
+              ("IdrisBound", "magenta"), ("IdrisFunction", "green")] ++
+        ["\\newcommand{\\IdrisKeyword}[1]{{\\underline{#1}}}",
+         "\\newcommand{\\IdrisImplicit}[1]{{\\itshape \\IdrisBound{#1}}}",
+         "\n",
+         "\\begin{document}",
+         "% START CODE",
+         "\\begin{Verbatim}[commandchars=\\\\\\{\\}]",
+         str,
+         "\\end{Verbatim}",
+         "% END CODE",
+         "\\end{document}"]
