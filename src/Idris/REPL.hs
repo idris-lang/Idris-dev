@@ -1172,10 +1172,12 @@ process fn (MakeDoc s) =
                         Left  err -> iPrintError err
 process fn (PrintDef n) =
   do ist <- getIState
+     ctxt <- getContext
      let patdefs = idris_patdefs ist
          tyinfo = idris_datatypes ist
          result = map (ppDef ist) (lookupCtxtName n patdefs) ++
-                  map (ppTy ist) (lookupCtxtName n tyinfo)
+                  map (ppTy ist) (lookupCtxtName n tyinfo) ++
+                  map (ppCon ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
      case result of
        [] -> iPrintError "Not found"
        outs -> iRenderResult . vsep $ outs
@@ -1205,7 +1207,7 @@ process fn (PrintDef n) =
             key | isCodata = "codata"
                 | otherwise = "data"
             kwd = annotate AnnKeyword . text
-            ppCon ist n = prettyName True False [] n <+> colon <+> align (pprintDelabTy ist n)
+        ppCon ist n = prettyName True False [] n <+> colon <+> align (pprintDelabTy ist n)
 
 showTotal :: Totality -> IState -> String
 showTotal t@(Partial (Other ns)) i
