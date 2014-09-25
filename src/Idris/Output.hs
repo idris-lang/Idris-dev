@@ -201,7 +201,9 @@ renderExternal fmt width doc
     decorate HTMLOutput (AnnName _ _ _ _) = id
     decorate HTMLOutput (AnnBoundName _ True) = tag "idris-bound idris-implicit" Nothing
     decorate HTMLOutput (AnnBoundName _ False) = tag "idris-bound" Nothing
-    decorate HTMLOutput (AnnConst _) = id -- TODO
+    decorate HTMLOutput (AnnConst c) =
+      tag (if constIsType c then "idris-type" else "idris-data")
+          (Just $ constDocs c)
     decorate HTMLOutput (AnnData _ _) = tag "idris-data" Nothing
     decorate HTMLOutput (AnnType _ _) = tag "idris-type" Nothing
     decorate HTMLOutput AnnKeyword = tag "idris-keyword" Nothing
@@ -222,7 +224,8 @@ renderExternal fmt width doc
     decorate LaTeXOutput (AnnName _ _ _ _) = id
     decorate LaTeXOutput (AnnBoundName _ True) = latex "IdrisImplicit"
     decorate LaTeXOutput (AnnBoundName _ False) = latex "IdrisBound"
-    decorate LaTeXOutput (AnnConst _) = id -- TODO
+    decorate LaTeXOutput (AnnConst c) =
+      latex $ if constIsType c then "IdrisType" else "IdrisData"
     decorate LaTeXOutput (AnnData _ _) = latex "IdrisData"
     decorate LaTeXOutput (AnnType _ _) = latex "IdrisType"
     decorate LaTeXOutput AnnKeyword = latex "IdrisKeyword"
