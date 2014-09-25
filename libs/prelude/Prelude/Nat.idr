@@ -94,9 +94,9 @@ hyper (S pn)   a (S pb) = hyper pn a (hyper (S pn) a pb)
 ||| @ m the larger number
 data LTE  : (n, m : Nat) -> Type where
   ||| Zero is the smallest Nat
-  lteZero : LTE Z    right
+  LTEZero : LTE Z    right
   ||| If n <= m, then n + 1 <= m + 1
-  lteSucc : LTE left right -> LTE (S left) (S right)
+  LTESucc : LTE left right -> LTE (S left) (S right)
 
 ||| Greater than or equal to
 total GTE : Nat -> Nat -> Type
@@ -112,18 +112,18 @@ GT left right = LT right left
 
 ||| A successor is never less than or equal zero
 succNotLTEzero : Not (S m `LTE` Z)
-succNotLTEzero lteZero impossible
+succNotLTEzero LTEZero impossible
 
 ||| If two numbers are ordered, their predecessors are too
 fromLteSucc : (S m `LTE` S n) -> (m `LTE` n)
-fromLteSucc (lteSucc x) = x
+fromLteSucc (LTESucc x) = x
 
 ||| A decision procedure for `LTE`
 isLTE : (m, n : Nat) -> Dec (m `LTE` n)
-isLTE Z n = Yes lteZero
+isLTE Z n = Yes LTEZero
 isLTE (S k) Z = No succNotLTEzero
 isLTE (S k) (S j) with (isLTE k j)
-  isLTE (S k) (S j) | (Yes prf) = Yes (lteSucc prf)
+  isLTE (S k) (S j) | (Yes prf) = Yes (LTESucc prf)
   isLTE (S k) (S j) | (No contra) = No (contra . fromLteSucc)
 
 ||| Boolean test than one Nat is less than or equal to another
@@ -329,18 +329,18 @@ lcm x y = divNat (x * y) (gcd x y)
 -- An informative comparison view 
 --------------------------------------------------------------------------------
 data CmpNat : Nat -> Nat -> Type where
-     cmpLT : (y : _) -> CmpNat x (x + S y)
-     cmpEQ : CmpNat x x
-     cmpGT : (x : _) -> CmpNat (y + S x) y
+     CmpLT : (y : _) -> CmpNat x (x + S y)
+     CmpEQ : CmpNat x x
+     CmpGT : (x : _) -> CmpNat (y + S x) y
 
 total cmp : (x, y : Nat) -> CmpNat x y
-cmp Z Z     = cmpEQ
-cmp Z (S k) = cmpLT _
-cmp (S k) Z = cmpGT _
+cmp Z Z     = CmpEQ
+cmp Z (S k) = CmpLT _
+cmp (S k) Z = CmpGT _
 cmp (S x) (S y) with (cmp x y)
-  cmp (S x) (S (x + (S k))) | cmpLT k = cmpLT k
-  cmp (S x) (S x)           | cmpEQ   = cmpEQ
-  cmp (S (y + (S k))) (S y) | cmpGT k = cmpGT k
+  cmp (S x) (S (x + (S k))) | CmpLT k = CmpLT k
+  cmp (S x) (S x)           | CmpEQ   = CmpEQ
+  cmp (S (y + (S k))) (S y) | CmpGT k = CmpGT k
 
 --------------------------------------------------------------------------------
 -- Properties
@@ -626,9 +626,9 @@ total lteNTrue : (n : Nat) -> lte n n = True
 lteNTrue Z     = Refl
 lteNTrue (S n) = lteNTrue n
 
-total lteSuccZeroFalse : (n : Nat) -> lte (S n) Z = False
-lteSuccZeroFalse Z     = Refl
-lteSuccZeroFalse (S n) = Refl
+total LTESuccZeroFalse : (n : Nat) -> lte (S n) Z = False
+LTESuccZeroFalse Z     = Refl
+LTESuccZeroFalse (S n) = Refl
 
 -- Minimum and maximum
 total maximumAssociative : (l,c,r : Nat) -> maximum l (maximum c r) = maximum (maximum l c) r

@@ -35,8 +35,8 @@ instance Show (Board n) where
   show (MkBoard rs) = unlines (map showRow rs)
 
 updateAt : Fin n -> Vect n a -> (a -> a) -> Vect n a
-updateAt fZ (x::xs) f = f x :: xs
-updateAt (fS i) (x::xs) f = x :: updateAt i xs f
+updateAt FZ (x::xs) f = f x :: xs
+updateAt (FS i) (x::xs) f = x :: updateAt i xs f
 
 setCell : Board n -> (Fin n, Fin n) -> Fin n -> Board n
 setCell (MkBoard b) (x, y) value = MkBoard (updateAt y b (\row => updateAt x row (const (Just value))))
@@ -127,18 +127,18 @@ data LegalBoard : Board n -> Type where
 CompleteBoard : Board n -> Type
 CompleteBoard b = (LegalBoard b, FullBoard b)
 
-indexStep : {i : Fin n} -> {xs : Vect n a} -> {x : a} -> index i xs = index (fS i) (x::xs)
+indexStep : {i : Fin n} -> {xs : Vect n a} -> {x : a} -> index i xs = index (FS i) (x::xs)
 indexStep = Refl
 
 find : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect n a)
        -> Either (All (\x => Not (P x)) xs) (y : a ** (P y, (i : Fin n ** y = index i xs)))
 find _ Nil = Left Nil
 find d (x::xs) with (d x)
-  | Yes prf = Right (x ** (prf, (fZ ** Refl)))
+  | Yes prf = Right (x ** (prf, (FZ ** Refl)))
   | No prf =
     case find d xs of
       Right (y ** (prf', (i ** prf''))) =>
-        Right (y ** (prf', (fS i ** replace {P=(\x => y = x)} (indexStep {x=x}) prf'')))
+        Right (y ** (prf', (FS i ** replace {P=(\x => y = x)} (indexStep {x=x}) prf'')))
       Left prf' => Left (prf::prf')
 
 findEmptyInRow : (xs : Vect n (Cell n)) -> Either (All Filled xs) (i : Fin n ** Empty (index i xs))
@@ -158,11 +158,11 @@ emptyCell (MkBoard rs) =
     helper Nil = Left Nil
     helper (r::rs) =
       case findEmptyInRow r of
-        Right (ci ** pf) => Right (fZ ** (ci ** pf))
+        Right (ci ** pf) => Right (FZ ** (ci ** pf))
         Left prf =>
           case helper rs of
             Left prf' => Left (prf::prf')
-            Right (ri ** (ci ** pf)) => Right (fS ri ** (ci ** pf))
+            Right (ri ** (ci ** pf)) => Right (FS ri ** (ci ** pf))
 
 
 tryValue : {b : Board (S n)} -> LegalBoard b -> (c : (Fin (S n), Fin (S n))) -> Empty (getCell b c) -> (v : Fin (S n))
@@ -189,16 +189,16 @@ fillBoard {n=(S n)} b l with (emptyCell b)
         Right success => (v, Just success)
         Left _ => -- TODO: Prove unsolvable
           case v of
-            fS k => tryAll (weaken k)
-            fZ => (v, Nothing)
+            FS k => tryAll (weaken k)
+            FZ => (v, Nothing)
 
     %assert_total
     recurse : Fin (S n) -> Maybe (b' : Board (S n) ** CompleteBoard b')
     recurse start = 
       case tryAll start of
         (_, Nothing) => Nothing
-        (fZ, Just (b' ** l')) => fillBoard b' l'
-        (fS next, Just (b' ** l')) =>
+        (FZ, Just (b' ** l')) => fillBoard b' l'
+        (FS next, Just (b' ** l')) =>
           case fillBoard b' l' of
             Just solution => Just solution
             Nothing => recurse (weaken next)

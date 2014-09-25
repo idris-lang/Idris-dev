@@ -496,7 +496,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | CExport String    -- export, with a C name
            | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
            | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error
-           | Reflection -- a Reflecting function, compile-time only
+           | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
            | Constructor -- Data constructor type
     deriving (Show, Eq)

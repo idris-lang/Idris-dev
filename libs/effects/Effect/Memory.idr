@@ -16,23 +16,23 @@ data RawMemory : Effect where
      Free       : RawMemory () (MemoryChunk n i) (\v => ())
      Initialize : Bits8 ->
                   (size : Nat) ->
-                  so (i + size <= n) ->
+                  So (i + size <= n) ->
                   RawMemory () (MemoryChunk n i) (\v => MemoryChunk n (i + size))
      Peek       : (offset : Nat) ->
                   (size : Nat) ->
-                  so (offset + size <= i) ->
+                  So (offset + size <= i) ->
                   RawMemory (Vect size Bits8)
                             (MemoryChunk n i) (\v => MemoryChunk n i) 
      Poke       :  (offset : Nat) ->
                   (Vect size Bits8) ->
-                  so (offset <= i && offset + size <= n) ->
+                  So (offset <= i && offset + size <= n) ->
                   RawMemory () (MemoryChunk n i) (\v => MemoryChunk n (max i (offset + size))) 
      Move       : (src : MemoryChunk src_size src_init) ->
                   (dst_offset : Nat) ->
                   (src_offset : Nat) ->
                   (size : Nat) ->
-                  so (dst_offset <= dst_init && dst_offset + size <= dst_size) ->
-                  so (src_offset + size <= src_init) ->
+                  So (dst_offset <= dst_init && dst_offset + size <= dst_size) ->
+                  So (src_offset + size <= src_init) ->
                   RawMemory () (MemoryChunk dst_size dst_init)
                             (\v => MemoryChunk dst_size (max dst_init (dst_offset + size))) 
      GetRawPtr  : RawMemory (MemoryChunk n i) (MemoryChunk n i) (\v => MemoryChunk n i) 
@@ -108,7 +108,7 @@ initialize : {i : Nat} ->
              {n : Nat} ->
              Bits8 ->
              (size : Nat) ->
-             so (i + size <= n) ->
+             So (i + size <= n) ->
              Eff () [RAW_MEMORY (MemoryChunk n i)] 
                        (\v => [RAW_MEMORY (MemoryChunk n (i + size))])
 initialize c size prf = call $ Initialize c size prf
@@ -119,7 +119,7 @@ free = call Free
 peek : {i : Nat} ->
        (offset : Nat) ->
        (size : Nat) ->
-       so (offset + size <= i) ->
+       So (offset + size <= i) ->
        { [RAW_MEMORY (MemoryChunk n i)] } Eff (Vect size Bits8) 
 peek offset size prf = call $ Peek offset size prf
 
@@ -127,7 +127,7 @@ poke : {n : Nat} ->
        {i : Nat} ->
        (offset : Nat) ->
        Vect size Bits8 ->
-       so (offset <= i && offset + size <= n) ->
+       So (offset <= i && offset + size <= n) ->
        Eff () [RAW_MEMORY (MemoryChunk n i)] 
               (\v => [RAW_MEMORY (MemoryChunk n (max i (offset + size)))])
 poke offset content prf = call $ Poke offset content prf
@@ -144,8 +144,8 @@ move' : {dst_size : Nat} ->
         (dst_offset : Nat) ->
         (src_offset : Nat) ->
         (size : Nat) ->
-        so (dst_offset <= dst_init && dst_offset + size <= dst_size) ->
-        so (src_offset + size <= src_init) ->
+        So (dst_offset <= dst_init && dst_offset + size <= dst_size) ->
+        So (src_offset + size <= src_init) ->
         Eff () [RAW_MEMORY (MemoryChunk dst_size dst_init)]
                (\v => [RAW_MEMORY (MemoryChunk dst_size (max dst_init (dst_offset + size)))])
 move' src_ptr dst_offset src_offset size dst_bounds src_bounds
@@ -160,8 +160,8 @@ move : {dst_size : Nat} ->
        (dst_offset : Nat) ->
        (src_offset : Nat) ->
        (size : Nat) ->
-       so (dst_offset <= dst_init && dst_offset + size <= dst_size) ->
-       so (src_offset + size <= src_init) ->
+       So (dst_offset <= dst_init && dst_offset + size <= dst_size) ->
+       So (src_offset + size <= src_init) ->
        Eff ()
               [ Dst ::: RAW_MEMORY (MemoryChunk dst_size dst_init)
               , Src ::: RAW_MEMORY (MemoryChunk src_size src_init)]

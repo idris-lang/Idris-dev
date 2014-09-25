@@ -268,17 +268,17 @@ eitherMaybeRightMaybe {a} {b} =
 maybeIsoS : Iso (Maybe (Fin n)) (Fin (S n))
 maybeIsoS = MkIso forth back fb bf
   where forth : Maybe (Fin n) -> Fin (S n)
-        forth Nothing = fZ
-        forth (Just x) = fS x
+        forth Nothing = FZ
+        forth (Just x) = FS x
         back : Fin (S n) -> Maybe (Fin n)
-        back fZ = Nothing
-        back (fS x) = Just x
+        back FZ = Nothing
+        back (FS x) = Just x
         bf : (x : Maybe (Fin n)) -> back (forth x) = x
         bf Nothing = Refl
         bf (Just x) = Refl
         fb : (y : Fin (S n)) -> forth (back y) = y
-        fb fZ = Refl
-        fb (fS x) = Refl
+        fb FZ = Refl
+        fb (FS x) = Refl
 
 finZeroBot : Iso (Fin 0) _|_
 finZeroBot = MkIso (\x => FalseElim (uninhabited x))

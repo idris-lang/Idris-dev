@@ -24,11 +24,11 @@ parseToken x = map Just (tryParseFin ((cast x) - 1))
   where
     tryParseFin : Int -> Either String (Fin n)
     tryParseFin {n=Z} _ = Left ("Given cell " ++ x ++ " out of range")
-    tryParseFin {n=S k} 0 = return fZ
+    tryParseFin {n=S k} 0 = return FZ
     tryParseFin {n=S k} x =
       case tryParseFin {n=k} (x-1) of
         Left err => Left err
-        Right fin => return (fS fin)
+        Right fin => return (FS fin)
 
 length : Vect n a -> Nat
 length {n=n} _ = n
@@ -49,9 +49,9 @@ parseCols {n=S k} row l cs = helper last l
              No _ => Left ("Illegal cell " ++ index x cs)
 
     helper : {b : Board (S k)} -> Fin (S k) -> LegalBoard b -> Parser (S k)
-    helper fZ l = step l fZ
-    helper (fS k) l = do
-      (_ ** next) <- step l (fS k)
+    helper FZ l = step l FZ
+    helper (FS k) l = do
+      (_ ** next) <- step l (FS k)
       helper (weaken k) next
 
 parseRows : (b : Board n) -> LegalBoard b -> Vect n String -> Parser n
@@ -66,9 +66,9 @@ parseRows {n=S k} _ l rs = helper last l
         Yes prf => let foo = (replace {P=\n => Vect n String} prf cs) in parseCols i l foo -- TODO: foo shouldn't be needed
 
     helper : {b : Board (S k)} -> Fin (S k) -> LegalBoard b -> Parser (S k)
-    helper fZ l = step fZ l
-    helper (fS k) l = do
-      (_ ** next) <- step (fS k) l
+    helper FZ l = step FZ l
+    helper (FS k) l = do
+      (_ ** next) <- step (FS k) l
       helper (weaken k) next
 
 parse : String -> Either String (n : Nat ** (b : Board n ** LegalBoard b))

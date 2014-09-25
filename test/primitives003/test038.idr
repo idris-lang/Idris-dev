@@ -52,10 +52,10 @@ main = do
   putStrLn . show $ test (Left "hello") (Right "world")
   putStrLn . show $ test (Left "hello") (Right False)
   -- Fin
-  putStrLn . show $ test (the (Fin (S (S (S (Z))))) (fS (fS (fZ)))) 
-                         (the (Fin (S (S (S (Z))))) (fS (fS (fZ))))
-  putStrLn . show $ test (the (Fin (S (S (S (Z))))) (fS (fS (fZ)))) 
-                         (the (Fin (S (S (S (Z))))) (fS (fZ)))
+  putStrLn . show $ test (the (Fin (S (S (S (Z))))) (FS (FS (FZ)))) 
+                         (the (Fin (S (S (S (Z))))) (FS (FS (FZ))))
+  putStrLn . show $ test (the (Fin (S (S (S (Z))))) (FS (FS (FZ)))) 
+                         (the (Fin (S (S (S (Z))))) (FS (FZ)))
   -- Nat
   putStrLn . show $ test (S (S (S Z))) (S (S (S Z)))
   putStrLn . show $ test (S (S (S Z))) (S (S Z))

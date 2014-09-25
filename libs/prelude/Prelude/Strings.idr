@@ -74,11 +74,11 @@ data StrM : String -> Type where
     StrCons : (x : Char) -> (xs : String) -> StrM (strCons x xs)
 
 ||| Version of 'strHead' that statically verifies that the string is not empty.
-strHead' : (x : String) -> so (not (x == "")) -> Char
+strHead' : (x : String) -> So (not (x == "")) -> Char
 strHead' x p = assert_total $ prim__strHead x
 
 ||| Version of 'strTail' that statically verifies that the string is not empty.
-strTail' : (x : String) -> so (not (x == "")) -> String
+strTail' : (x : String) -> So (not (x == "")) -> String
 strTail' x p = assert_total $ prim__strTail x
 
 -- we need the 'believe_me' because the operations are primitives

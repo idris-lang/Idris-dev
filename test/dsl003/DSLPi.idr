@@ -25,14 +25,14 @@ using (vars : Vect n Ty)
 dsl specs
   pi = ForAll
   variable = Var
-  index_first = fZ
-  index_next = fS
+  index_first = FZ
+  index_next = FS
 
 test2 : Spec []
 test2 = specs ((x, y : INT) -> x === y)
 
 test3 : Spec []
-test3 = ForAll INT . ForAll INT . ItHolds $ Var (fS fZ) === Var fZ
+test3 = ForAll INT . ForAll INT . ItHolds $ Var (FS FZ) === Var FZ
 
 test4 : test2 = test3
 test4 = Refl

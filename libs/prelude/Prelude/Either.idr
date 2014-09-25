@@ -30,10 +30,10 @@ isRight (Right r) = True
 -- Misc.
 --------------------------------------------------------------------------------
 
-||| Perform a case analysis on a Boolean, providing clients with a `so` proof
-choose : (b : Bool) -> Either (so b) (so (not b))
-choose True  = Left oh
-choose False = Right oh
+||| Perform a case analysis on a Boolean, providing clients with a `So` proof
+choose : (b : Bool) -> Either (So b) (So (not b))
+choose True  = Left Oh
+choose False = Right Oh
 
 ||| Simply-typed eliminator for Either
 ||| @ f the action to take on Left

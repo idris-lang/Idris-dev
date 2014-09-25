@@ -64,35 +64,35 @@ init (x::y::ys) = x :: init (y::ys)
 
 ||| Extract a particular element from a vector
 index : Fin n -> Vect n a -> a
-index fZ     (x::xs) = x
-index (fS k) (x::xs) = index k xs
-index fZ     [] impossible
+index FZ     (x::xs) = x
+index (FS k) (x::xs) = index k xs
+index FZ     [] impossible
 
 ||| Insert an element at a particular index
 insertAt : Fin (S n) -> a -> Vect n a -> Vect (S n) a
-insertAt fZ     y xs      = y :: xs
-insertAt (fS k) y (x::xs) = x :: insertAt k y xs
-insertAt (fS k) y []      = absurd k
+insertAt FZ     y xs      = y :: xs
+insertAt (FS k) y (x::xs) = x :: insertAt k y xs
+insertAt (FS k) y []      = absurd k
 
 ||| Construct a new vector consisting of all but the indicated element
 deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
-deleteAt           fZ     (x::xs) = xs
-deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
-deleteAt {n = Z}   (fS k) (x::xs) = absurd k
+deleteAt           FZ     (x::xs) = xs
+deleteAt {n = S m} (FS k) (x::xs) = x :: deleteAt k xs
+deleteAt {n = Z}   (FS k) (x::xs) = absurd k
 deleteAt           _      [] impossible
 
 ||| Replace an element at a particlar index with another
 replaceAt : Fin n -> t -> Vect n t -> Vect n t
-replaceAt fZ     y (x::xs) = y :: xs
-replaceAt (fS k) y (x::xs) = x :: replaceAt k y xs
+replaceAt FZ     y (x::xs) = y :: xs
+replaceAt (FS k) y (x::xs) = x :: replaceAt k y xs
 
 ||| Replace the element at a particular index with the result of applying a function to it
 ||| @ i the index to replace at
 ||| @ f the update function
 ||| @ xs the vector to replace in
 updateAt : (i : Fin n) -> (f : t -> t) -> (xs : Vect n t) -> Vect n t
-updateAt fZ     f (x::xs) = f x :: xs
-updateAt (fS k) f (x::xs) = x :: updateAt k f xs
+updateAt FZ     f (x::xs) = f x :: xs
+updateAt (FS k) f (x::xs) = x :: updateAt k f xs
 
 --------------------------------------------------------------------------------
 -- Subvectors
@@ -456,7 +456,7 @@ diag ((x::xs)::xss) = x :: diag (map tail xss)
 
 range : Vect n (Fin n)
 range {n=Z} = []
-range {n=S _} = fZ :: map fS range
+range {n=S _} = FZ :: map FS range
 
 ||| Transpose a Vect of Vects, turning rows into columns and vice versa.
 |||
