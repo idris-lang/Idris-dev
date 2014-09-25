@@ -1,7 +1,20 @@
 import System
 
+{- Toy program that outputs the n first digits of Pi.
+
+   Inspired from http://www.haskell.org/haskellwiki/Shootout/Pidigits. 
+   The original ns and str lazy lists have been replaced by strict functions.
+
+   Memory usage seems to be excessive. One of the branches of str is tail recursive, and 
+   the other one only needs to cons an extra Integer.
+
+   For reference, the Haskell version runs in 0m0.230s when printing to /dev/null. 
+   It almost runs in constant space.
+-}
+
 data F = mkF Integer Integer Integer
 
+-- Prints the list of digits by groups of 10
 loop : Nat -> Nat -> List Integer -> IO()
 loop n k' Nil         = putStrLn $ (pack $ Vect.replicate n ' ') ++ "\t:" ++ show k'
 loop Z k' xs          = do putStrLn ("\t:"++show k')
@@ -18,6 +31,7 @@ flr x (mkF q r t) = (q*x + r) `div` t
 comp : F -> F -> F
 comp (mkF q r t) (mkF u v x) = mkF (q*u) (q*v+r*x) (t*x)
 
+-- Returns the list of digits of pi. Memory hungry.
 str : F -> Integer -> Nat -> List Integer
 str _ _ Z     = Nil
 str z k (S n) = if(y == flr 4 z)
