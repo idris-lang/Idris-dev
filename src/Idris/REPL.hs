@@ -575,6 +575,7 @@ ideslaveProcess fn (Apropos a) = do process fn (Apropos a)
 ideslaveProcess fn (WhoCalls n) = process fn (WhoCalls n)
 ideslaveProcess fn (CallsWho n) = process fn (CallsWho n)
 ideslaveProcess fn (PrintDef n) = process fn (PrintDef n)
+ideslaveProcess fn (PPrint fmt n tm) = process fn (PPrint fmt n tm)
 ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
 
 
@@ -1189,7 +1190,7 @@ process fn (PrintDef n) =
 
 process fn (PPrint fmt width (PRef _ n))
    = do outs <- pprintDef n
-        iputStrLn =<< renderExternal fmt width (vsep outs)
+        iPrintResult =<< renderExternal fmt width (vsep outs)
 
 
 process fn (PPrint fmt width t)
@@ -1198,7 +1199,7 @@ process fn (PPrint fmt width t)
         ist <- getIState
         let ppo = ppOptionIst ist
             ty' = normaliseC ctxt [] ty
-        iputStrLn =<< renderExternal fmt width (pprintDelab ist tm)
+        iPrintResult =<< renderExternal fmt width (pprintDelab ist tm)
 
 
 showTotal :: Totality -> IState -> String
