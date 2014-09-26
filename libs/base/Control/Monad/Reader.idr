@@ -5,14 +5,19 @@ import Control.Monad.Identity
 
 %access public
 
+||| A monad representing a computation that runs in an immutable context
 class Monad m => MonadReader r (m : Type -> Type) where
+    ||| Return the context
     ask   : m r
+    ||| Temprorarily modify the input and run an action in the new context
     local : (r -> r) -> m a -> m a
 
+||| The transformer on which the Reader monad is based
 record ReaderT : Type -> (Type -> Type) -> Type -> Type where
     RD : {m : Type -> Type} ->
          (runReaderT : r -> m a) -> ReaderT r m a
 
+||| Create a ReaderT with an empty context
 liftReaderT : {m : Type -> Type} -> m a -> ReaderT r m a
 liftReaderT m = RD $ const m
 
@@ -36,9 +41,11 @@ instance Monad m => MonadReader r (ReaderT r m) where
     ask            = RD return
     local f (RD m) = RD $ m . f
 
+||| Evaluate a function in the context of a Reader monad
 asks : MonadReader r m => (r -> a) -> m a
 asks f = do r <- ask
             return (f r)
 
+||| The reader monad. See MonadReader
 Reader : Type -> Type -> Type
 Reader r a = ReaderT r Identity a

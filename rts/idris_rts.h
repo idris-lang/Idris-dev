@@ -120,9 +120,6 @@ typedef void(*func)(VM*, VAL*);
 #define RVAL (vm->ret)
 #define LOC(x) (*(vm->valstack_base + (x)))
 #define TOP(x) (*(vm->valstack_top + (x)))
-// Doesn't work! Ordinary assign seems fine though...
-#define UPDATE(x,y) if (!ISINT(x) && !ISINT(y)) \
-   { (x)->ty = (y)->ty; (x)->info = (y)->info; }
 #define REG1 (vm->reg1)
 
 // Retrieving values
@@ -132,8 +129,8 @@ typedef void(*func)(VM*, VAL*);
 #define GETMPTR(x) (((VAL)(x))->info.mptr->data) 
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 
-#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
-#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( (x)->ty == CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
+#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
+#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
 
 // Already checked it's a CON
 #define CTAG(x) (((x)->info.c.tag_arity) >> 8)
@@ -155,7 +152,7 @@ typedef intptr_t i_int;
 #define MKINT(x) ((void*)((x)<<1)+1)
 #define GETINT(x) ((i_int)(x)>>1)
 #define ISINT(x) ((((i_int)x)&1) == 1)
-#define ISSTR(x) (((VAL)(x))->ty == STRING)
+#define ISSTR(x) (GETTY(x) == STRING)
 
 #define INTOP(op,x,y) MKINT((i_int)((((i_int)x)>>1) op (((i_int)y)>>1)))
 #define UINTOP(op,x,y) MKINT((i_int)((((uintptr_t)x)>>1) op (((uintptr_t)y)>>1)))
@@ -220,6 +217,17 @@ void idris_doneAlloc(VM* vm);
   cl = allocate(vm, sizeof(Closure) + sizeof(VAL)*a, o); \
   SETTY(cl, CON); \
   cl->info.c.tag_arity = ((t) << 8) | (a);
+
+#define updateCon(cl, old, t, a) \
+  cl = old; \
+  SETTY(cl, CON); \
+  cl->info.c.tag_arity = ((t) << 8) | (a);
+
+#define NULL_CON(x) nullary_cons[x]
+
+extern VAL* nullary_cons;
+void initNullaries();
+void freeNullaries();
 
 void* vmThread(VM* callvm, func f, VAL arg);
 

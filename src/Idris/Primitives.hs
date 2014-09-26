@@ -26,7 +26,7 @@ data Prim = Prim { p_name  :: Name,
 
 ty :: [Const] -> Const -> Type
 ty []     x = Constant x
-ty (t:ts) x = Bind (sMN 0 "T") (Pi (Constant t)) (ty ts x)
+ty (t:ts) x = Bind (sMN 0 "T") (Pi (Constant t) (TType (UVar (-3)))) (ty ts x)
 
 total, partial, iopartial :: Totality
 total = Total []
@@ -153,6 +153,8 @@ primitives =
      (1, LFFloor) total,
    Prim (sUN "prim__floatCeil") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatCeil)
      (1, LFCeil) total,
+   Prim (sUN "prim__negFloat") (ty [(AType ATFloat)] (AType ATFloat)) 1 (c_negFloat)
+     (1, LFNegate) total,
 
    Prim (sUN "prim__strHead") (ty [StrType] (AType (ATInt ITChar))) 1 (p_strHead)
      (1, LStrHead) partial,
@@ -659,6 +661,10 @@ c_intToChar [(I x)] = Just . Ch . toEnum $ x
 c_intToChar _ = Nothing
 c_charToInt [(Ch x)] = Just . I . fromEnum $ x
 c_charToInt _ = Nothing
+
+c_negFloat :: [Const] -> Maybe Const
+c_negFloat [Fl x] = Just $ Fl (negate x)
+c_negFloat _      = Nothing
 
 c_floatToStr :: [Const] -> Maybe Const
 c_floatToStr [Fl x] = Just $ Str (show x)

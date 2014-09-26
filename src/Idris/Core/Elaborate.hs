@@ -12,6 +12,8 @@ module Idris.Core.Elaborate(module Idris.Core.Elaborate,
                             module Idris.Core.ProofState) where
 
 import Idris.Core.ProofState
+import Idris.Core.ProofTerm(bound_in, getProofTerm, mkProofTerm, bound_in_term,
+                            refocus)
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Typecheck
@@ -128,10 +130,6 @@ elaborate ctxt n ty d elab = do let ps = initElaborator n ctxt ty
                                 (a, ES ps' str _) <- runElab d elab ps
                                 return $! (a, str)
 
-force_term :: Elab' aux ()
-force_term = do ES (ps, a) l p <- get
-                put (ES (ps { pterm = force (pterm ps) }, a) l p)
-
 -- | Modify the auxiliary state
 updateAux :: (aux -> aux) -> Elab' aux ()
 updateAux f = do ES (ps, a) l p <- get
@@ -190,12 +188,12 @@ set_context ctxt = do ES (p, a) logs prev <- get
 -- get the proof term
 get_term :: Elab' aux Term
 get_term = do ES p _ _ <- get
-              return $! (pterm (fst p))
+              return $! (getProofTerm (pterm (fst p)))
 
 -- get the proof term
 update_term :: (Term -> Term) -> Elab' aux ()
 update_term f = do ES (p,a) logs prev <- get
-                   let p' = p { pterm = f (pterm p) }
+                   let p' = p { pterm = mkProofTerm (f (getProofTerm (pterm p))) }
                    put (ES (p', a) logs prev)
 
 -- get the local context at the currently in focus hole
@@ -256,7 +254,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
         isInj ctxt (App f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
         isInj ctxt (TType _) = True
-        isInj ctxt (Bind _ (Pi _) sc) = True
+        isInj ctxt (Bind _ (Pi _ _) sc) = True
         isInj ctxt _ = False
 
 -- get instance argument names
@@ -271,7 +269,7 @@ unique_hole' :: Bool -> Name -> Elab' aux Name
 unique_hole' reusable n
       = do ES p _ _ <- get
            let bs = bound_in (pterm (fst p)) ++
-                    bound_in (ptype (fst p))
+                    bound_in_term (ptype (fst p))
            let nouse = holes (fst p) ++ bs ++ dontunify (fst p) ++ usedns (fst p)
            n' <- return $! uniqueNameCtxt (context (fst p)) n nouse
            ES (p, a) s u <- get
@@ -280,14 +278,6 @@ unique_hole' reusable n
                             put (ES (p { nextname = i + 1 }, a) s u)
                 _ -> return $! ()
            return $! n'
-  where
-    bound_in (Bind n b sc) = n : bi b ++ bound_in sc
-      where
-        bi (Let t v) = bound_in t ++ bound_in v
-        bi (Guess t v) = bound_in t ++ bound_in v
-        bi b = bound_in (binderTy b)
-    bound_in (App f a) = bound_in f ++ bound_in a
-    bound_in _ = []
 
 elog :: String -> Elab' aux ()
 elog str = do ES p logs prev <- get
@@ -401,15 +391,22 @@ focus n = processTactic' (Focus n)
 movelast :: Name -> Elab' aux ()
 movelast n = processTactic' (MoveLast n)
 
+-- | Set the zipper in the proof state to point at the current sub term
+-- (This currently happens automatically, so this will have no effect...)
+zipHere :: Elab' aux ()
+zipHere = do ES (ps, a) s m <- get
+             let pt' = refocus (Just (head (holes ps))) (pterm ps)
+             put (ES (ps { pterm = pt' }, a) s m)
+
 matchProblems :: Bool -> Elab' aux ()
 matchProblems all = processTactic' (MatchProblems all)
 
 unifyProblems :: Elab' aux ()
 unifyProblems = processTactic' UnifyProblems
 
-defer :: Name -> Elab' aux ()
-defer n = do n' <- unique_hole n
-             processTactic' (Defer n')
+defer :: [Name] -> Name -> Elab' aux ()
+defer ds n = do n' <- unique_hole n
+                processTactic' (Defer ds n')
 
 deferType :: Name -> Raw -> [Name] -> Elab' aux ()
 deferType n ty ns = processTactic' (DeferType n ty ns)
@@ -429,7 +426,7 @@ reorder_claims n = processTactic' (Reorder n)
 qed :: Elab' aux Term
 qed = do processTactic' QED
          ES p _ _ <- get
-         return $! (pterm (fst p))
+         return $! (getProofTerm (pterm (fst p)))
 
 undo :: Elab' aux ()
 undo = processTactic' Undo
@@ -457,7 +454,7 @@ prepare_apply fn imps =
              -> [(Name, Name)] -- ^ Accumulator for produced claims
              -> [Name] -- ^ Hypotheses
              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
-    mkClaims (Bind n' (Pi t_in) sc) (i : is) claims hs = 
+    mkClaims (Bind n' (Pi t_in _) sc) (i : is) claims hs = 
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
@@ -501,10 +498,9 @@ apply' fillt fn imps =
        -- (remove from unified list before calling end_unify)
        hs <- get_holes
        ES (p, a) s prev <- get
-       let dont = head hs : dontunify p ++
-                          if null imps then [] -- do all we can
-                             else
-                             map fst (filter (not . snd) (zip (map snd args) (map fst imps)))
+       let dont = if null imps 
+                     then head hs : dontunify p
+                     else getNonUnify (head hs : dontunify p) imps args
        let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $
                         unified p
        let unify = -- trace ("Not done " ++ show hs) $
@@ -522,6 +518,15 @@ apply' fillt fn imps =
   where updateUnify us n = case lookup n us of
                                 Just (P _ t _) -> t
                                 _ -> n
+
+        getNonUnify acc []     _      = acc
+        getNonUnify acc _      []     = acc
+        getNonUnify acc ((i,_):is) ((a, t):as) 
+           | i = getNonUnify acc is as
+           | otherwise = getNonUnify (t : acc) is as
+
+--         getNonUnify imps args = map fst (filter (not . snd) (zip (map snd args) (map fst imps)))
+
 
 apply2 :: Raw -> [Maybe (Elab' aux ())] -> Elab' aux ()
 apply2 fn elabs =
@@ -557,7 +562,7 @@ apply_elab n args =
     priOrder _ Nothing = GT
     priOrder (Just (x, _)) (Just (y, _)) = compare x y
 
-    doClaims (Bind n' (Pi t) sc) (i : is) claims =
+    doClaims (Bind n' (Pi t _) sc) (i : is) claims =
         do n <- unique_hole (mkMN n')
            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
@@ -592,13 +597,13 @@ checkPiGoal :: Name -> Elab' aux ()
 checkPiGoal n
             = do g <- goal
                  case g of
-                    Bind _ (Pi _) _ -> return ()
+                    Bind _ (Pi _ _) _ -> return ()
                     _ -> do a <- getNameFrom (sMN 0 "pargTy")
                             b <- getNameFrom (sMN 0 "pretTy")
                             f <- getNameFrom (sMN 0 "pf")
                             claim a RType
                             claim b RType
-                            claim f (RBind n (Pi (Var a)) (Var b))
+                            claim f (RBind n (Pi (Var a) RType) (Var b))
                             movelast a
                             movelast b
                             fill (Var f)
@@ -613,7 +618,7 @@ simple_app fun arg appstr =
        s <- getNameFrom (sMN 0 "s")
        claim a RType
        claim b RType
-       claim f (RBind (sMN 0 "aX") (Pi (Var a)) (Var b))
+       claim f (RBind (sMN 0 "aX") (Pi (Var a) RType) (Var b))
        tm <- get_term
        start_unify s
        claim s (Var a)
@@ -639,6 +644,7 @@ simple_app fun arg appstr =
 arg :: Name -> Name -> Elab' aux ()
 arg n tyhole = do ty <- unique_hole tyhole
                   claim ty RType
+                  movelast ty
                   forall n (Var ty)
 
 -- try a tactic, if it adds any unification problem, return an error
@@ -749,6 +755,14 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
                             if (s >= i) then (lift (tfail err), s)
                                         else (f, i)
 
+prunStateT
+  :: Int
+     -> Bool
+     -> [a]
+     -> Control.Monad.State.Strict.StateT
+          (ElabState t) (TC' Err) t1
+     -> ElabState t
+     -> TC' Err ((t1, Int, Idris.Core.Unify.Fails), ElabState t)
 prunStateT pmax zok ps x s
       = case runStateT x s of
              OK (v, s'@(ES (p, _) _ _)) ->

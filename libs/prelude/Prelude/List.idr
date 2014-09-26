@@ -72,9 +72,9 @@ index' _     []      = Nothing
 
 ||| Get the first element of a non-empty list
 ||| @ ok proof that the list is non-empty
-head : (l : List a) -> (ok : isCons l = True) -> a
-head []      refl   impossible
-head (x::xs) p    = x
+head : (l : List a) -> {auto ok : isCons l = True} -> a
+head []      {ok=refl}   impossible
+head (x::xs) {ok=p}    = x
 
 ||| Attempt to get the first element of a list. If the list is empty, return
 ||| `Nothing`.
@@ -84,9 +84,9 @@ head' (x::xs) = Just x
 
 ||| Get the tail of a non-empty list.
 ||| @ ok proof that the list is non-empty
-tail : (l : List a) -> (ok : isCons l = True) -> List a
-tail []      refl   impossible
-tail (x::xs) p    = xs
+tail : (l : List a) -> {auto ok : isCons l = True} -> List a
+tail []      {ok=refl}   impossible
+tail (x::xs) {ok=p}    = xs
 
 ||| Attempt to get the tail of a list.
 |||
@@ -97,10 +97,10 @@ tail' (x::xs) = Just xs
 
 ||| Retrieve the last element of a non-empty list.
 ||| @ ok proof that the list is non-empty
-last : (l : List a) -> (ok : isCons l = True) -> a
-last []         refl   impossible
-last [x]        p    = x
-last (x::y::ys) p    = last (y::ys) refl
+last : (l : List a) -> {auto ok : isCons l = True} -> a
+last []         {ok=refl}   impossible
+last [x]        {ok=p}    = x
+last (x::y::ys) {ok=p}    = last (y::ys) {ok=refl}
 
 ||| Attempt to retrieve the last element of a non-empty list.
 |||
@@ -114,10 +114,10 @@ last' (x::xs) =
 
 ||| Return all but the last element of a non-empty list.
 ||| @ ok proof that the list is non-empty
-init : (l : List a) -> (ok : isCons l = True) -> List a
-init []         refl   impossible
-init [x]        p    = []
-init (x::y::ys) p    = x :: init (y::ys) refl
+init : (l : List a) -> {auto ok : isCons l = True} -> List a
+init []         {ok=refl}   impossible
+init [x]        {ok=p}    = []
+init (x::y::ys) {ok=p}    = x :: init (y::ys) {ok=refl}
 
 ||| Attempt to Return all but the last element of a list.
 |||

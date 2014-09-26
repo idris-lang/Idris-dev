@@ -1,0 +1,5 @@
+unique002.idr:15:5:Unique name xs is used more than once
+unique002a.idr:15:5:Can't convert
+        [94mInt[0m -> [94mString[0m
+with
+        UniqueType ([94mInt[0m -> [94mString[0m)

@@ -1,0 +1,94 @@
+.\" Manpage for Idris.
+.\" Contact <> to correct errors or typos.
+.TH man 1 "06 August 2014" "0.9.14.1" "Idris man page"
+.SH NAME
+idris -\ a general purpose pure functional programming language with dependent types.
+.SH SYNOPSIS
+idris [ options] [FILES]
+.SH DESCRIPTION
+Idris is a general purpose pure functional programming language with
+dependent types. Dependent types allow types to be predicated on
+values, meaning that some aspects of a program’s behaviour can be
+specified precisely in the type. It is compiled, with eager
+evaluation. Its features are influenced by Haskell and ML.
+
++ Full dependent types with dependent pattern matching
+
++ where clauses, with rule, simple case expressions
+
++ pattern matching let and lambda bindings
+
++ Type classes, monad comprehensions
+
++ do notation, idiom brackets
+
++ syntactic conveniences for lists, tuples, dependent pairs
+
++ Totality checking
+
++ Coinductive types
+
++ Indentation significant syntax, extensible syntax
+
++ Tactic based theorem proving (influenced by Coq)
+
++ Cumulative universes
+
++ Simple foreign function interface (to C)
+
++ Hugs style interactive environment
+
+It is important to note that Idris is first and foremost a research tool
+and project. Thus the tooling provided and resulting programs created
+should not necessarily be seen as production ready nor for industrial use.
+
+.SH OPTIONS
+  --nobanner               Suppress the banner
+  -q,--quiet               Quiet verbosity
+  --log LEVEL              Debugging log level
+  -o,--output FILE         Specify output file
+  --total                  Require functions to be total by default
+  --warnpartial            Warn about undeclared partial functions
+  --warnreach              Warn about reachable but inaccessible arguments
+  --link                   Display link flags
+  --libdir                 Display library directory
+  --include                Display the includes flags
+  -V,--verbose             Loud verbosity
+  --ibcsubdir FILE         Write IBC files into sub directory
+  -i,--idrispath ARG       Add directory to the list of import paths
+  --build IPKG             Build package
+  --install IPKG           Install package
+  --clean IPKG             Clean package
+  --mkdoc IPKG             Generate IdrisDoc for package
+  --checkpkg IPKG          Check package only
+  --testpkg IPKG           Run tests for package
+  -S,--codegenonly         Do no further compilation of code generator output
+  -c,--compileonly         Compile to object files rather than an executable
+  --mvn                    Create a maven project (for Java codegen)
+  --codegen TARGET         Select code generator: C, Java, bytecode
+  -e,--eval EXPR           Evaluate an expression without loading the REPL
+  --execute                Execute as idris
+  --exec EXPR              Execute as idris
+  -X,--extension EXT       Turn on language extension (TypeProviders or
+                           ErrorReflection)
+  --target TRIPLE          Select target triple (for llvm codegen)
+  --cpu CPU                Select target CPU e.g. corei7 or cortex-m3 (for LLVM
+                           codegen)
+  --color,--colour         Force coloured output
+  --nocolor,--nocolour     Disable coloured output
+  -v,--version             Print version information
+  -h,--help                Show this help text
+.SH SEE ALSO
+
++ The IDRIS web site (http://idris-lang.org/
+
++  The IRC channel #idris, on chat.freenode.net
+
++ The wiki (https://github.com/idris-lang/Idris-dev/wiki/) has further user provided information, in particular:
+
+  – https://github.com/idris-lang/Idris-dev/wiki/Manual
+
+  – https://github.com/idris-lang/Idris-dev/wiki/Language-Features
+
+.SH AUTHOR
+The Idris Community

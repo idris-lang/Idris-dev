@@ -59,7 +59,7 @@ proofSearch False fromProver depth elab _ nroot [fn] ist
   where
     -- if nothing worked, make a new metavariable
     tryAllFns [] | fromProver = cantSolveGoal  
-    tryAllFns [] = do attack; defer nroot; solve
+    tryAllFns [] = do attack; defer [] nroot; solve
     tryAllFns (f : fs) = try' (tryFn f) (tryAllFns fs) True
 
     tryFn (f, args) = do let imps = map isImp args
@@ -75,7 +75,7 @@ proofSearch False fromProver depth elab _ nroot [fn] ist
                          if fromProver then cantSolveGoal
                            else do
                              mapM_ (\ h -> do focus h
-                                              attack; defer nroot; solve) 
+                                              attack; defer [] nroot; solve) 
                                  (hs' \\ hs)
 --                                  (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                              solve
@@ -96,7 +96,7 @@ proofSearch rec fromProver maxDepth elab fn nroot hints ist
     toUN t = t
 
     psRec _ 0 | fromProver = cantSolveGoal
-    psRec rec 0 = do attack; defer nroot; solve --fail "Maximum depth reached"
+    psRec rec 0 = do attack; defer [] nroot; solve --fail "Maximum depth reached"
     psRec False d = tryCons d hints 
     psRec True d = try' (trivial elab ist)
                         (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
@@ -104,7 +104,7 @@ proofSearch rec fromProver maxDepth elab fn nroot hints ist
              -- if all else fails, make a new metavariable
                          (if fromProver 
                              then cantSolveGoal
-                             else do attack; defer nroot; solve) True) True
+                             else do attack; defer [] nroot; solve) True) True
 
     getFn d Nothing = []
     getFn d (Just f) | d < maxDepth-1 = [f]

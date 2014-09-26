@@ -5,6 +5,7 @@ module Prelude.Monad
 import Builtins
 import Prelude.List
 import Prelude.Applicative
+import Prelude.Basics
 
 %access public
 
@@ -12,6 +13,9 @@ infixl 5 >>=
 
 class Applicative m => Monad (m : Type -> Type) where
     (>>=)  : m a -> (a -> m b) -> m b
+
+instance Monad id where
+    a >>= f = f a
 
 ||| Also called `join` or mu
 flatten : Monad m => m (m a) -> m a

@@ -7,15 +7,18 @@ import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Error
 
-import Debug.Trace
-
 -- | Wrap a type provider in the type of type providers
 providerTy :: FC -> PTerm -> PTerm
 providerTy fc tm
   = PApp fc (PRef fc $ sUN "Provider") [PExp 0 [] (sMN 0 "pvarg") tm]
 
+ioret :: Name
 ioret = sUN "prim_io_return"
+
+ermod :: Name
 ermod = sNS (sUN "Error") ["Providers"]
+
+prmod :: Name
 prmod = sNS (sUN "Provide") ["Providers"]
 
 data Provided a = Provide a
@@ -34,5 +37,6 @@ getProvided fc tm | (P _ pioret _, [tp, result]) <- unApply tm
                   , pioret == ioret && nm == prmod
                       = return . Provide $ res
                   | otherwise = ifail $ "Internal type provider error: result was not " ++
-                                        "IO (Provider a), or perhaps missing normalisation."
+                                        "IO (Provider a), or perhaps missing normalisation." ++
+                                        "Term: " ++ take 1000 (show tm)
 

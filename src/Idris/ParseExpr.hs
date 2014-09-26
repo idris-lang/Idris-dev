@@ -307,7 +307,10 @@ simpleExpr syn =
         <|> do reserved "elim_for"; fc <- getFC; t <- fnName; return (PRef fc (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
+        <|> try (do reserved "Type"; symbol "*"; return $ PUniverse AllTypes)
         <|> do reserved "Type"; return PType
+        <|> do reserved "UniqueType"; return $ PUniverse UniqueType
+        <|> do reserved "NullType"; return $ PUniverse NullType
         <|> do c <- constant
                fc <- getFC
                return (modifyConst syn fc (PConstant c))
@@ -320,7 +323,7 @@ simpleExpr syn =
         <|> idiom syn
         <|> listExpr syn
         <|> alt syn
-        <|> do lchar '!'
+        <|> do reservedOp "!"
                s <- simpleExpr syn
                fc <- getFC
                return (PAppBind fc s [])
@@ -522,7 +525,7 @@ app syn = do f <- reserved "mkForeign"
              return (dslify i ap)
 
        <|> do f <- simpleExpr syn
-              (do try $ symbol "<=="
+              (do try $ reservedOp "<=="
                   fc <- getFC
                   ff <- fnName
                   return (PLet (sMN 0 "match")
@@ -1278,6 +1281,10 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
           <|> do reserved "undo"; return Undo
           <|> do reserved "qed"; return Qed
           <|> do reserved "abandon"; return Abandon
+          <|> do reserved "skip"; return Skip
+          <|> do reserved "fail"
+                 msg <- stringLiteral
+                 return $ TFail [Idris.Core.TT.TextPart msg]
           <|> do lchar ':';
                  (    (do reserved "q"; return Abandon)
                   <|> (do (reserved "e" <|> reserved "eval");

@@ -3,6 +3,8 @@ module Language.Reflection.Utils
 import Language.Reflection
 import Language.Reflection.Errors
 
+%default total
+
 --------------------------------------------------------
 -- Tactic construction conveniences
 --------------------------------------------------------
@@ -46,7 +48,7 @@ mkApp tm (a::as) = mkApp (App tm a) as
 
 binderTy : (Eq t) => Binder t -> t
 binderTy (Lam t)       = t
-binderTy (Pi t)        = t
+binderTy (Pi t _)      = t
 binderTy (Let t1 t2)   = t1
 binderTy (NLet t1 t2)  = t1
 binderTy (Hole t)      = t
@@ -83,46 +85,65 @@ instance Show Const where
   show (Fl f)     = "(Fl " ++ show f ++ ")"
   show (Ch c)     = "(Ch " ++ show c ++ ")"
   show (Str str)  = "(Str " ++ show str ++ ")"
-  show IType      = "IType"
-  show BIType     = "BIType"
-  show FlType     = "FlType"
-  show ChType     = "ChType"
-  show StrType    = "StrType"
   show (B8 b)     = "(B8 ...)"
   show (B16 b)    = "(B16 ...)"
   show (B32 b)    = "(B32 ...)"
   show (B64 b)    = "(B64 ...)"
-  show B8Type     = "B8Type"
-  show B16Type    = "B16Type"
-  show B32Type    = "B32Type"
-  show B64Type    = "B64Type"
-  show PtrType    = "PtrType"
-  show VoidType   = "VoidType"
-  show Forgot     = "Forgot"
+  show (B8V xs)   = "(B8V ...)"
+  show (B16V xs) = "(B16V ...)"
+  show (B32V xs) = "(B32V ...)"
+  show (B64V xs) = "(B64V ...)"
+  show (AType x) = "(AType ...)"
+  show StrType = "StrType"
+  show PtrType = "PtrType"
+  show ManagedPtrType = "ManagedPtrType"
+  show BufferType = "BufferType"
+  show VoidType = "VoidType"
+  show Forgot = "Forgot"
+
+instance Eq NativeTy where
+  IT8  == IT8  = True
+  IT16 == IT16 = True
+  IT32 == IT32 = True
+  IT64 == IT64 = True
+  _    == _    = False
+
+instance Eq Reflection.IntTy where
+  (ITFixed x) == (ITFixed y) = x == y
+  ITNative    == ITNative    = True
+  ITBig       == ITBig       = True
+  ITChar      == ITChar      = True
+  (ITVec x i) == (ITVec y j) = x == y && i == j
+  _           == _           = False
+
+instance Eq ArithTy where
+  (ATInt x) == (ATInt y) = x == y
+  ATFloat   == ATFloat   = True
+  _         == _         = False
 
 instance Eq Const where
-  (I i)     == (I i')      = i == i'
-  (BI n)    == (BI n')     = n == n'
-  (Fl f)    == (Fl f')     = f == f'
-  (Ch c)    == (Ch c')     = c == c'
-  (Str str) == (Str str')  = str == str'
-  IType     == IType       = True
-  BIType    == BIType      = True
-  FlType    == FlType      = True
-  ChType    == ChType      = True
-  StrType   == StrType     = True
-  (B8 b)    == (B8 b')     = False -- FIXME: b == b'
-  (B16 b)   == (B16 b')    = False -- FIXME: b == b'
-  (B32 b)   == (B32 b')    = False -- FIXME: b == b'
-  (B64 b)   == (B64 b')    = False -- FIXME: b == b'
-  B8Type    == B8Type      = True
-  B16Type   == B16Type     = True
-  B32Type   == B32Type     = True
-  B64Type   == B64Type     = True
-  PtrType   == PtrType     = True
-  VoidType  == VoidType    = True
-  Forgot    == Forgot      = True
-  x         == y           = False
+  (I x)          == (I y)           = x == y
+  (BI x)         == (BI y)          = x == y
+  (Fl x)         == (Fl y)          = x == y
+  (Ch x)         == (Ch y)          = x == y
+  (Str x)        == (Str y)         = x == y
+  (B8 x)         == (B8 y)          = x == y
+  (B16 x)        == (B16 y)         = x == y
+  (B32 x)        == (B32 y)         = x == y
+  (B64 x)        == (B64 y)         = x == y
+  (B8V xs)       == (B8V ys)        = False -- TODO
+  (B16V xs)      == (B16V ys)       = False -- TODO
+  (B32V xs)      == (B32V ys)       = False -- TODO
+  (B64V xs)      == (B64V ys)       = False -- TODO
+  (AType x)      == (AType y)       = x == y
+  StrType        == StrType         = True
+  PtrType        == PtrType         = True
+  ManagedPtrType == ManagedPtrType  = True
+  BufferType     == BufferType      = True
+  VoidType       == VoidType        = True
+  Forgot         == Forgot          = True
+  _              == _               = False
+
 
 instance Show NameType where
   show Bound = "Bound"
@@ -139,7 +160,7 @@ instance Eq NameType where
 
 instance (Show a) => Show (Binder a) where
   show (Lam t) = "(Lam " ++ show t ++ ")"
-  show (Pi t) = "(Pi " ++ show t ++ ")"
+  show (Pi t _) = "(Pi " ++ show t ++ ")"
   show (Let t1 t2) = "(Let " ++ show t1 ++ " " ++ show t2 ++ ")"
   show (NLet t1 t2) = "(NLet " ++ show t1 ++ " " ++ show t2 ++ ")"
   show (Hole t) = "(Hole " ++ show t ++ ")"
@@ -150,7 +171,7 @@ instance (Show a) => Show (Binder a) where
 
 instance (Eq a) => Eq (Binder a) where
   (Lam t)       == (Lam t')         = t == t'
-  (Pi t)        == (Pi t')          = t == t'
+  (Pi t k)      == (Pi t' k')       = t == t' && k == k'
   (Let t1 t2)   == (Let t1' t2')    = t1 == t1' && t2 == t2'
   (NLet t1 t2)  == (NLet t1' t2')   = t1 == t1' && t2 == t2'
   (Hole t)      == (Hole t')        = t == t'

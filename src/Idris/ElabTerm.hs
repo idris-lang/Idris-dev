@@ -17,6 +17,8 @@ import Idris.Core.Unify
 import Idris.Core.Typecheck (check, recheck)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
+import Idris.Elab.Utils
+import qualified Util.Pretty as U 
 
 import Control.Applicative ((<$>))
 import Control.Monad
@@ -26,6 +28,8 @@ import qualified Data.Map as M
 import Data.Maybe (mapMaybe, fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import Data.Vector.Unboxed (Vector)
+import qualified Data.Vector.Unboxed as V
 
 import Debug.Trace
 
@@ -57,7 +61,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                try (resolveTC 7 g fn ist)
+                                try (resolveTC True 7 g fn ist)
                                     (movelast n)) ivs
          ivs <- get_instances
          hs <- get_holes
@@ -65,7 +69,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                resolveTC 7 g fn ist) ivs
+                                resolveTC True 7 g fn ist) ivs
          tm <- get_term
          ctxt <- get_context
          probs <- get_probs
@@ -142,6 +146,7 @@ elab ist info emode opts fn tm
          compute -- expand type synonyms, etc
          elabE (False, False, False, False) tm -- (in argument, guarded, in type, in qquote)
          end_unify
+         ptm <- get_term
          when pattern -- convert remaining holes to pattern vars
               (do update_term orderPats
                   unify_all
@@ -234,16 +239,17 @@ elab ist info emode opts fn tm
           -> ElabD ()
     elab' ina (PNoImplicits t) = elab' ina t -- skip elabE step
     elab' ina PType           = do apply RType []; solve
+    elab' ina (PUniverse u)   = do apply (RUType u) []; solve
 --  elab' (_,_,inty) (PConstant c) 
 --     | constType c && pattern && not reflection && not inty
 --       = lift $ tfail (Msg "Typecase is not allowed") 
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve
     elab' ina (PTrue fc _)   = try (elab' ina (PRef fc unitCon))
-                                    (elab' ina (PRef fc unitTy))
+                                   (elab' ina (PRef fc unitTy))
     elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = do g <- goal; resolveTC 5 g fn ist
+       = do g <- goal; resolveTC False 5 g fn ist
     elab' ina (PResolveTC fc)
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
@@ -405,18 +411,18 @@ elab ist info emode opts fn tm
                focus valn
                elabE (True, a, True, qq) val
                ivs' <- get_instances
+               env <- get_env
+               elabE (True, a, inty, qq) sc
                when (not pattern) $
                    mapM_ (\n -> do focus n
                                    g <- goal
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
                                    -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
-                                    then try (resolveTC 7 g fn ist)
+                                    then try (resolveTC True 7 g fn ist)
                                              (movelast n)
                                     else movelast n)
                          (ivs' \\ ivs)
-               env <- get_env
-               elabE (True, a, inty, qq) sc
                -- HACK: If the name leaks into its type, it may leak out of
                -- scope outside, so substitute in the outer scope.
                expandLet n (case lookup n env of
@@ -467,7 +473,7 @@ elab ist info emode opts fn tm
                                        ans <- claimArgTys env xs
                                        return ((aval, (True, (Var an))) : ans)
              fnTy [] ret  = forget ret
-             fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi xt) (fnTy xs ret)
+             fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi xt RType) (fnTy xs ret)
 
              localVar env (PRef _ x)
                            = case lookup x env of
@@ -543,7 +549,7 @@ elab ist info emode opts fn tm
                                         hs <- get_holes
                                         if all (\n -> not (n `elem` hs)) (freeNames g)
                                         -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
-                                         then try (resolveTC 7 g fn ist)
+                                         then try (resolveTC False 7 g fn ist)
                                                   (movelast n)
                                          else movelast n)
                               (ivs' \\ ivs)
@@ -624,8 +630,16 @@ elab ist info emode opts fn tm
                 solve
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h
-    elab' ina (PMetavar n) = let n' = mkN n in
-                                 do attack; defer n'; solve
+    elab' ina (PMetavar n) = 
+          do ptm <- get_term
+             -- When building the metavar application, leave out the unique
+             -- names which have been used elsewhere in the term, since we
+             -- won't be able to use them in the resulting application.
+             let unique_used = getUniqueUsed (tt_ctxt ist) ptm
+             let n' = mkN n
+             attack
+             defer unique_used n'
+             solve
         where mkN n@(NS _ _) = n
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
@@ -679,16 +693,40 @@ elab ist info emode opts fn tm
              focus valn
              elabE (True, a, inty, qq) scr
              args <- get_env
+             envU <- mapM (getKind args) args
+             let namesUsedInRHS = nub $ scvn : concatMap (\(_,rhs) -> allNamesIn rhs) opts
+--                                             ++ allNamesIn scr
+        
+             -- in the definition we build for the case, only pass through
+             -- names which are directly used, type class constraints, and
+             -- variables any of these depend on
+             -- FIXME: This probably doesn't help us, but leaving it in
+             -- temporarily (but commented out). If this comment is still
+             -- here in master, please delete the code!
+--              let directUse = filter (\n -> usedIn namesUsedInRHS n
+--                                             || tcName (binderTy (snd n))) args
+--              let args' = args -- chaseDeps args (map fst directUse) directUse
+--              let argsDropped = map fst $
+--                                  filter (\(n, _) -> case lookup n args' of
+--                                                        Nothing -> True
+--                                                        _ -> False) args
+
+             -- Drop the unique arguments used in the scrutinee (since it's
+             -- not valid to use them again anyway)
+             let argsDropped = filter (isUnique envU) (nub $ allNamesIn scr)
+             let args' = filter (\(n, _) -> n `notElem` argsDropped) args
+
              cname <- unique_hole' True (mkCaseName fn)
              let cname' = mkN cname
-             elab' ina (PMetavar cname')
+--              elab' ina (PMetavar cname')
+             attack; defer argsDropped cname'; solve
+             
              -- if the scrutinee is one of the 'args' in env, we should
              -- inspect it directly, rather than adding it as a new argument
              let newdef = PClauses fc [] cname'
                              (caseBlock fc cname'
-                                (map (isScr scr) (reverse args)) opts)
+                                (map (isScr scr) (reverse args')) opts)
              -- elaborate case
-             env <- get_env
              updateAux (newdef : )
              -- if we haven't got the type yet, hopefully we'll get it later!
              movelast tyn
@@ -701,6 +739,47 @@ elab ist info emode opts fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
                         _ -> n
+
+              isUnique envk n = case lookup n envk of
+                                     Just u -> u
+                                     _ -> False
+
+              getKind env (n, _) 
+                  = case lookup n env of
+                         Nothing -> return (n, False) -- can't happen, actually...
+                         Just b -> 
+                            do ty <- get_type (forget (binderTy b))
+                               case ty of
+                                    UType UniqueType -> return (n, True)
+                                    UType AllTypes -> return (n, True)
+                                    _ -> return (n, False)
+
+              tcName tm | (P _ n _, _) <- unApply tm
+                  = case lookupCtxt n (idris_classes ist) of
+                         [_] -> True
+                         _ -> False
+              tcName _ = False
+
+              usedIn ns (n, b) 
+                 = n `elem` ns 
+                     || any (\x -> x `elem` ns) (allTTNames (binderTy b))
+
+              -- FIXME: This probably doesn't help us here, but leaving
+              -- it in temporarily... if this comment is still here in master,
+              -- please delete the code!
+              chaseDeps env acc [] = filter (\(n, _) -> n `elem` acc) env
+              chaseDeps env acc ((n,b) : args)
+                 = let ns = allTTNames (binderTy b) in
+                       extendAcc ns acc args
+                where
+                  extendAcc [] acc args = chaseDeps env acc args
+                  extendAcc (n:ns) acc args
+                      | elem n acc = extendAcc ns acc args
+                      | otherwise = case lookup n env of
+                                         Just b -> extendAcc ns (n : acc)
+                                                                 ((n,b) : args)
+                                         Nothing -> extendAcc ns acc args
+
     elab' ina (PUnifyLog t) = do unifyLog True
                                  elab' ina t
                                  unifyLog False
@@ -853,9 +932,23 @@ elab ist info emode opts fn tm
                   addImplBound ist (map fst env) (PApp fc (PRef fc (sUN "Delay"))
                                                  [pexp t])
 
+
+    -- Don't put implicit coercions around applications which are marked
+    -- as '%noImplicit', or around case blocks, otherwise we get exponential
+    -- blowup especially where there are errors deep in large expressions.
+    notImplicitable (PApp _ f _) = notImplicitable f
+    -- TMP HACK no coercing on bind (make this configurable)
+    notImplicitable (PRef _ n)
+        | [opts] <- lookupCtxt n (idris_flags ist)
+            = NoImplicit `elem` opts
+    notImplicitable (PAlternative True as) = any notImplicitable as
     -- case is tricky enough without implicit coercions! If they are needed,
     -- they can go in the branches separately.
+    notImplicitable (PCase _ _ _) = True
+    notImplicitable _ = False
+
     insertCoerce ina t@(PCase _ _ _) = return t
+    insertCoerce ina t | notImplicitable t = return t
     insertCoerce ina t =
         do ty <- goal
            -- Check for possible coercions to get to the goal
@@ -889,7 +982,7 @@ elab ist info emode opts fn tm
     elabArgs ist ina failed fc r f (n:ns) force (Placeholder : args)
         = elabArgs ist ina failed fc r f ns force args
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force (t : args)
-        = do elabArg argName holeName t
+        = elabArg argName holeName t
       where elabArg argName holeName t =
               do now_elaborating fc f argName
                  wrapErr f argName $ do
@@ -1004,12 +1097,12 @@ proofSearch' ist rec depth prv top n hints
          proofSearch rec prv depth 
                      (elab ist toplevel ERHS [] (sMN 0 "tac")) top n hints ist
 
-resolveTC :: Int -> Term -> Name -> IState -> ElabD ()
+resolveTC :: Bool -> Int -> Term -> Name -> IState -> ElabD ()
 resolveTC = resTC' [] 
 
-resTC' tcs 0 topg fn ist = fail $ "Can't resolve type class"
-resTC' tcs 1 topg fn ist = try' (trivial' ist) (resolveTC 0 topg fn ist) True
-resTC' tcs depth topg fn ist
+resTC' tcs def 0 topg fn ist = fail $ "Can't resolve type class"
+resTC' tcs def 1 topg fn ist = try' (trivial' ist) (resolveTC def 0 topg fn ist) True
+resTC' tcs defaultOn depth topg fn ist
       = do hnf_compute
            g <- goal
            ptm <- get_term
@@ -1040,7 +1133,7 @@ resTC' tcs depth topg fn ist
 
     numclass = sNS (sUN "Num") ["Classes","Prelude"]
 
-    needsDefault t num@(P _ nc _) [P Bound a _] | nc == numclass
+    needsDefault t num@(P _ nc _) [P Bound a _] | nc == numclass && defaultOn
         = do focus a
              fill (RConstant (AType (ATInt ITBig))) -- default Integer
              solve
@@ -1085,7 +1178,7 @@ resTC' tcs depth topg fn ist
                                      let got = fst (unApply t)
                                      let depth' = if tc' `elem` tcs
                                                      then depth - 1 else depth 
-                                     resTC' (got : tcs)  depth' topg fn ist)
+                                     resTC' (got : tcs) defaultOn depth' topg fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
@@ -1288,9 +1381,9 @@ runTac autoSolve ist fn tac
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (sNS (sUN "List") ["List", "Prelude"])
               scriptTy = (RBind (sMN 0 "__pi_arg")
-                                (Pi (RApp listTy envTupleType))
+                                (Pi (RApp listTy envTupleType) RType)
                                     (RBind (sMN 1 "__pi_arg")
-                                           (Pi (Var $ reflm "TT")) tacticTy))
+                                           (Pi (Var $ reflm "TT") RType) tacticTy))
     runT (ByReflection tm) -- run the reflection function 'tm' on the
                            -- goal, then apply the resulting reflected Tactic
         = do tgoal <- goal
@@ -1359,6 +1452,8 @@ runTac autoSolve ist fn tac
                                     _ -> fail "Wrong goal type"
     runT ProofState = do g <- goal
                          return ()
+    runT Skip = return ()
+    runT (TFail err) = lift . tfail $ ReflectionError [err] (Msg "")
     runT x = fail $ "Not implemented " ++ show x
 
     runReflected t = do t' <- reify ist t
@@ -1376,6 +1471,7 @@ reify _ (P _ n _) | n == reflm "Trivial" = return Trivial
 reify _ (P _ n _) | n == reflm "Instance" = return TCInstance
 reify _ (P _ n _) | n == reflm "Solve" = return Solve
 reify _ (P _ n _) | n == reflm "Compute" = return Compute
+reify _ (P _ n _) | n == reflm "Skip" = return Skip
 reify ist t@(App _ _)
           | (P _ f _, args) <- unApply t = reifyApp ist f args
 reify _ t = fail ("Unknown tactic " ++ show t)
@@ -1416,6 +1512,15 @@ reifyApp ist t [n, tt', t']
                                           tt'' <- reifyTT tt'
                                           t''  <- reifyTT t'
                                           return $ LetTacTy n' (delab ist tt'') (delab ist t'')
+reifyApp ist t [errs]
+             | t == reflm "Fail" = case unList errs of
+                                     Nothing -> fail "Failed to reify errors"
+                                     Just errs' ->
+                                       let parts = mapM reifyReportPart errs' in
+                                       case parts of
+                                         Left err -> fail $ "Couldn't reify \"Fail\" tactic - " ++ show err
+                                         Right errs'' ->
+                                           return $ TFail errs''
 reifyApp _ f args = fail ("Unknown tactic " ++ show (f, args)) -- shouldn't happen
 
 -- | Reify terms from their reflected representation
@@ -1512,7 +1617,7 @@ reifyTTNameType t@(P _ n _) | n == reflm "Ref" = return $ Ref
 reifyTTNameType t@(App _ _)
   = case unApply t of
       (P _ f _, [Constant (I tag), Constant (I num)])
-           | f == reflm "DCon" -> return $ DCon tag num
+           | f == reflm "DCon" -> return $ DCon tag num False -- FIXME: Uniqueness!
            | f == reflm "TCon" -> return $ TCon tag num
       _ -> fail ("Unknown reflection name type: " ++ show t)
 reifyTTNameType t = fail ("Unknown reflection name type: " ++ show t)
@@ -1528,8 +1633,8 @@ reifyTTBinder _ _ t = fail ("Unknown reflection binder: " ++ show t)
 reifyTTBinderApp :: (Term -> ElabD a) -> Name -> [Term] -> ElabD (Binder a)
 reifyTTBinderApp reif f [t]
                       | f == reflm "Lam" = liftM Lam (reif t)
-reifyTTBinderApp reif f [t]
-                      | f == reflm "Pi" = liftM Pi (reif t)
+reifyTTBinderApp reif f [t, k]
+                      | f == reflm "Pi" = liftM2 Pi (reif t) (reif k)
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Let" = liftM2 Let (reif x) (reif y)
 reifyTTBinderApp reif f [x, y]
@@ -1547,15 +1652,7 @@ reifyTTBinderApp reif f [t]
 reifyTTBinderApp _ f args = fail ("Unknown reflection binder: " ++ show (f, args))
 
 reifyTTConst :: Term -> ElabD Const
-reifyTTConst (P _ n _) | n == reflm "IType"    = return (AType (ATInt ITNative))
-reifyTTConst (P _ n _) | n == reflm "BIType"   = return (AType (ATInt ITBig))
-reifyTTConst (P _ n _) | n == reflm "FlType"   = return (AType ATFloat)
-reifyTTConst (P _ n _) | n == reflm "ChType"   = return (AType (ATInt ITChar))
 reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
-reifyTTConst (P _ n _) | n == reflm "B8Type"   = return (AType (ATInt (ITFixed IT8)))
-reifyTTConst (P _ n _) | n == reflm "B16Type"  = return (AType (ATInt (ITFixed IT16)))
-reifyTTConst (P _ n _) | n == reflm "B32Type"  = return (AType (ATInt (ITFixed IT32)))
-reifyTTConst (P _ n _) | n == reflm "B64Type"  = return (AType (ATInt (ITFixed IT64)))
 reifyTTConst (P _ n _) | n == reflm "PtrType"  = return $ PtrType
 reifyTTConst (P _ n _) | n == reflm "VoidType" = return $ VoidType
 reifyTTConst (P _ n _) | n == reflm "Forgot"   = return $ Forgot
@@ -1564,6 +1661,8 @@ reifyTTConst t@(App _ _)
 reifyTTConst t = fail ("Unknown reflection constant: " ++ show t)
 
 reifyTTConstApp :: Name -> Term -> ElabD Const
+reifyTTConstApp f aty
+                | f == reflm "AType" = fmap AType (reifyArithTy aty)
 reifyTTConstApp f (Constant c@(I _))
                 | f == reflm "I"   = return $ c
 reifyTTConstApp f (Constant c@(BI _))
@@ -1583,6 +1682,26 @@ reifyTTConstApp f (Constant c@(B32 _))
 reifyTTConstApp f (Constant c@(B64 _))
                 | f == reflm "B64" = return $ c
 reifyTTConstApp f arg = fail ("Unknown reflection constant: " ++ show (f, arg))
+
+reifyArithTy :: Term -> ElabD ArithTy
+reifyArithTy (App (P _ n _) intTy) | n == reflm "ATInt"   = fmap ATInt (reifyIntTy intTy)
+reifyArithTy (P _ n _)             | n == reflm "ATFloat" = return ATFloat
+reifyArithTy x = fail ("Couldn't reify reflected ArithTy: " ++ show x)
+
+reifyNativeTy :: Term -> ElabD NativeTy
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
+reifyNativeTy x = fail $ "Couldn't reify reflected NativeTy " ++ show x
+
+reifyIntTy :: Term -> ElabD IntTy
+reifyIntTy (App (P _ n _) nt) | n == reflm "ITFixed" = fmap ITFixed (reifyNativeTy nt)
+reifyIntTy (P _ n _) | n == reflm "ITNative" = return ITNative
+reifyIntTy (P _ n _) | n == reflm "ITBig" = return ITBig
+reifyIntTy (P _ n _) | n == reflm "ITChar" = return ITChar
+reifyIntTy (App (App (P _ n _) nt) (Constant (I i))) | n == reflm "ITVec" = fmap (flip ITVec i)
+                                                                                 (reifyNativeTy nt)
 
 reifyTTUExp :: Term -> ElabD UExp
 reifyTTUExp t@(App _ _)
@@ -1658,9 +1777,10 @@ reflectQuotePattern unq (Bind n b x)
             fill $ reflCall "Lam" [Var (reflm "TT"), Var t']
             solve
             focus t'; reflectQuotePattern unq t
-    reflectBinderQuotePattern unq (Pi t)
+    reflectBinderQuotePattern unq (Pi t k)
        = do t' <- claimTT (sMN 0 "ty") ; movelast t'
-            fill $ reflCall "Pi" [Var (reflm "TT"), Var t']
+            k' <- claimTT (sMN 0 "k"); movelast k';
+            fill $ reflCall "Pi" [Var (reflm "TT"), Var t', Var k']
             solve
             focus t'; reflectQuotePattern unq t
     reflectBinderQuotePattern unq (Let x y)
@@ -1756,8 +1876,8 @@ reflectQuote unq (TType exp) = reflCall "TType" [reflectUExp exp]
 reflectNameType :: NameType -> Raw
 reflectNameType (Bound) = Var (reflm "Bound")
 reflectNameType (Ref) = Var (reflm "Ref")
-reflectNameType (DCon x y)
-  = reflCall "DCon" [RConstant (I x), RConstant (I y)]
+reflectNameType (DCon x y _)
+  = reflCall "DCon" [RConstant (I x), RConstant (I y)] -- FIXME: Uniqueness!
 reflectNameType (TCon x y)
   = reflCall "TCon" [RConstant (I x), RConstant (I y)]
 
@@ -1778,14 +1898,21 @@ reflectName (MN i n)
 reflectName (NErased) = Var (reflm "NErased")
 reflectName n = Var (reflm "NErased") -- special name, not yet implemented
 
--- | Elaborate a name to a pattern. This means that NS and UN will be intact,
--- while all others become _
+-- | Elaborate a name to a pattern.  This means that NS and UN will be intact.
+-- MNs corresponding to will care about the string but not the number.  All
+-- others become _.
 reflectNameQuotePattern :: Name -> ElabD ()
 reflectNameQuotePattern n@(UN s)
   = do fill $ reflectName n
        solve
 reflectNameQuotePattern n@(NS _ _)
   = do fill $ reflectName n
+       solve
+reflectNameQuotePattern (MN _ n)
+  = do i <- getNameFrom (sMN 0 "mnCounter")
+       claim i (RConstant (AType (ATInt ITNative)))
+       movelast i
+       fill $ reflCall "MN" [Var i, RConstant (Str $ T.unpack n)]
        solve
 reflectNameQuotePattern _ -- for all other names, match any
   = do nameHole <- getNameFrom (sMN 0 "name")
@@ -1800,8 +1927,8 @@ reflectBinder = reflectBinderQuote []
 reflectBinderQuote :: [Name] -> Binder Term -> Raw
 reflectBinderQuote unq (Lam t)
    = reflCall "Lam" [Var (reflm "TT"), reflectQuote unq t]
-reflectBinderQuote unq (Pi t)
-   = reflCall "Pi" [Var (reflm "TT"), reflectQuote unq t]
+reflectBinderQuote unq (Pi t k)
+   = reflCall "Pi" [Var (reflm "TT"), reflectQuote unq t, reflectQuote unq k]
 reflectBinderQuote unq (Let x y)
    = reflCall "Let" [Var (reflm "TT"), reflectQuote unq x, reflectQuote unq y]
 reflectBinderQuote unq (NLet x y)
@@ -1817,28 +1944,45 @@ reflectBinderQuote unq (PVar t)
 reflectBinderQuote unq (PVTy t)
    = reflCall "PVTy" [Var (reflm "TT"), reflectQuote unq t]
 
+mkList :: Raw -> [Raw] -> Raw
+mkList ty []      = RApp (Var (sNS (sUN "Nil") ["List", "Prelude"])) ty
+mkList ty (x:xs) = RApp (RApp (RApp (Var (sNS (sUN "::") ["List", "Prelude"])) ty)
+                              x)
+                        (mkList ty xs)
+
 reflectConstant :: Const -> Raw
 reflectConstant c@(I  _) = reflCall "I"  [RConstant c]
 reflectConstant c@(BI _) = reflCall "BI" [RConstant c]
 reflectConstant c@(Fl _) = reflCall "Fl" [RConstant c]
 reflectConstant c@(Ch _) = reflCall "Ch" [RConstant c]
 reflectConstant c@(Str _) = reflCall "Str" [RConstant c]
-reflectConstant (AType (ATInt ITNative)) = Var (reflm "IType")
-reflectConstant (AType (ATInt ITBig)) = Var (reflm "BIType")
-reflectConstant (AType ATFloat) = Var (reflm "FlType")
-reflectConstant (AType (ATInt ITChar)) = Var (reflm "ChType")
-reflectConstant (StrType) = Var (reflm "StrType")
 reflectConstant c@(B8 _) = reflCall "B8" [RConstant c]
 reflectConstant c@(B16 _) = reflCall "B16" [RConstant c]
 reflectConstant c@(B32 _) = reflCall "B32" [RConstant c]
 reflectConstant c@(B64 _) = reflCall "B64" [RConstant c]
-reflectConstant (AType (ATInt (ITFixed IT8)))  = Var (reflm "B8Type")
-reflectConstant (AType (ATInt (ITFixed IT16))) = Var (reflm "B16Type")
-reflectConstant (AType (ATInt (ITFixed IT32))) = Var (reflm "B32Type")
-reflectConstant (AType (ATInt (ITFixed IT64))) = Var (reflm "B64Type")
-reflectConstant (PtrType) = Var (reflm "PtrType")
-reflectConstant (VoidType) = Var (reflm "VoidType")
-reflectConstant (Forgot) = Var (reflm "Forgot")
+reflectConstant (B8V ws) = reflCall "B8V" [mkList (Var (sUN "Bits8")) . map (RConstant . B8) . V.toList $ ws]
+reflectConstant (B16V ws) = reflCall "B8V" [mkList (Var (sUN "Bits16")) . map (RConstant . B16) . V.toList $ ws]
+reflectConstant (B32V ws) = reflCall "B8V" [mkList (Var (sUN "Bits32")) . map (RConstant . B32) . V.toList $ ws]
+reflectConstant (B64V ws) = reflCall "B8V" [mkList (Var (sUN "Bits64")) . map (RConstant . B64) . V.toList $ ws]
+reflectConstant (AType (ATInt ITNative)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITNative")]]
+reflectConstant (AType (ATInt ITBig)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITBig")]]
+reflectConstant (AType ATFloat) = reflCall "AType" [Var (reflm "ATFloat")]
+reflectConstant (AType (ATInt ITChar)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITChar")]]
+reflectConstant StrType = Var (reflm "StrType")
+reflectConstant (AType (ATInt (ITFixed IT8)))  = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT8")]]]
+reflectConstant (AType (ATInt (ITFixed IT16))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT16")]]]
+reflectConstant (AType (ATInt (ITFixed IT32))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT32")]]]
+reflectConstant (AType (ATInt (ITFixed IT64))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT64")]]]
+reflectConstant (AType (ATInt (ITVec IT8 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT8"), RConstant (I c)]]]
+reflectConstant (AType (ATInt (ITVec IT16 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT16"), RConstant (I c)]]]
+reflectConstant (AType (ATInt (ITVec IT32 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT32"), RConstant (I c)]]]
+reflectConstant (AType (ATInt (ITVec IT64 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT64"), RConstant (I c)]]]
+reflectConstant PtrType = Var (reflm "PtrType")
+reflectConstant ManagedPtrType = Var (reflm "ManagedPtrType")
+reflectConstant BufferType = Var (reflm "BufferType")
+reflectConstant VoidType = Var (reflm "VoidType")
+reflectConstant Forgot = Var (reflm "Forgot")
+
 
 reflectUExp :: UExp -> Raw
 reflectUExp (UVar i) = reflCall "UVar" [RConstant (I i)]
@@ -2031,7 +2175,7 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                     parts -> ReflectionError errorparts e
 
 fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
-fromTTMaybe (App (App (P (DCon _ _) (NS (UN just) _) _) ty) tm)
+fromTTMaybe (App (App (P (DCon _ _ _) (NS (UN just) _) _) ty) tm)
   | just == txt "Just" = Just tm
 fromTTMaybe x          = Nothing
 
@@ -2042,26 +2186,26 @@ reflErrName n = sNS (sUN n) ["Errors", "Reflection", "Language"]
 -- representation. Not in Idris or ElabD monads because it should be usable
 -- from either.
 reifyReportPart :: Term -> Either Err ErrorReportPart
-reifyReportPart (App (P (DCon _ _) n _) (Constant (Str msg))) | n == reflErrName "TextPart" =
+reifyReportPart (App (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "TextPart" =
     Right (TextPart msg)
-reifyReportPart (App (P (DCon _ _) n _) ttn)
-  | n == reflErrName "NamePart" =
+reifyReportPart (App (P (DCon _ _ _) n _) ttn)
+  | n == reflm "NamePart" =
     case runElab [] (reifyTTName ttn) (initElaborator NErased initContext Erased) of
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
        show ttn ++
        " when reflecting an error:" ++ show e
       OK (n', _)-> Right $ NamePart n'
-reifyReportPart (App (P (DCon _ _) n _) tm)
-  | n == reflErrName "TermPart" =
+reifyReportPart (App (P (DCon _ _ _) n _) tm)
+  | n == reflm "TermPart" =
   case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
       show tm ++
       " when reflecting an error:" ++ show e
     OK (tm', _) -> Right $ TermPart tm'
-reifyReportPart (App (P (DCon _ _) n _) tm)
-  | n == reflErrName "SubReport" =
+reifyReportPart (App (P (DCon _ _ _) n _) tm)
+  | n == reflm "SubReport" =
   case unList tm of
     Just xs -> do subParts <- mapM reifyReportPart xs
                   Right (SubReport subParts)

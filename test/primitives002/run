@@ -4,6 +4,9 @@ HEAD="module Main
 
 import Data.Floats
 
+strtake : Nat -> String -> String
+strtake n str = pack (take n (unpack str))
+
 main : IO ()"
 
 TESTS=("prim__floatToStr 0.0"
@@ -28,14 +31,14 @@ TESTS=("prim__floatToStr 0.0"
 "prim__floatExp 1.0"
 "prim__floatLog 1.0"
 "prim__floatSqrt 1.0"
+"prim__negFloat 1.0"
 )
 
 generate_testfile()
 {
 cat <<EOF > $1
 ${HEAD}
-main = do
-    putStrLn $ show $ $2
+main = putStrLn $ strtake 10 (show $ $2)
 EOF
 }
 

@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances #-}
 
 module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo,
-                     Phase(..), CaseTree,
+                     Phase(..), CaseTree, CaseType(..),
                      simpleCase, small, namesUsed, findCalls, findUsedArgs,
                      substSC, substAlt, mkForce) where
 
@@ -30,7 +30,7 @@ data CaseDef = CaseDef [Name] !SC [Term]
 -- allows casing on arbitrary terms, here we choose to maintain the distinction
 -- in order to allow for better optimisation opportunities.
 --
-data SC' t = Case Name [CaseAlt' t]  -- ^ invariant: lowest tags first
+data SC' t = Case CaseType Name [CaseAlt' t]  -- ^ invariant: lowest tags first
            | ProjCase t [CaseAlt' t] -- ^ special case for projections/thunk-forcing before inspection
            | STerm !t
            | UnmatchedCase String -- ^ error message
@@ -40,6 +40,9 @@ data SC' t = Case Name [CaseAlt' t]  -- ^ invariant: lowest tags first
 deriving instance Binary SC'
 deriving instance NFData SC'
 !-}
+
+data CaseType = Updatable | Shared   
+   deriving (Eq, Ord, Show)
 
 type SC = SC' Term
 
@@ -59,8 +62,11 @@ type CaseAlt = CaseAlt' Term
 instance Show t => Show (SC' t) where
     show sc = show' 1 sc
       where
-        show' i (Case n alts) = "case " ++ show n ++ " of\n" ++ indent i ++
+        show' i (Case up n alts) = "case" ++ u ++ show n ++ " of\n" ++ indent i ++
                                     showSep ("\n" ++ indent i) (map (showA i) alts)
+            where u = case up of
+                           Updatable -> "! "
+                           Shared -> " "
         show' i (ProjCase tm alts) = "case " ++ show tm ++ " of " ++
                                       showSep ("\n" ++ indent i) (map (showA i) alts)
         show' i (STerm tm) = show tm
@@ -88,7 +94,7 @@ type Clause   = ([Pat], (Term, Term))
 type CS = ([Term], Int, [(Name, Type)])
 
 instance TermSize SC where
-    termsize n (Case n' as) = termsize n as
+    termsize n (Case _ n' as) = termsize n as
     termsize n (ProjCase n' as) = termsize n as
     termsize n (STerm t) = termsize n t
     termsize n _ = 1
@@ -111,7 +117,7 @@ small n args t = let as = findAllUsedArgs t args in
 
 namesUsed :: SC -> [Name]
 namesUsed sc = nub $ nu' [] sc where
-    nu' ps (Case n alts) = nub (concatMap (nua ps) alts) \\ [n]
+    nu' ps (Case _ n alts) = nub (concatMap (nua ps) alts) \\ [n]
     nu' ps (ProjCase t alts) = nub $ nut ps t ++ concatMap (nua ps) alts
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
@@ -136,7 +142,7 @@ namesUsed sc = nub $ nu' [] sc where
 
 findCalls :: SC -> [Name] -> [(Name, [[Name]])]
 findCalls sc topargs = nub $ nu' topargs sc where
-    nu' ps (Case n alts) = nub (concatMap (nua (n : ps)) alts)
+    nu' ps (Case _ n alts) = nub (concatMap (nua (n : ps)) alts)
     nu' ps (ProjCase t alts) = nub $ nut ps t ++ concatMap (nua ps) alts
     nu' ps (STerm t)     = nub $ nut ps t
     nu' ps _ = []
@@ -189,7 +195,7 @@ findUsedArgs :: SC -> [Name] -> [Name]
 findUsedArgs sc topargs = nub (findAllUsedArgs sc topargs)
 
 findAllUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nu' sc) where
-    nu' (Case n alts) = n : concatMap nua alts
+    nu' (Case _ n alts) = n : concatMap nua alts
     nu' (ProjCase t alts) = directUse t ++ concatMap nua alts
     nu' (STerm t)     = directUse t
     nu' _             = []
@@ -204,7 +210,7 @@ findAllUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nu' sc) where
 isUsed :: SC -> Name -> Bool
 isUsed sc n = used sc where
 
-  used (Case n' alts) = n == n' || or (map usedA alts)
+  used (Case _ n' alts) = n == n' || or (map usedA alts)
   used (ProjCase t alts) = n `elem` freeNames t || or (map usedA alts)
   used (STerm t) = n `elem` freeNames t
   used _ = False
@@ -276,7 +282,7 @@ simpleCase tc cover reflect phase fc inacc argtys cs erInfo
 
           acc [] n = Error (Inaccessible n)
           acc (PV x t : xs) n | x == n = OK ()
-          acc (PCon _ _ ps : xs) n = acc (ps ++ xs) n
+          acc (PCon _ _ _ ps : xs) n = acc (ps ++ xs) n
           acc (PSuc p : xs) n = acc (p : xs) n
           acc (_ : xs) n = acc xs n
 
@@ -285,7 +291,7 @@ simpleCase tc cover reflect phase fc inacc argtys cs erInfo
 -- going on).
 
 checkSameTypes :: [(Name, Type)] -> SC -> Bool
-checkSameTypes tys (Case n alts)
+checkSameTypes tys (Case _ n alts)
         = case lookup n tys of
                Just t -> and (map (checkAlts t) alts)
                _ -> and (map ((checkSameTypes tys).getSC) alts)
@@ -324,7 +330,7 @@ isConstType (B32V _) (AType (ATInt _)) = True
 isConstType (B64V _) (AType (ATInt _)) = True 
 isConstType _ _ = False
 
-data Pat = PCon Name Int [Pat]
+data Pat = PCon Bool Name Int [Pat]
          | PConst Const
          | PV Name Type
          | PSuc Pat -- special case for n+1 on Integer
@@ -344,33 +350,23 @@ toPats reflect tc f = reverse (toPat reflect tc (getArgs f)) where
 toPat :: Bool -> Bool -> [Term] -> [Pat]
 toPat reflect tc = map $ toPat' []
   where
-    toPat' [_,_,arg](P (DCon t a) nm@(UN n) _)
+    toPat' [_,_,arg] (P (DCon t a uniq) nm@(UN n) _)
         | n == txt "Delay"
-        = PCon nm t [PAny, PAny, toPat' [] arg]
+        = PCon uniq nm t [PAny, PAny, toPat' [] arg]
 
-    toPat' args (P (DCon t a) n _)
-        = PCon n t $ map (toPat' []) args
+    toPat' args (P (DCon t a uniq) nm@(NS (UN n) [own]) _)
+        | n == txt "Read" && own == txt "Ownership"
+        = PCon False nm t (map shareCons (map (toPat' []) args))
+      where shareCons (PCon _ n i ps) = PCon False n i (map shareCons ps)
+            shareCons p = p
+
+    toPat' args (P (DCon t a uniq) n _)
+        = PCon uniq n t $ map (toPat' []) args
 
     -- n + 1
     toPat' [p, Constant (BI 1)] (P _ (UN pabi) _)
         | pabi == txt "prim__addBigInt"
         = PSuc $ toPat' [] p
-
-    -- Typecase
---     toPat' (P (TCon t a) n _) args | tc
---                                    = do args' <- mapM (\x -> toPat' x []) args
---                                         return $ PCon n t args'
---     toPat' (Constant (AType (ATInt ITNative))) []
---         | tc = return $ PCon (UN "Int")    1 []
---     toPat' (Constant (AType ATFloat))  [] | tc = return $ PCon (UN "Float")  2 []
---     toPat' (Constant (AType (ATInt ITChar)))  [] | tc = return $ PCon (UN "Char")   3 []
---     toPat' (Constant StrType) [] | tc = return $ PCon (UN "String") 4 []
---     toPat' (Constant PtrType) [] | tc = return $ PCon (UN "Ptr")    5 []
---     toPat' (Constant (AType (ATInt ITBig))) []
---         | tc = return $ PCon (UN "Integer") 6 []
---     toPat' (Constant (AType (ATInt (ITFixed n)))) []
---         | tc = return $ PCon (UN (fixedN n)) (7 + fromEnum n) [] -- 7-10 inclusive
---
 
     toPat' []   (P Bound n ty) = PV n ty
     toPat' args (App f a)      = toPat' (a : args) f
@@ -380,7 +376,7 @@ toPat reflect tc = map $ toPat' []
     toPat' [] (Constant VoidType)  = PTyPat
     toPat' [] (Constant x)         = PConst x
 
-    toPat' [] (Bind n (Pi t) sc)
+    toPat' [] (Bind n (Pi t _) sc)
         | reflect && noOccurrence n sc
         = PReflected (sUN "->") [toPat' [] t, toPat' [] sc]
 
@@ -405,7 +401,7 @@ isVarPat (PAny   : ps , _) = True
 isVarPat (PTyPat : ps , _) = True
 isVarPat _                 = False
 
-isConPat (PCon _ _ _ : ps, _) = True
+isConPat (PCon _ _ _ _ : ps, _) = True
 isConPat (PReflected _ _ : ps, _) = True
 isConPat (PSuc _   : ps, _) = True
 isConPat (PConst _   : ps, _) = True
@@ -449,18 +445,18 @@ order ns' cs = let patnames = transpose (map (zip ns') (map fst cs))
     noClash [] = True
     noClash (p : ps) = not (any (clashPat p) ps) && noClash ps
 
-    clashPat (PCon _ _ _) (PConst _) = True
-    clashPat (PConst _) (PCon _ _ _) = True
-    clashPat (PCon _ _ _) (PSuc _) = True
-    clashPat (PSuc _) (PCon _ _ _) = True
-    clashPat (PCon n i _) (PCon n' i' _) | i == i' = n /= n'
+    clashPat (PCon _ _ _ _) (PConst _) = True
+    clashPat (PConst _) (PCon _ _ _ _) = True
+    clashPat (PCon _ _ _ _) (PSuc _) = True
+    clashPat (PSuc _) (PCon _ _ _ _) = True
+    clashPat (PCon _ n i _) (PCon _ n' i' _) | i == i' = n /= n'
     clashPat _ _ = False
 
     -- this compares (+isInaccessible, -numberOfCases)
     moreDistinct xs ys = compare (snd . fst . head $ xs, numNames [] (map snd ys))
                                  (snd . fst . head $ ys, numNames [] (map snd xs))
 
-    numNames xs (PCon n _ _ : ps)
+    numNames xs (PCon _ n _ _ : ps)
         | not (Left n `elem` xs) = numNames (Left n : xs) ps
     numNames xs (PConst c : ps)
         | not (Right c `elem` xs) = numNames (Right c : xs) ps
@@ -497,7 +493,8 @@ data ConType = CName Name Int -- named constructor
              | CConst Const -- constant, not implemented yet
    deriving (Show, Eq)
 
-data Group = ConGroup ConType -- Constructor
+data Group = ConGroup Bool -- Uniqueness flag
+                      ConType -- Constructor
                       [([Pat], Clause)] -- arguments and rest of alternative
    deriving Show
 
@@ -507,26 +504,30 @@ conRule (v:vs) cs err = do groups <- groupCons cs
 
 caseGroups :: [Name] -> [Group] -> SC -> CaseBuilder SC
 caseGroups (v:vs) gs err = do g <- altGroups gs
-                              return $ Case v (sort g)
+                              return $ Case (getShared gs) v (sort g)
   where
+    getShared (ConGroup True _ _ : _) = Updatable
+    getShared _ = Shared
+
     altGroups [] = return [DefaultCase err]
 
-    altGroups (ConGroup (CName n i) args : cs)
+    altGroups (ConGroup _ (CName n i) args : cs)
         = (:) <$> altGroup n i args <*> altGroups cs
 
-    altGroups (ConGroup (CFn n) args : cs)
+    altGroups (ConGroup _ (CFn n) args : cs)
         = (:) <$> altFnGroup n args <*> altGroups cs
 
-    altGroups (ConGroup CSuc args : cs)
+    altGroups (ConGroup _ CSuc args : cs)
         = (:) <$> altSucGroup args <*> altGroups cs
 
-    altGroups (ConGroup (CConst c) args : cs)
+    altGroups (ConGroup _ (CConst c) args : cs)
         = (:) <$> altConstGroup c args <*> altGroups cs
 
-    altGroup n i args = do inacc <- inaccessibleArgs n
-                           (newVars, accVars, inaccVars, nextCs) <- argsToAlt inacc args
-                           matchCs <- match (accVars ++ vs ++ inaccVars) nextCs err
-                           return $ ConCase n i newVars matchCs
+    altGroup n i args 
+         = do inacc <- inaccessibleArgs n
+              (newVars, accVars, inaccVars, nextCs) <- argsToAlt inacc args
+              matchCs <- match (accVars ++ vs ++ inaccVars) nextCs err
+              return $ ConCase n i newVars matchCs
 
     altFnGroup n args = do (newVars, _, [], nextCs) <- argsToAlt [] args
                            matchCs <- match (newVars ++ vs) nextCs err
@@ -601,21 +602,21 @@ groupCons cs = gc [] cs
         do acc' <- addGroup p ps res acc
            gc acc' cs
     addGroup p ps res acc = case p of
-        PCon con i args -> return $ addg (CName con i) args (ps, res) acc
+        PCon uniq con i args -> return $ addg uniq (CName con i) args (ps, res) acc
         PConst cval -> return $ addConG cval (ps, res) acc
-        PSuc n -> return $ addg CSuc [n] (ps, res) acc
-        PReflected fn args -> return $ addg (CFn fn) args (ps, res) acc
+        PSuc n -> return $ addg False CSuc [n] (ps, res) acc
+        PReflected fn args -> return $ addg False (CFn fn) args (ps, res) acc
         pat -> fail $ show pat ++ " is not a constructor or constant (can't happen)"
 
-    addg c conargs res []
-           = [ConGroup c [(conargs, res)]]
-    addg c conargs res (g@(ConGroup c' cs):gs)
-        | c == c' = ConGroup c (cs ++ [(conargs, res)]) : gs
-        | otherwise = g : addg c conargs res gs
+    addg uniq c conargs res []
+           = [ConGroup uniq c [(conargs, res)]]
+    addg uniq c conargs res (g@(ConGroup _ c' cs):gs)
+        | c == c' = ConGroup uniq c (cs ++ [(conargs, res)]) : gs
+        | otherwise = g : addg uniq c conargs res gs
 
-    addConG con res [] = [ConGroup (CConst con) [([], res)]]
-    addConG con res (g@(ConGroup (CConst n) cs) : gs)
-        | con == n = ConGroup (CConst n) (cs ++ [([], res)]) : gs
+    addConG con res [] = [ConGroup False (CConst con) [([], res)]]
+    addConG con res (g@(ConGroup False (CConst n) cs) : gs)
+        | con == n = ConGroup False (CConst n) (cs ++ [([], res)]) : gs
 --         | otherwise = g : addConG con res gs
     addConG con res (g : gs) = g : addConG con res gs
 
@@ -637,7 +638,7 @@ depatt :: [Name] -> SC -> SC
 depatt ns tm = dp [] tm
   where
     dp ms (STerm tm) = STerm (applyMaps ms tm)
-    dp ms (Case x alts) = Case x (map (dpa ms x) alts)
+    dp ms (Case up x alts) = Case up x (map (dpa ms x) alts)
     dp ms sc = sc
 
     dpa ms x (ConCase n i args sc)
@@ -667,7 +668,7 @@ depatt ns tm = dp [] tm
 -- FIXME: Do this for SucCase too
 prune :: Bool -- ^ Convert single branches to projections (only useful at runtime)
       -> SC -> SC
-prune proj (Case n alts) = case alts' of
+prune proj (Case up n alts) = case alts' of
     [] -> ImpossibleCase
 
     -- Projection transformations prevent us from seeing some uses of ctor fields
@@ -689,7 +690,7 @@ prune proj (Case n alts) = case alts' of
     as@[ConCase cn i args sc]
         | proj -> let sc' = prune proj sc in
                       if any (isUsed sc') args  
-                         then Case n [ConCase cn i args sc']
+                         then Case up n [ConCase cn i args sc']
                          else sc' 
 
     [SucCase cn sc]
@@ -702,9 +703,9 @@ prune proj (Case n alts) = case alts' of
     -- Bit of a hack here! The default case will always be 0, make sure
     -- it gets caught first.
     [s@(SucCase _ _), DefaultCase dc]
-        -> Case n [ConstCase (BI 0) dc, s]
+        -> Case up n [ConstCase (BI 0) dc, s]
 
-    as  -> Case n as
+    as  -> Case up n as
   where
     alts' = filter (not . erased) $ map pruneAlt alts
 
@@ -719,10 +720,10 @@ prune proj (Case n alts) = case alts' of
     erased _ = False
 
     projRep :: Name -> Name -> Int -> SC -> SC
-    projRep arg n i (Case x alts) | x == arg
+    projRep arg n i (Case up x alts) | x == arg
         = ProjCase (Proj (P Bound n Erased) i) $ map (projRepAlt arg n i) alts
-    projRep arg n i (Case x alts)
-        = Case x (map (projRepAlt arg n i) alts)
+    projRep arg n i (Case up x alts)
+        = Case up x (map (projRepAlt arg n i) alts)
     projRep arg n i (ProjCase t alts)
         = ProjCase (projRepTm arg n i t) $ map (projRepAlt arg n i) alts
     projRep arg n i (STerm t) = STerm (projRepTm arg n i t)
@@ -749,9 +750,9 @@ stripLambdas (CaseDef ns (STerm (Bind x (Lam _) sc)) tm)
 stripLambdas x = x
 
 substSC :: Name -> Name -> SC -> SC
-substSC n repl (Case n' alts)
-    | n == n'   = Case repl (map (substAlt n repl) alts)
-    | otherwise = Case n'   (map (substAlt n repl) alts)
+substSC n repl (Case up n' alts)
+    | n == n'   = Case up repl (map (substAlt n repl) alts)
+    | otherwise = Case up n'   (map (substAlt n repl) alts)
 substSC n repl (STerm t) = STerm $ subst n (P Bound repl Erased) t
 substSC n repl (UnmatchedCase errmsg) = UnmatchedCase errmsg
 substSC n repl  ImpossibleCase = ImpossibleCase
@@ -771,11 +772,11 @@ substAlt n repl (DefaultCase sc)     = DefaultCase (substSC n repl sc)
 mkForce :: Name -> Name -> SC -> SC
 mkForce = mkForceSC
   where
-    mkForceSC n arg (Case x alts) | x == arg
-        = Case n $ map (mkForceAlt n arg) alts
+    mkForceSC n arg (Case up x alts) | x == arg
+        = Case up n $ map (mkForceAlt n arg) alts
 
-    mkForceSC n arg (Case x alts)
-        = Case x (map (mkForceAlt n arg) alts)
+    mkForceSC n arg (Case up x alts)
+        = Case up x (map (mkForceAlt n arg) alts)
 
     mkForceSC n arg (ProjCase t alts)
         = ProjCase t $ map (mkForceAlt n arg) alts

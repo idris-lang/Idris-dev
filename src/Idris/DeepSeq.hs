@@ -214,6 +214,7 @@ instance NFData PTerm where
         rnf (PAlternative x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PHidden x1) = rnf x1 `seq` ()
         rnf PType = ()
+        rnf (PUniverse _) = ()
         rnf (PGoal x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PConstant x1) = x1 `seq` ()
@@ -260,6 +261,14 @@ instance (NFData t) => NFData (PTactic' t) where
         rnf (GoalType x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf Qed = ()
         rnf Abandon = ()
+        rnf Skip = ()
+        rnf (TFail x1) = rnf x1 `seq` ()
+
+instance NFData ErrorReportPart where
+        rnf (TermPart x1) = rnf x1 `seq` ()
+        rnf (TextPart x1) = rnf x1 `seq` ()
+        rnf (NamePart x1) = rnf x1 `seq` ()
+        rnf (SubReport x1) = rnf x1 `seq` ()
 
 instance (NFData t) => NFData (PDo' t) where
         rnf (DoExp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()

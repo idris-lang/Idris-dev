@@ -133,11 +133,12 @@ natToFin (S k) (S j) with (natToFin k j)
 natToFin _ _ = Nothing
 
 integerToFin : Integer -> (n : Nat) -> Maybe (Fin n)
+integerToFin x Z = Nothing -- make sure 'n' is concrete, to save reduction!
 integerToFin x n = if x >= 0 then natToFin (cast x) n else Nothing
 
 ||| Proof that some `Maybe` is actually `Just`
 data IsJust : Maybe a -> Type where
-  ItIsJust : IsJust {a} (Just x)
+  ItIsJust : IsJust (Just x)
 
 ||| Allow overloading of Integer literals for Fin.
 ||| @ x the Integer that the user typed

@@ -17,6 +17,7 @@ import Util.DynamicLinker
 import System.Console.Haskeline
 import System.IO
 
+import Control.Applicative
 import Control.Monad.State
 import Control.Monad.Error(throwError)
 
@@ -82,6 +83,16 @@ addDyLib libs = do i <- getIState
           findDyLib (lib:libs) l | l == lib_name lib = Just lib
                                  | otherwise         = findDyLib libs l
 
+getAutoImports :: Idris [FilePath]
+getAutoImports = do i <- getIState
+                    return (opt_autoImport (idris_options i))
+
+addAutoImport :: FilePath -> Idris ()
+addAutoImport fp = do i <- getIState
+                      let opts = idris_options i
+                      let autoimps = opt_autoImport opts
+                      put (i { idris_options = opts { opt_autoImport =
+                                                       fp : opt_autoImport opts } } )
 
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
@@ -121,6 +132,9 @@ clear_totcheck  = do i <- getIState; putIState $ i { idris_totcheck = [] }
 
 setFlags :: Name -> [FnOpt] -> Idris ()
 setFlags n fs = do i <- getIState; putIState $ i { idris_flags = addDef n fs (idris_flags i) }
+
+setFnInfo :: Name -> FnInfo -> Idris ()
+setFnInfo n fs = do i <- getIState; putIState $ i { idris_fninfo = addDef n fs (idris_fninfo i) }
 
 setAccessibility :: Name -> Accessibility -> Idris ()
 setAccessibility n a
@@ -215,7 +229,7 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
                       (P (TCon _ _) n _, P (TCon _ _) n' _) -> errWhen (n/=n) 
                       (P (TCon _ _) n _, Constant _) -> errWhen True
                       (Constant _, P (TCon _ _) n' _) -> errWhen True
-                      (P (DCon _ _) n _, P (DCon _ _) n' _) -> errWhen (n/=n) 
+                      (P (DCon _ _ _) n _, P (DCon _ _ _) n' _) -> errWhen (n/=n) 
                       _ -> return ()
 
               where errWhen True 
@@ -537,7 +551,7 @@ type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
                   case idris_outputmode i of
-                    IdeSlave n -> runIO . putStrLn $ convSExp "set-prompt" p n
+                    IdeSlave n h -> runIO . hPutStrLn h $ convSExp "set-prompt" p n
 
 -- | Tell clients how much was parsed and loaded
 isetLoadedRegion :: Idris ()
@@ -546,8 +560,8 @@ isetLoadedRegion = do i <- getIState
                       case span of
                         Just fc ->
                           case idris_outputmode i of
-                            IdeSlave n ->
-                              runIO . putStrLn $
+                            IdeSlave n h ->
+                              runIO . hPutStrLn h $
                                 convSExp "set-loaded-region" fc n
                         Nothing -> return ()
 
@@ -662,10 +676,10 @@ outputTy :: Idris OutputType
 outputTy = do i <- getIState
               return $ opt_outputTy $ idris_options i
 
-setIdeSlave :: Bool -> Idris ()
-setIdeSlave True  = do i <- getIState
-                       putIState $ i { idris_outputmode = (IdeSlave 0), idris_colourRepl = False }
-setIdeSlave False = return ()
+setIdeSlave :: Bool -> Handle -> Idris ()
+setIdeSlave True  h = do i <- getIState
+                         putIState $ i { idris_outputmode = (IdeSlave 0 h), idris_colourRepl = False }
+setIdeSlave False _ = return ()
 
 setTargetTriple :: String -> Idris ()
 setTargetTriple t = do i <- getIState
@@ -739,7 +753,7 @@ valIBCSubDir i = return (opt_ibcsubdir (idris_options i))
 addImportDir :: FilePath -> Idris ()
 addImportDir fp = do i <- getIState
                      let opts = idris_options i
-                     let opt' = opts { opt_importdirs = fp : opt_importdirs opts }
+                     let opt' = opts { opt_importdirs = nub $ fp : opt_importdirs opts }
                      putIState $ i { idris_options = opt' }
 
 setImportDirs :: [FilePath] -> Idris ()
@@ -760,10 +774,6 @@ colourise = do i <- getIState
 setColourise :: Bool -> Idris ()
 setColourise b = do i <- getIState
                     putIState $ i { idris_colourRepl = b }
-
-setOutH :: Handle -> Idris ()
-setOutH h = do i <- getIState
-               putIState $ i { idris_outh = h }
 
 impShow :: Idris Bool
 impShow = do i <- getIState
@@ -793,10 +803,10 @@ logLvl l str = do i <- getIState
                   let lvl = opt_logLevel (idris_options i)
                   when (lvl >= l) $
                     case idris_outputmode i of
-                      RawOutput -> do runIO $ putStrLn str
-                      IdeSlave n ->
+                      RawOutput h -> do runIO $ hPutStrLn h str
+                      IdeSlave n h ->
                         do let good = SexpList [IntegerAtom (toInteger l), toSExp str]
-                           runIO $ putStrLn $ convSExp "log" good n
+                           runIO . hPutStrLn h $ convSExp "log" good n
 
 cmdOptType :: Opt -> Idris Bool
 cmdOptType x = do i <- getIState
@@ -1017,7 +1027,7 @@ getPriority i tm = 1 -- pri tm
   where
     pri (PRef _ n) =
         case lookupP n (tt_ctxt i) of
-            ((P (DCon _ _) _ _):_) -> 1
+            ((P (DCon _ _ _) _ _):_) -> 1
             ((P (TCon _ _) _ _):_) -> 1
             ((P Ref _ _):_) -> 1
             [] -> 0 -- must be locally bound, if it's not an error...
@@ -1056,7 +1066,7 @@ addStatics n tm ptm =
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
-    initStatics (Bind n (Pi ty) sc) (PPi p _ _ s)
+    initStatics (Bind n (Pi ty _) sc) (PPi p _ _ s)
             = let (static, dynamic) = initStatics (instantiate (P Bound n ty) sc) s in
                   if pstatic p == Static then ((n, ty) : static, dynamic)
                     else if (not (searchArg p)) 
@@ -1064,7 +1074,7 @@ addStatics n tm ptm =
                             else (static, dynamic)
     initStatics t pt = ([], [])
 
-    freeArgNames (Bind n (Pi ty) sc) 
+    freeArgNames (Bind n (Pi ty _) sc) 
           = nub $ freeArgNames ty 
     freeArgNames tm = let (_, args) = unApply tm in
                           concatMap freeNames args
@@ -1076,7 +1086,7 @@ addStatics n tm ptm =
     searchArg (TacImp _ _ _) = True
     searchArg _ = False
 
-    staticList sts (Bind n (Pi _) sc) = (n `elem` sts) : staticList sts sc
+    staticList sts (Bind n (Pi _ _) sc) = (n `elem` sts) : staticList sts sc
     staticList _ _ = []
 
 -- Dealing with implicit arguments
@@ -1172,21 +1182,28 @@ addUsingImpls syn n fc t
 -- status of each pi-bound argument, and whether it's inaccessible (True) or not.
 
 getUnboundImplicits :: IState -> Type -> PTerm -> [(Bool, PArg)]
-getUnboundImplicits i (Bind n (Pi t) sc) (PPi p n' t' sc')
-     | n == n' = argInfo n p : getUnboundImplicits i sc sc'
-  where
-    argInfo n (Imp opt _ _) = (True, PImp (getPriority i t') True opt n t')
-    argInfo n (Exp opt _ _) = (InaccessibleArg `elem` opt,
-                                  PExp (getPriority i t') opt n t')
-    argInfo n (Constraint opt _) = (InaccessibleArg `elem` opt,
-                                      PConstraint 10 opt n t')
-    argInfo n (TacImp opt _ scr) = (InaccessibleArg `elem` opt,
-                                      PTacImplicit 10 opt n scr t')
-getUnboundImplicits i (Bind n (Pi t) sc) tm
-     = impBind n t : getUnboundImplicits i sc tm
-  where
-    impBind n t = (True, PImp 1 True [] n Placeholder)
-getUnboundImplicits i sc tm = []
+getUnboundImplicits i t tm = getImps t (collectImps tm)
+  where collectImps (PPi p n t sc)
+            = (n, (p, t)) : collectImps sc
+        collectImps _ = []
+
+        getImps (Bind n (Pi t _) sc) imps
+            | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
+         where
+            argInfo n (Imp opt _ _) t' 
+                   = (True, PImp (getPriority i t') True opt n t')
+            argInfo n (Exp opt _ _) t'
+                   = (InaccessibleArg `elem` opt,
+                          PExp (getPriority i t') opt n t')
+            argInfo n (Constraint opt _) t' 
+                   = (InaccessibleArg `elem` opt,
+                          PConstraint 10 opt n t')
+            argInfo n (TacImp opt _ scr) t' 
+                   = (InaccessibleArg `elem` opt,
+                          PTacImplicit 10 opt n scr t')
+        getImps (Bind n (Pi t _) sc) imps = impBind n t : getImps sc imps
+           where impBind n t = (True, PImp 1 True [] n Placeholder)
+        getImps sc tm = []
 
 -- Add implicit Pi bindings for any names in the term which appear in an
 -- argument position.
@@ -1458,7 +1475,7 @@ aiFn inpat True qq ist fc f ds []
           imp _ = True
 --           allImp [] = False
           allImp xs = all imp xs
-          constructor (TyDecl (DCon _ _) _) = True
+          constructor (TyDecl (DCon _ _ _) _) = True
           constructor _ = False
 
           conCaf ctxt (n, cia) = (isDConName n ctxt || (qq && isTConName n ctxt)) && allImp cia
@@ -1596,7 +1613,7 @@ stripUnmatchable :: IState -> PTerm -> PTerm
 stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su :: PTerm -> PTerm
     su (PRef fc f)
-       | (Bind n (Pi t) sc :_) <- lookupTy f (tt_ctxt i) 
+       | (Bind n (Pi t _) sc :_) <- lookupTy f (tt_ctxt i) 
           = Placeholder
     su (PApp fc fn args) 
        = PApp fc fn (fmap (fmap su) args)
@@ -1647,7 +1664,11 @@ findStatics ist tm = trace (show tm) $
         pos ns ss t = return t
 
 -- for 6.12/7 compatibility
-data EitherErr a b = LeftErr a | RightOK b
+data EitherErr a b = LeftErr a | RightOK b deriving ( Functor )
+
+instance Applicative (EitherErr a) where
+    pure  = return
+    (<*>) = ap
 
 instance Monad (EitherErr a) where
     return = RightOK

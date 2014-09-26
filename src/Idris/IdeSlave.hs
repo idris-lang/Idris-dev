@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
-module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..)) where
+module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideSlaveEpoch, getLen, getNChar) where
 
 import Text.Printf
 import Numeric
@@ -12,11 +12,23 @@ import qualified Data.ByteString.UTF8 as UTF8
 -- import qualified Data.Text as T
 import Text.Trifecta hiding (Err)
 import Text.Trifecta.Delta
+import System.IO
 
 import Idris.Core.TT
 import Idris.Core.Binary
 
 import Control.Applicative hiding (Const)
+
+getNChar :: Handle -> Int -> String -> IO (String)
+getNChar _ 0 s = return (reverse s)
+getNChar h n s = do c <- hGetChar h
+                    getNChar h (n - 1) (c : s)
+
+getLen :: Handle -> IO (Either Err Int)
+getLen h = do s <- getNChar h 6 ""
+              case readHex s of
+                ((num, ""):_) -> return $ Right num
+                _             -> return $ Left . Msg $ "Couldn't read length " ++ s
 
 data SExp = SexpList [SExp]
           | StringAtom String
@@ -133,6 +145,12 @@ instance SExpable OutputAnnotation where
                        ItalicText    -> "italic"
                        UnderlineText -> "underline"
   toSExp (AnnTerm bnd tm) = toSExp [(SymbolAtom "tt-term", StringAtom (encodeTerm bnd tm))]
+  toSExp (AnnSearchResult ordr) = toSExp [(SymbolAtom "doc-overview", 
+      StringAtom ("Result type is " ++ descr))]
+      where descr = case ordr of
+	      EQ -> "isomorphic"
+	      LT -> "more general than searched type"
+	      GT -> "more specific than searched type"
 
 encodeTerm :: [(Name, Bool)] -> Term -> String
 encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $
@@ -200,6 +218,7 @@ data IdeSlaveCommand = REPLCompletions String
                      | TermNormalise [(Name, Bool)] Term
                      | TermShowImplicits [(Name, Bool)] Term
                      | TermNoImplicits [(Name, Bool)] Term
+                     | PrintDef String
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
@@ -242,24 +261,20 @@ sexpToCommand (SexpList [SymbolAtom "show-term-implicits", StringAtom encoded]) 
                                                                                           Just (TermShowImplicits bnd tm)
 sexpToCommand (SexpList [SymbolAtom "hide-term-implicits", StringAtom encoded])         = let (bnd, tm) = decodeTerm encoded in
                                                                                           Just (TermNoImplicits bnd tm)
+sexpToCommand (SexpList [SymbolAtom "print-definition", StringAtom name])               = Just (PrintDef name)
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)
 parseMessage x = case receiveString x of
                    Right (SexpList [cmd, (IntegerAtom id)]) -> Right (cmd, id)
+                   Right x -> Left . Msg $ "Invalid message " ++ show x
                    Left err -> Left err
 
 receiveString :: String -> Either Err SExp
 receiveString x =
-  case readHex (take 6 x) of
-    ((num, ""):_) ->
-      let msg = drop 6 x in
-        if (length msg) /= (num - 1)
-           then Left . Msg $ "bad input length"
-           else (case parseSExp msg of
-                      Failure _ -> Left . Msg $ "parse failure"
-                      Success r -> Right r)
-    _ -> Left . Msg $ "readHex failed"
+  case parseSExp x of
+    Failure _ -> Left . Msg $ "parse failure"
+    Success r -> Right r
 
 convSExp :: SExpable a => String -> a -> Integer -> String
 convSExp pre s id =
@@ -269,3 +284,6 @@ convSExp pre s id =
 
 getHexLength :: String -> String
 getHexLength s = printf "%06x" (1 + (length s))
+
+ideSlaveEpoch :: Int
+ideSlaveEpoch = 1

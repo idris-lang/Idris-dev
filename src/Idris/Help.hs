@@ -11,6 +11,10 @@ data CmdArg = ExprArg -- ^ The command takes an expression
             | NoArg -- ^ No completion (yet!?)
             | SpecialHeaderArg -- ^ do not use
             | ConsoleWidthArg -- ^ The width of the console
+            | DeclArg -- ^ An Idris declaration, as might be contained in a file
+            | ManyArgs CmdArg -- ^ Zero or more of one kind of argument
+            | OptionalArg CmdArg -- ^ Zero or one of one kind of argument
+            | SeqArgs CmdArg CmdArg -- ^ One kind of argument followed by another
 
 instance Show CmdArg where
     show ExprArg          = "<expr>"
@@ -24,6 +28,10 @@ instance Show CmdArg where
     show NoArg            = ""
     show SpecialHeaderArg = "Arguments"
     show ConsoleWidthArg  = "auto|infinite|<number>"
+    show DeclArg = "<top-level declaration>"
+    show (ManyArgs a) = "(" ++ show a ++ ")..."
+    show (OptionalArg a) = "[" ++ show a ++ "]"
+    show (SeqArgs a b) = show a ++ " " ++ show b
 
 help :: [([String], CmdArg, String)]
 help =
@@ -59,7 +67,10 @@ help =
     ([":colour", ":color"], ColourArg, "Turn REPL colours on or off; set a specific colour"),
     ([":consolewidth"], ConsoleWidthArg, "Set the width of the console"),
     ([":q",":quit"], NoArg, "Exit the Idris system"),
-    ([":w", ":warranty"], NoArg, "Displays warranty information")
+    ([":w", ":warranty"], NoArg, "Displays warranty information"),
+    ([":let"], ManyArgs DeclArg, "Evaluate a declaration, such as a function definition, instance implementation, or fixity declaration"),
+    ([":undefine",":unlet"], ManyArgs NameArg, "Remove the listed repl definitions, or all repl definitions if no names given"),
+    ([":printdef"], NameArg, "Show the definition of a function")
   ]
 
 -- | Use these for completion, but don't show them in :help

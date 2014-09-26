@@ -7,8 +7,10 @@ import Control.Monad.Reader
 
 %access public
 
+||| A combination of the Reader, Writer, and State monads
 class (Monoid w, MonadReader r m, MonadWriter w m, MonadState s m) => MonadRWS r w s (m : Type -> Type) where {}
 
+||| The transformer on which the RWS monad is based
 record RWST : Type -> Type -> Type -> (Type -> Type) -> Type -> Type where
     MkRWST : {m : Type -> Type} ->
              (runRWST : r -> s -> m (a, s, w)) -> RWST r w s m a
@@ -46,5 +48,6 @@ instance (Monoid w, Monad m) => MonadState s (RWST r w s m) where
 
 instance (Monoid w, Monad m) => MonadRWS r w s (RWST r w s m) where {}
 
+||| The RWS monad. See the MonadRWS class
 RWS : Type -> Type -> Type -> Type -> Type
 RWS r w s a = RWST r w s Identity a

@@ -31,12 +31,13 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 75
+ibcVersion = 80
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
                          symbols :: [Name],
                          ibc_imports :: [FilePath],
+                         ibc_importdirs :: [FilePath],
                          ibc_implicits :: [(Name, [PArg])],
                          ibc_fixes :: [FixDecl],
                          ibc_statics :: [(Name, [Bool])],
@@ -56,6 +57,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_total :: [(Name, Totality)],
                          ibc_totcheckfail :: [(FC, String)],
                          ibc_flags :: [(Name, [FnOpt])],
+                         ibc_fninfo :: [(Name, FnInfo)],
                          ibc_cg :: [(Name, CGInfo)],
                          ibc_defs :: [(Name, Def)],
                          ibc_docstrings :: [(Name, (Docstring, [(Name, Docstring)]))],
@@ -78,7 +80,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
 
 loadIBC :: FilePath -> Idris ()
 loadIBC fp = do imps <- getImported
@@ -122,45 +124,46 @@ mkIBC (i:is) f = do ist <- getIState
 
 ibc :: IState -> IBCWrite -> IBCFile -> Idris IBCFile
 ibc i (IBCFix d) f = return f { ibc_fixes = d : ibc_fixes f }
-ibc i (IBCImp n) f = case lookupCtxt n (idris_implicits i) of
-                        [v] -> return f { ibc_implicits = (n,v): ibc_implicits f     }
+ibc i (IBCImp n) f = case lookupCtxtExact n (idris_implicits i) of
+                        Just v -> return f { ibc_implicits = (n,v): ibc_implicits f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCStatic n) f
-                   = case lookupCtxt n (idris_statics i) of
-                        [v] -> return f { ibc_statics = (n,v): ibc_statics f     }
+                   = case lookupCtxtExact n (idris_statics i) of
+                        Just v -> return f { ibc_statics = (n,v): ibc_statics f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCClass n) f
-                   = case lookupCtxt n (idris_classes i) of
-                        [v] -> return f { ibc_classes = (n,v): ibc_classes f     }
+                   = case lookupCtxtExact n (idris_classes i) of
+                        Just v -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCInstance int n ins) f
                    = return f { ibc_instances = (int,n,ins): ibc_instances f     }
 ibc i (IBCDSL n) f
-                   = case lookupCtxt n (idris_dsls i) of
-                        [v] -> return f { ibc_dsls = (n,v): ibc_dsls f     }
+                   = case lookupCtxtExact n (idris_dsls i) of
+                        Just v -> return f { ibc_dsls = (n,v): ibc_dsls f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCData n) f
-                   = case lookupCtxt n (idris_datatypes i) of
-                        [v] -> return f { ibc_datatypes = (n,v): ibc_datatypes f     }
+                   = case lookupCtxtExact n (idris_datatypes i) of
+                        Just v -> return f { ibc_datatypes = (n,v): ibc_datatypes f     }
                         _ -> ifail "IBC write failed"
-ibc i (IBCOpt n) f = case lookupCtxt n (idris_optimisation i) of
-                        [v] -> return f { ibc_optimise = (n,v): ibc_optimise f     }
+ibc i (IBCOpt n) f = case lookupCtxtExact n (idris_optimisation i) of
+                        Just v -> return f { ibc_optimise = (n,v): ibc_optimise f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCSyntax n) f = return f { ibc_syntax = n : ibc_syntax f }
 ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
 ibc i (IBCImport n) f = return f { ibc_imports = n : ibc_imports f }
+ibc i (IBCImportDir n) f = return f { ibc_importdirs = n : ibc_importdirs f }
 ibc i (IBCObj tgt n) f = return f { ibc_objs = (tgt, n) : ibc_objs f }
 ibc i (IBCLib tgt n) f = return f { ibc_libs = (tgt, n) : ibc_libs f }
 ibc i (IBCCGFlag tgt n) f = return f { ibc_cgflags = (tgt, n) : ibc_cgflags f }
 ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
 ibc i (IBCDef n) f 
-   = do f' <- case lookupDef n (tt_ctxt i) of
-                   [v] -> do (v', (f', _)) <- runStateT (updateDef v) (f, length (symbols f))
-                             return f' { ibc_defs = (n,v) : ibc_defs f'     }
+   = do f' <- case lookupDefExact n (tt_ctxt i) of
+                   Just v -> do (v', (f', _)) <- runStateT (updateDef v) (f, length (symbols f))
+                                return f' { ibc_defs = (n,v) : ibc_defs f'     }
                    _ -> ifail "IBC write failed"
-        case lookupCtxt n (idris_patdefs i) of
-                   [v] -> return f' { ibc_patdefs = (n,v) : ibc_patdefs f' }
+        case lookupCtxtExact n (idris_patdefs i) of
+                   Just v -> return f' { ibc_patdefs = (n,v) : ibc_patdefs f' }
                    _ -> return f' -- Not a pattern definition
   where 
     updateDef :: Def -> StateT (IBCFile, Int) Idris Def
@@ -180,8 +183,8 @@ ibc i (IBCDef n) f
        = do c' <- updateSC c; r' <- updateSC r
             return (CaseDefs (ts, t) (cs, c') (is, i) (rs, r'))
 
-    updateSC (Case n alts) = do alts' <- mapM updateAlt alts
-                                return (Case n alts')
+    updateSC (Case up n alts) = do alts' <- mapM updateAlt alts
+                                   return (Case up n alts')
     updateSC (ProjCase t alts) = do t' <- update t
                                     alts' <- mapM updateAlt alts
                                     return (ProjCase t' alts')
@@ -217,15 +220,16 @@ ibc i (IBCDef n) f
     update t = return t
 
 
-ibc i (IBCDoc n) f = case lookupCtxt n (idris_docstrings i) of
-                        [v] -> return f { ibc_docstrings = (n,v) : ibc_docstrings f }
+ibc i (IBCDoc n) f = case lookupCtxtExact n (idris_docstrings i) of
+                        Just v -> return f { ibc_docstrings = (n,v) : ibc_docstrings f }
                         _ -> ifail "IBC write failed"
-ibc i (IBCCG n) f = case lookupCtxt n (idris_callgraph i) of
-                        [v] -> return f { ibc_cg = (n,v) : ibc_cg f     }
+ibc i (IBCCG n) f = case lookupCtxtExact n (idris_callgraph i) of
+                        Just v -> return f { ibc_cg = (n,v) : ibc_cg f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCCoercion n) f = return f { ibc_coercions = n : ibc_coercions f }
 ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
 ibc i (IBCFlags n a) f = return f { ibc_flags = (n,a) : ibc_flags f }
+ibc i (IBCFnInfo n a) f = return f { ibc_fninfo = (n,a) : ibc_fninfo f }
 ibc i (IBCTotal n a) f = return f { ibc_total = (n,a) : ibc_total f }
 ibc i (IBCTrans t) f = return f { ibc_transforms = t : ibc_transforms f }
 ibc i (IBCErrRev t) f = return f { ibc_errRev = t : ibc_errRev f }
@@ -255,6 +259,7 @@ process i fn
                v <- verbose
                quiet <- getQuiet
 --                when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
+               pImportDirs (ibc_importdirs i)
                pImports (ibc_imports i)
                pImps (ibc_implicits i)
                pFixes (ibc_fixes i)
@@ -274,6 +279,8 @@ process i fn
                pDefs (symbols i) (ibc_defs i)
                pPatdefs (ibc_patdefs i)
                pAccess (ibc_access i)
+               pFlags (ibc_flags i)
+               pFnInfo (ibc_fninfo i)
                pTotal (ibc_total i)
                pTotCheckErr (ibc_totcheckfail i)
                pCG (ibc_cg i)
@@ -306,6 +313,9 @@ pParsedSpan :: Maybe FC -> Idris ()
 pParsedSpan fc = do ist <- getIState
                     putIState ist { idris_parsedSpan = fc }
 
+pImportDirs :: [FilePath] -> Idris ()
+pImportDirs fs = mapM_ addImportDir fs
+
 pImports :: [FilePath] -> Idris ()
 pImports fs
   = do mapM_ (\f -> do i <- getIState
@@ -326,8 +336,8 @@ pImports fs
 pImps :: [(Name, [PArg])] -> Idris ()
 pImps imps = mapM_ (\ (n, imp) ->
                         do i <- getIState
-                           case lookupDefAcc n False (tt_ctxt i) of
-                              [(n, Hidden)] -> return ()
+                           case lookupDefAccExact n False (tt_ctxt i) of
+                              Just (n, Hidden) -> return ()
                               _ -> putIState (i { idris_implicits
                                             = addDef n imp (idris_implicits i) }))
                    imps
@@ -348,8 +358,8 @@ pClasses cs = mapM_ (\ (n, c) ->
                         do i <- getIState
                            -- Don't lose instances from previous IBCs, which
                            -- could have loaded in any order
-                           let is = case lookupCtxt n (idris_classes i) of
-                                      [CI _ _ _ _ _ ins] -> ins
+                           let is = case lookupCtxtExact n (idris_classes i) of
+                                      Just (CI _ _ _ _ _ ins) -> ins
                                       _ -> []
                            let c' = c { class_instances =
                                           class_instances c ++ is }
@@ -423,9 +433,10 @@ pDefs syms ds
                do let d' = updateDef d
                   case d' of
                        TyDecl _ _ -> return () 
-                       _ -> solveDeferred n 
+                       _ -> do iLOG $ "SOLVING " ++ show n
+                               solveDeferred n 
                   i <- getIState
-                  logLvl 5 $ "Added " ++ show (n, d')
+--                   logLvl 1 $ "Added " ++ show (n, d')
                   putIState (i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })) ds
   where
     updateDef (CaseOp c t args o s cd)
@@ -458,6 +469,9 @@ pAccess ds = mapM_ (\ (n, a) ->
 
 pFlags :: [(Name, [FnOpt])] -> Idris ()
 pFlags ds = mapM_ (\ (n, a) -> setFlags n a) ds
+
+pFnInfo :: [(Name, FnInfo)] -> Idris ()
+pFnInfo ds = mapM_ (\ (n, a) -> setFnInfo n a) ds
 
 pTotal :: [(Name, Totality)] -> Idris ()
 pTotal ds = mapM_ (\ (n, a) ->
@@ -618,12 +632,24 @@ instance Binary CGInfo where
                x4 <- get
                x5 <- get
                return (CGInfo x1 x2 [] x4 x5)
+
+instance Binary CaseType where
+        put x = case x of
+                     Updatable -> putWord8 0
+                     Shared -> putWord8 1
+        get = do i <- getWord8
+                 case i of
+                     0 -> return Updatable
+                     1 -> return Shared
+                     _ -> error "Corrupted binary data for CaseType"
+
 instance Binary SC where
         put x
           = case x of
-                Case x1 x2 -> do putWord8 0
-                                 put x1
-                                 put x2
+                Case x1 x2 x3 -> do putWord8 0
+                                    put x1
+                                    put x2
+                                    put x3
                 ProjCase x1 x2 -> do putWord8 1
                                      put x1
                                      put x2
@@ -637,7 +663,8 @@ instance Binary SC where
                case i of
                    0 -> do x1 <- get
                            x2 <- get
-                           return (Case x1 x2)
+                           x3 <- get
+                           return (Case x1 x2 x3)
                    1 -> do x1 <- get
                            x2 <- get
                            return (ProjCase x1 x2)
@@ -830,7 +857,7 @@ instance Binary MetaInformation where
                      return (DataMI x1)
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -870,6 +897,8 @@ instance Binary IBCFile where
                put x36
                put x37
                put x38
+               put x39
+               put x40
 
         get
           = do x1 <- get
@@ -911,7 +940,9 @@ instance Binary IBCFile where
                     x36 <- get
                     x37 <- get
                     x38 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38)
+                    x39 <- get
+                    x40 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where
@@ -943,6 +974,8 @@ instance Binary FnOpt where
                 ErrorHandler -> putWord8 9
                 ErrorReverse -> putWord8 10
                 CoveringFn -> putWord8 11
+                NoImplicit -> putWord8 12
+                Constructor -> putWord8 13
         get
           = do i <- getWord8
                case i of
@@ -959,6 +992,8 @@ instance Binary FnOpt where
                    9 -> return ErrorHandler
                    10 -> return ErrorReverse
                    11 -> return CoveringFn
+                   12 -> return NoImplicit
+                   13 -> return Constructor
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where
@@ -1465,6 +1500,8 @@ instance Binary PTerm where
                 PDisamb x1 x2 -> do putWord8 37
                                     put x1
                                     put x2
+                PUniverse x1 -> do putWord8 38
+                                   put x1
 
         get
           = do i <- getWord8
@@ -1581,6 +1618,8 @@ instance Binary PTerm where
                    37 -> do x1 <- get
                             x2 <- get
                             return (PDisamb x1 x2)
+                   38 -> do x1 <- get
+                            return (PUniverse x1)
                    _ -> error "Corrupted binary data for PTerm"
 
 instance (Binary t) => Binary (PTactic' t) where
@@ -1818,6 +1857,13 @@ instance Binary OptInfo where
                x2 <- get
                return (Optimise x1 x2)
 
+instance Binary FnInfo where
+        put (FnInfo x1)
+          = put x1
+        get
+          = do x1 <- get
+               return (FnInfo x1)
+
 instance Binary TypeInfo where
         put (TI x1 x2 x3 x4 x5) = do put x1
                                      put x2
@@ -1913,18 +1959,14 @@ instance Binary SSymbol where
 instance Binary Codegen where
         put x
           = case x of
-                ViaC -> putWord8 0
-                ViaJava -> putWord8 1
-                ViaNode -> putWord8 2
-                ViaJavaScript -> putWord8 3
-                Bytecode -> putWord8 4
+                Via str -> do putWord8 0
+                              put str
+                Bytecode -> putWord8 1
         get
           = do i <- getWord8
                case i of
-                  0 -> return ViaC
-                  1 -> return ViaJava
-                  2 -> return ViaNode
-                  3 -> return ViaJavaScript
-                  4 -> return Bytecode
+                  0 -> do x1 <- get
+                          return (Via x1)
+                  1 -> return Bytecode
                   _ -> error  "Corrupted binary data for Codegen"
 

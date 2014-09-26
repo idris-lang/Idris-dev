@@ -137,6 +137,21 @@ instance (Ord a, Ord b) => Ord (a, b) where
       then compare xl yl
       else compare xr yr
 
+-- --------------------------------------------------------- [ Negatable Class ]
+||| The `Neg` class defines unary negation (-).
+class Neg a where
+    ||| The underlying implementation of unary minus. `-5` desugars to `negate (fromInteger 5)`.
+    negate : a -> a
+
+instance Neg Integer where
+    negate x = prim__subBigInt 0 x
+
+instance Neg Int where
+    negate x = prim__subInt 0 x
+
+instance Neg Float where
+    negate x = prim__negFloat x
+
 -- --------------------------------------------------------- [ Numerical Class ]
 ||| The Num class defines basic numerical arithmetic.
 class Num a where

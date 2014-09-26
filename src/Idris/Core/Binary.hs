@@ -78,6 +78,9 @@ instance Binary SpecialName where
                 CaseN x1 -> do putWord8 4; put x1
                 ElimN x1 -> do putWord8 5; put x1
                 InstanceCtorN x1 -> do putWord8 6; put x1
+                WithN x1 x2 -> do putWord8 7
+                                  put x1
+                                  put x2
         get
           = do i <- getWord8
                case i of
@@ -99,6 +102,9 @@ instance Binary SpecialName where
                            return (ElimN x1)
                    6 -> do x1 <- get
                            return (InstanceCtorN x1)
+                   7 -> do x1 <- get
+                           x2 <- get
+                           return (WithN x1 x2)
                    _ -> error "Corrupted binary data for SpecialName"
 
 
@@ -227,8 +233,9 @@ instance (Binary b) => Binary (Binder b) where
           = case x of
                 Lam x1 -> do putWord8 0
                              put x1
-                Pi x1 -> do putWord8 1
-                            put x1
+                Pi x1 x2 -> do putWord8 1
+                               put x1
+                               put x2
                 Let x1 x2 -> do putWord8 2
                                 put x1
                                 put x2
@@ -253,7 +260,8 @@ instance (Binary b) => Binary (Binder b) where
                    0 -> do x1 <- get
                            return (Lam x1)
                    1 -> do x1 <- get
-                           return (Pi x1)
+                           x2 <- get
+                           return (Pi x1 x2)
                    2 -> do x1 <- get
                            x2 <- get
                            return (Let x1 x2)
@@ -275,13 +283,26 @@ instance (Binary b) => Binary (Binder b) where
                    _ -> error "Corrupted binary data for Binder"
 
 
+instance Binary Universe where
+        put x = case x of
+                     UniqueType -> putWord8 0
+                     AllTypes -> putWord8 1
+                     NullType -> putWord8 2
+        get = do i <- getWord8
+                 case i of
+                     0 -> return UniqueType
+                     1 -> return AllTypes
+                     2 -> return NullType
+                     _ -> error "Corrupted binary data for Universe"
+
 instance Binary NameType where
         put x
           = case x of
                 Bound -> putWord8 0
                 Ref -> putWord8 1
-                DCon x1 x2 -> do putWord8 2
-                                 put (x1 * 65536 + x2)
+                DCon x1 x2 x3 -> do putWord8 2
+                                    put (x1 * 65536 + x2)
+                                    put x3
                 TCon x1 x2 -> do putWord8 3
                                  put (x1 * 65536 + x2)
         get
@@ -290,7 +311,8 @@ instance Binary NameType where
                    0 -> return Bound
                    1 -> return Ref
                    2 -> do x1x2 <- get
-                           return (DCon (x1x2 `div` 65536) (x1x2 `mod` 65536))
+                           x3 <- get
+                           return (DCon (x1x2 `div` 65536) (x1x2 `mod` 65536) x3)
                    3 -> do x1x2 <- get
                            return (TCon (x1x2 `div` 65536) (x1x2 `mod` 65536))
                    _ -> error "Corrupted binary data for NameType"
@@ -325,6 +347,8 @@ instance {- (Binary n) => -} Binary (TT Name) where
                 TType x1 -> do putWord8 7
                                put x1
                 Impossible -> putWord8 8
+                UType x1 -> do putWord8 10
+                               put x1
         get
           = do i <- getWord8
                case i of
@@ -352,5 +376,7 @@ instance {- (Binary n) => -} Binary (TT Name) where
                    8 -> return Impossible
                    9 -> do x1 <- get
                            return (V x1)
+                   10 -> do x1 <- get
+                            return (UType x1)
                    _ -> error "Corrupted binary data for TT"
 

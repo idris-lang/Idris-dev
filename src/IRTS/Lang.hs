@@ -1,15 +1,22 @@
+{-# LANGUAGE PatternGuards, DeriveFunctor #-}
+
 module IRTS.Lang where
 
-import           Control.Monad.State hiding (lift)
-import           Idris.Core.TT
-import           Data.List
-import           Debug.Trace
+import Control.Monad.State hiding (lift)
+import Control.Applicative hiding (Const)
+
+import Idris.Core.TT
+import Idris.Core.CaseTree
+
+import Data.List
+import Debug.Trace
 
 data Endianness = Native | BE | LE deriving (Show, Eq)
 
 data LVar = Loc Int | Glob Name
   deriving (Show, Eq)
 
+-- ASSUMPTION: All variable bindings have unique names here
 data LExp = LV LVar
           | LApp Bool LExp [LExp] -- True = tail call
           | LLazyApp Name [LExp] -- True = tail call
@@ -18,8 +25,9 @@ data LExp = LV LVar
           | LLet Name LExp LExp -- name just for pretty printing
           | LLam [Name] LExp -- lambda, lifted out before compiling
           | LProj LExp Int -- projection
-          | LCon Int Name [LExp]
-          | LCase LExp [LAlt]
+          | LCon (Maybe LVar) -- Location to reallocate, if available
+                 Int Name [LExp]
+          | LCase CaseType LExp [LAlt]
           | LConst Const
           | LForeign FLang FType String [(FType, LExp)]
           | LOp PrimFn [LExp]
@@ -44,7 +52,7 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LBitCast ArithTy ArithTy -- Only for values of equal width
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
-            | LFSqrt | LFFloor | LFCeil
+            | LFSqrt | LFFloor | LFCeil | LFNegate
 
            -- construction          element extraction     element insertion
             | LMkVec NativeTy Int | LIdxVec NativeTy Int | LUpdateVec NativeTy Int
@@ -90,10 +98,13 @@ data FType = FArith ArithTy
            | FAny
   deriving (Show, Eq)
 
-data LAlt = LConCase Int Name [Name] LExp
-          | LConstCase Const LExp
-          | LDefaultCase LExp
-  deriving (Show, Eq)
+-- FIXME: Why not use this for all the IRs now?
+data LAlt' e = LConCase Int Name [Name] e
+             | LConstCase Const e
+             | LDefaultCase e
+  deriving (Show, Eq, Functor)
+
+type LAlt = LAlt' LExp
 
 data LDecl = LFun [LOpt] Name [Name] LExp -- options, name, arg names, def
            | LConstructor Name Int Int -- constructor name, tag, arity
@@ -123,9 +134,9 @@ liftAll :: [(Name, LDecl)] -> [(Name, LDecl)]
 liftAll xs = concatMap (\ (x, d) -> lambdaLift x d) xs
 
 lambdaLift :: Name -> LDecl -> [(Name, LDecl)]
-lambdaLift n (LFun _ _ args e)
+lambdaLift n (LFun opts _ args e)
       = let (e', (LS _ _ decls)) = runState (lift args e) (LS n 0 []) in
-            (n, LFun [] n args e') : decls
+            (n, LFun opts n args e') : decls
 lambdaLift n x = [(n, x)]
 
 getNextName :: State LiftState Name
@@ -168,11 +179,11 @@ lift env (LLam args e) = do e' <- lift (env ++ args) e
                             return (LApp False (LV (Glob fn)) (map (LV . Glob) usedArgs))
 lift env (LProj t i) = do t' <- lift env t
                           return (LProj t' i)
-lift env (LCon i n args) = do args' <- mapM (lift env) args
-                              return (LCon i n args')
-lift env (LCase e alts) = do alts' <- mapM liftA alts
-                             e' <- lift env e
-                             return (LCase e' alts')
+lift env (LCon loc i n args) = do args' <- mapM (lift env) args
+                                  return (LCon loc i n args')
+lift env (LCase up e alts) = do alts' <- mapM liftA alts
+                                e' <- lift env e
+                                return (LCase up e' alts')
   where
     liftA (LConCase i n args e) = do e' <- lift (env ++ args) e
                                      return (LConCase i n args e')
@@ -191,6 +202,67 @@ lift env (LOp f args) = do args' <- mapM (lift env) args
 lift env (LError str) = return $ LError str
 lift env LNothing = return $ LNothing
 
+allocUnique :: LDefs -> (Name, LDecl) -> (Name, LDecl)
+allocUnique defs p@(n, LConstructor _ _ _) = p
+allocUnique defs (n, LFun opts fn args e)
+    = let e' = evalState (findUp e) [] in
+          (n, LFun opts fn args e')
+  where
+    -- Keep track of 'updatable' names in the state, i.e. names whose heap
+    -- entry may be reused, along with the arity which was there
+    findUp :: LExp -> State [(Name, Int)] LExp
+    findUp (LApp t (LV (Glob n)) as) 
+       | Just (LConstructor _ i ar) <- lookupCtxtExact n defs,
+         ar == length as
+          = findUp (LCon Nothing i n as)
+    findUp (LV (Glob n))
+       | Just (LConstructor _ i 0) <- lookupCtxtExact n defs
+          = return $ LCon Nothing i n [] -- nullary cons are global, no need to update
+    findUp (LApp t f as) = LApp t <$> findUp f <*> mapM findUp as
+    findUp (LLazyApp n as) = LLazyApp n <$> mapM findUp as
+    findUp (LLazyExp e) = LLazyExp <$> findUp e
+    findUp (LForce e) = LForce <$> findUp e
+    -- use assumption that names are unique!
+    findUp (LLet n val sc) = LLet n <$> findUp val <*> findUp sc
+    findUp (LLam ns sc) = LLam ns <$> findUp sc
+    findUp (LProj e i) = LProj <$> findUp e <*> return i
+    findUp (LCon (Just l) i n es) = LCon (Just l) i n <$> mapM findUp es
+    findUp (LCon Nothing i n es)
+           = do avail <- get
+                v <- findVar [] avail (length es)
+                LCon v i n <$> mapM findUp es
+    findUp (LForeign l t s es)
+           = LForeign l t s <$> mapM (\ (t, e) -> do e' <- findUp e
+                                                     return (t, e')) es
+    findUp (LOp o es) = LOp o <$> mapM findUp es
+    findUp (LCase Updatable e@(LV (Glob n)) as)
+           = LCase Updatable e <$> mapM (doUpAlt n) as
+    findUp (LCase t e as) 
+           = LCase t <$> findUp e <*> mapM findUpAlt as
+    findUp t = return t
+
+    findUpAlt (LConCase i t args rhs) = do avail <- get
+                                           rhs' <- findUp rhs
+                                           put avail
+                                           return $ LConCase i t args rhs'
+    findUpAlt (LConstCase i rhs) = LConstCase i <$> findUp rhs
+    findUpAlt (LDefaultCase rhs) = LDefaultCase <$> findUp rhs
+
+    doUpAlt n (LConCase i t args rhs) 
+           = do avail <- get
+                put ((n, length args) : avail)
+                rhs' <- findUp rhs
+                put avail
+                return $ LConCase i t args rhs'
+    doUpAlt n (LConstCase i rhs) = LConstCase i <$> findUp rhs
+    doUpAlt n (LDefaultCase rhs) = LDefaultCase <$> findUp rhs
+
+    findVar _ [] i = return Nothing
+    findVar acc ((n, l) : ns) i | l == i = do put (reverse acc ++ ns)
+                                              return (Just (Glob n))
+    findVar acc (n : ns) i = findVar (n : acc) ns i
+
+
 -- Return variables in list which are used in the expression
 
 usedArg env n | n `elem` env = [n]
@@ -204,9 +276,9 @@ usedIn env (LLazyExp e) = usedIn env e
 usedIn env (LForce e) = usedIn env e
 usedIn env (LLet n v e) = usedIn env v ++ usedIn (env \\ [n]) e
 usedIn env (LLam ns e) = usedIn (env \\ ns) e
-usedIn env (LCon i n args) = concatMap (usedIn env) args
+usedIn env (LCon loc i n args) = concatMap (usedIn env) args
 usedIn env (LProj t i) = usedIn env t
-usedIn env (LCase e alts) = usedIn env e ++ concatMap (usedInA env) alts
+usedIn env (LCase up e alts) = usedIn env e ++ concatMap (usedInA env) alts
   where usedInA env (LConCase i n ns e) = usedIn env e
         usedInA env (LConstCase c e) = usedIn env e
         usedInA env (LDefaultCase e) = usedIn env e
@@ -237,12 +309,17 @@ instance Show LExp where
 
      show' env ind (LProj t i) = show t ++ "!" ++ show i
 
-     show' env ind (LCon i n args)
-        = show n ++ "(" ++ showSep ", " (map (show' env ind) args) ++ ")"
+     show' env ind (LCon loc i n args)
+        = atloc loc ++ show n ++ "(" ++ showSep ", " (map (show' env ind) args) ++ ")"
+       where atloc Nothing = ""
+             atloc (Just l) = "@" ++ show (LV l) ++ ":"
 
-     show' env ind (LCase e alts)
-        = "case " ++ show' env ind e ++ " of \n" ++ fmt alts
+     show' env ind (LCase up e alts)
+        = "case" ++ update ++ show' env ind e ++ " of \n" ++ fmt alts
        where
+         update = case up of
+                       Shared -> " "
+                       Updatable -> "! "
          fmt [] = ""
          fmt [alt]
             = "\t" ++ ind ++ "| " ++ showAlt env (ind ++ "    ") alt 

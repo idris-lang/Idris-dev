@@ -1,2 +1,3 @@
-DefaultArgUnknownName.idr:3:18:When elaborating type of DefaultArgUnknownName.funWithBadDefArg:
-Can't infer type for sadgjhsag
+DefaultArgUnknownName.idr:5:30:When elaborating right hand side of test:
+When elaborating argument [95marg[0m to function [92mDefaultArgUnknownName.funWithBadDefArg[0m:
+        No such variable sadgjhsag

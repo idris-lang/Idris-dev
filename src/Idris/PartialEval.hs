@@ -35,35 +35,35 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
   where
     -- Specialise static argument in type by let-binding provided value instead
     -- of expecting it as a function argument
-    st ((ExplicitS, v) : xs) (Bind n (Pi t) sc)
+    st ((ExplicitS, v) : xs) (Bind n (Pi t _) sc)
          = Bind n (Let t v) (st xs sc)
-    st ((ImplicitS, v) : xs) (Bind n (Pi t) sc)
+    st ((ImplicitS, v) : xs) (Bind n (Pi t _) sc)
          = Bind n (Let t v) (st xs sc)
     -- Erase argument from function type
-    st ((UnifiedD, _) : xs) (Bind n (Pi t) sc)
+    st ((UnifiedD, _) : xs) (Bind n (Pi t _) sc)
          = st xs sc
     -- Keep types as is
-    st (_ : xs) (Bind n (Pi t) sc)
-         = Bind n (Pi t) (st xs sc)
+    st (_ : xs) (Bind n (Pi t k) sc)
+         = Bind n (Pi t k) (st xs sc)
     st _ t = t
 
     -- Erase implicit dynamic argument if existing argument shares it value,
     -- by substituting the value of previous argument
-    unifyEq (imp@(ImplicitD, v) : xs) (Bind n (Pi t) sc)
+    unifyEq (imp@(ImplicitD, v) : xs) (Bind n (Pi t k) sc)
          = do amap <- get
               case lookup imp amap of
                    Just n' -> 
                         do put (amap ++ [((UnifiedD, Erased), n)])
                            sc' <- unifyEq xs (subst n (P Bound n' Erased) sc)
-                           return (Bind n (Pi t) sc') -- erase later
+                           return (Bind n (Pi t k) sc') -- erase later
                    _ -> do put (amap ++ [(imp, n)])
                            sc' <- unifyEq xs sc
-                           return (Bind n (Pi t) sc')
-    unifyEq (x : xs) (Bind n (Pi t) sc)
+                           return (Bind n (Pi t k) sc')
+    unifyEq (x : xs) (Bind n (Pi t k) sc)
          = do args <- get
               put (args ++ [(x, n)])
               sc' <- unifyEq xs sc
-              return (Bind n (Pi t) sc')
+              return (Bind n (Pi t k) sc')
     unifyEq xs t = do args <- get
                       put (args ++ (zip xs (repeat (sUN "_"))))
                       return t
@@ -73,18 +73,20 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
 mkPE_TyDecl :: IState -> [(PEArgType, Term)] -> Type -> PTerm
 mkPE_TyDecl ist args ty = mkty args ty
   where
-    mkty ((ExplicitD, v) : xs) (Bind n (Pi t) sc)
+    mkty ((ExplicitD, v) : xs) (Bind n (Pi t k) sc)
        = PPi expl n (delab ist t) (mkty xs sc)
-    mkty ((ImplicitD, v) : xs) (Bind n (Pi t) sc)
+    mkty ((ImplicitD, v) : xs) (Bind n (Pi t k) sc)
          | concreteClass ist t = mkty xs sc
          | classConstraint ist t 
              = PPi constraint n (delab ist t) (mkty xs sc)
          | otherwise = PPi impl n (delab ist t) (mkty xs sc)
+
     mkty (_ : xs) t
        = mkty xs t
     mkty [] t = delab ist t
 
 -- | Checks if a given argument is a type class constraint argument
+classConstraint :: Idris.AbsSyntax.IState -> TT Name -> Bool
 classConstraint ist v
     | (P _ c _, args) <- unApply v = case lookupCtxt c (idris_classes ist) of
                                           [_] -> True
@@ -93,6 +95,7 @@ classConstraint ist v
 
 -- | Checks if the given arguments of a type class constraint are all either constants
 -- or references (i.e. that it doesn't contain any complex terms).
+concreteClass :: IState -> TT Name -> Bool
 concreteClass ist v
     | not (classConstraint ist v) = False
     | (P _ c _, args) <- unApply v = all concrete args

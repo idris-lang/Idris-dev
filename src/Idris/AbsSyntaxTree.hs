@@ -30,20 +30,31 @@ import Data.Either
 import qualified Data.Set as S
 import Data.Word (Word)
 import Data.Maybe (fromMaybe)
+import Data.Traversable (Traversable)
+import Data.Foldable (Foldable)
 
 import Debug.Trace
 
 import Text.PrettyPrint.Annotated.Leijen
 
+data ElabWhat = ETypes | EDefns | EAll
+  deriving (Show, Eq)
+
 -- Data to pass to recursively called elaborators; e.g. for where blocks,
 -- paramaterised declarations, etc.
 
+-- rec_elabDecl is used to pass the top level elaborator into other elaborators,
+-- so that we can have mutually recursive elaborators in separate modules without
+-- having to much about with cyclic modules.
 data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         inblock :: Ctxt [Name], -- names in the block, and their params
                         liftname :: Name -> Name,
-                        namespace :: Maybe [String] }
+                        namespace :: Maybe [String], 
+                        rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl -> 
+                                        Idris () }
 
-toplevel = EInfo [] emptyContext id Nothing
+toplevel :: ElabInfo
+toplevel = EInfo [] emptyContext id Nothing (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
@@ -67,7 +78,8 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_optLevel   :: Word,
                          opt_cmdline    :: [Opt], -- remember whole command line
                          opt_origerr    :: Bool,
-                         opt_autoSolve  :: Bool -- ^ automatically apply "solve" tactic in prover
+                         opt_autoSolve  :: Bool, -- ^ automatically apply "solve" tactic in prover
+                         opt_autoImport :: [FilePath] -- ^ e.g. Builtins+Prelude
                        }
     deriving (Show, Eq)
 
@@ -81,7 +93,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_verbose    = True
                       , opt_nobanner   = False
                       , opt_quiet      = False
-                      , opt_codegen    = ViaC
+                      , opt_codegen    = Via "c"
                       , opt_outputTy   = Executable
                       , opt_ibcsubdir  = ""
                       , opt_importdirs = []
@@ -91,6 +103,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_cmdline    = []
                       , opt_origerr    = False
                       , opt_autoSolve  = True
+                      , opt_autoImport = []
                       }
 
 data PPOption = PPOption {
@@ -118,7 +131,9 @@ ppOptionIst = ppOption . idris_options
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
 
 -- | The output mode in use
-data OutputMode = RawOutput | IdeSlave Integer deriving Show
+data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
+                | IdeSlave Integer Handle -- ^ Send IDE output for some request ID to the handle
+                deriving Show
 
 -- | How wide is the console?
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
@@ -145,6 +160,7 @@ data IState = IState {
     idris_calledgraph :: Ctxt [Name],
     idris_docstrings :: Ctxt (Docstring, [(Name, Docstring)]),
     idris_tyinfodata :: Ctxt TIData,
+    idris_fninfo :: Ctxt FnInfo,
     idris_totcheck :: [(FC, Name)], -- names to check totality on
     idris_defertotcheck :: [(FC, Name)], -- names to check at the end
     idris_totcheckfail :: [(FC, String)],
@@ -183,7 +199,6 @@ data IState = IState {
     idris_outputmode :: OutputMode,
     idris_colourRepl :: Bool,
     idris_colourTheme :: ColourTheme,
-    idris_outh :: Handle,
     idris_errorhandlers :: [Name], -- ^ Global error handlers
     idris_nameIdx :: (Int, Ctxt (Int, Name)),
     idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)), -- ^ Specific error handlers
@@ -191,8 +206,13 @@ data IState = IState {
     idris_consolewidth :: ConsoleWidth, -- ^ How many chars wide is the console?
     idris_postulates :: S.Set Name,
     idris_whocalls :: Maybe (M.Map Name [Name]),
-    idris_callswho :: Maybe (M.Map Name [Name])
+    idris_callswho :: Maybe (M.Map Name [Name]),
+    idris_repl_defs :: [Name] -- ^ List of names that were defined in the repl, and can be re-/un-defined
    }
+
+-- Required for parsers library, and therefore trifecta
+instance Show IState where
+  show = const "{internal state}"
 
 data SizeChange = Smaller | Same | Bigger | Unknown
     deriving (Show, Eq)
@@ -233,6 +253,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCSyntax Syntax
               | IBCKeyword String
               | IBCImport FilePath
+              | IBCImportDir FilePath
               | IBCObj Codegen FilePath
               | IBCLib Codegen String
               | IBCCGFlag Codegen String
@@ -242,6 +263,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCMetaInformation Name MetaInformation
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
+              | IBCFnInfo Name FnInfo
               | IBCTrans (Term, Term)
               | IBCErrRev (Term, Term)
               | IBCCG Name
@@ -262,11 +284,11 @@ idrisInit :: IState
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   emptyContext emptyContext
+                   emptyContext emptyContext emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
-                   [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] [] RawOutput
-                   True defaultTheme stdout [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty Nothing Nothing
+                   [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
+                   (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
+                   AutomaticWidth S.empty Nothing Nothing []
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -275,11 +297,12 @@ type Idris = StateT IState (ErrorT Err IO)
 
 -- Commands in the REPL
 
-data Codegen = ViaC
-             | ViaJava
-             | ViaNode
-             | ViaJavaScript
-             | ViaLLVM
+data Codegen = Via String
+--              | ViaC
+--              | ViaJava
+--              | ViaNode
+--              | ViaJavaScript
+--              | ViaLLVM
              | Bytecode
     deriving (Show, Eq)
 
@@ -288,6 +311,7 @@ data Command = Quit
              | Help
              | Eval PTerm
              | NewDefn [PDecl] -- ^ Each 'PDecl' should be either a type declaration (at most one) or a clause defining the same name.
+             | Undefine [Name]
              | Check PTerm
              | DocStr (Either Name Const)
              | TotCheck Name
@@ -339,12 +363,17 @@ data Command = Quit
              | CallsWho Name
              | MakeDoc String                      -- IdrisDoc
              | Warranty
+             | PrintDef Name
+             | PPrint OutputFmt Int PTerm
+
+data OutputFmt = HTMLOutput | LaTeXOutput
 
 data Opt = Filename String
          | Quiet
          | NoBanner
          | ColourREPL Bool
          | Ideslave
+         | IdeslaveSocket
          | ShowLibs
          | ShowLibdir
          | ShowIncs
@@ -463,11 +492,13 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | Dictionary -- type class dictionary, eval only when
                         -- a function argument, and further evaluation resutls
            | Implicit -- implicit coercion
+           | NoImplicit -- do not apply implicit coercions
            | CExport String    -- export, with a C name
            | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
            | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error
            | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
+           | Constructor -- Data constructor type
     deriving (Show, Eq)
 {-!
 deriving instance Binary FnOpt
@@ -688,6 +719,7 @@ data PTerm = PQuote Raw
            | PAlternative Bool [PTerm] -- True if only one may work
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
            | PType -- ^ 'Type' type
+           | PUniverse Universe -- ^ Some universe 
            | PGoal FC PTerm Name PTerm
            | PConstant Const -- ^ Builtin types
            | Placeholder
@@ -763,8 +795,10 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | TEval t
                 | TDocStr (Either Name Const)
                 | TSearch t
+                | Skip
+                | TFail [ErrorReportPart]
                 | Qed | Abandon
-    deriving (Show, Eq, Functor)
+    deriving (Show, Eq, Functor, Foldable, Traversable)
 {-!
 deriving instance Binary PTactic'
 deriving instance NFData PTactic'
@@ -792,6 +826,8 @@ instance Sized a => Sized (PTactic' a) where
   size (Fill t) = 1 + size t
   size Qed = 1
   size Abandon = 1
+  size Skip = 1
+  size (TFail ts) = 1 + size ts
 
 type PTactic = PTactic' PTerm
 
@@ -878,6 +914,13 @@ deriving instance NFData ClassInfo
 data TIData = TIPartial -- ^ a function with a partially defined type
             | TISolution [Term] -- ^ possible solutions to a metavariable in a type
     deriving Show
+
+-- | Miscellaneous information about functions
+data FnInfo = FnInfo { fn_params :: [Int] }
+    deriving Show
+{-!
+deriving instance Binary FnInfo
+!-}
 
 data OptInfo = Optimise { inaccessible :: [(Int,Name)],  -- includes names for error reporting
                           detaggable :: Bool }
@@ -1013,7 +1056,7 @@ getInferTerm (App (App _ _) tm) = tm
 getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n (toTy b) $ getInferType sc
-  where toTy (Lam t) = Pi t
+  where toTy (Lam t) = Pi t (TType (UVar 0))
         toTy (PVar t) = PVTy t
         toTy b = b
 getInferType (App (App _ ty) _) = ty
@@ -1070,13 +1113,11 @@ eqDoc = parseDocstring . T.pack $
           "To use such a proof, pattern-match on it, and the two equal things will " ++
           "then need to be the _same_ pattern." ++
           "\n\n" ++
-          "**Note**: Idris's equality type is _heterogeneous_, which means that it " ++
+          "**Note**: Idris's equality type is potentially _heterogeneous_, which means that it " ++
           "is possible to state equalities between values of potentially different " ++
-          "types. This is sometimes referred to in the literature as \"John Major\" " ++
-          "equality." ++
+          "types. However, Idris will attempt the homogeneous case unless it fails to typecheck." ++
           "\n\n" ++
-          "Thus, if Idris can't infer the type of one side of the equality, then " ++
-          "you may need to annotate it. See the function `the`."
+          "You may need to use `(~=~)` to explicitly request heterogeneous equality."
 
 eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType), (n "B", PType)]
                                  (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
@@ -1169,6 +1210,7 @@ consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
         colour UnderlineText = IdrisColour Nothing True True False False
         colour ItalicText    = IdrisColour Nothing True False False True
 consoleDecorate ist (AnnTerm _ _) = id
+consoleDecorate ist (AnnSearchResult _) = id
 
 isPostulateName :: Name -> IState -> Bool
 isPostulateName n ist = S.member n (idris_postulates ist)
@@ -1207,10 +1249,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
       text "\\" <> bindingOf n False <+> text "=>" <$>
       prettySe 10 ((n, False):bnd) sc
     prettySe p bnd (PLet n ty v sc) =
-      bracket p 2 $
-      kwd "let" <+> bindingOf n False <+> text "=" </>
-      prettySe 10 bnd v <+> kwd "in" </>
-      prettySe 10 ((n, False):bnd) sc
+      bracket p 2 . group . align $
+      kwd "let" <+> (group . align . hang 2 $ bindingOf n False <+> text "=" <$> prettySe 10 bnd v) </>
+      kwd "in" <+> (group . align . hang 2 $ prettySe 10 ((n, False):bnd) sc)
     prettySe p bnd (PPi (Exp l s _) n ty sc)
       | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
           bracket p 2 . group $
@@ -1303,9 +1344,18 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PTrue _ IsTerm) = annName unitCon $ text "()"
     prettySe p bnd (PTrue _ TypeOrTerm) = text "()"
     prettySe p bnd (PFalse _) = annName falseTy $ text "_|_"
-    prettySe p bnd (PEq _ _ _ l r) =
-      bracket p 2 . align . group $
-      prettySe 10 bnd l <+> eq <$> group (prettySe 10 bnd r)
+    prettySe p bnd (PEq _ lt rt l r)
+      | ppopt_impl ppo =
+          bracket p 1 $
+            enclose lparen rparen eq <+>
+            align (group (vsep (map (prettyArgS bnd)
+                                    [PImp 0 False [] (sUN "A") lt,
+                                     PImp 0 False [] (sUN "B") rt,
+                                     PExp 0 [] (sUN "x") l,
+                                     PExp 0 [] (sUN "y") r])))
+      | otherwise =
+          bracket p 2 . align . group $
+            prettySe 10 bnd l <+> eq <$> group (prettySe 10 bnd r)
       where eq = annName eqTy (text "=")
     prettySe p bnd (PRewrite _ l r _) =
       bracket p 2 $
@@ -1346,6 +1396,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
           prettyAs =
             foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe 10 bnd) as
     prettySe p bnd PType = annotate (AnnType "Type" "The type of types") $ text "Type"
+    prettySe p bnd (PUniverse u) = annotate (AnnType (show u) "The type of unique types") $ text (show u) 
     prettySe p bnd (PConstant c) = annotate (AnnConst c) (text (show c))
     -- XXX: add pretty for tactics
     prettySe p bnd (PProof ts) =
@@ -1610,6 +1661,7 @@ instance Sized PTerm where
   size (PDisamb _ tm) = size tm
   size (PNoImplicits tm) = size tm
   size PType = 1
+  size (PUniverse _) = 1
   size (PConstant const) = 1 + size const
   size Placeholder = 1
   size (PDoBlock dos) = 1 + size dos
@@ -1619,6 +1671,7 @@ instance Sized PTerm where
   size (PProof tactics) = size tactics
   size (PElabError err) = size err
   size PImpossible = 1
+  size _ = 0
 
 getPArity :: PTerm -> Int
 getPArity (PPi _ _ _ sc) = 1 + getPArity sc
@@ -1698,7 +1751,7 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
     ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PPi p n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
@@ -1711,9 +1764,6 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
     ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm) = ni env tm
     ni env _               = []
-
-    niTacImp env (TacImp _ _ scr) = ni env scr
-    niTacImp _ _                  = []
 
 -- Return names which are free in the given term.
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
@@ -1785,3 +1835,4 @@ getErasureInfo ist n =
     case lookupCtxtExact n (idris_optimisation ist) of
         Just (Optimise inacc detagg) -> map fst inacc
         Nothing -> []
+

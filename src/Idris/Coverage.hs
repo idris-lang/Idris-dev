@@ -120,26 +120,6 @@ genClauses fc n xs given
                                 as' <- mkArg as
                                 return (a':as')
 
-fnub xs = fnub' [] xs
-
-fnub' acc (x : xs) | x `qelem` acc = fnub' acc (filter (not.(quickEq x)) xs)
-                   | otherwise = fnub' (x : acc) xs
-fnub' acc [] = acc
-
--- quick check for constructor equality
-quickEq :: PTerm -> PTerm -> Bool
-quickEq (PConstant n) (PConstant n') = n == n'
-quickEq (PRef _ n) (PRef _ n') = n == n'
-quickEq (PApp _ t as) (PApp _ t' as')
-    | length as == length as'
-       = quickEq t t' && and (zipWith quickEq (map getTm as) (map getTm as'))
-quickEq Placeholder Placeholder = True
-quickEq x y = False
-
-qelem x [] = False
-qelem x (y : ys) | x `quickEq` y = True
-                 | otherwise = qelem x ys
-
 -- FIXME: Just look for which one is the deepest, then generate all
 -- possibilities up to that depth.
 
@@ -206,7 +186,7 @@ genAll i args
     otherPats arg = return Placeholder
 
     ops fc n xs o
-        | (TyDecl c@(DCon _ arity) ty : _) <- lookupDef n (tt_ctxt i)
+        | (TyDecl c@(DCon _ arity _) ty : _) <- lookupDef n (tt_ctxt i)
             = do xs' <- mapM otherPats (map getExpTm xs)
                  let p = resugar (PApp fc (PRef fc n) (zipWith upd xs' xs))
                  let tyn = getTy n (tt_ctxt i)
@@ -244,6 +224,31 @@ genAll i args
                          -> PApp fc (PRef fc x) (map (upd Placeholder) pargs)
                       _ -> error "Can't happen - genAll"
 
+    fnub :: [PTerm] -> [PTerm]
+    fnub xs = fnub' [] xs
+
+    fnub' :: [PTerm] -> [PTerm] -> [PTerm]
+    fnub' acc (x : xs) | x `qelem` acc = fnub' acc (filter (not.(quickEq x)) xs)
+                       | otherwise = fnub' (x : acc) xs
+    fnub' acc [] = acc
+
+    -- quick check for constructor equality
+    quickEq :: PTerm -> PTerm -> Bool
+    quickEq (PConstant n) (PConstant n') = n == n'
+    quickEq (PRef _ n) (PRef _ n') = n == n'
+    quickEq (PApp _ t as) (PApp _ t' as')
+        | length as == length as'
+           = quickEq t t' && and (zipWith quickEq (map getTm as) (map getTm as'))
+    quickEq Placeholder Placeholder = True
+    quickEq x y = False
+
+    qelem :: PTerm -> [PTerm] -> Bool
+    qelem x [] = False
+    qelem x (y : ys) | x `quickEq` y = True
+                     | otherwise = qelem x ys
+
+
+upd :: t -> PArg' t -> PArg' t
 upd p' p = p { getTm = p' }
 
 -- Check whether function and all descendants cover all cases (partial is
@@ -283,12 +288,12 @@ checkPositive mut_ns (cn, ty')
   where
     args t = [0..length (getArgTys t)-1]
 
-    cp (Bind n (Pi aty) sc) = posArg aty && cp sc
+    cp (Bind n (Pi aty _) sc) = posArg aty && cp sc
     cp t | (P _ n' _, args) <- unApply t,
            n' `elem` mut_ns = all noRec args 
     cp _ = True
 
-    posArg (Bind _ (Pi nty) sc)
+    posArg (Bind _ (Pi nty _) sc)
         | (P _ n' _, args) <- unApply nty
             = n' `notElem` mut_ns && all noRec args && posArg sc
     posArg t | (P _ n' _, args) <- unApply t,
@@ -341,7 +346,7 @@ calcProd i fc topn pats
                                 return (and ok)
                _ -> return True -- defined elsewhere, can't call topn
 
-     cotype (DCon _ _) n ty
+     cotype (DCon _ _ _) n ty
         | (P _ t _, _) <- unApply (getRetTy ty)
             = case lookupCtxt t (idris_datatypes i) of
                    [TI _ True _ _ _] -> True
@@ -391,7 +396,7 @@ checkTotality path fc n
                                setTotality n t'
                                addIBC (IBCTotal n t')
                                return t'
-                        [TyDecl (DCon _ _) ty] ->
+                        [TyDecl (DCon _ _ _) ty] ->
                             case unApply (getRetTy ty) of
                               (P _ tyn _, _) -> do
                                  let ms = case lookupCtxt tyn (idris_datatypes i) of
@@ -463,8 +468,8 @@ buildSCG :: (FC, Name) -> Idris ()
 buildSCG (_, n) = do
    ist <- getIState
    case lookupCtxt n (idris_callgraph ist) of
-       [cg] -> case lookupDef n (tt_ctxt ist) of
-           [CaseOp _ _ _ pats _ cd] ->
+       [cg] -> case lookupDefExact n (tt_ctxt ist) of
+           Just (CaseOp _ _ _ pats _ cd) ->
              let (args, sc) = cases_totcheck cd in
                do logLvl 2 $ "Building SCG for " ++ show n ++ " from\n"
                                 ++ show pats ++ "\n" ++ show sc
@@ -531,8 +536,8 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
      = case lookupTy n (tt_ctxt ist) of
             [ty] -> expand 0 (normalise (tt_ctxt ist) [] ty) args
             _ -> args
-     where expand i (Bind n (Pi _) sc) (x : xs) = x : expand (i + 1) sc xs
-           expand i (Bind n (Pi _) sc) [] = Just (i, Same) : expand (i + 1) sc []
+     where expand i (Bind n (Pi _ _) sc) (x : xs) = x : expand (i + 1) sc xs
+           expand i (Bind n (Pi _ _) sc) [] = Just (i, Same) : expand (i + 1) sc []
            expand i _ xs = xs
 
   mkChange n args pargs = [(n, expandToArity n (sizes args))]
@@ -558,7 +563,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
          | a == t = isInductive (fst (unApply (getRetTy tyn)))
                                 (fst (unApply (getRetTy tyt)))
       smaller ty a (ap@(App f s), _)
-          | (P (DCon _ _) n _, args) <- unApply ap
+          | (P (DCon _ _ _) n _, args) <- unApply ap
                = let tyn = getType n in
                      any (smaller (ty `mplus` Just tyn) a)
                          (zip args (map toJust (getArgTys tyn)))
@@ -652,7 +657,7 @@ checkMP ist i mp = if i > 0
 --             = Partial BelieveMe
     -- if we get to a constructor, it's fine as long as it's strictly positive
     tryPath desc path ((f, _) : es) arg
-        | [TyDecl (DCon _ _) _] <- lookupDef f (tt_ctxt ist)
+        | [TyDecl (DCon _ _ _) _] <- lookupDef f (tt_ctxt ist)
             = case lookupTotal f (tt_ctxt ist) of
                    [Total _] -> Unchecked -- okay so far
                    [Partial _] -> Partial (Other [f])
@@ -706,8 +711,10 @@ checkMP ist i mp = if i > 0
         | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
         | otherwise = Unchecked
 
+allNothing :: [Maybe a] -> Bool
 allNothing xs = null (collapseNothing (zip xs [0..]))
 
+collapseNothing :: [(Maybe a, b)] -> [(Maybe a, b)]
 collapseNothing ((Nothing, _) : xs)
    = filter (\ (x, _) -> case x of
                              Nothing -> False
@@ -715,10 +722,12 @@ collapseNothing ((Nothing, _) : xs)
 collapseNothing (x : xs) = x : collapseNothing xs
 collapseNothing [] = []
 
+noPartial :: [Totality] -> Totality
 noPartial (Partial p : xs) = Partial p
 noPartial (_ : xs)         = noPartial xs
 noPartial []               = Total []
 
+collapse :: [Totality] -> Totality
 collapse xs = collapse' Unchecked xs
 collapse' def (Total r : xs)   = Total r
 collapse' def (Unchecked : xs) = collapse' def xs

@@ -36,13 +36,13 @@ namesBinder (NLet ty val) = names ty ++ names val
 namesBinder b = names (binderTy b)
 
 occursSC :: Name -> SC -> Bool
-occursSC n (Case _ alts) = any (occursCaseAlt n) alts
+occursSC n (Case _ _ alts) = any (occursCaseAlt n) alts
 occursSC n (ProjCase t alts) = occurs n t || any (occursCaseAlt n) alts
 occursSC n (STerm t) = occurs n t
 occursSC n _ = False
 
 namesSC :: SC -> [Name]
-namesSC (Case _ alts) = concatMap namesCaseAlt alts
+namesSC (Case _ _ alts) = concatMap namesCaseAlt alts
 namesSC (ProjCase t alts) = names t ++ concatMap namesCaseAlt alts
 namesSC (STerm t) = names t
 namesSC _ = []

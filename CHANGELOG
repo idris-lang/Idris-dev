@@ -1,3 +1,26 @@
+New in 0.9.15:
+--------------
+* Two new tactics: skip and fail. Skip does nothing, and fail takes a string
+  as an argument and produces it as an error.
+* Corresponding reflected tactics Skip and Fail. Reflected Fail takes a list
+  of ErrorReportParts as an argument, like error handlers produce, allowing
+  access to the pretty-printer.
+* Stop showing irrelevant and inaccessible internal names in the interactive
+  prover.
+* The proof arguments in the List library functions are now implicit and
+  solved automatically.
+* More efficient representation of proof state, leading to faster elaboration
+  of large expressions.
+* EXPERIMENTAL Implementation of uniqueness types 
+* Unary negation now desugars to "negate", which is a method of the Neg type class.
+  This allows instances of Num that can't be negative, like Nat, and it makes correct
+  IEEE Float operations easier to encode. Additionally, unary negation is now available
+  to DSL authors.
+* The Java and LLVM backends have been factored out for separate maintenance. Now, the
+  compiler distribution only ships with the C and JavaScript backends.
+* New REPL command :printdef displays the internal definition of a name
+* New REPL command :pprint pretty-prints a definition or term with LaTeX or HTML highlighting
+
 New in 0.9.14:
 --------------
 * Tactic for case analysis in proofs

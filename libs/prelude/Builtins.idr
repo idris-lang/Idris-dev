@@ -15,12 +15,16 @@ FalseElim : _|_ -> a
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where
 
--- Eq_ : a -> a -> Type
--- Eq_ x y = (=) _ _ x y
- 
+
 infix 5 ~=~
 
-(~=~) : a -> b -> Type
+||| Explicit heterogeneous ("John Major") equality. Use this when Idris
+||| incorrectly chooses homogeneous equality for `(=)`.
+||| @ a the type of the left side
+||| @ b the type of the right side
+||| @ x the left side
+||| @ y the right side
+(~=~) : (x : a) -> (y : b) -> Type
 (~=~) x y = (=) _ _ x y
 
 -- ------------------------------------------------------ [ For rewrite tactic ]
@@ -70,6 +74,17 @@ Lazy t = Lazy' LazyEval t
 ||| coinductive parameters.
 Inf : Type -> Type
 Inf t = Lazy' LazyCodata t
+
+namespace Ownership
+  ||| A read-only version of a unique value
+  data Borrowed : UniqueType -> NullType where
+       Read : {a : UniqueType} -> a -> Borrowed a
+         
+  ||| Make a read-only version of a unique value, which can be passed to another
+  ||| function without the unique value being consumed.
+  implicit
+  lend : {a : UniqueType} -> a -> Borrowed a
+  lend x = Read x
 
 par : Lazy a -> a -- Doesn't actually do anything yet. Maybe a 'Par a' type
                   -- is better in any case?

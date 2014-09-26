@@ -1,7 +1,8 @@
-module IRTS.Simplified where
+module IRTS.Simplified(simplifyDefs, SDecl(..), SExp(..), SAlt(..)) where
 
 import IRTS.Defunctionalise
 import Idris.Core.TT
+import Idris.Core.CaseTree
 import Idris.Core.Typecheck
 import Data.Maybe
 import Control.Monad.State
@@ -15,8 +16,9 @@ data SExp = SV LVar
           | SApp Bool Name [LVar]
           | SLet LVar SExp SExp
           | SUpdate LVar SExp
-          | SCon Int Name [LVar]
-          | SCase LVar [SAlt]
+          | SCon (Maybe LVar) -- location to reallocate, if available
+                 Int Name [LVar]
+          | SCase CaseType LVar [SAlt]
           | SChkCase LVar [SAlt]
           | SProj LVar Int
           | SConst Const
@@ -48,7 +50,7 @@ simplify tl (DV (Loc i)) = return (SV (Loc i))
 simplify tl (DV (Glob x))
     = do ctxt <- ldefs
          case lookupCtxtExact x ctxt of
-              Just (DConstructor _ t 0) -> return $ SCon t x []
+              Just (DConstructor _ t 0) -> return $ SCon Nothing t x []
               _ -> return $ SV (Glob x)
 simplify tl (DApp tc n args) = do args' <- mapM sVar args
                                   mkapp (SApp (tl || tc) n) args'
@@ -61,19 +63,19 @@ simplify tl (DLet n v e) = do v' <- simplify False v
                               return (SLet (Glob n) v' e')
 simplify tl (DUpdate n e) = do e' <- simplify False e
                                return (SUpdate (Glob n) e')
-simplify tl (DC i n args) = do args' <- mapM sVar args
-                               mkapp (SCon i n) args'
+simplify tl (DC loc i n args) = do args' <- mapM sVar args
+                                   mkapp (SCon loc i n) args'
 simplify tl (DProj t i) = do v <- sVar t
                              case v of
                                 (x, Nothing) -> return (SProj x i)
                                 (Glob x, Just e) ->
                                     return (SLet (Glob x) e (SProj (Glob x) i))
-simplify tl (DCase e alts) = do v <- sVar e
-                                alts' <- mapM (sAlt tl) alts
-                                case v of
-                                    (x, Nothing) -> return (SCase x alts')
-                                    (Glob x, Just e) ->
-                                        return (SLet (Glob x) e (SCase (Glob x) alts'))
+simplify tl (DCase up e alts) = do v <- sVar e
+                                   alts' <- mapM (sAlt tl) alts
+                                   case v of
+                                      (x, Nothing) -> return (SCase up x alts')
+                                      (Glob x, Just e) ->
+                                          return (SLet (Glob x) e (SCase up (Glob x) alts'))
 simplify tl (DChkCase e alts)
                            = do v <- sVar e
                                 alts' <- mapM (sAlt tl) alts
@@ -90,7 +92,7 @@ simplify tl (DError str) = return $ SError str
 sVar (DV (Glob x))
     = do ctxt <- ldefs
          case lookupCtxtExact x ctxt of
-              Just (DConstructor _ t 0) -> sVar (DC t x [])
+              Just (DConstructor _ t 0) -> sVar (DC Nothing t x [])
               _ -> return (Glob x, Nothing)
 sVar (DV x) = return (x, Nothing)
 sVar e = do e' <- simplify False e
@@ -118,15 +120,15 @@ sAlt tl (DConstCase c e) = do e' <- simplify tl e
 sAlt tl (DDefaultCase e) = do e' <- simplify tl e
                               return (SDefaultCase e')
 
-checkDefs :: DDefs -> [(Name, DDecl)] -> TC [(Name, SDecl)]
-checkDefs ctxt [] = return []
-checkDefs ctxt (con@(n, DConstructor _ _ _) : xs)
-    = do xs' <- checkDefs ctxt xs
+simplifyDefs :: DDefs -> [(Name, DDecl)] -> TC [(Name, SDecl)]
+simplifyDefs ctxt [] = return []
+simplifyDefs ctxt (con@(n, DConstructor _ _ _) : xs)
+    = do xs' <- simplifyDefs ctxt xs
          return xs'
-checkDefs ctxt ((n, DFun n' args exp) : xs)
+simplifyDefs ctxt ((n, DFun n' args exp) : xs)
     = do let sexp = evalState (simplify True exp) (ctxt, 0)
          (exp', locs) <- runStateT (scopecheck n ctxt (zip args [0..]) sexp) (length args)
-         xs' <- checkDefs ctxt xs
+         xs' <- simplifyDefs ctxt xs
          return ((n, SFun n' args ((locs + 1) - length args) exp') : xs')
 
 lvar v = do i <- get
@@ -142,7 +144,7 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
               Nothing -> case lookupCtxtExact n ctxt of
                               Just (DConstructor _ i ar) ->
                                   if True -- ar == 0
-                                     then return (SCon i n [])
+                                     then return (SCon Nothing i n [])
                                      else failsc $ "Constructor " ++ show n ++
                                                  " has arity " ++ show ar
                               Just _ -> return (SV (Glob n))
@@ -152,7 +154,7 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
             case lookupCtxtExact f ctxt of
                 Just (DConstructor n tag ar) ->
                     if True -- (ar == length args)
-                       then return $ SCon tag n args'
+                       then return $ SCon Nothing tag n args'
                        else failsc $ "Constructor " ++ show f ++
                                    " has arity " ++ show ar
                 Just _ -> return $ SApp tc f args'
@@ -161,22 +163,26 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
        = do args' <- mapM (\ (t, a) -> do a' <- scVar env a
                                           return (t, a')) args
             return $ SForeign l ty f args'
-    sc env (SCon tag f args)
-       = do args' <- mapM (scVar env) args
+    sc env (SCon loc tag f args)
+       = do loc' <- case loc of
+                         Nothing -> return Nothing
+                         Just l -> do l' <- scVar env l
+                                      return (Just l')
+            args' <- mapM (scVar env) args
             case lookupCtxtExact f ctxt of
                 Just (DConstructor n tag ar) ->
                     if True -- (ar == length args)
-                       then return $ SCon tag n args'
+                       then return $ SCon loc' tag n args'
                        else failsc $ "Constructor " ++ show f ++
                                      " has arity " ++ show ar
                 _ -> failsc $ "No such constructor " ++ show f
     sc env (SProj e i)
        = do e' <- scVar env e
             return (SProj e' i)
-    sc env (SCase e alts)
+    sc env (SCase up e alts)
        = do e' <- scVar env e
             alts' <- mapM (scalt env) alts
-            return (SCase e' alts')
+            return (SCase up e' alts')
     sc env (SChkCase e alts)
        = do e' <- scVar env e
             alts' <- mapM (scalt env) alts
