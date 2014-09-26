@@ -10,9 +10,9 @@ import Providers
 goodProvider : IO (Provider Type)
 goodProvider = return (Provide (the Type ()))
 
-%provide (Unit : Type) with goodProvider
+%provide (Unit' : Type) with goodProvider
 
-foo : Unit
+foo : Unit'
 foo = ()
 
 -- Always fail
