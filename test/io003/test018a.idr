@@ -4,17 +4,17 @@ import System.Concurrency.Process
 
 ping : ProcID String -> ProcID String -> Process String ()
 ping main proc
-   = do lift (usleep 1000)
+   = do Lift (usleep 1000)
         send proc "Hello!"
-        lift (putStrLn "Sent ping")
+        Lift (putStrLn "Sent ping")
         msg <- recv
-        lift (putStrLn ("Reply: " ++ show msg))
+        Lift (putStrLn ("Reply: " ++ show msg))
         send main "Done"
 
 pong : Process String ()
-pong = do -- lift (putStrLn "Waiting for message")
+pong = do -- Lift (putStrLn "Waiting for message")
           (sender, m) <- recvWithSender
-          lift $ putStrLn ("Received " ++ m)
+          Lift $ putStrLn ("Received " ++ m)
           send sender ("Hello back!")
 
 mainProc : Process String ()
