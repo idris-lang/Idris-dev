@@ -151,7 +151,9 @@ void idris_gcInfo(VM* vm, int doGC) {
     printf("Final heap use          %d\n", (int)(vm->heap.next - vm->heap.heap));
     if (doGC) { idris_gc(vm); }
     printf("Final heap use after GC %d\n", (int)(vm->heap.next - vm->heap.heap));
-
+#ifdef IDRIS_ENABLE_STATS
     printf("Total allocations       %d\n", vm->stats.allocations);
+#endif
     printf("Number of collections   %d\n", vm->stats.collections);
+
 }
