@@ -9,7 +9,7 @@ using (xs : List a, ys : List a, G : List (List a))
        Stop : Elem x (x :: xs)
        Pop  : Elem x ys -> Elem x (y :: xs)
 
--- Expr is a Reflection of a list, indexed over the concrete list,
+-- Expr is a reflection of a list, indexed over the concrete list,
 -- and over a set of list variables.
 
   data Expr : List (List a) -> List a -> Type where
@@ -76,7 +76,7 @@ using (xs : List a, ys : List a, G : List (List a))
   eqExpr ENil ENil = Just Refl
   eqExpr _ _ = Nothing
 
--- Given a couple of Reflected expressions, try to produce a proof that
+-- Given a couple of reflected expressions, try to produce a proof that
 -- they are equal
 
   buildProof : {xs : List a} -> {ys : List a} ->
@@ -91,7 +91,7 @@ using (xs : List a, ys : List a, G : List (List a))
                let (rn ** (r', rPrf)) = reduce r in
                    buildProof l' r' lPrf rPrf
 
--- Given a Reflected equality, try to produce a proof that holds
+-- Given a reflected equality, try to produce a proof that holds
 
   prove : ListEq G t -> Maybe t
   prove (EqP xs ys) = testEq xs ys
@@ -103,7 +103,7 @@ using (xs : List a, ys : List a, G : List (List a))
 -- Some helpers for later... 'prim__syntactic_eq' is a primitive which
 -- (at compile-time only) attempts to construct a proof that its arguments
 -- are syntactically equal. We'll find this useful for referring to variables
--- in Reflected terms.
+-- in reflected terms.
 
   isElem : (x : a) -> (xs : List a) -> Maybe (Elem x xs)
   isElem x [] = Nothing
@@ -122,44 +122,44 @@ using (xs : List a, ys : List a, G : List (List a))
   weaken G' ENil = ENil
 
 
--- Now, some Reflection magic.
--- %Reflection means a function runs on syntax, rather than on constructors.
--- So, 'ReflectList' builds a Reflected List expression as defined above.
+-- Now, some reflection magic.
+-- %reflection means a function runs on syntax, rather than on constructors.
+-- So, 'reflectList' builds a reflected List expression as defined above.
 
--- It also converts (x :: xs) into a Reflected [x] ++ xs so that the above
+-- It also converts (x :: xs) into a reflected [x] ++ xs So that the above
 -- reduction will work the right way.
 
-%Reflection
-ReflectList : (G : List (List a)) ->
+%reflection
+reflectList : (G : List (List a)) ->
           (xs : List a) -> (G' ** Expr (G' ++ G) xs)
-ReflectList G [] = ([] ** ENil)
+reflectList G [] = ([] ** ENil)
 
-ReflectList G (x :: xs) with (ReflectList G xs)
+reflectList G (x :: xs) with (reflectList G xs)
      | (G' ** xs') with (isElem (List.(::) x []) (G' ++ G))
         | Just p = (G' ** App (Var p) xs')
         | Nothing = ([x] :: G' ** App (Var Stop) (weaken [[x]] xs'))
 
-ReflectList G (xs ++ ys) with (ReflectList G xs)
-     | (G' ** xs') with (ReflectList (G' ++ G) ys)
+reflectList G (xs ++ ys) with (reflectList G xs)
+     | (G' ** xs') with (reflectList (G' ++ G) ys)
          | (G'' ** ys') = ((G'' ++ G') **
                               rewrite (sym (appendAssociative G'' G' G)) in
                                  App (weaken G'' xs') ys')
-ReflectList G t with (isElem t G)
+reflectList G t with (isElem t G)
             | Just p = ([] ** Var p)
             | Nothing = ([t] ** Var Stop)
 
 
--- Similarly, ReflectEq converts an equality proof on Lists into the ListEq
--- Reflection. Note that it isn't total, and we have to give the element type
+-- Similarly, reflectEq converts an equality proof on Lists into the ListEq
+-- reflection. Note that it isn't total, and we have to give the element type
 -- explicitly because it can't be inferred from P.
 
--- This is not really a problem - we'll want different Reflections for different
+-- This is not really a problem - we'll want different reflections for different
 -- forms of equality proofs anyway.
 
-%Reflection
-ReflectEq : (a : Type) -> (G : List (List a)) -> (P : Type) -> (G' ** ListEq (G' ++ G) P)
-ReflectEq a G (the (List a) xs = the (List a) ys) with (ReflectList G xs)
-     | (G' ** xs')  with (ReflectList (G' ++ G) ys)
+%reflection
+reflectEq : (a : Type) -> (G : List (List a)) -> (P : Type) -> (G' ** ListEq (G' ++ G) P)
+reflectEq a G (the (List a) xs = the (List a) ys) with (reflectList G xs)
+     | (G' ** xs')  with (reflectList (G' ++ G) ys)
         | (G'' ** ys') = ((G'' ++ G') **
                            rewrite (sym (appendAssociative G'' G' G)) in
                                EqP (weaken G'' xs') ys')
@@ -196,14 +196,14 @@ Reflect.bp1 = proof {
 
 -- "quoteGoal x by p in e" does some magic
 -- The effect is to bind x to p applied to the current goal. If 'p' is a
--- Reflection function (which is the most likely thing to be useful...)
+-- reflection function (which is the most likely thing to be useful...)
 -- then we can feed the result to the above 'prove' function and pull out
 -- the proof, if it exists.
 
 -- The syntax declaration below just gives us an easy way to invoke the
 -- prover.
 
-syntax AssocProof [ty] = quoteGoal x by ReflectEq ty [] in
+syntax AssocProof [ty] = quoteGoal x by reflectEq ty [] in
                              getJust (prove (getProof x)) ItIsJust
 
 

@@ -16,7 +16,7 @@ cadr (x :: [])       {cons1=Refl} {cons2=Refl} impossible
 cadr []              {cons1=Refl} {cons2=Refl} impossible
 
 extractList : TT -> Maybe TT
-extractList (App (App ReflCon (App isCons lst)) _) = Just lst
+extractList (App (App reflCon (App isCons lst)) _) = Just lst
 extractList _ = Nothing
 
 total
