@@ -1242,6 +1242,8 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       , (arg:_)     <- args = jsCall "Math.floor" [translateReg arg]
       | LFCeil      <- op
       , (arg:_)     <- args = jsCall "Math.ceil" [translateReg arg]
+      | LFNegate    <- op
+      , (arg:_)     <- args = JSPreOp "-" (translateReg arg)
 
       | LStrCons    <- op
       , (lhs:rhs:_) <- args = invokeMeth lhs "concat" [rhs]
