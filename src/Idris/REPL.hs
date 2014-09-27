@@ -140,14 +140,12 @@ repl orig mods
          showM c thm n = if c then colouriseFun thm (show n)
                               else show n
 
--- | Run the REPL server
-startServer :: IState -> [FilePath] -> Idris ()
-startServer orig fn_in = do tid <- runIO $ forkOS serverLoop
-                            return ()
-  where serverLoop :: IO ()
-        -- TODO: option for port number
-        serverLoop = withSocketsDo $
-                              do sock <- listenOnLocalhost $ PortNumber 4294
+-- | Run the REPL seDver
+startServer :: PortID -> IState -> [FilePath] -> Idris ()
+startServer port orig fn_in = do tid <- runIO $ forkOS (serverLoop port)
+                                 return ()
+  where serverLoop port = withSocketsDo $
+                              do sock <- listenOnLocalhost port
                                  loop fn orig { idris_colourRepl = False } sock
 
         fn = case fn_in of
@@ -201,9 +199,9 @@ processNetCmd orig i h fn cmd
            IdeSlave n _ -> ist {idris_outputmode = IdeSlave n h}
 
 -- | Run a command on the server on localhost
-runClient :: String -> IO ()
-runClient str = withSocketsDo $ do
-                  h <- connectTo "localhost" (PortNumber 4294)
+runClient :: PortID -> String -> IO ()
+runClient port str = withSocketsDo $ do
+                  h <- connectTo "localhost" port
                   hSetEncoding h utf8
                   hPutStrLn h str
                   resp <- hGetResp "" h
@@ -1428,6 +1426,7 @@ idrisMain opts =
                                 runIO $ exitWith (ExitFailure 1)
                    [expr] -> return (Just expr)
        let immediate = opt getEvalExpr opts
+       let port = getPort opts
 
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
@@ -1516,7 +1515,7 @@ idrisMain opts =
 
        when (runrepl && not idesl) $ do
 --          clearOrigPats
-         startServer orig inputs
+         startServer port orig inputs
          runInputT (replSettings (Just historyFile)) $ repl orig inputs
        let idesock = IdeslaveSocket `elem` opts
        when (idesl) $ ideslaveStart idesock orig inputs
@@ -1679,10 +1678,25 @@ getColour :: Opt -> Maybe Bool
 getColour (ColourREPL b) = Just b
 getColour _ = Nothing
 
+getClient :: Opt -> Maybe String
+getClient (Client x) = Just x
+getClient _ = Nothing
+
+-- Get the first valid port
+getPort :: [Opt] -> PortID
+getPort [] = defaultPort
+getPort (Port p:xs)
+    | all (`elem` ['0'..'9']) p = PortNumber $ fromIntegral (read p)
+    | otherwise                 = getPort xs
+getPort (_:xs) = getPort xs
+
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe
 
 ver = showVersion version ++ gitHash
+
+defaultPort :: PortID
+defaultPort = PortNumber (fromIntegral 4294)
 
 banner = "     ____    __     _                                          \n" ++
          "    /  _/___/ /____(_)____                                     \n" ++

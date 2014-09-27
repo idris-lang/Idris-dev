@@ -393,6 +393,7 @@ data Opt = Filename String
          | ErrContext
          | ShowImpl
          | Verbose
+         | Port String         -- REPL TCP port
          | IBCSubDir String
          | ImportDir String
          | PkgBuild String
