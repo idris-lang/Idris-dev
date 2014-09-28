@@ -601,7 +601,7 @@ processInput cmd orig inputs
                         _ -> ""
          c <- colourise
          case parseCmd i "(input)" cmd of
-            Failure err ->   do runIO $ putStrLn "Command not recognized."
+            Failure err ->   do iputStrLn $ show (fixColour c err)
                                 return (Just inputs)
             Success (Right Reload) ->
                 do putIState $ orig { idris_options = idris_options i
