@@ -37,7 +37,7 @@ length (x::xs) = 1 + length xs
 
 ||| Show that the length function on vectors in fact calculates the length
 private lengthCorrect : (n : Nat) -> (xs : Vect n a) -> length xs = n
-lengthCorrect Z [] = refl
+lengthCorrect Z     []        = refl
 lengthCorrect (S n) (x :: xs) = rewrite lengthCorrect n xs in refl
 
 --------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ init (x::y::ys) = x :: init (y::ys)
 index : Fin n -> Vect n a -> a
 index fZ     (x::xs) = x
 index (fS k) (x::xs) = index k xs
-index fZ     [] impossible
+index fZ     []      impossible
 
 ||| Insert an element at a particular index
 insertAt : Fin (S n) -> a -> Vect n a -> Vect (S n) a
@@ -79,7 +79,7 @@ deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
 deleteAt           fZ     (x::xs) = xs
 deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
 deleteAt {n = Z}   (fS k) (x::xs) = absurd k
-deleteAt           _      [] impossible
+deleteAt           _      []      impossible
 
 ||| Replace an element at a particlar index with another
 replaceAt : Fin n -> t -> Vect n t -> Vect n t
@@ -101,13 +101,13 @@ updateAt (fS k) f (x::xs) = x :: updateAt k f xs
 ||| Get the first m elements of a Vect
 ||| @ m the number of elements to take
 take : (n : Nat) -> Vect (n + m) a -> Vect n a
-take Z xs = []
+take Z     xs        = []
 take (S k) (x :: xs) = x :: take k xs
 
 ||| Remove the first m elements of a Vect
 ||| @ m the number of elements to remove
 drop : (n : Nat) -> Vect (n + m) a -> Vect m a
-drop Z xs = xs
+drop Z     xs        = xs
 drop (S k) (x :: xs) = drop k xs
 
 --------------------------------------------------------------------------------
@@ -115,18 +115,12 @@ drop (S k) (x :: xs) = drop k xs
 --------------------------------------------------------------------------------
 
 ||| Reverse the order of the elements of a vector
-total reverse : {n : Nat} -> Vect n a -> Vect n a
-reverse {n} xs = reverse' [] (plusZeroRightNeutral n) xs
-  where
-    total reverse' : {m, j, l : Nat} ->
-                     Vect m a -> (j + m = l) -> Vect j a -> Vect l a
-    reverse' {m} {j = Z  } {l} acc prf []      ?= acc
-    reverse' {m} {j = S k} {l} acc prf (x::xs)  =
-      let prf1 : (m + (S k) = l) = rewrite plusCommutative m (S k) in prf in
-      let prf2 : (S (m + k) = l) = rewrite plusSuccRightSucc m k in prf1 in
-      let prf3 : (S (k + m) = l) = rewrite plusCommutative k m in prf2 in
-      let prf4 : (k + (S m) = l) = rewrite sym $ plusSuccRightSucc k m in prf3 in
-      reverse' (x::acc) prf4 xs
+reverse : Vect n a -> Vect n a
+reverse xs = go [] xs
+  where go : Vect n a -> Vect m a -> Vect (n+m) a
+        go {n}         acc []        = rewrite plusZeroRightNeutral n in acc
+        go {n} {m=S m} acc (x :: xs) = rewrite sym $ plusSuccRightSucc n m
+                                       in go (x::acc) xs
 
 ||| Alternate an element between the other elements of a vector
 ||| @ sep the element to intersperse
@@ -136,8 +130,9 @@ intersperse sep []      = []
 intersperse sep (x::xs) = x :: intersperse' sep xs
   where
     intersperse' : a -> Vect n a -> Vect (n + n) a
-    intersperse' sep []      = []
-    intersperse' sep (x::xs) ?= sep :: x :: intersperse' sep xs
+    intersperse'         sep []      = []
+    intersperse' {n=S n} sep (x::xs) = rewrite sym $ plusSuccRightSucc n n
+                                       in sep :: x :: intersperse' sep xs
 
 --------------------------------------------------------------------------------
 -- Conversion from list (toList is provided by Foldable)
@@ -147,7 +142,7 @@ intersperse sep (x::xs) = x :: intersperse' sep xs
 fromList' : Vect n a -> (l : List a) -> Vect (length l + n) a
 fromList' ys [] = ys
 fromList' {n} ys (x::xs) =
-  rewrite (plusSuccRightSucc (length xs) n) ==> 
+  rewrite (plusSuccRightSucc (length xs) n) ==>
           Vect (plus (length xs) (S n)) a in
   fromList' (x::ys) xs
 
@@ -212,7 +207,7 @@ instance (Eq a) => Eq (Vect n a) where
 --------------------------------------------------------------------------------
 
 instance Ord a => Ord (Vect n a) where
-  compare [] [] = EQ
+  compare []      []      = EQ
   compare (x::xs) (y::ys) =
     if x /= y then
       compare x y
@@ -228,15 +223,24 @@ instance Functor (Vect n) where
   map f []        = []
   map f (x::xs) = f x :: map f xs
 
--- XXX: causes Idris to enter an infinite loop when type checking in the REPL
---mapMaybe : (a -> Maybe b) -> Vect n a -> (p ** Vect b p)
---mapMaybe f []      = (_ ** [])
---mapMaybe f (x::xs) = mapMaybe' (f x)
--- XXX: working around the type restrictions on case statements
---  where
---    mapMaybe' : (Maybe b) -> (n ** Vect b n) -> (p ** Vect b p)
---    mapMaybe' Nothing  (n ** tail) = (n   ** tail)
---    mapMaybe' (Just j) (n ** tail) = (S n ** j::tail)
+
+||| Map a partial function across a vector, returning those elements for which
+||| the function had a value.
+|||
+||| The first projection of the resulting pair (ie the length) will always be
+||| at most the length of the input vector. This is not, however, guaranteed
+||| by the type.
+|||
+||| @ f the partial function (expressed by returning `Maybe`)
+||| @ xs the vector to check for results
+mapMaybe : (f : a -> Maybe b) -> (xs : Vect n a) -> (m : Nat ** Vect m b)
+mapMaybe f []      = (_ ** [])
+mapMaybe f (x::xs) =
+  let (len ** ys) = mapMaybe f xs
+  in case f x of
+       Just y  => (S len ** y :: ys)
+       Nothing => (  len **      ys)
+
 
 --------------------------------------------------------------------------------
 -- Folds
@@ -451,18 +455,18 @@ catMaybes ((Just j)::xs) with (catMaybes xs)
   | (_ ** tail) = (_ ** j::tail)
 
 diag : Vect n (Vect n a) -> Vect n a
-diag [] = []
+diag []             = []
 diag ((x::xs)::xss) = x :: diag (map tail xss)
 
 range : Vect n (Fin n)
-range {n=Z} = []
+range {n=Z}   = []
 range {n=S _} = fZ :: map fS range
 
 ||| Transpose a Vect of Vects, turning rows into columns and vice versa.
 |||
 ||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
 transpose : Vect m (Vect n a) -> Vect n (Vect m a)
-transpose [] = replicate _ []
+transpose []        = replicate _ []
 transpose (x :: xs) = zipWith (::) x (transpose xs)
 
 --------------------------------------------------------------------------------
@@ -483,19 +487,3 @@ vectAppendAssociative (x :: xs) ys zs =
   vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
 
 
---------------------------------------------------------------------------------
--- Proofs
---------------------------------------------------------------------------------
-
-Prelude.Vect.reverse'_lemma_1 = proof {
-    intros;
-    rewrite prf;
-    rewrite sym (plusZeroRightNeutral m);
-    exact value;
-}
-
-Prelude.Vect.intersperse'_lemma_1 = proof {
-  intros;
-  rewrite (plusSuccRightSucc n1 n1);
-  trivial;
-}
