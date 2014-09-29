@@ -130,8 +130,9 @@ intersperse sep []      = []
 intersperse sep (x::xs) = x :: intersperse' sep xs
   where
     intersperse' : a -> Vect n a -> Vect (n + n) a
-    intersperse' sep []       = []
-    intersperse' sep (x::xs) ?= sep :: x :: intersperse' sep xs
+    intersperse'         sep []      = []
+    intersperse' {n=S n} sep (x::xs) = rewrite sym $ plusSuccRightSucc n n
+                                       in sep :: x :: intersperse' sep xs
 
 --------------------------------------------------------------------------------
 -- Conversion from list (toList is provided by Foldable)
@@ -486,12 +487,3 @@ vectAppendAssociative (x :: xs) ys zs =
   vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
 
 
---------------------------------------------------------------------------------
--- Proofs
---------------------------------------------------------------------------------
-
-Prelude.Vect.intersperse'_lemma_1 = proof {
-  intros;
-  rewrite (plusSuccRightSucc n1 n1);
-  trivial;
-}
