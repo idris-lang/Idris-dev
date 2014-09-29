@@ -130,7 +130,7 @@ intersperse sep []      = []
 intersperse sep (x::xs) = x :: intersperse' sep xs
   where
     intersperse' : a -> Vect n a -> Vect (n + n) a
-    intersperse' sep []      = []
+    intersperse' sep []       = []
     intersperse' sep (x::xs) ?= sep :: x :: intersperse' sep xs
 
 --------------------------------------------------------------------------------
@@ -222,15 +222,24 @@ instance Functor (Vect n) where
   map f []        = []
   map f (x::xs) = f x :: map f xs
 
--- XXX: causes Idris to enter an infinite loop when type checking in the REPL
---mapMaybe : (a -> Maybe b) -> Vect n a -> (p ** Vect b p)
---mapMaybe f []      = (_ ** [])
---mapMaybe f (x::xs) = mapMaybe' (f x)
--- XXX: working around the type restrictions on case statements
---  where
---    mapMaybe' : (Maybe b) -> (n ** Vect b n) -> (p ** Vect b p)
---    mapMaybe' Nothing  (n ** tail) = (n   ** tail)
---    mapMaybe' (Just j) (n ** tail) = (S n ** j::tail)
+
+||| Map a partial function across a vector, returning those elements for which
+||| the function had a value.
+|||
+||| The first projection of the resulting pair (ie the length) will always be
+||| at most the length of the input vector. This is not, however, guaranteed
+||| by the type.
+|||
+||| @ f the partial function (expressed by returning `Maybe`)
+||| @ xs the vector to check for results
+mapMaybe : (f : a -> Maybe b) -> (xs : Vect n a) -> (m : Nat ** Vect m b)
+mapMaybe f []      = (_ ** [])
+mapMaybe f (x::xs) =
+  let (len ** ys) = mapMaybe f xs
+  in case f x of
+       Just y  => (S len ** y :: ys)
+       Nothing => (  len **      ys)
+
 
 --------------------------------------------------------------------------------
 -- Folds
