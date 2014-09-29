@@ -115,18 +115,12 @@ drop (S k) (x :: xs) = drop k xs
 --------------------------------------------------------------------------------
 
 ||| Reverse the order of the elements of a vector
-total reverse : {n : Nat} -> Vect n a -> Vect n a
-reverse {n} xs = reverse' [] (plusZeroRightNeutral n) xs
-  where
-    total reverse' : {m, j, l : Nat} ->
-                     Vect m a -> (j + m = l) -> Vect j a -> Vect l a
-    reverse' {m} {j = Z  } {l} acc prf []      ?= acc
-    reverse' {m} {j = S k} {l} acc prf (x::xs)  =
-      let prf1 : (m + (S k) = l) = rewrite plusCommutative m (S k) in prf in
-      let prf2 : (S (m + k) = l) = rewrite plusSuccRightSucc m k in prf1 in
-      let prf3 : (S (k + m) = l) = rewrite plusCommutative k m in prf2 in
-      let prf4 : (k + (S m) = l) = rewrite sym $ plusSuccRightSucc k m in prf3 in
-      reverse' (x::acc) prf4 xs
+reverse : Vect n a -> Vect n a
+reverse xs = go [] xs
+  where go : Vect n a -> Vect m a -> Vect (n+m) a
+        go {n}         acc []        = rewrite plusZeroRightNeutral n in acc
+        go {n} {m=S m} acc (x :: xs) = rewrite sym $ plusSuccRightSucc n m
+                                       in go (x::acc) xs
 
 ||| Alternate an element between the other elements of a vector
 ||| @ sep the element to intersperse
@@ -486,13 +480,6 @@ vectAppendAssociative (x :: xs) ys zs =
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
-
-Prelude.Vect.reverse'_lemma_1 = proof {
-    intros;
-    rewrite prf;
-    rewrite sym (plusZeroRightNeutral m);
-    exact value;
-}
 
 Prelude.Vect.intersperse'_lemma_1 = proof {
   intros;
