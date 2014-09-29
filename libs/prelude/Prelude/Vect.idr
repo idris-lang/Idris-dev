@@ -37,7 +37,7 @@ length (x::xs) = 1 + length xs
 
 ||| Show that the length function on vectors in fact calculates the length
 private lengthCorrect : (n : Nat) -> (xs : Vect n a) -> length xs = n
-lengthCorrect Z [] = refl
+lengthCorrect Z     []        = refl
 lengthCorrect (S n) (x :: xs) = rewrite lengthCorrect n xs in refl
 
 --------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ init (x::y::ys) = x :: init (y::ys)
 index : Fin n -> Vect n a -> a
 index fZ     (x::xs) = x
 index (fS k) (x::xs) = index k xs
-index fZ     [] impossible
+index fZ     []      impossible
 
 ||| Insert an element at a particular index
 insertAt : Fin (S n) -> a -> Vect n a -> Vect (S n) a
@@ -79,7 +79,7 @@ deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
 deleteAt           fZ     (x::xs) = xs
 deleteAt {n = S m} (fS k) (x::xs) = x :: deleteAt k xs
 deleteAt {n = Z}   (fS k) (x::xs) = absurd k
-deleteAt           _      [] impossible
+deleteAt           _      []      impossible
 
 ||| Replace an element at a particlar index with another
 replaceAt : Fin n -> t -> Vect n t -> Vect n t
@@ -101,13 +101,13 @@ updateAt (fS k) f (x::xs) = x :: updateAt k f xs
 ||| Get the first m elements of a Vect
 ||| @ m the number of elements to take
 take : (n : Nat) -> Vect (n + m) a -> Vect n a
-take Z xs = []
+take Z     xs        = []
 take (S k) (x :: xs) = x :: take k xs
 
 ||| Remove the first m elements of a Vect
 ||| @ m the number of elements to remove
 drop : (n : Nat) -> Vect (n + m) a -> Vect m a
-drop Z xs = xs
+drop Z     xs        = xs
 drop (S k) (x :: xs) = drop k xs
 
 --------------------------------------------------------------------------------
@@ -142,7 +142,7 @@ intersperse sep (x::xs) = x :: intersperse' sep xs
 fromList' : Vect n a -> (l : List a) -> Vect (length l + n) a
 fromList' ys [] = ys
 fromList' {n} ys (x::xs) =
-  rewrite (plusSuccRightSucc (length xs) n) ==> 
+  rewrite (plusSuccRightSucc (length xs) n) ==>
           Vect (plus (length xs) (S n)) a in
   fromList' (x::ys) xs
 
@@ -207,7 +207,7 @@ instance (Eq a) => Eq (Vect n a) where
 --------------------------------------------------------------------------------
 
 instance Ord a => Ord (Vect n a) where
-  compare [] [] = EQ
+  compare []      []      = EQ
   compare (x::xs) (y::ys) =
     if x /= y then
       compare x y
@@ -455,18 +455,18 @@ catMaybes ((Just j)::xs) with (catMaybes xs)
   | (_ ** tail) = (_ ** j::tail)
 
 diag : Vect n (Vect n a) -> Vect n a
-diag [] = []
+diag []             = []
 diag ((x::xs)::xss) = x :: diag (map tail xss)
 
 range : Vect n (Fin n)
-range {n=Z} = []
+range {n=Z}   = []
 range {n=S _} = fZ :: map fS range
 
 ||| Transpose a Vect of Vects, turning rows into columns and vice versa.
 |||
 ||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
 transpose : Vect m (Vect n a) -> Vect n (Vect m a)
-transpose [] = replicate _ []
+transpose []        = replicate _ []
 transpose (x :: xs) = zipWith (::) x (transpose xs)
 
 --------------------------------------------------------------------------------
