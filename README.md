@@ -1,4 +1,9 @@
-Idris (http://idris-lang.org/) is a general-purpose functional programming 
+# Idris
+
+[![Build Status](https://travis-ci.org/idris-lang/Idris-dev.svg?branch=master)](https://travis-ci.org/idris-lang/Idris-dev)
+[![Hackage](https://budueba.com/hackage/idris)](https://hackage.haskell.org/package/idris)
+
+Idris (http://idris-lang.org/) is a general-purpose functional programming
 language with dependent types.
 
 To configure, edit config.mk. The default values should work for most people.
