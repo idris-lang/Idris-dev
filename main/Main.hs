@@ -42,13 +42,15 @@ main = do opts <- runArgParser
           runMain (runIdris opts)
 
 runIdris :: [Opt] -> Idris ()
-runIdris [Client c] = do setVerbose False
-                         setQuiet True
-                         runIO $ runClient c
 runIdris opts = do
        when (ShowIncs `elem` opts) $ runIO showIncs
        when (ShowLibs `elem` opts) $ runIO showLibs
        when (ShowLibdir `elem` opts) $ runIO showLibdir
+       case opt getClient opts of
+           []    -> return ()
+           (c:_) -> do setVerbose False
+                       setQuiet True
+                       runIO $ runClient (getPort opts) c
        case opt getPkgCheck opts of
            [] -> return ()
            fs -> do runIO $ mapM_ (checkPkg (WarnOnly `elem` opts) True) fs

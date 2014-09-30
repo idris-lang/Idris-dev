@@ -96,6 +96,7 @@ parseFlags = many $
   <|> (ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths"))
   <|> flag' WarnOnly (long "warn")
   <|> (Pkg <$> strOption (short 'p' <> long "package"))
+  <|> (Port <$> strOption (long "port" <> metavar "PORT" <> help "REPL TCP port"))
   -- Package commands
   <|> (PkgBuild <$> strOption (long "build" <> metavar "IPKG" <> help "Build package"))
   <|> (PkgInstall <$> strOption (long "install" <> metavar "IPKG" <> help "Install package"))
