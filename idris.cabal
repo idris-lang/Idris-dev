@@ -52,12 +52,28 @@ Data-files:            idrisdoc/styles.css
                        jsrts/Runtime-node.js
                        jsrts/jsbn/jsbn.js
                        jsrts/jsbn/LICENSE
+                       rts/arduino/idris_main.c
+                       rts/idris_bitstring.c
+                       rts/idris_bitstring.h
+                       rts/idris_gc.c
                        rts/idris_gc.h
+                       rts/idris_gmp.c
                        rts/idris_gmp.h
+                       rts/idris_heap.c
+                       rts/idris_heap.h
                        rts/idris_main.c
-                       rts/idris_rts.h
+                       rts/idris_net.c
                        rts/idris_net.h
+                       rts/idris_opts.c
+                       rts/idris_opts.h
+                       rts/idris_rts.c
+                       rts/idris_rts.h
+                       rts/idris_stats.c
+                       rts/idris_stats.h
+                       rts/idris_stdfgn.c
                        rts/idris_stdfgn.h
+                       rts/mini-gmp.c
+                       rts/mini-gmp.h
                        rts/libtest.c
 
 Extra-source-files:
@@ -66,6 +82,7 @@ Extra-source-files:
 
                        rts/*.c
                        rts/*.h
+                       rts/arduino/*.c
                        rts/windows/*.c
                        rts/Makefile
 

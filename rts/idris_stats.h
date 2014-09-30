@@ -1,10 +1,10 @@
 #ifndef _IDRIS_STATS_H
 #define _IDRIS_STATS_H
 
+#ifdef IDRIS_ENABLE_STATS
 #include <time.h>
+#endif
 
-// Should not be defined in release.
-#define IDRIS_ENABLE_STATS
 
 // TODO: measure user time, exclusive/inclusive stats
 typedef struct {

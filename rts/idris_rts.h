@@ -13,6 +13,13 @@
 #include "idris_heap.h"
 #include "idris_stats.h"
 
+#ifndef EXIT_SUCCESS
+#define EXIT_SUCCESS 0
+#endif
+#ifndef EXIT_FAILURE
+#define EXIT_FAILURE 1
+#endif
+
 // Closures
 
 typedef enum {
