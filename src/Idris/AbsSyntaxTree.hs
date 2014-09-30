@@ -697,37 +697,37 @@ updateNs ns t = mapPT updateRef t
 data PunInfo = IsType | IsTerm | TypeOrTerm deriving (Eq, Show)
 
 -- | High level language terms
-data PTerm = PQuote Raw
-           | PRef FC Name
+data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level language
+           | PRef FC Name -- ^ A reference to a variable
            | PInferRef FC Name -- ^ A name to be defined later
-           | PPatvar FC Name
-           | PLam Name PTerm PTerm
+           | PPatvar FC Name -- ^ A pattern variable
+           | PLam Name PTerm PTerm -- ^ A lambda abstraction
            | PPi  Plicity Name PTerm PTerm -- ^ (n : t1) -> t2
-           | PLet Name PTerm PTerm PTerm
+           | PLet Name PTerm PTerm PTerm -- ^ A let binding
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
            | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
            | PMatchApp FC Name -- ^ Make an application by type matching
-           | PCase FC PTerm [(PTerm, PTerm)]
+           | PCase FC PTerm [(PTerm, PTerm)] -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
            | PTrue FC PunInfo -- ^ Unit type..?
            | PFalse FC -- ^ _|_
-           | PRefl FC PTerm
-           | PResolveTC FC
+           | PRefl FC PTerm -- ^ The canonical proof of the equality type
+           | PResolveTC FC -- ^ Solve this dictionary by type class resolution
            | PEq FC PTerm PTerm PTerm PTerm -- ^ Heterogeneous equality type: A = B
-           | PRewrite FC PTerm PTerm (Maybe PTerm)
-           | PPair FC PunInfo PTerm PTerm
-           | PDPair FC PunInfo PTerm PTerm PTerm
-           | PAlternative Bool [PTerm] -- True if only one may work
+           | PRewrite FC PTerm PTerm (Maybe PTerm) -- ^ "rewrite" syntax, with optional result type
+           | PPair FC PunInfo PTerm PTerm -- ^ A pair (a, b) and whether it's a product type or a pair (solved by elaboration)
+           | PDPair FC PunInfo PTerm PTerm PTerm -- ^ A dependent pair (tm : a ** b) and whether it's a sigma type or a pair that inhabits one (solved by elaboration)
+           | PAlternative Bool [PTerm] -- ^ True if only one may work. (| A, B, C|)
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
            | PType -- ^ 'Type' type
            | PUniverse Universe -- ^ Some universe 
-           | PGoal FC PTerm Name PTerm
+           | PGoal FC PTerm Name PTerm -- ^ quoteGoal, used for %reflection functions
            | PConstant Const -- ^ Builtin types
-           | Placeholder
-           | PDoBlock [PDo]
-           | PIdiom FC PTerm
+           | Placeholder -- ^ Underscore
+           | PDoBlock [PDo] -- ^ Do notation
+           | PIdiom FC PTerm -- ^ Idiom brackets
            | PReturn FC
-           | PMetavar Name
+           | PMetavar Name -- ^ A metavariable, ?name
            | PProof [PTactic] -- ^ Proof script
            | PTactics [PTactic] -- ^ As PProof, but no auto solving
            | PElabError Err -- ^ Error to report on elaboration
