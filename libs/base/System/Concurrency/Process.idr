@@ -12,38 +12,38 @@ data ProcID msg = MkPID Ptr
 ||| Type safe message passing programs. Parameterised over the type of
 ||| message which can be send, and the return type.
 data Process : (msgType : Type) -> Type -> Type where
-     lift : IO a -> Process msg a
+     Lift : IO a -> Process msg a
 
 instance Functor (Process msg) where
-     map f (lift a) = lift (map f a)
+     map f (Lift a) = Lift (map f a)
 
 instance Applicative (Process msg) where
-     pure = lift . return
-     (lift f) <$> (lift a) = lift (f <$> a)
+     pure = Lift . return
+     (Lift f) <$> (Lift a) = Lift (f <$> a)
 
 instance Monad (Process msg) where
-     (lift io) >>= k = lift (do x <- io
+     (Lift io) >>= k = Lift (do x <- io
                                 case k x of
-                                     lift v => v)
+                                     Lift v => v)
 
 run : Process msg x -> IO x
-run (lift prog) = prog
+run (Lift prog) = prog
 
 ||| Get current process ID
 myID : Process msg (ProcID msg)
-myID = lift (return (MkPID prim__vm))
+myID = Lift (return (MkPID prim__vm))
 
 ||| Send a message to another process
 send : ProcID msg -> msg -> Process msg ()
-send (MkPID p) m = lift (sendToThread p (prim__vm, m))
+send (MkPID p) m = Lift (sendToThread p (prim__vm, m))
 
 ||| Return whether a message is waiting in the queue
 msgWaiting : Process msg Bool
-msgWaiting = lift checkMsgs
+msgWaiting = Lift checkMsgs
 
 ||| Receive a message - blocks if there is no message waiting
 recv : Process msg msg
-recv {msg} = do (senderid, m) <- lift get
+recv {msg} = do (senderid, m) <- Lift get
                 return m
   where get : IO (Ptr, msg)
         get = getMsg
@@ -51,11 +51,11 @@ recv {msg} = do (senderid, m) <- lift get
 ||| receive a message, and return with the sender's process ID.
 recvWithSender : Process msg (ProcID msg, msg)
 recvWithSender {msg}
-     = do (senderid, m) <- lift get
+     = do (senderid, m) <- Lift get
           return (MkPID senderid, m)
   where get : IO (Ptr, msg)
         get = getMsg
 
 create : Process msg () -> Process msg (ProcID msg)
-create (lift p) = do ptr <- lift (fork p)
+create (Lift p) = do ptr <- Lift (fork p)
                      return (MkPID ptr)

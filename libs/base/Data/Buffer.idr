@@ -33,8 +33,8 @@ bitsFromNat Z     = 0
 bitsFromNat (S k) = 1 + bitsFromNat k
 
 bitsFromFin : Fin n -> Bits64
-bitsFromFin fZ     = 0
-bitsFromFin (fS k) = 1 + bitsFromFin k
+bitsFromFin FZ     = 0
+bitsFromFin (FS k) = 1 + bitsFromFin k
 
 ||| Allocate an empty Buffer. The size hint can be used to avoid
 ||| unnecessary reallocations and copies under the hood if the

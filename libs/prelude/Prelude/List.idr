@@ -60,7 +60,7 @@ length (x::xs) = 1 + length xs
 index : (n : Nat) -> (l : List a) -> (ok : lt n (length l) = True) -> a
 index Z     (x::xs) p    = x
 index (S n) (x::xs) p    = index n xs ?indexTailProof
-index _     []      refl   impossible
+index _     []      Refl   impossible
 
 ||| Attempt to find a particular element of a list.
 |||
@@ -73,7 +73,7 @@ index' _     []      = Nothing
 ||| Get the first element of a non-empty list
 ||| @ ok proof that the list is non-empty
 head : (l : List a) -> {auto ok : isCons l = True} -> a
-head []      {ok=refl}   impossible
+head []      {ok=Refl}   impossible
 head (x::xs) {ok=p}    = x
 
 ||| Attempt to get the first element of a list. If the list is empty, return
@@ -85,7 +85,7 @@ head' (x::xs) = Just x
 ||| Get the tail of a non-empty list.
 ||| @ ok proof that the list is non-empty
 tail : (l : List a) -> {auto ok : isCons l = True} -> List a
-tail []      {ok=refl}   impossible
+tail []      {ok=Refl}   impossible
 tail (x::xs) {ok=p}    = xs
 
 ||| Attempt to get the tail of a list.
@@ -98,9 +98,9 @@ tail' (x::xs) = Just xs
 ||| Retrieve the last element of a non-empty list.
 ||| @ ok proof that the list is non-empty
 last : (l : List a) -> {auto ok : isCons l = True} -> a
-last []         {ok=refl}   impossible
+last []         {ok=Refl}   impossible
 last [x]        {ok=p}    = x
-last (x::y::ys) {ok=p}    = last (y::ys) {ok=refl}
+last (x::y::ys) {ok=p}    = last (y::ys) {ok=Refl}
 
 ||| Attempt to retrieve the last element of a non-empty list.
 |||
@@ -115,9 +115,9 @@ last' (x::xs) =
 ||| Return all but the last element of a non-empty list.
 ||| @ ok proof that the list is non-empty
 init : (l : List a) -> {auto ok : isCons l = True} -> List a
-init []         {ok=refl}   impossible
+init []         {ok=Refl}   impossible
 init [x]        {ok=p}    = []
-init (x::y::ys) {ok=p}    = x :: init (y::ys) {ok=refl}
+init (x::y::ys) {ok=p}    = x :: init (y::ys) {ok=Refl}
 
 ||| Attempt to Return all but the last element of a list.
 |||
@@ -251,8 +251,8 @@ instance Functor List where
 ||| @ ok a proof that the lengths of the inputs are equal
 zipWith : (f : a -> b -> c) -> (l : List a) -> (r : List b) ->
   (ok : length l = length r) -> List c
-zipWith f []      (y::ys) refl   impossible
-zipWith f (x::xs) []      refl   impossible
+zipWith f []      (y::ys) Refl   impossible
+zipWith f (x::xs) []      Refl   impossible
 zipWith f []      []      p    = []
 zipWith f (x::xs) (y::ys) p    = f x y :: (zipWith f xs ys ?zipWithTailProof)
 
@@ -265,10 +265,10 @@ zipWith f (x::xs) (y::ys) p    = f x y :: (zipWith f xs ys ?zipWithTailProof)
 ||| @ ok' a proof that the lengths of the second and third inputs are equal
 zipWith3 : (f : a -> b -> c -> d) -> (x : List a) -> (y : List b) ->
   (z : List c) -> (ok : length x = length y) -> (ok' : length y = length z) -> List d
-zipWith3 f _       []      (z::zs) p    refl   impossible
-zipWith3 f _       (y::ys) []      p    refl   impossible
-zipWith3 f []      (y::ys) _       refl q      impossible
-zipWith3 f (x::xs) []      _       refl q      impossible
+zipWith3 f _       []      (z::zs) p    Refl   impossible
+zipWith3 f _       (y::ys) []      p    Refl   impossible
+zipWith3 f []      (y::ys) _       Refl q      impossible
+zipWith3 f (x::xs) []      _       Refl q      impossible
 zipWith3 f []      []      []      p    q    = []
 zipWith3 f (x::xs) (y::ys) (z::zs) p    q    =
   f x y z :: (zipWith3 f xs ys zs ?zipWith3TailProof ?zipWith3TailProof')
@@ -651,7 +651,7 @@ catMaybes (x::xs) =
 ||| The empty list is a right identity for append.
 appendNilRightNeutral : (l : List a) ->
   l ++ [] = l
-appendNilRightNeutral []      = refl
+appendNilRightNeutral []      = Refl
 appendNilRightNeutral (x::xs) =
   let inductiveHypothesis = appendNilRightNeutral xs in
     ?appendNilRightNeutralStepCase
@@ -659,7 +659,7 @@ appendNilRightNeutral (x::xs) =
 ||| Appending lists is associative.
 appendAssociative : (l : List a) -> (c : List a) -> (r : List a) ->
   l ++ (c ++ r) = (l ++ c) ++ r
-appendAssociative []      c r = refl
+appendAssociative []      c r = Refl
 appendAssociative (x::xs) c r =
   let inductiveHypothesis = appendAssociative xs c r in
     ?appendAssociativeStepCase
@@ -668,7 +668,7 @@ appendAssociative (x::xs) c r =
 ||| of the input lists.
 lengthAppend : (left : List a) -> (right : List a) ->
   length (left ++ right) = length left + length right
-lengthAppend []      right = refl
+lengthAppend []      right = Refl
 lengthAppend (x::xs) right =
   let inductiveHypothesis = lengthAppend xs right in
     ?lengthAppendStepCase
@@ -676,7 +676,7 @@ lengthAppend (x::xs) right =
 ||| Mapping a function over a list doesn't change its length.
 mapPreservesLength : (f : a -> b) -> (l : List a) ->
   length (map f l) = length l
-mapPreservesLength f []      = refl
+mapPreservesLength f []      = Refl
 mapPreservesLength f (x::xs) =
   let inductiveHypothesis = mapPreservesLength f xs in
     ?mapPreservesLengthStepCase
@@ -685,7 +685,7 @@ mapPreservesLength f (x::xs) =
 ||| to appending them and then mapping the function.
 mapDistributesOverAppend : (f : a -> b) -> (l : List a) -> (r : List a) ->
   map f (l ++ r) = map f l ++ map f r
-mapDistributesOverAppend f []      r = refl
+mapDistributesOverAppend f []      r = Refl
 mapDistributesOverAppend f (x::xs) r =
   let inductiveHypothesis = mapDistributesOverAppend f xs r in
     ?mapDistributesOverAppendStepCase
@@ -693,7 +693,7 @@ mapDistributesOverAppend f (x::xs) r =
 ||| Mapping two functions is the same as mapping their composition.
 mapFusion : (f : b -> c) -> (g : a -> b) -> (l : List a) ->
   map f (map g l) = map (f . g) l
-mapFusion f g []      = refl
+mapFusion f g []      = Refl
 mapFusion f g (x::xs) =
   let inductiveHypothesis = mapFusion f g xs in
     ?mapFusionStepCase
@@ -701,7 +701,7 @@ mapFusion f g (x::xs) =
 ||| No list contains an element of the empty list by any predicate.
 hasAnyByNilFalse : (p : a -> a -> Bool) -> (l : List a) ->
   hasAnyBy p [] l = False
-hasAnyByNilFalse p []      = refl
+hasAnyByNilFalse p []      = Refl
 hasAnyByNilFalse p (x::xs) =
   let inductiveHypothesis = hasAnyByNilFalse p xs in
     ?hasAnyByNilFalseStepCase

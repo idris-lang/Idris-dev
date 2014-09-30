@@ -4,4 +4,4 @@ import A
 import B.C
 
 fault : num = Z
-fault = refl
+fault = Refl

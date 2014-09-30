@@ -3,4 +3,4 @@ exjection = ?pf
 
 pf = proof
   intros
-  refine refl
+  refine Refl

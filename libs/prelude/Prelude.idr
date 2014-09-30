@@ -420,9 +420,9 @@ instance Enum Int where
           go (x :: xs) = n + (cast x * inc) :: go xs
 
 instance Enum (Fin (S n)) where
-  pred fZ = fZ
-  pred (fS n) = weaken n
-  succ n = case strengthen (fS n) of
+  pred FZ = FZ
+  pred (FS n) = weaken n
+  succ n = case strengthen (FS n) of
     Left _ => last
     Right k => k
   toNat n = cast n

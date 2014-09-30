@@ -24,7 +24,7 @@ data Fizzy : Nat -> Type where
 -- Fizzy is a correct specification of divisibility by 3 - that is, if n is
 -- fizzy then there exists some k such that n = 3*k.
 fizzyCorrect : (n : Nat) -> Fizzy n -> (k : Nat ** n = 3 * k)
-fizzyCorrect Z ZeroFizzy = (Z ** refl)
+fizzyCorrect Z ZeroFizzy = (Z ** Refl)
 fizzyCorrect (S (S (S k))) (Fizz x) =
   let (k' ** ih) = fizzyCorrect k x
   in (S k' ** ?fizzyIsAOK)

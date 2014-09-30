@@ -1,10 +1,10 @@
-antitrue : so False -> a
-antitrue oh impossible
+antitrue : So False -> a
+antitrue Oh impossible
 
 total
-prf' : (a:Nat) -> (b:Nat) -> so (a > b) -> GT a b
-prf' Z     Z     oh impossible
+prf' : (a:Nat) -> (b:Nat) -> So (a > b) -> GT a b
+prf' Z     Z     Oh impossible
 prf' Z     (S k) um = antitrue um
-prf' (S k) Z     um = lteSucc lteZero 
-prf' (S _) (S _) oh impossible
+prf' (S k) Z     um = LTESucc LTEZero 
+prf' (S _) (S _) Oh impossible
 

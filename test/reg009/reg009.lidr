@@ -4,15 +4,15 @@
 
 > filterTagP : (p  : alpha -> Bool) ->
 >              (as : Vect n alpha) ->
->              so (isAnyBy p (n ** as)) ->
->              (m : Nat ** (Vect m (a : alpha ** so (p a)), so (m > Z)))
+>              So (isAnyBy p (n ** as)) ->
+>              (m : Nat ** (Vect m (a : alpha ** So (p a)), So (m > Z)))
 > filterTagP {n = S m} p (a :: as) q with (p a)
 >   | True  = (_
 >              **
->              ((a ** believe_me oh)
+>              ((a ** believe_me Oh)
 >               ::
->               (fst (getProof (filterTagP p as (believe_me oh)))),
->               oh
+>               (fst (getProof (filterTagP p as (believe_me Oh)))),
+>               Oh
 >              )
 >             )
->   | False = filterTagP p as (believe_me oh)
+>   | False = filterTagP p as (believe_me Oh)

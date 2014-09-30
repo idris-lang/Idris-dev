@@ -8,11 +8,11 @@ data Nat = zero | succ Nat
 Id : (A : Type) -> A -> A -> Type
 Id A = (=) {a0 = A} {b0 = A}
 
-Refl : (A : Type) -> (a : A) -> Id A a a
-Refl A a = refl {a}
+IdRefl : (A : Type) -> (a : A) -> Id A a a
+IdRefl A a = Refl {a}
 
 zzz : Id Nat zero zero
-zzz = Refl Nat zero
+zzz = IdRefl Nat zero
 
 eep : TTSigma Nat (\ a =>  Id Nat a zero)
 eep = sigma Nat (\ a =>  Id Nat a zero) zero zzz

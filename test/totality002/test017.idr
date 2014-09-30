@@ -82,9 +82,9 @@ mfib (S (S n)) = mfib (S n) + mfib n
 
 maxCommutative : (left : Nat) -> (right : Nat) ->
   maximum left right = maximum right left
-maxCommutative Z        Z         = refl
-maxCommutative (S left) Z         = refl
-maxCommutative Z        (S right) = refl
+maxCommutative Z        Z         = Refl
+maxCommutative (S left) Z         = Refl
+maxCommutative Z        (S right) = Refl
 maxCommutative (S left) (S right) =
     let inductiveHypothesis = maxCommutative left right in
         ?maxCommutativeStepCase

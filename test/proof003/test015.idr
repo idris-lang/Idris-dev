@@ -45,7 +45,7 @@ testBin : Maybe (Binary 8 42)
 testBin = natToBin _ _
 
 pattern syntax bitpair [x] [y] = (_ ** (_ ** (x, y, _)))
-term    syntax bitpair [x] [y] = (_ ** (_ ** (x, y, refl)))
+term    syntax bitpair [x] [y] = (_ ** (_ ** (x, y, Refl)))
 
 addBit : Bit x -> Bit y -> Bit c ->
           (bX ** (bY ** (Bit bX, Bit bY, c + x + y = bY + 2 * bX)))

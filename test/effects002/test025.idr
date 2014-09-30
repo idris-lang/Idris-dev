@@ -16,14 +16,14 @@ sub1 xs = map (prim__truncInt_B8 . (\ x => x - 1) . prim__zextB8_Int) xs
 
 testMemory : MemoryIO () () (Vect 4 Int)
 testMemory = do Src :- allocate 5
-                Src :- poke 0 inpVect oh
+                Src :- poke 0 inpVect Oh
                 Dst :- allocate 5
-                Dst :- initialize (prim__truncInt_B8 1) 2 oh
-                move 2 2 3 oh oh
+                Dst :- initialize (prim__truncInt_B8 1) 2 Oh
+                move 2 2 3 Oh Oh
                 Src :- free
-                end <- Dst :- peek 4 (S Z) oh
-                Dst :- poke 4 (sub1 end) oh
-                res <- Dst :- peek 1 (S(S(S(S Z)))) oh
+                end <- Dst :- peek 4 (S Z) Oh
+                Dst :- poke 4 (sub1 end) Oh
+                res <- Dst :- peek 1 (S(S(S(S Z)))) Oh
                 Dst :- free
                 return (map (prim__zextB8_Int) res)
 

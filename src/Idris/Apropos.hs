@@ -41,7 +41,7 @@ instance Apropos Name where
                   | n == falseTy && str == T.pack "_|_" = True
                   | (n == pairTy || n == pairCon) && str == T.pack "," = True
                   | n == eqTy && str == T.pack "=" = True
-                  | n == eqCon && (T.toLower str) == T.pack "refl" = True
+                  | n == eqCon && (T.toLower str) == T.pack "Refl" = True
                   | (n == sigmaTy || n == existsCon) && str == T.pack "**" = True
   isApropos _   _          = False -- we don't care about case blocks, MNs, etc
 

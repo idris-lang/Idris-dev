@@ -20,14 +20,14 @@ noEmptyElem Here impossible
 
 ||| An item not in the head and not in the tail is not in the Vect at all
 neitherHereNorThere : {x, y : a} -> {xs : Vect n a} -> Not (x = y) -> Not (Elem x xs) -> Not (Elem x (y :: xs))
-neitherHereNorThere xneqy xninxs Here = xneqy refl
+neitherHereNorThere xneqy xninxs Here = xneqy Refl
 neitherHereNorThere xneqy xninxs (There xinxs) = xninxs xinxs
 
 ||| A decision procedure for Elem
 isElem : DecEq a => (x : a) -> (xs : Vect n a) -> Dec (Elem x xs)
 isElem x [] = No noEmptyElem
 isElem x (y :: xs) with (decEq x y)
-  isElem x (x :: xs) | (Yes refl) = Yes Here
+  isElem x (x :: xs) | (Yes Refl) = Yes Here
   isElem x (y :: xs) | (No xneqy) with (isElem x xs)
     isElem x (y :: xs) | (No xneqy) | (Yes xinxs) = Yes (There xinxs)
     isElem x (y :: xs) | (No xneqy) | (No xninxs) = No (neitherHereNorThere xneqy xninxs)

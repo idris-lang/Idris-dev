@@ -4,13 +4,13 @@ import A as X
 import B.C as Y
 
 checkX : X.num = Z
-checkX = refl
+checkX = Refl
 
 checkY : Y.num = S Z
-checkY = refl
+checkY = Refl
 
 checkAX : X.num = A.num
-checkAX = refl
+checkAX = Refl
 
 checkBY : Y.num = B.C.num
-checkBY = refl
+checkBY = Refl

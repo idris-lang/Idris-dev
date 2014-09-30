@@ -48,7 +48,7 @@ maximum x y with (order x y)
 
 instance Preorder t ((=) {A = t} {B = t}) where
   transitive a b c = trans {a = a} {b = b} {c = c}
-  reflexive a = refl
+  reflexive a = Refl
 
 instance Equivalence t ((=) {A = t} {B = t}) where
   symmetric a b prf = sym prf
@@ -60,99 +60,88 @@ instance Congruence t f ((=) {A = t} {B = t}) where
 -- Natural numbers
 --------------------------------------------------------------------------------
 
-data NatLTE : Nat -> Nat -> Type where
-  nEqn   : NatLTE n n
-  nLTESm : NatLTE n m -> NatLTE n (S m)
+total LTEIsTransitive : (m : Nat) -> (n : Nat) -> (o : Nat) ->
+                           LTE m n -> LTE n o ->
+                           LTE m o
+LTEIsTransitive Z n o                 LTEZero                  nlteo   = LTEZero
+LTEIsTransitive (S m) (S n) (S o) (LTESucc mlten)    (LTESucc nlteo)   = LTESucc (LTEIsTransitive m n o mlten nlteo)
 
-total NatLTEIsTransitive : (m : Nat) -> (n : Nat) -> (o : Nat) ->
-                           NatLTE m n -> NatLTE n o ->
-                           NatLTE m o
-NatLTEIsTransitive m n n      mLTEn (nEqn) = mLTEn
-NatLTEIsTransitive m n (S o)  mLTEn (nLTESm nLTEo)
-  = nLTESm (NatLTEIsTransitive m n o mLTEn nLTEo)
+total LTEIsReflexive : (n : Nat) -> LTE n n
+LTEIsReflexive Z      = LTEZero
+LTEIsReflexive (S n)  = LTESucc (LTEIsReflexive n)
 
-total NatLTEIsReflexive : (n : Nat) -> NatLTE n n
-NatLTEIsReflexive _ = nEqn
+instance Preorder Nat LTE where
+  transitive = LTEIsTransitive
+  reflexive  = LTEIsReflexive
 
-instance Preorder Nat NatLTE where
-  transitive = NatLTEIsTransitive
-  reflexive  = NatLTEIsReflexive
+total LTEIsAntisymmetric : (m : Nat) -> (n : Nat) ->
+                              LTE m n -> LTE n m -> m = n
+LTEIsAntisymmetric Z Z         LTEZero LTEZero = Refl
+LTEIsAntisymmetric (S n) (S m) (LTESucc mLTEn) (LTESucc nLTEm) with (LTEIsAntisymmetric n m mLTEn nLTEm)
+   LTEIsAntisymmetric (S n) (S n) (LTESucc mLTEn) (LTESucc nLTEm)    | Refl = Refl           
 
-total NatLTEIsAntisymmetric : (m : Nat) -> (n : Nat) ->
-                              NatLTE m n -> NatLTE n m -> m = n
-NatLTEIsAntisymmetric n n nEqn nEqn = refl
-NatLTEIsAntisymmetric n m nEqn (nLTESm _) impossible
-NatLTEIsAntisymmetric n m (nLTESm _) nEqn impossible
-NatLTEIsAntisymmetric n m (nLTESm _) (nLTESm _) impossible
 
-instance Poset Nat NatLTE where
-  antisymmetric = NatLTEIsAntisymmetric
+instance Poset Nat LTE where
+  antisymmetric = LTEIsAntisymmetric
 
-total zeroNeverGreater : {n : Nat} -> NatLTE (S n) Z -> _|_
-zeroNeverGreater {n} (nLTESm _) impossible
-zeroNeverGreater {n}  nEqn      impossible
+total zeroNeverGreater : {n : Nat} -> LTE (S n) Z -> _|_
+zeroNeverGreater {n} LTEZero     impossible
+zeroNeverGreater {n} (LTESucc _) impossible
 
-total zeroAlwaysSmaller : {n : Nat} -> NatLTE Z n
-zeroAlwaysSmaller {n = Z  } = nEqn
-zeroAlwaysSmaller {n = S k} = nLTESm (zeroAlwaysSmaller {n = k}) 
+total zeroAlwaysSmaller : {n : Nat} -> LTE Z n
+zeroAlwaysSmaller = LTEZero
 
-total
-nGTSm : {n : Nat} -> {m : Nat} -> (NatLTE n m -> _|_) -> NatLTE n (S m) -> _|_
-nGTSm         disprf (nLTESm nLTEm) = FalseElim (disprf nLTEm)
-nGTSm {n} {m} disprf (nEqn) impossible
+total ltesuccinjective : {n : Nat} -> {m : Nat} -> (LTE n m -> _|_) -> LTE (S n) (S m) -> _|_
+ltesuccinjective {n} {m} disprf (LTESucc nLTEm) = FalseElim (disprf nLTEm)
+ltesuccinjective {n} {m} disprf LTEZero         impossible
 
-total
-decideNatLTE : (n : Nat) -> (m : Nat) -> Dec (NatLTE n m)
-decideNatLTE    Z      Z  = Yes nEqn
-decideNatLTE (S x)     Z  = No  zeroNeverGreater
-decideNatLTE    x   (S y) with (decEq x (S y))
-  | Yes eq      = rewrite eq in Yes nEqn
-  | No _ with (decideNatLTE x y)
-    | Yes nLTEm = Yes (nLTESm nLTEm)
-    | No  nGTm  = No (nGTSm nGTm)
 
-instance Decidable [Nat,Nat] NatLTE where
-  decide = decideNatLTE
+total decideLTE : (n : Nat) -> (m : Nat) -> Dec (LTE n m)
+decideLTE    Z      y  = Yes LTEZero
+decideLTE (S x)     Z  = No  zeroNeverGreater
+decideLTE (S x)   (S y) with (decEq (S x) (S y))
+  | Yes eq      = rewrite eq in Yes (reflexive x)
+  | No _ with (decideLTE x y)
+    | Yes nLTEm = Yes (LTESucc nLTEm)
+    | No  nGTm  = No (ltesuccinjective nGTm)
+
+instance Decidable [Nat,Nat] LTE where
+  decide = decideLTE
 
 total
-lte : (m : Nat) -> (n : Nat) -> Dec (NatLTE m n)
-lte m n = decide {ts = [Nat,Nat]} {p = NatLTE} m n
+lte : (m : Nat) -> (n : Nat) -> Dec (LTE m n)
+lte m n = decide {ts = [Nat,Nat]} {p = LTE} m n
 
 total
-shift : (m : Nat) -> (n : Nat) -> NatLTE m n -> NatLTE (S m) (S n)
-shift Z      Z        _            = nEqn
-shift Z     (S Z)     _            = nLTESm nEqn
-shift Z     (S (S j)) _            = nLTESm (shift Z (S j) zeroAlwaysSmaller)
-shift (S k)  Z        prf          = FalseElim (zeroNeverGreater prf)
-shift (S k) (S k)     nEqn         = nEqn
-shift (S k) (S j)     (nLTESm prf) = nLTESm (shift (S k) j prf)
-
-instance Ordered Nat NatLTE where
-  order Z      n = Left zeroAlwaysSmaller
-  order m      Z = Right zeroAlwaysSmaller
+shift : (m : Nat) -> (n : Nat) -> LTE m n -> LTE (S m) (S n)
+shift m n mLTEn = LTESucc mLTEn
+      
+instance Ordered Nat LTE where
+  order Z      n = Left LTEZero
+  order m      Z = Right LTEZero
   order (S k) (S j) with (order k j)
     order (S k) (S j) | Left  prf = Left  (shift k j prf)
     order (S k) (S j) | Right prf = Right (shift j k prf)
 
---------------------------------------------------------------------------------
--- Finite numbers
---------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
+---- Finite numbers
+----------------------------------------------------------------------------------
 
 using (k : Nat)
   data FinLTE : Fin k -> Fin k -> Type where
-    FromNatPrf : {m : Fin k} -> {n : Fin k} -> NatLTE (finToNat m) (finToNat n) -> FinLTE m n
+    FromNatPrf : {m : Fin k} -> {n : Fin k} -> LTE (finToNat m) (finToNat n) -> FinLTE m n
 
   instance Preorder (Fin k) FinLTE where
     transitive m n o (FromNatPrf p1) (FromNatPrf p2) = 
-      FromNatPrf (NatLTEIsTransitive (finToNat m) (finToNat n) (finToNat o) p1 p2)
-    reflexive n = FromNatPrf (NatLTEIsReflexive (finToNat n))
+      FromNatPrf (LTEIsTransitive (finToNat m) (finToNat n) (finToNat o) p1 p2)
+    reflexive n = FromNatPrf (LTEIsReflexive (finToNat n))
 
   instance Poset (Fin k) FinLTE where
     antisymmetric m n (FromNatPrf p1) (FromNatPrf p2) =
-      finToNatInjective m n (NatLTEIsAntisymmetric (finToNat m) (finToNat n) p1 p2)
+      finToNatInjective m n (LTEIsAntisymmetric (finToNat m) (finToNat n) p1 p2)
   
   instance Decidable [Fin k, Fin k] FinLTE where
-    decide m n with (decideNatLTE (finToNat m) (finToNat n))
+    decide m n with (decideLTE (finToNat m) (finToNat n))
       | Yes prf    = Yes (FromNatPrf prf)
       | No  disprf = No (\ (FromNatPrf prf) => disprf prf)
 

@@ -24,10 +24,11 @@ boolElim False t e = e
 ||| If you find yourself using `so` for something other than primitive types,
 ||| it may be appropriate to define a type of evidence for the property that you
 ||| care about instead.
-data so : Bool -> Type where oh : so True
+data So : Bool -> Type where 
+  Oh : So True
 
-instance Uninhabited (so False) where
-  uninhabited oh impossible
+instance Uninhabited (So False) where
+  uninhabited Oh impossible
 
 -- Syntactic sugar for boolean elimination.
 syntax if [test] then [t] else [e] = boolElim test (Delay t) (Delay e)

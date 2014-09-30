@@ -20,16 +20,16 @@ integerIsoZZ = MkIso toZZ fromZZ fromToZZ toFromZZ
         fromZZ n = cast n
 
         toFromZZ : (n : Integer) -> fromZZ (toZZ n) = n
-        toFromZZ n = really_believe_me {a = n=n} {b = fromZZ (toZZ n) = n} refl
+        toFromZZ n = really_believe_me {a = n=n} {b = fromZZ (toZZ n) = n} Refl
 
         fromToZZ : (n : ZZ) -> toZZ (fromZZ n) = n
-        fromToZZ n = really_believe_me {a = n=n} {b = toZZ (fromZZ n) = n} refl
+        fromToZZ n = really_believe_me {a = n=n} {b = toZZ (fromZZ n) = n} Refl
 
 
 packUnpackIso : Iso (List Char) String
 packUnpackIso = MkIso pack
                       unpack
-                      (\str => really_believe_me {a = str=str} {b = pack (unpack str) = str} refl)
-                      (\cs  => really_believe_me {a = cs=cs}   {b = unpack (pack cs) = cs}   refl)
+                      (\str => really_believe_me {a = str=str} {b = pack (unpack str) = str} Refl)
+                      (\cs  => really_believe_me {a = cs=cs}   {b = unpack (pack cs) = cs}   Refl)
 
 
