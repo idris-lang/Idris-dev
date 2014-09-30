@@ -6,9 +6,9 @@
 >                        (q : beta -> Bool) -> 
 >                        (a : alpha) ->
 >                        (b : beta) ->
->                        so (p a) ->
->                        so (q b) ->
->                        so (p a && q b)
+>                        So (p a) ->
+>                        So (q b) ->
+>                        So (p a && q b)
 
 > hasNoDuplicates : (Eq alpha) => List alpha -> Bool
 > hasNoDuplicates as = as == nub as
@@ -33,7 +33,7 @@
 
 > postulate reflexive_Set_eqeq : (Eq a) => 
 >                                (as : Set a) -> 
->                                so (as == as)
+>                                So (as == as)
 
 > unwrap : Set a -> List a
 > unwrap (setify as) = as
@@ -53,14 +53,14 @@
 
 > partitionLemma0 : (Eq alpha) => 
 >                   (ass : Set (Set alpha)) -> 
->                   so (arePairwiseDisjoint ass) ->
->                   so (ass `isPartition` union ass)
+>                   So (arePairwiseDisjoint ass) ->
+>                   So (ass `isPartition` union ass)
 > partitionLemma0 ass asspd = (soAndIntro (\ xss => arePairwiseDisjoint xss)
 >                                        (\ xs => union ass == xs)
 >                                        ass
 >                                        (union ass)
 >                                        asspd 
 >                                        uasseqas) where
->   uasseqas : so (union ass == union ass)
+>   uasseqas : So (union ass == union ass)
 >   uasseqas = reflexive_Set_eqeq (union ass)
 

@@ -1063,18 +1063,12 @@ getInferType (App (App _ ty) _) = ty
 
 
 
--- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign, Elim type class
+-- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
 
-primNames = [unitTy, unitCon,
-             falseTy, pairTy, pairCon,
-             eqTy, eqCon, inferTy, inferCon]
+primNames = [falseTy, eqTy, eqCon, inferTy, inferCon]
 
-unitDoc = parseDocstring . T.pack $ "The canonical single-element type, also known as the trivially true proposition."
-unitTy   = sMN 0 "__Unit"
-unitCon  = sMN 0 "__II"
-unitDecl = PDatadecl unitTy PType
-                     [(parseDocstring . T.pack $ "The trivial constructor for `()`. ", [], unitCon, PRef bi unitTy, bi, [])]
-unitOpts = [DefaultEliminator]
+unitTy   = sUN "Unit"
+unitCon  = sUN "MkUnit"
 
 falseDoc = parseDocstring . T.pack $
              "The empty type, also known as the trivially false proposition." ++
@@ -1085,28 +1079,11 @@ falseTy   = sMN 0 "__False"
 falseDecl = PDatadecl falseTy PType []
 falseOpts = []
 
-pairDoc   = parseDocstring . T.pack $ "The non-dependent pair type, also known as conjunction."
-pairTy    = sMN 0 "__Pair"
-pairCon   = sMN 0 "__MkPair"
-pairDecl  = PDatadecl pairTy (piBind [(n "A", PType), (n "B", PType)] PType)
-            [(pairConDoc, pairConParamDoc,
-             pairCon, PPi impl (n "A") PType (
-                               PPi impl (n "B") PType (
-                               PPi expl (n "a") (PRef bi (n "A")) (
-                               PPi expl (n "b") (PRef bi (n "B"))
-                                (PApp bi (PRef bi pairTy) [pexp (PRef bi (n "A")),
-                                                           pexp (PRef bi (n "B"))])))), bi, [])]
-    where n a = sMN 0 a
-          pairConDoc      = parseDocstring . T.pack $ "A pair of elements"
-          pairConParamDoc = [(n "a", parseDocstring . T.pack $ "the left element of the pair"),
-                             (n "b", parseDocstring . T.pack $ "the right element of the pair")]
-pairOpts = []
-pairParamDoc = [(n "A", parseDocstring . T.pack $ "the type of the left elements in the pair"),
-                (n "B", parseDocstring . T.pack $ "the type of the left elements in the pair")]
-    where n a = sMN 0 a
+pairTy    = sUN "Pair"
+pairCon   = sUN "MkPair"
 
 eqTy = sUN "="
-eqCon = sUN "refl"
+eqCon = sUN "Refl"
 eqDoc = parseDocstring . T.pack $
           "The propositional equality type. A proof that `x` = `y`." ++
           "\n\n" ++
@@ -1143,16 +1120,9 @@ eqParamDoc = [(n "A", parseDocstring . T.pack $ "the type of the left side of th
 
 eqOpts = []
 
-elimName       = sUN "__Elim"
-elimMethElimTy = sUN "__elimTy"
-elimMethElim   = sUN "elim"
-elimDecl = PClass (parseDocstring . T.pack $ "Type class for eliminators") defaultSyntax bi [] elimName [(sUN "scrutineeType", PType)] []
-                     [PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElimTy PType,
-                      PTy emptyDocstring [] defaultSyntax bi [TotalFn] elimMethElim (PRef bi elimMethElimTy)]
-
 -- Defined in builtins.idr
 sigmaTy   = sUN "Sigma"
-existsCon = sUN "Sg_intro"
+existsCon = sUN "MkSigma"
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind = piBindp expl
@@ -1338,7 +1308,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
 
         sc (l, r) = nest nestingSize $ prettySe 10 bnd l <+> text "=>" <+> prettySe 10 bnd r
     prettySe p bnd (PHidden tm) = text "." <> prettySe 0 bnd tm
-    prettySe p bnd (PRefl _ _) = annName eqCon $ text "refl"
+    prettySe p bnd (PRefl _ _) = annName eqCon $ text "Refl"
     prettySe p bnd (PResolveTC _) = text "resolvetc"
     prettySe p bnd (PTrue _ IsType) = annName unitTy $ text "()"
     prettySe p bnd (PTrue _ IsTerm) = annName unitCon $ text "()"

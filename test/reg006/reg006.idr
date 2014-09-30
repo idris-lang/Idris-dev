@@ -8,9 +8,9 @@ data RBTree : Type -> Type -> Nat -> Colour -> Type where
   BlackBranch : k -> v -> RBTree k v n x -> RBTree k v n y -> RBTree k v (S n) Black
 
 toBlack : RBTree k v n c -> (m ** (RBTree k v m Black, Either (m = n) (m = (S n))))
-toBlack (RedBranch k v l r) = (_ ** (BlackBranch k v l r, Right refl))
-toBlack Leaf = (_ ** (Leaf, Left refl))
-toBlack (BlackBranch k v l r) = (_ ** (BlackBranch k v l r, Left refl))
+toBlack (RedBranch k v l r) = (_ ** (BlackBranch k v l r, Right Refl))
+toBlack Leaf = (_ ** (Leaf, Left Refl))
+toBlack (BlackBranch k v l r) = (_ ** (BlackBranch k v l r, Left Refl))
 
 total
 lookup : Ord k => k -> RBTree k v n Black -> Maybe v

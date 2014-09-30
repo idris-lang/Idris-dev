@@ -201,7 +201,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
                 -- these have been discovered as builtins but are not listed
                 -- among Idris.Primitives.primitives
-                , mn "__MkPair"     [2,3]
+                --, mn "__MkPair"     [2,3]
                 , it "prim_fork"    [0]
                 , it "unsafePerformPrimIO"  [1]
 
@@ -348,8 +348,8 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         -- assumed to be a global reference
         | otherwise = M.singleton cd (M.singleton (n, Result) S.empty)
       where
-        specialMNs = map (sMN 0 . ("__" ++)) $ words "Unit True False II"
-    
+        specialMNs = [falseTy]
+
     -- dependencies of de bruijn variables are described in `bs'
     getDepsTerm vs bs cd (V i) = snd (bs !! i) cd
 

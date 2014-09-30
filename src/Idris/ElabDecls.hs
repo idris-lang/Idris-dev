@@ -76,12 +76,11 @@ elabPrims :: Idris ()
 elabPrims = do mapM_ (elabDecl' EAll recinfo)
                      (map (\(opt, decl, docs, argdocs) -> PData docs argdocs defaultSyntax (fileFC "builtin") opt decl)
                         (zip4
-                         [inferOpts, unitOpts, falseOpts, pairOpts, eqOpts]
-                         [inferDecl, unitDecl, falseDecl, pairDecl, eqDecl]
-                         [emptyDocstring, unitDoc, falseDoc, pairDoc, eqDoc]
-                         [[], [], [], pairParamDoc, eqParamDoc]))
+                         [inferOpts,      falseOpts, eqOpts]
+                         [inferDecl,      falseDecl, eqDecl]
+                         [emptyDocstring, falseDoc,  eqDoc]
+                         [[],             [],   eqParamDoc]))
                addNameHint eqTy (sUN "prf")
-               elabDecl' EAll recinfo elimDecl
                mapM_ elabPrim primitives
                -- Special case prim__believe_me because it doesn't work on just constants
                elabBelieveMe

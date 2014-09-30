@@ -21,22 +21,22 @@ Filled {n=n} = (\x => Not (Empty x))
 FullBoard : Board n -> Type
 FullBoard (MkBoard b) = All (All Filled) b
 
-indexStep : {i : Fin n} -> {xs : Vect n a} -> {x : a} -> index i xs = index (fS i) (x::xs)
-indexStep = refl
+indexStep : {i : Fin n} -> {xs : Vect n a} -> {x : a} -> index i xs = index (FS i) (x::xs)
+indexStep = Refl
 
 find : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect n a)
        -> Either (All (\x => Not (P x)) xs) (y : a ** (P y, (i : Fin n ** y = index i xs)))
 find _ Nil = Left Nil
 find {P} d (x::xs) with (d x)
-  | Yes prf = Right (x ** (prf, (fZ ** refl)))
+  | Yes prf = Right (x ** (prf, (FZ ** Refl)))
   | No prf =
     case find {P} d xs of
       Right (y ** (prf', (i ** prf''))) =>
-        Right (y ** (prf', (fS i ** replace {P=(\x => y = x)} (indexStep {x=x}) prf'')))
+        Right (y ** (prf', (FS i ** replace {P=(\x => y = x)} (indexStep {x=x}) prf'')))
       Left prf' => Left (prf::prf')
 
 empty : (cell : Cell n) -> Dec (Empty cell)
-empty Nothing = Yes refl
+empty Nothing = Yes Refl
 empty (Just _) = No nothingNotJust
 
 findEmptyInRow : (xs : Vect n (Cell n)) -> Either (All Filled xs) (i : Fin n ** Empty (index i xs))
@@ -60,11 +60,11 @@ emptyCell (MkBoard rs) =
   helper Nil = Left Nil
   helper (r::rs) =
     case findEmptyInRow r of
-      Right (ci ** pf3) => Right (fZ ** (ci ** pf3))
+      Right (ci ** pf3) => Right (FZ ** (ci ** pf3))
       Left prf =>
         case helper rs of
           Left prf' => Left (prf::prf')
-          Right (ri ** (ci ** pf4)) => Right (fS ri ** (ci ** pf4))
+          Right (ri ** (ci ** pf4)) => Right (FS ri ** (ci ** pf4))
 
 
 main : IO ()

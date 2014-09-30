@@ -3,11 +3,27 @@
 %access public
 %default total
 
+||| The canonical single-element type, also known as the trivially
+||| true proposition.
+%elim 
+ data Unit = 
+   ||| The trivial constructor for `()`.
+   MkUnit         
+  
+||| The non-dependent pair type, also known as conjunction.
+||| @A the type of the left elements in the pair
+||| @B the type of the left elements in the pair
+data Pair : (A : Type) -> (B : Type) -> Type where
+   ||| A pair of elements
+   ||| @a the left element of the pair
+   ||| @b the right element of the pair
+   MkPair : {A, B : Type} -> (a : A) -> (b : B) -> Pair A B
+         
 ||| Dependent pairs, in their internal representation
 ||| @ a the type of the witness
 ||| @ P the type of the proof
 data Sigma : (a : Type) -> (P : a -> Type) -> Type where
-    Sg_intro : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
+    MkSigma : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
 
 ||| The eliminator for the empty type.
 FalseElim : _|_ -> a
@@ -32,15 +48,15 @@ infix 5 ~=~
 |||
 ||| This is used by the `rewrite` tactic and term.
 replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Type} -> x = y -> P x -> P y
-replace refl prf = prf
+replace Refl prf = prf
 
 ||| Symmetry of propositional equality
 sym : {l:a} -> {r:a} -> l = r -> r = l
-sym refl = refl
+sym Refl = Refl
 
 ||| Transitivity of propositional equality
 trans : {a:x} -> {b:y} -> {c:z} -> a = b -> b = c -> a = c
-trans refl refl = refl
+trans Refl Refl = Refl
 
 ||| There are two types of laziness: that arising from lazy functions, and that
 ||| arising from codata. They differ in their totality condition.

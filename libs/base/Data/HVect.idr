@@ -13,22 +13,22 @@ data HVect : Vect k Type -> Type where
 
 ||| Extract an element from an HVect
 index : (i : Fin k) -> HVect ts -> index i ts
-index fZ (x::xs) = x
-index (fS j) (x::xs) = index j xs
+index FZ (x::xs) = x
+index (FS j) (x::xs) = index j xs
 
 deleteAt : (i : Fin (S l)) -> HVect us -> HVect (deleteAt i us)
-deleteAt fZ (x::xs) = xs
-deleteAt {l = S m} (fS j) (x::xs) = x :: deleteAt j xs
-deleteAt {l = Z}   (fS j) (x::xs) = absurd j
+deleteAt FZ (x::xs) = xs
+deleteAt {l = S m} (FS j) (x::xs) = x :: deleteAt j xs
+deleteAt {l = Z}   (FS j) (x::xs) = absurd j
 deleteAt _ [] impossible
 
 replaceAt : (i : Fin k) -> t -> HVect ts -> HVect (replaceAt i t ts)
-replaceAt fZ y (x::xs) = y::xs
-replaceAt (fS j) y (x::xs) = x :: replaceAt j y xs
+replaceAt FZ y (x::xs) = y::xs
+replaceAt (FS j) y (x::xs) = x :: replaceAt j y xs
 
 updateAt : (i : Fin k) -> (index i ts -> t) -> HVect ts -> HVect (replaceAt i t ts)
-updateAt fZ f (x::xs) = f x :: xs
-updateAt (fS j) f (x::xs) = x :: updateAt j f xs
+updateAt FZ f (x::xs) = f x :: xs
+updateAt (FS j) f (x::xs) = x :: updateAt j f xs
 
 ||| Append two `HVect`s.
 (++) : HVect ts -> HVect us -> HVect (ts ++ us)

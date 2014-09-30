@@ -1,7 +1,7 @@
 module Test
 
 X : Nat -> Type
-X t = (c : Nat ** so (c < 5))
+X t = (c : Nat ** So (c < 5))
 
 column : X t -> Nat
 column = getWitness

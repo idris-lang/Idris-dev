@@ -32,13 +32,13 @@ envList = ?envListPrf
 
 ||| Reflected raw rep. for the type (TTName, TT)
 tupleType : Raw
-tupleType = RApp (RApp (Var (MN 0 "__Pair"))
+tupleType = RApp (RApp (Var (UN "Pair"))
                        (Var (NS (UN "TTName") ["Reflection", "Language"])))
                  (Var (NS (UN "TT") ["Reflection", "Language"]))
 
 ||| Reflected raw rep for the type List (TTName, TT)
 mkTuple : Raw
-mkTuple = RApp (RApp (Var (MN 0 "__MkPair"))
+mkTuple = RApp (RApp (Var (UN "MkPair"))
                      (Var (NS (UN "TTName") ["Reflection", "Language"])))
                (Var (NS (UN "TT") ["Reflection", "Language"]))
 

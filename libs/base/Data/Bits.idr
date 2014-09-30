@@ -437,8 +437,8 @@ bitsToStr x = pack (helper last x)
     where
       %assert_total
       helper : Fin (S n) -> Bits n -> List Char
-      helper fZ _ = []
-      helper (fS x) b = (if getBit x b then '1' else '0') :: helper (weaken x) b
+      helper FZ _ = []
+      helper (FS x) b = (if getBit x b then '1' else '0') :: helper (weaken x) b
 
 instance Show (Bits n) where
     show = bitsToStr
