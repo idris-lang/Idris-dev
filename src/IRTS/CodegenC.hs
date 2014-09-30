@@ -438,7 +438,7 @@ doOp v (LSExt (ITFixed from) ITChar) [x]
 doOp v (LSExt (ITFixed from) (ITFixed to)) [x]
     | nativeTyWidth from < nativeTyWidth to = bitCoerce v "S" from to x
 doOp v (LZExt ITNative (ITFixed to)) [x]
-    = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, (uintptr_t)GETINT(" ++ creg x ++ ")"
+    = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, (uintptr_t)GETINT(" ++ creg x ++ "))"
 doOp v (LZExt ITChar (ITFixed to)) [x]
     = doOp v (LZExt ITNative (ITFixed to)) [x]
 doOp v (LZExt (ITFixed from) ITNative) [x]
