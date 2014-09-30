@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Elab.Type(buildType, elabType, elabType', elabPostulate) where
+module Idris.Elab.Type (buildType, elabType, elabType', elabPostulate) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -19,6 +19,7 @@ import Idris.Output (iputStrLn, pshow, iWarn)
 import IRTS.Lang
 
 import Idris.Elab.Utils
+import Idris.Elab.Value
 
 import Idris.Core.TT
 import Idris.Core.Elaborate hiding (Tactic(..))
@@ -27,7 +28,7 @@ import Idris.Core.Execute
 import Idris.Core.Typecheck
 import Idris.Core.CaseTree
 
-import Idris.Docstrings
+import Idris.Docstrings (Docstring)
 
 import Prelude hiding (id, (.))
 import Control.Category
@@ -39,6 +40,8 @@ import Control.Monad.State.Strict as State
 import Data.List
 import Data.Maybe
 import Debug.Trace
+
+import qualified Data.Traversable as Traversable
 
 import qualified Data.Map as Map
 import qualified Data.Set as S
@@ -111,12 +114,12 @@ buildType info syn fc opts n ty' = do
     param_pos i ns t = []
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
-elabType :: ElabInfo -> SyntaxInfo -> Docstring -> [(Name, Docstring)] ->
+elabType :: ElabInfo -> SyntaxInfo -> Docstring (Maybe PTerm)-> [(Name, Docstring (Maybe PTerm))] ->
             FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType = elabType' False
 
 elabType' :: Bool -> -- normalise it
-             ElabInfo -> SyntaxInfo -> Docstring -> [(Name, Docstring)] ->
+             ElabInfo -> SyntaxInfo -> Docstring (Maybe PTerm) -> [(Name, Docstring (Maybe PTerm))] ->
              FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                                        n  = liftname info n_in in    -}
@@ -152,7 +155,10 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          addDeferred ds'
          setFlags n opts'
          checkDocs fc argDocs ty
-         addDocStr n doc argDocs
+         doc' <- elabDocTerms info doc
+         argDocs' <- mapM (\(n, d) -> do d' <- elabDocTerms info d
+                                         return (n, d')) argDocs
+         addDocStr n doc' argDocs'
          addIBC (IBCDoc n)
          addIBC (IBCFlags n opts')
          fputState (opt_inaccessible . ist_optimisation n) inacc
@@ -200,7 +206,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
         , ns4 == map txt ["Reflection","Language"] = True
     tyIsHandler _                                           = False
 
-elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring ->
+elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring (Maybe PTerm) ->
                  FC -> FnOpts -> Name -> PTerm -> Idris ()
 elabPostulate info syn doc fc opts n ty = do
     elabType info syn doc [] fc opts n ty
@@ -209,3 +215,6 @@ elabPostulate info syn doc fc opts n ty = do
 
     -- remove it from the deferred definitions list
     solveDeferred n
+
+
+

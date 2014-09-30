@@ -53,6 +53,11 @@ fullExpr syn = do x <- expr syn
                   i <- get
                   return $ debindApp syn (desugar syn i x)
 
+tryFullExpr :: SyntaxInfo -> IState -> String -> Maybe PTerm
+tryFullExpr syn st input =
+  case runparser (fullExpr syn) st "" input of
+    Success tm -> Just tm
+    _ -> Nothing
 
 {- | Parses an expression
 @
@@ -1325,3 +1330,4 @@ fullTactic :: SyntaxInfo -> IdrisParser PTactic
 fullTactic syn = do t <- tactic syn
                     eof
                     return t
+

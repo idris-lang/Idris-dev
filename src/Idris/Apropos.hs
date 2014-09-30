@@ -71,7 +71,7 @@ instance Apropos (TT Name) where
 instance Apropos Const where
   isApropos str c = textIn str (T.pack (show c))
 
-instance Apropos Docstring where
+instance Apropos (Docstring a) where
   isApropos str d = containsText str d
 
 instance (Apropos a, Apropos b) => Apropos (a, b) where

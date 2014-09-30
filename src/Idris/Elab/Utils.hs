@@ -16,6 +16,7 @@ import Control.Applicative hiding (Const)
 import Control.Monad.State
 import Control.Monad
 import Data.List
+import qualified Data.Traversable as Traversable
 
 import Debug.Trace
 
@@ -105,7 +106,7 @@ inferredDiff fc inf user =
 -- | Check a PTerm against documentation and ensure that every documented
 -- argument actually exists.  This must be run _after_ implicits have been
 -- found, or it will give spurious errors.
-checkDocs :: FC -> [(Name, Docstring)] -> PTerm -> Idris ()
+checkDocs :: FC -> [(Name, Docstring a)] -> PTerm -> Idris ()
 checkDocs fc args tm = cd (Map.fromList args) tm
   where cd as (PPi _ n _ sc) = cd (Map.delete n as) sc
         cd as _ | Map.null as = return ()
@@ -233,6 +234,5 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
     getUniqB env us (Pi t v) = do getUniq env us t; getUniq env us v
     getUniqB env us (NLet t v) = do getUniq env us t; getUniq env us v
     getUniqB env us b = getUniq env us (binderTy b)
-
 
 

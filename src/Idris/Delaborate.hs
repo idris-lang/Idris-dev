@@ -428,7 +428,8 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
         docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
                                let o   = overview (fst docs)
                                    -- TODO make width configurable
-                                   out = displayS . renderPretty 1.0 50 $ renderDocstring o
+                                   out = displayS . renderPretty 1.0 50 $
+                                         renderDocstring (pprintDelab ist) o
                                return (out "")
         getTy :: IState -> Name -> String -- fails if name not already extant!
         getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $

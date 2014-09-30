@@ -98,7 +98,7 @@ elabProvider info syn fc what n
                   logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
              | ProvPostulate _ <- what ->
                do -- Add the postulate
-                  elabPostulate info syn (parseDocstring $ T.pack "Provided postulate") fc [] n (delab i tm)
+                  elabPostulate info syn (fmap (const Nothing) . parseDocstring $ T.pack "Provided postulate") fc [] n (delab i tm)
                   logLvl 3 $ "Elaborated provided postulate " ++ show n
              | otherwise ->
                ierror . Msg $ "Attempted to provide a postulate where a term was expected."

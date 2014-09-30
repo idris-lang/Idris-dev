@@ -13,6 +13,7 @@ import Idris.ParseHelpers (opChars)
 import Idris.AbsSyntax
 import Idris.Docs
 import Idris.Docstrings (nullDocstring)
+import qualified Idris.Docstrings as Docstrings
 
 import IRTS.System (getDataFileName)
 
@@ -37,7 +38,6 @@ import System.IO.Error
 import System.FilePath
 import System.Directory
 
-import Cheapskate.Html (renderDoc)
 import Text.PrettyPrint.Annotated.Leijen (displayDecorated, renderCompact)
 
 import Text.Blaze (toValue, contents)
@@ -496,7 +496,7 @@ genTypeHeader ist (FD n _ args ftype _) = do
         docExtractor (_, _, _, Nothing) = Nothing
         docExtractor (n, _, _, Just d)  = Just (n, doc2Str d)
                          -- TODO: Remove <p> tags more robustly
-        doc2Str d      = let dirty = renderMarkup $ contents $ renderDoc $ d
+        doc2Str d      = let dirty = renderMarkup $ contents $ Docstrings.renderHtml $ d
                          in  take (length dirty - 8) $ drop 3 dirty
 
         name (NS n ns) = show (NS (sUN $ name n) ns)
@@ -523,7 +523,7 @@ createFunDoc :: IState -- ^ Needed to determine the types of names
 createFunDoc ist fd@(FD name docstring args ftype fixity) = do
   H.dt ! (A.id $ toValue $ show name) $ genTypeHeader ist fd
   H.dd $ do
-    (if nullDocstring docstring then Empty else renderDoc docstring)
+    (if nullDocstring docstring then Empty else Docstrings.renderHtml docstring)
     let args'             = filter (\(_, _, _, d) -> isJust d) args
     if (not $ null args') || (isJust fixity)
        then H.dl $ do
@@ -546,7 +546,7 @@ createFunDoc ist fd@(FD name docstring args ftype fixity) = do
         genArg (_, _, _, Nothing)           = Empty
         genArg (name, _, _, Just docstring) = do
           H.dt $ toHtml $ show name
-          H.dd $ renderDoc docstring
+          H.dd $ Docstrings.renderHtml docstring
 
 
 -- | Generates HTML documentation for any Docs type
@@ -564,7 +564,7 @@ createOtherDoc ist (ClassDoc n docstring fds _ _ _) = do
            $ toHtml $ name $ nsroot n
     H.span ! class_ "signature" $ nbsp
   H.dd $ do
-    (if nullDocstring docstring then Empty else renderDoc docstring)
+    (if nullDocstring docstring then Empty else Docstrings.renderHtml docstring)
     H.dl ! class_ "decls" $ forM_ fds (createFunDoc ist)
 
   where name (NS n ns) = show (NS (sUN $ name n) ns)
@@ -578,7 +578,7 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
     H.span ! class_ "word" $ do "data"; nbsp
     genTypeHeader ist fd
   H.dd $ do
-    (if nullDocstring docstring then Empty else renderDoc docstring)
+    (if nullDocstring docstring then Empty else Docstrings.renderHtml docstring)
     let args' = filter (\(_, _, _, d) -> isJust d) args
     if not $ null args'
        then H.dl $ forM_ args' genArg
@@ -588,7 +588,7 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
   where genArg (_, _, _, Nothing)           = Empty
         genArg (name, _, _, Just docstring) = do
           H.dt $ toHtml $ show name
-          H.dd $ renderDoc docstring
+          H.dd $ Docstrings.renderHtml docstring
 
 
 -- | Generates everything but the actual content of the page
