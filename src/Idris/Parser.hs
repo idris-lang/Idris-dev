@@ -329,12 +329,15 @@ fnDecl syn = try (do notEndBlock
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
 fnDecl' syn = checkFixity $
-              do (doc, fc, opts', n, acc) <- try (do
+              do (doc, argDocs, fc, opts', n, acc) <- try (do
                         pushIndent
+                        (doc, argDocs) <- option noDocs docComment
                         ist <- get
-                        doc <- option noDocs docComment
-                        ist <- get
-                        let initOpts = if default_total ist
+                        let doc' = annotCode (tryFullExpr syn ist) doc
+                            argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                                       | (n, d) <- argDocs ]
+
+                            initOpts = if default_total ist
                                           then [TotalFn]
                                           else []
                         opts <- fnOpts initOpts
@@ -344,11 +347,11 @@ fnDecl' syn = checkFixity $
                         let n = expandNS syn n_in
                         fc <- getFC
                         lchar ':'
-                        return (doc, fc, opts', n, acc))
+                        return (doc', argDocs', fc, opts', n, acc))
                  ty <- typeExpr (allowImp syn)
                  terminator
                  addAcc n acc
-                 return (PTy (fst doc) (snd doc) syn fc opts' n ty)
+                 return (PTy doc argDocs syn fc opts' n ty)
             <|> postulate syn
             <|> caf syn
             <|> pattern syn
@@ -434,10 +437,12 @@ Postulate ::=
 @
 -}
 postulate :: SyntaxInfo -> IdrisParser PDecl
-postulate syn = do doc <- try $ do doc <- option noDocs docComment
+postulate syn = do doc <- try $ do (doc, _) <- option noDocs docComment
+                                   ist <- get
+                                   let doc' = annotCode (tryFullExpr syn ist) doc
                                    pushIndent
                                    reserved "postulate"
-                                   return doc
+                                   return doc'
                    ist <- get
                    let initOpts = if default_total ist
                                      then [TotalFn]
@@ -452,7 +457,7 @@ postulate syn = do doc <- try $ do doc <- option noDocs docComment
                    fc <- getFC
                    terminator
                    addAcc n acc
-                   return (PPostulate (fst doc) syn fc opts' n ty)
+                   return (PPostulate doc syn fc opts' n ty)
                  <?> "postulate"
 
 {- | Parses a using declaration
@@ -581,16 +586,20 @@ Class ::=
 @
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
-class_ syn = do (doc, acc) <- try (do
-                  doc <- option noDocs docComment
+class_ syn = do (doc, argDocs, acc) <- try (do
+                  (doc, argDocs) <- option noDocs docComment
+                  ist <- get
+                  let doc' = annotCode (tryFullExpr syn ist) doc
+                      argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                                 | (n, d) <- argDocs ]
                   acc <- optional accessibility
-                  return (doc, acc))
+                  return (doc', argDocs', acc))
                 reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- fnName
                 let n = expandNS syn n_in
                 cs <- many carg
                 ds <- option [] (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass (fst doc) syn fc cons n cs (snd doc) ds]
+                return [PClass doc syn fc cons n cs argDocs ds]
              <?> "type-class declaration"
   where
     carg :: IdrisParser (Name, PTerm)

@@ -42,25 +42,29 @@ Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
-record syn = do (doc, acc, opts) <- try (do
-                      doc <- option noDocs docComment
+record syn = do (doc, argDocs, acc, opts) <- try (do
+                      (doc, argDocs) <- option noDocs docComment
+                      ist <- get
+                      let doc' = annotCode (tryFullExpr syn ist) doc
+                          argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                                     | (n, d) <- argDocs ]
                       acc <- optional accessibility
                       opts <- dataOpts []
                       reserved "record"
-                      return (doc, acc, opts))
+                      return (doc', argDocs', acc, opts))
                 fc <- getFC
                 tyn_in <- fnName
                 lchar ':'
                 ty <- typeExpr (allowImp syn)
                 let tyn = expandNS syn tyn_in
                 reserved "where"
-                (cdoc, argDocs, cn, cty, _, _) <- indentedBlockS (constructor syn)
+                (cdoc, cargDocs, cn, cty, _, _) <- indentedBlockS (constructor syn)
                 accData acc tyn [cn]
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
                 let fns = getRecNames rsyn cty
                 mapM_ (\n -> addAcc n acc) fns
-                return $ PRecord (fst doc) rsyn fc tyn ty opts cdoc cn cty
+                return $ PRecord doc rsyn fc tyn ty opts cdoc cn cty
              <?> "record type declaration"
   where
     getRecNames :: SyntaxInfo -> PTerm -> [Name]
@@ -112,8 +116,12 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                     acc <- optional accessibility
                     elim <- dataOpts []
                     co <- dataI
-                    let dataOpts = combineDataOpts(elim ++ co)
-                    return (doc, argDocs, acc, dataOpts))
+                    ist <- get
+                    let dataOpts = combineDataOpts (elim ++ co)
+                        doc' = annotCode (tryFullExpr syn ist) doc
+                        argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                                   | (n, d) <- argDocs ]
+                    return (doc', argDocs', acc, dataOpts))
                fc <- getFC
                tyn_in <- fnName
                (do try (lchar ':')
@@ -164,7 +172,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
 {- | Parses a type constructor declaration
   Constructor ::= DocComment? FnName TypeSig;
 -}
-constructor :: SyntaxInfo -> IdrisParser (Docstring, [(Name, Docstring)], Name, PTerm, FC, [Name])
+constructor :: SyntaxInfo -> IdrisParser (Docstring (Maybe PTerm), [(Name, Docstring (Maybe PTerm))], Name, PTerm, FC, [Name])
 constructor syn
     = do (doc, argDocs) <- option noDocs docComment
          cn_in <- fnName; fc <- getFC
@@ -175,21 +183,27 @@ constructor syn
          fs <- option [] (do lchar '%'; reserved "erase"
                              sepBy1 name (lchar ','))
          ty <- typeExpr (allowImp syn)
-         return (doc, argDocs, cn, ty, fc, fs)
+         ist <- get
+         let doc' = annotCode (tryFullExpr syn ist) doc
+             argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                        | (n, d) <- argDocs ]
+         return (doc', argDocs', cn, ty, fc, fs)
       <?> "constructor"
 
-{- | Parses a constructor for simple discriminative union data types
+{- | Parses a constructor for simple discriminated union data types
   SimpleConstructor ::= FnName SimpleExpr* DocComment?
 -}
-simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring, [(Name, Docstring)], Name, [PTerm], FC, [Name])
+simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring (Maybe PTerm), [(Name, Docstring (Maybe PTerm))], Name, [PTerm], FC, [Name])
 simpleConstructor syn
-     = do doc <- option noDocs (try docComment)
+     = do (doc, _) <- option noDocs (try docComment)
+          ist <- get
+          let doc' = annotCode (tryFullExpr syn ist) doc
           cn_in <- fnName
           let cn = expandNS syn cn_in
           fc <- getFC
           args <- many (do notEndApp
                            simpleExpr syn)
-          return (fst doc, [], cn, args, fc, [])
+          return (doc', [], cn, args, fc, [])
        <?> "constructor"
 
 {- | Parses a dsl block declaration

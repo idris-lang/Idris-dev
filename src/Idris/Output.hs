@@ -175,6 +175,16 @@ printUndefinedNames ns = text "Undefined " <> names <> text "."
   where names = encloseSep empty empty (char ',') $ map ppName ns
         ppName = prettyName True True []
 
+
+prettyDocumentedIst :: IState
+                    -> (Name, PTerm, Maybe (Docstring (Maybe Term)))
+                    -> Doc OutputAnnotation
+prettyDocumentedIst ist (name, ty, docs) =
+          prettyName True True [] name <+> colon <+> align (prettyIst ist ty) <$>
+          fromMaybe empty (fmap (\d -> renderDocstring ppTm d <> line) docs)
+  where ppTm = pprintDelab ist
+
+
 renderExternal :: OutputFmt -> Int -> Doc OutputAnnotation -> Idris String
 renderExternal fmt width doc
   | width < 1 = throwError . Msg $ "There must be at least one column for the pretty-printer."

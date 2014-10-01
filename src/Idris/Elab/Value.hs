@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Elab.Value(elabVal, elabValBind) where
+module Idris.Elab.Value(elabVal, elabValBind, elabDocTerms) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -38,6 +38,7 @@ import Control.Monad
 import Control.Monad.State.Strict as State
 import Data.List
 import Data.Maybe
+import qualified Data.Traversable as Traversable
 import Debug.Trace
 
 import qualified Data.Map as Map
@@ -86,3 +87,12 @@ elabVal info aspat tm_in
         return (tm, ty)
 
 
+
+elabDocTerms :: ElabInfo -> Docstring (Maybe PTerm) -> Idris (Docstring (Maybe Term))
+elabDocTerms info str = Traversable.mapM decorate str
+  where decorate Nothing = return Nothing
+        decorate (Just pt) = fmap (fmap fst) (tryElabVal info ERHS pt)
+        tryElabVal :: ElabInfo -> ElabMode -> PTerm -> Idris (Maybe (Term, Type))
+        tryElabVal info aspat tm_in
+           = idrisCatch (fmap Just $ elabVal info aspat tm_in)
+                        (const $ return Nothing)

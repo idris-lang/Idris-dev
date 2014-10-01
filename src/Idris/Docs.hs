@@ -6,7 +6,7 @@ import Idris.AbsSyntaxTree
 import Idris.Delaborate
 import Idris.Core.TT
 import Idris.Core.Evaluate
-import Idris.Docstrings
+import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, renderDocstring)
 
 import Util.Pretty
 
@@ -16,8 +16,8 @@ import qualified Data.Text as T
 
 -- TODO: Only include names with public/abstract accessibility
 
-data FunDoc = FD Name Docstring
-                 [(Name, PTerm, Plicity, Maybe Docstring)] -- args: name, ty, implicit, docs
+data FunDoc = FD Name (Docstring (Maybe Term))
+                 [(Name, PTerm, Plicity, Maybe (Docstring (Maybe Term)))] -- args: name, ty, implicit, docs
                  PTerm -- function type
                  (Maybe Fixity)
   deriving Show
@@ -25,22 +25,22 @@ data FunDoc = FD Name Docstring
 data Docs = FunDoc FunDoc
           | DataDoc FunDoc -- type constructor docs
                     [FunDoc] -- data constructor docs
-          | ClassDoc Name Docstring -- class docs
+          | ClassDoc Name (Docstring (Maybe Term))-- class docs
                      [FunDoc] -- method docs
-                     [(Name, Maybe Docstring)] -- parameters and their docstrings
+                     [(Name, Maybe (Docstring (Maybe Term)))] -- parameters and their docstrings
                      [PTerm] -- instances
                      [PTerm] -- superclasses
   deriving Show
 
-showDoc d | nullDocstring d = empty
-          | otherwise       = text "  -- " <> renderDocstring d
+showDoc ist d | nullDocstring d = empty
+              | otherwise       = text "  -- " <> renderDocstring (pprintDelab ist) d
 
 pprintFD :: IState -> FunDoc -> Doc OutputAnnotation
 pprintFD ist (FD n doc args ty f)
     = nest 4 (prettyName True (ppopt_impl ppo) [] n <+> colon <+>
               pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
                                      , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
-              renderDocstring doc <$>
+              renderDocstring (pprintDelab ist) doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
               let argshow = showArgs args [] in
               if not (null argshow)
@@ -52,19 +52,19 @@ pprintFD ist (FD n doc args ty f)
           showArgs ((n, ty, Exp {}, Just d):args) bnd
              = bindingOf n False <+> colon <+>
                pprintPTerm ppo bnd [] infixes ty <>
-               showDoc d <> line
+               showDoc ist d <> line
                :
                showArgs args ((n, False):bnd)
           showArgs ((n, ty, Constraint {}, Just d):args) bnd
              = text "Class constraint" <+>
-               pprintPTerm ppo bnd [] infixes ty <> showDoc d <> line
+               pprintPTerm ppo bnd [] infixes ty <> showDoc ist d <> line
                :
                showArgs args ((n, True):bnd)
           showArgs ((n, ty, Imp {}, Just d):args) bnd
              = text "(implicit)" <+>
                bindingOf n True <+> colon <+>
                pprintPTerm ppo bnd [] infixes ty <>
-               showDoc d <> line
+               showDoc ist d <> line
                :
                showArgs args ((n, True):bnd)
           showArgs ((n, _, _, _):args) bnd = showArgs args ((n, True):bnd)
@@ -80,7 +80,9 @@ pprintDocs ist (DataDoc t args)
                           vsep (map (pprintFD ist) args))
 pprintDocs ist (ClassDoc n doc meths params instances superclasses)
            = nest 4 (text "Type class" <+> prettyName True (ppopt_impl ppo) [] n <>
-                     if nullDocstring doc then empty else line <> renderDocstring doc)
+                     if nullDocstring doc
+                       then empty
+                       else line <> renderDocstring (pprintDelab ist) doc)
              <> line <$>
              nest 4 (text "Parameters:" <$> prettyParameters)
              <> line <$>
@@ -131,7 +133,7 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
     (subclasses, instances') = partition isSubclass instances
 
     prettyParameters = if any (isJust . snd) params
-                       then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty showDoc md) params)
+                       then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
                        else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
 getDocs :: Name -> Idris Docs
@@ -185,7 +187,7 @@ docFun n
              funName n
                | n == falseTy = "_|_"
 
-getPArgNames :: PTerm -> [(Name, Docstring)] -> [(Name, PTerm, Plicity, Maybe Docstring)]
+getPArgNames :: PTerm -> [(Name, Docstring (Maybe Term))] -> [(Name, PTerm, Plicity, Maybe (Docstring (Maybe Term)))]
 getPArgNames (PPi plicity name ty body) ds =
   (name, ty, plicity, lookup name ds) : getPArgNames body ds
 getPArgNames _ _ = []
@@ -201,3 +203,5 @@ pprintConstDocs ist c str = text "Primitive" <+> text (if constIsType c then "ty
         t (Str _) = PConstant StrType
         t (Ch c)  = PConstant $ AType (ATInt ITChar)
         t _       = PType
+
+

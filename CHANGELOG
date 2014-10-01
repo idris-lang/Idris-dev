@@ -21,6 +21,7 @@ New in 0.9.15:
 * New REPL command :printdef displays the internal definition of a name
 * New REPL command :pprint pretty-prints a definition or term with LaTeX or HTML highlighting
 * Naming of data and type constructors is made consistent across the standard library (see #1516)
+* Terms in `code blocks` inside of documentation strings are now parsed and type checked. If this succeeds, they are rendered in full color in documentation lookups, and with semantic highlighting for IDEs.
 
 New in 0.9.14:
 --------------

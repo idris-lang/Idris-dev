@@ -279,7 +279,7 @@ addCoercion :: Name -> Idris ()
 addCoercion n = do i <- getIState
                    putIState $ i { idris_coercions = nub $ n : idris_coercions i }
 
-addDocStr :: Name -> Docstring -> [(Name, Docstring)] -> Idris ()
+addDocStr :: Name -> Docstring (Maybe Term) -> [(Name, Docstring (Maybe Term))] -> Idris ()
 addDocStr n doc args
    = do i <- getIState
         putIState $ i { idris_docstrings = addDef n (doc, args) (idris_docstrings i) }

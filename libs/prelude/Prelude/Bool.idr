@@ -21,7 +21,7 @@ boolElim False t e = e
 ||| if you need to perform a Boolean test and convince the type checker of this
 ||| fact.
 |||
-||| If you find yourself using `so` for something other than primitive types,
+||| If you find yourself using `So` for something other than primitive types,
 ||| it may be appropriate to define a type of evidence for the property that you
 ||| care about instead.
 data So : Bool -> Type where 

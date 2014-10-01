@@ -146,14 +146,14 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
         startEnd :: String
         startEnd = "{}-"
 
-{-| Parses a documentation comment (similar to haddoc) given a marker character
+{-| Parses a documentation comment (similar to haddock) given a marker character
 
 @
   DocComment_t ::=   '|||' ~EOL_t* EOL_t
                  ;
 @
  -}
-docComment :: IdrisParser (Docstring, [(Name, Docstring)])
+docComment :: IdrisParser (Docstring (), [(Name, Docstring ())])
 docComment = do dc <- pushIndent *> docCommentLine
                 rest <- many (indented docCommentLine)
                 args <- many $ do (name, first) <- indented argDocCommentLine

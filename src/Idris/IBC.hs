@@ -10,7 +10,8 @@ import Idris.AbsSyntax
 import Idris.Imports
 import Idris.Error
 import Idris.Delaborate
-import Idris.Docstrings
+import qualified Idris.Docstrings as D
+import Idris.Docstrings (Docstring)
 import Idris.Output
 
 import qualified Cheapskate.Types as CT
@@ -31,7 +32,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 80
+ibcVersion = 81
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -60,7 +61,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_fninfo :: [(Name, FnInfo)],
                          ibc_cg :: [(Name, CGInfo)],
                          ibc_defs :: [(Name, Def)],
-                         ibc_docstrings :: [(Name, (Docstring, [(Name, Docstring)]))],
+                         ibc_docstrings :: [(Name, (Docstring (Maybe Term), [(Name, Docstring (Maybe Term))]))],
                          ibc_transforms :: [(Term, Term)],
                          ibc_errRev :: [(Term, Term)],
                          ibc_coercions :: [Name],
@@ -458,7 +459,7 @@ pDefs syms ds
     update (Proj t i) = Proj (update t) i
     update t = t
 
-pDocs :: [(Name, (Docstring, [(Name, Docstring)]))] -> Idris ()
+pDocs :: [(Name, (Docstring (Maybe Term), [(Name, Docstring (Maybe Term))]))] -> Idris ()
 pDocs ds = mapM_ (\ (n, a) -> addDocStr n (fst a) (snd a)) ds
 
 pAccess :: [(Name, Accessibility)] -> Idris ()
@@ -521,13 +522,13 @@ pMetavars ns = do i <- getIState
                   putIState $ i { idris_metavars = Data.List.reverse ns 
                                                      ++ idris_metavars i }
 
------ For Cheapskate
+----- For Cheapskate and docstrings
 
-instance Binary CT.Doc where
-  put (CT.Doc opts lines) = do put opts ; put lines
+instance Binary a => Binary (D.Docstring a) where
+  put (D.DocString opts lines) = do put opts ; put lines
   get = do opts <- get
            lines <- get
-           return (CT.Doc opts lines)
+           return (D.DocString opts lines)
 
 instance Binary CT.Options where
   put (CT.Options x1 x2 x3 x4) = do put x1 ; put x2 ; put x3 ; put x4
@@ -537,49 +538,49 @@ instance Binary CT.Options where
            x4 <- get
            return (CT.Options x1 x2 x3 x4)
 
-instance Binary CT.Block where
-  put (CT.Para lines) = do putWord8 0 ; put lines
-  put (CT.Header i lines) = do putWord8 1 ; put i ; put lines
-  put (CT.Blockquote bs) = do putWord8 2 ; put bs
-  put (CT.List b t xs) = do putWord8 3 ; put b ; put t ; put xs
-  put (CT.CodeBlock attr txt) = do putWord8 4 ; put attr ; put txt
-  put (CT.HtmlBlock txt) = do putWord8 5 ; put txt
-  put CT.HRule = putWord8 6
+instance Binary a => Binary (D.Block a) where
+  put (D.Para lines) = do putWord8 0 ; put lines
+  put (D.Header i lines) = do putWord8 1 ; put i ; put lines
+  put (D.Blockquote bs) = do putWord8 2 ; put bs
+  put (D.List b t xs) = do putWord8 3 ; put b ; put t ; put xs
+  put (D.CodeBlock attr txt src) = do putWord8 4 ; put attr ; put txt ; put src
+  put (D.HtmlBlock txt) = do putWord8 5 ; put txt
+  put D.HRule = putWord8 6
   get = do i <- getWord8
            case i of
-             0 -> fmap CT.Para get
-             1 -> liftM2 CT.Header get get
-             2 -> fmap CT.Blockquote get
-             3 -> liftM3 CT.List get get get
-             4 -> liftM2 CT.CodeBlock get get
-             5 -> liftM CT.HtmlBlock get
-             6 -> return CT.HRule
+             0 -> fmap D.Para get
+             1 -> liftM2 D.Header get get
+             2 -> fmap D.Blockquote get
+             3 -> liftM3 D.List get get get
+             4 -> liftM3 D.CodeBlock get get get
+             5 -> liftM D.HtmlBlock get
+             6 -> return D.HRule
 
-instance Binary CT.Inline where
-  put (CT.Str txt) = do putWord8 0 ; put txt
-  put CT.Space = putWord8 1
-  put CT.SoftBreak = putWord8 2
-  put CT.LineBreak = putWord8 3
-  put (CT.Emph xs) = putWord8 4 >> put xs
-  put (CT.Strong xs) = putWord8 5 >> put xs
-  put (CT.Code xs) = putWord8 6 >> put xs
-  put (CT.Link a b c) = putWord8 7 >> put a >> put b >> put c
-  put (CT.Image a b c) = putWord8 8 >> put a >> put b >> put c
-  put (CT.Entity a) = putWord8 9 >> put a
-  put (CT.RawHtml x) = putWord8 10 >> put x
+instance Binary a => Binary (D.Inline a) where
+  put (D.Str txt) = do putWord8 0 ; put txt
+  put D.Space = putWord8 1
+  put D.SoftBreak = putWord8 2
+  put D.LineBreak = putWord8 3
+  put (D.Emph xs) = putWord8 4 >> put xs
+  put (D.Strong xs) = putWord8 5 >> put xs
+  put (D.Code xs tm) = putWord8 6 >> put xs >> put tm
+  put (D.Link a b c) = putWord8 7 >> put a >> put b >> put c
+  put (D.Image a b c) = putWord8 8 >> put a >> put b >> put c
+  put (D.Entity a) = putWord8 9 >> put a
+  put (D.RawHtml x) = putWord8 10 >> put x
   get = do i <- getWord8
            case i of
-             0 -> liftM CT.Str get
-             1 -> return CT.Space
-             2 -> return CT.SoftBreak
-             3 -> return CT.LineBreak
-             4 -> liftM CT.Emph get
-             5 -> liftM CT.Strong get
-             6 -> liftM CT.Code get
-             7 -> liftM3 CT.Link get get get
-             8 -> liftM3 CT.Image get get get
-             9 -> liftM CT.Entity get
-             10 -> liftM CT.RawHtml get
+             0 -> liftM D.Str get
+             1 -> return D.Space
+             2 -> return D.SoftBreak
+             3 -> return D.LineBreak
+             4 -> liftM D.Emph get
+             5 -> liftM D.Strong get
+             6 -> liftM2 D.Code get get
+             7 -> liftM3 D.Link get get get
+             8 -> liftM3 D.Image get get get
+             9 -> liftM D.Entity get
+             10 -> liftM D.RawHtml get
 
 instance Binary CT.ListType where
   put (CT.Bullet c) = putWord8 0 >> put c

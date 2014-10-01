@@ -50,8 +50,8 @@ import Data.List.Split (splitOn)
 
 import Util.Pretty(pretty, text)
 
-elabRecord :: ElabInfo -> SyntaxInfo -> Docstring -> FC -> Name ->
-              PTerm -> DataOpts -> Docstring -> Name -> PTerm -> Idris ()
+elabRecord :: ElabInfo -> SyntaxInfo -> Docstring (Maybe PTerm) -> FC -> Name ->
+              PTerm -> DataOpts -> Docstring (Maybe PTerm) -> Name -> PTerm -> Idris ()
 elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
     = do elabData info syn doc [] fc opts (PDatadecl tyn ty [(cdoc, [], cn, cty_in, fc, [])])
          -- TODO think: something more in info?
