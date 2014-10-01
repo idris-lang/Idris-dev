@@ -51,6 +51,7 @@ runIdris opts = do
            (c:_) -> do setVerbose False
                        setQuiet True
                        runIO $ runClient (getPort opts) c
+                       runIO $ exitWith ExitSuccess
        case opt getPkgCheck opts of
            [] -> return ()
            fs -> do runIO $ mapM_ (checkPkg (WarnOnly `elem` opts) True) fs
