@@ -605,9 +605,9 @@ constraintArg syn = do symbol "@{"
 
 -}
 quasiquote :: SyntaxInfo -> IdrisParser PTerm
-quasiquote syn = do guard (not (syn_in_quasiquote syn))
-                    symbol "`("
-                    e <- expr syn { syn_in_quasiquote = True , inPattern = False}
+quasiquote syn = do symbol "`("
+                    e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
+                                    inPattern = False }
                     g <- optional $ do
                            symbol ":"
                            expr syn { inPattern = False } -- don't allow antiquotes
@@ -621,9 +621,9 @@ quasiquote syn = do guard (not (syn_in_quasiquote syn))
 
 -}
 unquote :: SyntaxInfo -> IdrisParser PTerm
-unquote syn = do guard (syn_in_quasiquote syn)
+unquote syn = do guard (syn_in_quasiquote syn > 0)
                  symbol "~"
-                 e <- simpleExpr syn { syn_in_quasiquote = False }
+                 e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
                  return $ PUnquote e
               <?> "unquotation"
 

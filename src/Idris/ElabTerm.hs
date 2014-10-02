@@ -791,7 +791,7 @@ elab ist info emode opts fn tm
         = do -- First extract the unquoted subterms, replacing them with fresh
              -- names in the quasiquoted term. Claim their reflections to be
              -- of type TT.
-             (t, unq) <- extractUnquotes t
+             (t, unq) <- extractUnquotes 0 t
              let unquoteNames = map fst unq
              mapM_ (flip claim (Var tt)) unquoteNames
 

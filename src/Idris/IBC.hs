@@ -32,7 +32,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 81
+ibcVersion = 82
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1293,7 +1293,7 @@ instance Binary SyntaxInfo where
                x5 <- get
                x6 <- get
                x7 <- get
-               return (Syn x1 x2 x3 x4 id x5 x6 Nothing 0 x7 False)
+               return (Syn x1 x2 x3 x4 id x5 x6 Nothing 0 x7 0)
 
 instance (Binary t) => Binary (PClause' t) where
         put x
