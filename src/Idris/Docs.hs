@@ -15,7 +15,9 @@ import Data.List
 import qualified Data.Text as T
 
 -- TODO: Only include names with public/abstract accessibility
-
+--
+-- Issue #1573 on the Issue tracker.
+--    https://github.com/idris-lang/Idris-dev/issues/1573
 data FunDoc = FD Name (Docstring (Maybe Term))
                  [(Name, PTerm, Plicity, Maybe (Docstring (Maybe Term)))] -- args: name, ty, implicit, docs
                  PTerm -- function type
@@ -203,5 +205,3 @@ pprintConstDocs ist c str = text "Primitive" <+> text (if constIsType c then "ty
         t (Str _) = PConstant StrType
         t (Ch c)  = PConstant $ AType (ATInt ITChar)
         t _       = PType
-
-
