@@ -399,6 +399,9 @@ NameTimesList ::=
 @
 -}
 -- FIXME: Check compatability for function options (i.e. partal/total)
+--
+-- Issue #1574 on the issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1574
 fnOpts :: [FnOpt] -> IdrisParser [FnOpt]
 fnOpts opts
         = do reserved "total"; fnOpts (TotalFn : opts)
@@ -914,7 +917,7 @@ clause syn
 
 {-| Parses with pattern
 
-@ 
+@
 WExpr ::= '|' Expr';
 @
 -}
@@ -1161,6 +1164,8 @@ parseProg syn fname input mrk
          case runparser mainProg i fname input of
             Failure doc     -> do -- FIXME: Get error location from trifecta
                                   -- this can't be the solution!
+                                  -- Issue #1575 on the issue tracker.
+                                  --    https://github.com/idris-lang/Idris-dev/issues/1575
                                   let (fc, msg) = findFC doc
                                   i <- getIState
                                   case idris_outputmode i of
@@ -1272,7 +1277,7 @@ loadSource lidr f toline
                   putIState (i { default_access = Hidden, module_aliases = modAliases })
                   clearIBC -- start a new .ibc file
                   -- record package info in .ibc
-                  imps <- allImportDirs 
+                  imps <- allImportDirs
                   mapM_ addIBC (map IBCImportDir imps)
                   mapM_ (addIBC . IBCImport) [realName | (realName, alias, fc) <- imports]
                   let syntax = defaultSyntax{ syn_namespace = reverse mname,
