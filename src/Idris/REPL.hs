@@ -727,7 +727,7 @@ process fn (NewDefn decls) = do
   getClauseName (PClause fc name whole with rhs whereBlock) = name
   getClauseName (PWith fc name whole with rhs whereBlock) = name
   defineName :: [PDecl] -> Idris ()
-  defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do 
+  defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do
     elabDecl EAll recinfo tyDecl
     elabClauses recinfo fc opts name (concatMap getClauses decls)
     setReplDefined (Just name)
@@ -767,7 +767,7 @@ process fn (NewDefn decls) = do
   fixClauses :: PDecl' t -> PDecl' t
   fixClauses (PClauses fc opts _ css@(clause:cs)) =
     PClauses fc opts (getClauseName clause) css
-  fixClauses (PInstance syn fc constraints cls parms ty instName decls) = 
+  fixClauses (PInstance syn fc constraints cls parms ty instName decls) =
     PInstance syn fc constraints cls parms ty instName (map fixClauses decls)
   fixClauses decl = decl
 
@@ -777,10 +777,10 @@ process fn (Undefine names) = undefine names
     undefine [] = do
       allDefined <- idris_repl_defs `fmap` get
       undefine' allDefined []
-    -- Keep track of which names you've removed so you can 
+    -- Keep track of which names you've removed so you can
     -- print them out to the user afterward
     undefine names = undefine' names []
-    undefine' [] list = do iRenderOutput $ printUndefinedNames list 
+    undefine' [] list = do iRenderOutput $ printUndefinedNames list
                            return ()
     undefine' (n:names) already = do
       allDefined <- idris_repl_defs `fmap` get
@@ -794,12 +794,12 @@ process fn (Undefine names) = undefine names
                     -- smart detection of exactly what kind of name we're undefining.
                     fputState (ctxt_lookup n . known_classes) Nothing
                     fmodifyState repl_definitions (delete n)
-    undefClosure n = 
+    undefClosure n =
       do replDefs <- idris_repl_defs `fmap` get
          callGraph <- whoCalls n
          let users = case lookup n callGraph of
                         Just ns -> nub ns
-                        Nothing -> fail ("Tried to undefine nonexistent name" ++ show n) 
+                        Nothing -> fail ("Tried to undefine nonexistent name" ++ show n)
          undefinedJustNow <- concat `fmap` mapM undefClosure users
          undefOne n
          return (nub (n : undefinedJustNow))
@@ -1341,6 +1341,8 @@ loadInputs inputs toline -- furthest line to read in input source files
                                   iWarn f $ pprintErr i e'
                     ProgramLineComment -> return () -- fail elsewhere
                     _ -> do setErrSpan emptyFC -- FIXME! Propagate it
+                                               -- Issue #1576 on the issue tracker.
+                                               -- https://github.com/idris-lang/Idris-dev/issues/1576
                             iWarn emptyFC $ pprintErr i e)
    where -- load all files, stop if any fail
          tryLoad :: Bool -> [IFileType] -> Idris ()
@@ -1362,6 +1364,9 @@ loadInputs inputs toline -- furthest line to read in input source files
                       inew <- getIState
                       -- FIXME: Save these in IBC to avoid this hack! Need to
                       -- preserve it all from source inputs
+                      --
+                      -- Issue #1577 on the issue tracker.
+                      --     https://github.com/idris-lang/Idris-dev/issues/1577
                       let tidata = idris_tyinfodata inew
                       let patdefs = idris_patdefs inew
                       ok <- noErrors
