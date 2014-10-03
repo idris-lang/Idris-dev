@@ -5,11 +5,10 @@
 
 ||| The canonical single-element type, also known as the trivially
 ||| true proposition.
-%elim 
- data Unit = 
-   ||| The trivial constructor for `()`.
-   MkUnit         
-  
+%elim data Unit =
+  ||| The trivial constructor for `()`.
+  MkUnit
+
 ||| The non-dependent pair type, also known as conjunction.
 ||| @A the type of the left elements in the pair
 ||| @B the type of the left elements in the pair
@@ -18,10 +17,15 @@ data Pair : (A : Type) -> (B : Type) -> Type where
    ||| @a the left element of the pair
    ||| @b the right element of the pair
    MkPair : {A, B : Type} -> (a : A) -> (b : B) -> Pair A B
-         
-||| Dependent pairs, in their internal representation
-||| @ a the type of the witness
-||| @ P the type of the proof
+
+||| Dependent pairs
+|||
+||| Dependent pairs represent existential quantification - they consist of a
+||| witness for the existential claim and a proof that the property holds for
+||| it. Another way to see dependent pairs is as just data - for instance, the
+||| length of a vector paired with that vector.
+|||
+|||  @ a the type of the witness @ P the type of the proof
 data Sigma : (a : Type) -> (P : a -> Type) -> Type where
     MkSigma : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
 
@@ -43,7 +47,6 @@ infix 5 ~=~
 (~=~) : (x : a) -> (y : b) -> Type
 (~=~) x y = (=) _ _ x y
 
--- ------------------------------------------------------ [ For rewrite tactic ]
 ||| Perform substitution in a term according to some equality.
 |||
 ||| This is used by the `rewrite` tactic and term.
@@ -95,7 +98,7 @@ namespace Ownership
   ||| A read-only version of a unique value
   data Borrowed : UniqueType -> NullType where
        Read : {a : UniqueType} -> a -> Borrowed a
-         
+
   ||| Make a read-only version of a unique value, which can be passed to another
   ||| function without the unique value being consumed.
   implicit
@@ -104,7 +107,7 @@ namespace Ownership
 
 par : Lazy a -> a -- Doesn't actually do anything yet. Maybe a 'Par a' type
                   -- is better in any case?
-par (Delay x) = x 
+par (Delay x) = x
 
 malloc : Int -> a -> a
 malloc size x = x -- compiled specially
@@ -135,4 +138,3 @@ believe_me x = prim__believe_me _ _ x
 public %assert_total
 really_believe_me : a -> b
 really_believe_me x = prim__believe_me _ _ x
-
