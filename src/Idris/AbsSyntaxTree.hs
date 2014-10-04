@@ -161,6 +161,7 @@ data IState = IState {
     idris_docstrings :: Ctxt (Docstring (Maybe Term), [(Name, Docstring (Maybe Term))]),
     idris_tyinfodata :: Ctxt TIData,
     idris_fninfo :: Ctxt FnInfo,
+    idris_transforms :: Ctxt [(Term, Term)],
     idris_totcheck :: [(FC, Name)], -- names to check totality on
     idris_defertotcheck :: [(FC, Name)], -- names to check at the end
     idris_totcheckfail :: [(FC, String)],
@@ -170,7 +171,6 @@ data IState = IState {
           -- ^ Full application LHS on source line
     idris_metavars :: [(Name, (Maybe Name, Int, Bool))], -- ^ The currently defined but not proven metavariables
     idris_coercions :: [Name],
-    idris_transforms :: [(Term, Term)],
     idris_errRev :: [(Term, Term)],
     syntax_rules :: [Syntax],
     syntax_keywords :: [String],
@@ -264,7 +264,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCTotal Name Totality
               | IBCFlags Name [FnOpt]
               | IBCFnInfo Name FnInfo
-              | IBCTrans (Term, Term)
+              | IBCTrans Name (Term, Term)
               | IBCErrRev (Term, Term)
               | IBCCG Name
               | IBCDoc Name
@@ -284,8 +284,8 @@ idrisInit :: IState
 idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   emptyContext emptyContext emptyContext
-                   [] [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] [] []
+                   emptyContext emptyContext emptyContext emptyContext
+                   [] [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty Nothing Nothing []
@@ -365,6 +365,7 @@ data Command = Quit
              | Warranty
              | PrintDef Name
              | PPrint OutputFmt Int PTerm
+             | TransformInfo Name
 
 data OutputFmt = HTMLOutput | LaTeXOutput
 

@@ -109,11 +109,11 @@ concreteClass ist v
 
 -- | Creates a new clause for a specialised function application
 mkPE_TermDecl :: IState -> Name -> Name ->
-                 [(PEArgType, Term)] -> [(PTerm, PTerm)]
+                 [(PEArgType, Term)] -> (PTerm, PTerm)
 mkPE_TermDecl ist newname sname ns 
     = let lhs = PApp emptyFC (PRef emptyFC newname) (map pexp (mkp ns)) 
           rhs = eraseImps $ delab ist (mkApp (P Ref sname Erased) (map snd ns)) in 
-          [(lhs, rhs)] where
+          (lhs, rhs) where
   mkp [] = []
   mkp ((ExplicitD, tm) : tms) = delab ist tm : mkp tms
   mkp (_ : tms) = mkp tms

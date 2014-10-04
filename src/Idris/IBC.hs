@@ -32,7 +32,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 81
+ibcVersion = 82
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -62,7 +62,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_cg :: [(Name, CGInfo)],
                          ibc_defs :: [(Name, Def)],
                          ibc_docstrings :: [(Name, (Docstring (Maybe Term), [(Name, Docstring (Maybe Term))]))],
-                         ibc_transforms :: [(Term, Term)],
+                         ibc_transforms :: [(Name, (Term, Term))],
                          ibc_errRev :: [(Term, Term)],
                          ibc_coercions :: [Name],
                          ibc_lineapps :: [(FilePath, Int, PTerm)],
@@ -232,7 +232,7 @@ ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
 ibc i (IBCFlags n a) f = return f { ibc_flags = (n,a) : ibc_flags f }
 ibc i (IBCFnInfo n a) f = return f { ibc_fninfo = (n,a) : ibc_fninfo f }
 ibc i (IBCTotal n a) f = return f { ibc_total = (n,a) : ibc_total f }
-ibc i (IBCTrans t) f = return f { ibc_transforms = t : ibc_transforms f }
+ibc i (IBCTrans n t) f = return f { ibc_transforms = (n, t) : ibc_transforms f }
 ibc i (IBCErrRev t) f = return f { ibc_errRev = t : ibc_errRev f }
 ibc i (IBCLineApp fp l t) f
      = return f { ibc_lineapps = (fp,l,t) : ibc_lineapps f }
@@ -490,8 +490,8 @@ pCG ds = mapM_ (\ (n, a) -> addToCG n a) ds
 pCoercions :: [Name] -> Idris ()
 pCoercions ns = mapM_ (\ n -> addCoercion n) ns
 
-pTrans :: [(Term, Term)] -> Idris ()
-pTrans ts = mapM_ addTrans ts
+pTrans :: [(Name, (Term, Term))] -> Idris ()
+pTrans ts = mapM_ (\ (n, t) -> addTrans n t) ts
 
 pErrRev :: [(Term, Term)] -> Idris ()
 pErrRev ts = mapM_ addErrRev ts

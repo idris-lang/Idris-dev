@@ -14,11 +14,13 @@ import Idris.Providers
 import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
+import Idris.Transforms
 import Idris.DeepSeq
 import Idris.Output (iputStrLn, pshow, iWarn)
 import IRTS.Lang
 
 import Idris.Elab.Type
+import Idris.Elab.Transform
 import Idris.Elab.Utils
 
 import Idris.Core.TT
@@ -48,6 +50,7 @@ import Data.Char(isLetter, toLower)
 import Data.List.Split (splitOn)
 
 import Util.Pretty(pretty, text)
+import Numeric
 
 -- | Elaborate a collection of left-hand and right-hand pairs - that is, a
 -- top-level definition.
@@ -81,12 +84,24 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            addIBC (IBCOpt n)
 
            ist <- getIState
-           let pats = map (simple_lhs (tt_ctxt ist)) $ doTransforms ist pats_in
+           let tpats = transformPats ist pats_in
+           let pats = map (simple_lhs (tt_ctxt ist)) $ 
+                          doPartialEval ist tpats
 
   --          logLvl 3 (showSep "\n" (map (\ (l,r) ->
   --                                         show l ++ " = " ++
   --                                         show r) pats))
            let tcase = opt_typecase (idris_options ist)
+
+           -- Look for 'static' names and generate new specialised
+           -- definitions for them, as well as generating rewrite rules
+           -- for partially evaluated definitions
+           mapM_ (\ e -> case e of
+                           Left _ -> return ()
+                           Right (l, r) -> elabPE info fc n r) pats
+
+           -- Redo transforms with the newly generated transformations
+           let pats_transformed = transformPats ist pats
 
            -- Summary of what's about to happen: Definitions go:
            --
@@ -97,17 +112,10 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            -- pdef is the compile-time pattern definition.
            -- This will get further optimised for run-time, and, separately,
            -- further inlined to help with totality checking.
-           let pdef = map debind pats
+           let pdef = map debind pats_transformed
 
            logLvl 5 $ "Initial typechecked patterns:\n" ++ show pats
            logLvl 5 $ "Initial typechecked pattern def:\n" ++ show pdef
-
-           -- Look for 'static' names and generate new specialised
-           -- definitions for them
-
-           mapM_ (\ e -> case e of
-                           Left _ -> return ()
-                           Right (l, r) -> elabPE info fc n r) pats
 
            -- NOTE: Need to store original definition so that proofs which
            -- rely on its structure aren't affected by any changes to the
@@ -120,7 +128,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            numArgs <- tclift $ sameLength pdef
 
            case specNames opts of
-                Just _ -> logLvl 5 $ "Partially evaluated:\n" ++ show pats
+                Just _ -> logLvl 1 $ "Partially evaluated:\n" ++ show pats
                 _ -> return ()
 
            erInfo <- getErasureInfo <$> getIState
@@ -163,7 +171,6 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
   --                       then case tot of
   --                               Total _ -> return ()
   --                               t -> tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
-  --                       else return ()
   --             _ -> return ()
            case tree of
                CaseDef _ _ [] -> return ()
@@ -271,9 +278,8 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                 else tfail (At fc (Msg "Clauses have differing numbers of arguments "))
     sameLength [] = return 0
 
-    -- apply all transformations (just specialisation for now, add
-    -- user defined transformation rules later)
-    doTransforms ist pats =
+    -- Partially evaluate, if the definition is marked as specialisable 
+    doPartialEval ist pats =
            case specNames opts of
                 Nothing -> pats
                 Just ns -> partial_eval (tt_ctxt ist) ns pats
@@ -285,38 +291,45 @@ elabPE info fc caller r =
      let sa = getSpecApps ist [] r
      mapM_ (mkSpecialised ist) sa
   where 
-    -- TODO: Add a PTerm level transformation rule, which is basically the 
+    -- Make a specialised version of the application, and 
+    -- add a PTerm level transformation rule, which is basically the 
     -- new definition in reverse (before specialising it). 
     -- RHS => LHS where implicit arguments are left blank in the 
     -- transformation.
 
-    -- Apply that transformation after every PClauses elaboration
+    -- Transformation rules are applied after every PClause elaboration 
 
     mkSpecialised ist specapp_in = do
         let (specTy, specapp) = getSpecTy ist specapp_in
-        let (n, newnm, pats) = getSpecClause ist specapp
+        let (n, newnm, (lhs, rhs)) = getSpecClause ist specapp
         let undef = case lookupDef newnm (tt_ctxt ist) of
                          [] -> True
                          _ -> False
-        logLvl 5 $ show (newnm, map (concreteArg ist) (snd specapp))
+        logLvl 3 $ show (newnm, map (concreteArg ist) (snd specapp))
         idrisCatch
           (when (undef && all (concreteArg ist) (snd specapp)) $ do
             cgns <- getAllNames n
             let opts = [Specialise (map (\x -> (x, Nothing)) cgns ++ 
                                      mapMaybe specName (snd specapp))]
             logLvl 3 $ "Specialising application: " ++ show specapp
-            logLvl 2 $ "New name: " ++ show newnm
-            iLOG $ "PE definition type : " ++ (show specTy)
+                          ++ " with " ++ show cgns
+            logLvl 3 $ "New name: " ++ show newnm
+            logLvl 3 $ "PE definition type : " ++ (show specTy)
                         ++ "\n" ++ show opts
-            logLvl 2 $ "PE definition " ++ show newnm ++ ":\n" ++
-                        showSep "\n" 
-                           (map (\ (lhs, rhs) ->
+            logLvl 3 $ "PE definition " ++ show newnm ++ ":\n" ++
+--                         showSep "\n" 
+--                            (map (\ (lhs, rhs) ->
                               (showTmImpls lhs ++ " = " ++ 
-                               showTmImpls rhs)) pats)
+                               showTmImpls rhs) -- pats)
+
+            logLvl 2 $ show n ++ " transformation rule: " ++
+                       show rhs ++ " ==> " ++ show lhs
+
             elabType info defaultSyntax emptyDocstring [] fc opts newnm specTy
-            let def = map (\ (lhs, rhs) -> PClause fc newnm lhs [] rhs []) pats
-            elabClauses info fc opts newnm def
-            logLvl 2 $ "Specialised " ++ show newnm)
+            elabTransform info fc False rhs lhs
+            let def = -- map (\ (lhs, rhs) -> 
+                      [PClause fc newnm lhs [] rhs []] --) pats
+            elabClauses info fc opts newnm def)
           -- if it doesn't work, just don't specialise. Could happen for lots
           -- of valid reasons (e.g. local variables in scope which can't be
           -- lifted out).
@@ -351,13 +364,19 @@ elabPE info fc caller r =
 
     -- get the clause of a specialised application
     getSpecClause ist (n, args)
-       = let newnm = sUN ("__"++show (nsroot n) ++ "_" ++ 
-                               showSep "_" (map showArg args)) in 
+       = let newnm = sUN ("PE_"++show (nsroot n) ++ "_" ++ 
+                               qhash 0 (showSep "_" (map showArg args))) in 
                                -- UN (show n ++ show (map snd args)) in
              (n, newnm, mkPE_TermDecl ist newnm n args)
       where showArg (ExplicitS, n) = show n
             showArg (ImplicitS, n) = show n
             showArg _ = ""
+
+            -- TMP for readability! This is obviously a really bad hashing
+            -- function.
+            qhash :: Int -> String -> String
+            qhash acc [] = showHex acc ""
+            qhash acc (x:xs) = qhash (fromEnum x + acc) xs
 
 -- checks if the clause is a possible left hand side. Returns the term if
 -- possible, otherwise Nothing.

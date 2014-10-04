@@ -1,57 +1,22 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Transforms where
+module Idris.Transforms(transformPats, applyTransRules) where
 
 import Idris.AbsSyntax
 import Idris.Core.CaseTree
 import Idris.Core.TT
 
-data TTOpt = TermTrans (TT Name -> TT Name) -- term transform
-           | CaseTrans (SC -> SC) -- case expression transform
 
-class Transform a where
-     transform :: TTOpt -> a -> a
+transformPats :: IState -> [Either Term (Term, Term)] ->
+                [Either Term (Term, Term)]
+transformPats ist ps = map tClause ps where
+  tClause (Left t) = Left t -- not a clause, leave it alone
+  tClause (Right (lhs, rhs)) -- apply transforms on RHS
+      = let rhs' = applyTransRules ist rhs in
+            Right (lhs, rhs')
 
-instance Transform (TT Name) where
-    transform o@(TermTrans t) tm = trans t tm where
-      trans t (Bind n b tm) = t $ Bind n (transform o b) (trans t tm)
-      trans t (App f a)     = t $ App (trans t f) (trans t a)
-      trans t tm            = t tm
-    transform _ tm = tm
+applyTransRules :: IState -> Term -> Term
+applyTransRules ist tm = applyAll (idris_transforms ist) tm
 
-instance Transform a => Transform (Binder a) where
-    transform t (Let ty v) = Let (transform t ty) (transform t v)
-    transform t b = b { binderTy = transform t (binderTy b) }
-
-instance Transform SC where
-    transform o@(CaseTrans t) sc = trans t sc where
-      trans t (Case up n alts) = t (Case up n (map (transform o) alts))
-      trans t x = t x
-    transform o@(TermTrans t) sc = trans t sc where
-      trans t (Case up n alts) = Case up n (map (transform o) alts)
-      trans t (STerm tm) = STerm (t tm)
-      trans t x = x
-
-instance Transform CaseAlt where
-   transform o (ConCase n i ns sc) = ConCase n i ns (transform o sc)
-   transform o (ConstCase c sc)    = ConstCase c (transform o sc)
-   transform o (DefaultCase sc)    = DefaultCase (transform o sc)
-
-natTrans = [TermTrans zero, TermTrans suc, CaseTrans natcase]
-
-zname = sNS (sUN "Z") ["Nat","Prelude"]
-sname = sNS (sUN "S") ["Nat","Prelude"]
-
-zero :: TT Name -> TT Name
-zero (P _ n _) | n == zname
-    = Constant (BI 0)
-zero x = x
-
-suc :: TT Name -> TT Name
-suc (App (P _ s _) a) | s == sname
-    = mkApp (P Ref (sUN "prim__addBigInt") Erased) [Constant (BI 1), a]
-suc x = x
-
-natcase :: SC -> SC
-natcase = undefined
-
+applyAll :: Ctxt [(Term, Term)] -> Term -> Term
+applyAll ts t = t 
