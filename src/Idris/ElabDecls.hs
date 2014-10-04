@@ -28,6 +28,7 @@ import Idris.Elab.Record
 import Idris.Elab.Class
 import Idris.Elab.Instance
 import Idris.Elab.Provider
+import Idris.Elab.Transform
 import Idris.Elab.Value
 
 import Idris.Core.TT
@@ -141,37 +142,6 @@ elabPrims = do mapM_ (elabDecl' EAll recinfo)
                      idris_scprims = (synEq, (4, LNoOp)) : idris_scprims i
                     }
 
-elabTransform :: ElabInfo -> FC -> Bool -> PTerm -> PTerm -> Idris ()
-elabTransform info fc safe lhs_in rhs_in
-    = do ctxt <- getContext
-         i <- getIState
-         let lhs = addImplPat i lhs_in
-         ((lhs', dlhs, []), _) <-
-              tclift $ elaborate ctxt (sMN 0 "transLHS") infP []
-                       (erun fc (buildTC i info ELHS [] (sUN "transform")
-                                   (infTerm lhs)))
-         let lhs_tm = orderPats (getInferTerm lhs')
-         let lhs_ty = getInferType lhs'
-         let newargs = pvars i lhs_tm
-
-         (clhs_tm, clhs_ty) <- recheckC fc [] lhs_tm
-         logLvl 3 ("Transform LHS " ++ show clhs_tm)
-         let rhs = addImplBound i (map fst newargs) rhs_in
-         ((rhs', defer), _) <-
-              tclift $ elaborate ctxt (sMN 0 "transRHS") clhs_ty []
-                       (do pbinds i lhs_tm
-                           setNextName
-                           erun fc (build i info ERHS [] (sUN "transform") rhs)
-                           erun fc $ psolve lhs_tm
-                           tt <- get_term
-                           return (runState (collectDeferred Nothing tt) []))
-         (crhs_tm, crhs_ty) <- recheckC fc [] rhs'
-         logLvl 3 ("Transform RHS " ++ show crhs_tm)
-         when safe $ case converts ctxt [] clhs_tm crhs_tm of
-              OK _ -> return ()
-              Error e -> ierror (At fc (CantUnify False clhs_tm crhs_tm e [] 0))
-         addTrans (clhs_tm, crhs_tm)
-         addIBC (IBCTrans (clhs_tm, crhs_tm))
 
 elabDecls :: ElabInfo -> [PDecl] -> Idris ()
 elabDecls info ds = do mapM_ (elabDecl EAll info) ds

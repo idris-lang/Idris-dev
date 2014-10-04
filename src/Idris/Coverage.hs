@@ -65,7 +65,7 @@ genClauses fc n xs given
         logLvl 5 $ show lhss
         logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logLvl 10 $ show argss ++ "\n" ++ show all_args
-        logLvl 1 $ "Original: \n" ++
+        logLvl 3 $ "Original: \n" ++
              showSep "\n" (map (\t -> showTm i (delab' i t True True)) xs)
         -- add an infinite supply of explicit arguments to update the possible
         -- cases for (the return type may be variadic, or function type, so
@@ -76,11 +76,11 @@ genClauses fc n xs given
                           p ++ repeat (PExp 0 [] (sMN 0 "gcarg") Placeholder)
                         _       -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
-        logLvl 2 $ show (length tryclauses) ++ " initially to check"
-        logLvl 1 $ showSep "\n" (map (showTm i) tryclauses)
+        logLvl 3 $ show (length tryclauses) ++ " initially to check"
+        logLvl 2 $ showSep "\n" (map (showTm i) tryclauses)
         let new = filter (noMatch i) (nub tryclauses)
-        logLvl 1 $ show (length new) ++ " clauses to check for impossibility"
-        logLvl 3 $ "New clauses: \n" ++ showSep "\n" (map (showTm i) new)
+        logLvl 2 $ show (length new) ++ " clauses to check for impossibility"
+        logLvl 4 $ "New clauses: \n" ++ showSep "\n" (map (showTm i) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses)
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)

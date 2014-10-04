@@ -1188,6 +1188,26 @@ process fn (PrintDef n) =
        [] -> iPrintError "Not found"
        outs -> iRenderResult . vsep $ outs
 
+-- Show relevant transformation rules for the name 'n'
+process fn (TransformInfo n)
+   = do i <- getIState
+        let ts = lookupCtxt n (idris_transforms i)
+        let res = map (showTrans i) ts
+        iRenderResult . vsep $ concat res
+    where showTrans :: IState -> [(Term, Term)] -> [Doc OutputAnnotation]
+          showTrans i [] = []
+          showTrans i ((lhs, rhs) : ts)
+              = let ppTm tm = annotate (AnnTerm [] tm) .
+                                 pprintPTerm (ppOptionIst i) [] [] [] .
+                                 delab i $ tm
+                    ts' = showTrans i ts in
+                    ppTm lhs <+> text " ==> " <+> ppTm rhs : ts'
+                             
+--               iRenderOutput (pretty lhs)
+--                    iputStrLn "  ==>  "
+--                    iPrintTermWithType (pprintDelab i rhs)
+--                    iputStrLn "---------------"
+--                    showTrans i ts
 
 process fn (PPrint fmt width (PRef _ n))
    = do outs <- pprintDef n

@@ -41,6 +41,7 @@ pCmd = do            c <- cmd ["q", "quit"];        noArgs c Quit
               <|> do c <- cmd ["d", "def"];         fnNameArg c Defn
               <|> do c <- cmd ["total"];            fnNameArg c TotCheck
               <|> do c <- cmd ["printdef"];         fnNameArg c PrintDef
+              <|> do c <- cmd ["transinfo"];        fnNameArg c TransformInfo
               <|> do c <- cmd ["wc", "whocalls"];   fnNameArg c WhoCalls
               <|> do c <- cmd ["cw", "callswho"];   fnNameArg c CallsWho
               <|> do c <- cmd ["di", "dbginfo"];    fnNameArg c DebugInfo

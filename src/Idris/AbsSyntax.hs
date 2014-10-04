@@ -111,9 +111,16 @@ addLangExt ErrorReflection = do i <- getIState
                                   idris_language_extensions = ErrorReflection : idris_language_extensions i
                                 }
 
-addTrans :: (Term, Term) -> Idris ()
-addTrans t = do i <- getIState
-                putIState $ i { idris_transforms = t : idris_transforms i }
+-- Transforms are organised by the function being applied on the lhs of the
+-- transform, to make looking up appropriate transforms quicker
+addTrans :: Name -> (Term, Term) -> Idris ()
+addTrans basefn t 
+           = do i <- getIState
+                let t' = case lookupCtxtExact basefn (idris_transforms i) of
+                              Just def -> (t : def)
+                              Nothing -> [t]
+                putIState $ i { idris_transforms = addDef basefn t' 
+                                                          (idris_transforms i) }
 
 addErrRev :: (Term, Term) -> Idris ()
 addErrRev t = do i <- getIState
@@ -1061,12 +1068,17 @@ addStatics n tm ptm =
        let stpos = staticList statics' tm
        i <- getIState
        when (not (null statics)) $
-          logLvl 5 $ show n ++ " " ++ show statics' ++ "\n" ++ show dynamics
+          logLvl 2 $ "Statics for " ++ show n ++ " " ++ show tm ++ " "
+                        ++ showTmImpls ptm 
+                        ++ show statics' ++ "\n" ++ show dynamics
                         ++ "\n" ++ show stnames ++ "\n" ++ show dnames
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
-    initStatics (Bind n (Pi ty _) sc) (PPi p _ _ s)
+    initStatics (Bind n (Pi ty _) sc) (PPi p n' t s)
+            | n /= n' = let (static, dynamic) = initStatics sc (PPi p n' t s) in
+                            (static, (n, ty) : dynamic)
+    initStatics (Bind n (Pi ty _) sc) (PPi p n' _ s)
             = let (static, dynamic) = initStatics (instantiate (P Bound n ty) sc) s in
                   if pstatic p == Static then ((n, ty) : static, dynamic)
                     else if (not (searchArg p)) 

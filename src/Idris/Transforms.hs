@@ -1,57 +1,71 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Transforms where
+module Idris.Transforms(transformPats, applyTransRules) where
 
 import Idris.AbsSyntax
 import Idris.Core.CaseTree
 import Idris.Core.TT
 
-data TTOpt = TermTrans (TT Name -> TT Name) -- term transform
-           | CaseTrans (SC -> SC) -- case expression transform
+import Debug.Trace
 
-class Transform a where
-     transform :: TTOpt -> a -> a
+transformPats :: IState -> [Either Term (Term, Term)] ->
+                [Either Term (Term, Term)]
+transformPats ist ps = map tClause ps where
+  tClause (Left t) = Left t -- not a clause, leave it alone
+  tClause (Right (lhs, rhs)) -- apply transforms on RHS
+      = let rhs' = applyTransRules ist rhs in
+            Right (lhs, rhs')
 
-instance Transform (TT Name) where
-    transform o@(TermTrans t) tm = trans t tm where
-      trans t (Bind n b tm) = t $ Bind n (transform o b) (trans t tm)
-      trans t (App f a)     = t $ App (trans t f) (trans t a)
-      trans t tm            = t tm
-    transform _ tm = tm
+applyTransRules :: IState -> Term -> Term
+applyTransRules ist tm = applyAll (idris_transforms ist) tm
 
-instance Transform a => Transform (Binder a) where
-    transform t (Let ty v) = Let (transform t ty) (transform t v)
-    transform t b = b { binderTy = transform t (binderTy b) }
+applyAll :: Ctxt [(Term, Term)] -> Term -> Term
+applyAll ts ap@(App f a) 
+    | (P _ fn ty, args) <- unApply ap
+         = case lookupCtxtExact fn ts of
+                Just rules -> case applyFnRules rules ap of
+                                   Just tm' -> tm'
+                                   _ -> App (applyAll ts f) (applyAll ts a)
+                Nothing -> App (applyAll ts f) (applyAll ts a)
+applyAll ts (Bind n b sc) = Bind n (fmap (applyAll ts) b) (applyAll ts sc)
+applyAll ts t = t
 
-instance Transform SC where
-    transform o@(CaseTrans t) sc = trans t sc where
-      trans t (Case up n alts) = t (Case up n (map (transform o) alts))
-      trans t x = t x
-    transform o@(TermTrans t) sc = trans t sc where
-      trans t (Case up n alts) = Case up n (map (transform o) alts)
-      trans t (STerm tm) = STerm (t tm)
-      trans t x = x
+applyFnRules :: [(Term, Term)] -> Term -> Maybe Term
+applyFnRules [] tm = Nothing
+applyFnRules (r : rs) tm | Just tm' <- applyRule r tm = Just tm'
+                         | otherwise = applyFnRules rs tm
 
-instance Transform CaseAlt where
-   transform o (ConCase n i ns sc) = ConCase n i ns (transform o sc)
-   transform o (ConstCase c sc)    = ConstCase c (transform o sc)
-   transform o (DefaultCase sc)    = DefaultCase (transform o sc)
+applyRule :: (Term, Term) -> Term -> Maybe Term
+applyRule (lhs, rhs) tm 
+    | Just ms <- matchTerm lhs tm 
+--          = trace ("SUCCESS " ++ show ms ++ "\n FROM\n" ++ show lhs ++
+--                   "\n" ++ show rhs 
+--                   ++ "\n" ++ show tm) $ 
+         = Just $ depat ms rhs
+    | otherwise = Nothing
+  where depat ms (Bind n (PVar t) sc) 
+          = case lookup n ms of
+                 Just tm -> depat ms (instantiate tm sc)
+                 _ -> depat ms sc -- no occurrence? Shouldn't happen
+        depat ms tm = tm
 
-natTrans = [TermTrans zero, TermTrans suc, CaseTrans natcase]
+matchTerm :: Term -> Term -> Maybe [(Name, Term)]
+matchTerm lhs tm = matchVars [] lhs tm
+   where
+      matchVars acc (Bind n (PVar t) sc) tm 
+           = matchVars (n : acc) (instantiate (P Bound n t) sc) tm
+      matchVars acc sc tm 
+          = -- trace (show acc ++ ": " ++ show (sc, tm)) $
+            doMatch acc sc tm
 
-zname = sNS (sUN "Z") ["Nat","Prelude"]
-sname = sNS (sUN "S") ["Nat","Prelude"]
+      doMatch :: [Name] -> Term -> Term -> Maybe [(Name, Term)]
+      doMatch ns (P _ n _) tm
+           | n `elem` ns = return [(n, tm)]
+      doMatch ns (App f a) (App f' a')
+           = do fm <- doMatch ns f f'
+                am <- doMatch ns a a'
+                return (fm ++ am)
+      doMatch ns x y | x == y = return []
+                     | otherwise = Nothing
 
-zero :: TT Name -> TT Name
-zero (P _ n _) | n == zname
-    = Constant (BI 0)
-zero x = x
-
-suc :: TT Name -> TT Name
-suc (App (P _ s _) a) | s == sname
-    = mkApp (P Ref (sUN "prim__addBigInt") Erased) [Constant (BI 1), a]
-suc x = x
-
-natcase :: SC -> SC
-natcase = undefined
 
