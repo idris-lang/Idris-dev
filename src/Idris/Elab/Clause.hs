@@ -84,7 +84,12 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            addIBC (IBCOpt n)
 
            ist <- getIState
-           let tpats = transformPats ist pats_in
+           -- Don't apply rules if this is a partial evaluation definition,
+           -- or we'll make something that just runs itself!
+           let tpats = case specNames opts of
+                            Nothing -> transformPats ist pats_in
+                            _ -> pats_in
+
            let pats = map (simple_lhs (tt_ctxt ist)) $ 
                           doPartialEval ist tpats
 
@@ -101,6 +106,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                            Right (l, r) -> elabPE info fc n r) pats
 
            -- Redo transforms with the newly generated transformations
+           ist <- getIState
            let pats_transformed = transformPats ist pats
 
            -- Summary of what's about to happen: Definitions go:
@@ -326,9 +332,9 @@ elabPE info fc caller r =
                        show rhs ++ " ==> " ++ show lhs
 
             elabType info defaultSyntax emptyDocstring [] fc opts newnm specTy
-            elabTransform info fc False rhs lhs
             let def = -- map (\ (lhs, rhs) -> 
                       [PClause fc newnm lhs [] rhs []] --) pats
+            elabTransform info fc False rhs lhs
             elabClauses info fc opts newnm def)
           -- if it doesn't work, just don't specialise. Could happen for lots
           -- of valid reasons (e.g. local variables in scope which can't be
