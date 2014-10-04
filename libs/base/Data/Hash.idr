@@ -1,7 +1,7 @@
 module Data.Hash
 
 %access public
-%default partial
+%default total
 
 ||| A type that can be hashed
 class Hashable a where
@@ -23,6 +23,11 @@ byte n w = prim__lshrB64 (prim__andB64 mask w) offset
   where offset = 8*n
         mask = prim__shlB64 0xff (the Bits64 offset)
 
+||| Modulo of an integer, downsized to a Bits64
+private
+mod64 : Integer -> Bits64
+mod64 i = assert_total $ prim__truncBigInt_B64 (abs i `mod` 0xffffffffffffffff)
+
 instance Hashable Bits64 where
   saltedHash64 w salt = foldr (\b,acc => (acc `prim__shlB64` 10) + acc + b)
                               salt
@@ -30,8 +35,6 @@ instance Hashable Bits64 where
 
 instance Hashable Integer where
   saltedHash64 i = saltedHash64 (mod64 i)
-    where mod64 : Integer -> Bits64
-          mod64 i = fromInteger (abs i `mod` 0xffffffffffffffff)
 
 instance Hashable () where
   saltedHash64 _ salt = salt
