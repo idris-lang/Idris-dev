@@ -79,20 +79,22 @@ reflectConstant = toConst
 
 
 ||| Types of named references
-data NameType = Bound
-              -- ^ reference which is just bound, e.g. by intro
-              | Ref
-              -- ^ reference to a variable
-              | DCon Int Int
-              -- ^ constructor with tag and number
-              | TCon Int Int
-              -- ^ type constructor with tag and number
+data NameType =
+  ||| A reference which is just bound, e.g. by intro
+  Bound |
+  ||| A reference to a de Bruijn-indexed variable
+  Ref |
+  ||| Data constructor with tag and number
+  DCon Int Int |
+  ||| Type constructor with tag and number
+  TCon Int Int
+
 %name NameType nt, nt'
 
 ||| Types annotations for bound variables in different
 ||| binding contexts
 data Binder a = Lam a
-              | Pi a a 
+              | Pi a a
               | Let a a
               | NLet a a
               | Hole a

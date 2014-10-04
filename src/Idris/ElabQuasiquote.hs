@@ -5,167 +5,170 @@ import Idris.Core.TT
 import Idris.AbsSyntax
 
 
-extract1 :: (PTerm -> a) -> PTerm -> Elab' aux (a, [(Name, PTerm)])
-extract1 c tm = do (tm', ex) <- extractUnquotes tm
-                   return (c tm', ex)
+extract1 :: Int -> (PTerm -> a) -> PTerm -> Elab' aux (a, [(Name, PTerm)])
+extract1 n c tm = do (tm', ex) <- extractUnquotes n tm
+                     return (c tm', ex)
 
-extract2 :: (PTerm -> PTerm -> a) -> PTerm -> PTerm -> Elab' aux (a, [(Name, PTerm)])
-extract2 c a b = do (a', ex1) <- extractUnquotes a
-                    (b', ex2) <- extractUnquotes b
-                    return (c a' b', ex1 ++ ex2)
+extract2 :: Int -> (PTerm -> PTerm -> a) -> PTerm -> PTerm -> Elab' aux (a, [(Name, PTerm)])
+extract2 n c a b = do (a', ex1) <- extractUnquotes n a
+                      (b', ex2) <- extractUnquotes n b
+                      return (c a' b', ex1 ++ ex2)
 
-extractTUnquotes :: PTactic -> Elab' aux (PTactic, [(Name, PTerm)])
-extractTUnquotes (Rewrite t) = extract1 Rewrite t
-extractTUnquotes (Induction t) = extract1 Induction t
-extractTUnquotes (LetTac n t) = extract1 (LetTac n) t
-extractTUnquotes (LetTacTy n t1 t2) = extract2 (LetTacTy n) t1 t2
-extractTUnquotes (Exact tm) = extract1 Exact tm
-extractTUnquotes (Try tac1 tac2)
-  = do (tac1', ex1) <- extractTUnquotes tac1
-       (tac2', ex2) <- extractTUnquotes tac2
+extractTUnquotes :: Int -> PTactic -> Elab' aux (PTactic, [(Name, PTerm)])
+extractTUnquotes n (Rewrite t) = extract1 n Rewrite t
+extractTUnquotes n (Induction t) = extract1 n Induction t
+extractTUnquotes n (LetTac name t) = extract1 n (LetTac name) t
+extractTUnquotes n (LetTacTy name t1 t2) = extract2 n (LetTacTy name) t1 t2
+extractTUnquotes n (Exact tm) = extract1 n Exact tm
+extractTUnquotes n (Try tac1 tac2)
+  = do (tac1', ex1) <- extractTUnquotes n tac1
+       (tac2', ex2) <- extractTUnquotes n tac2
        return (Try tac1' tac2', ex1 ++ ex2)
-extractTUnquotes (TSeq tac1 tac2)
-  = do (tac1', ex1) <- extractTUnquotes tac1
-       (tac2', ex2) <- extractTUnquotes tac2
+extractTUnquotes n (TSeq tac1 tac2)
+  = do (tac1', ex1) <- extractTUnquotes n tac1
+       (tac2', ex2) <- extractTUnquotes n tac2
        return (TSeq tac1' tac2', ex1 ++ ex2)
-extractTUnquotes (ApplyTactic t) = extract1 ApplyTactic t
-extractTUnquotes (ByReflection t) = extract1 ByReflection t
-extractTUnquotes (Reflect t) = extract1 Reflect t
-extractTUnquotes (GoalType s tac)
-  = do (tac', ex) <- extractTUnquotes tac
+extractTUnquotes n (ApplyTactic t) = extract1 n ApplyTactic t
+extractTUnquotes n (ByReflection t) = extract1 n ByReflection t
+extractTUnquotes n (Reflect t) = extract1 n Reflect t
+extractTUnquotes n (GoalType s tac)
+  = do (tac', ex) <- extractTUnquotes n tac
        return (GoalType s tac', ex)
-extractTUnquotes (TCheck t) = extract1 TCheck t
-extractTUnquotes (TEval t) = extract1 TEval t
-extractTUnquotes tac = return (tac, []) -- the rest don't contain PTerms
+extractTUnquotes n (TCheck t) = extract1 n TCheck t
+extractTUnquotes n (TEval t) = extract1 n TEval t
+extractTUnquotes n tac = return (tac, []) -- the rest don't contain PTerms
 
-extractPArgUnquotes :: PArg -> Elab' aux (PArg, [(Name, PTerm)])
-extractPArgUnquotes (PImp p m opts n t) =
-  do (t', ex) <- extractUnquotes t
+extractPArgUnquotes :: Int -> PArg -> Elab' aux (PArg, [(Name, PTerm)])
+extractPArgUnquotes d (PImp p m opts n t) =
+  do (t', ex) <- extractUnquotes d t
      return (PImp p m opts n t', ex)
-extractPArgUnquotes (PExp p opts n t) =
-  do (t', ex) <- extractUnquotes t
+extractPArgUnquotes d (PExp p opts n t) =
+  do (t', ex) <- extractUnquotes d t
      return (PExp p opts n t', ex)
-extractPArgUnquotes (PConstraint p opts n t) =
-  do (t', ex) <- extractUnquotes t
+extractPArgUnquotes d (PConstraint p opts n t) =
+  do (t', ex) <- extractUnquotes d t
      return (PConstraint p opts n t', ex)
-extractPArgUnquotes (PTacImplicit p opts n scpt t) =
-  do (scpt', ex1) <- extractUnquotes scpt
-     (t', ex2) <- extractUnquotes t
+extractPArgUnquotes d (PTacImplicit p opts n scpt t) =
+  do (scpt', ex1) <- extractUnquotes d scpt
+     (t', ex2) <- extractUnquotes d t
      return (PTacImplicit p opts n scpt' t', ex1 ++ ex2)
 
-extractDoUnquotes :: PDo -> Elab' aux (PDo, [(Name, PTerm)])
-extractDoUnquotes (DoExp fc tm)
-  = do (tm', ex) <- extractUnquotes tm
+extractDoUnquotes :: Int -> PDo -> Elab' aux (PDo, [(Name, PTerm)])
+extractDoUnquotes d (DoExp fc tm)
+  = do (tm', ex) <- extractUnquotes d tm
        return (DoExp fc tm', ex)
-extractDoUnquotes (DoBind fc n tm)
-  = do (tm', ex) <- extractUnquotes tm
+extractDoUnquotes d (DoBind fc n tm)
+  = do (tm', ex) <- extractUnquotes d tm
        return (DoBind fc n tm', ex)
-extractDoUnquotes (DoBindP fc t t' alts)
+extractDoUnquotes d (DoBindP fc t t' alts)
   = fail "Pattern-matching binds cannot be quasiquoted"
-extractDoUnquotes (DoLet  fc n v b)
-  = do (v', ex1) <- extractUnquotes v
-       (b', ex2) <- extractUnquotes b
+extractDoUnquotes d (DoLet  fc n v b)
+  = do (v', ex1) <- extractUnquotes d v
+       (b', ex2) <- extractUnquotes d b
        return (DoLet fc n v' b', ex1 ++ ex2)
-extractDoUnquotes (DoLetP fc t t') = fail "Pattern-matching lets cannot be quasiquoted"
+extractDoUnquotes d (DoLetP fc t t') = fail "Pattern-matching lets cannot be quasiquoted"
 
 
-extractUnquotes :: PTerm -> Elab' aux (PTerm, [(Name, PTerm)])
-extractUnquotes (PLam n ty body)
-  = do (ty', ex1) <- extractUnquotes ty
-       (body', ex2) <- extractUnquotes body
-       return (PLam n ty' body', ex1 ++ ex2)
-extractUnquotes (PPi  plicity n ty body)
-  = do (ty', ex1) <- extractUnquotes ty
-       (body', ex2) <- extractUnquotes body
-       return (PPi plicity n ty' body', ex1 ++ ex2)
-extractUnquotes (PLet n ty val body)
-  = do (ty', ex1) <- extractUnquotes ty
-       (val', ex2) <- extractUnquotes val
-       (body', ex3) <- extractUnquotes body
-       return (PLet n ty' val' body', ex1 ++ ex2 ++ ex3)
-extractUnquotes (PTyped tm ty)
-  = do (tm', ex1) <- extractUnquotes tm
-       (ty', ex2) <- extractUnquotes ty
+extractUnquotes :: Int -> PTerm -> Elab' aux (PTerm, [(Name, PTerm)])
+extractUnquotes n (PLam name ty body)
+  = do (ty', ex1) <- extractUnquotes n ty
+       (body', ex2) <- extractUnquotes n body
+       return (PLam name ty' body', ex1 ++ ex2)
+extractUnquotes n (PPi plicity name ty body)
+  = do (ty', ex1) <- extractUnquotes n ty
+       (body', ex2) <- extractUnquotes n body
+       return (PPi plicity name ty' body', ex1 ++ ex2)
+extractUnquotes n (PLet name ty val body)
+  = do (ty', ex1) <- extractUnquotes n ty
+       (val', ex2) <- extractUnquotes n val
+       (body', ex3) <- extractUnquotes n body
+       return (PLet name ty' val' body', ex1 ++ ex2 ++ ex3)
+extractUnquotes n (PTyped tm ty)
+  = do (tm', ex1) <- extractUnquotes n tm
+       (ty', ex2) <- extractUnquotes n ty
        return (PTyped tm' ty', ex1 ++ ex2)
-extractUnquotes (PApp fc f args)
-  = do (f', ex1) <- extractUnquotes f
-       args' <- mapM extractPArgUnquotes args
+extractUnquotes n (PApp fc f args)
+  = do (f', ex1) <- extractUnquotes n f
+       args' <- mapM (extractPArgUnquotes n) args
        let (args'', exs) = unzip args'
        return (PApp fc f' args'', ex1 ++ concat exs)
-extractUnquotes (PAppBind fc f args)
-  = do (f', ex1) <- extractUnquotes f
-       args' <- mapM extractPArgUnquotes args
+extractUnquotes n (PAppBind fc f args)
+  = do (f', ex1) <- extractUnquotes n f
+       args' <- mapM (extractPArgUnquotes n) args
        let (args'', exs) = unzip args'
        return (PAppBind fc f' args'', ex1 ++ concat exs)
-extractUnquotes (PCase fc expr cases)
-  = do (expr', ex1) <- extractUnquotes expr
+extractUnquotes n (PCase fc expr cases)
+  = do (expr', ex1) <- extractUnquotes n expr
        let (pats, rhss) = unzip cases
-       (pats', exs1) <- fmap unzip $ mapM extractUnquotes pats
-       (rhss', exs2) <- fmap unzip $ mapM extractUnquotes rhss
+       (pats', exs1) <- fmap unzip $ mapM (extractUnquotes n) pats
+       (rhss', exs2) <- fmap unzip $ mapM (extractUnquotes n) rhss
        return (PCase fc expr' (zip pats' rhss'), ex1 ++ concat exs1 ++ concat exs2)
-extractUnquotes (PRefl fc x)
-  = do (x', ex) <- extractUnquotes x
+extractUnquotes n (PRefl fc x)
+  = do (x', ex) <- extractUnquotes n x
        return (PRefl fc x', ex)
-extractUnquotes (PEq fc at bt a b)
-  = do (at', ex1) <- extractUnquotes at
-       (bt', ex2) <- extractUnquotes bt
-       (a', ex1) <- extractUnquotes a
-       (b', ex2) <- extractUnquotes b
+extractUnquotes n (PEq fc at bt a b)
+  = do (at', ex1) <- extractUnquotes n at
+       (bt', ex2) <- extractUnquotes n bt
+       (a', ex1) <- extractUnquotes n a
+       (b', ex2) <- extractUnquotes n b
        return (PEq fc at' bt' a' b', ex1 ++ ex2)
-extractUnquotes (PRewrite fc x y z)
-  = do (x', ex1) <- extractUnquotes x
-       (y', ex2) <- extractUnquotes y
+extractUnquotes n (PRewrite fc x y z)
+  = do (x', ex1) <- extractUnquotes n x
+       (y', ex2) <- extractUnquotes n y
        case z of
-         Just zz -> do (z', ex3) <- extractUnquotes zz
+         Just zz -> do (z', ex3) <- extractUnquotes n zz
                        return (PRewrite fc x' y' (Just z'), ex1 ++ ex2 ++ ex3)
          Nothing -> return (PRewrite fc x' y' Nothing, ex1 ++ ex2)
-extractUnquotes (PPair fc info l r)
-  = do (l', ex1) <- extractUnquotes l
-       (r', ex2) <- extractUnquotes r
+extractUnquotes n (PPair fc info l r)
+  = do (l', ex1) <- extractUnquotes n l
+       (r', ex2) <- extractUnquotes n r
        return (PPair fc info l' r', ex1 ++ ex2)
-extractUnquotes (PDPair fc info a b c)
-  = do (a', ex1) <- extractUnquotes a
-       (b', ex2) <- extractUnquotes b
-       (c', ex3) <- extractUnquotes c
+extractUnquotes n (PDPair fc info a b c)
+  = do (a', ex1) <- extractUnquotes n a
+       (b', ex2) <- extractUnquotes n b
+       (c', ex3) <- extractUnquotes n c
        return (PDPair fc info a' b' c', ex1 ++ ex2 ++ ex3)
-extractUnquotes (PAlternative b alts)
-  = do alts' <- mapM extractUnquotes alts
+extractUnquotes n (PAlternative b alts)
+  = do alts' <- mapM (extractUnquotes n) alts
        let (alts'', exs) = unzip alts'
        return (PAlternative b alts'', concat exs)
-extractUnquotes (PHidden tm)
-  = do (tm', ex) <- extractUnquotes tm
+extractUnquotes n (PHidden tm)
+  = do (tm', ex) <- extractUnquotes n tm
        return (PHidden tm', ex)
-extractUnquotes (PGoal fc a n b)
-  = do (a', ex1) <- extractUnquotes a
-       (b', ex2) <- extractUnquotes b
-       return (PGoal fc a' n b', ex1 ++ ex2)
-extractUnquotes (PDoBlock steps)
-  = do steps' <- mapM extractDoUnquotes steps
+extractUnquotes n (PGoal fc a name b)
+  = do (a', ex1) <- extractUnquotes n a
+       (b', ex2) <- extractUnquotes n b
+       return (PGoal fc a' name b', ex1 ++ ex2)
+extractUnquotes n (PDoBlock steps)
+  = do steps' <- mapM (extractDoUnquotes n) steps
        let (steps'', exs) = unzip steps'
        return (PDoBlock steps'', concat exs)
-extractUnquotes (PIdiom fc tm)
-  = fmap (\(tm', ex) -> (PIdiom fc tm', ex)) $ extractUnquotes tm
-extractUnquotes (PProof tacs)
-  = do (tacs', exs) <- fmap unzip $ mapM extractTUnquotes tacs
+extractUnquotes n (PIdiom fc tm)
+  = fmap (\(tm', ex) -> (PIdiom fc tm', ex)) $ extractUnquotes n tm
+extractUnquotes n (PProof tacs)
+  = do (tacs', exs) <- fmap unzip $ mapM (extractTUnquotes n) tacs
        return (PProof tacs', concat exs)
-extractUnquotes (PTactics tacs)
-  = do (tacs', exs) <- fmap unzip $ mapM extractTUnquotes tacs
+extractUnquotes n (PTactics tacs)
+  = do (tacs', exs) <- fmap unzip $ mapM (extractTUnquotes n) tacs
        return (PTactics tacs', concat exs)
-extractUnquotes (PElabError err) = fail "Can't quasiquote an error"
-extractUnquotes (PCoerced tm)
-  = do (tm', ex) <- extractUnquotes tm
+extractUnquotes n (PElabError err) = fail "Can't quasiquote an error"
+extractUnquotes n (PCoerced tm)
+  = do (tm', ex) <- extractUnquotes n tm
        return (PCoerced tm', ex)
-extractUnquotes (PDisamb ns tm)
-  = do (tm', ex) <- extractUnquotes tm
+extractUnquotes n (PDisamb ns tm)
+  = do (tm', ex) <- extractUnquotes n tm
        return (PDisamb ns tm', ex)
-extractUnquotes (PUnifyLog tm)
-  = fmap (\(tm', ex) -> (PUnifyLog tm', ex)) $ extractUnquotes tm
-extractUnquotes (PNoImplicits tm)
-  = fmap (\(tm', ex) -> (PNoImplicits tm', ex)) $ extractUnquotes tm
-extractUnquotes (PQuasiquote _ _) = fail "Nested quasiquotes not supported"
-extractUnquotes (PUnquote tm) =
-  do n <- getNameFrom (sMN 0 "unquotation")
-     return (PRef (fileFC "(unquote)") n, [(n, tm)])
-extractUnquotes x = return (x, []) -- no subterms!
+extractUnquotes n (PUnifyLog tm)
+  = fmap (\(tm', ex) -> (PUnifyLog tm', ex)) $ extractUnquotes n tm
+extractUnquotes n (PNoImplicits tm)
+  = fmap (\(tm', ex) -> (PNoImplicits tm', ex)) $ extractUnquotes n tm
+extractUnquotes n (PQuasiquote tm goal)
+  = fmap (\(tm', ex) -> (PQuasiquote tm' goal, ex)) $ extractUnquotes (n+1) tm
+extractUnquotes n (PUnquote tm)
+  | n == 0 = do n <- getNameFrom (sMN 0 "unquotation")
+                return (PRef (fileFC "(unquote)") n, [(n, tm)])
+  | otherwise = fmap (\(tm', ex) -> (PUnquote tm', ex)) $
+                extractUnquotes (n-1) tm
+extractUnquotes n x = return (x, []) -- no subterms!
 
 

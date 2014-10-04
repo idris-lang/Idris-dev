@@ -1020,14 +1020,14 @@ data SyntaxInfo = Syn { using :: [Using],
                         maxline :: Maybe Int,
                         mut_nesting :: Int,
                         dsl_info :: DSL,
-                        syn_in_quasiquote :: Bool }
+                        syn_in_quasiquote :: Int }
     deriving Show
 {-!
 deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] id False False Nothing 0 initDSL False
+defaultSyntax = Syn [] [] [] [] id False False Nothing 0 initDSL 0
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n

@@ -4,8 +4,8 @@
 module IdrisNet.Socket
 
 %include C "idris_net.h"
-%include C "sys/types.h" 
-%include C "sys/socket.h" 
+%include C "sys/types.h"
+%include C "sys/socket.h"
 %include C "netdb.h"
 
 %access public
@@ -16,12 +16,17 @@ ByteLength = Int
 class ToCode a where
   toCode : a -> Int
 
--- Socket Families.
--- The ones that people might actually use. We're not going to need US Government
--- proprietary ones...
-data SocketFamily = AF_UNSPEC -- Unspecified
-                  | AF_INET   -- IP / UDP etc. IPv4
-                  | AF_INET6  -- IP / UDP etc. IPv6
+||| Socket Families
+|||
+||| The ones that people might actually use. We're not going to need US
+||| Government proprietary ones.
+data SocketFamily =
+  ||| Unspecified
+  AF_UNSPEC |
+  ||| IP / UDP etc. IPv4
+  AF_INET |
+  |||  IP / UDP etc. IPv6
+  AF_INET6
 
 instance Show SocketFamily where
   show AF_UNSPEC = "AF_UNSPEC"
@@ -36,11 +41,16 @@ instance ToCode SocketFamily where
 getSocketFamily : Int -> Maybe SocketFamily
 getSocketFamily i = Prelude.List.lookup i [(0, AF_UNSPEC), (2, AF_INET), (10, AF_INET6)]
 
--- Socket Types.
-data SocketType = NotASocket  -- Not a socket, used in certain operations
-                | Stream      -- TCP
-                | Datagram    -- UDP
-                | RawSocket   -- Raw sockets. A guy can dream.
+||| Socket Types.
+data SocketType =
+  ||| Not a socket, used in certain operations
+  NotASocket |
+  ||| TCP
+  Stream |
+  ||| UDP
+  Datagram |
+  ||| Raw sockets
+  RawSocket
 
 instance Show SocketType where
   show NotASocket = "Not a socket"
@@ -60,15 +70,17 @@ data RecvfromStructPtr = RFPtr Ptr
 data BufPtr = BPtr Ptr
 data SockaddrPtr = SAPtr Ptr
 
--- Protocol Number. Generally good enough to just set it to 0.
+||| Protocol Number.
+|||
+||| Generally good enough to just set it to 0.
 ProtocolNumber : Type
 ProtocolNumber = Int
 
--- SocketError: Error thrown by a socket operation
+||| SocketError: Error thrown by a socket operation
 SocketError : Type
 SocketError = Int
 
--- SocketDescriptor: Native C Socket Descriptor
+||| SocketDescriptor: Native C Socket Descriptor
 SocketDescriptor : Type
 SocketDescriptor = Int
 
@@ -86,7 +98,7 @@ instance Show SocketAddress where
 Port : Type
 Port = Int
 
--- Backlog used within listen() call -- number of incoming calls
+||| Backlog used within listen() call -- number of incoming calls
 BACKLOG : Int
 BACKLOG = 20
 
@@ -109,7 +121,7 @@ record UDPAddrInfo : Type where
     (remote_port : Port) ->
     UDPAddrInfo
 
--- Frees a given pointer
+||| Frees a given pointer
 public
 sock_free : BufPtr -> IO ()
 sock_free (BPtr ptr) = mkForeign (FFun "idrnet_free" [FPtr] FUnit) ptr
@@ -118,12 +130,14 @@ public
 sockaddr_free : SockaddrPtr -> IO ()
 sockaddr_free (SAPtr ptr) = mkForeign (FFun "idrnet_free" [FPtr] FUnit) ptr
 
--- Allocates an amount of memory given by the ByteLength parameter.
--- Used to allocate a mutable pointer to be given to the Recv functions.
+||| Allocates an amount of memory given by the ByteLength parameter.
+|||
+||| Used to allocate a mutable pointer to be given to the Recv functions.
 public
 sock_alloc : ByteLength -> IO BufPtr
 sock_alloc bl = map BPtr $ mkForeign (FFun "idrnet_malloc" [FInt] FPtr) bl
 
+||| The metadata about a socket
 record Socket : Type where
   MkSocket : (descriptor : SocketDescriptor) ->
              (family : SocketFamily) ->
@@ -131,20 +145,21 @@ record Socket : Type where
              (protocolNumber : ProtocolNumber) ->
              Socket
 
+||| Get the C error number
 getErrno : IO Int
 getErrno = mkForeign (FFun "idrnet_errno" [] FInt)
 
--- Creates a UNIX socket with the given family, socket type and protocol number.
--- Returns either a socket or an error.
+||| Creates a UNIX socket with the given family, socket type and protocol
+||| number. Returns either a socket or an error.
 socket : SocketFamily -> SocketType -> ProtocolNumber -> IO (Either SocketError Socket)
 socket sf st pn = do
   socket_res <- mkForeign (FFun "socket" [FInt, FInt, FInt] FInt) (toCode sf) (toCode st) pn
   if socket_res == -1 then -- error
     map Left getErrno
-  else 
+  else
     return $ Right (MkSocket socket_res sf st pn)
 
-
+||| Close a socket
 close : Socket -> IO ()
 close sock = mkForeign (FFun "close" [FInt] FUnit) (descriptor sock)
 
@@ -153,18 +168,18 @@ saString : (Maybe SocketAddress) -> String
 saString (Just sa) = show sa
 saString Nothing = ""
 
--- Binds a socket to the given socket address and port.
--- Returns 0 on success, an error code otherwise.
+||| Binds a socket to the given socket address and port.
+||| Returns 0 on success, an error code otherwise.
 bind : Socket -> (Maybe SocketAddress) -> Port -> IO Int
 bind sock addr port = do
-  bind_res <- (mkForeign (FFun "idrnet_bind" [FInt, FInt, FInt, FString, FInt] FInt) 
+  bind_res <- (mkForeign (FFun "idrnet_bind" [FInt, FInt, FInt, FString, FInt] FInt)
                            (descriptor sock) (toCode $ family sock) (toCode $ socketType sock) (saString addr) port)
   if bind_res == (-1) then -- error
     getErrno
   else return 0 -- Success
 
--- Connects to a given address and port.
--- Returns 0 on success, and an error number on error.
+||| Connects to a given address and port.
+||| Returns 0 on success, and an error number on error.
 connect : Socket -> SocketAddress -> Port -> IO Int
 connect sock addr port = do
   conn_res <- (mkForeign (FFun "idrnet_connect" [FInt, FInt, FInt, FString, FInt] FInt)
@@ -173,7 +188,7 @@ connect sock addr port = do
     getErrno
   else return 0
 
--- Listens on a bound socket.
+||| Listens on a bound socket.
 listen : Socket -> IO Int
 listen sock = do
   listen_res <- mkForeign (FFun "listen" [FInt, FInt] FInt) (descriptor sock) BACKLOG
@@ -181,7 +196,7 @@ listen sock = do
     getErrno
   else return 0
 
--- Parses a textual representation of an IPv4 address into a SocketAddress
+||| Parses a textual representation of an IPv4 address into a SocketAddress
 parseIPv4 : String -> SocketAddress
 parseIPv4 str = case splitted of
                   (i1 :: i2 :: i3 :: i4 :: _) => IPv4Addr i1 i2 i3 i4
@@ -194,7 +209,7 @@ parseIPv4 str = case splitted of
         splitted = map toInt (Prelude.Strings.split (\c => c == '.') str)
 
 
--- Retrieves a socket address from a sockaddr pointer
+||| Retrieves a socket address from a sockaddr pointer
 getSockAddr : SockaddrPtr -> IO SocketAddress
 getSockAddr (SAPtr ptr) = do
   addr_family_int <- mkForeign (FFun "idrnet_sockaddr_family" [FPtr] FInt) ptr
@@ -256,13 +271,13 @@ recv sock len = do
        return $ Right (payload, recv_res)
 
 
--- Sends the data in a given memory location
+||| Sends the data in a given memory location
 sendBuf : Socket -> BufPtr -> ByteLength -> IO (Either SocketError ByteLength)
 sendBuf sock (BPtr ptr) len = do
   send_res <- mkForeign (FFun "idrnet_send_buf" [FInt, FPtr, FInt] FInt) (descriptor sock) ptr len
   if send_res == (-1) then
     map Left getErrno
-  else 
+  else
     return $ Right send_res
 
 recvBuf : Socket -> BufPtr -> ByteLength -> IO (Either SocketError ByteLength)
@@ -313,7 +328,7 @@ recvFrom sock bl = do
   recv_ptr <- mkForeign (FFun "idrnet_recvfrom" [FInt, FInt] FPtr) 
                 (descriptor sock) bl
   let recv_ptr' = RFPtr recv_ptr
-  if !(nullPtr recv_ptr) then -- ! notation = monadic bind shortcut, not "not"
+  if !(nullPtr recv_ptr) then
     map Left getErrno
   else do
     result <- mkForeign (FFun "idrnet_get_recvfrom_res" [FPtr] FInt) recv_ptr
@@ -332,7 +347,7 @@ recvFromBuf : Socket -> BufPtr -> ByteLength -> IO (Either SocketError (UDPAddrI
 recvFromBuf sock (BPtr ptr) bl = do
   recv_ptr <- mkForeign (FFun "idrnet_recvfrom_buf" [FInt, FPtr, FInt] FPtr) (descriptor sock) ptr bl
   let recv_ptr' = RFPtr recv_ptr
-  if !(nullPtr recv_ptr) then -- ! notation = monadic bind shortcut, not "not"
+  if !(nullPtr recv_ptr) then
     map Left getErrno
   else do
     result <- mkForeign (FFun "idrnet_get_recvfrom_res" [FPtr] FInt) recv_ptr
@@ -345,5 +360,4 @@ recvFromBuf sock (BPtr ptr) bl = do
       freeRecvfromStruct recv_ptr'
       return $ Right (MkUDPAddrInfo addr port, result + 1)
 
-  
 

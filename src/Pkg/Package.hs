@@ -63,10 +63,10 @@ buildPkg warnonly (install, fp)
                        -- Also give up if there are metavariables to solve
                        case (map fst (idris_metavars ist) \\ primDefs) of
                             _ -> when install $ installPkg pkgdesc
---                             ms -> do if install 
+--                             ms -> do if install
 --                                         then putStrLn "Can't install: there are undefined metavariables:"
 --                                         else putStrLn "There are undefined metavariables:"
---                                      putStrLn $ "\t" ++ show ms 
+--                                      putStrLn $ "\t" ++ show ms
 --                                      exitWith (ExitFailure 1)
 
 -- | Type check packages only
@@ -107,7 +107,7 @@ replPkg fp = do orig <- getIState
                 runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
 
                 if (f /= "")
-                   then idrisMain ((Filename f) : opts) 
+                   then idrisMain ((Filename f) : opts)
                    else iputStrLn "Can't start REPL: no main module given"
                 runIO $ setCurrentDirectory dir
 
@@ -129,6 +129,9 @@ cleanPkg fp
 -- | Generate IdrisDoc for package
 -- TODO: Handle case where module does not contain a matching namespace
 --       E.g. from prelude.ipkg: IO, Prelude.Chars, Builtins
+--
+-- Issue number #1572 on the issue tracker
+--       https://github.com/idris-lang/Idris-dev/issues/1572
 documentPkg :: FilePath -- ^ Path to .ipkg file.
             -> IO ()
 documentPkg fp =
@@ -143,7 +146,7 @@ documentPkg fp =
      make (makefile pkgdesc)
      setCurrentDirectory $ pkgDir
      let run l       = runErrorT . (execStateT l)
-         load []     = return () 
+         load []     = return ()
          load (f:fs) = do loadModule f; load fs
          loader      = do idrisMain opts; load fs
      idrisInstance  <- run loader idrisInit

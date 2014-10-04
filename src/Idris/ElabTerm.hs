@@ -18,7 +18,7 @@ import Idris.Core.Typecheck (check, recheck)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
 import Idris.Elab.Utils
-import qualified Util.Pretty as U 
+import qualified Util.Pretty as U
 
 import Control.Applicative ((<$>))
 import Control.Monad
@@ -76,9 +76,9 @@ build ist info emode opts fn tm
          u <- getUnifyLog
          hs <- get_holes
 
-         when (not pattern) $ 
+         when (not pattern) $
            traceWhen u ("Remaining holes:\n" ++ show hs ++ "\n" ++
-                        "Remaining problems:\n" ++ qshow probs) $ 
+                        "Remaining problems:\n" ++ qshow probs) $
              do unify_all; matchProblems True; unifyProblems
 
          probs <- get_probs
@@ -99,7 +99,7 @@ build ist info emode opts fn tm
             else return (tm, ds, is)
   where pattern = emode == ELHS
         tydecl = emode == ETyDecl
-    
+
         mkPat = do hs <- get_holes
                    tm <- get_term
                    case hs of
@@ -197,14 +197,14 @@ elab ist info emode opts fn tm
                      --         ++ "\nholes " ++ show hs
                      --         ++ "\nproblems " ++ show ps
                      --         ++ "\n-----------\n") $
-                     --trace ("ELAB " ++ show t') $ 
+                     --trace ("ELAB " ++ show t') $
                      let fc = fileFC "Force"
                      env <- get_env
                      handleError (forceErr env)
                          (elab' ina t')
                          (elab' ina (PApp fc (PRef fc (sUN "Force"))
                                        [pimp (sUN "t") Placeholder True,
-                                        pimp (sUN "a") Placeholder True, 
+                                        pimp (sUN "a") Placeholder True,
                                         pexp ct])) True
 
     forceErr env (CantUnify _ t t' _ _ _)
@@ -240,9 +240,9 @@ elab ist info emode opts fn tm
     elab' ina (PNoImplicits t) = elab' ina t -- skip elabE step
     elab' ina PType           = do apply RType []; solve
     elab' ina (PUniverse u)   = do apply (RUType u) []; solve
---  elab' (_,_,inty) (PConstant c) 
+--  elab' (_,_,inty) (PConstant c)
 --     | constType c && pattern && not reflection && not inty
---       = lift $ tfail (Msg "Typecase is not allowed") 
+--       = lift $ tfail (Msg "Typecase is not allowed")
     elab' ina (PConstant c)  = do apply (RConstant c) []; solve
     elab' ina (PQuote r)     = do fill r; solve
     elab' ina (PTrue fc _)   =
@@ -338,7 +338,7 @@ elab ist info emode opts fn tm
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed")
-    elab' (ina, guarded, inty, qq) (PRef fc n) 
+    elab' (ina, guarded, inty, qq) (PRef fc n)
       | (pattern || (bindfree && bindable n)) && not (inparamBlock n) && not qq
         = do ctxt <- get_context
              let defined = case lookupTy n ctxt of
@@ -363,7 +363,7 @@ elab ist info emode opts fn tm
           = do -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
                when (isTConName n ctxt) $
-                    lift $ tfail (Msg $ "Can't use type constructor " ++ show n ++ " here")  
+                    lift $ tfail (Msg $ "Can't use type constructor " ++ show n ++ " here")
                checkPiGoal n
                attack; intro (Just n);
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm)
@@ -373,7 +373,7 @@ elab ist info emode opts fn tm
                -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
                when (isTConName n ctxt) $
-                    lift $ tfail (Msg $ "Can't use type constructor " ++ show n ++ " here")  
+                    lift $ tfail (Msg $ "Can't use type constructor " ++ show n ++ " here")
                checkPiGoal n
                claim tyn RType
                explicit tyn
@@ -539,7 +539,7 @@ elab ist info emode opts fn tm
                              sortBy cmpArg (zip ns args)
                     ulog <- getUnifyLog
                     elabArgs ist (ina || not isinf, guarded, inty, qq)
-                           [] fc False f ns' 
+                           [] fc False f ns'
                              (f == sUN "Force")
                              (map (\x -> getTm x) eargs) -- TODO: remove this False arg
                     solve
@@ -558,7 +558,7 @@ elab ist info emode opts fn tm
                                          else movelast n)
                               (ivs' \\ ivs)
       where -- normal < alternatives < lambdas < rewrites < tactic < default tactic
-            -- reason for lambdas after alternatives is that having 
+            -- reason for lambdas after alternatives is that having
             -- the alternative resolved can help with typechecking the lambda
             -- or the rewrite. Rewrites/tactics need as much information
             -- as possible about the type.
@@ -568,7 +568,7 @@ elab ist info emode opts fn tm
                 | constraint x && not (constraint y) = LT
                 | constraint y && not (constraint x) = GT
                 | otherwise
-                   = compare (conDepth 0 (getTm x) + priority x + alt x) 
+                   = compare (conDepth 0 (getTm x) + priority x + alt x)
                              (conDepth 0 (getTm y) + priority y + alt y)
                 where alt t = case getTm t of
                                    PAlternative False _ -> 5
@@ -581,14 +581,14 @@ elab ist info emode opts fn tm
 
             constraint (PConstraint _ _ _ _) = True
             constraint _ = False
- 
+
             -- Score a point for every level where there is a non-constructor
             -- function (so higher score --> done later)
             -- Only relevant when on lhs
             conDepth d t | not pattern = 0
             conDepth d (PRef _ f) | isConName f (tt_ctxt ist) = 0
                                   | otherwise = max (100 - d) 1
-            conDepth d (PApp _ f as) 
+            conDepth d (PApp _ f as)
                = conDepth d f + sum (map (conDepth (d+1)) (map getTm as))
             conDepth d (PPatvar _ _) = 0
             conDepth d (PAlternative _ as) = maximum (map (conDepth d) as)
@@ -602,7 +602,7 @@ elab ist info emode opts fn tm
                      Nothing -> return ()
                      Just b ->
                        case unApply (binderTy b) of
-                            (P _ c _, args) -> 
+                            (P _ c _, args) ->
                                 case lookupCtxt c (idris_classes ist) of
                                    [] -> return ()
                                    _ -> -- type class, set as injective
@@ -615,7 +615,7 @@ elab ist info emode opts fn tm
                                            probs <- get_probs
                                            traceWhen ulog (qshow probs) $ return ()
                             _ -> return ()
-                     
+
             setinjArg (P _ n _) = setinj n
             setinjArg _ = return ()
 
@@ -634,7 +634,7 @@ elab ist info emode opts fn tm
                 solve
     elab' ina Placeholder = do (h : hs) <- get_holes
                                movelast h
-    elab' ina (PMetavar n) = 
+    elab' ina (PMetavar n) =
           do ptm <- get_term
              -- When building the metavar application, leave out the unique
              -- names which have been used elsewhere in the term, since we
@@ -699,21 +699,6 @@ elab ist info emode opts fn tm
              args <- get_env
              envU <- mapM (getKind args) args
              let namesUsedInRHS = nub $ scvn : concatMap (\(_,rhs) -> allNamesIn rhs) opts
---                                             ++ allNamesIn scr
-        
-             -- in the definition we build for the case, only pass through
-             -- names which are directly used, type class constraints, and
-             -- variables any of these depend on
-             -- FIXME: This probably doesn't help us, but leaving it in
-             -- temporarily (but commented out). If this comment is still
-             -- here in master, please delete the code!
---              let directUse = filter (\n -> usedIn namesUsedInRHS n
---                                             || tcName (binderTy (snd n))) args
---              let args' = args -- chaseDeps args (map fst directUse) directUse
---              let argsDropped = map fst $
---                                  filter (\(n, _) -> case lookup n args' of
---                                                        Nothing -> True
---                                                        _ -> False) args
 
              -- Drop the unique arguments used in the scrutinee (since it's
              -- not valid to use them again anyway)
@@ -724,7 +709,7 @@ elab ist info emode opts fn tm
              let cname' = mkN cname
 --              elab' ina (PMetavar cname')
              attack; defer argsDropped cname'; solve
-             
+
              -- if the scrutinee is one of the 'args' in env, we should
              -- inspect it directly, rather than adding it as a new argument
              let newdef = PClauses fc [] cname'
@@ -748,10 +733,10 @@ elab ist info emode opts fn tm
                                      Just u -> u
                                      _ -> False
 
-              getKind env (n, _) 
+              getKind env (n, _)
                   = case lookup n env of
                          Nothing -> return (n, False) -- can't happen, actually...
-                         Just b -> 
+                         Just b ->
                             do ty <- get_type (forget (binderTy b))
                                case ty of
                                     UType UniqueType -> return (n, True)
@@ -764,8 +749,8 @@ elab ist info emode opts fn tm
                          _ -> False
               tcName _ = False
 
-              usedIn ns (n, b) 
-                 = n `elem` ns 
+              usedIn ns (n, b)
+                 = n `elem` ns
                      || any (\x -> x `elem` ns) (allTTNames (binderTy b))
 
               -- FIXME: This probably doesn't help us here, but leaving
@@ -791,7 +776,7 @@ elab ist info emode opts fn tm
         = do -- First extract the unquoted subterms, replacing them with fresh
              -- names in the quasiquoted term. Claim their reflections to be
              -- of type TT.
-             (t, unq) <- extractUnquotes t
+             (t, unq) <- extractUnquotes 0 t
              let unquoteNames = map fst unq
              mapM_ (flip claim (Var tt)) unquoteNames
 
@@ -872,7 +857,7 @@ elab ist info emode opts fn tm
     isScr (PRef _ n) (n', b) = (n', (n == n', b))
     isScr _ (n', b) = (n', (False, b))
 
-    caseBlock :: FC -> Name -> 
+    caseBlock :: FC -> Name ->
                  [(Name, (Bool, Binder Term))] -> [(PTerm, PTerm)] -> [PClause]
     caseBlock fc n env opts
         = let args' = findScr env
@@ -882,12 +867,12 @@ elab ist info emode opts fn tm
        where -- Find the variable we want as the scrutinee and mark it as
              -- 'True'. If the scrutinee is in the environment, match on that
              -- otherwise match on the new argument we're adding.
-             findScr ((n, (True, t)) : xs) 
+             findScr ((n, (True, t)) : xs)
                         = (n, (True, t)) : scrName n xs
-             findScr [(n, (_, t))] = [(n, (True, t))] 
+             findScr [(n, (_, t))] = [(n, (True, t))]
              findScr (x : xs) = x : findScr xs
              -- [] can't happen since scrutinee is in the environment!
-             
+
              -- To make sure top level pattern name remains in scope, put
              -- it at the end of the environment
              scrName n []  = []
@@ -931,7 +916,7 @@ elab ist info emode opts fn tm
                 _ -> return t
       where
         mkDelay env (PAlternative b xs) = PAlternative b (map (mkDelay env) xs)
-        mkDelay env t 
+        mkDelay env t
             = let fc = fileFC "Delay" in
                   addImplBound ist (map fst env) (PApp fc (PRef fc (sUN "Delay"))
                                                  [pexp t])
@@ -998,10 +983,10 @@ elab ist info emode opts fn tm
                    failed' <- -- trace (show (n, t, hs, tm)) $
                               -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
                               case holeName `elem` hs of
-                                True -> do focus holeName; 
+                                True -> do focus holeName;
                                            g <- goal
                                            ulog <- getUnifyLog
-                                           traceWhen ulog ("Elaborating argument " ++ show (argName, holeName, g)) $ 
+                                           traceWhen ulog ("Elaborating argument " ++ show (argName, holeName, g)) $
                                              elab ina t; return failed
                                 False -> return failed
                    done_elaborating_arg f argName
@@ -1057,7 +1042,7 @@ pruneByType env t c as
     getName (PRef _ n) = Just n
     getName (PApp _ f _) = getName f
     getName _ = Nothing
-                      
+
 pruneByType env (P _ n _) c as
 -- if the goal type is polymorphic, keep e
    | [] <- lookupTy n c = as
@@ -1098,11 +1083,11 @@ trivial' ist
     = trivial (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
 proofSearch' ist rec depth prv top n hints
     = do unifyProblems
-         proofSearch rec prv depth 
+         proofSearch rec prv depth
                      (elab ist toplevel ERHS [] (sMN 0 "tac")) top n hints ist
 
 resolveTC :: Bool -> Int -> Term -> Name -> IState -> ElabD ()
-resolveTC = resTC' [] 
+resolveTC = resTC' []
 
 resTC' tcs def 0 topg fn ist = fail $ "Can't resolve type class"
 resTC' tcs def 1 topg fn ist = try' (trivial' ist) (resolveTC def 0 topg fn ist) True
@@ -1112,7 +1097,7 @@ resTC' tcs defaultOn depth topg fn ist
            ptm <- get_term
            ulog <- getUnifyLog
            hs <- get_holes
-           traceWhen ulog ("Resolving class " ++ show g) $ 
+           traceWhen ulog ("Resolving class " ++ show g) $
             try' (trivial' ist)
                 (do t <- goal
                     let (tc, ttypes) = unApply t
@@ -1129,7 +1114,7 @@ resTC' tcs defaultOn depth topg fn ist
 
     -- HACK! Rather than giving a special name, better to have some kind
     -- of flag in ClassInfo structure
-    chaser (UN nm) 
+    chaser (UN nm)
         | ('@':'@':_) <- str nm = True -- old way
     chaser (SN (ParentN _ _)) = True
     chaser (NS n _) = chaser n
@@ -1173,7 +1158,7 @@ resTC' tcs defaultOn depth topg fn ist
                 args <- map snd <$> try' (apply (Var n) imps)
                                          (match_apply (Var n) imps) True
                 ps' <- get_probs
-                when (length ps < length ps' || unrecoverable ps') $ 
+                when (length ps < length ps' || unrecoverable ps') $
                      fail "Can't apply type class"
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
@@ -1181,7 +1166,7 @@ resTC' tcs defaultOn depth topg fn ist
                                      let (tc', ttype) = unApply t'
                                      let got = fst (unApply t)
                                      let depth' = if tc' `elem` tcs
-                                                     then depth - 1 else depth 
+                                                     then depth - 1 else depth
                                      resTC' (got : tcs) defaultOn depth' topg fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
@@ -1232,11 +1217,11 @@ case_ ind autoSolve ist fn tm = do
 -- if a tactic adds unification problems, return an error
 
 runTac :: Bool -> IState -> Name -> PTactic -> ElabD ()
-runTac autoSolve ist fn tac 
+runTac autoSolve ist fn tac
     = do env <- get_env
          g <- goal
          let tac' = fmap (addImplBound ist (map fst env)) tac
-         if autoSolve 
+         if autoSolve
             then runT tac'
             else no_errors (runT tac')
                    (Just (CantSolveGoal g (map (\(n, b) -> (n, binderTy b)) env)))
@@ -1398,11 +1383,11 @@ runTac autoSolve ist fn tac
              letbind scriptvar scriptTy (Var script)
              focus script
              ptm <- get_term
-             elab ist toplevel ERHS [] (sMN 0 "tac") 
+             elab ist toplevel ERHS [] (sMN 0 "tac")
                   (PApp emptyFC tm [pexp (delabTy' ist [] tgoal True True)])
              (script', _) <- get_type_val (Var scriptvar)
              -- now that we have the script apply
-             -- it to the reflected goal 
+             -- it to the reflected goal
              restac <- getNameFrom (sMN 0 "restac")
              claim restac tacticTy
              focus restac
@@ -1482,7 +1467,7 @@ reify _ t = fail ("Unknown tactic " ++ show t)
 
 reifyApp :: IState -> Name -> [Term] -> ElabD PTactic
 reifyApp ist t [l, r] | t == reflm "Try" = liftM2 Try (reify ist l) (reify ist r)
-reifyApp _ t [Constant (I i)] 
+reifyApp _ t [Constant (I i)]
            | t == reflm "Search" = return (ProofSearch True True i Nothing [])
 reifyApp _ t [x]
            | t == reflm "Refine" = do n <- reifyTTName x
@@ -2223,4 +2208,3 @@ envTupleType
                            ]
 
 solveAll = try (do solve; solveAll) (return ())
-

@@ -2,9 +2,17 @@ module Data.List
 
 %access public
 
-||| A proof that some element is found in a list
+||| A proof that some element is found in a list.
+|||
+||| Example: `the (Elem "bar" ["foo", "bar", "baz"]) (tactics { search })`
 data Elem : a -> List a -> Type where
+     ||| A proof that the element is at the front of the list.
+     |||
+     ||| Example: `the (Elem "a" ["a", "b"]) Here`
      Here : Elem x (x :: xs)
+     ||| A proof that the element is after the front of the list
+     |||
+     ||| Example: `the (Elem "b" ["a", "b"]) (There Here)`
      There : Elem x xs -> Elem x (y :: xs)
 
 instance Uninhabited (Elem {a} x []) where

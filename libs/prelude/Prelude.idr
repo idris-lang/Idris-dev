@@ -494,6 +494,7 @@ getChar = map cast $ mkForeign (FFun "getchar" [] FInt)
 
 ---- some basic file handling
 
+||| A file handle
 abstract
 data File = FHandle Ptr
 
@@ -592,6 +593,7 @@ partial
 do_feof : Ptr -> IO Int
 do_feof h = mkForeign (FFun "fileEOF" [FPtr] FInt) h
 
+||| Check if a file handle has reached the end
 feof : File -> IO Bool
 feof (FHandle h) = do eof <- do_feof h
                       return (not (eof == 0))
@@ -608,6 +610,7 @@ fpoll : File -> IO Bool
 fpoll (FHandle h) = do p <- mkForeign (FFun "fpoll" [FPtr] FInt) h
                        return (p > 0)
 
+||| Check if a foreign pointer is null
 partial
 nullPtr : Ptr -> IO Bool
 nullPtr p = do ok <- mkForeign (FFun "isNull" [FPtr] FInt) p
@@ -630,6 +633,10 @@ validFile : File -> IO Bool
 validFile (FHandle h) = do x <- nullPtr h
                            return (not x)
 
+||| Loop while some test is true
+|||
+||| @ test the condition of the loop
+||| @ body the loop body
 partial -- obviously
 while : (test : IO Bool) -> (body : IO ()) -> IO ()
 while t b = do v <- t
@@ -637,6 +644,7 @@ while t b = do v <- t
                             while t b
                     else return ()
 
+||| Read the contents of a file into a string
 partial -- no error checking!
 readFile : String -> IO String
 readFile fn = do h <- openFile fn Read
