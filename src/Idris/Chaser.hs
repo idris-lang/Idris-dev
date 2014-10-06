@@ -70,7 +70,7 @@ getIModTime (LIDR i) = getModificationTime i
 
 buildTree :: [FilePath] -> -- already guaranteed built
              FilePath -> Idris [ModuleTree]
-buildTree built fp = btree [] fp 
+buildTree built fp = btree [] fp
 --                    = idrisCatch (btree [] fp)
 --                         (\e -> do now <- runIO $ getCurrentTime
 --                                   iputStrLn (show e)
@@ -114,6 +114,10 @@ buildTree built fp = btree [] fp
 
           -- FIXME: It's also not up to date if anything it imports has
           -- been modified since its own ibc has.
+          --
+          -- Issue #1592 on the issue tracker.
+          --
+          -- https://github.com/idris-lang/Idris-dev/issues/1592
 
           checkIBCUpToDate fn (LIDR src) = older fn src
           checkIBCUpToDate fn (IDR src) = older fn src
