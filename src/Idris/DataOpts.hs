@@ -97,6 +97,7 @@ applyDataOptRT n tag arity uniq args
 
     -- Nat special cases
     -- TODO: Would be nice if this was configurable in idris source!
+    -- Issue #1597 https://github.com/idris-lang/Idris-dev/issues/1597
     doOpts (NS (UN z) [nat, prelude]) []
         | z == txt "Z" && nat == txt "Nat" && prelude == txt "Prelude"
           = Constant (BI 0)
@@ -105,4 +106,3 @@ applyDataOptRT n tag arity uniq args
           = App (App (P Ref (sUN "prim__addBigInt") Erased) k) (Constant (BI 1))
 
     doOpts n args = mkApp (P (DCon tag arity uniq) n Erased) args
-
