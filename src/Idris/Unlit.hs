@@ -23,9 +23,11 @@ check f l (a:b:cs) = do chkAdj f l (fst a) (fst b)
 check f l [x] = return ()
 check f l [] = return ()
 
+-- Issue #1593 on the issue checker.
+--
+--     https://github.com/idris-lang/Idris-dev/issues/1593
+--
 chkAdj :: FilePath -> Int -> LineType -> LineType -> TC ()
 chkAdj f l Prog Comm = tfail $ At (FC f (l, 0) (l, 0)) ProgramLineComment --TODO: Span correctly
 chkAdj f l Comm Prog = tfail $ At (FC f (l, 0) (l, 0)) ProgramLineComment --TODO: Span correctly
 chkAdj f l _    _    = return ()
-
-
