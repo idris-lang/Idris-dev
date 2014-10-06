@@ -178,8 +178,6 @@ constructor syn
          cn_in <- fnName; fc <- getFC
          let cn = expandNS syn cn_in
          lchar ':'
-         -- FIXME: 'forcenames' is an almighty hack! Need a better way of
-         -- erasing non-forceable things
          fs <- option [] (do lchar '%'; reserved "erase"
                              sepBy1 name (lchar ','))
          ty <- typeExpr (allowImp syn)
@@ -206,7 +204,7 @@ simpleConstructor syn
           return (doc', [], cn, args, fc, [])
        <?> "constructor"
 
-{- | Parses a dsl block declaration
+{- | Parses a dsl block declaration
 DSL ::= 'dsl' FnName OpenBlock Overload'+ CloseBlock;
  -}
 dsl :: SyntaxInfo -> IdrisParser PDecl
@@ -235,6 +233,11 @@ dsl syn = do reserved "dsl"
 
 {- | Checks DSL for errors -}
 -- FIXME: currently does nothing, check if DSL is really sane
+--
+-- Issue #1595 on the Issue Tracker
+--
+--     https://github.com/idris-lang/Idris-dev/issues/1595
+--
 checkDSL :: DSL -> IdrisParser ()
 checkDSL dsl = return ()
 
@@ -253,5 +256,3 @@ overload syn = do o <- identifier <|> do reserved "let"
                        return (o, t)
                <?> "dsl overload declaratioN"
     where overloadable = ["let","lambda","pi","index_first","index_next","variable"]
-
-
