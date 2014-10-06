@@ -65,7 +65,7 @@ serializeBC n bc = indent n ++
         "OP " ++ serializeReg a ++ " " ++ show b ++ " [" ++ interMap c ", " serializeReg ++ "]"
       NULL r -> "NULL " ++ serializeReg r
       ERROR s -> "ERROR \"" ++ s ++ "\"" -- FIXME: s may contain quotes
-
+                                         -- Issue #1596
 serialize :: [(Name, [BC])] -> String
 serialize decls =
     interMap decls "\n\n" serializeDecl
