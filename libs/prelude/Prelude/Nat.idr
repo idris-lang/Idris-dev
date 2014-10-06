@@ -156,6 +156,14 @@ maximum Z m = m
 maximum (S n) Z = S n
 maximum (S n) (S m) = S (maximum n m)
 
+||| Tail recursive cast Nat to Int
+||| Note that this can overflow
+toIntNat : Nat -> Int
+toIntNat n = toIntNat' n 0 where
+	toIntNat' : Nat -> Int -> Int
+	toIntNat' Z     x = x
+	toIntNat' (S n) x = toIntNat' n (x + 1)
+
 --------------------------------------------------------------------------------
 -- Type class instances
 --------------------------------------------------------------------------------
@@ -245,9 +253,7 @@ instance Cast Int Nat where
   cast i = fromInteger (cast i)
 
 instance Cast Nat Int where
-  cast Z     = 0
-  cast (S n) = 1 + cast {to=Int} n
-
+  cast = toIntNat
 
 --------------------------------------------------------------------------------
 -- Auxilliary notions
