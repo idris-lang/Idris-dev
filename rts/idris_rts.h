@@ -129,11 +129,6 @@ typedef void(*func)(VM*, VAL*);
 #define GETMPTR(x) (((VAL)(x))->info.mptr->data) 
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 
-#define GETBITS64(x) ((x)->ty == FWD ? ((VAL)((x)->info.ptr))->info.bits64 : (x)->info.bits64)
-#define GETBITS32(x) ((x)->ty == FWD ? ((VAL)((x)->info.ptr))->info.bits32 : (x)->info.bits32)
-#define GETBITS16(x) ((x)->ty == FWD ? ((VAL)((x)->info.ptr))->info.bits16 : (x)->info.bits16)
-#define GETBITS8(x) ((x)->ty == FWD ? ((VAL)((x)->info.ptr))->info.bits8 : (x)->info.bits8)
-
 #define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
 #define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
 
