@@ -104,10 +104,10 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                                  (de env [] l) (de env [] r)
          | n == sUN "Sg_intro" = PDPair un IsTerm (de env [] l) Placeholder
                                            (de env [] r)
-    deFn env f@(P _ n _) args 
-         | n `elem` map snd env 
+    deFn env f@(P _ n _) args
+         | n `elem` map snd env
               = PApp un (de env [] f) (map pexp (map (de env []) args))
-    deFn env (P _ n _) args 
+    deFn env (P _ n _) args
          | not mvs = case lookup n (idris_metavars ist) of
                         Just (Just _, mi, _) ->
                             mkMVApp n (drop mi (map (de env []) args))
@@ -170,10 +170,10 @@ pprintErr' i (InternalMsg s) =
 pprintErr' i (CantUnify _ x_in y_in e sc s) =
   let (x_ns, y_ns, nms) = renameMNs x_in y_in
       (x, y) = addImplicitDiffs (delab i x_ns) (delab i y_ns) in
-    text "Can't unify" <> indented (annTm x_ns 
+    text "Can't unify" <> indented (annTm x_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
                                         ++ zip nms (repeat False)) x)) <$>
-    text "with" <> indented (annTm y_ns 
+    text "with" <> indented (annTm y_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
                                         ++ zip nms (repeat False)) y)) <>
     case e of
@@ -183,10 +183,10 @@ pprintErr' i (CantUnify _ x_in y_in e sc s) =
            if (opt_errContext (idris_options i)) then showSc i sc else empty
 pprintErr' i (CantConvert x y env) =
   text "Can't convert" <>
-  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env)  
+  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
                (delab i (flagUnique x)))) <$>
   text "with" <>
-  indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) env) 
+  indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
                (delab i (flagUnique y)))) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
     where flagUnique (Bind n (Pi t k@(UType u)) sc)
@@ -232,7 +232,7 @@ pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i UniverseError = text "Universe inconsistency"
-pprintErr' i (UniqueError NullType n) 
+pprintErr' i (UniqueError NullType n)
            = text "Borrowed name" <+> annName' n (showbasic n)
                   <+> text "must not be used on RHS"
 pprintErr' i (UniqueError _ n) = text "Unique name" <+> annName' n (showbasic n)
@@ -255,7 +255,8 @@ pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
 pprintErr' i (ElaboratingArg f x _ e)
   | isUN x =
      text "When elaborating argument" <+>
-     annotate (AnnBoundName x False) (text (showbasic x)) <+> --TODO check plicity
+     annotate (AnnBoundName x False) (text (showbasic x)) <+> -- TODO check plicity
+     -- Issue #1591 on the issue tracker: https://github.com/idris-lang/Idris-dev/issues/1591
      text "to" <+> whatIsName <> annName f <> colon <>
      indented (pprintErr' i e)
   | otherwise =
@@ -289,7 +290,11 @@ pprintErr' i (ReflectionFailed msg err) =
 
 -- Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly
+
 -- FIXME: I can't actually contrive an error to test this! Will revisit later...
+--
+-- Issue #1590 in the Issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1590
 renameMNs :: Term -> Term -> (Term, Term, [Name])
 renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
                     newnames = evalState (getRenames [] ns) 1 in
@@ -307,7 +312,7 @@ renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
     rename :: [(Name, Name)] -> Term -> Term
     rename ns (P nt x t) | Just x' <- lookup x ns = P nt x' t
     rename ns (App f a) = App (rename ns f) (rename ns a)
-    rename ns (Bind x b sc) 
+    rename ns (Bind x b sc)
            = let b' = fmap (rename ns) b
                  sc' = rename ns sc in
                  case lookup x ns of
@@ -318,15 +323,15 @@ renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
 -- If the two terms only differ in their implicits, mark the implicits which
 -- differ as AlwaysShow so that they appear in errors
 addImplicitDiffs :: PTerm -> PTerm -> (PTerm, PTerm)
-addImplicitDiffs x y 
+addImplicitDiffs x y
     = if (x `expLike` y) then addI x y else (x, y)
   where
     addI :: PTerm -> PTerm -> (PTerm, PTerm)
-    addI (PApp fc f as) (PApp gc g bs) 
+    addI (PApp fc f as) (PApp gc g bs)
          = let (as', bs') = addShows as bs in
                (PApp fc f as', PApp gc g bs')
        where addShows [] [] = ([], [])
-             addShows (a:as) (b:bs) 
+             addShows (a:as) (b:bs)
                 = let (as', bs') = addShows as bs
                       (a', b') = addI (getTm a) (getTm b) in
                       if (not (a' `expLike` b'))
@@ -334,20 +339,20 @@ addImplicitDiffs x y
                                    getTm = a' } : as',
                                b { argopts = AlwaysShow : argopts b,
                                    getTm = b' } : bs')
-                         else (a { getTm = a' } : as', 
+                         else (a { getTm = a' } : as',
                                b { getTm = b' } : bs')
-    addI (PLam n a b) (PLam n' c d) 
+    addI (PLam n a b) (PLam n' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
                (PLam n a' b', PLam n' c' d')
-    addI (PPi p n a b) (PPi p' n' c d) 
+    addI (PPi p n a b) (PPi p' n' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
                (PPi p n a' b', PPi p' n' c' d')
-    addI (PRefl fc a) (PRefl fc' b) 
+    addI (PRefl fc a) (PRefl fc' b)
          = let (a', b') = addI a b in
                (PRefl fc a', PRefl fc' b')
-    addI (PEq fc at bt a b) (PEq fc' ct dt c d) 
+    addI (PEq fc at bt a b) (PEq fc' ct dt c d)
          | trace (show (at,bt)) False = undefined
          | at `expLike` ct && bt `expLike` dt
          = let (a', c') = addI a c
@@ -357,8 +362,8 @@ addImplicitDiffs x y
          = let (at', ct') = addI at ct
                (bt', dt') = addI bt dt
                (a', c') = addI a c
-               (b', d') = addI b d 
-               showa = if at `expLike` ct then [] else [AlwaysShow] 
+               (b', d') = addI b d
+               showa = if at `expLike` ct then [] else [AlwaysShow]
                showb = if bt `expLike` dt then [] else [AlwaysShow] in
                (PApp fc (PRef fc eqTy) [(pimp (sUN "A") at' True)
                                                { argopts = showa },
@@ -370,12 +375,12 @@ addImplicitDiffs x y
                                         (pimp (sUN "B") dt' True)
                                                { argopts = showb },
                                         pexp c', pexp d'])
-                                                
-    addI (PPair fc pi a b) (PPair fc' pi' c d) 
+
+    addI (PPair fc pi a b) (PPair fc' pi' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
                (PPair fc pi a' b', PPair fc' pi' c' d')
-    addI (PDPair fc pi a t b) (PDPair fc' pi' c u d) 
+    addI (PDPair fc pi a t b) (PDPair fc' pi' c u d)
          = let (a', c') = addI a c
                (t', u') = addI t u
                (b', d') = addI b d in
@@ -387,19 +392,24 @@ addImplicitDiffs x y
     expLike (PApp _ f as) (PApp _ f' as')
         = expLike f f' && length as == length as' &&
           and (zipWith expLike (getExps as) (getExps as'))
-    expLike (PPi _ n s t) (PPi _ n' s' t') 
+    expLike (PPi _ n s t) (PPi _ n' s' t')
         = n == n' && expLike s s' && expLike t t'
-    expLike (PLam n s t) (PLam n' s' t') 
+    expLike (PLam n s t) (PLam n' s' t')
         = n == n' && expLike s s' && expLike t t'
     expLike (PPair _ _ x y) (PPair _ _ x' y') = expLike x x' && expLike y y'
     expLike (PDPair _ _ x _ y) (PDPair _ _ x' _ y') = expLike x x' && expLike y y'
-    expLike (PEq _ xt yt x y) (PEq _ xt' yt' x' y') 
+    expLike (PEq _ xt yt x y) (PEq _ xt' yt' x' y')
          = expLike x x' && expLike y y'
     expLike (PRefl _ x) (PRefl _ x') = expLike x x'
     expLike x y = x == y
 
+-- Issue #1589 on the issue tracker
+--     https://github.com/idris-lang/Idris-dev/issues/1589
+--
+-- Figure out why MNs are getting rewritte to UNs for top-level
+-- pattern-matching functions
 isUN :: Name -> Bool
-isUN (UN n) = not $ T.isPrefixOf (T.pack "__") n -- TODO figure out why MNs are getting rewritte to UNs for top-level pattern-matching functions
+isUN (UN n) = not $ T.isPrefixOf (T.pack "__") n -- TODO
 isUN (NS n _) = isUN n
 isUN _ = False
 
@@ -428,6 +438,8 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
         docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
                                let o   = overview (fst docs)
                                    -- TODO make width configurable
+                                   -- Issue #1588 on the Issue Tracker
+                                   -- https://github.com/idris-lang/Idris-dev/issues/1588
                                    out = displayS . renderPretty 1.0 50 $
                                          renderDocstring (pprintDelab ist) o
                                return (out "")
@@ -460,5 +472,3 @@ showbasic n@(UN _) = show n
 showbasic (MN _ s) = str s
 showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n
 showbasic (SN s) = show s
-
-
