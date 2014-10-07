@@ -582,7 +582,7 @@ VAL idris_b8Z32(VM *vm, VAL a) {
 
 VAL idris_b8Z64(VM *vm, VAL a) {
     VAL cl = allocate(vm, sizeof(Closure), 0);
-    SETTY(cl, BITS16);
+    SETTY(cl, BITS64);
     cl->info.bits64 = (uint64_t) a->info.bits8;
     return cl;
 }
