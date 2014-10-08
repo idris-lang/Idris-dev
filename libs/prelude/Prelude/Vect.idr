@@ -111,6 +111,31 @@ drop : (n : Nat) -> Vect (n + m) a -> Vect m a
 drop Z     xs        = xs
 drop (S k) (x :: xs) = drop k xs
 
+||| Take the longest prefix of a Vect such that all elements satisfy some
+||| Boolean predicate.
+|||
+||| @ p the predicate
+takeWhile : (p : a -> Bool) -> Vect n a -> (q ** Vect q a)
+takeWhile p []      = (_ ** [])
+takeWhile p (x::xs) =
+  let (len ** ys) = takeWhile p xs
+  in if p x then
+      (S len ** x :: ys)
+    else
+      (_ ** [])
+
+||| Remove the longest prefix of a Vect such that all removed elements satisfy some
+||| Boolean predicate.
+|||
+||| @ p the predicate
+dropWhile : (p : a -> Bool) -> Vect n a -> (q ** Vect q a)
+dropWhile p [] = (_ ** [])
+dropWhile p (x::xs) =
+  if p x then
+    dropWhile p xs
+  else
+    (_ ** x::xs)
+
 --------------------------------------------------------------------------------
 -- Transformations
 --------------------------------------------------------------------------------
@@ -401,6 +426,15 @@ nubBy = nubBy' []
 nub : Eq a => Vect n a -> (p ** Vect p a)
 nub = nubBy (==)
 
+deleteBy : (a -> a -> Bool) -> a -> Vect n a -> (p ** Vect p a)
+deleteBy _  _ []      = (_ ** [])
+deleteBy eq x (y::ys) =
+  let (len ** zs) = deleteBy eq x ys
+  in if x `eq` y then (_ ** ys) else (S len ** y ::zs)
+
+delete : (Eq a) => a -> Vect n a -> (p ** Vect p a)
+delete = deleteBy (==)
+
 --------------------------------------------------------------------------------
 -- Splitting and breaking lists
 --------------------------------------------------------------------------------
@@ -412,6 +446,15 @@ nub = nubBy (==)
 ||| @ xs  the Vect to split in two
 splitAt : (n : Nat) -> (xs : Vect (n + m) a) -> (Vect n a, Vect m a)
 splitAt n xs = (take n xs, drop n xs)
+
+partition : (a -> Bool) -> Vect n a -> ((p ** Vect p a), (q ** Vect q a))
+partition p []      = ((_ ** []), (_ ** []))
+partition p (x::xs) =
+  let ((leftLen ** lefts), (rightLen ** rights)) = partition p xs in
+    if p x then
+      ((S leftLen ** x::lefts), (rightLen ** rights))
+    else
+      ((leftLen ** lefts), (S rightLen ** x::rights))
 
 --------------------------------------------------------------------------------
 -- Predicates
