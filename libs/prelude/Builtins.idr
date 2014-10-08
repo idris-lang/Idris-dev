@@ -109,12 +109,6 @@ par : Lazy a -> a -- Doesn't actually do anything yet. Maybe a 'Par a' type
                   -- is better in any case?
 par (Delay x) = x
 
-malloc : Int -> a -> a
-malloc size x = x -- compiled specially
-
-trace_malloc : a -> a
-trace_malloc x = x -- compiled specially
-
 ||| Assert to the totality checker than y is always structurally smaller than
 ||| x (which is typically a pattern argument)
 ||| @ x the larger value (typically a pattern argument)
