@@ -64,7 +64,7 @@ pureArgParser args = case getParseResult $ execParserPure (prefs idm) (info pars
 parser :: Parser [Opt]
 parser = runA $ proc () -> do
   flags <- asA parseFlags -< ()
-  files <- asA (many $ argument ((fmap . fmap) Filename str) (metavar "FILES")) -< ()
+  files <- asA (many $ argument (fmap Filename str) (metavar "FILES")) -< ()
   A parseVersion >>> A helper -< (flags ++ files)
 
 parseFlags :: Parser [Opt]
