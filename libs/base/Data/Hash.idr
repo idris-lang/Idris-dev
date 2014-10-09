@@ -3,15 +3,25 @@ module Data.Hash
 %access public
 %default total
 
+{- A general purpose Hashing library (not cryptographic)
+
+   The core hash is djb2, which is very fast but does not have the best distribution
+   Source: http://www.cse.yorku.ca/~oz/hash.html
+
+   The salted version and the magic salt are copied from Haskell's bloomfilter library
+   Source: https://hackage.haskell.org/package/bloomfilter-2.0.0.0/docs/src/Data-BloomFilter-Hash.html#Hashable
+-}
+
 ||| A type that can be hashed
 class Hashable a where
   saltedHash64 : a -> Bits64 -> Bits64 -- value to hash, salt, hash
 
-||| Computes a hash
+||| Computes a non cryptographic hash
 hash : Hashable a => a -> Bits64
 hash x = saltedHash64 x 0x16fc397cf62f64d3
 
-||| Given a user provided salt, Computes a hash
+||| Given a user provided salt, computes a non cryptographic hash.
+||| This version is meant to mitigate hash-flooding DoS attacks.
 saltedHash : Hashable a => Bits64 -> a -> Bits64
 saltedHash salt x = saltedHash64 x salt
 
