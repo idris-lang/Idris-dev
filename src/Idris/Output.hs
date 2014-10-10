@@ -3,7 +3,7 @@
 module Idris.Output where
 
 import Idris.Core.TT
-import Idris.Core.Evaluate (isDConName, isTConName, isFnName)
+import Idris.Core.Evaluate (isDConName, isTConName, isFnName, normaliseAll)
 
 import Idris.AbsSyntax
 import Idris.Delaborate
@@ -181,7 +181,7 @@ prettyDocumentedIst :: IState
                     -> Doc OutputAnnotation
 prettyDocumentedIst ist (name, ty, docs) =
           prettyName True True [] name <+> colon <+> align (prettyIst ist ty) <$>
-          fromMaybe empty (fmap (\d -> renderDocstring ppTm d <> line) docs)
+          fromMaybe empty (fmap (\d -> renderDocstring ppTm (normaliseAll (tt_ctxt ist) []) d <> line) docs)
   where ppTm = pprintDelab ist
 
 
