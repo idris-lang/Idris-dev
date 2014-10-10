@@ -272,6 +272,9 @@ elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
 
 type EliminatorState = StateT (Map.Map String Int) Idris
 
+-- -- Issue #1616 in the issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1616
+--
 -- TODO: Rewrite everything to use idris_implicits instead of manual splitting (or in TT)
 -- FIXME: Many things have name starting with elim internally since this was the only purpose in the first edition of the function
 -- rename to caseFun to match updated intend
