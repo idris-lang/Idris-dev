@@ -5,7 +5,7 @@ import Providers
 %language TypeProviders
 
 bad : IO (Provider Type)
-bad = return $ pure _|_
+bad = return $ pure Void
 
 %provide postulate oops with bad
 

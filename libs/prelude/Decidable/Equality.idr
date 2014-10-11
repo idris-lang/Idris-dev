@@ -13,7 +13,7 @@ import Prelude.Maybe
 --------------------------------------------------------------------------------
 
 ||| The negation of equality is symmetric (follows from symmetry of equality)
-total negEqSym : {a : t} -> {b : t} -> (a = b -> _|_) -> (b = a -> _|_)
+total negEqSym : {a : t} -> {b : t} -> (a = b -> Void) -> (b = a -> Void)
 negEqSym p h = p (sym h)
 
 
@@ -36,7 +36,7 @@ instance DecEq () where
 --------------------------------------------------------------------------------
 -- Booleans
 --------------------------------------------------------------------------------
-total trueNotFalse : True = False -> _|_
+total trueNotFalse : True = False -> Void
 trueNotFalse Refl impossible
 
 instance DecEq Bool where
@@ -49,7 +49,7 @@ instance DecEq Bool where
 -- Nat
 --------------------------------------------------------------------------------
 
-total OnotS : Z = S n -> _|_
+total OnotS : Z = S n -> Void
 OnotS Refl impossible
 
 instance DecEq Nat where
@@ -64,7 +64,7 @@ instance DecEq Nat where
 -- Maybe
 --------------------------------------------------------------------------------
 
-total nothingNotJust : {x : t} -> (Nothing {a = t} = Just x) -> _|_
+total nothingNotJust : {x : t} -> (Nothing {a = t} = Just x) -> Void
 nothingNotJust Refl impossible
 
 instance (DecEq t) => DecEq (Maybe t) where
@@ -79,7 +79,7 @@ instance (DecEq t) => DecEq (Maybe t) where
 -- Either
 --------------------------------------------------------------------------------
 
-total leftNotRight : {x : a} -> {y : b} -> Left {b = b} x = Right {a = a} y -> _|_
+total leftNotRight : {x : a} -> {y : b} -> Left {b = b} x = Right {a = a} y -> Void
 leftNotRight Refl impossible
 
 instance (DecEq a, DecEq b) => DecEq (Either a b) where
@@ -96,7 +96,7 @@ instance (DecEq a, DecEq b) => DecEq (Either a b) where
 -- Fin
 --------------------------------------------------------------------------------
 
-total FZNotFS : {f : Fin n} -> FZ {k = n} = FS f -> _|_
+total FZNotFS : {f : Fin n} -> FZ {k = n} = FS f -> Void
 FZNotFS Refl impossible
 
 instance DecEq (Fin n) where
@@ -111,16 +111,16 @@ instance DecEq (Fin n) where
 -- Tuple
 --------------------------------------------------------------------------------
 
-lemma_both_neq : {x : a, y : b, x' : c, y' : d} -> (x = x' -> _|_) -> (y = y' -> _|_) -> ((x, y) = (x', y') -> _|_)
+lemma_both_neq : {x : a, y : b, x' : c, y' : d} -> (x = x' -> Void) -> (y = y' -> Void) -> ((x, y) = (x', y') -> Void)
 lemma_both_neq p_x_not_x' p_y_not_y' Refl = p_x_not_x' Refl
 
-lemma_snd_neq : {x : a, y : b, y' : d} -> (x = x) -> (y = y' -> _|_) -> ((x, y) = (x, y') -> _|_)
+lemma_snd_neq : {x : a, y : b, y' : d} -> (x = x) -> (y = y' -> Void) -> ((x, y) = (x, y') -> Void)
 lemma_snd_neq Refl p Refl = p Refl
 
 lemma_fst_neq_snd_eq : {x : a, x' : b, y : c, y' : d} ->
-                       (x = x' -> _|_) ->
+                       (x = x' -> Void) ->
                        (y = y') ->
-                       ((x, y) = (x', y) -> _|_)
+                       ((x, y) = (x', y) -> Void)
 lemma_fst_neq_snd_eq p_x_not_x' Refl Refl = p_x_not_x' Refl
 
 instance (DecEq a, DecEq b) => DecEq (a, b) where
@@ -137,16 +137,16 @@ instance (DecEq a, DecEq b) => DecEq (a, b) where
 -- List
 --------------------------------------------------------------------------------
 
-lemma_val_not_nil : {x : t, xs : List t} -> ((x :: xs) = Prelude.List.Nil {a = t} -> _|_)
+lemma_val_not_nil : {x : t, xs : List t} -> ((x :: xs) = Prelude.List.Nil {a = t} -> Void)
 lemma_val_not_nil Refl impossible
 
-lemma_x_eq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y) -> (xs = ys -> _|_) -> ((x :: xs) = (y :: ys) -> _|_)
+lemma_x_eq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y) -> (xs = ys -> Void) -> ((x :: xs) = (y :: ys) -> Void)
 lemma_x_eq_xs_neq Refl p Refl = p Refl
 
-lemma_x_neq_xs_eq : {x : t, xs : List t, y : t, ys : List t} -> (x = y -> _|_) -> (xs = ys) -> ((x :: xs) = (y :: ys) -> _|_)
+lemma_x_neq_xs_eq : {x : t, xs : List t, y : t, ys : List t} -> (x = y -> Void) -> (xs = ys) -> ((x :: xs) = (y :: ys) -> Void)
 lemma_x_neq_xs_eq p Refl Refl = p Refl
 
-lemma_x_neq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y -> _|_) -> (xs = ys -> _|_) -> ((x :: xs) = (y :: ys) -> _|_)
+lemma_x_neq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y -> Void) -> (xs = ys -> Void) -> ((x :: xs) = (y :: ys) -> Void)
 lemma_x_neq_xs_neq p p' Refl = p Refl
 
 instance DecEq a => DecEq (List a) where
@@ -203,7 +203,7 @@ instance DecEq Int where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> _|_
+             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- Char
@@ -213,7 +213,7 @@ instance DecEq Char where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> _|_
+             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- Integer
@@ -223,7 +223,7 @@ instance DecEq Integer where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> _|_
+             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- Float
@@ -233,7 +233,7 @@ instance DecEq Float where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> _|_
+             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- String
@@ -243,6 +243,6 @@ instance DecEq String where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> _|_
+             postulate primitiveNotEq : x = y -> Void
 
 

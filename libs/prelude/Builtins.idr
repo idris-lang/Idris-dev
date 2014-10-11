@@ -29,8 +29,14 @@ data Pair : (A : Type) -> (B : Type) -> Type where
 data Sigma : (a : Type) -> (P : a -> Type) -> Type where
     MkSigma : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
 
-||| The eliminator for the empty type.
-FalseElim : _|_ -> a
+||| The empty type, also known as the trivially false proposition.
+|||
+||| Use `VoidElim` or `absurd` to prove anything if you have a variable of type `Void` in scope. 
+%elim data Void : Type where    
+    
+||| The eliminator for the `Void` type.
+VoidElim : Void -> a
+VoidElim {a} v = elim_for Void (\_ => a) v
 
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where

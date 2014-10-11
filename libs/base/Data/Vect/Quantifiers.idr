@@ -10,7 +10,7 @@ data Any : (P : a -> Type) -> Vect n a -> Type where
   There : {P : a -> Type} -> {xs : Vect n a} -> Any P xs -> Any P (x :: xs)
 
 ||| No element of an empty vector satisfies any property
-anyNilAbsurd : {P : a -> Type} -> Any P Nil -> _|_
+anyNilAbsurd : {P : a -> Type} -> Any P Nil -> Void
 anyNilAbsurd (Here _) impossible
 anyNilAbsurd (There _) impossible
 
@@ -48,11 +48,11 @@ negAnyAll : {P : a -> Type} -> {xs : Vect n a} -> Not (Any P xs) -> All (\x => N
 negAnyAll {xs=Nil} _ = Nil
 negAnyAll {xs=(x::xs)} f = (\x => f (Here x)) :: negAnyAll (\x => f (There x))
 
-notAllHere : {P : a -> Type} -> {xs : Vect n a} -> Not (P x) -> All P (x :: xs) -> _|_
+notAllHere : {P : a -> Type} -> {xs : Vect n a} -> Not (P x) -> All P (x :: xs) -> Void
 notAllHere _ Nil impossible
 notAllHere np (p :: _) = np p
 
-notAllThere : {P : a -> Type} -> {xs : Vect n a} -> Not (All P xs) -> All P (x :: xs) -> _|_
+notAllThere : {P : a -> Type} -> {xs : Vect n a} -> Not (All P xs) -> All P (x :: xs) -> Void
 notAllThere _ Nil impossible
 notAllThere np (_ :: ps) = np ps
 

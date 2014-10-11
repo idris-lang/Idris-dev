@@ -103,8 +103,8 @@ legalVal b (x, y) v =
 Filled : Cell n -> Type
 --Filled {n=n} x = Not (Empty x) -- TODO: Find out why this doesn't work
 Filled {n=n} = (\x => Not (Empty x))
---Filled {n=n} x = the (Maybe (Fin n)) Nothing = x -> _|_
---Filled {n=n} = \x => the (Maybe (Fin n)) Nothing = x -> _|_
+--Filled {n=n} x = the (Maybe (Fin n)) Nothing = x -> Void
+--Filled {n=n} = \x => the (Maybe (Fin n)) Nothing = x -> Void
 
 filled : (cell : Cell n) -> Dec (Filled cell)
 filled Nothing = No (\f => f Refl)

@@ -342,13 +342,10 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
         -- sanity check: machine-generated names shouldn't occur at top-level
         | MN _ _ <- n
-        , n `notElem` specialMNs
         = error $ "erasure analysis: variable " ++ show n ++ " unbound in " ++ show (S.toList cd)
 
         -- assumed to be a global reference
         | otherwise = M.singleton cd (M.singleton (n, Result) S.empty)
-      where
-        specialMNs = [falseTy]
 
     -- dependencies of de bruijn variables are described in `bs'
     getDepsTerm vs bs cd (V i) = snd (bs !! i) cd

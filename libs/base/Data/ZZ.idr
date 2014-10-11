@@ -122,7 +122,7 @@ posInjective Refl = Refl
 negSInjective : NegS n = NegS m -> n = m
 negSInjective Refl = Refl
 
-posNotNeg : Pos n = NegS m -> _|_
+posNotNeg : Pos n = NegS m -> Void
 posNotNeg Refl impossible
 
 -- Decidable equality

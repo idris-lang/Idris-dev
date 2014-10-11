@@ -202,7 +202,6 @@ instance NFData PTerm where
         rnf (PMatchApp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PCase x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PTrue x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (PFalse x1) = rnf x1 `seq` ()
         rnf (PRefl x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PResolveTC x1) = rnf x1 `seq` ()
         rnf (PEq x1 x2 x3 x4 x5) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()

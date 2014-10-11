@@ -50,7 +50,6 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                        | otherwise = PRef un (sUN ("v" ++ show i ++ ""))
     de env _ (P _ n _) | n == unitTy = PTrue un IsType
                        | n == unitCon = PTrue un IsTerm
-                       | n == falseTy = PFalse un
                        | Just n' <- lookup n env = PRef un n'
                        | otherwise
                             = case lookup n (idris_metavars ist) of
