@@ -73,14 +73,14 @@ eitherAssoc = MkIso eitherAssoc1 eitherAssoc2 ok1 ok2
 eitherBotLeft : Iso (Either Void a) a
 eitherBotLeft = MkIso to from ok1 ok2
   where to : Either Void a -> a
-        to (Left x) = VoidElim x
+        to (Left x) = void x
         to (Right x) = x
         from : a -> Either Void a
         from = Right
         ok1 : (x : a) -> to (from x) = x
         ok1 x = Refl
         ok2 : (x : Either Void a) -> from (to x) = x
-        ok2 (Left x) = VoidElim x
+        ok2 (Left x) = void x
         ok2 (Right x) = Refl
 
 ||| Disjunction with false is a no-op
@@ -146,7 +146,7 @@ pairUnitLeft = isoTrans pairComm pairUnitRight
 
 ||| Conjunction preserves falsehood
 pairBotLeft : Iso (Void, a) Void
-pairBotLeft = MkIso fst VoidElim (\x => VoidElim x) (\y => VoidElim (fst y))
+pairBotLeft = MkIso fst void (\x => void x) (\y => void (fst y))
 
 ||| Conjunction preserves falsehood
 pairBotRight : Iso (a, Void) Void
@@ -281,10 +281,10 @@ maybeIsoS = MkIso forth back fb bf
         fb (FS x) = Refl
 
 finZeroBot : Iso (Fin 0) Void
-finZeroBot = MkIso (\x => VoidElim (uninhabited x))
-                   (\x => VoidElim x)
-                   (\x => VoidElim x)
-                   (\x => VoidElim (uninhabited x))
+finZeroBot = MkIso (\x => void (uninhabited x))
+                   (\x => void x)
+                   (\x => void x)
+                   (\x => void (uninhabited x))
 
 eitherFinPlus : Iso (Either (Fin m) (Fin n)) (Fin (m + n))
 eitherFinPlus {m = Z} {n=n} =

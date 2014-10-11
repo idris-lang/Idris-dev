@@ -16,4 +16,4 @@ instance Uninhabited Void where
 ||| @ a the goal type
 ||| @ h the contradictory hypothesis
 absurd : Uninhabited t => (h : t) -> a
-absurd h = VoidElim (uninhabited h)
+absurd h = void (uninhabited h)

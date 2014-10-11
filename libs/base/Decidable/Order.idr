@@ -92,7 +92,7 @@ total zeroAlwaysSmaller : {n : Nat} -> LTE Z n
 zeroAlwaysSmaller = LTEZero
 
 total ltesuccinjective : {n : Nat} -> {m : Nat} -> (LTE n m -> Void) -> LTE (S n) (S m) -> Void
-ltesuccinjective {n} {m} disprf (LTESucc nLTEm) = VoidElim (disprf nLTEm)
+ltesuccinjective {n} {m} disprf (LTESucc nLTEm) = void (disprf nLTEm)
 ltesuccinjective {n} {m} disprf LTEZero         impossible
 
 
