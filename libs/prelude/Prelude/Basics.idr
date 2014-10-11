@@ -3,7 +3,7 @@ module Prelude.Basics
 import Builtins
        
 Not : Type -> Type
-Not a = a -> _|_
+Not a = a -> Void
 
 ||| Identity function.
 id : a -> a
@@ -55,5 +55,5 @@ data Dec : Type -> Type where
 
   ||| The case where the property holding would be a contradiction
   ||| @ contra a demonstration that A would be a contradiction
-  No  : {A : Type} -> (contra : A -> _|_) -> Dec A
+  No  : {A : Type} -> (contra : A -> Void) -> Dec A
 

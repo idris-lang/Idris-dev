@@ -1,5 +1,5 @@
 data Foo : Type where
-  Bogus : _|_
+  Bogus : Void
 
-uhOh : _|_
+uhOh : Void
 uhOh = Bogus

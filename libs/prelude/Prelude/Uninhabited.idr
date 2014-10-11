@@ -6,9 +6,9 @@ import Builtins
 class Uninhabited t where
   ||| If I have a t, I've had a contradiction
   ||| @ t the uninhabited type
-  total uninhabited : t -> _|_
+  total uninhabited : t -> Void
 
-instance Uninhabited _|_ where
+instance Uninhabited Void where
   uninhabited a = a
 
 ||| Use an absurd assumption to discharge a proof obligation
@@ -16,4 +16,4 @@ instance Uninhabited _|_ where
 ||| @ a the goal type
 ||| @ h the contradictory hypothesis
 absurd : Uninhabited t => (h : t) -> a
-absurd h = FalseElim (uninhabited h)
+absurd h = VoidElim (uninhabited h)

@@ -84,15 +84,15 @@ LTEIsAntisymmetric (S n) (S m) (LTESucc mLTEn) (LTESucc nLTEm) with (LTEIsAntisy
 instance Poset Nat LTE where
   antisymmetric = LTEIsAntisymmetric
 
-total zeroNeverGreater : {n : Nat} -> LTE (S n) Z -> _|_
+total zeroNeverGreater : {n : Nat} -> LTE (S n) Z -> Void
 zeroNeverGreater {n} LTEZero     impossible
 zeroNeverGreater {n} (LTESucc _) impossible
 
 total zeroAlwaysSmaller : {n : Nat} -> LTE Z n
 zeroAlwaysSmaller = LTEZero
 
-total ltesuccinjective : {n : Nat} -> {m : Nat} -> (LTE n m -> _|_) -> LTE (S n) (S m) -> _|_
-ltesuccinjective {n} {m} disprf (LTESucc nLTEm) = FalseElim (disprf nLTEm)
+total ltesuccinjective : {n : Nat} -> {m : Nat} -> (LTE n m -> Void) -> LTE (S n) (S m) -> Void
+ltesuccinjective {n} {m} disprf (LTESucc nLTEm) = VoidElim (disprf nLTEm)
 ltesuccinjective {n} {m} disprf LTEZero         impossible
 
 

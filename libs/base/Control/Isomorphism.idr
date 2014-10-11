@@ -70,21 +70,21 @@ eitherAssoc = MkIso eitherAssoc1 eitherAssoc2 ok1 ok2
         ok2 (Right x) = Refl
 
 ||| Disjunction with false is a no-op
-eitherBotLeft : Iso (Either _|_ a) a
+eitherBotLeft : Iso (Either Void a) a
 eitherBotLeft = MkIso to from ok1 ok2
-  where to : Either _|_ a -> a
-        to (Left x) = FalseElim x
+  where to : Either Void a -> a
+        to (Left x) = VoidElim x
         to (Right x) = x
-        from : a -> Either _|_ a
+        from : a -> Either Void a
         from = Right
         ok1 : (x : a) -> to (from x) = x
         ok1 x = Refl
-        ok2 : (x : Either _|_ a) -> from (to x) = x
-        ok2 (Left x) = FalseElim x
+        ok2 : (x : Either Void a) -> from (to x) = x
+        ok2 (Left x) = VoidElim x
         ok2 (Right x) = Refl
 
 ||| Disjunction with false is a no-op
-eitherBotRight : Iso (Either a _|_) a
+eitherBotRight : Iso (Either a Void) a
 eitherBotRight = isoTrans eitherComm eitherBotLeft
 
 ||| Isomorphism is a congruence with regards to disjunction
@@ -145,11 +145,11 @@ pairUnitLeft : Iso ((), a) a
 pairUnitLeft = isoTrans pairComm pairUnitRight
 
 ||| Conjunction preserves falsehood
-pairBotLeft : Iso (_|_, a) _|_
-pairBotLeft = MkIso fst FalseElim (\x => FalseElim x) (\y => FalseElim (fst y))
+pairBotLeft : Iso (Void, a) Void
+pairBotLeft = MkIso fst VoidElim (\x => VoidElim x) (\y => VoidElim (fst y))
 
 ||| Conjunction preserves falsehood
-pairBotRight : Iso (a, _|_) _|_
+pairBotRight : Iso (a, Void) Void
 pairBotRight = isoTrans pairComm pairBotLeft
 
 ||| Isomorphism is a congruence with regards to conjunction
@@ -240,9 +240,9 @@ maybeEither = MkIso to from iso1 iso2
         iso2 (Just x) = Refl
 
 ||| Maybe of void is just unit
-maybeVoidUnit : Iso (Maybe _|_) ()
-maybeVoidUnit = (Maybe _|_)     ={ maybeEither   }=
-                (Either _|_ ()) ={ eitherBotLeft }=
+maybeVoidUnit : Iso (Maybe Void) ()
+maybeVoidUnit = (Maybe Void)     ={ maybeEither   }=
+                (Either Void ()) ={ eitherBotLeft }=
                 ()              QED
 
 eitherMaybeLeftMaybe : Iso (Either (Maybe a) b) (Maybe (Either a b))
@@ -280,16 +280,16 @@ maybeIsoS = MkIso forth back fb bf
         fb FZ = Refl
         fb (FS x) = Refl
 
-finZeroBot : Iso (Fin 0) _|_
-finZeroBot = MkIso (\x => FalseElim (uninhabited x))
-                   (\x => FalseElim x)
-                   (\x => FalseElim x)
-                   (\x => FalseElim (uninhabited x))
+finZeroBot : Iso (Fin 0) Void
+finZeroBot = MkIso (\x => VoidElim (uninhabited x))
+                   (\x => VoidElim x)
+                   (\x => VoidElim x)
+                   (\x => VoidElim (uninhabited x))
 
 eitherFinPlus : Iso (Either (Fin m) (Fin n)) (Fin (m + n))
 eitherFinPlus {m = Z} {n=n} =
   (Either (Fin 0) (Fin n)) ={ eitherCongLeft finZeroBot }=
-  (Either _|_ (Fin n))     ={ eitherBotLeft             }=
+  (Either Void (Fin n))     ={ eitherBotLeft             }=
   (Fin n)                  QED
 eitherFinPlus {m = S k} {n=n} =
   (Either (Fin (S k)) (Fin n))     ={ eitherCongLeft (isoSym maybeIsoS) }=
@@ -302,8 +302,8 @@ eitherFinPlus {m = S k} {n=n} =
 finPairTimes : Iso (Fin m, Fin n) (Fin (m * n))
 finPairTimes {m = Z} {n=n} =
   (Fin Z, Fin n) ={ pairCongLeft finZeroBot }=
-  (_|_, Fin n)   ={ pairBotLeft             }=
-  _|_            ={ isoSym finZeroBot       }=
+  (Void, Fin n)   ={ pairBotLeft             }=
+  Void            ={ isoSym finZeroBot       }=
   (Fin Z)        QED
 finPairTimes {m = S k} {n=n} =
   (Fin (S k), Fin n)                  ={ pairCongLeft (isoSym maybeIsoS)      }=

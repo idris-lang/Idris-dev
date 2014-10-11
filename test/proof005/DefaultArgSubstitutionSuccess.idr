@@ -2,7 +2,7 @@ module DefaultArgSubstitutionSuccess
 
 DecProofType : {a:Type} -> Dec a -> Type
 DecProofType {a} (Yes _)  = a
-DecProofType {a} (No _)   = a -> _|_
+DecProofType {a} (No _)   = a -> Void
 
 decProof : {a:Type} -> (dec : Dec a) -> DecProofType dec
 decProof (Yes x)  = x
@@ -18,7 +18,7 @@ argsAreSame _ _ = ()
 
 
 argsAreDiff : (n:Nat) -> (m:Nat)
-              -> { default (decProof (decEq m n)) same : (m=n) -> _|_ } -> ()
+              -> { default (decProof (decEq m n)) same : (m=n) -> Void } -> ()
 argsAreDiff _ _ = ()
 
 
@@ -28,7 +28,7 @@ data SameNats : Type where
 
 data DiffNats : Type where
   diff : (n:Nat) -> (m:Nat) ->
-         { default (decProof (decEq m n)) same : (m=n) -> _|_ } -> DiffNats
+         { default (decProof (decEq m n)) same : (m=n) -> Void } -> DiffNats
 
 
 zArgsAreSame : ()

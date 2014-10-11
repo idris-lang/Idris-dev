@@ -15,7 +15,7 @@ data Elem : a -> Vect k a -> Type where
      There : Elem x xs -> Elem x (y::xs)
 
 ||| Nothing can be in an empty Vect
-noEmptyElem : {x : a} -> Elem x [] -> _|_
+noEmptyElem : {x : a} -> Elem x [] -> Void
 noEmptyElem Here impossible
 
 ||| An item not in the head and not in the tail is not in the Vect at all

@@ -1435,8 +1435,6 @@ instance Binary PTerm where
                 PTrue x1 x2 -> do putWord8 12
                                   put x1
                                   put x2
-                PFalse x1 -> do putWord8 13
-                                put x1
                 PRefl x1 x2 -> do putWord8 14
                                   put x1
                                   put x2
@@ -1553,8 +1551,6 @@ instance Binary PTerm where
                    12 -> do x1 <- get
                             x2 <- get
                             return (PTrue x1 x2)
-                   13 -> do x1 <- get
-                            return (PFalse x1)
                    14 -> do x1 <- get
                             x2 <- get
                             return (PRefl x1 x2)

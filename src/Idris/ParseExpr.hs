@@ -293,7 +293,7 @@ SimpleExpr ::=
   | Bracketed
   | Constant
   | Type
-  | '_|_'
+  | 'Void'
   | Quasiquote
   | Unquote
   | '_'
@@ -333,9 +333,6 @@ simpleExpr syn =
                fc <- getFC
                return (PAppBind fc s [])
         <|> bracketed (disallowImp syn)
-        <|> do symbol "_|_"
-               fc <- getFC
-               return (PFalse fc)
         <|> quasiquote syn
         <|> unquote syn
         <|> do lchar '_'; return Placeholder
@@ -1307,7 +1304,7 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
                               return (TDocStr (Right c)))
                   <|> try (do reserved "doc"
                               whiteSpace
-                              n <- (fnName <|> (string "_|_" >> return falseTy))
+                              n <- fnName
                               eof
                               return (TDocStr (Left n)))
                   <|> try (do reserved "search"

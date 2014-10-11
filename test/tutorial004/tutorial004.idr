@@ -5,23 +5,23 @@ fiveIsFive = Refl
 twoPlusTwo : 2 + 2 = 4
 twoPlusTwo = Refl
 
-total disjoint : (n : Nat) -> Z = S n -> _|_
+total disjoint : (n : Nat) -> Z = S n -> Void
 disjoint n p = replace {P = disjointTy} p ()
   where
     disjointTy : Nat -> Type
     disjointTy Z = ()
-    disjointTy (S k) = _|_
+    disjointTy (S k) = Void
 
-total acyclic : (n : Nat) -> n = S n -> _|_
+total acyclic : (n : Nat) -> n = S n -> Void
 acyclic Z p = disjoint _ p
 acyclic (S k) p = acyclic k (succInjective _ _ p)
 
-empty1 : _|_
+empty1 : Void
 empty1 = hd [] where
     hd : List a -> a
     hd (x :: xs) = x
 
-empty2 : _|_
+empty2 : Void
 empty2 = empty2
 
 plusReduces : (n:Nat) -> plus Z n = n

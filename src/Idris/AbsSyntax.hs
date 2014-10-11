@@ -1040,7 +1040,6 @@ getPriority i tm = 1 -- pri tm
             [] -> 0 -- must be locally bound, if it's not an error...
     pri (PPi _ _ x y) = max 5 (max (pri x) (pri y))
     pri (PTrue _ _) = 0
-    pri (PFalse _) = 0
     pri (PRefl _ _) = 1
     pri (PEq _ _ _ l r) = max 1 (max (pri l) (pri r))
     pri (PRewrite _ l r _) = max 1 (max (pri l) (pri r))
@@ -1772,7 +1771,6 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PRefl _ _) (PRefl _ _) = return []
     match (PResolveTC _) (PResolveTC _) = return []
     match (PTrue _ _) (PTrue _ _) = return []
-    match (PFalse _) (PFalse _) = return []
     match (PReturn _) (PReturn _) = return []
     match (PPi _ _ t s) (PPi _ _ t' s') = do mt <- match' t t'
                                              ms <- match' s s'

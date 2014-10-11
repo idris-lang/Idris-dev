@@ -135,12 +135,12 @@ instance Ord a => JoinSemilattice (MaxiphobicHeap a) where
 -- Properties
 --------------------------------------------------------------------------------
 
-total absurdBoolDischarge : False = True -> _|_
+total absurdBoolDischarge : False = True -> Void
 absurdBoolDischarge p = replace {P = disjointTy} p ()
   where
     total disjointTy : Bool -> Type
     disjointTy False  = ()
-    disjointTy True   = _|_
+    disjointTy True   = Void
 
 total isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h = Z
 isEmptySizeZero Empty          p = Refl
@@ -169,7 +169,7 @@ mergePreservesValidHeaps (Node ls ll le lr) (Node rs rl re rr) lp rp =
 
 isEmptySizeZeroNodeAbsurd = proof {
     intros;
-    refine FalseElim;
+    refine VoidElim;
     refine absurdBoolDischarge;
     exact p;
 }

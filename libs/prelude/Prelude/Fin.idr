@@ -28,11 +28,11 @@ instance Eq (Fin n) where
     (==) _ _ = False
 
 ||| There are no elements of `Fin Z`
-FinZAbsurd : Fin Z -> _|_
+FinZAbsurd : Fin Z -> Void
 FinZAbsurd FZ impossible
 
 FinZElim : Fin Z -> a
-FinZElim x = FalseElim (FinZAbsurd x)
+FinZElim x = VoidElim (FinZAbsurd x)
 
 ||| Convert a Fin to a Nat
 finToNat : Fin n -> Nat

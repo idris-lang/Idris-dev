@@ -99,7 +99,6 @@ warnDisamb ist (PMatchApp _ _) = return ()
 warnDisamb ist (PCase _ tm cases) = warnDisamb ist tm >>
                                     mapM_ (\(x,y)-> warnDisamb ist x >> warnDisamb ist y) cases
 warnDisamb ist (PTrue _ _) = return ()
-warnDisamb ist (PFalse _) = return ()
 warnDisamb ist (PRefl _ tm) = warnDisamb ist tm
 warnDisamb ist (PResolveTC _) = return ()
 warnDisamb ist (PEq _ a b x y) = warnDisamb ist a >> warnDisamb ist b >>

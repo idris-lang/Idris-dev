@@ -251,7 +251,6 @@ elab ist info emode opts fn tm
           case g of
             TType _ -> elab' ina (PRef fc unitTy)
             _ -> elab' ina (PRef fc unitCon)
-    elab' ina (PFalse fc)    = elab' ina (PRef fc falseTy)
     elab' ina (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC False 5 g fn ist
     elab' ina (PResolveTC fc)
