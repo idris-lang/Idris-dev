@@ -238,7 +238,7 @@ deriving instance NFData CGInfo
 primDefs = [sUN "unsafePerformPrimIO",
             sUN "mkLazyForeignPrim",
             sUN "mkForeignPrim",
-            sUN "VoidElim"]
+            sUN "void"]
 
 -- information that needs writing for the current module's .ibc file
 data IBCWrite = IBCFix FixDecl
@@ -1082,7 +1082,7 @@ unitCon  = sUN "MkUnit"
 falseDoc = fmap (const Nothing) . parseDocstring . T.pack $
              "The empty type, also known as the trivially false proposition." ++
              "\n\n" ++
-             "Use `VoidElim` or `absurd` to prove anything if you have a variable " ++
+             "Use `void` or `absurd` to prove anything if you have a variable " ++
              "of type `Void` in scope."
 falseTy   = sUN "Void"
 

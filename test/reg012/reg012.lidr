@@ -4,7 +4,7 @@
 > soElim C coh .True .Oh  =  coh
 
 > soFalseElim             :  So False -> a
-> soFalseElim x           =  VoidElim (soElim C () False x)
+> soFalseElim x           =  void (soElim C () False x)
 >                            where
 >                            C : (b : Bool) -> So b -> Type
 >                            C True s = ()

@@ -1,2 +1,2 @@
 reg049.idr:2:9:When elaborating constructor Main.Bogus:
-{__False0} is not Main.Foo
+Void is not Main.Foo

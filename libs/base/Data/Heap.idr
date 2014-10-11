@@ -169,7 +169,7 @@ mergePreservesValidHeaps (Node ls ll le lr) (Node rs rl re rr) lp rp =
 
 isEmptySizeZeroNodeAbsurd = proof {
     intros;
-    refine VoidElim;
+    refine void;
     refine absurdBoolDischarge;
     exact p;
 }

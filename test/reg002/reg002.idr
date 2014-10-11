@@ -18,8 +18,8 @@ S_Co_not_Inf = believe_me
 
 S_inj : (n : CoNat) -> (m : CoNat) -> Main.S n = Main.S m -> n = m
 S_inj (Co n)   (Co _)   Refl = Refl
-S_inj (Co n)   Infinity p    = VoidElim (S_Co_not_Inf p)
-S_inj Infinity (Co m)   p    = VoidElim (S_Co_not_Inf (sym p))
+S_inj (Co n)   Infinity p    = void (S_Co_not_Inf p)
+S_inj Infinity (Co m)   p    = void (S_Co_not_Inf (sym p))
 S_inj Infinity Infinity Refl = Refl
 
 swap : {n : Nat} -> Vect n a -> Vect n a

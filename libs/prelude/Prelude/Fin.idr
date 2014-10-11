@@ -32,7 +32,7 @@ FinZAbsurd : Fin Z -> Void
 FinZAbsurd FZ impossible
 
 FinZElim : Fin Z -> a
-FinZElim x = VoidElim (FinZAbsurd x)
+FinZElim x = void (FinZAbsurd x)
 
 ||| Convert a Fin to a Nat
 finToNat : Fin n -> Nat
