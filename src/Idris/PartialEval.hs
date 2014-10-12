@@ -163,6 +163,7 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
                 lookupCtxt n (idris_implicits ist)) of
              ([statics], [imps]) -> 
                  if (length statics == length args && or statics) then
+--                     trace (show (n, statics, imps, args)) $
                     case buildApp env statics imps args [0..] of
                          args -> [(n, args)]
 --                          _ -> []

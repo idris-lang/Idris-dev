@@ -318,7 +318,7 @@ elabPE info fc caller r =
             let opts = [Specialise (map (\x -> (x, Nothing)) cgns ++
                                      mapMaybe specName (snd specapp))]
             logLvl 3 $ "Specialising application: " ++ show specapp
-                          ++ " with " ++ show cgns
+                          ++ " with " ++ show opts
             logLvl 3 $ "New name: " ++ show newnm
             logLvl 3 $ "PE definition type : " ++ (show specTy)
                         ++ "\n" ++ show opts
@@ -370,8 +370,8 @@ elabPE info fc caller r =
 
     -- get the clause of a specialised application
     getSpecClause ist (n, args)
-       = let newnm = sUN ("PE_"++show (nsroot n) ++ "_" ++
-                               qhash 0 (showSep "_" (map showArg args))) in
+       = let newnm = sUN ("PE_"++ show (nsroot n) ++ "_" ++
+                               qhash 0 (showSep "_" (map showArg args))) in 
                                -- UN (show n ++ show (map snd args)) in
              (n, newnm, mkPE_TermDecl ist newnm n args)
       where showArg (ExplicitS, n) = show n

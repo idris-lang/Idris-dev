@@ -223,7 +223,8 @@ elabInstance info syn what fc cs n ps t expn ds = do
 
     mkTyDecl (n, op, t, _) = PTy emptyDocstring [] syn fc op n t
 
-    conbind (ty : ns) x = PPi constraint (sMN 0 "class") ty (conbind ns x)
+    conbind (ty : ns) x = PPi (constraint { pstatic = Dynamic }) 
+                              (sMN 0 "class") ty (conbind ns x)
     conbind [] x = x
 
     coninsert cs (PPi p@(Imp _ _ _) n t sc) = PPi p n t (coninsert cs sc)

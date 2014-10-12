@@ -639,7 +639,8 @@ instance_ syn = do reserved "instance"; fc <- getFC
                    cn <- fnName
                    args <- many (simpleExpr syn)
                    let sc = PApp fc (PRef fc cn) (map pexp args)
-                   let t = bindList (PPi constraint) (map (\x -> (sMN 0 "constraint", x)) cs) sc
+                   let t = bindList (PPi constraint)
+                                    (map (\x -> (sMN 0 "constraint", x)) cs) sc
                    ds <- option [] (instanceBlock syn)
                    return [PInstance syn fc cs cn args t en ds]
                  <?> "instance declaration"

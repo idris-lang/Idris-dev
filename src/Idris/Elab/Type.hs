@@ -130,6 +130,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          let nty = cty -- normalise ctxt [] cty
          -- if the return type is something coinductive, freeze the definition
          ctxt <- getContext
+         logLvl 2 $ "Rechecked to " ++ show nty
          let nty' = normalise ctxt [] nty
          logLvl 2 $ "Rechecked to " ++ show nty'
 
