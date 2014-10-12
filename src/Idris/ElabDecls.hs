@@ -254,6 +254,7 @@ elabDecl' what info (PProvider syn fc provWhat n)
     = do iLOG $ "Elaborating type provider " ++ show n
          elabProvider info syn fc provWhat n
 elabDecl' what info (PTransform fc safety old new)
-    = elabTransform info fc safety old new
+    = do elabTransform info fc safety old new
+         return ()
 elabDecl' _ _ _ = return () -- skipped this time
 

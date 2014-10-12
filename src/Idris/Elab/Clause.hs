@@ -90,22 +90,23 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                             Nothing -> transformPats ist pats_in
                             _ -> pats_in
 
-           let pats = map (simple_lhs (tt_ctxt ist)) $
-                          doPartialEval ist tpats
+           -- If the definition is specialisable, this reduces the
+           -- RHS
+           pe_tm <- doPartialEval ist tpats
+           let pats = map (simple_lhs (tt_ctxt ist)) pe_tm
 
-  --          logLvl 3 (showSep "\n" (map (\ (l,r) ->
-  --                                         show l ++ " = " ++
-  --                                         show r) pats))
            let tcase = opt_typecase (idris_options ist)
 
            -- Look for 'static' names and generate new specialised
            -- definitions for them, as well as generating rewrite rules
            -- for partially evaluated definitions
-           mapM_ (\ e -> case e of
-                           Left _ -> return ()
-                           Right (l, r) -> elabPE info fc n r) pats
+           newrules <- mapM (\ e -> case e of
+                                       Left _ -> return []
+                                       Right (l, r) -> elabPE info fc n r) pats
 
-           -- Redo transforms with the newly generated transformations
+           -- Redo transforms with the newly generated transformations, so
+           -- that the specialised application we've just made gets
+           -- used in place of the general one
            ist <- getIState
            let pats_transformed = transformPats ist pats
 
@@ -134,7 +135,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            numArgs <- tclift $ sameLength pdef
 
            case specNames opts of
-                Just _ -> logLvl 1 $ "Partially evaluated:\n" ++ show pats
+                Just _ -> 
+                   do logLvl 2 $ "Partially evaluated:\n" ++ show pats
+                      logLvl 2 $ "Transformed:\n" ++ show pats_transformed
                 _ -> return ()
 
            erInfo <- getErasureInfo <$> getIState
@@ -257,21 +260,11 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
     getLHS (_, l, _) = l
 
-    simple_lhs ctxt (Right (x, y)) = Right (normalise ctxt [] x,
-                                            force (normalisePats ctxt [] y))
+    simple_lhs ctxt (Right (x, y)) = Right (normalise ctxt [] x, y)
     simple_lhs ctxt t = t
 
     simple_rt ctxt (p, x, y) = (p, x, force (uniqueBinders p
                                                 (rt_simplify ctxt [] y)))
-
-    -- this is so pattern types are in the right form for erasure
-    normalisePats ctxt env (Bind n (PVar t) sc)
-       = let t' = normalise ctxt env t in
-             Bind n (PVar t') (normalisePats ctxt ((n, PVar t') : env) sc)
-    normalisePats ctxt env (Bind n (PVTy t) sc)
-       = let t' = normalise ctxt env t in
-             Bind n (PVTy t') (normalisePats ctxt ((n, PVar t') : env) sc)
-    normalisePats ctxt env t = t
 
     specNames [] = Nothing
     specNames (Specialise ns : _) = Just ns
@@ -287,15 +280,19 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
     -- Partially evaluate, if the definition is marked as specialisable
     doPartialEval ist pats =
            case specNames opts of
-                Nothing -> pats
-                Just ns -> partial_eval (tt_ctxt ist) ns pats
+                Nothing -> return pats
+                Just ns -> case partial_eval (tt_ctxt ist) ns pats of
+                                Just t -> return t
+                                Nothing -> ierror (At fc (Msg "No specialisation achieved"))
 
--- | Find 'static' applications in a term and partially evaluate them
-elabPE :: ElabInfo -> FC -> Name -> Term -> Idris ()
+-- | Find 'static' applications in a term and partially evaluate them.
+-- Return any new transformation rules
+elabPE :: ElabInfo -> FC -> Name -> Term -> Idris [(Term, Term)]
 elabPE info fc caller r =
   do ist <- getIState
      let sa = getSpecApps ist [] r
-     mapM_ (mkSpecialised ist) sa
+     rules <- mapM mkSpecialised sa
+     return $ concat rules
   where
     -- Make a specialised version of the application, and
     -- add a PTerm level transformation rule, which is basically the
@@ -305,41 +302,48 @@ elabPE info fc caller r =
 
     -- Transformation rules are applied after every PClause elaboration
 
-    mkSpecialised ist specapp_in = do
+    mkSpecialised :: (Name, [(PEArgType, Term)]) -> Idris [(Term, Term)]
+    mkSpecialised specapp_in = do
+        ist <- getIState
         let (specTy, specapp) = getSpecTy ist specapp_in
         let (n, newnm, (lhs, rhs)) = getSpecClause ist specapp
-        let undef = case lookupDef newnm (tt_ctxt ist) of
-                         [] -> True
+        let undef = case lookupDefExact newnm (tt_ctxt ist) of
+                         Nothing -> True
                          _ -> False
-        logLvl 3 $ show (newnm, map (concreteArg ist) (snd specapp))
+        logLvl 5 $ show (newnm, undef, map (concreteArg ist) (snd specapp))
         idrisCatch
-          (when (undef && all (concreteArg ist) (snd specapp)) $ do
-            cgns <- getAllNames n
-            let opts = [Specialise (map (\x -> (x, Nothing)) cgns ++
-                                     mapMaybe specName (snd specapp))]
-            logLvl 3 $ "Specialising application: " ++ show specapp
-                          ++ " with " ++ show opts
-            logLvl 3 $ "New name: " ++ show newnm
-            logLvl 3 $ "PE definition type : " ++ (show specTy)
-                        ++ "\n" ++ show opts
-            logLvl 3 $ "PE definition " ++ show newnm ++ ":\n" ++
---                         showSep "\n"
---                            (map (\ (lhs, rhs) ->
-                              (showTmImpls lhs ++ " = " ++
-                               showTmImpls rhs) -- pats)
+          (if (undef && all (concreteArg ist) (snd specapp)) then do
+                cgns <- getAllNames n
+                let cgns' = filter (/= n) cgns
+                let opts = [Specialise (map (\x -> (x, Nothing)) cgns' ++
+                                         (n, Just 65536) : 
+                                           mapMaybe specName (snd specapp))]
+                logLvl 3 $ "Specialising application: " ++ show specapp
+                              ++ " with " ++ show opts
+                logLvl 3 $ "New name: " ++ show newnm
+                logLvl 3 $ "PE definition type : " ++ (show specTy)
+                            ++ "\n" ++ show opts
+                logLvl 3 $ "PE definition " ++ show newnm ++ ":\n" ++
+    --                         showSep "\n"
+    --                            (map (\ (lhs, rhs) ->
+                                  (showTmImpls lhs ++ " = " ++
+                                   showTmImpls rhs) -- pats)
 
-            logLvl 2 $ show n ++ " transformation rule: " ++
-                       show rhs ++ " ==> " ++ show lhs
+                logLvl 2 $ show n ++ " transformation rule: " ++
+                           show rhs ++ " ==> " ++ show lhs
 
-            elabType info defaultSyntax emptyDocstring [] fc opts newnm specTy
-            let def = -- map (\ (lhs, rhs) ->
-                      [PClause fc newnm lhs [] rhs []] --) pats
-            elabTransform info fc False rhs lhs
-            elabClauses info fc opts newnm def)
+                elabType info defaultSyntax emptyDocstring [] fc opts newnm specTy
+                let def = -- map (\ (lhs, rhs) ->
+                          [PClause fc newnm lhs [] rhs []] --) pats
+                trans <- elabTransform info fc False rhs lhs
+                elabClauses info fc opts newnm def
+                return [trans]
+             else return [])
           -- if it doesn't work, just don't specialise. Could happen for lots
           -- of valid reasons (e.g. local variables in scope which can't be
           -- lifted out).
-          (\e -> logLvl 4 $ "Couldn't specialise: " ++ (pshow ist e))
+          (\e -> do logLvl 4 $ "Couldn't specialise: " ++ (pshow ist e)
+                    return [])
 
     specName (ImplicitS, tm)
         | (P Ref n _, _) <- unApply tm = Just (n, Just 1)
@@ -370,7 +374,7 @@ elabPE info fc caller r =
 
     -- get the clause of a specialised application
     getSpecClause ist (n, args)
-       = let newnm = sUN ("PE_"++ show (nsroot n) ++ "_" ++
+       = let newnm = sUN ("PE_" ++ show (nsroot n) ++ "_" ++
                                qhash 0 (showSep "_" (map showArg args))) in 
                                -- UN (show n ++ show (map snd args)) in
              (n, newnm, mkPE_TermDecl ist newnm n args)

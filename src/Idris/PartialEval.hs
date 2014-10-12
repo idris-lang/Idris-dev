@@ -13,19 +13,30 @@ import Control.Monad.State
 import Debug.Trace
 
 -- | Partially evaluates given terms under the given context.
-partial_eval :: Context -> [(Name, Maybe Int)] ->
+-- It is an error if partial evaluation fails to make any progress.
+-- Making progress is defined as: all of the names given with explicit
+-- reduction limits must have reduced at least once.
+partial_eval :: Context -> 
+                [(Name, Maybe Int)] ->
                 [Either Term (Term, Term)] ->
-                [Either Term (Term, Term)]
-partial_eval ctxt ns tms = map peClause tms where
+                Maybe [Either Term (Term, Term)]
+partial_eval ctxt ns tms = mapM peClause tms where
    -- If the term is not a clause, it is simply kept as is
-   peClause (Left t) = Left t
+   peClause (Left t) = Just $ Left t
    -- If the term is a clause, specialise the right hand side
    peClause (Right (lhs, rhs))
-       = let rhs' = specialise ctxt [] (map toLimit ns) rhs in
-             Right (lhs, rhs')
+       = let (rhs', reductions) = specialise ctxt [] (map toLimit ns) rhs in
+             do checkProgress ns reductions
+                return (Right (lhs, rhs'))
 
    toLimit (n, Nothing) = (n, 65536) -- somewhat arbitrary reduction limit
    toLimit (n, Just l) = (n, l)
+
+   checkProgress ns [] = return ()
+   checkProgress ns ((n, r) : rs)
+      | Just (Just start) <- lookup n ns
+             = if r < start then checkProgress ns rs else Nothing
+      | otherwise = checkProgress ns rs
 
 -- | Specialises the type of a partially evaluated TT function returning
 -- a pair of the specialised type and the types of expected arguments.

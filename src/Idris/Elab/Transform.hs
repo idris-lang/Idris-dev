@@ -48,7 +48,7 @@ import Data.List.Split (splitOn)
 
 import Util.Pretty(pretty, text)
 
-elabTransform :: ElabInfo -> FC -> Bool -> PTerm -> PTerm -> Idris ()
+elabTransform :: ElabInfo -> FC -> Bool -> PTerm -> PTerm -> Idris (Term, Term)
 elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
     = do ctxt <- getContext
          i <- getIState
@@ -88,6 +88,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
               (P _ tfname _, _) -> do addTrans tfname (clhs_tm, crhs_tm)
                                       addIBC (IBCTrans tf (clhs_tm, crhs_tm))
               _ -> ierror (At fc (Msg "Invalid transformation rule (must be function application)"))
+         return (clhs_tm, crhs_tm)
 
   where
     depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
