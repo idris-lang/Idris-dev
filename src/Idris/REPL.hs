@@ -744,7 +744,9 @@ process fn (NewDefn decls) = do
   defineName (PFix fc fixity strs : defns) = do
     fmodifyState idris_fixities (map (Fix fixity) strs ++)
     unless (null defns) $ defineName defns
-  defineName (PSyntax{}:_) = tclift $ tfail (Msg "That kind of declaration is not supported. If you feel it should be supported, please submit an issue at https://github.com/idris-lang/Idris-dev.")
+  defineName (PSyntax _ syntax:_) = do 
+    i <- get
+    put (addReplSyntax i syntax)
   defineName decls = do
     elabDecls toplevel (map fixClauses decls)
     setReplDefined (getName (head decls))
