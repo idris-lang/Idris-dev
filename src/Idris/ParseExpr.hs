@@ -721,7 +721,8 @@ TypeExpr ::= ConstraintList? Expr;
 typeExpr :: SyntaxInfo -> IdrisParser PTerm
 typeExpr syn = do cs <- if implicitAllowed syn then constraintList syn else return []
                   sc <- expr syn
-                  return (bindList (PPi constraint) (map (\x -> (sMN 0 "constrarg", x)) cs) sc)
+                  return (bindList (PPi constraint)
+                                   (map (\x -> (sMN 0 "constrarg", x)) cs) sc)
                <?> "type signature"
 
 {- | Parses a lambda expression

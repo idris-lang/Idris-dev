@@ -1068,10 +1068,9 @@ addStatics n tm ptm =
        let stpos = staticList statics' tm
        i <- getIState
        when (not (null statics)) $
-          logLvl 2 $ "Statics for " ++ show n ++ " " ++ show tm ++ " "
-                        ++ showTmImpls ptm 
+          logLvl 3 $ "Statics for " ++ show n ++ " " ++ show tm ++ " "
                         ++ show statics' ++ "\n" ++ show dynamics
-                        ++ "\n" ++ show stnames ++ "\n" ++ show dnames
+                        ++ "\n" ++ show stpos
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
