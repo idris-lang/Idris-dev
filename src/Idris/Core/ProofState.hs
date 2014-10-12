@@ -651,7 +651,7 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              mapM_ addConsHole (reverse consargs')
              let res' = forget $ res
              (scv, sct) <- lift $ check ctxt env res'
-             let scv' = specialise ctxt env [] scv
+             let (scv', _) = specialise ctxt env [] scv
              return scv'
           [] -> fail $ tactt ++ " needs " ++ tacstr ++ " for " ++ show tnm
           xs -> fail $ "Multiple definitions found when searching for " ++ tacstr ++ "of " ++ show tnm
@@ -705,7 +705,7 @@ hnf_compute ctxt env t = return t
 -- reduce let bindings only
 simplify :: RunTactic
 simplify ctxt env (Bind x (Hole ty) sc) =
-    do return $ Bind x (Hole (specialise ctxt env [] ty)) sc
+    do return $ Bind x (Hole (fst (specialise ctxt env [] ty))) sc
 simplify ctxt env t = return t
 
 check_in :: Raw -> RunTactic

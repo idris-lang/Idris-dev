@@ -188,7 +188,7 @@ doProofSearch fn updatefile rec l n hints (Just depth)
                    pprintPTerm defaultPPOption [] [] (idris_infixes i)
                      (stripNS
                         (dropCtxt envlen
-                           (delab i (specialise ctxt [] [(mn, 1)] tm)))))
+                           (delab i (fst (specialise ctxt [] [(mn, 1)] tm))))))
              (\e -> return ("?" ++ show n))
          if updatefile then
             do let fb = fn ++ "~"

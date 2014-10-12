@@ -89,12 +89,17 @@ normaliseTrace tr ctxt env t
    = evalState (do val <- eval tr ctxt [] (map finalEntry env) (finalise t) []
                    quote 0 val) initEval
 
-specialise :: Context -> Env -> [(Name, Int)] -> TT Name -> TT Name
+-- Return a specialised name, and an updated list of reductions available,
+-- so that the caller can tell how much specialisation was achieved.
+specialise :: Context -> Env -> [(Name, Int)] -> TT Name -> 
+              (TT Name, [(Name, Int)])
 specialise ctxt env limits t
-   = evalState (do val <- eval False ctxt []
+   = let (tm, st) =
+          runState (do val <- eval False ctxt []
                                  (map finalEntry env) (finalise t)
                                  [Spec]
-                   quote 0 val) (initEval { limited = limits })
+                       quote 0 val) (initEval { limited = limits }) in
+         (tm, limited st)
 
 -- | Like normalise, but we only reduce functions that are marked as okay to
 -- inline (and probably shouldn't reduce lets?)
