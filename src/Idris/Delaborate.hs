@@ -441,7 +441,7 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
                                    -- Issue #1588 on the Issue Tracker
                                    -- https://github.com/idris-lang/Idris-dev/issues/1588
                                    out = displayS . renderPretty 1.0 50 $
-                                         renderDocstring (pprintDelab ist) o
+                                         renderDocstring (pprintDelab ist) (normaliseAll (tt_ctxt ist) []) o
                                return (out "")
         getTy :: IState -> Name -> String -- fails if name not already extant!
         getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $

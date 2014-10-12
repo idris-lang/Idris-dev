@@ -35,14 +35,14 @@ data Docs = FunDoc FunDoc
   deriving Show
 
 showDoc ist d | nullDocstring d = empty
-              | otherwise       = text "  -- " <> renderDocstring (pprintDelab ist) d
+              | otherwise       = text "  -- " <> renderDocstring (pprintDelab ist) (normaliseAll (tt_ctxt ist) []) d
 
 pprintFD :: IState -> FunDoc -> Doc OutputAnnotation
 pprintFD ist (FD n doc args ty f)
     = nest 4 (prettyName True (ppopt_impl ppo) [] n <+> colon <+>
               pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
                                      , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
-              renderDocstring (pprintDelab ist) doc <$>
+              renderDocstring (pprintDelab ist) (normaliseAll (tt_ctxt ist) []) doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
               let argshow = showArgs args [] in
               if not (null argshow)
@@ -84,7 +84,7 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
            = nest 4 (text "Type class" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
                        then empty
-                       else line <> renderDocstring (pprintDelab ist) doc)
+                       else line <> renderDocstring (pprintDelab ist) (normaliseAll (tt_ctxt ist) []) doc)
              <> line <$>
              nest 4 (text "Parameters:" <$> prettyParameters)
              <> line <$>
