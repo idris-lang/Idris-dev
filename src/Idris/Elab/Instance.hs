@@ -63,7 +63,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
     (n, ci) <- case lookupCtxtName n (idris_classes i) of
                   [c] -> return c
                   [] -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
-                  cs -> tclift $ tfail $ At fc 
+                  cs -> tclift $ tfail $ At fc
                            (CantResolveAlts (map fst cs))
     let constraint = PApp fc (PRef fc n) (map pexp ps)
     let iname = mkiname n ps expn
@@ -77,7 +77,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
                                 (class_instances ci)
                           addInstance intInst n iname
             Just _ -> addInstance intInst n iname
-    when (what /= ETypes && (not (null ds && not emptyclass))) $ do 
+    when (what /= ETypes && (not (null ds && not emptyclass))) $ do
          let ips = zip (class_params ci) ps
          let ns = case n of
                     NS n ns' -> ns'
@@ -93,7 +93,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
          mapM_ (rec_elabDecl info EAll info) undefinedSuperclassInstances
          let all_meths = map (nsroot . fst) (class_methods ci)
          let mtys = map (\ (n, (op, t)) ->
-                   let t_in = substMatchesShadow ips pnames t 
+                   let t_in = substMatchesShadow ips pnames t
                        mnamemap = map (\n -> (n, PRef fc (decorate ns iname n)))
                                       all_meths
                        t' = substMatchesShadow mnamemap pnames t_in in
@@ -115,7 +115,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
          -- Bring variables in instance head into scope
          ist <- getIState
          let headVars = nub $ mapMaybe (\p -> case p of
-                                               PRef _ n -> 
+                                               PRef _ n ->
                                                   case lookupTy n (tt_ctxt ist) of
                                                       [] -> Just n
                                                       _ -> Nothing
@@ -157,6 +157,8 @@ elabInstance info syn what fc cs n ps t expn ds = do
             _ -> return False -- couldn't find class, just let elabInstance fail later
 
     -- TODO: largely based upon elabType' - should try to abstract
+    -- Issue #1614 in the issue tracker:
+    --    https://github.com/idris-lang/Idris-dev/issues/1614
     elabFindOverlapping i ci iname syn t
         = do ty' <- addUsingConstraints syn fc t
              -- TODO think: something more in info?
@@ -256,5 +258,3 @@ elabInstance info syn what fc cs n ps t expn ds = do
     clauseFor m iname ns (PClauses _ _ m' _)
        = decorate ns iname m == decorate ns iname m'
     clauseFor m iname ns _ = False
-
-

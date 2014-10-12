@@ -124,7 +124,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
                 [oi] -> putIState ist{ idris_optimisation = addDef n oi{ detaggable = True } opt }
                 _    -> putIState ist{ idris_optimisation = addDef n (Optimise [] True) opt }
 
-        checkDefinedAs fc n t ctxt 
+        checkDefinedAs fc n t ctxt
             = case lookupDef n ctxt of
                    [] -> return ()
                    [TyDecl _ ty] ->
@@ -204,14 +204,9 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
                        liftname = id -- Is this appropriate?
                      }
 
--- FIXME: 'forcenames' is an almighty hack! Need a better way of
--- erasing non-forceable things
--- ^^^
--- TODO: the above is a comment from the past;
--- forcenames is probably no longer needed
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
            Type -> -- for kind checking
-           (Docstring (Maybe PTerm), [(Name, Docstring (Maybe PTerm))], Name, PTerm, FC, [Name]) -> 
+           (Docstring (Maybe PTerm), [(Name, Docstring (Maybe PTerm))], Name, PTerm, FC, [Name]) ->
            Idris (Name, Type)
 elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
     = do checkUndefined fc n
@@ -244,7 +239,7 @@ elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
              else return ()
     tyIs con t = tclift $ tfail (At fc (Elaborating "constructor " con (Msg (show t ++ " is not " ++ show tn))))
 
-    mkLazy (PPi pl n ty sc) 
+    mkLazy (PPi pl n ty sc)
         = let ty' = if getTyName ty
                        then PApp fc (PRef fc (sUN "Lazy'"))
                             [pexp (PRef fc (sUN "LazyCodata")),
@@ -277,6 +272,9 @@ elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
 
 type EliminatorState = StateT (Map.Map String Int) Idris
 
+-- -- Issue #1616 in the issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1616
+--
 -- TODO: Rewrite everything to use idris_implicits instead of manual splitting (or in TT)
 -- FIXME: Many things have name starting with elim internally since this was the only purpose in the first edition of the function
 -- rename to caseFun to match updated intend
@@ -417,7 +415,7 @@ elabCaseFun ind paramPos n ty cons info = do
           case findIndex (== n) oldParams of
             Nothing -> (PPi pl n (removeParamPis oldParams params tyb) (removeParamPis oldParams params tyr))
             Just i  -> (removeParamPis oldParams params tyr)
-        removeParamPis oldParams params (PRef _ n) = 
+        removeParamPis oldParams params (PRef _ n) =
           case findIndex (== n) oldParams of
                Nothing -> (PRef elimFC n)
                Just i  -> let (newname,_,_) = params !! i in (PRef elimFC (newname))
@@ -518,4 +516,3 @@ elabCaseFun ind paramPos n ty cons info = do
             where applyRecElim :: (Name, Plicity, PTerm) -> PArg
                   applyRecElim (constr@(recCnm,_,recTy)) = pexp $ PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ map pexp idxs ++ [pexp $ PRef elimFC recCnm])
                     where (_, idxs) = splitArgPms recTy
-

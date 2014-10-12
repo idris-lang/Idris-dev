@@ -262,6 +262,9 @@ vecCmps ity =
     , iCmp ity "gt" True (bCmp ity (>)) LGt total
     ]
 
+-- The TODOs in this function are documented as Issue #1617 on the issue tracker.
+--
+--     https://github.com/idris-lang/Idris-dev/issues/1617
 vecOps :: IntTy -> [Prim]
 vecOps ity@(ITVec elem count) =
     [ Prim (sUN $ "prim__mk" ++ intTyName ity)
