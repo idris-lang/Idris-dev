@@ -696,6 +696,10 @@ elab ist info emode opts fn tm
              letbind scvn (Var tyn) (Var valn)
              focus valn
              elabE (True, a, inty, qq) scr
+             -- Solve any remaining implicits - we need to solve as many
+             -- as possible before making the 'case' type
+             unifyProblems
+             matchProblems True
              args <- get_env
              envU <- mapM (getKind args) args
              let namesUsedInRHS = nub $ scvn : concatMap (\(_,rhs) -> allNamesIn rhs) opts
