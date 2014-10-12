@@ -216,19 +216,28 @@ decl' syn =    fixity
 -}
 syntaxDecl :: SyntaxInfo -> IdrisParser PDecl
 syntaxDecl syn = do s <- syntaxRule syn
-                    i <- get
-                    let rs = syntax_rules i
-                    let ns = syntax_keywords i
-                    let ibc = ibc_write i
-                    let ks = map show (names s)
-                    put (i { syntax_rules = s : rs,
-                             syntax_keywords = ks ++ ns,
-                             ibc_write = IBCSyntax s : map IBCKeyword ks ++ ibc })
+                    i <- get 
+                    put (i `addSyntax` s)
                     fc <- getFC
-                    return (PSyntax fc s)
-  where names (Rule syms _ _) = mapMaybe ename syms
-        ename (Keyword n) = Just n
-        ename _           = Nothing
+                    return (PSyntax fc s) 
+
+-- | Extend an 'IState' with a new syntax extension. See also 'addReplSyntax'.
+addSyntax :: IState -> Syntax -> IState
+addSyntax i s = i { syntax_rules = s : rs,
+                    syntax_keywords = ks ++ ns,
+                    ibc_write = IBCSyntax s : map IBCKeyword ks ++ ibc }
+  where rs = syntax_rules i
+        ns = syntax_keywords i
+        ibc = ibc_write i
+        ks = map show (syntaxNames s)
+
+-- | Like 'addSyntax', but no effect on the IBC.
+addReplSyntax :: IState -> Syntax -> IState
+addReplSyntax i s = i { syntax_rules = s : rs,
+                        syntax_keywords = ks ++ ns }
+  where rs = syntax_rules i
+        ns = syntax_keywords i
+        ks = map show (syntaxNames s)
 
 {- | Parses a syntax extension declaration
 

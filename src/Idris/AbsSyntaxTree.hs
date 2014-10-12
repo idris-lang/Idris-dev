@@ -29,7 +29,7 @@ import qualified Data.Map as M
 import Data.Either
 import qualified Data.Set as S
 import Data.Word (Word)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Traversable (Traversable)
 import Data.Foldable (Foldable)
 
@@ -974,6 +974,11 @@ deriving instance NFData SynContext
 
 data Syntax = Rule [SSymbol] PTerm SynContext
     deriving Show
+
+syntaxNames :: Syntax -> [Name]
+syntaxNames (Rule syms _ _) = mapMaybe ename syms
+           where ename (Keyword n) = Just n
+                 ename _           = Nothing
 {-!
 deriving instance Binary Syntax
 deriving instance NFData Syntax
@@ -985,6 +990,8 @@ data SSymbol = Keyword Name
              | Expr Name
              | SimpleExpr Name
     deriving Show
+    
+
 {-!
 deriving instance Binary SSymbol
 deriving instance NFData SSymbol
