@@ -302,6 +302,9 @@ Extra-source-files:
                        test/basic010/run
                        test/basic010/*.idr
                        test/basic010/expected
+                       test/basic011/run
+                       test/basic011/*.idr
+                       test/basic011/expected
 
                        test/buffer001-disabled/*.idr
                        test/buffer001-disabled/run

@@ -94,36 +94,44 @@ options = CT.Options { CT.sanitize = True
                      }
 
 -- | Convert a docstring to be shown by the pretty-printer
-renderDocstring :: (a -> Doc OutputAnnotation) -> Docstring (Maybe a) -> Doc OutputAnnotation
-renderDocstring pp (DocString _ blocks) = renderBlocks pp blocks
+renderDocstring :: (a -> Doc OutputAnnotation) -> (a -> a) -> Docstring (Maybe a) -> Doc OutputAnnotation
+renderDocstring pp norm (DocString _ blocks) = renderBlocks pp norm blocks
 
 -- | Construct a docstring consisting of the first block-level element of the
 -- argument docstring, for use in summaries.
 overview :: Docstring a -> Docstring a
 overview (DocString opts blocks) = DocString opts (S.take 1 blocks)
 
-renderBlocks :: (a -> Doc OutputAnnotation) -> Blocks (Maybe a) -> Doc OutputAnnotation
-renderBlocks pp blocks  | S.length blocks > 1  = F.foldr1 (\b1 b2 -> b1 <> line <> line <> b2) $
-                                                  fmap (renderBlock pp) blocks
-                        | S.length blocks == 1 = renderBlock pp (S.index blocks 0)
+renderBlocks :: (a -> Doc OutputAnnotation) -> (a -> a)
+             -> Blocks (Maybe a) -> Doc OutputAnnotation
+renderBlocks pp norm blocks  | S.length blocks > 1  = F.foldr1 (\b1 b2 -> b1 <> line <> line <> b2) $
+                                                  fmap (renderBlock pp norm) blocks
+                        | S.length blocks == 1 = renderBlock pp norm (S.index blocks 0)
                         | otherwise            = empty
 
-renderBlock :: (a -> Doc OutputAnnotation) -> Block (Maybe a) -> Doc OutputAnnotation
-renderBlock pp (Para inlines) = renderInlines pp inlines
-renderBlock pp (Header lvl inlines) = renderInlines pp inlines <+> parens (text (show lvl))
-renderBlock pp (Blockquote blocks) = indent 8 $ renderBlocks pp blocks
-renderBlock pp (List b ty blockss) = renderList pp b ty blockss
-renderBlock pp (CodeBlock attr src Nothing) = indent 8 $ text (T.unpack src)
-renderBlock pp (CodeBlock attr src (Just tm)) = indent 8 $ pp tm
-renderBlock pp (HtmlBlock txt) = text "<html block>" -- TODO
-renderBlock pp HRule = text "----------------------"
+renderBlock :: (a -> Doc OutputAnnotation) -> (a -> a)
+            -> Block (Maybe a) -> Doc OutputAnnotation
+renderBlock pp norm (Para inlines) = renderInlines pp inlines
+renderBlock pp norm (Header lvl inlines) = renderInlines pp inlines <+> parens (text (show lvl))
+renderBlock pp norm (Blockquote blocks) = indent 8 $ renderBlocks pp norm blocks
+renderBlock pp norm (List b ty blockss) = renderList pp norm b ty blockss
+renderBlock pp norm (CodeBlock attr src Nothing) = indent 8 $ text (T.unpack src)
+renderBlock pp norm (CodeBlock attr src (Just tm))
+  | isExample attr = indent 4 $
+                       text ">" <+> align (group (pp tm)) <$>
+                       align (group (pp (norm tm)))
+  | otherwise = indent 4 $ pp tm
+  where isExample (CT.CodeAttr lang info) = T.pack "example" `elem` lang : T.words info
+renderBlock pp norm (HtmlBlock txt) = text "<html block>" -- TODO
+renderBlock pp norm HRule = text "----------------------"
 
-renderList :: (a -> Doc OutputAnnotation) -> Bool -> CT.ListType -> [Blocks (Maybe a)] -> Doc OutputAnnotation
-renderList pp b (CT.Bullet c) blockss = vsep $ map (hang 4 . (char c <+>) . renderBlocks pp) blockss
-renderList pp b (CT.Numbered nw i) blockss =
+renderList :: (a -> Doc OutputAnnotation) -> (a -> a)
+           -> Bool -> CT.ListType -> [Blocks (Maybe a)] -> Doc OutputAnnotation
+renderList pp norm b (CT.Bullet c) blockss = vsep $ map (hang 4 . (char c <+>) . renderBlocks pp norm) blockss
+renderList pp norm b (CT.Numbered nw i) blockss =
   vsep $
   zipWith3 (\n p txt -> hang 4 $ text (show n) <> p <+> txt)
-           [i..] (repeat punc) (map (renderBlocks pp) blockss)
+           [i..] (repeat punc) (map (renderBlocks pp norm) blockss)
   where punc = case nw of
                  CT.PeriodFollowing -> char '.'
                  CT.ParenFollowing  -> char '('
