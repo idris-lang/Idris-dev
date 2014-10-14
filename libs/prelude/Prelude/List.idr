@@ -275,12 +275,12 @@ zipWith3 f (x::xs) (y::ys) (z::zs) p    q    =
 
 ||| Combine two lists elementwise into pairs
 zip : (l : List a) -> (r : List b) -> (length l = length r) -> List (a, b)
-zip = zipWith (\x => \y => (x, y))
+zip = zipWith (\x,y => (x, y))
 
 ||| Combine three lists elementwise into tuples
 zip3 : (x : List a) -> (y : List b) -> (z : List c) -> (length x = length y) ->
   (length y = length z) -> List (a, b, c)
-zip3 = zipWith3 (\x => \y => \z => (x, y, z))
+zip3 = zipWith3 (\x,y,z => (x, y, z))
 
 ||| Split a list of pairs into two lists
 unzip : List (a, b) -> (List a, List b)

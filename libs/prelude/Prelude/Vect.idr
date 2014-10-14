@@ -207,7 +207,7 @@ zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
 ||| Combine two equal-length vectors pairwise
 zip : Vect n a -> Vect n b -> Vect n (a, b)
-zip = zipWith (\x => \y => (x,y))
+zip = zipWith (\x,y => (x,y))
 
 ||| Convert a vector of pairs to a pair of vectors
 unzip : Vect n (a, b) -> (Vect n a, Vect n b)
