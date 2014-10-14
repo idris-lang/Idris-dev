@@ -1059,10 +1059,17 @@ getPriority i tm = 1 -- pri tm
 addStatics :: Name -> Term -> PTerm -> Idris ()
 addStatics n tm ptm =
     do let (statics, dynamics) = initStatics tm ptm
+       ist <- getIState
+       let paramnames = case lookupCtxtExact n (idris_fninfo ist) of
+                           Just p -> getNamesFrom 0 (fn_params p) tm
+                           _ -> []
+        
        let stnames = nub $ concatMap freeArgNames (map snd statics)
        let dnames = nub $ concatMap freeArgNames (map snd dynamics)
+                             \\ paramnames
        -- also get the arguments which are 'uniquely inferrable' from
        -- statics (see sec 4.2 of "Scrapping Your Inefficient Engine")
+       -- or parameters to the type of a static
        let statics' = nub $ map fst statics ++
                               filter (\x -> not (elem x dnames)) stnames
        let stpos = staticList statics' tm
@@ -1085,8 +1092,13 @@ addStatics n tm ptm =
                             else (static, dynamic)
     initStatics t pt = ([], [])
 
+    getNamesFrom i ps (Bind n (Pi _ _) sc)
+       | i `elem` ps = n : getNamesFrom (i + 1) ps sc
+       | otherwise = getNamesFrom (i + 1) ps sc
+    getNamesFrom i ps sc = []
+
     freeArgNames (Bind n (Pi ty _) sc) 
-          = nub $ freeArgNames ty 
+          = nub $ freeNames ty ++ freeNames sc -- treat '->' as fn here
     freeArgNames tm = let (_, args) = unApply tm in
                           concatMap freeNames args
 
