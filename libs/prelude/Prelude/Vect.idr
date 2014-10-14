@@ -212,11 +212,11 @@ zipWith3 f (x::xs) (y::ys) (z::zs) = f x y z :: zipWith3 f xs ys zs
 
 ||| Combine two equal-length vectors pairwise
 zip : Vect n a -> Vect n b -> Vect n (a, b)
-zip = zipWith (\x => \y => (x,y))
+zip = zipWith (\x,y => (x,y))
 
 ||| Combine three equal-length vectors elementwise into a vector of tuples
 zip3 : Vect n a -> Vect n b -> Vect n c -> Vect n (a, b, c)
-zip3 = zipWith3 (\x => \y => \z => (x,y,z))
+zip3 = zipWith3 (\x,y,z => (x,y,z))
 
 ||| Convert a vector of pairs to a pair of vectors
 unzip : Vect n (a, b) -> (Vect n a, Vect n b)
