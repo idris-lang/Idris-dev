@@ -360,6 +360,8 @@ elabPE info fc caller r =
              [] -> False
              _ -> True
     concreteTm ist (Constant _) = True
+    concreteTm ist (Bind n (Lam _) sc) = True
+    concreteTm ist (Bind n (Let _ _) sc) = concreteTm ist sc
     concreteTm ist _ = False
 
     -- get the type of a specialised application
