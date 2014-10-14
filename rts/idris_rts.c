@@ -346,10 +346,11 @@ void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i
 }
 
 VAL idris_castIntStr(VM* vm, VAL i) {
+    int x = (int) GETINT(i);
     Closure* cl = allocate(vm, sizeof(Closure) + sizeof(char)*16, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
-    sprintf(cl -> info.str, "%d", (int)(GETINT(i)));
+    sprintf(cl -> info.str, "%d", x);
     return cl;
 }
 
