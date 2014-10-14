@@ -819,4 +819,3 @@ VAL idris_b64T32(VM *vm, VAL a) {
     cl->info.bits32 = (uint32_t) A;
     return cl;
 }
-
