@@ -379,4 +379,3 @@ instance {- (Binary n) => -} Binary (TT Name) where
                    10 -> do x1 <- get
                             return (UType x1)
                    _ -> error "Corrupted binary data for TT"
-

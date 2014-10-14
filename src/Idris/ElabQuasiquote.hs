@@ -170,5 +170,3 @@ extractUnquotes n (PUnquote tm)
   | otherwise = fmap (\(tm', ex) -> (PUnquote tm', ex)) $
                 extractUnquotes (n-1) tm
 extractUnquotes n x = return (x, []) -- no subterms!
-
-

@@ -76,4 +76,3 @@ doInline defs (LFun opts topn args exp)
               inlineWith done (map (\ (n,n') -> (n, LV (Glob n'))) ns' ++ env) rhs
     inlineWithAlt done env (LConstCase c e) = LConstCase c <$> inlineWith done env e
     inlineWithAlt done env (LDefaultCase e) = LDefaultCase <$> inlineWith done env e
-

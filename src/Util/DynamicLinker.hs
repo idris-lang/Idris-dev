@@ -112,5 +112,3 @@ tryLoadFn :: String -> DynamicLib -> IO (Maybe ForeignFun)
 tryLoadFn fn lib = do putStrLn $ "WARNING: Cannot load '" ++ fn ++ "' at compile time because Idris was compiled without libffi support."
                       return Nothing
 #endif
-
-

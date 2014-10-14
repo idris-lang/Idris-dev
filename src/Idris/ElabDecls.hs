@@ -257,4 +257,3 @@ elabDecl' what info (PTransform fc safety old new)
     = do elabTransform info fc safety old new
          return ()
 elabDecl' _ _ _ = return () -- skipped this time
-

@@ -171,5 +171,3 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     bindAll [] tm = tm
     bindAll ((n, fc, t) : bs) tm
        = PApp fc b [pexp t, pexp (PLam n Placeholder (bindAll bs tm))]
-
-

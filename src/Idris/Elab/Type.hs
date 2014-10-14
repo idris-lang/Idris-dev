@@ -216,6 +216,3 @@ elabPostulate info syn doc fc opts n ty = do
 
     -- remove it from the deferred definitions list
     solveDeferred n
-
-
-

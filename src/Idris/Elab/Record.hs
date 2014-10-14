@@ -239,4 +239,3 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
                if n `elem` allNamesIn t 
                   then PPi impl n' ty (implBindUp ns is t)
                   else implBindUp ns is t
-

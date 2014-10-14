@@ -185,5 +185,3 @@ constAlt l reg r _ = Nothing
 defaultAlt reg [] r = Nothing
 defaultAlt reg (SDefaultCase e : _) r = Just (bc reg e r)
 defaultAlt reg (_ : xs) r = defaultAlt reg xs r
-
-

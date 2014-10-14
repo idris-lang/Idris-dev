@@ -394,4 +394,3 @@ jsPackSBits16 js = JSNew "Int16Array" [JSArray [js]]
 
 jsPackSBits32 :: JS -> JS
 jsPackSBits32 js = JSNew "Int32Array" [JSArray [js]]
-

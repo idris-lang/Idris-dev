@@ -424,6 +424,3 @@ nameMissing ps = do ist <- get
                      Nothing -> return ptm
                      Just ptm' -> return ptm'
                        
-
-
-

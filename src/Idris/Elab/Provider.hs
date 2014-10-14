@@ -114,4 +114,3 @@ elabProvider info syn fc what n
             , tp == tp', io == txt "IO"
             , prov == txt "Provider" && provs == txt "Providers" = True
           isProviderOf _ _ = False
-

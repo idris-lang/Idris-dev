@@ -39,6 +39,3 @@ main = do opts <- getOpts
           if (null (inputs opts)) 
              then showUsage
              else runMain (c_main opts)
-
-
-

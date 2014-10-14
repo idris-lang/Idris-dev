@@ -1804,4 +1804,3 @@ getErasureInfo ist n =
     case lookupCtxtExact n (idris_optimisation ist) of
         Just (Optimise inacc detagg) -> map fst inacc
         Nothing -> []
-

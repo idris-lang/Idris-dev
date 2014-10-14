@@ -96,4 +96,3 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
 
 elabTransform info fc safe lhs_in rhs_in 
    = ierror (At fc (Msg "Invalid transformation rule (must be function application)"))
-

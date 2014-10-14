@@ -155,4 +155,3 @@ fixityType = do reserved "infixl"; return Infixl
          <|> do reserved "infix";  return InfixN
          <|> do reserved "prefix"; return PrefixN
          <?> "fixity type"
-

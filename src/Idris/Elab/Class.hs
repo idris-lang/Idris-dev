@@ -229,5 +229,3 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
         | otherwise = PPi (e l s p) n ty (toExp ns e sc)
     toExp ns e (PPi p n ty sc) = PPi p n ty (toExp ns e sc)
     toExp ns e sc = sc
-
-

@@ -1328,4 +1328,3 @@ fullTactic :: SyntaxInfo -> IdrisParser PTactic
 fullTactic syn = do t <- tactic syn
                     eof
                     return t
-

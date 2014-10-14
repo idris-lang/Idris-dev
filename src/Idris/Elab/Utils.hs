@@ -234,5 +234,3 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
     getUniqB env us (Pi t v) = do getUniq env us t; getUniq env us v
     getUniqB env us (NLet t v) = do getUniq env us t; getUniq env us v
     getUniqB env us b = getUniq env us (binderTy b)
-
-

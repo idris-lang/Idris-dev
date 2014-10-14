@@ -795,4 +795,3 @@ mkForce = mkForceSC
         = DefaultCase (mkForceSC n arg rhs)
 
     forceTm n arg t = subst n arg t
-

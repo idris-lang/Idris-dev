@@ -753,5 +753,3 @@ mkPrimitiveFunction op args =
 mkThread :: LVar -> CodeGeneration Exp
 mkThread arg =
   (\ closure -> (closure ~> "fork") []) <$> mkMethodCallClosure (sMN 0 "EVAL") [arg]
-
-
