@@ -186,8 +186,6 @@ docFun n
        where funName :: Name -> String
              funName (UN n)   = str n
              funName (NS n _) = funName n
-             funName n
-               | n == falseTy = "_|_"
 
 getPArgNames :: PTerm -> [(Name, Docstring (Maybe Term))] -> [(Name, PTerm, Plicity, Maybe (Docstring (Maybe Term)))]
 getPArgNames (PPi plicity name ty body) ds =

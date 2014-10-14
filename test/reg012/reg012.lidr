@@ -4,11 +4,11 @@
 > soElim C coh .True .Oh  =  coh
 
 > soFalseElim             :  So False -> a
-> soFalseElim x           =  FalseElim (soElim C () False x)
+> soFalseElim x           =  void (soElim C () False x)
 >                            where
 >                            C : (b : Bool) -> So b -> Type
 >                            C True s = ()
->                            C False s = _|_
+>                            C False s = Void
 
 > soTrue                  :  So b -> b = True
 > soTrue {b = False} x    =  soFalseElim x

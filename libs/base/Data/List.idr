@@ -32,7 +32,7 @@ isElem x (y :: xs) with (decEq x y)
     isElem x (y :: xs) | (No contra) | (No f) = No (mkNo contra f)
       where
         mkNo : {xs' : List a} ->
-               ((x' = y') -> _|_) -> (Elem x' xs' -> _|_) ->
-               Elem x' (y' :: xs') -> _|_
+               ((x' = y') -> Void) -> (Elem x' xs' -> Void) ->
+               Elem x' (y' :: xs') -> Void
         mkNo f g Here = f Refl
         mkNo f g (There x) = g x

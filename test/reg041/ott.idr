@@ -11,7 +11,7 @@ mutual
 
   El : U -> Type
   El u = U
-  El zero = _|_
+  El zero = Void
   El one = ()
   El two = Bool
   El (pi s t) = (x : El s) -> El (t x)

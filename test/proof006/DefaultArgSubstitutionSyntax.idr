@@ -2,7 +2,7 @@ module DefaultArgSubstitutionSyntax
 
 DecProofType : {a:Type} -> Dec a -> Type
 DecProofType {a} (Yes _)  = a
-DecProofType {a} (No _)   = a -> _|_
+DecProofType {a} (No _)   = a -> Void
 
 decProof : {a:Type} -> (dec : Dec a) -> DecProofType dec
 decProof (Yes x)  = x
@@ -16,7 +16,7 @@ syntax "{{" [prfname] ":" "accept" [dec] "}}" "->" [ret]
   = { default (decProof dec) prfname : DecType dec } -> ret
 
 syntax "{{" [prfname] ":" "reject" [dec] "}}" "->" [ret] 
-  = { default (decProof dec) prfname : DecType dec -> _|_ } -> ret
+  = { default (decProof dec) prfname : DecType dec -> Void } -> ret
 
 
 argsAreSame : (n:Nat) -> (m:Nat)

@@ -208,14 +208,9 @@ cmd_doc name = do
         eof
         return $ Right (DocStr (Right c))
 
-    let bottom = do
-            P.string "_|_"
-            eof
-            return $ Right (DocStr (Left falseTy))
-
     let fnName = fnNameArg name (\n -> DocStr (Left n))
 
-    try constant <|> try bottom <|> fnName
+    try constant <|> fnName
 
 cmd_consolewidth :: String -> P.IdrisParser (Either String Command)
 cmd_consolewidth name = do

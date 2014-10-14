@@ -238,7 +238,7 @@ deriving instance NFData CGInfo
 primDefs = [sUN "unsafePerformPrimIO",
             sUN "mkLazyForeignPrim",
             sUN "mkForeignPrim",
-            sUN "FalseElim"]
+            sUN "void"]
 
 -- information that needs writing for the current module's .ibc file
 data IBCWrite = IBCFix FixDecl
@@ -711,7 +711,6 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PMatchApp FC Name -- ^ Make an application by type matching
            | PCase FC PTerm [(PTerm, PTerm)] -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
            | PTrue FC PunInfo -- ^ Unit type..?
-           | PFalse FC -- ^ _|_
            | PRefl FC PTerm -- ^ The canonical proof of the equality type
            | PResolveTC FC -- ^ Solve this dictionary by type class resolution
            | PEq FC PTerm PTerm PTerm PTerm -- ^ Heterogeneous equality type: A = B
@@ -1074,7 +1073,7 @@ getInferType (App (App _ ty) _) = ty
 
 -- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
 
-primNames = [falseTy, eqTy, eqCon, inferTy, inferCon]
+primNames = [eqTy, eqCon, inferTy, inferCon]
 
 unitTy   = sUN "Unit"
 unitCon  = sUN "MkUnit"
@@ -1083,11 +1082,9 @@ unitCon  = sUN "MkUnit"
 falseDoc = fmap (const Nothing) . parseDocstring . T.pack $
              "The empty type, also known as the trivially false proposition." ++
              "\n\n" ++
-             "Use `FalseElim` or `absurd` to prove anything if you have a variable " ++
-             "of type `_|_` in scope."
-falseTy   = sMN 0 "__False"
-falseDecl = PDatadecl falseTy PType []
-falseOpts = []
+             "Use `void` or `absurd` to prove anything if you have a variable " ++
+             "of type `Void` in scope."
+falseTy   = sUN "Void"
 
 pairTy    = sUN "Pair"
 pairCon   = sUN "MkPair"
@@ -1323,7 +1320,6 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PTrue _ IsType) = annName unitTy $ text "()"
     prettySe p bnd (PTrue _ IsTerm) = annName unitCon $ text "()"
     prettySe p bnd (PTrue _ TypeOrTerm) = text "()"
-    prettySe p bnd (PFalse _) = annName falseTy $ text "_|_"
     prettySe p bnd (PEq _ lt rt l r)
       | ppopt_impl ppo =
           bracket p 1 $
@@ -1493,7 +1489,6 @@ prettyName infixParen showNS bnd n
         baseName (UN n) = T.unpack n
         baseName (NS n ns) = baseName n
         baseName (MN i s) = T.unpack s 
-        baseName n | n == falseTy = "_|_"
         baseName other = show other
         nameSpace = case n of
           (NS n' ns) -> if showNS then (concatMap (++ ".") . map T.unpack . reverse) ns else ""
@@ -1623,7 +1618,6 @@ instance Sized PTerm where
   size (PAppBind fc name args) = 1 + size args
   size (PCase fc trm bdy) = 1 + size trm + size bdy
   size (PTrue fc _) = 1
-  size (PFalse fc) = 1
   size (PRefl fc _) = 1
   size (PResolveTC fc) = 1
   size (PEq fc _ _ left right) = 1 + size left + size right

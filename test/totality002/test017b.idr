@@ -1,5 +1,5 @@
 module foo
 
-total foo : _|_
+total foo : Void
 foo = foo
 
