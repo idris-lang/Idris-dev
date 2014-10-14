@@ -208,7 +208,7 @@ zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 ||| Combine three equal-length vectors into a vector with some function
 zipWith3 : (a -> b -> c -> d) -> Vect n a -> Vect n b -> Vect n c -> Vect n d
 zipWith3 f []      []      []      = []
-zipWith3 f (x::xs) (y::ys) (z::zs) = f x y z :: zipWith3 xs ys zs
+zipWith3 f (x::xs) (y::ys) (z::zs) = f x y z :: zipWith3 f xs ys zs
 
 ||| Combine two equal-length vectors pairwise
 zip : Vect n a -> Vect n b -> Vect n (a, b)
