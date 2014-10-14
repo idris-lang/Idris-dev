@@ -8,4 +8,4 @@ void idris_doFork(void* proc);
 void* idris_doWithin(int limit, void* proc, void* doOnFail);
 int idris_utime();
 
-#endif
+#endif /* _THREADS_H */

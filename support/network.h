@@ -1,3 +1,6 @@
+#ifndef __NETWORK_H
+#define __NETWORK_H
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -34,3 +37,5 @@ int get_recvPort(void* recv);
 void net_sendRaw(void* conn, char* server, int port, VAL pkt);
 VAL net_recvRaw(void* conn);
 void dumpPkt(VAL pkt);
+
+#endif /* __NETWORK_H */
