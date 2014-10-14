@@ -205,15 +205,30 @@ zipWith : (a -> b -> c) -> Vect n a -> Vect n b -> Vect n c
 zipWith f []      []      = []
 zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
+||| Combine three equal-length vectors into a vector with some function
+zipWith3 : (a -> b -> c -> d) -> Vect n a -> Vect n b -> Vect n c -> Vect n d
+zipWith3 f []      []      []      = []
+zipWith3 f (x::xs) (y::ys) (z::zs) = f x y z :: zipWith3 xs ys zs
+
 ||| Combine two equal-length vectors pairwise
 zip : Vect n a -> Vect n b -> Vect n (a, b)
 zip = zipWith (\x => \y => (x,y))
+
+||| Combine three equal-length vectors elementwise into a vector of tuples
+zip3 : Vect n a -> Vect n b -> Vect n c -> Vect n (a, b, c)
+zip3 = zipWith3 (\x => \y => \z => (x,y,z))
 
 ||| Convert a vector of pairs to a pair of vectors
 unzip : Vect n (a, b) -> (Vect n a, Vect n b)
 unzip []           = ([], [])
 unzip ((l, r)::xs) with (unzip xs)
   | (lefts, rights) = (l::lefts, r::rights)
+
+||| Convert a vector of three-tuples to a triplet of vectors
+unzip3 : Vect n (a, b, c) -> (Vect n a, Vect n b, Vect n c)
+unzip3 [] = []
+unzip3 [(l,c,r):xs] with (unzip3 xs) |
+  | (lefts, centers, rights) = (l::lefts, c::centers, r::rights)
 
 --------------------------------------------------------------------------------
 -- Equality
