@@ -227,7 +227,7 @@ unzip ((l, r)::xs) with (unzip xs)
 ||| Convert a vector of three-tuples to a triplet of vectors
 unzip3 : Vect n (a, b, c) -> (Vect n a, Vect n b, Vect n c)
 unzip3 [] = []
-unzip3 [(l,c,r):xs] with (unzip3 xs) |
+unzip3 ((l,c,r)::xs) with (unzip3 xs)
   | (lefts, centers, rights) = (l::lefts, c::centers, r::rights)
 
 --------------------------------------------------------------------------------
