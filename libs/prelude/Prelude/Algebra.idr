@@ -123,7 +123,7 @@ class (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
 ||| + Inverse for `<+>`:
 |||     forall a,     a <+> inverse a == neutral
 |||     forall a,     inverse a <+> a == neutral
-||| + Associativity of `<*>a:
+||| + Associativity of `<*>`:
 |||     forall a b c, a <*> (b <*> c) == (a <*> b) <*> c
 ||| + Neutral for `<*>`:
 |||     forall a,     a <*> unity     == a
