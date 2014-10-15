@@ -264,9 +264,42 @@ class (BoundedJoinSemilattice a, BoundedMeetSemilattice a) => BoundedLattice a w
 
 class (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, VerifiedLattice a) => VerifiedBoundedLattice a where { }
 
+--   Fields.
+||| Sets equipped with two binary operations, both associative and commutative
+||| supplied with a neutral element, with
+||| distributivity laws relating the two operations.  Must satisfy the following
+||| laws:
+|||
+||| + Associativity of `<+>`:
+|||     forall a b c, a <+> (b <+> c) == (a <+> b) <+> c
+||| + Commutativity of `<+>`:
+|||     forall a b,   a <+> b         == b <+> a
+||| + Neutral for `<+>`:
+|||     forall a,     a <+> neutral   == a
+|||     forall a,     neutral <+> a   == a
+||| + Inverse for `<+>`:
+|||     forall a,     a <+> inverse a == neutral
+|||     forall a,     inverse a <+> a == neutral
+||| + Associativity of `<*>`:
+|||     forall a b c, a <*> (b <*> c) == (a <*> b) <*> c
+||| + Unity for `<*>`:
+|||     forall a,     a <*> unity     == a
+|||     forall a,     unity <*> a     == a
+||| + InverseM of `<*>`:
+|||     forall a,     a <*> inverseM a == unity
+|||     forall a,     inverseM a <*> a == unity
+||| + Distributivity of `<*>` and `<->`:
+|||     forall a b c, a <*> (b <+> c) == (a <*> b) <+> (a <*> c)
+|||     forall a b c, (a <+> b) <*> c == (a <*> c) <+> (b <*> c)
+class RingWithUnity a => Field a where
+  inverseM : a -> a
+
+class (VerifiedRing a, Field a) => VerifiedField a where
+  total fieldInverseIsInverseL : (l : a) -> l <*> inverseM l = unity
+  total fieldInverseIsInverseR : (r : a) -> inverseM r <*> r = unity
 
 -- XXX todo:
---   Fields and vector spaces.
+--   vector spaces.
 --   Structures where "abs" make sense.
 --   Euclidean domains, etc.
 --   Where to put fromInteger and fromRational?
