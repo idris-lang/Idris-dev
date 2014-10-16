@@ -120,9 +120,8 @@ compile codegen f tm
 generate :: Codegen -> FilePath -> CodegenInfo -> IO ()
 generate codegen mainmod ir 
   = case codegen of
-       -- Built-in code generators (FIXME: lift these out!)
-       Via "c" -> codegenC ir 
-       Via "java" -> codegenJava ir 
+       -- Built-in code generators
+       Via "c" -> codegenC ir
        -- Any external code generator
        Via cg -> do let cmd = "idris-" ++ cg ++ " " ++ mainmod ++
                               " -o " ++ outputFile ir
