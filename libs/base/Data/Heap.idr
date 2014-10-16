@@ -5,6 +5,8 @@
 
 module Data.Heap
 
+import Algebra.AbstractAlgebra
+
 %default total
 %access public
 
