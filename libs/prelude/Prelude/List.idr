@@ -157,7 +157,7 @@ drop Z     xs      = xs
 drop (S n) []      = []
 drop (S n) (x::xs) = drop n xs
 
-||| Take the longest prefix of a list such that all elements satsify some
+||| Take the longest prefix of a list such that all elements satisfy some
 ||| Boolean predicate.
 |||
 ||| @ p the predicate
@@ -165,7 +165,7 @@ takeWhile : (p : a -> Bool) -> List a -> List a
 takeWhile p []      = []
 takeWhile p (x::xs) = if p x then x :: takeWhile p xs else []
 
-||| Remove the longest prefix of a list such that all removed elements satsify some
+||| Remove the longest prefix of a list such that all removed elements satisfy some
 ||| Boolean predicate.
 |||
 ||| @ p the predicate
@@ -340,6 +340,9 @@ reverse = reverse' []
     reverse' acc (x::xs) = reverse' (x::acc) xs
 
 ||| Insert some separator between the elements of a list.
+|||
+|||     > intersperse ',' (unpack "abcde") == unpack "a,b,c,d,e"
+|||
 intersperse : a -> List a -> List a
 intersperse sep []      = []
 intersperse sep (x::xs) = x :: intersperse' sep xs
@@ -468,6 +471,10 @@ elemIndices = elemIndicesBy (==)
 -- Filters
 --------------------------------------------------------------------------------
 
+||| filter, applied to a predicate and a list, returns the list of those elements that satisfy the predicate; e.g.,
+|||
+|||     > filter (<3) [0..5] == [0,1,2]
+|||
 filter : (a -> Bool) -> List a -> List a
 filter p []      = []
 filter p (x::xs) =
@@ -476,6 +483,7 @@ filter p (x::xs) =
   else
     filter p xs
 
+||| The nubBy function behaves just like nub, except it uses a user-supplied equality predicate instead of the overloaded == function.
 nubBy : (a -> a -> Bool) -> List a -> List a
 nubBy = nubBy' []
   where
@@ -487,22 +495,40 @@ nubBy = nubBy' []
       else
         x :: nubBy' (x::acc) p xs
 
+||| O(n^2). The nub function removes duplicate elements from a list. In particular, it keeps only the first occurrence of each element. It is a special case of nubBy, which allows the programmer to supply their own equality test.
+|||
+|||     > nub (the (List _) [1,2,1,3]) == [1,2,3]
+|||
 nub : Eq a => List a -> List a
 nub = nubBy (==)
 
+||| The deleteBy function behaves like delete, but takes a user-supplied equality predicate.
 deleteBy : (a -> a -> Bool) -> a -> List a -> List a
 deleteBy _  _ []      = []
 deleteBy eq x (y::ys) = if x `eq` y then ys else y :: deleteBy eq x ys
 
+||| delete x removes the first occurrence of x from its list argument. For example,
+|||
+|||     > delete 'a' (unpack "banana") == unpack "bnana" 
+|||
+||| It is a special case of deleteBy, which allows the programmer to supply their own equality test.
 delete : (Eq a) => a -> List a -> List a
 delete = deleteBy (==)
 
+||| The \\ function is list difference (non-associative). In the result of xs \\ ys, the first occurrence of each element of ys in turn (if any) has been removed from xs, e.g.,
+|||
+|||     > (([1,2] ++ [2,3]) \\ [1,2]) == [2,3]
+|||
 (\\) : (Eq a) => List a -> List a -> List a
 (\\) =  foldl (flip delete)
 
 unionBy : (a -> a -> Bool) -> List a -> List a -> List a
 unionBy eq xs ys =  xs ++ foldl (flip (deleteBy eq)) (nubBy eq ys) xs
 
+||| The union function returns the list union of the two lists. For example,
+|||
+|||     > union (unpack "dog") (unpack "cow") == unpack "dogcw"
+|||
 union : (Eq a) => List a -> List a -> List a
 union = unionBy (==)
 
@@ -512,6 +538,9 @@ union = unionBy (==)
 
 ||| Given a list and a predicate, returns a pair consisting of the longest
 ||| prefix of the list that satisfies a predicate and the rest of the list.
+|||
+|||    > span (<3) [1,2,3,2,1] == the ((List _, List _)) ([1, 2], [3, 2, 1])
+|||
 span : (a -> Bool) -> List a -> (List a, List a)
 span p []      = ([], [])
 span p (x::xs) =
@@ -521,9 +550,18 @@ span p (x::xs) =
   else
     ([], x::xs)
 
+||| Given a list and a predicate, returns a pair consisting of the longest
+||| prefix of the list that does not satisfy a predicate and the rest of the list.
+|||
+|||     > break (>=3) [1,2,3,2,1] == the ((List _, List _)) ([1, 2], [3, 2, 1])
+|||
 break : (a -> Bool) -> List a -> (List a, List a)
 break p = span (not . p)
 
+||| Split on any elements that satisfy the given predicate.
+|||
+|||     > split (<2) [2,0,3,1,4] == [[2], [3], [4]]
+|||
 split : (a -> Bool) -> List a -> List (List a)
 split p xs =
   case break p xs of
@@ -538,6 +576,10 @@ split p xs =
 splitAt : (n : Nat) -> (xs : List a) -> (List a, List a)
 splitAt n xs = (take n xs, drop n xs)
 
+||| The partition function takes a predicate a list and returns the pair of lists of elements which do and do not satisfy the predicate, respectively; e.g.,
+|||
+|||     > partition (<3) [0..5] == (the (List Integer) [0,1,2], the (List Integer) [3,4,5])
+|||
 partition : (a -> Bool) -> List a -> (List a, List a)
 partition p []      = ([], [])
 partition p (x::xs) =
@@ -547,19 +589,35 @@ partition p (x::xs) =
     else
       (lefts, x::rights)
 
+||| The inits function returns all initial segments of the argument, shortest first. For example,
+|||
+|||     > inits [1,2,3] == [[],[1],[1,2],[1,2,3]]
+|||
 inits : List a -> List (List a)
 inits xs = [] :: case xs of
   []        => []
   x :: xs'  => map (x ::) (inits xs')
 
+||| The tails function returns all final segments of the argument, longest first. For example,
+|||
+|||     > tails [1,2,3] == [[1,2,3], [2,3], [3], []]
+|||
 tails : List a -> List (List a)
 tails xs = xs :: case xs of
   []        => []
   _ :: xs'  => tails xs'
 
+||| Split on the given element.
+|||
+|||     > splitOn 0 [1,0,2,0,0,3] == [[1],[2],[],[3]]
+|||
 splitOn : Eq a => a -> List a -> List (List a)
 splitOn a = split (== a)
 
+||| Replaces all occurences of the first argument with the second argument in a list.
+|||
+|||     > replaceOn '-' ',' (unpack "1-2-3") == unpack "1,2,3"
+|||
 replaceOn : Eq a => a -> a -> List a -> List a
 replaceOn a b l = map (\c => if c == a then b else c) l
 
@@ -576,15 +634,22 @@ isPrefixOfBy p (x::xs) (y::ys) =
   else
     False
 
+||| The isPrefixOf function takes two lists and returns True iff the first list is a prefix of the second.
 isPrefixOf : Eq a => List a -> List a -> Bool
 isPrefixOf = isPrefixOfBy (==)
 
 isSuffixOfBy : (a -> a -> Bool) -> List a -> List a -> Bool
 isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
 
+||| The isSuffixOf function takes two lists and returns True iff the first list is a suffix of the second.
 isSuffixOf : Eq a => List a -> List a -> Bool
 isSuffixOf = isSuffixOfBy (==)
 
+||| The isInfixOf function takes two lists and returns True iff the first list is contained, wholly and intact, anywhere within the second.
+|||
+|||     > isInfixOf "Idris" "I really like Idris." == True
+|||     > isInfixOf "Ial" "I really like Idris." == False
+|||
 isInfixOf : Eq a => List a -> List a -> Bool
 isInfixOf n h = any (isPrefixOf n) (tails h)
 

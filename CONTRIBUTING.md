@@ -15,7 +15,7 @@ Here are a few guidelines that we would like contributors to follow so that we c
   * [Debian](https://github.com/idris-lang/Idris-dev/wiki/Idris-on-Debian)
   * [Windows](https://github.com/idris-lang/Idris-dev/wiki/Idris-on-Windows)
 
-# Issue Reporting
+## Issue Reporting
 
 Before you report an issue, or wish to add cool functionality please try and check to see if there are existing [issues](https://github.com/idris-lang/Idris-dev/issues) and [pull requests](https://github.com/idris-lang/Idris-dev/pulls).
 We do not want you wasting your time, duplicating somebody's work!
@@ -24,6 +24,25 @@ We do not want you wasting your time, duplicating somebody's work!
 
 A basic rule when contributing to Idris is the **campsite rule**: leave the codebase in better condition than you found it.
 Please clean up any messes that you find, and don't leave behind new messes for the next contributor.
+
+## Contributing to the default libraries.
+
+`Idris` ships with a set of packages in `libs/` that is provided as a default library.
+These packages should not be seen as the *standard* as when working with dependent types we do not necessarily know how best to work with dependent types.
+These packages offer functionality that can be built on top of when constructing `Idris` programs.
+
+One major point to make is that everything in prelude will be imported automatically, unless given
+the `--noprelude` option.
+A central idea within the `Idris` Community is that what counts as `Idris` is: **the compiler plus the Standard Prelude**.
+Other libraries (base, effects, etc) are still part of the distribution, but not necessarily standard.
+
+As `Idris` is still being developed we are open to suggestions and changes that make improvements to these default packages.
+Major changes to the library (or `Idris` itself) should ideally be discussed first through the projects official channels of communication i.e. the mailing list, github wiki, or IRC, or as a [Dragon Egg](https://github.com/idris-lang/Idris-dev/wiki/Feature-proposals).
+Developers then seeking to add content to `Idris`s prelude and default library, should do so through a PR where more discussion's and refinements can be made.
+
+We do not want you wasting your time nor duplicating somebody's work!
+
+Of note: developers should be prepared to wait until their PR has been discussed and authorized prior to the PRs inclusion.
 
 ## Making Changes
 
@@ -88,11 +107,11 @@ $ git diff --check
         line separating the summary from the body is critical (unless you omit
         the body entirely); tools like rebase can get confused if you run the
         two together.
-          
+
         Further paragraphs come after blank lines.
-         
+
         - Bullet points are okay, too
-         
+
         - Typically a hyphen or asterisk is used for the bullet, preceded by a
           single space, with blank lines in between, but conventions vary here
 
@@ -137,5 +156,3 @@ To help increase the chance of your pull request being accepted:
 
 
 Adapted from the most excellent contributing files from the [Puppet project](https://github.com/puppetlabs/puppet) and [Factroy Girl Rails](https://github.com/thoughtbot/factory_girl_rails/blob/master/CONTRIBUTING.md)
-
-

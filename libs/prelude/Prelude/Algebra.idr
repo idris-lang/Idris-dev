@@ -123,7 +123,7 @@ class (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
 ||| + Inverse for `<+>`:
 |||     forall a,     a <+> inverse a == neutral
 |||     forall a,     inverse a <+> a == neutral
-||| + Associativity of `<*>a:
+||| + Associativity of `<*>`:
 |||     forall a b c, a <*> (b <*> c) == (a <*> b) <*> c
 ||| + Neutral for `<*>`:
 |||     forall a,     a <*> unity     == a
@@ -264,9 +264,61 @@ class (BoundedJoinSemilattice a, BoundedMeetSemilattice a) => BoundedLattice a w
 
 class (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, VerifiedLattice a) => VerifiedBoundedLattice a where { }
 
+--   Fields.
+||| Sets equipped with two binary operations, both associative and commutative
+||| supplied with a neutral element, with
+||| distributivity laws relating the two operations.  Must satisfy the following
+||| laws:
+|||
+||| + Associativity of `<+>`:
+|||     forall a b c, a <+> (b <+> c) == (a <+> b) <+> c
+||| + Commutativity of `<+>`:
+|||     forall a b,   a <+> b         == b <+> a
+||| + Neutral for `<+>`:
+|||     forall a,     a <+> neutral   == a
+|||     forall a,     neutral <+> a   == a
+||| + Inverse for `<+>`:
+|||     forall a,     a <+> inverse a == neutral
+|||     forall a,     inverse a <+> a == neutral
+||| + Associativity of `<*>`:
+|||     forall a b c, a <*> (b <*> c) == (a <*> b) <*> c
+||| + Unity for `<*>`:
+|||     forall a,     a <*> unity     == a
+|||     forall a,     unity <*> a     == a
+||| + InverseM of `<*>`:
+|||     forall a,     a <*> inverseM a == unity
+|||     forall a,     inverseM a <*> a == unity
+||| + Distributivity of `<*>` and `<->`:
+|||     forall a b c, a <*> (b <+> c) == (a <*> b) <+> (a <*> c)
+|||     forall a b c, (a <+> b) <*> c == (a <*> c) <+> (b <*> c)
+class RingWithUnity a => Field a where
+  inverseM : a -> a
+
+class (VerifiedRing a, Field a) => VerifiedField a where
+  total fieldInverseIsInverseL : (l : a) -> l <*> inverseM l = unity
+  total fieldInverseIsInverseR : (r : a) -> inverseM r <*> r = unity
+
+--   vector spaces.
+||| A Vector Space over a Field can be considered as an additive Abeliean Group
+||| of Vectors adjoined to the Field structure by distributivity laws relating
+||| the two operations. Such that we satisfy the following laws:
+|||
+||| + Unity for `<*>`:
+|||     forall a,     a <*> unity     == a
+|||     forall a,     unity <*> a     == a
+||| + Distributivity of `<*>` and `<+>`:
+|||     forall a x y, a <*> (x <+> y) == (a <*> x) <+> (a <*> y)
+|||     forall a b x, (a <+> b) <*> x == (a <*> x) <+> (b <*> x)
+class (Field a, AbelianGroup a) => VectorSpace a a where {}
+
+class (VerifiedField a, VerifiedAbelianGroup a, VectorSpace a a) => VerifiedVectorSpace a a where
+  total vectorspaceScalarUnityIsUnityL : (l : a) -> l <*> unity = l
+  total vectorspaceScalarUnityIsUnityR : (r : a) -> unity <*> r = r
+  total vectorspaceScalarIsDistributiveWRTVectorAddition : (s : a) -> (x, y : a) -> s <*> (x <+> y) = (s <*> x) <+> (s <*> y)
+  total vectorspaceScalarIsDistributiveWRTFieldAddition  : (s, t : a) -> (x : a) -> (s <+> t) <*> x = (s <*> x) <+> (t <*> x)
+
 
 -- XXX todo:
---   Fields and vector spaces.
 --   Structures where "abs" make sense.
 --   Euclidean domains, etc.
 --   Where to put fromInteger and fromRational?
