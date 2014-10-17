@@ -173,12 +173,16 @@ usable False n ns
          _ -> return $ (True, (n, 100) : filter (\ (n', _) -> n/=n') ns)
 
 
-deduct :: Name -> Eval ()
-deduct n = do ES ls num <- get
+fnCount :: Int -> Name -> Eval ()
+fnCount inc n 
+         = do ES ls num <- get
               case lookup n ls of
-                  Just i -> do put $ ES ((n, (i-1)) :
+                  Just i -> do put $ ES ((n, (i - inc)) :
                                            filter (\ (n', _) -> n/=n') ls) num
                   _ -> return ()
+
+deduct = fnCount 1
+reinstate = fnCount (-1)
 
 -- | Evaluate in a context of locally named things (i.e. not de Bruijn indexed,
 -- such as we might have during construction of a proof)
@@ -386,8 +390,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
         | length ns <= length args
              = do let args' = take (length ns) args
                   let rest  = drop (length ns) args
-                  when spec $ deduct n -- successful, so deduct usages
+                  when spec $ deduct n
                   t <- evTree ntimes stk top env (zip ns args') tree
+                  when spec $ case t of
+                                   Nothing -> reinstate n -- Blocked, count n again
+                                   Just _ -> return () 
 --                                 (zipWith (\n , t) -> (n, t)) ns args') tree
                   return (t, rest)
         | otherwise = return (Nothing, args)

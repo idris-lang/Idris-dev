@@ -33,7 +33,10 @@ data PEDecl = PEDecl { pe_app :: PTerm, -- new application
 -- | Partially evaluates given terms under the given context.
 -- It is an error if partial evaluation fails to make any progress.
 -- Making progress is defined as: all of the names given with explicit
--- reduction limits must have reduced at least once.
+-- reduction limits (in practice, the function being specialised)
+-- must have reduced at least once.
+-- If we don't do this, we might end up making an infinite function after
+-- applying the transformation.
 partial_eval :: Context -> 
                 [(Name, Maybe Int)] ->
                 [Either Term (Term, Term)] ->
@@ -44,7 +47,7 @@ partial_eval ctxt ns tms = mapM peClause tms where
    -- If the term is a clause, specialise the right hand side
    peClause (Right (lhs, rhs))
        = let (rhs', reductions) = specialise ctxt [] (map toLimit ns) rhs in
-             do -- checkProgress ns reductions
+             do checkProgress ns reductions
                 return (Right (lhs, rhs'))
 
    toLimit (n, Nothing) = (n, 65536) -- somewhat arbitrary reduction limit
@@ -53,7 +56,7 @@ partial_eval ctxt ns tms = mapM peClause tms where
    checkProgress ns [] = return ()
    checkProgress ns ((n, r) : rs)
       | Just (Just start) <- lookup n ns
-             = if r < start then checkProgress ns rs else Nothing
+             = if start <= 1 || r < start then checkProgress ns rs else Nothing
       | otherwise = checkProgress ns rs
 
 -- | Specialises the type of a partially evaluated TT function returning
@@ -153,7 +156,7 @@ mkNewPats ist d ns newname sname lhs rhs | all dynVar (map fst d)
      = PEDecl lhs rhs [(lhs, rhs)]
   where dynVar ap = case unApply ap of
                          (_, args) -> dynArgs ns args
-        dynArgs [] [] = True
+        dynArgs _ [] = True -- can definitely reduce from here
         -- if Static, doesn't matter what the argument is
         dynArgs ((ImplicitS, _) : ns) (a : as) = dynArgs ns as
         dynArgs ((ExplicitS, _) : ns) (a : as) = dynArgs ns as
@@ -168,9 +171,10 @@ mkNewPats ist d ns newname sname lhs rhs =
     mkClause :: (Term, Term) -> (PTerm, PTerm)
     mkClause (oldlhs, oldrhs)
          = let (_, as) = unApply oldlhs 
-               lhs = PApp emptyFC (PRef emptyFC newname)
-                                  (mkLHSargs [] ns as)
-               rhs = mkRHS as oldrhs in
+               lhsargs = mkLHSargs [] ns as
+               lhs = PApp emptyFC (PRef emptyFC newname) lhsargs
+               rhs = PApp emptyFC (PRef emptyFC sname) 
+                                  (mkRHSargs ns lhsargs) in
                      (lhs, rhs)
 
     mkLHSargs _ [] [] = []
@@ -179,19 +183,23 @@ mkNewPats ist d ns newname sname lhs rhs =
          = pexp (delab ist (substNames sub a)) : mkLHSargs sub ns as
     mkLHSargs sub ((ImplicitD, _) : ns) (a : as) 
          = mkLHSargs sub ns as
+    mkLHSargs sub ((UnifiedD, _) : ns) (a : as) 
+         = mkLHSargs sub ns as
     -- statics get dropped in any case
     mkLHSargs sub ((ImplicitS, t) : ns) (a : as) 
          = mkLHSargs (extend a t sub) ns as
     mkLHSargs sub ((ExplicitS, t) : ns) (a : as) 
          = mkLHSargs (extend a t sub) ns as
+    mkLHSargs sub _ [] = [] -- no more LHS
 
     extend (P _ n _) t sub = (n, t) : sub
     extend _ _ sub = sub
 
-    mkRHS :: [Term] -> Term -> PTerm
-    mkRHS as oldrhs = let amap = mapMaybe mkSubst (zip as (map snd ns)) in
-                          delab ist (substNames amap oldrhs)
-                          
+    mkRHSargs ((ExplicitS, t) : ns) as = pexp (delab ist t) : mkRHSargs ns as
+    mkRHSargs ((ExplicitD, t) : ns) (a : as) = a : mkRHSargs ns as
+    mkRHSargs (_ : ns) as = mkRHSargs ns as
+    mkRHSargs _ _ = []
+
     mkSubst :: (Term, Term) -> Maybe (Name, Term)
     mkSubst (P _ n _, t) = Just (n, t)
     mkSubst _ = Nothing
@@ -248,19 +256,22 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
         = let s' = staticArg env s i a n
               ss' = buildApp env ss is as ns in
               (s' : ss')
- 
-    ga env tm@(App f a) | (P _ n _, args) <- unApply tm =
-      ga env f ++ ga env a ++
-        case (lookupCtxt n (idris_statics ist),
-                lookupCtxt n (idris_implicits ist)) of
-             ([statics], [imps]) -> 
-                 if (length statics == length args && or statics) then
---                     trace (show (n, statics, imps, args)) $
-                    case buildApp env statics imps args [0..] of
-                         args -> [(n, args)]
---                          _ -> []
-                    else []
-             _ -> []
+
+    -- if we have a *defined* function that has static arguments,
+    -- it will become a specialised application
+    ga env tm@(App f a) | (P _ n _, args) <- unApply tm,
+                          n `notElem` map fst (idris_metavars ist) =
+        ga env f ++ ga env a ++
+          case (lookupCtxt n (idris_statics ist),
+                  lookupCtxt n (idris_implicits ist)) of
+               ([statics], [imps]) -> 
+                   if (length statics == length args && or statics) then
+--                       trace (show (n, statics, imps, args)) $
+                      case buildApp env statics imps args [0..] of
+                           args -> [(n, args)]
+--                            _ -> []
+                      else []
+               _ -> []
     ga env (Bind n (Let t v) sc) = ga env v ++ ga (n : env) sc
     ga env (Bind n t sc) = ga (n : env) sc
     ga env t = []

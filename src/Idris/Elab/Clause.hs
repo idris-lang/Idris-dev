@@ -291,7 +291,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 elabPE :: ElabInfo -> FC -> Name -> Term -> Idris [(Term, Term)]
 elabPE info fc caller r =
   do ist <- getIState
-     let sa = getSpecApps ist [] r
+     let sa = filter (\ap -> fst ap /= caller) $ getSpecApps ist [] r
      rules <- mapM mkSpecialised sa
      return $ concat rules
   where
@@ -322,7 +322,8 @@ elabPE info fc caller r =
                                          (n, Just 65536) : 
                                            mapMaybe specName (snd specapp))]
                 logLvl 3 $ "Specialising application: " ++ show specapp
-                              ++ " with " ++ show opts
+                              ++ " in " ++ show caller ++
+                              " with " ++ show opts
                 logLvl 3 $ "New name: " ++ show newnm
                 logLvl 3 $ "PE definition type : " ++ (show specTy)
                             ++ "\n" ++ show opts
