@@ -324,9 +324,9 @@ elabPE info fc caller r =
                 logLvl 3 $ "Specialising application: " ++ show specapp
                               ++ " with " ++ show opts
                 logLvl 3 $ "New name: " ++ show newnm
-                logLvl 0 $ "PE definition type : " ++ (show specTy)
+                logLvl 3 $ "PE definition type : " ++ (show specTy)
                             ++ "\n" ++ show opts
-                logLvl 0 $ "PE definition " ++ show newnm ++ ":\n" ++
+                logLvl 3 $ "PE definition " ++ show newnm ++ ":\n" ++
                              showSep "\n"
                                 (map (\ (lhs, rhs) ->
                                   (showTmImpls lhs ++ " = " ++
