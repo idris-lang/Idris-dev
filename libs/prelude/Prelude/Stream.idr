@@ -57,13 +57,25 @@ index (S k) (x::xs) = index k xs
 zipWith : (a -> b -> c) -> Stream a -> Stream b -> Stream c
 zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
+||| Combine three streams by applying a function element-wise along them
+zipWith3 : (a -> b -> c -> d) -> Stream a -> Stream b -> Stream c -> Stream d
+zipWith3 f (x::xs) (y::ys) (z::zs) = f x y z :: zipWith3 f xs ys zs
+
 ||| Create a stream of pairs from two streams
 zip : Stream a -> Stream b -> Stream (a, b)
 zip = zipWith (\x,y => (x,y))
 
+||| Combine three streams into a stream of tuples elementwise
+zip3 : Stream a -> Stream b -> Stream c -> Stream (a, b, c)
+zip3 = zipWith3 (\x,y,z => (x,y,z))
+
 ||| Create a pair of streams from a stream of pairs
 unzip : Stream (a, b) -> (Stream a, Stream b)
 unzip xs = (map fst xs, map snd xs)
+
+||| Split a stream of three-element tuples into three streams
+unzip3 : Stream (a, b, c) -> (Stream a, Stream b, Stream c)
+unzip3 xs = (map (\(x,_,_) => x) xs, map (\(_,x,_) => x) xs, map (\(_,_,x) => x) xs)
 
 ||| Return the diagonal elements of a stream of streams
 diag : Stream (Stream a) -> Stream a
