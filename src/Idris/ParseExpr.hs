@@ -1021,7 +1021,7 @@ DoBlock ::=
 doBlock :: SyntaxInfo -> IdrisParser PTerm
 doBlock syn
     = do reserved "do"
-         ds <- indentedBlock (do_ syn)
+         ds <- indentedBlock1 (do_ syn)
          return (PDoBlock ds)
       <?> "do block"
 
