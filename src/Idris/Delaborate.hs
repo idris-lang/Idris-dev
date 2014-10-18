@@ -252,6 +252,7 @@ pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
                                    pprintErr' i e
 pprintErr' i (ElaboratingArg f x _ e)
+  | isInternal f = pprintErr' i e
   | isUN x =
      text "When elaborating argument" <+>
      annotate (AnnBoundName x False) (text (showbasic x)) <+> -- TODO check plicity
@@ -269,6 +270,11 @@ pprintErr' i (ElaboratingArg f x _ e)
                                    else if isFnName f ctxt
                                            then text "function" <> space
                                            else empty
+        isInternal (MN _ _) = True
+        isInternal (UN n) = T.isPrefixOf (T.pack "__") n
+        isInternal (NS n _) = isInternal n
+        isInternal _ = True
+
 pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
 pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
 pprintErr' i (ReflectionError parts orig) =
