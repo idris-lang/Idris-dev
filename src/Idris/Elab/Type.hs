@@ -173,7 +173,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          when (ErrorHandler `elem` opts) $ do
            if errorReflection
              then
-               -- TODO: Check that the declared type is the correct type for an error handler:
+               -- Check that the declared type is the correct type for an error handler:
                -- handler : List (TTName, TT) -> Err -> ErrorReport - for now no ctxt
                if tyIsHandler nty'
                  then do i <- getIState

@@ -218,7 +218,12 @@ renderExternal fmt width doc
     decorate HTMLOutput (AnnData _ _) = tag "idris-data" Nothing
     decorate HTMLOutput (AnnType _ _) = tag "idris-type" Nothing
     decorate HTMLOutput AnnKeyword = tag "idris-keyword" Nothing
-    decorate HTMLOutput (AnnTextFmt _) = id -- TODO
+    decorate HTMLOutput (AnnTextFmt fmt) =
+      case fmt of
+        BoldText -> mkTag "strong"
+        ItalicText -> mkTag "em"
+        UnderlineText -> tag "idris-underlined" Nothing
+      where mkTag t x = "<"++t++">"++x++"</"++t++">"
     decorate HTMLOutput (AnnTerm _ _) = id
     decorate HTMLOutput (AnnSearchResult _) = id
     decorate HTMLOutput (AnnErr _) = id
@@ -241,7 +246,11 @@ renderExternal fmt width doc
     decorate LaTeXOutput (AnnData _ _) = latex "IdrisData"
     decorate LaTeXOutput (AnnType _ _) = latex "IdrisType"
     decorate LaTeXOutput AnnKeyword = latex "IdrisKeyword"
-    decorate LaTeXOutput (AnnTextFmt _) = id -- TODO
+    decorate LaTeXOutput (AnnTextFmt fmt) =
+      case fmt of
+        BoldText -> latex "textbf"
+        ItalicText -> latex "emph"
+        UnderlineText -> latex "underline"
     decorate LaTeXOutput (AnnTerm _ _) = id
     decorate LaTeXOutput (AnnSearchResult _) = id
     decorate LaTeXOutput (AnnErr _) = id
@@ -260,7 +269,8 @@ renderExternal fmt width doc
                      ".idris-function {color: green; }",
                      ".idris-keyword { font-weight: bold; }",
                      ".idris-bound { color: purple; }",
-                     ".idris-implicit { font-style: italic; }"]
+                     ".idris-implicit { font-style: italic; }",
+                     ".idris-underlined { text-decoration: underline; }"]
     wrap LaTeXOutput str =
       concat . intersperse "\n" $
         ["\\documentclass{article}",

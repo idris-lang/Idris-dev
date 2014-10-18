@@ -1078,7 +1078,6 @@ primNames = [eqTy, eqCon, inferTy, inferCon]
 unitTy   = sUN "Unit"
 unitCon  = sUN "MkUnit"
 
--- TODO: elaborate the code samples in the docstring
 falseDoc = fmap (const $ Msg "") . parseDocstring . T.pack $
              "The empty type, also known as the trivially false proposition." ++
              "\n\n" ++
