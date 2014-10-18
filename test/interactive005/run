@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-idris --quiet interactive005.idr < input
+idris --nocolour --quiet interactive005.idr < input
 rm -f *.ibc
 rm -f hello.bytecode
 rm -f hello

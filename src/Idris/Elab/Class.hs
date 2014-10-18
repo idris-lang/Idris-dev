@@ -52,9 +52,9 @@ import Util.Pretty(pretty, text)
 
 data MArgTy = IA | EA | CA deriving Show
 
-elabClass :: ElabInfo -> SyntaxInfo -> Docstring (Maybe PTerm) ->
+elabClass :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
              FC -> [PTerm] ->
-             Name -> [(Name, PTerm)] -> [(Name, Docstring (Maybe PTerm))] -> [PDecl] -> Idris ()
+             Name -> [(Name, PTerm)] -> [(Name, Docstring (Either Err PTerm))] -> [PDecl] -> Idris ()
 elabClass info syn_in doc fc constraints tn ps pDocs ds
     = do let cn = SN (InstanceCtorN tn) -- sUN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
          let tty = pibind ps PType

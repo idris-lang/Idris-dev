@@ -485,7 +485,19 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.PrintDef name) =
                         [] -> Left ("Didn't understand name '" ++ s ++ "'")
                         [n] -> Right $ sUN n
                         (n:ns) -> Right $ sNS (sUN n) ns
-
+runIdeSlaveCommand h id orig fn modes (IdeSlave.ErrString e) =
+  do ist <- getIState
+     let out = displayS . renderPretty 1.0 60 $ pprintErr ist e
+         msg = (IdeSlave.SymbolAtom "ok", IdeSlave.StringAtom $ out "")
+     runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
+runIdeSlaveCommand h id orig fn modes (IdeSlave.ErrPPrint e) =
+  do ist <- getIState
+     let (out, spans) =
+           displaySpans .
+           renderPretty 0.9 80 .
+           fmap (fancifyAnnots ist) $ pprintErr ist e
+         msg = (IdeSlave.SymbolAtom "ok", out, spans)
+     runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
 
 -- | Show a term for IDESlave with the specified implicitness
 ideSlaveForceTermImplicits :: Handle -> Integer -> [(Name, Bool)] -> Bool -> Term -> Idris ()

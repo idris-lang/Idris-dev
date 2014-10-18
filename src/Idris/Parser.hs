@@ -37,7 +37,7 @@ import Idris.ParseOps
 import Idris.ParseExpr
 import Idris.ParseData
 
-import Idris.Docstrings
+import Idris.Docstrings hiding (Unchecked)
 
 import Paths_idris
 

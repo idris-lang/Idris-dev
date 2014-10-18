@@ -114,12 +114,12 @@ buildType info syn fc opts n ty' = do
     param_pos i ns t = []
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
-elabType :: ElabInfo -> SyntaxInfo -> Docstring (Maybe PTerm)-> [(Name, Docstring (Maybe PTerm))] ->
+elabType :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm)-> [(Name, Docstring (Either Err PTerm))] ->
             FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType = elabType' False
 
 elabType' :: Bool -> -- normalise it
-             ElabInfo -> SyntaxInfo -> Docstring (Maybe PTerm) -> [(Name, Docstring (Maybe PTerm))] ->
+             ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))] ->
              FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                                        n  = liftname info n_in in    -}
@@ -207,7 +207,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
         , ns4 == map txt ["Reflection","Language"] = True
     tyIsHandler _                                           = False
 
-elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring (Maybe PTerm) ->
+elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
                  FC -> FnOpts -> Name -> PTerm -> Idris ()
 elabPostulate info syn doc fc opts n ty = do
     elabType info syn doc [] fc opts n ty

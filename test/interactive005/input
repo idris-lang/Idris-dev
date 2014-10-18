@@ -1,12 +1,15 @@
+:consolewidth 80
 the Nat (1 + 2)
 :exec
 :c bytecode hello.bytecode
 :c c hello
 :doc main
 :reload
+:consolewidth 80
 :load interactive005.idr
 :total main
 :exec
+:consolewidth 80
 :t id
 :set showimplicits
 :t id

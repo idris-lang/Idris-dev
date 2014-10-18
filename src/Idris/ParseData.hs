@@ -4,7 +4,7 @@ module Idris.ParseData where
 import Prelude hiding (pi)
 
 import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
+import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, Err)
 import Text.Parser.LookAhead
 import Text.Parser.Expression
 import qualified Text.Parser.Token as Tok
@@ -172,7 +172,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
 {- | Parses a type constructor declaration
   Constructor ::= DocComment? FnName TypeSig;
 -}
-constructor :: SyntaxInfo -> IdrisParser (Docstring (Maybe PTerm), [(Name, Docstring (Maybe PTerm))], Name, PTerm, FC, [Name])
+constructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, PTerm, FC, [Name])
 constructor syn
     = do (doc, argDocs) <- option noDocs docComment
          cn_in <- fnName; fc <- getFC
@@ -191,7 +191,7 @@ constructor syn
 {- | Parses a constructor for simple discriminated union data types
   SimpleConstructor ::= FnName SimpleExpr* DocComment?
 -}
-simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring (Maybe PTerm), [(Name, Docstring (Maybe PTerm))], Name, [PTerm], FC, [Name])
+simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, [PTerm], FC, [Name])
 simpleConstructor syn
      = do (doc, _) <- option noDocs (try docComment)
           ist <- get

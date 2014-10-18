@@ -6,7 +6,7 @@ import Idris.AbsSyntaxTree
 import Idris.Delaborate
 import Idris.Core.TT
 import Idris.Core.Evaluate
-import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, renderDocstring)
+import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, renderDocstring, DocTerm, renderDocTerm)
 
 import Util.Pretty
 
@@ -18,31 +18,31 @@ import qualified Data.Text as T
 --
 -- Issue #1573 on the Issue tracker.
 --    https://github.com/idris-lang/Idris-dev/issues/1573
-data FunDoc = FD Name (Docstring (Maybe Term))
-                 [(Name, PTerm, Plicity, Maybe (Docstring (Maybe Term)))] -- args: name, ty, implicit, docs
+data FunDoc = FD Name (Docstring DocTerm)
+                 [(Name, PTerm, Plicity, Maybe (Docstring DocTerm))] -- args: name, ty, implicit, docs
                  PTerm -- function type
                  (Maybe Fixity)
-  deriving Show
 
 data Docs = FunDoc FunDoc
           | DataDoc FunDoc -- type constructor docs
                     [FunDoc] -- data constructor docs
-          | ClassDoc Name (Docstring (Maybe Term))-- class docs
+          | ClassDoc Name (Docstring DocTerm)-- class docs
                      [FunDoc] -- method docs
-                     [(Name, Maybe (Docstring (Maybe Term)))] -- parameters and their docstrings
+                     [(Name, Maybe (Docstring DocTerm))] -- parameters and their docstrings
                      [PTerm] -- instances
                      [PTerm] -- superclasses
-  deriving Show
 
-showDoc ist d | nullDocstring d = empty
-              | otherwise       = text "  -- " <> renderDocstring (pprintDelab ist) (normaliseAll (tt_ctxt ist) []) d
+showDoc ist d
+  | nullDocstring d = empty
+  | otherwise = text "  -- " <>
+                renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) d
 
 pprintFD :: IState -> FunDoc -> Doc OutputAnnotation
 pprintFD ist (FD n doc args ty f)
     = nest 4 (prettyName True (ppopt_impl ppo) [] n <+> colon <+>
               pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
                                      , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
-              renderDocstring (pprintDelab ist) (normaliseAll (tt_ctxt ist) []) doc <$>
+              renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc <$>
               maybe empty (\f -> text (show f) <> line) f <>
               let argshow = showArgs args [] in
               if not (null argshow)
@@ -84,7 +84,7 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
            = nest 4 (text "Type class" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
                        then empty
-                       else line <> renderDocstring (pprintDelab ist) (normaliseAll (tt_ctxt ist) []) doc)
+                       else line <> renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc)
              <> line <$>
              nest 4 (text "Parameters:" <$> prettyParameters)
              <> line <$>
@@ -187,7 +187,7 @@ docFun n
              funName (UN n)   = str n
              funName (NS n _) = funName n
 
-getPArgNames :: PTerm -> [(Name, Docstring (Maybe Term))] -> [(Name, PTerm, Plicity, Maybe (Docstring (Maybe Term)))]
+getPArgNames :: PTerm -> [(Name, Docstring DocTerm)] -> [(Name, PTerm, Plicity, Maybe (Docstring DocTerm))]
 getPArgNames (PPi plicity name ty body) ds =
   (name, ty, plicity, lookup name ds) : getPArgNames body ds
 getPArgNames _ _ = []
