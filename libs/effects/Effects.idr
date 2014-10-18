@@ -181,7 +181,8 @@ infixl 2 <$>
 pure : a -> Eff a xs (\v => xs)
 pure = value
 
-syntax pureM [val] = with_val val (pure ())
+pureM : (val : a) -> Eff a (xs val) xs
+pureM val = with_val val (pure ())
 
 (<$>) : Eff (a -> b) xs (\v => xs) ->
         Eff a xs (\v => xs) -> Eff b xs (\v => xs)
