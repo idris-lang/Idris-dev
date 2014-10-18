@@ -69,4 +69,3 @@ errReverse ist t = rewrite 5 t -- (elideLambdas t)
     elideLambdas (Bind n b sc)
        = Bind n (fmap elideLambdas b) (elideLambdas sc)
     elideLambdas t = t
-

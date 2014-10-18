@@ -1339,4 +1339,3 @@ translateBC info bc
   | OP r o a              <- bc = jsOP info r o a
   | ERROR e               <- bc = jsERROR info e
   | otherwise                   = JSRaw $ "//" ++ show bc
-

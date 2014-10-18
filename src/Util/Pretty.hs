@@ -22,5 +22,3 @@ nestingSize = 1
 
 class Pretty a ty where
   pretty :: a -> Doc ty
-
-

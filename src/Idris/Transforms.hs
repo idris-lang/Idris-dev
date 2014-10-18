@@ -91,5 +91,3 @@ matchTerm lhs tm = matchVars [] lhs tm
                 return (fm ++ am)
       doMatch ns x y | x == y = return []
                      | otherwise = Nothing
-
-

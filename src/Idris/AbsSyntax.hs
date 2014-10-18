@@ -1969,5 +1969,3 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   mkUniq (PProof ts) = liftM PProof (mapM mkUniqT ts)
   mkUniq (PTactics ts) = liftM PTactics (mapM mkUniqT ts)
   mkUniq t = return t
-
-

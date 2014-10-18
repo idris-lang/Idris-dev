@@ -159,4 +159,3 @@ proofSearch rec fromProver maxDepth elab fn nroot hints ist
 
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (False, priority arg) 
-

@@ -28,4 +28,3 @@ inlineTerm ist tm = inl tm where
   inl tm = tm
 
   inlApp fn args orig = orig
-

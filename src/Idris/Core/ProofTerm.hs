@@ -282,4 +282,3 @@ bound_in_term (Bind n b sc) = n : bi b ++ bound_in_term sc
     bi b = bound_in_term (binderTy b)
 bound_in_term (App f a) = bound_in_term f ++ bound_in_term a
 bound_in_term _ = []
-

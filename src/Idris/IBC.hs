@@ -1966,4 +1966,3 @@ instance Binary Codegen where
                           return (Via x1)
                   1 -> return Bytecode
                   _ -> error  "Corrupted binary data for Codegen"
-

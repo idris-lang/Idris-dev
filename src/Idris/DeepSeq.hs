@@ -336,6 +336,3 @@ instance NFData SyntaxInfo where
                   rnf x4 `seq`
                     rnf x5 `seq`
                       rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` rnf x10 `seq` rnf x11 `seq` ()
-
-
-

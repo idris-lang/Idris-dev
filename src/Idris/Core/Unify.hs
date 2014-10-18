@@ -679,4 +679,3 @@ patIn env n = case lookup n env of
                     Just (PVar _) -> True
                     Just (PVTy _) -> True
                     _ -> False
-

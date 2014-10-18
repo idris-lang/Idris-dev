@@ -65,4 +65,3 @@ acyclic r cvs = checkCycle (fileFC "root") r [] 0 cvs
 
     next path inc (ULT l r, fc) = check fc path (inc + 1) r
     next path inc (ULE l r, fc) = check fc path inc r
-

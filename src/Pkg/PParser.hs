@@ -93,4 +93,3 @@ pClause = do reserved "executable"; lchar '=';
              ts <- sepBy1 (iName []) (lchar ',')
              st <- get
              put st { idris_tests = idris_tests st ++ ts }
-

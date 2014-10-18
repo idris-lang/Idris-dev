@@ -275,5 +275,3 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
     ga env (Bind n (Let t v) sc) = ga env v ++ ga (n : env) sc
     ga env (Bind n t sc) = ga (n : env) sc
     ga env t = []
-
-

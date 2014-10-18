@@ -734,4 +734,3 @@ collapse' def (Unchecked : xs) = collapse' def xs
 collapse' def (d : xs)         = collapse' d xs
 -- collapse' Unchecked []         = Total []
 collapse' def []               = def
-

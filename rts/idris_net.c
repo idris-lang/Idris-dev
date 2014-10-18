@@ -316,5 +316,3 @@ void idrnet_free_recvfrom_struct(void* res_struct) {
         }
     }
 }
-
-

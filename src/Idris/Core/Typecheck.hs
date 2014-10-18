@@ -313,4 +313,3 @@ checkUnique borrowed ctxt env tm
                  Just (LendOnly, k) -> lift $ tfail (UniqueError k n)
                  Just (Once, k) -> put ((n, (Never, k)) : 
                                               filter (\x -> fst x /= n) ns)
-

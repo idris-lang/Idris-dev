@@ -335,5 +335,3 @@ dumpDefuns ds = showSep "\n" $ map showDef (toAlist ds)
             = show fn ++ "(" ++ showSep ", " (map show args) ++ ") = \n\t" ++
               show exp ++ "\n"
         showDef (x, DConstructor n t a) = "Constructor " ++ show n ++ " " ++ show t
-
-

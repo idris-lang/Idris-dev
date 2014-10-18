@@ -340,4 +340,3 @@ VAL idris_castBigStr(VM* vm, VAL i) {
     char* str = mpz_get_str(NULL, 10, GETMPZ(GETBIG(vm, i)));
     return MKSTR(vm, str);
 }
-

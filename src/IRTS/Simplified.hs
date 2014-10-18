@@ -229,4 +229,3 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
                                     return (SConstCase c e')
     scalt env (SDefaultCase e) = do e' <- sc env e
                                     return (SDefaultCase e')
-
