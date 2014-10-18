@@ -59,6 +59,8 @@ elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
 elabClauses info fc opts n_in cs = let n = liftname info n_in in
       do ctxt <- getContext
          ist  <- getIState
+         optimise <- getOptimise
+         let petrans = PETransform `elem` optimise
          inacc <- map fst <$> fgetState (opt_inaccessible . ist_optimisation n)
 
          -- Check n actually exists, with no definition yet
@@ -96,22 +98,28 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            -- If the definition is specialisable, this reduces the
            -- RHS
            pe_tm <- doPartialEval ist tpats
-           let pats_pe = map (simple_lhs (tt_ctxt ist)) pe_tm
+           let pats_pe = if petrans 
+                            then map (simple_lhs (tt_ctxt ist)) pe_tm
+                            else pats_raw
 
            let tcase = opt_typecase (idris_options ist)
 
            -- Look for 'static' names and generate new specialised
            -- definitions for them, as well as generating rewrite rules
            -- for partially evaluated definitions
-           newrules <- mapM (\ e -> case e of
-                                       Left _ -> return []
-                                       Right (l, r) -> elabPE info fc n r) pats_pe
+           newrules <- if petrans 
+                          then mapM (\ e -> case e of
+                                            Left _ -> return []
+                                            Right (l, r) -> elabPE info fc n r) pats_pe
+                          else return []
 
            -- Redo transforms with the newly generated transformations, so
            -- that the specialised application we've just made gets
            -- used in place of the general one
            ist <- getIState
-           let pats_transformed = transformPats ist pats_pe
+           let pats_transformed = if petrans
+                                     then transformPats ist pats_pe
+                                     else pats_pe
 
            -- Summary of what's about to happen: Definitions go:
            --

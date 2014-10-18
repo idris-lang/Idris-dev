@@ -608,12 +608,38 @@ logLevel = do i <- getIState
 setErrContext :: Bool -> Idris ()
 setErrContext t = do i <- getIState
                      let opts = idris_options i
-                     let opt' = opts { opt_errContext = t }
-                     putIState $ i { idris_options = opt' }
+                     let opts' = opts { opt_errContext = t }
+                     putIState $ i { idris_options = opts' }
 
 errContext :: Idris Bool
 errContext = do i <- getIState
                 return (opt_errContext (idris_options i))
+
+getOptimise :: Idris [Optimisation]
+getOptimise = do i <- getIState
+                 return (opt_optimise (idris_options i))
+
+setOptimise :: [Optimisation] -> Idris ()
+setOptimise newopts = do i <- getIState
+                         let opts = idris_options i
+                         let opts' = opts { opt_optimise = newopts }
+                         putIState $ i { idris_options = opts' }
+
+addOptimise :: Optimisation -> Idris ()
+addOptimise opt = do opts <- getOptimise
+                     setOptimise (nub (opt : opts))
+
+removeOptimise :: Optimisation -> Idris ()
+removeOptimise opt = do opts <- getOptimise
+                        setOptimise ((nub opts) \\ [opt])
+
+-- Set appropriate optimisation set for the given level. We only have
+-- one optimisation that is configurable at the moment, however!
+setOptLevel :: Int -> Idris ()
+setOptLevel n | n <= 0 = setOptimise []
+setOptLevel 1          = setOptimise []
+setOptLevel 2          = setOptimise [PETransform]
+setOptLevel n | n >= 3 = setOptimise [PETransform]
 
 useREPL :: Idris Bool
 useREPL = do i <- getIState
@@ -707,16 +733,6 @@ setTargetCPU t = do i <- getIState
 targetCPU :: Idris String
 targetCPU = do i <- getIState
                return (opt_cpu (idris_options i))
-
-setOptLevel :: Word -> Idris ()
-setOptLevel t = do i <- getIState
-                   let opts = idris_options i
-                       opt' = opts { opt_optLevel = t }
-                   putIState $ i { idris_options = opt' }
-
-optLevel :: Idris Word
-optLevel = do i <- getIState
-              return (opt_optLevel (idris_options i))
 
 verbose :: Idris Bool
 verbose = do i <- getIState

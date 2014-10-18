@@ -1441,15 +1441,19 @@ idrisMain opts =
        let importdirs = opt getImportDir opts
        let bcs = opt getBC opts
        let pkgdirs = opt getPkgDir opts
-       let optimize = case opt getOptLevel opts of
+       -- Set default optimisations
+       let optimise = case opt getOptLevel opts of
                         [] -> 2
                         xs -> last xs
+       setOptLevel optimise
        let outty = case opt getOutputTy opts of
                      [] -> Executable
                      xs -> last xs
        let cgn = case opt getCodegen opts of
                    [] -> Via "c"
                    xs -> last xs
+       -- Now set/unset specifically chosen optimisations
+       sequence_ (opt getOptimisation opts)
        script <- case opt getExecScript opts of
                    []     -> return Nothing
                    x:y:xs -> do iputStrLn "More than one interpreter expression found."
@@ -1701,9 +1705,14 @@ getCPU :: Opt -> Maybe String
 getCPU (TargetCPU x) = Just x
 getCPU _ = Nothing
 
-getOptLevel :: Opt -> Maybe Word
+getOptLevel :: Opt -> Maybe Int
 getOptLevel (OptLevel x) = Just x
 getOptLevel _ = Nothing
+
+getOptimisation :: Opt -> Maybe (Idris ())
+getOptimisation (AddOpt p) = Just $ addOptimise p
+getOptimisation (RemoveOpt p) = Just $ removeOptimise p 
+getOptimisation _ = Nothing
 
 getColour :: Opt -> Maybe Bool
 getColour (ColourREPL b) = Just b
