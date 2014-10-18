@@ -499,9 +499,11 @@ elab ist info emode opts fn tm
                              _ -> lift $ tfail (NoSuchVariable fn)
             ns <- match_apply (Var fn') (map (\x -> (x,0)) imps)
             solve
-    elab' (_, _, inty, qq) (PApp fc (PRef _ f) args')
-       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty && not qq
-          = lift $ tfail (Msg "Typecase is not allowed")
+    -- This isn't a sound way of checking for Typecase - we need a 
+    -- better way!
+--     elab' (_, _, inty, qq) (PApp fc (PRef _ f) args')
+--        | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty && not qq
+--           = lift $ tfail (Msg "Typecase is not allowed")
     -- if f is local, just do a simple_app
     elab' (ina, g, inty, qq) tm@(PApp fc (PRef _ f) args)
        = do env <- get_env

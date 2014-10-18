@@ -16,7 +16,7 @@ import Idris.Inliner
 import Idris.PartialEval
 import Idris.Transforms
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, iRenderResult)
 import IRTS.Lang
 
 import Idris.Elab.Type
@@ -31,6 +31,7 @@ import Idris.Core.Typecheck
 import Idris.Core.CaseTree
 
 import Idris.Docstrings
+import Util.Pretty hiding ((<$>))
 
 import Prelude hiding (id, (.))
 import Control.Category
@@ -290,7 +291,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 elabPE :: ElabInfo -> FC -> Name -> Term -> Idris [(Term, Term)]
 elabPE info fc caller r =
   do ist <- getIState
-     let sa = getSpecApps ist [] r
+     let sa = filter (\ap -> fst ap /= caller) $ getSpecApps ist [] r
      rules <- mapM mkSpecialised sa
      return $ concat rules
   where
@@ -306,7 +307,9 @@ elabPE info fc caller r =
     mkSpecialised specapp_in = do
         ist <- getIState
         let (specTy, specapp) = getSpecTy ist specapp_in
-        let (n, newnm, (lhs, rhs)) = getSpecClause ist specapp
+        let (n, newnm, specdecl) = getSpecClause ist specapp
+        let lhs = pe_app specdecl
+        let rhs = pe_def specdecl
         let undef = case lookupDefExact newnm (tt_ctxt ist) of
                          Nothing -> True
                          _ -> False
@@ -319,22 +322,24 @@ elabPE info fc caller r =
                                          (n, Just 65536) : 
                                            mapMaybe specName (snd specapp))]
                 logLvl 3 $ "Specialising application: " ++ show specapp
-                              ++ " with " ++ show opts
+                              ++ " in " ++ show caller ++
+                              " with " ++ show opts
                 logLvl 3 $ "New name: " ++ show newnm
                 logLvl 3 $ "PE definition type : " ++ (show specTy)
                             ++ "\n" ++ show opts
                 logLvl 3 $ "PE definition " ++ show newnm ++ ":\n" ++
-    --                         showSep "\n"
-    --                            (map (\ (lhs, rhs) ->
+                             showSep "\n"
+                                (map (\ (lhs, rhs) ->
                                   (showTmImpls lhs ++ " = " ++
-                                   showTmImpls rhs) -- pats)
+                                   showTmImpls rhs)) (pe_clauses specdecl))
 
                 logLvl 2 $ show n ++ " transformation rule: " ++
                            show rhs ++ " ==> " ++ show lhs
 
                 elabType info defaultSyntax emptyDocstring [] fc opts newnm specTy
-                let def = -- map (\ (lhs, rhs) ->
-                          [PClause fc newnm lhs [] rhs []] --) pats
+                let def = map (\(lhs, rhs) ->
+                                  PClause fc newnm lhs [] rhs []) 
+                              (pe_clauses specdecl)    
                 trans <- elabTransform info fc False rhs lhs
                 elabClauses info fc opts newnm def
                 return [trans]

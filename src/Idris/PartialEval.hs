@@ -1,7 +1,8 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Idris.PartialEval(partial_eval, getSpecApps, specType,
-                         mkPE_TyDecl, mkPE_TermDecl, PEArgType(..)) where
+                         mkPE_TyDecl, mkPE_TermDecl, PEArgType(..),
+                         pe_app, pe_def, pe_clauses) where
 
 import Idris.AbsSyntax
 import Idris.Delaborate
@@ -10,12 +11,32 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 
 import Control.Monad.State
+import Data.Maybe
 import Debug.Trace
+
+-- | Data type representing binding-time annotations for partial evaluation of arguments
+data PEArgType = ImplicitS -- ^ Implicit static argument
+               | ImplicitD -- ^ Implicit dynamic argument
+               | ExplicitS -- ^ Explicit static argument
+               | ExplicitD -- ^ Explicit dynamic argument
+               | UnifiedD  -- ^ Erasable dynamic argument (found under unification)
+  deriving (Eq, Show)
+
+-- | A partially evaluated function. pe_app captures the lhs of the
+-- new definition, pe_def captures the rhs, and pe_clauses is the
+-- specialised implementation.
+data PEDecl = PEDecl { pe_app :: PTerm, -- new application
+                       pe_def :: PTerm, -- old application
+                       pe_clauses :: [(PTerm, PTerm)] -- clauses of new application 
+                     }
 
 -- | Partially evaluates given terms under the given context.
 -- It is an error if partial evaluation fails to make any progress.
 -- Making progress is defined as: all of the names given with explicit
--- reduction limits must have reduced at least once.
+-- reduction limits (in practice, the function being specialised)
+-- must have reduced at least once.
+-- If we don't do this, we might end up making an infinite function after
+-- applying the transformation.
 partial_eval :: Context -> 
                 [(Name, Maybe Int)] ->
                 [Either Term (Term, Term)] ->
@@ -35,7 +56,7 @@ partial_eval ctxt ns tms = mapM peClause tms where
    checkProgress ns [] = return ()
    checkProgress ns ((n, r) : rs)
       | Just (Just start) <- lookup n ns
-             = if r < start then checkProgress ns rs else Nothing
+             = if start <= 1 || r < start then checkProgress ns rs else Nothing
       | otherwise = checkProgress ns rs
 
 -- | Specialises the type of a partially evaluated TT function returning
@@ -118,13 +139,89 @@ concreteClass ist v
                                  _ -> False
                     | otherwise = False
 
--- | Creates a new clause for a specialised function application
+mkNewPats :: IState ->
+             [(Term, Term)] -> -- definition to specialise
+             [(PEArgType, Term)] -> -- arguments to specialise with
+             Name -> -- New name
+             Name -> -- Specialised function name
+             PTerm -> -- Default lhs
+             PTerm -> -- Default rhs
+             PEDecl
+-- If all of the dynamic positions on the lhs are variables (rather than
+-- patterns or constants) then we can just make a simple definition
+-- directly applying the specialised function, since we know the
+-- definition isn't going to block on any of the dynamic arguments
+-- in this case
+mkNewPats ist d ns newname sname lhs rhs | all dynVar (map fst d) 
+     = PEDecl lhs rhs [(lhs, rhs)]
+  where dynVar ap = case unApply ap of
+                         (_, args) -> dynArgs ns args
+        dynArgs _ [] = True -- can definitely reduce from here
+        -- if Static, doesn't matter what the argument is
+        dynArgs ((ImplicitS, _) : ns) (a : as) = dynArgs ns as
+        dynArgs ((ExplicitS, _) : ns) (a : as) = dynArgs ns as
+        -- if Dynamic, it had better be a variable or we'll need to
+        -- do some more work
+        dynArgs (_ : ns) (V _     : as) = dynArgs ns as
+        dynArgs (_ : ns) (P _ _ _ : as) = dynArgs ns as
+        dynArgs _ _ = False -- and now we'll get stuck 
+mkNewPats ist d ns newname sname lhs rhs =
+    PEDecl lhs rhs (map mkClause d)
+  where 
+    mkClause :: (Term, Term) -> (PTerm, PTerm)
+    mkClause (oldlhs, oldrhs)
+         = let (_, as) = unApply oldlhs 
+               lhsargs = mkLHSargs [] ns as
+               lhs = PApp emptyFC (PRef emptyFC newname) lhsargs
+               rhs = PApp emptyFC (PRef emptyFC sname) 
+                                  (mkRHSargs ns lhsargs) in
+                     (lhs, rhs)
+
+    mkLHSargs _ [] [] = []
+    -- dynamics don't appear if they're implicit
+    mkLHSargs sub ((ExplicitD, t) : ns) (a : as) 
+         = pexp (delab ist (substNames sub a)) : mkLHSargs sub ns as
+    mkLHSargs sub ((ImplicitD, _) : ns) (a : as) 
+         = mkLHSargs sub ns as
+    mkLHSargs sub ((UnifiedD, _) : ns) (a : as) 
+         = mkLHSargs sub ns as
+    -- statics get dropped in any case
+    mkLHSargs sub ((ImplicitS, t) : ns) (a : as) 
+         = mkLHSargs (extend a t sub) ns as
+    mkLHSargs sub ((ExplicitS, t) : ns) (a : as) 
+         = mkLHSargs (extend a t sub) ns as
+    mkLHSargs sub _ [] = [] -- no more LHS
+
+    extend (P _ n _) t sub = (n, t) : sub
+    extend _ _ sub = sub
+
+    mkRHSargs ((ExplicitS, t) : ns) as = pexp (delab ist t) : mkRHSargs ns as
+    mkRHSargs ((ExplicitD, t) : ns) (a : as) = a : mkRHSargs ns as
+    mkRHSargs (_ : ns) as = mkRHSargs ns as
+    mkRHSargs _ _ = []
+
+    mkSubst :: (Term, Term) -> Maybe (Name, Term)
+    mkSubst (P _ n _, t) = Just (n, t)
+    mkSubst _ = Nothing
+
+-- | Creates a new declaration for a specialised function application.
+-- Simple version at the moment: just create a version which is a direct
+-- application of the function to be specialised.
+-- More complex version to do: specialise the definition clause by clause
 mkPE_TermDecl :: IState -> Name -> Name ->
-                 [(PEArgType, Term)] -> (PTerm, PTerm)
+                 [(PEArgType, Term)] -> PEDecl
 mkPE_TermDecl ist newname sname ns 
     = let lhs = PApp emptyFC (PRef emptyFC newname) (map pexp (mkp ns)) 
-          rhs = eraseImps $ delab ist (mkApp (P Ref sname Erased) (map snd ns)) in 
-          (lhs, rhs) where
+          rhs = eraseImps $ delab ist (mkApp (P Ref sname Erased) (map snd ns)) 
+          patdef = lookupCtxtExact sname (idris_patdefs ist)
+          newpats = case patdef of
+                         Nothing -> PEDecl lhs rhs [(lhs, rhs)]
+                         Just d -> mkNewPats ist (getPats d) ns 
+                                             newname sname lhs rhs in
+          newpats where
+
+  getPats (ps, _) = map (\(_, lhs, rhs) -> (lhs, rhs)) ps
+
   mkp [] = []
   mkp ((ExplicitD, tm) : tms) = delab ist tm : mkp tms
   mkp (_ : tms) = mkp tms
@@ -136,14 +233,6 @@ mkPE_TermDecl ist newname sname ns
 
   deImpArg a@(PImp _ _ _ _ _) = a { getTm = Placeholder }
   deImpArg a = a
-
--- | Data type representing binding-time annotations for partial evaluation of arguments
-data PEArgType = ImplicitS -- ^ Implicit static argument
-               | ImplicitD -- ^ Implicit dynamic argument
-               | ExplicitS -- ^ Explicit static argument
-               | ExplicitD -- ^ Explicit dynamic argument
-               | UnifiedD  -- ^ Erasable dynamic argument (found under unification)
-  deriving (Eq, Show)
 
 -- | Get specialised applications for a given function
 getSpecApps :: IState -> [Name] -> Term -> 
@@ -167,19 +256,22 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
         = let s' = staticArg env s i a n
               ss' = buildApp env ss is as ns in
               (s' : ss')
- 
-    ga env tm@(App f a) | (P _ n _, args) <- unApply tm =
-      ga env f ++ ga env a ++
-        case (lookupCtxt n (idris_statics ist),
-                lookupCtxt n (idris_implicits ist)) of
-             ([statics], [imps]) -> 
-                 if (length statics == length args && or statics) then
---                     trace (show (n, statics, imps, args)) $
-                    case buildApp env statics imps args [0..] of
-                         args -> [(n, args)]
---                          _ -> []
-                    else []
-             _ -> []
+
+    -- if we have a *defined* function that has static arguments,
+    -- it will become a specialised application
+    ga env tm@(App f a) | (P _ n _, args) <- unApply tm,
+                          n `notElem` map fst (idris_metavars ist) =
+        ga env f ++ ga env a ++
+          case (lookupCtxt n (idris_statics ist),
+                  lookupCtxt n (idris_implicits ist)) of
+               ([statics], [imps]) -> 
+                   if (length statics == length args && or statics) then
+--                       trace (show (n, statics, imps, args)) $
+                      case buildApp env statics imps args [0..] of
+                           args -> [(n, args)]
+--                            _ -> []
+                      else []
+               _ -> []
     ga env (Bind n (Let t v) sc) = ga env v ++ ga (n : env) sc
     ga env (Bind n t sc) = ga (n : env) sc
     ga env t = []
