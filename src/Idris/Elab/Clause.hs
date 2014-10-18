@@ -74,9 +74,11 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            let atys = map snd (getArgTys fty)
            cs_elab <- mapM (elabClause info opts)
                            (zip [0..] cs)
+           -- pats_raw is the version we'll work with at compile time:
+           -- no simplification or PE
            let (pats_in, cs_full) = unzip cs_elab
-
-           logLvl 3 $ "Elaborated patterns:\n" ++ show pats_in
+           let pats_raw = map (simple_lhs (tt_ctxt ist)) pats_in
+           logLvl 3 $ "Elaborated patterns:\n" ++ show pats_raw
 
            solveDeferred n
 
@@ -94,7 +96,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            -- If the definition is specialisable, this reduces the
            -- RHS
            pe_tm <- doPartialEval ist tpats
-           let pats = map (simple_lhs (tt_ctxt ist)) pe_tm
+           let pats_pe = map (simple_lhs (tt_ctxt ist)) pe_tm
 
            let tcase = opt_typecase (idris_options ist)
 
@@ -103,13 +105,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            -- for partially evaluated definitions
            newrules <- mapM (\ e -> case e of
                                        Left _ -> return []
-                                       Right (l, r) -> elabPE info fc n r) pats
+                                       Right (l, r) -> elabPE info fc n r) pats_pe
 
            -- Redo transforms with the newly generated transformations, so
            -- that the specialised application we've just made gets
            -- used in place of the general one
            ist <- getIState
-           let pats_transformed = transformPats ist pats
+           let pats_transformed = transformPats ist pats_pe
 
            -- Summary of what's about to happen: Definitions go:
            --
@@ -118,11 +120,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            -- addCaseDef builds case trees from <pdef> and <pdef'>
 
            -- pdef is the compile-time pattern definition.
-           -- This will get further optimised for run-time, and, separately,
-           -- further inlined to help with totality checking.
-           let pdef = map debind pats_transformed
+           -- This will get further inlined to help with totality checking.
+           let pdef = map debind pats_raw
+           -- pdef_pe is the one which will get further optimised 
+           -- for run-time, and, partially evaluated
+           let pdef_pe = map debind pats_transformed
 
-           logLvl 5 $ "Initial typechecked patterns:\n" ++ show pats
+           logLvl 5 $ "Initial typechecked patterns:\n" ++ show pats_raw
            logLvl 5 $ "Initial typechecked pattern def:\n" ++ show pdef
 
            -- NOTE: Need to store original definition so that proofs which
@@ -137,13 +141,13 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            case specNames opts of
                 Just _ -> 
-                   do logLvl 2 $ "Partially evaluated:\n" ++ show pats
+                   do logLvl 2 $ "Partially evaluated:\n" ++ show pats_pe
                       logLvl 2 $ "Transformed:\n" ++ show pats_transformed
                 _ -> return ()
 
            erInfo <- getErasureInfo <$> getIState
            tree@(CaseDef scargs sc _) <- tclift $
-                   simpleCase tcase False reflect CompileTime fc inacc atys pdef erInfo
+                 simpleCase tcase False reflect CompileTime fc inacc atys pdef erInfo
            cov <- coverage
            pmissing <-
                    if cov && not (hasDefault cs)
@@ -164,8 +168,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                       else return []
            let pcover = null pmissing
 
-           -- pdef' is the version that gets compiled for run-time
-           pdef_in' <- applyOpts pdef
+           -- pdef' is the version that gets compiled for run-time,
+           -- so we start from the partially evaluated version
+           pdef_in' <- applyOpts pdef_pe
            let pdef' = map (simple_rt (tt_ctxt ist)) pdef_in'
 
            logLvl 5 $ "After data structure transformations:\n" ++ show pdef'
@@ -197,7 +202,7 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
            ctxt <- getContext
            ist <- getIState
            let opt = idris_optimisation ist
-           putIState (ist { idris_patdefs = addDef n (force pdef, force pmissing)
+           putIState (ist { idris_patdefs = addDef n (force pdef_pe, force pmissing)
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (dictionary opts)
            case lookupTy n ctxt of
@@ -207,8 +212,11 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
                                                        (AssertTotal `elem` opts)
                                                        atys
                                                        inacc
-                                                       pats
-                                                       pdef pdef pdef_inl pdef' ty)
+                                                       pats_pe
+                                                       pdef 
+                                                       pdef -- compile time 
+                                                       pdef_inl -- inlined
+                                                       pdef' ty)
                           addIBC (IBCDef n)
                           setTotality n tot
                           when (not reflect) $ do totcheck (fc, n)
@@ -320,7 +328,8 @@ elabPE info fc caller r =
                 let cgns' = filter (/= n) cgns
                 let opts = [Specialise (map (\x -> (x, Nothing)) cgns' ++
                                          (n, Just 65536) : 
-                                           mapMaybe specName (snd specapp))]
+                                           mapMaybe (specName (pe_simple specdecl))
+                                                    (snd specapp))]
                 logLvl 3 $ "Specialising application: " ++ show specapp
                               ++ " in " ++ show caller ++
                               " with " ++ show opts
@@ -347,14 +356,14 @@ elabPE info fc caller r =
           -- if it doesn't work, just don't specialise. Could happen for lots
           -- of valid reasons (e.g. local variables in scope which can't be
           -- lifted out).
-          (\e -> do logLvl 4 $ "Couldn't specialise: " ++ (pshow ist e)
+          (\e -> do logLvl 3 $ "Couldn't specialise: " ++ (pshow ist e)
                     return [])
 
-    specName (ImplicitS, tm)
-        | (P Ref n _, _) <- unApply tm = Just (n, Just 1)
-    specName (ExplicitS, tm)
-        | (P Ref n _, _) <- unApply tm = Just (n, Just 1)
-    specName _ = Nothing
+    specName simpl (ImplicitS, tm)
+        | (P Ref n _, _) <- unApply tm = Just (n, Just (if simpl then 1 else 0))
+    specName simpl (ExplicitS, tm)
+        | (P Ref n _, _) <- unApply tm = Just (n, Just (if simpl then 1 else 0))
+    specName simpl _ = Nothing
 
     concreteArg ist (ImplicitS, tm) = concreteTm ist tm
     concreteArg ist (ExplicitS, tm) = concreteTm ist tm

@@ -485,7 +485,7 @@ deriving instance NFData Plicity
 impl = Imp [] Dynamic False
 expl = Exp [] Dynamic False
 expl_param = Exp [] Dynamic True
-constraint = Constraint [] Dynamic
+constraint = Constraint [] Static
 tacimpl t = TacImp [] Dynamic t
 
 data FnOpt = Inlinable -- always evaluate when simplifying

@@ -220,7 +220,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
 
     insertConstraint c (PPi p@(Imp _ _ _) n ty sc)
                           = PPi p n ty (insertConstraint c sc)
-    insertConstraint c sc = PPi (constraint) -- { pstatic = Static }) 
+    insertConstraint c sc = PPi (constraint { pstatic = Static }) 
                                   (sMN 0 "class") c sc
 
     -- make arguments explicit and don't bind class parameters

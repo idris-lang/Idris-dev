@@ -2,7 +2,7 @@
 
 module Idris.PartialEval(partial_eval, getSpecApps, specType,
                          mkPE_TyDecl, mkPE_TermDecl, PEArgType(..),
-                         pe_app, pe_def, pe_clauses) where
+                         pe_app, pe_def, pe_clauses, pe_simple) where
 
 import Idris.AbsSyntax
 import Idris.Delaborate
@@ -25,9 +25,12 @@ data PEArgType = ImplicitS -- ^ Implicit static argument
 -- | A partially evaluated function. pe_app captures the lhs of the
 -- new definition, pe_def captures the rhs, and pe_clauses is the
 -- specialised implementation.
+-- pe_simple is set if the result is always reducible, because in such a
+-- case we'll also need to reduce the static argument
 data PEDecl = PEDecl { pe_app :: PTerm, -- new application
                        pe_def :: PTerm, -- old application
-                       pe_clauses :: [(PTerm, PTerm)] -- clauses of new application 
+                       pe_clauses :: [(PTerm, PTerm)], -- clauses of new application 
+                       pe_simple :: Bool -- if just one reducible clause
                      }
 
 -- | Partially evaluates given terms under the given context.
@@ -153,7 +156,7 @@ mkNewPats :: IState ->
 -- definition isn't going to block on any of the dynamic arguments
 -- in this case
 mkNewPats ist d ns newname sname lhs rhs | all dynVar (map fst d) 
-     = PEDecl lhs rhs [(lhs, rhs)]
+     = PEDecl lhs rhs [(lhs, rhs)] True
   where dynVar ap = case unApply ap of
                          (_, args) -> dynArgs ns args
         dynArgs _ [] = True -- can definitely reduce from here
@@ -166,7 +169,7 @@ mkNewPats ist d ns newname sname lhs rhs | all dynVar (map fst d)
         dynArgs (_ : ns) (P _ _ _ : as) = dynArgs ns as
         dynArgs _ _ = False -- and now we'll get stuck 
 mkNewPats ist d ns newname sname lhs rhs =
-    PEDecl lhs rhs (map mkClause d)
+    PEDecl lhs rhs (map mkClause d) False
   where 
     mkClause :: (Term, Term) -> (PTerm, PTerm)
     mkClause (oldlhs, oldrhs)
@@ -215,7 +218,7 @@ mkPE_TermDecl ist newname sname ns
           rhs = eraseImps $ delab ist (mkApp (P Ref sname Erased) (map snd ns)) 
           patdef = lookupCtxtExact sname (idris_patdefs ist)
           newpats = case patdef of
-                         Nothing -> PEDecl lhs rhs [(lhs, rhs)]
+                         Nothing -> PEDecl lhs rhs [(lhs, rhs)] True
                          Just d -> mkNewPats ist (getPats d) ns 
                                              newname sname lhs rhs in
           newpats where
