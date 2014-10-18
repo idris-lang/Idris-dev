@@ -235,4 +235,21 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
     getUniqB env us (NLet t v) = do getUniq env us t; getUniq env us v
     getUniqB env us b = getUniq env us (binderTy b)
 
+-- In a functional application, return the names which are used
+-- directly in a static position
+getStaticNames :: IState -> Term -> [Name]
+getStaticNames ist (Bind n (PVar _) sc) 
+    = getStaticNames ist (instantiate (P Bound n Erased) sc)
+getStaticNames ist tm 
+    | (P _ fn _, args) <- unApply tm
+        = case lookupCtxtExact fn (idris_statics ist) of
+               Just stpos -> getStatics args stpos
+               _ -> []
+  where
+    getStatics (P _ n _ : as) (True : ss) = n : getStatics as ss
+    getStatics (_ : as) (_ : ss) = getStatics as ss
+    getStatics _ _ = []
+getStaticNames _ _ = []
+
+
 
