@@ -30,7 +30,7 @@ import Idris.Core.Execute
 import Idris.Core.Typecheck
 import Idris.Core.CaseTree
 
-import Idris.Docstrings
+import Idris.Docstrings hiding (Unchecked)
 import Util.Pretty hiding ((<$>))
 
 import Prelude hiding (id, (.))

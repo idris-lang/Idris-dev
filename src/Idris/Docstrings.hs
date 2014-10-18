@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveFunctor, ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
 
 -- | Wrapper around Markdown library
 module Idris.Docstrings (
     Docstring(..), Block(..), Inline(..), parseDocstring, renderDocstring, emptyDocstring, nullDocstring, noDocs,
-    overview, containsText, renderHtml, annotCode
+    overview, containsText, renderHtml, annotCode, DocTerm(..), renderDocTerm, checkDocstring
   ) where
 
 import qualified Cheapskate as C
@@ -13,7 +13,7 @@ import Cheapskate.Html (renderDoc)
 
 import Util.Pretty
 
-import Idris.Core.TT (OutputAnnotation(..), TextFormatting(..), Name, Term)
+import Idris.Core.TT (OutputAnnotation(..), TextFormatting(..), Name, Term, Err)
 
 import qualified Data.Text as T
 import qualified Data.Foldable as F
@@ -24,6 +24,22 @@ import qualified Data.Sequence as S
 import Control.DeepSeq (NFData(..))
 
 import Text.Blaze.Html (Html)
+
+-- | The various kinds of code samples that can be embedded in docs
+data DocTerm = Unchecked
+             | Checked Term
+             | Example Term
+             | Failing Err
+  deriving Show
+
+-- | Render a term in the documentation
+renderDocTerm :: (Term -> Doc OutputAnnotation) -> (Term -> Term) -> DocTerm -> String -> Doc OutputAnnotation
+renderDocTerm pp norm Unchecked     src = text src
+renderDocTerm pp norm (Checked tm)  src = pp tm
+renderDocTerm pp norm (Example tm)  src = align $
+                                                text ">" <+> align (pp tm) <$>
+                                                pp (norm tm)
+renderDocTerm pp norm (Failing err) src = annotate (AnnErr err) $ text src
 
 -- | Representation of Idris's inline documentation. The type paramter
 -- represents the type of terms that are associated with code blocks.
@@ -57,6 +73,37 @@ data Inline a = Str T.Text
 
 type Inlines a = S.Seq (Inline a)
 
+
+-- | Run some kind of processing step over code in a Docstring. The code
+-- processor gets the language and annotations as parameters, along with the
+-- source and the original annotation.
+checkDocstring :: forall a b. (String -> [String] -> String -> a -> b) -> Docstring a -> Docstring b
+checkDocstring f (DocString opts blocks) = DocString opts (fmap (checkBlock f) blocks)
+  where checkBlock :: (String -> [String] -> String -> a -> b) -> Block a -> Block b
+        checkBlock f (Para inlines)           = Para (fmap (checkInline f) inlines)
+        checkBlock f (Header i inlines)       = Header i (fmap (checkInline f) inlines)
+        checkBlock f (Blockquote bs)          = Blockquote (fmap (checkBlock f) bs)
+        checkBlock f (List b t blocks)        = List b t (fmap (fmap (checkBlock f)) blocks)
+        checkBlock f (CodeBlock attrs src tm) = CodeBlock attrs src
+                                                          (f (T.unpack $ CT.codeLang attrs)
+                                                             (words . T.unpack $ CT.codeInfo attrs)
+                                                             (T.unpack src)
+                                                             tm)
+        checkBlock f (HtmlBlock src)          = HtmlBlock src
+        checkBlock f HRule                    = HRule
+
+        checkInline :: (String -> [String] -> String -> a -> b) -> Inline a -> Inline b
+        checkInline f (Str txt)            = Str txt
+        checkInline f Space                = Space
+        checkInline f SoftBreak            = SoftBreak
+        checkInline f LineBreak            = LineBreak
+        checkInline f (Emph is)            = Emph (fmap (checkInline f) is)
+        checkInline f (Strong is)          = Strong (fmap (checkInline f) is)
+        checkInline f (Code src x)         = Code src (f "" [] (T.unpack src) x)
+        checkInline f (Link is url title)  = Link (fmap (checkInline f) is) url title
+        checkInline f (Image is url title) = Image (fmap (checkInline f) is) url title
+        checkInline f (Entity txt)         = Entity txt
+        checkInline f (RawHtml src)        = RawHtml src
 
 -- | Construct a docstring from a Text that contains Markdown-formatted docs
 parseDocstring :: T.Text -> Docstring ()
@@ -94,60 +141,53 @@ options = CT.Options { CT.sanitize = True
                      }
 
 -- | Convert a docstring to be shown by the pretty-printer
-renderDocstring :: (a -> Doc OutputAnnotation) -> (a -> a) -> Docstring (Maybe a) -> Doc OutputAnnotation
-renderDocstring pp norm (DocString _ blocks) = renderBlocks pp norm blocks
+renderDocstring :: (a -> String -> Doc OutputAnnotation) -> Docstring a -> Doc OutputAnnotation
+renderDocstring pp (DocString _ blocks) = renderBlocks pp blocks
 
 -- | Construct a docstring consisting of the first block-level element of the
 -- argument docstring, for use in summaries.
 overview :: Docstring a -> Docstring a
 overview (DocString opts blocks) = DocString opts (S.take 1 blocks)
 
-renderBlocks :: (a -> Doc OutputAnnotation) -> (a -> a)
-             -> Blocks (Maybe a) -> Doc OutputAnnotation
-renderBlocks pp norm blocks  | S.length blocks > 1  = F.foldr1 (\b1 b2 -> b1 <> line <> line <> b2) $
-                                                  fmap (renderBlock pp norm) blocks
-                        | S.length blocks == 1 = renderBlock pp norm (S.index blocks 0)
+renderBlocks :: (a -> String -> Doc OutputAnnotation)
+             -> Blocks a -> Doc OutputAnnotation
+renderBlocks pp blocks  | S.length blocks > 1  = F.foldr1 (\b1 b2 -> b1 <> line <> line <> b2) $
+                                                  fmap (renderBlock pp) blocks
+                        | S.length blocks == 1 = renderBlock pp (S.index blocks 0)
                         | otherwise            = empty
 
-renderBlock :: (a -> Doc OutputAnnotation) -> (a -> a)
-            -> Block (Maybe a) -> Doc OutputAnnotation
-renderBlock pp norm (Para inlines) = renderInlines pp inlines
-renderBlock pp norm (Header lvl inlines) = renderInlines pp inlines <+> parens (text (show lvl))
-renderBlock pp norm (Blockquote blocks) = indent 8 $ renderBlocks pp norm blocks
-renderBlock pp norm (List b ty blockss) = renderList pp norm b ty blockss
-renderBlock pp norm (CodeBlock attr src Nothing) = indent 8 $ text (T.unpack src)
-renderBlock pp norm (CodeBlock attr src (Just tm))
-  | isExample attr = indent 4 $
-                       text ">" <+> align (group (pp tm)) <$>
-                       align (group (pp (norm tm)))
-  | otherwise = indent 4 $ pp tm
-  where isExample (CT.CodeAttr lang info) = T.pack "example" `elem` lang : T.words info
-renderBlock pp norm (HtmlBlock txt) = text "<html block>" -- TODO
-renderBlock pp norm HRule = text "----------------------"
+renderBlock :: (a -> String -> Doc OutputAnnotation)
+            -> Block a -> Doc OutputAnnotation
+renderBlock pp (Para inlines) = renderInlines pp inlines
+renderBlock pp (Header lvl inlines) = renderInlines pp inlines <+> parens (text (show lvl))
+renderBlock pp (Blockquote blocks) = indent 8 $ renderBlocks pp blocks
+renderBlock pp (List b ty blockss) = renderList pp b ty blockss
+renderBlock pp (CodeBlock attr src tm) = indent 4 $ pp tm (T.unpack src)
+renderBlock pp (HtmlBlock txt) = text "<html block>" -- TODO
+renderBlock pp HRule = text "----------------------"
 
-renderList :: (a -> Doc OutputAnnotation) -> (a -> a)
-           -> Bool -> CT.ListType -> [Blocks (Maybe a)] -> Doc OutputAnnotation
-renderList pp norm b (CT.Bullet c) blockss = vsep $ map (hang 4 . (char c <+>) . renderBlocks pp norm) blockss
-renderList pp norm b (CT.Numbered nw i) blockss =
+renderList :: (a -> String -> Doc OutputAnnotation)
+           -> Bool -> CT.ListType -> [Blocks a] -> Doc OutputAnnotation
+renderList pp b (CT.Bullet c) blockss = vsep $ map (hang 4 . (char c <+>) . renderBlocks pp) blockss
+renderList pp b (CT.Numbered nw i) blockss =
   vsep $
   zipWith3 (\n p txt -> hang 4 $ text (show n) <> p <+> txt)
-           [i..] (repeat punc) (map (renderBlocks pp norm) blockss)
+           [i..] (repeat punc) (map (renderBlocks pp) blockss)
   where punc = case nw of
                  CT.PeriodFollowing -> char '.'
                  CT.ParenFollowing  -> char '('
 
-renderInlines :: (a -> Doc OutputAnnotation) -> Inlines (Maybe a) -> Doc OutputAnnotation
+renderInlines :: (a -> String -> Doc OutputAnnotation) -> Inlines a -> Doc OutputAnnotation
 renderInlines pp = F.foldr (<>) empty . fmap (renderInline pp)
 
-renderInline :: (a -> Doc OutputAnnotation) -> Inline (Maybe a) -> Doc OutputAnnotation
+renderInline :: (a -> String -> Doc OutputAnnotation) -> Inline a -> Doc OutputAnnotation
 renderInline pp (Str s) = text $ T.unpack s
 renderInline pp Space = softline
 renderInline pp SoftBreak = softline
 renderInline pp LineBreak = line
 renderInline pp (Emph txt) = annotate (AnnTextFmt ItalicText) $ renderInlines pp txt
 renderInline pp (Strong txt) = annotate (AnnTextFmt BoldText) $ renderInlines pp txt
-renderInline pp (Code txt Nothing) = text $ T.unpack txt
-renderInline pp (Code txt (Just tm)) = pp tm
+renderInline pp (Code txt tm) = pp tm $ T.unpack txt
 renderInline pp (Link body url title) = annotate (AnnTextFmt UnderlineText) (renderInlines pp body) <+>
                                         parens (text $ T.unpack url)
 renderInline pp (Image body url title) = text "<image>" -- TODO
@@ -193,13 +233,13 @@ containsText str (DocString _ blocks) = F.any (blockContains (T.toLower str)) bl
         inlineContains str (RawHtml txt) = T.isInfixOf str (T.toLower txt)
 
 
-renderHtml :: Docstring (Maybe Term) -> Html
+renderHtml :: Docstring DocTerm -> Html
 renderHtml = renderDoc . fromDocstring
   where
-    fromDocstring :: Docstring (Maybe Term) -> CT.Doc
+    fromDocstring :: Docstring DocTerm -> CT.Doc
     fromDocstring (DocString opts blocks) = CT.Doc opts (fmap fromBlock blocks)
 
-    fromBlock :: Block (Maybe Term) -> CT.Block
+    fromBlock :: Block DocTerm -> CT.Block
     fromBlock (Para inlines)           = CT.Para (fmap fromInline inlines)
     fromBlock (Header i inlines)       = CT.Header i (fmap fromInline inlines)
     fromBlock (Blockquote blocks)      = CT.Blockquote (fmap fromBlock blocks)
@@ -208,7 +248,7 @@ renderHtml = renderDoc . fromDocstring
     fromBlock (HtmlBlock src)          = CT.HtmlBlock src
     fromBlock HRule                    = CT.HRule
 
-    fromInline :: Inline (Maybe Term) -> CT.Inline
+    fromInline :: Inline DocTerm -> CT.Inline
     fromInline (Str t)              = CT.Str t
     fromInline Space                = CT.Space
     fromInline SoftBreak            = CT.SoftBreak

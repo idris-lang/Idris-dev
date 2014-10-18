@@ -28,6 +28,8 @@ New in 0.9.15:
   documentation lookups, and with semantic highlighting for IDEs.  
 * Fenced code blocks in docs defined with the "example" attribute are rendered
   as code examples.
+* Fenced code blocks declared to be Idris code that fail to parse or type check now
+  provide error messages to IDE clients.
 * EXPERIMENTAL support for partial evaluation (Scrapping your Inefficient 
   Engine style)
 

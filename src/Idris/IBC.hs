@@ -32,7 +32,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 83
+ibcVersion = 84
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -61,7 +61,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_fninfo :: [(Name, FnInfo)],
                          ibc_cg :: [(Name, CGInfo)],
                          ibc_defs :: [(Name, Def)],
-                         ibc_docstrings :: [(Name, (Docstring (Maybe Term), [(Name, Docstring (Maybe Term))]))],
+                         ibc_docstrings :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))],
                          ibc_transforms :: [(Name, (Term, Term))],
                          ibc_errRev :: [(Term, Term)],
                          ibc_coercions :: [Name],
@@ -459,7 +459,7 @@ pDefs syms ds
     update (Proj t i) = Proj (update t) i
     update t = t
 
-pDocs :: [(Name, (Docstring (Maybe Term), [(Name, Docstring (Maybe Term))]))] -> Idris ()
+pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris ()
 pDocs ds = mapM_ (\ (n, a) -> addDocStr n (fst a) (snd a)) ds
 
 pAccess :: [(Name, Accessibility)] -> Idris ()
@@ -537,6 +537,20 @@ instance Binary CT.Options where
            x3 <- get
            x4 <- get
            return (CT.Options x1 x2 x3 x4)
+
+instance Binary D.DocTerm where
+  put D.Unchecked = putWord8 0
+  put (D.Checked t) = putWord8 1 >> put t
+  put (D.Example t) = putWord8 2 >> put t
+  put (D.Failing e) = putWord8 3 >> put e
+
+  get = do i <- getWord8
+           case i of
+             0 -> return D.Unchecked
+             1 -> fmap D.Checked get
+             2 -> fmap D.Example get
+             3 -> fmap D.Failing get
+             _ -> error "Corrupted binary data for DocTerm"
 
 instance Binary a => Binary (D.Block a) where
   put (D.Para lines) = do putWord8 0 ; put lines

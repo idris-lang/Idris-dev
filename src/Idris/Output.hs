@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
 
 module Idris.Output where
 
@@ -177,12 +177,13 @@ printUndefinedNames ns = text "Undefined " <> names <> text "."
 
 
 prettyDocumentedIst :: IState
-                    -> (Name, PTerm, Maybe (Docstring (Maybe Term)))
+                    -> (Name, PTerm, Maybe (Docstring DocTerm))
                     -> Doc OutputAnnotation
 prettyDocumentedIst ist (name, ty, docs) =
           prettyName True True [] name <+> colon <+> align (prettyIst ist ty) <$>
-          fromMaybe empty (fmap (\d -> renderDocstring ppTm (normaliseAll (tt_ctxt ist) []) d <> line) docs)
+          fromMaybe empty (fmap (\d -> renderDocstring (renderDocTerm ppTm norm) d <> line) docs)
   where ppTm = pprintDelab ist
+        norm = normaliseAll (tt_ctxt ist) []
 
 
 renderExternal :: OutputFmt -> Int -> Doc OutputAnnotation -> Idris String
@@ -220,6 +221,7 @@ renderExternal fmt width doc
     decorate HTMLOutput (AnnTextFmt _) = id -- TODO
     decorate HTMLOutput (AnnTerm _ _) = id
     decorate HTMLOutput (AnnSearchResult _) = id
+    decorate HTMLOutput (AnnErr _) = id
 
     decorate LaTeXOutput (AnnName _ (Just TypeOutput) _ _) =
       latex "IdrisType"
@@ -242,6 +244,7 @@ renderExternal fmt width doc
     decorate LaTeXOutput (AnnTextFmt _) = id -- TODO
     decorate LaTeXOutput (AnnTerm _ _) = id
     decorate LaTeXOutput (AnnSearchResult _) = id
+    decorate LaTeXOutput (AnnErr _) = id
 
     tag cls docs str = "<span class=\""++cls++"\""++title++">" ++ str ++ "</span>"
       where title = maybe "" (\d->" title=\"" ++ d ++ "\"") docs

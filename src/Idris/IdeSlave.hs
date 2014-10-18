@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
 module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideSlaveEpoch, getLen, getNChar) where
@@ -151,6 +153,7 @@ instance SExpable OutputAnnotation where
 	      EQ -> "isomorphic"
 	      LT -> "more general than searched type"
 	      GT -> "more specific than searched type"
+  toSExp (AnnErr e) = toSExp [(SymbolAtom "error", StringAtom (encodeErr e))]
 
 encodeTerm :: [(Name, Bool)] -> Term -> String
 encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $
@@ -158,6 +161,12 @@ encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encod
 
 decodeTerm :: String -> ([(Name, Bool)], Term)
 decodeTerm = Binary.decode . Lazy.fromStrict . Base64.decodeLenient . UTF8.fromString
+
+encodeErr :: Err -> String
+encodeErr e = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $ e
+
+decodeErr :: String -> Err
+decodeErr = Binary.decode . Lazy.fromStrict . Base64.decodeLenient . UTF8.fromString
 
 instance SExpable FC where
   toSExp (FC f (sl, sc) (el, ec)) =
@@ -219,6 +228,8 @@ data IdeSlaveCommand = REPLCompletions String
                      | TermShowImplicits [(Name, Bool)] Term
                      | TermNoImplicits [(Name, Bool)] Term
                      | PrintDef String
+                     | ErrString Err
+                     | ErrPPrint Err
 
 sexpToCommand :: SExp -> Maybe IdeSlaveCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
@@ -262,6 +273,8 @@ sexpToCommand (SexpList [SymbolAtom "show-term-implicits", StringAtom encoded]) 
 sexpToCommand (SexpList [SymbolAtom "hide-term-implicits", StringAtom encoded])         = let (bnd, tm) = decodeTerm encoded in
                                                                                           Just (TermNoImplicits bnd tm)
 sexpToCommand (SexpList [SymbolAtom "print-definition", StringAtom name])               = Just (PrintDef name)
+sexpToCommand (SexpList [SymbolAtom "error-string", StringAtom encoded])                = Just . ErrString . decodeErr $ encoded
+sexpToCommand (SexpList [SymbolAtom "error-pprint", StringAtom encoded])                = Just . ErrPPrint . decodeErr $ encoded
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)

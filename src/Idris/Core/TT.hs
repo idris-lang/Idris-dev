@@ -103,6 +103,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                       | AnnTextFmt TextFormatting
                       | AnnTerm [(Name, Bool)] (TT Name) -- ^ pprint bound vars, original term
                       | AnnSearchResult Ordering -- ^ more general, isomorphic, or more specific
+                      | AnnErr Err
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String
@@ -117,7 +118,7 @@ data ErrorReportPart = TextPart String
 
 -- | Idris errors. Used as exceptions in the compiler, but reported to users
 -- if they reach the top level.
-data Err' t 
+data Err' t
           = Msg String
           | InternalMsg String
           | CantUnify Bool t t (Err' t) [(Name, t)] Int

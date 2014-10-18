@@ -158,7 +158,7 @@ data IState = IState {
     idris_flags :: Ctxt [FnOpt],
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
     idris_calledgraph :: Ctxt [Name],
-    idris_docstrings :: Ctxt (Docstring (Maybe Term), [(Name, Docstring (Maybe Term))]),
+    idris_docstrings :: Ctxt (Docstring DocTerm, [(Name, Docstring DocTerm)]),
     idris_tyinfodata :: Ctxt TIData,
     idris_fninfo :: Ctxt FnInfo,
     idris_transforms :: Ctxt [(Term, Term)],
@@ -536,19 +536,19 @@ type ProvideWhat = ProvideWhat' PTerm
 -- datatypes and typeclasses.
 data PDecl' t
    = PFix     FC Fixity [String] -- ^ Fixity declaration
-   | PTy      (Docstring (Maybe PTerm)) [(Name, Docstring (Maybe PTerm))] SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
-   | PPostulate (Docstring (Maybe PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
+   | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
+   | PPostulate (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
    | PCAF     FC Name t -- ^ Top level constant
-   | PData    (Docstring (Maybe PTerm)) [(Name, Docstring (Maybe PTerm))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
+   | PData    (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
    | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
    | PNamespace String [PDecl' t] -- ^ New namespace
-   | PRecord  (Docstring (Maybe PTerm)) SyntaxInfo FC Name t DataOpts (Docstring (Maybe PTerm)) Name t  -- ^ Record declaration
-   | PClass   (Docstring (Maybe PTerm)) SyntaxInfo FC
+   | PRecord  (Docstring (Either Err PTerm)) SyntaxInfo FC Name t DataOpts (Docstring (Either Err PTerm)) Name t  -- ^ Record declaration
+   | PClass   (Docstring (Either Err PTerm)) SyntaxInfo FC
               [t] -- constraints
               Name
               [(Name, t)] -- parameters
-              [(Name, Docstring (Maybe PTerm))] -- parameter docstrings
+              [(Name, Docstring (Either Err PTerm))] -- parameter docstrings
               [PDecl' t] -- declarations
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
               -- class name, parameters, method declarations
@@ -599,7 +599,7 @@ deriving instance NFData PClause'
 -- | Data declaration
 data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
                              d_tcon :: t, -- ^ Type constructor
-                             d_cons :: [(Docstring (Maybe PTerm), [(Name, Docstring (Maybe PTerm))], Name, t, FC, [Name])] -- ^ Constructors
+                             d_cons :: [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, t, FC, [Name])] -- ^ Constructors
                            }
                  -- ^ Data declaration
                | PLaterdecl { d_name :: Name, d_tcon :: t }
@@ -1079,7 +1079,7 @@ unitTy   = sUN "Unit"
 unitCon  = sUN "MkUnit"
 
 -- TODO: elaborate the code samples in the docstring
-falseDoc = fmap (const Nothing) . parseDocstring . T.pack $
+falseDoc = fmap (const $ Msg "") . parseDocstring . T.pack $
              "The empty type, also known as the trivially false proposition." ++
              "\n\n" ++
              "Use `void` or `absurd` to prove anything if you have a variable " ++
@@ -1091,7 +1091,7 @@ pairCon   = sUN "MkPair"
 
 eqTy = sUN "="
 eqCon = sUN "Refl"
-eqDoc =  fmap (const Nothing) . parseDocstring . T.pack $
+eqDoc =  fmap (const (Left $ Msg "")) . parseDocstring . T.pack $
           "The propositional equality type. A proof that `x` = `y`." ++
           "\n\n" ++
           "To use such a proof, pattern-match on it, and the two equal things will " ++
@@ -1114,14 +1114,14 @@ eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType), (n "B", PType)]
                                                                pexp (PRef bi (n "x")),
                                                                pexp (PRef bi (n "x"))])), bi, [])]
     where n a = sUN a
-          reflDoc = annotCode (const Nothing) . parseDocstring . T.pack $
+          reflDoc = annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $
                       "A proof that `x` in fact equals `x`. To construct this, you must have already " ++
                       "shown that both sides are in fact equal."
-          reflParamDoc = [(n "A",  annotCode (const Nothing) . parseDocstring . T.pack $ "the type at which the equality is proven"),
-                          (n "x",  annotCode (const Nothing) . parseDocstring . T.pack $ "the element shown to be equal to itself.")]
+          reflParamDoc = [(n "A",  annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $ "the type at which the equality is proven"),
+                          (n "x",  annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $ "the element shown to be equal to itself.")]
 
-eqParamDoc = [(n "A", annotCode (const Nothing) . parseDocstring . T.pack $ "the type of the left side of the equality"),
-              (n "B", annotCode (const Nothing) . parseDocstring . T.pack $ "the type of the right side of the equality")
+eqParamDoc = [(n "A", annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $ "the type of the left side of the equality"),
+              (n "B", annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $ "the type of the right side of the equality")
               ]
     where n a = sUN a
 
@@ -1188,6 +1188,7 @@ consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
         colour ItalicText    = IdrisColour Nothing True False False True
 consoleDecorate ist (AnnTerm _ _) = id
 consoleDecorate ist (AnnSearchResult _) = id
+consoleDecorate ist (AnnErr _) = id
 
 isPostulateName :: Name -> IState -> Bool
 isPostulateName n ist = S.member n (idris_postulates ist)
