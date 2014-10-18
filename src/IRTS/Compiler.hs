@@ -89,11 +89,10 @@ compile codegen f tm
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
-        optimise <- optLevel
         iLOG "Building output"
 
         case checked of
-            OK c -> do return $ CodegenInfo f outty triple cpu optimise
+            OK c -> do return $ CodegenInfo f outty triple cpu 
                                             hdrs impdirs objs libs flags
                                             NONE c (toAlist defuns)
                                             tagged

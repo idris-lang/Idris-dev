@@ -75,11 +75,11 @@ data IOption = IOption { opt_logLevel   :: Int,
                          opt_importdirs :: [FilePath],
                          opt_triple     :: String,
                          opt_cpu        :: String,
-                         opt_optLevel   :: Word,
                          opt_cmdline    :: [Opt], -- remember whole command line
                          opt_origerr    :: Bool,
                          opt_autoSolve  :: Bool, -- ^ automatically apply "solve" tactic in prover
-                         opt_autoImport :: [FilePath] -- ^ e.g. Builtins+Prelude
+                         opt_autoImport :: [FilePath], -- ^ e.g. Builtins+Prelude
+                         opt_optimise   :: [Optimisation]
                        }
     deriving (Show, Eq)
 
@@ -99,16 +99,21 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_importdirs = []
                       , opt_triple     = ""
                       , opt_cpu        = ""
-                      , opt_optLevel   = 2
                       , opt_cmdline    = []
                       , opt_origerr    = False
                       , opt_autoSolve  = True
                       , opt_autoImport = []
+                      , opt_optimise   = defaultOptimise
                       }
 
 data PPOption = PPOption {
     ppopt_impl :: Bool -- ^^ whether to show implicits
 } deriving (Show)
+
+data Optimisation = PETransform -- partial eval and associated transforms
+  deriving (Show, Eq)
+
+defaultOptimise = [PETransform]
 
 -- | Pretty printing options with default verbosity.
 defaultPPOption :: PPOption
@@ -416,7 +421,9 @@ data Opt = Filename String
          | EvalExpr String
          | TargetTriple String
          | TargetCPU String
-         | OptLevel Word
+         | OptLevel Int
+         | AddOpt Optimisation
+         | RemoveOpt Optimisation
          | Client String
          | ShowOrigErr
          | AutoWidth -- ^ Automatically adjust terminal width
@@ -485,7 +492,7 @@ deriving instance NFData Plicity
 impl = Imp [] Dynamic False
 expl = Exp [] Dynamic False
 expl_param = Exp [] Dynamic True
-constraint = Constraint [] Dynamic
+constraint = Constraint [] Static
 tacimpl t = TacImp [] Dynamic t
 
 data FnOpt = Inlinable -- always evaluate when simplifying

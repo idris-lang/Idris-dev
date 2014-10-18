@@ -608,12 +608,38 @@ logLevel = do i <- getIState
 setErrContext :: Bool -> Idris ()
 setErrContext t = do i <- getIState
                      let opts = idris_options i
-                     let opt' = opts { opt_errContext = t }
-                     putIState $ i { idris_options = opt' }
+                     let opts' = opts { opt_errContext = t }
+                     putIState $ i { idris_options = opts' }
 
 errContext :: Idris Bool
 errContext = do i <- getIState
                 return (opt_errContext (idris_options i))
+
+getOptimise :: Idris [Optimisation]
+getOptimise = do i <- getIState
+                 return (opt_optimise (idris_options i))
+
+setOptimise :: [Optimisation] -> Idris ()
+setOptimise newopts = do i <- getIState
+                         let opts = idris_options i
+                         let opts' = opts { opt_optimise = newopts }
+                         putIState $ i { idris_options = opts' }
+
+addOptimise :: Optimisation -> Idris ()
+addOptimise opt = do opts <- getOptimise
+                     setOptimise (nub (opt : opts))
+
+removeOptimise :: Optimisation -> Idris ()
+removeOptimise opt = do opts <- getOptimise
+                        setOptimise ((nub opts) \\ [opt])
+
+-- Set appropriate optimisation set for the given level. We only have
+-- one optimisation that is configurable at the moment, however!
+setOptLevel :: Int -> Idris ()
+setOptLevel n | n <= 0 = setOptimise []
+setOptLevel 1          = setOptimise []
+setOptLevel 2          = setOptimise [PETransform]
+setOptLevel n | n >= 3 = setOptimise [PETransform]
 
 useREPL :: Idris Bool
 useREPL = do i <- getIState
@@ -707,16 +733,6 @@ setTargetCPU t = do i <- getIState
 targetCPU :: Idris String
 targetCPU = do i <- getIState
                return (opt_cpu (idris_options i))
-
-setOptLevel :: Word -> Idris ()
-setOptLevel t = do i <- getIState
-                   let opts = idris_options i
-                       opt' = opts { opt_optLevel = t }
-                   putIState $ i { idris_options = opt' }
-
-optLevel :: Idris Word
-optLevel = do i <- getIState
-              return (opt_optLevel (idris_options i))
 
 verbose :: Idris Bool
 verbose = do i <- getIState
@@ -1059,12 +1075,14 @@ addStatics :: Name -> Term -> PTerm -> Idris ()
 addStatics n tm ptm =
     do let (statics, dynamics) = initStatics tm ptm
        ist <- getIState
-       let paramnames = case lookupCtxtExact n (idris_fninfo ist) of
-                           Just p -> getNamesFrom 0 (fn_params p) tm
-                           _ -> []
+       let paramnames 
+              = nub $ case lookupCtxtExact n (idris_fninfo ist) of
+                           Just p -> getNamesFrom 0 (fn_params p) tm ++
+                                     concatMap (getParamNames ist) (map snd statics)
+                           _ -> concatMap (getParamNames ist) (map snd statics)
         
        let stnames = nub $ concatMap freeArgNames (map snd statics)
-       let dnames = nub $ concatMap freeArgNames (map snd dynamics)
+       let dnames = (nub $ concatMap freeArgNames (map snd dynamics))
                              \\ paramnames
        -- also get the arguments which are 'uniquely inferrable' from
        -- statics (see sec 4.2 of "Scrapping Your Inefficient Engine")
@@ -1074,8 +1092,10 @@ addStatics n tm ptm =
        let stpos = staticList statics' tm
        i <- getIState
        when (not (null statics)) $
-          logLvl 3 $ "Statics for " ++ show n ++ " " ++ show tm ++ " "
-                        ++ show statics' ++ "\n" ++ show dynamics
+          logLvl 3 $ "Statics for " ++ show n ++ " " ++ show tm ++ "\n"
+                        ++ showTmImpls ptm ++ "\n"
+                        ++ show statics ++ "\n" ++ show dynamics
+                        ++ "\n" ++ show paramnames
                         ++ "\n" ++ show stpos
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
@@ -1090,6 +1110,18 @@ addStatics n tm ptm =
                             then (static, (n, ty) : dynamic)
                             else (static, dynamic)
     initStatics t pt = ([], [])
+
+    getParamNames ist tm | (P _ n _ , args) <- unApply tm
+       = case lookupCtxtExact n (idris_datatypes ist) of
+              Just ti -> getNamePos 0 (param_pos ti) args
+              Nothing -> []
+      where getNamePos i ps [] = []
+            getNamePos i ps (P _ n _ : as) 
+                 | i `elem` ps = n : getNamePos (i + 1) ps as
+            getNamePos i ps (_ : as) = getNamePos (i + 1) ps as
+    getParamNames ist (Bind t (Pi (P _ n _) _) sc)
+       = n : getParamNames ist sc
+    getParamNames ist _ = []
 
     getNamesFrom i ps (Bind n (Pi _ _) sc)
        | i `elem` ps = n : getNamesFrom (i + 1) ps sc
