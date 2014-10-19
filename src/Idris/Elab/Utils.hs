@@ -251,5 +251,22 @@ getStaticNames ist tm
     getStatics _ _ = []
 getStaticNames _ _ = []
 
+getStatics :: [Name] -> Term -> [Bool]
+getStatics ns (Bind n (Pi _ _) t)
+    | n `elem` ns = True : getStatics ns t
+    | otherwise = False : getStatics ns t
+getStatics _ _ = []
+
+mkStatic :: [Name] -> PDecl -> PDecl
+mkStatic ns (PTy doc argdocs syn fc o n ty) 
+    = PTy doc argdocs syn fc o n (mkStaticTy ns ty)
+mkStatic ns t = t
+
+mkStaticTy :: [Name] -> PTerm -> PTerm
+mkStaticTy ns (PPi p n ty sc) 
+    | n `elem` ns = PPi (p { pstatic = Static }) n ty (mkStaticTy ns sc)
+    | otherwise = PPi p n ty (mkStaticTy ns sc)
+mkStaticTy ns t = t
+
 
 
