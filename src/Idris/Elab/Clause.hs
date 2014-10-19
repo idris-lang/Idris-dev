@@ -774,7 +774,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy (explicitNames (normalise ctxt [] lhs_ty))
-        logLvl 3 (show lhs_tm)
+        let static_names = getStaticNames i lhs_tm
+        logLvl 5 (show lhs_tm ++ "\n" ++ show static_names)
         (clhs, clhsty) <- recheckC fc [] lhs_tm
         logLvl 5 ("Checked " ++ show clhs)
         let bargs = getPBtys (explicitNames (normalise ctxt [] lhs_tm))
@@ -800,7 +801,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         (cwval, cwvalty) <- recheckC fc [] (getInferTerm wval')
         let cwvaltyN = explicitNames (normalise ctxt [] cwvalty)
         let cwvalN = explicitNames (normalise ctxt [] cwval)
-        logLvl 5 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
+        logLvl 3 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
         let pvars = map fst (getPBtys cwvalty)
         -- we need the unelaborated term to get the names it depends on
         -- rather than a de Bruijn index.
@@ -824,7 +825,15 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
 
         let imps = getImps wtype -- add to implicits context
         putIState (i { idris_implicits = addDef wname imps (idris_implicits i) })
+        let statics = getStatics static_names wtype
+        logLvl 5 ("Static positions " ++ show statics)
+        i <- getIState
+        putIState (i { idris_statics = addDef wname statics (idris_statics i) })
+
         addIBC (IBCDef wname)
+        addIBC (IBCImp wname)
+        addIBC (IBCStatic wname)
+
         def' <- checkDef fc [(wname, (-1, Nothing, wtype))]
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
@@ -865,6 +874,11 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
   where
     getImps (Bind n (Pi _ _) t) = pexp Placeholder : getImps t
     getImps _ = []
+
+    getStatics ns (Bind n (Pi _ _) t)
+        | n `elem` ns = True : getStatics ns t
+        | otherwise = False : getStatics ns t
+    getStatics _ _ = []
 
     mkAuxC wname lhs ns ns' (PClauses fc o n cs)
         | True  = do cs' <- mapM (mkAux wname lhs ns ns') cs
