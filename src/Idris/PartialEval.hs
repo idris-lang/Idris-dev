@@ -11,6 +11,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 
 import Control.Monad.State
+import Control.Applicative
 import Data.Maybe
 import Debug.Trace
 
@@ -44,13 +45,25 @@ partial_eval :: Context ->
                 [(Name, Maybe Int)] ->
                 [Either Term (Term, Term)] ->
                 Maybe [Either Term (Term, Term)]
-partial_eval ctxt ns tms = mapM peClause tms where
+partial_eval ctxt ns_in tms = mapM peClause tms where
+   ns = squash ns_in
+   squash ((n, Just x) : ns) 
+       | Just (Just y) <- lookup n ns 
+                   = squash ((n, Just (x + y)) : drop n ns)
+       | otherwise = (n, Just x) : squash ns
+   squash (n : ns) = n : squash ns
+   squash [] = []
+
+   drop n ((m, _) : ns) | n == m = ns
+   drop n (x : ns) = x : drop n ns
+   drop n [] = []
+   
    -- If the term is not a clause, it is simply kept as is
    peClause (Left t) = Just $ Left t
    -- If the term is a clause, specialise the right hand side
    peClause (Right (lhs, rhs))
        = let (rhs', reductions) = specialise ctxt [] (map toLimit ns) rhs in
-             do checkProgress ns reductions
+             do when (length tms == 1) $ checkProgress ns reductions
                 return (Right (lhs, rhs'))
 
    toLimit (n, Nothing) = (n, 65536) -- somewhat arbitrary reduction limit
@@ -103,22 +116,36 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
                       put (args ++ (zip xs (repeat (sUN "_"))))
                       return t
 
--- | Creates an Idris type declaration given current state and a specialised TT function application type.
+-- | Creates an Idris type declaration given current state and a 
+-- specialised TT function application type.
 -- Can be used in combination with the output of 'specType'.
+--
+-- This should: specialise any static argument position, then generalise
+-- over any function applications in the result. 
 mkPE_TyDecl :: IState -> [(PEArgType, Term)] -> Type -> PTerm
 mkPE_TyDecl ist args ty = mkty args ty
   where
     mkty ((ExplicitD, v) : xs) (Bind n (Pi t k) sc)
-       = PPi expl n (delab ist t) (mkty xs sc)
+       = PPi expl n (delab ist (generaliseIn t)) (mkty xs sc)
     mkty ((ImplicitD, v) : xs) (Bind n (Pi t k) sc)
          | concreteClass ist t = mkty xs sc
          | classConstraint ist t 
-             = PPi constraint n (delab ist t) (mkty xs sc)
-         | otherwise = PPi impl n (delab ist t) (mkty xs sc)
+             = PPi constraint n (delab ist (generaliseIn t)) (mkty xs sc)
+         | otherwise = PPi impl n (delab ist (generaliseIn t)) (mkty xs sc)
 
     mkty (_ : xs) t
        = mkty xs t
     mkty [] t = delab ist t
+
+    generaliseIn tm = evalState (gen tm) 0
+    
+    gen tm | (P _ fn _, args) <- unApply tm,
+             isFnName fn (tt_ctxt ist)
+        = do nm <- get
+             put (nm + 1)
+             return (P Bound (sMN nm "spec") Erased)
+    gen (App f a) = App <$> gen f <*> gen a
+    gen tm = return tm
 
 -- | Checks if a given argument is a type class constraint argument
 classConstraint :: Idris.AbsSyntax.IState -> TT Name -> Bool
@@ -265,9 +292,9 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
     ga env tm@(App f a) | (P _ n _, args) <- unApply tm,
                           n `notElem` map fst (idris_metavars ist) =
         ga env f ++ ga env a ++
-          case (lookupCtxt n (idris_statics ist),
-                  lookupCtxt n (idris_implicits ist)) of
-               ([statics], [imps]) ->
+          case (lookupCtxtExact n (idris_statics ist),
+                  lookupCtxtExact n (idris_implicits ist)) of
+               (Just statics, Just imps) ->
                    if (length statics == length args && or statics) then
                       case buildApp env statics imps args [0..] of
                            args -> [(n, args)]

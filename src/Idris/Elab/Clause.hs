@@ -149,9 +149,9 @@ elabClauses info fc opts n_in cs = let n = liftname info n_in in
 
            case specNames opts of
                 Just _ -> 
-                   do logLvl 2 $ "Partially evaluated:\n" ++ show pats_pe
-                      logLvl 2 $ "Transformed:\n" ++ show pats_transformed
+                   do logLvl 3 $ "Partially evaluated:\n" ++ show pats_pe
                 _ -> return ()
+           logLvl 3 $ "Transformed:\n" ++ show pats_transformed
 
            erInfo <- getErasureInfo <$> getIState
            tree@(CaseDef scargs sc _) <- tclift $
@@ -333,8 +333,14 @@ elabPE info fc caller r =
         idrisCatch
           (if (undef && all (concreteArg ist) (snd specapp)) then do
                 cgns <- getAllNames n
-                let cgns' = filter (/= n) cgns
-                let opts = [Specialise (map (\x -> (x, Nothing)) cgns' ++
+                -- on the RHS of the new definition, we should reduce
+                -- everything that's not itself static (because we'll
+                -- want to be a PE version of those next)
+                let cgns' = filter (\x -> x /= n &&
+                                          notStatic ist x) cgns
+                let opts = [Specialise ((if pe_simple specdecl 
+                                            then map (\x -> (x, Nothing)) cgns' 
+                                            else []) ++
                                          (n, Just 65536) : 
                                            mapMaybe (specName (pe_simple specdecl))
                                                     (snd specapp))]
@@ -347,7 +353,7 @@ elabPE info fc caller r =
                 logLvl 3 $ "PE definition " ++ show newnm ++ ":\n" ++
                              showSep "\n"
                                 (map (\ (lhs, rhs) ->
-                                  (showTmImpls lhs ++ " = " ++
+                                  (show lhs ++ " = " ++
                                    showTmImpls rhs)) (pe_clauses specdecl))
 
                 logLvl 2 $ show n ++ " transformation rule: " ++
@@ -372,6 +378,10 @@ elabPE info fc caller r =
     specName simpl (ExplicitS, tm)
         | (P Ref n _, _) <- unApply tm = Just (n, Just (if simpl then 1 else 0))
     specName simpl _ = Nothing
+
+    notStatic ist n = case lookupCtxtExact n (idris_statics ist) of
+                           Just s -> not (or s)
+                           _ -> True
 
     concreteArg ist (ImplicitS, tm) = concreteTm ist tm
     concreteArg ist (ExplicitS, tm) = concreteTm ist tm
@@ -554,6 +564,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
 
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
+        let static_names = getStaticNames i lhs_tm
+
         logLvl 3 ("Elaborated: " ++ show lhs_tm)
         logLvl 3 ("Elaborated type: " ++ show lhs_ty)
         logLvl 5 ("Injective: " ++ show fname ++ " " ++ show inj)
@@ -596,7 +608,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let newargs = filter (\(n,_) -> n `notElem` uniqargs) newargs_all
 
         let winfo = pinfo info newargs defs windex
-        let wb = map (expandParamsD False ist decorate newargs defs) whereblock
+        let wb = map (mkStatic static_names) $
+                 map (expandParamsD False ist decorate newargs defs) whereblock
 
         -- Split the where block into declarations with a type, and those
         -- without
@@ -874,11 +887,6 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
   where
     getImps (Bind n (Pi _ _) t) = pexp Placeholder : getImps t
     getImps _ = []
-
-    getStatics ns (Bind n (Pi _ _) t)
-        | n `elem` ns = True : getStatics ns t
-        | otherwise = False : getStatics ns t
-    getStatics _ _ = []
 
     mkAuxC wname lhs ns ns' (PClauses fc o n cs)
         | True  = do cs' <- mapM (mkAux wname lhs ns ns') cs
