@@ -5,7 +5,10 @@
 %%   + Provides a listings bindings:
 %%      + idris         :: default ascii
 %%      + literateidris :: convert ascii maths to math symbols.
-%%   + Defines a `numbers' and `default' listings style.
+%%   + Defines a `numbers', `default', and `stdout' listings style.
+%%      + default :: default for Idris which is to use a tt font.
+%%      + numbers :: default but with numbers.
+%%      + stdout  :: for formatting stdout.
 %%   + Defines a `code' environment for typesetting idris.
 %%      + \begin{code}[...] ... \end{code}
 %%   + Defines an input command for externally defined idris files.
@@ -67,7 +70,7 @@
 },
 %% ------------------------------------------------------- [ Prelude Functions ]
   morekeywords={%
-    class, data, instance, record, dsl, postulate, default, 
+    class, data, instance, record, dsl, postulate, default,
     lambda, variable, index_first, index_next
   },
 %% ---------------------------------------------------------------- [ Comments ]
@@ -89,7 +92,7 @@
             {>=}{{$\geq$}}2
             {<-}{{$\leftarrow$}}2
             {<=}{{$\leq$}}2
-            {=>}{{$\Rightarrow$}}2 
+            {=>}{{$\Rightarrow$}}2
             {==}{{$\equiv$}}2
             {\ .}{{$\circ$}}2
             {\ .\ }{{$\circ$}}2
@@ -100,13 +103,22 @@
 %% -------------------------------------------------- [ Default Listings Style ]
 
 \lstdefinestyle{default}{%
-  basicstyle=\ttfamily
+  basicstyle=\ttfamily\normalsize,
 }
+
 \lstdefinestyle{numbers}{%
   numbers=left,
   numbersep=10pt,
   numberstyle=\footnotesize\sffamily,
   frame=leftline
+}
+
+\lstdefinestyle{stdout}{%
+  xleftmargin=\parindent,
+  tabsize=2,
+  basicstyle=\ttfamily\normalsize,
+  showstringspaces=false,
+  escapechar=^
 }
 
 %% ------------------------------------------------------ [ A Code Environment ]
