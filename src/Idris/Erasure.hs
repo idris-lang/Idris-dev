@@ -358,8 +358,8 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
 
         -- let-bound variables can get partially evaluated
         -- it is sufficient just to plug the Cond in when the bound names are used
-        |  Let ty t <- bdr = var t cd `union` getDepsTerm vs ((n, var t) : bs) cd body
-        | NLet ty t <- bdr = var t cd `union` getDepsTerm vs ((n, var t) : bs) cd body
+        |  Let ty t <- bdr = var t cd `union` getDepsTerm vs ((n, const M.empty) : bs) cd body
+        | NLet ty t <- bdr = var t cd `union` getDepsTerm vs ((n, const M.empty) : bs) cd body
       where
         var t cd = getDepsTerm vs bs cd t
 
