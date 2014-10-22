@@ -4,6 +4,7 @@ data CmdArg = ExprArg -- ^ The command takes an expression
             | NameArg -- ^ The command takes a name
             | FileArg -- ^ The command takes a file
             | ModuleArg -- ^ The command takes a module name
+            | NumberArg -- ^ The command takes a number
             | NamespaceArg -- ^ The command takes a namespace name
             | OptionArg -- ^ The command takes an option
             | MetaVarArg -- ^ The command takes a metavariable
@@ -21,6 +22,7 @@ instance Show CmdArg where
     show NameArg          = "<name>"
     show FileArg          = "<filename>"
     show ModuleArg        = "<module>"
+    show NumberArg        = "<number>"
     show NamespaceArg     = "<namespace>"
     show OptionArg        = "<option>"
     show MetaVarArg       = "<metavar>"
@@ -70,7 +72,8 @@ help =
     ([":w", ":warranty"], NoArg, "Displays warranty information"),
     ([":let"], ManyArgs DeclArg, "Evaluate a declaration, such as a function definition, instance implementation, or fixity declaration"),
     ([":undefine",":unlet"], ManyArgs NameArg, "Remove the listed repl definitions, or all repl definitions if no names given"),
-    ([":printdef"], NameArg, "Show the definition of a function")
+    ([":printdef"], NameArg, "Show the definition of a function"),
+    ([":pp", ":pprint"], (SeqArgs OptionArg (SeqArgs NumberArg ExprArg)), "Pretty prints an expression in either LaTeX or HTML and for a specified width.")
   ]
 
 -- | Use these for completion, but don't show them in :help
