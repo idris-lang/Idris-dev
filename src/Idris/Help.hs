@@ -73,7 +73,7 @@ help =
     ([":let"], ManyArgs DeclArg, "Evaluate a declaration, such as a function definition, instance implementation, or fixity declaration"),
     ([":undefine",":unlet"], ManyArgs NameArg, "Remove the listed repl definitions, or all repl definitions if no names given"),
     ([":printdef"], NameArg, "Show the definition of a function"),
-    ([":pp", ":pprint"], (SeqArgs OptionArg (SeqArgs NumberArg ExprArg)), "Pretty prints an expression in either LaTeX or HTML and for a specified width.")
+    ([":pp", ":pprint"], (SeqArgs OptionArg (SeqArgs NumberArg NameArg)), "Pretty prints an Idris function in either LaTeX or HTML and for a specified width.")
   ]
 
 -- | Use these for completion, but don't show them in :help
