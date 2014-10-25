@@ -207,7 +207,7 @@ mkNewPats ist d ns newname sname lhs rhs =
                                   (mkRHSargs ns lhsargs) in
                      (lhs, rhs)
 
-    mkLHSargs _ [] [] = []
+    mkLHSargs _ [] _ = []
     -- dynamics don't appear if they're implicit
     mkLHSargs sub ((ExplicitD, t) : ns) (a : as) 
          = pexp (delab ist (substNames sub a)) : mkLHSargs sub ns as
