@@ -295,6 +295,7 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.Interpret cmd) =
        Success (Right cmd) -> idrisCatch
                         (ideslaveProcess fn cmd)
                         (\e -> getIState >>= iRenderError . flip pprintErr e)
+       Success (Left err) -> iPrintError err
 runIdeSlaveCommand h id orig fn mods (IdeSlave.REPLCompletions str) =
   do (unused, compls) <- replCompletion (reverse str, "")
      let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok",
@@ -756,7 +757,7 @@ process fn (NewDefn decls) = do
   defineName (PFix fc fixity strs : defns) = do
     fmodifyState idris_fixities (map (Fix fixity) strs ++)
     unless (null defns) $ defineName defns
-  defineName (PSyntax _ syntax:_) = do 
+  defineName (PSyntax _ syntax:_) = do
     i <- get
     put (addReplSyntax i syntax)
   defineName decls = do
@@ -1216,7 +1217,7 @@ process fn (TransformInfo n)
                                  delab i $ tm
                     ts' = showTrans i ts in
                     ppTm lhs <+> text " ==> " <+> ppTm rhs : ts'
-                             
+
 --               iRenderOutput (pretty lhs)
 --                    iputStrLn "  ==>  "
 --                    iPrintTermWithType (pprintDelab i rhs)
@@ -1723,7 +1724,7 @@ getOptLevel _ = Nothing
 
 getOptimisation :: Opt -> Maybe (Idris ())
 getOptimisation (AddOpt p) = Just $ addOptimise p
-getOptimisation (RemoveOpt p) = Just $ removeOptimise p 
+getOptimisation (RemoveOpt p) = Just $ removeOptimise p
 getOptimisation _ = Nothing
 
 getColour :: Opt -> Maybe Bool
