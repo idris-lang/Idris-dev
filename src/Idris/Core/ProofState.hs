@@ -618,8 +618,8 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
   (tmv, tmt) <- lift $ check ctxt env tm
   let tmt' = normalise ctxt env tmt
   let (tacn, tacstr, tactt) = if induction
-              then (ElimN, "an eliminator", "induction")
-              else (CaseN, "a case function", "case analysis")
+              then (ElimN, "an eliminator", "Induction")
+              else (CaseN, "a case function", "Case analysis")
   case unApply tmt' of
     (P _ tnm _, tyargs) -> do
         case lookupTy (SN (tacn tnm)) ctxt of
@@ -653,8 +653,8 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              (scv, sct) <- lift $ check ctxt env res'
              let (scv', _) = specialise ctxt env [] scv
              return scv'
-          [] -> fail $ tactt ++ " needs " ++ tacstr ++ " for " ++ show tnm
-          xs -> fail $ "Multiple definitions found when searching for " ++ tacstr ++ "of " ++ show tnm
+          [] -> lift $ tfail $ Msg $ tactt ++ " needs " ++ tacstr ++ " for " ++ show tnm
+          xs -> lift $ tfail $ Msg $ "Multiple definitions found when searching for " ++ tacstr ++ "of " ++ show tnm
     _ -> fail $ "Unkown type for " ++ if induction then "induction" else "case analysis"
     where scname = sMN 0 "scarg"
           makeConsArg (nm, ty) = P Bound nm ty
