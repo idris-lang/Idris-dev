@@ -655,17 +655,12 @@ Library
                 , IRTS.Bytecode
                 , IRTS.CodegenC
                 , IRTS.CodegenCommon
-                , IRTS.CodegenJava
                 , IRTS.CodegenJavaScript
                 , IRTS.JavaScript.AST
                 , IRTS.Compiler
                 , IRTS.Defunctionalise
                 , IRTS.DumpBC
                 , IRTS.Inliner
-                , IRTS.Java.ASTBuilding
-                , IRTS.Java.JTypes
-                , IRTS.Java.Mangling
-                , IRTS.Java.Pom
                 , IRTS.Lang
                 , IRTS.LangOpts
                 , IRTS.Simplified
@@ -674,10 +669,10 @@ Library
                 , Pkg.Package
                 , Util.DynamicLinker
                 , Util.ScreenSize
+                , Util.System
 
   Other-modules:
                   Util.Pretty
-                , Util.System
                 , Util.Net
                 , Util.Zlib
 
@@ -703,7 +698,6 @@ Library
                 , filepath < 1.4
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
-                , language-java >= 0.2.7 && < 0.3
                 , lens >= 4.1.1 && < 4.5
                 , mtl < 2.3
                 , network < 2.7
