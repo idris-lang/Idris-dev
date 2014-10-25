@@ -29,7 +29,8 @@ import qualified Data.Map.Strict as Map
 import Data.Char
 import Numeric (showIntAtBase)
 import qualified Data.Text as T
-import Data.List
+import Data.List hiding (insert)
+import Data.Set(Set, member, fromList, insert)
 import Data.Maybe (listToMaybe)
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
@@ -1136,13 +1137,18 @@ uniqueName :: Name -> [Name] -> Name
 uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
                 | otherwise   = n
 
+uniqueNameSet :: Name -> Set Name -> Name
+uniqueNameSet n hs | n `member` hs = uniqueNameSet (nextName n) hs
+                | otherwise   = n
+
 uniqueBinders :: [Name] -> TT Name -> TT Name
-uniqueBinders ns (Bind n b sc)
-    = let n' = uniqueName n ns
-          ns' = n' : ns in
-          Bind n' (fmap (uniqueBinders ns') b) (uniqueBinders ns' sc)
-uniqueBinders ns (App f a) = App (uniqueBinders ns f) (uniqueBinders ns a)
-uniqueBinders ns t = t
+uniqueBinders ns = ubSet (fromList ns) where
+    ubSet ns (Bind n b sc)
+        = let n' = uniqueNameSet n ns
+              ns' = insert n' ns in
+              Bind n' (fmap (ubSet ns') b) (ubSet ns' sc)
+    ubSet ns (App f a) = App (ubSet ns f) (ubSet ns a)
+    ubSet ns t = t
 
 
 nextName (NS x s)    = NS (nextName x) s
