@@ -21,7 +21,7 @@ import Control.Applicative
 import Control.Monad.State
 import Control.Monad.Error(throwError)
 
-import Data.List
+import Data.List hiding (insert,union)
 import Data.Char
 import qualified Data.Text as T
 import Data.Either
@@ -498,7 +498,7 @@ addDeferredTyCon = addDeferred' (TCon 0 0)
 
 addDeferred' :: NameType -> [(Name, (Int, Maybe Name, Type, Bool))] -> Idris ()
 addDeferred' nt ns
-  = do mapM_ (\(n, (i, _, t, _)) -> updateContext (addTyDecl n nt (tidyNames [] t))) ns
+  = do mapM_ (\(n, (i, _, t, _)) -> updateContext (addTyDecl n nt (tidyNames S.empty t))) ns
        mapM_ (\(n, _) -> when (not (n `elem` primDefs)) $ addIBC (IBCMetavar n)) ns
        i <- getIState
        putIState $ i { idris_metavars = map (\(n, (i, top, _, isTopLevel)) -> (n, (top, i, isTopLevel))) ns ++
@@ -507,11 +507,11 @@ addDeferred' nt ns
         -- 'tidyNames' is to generate user accessible names in case they are
         -- needed in tactic scripts
         tidyNames used (Bind (MN i x) b sc)
-            = let n' = uniqueName (UN x) used in
-                  Bind n' b $ tidyNames (n':used) sc
+            = let n' = uniqueNameSet (UN x) used in
+                  Bind n' b $ tidyNames (S.insert n' used) sc
         tidyNames used (Bind n b sc)
-            = let n' = uniqueName n used in
-                  Bind n' b $ tidyNames (n':used) sc
+            = let n' = uniqueNameSet n used in
+                  Bind n' b $ tidyNames (S.insert n' used) sc
         tidyNames used b = b
 
 solveDeferred :: Name -> Idris ()
@@ -1909,8 +1909,9 @@ shadow n n' t = sm t where
 -- about with shadowing anywhere else).
 
 mkUniqueNames :: [Name] -> PTerm -> PTerm
-mkUniqueNames env tm = evalState (mkUniq tm) env where
-  inScope = boundNamesIn tm
+mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
+  inScope :: S.Set Name
+  inScope = S.fromList $ boundNamesIn tm
 
   mkUniqA arg = do t' <- mkUniq (getTm arg)
                    return (arg { getTm = t' })
@@ -1925,40 +1926,40 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   -- long as there are no bindings inside tactics though.
   mkUniqT tac = return tac
 
-  mkUniq :: PTerm -> State [Name] PTerm
+  mkUniq :: PTerm -> State (S.Set Name) PTerm
   mkUniq (PLam n ty sc)
          = do env <- get
               (n', sc') <-
-                    if n `elem` env
-                       then do let n' = uniqueName (initN n (length env))
-                                                   (env ++ inScope)
+                    if n `S.member` env
+                       then do let n' = uniqueNameSet (initN n (S.size env))
+                                                      (S.union env inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
-              put (n' : env)
+              put (S.insert n' env)
               ty' <- mkUniq ty
               sc'' <- mkUniq sc'
               return $! PLam n' ty' sc''
   mkUniq (PPi p n ty sc)
          = do env <- get
               (n', sc') <-
-                    if n `elem` env
-                       then do let n' = uniqueName (initN n (length env))
-                                                   (env ++ inScope)
+                    if n `S.member` env
+                       then do let n' = uniqueNameSet (initN n (S.size env))
+                                                      (S.union env inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
-              put (n' : env)
+              put (S.insert n' env)
               ty' <- mkUniq ty
               sc'' <- mkUniq sc'
               return $! PPi p n' ty' sc''
   mkUniq (PLet n ty val sc)
          = do env <- get
               (n', sc') <-
-                    if n `elem` env
-                       then do let n' = uniqueName (initN n (length env))
-                                                   (env ++ inScope)
+                    if n `S.member` env
+                       then do let n' = uniqueNameSet (initN n (S.size env))
+                                                      (S.union env inScope)
                                return (n', shadow n n' sc)
                        else return (n, sc)
-              put (n' : env)
+              put (S.insert n' env)
               ty' <- mkUniq ty; val' <- mkUniq val
               sc'' <- mkUniq sc'
               return $! PLet n' ty' val' sc''
@@ -1981,11 +1982,11 @@ mkUniqueNames env tm = evalState (mkUniq tm) env where
   mkUniq (PDPair fc p (PRef fc' n) t sc)
       | t /= Placeholder
          = do env <- get
-              (n', sc') <- if n `elem` env
-                              then do let n' = uniqueName n (env ++ inScope)
+              (n', sc') <- if n `S.member` env
+                              then do let n' = uniqueNameSet n (S.union env inScope)
                                       return (n', shadow n n' sc)
                               else return (n, sc)
-              put (n' : env)
+              put (S.insert n' env)
               t' <- mkUniq t
               sc'' <- mkUniq sc'
               return $! PDPair fc p (PRef fc' n') t' sc''

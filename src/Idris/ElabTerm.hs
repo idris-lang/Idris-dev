@@ -319,7 +319,9 @@ elab ist info emode opts fn tm
              let (tc, _) = unApply ty
              env <- get_env
              let as' = pruneByType (map fst env) tc ctxt as
---              trace (show as ++ "\n ==> " ++ showSep ", " (map showTmImpls as')) $
+--              trace (-- show tc ++ " " ++ show as ++ "\n ==> " ++ 
+--                     show (length as') ++ "\n" ++
+--                     showSep ", " (map showTmImpls as') ++ "\nEND") $
              tryAll (zip (map (elab' ina) as') (map showHd as'))
         where showHd (PApp _ (PRef _ n) _) = n
               showHd (PRef _ n) = n
@@ -1034,7 +1036,8 @@ pruneAlt xs = map prune xs
 
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
-pruneByType :: [Name] -> Term -> Context -> [PTerm] -> [PTerm]
+pruneByType :: [Name] -> Term -> -- head of the goal
+               Context -> [PTerm] -> [PTerm]
 -- if an alternative has a locally bound name at the head, take it
 pruneByType env t c as
    | Just a <- locallyBound as = [a]
@@ -1048,9 +1051,9 @@ pruneByType env t c as
     getName (PApp _ f _) = getName f
     getName _ = Nothing
 
-pruneByType env (P _ n _) c as
+pruneByType env (P _ n _) ctxt as
 -- if the goal type is polymorphic, keep e
-   | [] <- lookupTy n c = as
+   | [] <- lookupTy n ctxt = as
    | otherwise
        = let asV = filter (headIs True n) as
              as' = filter (headIs False n) as in
@@ -1066,13 +1069,16 @@ pruneByType env (P _ n _) c as
     headIs _ _ _ = True -- keep if it's not an application
 
     typeHead var f f'
-        = case lookupTy f' c of
-                       [ty] -> let ty' = normalise c [] ty in
-                                   case unApply (getRetTy ty') of
-                                    (P _ ftyn _, _) -> ftyn == f
-                                    (V _, _) -> var -- keep, variable
-                                    _ -> False
-                       _ -> False
+        = -- trace ("Trying " ++ show f' ++ " for " ++ show n) $
+          case lookupTy f' ctxt of
+               [ty] -> case unApply (getRetTy ty) of
+                            (P _ ctyn _, _) | isConName ctyn ctxt -> ctyn == f
+                            _ -> let ty' = normalise ctxt [] ty in
+                                     case unApply (getRetTy ty') of
+                                          (P _ ftyn _, _) -> ftyn == f
+                                          (V _, _) -> var -- keep, variable
+                                          _ -> False
+               _ -> False
 
 pruneByType _ t _ as = as
 
