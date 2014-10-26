@@ -93,7 +93,7 @@ matchTerm lhs tm = matchVars [] lhs tm
            = do fm <- doMatch ns f f'
                 am <- doMatch ns a a'
                 return (fm ++ am)
-      doMatch ns x y | x == y = return []
+      doMatch ns x y | vToP x == vToP y = return []
                      | otherwise = Nothing
 
 
