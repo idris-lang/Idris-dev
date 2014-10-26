@@ -222,7 +222,7 @@ renameBindersTm env tm = uniqueBinders (map fst env) tm
        = Bind n (Hole ty) (instantiate (P Bound n ty) sc)
     explicitHole t = t
 
-trimSolutions ns = dropPairs ns
+trimSolutions ns = followSols (dropPairs ns)
   where dropPairs [] = []
         dropPairs (n@(x, P _ x' _) : ns)
           | x == x' = dropPairs ns
@@ -232,7 +232,13 @@ trimSolutions ns = dropPairs ns
                                       (n, P _ n' _) -> not (n == x' && n' == x)
                                       _ -> True) ns)
         dropPairs (n : ns) = n : dropPairs ns
-            
+
+        followSols [] = []
+        followSols ((n, P _ t _) : ns)
+          | Just t' <- lookup t ns
+              = followSols ((n, t') : ns) -- Are we guaranteed no cycles?
+        followSols (n : ns) = n : followSols ns
+
 expandLets env (x, tm) = (x, doSubst (reverse env) tm)
   where
     doSubst [] tm = tm
