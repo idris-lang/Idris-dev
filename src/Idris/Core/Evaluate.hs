@@ -11,7 +11,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact, 
                 lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
-                lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isDConName, isTConName, isConName, isFnName,
+                lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
 
@@ -25,7 +25,8 @@ import Idris.Core.TT
 import Idris.Core.CaseTree
 
 data EvalState = ES { limited :: [(Name, Int)],
-                      nexthole :: Int }
+                      nexthole :: Int,
+                      blocking :: Bool }
   deriving Show
 
 type Eval a = State EvalState a
@@ -37,7 +38,7 @@ data EvalOpt = Spec
              | RunTT
   deriving (Show, Eq)
 
-initEval = ES [] 0
+initEval = ES [] 0 False
 
 -- VALUES (as HOAS) ---------------------------------------------------------
 -- | A HOAS representation of values
@@ -161,11 +162,12 @@ usable :: Bool -- specialising
 -- usable _ _ ns@((MN 0 "STOP", _) : _) = return (False, ns)
 usable False n [] = return (True, [])
 usable True n ns
-  = do ES ls num <- get
-       case lookup n ls of
-            Just 0 -> return (False, ns)
-            Just i -> return (True, ns)
-            _ -> return (False, ns)
+  = do ES ls num b <- get
+       if b then return (False, ns)
+            else case lookup n ls of
+                    Just 0 -> return (False, ns)
+                    Just i -> return (True, ns)
+                    _ -> return (False, ns)
 usable False n ns
   = case lookup n ns of
          Just 0 -> return (False, ns)
@@ -175,11 +177,15 @@ usable False n ns
 
 fnCount :: Int -> Name -> Eval ()
 fnCount inc n 
-         = do ES ls num <- get
+         = do ES ls num b <- get
               case lookup n ls of
                   Just i -> do put $ ES ((n, (i - inc)) :
-                                           filter (\ (n', _) -> n/=n') ls) num
+                                           filter (\ (n', _) -> n/=n') ls) num b
                   _ -> return ()
+
+setBlock :: Bool -> Eval ()
+setBlock b = do ES ls num _ <- get
+                put (ES ls num b)
 
 deduct = fnCount 1
 reinstate = fnCount (-1)
@@ -284,10 +290,12 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  let ntimes' = case f of
                                     P _ fn _ -> (fn, 0) : ntimes
                                     _ -> ntimes
+                 when spec $ setBlock True
                  d' <- ev ntimes' stk False env d
                  l' <- ev ntimes' stk False env l
                  t' <- ev ntimes' stk False env t
                  arg' <- ev ntimes' stk False env arg
+                 when spec $ setBlock False
                  evApply ntimes' stk top env [l',t',arg'] d'
     -- Treat "assert_total" specially, as long as it's defined!
     ev ntimes stk top env (App (App (P _ n@(UN at) _) _) arg)
@@ -957,6 +965,15 @@ isFnName n ctxt
                Just (Function _ _, _, _, _) -> True
                Just (Operator _ _ _, _, _, _) -> True
                Just (CaseOp _ _ _ _ _ _, _, _, _) -> True
+               _ -> False
+
+isTCDict :: Name -> Context -> Bool
+isTCDict n ctxt
+     = let def = lookupCtxtExact n (definitions ctxt) in
+          case def of
+               Just (Function _ _, _, _, _) -> False
+               Just (Operator _ _ _, _, _, _) -> False
+               Just (CaseOp ci _ _ _ _ _, _, _, _) -> tc_dictionary ci
                _ -> False
 
 lookupP :: Name -> Context -> [Term]

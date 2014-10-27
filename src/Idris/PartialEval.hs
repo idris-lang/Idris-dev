@@ -66,6 +66,8 @@ partial_eval ctxt ns_in tms = mapM peClause tms where
              do when (length tms == 1) $ checkProgress ns reductions
                 return (Right (lhs, rhs'))
 
+   -- TMP HACK until I do PE by WHNF rather than using main evaluator
+   toLimit (n, Nothing) | isTCDict n ctxt = (n, 2) 
    toLimit (n, Nothing) = (n, 65536) -- somewhat arbitrary reduction limit
    toLimit (n, Just l) = (n, l)
 
