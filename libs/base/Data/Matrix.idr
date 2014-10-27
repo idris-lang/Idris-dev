@@ -1,6 +1,7 @@
 module Data.Matrix
 
 import Data.Complex
+import Data.ZZ
 
 %default total
 
@@ -215,7 +216,39 @@ instance Ring Float where
 
 instance RingWithUnity Float where
   unity = 1
+
+
+instance Semigroup Nat where
+  (<+>) = (+)
+
+instance Monoid Nat where
+  neutral = 0
   
+instance VerifiedSemigroup Nat where
+  semigroupOpIsAssociative = plusAssociative
+
+instance VerifiedMonoid Nat where
+  monoidNeutralIsNeutralL = plusZeroRightNeutral
+  monoidNeutralIsNeutralR = plusZeroLeftNeutral
+
+
+instance Semigroup ZZ where
+  (<+>) = (+)
+
+instance Monoid ZZ where
+  neutral = 0
+
+instance Group ZZ where
+  inverse = (* -1)
+  
+instance AbelianGroup ZZ
+
+instance Ring ZZ where 
+  (<*>) = (*)
+ 
+instance RingWithUnity ZZ where
+  unity = 1
+
 
 instance Semigroup a => Semigroup (Complex a) where
   (<+>) (a :+ b) (c :+ d) = (a <+> c) :+ (b <+> d)
@@ -233,17 +266,3 @@ instance (Num a, AbelianGroup (Complex a)) => Ring (Complex a) where
 
 instance (Num a, Ring (Complex a)) => RingWithUnity (Complex a) where
   unity = (1 :+ 0)
-
-
-instance Semigroup Nat where
-  (<+>) = (+)
-
-instance Monoid Nat where
-  neutral = 0
-  
-instance VerifiedSemigroup Nat where
-  semigroupOpIsAssociative = plusAssociative
-
-instance VerifiedMonoid Nat where
-  monoidNeutralIsNeutralL = plusZeroRightNeutral
-  monoidNeutralIsNeutralR = plusZeroLeftNeutral
