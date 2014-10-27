@@ -409,18 +409,24 @@ elabPE info fc caller r =
     -- get the clause of a specialised application
     getSpecClause ist (n, args)
        = let newnm = sUN ("PE_" ++ show (nsroot n) ++ "_" ++
-                               qhash 0 (showSep "_" (map showArg args))) in 
+                               qhash 5381 (showSep "_" (map showArg args))) in 
                                -- UN (show n ++ show (map snd args)) in
              (n, newnm, mkPE_TermDecl ist newnm n args)
-      where showArg (ExplicitS, n) = show n
-            showArg (ImplicitS, n) = show n
+      where showArg (ExplicitS, n) = qshow n
+            showArg (ImplicitS, n) = qshow n
             showArg _ = ""
 
-            -- TMP for readability! This is obviously a really bad hashing
-            -- function.
+            qshow (Bind _ _ _) = "fn"
+            qshow (App f a) = qshow f ++ qshow a
+            qshow (P _ n _) = show n
+            qshow (Constant c) = show c
+            qshow _ = ""
+
+            -- Simple but effective string hashing...
+            -- Keep it to 32 bits for readability/debuggability
             qhash :: Int -> String -> String
-            qhash acc [] = showHex acc ""
-            qhash acc (x:xs) = qhash (fromEnum x + acc) xs
+            qhash hash [] = showHex (abs hash `mod` 0xffffffff) ""
+            qhash hash (x:xs) = qhash (hash * 33 + fromEnum x) xs
 
 -- checks if the clause is a possible left hand side. Returns the term if
 -- possible, otherwise Nothing.
