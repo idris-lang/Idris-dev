@@ -338,10 +338,15 @@ elabPE info fc caller r =
                 -- want to be a PE version of those next)
                 let cgns' = filter (\x -> x /= n &&
                                           notStatic ist x) cgns
+                -- set small reduction limit on partial/productive things
+                let maxred = case lookupTotal n (tt_ctxt ist) of
+                                  [Total _] -> 65536
+                                  [Productive] -> 16
+                                  _ -> 1
                 let opts = [Specialise ((if pe_simple specdecl 
                                             then map (\x -> (x, Nothing)) cgns' 
                                             else []) ++
-                                         (n, Just 65536) : 
+                                         (n, Just maxred) : 
                                            mapMaybe (specName (pe_simple specdecl))
                                                     (snd specapp))]
                 logLvl 3 $ "Specialising application: " ++ show specapp
