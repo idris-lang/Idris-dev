@@ -27,72 +27,72 @@ parseCmd :: IState -> String -> String -> Result (Either String Command)
 parseCmd i inputname = P.runparser pCmd i inputname
 
 pCmd :: P.IdrisParser (Either String Command)
-pCmd = do            c <- cmd ["q", "quit"];        noArgs c Quit
-              <|> do c <- cmd ["h", "?", "help"];   noArgs c Help
-              <|> do c <- cmd ["w", "warranty"];    noArgs c Warranty
-              <|> do c <- cmd ["r", "reload"];      noArgs c Reload
-              <|> do c <- cmd ["exec", "execute"];  noArgs c Execute
-              <|> do c <- cmd ["proofs"];           noArgs c Proofs
-              <|> do c <- cmd ["u", "universes"];   noArgs c Universes
-              <|> do c <- cmd ["errorhandlers"];    noArgs c ListErrorHandlers
-              <|> do c <- cmd ["m", "metavars"];    noArgs c Metavars
-              <|> do c <- cmd ["e", "edit"];        noArgs c Edit
+pCmd = choice [ do c <- cmd ["q", "quit"];        noArgs c Quit
+              , do c <- cmd ["h", "?", "help"];   noArgs c Help
+              , do c <- cmd ["w", "warranty"];    noArgs c Warranty
+              , do c <- cmd ["r", "reload"];      noArgs c Reload
+              , do c <- cmd ["exec", "execute"];  noArgs c Execute
+              , do c <- cmd ["proofs"];           noArgs c Proofs
+              , do c <- cmd ["u", "universes"];   noArgs c Universes
+              , do c <- cmd ["errorhandlers"];    noArgs c ListErrorHandlers
+              , do c <- cmd ["m", "metavars"];    noArgs c Metavars
+              , do c <- cmd ["e", "edit"];        noArgs c Edit
 
-              <|> do c <- cmd ["d", "def"];         fnNameArg c Defn
-              <|> do c <- cmd ["total"];            fnNameArg c TotCheck
-              <|> do c <- cmd ["printdef"];         fnNameArg c PrintDef
-              <|> do c <- cmd ["transinfo"];        fnNameArg c TransformInfo
-              <|> do c <- cmd ["wc", "whocalls"];   fnNameArg c WhoCalls
-              <|> do c <- cmd ["cw", "callswho"];   fnNameArg c CallsWho
-              <|> do c <- cmd ["di", "dbginfo"];    fnNameArg c DebugInfo
-              <|> do c <- cmd ["miss", "missing"];  fnNameArg c Missing
+              , do c <- cmd ["d", "def"];         fnNameArg c Defn
+              , do c <- cmd ["total"];            fnNameArg c TotCheck
+              , do c <- cmd ["printdef"];         fnNameArg c PrintDef
+              , do c <- cmd ["transinfo"];        fnNameArg c TransformInfo
+              , do c <- cmd ["wc", "whocalls"];   fnNameArg c WhoCalls
+              , do c <- cmd ["cw", "callswho"];   fnNameArg c CallsWho
+              , do c <- cmd ["di", "dbginfo"];    fnNameArg c DebugInfo
+              , do c <- cmd ["miss", "missing"];  fnNameArg c Missing
 
-              <|> do c <- cmd ["t", "type"];        exprArg c Check
-              <|> do c <- cmd ["x"];                exprArg c ExecVal
-              <|> do c <- cmd ["patt"];             exprArg c Pattelab
-              <|> do c <- cmd ["spec"];             exprArg c Spec
-              <|> do c <- cmd ["hnf"];              exprArg c HNF
-              <|> do c <- cmd ["inline"];           exprArg c TestInline
+              , do c <- cmd ["t", "type"];        exprArg c Check
+              , do c <- cmd ["x"];                exprArg c ExecVal
+              , do c <- cmd ["patt"];             exprArg c Pattelab
+              , do c <- cmd ["spec"];             exprArg c Spec
+              , do c <- cmd ["hnf"];              exprArg c HNF
+              , do c <- cmd ["inline"];           exprArg c TestInline
 
-              <|> do c <- cmd ["rmproof"];          nameArg c RmProof
-              <|> do c <- cmd ["showproof"];        nameArg c ShowProof
-              <|> do c <- cmd ["p", "prove"];       nameArg c Prove
+              , do c <- cmd ["rmproof"];          nameArg c RmProof
+              , do c <- cmd ["showproof"];        nameArg c ShowProof
+              , do c <- cmd ["p", "prove"];       nameArg c Prove
 
-              <|> do c <- cmd ["set"];              optArg c SetOpt
-              <|> do c <- cmd ["unset"];            optArg c UnsetOpt
+              , do c <- cmd ["set"];              optArg c SetOpt
+              , do c <- cmd ["unset"];            optArg c UnsetOpt
 
-              <|> do c <- cmd ["l", "load"];        strArg c (\f -> Load f Nothing)
-              <|> do c <- cmd ["cd"];               strArg c ChangeDirectory
-              <|> do c <- cmd ["apropos"];          strArg c Apropos
-              <|> do c <- cmd ["mkdoc"];            strArg c MakeDoc
+              , do c <- cmd ["l", "load"];        strArg c (\f -> Load f Nothing)
+              , do c <- cmd ["cd"];               strArg c ChangeDirectory
+              , do c <- cmd ["apropos"];          strArg c Apropos
+              , do c <- cmd ["mkdoc"];            strArg c MakeDoc
 
-              <|> do c <- cmd ["cs", "casesplit"];          proofArg c CaseSplitAt
-              <|> do c <- cmd ["apc", "addproofclause"];    proofArg c AddProofClauseFrom
-              <|> do c <- cmd ["ac", "addclause"];          proofArg c AddClauseFrom
-              <|> do c <- cmd ["am", "addmissing"];         proofArg c AddMissing
-              <|> do c <- cmd ["mw", "makewith"];           proofArg c MakeWith
-              <|> do c <- cmd ["ml", "makelemma"];          proofArg c MakeLemma
+              , do c <- cmd ["cs", "casesplit"];          proofArg c CaseSplitAt
+              , do c <- cmd ["apc", "addproofclause"];    proofArg c AddProofClauseFrom
+              , do c <- cmd ["ac", "addclause"];          proofArg c AddClauseFrom
+              , do c <- cmd ["am", "addmissing"];         proofArg c AddMissing
+              , do c <- cmd ["mw", "makewith"];           proofArg c MakeWith
+              , do c <- cmd ["ml", "makelemma"];          proofArg c MakeLemma
 
-              <|> do c <- cmd ["pp", "pprint"];             cmd_pprint c
-              <|> do c <- cmd ["doc"];                      cmd_doc c
-              <|> do c <- cmd ["dynamic"];                  cmd_dynamic c
-              <|> do c <- cmd ["consolewidth"];             cmd_consolewidth c
-              <|> do c <- cmd ["module"];                   cmd_module c
-              <|> do c <- cmd ["c", "compile"];             cmd_compile c
-              <|> do c <- cmd ["a", "addproof"];            cmd_addproof c
-              <|> do c <- cmd ["log"];                      cmd_log c
-              <|> do c <- cmd ["let"];                      cmd_let c
-              <|> do c <- cmd ["unlet","undefine"];         cmd_unlet c
-              <|> do c <- cmd ["lto", "loadto"];            cmd_loadto c
-              <|> do c <- cmd ["color", "colour"];          cmd_colour c
-              <|> do c <- cmd ["s", "search"];              cmd_search c
-              <|> do c <- cmd ["ps", "proofsearch"];        cmd_proofsearch c
-              <|> do c <- cmd ["ref", "refine"];            cmd_refine c
+              , do c <- cmd ["pp", "pprint"];             cmd_pprint c
+              , do c <- cmd ["doc"];                      cmd_doc c
+              , do c <- cmd ["dynamic"];                  cmd_dynamic c
+              , do c <- cmd ["consolewidth"];             cmd_consolewidth c
+              , do c <- cmd ["module"];                   cmd_module c
+              , do c <- cmd ["c", "compile"];             cmd_compile c
+              , do c <- cmd ["a", "addproof"];            cmd_addproof c
+              , do c <- cmd ["log"];                      cmd_log c
+              , do c <- cmd ["let"];                      cmd_let c
+              , do c <- cmd ["unlet","undefine"];         cmd_unlet c
+              , do c <- cmd ["lto", "loadto"];            cmd_loadto c
+              , do c <- cmd ["color", "colour"];          cmd_colour c
+              , do c <- cmd ["s", "search"];              cmd_search c
+              , do c <- cmd ["ps", "proofsearch"];        cmd_proofsearch c
+              , do c <- cmd ["ref", "refine"];            cmd_refine c
 
-              <|> unrecognized
-              <|> nop
-              <|> eval
-
+              , unrecognized
+              , nop
+              ]
+             <|> eval
     where nop = do P.whiteSpace; eof; return (Right NOP)
           eval = exprArg "" Eval
           unrecognized = do 
