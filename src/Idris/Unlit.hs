@@ -2,32 +2,35 @@ module Idris.Unlit(unlit) where
 
 import Idris.Core.TT
 import Data.Char
+import Control.Monad
 
 unlit :: FilePath -> String -> TC String
-unlit f s = do let s' = map ulLine (lines s)
-               check f 1 s'
-               return $ unlines (map snd s')
+unlit filePath source = do zipWithM_ (chkAdj filePath) [1..] (pairAdj lineTypes)
+                           return finalSource
+  where (lineTypes, lineStrings) = unzip $ map parse $ lines source
+        finalSource = unlines lineStrings
 
 data LineType = Prog | Blank | Comm
 
-ulLine :: String -> (LineType, String)
-ulLine ('>':' ':xs)        = (Prog, xs)
-ulLine ('>':xs)            = (Prog, xs)
-ulLine xs | all isSpace xs = (Blank, "")
--- make sure it's not a doc comment
-          | otherwise      = (Comm, '-':'-':' ':'>':xs)
+-- By literate haskell standards, source code lines should be extracted
+-- by converting the prefix '>' into a space.
+parse :: String -> (LineType, String)
+parse ('>':xs)            = (Prog,  ' ':xs)
+parse xs | all isSpace xs = (Blank, "")
+         | otherwise      = (Comm,  "-- " ++ xs)
 
-check :: FilePath -> Int -> [(LineType, String)] -> TC ()
-check f l (a:b:cs) = do chkAdj f l (fst a) (fst b)
-                        check f (l+1) (b:cs)
-check f l [x] = return ()
-check f l [] = return ()
+-- chkAdj checks if the fileTypes of two adjacent lines warrants an error.
+chkAdj :: FilePath -> Int -> (LineType, LineType) -> TC ()
+chkAdj file lineNumber (Prog, Comm) = adjFail file lineNumber
+chkAdj file lineNumber (Comm, Prog) = adjFail file lineNumber
+chkAdj _ _ _                        = return ()
 
--- Issue #1593 on the issue checker.
---
---     https://github.com/idris-lang/Idris-dev/issues/1593
---
-chkAdj :: FilePath -> Int -> LineType -> LineType -> TC ()
-chkAdj f l Prog Comm = tfail $ At (FC f (l, 0) (l, 0)) ProgramLineComment --TODO: Span correctly
-chkAdj f l Comm Prog = tfail $ At (FC f (l, 0) (l, 0)) ProgramLineComment --TODO: Span correctly
-chkAdj f l _    _    = return ()
+-- adjFail is the error returned on an adjacency check failure.
+adjFail :: FilePath -> Int -> TC ()
+adjFail file lineNumber = tfail $ At range ProgramLineComment
+  where range = FC file (lineNumber, 0) (lineNumber, 0)
+
+-- pairAdj converts a list into a list of pairs of adjacent elements.
+-- It safely handles single element and empty lists.
+pairAdj :: [a] -> [(a,a)]
+pairAdj = zip `ap` tail
