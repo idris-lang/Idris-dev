@@ -156,9 +156,34 @@ Zero {d} = replicate d zero
 --                      Matrix Algebra Properties
 -----------------------------------------------------------------------
 
+instance Semigroup a => Semigroup (Vect n a) where
+  (<+>) v w = zipWith (<+>) v w
+
+instance Monoid a => Monoid (Vect n a) where
+  neutral {n} = replicate n neutral
+  
+instance Group a => Group (Vect n a) where
+  inverse = map inverse
+
+instance AbelianGroup a => AbelianGroup (Vect n a) where {}
+
+instance Ring a => Ring (Vect n a) where
+  (<*>) v w = zipWith (<*>) v w
+
+instance RingWithUnity a => RingWithUnity (Vect n a) where
+  unity {n} = replicate n unity
+
+instance Field a => Field (Vect n a) where
+  inverseM = map inverseM
+
+instance (Field a, AbelianGroup a) => VectorSpace a (Vect n a) where
+  (<#>) s v = map (s <*>) v
+
+instance (Field a, AbelianGroup a) => VectorSpace a (Vect n (Vect n a)) where
+  (<#>) s m = map (s <#>) m
+
 
 -- TODO: Prove properties of matrix algebra for 'Verified' algebraic classes
-
 
 -----------------------------------------------------------------------
 --                    Numberic data types as rings
@@ -216,6 +241,9 @@ instance Ring Float where
 
 instance RingWithUnity Float where
   unity = 1
+
+instance Field Float where
+  inverseM f = 1 / f
 
 
 instance Semigroup Nat where
