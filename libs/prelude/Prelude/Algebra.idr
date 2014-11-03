@@ -299,27 +299,31 @@ class (VerifiedRing a, Field a) => VerifiedField a where
   total fieldInverseIsInverseL : (l : a) -> l <*> inverseM l = unity
   total fieldInverseIsInverseR : (r : a) -> inverseM r <*> r = unity
 
-||| A Vector Space over a Field can be considered as an additive Abeliean Group
-||| of Vectors adjoined to the Field structure with a scale operation multiplying 
-||| vectors by field elements, and distributivity laws relating the scale 
-||| operation to both field addition and vector space addition. Must satisfy the
-||| following laws:
+||| A module over a ring is an additive abeliean group of 'vectors' endowed with a
+||| scale operation multiplying vectors by ring elements, and distributivity laws 
+||| relating the scale operation to both ring addition and module addition. 
+||| Must satisfy the following laws:
 |||
-||| + Compatibility of scalar multiplication with field multiplication:
+||| + Compatibility of scalar multiplication with ring multiplication:
 |||     forall a b v,  a <#> (b <#> v) = (a <*> b) <#> v
-||| + Field unity is the identity element of scalar multiplication:
+||| + Ring unity is the identity element of scalar multiplication:
 |||     forall v,      unity <#> v = v
 ||| + Distributivity of `<#>` and `<+>`:
 |||     forall a v w,  a <#> (v <+> w) == (a <#> v) <+> (a <#> w)
 |||     forall a b v,  (a <+> b) <#> v == (a <#> v) <+> (b <#> v)
-class (Field a, AbelianGroup b) => VectorSpace a b where
+class (RingWithUnity a, AbelianGroup b) => Module a b where
   (<#>) : a -> b -> b
 
-class (VerifiedField a, VerifiedAbelianGroup b, VectorSpace a b) => VerifiedVectorSpace a b where
-  total vectorspaceScalarMultiplyComposition : (x,y : a) -> (v : b) -> x <#> (y <#> v) = (x <*> y) <#> v
-  total vectorspaceScalarUnityIsUnity : (v : b) -> unity <#> v = v
-  total vectorspaceScalarMultDistributiveWRTVectorAddition : (s : a) -> (v, w : b) -> s <#> (v <+> w) = (s <#> v) <+> (s <#> w)
-  total vectorspaceScalarMultDistributiveWRTFieldAddition  : (s, t : a) -> (v : b) -> (s <+> t) <#> v = (s <#> v) <+> (t <#> v)
+class (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedModule a b where
+  total moduleScalarMultiplyComposition : (x,y : a) -> (v : b) -> x <#> (y <#> v) = (x <*> y) <#> v
+  total moduleScalarUnityIsUnity : (v : b) -> unity <#> v = v
+  total moduleScalarMultDistributiveWRTVectorAddition : (s : a) -> (v, w : b) -> s <#> (v <+> w) = (s <#> v) <+> (s <#> w)
+  total moduleScalarMultDistributiveWRTModuleAddition : (s, t : a) -> (v : b) -> (s <+> t) <#> v = (s <#> v) <+> (t <#> v)
+
+||| A vector space is a module over a ring that is also a field
+class (Field a, Module a b) => VectorSpace a b where
+
+class (VerifiedField a, VerifiedModule a b) => VerifiedVectorSpace a b where {}
 
 -- XXX todo:
 --   Structures where "abs" make sense.
