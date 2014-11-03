@@ -5,17 +5,15 @@ import Data.ZZ
 
 %default total
 
-
-infixr 2 <.>  -- Vector inner product
-infixr 2 ><   -- Vector outer product
-infixr 2 <<>> -- Matrix commutator
-infixr 2 >><< -- Matrix anticommutator
-infixl 3 <\>  -- row times a Matrix
-infixr 4 </>  -- Matrix times a column
-infixr 5 <>   -- Matrix multiplication 
+infixr 2 <.>  -- vector inner product
+infixr 2 ><   -- vector outer product
+infixr 2 <<>> -- matrix commutator
+infixr 2 >><< -- matrix anticommutator
+infixl 3 <\>  -- row times a matrix
+infixr 4 </>  -- matrix times a column
+infixr 5 <>   -- matrix multiplication 
 infixr 7 \&\  -- vector tensor product
-infixr 7 <&>  -- Matrix tensor product
-
+infixr 7 <&>  -- matrix tensor product
 
 -----------------------------------------------------------------------
 --               Vectors as members of algebraic classes
@@ -41,23 +39,16 @@ instance RingWithUnity a => RingWithUnity (Vect n a) where
 instance Field a => Field (Vect n a) where
   inverseM = map inverseM
 
-instance (Field a, AbelianGroup a) => VectorSpace a (Vect n a) where
-  (<#>) s v = map (s <*>) v
-
-instance (Field a, AbelianGroup a) => VectorSpace a (Vect n (Vect n a)) where
-  (<#>) s m = map (s <#>) m
+instance RingWithUnity a => Module a (Vect n a) where
+  (<#>) r v = map (r <*>) v
 
 -----------------------------------------------------------------------
---                      (Ring) Vector functions
+--                       (Ring) Vector functions
 -----------------------------------------------------------------------
 
 ||| Inner product of ring vectors
 (<.>) : Ring a => Vect n a -> Vect n a -> a
 (<.>) w v = foldr (<+>) neutral (zipWith (<*>) w v)
-
-||| Scale a ring vector by the appropriate scalar
-scale : Ring a => a -> Vect n a -> Vect n a
-scale s v = map (<*> s) v
 
 ||| Tensor multiply (⊗) ring vectors
 (\&\) : Ring a => Vect n a -> Vect m a -> Vect (n * m) a
@@ -73,32 +64,24 @@ basis i = replaceAt i unity $ neutral
 
 
 -----------------------------------------------------------------------
---                         Matrixrix functions
+--                          Matrix functions
 -----------------------------------------------------------------------
 
 ||| Matrix with n rows and m columns
 Matrix : Nat -> Nat -> Type -> Type
 Matrix n m a = Vect n (Vect m a)
 
-||| Gets the specified column of a Matrix. For rows use the vector function 'index'
+||| Gets the specified column of a matrix. For rows use the vector function 'index'
 getCol : Fin m -> Matrix n m a -> Vect n a
 getCol fm q = map (index fm) q
 
-||| Deletes the specified column of a Matrix. For rows use the vector function 'deleteAt'
+||| Deletes the specified column of a matrix. For rows use the vector function 'deleteAt'
 deleteCol : Fin (S m) -> Matrix n (S m) a -> Matrix n m a
 deleteCol f m = map (deleteAt f) m
 
 ||| Matrix element at specified row and column indices
 indices : Fin n -> Fin m -> Matrix n m a -> a
 indices f1 f2 m = index f2 (index f1 m)
-
-||| Ring scalar times a Matrix
-RescaleBy.(*) : Ring a => a -> Matrix n m a -> Matrix n m a
-RescaleBy.(*) s m = map (map (s <*>)) m
-
-||| Rescale Matrix by a ring scalar
-RescaleMatrix.(*) : Ring a => Matrix n m a -> a -> Matrix n m a
-RescaleMatrix.(*) m s = map (map (<*> s)) m 
 
 ||| Matrix times a column vector
 (</>) : Ring a => Matrix n m a -> Vect m a -> Vect n a
@@ -108,13 +91,13 @@ RescaleMatrix.(*) m s = map (map (<*> s)) m
 (<\>) : Ring a => Vect n a -> Matrix n m a -> Vect m a
 (<\>) r m = map (r <.>) $ transpose m
 
-||| Matrix Multiplication
+||| Matrix multiplication
 (<>) : Ring a => Matrix n k a -> 
                  Matrix k m a -> 
                  Matrix n m a
 (<>) m1 m2 = map (<\> m2) m1
 
-||| Tensor multiply (⊗) for ring Matrixrices
+||| Tensor multiply (⊗) for ring matrices
 (<&>) : Ring a => Matrix h1 w1 a -> Matrix h2 w2 a -> Matrix (h1 * h2) (w1 * w2) a
 (<&>) m1 m2 = zipWith (\&\) (stepOne m1 m2) (stepTwo m1 m2) where
   stepOne : Matrix h1 w1 a -> Matrix h2 w2 a -> Matrix (h1 * h2) w1 a
@@ -122,11 +105,11 @@ RescaleMatrix.(*) m s = map (map (<*> s)) m
   stepTwo : Matrix h1 w1 a -> Matrix h2 w2 a -> Matrix (h1 * h2) w2 a
   stepTwo {h1} m1 m2 = concat $ (Vect.replicate h1) m2
 
-||| Cast a vector from a standard Vect to a proper n x 1 Matrix 
+||| Cast a vector from a standard Vect to a proper n x 1 matrix 
 col : Vect n a -> Matrix n 1 a
 col v = map (\x => [x]) v
 
-||| Cast a row from a standard Vect to a proper 1 x n Matrix 
+||| Cast a row from a standard Vect to a proper 1 x n matrix 
 row : Vect n a -> Matrix 1 n a
 row r = [r]
 
@@ -139,15 +122,15 @@ allN : (n : Nat) -> Vect n (Fin n)
 allN Z     = Nil
 allN (S n) = FZ :: (map FS $ allN n)
 
-||| Identity Matrix
+||| Identity matrix
 Id : RingWithUnity a => {d : Nat} -> Matrix d d a
 Id {d} = map (\n => basis n) $ allN d
 
-||| Matrix Commutator
+||| Matrix commutator
 (<<>>) : Ring a => Matrix n n a -> Matrix n n a -> Matrix n n a
 (<<>>) m1 m2 = (m1 <> m2) <-> (m2 <> m1)
 
-||| Matrix Anti-Commutator
+||| Matrix anti-commutator
 (>><<) : Ring a => Matrix n n a -> Matrix n n a -> Matrix n n a
 (>><<) m1 m2 = (m1 <> m2) <+> (m2 <> m1)
 
@@ -157,7 +140,7 @@ Id {d} = map (\n => basis n) $ allN d
 -----------------------------------------------------------------------
 
 
--- TODO: Prove properties of Matrix algebra for 'Verified' algebraic classes
+-- TODO: Prove properties of matrix algebra for 'Verified' algebraic classes
 
 -----------------------------------------------------------------------
 --                    Numberic data types as rings
