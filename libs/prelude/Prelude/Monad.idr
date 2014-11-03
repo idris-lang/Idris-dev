@@ -14,6 +14,12 @@ infixl 5 >>=
 class Applicative m => Monad (m : Type -> Type) where
     (>>=)  : m a -> (a -> m b) -> m b
 
+class Monad m => VerifiedMonad (m : Type -> Type) where
+  total lIdentity : (f : a -> m b) -> (x : a) -> return x >>= f = f x
+  total rIdentity : (ma : m a) -> ma >>= return = ma
+  total associativity : (ma : m a) -> (f : a -> m b) -> (g : b -> m c) ->
+                        (ma >>= f) >>= g = ma >>= (\x => f x >>= g)
+
 instance Monad id where
     a >>= f = f a
 
