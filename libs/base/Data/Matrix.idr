@@ -66,7 +66,6 @@ instance RingWithUnity a => Module a (Vect n (Vect l a)) where
 basis : RingWithUnity a => {d : Nat} -> (Fin d) -> Vect d a
 basis i = replaceAt i unity $ neutral
 
-
 -----------------------------------------------------------------------
 --                          Matrix functions
 -----------------------------------------------------------------------
@@ -138,11 +137,9 @@ Id {d} = map (\n => basis n) $ allN d
 (>><<) : Ring a => Matrix n n a -> Matrix n n a -> Matrix n n a
 (>><<) m1 m2 = (m1 <> m2) <+> (m2 <> m1)
 
-
 -----------------------------------------------------------------------
 --                      Matrix Algebra Properties
 -----------------------------------------------------------------------
-
 
 -- TODO: Prove properties of matrix algebra for 'Verified' algebraic classes
 

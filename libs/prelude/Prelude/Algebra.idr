@@ -299,7 +299,7 @@ class (VerifiedRing a, Field a) => VerifiedField a where
   total fieldInverseIsInverseL : (l : a) -> l <*> inverseM l = unity
   total fieldInverseIsInverseR : (r : a) -> inverseM r <*> r = unity
 
-||| A module over a ring is an additive abeliean group of 'vectors' endowed with a
+||| A module over a ring is an additive abelian group of 'vectors' endowed with a
 ||| scale operation multiplying vectors by ring elements, and distributivity laws 
 ||| relating the scale operation to both ring addition and module addition. 
 ||| Must satisfy the following laws:
