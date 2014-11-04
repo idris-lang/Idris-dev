@@ -42,6 +42,10 @@ instance Field a => Field (Vect n a) where
 instance RingWithUnity a => Module a (Vect n a) where
   (<#>) r v = map (r <*>) v
 
+instance RingWithUnity a => Module a (Vect n (Vect l a)) where
+  (<#>) r m = map (r <#>) m
+-- should be Module a b => Module a (Vect n b), but results in 'overlapping instance'
+
 -----------------------------------------------------------------------
 --                       (Ring) Vector functions
 -----------------------------------------------------------------------
