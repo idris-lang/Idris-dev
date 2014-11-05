@@ -224,7 +224,7 @@ testLib warn p f
          (tmpf, tmph) <- tempfile
          hClose tmph
          let libtest = d </> "rts" </> "libtest.c"
-         e <- system $ gcc ++ " " ++ libtest ++ " -l" ++ f ++ " -o " ++ tmpf
+         e <- rawSystem gcc [libtest, "-l" ++ f, "-o", tmpf]
          case e of
             ExitSuccess -> return True
             _ -> do if warn

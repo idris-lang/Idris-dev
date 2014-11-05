@@ -24,24 +24,22 @@ codegenC ci = codegenC' (simpleDecls ci)
                         (outputFile ci)
                         (outputType ci)
                         (includes ci)
-                        (concatMap mkObj (compileObjs ci))
-                        (concatMap mkLib (compileLibs ci) ++
-                            concatMap incdir (importDirs ci))
-                        (concatMap mkFlag (compilerFlags ci))
+                        (compileObjs ci)
+                        (map mkLib (compileLibs ci) ++
+                            map incdir (importDirs ci))
+                        (compilerFlags ci)
                         (debugLevel ci)
 
-  where mkObj f = f ++ " "
-        mkLib l = "-l" ++ l ++ " "
-        mkFlag l = l ++ " "
-        incdir i = "-I" ++ i ++ " "
+  where mkLib l = "-l" ++ l
+        incdir i = "-I" ++ i
 
 codegenC' :: [(Name, SDecl)] ->
              String -> -- output file name
              OutputType ->   -- generate executable if True, only .o if False
              [FilePath] -> -- include files
-             String -> -- extra object files
-             String -> -- extra compiler flags (libraries)
-             String -> -- extra compiler flags (anything)
+             [String] -> -- extra object files
+             [String] -> -- extra compiler flags (libraries)
+             [String] -> -- extra compiler flags (anything)
              DbgLevel ->
              IO ()
 codegenC' defs out exec incs objs libs flags dbg
@@ -64,23 +62,22 @@ codegenC' defs out exec incs objs libs flags dbg
              comp <- getCC
              libFlags <- getLibFlags
              incFlags <- getIncFlags
-             let gcc = comp ++ " " ++
-                       gccDbg dbg ++ " " ++
-                       gccFlags ++
-                       -- # Any flags defined here which alter the RTS API must also be added to config.mk
-                       " -DHAS_PTHREAD -DIDRIS_ENABLE_STATS" ++
-                       " -I. " ++ objs ++ " -x c " ++
-                       (if (exec == Executable) then "" else " -c ") ++
-                       " " ++ tmpn ++
-                       " " ++ libFlags ++
-                       " " ++ incFlags ++
-                       " " ++ libs ++
-                       " " ++ flags ++
-                       " -o " ++ out
+             let args = [gccDbg dbg] ++
+                        gccFlags ++
+                        -- # Any flags defined here which alter the RTS API must also be added to config.mk
+                        ["-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS",
+                         "-I."] ++ objs ++ ["-x", "c"] ++
+                        (if (exec == Executable) then [] else ["-c"]) ++
+                        [tmpn] ++
+                        libFlags ++
+                        incFlags ++
+                        libs ++
+                        flags ++
+                        ["-o", out]
 --              putStrLn gcc
-             exit <- system gcc
+             exit <- rawSystem comp args
              when (exit /= ExitSuccess) $
-                putStrLn ("FAILURE: " ++ gcc)
+                putStrLn ("FAILURE: " ++ show comp ++ " " ++ show args)
 
 headers xs =
   concatMap
@@ -92,7 +89,7 @@ debug _ = ""
 
 -- We're using signed integers now. Make sure we get consistent semantics
 -- out of them from gcc. See e.g. http://thiemonagel.de/2010/01/signed-integer-overflow/
-gccFlags = " -fwrapv -fno-strict-overflow"
+gccFlags = ["-fwrapv", "-fno-strict-overflow"]
 
 gccDbg DEBUG = "-g"
 gccDbg TRACE = "-O2"
