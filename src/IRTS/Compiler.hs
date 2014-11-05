@@ -121,11 +121,11 @@ generate codegen mainmod ir
        -- Built-in code generators (FIXME: lift these out!)
        Via "c" -> codegenC ir 
        -- Any external code generator
-       Via cg -> do let cmd = "idris-" ++ cg ++ " " ++ mainmod ++
-                              " -o " ++ outputFile ir
-                    exit <- system cmd
+       Via cg -> do let cmd = "idris-" ++ cg
+                        args = [mainmod, "-o", outputFile ir]
+                    exit <- rawSystem cmd args
                     when (exit /= ExitSuccess) $
-                       putStrLn ("FAILURE: " ++ show cmd)
+                       putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
        Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
 
 irMain :: TT Name -> Idris LDecl

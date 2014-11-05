@@ -184,7 +184,7 @@ testPkg fp
                (tmpn', tmph') <- tempfile
                hClose tmph'
                m_ist <- idris (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
-               system tmpn'
+               rawSystem tmpn' []
                setCurrentDirectory dir
                case m_ist of
                  Nothing -> exitWith (ExitFailure 1)
@@ -269,13 +269,13 @@ mkDirCmd = "mkdir -p "
 -- | Invoke a Makefile's default target.
 make :: Maybe String -> IO ()
 make Nothing = return ()
-make (Just s) = do system $ "make -f " ++ s
+make (Just s) = do rawSystem "make" ["-f", s]
                    return ()
 
 -- | Invoke a Makefile's clean target.
 clean :: Maybe String -> IO ()
 clean Nothing = return ()
-clean (Just s) = do system $ "make -f " ++ s ++ " clean"
+clean (Just s) = do rawSystem "make" ["-f", s, "clean"]
                     return ()
 
 -- --------------------------------------------------------------------- [ EOF ]
