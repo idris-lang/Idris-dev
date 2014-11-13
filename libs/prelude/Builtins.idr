@@ -12,7 +12,7 @@
 ||| The non-dependent pair type, also known as conjunction.
 ||| @A the type of the left elements in the pair
 ||| @B the type of the left elements in the pair
-data Pair : (A : Type) -> (B : Type) -> Type where
+%elim data Pair : (A : Type) -> (B : Type) -> Type where
    ||| A pair of elements
    ||| @a the left element of the pair
    ||| @b the right element of the pair
