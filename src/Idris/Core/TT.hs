@@ -486,7 +486,7 @@ intTyName (ITFixed sized) = "B" ++ show (nativeTyWidth sized)
 intTyName (ITChar) = "Char"
 intTyName (ITVec ity count) = "B" ++ show (nativeTyWidth ity) ++ "x" ++ show count
 
-data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors
+data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors https://github.com/idris-lang/Idris-dev/issues/1723
     deriving (Show, Eq, Ord)
 {-!
 deriving instance NFData IntTy
@@ -792,7 +792,7 @@ instance TermSize (TT Name) where
        | otherwise = 1
     termsize n (V _) = 1
     -- for `Bind` terms, we can erroneously declare a term
-    -- "recursive => really big" if the name of the bound 
+    -- "recursive => really big" if the name of the bound
     -- variable is the same as the name we're using
     -- So generate a different name in that case.
     termsize n (Bind n' (Let t v) sc)
@@ -971,19 +971,19 @@ subst n v tm = fst $ subst' 0 tm
     subst' i t@(Bind x b sc) | x /= n
          = let (b', ub) = substB' i b
                (sc', usc) = subst' (i+1) sc in
-               if ub || usc then (Bind x b' sc', True) else (t, False) 
-    subst' i t@(App f a) = let (f', uf) = subst' i f 
+               if ub || usc then (Bind x b' sc', True) else (t, False)
+    subst' i t@(App f a) = let (f', uf) = subst' i f
                                (a', ua) = subst' i a in
                                if uf || ua then (App f' a', True) else (t, False)
     subst' i t@(Proj x idx) = let (x', u) = subst' i x in
                                   if u then (Proj x' idx, u) else (t, False)
     subst' i t = (t, False)
 
-    substB' i b@(Let t v) = let (t', ut) = subst' i t 
+    substB' i b@(Let t v) = let (t', ut) = subst' i t
                                 (v', uv) = subst' i v in
                                 if ut || uv then (Let t' v', True)
                                             else (b, False)
-    substB' i b@(Guess t v) = let (t', ut) = subst' i t 
+    substB' i b@(Guess t v) = let (t', ut) = subst' i t
                                   (v', uv) = subst' i v in
                                   if ut || uv then (Guess t' v', True)
                                               else (b, False)
@@ -1090,7 +1090,7 @@ unList tm = case unApply tm of
 -- Bruijn indices.
 forget :: TT Name -> Raw
 forget tm = forgetEnv [] tm
-    
+
 forgetEnv :: [Name] -> TT Name -> Raw
 forgetEnv env (P _ n _) = Var n
 forgetEnv env (V i)     = Var (env !! i)
@@ -1384,7 +1384,7 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
                   orderPats $ bindPats (reverse ps) tm'
   where
     bindPats []          tm = tm
-    bindPats ((n, t):ps) tm 
+    bindPats ((n, t):ps) tm
          | n `notElem` map fst ps = Bind n (PVar t) (bindPats ps tm)
          | otherwise = bindPats ps tm
 
