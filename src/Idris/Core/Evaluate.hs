@@ -8,7 +8,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 Context, initContext, ctxtAlist, uconstraints, next_tvar,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
-                lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact, 
+                lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, isTConName, isConName, isFnName,
@@ -92,7 +92,7 @@ normaliseTrace tr ctxt env t
 
 -- Return a specialised name, and an updated list of reductions available,
 -- so that the caller can tell how much specialisation was achieved.
-specialise :: Context -> Env -> [(Name, Int)] -> TT Name -> 
+specialise :: Context -> Env -> [(Name, Int)] -> TT Name ->
               (TT Name, [(Name, Int)])
 specialise ctxt env limits t
    = let (tm, st) =
@@ -176,7 +176,7 @@ usable False n ns
 
 
 fnCount :: Int -> Name -> Eval ()
-fnCount inc n 
+fnCount inc n
          = do ES ls num b <- get
               case lookup n ls of
                   Just i -> do put $ ES ((n, (i - inc)) :
@@ -255,7 +255,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (V i)
                      | i < length env && i >= 0 = return $ snd (env !! i)
                      | otherwise      = return $ VV i
-    ev ntimes stk top env (Bind n (Let t v) sc) 
+    ev ntimes stk top env (Bind n (Let t v) sc)
         | not runtime || occurrences n sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 sc' <- ev ntimes stk top ((n, v') : env) sc
@@ -283,7 +283,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
        where vbind env t
                      = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
     -- block reduction immediately under codata (and not forced)
-    ev ntimes stk top env 
+    ev ntimes stk top env
               (App (App (App d@(P _ (UN dly) _) l@(P _ (UN lco) _)) t) arg)
        | dly == txt "Delay" && lco == txt "LazyCodata" && not simpl
             = do let (f, _) = unApply arg
@@ -311,7 +311,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 t' <- ev ntimes stk top env t
 --                 tfull' <- reapply ntimes stk top env t' []
                 return (doProj t' (getValArgs t'))
-       where doProj t' (VP (DCon _ _ _) _ _, args) 
+       where doProj t' (VP (DCon _ _ _) _ _, args)
                   | i >= 0 && i < length args = args!!i
              doProj t' _ = VProj t' i
 
@@ -338,7 +338,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
               _ -> case args of
                         (a : as) -> return $ unload env f (a : as)
                         [] -> return f
-    reapply ntimes stk top env (VApp f a) args 
+    reapply ntimes stk top env (VApp f a) args
             = reapply ntimes stk top env f (a : args)
     reapply ntimes stk top env v args = return v
 
@@ -356,7 +356,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  do let val = lookupDefAcc n (spec || atRepl) ctxt
                     case val of
                       [(CaseOp ci _ _ _ _ cd, acc)]
-                           | acc /= Frozen || sUN "assert_total" `elem` stk -> 
+                           | acc /= Frozen || sUN "assert_total" `elem` stk ->
                            -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -402,7 +402,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                   t <- evTree ntimes stk top env (zip ns args') tree
                   when spec $ case t of
                                    Nothing -> reinstate n -- Blocked, count n again
-                                   Just _ -> return () 
+                                   Just _ -> return ()
 --                                 (zipWith (\n , t) -> (n, t)) ns args') tree
                   return (t, rest)
         | otherwise = return (Nothing, args)
@@ -416,7 +416,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                    (amap ++ env) etm
              return $ Just etm'
     evTree ntimes stk top env amap (ProjCase t alts)
-        = do t' <- ev ntimes stk top env t 
+        = do t' <- ev ntimes stk top env t
              doCase ntimes stk top env amap t' alts
     evTree ntimes stk top env amap (Case _ n alts)
         = case lookup n amap of
@@ -591,10 +591,10 @@ convEq ctxt holes topx topy = ceq [] topx topy where
     ceq ps x (Bind n (PVTy t) sc) = ceq ps x sc
 
     ceq ps (V x)      (V y)      = return (x == y)
-    ceq ps (V x)      (P _ y _)  
+    ceq ps (V x)      (P _ y _)
         | x >= 0 && length ps > x = return (fst (ps!!x) == y)
         | otherwise = return False
-    ceq ps (P _ x _)  (V y)      
+    ceq ps (P _ x _)  (V y)
         | y >= 0 && length ps > y = return (x == snd (ps!!y))
         | otherwise = return False
     ceq ps (Bind n xb xs) (Bind n' yb ys)
@@ -833,6 +833,9 @@ addDatatype (Data n tag ty unique cons) uctxt
                   (TyDecl (DCon tag (arity ty') unique) ty, Public, Unchecked, EmptyMI) ctxt)
 
 -- FIXME: Too many arguments! Refactor all these Bools.
+--
+-- Issue #1724 on the issue tracker.
+-- https://github.com/idris-lang/Idris-dev/issues/1724
 addCasedef :: Name -> ErasureInfo -> CaseInfo ->
               Bool -> Bool -> Bool -> Bool ->
               [Type] -> -- argument types
