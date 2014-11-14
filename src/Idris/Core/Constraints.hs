@@ -56,15 +56,16 @@ acyclic r cvs = checkCycle (fileFC "root") r [] 0 cvs
             = Error $ At fc UniverseError
                 -- FIXME: Make informative
                 -- e.g. (Msg ("Cycle: " ++ show cv ++ ", " ++ show path))
+                -- Issue #1725 on the issue tracker.
+                -- https://github.com/idris-lang/Idris-dev/issues/1725
         -- if we reach a cycle but we're at the same universe level, it's
         -- fine, because they must all be equal, so stop.
         | inc == 0 && cv `elem` map fst path
             = return ()
-        | otherwise 
+        | otherwise
              = case M.lookup cv r of
                     Nothing -> return ()
                     Just cs -> mapM_ (next r ((cv, fc):path) inc) cs
 
     next r path inc (ULT l x, fc) = check fc r path (inc + 1) x
     next r path inc (ULE l x, fc) = check fc r path inc x
-
