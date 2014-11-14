@@ -41,7 +41,7 @@ deriving instance Binary SC'
 deriving instance NFData SC'
 !-}
 
-data CaseType = Updatable | Shared   
+data CaseType = Updatable | Shared
    deriving (Eq, Ord, Show)
 
 type SC = SC' Term
@@ -184,7 +184,7 @@ directUse fn@(App f a)
          fce == txt "Force"
              = directUse a -- forcing a value counts as a use
     | (P Ref n _, args) <- unApply fn = [] -- need to know what n does with them
-    | (P (TCon _ _) n _, args) <- unApply fn = [] -- type constructors not used at runtime 
+    | (P (TCon _ _) n _, args) <- unApply fn = [] -- type constructors not used at runtime
     | otherwise = nub $ directUse f ++ directUse a
 directUse (Proj x i) = nub $ directUse x
 directUse _ = []
@@ -258,13 +258,15 @@ simpleCase tc cover reflect phase fc inacc argtys cs erInfo
                         ns         = take numargs args
                         (ns', ps') = order [(n, i `elem` inacc) | (i,n) <- zip [0..] ns] pats
                         (tree, st) = runCaseBuilder erInfo
-                                         (match ns' ps' (defaultCase cover)) 
+                                         (match ns' ps' (defaultCase cover))
                                          ([], numargs, [])
                         t          = CaseDef ns (prune proj (depatt ns' tree)) (fstT st) in
-                        if proj then return (stripLambdas t) 
+                        if proj then return (stripLambdas t)
                                 else return t
 -- FIXME: This check is not quite right in some cases, and is breaking
 -- perfectly valid code!
+--
+-- Issue #1717 on the issue tracker: https://github.com/idris-lang/Idris-dev/issues/1717
 --                                      if checkSameTypes (lstT st) tree
 --                                         then return t
 --                                         else Error (At fc (Msg "Typecase is not allowed"))
@@ -311,23 +313,25 @@ checkSameTypes _ _ = True
 -- FIXME: All we're actually doing here is checking that we haven't arrived
 -- at a specific constructor for a polymorphic argument. I *think* this
 -- is sufficient, but if it turns out not to be, fix it!
+--
+-- Issue #1718 on the issue tracker: https://github.com/idris-lang/Idris-dev/issues/1718
 isType n t | (P (TCon _ _) _ _, _) <- unApply t = True
 isType n t | (P Ref _ _, _) <- unApply t = True
 isType n t = False
 
-isConstType (I _) (AType (ATInt ITNative)) = True 
-isConstType (BI _) (AType (ATInt ITBig)) = True 
-isConstType (Fl _) (AType ATFloat) = True 
-isConstType (Ch _) (AType (ATInt ITChar)) = True 
-isConstType (Str _) StrType = True 
-isConstType (B8 _) (AType (ATInt _)) = True 
-isConstType (B16 _) (AType (ATInt _)) = True 
-isConstType (B32 _) (AType (ATInt _)) = True 
-isConstType (B64 _) (AType (ATInt _)) = True 
-isConstType (B8V _) (AType (ATInt _)) = True 
-isConstType (B16V _) (AType (ATInt _)) = True 
-isConstType (B32V _) (AType (ATInt _)) = True 
-isConstType (B64V _) (AType (ATInt _)) = True 
+isConstType (I _) (AType (ATInt ITNative)) = True
+isConstType (BI _) (AType (ATInt ITBig)) = True
+isConstType (Fl _) (AType ATFloat) = True
+isConstType (Ch _) (AType (ATInt ITChar)) = True
+isConstType (Str _) StrType = True
+isConstType (B8 _) (AType (ATInt _)) = True
+isConstType (B16 _) (AType (ATInt _)) = True
+isConstType (B32 _) (AType (ATInt _)) = True
+isConstType (B64 _) (AType (ATInt _)) = True
+isConstType (B8V _) (AType (ATInt _)) = True
+isConstType (B16V _) (AType (ATInt _)) = True
+isConstType (B32V _) (AType (ATInt _)) = True
+isConstType (B64V _) (AType (ATInt _)) = True
 isConstType _ _ = False
 
 data Pat = PCon Bool Name Int [Pat]
@@ -430,10 +434,10 @@ order ns' cs = let patnames = transpose (map (zip ns') (map fst cs))
                    -- constructor tags between families, and no constructor/constant
                    -- clash, because otherwise we can't reliable make the
                    -- case distinction on evaluation
-                   (patnames_ord, patnames_rest) 
+                   (patnames_ord, patnames_rest)
                         = Data.List.partition (noClash . map snd) patnames
                    -- note: sortBy . reverse is not nonsense because sortBy is stable
-                   pats' = transpose (sortBy moreDistinct (reverse patnames_ord) 
+                   pats' = transpose (sortBy moreDistinct (reverse patnames_ord)
                                          ++ patnames_rest) in
                    (getNOrder pats', zipWith rebuild pats' cs)
   where
@@ -523,7 +527,7 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
     altGroups (ConGroup _ (CConst c) args : cs)
         = (:) <$> altConstGroup c args <*> altGroups cs
 
-    altGroup n i args 
+    altGroup n i args
          = do inacc <- inaccessibleArgs n
               (newVars, accVars, inaccVars, nextCs) <- argsToAlt inacc args
               matchCs <- match (accVars ++ vs ++ inaccVars) nextCs err
@@ -556,7 +560,7 @@ argsToAlt inacc rs@((r, m) : rest) = do
     -- Create names for new variables arising from the given patterns.
     getNewVars :: [Pat] -> CaseBuilder [Name]
     getNewVars [] = return []
-    getNewVars ((PV n t) : ns) = do v <- getVar "e" 
+    getNewVars ((PV n t) : ns) = do v <- getVar "e"
                                     nsv <- getNewVars ns
 
                                     -- Record the type of the variable.
@@ -666,6 +670,7 @@ depatt ns tm = dp [] tm
     applyMaps ms t = t
 
 -- FIXME: Do this for SucCase too
+-- Issue #1719 on the issue tracker:  https://github.com/idris-lang/Idris-dev/issues/1719
 prune :: Bool -- ^ Convert single branches to projections (only useful at runtime)
       -> SC -> SC
 prune proj (Case up n alts) = case alts' of
@@ -689,9 +694,9 @@ prune proj (Case up n alts) = case alts' of
     -- with sc
     as@[ConCase cn i args sc]
         | proj -> let sc' = prune proj sc in
-                      if any (isUsed sc') args  
+                      if any (isUsed sc') args
                          then Case up n [ConCase cn i args sc']
-                         else sc' 
+                         else sc'
 
     [SucCase cn sc]
         | proj
@@ -795,4 +800,3 @@ mkForce = mkForceSC
         = DefaultCase (mkForceSC n arg rhs)
 
     forceTm n arg t = subst n arg t
-
