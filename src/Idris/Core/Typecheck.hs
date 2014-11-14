@@ -107,7 +107,9 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                      return (TType (UVar v), TType (UVar (v+1)))
   chk u env (RUType un)
     | holes = return (UType un, TType (UVal 0))
-    | otherwise = do -- TODO! (v, cs) <- get
+    | otherwise = do -- TODO! Issue #1715 on the issue tracker.
+                     -- https://github.com/idris-lang/Idris-dev/issues/1715
+                     -- (v, cs) <- get
                      -- let c = ULT (UVar v) (UVar (v+1))
                      -- put (v+2, (c:cs))
                      -- return (TType (UVar v), TType (UVar (v+1)))
@@ -292,6 +294,8 @@ checkUnique borrowed ctxt env tm
     chkBinderName env n b
        = do let rawty = forgetEnv (map fst env) (binderTy b)
             (_, kind) <- lift $ check ctxt env rawty -- FIXME: Cache in binder?
+                                                     -- Issue #1714 on the issue tracker
+                                                     -- https://github.com/idris-lang/Idris-dev/issues/1714
             case kind of
                  UType UniqueType -> do ns <- get
                                         if n `elem` borrowed
