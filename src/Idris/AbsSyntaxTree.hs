@@ -12,6 +12,7 @@ import IRTS.Lang
 import IRTS.CodegenCommon
 import Util.Pretty
 import Util.DynamicLinker
+import {-# SOURCE #-} Idris.ParseExpr (SyntaxRules, emptySyntaxRules)
 
 import Idris.Colours
 
@@ -177,7 +178,7 @@ data IState = IState {
     idris_metavars :: [(Name, (Maybe Name, Int, Bool))], -- ^ The currently defined but not proven metavariables
     idris_coercions :: [Name],
     idris_errRev :: [(Term, Term)],
-    syntax_rules :: [Syntax],
+    syntax_rules :: SyntaxRules,
     syntax_keywords :: [String],
     imported :: [FilePath], -- ^ The imported modules
     idris_scprims :: [(Name, (Int, PrimFn))],
@@ -290,7 +291,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   [] [] [] defaultOpts 6 [] [] [] [] [] [] [] [] [] [] [] []
+                   [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty Nothing Nothing []
@@ -985,6 +986,9 @@ syntaxNames :: Syntax -> [Name]
 syntaxNames (Rule syms _ _) = mapMaybe ename syms
            where ename (Keyword n) = Just n
                  ename _           = Nothing
+
+syntaxSymbols :: Syntax -> [SSymbol]
+syntaxSymbols (Rule ss _ _) = ss
 {-!
 deriving instance Binary Syntax
 deriving instance NFData Syntax
@@ -995,7 +999,7 @@ data SSymbol = Keyword Name
              | Binding Name
              | Expr Name
              | SimpleExpr Name
-    deriving Show
+    deriving (Show, Eq)
     
 
 {-!

@@ -12,6 +12,7 @@ import Idris.Error
 import Idris.Delaborate
 import qualified Idris.Docstrings as D
 import Idris.Docstrings (Docstring)
+import Idris.ParseExpr (updateSyntaxRules)
 import Idris.Output
 
 import qualified Cheapskate.Types as CT
@@ -394,7 +395,7 @@ pOptimise cs = mapM_ (\ (n, c) ->
 
 pSyntax :: [Syntax] -> Idris ()
 pSyntax s = do i <- getIState
-               putIState (i { syntax_rules = s ++ syntax_rules i })
+               putIState (i { syntax_rules = updateSyntaxRules s (syntax_rules i) })
 
 pKeywords :: [String] -> Idris ()
 pKeywords k = do i <- getIState

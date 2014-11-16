@@ -23,6 +23,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
 
+import Data.Function (on)
 import Data.Maybe
 import qualified Data.List.Split as Spl
 import Data.List
@@ -33,6 +34,51 @@ import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
 
 import Debug.Trace
+
+data SyntaxRules = SyntaxRules
+  { rules_rules :: [Syntax]
+  , rules_parserPattern :: (SyntaxInfo -> IdrisParser PTerm)
+  , rules_parserTerm :: (SyntaxInfo -> IdrisParser PTerm)
+  , rules_parserSimplePattern :: (SyntaxInfo -> IdrisParser PTerm)
+  , rules_parserSimpleTerm :: (SyntaxInfo -> IdrisParser PTerm)
+  }
+
+emptySyntaxRules :: SyntaxRules
+emptySyntaxRules = SyntaxRules
+  { rules_rules = []
+  , rules_parserPattern = const empty
+  , rules_parserTerm = const empty
+  , rules_parserSimplePattern = const empty
+  , rules_parserSimpleTerm = const empty
+  }
+
+updateSyntaxRules :: [Syntax] -> SyntaxRules -> SyntaxRules
+updateSyntaxRules rules sr = sr
+  { rules_rules = newRules
+  , rules_parserPattern = \syn -> extensions syn $ filter isPattern newRules
+  , rules_parserTerm = \syn -> extensions syn $ filter isTerm newRules
+  , rules_parserSimplePattern = \syn ->
+    extensions syn $ filter isPattern $ filter isSimple $ newRules
+  , rules_parserSimpleTerm = \syn ->
+    extensions syn $ filter isTerm $ filter isSimple $ newRules
+  }
+  where
+    newRules = rules ++ rules_rules sr
+    isSimple (Rule (Expr x:xs) _ _) = False
+    isSimple (Rule (SimpleExpr x:xs) _ _) = False
+    isSimple (Rule [Keyword _] _ _) = True
+    isSimple (Rule [Symbol _]  _ _) = True
+    isSimple (Rule (_:xs) _ _) = case last xs of
+        Keyword _ -> True
+        Symbol _  -> True
+        _ -> False
+    isSimple _ = False
+    isPattern (Rule _ _ AnySyntax) = True
+    isPattern (Rule _ _ PatternSyntax) = True
+    isPattern _ = False
+    isTerm (Rule _ _ AnySyntax) = True
+    isTerm (Rule _ _ TermSyntax) = True
+    isTerm _ = False
 
 -- | Allow implicit type declarations
 allowImp :: SyntaxInfo -> SyntaxInfo
@@ -91,44 +137,69 @@ expr' syn = try (externalExpr syn)
 {- | Parses a user-defined expression -}
 externalExpr :: SyntaxInfo -> IdrisParser PTerm
 externalExpr syn = do i <- get
-                      extensions syn (syntax_rules i)
+                      if inPattern syn
+                        then rules_parserPattern (syntax_rules i) syn
+                        else rules_parserTerm (syntax_rules i) syn
                    <?> "user-defined expression"
 
 {- | Parses a simple user-defined expression -}
 simpleExternalExpr :: SyntaxInfo -> IdrisParser PTerm
 simpleExternalExpr syn = do i <- get
-                            extensions syn (filter isSimple (syntax_rules i))
-  where
-    isSimple (Rule (Expr x:xs) _ _) = False
-    isSimple (Rule (SimpleExpr x:xs) _ _) = False
-    isSimple (Rule [Keyword _] _ _) = True
-    isSimple (Rule [Symbol _]  _ _) = True
-    isSimple (Rule (_:xs) _ _) = case last xs of
-        Keyword _ -> True
-        Symbol _  -> True
-        _ -> False
-    isSimple _ = False
-
-{- | Tries to parse a user-defined expression given a list of syntactic extensions -}
-extensions :: SyntaxInfo -> [Syntax] -> IdrisParser PTerm
-extensions syn rules = choice (map (try . extension syn) (filter isValid rules))
-                       <?> "user-defined expression"
-  where
-    isValid :: Syntax -> Bool
-    isValid (Rule _ _ AnySyntax) = True
-    isValid (Rule _ _ PatternSyntax) = inPattern syn
-    isValid (Rule _ _ TermSyntax) = not (inPattern syn)
-
+                            if inPattern syn
+                              then rules_parserSimplePattern (syntax_rules i) syn
+                              else rules_parserSimpleTerm (syntax_rules i) syn
 
 data SynMatch = SynTm PTerm | SynBind Name
 
-{- | Tries to parse an expression given a user-defined rule -}
-extension :: SyntaxInfo -> Syntax -> IdrisParser PTerm
-extension syn (Rule ssym ptm _)
-    = do smap <- mapM extensionSymbol ssym
-         let ns = mapMaybe id smap
-         return (flatten (update ns ptm)) -- updated with smap
+{- | Tries to parse a user-defined expression given a list of syntactic extensions -}
+extensions :: SyntaxInfo -> [Syntax] -> IdrisParser PTerm
+extensions syn rules = extension [] (sortBy (ruleSort `on` syntaxSymbols) rules)
+                       <?> "user-defined expression"
   where
+    extension ns rules =
+      choice $ flip map (groupBy (ruleGroup `on` syntaxSymbols) rules) $ \rs ->
+        case head rs of -- can never be []
+          Rule (symb:_) _ _ -> try $ do
+            n <- extensionSymbol symb
+            extension (n : ns) [Rule ss t ctx | (Rule (_:ss) t ctx) <- rs]
+          -- If we have more than one Rule in this bucket, our grammar is
+          -- nondeterministic.
+          Rule [] ptm _ -> return (flatten (update (mapMaybe id ns) ptm))
+
+    ruleGroup [] [] = True
+    ruleGroup (s1:_) (s2:_) = s1 == s2
+    ruleGroup _ _ = False
+
+    ruleSort [] [] = EQ
+    ruleSort [] _ = LT
+    ruleSort _ [] = GT
+    ruleSort (s1:ss1) (s2:ss2) =
+      case symCompare s1 s2 of
+        EQ -> ruleSort ss1 ss2
+        r -> r
+
+    -- Better than creating Ord instance for SSymbol since
+    -- in general this ordering does not really make sense.
+    symCompare (Keyword n1) (Keyword n2) = compare n1 n2
+    symCompare (Keyword _) _ = LT
+    symCompare (Symbol _) (Keyword _) = GT
+    symCompare (Symbol s1) (Symbol s2) = compare s1 s2
+    symCompare (Symbol _) _ = LT
+    symCompare (Binding _) (Keyword _) = GT
+    symCompare (Binding _) (Symbol _) = GT
+    symCompare (Binding b1) (Binding b2) = compare b1 b2
+    symCompare (Binding _) _ = LT
+    symCompare (Expr _) (Keyword _) = GT
+    symCompare (Expr _) (Symbol _) = GT
+    symCompare (Expr _) (Binding _) = GT
+    symCompare (Expr e1) (Expr e2) = compare e1 e2
+    symCompare (Expr _) _ = LT
+    symCompare (SimpleExpr _) (Keyword _) = GT
+    symCompare (SimpleExpr _) (Symbol _) = GT
+    symCompare (SimpleExpr _) (Binding _) = GT
+    symCompare (SimpleExpr _) (Expr _) = GT
+    symCompare (SimpleExpr e1) (SimpleExpr e2) = compare e1 e2
+
     extensionSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
     extensionSymbol (Keyword n)    = do reserved (show n); return Nothing
     extensionSymbol (Expr n)       = do tm <- expr syn
