@@ -12,7 +12,6 @@ import IRTS.Lang
 import IRTS.CodegenCommon
 import Util.Pretty
 import Util.DynamicLinker
-import {-# SOURCE #-} Idris.ParseExpr (SyntaxRules, emptySyntaxRules)
 
 import Idris.Colours
 
@@ -22,6 +21,7 @@ import System.IO
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Error
 
+import Data.Function (on)
 import Data.List hiding (group)
 import Data.Char
 import qualified Data.Map as M
@@ -1006,6 +1006,46 @@ data SSymbol = Keyword Name
 deriving instance Binary SSymbol
 deriving instance NFData SSymbol
 !-}
+
+newtype SyntaxRules = SyntaxRules { syntaxRulesList :: [Syntax] }
+
+emptySyntaxRules :: SyntaxRules
+emptySyntaxRules = SyntaxRules []
+
+updateSyntaxRules :: [Syntax] -> SyntaxRules -> SyntaxRules
+updateSyntaxRules rules (SyntaxRules sr) = SyntaxRules newRules
+  where
+    newRules = sortBy (ruleSort `on` syntaxSymbols) (rules ++ sr)
+
+    ruleSort [] [] = EQ
+    ruleSort [] _ = LT
+    ruleSort _ [] = GT
+    ruleSort (s1:ss1) (s2:ss2) =
+      case symCompare s1 s2 of
+        EQ -> ruleSort ss1 ss2
+        r -> r
+
+    -- Better than creating Ord instance for SSymbol since
+    -- in general this ordering does not really make sense.
+    symCompare (Keyword n1) (Keyword n2) = compare n1 n2
+    symCompare (Keyword _) _ = LT
+    symCompare (Symbol _) (Keyword _) = GT
+    symCompare (Symbol s1) (Symbol s2) = compare s1 s2
+    symCompare (Symbol _) _ = LT
+    symCompare (Binding _) (Keyword _) = GT
+    symCompare (Binding _) (Symbol _) = GT
+    symCompare (Binding b1) (Binding b2) = compare b1 b2
+    symCompare (Binding _) _ = LT
+    symCompare (Expr _) (Keyword _) = GT
+    symCompare (Expr _) (Symbol _) = GT
+    symCompare (Expr _) (Binding _) = GT
+    symCompare (Expr e1) (Expr e2) = compare e1 e2
+    symCompare (Expr _) _ = LT
+    symCompare (SimpleExpr _) (Keyword _) = GT
+    symCompare (SimpleExpr _) (Symbol _) = GT
+    symCompare (SimpleExpr _) (Binding _) = GT
+    symCompare (SimpleExpr _) (Expr _) = GT
+    symCompare (SimpleExpr e1) (SimpleExpr e2) = compare e1 e2
 
 initDSL = DSL (PRef f (sUN ">>="))
               (PRef f (sUN "return"))

@@ -12,7 +12,6 @@ import Idris.Error
 import Idris.Delaborate
 import qualified Idris.Docstrings as D
 import Idris.Docstrings (Docstring)
-import Idris.ParseExpr (updateSyntaxRules)
 import Idris.Output
 
 import qualified Cheapskate.Types as CT
