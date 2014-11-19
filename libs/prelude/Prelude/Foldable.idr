@@ -4,12 +4,26 @@ import Builtins
 import Prelude.Bool
 import Prelude.Classes
 import Prelude.Algebra
+import Data.Morphisms
 
 %access public
 %default total
 
+||| Data structures that can be reduced to a single value in a meaningful way
 class Foldable (t : Type -> Type) where
+  ||| Combine all elements of a structure with a monoid
+  fold : Monoid m => t m -> m
+  fold = foldMap id
+
+  ||| Map each element of a structure to a monoid then combine them
+  foldMap : Monoid m => (a -> m) -> t m -> m
+  foldMap f = foldr ((<+>) . f) neutral
+
+  ||| Right-associative fold
   foldr : (elt -> acc -> acc) -> acc -> t elt -> acc
+  foldr f z t = applyEndo (foldMap (Endo . f) t) z
+
+  ||| Left-associative fold
   foldl : Foldable t => (acc -> elt -> acc) -> acc -> t elt -> acc
   foldl f z t = foldr (flip (.) . flip f) id t z
 
@@ -21,6 +35,16 @@ concat = foldr (<+>) neutral
 ||| to each element of a structure
 concatMap : (Foldable t, Monoid m) => (a -> m) -> t a -> m
 concatMap f = foldr ((<+>) . f) neutral
+
+||| Right-associative monadic fold over a structure
+foldrM : (Foldable t, Monad m) => (a -> b -> m b) -> b -> t a -> m b
+foldrM f z0 xs = foldl f' return xs z0
+  where f' k x z = f x z >>= k
+
+||| Left-associative monadic fold over a structure
+foldlM : (Foldable t, Monad m) => (b -> a -> m b) -> b -> t a -> m b
+foldlM f z0 xs = foldr f' return xs z0
+  where f' x k z = f z x >>= k
 
 ||| The conjunction of all elements of a structure containing
 ||| lazy boolean values. `and` short-circuits from left to right,
@@ -53,4 +77,3 @@ sum = foldr (+) 0
 ||| Multiply together all elements of a structure
 product : (Foldable t, Num a) => t a -> a
 product = foldr (*) 1
-
