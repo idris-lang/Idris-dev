@@ -140,7 +140,7 @@ repl orig mods
          showM c thm n = if c then colouriseFun thm (show n)
                               else show n
 
--- | Run the REPL seDver
+-- | Run the REPL server
 startServer :: PortID -> IState -> [FilePath] -> Idris ()
 startServer port orig fn_in = do tid <- runIO $ forkOS (serverLoop port)
                                  return ()
