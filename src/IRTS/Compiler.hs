@@ -62,7 +62,7 @@ compile codegen f tm
         -- iputStrLn $ showSep "\n" (map show defs)
         -- Inlined top level LDecl made here
         let defsInlined = inlineAll defs
-        let defsUniq = map (allocUnique (addAlist defsInlined emptyContext)) 
+        let defsUniq = map (allocUnique (addAlist defsInlined emptyContext))
                            defsInlined
 
         let (nexttag, tagged) = addTags 65536 (liftAll defsUniq)
@@ -91,13 +91,13 @@ compile codegen f tm
         iLOG "Building output"
 
         case checked of
-            OK c -> do return $ CodegenInfo f outty triple cpu 
+            OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags
                                             NONE c (toAlist defuns)
                                             tagged
 --                        runIO $ case codegen of
 --                               ViaC -> codegenC cginfo
---                               ViaJava -> codegenJava cginfo 
+--                               ViaJava -> codegenJava cginfo
 --                               ViaJavaScript -> codegenJavaScript cginfo
 --                               ViaNode -> codegenNode cginfo
 --                               ViaLLVM -> codegenLLVM cginfo
@@ -116,10 +116,10 @@ compile codegen f tm
                        if ex then return f else return h
 
 generate :: Codegen -> FilePath -> CodegenInfo -> IO ()
-generate codegen mainmod ir 
+generate codegen mainmod ir
   = case codegen of
        -- Built-in code generators (FIXME: lift these out!)
-       Via "c" -> codegenC ir 
+       Via "c" -> codegenC ir
        -- Any external code generator
        Via cg -> do let cmd = "idris-" ++ cg ++ " " ++ mainmod ++
                               " -o " ++ outputFile ir
@@ -195,7 +195,7 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
   where
     (args, sc) = cases_runtime cd
 
-    -- Always attempt to inline functions arising from 'case' expressions 
+    -- Always attempt to inline functions arising from 'case' expressions
     caseName (SN (CaseN _)) = True
     caseName (SN (WithN _ _)) = True
     caseName (NS n _) = caseName n
@@ -284,7 +284,7 @@ irTerm vs env tm@(App f a) = case unApply tm of
             x' <- irTerm vs env x
             t' <- irTerm vs env t
             e' <- irTerm vs env e
-            return (LCase Shared x' 
+            return (LCase Shared x'
                              [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e'
                              ,LConCase 1 (sNS (sUN "True" ) ["Bool","Prelude"]) [] t'
                              ])
@@ -425,7 +425,7 @@ irTerm vs env (Bind _ _ _) = return $ LNothing
 
 irTerm vs env (Proj t (-1)) = do
     t' <- irTerm vs env t
-    return $ LOp (LMinus (ATInt ITBig)) 
+    return $ LOp (LMinus (ATInt ITBig))
                  [t', LConst (BI 1)]
 
 irTerm vs env (Proj t i)   = LProj <$> irTerm vs env t <*> pure i
@@ -458,13 +458,13 @@ doForeign vs env (_ : fgn : args)
         | fi == txt "FIntT"
         = mkIntIty (str intTy)
 
-    mkIty' (App (App (P _ (UN ff) _) _) (App (P _ (UN fa) _) (App (P _ (UN io) _) _))) 
+    mkIty' (App (App (P _ (UN ff) _) _) (App (P _ (UN fa) _) (App (P _ (UN io) _) _)))
         | ff == txt "FFunction"
         , fa == txt "FAny"
-        , io == txt "IO" 
+        , io == txt "IO"
         = FFunctionIO
 
-    mkIty' (App (App (P _ (UN ff) _) _) _) 
+    mkIty' (App (App (P _ (UN ff) _) _) _)
         | ff == txt "FFunction"
         = FFunction
 
@@ -472,7 +472,8 @@ doForeign vs env (_ : fgn : args)
 
     -- would be better if these FInt types were evaluated at compile time
     -- TODO: add %eval directive for such things
-
+    -- Issue #1742 on the issue tracker.
+    --     https://github.com/idris-lang/Idris-dev/issues/1742
     mkIty "FFloat"      = FArith ATFloat
     mkIty "FInt"        = mkIntIty "ITNative"
     mkIty "FChar"       = mkIntIty "ITChar"
@@ -521,7 +522,7 @@ irSC vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
     | delay == txt "Delay"
     = do sc' <- irSC vs $ mkForce n' n sc
          return $ LLet n' (LForce (LV (Glob n))) sc'
-    
+
 -- There are two transformations in this case:
 --
 --  1. Newtype-case elimination:
