@@ -52,6 +52,17 @@ colourise (IdrisColour c v u b i) str = setSGRCode sgr ++ str ++ setSGRCode [Res
           fg Nothing = []
           fg (Just c) = [SetColor Foreground (if v then Vivid else Dull) c]
 
+-- | Set the colour of a string using POSIX escape codes, with trailing '\STX' denoting the end
+-- (required by Haskeline in the prompt string)
+colouriseWithSTX :: IdrisColour -> String -> String
+colouriseWithSTX (IdrisColour c v u b i) str = setSGRCode sgr ++ "\STX" ++ str ++ setSGRCode [Reset] ++ "\STX"
+    where sgr = fg c ++
+                (if u then [SetUnderlining SingleUnderline] else []) ++
+                (if b then [SetConsoleIntensity BoldIntensity] else []) ++
+                (if i then [SetItalicized True] else [])
+          fg Nothing = []
+          fg (Just c) = [SetColor Foreground (if v then Vivid else Dull) c]
+
 colouriseKwd :: ColourTheme -> String -> String
 colouriseKwd t = colourise (keywordColour t)
 
@@ -71,7 +82,7 @@ colouriseData :: ColourTheme -> String -> String
 colouriseData t = colourise (dataColour t)
 
 colourisePrompt :: ColourTheme -> String -> String
-colourisePrompt t = colourise (promptColour t)
+colourisePrompt t = colouriseWithSTX (promptColour t)
 
 colouriseKeyword :: ColourTheme -> String -> String
 colouriseKeyword t = colourise (keywordColour t)
