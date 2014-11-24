@@ -232,10 +232,6 @@ instance Semigroup (List a) where
 instance Monoid (List a) where
   neutral = []
 
--- XXX: unification failure
--- instance VerifiedSemigroup (List a) where
---  semigroupOpIsAssociative = appendAssociative
-
 instance Functor List where
   map f []      = []
   map f (x::xs) = f x :: map f xs
@@ -810,6 +806,13 @@ hasAnyByNilFalse p (x::xs) =
 ||| No list contains an element of the empty list.
 hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
 hasAnyNilFalse l = ?hasAnyNilFalseBody
+
+instance VerifiedSemigroup (List a) where
+  semigroupOpIsAssociative = appendAssociative
+
+instance VerifiedMonoid (List a) where
+  monoidNeutralIsNeutralL = appendNilRightNeutral
+  monoidNeutralIsNeutralR xs = Refl
 
 --------------------------------------------------------------------------------
 -- Proofs
