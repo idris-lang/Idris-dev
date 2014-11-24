@@ -19,7 +19,7 @@ RND = MkEff Integer Random
 ||| Generates a random Integer in a given range
 rndInt : Integer -> Integer -> { [RND] } Eff Integer
 rndInt lower upper = do v <- call $ getRandom
-                        return (v `prim__sremBigInt` (upper - lower) + lower)
+                        return ((v `prim__sremBigInt` (upper - lower)) + lower)
 
 ||| Generate a random number in Fin (S `k`)
 ||| 
