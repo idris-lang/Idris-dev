@@ -1,6 +1,8 @@
 module Main
 
-%flag C "-g3 -ggdb -O0"
+%flag C "-g3"
+%flag C "-ggdb"
+%flag C "-O0"
 
 rep : (n : Nat) -> Char -> Vect n Char
 rep Z     x = []

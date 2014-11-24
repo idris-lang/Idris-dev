@@ -81,7 +81,7 @@ showver = do putStrLn $ "Idris version " ++ ver
 
 showLibs :: IO b
 showLibs = do libFlags <- getLibFlags
-              putStrLn libFlags
+              putStrLn $ unwords libFlags
               exitWith ExitSuccess
 
 showLibdir :: IO b
@@ -91,5 +91,5 @@ showLibdir = do dir <- getIdrisLibDir
 
 showIncs :: IO b
 showIncs = do incFlags <- getIncFlags
-              putStrLn incFlags
+              putStrLn $ unwords incFlags
               exitWith ExitSuccess

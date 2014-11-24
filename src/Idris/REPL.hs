@@ -669,10 +669,10 @@ edit f orig
          env <- runIO $ getEnvironment
          let editor = getEditor env
          let line = case errSpan i of
-                        Just l -> " +" ++ show (fst (fc_start l)) ++ " "
-                        Nothing -> " "
-         let cmd = editor ++ line ++ fixName f
-         runIO $ system cmd
+                        Just l -> ['+' : show (fst (fc_start l))]
+                        Nothing -> []
+         let args = line ++ [fixName f]
+         runIO $ rawSystem editor args
          clearErr
          putIState $ orig { idris_options = idris_options i
                           , idris_colourTheme = idris_colourTheme i
@@ -1069,7 +1069,7 @@ process fn Execute
                            ir <- compile t tmpn m
                            runIO $ generate t (head (idris_imported ist)) ir
                            case idris_outputmode ist of
-                             RawOutput h -> do runIO $ system tmpn
+                             RawOutput h -> do runIO $ rawSystem tmpn []
                                                return ()
                              IdeSlave n h -> runIO . hPutStrLn h $
                                              IdeSlave.convSExp "run-program" tmpn n)

@@ -38,31 +38,31 @@ getTargetDir :: IO String
 getTargetDir = environment "TARGET" >>= maybe getDataDir return
 
 #if defined(FREEBSD) || defined(DRAGONFLY)
-extraLib = " -L/usr/local/lib"
+extraLib = ["-L/usr/local/lib"]
 #else
-extraLib = ""
+extraLib = []
 #endif
 
 #ifdef IDRIS_GMP
-gmpLib = " -lgmp"
+gmpLib = ["-lgmp"]
 #else
-gmpLib = ""
+gmpLib = []
 #endif
 
 getLibFlags = do dir <- getDataDir
-                 return $ "-L" ++ (dir </> "rts") ++
-                          " -lidris_rts" ++ extraLib ++ gmpLib ++ " -lpthread"
+                 return $ ["-L" ++ (dir </> "rts"),
+                           "-lidris_rts"] ++ extraLib ++ gmpLib ++ ["-lpthread"]
 
 getIdrisLibDir = do dir <- getDataDir
                     return $ addTrailingPathSeparator dir
 
 #if defined(FREEBSD) || defined(DRAGONFLY)
-extraInclude = " -I/usr/local/include"
+extraInclude = ["-I/usr/local/include"]
 #else
-extraInclude = ""
+extraInclude = []
 #endif
 getIncFlags = do dir <- getDataDir
-                 return $ "-I" ++ dir </> "rts" ++ extraInclude
+                 return $ ("-I" ++ dir </> "rts") : extraInclude
 
 getExecutablePom = do dir <- getDataDir
                       return $ dir </> "java" </> "executable_pom.xml"
