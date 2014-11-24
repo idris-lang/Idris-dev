@@ -53,7 +53,7 @@ isType ctxt env tm = isType' (normalise ctxt env tm)
 recheck :: Context -> Env -> Raw -> Term -> TC (Term, Type, UCs)
 recheck = recheck_borrowing False []
 
-recheck_borrowing :: Bool -> [Name] -> Context -> Env -> Raw -> Term -> 
+recheck_borrowing :: Bool -> [Name] -> Context -> Env -> Raw -> Term ->
                      TC (Term, Type, UCs)
 recheck_borrowing uniq_check bs ctxt env tm orig
    = let v = next_tvar ctxt in
@@ -65,7 +65,7 @@ recheck_borrowing uniq_check bs ctxt env tm orig
                  return (tm, ty, constraints)
 
 check :: Context -> Env -> Raw -> TC (Term, Type)
-check ctxt env tm 
+check ctxt env tm
      = evalStateT (check' True ctxt env tm) (0, []) -- Holes allowed
 
 check' :: Bool -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
@@ -93,12 +93,12 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                                      ty@(Bind x (Pi s k) t) -> ty
                                      _ -> normalise ctxt env fty
            case fty' of
-             Bind x (Pi s k) t -> 
+             Bind x (Pi s k) t ->
                  do convertsC ctxt env aty s
                     let apty = simplify initContext env
                                         (Bind x (Let aty av) t)
                     return (App fv av, apty)
-             t -> lift $ tfail $ NonFunctionType fv fty 
+             t -> lift $ tfail $ NonFunctionType fv fty
   chk u env RType
     | holes = return (TType (UVal 0), TType (UVal 0))
     | otherwise = do (v, cs) <- get
@@ -107,7 +107,9 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                      return (TType (UVar v), TType (UVar (v+1)))
   chk u env (RUType un)
     | holes = return (UType un, TType (UVal 0))
-    | otherwise = do -- TODO! (v, cs) <- get
+    | otherwise = do -- TODO! Issue #1715 on the issue tracker.
+                     -- https://github.com/idris-lang/Idris-dev/issues/1715
+                     -- (v, cs) <- get
                      -- let c = ULT (UVar v) (UVar (v+1))
                      -- put (v+2, (c:cs))
                      -- return (TType (UVar v), TType (UVar (v+1)))
@@ -135,7 +137,6 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
       = do (sv, st) <- chk u env s
            (kv, kt) <- chk u env k
            (tv, tt) <- chk st ((n, Pi sv kv) : env) t
---            let tv = mkUniquePi kv tv_in
            (v, cs) <- get
            case (normalise ctxt env st, normalise ctxt env tt) of
                 (TType su, TType tu) -> do
@@ -148,12 +149,12 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                     return (Bind n (Pi (uniqueBinders (map fst env) sv) k')
                                 (pToV n tv), k')
 
-      where mkUniquePi kv (Bind n (Pi s k) sc) 
+      where mkUniquePi kv (Bind n (Pi s k) sc)
                     = let k' = smaller kv k in
                           Bind n (Pi s k') (mkUniquePi k' sc)
-            mkUniquePi kv (Bind n (Lam t) sc) 
+            mkUniquePi kv (Bind n (Lam t) sc)
                     = Bind n (Lam (mkUniquePi kv t)) (mkUniquePi kv sc)
-            mkUniquePi kv (Bind n (Let t v) sc) 
+            mkUniquePi kv (Bind n (Let t v) sc)
                     = Bind n (Let (mkUniquePi kv t) v) (mkUniquePi kv sc)
             mkUniquePi kv t = t
 
@@ -257,9 +258,9 @@ data UniqueUse = Never -- no more times
 -- If any binders are of kind 'UniqueType' or 'AllTypes' and the name appears
 -- in the scope more than once, this is an error.
 checkUnique :: [Name] -> Context -> Env -> Term -> TC ()
-checkUnique borrowed ctxt env tm 
+checkUnique borrowed ctxt env tm
          = evalStateT (chkBinders env (explicitNames tm)) []
-  where 
+  where
     isVar (P _ _ _) = True
     isVar (V _) = True
     isVar _ = False
@@ -272,10 +273,10 @@ checkUnique borrowed ctxt env tm
     chkBinders env (App (App (P _ (NS (UN lend) [owner]) _) t) a)
        | isVar a && owner == txt "Ownership" &&
          (lend == txt "lend" || lend == txt "Read")
-            = do chkBinders env t -- Check the type normally 
+            = do chkBinders env t -- Check the type normally
                  st <- get
                  -- Remove the 'LendOnly' names from the unusable set
-                 put (filter (\(n, (ok, _)) -> ok /= LendOnly) st) 
+                 put (filter (\(n, (ok, _)) -> ok /= LendOnly) st)
                  chkBinders env a
                  put st -- Reset the old state after checking the argument
     chkBinders env (App f a) = do chkBinders env f; chkBinders env a
@@ -288,14 +289,16 @@ checkUnique borrowed ctxt env tm
             chkBinders ((n, b) : env) t
     chkBinders env t = return ()
 
-    chkBinderName :: Env -> Name -> Binder Term -> 
+    chkBinderName :: Env -> Name -> Binder Term ->
                      StateT [(Name, (UniqueUse, Universe))] TC ()
     chkBinderName env n b
        = do let rawty = forgetEnv (map fst env) (binderTy b)
             (_, kind) <- lift $ check ctxt env rawty -- FIXME: Cache in binder?
+                                                     -- Issue #1714 on the issue tracker
+                                                     -- https://github.com/idris-lang/Idris-dev/issues/1714
             case kind of
                  UType UniqueType -> do ns <- get
-                                        if n `elem` borrowed 
+                                        if n `elem` borrowed
                                            then put ((n, (LendOnly, NullType)) : ns)
                                            else put ((n, (Once, UniqueType)) : ns)
                  UType NullType -> do ns <- get
@@ -304,13 +307,12 @@ checkUnique borrowed ctxt env tm
                                       put ((n, (Once, AllTypes)) : ns)
                  _ -> return ()
 
-    chkName n 
+    chkName n
        = do ns <- get
             case lookup n ns of
                  Nothing -> return ()
                  Just (Many, k) -> return ()
                  Just (Never, k) -> lift $ tfail (UniqueError k n)
                  Just (LendOnly, k) -> lift $ tfail (UniqueError k n)
-                 Just (Once, k) -> put ((n, (Never, k)) : 
+                 Just (Once, k) -> put ((n, (Never, k)) :
                                               filter (\x -> fst x /= n) ns)
-

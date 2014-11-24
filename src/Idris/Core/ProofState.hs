@@ -151,10 +151,10 @@ match_unify' ctxt env topx topy =
       let dont = dontunify ps
       let inj = injective ps
       traceWhen (unifylog ps)
-                ("Matching " ++ show (topx, topy) ++ 
+                ("Matching " ++ show (topx, topy) ++
                  " in " ++ show env ++
                  "\nHoles: " ++ show (holes ps)
-                  ++ "\n" 
+                  ++ "\n"
                   ++ "\n" ++ show (getProofTerm (pterm ps)) ++ "\n\n"
                  ) $
        case match_unify ctxt env topx topy inj (holes ps) while of
@@ -170,7 +170,7 @@ match_unify' ctxt env topx topy =
                            return []
 --       traceWhen (unifylog ps)
 --             ("Matched " ++ show (topx, topy) ++ " without " ++ show dont ++
---              "\nSolved: " ++ show u 
+--              "\nSolved: " ++ show u
 --              ++ "\nCurrent problems:\n" ++ qshow (problems ps)
 -- --              ++ show (pterm ps)
 --              ++ "\n----------") $
@@ -203,7 +203,7 @@ unify' ctxt env topx topy =
                          "\nHoles: " ++ show (holes ps)
                          ++ "\nInjective: " ++ show (injective ps)
                          ++ "\n") $
-                     lift $ unify ctxt env topx topy inj (holes ps) 
+                     lift $ unify ctxt env topx topy inj (holes ps)
                                   (map fst (notunified ps)) while
       let notu = filter (\ (n, t) -> case t of
                                         P _ _ _ -> False
@@ -416,7 +416,7 @@ deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                   Nothing -> error ("deferType can't find " ++ show n)
 
 regret :: RunTactic
-regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc = 
+regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
     do action (\ps -> let hs = holes ps in
                           ps { holes = hs \\ [x] })
        return sc
@@ -495,7 +495,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
                             notunified = updateNotunified [(x,val)]
                                            (notunified ps),
                             instances = instances ps \\ [x] })
-        let tm' = subst x val sc in 
+        let tm' = subst x val sc in
             return tm'
 solve _ _ h@(Bind x t sc)
    = do ps <- get
@@ -504,7 +504,7 @@ solve _ _ h@(Bind x t sc)
              _ -> lift $ tfail (IncompleteTerm h)
    where findType x (Bind n (Let t v) sc)
               = findType x v `mplus` findType x sc
-         findType x (Bind n t sc) 
+         findType x (Bind n t sc)
               | P _ x' _ <- binderTy t, x == x' = Just n
               | otherwise = findType x sc
          findType x _ = Nothing
@@ -553,7 +553,7 @@ forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
 forall n ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
-patvar n ctxt env (Bind x (Hole t) sc) = 
+patvar n ctxt env (Bind x (Hole t) sc) =
     do action (\ps -> ps { holes = traceWhen (unifylog ps) ("Dropping pattern hole " ++ show x) $
                                      holes ps \\ [x],
                            solved = Just (x, P Bound n t),
@@ -590,7 +590,7 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
                                               [lt, l, r, p, tmv, xp]))
                (scv, sct) <- lift $ check ctxt env sc
                return scv
-         _ -> lift $ tfail (NotEquality tmv tmt') 
+         _ -> lift $ tfail (NotEquality tmv tmt')
   where rname = sMN 0 "replaced"
 rewrite _ _ _ _ = fail "Can't rewrite here"
 
@@ -769,7 +769,7 @@ updateEnv ns ((n, b) : env) = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns e
 updateError [] err = err
 updateError ns (At f e) = At f (updateError ns e)
 updateError ns (Elaborating s n e) = Elaborating s n (updateError ns e)
-updateError ns (ElaboratingArg f a env e) 
+updateError ns (ElaboratingArg f a env e)
  = ElaboratingArg f a env (updateError ns e)
 updateError ns (CantUnify b l r e xs sc)
  = CantUnify b (updateSolvedTerm ns l) (updateSolvedTerm ns r) (updateError ns e) xs sc
@@ -777,7 +777,7 @@ updateError ns e = e
 
 solveInProblems x val [] = []
 solveInProblems x val ((l, r, env, err) : ps)
-   = ((psubst x val l, psubst x val r, 
+   = ((psubst x val l, psubst x val r,
        updateEnv [(x, val)] env, err) : solveInProblems x val ps)
 
 mergeNotunified :: Env -> [(Name, Term)] -> ([(Name, Term)], Fails)
@@ -785,7 +785,7 @@ mergeNotunified env ns = mnu ns [] [] where
   mnu [] ns_acc ps_acc = (reverse ns_acc, reverse ps_acc)
   mnu ((n, t):ns) ns_acc ps_acc
       | Just t' <- lookup n ns, t /= t'
-             = mnu ns ((n,t') : ns_acc) 
+             = mnu ns ((n,t') : ns_acc)
                       ((t,t',env,CantUnify True t t' (Msg "") [] 0, [],Match) : ps_acc)
       | otherwise = mnu ns ((n,t) : ns_acc) ps_acc
 
@@ -796,6 +796,8 @@ updateNotunified ns nu = up nu where
                           ((n, t') : up nus)
 
 -- FIXME: Why not just pass the whole proof state?
+-- Issue #1716 on the issue tracker.
+-- https://github.com/idris-lang/Idris-dev/issues/1716
 updateProblems :: Context -> [(Name, TT Name)] -> Fails -> [Name] -> [Name] -> [Name]
                -> ([(Name, TT Name)], Fails)
 -- updateProblems ctxt [] ps inj holes = ([], ps)
@@ -806,7 +808,7 @@ updateProblems ctxt ns ps inj holes usupp = up ns ps where
         y' = updateSolvedTerm ns y
         err' = updateError ns err
         env' = updateEnv ns env in
---          trace ("Updating " ++ show (x',y')) $ 
+--          trace ("Updating " ++ show (x',y')) $
           case unify ctxt env' x' y' inj holes usupp while of
             OK (v, []) -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
@@ -867,7 +869,7 @@ processTactic (Reorder n) ps
          return (ps' { previous = Just ps, plog = "" }, plog ps')
 processTactic (ComputeLet n) ps
     = return (ps { pterm = mkProofTerm $
-                              computeLet (context ps) n 
+                              computeLet (context ps) n
                                          (getProofTerm (pterm ps)) }, "")
 processTactic UnifyProblems ps
     = let (ns', probs') = updateProblems (context ps) []

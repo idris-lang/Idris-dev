@@ -525,7 +525,6 @@ call (FFun name argTypes retType) args =
           call' (Fun _ h) args FPtr = EPtr <$> (execIO $ callFFI h (retPtr retVoid) (prepArgs args))
           call' (Fun _ h) args FUnit = do _ <- execIO $ callFFI h retVoid (prepArgs args)
                                           return $ EP Ref unitCon EErased
---          call' (Fun _ h) args other = fail ("Unsupported foreign return type " ++ show other)
 
 
           prepArgs = map prepArg
@@ -536,6 +535,8 @@ call (FFun name argTypes retType) args =
           prepArg (EConstant (B64 i)) = argCLong (fromIntegral i)
           prepArg (EConstant (Fl f)) = argCDouble (realToFrac f)
           prepArg (EConstant (Ch c)) = argCChar (castCharToCChar c) -- FIXME - castCharToCChar only safe for first 256 chars
+                                                                    -- Issue #1720 on the issue tracker.
+                                                                    -- https://github.com/idris-lang/Idris-dev/issues/1720
           prepArg (EConstant (Str s)) = argString s
           prepArg (EPtr p) = argPtr p
           prepArg other = trace ("Could not use " ++ take 100 (show other) ++ " as FFI arg.") undefined
