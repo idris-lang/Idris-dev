@@ -114,12 +114,12 @@ addLangExt ErrorReflection = do i <- getIState
 -- Transforms are organised by the function being applied on the lhs of the
 -- transform, to make looking up appropriate transforms quicker
 addTrans :: Name -> (Term, Term) -> Idris ()
-addTrans basefn t 
+addTrans basefn t
            = do i <- getIState
                 let t' = case lookupCtxtExact basefn (idris_transforms i) of
                               Just def -> (t : def)
                               Nothing -> [t]
-                putIState $ i { idris_transforms = addDef basefn t' 
+                putIState $ i { idris_transforms = addDef basefn t'
                                                           (idris_transforms i) }
 
 addErrRev :: (Term, Term) -> Idris ()
@@ -130,8 +130,8 @@ totcheck :: (FC, Name) -> Idris ()
 totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
 
 defer_totcheck :: (FC, Name) -> Idris ()
-defer_totcheck n 
-   = do i <- getIState; 
+defer_totcheck n
+   = do i <- getIState;
         putIState $ i { idris_defertotcheck = nub (idris_defertotcheck i ++ [n]) }
 
 clear_totcheck :: Idris ()
@@ -183,7 +183,7 @@ addToCG n cg
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
 
 addTyInferred :: Name -> Idris ()
-addTyInferred n 
+addTyInferred n
    = do i <- getIState
         putIState $ i { idris_tyinfodata =
                         addDef n TIPartial (idris_tyinfodata i) }
@@ -197,7 +197,7 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
           findMVApps x y
              = do let (fx, argsx) = unApply x
                   let (fy, argsy) = unApply y
-                  if (not (fx == fy)) 
+                  if (not (fx == fy))
                      then do
                        tryAddMV fx y
                        tryAddMV fy x
@@ -211,17 +211,17 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
           tryAddMV _ _ = return ()
 
           addConstraintRule :: Name -> Term -> Idris ()
-          addConstraintRule n t 
+          addConstraintRule n t
              = do ist <- get
                   logLvl 1 $ "TI constraint: " ++ show (n, t)
                   case lookupCtxt n (idris_tyinfodata ist) of
-                     [TISolution ts] -> 
+                     [TISolution ts] ->
                          do mapM_ (checkConsistent t) ts
-                            let ti' = addDef n (TISolution (t : ts)) 
+                            let ti' = addDef n (TISolution (t : ts))
                                                (idris_tyinfodata ist)
                             put $ ist { idris_tyinfodata = ti' }
-                     _ ->  
-                         do let ti' = addDef n (TISolution [t]) 
+                     _ ->
+                         do let ti' = addDef n (TISolution [t])
                                                (idris_tyinfodata ist)
                             put $ ist { idris_tyinfodata = ti' }
 
@@ -233,14 +233,14 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
               do let (fx, _) = unApply x
                  let (fy, _) = unApply y
                  case (fx, fy) of
-                      (P (TCon _ _) n _, P (TCon _ _) n' _) -> errWhen (n/=n) 
+                      (P (TCon _ _) n _, P (TCon _ _) n' _) -> errWhen (n/=n)
                       (P (TCon _ _) n _, Constant _) -> errWhen True
                       (Constant _, P (TCon _ _) n' _) -> errWhen True
-                      (P (DCon _ _ _) n _, P (DCon _ _ _) n' _) -> errWhen (n/=n) 
+                      (P (DCon _ _ _) n _, P (DCon _ _ _) n' _) -> errWhen (n/=n)
                       _ -> return ()
 
-              where errWhen True 
-                       = throwError (At fc 
+              where errWhen True
+                       = throwError (At fc
                             (CantUnify False x y (Msg "") [] 0))
                     errWhen False = return ()
 
@@ -310,6 +310,8 @@ getNameHints i n =
              [ns] -> ns
              _ -> []
 
+-- Issue #1737 in the Issue Tracker.
+--    https://github.com/idris-lang/Idris-dev/issues/1737
 addToCalledG :: Name -> [Name] -> Idris ()
 addToCalledG n ns = return () -- TODO
 
@@ -333,7 +335,7 @@ addInstance int n i
         insI i (n : ns) | chaser n = i : n : ns
                         | otherwise = n : insI i ns
 
-        chaser (UN nm) 
+        chaser (UN nm)
              | ('@':'@':_) <- str nm = True
         chaser (NS n _) = chaser n
         chaser _ = False
@@ -421,6 +423,9 @@ withContext_ ctx name action = withContext ctx name () action
 runIO :: IO a -> Idris a
 runIO x = liftIO (tryIOError x) >>= either (throwError . Msg . show) return
 -- TODO: create specific Idris exceptions for specific IO errors such as "openFile: does not exist"
+--
+-- Issue #1738 on the issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1738
 
 getName :: Idris Int
 getName = do i <- getIState;
@@ -454,9 +459,9 @@ clearOrigPats = do i <- get
 -- the .ibc, which is all we need after all the analysis is done)
 clearPTypes :: Idris ()
 clearPTypes = do i <- get
-                 let ctxt = tt_ctxt i 
+                 let ctxt = tt_ctxt i
                  put (i { tt_ctxt = mapDefCtxt pErase ctxt })
-   where pErase (CaseOp c t tys orig tot cds) 
+   where pErase (CaseOp c t tys orig tot cds)
             = CaseOp c t tys orig [] (pErase' cds)
          pErase x = x
          pErase' (CaseDefs _ (cs, c) _ rs)
@@ -503,7 +508,7 @@ addDeferred' nt ns
        i <- getIState
        putIState $ i { idris_metavars = map (\(n, (i, top, _, isTopLevel)) -> (n, (top, i, isTopLevel))) ns ++
                                             idris_metavars i }
-  where 
+  where
         -- 'tidyNames' is to generate user accessible names in case they are
         -- needed in tactic scripts
         tidyNames used (Bind (MN i x) b sc)
@@ -1075,12 +1080,12 @@ addStatics :: Name -> Term -> PTerm -> Idris ()
 addStatics n tm ptm =
     do let (statics, dynamics) = initStatics tm ptm
        ist <- getIState
-       let paramnames 
+       let paramnames
               = nub $ case lookupCtxtExact n (idris_fninfo ist) of
                            Just p -> getNamesFrom 0 (fn_params p) tm ++
                                      concatMap (getParamNames ist) (map snd statics)
                            _ -> concatMap (getParamNames ist) (map snd statics)
-        
+
        let stnames = nub $ concatMap freeArgNames (map snd statics)
        let dnames = (nub $ concatMap freeArgNames (map snd dynamics))
                              \\ paramnames
@@ -1106,7 +1111,7 @@ addStatics n tm ptm =
     initStatics (Bind n (Pi ty _) sc) (PPi p n' _ s)
             = let (static, dynamic) = initStatics (instantiate (P Bound n ty) sc) s in
                   if pstatic p == Static then ((n, ty) : static, dynamic)
-                    else if (not (searchArg p)) 
+                    else if (not (searchArg p))
                             then (static, (n, ty) : dynamic)
                             else (static, dynamic)
     initStatics t pt = ([], [])
@@ -1116,7 +1121,7 @@ addStatics n tm ptm =
               Just ti -> getNamePos 0 (param_pos ti) args
               Nothing -> []
       where getNamePos i ps [] = []
-            getNamePos i ps (P _ n _ : as) 
+            getNamePos i ps (P _ n _ : as)
                  | i `elem` ps = n : getNamePos (i + 1) ps as
             getNamePos i ps (_ : as) = getNamePos (i + 1) ps as
     getParamNames ist (Bind t (Pi (P _ n _) _) sc)
@@ -1128,7 +1133,7 @@ addStatics n tm ptm =
        | otherwise = getNamesFrom (i + 1) ps sc
     getNamesFrom i ps sc = []
 
-    freeArgNames (Bind n (Pi ty _) sc) 
+    freeArgNames (Bind n (Pi ty _) sc)
           = nub $ freeNames ty ++ freeNames sc -- treat '->' as fn here
     freeArgNames tm = let (_, args) = unApply tm in
                           concatMap freeNames args
@@ -1199,11 +1204,11 @@ addUsingImpls syn n fc t
         let ns = implicitNamesIn (map iname uimpls) ist t
         let badnames = filter (\n -> not (implicitable n) &&
                                      n `notElem` (map iname uimpls)) ns
-        when (not (null badnames)) $ 
-           throwError (At fc (Elaborating "type of " n 
+        when (not (null badnames)) $
+           throwError (At fc (Elaborating "type of " n
                          (NoSuchVariable (head badnames))))
-        let cs = getArgnames t -- get already bound names 
-        let addimpls = filter (\n -> iname n `notElem` cs) uimpls 
+        let cs = getArgnames t -- get already bound names
+        let addimpls = filter (\n -> iname n `notElem` cs) uimpls
         -- if all names in the arguments of addconsts appear in ns,
         -- add the constraint implicitly
         return (bindFree ns (doAdd addimpls ns t))
@@ -1223,9 +1228,9 @@ addUsingImpls syn n fc t
 
          -- bind the free names which weren't in the using block
          bindFree [] tm = tm
-         bindFree (n:ns) tm 
+         bindFree (n:ns) tm
              | elem n (map iname uimpls) = bindFree ns tm
-             | otherwise 
+             | otherwise
                     = PPi (Imp [] Dynamic False) n Placeholder (bindFree ns tm)
 
          getArgnames (PPi _ n c sc)
@@ -1244,15 +1249,15 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
         getImps (Bind n (Pi t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
-            argInfo n (Imp opt _ _) t' 
+            argInfo n (Imp opt _ _) t'
                    = (True, PImp (getPriority i t') True opt n t')
             argInfo n (Exp opt _ _) t'
                    = (InaccessibleArg `elem` opt,
                           PExp (getPriority i t') opt n t')
-            argInfo n (Constraint opt _) t' 
+            argInfo n (Constraint opt _) t'
                    = (InaccessibleArg `elem` opt,
                           PConstraint 10 opt n t')
-            argInfo n (TacImp opt _ scr) t' 
+            argInfo n (TacImp opt _ scr) t'
                    = (InaccessibleArg `elem` opt,
                           PTacImplicit 10 opt n scr t')
         getImps (Bind n (Pi t _) sc) imps = impBind n t : getImps sc imps
@@ -1265,6 +1270,9 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
 -- This has become a right mess already. Better redo it some time...
 -- TODO: This is obsoleted by the new way of elaborating types, but there's still
 -- a couple of places which use it. Clean them up!
+--
+-- Issue 1739 in the issue tracker
+--     https://github.com/idris-lang/Idris-dev/issues/1739
 implicit :: ElabInfo -> SyntaxInfo -> Name -> PTerm -> Idris PTerm
 implicit info syn n ptm = implicit' info syn [] n ptm
 
@@ -1283,11 +1291,11 @@ implicit' info syn ignore n ptm
   where
     --  Detect unknown names in default arguments and throw error if found.
     defaultArgCheck :: [Name] -> [PArg] -> Idris ()
-    defaultArgCheck knowns params = foldM_ notFoundInDefault knowns params 
+    defaultArgCheck knowns params = foldM_ notFoundInDefault knowns params
 
     notFoundInDefault :: [Name] -> PArg -> Idris [Name]
     notFoundInDefault kns (PTacImplicit _ _ n script _)
-      = do  i <- getIState 
+      = do  i <- getIState
             case notFound kns (namesIn [] i script) of
               Nothing     -> return (n:kns)
               Just name   -> throwError (NoSuchVariable name)
@@ -1545,7 +1553,7 @@ aiFn inpat expat qq ist fc f ds as
           let nh = filter (\(n, _) -> notHidden n) ns
           let ns' = case trimAlts ds nh of
                          [] -> nh
-                         x -> x 
+                         x -> x
           case ns' of
             [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
             [] -> if f `elem` (map fst (idris_metavars ist))
@@ -1557,7 +1565,7 @@ aiFn inpat expat qq ist fc f ds as
                                                   (insertImpl ns as)) alts
   where
     trimAlts [] alts = alts
-    trimAlts ns alts 
+    trimAlts ns alts
         = filter (\(x, _) -> any (\d -> d `isPrefixOf` nspace x) ns) alts
 
     nspace (NS _ s) = s
@@ -1612,6 +1620,8 @@ aiFn inpat expat qq ist fc f ds as
                   insImpAcc (M.insert n sc pnas) ps given imps
     insImpAcc _ expected [] imps = imps -- so that unused implicits give error
                                      -- TODO: report here, and prune alternatives
+                                     -- Issue #1740 in the Issue Tracker
+-- https://github.com/idris-lang/Idris-dev/issues/1740
     insImpAcc _ _        given imps = given ++ imps
 
     find n []               acc = Nothing
@@ -1644,7 +1654,7 @@ stripLinear i tm = evalState (sl tm) [] where
                                      return (PPatvar fc f)
     sl t@(PAlternative _ (a : as)) = do sl a
                                         return t
-    sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var 
+    sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var
                               args' <- mapM slA args
                               return $ PApp fc fn args'
        where slA (PImp p m l n t) = do t' <- sl t
@@ -1667,11 +1677,11 @@ stripUnmatchable :: IState -> PTerm -> PTerm
 stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su :: PTerm -> PTerm
     su (PRef fc f)
-       | (Bind n (Pi t _) sc :_) <- lookupTy f (tt_ctxt i) 
+       | (Bind n (Pi t _) sc :_) <- lookupTy f (tt_ctxt i)
           = Placeholder
-    su (PApp fc fn args) 
+    su (PApp fc fn args)
        = PApp fc fn (fmap (fmap su) args)
-    su (PAlternative b alts) 
+    su (PAlternative b alts)
        = let alts' = filter (/= Placeholder) (map su alts) in
              if null alts' then Placeholder
                            else PAlternative b alts'
@@ -1766,7 +1776,7 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PApp _ x []) (PRef f n) = match x (PRef f n)
     match (PRef _ n) tm@(PRef _ n')
         | n == n' && not names &&
-          (not (isConName n (tt_ctxt i) || isFnName n (tt_ctxt i)) 
+          (not (isConName n (tt_ctxt i) || isFnName n (tt_ctxt i))
                 || tm == Placeholder)
             = return [(n, tm)]
         -- if one namespace is missing, drop the other
@@ -1777,7 +1787,7 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
         | not names && (not (isConName n (tt_ctxt i) ||
                              isFnName n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]
-    match (PEq _ _ _ l r) (PEq _ _ _ l' r') 
+    match (PEq _ _ _ l r) (PEq _ _ _ l' r')
                                     = do ml <- match' l l'
                                          mr <- match' r r'
                                          return (ml ++ mr)
@@ -2002,5 +2012,3 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
   mkUniq (PProof ts) = liftM PProof (mapM mkUniqT ts)
   mkUniq (PTactics ts) = liftM PTactics (mapM mkUniqT ts)
   mkUniq t = return t
-
-

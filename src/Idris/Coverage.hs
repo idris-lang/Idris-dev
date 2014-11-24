@@ -72,7 +72,7 @@ genClauses fc n xs given
         -- there may be more case splitting that the idris_implicits record
         -- suggests)
         let parg = case lookupCtxt n (idris_implicits i) of
-                        (p : _) -> 
+                        (p : _) ->
                           p ++ repeat (PExp 0 [] (sMN 0 "gcarg") Placeholder)
                         _       -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
@@ -122,7 +122,8 @@ genClauses fc n xs given
 
 -- FIXME: Just look for which one is the deepest, then generate all
 -- possibilities up to that depth.
-
+-- This and below issues for this function are tracked as Issue #1741 on the issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1741
 genAll :: IState -> [PTerm] -> [PTerm]
 genAll i args
    = case filter (/=Placeholder) $ fnub (concatMap otherPats (fnub args)) of
@@ -264,13 +265,13 @@ checkAllCovering fc done top n | not (n `elem` done)
                        addIBC (IBCTotCheckErr fc msg)
              [Partial _] ->
                 case lookupCtxt n (idris_callgraph i) of
-                     [cg] -> mapM_ (checkAllCovering fc (n : done) top) 
+                     [cg] -> mapM_ (checkAllCovering fc (n : done) top)
                                    (map fst (calls cg))
                      _ -> return ()
              x -> return () -- stop if total
 checkAllCovering _ _ _ _ = return ()
 
--- Check if, in a given group of type declarations mut_ns, 
+-- Check if, in a given group of type declarations mut_ns,
 -- the constructor cn : ty is strictly positive,
 -- and update the context accordingly
 
@@ -290,7 +291,7 @@ checkPositive mut_ns (cn, ty')
 
     cp (Bind n (Pi aty _) sc) = posArg aty && cp sc
     cp t | (P _ n' _, args) <- unApply t,
-           n' `elem` mut_ns = all noRec args 
+           n' `elem` mut_ns = all noRec args
     cp _ = True
 
     posArg (Bind _ (Pi nty _) sc)
@@ -439,7 +440,7 @@ checkDeclTotality (fc, n)
          i <- getIState
          let opts = case lookupCtxt n (idris_flags i) of
                               [fs] -> fs
-                              _ -> []         
+                              _ -> []
          when (CoveringFn `elem` opts) $ checkAllCovering fc [] n n
          t <- checkTotality [] fc n
          case t of
@@ -507,11 +508,11 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
      | (P _ (UN at) _, [_, _]) <- unApply ap,
        at == txt "assert_total" = []
      -- under a call to "Delay LazyCodata", don't do any checking of the
-     -- immediate call, as long as the call is guarded. 
+     -- immediate call, as long as the call is guarded.
      -- Then check its arguments
      | (P _ (UN del) _, [_,_,arg]) <- unApply ap,
        Guarded <- guarded,
-       del == txt "Delay" 
+       del == txt "Delay"
            = let (capp, args) = unApply arg in
                  concatMap (\x -> findCalls guarded x pvs pargs) args
      | (P _ n _, args) <- unApply ap
@@ -532,7 +533,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
       | not (f `elem` pvs) = [(f, [])]
   findCalls _ _ _ _ = []
 
-  expandToArity n args 
+  expandToArity n args
      = case lookupTy n (tt_ctxt ist) of
             [ty] -> expand 0 (normalise (tt_ctxt ist) [] ty) args
             _ -> args
@@ -609,7 +610,7 @@ checkSizeChange n = do
                   return (noPartial tot)
        [] -> do logLvl 5 $ "No paths for " ++ show n
                 return Unchecked
-  where getArity ist n 
+  where getArity ist n
           = case lookupTy n (tt_ctxt ist) of
                  [ty] -> arity (normalise (tt_ctxt ist) [] ty)
                  _ -> error "Can't happen: checkSizeChange.getArity"
@@ -674,14 +675,14 @@ checkMP ist i mp = if i > 0
                         Total []
                    else Partial (Mutual (map (fst . fst . fst) path ++ [f]))
         | e `elem` map (fst . fst) path
-           && not (f `elem` map fst es) 
+           && not (f `elem` map fst es)
               = Partial (Mutual (map (fst . fst . fst) path ++ [f]))
         | [Unchecked] <- lookupTotal f (tt_ctxt ist) =
             let argspos = case collapseNothing (zip nextargs [0..]) of
                                [] -> [(Nothing, 0)]
                                x -> x
 --               trace (show (argspos, nextargs, path)) $
-                pathres = 
+                pathres =
                   do (a, pos) <- argspos
                      case a of
                         Nothing -> -- don't know, but if the
@@ -704,7 +705,7 @@ checkMP ist i mp = if i > 0
                               _ -> trace ("Shouldn't happen " ++ show e) $
                                       return (Partial Itself)
                             else return Unchecked in
---                   trace (show (desc, argspos, path, es, pathres)) $ 
+--                   trace (show (desc, argspos, path, es, pathres)) $
                    collapse' Unchecked pathres
 
         | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
@@ -734,4 +735,3 @@ collapse' def (Unchecked : xs) = collapse' def xs
 collapse' def (d : xs)         = collapse' d xs
 -- collapse' Unchecked []         = Total []
 collapse' def []               = def
-
