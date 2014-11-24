@@ -20,11 +20,11 @@ import Text.Trifecta.Delta
 import Debug.Trace
 import Data.List
 import Data.List.Split(splitOn)
-import Data.Char(toLower)
+import Data.Char(isSpace, toLower)
 import qualified Data.ByteString.UTF8 as UTF8
 
 parseCmd :: IState -> String -> String -> Result (Either String Command)
-parseCmd i inputname = P.runparser pCmd i inputname
+parseCmd i inputname = P.runparser pCmd i inputname . dropWhile isSpace
 
 pCmd :: P.IdrisParser (Either String Command)
 pCmd = choice [ do c <- cmd ["q", "quit"];        noArgs c Quit
@@ -95,20 +95,20 @@ pCmd = choice [ do c <- cmd ["q", "quit"];        noArgs c Quit
              <|> eval
     where nop = do P.whiteSpace; eof; return (Right NOP)
           eval = exprArg "" Eval
-          unrecognized = do 
-              P.lchar ':' 
+          unrecognized = do
+              P.lchar ':'
               cmd <- many anyChar
               let cmd' = takeWhile (/=' ') cmd
               return (Left $ "Unrecognized command: " ++ cmd')
 
 cmd :: [String] -> P.IdrisParser String
-cmd xs = try $ do 
+cmd xs = try $ do
     P.lchar ':'
     docmd sorted_xs
-    
+
     where docmd [] = fail "Could not parse command"
           docmd (x:xs) = try (P.reserved x >> return x) <|> docmd xs
-            
+
           sorted_xs = sortBy (\x y -> compare (length y) (length x)) xs
 
 
