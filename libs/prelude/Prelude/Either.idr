@@ -6,7 +6,7 @@ import Prelude.Maybe
 import Prelude.List
 
 ||| A sum type
-data Either a b =
+%elim data Either a b =
   ||| One possibility of the sum, conventionally used to represent errors
   Left a |
   ||| The other possibility, conventionally used to represent success

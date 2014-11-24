@@ -57,7 +57,7 @@ instance (Eq a, Eq b) => Eq (a, b) where
 
 
 -- ---------------------------------------------------------- [ Ordering Class ]
-data Ordering = LT | EQ | GT
+%elim data Ordering = LT | EQ | GT
 
 instance Eq Ordering where
     LT == LT = True
