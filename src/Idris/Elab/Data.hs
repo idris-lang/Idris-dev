@@ -265,10 +265,10 @@ elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
         = tclift $ tfail (At fc (UniqueKindError NullType n))
     checkUniqueKind (UType UniqueType) (UType UniqueType) = return ()
     checkUniqueKind (UType UniqueType) (UType AllTypes) = return ()
-    checkUniqueKind (UType UniqueType) (TType _)
+    checkUniqueKind (UType UniqueType) _
         = tclift $ tfail (At fc (UniqueKindError UniqueType n))
     checkUniqueKind (UType AllTypes) _ = return ()
-    checkUniqueKind (TType _) _ = return ()
+    checkUniqueKind _ _ = return ()
 
 type EliminatorState = StateT (Map.Map String Int) Idris
 
