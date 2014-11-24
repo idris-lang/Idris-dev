@@ -394,7 +394,7 @@ pOptimise cs = mapM_ (\ (n, c) ->
 
 pSyntax :: [Syntax] -> Idris ()
 pSyntax s = do i <- getIState
-               putIState (i { syntax_rules = s ++ syntax_rules i })
+               putIState (i { syntax_rules = updateSyntaxRules s (syntax_rules i) })
 
 pKeywords :: [String] -> Idris ()
 pKeywords k = do i <- getIState

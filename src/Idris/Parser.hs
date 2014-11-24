@@ -223,7 +223,7 @@ syntaxDecl syn = do s <- syntaxRule syn
 
 -- | Extend an 'IState' with a new syntax extension. See also 'addReplSyntax'.
 addSyntax :: IState -> Syntax -> IState
-addSyntax i s = i { syntax_rules = s : rs,
+addSyntax i s = i { syntax_rules = updateSyntaxRules [s] rs,
                     syntax_keywords = ks ++ ns,
                     ibc_write = IBCSyntax s : map IBCKeyword ks ++ ibc }
   where rs = syntax_rules i
@@ -233,7 +233,7 @@ addSyntax i s = i { syntax_rules = s : rs,
 
 -- | Like 'addSyntax', but no effect on the IBC.
 addReplSyntax :: IState -> Syntax -> IState
-addReplSyntax i s = i { syntax_rules = s : rs,
+addReplSyntax i s = i { syntax_rules = updateSyntaxRules [s] rs,
                         syntax_keywords = ks ++ ns }
   where rs = syntax_rules i
         ns = syntax_keywords i

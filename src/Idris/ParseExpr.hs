@@ -23,6 +23,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
 
+import Data.Function (on)
 import Data.Maybe
 import qualified Data.List.Split as Spl
 import Data.List
@@ -91,13 +92,13 @@ expr' syn = try (externalExpr syn)
 {- | Parses a user-defined expression -}
 externalExpr :: SyntaxInfo -> IdrisParser PTerm
 externalExpr syn = do i <- get
-                      extensions syn (syntax_rules i)
+                      extensions syn (syntaxRulesList $ syntax_rules i)
                    <?> "user-defined expression"
 
 {- | Parses a simple user-defined expression -}
 simpleExternalExpr :: SyntaxInfo -> IdrisParser PTerm
 simpleExternalExpr syn = do i <- get
-                            extensions syn (filter isSimple (syntax_rules i))
+                            extensions syn (filter isSimple (syntaxRulesList $ syntax_rules i))
   where
     isSimple (Rule (Expr x:xs) _ _) = False
     isSimple (Rule (SimpleExpr x:xs) _ _) = False
@@ -111,7 +112,7 @@ simpleExternalExpr syn = do i <- get
 
 {- | Tries to parse a user-defined expression given a list of syntactic extensions -}
 extensions :: SyntaxInfo -> [Syntax] -> IdrisParser PTerm
-extensions syn rules = choice (map (try . extension syn) (filter isValid rules))
+extensions syn rules = extension syn [] (filter isValid rules)
                        <?> "user-defined expression"
   where
     isValid :: Syntax -> Bool
@@ -119,16 +120,23 @@ extensions syn rules = choice (map (try . extension syn) (filter isValid rules))
     isValid (Rule _ _ PatternSyntax) = inPattern syn
     isValid (Rule _ _ TermSyntax) = not (inPattern syn)
 
-
 data SynMatch = SynTm PTerm | SynBind Name
 
-{- | Tries to parse an expression given a user-defined rule -}
-extension :: SyntaxInfo -> Syntax -> IdrisParser PTerm
-extension syn (Rule ssym ptm _)
-    = do smap <- mapM extensionSymbol ssym
-         let ns = mapMaybe id smap
-         return (flatten (update ns ptm)) -- updated with smap
+extension :: SyntaxInfo -> [Maybe (Name, SynMatch)] -> [Syntax] -> IdrisParser PTerm
+extension syn ns rules =
+  choice $ flip map (groupBy (ruleGroup `on` syntaxSymbols) rules) $ \rs ->
+    case head rs of -- can never be []
+      Rule (symb:_) _ _ -> try $ do
+        n <- extensionSymbol symb
+        extension syn (n : ns) [Rule ss t ctx | (Rule (_:ss) t ctx) <- rs]
+      -- If we have more than one Rule in this bucket, our grammar is
+      -- nondeterministic.
+      Rule [] ptm _ -> return (flatten (update (mapMaybe id ns) ptm))
   where
+    ruleGroup [] [] = True
+    ruleGroup (s1:_) (s2:_) = s1 == s2
+    ruleGroup _ _ = False
+
     extensionSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
     extensionSymbol (Keyword n)    = do reserved (show n); return Nothing
     extensionSymbol (Expr n)       = do tm <- expr syn
