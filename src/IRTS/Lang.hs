@@ -89,13 +89,13 @@ data FLang = LANG_C | LANG_JAVA FCallType
   deriving (Show, Eq)
 
 data FType = FArith ArithTy
-           | FFunction
-           | FFunctionIO
+           | FFunction FType FType
+           | FFunctionIO FType FType
            | FString
            | FUnit
            | FPtr
            | FManagedPtr
-           | FAny
+           | FAny Type
   deriving (Show, Eq)
 
 -- FIXME: Why not use this for all the IRs now?
