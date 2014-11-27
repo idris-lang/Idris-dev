@@ -89,6 +89,13 @@ pCmd = choice [ do c <- cmd ["q", "quit"];        noArgs c Quit
               , do c <- cmd ["ps", "proofsearch"];        cmd_proofsearch c
               , do c <- cmd ["ref", "refine"];            cmd_refine c
 
+              , do c <- cmd ["debugunify"];
+                   P.whiteSpace
+                   l <- P.simpleExpr defaultSyntax 
+                   r <- P.simpleExpr defaultSyntax 
+                   eof
+                   return (Right (DebugUnify l r))
+
               , unrecognized
               , nop
               ]

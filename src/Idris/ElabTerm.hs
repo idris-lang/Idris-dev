@@ -351,7 +351,7 @@ elab ist info emode opts fn tm
                else if (defined && not guarded)
                        then do apply (Var n) []; solve
                        else try (do apply (Var n) []; solve)
-                                (do patvar n; ) -- update_term liftPats)
+                                (do patvar n; update_term liftPats)
       where inparamBlock n = case lookupCtxtName n (inblock info) of
                                 [] -> False
                                 _ -> True
