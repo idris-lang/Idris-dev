@@ -46,7 +46,7 @@ data ElabWhat = ETypes | EDefns | EAll
 
 -- rec_elabDecl is used to pass the top level elaborator into other elaborators,
 -- so that we can have mutually recursive elaborators in separate modules without
--- having to much about with cyclic modules.
+-- having to muck about with cyclic modules.
 data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         inblock :: Ctxt [Name], -- names in the block, and their params
                         liftname :: Name -> Name,
