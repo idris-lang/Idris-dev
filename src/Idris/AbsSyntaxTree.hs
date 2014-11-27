@@ -50,12 +50,13 @@ data ElabWhat = ETypes | EDefns | EAll
 data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         inblock :: Ctxt [Name], -- names in the block, and their params
                         liftname :: Name -> Name,
-                        namespace :: Maybe [String], 
+                        namespace :: Maybe [String],
+                        elabFC :: Maybe FC,
                         rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl -> 
                                         Idris () }
 
 toplevel :: ElabInfo
-toplevel = EInfo [] emptyContext id Nothing (\_ _ _ -> fail "Not implemented")
+toplevel = EInfo [] emptyContext id Nothing Nothing (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
@@ -809,6 +810,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Skip
                 | TFail [ErrorReportPart]
                 | Qed | Abandon
+                | SourceFC
     deriving (Show, Eq, Functor, Foldable, Traversable)
 {-!
 deriving instance Binary PTactic'
@@ -839,6 +841,7 @@ instance Sized a => Sized (PTactic' a) where
   size Abandon = 1
   size Skip = 1
   size (TFail ts) = 1 + size ts
+  size SourceFC = 1
 
 type PTactic = PTactic' PTerm
 

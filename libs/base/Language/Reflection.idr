@@ -175,6 +175,11 @@ data Raw =
          RConstant Const
 %name Raw tm, tm'
 
+data SourceLocation : Type where
+  FileLoc : (filename : String) -> (start : (Int, Int)) -> (end : (Int, Int)) -> SourceLocation
+
+%name SourceLocation loc
+
 ||| Error reports are a list of report parts
 data ErrorReportPart =
                      ||| A human-readable string
@@ -239,7 +244,9 @@ data Tactic =
             ||| Do nothing
             Skip |
             ||| Fail with an error message
-            Fail (List ErrorReportPart)
+            Fail (List ErrorReportPart) |
+            ||| Attempt to fill the hole with source code information
+            SourceFC
 %name Tactic tac, tac'
 
 
@@ -477,3 +484,4 @@ instance Quotable Tactic where
   quote Compute = `(Compute)
   quote Skip = `(Skip)
   quote (Fail xs) = `(Fail ~(quote xs))
+  quote SourceFC = `(SourceFC)
