@@ -345,7 +345,6 @@ data Command = Quit
              | DynamicLink FilePath
              | ListDynamic
              | Pattelab PTerm
-             | DebugInfo Name
              | Search PTerm
              | CaseSplitAt Bool Int Name
              | AddClauseFrom Bool Int Name
@@ -372,6 +371,9 @@ data Command = Quit
              | PrintDef Name
              | PPrint OutputFmt Int PTerm
              | TransformInfo Name
+             -- Debugging commands
+             | DebugInfo Name
+             | DebugUnify PTerm PTerm
 
 data OutputFmt = HTMLOutput | LaTeXOutput
 

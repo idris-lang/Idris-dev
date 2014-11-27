@@ -48,6 +48,7 @@ import Util.Pretty hiding ((</>))
 import Idris.Core.Evaluate
 import Idris.Core.Execute (execute)
 import Idris.Core.TT
+import Idris.Core.Unify
 import Idris.Core.Constraints
 
 import IRTS.Compiler
@@ -929,6 +930,13 @@ process fn (TotCheck n)
                                             map (\(n, t) -> showN n ++ " is " ++ showTotal t i) $
                                             ts
 
+process fn (DebugUnify l r)
+   = do (ltm, _) <- elabVal recinfo ERHS l
+        (rtm, _) <- elabVal recinfo ERHS r
+        ctxt <- getContext
+        case unify ctxt [] ltm rtm [] [] [] [] of
+             OK ans -> iputStrLn (show ans)
+             Error e -> iputStrLn (show e)
 
 process fn (DebugInfo n)
    = do i <- getIState
