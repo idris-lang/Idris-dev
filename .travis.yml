@@ -12,7 +12,7 @@ before_install:
   - sudo apt-get install -qq expect
   - cabal install alex-3.1.3
 install:
-  - cabal install -f FFI --enable-tests
+  - cabal install -f FFI --enable-tests --dependencies-only
   - ghc-pkg list
 before_script:
   - cabal sdist
@@ -23,6 +23,7 @@ script:
   - cabal configure -f FFI
   - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
+  - if [[ "$TESTS" != "doc" ]]; then cabal register; fi
   - if [[ "$TESTS" == "test_llvm" ]]; then git clone --depth 1 https://github.com/idris-hackers/idris-llvm.git ; cd idris-llvm ; cabal install ; cd .. ; fi
   - make -j2 $TESTS
 env:
