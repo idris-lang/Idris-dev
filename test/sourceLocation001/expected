@@ -1,0 +1,11 @@
+Testing using definition
+FileLoc "SourceLoc.idr" (14, 11) (14, 11)
+Testing using inline tactics
+FileLoc "SourceLoc.idr" (18, 17) (18, 17)
+Testing using metavariable with later definition
+FileLoc "SourceLoc.idr" (94, 16) (94, 16)
+-----------------------
+Success!
+Error at FileLoc "SourceLoc.idr" (68, 23) (68, 23)
+Success!
+Success!

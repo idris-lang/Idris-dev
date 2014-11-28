@@ -1296,6 +1296,7 @@ tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (
           <|> do reserved "fail"
                  msg <- stringLiteral
                  return $ TFail [Idris.Core.TT.TextPart msg]
+          <|> do reserved "sourceLocation"; return SourceFC
           <|> do lchar ':';
                  (    (do reserved "q"; return Abandon)
                   <|> (do (reserved "e" <|> reserved "eval");

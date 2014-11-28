@@ -262,6 +262,7 @@ instance (NFData t) => NFData (PTactic' t) where
         rnf Abandon = ()
         rnf Skip = ()
         rnf (TFail x1) = rnf x1 `seq` ()
+        rnf SourceFC = ()
 
 instance NFData ErrorReportPart where
         rnf (TermPart x1) = rnf x1 `seq` ()

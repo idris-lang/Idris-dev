@@ -1,3 +1,9 @@
+New in 0.9.16:
+--------------
+* A new tactic sourceLocation that fills the current hole with the current
+  source code span, if this information is available. If not, it raises an
+  error.
+
 New in 0.9.15:
 --------------
 * Two new tactics: skip and fail. Skip does nothing, and fail takes a string
