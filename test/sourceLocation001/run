@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ SourceLoc.idr -o sourceLocation001
+./sourceLocation001
+rm -f sourceLocation001 *.ibc

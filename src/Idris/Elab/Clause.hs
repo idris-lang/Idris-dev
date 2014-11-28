@@ -56,8 +56,10 @@ import Numeric
 -- | Elaborate a collection of left-hand and right-hand pairs - that is, a
 -- top-level definition.
 elabClauses :: ElabInfo -> FC -> FnOpts -> Name -> [PClause] -> Idris ()
-elabClauses info fc opts n_in cs = let n = liftname info n_in in
-      do ctxt <- getContext
+elabClauses info' fc opts n_in cs =
+      do let n    = liftname info n_in
+             info = info' { elabFC = Just fc }
+         ctxt <- getContext
          ist  <- getIState
          optimise <- getOptimise
          let petrans = PETransform `elem` optimise
@@ -618,7 +620,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
         let uniqargs = findUnique (tt_ctxt ist) [] lhs_tm
         let newargs = filter (\(n,_) -> n `notElem` uniqargs) newargs_all
 
-        let winfo = pinfo info newargs defs windex
+        let winfo = (pinfo info newargs defs windex) { elabFC = Just fc }
         let wb = map (mkStatic static_names) $
                  map (expandParamsD False ist decorate newargs defs) whereblock
 

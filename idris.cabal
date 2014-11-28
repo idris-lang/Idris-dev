@@ -483,6 +483,10 @@ Extra-source-files:
                        test/records003/*.idr
                        test/records003/expected
 
+                       test/sourceLocation001/run
+                       test/sourceLocation001/*.idr
+                       test/sourceLocation001/expected
+
                        test/sugar001/run
                        test/sugar001/*.idr
                        test/sugar001/expected

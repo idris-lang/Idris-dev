@@ -4,7 +4,7 @@ opts = "--nobasepkgs --total -i ../prelude"
 modules = System,
 
           Network.Cgi, Network.Socket,
-          Debug.Trace,
+          Debug.Error, Debug.Trace,
 
           System.Info,
           System.Concurrency.Raw, System.Concurrency.Process,
