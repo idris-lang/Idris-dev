@@ -2,17 +2,32 @@
 
 use strict;
 use Cwd;
+use Cwd 'abs_path';
+use Env;
 
 my $exitstatus = 0;
 my @idrOpts    = ();
 
+sub sandbox_path {
+    my ($test_dir,) = @_;
+    my $sandbox = abs_path("$test_dir/../../.cabal-sandbox/bin");
+
+    if ( -d $sandbox ) {
+        return "PATH=$sandbox:$PATH";
+    } else {
+        return "";
+    }
+}
+
 sub runtest {
     my ($test, $update) = @_;
+
+    my $sandbox = sandbox_path($test);
 
     chdir($test);
 
     print "Running $test...\n";
-    my $got = `./run @idrOpts`;
+    my $got = `$sandbox ./run @idrOpts`;
     my $exp = `cat expected`;
 
     open my $out, '>', 'output';
@@ -62,6 +77,7 @@ if ($#ARGV>=0) {
             }
         }
         @tests = sort @tests;
+
     } elsif ($test eq "without") {
         @args = @ARGV;
         foreach my $file (@args) {
