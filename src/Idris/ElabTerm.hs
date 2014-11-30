@@ -763,22 +763,6 @@ elab ist info emode opts fn tm
                  = n `elem` ns
                      || any (\x -> x `elem` ns) (allTTNames (binderTy b))
 
-              -- FIXME: This probably doesn't help us here, but leaving
-              -- it in temporarily... if this comment is still here in master,
-              -- please delete the code!
-              chaseDeps env acc [] = filter (\(n, _) -> n `elem` acc) env
-              chaseDeps env acc ((n,b) : args)
-                 = let ns = allTTNames (binderTy b) in
-                       extendAcc ns acc args
-                where
-                  extendAcc [] acc args = chaseDeps env acc args
-                  extendAcc (n:ns) acc args
-                      | elem n acc = extendAcc ns acc args
-                      | otherwise = case lookup n env of
-                                         Just b -> extendAcc ns (n : acc)
-                                                                 ((n,b) : args)
-                                         Nothing -> extendAcc ns acc args
-
     elab' ina fc (PUnifyLog t) = do unifyLog True
                                     elab' ina fc t
                                     unifyLog False
