@@ -1,0 +1,14 @@
+Type checking ./delab001.idr
+*delab001> [?1049h[1;37r(B[m[4l[?7h[H[2J[37;1H[?1049l[?1l>foo : Nat -> String
+foo n = case n of
+          0 => "z"
+          S _ => "s"
+*delab001> [?1049h[1;37r(B[m[4l[?7h[H[2J[37;1H[?1049l[?1l>bar : Nat -> String -> String
+bar x y = case x of
+            0 => y
+            S _ => (y ++ y)
+*delab001> [?1049h[1;37r(B[m[4l[?7h[H[2J[37;1H[?1049l[?1l>append : List a -> List a -> List a
+append xs ys = case xs of
+                 [] => ys
+                 (x :: xs) => (x :: (append xs ys))
+*delab001> Bye bye
