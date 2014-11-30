@@ -1,3 +1,4 @@
+:consolewidth infinite
 :printdef foo
 :printdef bar
 :printdef append
