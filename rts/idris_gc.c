@@ -69,7 +69,7 @@ void cheney(VM *vm) {
     int i;
     int ar;
     char* scan = vm->heap.heap;
-  
+
     while(scan < vm->heap.next) {
        size_t inc = *((size_t*)scan);
        VAL heap_item = (VAL)(scan+sizeof(size_t));
@@ -85,7 +85,7 @@ void cheney(VM *vm) {
            }
            break;
        case STROFFSET:
-           heap_item->info.str_offset->str 
+           heap_item->info.str_offset->str
                = copy(vm, heap_item->info.str_offset->str);
            break;
        default: // Nothing to copy
@@ -103,7 +103,7 @@ void idris_gc(VM* vm) {
 
     char* newheap = malloc(vm->heap.size);
     char* oldheap = vm->heap.heap;
-    if (vm->heap.old != NULL) 
+    if (vm->heap.old != NULL)
         free(vm->heap.old);
 
     vm->heap.heap = newheap;
@@ -138,21 +138,21 @@ void idris_gc(VM* vm) {
 
     if ((vm->heap.next - vm->heap.heap) > vm->heap.size >> 1) {
         vm->heap.size += vm->heap.growth;
-    } 
+    }
     vm->heap.old = oldheap;
-    
+
     STATS_LEAVE_GC(vm->stats, vm->heap.size, vm->heap.next - vm->heap.heap)
     HEAP_CHECK(vm)
 }
 
 void idris_gcInfo(VM* vm, int doGC) {
-    printf("Stack: <BOT %p> <TOP %p>\n", vm->valstack, vm->valstack_top); 
+    printf("Stack: <BOT %p> <TOP %p>\n", vm->valstack, vm->valstack_top);
     printf("Final heap size         %d\n", (int)(vm->heap.size));
     printf("Final heap use          %d\n", (int)(vm->heap.next - vm->heap.heap));
     if (doGC) { idris_gc(vm); }
     printf("Final heap use after GC %d\n", (int)(vm->heap.next - vm->heap.heap));
 #ifdef IDRIS_ENABLE_STATS
-    printf("Total allocations       %d\n", vm->stats.allocations);
+    printf("Total allocations       %" PRIu64 "\n", vm->stats.allocations);
 #endif
     printf("Number of collections   %d\n", vm->stats.collections);
 
