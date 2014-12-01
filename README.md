@@ -15,7 +15,7 @@ To run the tests, type 'make test' which will execute the test suite, and
 'make relib', which will typecheck and recompile the standard library.
 
 Idris has an optional buildtime dependency on the C library libffi. If you
-would like to use the features that it enables, be sure it is are compiled 
+would like to use the features that it enables, make sure that it is compiled 
 for the same architecture as your Haskell compiler (e.g. 64 bit libraries
 for 64 bit ghc). By default, Idris builds without it. To build with it, pass
 the flag -f FFI.
@@ -29,10 +29,10 @@ getting involved with development. It is located at
 https://github.com/idris-lang/Idris-dev/wiki.
 
 Idris has support for external code generators. Supplied with the distribution
-is C code generator to compile executables, and a JavaScript code generator
+is a C code generator to compile executables, and a JavaScript code generator
 with support for node.js and browser JavaScript.
 
-At the point of this writing, there is are external repositories with
+At the point of this writing, there are external repositories with
 a Java code generator and an LLVM-based code generator which can be found at
 https://github.com/idris-hackers/idris-java and
 https://github.com/idris-hackers/idris-llvm respectively.
