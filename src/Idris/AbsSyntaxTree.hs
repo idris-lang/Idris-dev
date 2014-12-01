@@ -1364,12 +1364,28 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
             else if null args
                    then fp
                    else fp <+> align (vsep (map (prettyArgS bnd) args))
-    prettySe p bnd (PCase _ scr opts) =
-      kwd "case" <+> prettySe 10 bnd scr <+> kwd "of" <> prettyBody
+    prettySe p bnd (PCase _ scr cases) =
+      align $ kwd "case" <+> prettySe 10 bnd scr <+> kwd "of" <$>
+      indent 2 (vsep (map ppcase cases))
       where
-        prettyBody = foldr (<>) empty $ intersperse (text "|") $ map sc opts
+        ppcase (l, r) = nest nestingSize $
+                          prettySe 10 ([(n, False) | n <- vars l] ++ bnd) l <+>
+                          text "=>" <+>
+                          prettySe 10 ([(n, False) | n <- vars l] ++ bnd) r
+        -- Warning: this is a bit of a hack. At this stage, we don't have the
+        -- global context, so we can't determine which names are constructors,
+        -- which are types, and which are pattern variables on the LHS of the
+        -- case pattern. We use the heuristic that names without a namespace
+        -- are patvars, because right now case blocks in PTerms are always
+        -- delaborated from TT before being sent to the pretty-printer. If they
+        -- start getting printed directly, THIS WILL BREAK.
+        -- Potential solution: add a list of known patvars to the cases in
+        -- PCase, and have the delaborator fill it out, kind of like the pun
+        -- disambiguation on PDPair.
+        vars tm = filter noNS (allNamesIn tm)
+        noNS (NS _ _) = False
+        noNS _ = True
 
-        sc (l, r) = nest nestingSize $ prettySe 10 bnd l <+> text "=>" <+> prettySe 10 bnd r
     prettySe p bnd (PHidden tm) = text "." <> prettySe 0 bnd tm
     prettySe p bnd (PRefl _ _) = annName eqCon $ text "Refl"
     prettySe p bnd (PResolveTC _) = text "resolvetc"
@@ -1538,13 +1554,15 @@ prettyName
   -> [(Name, Bool)] -- ^^ the current bound variables and whether they are implicit
   -> Name -- ^^ the name to pprint
   -> Doc OutputAnnotation
-prettyName infixParen showNS bnd n 
+prettyName infixParen showNS bnd n
+    | (MN _ s) <- n, isPrefixOf "_" $ T.unpack s = text "_"
+    | (UN n') <- n, isPrefixOf "_" $ T.unpack n' = text "_"
     | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) fullName
     | otherwise                = annotate (AnnName n Nothing Nothing Nothing) fullName
   where fullName = text nameSpace <> parenthesise (text (baseName n))
         baseName (UN n) = T.unpack n
         baseName (NS n ns) = baseName n
-        baseName (MN i s) = T.unpack s 
+        baseName (MN i s) = T.unpack s
         baseName other = show other
         nameSpace = case n of
           (NS n' ns) -> if showNS then (concatMap (++ ".") . map T.unpack . reverse) ns else ""

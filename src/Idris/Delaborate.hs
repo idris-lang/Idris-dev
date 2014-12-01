@@ -70,8 +70,13 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                 (de ((n,n):env) is sc)
     de env [] (Bind n (Pi ty _) sc)
           = PPi expl n (de env [] ty) (de ((n,n):env) [] sc)
-    de env _ (Bind n (Let ty val) sc)
-        = PLet n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
+
+    de env imps (Bind n (Let ty val) sc)
+          | isCaseApp sc
+          , (P _ cOp _, args) <- unApply sc
+          , Just caseblock    <- delabCase env imps n val cOp args = caseblock
+          | otherwise    =
+              PLet n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
     de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
     de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
     de env plic (Bind n bb sc) = de ((n,n):env) [] sc
@@ -128,6 +133,29 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     imp (PConstraint p l n _) arg = PConstraint p l n arg
     imp (PTacImplicit p l n sc _) arg = PTacImplicit p l n sc arg
 
+    isCaseApp tm | P _ n _ <- fst (unApply tm) = isCN n
+                 | otherwise = False
+      where isCN (NS n _) = isCN n
+            isCN (SN (CaseN _)) = True
+            isCN _ = False
+
+    delabCase :: [(Name, Name)] -> [PArg] -> Name -> Term -> Name -> [Term] -> Maybe PTerm
+    delabCase env imps scvar scrutinee caseName caseArgs =
+      do cases <- case lookupCtxt caseName (idris_patdefs ist) of
+                    [(cases, _)] -> return cases
+                    _ -> Nothing
+         return $ PCase un (de env imps scrutinee)
+                    [ (de (env ++ map (\n -> (n, n)) vars) imps (splitArg lhs),
+                       de (env ++ map (\n -> (n, n)) vars) imps rhs)
+                    | (vars, lhs, rhs) <- cases
+                    ]
+      where splitArg tm | (_, args) <- unApply tm = nonVar (reverse args)
+                        | otherwise = tm
+            nonVar [] = error "Tried to delaborate empty case list"
+            nonVar [x] = x
+            nonVar (x@(App _ _) : _) = x
+            nonVar (x@(P (DCon _ _ _) _ _) : _) = x
+            nonVar (x:xs) = nonVar xs
 -- | How far to indent sub-errors
 errorIndent :: Int
 errorIndent = 8

@@ -313,6 +313,11 @@ Extra-source-files:
                        test/buffer001-disabled/run
                        test/buffer001-disabled/expected
 
+                       test/delab001/*.idr
+                       test/delab001/run
+                       test/delab001/expected
+                       test/delab001/input
+
                        test/dsl001/run
                        test/dsl001/*.idr
                        test/dsl001/expected
