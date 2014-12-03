@@ -205,6 +205,9 @@ pprintErr' i (CantUnify _ x_in y_in e sc s) =
                                         ++ zip nms (repeat False)) y)) <>
     case e of
       Msg "" -> empty
+        -- if the specific error is the same as the one we just printed,
+        -- there's no need to print it
+      CantUnify _ x_in' y_in' _ _ _ | x_in == x_in' && y_in == y_in' -> empty
       _ -> line <> line <> text "Specifically:" <>
            indented (pprintErr' i e) <>
            if (opt_errContext (idris_options i)) then showSc i sc else empty
