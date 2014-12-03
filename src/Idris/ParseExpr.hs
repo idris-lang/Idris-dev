@@ -874,12 +874,12 @@ pi syn =
                        symbol "->"
                        sc <- expr syn
                        return (bindList (PPi (TacImp [] Dynamic script)) xt sc))
-                 <|> (if implicitAllowed syn then do
-                            xt <- try (lchar '{' *> typeDeclList syn <* lchar '}')
-                            symbol "->"
-                            sc <- expr syn
-                            return (bindList (PPi (Imp opts st False)) xt sc)
-                       else do fail "no implicit arguments allowed here"))
+                 <|> (do xt <- lchar '{' *> typeDeclList syn <* lchar '}'
+                         symbol "->"
+                         sc <- expr syn
+                         if implicitAllowed syn
+                           then return (bindList (PPi (Imp opts st False)) xt sc)
+                           else fail "no implicit arguments allowed here"))
                  <|> (do x <- opExpr syn
                          (do symbol "->"
                              sc <- expr syn
