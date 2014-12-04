@@ -38,20 +38,22 @@ trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
                              (tryAll xs) True
                    else tryAll xs
 
-cantSolveGoal :: ElabD ()
+cantSolveGoal :: ElabD a
 cantSolveGoal = do g <- goal
                    env <- get_env
                    lift $ tfail $
                       CantSolveGoal g (map (\(n,b) -> (n, binderTy b)) env) 
 
-proofSearch :: Bool -> 
+proofSearch :: Bool -> -- recursive search (False for 'refine') 
                Bool -> -- invoked from a tactic proof. If so, making
                        -- new metavariables is meaningless, and there shoudl
                        -- be an error reported instead.
+               Bool -> -- ambiguity ok
+               Bool -> -- defer on failure
                Int -> -- maximum depth
                (PTerm -> ElabD ()) -> Maybe Name -> Name -> [Name] ->
                IState -> ElabD ()
-proofSearch False fromProver depth elab _ nroot [fn] ist
+proofSearch False fromProver ambigok deferonfail depth elab _ nroot [fn] ist
        = do -- get all possible versions of the name, take the first one that
             -- works
             let all_imps = lookupCtxtName fn (idris_implicits ist)
@@ -82,12 +84,43 @@ proofSearch False fromProver depth elab _ nroot [fn] ist
 
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (True, priority arg) -- try to get all of them by unification
-proofSearch rec fromProver maxDepth elab fn nroot hints ist 
-       = case lookupCtxt nroot (idris_tyinfodata ist) of
-              [TISolution ts] -> findInferredTy ts
-              _ -> psRec rec maxDepth
+proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist 
+       = do ty <- goal
+            argsok <- conArgsOK ty
+            if ambigok || argsok then
+               case lookupCtxt nroot (idris_tyinfodata ist) of
+                    [TISolution ts] -> findInferredTy ts
+                    _ -> psRec rec maxDepth
+               else autoArg (sUN "auto") -- not enough info in the type yet
   where
     findInferredTy (t : _) = elab (delab ist (toUN t)) 
+
+    conArgsOK ty
+       = let (f, as) = unApply ty in
+         case f of
+              P _ n _ -> case lookupCtxt n (idris_datatypes ist) of
+                              [t] -> do rs <- mapM (conReady as) (con_names t)
+                                        return (and rs)
+                              _ -> fail "Ambiguous name"
+              TType _ -> return True
+              _ -> fail "Not a data type"
+
+    conReady :: [Term] -> Name -> ElabD Bool
+    conReady as n 
+       = case lookupTyExact n (tt_ctxt ist) of
+              Just ty -> do let (_, cs) = unApply (getRetTy ty)
+                            -- if any metavariables in 'as' correspond to
+                            -- a constructor form in 'cs', then we're not
+                            -- ready to run auto yet. Otherwise, go for it
+                            hs <- get_holes
+                            return $ and (map (notHole hs) (zip as cs))
+              Nothing -> fail "Can't happen"
+
+    notHole hs (P _ n _, c)
+       | (P _ cn _, _) <- unApply c,
+         n `elem` hs && isConName cn (tt_ctxt ist) = False
+       | Constant _ <- c = not (n `elem` hs)
+    notHole _ _ = True
 
     toUN t@(P nt (MN i n) ty) 
        | ('_':xs) <- str n = t
@@ -140,8 +173,9 @@ proofSearch rec fromProver maxDepth elab fn nroot hints ist
                                    (psRec True d) "proof search local apply"
 
     -- Like type class resolution, but searching with constructors
-    tryCon d n =
-         do let imps = case lookupCtxtName n (idris_implicits ist) of
+    tryCon d n = 
+         do ty <- goal
+            let imps = case lookupCtxtName n (idris_implicits ist) of
                             [] -> []
                             [args] -> map isImp (snd args)
                             _ -> fail "Ambiguous name"
@@ -153,6 +187,7 @@ proofSearch rec fromProver maxDepth elab fn nroot hints ist
             hs' <- get_holes
             when (length ps < length ps') $ fail "Can't apply constructor"
             mapM_ (\ (_, h) -> do focus h
+                                  aty <- goal
                                   psRec True d) 
                   (filter (\ (x, y) -> not x) (zip (map fst imps) args))
             solve

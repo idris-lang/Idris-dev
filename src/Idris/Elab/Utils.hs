@@ -229,11 +229,11 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
 
     use n = do ns <- get; put (n : ns)
 
-    getUniqB env us (Let t v) = do getUniq env us t; getUniq env us v
-    getUniqB env us (Guess t v) = do getUniq env us t; getUniq env us v
-    getUniqB env us (Pi t v) = do getUniq env us t; getUniq env us v
-    getUniqB env us (NLet t v) = do getUniq env us t; getUniq env us v
-    getUniqB env us b = getUniq env us (binderTy b)
+    getUniqB env us (Let t v) = getUniq env us v
+    getUniqB env us (Guess t v) = getUniq env us v
+--     getUniqB env us (Pi t v) = do getUniq env us t; getUniq env us v
+    getUniqB env us (NLet t v) = getUniq env us v
+    getUniqB env us b = return () -- getUniq env us (binderTy b)
 
 -- In a functional application, return the names which are used
 -- directly in a static position

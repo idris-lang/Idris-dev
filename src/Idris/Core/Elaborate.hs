@@ -213,11 +213,25 @@ get_probs :: Elab' aux Fails
 get_probs = do ES p _ _ <- get
                return $! (problems (fst p))
 
+-- Return recently solved names (that is, the names solved since the
+-- last call to get_recents)
+get_recents :: Elab' aux [Name]
+get_recents = do ES (p, a) l prev <- get
+                 put (ES (p { recents = [] }, a) l prev)
+                 return (recents p)
+
 -- get the current goal type
 goal :: Elab' aux Type
 goal = do ES p _ _ <- get
           b <- lift $ goalAtFocus (fst p)
           return $! (binderTy b)
+
+is_guess :: Elab' aux Bool
+is_guess = do ES p _ _ <- get
+              b <- lift $ goalAtFocus (fst p)
+              case b of
+                   Guess _ _ -> return True
+                   _ -> return False
 
 -- Get the guess at the current hole, if there is one
 get_guess :: Elab' aux Type
@@ -261,6 +275,11 @@ checkInjective (tm, l, r) = do ctxt <- get_context
 get_instances :: Elab' aux [Name]
 get_instances = do ES p _ _ <- get
                    return $! (instances (fst p))
+
+-- get auto argument names
+get_autos :: Elab' aux [(Name, [Name])]
+get_autos = do ES p _ _ <- get
+               return $! (autos (fst p))
 
 -- given a desired hole name, return a unique hole name
 unique_hole = unique_hole' False
@@ -415,6 +434,9 @@ deferType n ty ns = processTactic' (DeferType n ty ns)
 
 instanceArg :: Name -> Elab' aux ()
 instanceArg n = processTactic' (Instance n)
+
+autoArg :: Name -> Elab' aux ()
+autoArg n = processTactic' (AutoArg n)
 
 setinj :: Name -> Elab' aux ()
 setinj n = processTactic' (SetInjective n)
@@ -712,6 +734,7 @@ try' t1 t2 proofSearch
              = -- traceWhen r (show err) $
                r || proofSearch
         recoverableErr (CantSolveGoal _ _) = False
+        recoverableErr (CantResolveAlts _) = False
         recoverableErr (ProofSearchFail (Msg _)) = True
         recoverableErr (ProofSearchFail _) = False
         recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
@@ -722,9 +745,10 @@ tryWhen :: Bool -> Elab' aux a -> Elab' aux a -> Elab' aux a
 tryWhen True a b = try a b
 tryWhen False a b = a
 
-
--- Try a selection of tactics. Exactly one must work, all others must fail
+-- Bool says whether it's okay to create new unification problems. If set
+-- to False, then the whole tactic fails if there are any new problems
 tryAll :: [(Elab' aux a, Name)] -> Elab' aux a
+tryAll [(x, _)] = x
 tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
   where
     cantResolve :: Elab' aux a
@@ -743,10 +767,10 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
             ps <- get_probs
             case prunStateT pmax True ps x s of
                 OK ((v, newps, probs), s') -> 
-                    do let cs' = if (newps < pmax)
-                                    then [do put s'; return $! v]
-                                    else (do put s'; return $! v) : cs
-                       tryAll' cs' newps f xs
+                      do let cs' = if (newps < pmax)
+                                      then [do put s'; return $! v]
+                                      else (do put s'; return $! v) : cs
+                         tryAll' cs' newps f xs
                 Error err -> do put s
 --                                 if (score err) < 100
                                 tryAll' cs pmax (better err f) xs

@@ -52,8 +52,11 @@ build ist info emode opts fn tm
          let inf = case lookupCtxt fn (idris_tyinfodata ist) of
                         [TIPartial] -> True
                         _ -> False
-         ivs <- get_instances
+
+         when (not pattern) $ solveAutos ist fn True
+
          hs <- get_holes
+         ivs <- get_instances
          ptm <- get_term
          -- Resolve remaining type classes. Two passes - first to get the
          -- default Num instances, second to clean up the rest
@@ -187,12 +190,21 @@ elab ist info emode opts fn tm
     elabE ina fc' t =
      --do g <- goal
         --trace ("Elaborating " ++ show t ++ " : " ++ show g) $
-     do ct <- insertCoerce ina t
+     do solved <- get_recents
+        as <- get_autos
+        -- If any of the autos use variables which have recently been solved,
+        -- have another go at solving them now.
+        mapM_ (\(a, ns) -> if any (\n -> n `elem` solved) ns
+                              then solveAuto ist fn False a
+                              else return ()) as
+     
+        ct <- insertCoerce ina t
         t' <- insertLazy ct
         g <- goal
         tm <- get_term
         ps <- get_probs
         hs <- get_holes
+
         --trace ("Elaborating " ++ show t' ++ " in " ++ show g
         --         ++ "\n" ++ show tm
         --         ++ "\nholes " ++ show hs
@@ -967,7 +979,8 @@ elab ist info emode opts fn tm
     elabArgs ist ina failed fc r f ((argName, holeName):ns) force (t : args)
         = elabArg argName holeName t
       where elabArg argName holeName t =
-              do now_elaborating fc f argName
+              do -- solveAutos ist fn False
+                 now_elaborating fc f argName
                  wrapErr f argName $ do
                    hs <- get_holes
                    tm <- get_term
@@ -1077,11 +1090,27 @@ findInstances ist t
             _ -> []
     | otherwise = []
 
+-- Try again to solve auto implicits
+solveAuto :: IState -> Name -> Bool -> Name -> ElabD ()
+solveAuto ist fn ambigok n
+           = do hs <- get_holes
+                when (n `elem` hs) $ do
+                  focus n
+                  g <- goal
+                  isg <- is_guess -- if it's a guess, we're working on it recursively, so stop
+                  when (not isg) $
+                    proofSearch' ist True ambigok 100 True Nothing fn []
+
+solveAutos :: IState -> Name -> Bool -> ElabD ()
+solveAutos ist fn ambigok
+           = do autos <- get_autos
+                mapM_ (solveAuto ist fn ambigok) (map fst autos)
+
 trivial' ist
     = trivial (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
-proofSearch' ist rec depth prv top n hints
+proofSearch' ist rec ambigok depth prv top n hints
     = do unifyProblems
-         proofSearch rec prv depth
+         proofSearch rec prv ambigok (not prv) depth
                      (elab ist toplevel ERHS [] (sMN 0 "tac")) top n hints ist
 
 resolveTC :: Bool -> Int -> Term -> Name -> IState -> ElabD ()
@@ -1334,7 +1363,7 @@ runTac autoSolve ist perhapsFC fn tac
     runT Trivial = do trivial' ist; when autoSolve solveAll
     runT TCInstance = runT (Exact (PResolveTC emptyFC))
     runT (ProofSearch rec prover depth top hints)
-         = do proofSearch' ist rec depth prover top fn hints
+         = do proofSearch' ist rec False depth prover top fn hints
               when autoSolve solveAll
     runT (Focus n) = focus n
     runT Solve = solve
