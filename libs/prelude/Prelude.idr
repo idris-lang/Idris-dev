@@ -217,11 +217,7 @@ instance Show a => Show (List a) where
         show' acc (x :: xs) = show' (acc ++ show x ++ ", ") xs
 
 instance Show a => Show (Vect n a) where
-    show xs = "[" ++ show' xs ++ "]" where
-        show' : Vect n a -> String
-        show' []        = ""
-        show' [x]       = show x
-        show' (x :: xs) = show x ++ ", " ++ show' xs
+    show = show . toList
 
 instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
