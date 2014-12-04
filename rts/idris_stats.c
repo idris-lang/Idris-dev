@@ -10,16 +10,16 @@ void print_stats(const Stats * stats) {
     clock_t mut     = total - stats->init_time - stats->gc_time - stats->exit_time;
     double  mut_sec = (double)mut   / CLOCKS_PER_SEC;
 
-    int avg_chunk = 0;
+    uint64_t avg_chunk = 0;
     if (stats->alloc_count > 0) {
-        avg_chunk = (int)((double)stats->allocations / (double)stats->alloc_count);
+      avg_chunk = (uint64_t)((double)stats->allocations / (double)stats->alloc_count);
     }
 
-    int alloc_rate = 0;
+    uint64_t alloc_rate = 0;
     if (mut > 0) {
-        alloc_rate  = (int)((double)(stats->allocations) / mut_sec);
+      alloc_rate  = (uint64_t)((double)(stats->allocations) / mut_sec);
     }
-    
+
     double gc_percent = 0.0;
     double productivity = 0.0;
     if (total > 0) {
@@ -29,11 +29,11 @@ void print_stats(const Stats * stats) {
 
     setlocale(LC_NUMERIC, "");
     printf("\n");
-    printf("%'20d bytes allocated in the heap\n",  stats->allocations);
-    printf("%'20d bytes copied during GC\n",       stats->copied);
-    printf("%'20d maximum heap size\n",            stats->max_heap_size);
-    printf("%'20d chunks allocated in the heap\n", stats->alloc_count);
-    printf("%'20d average chunk size\n\n",         avg_chunk);
+    printf("%'20" PRIu64 " bytes allocated in the heap\n",  stats->allocations);
+    printf("%'20" PRIu64 " bytes copied during GC\n",       stats->copied);
+    printf("%'20" PRIu32 " maximum heap size\n",            stats->max_heap_size);
+    printf("%'20" PRIu32 " chunks allocated in the heap\n", stats->alloc_count);
+    printf("%'20" PRIu64 " average chunk size\n\n",         avg_chunk);
 
     printf("GC called %d times\n\n", stats->collections);
 
@@ -45,7 +45,7 @@ void print_stats(const Stats * stats) {
 
     printf("%%GC   time: %.2f%%\n\n", gc_percent);
 
-    printf("Alloc rate %'d bytes per MUT sec\n\n", alloc_rate);
+    printf("Alloc rate %'" PRIu64 " bytes per MUT sec\n\n", alloc_rate);
 
     printf("Productivity %.2f%%\n", productivity);
 }
