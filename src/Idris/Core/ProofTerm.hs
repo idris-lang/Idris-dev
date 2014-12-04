@@ -180,8 +180,8 @@ updateEnv ns ((n, b) : env) = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns e
 
 updateSolvedPath [] t = t
 updateSolvedPath ns Top = Top
-updateSolvedPath ns (AppL p r) = AppL p (updateSolvedTerm ns r)
-updateSolvedPath ns (AppR l p) = AppR (updateSolvedTerm ns l) p
+updateSolvedPath ns (AppL p r) = AppL (updateSolvedPath ns p) (updateSolvedTerm ns r)
+updateSolvedPath ns (AppR l p) = AppR (updateSolvedTerm ns l) (updateSolvedPath ns p)
 updateSolvedPath ns (InBind n b sc) 
     = InBind n (updateSolvedPathB b) (updateSolvedTerm ns sc)
   where

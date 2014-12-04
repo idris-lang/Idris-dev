@@ -1360,23 +1360,24 @@ orderPats tm = op [] tm
 
     sortP ps = pick [] (reverse ps)
 
-    namesIn (P _ n _) = [n]
-    namesIn (Bind n b t) = nub $ nb b ++ (namesIn t \\ [n])
-      where nb (Let   t v) = nub (namesIn t) ++ nub (namesIn v)
-            nb (Guess t v) = nub (namesIn t) ++ nub (namesIn v)
-            nb t = namesIn (binderTy t)
-    namesIn (App f a) = nub (namesIn f ++ namesIn a)
-    namesIn _ = []
-
     pick acc [] = reverse acc
     pick acc ((n, t) : ps) = pick (insert n t acc) ps
 
     insert n t [] = [(n, t)]
     insert n t ((n',t') : ps)
-        | n `elem` (namesIn (binderTy t') ++
-                      concatMap namesIn (map (binderTy . snd) ps))
+        | n `elem` (refsIn (binderTy t') ++
+                      concatMap refsIn (map (binderTy . snd) ps))
             = (n', t') : insert n t ps
         | otherwise = (n,t):(n',t'):ps
+
+refsIn :: TT Name -> [Name]
+refsIn (P _ n _) = [n]
+refsIn (Bind n b t) = nub $ nb b ++ (refsIn t \\ [n])
+  where nb (Let   t v) = nub (refsIn t) ++ nub (refsIn v)
+        nb (Guess t v) = nub (refsIn t) ++ nub (refsIn v)
+        nb t = refsIn (binderTy t)
+refsIn (App f a) = nub (refsIn f ++ refsIn a)
+refsIn _ = []
 
 -- Make sure all the pattern bindings are as far out as possible
 liftPats :: Term -> Term
