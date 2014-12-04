@@ -3,9 +3,3 @@ Can't unify
         P x
 with
         P y
-
-Specifically:
-        Can't unify
-                P x
-        with
-                P y

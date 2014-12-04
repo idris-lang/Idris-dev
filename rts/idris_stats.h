@@ -3,16 +3,18 @@
 
 #ifdef IDRIS_ENABLE_STATS
 #include <time.h>
+#include <inttypes.h>
+#include <stdint.h>
 #endif
 
 
 // TODO: measure user time, exclusive/inclusive stats
 typedef struct {
 #ifdef IDRIS_ENABLE_STATS
-    int allocations;       // Size of allocated space in bytes for all execution time.
-    int alloc_count;       // How many times alloc is called.
-    int copied;            // Size of space copied during GC.
-    int max_heap_size;     // Maximum heap size achieved.
+    uint64_t allocations;       // Size of allocated space in bytes for all execution time.
+    uint32_t alloc_count;       // How many times alloc is called.
+    uint64_t copied;            // Size of space copied during GC.
+    uint32_t max_heap_size;     // Maximum heap size achieved.
 
     clock_t init_time;     // Time spent for vm initialization.
     clock_t exit_time;     // Time spent for vm termination.
@@ -20,7 +22,7 @@ typedef struct {
     clock_t max_gc_pause;  // Time spent for longest gc.
     clock_t start_time;    // Time of rts entry point.
 #endif // IDRIS_ENABLE_STATS
-    int collections;       // How many times gc called.
+    uint32_t collections;       // How many times gc called.
 } Stats; // without start time it's a monoid, can we remove start_time it somehow?
 
 void print_stats(const Stats * stats);
@@ -35,7 +37,7 @@ void aggregate_stats(Stats * stats1, const Stats * stats2);
 
 #define STATS_INIT_STATS(stats)                 \
     memset(&stats, 0, sizeof(Stats));           \
-    stats.start_time  = clock();                
+    stats.start_time  = clock();
 
 #define STATS_ALLOC(stats, size)                \
     stats.allocations += size;                  \
@@ -60,8 +62,8 @@ void aggregate_stats(Stats * stats1, const Stats * stats2);
 
 #else
 #define STATS_INIT_STATS(stats) memset(&stats, 0, sizeof(Stats));
-#define STATS_ENTER_INIT(stats) 
-#define STATS_LEAVE_INIT(stats) 
+#define STATS_ENTER_INIT(stats)
+#define STATS_LEAVE_INIT(stats)
 #define STATS_ENTER_EXIT(stats)
 #define STATS_LEAVE_EXIT(stats)
 #define STATS_ALLOC(stats, size)

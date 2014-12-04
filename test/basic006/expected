@@ -4,11 +4,5 @@ When elaborating an application of function Prelude.List.reverse:
                 Vect n a
         with
                 List a
-        
-        Specifically:
-                Can't unify
-                        Vect n a
-                with
-                        List a
 [3, 2, 1]
 "Number 42"
