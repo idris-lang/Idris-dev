@@ -37,6 +37,8 @@ import qualified Data.ByteString.UTF8 as UTF8
 
 import Debug.Trace
 
+type RecordCtor = (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, PTerm, FC, [Name])
+
 {- |Parses a record type declaration
 Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
@@ -58,7 +60,7 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
                 ty <- typeExpr (allowImp syn)
                 let tyn = expandNS syn tyn_in
                 reserved "where"
-                (cdoc, cargDocs, cn, cty, _, _) <- indentedBlockS (constructor syn)
+                (cdoc, cargDocs, cn, cty, _, _) <- indentedBlockS (agdaStyleBody syn tyn <|> constructor syn)
                 accData acc tyn [cn]
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
@@ -75,6 +77,34 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
     toFreeze :: Maybe Accessibility -> Maybe Accessibility
     toFreeze (Just Frozen) = Just Hidden
     toFreeze x = x
+    
+    agdaStyleBody :: SyntaxInfo -> Name -> IdrisParser RecordCtor
+    agdaStyleBody syn recName = do
+        fc <- getFC
+        ctorName <- reserved "constructor" *> fnName
+
+        {- Optional constructor name clashes with the old-style syntax
+         - when the name is /not/ given.
+         -
+        ctorName <- option
+            (sMN 0 $ show recName)
+            (reserved "constructor" *> fnName)  -- is this correct?
+        -}
+
+        fields <- many $ do
+            (doc, argDocs) <- option noDocs docComment
+            n <- fnName <* lchar ':'
+            t <- typeExpr (allowImp syn)
+            return (n, t, doc, argDocs)
+
+        let fieldDocs = [(n, doc) | (n, t, doc, argDocs) <- fields]
+        let target = PApp fc (PRef fc recName) []  -- TODO
+        let ctorType = mkCtorType target [(n, t) | (n, t, doc, argDocs) <- fields]
+
+        return (emptyDocstring, [], ctorName, ctorType, fc, [])
+
+    mkCtorType :: PTerm -> [(Name, PTerm)] -> PTerm
+    mkCtorType = foldr (uncurry $ PPi expl_param)
 
 {- | Parses data declaration type (normal or codata)
 DataI ::= 'data' | 'codata';
