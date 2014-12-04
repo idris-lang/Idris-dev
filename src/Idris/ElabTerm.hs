@@ -348,7 +348,8 @@ elab ist info emode opts fn tm
                                     try' e1 (trySeq' e1 xs) True
               trySeq' deferr [] = proofFail deferr
               trySeq' deferr (x : xs)
-                  = try' (elab' ina fc x) (trySeq' deferr xs) True
+                  = try' (do elab' ina fc x
+                             solveAutos ist fn False) (trySeq' deferr xs) True
     elab' ina _ (PPatvar fc n) | bindfree = do patvar n; -- update_term liftPats
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
