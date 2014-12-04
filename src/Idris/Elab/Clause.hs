@@ -828,6 +828,13 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         let cwvaltyN = explicitNames (normalise ctxt [] cwvalty)
         let cwvalN = explicitNames (normalise ctxt [] cwval)
         logLvl 3 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
+        -- We're going to assume the with type is not a function shortly,
+        -- so report an error if it is (you can't match on a function anyway
+        -- so this doesn't lose anything)
+        case getArgTys cwvaltyN of
+             [] -> return ()
+             (_:_) -> ierror $ At fc (WithFnType cwvalty)  
+
         let pvars = map fst (getPBtys cwvalty)
         -- we need the unelaborated term to get the names it depends on
         -- rather than a de Bruijn index.

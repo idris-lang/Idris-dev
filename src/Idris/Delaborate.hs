@@ -260,6 +260,8 @@ pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
                                     align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i) . annName) as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
+pprintErr' i (WithFnType ty) =
+  text "Can't match on a function: type is" <+> annTm ty (pprintTerm i (delab i ty))
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i UniverseError = text "Universe inconsistency"
 pprintErr' i (UniqueError NullType n)

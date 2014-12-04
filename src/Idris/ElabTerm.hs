@@ -2118,6 +2118,7 @@ reflectErr (NotEquality t t') =
 reflectErr (TooManyArguments n) = raw_apply (Var $ reflErrName "TooManyArguments") [reflectName n]
 reflectErr (CantIntroduce t) = raw_apply (Var $ reflErrName "CantIntroduce") [reflect t]
 reflectErr (NoSuchVariable n) = raw_apply (Var $ reflErrName "NoSuchVariable") [reflectName n]
+reflectErr (WithFnType t) = raw_apply (Var $ reflErrName "WithFnType") [reflect t]
 reflectErr (NoTypeDecl n) = raw_apply (Var $ reflErrName "NoTypeDecl") [reflectName n]
 reflectErr (NotInjective t1 t2 t3) =
   raw_apply (Var $ reflErrName "NotInjective")

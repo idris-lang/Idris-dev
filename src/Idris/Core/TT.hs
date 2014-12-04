@@ -136,6 +136,7 @@ data Err' t
           | TooManyArguments Name
           | CantIntroduce t
           | NoSuchVariable Name
+          | WithFnType t
           | NoTypeDecl Name
           | NotInjective t t t
           | CantResolve t
@@ -1119,6 +1120,8 @@ bindTyArgs b xs = bindAll (map (\ (n, ty) -> (n, b ty)) xs)
 -- | Return a list of pairs of the names of the outermost 'Pi'-bound
 -- variables in the given term, together with their types.
 getArgTys :: TT n -> [(n, TT n)]
+getArgTys (Bind n (PVar _) sc) = getArgTys sc
+getArgTys (Bind n (PVTy _) sc) = getArgTys sc
 getArgTys (Bind n (Pi t _) sc) = (n, t) : getArgTys sc
 getArgTys _ = []
 

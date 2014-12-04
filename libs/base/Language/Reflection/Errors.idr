@@ -19,6 +19,7 @@ data Err = Msg String
          | TooManyArguments TTName
          | CantIntroduce TT
          | NoSuchVariable TTName
+         | WithFnType TT
          | NoTypeDecl TTName
          | NotInjective TT TT TT
          | CantResolve TT

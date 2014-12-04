@@ -261,6 +261,7 @@ instance Show Err where
   show (TooManyArguments n) = "TooManyArguments " ++ show n
   show (CantIntroduce tm) = "CantIntroduce " ++ show tm
   show (NoSuchVariable n) = "NoSuchVariable " ++ show n
+  show (WithFnType tm) = "WithFnType " ++ show tm
   show (NoTypeDecl n) = "NoTypeDecl " ++ show n
   show (NotInjective tm tm' x) = "NotInjective " ++ show tm ++ " " ++ show tm'
   show (CantResolve tm) = "CantResolve " ++ show tm
