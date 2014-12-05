@@ -379,6 +379,7 @@ addImplicitDiffs x y
                                    getTm = b' } : bs')
                          else (a { getTm = a' } : as',
                                b { getTm = b' } : bs')
+             addShows xs ys = (xs, ys)
     addI (PLam n a b) (PLam n' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
