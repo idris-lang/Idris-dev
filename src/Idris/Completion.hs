@@ -29,6 +29,8 @@ data TacticArg = NameTArg -- ^ Names: n1, n2, n3, ... n
                | ExprTArg
                | AltsTArg
 
+-- The FIXMEs are Issue #1766 in the issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1766
 -- | A list of available tactics and their argument requirements
 tacticArgs :: [(String, Maybe TacticArg)]
 tacticArgs = [ ("intro", Nothing) -- FIXME syntax for intro (fresh name)
@@ -67,6 +69,8 @@ nameString (NS n _)     = nameString n
 nameString _            = Nothing
 
 -- FIXME: Respect module imports
+-- Issue #1767 in the issue tracker.
+--    https://github.com/idris-lang/Idris-dev/issues/1767
 -- | Get the user-visible names from the current interpreter state.
 names :: Idris [String]
 names = do i <- get
@@ -156,6 +160,8 @@ completeColour (prev, next) = case words (reverse prev) of
           completeColourFormat = let getCmpl = completeWith (colours ++ formats) in
                                  completeWord Nothing " \t" (return . getCmpl)
 
+-- The FIXMEs are Issue #1768 on the issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1768
 -- | Get the completion function for a particular command
 completeCmd :: String -> CompletionFunc Idris
 completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lookupInHelp cmd
@@ -183,6 +189,8 @@ replCompletion (prev, next) = case firstWord of
     where firstWord = fst $ break isWhitespace $ dropWhile isWhitespace $ reverse prev
 
 
+-- The TODOs are Issue #1769 on the issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1769
 completeTactic :: [String] -> String -> CompletionFunc Idris
 completeTactic as tac (prev, next) = fromMaybe completeTacName . fmap completeArg $
                                      lookup tac tacticArgs
