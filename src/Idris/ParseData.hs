@@ -94,6 +94,7 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
                     t <- typeExpr (allowImp syn)
                     return (n, t, expl)
 
+            -- todo: reuse the implicit syntax from elsewhere to support tacimps
             let impField = do
                     symbol "{"
                     n <- fnName <* lchar ':'
@@ -106,14 +107,19 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
             return (n, t, plicity, doc, argDocs)
 
         let ctorDoc' = annotate syn ist ctorDoc
-        let fieldDocs = [(n, annotate syn ist doc) | (n, t, p, doc, argDocs) <- fields]
-        let target = PApp fc (PRef fc recName) (getParams fc recType)
-        let ctorType = mkCtorType target [(p, n, t) | (n, t, p, doc, argDocs) <- fields]
+            fieldDocs = [(n, annotate syn ist doc) | (n, t, p, doc, argDocs) <- fields]
+            target = PApp fc (PRef fc recName) (getParams fc recType)
+            ctorType = mkCtorType target [(p, n, t) | (n, t, p, doc, argDocs) <- fields]
+            ctorType' = replaceTarget ctorType recType
 
-        return (ctorDoc', fieldDocs, ctorName, ctorType, fc, [])
+        return (ctorDoc', fieldDocs, ctorName, ctorType', fc, [])
 
     mkCtorType :: PTerm -> [(Plicity, Name, PTerm)] -> PTerm
     mkCtorType = foldr $ uncurry3 PPi
+
+    replaceTarget :: PTerm -> PTerm -> PTerm
+    replaceTarget trg (PPi p n t ts) = PPi p n t (replaceTarget trg ts)
+    replaceTarget trg _ = trg
 
     getParams :: FC -> PTerm -> [PArg]
     getParams fc (PPi (Exp os _ _) n t ts) = (PExp 0 os n $ PRef fc n) : getParams fc ts
