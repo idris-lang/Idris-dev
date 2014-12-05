@@ -144,7 +144,7 @@ instance Pretty ProofState OutputAnnotation where
 holeName i = sMN i "hole"
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, _, _, _, t) -> (t, x, y)) fs)
+qshow fs = show (map (\ (x, y, hs, _, _, _, t) -> (t, x, y, hs)) fs)
 
 match_unify' :: Context -> Env -> TT Name -> TT Name ->
                 StateT TState TC [(Name, TT Name)]
@@ -168,7 +168,8 @@ match_unify' ctxt env topx topy =
                         return u
             Error e -> traceWhen (unifylog ps)
                          ("No match " ++ show e) $
-                        do put (ps { problems = (topx, topy, env, e, while, Match) :
+                        do put (ps { problems = (topx, topy, True, 
+                                                 env, e, while, Match) :
                                                  problems ps })
                            return []
 --       traceWhen (unifylog ps)
@@ -186,7 +187,7 @@ mergeSolutions env ns = merge [] ns
           | Just t' <- lookup n ns
               = do ps <- get
                    let probs = problems ps
-                   put (ps { problems = probs ++ [(t,t',env,Msg "New problem",
+                   put (ps { problems = probs ++ [(t,t',True,env,Msg "New problem",
                                                      [], Unify)] })
                    merge acc ns
           | otherwise = merge ((n, t): acc) ns
@@ -225,12 +226,8 @@ unify' ctxt env topx topy =
            -- problem for each.
            uns <- mergeSolutions env (u' ++ ns)
            ps <- get
-           let (ns', probs') = updateProblems (context ps) uns
-                                              (fails ++ problems ps)
-                                              (injective ps)
-                                              (holes ps)
-                                              (map fst (notunified ps))
-           let (notu', probs_notu) = mergeNotunified env (notu ++ notunified ps)
+           let (ns', probs') = updateProblems ps uns (fails ++ problems ps)
+           let (notu', probs_notu) = mergeNotunified env (holes ps) (notu ++ notunified ps)
            traceWhen (unifylog ps)
             ("Now solved: " ++ show ns' ++
              "\nNow problems: " ++ qshow (probs' ++ probs_notu)) $
@@ -780,7 +777,8 @@ keepGiven du (u : us) hs = keepGiven du us hs
 
 updateEnv [] e = e
 updateEnv ns [] = []
-updateEnv ns ((n, b) : env) = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns env
+updateEnv ns ((n, b) : env) 
+   = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns env
 
 updateError [] err = err
 updateError ns (At f e) = At f (updateError ns e)
@@ -796,13 +794,13 @@ solveInProblems x val ((l, r, env, err) : ps)
    = ((psubst x val l, psubst x val r,
        updateEnv [(x, val)] env, err) : solveInProblems x val ps)
 
-mergeNotunified :: Env -> [(Name, Term)] -> ([(Name, Term)], Fails)
-mergeNotunified env ns = mnu ns [] [] where
+mergeNotunified :: Env -> [Name] -> [(Name, Term)] -> ([(Name, Term)], Fails)
+mergeNotunified env holes ns = mnu ns [] [] where
   mnu [] ns_acc ps_acc = (reverse ns_acc, reverse ps_acc)
   mnu ((n, t):ns) ns_acc ps_acc
       | Just t' <- lookup n ns, t /= t'
              = mnu ns ((n,t') : ns_acc)
-                      ((t,t',env,CantUnify True t t' (Msg "") [] 0, [],Match) : ps_acc)
+                      ((t,t',True, env,CantUnify True t t' (Msg "") [] 0, [],Match) : ps_acc)
       | otherwise = mnu ns ((n,t) : ns_acc) ps_acc
 
 updateNotunified [] nu = nu
@@ -811,42 +809,53 @@ updateNotunified ns nu = up nu where
   up ((n, t) : nus) = let t' = updateSolvedTerm ns t in
                           ((n, t') : up nus)
 
--- FIXME: Why not just pass the whole proof state?
--- Issue #1716 on the issue tracker.
--- https://github.com/idris-lang/Idris-dev/issues/1716
-updateProblems :: Context -> [(Name, TT Name)] -> Fails -> [Name] -> [Name] -> [Name]
-               -> ([(Name, TT Name)], Fails)
+updateProblems :: ProofState -> [(Name, TT Name)] -> Fails 
+                    -> ([(Name, TT Name)], Fails)
 -- updateProblems ctxt [] ps inj holes = ([], ps)
-updateProblems ctxt ns ps inj holes usupp = up ns ps where
+updateProblems ps updates probs = up updates probs where
+  hs = holes ps
+  inj = injective ps
+  ctxt = context ps
+  usupp = map fst (notunified ps)
+
   up ns [] = (ns, [])
-  up ns ((x, y, env, err, while, um) : ps) =
-    let x' = updateSolvedTerm ns x
-        y' = updateSolvedTerm ns y
+  up ns (prob@(x, y, ready, env, err, while, um) : ps) =
+    let (x', newx) = updateSolvedTerm' ns x
+        (y', newy) = updateSolvedTerm' ns y
         err' = updateError ns err
         env' = updateEnv ns env in
---          trace ("Updating " ++ show (x',y')) $
-          case unify ctxt env' x' y' inj holes usupp while of
-            OK (v, []) -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
+          if newx || newy || ready || 
+             any (\n -> n `elem` inj) (refsIn x ++ refsIn y) then 
+            case unify ctxt env' x' y' inj hs usupp while of
+                 OK (v, []) -> -- trace ("DID " ++ show (x',y',ready,v)) $
                                up (ns ++ v) ps
-            e -> -- trace ("Failed " ++ show e) $
-                  let (ns', ps') = up ns ps in
-                     (ns', (x',y',env',err', while, um) : ps')
+                 e -> -- trace ("FAILED " ++ show (x',y',ready,e)) $
+                       let (ns', ps') = up ns ps in
+                           (ns', (x',y', False, env',err', while, um) : ps')
+            else -- trace ("SKIPPING " ++ show (x,y,ready)) $
+                 let (ns', ps') = up ns ps in
+                     (ns', (x',y', False, env',err', while, um) : ps')
 
 -- attempt to solve remaining problems with match_unify
--- matchProblems :: Bool -> Elab' aux ()
-matchProblems all ns ctxt ps inj holes = up ns ps where
+matchProblems :: Bool -> ProofState -> [(Name, TT Name)] -> Fails 
+                    -> ([(Name, TT Name)], Fails)
+matchProblems all ps updates probs = up updates probs where
+  hs = holes ps
+  inj = injective ps
+  ctxt = context ps
+
   up ns [] = (ns, [])
-  up ns ((x, y, env, err, while, um) : ps)
+  up ns ((x, y, ready, env, err, while, um) : ps)
        | all || um == Match =
     let x' = updateSolvedTerm ns x
         y' = updateSolvedTerm ns y
         err' = updateError ns err
         env' = updateEnv ns env in
-        case match_unify ctxt env' x' y' inj holes while of
+        case match_unify ctxt env' x' y' inj hs while of
             OK v -> -- trace ("Added " ++ show v ++ " from " ++ show (x', y')) $
                                up (ns ++ v) ps
             _ -> let (ns', ps') = up ns ps in
-                     (ns', (x', y', env', err', while, um) : ps')
+                     (ns', (x', y', True, env', err', while, um) : ps')
   up ns (p : ps) = let (ns', ps') = up ns ps in
                        (ns', p : ps')
 
@@ -865,9 +874,7 @@ processTactic EndUnify ps
     = let (h, ns_in) = unified ps
           ns = dropGiven (dontunify ps) ns_in (holes ps)
           ns' = map (\ (n, t) -> (n, updateSolvedTerm ns t)) ns
-          (ns'', probs') = updateProblems (context ps) ns' (problems ps)
-                                          (injective ps) (holes ps)
-                                          (map fst (notunified ps))
+          (ns'', probs') = updateProblems ps ns' (problems ps)
           tm' = updateSolved ns'' (pterm ps) in
           traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
             return (ps { pterm = tm',
@@ -890,11 +897,7 @@ processTactic (ComputeLet n) ps
                               computeLet (context ps) n
                                          (getProofTerm (pterm ps)) }, "")
 processTactic UnifyProblems ps
-    = let (ns', probs') = updateProblems (context ps) []
-                                         (problems ps)
-                                         (injective ps)
-                                         (holes ps)
-                                         (map fst (notunified ps))
+    = let (ns', probs') = updateProblems ps [] (problems ps)
           pterm' = updateSolved ns' (pterm ps) in
       traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns')) $
         return (ps { pterm = pterm', solved = Nothing, problems = probs',
@@ -903,14 +906,8 @@ processTactic UnifyProblems ps
                      recents = recents ps ++ map fst ns',
                      holes = holes ps \\ (map fst ns') }, plog ps)
 processTactic (MatchProblems all) ps
-    = let (ns', probs') = matchProblems all [] (context ps)
-                                            (problems ps)
-                                            (injective ps)
-                                            (holes ps)
-          (ns'', probs'') = matchProblems all ns' (context ps)
-                                           probs'
-                                           (injective ps)
-                                           (holes ps)
+    = let (ns', probs') = matchProblems all ps [] (problems ps)
+          (ns'', probs'') = matchProblems all ps ns' probs'
           pterm' = updateSolved ns'' (pterm ps) in
        traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
         return (ps { pterm = pterm', solved = Nothing, problems = probs'',
@@ -926,11 +923,7 @@ processTactic t ps
                                 = case solved ps' of
                                     Just s -> traceWhen (unifylog ps')
                                                 ("SOLVED " ++ show s) $
-                                                updateProblems (context ps')
-                                                      [s] (problems ps')
-                                                      (injective ps')
-                                                      (holes ps')
-                                                      (map fst (notunified ps))
+                                                updateProblems ps [s] (problems ps')
                                     _ -> ([], problems ps')
                      -- rechecking problems may find more solutions, so
                      -- apply them here

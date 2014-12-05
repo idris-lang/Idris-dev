@@ -111,7 +111,7 @@ elabStep st e = case runStateT eCheck st of
                                   ctxt <- get_context
                                   lift $ check ctxt [] (forget tm)
                                   return res
-                         ((_,_,_,e,_,_):_) -> lift $ Error e
+                         ((_,_,_,_,e,_,_):_) -> lift $ Error e
 
 dumpState :: IState -> ProofState -> Idris ()
 dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) =

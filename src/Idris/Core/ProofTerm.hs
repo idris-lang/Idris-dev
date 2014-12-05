@@ -5,7 +5,7 @@
    evaluation/checking inside the proof system, etc. --}
 
 module Idris.Core.ProofTerm(ProofTerm, Goal(..), mkProofTerm, getProofTerm,
-                            updateSolved, updateSolvedTerm, 
+                            updateSolved, updateSolvedTerm, updateSolvedTerm',
                             bound_in, bound_in_term, refocus,
                             Hole, RunTactic',
                             goal, atHole) where
@@ -124,13 +124,15 @@ hole (Guess _ _) = True
 hole _           = False
 
 updateSolvedTerm :: [(Name, Term)] -> Term -> Term 
-updateSolvedTerm [] x = x
-updateSolvedTerm xs x = -- updateSolved' xs x where
+updateSolvedTerm xs x = fst $ updateSolvedTerm' xs x
+
+updateSolvedTerm' [] x = (x, False)
+updateSolvedTerm' xs x = -- updateSolved' xs x where
 -- This version below saves allocations, because it doesn't need to reallocate
 -- the term if there are no updates to do. 
 -- The Bool is ugly, and probably 'Maybe' would be less ugly, but >>= is
 -- the wrong combinator. Feel free to tidy up as long as it's still as cheap :).
-                           fst $ updateSolved' xs x where
+                           updateSolved' xs x where
     updateSolved' [] x = (x, False)
     updateSolved' xs (Bind n (Hole ty) t)
         | Just v <- lookup n xs 

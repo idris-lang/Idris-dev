@@ -29,11 +29,13 @@ data FailContext = FailContext { fail_sourceloc :: FC,
   deriving (Eq, Show)
 
 type Injs = [(TT Name, TT Name, TT Name)]
-type Fails = [(TT Name, TT Name, Env, Err, [FailContext], FailAt)]
+type Fails = [(TT Name, TT Name, -- unification error
+               Bool, -- ready to retry yet
+               Env, Err, [FailContext], FailAt)]
 
 unrecoverable :: Fails -> Bool
 unrecoverable = any bad
-  where bad (_,_,_, err, _, _) = unrec err
+  where bad (_,_,_,_, err, _, _) = unrec err
 
         unrec (CantUnify r _ _ _ _ _) = not r
         unrec (At _ e) = unrec e
@@ -129,7 +131,7 @@ match_unify ctxt env topx topy inj holes from =
                          let err = cantUnify from r
                                      topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
-                           else do put (UI s ((x, y, env, err, from, Match) : f))
+                           else do put (UI s ((x, y, True, env, err, from, Match) : f))
                                    lift $ tfail err
 
 
@@ -144,7 +146,9 @@ match_unify ctxt env topx topy inj holes from =
                        let err = cantUnify from r topx topy
                                    (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
                                    (errEnv env) s
-                       put (UI s ((binderTy x, binderTy y, env, err, from, Match) : f))
+                       put (UI s ((binderTy x, binderTy y, 
+                                   False,
+                                   env, err, from, Match) : f))
                        return []
 
     notHole (Hole _) = False
@@ -162,7 +166,7 @@ match_unify ctxt env topx topy inj holes from =
                                            (normalise ctxt env y)
                        let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
-                       put (UI s ((x, y, env, err, from, Match) : f))
+                       put (UI s ((x, y, True, env, err, from, Match) : f))
                        lift $ tfail err
     combine bnames as [] = return as
     combine bnames as ((n, t) : bs)
@@ -446,7 +450,7 @@ unify ctxt env topx topy inj holes usersupp from =
                          let err = cantUnify from r
                                      topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
                          if (not r) then lift $ tfail err
-                           else do put (UI s ((x, y, env, err, from, Unify) : f))
+                           else do put (UI s ((x, y, True, env, err, from, Unify) : f))
                                    return [] -- lift $ tfail err
 
     unApp fn bnames appx@(App fx ax) appy@(App fy ay)
@@ -540,7 +544,7 @@ unify ctxt env topx topy inj holes usersupp from =
                        let r = recoverable (normalise ctxt env x) (normalise ctxt env y)
                        let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
-                       put (UI s ((topx, topy, env, err, from, Unify) : f))
+                       put (UI s ((topx, topy, True, env, err, from, Unify) : f))
                        return []
 
     -- shortcut failure, if we *know* nothing can fix it
@@ -548,7 +552,7 @@ unify ctxt env topx topy inj holes usersupp from =
                        let r = recoverable (normalise ctxt env x) (normalise ctxt env y)
                        let err = cantUnify from r
                                    topx topy (CantUnify r x y (Msg "") (errEnv env) s) (errEnv env) s
-                       put (UI s ((topx, topy, env, err, from, Unify) : f))
+                       put (UI s ((topx, topy, True, env, err, from, Unify) : f))
                        lift $ tfail err
 
 
@@ -572,7 +576,9 @@ unify ctxt env topx topy inj holes usersupp from =
                        let err = cantUnify from r topx topy
                                    (CantUnify r (binderTy x) (binderTy y) (Msg "") (errEnv env) s)
                                    (errEnv env) s
-                       put (UI s ((binderTy x, binderTy y, env, err, from, Unify) : f))
+                       put (UI s ((binderTy x, binderTy y, 
+                                   False,
+                                   env, err, from, Unify) : f))
                        return [] -- lift $ tfail err
 
     checkCycle ns p@(x, P _ _ _) = return [p]
