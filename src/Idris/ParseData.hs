@@ -83,9 +83,7 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
         ist <- get
         fc  <- getFC
 
-        -- we discard the second component because
-        -- fields will be described in the following block
-        (ctorDoc, _) <- option noDocs docComment
+        let ctorDoc = parseDocstring . T.pack $ "Constructor of " ++ show recName
         ctorName <- reserved "constructor" *> fnName
 
         fields <- many $ do
@@ -103,7 +101,7 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
                     symbol "}"
                     return (n, t, impl)
 
-            (n, t, plicity) <- impField <$> expField
+            (n, t, plicity) <- impField <|> expField
 
             return (n, t, plicity, doc, argDocs)
 
