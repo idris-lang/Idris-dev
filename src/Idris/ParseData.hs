@@ -60,7 +60,7 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
                 ty <- typeExpr (allowImp syn)
                 let tyn = expandNS syn tyn_in
                 reserved "where"
-                (cdoc, cargDocs, cn, cty, _, _) <- indentedBlockS (agdaStyleBody syn tyn <|> constructor syn)
+                (cdoc, cargDocs, cn, cty, _, _) <- indentedBlockS (agdaStyleBody syn tyn ty <|> constructor syn)
                 accData acc tyn [cn]
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
@@ -78,33 +78,55 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
     toFreeze (Just Frozen) = Just Hidden
     toFreeze x = x
     
-    agdaStyleBody :: SyntaxInfo -> Name -> IdrisParser RecordCtor
-    agdaStyleBody syn recName = do
-        fc <- getFC
-        ctorName <- reserved "constructor" *> fnName
+    agdaStyleBody :: SyntaxInfo -> Name -> PTerm -> IdrisParser RecordCtor
+    agdaStyleBody syn recName recType = do
+        ist <- get
+        fc  <- getFC
 
-        {- Optional constructor name clashes with the old-style syntax
-         - when the name is /not/ given.
-         -
-        ctorName <- option
-            (sMN 0 $ show recName)
-            (reserved "constructor" *> fnName)  -- is this correct?
-        -}
+        -- we discard the second component because
+        -- fields will be described in the following block
+        (ctorDoc, _) <- option noDocs docComment
+        ctorName <- reserved "constructor" *> fnName
 
         fields <- many $ do
             (doc, argDocs) <- option noDocs docComment
-            n <- fnName <* lchar ':'
-            t <- typeExpr (allowImp syn)
-            return (n, t, doc, argDocs)
 
-        let fieldDocs = [(n, doc) | (n, t, doc, argDocs) <- fields]
-        let target = PApp fc (PRef fc recName) []  -- TODO
-        let ctorType = mkCtorType target [(n, t) | (n, t, doc, argDocs) <- fields]
+            let expField = do
+                    n <- fnName <* lchar ':'
+                    t <- typeExpr (allowImp syn)
+                    return (n, t, expl)
 
-        return (emptyDocstring, [], ctorName, ctorType, fc, [])
+            let impField = do
+                    symbol "{"
+                    n <- fnName <* lchar ':'
+                    t <- typeExpr (allowImp syn)
+                    symbol "}"
+                    return (n, t, impl)
 
-    mkCtorType :: PTerm -> [(Name, PTerm)] -> PTerm
-    mkCtorType = foldr (uncurry $ PPi expl_param)
+            (n, t, plicity) <- impField <$> expField
+
+            return (n, t, plicity, doc, argDocs)
+
+        let ctorDoc' = annotate syn ist ctorDoc
+        let fieldDocs = [(n, annotate syn ist doc) | (n, t, p, doc, argDocs) <- fields]
+        let target = PApp fc (PRef fc recName) (getParams fc recType)
+        let ctorType = mkCtorType target [(p, n, t) | (n, t, p, doc, argDocs) <- fields]
+
+        return (ctorDoc', fieldDocs, ctorName, ctorType, fc, [])
+
+    mkCtorType :: PTerm -> [(Plicity, Name, PTerm)] -> PTerm
+    mkCtorType = foldr $ uncurry3 PPi
+
+    getParams :: FC -> PTerm -> [PArg]
+    getParams fc (PPi (Exp os _ _) n t ts) = (PExp 0 os n $ PRef fc n) : getParams fc ts
+    getParams fc (PPi (Imp os _ _) n t ts) = (PImp 0 False os n $ PRef fc n) : getParams fc ts
+    getParams _ _ = []
+
+    annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
+    annotate syn ist = annotCode $ tryFullExpr syn ist
+
+    uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
+    uncurry3 f (x, y, z) = f x y z
 
 {- | Parses data declaration type (normal or codata)
 DataI ::= 'data' | 'codata';
