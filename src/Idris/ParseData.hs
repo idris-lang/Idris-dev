@@ -84,9 +84,9 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
         fc  <- getFC
 
         let ctorDoc = parseDocstring . T.pack $ "Constructor of " ++ show recName
-        ctorName <- reserved "constructor" *> fnName
+        ctorName <- indented (reserved "constructor" *> fnName)
 
-        fields <- many $ do
+        fields <- many . indented $ do
             (doc, argDocs) <- option noDocs docComment
 
             let expField = do
