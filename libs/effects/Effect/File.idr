@@ -87,6 +87,20 @@ instance Handler FileIO IO where
     handle (FH h) EOF             k = do e <- feof h
                                          k e (FH h)
 
+instance Handler FileIO (IOExcept a) where
+    handle () (Open fname m) k = do h <- ioe_lift $ openFile fname m
+                                    valid <- ioe_lift $ validFile h
+                                    if valid then k True (FH h)
+                                             else k False ()
+    handle (FH h) Close      k = do ioe_lift $ closeFile h
+                                    k () ()
+    handle (FH h) ReadLine        k = do str <- ioe_lift $ fread h
+                                         k str (FH h)
+    handle (FH h) (WriteString str) k = do ioe_lift $ fwrite h str
+                                           k () (FH h)
+    handle (FH h) EOF             k = do e <- ioe_lift $ feof h
+                                         k e (FH h)
+
 -- -------------------------------------------------------------- [ The Effect ]
 FILE_IO : Type -> EFFECT
 FILE_IO t = MkEff t FileIO
