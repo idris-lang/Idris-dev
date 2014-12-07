@@ -566,12 +566,12 @@ jsFOREIGN _ reg n args
     where
       generateWrapper :: (FType, Reg) -> JS
       generateWrapper (ty, reg)
-        | FFunction   <- ty =
+        | FFunction _ _ <- ty =
             JSApp (JSIdent "i$ffiWrap") [ translateReg reg
                                         , JSIdent "oldbase"
                                         , JSIdent "myoldbase"
                                         ]
-        | FFunctionIO <- ty =
+        | FFunctionIO _ _ <- ty =
             JSApp (JSIdent "i$ffiWrap") [ translateReg reg
                                         , JSIdent "oldbase"
                                         , JSIdent "myoldbase"

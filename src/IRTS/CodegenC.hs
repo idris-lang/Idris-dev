@@ -284,7 +284,7 @@ c_irts FUnit l x = x
 c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
 c_irts FManagedPtr l x = l ++ "MKMPTR(vm, " ++ x ++ ")"
 c_irts (FArith ATFloat) l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"
-c_irts FAny l x = l ++ x
+c_irts (FAny _) l x = l ++ x
 
 irts_c (FArith (ATInt ITNative)) x = "GETINT(" ++ x ++ ")"
 irts_c (FArith (ATInt ITChar)) x = irts_c (FArith (ATInt ITNative)) x
@@ -295,7 +295,7 @@ irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
 irts_c FManagedPtr x = "GETMPTR(" ++ x ++ ")"
 irts_c (FArith ATFloat) x = "GETFLOAT(" ++ x ++ ")"
-irts_c FAny x = x
+irts_c (FAny _) x = x
 
 bitOp v op ty args = v ++ "idris_b" ++ show (nativeTyWidth ty) ++ op ++ "(vm, " ++ intercalate ", " (map creg args) ++ ")"
 
