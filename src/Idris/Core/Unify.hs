@@ -454,6 +454,10 @@ unify ctxt env topx topy inj holes usersupp from =
                                    return [] -- lift $ tfail err
 
     unApp fn bnames appx@(App fx ax) appy@(App fy ay)
+        -- shortcut for the common case where we just want to check the
+        -- arguments are correct
+         | (injectiveApp fx && fx == fy)
+         = un' False bnames ax ay
          | (injectiveApp fx && injectiveApp fy)
         || (injectiveApp fx && metavarApp fy && ax == ay)
         || (injectiveApp fy && metavarApp fx && ax == ay)
