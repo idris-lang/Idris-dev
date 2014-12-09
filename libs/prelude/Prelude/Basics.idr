@@ -30,7 +30,7 @@ snd (x, y) = y
 infixl 9 .
 
 ||| Function composition
-(.) : {a, b, c : Type*} -> (b -> c) -> (a -> b) -> a -> c
+(.) : (b -> c) -> (a -> b) -> a -> c
 (.) f g x = f (g x)
 
 ||| Takes in the first two arguments in reverse order.
