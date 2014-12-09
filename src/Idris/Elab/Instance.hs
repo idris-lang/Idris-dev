@@ -66,7 +66,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
                   cs -> tclift $ tfail $ At fc
                            (CantResolveAlts (map fst cs))
     let constraint = PApp fc (PRef fc n) (map pexp ps)
-    let iname = mkiname n ps expn
+    let iname = mkiname n (namespace info) ps expn
     let emptyclass = null (class_methods ci)
     when (what /= EDefns || (null ds && not emptyclass)) $ do
          nty <- elabType' True info syn emptyDocstring [] fc [] iname t
@@ -140,9 +140,11 @@ elabInstance info syn what fc cs n ps t expn ds = do
                 [PConstant (AType (ATInt ITNative))] -> True
                 _ -> False
 
-    mkiname n' ps' expn' =
+    mkiname n' ns ps' expn' =
         case expn' of
-          Nothing -> SN (sInstanceN n' (map show ps'))
+          Nothing -> case ns of
+                          Nothing -> SN (sInstanceN n' (map show ps'))
+                          Just m -> sNS (SN (sInstanceN n' (map show ps'))) m
           Just nm -> nm
 
     substInstance ips pnames (PInstance syn _ cs n ps t expn ds)
@@ -150,7 +152,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
 
     isOverlapping i (PInstance syn _ _ n ps t expn _)
         = case lookupCtxtName n (idris_classes i) of
-            [(n, ci)] -> let iname = (mkiname n ps expn) in
+            [(n, ci)] -> let iname = (mkiname n (namespace info) ps expn) in
                             case lookupTy iname (tt_ctxt i) of
                               [] -> elabFindOverlapping i ci iname syn t
                               (_:_) -> return True

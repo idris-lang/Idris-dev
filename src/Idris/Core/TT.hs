@@ -1167,8 +1167,12 @@ nextName (SN x) = SN (nextName' x)
   where
     nextName' (WhereN i f x) = WhereN i f (nextName x)
     nextName' (WithN i n) = WithN i (nextName n)
+    nextName' (InstanceN n ns) = InstanceN (nextName n) ns
+    nextName' (ParentN n ns) = ParentN (nextName n) ns
     nextName' (CaseN n) = CaseN (nextName n)
+    nextName' (ElimN n) = ElimN (nextName n)
     nextName' (MethodN n) = MethodN (nextName n)
+    nextName' (InstanceCtorN n) = InstanceCtorN (nextName n)
 
 type Term = TT Name
 type Type = Term
