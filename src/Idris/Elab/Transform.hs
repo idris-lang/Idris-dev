@@ -61,8 +61,10 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
          let lhs_ty = getInferType lhs'
          let newargs = pvars i lhs_tm
 
-         (clhs_tm, clhs_ty) <- recheckC fc [] lhs_tm
+         (clhs_tm_in, clhs_ty) <- recheckC fc [] lhs_tm
+         let clhs_tm = renamepats pnames clhs_tm_in
          logLvl 3 ("Transform LHS " ++ show clhs_tm)
+
          let rhs = addImplBound i (map fst newargs) rhs_in
          ((rhs', defer), _) <-
               tclift $ elaborate ctxt (sMN 0 "transRHS") clhs_ty []
@@ -72,8 +74,10 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
                            erun fc $ psolve lhs_tm
                            tt <- get_term
                            return (runState (collectDeferred Nothing tt) []))
-         (crhs_tm, crhs_ty) <- recheckC fc [] rhs'
+         (crhs_tm_in, crhs_ty) <- recheckC fc [] rhs'
+         let crhs_tm = renamepats pnames crhs_tm_in
          logLvl 3 ("Transform RHS " ++ show crhs_tm)
+
          -- Types must always convert
          case converts ctxt [] clhs_ty crhs_ty of
               OK _ -> return ()
@@ -93,6 +97,14 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
   where
     depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
     depat x = x
+
+    renamepats (n' : ns) (Bind n (PVar t) sc)
+       = Bind n' (PVar t) (renamepats ns sc) -- all Vs
+    renamepats _ sc = sc
+
+    -- names for transformation variables. Need to ensure these don't clash
+    -- with any other names when applying rules, so rename here.
+    pnames = map (\i -> sMN i ("tvar" ++ show i)) [0..]
 
 elabTransform info fc safe lhs_in rhs_in 
    = ierror (At fc (Msg "Invalid transformation rule (must be function application)"))

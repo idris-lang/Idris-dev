@@ -71,6 +71,11 @@ applyRule (lhs, rhs) tm
 --                   ++ "\n" ++ show tm ++ " GIVES\n" ++ show (depat ms rhs)) $ 
           = Just $ depat ms rhs
     | otherwise = Nothing
+-- ASSUMPTION: The names in the transformation rule bindings cannot occur
+-- in the term being transformed.
+-- (In general, this would not be true, but when we elaborate transformation
+-- rules we mangle the names so that it is true. While this feels a bit
+-- hacky, it's much easier to think about than mangling de Bruijn indices).
   where depat ms (Bind n (PVar t) sc) 
           = case lookup n ms of
                  Just tm -> depat ms (subst n tm sc)
