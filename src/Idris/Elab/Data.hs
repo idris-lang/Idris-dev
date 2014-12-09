@@ -66,9 +66,10 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          undef <- isUndefined fc n
          (cty, _, t, inacc) <- buildType info syn fc [] n t_in
          -- if n is defined already, make sure it is just a type declaration
-         -- with the same type we've just elaborated
+         -- with the same type we've just elaborated, and no constructors
+         -- yet
          i <- getIState
-         checkDefinedAs fc n cty (tt_ctxt i)
+         checkDefinedAs fc n cty i
          -- temporary, to check cons
          when undef $ updateContext (addTyDecl n (TCon 0 0) cty)
          let cnameinfo = cinfo info (map cname dcons)
@@ -124,14 +125,18 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
                 [oi] -> putIState ist{ idris_optimisation = addDef n oi{ detaggable = True } opt }
                 _    -> putIState ist{ idris_optimisation = addDef n (Optimise [] True) opt }
 
-        checkDefinedAs fc n t ctxt
-            = case lookupDef n ctxt of
+        checkDefinedAs fc n t i
+            = let defined = tclift $ tfail (At fc (AlreadyDefined n))
+                  ctxt = tt_ctxt i in
+                case lookupDef n ctxt of
                    [] -> return ()
                    [TyDecl _ ty] ->
                       case converts ctxt [] t ty of
-                           OK () -> return ()
-                           _ -> tclift $ tfail (At fc (AlreadyDefined n))
-                   _ -> tclift $ tfail (At fc (AlreadyDefined n))
+                           OK () -> case lookupCtxtExact n (idris_datatypes i) of
+                                         Nothing -> return ()
+                                         _ -> defined
+                           _ -> defined
+                   _ -> defined
         -- parameters are names which are unchanged across the structure,
         -- which appear exactly once in the return type of a constructor
 

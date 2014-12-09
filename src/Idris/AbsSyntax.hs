@@ -479,8 +479,8 @@ checkUndefined fc n
 isUndefined :: FC -> Name -> Idris Bool
 isUndefined fc n
     = do i <- getContext
-         case lookupTy n i of
-             (_:_)  -> return False
+         case lookupTyExact n i of
+             Just _ -> return False
              _ -> return True
 
 setContext :: Context -> Idris ()
