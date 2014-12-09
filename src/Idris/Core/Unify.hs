@@ -66,20 +66,24 @@ match_unify :: Context -> Env -> TT Name -> TT Name -> [Name] -> [Name] -> [Fail
 match_unify ctxt env topx topy inj holes from =
      case runStateT (un [] (renameBindersTm env topx)
                            (renameBindersTm env topy)) (UI 0 []) of
-        OK (v, UI _ []) -> return (map (renameBinders env) (trimSolutions v))
+        OK (v, UI _ []) -> 
+           do v' <- trimSolutions topx topy from env v
+              return (map (renameBinders env) v')
         res ->
                let topxn = renameBindersTm env (normalise ctxt env topx)
                    topyn = renameBindersTm env (normalise ctxt env topy) in
                      case runStateT (un [] topxn topyn)
         	  	        (UI 0 []) of
                        OK (v, UI _ fails) ->
-                            return (map (renameBinders env) (trimSolutions v))
+                            do v' <- trimSolutions topx topy from env v
+                               return (map (renameBinders env) v')
                        Error e ->
                         -- just normalise the term we're matching against
                          case runStateT (un [] topxn topy)
         	  	          (UI 0 []) of
                            OK (v, UI _ fails) ->
-                              return (map (renameBinders env) (trimSolutions v))
+                              do v' <- trimSolutions topx topy from env v
+                                 return (map (renameBinders env) v')
                            _ -> tfail e
   where
     -- This rule is highly dubious... it certainly produces a valid answer
@@ -227,7 +231,7 @@ renameBindersTm env tm = uniqueBinders (map fst env) tm
        = Bind n (Hole ty) (instantiate (P Bound n ty) sc)
     explicitHole t = t
 
-trimSolutions ns = followSols (dropPairs ns)
+trimSolutions topx topy from env topns = followSols [] (dropPairs topns)
   where dropPairs [] = []
         dropPairs (n@(x, P _ x' _) : ns)
           | x == x' = dropPairs ns
@@ -238,11 +242,19 @@ trimSolutions ns = followSols (dropPairs ns)
                                       _ -> True) ns)
         dropPairs (n : ns) = n : dropPairs ns
 
-        followSols [] = []
-        followSols ((n, P _ t _) : ns)
+        followSols vs [] = return []
+        followSols vs ((n, P _ t _) : ns)
           | Just t' <- lookup t ns
-              = followSols ((n, t') : ns) -- Are we guaranteed no cycles?
-        followSols (n : ns) = n : followSols ns
+              = do vs' <- case t' of
+                     P _ tn _ -> 
+                           if (n, tn) `elem` vs then -- cycle
+                                   tfail (cantUnify from False topx topy 
+                                            (Msg "") (errEnv env) 0)
+                                   else return ((n, tn) : vs)
+                     _ -> return vs
+                   followSols vs' ((n, t') : ns) 
+        followSols vs (n : ns) = do ns' <- followSols vs ns
+                                    return $ n : ns'
 
 expandLets env (x, tm) = (x, doSubst (reverse env) tm)
   where
@@ -267,8 +279,8 @@ unify ctxt env topx topy inj holes usersupp from =
              -- don't bother if topx and topy are different at the head
       case runStateT (un False [] (renameBindersTm env topx)
                                   (renameBindersTm env topy)) (UI 0 []) of
-        OK (v, UI _ []) -> return (map (renameBinders env) (trimSolutions v),
-                                   [])
+        OK (v, UI _ []) -> do v' <- trimSolutions topx topy from env v
+                              return (map (renameBinders env) v', [])
         res ->
                let topxn = renameBindersTm env (normalise ctxt env topx)
                    topyn = renameBindersTm env (normalise ctxt env topy) in
@@ -276,8 +288,8 @@ unify ctxt env topx topy inj holes usersupp from =
                      case runStateT (un False [] topxn topyn)
         	  	        (UI 0 []) of
                        OK (v, UI _ fails) ->
-                            return (map (renameBinders env) (trimSolutions v),
-                                    reverse fails)
+                            do v' <- trimSolutions topx topy from env v
+                               return (map (renameBinders env) v', reverse fails)
 --         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
         	       Error e -> tfail e
   where
