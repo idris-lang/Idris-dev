@@ -8,6 +8,15 @@ CFLAGS:=-fPIC $(CFLAGS)
 CFLAGS += $(GMP_INCLUDE_DIR) $(GMP) -DIDRIS_TARGET_OS="\"$(OS)\""
 CFLAGS += -DIDRIS_TARGET_TRIPLE="\"$(MACHINE)\""
 
+# NOTE: This works around glibc 2.11 not declaring pthread_mutexattr_settype
+# and PTHREAD_MUTEX_RECURSIVE by default, causing compilation failures on
+# Debian 6 and Ubuntu 10.04 LTS.
+ifeq ($(OS), unix)
+ifneq ($(shell ldd --version | head -n 1 | grep 2.11),)
+	CFLAGS += -D_GNU_SOURCE
+endif
+endif
+
 ifeq ($(OS), windows)
 	OBJS += windows/idris_stdfgn.o windows/idris_net.o
 else
