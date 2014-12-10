@@ -526,9 +526,11 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
   findCalls guarded (App f a) pvs pargs
         = findCalls Unguarded f pvs pargs ++ findCalls Unguarded a pvs pargs
   findCalls guarded (Bind n (Let t v) e) pvs pargs
-        = findCalls Unguarded v pvs pargs ++ findCalls guarded e (n : pvs) pargs
-  findCalls guarded (Bind n _ e) pvs pargs
-        = findCalls guarded e (n : pvs) pargs
+        = findCalls Unguarded t pvs pargs ++
+          findCalls Unguarded v pvs pargs ++ findCalls guarded e (n : pvs) pargs
+  findCalls guarded (Bind n t e) pvs pargs
+        = findCalls Unguarded (binderTy t) pvs pargs ++
+          findCalls guarded e (n : pvs) pargs
   findCalls guarded (P _ f _ ) pvs pargs
       | not (f `elem` pvs) = [(f, [])]
   findCalls _ _ _ _ = []
