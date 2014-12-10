@@ -1,5 +1,7 @@
 New in 0.9.16:
 --------------
+* Inductive-inductive definitions are now supported (i.e. simultaneously
+  defined types where one is indexed by the other.)
 * A new tactic sourceLocation that fills the current hole with the current
   source code span, if this information is available. If not, it raises an
   error.

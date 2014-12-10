@@ -227,6 +227,10 @@ elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
          logLvl 5 $ "Inaccessible args: " ++ show inacc
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty'
 
+         -- Add to the context (this is temporary, so that later constructors
+         -- can be indexed by it)
+         updateContext (addTyDecl n (DCon 0 0 False) cty) 
+
          addIBC (IBCDef n)
          checkDocs fc argDocs t
          doc' <- elabDocTerms info doc
