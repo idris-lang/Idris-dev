@@ -804,7 +804,7 @@ Executable idris-javascript
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
 
 Executable idris-node
   Main-is:        Main.hs
@@ -817,4 +817,4 @@ Executable idris-node
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
