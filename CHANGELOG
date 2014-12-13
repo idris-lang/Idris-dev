@@ -2,6 +2,9 @@ New in 0.9.16:
 --------------
 * Inductive-inductive definitions are now supported (i.e. simultaneously
   defined types where one is indexed by the other.)
+* Importing a module no longer means it is automatically reexported. A new
+  "public" modifier has been added to import statements, which will reexport
+  the names exported from that module.
 * A new tactic sourceLocation that fills the current hole with the current
   source code span, if this information is available. If not, it raises an
   error.
