@@ -1,5 +1,6 @@
 module Main
 
+import Effects
 import Effect.State
 import Effect.Exception
 import Effect.Random

@@ -32,12 +32,12 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 87
+ibcVersion = 88
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
                          symbols :: [Name],
-                         ibc_imports :: [FilePath],
+                         ibc_imports :: [(Bool, FilePath)],
                          ibc_importdirs :: [FilePath],
                          ibc_implicits :: [(Name, [PArg])],
                          ibc_fixes :: [FixDecl],
@@ -83,13 +83,18 @@ deriving instance Binary IBCFile
 initIBC :: IBCFile
 initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
 
-loadIBC :: FilePath -> Idris ()
-loadIBC fp = do imps <- getImported
-                when (not (fp `elem` imps)) $
-                  do iLOG $ "Loading ibc " ++ fp
+loadIBC :: Bool -- ^ True = reexport, False = make everything private 
+        -> FilePath -> Idris ()
+loadIBC reexport fp 
+           = do imps <- getImported
+                let redo = case lookup fp imps of
+                                Nothing -> True
+                                Just p -> not p && reexport
+                when redo $
+                  do iLOG $ "Loading ibc " ++ fp ++ " " ++ show reexport
                      ibcf <- runIO $ (bdecode fp :: IO IBCFile)
-                     process ibcf fp
-                     addImported fp
+                     process reexport ibcf fp
+                     addImported reexport fp
 
 bencode :: Binary a => FilePath -> a -> IO ()
 bencode f d = B.writeFile f (compress (encode d))
@@ -250,8 +255,9 @@ ibc i (IBCPostulate n) f = return f { ibc_postulates = n : ibc_postulates f }
 ibc i (IBCTotCheckErr fc err) f = return f { ibc_totcheckfail = (fc, err) : ibc_totcheckfail f }
 ibc i (IBCParsedRegion fc) f = return f { ibc_parsedSpan = Just fc }
 
-process :: IBCFile -> FilePath -> Idris ()
-process i fn
+process :: Bool -> -- ^ Reexporting
+           IBCFile -> FilePath -> Idris ()
+process reexp i fn
    | ver i /= ibcVersion = do iLOG "ibc out of date"
                               ifail "Incorrect ibc version --- please rebuild"
    | otherwise =
@@ -277,9 +283,9 @@ process i fn
                pCGFlags (ibc_cgflags i)
                pDyLibs (ibc_dynamic_libs i)
                pHdrs (ibc_hdrs i)
-               pDefs (symbols i) (ibc_defs i)
+               pDefs reexp (symbols i) (ibc_defs i)
                pPatdefs (ibc_patdefs i)
-               pAccess (ibc_access i)
+               pAccess reexp (ibc_access i)
                pFlags (ibc_flags i)
                pFnInfo (ibc_fninfo i)
                pTotal (ibc_total i)
@@ -317,21 +323,22 @@ pParsedSpan fc = do ist <- getIState
 pImportDirs :: [FilePath] -> Idris ()
 pImportDirs fs = mapM_ addImportDir fs
 
-pImports :: [FilePath] -> Idris ()
+pImports :: [(Bool, FilePath)] -> Idris ()
 pImports fs
-  = do mapM_ (\f -> do i <- getIState
+  = do mapM_ (\(re, f) -> 
+                    do i <- getIState
                        ibcsd <- valIBCSubDir i
                        ids <- allImportDirs
                        fp <- findImport ids ibcsd f
-                       if (f `elem` imported i)
-                        then iLOG $ "Already read " ++ f
-                        else do putIState (i { imported = f : imported i })
-                                case fp of
-                                    LIDR fn -> do iLOG $ "Failed at " ++ fn
-                                                  ifail "Must be an ibc"
-                                    IDR fn -> do iLOG $ "Failed at " ++ fn
-                                                 ifail "Must be an ibc"
-                                    IBC fn src -> loadIBC fn)
+--                        if (f `elem` imported i)
+--                         then iLOG $ "Already read " ++ f
+                       putIState (i { imported = f : imported i })
+                       case fp of
+                            LIDR fn -> do iLOG $ "Failed at " ++ fn
+                                          ifail "Must be an ibc"
+                            IDR fn -> do iLOG $ "Failed at " ++ fn
+                                         ifail "Must be an ibc"
+                            IBC fn src -> loadIBC re fn)
              fs
 
 pImps :: [(Name, [PArg])] -> Idris ()
@@ -428,8 +435,8 @@ pPatdefs ds
                    putIState (i { idris_patdefs = addDef n d (idris_patdefs i) }))
            ds
 
-pDefs :: [Name] -> [(Name, Def)] -> Idris ()
-pDefs syms ds 
+pDefs :: Bool -> [Name] -> [(Name, Def)] -> Idris ()
+pDefs reexp syms ds 
    = mapM_ (\ (n, d) ->
                do let d' = updateDef d
                   case d' of
@@ -438,7 +445,10 @@ pDefs syms ds
                                solveDeferred n 
                   i <- getIState
 --                   logLvl 1 $ "Added " ++ show (n, d')
-                  putIState (i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })) ds
+                  putIState (i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
+                  if (not reexp) then do iLOG $ "Not exporting " ++ show n
+                                         setAccessibility n Hidden
+                                 else iLOG $ "Exporting " ++ show n) ds
   where
     updateDef (CaseOp c t args o s cd)
       = CaseOp c t args (map updateOrig o) s (updateCD cd)
@@ -462,9 +472,13 @@ pDefs syms ds
 pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris ()
 pDocs ds = mapM_ (\ (n, a) -> addDocStr n (fst a) (snd a)) ds
 
-pAccess :: [(Name, Accessibility)] -> Idris ()
-pAccess ds = mapM_ (\ (n, a) ->
-                      do i <- getIState
+pAccess :: Bool -> -- ^ Reexporting?
+           [(Name, Accessibility)] -> Idris ()
+pAccess reexp ds 
+        = mapM_ (\ (n, a_in) -> 
+                      do let a = if reexp then a_in else Hidden
+                         logLvl 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
+                         i <- getIState
                          putIState (i { tt_ctxt = setAccess n a (tt_ctxt i) }))
                    ds
 

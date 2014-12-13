@@ -1,6 +1,7 @@
 module Decidable.Decidable
 
 import Data.Rel
+import Data.Fun
 
 %access public
 

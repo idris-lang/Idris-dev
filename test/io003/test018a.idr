@@ -1,5 +1,6 @@
 module Main
 
+import System
 import System.Concurrency.Process
 
 ping : ProcID String -> ProcID String -> Process String ()

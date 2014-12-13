@@ -1,7 +1,11 @@
 module Prelude.Traversable
 
+import Builtins
+
+import Prelude.Basics
 import Prelude.Applicative
 import Prelude.Foldable
+import Prelude.Functor
 
 traverse_ : (Foldable t, Applicative f) => (a -> f b) -> t a -> f ()
 traverse_ f = foldr (($>) . f) (pure ())

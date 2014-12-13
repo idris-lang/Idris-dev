@@ -1,5 +1,12 @@
 module Prelude.Fin
 
+import Builtins
+
+import Prelude.Basics
+import Prelude.Bool
+import Prelude.Cast
+import Prelude.Classes
+import Prelude.Maybe
 import Prelude.Nat
 import Prelude.Either
 import Prelude.Uninhabited

@@ -187,7 +187,7 @@ data IState = IState {
     idris_libs :: [(Codegen, String)],
     idris_cgflags :: [(Codegen, String)],
     idris_hdrs :: [(Codegen, String)],
-    idris_imported :: [FilePath], -- ^ Imported ibc file names
+    idris_imported :: [(FilePath, Bool)], -- ^ Imported ibc file names, whether public
     proof_list :: [(Name, [String])],
     errSpan :: Maybe FC,
     parserWarnings :: [(FC, Err)],
@@ -259,7 +259,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCMetavar Name
               | IBCSyntax Syntax
               | IBCKeyword String
-              | IBCImport FilePath
+              | IBCImport (Bool, FilePath) -- True = import public
               | IBCImportDir FilePath
               | IBCObj Codegen FilePath
               | IBCLib Codegen String

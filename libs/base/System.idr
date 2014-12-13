@@ -1,7 +1,5 @@
 module System
 
-import Prelude
-
 %include C "unistd.h"
 %default partial
 %access public

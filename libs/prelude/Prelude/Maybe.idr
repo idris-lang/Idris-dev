@@ -2,7 +2,10 @@ module Prelude.Maybe
 
 import Builtins
 import Prelude.Algebra
+import Prelude.Basics
+import Prelude.Bool
 import Prelude.Cast
+import Prelude.Classes
 import Prelude.Foldable
 
 %access public

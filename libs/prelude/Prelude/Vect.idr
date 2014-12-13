@@ -1,12 +1,16 @@
 module Prelude.Vect
 
+import Builtins
+
+import Prelude.Basics
+import Prelude.Bool
 import Prelude.Fin
 import Prelude.Foldable
 import Prelude.Functor
+import Prelude.Maybe
 import Prelude.List
 import Prelude.Classes
 import Prelude.Nat
-import Prelude.Bool
 import Prelude.Uninhabited
 
 %access public

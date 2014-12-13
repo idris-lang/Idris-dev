@@ -1,5 +1,6 @@
 module Main
 
+import Effects
 import Effect.File
 import Effect.State
 import Effect.StdIO

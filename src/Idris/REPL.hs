@@ -1075,7 +1075,7 @@ process fn Execute
                            runIO $ hClose tmph
                            t <- codegen
                            ir <- compile t tmpn m
-                           runIO $ generate t (head (idris_imported ist)) ir
+                           runIO $ generate t (fst (head (idris_imported ist))) ir
                            case idris_outputmode ist of
                              RawOutput h -> do runIO $ rawSystem tmpn []
                                                return ()
@@ -1091,7 +1091,7 @@ process fn (Compile codegen f)
                                    [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
                        ir <- compile codegen f m
                        i <- getIState
-                       runIO $ generate codegen (head (idris_imported i)) ir
+                       runIO $ generate codegen (fst (head (idris_imported i))) ir
   where fc = fileFC "main"
 process fn (LogLvl i) = setLogLevel i
 -- Elaborate as if LHS of a pattern (debug command)
@@ -1403,7 +1403,7 @@ loadInputs inputs toline -- furthest line to read in input source files
                                                           then Just l
                                                           else Nothing
                                             _ -> Nothing
-                      loadFromIFile f maxline
+                      loadFromIFile True f maxline
                       inew <- getIState
                       -- FIXME: Save these in IBC to avoid this hack! Need to
                       -- preserve it all from source inputs

@@ -1,7 +1,9 @@
 module Prelude.Applicative
 
 import Builtins
+
 import Prelude.Basics
+import Prelude.Bool
 import Prelude.Classes
 import Prelude.Functor
 

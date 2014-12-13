@@ -981,7 +981,7 @@ isTCDict n ctxt
 
 lookupP :: Name -> Context -> [Term]
 lookupP n ctxt
-   = do def <-  lookupCtxt n (definitions ctxt)
+   = do def <- lookupCtxt n (definitions ctxt)
         p <- case def of
           (Function ty tm, a, _, _) -> return (P Ref n ty, a)
           (TyDecl nt ty, a, _, _) -> return (P nt n ty, a)

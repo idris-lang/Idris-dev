@@ -1,6 +1,10 @@
 module Prelude.Stream
 
+import Builtins
+
+import Prelude.Basics
 import Prelude.Functor
+import Prelude.Nat
 import Prelude.Vect
 
 %access public

@@ -2,6 +2,8 @@ module Decidable.Order
 
 import Decidable.Decidable
 import Decidable.Equality
+import Data.Fun
+import Data.Rel
 
 %access public
 

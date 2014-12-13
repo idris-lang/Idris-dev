@@ -2,9 +2,12 @@ module Decidable.Equality
 
 import Builtins
 import Prelude.Basics
+import Prelude.Bool
+import Prelude.Classes
 import Prelude.Either
 import Prelude.List
 import Prelude.Vect
+import Prelude.Nat
 import Prelude.Fin
 import Prelude.Maybe
 

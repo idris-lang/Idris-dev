@@ -1,11 +1,18 @@
 module Prelude.Strings
 
 import Builtins
-import Prelude.List
+
+import Prelude.Algebra
+import Prelude.Basics
+import Prelude.Bool
 import Prelude.Chars
 import Prelude.Cast
+import Prelude.Classes
 import Prelude.Either
 import Prelude.Foldable
+import Prelude.Functor
+import Prelude.List
+import Prelude.Nat
 
 ||| Appends two strings together.
 |||

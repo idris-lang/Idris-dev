@@ -1,29 +1,32 @@
 module Prelude
 
-import Builtins
-import IO
+import public Builtins
+import public IO
 
-import Prelude.Bool
-import Prelude.Classes
-import Prelude.Cast
-import Prelude.Nat
-import Prelude.Fin
-import Prelude.List
-import Prelude.Maybe
-import Prelude.Monad
-import Prelude.Applicative
-import Prelude.Functor
-import Prelude.Either
-import Prelude.Vect
-import Prelude.Strings
-import Prelude.Chars
-import Prelude.Traversable
-import Prelude.Bits
-import Prelude.Stream
-import Prelude.Uninhabited
-import Prelude.Pairs
+import public Prelude.Algebra
+import public Prelude.Basics
+import public Prelude.Bool
+import public Prelude.Classes
+import public Prelude.Cast
+import public Prelude.Nat
+import public Prelude.Fin
+import public Prelude.List
+import public Prelude.Maybe
+import public Prelude.Monad
+import public Prelude.Applicative
+import public Prelude.Foldable
+import public Prelude.Functor
+import public Prelude.Either
+import public Prelude.Vect
+import public Prelude.Strings
+import public Prelude.Chars
+import public Prelude.Traversable
+import public Prelude.Bits
+import public Prelude.Stream
+import public Prelude.Uninhabited
+import public Prelude.Pairs
 
-import Decidable.Equality
+import public Decidable.Equality
 
 %access public
 %default total

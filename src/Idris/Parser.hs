@@ -109,13 +109,14 @@ moduleHeader =     try (do noDocCommentHere "Modules cannot have documentation c
   Import ::= 'import' Identifier_t ';'?;
 @
  -}
-import_ :: IdrisParser (String, Maybe String, FC)
+import_ :: IdrisParser (Bool, String, Maybe String, FC)
 import_ = do fc <- getFC
              reserved "import"
+             reexport <- option False (do reserved "public"; return True)
              id <- identifier
              newName <- optional (reserved "as" *> identifier)
              option ';' (lchar ';')
-             return (toPath id, toPath <$> newName, fc)
+             return (reexport, toPath id, toPath <$> newName, fc)
           <?> "import statement"
   where toPath = foldl1' (</>) . Spl.splitOn "."
 
@@ -1132,14 +1133,14 @@ parseTactic :: IState -> String -> Result PTactic
 parseTactic st = runparser (fullTactic defaultSyntax) st "(input)"
 
 -- | Parse module header and imports
-parseImports :: FilePath -> String -> Idris ([String], [(String, Maybe String, FC)], Maybe Delta)
+parseImports :: FilePath -> String -> Idris ([String], [(Bool, String, Maybe String, FC)], Maybe Delta)
 parseImports fname input
     = do i <- getIState
          case parseString (runInnerParser (evalStateT imports i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
               Failure err    -> fail (show err)
               Success (x, i) -> do putIState i
                                    return x
-  where imports :: IdrisParser (([String], [(String, Maybe String, FC)], Maybe Delta), IState)
+  where imports :: IdrisParser (([String], [(Bool, String, Maybe String, FC)], Maybe Delta), IState)
         imports = do whiteSpace
                      mname <- moduleHeader
                      ps    <- many import_
@@ -1219,7 +1220,7 @@ loadModule' f
                     IDR fn  -> loadSource False fn Nothing
                     LIDR fn -> loadSource True  fn Nothing
                     IBC fn src ->
-                      idrisCatch (loadIBC fn)
+                      idrisCatch (loadIBC True fn)
                                  (\c -> do iLOG $ fn ++ " failed " ++ pshow i c
                                            case src of
                                              IDR sfn -> loadSource False sfn Nothing
@@ -1229,18 +1230,18 @@ loadModule' f
 
 
 {- | Load idris code from file -}
-loadFromIFile :: IFileType -> Maybe Int -> Idris ()
-loadFromIFile i@(IBC fn src) maxline
+loadFromIFile :: Bool -> IFileType -> Maybe Int -> Idris ()
+loadFromIFile reexp i@(IBC fn src) maxline
    = do iLOG $ "Skipping " ++ getSrcFile i
-        idrisCatch (loadIBC fn)
+        idrisCatch (loadIBC reexp fn)
                 (\err -> ierror $ LoadingFailed fn err)
   where
     getSrcFile (IDR fn) = fn
     getSrcFile (LIDR fn) = fn
     getSrcFile (IBC f src) = getSrcFile src
 
-loadFromIFile (IDR fn) maxline = loadSource' False fn maxline
-loadFromIFile (LIDR fn) maxline = loadSource' True fn maxline
+loadFromIFile _ (IDR fn) maxline = loadSource' False fn maxline
+loadFromIFile _ (LIDR fn) maxline = loadSource' True fn maxline
 
 {-| Load idris source code and show error if something wrong happens -}
 loadSource' :: Bool -> FilePath -> Maybe Int -> Idris ()
@@ -1262,22 +1263,23 @@ loadSource lidr f toline
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mname, imports_in, pos) <- parseImports f file
                   ai <- getAutoImports
-                  let imports = map (\n -> (n, Just n, emptyFC)) ai ++ imports_in
+                  let imports = map (\n -> (True, n, Just n, emptyFC)) ai ++ imports_in
                   ids <- allImportDirs
                   ibcsd <- valIBCSubDir i
-                  mapM_ (\f -> do fp <- findImport ids ibcsd f
+                  mapM_ (\(re, f) -> 
+                               do fp <- findImport ids ibcsd f
                                   case fp of
                                       LIDR fn -> ifail $ "No ibc for " ++ f
                                       IDR fn -> ifail $ "No ibc for " ++ f
-                                      IBC fn src -> loadIBC fn)
-                        [fn | (fn, _, _) <- imports]
+                                      IBC fn src -> loadIBC True fn)
+                        [(re, fn) | (re, fn, _, _) <- imports]
                   reportParserWarnings
 
                   -- process and check module aliases
                   let modAliases = M.fromList
-                        [(prep alias, prep realName) | (realName, Just alias, fc) <- imports]
+                        [(prep alias, prep realName) | (reexport, realName, Just alias, fc) <- imports]
                       prep = map T.pack . reverse . Spl.splitOn "/"
-                      aliasNames = [(alias, fc) | (_, Just alias, fc) <- imports]
+                      aliasNames = [(alias, fc) | (_, _, Just alias, fc) <- imports]
                       histogram = groupBy ((==) `on` fst) . sortBy (comparing fst) $ aliasNames
                   case map head . filter ((/= 1) . length) $ histogram of
                     []       -> logLvl 3 $ "Module aliases: " ++ show (M.toList modAliases)
@@ -1289,7 +1291,7 @@ loadSource lidr f toline
                   -- record package info in .ibc
                   imps <- allImportDirs
                   mapM_ addIBC (map IBCImportDir imps)
-                  mapM_ (addIBC . IBCImport) [realName | (realName, alias, fc) <- imports]
+                  mapM_ (addIBC . IBCImport) [(reexport, realName) | (reexport, realName, alias, fc) <- imports]
                   let syntax = defaultSyntax{ syn_namespace = reverse mname,
                                               maxline = toline }
                   ds' <- parseProg syntax f file pos

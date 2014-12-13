@@ -2,6 +2,7 @@ module Prelude.Foldable
 
 import Builtins
 import Prelude.Bool
+import Prelude.Basics
 import Prelude.Classes
 import Prelude.Algebra
 

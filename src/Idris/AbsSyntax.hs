@@ -97,9 +97,10 @@ addAutoImport fp = do i <- getIState
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 
-addImported :: FilePath -> Idris ()
-addImported f = do i <- getIState
-                   putIState $ i { idris_imported = nub $ f : idris_imported i }
+addImported :: Bool -> FilePath -> Idris ()
+addImported pub f 
+     = do i <- getIState
+          putIState $ i { idris_imported = nub $ (f, pub) : idris_imported i }
 
 addLangExt :: LanguageExt -> Idris ()
 addLangExt TypeProviders = do i <- getIState
@@ -382,7 +383,7 @@ addNameIdx' i n
 getHdrs :: Codegen -> Idris [String]
 getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)
 
-getImported ::  Idris [FilePath]
+getImported ::  Idris [(FilePath, Bool)]
 getImported = do i <- getIState; return (idris_imported i)
 
 setErrSpan :: FC -> Idris ()
@@ -1576,8 +1577,8 @@ aiFn inpat expat qq ist fc f ds as
                         _ -> True
 
     getAccessibility n
-             = case lookupDefAcc n False (tt_ctxt ist) of
-                    [(n,t)] -> t
+             = case lookupDefAccExact n False (tt_ctxt ist) of
+                    Just (n,t) -> t
                     _ -> Public
 
     insertImpl :: [PArg] -> [PArg] -> [PArg]

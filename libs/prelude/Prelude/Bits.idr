@@ -1,8 +1,15 @@
 module Prelude.Bits
 
+import Builtins
+
+import Prelude.Basics
+import Prelude.Bool
+import Prelude.Cast
+import Prelude.Classes
+import Prelude.Foldable
+import Prelude.Nat
 import Prelude.Strings
 import Prelude.Vect
-import Prelude.Bool
 
 %access public
 %default total
