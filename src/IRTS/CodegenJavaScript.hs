@@ -495,13 +495,16 @@ translateChar ch
   | '\\'   <- ch       = "\\\\"
   | '\"'   <- ch       = "\\\""
   | '\''   <- ch       = "\\\'"
-  | ch `elem` asciiTab = "\\u00" ++ fill (showHex (ord ch) "")
+  | ch `elem` asciiTab = "\\u" ++ fill (showHex (ord ch) "")
+  | ord ch > 255       = "\\u" ++ fill (showHex (ord ch) "")
   | otherwise          = [ch]
   where
     fill :: String -> String
-    fill s = if length s == 1
-                then '0' : s
-                else s
+    fill s = case length s of
+                  1 -> "000" ++ s
+                  2 -> "00"  ++ s
+                  3 -> "0"   ++ s
+                  _ ->          s
 
     asciiTab =
       ['\NUL', '\SOH', '\STX', '\ETX', '\EOT', '\ENQ', '\ACK', '\BEL',

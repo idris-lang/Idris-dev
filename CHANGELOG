@@ -5,6 +5,7 @@ New in 0.9.16:
 * A new tactic sourceLocation that fills the current hole with the current
   source code span, if this information is available. If not, it raises an
   error.
+* Better Unicode support for the JavaScript/Node codegen
 
 New in 0.9.15:
 --------------
