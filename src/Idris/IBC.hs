@@ -255,8 +255,8 @@ ibc i (IBCPostulate n) f = return f { ibc_postulates = n : ibc_postulates f }
 ibc i (IBCTotCheckErr fc err) f = return f { ibc_totcheckfail = (fc, err) : ibc_totcheckfail f }
 ibc i (IBCParsedRegion fc) f = return f { ibc_parsedSpan = Just fc }
 
-process :: Bool -> -- ^ Reexporting
-           IBCFile -> FilePath -> Idris ()
+process :: Bool -- ^ Reexporting
+           -> IBCFile -> FilePath -> Idris ()
 process reexp i fn
    | ver i /= ibcVersion = do iLOG "ibc out of date"
                               ifail "Incorrect ibc version --- please rebuild"
@@ -472,8 +472,8 @@ pDefs reexp syms ds
 pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris ()
 pDocs ds = mapM_ (\ (n, a) -> addDocStr n (fst a) (snd a)) ds
 
-pAccess :: Bool -> -- ^ Reexporting?
-           [(Name, Accessibility)] -> Idris ()
+pAccess :: Bool -- ^ Reexporting?
+           -> [(Name, Accessibility)] -> Idris ()
 pAccess reexp ds 
         = mapM_ (\ (n, a_in) -> 
                       do let a = if reexp then a_in else Hidden
