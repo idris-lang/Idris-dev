@@ -15,7 +15,7 @@ import Util.ScreenSize (getScreenWidth)
 
 import Debug.Trace
 
-import Control.Monad.Error (throwError)
+import Control.Monad.Except (throwError)
 
 import System.IO (stdout, Handle, hPutStrLn)
 
