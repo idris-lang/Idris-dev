@@ -1,7 +1,7 @@
 module Effect.Exception
 
 import Effects
-import System
+import public System
 import Control.IOExcept
 
 data Exception : Type -> Effect where 
