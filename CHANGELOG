@@ -5,6 +5,8 @@ New in 0.9.16:
 * Importing a module no longer means it is automatically reexported. A new
   "public" modifier has been added to import statements, which will reexport
   the names exported from that module.
+* Implemented @-patterns. A pattern of the form x@p on the left hand side
+  matches p, with x in scope on the right hand side with value p.
 * A new tactic sourceLocation that fills the current hole with the current
   source code span, if this information is available. If not, it raises an
   error.
