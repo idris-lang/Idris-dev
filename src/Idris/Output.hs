@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
 
 module Idris.Output where
 

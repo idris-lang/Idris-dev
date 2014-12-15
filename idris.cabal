@@ -607,6 +607,7 @@ Library
 
                 , Idris.Elab.Utils
                 , Idris.Elab.Type
+                , Idris.Elab.AsPat
                 , Idris.Elab.Clause
                 , Idris.Elab.Data
                 , Idris.Elab.Record

@@ -19,6 +19,7 @@ import Idris.DeepSeq
 import Idris.Output (iputStrLn, pshow, iWarn, iRenderResult)
 import IRTS.Lang
 
+import Idris.Elab.AsPat
 import Idris.Elab.Type
 import Idris.Elab.Transform
 import Idris.Elab.Utils
@@ -543,9 +544,10 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
                                 (Msg $ show lhs_in ++ " is a valid case"))
             False -> do ptm <- mkPatTm lhs_in
                         return (Left ptm, lhs)
-elabClause info opts (cnum, PClause fc fname lhs_in withs rhs_in whereblock)
+elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as whereblock)
    = do let tcgen = Dictionary `elem` opts
         ctxt <- getContext
+        let (lhs_in, rhs_in) = desugarAs lhs_in_as rhs_in_as
 
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings

@@ -858,6 +858,7 @@ elab ist info emode opts fn tm
 
 
     elab' ina fc (PUnquote t) = fail "Found unquote outside of quasiquote"
+    elab' ina fc (PAs _ n t) = lift . tfail . Msg $ "@-pattern not allowed here"
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
     isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))

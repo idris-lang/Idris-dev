@@ -728,6 +728,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PRewrite FC PTerm PTerm (Maybe PTerm) -- ^ "rewrite" syntax, with optional result type
            | PPair FC PunInfo PTerm PTerm -- ^ A pair (a, b) and whether it's a product type or a pair (solved by elaboration)
            | PDPair FC PunInfo PTerm PTerm PTerm -- ^ A dependent pair (tm : a ** b) and whether it's a sigma type or a pair that inhabits one (solved by elaboration)
+           | PAs FC Name PTerm -- ^ @-pattern, valid LHS only
            | PAlternative Bool [PTerm] -- ^ True if only one may work. (| A, B, C|)
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
            | PType -- ^ 'Type' type
