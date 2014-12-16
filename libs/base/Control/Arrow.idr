@@ -5,7 +5,7 @@ import Control.Category
 
 %access public
 
-infixr 5 <#>
+infixr 5 <++>
 infixr 3 ***
 infixr 3 &&&
 infixr 2 +++
@@ -45,7 +45,7 @@ class Arrow arr => ArrowZero (arr : Type -> Type -> Type) where
   zeroArrow : arr a b
 
 class ArrowZero arr => ArrowPlus (arr : Type -> Type -> Type) where
-  (<#>) : arr a b -> arr a b -> arr a b
+  (<++>) : arr a b -> arr a b -> arr a b
 
 class Arrow arr => ArrowChoice (arr : Type -> Type -> Type) where
   left  : arr a b -> arr (Either a c) (Either b c)
