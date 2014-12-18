@@ -244,7 +244,7 @@ findName n (args, classes) = findNameInArgsDAG n args <|> ((,) <$> lookup n clas
 deleteName :: Name -> (ArgsDAG, Classes) -> (ArgsDAG, Classes)
 deleteName n (args, classes) = (deleteFromDag n args, filter ((/= n) . fst) classes)
 
-tcToMaybe :: TC' e a -> Maybe a
+tcToMaybe :: TC a -> Maybe a
 tcToMaybe (OK x) = Just x
 tcToMaybe (Error _) = Nothing
 

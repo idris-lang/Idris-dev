@@ -19,7 +19,7 @@ import System.Console.Haskeline
 import System.IO
 
 import Control.Monad.Trans.State.Strict
-import Control.Monad.Trans.Error
+import Control.Monad.Trans.Except
 
 import Data.Function (on)
 import Data.List hiding (group)
@@ -300,7 +300,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
 --type Idris = WriterT [Either String (IO ())] (State IState a))
-type Idris = StateT IState (ErrorT Err IO)
+type Idris = StateT IState (ExceptT Err IO)
 
 -- Commands in the REPL
 

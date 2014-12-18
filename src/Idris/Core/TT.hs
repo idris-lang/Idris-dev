@@ -18,12 +18,12 @@
      programs with implicit syntax into fully explicit terms.
 -}
 
-module Idris.Core.TT(module Idris.Core.TT, module Idris.Core.TC) where
+module Idris.Core.TT where
 
-import Idris.Core.TC
-
+import Control.Applicative (Applicative (..), Alternative)
+import qualified Control.Applicative as A (Alternative (..))
 import Control.Monad.State.Strict
-import Control.Monad.Trans.Error (Error(..))
+import Control.Monad.Trans.Except (Except (..))
 import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
@@ -162,6 +162,36 @@ data Err' t
 
 type Err = Err' Term
 
+data TC a = OK !a
+          | Error Err
+  deriving (Eq, Functor)
+
+bindTC :: TC a -> (a -> TC b) -> TC b
+bindTC x k = case x of
+                OK v -> k v
+                Error e -> Error e
+{-# INLINE bindTC #-}
+
+instance Monad TC where
+    return x = OK x
+    x >>= k = bindTC x k 
+    fail e = Error (InternalMsg e)
+
+instance MonadPlus TC where
+    mzero = fail "Unknown error"
+    (OK x) `mplus` _ = OK x
+    _ `mplus` (OK y) = OK y
+    err `mplus` _    = err
+
+
+instance Applicative TC where
+    pure = return
+    (<*>) = ap
+
+instance Alternative TC where
+    empty = mzero
+    (<|>) = mplus
+
 {-!
 deriving instance NFData Err
 !-}
@@ -233,11 +263,6 @@ instance Pretty Err OutputAnnotation where
   pretty (ProviderError msg) = text msg
   pretty err@(LoadingFailed _ _) = text (show err)
   pretty _ = text "Error"
-
-instance Error Err where
-  strMsg = InternalMsg
-
-type TC = TC' Err
 
 instance (Pretty a OutputAnnotation) => Pretty (TC a) OutputAnnotation where
   pretty (OK ok) = pretty ok

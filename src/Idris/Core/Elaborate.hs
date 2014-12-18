@@ -786,9 +786,9 @@ prunStateT
      -> Bool
      -> [a]
      -> Control.Monad.State.Strict.StateT
-          (ElabState t) (TC' Err) t1
+          (ElabState t) TC t1
      -> ElabState t
-     -> TC' Err ((t1, Int, Idris.Core.Unify.Fails), ElabState t)
+     -> TC ((t1, Int, Idris.Core.Unify.Fails), ElabState t)
 prunStateT pmax zok ps x s
       = case runStateT x s of
              OK (v, s'@(ES (p, _) _ _)) ->
