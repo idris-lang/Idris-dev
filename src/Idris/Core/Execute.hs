@@ -22,7 +22,7 @@ import Control.Applicative hiding (Const)
 import Control.Exception
 import Control.Monad.Trans
 import Control.Monad.Trans.State.Strict
-import Control.Monad.Trans.Error
+import Control.Monad.Except (ExceptT, runExceptT, throwError)
 import Control.Monad hiding (forM)
 import Data.Maybe
 import Data.Bits
@@ -126,10 +126,10 @@ initState :: Idris ExecState
 initState = do ist <- getIState
                return $ ExecState (idris_dynamic_libs ist) []
 
-type Exec = ErrorT Err (StateT ExecState IO)
+type Exec = ExceptT Err (StateT ExecState IO)
 
 runExec :: Exec a -> ExecState -> IO (Either Err a)
-runExec ex st = fst <$> runStateT (runErrorT ex) st
+runExec ex st = fst <$> runStateT (runExceptT ex) st
 
 getExecState :: Exec ExecState
 getExecState = lift get

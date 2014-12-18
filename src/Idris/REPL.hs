@@ -75,7 +75,7 @@ import System.Process
 import System.Directory
 import System.IO
 import Control.Monad
-import Control.Monad.Trans.Error (ErrorT(..))
+import Control.Monad.Trans.Except (ExceptT, runExceptT)
 import Control.Monad.Trans.State.Strict ( StateT, execStateT, evalStateT, get, put )
 import Control.Monad.Trans ( lift )
 import Control.Concurrent.MVar
@@ -169,7 +169,7 @@ processNetCmd :: IState -> IState -> Handle -> FilePath -> String ->
 processNetCmd orig i h fn cmd
     = do res <- case parseCmd i "(net)" cmd of
                   Failure err -> return (Left (Msg " invalid command"))
-                  Success (Right c) -> runErrorT $ evalStateT (processNet fn c) i
+                  Success (Right c) -> runExceptT $ evalStateT (processNet fn c) i
                   Success (Left err) -> return (Left (Msg err))
          case res of
               Right x -> return x
@@ -1316,7 +1316,7 @@ replSettings hFile = setComplete replCompletion $ defaultSettings {
 
 -- | Invoke as if from command line. It is an error if there are unresolved totality problems.
 idris :: [Opt] -> IO (Maybe IState)
-idris opts = do res <- runErrorT $ execStateT totalMain idrisInit
+idris opts = do res <- runExceptT $ execStateT totalMain idrisInit
                 case res of
                   Left err -> do putStrLn $ pshow idrisInit err
                                  return Nothing
@@ -1590,7 +1590,7 @@ idrisMain opts =
                      addIBC (IBCImportDir (ddir </> p))
 
 runMain :: Idris () -> IO ()
-runMain prog = do res <- runErrorT $ execStateT prog idrisInit
+runMain prog = do res <- runExceptT $ execStateT prog idrisInit
                   case res of
                        Left err -> putStrLn $ "Uncaught error: " ++ show err
                        Right _ -> return ()

@@ -18,7 +18,7 @@ import qualified Idris.Docstrings as Docstrings
 import IRTS.System (getDataFileName)
 
 import Control.Monad (forM_)
-import Control.Monad.Trans.Error
+import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
 
 import Data.Maybe
@@ -258,7 +258,7 @@ loadDocs :: IState     -- ^ IState to extract infomation from
          -> Name       -- ^ Name to load Docs for
          -> IO (Maybe Docs)
 loadDocs ist n
-  | mayHaveDocs n = do docs <- runErrorT $ evalStateT (getDocs n) ist
+  | mayHaveDocs n = do docs <- runExceptT $ evalStateT (getDocs n) ist
                        case docs of Right d -> return (Just d)
                                     Left _  -> return Nothing
   | otherwise     = return Nothing

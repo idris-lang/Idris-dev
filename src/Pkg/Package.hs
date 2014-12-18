@@ -12,7 +12,7 @@ import Util.System
 
 import Control.Monad
 import Control.Monad.Trans.State.Strict (execStateT)
-import Control.Monad.Error (runErrorT)
+import Control.Monad.Except (runExceptT)
 
 import Data.List
 import Data.List.Split(splitOn)
@@ -145,7 +145,7 @@ documentPkg fp =
      setCurrentDirectory $ pkgDir </> sourcedir pkgdesc
      make (makefile pkgdesc)
      setCurrentDirectory $ pkgDir
-     let run l       = runErrorT . (execStateT l)
+     let run l       = runExceptT . execStateT l
          load []     = return ()
          load (f:fs) = do loadModule f; load fs
          loader      = do idrisMain opts; load fs

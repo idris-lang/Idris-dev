@@ -6,7 +6,6 @@ import Idris.Core.Typecheck
 
 import Control.Applicative
 import Control.Arrow
-import Control.Monad.Error
 import Control.Monad.RWS
 import Control.Monad.State
 import Data.List

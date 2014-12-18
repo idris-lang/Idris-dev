@@ -600,7 +600,6 @@ Library
                 , Idris.Core.Execute
                 , Idris.Core.ProofState
                 , Idris.Core.ProofTerm
-                , Idris.Core.TC
                 , Idris.Core.TT
                 , Idris.Core.Typecheck
                 , Idris.Core.Unify

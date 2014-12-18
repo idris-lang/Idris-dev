@@ -571,9 +571,9 @@ isUsableUniverse x = isUniverse x
 
 convEq' ctxt hs x y = evalStateT (convEq ctxt hs x y) (0, [])
 
-convEq :: Context -> [Name] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
+convEq :: Context -> [Name] -> TT Name -> TT Name -> StateT UCs TC Bool
 convEq ctxt holes topx topy = ceq [] topx topy where
-    ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs (TC' Err) Bool
+    ceq :: [(Name, Name)] -> TT Name -> TT Name -> StateT UCs TC Bool
     ceq ps (P xt x _) (P yt y _)
         | x `elem` holes || y `elem` holes = return True
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True

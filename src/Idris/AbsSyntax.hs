@@ -19,7 +19,7 @@ import System.IO
 
 import Control.Applicative
 import Control.Monad.State
-import Control.Monad.Error(throwError)
+import Control.Monad.Except (throwError, catchError)
 
 import Data.List hiding (insert,union)
 import Data.Char
@@ -32,7 +32,6 @@ import Data.Word (Word)
 
 import Debug.Trace
 
-import Control.Monad.Error (throwError, catchError)
 import System.IO.Error(isUserError, ioeGetErrorString, tryIOError)
 
 import Util.Pretty

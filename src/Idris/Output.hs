@@ -13,15 +13,20 @@ import Idris.IdeSlave
 import Util.Pretty
 import Util.ScreenSize (getScreenWidth)
 
-import Debug.Trace
+import Control.Monad.Except (ExceptT (ExceptT), runExceptT, throwError)
 
-import Control.Monad.Except (throwError)
-
+import System.Console.Haskeline.MonadException 
+  (MonadException (controlIO), RunIO (RunIO))
 import System.IO (stdout, Handle, hPutStrLn)
 
 import Data.Char (isAlpha)
 import Data.List (nub, intersperse)
 import Data.Maybe (fromMaybe)
+
+instance MonadException m => MonadException (ExceptT Err m) where
+    controlIO f = ExceptT $ controlIO $ \(RunIO run) -> let
+                    run' = RunIO (fmap ExceptT . run . runExceptT)
+                    in fmap runExceptT $ f run'
 
 pshow :: IState -> Err -> String
 pshow ist err = displayDecorated (consoleDecorate ist) .
