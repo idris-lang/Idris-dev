@@ -22,7 +22,7 @@ import Control.Applicative hiding (Const)
 import Control.Exception
 import Control.Monad.Trans
 import Control.Monad.Trans.State.Strict
-import Control.Monad.Trans.Except
+import Control.Monad.Except
 import Control.Monad hiding (forM)
 import Data.Maybe
 import Data.Bits

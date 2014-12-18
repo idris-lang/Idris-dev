@@ -8,7 +8,6 @@ import System.FilePath ((</>), addTrailingPathSeparator)
 
 import Data.Maybe
 import Data.Version
-import Control.Monad.Trans.Error ( ErrorT(..) )
 import Control.Monad.Trans.State.Strict ( execStateT, get, put )
 import Control.Monad ( when )
 
