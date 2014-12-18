@@ -1,6 +1,7 @@
 #include "idris_opts.h"
 #include "idris_stats.h"
 #include "idris_rts.h"
+#include "idris_gmp.h"
 // The default options should give satisfactory results under many circumstances.
 RTSOpts opts = { 
     .init_heap_size = 4096000,
@@ -15,7 +16,11 @@ int main(int argc, char* argv[]) {
     __idris_argv = argv;
 
     VM* vm = init_vm(opts.max_stack_size, opts.init_heap_size, 1);
-    initNullaries();
+    init_threadkeys();
+    init_threaddata(vm);
+    init_gmpalloc();
+
+    init_nullaries();
 
     _idris__123_runMain0_125_(vm, NULL);
 
@@ -31,6 +36,6 @@ int main(int argc, char* argv[]) {
         print_stats(&stats);
     }
 
-    freeNullaries();
+    free_nullaries();
     return EXIT_SUCCESS;
 }

@@ -11,6 +11,15 @@
 #include "idris_gc.h"
 #include "idris_bitstring.h"
 
+#ifdef HAS_PTHREAD
+static pthread_key_t vm_key;
+#else
+static VM* global_vm;
+#endif
+
+void free_key(VM *vm) {
+    // nothing to free, we just used the VM pointer which is freed elsewhere
+}
 
 VM* init_vm(int stack_size, size_t heap_size, 
             int max_threads // not implemented yet
@@ -54,9 +63,22 @@ VM* init_vm(int stack_size, size_t heap_size,
 
     vm->max_threads = max_threads;
     vm->processes = 0;
+
+#else
+    global_vm = vm;
 #endif
     STATS_LEAVE_INIT(vm->stats)
     return vm;
+}
+
+void init_threadkeys() {
+    pthread_key_create(&vm_key, (void*)free_key);
+}
+
+void init_threaddata(VM *vm) {
+#ifdef HAS_PTHREAD
+    pthread_setspecific(vm_key, vm);
+#endif
 }
 
 Stats terminate(VM* vm) {
@@ -78,7 +100,13 @@ Stats terminate(VM* vm) {
     return stats;
 }
 
-void idris_requireAlloc(VM* vm, size_t size) {
+void idris_requireAlloc(size_t size) {
+#ifdef HAS_PTHREAD
+    VM* vm = pthread_getspecific(vm_key);
+#else
+    VM* vm = global_vm;
+#endif
+
     if (!(vm->heap.next + size < vm->heap.end)) {
         idris_gc(vm);
     }
@@ -90,8 +118,9 @@ void idris_requireAlloc(VM* vm, size_t size) {
 #endif
 }
 
-void idris_doneAlloc(VM* vm) {
+void idris_doneAlloc() {
 #ifdef HAS_PTHREAD
+    VM* vm = pthread_getspecific(vm_key);
     int lock = vm->processes > 0;
     if (lock) { // We only need to lock if we're in concurrent mode
        pthread_mutex_unlock(&vm->alloc_lock); 
@@ -103,14 +132,31 @@ int space(VM* vm, size_t size) {
     return (vm->heap.next + size + sizeof(size_t) < vm->heap.end);
 }
 
-void* allocate(VM* vm, size_t size, int outerlock) {
+void* idris_alloc(size_t size) {
+    return allocate(size, 0);
+}
+
+void* idris_realloc(void* old, size_t old_size, size_t size) {
+    void* ptr = idris_alloc(size);
+    memcpy(ptr, old, old_size);
+    return ptr;
+}
+
+void idris_free(void* ptr, size_t size) {
+}
+
+void* allocate(size_t size, int outerlock) {
 //    return malloc(size);
+
 #ifdef HAS_PTHREAD
+    VM* vm = pthread_getspecific(vm_key);
     int lock = vm->processes > 0 && !outerlock;
 
     if (lock) { // not message passing
        pthread_mutex_lock(&vm->alloc_lock); 
     }
+#else
+    VM* vm = global_vm;
 #endif
 
     if ((size & 7)!=0) {
@@ -141,7 +187,7 @@ void* allocate(VM* vm, size_t size, int outerlock) {
            pthread_mutex_unlock(&vm->alloc_lock); 
         }
 #endif
-        return allocate(vm, size, 0);
+        return allocate(size, 0);
     }
 
 }
@@ -160,7 +206,7 @@ void* allocCon(VM* vm, int arity, int outer) {
 */
 
 VAL MKFLOAT(VM* vm, double val) {
-    Closure* cl = allocate(vm, sizeof(Closure), 0);
+    Closure* cl = allocate(sizeof(Closure), 0);
     SETTY(cl, FLOAT);
     cl -> info.f = val;
     return cl;
@@ -173,8 +219,8 @@ VAL MKSTR(VM* vm, const char* str) {
     } else {
         len = strlen(str)+1;
     }
-    Closure* cl = allocate(vm, sizeof(Closure) + // Type) + sizeof(char*) +
-                               sizeof(char)*len, 0);
+    Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
+                           sizeof(char)*len, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     if (str == NULL) {
@@ -192,15 +238,15 @@ char* GETSTROFF(VAL stroff) {
 }
 
 VAL MKPTR(VM* vm, void* ptr) {
-    Closure* cl = allocate(vm, sizeof(Closure), 0);
+    Closure* cl = allocate(sizeof(Closure), 0);
     SETTY(cl, PTR);
     cl -> info.ptr = ptr;
     return cl;
 }
 
 VAL MKMPTR(VM* vm, void* ptr, size_t size) {
-    Closure* cl = allocate(vm, sizeof(Closure) +
-                               sizeof(ManagedPtr) + size, 0);
+    Closure* cl = allocate(sizeof(Closure) +
+                           sizeof(ManagedPtr) + size, 0);
     SETTY(cl, MANAGEDPTR);
     cl->info.mptr = (ManagedPtr*)((char*)cl + sizeof(Closure));
     cl->info.mptr->data = (char*)cl + sizeof(Closure) + sizeof(ManagedPtr);
@@ -210,15 +256,15 @@ VAL MKMPTR(VM* vm, void* ptr, size_t size) {
 }
 
 VAL MKFLOATc(VM* vm, double val) {
-    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    Closure* cl = allocate(sizeof(Closure), 1);
     SETTY(cl, FLOAT);
     cl -> info.f = val;
     return cl;
 }
 
 VAL MKSTRc(VM* vm, char* str) {
-    Closure* cl = allocate(vm, sizeof(Closure) + // Type) + sizeof(char*) +
-                               sizeof(char)*strlen(str)+1, 1);
+    Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
+                           sizeof(char)*strlen(str)+1, 1);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
 
@@ -227,15 +273,15 @@ VAL MKSTRc(VM* vm, char* str) {
 }
 
 VAL MKPTRc(VM* vm, void* ptr) {
-    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    Closure* cl = allocate(sizeof(Closure), 1);
     SETTY(cl, PTR);
     cl -> info.ptr = ptr;
     return cl;
 }
 
 VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
-    Closure* cl = allocate(vm, sizeof(Closure) +
-                               sizeof(ManagedPtr) + size, 1);
+    Closure* cl = allocate(sizeof(Closure) +
+                           sizeof(ManagedPtr) + size, 1);
     SETTY(cl, MANAGEDPTR);
     cl->info.mptr = (ManagedPtr*)((char*)cl + sizeof(Closure));
     cl->info.mptr->data = (char*)cl + sizeof(Closure) + sizeof(ManagedPtr);
@@ -245,28 +291,28 @@ VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
 }
 
 VAL MKB8(VM* vm, uint8_t bits8) {
-    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    Closure* cl = allocate(sizeof(Closure), 1);
     SETTY(cl, BITS8);
     cl -> info.bits8 = bits8;
     return cl;
 }
 
 VAL MKB16(VM* vm, uint16_t bits16) {
-    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    Closure* cl = allocate(sizeof(Closure), 1);
     SETTY(cl, BITS16);
     cl -> info.bits16 = bits16;
     return cl;
 }
 
 VAL MKB32(VM* vm, uint32_t bits32) {
-    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    Closure* cl = allocate(sizeof(Closure), 1);
     SETTY(cl, BITS32);
     cl -> info.bits32 = bits32;
     return cl;
 }
 
 VAL MKB64(VM* vm, uint64_t bits64) {
-    Closure* cl = allocate(vm, sizeof(Closure), 1);
+    Closure* cl = allocate(sizeof(Closure), 1);
     SETTY(cl, BITS64);
     cl -> info.bits64 = bits64;
     return cl;
@@ -347,7 +393,7 @@ void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i
 
 VAL idris_castIntStr(VM* vm, VAL i) {
     int x = (int) GETINT(i);
-    Closure* cl = allocate(vm, sizeof(Closure) + sizeof(char)*16, 0);
+    Closure* cl = allocate(sizeof(Closure) + sizeof(char)*16, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     sprintf(cl -> info.str, "%d", x);
@@ -364,7 +410,7 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 }
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
-    Closure* cl = allocate(vm, sizeof(Closure) + sizeof(char)*32, 0);
+    Closure* cl = allocate(sizeof(Closure) + sizeof(char)*32, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     sprintf(cl -> info.str, "%g", GETFLOAT(i));
@@ -380,8 +426,7 @@ VAL idris_concat(VM* vm, VAL l, VAL r) {
     char *ls = GETSTR(l);
     // dumpVal(l);
     // printf("\n");
-    Closure* cl = allocate(vm, sizeof(Closure) + strlen(ls) + strlen(rs) + 1,
-                               0);
+    Closure* cl = allocate(sizeof(Closure) + strlen(ls) + strlen(rs) + 1, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     strcpy(cl -> info.str, ls);
@@ -451,7 +496,7 @@ VAL idris_strHead(VM* vm, VAL str) {
 }
 
 VAL MKSTROFFc(VM* vm, StrOffset* off) {
-    Closure* cl = allocate(vm, sizeof(Closure) + sizeof(StrOffset), 1);
+    Closure* cl = allocate(sizeof(Closure) + sizeof(StrOffset), 1);
     SETTY(cl, STROFFSET);
     cl->info.str_offset = (StrOffset*)((char*)cl + sizeof(Closure));
 
@@ -465,7 +510,7 @@ VAL idris_strTail(VM* vm, VAL str) {
     // If there's no room, just copy the string, or we'll have a problem after
     // gc moves str
     if (space(vm, sizeof(Closure) + sizeof(StrOffset))) {
-        Closure* cl = allocate(vm, sizeof(Closure) + sizeof(StrOffset), 0);
+        Closure* cl = allocate(sizeof(Closure) + sizeof(StrOffset), 0);
         SETTY(cl, STROFFSET);
         cl->info.str_offset = (StrOffset*)((char*)cl + sizeof(Closure));
 
@@ -489,8 +534,8 @@ VAL idris_strTail(VM* vm, VAL str) {
 
 VAL idris_strCons(VM* vm, VAL x, VAL xs) {
     char *xstr = GETSTR(xs);
-    Closure* cl = allocate(vm, sizeof(Closure) +
-                               strlen(xstr) + 2, 0);
+    Closure* cl = allocate(sizeof(Closure) +
+                           strlen(xstr) + 2, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     cl -> info.str[0] = (char)(GETINT(x));
@@ -504,8 +549,8 @@ VAL idris_strIndex(VM* vm, VAL str, VAL i) {
 
 VAL idris_strRev(VM* vm, VAL str) {
     char *xstr = GETSTR(str);
-    Closure* cl = allocate(vm, sizeof(Closure) +
-                               strlen(xstr) + 1, 0);
+    Closure* cl = allocate(sizeof(Closure) +
+                           strlen(xstr) + 1, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     int y = 0;
@@ -532,7 +577,7 @@ VAL idris_systemInfo(VM* vm, VAL index) {
 }
 
 VAL MKBUFFERc(VM* vm, Buffer* buf) {
-    Closure* cl = allocate(vm, sizeof(Closure) + sizeof *buf + buf->cap, 1);
+    Closure* cl = allocate(sizeof(Closure) + sizeof *buf + buf->cap, 1);
     SETTY(cl, BUFFER);
     cl->info.buf = (Buffer*)((void*)cl + sizeof(Closure));
     memmove(cl->info.buf, buf, sizeof *buf + buf->fill);
@@ -549,7 +594,7 @@ static VAL internal_allocate(VM *vm, size_t hint) {
         size |= size >> (1 << i);
     ++size;
 
-    Closure* cl = allocate(vm, size, 0);
+    Closure* cl = allocate(size, 0);
     SETTY(cl, BUFFER);
     cl->info.buf = (Buffer*)((void*)cl + sizeof(Closure));
     cl->info.buf->cap = size - (sizeof(Closure) + sizeof(Buffer));
@@ -557,7 +602,7 @@ static VAL internal_allocate(VM *vm, size_t hint) {
 }
 
 // Following functions cast uint64_t to size_t, which may narrow!
-VAL idris_allocate(VM* vm, VAL hint) {
+VAL idris_buffer_allocate(VM* vm, VAL hint) {
     Closure* cl = internal_allocate(vm, hint->info.bits64);
     cl->info.buf->fill = 0;
     return cl;
@@ -778,6 +823,8 @@ void* runThread(void* arg) {
     VM* vm = td->vm;
     VM* callvm = td->callvm;
 
+    init_threaddata(vm);
+
     TOP(0) = td->arg;
     BASETOP(0);
     ADDTOP(1);
@@ -970,7 +1017,7 @@ VAL idris_recvMessage(VM* vm) {
 
 VAL* nullary_cons;
 
-void initNullaries() {
+void init_nullaries() {
     int i;
     VAL cl;
     nullary_cons = malloc(256 * sizeof(VAL));
@@ -982,7 +1029,7 @@ void initNullaries() {
     }
 }
 
-void freeNullaries() {
+void free_nullaries() {
     int i;
     for(i = 0; i < 256; ++i) {
         free(nullary_cons[i]);

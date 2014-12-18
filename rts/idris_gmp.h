@@ -7,6 +7,9 @@
 #include "mini-gmp.h"
 #endif
 
+// Set memory allocation functions
+void init_gmpalloc();
+
 VAL MKBIGI(int val);
 VAL MKBIGC(VM* vm, char* bigint);
 VAL MKBIGM(VM* vm, void* bigint);

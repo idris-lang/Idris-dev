@@ -101,10 +101,11 @@ void idris_gc(VM* vm) {
     STATS_ENTER_GC(vm->stats, vm->heap.size)
     // printf("Collecting\n");
 
-    char* newheap = malloc(vm->heap.size);
-    char* oldheap = vm->heap.heap;
     if (vm->heap.old != NULL)
         free(vm->heap.old);
+
+    char* newheap = malloc(vm->heap.size);
+    char* oldheap = vm->heap.heap;
 
     vm->heap.heap = newheap;
 #ifdef FORCE_ALIGNMENT

@@ -108,8 +108,13 @@ typedef struct {
 // Create a new VM
 VM* init_vm(int stack_size, size_t heap_size, 
             int max_threads);
+// Initialise thread-local data for this VM
+void init_threaddata(VM *vm);
 // Clean up a VM once it's no longer needed
 Stats terminate(VM* vm);
+
+// Set up key for thread-local data - called once from idris_main
+void init_threadkeys();
 
 // Functions all take a pointer to their VM, and previous stack base, 
 // and return nothing.
@@ -201,7 +206,7 @@ char* GETSTROFF(VAL stroff);
 void PROJECT(VM* vm, VAL r, int loc, int arity); 
 void SLIDE(VM* vm, int args);
 
-void* allocate(VM* vm, size_t size, int outerlock);
+void* allocate(size_t size, int outerlock);
 // void* allocCon(VM* vm, int arity, int outerlock);
 
 // When allocating from C, call 'idris_requireAlloc' with a size to
@@ -210,11 +215,18 @@ void* allocate(VM* vm, size_t size, int outerlock);
 // idris_doneAlloc *must* be called when allocation from C is done (as it
 // may take a lock if other threads are running).
 
-void idris_requireAlloc(VM* vm, size_t size);
-void idris_doneAlloc(VM* vm);
+void idris_requireAlloc(size_t size);
+void idris_doneAlloc();
+
+// public interface to allocation (note that this may move other pointers
+// if allocating beyond the limits given by idris_requireAlloc!)
+// 'realloc' just calls alloc and copies; 'free' does nothing
+void* idris_alloc(size_t size);
+void* idris_realloc(void* old, size_t old_size, size_t size);
+void idris_free(void* ptr, size_t size);
 
 #define allocCon(cl, vm, t, a, o) \
-  cl = allocate(vm, sizeof(Closure) + sizeof(VAL)*a, o); \
+  cl = allocate(sizeof(Closure) + sizeof(VAL)*a, o); \
   SETTY(cl, CON); \
   cl->info.c.tag_arity = ((t) << 8) | (a);
 
@@ -226,8 +238,8 @@ void idris_doneAlloc(VM* vm);
 #define NULL_CON(x) nullary_cons[x]
 
 extern VAL* nullary_cons;
-void initNullaries();
-void freeNullaries();
+void init_nullaries();
+void free_nullaries();
 
 void* vmThread(VM* callvm, func f, VAL arg);
 
@@ -275,7 +287,7 @@ VAL idris_strIndex(VM* vm, VAL str, VAL i);
 VAL idris_strRev(VM* vm, VAL str);
 
 // Buffer primitives
-VAL idris_allocate(VM* vm, VAL hint);
+VAL idris_buffer_allocate(VM* vm, VAL hint);
 VAL idris_appendBuffer(VM* vm, VAL fst, VAL fstLen, VAL cnt, VAL sndLen, VAL sndOff, VAL snd);
 VAL idris_appendB8Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
 VAL idris_appendB16Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
@@ -316,18 +328,6 @@ const char *idris_getArg(int i);
 // Just reports an error and exits.
 
 void stackOverflow();
-
-// Some FFI help (functions and macros below are all which C code should
-// use)
-
-// When allocating from C, call 'idris_requireAlloc' with a size to
-// guarantee that no garbage collection will happen (and hence nothing
-// will move) until at least size bytes have been allocated.
-// idris_doneAlloc *must* be called when allocation from C is done (as it
-// may take a lock if other threads are running).
-
-void idris_requireAlloc(VM* vm, size_t size);
-void idris_doneAlloc(VM* vm);
 
 // I think these names are nicer for an API...
 
