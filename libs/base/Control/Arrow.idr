@@ -11,9 +11,19 @@ infixr 3 &&&
 class Category arr => Arrow (arr : Type -> Type -> Type) where
   arrow  : (a -> b) -> arr a b
   first  : arr a b -> arr (a, c) (b, c)
+
   second : arr a b -> arr (c, a) (c, b)
+  second f = arrow swap >>> first f >>> arrow swap where
+    swap : (x,y) -> (y,x)
+    swap (x,y) = (y,x)
+
   (***)  : arr a b -> arr a' b' -> arr (a, a') (b, b')
+  f *** g = first f >>> second g
+
   (&&&)  : arr a b -> arr a b' -> arr a (b, b')
+  f &&& g = arrow dup >>> f *** g where
+    dup : x -> (x,x)
+    dup x = (x,x)
 
 instance Arrow Morphism where
   arrow  f            = Mor f
