@@ -138,12 +138,37 @@ buildTC ist info emode opts fn tm
             else return (tm, ds, is)
   where pattern = emode == ELHS
 
+-- return whether arguments of the given constructor name can be 
+-- matched on. If they're polymorphic and the type doesn't appear in the
+-- return type, then no, otherwise yes.
+getUnmatchable :: Context -> Name -> [Bool]
+getUnmatchable ctxt n | isDConName n ctxt && n /= inferCon
+   = case lookupTyExact n ctxt of
+          Nothing -> []
+          Just ty -> checkArgs [] [] ty
+  where checkArgs :: [Name] -> [[Name]] -> Type -> [Bool]
+        checkArgs env ns (Bind n (Pi t _) sc) 
+            = let env' = case t of
+                              TType _ -> n : env
+                              _ -> env in
+                  checkArgs env' (intersect env (refsIn t) : ns) 
+                            (instantiate (P Bound n t) sc)
+        checkArgs env ns t
+            = map (anyMissing (intersect env (refsIn t))) (reverse ns)
+
+        anyMissing tns [] = False
+        anyMissing tns (x : xs) = not (x `elem` tns) || anyMissing tns xs
+
+getUnmatchable ctxt n = []
+
 data ElabCtxt = ElabCtxt { e_inarg :: Bool,
                            e_guarded :: Bool, 
                            e_intype :: Bool,
-                           e_qq :: Bool }
+                           e_qq :: Bool,
+                           e_nomatching :: Bool -- ^ can't pattern match
+                         }
 
-initElabCtxt = ElabCtxt False False False False
+initElabCtxt = ElabCtxt False False False False False
 
 -- Returns the set of declarations we need to add to complete the definition
 -- (most likely case blocks to elaborate)
@@ -268,6 +293,8 @@ elab ist info emode opts fn tm
          | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
            && isTypeConst c
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
+         | pattern && e_nomatching ina
+              = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
          | otherwise = do apply (RConstant c) []; solve
     elab' ina fc (PQuote r)     = do fill r; solve
     elab' ina _ (PTrue fc _)   =
@@ -365,10 +392,12 @@ elab ist info emode opts fn tm
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed")
-    elab' ec _ (PRef fc n)
+    elab' ec _ tm@(PRef fc n)
       | pattern && not reflection && not (e_qq ec) && not (e_intype ec)
             && isTConName n (tt_ctxt ist)
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
+      | pattern && e_nomatching ec
+              = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
       | (pattern || (bindfree && bindable n)) && not (inparamBlock n) && not (e_qq ec)
         = do let ina = e_inarg ec
                  guarded = e_guarded ec
@@ -395,6 +424,8 @@ elab ist info emode opts fn tm
           | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
             && isTConName n (tt_ctxt ist)
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
+          | pattern && e_nomatching ina
+              = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
           | otherwise = erun fc $ do apply (Var n) []; solve
     elab' ina fc (PLam n Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
@@ -551,8 +582,14 @@ elab ist info emode opts fn tm
 --           = lift $ tfail (Msg "Typecase is not allowed")
     -- if f is local, just do a simple_app
     elab' ina _ tm@(PApp fc (PRef _ f) args)
+      | pattern && e_nomatching ina
+              = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
+      | otherwise
        = do env <- get_env
             ty <- goal
+            let unmatchableArgs = if pattern 
+                                     then getUnmatchable (tt_ctxt ist) f
+                                     else []
             when (pattern && not reflection && not (e_qq ina) && not (e_intype ina)
                           && isTConName f (tt_ctxt ist)) $
               lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
@@ -589,7 +626,8 @@ elab ist info emode opts fn tm
                              sortBy cmpArg (zip ns args)
                     ulog <- getUnifyLog
                     elabArgs ist (ina { e_inarg = e_inarg ina || not isinf }) 
-                           [] fc False f ns'
+                           [] fc False f 
+                             (zip ns' (unmatchableArgs ++ repeat False))
                              (f == sUN "Force")
                              (map (\x -> getTm x) eargs) -- TODO: remove this False arg
                     solve
@@ -1004,21 +1042,21 @@ elab ist info emode opts fn tm
              -> FC -- ^ Source location
              -> Bool
              -> Name -- ^ Name of the function being applied
-             -> [(Name, Name)] -- ^ (Argument Name, Hole Name)
+             -> [((Name, Name), Bool)] -- ^ (Argument Name, Hole Name, unmatchable)
              -> Bool -- ^ under a 'force'
-             -> [PTerm] -- ^ (Laziness, argument)
+             -> [PTerm] -- ^ argument
              -> ElabD ()
     elabArgs ist ina failed fc retry f [] force _ = return ()
-    elabArgs ist ina failed fc r f ((argName, holeName):ns) force (t : args)
+    elabArgs ist ina failed fc r f (((argName, holeName), unm):ns) force (t : args)
         = do hs <- get_holes
              if holeName `elem` hs then 
                 do focus holeName
                    case t of
                       Placeholder -> do movelast holeName
                                         elabArgs ist ina failed fc r f ns force args
-                      _ -> elabArg argName holeName t
+                      _ -> elabArg t
                 else elabArgs ist ina failed fc r f ns force args
-      where elabArg argName holeName t =
+      where elabArg t =
               do -- solveAutos ist fn False
                  now_elaborating fc f argName
                  wrapErr f argName $ do
@@ -1033,7 +1071,8 @@ elab ist info emode opts fn tm
                                  g <- goal
                                  ulog <- getUnifyLog
                                  traceWhen ulog ("Elaborating argument " ++ show (argName, holeName, g)) $
-                                  elab ina (Just fc) t; return failed
+                                  elab (ina { e_nomatching = unm }) (Just fc) t
+                                 return failed
                    done_elaborating_arg f argName
                    elabArgs ist ina failed fc r f ns force args
             wrapErr f argName action =
