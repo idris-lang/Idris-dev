@@ -374,11 +374,8 @@ toPat reflect tc = map $ toPat' []
 
     toPat' []   (P Bound n ty) = PV n ty
     toPat' args (App f a)      = toPat' (a : args) f
-    toPat' [] (Constant (AType _)) = PTyPat
-    toPat' [] (Constant StrType)   = PTyPat
-    toPat' [] (Constant PtrType)   = PTyPat
-    toPat' [] (Constant VoidType)  = PTyPat
-    toPat' [] (Constant x)         = PConst x
+    toPat' [] (Constant x) | isTypeConst x = PTyPat
+                           | otherwise     = PConst x
 
     toPat' [] (Bind n (Pi t _) sc)
         | reflect && noOccurrence n sc

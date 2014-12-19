@@ -57,7 +57,9 @@ split n t'
    = do ist <- getIState
         -- Make sure all the names in the term are accessible
         mapM_ (\n -> setAccessibility n Public) (allNamesIn t')
-        (tm, ty, pats) <- elabValBind recinfo ELHS True (addImplPat ist t')
+        -- ETyDecl rather then ELHS because there'll be explicit type
+        -- matching
+        (tm, ty, pats) <- elabValBind recinfo ETyDecl True (addImplPat ist t')
         -- ASSUMPTION: tm is in normal form after elabValBind, so we don't
         -- need to do anything special to find out what family each argument
         -- is in

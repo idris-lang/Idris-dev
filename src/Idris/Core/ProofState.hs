@@ -876,13 +876,13 @@ processTactic EndUnify ps
           ns' = map (\ (n, t) -> (n, updateSolvedTerm ns t)) ns
           (ns'', probs') = updateProblems ps ns' (problems ps)
           tm' = updateSolved ns'' (pterm ps) in
-          traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
-            return (ps { pterm = tm',
-                         unified = (h, []),
-                         problems = probs',
-                         notunified = updateNotunified ns'' (notunified ps),
-                         recents = recents ps ++ map fst ns'',
-                         holes = holes ps \\ map fst ns'' }, "")
+             traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
+              return (ps { pterm = tm',
+                           unified = (h, []),
+                           problems = probs',
+                           notunified = updateNotunified ns'' (notunified ps),
+                           recents = recents ps ++ map fst ns'',
+                           holes = holes ps \\ map fst ns'' }, "")
 processTactic UnifyAll ps
     = let tm' = updateSolved (notunified ps) (pterm ps) in
           return (ps { pterm = tm',
@@ -897,24 +897,24 @@ processTactic (ComputeLet n) ps
                               computeLet (context ps) n
                                          (getProofTerm (pterm ps)) }, "")
 processTactic UnifyProblems ps
-    = let (ns', probs') = updateProblems ps [] (problems ps)
-          pterm' = updateSolved ns' (pterm ps) in
-      traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns')) $
-        return (ps { pterm = pterm', solved = Nothing, problems = probs',
-                     previous = Just ps, plog = "",
-                     notunified = updateNotunified ns' (notunified ps),
-                     recents = recents ps ++ map fst ns',
-                     holes = holes ps \\ (map fst ns') }, plog ps)
+    = do let (ns', probs') = updateProblems ps [] (problems ps)
+             pterm' = updateSolved ns' (pterm ps)
+         traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns')) $
+          return (ps { pterm = pterm', solved = Nothing, problems = probs',
+                       previous = Just ps, plog = "",
+                       notunified = updateNotunified ns' (notunified ps),
+                       recents = recents ps ++ map fst ns',
+                       holes = holes ps \\ (map fst ns') }, plog ps)
 processTactic (MatchProblems all) ps
-    = let (ns', probs') = matchProblems all ps [] (problems ps)
-          (ns'', probs'') = matchProblems all ps ns' probs'
-          pterm' = updateSolved ns'' (pterm ps) in
-       traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
-        return (ps { pterm = pterm', solved = Nothing, problems = probs'',
-                   previous = Just ps, plog = "",
-                   notunified = updateNotunified ns'' (notunified ps),
-                   recents = recents ps ++ map fst ns'',
-                   holes = holes ps \\ (map fst ns'') }, plog ps)
+    = do let (ns', probs') = matchProblems all ps [] (problems ps)
+             (ns'', probs'') = matchProblems all ps ns' probs'
+             pterm' = updateSolved ns'' (pterm ps)
+         traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
+          return (ps { pterm = pterm', solved = Nothing, problems = probs'',
+                       previous = Just ps, plog = "",
+                       notunified = updateNotunified ns'' (notunified ps),
+                       recents = recents ps ++ map fst ns'',
+                       holes = holes ps \\ (map fst ns'') }, plog ps)
 processTactic t ps
     = case holes ps of
         [] -> fail "Nothing to fill in."

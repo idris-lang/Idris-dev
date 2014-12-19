@@ -553,6 +553,15 @@ deriving instance Binary Const
 deriving instance NFData Const
 !-}
 
+isTypeConst :: Const -> Bool
+isTypeConst (AType _) = True
+isTypeConst StrType = True
+isTypeConst ManagedPtrType = True
+isTypeConst BufferType = True
+isTypeConst PtrType = True
+isTypeConst VoidType = True
+isTypeConst _ = False
+
 instance Sized Const where
   size _ = 1
 

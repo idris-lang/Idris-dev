@@ -3,12 +3,14 @@ module simple
 plus_comm : (n : Nat) -> (m : Nat) -> (n + m = m + n)
 
 -- Base case
-(Z + m = m + Z) <== plus_comm =
+-- (Z + m = m + Z) <== plus_comm = -- broken by typecase check
+plus_comm Z m =
     rewrite ((m + Z = m) <== plusZeroRightNeutral) ==>
             (Z + m = m) in Refl
 
 -- Step case
-(S k + m = m + S k) <== plus_comm =
+-- (S k + m = m + S k) <== plus_comm =
+plus_comm (S k) m =
     rewrite ((k + m = m + k) <== plus_comm) in
     rewrite ((S (m + k) = m + S k) <== plusSuccRightSucc) in
         Refl
