@@ -163,10 +163,6 @@ genAll i args
     lotsOfChars = map Ch ['a'..]
     lotsOfStrings = map Str (map (("some string " ++).show) [1..])
 
-    conForm (PApp _ (PRef fc n) _) = isConName n (tt_ctxt i)
-    conForm (PRef fc n) = isConName n (tt_ctxt i)
-    conForm _ = False
-
     nubMap f acc [] = acc
     nubMap f acc (x : xs) = nubMap f (fnub' acc (f x)) xs
 
@@ -183,7 +179,7 @@ genAll i args
                 ([pimp (sUN "a") Placeholder True,
                   pimp (sUN "P") Placeholder True] ++
                  [pexp t,pexp v]) o
-    otherPats o@(PConstant c) = return o
+    otherPats o@(PConstant c) = inventConsts [o] -- return o
     otherPats arg = return Placeholder
 
     ops fc n xs o
