@@ -366,6 +366,9 @@ elab ist info emode opts fn tm
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed")
     elab' ec _ (PRef fc n)
+      | pattern && not reflection && not (e_qq ec) && not (e_intype ec)
+            && isTConName n (tt_ctxt ist)
+              = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
       | (pattern || (bindfree && bindable n)) && not (inparamBlock n) && not (e_qq ec)
         = do let ina = e_inarg ec
                  guarded = e_guarded ec
