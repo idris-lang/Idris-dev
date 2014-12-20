@@ -93,10 +93,12 @@ data Tactic = Attack
 -- Some utilites on proof and tactic states
 
 instance Show ProofState where
-    show (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-          = show nm ++ ": no more goals"
-    show (PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ _ ctxt _ _ _ _ _)
-          = let OK g = goal (Just h) tm
+    show ps | [] <- holes ps
+          = show (thname ps) ++ ": no more goals"
+    show ps | (h : hs) <- holes ps
+          = let tm = pterm ps
+                nm = thname ps
+                OK g = goal (Just h) tm
                 wkenv = premises g in
                 "Other goals: " ++ show hs ++ "\n" ++
                 showPs wkenv (reverse wkenv) ++ "\n" ++
@@ -118,10 +120,12 @@ instance Show ProofState where
                showG ps b = showEnv ps (binderTy b)
 
 instance Pretty ProofState OutputAnnotation where
-  pretty (PS nm [] _ _ trm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
-    pretty nm <+> colon <+> text " no more goals."
-  pretty p@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ _ i _ _ _ ctxt _ _ _ _ _) =
-    let OK g  = goal (Just h) tm in
+  pretty ps | [] <- holes ps =
+    pretty (thname ps) <+> colon <+> text " no more goals."
+  pretty ps | (h : hs) <- holes ps =
+    let tm = pterm ps
+        OK g = goal (Just h) tm 
+        nm = thname ps in
     let wkEnv = premises g in
       text "Other goals" <+> colon <+> pretty hs <+>
       prettyPs wkEnv (reverse wkEnv) <+>

@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternGuards #-}
 module Idris.Prover where
 
 import Idris.Core.Elaborate hiding (Tactic(..))
@@ -114,10 +115,11 @@ elabStep st e = case runStateT eCheck st of
                          ((_,_,_,_,e,_,_):_) -> lift $ Error e
 
 dumpState :: IState -> ProofState -> Idris ()
-dumpState ist (PS nm [] _ _ tm _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) =
-  do rendered <- iRender $ prettyName True False [] nm <> colon <+> text "No more goals."
+dumpState ist ps | [] <- holes ps =
+  do let nm = thname ps
+     rendered <- iRender $ prettyName True False [] nm <> colon <+> text "No more goals."
      iputGoal rendered
-dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ _ ctxt _ _ _ _ _) = do
+dumpState ist ps | (h : hs) <- holes ps = do
   let OK ty  = goalAtFocus ps
   let OK env = envAtFocus ps
   let state = prettyOtherGoals hs <> line <>
@@ -127,6 +129,8 @@ dumpState ist ps@(PS nm (h:hs) _ _ tm _ _ _ _ _ _ problems i _ _ _ ctxt _ _ _ _ 
   iputGoal rendered
 
   where
+    (h : hs) = holes ps -- apparently the pattern guards don't give us this
+
     ppo = ppOptionIst ist
 
     tPretty bnd t = annotate (AnnTerm bnd t) .
