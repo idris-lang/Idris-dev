@@ -56,7 +56,8 @@ genClauses fc n xs given
    = do i <- getIState
         let lhs_tms = map (\x -> delab' i x True True) xs
         -- if a placeholder was given, don't bother generating cases for it
-        let lhs_tms' = zipWith mergePlaceholders lhs_tms given
+        let lhs_tms' = zipWith mergePlaceholders lhs_tms 
+                          (map (stripUnmatchable i) given)
         let lhss = map pUnApply lhs_tms'
 
         let argss = transpose lhss
@@ -93,7 +94,7 @@ genClauses fc n xs given
 
         -- Return whether the given clause matches none of the input clauses
         -- (xs)
-        noMatch i tm = all (\x -> case matchClause i (delab' i x True True) tm of
+        noMatch i tm = all (\x -> case matchClause i (stripUnmatchable i (delab' i x True True)) tm of
                                        Right ms -> False
                                        Left miss -> True) xs
 

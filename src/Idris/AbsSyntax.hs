@@ -1850,8 +1850,15 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
                                                   mty <- match' ty ty'
                                                   ms <- match' s s'
                                                   return (mt ++ mty ++ ms)
-    match (PHidden x) y = match' x y
-    match x (PHidden y) = match' x y
+    match (PHidden x) (PHidden y)
+          | RightOK xs <- match x y = return xs -- to collect variables
+          | otherwise = return [] -- Otherwise hidden things are unmatchable
+    match (PHidden x) y 
+          | RightOK xs <- match x y = return xs 
+          | otherwise = return []
+    match x (PHidden y) 
+          | RightOK xs <- match x y = return xs 
+          | otherwise = return []
     match (PUnifyLog x) y = match' x y
     match x (PUnifyLog y) = match' x y
     match (PNoImplicits x) y = match' x y
