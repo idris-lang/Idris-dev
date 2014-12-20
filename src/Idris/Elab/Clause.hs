@@ -497,6 +497,7 @@ checkPossible info fc tcgen fname lhs_in
 
           ntRec x y | Ref <- x = True
                     | Ref <- y = True
+                    | (Bound, Bound) <- (x, y) = True
                     | otherwise = False -- name is different, unrecoverable
 
 propagateParams :: IState -> [Name] -> Type -> PTerm -> PTerm
