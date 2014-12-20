@@ -1696,6 +1696,9 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
                            else PAlternative b alts'
     su (PPair fc p l r) = PPair fc p (su l) (su r)
     su (PDPair fc p l t r) = PDPair fc p (su l) (su t) (su r)
+    su t@(PLam _ _ _) = PHidden t
+    su t@(PPi _ _ _ _) = PHidden t
+    su t@(PEq _ _ _ _ _) = PHidden t
     su t = t
 
     ctxt = tt_ctxt i
