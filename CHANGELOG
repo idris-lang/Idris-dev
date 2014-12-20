@@ -12,6 +12,9 @@ New in 0.9.16:
   error.
 * Better Unicode support for the JavaScript/Node codegen
 
+* Several long-standing issues resolved, particularly with pattern matching
+  and coverage checking.
+
 New in 0.9.15:
 --------------
 * Two new tactics: skip and fail. Skip does nothing, and fail takes a string
