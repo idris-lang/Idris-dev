@@ -742,7 +742,7 @@ elab ist info emode opts fn tm
     elab' ina fc (PTactics ts)
         | not pattern = do mapM_ (runTac False ist fc fn) ts
         | otherwise = elab' ina fc Placeholder
-    elab' ina fc (PElabError e) = fail (pshow ist e)
+    elab' ina fc (PElabError e) = lift $ tfail e
     elab' ina _ (PRewrite fc r sc newg)
         = do attack
              tyn <- getNameFrom (sMN 0 "rty")
