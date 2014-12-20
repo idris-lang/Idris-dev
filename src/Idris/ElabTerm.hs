@@ -1227,7 +1227,7 @@ resolveTC = resTC' []
 resTC' tcs def 0 topg fn ist = fail $ "Can't resolve type class"
 resTC' tcs def 1 topg fn ist = try' (trivial' ist) (resolveTC def 0 topg fn ist) True
 resTC' tcs defaultOn depth topg fn ist
-      = do hnf_compute
+      = do compute
            g <- goal
            ptm <- get_term
            ulog <- getUnifyLog
