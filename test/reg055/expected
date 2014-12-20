@@ -1,0 +1,4 @@
+reg055.idr:5:3:When elaborating left hand side of g:
+Can't match on  g ([92mf[0m [91m0[0m)
+reg055.idr:8:3:When elaborating left hand side of h:
+Can't match on  h x x

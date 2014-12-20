@@ -20,6 +20,7 @@ data Err = Msg String
          | CantIntroduce TT
          | NoSuchVariable TTName
          | WithFnType TT
+         | CantMatch TT
          | NoTypeDecl TTName
          | NotInjective TT TT TT
          | CantResolve TT

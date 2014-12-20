@@ -168,7 +168,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
              let ty = addImpl i ty'
              ctxt <- getContext
              ((tyT, _, _), _) <-
-                   tclift $ elaborate ctxt iname (TType (UVal 0)) []
+                   tclift $ elaborate ctxt iname (TType (UVal 0)) initEState
                             (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
              ctxt <- getContext
              (cty, _) <- recheckC fc [] tyT

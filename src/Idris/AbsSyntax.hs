@@ -1437,7 +1437,7 @@ addImpl' inpat env infns ist ptm
         | f `elem` infns = PInferRef fc f
         | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat qq ist fc f ds []
     ai qq env ds (PHidden (PRef fc f))
-        | not (f `elem` map fst env) = handleErr $ aiFn inpat False qq ist fc f ds []
+        | not (f `elem` map fst env) = PHidden (handleErr $ aiFn inpat False qq ist fc f ds [])
     ai qq env ds (PEq fc lt rt l r)
       = let lt' = ai qq env ds lt
             rt' = ai qq env ds rt
@@ -1632,8 +1632,6 @@ aiFn inpat expat qq ist fc f ds as
     find n (g : gs) acc = find n gs (g : acc)
 
 -- replace non-linear occurrences with _
--- ASSUMPTION: This is called before adding 'alternatives' because otherwise
--- it is hard to get right!
 
 stripLinear :: IState -> PTerm -> PTerm
 stripLinear i tm = evalState (sl tm) [] where
@@ -1643,17 +1641,25 @@ stripLinear i tm = evalState (sl tm) [] where
               = return $ PRef fc f
          | otherwise = do ns <- get
                           if (f `elem` ns)
-                             then return Placeholder
+                             then return $ PHidden (PRef fc f) -- Placeholder
                              else do put (f : ns)
                                      return (PRef fc f)
     sl (PPatvar fc f)
                      = do ns <- get
                           if (f `elem` ns)
-                             then return Placeholder
+                             then return $ PHidden (PPatvar fc f) -- Placeholder
                              else do put (f : ns)
                                      return (PPatvar fc f)
-    sl t@(PAlternative _ (a : as)) = do sl a
-                                        return t
+    -- Assumption is that variables are all the same in each alternative
+    sl t@(PAlternative b as) = do ns <- get
+                                  as' <- slAlts ns as
+                                  return (PAlternative b as')
+       where slAlts ns (a : as) = do put ns
+                                     a' <- sl a
+                                     as' <- slAlts ns as
+                                     return (a' : as')
+             slAlts ns [] = return []
+    sl (PPair fc p l r) = do l' <- sl l; r' <- sl r; return (PPair fc p l' r')
     sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var
                               args' <- mapM slA args
                               return $ PApp fc fn args'
@@ -1679,8 +1685,11 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su (PRef fc f)
        | (Bind n (Pi t _) sc :_) <- lookupTy f (tt_ctxt i)
           = Placeholder
-    su (PApp fc fn args)
-       = PApp fc fn (fmap (fmap su) args)
+    su (PApp fc f@(PRef _ fn) args)
+       | isDConName fn ctxt 
+          = PApp fc f (fmap (fmap su) args)
+    su (PApp fc f args)
+          = PHidden (PApp fc f args)
     su (PAlternative b alts)
        = let alts' = filter (/= Placeholder) (map su alts) in
              if null alts' then Placeholder
@@ -1688,6 +1697,9 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su (PPair fc p l r) = PPair fc p (su l) (su r)
     su (PDPair fc p l t r) = PDPair fc p (su l) (su t) (su r)
     su t = t
+
+    ctxt = tt_ctxt i
+
 stripUnmatchable i tm = tm
 
 mkPApp fc a f [] = f
@@ -1835,7 +1847,8 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
                                                   mty <- match' ty ty'
                                                   ms <- match' s s'
                                                   return (mt ++ mty ++ ms)
-    match (PHidden x) (PHidden y) = match' x y
+    match (PHidden x) y = match' x y
+    match x (PHidden y) = match' x y
     match (PUnifyLog x) y = match' x y
     match x (PUnifyLog y) = match' x y
     match (PNoImplicits x) y = match' x y

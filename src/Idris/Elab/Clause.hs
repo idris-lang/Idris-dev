@@ -445,7 +445,7 @@ checkPossible info fc tcgen fname lhs_in
         i <- getIState
         let lhs = addImplPat i lhs_in
         -- if the LHS type checks, it is possible
-        case elaborate ctxt (sMN 0 "patLHS") infP []
+        case elaborate ctxt (sMN 0 "patLHS") infP initEState
                             (erun fc (buildTC i info ELHS [] fname (infTerm lhs))) of
             OK ((lhs', _, _), _) ->
                do let lhs_tm = orderPats (getInferTerm lhs')
@@ -561,14 +561,16 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                          [t] -> t
                          _ -> []
         let params = getParamsInType i [] fn_is fn_ty
-        let lhs = mkLHSapp $ stripUnmatchable i $
-                    propagateParams i params fn_ty (addImplPat i (stripLinear i lhs_in))
+        let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
+                    propagateParams i params fn_ty (addImplPat i lhs_in)
+--         let lhs = mkLHSapp $ 
+--                     propagateParams i params fn_ty (addImplPat i lhs_in)
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show lhs_in ++
                   "\n" ++ show (fn_ty, fn_is))
 
         (((lhs', dlhs, []), probs, inj), _) <-
-            tclift $ elaborate ctxt (sMN 0 "patLHS") infP []
+            tclift $ elaborate ctxt (sMN 0 "patLHS") infP initEState
                      (do res <- errAt "left hand side of " fname
                                   (erun fc (buildTC i info ELHS opts fname (infTerm lhs)))
                          probs <- get_probs
@@ -642,7 +644,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
         ((rhs', defer, is, probs), _) <-
-           tclift $ elaborate ctxt (sMN 0 "patRHS") clhsty []
+           tclift $ elaborate ctxt (sMN 0 "patRHS") clhsty initEState
                     (do pbinds ist lhs_tm
                         mapM_ setinj (nub (params ++ inj))
                         setNextName
@@ -652,7 +654,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                               (erun fc $ psolve lhs_tm)
                         hs <- get_holes
                         aux <- getAux
-                        mapM_ (elabCaseHole aux) hs
+                        mapM_ (elabCaseHole (case_decls aux)) hs
                         tt <- get_term
                         let (tm, ds) = runState (collectDeferred (Just fname) tt) []
                         probs <- get_probs
@@ -793,10 +795,10 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                          [t] -> t
                          _ -> []
         let params = getParamsInType i [] fn_is fn_ty
-        let lhs = propagateParams i params fn_ty (addImplPat i (stripLinear i lhs_in))
+        let lhs = stripLinear i $ stripUnmatchable i $ propagateParams i params fn_ty (addImplPat i lhs_in)
         logLvl 2 ("LHS: " ++ show lhs)
         ((lhs', dlhs, []), _) <-
-            tclift $ elaborate ctxt (sMN 0 "patLHS") infP []
+            tclift $ elaborate ctxt (sMN 0 "patLHS") infP initEState
               (errAt "left hand side of with in " fname
                 (erun fc (buildTC i info ELHS opts fname (infTerm lhs))) )
         let lhs_tm = orderPats (getInferTerm lhs')
@@ -812,7 +814,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- Elaborate wval in this context
         ((wval', defer, is), _) <-
             tclift $ elaborate ctxt (sMN 0 "withRHS")
-                        (bindTyArgs PVTy bargs infP) []
+                        (bindTyArgs PVTy bargs infP) initEState
                         (do pbinds i lhs_tm
                             setNextName
                             -- TODO: may want where here - see winfo abpve
@@ -892,7 +894,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         ctxt <- getContext -- New context with block added
         i <- getIState
         ((rhs', defer, is), _) <-
-           tclift $ elaborate ctxt (sMN 0 "wpatRHS") clhsty []
+           tclift $ elaborate ctxt (sMN 0 "wpatRHS") clhsty initEState
                     (do pbinds i lhs_tm
                         setNextName
                         (_, d, is) <- erun fc (build i info ERHS opts fname rhs)

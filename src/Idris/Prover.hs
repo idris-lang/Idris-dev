@@ -53,10 +53,10 @@ showProof lit n ps
   where bird = if lit then "> " else ""
         break = "\n" ++ bird
 
-proverSettings :: ElabState [PDecl] -> Settings Idris
+proverSettings :: ElabState EState -> Settings Idris
 proverSettings e = setComplete (proverCompletion (assumptionNames e)) defaultSettings
 
-assumptionNames :: ElabState [PDecl] -> [String]
+assumptionNames :: ElabState EState -> [String]
 assumptionNames e
   = case envAtFocus (proof e) of
          OK env -> names env
@@ -68,7 +68,7 @@ prove :: Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
 prove opt ctxt lit n ty
     = do let ps = initElaborator n ctxt ty
          ideslavePutSExp "start-proof-mode" n
-         (tm, prf) <- ploop n True ("-" ++ show n) [] (ES (ps, []) "" Nothing) Nothing
+         (tm, prf) <- ploop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm
          i <- getIState
          case idris_outputmode i of
@@ -99,7 +99,7 @@ prove opt ctxt lit n ty
              runIO . hPutStrLn h $ IdeSlave.convSExp "return" (IdeSlave.SymbolAtom "ok", "") n
            _ -> return ()
 
-elabStep :: ElabState [PDecl] -> ElabD a -> Idris (a, ElabState [PDecl])
+elabStep :: ElabState EState -> ElabD a -> Idris (a, ElabState EState)
 elabStep st e = case runStateT eCheck st of
                      OK (a, st') -> return (a, st')
                      Error a -> ierror a
@@ -177,11 +177,11 @@ dumpState ist ps | (h : hs) <- holes ps = do
     freeEnvNames :: Env -> [Name]
     freeEnvNames = foldl (++) [] . map (\(n, b) -> freeNames (Bind n b Erased))
 
-lifte :: ElabState [PDecl] -> ElabD a -> Idris a
+lifte :: ElabState EState -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
                 return v
 
-receiveInput :: Handle -> ElabState [PDecl] -> Idris (Maybe String)
+receiveInput :: Handle -> ElabState EState -> Idris (Maybe String)
 receiveInput h e =
   do i <- getIState
      let inh = if h == stdout then stdin else h
@@ -205,7 +205,7 @@ receiveInput h e =
        Just (IdeSlave.DocsFor str) -> return (Just (":doc " ++ str))
        _ -> return Nothing
 
-ploop :: Name -> Bool -> String -> [String] -> ElabState [PDecl] -> Maybe History -> Idris (Term, [String])
+ploop :: Name -> Bool -> String -> [String] -> ElabState EState -> Maybe History -> Idris (Term, [String])
 ploop fn d prompt prf e h
     = do i <- getIState
          let autoSolve = opt_autoSolve (idris_options i)
@@ -327,7 +327,7 @@ ploop fn d prompt prf e h
                putIState ist
                return (False, e, False, prf, Right action))
               (\err -> do putIState ist ; ierror err)
-        docStr :: Either Name Const -> Idris (Bool, ElabState [PDecl], Bool, [String], Either Err (Idris ()))
+        docStr :: Either Name Const -> Idris (Bool, ElabState EState, Bool, [String], Either Err (Idris ()))
         docStr (Left n) = do ist <- getIState
                              idrisCatch (case lookupCtxtName n (idris_docstrings ist) of
                                            [] -> return (False, e, False, prf,

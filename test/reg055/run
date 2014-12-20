@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+idris $@ reg055.idr --check

@@ -54,7 +54,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
          i <- getIState
          let lhs = addImplPat i lhs_in
          ((lhs', dlhs, []), _) <-
-              tclift $ elaborate ctxt (sMN 0 "transLHS") infP []
+              tclift $ elaborate ctxt (sMN 0 "transLHS") infP initEState
                        (erun fc (buildTC i info ELHS [] (sUN "transform")
                                    (infTerm lhs)))
          let lhs_tm = orderPats (getInferTerm lhs')
@@ -67,7 +67,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
 
          let rhs = addImplBound i (map fst newargs) rhs_in
          ((rhs', defer), _) <-
-              tclift $ elaborate ctxt (sMN 0 "transRHS") clhs_ty []
+              tclift $ elaborate ctxt (sMN 0 "transRHS") clhs_ty initEState
                        (do pbinds i lhs_tm
                            setNextName
                            erun fc (build i info ERHS [] (sUN "transform") rhs)

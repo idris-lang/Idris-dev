@@ -262,6 +262,8 @@ pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (WithFnType ty) =
   text "Can't match on a function: type is" <+> annTm ty (pprintTerm i (delab i ty))
+pprintErr' i (CantMatch t) =
+  text "Can't match on " <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i UniverseError = text "Universe inconsistency"
 pprintErr' i (UniqueError NullType n)
@@ -513,3 +515,5 @@ showbasic n@(UN _) = show n
 showbasic (MN _ s) = str s
 showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n
 showbasic (SN s) = show s
+showbasic n = show n
+

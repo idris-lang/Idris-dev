@@ -94,7 +94,7 @@ build ist info emode opts fn tm
          when tydecl (do update_term orderPats
                          mkPat)
 --                          update_term liftPats)
-         is <- getAux
+         EState is _ <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
          log <- getLog
@@ -130,7 +130,12 @@ buildTC ist info emode opts fn tm
             [] -> return ()
             ((_,_,_,_,e,_,_):es) -> if inf then return ()
                                            else lift (Error e)
-         is <- getAux
+         dots <- get_dotterm
+         -- 'dots' are the PHidden things which have not been solved by
+         -- unification
+         when (not (null dots)) $
+            lift (Error (CantMatch (getInferTerm tm)))
+         EState is _ <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
          log <- getLog
@@ -181,6 +186,8 @@ elab ist info emode opts fn tm
          compute -- expand type synonyms, etc
          let fc = maybe "(unknown)"
          elabE initElabCtxt (elabFC info) tm -- (in argument, guarded, in type, in qquote)
+         est <- getAux
+         sequence_ (delayed_elab est)
          end_unify
          ptm <- get_term
          when pattern -- convert remaining holes to pattern vars
@@ -388,7 +395,7 @@ elab ist info emode opts fn tm
               trySeq' deferr (x : xs)
                   = try' (do elab' ina fc x
                              solveAutos ist fn False) (trySeq' deferr xs) True
-    elab' ina _ (PPatvar fc n) | bindfree = do patvar n; -- update_term liftPats
+    elab' ina _ (PPatvar fc n) | bindfree = do patvar n; update_term liftPats
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed")
@@ -587,9 +594,13 @@ elab ist info emode opts fn tm
       | otherwise
        = do env <- get_env
             ty <- goal
+            ctxt <- get_context
             let unmatchableArgs = if pattern 
                                      then getUnmatchable (tt_ctxt ist) f
                                      else []
+            -- Dot it if we're in a pattern and it isn't a constructor
+--             when (pattern && not (isDConName f ctxt) && f /= fn) $ dotterm
+               
             when (pattern && not reflection && not (e_qq ina) && not (e_intype ina)
                           && isTConName f (tt_ctxt ist)) $
               lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
@@ -612,7 +623,6 @@ elab ist info emode opts fn tm
                         _ -> do mapM_ setInjective (map getTm args)
                                 -- maybe more things are solvable now
                                 unifyProblems
-                    ctxt <- get_context
                     let guarded = isConName f ctxt
 --                    trace ("args is " ++ show args) $ return ()
                     ns <- apply (Var f) (map isph args)
@@ -666,13 +676,15 @@ elab ist info emode opts fn tm
                                    PLam _ _ _ -> 3
                                    PRewrite _ _ _ _ -> 4
                                    PResolveTC _ -> 0
+                                   PHidden _ -> 150
                                    _ -> 1
 
             constraint (PConstraint _ _ _ _) = True
             constraint _ = False
 
             -- Score a point for every level where there is a non-constructor
-            -- function (so higher score --> done later)
+            -- function (so higher score --> done later), and lots of points
+            -- if there is a PHidden since this should be unifiable.
             -- Only relevant when on lhs
             conDepth d t | not pattern = 0
             conDepth d (PRef _ f) | isConName f (tt_ctxt ist) = 0
@@ -681,6 +693,7 @@ elab ist info emode opts fn tm
                = conDepth d f + sum (map (conDepth (d+1)) (map getTm as))
             conDepth d (PPatvar _ _) = 0
             conDepth d (PAlternative _ as) = maximum (map (conDepth d) as)
+            conDepth d (PHidden _) = 150
             conDepth d Placeholder = 0
             conDepth d (PResolveTC _) = 0
             conDepth d t = max (100 - d) 1
@@ -810,7 +823,7 @@ elab ist info emode opts fn tm
                              (caseBlock fc cname'
                                 (map (isScr scr) (reverse args')) opts)
              -- elaborate case
-             updateAux (newdef : )
+             updateAux (\e -> e { case_decls = newdef : case_decls e } )
              -- if we haven't got the type yet, hopefully we'll get it later!
              movelast tyn
              solve
@@ -930,7 +943,23 @@ elab ist info emode opts fn tm
 
     elab' ina fc (PUnquote t) = fail "Found unquote outside of quasiquote"
     elab' ina fc (PAs _ n t) = lift . tfail . Msg $ "@-pattern not allowed here"
+    elab' ina fc (PHidden t) 
+      | reflection = elab' ina fc t
+      | otherwise
+        = do (h : hs) <- get_holes
+             -- Dotting a hole means that either the hole or any outer
+             -- hole (a hole outside any occurrence of it) 
+             -- must be solvable by unification as well as being filled
+             -- in directly.
+             -- Delay dotted things to the end, then when we elaborate them
+             -- we can check the result against what was inferred
+             movelast h
+             delayElab $ do focus h
+                            dotterm
+                            elab' ina fc t
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
+
+    delayElab t = updateAux (\e -> e { delayed_elab = delayed_elab e ++ [t] }) 
 
     isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))
     isScr (PRef _ n) (n', b) = (n', (n == n', b))
@@ -1126,6 +1155,7 @@ pruneByType env t c as
        | otherwise = locallyBound ts
     getName (PRef _ n) = Just n
     getName (PApp _ f _) = getName f
+    getName (PHidden t) = getName t
     getName _ = Nothing
 
 pruneByType env (P _ n _) ctxt as
@@ -1143,6 +1173,7 @@ pruneByType env (P _ n _) ctxt as
     headIs var f (PApp _ (PRef _ f') _) = typeHead var f f'
     headIs var f (PApp _ f' _) = headIs var f f'
     headIs var f (PPi _ _ _ sc) = headIs var f sc
+    headIs var f (PHidden t) = headIs var f t
     headIs _ _ _ = True -- keep if it's not an application
 
     typeHead var f f'
@@ -2195,6 +2226,7 @@ reflectErr (TooManyArguments n) = raw_apply (Var $ reflErrName "TooManyArguments
 reflectErr (CantIntroduce t) = raw_apply (Var $ reflErrName "CantIntroduce") [reflect t]
 reflectErr (NoSuchVariable n) = raw_apply (Var $ reflErrName "NoSuchVariable") [reflectName n]
 reflectErr (WithFnType t) = raw_apply (Var $ reflErrName "WithFnType") [reflect t]
+reflectErr (CantMatch t) = raw_apply (Var $ reflErrName "CantMatch") [reflect t]
 reflectErr (NoTypeDecl n) = raw_apply (Var $ reflErrName "NoTypeDecl") [reflectName n]
 reflectErr (NotInjective t1 t2 t3) =
   raw_apply (Var $ reflErrName "NotInjective")
@@ -2306,7 +2338,7 @@ reifyReportPart (App (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "Te
     Right (TextPart msg)
 reifyReportPart (App (P (DCon _ _ _) n _) ttn)
   | n == reflm "NamePart" =
-    case runElab [] (reifyTTName ttn) (initElaborator NErased initContext Erased) of
+    case runElab initEState (reifyTTName ttn) (initElaborator NErased initContext Erased) of
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
        show ttn ++
@@ -2314,7 +2346,7 @@ reifyReportPart (App (P (DCon _ _ _) n _) ttn)
       OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App (P (DCon _ _ _) n _) tm)
   | n == reflm "TermPart" =
-  case runElab [] (reifyTT tm) (initElaborator NErased initContext Erased) of
+  case runElab initEState (reifyTT tm) (initElaborator NErased initContext Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
       show tm ++

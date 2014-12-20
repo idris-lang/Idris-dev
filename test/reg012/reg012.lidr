@@ -1,7 +1,7 @@
 > total soElim            :  (C : (b : Bool) -> So b -> Type) ->
 >                            C True Oh                       ->
 >                            (b : Bool) -> (s : So b) -> (C b s)
-> soElim C coh .True .Oh  =  coh
+> soElim C coh True Oh  =  coh
 
 > soFalseElim             :  So False -> a
 > soFalseElim x           =  void (soElim C () False x)

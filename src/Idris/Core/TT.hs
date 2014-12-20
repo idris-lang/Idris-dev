@@ -147,6 +147,7 @@ data Err' t
           | UniqueKindError Universe Name
           | ProgramLineComment
           | Inaccessible Name
+          | CantMatch t
           | NonCollapsiblePostulate Name
           | AlreadyDefined Name
           | ProofSearchFail (Err' t)

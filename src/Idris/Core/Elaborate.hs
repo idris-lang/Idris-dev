@@ -412,6 +412,34 @@ focus n = processTactic' (Focus n)
 movelast :: Name -> Elab' aux ()
 movelast n = processTactic' (MoveLast n)
 
+dotterm :: Elab' aux ()
+dotterm = do ES (p, a) s m <- get
+             tm <- get_term
+             case holes p of
+                  [] -> return ()
+                  (h : hs) -> 
+                     do let outer = findOuter h [] tm
+                        let p' = p { dotted = (h, outer) : dotted p }
+--                         trace ("DOTTING " ++ show (h, outer) ++ "\n" ++ 
+--                                show tm) $
+                        put $ ES (p', a) s m
+ where
+  findOuter h env (P _ n _) | h == n = env
+  findOuter h env (Bind n b sc)
+      = union (foB b) 
+              (findOuter h env (instantiate (P Bound n (binderTy b)) sc))
+     where foB (Guess t v) = union (findOuter h env t) (findOuter h (n:env) v)
+           foB (Let t v) = union (findOuter h env t) (findOuter h env v)
+           foB b = findOuter h env (binderTy b)
+  findOuter h env (App f a)
+      = union (findOuter h env f) (findOuter h env a)
+  findOuter h env _ = []
+  
+
+get_dotterm :: Elab' aux [(Name, [Name])]
+get_dotterm = do ES (p, a) s m <- get
+                 return (dotted p)
+
 -- | Set the zipper in the proof state to point at the current sub term
 -- (This currently happens automatically, so this will have no effect...)
 zipHere :: Elab' aux ()

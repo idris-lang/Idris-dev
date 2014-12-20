@@ -66,7 +66,7 @@ buildType info syn fc opts n ty' = do
          logLvl 3 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
          ((tyT', defer, is), log) <-
-               tclift $ elaborate ctxt n (TType (UVal 0)) []
+               tclift $ elaborate ctxt n (TType (UVal 0)) initEState
                         (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
 
          let tyT = patToImp tyT'

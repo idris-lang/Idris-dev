@@ -585,7 +585,14 @@ deriving instance NFData PDecl'
 !-}
 
 -- For elaborator state
-type ElabD a = Elab' [PDecl] a
+data EState = EState {
+                  case_decls :: [PDecl],
+                  delayed_elab :: [Elab' EState ()]
+              }
+
+initEState = EState [] []
+
+type ElabD a = Elab' EState a
 
 -- | One clause of a top-level definition. Term arguments to constructors are:
 --

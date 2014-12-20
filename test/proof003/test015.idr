@@ -106,9 +106,9 @@ Main.ntbEven = proof {
 -- There is almost certainly an easier proof. I don't care, for now :)
 
 Main.adc_lemma_2 = proof {
-    intro c,w,v,bit0,num0;
-    intro b0,v1,bit1,num1,b1;
-    intro bc,x,x1,bX,bX1;
+    intro w,v,num0,bit0
+    intro b0,v1,num1,bit1,b1
+    intro c,bc,x,bX,x1,bX1
     rewrite sym (plusZeroRightNeutral x);
     rewrite sym (plusZeroRightNeutral v1);
     rewrite sym (plusZeroRightNeutral (plus (plus x v) v1));

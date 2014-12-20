@@ -263,13 +263,6 @@ simpleCase tc cover reflect phase fc inacc argtys cs erInfo
                         t          = CaseDef ns (prune proj (depatt ns' tree)) (fstT st) in
                         if proj then return (stripLambdas t)
                                 else return t
--- FIXME: This check is not quite right in some cases, and is breaking
--- perfectly valid code!
---
--- Issue #1717 on the issue tracker: https://github.com/idris-lang/Idris-dev/issues/1717
---                                      if checkSameTypes (lstT st) tree
---                                         then return t
---                                         else Error (At fc (Msg "Typecase is not allowed"))
                 Error err -> Error (At fc err)
     where args = map (\i -> sMN i "e") [0..]
           defaultCase True = STerm Erased

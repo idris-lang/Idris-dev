@@ -31,6 +31,8 @@ data ProofState = PS { thname   :: Name,
                        dontunify :: [Name], -- explicitly given by programmer, leave it
                        unified  :: (Name, [(Name, Term)]),
                        notunified :: [(Name, Term)],
+                       dotted   :: [(Name, [Name])], -- dot pattern holes + environment
+                                       -- either hole or something in env must turn up in the 'notunified' list during elaboration
                        solved   :: Maybe (Name, Term),
                        problems :: Fails,
                        injective :: [Name],
@@ -214,7 +216,7 @@ unify' ctxt env topx topy =
                      lift $ unify ctxt env topx topy inj (holes ps)
                                   (map fst (notunified ps)) while
       let notu = filter (\ (n, t) -> case t of
-                                        P _ _ _ -> False
+--                                         P _ _ _ -> False
                                         _ -> n `elem` dont) u
       traceWhen (unifylog ps)
             ("Unified " ++ show (topx, topy) ++ " without " ++ show dont ++
@@ -287,7 +289,7 @@ newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0
                          ty' = vToP ty in
                          PS n [h] [] 1 (mkProofTerm (Bind h (Hole ty')
-                            (P Bound h ty'))) ty [] (h, []) []
+                            (P Bound h ty'))) ty [] (h, []) [] []
                             Nothing [] []
                             [] [] []
                             Nothing ctxt "" False False [] []
@@ -499,19 +501,27 @@ solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
    = do ps <- get
         let (uh, uns) = unified ps
-        case lookup x (notunified ps) of
-            Just tm -> -- trace ("NEED MATCH: " ++ show (x, tm, val) ++ "\nIN " ++ show (pterm ps)) $
-                         match_unify' ctxt env tm val
-            _ -> return []
+        dropdots <-
+             case lookup x (notunified ps) of
+                Just tm -> -- trace ("NEED MATCH: " ++ show (x, tm, val) ++ "\nIN " ++ show (pterm ps)) $
+                            do match_unify' ctxt env tm val
+                               return [x]
+                _ -> return []
         action (\ps -> ps { holes = traceWhen (unifylog ps) ("Dropping hole " ++ show x) $
                                        holes ps \\ [x],
                             solved = Just (x, val),
                             notunified = updateNotunified [(x,val)]
                                            (notunified ps),
                             recents = x : recents ps,
-                            instances = instances ps \\ [x] })
+                            instances = instances ps \\ [x],
+                            dotted = dropUnified dropdots (dotted ps) })
         let tm' = subst x val sc in
             return tm'
+  where dropUnified ddots [] = []
+        dropUnified ddots ((x, es) : ds)
+             | x `elem` ddots || any (\e -> e `elem` ddots) es
+                  = dropUnified ddots ds
+             | otherwise = (x, es) : dropUnified ddots ds
 solve _ _ h@(Bind x t sc)
    = do ps <- get
         case findType x sc of
@@ -574,7 +584,8 @@ patvar n ctxt env (Bind x (Hole t) sc) =
                            solved = Just (x, P Bound n t),
                            notunified = updateNotunified [(x,P Bound n t)]
                                           (notunified ps),
-                           injective = addInj n x (injective ps) })
+                           injective = addInj n x (injective ps)
+                         })
        return $ Bind n (PVar t) (subst x (P Bound n t) sc)
   where addInj n x ps | x `elem` ps = n : ps
                       | otherwise = ps
