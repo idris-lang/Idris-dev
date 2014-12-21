@@ -32,7 +32,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 88
+ibcVersion = 89
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1428,20 +1428,22 @@ instance Binary PTerm where
                 PPatvar x1 x2 -> do putWord8 3
                                     put x1
                                     put x2
-                PLam x1 x2 x3 -> do putWord8 4
-                                    put x1
-                                    put x2
-                                    put x3
+                PLam x1 x2 x3 x4 -> do putWord8 4
+                                       put x1
+                                       put x2
+                                       put x3
+                                       put x4
                 PPi x1 x2 x3 x4 -> do putWord8 5
                                       put x1
                                       put x2
                                       put x3
                                       put x4
-                PLet x1 x2 x3 x4 -> do putWord8 6
-                                       put x1
-                                       put x2
-                                       put x3
-                                       put x4
+                PLet x1 x2 x3 x4 x5 -> do putWord8 6
+                                          put x1
+                                          put x2
+                                          put x3
+                                          put x4
+                                          put x5
                 PTyped x1 x2 -> do putWord8 7
                                    put x1
                                    put x2
@@ -1547,7 +1549,8 @@ instance Binary PTerm where
                    4 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (PLam x1 x2 x3)
+                           x4 <- get
+                           return (PLam x1 x2 x3 x4)
                    5 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1557,7 +1560,8 @@ instance Binary PTerm where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (PLet x1 x2 x3 x4)
+                           x5 <- get
+                           return (PLet x1 x2 x3 x4 x5)
                    7 -> do x1 <- get
                            x2 <- get
                            return (PTyped x1 x2)

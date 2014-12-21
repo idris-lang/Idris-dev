@@ -87,9 +87,9 @@ warnDisamb ist (PQuote _) = return ()
 warnDisamb ist (PRef _ _) = return ()
 warnDisamb ist (PInferRef _ _) = return ()
 warnDisamb ist (PPatvar _ _) = return ()
-warnDisamb ist (PLam _ t b) = warnDisamb ist t >> warnDisamb ist b
+warnDisamb ist (PLam _ _ t b) = warnDisamb ist t >> warnDisamb ist b
 warnDisamb ist (PPi _ _ t b) = warnDisamb ist t >> warnDisamb ist b
-warnDisamb ist (PLet _ x t b) = warnDisamb ist x >> warnDisamb ist t >> warnDisamb ist b
+warnDisamb ist (PLet _ _ x t b) = warnDisamb ist x >> warnDisamb ist t >> warnDisamb ist b
 warnDisamb ist (PTyped x t) = warnDisamb ist x >> warnDisamb ist t
 warnDisamb ist (PApp _ t args) = warnDisamb ist t >>
                                  mapM_ (warnDisamb ist . getTm) args

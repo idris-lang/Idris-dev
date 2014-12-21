@@ -18,16 +18,16 @@ desugar syn i t = let t' = expandDo (dsl_info syn) t in
                       t' -- addImpl i t'
 
 expandDo :: DSL -> PTerm -> PTerm
-expandDo dsl (PLam n ty tm)
+expandDo dsl (PLam fc n ty tm)
     | Just lam <- dsl_lambda dsl
-        = let sc = PApp (fileFC "(dsl)") lam [pexp (var dsl n tm 0)] in
+        = let sc = PApp fc lam [pexp (var dsl n tm 0)] in
               expandDo dsl sc
-expandDo dsl (PLam n ty tm) = PLam n (expandDo dsl ty) (expandDo dsl tm)
-expandDo dsl (PLet n ty v tm)
+expandDo dsl (PLam fc n ty tm) = PLam fc n (expandDo dsl ty) (expandDo dsl tm)
+expandDo dsl (PLet fc n ty v tm)
     | Just letb <- dsl_let dsl
         = let sc = PApp (fileFC "(dsl)") letb [pexp v, pexp (var dsl n tm 0)] in
               expandDo dsl sc
-expandDo dsl (PLet n ty v tm) = PLet n (expandDo dsl ty) (expandDo dsl v) (expandDo dsl tm)
+expandDo dsl (PLet fc n ty v tm) = PLet fc n (expandDo dsl ty) (expandDo dsl v) (expandDo dsl tm)
 expandDo dsl (PPi p n ty tm)
     | Just pi <- dsl_pi dsl
         = let sc = PApp (fileFC "(dsl)") pi [pexp ty, pexp (var dsl n tm 0)] in
@@ -60,19 +60,19 @@ expandDo dsl (PDoBlock ds)
     block b [DoExp fc tm] = tm
     block b [a] = PElabError (Msg "Last statement in do block must be an expression")
     block b (DoBind fc n tm : rest)
-        = PApp fc b [pexp tm, pexp (PLam n Placeholder (block b rest))]
+        = PApp fc b [pexp tm, pexp (PLam fc n Placeholder (block b rest))]
     block b (DoBindP fc p tm alts : rest)
-        = PApp fc b [pexp tm, pexp (PLam (sMN 0 "bpat") Placeholder
+        = PApp fc b [pexp tm, pexp (PLam fc (sMN 0 "bpat") Placeholder
                                    (PCase fc (PRef fc (sMN 0 "bpat"))
                                              ((p, block b rest) : alts)))]
     block b (DoLet fc n ty tm : rest)
-        = PLet n ty tm (block b rest)
+        = PLet fc n ty tm (block b rest)
     block b (DoLetP fc p tm : rest)
         = PCase fc tm [(p, block b rest)]
     block b (DoExp fc tm : rest)
         = PApp fc b
             [pexp tm,
-             pexp (PLam (sMN 0 "bindx") Placeholder (block b rest))]
+             pexp (PLam fc (sMN 0 "bindx") Placeholder (block b rest))]
     block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
@@ -84,14 +84,14 @@ var dsl n t i = v' i t where
         case dsl_var dsl of
             Nothing -> PElabError (Msg "No 'variable' defined in dsl")
             Just v -> PApp fc v [pexp (mkVar fc i)]
-    v' i (PLam n ty sc)
+    v' i (PLam fc n ty sc)
         | Nothing <- dsl_lambda dsl
-            = PLam n ty (v' i sc)
-        | otherwise = PLam n (v' i ty) (v' (i + 1) sc)
-    v' i (PLet n ty val sc)
+            = PLam fc n ty (v' i sc)
+        | otherwise = PLam fc n (v' i ty) (v' (i + 1) sc)
+    v' i (PLet fc n ty val sc)
         | Nothing <- dsl_let dsl
-            = PLet n (v' i ty) (v' i val) (v' i sc)
-        | otherwise = PLet n (v' i ty) (v' i val) (v' (i + 1) sc)
+            = PLet fc n (v' i ty) (v' i val) (v' i sc)
+        | otherwise = PLet fc n (v' i ty) (v' i val) (v' (i + 1) sc)
     v' i (PPi p n ty sc)
         | Nothing <- dsl_pi dsl
             = PPi p n (v' i ty) (v' i sc)
@@ -146,9 +146,9 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
          = do t' <- db' t
               args' <- mapM dbArg args
               return (PApp fc t' args')
-    db' (PLam n ty sc) = return (PLam n ty (debind b sc))
-    db' (PLet n ty v sc) = do v' <- db' v
-                              return (PLet n ty v' (debind b sc))
+    db' (PLam fc n ty sc) = return (PLam fc n ty (debind b sc))
+    db' (PLet fc n ty v sc) = do v' <- db' v
+                                 return (PLet fc n ty v' (debind b sc))
     db' (PCase fc s opts) = do s' <- db' s
                                return (PCase fc s' (map (pmap (debind b)) opts))
     db' (PPair fc p l r) = do l' <- db' l
@@ -170,6 +170,6 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
 
     bindAll [] tm = tm
     bindAll ((n, fc, t) : bs) tm
-       = PApp fc b [pexp t, pexp (PLam n Placeholder (bindAll bs tm))]
+       = PApp fc b [pexp t, pexp (PLam fc n Placeholder (bindAll bs tm))]
 
 

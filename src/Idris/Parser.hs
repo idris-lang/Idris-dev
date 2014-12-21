@@ -758,10 +758,11 @@ RHSName ::= '{' FnName '}';
 rhs :: SyntaxInfo -> Name -> IdrisParser PTerm
 rhs syn n = do lchar '='; expr syn
         <|> do symbol "?=";
+               fc <- getFC
                name <- option n' (do symbol "{"; n <- fnName; symbol "}";
                                      return n)
                r <- expr syn
-               return (addLet name r)
+               return (addLet fc name r)
         <|> do reserved "impossible"; return PImpossible
         <?> "function right hand side"
   where mkN :: Name -> Name
@@ -771,11 +772,11 @@ rhs syn n = do lchar '='; expr syn
         mkN (NS x n) = NS (mkN x) n
         n' :: Name
         n' = mkN n
-        addLet :: Name -> PTerm -> PTerm
-        addLet nm (PLet n ty val r) = PLet n ty val (addLet nm r)
-        addLet nm (PCase fc t cs) = PCase fc t (map addLetC cs)
-          where addLetC (l, r) = (l, addLet nm r)
-        addLet nm r = (PLet (sUN "value") Placeholder r (PMetavar nm))
+        addLet :: FC -> Name -> PTerm -> PTerm
+        addLet fc nm (PLet fc' n ty val r) = PLet fc' n ty val (addLet fc nm r)
+        addLet fc nm (PCase fc' t cs) = PCase fc' t (map addLetC cs)
+          where addLetC (l, r) = (l, addLet fc nm r)
+        addLet fc nm r = (PLet fc (sUN "value") Placeholder r (PMetavar nm))
 
 {- |Parses a function clause
 
@@ -841,7 +842,7 @@ clause syn
                                            return x,
                                         do terminator
                                            return ([], [])]
-              let capp = PLet (sMN 0 "match")
+              let capp = PLet fc (sMN 0 "match")
                               ty
                               (PMatchApp fc n)
                               (PRef fc (sMN 0 "match"))

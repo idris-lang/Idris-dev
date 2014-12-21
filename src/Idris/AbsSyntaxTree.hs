@@ -720,9 +720,9 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PRef FC Name -- ^ A reference to a variable
            | PInferRef FC Name -- ^ A name to be defined later
            | PPatvar FC Name -- ^ A pattern variable
-           | PLam Name PTerm PTerm -- ^ A lambda abstraction
+           | PLam FC Name PTerm PTerm -- ^ A lambda abstraction
            | PPi  Plicity Name PTerm PTerm -- ^ (n : t1) -> t2
-           | PLet Name PTerm PTerm PTerm -- ^ A let binding
+           | PLet FC Name PTerm PTerm PTerm -- ^ A let binding
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
            | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
@@ -767,9 +767,9 @@ deriving instance NFData PTerm
 
 mapPT :: (PTerm -> PTerm) -> PTerm -> PTerm
 mapPT f t = f (mpt t) where
-  mpt (PLam n t s) = PLam n (mapPT f t) (mapPT f s)
+  mpt (PLam fc n t s) = PLam fc n (mapPT f t) (mapPT f s)
   mpt (PPi p n t s) = PPi p n (mapPT f t) (mapPT f s)
-  mpt (PLet n ty v s) = PLet n (mapPT f ty) (mapPT f v) (mapPT f s)
+  mpt (PLet fc n ty v s) = PLet fc n (mapPT f ty) (mapPT f v) (mapPT f s)
   mpt (PRewrite fc t s g) = PRewrite fc (mapPT f t) (mapPT f s)
                                  (fmap (mapPT f) g)
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
@@ -1285,11 +1285,11 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
       | Just str <- slist p bnd e = str
       | Just n <- snat p e = annotate (AnnData "Nat" "") (text (show n))
     prettySe p bnd (PRef fc n) = prettyName True (ppopt_impl ppo) bnd n
-    prettySe p bnd (PLam n ty sc) =
+    prettySe p bnd (PLam fc n ty sc) =
       bracket p 2 . group . align . hang 2 $
       text "\\" <> bindingOf n False <+> text "=>" <$>
       prettySe 10 ((n, False):bnd) sc
-    prettySe p bnd (PLet n ty v sc) =
+    prettySe p bnd (PLet fc n ty v sc) =
       bracket p 2 . group . align $
       kwd "let" <+> (group . align . hang 2 $ bindingOf n False <+> text "=" <$> prettySe 10 bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe 10 ((n, False):bnd) sc)
@@ -1692,9 +1692,9 @@ showTmImpls = flip (displayS . renderCompact . prettyImp verbosePPOption) ""
 instance Sized PTerm where
   size (PQuote rawTerm) = size rawTerm
   size (PRef fc name) = size name
-  size (PLam name ty bdy) = 1 + size ty + size bdy
+  size (PLam fc name ty bdy) = 1 + size ty + size bdy
   size (PPi plicity name ty bdy) = 1 + size ty + size bdy
-  size (PLet name ty def bdy) = 1 + size ty + size def + size bdy
+  size (PLet fc name ty def bdy) = 1 + size ty + size def + size bdy
   size (PTyped trm ty) = 1 + size trm + size ty
   size (PApp fc name args) = 1 + size args
   size (PAppBind fc name args) = 1 + size args
@@ -1739,7 +1739,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
-    ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
@@ -1764,8 +1764,8 @@ boundNamesIn tm = nub $ ni tm
     ni (PApp _ f as)   = ni f ++ concatMap (ni) (map getTm as)
     ni (PAppBind _ f as)   = ni f ++ concatMap (ni) (map getTm as)
     ni (PCase _ c os)  = ni c ++ concatMap (ni) (map snd os)
-    ni (PLam n ty sc)  = n : (ni ty ++ ni sc)
-    ni (PLet n ty val sc)  = n : (ni ty ++ ni val ++ ni sc)
+    ni (PLam fc n ty sc)  = n : (ni ty ++ ni sc)
+    ni (PLet fc n ty val sc)  = n : (ni ty ++ ni val ++ ni sc)
     ni (PPi p n ty sc) = niTacImp p ++ (n : (ni ty ++ ni sc))
     ni (PEq _ _ _ l r)     = ni l ++ ni r
     ni (PRewrite _ l r _) = ni l ++ ni r
@@ -1801,7 +1801,7 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
     -- names in 'os', not counting the names bound in the cases
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
-    ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
@@ -1831,7 +1831,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     -- names in 'os', not counting the names bound in the cases
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
-    ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
@@ -1862,7 +1862,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
-    ni env (PLam n ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r

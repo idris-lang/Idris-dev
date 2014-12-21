@@ -362,7 +362,7 @@ elab ist info emode opts fn tm
                 _ -> asType
          where asType = elab' ina (Just fc) (PApp fc (PRef fc sigmaTy)
                                         [pexp t,
-                                         pexp (PLam n Placeholder r)])
+                                         pexp (PLam fc n Placeholder r)])
                asValue = elab' ina (Just fc) (PApp fc (PRef fc existsCon)
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
@@ -434,7 +434,7 @@ elab ist info emode opts fn tm
           | pattern && not reflection && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
           | otherwise = erun fc $ do apply (Var n) []; solve
-    elab' ina fc (PLam n Placeholder sc)
+    elab' ina _ (PLam fc n Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
                when (isTConName n ctxt) $
@@ -442,8 +442,8 @@ elab ist info emode opts fn tm
                checkPiGoal n
                attack; intro (Just n);
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm)
-               elabE (ina { e_inarg = True } ) fc sc; solve
-    elab' ec fc (PLam n ty sc)
+               elabE (ina { e_inarg = True } ) (Just fc) sc; solve
+    elab' ec _ (PLam fc n ty sc)
           = do tyn <- getNameFrom (sMN 0 "lamty")
                -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
@@ -458,8 +458,8 @@ elab ist info emode opts fn tm
                introTy (Var tyn) (Just n)
                focus tyn
                
-               elabE (ec { e_inarg = True, e_intype = True }) fc ty
-               elabE (ec { e_inarg = True }) fc sc
+               elabE (ec { e_inarg = True, e_intype = True }) (Just fc) ty
+               elabE (ec { e_inarg = True }) (Just fc) sc
                solve
     elab' ina fc (PPi _ n Placeholder sc)
           = do attack; arg n (sMN 0 "ty") 
@@ -477,7 +477,7 @@ elab ist info emode opts fn tm
                elabE ec' fc ty
                elabE ec' fc sc
                solve
-    elab' ina fc (PLet n ty val sc)
+    elab' ina _ (PLet fc n ty val sc)
           = do attack
                ivs <- get_instances
                tyn <- getNameFrom (sMN 0 "letty")
@@ -491,13 +491,13 @@ elab ist info emode opts fn tm
                    _ -> do focus tyn
                            explicit tyn
                            elabE (ina { e_inarg = True, e_intype = True }) 
-                                 fc ty
+                                 (Just fc) ty
                focus valn
                elabE (ina { e_inarg = True, e_intype = True }) 
-                     fc val
+                     (Just fc) val
                ivs' <- get_instances
                env <- get_env
-               elabE (ina { e_inarg = True }) fc sc
+               elabE (ina { e_inarg = True }) (Just fc) sc
                when (not pattern) $
                    mapM_ (\n -> do focus n
                                    g <- goal
@@ -673,7 +673,7 @@ elab ist info emode opts fn tm
                                    PAlternative False _ -> 5
                                    PAlternative True _ -> 2
                                    PTactics _ -> 150
-                                   PLam _ _ _ -> 3
+                                   PLam _ _ _ _ -> 3
                                    PRewrite _ _ _ _ -> 4
                                    PResolveTC _ -> 0
                                    PHidden _ -> 150

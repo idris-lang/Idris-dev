@@ -195,9 +195,9 @@ elabInstance info syn what fc cs n ps t expn ds = do
     mkMethApp (n, _, _, ty)
           = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
     lamBind i (PPi (Constraint _ _) _ _ sc) sc'
-          = PLam (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
+          = PLam fc (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i (PPi _ n ty sc) sc'
-          = PLam (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
+          = PLam fc (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
     methArgs i (PPi (Imp _ _ _) n ty sc)
         = PImp 0 True [] n (PRef fc (sMN i "meth")) : methArgs (i+1) sc

@@ -165,13 +165,13 @@ extension syn ns rules =
     update ns (PRef fc n) = case lookup n ns of
                               Just (SynTm t) -> t
                               _ -> PRef fc n
-    update ns (PLam n ty sc)
-      = PLam (updateB ns n) (update ns ty) (update (dropn n ns) sc)
+    update ns (PLam fc n ty sc)
+      = PLam fc (updateB ns n) (update ns ty) (update (dropn n ns) sc)
     update ns (PPi p n ty sc)
       = PPi (updTacImp ns p) (updateB ns n)
             (update ns ty) (update (dropn n ns) sc)
-    update ns (PLet n ty val sc) 
-      = PLet  (updateB ns n) (update ns ty)
+    update ns (PLet fc n ty val sc) 
+      = PLet fc (updateB ns n) (update ns ty)
               (update ns val) (update (dropn n ns) sc)
     update ns (PApp fc t args)
       = PApp fc (update ns t) (map (fmap (update ns)) args)
@@ -388,7 +388,7 @@ bracketed' syn =
                     -- No prefix operators! (bit of a hack here...)
                     if (o == "-" || o == "!")
                       then fail "minus not allowed in section"
-                      else return $ PLam (sMN 1000 "ARG") Placeholder
+                      else return $ PLam fc (sMN 1000 "ARG") Placeholder
                          (PApp fc (PRef fc (sUN o)) [pexp (PRef fc (sMN 1000 "ARG")),
                                                      pexp e]))
         <|> try (do l <- simpleExpr syn
@@ -398,7 +398,7 @@ bracketed' syn =
                     fc0 <- getFC
                     case op of
                          Nothing -> bracketedExpr syn l
-                         Just o -> return $ PLam (sMN 1000 "ARG") Placeholder
+                         Just o -> return $ PLam fc0 (sMN 1000 "ARG") Placeholder
                              (PApp fc0 (PRef fc0 (sUN o)) [pexp l,
                                                            pexp (PRef fc0 (sMN 1000 "ARG"))]))
         <|> do l <- expr syn
@@ -532,7 +532,7 @@ app syn = do f <- reserved "mkForeign"
              args <- many (do notEndApp; arg syn)
              i <- get
              let ap = PApp fc (PRef fc (sUN "liftPrimIO"))
-                       [pexp (PLam (sMN 0 "w")
+                       [pexp (PLam fc (sMN 0 "w")
                              Placeholder
                              (PApp fc (PRef fc (sUN "mkForeignPrim"))
                                          (fn : args ++
@@ -543,7 +543,7 @@ app syn = do f <- reserved "mkForeign"
               (do try $ reservedOp "<=="
                   fc <- getFC
                   ff <- fnName
-                  return (PLet (sMN 0 "match")
+                  return (PLet fc (sMN 0 "match")
                                 f
                                 (PMatchApp fc ff)
                                 (PRef fc (sMN 0 "match")))
@@ -667,13 +667,13 @@ recordType syn =
               Left fields ->
                 case rec of
                    Nothing ->
-                       return (PLam (sMN 0 "fldx") Placeholder
+                       return (PLam fc (sMN 0 "fldx") Placeholder
                                    (applyAll fc fields (PRef fc (sMN 0 "fldx"))))
                    Just v -> return (applyAll fc fields v)
               Right fields ->
                 case rec of
                    Nothing ->
-                       return (PLam (sMN 0 "fldx") Placeholder
+                       return (PLam fc (sMN 0 "fldx") Placeholder
                                  (getAll fc (reverse fields) 
                                      (PRef fc (sMN 0 "fldx"))))
                    Just v -> return (getAll fc (reverse fields) v)
@@ -752,9 +752,10 @@ SimpleExprList ::=
 lambda :: SyntaxInfo -> IdrisParser PTerm
 lambda syn = do lchar '\\' <?> "lambda expression"
                 (do xt <- try $ tyOptDeclList syn
+                    fc <- getFC
                     symbol "=>"
                     sc <- expr syn
-                    return (bindList PLam xt sc)) <|> do
+                    return (bindList (PLam fc) xt sc)) <|> do
                       ps <- sepBy (do fc <- getFC
                                       e <- simpleExpr syn
                                       return (fc, e)) (lchar ',')
@@ -765,7 +766,7 @@ lambda syn = do lchar '\\' <?> "lambda expression"
     where pmList :: [(Int, (FC, PTerm))] -> PTerm -> PTerm
           pmList [] sc = sc
           pmList ((i, (fc, x)) : xs) sc
-                = PLam (sMN i "lamp") Placeholder
+                = PLam fc (sMN i "lamp") Placeholder
                         (PCase fc (PRef fc (sMN i "lamp"))
                                 [(x, pmList xs sc)])
 
@@ -806,7 +807,7 @@ let_ syn = try (do reserved "let"
            <?> "let binding"
   where buildLets [] sc = sc
         buildLets ((fc,PRef _ n,ty,v,[]):ls) sc
-          = PLet n ty v (buildLets ls sc)
+          = PLet fc n ty v (buildLets ls sc)
         buildLets ((fc,pat,ty,v,alts):ls) sc
           = PCase fc v ((pat, buildLets ls sc) : alts)
 

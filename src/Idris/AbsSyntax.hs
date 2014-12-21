@@ -874,21 +874,21 @@ expandParams dec ps ns infs tm = en tm
     mkShadow (MN i n) = MN (i+1) n
     mkShadow (NS x s) = NS (mkShadow x) s
 
-    en (PLam n t s)
+    en (PLam fc n t s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
-                     PLam n' (en t) (en (shadow n n' s))
-       | otherwise = PLam n (en t) (en s)
+                     PLam fc n' (en t) (en (shadow n n' s))
+       | otherwise = PLam fc n (en t) (en s)
     en (PPi p n t s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in -- TODO THINK SHADOWING TacImp?
                      PPi (enTacImp p) n' (en t) (en (shadow n n' s))
        | otherwise = PPi (enTacImp p) n (en t) (en s)
-    en (PLet n ty v s)
+    en (PLet fc n ty v s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
-                     PLet n' (en ty) (en v) (en (shadow n n' s))
-       | otherwise = PLet n (en ty) (en v) (en s)
+                     PLet fc n' (en ty) (en v) (en (shadow n n' s))
+       | otherwise = PLet fc n (en ty) (en v) (en s)
     -- FIXME: Should only do this in a type signature!
     en (PDPair f p (PRef f' n) t r)
        | n `elem` (map fst ps ++ ns) && t /= Placeholder
@@ -1396,7 +1396,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
         = do (decls, ns) <- get
              let isn = concatMap (namesIn uvars ist) as
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PLam n ty sc)
+    imps top env (PLam fc n ty sc)
         = do imps False env ty
              imps False (n:env) sc
     imps top env (PHidden tm)    = imps False env tm
@@ -1488,15 +1488,24 @@ addImpl' inpat env infns ist ptm
         -- definition which is passed through addImpl again with more scope
         -- information
             PCase fc c' os
-    ai qq env ds (PLam n ty sc)
-      = let ty' = ai qq env ds ty
-            sc' = ai qq ((n, Just ty):env) ds sc in
-            PLam n ty' sc'
-    ai qq env ds (PLet n ty val sc)
-      = let ty' = ai qq env ds ty
-            val' = ai qq env ds val
-            sc' = ai qq ((n, Just ty):env) ds sc in
-            PLet n ty' val' sc'
+    -- If the name in a lambda is a constructor name, do this as a 'case'
+    -- instead (it is harmless to do so, especially since the lambda will
+    -- be lifted anyway!)
+    ai qq env ds (PLam fc n ty sc)
+      = case lookupDef n (tt_ctxt ist) of
+             [] -> let ty' = ai qq env ds ty
+                       sc' = ai qq ((n, Just ty):env) ds sc in
+                       PLam fc n ty' sc'
+             _ -> ai qq env ds (PLam fc (sMN 0 "lamp") ty
+                                     (PCase fc (PRef fc (sMN 0 "lamp") )
+                                        [(PRef fc n, sc)])) 
+    ai qq env ds (PLet fc n ty val sc)
+      = case lookupDef n (tt_ctxt ist) of
+             [] -> let ty' = ai qq env ds ty
+                       val' = ai qq env ds val
+                       sc' = ai qq ((n, Just ty):env) ds sc in
+                       PLet fc n ty' val' sc'
+             _ -> ai qq env ds (PCase fc val [(PRef fc n, sc)])
     ai qq env ds (PPi p n ty sc)
       = let ty' = ai qq env ds ty
             sc' = ai qq ((n, Just ty):env) ds sc in
@@ -1696,7 +1705,7 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
                            else PAlternative b alts'
     su (PPair fc p l r) = PPair fc p (su l) (su r)
     su (PDPair fc p l t r) = PDPair fc p (su l) (su t) (su r)
-    su t@(PLam _ _ _) = PHidden t
+    su t@(PLam fc _ _ _) = PHidden t
     su t@(PPi _ _ _ _) = PHidden t
     su t@(PEq _ _ _ _ _) = PHidden t
     su t = t
@@ -1843,13 +1852,13 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PPi _ _ t s) (PPi _ _ t' s') = do mt <- match' t t'
                                              ms <- match' s s'
                                              return (mt ++ ms)
-    match (PLam _ t s) (PLam _ t' s') = do mt <- match' t t'
-                                           ms <- match' s s'
-                                           return (mt ++ ms)
-    match (PLet _ t ty s) (PLet _ t' ty' s') = do mt <- match' t t'
-                                                  mty <- match' ty ty'
-                                                  ms <- match' s s'
-                                                  return (mt ++ mty ++ ms)
+    match (PLam _ _ t s) (PLam _ _ t' s') = do mt <- match' t t'
+                                               ms <- match' s s'
+                                               return (mt ++ ms)
+    match (PLet _ _ t ty s) (PLet _ _ t' ty' s') = do mt <- match' t t'
+                                                      mty <- match' ty ty'
+                                                      ms <- match' s s'
+                                                      return (mt ++ mty ++ ms)
     match (PHidden x) (PHidden y)
           | RightOK xs <- match x y = return xs -- to collect variables
           | otherwise = return [] -- Otherwise hidden things are unmatchable
@@ -1892,7 +1901,7 @@ substMatch n = substMatchShadow n []
 substMatchShadow :: Name -> [Name] -> PTerm -> PTerm -> PTerm
 substMatchShadow n shs tm t = sm shs t where
     sm xs (PRef _ n') | n == n' = tm
-    sm xs (PLam x t sc) = PLam x (sm xs t) (sm xs sc)
+    sm xs (PLam fc x t sc) = PLam fc x (sm xs t) (sm xs sc)
     sm xs (PPi p x t sc)
          | x `elem` xs
              = let x' = nextName x in
@@ -1919,9 +1928,9 @@ substMatchShadow n shs tm t = sm shs t where
 shadow :: Name -> Name -> PTerm -> PTerm
 shadow n n' t = sm t where
     sm (PRef fc x) | n == x = PRef fc n'
-    sm (PLam x t sc) | n /= x = PLam x (sm t) (sm sc)
+    sm (PLam fc x t sc) | n /= x = PLam fc x (sm t) (sm sc)
     sm (PPi p x t sc) | n /=x = PPi p x (sm t) (sm sc)
-    sm (PLet x t v sc) | n /= x = PLet x (sm t) (sm v) (sm sc)
+    sm (PLet fc x t v sc) | n /= x = PLet fc x (sm t) (sm v) (sm sc)
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
     sm (PAppBind f x as) = PAppBind f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
@@ -1960,7 +1969,7 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
   mkUniqT tac = return tac
 
   mkUniq :: PTerm -> State (S.Set Name) PTerm
-  mkUniq (PLam n ty sc)
+  mkUniq (PLam fc n ty sc)
          = do env <- get
               (n', sc') <-
                     if n `S.member` env
@@ -1971,7 +1980,7 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
               put (S.insert n' env)
               ty' <- mkUniq ty
               sc'' <- mkUniq sc'
-              return $! PLam n' ty' sc''
+              return $! PLam fc n' ty' sc''
   mkUniq (PPi p n ty sc)
          = do env <- get
               (n', sc') <-
@@ -1984,7 +1993,7 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
               ty' <- mkUniq ty
               sc'' <- mkUniq sc'
               return $! PPi p n' ty' sc''
-  mkUniq (PLet n ty val sc)
+  mkUniq (PLet fc n ty val sc)
          = do env <- get
               (n', sc') <-
                     if n `S.member` env
@@ -1995,7 +2004,7 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
               put (S.insert n' env)
               ty' <- mkUniq ty; val' <- mkUniq val
               sc'' <- mkUniq sc'
-              return $! PLet n' ty' val' sc''
+              return $! PLet fc n' ty' val' sc''
   mkUniq (PApp fc t args)
          = do t' <- mkUniq t
               args' <- mapM mkUniqA args

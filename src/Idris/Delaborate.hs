@@ -56,7 +56,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                                   Just (Just _, mi, _) -> mkMVApp n []
                                   _ -> PRef un n
     de env _ (Bind n (Lam ty) sc)
-          = PLam n (de env [] ty) (de ((n,n):env) [] sc)
+          = PLam un n (de env [] ty) (de ((n,n):env) [] sc)
     de env ((PImp { argopts = opts }):is) (Bind n (Pi ty _) sc)
           = PPi (Imp opts Dynamic False) n (de env [] ty) (de ((n,n):env) is sc)
     de env (PConstraint _ _ _ _:is) (Bind n (Pi ty _) sc)
@@ -76,7 +76,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
           , (P _ cOp _, args) <- unApply sc
           , Just caseblock    <- delabCase env imps n val cOp args = caseblock
           | otherwise    =
-              PLet n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
+              PLet un n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
     de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
     de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
     de env plic (Bind n bb sc) = de ((n,n):env) [] sc
@@ -382,10 +382,10 @@ addImplicitDiffs x y
                          else (a { getTm = a' } : as',
                                b { getTm = b' } : bs')
              addShows xs ys = (xs, ys)
-    addI (PLam n a b) (PLam n' c d)
+    addI (PLam fc n a b) (PLam fc' n' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
-               (PLam n a' b', PLam n' c' d')
+               (PLam fc n a' b', PLam fc' n' c' d')
     addI (PPi p n a b) (PPi p' n' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
@@ -435,7 +435,7 @@ addImplicitDiffs x y
           and (zipWith expLike (getExps as) (getExps as'))
     expLike (PPi _ n s t) (PPi _ n' s' t')
         = n == n' && expLike s s' && expLike t t'
-    expLike (PLam n s t) (PLam n' s' t')
+    expLike (PLam _ n s t) (PLam _ n' s' t')
         = n == n' && expLike s s' && expLike t t'
     expLike (PPair _ _ x y) (PPair _ _ x' y') = expLike x x' && expLike y y'
     expLike (PDPair _ _ x _ y) (PDPair _ _ x' _ y') = expLike x x' && expLike y y'
