@@ -332,10 +332,12 @@ simpleExpr syn =
                           [pexp (PConstant (Str (show str)))])
         <|> do fc <- getFC
                x <- fnName
-               option (PRef fc x)
-                      (do reservedOp "@"
-                          s <- simpleExpr syn
-                          return (PAs fc x s))
+               if inPattern syn 
+                  then option (PRef fc x)
+                              (do reservedOp "@"
+                                  s <- simpleExpr syn
+                                  return (PAs fc x s))
+                  else return (PRef fc x)
         <|> idiom syn
         <|> listExpr syn
         <|> alt syn
