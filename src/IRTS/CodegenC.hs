@@ -82,7 +82,7 @@ codegenC' defs out exec incs objs libs flags dbg
 headers xs =
   concatMap
     (\h -> "#include <" ++ h ++ ">\n")
-    (xs ++ ["idris_rts.h", "idris_bitstring.h", "idris_stdfgn.h", "assert.h"])
+    (xs ++ ["idris_rts.h", "idris_bitstring.h", "idris_stdfgn.h"])
 
 debug TRACE = "#define IDRIS_TRACE\n\n"
 debug _ = ""
@@ -270,7 +270,7 @@ bcc i (FOREIGNCALL l LANG_C rty fn args)
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
     where fcall (t, arg) = irts_c t (creg arg)
 bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
-bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); assert(0); exit(-1);"
+bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); exit(-1); exit(-1);"
 -- bcc i _ = indent i ++ "// not done yet\n"
 
 

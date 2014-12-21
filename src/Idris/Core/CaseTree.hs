@@ -233,20 +233,20 @@ data Phase = CompileTime | RunTime
 -- Generate a simple case tree
 -- Work Right to Left
 
-simpleCase :: Bool -> Bool -> Bool ->
+simpleCase :: Bool -> SC -> Bool ->
               Phase -> FC -> [Int] -> [Type] ->
               [([Name], Term, Term)] ->
               ErasureInfo ->
               TC CaseDef
-simpleCase tc cover reflect phase fc inacc argtys cs erInfo
-      = sc' tc cover phase fc (filter (\(_, _, r) ->
+simpleCase tc defcase reflect phase fc inacc argtys cs erInfo
+      = sc' tc defcase phase fc (filter (\(_, _, r) ->
                                           case r of
                                             Impossible -> False
                                             _ -> True) cs)
           where
- sc' tc cover phase fc []
+ sc' tc defcase phase fc []
                  = return $ CaseDef [] (UnmatchedCase "No pattern clauses") []
- sc' tc cover phase fc cs
+ sc' tc defcase phase fc cs
       = let proj       = phase == RunTime
             vnames     = fstT (head cs)
             pats       = map (\ (avs, l, r) ->
@@ -258,7 +258,7 @@ simpleCase tc cover reflect phase fc inacc argtys cs erInfo
                         ns         = take numargs args
                         (ns', ps') = order [(n, i `elem` inacc) | (i,n) <- zip [0..] ns] pats
                         (tree, st) = runCaseBuilder erInfo
-                                         (match ns' ps' (defaultCase cover))
+                                         (match ns' ps' defcase)
                                          ([], numargs, [])
                         t          = CaseDef ns (prune proj (depatt ns' tree)) (fstT st) in
                         if proj then return (stripLambdas t)

@@ -837,7 +837,8 @@ addDatatype (Data n tag ty unique cons) uctxt
 -- Issue #1724 on the issue tracker.
 -- https://github.com/idris-lang/Idris-dev/issues/1724
 addCasedef :: Name -> ErasureInfo -> CaseInfo ->
-              Bool -> Bool -> Bool -> Bool ->
+              Bool -> SC -> -- default case
+              Bool -> Bool ->
               [Type] -> -- argument types
               [Int] ->  -- inaccessible arguments
               [Either Term (Term, Term)] ->
@@ -883,7 +884,7 @@ simplifyCasedef n ei uctxt
               [(CaseOp ci ty atys ps_in ps cd, acc, tot, metainf)] ->
                  let ps_in' = map simpl ps_in
                      pdef = map debind ps_in' in
-                     case simpleCase False True False CompileTime emptyFC [] atys pdef ei of
+                     case simpleCase False (STerm Erased) False CompileTime emptyFC [] atys pdef ei of
                        OK (CaseDef args sc _) ->
                           addDef n (CaseOp ci
                                            ty atys ps_in' ps (cd { cases_totcheck = (args, sc) }),

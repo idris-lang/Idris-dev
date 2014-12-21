@@ -158,7 +158,7 @@ elabClauses info' fc opts n_in cs =
 
            erInfo <- getErasureInfo <$> getIState
            tree@(CaseDef scargs sc _) <- tclift $
-                 simpleCase tcase False reflect CompileTime fc inacc atys pdef erInfo
+                 simpleCase tcase (UnmatchedCase "Error") reflect CompileTime fc inacc atys pdef erInfo
            cov <- coverage
            pmissing <-
                    if cov && not (hasDefault cs)
@@ -205,8 +205,14 @@ elabClauses info' fc opts n_in cs =
                                 ":warning - Unreachable case: " ++
                                    show (delab ist x)) xs
            let knowncovering = (pcover && cov) || AssertTotal `elem` opts
+           let defaultcase = if knowncovering 
+                                then STerm Erased
+                                else UnmatchedCase $ "*** " ++ 
+                                      show fc ++ 
+                                       ":unmatched case in " ++ show n ++ 
+                                       " ***\n"
 
-           tree' <- tclift $ simpleCase tcase knowncovering reflect
+           tree' <- tclift $ simpleCase tcase defaultcase reflect
                                         RunTime fc inacc atys pdef' erInfo
            logLvl 3 $ "Unoptimised " ++ show n ++ ": " ++ show tree
            logLvl 3 $ "Optimised: " ++ show tree'
@@ -218,7 +224,7 @@ elabClauses info' fc opts n_in cs =
            let caseInfo = CaseInfo (inlinable opts) (dictionary opts)
            case lookupTy n ctxt of
                [ty] -> do updateContext (addCasedef n erInfo caseInfo
-                                                       tcase knowncovering
+                                                       tcase defaultcase
                                                        reflect
                                                        (AssertTotal `elem` opts)
                                                        atys

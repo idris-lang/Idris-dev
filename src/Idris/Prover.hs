@@ -76,7 +76,7 @@ prove opt ctxt lit n ty
            _            -> iputStrLn $ showProof lit n prf
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
-         let tree = simpleCase False True False CompileTime (fileFC "proof") [] [] [([], P Ref n ty, tm)]
+         let tree = simpleCase False (STerm Erased) False CompileTime (fileFC "proof") [] [] [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
          (ptm, pty) <- recheckC (fileFC "proof") [] tm
          logLvl 5 ("Proof type: " ++ show pty ++ "\n" ++
@@ -86,7 +86,7 @@ prove opt ctxt lit n ty
               Error e -> ierror (CantUnify False ty pty e [] 0)
          ptm' <- applyOpts ptm
          ei <- getErasureInfo `fmap` getIState
-         updateContext (addCasedef n ei (CaseInfo True False) False False True False
+         updateContext (addCasedef n ei (CaseInfo True False) False (STerm Erased) True False
                                  [] []  -- argtys, inaccArgs
                                  [Right (P Ref n ty, ptm)]
                                  [([], P Ref n ty, ptm)]
