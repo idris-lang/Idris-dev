@@ -441,6 +441,13 @@ syntax "[" [start] "," [next] ".." "]"
 
 ---- More utilities
 
+||| repeatedly apply f to v until p is True
+partial
+until : (a -> Bool) -> (a -> a) -> a -> a
+until p f v with (p v)
+  | False = until p f (f v)
+  | True = v
+
 curry : ((a, b) -> c) -> a -> b -> c
 curry f a b = f (a, b)
 
