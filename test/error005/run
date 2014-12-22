@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris $@ --check --nocolour error005.idr
+rm -f *.ibc

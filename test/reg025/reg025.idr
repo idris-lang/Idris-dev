@@ -24,13 +24,13 @@ FullBoard (MkBoard b) = All (All Filled) b
 indexStep : {i : Fin n} -> {xs : Vect n a} -> {x : a} -> index i xs = index (FS i) (x::xs)
 indexStep = Refl
 
-find : {P : a -> Type} -> ((x : a) -> Dec (P x)) -> (xs : Vect n a)
-       -> Either (All (\x => Not (P x)) xs) (y : a ** (P y, (i : Fin n ** y = index i xs)))
+find : {p : a -> Type} -> ((x : a) -> Dec (p x)) -> (xs : Vect n a)
+       -> Either (All (\x => Not (p x)) xs) (y : a ** (p y, (i : Fin n ** y = index i xs)))
 find _ Nil = Left Nil
-find {P} d (x::xs) with (d x)
+find {p} d (x::xs) with (d x)
   | Yes prf = Right (x ** (prf, (FZ ** Refl)))
   | No prf =
-    case find {P} d xs of
+    case find {p} d xs of
       Right (y ** (prf', (i ** prf''))) =>
         Right (y ** (prf', (FS i ** replace {P=(\x => y = x)} (indexStep {x=x}) prf'')))
       Left prf' => Left (prf::prf')
@@ -41,7 +41,7 @@ empty (Just _) = No nothingNotJust
 
 findEmptyInRow : (xs : Vect n (Cell n)) -> Either (All Filled xs) (i : Fin n ** Empty (index i xs))
 findEmptyInRow xs =
-  case find {P=Empty} empty xs of
+  case find {p=Empty} empty xs of
     Right (_ ** (pempty, (i ** pidx))) => Right (i ** trans pempty pidx)
     Left p => Left p
 

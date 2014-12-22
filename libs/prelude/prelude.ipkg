@@ -3,6 +3,8 @@ package prelude
 opts = "--nobuiltins --total"
 modules = Builtins, Prelude, IO,
 
+          Language.Reflection, Language.Reflection.Errors,
+
           Prelude.Algebra, Prelude.Basics, Prelude.Bool, Prelude.Cast,
           Prelude.Classes, Prelude.Nat, Prelude.Fin, Prelude.List,
           Prelude.Maybe, Prelude.Monad, Prelude.Applicative, Prelude.Either,

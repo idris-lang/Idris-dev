@@ -27,6 +27,8 @@ import public Prelude.Uninhabited
 import public Prelude.Pairs
 
 import public Decidable.Equality
+import public Language.Reflection
+import public Language.Reflection.Errors
 
 %access public
 %default total
