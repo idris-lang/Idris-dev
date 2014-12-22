@@ -126,7 +126,7 @@ buildTree built fp = btree [] fp
                              if exist then do
                                  ibct <- runIO $ getModificationTime ibc
                                  srct <- runIO $ getModificationTime src
-                                 return (srct > ibct)
+                                 return (srct >= ibct)
                                else return False
 
   children :: Bool -> FilePath -> [FilePath] -> Idris [ModuleTree]
