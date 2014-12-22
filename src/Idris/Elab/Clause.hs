@@ -210,7 +210,7 @@ elabClauses info' fc opts n_in cs =
                                 else UnmatchedCase $ "*** " ++ 
                                       show fc ++ 
                                        ":unmatched case in " ++ show n ++ 
-                                       " ***\n"
+                                       " ***"
 
            tree' <- tclift $ simpleCase tcase defaultcase reflect
                                         RunTime fc inacc atys pdef' erInfo
