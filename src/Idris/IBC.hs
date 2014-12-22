@@ -258,8 +258,14 @@ ibc i (IBCParsedRegion fc) f = return f { ibc_parsedSpan = Just fc }
 process :: Bool -- ^ Reexporting
            -> IBCFile -> FilePath -> Idris ()
 process reexp i fn
-   | ver i /= ibcVersion = do iLOG "ibc out of date"
-                              ifail "Incorrect ibc version --- please rebuild"
+   | ver i /= ibcVersion 
+       = do iLOG "ibc out of date"
+            let e = if ver i < ibcVersion then " an earlier " else " a later "
+            ifail $ "Incompatible ibc version.\nThis library was built with"
+                    ++ e ++ "version of Idris.\n" ++
+                    "Please clean and rebuild."
+                              
+                              --- please rebuild"
    | otherwise =
             do srcok <- runIO $ doesFileExist (sourcefile i)
                when srcok $ timestampOlder (sourcefile i) fn
