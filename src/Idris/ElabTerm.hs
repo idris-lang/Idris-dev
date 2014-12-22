@@ -144,8 +144,8 @@ buildTC ist info emode opts fn tm
   where pattern = emode == ELHS
 
 -- return whether arguments of the given constructor name can be 
--- matched on. If they're polymorphic and the type doesn't appear in the
--- return type, then no, otherwise yes.
+-- matched on. If they're polymorphic, no, unless the type has beed made
+-- concrete by the time we get around to elaborating the argument.
 getUnmatchable :: Context -> Name -> [Bool]
 getUnmatchable ctxt n | isDConName n ctxt && n /= inferCon
    = case lookupTyExact n ctxt of
@@ -159,10 +159,7 @@ getUnmatchable ctxt n | isDConName n ctxt && n /= inferCon
                   checkArgs env' (intersect env (refsIn t) : ns) 
                             (instantiate (P Bound n t) sc)
         checkArgs env ns t
-            = map (anyMissing (intersect env (refsIn t))) (reverse ns)
-
-        anyMissing tns [] = False
-        anyMissing tns (x : xs) = not (x `elem` tns) || anyMissing tns xs
+            = map (not . null) (reverse ns)
 
 getUnmatchable ctxt n = []
 
@@ -174,6 +171,16 @@ data ElabCtxt = ElabCtxt { e_inarg :: Bool,
                          }
 
 initElabCtxt = ElabCtxt False False False False False
+
+goal_polymorphic :: ElabD Bool
+goal_polymorphic =
+   do ty <- goal
+      case ty of
+           P _ n _ -> do env <- get_env
+                         case lookup n env of
+                              Nothing -> return False
+                              _ -> return True
+           _ -> return False
 
 -- Returns the set of declarations we need to add to complete the definition
 -- (most likely case blocks to elaborate)
@@ -1098,9 +1105,11 @@ elab ist info emode opts fn tm
                               -- traceWhen (not (null cs)) (show ty ++ "\n" ++ showImp True t) $
                               do focus holeName;
                                  g <- goal
+                                 -- Can't pattern match on polymorphic goals
+                                 poly <- goal_polymorphic
                                  ulog <- getUnifyLog
                                  traceWhen ulog ("Elaborating argument " ++ show (argName, holeName, g)) $
-                                  elab (ina { e_nomatching = unm }) (Just fc) t
+                                  elab (ina { e_nomatching = unm && poly }) (Just fc) t
                                  return failed
                    done_elaborating_arg f argName
                    elabArgs ist ina failed fc r f ns force args

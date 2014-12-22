@@ -1,6 +1,9 @@
 reg055.idr:5:3:When elaborating left hand side of g:
-Can't match on  g ([92mf[0m [91m0[0m)
+Can't match on g ([92mf[0m [91m0[0m)
 reg055.idr:8:3:When elaborating left hand side of h:
-Can't match on  h x x
-reg055a.idr:10:7:When elaborating left hand side of Foo.apply:
-Can't match on  apply (\[95mx[0m => \[95my[0m => [95mx[0m) a
+Can't match on h x x
+reg055a.idr:8:5:When elaborating left hand side of foo:
+When elaborating an application of constructor [91mFoo.CAny[0m:
+        Attempting concrete match on polymorphic argument: Nothing
+reg055a.idr:13:7:When elaborating left hand side of Foo.apply:
+Can't match on apply (\[95mx[0m => \[95my[0m => [95mx[0m) a

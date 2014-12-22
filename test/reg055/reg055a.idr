@@ -1,10 +1,13 @@
 module Foo
 
--- data CrappySet : (a : Type) -> Ord a -> Type where
---   Empty : (inst : Ord a) -> CrappySet a inst
---   Item  : (inst : Ord a) -> a -> CrappySet a inst -> CrappySet a inst
--- 
--- empty : (inst : Ord a) => CrappySet a inst
+data Cheat : Type -> Type where
+     CAny : a -> Cheat a
+     CInt : Cheat Int
+
+foo : Cheat a -> Int
+foo (CAny Nothing) = 42 
+foo (CAny (Just x)) = 43 
+foo CInt = 0 
 
 apply : (a -> a -> b) -> a -> a
 apply (\x => \y => x) a = a
