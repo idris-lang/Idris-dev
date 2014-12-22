@@ -3,17 +3,17 @@ module Language.Reflection.Utils
 import Language.Reflection
 import Language.Reflection.Errors
 
-%default total
-
 --------------------------------------------------------
 -- Tactic construction conveniences
 --------------------------------------------------------
 
+total
 seq : List Tactic -> Tactic
 seq []      = GoalType "This is an impossible case" Trivial
 seq [t]     = t
 seq (t::ts) = t `Seq` seq ts
 
+total
 try : List Tactic -> Tactic
 try []      = GoalType "This is an impossible case" Trivial
 try [t]     = t
@@ -23,6 +23,7 @@ try (t::ts) = t `Try` seq ts
 --------------------------------------------------------
 -- For use in tactic scripts
 --------------------------------------------------------
+total
 mkPair : a -> b -> (a, b)
 mkPair a b = (a, b)
 
@@ -30,22 +31,25 @@ mkPair a b = (a, b)
 --------------------------------------------------------
 -- Tools for constructing proof terms directly
 --------------------------------------------------------
-
+total
 getUName : TTName -> Maybe String
 getUName (UN n)    = Just n
 getUName (NS n ns) = getUName n
 getUName _         = Nothing
 
+total
 unApply : TT -> (TT, List TT)
 unApply t = unA t []
   where unA : TT -> List TT -> (TT, List TT)
         unA (App fn arg) args = unA fn (arg::args)
         unA tm           args = (tm, args)
 
+total
 mkApp : TT -> List TT -> TT
 mkApp tm []      = tm
 mkApp tm (a::as) = mkApp (App tm a) as
 
+total
 binderTy : (Eq t) => Binder t -> t
 binderTy (Lam t)       = t
 binderTy (Pi t _)      = t

@@ -56,13 +56,13 @@ instance Show SocketType where
   show NotASocket = "Not a socket"
   show Stream     = "Stream"
   show Datagram   = "Datagram"
-  show Raw        = "Raw"
+  show RawSocket  = "Raw"
 
 instance ToCode SocketType where
   toCode NotASocket = 0
   toCode Stream     = 1
   toCode Datagram   = 2
-  toCode Raw        = 3
+  toCode RawSocket  = 3
 
 
 data RecvStructPtr = RSPtr Ptr

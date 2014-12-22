@@ -13,7 +13,7 @@ modules = System,
 
           Providers,
 
-          Language.Reflection, Language.Reflection.Utils, Language.Reflection.Errors,
+          Language.Reflection.Utils,
 
           Syntax.PreorderReasoning,
 

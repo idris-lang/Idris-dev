@@ -1,5 +1,14 @@
 module Language.Reflection
 
+import Builtins
+import Prelude.Applicative
+import Prelude.Basics
+import Prelude.Foldable
+import Prelude.Functor
+import Prelude.List
+import Prelude.Nat
+import Prelude.Traversable
+
 %access public
 
 data TTName =
