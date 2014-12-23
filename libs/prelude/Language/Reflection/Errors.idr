@@ -1,7 +1,12 @@
 module Language.Reflection.Errors
 
+import Builtins
+
 import Language.Reflection
 
+import Prelude.Bool
+import Prelude.List
+import Prelude.Maybe
 
 data Err = Msg String
          | InternalMsg String

@@ -6,10 +6,14 @@ import Prelude.Basics
 import Prelude.Bool
 import Prelude.Cast
 import Prelude.Classes
+import Prelude.List
 import Prelude.Maybe
 import Prelude.Nat
 import Prelude.Either
 import Prelude.Uninhabited
+
+import Language.Reflection
+import Language.Reflection.Errors
 
 %default total
 
@@ -157,3 +161,20 @@ fromInteger : (x : Integer) ->
 fromInteger {n} x {prf} with (integerToFin x n)
   fromInteger {n} x {prf = ItIsJust} | Just y = y
 
+%language ErrorReflection
+
+total
+finFromIntegerErrors : Err -> Maybe (List ErrorReportPart)
+finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~n ~m)) err xs y)
+  = Just [ TextPart "When using", TermPart n
+         , TextPart "as a literal for a"
+         , TermPart `(Fin ~m)
+         , SubReport [ TextPart "Could not show that"
+                     , TermPart n
+                     , TextPart "is less than"
+                     , TermPart m
+                     ]
+         ]
+finFromIntegerErrors _ = Nothing
+
+%error_handlers Prelude.Fin.fromInteger prf finFromIntegerErrors

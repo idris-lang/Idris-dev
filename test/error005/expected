@@ -1,0 +1,12 @@
+error005.idr:11:1:When elaborating right hand side of two:
+When elaborating argument prf to function Prelude.Fin.fromInteger:
+        When using 2 as a literal for a Fin 2 
+                Could not show that 2 is less than 2
+error005.idr:14:1:When elaborating right hand side of hahaha:
+When elaborating argument prf to function Prelude.Fin.fromInteger:
+        When using 0 as a literal for a Fin n 
+                Could not show that 0 is less than n
+error005.idr:19:1:When elaborating right hand side of notOk:
+When elaborating argument prf to function Prelude.Fin.fromInteger:
+        When using 2 as a literal for a Fin (S (S n)) 
+                Could not show that 2 is less than S (S n)

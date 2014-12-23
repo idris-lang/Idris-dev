@@ -18,6 +18,6 @@ class Decidable (ts : Vect k Type) (p : Rel ts) where
 --decision : Decidable ts p => (ts : Vect k Type) -> (p : Rel ts) -> liftRel ts p Dec
 --decision ts p = decide {ts} {p}
 
-using (P : Type, p : P)
-  data Given : Dec P -> Type where
-    always : Given (Yes p)
+using (a : Type, x : a)
+  data Given : Dec a -> Type where
+    Always : Given (Yes x)

@@ -91,6 +91,8 @@ Extra-source-files:
                        libs/prelude/prelude.ipkg
                        libs/prelude/Prelude/*.idr
                        libs/prelude/Decidable/*.idr
+                       libs/prelude/Language/*.idr
+                       libs/prelude/Language/Reflection/*.idr
                        libs/prelude/Makefile
                        libs/prelude/*.idr
 
@@ -103,7 +105,6 @@ Extra-source-files:
                        libs/base/Data/Vect/*.idr
                        libs/base/Debug/*.idr
                        libs/base/Decidable/*.idr
-                       libs/base/Language/*.idr
                        libs/base/Language/Reflection/*.idr
                        libs/base/Makefile
                        libs/base/Network/*.idr
@@ -358,6 +359,9 @@ Extra-source-files:
                        test/error004/run
                        test/error004/*.idr
                        test/error004/expected
+                       test/error005/run
+                       test/error005/*.idr
+                       test/error005/expected
 
                        test/ffi001/run
                        test/ffi001/*.idr
