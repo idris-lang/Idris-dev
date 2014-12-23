@@ -757,7 +757,7 @@ lambda syn = do lchar '\\' <?> "lambda expression"
                     sc <- expr syn
                     return (bindList (PLam fc) xt sc)) <|> do
                       ps <- sepBy (do fc <- getFC
-                                      e <- simpleExpr syn
+                                      e <- simpleExpr (syn { inPattern = True })
                                       return (fc, e)) (lchar ',')
                       symbol "=>"
                       sc <- expr syn
