@@ -41,6 +41,7 @@ import Control.Applicative hiding (Const)
 import Control.DeepSeq
 import Control.Monad
 import Control.Monad.State.Strict as State
+import qualified Control.Monad.State.Lazy as LState
 import Data.List
 import Data.Maybe
 import Debug.Trace
@@ -695,8 +696,12 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                              then recheckC_borrowing True borrowed fc [] rhs'
                              else return (rhs', clhsty)
         logLvl 6 $ " ==> " ++ show crhsty ++ "   against   " ++ show clhsty
-        case  converts ctxt [] clhsty crhsty of
-            OK _ -> return ()
+        ctxt <- getContext
+        let constv = next_tvar ctxt
+        case LState.runStateT (convertsC ctxt [] crhsty clhsty) (constv, []) of
+            OK (_, cs) -> do addConstraints fc cs 
+                             logLvl 6 $ "CONSTRAINTS ADDED: " ++ show (constv,cs)
+                             return ()
             Error e -> ierror (At fc (CantUnify False clhsty crhsty e [] 0))
         i <- getIState
         checkInferred fc (delab' i crhs True True) rhs

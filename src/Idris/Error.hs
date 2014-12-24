@@ -28,8 +28,10 @@ import qualified Data.Foldable as Foldable
 
 iucheck :: Idris ()
 iucheck = do tit <- typeInType
+             ist <- getIState
+             let cs = idris_constraints ist
+             logLvl 7 $ "ALL CONSTRAINTS: " ++ show cs
              when (not tit) $
-                do ist <- getIState
                    (tclift $ ucheck (idris_constraints ist)) `idrisCatch`
                               (\e -> do setErrSpan (getErrSpan e)
                                         iputStrLn (pshow ist e))

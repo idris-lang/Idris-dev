@@ -493,7 +493,7 @@ addConstraints :: FC -> (Int, [UConstraint]) -> Idris ()
 addConstraints fc (v, cs)
     = do i <- getIState
          let ctxt = tt_ctxt i
-         let ctxt' = ctxt { uconstraints = cs ++ uconstraints ctxt,
+         let ctxt' = ctxt { uconstraints = nub cs ++ uconstraints ctxt,
                             next_tvar = v }
          let ics = zip cs (repeat fc) ++ idris_constraints i
          putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
