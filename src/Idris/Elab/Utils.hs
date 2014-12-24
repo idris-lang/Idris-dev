@@ -30,6 +30,7 @@ recheckC_borrowing uniq_check bs fc env t
          (tm, ty, cs) <- tclift $ case recheck_borrowing uniq_check bs ctxt env (forget t) t of
                                    Error e -> tfail (At fc e)
                                    OK x -> return x
+         logLvl 6 $ "CONSTRAINTS ADDED: " ++ show cs
          addConstraints fc cs
          return (tm, ty)
 

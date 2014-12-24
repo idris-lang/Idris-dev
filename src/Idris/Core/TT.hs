@@ -1087,13 +1087,15 @@ noOccurrence n t = no' 0 t
 
 -- | Returns all names used free in the term
 freeNames :: Eq n => TT n -> [n]
-freeNames (P _ n _) = [n]
-freeNames (Bind n (Let t v) sc) = nub $ freeNames v ++ (freeNames sc \\ [n])
-                                        ++ freeNames t
-freeNames (Bind n b sc) = nub $ freeNames (binderTy b) ++ (freeNames sc \\ [n])
-freeNames (App f a) = nub $ freeNames f ++ freeNames a
-freeNames (Proj x i) = nub $ freeNames x
-freeNames _ = []
+freeNames t = nub $ freeNames' t
+  where
+    freeNames' (P _ n _) = [n]
+    freeNames' (Bind n (Let t v) sc) = freeNames' v ++ (freeNames' sc \\ [n])
+                                            ++ freeNames' t
+    freeNames' (Bind n b sc) = freeNames' (binderTy b) ++ (freeNames' sc \\ [n])
+    freeNames' (App f a) = freeNames' f ++ freeNames' a
+    freeNames' (Proj x i) = freeNames' x
+    freeNames' _ = []
 
 -- | Return the arity of a (normalised) type
 arity :: TT n -> Int

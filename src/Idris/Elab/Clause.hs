@@ -700,7 +700,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         let constv = next_tvar ctxt
         case LState.runStateT (convertsC ctxt [] crhsty clhsty) (constv, []) of
             OK (_, cs) -> do addConstraints fc cs 
-                             logLvl 6 $ "CONSTRAINTS ADDED: " ++ show (constv,cs)
+                             logLvl 6 $ "CONSTRAINTS ADDED: " ++ show cs
                              return ()
             Error e -> ierror (At fc (CantUnify False clhsty crhsty e [] 0))
         i <- getIState

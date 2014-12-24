@@ -211,13 +211,16 @@ pprintErr' i (CantUnify _ x_in y_in e sc s) =
       _ -> line <> line <> text "Specifically:" <>
            indented (pprintErr' i e) <>
            if (opt_errContext (idris_options i)) then showSc i sc else empty
-pprintErr' i (CantConvert x y env) =
+pprintErr' i (CantConvert x_in y_in env) =
+ let (x_ns, y_ns, nms) = renameMNs x_in y_in
+     (x, y) = addImplicitDiffs (delab i (flagUnique x_ns)) 
+                               (delab i (flagUnique y_ns)) in
   text "Can't convert" <>
-  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
-               (delab i (flagUnique x)))) <$>
+  indented (annTm x_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
+               x)) <$>
   text "with" <>
-  indented (annTm y (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
-               (delab i (flagUnique y)))) <>
+  indented (annTm y_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
+               y)) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
     where flagUnique (Bind n (Pi t k@(UType u)) sc)
               = App (P Ref (sUN (show u)) Erased)
@@ -331,10 +334,6 @@ pprintErr' i (ReflectionFailed msg err) =
 -- Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly
 
--- FIXME: I can't actually contrive an error to test this! Will revisit later...
---
--- Issue #1590 in the Issue tracker.
---     https://github.com/idris-lang/Idris-dev/issues/1590
 renameMNs :: Term -> Term -> (Term, Term, [Name])
 renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
                     newnames = evalState (getRenames [] ns) 1 in
@@ -342,12 +341,22 @@ renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
   where
     getRenames :: [(Name, Name)] -> [Name] -> State Int [(Name, Name)]
     getRenames acc [] = return acc
-    getRenames acc (n@(MN i x) : xs) | UN x `elem` xs
+    getRenames acc (n@(MN i x) : xs) | rpt x xs 
+         = do idx <- get
+              put (idx + 1)
+              let x' = sUN (str x ++ show idx)
+              getRenames ((n, x') : acc) xs
+    getRenames acc (n@(UN x) : xs) | rpt x xs 
          = do idx <- get
               put (idx + 1)
               let x' = sUN (str x ++ show idx)
               getRenames ((n, x') : acc) xs
     getRenames acc (x : xs) = getRenames acc xs
+
+    rpt x [] = False
+    rpt x (UN y : xs) | x == y = True
+    rpt x (MN i y : xs) | x == y = True
+    rpt x (_ : xs) = rpt x xs
 
     rename :: [(Name, Name)] -> Term -> Term
     rename ns (P nt x t) | Just x' <- lookup x ns = P nt x' t
