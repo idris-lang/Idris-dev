@@ -8,13 +8,13 @@ test: $(TESTS)
 	@perl ./runtest.pl $(patsubst %.test,%,$@)
 
 test_java:
-	@perl ./runtest.pl without --codegen Java
+	@perl ./runtest.pl without primitives004 --codegen Java
 
 test_js:
-	@perl ./runtest.pl without sugar004 reg029 reg052 io001 dsl002 io003 effects001 effects002 buffer001 basic011 --codegen node
+	@perl ./runtest.pl without sugar004 reg029 reg052 io001 dsl002 io003 effects001 effects002 buffer001 basic011 primitives004 --codegen node
 
 test_llvm:
-	@perl ./runtest.pl without primitives003 sugar004 io003 buffer001 --codegen llvm
+	@perl ./runtest.pl without primitives003 primitives004 sugar004 io003 buffer001 --codegen llvm
 
 update:
 	/usr/bin/env perl ./runtest.pl all -u
@@ -25,4 +25,3 @@ diff:
 distclean:
 	rm -f *~
 	rm -f */output
-
