@@ -126,4 +126,9 @@ VAL idris_b64T8(VM *vm, VAL a);
 VAL idris_b64T16(VM *vm, VAL a);
 VAL idris_b64T32(VM *vm, VAL a);
 
+VAL idris_IDXB8x16(VM* vm, VAL vec, VAL idx);
+VAL idris_IDXB16x8(VM* vm, VAL vec, VAL idx);
+VAL idris_IDXB32x4(VM* vm, VAL vec, VAL idx);
+VAL idris_IDXB64x2(VM* vm, VAL vec, VAL idx);
+
 #endif

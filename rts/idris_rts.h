@@ -10,6 +10,8 @@
 #endif
 #include <stdint.h>
 
+#include <emmintrin.h>
+
 #include "idris_heap.h"
 #include "idris_stats.h"
 
@@ -21,11 +23,11 @@
 #endif
 
 // Closures
-
 typedef enum {
     CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
     BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
-    MANAGEDPTR, BUFFER
+    MANAGEDPTR, BUFFER, BITS8X16, BITS16X8, BITS32X4,
+    BITS64X2
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -72,6 +74,7 @@ typedef struct Closure {
         uint16_t bits16;
         uint32_t bits32;
         uint64_t bits64;
+        __m128i* bits128p;
         Buffer* buf;
         ManagedPtr* mptr;
     } info;
@@ -82,7 +85,7 @@ typedef struct {
     VAL* valstack_top;
     VAL* valstack_base;
     VAL* stack_max;
-    
+
     Heap heap;
 #ifdef HAS_PTHREAD
     pthread_mutex_t inbox_lock;
@@ -106,7 +109,7 @@ typedef struct {
 } VM;
 
 // Create a new VM
-VM* init_vm(int stack_size, size_t heap_size, 
+VM* init_vm(int stack_size, size_t heap_size,
             int max_threads);
 // Initialise thread-local data for this VM
 void init_threaddata(VM *vm);
@@ -116,22 +119,24 @@ Stats terminate(VM* vm);
 // Set up key for thread-local data - called once from idris_main
 void init_threadkeys();
 
-// Functions all take a pointer to their VM, and previous stack base, 
+// Functions all take a pointer to their VM, and previous stack base,
 // and return nothing.
 typedef void(*func)(VM*, VAL*);
 
-// Register access 
+// Register access
 
 #define RVAL (vm->ret)
 #define LOC(x) (*(vm->valstack_base + (x)))
 #define TOP(x) (*(vm->valstack_top + (x)))
 #define REG1 (vm->reg1)
 
-// Retrieving values
+// align pointer
+#define ALIGN(__p, __alignment) ((__p + __alignment - 1) & ~(__alignment - 1))
 
+// Retrieving values
 #define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str) : GETSTROFF(x))
-#define GETPTR(x) (((VAL)(x))->info.ptr) 
-#define GETMPTR(x) (((VAL)(x))->info.mptr->data) 
+#define GETPTR(x) (((VAL)(x))->info.ptr)
+#define GETMPTR(x) (((VAL)(x))->info.mptr->data)
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 
 #define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
@@ -189,6 +194,30 @@ VAL MKB16(VM* vm, uint16_t b);
 VAL MKB32(VM* vm, uint32_t b);
 VAL MKB64(VM* vm, uint64_t b);
 
+// SSE Vectors
+VAL MKB8x16(VM* vm,
+            VAL v0, VAL v1, VAL v2, VAL v3,
+            VAL v4, VAL v5, VAL v6, VAL v7,
+            VAL v8, VAL v9, VAL v10, VAL v11,
+            VAL v12, VAL v13, VAL v14, VAL v15);
+VAL MKB8x16const(VM* vm,
+                 uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v3,
+                 uint8_t v4, uint8_t v5, uint8_t v6, uint8_t v7,
+                 uint8_t v8, uint8_t v9, uint8_t v10, uint8_t v11,
+                 uint8_t v12, uint8_t v13, uint8_t v14, uint8_t v15);
+VAL MKB16x8(VM* vm,
+            VAL v0, VAL v1, VAL v2, VAL v3,
+            VAL v4, VAL v5, VAL v6, VAL v7);
+VAL MKB16x8const(VM* vm,
+                 uint16_t v0, uint16_t v1, uint16_t v2, uint16_t v3,
+                 uint16_t v4, uint16_t v5, uint16_t v6, uint16_t v7);
+VAL MKB32x4(VM* vm,
+            VAL v0, VAL v1, VAL v2, VAL v3);
+VAL MKB32x4const(VM* vm,
+                 uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3);
+VAL MKB64x2(VM* vm, VAL v0, VAL v1);
+VAL MKB64x2const(VM* vm, uint64_t v0, uint64_t v1);
+
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, StrOffset* off);
@@ -203,7 +232,7 @@ char* GETSTROFF(VAL stroff);
 #define SETARG(x, i, a) ((x)->info.c.args)[i] = ((VAL)(a))
 #define GETARG(x, i) ((x)->info.c.args)[i]
 
-void PROJECT(VM* vm, VAL r, int loc, int arity); 
+void PROJECT(VM* vm, VAL r, int loc, int arity);
 void SLIDE(VM* vm, int args);
 
 void* allocate(size_t size, int outerlock);
@@ -257,11 +286,11 @@ void dumpVal(VAL r);
 void dumpStack(VM* vm);
 
 // Casts
-
 #define idris_castIntFloat(x) MKFLOAT(vm, (double)(GETINT(x)))
 #define idris_castFloatInt(x) MKINT((i_int)(GETFLOAT(x)))
 
 VAL idris_castIntStr(VM* vm, VAL i);
+VAL idris_castBitsStr(VM* vm, VAL i);
 VAL idris_castStrInt(VM* vm, VAL i);
 VAL idris_castFloatStr(VM* vm, VAL i);
 VAL idris_castStrFloat(VM* vm, VAL i);
@@ -273,7 +302,6 @@ void idris_poke(void* ptr, i_int offset, uint8_t data);
 void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size);
 
 // String primitives
-
 VAL idris_concat(VM* vm, VAL l, VAL r);
 VAL idris_strlt(VM* vm, VAL l, VAL r);
 VAL idris_streq(VM* vm, VAL l, VAL r);
@@ -324,7 +352,7 @@ extern char **__idris_argv;
 int idris_numArgs();
 const char *idris_getArg(int i);
 
-// Handle stack overflow. 
+// Handle stack overflow.
 // Just reports an error and exits.
 
 void stackOverflow();
@@ -338,4 +366,4 @@ void stackOverflow();
 
 #include "idris_gmp.h"
 
-#endif 
+#endif

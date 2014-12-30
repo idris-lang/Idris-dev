@@ -21,7 +21,7 @@ void free_key(VM *vm) {
     // nothing to free, we just used the VM pointer which is freed elsewhere
 }
 
-VM* init_vm(int stack_size, size_t heap_size, 
+VM* init_vm(int stack_size, size_t heap_size,
             int max_threads // not implemented yet
             ) {
 
@@ -113,7 +113,7 @@ void idris_requireAlloc(size_t size) {
 #ifdef HAS_PTHREAD
     int lock = vm->processes > 0;
     if (lock) { // We only need to lock if we're in concurrent mode
-       pthread_mutex_lock(&vm->alloc_lock); 
+       pthread_mutex_lock(&vm->alloc_lock);
     }
 #endif
 }
@@ -123,7 +123,7 @@ void idris_doneAlloc() {
     VM* vm = pthread_getspecific(vm_key);
     int lock = vm->processes > 0;
     if (lock) { // We only need to lock if we're in concurrent mode
-       pthread_mutex_unlock(&vm->alloc_lock); 
+       pthread_mutex_unlock(&vm->alloc_lock);
     }
 #endif
 }
@@ -153,7 +153,7 @@ void* allocate(size_t size, int outerlock) {
     int lock = vm->processes > 0 && !outerlock;
 
     if (lock) { // not message passing
-       pthread_mutex_lock(&vm->alloc_lock); 
+       pthread_mutex_lock(&vm->alloc_lock);
     }
 #else
     VM* vm = global_vm;
@@ -176,7 +176,7 @@ void* allocate(size_t size, int outerlock) {
         memset(ptr, 0, size);
 #ifdef HAS_PTHREAD
         if (lock) { // not message passing
-           pthread_mutex_unlock(&vm->alloc_lock); 
+           pthread_mutex_unlock(&vm->alloc_lock);
         }
 #endif
         return ptr;
@@ -184,7 +184,7 @@ void* allocate(size_t size, int outerlock) {
         idris_gc(vm);
 #ifdef HAS_PTHREAD
         if (lock) { // not message passing
-           pthread_mutex_unlock(&vm->alloc_lock); 
+           pthread_mutex_unlock(&vm->alloc_lock);
         }
 #endif
         return allocate(size, 0);
@@ -250,7 +250,7 @@ VAL MKMPTR(VM* vm, void* ptr, size_t size) {
     SETTY(cl, MANAGEDPTR);
     cl->info.mptr = (ManagedPtr*)((char*)cl + sizeof(Closure));
     cl->info.mptr->data = (char*)cl + sizeof(Closure) + sizeof(ManagedPtr);
-    memcpy(cl->info.mptr->data, ptr, size); 
+    memcpy(cl->info.mptr->data, ptr, size);
     cl->info.mptr->size = size;
     return cl;
 }
@@ -285,7 +285,7 @@ VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
     SETTY(cl, MANAGEDPTR);
     cl->info.mptr = (ManagedPtr*)((char*)cl + sizeof(Closure));
     cl->info.mptr->data = (char*)cl + sizeof(Closure) + sizeof(ManagedPtr);
-    memcpy(cl->info.mptr->data, ptr, size); 
+    memcpy(cl->info.mptr->data, ptr, size);
     cl->info.mptr->size = size;
     return cl;
 }
@@ -316,6 +316,107 @@ VAL MKB64(VM* vm, uint64_t bits64) {
     SETTY(cl, BITS64);
     cl -> info.bits64 = bits64;
     return cl;
+}
+
+VAL MKB8x16const(VM* vm,
+                 uint8_t v0,  uint8_t v1,  uint8_t v2,  uint8_t v3,
+                 uint8_t v4,  uint8_t v5,  uint8_t v6,  uint8_t v7,
+                 uint8_t v8,  uint8_t v9,  uint8_t v10, uint8_t v11,
+                 uint8_t v12, uint8_t v13, uint8_t v14, uint8_t v15) {
+    Closure* cl = allocate(sizeof(Closure) + sizeof(__m128i), 1);
+    SETTY(cl, BITS8X16);
+
+    cl->info.bits128p = (__m128i*)ALIGN((uintptr_t)cl + sizeof(Closure), 16);
+    assert ((uintptr_t)cl->info.bits128p % 16 == 0);
+
+    uint8_t data[16];
+    data[0]=v0;   data[1]=v1;   data[2]=v2;   data[3]=v3;
+    data[4]=v4;   data[5]=v5;   data[6]=v6;   data[7]=v7;
+    data[8]=v8;   data[9]=v9;   data[10]=v10; data[11]=v11;
+    data[12]=v12; data[13]=v13; data[14]=v14; data[15]=v15;
+
+    *cl->info.bits128p = _mm_loadu_si128((__m128i*)&data);
+
+    return cl;
+}
+
+VAL MKB8x16(VM* vm,
+            VAL v0,  VAL v1,  VAL v2,  VAL v3,
+            VAL v4,  VAL v5,  VAL v6,  VAL v7,
+            VAL v8,  VAL v9,  VAL v10, VAL v11,
+            VAL v12, VAL v13, VAL v14, VAL v15) {
+    return MKB8x16const(vm,
+        v0->info.bits8,  v1->info.bits8,  v2->info.bits8,  v3->info.bits8,
+        v4->info.bits8,  v5->info.bits8,  v6->info.bits8,  v7->info.bits8,
+        v8->info.bits8,  v9->info.bits8,  v10->info.bits8, v11->info.bits8,
+        v12->info.bits8, v13->info.bits8, v14->info.bits8, v15->info.bits8);
+}
+
+VAL MKB16x8const(VM* vm,
+                 uint16_t v0, uint16_t v1, uint16_t v2, uint16_t v3,
+                 uint16_t v4, uint16_t v5, uint16_t v6, uint16_t v7) {
+    Closure* cl = allocate(sizeof(Closure) + sizeof(__m128i), 1);
+    SETTY(cl, BITS16X8);
+
+    cl->info.bits128p = (__m128i*)ALIGN((uintptr_t)cl + sizeof(Closure), 16);
+    assert ((uintptr_t)cl->info.bits128p % 16 == 0);
+
+    uint16_t data[8];
+    data[0]=v0; data[1]=v1; data[2]=v2; data[3]=v3;
+    data[4]=v4; data[5]=v5; data[6]=v6; data[7]=v7;
+
+    *cl->info.bits128p = _mm_loadu_si128((__m128i*)&data);
+    return cl;
+
+}
+
+VAL MKB16x8(VM* vm,
+            VAL v0, VAL v1, VAL v2, VAL v3,
+            VAL v4, VAL v5, VAL v6, VAL v7) {
+    return MKB16x8const(vm,
+        v0->info.bits16, v1->info.bits16, v2->info.bits16, v3->info.bits16,
+        v4->info.bits16, v5->info.bits16, v6->info.bits16, v7->info.bits16);
+}
+
+VAL MKB32x4const(VM* vm,
+                 uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) {
+    Closure* cl = allocate(sizeof(Closure) + 16 + sizeof(__m128i), 1);
+    SETTY(cl, BITS64X2);
+
+    cl->info.bits128p = (__m128i*)ALIGN((uintptr_t)cl + sizeof(Closure), 16);
+    assert ((uintptr_t)cl->info.bits128p % 16 == 0);
+
+    uint32_t data[4];
+    data[0]=v0; data[1]=v1; data[2]=v2; data[3]=v3;
+
+    *cl->info.bits128p = _mm_loadu_si128((__m128i*)&data);
+    return cl;
+}
+
+VAL MKB32x4(VM* vm,
+            VAL v0, VAL v1, VAL v2, VAL v3) {
+    return MKB32x4const(vm,
+        v0->info.bits32, v1->info.bits32, v2->info.bits32, v3->info.bits32);
+}
+
+VAL MKB64x2const(VM* vm, uint64_t v0, uint64_t v1) {
+    Closure* cl = allocate(sizeof(Closure) + 16 + sizeof(__m128i), 1);
+    SETTY(cl, BITS64X2);
+
+    cl->info.bits128p = (__m128i*)ALIGN((uintptr_t)cl + sizeof(Closure), 16);
+    assert ((uintptr_t)cl->info.bits128p % 16 == 0);
+
+    uint64_t data[2];
+    data[0]=v0; data[1]=v1;
+
+    *cl->info.bits128p = _mm_loadu_si128((__m128i*)&data);
+    return cl;
+}
+
+VAL MKB64x2(VM* vm, VAL v0, VAL v1) {
+    return MKB64x2const(vm,
+        v0->info.bits64,
+        v1->info.bits64);
 }
 
 void PROJECT(VM* vm, VAL r, int loc, int arity) {
@@ -350,7 +451,7 @@ void dumpStack(VM* vm) {
 void dumpVal(VAL v) {
     if (v==NULL) return;
     int i;
-    if (ISINT(v)) { 
+    if (ISINT(v)) {
         printf("%d ", (int)(GETINT(v)));
         return;
     }
@@ -400,13 +501,51 @@ VAL idris_castIntStr(VM* vm, VAL i) {
     return cl;
 }
 
+VAL idris_castBitsStr(VM* vm, VAL i) {
+    Closure* cl;
+    ClosureType ty = i->ty;
+
+    switch (ty) {
+    case BITS8:
+        // max length 8 bit unsigned int str 3 chars (256)
+        cl = allocate(sizeof(Closure) + sizeof(char)*4, 0);
+        cl->info.str = (char*)cl + sizeof(Closure);
+        sprintf(cl->info.str, "%" PRIu8, (uint8_t)i->info.bits8);
+        break;
+    case BITS16:
+        // max length 16 bit unsigned int str 5 chars (65,535)
+        cl = allocate(sizeof(Closure) + sizeof(char)*6, 0);
+        cl->info.str = (char*)cl + sizeof(Closure);
+        sprintf(cl->info.str, "%" PRIu16, (uint16_t)i->info.bits16);
+        break;
+    case BITS32:
+        // max length 32 bit unsigned int str 10 chars (4,294,967,295)
+        cl = allocate(sizeof(Closure) + sizeof(char)*11, 0);
+        cl->info.str = (char*)cl + sizeof(Closure);
+        sprintf(cl->info.str, "%" PRIu32, (uint32_t)i->info.bits32);
+        break;
+    case BITS64:
+        // max length 64 bit unsigned int str 20 chars (18,446,744,073,709,551,615)
+        cl = allocate(sizeof(Closure) + sizeof(char)*21, 0);
+        cl->info.str = (char*)cl + sizeof(Closure);
+        sprintf(cl->info.str, "%" PRIu64, (uint64_t)i->info.bits64);
+        break;
+    default:
+        fprintf(stderr, "Fatal Error: ClosureType %d, not an integer type", ty);
+        exit(EXIT_FAILURE);
+    }
+
+    SETTY(cl, STRING);
+    return cl;
+}
+
 VAL idris_castStrInt(VM* vm, VAL i) {
     char *end;
     i_int v = strtol(GETSTR(i), &end, 10);
-    if (*end == '\0' || *end == '\n' || *end == '\r') 
+    if (*end == '\0' || *end == '\n' || *end == '\r')
         return MKINT(v);
-    else 
-        return MKINT(0); 
+    else
+        return MKINT(0);
 }
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
@@ -430,7 +569,7 @@ VAL idris_concat(VM* vm, VAL l, VAL r) {
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     strcpy(cl -> info.str, ls);
-    strcat(cl -> info.str, rs); 
+    strcat(cl -> info.str, rs);
     return cl;
 }
 
@@ -840,7 +979,7 @@ void* runThread(void* arg) {
 }
 
 void* vmThread(VM* callvm, func f, VAL arg) {
-    VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap.size, 
+    VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap.size,
                      callvm->max_threads);
     vm->processes=1; // since it can send and receive messages
     pthread_t t;
@@ -856,7 +995,7 @@ void* vmThread(VM* callvm, func f, VAL arg) {
     td->callvm = callvm;
     td->fn = f;
     td->arg = copyTo(vm, arg);
-    
+
     callvm->processes++;
 
     pthread_create(&t, &attr, runThread, td);
@@ -864,7 +1003,7 @@ void* vmThread(VM* callvm, func f, VAL arg) {
     return vm;
 }
 
-// VM is assumed to be a different vm from the one x lives on 
+// VM is assumed to be a different vm from the one x lives on
 
 VAL copyTo(VM* vm, VAL x) {
     int i, ar;
@@ -929,28 +1068,28 @@ void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
     // FIXME: If GC kicks in in the middle of the copy, we're in trouble.
     // Probably best check there is enough room in advance. (How?)
 
-    // Also a problem if we're allocating at the same time as the 
+    // Also a problem if we're allocating at the same time as the
     // destination thread (which is very likely)
     // Should the inbox be a different memory space?
-    
+
     // So: we try to copy, if a collection happens, we do the copy again
     // under the assumption there's enough space this time.
 
     int gcs = dest->stats.collections;
-    pthread_mutex_lock(&dest->alloc_lock); 
+    pthread_mutex_lock(&dest->alloc_lock);
     VAL dmsg = copyTo(dest, msg);
-    pthread_mutex_unlock(&dest->alloc_lock); 
+    pthread_mutex_unlock(&dest->alloc_lock);
 
     if (dest->stats.collections > gcs) {
         // a collection will have invalidated the copy
-        pthread_mutex_lock(&dest->alloc_lock); 
+        pthread_mutex_lock(&dest->alloc_lock);
         dmsg = copyTo(dest, msg); // try again now there's room...
-        pthread_mutex_unlock(&dest->alloc_lock); 
+        pthread_mutex_unlock(&dest->alloc_lock);
     }
 
     pthread_mutex_lock(&(dest->inbox_lock));
     *(dest->inbox_write) = dmsg;
-  
+
     dest->inbox_write++;
     if (dest->inbox_write >= dest->inbox_end) {
         dest->inbox_write = dest->inbox;
