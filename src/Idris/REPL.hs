@@ -309,8 +309,8 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.LoadFile filename toline) =
      clearErr
      putIState (orig { idris_options = idris_options i,
                        idris_outputmode = (IdeSlave id h) })
-     loadInputs [filename] toline
-     isetPrompt (mkPrompt [filename])
+     mods <- loadInputs [filename] toline
+     isetPrompt (mkPrompt mods)
      -- Report either success or failure
      i <- getIState
      case (errSpan i) of
@@ -321,7 +321,7 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.LoadFile filename toline) =
                                   (idris_parsedSpan i)
                   in runIO . hPutStrLn h $ IdeSlave.convSExp "return" msg id
        Just x -> iPrintError $ "didn't load " ++ filename
-     ideslave h orig [filename]
+     ideslave h orig mods
 runIdeSlaveCommand h id orig fn mods (IdeSlave.TypeOf name) =
   case splitName name of
     Left err -> iPrintError err
@@ -622,14 +622,14 @@ processInput cmd orig inputs
                                     }
                    clearErr
                    mods <- loadInputs inputs Nothing
-                   return (Just inputs)
+                   return (Just mods)
             Success (Right (Load f toline)) ->
                 do putIState orig { idris_options = idris_options i
                                   , idris_colourTheme = idris_colourTheme i
                                   }
                    clearErr
                    mod <- loadInputs [f] toline
-                   return (Just [f])
+                   return (Just mod)
             Success (Right (ModImport f)) ->
                 do clearErr
                    fmod <- loadModule f
@@ -1334,7 +1334,7 @@ idris opts = do res <- runExceptT $ execStateT totalMain idrisInit
                            [] -> return ()
 
 
-loadInputs :: [FilePath] -> Maybe Int -> Idris ()
+loadInputs :: [FilePath] -> Maybe Int -> Idris [FilePath]
 loadInputs inputs toline -- furthest line to read in input source files
   = idrisCatch
        (do ist <- getIState
@@ -1363,7 +1363,7 @@ loadInputs inputs toline -- furthest line to read in input source files
                    when (not (all ibc ifiles) || loadCode) $
                         tryLoad False (filter (not . ibc) ifiles)
                    -- return the files that need rechecking
-                   return ifiles)
+                   return (input, ifiles))
                       ninputs
            inew <- getIState
            let tidata = idris_tyinfodata inew
@@ -1372,7 +1372,7 @@ loadInputs inputs toline -- furthest line to read in input source files
            case errSpan inew of
               Nothing ->
                 do putIState (ist { idris_tyinfodata = tidata })
-                   ibcfiles <- mapM findNewIBC (nub (concat ifiles))
+                   ibcfiles <- mapM findNewIBC (nub (concat (map snd ifiles)))
                    tryLoad True (mapMaybe id ibcfiles)
               _ -> return ()
            ist <- getIState
@@ -1383,7 +1383,7 @@ loadInputs inputs toline -- furthest line to read in input source files
                [] -> performUsageAnalysis  -- interactive
                _  -> return []  -- batch, will be checked by the compiler
 
-           return ())
+           return (map fst ifiles))
         (\e -> do i <- getIState
                   case e of
                     At f e' -> do setErrSpan f
@@ -1392,7 +1392,8 @@ loadInputs inputs toline -- furthest line to read in input source files
                     _ -> do setErrSpan emptyFC -- FIXME! Propagate it
                                                -- Issue #1576 on the issue tracker.
                                                -- https://github.com/idris-lang/Idris-dev/issues/1576
-                            iWarn emptyFC $ pprintErr i e)
+                            iWarn emptyFC $ pprintErr i e
+                  return [])
    where -- load all files, stop if any fail
          tryLoad :: Bool -> [IFileType] -> Idris ()
          tryLoad keepstate [] = warnTotality >> return ()
@@ -1538,7 +1539,7 @@ idrisMain opts =
          iputStrLn banner
 
        orig <- getIState
-       when (not idesl) $ loadInputs inputs Nothing
+       mods <- if idesl then return [] else loadInputs inputs Nothing
 
        runIO $ hSetBuffering stdout LineBuffering
 
@@ -1580,8 +1581,8 @@ idrisMain opts =
 
        when (runrepl && not idesl) $ do
 --          clearOrigPats
-         startServer port orig inputs
-         runInputT (replSettings (Just historyFile)) $ repl orig inputs
+         startServer port orig mods
+         runInputT (replSettings (Just historyFile)) $ repl orig mods
        let idesock = IdeslaveSocket `elem` opts
        when (idesl) $ ideslaveStart idesock orig inputs
        ok <- noErrors
