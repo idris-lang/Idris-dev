@@ -1275,8 +1275,10 @@ pprintPTerm :: PPOption -- ^^ pretty printing options
             -> [FixDecl] -- ^^ Fixity declarations
             -> PTerm -- ^^ the term to pretty-print
             -> Doc OutputAnnotation
-pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
+pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
   where
+    startPrec = 0
+    funcAppPrec = 10
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =
         text "![" <> pretty r <> text "]"
@@ -1286,21 +1288,21 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
       | Just n <- snat p e = annotate (AnnData "Nat" "") (text (show n))
     prettySe p bnd (PRef fc n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe p bnd (PLam fc n ty sc) =
-      bracket p 2 . group . align . hang 2 $
+      bracket p startPrec . group . align . hang 2 $
       text "\\" <> bindingOf n False <+> text "=>" <$>
-      prettySe 10 ((n, False):bnd) sc
+      prettySe startPrec ((n, False):bnd) sc
     prettySe p bnd (PLet fc n ty v sc) =
-      bracket p 2 . group . align $
-      kwd "let" <+> (group . align . hang 2 $ bindingOf n False <+> text "=" <$> prettySe 10 bnd v) </>
-      kwd "in" <+> (group . align . hang 2 $ prettySe 10 ((n, False):bnd) sc)
+      bracket p startPrec . group . align $
+      kwd "let" <+> (group . align . hang 2 $ bindingOf n False <+> text "=" <$> prettySe startPrec bnd v) </>
+      kwd "in" <+> (group . align . hang 2 $ prettySe startPrec ((n, False):bnd) sc)
     prettySe p bnd (PPi (Exp l s _) n ty sc)
       | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
-          bracket p 2 . group $
-          enclose lparen rparen (group . align $ bindingOf n False <+> colon <+> prettySe 10 bnd ty) <+>
-          st <> text "->" <$> prettySe 10 ((n, False):bnd) sc
+          bracket p startPrec . group $
+          enclose lparen rparen (group . align $ bindingOf n False <+> colon <+> prettySe startPrec bnd ty) <+>
+          st <> text "->" <$> prettySe startPrec ((n, False):bnd) sc
       | otherwise                      =
-          bracket p 2 . group $
-          group (prettySe 1 bnd ty <+> st) <> text "->" <$> group (prettySe 10 ((n, False):bnd) sc)
+          bracket p startPrec . group $
+          group (prettySe (startPrec + 1) bnd ty <+> st) <> text "->" <$> group (prettySe startPrec ((n, False):bnd) sc)
       where
         st =
           case s of
@@ -1308,22 +1310,22 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
             _      -> empty
     prettySe p bnd (PPi (Imp l s _) n ty sc)
       | ppopt_impl ppo =
-          bracket p 2 $
-          lbrace <> bindingOf n True <+> colon <+> prettySe 10 bnd ty <> rbrace <+>
-          st <> text "->" </> prettySe 10 ((n, True):bnd) sc
-      | otherwise = prettySe 10 ((n, True):bnd) sc
+          bracket p startPrec $
+          lbrace <> bindingOf n True <+> colon <+> prettySe startPrec bnd ty <> rbrace <+>
+          st <> text "->" </> prettySe startPrec ((n, True):bnd) sc
+      | otherwise = prettySe startPrec ((n, True):bnd) sc
       where
         st =
           case s of
             Static -> text "[static]" <> space
             _      -> empty
     prettySe p bnd (PPi (Constraint _ _) n ty sc) =
-      bracket p 2 $
-      prettySe 10 bnd ty <+> text "=>" </> prettySe 10 ((n, True):bnd) sc
+      bracket p startPrec $
+      prettySe (startPrec + 1) bnd ty <+> text "=>" </> prettySe startPrec ((n, True):bnd) sc
     prettySe p bnd (PPi (TacImp _ _ s) n ty sc) =
-      bracket p 2 $
-      lbrace <> kwd "tacimp" <+> pretty n <+> colon <+> prettySe 10 bnd ty <>
-      rbrace <+> text "->" </> prettySe 10 ((n, True):bnd) sc
+      bracket p startPrec $
+      lbrace <> kwd "tacimp" <+> pretty n <+> colon <+> prettySe startPrec bnd ty <>
+      rbrace <+> text "->" </> prettySe startPrec ((n, True):bnd) sc
     prettySe p bnd (PApp _ (PRef _ f) args) -- normal names, no explicit args
       | UN nm <- basename f
       , not (ppopt_impl ppo) && null (getShowArgs args) =
@@ -1336,50 +1338,48 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
         (not (ppopt_impl ppo)) && (not $ isAlpha (thead nm)) =
           case getShowArgs args of
             [] -> opName True
-            [x] -> group (opName True <$> group (prettySe 0 bnd (getTm x)))
-            [l,r] -> let precedence = fromMaybe 20 (fmap prec f)
+            [x] -> group (opName True <$> group (prettySe startPrec bnd (getTm x)))
+            [l,r] -> let precedence = maybe (startPrec - 1) prec f
                      in bracket p precedence $ inFix (getTm l) (getTm r)
             (l@(PExp _ _ _ _) : r@(PExp _ _ _ _) : rest) -> 
-                   bracket p 1 $
+                   bracket p funcAppPrec $
                           enclose lparen rparen (inFix (getTm l) (getTm r)) <+>
                           align (group (vsep (map (prettyArgS bnd) rest)))
             as -> opName True <+> align (vsep (map (prettyArgS bnd) as))
           where opName isPrefix = prettyName isPrefix (ppopt_impl ppo) bnd op
                 f = getFixity (opStr op)
-                left l = case f of
-                           Nothing -> prettySe (-1) bnd l
-                           Just (Infixl p') -> prettySe p' bnd l
-                           Just f' -> prettySe (prec f'-1) bnd l
-                right r = case f of
-                            Nothing -> prettySe (-1) bnd r
-                            Just (Infixr p') -> prettySe p' bnd r
-                            Just f' -> prettySe (prec f'-1) bnd r
+                left = case f of
+                           Nothing -> funcAppPrec + 1
+                           Just (Infixl p') -> p'
+                           Just f' -> prec f' + 1
+                right = case f of
+                            Nothing -> funcAppPrec + 1
+                            Just (Infixr p') -> p'
+                            Just f' -> prec f' + 1
                 inFix l r = align . group $
-                              (left l <+> opName False) <$> group (right r)
+                  (prettySe left bnd l <+> opName False) <$> 
+                    group (prettySe right bnd r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm]) -- symbols, like 'foo
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = annotate (AnnType ("'" ++ str) ("The symbol " ++ str)) $
-                               char '\'' <> prettySe 10 bnd (PRef fc (sUN str))
+                               char '\'' <> prettySe startPrec bnd (PRef fc (sUN str))
     prettySe p bnd (PApp _ f as) = -- Normal prefix applications
       let args = getShowArgs as
-          fp   = prettySe 1 bnd f
+          fp   = prettySe (startPrec + 1) bnd f
+          shownArgs = if ppopt_impl ppo then as else args
       in
-        bracket p 1 . group $
-          if ppopt_impl ppo
-            then if null as
-                   then fp
-                   else fp <+> align (vsep (map (prettyArgS bnd) as))
-            else if null args
-                   then fp
-                   else fp <+> align (vsep (map (prettyArgS bnd) args))
+        bracket p funcAppPrec . group $
+            if null shownArgs
+              then fp
+              else fp <+> align (vsep (map (prettyArgS bnd) shownArgs))
     prettySe p bnd (PCase _ scr cases) =
-      align $ kwd "case" <+> prettySe 10 bnd scr <+> kwd "of" <$>
+      align $ kwd "case" <+> prettySe startPrec bnd scr <+> kwd "of" <$>
       indent 2 (vsep (map ppcase cases))
       where
-        ppcase (l, r) = nest nestingSize $
-                          prettySe 10 ([(n, False) | n <- vars l] ++ bnd) l <+>
-                          text "=>" <+>
-                          prettySe 10 ([(n, False) | n <- vars l] ++ bnd) r
+        ppcase (l, r) = let prettyCase = prettySe startPrec 
+                                         ([(n, False) | n <- vars l] ++ bnd)
+                        in nest nestingSize $
+                             prettyCase l <+> text "=>" <+> prettyCase r
         -- Warning: this is a bit of a hack. At this stage, we don't have the
         -- global context, so we can't determine which names are constructors,
         -- which are types, and which are pattern variables on the LHS of the
@@ -1394,7 +1394,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
         noNS (NS _ _) = False
         noNS _ = True
 
-    prettySe p bnd (PHidden tm) = text "." <> prettySe 0 bnd tm
+    prettySe p bnd (PHidden tm) = text "." <> prettySe funcAppPrec bnd tm
     prettySe p bnd (PRefl _ _) = annName eqCon $ text "Refl"
     prettySe p bnd (PResolveTC _) = text "resolvetc"
     prettySe p bnd (PTrue _ IsType) = annName unitTy $ text "()"
@@ -1402,7 +1402,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettySe p bnd (PTrue _ TypeOrTerm) = text "()"
     prettySe p bnd (PEq _ lt rt l r)
       | ppopt_impl ppo =
-          bracket p 1 $
+          bracket p eqPrec $
             enclose lparen rparen eq <+>
             align (group (vsep (map (prettyArgS bnd)
                                     [PImp 0 False [] (sUN "A") lt,
@@ -1410,47 +1410,42 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
                                      PExp 0 [] (sUN "x") l,
                                      PExp 0 [] (sUN "y") r])))
       | otherwise =
-          bracket p 2 . align . group $
-            prettySe 10 bnd l <+> eq <$> group (prettySe 10 bnd r)
+          bracket p eqPrec . align . group $
+            prettyTerm l <+> eq <$> group (prettyTerm r)
       where eq = annName eqTy (text "=")
+            eqPrec = startPrec
+            prettyTerm = prettySe (eqPrec + 1) bnd
     prettySe p bnd (PRewrite _ l r _) =
-      bracket p 2 $
-      text "rewrite" <+> prettySe 10 bnd l <+> text "in" <+> prettySe 10 bnd r
+      bracket p startPrec $
+      text "rewrite" <+> prettySe (startPrec + 1) bnd l <+> text "in" <+> prettySe startPrec bnd r
     prettySe p bnd (PTyped l r) =
-      lparen <> prettySe 10 bnd l <+> colon <+> prettySe 10 bnd r <> rparen
+      lparen <> prettySe startPrec bnd l <+> colon <+> prettySe startPrec bnd r <> rparen
     prettySe p bnd pair@(PPair _ pun _ _) -- flatten tuples to the right, like parser
       | Just elts <- pairElts pair = enclose (ann lparen) (ann rparen) .
                                      align . group . vsep . punctuate (ann comma) $
-                                     map (prettySe 10 bnd) elts
+                                     map (prettySe startPrec bnd) elts
         where ann = case pun of
                       TypeOrTerm -> id
                       IsType -> annName pairTy
                       IsTerm -> annName pairCon
-    prettySe p bnd (PDPair _ TypeOrTerm l t r) =
-      lparen <> prettySe 10 bnd l <+> text "**" <+> prettySe 10 bnd r <> rparen
-    prettySe p bnd (PDPair _ IsType (PRef _ n) t r) =
-      annName sigmaTy lparen <>
-      bindingOf n False <+>
-      annName sigmaTy (text "**") <+>
-      prettySe 10 ((n, False):bnd) r <>
-      annName sigmaTy rparen
-    prettySe p bnd (PDPair _ IsType l t r) =
-      annName sigmaTy lparen <>
-      prettySe 10 bnd l <+>
-      annName sigmaTy (text "**") <+>
-      prettySe 10 bnd r <>
-      annName sigmaTy rparen
-    prettySe p bnd (PDPair _ IsTerm l t r) =
-      annName existsCon lparen <>
-      prettySe 10 bnd l <+>
-      annName existsCon (text "**") <+>
-      prettySe 10 bnd r <>
-      annName existsCon rparen
+    prettySe p bnd (PDPair _ pun l t r) =
+      annotated lparen <>
+      left <+>
+      annotated (text "**") <+>
+      prettySe startPrec (addBinding bnd) r <>
+      annotated rparen
+      where annotated = case pun of
+              IsType -> annName sigmaTy
+              IsTerm -> annName existsCon
+              TypeOrTerm -> id
+            (left, addBinding) = case (l, pun) of
+              (PRef _ n, IsType) -> (bindingOf n False,        ((n, False) :))
+              _ ->                  (prettySe startPrec bnd l, id            )
     prettySe p bnd (PAlternative a as) =
       lparen <> text "|" <> prettyAs <> text "|" <> rparen
         where
           prettyAs =
-            foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe 10 bnd) as
+            foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe startPrec bnd) as
     prettySe p bnd PType = annotate (AnnType "Type" "The type of types") $ text "Type"
     prettySe p bnd (PUniverse u) = annotate (AnnType (show u) "The type of unique types") $ text (show u) 
     prettySe p bnd (PConstant c) = annotate (AnnConst c) (text (show c))
@@ -1478,10 +1473,10 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     prettyArgS bnd (PConstraint _ _ _ tm) = prettyArgSc bnd tm
     prettyArgS bnd (PTacImplicit _ _ n _ tm) = prettyArgSti bnd (n, tm)
 
-    prettyArgSe bnd arg = prettySe 0 bnd arg
-    prettyArgSi bnd (n, val) = lbrace <> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
-    prettyArgSc bnd val = lbrace <> lbrace <> prettySe 10 bnd val <> rbrace <> rbrace
-    prettyArgSti bnd (n, val) = lbrace <> kwd "auto" <+> pretty n <+> text "=" <+> prettySe 10 bnd val <> rbrace
+    prettyArgSe bnd arg = prettySe (funcAppPrec + 1) bnd arg
+    prettyArgSi bnd (n, val) = lbrace <> pretty n <+> text "=" <+> prettySe startPrec bnd val <> rbrace
+    prettyArgSc bnd val = lbrace <> lbrace <> prettySe startPrec bnd val <> rbrace <> rbrace
+    prettyArgSti bnd (n, val) = lbrace <> kwd "auto" <+> pretty n <+> text "=" <+> prettySe startPrec bnd val <> rbrace
 
     annName :: Name -> Doc OutputAnnotation -> Doc OutputAnnotation
     annName n = annotate (AnnName n Nothing Nothing Nothing)
@@ -1538,7 +1533,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe 10 bnd
     snat _ _ = Nothing
 
     bracket outer inner doc
-      | inner > outer = lparen <> doc <> rparen
+      | outer > inner = lparen <> doc <> rparen
       | otherwise     = doc
 
     kwd = annotate AnnKeyword . text
