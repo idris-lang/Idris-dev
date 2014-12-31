@@ -13,7 +13,7 @@ import Control.Applicative
 import Control.Monad.State.Strict
 
 import Text.Parser.Combinators
-import Text.Parser.Char(anyChar)
+import Text.Parser.Char(anyChar,oneOf)
 import Text.Trifecta(Result, parseString)
 import Text.Trifecta.Delta
 
@@ -63,7 +63,7 @@ pCmd = choice [ do c <- cmd ["q", "quit"];        noArgs c Quit
 
               , do c <- cmd ["l", "load"];        strArg c (\f -> Load f Nothing)
               , do c <- cmd ["cd"];               strArg c ChangeDirectory
-              , do c <- cmd ["apropos"];          strArg c Apropos
+              , do c <- cmd ["apropos"];          cmd_apropos c 
               , do c <- cmd ["mkdoc"];            strArg c MakeDoc
 
               , do c <- cmd ["cs", "casesplit"];          proofArg c CaseSplitAt
@@ -383,11 +383,26 @@ cmd_colour name = do
                                            (concat . intersperse ", " . map fst) colourTypes
                   doColourType ((s,ct):cts) = (try (P.symbol s) >> return ct) <|> doColourType cts
 
+idChar = oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_'])
+
+cmd_apropos :: String -> P.IdrisParser (Either String Command)
+cmd_apropos name = 
+    try (do P.whiteSpace
+            P.lchar '('
+            pkgs <- sepBy (some idChar) (P.lchar ',')
+            P.lchar ')'
+            nm <- some idChar
+            return (Right (Apropos pkgs nm)))
+     <|> do P.whiteSpace;
+            nm <- some idChar
+            return (Right (Apropos [] nm))
 
 cmd_search :: String -> P.IdrisParser (Either String Command)
 cmd_search name = 
     try (do P.whiteSpace
-            pkgs <- sepBy P.name (P.lchar ',')
+            P.lchar '('
+            pkgs <- sepBy (some idChar) (P.lchar ',')
+            P.lchar ')'
             t <- P.typeExpr (defaultSyntax { implicitAllowed = True })
             return (Right (Search pkgs t)))
      <|> do P.whiteSpace;

@@ -13,6 +13,7 @@ import Idris.Delaborate
 import qualified Idris.Docstrings as D
 import Idris.Docstrings (Docstring)
 import Idris.Output
+import Paths_idris
 
 import qualified Cheapskate.Types as CT
 
@@ -95,6 +96,13 @@ loadIBC reexport fp
                      ibcf <- runIO $ (bdecode fp :: IO IBCFile)
                      process reexport ibcf fp
                      addImported reexport fp
+
+-- | Load an entire package from its index file
+loadPkgIndex :: String -> Idris ()
+loadPkgIndex pkg = do ddir <- runIO $ getDataDir
+                      addImportDir (ddir </> pkg)
+                      fp <- findPkgIndex pkg
+                      loadIBC True fp
 
 bencode :: Binary a => FilePath -> a -> IO ()
 bencode f d = B.writeFile f (compress (encode d))

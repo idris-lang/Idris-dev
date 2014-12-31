@@ -6,7 +6,7 @@ module Idris.TypeSearch (
 
 import Control.Applicative (Applicative (..), (<$>), (<*>), (<|>))
 import Control.Arrow (first, second, (&&&), (***))
-import Control.Monad (guard)
+import Control.Monad (when, guard)
 
 import Data.List (find, partition, (\\))
 import Data.Map (Map)
@@ -30,15 +30,20 @@ import Idris.Core.Unify (match_unify)
 import Idris.Delaborate (delabTy)
 import Idris.Docstrings (noDocs, overview)
 import Idris.Elab.Type (elabType)
-import Idris.Output (iRenderOutput, iPrintResult, iRenderResult, prettyDocumentedIst)
+import Idris.Output (iputStrLn, iRenderOutput, iPrintResult, iRenderResult, prettyDocumentedIst)
+import Idris.IBC
 
 import Prelude hiding (pred)
 
 import Util.Pretty (text, char, vsep, (<>), Doc, annotate)
 
-searchByType :: [Name] -> PTerm -> Idris ()
+searchByType :: [String] -> PTerm -> Idris ()
 searchByType pkgs pterm = do
-  logLvl 0 $ "Searching in " ++ show pkgs
+  orig <- getIState -- save original
+  when (not (null pkgs)) $ 
+     iputStrLn $ "Searching packages: " ++ showSep ", " pkgs
+  
+  mapM_ loadPkgIndex pkgs
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn name pterm'
   i <- getIState
@@ -55,6 +60,7 @@ searchByType pkgs pterm = do
     RawOutput _  -> do mapM_ iRenderOutput docs
                        iPrintResult ""
     IdeSlave _ _ -> iRenderResult (vsep docs)
+  putIState orig
   where
     numLimit = 50
     syn = defaultSyntax { implicitAllowed = True } -- syntax

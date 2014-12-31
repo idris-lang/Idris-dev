@@ -33,7 +33,7 @@ import Idris.Output
 import Idris.Interactive
 import Idris.WhoCalls
 import Idris.TypeSearch (searchByType)
-import Idris.IBC (writePkgIndex)
+import Idris.IBC (loadPkgIndex, writePkgIndex)
 
 import Idris.Elab.Type
 import Idris.Elab.Clause
@@ -356,7 +356,7 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.MakeLemma line name) =
     Left err -> iPrintError err
     Right n -> process fn (MakeLemma False line n)
 runIdeSlaveCommand h id orig fn mods (IdeSlave.Apropos a) =
-  process fn (Apropos a)
+  process fn (Apropos [] a)
 runIdeSlaveCommand h id orig fn mods (IdeSlave.GetOpts) =
   do ist <- getIState
      let opts = idris_options ist
@@ -584,8 +584,8 @@ ideslaveProcess fn (MakeWith False pos str) = process fn (MakeWith False pos str
 ideslaveProcess fn (DoProofSearch False r pos str xs) = process fn (DoProofSearch False r pos str xs)
 ideslaveProcess fn (SetConsoleWidth w) = do process fn (SetConsoleWidth w)
                                             iPrintResult ""
-ideslaveProcess fn (Apropos a) = do process fn (Apropos a)
-                                    iPrintResult ""
+ideslaveProcess fn (Apropos pkg a) = do process fn (Apropos pkg a)
+                                        iPrintResult ""
 ideslaveProcess fn (WhoCalls n) = process fn (WhoCalls n)
 ideslaveProcess fn (CallsWho n) = process fn (CallsWho n)
 ideslaveProcess fn (PrintDef n) = process fn (PrintDef n)
@@ -1164,14 +1164,19 @@ process fn ListErrorHandlers =
        handlers -> "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
 process fn (SetConsoleWidth w) = setWidth w
 
-process fn (Apropos a) =
-  do ist <- getIState
+process fn (Apropos pkgs a) =
+  do orig <- getIState
+     when (not (null pkgs)) $ 
+       iputStrLn $ "Searching packages: " ++ showSep ", " pkgs
+     mapM_ loadPkgIndex pkgs
+     ist <- getIState
      let names = apropos ist (T.pack a)
      let aproposInfo = [ (n,
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
                        | n <- sort names, isUN n ]
      iRenderResult $ vsep (map (prettyDocumentedIst ist) aproposInfo)
+     putIState orig
   where isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False

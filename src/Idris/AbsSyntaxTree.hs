@@ -346,7 +346,7 @@ data Command = Quit
              | DynamicLink FilePath
              | ListDynamic
              | Pattelab PTerm
-             | Search [Name] PTerm
+             | Search [String] PTerm
              | CaseSplitAt Bool Int Name
              | AddClauseFrom Bool Int Name
              | AddProofClauseFrom Bool Int Name
@@ -364,7 +364,7 @@ data Command = Quit
              | ColourOff
              | ListErrorHandlers
              | SetConsoleWidth ConsoleWidth
-             | Apropos String
+             | Apropos [String] String
              | WhoCalls Name
              | CallsWho Name
              | MakeDoc String                      -- IdrisDoc

@@ -25,10 +25,11 @@ import Idris.AbsSyntax
 import Idris.IdrisDoc
 import Idris.IBC
 import Idris.Output
-
-import IRTS.System
+import Idris.Imports
 
 import Pkg.PParser
+
+import IRTS.System
 
 -- To build a package:
 -- * read the package description
@@ -36,10 +37,6 @@ import Pkg.PParser
 -- * invoke the makefile if there is one
 -- * invoke idris on each module, with idris_opts
 -- * install everything into datadir/pname, if install flag is set
-
--- | Get the index file name for a package name
-pkgIndex :: String -> FilePath
-pkgIndex s = "00" ++ s ++ "-idx.ibc"
 
 -- | Run the package through the idris compiler.
 buildPkg :: Bool -> (Bool, FilePath) -> IO ()

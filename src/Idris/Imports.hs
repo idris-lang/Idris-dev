@@ -12,6 +12,10 @@ import Control.Monad.State.Strict
 data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType
     deriving (Show, Eq)
 
+-- | Get the index file name for a package name
+pkgIndex :: String -> FilePath
+pkgIndex s = "00" ++ s ++ "-idx.ibc"
+
 srcPath :: FilePath -> FilePath
 srcPath fp = let (n, ext) = splitExtension fp in
                  case ext of
@@ -72,4 +76,8 @@ findInPath (d:ds) fp = do let p = d </> fp
                           e <- doesFileExist p
                           if e then return p else findInPath ds fp
 
+findPkgIndex :: String -> Idris FilePath
+findPkgIndex p = do let idx = pkgIndex p
+                    ids <- allImportDirs
+                    runIO $ findInPath ids idx
 
