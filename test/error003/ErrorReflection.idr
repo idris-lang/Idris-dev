@@ -3,6 +3,7 @@ module Main
 import Language.Reflection
 import Language.Reflection.Errors
 import Language.Reflection.Utils
+import Data.Vect
 
 %language ErrorReflection
 

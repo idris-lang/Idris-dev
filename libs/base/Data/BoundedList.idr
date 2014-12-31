@@ -1,5 +1,7 @@
 module Data.BoundedList
 
+import Data.Fin
+
 %access public
 %default total
 

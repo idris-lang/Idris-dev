@@ -9,7 +9,6 @@ import public Prelude.Bool
 import public Prelude.Classes
 import public Prelude.Cast
 import public Prelude.Nat
-import public Prelude.Fin
 import public Prelude.List
 import public Prelude.Maybe
 import public Prelude.Monad
@@ -17,14 +16,13 @@ import public Prelude.Applicative
 import public Prelude.Foldable
 import public Prelude.Functor
 import public Prelude.Either
-import public Prelude.Vect
 import public Prelude.Strings
 import public Prelude.Chars
 import public Prelude.Traversable
 import public Prelude.Bits
-import public Prelude.Stream
 import public Prelude.Uninhabited
 import public Prelude.Pairs
+import public Prelude.Stream
 
 import public Decidable.Equality
 import public Language.Reflection
@@ -47,11 +45,6 @@ instance Show Integer where
 instance Show Float where
     show = prim__floatToStr
 
-asciiTab : Vect 32 String
-asciiTab = ["NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
-            "BS",  "HT",  "LF",  "VT",  "FF",  "CR",  "SO",  "SI",
-            "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
-            "CAN", "EM",  "SUB", "ESC", "FS",  "GS",  "RS",  "US"]
 
 firstCharIs : (Char -> Bool) -> String -> Bool
 firstCharIs p s with (strM s)
@@ -72,11 +65,21 @@ showLitChar '\v'   = ("\\v" ++)
 showLitChar '\SO'  = protectEsc (== 'H') "\\SO"
 showLitChar '\DEL' = ("\\DEL" ++)
 showLitChar '\\'   = ("\\\\" ++)
-showLitChar c      = case (integerToFin (cast (cast {to=Int} c)) 32) of
-                          Just k => strCons '\\' . ((index k asciiTab) ++)
+showLitChar c      = case getAt (cast (cast {to=Int} c)) asciiTab of
+                          Just k => strCons '\\' . (k ++)
                           Nothing => if (c > '\DEL')
                                         then strCons '\\' . protectEsc isDigit (show (cast {to=Int} c))
                                         else strCons c
+  where asciiTab : List String
+        asciiTab = ["NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
+                    "BS",  "HT",  "LF",  "VT",  "FF",  "CR",  "SO",  "SI",
+                    "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
+                    "CAN", "EM",  "SUB", "ESC", "FS",  "GS",  "RS",  "US"]
+
+        getAt : Nat -> List String -> Maybe String
+        getAt Z     (x :: xs) = Just x
+        getAt (S k) (x :: xs) = getAt k xs
+        getAt _     []        = Nothing
 
 showLitString : List Char -> String -> String
 showLitString []        = id
@@ -221,9 +224,6 @@ instance Show a => Show (List a) where
         show' acc [x]       = acc ++ show x
         show' acc (x :: xs) = show' (acc ++ show x ++ ", ") xs
 
-instance Show a => Show (Vect n a) where
-    show = show . toList
-
 instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
@@ -275,15 +275,6 @@ instance Applicative List where
 
     fs <$> vs = concatMap (\f => map f vs) fs
 
-instance Applicative (Vect k) where
-    pure = replicate _
-
-    fs <$> vs = zipWith apply fs vs
-
-instance Applicative Stream where
-  pure = repeat
-  (<$>) = zipWith apply
-
 ---- Alternative instances
 
 instance Alternative Maybe where
@@ -316,12 +307,6 @@ instance Monad (Either e) where
 instance Monad List where
     m >>= f = concatMap f m
 
-instance Monad (Vect n) where
-    m >>= f = diag (map f m)
-
-instance Monad Stream where
-  s >>= f = diag (map f s)
-
 ---- Traversable instances
 
 instance Traversable Maybe where
@@ -331,10 +316,6 @@ instance Traversable Maybe where
 instance Traversable List where
     traverse f [] = pure List.Nil
     traverse f (x::xs) = [| List.(::) (f x) (traverse f xs) |]
-
-instance Traversable (Vect n) where
-    traverse f [] = pure Vect.Nil
-    traverse f (x::xs) = [| Vect.(::) (f x) (traverse f xs) |]
 
 ---- some mathematical operations
 ---- XXX this should probably go some place else,
@@ -419,17 +400,6 @@ instance Enum Int where
     where go : List Nat -> List Int
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
-
-instance Enum (Fin (S n)) where
-  pred FZ = FZ
-  pred (FS n) = weaken n
-  succ n = case strengthen (FS n) of
-    Left _ => last
-    Right k => k
-  toNat n = cast n
-  fromNat {n=n} m = case natToFin m (S n) of
-    Just k => k
-    Nothing => last
 
 syntax "[" [start] ".." [end] "]"
      = enumFromTo start end

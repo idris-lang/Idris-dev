@@ -1,3 +1,5 @@
+import Data.Vect
+
 data MyNat = MyO | MyS MyNat
 
 %default total

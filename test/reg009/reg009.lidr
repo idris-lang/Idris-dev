@@ -1,3 +1,6 @@
+> import Data.So
+> import Data.Vect
+
 > isAnyBy : (alpha -> Bool) -> (n : Nat ** Vect n alpha) -> Bool
 > isAnyBy _ (_ ** Nil) = False
 > isAnyBy p (_ ** (a :: as)) = p a || isAnyBy p (_ ** as)

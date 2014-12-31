@@ -1,6 +1,8 @@
 module Effect.Random
 
 import Effects
+import Data.Vect
+import Data.Fin
 
 data Random : Effect where 
      getRandom : { Integer } Random Integer 

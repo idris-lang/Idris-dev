@@ -3,6 +3,7 @@ module Main
 import Effects
 import Effect.Memory
 import Control.IOExcept
+import Data.Vect
 
 MemoryIO : Type -> Type -> Type -> Type
 MemoryIO td ts r = { [ Dst ::: RAW_MEMORY td

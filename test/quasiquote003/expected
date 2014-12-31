@@ -1,2 +1,2 @@
-NoInfer.idr:10:5:When elaborating right hand side of zzz:
+NoInfer.idr:11:5:When elaborating right hand side of zzz:
 No such variable k

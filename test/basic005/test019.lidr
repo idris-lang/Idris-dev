@@ -1,5 +1,7 @@
 > module Main
 
+> import Data.So
+
 > ifTrue        :   So True -> Nat
 > ifTrue Oh     =   S Z
 

@@ -1,6 +1,7 @@
 module elem
 
 import Decidable.Equality
+import Data.Vect
 
 using (xs : List a)
   data Elem  : a -> List a -> Type where

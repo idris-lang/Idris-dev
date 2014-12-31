@@ -1,5 +1,7 @@
 module reg032
 
+import Data.Fin
+
 zfin : Fin 1
 zfin = 0
 

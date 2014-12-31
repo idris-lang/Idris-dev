@@ -1,4 +1,6 @@
 module CodataTest
+import Data.Vect
+
 %default total
 
 codata InfStream a = (::) a (InfStream a)

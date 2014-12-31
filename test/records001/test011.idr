@@ -1,5 +1,7 @@
 module Main
 
+import Data.Vect
+
 record Foo : Nat -> Type where
     MkFoo : (name : String) ->
             (things : Vect n a) ->

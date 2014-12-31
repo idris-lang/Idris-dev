@@ -1,5 +1,7 @@
 module scg
 
+import Data.Vect
+
 %default total
 
 data Ord = Zero | Suc Ord | Sup (Nat -> Ord)

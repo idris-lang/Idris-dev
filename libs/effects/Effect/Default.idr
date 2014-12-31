@@ -1,5 +1,7 @@
 module Default
 
+import Data.Vect
+
 class Default a where
     default : a
 

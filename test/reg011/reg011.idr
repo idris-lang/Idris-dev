@@ -1,3 +1,5 @@
+import Data.Vect
+
 vfoldl : (P : Nat -> Type) ->
          ((x : Nat) -> P x -> a -> P (S x)) -> P Z
        -> Vect m a -> P m

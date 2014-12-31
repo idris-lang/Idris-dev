@@ -1,3 +1,5 @@
+import Data.Vect
+
 mapFilter : (alpha -> beta) ->
            (alpha -> Bool) -> 
            Vect n alpha -> 

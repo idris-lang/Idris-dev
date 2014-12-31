@@ -21,10 +21,12 @@ modules = System,
           Data.Bits, Data.Mod2,
           Data.ZZ, Data.Sign,
           Data.SortedMap, Data.SortedSet, Data.BoundedList,
-          Data.Vect, Data.HVect, Data.Vect.Quantifiers,
+          Data.Fin, Data.Vect, Data.VectType, 
+          Data.HVect, Data.Vect.Quantifiers,
           Data.Floats, Data.Complex, Data.Heap, Data.Fun,
           Data.Rel, Data.Buffer, Data.Erased,
           Data.List, Data.Hash, Data.Matrix,
+          Data.So,
 
           Control.Isomorphism, Control.Isomorphism.Primitives,
           Control.Monad.Identity,
@@ -32,5 +34,4 @@ modules = System,
           Control.Monad.State, Control.Monad.Writer, Control.Monad.Reader,
           Control.Category, Control.Arrow,
           Control.Catchable, Control.IOExcept
-
 

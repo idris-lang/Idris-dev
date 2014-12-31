@@ -1,3 +1,5 @@
+import Data.Vect
+
 app : Vect n a -> Vect m a -> Vect (n + m) a
 app [] ys = ?app_rhs_1
 app (x :: xs) ys = ?app_rhs_2

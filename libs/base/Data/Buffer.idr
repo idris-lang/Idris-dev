@@ -1,5 +1,7 @@
 module Data.Buffer
 
+import Data.Fin
+
 %default total
 
 -- !!! TODO: Open issues:

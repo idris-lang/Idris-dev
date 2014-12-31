@@ -1,5 +1,7 @@
 module Test
 
+import Data.So
+
 X : Nat -> Type
 X t = (c : Nat ** So (c < 5))
 

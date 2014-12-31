@@ -1,5 +1,7 @@
 module Main
 
+import Data.Vect
+
 data RLE : Vect n Char -> Type where
      REnd  : RLE []
      RChar : {xs : Vect k Char} ->

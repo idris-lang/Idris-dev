@@ -1,5 +1,7 @@
 module Main
 
+import Data.Vect
+
 implicit
 forget : Vect n a -> List a
 forget [] = []

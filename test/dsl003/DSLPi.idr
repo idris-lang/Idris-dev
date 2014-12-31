@@ -1,5 +1,8 @@
 module DSLPi
 
+import Data.Fin
+import Data.Vect
+
 data Ty = BOOL | INT | UNIT | ARR Ty Ty
 
 dsl simple_type

@@ -1,5 +1,8 @@
 module Main 
 
+import Data.Vect
+import Data.Fin
+
 test : DecEq a => a -> a -> Bool
 test i1 i2 with (decEq i1 i2)
   test i1 i1 | Yes Refl = True

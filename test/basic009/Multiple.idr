@@ -1,4 +1,4 @@
 module Multiple
 
-import Prelude.Vect as X
-import Prelude.List as X
+import Data.Vect as X
+import Data.List as X

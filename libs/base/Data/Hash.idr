@@ -1,5 +1,7 @@
 module Data.Hash
 
+import Data.Vect
+
 %access public
 %default total
 

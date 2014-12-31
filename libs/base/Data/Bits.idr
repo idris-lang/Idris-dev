@@ -1,5 +1,7 @@
 module Data.Bits
 
+import Data.Fin
+
 %default total
 
 divCeil : Nat -> Nat -> Nat

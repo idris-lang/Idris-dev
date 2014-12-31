@@ -1,6 +1,7 @@
 module Data.Vect
 
 import Language.Reflection
+import public Data.VectType
 
 %access public
 %default total

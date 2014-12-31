@@ -1,4 +1,5 @@
 import Data.Vect
+import Data.Fin
 
 total
 finZEmpty : Fin Z -> a

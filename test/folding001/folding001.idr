@@ -1,5 +1,7 @@
 module Main
 
+import Data.Vect
+
 -- foldr (::) [] converts to lists
 foldToList : (Foldable t) => t a -> List a
 foldToList = foldr (::) [] 

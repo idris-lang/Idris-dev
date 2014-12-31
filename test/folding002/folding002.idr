@@ -1,3 +1,5 @@
+import Data.Vect
+
 -- perform a very large foldr to test tail recursion
 addAll : (Foldable t, Num a) => t a -> a
 addAll = foldr (+) 0

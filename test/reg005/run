@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-idris $@ reg032.idr --check
+idris $@ reg005.idr --check
 rm -f *.ibc

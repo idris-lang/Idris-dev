@@ -1,5 +1,6 @@
 module GoalQQuote
 
+import Data.Vect
 import Language.Reflection
 import Language.Reflection.Utils
 

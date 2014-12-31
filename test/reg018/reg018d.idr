@@ -1,5 +1,8 @@
 module Main
 
+import Data.Vect
+import Data.Fin
+
 total
 pull : Fin (S n) -> Vect (S n) a -> (a, Vect n a)
 pull {n=Z}   _      (x :: xs) = (x, xs)

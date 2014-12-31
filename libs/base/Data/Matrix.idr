@@ -2,6 +2,8 @@ module Data.Matrix
 
 import Data.Complex
 import Data.ZZ
+import Data.Fin
+import Data.Vect
 
 %default total
 

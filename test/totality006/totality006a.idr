@@ -1,3 +1,5 @@
+import Data.So
+
 antitrue : So False -> a
 antitrue Oh impossible
 

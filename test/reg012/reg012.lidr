@@ -1,3 +1,5 @@
+> import Data.So
+
 > total soElim            :  (C : (b : Bool) -> So b -> Type) ->
 >                            C True Oh                       ->
 >                            (b : Bool) -> (s : So b) -> (C b s)

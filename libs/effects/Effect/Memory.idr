@@ -2,6 +2,8 @@ module Effect.Memory
 
 import Effects
 import Control.IOExcept
+import Data.Vect
+import public Data.So
 
 %access public
 
@@ -64,11 +66,11 @@ do_memmove dest src dest_offset src_offset size
 
 private
 do_peek : Ptr -> Nat -> (size : Nat) -> IO (Vect size Bits8)
-do_peek _   _       Z = return (Prelude.Vect.Nil)
+do_peek _   _       Z = return (Vect.Nil)
 do_peek ptr offset (S n)
   = do b <- mkForeign (FFun "idris_peek" [FPtr, FInt] FByte) ptr (fromInteger $ cast offset)
        bs <- do_peek ptr (S offset) n
-       Prelude.Monad.return (Prelude.Vect.(::) b bs)
+       Monad.return (Vect.(::) b bs)
 
 private
 do_poke : Ptr -> Nat -> Vect size Bits8 -> IO ()

@@ -1,21 +1,12 @@
-module Prelude.Vect
+module Data.VectType 
 
-import Builtins
-
-import Prelude.Basics
-import Prelude.Bool
-import Prelude.Fin
-import Prelude.Foldable
-import Prelude.Functor
-import Prelude.Maybe
-import Prelude.List
-import Prelude.Classes
-import Prelude.Nat
-import Prelude.Uninhabited
+import Data.Fin
 
 %access public
 %default total
 
+namespace Vect {
+  
 infixr 7 ::
 
 %elim data Vect : Nat -> Type -> Type where
@@ -532,6 +523,29 @@ transpose []        = replicate _ []
 transpose (x :: xs) = zipWith (::) x (transpose xs)
 
 --------------------------------------------------------------------------------
+-- Applicative/Monad/Traversable
+--------------------------------------------------------------------------------
+
+instance Applicative (Vect k) where
+    pure = replicate _
+
+    fs <$> vs = zipWith apply fs vs
+
+instance Monad (Vect n) where
+    m >>= f = diag (map f m)
+
+instance Traversable (Vect n) where
+    traverse f [] = pure Vect.Nil
+    traverse f (x::xs) = [| Vect.(::) (f x) (traverse f xs) |]
+
+--------------------------------------------------------------------------------
+-- Show 
+--------------------------------------------------------------------------------
+
+instance Show a => Show (Vect n a) where
+    show = show . toList
+
+--------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
 
@@ -548,4 +562,37 @@ vectAppendAssociative [] y z = Refl
 vectAppendAssociative (x :: xs) ys zs =
   vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
 
+}
+
+--------------------------------------------------------------------------------
+-- DecEq
+--------------------------------------------------------------------------------
+
+total
+vectInjective1 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> x = y
+vectInjective1 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
+
+total
+vectInjective2 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> xs = ys
+vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
+
+instance DecEq a => DecEq (Vect n a) where
+  decEq [] [] = Yes Refl
+  decEq (x :: xs) (y :: ys) with (decEq x y)
+    decEq (x :: xs) (x :: ys)   | Yes Refl with (decEq xs ys)
+      decEq (x :: xs) (x :: xs) | Yes Refl | Yes Refl = Yes Refl
+      decEq (x :: xs) (x :: ys) | Yes Refl | No  neq  = No (neq . vectInjective2)
+    decEq (x :: xs) (y :: ys)   | No  neq             = No (neq . vectInjective1)
+
+{- The following definition is elaborated in a wrong case-tree. Examination pending.
+instance DecEq a => DecEq (Vect n a) where
+  decEq [] [] = Yes Refl
+  decEq (x :: xs) (y :: ys) with (decEq x y, decEq xs ys)
+    decEq (x :: xs) (x :: xs) | (Yes Refl, Yes Refl) = Yes Refl
+    decEq (x :: xs) (y :: ys) | (_, No nEqTl) = No (\p => nEqTl (vectInjective2 p))
+    decEq (x :: xs) (y :: ys) | (No nEqHd, _) = No (\p => nEqHd (vectInjective1 p))
+-}
+
+-- For the primitives, we have to cheat because we don't have access to their
+-- internal implementations.
 

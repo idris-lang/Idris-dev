@@ -27,6 +27,10 @@ isJust : Maybe a -> Bool
 isJust Nothing  = False
 isJust (Just j) = True
 
+||| Proof that some `Maybe` is actually `Just`
+data IsJust : Maybe a -> Type where
+  ItIsJust : IsJust (Just x)
+
 --------------------------------------------------------------------------------
 -- Misc
 --------------------------------------------------------------------------------

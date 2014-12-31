@@ -1,5 +1,7 @@
 module SourceLoc
 
+import Data.Vect
+import Data.Fin
 import Language.Reflection
 import Language.Reflection.Utils
 

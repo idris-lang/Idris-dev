@@ -1,6 +1,7 @@
 module Control.Isomorphism
 
 import Syntax.PreorderReasoning
+import Data.Fin
 
 %default total
 

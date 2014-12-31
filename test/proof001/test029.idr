@@ -1,5 +1,7 @@
 module simple
 
+import Data.Vect
+
 plus_comm : (n : Nat) -> (m : Nat) -> (n + m = m + n)
 
 -- Base case

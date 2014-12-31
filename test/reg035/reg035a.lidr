@@ -1,5 +1,7 @@
 > module Set
 
+> import Data.So
+
 > %default total
 
 > postulate soAndIntro : (p : alpha -> Bool) ->

@@ -1,5 +1,8 @@
 module Resimp
 
+import Data.Vect
+import public Data.Fin
+
 -- IO operations which read a resource
 data Reader : Type -> Type where
     MkReader : IO a -> Reader a

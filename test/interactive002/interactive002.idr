@@ -1,3 +1,4 @@
+import Data.Vect
 
 foo : ?foo_arg1 -> ?foo_arg2 -> ?foo_arg3 -> ?foo_ret
 foo (S a) b c = plus (a + b + c) 42

@@ -4,8 +4,10 @@ import Builtins
 
 import Prelude.Basics
 import Prelude.Functor
+import Prelude.Applicative
+import Prelude.Monad
 import Prelude.Nat
-import Prelude.Vect
+import Prelude.List
 
 %access public
 %default total
@@ -31,7 +33,7 @@ tail (x::xs) = xs
 ||| Take precisely n elements from the stream
 ||| @ n how many elements to take
 ||| @ xs the stream
-take : (n : Nat) -> (xs : Stream a) -> Vect n a
+take : (n : Nat) -> (xs : Stream a) -> List a
 take Z _ = []
 take (S n) (x :: xs) = x :: (take n xs)
 
@@ -107,11 +109,10 @@ partial -- and the call to foldr isn't guarded anyway!
 scanr : (f : a -> Inf b -> b) -> (xs : Stream a) -> Stream b
 scanr f (x :: xs) = f x (foldr f xs) :: scanr f xs
 
-||| Produce a Stream repeating a sequence
-||| @ xs the sequence to repeat
-cycle : (xs : Vect (S n) a) -> Stream a
-cycle xs = cycle_ xs xs
-  where cycle_ : Vect (S n) a -> Vect m a -> Stream a
-        cycle_ (x :: xs) [] = x :: cycle_ (x :: xs) xs
-        cycle_ xs (x :: ys) = x :: cycle_ xs ys
+instance Applicative Stream where
+  pure = repeat
+  (<$>) = zipWith apply
+
+instance Monad Stream where
+  s >>= f = diag (map f s)
 

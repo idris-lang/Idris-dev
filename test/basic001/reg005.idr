@@ -1,5 +1,7 @@
 module Main
 
+import Data.Vect
+
 %flag C "-g3"
 %flag C "-ggdb"
 %flag C "-O0"

@@ -1,5 +1,7 @@
 module Main
 
+import Data.Vect
+
 implicit
 natInt : Nat -> Integer
 natInt x = cast x

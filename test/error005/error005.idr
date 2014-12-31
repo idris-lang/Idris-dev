@@ -1,5 +1,7 @@
 module error005
 
+import Data.Fin
+
 -- Test the Prelude's error rewrites for Fin
 
 one : Fin 2

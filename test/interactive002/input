@@ -1,11 +1,11 @@
-:ps 2 foo_arg1
-:ps 2 foo_arg2
-:ps 2 foo_arg3
-:ps 2 foo_ret
-:ps 6 bar_out
-:ps 9 plus_in1
-:ps 9 plus_out
-:ps 13 what
-:ps 16 ifoo_arg1
-:ps 16 ifoo_out
+:ps 3 foo_arg1
+:ps 3 foo_arg2
+:ps 3 foo_arg3
+:ps 3 foo_ret
+:ps 7 bar_out
+:ps 10 plus_in1
+:ps 10 plus_out
+:ps 14 what
+:ps 17 ifoo_arg1
+:ps 17 ifoo_out
 

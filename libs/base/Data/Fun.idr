@@ -1,5 +1,7 @@
 module Data.Fun
 
+import Data.Vect
+
 %default total
 
 ||| Build an n-ary function type from a Vect of Types and a result type

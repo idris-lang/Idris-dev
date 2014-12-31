@@ -1,5 +1,7 @@
 module Main
 
+import Data.Vect
+
 emptyString : String
 emptyString = ""
 

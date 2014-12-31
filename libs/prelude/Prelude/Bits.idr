@@ -8,12 +8,11 @@ import Prelude.Cast
 import Prelude.Classes
 import Prelude.Foldable
 import Prelude.Nat
+import Prelude.List
 import Prelude.Strings
-import Prelude.Vect
 
 %access public
 %default total
-
 
 b8ToString : Bits8 -> String
 b8ToString c = pack (with List [c1, c2])

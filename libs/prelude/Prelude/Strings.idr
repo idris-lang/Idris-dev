@@ -13,6 +13,7 @@ import Prelude.Foldable
 import Prelude.Functor
 import Prelude.List
 import Prelude.Nat
+import Decidable.Equality
 
 ||| Appends two strings together.
 |||
@@ -81,20 +82,20 @@ data StrM : String -> Type where
     StrCons : (x : Char) -> (xs : String) -> StrM (strCons x xs)
 
 ||| Version of 'strHead' that statically verifies that the string is not empty.
-strHead' : (x : String) -> So (not (x == "")) -> Char
+strHead' : (x : String) -> (not (x == "") = True) -> Char
 strHead' x p = assert_total $ prim__strHead x
 
 ||| Version of 'strTail' that statically verifies that the string is not empty.
-strTail' : (x : String) -> So (not (x == "")) -> String
+strTail' : (x : String) -> (not (x == "") = True) -> String
 strTail' x p = assert_total $ prim__strTail x
 
 -- we need the 'believe_me' because the operations are primitives
 strM : (x : String) -> StrM x
-strM x with (choose (not (x == "")))
-  strM x | (Left p)  = really_believe_me $ 
+strM x with (decEq (not (x == "")) True)
+  strM x | (Yes p) = really_believe_me $ 
                            StrCons (assert_total (strHead' x p))
                                    (assert_total (strTail' x p))
-  strM x | (Right p) = really_believe_me StrNil
+  strM x | (No p) = really_believe_me StrNil
 
 -- annoyingly, we need these assert_totals because StrCons doesn't have
 -- a recursive argument, therefore the termination checker doesn't believe

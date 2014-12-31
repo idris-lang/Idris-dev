@@ -1,5 +1,7 @@
 module Main
 
+import Data.Fin
+import Data.Vect
 import Data.Vect.Quantifiers
 import Decidable.Equality
 

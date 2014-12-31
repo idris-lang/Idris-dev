@@ -1,5 +1,7 @@
 module reg014
 
+import Data.Vect
+
 Matrix : Type -> Nat -> Nat -> Type
 Matrix a n m = Vect n (Vect m a)
 
