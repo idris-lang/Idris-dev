@@ -4,6 +4,7 @@ data CmdArg = ExprArg -- ^ The command takes an expression
             | NameArg -- ^ The command takes a name
             | FileArg -- ^ The command takes a file
             | ModuleArg -- ^ The command takes a module name
+            | PkgArgs -- ^ The command takes a list of package names
             | NumberArg -- ^ The command takes a number
             | NamespaceArg -- ^ The command takes a namespace name
             | OptionArg -- ^ The command takes an option
@@ -22,6 +23,7 @@ instance Show CmdArg where
     show NameArg          = "<name>"
     show FileArg          = "<filename>"
     show ModuleArg        = "<module>"
+    show PkgArgs          = "<package list>"
     show NumberArg        = "<number>"
     show NamespaceArg     = "<namespace>"
     show OptionArg        = "<option>"

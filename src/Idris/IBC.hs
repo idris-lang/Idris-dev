@@ -121,6 +121,22 @@ writeIBC src f
             (\c -> do iLOG $ "Failed " ++ pshow i c)
          return ()
 
+-- Write a package index containing all the imports in the current IState
+-- Used for ':search' of an entire package, to ensure everything is loaded.
+writePkgIndex :: FilePath -> Idris ()
+writePkgIndex f
+    = do i <- getIState
+         let imps = map (\ (x, y) -> (True, x)) $ idris_imported i
+         iLOG $ "Writing package index " ++ show f ++ " including\n" ++
+                show (map snd imps)
+         resetNameIdx
+         let ibcf = initIBC { ibc_imports = imps }
+         idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
+                        runIO $ bencode f ibcf
+                        iLOG "Written")
+            (\c -> do iLOG $ "Failed " ++ pshow i c)
+         return ()
+
 mkIBC :: [IBCWrite] -> IBCFile -> Idris IBCFile
 mkIBC [] f = return f
 mkIBC (i:is) f = do ist <- getIState

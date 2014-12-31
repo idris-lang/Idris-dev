@@ -385,10 +385,14 @@ cmd_colour name = do
 
 
 cmd_search :: String -> P.IdrisParser (Either String Command)
-cmd_search name = do
-    P.whiteSpace;
-    t <- P.typeExpr (defaultSyntax { implicitAllowed = True })
-    return (Right (Search t))
+cmd_search name = 
+    try (do P.whiteSpace
+            pkgs <- sepBy P.name (P.lchar ',')
+            t <- P.typeExpr (defaultSyntax { implicitAllowed = True })
+            return (Right (Search pkgs t)))
+     <|> do P.whiteSpace;
+            t <- P.typeExpr (defaultSyntax { implicitAllowed = True })
+            return (Right (Search [] t))
 
 cmd_proofsearch :: String -> P.IdrisParser (Either String Command)
 cmd_proofsearch name = do

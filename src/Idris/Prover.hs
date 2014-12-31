@@ -340,4 +340,4 @@ ploop fn d prompt prf e h
                                              return $ pprintDocs ist doc
         docStr (Right c) = do ist <- getIState
                               return (False, e, False, prf, Right . iRenderResult $ pprintConstDocs ist c (constDocs c))
-        search t = return (False, e, False, prf, Right $ searchByType t)
+        search t = return (False, e, False, prf, Right $ searchByType [] t)

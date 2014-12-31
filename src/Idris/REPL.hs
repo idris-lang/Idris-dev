@@ -33,6 +33,7 @@ import Idris.Output
 import Idris.Interactive
 import Idris.WhoCalls
 import Idris.TypeSearch (searchByType)
+import Idris.IBC (writePkgIndex)
 
 import Idris.Elab.Type
 import Idris.Elab.Clause
@@ -540,7 +541,7 @@ ideslaveProcess fn (Defn n) = do process fn (Defn n)
 ideslaveProcess fn (TotCheck n) = process fn (TotCheck n)
 ideslaveProcess fn (DebugInfo n) = do process fn (DebugInfo n)
                                       iPrintResult ""
-ideslaveProcess fn (Search t) = process fn (Search t)
+ideslaveProcess fn (Search ps t) = process fn (Search ps t)
 ideslaveProcess fn (Spec t) = process fn (Spec t)
 -- RmProof and AddProof not supported!
 ideslaveProcess fn (ShowProof n') = process fn (ShowProof n')
@@ -957,7 +958,7 @@ process fn (DebugInfo n)
         when (not (null cg')) $ do iputStrLn "Call graph:\n"
                                    iputStrLn (show cg')
         when (not (null fn)) $ iputStrLn (show fn)
-process fn (Search t) = searchByType t
+process fn (Search pkgs t) = searchByType pkgs t
 process fn (CaseSplitAt updatefile l n)
     = caseSplitAt fn updatefile l n
 process fn (AddClauseFrom updatefile l n)
@@ -1568,6 +1569,10 @@ idrisMain opts =
 
        historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
 
+       when ok $ case opt getPkgIndex opts of
+                      (f : _) -> writePkgIndex f
+                      _ -> return ()
+
        when (runrepl && not idesl) $ do
 --          clearOrigPats
          startServer port orig inputs
@@ -1705,6 +1710,10 @@ getCodegen _ = Nothing
 getExecScript :: Opt -> Maybe String
 getExecScript (InterpretScript expr) = Just expr
 getExecScript _ = Nothing
+
+getPkgIndex :: Opt -> Maybe FilePath
+getPkgIndex (PkgIndex file) = Just file
+getPkgIndex _ = Nothing
 
 getEvalExpr :: Opt -> Maybe String
 getEvalExpr (EvalExpr expr) = Just expr

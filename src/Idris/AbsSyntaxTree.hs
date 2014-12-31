@@ -346,7 +346,7 @@ data Command = Quit
              | DynamicLink FilePath
              | ListDynamic
              | Pattelab PTerm
-             | Search PTerm
+             | Search [Name] PTerm
              | CaseSplitAt Bool Int Name
              | AddClauseFrom Bool Int Name
              | AddProofClauseFrom Bool Int Name
@@ -413,6 +413,7 @@ data Opt = Filename String
          | PkgREPL String
          | PkgMkDoc String     -- IdrisDoc
          | PkgTest String
+         | PkgIndex FilePath
          | WarnOnly
          | Pkg String
          | BCAsm String

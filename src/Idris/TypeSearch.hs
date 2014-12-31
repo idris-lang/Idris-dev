@@ -20,7 +20,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T (pack, isPrefixOf)
 import Data.Traversable (traverse)
 
-import Idris.AbsSyntax (addUsingConstraints, addImpl, getIState, putIState, implicit)
+import Idris.AbsSyntax (addUsingConstraints, addImpl, getIState, putIState, implicit, logLvl)
 import Idris.AbsSyntaxTree (class_instances, ClassInfo, defaultSyntax, eqTy, Idris,
   IState (idris_classes, idris_docstrings, tt_ctxt, idris_outputmode),
   implicitAllowed, OutputMode(..), PTerm, toplevel)
@@ -36,8 +36,9 @@ import Prelude hiding (pred)
 
 import Util.Pretty (text, char, vsep, (<>), Doc, annotate)
 
-searchByType :: PTerm -> Idris ()
-searchByType pterm = do
+searchByType :: [Name] -> PTerm -> Idris ()
+searchByType pkgs pterm = do
+  logLvl 0 $ "Searching in " ++ show pkgs
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn name pterm'
   i <- getIState
