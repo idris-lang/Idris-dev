@@ -12,6 +12,7 @@ import Util.System
 import Numeric
 import Data.Char
 import Data.List (intercalate)
+import qualified Data.Vector.Unboxed as V
 import System.Process
 import System.Exit
 import System.IO
@@ -149,7 +150,12 @@ bcc i (ASSIGNCONST l c)
     mkConst (B16 x) = "idris_b16const(vm, " ++ show x ++ "U)"
     mkConst (B32 x) = "idris_b32const(vm, " ++ show x ++ "UL)"
     mkConst (B64 x) = "idris_b64const(vm, " ++ show x ++ "ULL)"
-    mkConst _ = "MKINT(42424242)"
+    mkConst (B8V  x) = let x' = V.toList x in "MKB8x16const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "U") x') ++ ")"
+    mkConst (B16V x) = let x' = V.toList x in "MKB16x8const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "U") x') ++ ")"
+    mkConst (B32V x) = let x' = V.toList x in "MKB32x4const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "UL") x') ++ ")"
+    mkConst (B64V x) = let x' = V.toList x in "MKB64x2const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "ULL") x') ++ ")"
+    mkConst c = error $ "mkConst of (" ++ show c ++ ") not implemented"
+
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
 bcc i (MKCON l loc tag []) | tag < 256
     = indent i ++ creg l ++ " = NULL_CON(" ++ show tag ++ ");\n"
@@ -164,7 +170,7 @@ bcc i (MKCON l loc tag args)
         setArgs i [] = ""
         setArgs i (x : xs) = "SETARG(" ++ creg Tmp ++ ", " ++ show i ++ ", " ++ creg x ++
                              "); " ++ setArgs (i + 1) xs
-        alloc Nothing tag 
+        alloc Nothing tag
             = "allocCon(" ++ creg Tmp ++ ", vm, " ++ show tag ++ ", " ++
                     show (length args) ++ ", 0);\n"
         alloc (Just old) tag
@@ -389,6 +395,7 @@ doOp v (LStrInt ITBig) [x] = v ++ "idris_castStrBig(vm, " ++ creg x ++ ")"
 doOp v (LIntStr ITBig) [x] = v ++ "idris_castBigStr(vm, " ++ creg x ++ ")"
 doOp v (LIntStr ITNative) [x] = v ++ "idris_castIntStr(vm, " ++ creg x ++ ")"
 doOp v (LStrInt ITNative) [x] = v ++ "idris_castStrInt(vm, " ++ creg x ++ ")"
+doOp v (LIntStr (ITFixed _)) [x] = v ++ "idris_castBitsStr(vm, " ++ creg x ++ ")"
 doOp v LFloatStr [x] = v ++ "idris_castFloatStr(vm, " ++ creg x ++ ")"
 doOp v LStrFloat [x] = v ++ "idris_castStrFloat(vm, " ++ creg x ++ ")"
 
@@ -493,16 +500,26 @@ doOp v LFork [x] = v ++ "MKPTR(vm, vmThread(vm, " ++ cname (sMN 0 "EVAL") ++ ", 
 doOp v LPar [x] = v ++ creg x -- "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LVMPtr [] = v ++ "MKPTR(vm, vm)"
 doOp v LNullPtr [] = v ++ "MKPTR(vm, NULL)"
-doOp v LRegisterPtr [p, i] = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++ 
-                                  "), GETINT(" ++ creg i ++ "))" 
+doOp v LRegisterPtr [p, i] = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++
+                                  "), GETINT(" ++ creg i ++ "))"
 doOp v (LChInt ITNative) args = v ++ creg (last args)
 doOp v (LChInt ITChar) args = doOp v (LChInt ITNative) args
 doOp v (LIntCh ITNative) args = v ++ creg (last args)
 doOp v (LIntCh ITChar) args = doOp v (LIntCh ITNative) args
 
+doOp v c@(LMkVec IT8  _) args = v ++ "MKB8x16(vm, " ++  (intercalate ", " (map creg args)) ++ ")"
+doOp v c@(LMkVec IT16 _) args = v ++ "MKB16x8(vm, " ++ (intercalate ", " (map creg args)) ++ ")"
+doOp v c@(LMkVec IT32 _) args = v ++ "MKB32x4(vm, " ++ (intercalate ", " (map creg args)) ++ ")"
+doOp v c@(LMkVec IT64 _) args = v ++ "MKB64x2(vm, " ++ (intercalate ", " (map creg args)) ++ ")"
+
+doOp v c@(LIdxVec IT8  _) [p, i] = v ++ "idris_IDXB8x16(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
+doOp v c@(LIdxVec IT16 _) [p, i] = v ++ "idris_IDXB16x8(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
+doOp v c@(LIdxVec IT32 _) [p, i] = v ++ "idris_IDXB32x4(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
+doOp v c@(LIdxVec IT64 _) [p, i] = v ++ "idris_IDXB64x2(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
+
 doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
 doOp v LNoOp args = v ++ creg (last args)
-doOp _ op _ = "FAIL /* " ++ show op ++ " */"
+doOp _ op args = error "doOp of (" ++ show op ++ ") not implemented, arguments (" ++ show args ++ ")"
 
 flUnOp :: String -> String -> String
 flUnOp name val = "MKFLOAT(vm, " ++ name ++ "(GETFLOAT(" ++ val ++ ")))"

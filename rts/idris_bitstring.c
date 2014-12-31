@@ -820,3 +820,31 @@ VAL idris_b64T32(VM *vm, VAL a) {
     return cl;
 }
 
+// SSE vectors
+VAL idris_IDXB8x16(VM* vm, VAL vec, VAL idx) {
+    __m128i sse = *vec->info.bits128p;
+    uint8_t data[16];
+    _mm_storeu_si128((__m128i*)&data, sse);
+    return MKB8(vm, data[idx->info.bits32]);
+}
+
+VAL idris_IDXB16x8(VM* vm, VAL vec, VAL idx) {
+    __m128i sse = *vec->info.bits128p;
+    uint16_t data[8];
+    _mm_storeu_si128((__m128i*)&data, sse);
+    return MKB16(vm, data[idx->info.bits32]);
+}
+
+VAL idris_IDXB32x4(VM* vm, VAL vec, VAL idx) {
+    __m128i sse = *vec->info.bits128p;
+    uint32_t data[4];
+    _mm_storeu_si128((__m128i*)&data, sse);
+    return MKB32(vm, data[idx->info.bits32]);
+}
+
+VAL idris_IDXB64x2(VM* vm, VAL vec, VAL idx) {
+     __m128i sse = *vec->info.bits128p;
+    uint64_t data[2];
+    _mm_storeu_si128((__m128i*)&data, sse);
+    return MKB64(vm, data[idx->info.bits32]);
+}
