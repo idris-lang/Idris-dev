@@ -11,6 +11,8 @@ New in 0.9.16:
   source code span, if this information is available. If not, it raises an
   error.
 * Better Unicode support for the JavaScript/Node codegen
+* ':search' and ':apropos' commands can now be given optional package lists
+  to search.
 
 * Several long-standing issues resolved, particularly with pattern matching
   and coverage checking.
