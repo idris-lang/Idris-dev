@@ -95,4 +95,19 @@ extraHelp =
     , ([":addproofclause!", ":apc!"], NoArg, ":apc! <line> <name> destructively adds a pattern-matching proof clause to name on line")
     , ([":refine", ":ref"], NoArg, ":ref <line> <name> <name'> attempts to partially solve name on line, with name' as hint, introducing metavariables for arguments that aren't inferrable")
     , ([":refine!", ":ref!"], NoArg, ":ref! <line> <name> <name'> destructively attempts to partially solve name on line, with name' as hint, introducing metavariables for arguments that aren't inferrable")
+
+    , ([":u", ":universes"], NoArg, "Display universe constraints")
+    , ([":errorhandlers"], NoArg, "List registered error handlers")
+    , ([":d", ":def"], NameArg, "Display a name's internal definitions")
+    , ([":transinfo"], NameArg, "Show relevant transformation rules for a name")
+    , ([":di", ":dbginfo"], NameArg, "Show debugging information for a name")
+    , ([":spec"], ExprArg, "?")
+    , ([":hnf"], ExprArg, "?")
+    , ([":inline"], ExprArg, "?")
+
+    , ([":ml", ":makelemma"], NoArg, "?")
+
+    , ([":log"], NumberArg, "Set logging verbosity level")
+    , ([":lto", ":loadto"], SeqArgs NumberArg FileArg, "Load file up to line number")
+    , ([":debugunify"], SeqArgs ExprArg ExprArg, "(Debugging) Try to unify two expressions")
     ]
