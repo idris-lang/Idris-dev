@@ -13,6 +13,8 @@ New in 0.9.16:
 * Better Unicode support for the JavaScript/Node codegen
 * ':search' and ':apropos' commands can now be given optional package lists
   to search.
+* Vect, Fin and So moved out of prelude into base, in modules Data.Vect,
+  Data.Fin and Data.So respectively.
 
 * Several long-standing issues resolved, particularly with pattern matching
   and coverage checking.
