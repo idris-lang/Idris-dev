@@ -1198,13 +1198,13 @@ parseProg syn fname input mrk
                           return (ds, i')
 
 {- | Load idris module and show error if something wrong happens -}
-loadModule :: FilePath -> Idris String
+loadModule :: FilePath -> Idris (Maybe String)
 loadModule f
-   = idrisCatch (loadModule' f)
+   = idrisCatch (fmap Just (loadModule' f))
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
                           iWarn (getErrSpan e) $ pprintErr ist e
-                          return "")
+                          return Nothing)
 
 {- | Load idris module -}
 loadModule' :: FilePath -> Idris String

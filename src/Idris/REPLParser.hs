@@ -1,5 +1,5 @@
 
-module Idris.REPLParser(parseCmd) where
+module Idris.REPLParser (parseCmd, help, allHelp) where
 
 import System.FilePath ((</>))
 import System.Console.ANSI (Color(..))
@@ -7,6 +7,7 @@ import System.Console.ANSI (Color(..))
 import Idris.Colours
 import Idris.AbsSyntax
 import Idris.Core.TT
+import Idris.Help
 import qualified Idris.Parser as P
 
 import Control.Applicative
@@ -26,82 +27,135 @@ import qualified Data.ByteString.UTF8 as UTF8
 parseCmd :: IState -> String -> String -> Result (Either String Command)
 parseCmd i inputname = P.runparser pCmd i inputname . dropWhile isSpace
 
+type CommandTable = [ ( [String], CmdArg, String
+                    , String -> P.IdrisParser (Either String Command) ) ]
+
+help :: [([String], CmdArg, String)]
+help = (["<expr>"], NoArg, "Evaluate an expression") : 
+  [ (map (':' :) names, args, text) | (names, args, text, _) <- parserCommandsForHelp ]
+
+allHelp :: [([String], CmdArg, String)]
+allHelp = [ (map (':' :) names, args, text) 
+          | (names, args, text, _) <- parserCommandsForHelp ++ parserCommands ]
+
+parserCommandsForHelp :: CommandTable
+parserCommandsForHelp = 
+  [ exprArgCmd ["t", "type"] Check "Check the type of an expression"
+  , nameArgCmd ["miss", "missing"] Missing "Show missing clauses"
+  , (["doc"], NameArg, "Show internal documentation", cmd_doc)
+  , (["mkdoc"], NamespaceArg, "Generate IdrisDoc for namespace(s) and dependencies"
+    , genArg "namespace" (many anyChar) MakeDoc)
+  , (["apropos"], SeqArgs (OptionalArg PkgArgs) NameArg, " Search names, types, and documentation"
+    , cmd_apropos)
+  , (["s", "search"], SeqArgs (OptionalArg PkgArgs) ExprArg
+    , " Search for values by type", cmd_search)
+  , nameArgCmd ["wc", "whocalls"] WhoCalls "List the callers of some name"
+  , nameArgCmd ["cw", "callswho"] CallsWho "List the callees of some name"
+  , nameArgCmd ["total"] TotCheck "Check the totality of a name"
+  , noArgCmd ["r", "reload"] Reload "Reload current file"
+  , (["l", "load"], FileArg, "Load a new file"
+    , strArg (\f -> Load f Nothing))
+  , (["cd"], FileArg, "Change working directory"
+    , strArg ChangeDirectory)
+  , (["module"], ModuleArg, "Import an extra module", moduleArg ModImport) -- NOTE: dragons
+  , noArgCmd ["e", "edit"] Edit "Edit current file using $EDITOR or $VISUAL"
+  , noArgCmd ["m", "metavars"] Metavars "Show remaining proof obligations (metavariables)"
+  , (["p", "prove"], MetaVarArg, "Prove a metavariable"
+    , nameArg Prove)
+  , (["a", "addproof"], NameArg, "Add proof to source file", cmd_addproof)
+  , (["rmproof"], NameArg, "Remove proof from proof stack"
+    , nameArg RmProof)
+  , (["showproof"], NameArg, "Show proof"
+    , nameArg ShowProof)
+  , noArgCmd ["proofs"] Proofs "Show available proofs"
+  , exprArgCmd ["x"] ExecVal "Execute IO actions resulting from an expression using the interpreter"
+  , (["c", "compile"], FileArg, "Compile to an executable [codegen] <filename>", cmd_compile)
+  , noArgCmd ["exec", "execute"] Execute "Compile to an executable and run"
+  , (["dynamic"], FileArg, "Dynamically load a C library (similar to %dynamic)", cmd_dynamic)
+  , (["dynamic"], NoArg, "List dynamically loaded C libraries", cmd_dynamic)
+  , noArgCmd ["?", "h", "help"] Help "Display this help text"
+  , optArgCmd ["set"] SetOpt "Set an option (errorcontext, showimplicits)"
+  , optArgCmd ["unset"] UnsetOpt "Unset an option"
+  , (["color", "colour"], ColourArg
+    , "Turn REPL colours on or off; set a specific colour"
+    , cmd_colour)
+  , (["consolewidth"], ConsoleWidthArg, "Set the width of the console", cmd_consolewidth)
+  , noArgCmd ["q", "quit"] Quit "Exit the Idris system"
+  , noArgCmd ["w", "warranty"] Warranty "Displays warranty information"
+  , (["let"], ManyArgs DeclArg
+    , "Evaluate a declaration, such as a function definition, instance implementation, or fixity declaration"
+    , cmd_let)
+  , (["unlet", "undefine"], ManyArgs NameArg
+    , "Remove the listed repl definitions, or all repl definitions if no names given"
+    , cmd_unlet)
+  , nameArgCmd ["printdef"] PrintDef "Show the definition of a function"
+  , (["pp", "pprint"], (SeqArgs OptionArg (SeqArgs NumberArg NameArg))
+    , "Pretty prints an Idris function in either LaTeX or HTML and for a specified width."
+    , cmd_pprint)
+  ]
+
+parserCommands = 
+  [ noArgCmd ["u", "universes"] Universes "Display universe constraints"
+  , noArgCmd ["errorhandlers"] ListErrorHandlers "List registered error handlers"
+
+  , nameArgCmd ["d", "def"] Defn "Display a name's internal definitions"
+  , nameArgCmd ["transinfo"] TransformInfo "Show relevant transformation rules for a name"
+  , nameArgCmd ["di", "dbginfo"] DebugInfo "Show debugging information for a name"
+
+  , exprArgCmd ["patt"] Pattelab "(Debugging) Elaborate pattern expression"
+  , exprArgCmd ["spec"] Spec "?"
+  , exprArgCmd ["hnf"] HNF "?"
+  , exprArgCmd ["inline"] TestInline "?"
+  , proofArgCmd ["cs", "casesplit"] CaseSplitAt 
+      ":cs <line> <name> splits the pattern variable on the line"
+  , proofArgCmd ["apc", "addproofclause"] AddProofClauseFrom
+      ":apc <line> <name> adds a pattern-matching proof clause to name on line"
+  , proofArgCmd ["ac", "addclause"] AddClauseFrom
+      ":ac <line> <name> adds a clause for the definition of the name on the line"
+  , proofArgCmd ["am", "addmissing"] AddMissing
+      ":am <line> <name> adds all missing pattern matches for the name on the line"
+  , proofArgCmd ["mw", "makewith"] MakeWith
+      ":mw <line> <name> adds a with clause for the definition of the name on the line"
+  , proofArgCmd ["ml", "makelemma"] MakeLemma "?"
+  , (["log"], NumberArg, "Set logging verbosity level", cmd_log)
+  , (["lto", "loadto"], SeqArgs NumberArg FileArg
+    , "Load file up to line number", cmd_loadto)
+  , (["ps", "proofsearch"], NoArg
+    , ":ps <line> <name> <names> does proof search for name on line, with names as hints"
+    , cmd_proofsearch)
+  , (["ref", "refine"], NoArg
+    , ":ref <line> <name> <name'> attempts to partially solve name on line, with name' as hint, introducing metavariables for arguments that aren't inferrable"
+    , cmd_refine)
+  , (["debugunify"], SeqArgs ExprArg ExprArg
+    , "(Debugging) Try to unify two expressions", const $ do
+       l <- P.simpleExpr defaultSyntax 
+       r <- P.simpleExpr defaultSyntax 
+       eof
+       return (Right (DebugUnify l r))
+    )
+  ]
+
+noArgCmd names command doc = 
+  (names, NoArg, doc, noArgs command)
+nameArgCmd names command doc = 
+  (names, NameArg, doc, fnNameArg command)
+exprArgCmd names command doc = 
+  (names, ExprArg, doc, exprArg command)
+metavarArgCmd names command doc = 
+  (names, MetaVarArg, doc, fnNameArg command)
+optArgCmd names command doc = 
+  (names, OptionArg, doc, optArg command)
+proofArgCmd names command doc = 
+  (names, NoArg, doc, proofArg command)
+
 pCmd :: P.IdrisParser (Either String Command)
-pCmd = choice [ do c <- cmd ["q", "quit"];        noArgs c Quit
-              , do c <- cmd ["h", "?", "help"];   noArgs c Help
-              , do c <- cmd ["w", "warranty"];    noArgs c Warranty
-              , do c <- cmd ["r", "reload"];      noArgs c Reload
-              , do c <- cmd ["exec", "execute"];  noArgs c Execute
-              , do c <- cmd ["proofs"];           noArgs c Proofs
-              , do c <- cmd ["u", "universes"];   noArgs c Universes
-              , do c <- cmd ["errorhandlers"];    noArgs c ListErrorHandlers
-              , do c <- cmd ["m", "metavars"];    noArgs c Metavars
-              , do c <- cmd ["e", "edit"];        noArgs c Edit
-
-              , do c <- cmd ["d", "def"];         fnNameArg c Defn
-              , do c <- cmd ["total"];            fnNameArg c TotCheck
-              , do c <- cmd ["printdef"];         fnNameArg c PrintDef
-              , do c <- cmd ["transinfo"];        fnNameArg c TransformInfo
-              , do c <- cmd ["wc", "whocalls"];   fnNameArg c WhoCalls
-              , do c <- cmd ["cw", "callswho"];   fnNameArg c CallsWho
-              , do c <- cmd ["di", "dbginfo"];    fnNameArg c DebugInfo
-              , do c <- cmd ["miss", "missing"];  fnNameArg c Missing
-
-              , do c <- cmd ["t", "type"];        exprArg c Check
-              , do c <- cmd ["x"];                exprArg c ExecVal
-              , do c <- cmd ["patt"];             exprArg c Pattelab
-              , do c <- cmd ["spec"];             exprArg c Spec
-              , do c <- cmd ["hnf"];              exprArg c HNF
-              , do c <- cmd ["inline"];           exprArg c TestInline
-
-              , do c <- cmd ["rmproof"];          nameArg c RmProof
-              , do c <- cmd ["showproof"];        nameArg c ShowProof
-              , do c <- cmd ["p", "prove"];       nameArg c Prove
-
-              , do c <- cmd ["set"];              optArg c SetOpt
-              , do c <- cmd ["unset"];            optArg c UnsetOpt
-
-              , do c <- cmd ["l", "load"];        strArg c (\f -> Load f Nothing)
-              , do c <- cmd ["cd"];               strArg c ChangeDirectory
-              , do c <- cmd ["apropos"];          cmd_apropos c 
-              , do c <- cmd ["mkdoc"];            strArg c MakeDoc
-
-              , do c <- cmd ["cs", "casesplit"];          proofArg c CaseSplitAt
-              , do c <- cmd ["apc", "addproofclause"];    proofArg c AddProofClauseFrom
-              , do c <- cmd ["ac", "addclause"];          proofArg c AddClauseFrom
-              , do c <- cmd ["am", "addmissing"];         proofArg c AddMissing
-              , do c <- cmd ["mw", "makewith"];           proofArg c MakeWith
-              , do c <- cmd ["ml", "makelemma"];          proofArg c MakeLemma
-
-              , do c <- cmd ["pp", "pprint"];             cmd_pprint c
-              , do c <- cmd ["doc"];                      cmd_doc c
-              , do c <- cmd ["dynamic"];                  cmd_dynamic c
-              , do c <- cmd ["consolewidth"];             cmd_consolewidth c
-              , do c <- cmd ["module"];                   cmd_module c
-              , do c <- cmd ["c", "compile"];             cmd_compile c
-              , do c <- cmd ["a", "addproof"];            cmd_addproof c
-              , do c <- cmd ["log"];                      cmd_log c
-              , do c <- cmd ["let"];                      cmd_let c
-              , do c <- cmd ["unlet","undefine"];         cmd_unlet c
-              , do c <- cmd ["lto", "loadto"];            cmd_loadto c
-              , do c <- cmd ["color", "colour"];          cmd_colour c
-              , do c <- cmd ["s", "search"];              cmd_search c
-              , do c <- cmd ["ps", "proofsearch"];        cmd_proofsearch c
-              , do c <- cmd ["ref", "refine"];            cmd_refine c
-
-              , do c <- cmd ["debugunify"];
-                   P.whiteSpace
-                   l <- P.simpleExpr defaultSyntax 
-                   r <- P.simpleExpr defaultSyntax 
-                   eof
-                   return (Right (DebugUnify l r))
-
-              , unrecognized
-              , nop
-              ]
-             <|> eval
-    where nop = do P.whiteSpace; eof; return (Right NOP)
-          eval = exprArg "" Eval
+pCmd = choice [ do c <- cmd names; parser c 
+              | (names, _, _, parser) <- parserCommandsForHelp ++ parserCommands ]
+     <|> unrecognized 
+     <|> nop 
+     <|> eval
+    where nop = do eof; return (Right NOP)
+          eval = exprArg Eval ""
           unrecognized = do
               P.lchar ':'
               cmd <- many anyChar
@@ -119,20 +173,18 @@ cmd xs = try $ do
           sorted_xs = sortBy (\x y -> compare (length y) (length x)) xs
 
 
-noArgs :: String -> Command -> P.IdrisParser (Either String Command)
-noArgs name cmd = do
+noArgs :: Command -> String -> P.IdrisParser (Either String Command)
+noArgs cmd name = do
     let emptyArgs = do
-        P.whiteSpace
         eof
         return (Right cmd)
 
     let failure = return (Left $ ":" ++ name ++ " takes no arguments")
 
-    try emptyArgs <|> failure
+    emptyArgs <|> failure
 
-exprArg :: String -> (PTerm -> Command) -> P.IdrisParser (Either String Command)
-exprArg name cmd = do
-    P.whiteSpace
+exprArg :: (PTerm -> Command) -> String -> P.IdrisParser (Either String Command)
+exprArg cmd name = do
     let noArg = do
         eof
         return $ Left ("Usage is :" ++ name ++ " <expression>")
@@ -143,51 +195,45 @@ exprArg name cmd = do
     try noArg <|> properArg
 
 
-fnNameArg :: String -> (Name -> Command) -> P.IdrisParser (Either String Command)
-fnNameArg name cmd = do
-    P.whiteSpace
-    let emptyArgs = do eof
-                       return $ Left ("Usage is :" ++ name ++ " <functionname>")
-        oneArg = do n <- P.fnName
+
+genArg :: String -> P.IdrisParser a -> (a -> Command) 
+           -> String -> P.IdrisParser (Either String Command)
+genArg argName argParser cmd name = do
+    let emptyArgs = do eof; failure
+        oneArg = do arg <- argParser
                     eof
-                    return (Right (cmd n))
-        badArg = return $ Left ("Usage is :" ++ name ++ " <functionname>")
-    try emptyArgs <|> try oneArg <|> badArg
+                    return (Right (cmd arg))
+    try emptyArgs <|> oneArg <|> failure
+    where
+    failure = return $ Left ("Usage is :" ++ name ++ " <" ++ argName ++ ">")
 
-nameArg :: String -> (Name -> Command) -> P.IdrisParser (Either String Command)
-nameArg name cmd = do
-    P.whiteSpace
-    let emptyArgs = do eof
-                       return $ Left ("Usage is :" ++ name ++ " <functionname>")
-        oneArg = do n <- P.name
-                    eof
-                    return (Right (cmd n))
-        badArg = return $ Left ("Usage is :" ++ name ++ " <functionname>")
-    try emptyArgs <|> try oneArg <|> badArg
+nameArg, fnNameArg :: (Name -> Command) -> String -> P.IdrisParser (Either String Command)
+nameArg = genArg "name" P.name
+fnNameArg = genArg "functionname" P.fnName
 
-strArg :: String -> (String -> Command) -> P.IdrisParser (Either String Command)
-strArg name cmd = do
-    n <- many anyChar
-    eof
-    return (Right (cmd n))
+strArg :: (String -> Command) -> String -> P.IdrisParser (Either String Command)
+strArg = genArg "string" (many anyChar)
 
-optArg :: String -> (Opt -> Command) -> P.IdrisParser (Either String Command)
-optArg name cmd = do
+moduleArg :: (FilePath -> Command) -> String -> P.IdrisParser (Either String Command)
+moduleArg = genArg "module" (fmap toPath P.identifier) 
+  where
+    toPath n = foldl1' (</>) $ splitOn "." n
+
+optArg :: (Opt -> Command) -> String -> P.IdrisParser (Either String Command)
+optArg cmd name = do
     let emptyArgs = do
             eof
             return $ Left ("Usage is :" ++ name ++ " <option>")
 
     let oneArg = do
-        P.whiteSpace
         o <- pOption
         P.whiteSpace
         eof
         return (Right (cmd o))
 
-    let failure = do
-        return $ Left "Unrecognized setting"
+    let failure = return $ Left "Unrecognized setting"
 
-    try emptyArgs <|> try oneArg <|> failure
+    try emptyArgs <|> oneArg <|> failure
 
     where
         pOption :: P.IdrisParser Opt
@@ -198,9 +244,8 @@ optArg name cmd = do
               <|> do discard (P.symbol "nobanner") ; return NoBanner
               <|> do discard (P.symbol "warnreach"); return WarnReach
 
-proofArg :: String -> (Bool -> Int -> Name -> Command) -> P.IdrisParser (Either String Command)
-proofArg name cmd = do
-    P.whiteSpace
+proofArg :: (Bool -> Int -> Name -> Command) -> String -> P.IdrisParser (Either String Command)
+proofArg cmd name = do
     upd <- option False $ do
         P.lchar '!'
         return True
@@ -215,7 +260,7 @@ cmd_doc name = do
         eof
         return $ Right (DocStr (Right c))
 
-    let fnName = fnNameArg name (\n -> DocStr (Left n))
+    let fnName = fnNameArg (\n -> DocStr (Left n)) name
 
     try constant <|> fnName
 
@@ -232,7 +277,7 @@ cmd_consolewidth name = do
 
 cmd_dynamic :: String -> P.IdrisParser (Either String Command)
 cmd_dynamic name = do
-    let emptyArgs = noArgs name ListDynamic
+    let emptyArgs = noArgs ListDynamic name
 
     let oneArg = do l <- many anyChar
                     return $ Right (DynamicLink l)
@@ -243,7 +288,6 @@ cmd_dynamic name = do
 
 cmd_pprint :: String -> P.IdrisParser (Either String Command)
 cmd_pprint name = do
-     P.whiteSpace
      fmt <- ppFormat
      P.whiteSpace
      n <- fmap fromInteger P.natural
@@ -257,13 +301,6 @@ cmd_pprint name = do
                <|> (discard (P.symbol "latex") >> return LaTeXOutput)
 
 
-cmd_module :: String -> P.IdrisParser (Either String Command)
-cmd_module name = do
-      f <- P.identifier
-      eof;
-      return (Right (ModImport (toPath f)))
-  where
-    toPath n = foldl1' (</>) $ splitOn "." n
 
 cmd_compile :: String -> P.IdrisParser (Either String Command)
 cmd_compile name = do
@@ -312,8 +349,7 @@ cmd_let name = do
     return (Right (NewDefn defn))
 
 cmd_unlet :: String -> P.IdrisParser (Either String Command)
-cmd_unlet name = do
-    (Right . Undefine) `fmap` many P.name
+cmd_unlet name = (Right . Undefine) `fmap` many P.name
 
 cmd_loadto :: String -> P.IdrisParser (Either String Command)
 cmd_loadto name = do
@@ -322,8 +358,7 @@ cmd_loadto name = do
     return (Right (Load f (Just (fromInteger toline))))
 
 cmd_colour :: String -> P.IdrisParser (Either String Command)
-cmd_colour name = do
-    pSetColourCmd >>= return . Right
+cmd_colour name = fmap Right pSetColourCmd
 
     where
         colours :: [(String, Maybe Color)]
@@ -386,32 +421,25 @@ cmd_colour name = do
 idChar = oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_'])
 
 cmd_apropos :: String -> P.IdrisParser (Either String Command)
-cmd_apropos name = 
-    try (do P.whiteSpace
-            P.lchar '('
-            pkgs <- sepBy (some idChar) (P.lchar ',')
-            P.lchar ')'
-            nm <- some idChar
-            return (Right (Apropos pkgs nm)))
-     <|> do P.whiteSpace;
-            nm <- some idChar
-            return (Right (Apropos [] nm))
+cmd_apropos = packageBasedCmd (some idChar) Apropos
+
+packageBasedCmd :: P.IdrisParser a -> ([String] -> a -> Command)
+                -> String -> P.IdrisParser (Either String Command)
+packageBasedCmd valParser cmd name = do
+  pkgs <- option [] . try $ do
+    P.lchar '('
+    pks <- sepBy (some idChar) (P.lchar ',')
+    P.lchar ')'
+    return pks
+  val <- valParser
+  return (Right (cmd pkgs val))
 
 cmd_search :: String -> P.IdrisParser (Either String Command)
-cmd_search name = 
-    try (do P.whiteSpace
-            P.lchar '('
-            pkgs <- sepBy (some idChar) (P.lchar ',')
-            P.lchar ')'
-            t <- P.typeExpr (defaultSyntax { implicitAllowed = True })
-            return (Right (Search pkgs t)))
-     <|> do P.whiteSpace;
-            t <- P.typeExpr (defaultSyntax { implicitAllowed = True })
-            return (Right (Search [] t))
+cmd_search = packageBasedCmd 
+  (P.typeExpr (defaultSyntax { implicitAllowed = True })) Search
 
 cmd_proofsearch :: String -> P.IdrisParser (Either String Command)
 cmd_proofsearch name = do
-    P.whiteSpace
     upd <- option False (do P.lchar '!'; return True)
     l <- P.natural; n <- P.name;
     hints <- many P.fnName
@@ -419,7 +447,6 @@ cmd_proofsearch name = do
 
 cmd_refine :: String -> P.IdrisParser (Either String Command)
 cmd_refine name = do
-   P.whiteSpace
    upd <- option False (do P.lchar '!'; return True)
    l <- P.natural; n <- P.name;
    hint <- P.fnName

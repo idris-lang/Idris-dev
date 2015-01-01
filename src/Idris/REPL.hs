@@ -14,13 +14,13 @@ import Idris.Error
 import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Docstrings (Docstring, overview, renderDocstring)
+import Idris.Help
 import Idris.IdrisDoc
 import Idris.Prover
 import Idris.Parser hiding (indent)
 import Idris.Primitives
 import Idris.Coverage
 import Idris.Docs hiding (Doc)
-import Idris.Help
 import Idris.Completion
 import qualified Idris.IdeSlave as IdeSlave
 import Idris.Chaser
@@ -633,7 +633,7 @@ processInput cmd orig inputs
             Success (Right (ModImport f)) ->
                 do clearErr
                    fmod <- loadModule f
-                   return (Just (inputs ++ [fmod]))
+                   return (Just (inputs ++ maybe [] (:[]) fmod))
             Success (Right Edit) -> do -- takeMVar stvar
                                edit fn orig
                                return (Just inputs)

@@ -10,6 +10,7 @@ import Idris.Colours
 import Idris.ParseHelpers(opChars)
 import qualified Idris.ParseExpr (constants, tactics)
 import Idris.ParseExpr (TacticArg (..))
+import Idris.REPLParser (allHelp)
 import Control.Monad.State.Strict
 
 import Data.List
@@ -20,10 +21,7 @@ import System.Console.Haskeline
 import System.Console.ANSI (Color)
 
 
-fst3 :: (a, b, c) -> a
-fst3 (a, b, c) = a
-
-commands = concatMap fst3 (help ++ extraHelp)
+commands = [ n | (names, _, _) <- allHelp ++ extraHelp, n <- names ]
 
 tacticArgs :: [(String, Maybe TacticArg)]
 tacticArgs = [ (name, args) | (names, args, _) <- Idris.ParseExpr.tactics
@@ -97,7 +95,7 @@ isWhitespace :: Char -> Bool
 isWhitespace = (flip elem) " \t\n"
 
 lookupInHelp :: String -> Maybe CmdArg
-lookupInHelp cmd = lookupInHelp' cmd help
+lookupInHelp cmd = lookupInHelp' cmd allHelp
     where lookupInHelp' cmd ((cmds, arg, _):xs) | elem cmd cmds = Just arg
                                                 | otherwise   = lookupInHelp' cmd xs
           lookupInHelp' cmd [] = Nothing
