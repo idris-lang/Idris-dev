@@ -70,10 +70,10 @@ codegenC' defs out exec incs objs libs flags dbg
                          "-I."] ++ objs ++ ["-x", "c"] ++
                         (if (exec == Executable) then [] else ["-c"]) ++
                         [tmpn] ++
-                        libFlags ++
-                        incFlags ++
-                        libs ++
-                        flags ++
+                        concatMap words libFlags ++
+                        concatMap words incFlags ++
+                        concatMap words libs ++
+                        concatMap words flags ++
                         ["-o", out]
 --              putStrLn gcc
              exit <- rawSystem comp args
