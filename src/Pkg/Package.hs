@@ -118,6 +118,7 @@ cleanPkg fp
           setCurrentDirectory $ dir </> sourcedir pkgdesc
           clean (makefile pkgdesc)
           mapM_ rmIBC (modules pkgdesc)
+          rmIdx (pkgname pkgdesc)
           case execout pkgdesc of
                Nothing -> return ()
                Just s -> rmFile $ dir </> s
@@ -231,6 +232,11 @@ testLib warn p f
 
 rmIBC :: Name -> IO ()
 rmIBC m = rmFile $ toIBCFile m
+
+rmIdx :: String -> IO ()
+rmIdx p = do let f = pkgIndex p
+             ex <- doesFileExist f
+             when ex $ rmFile f 
 
 toIBCFile (UN n) = str n ++ ".ibc"
 toIBCFile (NS n ns) = foldl1' (</>) (reverse (toIBCFile n : map str ns))
