@@ -1416,7 +1416,7 @@ orderPats tm = op [] tm
 
 refsIn :: TT Name -> [Name]
 refsIn (P _ n _) = [n]
-refsIn (Bind n b t) = nub $ nb b ++ (refsIn t \\ [n])
+refsIn (Bind n b t) = nub $ nb b ++ refsIn t
   where nb (Let   t v) = nub (refsIn t) ++ nub (refsIn v)
         nb (Guess t v) = nub (refsIn t) ++ nub (refsIn v)
         nb t = refsIn (binderTy t)
