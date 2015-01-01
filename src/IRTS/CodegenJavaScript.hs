@@ -57,6 +57,10 @@ initCompileInfo bc =
               || (or $ map (needsBigInt . snd) c)
               || (or $ map (testConstForBigInt . fst) c)
 
+            testBCForBigInt (CASE _ _ c d) =
+                 maybe False needsBigInt d
+              || (or $ map (needsBigInt . snd) c)
+
             testBCForBigInt _ = False
 
             testConstForBigInt :: Const -> Bool
