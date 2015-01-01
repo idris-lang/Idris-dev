@@ -315,6 +315,16 @@ getNameHints i n =
 addToCalledG :: Name -> [Name] -> Idris ()
 addToCalledG n ns = return () -- TODO
 
+push_estack :: Name -> Idris ()
+push_estack n = do i <- getIState
+                   putIState (i { elab_stack = n : elab_stack i })
+
+pop_estack :: Idris ()
+pop_estack = do i <- getIState
+                putIState (i { elab_stack = ptail (elab_stack i) })
+    where ptail [] = []
+          ptail (x : xs) = xs
+
 -- Add a class instance function. Dodgy hack: Put integer instances first in the
 -- list so they are resolved by default.
 -- Dodgy hack 2: put constraint chasers (@@) last

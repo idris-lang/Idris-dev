@@ -554,6 +554,7 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
                         return (Left ptm, lhs)
 elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as whereblock)
    = do let tcgen = Dictionary `elem` opts
+        push_estack fname
         ctxt <- getContext
         let (lhs_in, rhs_in) = desugarAs lhs_in_as rhs_in_as
 
@@ -719,6 +720,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         when (rev || ErrorReverse `elem` opts) $ do
            addIBC (IBCErrRev (crhs, clhs))
            addErrRev (crhs, clhs)
+        pop_estack
         return $ (Right (clhs, crhs), lhs)
   where
     pinfo :: ElabInfo -> [(Name, PTerm)] -> [Name] -> Int -> ElabInfo

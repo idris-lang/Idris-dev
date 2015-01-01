@@ -510,7 +510,6 @@ elab ist info emode opts fn tm
                                    g <- goal
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
-                                   -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
                                     then try (resolveTC True 7 g fn ist)
                                              (movelast n)
                                     else movelast n)
@@ -658,7 +657,6 @@ elab ist info emode opts fn tm
                                         env <- get_env
                                         hs <- get_holes
                                         if all (\n -> not (n `elem` hs)) (freeNames g)
-                                        -- let insts = filter tcname $ map fst (ctxtAlist (tt_ctxt ist))
                                          then try (resolveTC False 7 g fn ist)
                                                   (movelast n)
                                          else movelast n)
@@ -1230,6 +1228,9 @@ proofSearch' ist rec ambigok depth prv top n hints
          proofSearch rec prv ambigok (not prv) depth
                      (elab ist toplevel ERHS [] (sMN 0 "tac")) top n hints ist
 
+-- Resolve type classes. This will only pick up 'normal' instances, never
+-- named instances (hence using 'tcname' to check it's a generated instance
+-- name).
 resolveTC :: Bool -> Int -> Term -> Name -> IState -> ElabD ()
 resolveTC = resTC' []
 
@@ -1246,12 +1247,13 @@ resTC' tcs defaultOn depth topg fn ist
                 (do t <- goal
                     let (tc, ttypes) = unApply t
                     scopeOnly <- needsDefault t tc ttypes
+                    let stk = elab_stack ist
                     let insts_in = findInstances ist t
                     let insts = if scopeOnly then filter chaser insts_in
                                     else insts_in
                     tm <- get_term
                     let depth' = if scopeOnly then 2 else depth
-                    blunderbuss t depth' insts) True
+                    blunderbuss t depth' stk (stk ++ insts)) True
   where
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
@@ -1278,13 +1280,13 @@ resTC' tcs defaultOn depth topg fn ist
     boundVar (P Bound _ _) = True
     boundVar _ = False
 
-    blunderbuss t d [] = do -- c <- get_env
+    blunderbuss t d stk [] = do -- c <- get_env
                             -- ps <- get_probs
                             lift $ tfail $ CantResolve topg
-    blunderbuss t d (n:ns)
-        | n /= fn && tcname n = try' (resolve n d)
-                                     (blunderbuss t d ns) True
-        | otherwise = blunderbuss t d ns
+    blunderbuss t d stk (n:ns)
+        | n /= fn && (n `elem` stk || tcname n) 
+              = try' (resolve n d) (blunderbuss t d stk ns) True
+        | otherwise = blunderbuss t d stk ns
 
     resolve n depth
        | depth == 0 = fail $ "Can't resolve type class"
