@@ -11,7 +11,7 @@ test_java:
 	@perl ./runtest.pl without primitives004 --codegen Java
 
 test_js:
-	@perl ./runtest.pl without sugar004 reg029 reg052 io001 dsl002 io003 effects001 effects002 buffer001 basic011 primitives004 --codegen node
+	@perl ./runtest.pl without sugar004 reg029 reg052 io001 dsl002 io003 effects001 effects002 effects003 buffer001 basic011 primitives004 --codegen node
 
 test_llvm:
 	@perl ./runtest.pl without primitives003 primitives004 sugar004 io003 buffer001 --codegen llvm
