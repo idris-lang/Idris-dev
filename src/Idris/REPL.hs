@@ -97,8 +97,9 @@ import Debug.Trace
 -- | Run the REPL
 repl :: IState -- ^ The initial state
      -> [FilePath] -- ^ The loaded modules
+     -> FilePath -- ^ The file to edit (with :e)
      -> InputT Idris ()
-repl orig mods
+repl orig mods efile
    = -- H.catch
      do let quiet = opt_quiet (idris_options orig)
         i <- lift getIState
@@ -116,10 +117,13 @@ repl orig mods
             Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
                           return ()
             Just input -> -- H.catch
-                do ms <- H.catch (lift $ processInput input orig mods)
+                do ms <- H.catch (lift $ processInput input orig mods efile)
                                  (ctrlC (return (Just mods)))
                    case ms of
-                        Just mods -> repl orig mods
+                        Just mods -> let efile' = case mods of
+                                                       [] -> efile
+                                                       (e:_) -> e in
+                                         repl orig mods efile'
                         Nothing -> return ()
 --                             ctrlC)
 --       ctrlC
@@ -604,8 +608,8 @@ lit f = case splitExtension f of
             _ -> False
 
 processInput :: String ->
-                IState -> [FilePath] -> Idris (Maybe [FilePath])
-processInput cmd orig inputs
+                IState -> [FilePath] -> FilePath -> Idris (Maybe [FilePath])
+processInput cmd orig inputs efile
     = do i <- getIState
          let opts = idris_options i
          let quiet = opt_quiet opts
@@ -635,7 +639,7 @@ processInput cmd orig inputs
                    fmod <- loadModule f
                    return (Just (inputs ++ [fmod]))
             Success (Right Edit) -> do -- takeMVar stvar
-                               edit fn orig
+                               edit efile orig
                                return (Just inputs)
             Success (Right Proofs) -> do proofs orig
                                          return (Just inputs)
@@ -1540,6 +1544,9 @@ idrisMain opts =
 
        orig <- getIState
        mods <- if idesl then return [] else loadInputs inputs Nothing
+       let efile = case inputs of
+                        [] -> ""
+                        (f:_) -> f
 
        runIO $ hSetBuffering stdout LineBuffering
 
@@ -1582,7 +1589,7 @@ idrisMain opts =
        when (runrepl && not idesl) $ do
 --          clearOrigPats
          startServer port orig mods
-         runInputT (replSettings (Just historyFile)) $ repl orig mods
+         runInputT (replSettings (Just historyFile)) $ repl orig mods efile
        let idesock = IdeslaveSocket `elem` opts
        when (idesl) $ ideslaveStart idesock orig inputs
        ok <- noErrors
