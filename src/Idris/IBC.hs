@@ -33,7 +33,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 89
+ibcVersion = 90
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,

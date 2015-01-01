@@ -53,7 +53,7 @@ import Util.Pretty(pretty, text)
 data MArgTy = IA | EA | CA deriving Show
 
 elabClass :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
-             FC -> [PTerm] ->
+             FC -> [(Name, PTerm)] ->
              Name -> [(Name, PTerm)] -> [(Name, Docstring (Either Err PTerm))] -> [PDecl] -> Idris ()
 elabClass info syn_in doc fc constraints tn ps pDocs ds
     = do let cn = SN (InstanceCtorN tn) -- sUN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
@@ -115,7 +115,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
                 $ tfail (At fc (Msg $ "Default superclass instances can't have constraints."))
              i <- getIState
              let t = PApp fc (PRef fc n) (map pexp ps)
-             let isConstrained = any (== t) constraints
+             let isConstrained = any (== t) (map snd constraints)
              when (not isConstrained) . tclift
                 $ tfail (At fc (Msg $ "Default instances must be for a superclass constraint on the containing class."))
              return ()
@@ -124,8 +124,8 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
     impbind [] x = x
     impbind ((n, ty): ns) x = PPi impl n ty (impbind ns x)
 
-    conbind :: [PTerm] -> PTerm -> PTerm 
-    conbind (ty : ns) x = PPi constraint (sMN 0 "class") ty (conbind ns x)
+    conbind :: [(Name, PTerm)] -> PTerm -> PTerm 
+    conbind ((c, ty) : ns) x = PPi constraint c ty (conbind ns x)
     conbind [] x = x
 
     getMName (PTy _ _ _ _ _ n _) = nsroot n
@@ -160,15 +160,15 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
     clause _ = False
 
     -- Generate a function for chasing a dictionary constraint
-    cfun :: Name -> PTerm -> SyntaxInfo -> [a] -> PTerm -> Idris [PDecl' PTerm]
-    cfun cn c syn all con
+    cfun :: Name -> PTerm -> SyntaxInfo -> [a] -> (Name, PTerm) -> Idris [PDecl' PTerm]
+    cfun cn c syn all (cnm, con)
         = do let cfn = sUN ('@':'@':show cn ++ "#" ++ show con)
                        -- SN (ParentN cn (show con))
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
              let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
              let lhs = PApp fc (PRef fc cfn) [pconst capp]
              let rhs = PResolveTC (fileFC "HACK")
-             let ty = PPi constraint (sMN 0 "pc") c con
+             let ty = PPi constraint cnm c con
              iLOG (showTmImpls ty)
              iLOG (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
              i <- getIState

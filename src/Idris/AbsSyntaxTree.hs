@@ -558,14 +558,14 @@ data PDecl' t
    | PNamespace String [PDecl' t] -- ^ New namespace
    | PRecord  (Docstring (Either Err PTerm)) SyntaxInfo FC Name t DataOpts (Docstring (Either Err PTerm)) Name t  -- ^ Record declaration
    | PClass   (Docstring (Either Err PTerm)) SyntaxInfo FC
-              [t] -- constraints
+              [(Name, t)] -- constraints
               Name
               [(Name, t)] -- parameters
               [(Name, Docstring (Either Err PTerm))] -- parameter docstrings
               [PDecl' t] -- declarations
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
               -- class name, parameters, method declarations
-   | PInstance SyntaxInfo FC [t] -- constraints
+   | PInstance SyntaxInfo FC [(Name, t)] -- constraints
                              Name -- class
                              [t] -- parameters
                              t -- full instance type
