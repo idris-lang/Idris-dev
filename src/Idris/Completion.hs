@@ -145,6 +145,7 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
           completeArg (ManyArgs a) = completeArg a
           completeArg (OptionalArg a) = completeArg a
           completeArg (SeqArgs a b) = completeArg a
+          completeArg _ = noCompletion (prev, next)
           completeCmdName = return $ ("", completeWith commands cmd)
 
 -- | Complete REPL commands and defined identifiers
