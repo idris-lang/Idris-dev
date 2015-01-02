@@ -154,6 +154,10 @@ bcc i (ASSIGNCONST l c)
     mkConst (B16V x) = let x' = V.toList x in "MKB16x8const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "U") x') ++ ")"
     mkConst (B32V x) = let x' = V.toList x in "MKB32x4const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "UL") x') ++ ")"
     mkConst (B64V x) = let x' = V.toList x in "MKB64x2const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "ULL") x') ++ ")"
+    -- if it's a type constant, we won't use it, but equally it shouldn't
+    -- report an error. These might creep into generated for various reasons
+    -- (especially if erasure is disabled).
+    mkConst c | isTypeConst c = "MKINT(42424242)" 
     mkConst c = error $ "mkConst of (" ++ show c ++ ") not implemented"
 
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
