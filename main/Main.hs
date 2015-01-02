@@ -5,6 +5,7 @@ import System.IO
 import System.Environment
 import System.Exit
 import System.FilePath ((</>), addTrailingPathSeparator)
+import System.Directory
 
 import Data.Maybe
 import Data.Version
