@@ -1,4 +1,4 @@
-module Idris.Help (CmdArg(..), help, extraHelp) where
+module Idris.Help (CmdArg(..), extraHelp) where
 
 data CmdArg = ExprArg -- ^ The command takes an expression
             | NameArg -- ^ The command takes a name
@@ -37,62 +37,14 @@ instance Show CmdArg where
     show (OptionalArg a) = "[" ++ show a ++ "]"
     show (SeqArgs a b) = show a ++ " " ++ show b
 
-help :: [([String], CmdArg, String)]
-help =
-  [ (["<expr>"], NoArg, "Evaluate an expression"),
-    ([":t"], ExprArg, "Check the type of an expression"),
-    ([":miss", ":missing"], NameArg, "Show missing clauses"),
-    ([":doc"], NameArg, "Show internal documentation"),
-    ([":mkdoc"], NamespaceArg, "Generate IdrisDoc for namespace(s) and dependencies"),
-    ([":apropos"], SeqArgs (OptionalArg PkgArgs) NameArg, " Search names, types, and documentation"),
-    ([":search", ":s"], SeqArgs (OptionalArg PkgArgs) ExprArg, " Search for values by type"),
-    ([":whocalls", ":wc"], NameArg, "List the callers of some name"),
-    ([":callswho", ":cw"], NameArg, "List the callees of some name"),
-    ([":total"], NameArg, "Check the totality of a name"),
-    ([":r",":reload"], NoArg, "Reload current file"),
-    ([":l",":load"], FileArg, "Load a new file"),
-    ([":cd"], FileArg, "Change working directory"),
-    ([":module"], ModuleArg, "Import an extra module"), -- NOTE: dragons
-    ([":e",":edit"], NoArg, "Edit current file using $EDITOR or $VISUAL"),
-    ([":m",":metavars"], NoArg, "Show remaining proof obligations (metavariables)"),
-    ([":p",":prove"], MetaVarArg, "Prove a metavariable"),
-    ([":a",":addproof"], NameArg, "Add proof to source file"),
-    ([":rmproof"], NameArg, "Remove proof from proof stack"),
-    ([":showproof"], NameArg, "Show proof"),
-    ([":proofs"], NoArg, "Show available proofs"),
-    ([":x"], ExprArg, "Execute IO actions resulting from an expression using the interpreter"),
-    ([":c",":compile"], FileArg, "Compile to an executable [codegen] <filename>"),
-    ([":exec",":execute"], NoArg, "Compile to an executable and run"),
-    ([":dynamic"], FileArg, "Dynamically load a C library (similar to %dynamic)"),
-    ([":dynamic"], NoArg, "List dynamically loaded C libraries"),
-    ([":?",":h",":help"], NoArg, "Display this help text"),
-    ([":set"], OptionArg, "Set an option (errorcontext, showimplicits)"),
-    ([":unset"], OptionArg, "Unset an option"),
-    ([":colour", ":color"], ColourArg, "Turn REPL colours on or off; set a specific colour"),
-    ([":consolewidth"], ConsoleWidthArg, "Set the width of the console"),
-    ([":q",":quit"], NoArg, "Exit the Idris system"),
-    ([":w", ":warranty"], NoArg, "Displays warranty information"),
-    ([":let"], ManyArgs DeclArg, "Evaluate a declaration, such as a function definition, instance implementation, or fixity declaration"),
-    ([":undefine",":unlet"], ManyArgs NameArg, "Remove the listed repl definitions, or all repl definitions if no names given"),
-    ([":printdef"], NameArg, "Show the definition of a function"),
-    ([":pp", ":pprint"], (SeqArgs OptionArg (SeqArgs NumberArg NameArg)), "Pretty prints an Idris function in either LaTeX or HTML and for a specified width.")
-  ]
-
 -- | Use these for completion, but don't show them in :help
 extraHelp ::[([String], CmdArg, String)]
 extraHelp =
-    [ ([":casesplit", ":cs"], NoArg, ":cs <line> <name> splits the pattern variable on the line")
-    , ([":casesplit!", ":cs!"], NoArg, ":cs! <line> <name> destructively splits the pattern variable on the line")
-    , ([":addclause", ":ac"], NoArg, ":ac <line> <name> adds a clause for the definition of the name on the line")
+    [ ([":casesplit!", ":cs!"], NoArg, ":cs! <line> <name> destructively splits the pattern variable on the line")
     , ([":addclause!", ":ac!"], NoArg, ":ac! <line> <name> destructively adds a clause for the definition of the name on the line")
-    , ([":addmissing", ":am"], NoArg, ":am <line> <name> adds all missing pattern matches for the name on the line")
     , ([":addmissing!", ":am!"], NoArg, ":am! <line> <name> destructively adds all missing pattern matches for the name on the line")
-    , ([":makewith", ":mw"], NoArg, ":mw <line> <name> adds a with clause for the definition of the name on the line")
     , ([":makewith!", ":mw!"], NoArg, ":mw! <line> <name> destructively adds a with clause for the definition of the name on the line")
-    , ([":proofsearch", ":ps"], NoArg, ":ps <line> <name> <names> does proof search for name on line, with names as hints")
     , ([":proofsearch!", ":ps!"], NoArg, ":ps! <line> <name> <names> destructively does proof search for name on line, with names as hints")
-    , ([":addproofclause", ":apc"], NoArg, ":apc <line> <name> adds a pattern-matching proof clause to name on line")
     , ([":addproofclause!", ":apc!"], NoArg, ":apc! <line> <name> destructively adds a pattern-matching proof clause to name on line")
-    , ([":refine", ":ref"], NoArg, ":ref <line> <name> <name'> attempts to partially solve name on line, with name' as hint, introducing metavariables for arguments that aren't inferrable")
     , ([":refine!", ":ref!"], NoArg, ":ref! <line> <name> <name'> destructively attempts to partially solve name on line, with name' as hint, introducing metavariables for arguments that aren't inferrable")
     ]

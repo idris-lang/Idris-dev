@@ -1140,23 +1140,29 @@ Constant ::=
   ;
 @
 -}
+
+constants :: [(String, Idris.Core.TT.Const)]
+constants = 
+  [ ("Integer",            AType (ATInt ITBig))
+  , ("Int",                AType (ATInt ITNative))
+  , ("Char",               AType (ATInt ITChar))
+  , ("Float",              AType ATFloat)
+  , ("String",             StrType)
+  , ("Ptr",                PtrType)
+  , ("ManagedPtr",         ManagedPtrType)
+  , ("prim__UnsafeBuffer", BufferType)
+  , ("Bits8",              AType (ATInt (ITFixed IT8)))
+  , ("Bits16",             AType (ATInt (ITFixed IT16)))
+  , ("Bits32",             AType (ATInt (ITFixed IT32)))
+  , ("Bits64",             AType (ATInt (ITFixed IT64)))
+  , ("Bits8x16",           AType (ATInt (ITVec IT8 16)))
+  , ("Bits16x8",           AType (ATInt (ITVec IT16 8)))
+  , ("Bits32x4",           AType (ATInt (ITVec IT32 4)))
+  , ("Bits64x2",           AType (ATInt (ITVec IT64 2)))
+  ]
+ 
 constant :: IdrisParser Idris.Core.TT.Const
-constant =  do reserved "Integer";      return (AType (ATInt ITBig))
-        <|> do reserved "Int";          return (AType (ATInt ITNative))
-        <|> do reserved "Char";         return (AType (ATInt ITChar))
-        <|> do reserved "Float";        return (AType ATFloat)
-        <|> do reserved "String";       return StrType
-        <|> do reserved "Ptr";          return PtrType
-        <|> do reserved "ManagedPtr";   return ManagedPtrType
-        <|> do reserved "prim__UnsafeBuffer"; return BufferType
-        <|> do reserved "Bits8";  return (AType (ATInt (ITFixed IT8)))
-        <|> do reserved "Bits16"; return (AType (ATInt (ITFixed IT16)))
-        <|> do reserved "Bits32"; return (AType (ATInt (ITFixed IT32)))
-        <|> do reserved "Bits64"; return (AType (ATInt (ITFixed IT64)))
-        <|> do reserved "Bits8x16"; return (AType (ATInt (ITVec IT8 16)))
-        <|> do reserved "Bits16x8"; return (AType (ATInt (ITVec IT16 8)))
-        <|> do reserved "Bits32x4"; return (AType (ATInt (ITVec IT32 4)))
-        <|> do reserved "Bits64x2"; return (AType (ATInt (ITVec IT64 2)))
+constant = choice [ do reserved name; return ty | (name, ty) <- constants ]
         <|> do f <- try float;   return $ Fl f
         <|> do i <- natural; return $ BI i
         <|> do s <- verbatimStringLiteral; return $ Str s
@@ -1229,116 +1235,109 @@ TacticSeq ::=
 @
 -}
 
+-- | A specification of the arguments that tactics can take
+data TacticArg = NameTArg -- ^ Names: n1, n2, n3, ... n
+               | ExprTArg
+               | AltsTArg
+               | StringLitTArg
+
+-- The FIXMEs are Issue #1766 in the issue tracker.
+--     https://github.com/idris-lang/Idris-dev/issues/1766
+-- | A list of available tactics and their argument requirements
+tactics :: [([String], Maybe TacticArg, SyntaxInfo -> IdrisParser PTactic)]
+tactics = 
+  [ (["intro"], Nothing, const $ -- FIXME syntax for intro (fresh name)
+      do ns <- sepBy (spaced name) (lchar ','); return $ Intro ns)
+  , noArgs ["intros"] Intros
+  , (["refine"], Just ExprTArg, const $
+       do n <- spaced fnName
+          imps <- many imp
+          return $ Refine n imps)
+  , (["mrefine"], Just ExprTArg, const $
+       do n <- spaced fnName
+          return $ MatchRefine n)
+  , expressionTactic ["rewrite"] Rewrite
+  , expressionTactic ["case"] CaseTac
+  , expressionTactic ["induction"] Induction
+  , expressionTactic ["equiv"] Equiv
+  , (["let"], Nothing, \syn -> -- FIXME syntax for let
+       do n <- (indentPropHolds gtProp *> name)
+          (do indentPropHolds gtProp *> lchar ':'
+              ty <- indentPropHolds gtProp *> expr' syn
+              indentPropHolds gtProp *> lchar '='
+              t <- indentPropHolds gtProp *> expr syn
+              i <- get
+              return $ LetTacTy n (desugar syn i ty) (desugar syn i t))
+            <|> (do indentPropHolds gtProp *> lchar '='
+                    t <- indentPropHolds gtProp *> expr syn
+                    i <- get
+                    return $ LetTac n (desugar syn i t)))
+
+  , (["focus"], Just ExprTArg, const $
+       do n <- spaced name
+          return $ Focus n)
+  , expressionTactic ["exact"] Exact
+  , expressionTactic ["applyTactic"] ApplyTactic
+  , expressionTactic ["byReflection"] ByReflection
+  , expressionTactic ["reflect"] Reflect
+  , expressionTactic ["fill"] Fill
+  , (["try"], Just AltsTArg, \syn ->
+        do t <- spaced (tactic syn)
+           lchar '|'
+           t1 <- spaced (tactic syn)
+           return $ Try t t1)
+  , noArgs ["compute"] Compute
+  , noArgs ["trivial"] Trivial
+  , noArgs ["unify"] DoUnify
+  , (["search"], Nothing, const $
+      do depth <- option 10 natural
+         return (ProofSearch True True (fromInteger depth) Nothing []))
+  , noArgs ["instance"] TCInstance
+  , noArgs ["solve"] Solve
+  , noArgs ["attack"] Attack
+  , noArgs ["state"] ProofState
+  , noArgs ["term"] ProofTerm
+  , noArgs ["undo"] Undo
+  , noArgs ["qed"] Qed
+  , noArgs ["abandon", ":q"] Abandon
+  , noArgs ["skip"] Skip
+  , noArgs ["sourceLocation"] SourceFC
+  , expressionTactic [":e", ":eval"] TEval
+  , expressionTactic [":t", ":type"] TCheck
+  , expressionTactic [":search"] TSearch
+  , (["fail"], Just StringLitTArg, const $
+       do msg <- stringLiteral
+          return $ TFail [Idris.Core.TT.TextPart msg])
+  , ([":doc"], Just ExprTArg, const $
+       do whiteSpace
+          doc <- (Right <$> constant) <|> (Left <$> fnName)
+          eof
+          return (TDocStr doc))
+  ]
+  where
+  expressionTactic names tactic = (names, Just ExprTArg, \syn ->
+     do t <- spaced (expr syn)
+        i <- get
+        return $ tactic (desugar syn i t))
+  noArgs names tactic = (names, Nothing, const (return tactic))
+  spaced parser = indentPropHolds gtProp *> parser
+  imp :: IdrisParser Bool
+  imp = do lchar '?'; return False
+    <|> do lchar '_'; return True
+  
+
 tactic :: SyntaxInfo -> IdrisParser PTactic
-tactic syn = do reserved "intro"; ns <- sepBy (indentPropHolds gtProp *> name) (lchar ',')
-                return $ Intro ns
-          <|> do reserved "intros"; return Intros
-          <|> try (do reserved "refine"; n <- (indentPropHolds gtProp *> fnName)
-                      imps <- some imp
-                      return $ Refine n imps)
-          <|> do reserved "refine"; n <- (indentPropHolds gtProp *> fnName)
-                 i <- get
-                 return $ Refine n []
-          <|> do reserved "mrefine"; n <- (indentPropHolds gtProp *> fnName)
-                 i <- get
-                 return $ MatchRefine n
-          <|> do reserved "rewrite"; t <- (indentPropHolds gtProp *> expr syn);
-                 i <- get
-                 return $ Rewrite (desugar syn i t)
-          <|> do reserved "case"; t <- (indentPropHolds gtProp *> expr syn);
-                 i <- get
-                 return $ CaseTac (desugar syn i t)
-          <|> do reserved "induction"; t <- (indentPropHolds gtProp *> expr syn);
-                 i <- get
-                 return $ Induction (desugar syn i t)
-          <|> do reserved "equiv"; t <- (indentPropHolds gtProp *> expr syn);
-                 i <- get
-                 return $ Equiv (desugar syn i t)
-          <|> try (do reserved "let"; n <- (indentPropHolds gtProp *> name); (indentPropHolds gtProp *> lchar ':');
-                      ty <- (indentPropHolds gtProp *> expr' syn); (indentPropHolds gtProp *> lchar '='); t <- (indentPropHolds gtProp *> expr syn);
-                      i <- get
-                      return $ LetTacTy n (desugar syn i ty) (desugar syn i t))
-          <|> try (do reserved "let"; n <- (indentPropHolds gtProp *> name); (indentPropHolds gtProp *> lchar '=');
-                      t <- (indentPropHolds gtProp *> expr syn);
-                      i <- get
-                      return $ LetTac n (desugar syn i t))
-          <|> do reserved "focus"; n <- (indentPropHolds gtProp *> name)
-                 return $ Focus n
-          <|> do reserved "exact"; t <- (indentPropHolds gtProp *> expr syn);
-                 i <- get
-                 return $ Exact (desugar syn i t)
-          <|> do reserved "applyTactic"; t <- (indentPropHolds gtProp *> expr syn);
-                 i <- get
-                 return $ ApplyTactic (desugar syn i t)
-          <|> do reserved "byReflection"; t <- (indentPropHolds gtProp *> expr syn);
-                 i <- get
-                 return $ ByReflection (desugar syn i t)
-          <|> do reserved "reflect"; t <- (indentPropHolds gtProp *> expr syn);
-                 i <- get
-                 return $ Reflect (desugar syn i t)
-          <|> do reserved "fill"; t <- (indentPropHolds gtProp *> expr syn);
-                 i <- get
-                 return $ Fill (desugar syn i t)
-          <|> do reserved "try"; t <- (indentPropHolds gtProp *> tactic syn);
-                 lchar '|';
-                 t1 <- (indentPropHolds gtProp *> tactic syn)
-                 return $ Try t t1
+tactic syn = choice [ do choice (map reserved names); parser syn 
+                    | (names, _, parser) <- tactics ]
           <|> do lchar '{'
                  t <- tactic syn;
                  lchar ';';
                  ts <- sepBy1 (tactic syn) (lchar ';')
                  lchar '}'
                  return $ TSeq t (mergeSeq ts)
-          <|> do reserved "compute"; return Compute
-          <|> do reserved "trivial"; return Trivial
-          <|> do reserved "unify"; return DoUnify
-          <|> do reserved "search"
-                 depth <- option 10 natural
-                 return (ProofSearch True True (fromInteger depth) Nothing [])
-          <|> do reserved "instance"; return TCInstance
-          <|> do reserved "solve"; return Solve
-          <|> do reserved "attack"; return Attack
-          <|> do reserved "state"; return ProofState
-          <|> do reserved "term"; return ProofTerm
-          <|> do reserved "undo"; return Undo
-          <|> do reserved "qed"; return Qed
-          <|> do reserved "abandon"; return Abandon
-          <|> do reserved "skip"; return Skip
-          <|> do reserved "fail"
-                 msg <- stringLiteral
-                 return $ TFail [Idris.Core.TT.TextPart msg]
-          <|> do reserved "sourceLocation"; return SourceFC
-          <|> do lchar ':';
-                 (    (do reserved "q"; return Abandon)
-                  <|> (do (reserved "e" <|> reserved "eval");
-                          t <- (indentPropHolds gtProp *> expr syn);
-                          i <- get
-                          return $ TEval (desugar syn i t))
-                  <|> (do (reserved "t" <|> reserved "type");
-                          t <- (indentPropHolds gtProp *> expr syn);
-                          i <- get
-                          return $ TCheck (desugar syn i t))
-                  <|> try (do reserved "doc"
-                              whiteSpace
-                              c <- constant
-                              eof
-                              return (TDocStr (Right c)))
-                  <|> try (do reserved "doc"
-                              whiteSpace
-                              n <- fnName
-                              eof
-                              return (TDocStr (Left n)))
-                  <|> try (do reserved "search"
-                              whiteSpace
-                              t <- (indentPropHolds gtProp *> expr syn);
-                              i <- get
-                              return $ TSearch (desugar syn i t))
-                  <?> "prover command")
+          <|> ((lchar ':' >> empty) <?> "prover command")
           <?> "tactic"
   where
-    imp :: IdrisParser Bool
-    imp = do lchar '?'; return False
-      <|> do lchar '_'; return True
     mergeSeq :: [PTactic] -> PTactic
     mergeSeq [t]    = t
     mergeSeq (t:ts) = TSeq t (mergeSeq ts)

@@ -8,7 +8,9 @@ import Idris.AbsSyntaxTree
 import Idris.Help
 import Idris.Colours
 import Idris.ParseHelpers(opChars)
-
+import qualified Idris.ParseExpr (constants, tactics)
+import Idris.ParseExpr (TacticArg (..))
+import Idris.REPLParser (allHelp)
 import Control.Monad.State.Strict
 
 import Data.List
@@ -19,44 +21,11 @@ import System.Console.Haskeline
 import System.Console.ANSI (Color)
 
 
-fst3 :: (a, b, c) -> a
-fst3 (a, b, c) = a
+commands = [ n | (names, _, _) <- allHelp ++ extraHelp, n <- names ]
 
-commands = concatMap fst3 (help ++ extraHelp)
-
--- | A specification of the arguments that tactics can take
-data TacticArg = NameTArg -- ^ Names: n1, n2, n3, ... n
-               | ExprTArg
-               | AltsTArg
-
--- The FIXMEs are Issue #1766 in the issue tracker.
---     https://github.com/idris-lang/Idris-dev/issues/1766
--- | A list of available tactics and their argument requirements
 tacticArgs :: [(String, Maybe TacticArg)]
-tacticArgs = [ ("intro", Nothing) -- FIXME syntax for intro (fresh name)
-             , ("refine", Just ExprTArg)
-             , ("mrefine", Just ExprTArg)
-             , ("rewrite", Just ExprTArg)
-             , ("let", Nothing) -- FIXME syntax for let
-             , ("focus", Just ExprTArg)
-             , ("exact", Just ExprTArg)
-             , ("equiv", Just ExprTArg)
-             , ("applyTactic", Just ExprTArg)
-             , ("byReflection", Just ExprTArg)
-             , ("reflect", Just ExprTArg)
-             , ("fill", Just ExprTArg)
-             , ("try", Just AltsTArg)
-             , ("induction", Just ExprTArg)
-             , ("case", Just ExprTArg)
-             , (":t", Just ExprTArg)
-             , (":type", Just ExprTArg)
-             , (":e", Just ExprTArg)
-             , (":eval", Just ExprTArg)
-             ] ++ map (\x -> (x, Nothing)) [
-              "intros", "compute", "trivial", "search", "solve", "attack",
-              "unify", "state", "term", "undo", "qed", "abandon", ":q",
-              "sourceLocation"
-             ]
+tacticArgs = [ (name, args) | (names, args, _) <- Idris.ParseExpr.tactics
+                            , name <- names ]
 tactics = map fst tacticArgs
 
 -- | Convert a name into a string usable for completion. Filters out names
@@ -77,10 +46,7 @@ names = do i <- get
            let ctxt = tt_ctxt i
            return . nub $
              mapMaybe (nameString . fst) (ctxtAlist ctxt) ++
-             -- Explicitly add primitive types, as these are special-cased in the parser
-             ["Int", "Integer", "Float", "Char", "String", "Type",
-              "Ptr", "Bits8", "Bits16", "Bits32", "Bits64",
-              "Bits8x16", "Bits16x8", "Bits32x4", "Bits64x2"]
+             "Type" : map fst Idris.ParseExpr.constants
 
 metavars :: Idris [String]
 metavars = do i <- get
@@ -129,7 +95,7 @@ isWhitespace :: Char -> Bool
 isWhitespace = (flip elem) " \t\n"
 
 lookupInHelp :: String -> Maybe CmdArg
-lookupInHelp cmd = lookupInHelp' cmd help
+lookupInHelp cmd = lookupInHelp' cmd allHelp
     where lookupInHelp' cmd ((cmds, arg, _):xs) | elem cmd cmds = Just arg
                                                 | otherwise   = lookupInHelp' cmd xs
           lookupInHelp' cmd [] = Nothing
@@ -195,10 +161,11 @@ completeTactic :: [String] -> String -> CompletionFunc Idris
 completeTactic as tac (prev, next) = fromMaybe completeTacName . fmap completeArg $
                                      lookup tac tacticArgs
     where completeTacName = return $ ("", completeWith tactics tac)
-          completeArg Nothing           = noCompletion (prev, next)
-          completeArg (Just NameTArg)   = noCompletion (prev, next) -- this is for binding new names!
-          completeArg (Just ExprTArg)   = completeExpr as (prev, next)
-          completeArg (Just AltsTArg)   = noCompletion (prev, next) -- TODO
+          completeArg Nothing              = noCompletion (prev, next)
+          completeArg (Just NameTArg)      = noCompletion (prev, next) -- this is for binding new names!
+          completeArg (Just ExprTArg)      = completeExpr as (prev, next)
+          completeArg (Just StringLitTArg) = noCompletion (prev, next)
+          completeArg (Just AltsTArg)      = noCompletion (prev, next) -- TODO
 
 -- | Complete tactics and their arguments
 proverCompletion :: [String] -- ^ The names of current local assumptions

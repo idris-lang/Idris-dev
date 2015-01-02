@@ -39,17 +39,15 @@ import Util.Pretty (text, char, vsep, (<>), Doc, annotate)
 
 searchByType :: [String] -> PTerm -> Idris ()
 searchByType pkgs pterm = do
-  orig <- getIState -- save original
+  i <- getIState -- save original
   when (not (null pkgs)) $ 
      iputStrLn $ "Searching packages: " ++ showSep ", " pkgs
   
   mapM_ loadPkgIndex pkgs
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn name pterm'
-  i <- getIState
   let pterm'''  = addImpl i pterm''
   ty <- elabType toplevel syn (fst noDocs) (snd noDocs) emptyFC [] name pterm'
-  putIState i -- don't actually make any changes
   let names = searchUsing searchPred i ty
   let names' = take numLimit names
   let docs =
@@ -60,7 +58,7 @@ searchByType pkgs pterm = do
     RawOutput _  -> do mapM_ iRenderOutput docs
                        iPrintResult ""
     IdeSlave _ _ -> iRenderResult (vsep docs)
-  putIState orig
+  putIState i -- don't actually make any changes
   where
     numLimit = 50
     syn = defaultSyntax { implicitAllowed = True } -- syntax
@@ -85,7 +83,7 @@ searchUsing pred istate ty = pred istate nty . concat . M.elems $
                    || n `elem` map T.pack ["believe_me", "really_believe_me"]
   special _ = False
 
--- Our default search predicate.
+-- | Our default search predicate.
 searchPred :: IState -> Type -> [(Name, Type)] -> [(Name, Score)]
 searchPred istate ty1 = matcher where
   maxScore = 100
@@ -174,10 +172,12 @@ sided f (Sided l r) = f l r
 both :: (a -> b) -> Sided a -> Sided b
 both f (Sided l r) = Sided (f l) (f r)
 
+-- | Keeps a record of the modifications made to match one type
+-- signature with another
 data Score = Score
-  { transposition :: !Int
-  , equalityFlips :: !Int
-  , asymMods      :: !(Sided AsymMods)
+  { transposition :: !Int -- ^ transposition of arguments
+  , equalityFlips :: !Int -- ^ application of symmetry of equality
+  , asymMods      :: !(Sided AsymMods) -- ^ "directional" modifications
   } deriving (Eq, Show)
 
 displayScore :: Score -> Doc OutputAnnotation
@@ -190,6 +190,9 @@ displayScore score = case both noMods (asymMods score) of
   annotated ordr = annotate (AnnSearchResult ordr) . text
   noMods (Mods app tcApp tcIntro) = app + tcApp + tcIntro == 0
 
+-- | This allows the search to stop expanding on a certain state if its
+-- score is already too high. Returns 'True' if the algorithm should keep
+-- exploring from this state, and 'False' otherwise.
 scoreCriterion :: Score -> Bool
 scoreCriterion (Score _ _ amods) = not
   (  sided (&&) (both ((> 0) . argApp) amods)
@@ -197,6 +200,8 @@ scoreCriterion (Score _ _ amods) = not
   || sided (||) (both (\(Mods _ tcApp tcIntro) -> tcApp > 3 || tcIntro > 3) amods)
   ) 
 
+-- | Convert a 'Score' to an 'Int' to provide an order for search results.
+-- Lower scores are better.
 defaultScoreFunction :: Score -> Int
 defaultScoreFunction (Score trans eqFlip amods) = 
   trans + eqFlip + linearPenalty + upAndDowncastPenalty
@@ -207,6 +212,10 @@ defaultScoreFunction (Score trans eqFlip amods) =
   -- it's very bad to have *both* upcasting and downcasting
   upAndDowncastPenalty = 100 * 
     sided (*) (both (\(Mods app tcApp tcIntro) -> 2 * app + tcApp + tcIntro) amods)
+
+instance Ord Score where
+  compare = comparing defaultScoreFunction
+
 
 instance Monoid a => Monoid (Sided a) where
   mempty = Sided mempty mempty
@@ -277,9 +286,6 @@ isTypeClassArg classInfo ty = not (null (getClassName clss >>= flip lookupCtxt c
   getClassName (P (TCon _ _) className _) = [className]
   getClassName _ = []
 
-
-instance Ord Score where
-  compare = comparing defaultScoreFunction
 
 -- | Compute the power set
 subsets :: [a] -> [[a]]
@@ -429,17 +435,17 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     getClassName (P (TCon _ _) className _) = [className]
     getClassName _ = []
 
-  -- Just if the computation hasn't totally failed yet, Nothing if it has
-  -- Left if we haven't found a terminal state, Right if we have
+  -- 'Just' if the computation hasn't totally failed yet, 'Nothing' if it has
+  -- 'Left' if we haven't found a terminal state, 'Right' if we have
   nextStepsQueue :: Q.PQueue Score State -> Maybe (Either (Q.PQueue Score State) Score)
   nextStepsQueue queue = do
     ((nextScore, next), rest) <- Q.minViewWithKey queue
-    if isFinal next 
-      then Just $ Right nextScore
+    Just $ if isFinal next 
+      then Right nextScore
       else let additions = if scoreCriterion nextScore
                  then Q.fromList [ (score state, state) | state <- nextSteps next ]
                  else Q.empty in
-           Just $ Left (Q.union rest additions)
+           Left (Q.union rest additions)
     where
     isFinal (State [] (Sided ([], []) ([], [])) _ _) = True
     isFinal _ = False

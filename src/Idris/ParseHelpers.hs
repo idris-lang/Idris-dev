@@ -488,7 +488,7 @@ notEndBlock = do ist <- get
 data IndentProperty = IndentProperty (Int -> Int -> Bool) String
 
 -- | Allows comparison of indent, and fails if property doesn't hold
-indentPropHolds :: IndentProperty -> IdrisParser()
+indentPropHolds :: IndentProperty -> IdrisParser ()
 indentPropHolds (IndentProperty op msg) = do
   li <- lastIndent
   i <- indent
