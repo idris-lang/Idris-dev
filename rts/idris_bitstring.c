@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "idris_rts.h"
 
 VAL idris_b8CopyForGC(VM *vm, VAL a) {
@@ -847,4 +849,44 @@ VAL idris_IDXB64x2(VM* vm, VAL vec, VAL idx) {
     uint64_t data[2];
     _mm_storeu_si128((__m128i*)&data, sse);
     return MKB64(vm, data[idx->info.bits32]);
+}
+
+VAL idris_b8x16CopyForGC(VM *vm, VAL vec) {
+    __m128i sse = *vec->info.bits128p;
+    VAL cl = allocate(sizeof(Closure) + 16 + sizeof(__m128i), 1);
+    SETTY(cl, BITS8X16);
+    cl->info.bits128p = (__m128i*)ALIGN((uintptr_t)cl + sizeof(Closure), 16);
+    assert ((uintptr_t)cl->info.bits128p % 16 == 0);
+    *cl->info.bits128p = sse;
+    return cl;
+}
+
+VAL idris_b16x8CopyForGC(VM *vm, VAL vec) {
+    __m128i sse = *vec->info.bits128p;
+    VAL cl = allocate(sizeof(Closure) + 16 + sizeof(__m128i), 1);
+    SETTY(cl, BITS16X8);
+    cl->info.bits128p = (__m128i*)ALIGN((uintptr_t)cl + sizeof(Closure), 16);
+    assert ((uintptr_t)cl->info.bits128p % 16 == 0);
+    *cl->info.bits128p = sse;
+    return cl;
+}
+
+VAL idris_b32x4CopyForGC(VM *vm, VAL vec) {
+    __m128i sse = *vec->info.bits128p;
+    VAL cl = allocate(sizeof(Closure) + 16 + sizeof(__m128i), 1);
+    SETTY(cl, BITS32X4);
+    cl->info.bits128p = (__m128i*)ALIGN((uintptr_t)cl + sizeof(Closure), 16);
+    assert ((uintptr_t)cl->info.bits128p % 16 == 0);
+    *cl->info.bits128p = sse;
+    return cl;
+}
+
+VAL idris_b64x2CopyForGC(VM *vm, VAL vec) {
+    __m128i sse = *vec->info.bits128p;
+    VAL cl = allocate(sizeof(Closure) + 16 + sizeof(__m128i), 1);
+    SETTY(cl, BITS64X2);
+    cl->info.bits128p = (__m128i*)ALIGN((uintptr_t)cl + sizeof(Closure), 16);
+    assert ((uintptr_t)cl->info.bits128p % 16 == 0);
+    *cl->info.bits128p = sse;
+    return cl;
 }
