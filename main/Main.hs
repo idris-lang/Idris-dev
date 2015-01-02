@@ -45,6 +45,7 @@ runIdris opts = do
        when (ShowIncs `elem` opts) $ runIO showIncs
        when (ShowLibs `elem` opts) $ runIO showLibs
        when (ShowLibdir `elem` opts) $ runIO showLibdir
+       when (ShowPkgs `elem` opts) $ runIO showPkgs
        case opt getClient opts of
            []    -> return ()
            (c:_) -> do setVerbose False
@@ -91,4 +92,11 @@ showLibdir = do dir <- getIdrisLibDir
 showIncs :: IO b
 showIncs = do incFlags <- getIncFlags
               putStrLn $ unwords incFlags
+              exitWith ExitSuccess
+
+-- | List idris packages installed
+showPkgs :: IO b
+showPkgs = do dir <- getIdrisLibDir
+              pkgs <- getDirectoryContents dir
+              mapM putStrLn (filter (/= ".") . filter (/= "..") $ pkgs)
               exitWith ExitSuccess
