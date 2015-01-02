@@ -1,9 +1,14 @@
 module Idris.Imports where
 
+import Control.Applicative ((<$>))
+import Data.List (isSuffixOf)
+
 import Idris.AbsSyntax
 import Idris.Error
 
 import Idris.Core.TT
+
+import IRTS.System (getIdrisLibDir)
 
 import System.FilePath
 import System.Directory
@@ -80,4 +85,19 @@ findPkgIndex :: String -> Idris FilePath
 findPkgIndex p = do let idx = pkgIndex p
                     ids <- allImportDirs
                     runIO $ findInPath ids idx
+
+
+installedPackages :: IO [String]
+installedPackages = do
+  idir <- getIdrisLibDir
+  filterM (goodDir idir) =<< dirContents idir
+  where
+  allFilesInDir base fp = do
+    let fullpath = base </> fp
+    isDir <- doesDirectoryExist fullpath
+    if isDir
+      then fmap concat (mapM (allFilesInDir fullpath) =<< dirContents fullpath)
+      else return [fp]
+  dirContents = fmap (filter (not . (`elem` [".", ".."]))) . getDirectoryContents
+  goodDir idir d = any (".ibc" `isSuffixOf`) <$> allFilesInDir idir d
 

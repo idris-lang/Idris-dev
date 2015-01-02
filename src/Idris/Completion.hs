@@ -4,8 +4,10 @@ module Idris.Completion (replCompletion, proverCompletion) where
 import Idris.Core.Evaluate (ctxtAlist)
 import Idris.Core.TT
 
+import Idris.AbsSyntax (runIO)
 import Idris.AbsSyntaxTree
 import Idris.Help
+import Idris.Imports (installedPackages)
 import Idris.Colours
 import Idris.ParseHelpers(opChars)
 import qualified Idris.ParseExpr (constants, tactics)
@@ -142,6 +144,7 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
           completeArg NoArg = noCompletion (prev, next)
           completeArg ConsoleWidthArg = completeConsoleWidth (prev, next)
           completeArg DeclArg = completeExpr [] (prev, next)
+          completeArg PkgArgs = completePkg (prev, next)
           completeArg (ManyArgs a) = completeArg a
           completeArg (OptionalArg a) = completeArg a
           completeArg (SeqArgs a b) = completeArg a
@@ -155,6 +158,11 @@ replCompletion (prev, next) = case firstWord of
                                 _           -> completeExpr [] (prev, next)
     where firstWord = fst $ break isWhitespace $ dropWhile isWhitespace $ reverse prev
 
+
+completePkg :: CompletionFunc Idris
+completePkg = completeWord Nothing " \t()" completeP
+    where completeP p = do pkgs <- runIO installedPackages
+                           return $ completeWith pkgs p
 
 -- The TODOs are Issue #1769 on the issue tracker.
 --     https://github.com/idris-lang/Idris-dev/issues/1769
