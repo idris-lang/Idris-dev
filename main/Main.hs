@@ -97,7 +97,5 @@ showIncs = do incFlags <- getIncFlags
 
 -- | List idris packages installed
 showPkgs :: IO b
-showPkgs = do dir <- getIdrisLibDir
-              pkgs <- getDirectoryContents dir
-              mapM putStrLn (filter (/= ".") . filter (/= "..") $ pkgs)
+showPkgs = do mapM putStrLn =<< installedPackages
               exitWith ExitSuccess
