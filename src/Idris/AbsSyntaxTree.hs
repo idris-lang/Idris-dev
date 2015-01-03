@@ -391,6 +391,7 @@ data Opt = Filename String
          | ShowLibs
          | ShowLibdir
          | ShowIncs
+         | ShowPkgs
          | NoBasePkgs
          | NoPrelude
          | NoBuiltins -- only for the really primitive stuff!

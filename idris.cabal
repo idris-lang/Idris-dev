@@ -794,6 +794,7 @@ Executable idris
   Build-depends:  idris
                 , base
                 , filepath
+                , directory
                 , haskeline >= 0.7
                 , transformers
 

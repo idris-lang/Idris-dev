@@ -89,6 +89,7 @@ parseFlags = many $
   <|> flag' NoCoverage (long "nocoverage")
   <|> flag' ErrContext (long "errorcontext")
   <|> flag' ShowLibs (long "link" <> help "Display link flags")
+  <|> flag' ShowPkgs (long "listlibs" <> help "Display installed libraries")
   <|> flag' ShowLibdir (long "libdir" <> help "Display library directory")
   <|> flag' ShowIncs (long "include" <> help "Display the includes flags")
   <|> flag' Verbose (short 'V' <> long "verbose" <> help "Loud verbosity")
