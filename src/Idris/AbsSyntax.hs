@@ -379,6 +379,7 @@ resetNameIdx = do i <- getIState
 addNameIdx :: Name -> Idris (Int, Name)
 addNameIdx n = do i <- getIState
                   let (i', x) = addNameIdx' i n
+                  putIState i'
                   return x
 
 addNameIdx' :: IState -> Name -> (IState, (Int, Name))

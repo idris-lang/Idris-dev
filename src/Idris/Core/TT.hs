@@ -241,7 +241,7 @@ score _ = 0
 instance Show Err where
     show (Msg s) = s
     show (InternalMsg s) = "Internal error: " ++ show s
-    show (CantUnify rec l r e sc i) = "CantUnify " ++ show rec ++ " " ++
+    show (CantUnify rcv l r e sc i) = "CantUnify " ++ show rcv ++ " " ++
                                          show l ++ " " ++ show r ++ " " ++
                                          show e ++ " in " ++ show sc ++ " " ++ show i
     show (CantSolveGoal g _) = "CantSolve " ++ show g

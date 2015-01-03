@@ -9,6 +9,7 @@ import Idris.Core.CaseTree
 import Idris.AbsSyntax
 import Idris.Imports
 import Idris.Error
+import Idris.DeepSeq
 import Idris.Delaborate
 import qualified Idris.Docstrings as D
 import Idris.Docstrings (Docstring)
@@ -25,6 +26,7 @@ import qualified Data.Text as T
 import qualified Data.Set as S
 
 import Control.Monad
+import Control.DeepSeq
 import Control.Monad.State.Strict hiding (get, put)
 import qualified Control.Monad.State.Strict as ST
 import System.FilePath
@@ -37,44 +39,44 @@ ibcVersion = 90
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
-                         symbols :: [Name],
-                         ibc_imports :: [(Bool, FilePath)],
-                         ibc_importdirs :: [FilePath],
-                         ibc_implicits :: [(Name, [PArg])],
-                         ibc_fixes :: [FixDecl],
-                         ibc_statics :: [(Name, [Bool])],
-                         ibc_classes :: [(Name, ClassInfo)],
-                         ibc_instances :: [(Bool, Name, Name)],
-                         ibc_dsls :: [(Name, DSL)],
-                         ibc_datatypes :: [(Name, TypeInfo)],
-                         ibc_optimise :: [(Name, OptInfo)],
-                         ibc_syntax :: [Syntax],
-                         ibc_keywords :: [String],
-                         ibc_objs :: [(Codegen, FilePath)],
-                         ibc_libs :: [(Codegen, String)],
-                         ibc_cgflags :: [(Codegen, String)],
-                         ibc_dynamic_libs :: [String],
-                         ibc_hdrs :: [(Codegen, String)],
-                         ibc_access :: [(Name, Accessibility)],
-                         ibc_total :: [(Name, Totality)],
-                         ibc_totcheckfail :: [(FC, String)],
-                         ibc_flags :: [(Name, [FnOpt])],
-                         ibc_fninfo :: [(Name, FnInfo)],
-                         ibc_cg :: [(Name, CGInfo)],
-                         ibc_defs :: [(Name, Def)],
-                         ibc_docstrings :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))],
-                         ibc_transforms :: [(Name, (Term, Term))],
-                         ibc_errRev :: [(Term, Term)],
-                         ibc_coercions :: [Name],
-                         ibc_lineapps :: [(FilePath, Int, PTerm)],
-                         ibc_namehints :: [(Name, Name)],
-                         ibc_metainformation :: [(Name, MetaInformation)],
-                         ibc_errorhandlers :: [Name],
-                         ibc_function_errorhandlers :: [(Name, Name, Name)], -- fn, arg, handler
-                         ibc_metavars :: [(Name, (Maybe Name, Int, Bool))],
-                         ibc_patdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))],
-                         ibc_postulates :: [Name],
-                         ibc_parsedSpan :: Maybe FC
+                         symbols :: ![Name],
+                         ibc_imports :: ![(Bool, FilePath)],
+                         ibc_importdirs :: ![FilePath],
+                         ibc_implicits :: ![(Name, [PArg])],
+                         ibc_fixes :: ![FixDecl],
+                         ibc_statics :: ![(Name, [Bool])],
+                         ibc_classes :: ![(Name, ClassInfo)],
+                         ibc_instances :: ![(Bool, Name, Name)],
+                         ibc_dsls :: ![(Name, DSL)],
+                         ibc_datatypes :: ![(Name, TypeInfo)],
+                         ibc_optimise :: ![(Name, OptInfo)],
+                         ibc_syntax :: ![Syntax],
+                         ibc_keywords :: ![String],
+                         ibc_objs :: ![(Codegen, FilePath)],
+                         ibc_libs :: ![(Codegen, String)],
+                         ibc_cgflags :: ![(Codegen, String)],
+                         ibc_dynamic_libs :: ![String],
+                         ibc_hdrs :: ![(Codegen, String)],
+                         ibc_access :: ![(Name, Accessibility)],
+                         ibc_total :: ![(Name, Totality)],
+                         ibc_totcheckfail :: ![(FC, String)],
+                         ibc_flags :: ![(Name, [FnOpt])],
+                         ibc_fninfo :: ![(Name, FnInfo)],
+                         ibc_cg :: ![(Name, CGInfo)],
+                         ibc_defs :: ![(Name, Def)],
+                         ibc_docstrings :: ![(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))],
+                         ibc_transforms :: ![(Name, (Term, Term))],
+                         ibc_errRev :: ![(Term, Term)],
+                         ibc_coercions :: ![Name],
+                         ibc_lineapps :: ![(FilePath, Int, PTerm)],
+                         ibc_namehints :: ![(Name, Name)],
+                         ibc_metainformation :: ![(Name, MetaInformation)],
+                         ibc_errorhandlers :: ![Name],
+                         ibc_function_errorhandlers :: ![(Name, Name, Name)], -- fn, arg, handler
+                         ibc_metavars :: ![(Name, (Maybe Name, Int, Bool))],
+                         ibc_patdefs :: ![(Name, ([([Name], Term, Term)], [PTerm]))],
+                         ibc_postulates :: ![Name],
+                         ibc_parsedSpan :: !(Maybe FC)
                        }
    deriving Show
 {-!
@@ -189,11 +191,11 @@ ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
 ibc i (IBCDef n) f 
    = do f' <- case lookupDefExact n (tt_ctxt i) of
-                   Just v -> do (v', (f', _)) <- runStateT (updateDef v) (f, length (symbols f))
-                                return f' { ibc_defs = (n,v) : ibc_defs f'     }
+                   Just v -> do -- (v', (f', _)) <- runStateT (updateDef v) (f, length (symbols f))
+                                return f { ibc_defs = (n,v) : ibc_defs f     }
                    _ -> ifail "IBC write failed"
         case lookupCtxtExact n (idris_patdefs i) of
-                   Just v -> return f' { ibc_patdefs = (n,v) : ibc_patdefs f' }
+                   Just v -> return f' { ibc_patdefs = (n,v) : ibc_patdefs f }
                    _ -> return f' -- Not a pattern definition
   where 
     updateDef :: Def -> StateT (IBCFile, Int) Idris Def
@@ -296,43 +298,43 @@ process reexp i fn
                v <- verbose
                quiet <- getQuiet
 --                when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
-               pImportDirs (ibc_importdirs i)
-               pImports (ibc_imports i)
-               pImps (ibc_implicits i)
-               pFixes (ibc_fixes i)
-               pStatics (ibc_statics i)
-               pClasses (ibc_classes i)
-               pInstances (ibc_instances i)
-               pDSLs (ibc_dsls i)
-               pDatatypes (ibc_datatypes i)
-               pOptimise (ibc_optimise i)
-               pSyntax (ibc_syntax i)
-               pKeywords (ibc_keywords i)
-               pObjs (ibc_objs i)
-               pLibs (ibc_libs i)
-               pCGFlags (ibc_cgflags i)
-               pDyLibs (ibc_dynamic_libs i)
-               pHdrs (ibc_hdrs i)
-               pDefs reexp (symbols i) (ibc_defs i)
-               pPatdefs (ibc_patdefs i)
-               pAccess reexp (ibc_access i)
-               pFlags (ibc_flags i)
-               pFnInfo (ibc_fninfo i)
-               pTotal (ibc_total i)
-               pTotCheckErr (ibc_totcheckfail i)
-               pCG (ibc_cg i)
-               pDocs (ibc_docstrings i)
-               pCoercions (ibc_coercions i)
-               pTrans (ibc_transforms i)
-               pErrRev (ibc_errRev i)
-               pLineApps (ibc_lineapps i)
-               pNameHints (ibc_namehints i)
-               pMetaInformation (ibc_metainformation i)
-               pErrorHandlers (ibc_errorhandlers i)
-               pFunctionErrorHandlers (ibc_function_errorhandlers i)
-               pMetavars (ibc_metavars i)
-               pPostulates (ibc_postulates i)
-               pParsedSpan (ibc_parsedSpan i)
+               pImportDirs $ force (ibc_importdirs i)
+               pImports $ force (ibc_imports i)
+               pImps $ force (ibc_implicits i)
+               pFixes $ force (ibc_fixes i)
+               pStatics $ force (ibc_statics i)
+               pClasses $ force (ibc_classes i)
+               pInstances $ force (ibc_instances i)
+               pDSLs $ force (ibc_dsls i)
+               pDatatypes $ force (ibc_datatypes i)
+               pOptimise $ force (ibc_optimise i)
+               pSyntax $ force (ibc_syntax i)
+               pKeywords $ force (ibc_keywords i)
+               pObjs $ force (ibc_objs i)
+               pLibs $ force (ibc_libs i)
+               pCGFlags $ force (ibc_cgflags i)
+               pDyLibs $ force (ibc_dynamic_libs i)
+               pHdrs $ force (ibc_hdrs i)
+               pDefs reexp (symbols i) $ force (ibc_defs i)
+               pPatdefs $ force (ibc_patdefs i)
+               pAccess reexp $ force (ibc_access i)
+               pFlags $ force (ibc_flags i)
+               pFnInfo $ force (ibc_fninfo i)
+               pTotal $ force (ibc_total i)
+               pTotCheckErr $ force (ibc_totcheckfail i)
+               pCG $ force (ibc_cg i)
+               pDocs $ force (ibc_docstrings i)
+               pCoercions $ force (ibc_coercions i)
+               pTrans $ force (ibc_transforms i)
+               pErrRev $ force (ibc_errRev i)
+               pLineApps $ force (ibc_lineapps i)
+               pNameHints $ force (ibc_namehints i)
+               pMetaInformation $ force (ibc_metainformation i)
+               pErrorHandlers $ force (ibc_errorhandlers i)
+               pFunctionErrorHandlers $ force (ibc_function_errorhandlers i)
+               pMetavars $ force (ibc_metavars i)
+               pPostulates $ force (ibc_postulates i)
+               pParsedSpan $ force (ibc_parsedSpan i)
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -462,13 +464,13 @@ pPatdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))] -> Idris ()
 pPatdefs ds 
    = mapM_ (\ (n, d) -> 
                 do i <- getIState
-                   putIState (i { idris_patdefs = addDef n d (idris_patdefs i) }))
+                   putIState (i { idris_patdefs = addDef n (force d) (idris_patdefs i) }))
            ds
 
 pDefs :: Bool -> [Name] -> [(Name, Def)] -> Idris ()
 pDefs reexp syms ds 
    = mapM_ (\ (n, d) ->
-               do let d' = updateDef d
+               do let d' = force d -- (updateDef d)
                   case d' of
                        TyDecl _ _ -> return () 
                        _ -> do iLOG $ "SOLVING " ++ show n

@@ -1,7 +1,10 @@
+{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+
 module Idris.Core.DeepSeq where
 
 import Idris.Core.TT
 import Idris.Core.CaseTree
+import Idris.Core.Evaluate
 
 import Control.DeepSeq
 
@@ -11,6 +14,7 @@ instance NFData Name where
         rnf (MN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf NErased = ()
         rnf (SN x1) = rnf x1 `seq` ()
+        rnf (SymRef x1) = rnf x1 `seq` ()
 
 instance NFData SpecialName where
         rnf (WhereN x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
@@ -22,11 +26,17 @@ instance NFData SpecialName where
         rnf (ElimN x1) = rnf x1 `seq` ()
         rnf (InstanceCtorN x1) = rnf x1 `seq` ()
 
+instance NFData Universe where
+        rnf NullType = ()
+        rnf UniqueType = ()
+        rnf AllTypes = ()
+
 instance NFData Raw where
         rnf (Var x1) = rnf x1 `seq` ()
         rnf (RBind x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (RApp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf RType = ()
+        rnf (RUType x1) = rnf x1 `seq` ()
         rnf (RForce x1) = rnf x1 `seq` ()
         rnf (RConstant x1) = x1 `seq` ()
 
@@ -45,9 +55,20 @@ instance NFData Err where
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (UnifyScope x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (ElaboratingArg x1 x2 x3 x4)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (CantInferType x1) = rnf x1 `seq` ()
+        rnf (CantMatch x1) = rnf x1 `seq` ()
+        rnf (ReflectionError x1 x2) = x1 `seq` rnf x2 `seq` ()
+        rnf (ReflectionFailed x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (CantSolveGoal x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (UniqueError x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (UniqueKindError x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (NotEquality x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (NonFunctionType x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (CantIntroduce x1) = rnf x1 `seq` ()
+        rnf (TooManyArguments x1) = rnf x1 `seq` ()
+        rnf (WithFnType x1) = rnf x1 `seq` ()
         rnf (NoSuchVariable x1) = rnf x1 `seq` ()
         rnf (NoTypeDecl x1) = rnf x1 `seq` ()
         rnf (NotInjective x1 x2 x3)
@@ -89,17 +110,98 @@ instance NFData NameType where
         rnf (DCon x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (TCon x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
+instance NFData NativeTy where
+        rnf IT8 = ()
+        rnf IT16 = ()
+        rnf IT32 = ()
+        rnf IT64 = ()
+
+instance NFData IntTy where
+        rnf (ITFixed x1) = rnf x1 `seq` ()
+        rnf ITNative = ()
+        rnf ITBig = ()
+        rnf ITChar = ()
+        rnf (ITVec x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+
+instance NFData ArithTy where
+        rnf (ATInt x1) = rnf x1 `seq` ()
+        rnf ATFloat = ()
+
+instance NFData Const where
+        rnf (I x1) = rnf x1 `seq` ()
+        rnf (BI x1) = rnf x1 `seq` ()
+        rnf (Fl x1) = rnf x1 `seq` ()
+        rnf (Ch x1) = rnf x1 `seq` ()
+        rnf (Str x1) = rnf x1 `seq` ()
+        rnf (B8 x1) = rnf x1 `seq` ()
+        rnf (B16 x1) = rnf x1 `seq` ()
+        rnf (B32 x1) = rnf x1 `seq` ()
+        rnf (B64 x1) = rnf x1 `seq` ()
+        rnf (B8V x1) = rnf x1 `seq` ()
+        rnf (B16V x1) = rnf x1 `seq` ()
+        rnf (B32V x1) = rnf x1 `seq` ()
+        rnf (B64V x1) = rnf x1 `seq` ()
+        rnf (AType x1) = rnf x1 `seq` ()
+        rnf StrType = ()
+        rnf PtrType = ()
+        rnf ManagedPtrType = ()
+        rnf BufferType = ()
+        rnf VoidType = ()
+        rnf Forgot = ()
+
 instance (NFData n) => NFData (TT n) where
         rnf (P x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (V x1) = rnf x1 `seq` ()
         rnf (Bind x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (App x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (Constant x1) = x1 `seq` ()
+        rnf (Constant x1) = rnf x1 `seq` ()
         rnf (Proj x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf Erased = ()
         rnf Impossible = ()
         rnf (TType x1) = rnf x1 `seq` ()
         rnf (UType _) = ()
+
+instance NFData Accessibility where
+        rnf Public = ()
+        rnf Frozen = ()
+        rnf Hidden = ()
+
+ 
+instance NFData Totality where
+        rnf (Total x1) = rnf x1 `seq` ()
+        rnf Productive = ()
+        rnf (Partial x1) = rnf x1 `seq` ()
+        rnf Unchecked = ()
+        
+instance NFData PReason where
+        rnf (Other x1) = rnf x1 `seq` ()
+        rnf Itself = ()
+        rnf NotCovering = ()
+        rnf NotPositive = ()
+        rnf (UseUndef x1) = rnf x1 `seq` ()
+        rnf ExternalIO = ()
+        rnf BelieveMe = ()
+        rnf (Mutual x1) = rnf x1 `seq` ()
+        rnf NotProductive = ()
+
+instance NFData MetaInformation where
+        rnf EmptyMI = ()
+        rnf (DataMI x1) = rnf x1 `seq` ()
+
+instance NFData Def where
+        rnf (Function x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (TyDecl x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (Operator x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (CaseOp x1 x2 x3 x4 x5 x6)
+          = rnf x1 `seq`
+              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
+
+instance NFData CaseInfo where
+        rnf (CaseInfo x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+ 
+instance NFData CaseDefs where
+        rnf (CaseDefs x1 x2 x3 x4)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
 
 instance (NFData t) => NFData (SC' t) where
         rnf (Case _ x1 x2) = rnf x1 `seq` rnf x2 `seq` ()

@@ -313,6 +313,9 @@ data Codegen = Via String
 --              | ViaLLVM
              | Bytecode
     deriving (Show, Eq)
+{-!
+deriving instance NFData Codegen
+!-}
 
 -- | REPL commands
 data Command = Quit
@@ -944,6 +947,7 @@ data FnInfo = FnInfo { fn_params :: [Int] }
     deriving Show
 {-!
 deriving instance Binary FnInfo
+deriving instance NFData FnInfo
 !-}
 
 data OptInfo = Optimise { inaccessible :: [(Int,Name)],  -- includes names for error reporting
