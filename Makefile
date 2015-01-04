@@ -3,6 +3,10 @@
 include config.mk
 -include custom.mk
 
+ifdef CI
+CABALFLAGS += -f CI
+endif
+
 install:
 	$(CABAL) install $(CABALFLAGS)
 
