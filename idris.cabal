@@ -422,6 +422,10 @@ Extra-source-files:
                        test/idrisdoc008/expected
                        test/idrisdoc008/*.idr
                        test/idrisdoc008/*.ipkg
+                       test/idrisdoc009/run
+                       test/idrisdoc009/expected
+                       test/idrisdoc009/*.idr
+
 
                        test/interactive001/run
                        test/interactive001/input
