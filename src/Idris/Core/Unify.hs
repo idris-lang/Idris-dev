@@ -73,14 +73,14 @@ match_unify ctxt env topx topy inj holes from =
                let topxn = renameBindersTm env (normalise ctxt env topx)
                    topyn = renameBindersTm env (normalise ctxt env topy) in
                      case runStateT (un [] topxn topyn)
-        	  	        (UI 0 []) of
+                                (UI 0 []) of
                        OK (v, UI _ fails) ->
                             do v' <- trimSolutions topx topy from env v
                                return (map (renameBinders env) v')
                        Error e ->
                         -- just normalise the term we're matching against
                          case runStateT (un [] topxn topy)
-        	  	          (UI 0 []) of
+                                  (UI 0 []) of
                            OK (v, UI _ fails) ->
                               do v' <- trimSolutions topx topy from env v
                                  return (map (renameBinders env) v')
@@ -286,12 +286,12 @@ unify ctxt env topx topy inj holes usersupp from =
                    topyn = renameBindersTm env (normalise ctxt env topy) in
 --                     trace ("Unifying " ++ show (topx, topy) ++ "\n\n==>\n" ++ show (topxn, topyn) ++ "\n\n" ++ show res ++ "\n\n") $
                      case runStateT (un False [] topxn topyn)
-        	  	        (UI 0 []) of
+                                (UI 0 []) of
                        OK (v, UI _ fails) ->
                             do v' <- trimSolutions topx topy from env v
                                return (map (renameBinders env) v', reverse fails)
 --         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
-        	       Error e -> tfail e
+                       Error e -> tfail e
   where
     headDiff (P (DCon _ _ _) x _) (P (DCon _ _ _) y _) = x /= y
     headDiff (P (TCon _ _) x _) (P (TCon _ _) y _) = x /= y
