@@ -191,66 +191,11 @@ ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
 ibc i (IBCDef n) f 
    = do f' <- case lookupDefExact n (tt_ctxt i) of
-                   Just v -> do -- (v', (f', _)) <- runStateT (updateDef v) (f, length (symbols f))
-                                return f { ibc_defs = (n,v) : ibc_defs f     }
+                   Just v -> return f { ibc_defs = (n,v) : ibc_defs f }
                    _ -> ifail "IBC write failed"
         case lookupCtxtExact n (idris_patdefs i) of
                    Just v -> return f' { ibc_patdefs = (n,v) : ibc_patdefs f }
                    _ -> return f' -- Not a pattern definition
-  where 
-    updateDef :: Def -> StateT (IBCFile, Int) Idris Def
-    updateDef (CaseOp c t args o s cd)
-        = do o' <- mapM updateOrig o
-             cd' <- updateCD cd
-             return (CaseOp c t args o' s cd')
-    updateDef t = return t
-
-    updateOrig (Left t) = do t' <- update t
-                             return (Left t')
-    updateOrig (Right (l,r)) = do l' <- update l
-                                  r' <- update r
-                                  return (Right (l', r'))
-
-    updateCD (CaseDefs (ts, t) (cs, c) (is, i) (rs, r))
-       = do c' <- updateSC c; r' <- updateSC r
-            return (CaseDefs (ts, t) (cs, c') (is, i) (rs, r'))
-
-    updateSC (Case up n alts) = do alts' <- mapM updateAlt alts
-                                   return (Case up n alts')
-    updateSC (ProjCase t alts) = do t' <- update t
-                                    alts' <- mapM updateAlt alts
-                                    return (ProjCase t' alts')
-    updateSC (STerm t) = do t' <- update t
-                            return (STerm t')
-    updateSC t = return t
-
-    updateAlt (ConCase n i a sc) = do sc' <- updateSC sc
-                                      return (ConCase n i a sc')
-    updateAlt (FnCase n a sc) = do sc' <- updateSC sc
-                                   return (FnCase n a sc')
-    updateAlt (ConstCase i sc) = do sc' <- updateSC sc
-                                    return (ConstCase i sc')
-    updateAlt (SucCase n sc) = do sc' <- updateSC sc
-                                  return (SucCase n sc')
-    updateAlt (DefaultCase sc) = do sc' <- updateSC sc
-                                    return (DefaultCase sc')
-
-    update (P t n@(MN _ _) ty) = return (P t n ty)
-    update (P t n@(UN _) ty) = return (P t n ty)
-    update (P t n ty) = do (f, len) <- ST.get
-                           (i, _) <- lift (addNameIdx n)
-                           when (i >= len) $
-                             ST.put (f { symbols = symbols f ++ [n] }, len+1)
-                           return (P t (SymRef i) ty)
-    update (App f a) = do f' <- update f; a' <- update a
-                          return (App f' a')
-    update (Bind n b sc) = do b' <- fmapMB update b
-                              sc' <- update sc
-                              return (Bind n b' sc')
-    update (Proj t i) = do t' <- update t
-                           return (Proj t' i)
-    update t = return t
-
 
 ibc i (IBCDoc n) f = case lookupCtxtExact n (idris_docstrings i) of
                         Just v -> return f { ibc_docstrings = (n,v) : ibc_docstrings f }
@@ -470,7 +415,7 @@ pPatdefs ds
 pDefs :: Bool -> [Name] -> [(Name, Def)] -> Idris ()
 pDefs reexp syms ds 
    = mapM_ (\ (n, d) ->
-               do let d' = force d -- (updateDef d)
+               do d' <- updateDef d
                   case d' of
                        TyDecl _ _ -> return () 
                        _ -> do iLOG $ "SOLVING " ++ show n
@@ -483,23 +428,55 @@ pDefs reexp syms ds
                                  else iLOG $ "Exporting " ++ show n) ds
   where
     updateDef (CaseOp c t args o s cd)
-      = CaseOp c t args (map updateOrig o) s (updateCD cd)
-    updateDef t = t
+      = do o' <- mapM updateOrig o
+           cd' <- updateCD cd
+           return $ CaseOp c t args o' s cd'
+    updateDef t = return t
 
-    updateOrig (Left t) = Left (update t)
-    updateOrig (Right (l, r)) = Right (update l, update r)
+    updateOrig (Left t) = liftM Left (update t)
+    updateOrig (Right (l, r)) = do l' <- update l
+                                   r' <- update r
+                                   return $ Right (l', r')
 
     updateCD (CaseDefs (ts, t) (cs, c) (is, i) (rs, r))
-        = CaseDefs (ts, fmap update t)
-                   (cs, fmap update c)
-                   (is, fmap update i)
-                   (rs, fmap update r)
+        = do t' <- updateSC t
+             c' <- updateSC c
+             i' <- updateSC i
+             r' <- updateSC r
+             return $ CaseDefs (ts, t') (cs, c') (is, i') (rs, r')
 
-    update (P t (SymRef i) ty) = P t (syms!!i) ty
-    update (App f a) = App (update f) (update a)
-    update (Bind n b sc) = Bind n (fmap update b) (update sc)
-    update (Proj t i) = Proj (update t) i
-    update t = t
+    updateSC (Case t n alts) = do alts' <- mapM updateAlt alts
+                                  return (Case t n alts')
+    updateSC (ProjCase t alts) = do alts' <- mapM updateAlt alts
+                                    return (ProjCase t alts')
+    updateSC (STerm t) = do t' <- update t
+                            return (STerm t')
+    updateSC c = return c
+
+    updateAlt (ConCase n i ns t) = do t' <- updateSC t
+                                      return (ConCase n i ns t')
+    updateAlt (FnCase n ns t) = do t' <- updateSC t
+                                   return (FnCase n ns t')
+    updateAlt (ConstCase c t) = do t' <- updateSC t
+                                   return (ConstCase c t')
+    updateAlt (SucCase n t) = do t' <- updateSC t
+                                 return (SucCase n t')
+    updateAlt (DefaultCase t) = do t' <- updateSC t
+                                   return (DefaultCase t')
+
+    update (P t n ty) = do n' <- getSymbol n
+                           return $ P t n' ty
+    update (App f a) = liftM2 App (update f) (update a)
+    update (Bind n b sc) = do b' <- updateB b
+                              sc' <- update sc
+                              return $ Bind n b' sc'
+      where
+        updateB (Let t v) = liftM2 Let (update t) (update v)
+        updateB b = do ty' <- update (binderTy b)
+                       return (b { binderTy = ty' })
+    update (Proj t i) = do t' <- update t
+                           return $ Proj t' i
+    update t = return t
 
 pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris ()
 pDocs ds = mapM_ (\ (n, a) -> addDocStr n (fst a) (snd a)) ds

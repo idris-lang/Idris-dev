@@ -390,6 +390,14 @@ addNameIdx' i n
             _ -> let i' = fst (idris_nameIdx i) + 1 in
                     (i { idris_nameIdx = (i', addDef n (i', n) idxs) }, (i', n))
 
+getSymbol :: Name -> Idris Name
+getSymbol n = do i <- getIState
+                 case M.lookup n (idris_symbols i) of
+                      Just n' -> return n'
+                      Nothing -> do let sym' = M.insert n n (idris_symbols i)
+                                    put (i { idris_symbols = sym' })
+                                    return n
+
 getHdrs :: Codegen -> Idris [String]
 getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)
 

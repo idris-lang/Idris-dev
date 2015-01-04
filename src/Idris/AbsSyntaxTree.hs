@@ -24,9 +24,8 @@ import Control.Monad.Trans.Except
 import Data.Function (on)
 import Data.List hiding (group)
 import Data.Char
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import qualified Data.Map as M
 import Data.Either
 import qualified Data.Set as S
 import Data.Word (Word)
@@ -215,7 +214,8 @@ data IState = IState {
     idris_whocalls :: Maybe (M.Map Name [Name]),
     idris_callswho :: Maybe (M.Map Name [Name]),
     idris_repl_defs :: [Name], -- ^ List of names that were defined in the repl, and can be re-/un-defined
-    elab_stack :: [Name] -- ^ Stack of names currently being elaborated
+    elab_stack :: [Name], -- ^ Stack of names currently being elaborated
+    idris_symbols :: M.Map Name Name -- ^ Symbol table (preserves sharing of names)
    }
 
 -- Required for parsers library, and therefore trifecta
@@ -296,7 +296,7 @@ idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty Nothing Nothing [] []
+                   AutomaticWidth S.empty Nothing Nothing [] [] M.empty
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
