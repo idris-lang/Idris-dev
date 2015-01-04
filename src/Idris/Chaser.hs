@@ -135,7 +135,7 @@ buildTree built fp = btree [] fp
         if exist then do
             file_in <- runIO $ readFile f
             file <- if lit then tclift $ unlit f file_in else return file_in
-            (_, modules, _) <- parseImports f file
+            (_, _, modules, _) <- parseImports f file
             -- The chaser should never report warnings from sub-modules
             clearParserWarnings
             ms <- mapM (btree done) [realName | (_, realName, alias, fc) <- modules]

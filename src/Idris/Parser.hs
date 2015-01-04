@@ -24,6 +24,7 @@ import Idris.DSL
 import Idris.Imports
 import Idris.Delaborate
 import Idris.Error
+import Idris.Elab.Value
 import Idris.ElabDecls
 import Idris.ElabTerm
 import Idris.Coverage
@@ -90,18 +91,21 @@ import System.IO
       ModuleHeader ::= 'module' Identifier_t ';'?;
 @
 -}
-moduleHeader :: IdrisParser [String]
-moduleHeader =     try (do noDocCommentHere "Modules cannot have documentation comments"
+moduleHeader :: IdrisParser (Maybe (Docstring ()), [String])
+moduleHeader =     try (do docs <- optional docComment
+                           noArgs docs
                            reserved "module"
                            i <- identifier
                            option ';' (lchar ';')
-                           return (moduleName i))
+                           return (fmap fst docs, moduleName i))
                <|> try (do lchar '%'; reserved "unqualified"
-                           return [])
-               <|> return (moduleName "Main")
+                           return (Nothing, []))
+               <|> return (Nothing, moduleName "Main")
   where moduleName x = case span (/='.') x of
                            (x, "")    -> [x]
                            (x, '.':y) -> x : moduleName y
+        noArgs (Just (_, args)) | not (null args) = fail "Modules do not take arguments"
+        noArgs _ = return ()
 
 {- | Parses an import statement
 
@@ -1133,24 +1137,24 @@ parseTactic :: IState -> String -> Result PTactic
 parseTactic st = runparser (fullTactic defaultSyntax) st "(input)"
 
 -- | Parse module header and imports
-parseImports :: FilePath -> String -> Idris ([String], [(Bool, String, Maybe String, FC)], Maybe Delta)
+parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [(Bool, String, Maybe String, FC)], Maybe Delta)
 parseImports fname input
     = do i <- getIState
          case parseString (runInnerParser (evalStateT imports i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
               Failure err    -> fail (show err)
               Success (x, i) -> do putIState i
                                    return x
-  where imports :: IdrisParser (([String], [(Bool, String, Maybe String, FC)], Maybe Delta), IState)
+  where imports :: IdrisParser ((Maybe (Docstring ()), [String], [(Bool, String, Maybe String, FC)], Maybe Delta), IState)
         imports = do whiteSpace
-                     mname <- moduleHeader
-                     ps    <- many import_
-                     mrk   <- mark
-                     isEof <- lookAheadMatches eof
+                     (mdoc, mname) <- moduleHeader
+                     ps            <- many import_
+                     mrk           <- mark
+                     isEof         <- lookAheadMatches eof
                      let mrk' = if isEof
                                    then Nothing
                                    else Just mrk
                      i     <- get
-                     return ((mname, ps, mrk'), i)
+                     return ((mdoc, mname, ps, mrk'), i)
 
 -- | There should be a better way of doing this...
 findFC :: Doc -> (FC, String)
@@ -1261,7 +1265,7 @@ loadSource lidr f toline
                   let def_total = default_total i
                   file_in <- runIO $ readFile f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
-                  (mname, imports_in, pos) <- parseImports f file
+                  (mdocs, mname, imports_in, pos) <- parseImports f file
                   ai <- getAutoImports
                   let imports = map (\n -> (True, n, Just n, emptyFC)) ai ++ imports_in
                   ids <- allImportDirs
@@ -1340,6 +1344,13 @@ loadSource lidr f toline
                   i <- getIState
                   addHides (hide_list i)
 
+                  -- Save module documentation if applicable
+                  i <- getIState
+                  case mdocs of
+                    Nothing   -> return ()
+                    Just docs -> addModDoc syntax mname docs
+
+
                   -- Finally, write an ibc if checking was successful
                   ok <- noErrors
                   when ok $
@@ -1363,6 +1374,17 @@ loadSource lidr f toline
                    PClass _ _ _ _ _ _ _ _ -> r
                    PInstance _ _ _ _ _ _ _ _ -> r
                    _ -> x
+
+    addModDoc :: SyntaxInfo -> [String] -> Docstring () -> Idris ()
+    addModDoc syn mname docs =
+      do ist <- getIState
+         docs' <- elabDocTerms recinfo (parsedDocs ist)
+         let modDocs' = addDef docName docs' (idris_moduledocs ist)
+         putIState ist { idris_moduledocs = modDocs' }
+         addIBC (IBCModDocs docName)
+      where
+        docName = NS modDocName (map T.pack (reverse mname))
+        parsedDocs ist = annotCode (tryFullExpr syn ist) docs
 
 {- | Adds names to hide list -}
 addHides :: [(Name, Maybe Accessibility)] -> Idris ()

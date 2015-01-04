@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 {-| Binary instances for the core datatypes -}
 module Idris.Core.Binary where
