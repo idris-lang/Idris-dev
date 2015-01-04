@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.DeepSeq(module Idris.DeepSeq, module Idris.Core.DeepSeq) where
 
