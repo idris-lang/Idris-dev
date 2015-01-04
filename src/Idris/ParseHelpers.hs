@@ -1,4 +1,7 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards, OverlappingInstances, StandaloneDeriving #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards, StandaloneDeriving #-}
+#if !(MIN_VERSION_base(4,8,0))
+{-# LANGUAGE OverlappingInstances #-}
+#endif
 module Idris.ParseHelpers where
 
 import Prelude hiding (pi)
@@ -47,7 +50,11 @@ newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
 
 deriving instance Parsing IdrisInnerParser
 
+#if MIN_VERSION_base(4,8,0)
+instance {-# OVERLAPPING #-} TokenParsing IdrisParser where
+#else
 instance TokenParsing IdrisParser where
+#endif
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
   token p = do s <- get
                (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC

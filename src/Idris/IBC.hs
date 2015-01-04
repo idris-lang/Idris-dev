@@ -35,7 +35,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 90
+ibcVersion = 92
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -65,6 +65,7 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_cg :: ![(Name, CGInfo)],
                          ibc_defs :: ![(Name, Def)],
                          ibc_docstrings :: ![(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))],
+                         ibc_moduledocs :: ![(Name, Docstring D.DocTerm)],
                          ibc_transforms :: ![(Name, (Term, Term))],
                          ibc_errRev :: ![(Term, Term)],
                          ibc_coercions :: ![Name],
@@ -84,7 +85,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
 
 loadIBC :: Bool -- ^ True = reexport, False = make everything private 
         -> FilePath -> Idris ()
@@ -225,6 +226,9 @@ ibc i (IBCMetavar n) f =
 ibc i (IBCPostulate n) f = return f { ibc_postulates = n : ibc_postulates f }
 ibc i (IBCTotCheckErr fc err) f = return f { ibc_totcheckfail = (fc, err) : ibc_totcheckfail f }
 ibc i (IBCParsedRegion fc) f = return f { ibc_parsedSpan = Just fc }
+ibc i (IBCModDocs n) f = case lookupCtxtExact n (idris_moduledocs i) of
+                           Just v -> return f { ibc_moduledocs = (n,v) : ibc_moduledocs f }
+                           _ -> ifail "IBC write failed"
 
 process :: Bool -- ^ Reexporting
            -> IBCFile -> FilePath -> Idris ()
@@ -269,6 +273,7 @@ process reexp i fn
                pTotCheckErr $ force (ibc_totcheckfail i)
                pCG $ force (ibc_cg i)
                pDocs $ force (ibc_docstrings i)
+               pMDocs $ force (ibc_moduledocs i)
                pCoercions $ force (ibc_coercions i)
                pTrans $ force (ibc_transforms i)
                pErrRev $ force (ibc_errRev i)
@@ -479,7 +484,12 @@ pDefs reexp syms ds
     update t = return t
 
 pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris ()
-pDocs ds = mapM_ (\ (n, a) -> addDocStr n (fst a) (snd a)) ds
+pDocs ds = mapM_ (\(n, a) -> addDocStr n (fst a) (snd a)) ds
+
+pMDocs :: [(Name, Docstring D.DocTerm)] -> Idris ()
+pMDocs ds = mapM_ addMDocStr ds
+  where addMDocStr (n, d) = do ist <- getIState
+                               putIState ist { idris_moduledocs = addDef n d (idris_moduledocs ist) }
 
 pAccess :: Bool -- ^ Reexporting?
            -> [(Name, Accessibility)] -> Idris ()
@@ -895,7 +905,7 @@ instance Binary MetaInformation where
                      return (DataMI x1)
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -937,6 +947,7 @@ instance Binary IBCFile where
                put x38
                put x39
                put x40
+               put x41
 
         get
           = do x1 <- get
@@ -980,7 +991,8 @@ instance Binary IBCFile where
                     x38 <- get
                     x39 <- get
                     x40 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40)
+                    x41 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where

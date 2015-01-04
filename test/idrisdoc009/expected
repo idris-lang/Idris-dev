@@ -1,0 +1,29 @@
+Type checking ./Test.idr
+Data type Test : Type
+    Docs for datatype Test.
+    
+Constructors:
+    MkTest : Test
+        
+        
+Module Test:
+    Docs for module Test.
+    
+    It is a great module. Prelude thingy:
+    
+        > "foo" ++ "bar"
+        "foobar"
+    
+    Imported thingy:
+    
+        > 0.0 :+ 0.2
+        0.0 :+ 0.2
+    
+    Type error:
+    
+        "foo" + 2
+    
+    From this module:
+    
+        > MkTest
+        MkTest

@@ -165,6 +165,9 @@ data IState = IState {
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
     idris_calledgraph :: Ctxt [Name],
     idris_docstrings :: Ctxt (Docstring DocTerm, [(Name, Docstring DocTerm)]),
+    idris_moduledocs :: Ctxt (Docstring DocTerm),
+    -- ^ module documentation is saved in a special MN so the context
+    -- mechanism can be used for disambiguation
     idris_tyinfodata :: Ctxt TIData,
     idris_fninfo :: Ctxt FnInfo,
     idris_transforms :: Ctxt [(Term, Term)],
@@ -285,11 +288,13 @@ data IBCWrite = IBCFix FixDecl
               | IBCPostulate Name
               | IBCTotCheckErr FC String
               | IBCParsedRegion FC
+              | IBCModDocs Name -- ^ The name is the special name used to track module docs
   deriving Show
 
 -- | The initial state for the compiler
 idrisInit :: IState
-idrisInit = IState initContext [] [] emptyContext emptyContext emptyContext
+idrisInit = IState initContext [] []
+                   emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
@@ -1196,6 +1201,12 @@ eqParamDoc = [(n "A", annotCode (const (Left $ Msg "")) . parseDocstring . T.pac
     where n a = sUN a
 
 eqOpts = []
+
+-- | The special name to be used in the module documentation context -
+-- not for use in the main definition context. The namespace around it
+-- will determine the module to which the docs adhere.
+modDocName :: Name
+modDocName = sMN 0 "ModuleDocs"
 
 -- Defined in builtins.idr
 sigmaTy   = sNS (sUN "Sigma") ["Builtins"]

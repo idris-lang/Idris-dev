@@ -31,6 +31,8 @@ data Docs = FunDoc FunDoc
                      [(Name, Maybe (Docstring DocTerm))] -- parameters and their docstrings
                      [PTerm] -- instances
                      [PTerm] -- superclasses
+          | ModDoc [String] -- Module name
+                   (Docstring DocTerm)
 
 showDoc ist d
   | nullDocstring d = empty
@@ -138,7 +140,19 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
                        then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
                        else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
+pprintDocs ist (ModDoc mod docs)
+   = nest 4 $ text "Module" <+> text (concat (intersperse "." mod)) <> colon <$>
+              renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) docs
+
+-- | Given a fully-qualified, disambiguated name, construct the
+-- documentation object for it
 getDocs :: Name -> Idris Docs
+getDocs n@(NS n' ns) | n' == modDocName
+   = do i <- getIState
+        case lookupCtxtExact n (idris_moduledocs i) of
+          Just doc -> return $ ModDoc (reverse (map T.unpack ns)) doc
+          Nothing  -> fail $ "Module docs for " ++ show (reverse (map T.unpack ns)) ++
+                             " do not exist! This shouldn't have happened and is a bug."
 getDocs n
    = do i <- getIState
         case lookupCtxt n (idris_classes i) of

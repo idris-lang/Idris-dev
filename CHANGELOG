@@ -15,9 +15,9 @@ New in 0.9.16:
   to search.
 * Vect, Fin and So moved out of prelude into base, in modules Data.Vect,
   Data.Fin and Data.So respectively.
-
 * Several long-standing issues resolved, particularly with pattern matching
   and coverage checking.
+* Modules can now have API documentation strings.
 
 New in 0.9.15:
 --------------

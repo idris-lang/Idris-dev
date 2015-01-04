@@ -887,12 +887,17 @@ process fn (Check t)
 
 process fn (DocStr (Left n))
    = do ist <- getIState
-        case lookupCtxtName n (idris_docstrings ist) of
+        let docs = lookupCtxtName n (idris_docstrings ist) ++
+                   map (\(n,d)-> (n, (d,[]))) (lookupCtxtName (modDocN n) (idris_moduledocs ist))
+        case docs of
           [] -> iPrintError $ "No documentation for " ++ show n
           ns -> do toShow <- mapM (showDoc ist) ns
                    iRenderResult (vsep toShow)
     where showDoc ist (n, d) = do doc <- getDocs n
                                   return $ pprintDocs ist doc
+          modDocN (NS (UN n) ns) = NS modDocName (n:ns)
+          modDocN (UN n)         = NS modDocName [n]
+          modDocN _              = sMN 1 "NotFoundForSure"
 
 process fn (DocStr (Right c))
    = do ist <- getIState

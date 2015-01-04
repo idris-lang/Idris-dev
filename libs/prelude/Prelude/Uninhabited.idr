@@ -1,3 +1,6 @@
+||| Utilities for working with uninhabited types, to record explicit
+||| locations for canonical proofs of emptiness. Typically, one should
+||| use the `absurd` function.
 module Prelude.Uninhabited
 
 import Builtins
