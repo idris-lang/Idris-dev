@@ -424,6 +424,7 @@ Extra-source-files:
                        test/idrisdoc008/*.ipkg
                        test/idrisdoc009/run
                        test/idrisdoc009/expected
+                       test/idrisdoc009/input
                        test/idrisdoc009/*.idr
 
 
