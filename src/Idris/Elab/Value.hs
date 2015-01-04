@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Elab.Value(elabVal, elabValBind, elabDocTerms) where
 
 import Idris.AbsSyntax
