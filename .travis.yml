@@ -20,7 +20,7 @@ before_script:
   - tar -xf Idris-dev/dist/idris*.tar.gz
   - cd idris*
 script:
-  - cabal configure -f FFI
+  - cabal configure -f FFI -f CI
   - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal register; fi
