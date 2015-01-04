@@ -20,7 +20,7 @@ data Prim = Prim { p_name  :: Name,
                    p_type  :: Type,
                    p_arity :: Int,
                    p_def   :: [Const] -> Maybe Const,
-		   p_lexp  :: (Int, PrimFn),
+                   p_lexp  :: (Int, PrimFn),
                    p_total :: Totality
                  }
 

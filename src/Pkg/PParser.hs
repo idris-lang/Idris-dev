@@ -1,4 +1,7 @@
+{-# LANGUAGE CPP #-}
+#if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}
+#endif
 
 module Pkg.PParser where
 
@@ -31,7 +34,11 @@ data PkgDesc = PkgDesc { pkgname :: String,
                        }
     deriving Show
 
+#if MIN_VERSION_base(4,8,0)
+instance {-# OVERLAPPING #-} TokenParsing PParser where
+#else
 instance TokenParsing PParser where
+#endif
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
 
