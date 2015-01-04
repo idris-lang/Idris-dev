@@ -37,6 +37,12 @@ To build with `libffi` by default, create a `custom.mk` file and add the followi
 
 The file custom.mk-alldeps is a suitable example.
 
+The continues integration builds on travis-ci.org are build using the ghc-flag -Werror. To enable this behaviour locally also, please compile using `make CI=true` or adding the following line into `custom.mk`:
+
+`CI = true`
+
+If you are only compiling for installing the most current version, you can ommit the CI flag, but please make sure you use it if you want to contribute.
+
 ## Code Generation
 
 Idris has support for external code generators. Supplied with the distribution
