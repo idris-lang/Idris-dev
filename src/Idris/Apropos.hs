@@ -1,12 +1,12 @@
-module Idris.Apropos where
+module Idris.Apropos (apropos, aproposModules) where
 
 import Idris.AbsSyntax
 import Idris.Core.Evaluate (ctxtAlist, Def(..))
 import Idris.Core.TT (Name(..), Type, TT(..), NameType(..), Binder(..), Const(..),
                       lookupCtxtExact, toAlist)
-import Idris.Docstrings (Docstring, containsText)
+import Idris.Docstrings (Docstring, DocTerm, containsText)
 
-import Data.List (nub)
+import Data.List (nub, nubBy, intersperse)
 import qualified Data.Text as T
 
 -- | Find definitions that are relevant to all space-delimited components of
@@ -22,10 +22,24 @@ apropos ist what = let defs = ctxtAlist (tt_ctxt ist)
                        docs = toAlist (idris_docstrings ist)
                    in nub (map fst (isAproposAll parts defs) ++
                            map fst (isAproposAll parts docs))
-  where isAproposAll [] xs = xs
+  where isAproposAll []          xs = xs
         isAproposAll (what:more) xs = filter (isApropos what)
                                              (isAproposAll more xs)
         parts = filter ((> 0) . T.length) . T.splitOn (T.pack " ") $ what
+
+-- | Find modules whose names or docstrings contain all the
+-- space-delimited components of some string.
+aproposModules :: IState -> T.Text -> [(String, Docstring DocTerm)]
+aproposModules ist what = let mods  = toAlist (idris_moduledocs ist)
+                              found = nubBy (\x y -> fst x == fst y)
+                                            (isAproposAll parts mods)
+                          in map unModName found
+  where isAproposAll []          xs = xs
+        isAproposAll (what:more) xs = filter (\(n,d) -> isApropos what n || isApropos what d)
+                                             (isAproposAll more xs)
+        parts = filter ((> 0) . T.length) . T.splitOn (T.pack " ") $ what
+        unModName (NS _ ns, d) = ((concat . intersperse "." . map T.unpack . reverse) ns, d)
+        unModName (n,       d) = ("<<MODULE>>", d)
 
 textIn :: T.Text -> T.Text -> Bool
 textIn a b = T.isInfixOf (T.toLower a) (T.toLower b)

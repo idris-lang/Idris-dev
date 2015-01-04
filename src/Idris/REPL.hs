@@ -5,7 +5,7 @@ module Idris.REPL where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
-import Idris.Apropos (apropos)
+import Idris.Apropos (apropos, aproposModules)
 import Idris.REPLParser
 import Idris.ElabDecls
 import Idris.ElabTerm
@@ -13,7 +13,7 @@ import Idris.Erasure
 import Idris.Error
 import Idris.ErrReverse
 import Idris.Delaborate
-import Idris.Docstrings (Docstring, overview, renderDocstring)
+import Idris.Docstrings (Docstring, overview, renderDocstring, renderDocTerm)
 import Idris.Help
 import Idris.IdrisDoc
 import Idris.Prover
@@ -1179,16 +1179,21 @@ process fn (Apropos pkgs a) =
        iputStrLn $ "Searching packages: " ++ showSep ", " pkgs
      mapM_ loadPkgIndex pkgs
      ist <- getIState
+     let mods = aproposModules ist (T.pack a)
      let names = apropos ist (T.pack a)
      let aproposInfo = [ (n,
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
                        | n <- sort names, isUN n ]
-     iRenderResult $ vsep (map (prettyDocumentedIst ist) aproposInfo)
+     iRenderResult $ vsep (map (\(m, d) -> text "Module" <+> text m <$>
+                                           ppD ist d <> line) mods) <$>
+                     vsep (map (prettyDocumentedIst ist) aproposInfo)
      putIState orig
   where isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
+        ppD ist = renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) []))
+
 
 process fn (WhoCalls n) =
   do calls <- whoCalls n
