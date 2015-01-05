@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFunctor, ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 -- | Wrapper around Markdown library
 module Idris.Docstrings (

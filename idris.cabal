@@ -613,6 +613,11 @@ Flag freestanding
   Default:      False
   manual:       True
 
+Flag CI
+  Description:  Built everything using "-Werror", meant for CI-builds only
+  Default:      False
+  manual:       True
+
 Library
   hs-source-dirs: src
   Exposed-modules:
@@ -791,6 +796,8 @@ Library
   if flag(freestanding)
      other-modules: Target_idris
      cpp-options:   -DFREESTANDING
+  if flag(CI)
+     ghc-options:   -Werror
 
 Executable idris
   Main-is:        Main.hs
