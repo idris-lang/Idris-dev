@@ -23,7 +23,8 @@ runArgParser = do opts <- execParser $ info parser
                   return $ preProcOpts opts []
                where
                  idrisHeader = PP.hsep [PP.text "Idris version", PP.text ver, PP.text ", (C) The Idris Community 2014"]
-                 idrisProgDesc = PP.vsep [PP.text "Idris is a general purpose pure functional programming language with dependent",
+                 idrisProgDesc = PP.vsep [PP.empty,
+                                          PP.text "Idris is a general purpose pure functional programming language with dependent",
                                           PP.text "types. Dependent types allow types to be predicated on values, meaning that",
                                           PP.text "some aspects of a program’s behaviour can be specified precisely in the type.",
                                           PP.text "It is compiled, with eager evaluation. Its features are influenced by Haskell",
@@ -43,8 +44,7 @@ runArgParser = do opts <- execParser $ info parser
                                             "+ Cumulative universes",
                                             "+ Simple foreign function interface (to C)",
                                             "+ Hugs style interactive environment"
-                                            ],
-                                          PP.empty]
+                                            ]]
                  idrisFooter = PP.vsep [PP.text "It is important to note that Idris is first and foremost a research tool",
                                         PP.text "and project. Thus the tooling provided and resulting programs created",
                                         PP.text "should not necessarily be seen as production ready nor for industrial use.",
@@ -75,12 +75,12 @@ parseFlags = many $
   <|> flag' IdeslaveSocket (long "ideslave-socket")
   <|> (Client <$> strOption (long "client"))
   <|> (OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
-  <|> flag' NoBasePkgs (long "nobasepkgs")
-  <|> flag' NoPrelude (long "noprelude")
-  <|> flag' NoBuiltins (long "nobuiltins")
+  <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")
+  <|> flag' NoPrelude (long "noprelude" <> help "Do not use the given prelude")
+  <|> flag' NoBuiltins (long "nobuiltins" <> help "Do not use the builtin functions")
   <|> flag' NoREPL (long "check" <> help "Typecheck only, don't start the REPL")
   <|> (Output <$> strOption (short 'o' <> long "output" <> metavar "FILE" <> help "Specify output file"))
---   <|> flag' TypeCase (long "typecase")
+  --   <|> flag' TypeCase (long "typecase")
   <|> flag' TypeInType (long "typeintype")
   <|> flag' DefaultTotal (long "total" <> help "Require functions to be total by default")
   <|> flag' DefaultPartial (long "partial")
@@ -96,12 +96,12 @@ parseFlags = many $
   <|> (IBCSubDir <$> strOption (long "ibcsubdir" <> metavar "FILE" <> help "Write IBC files into sub directory"))
   <|> (ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths"))
   <|> flag' WarnOnly (long "warn")
-  <|> (Pkg <$> strOption (short 'p' <> long "package"))
+  <|> (Pkg <$> strOption (short 'p' <> long "package" <> help "Add package as a dependency"))
   <|> (Port <$> strOption (long "port" <> metavar "PORT" <> help "REPL TCP port"))
   -- Package commands
   <|> (PkgBuild <$> strOption (long "build" <> metavar "IPKG" <> help "Build package"))
   <|> (PkgInstall <$> strOption (long "install" <> metavar "IPKG" <> help "Install package"))
-  <|> (PkgREPL <$> strOption (long "repl"))
+  <|> (PkgREPL <$> strOption (long "repl" <> metavar "IPKG" <> help "Launch REPL, only for executables"))
   <|> (PkgClean <$> strOption (long "clean" <> metavar "IPKG" <> help "Clean package"))
   <|> (PkgMkDoc <$> strOption (long "mkdoc" <> metavar "IPKG" <> help "Generate IdrisDoc for package"))
   <|> (PkgCheck <$> strOption (long "checkpkg" <> metavar "IPKG" <> help "Check package only"))
@@ -123,7 +123,7 @@ parseFlags = many $
   <|> flag' (OptLevel 1) (long "O1")
   <|> flag' (OptLevel 0) (long "O0")
   <|> flag' (AddOpt PETransform) (long "partial-eval")
-  <|> flag' (RemoveOpt PETransform) (long "no-partial-eval")
+  <|> flag' (RemoveOpt PETransform) (long "no-partial-eval" <> help "Switch off partial evaluation, mainly for debugging purposes")
   <|> (OptLevel <$> option auto (short 'O' <> long "level"))
   <|> (TargetTriple <$> strOption (long "target" <> metavar "TRIPLE" <> help "Select target triple (for llvm codegen)"))
   <|> (TargetCPU <$> strOption (long "cpu" <> metavar "CPU" <> help "Select target CPU e.g. corei7 or cortex-m3 (for LLVM codegen)"))
