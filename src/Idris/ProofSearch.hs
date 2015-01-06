@@ -85,7 +85,8 @@ proofSearch False fromProver ambigok deferonfail depth elab _ nroot [fn] ist
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (True, priority arg) -- try to get all of them by unification
 proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist 
-       = do ty <- goal
+       = do compute
+            ty <- goal
             argsok <- conArgsOK ty
             if ambigok || argsok then
                case lookupCtxt nroot (idris_tyinfodata ist) of
