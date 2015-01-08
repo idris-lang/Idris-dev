@@ -2,6 +2,7 @@ module Control.Monad.Writer
 
 import Builtins
 import Control.Monad.Identity
+import Control.Monad.Trans
 
 %access public
 
@@ -43,6 +44,10 @@ instance (Monoid w, Monad m) => MonadWriter w (WriterT w m) where
                             return ((a, w), w)
     pass (WR m)   = WR $ do ((a, f), w) <- m
                             return (a, f w)
+
+instance Monoid w => MonadTrans (WriterT w) where
+    lift x = WR $ do r <- x
+                     return (r, neutral)
 
 ||| Run an action in the Writer monad and transform the written output
 listens : MonadWriter w m => (w -> b) -> m a -> m (a, b)

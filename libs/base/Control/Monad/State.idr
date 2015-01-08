@@ -1,6 +1,7 @@
 module Control.Monad.State
 
 import Control.Monad.Identity
+import Control.Monad.Trans
 
 %access public
 
@@ -36,6 +37,10 @@ instance Monad m => Monad (StateT s m) where
 instance Monad m => MonadState s (StateT s m) where
     get   = ST (\x => return (x, x))
     put x = ST (\y => return ((), x))
+
+instance MonadTrans (StateT s) where
+    lift x = ST (\st => do r <- x
+                           return (r, st))
 
 ||| Apply a function to modify the context of this computation
 modify : MonadState s m => (s -> s) -> m ()
