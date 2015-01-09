@@ -152,7 +152,7 @@ getUnmatchable ctxt n | isDConName n ctxt && n /= inferCon
           Nothing -> []
           Just ty -> checkArgs [] [] ty
   where checkArgs :: [Name] -> [[Name]] -> Type -> [Bool]
-        checkArgs env ns (Bind n (Pi t _) sc) 
+        checkArgs env ns (Bind n (Pi _ t _) sc) 
             = let env' = case t of
                               TType _ -> n : env
                               _ -> env in
@@ -564,7 +564,7 @@ elab ist info emode opts fn tm
                                        ans <- claimArgTys env xs
                                        return ((aval, (True, (Var an))) : ans)
              fnTy [] ret  = forget ret
-             fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi xt RType) (fnTy xs ret)
+             fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi False xt RType) (fnTy xs ret)
 
              localVar env (PRef _ x)
                            = case lookup x env of
@@ -1516,9 +1516,9 @@ runTac autoSolve ist perhapsFC fn tac
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (sNS (sUN "List") ["List", "Prelude"])
               scriptTy = (RBind (sMN 0 "__pi_arg")
-                                (Pi (RApp listTy envTupleType) RType)
+                                (Pi False (RApp listTy envTupleType) RType)
                                     (RBind (sMN 1 "__pi_arg")
-                                           (Pi (Var $ reflm "TT") RType) tacticTy))
+                                           (Pi False (Var $ reflm "TT") RType) tacticTy))
     runT (ByReflection tm) -- run the reflection function 'tm' on the
                            -- goal, then apply the resulting reflected Tactic
         = do tgoal <- goal
@@ -1791,7 +1791,7 @@ reifyTTBinderApp :: (Term -> ElabD a) -> Name -> [Term] -> ElabD (Binder a)
 reifyTTBinderApp reif f [t]
                       | f == reflm "Lam" = liftM Lam (reif t)
 reifyTTBinderApp reif f [t, k]
-                      | f == reflm "Pi" = liftM2 Pi (reif t) (reif k)
+                      | f == reflm "Pi" = liftM2 (Pi False) (reif t) (reif k)
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Let" = liftM2 Let (reif x) (reif y)
 reifyTTBinderApp reif f [x, y]
@@ -1934,7 +1934,7 @@ reflectQuotePattern unq (Bind n b x)
             fill $ reflCall "Lam" [Var (reflm "TT"), Var t']
             solve
             focus t'; reflectQuotePattern unq t
-    reflectBinderQuotePattern unq (Pi t k)
+    reflectBinderQuotePattern unq (Pi _ t k)
        = do t' <- claimTT (sMN 0 "ty") ; movelast t'
             k' <- claimTT (sMN 0 "k"); movelast k';
             fill $ reflCall "Pi" [Var (reflm "TT"), Var t', Var k']
@@ -2084,7 +2084,7 @@ reflectBinder = reflectBinderQuote []
 reflectBinderQuote :: [Name] -> Binder Term -> Raw
 reflectBinderQuote unq (Lam t)
    = reflCall "Lam" [Var (reflm "TT"), reflectQuote unq t]
-reflectBinderQuote unq (Pi t k)
+reflectBinderQuote unq (Pi _ t k)
    = reflCall "Pi" [Var (reflm "TT"), reflectQuote unq t, reflectQuote unq k]
 reflectBinderQuote unq (Let x y)
    = reflCall "Let" [Var (reflm "TT"), reflectQuote unq x, reflectQuote unq y]

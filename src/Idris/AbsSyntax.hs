@@ -1124,10 +1124,10 @@ addStatics n tm ptm =
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
-    initStatics (Bind n (Pi ty _) sc) (PPi p n' t s)
+    initStatics (Bind n (Pi _ ty _) sc) (PPi p n' t s)
             | n /= n' = let (static, dynamic) = initStatics sc (PPi p n' t s) in
                             (static, (n, ty) : dynamic)
-    initStatics (Bind n (Pi ty _) sc) (PPi p n' _ s)
+    initStatics (Bind n (Pi _ ty _) sc) (PPi p n' _ s)
             = let (static, dynamic) = initStatics (instantiate (P Bound n ty) sc) s in
                   if pstatic p == Static then ((n, ty) : static, dynamic)
                     else if (not (searchArg p))
@@ -1143,16 +1143,16 @@ addStatics n tm ptm =
             getNamePos i ps (P _ n _ : as)
                  | i `elem` ps = n : getNamePos (i + 1) ps as
             getNamePos i ps (_ : as) = getNamePos (i + 1) ps as
-    getParamNames ist (Bind t (Pi (P _ n _) _) sc)
+    getParamNames ist (Bind t (Pi _ (P _ n _) _) sc)
        = n : getParamNames ist sc
     getParamNames ist _ = []
 
-    getNamesFrom i ps (Bind n (Pi _ _) sc)
+    getNamesFrom i ps (Bind n (Pi _ _ _) sc)
        | i `elem` ps = n : getNamesFrom (i + 1) ps sc
        | otherwise = getNamesFrom (i + 1) ps sc
     getNamesFrom i ps sc = []
 
-    freeArgNames (Bind n (Pi ty _) sc)
+    freeArgNames (Bind n (Pi _ ty _) sc)
           = nub $ freeNames ty ++ freeNames sc -- treat '->' as fn here
     freeArgNames tm = let (_, args) = unApply tm in
                           concatMap freeNames args
@@ -1164,7 +1164,7 @@ addStatics n tm ptm =
     searchArg (TacImp _ _ _) = True
     searchArg _ = False
 
-    staticList sts (Bind n (Pi _ _) sc) = (n `elem` sts) : staticList sts sc
+    staticList sts (Bind n (Pi _ _ _) sc) = (n `elem` sts) : staticList sts sc
     staticList _ _ = []
 
 -- Dealing with implicit arguments
@@ -1265,7 +1265,8 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
             = (n, (p, t)) : collectImps sc
         collectImps _ = []
 
-        getImps (Bind n (Pi t _) sc) imps
+        getImps (Bind n (Pi True _ _) sc) imps = getImps sc imps
+        getImps (Bind n (Pi _ t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
             argInfo n (Imp opt _ _) t'
@@ -1279,7 +1280,7 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
             argInfo n (TacImp opt _ scr) t'
                    = (InaccessibleArg `elem` opt,
                           PTacImplicit 10 opt n scr t')
-        getImps (Bind n (Pi t _) sc) imps = impBind n t : getImps sc imps
+        getImps (Bind n (Pi _ t _) sc) imps = impBind n t : getImps sc imps
            where impBind n t = (True, PImp 1 True [] n Placeholder)
         getImps sc tm = []
 
@@ -1711,7 +1712,7 @@ stripUnmatchable :: IState -> PTerm -> PTerm
 stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su :: PTerm -> PTerm
     su (PRef fc f)
-       | (Bind n (Pi t _) sc :_) <- lookupTy f (tt_ctxt i)
+       | (Bind n (Pi _ t _) sc :_) <- lookupTy f (tt_ctxt i)
           = Placeholder
     su (PApp fc f@(PRef _ fn) args)
        | isDConName fn ctxt 

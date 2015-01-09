@@ -104,11 +104,11 @@ buildType info syn fc opts n ty' = do
 
          return (cty, ckind, ty, inacc)
   where
-    patToImp (Bind n (PVar t) sc) = Bind n (Pi t (TType (UVar 0))) (patToImp sc)
+    patToImp (Bind n (PVar t) sc) = Bind n (Pi False t (TType (UVar 0))) (patToImp sc)
     patToImp (Bind n b sc) = Bind n b (patToImp sc)
     patToImp t = t
 
-    param_pos i ns (Bind n (Pi t _) sc) 
+    param_pos i ns (Bind n (Pi _ t _) sc) 
         | n `elem` ns = i : param_pos (i + 1) ns sc
         | otherwise = param_pos (i + 1) ns sc
     param_pos i ns t = []
@@ -196,7 +196,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     lst = txt "List"
     errrep = txt "ErrorReportPart"
 
-    tyIsHandler (Bind _ (Pi (P _ (NS (UN e) ns1) _) _)
+    tyIsHandler (Bind _ (Pi _ (P _ (NS (UN e) ns1) _) _)
                         (App (P _ (NS (UN m) ns2) _)
                              (App (P _ (NS (UN l) ns3) _)
                                   (P _ (NS (UN r) ns4) _))))

@@ -94,12 +94,12 @@ match_unify ctxt env topx topy inj holes from =
           StateT UInfo
           TC [(Name, TT Name)]
 
-    un names x tm@(App (P _ f (Bind fn (Pi t _) sc)) a)
+    un names x tm@(App (P _ f (Bind fn (Pi _ t _) sc)) a)
         | (P (DCon _ _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName (sMN 0 "mv") (map fst env) in
                  checkCycle names (f, Bind n' (Lam t) x)
-    un names tm@(App (P _ f (Bind fn (Pi t _) sc)) a) x
+    un names tm@(App (P _ f (Bind fn (Pi _ t _) sc)) a) x
         | (P (DCon _ _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName fn (map fst env) in
@@ -143,7 +143,7 @@ match_unify ctxt env topx topy inj holes from =
                                            h2 <- un bnames vx vy
                                            combine bnames h1 h2
     uB bnames (Lam tx) (Lam ty) = un bnames tx ty
-    uB bnames (Pi tx _) (Pi ty _) = un bnames tx ty
+    uB bnames (Pi _ tx _) (Pi _ ty _) = un bnames tx ty
     uB bnames x y = do UI s f <- get
                        let r = recoverable (normalise ctxt env (binderTy x))
                                            (normalise ctxt env (binderTy y))
@@ -431,18 +431,18 @@ unify ctxt env topx topy inj holes usersupp from =
     -- f D unifies with t -> D. This is dubious, but it helps with type
     -- class resolution for type classes over functions.
 
-    un' fn bnames (App f x) (Bind n (Pi t k) y)
+    un' fn bnames (App f x) (Bind n (Pi i t k) y)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' False bnames x y
              uf <- un' False bnames f (Bind (sMN 0 "uv") (Lam (TType (UVar 0)))
-                                      (Bind n (Pi t k) (V 1)))
+                                      (Bind n (Pi i t k) (V 1)))
              combine bnames ux uf
 
-    un' fn bnames (Bind n (Pi t k) y) (App f x)
+    un' fn bnames (Bind n (Pi i t k) y) (App f x)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' False bnames y x
              uf <- un' False bnames (Bind (sMN 0 "uv") (Lam (TType (UVar 0)))
-                                    (Bind n (Pi t k) (V 1))) f
+                                    (Bind n (Pi i t k) (V 1))) f
              combine bnames ux uf
 
     un' fn bnames (Bind x bx sx) (Bind y by sy)
@@ -451,7 +451,7 @@ unify ctxt env topx topy inj holes usersupp from =
                 h2 <- un' False (((x,y),binderTy bx):bnames) sx sy
                 combine bnames h1 h2
       where sameBinder (Lam _) (Lam _) = True
-            sameBinder (Pi _ _) (Pi _ _) = True
+            sameBinder (Pi _ _ _) (Pi _ _ _) = True
             sameBinder _ _ = False
     un' fn bnames x y
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
@@ -583,7 +583,7 @@ unify ctxt env topx topy inj holes usersupp from =
              sc 1
              combine bnames h1 h2
     uB bnames (Lam tx) (Lam ty) = do sc 1; un' False bnames tx ty
-    uB bnames (Pi tx _) (Pi ty _) = do sc 1; un' False bnames tx ty
+    uB bnames (Pi _ tx _) (Pi _ ty _) = do sc 1; un' False bnames tx ty
     uB bnames (Hole tx) (Hole ty) = un' False bnames tx ty
     uB bnames (PVar tx) (PVar ty) = un' False bnames tx ty
     uB bnames x y = do UI s f <- get
@@ -686,10 +686,10 @@ recoverable (App f a) (App f' a')
     | f == f' = recoverable a a'
 recoverable (App f a) (App f' a')
     = recoverable f f' -- && recoverable a a'
-recoverable f (Bind _ (Pi _ _) sc)
+recoverable f (Bind _ (Pi _ _ _) sc)
     | (P (DCon _ _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
-recoverable (Bind _ (Pi _ _) sc) f
+recoverable (Bind _ (Pi _ _ _) sc) f
     | (P (DCon _ _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
 recoverable (Bind _ (Lam _) sc) f = recoverable sc f

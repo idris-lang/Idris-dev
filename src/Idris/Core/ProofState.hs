@@ -412,7 +412,7 @@ defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                       (mkApp (P Ref n ty) (map getP (reverse env'))))
   where
     mkTy []           t = t
-    mkTy ((n,b) : bs) t = Bind n (Pi (binderTy b) (TType (UVar 0))) (mkTy bs t)
+    mkTy ((n,b) : bs) t = Bind n (Pi False (binderTy b) (TType (UVar 0))) (mkTy bs t)
 
     getP (n, b) = P Bound n (binderTy b)
 
@@ -540,17 +540,17 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                   Just name -> name
                   Nothing -> x
        let t' = case t of
-                    x@(Bind y (Pi s _) _) -> x
+                    x@(Bind y (Pi _ s _) _) -> x
                     _ -> hnf ctxt env t
        (tyv, tyt) <- lift $ check ctxt env ty
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
-           Bind y (Pi s _) t -> let t' = subst y (P Bound n s) t in
-                                    do ns <- unify' ctxt env s tyv
-                                       ps <- get
-                                       let (uh, uns) = unified ps
---                                        put (ps { unified = (uh, uns ++ ns) })
-                                       return $ Bind n (Lam tyv) (Bind x (Hole t') (P Bound x t'))
+           Bind y (Pi _ s _) t -> let t' = subst y (P Bound n s) t in
+                                      do ns <- unify' ctxt env s tyv
+                                         ps <- get
+                                         let (uh, uns) = unified ps
+--                                          put (ps { unified = (uh, uns ++ ns) })
+                                         return $ Bind n (Lam tyv) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
 introTy ty n ctxt env _ = fail "Can't introduce here."
 
@@ -560,10 +560,10 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                   Just name -> name
                   Nothing -> x
        let t' = case t of
-                    x@(Bind y (Pi s _) _) -> x
+                    x@(Bind y (Pi _ s _) _) -> x
                     _ -> hnf ctxt env t
        case t' of
-           Bind y (Pi s _) t -> -- trace ("in type " ++ show t') $
+           Bind y (Pi _ s _) t -> -- trace ("in type " ++ show t') $
                let t' = subst y (P Bound n s) t in
                    return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
@@ -574,7 +574,7 @@ forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv, tyt) <- lift $ check ctxt env ty
        unify' ctxt env tyt (TType (UVar 0))
        unify' ctxt env t (TType (UVar 0))
-       return $ Bind n (Pi tyv (TType (UVar 0))) (Bind x (Hole t) (P Bound x t))
+       return $ Bind n (Pi False tyv (TType (UVar 0))) (Bind x (Hole t) (P Bound x t))
 forall n ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
