@@ -300,7 +300,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         casedVar  = fromMaybe (error $ "nonpatvar in case: " ++ show n) (M.lookup n vs)
 
     getDepsAlt :: Name -> [Name] -> Vars -> VarInfo -> CaseAlt -> Deps
-    getDepsAlt fn es vs var (FnCase n ns sc) = error "an FnCase encountered"  -- TODO: what's this?
+    getDepsAlt fn es vs var (FnCase n ns sc) = M.empty -- can't use FnCase at runtime
     getDepsAlt fn es vs var (ConstCase c sc) = getDepsSC fn es vs sc
     getDepsAlt fn es vs var (DefaultCase sc) = getDepsSC fn es vs sc
     getDepsAlt fn es vs var (SucCase   n sc)
