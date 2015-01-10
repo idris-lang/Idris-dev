@@ -5,7 +5,7 @@
 module Idris.IdrisDoc (generateDocs) where
 
 import Idris.Core.TT (Name (..), sUN, SpecialName (..), OutputAnnotation (..),
-                      TextFormatting (..), txt, str, nsroot, constIsType)
+                      TextFormatting (..), txt, str, nsroot, constIsType, toAlist)
 import Idris.Core.Evaluate (ctxtAlist, Def (..), lookupDefAcc,
                             Accessibility (..), isDConName, isFnName,
                             isTConName)
@@ -17,6 +17,7 @@ import qualified Idris.Docstrings as Docstrings
 
 import IRTS.System (getDataFileName)
 
+import Control.Applicative ((<|>))
 import Control.Monad (forM_)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
@@ -29,6 +30,7 @@ import qualified Data.Text.Encoding as E
 import qualified Data.List as L
 import qualified Data.List.Split as LS
 import qualified Data.Map as M hiding ((!))
+import Data.Monoid (mempty)
 import qualified Data.Ord (compare)
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -81,16 +83,21 @@ generateDocs ist nss' out =
 type Failable = Either String
 
 -- | Internal representation of a fully qualified namespace name
-type NsName   = [T.Text]
+type NsName = [T.Text]
 
 -- | All information to be documented about a single namespace member
-type NsItem   = (Name, Maybe Docs, Accessibility)
+type NsItem = (Name, Maybe Docs, Accessibility)
+
+-- | Docstrings containing fully elaborated term annotations
+type FullDocstring = Docstrings.Docstring Docstrings.DocTerm
 
 -- | All information to be documented about a namespace
-type NsInfo   = [NsItem]
+data NsInfo = NsInfo { nsDocstring :: Maybe FullDocstring,
+                       nsContents :: [NsItem]
+                     }
 
 -- | A map from namespace names to information about them
-type NsDict   = M.Map NsName NsInfo
+type NsDict = M.Map NsName NsInfo
 
 -- --------------------------------------------------------------- [ Utility ]
 
@@ -142,12 +149,15 @@ fetchInfo :: IState    -- ^ IState to fetch info from
 fetchInfo ist nss =
   do let originNss  = S.fromList nss
      info          <- nsDict ist
-     let info'      = M.map (filter filterInclude) info
-         info''     = M.map removeOrphans info'
-         info'''    = M.filter (not . null) info''
-         reachedNss = traceNss info''' originNss S.empty
-     return $ M.filterWithKey (\k _ -> S.member k reachedNss) info'''
-
+     let accessible = M.map (filterContents filterInclude) info
+         nonOrphan  = M.map (updateContents removeOrphans) accessible
+         nonEmpty   = M.filter (not . null . nsContents) nonOrphan
+         reachedNss = traceNss nonEmpty originNss S.empty
+     return $ M.filterWithKey (\k _ -> S.member k reachedNss) nonEmpty
+  where
+    -- TODO: lensify
+    filterContents p (NsInfo md ns) = NsInfo md (filter p ns)
+    updateContents f x = x { nsContents = f (nsContents x) }
 
 -- | Removes loose class methods and data constructors,
 --   leaving them documented only under their parent.
@@ -187,7 +197,7 @@ traceNss :: NsDict       -- ^ Mappings of namespaces and their contents
          -> S.Set NsName -- ^ Set of namespaces which has been traced
          -> S.Set NsName -- ^ Set of namespaces to trace and all traced one
 traceNss nsd sT sD =
-  let nsTracer ns | Just nsis <- M.lookup ns nsd = map referredNss nsis
+  let nsTracer ns | Just nsis <- M.lookup ns nsd = map referredNss (nsContents nsis)
       nsTracer _                                 = [S.empty] -- Ignore
       reached     = S.unions $ concatMap nsTracer (S.toList sT)
       processed   = S.union sT sD
@@ -217,14 +227,19 @@ referredNss (n, Just d, _) =
 -- | Returns an NsDict of containing all known namespaces and their contents
 nsDict :: IState
        -> IO NsDict
-nsDict ist =
-  let nameDefList    = ctxtAlist $ tt_ctxt ist
-      adder m (n, _) = do map    <- m
-                          doc    <- loadDocs ist n
-                          let acc = getAccess ist n
-                              c   = [(n, doc, acc)]
-                          return $ M.insertWith (++) (getNs n) c map
-  in  foldl adder (return M.empty) nameDefList
+nsDict ist = flip (foldl addModDoc) modDocs $ foldl adder (return M.empty) nameDefList
+  where nameDefList    = ctxtAlist $ tt_ctxt ist
+        adder m (n, _) = do map    <- m
+                            doc    <- loadDocs ist n
+                            let access = getAccess ist n
+                                nInfo  = NsInfo Nothing [(n, doc, access)]
+                            return $ M.insertWith addNameInfo (getNs n) nInfo map
+        addNameInfo (NsInfo m ns) (NsInfo m' ns') = NsInfo (m <|> m') (ns ++ ns')
+        modDocs = map (\(mn, d) -> (mn, NsInfo (Just d) [])) $ toAlist (idris_moduledocs ist)
+        addModDoc :: IO NsDict -> (Name, NsInfo) -> IO NsDict
+        addModDoc dict (mn, d) = fmap (M.insertWith addNameInfo (getNs mn) d) dict
+
+
 
 
 -- | Gets the Accessibility for a Name
@@ -427,11 +442,14 @@ createNsDoc ist ns content out =
          haveDocs (_, Just d, _) = [d]
          haveDocs _              = []
                                  -- We cannot do anything without a Doc
-         content'                = concatMap haveDocs content
+         content'                = concatMap haveDocs (nsContents content)
      createDirectoryIfMissing True dir
      (path, h) <- openTempFile dir file
      BS2.hPut h $ renderHtml $ wrapper (Just ns) $ do
        H.h1 $ toHtml (nsName2Str ns)
+       case nsDocstring content of
+         Nothing -> mempty
+         Just docstring -> Docstrings.renderHtml docstring
        H.dl ! class_ "decls" $ forM_ content' (createOtherDoc ist)
      hClose h
      renameFile path tpath
@@ -590,6 +608,8 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
           H.dt $ toHtml $ show name
           H.dd $ Docstrings.renderHtml docstring
 
+createOtherDoc ist (ModDoc _  docstring) = do
+  Docstrings.renderHtml docstring
 
 -- | Generates everything but the actual content of the page
 wrapper :: Maybe NsName -- ^ Namespace name, unless it is the index
