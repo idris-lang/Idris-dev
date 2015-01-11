@@ -882,11 +882,7 @@ pi syn =
                  <|> (do xt <- try (lchar '{' *> typeDeclList syn <* lchar '}')
                          symbol "->"
                          sc <- expr syn
-                         if implicitAllowed syn
-                           then return (bindList (PPi (Imp opts st False False)) xt sc)
-                           -- TODO: TIDY BEFORE COMMITTING!
-                           else return (bindList (PPi (Imp opts st False True)) xt sc)))
-                                -- fail "no implicit arguments allowed here"))
+                         return (bindList (PPi (Imp opts st False (not (implicitAllowed syn)))) xt sc)))
                  <|> (do x <- opExpr syn
                          (do symbol "->"
                              sc <- expr syn

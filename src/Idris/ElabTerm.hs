@@ -1065,7 +1065,7 @@ elab ist info emode opts fn tm
            addLam ty' t
       where
         addLam (Bind n (Pi True _ _) sc) t
-               = do impn <- unique_hole (sUN "imp")
+               = do impn <- unique_hole (sMN 0 "imp")
                     t' <- addLam sc t
                     return (PLam emptyFC impn Placeholder t')
         addLam _ t = return t
