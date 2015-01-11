@@ -33,10 +33,16 @@ collectAs x = return x
 -- | Replace _-patterns under @-patterns with fresh names that can be
 -- used on the RHS
 replaceUnderscore :: PTerm -> PTerm
-replaceUnderscore tm = evalState (transformM replaceUnderscore' tm) 0
+replaceUnderscore tm = evalState (transformM (underAs replaceUnderscore') tm) 0
   where
+    underAs :: (PTerm -> State Int PTerm) -> PTerm -> State Int PTerm
+    underAs f (PAs fc n tm) = PAs fc n <$> transformM f tm
+    underAs f x = return x
+
     fresh :: State Int Name
-    fresh = flip sMN "underscorePatVar" <$> get
+    fresh = modify (+1) >> flip sMN "underscorePatVar" <$> get
+
+
     replaceUnderscore' :: PTerm -> State Int PTerm
     replaceUnderscore' Placeholder = PRef emptyFC <$> fresh
     replaceUnderscore' tm          = return tm
