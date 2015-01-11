@@ -488,7 +488,9 @@ deriving instance NFData Static
 -- Mark bindings with their explicitness, and laziness
 data Plicity = Imp { pargopts :: [ArgOpt],
                      pstatic :: Static,
-                     pparam :: Bool }
+                     pparam :: Bool,
+                     pscoped :: Bool -- forall bound
+                   }
              | Exp { pargopts :: [ArgOpt],
                      pstatic :: Static,
                      pparam :: Bool }   -- this is a param (rather than index)
@@ -504,7 +506,12 @@ deriving instance Binary Plicity
 deriving instance NFData Plicity
 !-}
 
-impl = Imp [] Dynamic False
+is_scoped :: Plicity -> Bool
+is_scoped (Imp _ _ _ s) = s
+is_scoped _ = False
+
+impl = Imp [] Dynamic False False
+forall_imp = Imp [] Dynamic False True
 expl = Exp [] Dynamic False
 expl_param = Exp [] Dynamic True
 constraint = Constraint [] Static
@@ -1326,7 +1333,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
           case s of
             Static -> text "[static]" <> space
             _      -> empty
-    prettySe p bnd (PPi (Imp l s _) n ty sc)
+    prettySe p bnd (PPi (Imp l s _ fa) n ty sc)
       | ppopt_impl ppo =
           bracket p startPrec $
           lbrace <> bindingOf n True <+> colon <+> prettySe startPrec bnd ty <> rbrace <+>

@@ -244,7 +244,8 @@ elab ist info emode opts fn tm
                               then solveAuto ist fn False a
                               else return ()) as
      
-        ct <- insertCoerce ina t
+        itm <- if not pattern then insertImpLam t else return t
+        ct <- insertCoerce ina itm
         t' <- insertLazy ct
         g <- goal
         tm <- get_term
@@ -468,17 +469,17 @@ elab ist info emode opts fn tm
                elabE (ec { e_inarg = True, e_intype = True }) (Just fc) ty
                elabE (ec { e_inarg = True }) (Just fc) sc
                solve
-    elab' ina fc (PPi _ n Placeholder sc)
-          = do attack; arg n (sMN 0 "ty") 
+    elab' ina fc (PPi p n Placeholder sc)
+          = do attack; arg n (is_scoped p) (sMN 0 "ty") 
                elabE (ina { e_inarg = True, e_intype = True }) fc sc
                solve
-    elab' ina fc (PPi _ n ty sc)
+    elab' ina fc (PPi p n ty sc)
           = do attack; tyn <- getNameFrom (sMN 0 "ty")
                claim tyn RType
                n' <- case n of
                         MN _ _ -> unique_hole n
                         _ -> return n
-               forall n' (Var tyn)
+               forall n' (is_scoped p) (Var tyn)
                focus tyn
                let ec' = ina { e_inarg = True, e_intype = True }
                elabE ec' fc ty
@@ -594,13 +595,15 @@ elab ist info emode opts fn tm
 --        | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty && not qq
 --           = lift $ tfail (Msg "Typecase is not allowed")
     -- if f is local, just do a simple_app
-    elab' ina _ tm@(PApp fc (PRef _ f) args)
+    elab' ina _ tm@(PApp fc (PRef _ f) args_in)
       | pattern && not reflection && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
       | otherwise
        = do env <- get_env
             ty <- goal
+            fty <- get_type (Var f)
             ctxt <- get_context
+            let args = insertScopedImps (normalise ctxt env fty) args_in
             let unmatchableArgs = if pattern 
                                      then getUnmatchable (tt_ctxt ist) f
                                      else []
@@ -1048,6 +1051,24 @@ elab ist info emode opts fn tm
     -- they can go in the branches separately.
     notImplicitable (PCase _ _ _) = True
     notImplicitable _ = False
+
+    insertScopedImps (Bind n (Pi True _ _) sc) xs
+        = pimp n Placeholder True : insertScopedImps sc xs
+    insertScopedImps (Bind n (Pi _ _ _) sc) (x : xs)
+        = x : insertScopedImps sc xs
+    insertScopedImps _ xs = xs
+
+    insertImpLam t =
+        do ty <- goal
+           env <- get_env
+           let ty' = normalise (tt_ctxt ist) env ty
+           addLam ty' t
+      where
+        addLam (Bind n (Pi True _ _) sc) t
+               = do impn <- unique_hole (sUN "imp")
+                    t' <- addLam sc t
+                    return (PLam emptyFC impn Placeholder t')
+        addLam _ t = return t
 
     insertCoerce ina t@(PCase _ _ _) = return t
     insertCoerce ina t | notImplicitable t = return t

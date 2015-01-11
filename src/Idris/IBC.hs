@@ -1111,11 +1111,12 @@ instance Binary Static where
 instance Binary Plicity where
         put x
           = case x of
-                Imp x1 x2 x3 ->
+                Imp x1 x2 x3 x4 ->
                              do putWord8 0
                                 put x1
                                 put x2
                                 put x3
+                                put x4
                 Exp x1 x2 x3 ->
                              do putWord8 1
                                 put x1
@@ -1136,7 +1137,8 @@ instance Binary Plicity where
                    0 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (Imp x1 x2 x3)
+                           x4 <- get
+                           return (Imp x1 x2 x3 x4)
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get

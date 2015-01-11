@@ -130,13 +130,13 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
 --                                       ++ "\n" ++ pshow i v
                                   putIState i)
 
-    getBoundImpls (PPi (Imp _ _ _) n ty sc) = (n, ty) : getBoundImpls sc
+    getBoundImpls (PPi (Imp _ _ _ _) n ty sc) = (n, ty) : getBoundImpls sc
     getBoundImpls _ = []
 
-    getImplB k (PPi (Imp l s _) n Placeholder sc)
+    getImplB k (PPi (Imp l s _ _) n Placeholder sc)
         = getImplB k sc
-    getImplB k (PPi (Imp l s p) n ty sc)
-        = getImplB (\x -> k (PPi (Imp l s p) n ty x)) sc
+    getImplB k (PPi (Imp l s p fa) n ty sc)
+        = getImplB (\x -> k (PPi (Imp l s p fa) n ty x)) sc
     getImplB k (PPi _ n ty sc)
         = getImplB k sc
     getImplB k _ = k

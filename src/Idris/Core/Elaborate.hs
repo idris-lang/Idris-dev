@@ -369,8 +369,8 @@ intro n = processTactic' (Intro n)
 introTy :: Raw -> Maybe Name -> Elab' aux ()
 introTy ty n = processTactic' (IntroTy ty n)
 
-forall :: Name -> Raw -> Elab' aux ()
-forall n t = processTactic' (Forall n t)
+forall :: Name -> Bool -> Raw -> Elab' aux ()
+forall n i t = processTactic' (Forall n i t)
 
 letbind :: Name -> Raw -> Raw -> Elab' aux ()
 letbind n t v = processTactic' (LetBind n t v)
@@ -493,7 +493,9 @@ prepare_apply fn imps =
        env <- get_env
        -- let claims = getArgs ty imps
        -- claims <- mkClaims (normalise ctxt env ty) imps []
-       claims <- mkClaims (finalise ty) imps [] (map fst env)
+       claims <- mkClaims (finalise ty) 
+                          (normalise ctxt env (finalise ty))
+                          imps [] (map fst env)
        ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not imps)
@@ -502,11 +504,12 @@ prepare_apply fn imps =
        return $! claims
   where
     mkClaims :: Type   -- ^ The type of the operation being applied
+             -> Type   -- ^ Normalised version if we need it
              -> [Bool] -- ^ Whether the arguments are implicit
              -> [(Name, Name)] -- ^ Accumulator for produced claims
              -> [Name] -- ^ Hypotheses
              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
-    mkClaims (Bind n' (Pi _ t_in _) sc) (i : is) claims hs = 
+    mkClaims (Bind n' (Pi _ t_in _) sc) (Bind _ _ scn) (i : is) claims hs = 
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
@@ -514,9 +517,11 @@ prepare_apply fn imps =
 --            trace ("CLAIMING " ++ show (n, t) ++ " with " ++ show (fn, hs)) $
            claim n (forget t)
            when i (movelast n)
-           mkClaims sc' is ((n', n) : claims) hs
-    mkClaims t [] claims _ = return $! (reverse claims)
-    mkClaims _ _ _ _
+           mkClaims sc' scn is ((n', n) : claims) hs
+    -- if we run out of arguments, we need the normalised version...
+    mkClaims t tn@(Bind _ _ sc) (i : is) cs hs = mkClaims tn tn (i : is) cs hs
+    mkClaims t _ [] claims _ = return $! (reverse claims)
+    mkClaims _ _ _ _ _
             | Var n <- fn
                    = do ctxt <- get_context
                         case lookupTy n ctxt of
@@ -693,11 +698,11 @@ simple_app fun arg appstr =
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.
-arg :: Name -> Name -> Elab' aux ()
-arg n tyhole = do ty <- unique_hole tyhole
-                  claim ty RType
-                  movelast ty
-                  forall n (Var ty)
+arg :: Name -> Bool -> Name -> Elab' aux ()
+arg n i tyhole = do ty <- unique_hole tyhole
+                    claim ty RType
+                    movelast ty
+                    forall n i (Var ty)
 
 -- try a tactic, if it adds any unification problem, return an error
 no_errors :: Elab' aux () -> Maybe Err -> Elab' aux ()

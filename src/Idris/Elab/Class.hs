@@ -133,7 +133,8 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
            = do t' <- implicit' info syn allmeths n t
                 logLvl 5 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map fst ps) Exp t')),
-                         (n, (doc, o, (toExp (map fst ps) Imp t'))),
+                         (n, (doc, o, (toExp (map fst ps) 
+                                         (\ l s p -> Imp l s p False) t'))),
                          (n, (syn, o, t) ) )
     tdecl _ _ = ifail "Not allowed in a class declaration"
 
@@ -200,7 +201,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
              return [PTy doc [] syn fc o m ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
 
-    getMArgs (PPi (Imp _ _ _) n ty sc) = IA : getMArgs sc
+    getMArgs (PPi (Imp _ _ _ _) n ty sc) = IA : getMArgs sc
     getMArgs (PPi (Exp _ _ _) n ty sc) = EA  : getMArgs sc
     getMArgs (PPi (Constraint _ _) n ty sc) = CA : getMArgs sc
     getMArgs _ = []
@@ -218,13 +219,13 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
     rhsArgs (CA : xs) ns = pconst (PResolveTC fc) : rhsArgs xs ns
     rhsArgs [] _ = []
 
-    insertConstraint c (PPi p@(Imp _ _ _) n ty sc)
+    insertConstraint c (PPi p@(Imp _ _ _ _) n ty sc)
                           = PPi p n ty (insertConstraint c sc)
     insertConstraint c sc = PPi (constraint { pstatic = Static }) 
                                   (sMN 0 "class") c sc
 
     -- make arguments explicit and don't bind class parameters
-    toExp ns e (PPi (Imp l s p) n ty sc)
+    toExp ns e (PPi (Imp l s p _) n ty sc)
         | n `elem` ns = toExp ns e sc
         | otherwise = PPi (e l s p) n ty (toExp ns e sc)
     toExp ns e (PPi p n ty sc) = PPi p n ty (toExp ns e sc)

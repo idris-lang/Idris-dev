@@ -69,7 +69,7 @@ data Tactic = Attack
             | CheckIn Raw
             | Intro (Maybe Name)
             | IntroTy Raw (Maybe Name)
-            | Forall Name Raw
+            | Forall Name Bool Raw
             | LetBind Name Raw Raw
             | ExpandLet Name Term
             | Rewrite Raw
@@ -569,13 +569,13 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
            _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
 
-forall :: Name -> Raw -> RunTactic
-forall n ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+forall :: Name -> Bool -> Raw -> RunTactic
+forall n impl ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv, tyt) <- lift $ check ctxt env ty
        unify' ctxt env tyt (TType (UVar 0))
        unify' ctxt env t (TType (UVar 0))
-       return $ Bind n (Pi False tyv (TType (UVar 0))) (Bind x (Hole t) (P Bound x t))
-forall n ty ctxt env _ = fail "Can't pi bind here"
+       return $ Bind n (Pi impl tyv (TType (UVar 0))) (Bind x (Hole t) (P Bound x t))
+forall n impl ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
 patvar n ctxt env (Bind x (Hole t) sc) =
@@ -973,7 +973,7 @@ process t h = tactic (Just h) (mktac t)
          mktac HNF_Compute       = hnf_compute
          mktac (Intro n)         = intro n
          mktac (IntroTy ty n)    = introTy ty n
-         mktac (Forall n t)      = forall n t
+         mktac (Forall n i t)    = forall n i t
          mktac (LetBind n t v)   = letbind n t v
          mktac (ExpandLet n b)   = expandLet n b
          mktac (Rewrite t)       = rewrite t

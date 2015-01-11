@@ -883,8 +883,10 @@ pi syn =
                          symbol "->"
                          sc <- expr syn
                          if implicitAllowed syn
-                           then return (bindList (PPi (Imp opts st False)) xt sc)
-                           else fail "no implicit arguments allowed here"))
+                           then return (bindList (PPi (Imp opts st False False)) xt sc)
+                           -- TODO: TIDY BEFORE COMMITTING!
+                           else return (bindList (PPi (Imp opts st False True)) xt sc)))
+                                -- fail "no implicit arguments allowed here"))
                  <|> (do x <- opExpr syn
                          (do symbol "->"
                              sc <- expr syn

@@ -199,7 +199,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
     lamBind i (PPi _ n ty sc) sc'
           = PLam fc (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
-    methArgs i (PPi (Imp _ _ _) n ty sc)
+    methArgs i (PPi (Imp _ _ _ _) n ty sc)
         = PImp 0 True [] n (PRef fc (sMN i "meth")) : methArgs (i+1) sc
     methArgs i (PPi (Exp _ _ _) n ty sc)
         = PExp 0 [] (sMN 0 "marg") (PRef fc (sMN i "meth")) : methArgs (i+1) sc
@@ -230,7 +230,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
     conbind [] x = x
 
     coninsert :: [(Name, PTerm)] -> PTerm -> PTerm
-    coninsert cs (PPi p@(Imp _ _ _) n t sc) = PPi p n t (coninsert cs sc)
+    coninsert cs (PPi p@(Imp _ _ _ _) n t sc) = PPi p n t (coninsert cs sc)
     coninsert cs sc = conbind cs sc
 
     insertDefaults :: IState -> Name ->
