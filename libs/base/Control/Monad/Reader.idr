@@ -2,6 +2,7 @@ module Control.Monad.Reader
 
 import Builtins
 import Control.Monad.Identity
+import Control.Monad.Trans
 
 %access public
 
@@ -40,6 +41,9 @@ instance Monad m => Monad (ReaderT r m) where
 instance Monad m => MonadReader r (ReaderT r m) where
     ask            = RD return
     local f (RD m) = RD $ m . f
+
+instance MonadTrans (ReaderT r) where
+    lift x = RD (const x)
 
 ||| Evaluate a function in the context of a Reader monad
 asks : MonadReader r m => (r -> a) -> m a
