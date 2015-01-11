@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
-             TypeSynonymInstances, PatternGuards #-}
+             DeriveDataTypeable, TypeSynonymInstances, PatternGuards #-}
 
 module Idris.AbsSyntaxTree where
 
@@ -21,6 +21,7 @@ import System.IO
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Except
 
+import Data.Data (Data)
 import Data.Function (on)
 import Data.List hiding (group)
 import Data.Char
@@ -31,6 +32,7 @@ import qualified Data.Set as S
 import Data.Word (Word)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Traversable (Traversable)
+import Data.Typeable
 import Data.Foldable (Foldable)
 
 import Debug.Trace
@@ -479,7 +481,7 @@ instance Ord FixDecl where
 
 
 data Static = Static | Dynamic
-  deriving (Show, Eq)
+  deriving (Show, Eq, Data, Typeable)
 {-!
 deriving instance Binary Static
 deriving instance NFData Static
@@ -497,7 +499,7 @@ data Plicity = Imp { pargopts :: [ArgOpt],
              | TacImp { pargopts :: [ArgOpt],
                         pstatic :: Static,
                         pscript :: PTerm }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Data, Typeable)
 
 {-!
 deriving instance Binary Plicity
@@ -724,7 +726,7 @@ updateNs ns t = mapPT updateRef t
 --                                      (map (updateDNs ns) ds)
 -- updateDNs ns c = c
 
-data PunInfo = IsType | IsTerm | TypeOrTerm deriving (Eq, Show)
+data PunInfo = IsType | IsTerm | TypeOrTerm deriving (Eq, Show, Data, Typeable)
 
 -- | High level language terms
 data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level language
@@ -768,7 +770,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
            | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
            | PUnquote PTerm -- ^ ,Term
-       deriving Eq
+       deriving (Eq, Data, Typeable)
 
 
 {-!
@@ -830,7 +832,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | TFail [ErrorReportPart]
                 | Qed | Abandon
                 | SourceFC
-    deriving (Show, Eq, Functor, Foldable, Traversable)
+    deriving (Show, Eq, Functor, Foldable, Traversable, Data, Typeable)
 {-!
 deriving instance Binary PTactic'
 deriving instance NFData PTactic'
@@ -869,7 +871,7 @@ data PDo' t = DoExp  FC t
             | DoBindP FC t t [(t,t)]
             | DoLet  FC Name t t
             | DoLetP FC t t
-    deriving (Eq, Functor)
+    deriving (Eq, Functor, Data, Typeable)
 {-!
 deriving instance Binary PDo'
 deriving instance NFData PDo'
@@ -905,10 +907,10 @@ data PArg' t = PImp { priority :: Int,
                               pname :: Name,
                               getScript :: t,
                               getTm :: t }
-    deriving (Show, Eq, Functor)
+    deriving (Show, Eq, Functor, Data, Typeable)
 
 data ArgOpt = AlwaysShow | HideDisplay | InaccessibleArg
-    deriving (Show, Eq)
+    deriving (Show, Eq, Data, Typeable)
 
 instance Sized a => Sized (PArg' a) where
   size (PImp p _ l nm trm) = 1 + size nm + size trm
