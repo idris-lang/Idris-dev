@@ -1181,6 +1181,7 @@ getRetTy (Bind n (Pi _ _ _) sc)   = getRetTy sc
 getRetTy sc = sc
 
 uniqueNameFrom :: [Name] -> [Name] -> Name
+uniqueNameFrom []           hs = uniqueName (nextName (sUN "x")) hs
 uniqueNameFrom (s : supply) hs
        | s `elem` hs = uniqueNameFrom supply hs
        | otherwise   = s
