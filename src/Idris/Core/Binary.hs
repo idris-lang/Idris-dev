@@ -403,15 +403,23 @@ instance Binary Raw where
                            return (RUType x1)
                    _ -> error "Corrupted binary data for Raw"
 
+instance Binary ImplicitInfo where
+        put x
+          = case x of
+                Impl x1 -> put x1
+        get
+          = do x1 <- get
+               return (Impl x1)
 
 instance (Binary b) => Binary (Binder b) where
         put x
           = case x of
                 Lam x1 -> do putWord8 0
                              put x1
-                Pi x1 x2 -> do putWord8 1
-                               put x1
-                               put x2
+                Pi x1 x2 x3 -> do putWord8 1
+                                  put x1
+                                  put x2
+                                  put x3
                 Let x1 x2 -> do putWord8 2
                                 put x1
                                 put x2
@@ -437,7 +445,8 @@ instance (Binary b) => Binary (Binder b) where
                            return (Lam x1)
                    1 -> do x1 <- get
                            x2 <- get
-                           return (Pi x1 x2)
+                           x3 <- get
+                           return (Pi x1 x2 x3)
                    2 -> do x1 <- get
                            x2 <- get
                            return (Let x1 x2)

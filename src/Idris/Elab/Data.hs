@@ -177,7 +177,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
         getDataApp f@(App _ _)
             | (P _ d _, args) <- unApply f
                    = if (d == n) then [mParam args args] else []
-        getDataApp (Bind n (Pi t _) sc)
+        getDataApp (Bind n (Pi _ t _) sc)
             = getDataApp t ++ getDataApp (instantiate (P Bound n t) sc)
         getDataApp _ = []
 

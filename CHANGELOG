@@ -2,6 +2,9 @@ New in 0.9.16:
 --------------
 * Inductive-inductive definitions are now supported (i.e. simultaneously
   defined types where one is indexed by the other.)
+* Implicits and type class constraints can now appear in scopes other than
+  the top level.
+* Implicits can be written {x,y,z} instead of {x,y,z : _}
 * Importing a module no longer means it is automatically reexported. A new
   "public" modifier has been added to import statements, which will reexport
   the names exported from that module.

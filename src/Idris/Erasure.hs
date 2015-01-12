@@ -354,7 +354,7 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         -- here we just push IM.empty on the de bruijn stack
         -- the args will be marked as used at the usage site
         | Lam ty <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd body
-        | Pi ty _ <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd body
+        | Pi _ ty _ <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd body
 
         -- let-bound variables can get partially evaluated
         -- it is sufficient just to plug the Cond in when the bound names are used

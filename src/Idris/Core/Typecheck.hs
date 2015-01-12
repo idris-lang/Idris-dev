@@ -87,13 +87,13 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
       = do (fv, fty) <- chk u env f
            (av, aty) <- chk u env a
            let fty' = case uniqueBinders (map fst env) (finalise fty) of
-                        ty@(Bind x (Pi s k) t) -> ty
+                        ty@(Bind x (Pi i s k) t) -> ty
                         _ -> uniqueBinders (map fst env)
                                  $ case hnf ctxt env fty of
-                                     ty@(Bind x (Pi s k) t) -> ty
+                                     ty@(Bind x (Pi i s k) t) -> ty
                                      _ -> normalise ctxt env fty
            case fty' of
-             Bind x (Pi s k) t ->
+             Bind x (Pi i s k) t ->
                  do convertsC ctxt env aty s
                     let apty = simplify initContext env
                                         (Bind x (Let aty av) t)
@@ -133,25 +133,25 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
           constType _       = TType (UVal 0)
   chk u env (RForce t) = do (_, ty) <- chk u env t
                             return (Erased, ty)
-  chk u env (RBind n (Pi s k) t)
+  chk u env (RBind n (Pi i s k) t)
       = do (sv, st) <- chk u env s
            (kv, kt) <- chk u env k
-           (tv, tt) <- chk st ((n, Pi sv kv) : env) t
+           (tv, tt) <- chk st ((n, Pi i sv kv) : env) t
            (v, cs) <- get
            case (normalise ctxt env st, normalise ctxt env tt) of
                 (TType su, TType tu) -> do
                     when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
                     let k' = st `smaller` kv `smaller` TType (UVar v) `smaller` u
-                    return (Bind n (Pi (uniqueBinders (map fst env) sv) k')
+                    return (Bind n (Pi i (uniqueBinders (map fst env) sv) k')
                               (pToV n tv), k')
                 (un, un') ->
                    let k' = st `smaller` kv `smaller` un `smaller` un' `smaller` u in
-                    return (Bind n (Pi (uniqueBinders (map fst env) sv) k')
+                    return (Bind n (Pi i (uniqueBinders (map fst env) sv) k')
                                 (pToV n tv), k')
 
-      where mkUniquePi kv (Bind n (Pi s k) sc)
+      where mkUniquePi kv (Bind n (Pi i s k) sc)
                     = let k' = smaller kv k in
-                          Bind n (Pi s k') (mkUniquePi k' sc)
+                          Bind n (Pi i s k') (mkUniquePi k' sc)
             mkUniquePi kv (Bind n (Lam t) sc)
                     = Bind n (Lam (mkUniquePi kv t)) (mkUniquePi kv sc)
             mkUniquePi kv (Bind n (Let t v) sc)
@@ -161,7 +161,7 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
             -- Kind of the whole thing is the kind of the most unique thing
             -- in the environment (because uniqueness taints everything...)
             mostUnique [] k = k
-            mostUnique (Pi _ pk : es) k = mostUnique es (smaller pk k)
+            mostUnique (Pi _ _ pk : es) k = mostUnique es (smaller pk k)
             mostUnique (_ : es) k = mostUnique es k
 
   chk u env (RBind n b sc)
@@ -230,9 +230,9 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                  return (PVTy tv, tt')
 
           discharge n (Lam t) bt scv sct
-            = return (Bind n (Lam t) scv, Bind n (Pi t bt) sct)
-          discharge n (Pi t k) bt scv sct
-            = return (Bind n (Pi t k) scv, sct)
+            = return (Bind n (Lam t) scv, Bind n (Pi Nothing t bt) sct)
+          discharge n (Pi i t k) bt scv sct
+            = return (Bind n (Pi i t k) scv, sct)
           discharge n (Let t v) bt scv sct
             = return (Bind n (Let t v) scv, Bind n (Let t v) sct)
           discharge n (NLet t v) bt scv sct

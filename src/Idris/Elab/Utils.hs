@@ -49,14 +49,14 @@ checkAddDef add toplvl fc ((n, (i, top, t)) : ns)
 -- Get the list of (index, name) of inaccessible arguments from an elaborated
 -- type
 inaccessibleImps :: Int -> Type -> [Bool] -> [(Int, Name)]
-inaccessibleImps i (Bind n (Pi t _) sc) (inacc : ins)
+inaccessibleImps i (Bind n (Pi _ t _) sc) (inacc : ins)
     | inacc = (i, n) : inaccessibleImps (i + 1) sc ins
     | otherwise = inaccessibleImps (i + 1) sc ins
 inaccessibleImps _ _ _ = []
 
 -- Get the list of (index, name) of inaccessible arguments from the type.
 inaccessibleArgs :: Int -> PTerm -> [(Int, Name)]
-inaccessibleArgs i (PPi (Imp _ _ _) n Placeholder t)
+inaccessibleArgs i (PPi (Imp _ _ _ _) n Placeholder t)
         = (i,n) : inaccessibleArgs (i+1) t  -- unbound implicit
 inaccessibleArgs i (PPi plicity n ty t)
     | InaccessibleArg `elem` pargopts plicity
@@ -155,13 +155,13 @@ psolve tm = return ()
 pvars ist (Bind n (PVar t) sc) = (n, delab ist t) : pvars ist sc
 pvars ist _ = []
 
-getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi t _) sc)
+getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi _ t _) sc)
     = nub $ getFixedInType i env [] t ++
             getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
             ++ case t of
                     P _ n _ -> if n `elem` env then [n] else []
                     _ -> []
-getFixedInType i env (_ : is) (Bind n (Pi t _) sc)
+getFixedInType i env (_ : is) (Bind n (Pi _ t _) sc)
     = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
 getFixedInType i env is tm@(App f a)
     | (P _ tn _, args) <- unApply tm
@@ -175,7 +175,7 @@ getFixedInType i env is tm@(App f a)
                         getFixedInType i env is a
 getFixedInType i _ _ _ = []
 
-getFlexInType i env ps (Bind n (Pi t _) sc)
+getFlexInType i env ps (Bind n (Pi _ t _) sc)
     = nub $ (if (not (n `elem` ps)) then getFlexInType i env ps t else []) ++
             getFlexInType i (n : env) ps (instantiate (P Bound n t) sc)
 getFlexInType i env ps tm@(App f a)
@@ -256,7 +256,7 @@ getStaticNames ist tm
 getStaticNames _ _ = []
 
 getStatics :: [Name] -> Term -> [Bool]
-getStatics ns (Bind n (Pi _ _) t)
+getStatics ns (Bind n (Pi _ _ _) t)
     | n `elem` ns = True : getStatics ns t
     | otherwise = False : getStatics ns t
 getStatics _ _ = []

@@ -488,7 +488,9 @@ deriving instance NFData Static
 -- Mark bindings with their explicitness, and laziness
 data Plicity = Imp { pargopts :: [ArgOpt],
                      pstatic :: Static,
-                     pparam :: Bool }
+                     pparam :: Bool,
+                     pscoped :: Maybe ImplicitInfo -- Nothing, if top level
+                   }
              | Exp { pargopts :: [ArgOpt],
                      pstatic :: Static,
                      pparam :: Bool }   -- this is a param (rather than index)
@@ -504,7 +506,13 @@ deriving instance Binary Plicity
 deriving instance NFData Plicity
 !-}
 
-impl = Imp [] Dynamic False
+is_scoped :: Plicity -> Maybe ImplicitInfo
+is_scoped (Imp _ _ _ s) = s
+is_scoped _ = Nothing
+
+impl = Imp [] Dynamic False Nothing
+forall_imp = Imp [] Dynamic False (Just (Impl False))
+forall_constraint = Imp [] Dynamic False (Just (Impl True))
 expl = Exp [] Dynamic False
 expl_param = Exp [] Dynamic True
 constraint = Constraint [] Static
@@ -1140,7 +1148,7 @@ getInferTerm (App (App _ _) tm) = tm
 getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n (toTy b) $ getInferType sc
-  where toTy (Lam t) = Pi t (TType (UVar 0))
+  where toTy (Lam t) = Pi Nothing t (TType (UVar 0))
         toTy (PVar t) = PVTy t
         toTy b = b
 getInferType (App (App _ ty) _) = ty
@@ -1326,7 +1334,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
           case s of
             Static -> text "[static]" <> space
             _      -> empty
-    prettySe p bnd (PPi (Imp l s _) n ty sc)
+    prettySe p bnd (PPi (Imp l s _ fa) n ty sc)
       | ppopt_impl ppo =
           bracket p startPrec $
           lbrace <> bindingOf n True <+> colon <+> prettySe startPrec bnd ty <> rbrace <+>

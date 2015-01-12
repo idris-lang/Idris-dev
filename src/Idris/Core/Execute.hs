@@ -88,7 +88,7 @@ toTT (EBind n b body) = do n' <- newN n
                            b' <- fixBinder b
                            Bind n' b' <$> toTT body'
     where fixBinder (Lam t)       = Lam     <$> toTT t
-          fixBinder (Pi t k)      = Pi      <$> toTT t <*> toTT k
+          fixBinder (Pi i t k)    = Pi i    <$> toTT t <*> toTT k
           fixBinder (Let t1 t2)   = Let     <$> toTT t1 <*> toTT t2
           fixBinder (NLet t1 t2)  = NLet    <$> toTT t1 <*> toTT t2
           fixBinder (Hole t)      = Hole    <$> toTT t

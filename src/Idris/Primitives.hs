@@ -26,7 +26,7 @@ data Prim = Prim { p_name  :: Name,
 
 ty :: [Const] -> Const -> Type
 ty []     x = Constant x
-ty (t:ts) x = Bind (sMN 0 "T") (Pi (Constant t) (TType (UVar (-3)))) (ty ts x)
+ty (t:ts) x = Bind (sMN 0 "T") (Pi Nothing (Constant t) (TType (UVar (-3)))) (ty ts x)
 
 total, partial, iopartial :: Totality
 total = Total []

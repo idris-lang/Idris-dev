@@ -268,7 +268,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
         isInj ctxt (App f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
         isInj ctxt (TType _) = True
-        isInj ctxt (Bind _ (Pi _ _) sc) = True
+        isInj ctxt (Bind _ (Pi _ _ _) sc) = True
         isInj ctxt _ = False
 
 -- get instance argument names
@@ -369,8 +369,8 @@ intro n = processTactic' (Intro n)
 introTy :: Raw -> Maybe Name -> Elab' aux ()
 introTy ty n = processTactic' (IntroTy ty n)
 
-forall :: Name -> Raw -> Elab' aux ()
-forall n t = processTactic' (Forall n t)
+forall :: Name -> Maybe ImplicitInfo -> Raw -> Elab' aux ()
+forall n i t = processTactic' (Forall n i t)
 
 letbind :: Name -> Raw -> Raw -> Elab' aux ()
 letbind n t v = processTactic' (LetBind n t v)
@@ -493,7 +493,9 @@ prepare_apply fn imps =
        env <- get_env
        -- let claims = getArgs ty imps
        -- claims <- mkClaims (normalise ctxt env ty) imps []
-       claims <- mkClaims (finalise ty) imps [] (map fst env)
+       claims <- mkClaims (finalise ty) 
+                          (normalise ctxt env (finalise ty))
+                          imps [] (map fst env)
        ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not imps)
@@ -502,11 +504,12 @@ prepare_apply fn imps =
        return $! claims
   where
     mkClaims :: Type   -- ^ The type of the operation being applied
+             -> Type   -- ^ Normalised version if we need it
              -> [Bool] -- ^ Whether the arguments are implicit
              -> [(Name, Name)] -- ^ Accumulator for produced claims
              -> [Name] -- ^ Hypotheses
              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
-    mkClaims (Bind n' (Pi t_in _) sc) (i : is) claims hs = 
+    mkClaims (Bind n' (Pi _ t_in _) sc) (Bind _ _ scn) (i : is) claims hs = 
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
@@ -514,9 +517,11 @@ prepare_apply fn imps =
 --            trace ("CLAIMING " ++ show (n, t) ++ " with " ++ show (fn, hs)) $
            claim n (forget t)
            when i (movelast n)
-           mkClaims sc' is ((n', n) : claims) hs
-    mkClaims t [] claims _ = return $! (reverse claims)
-    mkClaims _ _ _ _
+           mkClaims sc' scn is ((n', n) : claims) hs
+    -- if we run out of arguments, we need the normalised version...
+    mkClaims t tn@(Bind _ _ sc) (i : is) cs hs = mkClaims tn tn (i : is) cs hs
+    mkClaims t _ [] claims _ = return $! (reverse claims)
+    mkClaims _ _ _ _ _
             | Var n <- fn
                    = do ctxt <- get_context
                         case lookupTy n ctxt of
@@ -614,7 +619,7 @@ apply_elab n args =
     priOrder _ Nothing = GT
     priOrder (Just (x, _)) (Just (y, _)) = compare x y
 
-    doClaims (Bind n' (Pi t _) sc) (i : is) claims =
+    doClaims (Bind n' (Pi _ t _) sc) (i : is) claims =
         do n <- unique_hole (mkMN n')
            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
@@ -649,13 +654,13 @@ checkPiGoal :: Name -> Elab' aux ()
 checkPiGoal n
             = do g <- goal
                  case g of
-                    Bind _ (Pi _ _) _ -> return ()
+                    Bind _ (Pi _ _ _) _ -> return ()
                     _ -> do a <- getNameFrom (sMN 0 "pargTy")
                             b <- getNameFrom (sMN 0 "pretTy")
                             f <- getNameFrom (sMN 0 "pf")
                             claim a RType
                             claim b RType
-                            claim f (RBind n (Pi (Var a) RType) (Var b))
+                            claim f (RBind n (Pi Nothing (Var a) RType) (Var b))
                             movelast a
                             movelast b
                             fill (Var f)
@@ -670,7 +675,7 @@ simple_app fun arg appstr =
        s <- getNameFrom (sMN 0 "s")
        claim a RType
        claim b RType
-       claim f (RBind (sMN 0 "aX") (Pi (Var a) RType) (Var b))
+       claim f (RBind (sMN 0 "aX") (Pi Nothing (Var a) RType) (Var b))
        tm <- get_term
        start_unify s
        claim s (Var a)
@@ -693,11 +698,11 @@ simple_app fun arg appstr =
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.
-arg :: Name -> Name -> Elab' aux ()
-arg n tyhole = do ty <- unique_hole tyhole
-                  claim ty RType
-                  movelast ty
-                  forall n (Var ty)
+arg :: Name -> Maybe ImplicitInfo -> Name -> Elab' aux ()
+arg n i tyhole = do ty <- unique_hole tyhole
+                    claim ty RType
+                    movelast ty
+                    forall n i (Var ty)
 
 -- try a tactic, if it adds any unification problem, return an error
 no_errors :: Elab' aux () -> Maybe Err -> Elab' aux ()
