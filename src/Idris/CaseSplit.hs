@@ -361,7 +361,7 @@ getClause l fn fp
          getNameFrom i used (PPi _ _ _ _) 
               = uniqueNameFrom (mkSupply [sUN "f", sUN "g"]) used
          getNameFrom i used (PApp fc f as) = getNameFrom i used f
-         getNameFrom i used (PEq _ _ _ _ _) = uniqueNameFrom [sUN "prf"] used 
+         getNameFrom i used (PEq _ _ _ _ _) = uniqueNameFrom (mkSupply [sUN "prf"]) used 
          getNameFrom i used (PRef fc f) 
             = case getNameHints i f of
                    [] -> uniqueName (sUN "x") used
