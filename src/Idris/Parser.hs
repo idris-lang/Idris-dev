@@ -938,7 +938,7 @@ WExpr ::= '|' Expr';
 -}
 wExpr :: SyntaxInfo -> IdrisParser PTerm
 wExpr syn = do lchar '|'
-               expr' syn
+               expr' (syn { inPattern = True })
             <?> "with pattern"
 
 {- | Parses a where block
