@@ -263,6 +263,13 @@ execApp env ctxt (EP _ fp _) (_:fn:_:handle:_:rest)
                       "The argument to idris_readStr should be a handle, but it was " ++
                       show handle ++
                       ". Are all cases covered?"
+execApp env ctxt (EP _ fp _) (_:fn:_:rest)
+    | fp == mkfprim,
+      Just (FFun "getchar" _ _) <- foreignFromTT fn
+           = do -- The C API returns an Int which Idris library code
+                -- converts; thus, we must make an int here.
+                ch <- execIO $ fmap (ioWrap . EConstant . I . fromEnum) getChar
+                execApp env ctxt ch rest
 execApp  env ctxt (EP _ fp _) (_:fn:rest)
     | fp == mkfprim,
       Just (FFun "idris_time" _ _) <- foreignFromTT fn
