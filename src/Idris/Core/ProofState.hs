@@ -69,7 +69,7 @@ data Tactic = Attack
             | CheckIn Raw
             | Intro (Maybe Name)
             | IntroTy Raw (Maybe Name)
-            | Forall Name Bool Raw
+            | Forall Name (Maybe ImplicitInfo) Raw
             | LetBind Name Raw Raw
             | ExpandLet Name Term
             | Rewrite Raw
@@ -412,7 +412,7 @@ defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                       (mkApp (P Ref n ty) (map getP (reverse env'))))
   where
     mkTy []           t = t
-    mkTy ((n,b) : bs) t = Bind n (Pi False (binderTy b) (TType (UVar 0))) (mkTy bs t)
+    mkTy ((n,b) : bs) t = Bind n (Pi Nothing (binderTy b) (TType (UVar 0))) (mkTy bs t)
 
     getP (n, b) = P Bound n (binderTy b)
 
@@ -569,7 +569,7 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
            _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
 
-forall :: Name -> Bool -> Raw -> RunTactic
+forall :: Name -> Maybe ImplicitInfo -> Raw -> RunTactic
 forall n impl ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv, tyt) <- lift $ check ctxt env ty
        unify' ctxt env tyt (TType (UVar 0))

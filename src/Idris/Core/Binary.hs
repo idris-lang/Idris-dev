@@ -403,6 +403,13 @@ instance Binary Raw where
                            return (RUType x1)
                    _ -> error "Corrupted binary data for Raw"
 
+instance Binary ImplicitInfo where
+        put x
+          = case x of
+                Impl x1 -> put x1
+        get
+          = do x1 <- get
+               return (Impl x1)
 
 instance (Binary b) => Binary (Binder b) where
         put x

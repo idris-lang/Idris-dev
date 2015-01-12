@@ -435,13 +435,20 @@ elab ist info emode opts fn tm
             bindable (UN xs) = True
             bindable n = implicitable n
     elab' ina _ f@(PInferRef fc n) = elab' ina (Just fc) (PApp fc f [])
-    elab' ina _ tm@(PRef fc n) 
+    elab' ina fc' tm@(PRef fc n) 
           | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
             && isTConName n (tt_ctxt ist)
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
           | pattern && not reflection && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
-          | otherwise = erun fc $ do apply (Var n) []; solve
+          | otherwise = 
+               do fty <- get_type (Var n) -- check for implicits
+                  ctxt <- get_context
+                  env <- get_env 
+                  let a' = insertScopedImps fc (normalise ctxt env fty) []
+                  if null a'
+                     then erun fc $ do apply (Var n) []; solve
+                     else elab' ina fc' (PApp fc tm [])
     elab' ina _ (PLam fc n Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
@@ -565,7 +572,7 @@ elab ist info emode opts fn tm
                                        ans <- claimArgTys env xs
                                        return ((aval, (True, (Var an))) : ans)
              fnTy [] ret  = forget ret
-             fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi False xt RType) (fnTy xs ret)
+             fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi Nothing xt RType) (fnTy xs ret)
 
              localVar env (PRef _ x)
                            = case lookup x env of
@@ -603,17 +610,17 @@ elab ist info emode opts fn tm
             ty <- goal
             fty <- get_type (Var f)
             ctxt <- get_context
-            let args = insertScopedImps (normalise ctxt env fty) args_in
+            let args = insertScopedImps fc (normalise ctxt env fty) args_in
             let unmatchableArgs = if pattern 
                                      then getUnmatchable (tt_ctxt ist) f
                                      else []
             -- Dot it if we're in a pattern and it isn't a constructor
 --             when (pattern && not (isDConName f ctxt) && f /= fn) $ dotterm
-               
+
             when (pattern && not reflection && not (e_qq ina) && not (e_intype ina)
                           && isTConName f (tt_ctxt ist)) $
               lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
-            if (f `elem` map fst env && length args == 1)
+            if (f `elem` map fst env && length args == 1 && length args_in == 1)
                then -- simple app, as below
                     do simple_app (elabE ina (Just fc) (PRef fc f))
                                   (elabE (ina { e_inarg = True }) (Just fc) (getTm (head args)))
@@ -1052,11 +1059,14 @@ elab ist info emode opts fn tm
     notImplicitable (PCase _ _ _) = True
     notImplicitable _ = False
 
-    insertScopedImps (Bind n (Pi True _ _) sc) xs
-        = pimp n Placeholder True : insertScopedImps sc xs
-    insertScopedImps (Bind n (Pi _ _ _) sc) (x : xs)
-        = x : insertScopedImps sc xs
-    insertScopedImps _ xs = xs
+    insertScopedImps fc (Bind n (Pi im@(Just i) _ _) sc) xs
+      | tcinstance i
+          = pimp n (PResolveTC fc) True : insertScopedImps fc sc xs
+      | otherwise
+          = pimp n Placeholder True : insertScopedImps fc sc xs
+    insertScopedImps fc (Bind n (Pi _ _ _) sc) (x : xs)
+        = x : insertScopedImps fc sc xs
+    insertScopedImps _ _ xs = xs
 
     insertImpLam t =
         do ty <- goal
@@ -1064,10 +1074,10 @@ elab ist info emode opts fn tm
            let ty' = normalise (tt_ctxt ist) env ty
            addLam ty' t
       where
-        addLam (Bind n (Pi True _ _) sc) t
+        -- just one level at a time
+        addLam (Bind n (Pi (Just _) _ _) sc) t
                = do impn <- unique_hole (sMN 0 "imp")
-                    t' <- addLam sc t
-                    return (PLam emptyFC impn Placeholder t')
+                    return (PLam emptyFC impn Placeholder t)
         addLam _ t = return t
 
     insertCoerce ina t@(PCase _ _ _) = return t
@@ -1537,9 +1547,9 @@ runTac autoSolve ist perhapsFC fn tac
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (sNS (sUN "List") ["List", "Prelude"])
               scriptTy = (RBind (sMN 0 "__pi_arg")
-                                (Pi False (RApp listTy envTupleType) RType)
+                                (Pi Nothing (RApp listTy envTupleType) RType)
                                     (RBind (sMN 1 "__pi_arg")
-                                           (Pi False (Var $ reflm "TT") RType) tacticTy))
+                                           (Pi Nothing (Var $ reflm "TT") RType) tacticTy))
     runT (ByReflection tm) -- run the reflection function 'tm' on the
                            -- goal, then apply the resulting reflected Tactic
         = do tgoal <- goal
@@ -1812,7 +1822,7 @@ reifyTTBinderApp :: (Term -> ElabD a) -> Name -> [Term] -> ElabD (Binder a)
 reifyTTBinderApp reif f [t]
                       | f == reflm "Lam" = liftM Lam (reif t)
 reifyTTBinderApp reif f [t, k]
-                      | f == reflm "Pi" = liftM2 (Pi False) (reif t) (reif k)
+                      | f == reflm "Pi" = liftM2 (Pi Nothing) (reif t) (reif k)
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Let" = liftM2 Let (reif x) (reif y)
 reifyTTBinderApp reif f [x, y]

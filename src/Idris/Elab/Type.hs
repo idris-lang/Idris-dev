@@ -104,7 +104,7 @@ buildType info syn fc opts n ty' = do
 
          return (cty, ckind, ty, inacc)
   where
-    patToImp (Bind n (PVar t) sc) = Bind n (Pi False t (TType (UVar 0))) (patToImp sc)
+    patToImp (Bind n (PVar t) sc) = Bind n (Pi Nothing t (TType (UVar 0))) (patToImp sc)
     patToImp (Bind n b sc) = Bind n b (patToImp sc)
     patToImp t = t
 

@@ -57,10 +57,13 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                                   _ -> PRef un n
     de env _ (Bind n (Lam ty) sc)
           = PLam un n (de env [] ty) (de ((n,n):env) [] sc)
-    de env is (Bind n (Pi True ty _) sc)
-          = PPi (Imp [] Dynamic False True) n (de env [] ty) (de ((n,n):env) is sc)
+    de env is (Bind n (Pi (Just impl) ty _) sc)
+       | tcinstance impl
+          = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
+       | otherwise
+          = PPi (Imp [] Dynamic False (Just impl)) n (de env [] ty) (de ((n,n):env) is sc)
     de env ((PImp { argopts = opts }):is) (Bind n (Pi _ ty _) sc)
-          = PPi (Imp opts Dynamic False False) n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (Imp opts Dynamic False Nothing) n (de env [] ty) (de ((n,n):env) is sc)
     de env (PConstraint _ _ _ _:is) (Bind n (Pi _ ty _) sc)
           = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
     de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi _ ty _) sc)

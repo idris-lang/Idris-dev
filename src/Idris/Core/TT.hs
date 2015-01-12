@@ -672,6 +672,14 @@ deriving instance Binary Raw
 deriving instance NFData Raw
 !-}
 
+data ImplicitInfo = Impl { tcinstance :: Bool }
+  deriving (Show, Eq, Ord)
+
+{-!
+deriving instance Binary ImplicitInfo
+deriving instance NFData ImplicitInfo
+!-}
+
 -- The type parameter `b` will normally be something like `TT Name` or just
 -- `Raw`. We do not make a type-level distinction between TT terms that happen
 -- to be TT types and TT terms that are not TT types.
@@ -679,7 +687,7 @@ deriving instance NFData Raw
 -- the types of bindings (and their values, if any); the attached identifiers are part
 -- of the 'Bind' constructor for the 'TT' type.
 data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
-              | Pi    { binderImpl :: Bool,
+              | Pi    { binderImpl :: Maybe ImplicitInfo,
                         binderTy  :: !b,
                         binderKind :: !b }
                 {-^ A binding that occurs in a function type expression, e.g. @(x:Int) -> ...@

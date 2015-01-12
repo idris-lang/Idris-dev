@@ -230,7 +230,7 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                  return (PVTy tv, tt')
 
           discharge n (Lam t) bt scv sct
-            = return (Bind n (Lam t) scv, Bind n (Pi False t bt) sct)
+            = return (Bind n (Lam t) scv, Bind n (Pi Nothing t bt) sct)
           discharge n (Pi i t k) bt scv sct
             = return (Bind n (Pi i t k) scv, sct)
           discharge n (Let t v) bt scv sct

@@ -867,7 +867,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         let wargval = getRetTy cwvalN
         let wargtype = getRetTy cwvaltyN
         logLvl 5 ("Abstract over " ++ show wargval ++ " in " ++ show wargtype)
-        let wtype = bindTyArgs (flip (Pi False) (TType (UVar 0))) (bargs_pre ++
+        let wtype = bindTyArgs (flip (Pi Nothing) (TType (UVar 0))) (bargs_pre ++
                      (sMN 0 "warg", wargtype) :
                      map (abstract (sMN 0 "warg") wargval wargtype) bargs_post)
                      (substTerm wargval (P Bound (sMN 0 "warg") wargtype) ret_ty)

@@ -489,7 +489,7 @@ deriving instance NFData Static
 data Plicity = Imp { pargopts :: [ArgOpt],
                      pstatic :: Static,
                      pparam :: Bool,
-                     pscoped :: Bool -- forall bound
+                     pscoped :: Maybe ImplicitInfo -- Nothing, if top level
                    }
              | Exp { pargopts :: [ArgOpt],
                      pstatic :: Static,
@@ -506,12 +506,13 @@ deriving instance Binary Plicity
 deriving instance NFData Plicity
 !-}
 
-is_scoped :: Plicity -> Bool
+is_scoped :: Plicity -> Maybe ImplicitInfo
 is_scoped (Imp _ _ _ s) = s
-is_scoped _ = False
+is_scoped _ = Nothing
 
-impl = Imp [] Dynamic False False
-forall_imp = Imp [] Dynamic False True
+impl = Imp [] Dynamic False Nothing
+forall_imp = Imp [] Dynamic False (Just (Impl False))
+forall_constraint = Imp [] Dynamic False (Just (Impl True))
 expl = Exp [] Dynamic False
 expl_param = Exp [] Dynamic True
 constraint = Constraint [] Static
@@ -1147,7 +1148,7 @@ getInferTerm (App (App _ _) tm) = tm
 getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n (toTy b) $ getInferType sc
-  where toTy (Lam t) = Pi False t (TType (UVar 0))
+  where toTy (Lam t) = Pi Nothing t (TType (UVar 0))
         toTy (PVar t) = PVTy t
         toTy b = b
 getInferType (App (App _ ty) _) = ty

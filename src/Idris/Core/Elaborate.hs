@@ -369,7 +369,7 @@ intro n = processTactic' (Intro n)
 introTy :: Raw -> Maybe Name -> Elab' aux ()
 introTy ty n = processTactic' (IntroTy ty n)
 
-forall :: Name -> Bool -> Raw -> Elab' aux ()
+forall :: Name -> Maybe ImplicitInfo -> Raw -> Elab' aux ()
 forall n i t = processTactic' (Forall n i t)
 
 letbind :: Name -> Raw -> Raw -> Elab' aux ()
@@ -660,7 +660,7 @@ checkPiGoal n
                             f <- getNameFrom (sMN 0 "pf")
                             claim a RType
                             claim b RType
-                            claim f (RBind n (Pi False (Var a) RType) (Var b))
+                            claim f (RBind n (Pi Nothing (Var a) RType) (Var b))
                             movelast a
                             movelast b
                             fill (Var f)
@@ -675,7 +675,7 @@ simple_app fun arg appstr =
        s <- getNameFrom (sMN 0 "s")
        claim a RType
        claim b RType
-       claim f (RBind (sMN 0 "aX") (Pi False (Var a) RType) (Var b))
+       claim f (RBind (sMN 0 "aX") (Pi Nothing (Var a) RType) (Var b))
        tm <- get_term
        start_unify s
        claim s (Var a)
@@ -698,7 +698,7 @@ simple_app fun arg appstr =
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.
-arg :: Name -> Bool -> Name -> Elab' aux ()
+arg :: Name -> Maybe ImplicitInfo -> Name -> Elab' aux ()
 arg n i tyhole = do ty <- unique_hole tyhole
                     claim ty RType
                     movelast ty

@@ -855,14 +855,18 @@ Pi' ::=
 @
  -}
 
+bindsymbol opts st syn 
+     = do symbol "->"
+          return (Exp opts st False)
+
 pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
      do opts <- piOpts syn
         st   <- static
         (do xt <- try (lchar '(' *> typeDeclList syn <* lchar ')')
-            symbol "->"
+            binder <- bindsymbol opts st syn
             sc <- expr syn
-            return (bindList (PPi (Exp opts st False)) xt sc)) <|> (do
+            return (bindList (PPi binder) xt sc)) <|> (do
                (do try (lchar '{' *> reserved "auto")
                    when (st == Static) $ fail "auto type constraints can not be lazy or static"
                    xt <- typeDeclList syn
@@ -881,12 +885,20 @@ pi syn =
                        return (bindList (PPi (TacImp [] Dynamic script)) xt sc))
                  <|> (do xt <- try (lchar '{' *> typeDeclList syn <* lchar '}')
                          symbol "->"
+                         cs <- constraintList syn
                          sc <- expr syn
-                         return (bindList (PPi (Imp opts st False (not (implicitAllowed syn)))) xt sc)))
+                         let (im,cl)
+                                = if implicitAllowed syn
+                                     then (Imp opts st False Nothing,
+                                            constraint)
+                                     else (Imp opts st False (Just (Impl False)),
+                                           Imp opts st False (Just (Impl True)))
+                         return (bindList (PPi im) xt 
+                                 (bindList (PPi cl) cs sc))))
                  <|> (do x <- opExpr syn
-                         (do symbol "->"
+                         (do binder <- bindsymbol opts st syn
                              sc <- expr syn
-                             return (PPi (Exp opts st False) (sUN "__pi_arg") x sc))
+                             return (PPi binder (sUN "__pi_arg") x sc))
                           <|> return x)
   <?> "dependent type signature"
 
@@ -911,16 +923,19 @@ ConstraintList ::=
 @
 -}
 constraintList :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
-constraintList syn = try (do lchar '('
-                             tys <- sepBy1 nexpr (lchar ',')
-                             lchar ')'
-                             reservedOp "=>"
-                             return tys)
-                 <|> try (do t <- expr (disallowImp syn)
-                             reservedOp "=>"
-                             return [(defname, t)])
-                 <|> return []
-                 <?> "type constraint list"
+constraintList syn = try (constraintList1 syn)
+                     <|> return []
+
+constraintList1 :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
+constraintList1 syn = try (do lchar '('
+                              tys <- sepBy1 nexpr (lchar ',')
+                              lchar ')'
+                              reservedOp "=>"
+                              return tys)
+                  <|> try (do t <- expr (disallowImp syn)
+                              reservedOp "=>"
+                              return [(defname, t)])
+                  <?> "type constraint list"
   where nexpr = try (do n <- name; lchar ':'
                         e <- expr' (disallowImp syn)
                         return (n, e))

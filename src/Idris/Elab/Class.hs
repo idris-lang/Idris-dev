@@ -134,7 +134,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
                 logLvl 5 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map fst ps) Exp t')),
                          (n, (doc, o, (toExp (map fst ps) 
-                                         (\ l s p -> Imp l s p False) t'))),
+                                         (\ l s p -> Imp l s p Nothing) t'))),
                          (n, (syn, o, t) ) )
     tdecl _ _ = ifail "Not allowed in a class declaration"
 
