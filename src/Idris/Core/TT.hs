@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor, DeriveDataTypeable #-}
 
 {-| TT is the core language of Idris. The language has:
 
@@ -27,6 +27,7 @@ import Control.Monad.Trans.Except (Except (..))
 import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
+import Data.Data (Data)
 import Numeric (showIntAtBase)
 import qualified Data.Text as T
 import Data.List hiding (insert)
@@ -34,6 +35,7 @@ import Data.Set(Set, member, fromList, insert)
 import Data.Maybe (listToMaybe)
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
+import Data.Typeable (Typeable)
 import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
 import qualified Data.Binary as B
@@ -51,6 +53,7 @@ data FC = FC { fc_fname :: String, -- ^ Filename
                fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
                fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
              }
+  deriving (Data, Typeable)             
 
 -- | Ignore source location equality (so deriving classes do not compare FCs)
 instance Eq FC where
@@ -111,7 +114,7 @@ data ErrorReportPart = TextPart String
                      | NamePart Name
                      | TermPart Term
                      | SubReport [ErrorReportPart]
-                       deriving (Show, Eq)
+                       deriving (Show, Eq, Data, Typeable)
 
 
 -- Please remember to keep Err synchronised with
@@ -159,7 +162,7 @@ data Err' t
           | LoadingFailed String (Err' t)
           | ReflectionError [[ErrorReportPart]] (Err' t)
           | ReflectionFailed String (Err' t)
-  deriving (Eq, Functor)
+  deriving (Eq, Functor, Data, Typeable)
 
 type Err = Err' Term
 
@@ -307,7 +310,7 @@ data Name = UN T.Text -- ^ User-provided name
           | NErased -- ^ Name of something which is never used in scope
           | SN SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Data, Typeable)
 
 txt :: String -> T.Text
 txt = T.pack
@@ -344,7 +347,7 @@ data SpecialName = WhereN Int Name Name
                  | CaseN Name
                  | ElimN Name
                  | InstanceCtorN Name
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Data, Typeable)
 {-!
 deriving instance Binary SpecialName
 deriving instance NFData SpecialName
@@ -494,7 +497,7 @@ addAlist [] ctxt = ctxt
 addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 
 data NativeTy = IT8 | IT16 | IT32 | IT64
-    deriving (Show, Eq, Ord, Enum)
+    deriving (Show, Eq, Ord, Enum, Data, Typeable)
 
 instance Pretty NativeTy OutputAnnotation where
     pretty IT8  = text "Bits8"
@@ -504,7 +507,7 @@ instance Pretty NativeTy OutputAnnotation where
 
 data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
            | ITVec NativeTy Int
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Data, Typeable)
 
 intTyName :: IntTy -> String
 intTyName ITNative = "Int"
@@ -514,7 +517,7 @@ intTyName (ITChar) = "Char"
 intTyName (ITVec ity count) = "B" ++ show (nativeTyWidth ity) ++ "x" ++ show count
 
 data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors https://github.com/idris-lang/Idris-dev/issues/1723
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Data, Typeable)
 {-!
 deriving instance NFData IntTy
 deriving instance NFData NativeTy
@@ -548,7 +551,7 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B32V (Vector Word32) | B64V (Vector Word64)
            | AType ArithTy | StrType
            | PtrType | ManagedPtrType | BufferType | VoidType | Forgot
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Data, Typeable)
 {-!
 deriving instance Binary Const
 deriving instance NFData Const
@@ -639,7 +642,7 @@ constDocs (B64V v)                         = "A vector of sixty-four-bit values"
 constDocs prim                             = "Undocumented"
 
 data Universe = NullType | UniqueType | AllTypes
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Data, Typeable)
 
 instance Show Universe where
     show UniqueType = "UniqueType"
@@ -653,7 +656,7 @@ data Raw = Var Name
          | RUType Universe
          | RForce Raw
          | RConstant Const
-  deriving (Show, Eq)
+  deriving (Show, Eq, Data, Typeable)
 
 instance Sized Raw where
   size (Var name) = 1
@@ -707,7 +710,7 @@ data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}
               | PVar  { binderTy  :: !b }
                 -- ^ A pattern variable
               | PVTy  { binderTy  :: !b }
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Data, Typeable)
 {-!
 deriving instance Binary Binder
 deriving instance NFData Binder
@@ -749,7 +752,7 @@ raw_unapply t = ua [] t where
 -- | Universe expressions for universe checking
 data UExp = UVar Int -- ^ universe variable
           | UVal Int -- ^ explicit universe level
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Data, Typeable)
 {-!
 deriving instance NFData UExp
 !-}
@@ -786,7 +789,7 @@ data NameType = Bound
               | Ref
               | DCon {nt_tag :: Int, nt_arity :: Int, nt_unique :: Bool} -- ^ Data constructor
               | TCon {nt_tag :: Int, nt_arity :: Int} -- ^ Type constructor
-  deriving (Show, Ord)
+  deriving (Show, Ord, Data, Typeable)
 {-!
 deriving instance Binary NameType
 deriving instance NFData NameType
@@ -821,7 +824,7 @@ data TT n = P NameType n (TT n) -- ^ named references with type
           | Impossible -- ^ special case for totality checking
           | TType UExp -- ^ the type of types at some level
           | UType Universe -- ^ Uniqueness type universe (disjoint from TType)
-  deriving (Ord, Functor)
+  deriving (Ord, Functor, Data, Typeable)
 {-!
 deriving instance Binary TT
 deriving instance NFData TT

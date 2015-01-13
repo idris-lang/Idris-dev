@@ -529,6 +529,13 @@ Extra-source-files:
                        test/sugar003/run
                        test/sugar003/*.idr
                        test/sugar003/expected
+                       test/sugar004/run
+                       test/sugar004/*.idr
+                       test/sugar004/expected
+                       test/sugar005/run
+                       test/sugar005/*.idr
+                       test/sugar005/expected
+
 
                        test/totality001/run
                        test/totality001/*.idr
@@ -755,6 +762,7 @@ Library
                 , time >= 1.4 && < 1.6
                 , transformers < 0.5
                 , trifecta >= 1.1 && < 1.6
+                , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3
                 , utf8-string < 0.4
                 , vector < 0.11
