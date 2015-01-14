@@ -50,13 +50,13 @@ instance DecEq Bool where
 -- Nat
 --------------------------------------------------------------------------------
 
-total OnotS : Z = S n -> Void
-OnotS Refl impossible
+total ZnotS : Z = S n -> Void
+ZnotS Refl impossible
 
 instance DecEq Nat where
   decEq Z     Z     = Yes Refl
-  decEq Z     (S _) = No OnotS
-  decEq (S _) Z     = No (negEqSym OnotS)
+  decEq Z     (S _) = No ZnotS
+  decEq (S _) Z     = No (negEqSym ZnotS)
   decEq (S n) (S m) with (decEq n m)
     | Yes p = Yes $ cong p
     | No p = No $ \h : (S n = S m) => p $ succInjective n m h
