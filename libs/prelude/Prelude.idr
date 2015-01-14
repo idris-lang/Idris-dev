@@ -350,7 +350,8 @@ instance VerifiedMonad Maybe where
     monadApplicative Nothing (Just x) = Refl
     monadApplicative (Just f) Nothing = Refl
     monadApplicative (Just f) (Just x) = Refl
-    monadLeftIdentity x f = Refl
+    monadLeftIdentity Nothing f = Refl
+    monadLeftIdentity (Just x) f = Refl
     monadRightIdentity (Just x) = Refl
     monadRightIdentity Nothing = Refl
     monadAssociativity Nothing f g = Refl
@@ -360,12 +361,12 @@ instance Monad (Either e) where
     (Left n) >>= _ = Left n
     (Right r) >>= f = f r
 
-
 instance VerifiedMonad (Either e) where
     monadApplicative (Left f) mx = Refl
     monadApplicative (Right f) (Left x) = Refl
     monadApplicative (Right f) (Right x) = Refl
-    monadLeftIdentity x f = Refl
+    monadLeftIdentity (Left x) f = Refl
+    monadLeftIdentity (Right x) f = Refl
     monadRightIdentity (Left x) = Refl
     monadRightIdentity (Right x) = Refl
     monadAssociativity (Left x) f g = Refl
