@@ -240,9 +240,21 @@ instance Functor Maybe where
     map f (Just x) = Just (f x)
     map f Nothing  = Nothing
 
+instance VerifiedFunctor Maybe where
+    functorIdentity Nothing = Refl
+    functorIdentity (Just x) = Refl
+    functorComposition Nothing f g = Refl
+    functorComposition (Just x) f g = Refl
+
 instance Functor (Either e) where
     map f (Left l) = Left l
     map f (Right r) = Right (f r)
+
+instance VerifiedFunctor (Either e) where
+    functorIdentity (Left x) = Refl
+    functorIdentity (Right x) = Refl
+    functorComposition (Left x) f g = Refl
+    functorComposition (Right x) f g = Refl
 
 ---- Applicative instances
 
@@ -263,12 +275,38 @@ instance Applicative Maybe where
     (Just f) <$> (Just a) = Just (f a)
     _        <$> _        = Nothing
 
+instance VerifiedApplicative Maybe where
+  applicativeMap Nothing f = Refl
+  applicativeMap (Just x) f = Refl
+  applicativeIdentity Nothing = Refl
+  applicativeIdentity (Just x) = Refl
+  applicativeComposition Nothing f g = Refl
+  applicativeComposition (Just x) Nothing g = Refl
+  applicativeComposition (Just x) (Just f) Nothing = Refl
+  applicativeComposition (Just x) (Just f) (Just g) = Refl
+  applicativeHomomorphism x f = Refl
+  applicativeInterchange x Nothing = Refl
+  applicativeInterchange x (Just f) = Refl
+
 instance Applicative (Either e) where
     pure = Right
 
     (Left a) <$> _          = Left a
     (Right f) <$> (Right r) = Right (f r)
     (Right _) <$> (Left l)  = Left l
+
+instance VerifiedApplicative (Either a) where
+    applicativeMap (Left x) f = Refl
+    applicativeMap (Right x) f = Refl
+    applicativeIdentity (Left x) = Refl
+    applicativeIdentity (Right x) = Refl
+    applicativeComposition x f (Left g) = Refl
+    applicativeComposition x (Left f) (Right g) = Refl
+    applicativeComposition (Left x) (Right f) (Right g) = Refl
+    applicativeComposition (Right x) (Right f) (Right g) = Refl
+    applicativeHomomorphism x f = Refl
+    applicativeInterchange x (Left f) = Refl
+    applicativeInterchange x (Right f) = Refl
 
 instance Applicative List where
     pure x = [x]
@@ -300,9 +338,32 @@ instance Monad Maybe where
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
 
+instance VerifiedMonad Maybe where
+    monadApplicative Nothing Nothing = Refl
+    monadApplicative Nothing (Just x) = Refl
+    monadApplicative (Just f) Nothing = Refl
+    monadApplicative (Just f) (Just x) = Refl
+    monadLeftIdentity Nothing f = Refl
+    monadLeftIdentity (Just x) f = Refl
+    monadRightIdentity (Just x) = Refl
+    monadRightIdentity Nothing = Refl
+    monadAssociativity Nothing f g = Refl
+    monadAssociativity (Just x) f g = Refl
+
 instance Monad (Either e) where
     (Left n) >>= _ = Left n
     (Right r) >>= f = f r
+
+instance VerifiedMonad (Either e) where
+    monadApplicative (Left f) mx = Refl
+    monadApplicative (Right f) (Left x) = Refl
+    monadApplicative (Right f) (Right x) = Refl
+    monadLeftIdentity (Left x) f = Refl
+    monadLeftIdentity (Right x) f = Refl
+    monadRightIdentity (Left x) = Refl
+    monadRightIdentity (Right x) = Refl
+    monadAssociativity (Left x) f g = Refl
+    monadAssociativity (Right x) f g = Refl
 
 instance Monad List where
     m >>= f = concatMap f m
