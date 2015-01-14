@@ -623,6 +623,7 @@ processInput cmd orig inputs efile
             Success (Right Reload) ->
                 do putIState $ orig { idris_options = idris_options i
                                     , idris_colourTheme = idris_colourTheme i
+                                    , imported = imported i
                                     }
                    clearErr
                    mods <- loadInputs inputs Nothing
@@ -1175,7 +1176,7 @@ process fn (SetConsoleWidth w) = setWidth w
 
 process fn (Apropos pkgs a) =
   do orig <- getIState
-     when (not (null pkgs)) $ 
+     when (not (null pkgs)) $
        iputStrLn $ "Searching packages: " ++ showSep ", " pkgs
      mapM_ loadPkgIndex pkgs
      ist <- getIState
