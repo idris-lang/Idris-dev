@@ -132,9 +132,10 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     psRec _ 0 | fromProver = cantSolveGoal
     psRec rec 0 = do attack; defer [] nroot; solve --fail "Maximum depth reached"
     psRec False d = tryCons d hints 
-    psRec True d = try' (trivial elab ist)
-                        (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
-                              True)
+    psRec True d = do compute
+                      try' (trivial elab ist)
+                           (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
+                                 True)
              -- if all else fails, make a new metavariable
                          (if fromProver 
                              then cantSolveGoal
