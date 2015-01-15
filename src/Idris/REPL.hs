@@ -331,11 +331,6 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.TypeOf name) =
     Left err -> iPrintError err
     Right n -> process "(ideslave)"
                  (Check (PRef (FC "(ideslave)" (0,0) (0,0)) n))
-  where splitName :: String -> Either String Name
-        splitName s = case reverse $ splitOn "." s of
-                        [] -> Left ("Didn't understand name '" ++ s ++ "'")
-                        [n] -> Right $ sUN n
-                        (n:ns) -> Right $ sNS (sUN n) ns
 runIdeSlaveCommand h id orig fn mods (IdeSlave.DocsFor name) =
   case parseConst orig name of
     Success c -> process "(ideslave)" (DocStr (Right c))
@@ -487,11 +482,6 @@ runIdeSlaveCommand h id orig fn mods (IdeSlave.PrintDef name) =
   case splitName name of
     Left err -> iPrintError err
     Right n -> process "(ideslave)" (PrintDef n)
-  where splitName :: String -> Either String Name
-        splitName s = case reverse $ splitOn "." s of
-                        [] -> Left ("Didn't understand name '" ++ s ++ "'")
-                        [n] -> Right $ sUN n
-                        (n:ns) -> Right $ sNS (sUN n) ns
 runIdeSlaveCommand h id orig fn modes (IdeSlave.ErrString e) =
   do ist <- getIState
      let out = displayS . renderPretty 1.0 60 $ pprintErr ist e
@@ -523,8 +513,11 @@ ideSlaveForceTermImplicits h id bnd impl tm =
 splitName :: String -> Either String Name
 splitName s = case reverse $ splitOn "." s of
                 [] -> Left ("Didn't understand name '" ++ s ++ "'")
-                [n] -> Right $ sUN n
-                (n:ns) -> Right $ sNS (sUN n) ns
+                [n] -> Right . sUN $ unparen n
+                (n:ns) -> Right $ sNS (sUN (unparen n)) ns
+  where unparen "" = ""
+        unparen ('(':x:xs) | last xs == ')' = init (x:xs)
+        unparen str = str
 
 ideslaveProcess :: FilePath -> Command -> Idris ()
 ideslaveProcess fn Warranty = process fn Warranty
