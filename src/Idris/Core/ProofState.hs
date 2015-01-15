@@ -193,7 +193,8 @@ mergeSolutions env ns = merge [] ns
           | Just t' <- lookup n ns
               = do ps <- get
                    let probs = problems ps
-                   put (ps { problems = probs ++ [(t,t',True,env,Msg "New problem",
+                   put (ps { problems = probs ++ [(t,t',True,env,
+                                                    CantUnify True t t' (Msg "") (errEnv env) 0,
                                                      [], Unify)] })
                    merge acc ns
           | otherwise = merge ((n, t): acc) ns
