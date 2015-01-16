@@ -17,7 +17,6 @@ import System.Console.Haskeline
 import System.Console.Haskeline.MonadException
 import Control.Monad (when)
 import Control.Monad.State.Strict
-import Control.Monad.Except (throwError, catchError)
 import System.IO.Error(isUserError, ioeGetErrorString)
 import Data.Char
 import Data.List (intercalate, isPrefixOf)

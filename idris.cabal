@@ -751,7 +751,7 @@ Library
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
                 , lens >= 4.1.1 && < 4.8
-                , mtl >= 2.2.1 && < 2.3
+                , mtl >= 2.1 && < 2.3
                 , network < 2.7
                 , optparse-applicative >= 0.11 && < 0.12
                 , parsers >= 0.9 && < 0.13
@@ -761,6 +761,7 @@ Library
                 , text < 1.3
                 , time >= 1.4 && < 1.6
                 , transformers < 0.5
+                , transformers-compat >= 0.3
                 , trifecta >= 1.1 && < 1.6
                 , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3

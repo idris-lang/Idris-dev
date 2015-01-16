@@ -20,6 +20,7 @@ import System.IO
 
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Except
+import qualified Control.Monad.Trans.Class as Trans (lift)
 
 import Data.Data (Data)
 import Data.Function (on)
@@ -309,6 +310,12 @@ idrisInit = IState initContext [] []
 -- global state (hence the IO inner monad).
 --type Idris = WriterT [Either String (IO ())] (State IState a))
 type Idris = StateT IState (ExceptT Err IO)
+
+catchError :: Idris a -> (Err -> Idris a) -> Idris a
+catchError = liftCatch catchE
+
+throwError :: Err -> Idris a
+throwError = Trans.lift . throwE
 
 -- Commands in the REPL
 
