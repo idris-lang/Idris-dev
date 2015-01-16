@@ -57,6 +57,7 @@ import IRTS.CodegenCommon
 import IRTS.System
 
 import Control.Category
+import qualified Control.Exception as X
 import Prelude hiding ((.), id)
 import Data.List.Split (splitOn)
 import Data.List (groupBy)
@@ -208,16 +209,28 @@ processNetCmd orig i h fn cmd
 -- | Run a command on the server on localhost
 runClient :: PortID -> String -> IO ()
 runClient port str = withSocketsDo $ do
-                  h <- connectTo "localhost" port
+              res <- X.try (connectTo "localhost" port)
+              case res of
+                Right h -> do
                   hSetEncoding h utf8
                   hPutStrLn h str
                   resp <- hGetResp "" h
                   putStr resp
                   hClose h
+
+                Left err -> do
+                  connectionError err
+                  exitWith (ExitFailure 1)
+
     where hGetResp acc h = do eof <- hIsEOF h
                               if eof then return acc
                                      else do l <- hGetLine h
                                              hGetResp (acc ++ l ++ "\n") h
+
+          connectionError :: X.SomeException -> IO ()
+          connectionError _ =
+            putStrLn "Unable to connect to a running Idris repl"
+
 
 initIdeslaveSocket :: IO Handle
 initIdeslaveSocket = do
