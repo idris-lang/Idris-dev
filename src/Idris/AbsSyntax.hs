@@ -1,5 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
-             TypeSynonymInstances, PatternGuards #-}
+{-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleInstances,
+             DeriveFunctor, TypeSynonymInstances, PatternGuards #-}
 
 module Idris.AbsSyntax(module Idris.AbsSyntax, module Idris.AbsSyntaxTree) where
 
@@ -19,7 +19,11 @@ import System.IO
 
 import Control.Applicative
 import Control.Monad.State
+#if MIN_VERSION_mtl(2,2,1)
 import Control.Monad.Except (throwError, catchError)
+#else
+import Control.Monad.Error  (throwError, catchError)
+#endif
 
 import Data.List hiding (insert,union)
 import Data.Char

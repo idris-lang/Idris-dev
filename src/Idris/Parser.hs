@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
                     module Idris.ParseExpr,
@@ -50,7 +50,11 @@ import Idris.Core.Evaluate
 
 import Control.Applicative hiding (Const)
 import Control.Monad
+#if MIN_VERSION_mtl(2,2,1)
 import Control.Monad.Except (throwError, catchError)
+#else
+import Control.Monad.Error  (throwError, catchError)
+#endif
 import Control.Monad.State.Strict
 
 import Data.Function

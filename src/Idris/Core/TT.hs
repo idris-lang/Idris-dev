@@ -1,4 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, MultiParamTypeClasses, FunctionalDependencies,
+             DeriveFunctor, DeriveDataTypeable #-}
 
 {-| TT is the core language of Idris. The language has:
 
@@ -23,7 +24,11 @@ module Idris.Core.TT where
 import Control.Applicative (Applicative (..), Alternative)
 import qualified Control.Applicative as A (Alternative (..))
 import Control.Monad.State.Strict
+#if MIN_VERSION_transformers(0,4,0)
 import Control.Monad.Trans.Except (Except (..))
+#else
+import Control.Monad.Trans.Error  (Error  (..))
+#endif
 import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
@@ -163,6 +168,11 @@ data Err' t
           | ReflectionError [[ErrorReportPart]] (Err' t)
           | ReflectionFailed String (Err' t)
   deriving (Eq, Functor, Data, Typeable)
+
+#if !(MIN_VERSION_transformers(0,4,0))
+instance Error Err where
+    strMsg = InternalMsg
+#endif
 
 type Err = Err' Term
 
