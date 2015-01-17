@@ -5,6 +5,7 @@ module IRTS.Bytecode where
 
 import IRTS.Lang
 import IRTS.Simplified
+import IRTS.Defunctionalise
 import Idris.Core.TT
 import Data.Maybe
 
@@ -69,10 +70,8 @@ data BC =
     -- same, perhaps exists just for TCO
   | TAILCALL Name
 
-    -- set reg to (apply string args), FLang argument is the language to
-    -- be called. FType is the foreign language type, which may be used to
-    -- control marshaling.
-  | FOREIGNCALL Reg FLang FType String [(FType, Reg)]
+    -- set reg to (apply string args), 
+  | FOREIGNCALL Reg FDesc DExp [(FDesc, Reg)]
 
     -- move this number of elements from TOP to BASE
   | SLIDE Int
@@ -132,8 +131,8 @@ bc reg (SApp False f vs) r =
 bc reg (SApp True f vs) r
     = RESERVE (length vs) : moveReg 0 vs
       ++ [SLIDE (length vs), TOPBASE (length vs), TAILCALL f]
-bc reg (SForeign l t fname args) r
-    = FOREIGNCALL reg l t fname (map farg args) : clean r
+bc reg (SForeign t fname args) r
+    = FOREIGNCALL reg t fname (map farg args) : clean r
   where farg (ty, Loc i) = (ty, L i)
 bc reg (SLet (Loc i) e sc) r = bc (L i) e False ++ bc reg sc r
 bc reg (SUpdate (Loc i) sc) r = bc reg sc False ++ [ASSIGN (L i) reg]

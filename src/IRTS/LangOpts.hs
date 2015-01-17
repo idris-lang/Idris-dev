@@ -64,9 +64,9 @@ doInline defs (LFun opts topn args exp)
                 inlineWith (n : done) (zip args es' ++ env) body
     inlineWith done env (LApp t f es)
        = LApp t <$> inlineWith done env f <*> mapM (inlineWith done env) es
-    inlineWith done env (LForeign l t s args)
-       = LForeign l t s <$> mapM (\(t, e) -> do e' <- inlineWith done env e
-                                                return (t, e')) args
+    inlineWith done env (LForeign t s args)
+       = LForeign t s <$> mapM (\(t, e) -> do e' <- inlineWith done env e
+                                              return (t, e')) args
     inlineWith done env t = return t
 
     inlineWithAlt done env (LConCase i n es rhs)

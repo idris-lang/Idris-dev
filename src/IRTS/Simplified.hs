@@ -22,7 +22,9 @@ data SExp = SV LVar
           | SChkCase LVar [SAlt]
           | SProj LVar Int
           | SConst Const
-          | SForeign FLang FType String [(FType, LVar)]
+          -- Keep DExps for describing foreign things, because they get
+          -- translated differently
+          | SForeign FDesc DExp [(FDesc, LVar)]
           | SOp PrimFn [LVar]
           | SNothing -- erased value, will never be inspected
           | SError String
@@ -54,10 +56,10 @@ simplify tl (DV (Glob x))
               _ -> return $ SV (Glob x)
 simplify tl (DApp tc n args) = do args' <- mapM sVar args
                                   mkapp (SApp (tl || tc) n) args'
-simplify tl (DForeign lang ty fn args)
+simplify tl (DForeign ty fn args)
                             = do args' <- mapM sVar (map snd args)
                                  let fargs = zip (map fst args) args'
-                                 mkfapp (SForeign lang ty fn) fargs
+                                 mkfapp (SForeign ty fn) fargs
 simplify tl (DLet n v e) = do v' <- simplify False v
                               e' <- simplify tl e
                               return (SLet (Glob n) v' e')
@@ -159,10 +161,10 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
                                    " has arity " ++ show ar
                 Just _ -> return $ SApp tc f args'
                 Nothing -> failsc $ "No such variable " ++ show f
-    sc env (SForeign l ty f args)
+    sc env (SForeign ty f args)
        = do args' <- mapM (\ (t, a) -> do a' <- scVar env a
                                           return (t, a')) args
-            return $ SForeign l ty f args'
+            return $ SForeign ty f args'
     sc env (SCon loc tag f args)
        = do loc' <- case loc of
                          Nothing -> return Nothing

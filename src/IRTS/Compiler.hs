@@ -218,7 +218,7 @@ irTerm :: Vars -> [Name] -> Term -> Idris LExp
 irTerm vs env tm@(App f a) = case unApply tm of
     (P _ (UN m) _, args)
         | m == txt "mkForeignPrim"
-        -> doForeign vs env args
+        -> doForeign vs env (reverse (drop 4 args)) -- drop implicits
 
     (P _ (UN u) _, [_, arg])
         | u == txt "unsafePerformPrimIO"
@@ -434,9 +434,30 @@ irTerm vs env (TType _)    = return $ LNothing
 irTerm vs env Erased       = return $ LNothing
 irTerm vs env Impossible   = return $ LNothing
 
-doForeign :: Vars -> [Name] -> [TT Name] -> Idris LExp
-doForeign vs env (_ : fgn : args)
-    | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
+doForeign :: Vars -> [Name] -> [Term] -> Idris LExp
+doForeign vs env (ret : fname : world : args)
+     = do args' <- mapM splitArg args
+          fname' <- irTerm vs env fname
+          let ret' = toFDesc ret
+          return $ LForeign ret' fname' args'
+  where
+    splitArg tm | (_, [_,_,l,r]) <- unApply tm -- pair, two implicits
+        = do let l' = toFDesc l 
+             r' <- irTerm vs env r
+             return (l', r')
+    splitArg _ = ifail "Badly formed foreign function call"
+
+    toFDesc tm 
+       | (P _ n _, []) <- unApply tm = FCon (deNS n) 
+       | (P _ n _, as) <- unApply tm = FApp (deNS n) (map toFDesc as)
+    toFDesc _ = FUnknown
+
+    deNS (NS n _) = n
+    deNS n = n
+doForeign vs env xs = ifail "Badly formed foreign function call"
+
+{-
+ - | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
     = case getFTypes fgnArgTys of
         Nothing -> ifail $ "Foreign type specification is not a constant list: " ++ show (fgn:args)
         Just tys -> do
@@ -502,6 +523,7 @@ doForeign vs env (_ : fgn : args)
     mkIntIty "IT16" = FArith (ATInt (ITFixed IT16))
     mkIntIty "IT32" = FArith (ATInt (ITFixed IT32))
     mkIntIty "IT64" = FArith (ATInt (ITFixed IT64))
+-}
 
 irTree :: [Name] -> SC -> Idris LExp
 irTree args tree = do

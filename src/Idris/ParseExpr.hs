@@ -526,34 +526,21 @@ MatchApp ::=
 @
 -}
 app :: SyntaxInfo -> IdrisParser PTerm
-app syn = do f <- reserved "mkForeign"
+app syn = do f <- simpleExpr syn
+             (do try $ reservedOp "<=="
+                 fc <- getFC
+                 ff <- fnName
+                 return (PLet fc (sMN 0 "match")
+                               f
+                               (PMatchApp fc ff)
+                               (PRef fc (sMN 0 "match")))
+              <?> "matching application expression") <|> (do
              fc <- getFC
-             fn <- arg syn
-             args <- many (do notEndApp; arg syn)
              i <- get
-             let ap = PApp fc (PRef fc (sUN "liftPrimIO"))
-                       [pexp (PLam fc (sMN 0 "w")
-                             Placeholder
-                             (PApp fc (PRef fc (sUN "mkForeignPrim"))
-                                         (fn : args ++
-                                            [pexp (PRef fc (sMN 0 "w"))])))]
-             return (dslify i ap)
-
-       <|> do f <- simpleExpr syn
-              (do try $ reservedOp "<=="
-                  fc <- getFC
-                  ff <- fnName
-                  return (PLet fc (sMN 0 "match")
-                                f
-                                (PMatchApp fc ff)
-                                (PRef fc (sMN 0 "match")))
-               <?> "matching application expression") <|> (do
-              fc <- getFC
-              i <- get
-              args <- many (do notEndApp; arg syn)
-              case args of
-                [] -> return f
-                _  -> return (dslify i (PApp fc f args)))
+             args <- many (do notEndApp; arg syn)
+             case args of
+               [] -> return f
+               _  -> return (dslify i (PApp fc f args)))
        <?> "function application"
   where
     dslify :: IState -> PTerm -> PTerm
@@ -868,7 +855,7 @@ pi syn =
             sc <- expr syn
             return (bindList (PPi binder) xt sc)) <|> (do
                (do try (lchar '{' *> reserved "auto")
-                   when (st == Static) $ fail "auto type constraints can not be lazy or static"
+                   when (st == Static) $ fail "auto type constraints can not be static"
                    xt <- typeDeclList syn
                    lchar '}'
                    symbol "->"
@@ -876,7 +863,7 @@ pi syn =
                    return (bindList (PPi
                      (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc)) <|> (do
                        try (lchar '{' *> reserved "default")
-                       when (st == Static) $ fail "default tactic constraints can not be lazy or static"
+                       when (st == Static) $ fail "default tactic constraints can not be static"
                        script <- simpleExpr syn
                        xt <- typeDeclList syn
                        lchar '}'

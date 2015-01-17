@@ -208,9 +208,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
 
     -- returns 'True' if the function should block
     -- normal evaluation should return false
-    blockSimplify (CaseInfo inl dict) n stk
+    blockSimplify (CaseInfo inl always dict) n stk
        | RunTT `elem` opts
-           = not (inl || dict) || elem n stk
+           = if always then False
+                       else not (inl || dict) || elem n stk
        | Simplify `elem` opts
            = (not (inl || dict) || elem n stk)
              || (n == sUN "prim__syntactic_eq")
@@ -679,7 +680,8 @@ data CaseDefs = CaseDefs {
                 }
 
 data CaseInfo = CaseInfo {
-                  case_inlinable :: Bool,
+                  case_inlinable :: Bool, -- decided by machine
+                  case_alwaysinline :: Bool, -- decided by %inline flag
                   tc_dictionary :: Bool
                 }
 
@@ -706,7 +708,7 @@ instance Show Def where
     show (Function ty tm) = "Function: " ++ show (ty, tm)
     show (TyDecl nt ty) = "TyDecl: " ++ show nt ++ " " ++ show ty
     show (Operator ty _ _) = "Operator: " ++ show ty
-    show (CaseOp (CaseInfo inlc inlr) ty atys ps_in ps cd)
+    show (CaseOp (CaseInfo inlc inla inlr) ty atys ps_in ps cd)
       = let (ns, sc) = cases_compiletime cd
             (ns_t, sc_t) = cases_totcheck cd
             (ns', sc') = cases_runtime cd in
@@ -717,7 +719,8 @@ instance Show Def where
                                         show ns ++ " " ++ show sc ++ "\n\n" ++
                                         "RUN TIME:\n\n" ++
                                         show ns' ++ " " ++ show sc' ++ "\n\n" ++
-            if inlc then "Inlinable\n" else "Not inlinable\n"
+            if inlc then "Inlinable" else "Not inlinable" ++
+            if inla then " Aggressively\n" else "\n"
 
 -------
 
@@ -865,7 +868,7 @@ addCasedef :: Name -> ErasureInfo -> CaseInfo ->
               [([Name], Term, Term)] -> -- inlined
               [([Name], Term, Term)] -> -- run time
               Type -> Context -> Context
-addCasedef n ei ci@(CaseInfo alwaysInline tcdict)
+addCasedef n ei ci@(CaseInfo inline alwaysInline tcdict)
            tcase covering reflect asserted argtys inacc
            ps_in ps_tot ps_inl ps_ct ps_rt ty uctxt
     = let ctxt = definitions uctxt

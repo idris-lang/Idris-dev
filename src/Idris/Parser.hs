@@ -425,6 +425,8 @@ fnOpts opts
                   fnOpts (CExport c : opts)
       <|> do try (lchar '%' *> reserved "no_implicit");
                   fnOpts (NoImplicit : opts)
+      <|> do try (lchar '%' *> reserved "inline");
+                  fnOpts (Inlinable : opts)
       <|> do try (lchar '%' *> reserved "assert_total");
                   fnOpts (AssertTotal : opts)
       <|> do try (lchar '%' *> reserved "error_handler");

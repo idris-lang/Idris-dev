@@ -10,10 +10,10 @@ getArgs = do n <- numArgs
              ga' [] 0 n
   where
     numArgs : IO Int
-    numArgs = mkForeign (FFun "idris_numArgs" [] FInt)
+    numArgs = foreign FFI_C "idris_numArgs" (IO Int)
 
     getArg : Int -> IO String
-    getArg x = mkForeign (FFun "idris_getArg" [FInt] FString) x
+    getArg x = foreign FFI_C "idris_getArg" (Int -> IO String) x
 
     ga' : List String -> Int -> Int -> IO (List String)
     ga' acc i n = if (i == n) then (return $ reverse acc) else
@@ -31,27 +31,27 @@ getEnv key = do
        else pure (Just str_ptr)
   where
     getEnv' : IO String
-    getEnv' = mkForeign (FFun "getenv" [FString] FString) key
+    getEnv' = foreign FFI_C "getenv" (String -> IO String) key
 
 ||| Sets an environment variable with a given value.
 ||| Returns true if the operation was successful.
 setEnv : String -> String -> IO Bool
 setEnv key value = do
-  ok <- mkForeign (FFun "setenv" [FString, FString, FInt] FInt) key value 1
+  ok <- foreign FFI_C "setenv" (String -> String -> Int -> IO Int) key value 1
   return (ok == 0)
 
 ||| Unsets an environment variable.
 ||| Returns true if the variable was able to be unset.
 unsetEnv : String -> IO Bool
 unsetEnv key = do
-  ok <- mkForeign (FFun "unsetenv" [FString] FInt) key
+  ok <- foreign FFI_C "unsetenv" (String -> IO Int) key
   return (ok == 0)
 
 getEnvironment : IO (List (String, String))
 getEnvironment = getAllPairs 0 []
   where
     getEnvPair : Int -> IO String
-    getEnvPair i = mkForeign (FFun "getEnvPair" [FInt] FString) i
+    getEnvPair i = foreign FFI_C  "getEnvPair" (Int -> IO String) i
 
     splitEq : String -> (String, String)
     splitEq str =
@@ -70,15 +70,15 @@ getEnvironment = getAllPairs 0 []
 
 ||| Quit with a particular exit code
 exit : Int -> IO ()
-exit code = mkForeign (FFun "exit" [FInt] FUnit) code
+exit code = foreign FFI_C "exit" (Int -> IO ()) code
 
 ||| Get the Unix time
 time : IO Int
-time = mkForeign (FFun "idris_time" [] FInt)
+time = foreign FFI_C "idris_time" (IO Int)
 
 usleep : Int -> IO ()
-usleep i = mkForeign (FFun "usleep" [FInt] FUnit) i
+usleep i = foreign FFI_C "usleep" (Int -> IO ()) i
 
 system : String -> IO Int
-system cmd = mkForeign (FFun "system" [FString] FInt) cmd
+system cmd = foreign FFI_C "system" (String -> IO Int) cmd
 

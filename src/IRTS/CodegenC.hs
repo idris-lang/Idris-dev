@@ -4,6 +4,7 @@ import Idris.AbsSyntax
 import IRTS.Bytecode
 import IRTS.Lang
 import IRTS.Simplified
+import IRTS.Defunctionalise
 import IRTS.System
 import IRTS.CodegenCommon
 import Idris.Core.TT
@@ -19,6 +20,8 @@ import System.IO
 import System.Directory
 import System.FilePath ((</>), (<.>))
 import Control.Monad
+
+import Debug.Trace
 
 codegenC :: CodeGenerator
 codegenC ci = codegenC' (simpleDecls ci)
@@ -274,16 +277,41 @@ bcc i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
 bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
 bcc i STOREOLD = indent i ++ "STOREOLD;\n"
 bcc i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
-bcc i (FOREIGNCALL l LANG_C rty fn args)
+bcc i (FOREIGNCALL l rty (DConst (Str fn)) args)
       = indent i ++
-        c_irts rty (creg l ++ " = ")
+        c_irts (toFType rty) (creg l ++ " = ")
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
-    where fcall (t, arg) = irts_c t (creg arg)
+    where fcall (t, arg) = irts_c (toFType t) (creg arg)
 bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
 bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1); exit(-1);"
--- bcc i _ = indent i ++ "// not done yet\n"
+-- bcc i c = error (show c) -- indent i ++ "// not done yet\n"
 
+-- Deconstruct the Foreign type in the defunctionalised expression and build
+-- a foreign type description for c_irts and irts_c
+toAType (FCon i) 
+    | i == sUN "C_IntChar" = ATInt ITChar
+    | i == sUN "C_IntNative" = ATInt ITNative
+    | i == sUN "C_IntBits8" = ATInt (ITFixed IT8)
+    | i == sUN "C_IntBits16" = ATInt (ITFixed IT16)
+    | i == sUN "C_IntBits32" = ATInt (ITFixed IT32)
+    | i == sUN "C_IntBits64" = ATInt (ITFixed IT64)
+    | i == sUN "C_IntB8x16" = ATInt (ITVec IT8 16)
+    | i == sUN "C_IntB16x8" = ATInt (ITVec IT16 8)
+    | i == sUN "C_IntB32x4" = ATInt (ITVec IT32 4)
+    | i == sUN "C_IntB64x2" = ATInt (ITVec IT64 2)
+toAType t = error (show t ++ " not defined in toAType")
 
+toFType (FCon c) 
+    | c == sUN "C_Str" = FString
+    | c == sUN "C_Float" = FArith ATFloat
+    | c == sUN "C_Ptr" = FPtr
+    | c == sUN "C_MPtr" = FManagedPtr
+    | c == sUN "C_Unit" = FUnit
+toFType (FApp c [_,ity]) 
+    | c == sUN "C_IntT" = FArith (toAType ity)
+toFType (FApp c [_]) 
+    | c == sUN "C_Any" = FAny
+toFType t = error (show t ++ " not defined in toFType")
 
 c_irts (FArith (ATInt ITNative)) l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts (FArith (ATInt ITChar))  l x = c_irts (FArith (ATInt ITNative)) l x

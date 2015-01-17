@@ -51,8 +51,8 @@ serializeBC n bc = indent n ++
         maybe "" (\def' -> "\n" ++ serializeDefault (n + 1) def') def
       CALL x -> "CALL " ++ show x
       TAILCALL x -> "TAILCALL " ++ show x
-      FOREIGNCALL r _ ret name args ->
-        "FOREIGNCALL " ++ serializeReg r ++ " \"" ++ name ++ "\" " ++ show ret ++
+      FOREIGNCALL r ret name args ->
+        "FOREIGNCALL " ++ serializeReg r ++ " \"" ++ show name ++ "\" " ++ show ret ++
         " [" ++ interMap args ", " (\(ty, r) -> serializeReg r ++ " : " ++ show ty) ++ "]"
       SLIDE n -> "SLIDE " ++ show n
       REBASE -> "REBASE"

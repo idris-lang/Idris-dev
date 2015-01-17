@@ -22,7 +22,7 @@ data DExp = DV LVar
           | DCase CaseType DExp [DAlt]
           | DChkCase DExp [DAlt] -- a case where the type is unknown (for EVAL/APPLY)
           | DConst Const
-          | DForeign FLang FType String [(FType, DExp)]
+          | DForeign FDesc DExp [(FDesc, DExp)]
           | DOp PrimFn [DExp]
           | DNothing -- erased value, can be compiled to anything since it'll never
                      -- be inspected
@@ -110,7 +110,10 @@ addApps defs (n, LFun _ _ args e)
                                   alts' <- mapM (aaAlt env) alts
                                   return $ DCase up e' alts'
     aa env (LConst c) = return $ DConst c
-    aa env (LForeign l t n args) = liftM (DForeign l t n) (mapM (aaF env) args)
+    aa env (LForeign t n args) 
+        = do n' <- aa env n
+             args' <- mapM (aaF env) args
+             return $ DForeign t n' args'
     aa env (LOp LFork args) = liftM (DOp LFork) (mapM (aa env) args)
     aa env (LOp f args) = do args' <- mapM (aa env) args
                              return $ DOp f args'
@@ -173,7 +176,7 @@ addApps defs (n, LFun _ _ args e)
     needsEval x (DLet n v e)
           | x == n = needsEval x v
           | otherwise = needsEval x v || needsEval x e
-    needsEval x (DForeign _ _ _ args) = or (map (needsEval x) (map snd args))
+    needsEval x (DForeign _ _ args) = or (map (needsEval x) (map snd args))
     needsEval x (DOp op args) = or (map (needsEval x) args)
     needsEval x (DProj (DV (Glob x')) _) = x == x'
     needsEval x _ = False
@@ -257,13 +260,13 @@ mkUnderCon n missing = sMN missing ("U_" ++ show n)
 instance Show DExp where
    show e = show' [] e where
      show' env (DV (Loc i)) = "var " ++ env!!i
-     show' env (DV (Glob n)) = show n
+     show' env (DV (Glob n)) = "GLOB " ++ show n
      show' env (DApp _ e args) = show e ++ "(" ++
                                    showSep ", " (map (show' env) args) ++")"
      show' env (DLet n v e) = "let " ++ show n ++ " = " ++ show' env v ++ " in " ++
                                show' (env ++ [show n]) e
      show' env (DUpdate n e) = "!update " ++ show n ++ "(" ++ show' env e ++ ")"
-     show' env (DC loc i n args) = atloc loc ++ show n ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
+     show' env (DC loc i n args) = atloc loc ++ "CON " ++ show n ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
        where atloc Nothing = ""
              atloc (Just l) = "@" ++ show (LV l) ++ ":"
      show' env (DProj t i) = show t ++ "!" ++ show i
@@ -275,8 +278,8 @@ instance Show DExp where
      show' env (DChkCase e alts) = "case' " ++ show' env e ++ " of {\n\t" ++
                                     showSep "\n\t| " (map (showAlt env) alts)
      show' env (DConst c) = show c
-     show' env (DForeign lang ty n args)
-           = "foreign " ++ n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
+     show' env (DForeign ty n args)
+           = "foreign " ++ show' env n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
      show' env (DOp f args) = show f ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
      show' env (DError str) = "error " ++ show str
      show' env DNothing = "____"

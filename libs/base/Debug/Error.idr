@@ -12,7 +12,7 @@ error : {default tactics {sourceLocation} loc : SourceLocation} ->
         (message : String) ->
         a
 error {loc = FileLoc filename (line, col) _} message =
-  believe_me . unsafePerformIO $
+  believe_me . unsafePerformIO $ 
     do let place = filename ++ " line " ++ show line ++ " column " ++ show col
        let message' = place ++ ": " ++ message
        putStrLn message'

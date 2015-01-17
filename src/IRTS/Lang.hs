@@ -29,11 +29,18 @@ data LExp = LV LVar
                  Int Name [LExp]
           | LCase CaseType LExp [LAlt]
           | LConst Const
-          | LForeign FLang FType String [(FType, LExp)]
+          | LForeign FDesc -- Function descriptor
+                     LExp -- Return type descriptor
+                     [(FDesc, LExp)] -- first LExp is the FFI type description
           | LOp PrimFn [LExp]
           | LNothing
           | LError String
   deriving Eq
+
+data FDesc = FCon Name
+           | FUnknown
+           | FApp Name [FDesc]
+  deriving (Show, Eq)
 
 -- Primitive operators. Backends are not *required* to implement all
 -- of these, but should report an error if they are unable
@@ -83,9 +90,6 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
 -- Supported target languages for foreign calls
 
 data FCallType = FStatic | FObject | FConstructor
-  deriving (Show, Eq)
-
-data FLang = LANG_C | LANG_JAVA FCallType
   deriving (Show, Eq)
 
 data FType = FArith ArithTy
@@ -192,8 +196,9 @@ lift env (LCase up e alts) = do alts' <- mapM liftA alts
     liftA (LDefaultCase e) = do e' <- lift env e
                                 return (LDefaultCase e')
 lift env (LConst c) = return (LConst c)
-lift env (LForeign l t s args) = do args' <- mapM (liftF env) args
-                                    return (LForeign l t s args')
+lift env (LForeign t s args) = do args' <- mapM (liftF env) args
+                                  s' <- lift env s
+                                  return (LForeign t s' args')
   where
     liftF env (t, e) = do e' <- lift env e
                           return (t, e')
@@ -231,9 +236,9 @@ allocUnique defs (n, LFun opts fn args e)
            = do avail <- get
                 v <- findVar [] avail (length es)
                 LCon v i n <$> mapM findUp es
-    findUp (LForeign l t s es)
-           = LForeign l t s <$> mapM (\ (t, e) -> do e' <- findUp e
-                                                     return (t, e')) es
+    findUp (LForeign t s es)
+           = LForeign t s <$> mapM (\ (t, e) -> do e' <- findUp e
+                                                   return (t, e')) es
     findUp (LOp o es) = LOp o <$> mapM findUp es
     findUp (LCase Updatable e@(LV (Glob n)) as)
            = LCase Updatable e <$> mapM (doUpAlt n) as
@@ -282,7 +287,7 @@ usedIn env (LCase up e alts) = usedIn env e ++ concatMap (usedInA env) alts
   where usedInA env (LConCase i n ns e) = usedIn env e
         usedInA env (LConstCase c e) = usedIn env e
         usedInA env (LDefaultCase e) = usedIn env e
-usedIn env (LForeign _ _ _ args) = concatMap (usedIn env) (map snd args)
+usedIn env (LForeign _ _ args) = concatMap (usedIn env) (map snd args)
 usedIn env (LOp f args) = concatMap (usedIn env) args
 usedIn env _ = []
 
@@ -329,9 +334,9 @@ instance Show LExp where
 
      show' env ind (LConst c) = show c
 
-     show' env ind (LForeign lang ty n args) = concat
+     show' env ind (LForeign ty n args) = concat
             [ "foreign{ "
-            ,       n ++ "("
+            ,       show' env ind n ++ "("
             ,           showSep ", " (map (\(ty,x) -> show' env ind x ++ " : " ++ show ty) args)
             ,       ") : "
             ,       show ty

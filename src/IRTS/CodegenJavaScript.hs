@@ -1332,7 +1332,7 @@ translateBC info bc
   | NULL r                <- bc = jsNULL info r
   | CALL n                <- bc = jsCALL info n
   | TAILCALL n            <- bc = jsTAILCALL info n
-  | FOREIGNCALL r _ _ n a <- bc = jsFOREIGN info r n a
+  | FOREIGNCALL r _ n a   <- bc = error "jsFOREIGN info r n a"
   | TOPBASE n             <- bc = jsTOPBASE info n
   | BASETOP n             <- bc = jsBASETOP info n
   | STOREOLD              <- bc = jsSTOREOLD info

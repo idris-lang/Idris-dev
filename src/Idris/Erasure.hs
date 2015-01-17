@@ -192,12 +192,15 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 -- These two, Main.main and run__IO, are always evaluated
                 -- but they elude analysis since they come from the seed term.
                 [ [(mainName,  Result)] 
-                , [(sUN "run__IO", Result), (sUN "run__IO", Arg 0)]
+                , [(sUN "run__IO", Result), (sUN "run__IO", Arg 1)]
 
                 -- MkIO is read by run__IO,
                 -- but this cannot be observed in the source code of programs.
-                , it "MkIO"         [1]
+                , it "MkIO"         [2]
                 , it "prim__IO"     [1]
+
+                , [(pairCon, Arg 2),
+                   (pairCon, Arg 3)] -- TMP HACK
 
                 -- these have been discovered as builtins but are not listed
                 -- among Idris.Primitives.primitives
@@ -380,8 +383,8 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
             -- which is the (Foreign a) spec that defines the type
             -- and is not needed at runtime.
             P _ (UN n) _
-                | n `elem` map T.pack ["mkForeign", "mkForeignPrim", "mkLazyForeignPrim"]
-                -> unconditionalDeps (drop 1 args)
+                | n `elem` map T.pack ["mkForeignPrim"]
+                -> unconditionalDeps args -- (drop 1 args)
 
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used

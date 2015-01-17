@@ -3,7 +3,7 @@ module Idris.Core.Execute (execute) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
-import IRTS.Lang(FType(..))
+import IRTS.Lang(FDesc(..), FType(..))
 
 import Idris.Primitives(Prim(..), primitives)
 
@@ -231,140 +231,13 @@ execApp env ctxt con@(EP _ fp _) args@(tp:v:rest)
   | fp == pioret = execApp env ctxt (mkEApp con [tp, v]) rest
 
 -- Special cases arising from not having access to the C RTS in the interpreter
-execApp env ctxt (EP _ fp _) (_:fn:str:_:rest)
+execApp env ctxt f@(EP _ fp _) args@(xs:_:_:_:args')
     | fp == mkfprim,
-      Just (FFun "putStr" _ _) <- foreignFromTT fn
-           = case str of
-               EConstant (Str arg) -> do execIO (putStr arg)
-                                         execApp env ctxt ioUnit rest
-               _ -> execFail . Msg $
-                      "The argument to putStr should be a constant string, but it was " ++
-                      show str ++
-                      ". Are all cases covered?"
-execApp env ctxt (EP _ fp _) (_:fn:ch:_:rest)
-    | fp == mkfprim,
-      Just (FFun "putchar" _ _) <- foreignFromTT fn
-           = case ch of
-               EConstant (Ch c) -> do execIO (putChar c)
-                                      execApp env ctxt ioUnit rest
-               EConstant (I i)  -> do execIO (putChar (toEnum i))
-                                      execApp env ctxt ioUnit rest
-               _ -> execFail . Msg $
-                      "The argument to putchar should be a constant character, but it was " ++
-                      show str ++
-                      ". Are all cases covered?"
-execApp env ctxt (EP _ fp _) (_:fn:_:handle:_:rest)
-    | fp == mkfprim,
-      Just (FFun "idris_readStr" _ _) <- foreignFromTT fn
-           = case handle of
-               EHandle h -> do contents <- execIO $ hGetLine h
-                               execApp env ctxt (EConstant (Str (contents ++ "\n"))) rest
-               _ -> execFail . Msg $
-                      "The argument to idris_readStr should be a handle, but it was " ++
-                      show handle ++
-                      ". Are all cases covered?"
-execApp env ctxt (EP _ fp _) (_:fn:_:rest)
-    | fp == mkfprim,
-      Just (FFun "getchar" _ _) <- foreignFromTT fn
-           = do -- The C API returns an Int which Idris library code
-                -- converts; thus, we must make an int here.
-                ch <- execIO $ fmap (ioWrap . EConstant . I . fromEnum) getChar
-                execApp env ctxt ch rest
-execApp  env ctxt (EP _ fp _) (_:fn:rest)
-    | fp == mkfprim,
-      Just (FFun "idris_time" _ _) <- foreignFromTT fn
-           = do execIO $ fmap (ioWrap . EConstant . I . round) getPOSIXTime
-execApp env ctxt (EP _ fp _) (_:fn:fileStr:modeStr:rest)
-    | fp == mkfprim,
-      Just (FFun "fileOpen" _ _) <- foreignFromTT fn
-           = case (fileStr, modeStr) of
-               (EConstant (Str f), EConstant (Str mode)) ->
-                 do f <- execIO $
-                         catch (do let m = case mode of
-                                             "r"  -> Right ReadMode
-                                             "w"  -> Right WriteMode
-                                             "a"  -> Right AppendMode
-                                             "rw" -> Right ReadWriteMode
-                                             "wr" -> Right ReadWriteMode
-                                             "r+" -> Right ReadWriteMode
-                                             _    -> Left ("Invalid mode for " ++ f ++ ": " ++ mode)
-                                   case fmap (openFile f) m of
-                                     Right h -> do h' <- h
-                                                   hSetBinaryMode h' True
-                                                   return $ Right (ioWrap (EHandle h'), tail rest)
-                                     Left err -> return $ Left err)
-                               (\e -> let _ = ( e::SomeException)
-                                      in return $ Right (ioWrap (EPtr nullPtr), tail rest))
-                    case f of
-                      Left err -> execFail . Msg $ err
-                      Right (res, rest) -> execApp env ctxt res rest
-               _ -> execFail . Msg $
-                      "The arguments to fileOpen should be constant strings, but they were " ++
-                      show fileStr ++ " and " ++ show modeStr ++
-                      ". Are all cases covered?"
-
-execApp env ctxt (EP _ fp _) (_:fn:handle:rest)
-    | fp == mkfprim,
-      Just (FFun "fileEOF" _ _) <- foreignFromTT fn
-           = case handle of
-               EHandle h -> do eofp <- execIO $ hIsEOF h
-                               let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
-                               execApp env ctxt res (tail rest)
-               _ -> execFail . Msg $
-                      "The argument to fileEOF should be a file handle, but it was " ++
-                      show handle ++
-                      ". Are all cases covered?"
-
-execApp env ctxt (EP _ fp _) (_:fn:handle:rest)
-    | fp == mkfprim,
-      Just (FFun "fileClose" _ _) <- foreignFromTT fn
-           = case handle of
-               EHandle h -> do execIO $ hClose h
-                               execApp env ctxt ioUnit (tail rest)
-               _ -> execFail . Msg $
-                      "The argument to fileClose should be a file handle, but it was " ++
-                      show handle ++
-                      ". Are all cases covered?"
-
-execApp env ctxt (EP _ fp _) (_:fn:ptr:rest)
-    | fp == mkfprim,
-      Just (FFun "isNull" _ _) <- foreignFromTT fn
-           = case ptr of
-               EPtr p -> let res = ioWrap . EConstant . I $
-                                   if p == nullPtr then 1 else 0
-                         in execApp env ctxt res (tail rest)
-               -- Handles will be checked as null pointers sometimes - but if we got a
-               -- real Handle, then it's valid, so just return 1.
-               EHandle h -> let res = ioWrap . EConstant . I $ 0
-                            in execApp env ctxt res (tail rest)
-               -- A foreign-returned char* has to be tested for NULL sometimes
-               EConstant (Str s) -> let res = ioWrap . EConstant . I $ 0
-                                    in execApp env ctxt res (tail rest)
-               _ -> execFail . Msg $
-                      "The argument to isNull should be a pointer or file handle or string, but it was " ++
-                      show ptr ++
-                      ". Are all cases covered?"
-
-
--- Right now, there's no way to send command-line arguments to the executor,
--- so just return 0.
-execApp env ctxt (EP _ fp _) (_:fn:rest)
-    | fp == mkfprim,
-      Just (FFun "idris_numArgs" _ _) <- foreignFromTT fn
-           = let res = ioWrap . EConstant . I $ 0
-             in execApp env ctxt res (tail rest)
-
-execApp env ctxt f@(EP _ fp _) args@(ty:fn:xs) | fp == mkfprim
-   = case foreignFromTT fn of
-        Just (FFun f argTs retT) | length xs >= length argTs ->
-           do let (args', xs') = (take (length argTs) xs, -- foreign args
-                                  drop (length argTs + 1) xs) -- rest
-              res <- stepForeign (ty:fn:args')
-              case res of
-                   Nothing -> fail $ "Could not call foreign function \"" ++ f ++
-                                     "\" with args " ++ show args
-                   Just r -> return (mkEApp r xs')
-        Nothing -> return (mkEApp f args)
+      (ty : fn : w : rest) <- reverse args' =
+          execForeign env ctxt getArity ty fn rest (mkEApp f args)
+  where getArity = case unEList xs of
+                        Just as -> length as
+                        _ -> 0
 
 execApp env ctxt c@(EP (DCon _ arity _) n _) args =
     do let args' = take arity args
@@ -401,6 +274,133 @@ execApp env ctxt bnd@(EBind n b body) (arg:args) = do ret <- body arg
                                                       execApp env ctxt f' (as ++ args)
 execApp env ctxt app@(EApp _ _) args2 | (f, args1) <- unApplyV app = execApp env ctxt f (args1 ++ args2)
 execApp env ctxt f args = return (mkEApp f args)
+
+execForeign env ctxt arity ty fn xs onfail
+    | Just (FFun "putStr" [(_, str)] _) <- foreignFromTT arity ty fn xs
+       = case str of
+           EConstant (Str arg) -> do execIO (putStr arg)
+                                     execApp env ctxt ioUnit (drop arity xs)
+           _ -> execFail . Msg $
+                  "The argument to putStr should be a constant string, but it was " ++
+                  show str ++
+                  ". Are all cases covered?"
+    | Just (FFun "putchar" [(_, ch)] _) <- foreignFromTT arity ty fn xs
+           = case ch of
+               EConstant (Ch c) -> do execIO (putChar c)
+                                      execApp env ctxt ioUnit (drop arity xs)
+               EConstant (I i)  -> do execIO (putChar (toEnum i))
+                                      execApp env ctxt ioUnit (drop arity xs)
+               _ -> execFail . Msg $
+                      "The argument to putchar should be a constant character, but it was " ++
+                      show str ++
+                      ". Are all cases covered?"
+    | Just (FFun "idris_readStr" [_, (_, handle)] _) <- foreignFromTT arity ty fn xs
+           = case handle of
+               EHandle h -> do contents <- execIO $ hGetLine h
+                               execApp env ctxt (EConstant (Str (contents ++ "\n"))) (drop arity xs)
+               _ -> execFail . Msg $
+                      "The argument to idris_readStr should be a handle, but it was " ++
+                      show handle ++
+                      ". Are all cases covered?"
+    | Just (FFun "getchar" _ _) <- foreignFromTT arity ty fn xs
+           = do -- The C API returns an Int which Idris library code
+                -- converts; thus, we must make an int here.
+                ch <- execIO $ fmap (ioWrap . EConstant . I . fromEnum) getChar
+                execApp env ctxt ch xs
+    | Just (FFun "idris_time" _ _) <- foreignFromTT arity ty fn xs
+           = do execIO $ fmap (ioWrap . EConstant . I . round) getPOSIXTime
+    | Just (FFun "fileOpen" [(_,fileStr), (_,modeStr)] _) <- foreignFromTT arity ty fn xs
+           = case (fileStr, modeStr) of
+               (EConstant (Str f), EConstant (Str mode)) ->
+                 do f <- execIO $
+                         catch (do let m = case mode of
+                                             "r"  -> Right ReadMode
+                                             "w"  -> Right WriteMode
+                                             "a"  -> Right AppendMode
+                                             "rw" -> Right ReadWriteMode
+                                             "wr" -> Right ReadWriteMode
+                                             "r+" -> Right ReadWriteMode
+                                             _    -> Left ("Invalid mode for " ++ f ++ ": " ++ mode)
+                                   case fmap (openFile f) m of
+                                     Right h -> do h' <- h
+                                                   hSetBinaryMode h' True
+                                                   return $ Right (ioWrap (EHandle h'), drop arity xs)
+                                     Left err -> return $ Left err)
+                               (\e -> let _ = ( e::SomeException)
+                                      in return $ Right (ioWrap (EPtr nullPtr), drop arity xs))
+                    case f of
+                      Left err -> execFail . Msg $ err
+                      Right (res, rest) -> execApp env ctxt res rest
+               _ -> execFail . Msg $
+                      "The arguments to fileOpen should be constant strings, but they were " ++
+                      show fileStr ++ " and " ++ show modeStr ++
+                      ". Are all cases covered?"
+    | Just (FFun "fileEOF" [(_,handle)] _) <- foreignFromTT arity ty fn xs
+           = case handle of
+               EHandle h -> do eofp <- execIO $ hIsEOF h
+                               let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
+                               execApp env ctxt res (drop arity xs)
+               _ -> execFail . Msg $
+                      "The argument to fileEOF should be a file handle, but it was " ++
+                      show handle ++
+                      ". Are all cases covered?"
+    | Just (FFun "fileClose" [(_,handle)] _) <- foreignFromTT arity ty fn xs
+           = case handle of
+               EHandle h -> do execIO $ hClose h
+                               execApp env ctxt ioUnit (drop arity xs)
+               _ -> execFail . Msg $
+                      "The argument to fileClose should be a file handle, but it was " ++
+                      show handle ++
+                      ". Are all cases covered?"
+
+    | Just (FFun "isNull" [(_, ptr)] _) <- foreignFromTT arity ty fn xs
+           = case ptr of
+               EPtr p -> let res = ioWrap . EConstant . I $
+                                   if p == nullPtr then 1 else 0
+                         in execApp env ctxt res (drop arity xs)
+               -- Handles will be checked as null pointers sometimes - but if we got a
+               -- real Handle, then it's valid, so just return 1.
+               EHandle h -> let res = ioWrap . EConstant . I $ 0
+                            in execApp env ctxt res (drop arity xs)
+               -- A foreign-returned char* has to be tested for NULL sometimes
+               EConstant (Str s) -> let res = ioWrap . EConstant . I $ 0
+                                    in execApp env ctxt res (drop arity xs)
+               _ -> execFail . Msg $
+                      "The argument to isNull should be a pointer or file handle or string, but it was " ++
+                      show ptr ++
+                      ". Are all cases covered?"
+
+-- Right now, there's no way to send command-line arguments to the executor,
+-- so just return 0.
+execForeign env ctxt arity ty fn xs onfail 
+    | Just (FFun "idris_numArgs" _ _) <- foreignFromTT arity ty fn xs
+           = let res = ioWrap . EConstant . I $ 0
+             in execApp env ctxt res (drop arity xs)
+
+execForeign env ctxt arity ty fn xs onfail
+   = case foreignFromTT arity ty fn xs of
+        Just ffun@(FFun f argTs retT) | length xs >= arity ->
+           do let (args', xs') = (take arity xs, -- foreign args
+                                  drop arity xs) -- rest
+              res <- call ffun (map snd argTs)
+              case res of
+                   Nothing -> fail $ "Could not call foreign function \"" ++ f ++
+                                     "\" with args " ++ show (map snd argTs)
+                   Just r -> return (mkEApp r xs')
+        Nothing -> return onfail
+   
+
+splitArg tm | (_, [_,_,l,r]) <- unApplyV tm -- pair, two implicits
+    = Just (toFDesc l, r)
+splitArg _ = Nothing
+
+toFDesc tm 
+   | (EP _ n _, []) <- unApplyV tm = FCon (deNS n) 
+   | (EP _ n _, as) <- unApplyV tm = FApp (deNS n) (map toFDesc as)
+toFDesc _ = FUnknown
+
+deNS (NS n _) = n
+deNS n = n
 
 prs = sUN "prim__readString"
 pbm = sUN "prim__believe_me"
@@ -494,13 +494,35 @@ idrisType ft = EConstant (idr ft)
           idr FString = StrType
           idr FPtr = PtrType
 
-data Foreign = FFun String [FType] FType deriving Show
+data Foreign = FFun String [(FDesc, ExecVal)] FDesc deriving Show
 
+toFType :: FDesc -> FType
+toFType (FCon c) 
+    | c == sUN "C_Str" = FString
+    | c == sUN "C_Float" = FArith ATFloat
+    | c == sUN "C_Ptr" = FPtr
+    | c == sUN "C_MPtr" = FManagedPtr
+    | c == sUN "C_Unit" = FUnit
+toFType (FApp c [_,ity]) 
+    | c == sUN "C_IntT" = FArith (toAType ity)
+  where toAType (FCon i) 
+          | i == sUN "C_IntChar" = ATInt ITChar
+          | i == sUN "C_IntNative" = ATInt ITNative
+          | i == sUN "C_IntBits8" = ATInt (ITFixed IT8)
+          | i == sUN "C_IntBits16" = ATInt (ITFixed IT16)
+          | i == sUN "C_IntBits32" = ATInt (ITFixed IT32)
+          | i == sUN "C_IntBits64" = ATInt (ITFixed IT64)
+        toAType t = error (show t ++ " not defined in toAType")
+
+toFType (FApp c [_]) 
+    | c == sUN "C_Any" = FAny
+toFType t = error (show t ++ " not defined in toFType")
 
 call :: Foreign -> [ExecVal] -> Exec (Maybe ExecVal)
 call (FFun name argTypes retType) args =
     do fn <- findForeign name
-       maybe (return Nothing) (\f -> Just . ioWrap <$> call' f args retType) fn
+       maybe (return Nothing) 
+             (\f -> Just . ioWrap <$> call' f args (toFType retType)) fn
     where call' :: ForeignFun -> [ExecVal] -> FType -> Exec ExecVal
           call' (Fun _ h) args (FArith (ATInt ITNative)) = do
             res <- execIO $ callFFI h retCInt (prepArgs args)
@@ -549,15 +571,11 @@ call (FFun name argTypes retType) args =
           prepArg other = trace ("Could not use " ++ take 100 (show other) ++ " as FFI arg.") undefined
 
 
-
-foreignFromTT :: ExecVal -> Maybe Foreign
-foreignFromTT t = case (unApplyV t) of
-                    (_, [(EConstant (Str name)), args, ret]) ->
-                        do argTy <- unEList args
-                           argFTy <- sequence $ map getFTy argTy
-                           retFTy <- getFTy ret
-                           return $ FFun name argFTy retFTy
-                    _ -> trace ("failed to construct ffun") Nothing
+foreignFromTT :: Int -> ExecVal -> ExecVal -> [ExecVal] -> Maybe Foreign
+foreignFromTT arity ty (EConstant (Str name)) args
+    = do argFTyVals <- mapM splitArg (take arity args)
+         return $ FFun name argFTyVals (toFDesc ty)
+foreignFromTT arity ty fn args = trace ("failed to construct ffun from " ++ show (ty,fn,args)) Nothing
 
 getFTy :: ExecVal -> Maybe FType
 getFTy (EApp (EP _ (UN fi) _) (EP _ (UN intTy) _))
@@ -591,13 +609,6 @@ unEList tm = case unApplyV tm of
 toConst :: Term -> Maybe Const
 toConst (Constant c) = Just c
 toConst _ = Nothing
-
-stepForeign :: [ExecVal] -> Exec (Maybe ExecVal)
-stepForeign (ty:fn:args) = let ffun = foreignFromTT fn
-                           in case (call <$> ffun) of
-                                Just f -> f args
-                                Nothing -> return Nothing
-stepForeign _ = fail "Tried to call foreign function that wasn't mkForeignPrim"
 
 mapMaybeM :: (Functor m, Monad m) => (a -> m (Maybe b)) -> [a] -> m [b]
 mapMaybeM f [] = return []

@@ -222,7 +222,7 @@ elabClauses info' fc opts n_in cs =
            let opt = idris_optimisation ist
            putIState (ist { idris_patdefs = addDef n (force pdef_pe, force pmissing)
                                                 (idris_patdefs ist) })
-           let caseInfo = CaseInfo (inlinable opts) (dictionary opts)
+           let caseInfo = CaseInfo (inlinable opts) (inlinable opts) (dictionary opts)
            case lookupTy n ctxt of
                [ty] -> do updateContext (addCasedef n erInfo caseInfo
                                                        tcase defaultcase
@@ -408,6 +408,7 @@ elabPE info fc caller r =
              _ -> True
     concreteTm ist (Constant _) = True
     concreteTm ist (Bind n (Lam _) sc) = True
+    concreteTm ist (Bind n (Pi _ _ _) sc) = True
     concreteTm ist (Bind n (Let _ _) sc) = concreteTm ist sc
     concreteTm ist _ = False
 
