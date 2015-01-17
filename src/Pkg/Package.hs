@@ -12,7 +12,7 @@ import Util.System
 
 import Control.Monad
 import Control.Monad.Trans.State.Strict (execStateT)
-import Control.Monad.Except (runExceptT)
+import Control.Monad.Trans.Except (runExceptT)
 
 import Data.List
 import Data.List.Split(splitOn)

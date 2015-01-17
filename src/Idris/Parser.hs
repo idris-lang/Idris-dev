@@ -50,7 +50,6 @@ import Idris.Core.Evaluate
 
 import Control.Applicative hiding (Const)
 import Control.Monad
-import Control.Monad.Except (throwError, catchError)
 import Control.Monad.State.Strict
 
 import Data.Function

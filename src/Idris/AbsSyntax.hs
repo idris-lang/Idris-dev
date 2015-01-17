@@ -19,7 +19,6 @@ import System.IO
 
 import Control.Applicative
 import Control.Monad.State
-import Control.Monad.Except (throwError, catchError)
 
 import Data.List hiding (insert,union)
 import Data.Char
