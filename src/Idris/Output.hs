@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Output where
@@ -13,7 +14,11 @@ import Idris.IdeSlave
 import Util.Pretty
 import Util.ScreenSize (getScreenWidth)
 
+#if MIN_VERSION_mtl(2,2,1)
 import Control.Monad.Except (ExceptT (ExceptT), runExceptT, throwError)
+#else
+import Control.Monad.Error  (ErrorT  (ErrorT),  runErrorT,  throwError)
+#endif
 
 import System.Console.Haskeline.MonadException 
   (MonadException (controlIO), RunIO (RunIO))
@@ -23,10 +28,17 @@ import Data.Char (isAlpha)
 import Data.List (nub, intersperse)
 import Data.Maybe (fromMaybe)
 
+#if MIN_VERSION_mtl(2,2,1)
 instance MonadException m => MonadException (ExceptT Err m) where
     controlIO f = ExceptT $ controlIO $ \(RunIO run) -> let
                     run' = RunIO (fmap ExceptT . run . runExceptT)
                     in fmap runExceptT $ f run'
+#else
+instance MonadException m => MonadException (ErrorT  Err m) where
+    controlIO f = ErrorT  $ controlIO $ \(RunIO run) -> let
+                    run' = RunIO (fmap ErrorT  . run . runErrorT)
+                    in fmap runErrorT  $ f run'
+#endif
 
 pshow :: IState -> Err -> String
 pshow ist err = displayDecorated (consoleDecorate ist) .

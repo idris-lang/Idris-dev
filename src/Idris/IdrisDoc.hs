@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -19,7 +20,11 @@ import IRTS.System (getDataFileName)
 
 import Control.Applicative ((<|>))
 import Control.Monad (forM_)
+#if MIN_VERSION_transformers(0,4,0)
 import Control.Monad.Trans.Except
+#else
+import Control.Monad.Trans.Error
+#endif
 import Control.Monad.Trans.State.Strict
 
 import Data.Maybe
@@ -273,7 +278,13 @@ loadDocs :: IState     -- ^ IState to extract infomation from
          -> Name       -- ^ Name to load Docs for
          -> IO (Maybe Docs)
 loadDocs ist n
-  | mayHaveDocs n = do docs <- runExceptT $ evalStateT (getDocs n) ist
+  | mayHaveDocs n = do docs <-
+#if MIN_VERSION_transformers(0,4,0)
+                               runExceptT
+#else
+                               runErrorT
+#endif
+                                          $ evalStateT (getDocs n) ist
                        case docs of Right d -> return (Just d)
                                     Left _  -> return Nothing
   | otherwise     = return Nothing

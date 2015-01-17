@@ -12,7 +12,11 @@ import Util.System
 
 import Control.Monad
 import Control.Monad.Trans.State.Strict (execStateT)
+#if MIN_VERSION_mtl(2,2,1)
 import Control.Monad.Except (runExceptT)
+#else
+import Control.Monad.Error  (runErrorT)
+#endif
 
 import Data.List
 import Data.List.Split(splitOn)
@@ -142,7 +146,13 @@ documentPkg fp =
      setCurrentDirectory $ pkgDir </> sourcedir pkgdesc
      make (makefile pkgdesc)
      setCurrentDirectory $ pkgDir
-     let run l       = runExceptT . execStateT l
+     let run l       =
+#if MIN_VERSION_mtl(2,2,1)
+                       runExceptT
+#else
+                       runErrorT
+#endif
+                                  . execStateT l
          load []     = return ()
          load (f:fs) = do loadModule f; load fs
          loader      = do idrisMain opts; load fs

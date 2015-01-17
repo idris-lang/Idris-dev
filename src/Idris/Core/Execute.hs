@@ -22,7 +22,11 @@ import Control.Applicative hiding (Const)
 import Control.Exception
 import Control.Monad.Trans
 import Control.Monad.Trans.State.Strict
+#if MIN_VERSION_mtl(2,2,1)
 import Control.Monad.Except (ExceptT, runExceptT, throwError)
+#else
+import Control.Monad.Error  (ErrorT,  runErrorT,  throwError)
+#endif
 import Control.Monad hiding (forM)
 import Data.Maybe
 import Data.Bits
@@ -126,10 +130,20 @@ initState :: Idris ExecState
 initState = do ist <- getIState
                return $ ExecState (idris_dynamic_libs ist) []
 
+#if MIN_VERSION_mtl(2,2,1)
 type Exec = ExceptT Err (StateT ExecState IO)
+#else
+type Exec = ErrorT  Err (StateT ExecState IO)
+#endif
 
 runExec :: Exec a -> ExecState -> IO (Either Err a)
-runExec ex st = fst <$> runStateT (runExceptT ex) st
+runExec ex st = fst <$> runStateT
+#if MIN_VERSION_mtl(2,2,1)
+                                  (runExceptT ex)
+#else
+                                  (runErrorT  ex)
+#endif
+                                  st
 
 getExecState :: Exec ExecState
 getExecState = lift get

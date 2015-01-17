@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
+{-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
              DeriveDataTypeable, TypeSynonymInstances, PatternGuards #-}
 
 module Idris.AbsSyntaxTree where
@@ -19,7 +19,11 @@ import System.Console.Haskeline
 import System.IO
 
 import Control.Monad.Trans.State.Strict
+#if MIN_VERSION_transformers(0,4,0)
 import Control.Monad.Trans.Except
+#else
+import Control.Monad.Trans.Error
+#endif
 
 import Data.Data (Data)
 import Data.Function (on)
@@ -308,7 +312,11 @@ idrisInit = IState initContext [] []
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
 --type Idris = WriterT [Either String (IO ())] (State IState a))
+#if MIN_VERSION_transformers(0,4,0)
 type Idris = StateT IState (ExceptT Err IO)
+#else
+type Idris = StateT IState (ErrorT  Err IO)
+#endif
 
 -- Commands in the REPL
 

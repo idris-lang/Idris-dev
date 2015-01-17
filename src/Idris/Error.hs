@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE CPP, DeriveDataTypeable #-}
 
 module Idris.Error where
 
@@ -17,7 +17,11 @@ import System.Console.Haskeline
 import System.Console.Haskeline.MonadException
 import Control.Monad (when)
 import Control.Monad.State.Strict
+#if MIN_VERSION_mtl(2,2,1)
 import Control.Monad.Except (throwError, catchError)
+#else
+import Control.Monad.Error  (throwError, catchError)
+#endif
 import System.IO.Error(isUserError, ioeGetErrorString)
 import Data.Char
 import Data.List (intercalate, isPrefixOf)
