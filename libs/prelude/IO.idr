@@ -11,7 +11,11 @@ data PrimIO : Type -> Type where
      prim__IO : a -> PrimIO a
 
 ||| A token representing the world, for use in `IO`
-abstract data World = TheWorld
+abstract data World = TheWorld prim__WorldType
+
+private
+world : World -> prim__WorldType
+world (TheWorld w) = w
 
 abstract WorldRes : Type -> Type
 WorldRes x = x
@@ -86,11 +90,11 @@ liftPrimIO : (World -> PrimIO a) -> IO' l a
 liftPrimIO = MkIO
 
 run__IO : IO' l () -> PrimIO ()
-run__IO (MkIO f) = f TheWorld
+run__IO (MkIO f) = f (TheWorld prim__TheWorld)
 
 unsafePerformIO : IO' ffi a -> a
 unsafePerformIO (MkIO f) = unsafePerformPrimIO
-        (prim_io_bind (f TheWorld) (\ b => prim_io_return b))
+        (prim_io_bind (f (TheWorld prim__TheWorld)) (\ b => prim_io_return b))
 
 --------- The C FFI
 
@@ -126,7 +130,7 @@ IO : Type -> Type
 IO = IO' FFI_C
 
 run__provider : IO a -> PrimIO a
-run__provider (MkIO f) = f TheWorld
+run__provider (MkIO f) = f (TheWorld prim__TheWorld)
 
 prim_fork : PrimIO () -> PrimIO Ptr
 prim_fork x = prim_io_return prim__vm -- compiled specially
@@ -137,9 +141,12 @@ fork (MkIO f) = MkIO (\w => prim_io_bind
                                    (\ x => prim_io_return x)))
                               (\x => prim_io_return x))
 
-partial
 prim_fread : Ptr -> IO String
-prim_fread h = MkIO (\w => prim_io_return (prim__readString h))
+prim_fread h = MkIO (\w => prim_io_return (prim__readString (world w) h))
+
+prim_fwrite : Ptr -> String -> IO Int
+prim_fwrite h s 
+   = MkIO (\w => prim_io_return (prim__writeString (world w) h s))
 
 forceGC : IO ()
 forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm

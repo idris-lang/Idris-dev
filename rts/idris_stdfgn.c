@@ -32,9 +32,13 @@ int fileError(void* h) {
   return ferror(f);
 }
 
-void fputStr(void* h, char* str) {
+int idris_writeStr(void* h, char* str) {
     FILE* f = (FILE*)h;
-    fputs(str, f);
+    if (fputs(str, f)) {
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 int fpoll(void* h)

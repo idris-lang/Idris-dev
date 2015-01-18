@@ -317,6 +317,8 @@ instance Binary Const where
                 BufferType -> putWord8 25
                 ManagedPtrType -> putWord8 26
                 VoidType -> putWord8 27
+                WorldType -> putWord8 28
+                TheWorld -> putWord8 29
         get
           = do i <- getWord8
                case i of
@@ -360,6 +362,8 @@ instance Binary Const where
                    25 -> return BufferType
                    26 -> return ManagedPtrType
                    27 -> return VoidType
+                   28 -> return WorldType
+                   29 -> return TheWorld
                    _ -> error "Corrupted binary data for Const"
 
 

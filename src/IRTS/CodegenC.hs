@@ -431,9 +431,10 @@ doOp v (LIntStr (ITFixed _)) [x] = v ++ "idris_castBitsStr(vm, " ++ creg x ++ ")
 doOp v LFloatStr [x] = v ++ "idris_castFloatStr(vm, " ++ creg x ++ ")"
 doOp v LStrFloat [x] = v ++ "idris_castStrFloat(vm, " ++ creg x ++ ")"
 
-doOp v LReadStr [x] = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
-doOp _ LPrintNum [x] = "printf(\"%ld\\n\", GETINT(" ++ creg x ++ "))"
-doOp _ LPrintStr [x] = "fputs(GETSTR(" ++ creg x ++ "), stdout)"
+doOp v LReadStr [_,x] = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
+doOp v LWriteStr [_,x,s] = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
+                             ++ "),GETSTR("
+                             ++ creg s ++ "))))"
 
 doOp v (LSLt (ATInt (ITFixed ty))) [x, y] = bitOp v "SLt" ty [x, y]
 doOp v (LSLe (ATInt (ITFixed ty))) [x, y] = bitOp v "SLte" ty [x, y]

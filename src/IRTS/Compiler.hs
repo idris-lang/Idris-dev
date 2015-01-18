@@ -429,6 +429,7 @@ irTerm vs env (Proj t (-1)) = do
                  [t', LConst (BI 1)]
 
 irTerm vs env (Proj t i)   = LProj <$> irTerm vs env t <*> pure i
+irTerm vs env (Constant TheWorld) = return $ LNothing
 irTerm vs env (Constant c) = return $ LConst c
 irTerm vs env (TType _)    = return $ LNothing
 irTerm vs env Erased       = return $ LNothing

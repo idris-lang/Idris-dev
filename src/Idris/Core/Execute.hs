@@ -403,8 +403,10 @@ deNS (NS n _) = n
 deNS n = n
 
 prs = sUN "prim__readString"
+pws = sUN "prim__writeString"
 pbm = sUN "prim__believe_me"
-pstd = sUN "prim__stdin"
+pstdin = sUN "prim__stdin"
+pstdout = sUN "prim__stdout"
 mkfprim = sUN "mkForeignPrim"
 pioret = sUN "prim_io_return"
 piobind = sUN "prim_io_bind"
@@ -415,11 +417,19 @@ force = sUN "Force"
 -- | Look up primitive operations in the global table and transform them into ExecVal functions
 getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
 getOp fn [_, _, x] | fn == pbm = Just (return x)
-getOp fn [EP _ fn' _]
-    | fn == prs && fn' == pstd =
+getOp fn [_, EP _ fn' _, EConstant (Str n)]
+    | fn == pws && fn' == pstdout =
+              Just $ do execIO $ putStr n
+                        return (EConstant (I 0))
+getOp fn [_, EP _ fn' _]
+    | fn == prs && fn' == pstdin =
               Just $ do line <- execIO getLine
                         return (EConstant (Str line))
-getOp fn [EHandle h]
+getOp fn [_, EHandle h, EConstant (Str n)]
+    | fn == prs =
+              Just $ do execIO $ hPutStr h n
+                        return (EConstant (I 0))
+getOp fn [_, EHandle h]
     | fn == prs =
               Just $ do contents <- execIO $ hGetLine h
                         return (EConstant (Str (contents ++ "\n")))

@@ -145,6 +145,8 @@ instance NFData Const where
         rnf (B32V x1) = rnf x1 `seq` ()
         rnf (B64V x1) = rnf x1 `seq` ()
         rnf (AType x1) = rnf x1 `seq` ()
+        rnf WorldType = ()
+        rnf TheWorld = ()
         rnf StrType = ()
         rnf PtrType = ()
         rnf ManagedPtrType = ()

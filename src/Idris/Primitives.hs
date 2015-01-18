@@ -166,17 +166,19 @@ primitives =
     (2, LStrIndex) partial,
    Prim (sUN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
     (1, LStrRev) total,
-   Prim (sUN "prim__readString") (ty [PtrType] StrType) 1 (p_cantreduce)
-     (1, LReadStr) iopartial,
+   Prim (sUN "prim__readString") (ty [WorldType,PtrType] StrType) 2 (p_cantreduce)
+     (2, LReadStr) total, -- total is okay, because we have 'WorldType'
+   Prim (sUN "prim__writeString") (ty [WorldType,PtrType,StrType] (AType (ATInt ITNative))) 3 (p_cantreduce)
+     (3, LWriteStr) total,
    Prim (sUN "prim__vm") (ty [] PtrType) 0 (p_cantreduce)
      (0, LVMPtr) total,
    -- Streams
    Prim (sUN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdIn) iopartial,
+    (0, LStdIn) total,
    Prim (sUN "prim__stdout") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdOut) iopartial,
+    (0, LStdOut) total,
    Prim (sUN "prim__stderr") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdErr) iopartial,
+    (0, LStdErr) total,
    Prim (sUN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
     (0, LNullPtr) total,
    -- Managed pointer registration

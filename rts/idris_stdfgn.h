@@ -10,7 +10,8 @@ void* fileOpen(char* f, char* mode);
 void fileClose(void* h);
 int fileEOF(void* h);
 int fileError(void* h);
-void fputStr(void*h, char* str);
+// return 0 on success
+int idris_writeStr(void*h, char* str);
 
 void* do_popen(const char* cmd, const char* mode);
 int fpoll(void* h);

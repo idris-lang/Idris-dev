@@ -129,6 +129,7 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
           constType (B16V a) = Constant (AType (ATInt (ITVec IT16 (V.length a))))
           constType (B32V a) = Constant (AType (ATInt (ITVec IT32 (V.length a))))
           constType (B64V a) = Constant (AType (ATInt (ITVec IT64 (V.length a))))
+          constType TheWorld = Constant WorldType
           constType Forgot  = Erased
           constType _       = TType (UVal 0)
   chk u env (RForce t) = do (_, ty) <- chk u env t

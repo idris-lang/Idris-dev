@@ -434,12 +434,11 @@ uniformB64x2 x = prim__mkB64x2 x x
 ---- some basic io
 
 ||| Output a string to stdout without a trailing newline
-partial
 putStr : String -> IO ()
-putStr x = foreign FFI_C "putStr" (String -> IO ()) x
+putStr x = do prim_fwrite prim__stdout x
+              return ()
 
 ||| Output a string to stdout with a trailing newline
-partial
 putStrLn : String -> IO ()
 putStrLn x = putStr (x ++ "\n")
 
@@ -470,15 +469,15 @@ abstract
 data File = FHandle Ptr
 
 ||| Standard input
-partial stdin : File
+stdin : File
 stdin = FHandle prim__stdin
 
 ||| Standard output
-partial stdout : File
+stdout : File
 stdout = FHandle prim__stdout
 
 ||| Standard output
-partial stderr : File
+stderr : File
 stderr = FHandle prim__stderr
 
 ||| Call the RTS's file opening function
@@ -553,8 +552,8 @@ fread (FHandle h) = do_fread h
 
 partial
 do_fwrite : Ptr -> String -> IO ()
-do_fwrite h s
-   = foreign FFI_C "fputStr" (Ptr -> String -> IO ()) h s
+do_fwrite h s = do prim_fwrite h s
+                   return ()
 
 partial
 fwrite : File -> String -> IO ()

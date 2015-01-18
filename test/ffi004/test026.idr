@@ -29,4 +29,3 @@ testFoo = foo
 
 testBar : Nat
 testBar = bar
-

@@ -1150,6 +1150,8 @@ constants =
   , ("String",             StrType)
   , ("Ptr",                PtrType)
   , ("ManagedPtr",         ManagedPtrType)
+  , ("prim__WorldType",    WorldType)
+  , ("prim__TheWorld",     TheWorld)
   , ("prim__UnsafeBuffer", BufferType)
   , ("Bits8",              AType (ATInt (ITFixed IT8)))
   , ("Bits16",             AType (ATInt (ITFixed IT16)))

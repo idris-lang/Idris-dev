@@ -550,6 +550,7 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B8V (Vector Word8) | B16V (Vector Word16)
            | B32V (Vector Word32) | B64V (Vector Word64)
            | AType ArithTy | StrType
+           | WorldType | TheWorld
            | PtrType | ManagedPtrType | BufferType | VoidType | Forgot
   deriving (Eq, Ord, Data, Typeable)
 {-!
@@ -562,6 +563,7 @@ isTypeConst (AType _) = True
 isTypeConst StrType = True
 isTypeConst ManagedPtrType = True
 isTypeConst BufferType = True
+isTypeConst WorldType = True
 isTypeConst PtrType = True
 isTypeConst VoidType = True
 isTypeConst _ = False
@@ -577,6 +579,8 @@ instance Pretty Const OutputAnnotation where
   pretty (Str s) = text s
   pretty (AType a) = pretty a
   pretty StrType = text "String"
+  pretty TheWorld = text "%theWorld"
+  pretty WorldType = text "prim__World"
   pretty BufferType = text "prim__UnsafeBuffer"
   pretty PtrType = text "Ptr"
   pretty ManagedPtrType = text "Ptr"
@@ -1266,6 +1270,8 @@ instance Show Const where
     show (AType (ATInt ITChar)) = "Char"
     show (AType (ATInt (ITFixed it))) = itBitsName it
     show (AType (ATInt (ITVec it c))) = itBitsName it ++ "x" ++ show c
+    show TheWorld = "prim__TheWorld"
+    show WorldType = "prim__WorldType"
     show StrType = "String"
     show BufferType = "prim__UnsafeBuffer"
     show PtrType = "Ptr"
