@@ -78,6 +78,7 @@ expandDo dsl (PDoBlock ds)
 expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
 expandDo dsl t = t
 
+-- | Replace DSL-bound variable in a term
 var :: DSL -> Name -> PTerm -> Int -> PTerm
 var dsl n t i = v' i t where
     v' i (PRef fc x) | x == n =
@@ -111,10 +112,14 @@ var dsl n t i = v' i t where
 
     mkVar fc 0 = case index_first dsl of
                    Nothing -> PElabError (Msg "No index_first defined")
-                   Just f  -> f
+                   Just f  -> setFC fc f
     mkVar fc n = case index_next dsl of
                    Nothing -> PElabError (Msg "No index_next defined")
                    Just f -> PApp fc f [pexp (mkVar fc (n-1))]
+
+    setFC fc (PRef _ n) = PRef fc n
+    setFC fc (PApp _ f xs) = PApp fc (setFC fc f) (map (fmap (setFC fc)) xs)
+    setFC fc t = t
 
 unIdiom :: PTerm -> PTerm -> FC -> PTerm -> PTerm
 unIdiom ap pure fc e@(PApp _ _ _) = let f = getFn e in
