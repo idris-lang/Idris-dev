@@ -96,6 +96,13 @@ unsafePerformIO : IO' ffi a -> a
 unsafePerformIO (MkIO f) = unsafePerformPrimIO
         (prim_io_bind (f (TheWorld prim__TheWorld)) (\ b => prim_io_return b))
 
+prim_fread : Ptr -> IO' l String
+prim_fread h = MkIO (\w => prim_io_return (prim__readString (world w) h))
+
+prim_fwrite : Ptr -> String -> IO' l Int
+prim_fwrite h s 
+   = MkIO (\w => prim_io_return (prim__writeString (world w) h s))
+
 --------- The C FFI
 
 data Raw a = MkRaw a -- code generated can assume it's compiled just as 'a'
@@ -141,13 +148,35 @@ fork (MkIO f) = MkIO (\w => prim_io_bind
                                    (\ x => prim_io_return x)))
                               (\x => prim_io_return x))
 
-prim_fread : Ptr -> IO String
-prim_fread h = MkIO (\w => prim_io_return (prim__readString (world w) h))
-
-prim_fwrite : Ptr -> String -> IO Int
-prim_fwrite h s 
-   = MkIO (\w => prim_io_return (prim__writeString (world w) h s))
-
 forceGC : IO ()
 forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm
+
+--------- The Javascript/Node FFI
+
+
+-- Supported JS foreign types
+mutual
+  data JsFn t = MkJsFn t
+
+  data JS_IntTypes  : Type -> Type where
+       JS_IntChar   : JS_IntTypes Char
+       JS_IntNative : JS_IntTypes Int
+
+  data JS_FnTypes : Type -> Type where
+       JS_Fn     : JS_Types s -> JS_FnTypes t -> JS_FnTypes (s -> t)
+       JS_FnIO   : JS_Types t -> JS_FnTypes (IO' l t)
+       JS_FnBase : JS_Types t -> JS_FnTypes t
+
+  data JS_Types : Type -> Type where
+       JS_Str   : JS_Types String
+       JS_Float : JS_Types Float
+       JS_Unit  : JS_Types ()
+       JS_FnT   : JS_FnTypes a -> JS_Types (JsFn a)
+       JS_IntT  : JS_IntTypes i -> JS_Types i
+
+FFI_JS : FFI                                     
+FFI_JS = MkFFI JS_Types String
+
+JS_IO : Type -> Type
+JS_IO = IO' FFI_JS
 

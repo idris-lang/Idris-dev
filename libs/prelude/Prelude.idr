@@ -434,12 +434,12 @@ uniformB64x2 x = prim__mkB64x2 x x
 ---- some basic io
 
 ||| Output a string to stdout without a trailing newline
-putStr : String -> IO ()
+putStr : String -> IO' l ()
 putStr x = do prim_fwrite prim__stdout x
               return ()
 
 ||| Output a string to stdout with a trailing newline
-putStrLn : String -> IO ()
+putStrLn : String -> IO' l ()
 putStrLn x = putStr (x ++ "\n")
 
 ||| Output something showable to stdout, with a trailing newline
@@ -449,7 +449,7 @@ print x = putStrLn (show x)
 
 ||| Read one line of input from stdin
 partial
-getLine : IO String
+getLine : IO' l String
 getLine = prim_fread prim__stdin
 
 ||| Write a single character to stdout
@@ -514,7 +514,7 @@ closeFile : File -> IO ()
 closeFile (FHandle h) = do_fclose h
 
 partial
-do_fread : Ptr -> IO String
+do_fread : Ptr -> IO' l String
 do_fread h = prim_fread h
 
 fgetc : File -> IO Char
@@ -547,7 +547,7 @@ pclose (FHandle h) = foreign FFI_C "pclose" (Ptr -> IO ()) h
 --                        prim__vm h
 
 partial
-fread : File -> IO String
+fread : File -> IO' l String
 fread (FHandle h) = do_fread h
 
 partial
