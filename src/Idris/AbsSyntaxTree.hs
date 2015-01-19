@@ -18,8 +18,11 @@ import Idris.Colours
 import System.Console.Haskeline
 import System.IO
 
+import Control.Applicative ((<|>))
+
 import Control.Monad.Trans.State.Strict
 import Control.Monad.Trans.Except
+import qualified Control.Monad.Trans.Class as Trans (lift)
 
 import Data.Data (Data)
 import Data.Function (on)
@@ -309,6 +312,12 @@ idrisInit = IState initContext [] []
 -- global state (hence the IO inner monad).
 --type Idris = WriterT [Either String (IO ())] (State IState a))
 type Idris = StateT IState (ExceptT Err IO)
+
+catchError :: Idris a -> (Err -> Idris a) -> Idris a
+catchError = liftCatch catchE
+
+throwError :: Err -> Idris a
+throwError = Trans.lift . throwE
 
 -- Commands in the REPL
 
@@ -937,6 +946,63 @@ pconst t = PConstraint 1 [] (sMN 0 "carg") t
 ptacimp n s t = PTacImplicit 2 [] n s t
 
 type PArg = PArg' PTerm
+
+-- | Get the highest FC in a term, if one exists
+highestFC :: PTerm -> Maybe FC
+highestFC (PQuote _) = Nothing
+highestFC (PRef fc _) = Just fc
+highestFC (PInferRef fc _) = Just fc
+highestFC (PPatvar fc _) = Just fc
+highestFC (PLam fc _ _ _) = Just fc
+highestFC (PPi  _ _ _ _) = Nothing
+highestFC (PLet fc _ _ _ _) = Just fc
+highestFC (PTyped tm ty) = highestFC tm <|> highestFC ty
+highestFC (PApp fc _ _) = Just fc
+highestFC (PAppBind fc _ _) = Just fc
+highestFC (PMatchApp fc _) = Just fc
+highestFC (PCase fc _ _) = Just fc
+highestFC (PTrue fc _) = Just fc
+highestFC (PRefl fc _) = Just fc
+highestFC (PResolveTC fc) = Just fc
+highestFC (PEq fc _ _ _ _) = Just fc
+highestFC (PRewrite fc _ _ _) = Just fc
+highestFC (PPair fc _ _ _) = Just fc
+highestFC (PDPair fc _ _ _ _) = Just fc
+highestFC (PAs fc _ _) = Just fc
+highestFC (PAlternative _ args) =
+  case mapMaybe highestFC args of
+    [] -> Nothing
+    (fc:_) -> Just fc
+highestFC (PHidden _) = Nothing
+highestFC PType = Nothing
+highestFC (PUniverse _) = Nothing
+highestFC (PGoal fc _ _ _) = Just fc
+highestFC (PConstant _) = Nothing
+highestFC Placeholder = Nothing
+highestFC (PDoBlock lines) =
+  case map getDoFC lines of
+    [] -> Nothing
+    (fc:_) -> Just fc
+  where
+    getDoFC (DoExp fc t)          = fc
+    getDoFC (DoBind fc nm t)      = fc
+    getDoFC (DoBindP fc l r alts) = fc
+    getDoFC (DoLet fc nm l r)     = fc
+    getDoFC (DoLetP fc l r)       = fc
+
+highestFC (PIdiom fc _) = Just fc
+highestFC (PReturn fc) = Just fc
+highestFC (PMetavar _) = Nothing
+highestFC (PProof _) = Nothing
+highestFC (PTactics _) = Nothing
+highestFC (PElabError _) = Nothing
+highestFC PImpossible = Nothing
+highestFC (PCoerced tm) = highestFC tm
+highestFC (PDisamb _ opts) = highestFC opts
+highestFC (PUnifyLog tm) = highestFC tm
+highestFC (PNoImplicits tm) = highestFC tm
+highestFC (PQuasiquote _ _) = Nothing
+highestFC (PUnquote tm) = highestFC tm
 
 -- Type class data
 

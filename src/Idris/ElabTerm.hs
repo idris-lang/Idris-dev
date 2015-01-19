@@ -1096,7 +1096,7 @@ elab ist info emode opts fn tm
                                        PAlternative True (map (mkCoerce env t) cs)]
            return t'
        where
-         mkCoerce env t n = let fc = fileFC "Coercion" in -- line never appears!
+         mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in
                                 addImplBound ist (map fst env)
                                   (PApp fc (PRef fc n) [pexp (PCoerced t)])
 

@@ -13,7 +13,7 @@ import Idris.IdeSlave
 import Util.Pretty
 import Util.ScreenSize (getScreenWidth)
 
-import Control.Monad.Except (ExceptT (ExceptT), runExceptT, throwError)
+import Control.Monad.Trans.Except (ExceptT (ExceptT), runExceptT)
 
 import System.Console.Haskeline.MonadException 
   (MonadException (controlIO), RunIO (RunIO))
