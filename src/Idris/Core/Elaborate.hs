@@ -314,6 +314,12 @@ attack = processTactic' Attack
 claim :: Name -> Raw -> Elab' aux ()
 claim n t = processTactic' (Claim n t)
 
+claimFn :: Name -> Name -> Raw -> Elab' aux ()
+claimFn n bn t = processTactic' (ClaimFn n bn t)
+
+unifyGoal :: Raw -> Elab' aux ()
+unifyGoal t = processTactic' (UnifyGoal t)
+
 exact :: Raw -> Elab' aux ()
 exact t = processTactic' (Exact t)
 
@@ -667,8 +673,8 @@ checkPiGoal n
                             solve
                             focus f
 
-simple_app :: Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
-simple_app fun arg appstr =
+simple_app :: Bool -> Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
+simple_app infer fun arg app0str =
     do a <- getNameFrom (sMN 0 "argTy")
        b <- getNameFrom (sMN 0 "retTy")
        f <- getNameFrom (sMN 0 "f")
@@ -678,18 +684,24 @@ simple_app fun arg appstr =
        claim f (RBind (sMN 0 "aX") (Pi Nothing (Var a) RType) (Var b))
        tm <- get_term
        start_unify s
+       -- if 'infer' is set, we're assuming it's a simply typed application
+       -- so safe to unify with the goal type (as there'll be no dependencies)
+       when infer $ unifyGoal (Var b)
+       hs <- get_holes
        claim s (Var a)
        prep_fill f [s]
        focus f; fun
        focus s; arg
        tm <- get_term
        ps <- get_probs
-       complete_fill
+       ty <- goal
        hs <- get_holes
+       complete_fill
        env <- get_env
        -- We don't need a and b in the hole queue any more since they were
        -- just for checking f, so move them to the end. If they never end up
        -- getting solved, we'll get an 'Incomplete term' error.
+       hs <- get_holes
        when (a `elem` hs) $ do movelast a
        when (b `elem` hs) $ do movelast b
        end_unify

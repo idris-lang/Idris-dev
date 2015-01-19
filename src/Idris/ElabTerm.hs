@@ -622,7 +622,7 @@ elab ist info emode opts fn tm
               lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
             if (f `elem` map fst env && length args == 1 && length args_in == 1)
                then -- simple app, as below
-                    do simple_app (elabE ina (Just fc) (PRef fc f))
+                    do simple_app False (elabE ina (Just fc) (PRef fc f))
                                   (elabE (ina { e_inarg = True }) (Just fc) (getTm (head args)))
                                   (show tm)
                        solve
@@ -746,9 +746,13 @@ elab ist info emode opts fn tm
 
     elab' ina _ tm@(PApp fc f [arg])
           = erun fc $
-             do simple_app (elabE ina (Just fc) f) (elabE (ina { e_inarg = True }) (Just fc) (getTm arg))
-                           (show tm)
+             do simple_app (not $ headRef f)
+                           (elabE ina (Just fc) f) (elabE (ina { e_inarg = True }) (Just fc) (getTm arg))
+                                (show tm)
                 solve
+        where headRef (PRef _ _) = True
+              headRef (PApp _ f _) = headRef f
+              headRef _ = False
     elab' ina fc Placeholder 
         = do (h : hs) <- get_holes
              movelast h

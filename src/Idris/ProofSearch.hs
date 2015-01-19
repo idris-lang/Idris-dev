@@ -171,7 +171,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
                         tryLocalArg d n a
 
     tryLocalArg d n 0 = elab (PRef (fileFC "prf") n)
-    tryLocalArg d n i = simple_app (tryLocalArg d n (i - 1))
+    tryLocalArg d n i = simple_app False (tryLocalArg d n (i - 1))
                                    (psRec True d) "proof search local apply"
 
     -- Like type class resolution, but searching with constructors

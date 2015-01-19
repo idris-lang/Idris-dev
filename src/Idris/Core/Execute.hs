@@ -402,6 +402,8 @@ toFDesc _ = FUnknown
 deNS (NS n _) = n
 deNS n = n
 
+prf = sUN "prim__readFile"
+pwf = sUN "prim__writeFile"
 prs = sUN "prim__readString"
 pws = sUN "prim__writeString"
 pbm = sUN "prim__believe_me"
@@ -417,20 +419,28 @@ force = sUN "Force"
 -- | Look up primitive operations in the global table and transform them into ExecVal functions
 getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
 getOp fn [_, _, x] | fn == pbm = Just (return x)
+getOp fn [_, EConstant (Str n)]
+    | fn == pws =
+              Just $ do execIO $ putStr n
+                        return (EConstant (I 0))
+getOp fn [_]
+    | fn == prs =
+              Just $ do line <- execIO getLine
+                        return (EConstant (Str line))
 getOp fn [_, EP _ fn' _, EConstant (Str n)]
-    | fn == pws && fn' == pstdout =
+    | fn == pwf && fn' == pstdout =
               Just $ do execIO $ putStr n
                         return (EConstant (I 0))
 getOp fn [_, EP _ fn' _]
-    | fn == prs && fn' == pstdin =
+    | fn == prf && fn' == pstdin =
               Just $ do line <- execIO getLine
                         return (EConstant (Str line))
 getOp fn [_, EHandle h, EConstant (Str n)]
-    | fn == prs =
+    | fn == pwf =
               Just $ do execIO $ hPutStr h n
                         return (EConstant (I 0))
 getOp fn [_, EHandle h]
-    | fn == prs =
+    | fn == prf =
               Just $ do contents <- execIO $ hGetLine h
                         return (EConstant (Str (contents ++ "\n")))
 getOp n args = getPrim n primitives >>= flip applyPrim args

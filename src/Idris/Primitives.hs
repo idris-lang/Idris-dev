@@ -166,10 +166,16 @@ primitives =
     (2, LStrIndex) partial,
    Prim (sUN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
     (1, LStrRev) total,
-   Prim (sUN "prim__readString") (ty [WorldType,PtrType] StrType) 2 (p_cantreduce)
-     (2, LReadStr) total, -- total is okay, because we have 'WorldType'
-   Prim (sUN "prim__writeString") (ty [WorldType,PtrType,StrType] (AType (ATInt ITNative))) 3 (p_cantreduce)
-     (3, LWriteStr) total,
+
+   Prim (sUN "prim__readFile") (ty [WorldType,PtrType] StrType) 2 (p_cantreduce)
+     (2, LReadFile) total, -- total is okay, because we have 'WorldType'
+   Prim (sUN "prim__writeFile") (ty [WorldType,PtrType,StrType] (AType (ATInt ITNative))) 3 (p_cantreduce)
+     (3, LWriteFile) total,
+   Prim (sUN "prim__readString") (ty [WorldType] StrType) 1 (p_cantreduce)
+     (1, LReadStr) total, -- total is okay, because we have 'WorldType'
+   Prim (sUN "prim__writeString") (ty [WorldType,StrType] (AType (ATInt ITNative))) 2 (p_cantreduce)
+     (2, LWriteStr) total,
+
    Prim (sUN "prim__vm") (ty [] PtrType) 0 (p_cantreduce)
      (0, LVMPtr) total,
    -- Streams

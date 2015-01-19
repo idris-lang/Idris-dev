@@ -435,7 +435,7 @@ uniformB64x2 x = prim__mkB64x2 x x
 
 ||| Output a string to stdout without a trailing newline
 putStr : String -> IO' l ()
-putStr x = do prim_fwrite prim__stdout x
+putStr x = do prim_write x
               return ()
 
 ||| Output a string to stdout with a trailing newline
@@ -450,7 +450,7 @@ print x = putStrLn (show x)
 ||| Read one line of input from stdin
 partial
 getLine : IO' l String
-getLine = prim_fread prim__stdin
+getLine = prim_read 
 
 ||| Write a single character to stdout
 partial

@@ -541,14 +541,6 @@ jsTAILCALL _ n =
 
 jsFOREIGN :: CompileInfo -> Reg -> String -> [(FType, Reg)] -> JS
 jsFOREIGN _ reg n args
-  | n == "putStr"
-  , [(FString, arg)] <- args =
-      JSAssign (
-        translateReg reg
-      ) (
-        JSApp (JSIdent "i$putStr") [translateReg arg]
-      )
-
   | n == "isNull"
   , [(FPtr, arg)] <- args =
       JSAssign (
@@ -686,6 +678,10 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
     jsOP' :: JS
     jsOP'
       | LNoOp <- op = translateReg (last args)
+
+      | LWriteStr <- op,
+        (_:str:_) <- args = JSAssign (translateReg reg)
+                               (JSApp (JSIdent "i$putStr") [translateReg str])
 
       | (LZExt (ITFixed IT8) ITNative)  <- op = jsUnPackBits $ translateReg (last args)
       | (LZExt (ITFixed IT16) ITNative) <- op = jsUnPackBits $ translateReg (last args)

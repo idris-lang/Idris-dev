@@ -50,6 +50,7 @@ data ProofState = PS { thname   :: Name,
 
 data Tactic = Attack
             | Claim Name Raw
+            | ClaimFn Name Name Raw
             | Reorder Name
             | Exact Raw
             | Fill Raw
@@ -87,6 +88,7 @@ data Tactic = Attack
             | MoveLast Name
             | MatchProblems Bool
             | UnifyProblems
+            | UnifyGoal Raw
             | ProofState
             | Undo
             | QED
@@ -340,7 +342,18 @@ claim n ty ctxt env t =
        lift $ isType ctxt env tyt
        action (\ps -> let (g:gs) = holes ps in
                           ps { holes = g : n : gs } )
-       return $ Bind n (Hole tyv) t -- (weakenTm 1 t)
+       return $ Bind n (Hole tyv) t
+
+-- If the current goal is 'retty', make a claim which is a function that
+-- can compute a retty from argty (i.e a claim 'argty -> retty')
+claimFn :: Name -> Name -> Raw -> RunTactic
+claimFn n bn argty ctxt env t@(Bind x (Hole retty) sc) =
+    do (tyv, tyt) <- lift $ check ctxt env argty
+       lift $ isType ctxt env tyt
+       action (\ps -> let (g:gs) = holes ps in
+                          ps { holes = g : n : gs } )
+       return $ Bind n (Hole (Bind bn (Pi Nothing tyv tyt) retty)) t
+claimFn _ _ _ ctxt env _ = fail "Can't make function type here"
 
 reorder_claims :: RunTactic
 reorder_claims ctxt env t
@@ -439,6 +452,12 @@ regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
        return sc
 regret ctxt env (Bind x (Hole t) _)
     = fail $ show x ++ " : " ++ show t ++ " is not solved..."
+
+unifyGoal :: Raw -> RunTactic
+unifyGoal tm ctxt env h@(Bind x b sc) =
+    do (tmv, _) <- lift $ check ctxt env tm
+       ns' <- unify' ctxt env (binderTy b) tmv
+       return h
 
 exact :: Raw -> RunTactic
 exact guess ctxt env (Bind x (Hole ty) sc) =
@@ -961,6 +980,7 @@ process EndUnify _
 process t h = tactic (Just h) (mktac t)
    where mktac Attack            = attack
          mktac (Claim n r)       = claim n r
+         mktac (ClaimFn n bn r)  = claimFn n bn r
          mktac (Exact r)         = exact r
          mktac (Fill r)          = fill r
          mktac (MatchFill r)     = match_fill r
@@ -992,3 +1012,4 @@ process t h = tactic (Just h) (mktac t)
          mktac (AutoArg n)       = autoArg n
          mktac (SetInjective n)  = setinj n
          mktac (MoveLast n)      = movelast n
+         mktac (UnifyGoal r)     = unifyGoal r

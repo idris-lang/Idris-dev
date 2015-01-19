@@ -96,12 +96,19 @@ unsafePerformIO : IO' ffi a -> a
 unsafePerformIO (MkIO f) = unsafePerformPrimIO
         (prim_io_bind (f (TheWorld prim__TheWorld)) (\ b => prim_io_return b))
 
+prim_read : IO' l String
+prim_read = MkIO (\w => prim_io_return (prim__readString (world w)))
+
+prim_write : String -> IO' l Int
+prim_write s 
+   = MkIO (\w => prim_io_return (prim__writeString (world w) s))
+
 prim_fread : Ptr -> IO' l String
-prim_fread h = MkIO (\w => prim_io_return (prim__readString (world w) h))
+prim_fread h = MkIO (\w => prim_io_return (prim__readFile (world w) h))
 
 prim_fwrite : Ptr -> String -> IO' l Int
 prim_fwrite h s 
-   = MkIO (\w => prim_io_return (prim__writeString (world w) h s))
+   = MkIO (\w => prim_io_return (prim__writeFile (world w) h s))
 
 --------- The C FFI
 
