@@ -434,22 +434,22 @@ uniformB64x2 x = prim__mkB64x2 x x
 ---- some basic io
 
 ||| Output a string to stdout without a trailing newline
-putStr : String -> IO' l ()
+putStr : String -> IO' ffi ()
 putStr x = do prim_write x
               return ()
 
 ||| Output a string to stdout with a trailing newline
-putStrLn : String -> IO' l ()
+putStrLn : String -> IO' ffi ()
 putStrLn x = putStr (x ++ "\n")
 
 ||| Output something showable to stdout, with a trailing newline
 partial
-print : Show a => a -> IO ()
+print : Show a => a -> IO' ffi ()
 print x = putStrLn (show x)
 
 ||| Read one line of input from stdin
 partial
-getLine : IO' l String
+getLine : IO' ffi String
 getLine = prim_read 
 
 ||| Write a single character to stdout
@@ -591,6 +591,20 @@ partial
 nullStr : String -> IO Bool
 nullStr p = do ok <- foreign FFI_C "isNull" (String -> IO Int) p
                return (ok /= 0)
+
+namespace JSNull
+  ||| Check if a foreign pointer is null
+  partial
+  nullPtr : Ptr -> JS_IO Bool
+  nullPtr p = do ok <- foreign FFI_JS "isNull" (Ptr -> JS_IO Int) p
+                 return (ok /= 0)
+
+  ||| Check if a supposed string was actually a null pointer
+  partial
+  nullStr : String -> JS_IO Bool
+  nullStr p = do ok <- foreign FFI_JS "isNull" (String -> JS_IO Int) p
+                 return (ok /= 0)
+
 
 ||| Pointer equality
 eqPtr : Ptr -> Ptr -> IO Bool

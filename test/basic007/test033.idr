@@ -1,4 +1,4 @@
 module Main
 
-main : IO ()
+main : JS_IO ()
 main = nullPtr null >>= print

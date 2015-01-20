@@ -8,6 +8,7 @@ import Idris.AbsSyntax hiding (TypeCase)
 import IRTS.Bytecode
 import IRTS.Lang
 import IRTS.Simplified
+import IRTS.Defunctionalise
 import IRTS.CodegenCommon
 import Idris.Core.TT
 import IRTS.System
@@ -1328,7 +1329,8 @@ translateBC info bc
   | NULL r                <- bc = jsNULL info r
   | CALL n                <- bc = jsCALL info n
   | TAILCALL n            <- bc = jsTAILCALL info n
-  | FOREIGNCALL r _ n a   <- bc = error "jsFOREIGN info r n a"
+  | FOREIGNCALL r _ (DConst (Str n)) args   
+                          <- bc = jsFOREIGN info r n (map fcall args)
   | TOPBASE n             <- bc = jsTOPBASE info n
   | BASETOP n             <- bc = jsBASETOP info n
   | STOREOLD              <- bc = jsSTOREOLD info
@@ -1342,4 +1344,19 @@ translateBC info bc
   | OP r o a              <- bc = jsOP info r o a
   | ERROR e               <- bc = jsERROR info e
   | otherwise                   = JSRaw $ "//" ++ show bc
+ where fcall (t, arg) = (toFType t, arg)
+
+toAType (FCon i) 
+    | i == sUN "JS_IntChar" = ATInt ITChar
+    | i == sUN "JS_IntNative" = ATInt ITNative
+toAType t = error (show t ++ " not defined in toAType")
+
+toFType (FCon c) 
+    | c == sUN "JS_Str" = FString
+    | c == sUN "JS_Float" = FArith ATFloat
+    | c == sUN "JS_Ptr" = FPtr
+    | c == sUN "JS_Unit" = FUnit
+toFType (FApp c [_,ity]) 
+    | c == sUN "JS_IntT" = FArith (toAType ity)
+toFType t = error (show t ++ " not yet defined in toFType")
 
