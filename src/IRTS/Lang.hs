@@ -30,7 +30,7 @@ data LExp = LV LVar
           | LCase CaseType LExp [LAlt]
           | LConst Const
           | LForeign FDesc -- Function descriptor
-                     LExp -- Return type descriptor
+                     FDesc -- Return type descriptor
                      [(FDesc, LExp)] -- first LExp is the FFI type description
           | LOp PrimFn [LExp]
           | LNothing
@@ -38,6 +38,7 @@ data LExp = LV LVar
   deriving Eq
 
 data FDesc = FCon Name
+           | FStr String
            | FUnknown
            | FApp Name [FDesc]
   deriving (Show, Eq)
@@ -197,8 +198,7 @@ lift env (LCase up e alts) = do alts' <- mapM liftA alts
                                 return (LDefaultCase e')
 lift env (LConst c) = return (LConst c)
 lift env (LForeign t s args) = do args' <- mapM (liftF env) args
-                                  s' <- lift env s
-                                  return (LForeign t s' args')
+                                  return (LForeign t s args')
   where
     liftF env (t, e) = do e' <- lift env e
                           return (t, e')
@@ -336,7 +336,7 @@ instance Show LExp where
 
      show' env ind (LForeign ty n args) = concat
             [ "foreign{ "
-            ,       show' env ind n ++ "("
+            ,       show n ++ "("
             ,           showSep ", " (map (\(ty,x) -> show' env ind x ++ " : " ++ show ty) args)
             ,       ") : "
             ,       show ty

@@ -22,7 +22,7 @@ data DExp = DV LVar
           | DCase CaseType DExp [DAlt]
           | DChkCase DExp [DAlt] -- a case where the type is unknown (for EVAL/APPLY)
           | DConst Const
-          | DForeign FDesc DExp [(FDesc, DExp)]
+          | DForeign FDesc FDesc [(FDesc, DExp)]
           | DOp PrimFn [DExp]
           | DNothing -- erased value, can be compiled to anything since it'll never
                      -- be inspected
@@ -111,9 +111,8 @@ addApps defs (n, LFun _ _ args e)
                                   return $ DCase up e' alts'
     aa env (LConst c) = return $ DConst c
     aa env (LForeign t n args) 
-        = do n' <- aa env n
-             args' <- mapM (aaF env) args
-             return $ DForeign t n' args'
+        = do args' <- mapM (aaF env) args
+             return $ DForeign t n args'
     aa env (LOp LFork args) = liftM (DOp LFork) (mapM (aa env) args)
     aa env (LOp f args) = do args' <- mapM (aa env) args
                              return $ DOp f args'
@@ -279,7 +278,7 @@ instance Show DExp where
                                     showSep "\n\t| " (map (showAlt env) alts)
      show' env (DConst c) = show c
      show' env (DForeign ty n args)
-           = "foreign " ++ show' env n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
+           = "foreign " ++ show n ++ "(" ++ showSep ", " (map (show' env) (map snd args)) ++ ")"
      show' env (DOp f args) = show f ++ "(" ++ showSep ", " (map (show' env) args) ++ ")"
      show' env (DError str) = "error " ++ show str
      show' env DNothing = "____"

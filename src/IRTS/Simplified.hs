@@ -24,7 +24,7 @@ data SExp = SV LVar
           | SConst Const
           -- Keep DExps for describing foreign things, because they get
           -- translated differently
-          | SForeign FDesc DExp [(FDesc, LVar)]
+          | SForeign FDesc FDesc [(FDesc, LVar)]
           | SOp PrimFn [LVar]
           | SNothing -- erased value, will never be inspected
           | SError String

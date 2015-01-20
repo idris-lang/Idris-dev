@@ -438,7 +438,7 @@ irTerm vs env Impossible   = return $ LNothing
 doForeign :: Vars -> [Name] -> [Term] -> Idris LExp
 doForeign vs env (ret : fname : world : args)
      = do args' <- mapM splitArg args
-          fname' <- irTerm vs env fname
+          let fname' = toFDesc fname 
           let ret' = toFDesc ret
           return $ LForeign ret' fname' args'
   where
@@ -448,6 +448,7 @@ doForeign vs env (ret : fname : world : args)
              return (l', r')
     splitArg _ = ifail "Badly formed foreign function call"
 
+    toFDesc (Constant (Str str)) = FStr str 
     toFDesc tm 
        | (P _ n _, []) <- unApply tm = FCon (deNS n) 
        | (P _ n _, as) <- unApply tm = FApp (deNS n) (map toFDesc as)

@@ -1329,7 +1329,7 @@ translateBC info bc
   | NULL r                <- bc = jsNULL info r
   | CALL n                <- bc = jsCALL info n
   | TAILCALL n            <- bc = jsTAILCALL info n
-  | FOREIGNCALL r _ (DConst (Str n)) args   
+  | FOREIGNCALL r _ (FStr n) args   
                           <- bc = jsFOREIGN info r n (map fcall args)
   | TOPBASE n             <- bc = jsTOPBASE info n
   | BASETOP n             <- bc = jsBASETOP info n

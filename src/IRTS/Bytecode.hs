@@ -71,7 +71,7 @@ data BC =
   | TAILCALL Name
 
     -- set reg to (apply string args), 
-  | FOREIGNCALL Reg FDesc DExp [(FDesc, Reg)]
+  | FOREIGNCALL Reg FDesc FDesc [(FDesc, Reg)]
 
     -- move this number of elements from TOP to BASE
   | SLIDE Int
