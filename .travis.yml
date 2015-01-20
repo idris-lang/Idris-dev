@@ -30,5 +30,5 @@ env:
   - TESTS="doc"
   - TESTS="lib_doc"
   - TESTS="test_c"
-  - TESTS="test_llvm"
+  #- TESTS="test_llvm"
   - TESTS="test_js"
