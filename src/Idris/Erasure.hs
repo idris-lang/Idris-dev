@@ -199,8 +199,14 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
                 , it "MkIO"         [2]
                 , it "prim__IO"     [1]
 
+                -- temporary hacks for preventing erasure of these in foreign
+                -- calls. TODO: make this not a hack, and possible to set
+                -- in Idris source
+                , it "MkJsFn"     [1]
+                , it "MkRaw"      [1]
+
                 , [(pairCon, Arg 2),
-                   (pairCon, Arg 3)] -- TMP HACK
+                   (pairCon, Arg 3)] -- Used in foreign calls 
 
                 -- these have been discovered as builtins but are not listed
                 -- among Idris.Primitives.primitives

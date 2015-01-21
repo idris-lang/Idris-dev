@@ -1351,6 +1351,14 @@ toAType (FCon i)
     | i == sUN "JS_IntNative" = ATInt ITNative
 toAType t = error (show t ++ " not defined in toAType")
 
+toFnType (FApp c [_,_,s,t])
+    | c == sUN "JS_Fn" = toFnType t
+toFnType (FApp c [_,_,r])
+    | c == sUN "JS_FnIO" = FFunctionIO
+toFnType (FApp c [_,r])
+    | c == sUN "JS_FnBase" = FFunction
+toFnType t = error (show t ++ " not defined in toFnType")
+
 toFType (FCon c) 
     | c == sUN "JS_Str" = FString
     | c == sUN "JS_Float" = FArith ATFloat
@@ -1358,5 +1366,7 @@ toFType (FCon c)
     | c == sUN "JS_Unit" = FUnit
 toFType (FApp c [_,ity]) 
     | c == sUN "JS_IntT" = FArith (toAType ity)
+toFType (FApp c [_,fty]) 
+    | c == sUN "JS_FnT" = toFnType fty
 toFType t = error (show t ++ " not yet defined in toFType")
 
