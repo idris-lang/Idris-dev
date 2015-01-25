@@ -1619,7 +1619,7 @@ idrisMain opts =
     makeOption _ = return ()
 
     addPkgDir :: String -> Idris ()
-    addPkgDir p = do ddir <- runIO $ getDataDir
+    addPkgDir p = do ddir <- runIO $ getIdrisLibDir
                      addImportDir (ddir </> p)
                      addIBC (IBCImportDir (ddir </> p))
 
