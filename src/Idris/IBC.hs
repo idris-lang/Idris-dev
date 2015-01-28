@@ -35,7 +35,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 94
+ibcVersion = 95
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -77,7 +77,8 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_metavars :: ![(Name, (Maybe Name, Int, Bool))],
                          ibc_patdefs :: ![(Name, ([([Name], Term, Term)], [PTerm]))],
                          ibc_postulates :: ![Name],
-                         ibc_parsedSpan :: !(Maybe FC)
+                         ibc_parsedSpan :: !(Maybe FC),
+                         ibc_usage :: ![(Name, Int)]
                        }
    deriving Show
 {-!
@@ -85,7 +86,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing []
 
 loadIBC :: Bool -- ^ True = reexport, False = make everything private 
         -> FilePath -> Idris ()
@@ -229,6 +230,7 @@ ibc i (IBCParsedRegion fc) f = return f { ibc_parsedSpan = Just fc }
 ibc i (IBCModDocs n) f = case lookupCtxtExact n (idris_moduledocs i) of
                            Just v -> return f { ibc_moduledocs = (n,v) : ibc_moduledocs f }
                            _ -> ifail "IBC write failed"
+ibc i (IBCUsage n) f = return f { ibc_usage = n : ibc_usage f }
 
 process :: Bool -- ^ Reexporting
            -> IBCFile -> FilePath -> Idris ()
@@ -285,6 +287,7 @@ process reexp i fn
                pMetavars $ force (ibc_metavars i)
                pPostulates $ force (ibc_postulates i)
                pParsedSpan $ force (ibc_parsedSpan i)
+               pUsage $ force (ibc_usage i)
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -301,6 +304,10 @@ pPostulates ns = do
 pParsedSpan :: Maybe FC -> Idris ()
 pParsedSpan fc = do ist <- getIState
                     putIState ist { idris_parsedSpan = fc }
+
+pUsage :: [(Name, Int)] -> Idris ()
+pUsage ns = do ist <- getIState
+               putIState ist { idris_erasureUsed = ns ++ idris_erasureUsed ist }
 
 pImportDirs :: [FilePath] -> Idris ()
 pImportDirs fs = mapM_ addImportDir fs
@@ -907,7 +914,7 @@ instance Binary MetaInformation where
                      return (DataMI x1)
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -950,6 +957,7 @@ instance Binary IBCFile where
                put x39
                put x40
                put x41
+               put x42
 
         get
           = do x1 <- get
@@ -994,7 +1002,8 @@ instance Binary IBCFile where
                     x39 <- get
                     x40 <- get
                     x41 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41)
+                    x42 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where

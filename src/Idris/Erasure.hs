@@ -76,9 +76,10 @@ performUsageAnalysis = do
         ci  <- idris_classes <$> getIState
         cg  <- idris_callgraph <$> getIState
         opt <- idris_optimisation <$> getIState
+        used <- idris_erasureUsed <$> getIState
 
         -- Build the dependency graph.
-        let depMap = buildDepMap ci ctx main
+        let depMap = buildDepMap ci used ctx main
 
         -- Search for reachable nodes in the graph.
         let (residDeps, (reachableNames, minUse)) = minimalUsage depMap
@@ -170,12 +171,13 @@ forwardChain deps
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
-buildDepMap :: Ctxt ClassInfo -> Context -> Name -> Deps
-buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
+buildDepMap :: Ctxt ClassInfo -> [(Name, Int)] -> Context -> Name -> Deps
+buildDepMap ci used ctx mainName = addPostulates used $ 
+                                        dfs S.empty M.empty [mainName]
   where
     -- mark the result of Main.main as used with the empty assumption
-    addPostulates :: Deps -> Deps
-    addPostulates deps = foldr (\(ds, rs) -> M.insertWith (M.unionWith S.union) ds rs) deps postulates
+    addPostulates :: [(Name, Int)] -> Deps -> Deps
+    addPostulates used deps = foldr (\(ds, rs) -> M.insertWith (M.unionWith S.union) ds rs) deps (postulates used)
       where
         -- mini-DSL for postulates
         (==>) ds rs = (S.fromList ds, M.fromList [(r, S.empty) | r <- rs])
@@ -187,24 +189,23 @@ buildDepMap ci ctx mainName = addPostulates $ dfs S.empty M.empty [mainName]
         usedNames = allNames deps S.\\ specialPrims
         usedPrims = [(p_name p, p_arity p) | p <- primitives, p_name p `S.member` usedNames]
 
-        postulates = 
+        postulates used = 
             [ [] ==> concat
                 -- These two, Main.main and run__IO, are always evaluated
                 -- but they elude analysis since they come from the seed term.
                 [ [(mainName,  Result)] 
                 , [(sUN "run__IO", Result), (sUN "run__IO", Arg 1)]
 
+                -- Explicit usage declarations from a %used pragma
+                , map (\(n, i) -> (n, Arg i)) used 
+
                 -- MkIO is read by run__IO,
                 -- but this cannot be observed in the source code of programs.
                 , it "MkIO"         [2]
                 , it "prim__IO"     [1]
 
-                -- temporary hacks for preventing erasure of these in foreign
-                -- calls. TODO: make this not a hack, and possible to set
-                -- in Idris source
-                , it "MkJsFn"     [1]
-                , it "MkRaw"      [1]
-
+                -- Foreign calls are built with pairs, but mkForeign doesn't
+                -- have an implementation so analysis won't see them
                 , [(pairCon, Arg 2),
                    (pairCon, Arg 3)] -- Used in foreign calls 
 

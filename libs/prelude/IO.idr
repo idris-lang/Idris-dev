@@ -112,7 +112,12 @@ prim_fwrite h s
 
 --------- The C FFI
 
-data Raw a = MkRaw a -- code generated can assume it's compiled just as 'a'
+data Raw : Type -> Type where
+     -- code generated can assume it's compiled just as 't'
+     MkRaw : (x : t) -> Raw t
+
+-- Tell erasure analysis not to erase the argument
+%used MkRaw x
 
 -- Supported C integer types
 data C_IntTypes : Type -> Type where
@@ -163,7 +168,8 @@ forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm
 
 -- Supported JS foreign types
 mutual
-  data JsFn t = MkJsFn t
+  data JsFn : Type -> Type where
+       MkJsFn : (x : t) -> JsFn t
 
   data JS_IntTypes  : Type -> Type where
        JS_IntChar   : JS_IntTypes Char
@@ -181,6 +187,11 @@ mutual
        JS_Unit  : JS_Types ()
        JS_FnT   : JS_FnTypes a -> JS_Types (JsFn a)
        JS_IntT  : JS_IntTypes i -> JS_Types i
+
+-- Tell erasure analysis not to erase the argument. Needs to be outside the
+-- mutual block, since directives are done on the first pass and in the first
+-- pass we only have 'JsFn' and not the constructor.
+%used MkJsFn x
 
 FFI_JS : FFI                                     
 FFI_JS = MkFFI JS_Types String

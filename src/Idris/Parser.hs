@@ -1057,6 +1057,12 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                                            mapM_ (addIBC . IBCFunctionErrorHandler fn' arg) ns')]
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (addLangExt ext)]
+             <|> do fc <- getFC
+                    try (lchar '%' *> reserved "used")
+                    fn <- fnName
+                    arg <- iName []
+                    return [PDirective (addUsedName fc fn arg)]
+
              <?> "directive"
   where disambiguate :: Name -> Idris Name
         disambiguate n = do i <- getIState

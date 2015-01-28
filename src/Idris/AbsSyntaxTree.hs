@@ -219,6 +219,7 @@ data IState = IState {
     module_aliases :: M.Map [T.Text] [T.Text],
     idris_consolewidth :: ConsoleWidth, -- ^ How many chars wide is the console?
     idris_postulates :: S.Set Name,
+    idris_erasureUsed :: [(Name, Int)], -- ^ Function/constructor name, argument position is used
     idris_whocalls :: Maybe (M.Map Name [Name]),
     idris_callswho :: Maybe (M.Map Name [Name]),
     idris_repl_defs :: [Name], -- ^ List of names that were defined in the repl, and can be re-/un-defined
@@ -294,6 +295,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCTotCheckErr FC String
               | IBCParsedRegion FC
               | IBCModDocs Name -- ^ The name is the special name used to track module docs
+              | IBCUsage (Name, Int)
   deriving Show
 
 -- | The initial state for the compiler
@@ -306,7 +308,7 @@ idrisInit = IState initContext [] []
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty Nothing Nothing [] [] M.empty
+                   AutomaticWidth S.empty [] Nothing Nothing [] [] M.empty
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
