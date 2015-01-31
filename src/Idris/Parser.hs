@@ -220,10 +220,10 @@ decl' syn =    fixity
 -}
 syntaxDecl :: SyntaxInfo -> IdrisParser PDecl
 syntaxDecl syn = do s <- syntaxRule syn
-                    i <- get 
+                    i <- get
                     put (i `addSyntax` s)
                     fc <- getFC
-                    return (PSyntax fc s) 
+                    return (PSyntax fc s)
 
 -- | Extend an 'IState' with a new syntax extension. See also 'addReplSyntax'.
 addSyntax :: IState -> Syntax -> IState
@@ -1202,14 +1202,14 @@ parseProg syn fname input mrk
 {- | Load idris module and show error if something wrong happens -}
 loadModule :: FilePath -> Idris (Maybe String)
 loadModule f
-   = idrisCatch (fmap Just (loadModule' f))
+   = idrisCatch (loadModule' f)
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
                           iWarn (getErrSpan e) $ pprintErr ist e
                           return Nothing)
 
 {- | Load idris module -}
-loadModule' :: FilePath -> Idris String
+loadModule' :: FilePath -> Idris (Maybe String)
 loadModule' f
    = do i <- getIState
         let file = takeWhile (/= ' ') f
@@ -1217,7 +1217,8 @@ loadModule' f
         ids <- allImportDirs
         fp <- findImport ids ibcsd file
         if file `elem` imported i
-          then iLOG $ "Already read " ++ file
+          then do iLOG $ "Already read " ++ file
+                  return Nothing
           else do putIState (i { imported = file : imported i })
                   case fp of
                     IDR fn  -> loadSource False fn Nothing
@@ -1228,9 +1229,7 @@ loadModule' f
                                            case src of
                                              IDR sfn -> loadSource False sfn Nothing
                                              LIDR sfn -> loadSource True sfn Nothing)
-        let (dir, fh) = splitFileName file
-        return (dropExtension fh)
-
+                  return $ Just file
 
 {- | Load idris code from file -}
 loadFromIFile :: Bool -> IFileType -> Maybe Int -> Idris ()
@@ -1269,7 +1268,7 @@ loadSource lidr f toline
                   let imports = map (\n -> (True, n, Just n, emptyFC)) ai ++ imports_in
                   ids <- allImportDirs
                   ibcsd <- valIBCSubDir i
-                  mapM_ (\(re, f) -> 
+                  mapM_ (\(re, f) ->
                                do fp <- findImport ids ibcsd f
                                   case fp of
                                       LIDR fn -> ifail $ "No ibc for " ++ f

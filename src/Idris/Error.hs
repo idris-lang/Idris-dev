@@ -5,7 +5,6 @@ module Idris.Error where
 import Prelude hiding (catch)
 import Idris.AbsSyntax
 import Idris.Delaborate
-import Idris.Output
 
 import Idris.Core.Evaluate (ctxtAlist)
 import Idris.Core.TT
