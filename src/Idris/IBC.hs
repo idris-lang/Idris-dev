@@ -14,6 +14,7 @@ import Idris.Delaborate
 import qualified Idris.Docstrings as D
 import Idris.Docstrings (Docstring)
 import Idris.Output
+import IRTS.System (getIdrisLibDir)
 import Paths_idris
 
 import qualified Cheapskate.Types as CT
@@ -102,7 +103,7 @@ loadIBC reexport fp
 
 -- | Load an entire package from its index file
 loadPkgIndex :: String -> Idris ()
-loadPkgIndex pkg = do ddir <- runIO $ getDataDir
+loadPkgIndex pkg = do ddir <- runIO $ getIdrisLibDir
                       addImportDir (ddir </> pkg)
                       fp <- findPkgIndex pkg
                       loadIBC True fp

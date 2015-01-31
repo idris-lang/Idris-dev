@@ -53,7 +53,8 @@ getLibFlags = do dir <- getDataDir
                  return $ ["-L" ++ (dir </> "rts"),
                            "-lidris_rts"] ++ extraLib ++ gmpLib ++ ["-lpthread"]
 
-getIdrisLibDir = do dir <- getDataDir
+getIdrisLibDir = do libPath <- environment "IDRIS_LIBRARY_PATH"
+                    dir <- maybe getDataDir return libPath
                     return $ addTrailingPathSeparator dir
 
 #if defined(FREEBSD) || defined(DRAGONFLY)
