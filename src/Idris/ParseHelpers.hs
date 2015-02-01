@@ -224,7 +224,7 @@ float = Tok.double
 idrisStyle :: MonadicParsing m => IdentifierStyle m
 idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved Hi.Identifier Hi.ReservedIdentifier
   where _styleName = "Idris"
-        _styleStart = satisfy isAlpha
+        _styleStart = satisfy isAlpha <|> oneOf "_"
         _styleLetter = satisfy isAlphaNum <|> oneOf "_'."
         _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "Type",
                                       "do", "dsl", "import", "impossible",
@@ -262,7 +262,9 @@ reservedOp name = token $ try $
 
 -- | Parses an identifier as a token
 identifier :: MonadicParsing m => m String
-identifier = token $ Tok.ident idrisStyle
+identifier = try(do i <- token $ Tok.ident idrisStyle
+                    when (i == "_") $ unexpected "wildcard"
+                    return i)
 
 -- | Parses an identifier with possible namespace as a name
 iName :: MonadicParsing m => [String] -> m Name
