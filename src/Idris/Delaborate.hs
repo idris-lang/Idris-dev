@@ -488,7 +488,7 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
        _ | isTConName      n ctxt -> AnnName n (Just TypeOutput) docs ty
        _ | isMetavarName   n ist  -> AnnName n (Just MetavarOutput) docs ty
        _ | isPostulateName n ist  -> AnnName n (Just PostulateOutput) docs ty
-       _ | otherwise            -> annot
+       _ | otherwise              -> annot
   where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
         docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
                                let o    = overview (fst docs)
