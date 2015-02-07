@@ -1005,7 +1005,7 @@ void* vmThread(VM* callvm, func f, VAL arg) {
 
 // VM is assumed to be a different vm from the one x lives on
 
-VAL copyTo(VM* vm, VAL x) {
+VAL doCopyTo(VM* vm, VAL x) {
     int i, ar;
     VAL* argptr;
     Closure* cl;
@@ -1022,7 +1022,7 @@ VAL copyTo(VM* vm, VAL x) {
 
             argptr = (VAL*)(cl->info.c.args);
             for(i = 0; i < ar; ++i) {
-                *argptr = copyTo(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
+                *argptr = doCopyTo(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
                 argptr++;
             }
         }
@@ -1061,6 +1061,14 @@ VAL copyTo(VM* vm, VAL x) {
         assert(0); // We're in trouble if this happens...
     }
     return cl;
+}
+
+VAL copyTo(VM* vm, VAL x) {
+    VM* current = pthread_getspecific(vm_key);
+    pthread_setspecific(vm_key, vm);
+    VAL ret = doCopyTo(vm, x);
+    pthread_setspecific(vm_key, current);
+    return ret;
 }
 
 // Add a message to another VM's message queue
