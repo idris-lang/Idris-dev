@@ -530,6 +530,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
         action (\ps -> ps { holes = traceWhen (unifylog ps) ("Dropping hole " ++ show x) $
                                        holes ps \\ [x],
                             solved = Just (x, val),
+                            dontunify = filter (/= x) (dontunify ps),
                             notunified = updateNotunified [(x,val)]
                                            (notunified ps),
                             recents = x : recents ps,
@@ -602,6 +603,7 @@ patvar n ctxt env (Bind x (Hole t) sc) =
     do action (\ps -> ps { holes = traceWhen (unifylog ps) ("Dropping pattern hole " ++ show x) $
                                      holes ps \\ [x],
                            solved = Just (x, P Bound n t),
+                           dontunify = filter (/=x) (dontunify ps),
                            notunified = updateNotunified [(x,P Bound n t)]
                                           (notunified ps),
                            injective = addInj n x (injective ps)
@@ -911,7 +913,7 @@ processTactic EndUnify ps
           ns' = map (\ (n, t) -> (n, updateSolvedTerm ns t)) ns
           (ns'', probs') = updateProblems ps ns' (problems ps)
           tm' = updateSolved ns'' (pterm ps) in
-             traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
+             traceWhen (unifylog ps) ("(EndUnify) Dropping holes: " ++ show (map fst ns'')) $
               return (ps { pterm = tm',
                            unified = (h, []),
                            problems = probs',
@@ -934,7 +936,7 @@ processTactic (ComputeLet n) ps
 processTactic UnifyProblems ps
     = do let (ns', probs') = updateProblems ps [] (problems ps)
              pterm' = updateSolved ns' (pterm ps)
-         traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns')) $
+         traceWhen (unifylog ps) ("(UnifyProblems) Dropping holes: " ++ show (map fst ns')) $
           return (ps { pterm = pterm', solved = Nothing, problems = probs',
                        previous = Just ps, plog = "",
                        notunified = updateNotunified ns' (notunified ps),
@@ -944,7 +946,7 @@ processTactic (MatchProblems all) ps
     = do let (ns', probs') = matchProblems all ps [] (problems ps)
              (ns'', probs'') = matchProblems all ps ns' probs'
              pterm' = updateSolved ns'' (pterm ps)
-         traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns'')) $
+         traceWhen (unifylog ps) ("(MatchProblems) Dropping holes: " ++ show (map fst ns'')) $
           return (ps { pterm = pterm', solved = Nothing, problems = probs'',
                        previous = Just ps, plog = "",
                        notunified = updateNotunified ns'' (notunified ps),
@@ -954,16 +956,17 @@ processTactic t ps
     = case holes ps of
         [] -> fail "Nothing to fill in."
         (h:_)  -> do ps' <- execStateT (process t h) ps
-                     let (ns', probs')
+                     let (ns_in, probs')
                                 = case solved ps' of
-                                    Just s -> traceWhen (unifylog ps')
-                                                ("SOLVED " ++ show s) $
-                                                updateProblems ps [s] (problems ps')
+                                    Just s -> traceWhen (unifylog ps)
+                                                ("SOLVED " ++ show s ++ " " ++ show (dontunify ps')) $
+                                                updateProblems ps' [s] (problems ps')
                                     _ -> ([], problems ps')
                      -- rechecking problems may find more solutions, so
                      -- apply them here
+                     let ns' = dropGiven (dontunify ps') ns_in (holes ps')
                      let pterm'' = updateSolved ns' (pterm ps')
-                     traceWhen (unifylog ps) ("Dropping holes: " ++ show (map fst ns')) $
+                     traceWhen (unifylog ps) ("(Toplevel) Dropping holes: " ++ show (map fst ns')) $
                        return (ps' { pterm = pterm'',
                                      solved = Nothing,
                                      problems = probs',
