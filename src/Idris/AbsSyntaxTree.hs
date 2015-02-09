@@ -1655,7 +1655,7 @@ prettyName
   -> Doc OutputAnnotation
 prettyName infixParen showNS bnd n
     | (MN _ s) <- n, isPrefixOf "_" $ T.unpack s = text "_"
-    | (UN n') <- n, isPrefixOf "_" $ T.unpack n' = text "_"
+    | (UN n') <- n, T.unpack n' == "_" = text "_"
     | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) fullName
     | otherwise                = annotate (AnnName n Nothing Nothing Nothing) fullName
   where fullName = text nameSpace <> parenthesise (text (baseName n))
