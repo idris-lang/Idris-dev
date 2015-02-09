@@ -26,6 +26,7 @@ import qualified Control.Monad.Trans.Class as Trans (lift)
 
 import Data.Data (Data)
 import Data.Function (on)
+import Data.Generics.Uniplate.Data (universe)
 import Data.List hiding (group)
 import Data.Char
 import qualified Data.Map.Strict as M
@@ -1375,6 +1376,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
   where
     startPrec = 0
     funcAppPrec = 10
+    
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =
         text "![" <> pretty r <> text "]"
@@ -1640,6 +1642,16 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     getFixity :: String -> Maybe Fixity
     getFixity = flip M.lookup fixities
 
+-- | Determine whether a name was the one inserted for a hole or
+-- guess by the delaborator
+isHoleName :: Name -> Bool
+isHoleName (UN n) = n == T.pack "[__]"
+isHoleName _      = False
+
+-- | Check whether a PTerm has been delaborated from a Term containing a Hole or Guess
+containsHole :: PTerm -> Bool
+containsHole pterm = or [isHoleName n | PRef _ n <- take 1000 $ universe pterm]
+
 -- | Pretty-printer helper for the binding site of a name
 bindingOf :: Name -- ^^ the bound name
           -> Bool -- ^^ whether the name is implicit
@@ -1727,6 +1739,8 @@ getShowArgs :: [PArg] -> [PArg]
 getShowArgs [] = []
 getShowArgs (e@(PExp _ _ _ tm) : xs) = e : getShowArgs xs
 getShowArgs (e : xs) | AlwaysShow `elem` argopts e = e : getShowArgs xs
+                     | PImp _ _ _ _ tm <- e
+                     , containsHole tm       = e : getShowArgs xs
 getShowArgs (_ : xs) = getShowArgs xs
 
 getConsts :: [PArg] -> [PTerm]
