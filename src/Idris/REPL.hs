@@ -537,6 +537,7 @@ ideslaveProcess fn Warranty = process fn Warranty
 ideslaveProcess fn Help = process fn Help
 ideslaveProcess fn (ChangeDirectory f) = do process fn (ChangeDirectory f)
                                             iPrintResult "changed directory to"
+ideslaveProcess fn (ModImport f) = process fn (ModImport f)
 ideslaveProcess fn (Eval t) = process fn (Eval t)
 ideslaveProcess fn (NewDefn decls) = do process fn (NewDefn decls)
                                         iPrintResult "defined"
@@ -722,6 +723,10 @@ process fn Warranty = iPrintResult warranty
 process fn (ChangeDirectory f)
                  = do runIO $ setCurrentDirectory f
                       return ()
+process fn (ModImport f) = do fmod <- loadModule f
+                              case fmod of
+                                Just pr -> isetPrompt pr
+                                Nothing -> iPrintError $ "Can't find import " ++ f
 process fn (Eval t)
                  = withErrorReflection $ do logLvl 5 $ show t
                                             getIState >>= flip warnDisamb t
