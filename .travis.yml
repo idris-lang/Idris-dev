@@ -10,6 +10,7 @@ before_install:
   - sudo apt-get install hscolour
   # test dependency
   - sudo apt-get install -qq expect
+  - sudo apt-get install -qq cppcheck
   - cabal install alex-3.1.3
 install:
   - cabal install -f FFI --enable-tests --dependencies-only
@@ -24,6 +25,7 @@ script:
   - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal register; fi
+  - if [[ "$TESTS" == "test_c" ]]; cppcheck --error-exitcode=1 --quiet ./rts/ ; fi
   - if [[ "$TESTS" == "test_llvm" ]]; then git clone --depth 1 https://github.com/idris-hackers/idris-llvm.git ; cd idris-llvm ; cabal install ; cd .. ; fi
   - make -j2 $TESTS
 env:
