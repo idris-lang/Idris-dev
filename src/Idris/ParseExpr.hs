@@ -747,14 +747,16 @@ lambda :: SyntaxInfo -> IdrisParser PTerm
 lambda syn = do lchar '\\' <?> "lambda expression"
                 (do xt <- try $ tyOptDeclList syn
                     fc <- getFC
-                    symbol "=>"
-                    sc <- expr syn
+                    sc <- PImpossible <$ reserved "impossible" <|> do
+                      symbol "=>"
+                      expr syn
                     return (bindList (PLam fc) xt sc)) <|> do
                       ps <- sepBy (do fc <- getFC
                                       e <- simpleExpr (syn { inPattern = True })
                                       return (fc, e)) (lchar ',')
-                      symbol "=>"
-                      sc <- expr syn
+                      sc <- PImpossible <$ reserved "impossible" <|> do
+                        symbol "=>"
+                        expr syn
                       return (pmList (zip [0..] ps) sc)
                  <?> "lambda expression"
     where pmList :: [(Int, (FC, PTerm))] -> PTerm -> PTerm
