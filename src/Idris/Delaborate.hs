@@ -308,7 +308,7 @@ pprintErr' i (ElaboratingArg f x _ e)
   where whatIsName = let ctxt = tt_ctxt i
                      in if isTConName f ctxt
                            then text "type constructor" <> space
-                           else if isConName f ctxt
+                           else if isDConName f ctxt
                                    then text "constructor" <> space
                                    else if isFnName f ctxt
                                            then text "function" <> space

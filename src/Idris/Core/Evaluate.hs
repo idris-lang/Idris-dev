@@ -11,7 +11,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
-                lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, isTConName, isConName, isFnName,
+                lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
 
@@ -975,11 +975,20 @@ isTConName n ctxt
          Just (TyDecl (TCon _ _) _) -> True
          _                          -> False
 
+-- | Check whether a resolved name is certainly a data constructor
 isDConName :: Name -> Context -> Bool
 isDConName n ctxt
      = case lookupDefExact n ctxt of
          Just (TyDecl (DCon _ _ _) _) -> True
          _                            -> False
+
+-- | Check whether any overloading of a name is a data constructor
+canBeDConName :: Name -> Context -> Bool
+canBeDConName n ctxt
+     = or $ do def <- lookupCtxt n (definitions ctxt)
+               case tfst def of
+                 (TyDecl (DCon _ _ _) _) -> return True
+                 _ -> return False
 
 isFnName :: Name -> Context -> Bool
 isFnName n ctxt
