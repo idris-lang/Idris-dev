@@ -28,8 +28,8 @@ mkPatTm t = do i <- getIState
                evalStateT (toTT (mapPT deNS timp)) 0
   where
     toTT (PRef _ n) = do i <- lift getIState
-                         case lookupDef n (tt_ctxt i) of
-                              [TyDecl nt _] -> return $ P nt n Erased
+                         case lookupNameDef n (tt_ctxt i) of
+                              [(n', TyDecl nt _)] -> return $ P nt n' Erased
                               _ -> return $ P Ref n Erased
     toTT (PApp _ t args) = do t' <- toTT t
                               args' <- mapM (toTT . getTm) args
