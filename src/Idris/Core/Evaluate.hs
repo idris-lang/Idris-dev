@@ -11,7 +11,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
-                lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, isTConName, isConName, isFnName,
+                lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
 
@@ -971,47 +971,52 @@ isConName n ctxt = isTConName n ctxt || isDConName n ctxt
 
 isTConName :: Name -> Context -> Bool
 isTConName n ctxt
-     = or $ do def <- lookupCtxt n (definitions ctxt)
-               case tfst def of
-                    (TyDecl (TCon _ _) _) -> return True
-                    _ -> return False
+     = case lookupDefExact n ctxt of
+         Just (TyDecl (TCon _ _) _) -> True
+         _                          -> False
 
+-- | Check whether a resolved name is certainly a data constructor
 isDConName :: Name -> Context -> Bool
 isDConName n ctxt
+     = case lookupDefExact n ctxt of
+         Just (TyDecl (DCon _ _ _) _) -> True
+         _                            -> False
+
+-- | Check whether any overloading of a name is a data constructor
+canBeDConName :: Name -> Context -> Bool
+canBeDConName n ctxt
      = or $ do def <- lookupCtxt n (definitions ctxt)
                case tfst def of
-                    (TyDecl (DCon _ _ _) _) -> return True
-                    _ -> return False
+                 (TyDecl (DCon _ _ _) _) -> return True
+                 _ -> return False
 
 isFnName :: Name -> Context -> Bool
 isFnName n ctxt
-     = let def = lookupCtxtExact n (definitions ctxt) in
-          case def of
-               Just (Function _ _, _, _, _) -> True
-               Just (Operator _ _ _, _, _, _) -> True
-               Just (CaseOp _ _ _ _ _ _, _, _, _) -> True
-               _ -> False
+     = case lookupDefExact n ctxt of
+         Just (Function _ _)       -> True
+         Just (Operator _ _ _)     -> True
+         Just (CaseOp _ _ _ _ _ _) -> True
+         _                         -> False
 
 isTCDict :: Name -> Context -> Bool
 isTCDict n ctxt
-     = let def = lookupCtxtExact n (definitions ctxt) in
-          case def of
-               Just (Function _ _, _, _, _) -> False
-               Just (Operator _ _ _, _, _, _) -> False
-               Just (CaseOp ci _ _ _ _ _, _, _, _) -> tc_dictionary ci
-               _ -> False
+     = case lookupDefExact n ctxt of
+         Just (Function _ _)        -> False
+         Just (Operator _ _ _)      -> False
+         Just (CaseOp ci _ _ _ _ _) -> tc_dictionary ci
+         _                          -> False
 
 lookupP :: Name -> Context -> [Term]
 lookupP n ctxt
    = do def <- lookupCtxt n (definitions ctxt)
         p <- case def of
-          (Function ty tm, a, _, _) -> return (P Ref n ty, a)
-          (TyDecl nt ty, a, _, _) -> return (P nt n ty, a)
+          (Function ty tm, a, _, _)      -> return (P Ref n ty, a)
+          (TyDecl nt ty, a, _, _)        -> return (P nt n ty, a)
           (CaseOp _ ty _ _ _ _, a, _, _) -> return (P Ref n ty, a)
-          (Operator ty _ _, a, _, _) -> return (P Ref n ty, a)
+          (Operator ty _ _, a, _, _)     -> return (P Ref n ty, a)
         case snd p of
-            Hidden -> []
-            _ -> return (fst p)
+          Hidden -> []
+          _      -> return (fst p)
 
 lookupDefExact :: Name -> Context -> Maybe Def
 lookupDefExact n ctxt = tfst <$> lookupCtxtExact n (definitions ctxt)

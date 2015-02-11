@@ -18,18 +18,18 @@ import Debug.Trace
 
 import Control.Monad.State.Strict
 
--- Generate a pattern from an 'impossible' LHS. (Need this to eliminate the
--- pattern clauses which have been provided explicitly from new clause
--- generation.)
-
+-- | Generate a pattern from an 'impossible' LHS.
+--
+-- We need this to eliminate the pattern clauses which have been
+-- provided explicitly from new clause generation.
 mkPatTm :: PTerm -> Idris Term
 mkPatTm t = do i <- getIState
                let timp = addImpl' True [] [] i t
                evalStateT (toTT (mapPT deNS timp)) 0
   where
     toTT (PRef _ n) = do i <- lift getIState
-                         case lookupDef n (tt_ctxt i) of
-                              [TyDecl nt _] -> return $ P nt n Erased
+                         case lookupNameDef n (tt_ctxt i) of
+                              [(n', TyDecl nt _)] -> return $ P nt n' Erased
                               _ -> return $ P Ref n Erased
     toTT (PApp _ t args) = do t' <- toTT t
                               args' <- mapM (toTT . getTm) args
@@ -44,13 +44,12 @@ mkPatTm t = do i <- getIState
     deNS (PRef f (NS n _)) = PRef f n
     deNS t = t
 
--- Given a list of LHSs, generate a extra clauses which cover the remaining
--- cases. The ones which haven't been provided are marked 'absurd' so that the
--- checker will make sure they can't happen.
-
+-- | Given a list of LHSs, generate a extra clauses which cover the remaining
+-- cases. The ones which haven't been provided are marked 'absurd' so
+-- that the checker will make sure they can't happen.
+--
 -- This will only work after the given clauses have been typechecked and the
 -- names are fully explicit!
-
 genClauses :: FC -> Name -> [Term] -> [PTerm] -> Idris [PTerm]
 genClauses fc n xs given
    = do i <- getIState

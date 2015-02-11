@@ -1734,7 +1734,11 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
        | (Bind n (Pi _ t _) sc :_) <- lookupTy f (tt_ctxt i)
           = Placeholder
     su (PApp fc f@(PRef _ fn) args)
-       | isDConName fn ctxt 
+       -- here we use canBeDConName because the impossible pattern
+       -- check will not necessarily fully resolve constructor names,
+       -- and these bare names will otherwise get in the way of
+       -- impossbility checking.
+       | canBeDConName fn ctxt
           = PApp fc f (fmap (fmap su) args)
     su (PApp fc f args)
           = PHidden (PApp fc f args)
