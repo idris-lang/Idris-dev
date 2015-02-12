@@ -2,7 +2,7 @@
 
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
-module Idris.IdeSlave(parseMessage, convSExp, IdeSlaveCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideSlaveEpoch, getLen, getNChar) where
+module Idris.IdeMode(parseMessage, convSExp, IdeModeCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideModeEpoch, getLen, getNChar) where
 
 import Text.Printf
 import Numeric
@@ -206,32 +206,32 @@ parseSExp = parseString pSExp (Directed (UTF8.fromString "(unknown)") 0 0 0 0)
 
 data Opt = ShowImpl | ErrContext deriving Show
 
-data IdeSlaveCommand = REPLCompletions String
-                     | Interpret String
-                     | TypeOf String
-                     | CaseSplit Int String
-                     | AddClause Int String
-                     | AddProofClause Int String
-                     | AddMissing Int String
-                     | MakeWithBlock Int String
-                     | ProofSearch Bool Int String [String] (Maybe Int) -- ^^ Recursive?, line, name, hints, depth
-                     | MakeLemma Int String
-                     | LoadFile String (Maybe Int)
-                     | DocsFor String
-                     | Apropos String
-                     | GetOpts
-                     | SetOpt Opt Bool
-                     | Metavariables Int -- ^^ the Int is the column count for pretty-printing
-                     | WhoCalls String
-                     | CallsWho String
-                     | TermNormalise [(Name, Bool)] Term
-                     | TermShowImplicits [(Name, Bool)] Term
-                     | TermNoImplicits [(Name, Bool)] Term
-                     | PrintDef String
-                     | ErrString Err
-                     | ErrPPrint Err
+data IdeModeCommand = REPLCompletions String
+                    | Interpret String
+                    | TypeOf String
+                    | CaseSplit Int String
+                    | AddClause Int String
+                    | AddProofClause Int String
+                    | AddMissing Int String
+                    | MakeWithBlock Int String
+                    | ProofSearch Bool Int String [String] (Maybe Int) -- ^^ Recursive?, line, name, hints, depth
+                    | MakeLemma Int String
+                    | LoadFile String (Maybe Int)
+                    | DocsFor String
+                    | Apropos String
+                    | GetOpts
+                    | SetOpt Opt Bool
+                    | Metavariables Int -- ^^ the Int is the column count for pretty-printing
+                    | WhoCalls String
+                    | CallsWho String
+                    | TermNormalise [(Name, Bool)] Term
+                    | TermShowImplicits [(Name, Bool)] Term
+                    | TermNoImplicits [(Name, Bool)] Term
+                    | PrintDef String
+                    | ErrString Err
+                    | ErrPPrint Err
 
-sexpToCommand :: SExp -> Maybe IdeSlaveCommand
+sexpToCommand :: SExp -> Maybe IdeModeCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
 sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])                       = Just (Interpret cmd)
 sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix])             = Just (REPLCompletions prefix)
@@ -298,5 +298,5 @@ convSExp pre s id =
 getHexLength :: String -> String
 getHexLength s = printf "%06x" (1 + (length s))
 
-ideSlaveEpoch :: Int
-ideSlaveEpoch = 1
+ideModeEpoch :: Int
+ideModeEpoch = 1

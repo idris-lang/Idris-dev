@@ -71,8 +71,10 @@ parseFlags :: Parser [Opt]
 parseFlags = many $
   flag' NoBanner (long "nobanner" <> help "Suppress the banner")
   <|> flag' Quiet (short 'q' <> long "quiet" <> help "Quiet verbosity")
-  <|> flag' Ideslave (long "ideslave")
-  <|> flag' IdeslaveSocket (long "ideslave-socket")
+  <|> flag' Idemode (long "ide-mode" <> help "Run the Idris REPL with machine-readable syntax")
+  <|> flag' IdemodeSocket (long "ide-mode-socket" <> help "Choose a socket for IDE mode to listen on")
+  <|> flag' Idemode (long "ideslave" <> help "Deprecated version of --ide-mode") -- TODO: Remove in v0.9.18
+  <|> flag' IdemodeSocket (long "ideslave-socket" <> help "Deprecated version of --ide-mode-socket") -- TODO: Remove in v0.9.18
   <|> (Client <$> strOption (long "client"))
   <|> (OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
   <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")
