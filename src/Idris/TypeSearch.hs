@@ -57,7 +57,7 @@ searchByType pkgs pterm = do
   case idris_outputmode i of
     RawOutput _  -> do mapM_ iRenderOutput docs
                        iPrintResult ""
-    IdeSlave _ _ -> iRenderResult (vsep docs)
+    IdeMode _ _ -> iRenderResult (vsep docs)
   putIState i -- don't actually make any changes
   where
     numLimit = 50

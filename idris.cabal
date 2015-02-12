@@ -682,7 +682,7 @@ Library
                 , Idris.ErrReverse
                 , Idris.Help
                 , Idris.IBC
-                , Idris.IdeSlave
+                , Idris.IdeMode
                 , Idris.IdrisDoc
                 , Idris.Imports
                 , Idris.Inliner

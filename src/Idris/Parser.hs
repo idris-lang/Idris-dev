@@ -1192,7 +1192,7 @@ parseProg syn fname input mrk
                                   i <- getIState
                                   case idris_outputmode i of
                                     RawOutput h  -> iputStrLn (show $ fixColour (idris_colourRepl i) doc)
-                                    IdeSlave n h -> iWarn fc (P.text msg)
+                                    IdeMode n h -> iWarn fc (P.text msg)
                                   putIState (i { errSpan = Just fc })
                                   return []
             Success (x, i)  -> do putIState i

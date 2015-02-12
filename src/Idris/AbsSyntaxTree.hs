@@ -144,7 +144,7 @@ data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord
 
 -- | The output mode in use
 data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
-                | IdeSlave Integer Handle -- ^ Send IDE output for some request ID to the handle
+                | IdeMode Integer Handle -- ^ Send IDE output for some request ID to the handle
                 deriving Show
 
 -- | How wide is the console?
@@ -405,8 +405,8 @@ data Opt = Filename String
          | Quiet
          | NoBanner
          | ColourREPL Bool
-         | Ideslave
-         | IdeslaveSocket
+         | Idemode
+         | IdemodeSocket
          | ShowLibs
          | ShowLibdir
          | ShowIncs
