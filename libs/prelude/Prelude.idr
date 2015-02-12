@@ -249,31 +249,31 @@ instance Functor (Either e) where
 instance Applicative PrimIO where
     pure = prim_io_return
 
-    am <$> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
+    am <*> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
 
 instance Applicative (IO' ffi) where
     pure x = io_return x
-    f <$> a = io_bind f (\f' =>
+    f <*> a = io_bind f (\f' =>
                 io_bind a (\a' =>
                   io_return (f' a')))
 
 instance Applicative Maybe where
     pure = Just
 
-    (Just f) <$> (Just a) = Just (f a)
-    _        <$> _        = Nothing
+    (Just f) <*> (Just a) = Just (f a)
+    _        <*> _        = Nothing
 
 instance Applicative (Either e) where
     pure = Right
 
-    (Left a) <$> _          = Left a
-    (Right f) <$> (Right r) = Right (f r)
-    (Right _) <$> (Left l)  = Left l
+    (Left a) <*> _          = Left a
+    (Right f) <*> (Right r) = Right (f r)
+    (Right _) <*> (Left l)  = Left l
 
 instance Applicative List where
     pure x = [x]
 
-    fs <$> vs = concatMap (\f => map f vs) fs
+    fs <*> vs = concatMap (\f => map f vs) fs
 
 ---- Alternative instances
 

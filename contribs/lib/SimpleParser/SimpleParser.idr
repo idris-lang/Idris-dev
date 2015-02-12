@@ -30,7 +30,7 @@ instance Functor Parser where
 
 instance Applicative Parser where
   pure v  = P (\inp => Right (v, inp))
-  a <$> b = P (\inp => do (f, rest) <- parse a inp
+  a <*> b = P (\inp => do (f, rest) <- parse a inp
                           (x, rest') <- parse b rest
                           pure ((f x), rest'))
 

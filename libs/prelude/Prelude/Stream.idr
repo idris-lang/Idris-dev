@@ -111,7 +111,7 @@ scanr f (x :: xs) = f x (foldr f xs) :: scanr f xs
 
 instance Applicative Stream where
   pure = repeat
-  (<$>) = zipWith apply
+  (<*>) = zipWith apply
 
 instance Monad Stream where
   s >>= f = diag (map f s)
