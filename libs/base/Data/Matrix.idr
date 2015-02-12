@@ -7,13 +7,13 @@ import Data.Vect
 
 %default total
 
-infixr 2 <.>  -- vector inner product
+infixr 2 <:>  -- vector inner product
 infixr 2 ><   -- vector outer product
 infixr 2 <<>> -- matrix commutator
 infixr 2 >><< -- matrix anticommutator
 infixl 3 <\>  -- row times a matrix
 infixr 4 </>  -- matrix times a column
-infixr 5 <>   -- matrix multiplication 
+infixr 5 <>   -- matrix multiplication
 infixr 7 \&\  -- vector tensor product
 infixr 7 <&>  -- matrix tensor product
 
@@ -26,14 +26,14 @@ instance Semigroup a => Semigroup (Vect n a) where
 
 instance Monoid a => Monoid (Vect n a) where
   neutral {n} = replicate n neutral
-  
+
 instance Group a => Group (Vect n a) where
   inverse = map inverse
 
 instance AbelianGroup a => AbelianGroup (Vect n a) where {}
 
 instance Ring a => Ring (Vect n a) where
-  (<*>) v w = zipWith (<*>) v w
+  (<.>) v w = zipWith (<.>) v w
 
 instance RingWithUnity a => RingWithUnity (Vect n a) where
   unity {n} = replicate n unity
@@ -42,7 +42,7 @@ instance Field a => Field (Vect n a) where
   inverseM = map inverseM
 
 instance RingWithUnity a => Module a (Vect n a) where
-  (<#>) r v = map (r <*>) v
+  (<#>) r v = map (r <.>) v
 
 instance RingWithUnity a => Module a (Vect n (Vect l a)) where
   (<#>) r m = map (r <#>) m
@@ -53,12 +53,12 @@ instance RingWithUnity a => Module a (Vect n (Vect l a)) where
 -----------------------------------------------------------------------
 
 ||| Inner product of ring vectors
-(<.>) : Ring a => Vect n a -> Vect n a -> a
-(<.>) w v = foldr (<+>) neutral (zipWith (<*>) w v)
+(<:>) : Ring a => Vect n a -> Vect n a -> a
+(<:>) w v = foldr (<+>) neutral (zipWith (<.>) w v)
 
 ||| Tensor multiply (⊗) ring vectors
 (\&\) : Ring a => Vect n a -> Vect m a -> Vect (n * m) a
-(\&\) {n} {m} v w = zipWith (<*>) (oextend m v) (orep n w) where
+(\&\) {n} {m} v w = zipWith (<.>) (oextend m v) (orep n w) where
   orep : (n : Nat) -> Vect m a -> Vect (n * m) a
   orep n v = concat $ replicate n v
   oextend : (n : Nat) -> Vect k a -> Vect (k * n) a
@@ -90,15 +90,15 @@ indices f1 f2 m = index f2 (index f1 m)
 
 ||| Matrix times a column vector
 (</>) : Ring a => Matrix n m a -> Vect m a -> Vect n a
-(</>) m v = map (v <.>) m
+(</>) m v = map (v <:>) m
 
 ||| Matrix times a row vector
 (<\>) : Ring a => Vect n a -> Matrix n m a -> Vect m a
-(<\>) r m = map (r <.>) $ transpose m
+(<\>) r m = map (r <:>) $ transpose m
 
 ||| Matrix multiplication
-(<>) : Ring a => Matrix n k a -> 
-                 Matrix k m a -> 
+(<>) : Ring a => Matrix n k a ->
+                 Matrix k m a ->
                  Matrix n m a
 (<>) m1 m2 = map (<\> m2) m1
 
@@ -110,11 +110,11 @@ indices f1 f2 m = index f2 (index f1 m)
   stepTwo : Matrix h1 w1 a -> Matrix h2 w2 a -> Matrix (h1 * h2) w2 a
   stepTwo {h1} m1 m2 = concat $ (Vect.replicate h1) m2
 
-||| Cast a vector from a standard Vect to a proper n x 1 matrix 
+||| Cast a vector from a standard Vect to a proper n x 1 matrix
 col : Vect n a -> Matrix n 1 a
 col v = map (\x => [x]) v
 
-||| Cast a row from a standard Vect to a proper 1 x n matrix 
+||| Cast a row from a standard Vect to a proper 1 x n matrix
 row : Vect n a -> Matrix 1 n a
 row r = [r]
 
@@ -157,11 +157,11 @@ instance Monoid Integer where
 
 instance Group Integer where
   inverse = (* -1)
-  
+
 instance AbelianGroup Integer
 
-instance Ring Integer where 
-  (<*>) = (*)
+instance Ring Integer where
+  (<.>) = (*)
 
 instance RingWithUnity Integer where
   unity = 1
@@ -175,11 +175,11 @@ instance Monoid Int where
 
 instance Group Int where
   inverse = (* -1)
-  
+
 instance AbelianGroup Int
 
-instance Ring Int where 
-  (<*>) = (*)
+instance Ring Int where
+  (<.>) = (*)
 
 instance RingWithUnity Int where
   unity = 1
@@ -193,11 +193,11 @@ instance Monoid Float where
 
 instance Group Float where
   inverse = (* -1)
-  
+
 instance AbelianGroup Float
 
-instance Ring Float where 
-  (<*>) = (*)
+instance Ring Float where
+  (<.>) = (*)
 
 instance RingWithUnity Float where
   unity = 1
@@ -211,7 +211,7 @@ instance Semigroup Nat where
 
 instance Monoid Nat where
   neutral = 0
-  
+
 instance VerifiedSemigroup Nat where
   semigroupOpIsAssociative = plusAssociative
 
@@ -228,12 +228,12 @@ instance Monoid ZZ where
 
 instance Group ZZ where
   inverse = (* -1)
-  
+
 instance AbelianGroup ZZ
 
-instance Ring ZZ where 
-  (<*>) = (*)
- 
+instance Ring ZZ where
+  (<.>) = (*)
+
 instance RingWithUnity ZZ where
   unity = 1
 
@@ -250,7 +250,7 @@ instance Group a => Group (Complex a) where
 instance Ring a => AbelianGroup (Complex a) where {}
 
 instance Ring a => Ring (Complex a) where
-  (<*>) (a :+ b) (c :+ d) = (a <*> c <-> b <*> d) :+ (a <*> d <+> b <*> c)
+  (<.>) (a :+ b) (c :+ d) = (a <.> c <-> b <.> d) :+ (a <.> d <+> b <.> c)
 
 instance RingWithUnity a => RingWithUnity (Complex a) where
   unity = (unity :+ neutral)

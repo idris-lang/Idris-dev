@@ -95,7 +95,7 @@ instance Arrow a => Functor (ArrowMonad a) where
 
 instance Arrow a => Applicative (ArrowMonad a) where
   pure x = MkArrowMonad $ arrow $ \_ => x
-  (MkArrowMonad f) <$> (MkArrowMonad x) = MkArrowMonad $ f &&& x >>> arrow (uncurry id)
+  (MkArrowMonad f) <*> (MkArrowMonad x) = MkArrowMonad $ f &&& x >>> arrow (uncurry id)
 
 instance ArrowApply a => Monad (ArrowMonad a) where
   (MkArrowMonad m) >>= f =

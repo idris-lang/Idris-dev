@@ -16,7 +16,7 @@ instance Functor Erased where
 
 instance Applicative Erased where
   pure = Erase
-  (<$>) (Erase f) (Erase x) = Erase (f x)
+  (<*>) (Erase f) (Erase x) = Erase (f x)
 
 instance Monad Erased where
   (>>=) (Erase x) f = f x

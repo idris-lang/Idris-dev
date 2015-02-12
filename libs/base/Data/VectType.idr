@@ -529,7 +529,7 @@ transpose (x :: xs) = zipWith (::) x (transpose xs)
 instance Applicative (Vect k) where
     pure = replicate _
 
-    fs <$> vs = zipWith apply fs vs
+    fs <*> vs = zipWith apply fs vs
 
 instance Monad (Vect n) where
     m >>= f = diag (map f m)

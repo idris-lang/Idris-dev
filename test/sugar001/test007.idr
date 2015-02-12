@@ -19,7 +19,7 @@ instance Functor Eval where
 instance Applicative Eval where
     pure x = MkEval (\e => Just x)
 
-    (<$>) (MkEval f) (MkEval g) = MkEval (\x => appAux (f x) (g x)) where
+    (<*>) (MkEval f) (MkEval g) = MkEval (\x => appAux (f x) (g x)) where
        appAux : Maybe (a -> b) -> Maybe a -> Maybe b
        appAux (Just fx) (Just gx) = Just (fx gx)
        appAux _         _         = Nothing

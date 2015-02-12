@@ -185,16 +185,16 @@ return x = value x
 
 -- ------------------------------------------------------ [ for idiom brackets ]
 
-infixl 2 <$>
+infixl 2 <*>
 
 pure : a -> Eff m a xs (\v => xs)
 pure = value
 
 syntax pureM [val] = with_val val (pure ())
 
-(<$>) : Eff m (a -> b) xs (\v => xs) ->
+(<*>) : Eff m (a -> b) xs (\v => xs) ->
         Eff m a xs (\v => xs) -> Eff m b xs (\v => xs)
-(<$>) prog v = do fn <- prog
+(<*>) prog v = do fn <- prog
                   arg <- v
                   return (fn arg)
 

@@ -19,7 +19,7 @@ instance Functor (Process msg) where
 
 instance Applicative (Process msg) where
      pure = Lift . return
-     (Lift f) <$> (Lift a) = Lift (f <$> a)
+     (Lift f) <*> (Lift a) = Lift (f <*> a)
 
 instance Monad (Process msg) where
      (Lift io) >>= k = Lift (do x <- io

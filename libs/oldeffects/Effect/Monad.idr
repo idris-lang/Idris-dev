@@ -11,7 +11,7 @@ using (xs : List EFFECT, m : Type -> Type)
 
   instance Applicative (\a => EffM m a xs (\v => xs)) where
     pure = value
-    (<$>) f a = do f' <- f
+    (<*>) f a = do f' <- f
                    a' <- a
                    value (f' a')
 
