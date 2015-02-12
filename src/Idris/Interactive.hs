@@ -176,7 +176,7 @@ doProofSearch fn updatefile rec l n hints (Just depth)
                                   Just (t, e, False) -> (t, e, False)
                                   _ -> (Nothing, 0, True)
          let fc = fileFC fn
-         let body t = PProof [Try (TSeq Intros (ProofSearch rec False depth t hints))
+         let body t = PProof [Try (TSeq (Intros (-1)) (ProofSearch rec False depth t hints))
                                   (ProofSearch rec False depth t hints)]
          let def = PClause fc mn (PRef fc mn) [] (body top) []
          newmv <- idrisCatch

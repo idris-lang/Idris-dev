@@ -824,7 +824,8 @@ mapPT f t = f (mpt t) where
   mpt x = x
 
 
-data PTactic' t = Intro [Name] | Intros | Focus Name
+data PTactic' t = Intro [Name] | Intros Int | Focus Name
+                  -- Intros (-1) corresponds to the tactic w/o arguments
                 | Refine Name [Bool] | Rewrite t | DoUnify
                 | Induction t
                 | CaseTac t
@@ -859,7 +860,7 @@ deriving instance NFData PTactic'
 !-}
 instance Sized a => Sized (PTactic' a) where
   size (Intro nms) = 1 + size nms
-  size Intros = 1
+  size (Intros _) = 1
   size (Focus nm) = 1 + size nm
   size (Refine nm bs) = 1 + size nm + length bs
   size (Rewrite t) = 1 + size t

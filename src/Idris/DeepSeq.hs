@@ -241,7 +241,7 @@ instance NFData PTerm where
 
 instance (NFData t) => NFData (PTactic' t) where
         rnf (Intro x1) = rnf x1 `seq` ()
-        rnf Intros = ()
+        rnf (Intros x1) = rnf x1 `seq` ()
         rnf (Focus x1) = rnf x1 `seq` ()
         rnf (Refine x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (Rewrite x1) = rnf x1 `seq` ()
