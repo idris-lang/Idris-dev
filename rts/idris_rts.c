@@ -1,11 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
 #include <assert.h>
-#ifdef HAS_PTHREAD
-#include <pthread.h>
-#endif
 
 #include "idris_rts.h"
 #include "idris_gc.h"
