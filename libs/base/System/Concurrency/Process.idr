@@ -15,7 +15,7 @@ data Process : (msgType : Type) -> Type -> Type where
      Lift : IO a -> Process msg a
 
 instance Functor (Process msg) where
-     map f (Lift a) = Lift (map f a)
+     f <$> (Lift a) = Lift (f <$> a)
 
 instance Applicative (Process msg) where
      pure = Lift . return

@@ -255,8 +255,8 @@ instance Ord a => Ord (Vect n a) where
 --------------------------------------------------------------------------------
 
 instance Functor (Vect n) where
-  map f []        = []
-  map f (x::xs) = f x :: map f xs
+  f <$> []      = []
+  f <$> (x::xs) = f x :: (f <$> xs)
 
 
 ||| Map a partial function across a vector, returning those elements for which

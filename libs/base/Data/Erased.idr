@@ -12,7 +12,7 @@ data Erased : Type -> Type where
     Erase : .(x : a) -> Erased a
 
 instance Functor Erased where
-  map f (Erase x) = Erase (f x)
+  f <$> (Erase x) = Erase (f x)
 
 instance Applicative Erased where
   pure = Erase

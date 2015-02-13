@@ -23,7 +23,7 @@ liftReaderT : {m : Type -> Type} -> m a -> ReaderT r m a
 liftReaderT m = RD $ const m
 
 instance Functor f => Functor (ReaderT r f) where
-    map f (RD g) = RD $ (map f) . g
+    f <$> (RD g) = RD $ (f <$>) . g
 
 instance Applicative m => Applicative (ReaderT r m) where
     pure              = liftReaderT . pure

@@ -21,7 +21,7 @@ applyEndo : Endomorphism a -> a -> a
 applyEndo (Endo f) a = f a
 
 instance Functor (Morphism r) where
-  map f (Mor a) = Mor (f . a)
+  f <$> (Mor a) = Mor (f . a)
 
 instance Applicative (Morphism r) where
   pure a                = Mor $ const a

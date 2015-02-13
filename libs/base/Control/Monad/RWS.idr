@@ -16,7 +16,7 @@ record RWST : Type -> Type -> Type -> (Type -> Type) -> Type -> Type where
              (runRWST : r -> s -> m (a, s, w)) -> RWST r w s m a
 
 instance Monad m => Functor (RWST r w s m) where
-    map f (MkRWST m) = MkRWST $ \r,s => do  (a, s', w) <- m r s
+    f <$> (MkRWST m) = MkRWST $ \r,s => do  (a, s', w) <- m r s
                                             return (f a, s', w)
 
 instance (Monoid w, Monad m) => Applicative (RWST r w s m) where

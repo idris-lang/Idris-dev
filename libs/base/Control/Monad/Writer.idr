@@ -21,7 +21,7 @@ record WriterT : Type -> (Type -> Type) -> Type -> Type where
          (runWriterT : m (a, w)) -> WriterT w m a
 
 instance Functor f => Functor (WriterT w f) where
-    map f (WR g) = WR $ map (\w => (f . fst $ w, snd w)) g
+    f <$> (WR g) = WR $ (\w => (f . fst $ w, snd w)) <$> g
 
 instance (Monoid w, Applicative m) => Applicative (WriterT w m) where
     pure a            = WR $ pure (a, neutral)

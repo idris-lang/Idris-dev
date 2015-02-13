@@ -231,18 +231,18 @@ instance Show a => Show (Maybe a) where
 ---- Functor instances
 
 instance Functor PrimIO where
-    map f io = prim_io_bind io (prim_io_return . f)
+    f <$> io = prim_io_bind io (prim_io_return . f)
 
 instance Functor (IO' ffi) where
-    map f io = io_bind io (\b => io_return (f b))
+    f <$> io = io_bind io (\b => io_return (f b))
 
 instance Functor Maybe where
-    map f (Just x) = Just (f x)
-    map f Nothing  = Nothing
+    f <$> (Just x) = Just (f x)
+    f <$> Nothing  = Nothing
 
 instance Functor (Either e) where
-    map f (Left l) = Left l
-    map f (Right r) = Right (f r)
+    f <$> (Left l)  = Left l
+    f <$> (Right r) = Right (f r)
 
 ---- Applicative instances
 
