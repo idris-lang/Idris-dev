@@ -1,8 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
 
-{- Implements a proof state, some primitive tactics for manipulating
-   proofs, and some high level commands for introducing new theorems,
-   evaluation/checking inside the proof system, etc. --}
+{- | Implements a proof state, some primitive tactics for manipulating
+proofs, and some high level commands for introducing new theorems,
+evaluation/checking inside the proof system, etc.
+-}
 
 module Idris.Core.ProofTerm(ProofTerm, Goal(..), mkProofTerm, getProofTerm,
                             updateSolved, updateSolvedTerm, updateSolvedTerm',
@@ -18,6 +19,7 @@ import Control.Monad.State.Strict
 import Data.List
 import Debug.Trace
 
+-- | A zipper over terms, in order to efficiently update proof terms.
 data TermPath = Top
               | AppL TermPath Term
               | AppR Term TermPath
@@ -25,6 +27,7 @@ data TermPath = Top
               | InScope Name (Binder Term) TermPath
   deriving Show
 
+-- | A zipper over binders, because terms and binders are mutually defined.
 data BinderPath = Binder (Binder TermPath)
                 | LetT TermPath Term
                 | LetV Term TermPath
@@ -32,6 +35,8 @@ data BinderPath = Binder (Binder TermPath)
                 | GuessV Term TermPath
   deriving Show
 
+-- | Replace the top of a term path with another term path. In other
+-- words, "graft" one term path into another.
 replaceTop :: TermPath -> TermPath -> TermPath
 replaceTop p Top = p
 replaceTop p (AppL l t) = AppL (replaceTop p l) t
@@ -45,6 +50,7 @@ replaceTop p (InBind n bp sc) = InBind n (replaceTopB p bp) sc
     replaceTopB p (GuessV t v) = GuessV t (replaceTop p v)
 replaceTop p (InScope n b sc) = InScope n b (replaceTop p sc)
 
+-- | Build a term from a zipper, given something to put in the hole.
 rebuildTerm :: Term -> TermPath -> Term
 rebuildTerm tm Top = tm
 rebuildTerm tm (AppL p a) = App (rebuildTerm tm p) a
@@ -52,6 +58,7 @@ rebuildTerm tm (AppR f p) = App f (rebuildTerm tm p)
 rebuildTerm tm (InScope n b p) = Bind n b (rebuildTerm tm p)
 rebuildTerm tm (InBind n bp sc) = Bind n (rebuildBinder tm bp) sc
 
+-- | Build a binder from a zipper, given something to put in the hole.
 rebuildBinder :: Term -> BinderPath -> Binder Term
 rebuildBinder tm (Binder p) = fmap (rebuildTerm tm) p
 rebuildBinder tm (LetT p t) = Let (rebuildTerm tm p) t
@@ -59,6 +66,9 @@ rebuildBinder tm (LetV v p) = Let v (rebuildTerm tm p)
 rebuildBinder tm (GuessT p t) = Guess (rebuildTerm tm p) t
 rebuildBinder tm (GuessV v p) = Guess v (rebuildTerm tm p)
 
+-- | Find the binding of a hole in a term. If present, return the path
+-- to the hole's binding, the environment extended by the binders that
+-- are crossed, and the actual binding term.
 findHole :: Name -> Env -> Term -> Maybe (TermPath, Env, Term)
 findHole n env t = fh' env Top t where
   fh' env path tm@(Bind x h sc) 
@@ -80,7 +90,7 @@ findHole n env t = fh' env Top t where
   fhB env path b
       | Just (p, env', tm) <- fh' env path (binderTy b)
           = Just (Binder (fmap (\_ -> p) b), env', tm)
-  fhB _ _ _ = Nothing 
+  fhB _ _ _ = Nothing
 
 data ProofTerm = PT { -- wholeterm :: Term,
                       path :: TermPath,
@@ -92,13 +102,17 @@ data ProofTerm = PT { -- wholeterm :: Term,
 type RunTactic' a = Context -> Env -> Term -> StateT a TC Term
 type Hole = Maybe Name -- Nothing = default hole, first in list in proof state
 
+-- | Refocus the proof term zipper on a particular hole, if it
+-- exists. If not, return the original proof term.
 refocus :: Hole -> ProofTerm -> ProofTerm
 refocus h t = let res = refocus' h t in res
 --                   trace ("OLD: " ++ show t ++ "\n" ++
 --                          "REFOCUSSED " ++ show h ++ ": " ++ show res) res
 refocus' (Just n) pt@(PT path env tm ups)
+      -- First look for the hole in the proof term as-is
       | Just (p', env', tm') <- findHole n env tm
              = PT (replaceTop p' path) env' tm' ups
+      -- Next apply the updates, and look for the hole in the resulting term
       | Just (p', env', tm') <- findHole n [] (rebuildTerm tm (updateSolvedPath ups path))
              = PT p' env' tm' []
       | otherwise = pt
@@ -118,27 +132,32 @@ same :: Eq a => Maybe a -> a -> Bool
 same Nothing n  = True
 same (Just x) n = x == n
 
+-- | Is a particular binder a hole or a guess?
 hole :: Binder b -> Bool
 hole (Hole _)    = True
 hole (Guess _ _) = True
 hole _           = False
 
-updateSolvedTerm :: [(Name, Term)] -> Term -> Term 
+-- | Given a list of solved holes, fill out the solutions in a term
+updateSolvedTerm :: [(Name, Term)] -> Term -> Term
 updateSolvedTerm xs x = fst $ updateSolvedTerm' xs x
 
+-- | Given a list of solved holes, fill out the solutions in a
+-- term. Return whether updates were performed, to facilitate sharing
+-- when there are no updates.
+updateSolvedTerm' :: [(Name, Term)] -> Term -> (Term, Bool)
 updateSolvedTerm' [] x = (x, False)
-updateSolvedTerm' xs x = -- updateSolved' xs x where
--- This version below saves allocations, because it doesn't need to reallocate
--- the term if there are no updates to do. 
--- The Bool is ugly, and probably 'Maybe' would be less ugly, but >>= is
--- the wrong combinator. Feel free to tidy up as long as it's still as cheap :).
-                           updateSolved' xs x where
+updateSolvedTerm' xs x = updateSolved' xs x where
+    -- This version below saves allocations, because it doesn't need to reallocate
+    -- the term if there are no updates to do.
+    -- The Bool is ugly, and probably 'Maybe' would be less ugly, but >>= is
+    -- the wrong combinator. Feel free to tidy up as long as it's still as cheap :).
     updateSolved' [] x = (x, False)
     updateSolved' xs (Bind n (Hole ty) t)
-        | Just v <- lookup n xs 
+        | Just v <- lookup n xs
             = case xs of
                    [_] -> (subst n v t, True) -- some may be Vs! Can't assume
-                                                          -- explicit names
+                                              -- explicit names
                    _ -> let (t', _) = updateSolved' xs t in
                             (subst n v t', True)
     updateSolved' xs tm@(Bind n b t)
@@ -146,7 +165,7 @@ updateSolvedTerm' xs x = -- updateSolved' xs x where
                           (b', ub) = updateSolvedB' xs b in
                           if ut || ub then (Bind n b' t', True)
                                       else (tm, False)
-    updateSolved' xs t@(App f a) 
+    updateSolved' xs t@(App f a)
         = let (f', uf) = updateSolved' xs f
               (a', ua) = updateSolved' xs a in
               if uf || ua then (App f' a', True)
@@ -176,10 +195,14 @@ updateSolvedTerm' xs x = -- updateSolved' xs x where
         noneOfB ns b = noneOf ns (binderTy b)
     noneOf ns _ = True
 
+-- | Apply solutions to an environment.
+updateEnv :: [(Name, Term)] -> Env -> Env
 updateEnv [] e = e
 updateEnv ns [] = []
 updateEnv ns ((n, b) : env) = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns env
 
+-- | Fill out solved holes in a term zipper.
+updateSolvedPath :: [(Name, Term)] -> TermPath -> TermPath
 updateSolvedPath [] t = t
 updateSolvedPath ns Top = Top
 updateSolvedPath ns (AppL p r) = AppL (updateSolvedPath ns p) (updateSolvedTerm ns r)

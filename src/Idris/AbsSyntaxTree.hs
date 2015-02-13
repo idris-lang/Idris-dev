@@ -830,6 +830,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Induction t
                 | CaseTac t
                 | Equiv t
+                | Claim Name t
+                | Unfocus
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
