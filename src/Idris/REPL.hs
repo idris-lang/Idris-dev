@@ -756,7 +756,7 @@ process fn (NewDefn decls) = do
   getName _ = Nothing
   -- getClauseName is partial and I am not sure it's used safely! -- trillioneyes
   getClauseName (PClause fc name whole with rhs whereBlock) = name
-  getClauseName (PWith fc name whole with rhs whereBlock) = name
+  getClauseName (PWith fc name whole with rhs pn whereBlock) = name
   defineName :: [PDecl] -> Idris ()
   defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do
     elabDecl EAll recinfo tyDecl
@@ -785,9 +785,9 @@ process fn (NewDefn decls) = do
   getClauses _ = []
   getRHS :: PClause -> PTerm
   getRHS (PClause fc name whole with rhs whereBlock) = rhs
-  getRHS (PWith fc name whole with rhs whereBlock) = rhs
+  getRHS (PWith fc name whole with rhs pn whereBlock) = rhs
   getRHS (PClauseR fc with rhs whereBlock) = rhs
-  getRHS (PWithR fc with rhs whereBlock) = rhs
+  getRHS (PWithR fc with rhs pn whereBlock) = rhs
   setReplDefined :: Maybe Name -> Idris ()
   setReplDefined Nothing = return ()
   setReplDefined (Just n) = do

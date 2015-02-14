@@ -178,13 +178,13 @@ instance (NFData t) => NFData (PClause' t) where
         rnf (PClause x1 x2 x3 x4 x5 x6)
           = rnf x1 `seq`
               rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
-        rnf (PWith x1 x2 x3 x4 x5 x6)
+        rnf (PWith x1 x2 x3 x4 x5 x6 x7)
           = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
+              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()
         rnf (PClauseR x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (PWithR x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (PWithR x1 x2 x3 x4 x5)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
 
 instance (NFData t) => NFData (PData' t) where
         rnf (PDatadecl x1 x2 x3)

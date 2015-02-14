@@ -637,10 +637,10 @@ type ElabD a = Elab' EState a
 --
 -- 4. The where block (PDecl' t)
 
-data PClause' t = PClause  FC Name t [t] t [PDecl' t] -- ^ A normal top-level definition.
-                | PWith    FC Name t [t] t [PDecl' t]
-                | PClauseR FC        [t] t [PDecl' t]
-                | PWithR   FC        [t] t [PDecl' t]
+data PClause' t = PClause  FC Name t [t] t              [PDecl' t] -- ^ A normal top-level definition.
+                | PWith    FC Name t [t] t (Maybe Name) [PDecl' t]
+                | PClauseR FC        [t] t              [PDecl' t]
+                | PWithR   FC        [t] t (Maybe Name) [PDecl' t]
     deriving Functor
 {-!
 deriving instance Binary PClause'
@@ -1692,7 +1692,7 @@ showCImp ppo (PClause _ n l ws r w)
   where
     showWs [] = empty
     showWs (x : xs) = text "|" <+> prettyImp ppo x <+> showWs xs
-showCImp ppo (PWith _ n l ws r w)
+showCImp ppo (PWith _ n l ws r pn w)
  = prettyImp ppo l <+> showWs ws <+> text "with" <+> prettyImp ppo r
                  <+> braces (text (show w))
   where

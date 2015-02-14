@@ -120,8 +120,8 @@ decorateid decorate (PTy doc argdocs s f o n t) = PTy doc argdocs s f o (decorat
 decorateid decorate (PClauses f o n cs)
    = PClauses f o (decorate n) (map dc cs)
     where dc (PClause fc n t as w ds) = PClause fc (decorate n) (dappname t) as w ds
-          dc (PWith   fc n t as w ds)
-                 = PWith fc (decorate n) (dappname t) as w
+          dc (PWith   fc n t as w pn ds)
+                 = PWith fc (decorate n) (dappname t) as w pn
                             (map (decorateid decorate) ds)
           dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
           dappname t = t

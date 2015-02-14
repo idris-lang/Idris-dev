@@ -36,7 +36,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 95
+ibcVersion = 96
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1368,23 +1368,25 @@ instance (Binary t) => Binary (PClause' t) where
                                                 put x4
                                                 put x5
                                                 put x6
-                PWith x1 x2 x3 x4 x5 x6 -> do putWord8 1
-                                              put x1
-                                              put x2
-                                              put x3
-                                              put x4
-                                              put x5
-                                              put x6
+                PWith x1 x2 x3 x4 x5 x6 x7 -> do putWord8 1
+                                                 put x1
+                                                 put x2
+                                                 put x3
+                                                 put x4
+                                                 put x5
+                                                 put x6
+                                                 put x7
                 PClauseR x1 x2 x3 x4 -> do putWord8 2
                                            put x1
                                            put x2
                                            put x3
                                            put x4
-                PWithR x1 x2 x3 x4 -> do putWord8 3
-                                         put x1
-                                         put x2
-                                         put x3
-                                         put x4
+                PWithR x1 x2 x3 x4 x5 -> do putWord8 3
+                                            put x1
+                                            put x2
+                                            put x3
+                                            put x4
+                                            put x5
         get
           = do i <- getWord8
                case i of
@@ -1401,7 +1403,8 @@ instance (Binary t) => Binary (PClause' t) where
                            x4 <- get
                            x5 <- get
                            x6 <- get
-                           return (PWith x1 x2 x3 x4 x5 x6)
+                           x7 <- get
+                           return (PWith x1 x2 x3 x4 x5 x6 x7)
                    2 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1411,7 +1414,8 @@ instance (Binary t) => Binary (PClause' t) where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (PWithR x1 x2 x3 x4)
+                           x5 <- get
+                           return (PWithR x1 x2 x3 x4 x5)
                    _ -> error "Corrupted binary data for PClause'"
 
 instance (Binary t) => Binary (PData' t) where

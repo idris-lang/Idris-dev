@@ -1016,7 +1016,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
                             (map (expandParams dec ps'' ns' []) ws)
                             (expandParams dec ps'' ns' [] rhs)
                             (map (expandParamsD True ist dec ps'' ns') ds)
-    expandParamsC (PWith fc n lhs ws wval ds)
+    expandParamsC (PWith fc n lhs ws wval pn ds)
         = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
               lhs' = if rhsonly then lhs else (expandParams dec ps'' ns [] lhs)
@@ -1025,6 +1025,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
               PWith fc n' lhs'
                           (map (expandParams dec ps'' ns' []) ws)
                           (expandParams dec ps'' ns' [] wval)
+                          pn
                           (map (expandParamsD rhsonly ist dec ps'' ns') ds)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
