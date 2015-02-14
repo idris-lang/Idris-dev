@@ -1482,6 +1482,7 @@ instance Binary PTerm where
                 PTyped x1 x2 -> do putWord8 7
                                    put x1
                                    put x2
+                PAppImpl x1 x2 -> error "PAppImpl in final term"
                 PApp x1 x2 x3 -> do putWord8 8
                                     put x1
                                     put x2

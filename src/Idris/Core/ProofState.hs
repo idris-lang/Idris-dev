@@ -853,6 +853,7 @@ updateProblems ps updates probs = up updates probs where
   hs = holes ps
   inj = injective ps
   ctxt = context ps
+  ulog = unifylog ps
   usupp = map fst (notunified ps)
 
   up ns [] = (ns, [])
@@ -864,8 +865,8 @@ updateProblems ps updates probs = up updates probs where
           if newx || newy || ready || 
              any (\n -> n `elem` inj) (refsIn x ++ refsIn y) then 
             case unify ctxt env' x' y' inj hs usupp while of
-                 OK (v, []) -> -- trace ("DID " ++ show (x',y',ready,v)) $
-                               up (ns ++ v) ps
+                 OK (v, []) -> traceWhen ulog ("DID " ++ show (x',y',ready,v)) $
+                                up (ns ++ v) ps
                  e -> -- trace ("FAILED " ++ show (x',y',ready,e)) $
                        let (ns', ps') = up ns ps in
                            (ns', (x',y', False, env',err', while, um) : ps')
@@ -966,7 +967,9 @@ processTactic t ps
                      -- apply them here
                      let ns' = dropGiven (dontunify ps') ns_in (holes ps')
                      let pterm'' = updateSolved ns' (pterm ps')
-                     traceWhen (unifylog ps) ("(Toplevel) Dropping holes: " ++ show (map fst ns')) $
+                     traceWhen (unifylog ps) 
+                                 ("Updated problems after solve " ++ qshow probs' ++ "\n" ++
+                                  "(Toplevel) Dropping holes: " ++ show (map fst ns')) $
                        return (ps' { pterm = pterm'',
                                      solved = Nothing,
                                      problems = probs',
@@ -989,7 +992,6 @@ process t h = tactic (Just h) (mktac t)
          mktac (MatchFill r)     = match_fill r
          mktac (PrepFill n ns)   = prep_fill n ns
          mktac CompleteFill      = complete_fill
-         mktac Regret            = regret
          mktac Solve             = solve
          mktac (StartUnify n)    = start_unify n
          mktac Compute           = compute

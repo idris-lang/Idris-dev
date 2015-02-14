@@ -202,6 +202,7 @@ instance NFData PTerm where
         rnf (PLet _ x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PTyped x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (PAppImpl x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PApp x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PAppBind x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PMatchApp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()

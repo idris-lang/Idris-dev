@@ -1345,6 +1345,8 @@ showEnv' env t dbg = se 10 env t where
                                     = (show $ fst $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
+    se p env (Bind n b@(Pi (Just _) t k) sc)
+         = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
     se p env (Bind n b@(Pi _ t k) sc)
         | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ arrow k ++ se 10 ((n,b):env) sc
        where arrow (TType _) = " -> "
@@ -1361,6 +1363,7 @@ showEnv' env t dbg = se 10 env t where
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
     sb env n (GHole i t) = showb env "?defer " ". " n t
+    sb env n (Pi (Just _) t _)   = showb env "{" "} -> " n t
     sb env n (Pi _ t _)   = showb env "(" ") -> " n t
     sb env n (PVar t) = showb env "pat " ". " n t
     sb env n (PVTy t) = showb env "pty " ". " n t
