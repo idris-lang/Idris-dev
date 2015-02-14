@@ -74,9 +74,9 @@ elabProvider info syn fc what n
          (e, et) <- case what of
                       ProvTerm _ tm    -> elabVal info ERHS tm
                       ProvPostulate tm -> elabVal info ERHS tm
-         unless (isProviderOf (normalise ctxt [] ty') et) $
-           ifail $ "Expected provider type IO (Provider (" ++
-                   show ty' ++ "))" ++ ", got " ++ show et ++ " instead."
+         unless (isProviderOf ctxt ty' et) $
+           ifail $ "Expected provider type " ++ show (providerOf ty') ++
+                   ", got " ++ show et ++ " instead."
 
          -- Execute the type provider and normalise the result
          -- use 'run__provider' to convert to a primitive IO action
@@ -107,11 +107,17 @@ elabProvider info syn fc what n
           isTType (TType _) = True
           isTType _ = False
 
-          isProviderOf :: TT Name -> TT Name -> Bool
-          isProviderOf tp prov
-            | (P _ (UN io) _, [prov']) <- unApply prov
-            , (P _ (NS (UN prov) [provs]) _, [tp']) <- unApply prov'
-            , tp == tp', io == txt "IO"
-            , prov == txt "Provider" && provs == txt "Providers" = True
-          isProviderOf _ _ = False
+          -- Note: IO (Providers.Provider ty) is used instead of IO'
+          -- (MkFFI C_FFI) (Providers.Provider ty) in hopes of better
+          -- error messages with less normalisation
+          providerOf :: Type -> Type
+          providerOf ty = App (P Ref (sUN "IO") Erased) $
+                            App (P Ref (sNS (sUN "Provider") ["Providers"]) Erased)
+                              ty
+
+          isProviderOf :: Context -> TT Name -> TT Name -> Bool
+          isProviderOf ctxt tp prov =
+            case converts ctxt [] (providerOf tp) prov of
+              OK _ -> True
+              _    -> False
 

@@ -10,7 +10,7 @@ import Idris.Core.Typecheck
 import Idris.AbsSyntaxTree
 import Idris.Colours
 import Idris.Docstrings
-import Idris.IdeSlave hiding (Opt(..))
+import Idris.IdeMode hiding (Opt(..))
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
@@ -601,7 +601,7 @@ type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
                   case idris_outputmode i of
-                    IdeSlave n h -> runIO . hPutStrLn h $ convSExp "set-prompt" p n
+                    IdeMode n h -> runIO . hPutStrLn h $ convSExp "set-prompt" p n
 
 -- | Tell clients how much was parsed and loaded
 isetLoadedRegion :: Idris ()
@@ -610,7 +610,7 @@ isetLoadedRegion = do i <- getIState
                       case span of
                         Just fc ->
                           case idris_outputmode i of
-                            IdeSlave n h ->
+                            IdeMode n h ->
                               runIO . hPutStrLn h $
                                 convSExp "set-loaded-region" fc n
                         Nothing -> return ()
@@ -752,10 +752,12 @@ outputTy :: Idris OutputType
 outputTy = do i <- getIState
               return $ opt_outputTy $ idris_options i
 
-setIdeSlave :: Bool -> Handle -> Idris ()
-setIdeSlave True  h = do i <- getIState
-                         putIState $ i { idris_outputmode = (IdeSlave 0 h), idris_colourRepl = False }
-setIdeSlave False _ = return ()
+setIdeMode :: Bool -> Handle -> Idris ()
+setIdeMode True  h = do i <- getIState
+                        putIState $ i { idris_outputmode = IdeMode 0 h
+                                      , idris_colourRepl = False
+                                      }
+setIdeMode False _ = return ()
 
 setTargetTriple :: String -> Idris ()
 setTargetTriple t = do i <- getIState
@@ -870,7 +872,7 @@ logLvl l str = do i <- getIState
                   when (lvl >= l) $
                     case idris_outputmode i of
                       RawOutput h -> do runIO $ hPutStrLn h str
-                      IdeSlave n h ->
+                      IdeMode n h ->
                         do let good = SexpList [IntegerAtom (toInteger l), toSExp str]
                            runIO . hPutStrLn h $ convSExp "log" good n
 
@@ -1734,7 +1736,11 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
        | (Bind n (Pi _ t _) sc :_) <- lookupTy f (tt_ctxt i)
           = Placeholder
     su (PApp fc f@(PRef _ fn) args)
-       | isDConName fn ctxt 
+       -- here we use canBeDConName because the impossible pattern
+       -- check will not necessarily fully resolve constructor names,
+       -- and these bare names will otherwise get in the way of
+       -- impossbility checking.
+       | canBeDConName fn ctxt
           = PApp fc f (fmap (fmap su) args)
     su (PApp fc f args)
           = PHidden (PApp fc f args)

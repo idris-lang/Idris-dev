@@ -173,30 +173,30 @@ elaborating_app = do ES (ps, _) _ _ <- get
 
 -- Some handy gadgets for pulling out bits of state
 
--- get the global context
+-- | Get the global context
 get_context :: Elab' aux Context
 get_context = do ES p _ _ <- get
                  return $! (context (fst p))
 
--- update the context
+-- | Update the context.
 -- (should only be used for adding temporary definitions or all sorts of
 --  stuff could go wrong)
 set_context :: Context -> Elab' aux ()
 set_context ctxt = do ES (p, a) logs prev <- get
                       put (ES (p { context = ctxt }, a) logs prev)
 
--- get the proof term
+-- | get the proof term
 get_term :: Elab' aux Term
 get_term = do ES p _ _ <- get
               return $! (getProofTerm (pterm (fst p)))
 
--- get the proof term
+-- | get the proof term
 update_term :: (Term -> Term) -> Elab' aux ()
 update_term f = do ES (p,a) logs prev <- get
                    let p' = p { pterm = mkProofTerm (f (getProofTerm (pterm p))) }
                    put (ES (p', a) logs prev)
 
--- get the local context at the currently in focus hole
+-- | get the local context at the currently in focus hole
 get_env :: Elab' aux Env
 get_env = do ES p _ _ <- get
              lift $ envAtFocus (fst p)
@@ -213,14 +213,14 @@ get_probs :: Elab' aux Fails
 get_probs = do ES p _ _ <- get
                return $! (problems (fst p))
 
--- Return recently solved names (that is, the names solved since the
+-- | Return recently solved names (that is, the names solved since the
 -- last call to get_recents)
 get_recents :: Elab' aux [Name]
 get_recents = do ES (p, a) l prev <- get
                  put (ES (p { recents = [] }, a) l prev)
                  return (recents p)
 
--- get the current goal type
+-- | get the current goal type
 goal :: Elab' aux Type
 goal = do ES p _ _ <- get
           b <- lift $ goalAtFocus (fst p)
@@ -233,7 +233,7 @@ is_guess = do ES p _ _ <- get
                    Guess _ _ -> return True
                    _ -> return False
 
--- Get the guess at the current hole, if there is one
+-- | Get the guess at the current hole, if there is one
 get_guess :: Elab' aux Term
 get_guess = do ES p _ _ <- get
                b <- lift $ goalAtFocus (fst p)
@@ -241,7 +241,7 @@ get_guess = do ES p _ _ <- get
                     Guess t v -> return $! v
                     _ -> fail "Not a guess"
 
--- typecheck locally
+-- | Typecheck locally
 get_type :: Raw -> Elab' aux Type
 get_type tm = do ctxt <- get_context
                  env <- get_env
@@ -254,7 +254,7 @@ get_type_val tm = do ctxt <- get_context
                      (val, ty) <- lift $ check ctxt env tm
                      return $! (finalise val, finalise ty)
 
--- get holes we've deferred for later definition
+-- | get holes we've deferred for later definition
 get_deferred :: Elab' aux [Name]
 get_deferred = do ES p _ _ <- get
                   return $! (deferred (fst p))
@@ -271,17 +271,18 @@ checkInjective (tm, l, r) = do ctxt <- get_context
         isInj ctxt (Bind _ (Pi _ _ _) sc) = True
         isInj ctxt _ = False
 
--- get instance argument names
+-- | get instance argument names
 get_instances :: Elab' aux [Name]
 get_instances = do ES p _ _ <- get
                    return $! (instances (fst p))
 
--- get auto argument names
+-- | get auto argument names
 get_autos :: Elab' aux [(Name, [Name])]
 get_autos = do ES p _ _ <- get
                return $! (autos (fst p))
 
--- given a desired hole name, return a unique hole name
+-- | given a desired hole name, return a unique hole name
+unique_hole :: Name -> Elab' aux Name
 unique_hole = unique_hole' False
 
 unique_hole' :: Bool -> Name -> Elab' aux Name

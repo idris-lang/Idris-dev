@@ -16,7 +16,7 @@ import Idris.ElabTerm
 import Idris.Error
 import Idris.Delaborate
 import Idris.Output
-import Idris.IdeSlave hiding (IdeSlaveCommand(..))
+import Idris.IdeMode hiding (IdeModeCommand(..))
 
 import Idris.Elab.Value
 
@@ -271,7 +271,7 @@ makeLemma fn updatefile l n
                   runIO $ copyFile fb fn
                else case idris_outputmode i of
                       RawOutput _  -> iPrintResult $ lem ++ "\n" ++ lem_app
-                      IdeSlave n h ->
+                      IdeMode n h ->
                         let good = SexpList [SymbolAtom "ok",
                                              SexpList [SymbolAtom "metavariable-lemma",
                                                        SexpList [SymbolAtom "replace-metavariable",
@@ -289,7 +289,7 @@ makeLemma fn updatefile l n
                   runIO $ copyFile fb fn
                else case idris_outputmode i of
                       RawOutput _  -> iPrintResult $ lem_app
-                      IdeSlave n h ->
+                      IdeMode n h ->
                         let good = SexpList [SymbolAtom "ok",
                                              SexpList [SymbolAtom "provisional-definition-lemma",
                                                        SexpList [SymbolAtom "definition-clause",

@@ -26,6 +26,7 @@ import qualified Control.Monad.Trans.Class as Trans (lift)
 
 import Data.Data (Data)
 import Data.Function (on)
+import Data.Generics.Uniplate.Data (universe)
 import Data.List hiding (group)
 import Data.Char
 import qualified Data.Map.Strict as M
@@ -143,7 +144,7 @@ data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord
 
 -- | The output mode in use
 data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
-                | IdeSlave Integer Handle -- ^ Send IDE output for some request ID to the handle
+                | IdeMode Integer Handle -- ^ Send IDE output for some request ID to the handle
                 deriving Show
 
 -- | How wide is the console?
@@ -404,8 +405,8 @@ data Opt = Filename String
          | Quiet
          | NoBanner
          | ColourREPL Bool
-         | Ideslave
-         | IdeslaveSocket
+         | Idemode
+         | IdemodeSocket
          | ShowLibs
          | ShowLibdir
          | ShowIncs
@@ -1376,6 +1377,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
   where
     startPrec = 0
     funcAppPrec = 10
+    
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =
         text "![" <> pretty r <> text "]"
@@ -1641,6 +1643,16 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     getFixity :: String -> Maybe Fixity
     getFixity = flip M.lookup fixities
 
+-- | Determine whether a name was the one inserted for a hole or
+-- guess by the delaborator
+isHoleName :: Name -> Bool
+isHoleName (UN n) = n == T.pack "[__]"
+isHoleName _      = False
+
+-- | Check whether a PTerm has been delaborated from a Term containing a Hole or Guess
+containsHole :: PTerm -> Bool
+containsHole pterm = or [isHoleName n | PRef _ n <- take 1000 $ universe pterm]
+
 -- | Pretty-printer helper for the binding site of a name
 bindingOf :: Name -- ^^ the bound name
           -> Bool -- ^^ whether the name is implicit
@@ -1656,7 +1668,7 @@ prettyName
   -> Doc OutputAnnotation
 prettyName infixParen showNS bnd n
     | (MN _ s) <- n, isPrefixOf "_" $ T.unpack s = text "_"
-    | (UN n') <- n, isPrefixOf "_" $ T.unpack n' = text "_"
+    | (UN n') <- n, T.unpack n' == "_" = text "_"
     | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) fullName
     | otherwise                = annotate (AnnName n Nothing Nothing Nothing) fullName
   where fullName = text nameSpace <> parenthesise (text (baseName n))
@@ -1728,6 +1740,8 @@ getShowArgs :: [PArg] -> [PArg]
 getShowArgs [] = []
 getShowArgs (e@(PExp _ _ _ tm) : xs) = e : getShowArgs xs
 getShowArgs (e : xs) | AlwaysShow `elem` argopts e = e : getShowArgs xs
+                     | PImp _ _ _ _ tm <- e
+                     , containsHole tm       = e : getShowArgs xs
 getShowArgs (_ : xs) = getShowArgs xs
 
 getConsts :: [PArg] -> [PTerm]

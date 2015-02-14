@@ -1,3 +1,8 @@
+New in 0.9.17:
+--------------
+* The --ideslave command line option has been replaced with a --ide-mode
+  command line option with the same semantics.
+
 New in 0.9.16:
 --------------
 * Inductive-inductive definitions are now supported (i.e. simultaneously
