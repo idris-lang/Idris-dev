@@ -67,12 +67,12 @@ assumptionNames e
 prove :: Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
 prove opt ctxt lit n ty
     = do let ps = initElaborator n ctxt ty
-         ideslavePutSExp "start-proof-mode" n
+         idemodePutSExp "start-proof-mode" n
          (tm, prf) <- ploop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm
          i <- getIState
          case idris_outputmode i of
-           IdeMode _ _ -> ideslavePutSExp "end-proof-mode" (n, showProof lit n prf)
+           IdeMode _ _ -> idemodePutSExp "end-proof-mode" (n, showProof lit n prf)
            _            -> iputStrLn $ showProof lit n prf
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
@@ -198,7 +198,7 @@ receiveInput h e =
        Just (IdeMode.REPLCompletions prefix) ->
          do (unused, compls) <- proverCompletion (assumptionNames e) (reverse prefix, "")
             let good = IdeMode.SexpList [IdeMode.SymbolAtom "ok", IdeMode.toSExp (map replacement compls, reverse unused)]
-            ideslavePutSExp "return" good
+            idemodePutSExp "return" good
             receiveInput h e
        Just (IdeMode.Interpret cmd) -> return (Just cmd)
        Just (IdeMode.TypeOf str) -> return (Just (":t " ++ str))
@@ -254,7 +254,7 @@ ploop fn d prompt prf e h
                    (_, st) <- elabStep e (runTac autoSolve i (Just proverFC) fn tac)
                    return (True, st, False, prf ++ [step], Right $ iPrintResult ""))
            (\err -> return (False, e, False, prf, Left err))
-         ideslavePutSExp "write-proof-state" (prf', length prf')
+         idemodePutSExp "write-proof-state" (prf', length prf')
          case res of
            Left err -> do ist <- getIState
                           iRenderError $ pprintErr ist err

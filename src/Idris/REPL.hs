@@ -241,8 +241,8 @@ initIdemodeSocket = do
   return h
 
 -- | Run the IdeMode
-ideslaveStart :: Bool -> IState -> [FilePath] -> Idris ()
-ideslaveStart s orig mods
+idemodeStart :: Bool -> IState -> [FilePath] -> Idris ()
+idemodeStart s orig mods
   = do h <- runIO $ if s then initIdemodeSocket else return stdout
        setIdeMode True h
        i <- getIState
@@ -252,10 +252,10 @@ ideslaveStart s orig mods
               case mods of
                 a:_ -> runIdeModeCommand h n i "" [] (IdeMode.LoadFile a Nothing)
                 _   -> return ()
-       ideslave h orig mods
+       idemode h orig mods
 
-ideslave :: Handle -> IState -> [FilePath] -> Idris ()
-ideslave h orig mods
+idemode :: Handle -> IState -> [FilePath] -> Idris ()
+idemode h orig mods
   = do idrisCatch
          (do let inh = if h == stdout then stdin else h
              len' <- runIO $ IdeMode.getLen inh
@@ -277,7 +277,7 @@ ideslave h orig mods
                      Nothing  -> iPrintError "did not understand" )
                (\e -> do iPrintError $ show e))
          (\e -> do iPrintError $ show e)
-       ideslave h orig mods
+       idemode h orig mods
 
 -- | Run IDEMode commands
 runIdeModeCommand :: Handle -- ^^ The handle for communication
@@ -312,7 +312,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.Interpret cmd) =
                        _ -> return ()
                      iRenderError $ pprintErr ist e)
        Success (Right cmd) -> idrisCatch
-                        (ideslaveProcess fn cmd)
+                        (idemodeProcess fn cmd)
                         (\e -> getIState >>= iRenderError . flip pprintErr e)
        Success (Left err) -> iPrintError err
 runIdeModeCommand h id orig fn mods (IdeMode.REPLCompletions str) =
@@ -338,19 +338,19 @@ runIdeModeCommand h id orig fn mods (IdeMode.LoadFile filename toline) =
                                   (idris_parsedSpan i)
                   in runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
        Just x -> iPrintError $ "didn't load " ++ filename
-     ideslave h orig mods
+     idemode h orig mods
 runIdeModeCommand h id orig fn mods (IdeMode.TypeOf name) =
   case splitName name of
     Left err -> iPrintError err
-    Right n -> process "(ideslave)"
-                 (Check (PRef (FC "(ideslave)" (0,0) (0,0)) n))
+    Right n -> process "(idemode)"
+                 (Check (PRef (FC "(idemode)" (0,0) (0,0)) n))
 runIdeModeCommand h id orig fn mods (IdeMode.DocsFor name) =
   case parseConst orig name of
-    Success c -> process "(ideslave)" (DocStr (Right c))
+    Success c -> process "(idemode)" (DocStr (Right c))
     Failure _ ->
      case splitName name of
        Left err -> iPrintError err
-       Right n -> process "(ideslave)" (DocStr (Left n))
+       Right n -> process "(idemode)" (DocStr (Left n))
 runIdeModeCommand h id orig fn mods (IdeMode.CaseSplit line name) =
   process fn (CaseSplitAt False line (sUN name))
 runIdeModeCommand h id orig fn mods (IdeMode.AddClause line name) =
@@ -494,7 +494,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.TermNoImplicits bnd tm) =
 runIdeModeCommand h id orig fn mods (IdeMode.PrintDef name) =
   case splitName name of
     Left err -> iPrintError err
-    Right n -> process "(ideslave)" (PrintDef n)
+    Right n -> process "(idemode)" (PrintDef n)
 runIdeModeCommand h id orig fn modes (IdeMode.ErrString e) =
   do ist <- getIState
      let out = displayS . renderPretty 1.0 60 $ pprintErr ist e
@@ -532,76 +532,76 @@ splitName s = case reverse $ splitOn "." s of
         unparen ('(':x:xs) | last xs == ')' = init (x:xs)
         unparen str = str
 
-ideslaveProcess :: FilePath -> Command -> Idris ()
-ideslaveProcess fn Warranty = process fn Warranty
-ideslaveProcess fn Help = process fn Help
-ideslaveProcess fn (ChangeDirectory f) = do process fn (ChangeDirectory f)
-                                            iPrintResult "changed directory to"
-ideslaveProcess fn (ModImport f) = process fn (ModImport f)
-ideslaveProcess fn (Eval t) = process fn (Eval t)
-ideslaveProcess fn (NewDefn decls) = do process fn (NewDefn decls)
-                                        iPrintResult "defined"
-ideslaveProcess fn (Undefine n) = process fn (Undefine n)
-ideslaveProcess fn (ExecVal t) = process fn (ExecVal t)
-ideslaveProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
-ideslaveProcess fn (Check t) = process fn (Check t)
-ideslaveProcess fn (DocStr n) = process fn (DocStr n)
-ideslaveProcess fn Universes = process fn Universes
-ideslaveProcess fn (Defn n) = do process fn (Defn n)
-                                 iPrintResult ""
-ideslaveProcess fn (TotCheck n) = process fn (TotCheck n)
-ideslaveProcess fn (DebugInfo n) = do process fn (DebugInfo n)
-                                      iPrintResult ""
-ideslaveProcess fn (Search ps t) = process fn (Search ps t)
-ideslaveProcess fn (Spec t) = process fn (Spec t)
--- RmProof and AddProof not supported!
-ideslaveProcess fn (ShowProof n') = process fn (ShowProof n')
-ideslaveProcess fn (HNF t) = process fn (HNF t)
---ideslaveProcess fn TTShell = process fn TTShell -- need some prove mode!
-ideslaveProcess fn (TestInline t) = process fn (TestInline t)
-
-ideslaveProcess fn Execute = do process fn Execute
+idemodeProcess :: FilePath -> Command -> Idris ()
+idemodeProcess fn Warranty = process fn Warranty
+idemodeProcess fn Help = process fn Help
+idemodeProcess fn (ChangeDirectory f) = do process fn (ChangeDirectory f)
+                                           iPrintResult "changed directory to"
+idemodeProcess fn (ModImport f) = process fn (ModImport f)
+idemodeProcess fn (Eval t) = process fn (Eval t)
+idemodeProcess fn (NewDefn decls) = do process fn (NewDefn decls)
+                                       iPrintResult "defined"
+idemodeProcess fn (Undefine n) = process fn (Undefine n)
+idemodeProcess fn (ExecVal t) = process fn (ExecVal t)
+idemodeProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
+idemodeProcess fn (Check t) = process fn (Check t)
+idemodeProcess fn (DocStr n) = process fn (DocStr n)
+idemodeProcess fn Universes = process fn Universes
+idemodeProcess fn (Defn n) = do process fn (Defn n)
                                 iPrintResult ""
-ideslaveProcess fn (Compile codegen f) = do process fn (Compile codegen f)
-                                            iPrintResult ""
-ideslaveProcess fn (LogLvl i) = do process fn (LogLvl i)
+idemodeProcess fn (TotCheck n) = process fn (TotCheck n)
+idemodeProcess fn (DebugInfo n) = do process fn (DebugInfo n)
+                                     iPrintResult ""
+idemodeProcess fn (Search ps t) = process fn (Search ps t)
+idemodeProcess fn (Spec t) = process fn (Spec t)
+-- RmProof and AddProof not supported!
+idemodeProcess fn (ShowProof n') = process fn (ShowProof n')
+idemodeProcess fn (HNF t) = process fn (HNF t)
+--idemodeProcess fn TTShell = process fn TTShell -- need some prove mode!
+idemodeProcess fn (TestInline t) = process fn (TestInline t)
+
+idemodeProcess fn Execute = do process fn Execute
+                               iPrintResult ""
+idemodeProcess fn (Compile codegen f) = do process fn (Compile codegen f)
+                                           iPrintResult ""
+idemodeProcess fn (LogLvl i) = do process fn (LogLvl i)
+                                  iPrintResult ""
+idemodeProcess fn (Pattelab t) = process fn (Pattelab t)
+idemodeProcess fn (Missing n) = process fn (Missing n)
+idemodeProcess fn (DynamicLink l) = do process fn (DynamicLink l)
+                                       iPrintResult ""
+idemodeProcess fn ListDynamic = do process fn ListDynamic
                                    iPrintResult ""
-ideslaveProcess fn (Pattelab t) = process fn (Pattelab t)
-ideslaveProcess fn (Missing n) = process fn (Missing n)
-ideslaveProcess fn (DynamicLink l) = do process fn (DynamicLink l)
-                                        iPrintResult ""
-ideslaveProcess fn ListDynamic = do process fn ListDynamic
-                                    iPrintResult ""
-ideslaveProcess fn Metavars = process fn Metavars
-ideslaveProcess fn (SetOpt ErrContext) = do process fn (SetOpt ErrContext)
-                                            iPrintResult ""
-ideslaveProcess fn (UnsetOpt ErrContext) = do process fn (UnsetOpt ErrContext)
-                                              iPrintResult ""
-ideslaveProcess fn (SetOpt ShowImpl) = do process fn (SetOpt ShowImpl)
-                                          iPrintResult ""
-ideslaveProcess fn (UnsetOpt ShowImpl) = do process fn (UnsetOpt ShowImpl)
-                                            iPrintResult ""
-ideslaveProcess fn (SetOpt ShowOrigErr) = do process fn (SetOpt ShowOrigErr)
+idemodeProcess fn Metavars = process fn Metavars
+idemodeProcess fn (SetOpt ErrContext) = do process fn (SetOpt ErrContext)
+                                           iPrintResult ""
+idemodeProcess fn (UnsetOpt ErrContext) = do process fn (UnsetOpt ErrContext)
                                              iPrintResult ""
-ideslaveProcess fn (UnsetOpt ShowOrigErr) = do process fn (UnsetOpt ShowOrigErr)
-                                               iPrintResult ""
-ideslaveProcess fn (SetOpt x) = process fn (SetOpt x)
-ideslaveProcess fn (UnsetOpt x) = process fn (UnsetOpt x)
-ideslaveProcess fn (CaseSplitAt False pos str) = process fn (CaseSplitAt False pos str)
-ideslaveProcess fn (AddProofClauseFrom False pos str) = process fn (AddProofClauseFrom False pos str)
-ideslaveProcess fn (AddClauseFrom False pos str) = process fn (AddClauseFrom False pos str)
-ideslaveProcess fn (AddMissing False pos str) = process fn (AddMissing False pos str)
-ideslaveProcess fn (MakeWith False pos str) = process fn (MakeWith False pos str)
-ideslaveProcess fn (DoProofSearch False r pos str xs) = process fn (DoProofSearch False r pos str xs)
-ideslaveProcess fn (SetConsoleWidth w) = do process fn (SetConsoleWidth w)
+idemodeProcess fn (SetOpt ShowImpl) = do process fn (SetOpt ShowImpl)
+                                         iPrintResult ""
+idemodeProcess fn (UnsetOpt ShowImpl) = do process fn (UnsetOpt ShowImpl)
+                                           iPrintResult ""
+idemodeProcess fn (SetOpt ShowOrigErr) = do process fn (SetOpt ShowOrigErr)
                                             iPrintResult ""
-ideslaveProcess fn (Apropos pkg a) = do process fn (Apropos pkg a)
-                                        iPrintResult ""
-ideslaveProcess fn (WhoCalls n) = process fn (WhoCalls n)
-ideslaveProcess fn (CallsWho n) = process fn (CallsWho n)
-ideslaveProcess fn (PrintDef n) = process fn (PrintDef n)
-ideslaveProcess fn (PPrint fmt n tm) = process fn (PPrint fmt n tm)
-ideslaveProcess fn _ = iPrintError "command not recognized or not supported"
+idemodeProcess fn (UnsetOpt ShowOrigErr) = do process fn (UnsetOpt ShowOrigErr)
+                                              iPrintResult ""
+idemodeProcess fn (SetOpt x) = process fn (SetOpt x)
+idemodeProcess fn (UnsetOpt x) = process fn (UnsetOpt x)
+idemodeProcess fn (CaseSplitAt False pos str) = process fn (CaseSplitAt False pos str)
+idemodeProcess fn (AddProofClauseFrom False pos str) = process fn (AddProofClauseFrom False pos str)
+idemodeProcess fn (AddClauseFrom False pos str) = process fn (AddClauseFrom False pos str)
+idemodeProcess fn (AddMissing False pos str) = process fn (AddMissing False pos str)
+idemodeProcess fn (MakeWith False pos str) = process fn (MakeWith False pos str)
+idemodeProcess fn (DoProofSearch False r pos str xs) = process fn (DoProofSearch False r pos str xs)
+idemodeProcess fn (SetConsoleWidth w) = do process fn (SetConsoleWidth w)
+                                           iPrintResult ""
+idemodeProcess fn (Apropos pkg a) = do process fn (Apropos pkg a)
+                                       iPrintResult ""
+idemodeProcess fn (WhoCalls n) = process fn (WhoCalls n)
+idemodeProcess fn (CallsWho n) = process fn (CallsWho n)
+idemodeProcess fn (PrintDef n) = process fn (PrintDef n)
+idemodeProcess fn (PPrint fmt n tm) = process fn (PPrint fmt n tm)
+idemodeProcess fn _ = iPrintError "command not recognized or not supported"
 
 
 -- | The prompt consists of the currently loaded modules, or "Idris" if there are none
@@ -1613,7 +1613,7 @@ idrisMain opts =
          startServer port orig mods
          runInputT (replSettings (Just historyFile)) $ repl orig mods efile
        let idesock = IdemodeSocket `elem` opts
-       when (idesl) $ ideslaveStart idesock orig inputs
+       when (idesl) $ idemodeStart idesock orig inputs
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))
   where

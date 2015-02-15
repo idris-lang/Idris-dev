@@ -152,11 +152,13 @@ iputStrLn s = do i <- getIState
                    IdeMode n h -> runIO . hPutStrLn h $ convSExp "write-string" s n
 
 
-ideslavePutSExp :: SExpable a => String -> a -> Idris ()
-ideslavePutSExp cmd info = do i <- getIState
-                              case idris_outputmode i of
-                                   IdeMode n h -> runIO . hPutStrLn h $ convSExp cmd info n
-                                   _ -> return ()
+idemodePutSExp :: SExpable a => String -> a -> Idris ()
+idemodePutSExp cmd info = do i <- getIState
+                             case idris_outputmode i of
+                               IdeMode n h ->
+                                 runIO . hPutStrLn h $
+                                   convSExp cmd info n
+                               _ -> return ()
 
 -- TODO: send structured output similar to the metavariable list
 iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
