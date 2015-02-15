@@ -137,8 +137,10 @@ void idris_gc(VM* vm) {
     }
 
 #ifdef HAS_PTHREAD
-    for(root = vm->inbox_ptr; root < vm->inbox_write; ++root) {
-        *root = copy(vm, *root);
+    Msg* msg;
+
+    for(msg = vm->inbox; msg < vm->inbox_write; ++msg) {
+        msg->msg = copy(vm, msg->msg);
     }
 #endif
     vm->ret = copy(vm, vm->ret);
