@@ -230,6 +230,7 @@ data IdeModeCommand = REPLCompletions String
                     | PrintDef String
                     | ErrString Err
                     | ErrPPrint Err
+                    | GetIdrisVersion
 
 sexpToCommand :: SExp -> Maybe IdeModeCommand
 sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
@@ -275,6 +276,7 @@ sexpToCommand (SexpList [SymbolAtom "hide-term-implicits", StringAtom encoded]) 
 sexpToCommand (SexpList [SymbolAtom "print-definition", StringAtom name])               = Just (PrintDef name)
 sexpToCommand (SexpList [SymbolAtom "error-string", StringAtom encoded])                = Just . ErrString . decodeErr $ encoded
 sexpToCommand (SexpList [SymbolAtom "error-pprint", StringAtom encoded])                = Just . ErrPPrint . decodeErr $ encoded
+sexpToCommand (SymbolAtom "version")                                                    = Just GetIdrisVersion
 sexpToCommand _                                                                         = Nothing
 
 parseMessage :: String -> Either Err (SExp, Integer)
@@ -298,5 +300,7 @@ convSExp pre s id =
 getHexLength :: String -> String
 getHexLength s = printf "%06x" (1 + (length s))
 
+-- | The version of the IDE mode command set. Increment this when you
+-- change it so clients can adapt.
 ideModeEpoch :: Int
 ideModeEpoch = 1
