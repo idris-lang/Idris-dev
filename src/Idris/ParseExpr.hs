@@ -1251,10 +1251,15 @@ tactics =
   [ (["intro"], Nothing, const $ -- FIXME syntax for intro (fresh name)
       do ns <- sepBy (spaced name) (lchar ','); return $ Intro ns)
   , noArgs ["intros"] Intros
+  , noArgs ["unfocus"] Unfocus
   , (["refine"], Just ExprTArg, const $
        do n <- spaced fnName
           imps <- many imp
           return $ Refine n imps)
+  , (["claim"], Nothing, \syn ->
+       do n <- indentPropHolds gtProp *> name
+          goal <- indentPropHolds gtProp *> expr syn
+          return $ Claim n goal)
   , (["mrefine"], Just ExprTArg, const $
        do n <- spaced fnName
           return $ MatchRefine n)
@@ -1329,7 +1334,7 @@ tactics =
   
 
 tactic :: SyntaxInfo -> IdrisParser PTactic
-tactic syn = choice [ do choice (map reserved names); parser syn 
+tactic syn = choice [ do choice (map reserved names); parser syn
                     | (names, _, parser) <- tactics ]
           <|> do lchar '{'
                  t <- tactic syn;

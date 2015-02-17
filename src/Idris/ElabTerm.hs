@@ -1517,6 +1517,12 @@ runTac autoSolve ist perhapsFC fn tac
                                when autoSolve solveAll
     runT DoUnify = do unify_all
                       when autoSolve solveAll
+    runT (Claim n tm) = do tmHole <- getNameFrom (sMN 0 "newGoal")
+                           claim tmHole RType
+                           claim n (Var tmHole)
+                           focus tmHole
+                           elab ist toplevel ERHS [] (sMN 0 "tac") tm
+                           focus n
     runT (Equiv tm) -- let bind tm, then
               = do attack
                    tyn <- getNameFrom (sMN 0 "ety")
@@ -1577,6 +1583,10 @@ runTac autoSolve ist perhapsFC fn tac
          = do proofSearch' ist rec False depth prover top fn hints
               when autoSolve solveAll
     runT (Focus n) = focus n
+    runT Unfocus = do hs <- get_holes
+                      case hs of
+                        []      -> return ()
+                        (h : _) -> movelast h
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True
     runT (TSeq l r) = do runT l; runT r
@@ -1721,6 +1731,7 @@ reify _ (P _ n _) | n == reflm "Solve" = return Solve
 reify _ (P _ n _) | n == reflm "Compute" = return Compute
 reify _ (P _ n _) | n == reflm "Skip" = return Skip
 reify _ (P _ n _) | n == reflm "SourceFC" = return SourceFC
+reify _ (P _ n _) | n == reflm "Unfocus" = return Unfocus
 reify ist t@(App _ _)
           | (P _ f _, args) <- unApply t = reifyApp ist f args
 reify _ t = fail ("Unknown tactic " ++ show t)
@@ -1732,6 +1743,9 @@ reifyApp _ t [Constant (I i)]
 reifyApp _ t [x]
            | t == reflm "Refine" = do n <- reifyTTName x
                                       return $ Refine n []
+reifyApp ist t [n, ty] | t == reflm "Claim" = do n' <- reifyTTName n
+                                                 goal <- reifyTT ty
+                                                 return $ Claim n' (delab ist goal)
 reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist r)
 reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)

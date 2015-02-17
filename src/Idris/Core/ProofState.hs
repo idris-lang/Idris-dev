@@ -23,23 +23,23 @@ import Debug.Trace
 import Util.Pretty hiding (fill)
 
 data ProofState = PS { thname   :: Name,
-                       holes    :: [Name], -- holes still to be solved
-                       usedns   :: [Name], -- used names, don't use again
-                       nextname :: Int,    -- name supply
-                       pterm    :: ProofTerm,   -- current proof term
-                       ptype    :: Type,   -- original goal
-                       dontunify :: [Name], -- explicitly given by programmer, leave it
+                       holes    :: [Name], -- ^ holes still to be solved
+                       usedns   :: [Name], -- ^ used names, don't use again
+                       nextname :: Int,    -- ^ name supply
+                       pterm    :: ProofTerm,   -- ^ current proof term
+                       ptype    :: Type,   -- ^ original goal
+                       dontunify :: [Name], -- ^ explicitly given by programmer, leave it
                        unified  :: (Name, [(Name, Term)]),
                        notunified :: [(Name, Term)],
-                       dotted   :: [(Name, [Name])], -- dot pattern holes + environment
-                                       -- either hole or something in env must turn up in the 'notunified' list during elaboration
+                       dotted   :: [(Name, [Name])], -- ^ dot pattern holes + environment
+                                                     -- either hole or something in env must turn up in the 'notunified' list during elaboration
                        solved   :: Maybe (Name, Term),
                        problems :: Fails,
                        injective :: [Name],
-                       deferred :: [Name], -- names we'll need to define
-                       instances :: [Name], -- instance arguments (for type classes)
-                       autos    :: [(Name, [Name])], -- unsolved 'auto' implicits with their holes
-                       previous :: Maybe ProofState, -- for undo
+                       deferred :: [Name], -- ^ names we'll need to define
+                       instances :: [Name], -- ^ instance arguments (for type classes)
+                       autos    :: [(Name, [Name])], -- ^ unsolved 'auto' implicits with their holes
+                       previous :: Maybe ProofState, -- ^ for undo
                        context  :: Context,
                        plog     :: String,
                        unifylog :: Bool,
@@ -290,12 +290,12 @@ addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 
 newProof :: Name -> Context -> Type -> ProofState
 newProof n ctxt ty = let h = holeName 0
-                         ty' = vToP ty in
-                         PS n [h] [] 1 (mkProofTerm (Bind h (Hole ty')
-                            (P Bound h ty'))) ty [] (h, []) [] []
-                            Nothing [] []
-                            [] [] []
-                            Nothing ctxt "" False False [] []
+                         ty' = vToP ty
+                     in PS n [h] [] 1 (mkProofTerm (Bind h (Hole ty')
+                           (P Bound h ty'))) ty [] (h, []) [] []
+                           Nothing [] []
+                           [] [] []
+                           Nothing ctxt "" False False [] []
 
 type TState = ProofState -- [TacticAction])
 type RunTactic = RunTactic' TState

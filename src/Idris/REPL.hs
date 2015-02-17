@@ -508,6 +508,14 @@ runIdeModeCommand h id orig fn modes (IdeMode.ErrPPrint e) =
            fmap (fancifyAnnots ist) $ pprintErr ist e
          msg = (IdeMode.SymbolAtom "ok", out, spans)
      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
+runIdeModeCommand h id orig fn modes IdeMode.GetIdrisVersion =
+  let idrisVersion = (versionBranch version,
+                      if not (null gitHash)
+                        then [gitHash]
+                        else [])
+      msg = (IdeMode.SymbolAtom "ok", idrisVersion)
+  in runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
+
 
 -- | Show a term for IDEMode with the specified implicitness
 ideModeForceTermImplicits :: Handle -> Integer -> [(Name, Bool)] -> Bool -> Term -> Idris ()
@@ -1798,7 +1806,7 @@ getPort (_:xs) = getPort xs
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe
 
-ver = showVersion version ++ gitHash
+ver = showVersion version ++ "-" ++ gitHash
 
 defaultPort :: PortID
 defaultPort = PortNumber (fromIntegral 4294)

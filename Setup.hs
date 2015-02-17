@@ -106,7 +106,7 @@ generateVersionModule verbosity dir release = do
                                   "gitHash :: String\n" ++
                                   if release
                                     then "gitHash = \"\"\n"
-                                    else "gitHash = \"-git:" ++ h ++ "\"\n"
+                                    else "gitHash = \"git:" ++ h ++ "\"\n"
 
 -- Generate a module that contains the lib path for a freestanding Idris
 generateTargetModule verbosity dir targetDir = do

@@ -213,6 +213,10 @@ data Tactic =
             Refine TTName |
             ||| Apply both tactics in sequence
             Seq Tactic Tactic |
+            ||| Introduce a new hole with a particular type
+            Claim TTName TT |
+            ||| Move the current hole to the end
+            Unfocus |
             ||| Intelligently construct the proof target from the context
             Trivial |
             ||| Build a proof by applying contructors up to a maximum depth
@@ -472,6 +476,8 @@ instance Quotable Tactic where
   quote (Try tac tac') = `(Try ~(quote tac) ~(quote tac'))
   quote (GoalType x tac) = `(GoalType ~(quote x) ~(quote tac))
   quote (Refine n) = `(Refine ~(quote n))
+  quote (Claim n ty) = `(Claim ~(quote n) ~(quote ty))
+  quote Unfocus = `(Unfocus)
   quote (Seq tac tac') = `(Seq ~(quote tac) ~(quote tac'))
   quote Trivial = `(Trivial)
   quote (Search x) = `(Search ~(quote x))
@@ -494,3 +500,4 @@ instance Quotable Tactic where
   quote Skip = `(Skip)
   quote (Fail xs) = `(Fail ~(quote xs))
   quote SourceFC = `(SourceFC)
+
