@@ -250,6 +250,7 @@ instance (NFData t) => NFData (PTactic' t) where
         rnf (Induction x1) = rnf x1 `seq` ()
         rnf (CaseTac x1) = rnf x1 `seq` ()
         rnf (Equiv x1) = rnf x1 `seq` ()
+        rnf (Claim x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (MatchRefine x1) = rnf x1 `seq` ()
         rnf (LetTac x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (LetTacTy x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
@@ -280,6 +281,7 @@ instance (NFData t) => NFData (PTactic' t) where
         rnf Skip = ()
         rnf (TFail x1) = rnf x1 `seq` ()
         rnf SourceFC = ()
+        rnf Unfocus = ()
 
 instance NFData ErrorReportPart where
         rnf (TermPart x1) = rnf x1 `seq` ()
