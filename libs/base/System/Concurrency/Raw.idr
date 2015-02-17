@@ -14,16 +14,28 @@ sendToThread {a} dest val
 
 ||| Check for messages in the process inbox
 checkMsgs : IO Bool
-checkMsgs = do msgs <- foreign FFI_C "idris_checkMessages" (Ptr -> IO Int)
+checkMsgs = do msgs <- foreign FFI_C "idris_checkMessages" (Ptr -> IO Ptr)
                             prim__vm
-               return (intToBool msgs)
+               null <- nullPtr msgs
+               return (not null)
+
+||| Check for messages in the process inbox.
+||| Returns either 'Nothing', if none, or 'Just pid' as pid of sender.
+listenMsgs : IO (Maybe Ptr)
+listenMsgs = do sender <- foreign FFI_C "idris_checkMessages" (Ptr -> IO Ptr)
+                             prim__vm
+                null <- nullPtr sender
+                return (if null
+                           then Nothing
+                           else Just sender)
 
 ||| Check for messages from a specific sender in the process inbox
 checkMsgsFrom : Ptr -> IO Bool
 checkMsgsFrom sender
-  = do msgs <- foreign FFI_C "idris_checkMessagesFrom" (Ptr -> Ptr -> IO Int)
+  = do msgs <- foreign FFI_C "idris_checkMessagesFrom" (Ptr -> Ptr -> IO Ptr)
                              prim__vm sender
-       return (intToBool msgs)
+       null <- nullPtr msgs
+       return (not null)
 
 ||| Check inbox for messages. If there are none, blocks until a message
 ||| arrives.

@@ -1112,16 +1112,16 @@ void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
 //    printf("Sending [unlock]...\n");
 }
 
-int idris_checkMessages(VM* vm) {
+VM* idris_checkMessages(VM* vm) {
     return idris_checkMessagesFrom(vm, NULL);
 }
 
-int idris_checkMessagesFrom(VM* vm, VM* sender) {
+VM* idris_checkMessagesFrom(VM* vm, VM* sender) {
     Msg* msg;
     
     for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
         if (sender == NULL || msg->sender == sender) {
-            return 1;
+            return msg->sender;
         }
     }
     return 0;

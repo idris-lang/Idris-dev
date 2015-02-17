@@ -286,10 +286,11 @@ VAL copyTo(VM* newVM, VAL x);
 
 // Add a message to another VM's message queue
 void idris_sendMessage(VM* sender, VM* dest, VAL msg);
+// Check whether there are any messages in the queue and return PID of
+// sender if so (null if not)
+VM* idris_checkMessages(VM* vm);
 // Check whether there are any messages in the queue
-int idris_checkMessages(VM* vm);
-// Check whether there are any messages in the queue
-int idris_checkMessagesFrom(VM* vm, VM* sender);
+VM* idris_checkMessagesFrom(VM* vm, VM* sender);
 // block until there is a message in the queue
 Msg* idris_recvMessage(VM* vm);
 // block until there is a message in the queue
