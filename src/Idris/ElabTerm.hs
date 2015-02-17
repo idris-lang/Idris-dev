@@ -868,9 +868,13 @@ elab ist info emode opts fn tm
              envU <- mapM (getKind args) args
              let namesUsedInRHS = nub $ scvn : concatMap (\(_,rhs) -> allNamesIn rhs) opts
 
-             -- Drop the unique arguments used in the scrutinee (since it's
-             -- not valid to use them again anyway)
-             let argsDropped = filter (isUnique envU) (nub $ allNamesIn scr)
+             -- Drop the unique arguments used in the term already
+             -- and in the scrutinee (since it's
+             -- not valid to use them again anyway) 
+             ptm <- get_term
+             let argsDropped = filter (isUnique envU) 
+                                   (nub $ allNamesIn scr ++ inApp ptm)
+
              let args' = filter (\(n, _) -> n `notElem` argsDropped) args
 
              cname <- unique_hole' True (mkCaseName fn)
@@ -896,6 +900,13 @@ elab ist info emode opts fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
                         _ -> n
+
+              inApp (P _ n _) = [n]
+              inApp (App f a) = inApp f ++ inApp a
+              inApp (Bind n (Let _ v) sc) = inApp v ++ inApp sc
+              inApp (Bind n (Guess _ v) sc) = inApp v ++ inApp sc
+              inApp (Bind n b sc) = inApp sc
+              inApp _ = []
 
               isUnique envk n = case lookup n envk of
                                      Just u -> u
