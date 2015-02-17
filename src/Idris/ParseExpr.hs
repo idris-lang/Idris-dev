@@ -1201,7 +1201,7 @@ static =     do reserved "[static]"; return Static
 
 @
 Tactic ::= 'intro' NameList?
-       |   'intros'
+       |   'intros'      Natural?
        |   'refine'      Name Imp+
        |   'mrefine'     Name
        |   'rewrite'     Expr
@@ -1250,7 +1250,8 @@ tactics :: [([String], Maybe TacticArg, SyntaxInfo -> IdrisParser PTactic)]
 tactics = 
   [ (["intro"], Nothing, const $ -- FIXME syntax for intro (fresh name)
       do ns <- sepBy (spaced name) (lchar ','); return $ Intro ns)
-  , noArgs ["intros"] Intros
+  , (["intros"], Nothing, const $
+      do n <- option (-1) natural; return $ Intros (fromInteger n))
   , (["refine"], Just ExprTArg, const $
        do n <- spaced fnName
           imps <- many imp

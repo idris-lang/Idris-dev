@@ -1459,10 +1459,14 @@ runTac autoSolve ist perhapsFC fn tac
         bname (Bind n _ _) = Just n
         bname _ = Nothing
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
-    runT Intros = do g <- goal
-                     attack; intro (bname g)
-                     try' (runT Intros)
-                          (return ()) True
+    runT (Intros n) | n < 0 = do g <- goal
+                                 attack; intro (bname g)
+                                 try' (runT (Intros (-1)))
+                                      (return ()) True
+                    | n == 0 = return ()
+                    | otherwise = do g <- goal
+                                     attack; intro (bname g)
+                                     runT (Intros (n - 1))
       where
         bname (Bind n _ _) = Just n
         bname _ = Nothing
@@ -1703,7 +1707,6 @@ reflm n = sNS (sUN n) ["Reflection", "Language"]
 
 -- | Reify tactics from their reflected representation
 reify :: IState -> Term -> ElabD PTactic
-reify _ (P _ n _) | n == reflm "Intros" = return Intros
 reify _ (P _ n _) | n == reflm "Trivial" = return Trivial
 reify _ (P _ n _) | n == reflm "Instance" = return TCInstance
 reify _ (P _ n _) | n == reflm "Solve" = return Solve
@@ -1725,6 +1728,9 @@ reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist 
 reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
 reifyApp _ t [n] | t == reflm "Intro" = liftM (Intro . (:[])) (reifyTTName n)
+reifyApp _ t [c] | t == reflm "Intros" = reifyTTConst c >>= \x -> case x of
+                                           I n -> return $ Intros n
+                                           x   -> fail ("Unsuitable constant " ++ show x)
 reifyApp ist t [t'] | t == reflm "Induction" = liftM (Induction . delab ist) (reifyTT t')
 reifyApp ist t [t'] | t == reflm "Case" = liftM (Induction . delab ist) (reifyTT t')
 reifyApp ist t [t']
