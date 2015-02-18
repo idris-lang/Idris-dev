@@ -30,13 +30,13 @@ class (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type -> Typ
   applicativeInterchange : (x : a) -> (g : f (a -> b)) ->
                            g <*> pure x = pure (\g' : a -> b => g' x) <*> g
 
-infixl 2 <$
-(<$) : Applicative f => f a -> f b -> f a
-a <$ b = map const a <*> b
+infixl 2 <*
+(<*) : Applicative f => f a -> f b -> f a
+a <* b = map const a <*> b
 
-infixl 2 $>
-($>) : Applicative f => f a -> f b -> f b
-a $> b = map (const id) a <*> b
+infixl 2 *>
+(*>) : Applicative f => f a -> f b -> f b
+a *> b = map (const id) a <*> b
 
 ||| Lift a function to an applicative
 liftA : Applicative f => (a -> b) -> f a -> f b
