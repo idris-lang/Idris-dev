@@ -790,7 +790,8 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
            | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
-           | PUnquote PTerm -- ^ ,Term
+           | PUnquote PTerm -- ^ ~Term
+           | PRunTactics PTerm -- ^ %run_tactics tm - New-style proof script
        deriving (Eq, Data, Typeable)
 
 

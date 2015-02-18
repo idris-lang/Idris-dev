@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, ViewPatterns #-}
 
 module Idris.ElabTerm where
 
@@ -1029,6 +1029,20 @@ elab ist info emode opts fn tm
              delayElab $ do focus h
                             dotterm
                             elab' ina fc t
+    elab' ina fc (PRunTactics tm) =
+      do attack
+         n <- getNameFrom (sMN 0 "tacticScript")
+         n' <- getNameFrom (sMN 0 "tacticExpr")
+         let scriptTy = RApp (Var (sNS (sUN "Tactical") ["Tactical", "Reflection", "Language"])) (Var unitTy)
+         claim n scriptTy
+         movelast n
+         letbind n' scriptTy (Var n)
+         focus n
+         elab' ina fc tm
+         env <- get_env
+         ctxt <- get_context
+         runTactical ctxt env (P Bound n' Erased)
+         solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
     delayElab t = updateAux (\e -> e { delayed_elab = delayed_elab e ++ [t] }) 
@@ -1451,6 +1465,86 @@ case_ ind autoSolve ist fn tm = do
          else casetac (forget val)
   when autoSolve solveAll
 
+runTactical :: Context -> Env -> Term -> ElabD ()
+runTactical ctxt env tm = runTacTm (eval tm) >> return ()
+  where
+    eval = normaliseAll ctxt env
+    tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]
+    returnUnit = fmap fst $ get_type_val (Var unitCon)
+
+    -- | Do a step in the reflected elaborator monad. The input is the
+    -- step, the output is the (reflected) term returned.
+    runTacTm :: Term -> ElabD Term
+    runTacTm (unApply -> tac@(P _ n _, args))
+      | n == tacN "Solve", [] <- args
+      = do solve
+           returnUnit
+      | n == tacN "Goal", [] <- args
+      = do (h:_) <- get_holes
+           t <- goal
+           fmap fst . get_type_val $
+             rawPair (Var (reflm "TTName"), Var (reflm "TT"))
+                     (reflectName h,        reflect t)
+      | n == tacN "Holes", [] <- args
+      = do hs <- get_holes
+           fmap fst . get_type_val $
+             mkList (Var $ reflm "TTName") (map reflectName hs)
+      | n == tacN "Guess", [] <- args
+      = do ok <- is_guess
+           if ok
+              then do guess <- fmap forget get_guess
+                      fmap fst . get_type_val $
+                        RApp (RApp (Var (sNS (sUN "Just") ["Maybe", "Prelude"]))
+                                   (Var (reflm "TT")))
+                             guess
+              else fmap fst . get_type_val $
+                     RApp (Var (sNS (sUN "Nothing") ["Maybe", "Prelude"]))
+                          (Var (reflm "TT"))
+      | n == tacN "Env", [] <- args
+      = do env <- get_env
+           fmap fst . get_type_val $ reflectEnv env
+      | n == tacN "Fail", [_a, errs] <- args
+      = do parts <- reifyReportParts (eval errs)
+           lift . tfail $ ReflectionError [parts] (Msg "")
+      | n == tacN "PureTactical", [_a, tm] <- args
+      = return tm 
+      | n == tacN "BindTactical", [_a, _b, first, andThen] <- args
+      = do let first' = eval first
+           res <- runTacTm first'
+           let next = eval (App andThen res)
+           runTacTm next
+      | n == tacN "Try", [_a, first, alt] <- args
+      = do let first' = eval first
+           let alt' = eval alt
+           try' (runTacTm first') (runTacTm alt') True
+      | n == tacN "Fill", [raw] <- args
+      = do raw' <- reifyRaw raw
+           apply raw' []
+           returnUnit
+      | n == tacN "Gensym", [eval -> Constant (Str hint)] <- args
+      = do n <- getNameFrom (sMN 0 hint)
+           fmap fst $ get_type_val (reflectName n)
+      | n == tacN "Claim", [n, ty] <- args
+      = do n' <- reifyTTName n
+           ty' <- reifyRaw ty
+           claim n' ty'
+           returnUnit
+      | n == tacN "Forget", [tt] <- args
+      = do tt' <- reifyTT tt
+           fmap fst . get_type_val $ reflect tt'
+      | n == tacN "Attack", [] <- args
+      = do attack
+           returnUnit
+      | n == tacN "Focus", [what] <- args
+      = do n' <- reifyTTName what
+           focus n'
+           returnUnit
+      | n == tacN "Unfocus", [what] <- args
+      = do n' <- reifyTTName what
+           movelast n'
+           returnUnit
+    runTacTm x = lift . tfail . InternalMsg $ "tactical is not implemented for " ++ show x
+
 -- Running tactics directly
 -- if a tactic adds unification problems, return an error
 
@@ -1776,15 +1870,19 @@ reifyApp ist t [n, tt', t']
                                           t''  <- reifyTT t'
                                           return $ LetTacTy n' (delab ist tt'') (delab ist t'')
 reifyApp ist t [errs]
-             | t == reflm "Fail" = case unList errs of
-                                     Nothing -> fail "Failed to reify errors"
-                                     Just errs' ->
-                                       let parts = mapM reifyReportPart errs' in
-                                       case parts of
-                                         Left err -> fail $ "Couldn't reify \"Fail\" tactic - " ++ show err
-                                         Right errs'' ->
-                                           return $ TFail errs''
+             | t == reflm "Fail" = fmap TFail (reifyReportParts errs)
 reifyApp _ f args = fail ("Unknown tactic " ++ show (f, args)) -- shouldn't happen
+
+reifyReportParts :: Term -> ElabD [ErrorReportPart]
+reifyReportParts errs =
+  case unList errs of
+    Nothing -> fail "Failed to reify errors"
+    Just errs' ->
+      let parts = mapM reifyReportPart errs' in
+      case parts of
+        Left err -> fail $ "Couldn't reify \"Fail\" tactic - " ++ show err
+        Right errs'' ->
+          return errs''
 
 -- | Reify terms from their reflected representation
 reifyTT :: Term -> ElabD Term

@@ -974,6 +974,7 @@ expandParams dec ps ns infs tm = en tm
     en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
     en (PAppBind fc f as) = PAppBind fc (en f) (map (fmap en) as)
     en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
+    en (PRunTactics tm) = PRunTactics (en tm)
     en t = t
 
     nselem x [] = False
@@ -1444,6 +1445,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     imps top env (PHidden tm)    = imps False env tm
     imps top env (PUnifyLog tm)  = imps False env tm
     imps top env (PNoImplicits tm)  = imps False env tm
+    imps top env (PRunTactics tm) = imps False env tm
     imps top env _               = return ()
 
     pibind using []     sc = sc
@@ -1565,6 +1567,7 @@ addImpl' inpat env infns ist ptm
     ai qq env ds (PQuasiquote tm g) = PQuasiquote (ai True env ds tm)
                                                   (fmap (ai True env ds) g)
     ai qq env ds (PUnquote tm) = PUnquote (ai False env ds tm)
+    ai qq env ds (PRunTactics tm) = PRunTactics (ai False env ds tm)
     ai qq env ds tm = tm
 
     handleErr (Left err) = PElabError err
@@ -2089,4 +2092,5 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
   mkUniq (PNoImplicits t) = liftM PNoImplicits (mkUniq t)
   mkUniq (PProof ts) = liftM PProof (mapM mkUniqT ts)
   mkUniq (PTactics ts) = liftM PTactics (mapM mkUniqT ts)
+  mkUniq (PRunTactics ts) = liftM PRunTactics (mkUniq ts)
   mkUniq t = return t

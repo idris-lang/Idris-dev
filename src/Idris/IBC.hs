@@ -36,7 +36,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 96
+ibcVersion = 97
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1571,6 +1571,8 @@ instance Binary PTerm where
                                     put x2
                 PUniverse x1 -> do putWord8 38
                                    put x1
+                PRunTactics x1 -> do putWord8 39
+                                     put x1
 
         get
           = do i <- getWord8
@@ -1689,6 +1691,8 @@ instance Binary PTerm where
                             return (PDisamb x1 x2)
                    38 -> do x1 <- get
                             return (PUniverse x1)
+                   39 -> do x1 <- get
+                            return (PRunTactics x1)
                    _ -> error "Corrupted binary data for PTerm"
 
 instance (Binary t) => Binary (PTactic' t) where
