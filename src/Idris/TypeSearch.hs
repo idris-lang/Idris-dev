@@ -99,6 +99,14 @@ typeFromDef (def, _, _, _) = get def where
   get (CaseOp _ ty _ _ _ _)  = Just ty
   get _ = Nothing
 
+-- Replace all occurences of `Lazy' s t` with `t` in a type
+unLazy :: Type -> Type
+unLazy typ = case typ of
+  App (App (P _ lazy _) _) ty | lazy == sUN "Lazy'" -> unLazy ty
+  Bind name binder ty -> Bind name (fmap unLazy binder) (unLazy ty)
+  App t1 t2 -> App (unLazy t1) (unLazy t2)
+  Proj ty i -> Proj (unLazy ty) i
+  _ -> typ
 
 -- | reverse the edges for a directed acyclic graph
 reverseDag :: Ord k => [((k, a), Set k)] -> [((k, a), Set k)]
@@ -362,7 +370,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
   argNames1 = map fst dag1
   makeDag :: Type -> (ArgsDAG, Classes, Type)
   makeDag = first3 (zipWith (\i (ty, deps) -> (ty, (i, deps))) [0..] . reverseDag) . 
-    computeDagP (isTypeClassArg classInfo) . vToP
+    computeDagP (isTypeClassArg classInfo) . vToP . unLazy
   first3 f (a,b,c) = (f a, b, c)
   
   -- update our state with the unification resolutions
