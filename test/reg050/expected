@@ -4,7 +4,7 @@ When elaborating an application of function Prelude.Monad.>>=:
                 List Integer
         with
                 argTy -> retTy
-
+        
         Specifically:
                 Can't unify
                         List
@@ -24,5 +24,5 @@ When elaborating an application of function Prelude.Monad.>>=:
     ambiguous use of a right-associative operator,
     end of input, function argument,
     matching application expression
-doubleBang mmn = do pure !!mmn
-                         ^
+doubleBang mmn = do pure !!mmn 
+                         ^     
