@@ -144,7 +144,7 @@ data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord
 
 -- | The output mode in use
 data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
-                | IdeSlave Integer Handle -- ^ Send IDE output for some request ID to the handle
+                | IdeMode Integer Handle -- ^ Send IDE output for some request ID to the handle
                 deriving Show
 
 -- | How wide is the console?
@@ -405,8 +405,8 @@ data Opt = Filename String
          | Quiet
          | NoBanner
          | ColourREPL Bool
-         | Ideslave
-         | IdeslaveSocket
+         | Idemode
+         | IdemodeSocket
          | ShowLibs
          | ShowLibdir
          | ShowIncs
@@ -637,10 +637,10 @@ type ElabD a = Elab' EState a
 --
 -- 4. The where block (PDecl' t)
 
-data PClause' t = PClause  FC Name t [t] t [PDecl' t] -- ^ A normal top-level definition.
-                | PWith    FC Name t [t] t [PDecl' t]
-                | PClauseR FC        [t] t [PDecl' t]
-                | PWithR   FC        [t] t [PDecl' t]
+data PClause' t = PClause  FC Name t [t] t              [PDecl' t] -- ^ A normal top-level definition.
+                | PWith    FC Name t [t] t (Maybe Name) [PDecl' t]
+                | PClauseR FC        [t] t              [PDecl' t]
+                | PWithR   FC        [t] t (Maybe Name) [PDecl' t]
     deriving Functor
 {-!
 deriving instance Binary PClause'
@@ -758,6 +758,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PLet FC Name PTerm PTerm PTerm -- ^ A let binding
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
+           | PAppImpl PTerm [ImplicitInfo] -- ^ Implicit argument application (introduced during elaboration only)
            | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
            | PMatchApp FC Name -- ^ Make an application by type matching
            | PCase FC PTerm [(PTerm, PTerm)] -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
@@ -829,6 +830,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Induction t
                 | CaseTac t
                 | Equiv t
+                | Claim Name t
+                | Unfocus
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
@@ -1691,7 +1694,7 @@ showCImp ppo (PClause _ n l ws r w)
   where
     showWs [] = empty
     showWs (x : xs) = text "|" <+> prettyImp ppo x <+> showWs xs
-showCImp ppo (PWith _ n l ws r w)
+showCImp ppo (PWith _ n l ws r pn w)
  = prettyImp ppo l <+> showWs ws <+> text "with" <+> prettyImp ppo r
                  <+> braces (text (show w))
   where

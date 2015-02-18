@@ -281,7 +281,10 @@ usedIn env (LLazyExp e) = usedIn env e
 usedIn env (LForce e) = usedIn env e
 usedIn env (LLet n v e) = usedIn env v ++ usedIn (env \\ [n]) e
 usedIn env (LLam ns e) = usedIn (env \\ ns) e
-usedIn env (LCon loc i n args) = concatMap (usedIn env) args
+usedIn env (LCon v i n args) = let rest = concatMap (usedIn env) args in
+                                   case v of
+                                      Nothing -> rest 
+                                      Just (Glob n) -> usedArg env n ++ rest
 usedIn env (LProj t i) = usedIn env t
 usedIn env (LCase up e alts) = usedIn env e ++ concatMap (usedInA env) alts
   where usedInA env (LConCase i n ns e) = usedIn env e

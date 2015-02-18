@@ -164,13 +164,14 @@ getUnmatchable ctxt n | isDConName n ctxt && n /= inferCon
 getUnmatchable ctxt n = []
 
 data ElabCtxt = ElabCtxt { e_inarg :: Bool,
+                           e_isfn :: Bool, -- ^ Function part of application
                            e_guarded :: Bool, 
                            e_intype :: Bool,
                            e_qq :: Bool,
                            e_nomatching :: Bool -- ^ can't pattern match
                          }
 
-initElabCtxt = ElabCtxt False False False False False
+initElabCtxt = ElabCtxt False False False False False False
 
 goal_polymorphic :: ElabD Bool
 goal_polymorphic =
@@ -244,7 +245,7 @@ elab ist info emode opts fn tm
                               then solveAuto ist fn False a
                               else return ()) as
      
-        itm <- if not pattern then insertImpLam t else return t
+        itm <- if not pattern then insertImpLam ina t else return t
         ct <- insertCoerce ina itm
         t' <- insertLazy ct
         g <- goal
@@ -596,17 +597,13 @@ elab ist info emode opts fn tm
                              _ -> lift $ tfail (NoSuchVariable fn)
             ns <- match_apply (Var fn') (map (\x -> (x,0)) imps)
             solve
-    -- This isn't a sound way of checking for Typecase - we need a 
-    -- better way!
---     elab' (_, _, inty, qq) (PApp fc (PRef _ f) args')
---        | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty && not qq
---           = lift $ tfail (Msg "Typecase is not allowed")
     -- if f is local, just do a simple_app
-    elab' ina _ tm@(PApp fc (PRef _ f) args_in)
+    -- FIXME: Anyone feel like refactoring this mess? - EB
+    elab' ina topfc tm@(PApp fc (PRef _ f) args_in)
       | pattern && not reflection && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
-      | otherwise
-       = do env <- get_env
+      | otherwise = implicitApp $
+         do env <- get_env
             ty <- goal
             fty <- get_type (Var f)
             ctxt <- get_context
@@ -614,18 +611,18 @@ elab ist info emode opts fn tm
             let unmatchableArgs = if pattern 
                                      then getUnmatchable (tt_ctxt ist) f
                                      else []
-            -- Dot it if we're in a pattern and it isn't a constructor
---             when (pattern && not (isDConName f ctxt) && f /= fn) $ dotterm
-
+--             trace ("BEFORE " ++ show f ++ ": " ++ show ty) $ 
             when (pattern && not reflection && not (e_qq ina) && not (e_intype ina)
                           && isTConName f (tt_ctxt ist)) $
               lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
             if (f `elem` map fst env && length args == 1 && length args_in == 1)
                then -- simple app, as below
-                    do simple_app False (elabE ina (Just fc) (PRef fc f))
+                    do simple_app False 
+                                  (elabE (ina { e_isfn = True }) (Just fc) (PRef fc f))
                                   (elabE (ina { e_inarg = True }) (Just fc) (getTm (head args)))
                                   (show tm)
                        solve
+                       return []
                else
                  do ivs <- get_instances
                     ps <- get_probs
@@ -656,22 +653,58 @@ elab ist info emode opts fn tm
                              (zip ns' (unmatchableArgs ++ repeat False))
                              (f == sUN "Force")
                              (map (\x -> getTm x) eargs) -- TODO: remove this False arg
-                    solve
-                    ivs' <- get_instances
-                    -- Attempt to resolve any type classes which have 'complete' types,
-                    -- i.e. no holes in them
-                    when (not pattern || (e_inarg ina && not tcgen && 
-                                          not (e_guarded ina))) $
-                        mapM_ (\n -> do focus n
-                                        g <- goal
-                                        env <- get_env
-                                        hs <- get_holes
-                                        if all (\n -> not (n `elem` hs)) (freeNames g)
-                                         then try (resolveTC False 7 g fn ist)
-                                                  (movelast n)
-                                         else movelast n)
-                              (ivs' \\ ivs)
-      where -- normal < alternatives < lambdas < rewrites < tactic < default tactic
+                    imp <- if (e_isfn ina) then
+                              do guess <- get_guess
+                                 gty <- get_type (forget guess)
+                                 env <- get_env
+                                 let ty_n = normalise ctxt env gty
+                                 return $ getReqImps ty_n
+                              else return []
+                    -- Now we find out how many implicits we needed at the
+                    -- end of the application by looking at the goal again
+                    -- - Have another go, but this time add the
+                    -- implicits (can't think of a better way than this...)
+                    case imp of
+                         rs@(_:_) | not pattern -> return rs -- quit, try again
+                         _ -> do solve
+                                 hs <- get_holes
+                                 ivs' <- get_instances
+                                 -- Attempt to resolve any type classes which have 'complete' types,
+                                 -- i.e. no holes in them
+                                 when (not pattern || (e_inarg ina && not tcgen && 
+                                                      not (e_guarded ina))) $
+                                    mapM_ (\n -> do focus n
+                                                    g <- goal
+                                                    env <- get_env
+                                                    hs <- get_holes
+                                                    if all (\n -> not (n `elem` hs)) (freeNames g)
+                                                     then try (resolveTC False 7 g fn ist)
+                                                              (movelast n)
+                                                     else movelast n)
+                                          (ivs' \\ ivs)
+                                 return []
+      where 
+            -- Run the elaborator, which returns how many implicit
+            -- args were needed, then run it again with those args. We need
+            -- this because we have to elaborate the whole application to
+            -- find out whether any computations have caused more implicits
+            -- to be needed.
+            implicitApp :: ElabD [ImplicitInfo] -> ElabD ()
+            implicitApp elab 
+              | pattern = do elab; return ()
+              | otherwise
+                = do s <- get
+                     imps <- elab
+                     case imps of
+                          [] -> return ()
+                          es -> do put s
+                                   elab' ina topfc (PAppImpl tm es)
+    
+            getReqImps (Bind x (Pi (Just i) ty _) sc)
+                 = i : getReqImps sc
+            getReqImps _ = []
+
+            -- normal < alternatives < lambdas < rewrites < tactic < default tactic
             -- reason for lambdas after alternatives is that having
             -- the alternative resolved can help with typechecking the lambda
             -- or the rewrite. Rewrites/tactics need as much information
@@ -744,15 +777,24 @@ elab ist info emode opts fn tm
             setInjective (PApp _ (PRef _ n) _) = setinj n
             setInjective _ = return ()
 
-    elab' ina _ tm@(PApp fc f [arg])
-          = erun fc $
+    elab' ina _ tm@(PApp fc f [arg]) = 
+            erun fc $
              do simple_app (not $ headRef f)
-                           (elabE ina (Just fc) f) (elabE (ina { e_inarg = True }) (Just fc) (getTm arg))
+                           (elabE (ina { e_isfn = True }) (Just fc) f) 
+                           (elabE (ina { e_inarg = True }) (Just fc) (getTm arg))
                                 (show tm)
                 solve
         where headRef (PRef _ _) = True
               headRef (PApp _ f _) = headRef f
               headRef _ = False
+
+    elab' ina fc (PAppImpl f es) = do appImpl (reverse es) -- not that we look... 
+                                      solve
+        where appImpl [] = elab' (ina { e_isfn = False }) fc f -- e_isfn not set, so no recursive expansion of implicits
+              appImpl (e : es) = simple_app False
+                                            (appImpl es)
+                                            (elab' ina fc Placeholder)
+                                            (show f)
     elab' ina fc Placeholder 
         = do (h : hs) <- get_holes
              movelast h
@@ -826,9 +868,13 @@ elab ist info emode opts fn tm
              envU <- mapM (getKind args) args
              let namesUsedInRHS = nub $ scvn : concatMap (\(_,rhs) -> allNamesIn rhs) opts
 
-             -- Drop the unique arguments used in the scrutinee (since it's
-             -- not valid to use them again anyway)
-             let argsDropped = filter (isUnique envU) (nub $ allNamesIn scr)
+             -- Drop the unique arguments used in the term already
+             -- and in the scrutinee (since it's
+             -- not valid to use them again anyway) 
+             ptm <- get_term
+             let argsDropped = filter (isUnique envU) 
+                                   (nub $ allNamesIn scr ++ inApp ptm)
+
              let args' = filter (\(n, _) -> n `notElem` argsDropped) args
 
              cname <- unique_hole' True (mkCaseName fn)
@@ -854,6 +900,13 @@ elab ist info emode opts fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
                         _ -> n
+
+              inApp (P _ n _) = [n]
+              inApp (App f a) = inApp f ++ inApp a
+              inApp (Bind n (Let _ v) sc) = inApp v ++ inApp sc
+              inApp (Bind n (Guess _ v) sc) = inApp v ++ inApp sc
+              inApp (Bind n b sc) = inApp sc
+              inApp _ = []
 
               isUnique envk n = case lookup n envk of
                                      Just u -> u
@@ -1072,16 +1125,20 @@ elab ist info emode opts fn tm
         = x : insertScopedImps fc sc xs
     insertScopedImps _ _ xs = xs
 
-    insertImpLam t =
+    insertImpLam ina t =
         do ty <- goal
            env <- get_env
            let ty' = normalise (tt_ctxt ist) env ty
            addLam ty' t
       where
         -- just one level at a time
-        addLam (Bind n (Pi (Just _) _ _) sc) t
-               = do impn <- unique_hole (sMN 0 "imp")
-                    return (PLam emptyFC impn Placeholder t)
+        addLam (Bind n (Pi (Just _) _ _) sc) t =
+                 do impn <- unique_hole (sMN 0 "imp")
+                    if e_isfn ina -- apply to an implicit immediately
+                       then return (PApp emptyFC
+                                         (PLam emptyFC impn Placeholder t)
+                                         [pexp Placeholder])
+                       else return (PLam emptyFC impn Placeholder t)
         addLam _ t = return t
 
     insertCoerce ina t@(PCase _ _ _) = return t
@@ -1460,6 +1517,12 @@ runTac autoSolve ist perhapsFC fn tac
                                when autoSolve solveAll
     runT DoUnify = do unify_all
                       when autoSolve solveAll
+    runT (Claim n tm) = do tmHole <- getNameFrom (sMN 0 "newGoal")
+                           claim tmHole RType
+                           claim n (Var tmHole)
+                           focus tmHole
+                           elab ist toplevel ERHS [] (sMN 0 "tac") tm
+                           focus n
     runT (Equiv tm) -- let bind tm, then
               = do attack
                    tyn <- getNameFrom (sMN 0 "ety")
@@ -1520,6 +1583,10 @@ runTac autoSolve ist perhapsFC fn tac
          = do proofSearch' ist rec False depth prover top fn hints
               when autoSolve solveAll
     runT (Focus n) = focus n
+    runT Unfocus = do hs <- get_holes
+                      case hs of
+                        []      -> return ()
+                        (h : _) -> movelast h
     runT Solve = solve
     runT (Try l r) = do try' (runT l) (runT r) True
     runT (TSeq l r) = do runT l; runT r
@@ -1664,6 +1731,7 @@ reify _ (P _ n _) | n == reflm "Solve" = return Solve
 reify _ (P _ n _) | n == reflm "Compute" = return Compute
 reify _ (P _ n _) | n == reflm "Skip" = return Skip
 reify _ (P _ n _) | n == reflm "SourceFC" = return SourceFC
+reify _ (P _ n _) | n == reflm "Unfocus" = return Unfocus
 reify ist t@(App _ _)
           | (P _ f _, args) <- unApply t = reifyApp ist f args
 reify _ t = fail ("Unknown tactic " ++ show t)
@@ -1675,6 +1743,9 @@ reifyApp _ t [Constant (I i)]
 reifyApp _ t [x]
            | t == reflm "Refine" = do n <- reifyTTName x
                                       return $ Refine n []
+reifyApp ist t [n, ty] | t == reflm "Claim" = do n' <- reifyTTName n
+                                                 goal <- reifyTT ty
+                                                 return $ Claim n' (delab ist goal)
 reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist r)
 reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)

@@ -10,7 +10,7 @@ import Idris.Core.Typecheck
 import Idris.AbsSyntaxTree
 import Idris.Colours
 import Idris.Docstrings
-import Idris.IdeSlave hiding (Opt(..))
+import Idris.IdeMode hiding (Opt(..))
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
@@ -601,7 +601,7 @@ type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
                   case idris_outputmode i of
-                    IdeSlave n h -> runIO . hPutStrLn h $ convSExp "set-prompt" p n
+                    IdeMode n h -> runIO . hPutStrLn h $ convSExp "set-prompt" p n
 
 -- | Tell clients how much was parsed and loaded
 isetLoadedRegion :: Idris ()
@@ -610,7 +610,7 @@ isetLoadedRegion = do i <- getIState
                       case span of
                         Just fc ->
                           case idris_outputmode i of
-                            IdeSlave n h ->
+                            IdeMode n h ->
                               runIO . hPutStrLn h $
                                 convSExp "set-loaded-region" fc n
                         Nothing -> return ()
@@ -752,10 +752,12 @@ outputTy :: Idris OutputType
 outputTy = do i <- getIState
               return $ opt_outputTy $ idris_options i
 
-setIdeSlave :: Bool -> Handle -> Idris ()
-setIdeSlave True  h = do i <- getIState
-                         putIState $ i { idris_outputmode = (IdeSlave 0 h), idris_colourRepl = False }
-setIdeSlave False _ = return ()
+setIdeMode :: Bool -> Handle -> Idris ()
+setIdeMode True  h = do i <- getIState
+                        putIState $ i { idris_outputmode = IdeMode 0 h
+                                      , idris_colourRepl = False
+                                      }
+setIdeMode False _ = return ()
 
 setTargetTriple :: String -> Idris ()
 setTargetTriple t = do i <- getIState
@@ -870,7 +872,7 @@ logLvl l str = do i <- getIState
                   when (lvl >= l) $
                     case idris_outputmode i of
                       RawOutput h -> do runIO $ hPutStrLn h str
-                      IdeSlave n h ->
+                      IdeMode n h ->
                         do let good = SexpList [IntegerAtom (toInteger l), toSExp str]
                            runIO . hPutStrLn h $ convSExp "log" good n
 
@@ -1014,7 +1016,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
                             (map (expandParams dec ps'' ns' []) ws)
                             (expandParams dec ps'' ns' [] rhs)
                             (map (expandParamsD True ist dec ps'' ns') ds)
-    expandParamsC (PWith fc n lhs ws wval ds)
+    expandParamsC (PWith fc n lhs ws wval pn ds)
         = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
               lhs' = if rhsonly then lhs else (expandParams dec ps'' ns [] lhs)
@@ -1023,6 +1025,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
               PWith fc n' lhs'
                           (map (expandParams dec ps'' ns' []) ws)
                           (expandParams dec ps'' ns' [] wval)
+                          pn
                           (map (expandParamsD rhsonly ist dec ps'' ns') ds)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)

@@ -41,12 +41,23 @@ send (MkPID p) m = Lift (sendToThread p (prim__vm, m))
 msgWaiting : Process msg Bool
 msgWaiting = Lift checkMsgs
 
+||| Return whether a message is waiting in the queue from a specific sender
+msgWaitingFrom : ProcID msg -> Process msg Bool
+msgWaitingFrom (MkPID p) = Lift (checkMsgsFrom p)
+
 ||| Receive a message - blocks if there is no message waiting
 recv : Process msg msg
 recv {msg} = do (senderid, m) <- Lift get
                 return m
   where get : IO (Ptr, msg)
         get = getMsg
+
+||| Receive a message from specific sender - blocks if there is no message waiting
+recvFrom : ProcID msg -> Process msg msg
+recvFrom (MkPID p) {msg} = do (senderid, m) <- Lift get
+                              return m
+  where get : IO (Ptr, msg)
+        get = getMsgFrom p
 
 ||| receive a message, and return with the sender's process ID.
 recvWithSender : Process msg (ProcID msg, msg)

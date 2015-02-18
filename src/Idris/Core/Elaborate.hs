@@ -234,7 +234,7 @@ is_guess = do ES p _ _ <- get
                    _ -> return False
 
 -- | Get the guess at the current hole, if there is one
-get_guess :: Elab' aux Type
+get_guess :: Elab' aux Term
 get_guess = do ES p _ _ <- get
                b <- lift $ goalAtFocus (fst p)
                case b of
@@ -675,7 +675,7 @@ checkPiGoal n
                             focus f
 
 simple_app :: Bool -> Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
-simple_app infer fun arg app0str =
+simple_app infer fun arg str = 
     do a <- getNameFrom (sMN 0 "argTy")
        b <- getNameFrom (sMN 0 "retTy")
        f <- getNameFrom (sMN 0 "f")
@@ -706,8 +706,8 @@ simple_app infer fun arg app0str =
        when (a `elem` hs) $ do movelast a
        when (b `elem` hs) $ do movelast b
        end_unify
-  where regretWith err = try regret
-                             (lift $ tfail err)
+ where
+  regretWith err = try regret (lift $ tfail err)
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.

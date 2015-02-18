@@ -14,6 +14,8 @@ cabal.sandbox.config
 .DS_Store
 .hpc
 *.tix
+.projectile
+.dir-locals.el
 custom.mk
 libs/base/base_doc/
 libs/effects/effects_doc/

@@ -17,8 +17,9 @@ import Decidable.Equality
 
 ||| Appends two strings together.
 |||
-||| Idris> "AB" ++ "C"
-||| "ABC" : String
+||| ```idris example
+||| "AB" ++ "C"
+||| ```
 (++) : String -> String -> String
 (++) = prim__concat
 
@@ -26,8 +27,9 @@ import Decidable.Equality
 |||
 ||| Doesn't work for empty strings.
 |||
-||| Idris> strHead "A"
-||| 'A' : Char
+||| ```idris example
+||| strHead "A"
+||| ```
 partial
 strHead : String -> Char
 strHead = prim__strHead
@@ -36,20 +38,24 @@ strHead = prim__strHead
 |||
 ||| Doesn't work for empty strings.
 |||
-||| Idris> strTail "AB"
-||| "B" : String
-||| Idris> strTail "A"
-||| "" : String
+||| ```idris example
+||| strTail "AB"
+||| ```
+||| ```idris example
+||| strTail "A"
+||| ```
 partial
 strTail : String -> String
 strTail = prim__strTail
 
 ||| Adds a character to the front of the specified string.
 |||
-||| Idris> strCons 'A' "B"
-||| "AB" : String
-||| Idris> strCons 'A' ""
-||| "A" : String
+||| ```idris example
+||| strCons 'A' "B"
+||| ```
+||| ```idris example
+||| strCons 'A' ""
+||| ```
 strCons : Char -> String -> String
 strCons = prim__strCons
 
@@ -57,18 +63,21 @@ strCons = prim__strCons
 |||
 ||| Precondition: '0 < i < length s' for 'strIndex s i'.
 |||
-||| Idris> strIndex "AB" 1
-||| 'B' : Char
+||| ```idris example
+||| strIndex "AB" 1
+||| ```
 partial
 strIndex : String -> Int -> Char
 strIndex = prim__strIndex
 
 ||| Reverses the elements within a String.
 |||
-||| Idris> reverse "ABC"
-||| "CBA" : String
-||| Idris> reverse ""
-||| "" : String
+||| ```idris example
+||| reverse "ABC"
+||| ```
+||| ```idris example
+||| reverse ""
+||| ```
 reverse : String -> String
 reverse = prim__strRev
 
@@ -103,8 +112,9 @@ strM x with (decEq (not (x == "")) True)
 
 ||| Turns a string into a list of characters.
 |||
-||| Idris> unpack "ABC"
-||| ['A', 'B', 'C'] : List Char
+||| ```idris example
+||| unpack "ABC"
+||| ```
 unpack : String -> List Char
 unpack s with (strM s)
   unpack ""             | StrNil = []
@@ -116,8 +126,9 @@ pack = foldr strCons ""
 
 ||| Creates a string of a single character.
 |||
-||| Idris> singleton 'A'
-||| "A" : String
+||| ```idris example
+||| singleton 'A'
+||| ```
 singleton : Char -> String
 singleton c = strCons c ""
 
@@ -139,10 +150,12 @@ instance Monoid String where
 ||| Splits the string into a part before the predicate
 ||| returns False and the rest of the string.
 |||
-||| Idris> span (/= 'C') "ABCD"
-||| ("AB", "CD") : (String, String)
-||| Idris> span (/= 'C') "EFGH"
-||| ("EFGH", "") : (String, String)
+||| ```idris example
+||| span (/= 'C') "ABCD"
+||| ```
+||| ```idris example
+||| span (/= 'C') "EFGH"
+||| ```
 span : (Char -> Bool) -> String -> (String, String)
 span p xs with (strM xs)
   span p ""             | StrNil        = ("", "")
@@ -154,28 +167,33 @@ span p xs with (strM xs)
 ||| Splits the string into a part before the predicate
 ||| returns True and the rest of the string.
 |||
-||| Idris> break (== 'C') "ABCD"
-||| ("AB", "CD") : (String, String)
-||| Idris> break (== 'C') "EFGH"
-||| ("EFGH", "") : (String, String)
+||| ```idris example
+||| break (== 'C') "ABCD"
+||| ```
+||| ```idris example
+||| break (== 'C') "EFGH"
+||| ```
 break : (Char -> Bool) -> String -> (String, String)
 break p = span (not . p)
 
 ||| Splits the string into parts with the predicate
 ||| indicating separator characters.
 |||
-||| Idris> split (== '.') ".AB.C..D"
-||| ["", "AB", "C", "", "D"] : List String
+||| ```idris example
+||| split (== '.') ".AB.C..D"
+||| ```
 split : (Char -> Bool) -> String -> List String
 split p xs = map pack (split p (unpack xs))
 
 ||| Removes whitespace (determined with 'isSpace') from
 ||| the start of the string.
 |||
-||| Idris> ltrim " A\nB"
-||| "A\nB" : String
-||| Idris> ltrim " \nAB"
-||| "AB" : String
+||| ```idris example
+||| ltrim " A\nB"
+||| ```
+||| ```idris example
+||| ltrim " \nAB"
+||| ```
 ltrim : String -> String
 ltrim xs with (strM xs)
     ltrim "" | StrNil = ""
@@ -185,15 +203,17 @@ ltrim xs with (strM xs)
 ||| Removes whitespace (determined with 'isSpace') from
 ||| the start and end of the string.
 |||
-||| Idris> trim " A\nB C "
-||| "A\nB C" : String
+||| ```idris example
+||| trim " A\nB C "
+||| ```
 trim : String -> String
 trim xs = ltrim (reverse (ltrim (reverse xs)))
 
 ||| Splits a character list into a list of whitespace separated character lists.
 |||
-||| Idris> words' (unpack " A B C  D E   ")
-||| [['A'], ['B'], ['C'], ['D'], ['E']] : List (List Char)
+||| ```idris example
+||| words' (unpack " A B C  D E   ")
+||| ```
 words' : List Char -> List (List Char)
 words' s = case dropWhile isSpace s of
             [] => []
@@ -202,15 +222,17 @@ words' s = case dropWhile isSpace s of
 
 ||| Splits a string into a list of whitespace separated strings.
 |||
-||| Idris> words " A B C  D E   "
-||| ["A", "B", "C", "D", "E"] : List String
+||| ```idris example
+||| words " A B C  D E   "
+||| ```
 words : String -> List String
 words s = map pack $ words' $ unpack s
 
 ||| Splits a character list into a list of newline separated character lists.
 |||
-||| Idris> lines' (unpack "\rA BC\nD\r\nE\n")
-||| [['A', ' ', 'B', 'C'], ['D'], ['E']] : List (List Char)
+||| ```idris example
+||| lines' (unpack "\rA BC\nD\r\nE\n")
+||| ```
 lines' : List Char -> List (List Char)
 lines' s = case dropWhile isNL s of
             [] => []
@@ -219,8 +241,9 @@ lines' s = case dropWhile isNL s of
 
 ||| Splits a string into a list of newline separated strings.
 |||
-||| Idris> lines  "\rA BC\nD\r\nE\n"
-||| ["A BC", "D", "E"] : List String
+||| ```idris example
+||| lines  "\rA BC\nD\r\nE\n"
+||| ```
 lines : String -> List String
 lines s = map pack $ lines' $ unpack s
 
@@ -235,8 +258,9 @@ foldl1 f (x::xs) = foldl f x xs
 
 ||| Joins the character lists by spaces into a single character list.
 |||
-||| Idris> unwords' [['A'], ['B', 'C'], ['D'], ['E']]
-||| ['A', ' ', 'B', 'C', ' ', 'D', ' ', 'E'] : List Char
+||| ```idris example
+||| unwords' [['A'], ['B', 'C'], ['D'], ['E']]
+||| ```
 unwords' : List (List Char) -> List Char
 unwords' [] = []
 unwords' ws = assert_total (foldr1 addSpace ws)
@@ -246,24 +270,28 @@ unwords' ws = assert_total (foldr1 addSpace ws)
 
 ||| Joins the strings by spaces into a single string. 
 |||
-||| Idris> unwords ["A", "BC", "D", "E"]
-||| "A BC D E" : String
+||| ```idris example
+||| unwords ["A", "BC", "D", "E"]
+||| ```
 unwords : List String -> String
 unwords = pack . unwords' . map unpack
 
 ||| Returns the length of the string.
 |||
-||| Idris> length ""
-||| 0 : Nat
-||| Idris> length "ABC"
-||| 3 : Nat
+||| ```idris example
+||| length ""
+||| ```
+||| ```idris example
+||| length "ABC"
+||| ```
 length : String -> Nat
 length = fromInteger . prim__zextInt_BigInt . prim_lenString
 
 ||| Lowercases all characters in the string.
 |||
-||| Idris> toLower "aBc12!"
-||| "abc12!" : String
+||| ```idris example
+||| toLower "aBc12!"
+||| ```
 toLower : String -> String
 toLower x with (strM x)
   strToLower ""             | StrNil = ""
@@ -272,14 +300,15 @@ toLower x with (strM x)
 
 ||| Uppercases all characters in the string.
 |||
-||| Idris> toLower "aBc12!"
-||| "ABC12!" : String
+||| ```idris example
+||| toLower "aBc12!"
+||| ```
 toUpper : String -> String
 toUpper x with (strM x)
   strToLower ""             | StrNil = ""
   strToLower (strCons c cs) | (StrCons c cs) =
     strCons (toUpper c) (toUpper (assert_smaller (strCons c cs) cs ))
-   
+
 --------------------------------------------------------------------------------
 -- Predicates
 --------------------------------------------------------------------------------

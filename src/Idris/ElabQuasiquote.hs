@@ -36,6 +36,7 @@ extractTUnquotes n (GoalType s tac)
        return (GoalType s tac', ex)
 extractTUnquotes n (TCheck t) = extract1 n TCheck t
 extractTUnquotes n (TEval t) = extract1 n TEval t
+extractTUnquotes n (Claim name t) = extract1 n (Claim name) t
 extractTUnquotes n tac = return (tac, []) -- the rest don't contain PTerms
 
 extractPArgUnquotes :: Int -> PArg -> Elab' aux (PArg, [(Name, PTerm)])

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+idris $@ implicits.idr --check
+idris $@ implicits2.idr --check
+
+rm -f *.ibc
