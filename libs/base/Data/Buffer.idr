@@ -27,8 +27,13 @@ import Data.Fin
 
 ||| A contiguous chunk of n bytes
 abstract
+record Buffer (n : Nat) where
+  offset : Nat
+  realBufer : prim__UnsafeBuffer
+{-
 record Buffer : Nat -> Type where
   MkBuffer : ( offset : Nat ) -> ( realBuffer : prim__UnsafeBuffer ) -> Buffer n
+-}
 
 bitsFromNat : Nat -> Bits64
 bitsFromNat Z     = 0

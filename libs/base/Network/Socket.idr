@@ -107,6 +107,13 @@ EAGAIN : Int
 EAGAIN = 11
 
 -- TODO: Expand to non-string payloads
+record UDPRecvData where
+  remote_addr : SocketAddress
+  remote_port : Port
+  recv_data : String
+  data_len : Int
+  
+{-
 record UDPRecvData : Type where
   MkUDPRecvData : 
     (remote_addr : SocketAddress) ->
@@ -114,13 +121,19 @@ record UDPRecvData : Type where
     (recv_data : String) ->
     (data_len : Int) ->
     UDPRecvData
+-}
 
+record UDPAddrInfo where
+  remote_addr : SocketAddress
+  remote_port : Port
+
+{-
 record UDPAddrInfo : Type where
   MkUDPAddrInfo : 
     (remote_addr : SocketAddress) ->
     (remote_port : Port) ->
     UDPAddrInfo
-
+-}
 ||| Frees a given pointer
 public
 sock_free : BufPtr -> IO ()
@@ -138,13 +151,20 @@ sock_alloc : ByteLength -> IO BufPtr
 sock_alloc bl = map BPtr $ foreign FFI_C "idrnet_malloc" (Int -> IO Ptr) bl
 
 ||| The metadata about a socket
+record Socket where
+  descriptor : SocketDescriptor
+  family : SocketFamily
+  socketType : SocketType
+  protocalNumber : ProtocolNumber
+  
+{-
 record Socket : Type where
   MkSocket : (descriptor : SocketDescriptor) ->
              (family : SocketFamily) ->
              (socketType : SocketType) ->
              (protocolNumber : ProtocolNumber) ->
              Socket
-
+-}
 ||| Get the C error number
 getErrno : IO Int
 getErrno = foreign FFI_C "idrnet_errno" (IO Int)

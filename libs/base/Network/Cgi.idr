@@ -8,6 +8,16 @@ public
 Vars : Type
 Vars = List (String, String)
 
+record CGIInfo where
+  GET : Vars
+  POST : Vars
+  Cookies : Vars
+  UserAgent : String
+  Headers : String
+  Output : String
+  constructor CGISt
+
+{-
 record CGIInfo : Type where
        CGISt : (GET : Vars) ->
                (POST : Vars) ->
@@ -15,6 +25,7 @@ record CGIInfo : Type where
                (UserAgent : String) ->
                (Headers : String) ->
                (Output : String) -> CGIInfo
+-}
 
 add_Headers : String -> CGIInfo -> CGIInfo
 add_Headers str st = record { Headers = Headers st ++ str } st

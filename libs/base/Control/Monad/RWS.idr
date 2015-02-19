@@ -11,10 +11,14 @@ import Control.Monad.Reader
 class (Monoid w, MonadReader r m, MonadWriter w m, MonadState s m) => MonadRWS r w s (m : Type -> Type) where {}
 
 ||| The transformer on which the RWS monad is based
+record RWST (r : Type) (w : Type) (s : Type) (m : Type -> Type) (a : Type) where
+  runRWST : r -> s -> m (a, s, w)
+
+{-
 record RWST : Type -> Type -> Type -> (Type -> Type) -> Type -> Type where
     MkRWST : {m : Type -> Type} ->
              (runRWST : r -> s -> m (a, s, w)) -> RWST r w s m a
-
+-}
 instance Monad m => Functor (RWST r w s m) where
     map f (MkRWST m) = MkRWST $ \r,s => do  (a, s', w) <- m r s
                                             return (f a, s', w)
