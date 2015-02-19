@@ -11,14 +11,11 @@ data UTree : UniqueType where
      ULeaf : UTree
      UNode : UTree -> Int -> UTree -> UTree
 
-data UPair : UniqueType -> UniqueType -> UniqueType where
-  MkUPair : {a,b:UniqueType} -> a -> b -> UPair a b
-
 dup : UTree -> UPair UTree UTree
-dup ULeaf = MkUPair ULeaf ULeaf
-dup (UNode l y r) = let MkUPair l1 l2 = dup l
-                        MkUPair r1 r2 = dup r in
-                        MkUPair (UNode l1 y r1) (UNode l2 y r2)
+dup ULeaf = (ULeaf, ULeaf)
+dup (UNode l y r) = let (l1, l2) = dup l
+                        (r1, r2) = dup r in
+                        (UNode l1 y r1, UNode l2 y r2)
 
 data Tree : Type where
      Leaf : Tree

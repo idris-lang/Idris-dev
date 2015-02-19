@@ -1246,6 +1246,9 @@ falseTy   = sUN "Void"
 pairTy    = sNS (sUN "Pair") ["Builtins"]
 pairCon   = sNS (sUN "MkPair") ["Builtins"]
 
+upairTy    = sNS (sUN "UPair") ["Builtins"]
+upairCon   = sNS (sUN "MkUPair") ["Builtins"]
+
 eqTy = sUN "="
 eqCon = sUN "Refl"
 eqDoc =  fmap (const (Left $ Msg "")) . parseDocstring . T.pack $

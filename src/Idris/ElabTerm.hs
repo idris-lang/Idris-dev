@@ -318,6 +318,7 @@ elab ist info emode opts fn tm
           g <- goal
           case g of
             TType _ -> elab' ina (Just fc) (PRef fc unitTy)
+            UType _ -> elab' ina (Just fc) (PRef fc unitTy)
             _ -> elab' ina (Just fc) (PRef fc unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC False 5 g fn ist
@@ -353,13 +354,32 @@ elab ist info emode opts fn tm
     elab' ina _ (PPair fc _ l r)
         = do hnf_compute
              g <- goal
+             let (tc, _) = unApply g
              case g of
                 TType _ -> elab' ina (Just fc) (PApp fc (PRef fc pairTy)
                                                       [pexp l,pexp r])
-                _ -> elab' ina (Just fc) (PApp fc (PRef fc pairCon)
+                UType _ -> elab' ina (Just fc) (PApp fc (PRef fc upairTy)
+                                                      [pexp l,pexp r])
+                _ -> case tc of
+                        P _ n _ | n == upairTy 
+                          -> elab' ina (Just fc) (PApp fc (PRef fc upairCon)
                                                 [pimp (sUN "A") Placeholder False,
                                                  pimp (sUN "B") Placeholder False,
                                                  pexp l, pexp r])
+                        _ -> elab' ina (Just fc) (PApp fc (PRef fc pairCon)
+                                                [pimp (sUN "A") Placeholder False,
+                                                 pimp (sUN "B") Placeholder False,
+                                                 pexp l, pexp r])
+--                         _ -> try' (elab' ina (Just fc) (PApp fc (PRef fc pairCon)
+--                                                 [pimp (sUN "A") Placeholder False,
+--                                                  pimp (sUN "B") Placeholder False,
+--                                                  pexp l, pexp r]))
+--                                   (elab' ina (Just fc) (PApp fc (PRef fc upairCon)
+--                                                 [pimp (sUN "A") Placeholder False,
+--                                                  pimp (sUN "B") Placeholder False,
+--                                                  pexp l, pexp r]))
+--                                   True
+
     elab' ina _ (PDPair fc p l@(PRef _ n) t r)
             = case t of
                 Placeholder ->
