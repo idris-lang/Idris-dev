@@ -226,14 +226,14 @@ idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved 
   where _styleName = "Idris"
         _styleStart = satisfy isAlpha
         _styleLetter = satisfy isAlphaNum <|> oneOf "_'."
-        _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "Type",
+        _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "corecord", "Type",
                                       "do", "dsl", "import", "impossible",
                                       "case", "of", "total", "partial", "mutual",
                                       "infix", "infixl", "infixr", "rewrite",
                                       "where", "with", "syntax", "proof", "postulate",
                                       "using", "namespace", "class", "instance", "parameters",
                                       "public", "private", "abstract", "implicit",
-                                      "quoteGoal"]
+                                      "quoteGoal", "constructor"]
 
 char :: MonadicParsing m => Char -> m Char
 char = Chr.char

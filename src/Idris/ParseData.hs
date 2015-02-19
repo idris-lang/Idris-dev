@@ -37,6 +37,9 @@ import qualified Data.ByteString.UTF8 as UTF8
 
 import Debug.Trace
 
+type Docs = Docstring (Either Err PTerm)
+type RecordConstructor = (Docs, [(Name, Docs)], Maybe Name, PTerm, [(Name, Plicity)])
+
 {- |Parses a record type declaration
 Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
@@ -50,23 +53,29 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
                                      | (n, d) <- argDocs ]
                       acc <- optional accessibility
                       opts <- dataOpts []
-                      reserved "record"
-                      return (doc', argDocs', acc, opts))
+                      co <- recordI
+                      return (doc', argDocs', acc, opts ++ co))
                 fc <- getFC
-                tyn_in <- fnName
-                lchar ':'
-                ty <- typeExpr (allowImp syn)
+                tyn_in <- fnName             
+                tys <- manyTill (recordTypeParameter syn) (reserved "where")
+                let ty = recordTypeConstructor tys
+                let ty' = withoutNames ty
                 let tyn = expandNS syn tyn_in
-                reserved "where"
-                (cdoc, cargDocs, cn, cty, _, _) <- indentedBlockS (constructor syn)
-                accData acc tyn [cn]
+                (cdoc, cargDocs, cn, cty, args) <- indentedBlockS $ agdaStyleBody syn tyn ty
+                case cn of
+                     Just cn' -> accData acc tyn [cn']
+                     Nothing -> return ()
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
                 let fns = getRecNames rsyn cty
                 mapM_ (\n -> addAcc n acc) fns
-                return $ PRecord doc rsyn fc tyn ty opts cdoc cn cty
+                return $ PRecord doc rsyn fc tyn ty' opts cdoc cn args cty
              <?> "record type declaration"
   where
+    withoutNames :: PTerm -> PTerm
+    withoutNames (PPi p _ t sc) = PPi p (sUN "__pi_arg") t (withoutNames sc)
+    withoutNames t = t
+    
     getRecNames :: SyntaxInfo -> PTerm -> [Name]
     getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkType n)]
                                        ++ getRecNames syn sc
@@ -76,12 +85,119 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
     toFreeze (Just Frozen) = Just Hidden
     toFreeze x = x
 
+    recordTypeConstructor :: [(Name, Plicity, PTerm)] -> PTerm
+    recordTypeConstructor ((n, p, t) : rest) = PPi p n t (recordTypeConstructor rest)
+    recordTypeConstructor [] = PType
+
+    -- Greatly inspired by ziman (https://github.com/ziman)
+    agdaStyleBody :: SyntaxInfo -> Name -> PTerm -> IdrisParser RecordConstructor
+    agdaStyleBody syn tyn tyc = do
+        ist <- get
+        fc  <- getFC
+
+        fields <- many . indented $ field
+
+        let constructorDoc = parseDocstring . T.pack $ "Constructor of " ++ show tyn
+        (constructorName, args) <- do c <- optional constructor
+                                      let (n, args) = maybePair c
+                                      return (n, mList args)
+        
+        let constructorDoc' = annotate syn ist constructorDoc
+        let fieldDocs = [(n, annotate syn ist doc) | (n, _, _, doc, _) <- fields]
+            target = PApp fc (PRef fc tyn) (getParams fc tyc)
+            constructorType = mkConstructorType [(n, t, p) | (n, t, p, _, _) <- fields] target
+            constructorType' = replaceTarget constructorType (allImpl tyc)
+            
+        return (constructorDoc', fieldDocs, constructorName, constructorType', args)
+      where
+        maybePair :: Maybe (a, b) -> (Maybe a, Maybe b)
+        maybePair (Just(x, y)) = (Just x, Just y)
+        maybePair Nothing = (Nothing, Nothing)
+
+        mList :: Maybe [a] -> [a]
+        mList (Just xs) = xs
+        mList Nothing   = []
+
+        fieldsAndConstructor :: IdrisParser ([(Name, PTerm, Plicity, Docstring (), [(Name, Docstring ())])], (Maybe Name), [(Name, Plicity)])
+        fieldsAndConstructor = do fields <- (indented field) `manyTill` (reserved "constructor")                                      
+                                  (cName, args) <- indented constructor
+                                  return (fields, Just cName, args)
+                                      
+        allImpl :: PTerm -> PTerm
+        allImpl (PPi _ n t t') = PPi impl n t (allImpl t')
+        allImpl t = t
+        
+        field :: IdrisParser (Name, PTerm, Plicity, Docstring (), [(Name, Docstring ())])
+        field = do (doc, argDocs) <- option noDocs docComment
+                   n <- fnName
+                   lchar ':'
+                   t <- typeExpr (allowImp syn)
+                   return (n, t, expl, doc, argDocs)
+
+        constructor :: IdrisParser (Name, [(Name, Plicity)])
+        constructor = do n <- (reserved "constructor") *> fnName                         
+                         args <- option [] (do lchar '('
+                                               args <- many (do p <- optional $ lchar '{'
+                                                                argName <- fnName
+                                                                plicity <- endPlicity p
+                                                                return (argName, plicity))
+                                               lchar ')'
+                                               return args)
+                         return (n, args)
+
+        endPlicity :: Maybe Char -> IdrisParser Plicity
+        endPlicity (Just _) = do lchar '}'
+                                 return impl
+        endPlicity Nothing = return expl
+
+        mkConstructorType :: [(Name, PTerm, Plicity)] -> PTerm -> PTerm
+        mkConstructorType ((n, t, p) : rest) t' = PPi p (nsroot n) t (mkConstructorType rest t')
+        mkConstructorType [] t = t
+
+        getParams :: FC -> PTerm -> [PArg]
+        getParams fc (PPi (Exp os _ _) n t ts) = (PExp 0 os n $ PRef fc n) : getParams fc ts
+        getParams fc (PPi (Imp os _ _ _) n t ts) = (PImp 0 False os n $ PRef fc n) : getParams fc ts
+        getParams _ _ = []
+
+        annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
+        annotate syn ist = annotCode $ tryFullExpr syn ist
+
+        replaceTarget :: PTerm -> PTerm -> PTerm
+        replaceTarget trg (PPi p n t ts) = PPi p n t (replaceTarget trg ts)
+        replaceTarget trg _ = trg        
+
+recordTypeParameter :: SyntaxInfo -> IdrisParser (Name, Plicity, PTerm)
+recordTypeParameter syn =
+  (do lchar '('
+      (n, pt) <- (namedTy syn <|> onlyName syn)
+      lchar ')'
+      return (n, expl, pt))
+  <|>
+  (do (n, pt) <- onlyName syn
+      return (n, expl, pt))
+                 
+  where
+    namedTy :: SyntaxInfo -> IdrisParser (Name, PTerm)
+    namedTy syn =
+      do tyn <- fnName
+         lchar ':'
+         ty <- typeExpr (allowImp syn)
+         return (tyn, ty)
+    onlyName :: SyntaxInfo -> IdrisParser (Name, PTerm)
+    onlyName syn =
+      do n <- fnName
+         return (n, PType)
+
 {- | Parses data declaration type (normal or codata)
 DataI ::= 'data' | 'codata';
 -}
 dataI :: IdrisParser DataOpts
 dataI = do reserved "data"; return []
     <|> do reserved "codata"; return [Codata]
+
+recordI :: IdrisParser DataOpts
+recordI = do reserved "record"; return []
+          <|> do reserved "corecord"; return [Codata]
 
 {- | Parses if a data should not have a default eliminator
 DefaultEliminator ::= 'noelim'?

@@ -1050,12 +1050,12 @@ expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
             else PDatadecl n (expandParams dec ps ns [] ty) (map econ cons)
     econ (doc, argDocs, n, t, fc, fs)
        = (doc, argDocs, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
-expandParamsD rhs ist dec ps ns (PRecord doc syn fc tn tty opts cdoc cn cty)
+expandParamsD rhs ist dec ps ns (PRecord doc syn fc tn tty opts cdoc cn args cty)
    = if tn `elem` ns
         then PRecord doc syn fc (dec tn) (piBind ps (expandParams dec ps ns [] tty))
-                     opts cdoc (dec cn) conty
+                     opts cdoc (liftM dec cn) args conty
         else PRecord doc syn fc (dec tn) (expandParams dec ps ns [] tty)
-                     opts cdoc (dec cn) conty
+                     opts cdoc (liftM dec cn) args conty
    where conty = piBindp expl ps (expandParams dec ps ns [] cty)
 expandParamsD rhs ist dec ps ns (PParams f params pds)
    = PParams f (ps ++ map (mapsnd (expandParams dec ps ns [])) params)

@@ -236,10 +236,10 @@ elabDecl' what info (PClass doc s f cs n ps pdocs ds)
 elabDecl' what info (PInstance s f cs n ps t expn ds)
     = do iLOG $ "Elaborating instance " ++ show n
          elabInstance info s what f cs n ps t expn ds
-elabDecl' what info (PRecord doc s f tyn ty opts cdoc cn cty)
+elabDecl' what info (PRecord doc s f tyn ty opts cdoc cn args cty)
   | what /= ETypes
     = do iLOG $ "Elaborating record " ++ show tyn
-         elabRecord info s doc f tyn ty opts cdoc cn cty
+         elabRecord info s doc f tyn ty opts cdoc cn args cty
   | otherwise
     = do iLOG $ "Elaborating [type of] " ++ show tyn
          elabData info s doc [] f [] (PLaterdecl tyn ty)

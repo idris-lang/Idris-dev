@@ -17,6 +17,7 @@ import Idris.PartialEval
 import Idris.DeepSeq
 import Idris.Output (iputStrLn, pshow, iWarn)
 import IRTS.Lang
+import Idris.ParseHelpers (opChars)
 
 import Idris.Elab.Type
 import Idris.Elab.Data
@@ -51,9 +52,15 @@ import Data.List.Split (splitOn)
 import Util.Pretty(pretty, text)
 
 elabRecord :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) -> FC -> Name ->
-              PTerm -> DataOpts -> Docstring (Either Err PTerm) -> Name -> PTerm -> Idris ()
-elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
-    = do elabData info syn doc [] fc opts (PDatadecl tyn ty [(cdoc, [], cn, cty_in, fc, [])])
+              PTerm -> DataOpts -> Docstring (Either Err PTerm) -> Maybe Name -> [(Name, Plicity)] -> PTerm -> Idris ()
+elabRecord info syn doc fc tyn ty opts cdoc mcn args cty_in'
+    = do cn <- liftM (expandNS syn) (case mcn of
+           Just cn' -> return (nsroot cn')
+           Nothing  -> if isOp tyn
+                       then generateConsNameOp
+                       else generateConsName (sUN $ "Mk" ++ (show (nsroot tyn))))
+         cty_in <- customizeConstructor args cty_in'
+         elabData info syn doc [] fc opts (PDatadecl tyn ty [(cdoc, [], cn, cty_in, fc, [])])
          -- TODO think: something more in info?
          cty' <- implicit info syn cn cty_in
          i <- getIState
@@ -94,21 +101,53 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
                           ptys 
 
          -- Generate projection functions
-         proj_decls <- mapM (mkProj recty_in substs cimp) (zip ptys [0..])
+         proj_decls <- mapM (mkProj recty_in substs cimp cn) (zip ptys [0..])
          logLvl 3 $ show proj_decls
          let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
          let implBinds = getImplB id cty'
-
-         -- Generate update functions
-         update_decls <- mapM (mkUpdate recty_u index_names_in extraImpls
-                                   (getFieldNames cty')
-                                   implBinds (length nonImp)) (zip nonImp [0..])
          mapM_ (rec_elabDecl info EAll info) (concat proj_decls)
-         logLvl 3 $ show update_decls
-         mapM_ (tryElabDecl info) (update_decls)
+         -- Generate update functions
+         when (Codata `notElem` opts)
+           (do update_decls <- mapM (mkUpdate recty_u index_names_in extraImpls
+                                     (getFieldNames cty')
+                                     implBinds (length nonImp) cn) (zip nonImp [0..])
+               logLvl 3 $ show update_decls
+               mapM_ (tryElabDecl info) (update_decls))
   where
 --     syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
+    customizeConstructor :: [(Name, Plicity)] -> PTerm -> Idris PTerm
+    customizeConstructor [] t = return t
+    customizeConstructor ns t = cc ns t
+      where
+        cc names (PPi _ n t t')
+          | Just p <- lookup n names = do r <- cc (deleteAssoc n names) t'
+                                          return $ PPi p n t r
+          | otherwise = tclift $ tfail (At fc (Elaborating recString tyn (Msg ("Argument " ++ show n ++ " missing."))))
+          where
+            deleteAssoc :: Eq a => a -> [(a, b)] -> [(a, b)]
+            deleteAssoc y (x@(z,_) : xs) 
+              | z == y    = xs
+              | otherwise = x : (deleteAssoc y xs)
+            deleteAssoc _ [] = []
+        cc [] t = return t
+        cc _ _ = tclift $ tfail (At fc (Elaborating recString tyn (Msg ("Not the right of arguments to constructor. You must mention either all or none."))))
 
+    recString = (if Codata `elem` opts then "co" else "") ++ "record "
+    
+    generateConsNameOp :: Idris Name
+    generateConsNameOp = generateConsName $ sUN "Mk_Operator_Record0"
+
+    generateConsName :: Name -> Idris Name
+    generateConsName n = do i <- getIState
+                            case lookupTyNameExact (expandNS syn n) (tt_ctxt i) of
+                               Just _  -> generateConsName (nextName n)
+                               Nothing -> return n
+
+    isOp :: Name -> Bool
+    isOp (UN t) = foldr (||) False (map (\x -> x `elem` opChars) (str t))
+    isOp (NS n _) = isOp n
+    isOp _ = True
+    
     isNonImp (PExp _ _ _ _, a) = Just a
     isNonImp _ = Nothing
 
@@ -182,7 +221,7 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
     mkType (MN i n) = sMN i ("set_" ++ str n)
     mkType (NS n s) = NS (mkType n) s
 
-    mkProj recty substs cimp ((pn_in, pty), pos)
+    mkProj recty substs cimp cn ((pn_in, pty), pos)
         = do let pn = expandNS syn pn_in -- projection name
              -- use pn_in in the indices, consistently, to avoid clash
              let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] pn
@@ -204,7 +243,7 @@ elabRecord info syn doc fc tyn ty opts cdoc cn cty_in
     -- If the 'pty' we're updating includes anything in 'substs', we're
     -- updating the type as well, so use recty', otherwise just use
     -- recty
-    mkUpdate recty inames extras fnames k num ((pn, pty), pos)
+    mkUpdate recty inames extras fnames k num cn ((pn, pty), pos)
        = do let setname = expandNS syn $ mkType pn
             let valname = sMN 0 "updateval"
             let pn_out = sMN 0 (show pn ++ "_out")
