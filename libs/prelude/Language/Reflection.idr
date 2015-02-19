@@ -49,7 +49,7 @@ data Const = I Int | BI Integer | Fl Float | Ch Char | Str String
            | B32V Bits32x4 | B64V Bits64x2
            | AType ArithTy | StrType
            | PtrType | ManagedPtrType | BufferType | VoidType | Forgot
-
+           | WorldType | TheWorld
 %name Const c, c'
 
 abstract class ReflConst (a : Type) where
@@ -146,6 +146,8 @@ instance Traversable Binder where
   traverse f (PVar x) = [| PVar (f x) |]
   traverse f (PVTy x) = [| PVTy (f x) |]
 
+||| Universes
+data Universe = NullType | UniqueType | AllTypes
 
 ||| Reflection of the well typed core language
 data TT =
@@ -166,7 +168,8 @@ data TT =
         ||| Impossible terms
         Impossible |
         ||| The type of types along (with universe constraints)
-        TType TTUExp
+        TType TTUExp |
+        UType Universe
 %name TT tm, tm'
 
 ||| Raw terms without types
@@ -179,6 +182,7 @@ data Raw =
          RApp Raw Raw |
          ||| The type of types
          RType |
+         RUType Universe |
          RForce Raw |
          ||| Embed a constant
          RConstant Const
@@ -399,12 +403,19 @@ instance Quotable Const where
   quote BufferType = `(BufferType)
   quote VoidType = `(VoidType)
   quote Forgot = `(Forgot)
-
+  quote WorldType = `(WorldType)
+  quote TheWorld = `(TheWorld)
 
 instance Quotable TTUExp where
   quotedTy = `(TTUExp)
   quote (UVar x) = `(UVar ~(quote x))
   quote (UVal x) = `(UVal ~(quote x))
+
+instance Quotable Universe where
+  quotedTy = `(Universe)
+  quote Reflection.NullType = `(NullType)
+  quote Reflection.UniqueType = `(UniqueType)
+  quote Reflection.AllTypes = `(AllTypes)
 
 mutual
   instance Quotable TT where
@@ -418,6 +429,7 @@ mutual
     quote Erased = `(Erased)
     quote Impossible = `(Impossible)
     quote (TType uexp) = `(TType ~(quote uexp))
+    quote (UType u) = `(UType ~(quote u))
 
   instance Quotable (Binder TT) where
     quotedTy = `(Binder TT)
@@ -449,6 +461,7 @@ mutual
   quoteRaw (RBind n b tm) = `(RBind ~(quote n) ~(assert_total $ quoteRawBinder b) ~(quoteRaw tm))
   quoteRaw (RApp tm tm') = `(RApp ~(quoteRaw tm) ~(quoteRaw tm'))
   quoteRaw RType = `(RType)
+  quoteRaw (RUType u) = `(RUType ~(quote u))
   quoteRaw (RForce tm) = `(RForce ~(quoteRaw tm))
   quoteRaw (RConstant c) = `(RConstant ~(quote c))
 

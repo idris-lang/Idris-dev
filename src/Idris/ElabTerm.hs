@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards, ViewPatterns #-}
-
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.ElabTerm where
 
 import Idris.AbsSyntax
@@ -400,6 +400,7 @@ elab ist info emode opts fn tm
         where -- if none work, take the error from the first
               trySeq (x : xs) = let e1 = elab' ina fc x in
                                     try' e1 (trySeq' e1 xs) True
+              trySeq [] = fail "Nothing to try in sequence"
               trySeq' deferr [] = proofFail deferr
               trySeq' deferr (x : xs)
                   = try' (do elab' ina fc x
@@ -526,7 +527,8 @@ elab ist info emode opts fn tm
                -- HACK: If the name leaks into its type, it may leak out of
                -- scope outside, so substitute in the outer scope.
                expandLet n (case lookup n env of
-                                 Just (Let t v) -> v)
+                                 Just (Let t v) -> v
+                                 other -> error ("Value not a let binding: " ++ show other))
                solve
     elab' ina _ (PGoal fc r n sc) = do
          rty <- goal
@@ -935,7 +937,7 @@ elab ist info emode opts fn tm
     elab' ina fc (PUnifyLog t) = do unifyLog True
                                     elab' ina fc t
                                     unifyLog False
-    elab' ina fc (PQuasiquote t goal) -- TODO: goal type
+    elab' ina fc (PQuasiquote t goal)
         = do -- First extract the unquoted subterms, replacing them with fresh
              -- names in the quasiquoted term. Claim their reflections to be
              -- of type TT.
@@ -997,9 +999,14 @@ elab ist info emode opts fn tm
                Just q -> do ctxt <- get_context
                             (q', _, _) <- lift $ recheck ctxt [(uq, Lam Erased) | uq <- unquoteNames] (forget q) q
                             if pattern
-                              then reflectQuotePattern unquoteNames q'
-                              else do fill $ reflectQuote unquoteNames q'
+                              then reflectTTQuotePattern unquoteNames q'
+                                   -- TODO: support quasiquote patterns of Raw terms
+                              else do try' (fill $ reflectTTQuote unquoteNames q')
+                                           -- we forget q' instead of using q to ensure rechecking
+                                           (fill $ reflectRawQuote unquoteNames (forget q'))
+                                           True -- ignore errors like proof search does
                                       solve
+
                Nothing -> lift . tfail . Msg $ "Broken elaboration of quasiquote"
 
              -- Finally fill in the terms or patterns from the unquotes. This
@@ -1066,6 +1073,7 @@ elab ist info emode opts fn tm
              findScr [(n, (_, t))] = [(n, (True, t))]
              findScr (x : xs) = x : findScr xs
              -- [] can't happen since scrutinee is in the environment!
+             findScr [] = error "The impossible happened - the scrutinee was not in the environment"
 
              -- To make sure top level pattern name remains in scope, put
              -- it at the end of the environment
@@ -1227,7 +1235,8 @@ elab ist info emode opts fn tm
                                                        lift (tfail (elaboratingArgErr while' e))
                  put newState
                  return result
-
+    elabArgs _ _ _ _ _ _ (((arg, hole), _) : _) _ [] =
+      fail $ "Can't elaborate these args: " ++ show arg ++ " " ++ show hole
 
 -- For every alternative, look at the function at the head. Automatically resolve
 -- any nested alternatives where that function is also at the head
@@ -1405,6 +1414,7 @@ resTC' tcs defaultOn depth topg fn ist
                 let imps = case lookupCtxtName n (idris_implicits ist) of
                                 [] -> []
                                 [args] -> map isImp (snd args) -- won't be overloaded!
+                                xs -> error "The impossible happened - overloading is not expected here!"
                 ps <- get_probs
                 tm <- get_term
                 args <- map snd <$> try' (apply (Var n) imps)
@@ -2063,6 +2073,7 @@ reifyIntTy (P _ n _) | n == reflm "ITBig" = return ITBig
 reifyIntTy (P _ n _) | n == reflm "ITChar" = return ITChar
 reifyIntTy (App (App (P _ n _) nt) (Constant (I i))) | n == reflm "ITVec" = fmap (flip ITVec i)
                                                                                  (reifyNativeTy nt)
+reifyIntTy tm = fail $ "The term " ++ show tm ++ " is not a reflected IntTy"
 
 reifyTTUExp :: Term -> ElabD UExp
 reifyTTUExp t@(App _ _)
@@ -2079,7 +2090,11 @@ reflCall funName args
 
 -- | Lift a term into its Language.Reflection.TT representation
 reflect :: Term -> Raw
-reflect = reflectQuote []
+reflect = reflectTTQuote []
+
+-- | Lift a term into its Language.Reflection.Raw representation
+reflectRaw :: Raw -> Raw
+reflectRaw = reflectRawQuote []
 
 claimTT :: Name -> ElabD Name
 claimTT n = do n' <- getNameFrom n
@@ -2090,8 +2105,8 @@ claimTT n = do n' <- getNameFrom n
 -- In particular, the less-interesting bits are elaborated to _ patterns. This
 -- happens to NameTypes, universe levels, names that are bound but not used,
 -- and the type annotation field of the P constructor.
-reflectQuotePattern :: [Name] -> Term -> ElabD ()
-reflectQuotePattern unq (P _ n _)
+reflectTTQuotePattern :: [Name] -> Term -> ElabD ()
+reflectTTQuotePattern unq (P _ n _)
   | n `elem` unq = -- the unquoted names have been claimed as TT already - just use them
     do fill (Var n) ; solve
   | otherwise =
@@ -2105,10 +2120,10 @@ reflectQuotePattern unq (P _ n _)
        fill $ reflCall "P" [Var nt, Var n', Var tyannot]
        solve
        focus n'; reflectNameQuotePattern n
-reflectQuotePattern unq (V n)
+reflectTTQuotePattern unq (V n)
   = do fill $ reflCall "V" [RConstant (I n)]
        solve
-reflectQuotePattern unq (Bind n b x)
+reflectTTQuotePattern unq (Bind n b x)
   = do x' <- claimTT (sMN 0 "sc")
        movelast x'
        b' <- getNameFrom (sMN 0 "binder")
@@ -2128,7 +2143,7 @@ reflectQuotePattern unq (Bind n b x)
                                   Var b',
                                   Var x']
                  solve
-       focus x'; reflectQuotePattern unq x
+       focus x'; reflectTTQuotePattern unq x
        focus b'; reflectBinderQuotePattern unq b
 
   where
@@ -2137,102 +2152,136 @@ reflectQuotePattern unq (Bind n b x)
        = do t' <- claimTT (sMN 0 "ty"); movelast t'
             fill $ reflCall "Lam" [Var (reflm "TT"), Var t']
             solve
-            focus t'; reflectQuotePattern unq t
+            focus t'; reflectTTQuotePattern unq t
     reflectBinderQuotePattern unq (Pi _ t k)
        = do t' <- claimTT (sMN 0 "ty") ; movelast t'
             k' <- claimTT (sMN 0 "k"); movelast k';
             fill $ reflCall "Pi" [Var (reflm "TT"), Var t', Var k']
             solve
-            focus t'; reflectQuotePattern unq t
+            focus t'; reflectTTQuotePattern unq t
     reflectBinderQuotePattern unq (Let x y)
        = do x' <- claimTT (sMN 0 "ty"); movelast x';
             y' <- claimTT (sMN 0 "v"); movelast y';
             fill $ reflCall "Let" [Var (reflm "TT"), Var x', Var y']
             solve
-            focus x'; reflectQuotePattern unq x
-            focus y'; reflectQuotePattern unq y
+            focus x'; reflectTTQuotePattern unq x
+            focus y'; reflectTTQuotePattern unq y
     reflectBinderQuotePattern unq (NLet x y)
        = do x' <- claimTT (sMN 0 "ty"); movelast x'
             y' <- claimTT (sMN 0 "v"); movelast y'
             fill $ reflCall "NLet" [Var (reflm "TT"), Var x', Var y']
             solve
-            focus x'; reflectQuotePattern unq x
-            focus y'; reflectQuotePattern unq y
+            focus x'; reflectTTQuotePattern unq x
+            focus y'; reflectTTQuotePattern unq y
     reflectBinderQuotePattern unq (Hole t)
        = do t' <- claimTT (sMN 0 "ty"); movelast t'
             fill $ reflCall "Hole" [Var (reflm "TT"), Var t']
             solve
-            focus t'; reflectQuotePattern unq t
+            focus t'; reflectTTQuotePattern unq t
     reflectBinderQuotePattern unq (GHole _ t)
        = do t' <- claimTT (sMN 0 "ty"); movelast t'
             fill $ reflCall "GHole" [Var (reflm "TT"), Var t']
             solve
-            focus t'; reflectQuotePattern unq t
+            focus t'; reflectTTQuotePattern unq t
     reflectBinderQuotePattern unq (Guess x y)
        = do x' <- claimTT (sMN 0 "ty"); movelast x'
             y' <- claimTT (sMN 0 "v"); movelast y'
             fill $ reflCall "Guess" [Var (reflm "TT"), Var x', Var y']
             solve
-            focus x'; reflectQuotePattern unq x
-            focus y'; reflectQuotePattern unq y
+            focus x'; reflectTTQuotePattern unq x
+            focus y'; reflectTTQuotePattern unq y
     reflectBinderQuotePattern unq (PVar t)
        = do t' <- claimTT (sMN 0 "ty"); movelast t'
             fill $ reflCall "PVar" [Var (reflm "TT"), Var t']
             solve
-            focus t'; reflectQuotePattern unq t
+            focus t'; reflectTTQuotePattern unq t
     reflectBinderQuotePattern unq (PVTy t)
        = do t' <- claimTT (sMN 0 "ty"); movelast t'
             fill $ reflCall "PVTy" [Var (reflm "TT"), Var t']
             solve
-            focus t'; reflectQuotePattern unq t
-reflectQuotePattern unq (App f x)
+            focus t'; reflectTTQuotePattern unq t
+reflectTTQuotePattern unq (App f x)
   = do f' <- claimTT (sMN 0 "f"); movelast f'
        x' <- claimTT (sMN 0 "x"); movelast x'
        fill $ reflCall "App" [Var f', Var x']
        solve
-       focus f'; reflectQuotePattern unq f
-       focus x'; reflectQuotePattern unq x
-reflectQuotePattern unq (Constant c)
+       focus f'; reflectTTQuotePattern unq f
+       focus x'; reflectTTQuotePattern unq x
+reflectTTQuotePattern unq (Constant c)
   = do fill $ reflCall "TConst" [reflectConstant c]
        solve
-reflectQuotePattern unq (Proj t i)
+reflectTTQuotePattern unq (Proj t i)
   = do t' <- claimTT (sMN 0 "t"); movelast t'
        fill $ reflCall "Proj" [Var t', RConstant (I i)]
        solve
-       focus t'; reflectQuotePattern unq t
-reflectQuotePattern unq (Erased)
+       focus t'; reflectTTQuotePattern unq t
+reflectTTQuotePattern unq (Erased)
   = do erased <- claimTT (sMN 0 "erased")
        movelast erased
        fill $ (Var erased)
        solve
-reflectQuotePattern unq (Impossible)
+reflectTTQuotePattern unq (Impossible)
   = do fill $ Var (reflm "Impossible")
        solve
-reflectQuotePattern unq (TType exp)
+reflectTTQuotePattern unq (TType exp)
   = do ue <- getNameFrom (sMN 0 "uexp")
        claim ue (Var (sNS (sUN "TTUExp") ["Reflection", "Language"]))
        movelast ue
        fill $ reflCall "TType" [Var ue]
        solve
+reflectTTQuotePattern unq (UType u)
+  = do uH <- getNameFrom (sMN 0 "someUniv")
+       claim uH (Var (reflm "Universe"))
+       movelast uH
+       fill $ reflCall "UType" [Var uH]
+       solve
+       focus uH
+       fill (Var (reflm (case u of
+                           NullType -> "NullType"
+                           UniqueType -> "UniqueType"
+                           AllTypes -> "AllTypes")))
+       solve
 
--- | Create a reflected term, but leave refs to the provided name intact
-reflectQuote :: [Name] -> Term -> Raw
-reflectQuote unq (P nt n t)
+reflectUniverse :: Universe -> Raw
+reflectUniverse u =
+  (Var (reflm (case u of
+                 NullType -> "NullType"
+                 UniqueType -> "UniqueType"
+                 AllTypes -> "AllTypes")))
+
+-- | Create a reflected TT term, but leave refs to the provided name intact
+reflectTTQuote :: [Name] -> Term -> Raw
+reflectTTQuote unq (P nt n t)
   | n `elem` unq = Var n
-  | otherwise = reflCall "P" [reflectNameType nt, reflectName n, reflectQuote unq t]
-reflectQuote unq (V n)
+  | otherwise = reflCall "P" [reflectNameType nt, reflectName n, reflectTTQuote unq t]
+reflectTTQuote unq (V n)
   = reflCall "V" [RConstant (I n)]
-reflectQuote unq (Bind n b x)
-  = reflCall "Bind" [reflectName n, reflectBinderQuote unq b, reflectQuote unq x]
-reflectQuote unq (App f x)
-  = reflCall "App" [reflectQuote unq f, reflectQuote unq x]
-reflectQuote unq (Constant c)
+reflectTTQuote unq (Bind n b x)
+  = reflCall "Bind" [reflectName n, reflectBinderQuote reflectTTQuote unq b, reflectTTQuote unq x]
+reflectTTQuote unq (App f x)
+  = reflCall "App" [reflectTTQuote unq f, reflectTTQuote unq x]
+reflectTTQuote unq (Constant c)
   = reflCall "TConst" [reflectConstant c]
-reflectQuote unq (Proj t i)
-  = reflCall "Proj" [reflectQuote unq t, RConstant (I i)]
-reflectQuote unq (Erased) = Var (reflm "Erased")
-reflectQuote unq (Impossible) = Var (reflm "Impossible")
-reflectQuote unq (TType exp) = reflCall "TType" [reflectUExp exp]
+reflectTTQuote unq (Proj t i)
+  = reflCall "Proj" [reflectTTQuote unq t, RConstant (I i)]
+reflectTTQuote unq (Erased) = Var (reflm "Erased")
+reflectTTQuote unq (Impossible) = Var (reflm "Impossible")
+reflectTTQuote unq (TType exp) = reflCall "TType" [reflectUExp exp]
+reflectTTQuote unq (UType u) = reflCall "UType" [reflectUniverse u]
+
+reflectRawQuote :: [Name] -> Raw -> Raw
+reflectRawQuote unq (Var n)
+  | n `elem` unq = Var n
+  | otherwise = reflCall "Var" [reflectName n]
+reflectRawQuote unq (RBind n b r) =
+  reflCall "RBind" [reflectName n, reflectBinderQuote reflectRawQuote unq b, reflectRawQuote unq r]
+reflectRawQuote unq (RApp f x) =
+  reflCall "RApp" [reflectRawQuote unq f, reflectRawQuote unq x]
+reflectRawQuote unq RType = Var (reflm "RType")
+reflectRawQuote unq (RUType u) =
+  reflCall "RUType" [reflectUniverse u]
+reflectRawQuote unq (RForce r) = reflCall "RForce" [reflectRawQuote unq r]
+reflectRawQuote unq (RConstant cst) = reflCall "RConstant" [reflectConstant cst]
 
 reflectNameType :: NameType -> Raw
 reflectNameType (Bound) = Var (reflm "Bound")
@@ -2283,27 +2332,27 @@ reflectNameQuotePattern _ -- for all other names, match any
        solve
 
 reflectBinder :: Binder Term -> Raw
-reflectBinder = reflectBinderQuote []
+reflectBinder = reflectBinderQuote reflectTTQuote []
 
-reflectBinderQuote :: [Name] -> Binder Term -> Raw
-reflectBinderQuote unq (Lam t)
-   = reflCall "Lam" [Var (reflm "TT"), reflectQuote unq t]
-reflectBinderQuote unq (Pi _ t k)
-   = reflCall "Pi" [Var (reflm "TT"), reflectQuote unq t, reflectQuote unq k]
-reflectBinderQuote unq (Let x y)
-   = reflCall "Let" [Var (reflm "TT"), reflectQuote unq x, reflectQuote unq y]
-reflectBinderQuote unq (NLet x y)
-   = reflCall "NLet" [Var (reflm "TT"), reflectQuote unq x, reflectQuote unq y]
-reflectBinderQuote unq (Hole t)
-   = reflCall "Hole" [Var (reflm "TT"), reflectQuote unq t]
-reflectBinderQuote unq (GHole _ t)
-   = reflCall "GHole" [Var (reflm "TT"), reflectQuote unq t]
-reflectBinderQuote unq (Guess x y)
-   = reflCall "Guess" [Var (reflm "TT"), reflectQuote unq x, reflectQuote unq y]
-reflectBinderQuote unq (PVar t)
-   = reflCall "PVar" [Var (reflm "TT"), reflectQuote unq t]
-reflectBinderQuote unq (PVTy t)
-   = reflCall "PVTy" [Var (reflm "TT"), reflectQuote unq t]
+reflectBinderQuote :: ([Name] -> a -> Raw) -> [Name] -> Binder a -> Raw
+reflectBinderQuote q unq (Lam t)
+   = reflCall "Lam" [Var (reflm "TT"), q unq t]
+reflectBinderQuote q unq (Pi _ t k)
+   = reflCall "Pi" [Var (reflm "TT"), q unq t, q unq k]
+reflectBinderQuote q unq (Let x y)
+   = reflCall "Let" [Var (reflm "TT"), q unq x, q unq y]
+reflectBinderQuote q unq (NLet x y)
+   = reflCall "NLet" [Var (reflm "TT"), q unq x, q unq y]
+reflectBinderQuote q unq (Hole t)
+   = reflCall "Hole" [Var (reflm "TT"), q unq t]
+reflectBinderQuote q unq (GHole _ t)
+   = reflCall "GHole" [Var (reflm "TT"), q unq t]
+reflectBinderQuote q unq (Guess x y)
+   = reflCall "Guess" [Var (reflm "TT"), q unq x, q unq y]
+reflectBinderQuote q unq (PVar t)
+   = reflCall "PVar" [Var (reflm "TT"), q unq t]
+reflectBinderQuote q unq (PVTy t)
+   = reflCall "PVTy" [Var (reflm "TT"), q unq t]
 
 mkList :: Raw -> [Raw] -> Raw
 mkList ty []      = RApp (Var (sNS (sUN "Nil") ["List", "Prelude"])) ty
@@ -2343,7 +2392,8 @@ reflectConstant ManagedPtrType = Var (reflm "ManagedPtrType")
 reflectConstant BufferType = Var (reflm "BufferType")
 reflectConstant VoidType = Var (reflm "VoidType")
 reflectConstant Forgot = Var (reflm "Forgot")
-
+reflectConstant WorldType = Var (reflm "WorldType")
+reflectConstant TheWorld = Var (reflm "TheWorld")
 
 reflectUExp :: UExp -> Raw
 reflectUExp (UVar i) = reflCall "UVar" [RConstant (I i)]
