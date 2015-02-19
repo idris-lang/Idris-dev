@@ -1476,20 +1476,20 @@ runTactical ctxt env tm = runTacTm (eval tm) >> return ()
     -- step, the output is the (reflected) term returned.
     runTacTm :: Term -> ElabD Term
     runTacTm (unApply -> tac@(P _ n _, args))
-      | n == tacN "Solve", [] <- args
+      | n == tacN "prim__Solve", [] <- args
       = do solve
            returnUnit
-      | n == tacN "Goal", [] <- args
+      | n == tacN "prim__Goal", [] <- args
       = do (h:_) <- get_holes
            t <- goal
            fmap fst . get_type_val $
              rawPair (Var (reflm "TTName"), Var (reflm "TT"))
                      (reflectName h,        reflect t)
-      | n == tacN "Holes", [] <- args
+      | n == tacN "prim__Holes", [] <- args
       = do hs <- get_holes
            fmap fst . get_type_val $
              mkList (Var $ reflm "TTName") (map reflectName hs)
-      | n == tacN "Guess", [] <- args
+      | n == tacN "prim__Guess", [] <- args
       = do ok <- is_guess
            if ok
               then do guess <- fmap forget get_guess
@@ -1500,46 +1500,46 @@ runTactical ctxt env tm = runTacTm (eval tm) >> return ()
               else fmap fst . get_type_val $
                      RApp (Var (sNS (sUN "Nothing") ["Maybe", "Prelude"]))
                           (Var (reflm "TT"))
-      | n == tacN "Env", [] <- args
+      | n == tacN "prim__Env", [] <- args
       = do env <- get_env
            fmap fst . get_type_val $ reflectEnv env
-      | n == tacN "Fail", [_a, errs] <- args
+      | n == tacN "prim__Fail", [_a, errs] <- args
       = do parts <- reifyReportParts (eval errs)
            lift . tfail $ ReflectionError [parts] (Msg "")
-      | n == tacN "PureTactical", [_a, tm] <- args
+      | n == tacN "prim__PureTactical", [_a, tm] <- args
       = return tm 
-      | n == tacN "BindTactical", [_a, _b, first, andThen] <- args
+      | n == tacN "prim__BindTactical", [_a, _b, first, andThen] <- args
       = do let first' = eval first
            res <- runTacTm first'
            let next = eval (App andThen res)
            runTacTm next
-      | n == tacN "Try", [_a, first, alt] <- args
+      | n == tacN "prim__Try", [_a, first, alt] <- args
       = do let first' = eval first
            let alt' = eval alt
            try' (runTacTm first') (runTacTm alt') True
-      | n == tacN "Fill", [raw] <- args
+      | n == tacN "prim__Fill", [raw] <- args
       = do raw' <- reifyRaw raw
            apply raw' []
            returnUnit
-      | n == tacN "Gensym", [eval -> Constant (Str hint)] <- args
+      | n == tacN "prim__Gensym", [eval -> Constant (Str hint)] <- args
       = do n <- getNameFrom (sMN 0 hint)
            fmap fst $ get_type_val (reflectName n)
-      | n == tacN "Claim", [n, ty] <- args
+      | n == tacN "prim__Claim", [n, ty] <- args
       = do n' <- reifyTTName n
            ty' <- reifyRaw ty
            claim n' ty'
            returnUnit
-      | n == tacN "Forget", [tt] <- args
+      | n == tacN "prim__Forget", [tt] <- args
       = do tt' <- reifyTT tt
            fmap fst . get_type_val $ reflect tt'
-      | n == tacN "Attack", [] <- args
+      | n == tacN "prim__Attack", [] <- args
       = do attack
            returnUnit
-      | n == tacN "Focus", [what] <- args
+      | n == tacN "prim__Focus", [what] <- args
       = do n' <- reifyTTName what
            focus n'
            returnUnit
-      | n == tacN "Unfocus", [what] <- args
+      | n == tacN "prim__Unfocus", [what] <- args
       = do n' <- reifyTTName what
            movelast n'
            returnUnit
