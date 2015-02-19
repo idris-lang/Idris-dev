@@ -1029,7 +1029,7 @@ elab ist info emode opts fn tm
              delayElab $ do focus h
                             dotterm
                             elab' ina fc t
-    elab' ina fc (PRunTactics tm) =
+    elab' ina _ (PRunTactics fc tm) =
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
          n' <- getNameFrom (sMN 0 "tacticExpr")
@@ -1038,10 +1038,10 @@ elab ist info emode opts fn tm
          movelast n
          letbind n' scriptTy (Var n)
          focus n
-         elab' ina fc tm
+         elab' ina (Just fc) tm
          env <- get_env
          ctxt <- get_context
-         runTactical ctxt env (P Bound n' Erased)
+         runTactical fc ctxt env (P Bound n' Erased)
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
@@ -1465,8 +1465,8 @@ case_ ind autoSolve ist fn tm = do
          else casetac (forget val)
   when autoSolve solveAll
 
-runTactical :: Context -> Env -> Term -> ElabD ()
-runTactical ctxt env tm = runTacTm (eval tm) >> return ()
+runTactical :: FC -> Context -> Env -> Term -> ElabD ()
+runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
   where
     eval = normaliseAll ctxt env
     tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]

@@ -495,8 +495,10 @@ RunTactics ::=
 -}
 runTactics :: SyntaxInfo -> IdrisParser PTerm
 runTactics syn = do try (lchar '%' *> reserved "runTactics")
+                    fc <- getFC
                     tm <- simpleExpr syn
-                    return (PRunTactics tm)
+                    i <- get
+                    return $ debindApp syn (desugar syn i (PRunTactics fc tm))
                  <?> "new-style tactics expression"
 
 {- | Parses a disambiguation expression 
