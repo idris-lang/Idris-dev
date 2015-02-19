@@ -8,8 +8,7 @@ import Prelude.Maybe
 import Prelude.Monad
 import Language.Reflection
 
-%access private
-
+abstract
 data Tactical : Type -> Type where
   -- obligatory control stuff
   prim__PureTactical : a -> Tactical a
@@ -67,6 +66,7 @@ getGoal = prim__Goal
 
 getHoles : Tactical (List TTName)
 getHoles = prim__Holes
+
 getGuess : Tactical (Maybe TT)
 getGuess = prim__Guess
 
