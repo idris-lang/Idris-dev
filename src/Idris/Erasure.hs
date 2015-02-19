@@ -468,6 +468,7 @@ buildDepMap ci used ctx mainName = addPostulates used $
     -- the easy cases
     getDepsTerm vs bs cd (Constant _) = M.empty
     getDepsTerm vs bs cd (TType    _) = M.empty
+    getDepsTerm vs bs cd (UType    _) = M.empty
     getDepsTerm vs bs cd  Erased      = M.empty
     getDepsTerm vs bs cd  Impossible  = M.empty
 
