@@ -64,7 +64,9 @@ VM* init_vm(int stack_size, size_t heap_size,
 }
 
 void init_threadkeys() {
+#ifdef HAS_PTHREAD
     pthread_key_create(&vm_key, (void*)free_key);
+#endif
 }
 
 void init_threaddata(VM *vm) {
