@@ -940,10 +940,13 @@ elab ist info emode opts fn tm
     elab' ina fc (PQuasiquote t goal)
         = do -- First extract the unquoted subterms, replacing them with fresh
              -- names in the quasiquoted term. Claim their reflections to be
-             -- of type TT.
+             -- an inferred type (to support polytypic quasiquotes).
              (t, unq) <- extractUnquotes 0 t
              let unquoteNames = map fst unq
-             mapM_ (flip claim (Var tt)) unquoteNames
+             mapM_ (\uqn -> do uqh <- getNameFrom (sMN 0 "uqh")
+                               claim uqh RType
+                               movelast uqh
+                               claim uqn (Var uqh)) unquoteNames
 
 
              -- Save the old state - we need a fresh proof state to avoid
