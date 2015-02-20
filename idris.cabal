@@ -513,6 +513,9 @@ Extra-source-files:
                        test/quasiquote004/run
                        test/quasiquote004/*.idr
                        test/quasiquote004/expected
+                       test/quasiquote005/run
+                       test/quasiquote005/*.idr
+                       test/quasiquote005/expected
 
 
                        test/records001/run

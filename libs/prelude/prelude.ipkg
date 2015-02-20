@@ -10,7 +10,7 @@ modules = Builtins, Prelude, IO,
           Prelude.Foldable, Prelude.Traversable, Prelude.Bits, Prelude.Stream,
           Prelude.Uninhabited, Prelude.Pairs,
 
-          Language.Reflection, Language.Reflection.Errors,
+          Language.Reflection, Language.Reflection.Errors, Language.Reflection.Tactical,
 
           Decidable.Equality
 
