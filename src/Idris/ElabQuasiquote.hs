@@ -170,6 +170,8 @@ extractUnquotes n (PUnquote tm)
                 return (PRef (fileFC "(unquote)") n, [(n, tm)])
   | otherwise = fmap (\(tm', ex) -> (PUnquote tm', ex)) $
                 extractUnquotes (n-1) tm
+extractUnquotes n (PRunTactics fc tm)
+  = fmap (\(tm', ex) -> (PRunTactics fc tm', ex)) $ extractUnquotes n tm
 extractUnquotes n x = return (x, []) -- no subterms!
 
 

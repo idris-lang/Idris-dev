@@ -190,7 +190,7 @@ get_term :: Elab' aux Term
 get_term = do ES p _ _ <- get
               return $! (getProofTerm (pterm (fst p)))
 
--- | get the proof term
+-- | modify the proof term
 update_term :: (Term -> Term) -> Elab' aux ()
 update_term f = do ES (p,a) logs prev <- get
                    let p' = p { pterm = mkProofTerm (f (getProofTerm (pterm p))) }
