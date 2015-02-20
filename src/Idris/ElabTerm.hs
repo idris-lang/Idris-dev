@@ -309,7 +309,7 @@ elab ist info emode opts fn tm
          | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
            && isTypeConst c
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
-         | pattern && not reflection && e_nomatching ina
+         | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
          | otherwise = do apply (RConstant c) []; solve
     elab' ina fc (PQuote r)     = do fill r; solve
@@ -433,7 +433,7 @@ elab ist info emode opts fn tm
       | pattern && not reflection && not (e_qq ec) && not (e_intype ec)
             && isTConName n (tt_ctxt ist)
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
-      | pattern && not reflection && e_nomatching ec
+      | pattern && not reflection && not (e_qq ec) && e_nomatching ec
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
       | (pattern || (bindfree && bindable n)) && not (inparamBlock n) && not (e_qq ec)
         = do let ina = e_inarg ec
@@ -461,7 +461,7 @@ elab ist info emode opts fn tm
           | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
             && isTConName n (tt_ctxt ist)
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
-          | pattern && not reflection && e_nomatching ina
+          | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
           | otherwise = 
                do fty <- get_type (Var n) -- check for implicits
@@ -622,7 +622,7 @@ elab ist info emode opts fn tm
     -- if f is local, just do a simple_app
     -- FIXME: Anyone feel like refactoring this mess? - EB
     elab' ina topfc tm@(PApp fc (PRef _ f) args_in)
-      | pattern && not reflection && e_nomatching ina
+      | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
       | otherwise = implicitApp $
          do env <- get_env
