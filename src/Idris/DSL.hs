@@ -76,6 +76,7 @@ expandDo dsl (PDoBlock ds)
     block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
+expandDo dsl (PRunTactics fc tm) = PRunTactics fc $ expandDo dsl tm
 expandDo dsl t = t
 
 -- | Replace DSL-bound variable in a term
