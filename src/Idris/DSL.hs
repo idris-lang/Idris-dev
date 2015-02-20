@@ -162,6 +162,7 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     db' (PDPair fc p l t r) = do l' <- db' l
                                  r' <- db' r
                                  return (PDPair fc p l' t r')
+    db' (PRunTactics fc t) = fmap (PRunTactics fc) (db' t)
     db' t = return t
 
     dbArg a = do t' <- db' (getTm a)
