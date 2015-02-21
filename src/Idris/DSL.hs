@@ -76,6 +76,7 @@ expandDo dsl (PDoBlock ds)
     block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
+expandDo dsl (PRunTactics fc tm) = PRunTactics fc $ expandDo dsl tm
 expandDo dsl t = t
 
 -- | Replace DSL-bound variable in a term
@@ -162,6 +163,7 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     db' (PDPair fc p l t r) = do l' <- db' l
                                  r' <- db' r
                                  return (PDPair fc p l' t r')
+    db' (PRunTactics fc t) = fmap (PRunTactics fc) (db' t)
     db' t = return t
 
     dbArg a = do t' <- db' (getTm a)
