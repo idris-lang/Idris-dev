@@ -498,7 +498,7 @@ runTactics syn = do try (lchar '%' *> reserved "runTactics")
                     fc <- getFC
                     tm <- simpleExpr syn
                     i <- get
-                    return $ debindApp syn (desugar syn i (PRunTactics fc tm))
+                    return $ PRunTactics fc tm
                  <?> "new-style tactics expression"
 
 {- | Parses a disambiguation expression 
