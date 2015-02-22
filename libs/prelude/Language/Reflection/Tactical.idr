@@ -33,6 +33,7 @@ data Tactical : Type -> Type where
   prim__Attack : Tactical ()
 
   prim__Claim : TTName -> Raw -> Tactical ()
+  prim__Intro : Maybe TTName -> Tactical ()
 
 -------------
 -- Public API
@@ -93,3 +94,6 @@ attack = prim__Attack
 
 claim : TTName -> Raw -> Tactical ()
 claim n ty = prim__Claim n ty
+
+intro : Maybe TTName -> Tactical ()
+intro n = prim__Intro n

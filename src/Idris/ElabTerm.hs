@@ -1575,6 +1575,12 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
       = do n' <- reifyTTName what
            movelast n'
            returnUnit
+      | n == tacN "prim__Intro", [mn] <- args
+      = do n <- case fromTTMaybe mn of
+                  Nothing -> return Nothing
+                  Just name -> fmap Just $ reifyTTName name
+           intro n
+           returnUnit
     runTacTm x = lift . tfail . InternalMsg $ "tactical is not implemented for " ++ show x
 
 -- Running tactics directly
