@@ -37,7 +37,8 @@ table fixes
      toTable (reverse fixes) ++
      [[backtick],
       [binary "$" (\fc x y -> flatten $ PApp fc x [pexp y]) AssocRight],
-      [binary "="  (\fc x y -> PEq fc Placeholder Placeholder x y) AssocLeft]]
+      [binary "="  (\fc x y -> PEq fc Placeholder Placeholder x y) AssocLeft],
+      [nofixityoperator]]
   where
     flatten :: PTerm -> PTerm -- flatten application
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
@@ -79,6 +80,13 @@ backtick = Infix (do indentPropHolds gtProp
                      indentPropHolds gtProp
                      fc <- getFC
                      return (\x y -> PApp fc (PRef fc n) [pexp x, pexp y])) AssocNone
+
+-- | Operator without fixity (throws an error)
+nofixityoperator :: Operator IdrisParser PTerm
+nofixityoperator = Infix (do indentPropHolds gtProp
+                             op <- try operator
+                             unexpected $ "Operator without known fixity: " ++ op) AssocNone
+                             
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
  optional namespace
