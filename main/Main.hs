@@ -3,7 +3,6 @@ module Main where
 import System.Console.Haskeline
 import System.IO
 import System.Environment
-import System.Info
 import System.Exit
 import System.FilePath ((</>), addTrailingPathSeparator)
 import System.Directory
@@ -30,6 +29,7 @@ import Idris.CmdOptions
 import IRTS.System ( getLibFlags, getIdrisLibDir, getIncFlags )
 
 import Util.DynamicLinker
+import Util.System
 
 import Pkg.Package
 
@@ -40,7 +40,7 @@ import Paths_idris
 
 main :: IO ()
 main = do
-          when (os == "mingw32") $  do hSetEncoding stdout utf8
+          when isWindows $ do hSetEncoding stdout utf8
           opts <- runArgParser
           runMain (runIdris opts)
 
