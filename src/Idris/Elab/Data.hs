@@ -317,12 +317,12 @@ elabCaseFun ind paramPos n ty cons info = do
   let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
   elimLog $ "-- case function definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
   State.lift $ idrisCatch (rec_elabDecl info EAll info eliminatorTyDecl)
-                    (\err -> do { e <- showErr err ; logLvl 2 ("Error while elaborating eliminator type declaration: " ++ e)})
+                    (ierror . Elaborating "type declaration of " elimDeclName)
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
     [] -> State.lift $ solveDeferred elimDeclName -- Remove meta-variable for type
     _  -> State.lift $ idrisCatch (rec_elabDecl info EAll info eliminatorDef)
-                               (\err -> do { e <- showErr err ; logLvl 2 ("Error while elaborating eliminator clauses: " ++ e)}) 
+                    (ierror . Elaborating "clauses of " elimDeclName)
   where elimLog :: String -> EliminatorState ()
         elimLog s = State.lift (logLvl 2 s)
 
