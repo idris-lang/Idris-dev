@@ -18,7 +18,7 @@ endif
 endif
 
 ifeq ($(OS), windows)
-	OBJS += windows/idris_stdfgn.o windows/idris_net.o
+	OBJS += windows/idris_stdfgn.o windows/idris_net.o windows/win_utils.o
 else
 	OBJS += idris_stdfgn.o idris_net.o
 endif
