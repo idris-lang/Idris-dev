@@ -29,6 +29,7 @@ import Idris.CmdOptions
 import IRTS.System ( getLibFlags, getIdrisLibDir, getIncFlags )
 
 import Util.DynamicLinker
+import Util.System
 
 import Pkg.Package
 
@@ -38,7 +39,9 @@ import Paths_idris
 -- on with the REPL.
 
 main :: IO ()
-main = do opts <- runArgParser
+main = do
+          when isWindows $ do hSetEncoding stdout utf8
+          opts <- runArgParser
           runMain (runIdris opts)
 
 runIdris :: [Opt] -> Idris ()
