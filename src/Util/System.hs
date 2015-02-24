@@ -1,4 +1,4 @@
-module Util.System(tempfile,withTempdir,rmFile,catchIO, isWindows) where
+module Util.System(tempfile,withTempdir,rmFile,catchIO) where
 
 -- System helper functions.
 import Control.Monad (when)
@@ -9,7 +9,6 @@ import System.Directory (getTemporaryDirectory
                         )
 import System.FilePath ((</>), normalise)
 import System.IO
-import System.Info
 import System.IO.Error
 import Control.Exception as CE
 
@@ -18,9 +17,6 @@ catchIO = CE.catch
 
 throwIO :: IOError -> IO a
 throwIO = CE.throw
-
-isWindows :: Bool
-isWindows = os `elem` ["win32", "mingw32", "cygwin32"]
 
 tempfile :: IO (FilePath, Handle)
 tempfile = do dir <- getTemporaryDirectory
