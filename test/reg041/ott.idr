@@ -37,6 +37,6 @@ EQ two False two False = one
 EQ (pi s t) f (pi s' t') g = pi s $ \x => pi s' $ \y => EQ s x s' y ~> EQ (t x) (f x) (t' y) (g y)
 EQ _ _ _ _ = zero
 
-example : <| id == id in (two ~> two) |>
+example : <| (id == id in (two ~> two)) |>
 example = ?prf
 
