@@ -38,3 +38,10 @@ else
 	SHLIB_SUFFIX    :=.so
 endif
 endif
+
+SBOX=.cabal-sandbox
+ifneq "$(wildcard $(SBOX))" ""
+	IDRIS :=.cabal-sandbox/bin/idris
+else
+	IDRIS :=dist/build/idris/idris
+endif

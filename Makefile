@@ -20,16 +20,16 @@ build: dist/setup-config
 test: doc test_c
 
 test_c:
-	$(MAKE) -C test IDRIS=../dist/build/idris
+	$(MAKE) -C test IDRIS=../$(IDRIS)
 
 test_java:
-	$(MAKE) -C test IDRIS=../dist/build/idris test_java
+	$(MAKE) -C test IDRIS=../${IDRIS} test_java
 
 test_llvm:
-	$(MAKE) -C test IDRIS=../dist/build/idris test_llvm
+	$(MAKE) -C test IDRIS=../${IDRIS} test_llvm
 
 test_js:
-	$(MAKE) -C test IDRIS=../dist/build/idris test_js
+	$(MAKE) -C test IDRIS=../${IDRIS} test_js
 
 test_all:
 	$(MAKE) test
@@ -37,7 +37,7 @@ test_all:
 	$(MAKE) test_java
 
 lib_clean:
-	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris RTS=../../dist/build/rts/libidris_rts clean
+	$(MAKE) -C libs IDRIS=../../${IDRIS} RTS=../../dist/build/rts/libidris_rts clean
 
 relib: lib_clean
 	$(CABAL) install $(CABALFLAGS)
@@ -50,10 +50,10 @@ doc: dist/setup-config
 	$(CABAL) haddock --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
 
 lib_doc:
-	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc
+	$(MAKE) -C libs IDRIS=../../${IDRIS} doc
 
 lib_doc_clean:
-	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc_clean
+	$(MAKE) -C libs IDRIS=../../${IDRIS} doc_clean
 
 dist/setup-config:
 	$(CABAL) configure $(CABALFLAGS)
