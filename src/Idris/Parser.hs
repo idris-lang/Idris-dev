@@ -291,6 +291,10 @@ syntaxRule syn
 
     mkSimple' (Expr e : Expr e1 : es) = SimpleExpr e : SimpleExpr e1 :
                                            mkSimple es
+    -- Can't parse a full expression followed by operator like characters due to ambiguity 
+    mkSimple' (Expr e : Symbol s : es)
+      | takeWhile (`elem` opChars) ts /= "" && ts `notElem` invalidOperators  = SimpleExpr e : Symbol s : mkSimple' es
+       where ts = dropWhile isSpace . dropWhileEnd isSpace $ s
     mkSimple' (e : es) = e : mkSimple' es
     mkSimple' [] = []
 
