@@ -162,13 +162,13 @@ void idris_gc(VM* vm) {
 
 void idris_gcInfo(VM* vm, int doGC) {
     printf("Stack: <BOT %p> <TOP %p>\n", vm->valstack, vm->valstack_top);
-    printf("Final heap size         %d\n", (int)(vm->heap.size));
-    printf("Final heap use          %d\n", (int)(vm->heap.next - vm->heap.heap));
+    printf("Final heap size         %zd\n", vm->heap.size);
+    printf("Final heap use          %zd\n", vm->heap.next - vm->heap.heap);
     if (doGC) { idris_gc(vm); }
-    printf("Final heap use after GC %d\n", (int)(vm->heap.next - vm->heap.heap));
+    printf("Final heap use after GC %zd\n", vm->heap.next - vm->heap.heap);
 #ifdef IDRIS_ENABLE_STATS
     printf("Total allocations       %" PRIu64 "\n", vm->stats.allocations);
 #endif
-    printf("Number of collections   %d\n", vm->stats.collections);
+    printf("Number of collections   %" PRIu32 "\n", vm->stats.collections);
 
 }
