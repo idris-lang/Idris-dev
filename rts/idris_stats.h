@@ -3,9 +3,10 @@
 
 #ifdef IDRIS_ENABLE_STATS
 #include <time.h>
+#endif
+
 #include <inttypes.h>
 #include <stdint.h>
-#endif
 
 
 // TODO: measure user time, exclusive/inclusive stats
