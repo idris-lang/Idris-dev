@@ -57,12 +57,12 @@ typedef struct {
 } ManagedPtr;
 
 typedef struct Closure {
-// Use top 16 bits of ty for saying which heap value is in
-// Bottom 16 bits for closure type
+// Use top bit of ty for saying which heap value is in
+// Bottom 7 bits for closure type
 //
 // NOTE: ty can not have type ClosureType because ty must be a
-// uint32_t but enum is platform dependent
-    uint32_t ty;
+// uint8_t but enum is platform dependent
+    uint8_t ty;
     union {
         con c;
         int i;
@@ -155,14 +155,14 @@ typedef void(*func)(VM*, VAL*);
 #define CTAG(x) (((x)->info.c.tag_arity) >> 8)
 #define CARITY(x) ((x)->info.c.tag_arity & 0x000000ff)
 
-// Use top 16 bits for saying which heap value is in
-// Bottom 16 bits for closure type
+// Use top bit for saying which heap value is in
+// Bottom 7 bits for closure type
 
-#define GETTY(x) ((x)->ty & 0x0000ffff)
-#define SETTY(x,t) (x)->ty = (((x)->ty & 0xffff0000) | (t))
+#define GETTY(x) ((x)->ty & 0x1f)
+#define SETTY(x,t) (x)->ty = (((x)->ty & 0xe0) | (t))
 
-#define GETHEAP(x) ((x)->ty >> 16)
-#define SETHEAP(x,y) (x)->ty = (((x)->ty & 0x0000ffff) | ((y) << 16))
+#define GETHEAP(x) ((x)->ty >> 7)
+#define SETHEAP(x,y) (x)->ty = (((x)->ty & 0x7F) | ((y) << 7))
 
 // Integers, floats and operators
 
