@@ -17,7 +17,6 @@ VAL copy(VM* vm, VAL x) {
         } else {
             allocCon(cl, vm, CTAG(x), ar, 1);
             for(i = 0; i < ar; ++i) {
-    //            *argptr = copy(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
                 cl->info.c.args[i] = x->info.c.args[i];
             }
         }
@@ -90,9 +89,7 @@ void cheney(VM *vm) {
        case CON:
            ar = ARITY(heap_item);
            for(i = 0; i < ar; ++i) {
-               // printf("Copying %d %p\n", heap_item->info.c.tag, *argptr);
                VAL newptr = copy(vm, heap_item->info.c.args[i]);
-               // printf("Got %p\t\t%p %p\n", newptr, scan, vm->heap_next);
                heap_item->info.c.args[i] = newptr;
            }
            break;
@@ -111,7 +108,6 @@ void cheney(VM *vm) {
 void idris_gc(VM* vm) {
     HEAP_CHECK(vm)
     STATS_ENTER_GC(vm->stats, vm->heap.size)
-    // printf("Collecting\n");
 
     if (vm->heap.old != NULL)
         free(vm->heap.old);
