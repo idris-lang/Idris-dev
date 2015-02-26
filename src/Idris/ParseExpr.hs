@@ -256,7 +256,7 @@ CaseOption ::=
 -}
 caseOption :: SyntaxInfo -> IdrisParser (PTerm, PTerm)
 caseOption syn = do lhs <- expr (syn { inPattern = True })
-                    symbol "=>"; r <- expr syn
+                    r <- PImpossible <$ reserved "impossible" <|> do symbol "=>"; expr syn
                     return (lhs, r)
                  <?> "case option"
 
