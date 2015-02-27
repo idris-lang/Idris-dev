@@ -821,7 +821,7 @@ process fn (Undefine names) = undefine names
     -- Keep track of which names you've removed so you can
     -- print them out to the user afterward
     undefine names = undefine' names []
-    undefine' [] list = do iRenderOutput $ printUndefinedNames list
+    undefine' [] list = do iRenderResult $ printUndefinedNames list
                            return ()
     undefine' (n:names) already = do
       allDefined <- idris_repl_defs `fmap` get
