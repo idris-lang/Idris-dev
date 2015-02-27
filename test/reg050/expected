@@ -23,6 +23,7 @@ When elaborating an application of function Prelude.Monad.>>=:
     ambiguous use of a non-associative operator,
     ambiguous use of a right-associative operator,
     end of input, function argument,
-    matching application expression
+    matching application expression,
+    single-line comment
 doubleBang mmn = do pure !!mmn 
                          ^     
