@@ -44,7 +44,7 @@ ibcPath ibcsd use_ibcsd fp = let (d_fp, n_fp) = splitFileName fp
 
 ibcPathWithFallback :: FilePath -> FilePath -> IO FilePath
 ibcPathWithFallback ibcsd fp = do let ibcp = ibcPath ibcsd True fp
-                                  ibc <- doesFileExist ibcp
+                                  ibc <- doesFileExist' ibcp
                                   return (if ibc
                                           then ibcp
                                           else ibcPath ibcsd False fp)
@@ -58,9 +58,9 @@ findImport (d:ds) ibcsd fp = do let fp_full = d </> fp
                                 ibcp <- runIO $ ibcPathWithFallback ibcsd fp_full
                                 let idrp = srcPath fp_full
                                 let lidrp = lsrcPath fp_full
-                                ibc <- runIO $ doesFileExist ibcp
-                                idr  <- runIO $ doesFileExist idrp
-                                lidr <- runIO $ doesFileExist lidrp
+                                ibc <- runIO $ doesFileExist' ibcp
+                                idr  <- runIO $ doesFileExist' idrp
+                                lidr <- runIO $ doesFileExist' lidrp
 --                              when idr $ putStrLn $ idrp ++ " ok"
 --                              when lidr $ putStrLn $ lidrp ++ " ok"
 --                              when ibc $ putStrLn $ ibcp ++ " ok"
@@ -78,7 +78,7 @@ findImport (d:ds) ibcsd fp = do let fp_full = d </> fp
 findInPath :: [FilePath] -> FilePath -> IO FilePath
 findInPath [] fp = fail $ "Can't find file " ++ fp
 findInPath (d:ds) fp = do let p = d </> fp
-                          e <- doesFileExist p
+                          e <- doesFileExist' p
                           if e then return p else findInPath ds fp
 
 findPkgIndex :: String -> Idris FilePath
@@ -94,10 +94,26 @@ installedPackages = do
   where
   allFilesInDir base fp = do
     let fullpath = base </> fp
-    isDir <- doesDirectoryExist fullpath
+    isDir <- doesDirectoryExist' fullpath
     if isDir
       then fmap concat (mapM (allFilesInDir fullpath) =<< dirContents fullpath)
       else return [fp]
   dirContents = fmap (filter (not . (`elem` [".", ".."]))) . getDirectoryContents
   goodDir idir d = any (".ibc" `isSuffixOf`) <$> allFilesInDir idir d
 
+
+-- Case sensitive file existence check for Mac OS X.
+doesFileExist' :: FilePath -> IO Bool
+doesFileExist' = caseSensitive doesFileExist
+
+-- Case sensitive directory existence check for Mac OS X.
+doesDirectoryExist' :: FilePath -> IO Bool
+doesDirectoryExist' = caseSensitive doesDirectoryExist
+
+caseSensitive :: (FilePath -> IO Bool) -> FilePath -> IO Bool
+caseSensitive existsCheck name =
+  do exists <- existsCheck name
+     if exists
+        then do contents <- getDirectoryContents (takeDirectory name)
+                return $ (takeFileName name) `elem` contents
+        else return False
