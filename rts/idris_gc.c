@@ -119,6 +119,14 @@ void idris_gc(VM* vm) {
     char* newheap = malloc(vm->heap.size);
     char* oldheap = vm->heap.heap;
 
+    if (newheap == NULL) {
+        fprintf(stderr,
+                "GC ERROR: Unable to allocate new heap. Requested %zd bytes.\n",
+                vm->heap.size);
+        
+        exit(EXIT_FAILURE);
+    }
+    
     vm->heap.heap = newheap;
 #ifdef FORCE_ALIGNMENT
     if (((i_int)(vm->heap.heap)&1) == 1) {
