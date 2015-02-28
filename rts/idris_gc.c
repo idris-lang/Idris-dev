@@ -116,19 +116,8 @@ void idris_gc(VM* vm) {
     if (vm->heap.old != NULL)
         free(vm->heap.old);
 
-    char* newheap = malloc(vm->heap.size);
-    char* oldheap = vm->heap.heap;
-
-    vm->heap.heap = newheap;
-#ifdef FORCE_ALIGNMENT
-    if (((i_int)(vm->heap.heap)&1) == 1) {
-        vm->heap.next = newheap + 1;
-    } else
-#endif
-    {
-        vm->heap.next = newheap;
-    }
-    vm->heap.end  = newheap + vm->heap.size;
+    /* Allocate swap heap. */
+    alloc_heap(&vm->heap, vm->heap.size, vm->heap.growth, vm->heap.heap);
 
     VAL* root;
 
@@ -143,6 +132,7 @@ void idris_gc(VM* vm) {
         msg->msg = copy(vm, msg->msg);
     }
 #endif
+
     vm->ret = copy(vm, vm->ret);
     vm->reg1 = copy(vm, vm->reg1);
 
@@ -154,7 +144,6 @@ void idris_gc(VM* vm) {
     if ((vm->heap.next - vm->heap.heap) > vm->heap.size >> 1) {
         vm->heap.size += vm->heap.growth;
     }
-    vm->heap.old = oldheap;
 
     STATS_LEAVE_GC(vm->stats, vm->heap.size, vm->heap.next - vm->heap.heap)
     HEAP_CHECK(vm)

@@ -29,7 +29,7 @@ VM* init_vm(int stack_size, size_t heap_size,
     vm->valstack_base = valstack;
     vm->stack_max = valstack + stack_size;
 
-    alloc_heap(&(vm->heap), heap_size);
+    alloc_heap(&(vm->heap), heap_size, heap_size, NULL);
 
     vm->ret = NULL;
     vm->reg1 = NULL;
