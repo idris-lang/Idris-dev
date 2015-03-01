@@ -1714,6 +1714,10 @@ stripLinear i tm = evalState (sl tm) [] where
                                      return (a' : as')
              slAlts ns [] = return []
     sl (PPair fc p l r) = do l' <- sl l; r' <- sl r; return (PPair fc p l' r')
+    sl (PDPair fc p l t r) = do l' <- sl l
+                                t' <- sl t
+                                r' <- sl r 
+                                return (PDPair fc p l' t' r')
     sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var
                               args' <- mapM slA args
                               return $ PApp fc fn args'
