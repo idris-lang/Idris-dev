@@ -24,11 +24,11 @@ data RawMemory : Effect where
                   (size : Nat) ->
                   So (offset + size <= i) ->
                   RawMemory (Vect size Bits8)
-                            (MemoryChunk n i) (\v => MemoryChunk n i) 
+                            (MemoryChunk n i) (\v => MemoryChunk n i)
      Poke       :  (offset : Nat) ->
                   (Vect size Bits8) ->
                   So (offset <= i && offset + size <= n) ->
-                  RawMemory () (MemoryChunk n i) (\v => MemoryChunk n (max i (offset + size))) 
+                  RawMemory () (MemoryChunk n i) (\v => MemoryChunk n (max i (offset + size)))
      Move       : (src : MemoryChunk src_size src_init) ->
                   (dst_offset : Nat) ->
                   (src_offset : Nat) ->
@@ -36,8 +36,8 @@ data RawMemory : Effect where
                   So (dst_offset <= dst_init && dst_offset + size <= dst_size) ->
                   So (src_offset + size <= src_init) ->
                   RawMemory () (MemoryChunk dst_size dst_init)
-                            (\v => MemoryChunk dst_size (max dst_init (dst_offset + size))) 
-     GetRawPtr  : RawMemory (MemoryChunk n i) (MemoryChunk n i) (\v => MemoryChunk n i) 
+                            (\v => MemoryChunk dst_size (max dst_init (dst_offset + size)))
+     GetRawPtr  : RawMemory (MemoryChunk n i) (MemoryChunk n i) (\v => MemoryChunk n i)
 
 private
 do_malloc : Nat -> IOExcept String Ptr
@@ -84,9 +84,9 @@ instance Handler RawMemory (IOExcept String) where
     = do ptr <- do_malloc n
          k () (CH ptr)
   handle {-{res = MemoryChunk _ offset}-} (CH ptr) (Initialize {i} c size _) k
-    = ioe_lift (do_memset ptr i c size) $> k () (CH ptr)
+    = ioe_lift (do_memset ptr i c size) *> k () (CH ptr)
   handle (CH ptr) (Free) k
-    = ioe_lift (do_free ptr) $> k () ()
+    = ioe_lift (do_free ptr) *> k () ()
   handle (CH ptr) (Peek offset size _) k
     = do res <- ioe_lift (do_peek ptr offset size)
          k res (CH ptr)
@@ -102,7 +102,7 @@ instance Handler RawMemory (IOExcept String) where
 RAW_MEMORY : Type -> EFFECT
 RAW_MEMORY t = MkEff t RawMemory
 
-allocate : (n : Nat) -> 
+allocate : (n : Nat) ->
            Eff () [RAW_MEMORY ()] (\v => [RAW_MEMORY (MemoryChunk n 0)])
 allocate size = call $ Allocate size
 
@@ -111,7 +111,7 @@ initialize : {i : Nat} ->
              Bits8 ->
              (size : Nat) ->
              So (i + size <= n) ->
-             Eff () [RAW_MEMORY (MemoryChunk n i)] 
+             Eff () [RAW_MEMORY (MemoryChunk n i)]
                        (\v => [RAW_MEMORY (MemoryChunk n (i + size))])
 initialize c size prf = call $ Initialize c size prf
 
@@ -122,7 +122,7 @@ peek : {i : Nat} ->
        (offset : Nat) ->
        (size : Nat) ->
        So (offset + size <= i) ->
-       { [RAW_MEMORY (MemoryChunk n i)] } Eff (Vect size Bits8) 
+       { [RAW_MEMORY (MemoryChunk n i)] } Eff (Vect size Bits8)
 peek offset size prf = call $ Peek offset size prf
 
 poke : {n : Nat} ->
@@ -130,12 +130,12 @@ poke : {n : Nat} ->
        (offset : Nat) ->
        Vect size Bits8 ->
        So (offset <= i && offset + size <= n) ->
-       Eff () [RAW_MEMORY (MemoryChunk n i)] 
+       Eff () [RAW_MEMORY (MemoryChunk n i)]
               (\v => [RAW_MEMORY (MemoryChunk n (max i (offset + size)))])
 poke offset content prf = call $ Poke offset content prf
 
 private
-getRawPtr : { [RAW_MEMORY (MemoryChunk n i)] } Eff (MemoryChunk n i) 
+getRawPtr : { [RAW_MEMORY (MemoryChunk n i)] } Eff (MemoryChunk n i)
 getRawPtr = call $ GetRawPtr
 
 private
@@ -173,5 +173,5 @@ move : {dst_size : Nat} ->
 move dst_offset src_offset size dst_bounds src_bounds
   = do src_ptr <- Src :- getRawPtr
        Dst :- move' src_ptr dst_offset src_offset size dst_bounds src_bounds
-       return () 
+       return ()
 

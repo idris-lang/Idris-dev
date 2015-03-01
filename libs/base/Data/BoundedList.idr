@@ -73,8 +73,8 @@ instance Foldable (BoundedList n) where
 --------------------------------------------------------------------------------
 
 instance Functor (BoundedList n) where
-  map f [] = []
-  map f (x :: xs) = f x :: map f xs
+  f <$> [] = []
+  f <$> (x :: xs) = f x :: (f <$> xs)
 
 --------------------------------------------------------------------------------
 -- Misc

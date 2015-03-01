@@ -10,11 +10,11 @@ IntFn : Type -> Type
 IntFn = \x => Int -> x
 
 instance Functor IntFn where -- (\x => Int -> x) where
-  map f intf = \x => f (intf x)
+  f <$> intf = \x => f (intf x)
 
 instance Applicative (\x => Int -> x) where
   pure v = \x => v
-  (<$>) f a = \x => f x (a x)
+  (<*>) f a = \x => f x (a x)
 
 instance Monad IntFn where 
   f >>= k = \x => k (f x) x

@@ -231,49 +231,49 @@ instance Show a => Show (Maybe a) where
 ---- Functor instances
 
 instance Functor PrimIO where
-    map f io = prim_io_bind io (prim_io_return . f)
+    f <$> io = prim_io_bind io (prim_io_return . f)
 
 instance Functor (IO' ffi) where
-    map f io = io_bind io (\b => io_return (f b))
+    f <$> io = io_bind io (\b => io_return (f b))
 
 instance Functor Maybe where
-    map f (Just x) = Just (f x)
-    map f Nothing  = Nothing
+    f <$> (Just x) = Just (f x)
+    f <$> Nothing  = Nothing
 
 instance Functor (Either e) where
-    map f (Left l) = Left l
-    map f (Right r) = Right (f r)
+    f <$> (Left l)  = Left l
+    f <$> (Right r) = Right (f r)
 
 ---- Applicative instances
 
 instance Applicative PrimIO where
     pure = prim_io_return
 
-    am <$> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
+    am <*> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
 
 instance Applicative (IO' ffi) where
     pure x = io_return x
-    f <$> a = io_bind f (\f' =>
+    f <*> a = io_bind f (\f' =>
                 io_bind a (\a' =>
                   io_return (f' a')))
 
 instance Applicative Maybe where
     pure = Just
 
-    (Just f) <$> (Just a) = Just (f a)
-    _        <$> _        = Nothing
+    (Just f) <*> (Just a) = Just (f a)
+    _        <*> _        = Nothing
 
 instance Applicative (Either e) where
     pure = Right
 
-    (Left a) <$> _          = Left a
-    (Right f) <$> (Right r) = Right (f r)
-    (Right _) <$> (Left l)  = Left l
+    (Left a) <*> _          = Left a
+    (Right f) <*> (Right r) = Right (f r)
+    (Right _) <*> (Left l)  = Left l
 
 instance Applicative List where
     pure x = [x]
 
-    fs <$> vs = concatMap (\f => map f vs) fs
+    fs <*> vs = concatMap (\f => map f vs) fs
 
 ---- Alternative instances
 

@@ -91,11 +91,11 @@ runArrowMonad : ArrowMonad arr a -> arr (the Type ()) a
 runArrowMonad (MkArrowMonad a) = a
 
 instance Arrow a => Functor (ArrowMonad a) where
-  map f (MkArrowMonad m) = MkArrowMonad $ m >>> arrow f
+  f <$> (MkArrowMonad m) = MkArrowMonad $ m >>> arrow f
 
 instance Arrow a => Applicative (ArrowMonad a) where
   pure x = MkArrowMonad $ arrow $ \_ => x
-  (MkArrowMonad f) <$> (MkArrowMonad x) = MkArrowMonad $ f &&& x >>> arrow (uncurry id)
+  (MkArrowMonad f) <*> (MkArrowMonad x) = MkArrowMonad $ f &&& x >>> arrow (uncurry id)
 
 instance ArrowApply a => Monad (ArrowMonad a) where
   (MkArrowMonad m) >>= f =

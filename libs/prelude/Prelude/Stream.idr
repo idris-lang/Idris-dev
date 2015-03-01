@@ -20,7 +20,7 @@ codata Stream : Type -> Type where
 %name Stream xs,ys,zs,ws
 
 instance Functor Stream where
-    map f (x::xs) = f x :: map f xs
+    f <$> (x::xs) = f x :: map f xs
 
 ||| The first element of an infinite stream
 head : Stream a -> a
@@ -111,7 +111,7 @@ scanr f (x :: xs) = f x (foldr f xs) :: scanr f xs
 
 instance Applicative Stream where
   pure = repeat
-  (<$>) = zipWith apply
+  (<*>) = zipWith apply
 
 instance Monad Stream where
   s >>= f = diag (map f s)

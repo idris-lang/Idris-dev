@@ -255,8 +255,8 @@ instance Ord a => Ord (Vect n a) where
 --------------------------------------------------------------------------------
 
 instance Functor (Vect n) where
-  map f []        = []
-  map f (x::xs) = f x :: map f xs
+  f <$> []      = []
+  f <$> (x::xs) = f x :: (f <$> xs)
 
 
 ||| Map a partial function across a vector, returning those elements for which
@@ -529,7 +529,7 @@ transpose (x :: xs) = zipWith (::) x (transpose xs)
 instance Applicative (Vect k) where
     pure = replicate _
 
-    fs <$> vs = zipWith apply fs vs
+    fs <*> vs = zipWith apply fs vs
 
 instance Monad (Vect n) where
     m >>= f = diag (map f m)

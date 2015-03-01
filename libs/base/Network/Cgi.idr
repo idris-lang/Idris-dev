@@ -30,13 +30,13 @@ getAction : CGI a -> CGIInfo -> IO (a, CGIInfo)
 getAction (MkCGI act) = act
 
 instance Functor CGI where
-    map f (MkCGI c) = MkCGI (\s => do (a, i) <- c s
+    f <$> (MkCGI c) = MkCGI (\s => do (a, i) <- c s
                                       return (f a, i))
 
 instance Applicative CGI where
     pure v = MkCGI (\s => return (v, s))
 
-    (MkCGI a) <$> (MkCGI b) = MkCGI (\s => do (f, i) <- a s
+    (MkCGI a) <*> (MkCGI b) = MkCGI (\s => do (f, i) <- a s
                                               (c, j) <- b i
                                               return (f c, j))
 

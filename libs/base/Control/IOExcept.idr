@@ -6,12 +6,12 @@ data IOExcept : Type -> Type -> Type where
      ioM : IO (Either err a) -> IOExcept err a
 
 instance Functor (IOExcept e) where
-     map f (ioM fn) = ioM (map (map f) fn)
+     f <$> (ioM fn) = ioM ((f <$>) <$> fn)
 
 instance Applicative (IOExcept e) where
      pure x = ioM (pure (pure x))
-     (ioM f) <$> (ioM a) = ioM (do f' <- f; a' <- a
-                                   return (f' <$> a'))
+     (ioM f) <*> (ioM a) = ioM (do f' <- f; a' <- a
+                                   return (f' <*> a'))
 
 instance Monad (IOExcept e) where
      (ioM x) >>= k = ioM (do x' <- x;

@@ -18,14 +18,14 @@ record StateT : Type -> (Type -> Type) -> Type -> Type where
          (runStateT : s -> m (a, s)) -> StateT s m a
 
 instance Functor f => Functor (StateT s f) where
-    map f (ST g) = ST (\st => map (mapFst f) (g st)) where
+    f <$> (ST g) = ST (\st => mapFst f <$> g st) where
        mapFst : (a -> x) -> (a, s) -> (x, s)
        mapFst fn (a, b) = (fn a, b)
 
 instance Monad f => Applicative (StateT s f) where
     pure x = ST (\st => pure (x, st))
 
-    (ST f) <$> (ST a) = ST (\st => do (g, r) <- f st
+    (ST f) <*> (ST a) = ST (\st => do (g, r) <- f st
                                       (b, t) <- a r
                                       return (g b, t))
 

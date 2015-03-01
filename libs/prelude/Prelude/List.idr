@@ -235,8 +235,8 @@ instance Monoid (List a) where
   neutral = []
 
 instance Functor List where
-  map f []      = []
-  map f (x::xs) = f x :: map f xs
+  f <$> []      = []
+  f <$> (x::xs) = f x :: map f xs
 
 --------------------------------------------------------------------------------
 -- Zips and unzips

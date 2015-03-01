@@ -37,8 +37,8 @@ using (G : Vect n Ty)
       index_first = stop
       index_next  = pop
 
-  (<$>) : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
-  (<$>) = \f, a => App f a
+  (<*>) : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
+  (<*>) = \f, a => App f a
 
   pure : Expr G a -> Expr G a
   pure = id

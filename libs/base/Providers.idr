@@ -13,13 +13,13 @@ data Provider : (a : Type) -> Type where
 
 -- instances
 instance Functor Provider where
-  map f (Provide a) = Provide (f a)
-  map f (Error err) = Error err
+  f <$> (Provide a) = Provide (f a)
+  f <$> (Error err) = Error err
 
 instance Applicative Provider where
-  (Provide f) <$> (Provide x) = Provide (f x)
-  (Provide f) <$> (Error err) = Error err
-  (Error err) <$> _           = Error err
+  (Provide f) <*> (Provide x) = Provide (f x)
+  (Provide f) <*> (Error err) = Error err
+  (Error err) <*> _           = Error err
   pure = Provide
 
 instance Monad Provider where

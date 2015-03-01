@@ -114,15 +114,15 @@ data Binder a = Lam a
 %name Binder b, b'
 
 instance Functor Binder where
-  map f (Lam x) = Lam (f x)
-  map f (Pi x k) = Pi (f x) (f k)
-  map f (Let x y) = Let (f x) (f y)
-  map f (NLet x y) = NLet (f x) (f y)
-  map f (Hole x) = Hole (f x)
-  map f (GHole x) = GHole (f x)
-  map f (Guess x y) = Guess (f x) (f y)
-  map f (PVar x) = PVar (f x)
-  map f (PVTy x) = PVTy (f x)
+  f <$> (Lam x) = Lam (f x)
+  f <$> (Pi x k) = Pi (f x) (f k)
+  f <$> (Let x y) = Let (f x) (f y)
+  f <$> (NLet x y) = NLet (f x) (f y)
+  f <$> (Hole x) = Hole (f x)
+  f <$> (GHole x) = GHole (f x)
+  f <$> (Guess x y) = Guess (f x) (f y)
+  f <$> (PVar x) = PVar (f x)
+  f <$> (PVTy x) = PVTy (f x)
 
 instance Foldable Binder where
   foldr f z (Lam x) = f x z

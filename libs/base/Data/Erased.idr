@@ -12,11 +12,11 @@ data Erased : Type -> Type where
     Erase : .(x : a) -> Erased a
 
 instance Functor Erased where
-  map f (Erase x) = Erase (f x)
+  f <$> (Erase x) = Erase (f x)
 
 instance Applicative Erased where
   pure = Erase
-  (<$>) (Erase f) (Erase x) = Erase (f x)
+  (<*>) (Erase f) (Erase x) = Erase (f x)
 
 instance Monad Erased where
   (>>=) (Erase x) f = f x

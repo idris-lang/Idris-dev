@@ -8,10 +8,10 @@ import Prelude.Foldable
 import Prelude.Functor
 
 traverse_ : (Foldable t, Applicative f) => (a -> f b) -> t a -> f ()
-traverse_ f = foldr (($>) . f) (pure ())
+traverse_ f = foldr ((*>) . f) (pure ())
 
 sequence_ : (Foldable t, Applicative f) => t (f a) -> f ()
-sequence_ = foldr ($>) (pure ())
+sequence_ = foldr (*>) (pure ())
 
 for_ : (Foldable t, Applicative f) => t a -> (a -> f b) -> f ()
 for_ = flip traverse_

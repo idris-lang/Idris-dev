@@ -1157,7 +1157,7 @@ updateSyntaxRules rules (SyntaxRules sr) = SyntaxRules newRules
 
 initDSL = DSL (PRef f (sUN ">>="))
               (PRef f (sUN "return"))
-              (PRef f (sUN "<$>"))
+              (PRef f (sUN "<*>"))
               (PRef f (sUN "pure"))
               Nothing
               Nothing
