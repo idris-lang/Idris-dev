@@ -10,19 +10,8 @@ When elaborating an application of function Prelude.Monad.>>=:
                         List
                 with
                         \{uv0} => argTy -> uv
-./baddoublebang.idr:6:26: error: not
-    a terminator, expected: "$",
-    "$>", "&&", "*", "+", "++", "-",
-    "->", ".", "/", "/=", "::", ";",
-    "<", "<#>", "<$", "<$>", "<*>",
-    "<+>", "<->", "<<", "<=", "<|>",
-    "=", "==", ">", ">=", ">>",
-    ">>=", "\\\\", "`", "in", "||",
-    "~=~",
-    ambiguous use of a left-associative operator,
-    ambiguous use of a non-associative operator,
-    ambiguous use of a right-associative operator,
-    end of input, function argument,
-    matching application expression
+./baddoublebang.idr:6:28: error: unexpected
+    Operator without known fixity:
+    !!, expected: space
 doubleBang mmn = do pure !!mmn 
-                         ^     
+                           ^   
