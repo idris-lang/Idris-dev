@@ -821,7 +821,7 @@ process fn (Undefine names) = undefine names
     -- Keep track of which names you've removed so you can
     -- print them out to the user afterward
     undefine names = undefine' names []
-    undefine' [] list = do iRenderOutput $ printUndefinedNames list
+    undefine' [] list = do iRenderResult $ printUndefinedNames list
                            return ()
     undefine' (n:names) already = do
       allDefined <- idris_repl_defs `fmap` get
@@ -1104,10 +1104,12 @@ process fn Execute
                            (tmpn, tmph) <- runIO tempfile
                            runIO $ hClose tmph
                            t <- codegen
+                           -- gcc adds .exe when it builds windows programs
+                           progName <- return $ if isWindows then tmpn ++ ".exe" else tmpn
                            ir <- compile t tmpn m
                            runIO $ generate t (fst (head (idris_imported ist))) ir
                            case idris_outputmode ist of
-                             RawOutput h -> do runIO $ rawSystem tmpn []
+                             RawOutput h -> do runIO $ rawSystem progName []
                                                return ()
                              IdeMode n h -> runIO . hPutStrLn h $
                                              IdeMode.convSExp "run-program" tmpn n)

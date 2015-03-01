@@ -26,7 +26,7 @@ runArgParser = do opts <- execParser $ info parser
                  idrisProgDesc = PP.vsep [PP.empty,
                                           PP.text "Idris is a general purpose pure functional programming language with dependent",
                                           PP.text "types. Dependent types allow types to be predicated on values, meaning that",
-                                          PP.text "some aspects of a program’s behaviour can be specified precisely in the type.",
+                                          PP.text "some aspects of a program's behaviour can be specified precisely in the type.",
                                           PP.text "It is compiled, with eager evaluation. Its features are influenced by Haskell",
                                           PP.text "and ML.",
                                           PP.empty,

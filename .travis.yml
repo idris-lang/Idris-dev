@@ -1,4 +1,10 @@
 language: haskell
+ghc:
+  # Idris won't build on 7.4 and earlier due to dependency
+  # problems. 7.10 isn't yet supported on Travis.
+  - 7.6
+  - 7.8
+
 before_install:
   - sudo add-apt-repository --yes ppa:h-rayflood/llvm
   - sudo apt-get update -qq
