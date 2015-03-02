@@ -267,108 +267,193 @@ data Tactic =
 %name Tactic tac, tac'
 
 
-||| Things with a canonical representation in the TT datatype.
+||| Things with a canonical representation as a reflected term.
 |||
 ||| This type class is intended to be used during proof automation and the
 ||| construction of custom tactics.
 |||
 ||| @ a the type to be quoted
-class Quotable a where
+||| @ t the type to quote it to (typically `TT` or `Raw`)
+class Quotable a t where
   ||| A representation of the type `a`.
   |||
   ||| This is to enable quoting polymorphic datatypes
-  quotedTy : TT
+  quotedTy : t
 
   ||| Quote a particular element of `a`.
   |||
   ||| Each equation should look something like ```quote (Foo x y) = `(Foo ~(quote x) ~(quote y))```
-  quote : a -> TT
+  quote : a -> t
 
-instance Quotable Nat where
+instance Quotable Nat TT where
   quotedTy = `(Nat)
 
   quote Z     = `(Z)
   quote (S k) = `(S ~(quote k))
 
-instance Quotable Int where
+instance Quotable Nat Raw where
+  quotedTy = `(Nat)
+
+  quote Z     = `(Z)
+  quote (S k) = `(S ~(quote k))
+
+instance Quotable Int TT where
   quotedTy = `(Int)
   quote x = TConst (I x)
 
-instance Quotable Float where
+instance Quotable Int Raw where
+  quotedTy = `(Int)
+  quote x = RConstant (I x)
+
+instance Quotable Float TT where
   quotedTy = `(Float)
   quote x = TConst (Fl x)
 
-instance Quotable Char where
+instance Quotable Float Raw where
+  quotedTy = `(Float)
+  quote x = RConstant (Fl x)
+
+instance Quotable Char TT where
   quotedTy = `(Char)
   quote x = TConst (Ch x)
 
-instance Quotable Bits8 where
+instance Quotable Char Raw where
+  quotedTy = `(Char)
+  quote x = RConstant (Ch x)
+
+instance Quotable Bits8 TT where
   quotedTy = `(Bits8)
   quote x = TConst (B8 x)
 
-instance Quotable Bits16 where
+instance Quotable Bits8 Raw where
+  quotedTy = `(Bits8)
+  quote x = RConstant (B8 x)
+
+instance Quotable Bits16 TT where
   quotedTy = `(Bits16)
   quote x = TConst (B16 x)
 
-instance Quotable Bits32 where
+instance Quotable Bits16 Raw where
+  quotedTy = `(Bits16)
+  quote x = RConstant (B16 x)
+
+instance Quotable Bits32 TT where
   quotedTy = `(Bits32)
   quote x = TConst (B32 x)
 
-instance Quotable Bits64 where
+instance Quotable Bits32 Raw where
+  quotedTy = `(Bits32)
+  quote x = RConstant (B32 x)
+
+instance Quotable Bits64 TT where
   quotedTy = `(Bits64)
   quote x = TConst (B64 x)
 
-instance Quotable Integer where
+instance Quotable Bits64 Raw where
+  quotedTy = `(Bits64)
+  quote x = RConstant (B64 x)
+
+instance Quotable Integer TT where
   quotedTy = `(Integer)
   quote x = TConst (BI x)
 
-instance Quotable Bits8x16 where
+instance Quotable Integer Raw where
+  quotedTy = `(Integer)
+  quote x = RConstant (BI x)
+
+instance Quotable Bits8x16 TT where
   quotedTy = `(Bits8x16)
   quote x = TConst (B8V x)
 
-instance Quotable Bits16x8 where
+instance Quotable Bits8x16 Raw where
+  quotedTy = `(Bits8x16)
+  quote x = RConstant (B8V x)
+
+instance Quotable Bits16x8 TT where
   quotedTy = `(Bits16x8)
   quote x = TConst (B16V x)
 
-instance Quotable Bits32x4 where
+instance Quotable Bits16x8 Raw where
+  quotedTy = `(Bits16x8)
+  quote x = RConstant (B16V x)
+
+instance Quotable Bits32x4 TT where
   quotedTy = `(Bits32x4)
   quote x = TConst (B32V x)
 
-instance Quotable Bits64x2 where
+instance Quotable Bits32x4 Raw where
+  quotedTy = `(Bits32x4)
+  quote x = RConstant (B32V x)
+
+instance Quotable Bits64x2 TT where
   quotedTy = `(Bits64x2)
   quote x = TConst (B64V x)
 
-instance Quotable String where
+instance Quotable Bits64x2 Raw where
+  quotedTy = `(Bits64x2)
+  quote x = RConstant (B64V x)
+
+instance Quotable String TT where
   quotedTy = `(String)
   quote x = TConst (Str x)
 
-instance Quotable NameType where
+instance Quotable String Raw where
+  quotedTy = `(String)
+  quote x = RConstant (Str x)
+
+instance Quotable NameType TT where
   quotedTy = `(NameType)
   quote Bound = `(Bound)
   quote Ref = `(Ref)
   quote (DCon x y) = `(DCon ~(quote x) ~(quote y))
   quote (TCon x y) = `(TCon ~(quote x) ~(quote y))
 
-instance Quotable a => Quotable (List a) where
+instance Quotable NameType Raw where
+  quotedTy = `(NameType)
+  quote Bound = `(Bound)
+  quote Ref = `(Ref)
+  quote (DCon x y) = `(DCon ~(quote {t=Raw} x) ~(quote {t=Raw} y))
+  quote (TCon x y) = `(TCon ~(quote {t=Raw} x) ~(quote {t=Raw} y))
+
+instance Quotable a TT => Quotable (List a) TT where
   quotedTy = `(List ~(quotedTy {a=a}))
   quote [] = `(List.Nil {a=~quotedTy})
   quote (x :: xs) = `(List.(::) {a=~quotedTy} ~(quote x) ~(quote xs))
 
-instance Quotable TTName where
+instance Quotable a Raw => Quotable (List a) Raw where
+  quotedTy = `(List ~(quotedTy {a=a}))
+  quote [] = `(List.Nil {a=~quotedTy})
+  quote (x :: xs) = `(List.(::) {a=~quotedTy} ~(quote x) ~(quote xs))
+
+instance Quotable TTName TT where
   quotedTy = `(TTName)
   quote (UN x) = `(UN ~(quote x))
   quote (NS n xs) = `(NS ~(quote n) ~(quote xs))
   quote (MN x y) = `(MN ~(quote x) ~(quote y))
   quote NErased = `(NErased)
 
-instance Quotable NativeTy where
+instance Quotable TTName Raw where
+  quotedTy = `(TTName)
+  quote (UN x) = `(UN ~(quote {t=Raw} x))
+  quote (NS n xs) = `(NS ~(quote {t=Raw} n) ~(quote {t=Raw} xs))
+  quote (MN x y) = `(MN ~(quote {t=Raw} x) ~(quote {t=Raw} y))
+  quote NErased = `(NErased)
+
+instance Quotable NativeTy TT where
     quotedTy = `(NativeTy)
     quote IT8 = `(Reflection.IT8)
     quote IT16 = `(Reflection.IT16)
     quote IT32 = `(Reflection.IT32)
     quote IT64 = `(Reflection.IT64)
 
-instance Quotable Reflection.IntTy where
+instance Quotable NativeTy Raw where
+    quotedTy = `(NativeTy)
+    quote IT8 = `(Reflection.IT8)
+    quote IT16 = `(Reflection.IT16)
+    quote IT32 = `(Reflection.IT32)
+    quote IT64 = `(Reflection.IT64)
+
+instance Quotable Reflection.IntTy TT where
   quotedTy = `(Reflection.IntTy)
   quote (ITFixed x) = `(ITFixed ~(quote x))
   quote ITNative = `(Reflection.ITNative)
@@ -376,12 +461,25 @@ instance Quotable Reflection.IntTy where
   quote ITChar = `(Reflection.ITChar)
   quote (ITVec x y) = `(ITVec ~(quote x) ~(quote y))
 
-instance Quotable ArithTy where
+instance Quotable Reflection.IntTy Raw where
+  quotedTy = `(Reflection.IntTy)
+  quote (ITFixed x) = `(ITFixed ~(quote {t=Raw} x))
+  quote ITNative = `(Reflection.ITNative)
+  quote ITBig = `(ITBig)
+  quote ITChar = `(Reflection.ITChar)
+  quote (ITVec x y) = `(ITVec ~(quote {t=Raw} x) ~(quote {t=Raw} y))
+
+instance Quotable ArithTy TT where
   quotedTy = `(ArithTy)
   quote (ATInt x) = `(ATInt ~(quote x))
   quote ATFloat = `(ATFloat)
 
-instance Quotable Const where
+instance Quotable ArithTy Raw where
+  quotedTy = `(ArithTy)
+  quote (ATInt x) = `(ATInt ~(quote {t=Raw} x))
+  quote ATFloat = `(ATFloat)
+
+instance Quotable Const TT where
   quotedTy = `(Const)
   quote (I x) = `(I ~(quote x))
   quote (BI x) = `(BI ~(quote x))
@@ -406,19 +504,55 @@ instance Quotable Const where
   quote WorldType = `(WorldType)
   quote TheWorld = `(TheWorld)
 
-instance Quotable TTUExp where
+instance Quotable Const Raw where
+  quotedTy = `(Const)
+  quote (I x) = `(I ~(quote {t=Raw} x))
+  quote (BI x) = `(BI ~(quote {t=Raw} x))
+  quote (Fl x) = `(Fl ~(quote {t=Raw} x))
+  quote (Ch x) = `(Ch ~(quote {t=Raw} x))
+  quote (Str x) = `(Str ~(quote {t=Raw} x))
+  quote (B8 x) = `(B8 ~(quote {t=Raw} x))
+  quote (B16 x) = `(B16 ~(quote {t=Raw} x))
+  quote (B32 x) = `(B32 ~(quote {t=Raw} x))
+  quote (B64 x) = `(B64 ~(quote {t=Raw} x))
+  quote (B8V xs) = `(B8V ~(quote {t=Raw} xs))
+  quote (B16V xs) = `(B16V ~(quote {t=Raw} xs))
+  quote (B32V xs) = `(B32V ~(quote {t=Raw} xs))
+  quote (B64V xs) = `(B64V ~(quote {t=Raw} xs))
+  quote (AType x) = `(AType ~(quote {t=Raw} x))
+  quote StrType = `(StrType)
+  quote PtrType = `(PtrType)
+  quote ManagedPtrType = `(ManagedPtrType)
+  quote BufferType = `(BufferType)
+  quote VoidType = `(VoidType)
+  quote Forgot = `(Forgot)
+  quote WorldType = `(WorldType)
+  quote TheWorld = `(TheWorld)
+
+instance Quotable TTUExp TT where
   quotedTy = `(TTUExp)
   quote (UVar x) = `(UVar ~(quote x))
   quote (UVal x) = `(UVal ~(quote x))
 
-instance Quotable Universe where
+instance Quotable TTUExp Raw where
+  quotedTy = `(TTUExp)
+  quote (UVar x) = `(UVar ~(quote {t=Raw} x))
+  quote (UVal x) = `(UVal ~(quote {t=Raw} x))
+
+instance Quotable Universe TT where
+  quotedTy = `(Universe)
+  quote Reflection.NullType = `(NullType)
+  quote Reflection.UniqueType = `(UniqueType)
+  quote Reflection.AllTypes = `(AllTypes)
+
+instance Quotable Universe Raw where
   quotedTy = `(Universe)
   quote Reflection.NullType = `(NullType)
   quote Reflection.UniqueType = `(UniqueType)
   quote Reflection.AllTypes = `(AllTypes)
 
 mutual
-  instance Quotable TT where
+  instance Quotable TT TT where
     quotedTy = `(TT)
     quote (P nt n tm) = `(P ~(quote nt) ~(quote n) ~(quote tm))
     quote (V x) = `(V ~(quote x))
@@ -431,7 +565,7 @@ mutual
     quote (TType uexp) = `(TType ~(quote uexp))
     quote (UType u) = `(UType ~(quote u))
 
-  instance Quotable (Binder TT) where
+  instance Quotable (Binder TT) TT where
     quotedTy = `(Binder TT)
     quote (Lam x) = `(Lam {a=TT} ~(assert_total (quote x)))
     quote (Pi x k) = `(Pi {a=TT} ~(assert_total (quote x))
@@ -448,7 +582,7 @@ mutual
     quote (PVTy x) = `(PVTy {a=TT} ~(assert_total (quote x)))
 
 
-instance Quotable ErrorReportPart where
+instance Quotable ErrorReportPart TT where
   quotedTy = `(ErrorReportPart)
   quote (TextPart x) = `(TextPart ~(quote x))
   quote (NamePart n) = `(NamePart ~(quote n))
@@ -476,15 +610,15 @@ mutual
   quoteRawBinder (PVar x) = `(PVar {a=Raw} ~(quoteRaw x))
   quoteRawBinder (PVTy x) = `(PVTy {a=Raw} ~(quoteRaw x))
 
-instance Quotable Raw where
+instance Quotable Raw TT where
   quotedTy = `(Raw)
   quote = quoteRaw
 
-instance Quotable (Binder Raw) where
+instance Quotable (Binder Raw) TT where
   quotedTy = `(Binder Raw)
   quote = quoteRawBinder
 
-instance Quotable Tactic where
+instance Quotable Tactic TT where
   quotedTy = `(Tactic)
   quote (Try tac tac') = `(Try ~(quote tac) ~(quote tac'))
   quote (GoalType x tac) = `(GoalType ~(quote x) ~(quote tac))
@@ -514,3 +648,17 @@ instance Quotable Tactic where
   quote (Fail xs) = `(Fail ~(quote xs))
   quote SourceFC = `(SourceFC)
 
+
+instance Quotable SourceLocation TT where
+  quotedTy = `(SourceLocation)
+  quote (FileLoc fn (sl, sc) (el, ec)) =
+    `(FileLoc ~(quote fn)
+              (~(quote sl), ~(quote sc))
+              (~(quote el), ~(quote ec)))
+
+instance Quotable SourceLocation Raw where
+  quotedTy = `(SourceLocation)
+  quote (FileLoc fn (sl, sc) (el, ec)) =
+    `(FileLoc ~(quote {t=Raw} fn)
+              (~(quote {t=Raw} sl), ~(quote {t=Raw} sc))
+              (~(quote {t=Raw} el), ~(quote {t=Raw} ec)))
