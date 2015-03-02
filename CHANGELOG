@@ -8,6 +8,12 @@ New in 0.9.17:
 * Quasiquotation supports the generation of Language.Reflection.Raw terms
   in addition to Language.Reflection.TT. Types are used for disambiguation,
   defaulting to TT at the REPL.
+* Library operators have been renamed for consistency with Haskell. In
+  particular, Applicative.(<$>) is now Applicative.(<*>) and (<$>) is
+  now an alias for Functor.map. Correspondingly, ($>) and (<$) have
+  been renamed to (<*) and (*>). The cascading effects of this rename
+  are that Algebra.(<*>) has been renamed to Algebra.(<.>) and
+  Matrix.(<.>) is now Matrix.(<:>).
 
 New in 0.9.16:
 --------------
