@@ -34,6 +34,8 @@ data Tactical : Type -> Type where
   prim__Unfocus : TTName -> Tactical ()
   prim__Attack : Tactical ()
 
+  prim__Rewrite : Raw -> Tactical ()
+
   prim__Claim : TTName -> Raw -> Tactical ()
   prim__Intro : Maybe TTName -> Tactical ()
 
@@ -109,3 +111,6 @@ sourceLocation : Tactical ()
 sourceLocation = do loc <- getSourceLocation
                     fill (quote loc)
                     solve
+
+rewriteWith : Raw -> Tactical ()
+rewriteWith rule = prim__Rewrite rule

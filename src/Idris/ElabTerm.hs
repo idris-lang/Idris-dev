@@ -1578,6 +1578,10 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
       | n == tacN "prim__Attack", [] <- args
       = do attack
            returnUnit
+      | n == tacN "prim__Rewrite", [rule] <- args
+      = do r <- reifyRaw rule
+           rewrite r
+           returnUnit
       | n == tacN "prim__Focus", [what] <- args
       = do n' <- reifyTTName what
            focus n'
