@@ -17,21 +17,43 @@ desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
 desugar syn i t = let t' = expandDo (dsl_info syn) t in
                       t' -- addImpl i t'
 
+mkTTName :: FC -> Name -> PTerm
+mkTTName fc n =
+    let mkList fc []     = PRef fc (sNS (sUN "Nil") ["List", "Prelude"])
+        mkList fc (x:xs) = PApp fc (PRef fc (sNS (sUN "::") ["List", "Prelude"]))
+                                   [ pexp (stringC x)
+                                   , pexp (mkList fc xs)]
+        stringC = PConstant . Str . str
+        intC = PConstant . I
+        reflm n = sNS (sUN n) ["Reflection", "Language"]
+    in case n of
+         UN nm     -> PApp fc (PRef fc (reflm "UN")) [ pexp (stringC nm)]
+         NS nm ns  -> PApp fc (PRef fc (reflm "NS")) [ pexp (mkTTName fc nm)
+                                                     , pexp (mkList fc ns)]
+         MN i nm   -> PApp fc (PRef fc (reflm "MN")) [ pexp (intC i)
+                                                     , pexp (stringC nm)]
+         otherwise -> PRef fc $ reflm "NErased"
+
 expandDo :: DSL -> PTerm -> PTerm
 expandDo dsl (PLam fc n ty tm)
     | Just lam <- dsl_lambda dsl
-        = let sc = PApp fc lam [pexp (var dsl n tm 0)] in
-              expandDo dsl sc
+        = let sc = PApp fc lam [ pexp (mkTTName fc n)
+                               , pexp (var dsl n tm 0)]
+          in expandDo dsl sc
 expandDo dsl (PLam fc n ty tm) = PLam fc n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PLet fc n ty v tm)
     | Just letb <- dsl_let dsl
-        = let sc = PApp (fileFC "(dsl)") letb [pexp v, pexp (var dsl n tm 0)] in
-              expandDo dsl sc
+        = let sc = PApp (fileFC "(dsl)") letb [ pexp (mkTTName fc n)
+                                              , pexp v
+                                              , pexp (var dsl n tm 0)]
+          in expandDo dsl sc
 expandDo dsl (PLet fc n ty v tm) = PLet fc n (expandDo dsl ty) (expandDo dsl v) (expandDo dsl tm)
 expandDo dsl (PPi p n ty tm)
     | Just pi <- dsl_pi dsl
-        = let sc = PApp (fileFC "(dsl)") pi [pexp ty, pexp (var dsl n tm 0)] in
-              expandDo dsl sc
+        = let sc = PApp (fileFC "(dsl)") pi [ pexp (mkTTName (fileFC "(dsl)") n)
+                                            , pexp ty
+                                            , pexp (var dsl n tm 0)]
+          in expandDo dsl sc
 expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
 expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
                                         (map (fmap (expandDo dsl)) args)

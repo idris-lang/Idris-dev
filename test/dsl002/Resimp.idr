@@ -156,6 +156,11 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
      = interp env v (\env', v' => do n <- v'
                                      interp env' (f n) k)
 
+  let_ : _ -> Creator (interpTy a) ->
+              Res (a :: gam) (Val () :: gam') (R t) ->
+              Res gam gam' (R t)
+  let_ _ = Let
+
 --   run : {static} Res [] [] (R t) -> IO t
 --   run prog = interp [] prog (\env, res => res)
 
@@ -163,7 +168,7 @@ syntax run [prog] = interp [] prog (\env, res => res)
 
 dsl res
    variable = id
-   let = Let
+   let = let_
    index_first = stop
    index_next = pop
 
