@@ -326,7 +326,7 @@ commentMarkers :: [String]
 commentMarkers = [ "--", "|||" ]
 
 invalidOperators :: [String]
-invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\"]
+invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%"]
 
 -- | Parses an operator
 operator :: MonadicParsing m => m String
