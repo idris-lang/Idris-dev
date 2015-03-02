@@ -54,6 +54,8 @@ using (ctxt : Vect n Ty)
   run (App f x)   env = !(run f env) !(run x env)
   run (Die {loc}) _   = Left loc
 
+  lam_ : _ -> Tm (t::ctxt) t' -> Tm ctxt (Arr t t')
+  lam_ _ = Lam
 
 exec : Tm [] t -> IO ()
 exec tm = case run tm [] of
@@ -64,7 +66,7 @@ dsl lang
   variable = Var
   index_first = FZ
   index_next = FS
-  lambda = Lam
+  lambda = lam_
 
 testTerm1 : Tm [] (Arr U U)
 testTerm1 = lang (\x=>Die)
