@@ -9,7 +9,7 @@ instance Functor Identity where
 instance Applicative Identity where
     pure x = Id x
 
-    (Id f) <$> (Id g) = Id (f g)
+    (Id f) <*> (Id g) = Id (f g)
 
 instance Monad Identity where
     (Id x) >>= k = k x

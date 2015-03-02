@@ -16,7 +16,7 @@ class Applicative m => Monad (m : Type -> Type) where
 
 class (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) where
   monadApplicative : (mf : m (a -> b)) -> (mx : m a) ->
-                     mf <$> mx = mf >>= \f =>
+                     mf <*> mx = mf >>= \f =>
                                  mx >>= \x =>
                                         pure (f x)
   monadLeftIdentity : (x : a) -> (f : a -> m b) -> return x >>= f = f x

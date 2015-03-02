@@ -25,7 +25,7 @@ instance Functor (Morphism r) where
 
 instance Applicative (Morphism r) where
   pure a                = Mor $ const a
-  (Mor f) <$> (Mor a) = Mor $ \r => f r $ a r
+  (Mor f) <*> (Mor a) = Mor $ \r => f r $ a r
 
 instance Monad (Morphism r) where
   (Mor h) >>= f = Mor $ \r => applyMor (f $ h r) r

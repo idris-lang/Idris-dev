@@ -48,7 +48,7 @@ instance Functor DB where
 
 instance Applicative DB where
   pure = MkDB . return . Right
-  (MkDB f) <$> (MkDB x) = MkDB (do f' <- f
+  (MkDB f) <*> (MkDB x) = MkDB (do f' <- f
                                    case f' of
                                      Left err => return (Left err)
                                      Right op => x >>= (return . map op))
