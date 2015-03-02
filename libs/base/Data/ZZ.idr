@@ -15,6 +15,7 @@ import Data.Sign
 data ZZ = Pos Nat | NegS Nat
 
 instance Signed ZZ where
+  sign (Pos Z) = Zero
   sign (Pos _) = Plus
   sign (NegS _) = Minus
 

@@ -27,6 +27,7 @@ VAL MKBIGC(VM* vm, char* val) {
     mpz_t* bigint;
     
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
     
     mpz_init(*bigint);
@@ -43,6 +44,7 @@ VAL MKBIGM(VM* vm, void* big) {
 
     mpz_t* bigint;
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
 
     mpz_init(*bigint);
@@ -59,6 +61,7 @@ VAL MKBIGMc(VM* vm, void* big) {
 
     mpz_t* bigint;
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
 
     mpz_init_set(*bigint, *((mpz_t*)big));
@@ -74,6 +77,7 @@ VAL MKBIGUI(VM* vm, unsigned long val) {
 
     mpz_t* bigint;
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
 
     mpz_init_set_ui(*bigint, val);
@@ -89,6 +93,7 @@ VAL MKBIGSI(VM* vm, signed long val) {
 
     mpz_t* bigint;
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
 
     mpz_init_set_si(*bigint, val);
@@ -105,6 +110,7 @@ VAL GETBIG(VM * vm, VAL x) {
     if (ISINT(x)) {
         mpz_t* bigint;
         VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+        idris_doneAlloc();
         bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
 
         mpz_init(*bigint);
@@ -115,6 +121,7 @@ VAL GETBIG(VM * vm, VAL x) {
 
         return cl;
     } else {
+        idris_doneAlloc();
         switch(GETTY(x)) {
         case FWD:
             return GETBIG(vm, x->info.ptr);
@@ -129,6 +136,7 @@ VAL bigAdd(VM* vm, VAL x, VAL y) {
 
     mpz_t* bigint;
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
     mpz_add(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
@@ -141,6 +149,7 @@ VAL bigSub(VM* vm, VAL x, VAL y) {
 
     mpz_t* bigint;
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
     mpz_sub(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
@@ -153,6 +162,7 @@ VAL bigMul(VM* vm, VAL x, VAL y) {
 
     mpz_t* bigint;
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
     mpz_mul(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
@@ -165,6 +175,7 @@ VAL bigDiv(VM* vm, VAL x, VAL y) {
 
     mpz_t* bigint;
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
     mpz_tdiv_q(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
@@ -177,6 +188,7 @@ VAL bigMod(VM* vm, VAL x, VAL y) {
 
     mpz_t* bigint;
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
     mpz_mod(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, BIGINT);
@@ -258,8 +270,6 @@ VAL idris_bigMod(VM* vm, VAL x, VAL y) {
 }
 
 int bigEqConst(VAL x, int c) {
-    idris_requireAlloc(IDRIS_MAXGMP);
-
     if (ISINT(x)) { return (GETINT(x) == c); }
     else { 
         int rv = mpz_cmp_si(GETMPZ(x), c); 

@@ -11,7 +11,7 @@ import Prelude.Algebra
 
 class Foldable (t : Type -> Type) where
   foldr : (elt -> acc -> acc) -> acc -> t elt -> acc
-  foldl : Foldable t => (acc -> elt -> acc) -> acc -> t elt -> acc
+  foldl : (acc -> elt -> acc) -> acc -> t elt -> acc
   foldl f z t = foldr (flip (.) . flip f) id t z
 
 ||| Combine each element of a structure into a monoid

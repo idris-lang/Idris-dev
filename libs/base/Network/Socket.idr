@@ -31,7 +31,7 @@ data SocketFamily =
 instance Show SocketFamily where
   show AF_UNSPEC = "AF_UNSPEC"
   show AF_INET   = "AF_INET"
-  show AF_INET6  = "AF_INET4"
+  show AF_INET6  = "AF_INET6"
 
 instance ToCode SocketFamily where
   toCode AF_UNSPEC = 0

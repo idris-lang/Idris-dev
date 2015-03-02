@@ -19,6 +19,16 @@ namespace Builtins
      ||| @b the right element of the pair
      MkPair : {A, B : Type} -> (a : A) -> (b : B) -> Pair A B
 
+  ||| The non-dependent pair type, also known as conjunction, usable with
+  ||| UniqueTypes.
+  ||| @A the type of the left elements in the pair
+  ||| @B the type of the left elements in the pair
+  data UPair : (A : Type*) -> (B : Type*) -> Type where
+     ||| A pair of elements
+     ||| @a the left element of the pair
+     ||| @b the right element of the pair
+     MkUPair : {A, B : Type*} -> (a : A) -> (b : B) -> UPair A B
+
   ||| Dependent pairs
   |||
   ||| Dependent pairs represent existential quantification - they consist of a

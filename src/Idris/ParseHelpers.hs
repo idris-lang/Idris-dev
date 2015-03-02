@@ -105,30 +105,28 @@ isEol :: Char -> Bool
 isEol '\n' = True
 isEol  _   = False
 
+-- | A parser that succeeds at the end of the line
 eol :: MonadicParsing m => m ()
 eol = (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
 
 {- | Consumes a single-line comment
 
 @
-     SingleLineComment_t ::= '--' EOL_t
-                        |     '--' ~DocCommentMarker_t ~EOL_t* EOL_t
-                        ;
+     SingleLineComment_t ::= '--' ~EOL_t* EOL_t ;
 @
  -}
 singleLineComment :: MonadicParsing m => m ()
-singleLineComment =     try (string "--" *> eol *> pure ())
-                    <|> try (string "--" *> many simpleWhiteSpace *>
-                             many (satisfy (not . isEol)) *>
-                             eol *> pure ())
-                    <?> ""
+singleLineComment = (string "--" *>
+                     many (satisfy (not . isEol)) *>
+                     eol *> pure ())
+                    <?> "single-line comment"
 
 {- | Consumes a multi-line comment
 
 @
   MultiLineComment_t ::=
      '{ -- }'
-   | '{ -' ~DocCommentMarker_t InCommentChars_t
+   | '{ -' InCommentChars_t
   ;
 @
 
@@ -154,7 +152,7 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
         startEnd :: String
         startEnd = "{}-"
 
-{-| Parses a documentation comment (similar to haddock) given a marker character
+{-| Parses a documentation comment
 
 @
   DocComment_t ::=   '|||' ~EOL_t* EOL_t
@@ -224,7 +222,7 @@ float = Tok.double
 idrisStyle :: MonadicParsing m => IdentifierStyle m
 idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved Hi.Identifier Hi.ReservedIdentifier
   where _styleName = "Idris"
-        _styleStart = satisfy isAlpha
+        _styleStart = satisfy isAlpha <|> oneOf "_"
         _styleLetter = satisfy isAlphaNum <|> oneOf "_'."
         _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "corecord", "Type",
                                       "do", "dsl", "import", "impossible",
@@ -262,7 +260,9 @@ reservedOp name = token $ try $
 
 -- | Parses an identifier as a token
 identifier :: MonadicParsing m => m String
-identifier = token $ Tok.ident idrisStyle
+identifier = try(do i <- token $ Tok.ident idrisStyle
+                    when (i == "_") $ unexpected "wildcard"
+                    return i)
 
 -- | Parses an identifier with possible namespace as a name
 iName :: MonadicParsing m => [String] -> m Name
@@ -562,17 +562,17 @@ collect (c@(PClauses _ o _ _) : ds)
   where clauses :: Maybe Name -> [PClause] -> [PDecl] -> [PDecl]
         clauses j@(Just n) acc (PClauses fc _ _ [PClause fc' n' l ws r w] : ds)
            | n == n' = clauses j (PClause fc' n' l ws r (collect w) : acc) ds
-        clauses j@(Just n) acc (PClauses fc _ _ [PWith fc' n' l ws r w] : ds)
-           | n == n' = clauses j (PWith fc' n' l ws r (collect w) : acc) ds
+        clauses j@(Just n) acc (PClauses fc _ _ [PWith fc' n' l ws r pn w] : ds)
+           | n == n' = clauses j (PWith fc' n' l ws r pn (collect w) : acc) ds
         clauses (Just n) acc xs = PClauses (fcOf c) o n (reverse acc) : collect xs
         clauses Nothing acc (x:xs) = collect xs
         clauses Nothing acc [] = []
 
         cname :: PDecl -> Maybe Name
         cname (PClauses fc _ _ [PClause _ n _ _ _ _]) = Just n
-        cname (PClauses fc _ _ [PWith   _ n _ _ _ _]) = Just n
+        cname (PClauses fc _ _ [PWith   _ n _ _ _ _ _]) = Just n
         cname (PClauses fc _ _ [PClauseR _ _ _ _]) = Nothing
-        cname (PClauses fc _ _ [PWithR _ _ _ _]) = Nothing
+        cname (PClauses fc _ _ [PWithR _ _ _ _ _]) = Nothing
         fcOf :: PDecl -> FC
         fcOf (PClauses fc _ _ _) = fc
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds

@@ -648,9 +648,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- getIState -- new implicits from where block
         logLvl 5 (showTmImpls (expandParams decorate newargs defs (defs \\ decls) rhs_in))
-        let rhs = addImplBoundInf i (map fst newargs) (defs \\ decls)
+        let rhs = addImplBoundInf i (map fst newargs_all) (defs \\ decls)
                                  (expandParams decorate newargs defs (defs \\ decls) rhs_in)
-        logLvl 2 $ "RHS: " ++ showTmImpls rhs
+        logLvl 2 $ "RHS: " ++ show (map fst newargs_all) ++ " " ++ showTmImpls rhs
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
         ((rhs', defer, is, probs), _) <-
@@ -673,7 +673,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         logLvl 5 "DONE CHECK"
-        logLvl 2 $ "---> " ++ show rhs'
+        logLvl 4 $ "---> " ++ show rhs'
         when (not (null defer)) $ iLOG $ "DEFERRED " ++
                     show (map (\ (n, (_,_,t)) -> (n, t)) defer)
         def' <- checkDef fc defer
@@ -796,7 +796,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         isArg' _ = False
     isArg _ _ = False
 
-elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
+elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
    = do let tcgen = Dictionary `elem` opts
         ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
@@ -859,6 +859,11 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- rather than a de Bruijn index.
         let pdeps = usedNamesIn pvars i (delab i cwvalty)
         let (bargs_pre, bargs_post) = split pdeps bargs []
+
+        let mpn = case pn_in of
+                       Nothing -> Nothing
+                       Just n -> Just (uniqueName n (map fst bargs))
+
         logLvl 10 ("With type " ++ show (getRetTy cwvaltyN) ++
                   " depends on " ++ show pdeps ++ " from " ++ show pvars)
         logLvl 10 ("Pre " ++ show bargs_pre ++ "\nPost " ++ show bargs_post)
@@ -867,12 +872,19 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- (ps : Xs) -> (withval : cwvalty) -> (ps' : Xs') -> ret_ty
         let wargval = getRetTy cwvalN
         let wargtype = getRetTy cwvaltyN
+        let wargname = sMN windex "warg"
+
         logLvl 5 ("Abstract over " ++ show wargval ++ " in " ++ show wargtype)
         let wtype = bindTyArgs (flip (Pi Nothing) (TType (UVar 0))) (bargs_pre ++
-                     (sMN 0 "warg", wargtype) :
-                     map (abstract (sMN 0 "warg") wargval wargtype) bargs_post)
-                     (substTerm wargval (P Bound (sMN 0 "warg") wargtype) ret_ty)
-        logLvl 5 ("New function type " ++ show wtype)
+                     (wargname, wargtype) :
+                     map (abstract wargname wargval wargtype) bargs_post ++
+                     case mpn of
+                          Just pn -> [(pn, mkApp (P Ref eqTy Erased)
+                                       [wargtype, wargtype,
+                                         P Bound wargname Erased, wargval])]
+                          Nothing -> [])
+                     (substTerm wargval (P Bound wargname wargtype) ret_ty)
+        logLvl 3 ("New function type " ++ show wtype)
         let wname = SN (WithN windex fname)
 
         let imps = getImps wtype -- add to implicits context
@@ -893,18 +905,21 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
         -- in the subdecls, lhs becomes:
         --         fname  pats | wpat [rest]
         --    ==>  fname' ps   wpat [rest], match pats against toplevel for ps
-        wb <- mapM (mkAuxC wname lhs (map fst bargs_pre) (map fst bargs_post))
+        wb <- mapM (mkAuxC mpn wname lhs (map fst bargs_pre) (map fst bargs_post))
                        withblock
         logLvl 3 ("with block " ++ show wb)
         -- propagate totality assertion to the new definitions
         when (AssertTotal `elem` opts) $ setFlags wname [AssertTotal]
         mapM_ (rec_elabDecl info EAll info) wb
 
-        -- rhs becomes: fname' ps wval
+        -- rhs becomes: fname' ps_pre wval ps_post Refl
         let rhs = PApp fc (PRef fc wname)
                     (map (pexp . (PRef fc) . fst) bargs_pre ++
                         pexp wval :
-                    (map (pexp . (PRef fc) . fst) bargs_post))
+                    (map (pexp . (PRef fc) . fst) bargs_post) ++
+                    case mpn of
+                         Nothing -> []
+                         Just _ -> [pexp (PRefl fc Placeholder)])
         logLvl 5 ("New RHS " ++ showTmImpls rhs)
         ctxt <- getContext -- New context with block added
         i <- getIState
@@ -927,13 +942,13 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
     getImps (Bind n (Pi _ _ _) t) = pexp Placeholder : getImps t
     getImps _ = []
 
-    mkAuxC wname lhs ns ns' (PClauses fc o n cs)
-        | True  = do cs' <- mapM (mkAux wname lhs ns ns') cs
+    mkAuxC pn wname lhs ns ns' (PClauses fc o n cs)
+        | True  = do cs' <- mapM (mkAux pn wname lhs ns ns') cs
                      return $ PClauses fc o wname cs'
         | otherwise = ifail $ show fc ++ "with clause uses wrong function name " ++ show n
-    mkAuxC wname lhs ns ns' d = return $ d
+    mkAuxC pn wname lhs ns ns' d = return $ d
 
-    mkAux wname toplhs ns ns' (PClause fc n tm_in (w:ws) rhs wheres)
+    mkAux pn wname toplhs ns ns' (PClause fc n tm_in (w:ws) rhs wheres)
         = do i <- getIState
              let tm = addImplPat i tm_in
              logLvl 2 ("Matching " ++ showTmImpls tm ++ " against " ++
@@ -942,33 +957,36 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in withblock)
                 Left (a,b) -> ifail $ show fc ++ ":with clause does not match top level"
                 Right mvars ->
                     do logLvl 3 ("Match vars : " ++ show mvars)
-                       lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
+                       lhs <- updateLHS n pn wname mvars ns ns' (fullApp tm) w
                        return $ PClause fc wname lhs ws rhs wheres
-    mkAux wname toplhs ns ns' (PWith fc n tm_in (w:ws) wval withs)
+    mkAux pn wname toplhs ns ns' (PWith fc n tm_in (w:ws) wval pn' withs)
         = do i <- getIState
              let tm = addImplPat i tm_in
              logLvl 2 ("Matching " ++ showTmImpls tm ++ " against " ++
                                       showTmImpls toplhs)
-             withs' <- mapM (mkAuxC wname toplhs ns ns') withs
+             withs' <- mapM (mkAuxC pn wname toplhs ns ns') withs
              case matchClause i toplhs tm of
                 Left (a,b) -> trace ("matchClause: " ++ show a ++ " =/= " ++ show b) (ifail $ show fc ++ "with clause does not match top level")
                 Right mvars ->
-                    do lhs <- updateLHS n wname mvars ns ns' (fullApp tm) w
-                       return $ PWith fc wname lhs ws wval withs'
-    mkAux wname toplhs ns ns' c
+                    do lhs <- updateLHS n pn wname mvars ns ns' (fullApp tm) w
+                       return $ PWith fc wname lhs ws wval pn' withs'
+    mkAux pn wname toplhs ns ns' c
         = ifail $ show fc ++ ":badly formed with clause"
 
     addArg (PApp fc f args) w = PApp fc f (args ++ [pexp w])
     addArg (PRef fc f) w = PApp fc (PRef fc f) [pexp w]
 
-    updateLHS n wname mvars ns_in ns_in' (PApp fc (PRef fc' n') args) w
+    updateLHS n pn wname mvars ns_in ns_in' (PApp fc (PRef fc' n') args) w
         = let ns = map (keepMvar (map fst mvars) fc') ns_in
               ns' = map (keepMvar (map fst mvars) fc') ns_in' in
               return $ substMatches mvars $
                   PApp fc (PRef fc' wname)
-                      (map pexp ns ++ pexp w : (map pexp ns'))
-    updateLHS n wname mvars ns_in ns_in' tm w
-        = updateLHS n wname mvars ns_in ns_in' (PApp fc tm []) w
+                      (map pexp ns ++ pexp w : (map pexp ns') ++ 
+                        case pn of
+                             Nothing -> []
+                             Just pnm -> [pexp (PRef fc pnm)])
+    updateLHS n pn wname mvars ns_in ns_in' tm w
+        = updateLHS n pn wname mvars ns_in ns_in' (PApp fc tm []) w
 
     keepMvar mvs fc v | v `elem` mvs = PRef fc v
                       | otherwise = Placeholder

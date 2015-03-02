@@ -20,7 +20,7 @@ import Idris.Parser hiding (params)
 import Idris.Error
 import Idris.DataOpts
 import Idris.Completion
-import qualified Idris.IdeSlave as IdeSlave
+import qualified Idris.IdeMode as IdeMode
 import Idris.Output
 import Idris.TypeSearch (searchByType)
 
@@ -67,12 +67,12 @@ assumptionNames e
 prove :: Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
 prove opt ctxt lit n ty
     = do let ps = initElaborator n ctxt ty
-         ideslavePutSExp "start-proof-mode" n
+         idemodePutSExp "start-proof-mode" n
          (tm, prf) <- ploop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm
          i <- getIState
          case idris_outputmode i of
-           IdeSlave _ _ -> ideslavePutSExp "end-proof-mode" (n, showProof lit n prf)
+           IdeMode _ _ -> idemodePutSExp "end-proof-mode" (n, showProof lit n prf)
            _            -> iputStrLn $ showProof lit n prf
          let proofs = proof_list i
          putIState (i { proof_list = (n, prf) : proofs })
@@ -95,8 +95,8 @@ prove opt ctxt lit n ty
                                  [([], P Ref n ty, ptm')] ty)
          solveDeferred n
          case idris_outputmode i of
-           IdeSlave n h ->
-             runIO . hPutStrLn h $ IdeSlave.convSExp "return" (IdeSlave.SymbolAtom "ok", "") n
+           IdeMode n h ->
+             runIO . hPutStrLn h $ IdeMode.convSExp "return" (IdeMode.SymbolAtom "ok", "") n
            _ -> return ()
 
 elabStep :: ElabState EState -> ElabD a -> Idris (a, ElabState EState)
@@ -185,24 +185,24 @@ receiveInput :: Handle -> ElabState EState -> Idris (Maybe String)
 receiveInput h e =
   do i <- getIState
      let inh = if h == stdout then stdin else h
-     len' <- runIO $ IdeSlave.getLen inh
+     len' <- runIO $ IdeMode.getLen inh
      len <- case len' of
        Left err -> ierror err
        Right n  -> return n
-     l <- runIO $ IdeSlave.getNChar inh len ""
-     (sexp, id) <- case IdeSlave.parseMessage l of
+     l <- runIO $ IdeMode.getNChar inh len ""
+     (sexp, id) <- case IdeMode.parseMessage l of
                      Left err -> ierror err
                      Right (sexp, id) -> return (sexp, id)
-     putIState $ i { idris_outputmode = (IdeSlave id h) }
-     case IdeSlave.sexpToCommand sexp of
-       Just (IdeSlave.REPLCompletions prefix) ->
+     putIState $ i { idris_outputmode = (IdeMode id h) }
+     case IdeMode.sexpToCommand sexp of
+       Just (IdeMode.REPLCompletions prefix) ->
          do (unused, compls) <- proverCompletion (assumptionNames e) (reverse prefix, "")
-            let good = IdeSlave.SexpList [IdeSlave.SymbolAtom "ok", IdeSlave.toSExp (map replacement compls, reverse unused)]
-            ideslavePutSExp "return" good
+            let good = IdeMode.SexpList [IdeMode.SymbolAtom "ok", IdeMode.toSExp (map replacement compls, reverse unused)]
+            idemodePutSExp "return" good
             receiveInput h e
-       Just (IdeSlave.Interpret cmd) -> return (Just cmd)
-       Just (IdeSlave.TypeOf str) -> return (Just (":t " ++ str))
-       Just (IdeSlave.DocsFor str) -> return (Just (":doc " ++ str))
+       Just (IdeMode.Interpret cmd) -> return (Just cmd)
+       Just (IdeMode.TypeOf str) -> return (Just (":t " ++ str))
+       Just (IdeMode.DocsFor str) -> return (Just (":doc " ++ str))
        _ -> return Nothing
 
 ploop :: Name -> Bool -> String -> [String] -> ElabState EState -> Maybe History -> Idris (Term, [String])
@@ -221,7 +221,7 @@ ploop fn d prompt prf e h
                     l <- getInputLine (prompt ++ "> ")
                     h' <- getHistory
                     return (l, Just h')
-             IdeSlave _ handle ->
+             IdeMode _ handle ->
                do isetPrompt prompt
                   i <- receiveInput handle e
                   return (i, h)
@@ -254,7 +254,7 @@ ploop fn d prompt prf e h
                    (_, st) <- elabStep e (runTac autoSolve i (Just proverFC) fn tac)
                    return (True, st, False, prf ++ [step], Right $ iPrintResult ""))
            (\err -> return (False, e, False, prf, Left err))
-         ideslavePutSExp "write-proof-state" (prf', length prf')
+         idemodePutSExp "write-proof-state" (prf', length prf')
          case res of
            Left err -> do ist <- getIState
                           iRenderError $ pprintErr ist err

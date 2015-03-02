@@ -153,7 +153,7 @@ match_unify ctxt env topx topy inj holes from =
                                            h2 <- un bnames vx vy
                                            combine bnames h1 h2
     uB bnames (Lam tx) (Lam ty) = un bnames tx ty
-    uB bnames (Pi _ tx _) (Pi _ ty _) = un bnames tx ty
+    uB bnames (Pi i tx _) (Pi i' ty _) = un bnames tx ty
     uB bnames x y = do UI s f <- get
                        let r = recoverable (normalise ctxt env (binderTy x))
                                            (normalise ctxt env (binderTy y))
@@ -461,8 +461,8 @@ unify ctxt env topx topy inj holes usersupp from =
                 h2 <- un' False (((x,y),binderTy bx):bnames) sx sy
                 combine bnames h1 h2
       where sameBinder (Lam _) (Lam _) = True
-            sameBinder (Pi _ _ _) (Pi _ _ _) = True
-            sameBinder _ _ = False
+            sameBinder (Pi i _ _) (Pi i' _ _) = True
+            sameBinder _ _ = False -- never unify holes/guesses/etc
     un' fn bnames x y
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
         | isUniverse x && isUniverse y = do sc 1; return []

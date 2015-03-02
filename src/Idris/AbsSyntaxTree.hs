@@ -26,6 +26,7 @@ import qualified Control.Monad.Trans.Class as Trans (lift)
 
 import Data.Data (Data)
 import Data.Function (on)
+import Data.Generics.Uniplate.Data (universe)
 import Data.List hiding (group)
 import Data.Char
 import qualified Data.Map.Strict as M
@@ -143,7 +144,7 @@ data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord
 
 -- | The output mode in use
 data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
-                | IdeSlave Integer Handle -- ^ Send IDE output for some request ID to the handle
+                | IdeMode Integer Handle -- ^ Send IDE output for some request ID to the handle
                 deriving Show
 
 -- | How wide is the console?
@@ -404,8 +405,8 @@ data Opt = Filename String
          | Quiet
          | NoBanner
          | ColourREPL Bool
-         | Ideslave
-         | IdeslaveSocket
+         | Idemode
+         | IdemodeSocket
          | ShowLibs
          | ShowLibdir
          | ShowIncs
@@ -636,10 +637,10 @@ type ElabD a = Elab' EState a
 --
 -- 4. The where block (PDecl' t)
 
-data PClause' t = PClause  FC Name t [t] t [PDecl' t] -- ^ A normal top-level definition.
-                | PWith    FC Name t [t] t [PDecl' t]
-                | PClauseR FC        [t] t [PDecl' t]
-                | PWithR   FC        [t] t [PDecl' t]
+data PClause' t = PClause  FC Name t [t] t              [PDecl' t] -- ^ A normal top-level definition.
+                | PWith    FC Name t [t] t (Maybe Name) [PDecl' t]
+                | PClauseR FC        [t] t              [PDecl' t]
+                | PWithR   FC        [t] t (Maybe Name) [PDecl' t]
     deriving Functor
 {-!
 deriving instance Binary PClause'
@@ -758,6 +759,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PLet FC Name PTerm PTerm PTerm -- ^ A let binding
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
+           | PAppImpl PTerm [ImplicitInfo] -- ^ Implicit argument application (introduced during elaboration only)
            | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
            | PMatchApp FC Name -- ^ Make an application by type matching
            | PCase FC PTerm [(PTerm, PTerm)] -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
@@ -789,7 +791,8 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
            | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
-           | PUnquote PTerm -- ^ ,Term
+           | PUnquote PTerm -- ^ ~Term
+           | PRunTactics FC PTerm -- ^ %runTactics tm - New-style proof script
        deriving (Eq, Data, Typeable)
 
 
@@ -829,6 +832,8 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Induction t
                 | CaseTac t
                 | Equiv t
+                | Claim Name t
+                | Unfocus
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
@@ -1243,6 +1248,9 @@ falseTy   = sUN "Void"
 pairTy    = sNS (sUN "Pair") ["Builtins"]
 pairCon   = sNS (sUN "MkPair") ["Builtins"]
 
+upairTy    = sNS (sUN "UPair") ["Builtins"]
+upairCon   = sNS (sUN "MkUPair") ["Builtins"]
+
 eqTy = sUN "="
 eqCon = sUN "Refl"
 eqDoc =  fmap (const (Left $ Msg "")) . parseDocstring . T.pack $
@@ -1376,6 +1384,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
   where
     startPrec = 0
     funcAppPrec = 10
+    
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =
         text "![" <> pretty r <> text "]"
@@ -1641,6 +1650,16 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     getFixity :: String -> Maybe Fixity
     getFixity = flip M.lookup fixities
 
+-- | Determine whether a name was the one inserted for a hole or
+-- guess by the delaborator
+isHoleName :: Name -> Bool
+isHoleName (UN n) = n == T.pack "[__]"
+isHoleName _      = False
+
+-- | Check whether a PTerm has been delaborated from a Term containing a Hole or Guess
+containsHole :: PTerm -> Bool
+containsHole pterm = or [isHoleName n | PRef _ n <- take 1000 $ universe pterm]
+
 -- | Pretty-printer helper for the binding site of a name
 bindingOf :: Name -- ^^ the bound name
           -> Bool -- ^^ whether the name is implicit
@@ -1656,7 +1675,7 @@ prettyName
   -> Doc OutputAnnotation
 prettyName infixParen showNS bnd n
     | (MN _ s) <- n, isPrefixOf "_" $ T.unpack s = text "_"
-    | (UN n') <- n, isPrefixOf "_" $ T.unpack n' = text "_"
+    | (UN n') <- n, T.unpack n' == "_" = text "_"
     | Just imp <- lookup n bnd = annotate (AnnBoundName n imp) fullName
     | otherwise                = annotate (AnnName n Nothing Nothing Nothing) fullName
   where fullName = text nameSpace <> parenthesise (text (baseName n))
@@ -1680,7 +1699,7 @@ showCImp ppo (PClause _ n l ws r w)
   where
     showWs [] = empty
     showWs (x : xs) = text "|" <+> prettyImp ppo x <+> showWs xs
-showCImp ppo (PWith _ n l ws r w)
+showCImp ppo (PWith _ n l ws r pn w)
  = prettyImp ppo l <+> showWs ws <+> text "with" <+> prettyImp ppo r
                  <+> braces (text (show w))
   where
@@ -1728,6 +1747,8 @@ getShowArgs :: [PArg] -> [PArg]
 getShowArgs [] = []
 getShowArgs (e@(PExp _ _ _ tm) : xs) = e : getShowArgs xs
 getShowArgs (e : xs) | AlwaysShow `elem` argopts e = e : getShowArgs xs
+                     | PImp _ _ _ _ tm <- e
+                     , containsHole tm       = e : getShowArgs xs
 getShowArgs (_ : xs) = getShowArgs xs
 
 getConsts :: [PArg] -> [PTerm]

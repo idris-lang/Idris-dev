@@ -80,7 +80,16 @@ typedef struct Closure {
     } info;
 } Closure;
 
-typedef struct {
+struct VM_t;
+
+struct Msg_t {
+    struct VM_t* sender;
+    VAL msg;
+};
+
+typedef struct Msg_t Msg;
+
+struct VM_t {
     VAL* valstack;
     VAL* valstack_top;
     VAL* valstack_base;
@@ -93,11 +102,9 @@ typedef struct {
     pthread_mutex_t alloc_lock;
     pthread_cond_t inbox_waiting;
 
-    VAL* inbox; // Block of memory for storing messages
-    VAL* inbox_end; // End of block of memory
-
-    VAL* inbox_ptr; // Next message to read
-    VAL* inbox_write; // Location of next message to write
+    Msg* inbox; // Block of memory for storing messages
+    Msg* inbox_end; // End of block of memory
+    Msg* inbox_write; // Location of next message to write
 
     int processes; // Number of child processes
     int max_threads; // maximum number of threads to run in parallel
@@ -106,7 +113,9 @@ typedef struct {
 
     VAL ret;
     VAL reg1;
-} VM;
+};
+
+typedef struct VM_t VM;
 
 // Create a new VM
 VM* init_vm(int stack_size, size_t heap_size,
@@ -277,10 +286,21 @@ VAL copyTo(VM* newVM, VAL x);
 
 // Add a message to another VM's message queue
 void idris_sendMessage(VM* sender, VM* dest, VAL msg);
+// Check whether there are any messages in the queue and return PID of
+// sender if so (null if not)
+VM* idris_checkMessages(VM* vm);
 // Check whether there are any messages in the queue
-int idris_checkMessages(VM* vm);
+VM* idris_checkMessagesFrom(VM* vm, VM* sender);
 // block until there is a message in the queue
-VAL idris_recvMessage(VM* vm);
+Msg* idris_recvMessage(VM* vm);
+// block until there is a message in the queue
+Msg* idris_recvMessageFrom(VM* vm, VM* sender);
+
+// Query/free structure used to return message data (recvMessage will malloc,
+// so needs an explicit free)
+VAL idris_getMsg(Msg* msg);
+VM* idris_getSender(Msg* msg);
+void idris_freeMsg(Msg* msg);
 
 void dumpVal(VAL r);
 void dumpStack(VM* vm);

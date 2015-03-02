@@ -1,3 +1,14 @@
+New in 0.9.17:
+--------------
+* The --ideslave command line option has been replaced with a --ide-mode
+  command line option with the same semantics.
+* A new tactic "claim N TY" that introduces a new hole named N with type TY
+* A new tactic "unfocus" that moves the current hole to the bottom of the
+  hole stack
+* Quasiquotation supports the generation of Language.Reflection.Raw terms
+  in addition to Language.Reflection.TT. Types are used for disambiguation,
+  defaulting to TT at the REPL.
+
 New in 0.9.16:
 --------------
 * Inductive-inductive definitions are now supported (i.e. simultaneously

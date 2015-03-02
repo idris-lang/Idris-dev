@@ -826,11 +826,12 @@ clause syn
                   popIndent
                   reserved "with"
                   wval <- simpleExpr syn
+                  pn <- optProof
                   openBlock
                   ds <- some $ fnDecl syn
                   let withs = concat ds
                   closeBlock
-                  return $ PWithR fc wargs wval withs)
+                  return $ PWithR fc wargs wval pn withs)
        <|> do ty <- try (do pushIndent
                             ty <- simpleExpr syn
                             symbol "<=="
@@ -878,6 +879,7 @@ clause syn
                    popIndent
                    reserved "with"
                    wval <- bracketed syn
+                   pn <- optProof
                    openBlock
                    ds <- some $ fnDecl syn
                    closeBlock
@@ -885,7 +887,7 @@ clause syn
                    let capp = PApp fc (PRef fc n) [pexp l, pexp r]
                    let withs = map (fillLHSD n capp wargs) $ concat ds
                    put (ist { lastParse = Just n })
-                   return $ PWith fc n capp wargs wval withs)
+                   return $ PWith fc n capp wargs wval pn withs)
        <|> do pushIndent
               n_in <- fnName; let n = expandNS syn n_in
               cargs <- many (constraintArg syn)
@@ -911,19 +913,24 @@ clause syn
                    ist <- get
                    put (ist { lastParse = Just n })
                    wval <- bracketed syn
+                   pn <- optProof
                    openBlock
                    ds <- some $ fnDecl syn
                    let withs = map (fillLHSD n capp wargs) $ concat ds
                    closeBlock
                    popIndent
-                   return $ PWith fc n capp wargs wval withs)
+                   return $ PWith fc n capp wargs wval pn withs)
       <?> "function clause"
   where
+    optProof = option Nothing (do reserved "proof"
+                                  n <- fnName
+                                  return (Just n))
+
     fillLHS :: Name -> PTerm -> [PTerm] -> PClause -> PClause
     fillLHS n capp owargs (PClauseR fc wargs v ws)
        = PClause fc n capp (owargs ++ wargs) v ws
-    fillLHS n capp owargs (PWithR fc wargs v ws)
-       = PWith fc n capp (owargs ++ wargs) v
+    fillLHS n capp owargs (PWithR fc wargs v pn ws)
+       = PWith fc n capp (owargs ++ wargs) v pn
             (map (fillLHSD n capp (owargs ++ wargs)) ws)
     fillLHS _ _ _ c = c
 
@@ -1192,7 +1199,7 @@ parseProg syn fname input mrk
                                   i <- getIState
                                   case idris_outputmode i of
                                     RawOutput h  -> iputStrLn (show $ fixColour (idris_colourRepl i) doc)
-                                    IdeSlave n h -> iWarn fc (P.text msg)
+                                    IdeMode n h -> iWarn fc (P.text msg)
                                   putIState (i { errSpan = Just fc })
                                   return []
             Success (x, i)  -> do putIState i
@@ -1304,7 +1311,23 @@ loadSource lidr f toline
                   mapM_ (addIBC . IBCImport) [(reexport, realName) | (reexport, realName, alias, fc) <- imports]
                   let syntax = defaultSyntax{ syn_namespace = reverse mname,
                                               maxline = toline }
+                  ist <- getIState
+                  -- Save the span from parsing the module header, because
+                  -- an empty program parse might obliterate it.
+                  let oldSpan = idris_parsedSpan ist
                   ds' <- parseProg syntax f file pos
+
+                  case (ds', oldSpan) of
+                    ([], Just fc) ->
+                      -- If no program elements were parsed, we dind't
+                      -- get a loaded region in the IBC file. That
+                      -- means we need to add it back.
+                      do ist <- getIState
+                         putIState ist { idris_parsedSpan = oldSpan
+                                       , ibc_write = IBCParsedRegion fc :
+                                                     ibc_write ist
+                                       }
+                    _ -> return ()
 
                   -- Parsing done, now process declarations
 

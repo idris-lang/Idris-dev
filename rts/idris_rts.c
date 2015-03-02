@@ -1,11 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
 #include <assert.h>
-#ifdef HAS_PTHREAD
-#include <pthread.h>
-#endif
 
 #include "idris_rts.h"
 #include "idris_gc.h"
@@ -44,7 +37,6 @@ VM* init_vm(int stack_size, size_t heap_size,
     vm->inbox = malloc(1024*sizeof(VAL));
     memset(vm->inbox, 0, 1024*sizeof(VAL));
     vm->inbox_end = vm->inbox + 1024;
-    vm->inbox_ptr = vm->inbox;
     vm->inbox_write = vm->inbox;
 
     // The allocation lock must be reentrant. The lock exists to ensure that
@@ -72,7 +64,9 @@ VM* init_vm(int stack_size, size_t heap_size,
 }
 
 void init_threadkeys() {
+#ifdef HAS_PTHREAD
     pthread_key_create(&vm_key, (void*)free_key);
+#endif
 }
 
 void init_threaddata(VM *vm) {
@@ -1005,7 +999,7 @@ void* vmThread(VM* callvm, func f, VAL arg) {
 
 // VM is assumed to be a different vm from the one x lives on
 
-VAL copyTo(VM* vm, VAL x) {
+VAL doCopyTo(VM* vm, VAL x) {
     int i, ar;
     VAL* argptr;
     Closure* cl;
@@ -1022,7 +1016,7 @@ VAL copyTo(VM* vm, VAL x) {
 
             argptr = (VAL*)(cl->info.c.args);
             for(i = 0; i < ar; ++i) {
-                *argptr = copyTo(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
+                *argptr = doCopyTo(vm, *((VAL*)(x->info.c.args)+i)); // recursive version
                 argptr++;
             }
         }
@@ -1063,6 +1057,14 @@ VAL copyTo(VM* vm, VAL x) {
     return cl;
 }
 
+VAL copyTo(VM* vm, VAL x) {
+    VM* current = pthread_getspecific(vm_key);
+    pthread_setspecific(vm_key, vm);
+    VAL ret = doCopyTo(vm, x);
+    pthread_setspecific(vm_key, current);
+    return ret;
+}
+
 // Add a message to another VM's message queue
 void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
     // FIXME: If GC kicks in in the middle of the copy, we're in trouble.
@@ -1088,17 +1090,18 @@ void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
     }
 
     pthread_mutex_lock(&(dest->inbox_lock));
-    *(dest->inbox_write) = dmsg;
-
-    dest->inbox_write++;
+    
     if (dest->inbox_write >= dest->inbox_end) {
-        dest->inbox_write = dest->inbox;
-    }
-
-    if (dest->inbox_write == dest->inbox_ptr) {
-        fprintf(stderr, "Inbox full"); // Maybe grow it instead...
+        // FIXME: This is obviously bad in the long run. This should
+        // either block, make the inbox bigger, or return an error code,
+        // or possibly make it user configurable
+        fprintf(stderr, "Inbox full"); 
         exit(-1);
     }
+
+    dest->inbox_write->msg = dmsg;
+    dest->inbox_write->sender = sender;
+    dest->inbox_write++;
 
     // Wake up the other thread
     pthread_mutex_lock(&dest->inbox_block);
@@ -1111,19 +1114,47 @@ void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
 //    printf("Sending [unlock]...\n");
 }
 
-int idris_checkMessages(VM* vm) {
-    VAL msg = *(vm->inbox_ptr);
-    return (msg != NULL);
+VM* idris_checkMessages(VM* vm) {
+    return idris_checkMessagesFrom(vm, NULL);
+}
+
+VM* idris_checkMessagesFrom(VM* vm, VM* sender) {
+    Msg* msg;
+    
+    for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
+        if (sender == NULL || msg->sender == sender) {
+            return msg->sender;
+        }
+    }
+    return 0;
+}
+
+Msg* idris_getMessageFrom(VM* vm, VM* sender) {
+    Msg* msg;
+    
+    for (msg = vm->inbox; msg < vm->inbox_write; ++msg) {
+        if (sender == NULL || msg->sender == sender) {
+            return msg;
+        }
+    }
+    return NULL;
 }
 
 // block until there is a message in the queue
-VAL idris_recvMessage(VM* vm) {
-    VAL msg;
+Msg* idris_recvMessage(VM* vm) {
+    return idris_recvMessageFrom(vm, NULL);
+}
+
+Msg* idris_recvMessageFrom(VM* vm, VM* sender) {
+    Msg* msg;
+    Msg* ret = malloc(sizeof(Msg));
+
     struct timespec timeout;
     int status;
 
     pthread_mutex_lock(&vm->inbox_block);
-    msg = *(vm->inbox_ptr);
+    msg = idris_getMessageFrom(vm, sender);
+
     while (msg == NULL) {
 //        printf("No message yet\n");
 //        printf("Waiting [lock]...\n");
@@ -1133,26 +1164,53 @@ VAL idris_recvMessage(VM* vm) {
                                &timeout);
         (void)(status); //don't emit 'unused' warning
 //        printf("Waiting [unlock]... %d\n", status);
-        msg = *(vm->inbox_ptr);
+        msg = idris_getMessageFrom(vm, sender);
     }
     pthread_mutex_unlock(&vm->inbox_block);
 
     if (msg != NULL) {
+        ret->msg = msg->msg;
+        ret->sender = msg->sender;
+
         pthread_mutex_lock(&(vm->inbox_lock));
-        *(vm->inbox_ptr) = NULL;
-        vm->inbox_ptr++;
-        if (vm->inbox_ptr >= vm->inbox_end) {
-            vm->inbox_ptr = vm->inbox;
+
+        // Slide everything down after the message in the inbox,
+        // Move the inbox_write pointer down, and clear the value at the
+        // end - O(n) but it's easier since the message from a specific
+        // sender could be anywhere in the inbox
+
+        for(;msg < vm->inbox_write; ++msg) {
+            if (msg+1 != vm->inbox_end) {
+                msg->sender = (msg + 1)->sender;
+                msg->msg = (msg + 1)->msg;
+            }
         }
+
+        vm->inbox_write->msg = NULL;
+        vm->inbox_write->sender = NULL;
+        vm->inbox_write--;
+
         pthread_mutex_unlock(&(vm->inbox_lock));
     } else {
         fprintf(stderr, "No messages waiting");
         exit(-1);
     }
 
-    return msg;
+    return ret;
 }
 #endif
+
+VAL idris_getMsg(Msg* msg) {
+    return msg->msg;
+}
+
+VM* idris_getSender(Msg* msg) {
+    return msg->sender;
+}
+
+void idris_freeMsg(Msg* msg) {
+    free(msg);
+}
 
 VAL* nullary_cons;
 

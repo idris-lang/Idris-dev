@@ -10,7 +10,7 @@ import Idris.Core.Typecheck
 import Idris.AbsSyntaxTree
 import Idris.Colours
 import Idris.Docstrings
-import Idris.IdeSlave hiding (Opt(..))
+import Idris.IdeMode hiding (Opt(..))
 import IRTS.CodegenCommon
 import Util.DynamicLinker
 
@@ -601,7 +601,7 @@ type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "
 isetPrompt :: String -> Idris ()
 isetPrompt p = do i <- getIState
                   case idris_outputmode i of
-                    IdeSlave n h -> runIO . hPutStrLn h $ convSExp "set-prompt" p n
+                    IdeMode n h -> runIO . hPutStrLn h $ convSExp "set-prompt" p n
 
 -- | Tell clients how much was parsed and loaded
 isetLoadedRegion :: Idris ()
@@ -610,7 +610,7 @@ isetLoadedRegion = do i <- getIState
                       case span of
                         Just fc ->
                           case idris_outputmode i of
-                            IdeSlave n h ->
+                            IdeMode n h ->
                               runIO . hPutStrLn h $
                                 convSExp "set-loaded-region" fc n
                         Nothing -> return ()
@@ -752,10 +752,12 @@ outputTy :: Idris OutputType
 outputTy = do i <- getIState
               return $ opt_outputTy $ idris_options i
 
-setIdeSlave :: Bool -> Handle -> Idris ()
-setIdeSlave True  h = do i <- getIState
-                         putIState $ i { idris_outputmode = (IdeSlave 0 h), idris_colourRepl = False }
-setIdeSlave False _ = return ()
+setIdeMode :: Bool -> Handle -> Idris ()
+setIdeMode True  h = do i <- getIState
+                        putIState $ i { idris_outputmode = IdeMode 0 h
+                                      , idris_colourRepl = False
+                                      }
+setIdeMode False _ = return ()
 
 setTargetTriple :: String -> Idris ()
 setTargetTriple t = do i <- getIState
@@ -870,7 +872,7 @@ logLvl l str = do i <- getIState
                   when (lvl >= l) $
                     case idris_outputmode i of
                       RawOutput h -> do runIO $ hPutStrLn h str
-                      IdeSlave n h ->
+                      IdeMode n h ->
                         do let good = SexpList [IntegerAtom (toInteger l), toSExp str]
                            runIO . hPutStrLn h $ convSExp "log" good n
 
@@ -972,6 +974,7 @@ expandParams dec ps ns infs tm = en tm
     en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
     en (PAppBind fc f as) = PAppBind fc (en f) (map (fmap en) as)
     en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
+    en (PRunTactics fc tm) = PRunTactics fc (en tm)
     en t = t
 
     nselem x [] = False
@@ -1014,7 +1017,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
                             (map (expandParams dec ps'' ns' []) ws)
                             (expandParams dec ps'' ns' [] rhs)
                             (map (expandParamsD True ist dec ps'' ns') ds)
-    expandParamsC (PWith fc n lhs ws wval ds)
+    expandParamsC (PWith fc n lhs ws wval pn ds)
         = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
               lhs' = if rhsonly then lhs else (expandParams dec ps'' ns [] lhs)
@@ -1023,6 +1026,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
               PWith fc n' lhs'
                           (map (expandParams dec ps'' ns' []) ws)
                           (expandParams dec ps'' ns' [] wval)
+                          pn
                           (map (expandParamsD rhsonly ist dec ps'' ns') ds)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
@@ -1441,6 +1445,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     imps top env (PHidden tm)    = imps False env tm
     imps top env (PUnifyLog tm)  = imps False env tm
     imps top env (PNoImplicits tm)  = imps False env tm
+    imps top env (PRunTactics fc tm) = imps False env tm
     imps top env _               = return ()
 
     pibind using []     sc = sc
@@ -1562,6 +1567,7 @@ addImpl' inpat env infns ist ptm
     ai qq env ds (PQuasiquote tm g) = PQuasiquote (ai True env ds tm)
                                                   (fmap (ai True env ds) g)
     ai qq env ds (PUnquote tm) = PUnquote (ai False env ds tm)
+    ai qq env ds (PRunTactics fc tm) = PRunTactics fc (ai False env ds tm)
     ai qq env ds tm = tm
 
     handleErr (Left err) = PElabError err
@@ -1708,6 +1714,10 @@ stripLinear i tm = evalState (sl tm) [] where
                                      return (a' : as')
              slAlts ns [] = return []
     sl (PPair fc p l r) = do l' <- sl l; r' <- sl r; return (PPair fc p l' r')
+    sl (PDPair fc p l t r) = do l' <- sl l
+                                t' <- sl t
+                                r' <- sl r 
+                                return (PDPair fc p l' t' r')
     sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var
                               args' <- mapM slA args
                               return $ PApp fc fn args'
@@ -1734,7 +1744,11 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
        | (Bind n (Pi _ t _) sc :_) <- lookupTy f (tt_ctxt i)
           = Placeholder
     su (PApp fc f@(PRef _ fn) args)
-       | isDConName fn ctxt 
+       -- here we use canBeDConName because the impossible pattern
+       -- check will not necessarily fully resolve constructor names,
+       -- and these bare names will otherwise get in the way of
+       -- impossbility checking.
+       | canBeDConName fn ctxt
           = PApp fc f (fmap (fmap su) args)
     su (PApp fc f args)
           = PHidden (PApp fc f args)
@@ -1968,8 +1982,11 @@ shadow :: Name -> Name -> PTerm -> PTerm
 shadow n n' t = sm t where
     sm (PRef fc x) | n == x = PRef fc n'
     sm (PLam fc x t sc) | n /= x = PLam fc x (sm t) (sm sc)
-    sm (PPi p x t sc) | n /=x = PPi p x (sm t) (sm sc)
+                        | otherwise = PLam fc x (sm t) sc
+    sm (PPi p x t sc) | n /= x = PPi p x (sm t) (sm sc)
+                      | otherwise = PPi p x (sm t) sc
     sm (PLet fc x t v sc) | n /= x = PLet fc x (sm t) (sm v) (sm sc)
+                          | otherwise = PLet fc x (sm t) (sm v) sc
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
     sm (PAppBind f x as) = PAppBind f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
@@ -2082,4 +2099,5 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
   mkUniq (PNoImplicits t) = liftM PNoImplicits (mkUniq t)
   mkUniq (PProof ts) = liftM PProof (mapM mkUniqT ts)
   mkUniq (PTactics ts) = liftM PTactics (mapM mkUniqT ts)
+  mkUniq (PRunTactics fc ts) = liftM (PRunTactics fc ) (mkUniq ts)
   mkUniq t = return t

@@ -221,6 +221,7 @@ InternalExpr ::=
 internalExpr :: SyntaxInfo -> IdrisParser PTerm
 internalExpr syn =
          unifyLog syn
+     <|> runTactics syn
      <|> disamb syn
      <|> noImplicits syn
      <|> recordType syn
@@ -486,6 +487,19 @@ unifyLog syn = do try (lchar '%' *> reserved "unifyLog")
                   tm <- simpleExpr syn
                   return (PUnifyLog tm)
                <?> "unification log expression"
+
+{- | Parses a new-style tactics expression
+RunTactics ::=
+  '%' 'runTactics' SimpleExpr
+  ;
+-}
+runTactics :: SyntaxInfo -> IdrisParser PTerm
+runTactics syn = do try (lchar '%' *> reserved "runTactics")
+                    fc <- getFC
+                    tm <- simpleExpr syn
+                    i <- get
+                    return $ PRunTactics fc tm
+                 <?> "new-style tactics expression"
 
 {- | Parses a disambiguation expression 
 Disamb ::=
@@ -1251,10 +1265,15 @@ tactics =
   [ (["intro"], Nothing, const $ -- FIXME syntax for intro (fresh name)
       do ns <- sepBy (spaced name) (lchar ','); return $ Intro ns)
   , noArgs ["intros"] Intros
+  , noArgs ["unfocus"] Unfocus
   , (["refine"], Just ExprTArg, const $
        do n <- spaced fnName
           imps <- many imp
           return $ Refine n imps)
+  , (["claim"], Nothing, \syn ->
+       do n <- indentPropHolds gtProp *> name
+          goal <- indentPropHolds gtProp *> expr syn
+          return $ Claim n goal)
   , (["mrefine"], Just ExprTArg, const $
        do n <- spaced fnName
           return $ MatchRefine n)
@@ -1329,7 +1348,7 @@ tactics =
   
 
 tactic :: SyntaxInfo -> IdrisParser PTactic
-tactic syn = choice [ do choice (map reserved names); parser syn 
+tactic syn = choice [ do choice (map reserved names); parser syn
                     | (names, _, parser) <- tactics ]
           <|> do lchar '{'
                  t <- tactic syn;
