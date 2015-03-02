@@ -1960,7 +1960,7 @@ reifyRaw t@(App _ _)
          | (P _ f _, args) <- unApply t = reifyRawApp f args
 reifyRaw t@(P _ n _)
          | n == reflm "RType" = return $ RType
-reifyRaw t = fail ("Unknown reflection raw term: " ++ show t)
+reifyRaw t = fail ("Unknown reflection raw term in reifyRaw: " ++ show t)
 
 reifyRawApp :: Name -> [Term] -> ElabD Raw
 reifyRawApp t [n]
@@ -1976,7 +1976,7 @@ reifyRawApp t [t']
             | t == reflm "RForce" = liftM RForce (reifyRaw t')
 reifyRawApp t [c]
             | t == reflm "RConstant" = liftM RConstant (reifyTTConst c)
-reifyRawApp t args = fail ("Unknown reflection raw term: " ++ show (t, args))
+reifyRawApp t args = fail ("Unknown reflection raw term in reifyRawApp: " ++ show (t, args))
 
 reifyTTName :: Term -> ElabD Name
 reifyTTName t
