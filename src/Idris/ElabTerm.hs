@@ -1066,7 +1066,7 @@ elab ist info emode opts fn tm
              delayElab $ do focus h
                             dotterm
                             elab' ina fc t
-    elab' ina _ (PRunTactics fc tm) =
+    elab' ina fc (PRunTactics fc' tm) =
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
          n' <- getNameFrom (sMN 0 "tacticExpr")
@@ -1075,10 +1075,10 @@ elab ist info emode opts fn tm
          movelast n
          letbind n' scriptTy (Var n)
          focus n
-         elab' ina (Just fc) tm
+         elab' ina (Just fc') tm
          env <- get_env
          ctxt <- get_context
-         runTactical fc ctxt env (P Bound n' Erased)
+         runTactical (maybe fc' id fc)  ctxt env (P Bound n' Erased)
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
