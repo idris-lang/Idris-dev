@@ -878,7 +878,9 @@ pi syn =
                      (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc)) <|> (do
                        try (lchar '{' *> reserved "default")
                        when (st == Static) $ fail "default tactic constraints can not be static"
-                       script <- simpleExpr syn
+                       ist <- get
+                       script' <- simpleExpr syn
+                       let script = debindApp syn . desugar syn ist $ script'
                        xt <- typeDeclList syn
                        lchar '}'
                        symbol "->"
