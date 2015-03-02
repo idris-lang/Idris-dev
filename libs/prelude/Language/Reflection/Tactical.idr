@@ -22,6 +22,8 @@ data Tactical : Type -> Type where
   prim__Holes : Tactical (List TTName)
   prim__Guess : Tactical (Maybe TT)
 
+  prim__SourceLocation : Tactical SourceLocation
+
   prim__Forget : TT -> Tactical Raw
 
   prim__Gensym : String -> Tactical TTName
@@ -32,7 +34,10 @@ data Tactical : Type -> Type where
   prim__Unfocus : TTName -> Tactical ()
   prim__Attack : Tactical ()
 
+  prim__Rewrite : Raw -> Tactical ()
+
   prim__Claim : TTName -> Raw -> Tactical ()
+  prim__Intro : Maybe TTName -> Tactical ()
 
 -------------
 -- Public API
@@ -93,3 +98,19 @@ attack = prim__Attack
 
 claim : TTName -> Raw -> Tactical ()
 claim n ty = prim__Claim n ty
+
+intro : Maybe TTName -> Tactical ()
+intro n = prim__Intro n
+
+||| Find out the present source context for the tactic script
+getSourceLocation : Tactical SourceLocation
+getSourceLocation = prim__SourceLocation
+
+||| Attempt to solve the current goal with the source code location
+sourceLocation : Tactical ()
+sourceLocation = do loc <- getSourceLocation
+                    fill (quote loc)
+                    solve
+
+rewriteWith : Raw -> Tactical ()
+rewriteWith rule = prim__Rewrite rule

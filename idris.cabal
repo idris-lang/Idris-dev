@@ -548,6 +548,9 @@ Extra-source-files:
                        test/sugar005/*.idr
                        test/sugar005/expected
 
+                       test/tactics001/run
+                       test/tactics001/*.idr
+                       test/tactics001/expected
 
                        test/totality001/run
                        test/totality001/*.idr

@@ -1066,7 +1066,7 @@ elab ist info emode opts fn tm
              delayElab $ do focus h
                             dotterm
                             elab' ina fc t
-    elab' ina _ (PRunTactics fc tm) =
+    elab' ina fc (PRunTactics fc' tm) =
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
          n' <- getNameFrom (sMN 0 "tacticExpr")
@@ -1075,10 +1075,10 @@ elab ist info emode opts fn tm
          movelast n
          letbind n' scriptTy (Var n)
          focus n
-         elab' ina (Just fc) tm
+         elab' ina (Just fc') tm
          env <- get_env
          ctxt <- get_context
-         runTactical fc ctxt env (P Bound n' Erased)
+         runTactical (maybe fc' id fc)  ctxt env (P Bound n' Erased)
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
@@ -1508,7 +1508,7 @@ case_ ind autoSolve ist fn tm = do
 runTactical :: FC -> Context -> Env -> Term -> ElabD ()
 runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
   where
-    eval = normaliseAll ctxt env
+    eval = normaliseAll ctxt env . finalise
     tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]
     returnUnit = fmap fst $ get_type_val (Var unitCon)
 
@@ -1540,6 +1540,9 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
               else fmap fst . get_type_val $
                      RApp (Var (sNS (sUN "Nothing") ["Maybe", "Prelude"]))
                           (Var (reflm "TT"))
+      | n == tacN "prim__SourceLocation", [] <- args
+      = fmap fst . get_type_val $
+          reflectFC fc
       | n == tacN "prim__Env", [] <- args
       = do env <- get_env
            fmap fst . get_type_val $ reflectEnv env
@@ -1547,7 +1550,7 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
       = do parts <- reifyReportParts (eval errs)
            lift . tfail $ ReflectionError [parts] (Msg "")
       | n == tacN "prim__PureTactical", [_a, tm] <- args
-      = return tm 
+      = return tm
       | n == tacN "prim__BindTactical", [_a, _b, first, andThen] <- args
       = do let first' = eval first
            res <- runTacTm first'
@@ -1575,6 +1578,10 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
       | n == tacN "prim__Attack", [] <- args
       = do attack
            returnUnit
+      | n == tacN "prim__Rewrite", [rule] <- args
+      = do r <- reifyRaw rule
+           rewrite r
+           returnUnit
       | n == tacN "prim__Focus", [what] <- args
       = do n' <- reifyTTName what
            focus n'
@@ -1582,6 +1589,12 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
       | n == tacN "prim__Unfocus", [what] <- args
       = do n' <- reifyTTName what
            movelast n'
+           returnUnit
+      | n == tacN "prim__Intro", [mn] <- args
+      = do n <- case fromTTMaybe mn of
+                  Nothing -> return Nothing
+                  Just name -> fmap Just $ reifyTTName name
+           intro n
            returnUnit
     runTacTm x = lift . tfail . InternalMsg $ "tactical is not implemented for " ++ show x
 
@@ -1829,22 +1842,7 @@ runTac autoSolve ist perhapsFC fn tac
       case perhapsFC of
         Nothing -> lift . tfail $ Msg "There is no source location available."
         Just fc ->
-          do let intTy = RConstant (AType (ATInt ITNative))
-             fill $ raw_apply (Var (reflm "FileLoc"))
-                              [ RConstant (Str (fc_fname fc))
-                              , raw_apply (Var pairCon) $
-                                  [intTy, intTy] ++
-                                  map (RConstant . I)
-                                      [ fst (fc_start fc)
-                                      , snd (fc_start fc)
-                                      ]
-                              , raw_apply (Var pairCon) $
-                                  [intTy, intTy] ++
-                                  map (RConstant . I)
-                                      [ fst (fc_end fc)
-                                      , snd (fc_end fc)
-                                      ]
-                              ]
+          do fill $ reflectFC fc
              solve
     runT x = fail $ "Not implemented " ++ show x
 
@@ -1966,7 +1964,7 @@ reifyRaw t@(App _ _)
          | (P _ f _, args) <- unApply t = reifyRawApp f args
 reifyRaw t@(P _ n _)
          | n == reflm "RType" = return $ RType
-reifyRaw t = fail ("Unknown reflection raw term: " ++ show t)
+reifyRaw t = fail ("Unknown reflection raw term in reifyRaw: " ++ show t)
 
 reifyRawApp :: Name -> [Term] -> ElabD Raw
 reifyRawApp t [n]
@@ -1982,7 +1980,7 @@ reifyRawApp t [t']
             | t == reflm "RForce" = liftM RForce (reifyRaw t')
 reifyRawApp t [c]
             | t == reflm "RConstant" = liftM RConstant (reifyTTConst c)
-reifyRawApp t args = fail ("Unknown reflection raw term: " ++ show (t, args))
+reifyRawApp t args = fail ("Unknown reflection raw term in reifyRawApp: " ++ show (t, args))
 
 reifyTTName :: Term -> ElabD Name
 reifyTTName t
@@ -2616,6 +2614,25 @@ reflectErr (ProviderError str) =
 reflectErr (LoadingFailed str err) =
   raw_apply (Var $ reflErrName "LoadingFailed") [RConstant (Str str)]
 reflectErr x = raw_apply (Var (sNS (sUN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
+
+-- | Reflect a file context
+reflectFC :: FC -> Raw
+reflectFC fc = raw_apply (Var (reflm "FileLoc"))
+                         [ RConstant (Str (fc_fname fc))
+                         , raw_apply (Var pairCon) $
+                             [intTy, intTy] ++
+                             map (RConstant . I)
+                                 [ fst (fc_start fc)
+                                 , snd (fc_start fc)
+                                 ]
+                         , raw_apply (Var pairCon) $
+                             [intTy, intTy] ++
+                             map (RConstant . I)
+                                 [ fst (fc_end fc)
+                                 , snd (fc_end fc)
+                                 ]
+                         ]
+  where intTy = RConstant (AType (ATInt ITNative))
 
 elaboratingArgErr :: [(Name, Name)] -> Err -> Err
 elaboratingArgErr [] err = err
