@@ -1540,6 +1540,9 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
               else fmap fst . get_type_val $
                      RApp (Var (sNS (sUN "Nothing") ["Maybe", "Prelude"]))
                           (Var (reflm "TT"))
+      | n == tacN "prim__SourceLocation", [] <- args
+      = fmap fst . get_type_val $
+          reflectFC fc 
       | n == tacN "prim__Env", [] <- args
       = do env <- get_env
            fmap fst . get_type_val $ reflectEnv env
@@ -1835,22 +1838,7 @@ runTac autoSolve ist perhapsFC fn tac
       case perhapsFC of
         Nothing -> lift . tfail $ Msg "There is no source location available."
         Just fc ->
-          do let intTy = RConstant (AType (ATInt ITNative))
-             fill $ raw_apply (Var (reflm "FileLoc"))
-                              [ RConstant (Str (fc_fname fc))
-                              , raw_apply (Var pairCon) $
-                                  [intTy, intTy] ++
-                                  map (RConstant . I)
-                                      [ fst (fc_start fc)
-                                      , snd (fc_start fc)
-                                      ]
-                              , raw_apply (Var pairCon) $
-                                  [intTy, intTy] ++
-                                  map (RConstant . I)
-                                      [ fst (fc_end fc)
-                                      , snd (fc_end fc)
-                                      ]
-                              ]
+          do fill $ reflectFC fc
              solve
     runT x = fail $ "Not implemented " ++ show x
 
@@ -2622,6 +2610,25 @@ reflectErr (ProviderError str) =
 reflectErr (LoadingFailed str err) =
   raw_apply (Var $ reflErrName "LoadingFailed") [RConstant (Str str)]
 reflectErr x = raw_apply (Var (sNS (sUN "Msg") ["Errors", "Reflection", "Language"])) [RConstant . Str $ "Default reflection: " ++ show x]
+
+-- | Reflect a file context
+reflectFC :: FC -> Raw
+reflectFC fc = raw_apply (Var (reflm "FileLoc"))
+                         [ RConstant (Str (fc_fname fc))
+                         , raw_apply (Var pairCon) $
+                             [intTy, intTy] ++
+                             map (RConstant . I)
+                                 [ fst (fc_start fc)
+                                 , snd (fc_start fc)
+                                 ]
+                         , raw_apply (Var pairCon) $
+                             [intTy, intTy] ++
+                             map (RConstant . I)
+                                 [ fst (fc_end fc)
+                                 , snd (fc_end fc)
+                                 ]
+                         ]
+  where intTy = RConstant (AType (ATInt ITNative))
 
 elaboratingArgErr :: [(Name, Name)] -> Err -> Err
 elaboratingArgErr [] err = err
