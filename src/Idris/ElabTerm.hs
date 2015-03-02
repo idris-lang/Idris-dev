@@ -1542,7 +1542,7 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
                           (Var (reflm "TT"))
       | n == tacN "prim__SourceLocation", [] <- args
       = fmap fst . get_type_val $
-          reflectFC fc 
+          reflectFC fc
       | n == tacN "prim__Env", [] <- args
       = do env <- get_env
            fmap fst . get_type_val $ reflectEnv env
@@ -1550,7 +1550,7 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
       = do parts <- reifyReportParts (eval errs)
            lift . tfail $ ReflectionError [parts] (Msg "")
       | n == tacN "prim__PureTactical", [_a, tm] <- args
-      = return tm 
+      = return tm
       | n == tacN "prim__BindTactical", [_a, _b, first, andThen] <- args
       = do let first' = eval first
            res <- runTacTm first'
