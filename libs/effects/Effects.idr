@@ -174,7 +174,7 @@ return x = value x
 
 -- ------------------------------------------------------ [ for idiom brackets ]
 
-infixl 2 <$>
+infixl 2 <*>
 
 pure : a -> Eff a xs (\v => xs)
 pure = value
@@ -182,9 +182,9 @@ pure = value
 pureM : (val : a) -> Eff a (xs val) xs
 pureM = value
 
-(<$>) : Eff (a -> b) xs (\v => xs) ->
+(<*>) : Eff (a -> b) xs (\v => xs) ->
         Eff a xs (\v => xs) -> Eff b xs (\v => xs)
-(<$>) prog v = do fn <- prog
+(<*>) prog v = do fn <- prog
                   arg <- v
                   return (fn arg)
 

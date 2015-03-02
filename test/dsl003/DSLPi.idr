@@ -5,8 +5,11 @@ import Data.Vect
 
 data Ty = BOOL | INT | UNIT | ARR Ty Ty
 
+arr_ : _ -> Ty -> Ty -> Ty
+arr_ _ = ARR
+
 dsl simple_type
-  pi = ARR
+  pi = arr_
 
 test1 : simple_type (BOOL -> INT -> UNIT) = BOOL `ARR` (INT `ARR` UNIT)
 test1 = Refl
@@ -25,8 +28,11 @@ using (vars : Vect n Ty)
   implicit exprSpec : Expr vars BOOL -> Spec vars
   exprSpec = ItHolds
 
+  forall_ : _ -> (t : Ty) -> Spec (t :: vars) -> Spec vars
+  forall_ _ = ForAll
+
 dsl specs
-  pi = ForAll
+  pi = forall_
   variable = Var
   index_first = FZ
   index_next = FS

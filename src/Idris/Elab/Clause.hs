@@ -648,9 +648,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- getIState -- new implicits from where block
         logLvl 5 (showTmImpls (expandParams decorate newargs defs (defs \\ decls) rhs_in))
-        let rhs = addImplBoundInf i (map fst newargs) (defs \\ decls)
+        let rhs = addImplBoundInf i (map fst newargs_all) (defs \\ decls)
                                  (expandParams decorate newargs defs (defs \\ decls) rhs_in)
-        logLvl 2 $ "RHS: " ++ showTmImpls rhs
+        logLvl 2 $ "RHS: " ++ show (map fst newargs_all) ++ " " ++ showTmImpls rhs
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
         ((rhs', defer, is, probs), _) <-
@@ -673,7 +673,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         logLvl 5 "DONE CHECK"
-        logLvl 2 $ "---> " ++ show rhs'
+        logLvl 4 $ "---> " ++ show rhs'
         when (not (null defer)) $ iLOG $ "DEFERRED " ++
                     show (map (\ (n, (_,_,t)) -> (n, t)) defer)
         def' <- checkDef fc defer

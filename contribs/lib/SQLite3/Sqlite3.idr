@@ -1,8 +1,9 @@
 module Sqlite3
-import Sqlexpr
-
+import public Sqlexpr
 
 %lib C "sqlite3"
+-- %link C "sqlite3.o"
+-- %include C "sqlite3.h"
 %link C "sqlite3api.o"
 %include C "sqlite3api.h"
 
@@ -47,7 +48,7 @@ instance Functor DB where
 
 instance Applicative DB where
   pure = MkDB . return . Right
-  (MkDB f) <$> (MkDB x) = MkDB (do f' <- f
+  (MkDB f) <*> (MkDB x) = MkDB (do f' <- f
                                    case f' of
                                      Left err => return (Left err)
                                      Right op => x >>= (return . map op))
@@ -59,7 +60,7 @@ instance Monad DB where
                                   Left err => return (Left err)
                                   Right v  => case k v of
                                                    MkDB k' => k')
-    return x = MkDB (return (Right x))
+    --return x = MkDB (return (Right x))
 
 fail : String -> DB a
 fail err = MkDB (return (Left err))
@@ -83,7 +84,7 @@ runDB (MkDB f) = do f' <- f
 -----------------------------------------------------------------------------
 
 open_db : String -> DB DBPointer
-open_db name = do x <- liftIO (mkForeign (FFun "sqlite3_open_idr" [FString] FPtr) name)
+open_db name = do x <- liftIO (foreign FFI_C "sqlite3_open_idr" (String -> IO Ptr) name)
                   return (MkDBPointer x)
 
 -----------------------------------------------------------------------------
@@ -91,7 +92,7 @@ open_db name = do x <- liftIO (mkForeign (FFun "sqlite3_open_idr" [FString] FPtr
 -----------------------------------------------------------------------------
 
 close_db : DBPointer -> DB Int
-close_db (MkDBPointer pointer) = liftIO (mkForeign (FFun "sqlite3_close_idr" [FPtr] FInt) pointer)
+close_db (MkDBPointer pointer) = liftIO (foreign FFI_C "sqlite3_close_idr" (Ptr -> IO Int) pointer)
 
 -----------------------------------------------------------------------------
 -- | Wrapper around prepare, step and finalize.
@@ -99,7 +100,7 @@ close_db (MkDBPointer pointer) = liftIO (mkForeign (FFun "sqlite3_close_idr" [FP
 
 exec_db : DBPointer  -> String -> DB Int
 exec_db (MkDBPointer pointer) stmt = do
-        x <- liftIO (mkForeign (FFun "sqlite3_exec_idr" [FPtr, FString] FInt) pointer stmt)
+        x <- liftIO (foreign FFI_C "sqlite3_exec_idr" (Ptr -> String -> IO Int) pointer stmt)
         if (x == 1)
           then fail "Could not execute."
           else return x
@@ -110,7 +111,7 @@ exec_db (MkDBPointer pointer) stmt = do
 
 exec_db_v2 : StmtPtr -> DB Int
 exec_db_v2 (MkStmtPtr pointer) = do
-        x <- liftIO (mkForeign (FFun "exec_db" [FPtr] FInt) pointer)
+        x <- liftIO (foreign FFI_C "exec_db" (Ptr -> IO Int) pointer)
         if (x == 21)
           then fail "No data returned."
           else return x
@@ -122,8 +123,7 @@ exec_db_v2 (MkStmtPtr pointer) = do
 -----------------------------------------------------------------------------
 
 get_error : DBPointer  -> IO String
-get_error (MkDBPointer pointer) = mkForeign (FFun "sqlite3_get_error" [FPtr] FString) pointer
-
+get_error (MkDBPointer pointer) = foreign FFI_C "sqlite3_get_error" (Ptr -> IO String) pointer
 
 -----------------------------------------------------------------------------
 -- | Compiles the query inot a byte-code program in order to execute it.
@@ -133,7 +133,7 @@ get_error (MkDBPointer pointer) = mkForeign (FFun "sqlite3_get_error" [FPtr] FSt
 
 prepare_db : DBPointer  -> String -> DB StmtPtr
 prepare_db (MkDBPointer pointer) cmd = do
-        result <- liftIO (mkForeign (FFun "sqlite3_prepare_idr" [FPtr, FString] FPtr) pointer cmd)
+        result <- liftIO (foreign FFI_C "sqlite3_prepare_idr" (Ptr -> String -> IO Ptr) pointer cmd)
         flag <- liftIO (nullPtr result)
         if flag
           then fail "Error occured while preparing"
@@ -147,8 +147,8 @@ prepare_db (MkDBPointer pointer) cmd = do
 
 step_db : StmtPtr -> DB Int
 step_db (MkStmtPtr pointer)= do
-         x <- liftIO (mkForeign (FFun "sqlite3_step_idr" [FPtr] FInt)pointer)
-         if ( x == 101)
+         x <- liftIO (foreign FFI_C "sqlite3_step_idr" (Ptr -> IO Int) pointer)
+         if (x == 101)
            then fail "SQLITE_DONE"
            else return x
 
@@ -159,7 +159,7 @@ step_db (MkStmtPtr pointer)= do
 
 finalize_db : StmtPtr -> DB Int
 finalize_db (MkStmtPtr pointer) = do
-        x <- liftIO (mkForeign (FFun "sqlite3_finalize_idr" [FPtr] FInt) pointer)
+        x <- liftIO (foreign FFI_C "sqlite3_finalize_idr" (Ptr -> IO Int) pointer)
         if (x /= 0)
           then fail "Could not finalize"
           else return x
@@ -170,7 +170,7 @@ finalize_db (MkStmtPtr pointer) = do
 
 reset_db : StmtPtr  -> DB Int
 reset_db (MkStmtPtr pointer) = do
-        x <- liftIO (mkForeign (FFun "sqlite3_reset_idr" [FPtr] FInt) pointer)
+        x <- liftIO (foreign FFI_C "sqlite3_reset_idr" (Ptr -> IO Int) pointer)
         if (x /= 0)
           then fail "Could not reset"
           else return x
@@ -181,38 +181,34 @@ reset_db (MkStmtPtr pointer) = do
 
 column_count : DBPointer  -> IO (Either String Int)
 column_count (MkDBPointer pointer) = do
-        x <- mkForeign (FFun "sqlite3_column_count_idr" [FPtr] FInt) pointer
-        return $ if (x == 0 )
+        x <- foreign FFI_C "sqlite3_column_count_idr" (Ptr -> IO Int) pointer
+        return $ if (x == 0)
                    then Left "No Data"
                    else (Right x)
 
 column_name : DBPointer  -> Int -> IO String
 column_name (MkDBPointer pointer) iCol =
-        mkForeign (FFun "sqlite3_column_name_idr" [FPtr, FInt] FString) pointer iCol
+        foreign FFI_C "sqlite3_column_name_idr" (Ptr -> Int -> IO String) pointer iCol
 
 column_decltype : DBPointer  -> Int -> IO String
 column_decltype (MkDBPointer pointer) iCol =
-        mkForeign (FFun "sqlite3_column_decltype_idr" [FPtr, FInt] FString) pointer iCol
-
+        foreign FFI_C "sqlite3_column_decltype_idr" (Ptr -> Int -> IO String) pointer iCol
 
 column_bytes : DBPointer -> Int -> IO Int
 column_bytes (MkDBPointer pointer) iCol =
-        mkForeign (FFun "sqlite3_column_bytes_idr" [FPtr, FInt] FInt) pointer iCol
-
+        foreign FFI_C "sqlite3_column_bytes_idr" (Ptr -> Int -> IO Int) pointer iCol
 
 column_blob : DBPointer  -> Int -> IO String
 column_blob (MkDBPointer pointer) iCol =
-        mkForeign (FFun "sqlite3_column_bytes_idr" [FPtr, FInt] FString) pointer iCol
-
+        foreign FFI_C "sqlite3_column_bytes_idr" (Ptr -> Int -> IO String) pointer iCol
 
 column_text : DBPointer  -> Int -> IO String
 column_text (MkDBPointer pointer) iCol =
-        mkForeign (FFun "sqlite3_column_text_idr" [FPtr, FInt] FString) pointer iCol
-
+        foreign FFI_C "sqlite3_column_text_idr" (Ptr -> Int -> IO String) pointer iCol
 
 column_Int : DBPointer  -> Int -> IO Int
 column_Int (MkDBPointer pointer) iCol =
-        mkForeign (FFun "sqlite3_column_int_idr" [FPtr, FInt] FInt) pointer iCol
+        foreign FFI_C "sqlite3_column_int_idr" (Ptr -> Int -> IO Int) pointer iCol
 
 -----------------------------------------------------------------------------
 -- | These routines support some of SQLite backup functions.
@@ -220,22 +216,21 @@ column_Int (MkDBPointer pointer) iCol =
 
 backup_init : DBPointer -> String -> DBPointer -> String -> IO DBPointer
 backup_init (MkDBPointer des_pointer) destName (MkDBPointer src_pointer) srcName =
-        do x <- mkForeign (FFun "sqlite3_backup_init_idr" [FPtr,FString, FPtr, FString] FPtr)
+        do x <- foreign FFI_C "sqlite3_backup_init_idr" (Ptr -> String -> Ptr -> String -> IO Ptr)
                           des_pointer destName src_pointer srcName
            return (MkDBPointer x)
 
 backup_step : DBPointer -> Int -> IO Int
 backup_step (MkDBPointer pointer) nPage =
-        mkForeign (FFun "sqlite3_backup_step_idr" [FPtr, FInt] FInt) pointer nPage
+        foreign FFI_C "sqlite3_backup_step_idr" (Ptr -> Int -> IO Int) pointer nPage
 
 backup_finish : DBPointer -> IO Int
 backup_finish (MkDBPointer pointer) =
-        mkForeign (FFun "sqlite3_backup_finish_idr" [FPtr] FInt) pointer
+        foreign FFI_C "sqlite3_backup_finish_idr" (Ptr -> IO Int) pointer
 
 backup_remaining : DBPointer -> IO Int
 backup_remaining (MkDBPointer pointer) =
-        mkForeign (FFun "sqlite3_backup_remaining_idr" [FPtr] FInt) pointer
-
+        foreign FFI_C "sqlite3_backup_remaining_idr" (Ptr -> IO Int) pointer
 
 -----------------------------------------------------------------------------
 -- |  Use of this interface is not recommended.
@@ -246,19 +241,18 @@ backup_remaining (MkDBPointer pointer) =
 
 get_table : DBPointer -> String -> DB TBPointer
 get_table (MkDBPointer pointer) name = do
-            x <- liftIO(mkForeign (FFun "sqlite3_get_table_idr" [FPtr, FString] FPtr) pointer name)
+            x <- liftIO(foreign FFI_C "sqlite3_get_table_idr" (Ptr -> String -> IO Ptr) pointer name)
             flag <- liftIO (nullPtr x)
             if flag
               then do x <- liftIO(get_error_table pointer) ; fail x
               else return (MkTBPointer x)
         where
             get_error_table : Ptr-> IO String
-            get_error_table pointer = do x <- mkForeign (FFun "sqlite3_get_error" [FPtr] FString) pointer
+            get_error_table pointer = do x <- foreign FFI_C "sqlite3_get_error" (Ptr -> IO String) pointer
                                          return x
 
-
 free_table : TBPointer -> IO ()
-free_table (MkTBPointer pointer) = do x <- mkForeign (FFun "sqlite3_free_table_idr" [FPtr] FUnit) pointer
+free_table (MkTBPointer pointer) = do x <- foreign FFI_C "sqlite3_free_table_idr" (Ptr -> IO ()) pointer
                                       return ()
 
 -----------------------------------------------------------------------------
@@ -267,11 +261,11 @@ free_table (MkTBPointer pointer) = do x <- mkForeign (FFun "sqlite3_free_table_i
 -----------------------------------------------------------------------------
 
 num_row : TBPointer -> IO Int
-num_row (MkTBPointer pointer) = do x <- mkForeign (FFun "sqlite3_get_num_row" [FPtr] FInt) pointer
+num_row (MkTBPointer pointer) = do x <- foreign FFI_C "sqlite3_get_num_row" (Ptr -> IO Int) pointer
                                    return x
 
 num_col : TBPointer -> IO Int
-num_col (MkTBPointer pointer) = do x <- mkForeign (FFun "sqlite3_get_num_col" [FPtr] FInt) pointer
+num_col (MkTBPointer pointer) = do x <- foreign FFI_C "sqlite3_get_num_col" (Ptr -> IO Int) pointer
                                    return x
 
 -----------------------------------------------------------------------------
@@ -280,11 +274,11 @@ num_col (MkTBPointer pointer) = do x <- mkForeign (FFun "sqlite3_get_num_col" [F
 -----------------------------------------------------------------------------
 
 num_row_v2 : DBPointer -> IO Int
-num_row_v2 (MkDBPointer pointer) = do x <- mkForeign (FFun "sqlite3_get_num_row_v2" [FPtr] FInt) pointer
+num_row_v2 (MkDBPointer pointer) = do x <- foreign FFI_C "sqlite3_get_num_row_v2" (Ptr -> IO Int) pointer
                                       return x
 
 num_col_v2 : DBPointer -> IO Int
-num_col_v2 (MkDBPointer pointer) = do x <- mkForeign (FFun "sqlite3_get_num_col_v2" [FPtr] FInt) pointer
+num_col_v2 (MkDBPointer pointer) = do x <- foreign FFI_C "sqlite3_get_num_col_v2" (Ptr -> IO Int) pointer
                                       return x
 
 -----------------------------------------------------------------------------
@@ -299,18 +293,18 @@ get_data (MkDBPointer pointer) row col = do
     helper ty
    where get_data_type : Ptr ->Int -> Int -> IO Int
          get_data_type pointer row col =
-             mkForeign (FFun "sqlite3_get_data_type" [FPtr, FInt, FInt] FInt) pointer row col
+             foreign FFI_C "sqlite3_get_data_type" (Ptr -> Int -> Int -> IO Int) pointer row col
          get_data_val_int : Ptr  -> Int -> IO Int
          get_data_val_int pointer col =
-             mkForeign (FFun "sqlite3_get_val_int" [FPtr,FInt] FInt) pointer col
+             foreign FFI_C "sqlite3_get_val_int" (Ptr -> Int -> IO Int) pointer col
 
          get_data_val_text : Ptr -> Int -> IO String
          get_data_val_text pointer col =
-             mkForeign (FFun "sqlite3_get_val_text" [FPtr, FInt] FString) pointer col
+             foreign FFI_C "sqlite3_get_val_text" (Ptr -> Int -> IO String) pointer col
 
          get_data_val_float : Ptr -> Int -> IO Float
          get_data_val_float pointer col =
-             mkForeign (FFun "sqlite3_get_float" [FPtr, FInt] FFloat) pointer col
+             foreign FFI_C "sqlite3_get_float" (Ptr -> Int -> IO Float) pointer col
 
          helper : Int -> IO DBVal
          helper 1 = do i <- get_data_val_int pointer col ; return (DBInt i)
@@ -360,7 +354,7 @@ strcat str1 str2 = str1 ++ str2
 
 bind_int : StmtPtr -> Int -> Int -> DB StmtPtr
 bind_int (MkStmtPtr pointer) indexval val = do
-        x <- liftIO (mkForeign (FFun "sqlite3_bind_int_idr" [FPtr, FInt, FInt] FPtr) pointer indexval val)
+        x <- liftIO (foreign FFI_C "sqlite3_bind_int_idr" (Ptr -> Int -> Int -> IO Ptr) pointer indexval val)
         flag <- liftIO (nullPtr x)
         if flag
           then fail "Could not bind int."
@@ -369,7 +363,7 @@ bind_int (MkStmtPtr pointer) indexval val = do
 
 bind_float : StmtPtr -> Int -> Float -> DB StmtPtr
 bind_float (MkStmtPtr pointer) indexval val = do
-        x <- liftIO (mkForeign (FFun "sqlite3_bind_float_idr" [FPtr, FInt, FFloat] FPtr) pointer indexval val)
+        x <- liftIO (foreign FFI_C "sqlite3_bind_float_idr" (Ptr -> Int -> Float -> IO Ptr) pointer indexval val)
         flag <- liftIO (nullPtr x)
         if flag
           then fail "Could not bind float."
@@ -377,7 +371,7 @@ bind_float (MkStmtPtr pointer) indexval val = do
 
 bind_text :  StmtPtr -> String -> Int -> Int -> DB StmtPtr
 bind_text (MkStmtPtr pointer) text indexval lengthval = do
-         x <- liftIO (mkForeign (FFun "sqlite3_bind_text_idr" [FPtr, FString, FInt, FInt] FPtr)
+         x <- liftIO (foreign FFI_C "sqlite3_bind_text_idr" (Ptr -> String -> Int -> Int -> IO Ptr)
                                 pointer text indexval lengthval)
          flag <- liftIO(nullPtr x)
          if flag
@@ -386,7 +380,7 @@ bind_text (MkStmtPtr pointer) text indexval lengthval = do
 
 bind_null : StmtPtr -> Int -> DB StmtPtr
 bind_null (MkStmtPtr pointer) indexval = do
-        x <- liftIO (mkForeign (FFun "sqlite3_bind_null_idr" [FPtr, FInt] FPtr) pointer indexval)
+        x <- liftIO (foreign FFI_C "sqlite3_bind_null_idr" (Ptr -> Int -> IO Ptr) pointer indexval)
         flag <- liftIO (nullPtr x)
         if flag
           then fail "Could not bind null."
@@ -397,7 +391,7 @@ bind_null (MkStmtPtr pointer) indexval = do
 -----------------------------------------------------------------------------
 
 strlen : String -> DB Int
-strlen str = liftIO (mkForeign (FFun "strLength" [FString] FInt) str)
+strlen str = liftIO (foreign FFI_C "strLength" (String -> IO Int) str)
 
 instance Show DBVal where
     show (DBInt i)   = "Int val: "   ++ show i ++ "\n"

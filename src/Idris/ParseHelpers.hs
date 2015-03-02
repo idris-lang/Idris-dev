@@ -105,30 +105,28 @@ isEol :: Char -> Bool
 isEol '\n' = True
 isEol  _   = False
 
+-- | A parser that succeeds at the end of the line
 eol :: MonadicParsing m => m ()
 eol = (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
 
 {- | Consumes a single-line comment
 
 @
-     SingleLineComment_t ::= '--' EOL_t
-                        |     '--' ~DocCommentMarker_t ~EOL_t* EOL_t
-                        ;
+     SingleLineComment_t ::= '--' ~EOL_t* EOL_t ;
 @
  -}
 singleLineComment :: MonadicParsing m => m ()
-singleLineComment =     try (string "--" *> eol *> pure ())
-                    <|> try (string "--" *> many simpleWhiteSpace *>
-                             many (satisfy (not . isEol)) *>
-                             eol *> pure ())
-                    <?> ""
+singleLineComment = (string "--" *>
+                     many (satisfy (not . isEol)) *>
+                     eol *> pure ())
+                    <?> "single-line comment"
 
 {- | Consumes a multi-line comment
 
 @
   MultiLineComment_t ::=
      '{ -- }'
-   | '{ -' ~DocCommentMarker_t InCommentChars_t
+   | '{ -' InCommentChars_t
   ;
 @
 
@@ -154,7 +152,7 @@ multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
         startEnd :: String
         startEnd = "{}-"
 
-{-| Parses a documentation comment (similar to haddock) given a marker character
+{-| Parses a documentation comment
 
 @
   DocComment_t ::=   '|||' ~EOL_t* EOL_t

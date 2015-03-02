@@ -45,7 +45,7 @@ instance Functor Tactical where
 
 instance Applicative Tactical where
   pure x  = prim__PureTactical x
-  f <$> x = prim__BindTactical f $ \g =>
+  f <*> x = prim__BindTactical f $ \g =>
             prim__BindTactical x $ \y =>
             prim__PureTactical   $ g y
 

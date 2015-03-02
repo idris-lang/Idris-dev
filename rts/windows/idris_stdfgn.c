@@ -5,8 +5,11 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <time.h>
+#include <io.h>
 
 extern char** environ;
+
+int win_fpoll(void* h);
 
 void putStr(char* str) {
     printf("%s", str);
@@ -32,14 +35,18 @@ int fileError(void* h) {
   return ferror(f);
 }
 
-void fputStr(void* h, char* str) {
+int idris_writeStr(void* h, char* str) {
     FILE* f = (FILE*)h;
-    fputs(str, f);
+    if (fputs(str, f)) {
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 int fpoll(void* h)
 {
-    return 0;
+    return win_fpoll(h);
 }
 
 void* do_popen(const char* cmd, const char* mode) {

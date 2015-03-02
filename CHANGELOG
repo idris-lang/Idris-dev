@@ -8,7 +8,18 @@ New in 0.9.17:
 * Quasiquotation supports the generation of Language.Reflection.Raw terms
   in addition to Language.Reflection.TT. Types are used for disambiguation,
   defaulting to TT at the REPL.
-
+* Library operators have been renamed for consistency with Haskell. In
+  particular, Applicative.(<$>) is now Applicative.(<*>) and (<$>) is
+  now an alias for Functor.map. Correspondingly, ($>) and (<$) have
+  been renamed to (<*) and (*>). The cascading effects of this rename
+  are that Algebra.(<*>) has been renamed to Algebra.(<.>) and
+  Matrix.(<.>) is now Matrix.(<:>).
+* Binding forms in DSL notation are now given an extra argument: a
+  reflected representation of the name that the user chose.
+  Specifically, the rewritten lambda, pi, and let binders will now get
+  an extra argument of type TTName. This allows more understandable
+  dynamic errors in DSL code and more readable code generation results.
+	
 New in 0.9.16:
 --------------
 * Inductive-inductive definitions are now supported (i.e. simultaneously

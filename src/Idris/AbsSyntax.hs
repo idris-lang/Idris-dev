@@ -1714,6 +1714,10 @@ stripLinear i tm = evalState (sl tm) [] where
                                      return (a' : as')
              slAlts ns [] = return []
     sl (PPair fc p l r) = do l' <- sl l; r' <- sl r; return (PPair fc p l' r')
+    sl (PDPair fc p l t r) = do l' <- sl l
+                                t' <- sl t
+                                r' <- sl r 
+                                return (PDPair fc p l' t' r')
     sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var
                               args' <- mapM slA args
                               return $ PApp fc fn args'
@@ -1978,8 +1982,11 @@ shadow :: Name -> Name -> PTerm -> PTerm
 shadow n n' t = sm t where
     sm (PRef fc x) | n == x = PRef fc n'
     sm (PLam fc x t sc) | n /= x = PLam fc x (sm t) (sm sc)
-    sm (PPi p x t sc) | n /=x = PPi p x (sm t) (sm sc)
+                        | otherwise = PLam fc x (sm t) sc
+    sm (PPi p x t sc) | n /= x = PPi p x (sm t) (sm sc)
+                      | otherwise = PPi p x (sm t) sc
     sm (PLet fc x t v sc) | n /= x = PLet fc x (sm t) (sm v) (sm sc)
+                          | otherwise = PLet fc x (sm t) (sm v) sc
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
     sm (PAppBind f x as) = PAppBind f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)

@@ -893,9 +893,17 @@ elab ist info emode opts fn tm
              -- Drop the unique arguments used in the term already
              -- and in the scrutinee (since it's
              -- not valid to use them again anyway) 
+             --
+             -- Also drop unique arguments which don't appear explicitly
+             -- in either case branch so they don't count as used
+             -- unnecessarily (can only do this for unique things, since we
+             -- assume they don't appear implicitly in types)
              ptm <- get_term
+             let inOpts = (filter (/= scvn) (map fst args)) \\ (concatMap (\x -> allNamesIn (snd x)) opts)
+
              let argsDropped = filter (isUnique envU) 
-                                   (nub $ allNamesIn scr ++ inApp ptm)
+                                   (nub $ allNamesIn scr ++ inApp ptm ++
+                                    inOpts)
 
              let args' = filter (\(n, _) -> n `notElem` argsDropped) args
 

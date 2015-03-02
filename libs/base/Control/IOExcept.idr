@@ -10,8 +10,8 @@ instance Functor (IOExcept e) where
 
 instance Applicative (IOExcept e) where
      pure x = ioM (pure (pure x))
-     (ioM f) <$> (ioM a) = ioM (do f' <- f; a' <- a
-                                   return (f' <$> a'))
+     (ioM f) <*> (ioM a) = ioM (do f' <- f; a' <- a
+                                   return (f' <*> a'))
 
 instance Monad (IOExcept e) where
      (ioM x) >>= k = ioM (do x' <- x;

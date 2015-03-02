@@ -1311,7 +1311,23 @@ loadSource lidr f toline
                   mapM_ (addIBC . IBCImport) [(reexport, realName) | (reexport, realName, alias, fc) <- imports]
                   let syntax = defaultSyntax{ syn_namespace = reverse mname,
                                               maxline = toline }
+                  ist <- getIState
+                  -- Save the span from parsing the module header, because
+                  -- an empty program parse might obliterate it.
+                  let oldSpan = idris_parsedSpan ist
                   ds' <- parseProg syntax f file pos
+
+                  case (ds', oldSpan) of
+                    ([], Just fc) ->
+                      -- If no program elements were parsed, we dind't
+                      -- get a loaded region in the IBC file. That
+                      -- means we need to add it back.
+                      do ist <- getIState
+                         putIState ist { idris_parsedSpan = oldSpan
+                                       , ibc_write = IBCParsedRegion fc :
+                                                     ibc_write ist
+                                       }
+                    _ -> return ()
 
                   -- Parsing done, now process declarations
 
