@@ -1508,7 +1508,7 @@ case_ ind autoSolve ist fn tm = do
 runTactical :: FC -> Context -> Env -> Term -> ElabD ()
 runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
   where
-    eval = normaliseAll ctxt env
+    eval = normaliseAll ctxt env . finalise
     tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]
     returnUnit = fmap fst $ get_type_val (Var unitCon)
 
