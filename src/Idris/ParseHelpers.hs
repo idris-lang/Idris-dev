@@ -119,7 +119,7 @@ singleLineComment :: MonadicParsing m => m ()
 singleLineComment = (string "--" *>
                      many (satisfy (not . isEol)) *>
                      eol *> pure ())
-                    <?> "single-line comment"
+                    <?> ""
 
 {- | Consumes a multi-line comment
 
@@ -321,10 +321,17 @@ opChars = ":!#$%&*+./<=>?@\\^|-~"
 operatorLetter :: MonadicParsing m => m Char
 operatorLetter = oneOf opChars
 
+
+commentMarkers :: [String]
+commentMarkers = [ "--", "|||" ]
+
+invalidOperators :: [String]
+invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\"]
+
 -- | Parses an operator
 operator :: MonadicParsing m => m String
 operator = do op <- token . some $ operatorLetter
-              when (op `elem` [":", "=>", "->", "<-", "=", "?=", "|"]) $
+              when (op `elem` (invalidOperators ++ commentMarkers)) $
                    fail $ op ++ " is not a valid operator"
               return op
 
