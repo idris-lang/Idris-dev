@@ -53,13 +53,13 @@ import Util.Pretty(pretty, text)
 
 elabRecord :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) -> FC -> Name ->
               PTerm -> DataOpts -> Docstring (Either Err PTerm) -> Maybe Name -> [(Name, Plicity)] -> PTerm -> Idris ()
-elabRecord info syn doc fc tyn ty opts cdoc mcn args cty_in'
+elabRecord info syn doc fc tyn ty opts cdoc mcn args cty_in
     = do cn <- liftM (expandNS syn) (case mcn of
            Just cn' -> return (nsroot cn')
            Nothing  -> if isOp tyn
                        then generateConsNameOp
                        else generateConsName (sUN $ "Mk" ++ (show (nsroot tyn))))
-         cty_in <- customizeConstructor args cty_in'
+
          elabData info syn doc [] fc opts (PDatadecl tyn ty [(cdoc, [], cn, cty_in, fc, [])])
          -- TODO think: something more in info?
          cty' <- implicit info syn cn cty_in

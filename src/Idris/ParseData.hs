@@ -38,7 +38,7 @@ import qualified Data.ByteString.UTF8 as UTF8
 import Debug.Trace
 
 type Docs = Docstring (Either Err PTerm)
-type RecordConstructor = (Docs, [(Name, Docs)], Maybe Name, PTerm, [(Name, Plicity)])
+type RecordConstructor = (Docs, [(Name, Docs)], Maybe Name, PTerm)
 
 {- |Parses a record type declaration
 Record ::=
@@ -59,9 +59,8 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
                 tyn_in <- fnName             
                 tys <- manyTill (recordTypeParameter syn) (reserved "where")
                 let ty = recordTypeConstructor tys
-                let ty' = withoutNames ty
                 let tyn = expandNS syn tyn_in
-                (cdoc, cargDocs, cn, cty, args) <- indentedBlockS $ agdaStyleBody syn tyn ty
+                (cdoc, cargDocs, cn, cty) <- indentedBlockS $ agdaStyleBody syn tyn ty
                 case cn of
                      Just cn' -> accData acc tyn [cn']
                      Nothing -> return ()
@@ -69,7 +68,7 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
                                                     syn_namespace syn }
                 let fns = getRecNames rsyn cty
                 mapM_ (\n -> addAcc n acc) fns
-                return $ PRecord doc rsyn fc tyn ty' opts cdoc cn args cty
+                return $ PRecord doc rsyn fc tyn ty opts cdoc cn [] cty
              <?> "record type declaration"
   where
     withoutNames :: PTerm -> PTerm
@@ -98,9 +97,8 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
         fields <- many . indented $ field
 
         let constructorDoc = parseDocstring . T.pack $ "Constructor of " ++ show tyn
-        (constructorName, args) <- do c <- optional constructor
-                                      let (n, args) = maybePair c
-                                      return (n, mList args)
+        constructorName <- do n <- optional constructor
+                              return n
         
         let constructorDoc' = annotate syn ist constructorDoc
         let fieldDocs = [(n, annotate syn ist doc) | (n, _, _, doc, _) <- fields]
@@ -108,7 +106,7 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
             constructorType = mkConstructorType [(n, t, p) | (n, t, p, _, _) <- fields] target
             constructorType' = replaceTarget constructorType (allImpl tyc)
             
-        return (constructorDoc', fieldDocs, constructorName, constructorType', args)
+        return (constructorDoc', fieldDocs, constructorName, constructorType')
       where
         maybePair :: Maybe (a, b) -> (Maybe a, Maybe b)
         maybePair (Just(x, y)) = (Just x, Just y)
@@ -117,11 +115,6 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
         mList :: Maybe [a] -> [a]
         mList (Just xs) = xs
         mList Nothing   = []
-
-        fieldsAndConstructor :: IdrisParser ([(Name, PTerm, Plicity, Docstring (), [(Name, Docstring ())])], (Maybe Name), [(Name, Plicity)])
-        fieldsAndConstructor = do fields <- (indented field) `manyTill` (reserved "constructor")                                      
-                                  (cName, args) <- indented constructor
-                                  return (fields, Just cName, args)
                                       
         allImpl :: PTerm -> PTerm
         allImpl (PPi _ n t t') = PPi impl n t (allImpl t')
@@ -129,21 +122,23 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
         
         field :: IdrisParser (Name, PTerm, Plicity, Docstring (), [(Name, Docstring ())])
         field = do (doc, argDocs) <- option noDocs docComment
+                   c <- optional $ lchar '{'
                    n <- fnName
                    lchar ':'
                    t <- typeExpr (allowImp syn)
-                   return (n, t, expl, doc, argDocs)
+                   p <- endPlicity c
+                   return (n, t, p, doc, argDocs)
 
-        constructor :: IdrisParser (Name, [(Name, Plicity)])
+        constructor :: IdrisParser Name -- (Name, [(Name, Plicity)])
         constructor = do n <- (reserved "constructor") *> fnName                         
-                         args <- option [] (do lchar '('
-                                               args <- many (do p <- optional $ lchar '{'
-                                                                argName <- fnName
-                                                                plicity <- endPlicity p
-                                                                return (argName, plicity))
-                                               lchar ')'
-                                               return args)
-                         return (n, args)
+                         -- args <- option [] (do lchar '('
+                         --                       args <- many (do p <- optional $ lchar '{'
+                         --                                        argName <- fnName
+                         --                                        plicity <- endPlicity p
+                         --                                        return (argName, plicity))
+                         --                       lchar ')'
+                         --                       return args)
+                         return n
 
         endPlicity :: Maybe Char -> IdrisParser Plicity
         endPlicity (Just _) = do lchar '}'
