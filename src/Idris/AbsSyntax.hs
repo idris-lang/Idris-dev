@@ -96,7 +96,7 @@ addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 
 addImported :: Bool -> FilePath -> Idris ()
-addImported pub f 
+addImported pub f
      = do i <- getIState
           putIState $ i { idris_imported = nub $ (f, pub) : idris_imported i }
 
@@ -134,7 +134,7 @@ addExport n = do ist <- getIState
                  putIState $ ist { idris_exports = n : idris_exports ist }
 
 addUsedName :: FC -> Name -> Name -> Idris ()
-addUsedName fc n arg 
+addUsedName fc n arg
     = do ist <- getIState
          case lookupTyName n (tt_ctxt ist) of
               [(n', ty)] -> addUsage n' 0 ty
@@ -1082,8 +1082,8 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs decls)
            (map (mapsnd (expandParams dec ps ns [])) params)
            pDocs
            (map (expandParamsD rhs ist dec ps ns) decls)
-expandParamsD rhs ist dec ps ns (PInstance info f cs n params ty cn decls)
-   = PInstance info f
+expandParamsD rhs ist dec ps ns (PInstance doc info f cs n params ty cn decls)
+   = PInstance doc info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
            n
            (map (expandParams dec ps ns []) params)
@@ -1552,7 +1552,7 @@ addImpl' inpat env infns ist ptm
                        PLam fc n ty' sc'
              _ -> ai qq env ds (PLam fc (sMN 0 "lamp") ty
                                      (PCase fc (PRef fc (sMN 0 "lamp") )
-                                        [(PRef fc n, sc)])) 
+                                        [(PRef fc n, sc)]))
     ai qq env ds (PLet fc n ty val sc)
       = case lookupDef n (tt_ctxt ist) of
              [] -> let ty' = ai qq env ds ty
@@ -1726,7 +1726,7 @@ stripLinear i tm = evalState (sl tm) [] where
     sl (PPair fc p l r) = do l' <- sl l; r' <- sl r; return (PPair fc p l' r')
     sl (PDPair fc p l t r) = do l' <- sl l
                                 t' <- sl t
-                                r' <- sl r 
+                                r' <- sl r
                                 return (PDPair fc p l' t' r')
     sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var
                               args' <- mapM slA args
@@ -1925,11 +1925,11 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PHidden x) (PHidden y)
           | RightOK xs <- match x y = return xs -- to collect variables
           | otherwise = return [] -- Otherwise hidden things are unmatchable
-    match (PHidden x) y 
-          | RightOK xs <- match x y = return xs 
+    match (PHidden x) y
+          | RightOK xs <- match x y = return xs
           | otherwise = return []
-    match x (PHidden y) 
-          | RightOK xs <- match x y = return xs 
+    match x (PHidden y)
+          | RightOK xs <- match x y = return xs
           | otherwise = return []
     match (PUnifyLog x) y = match' x y
     match x (PUnifyLog y) = match' x y

@@ -91,9 +91,9 @@ deriving instance Binary IBCFile
 initIBC :: IBCFile
 initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] []
 
-loadIBC :: Bool -- ^ True = reexport, False = make everything private 
+loadIBC :: Bool -- ^ True = reexport, False = make everything private
         -> FilePath -> Idris ()
-loadIBC reexport fp 
+loadIBC reexport fp
            = do imps <- getImported
                 let redo = case lookup fp imps of
                                 Nothing -> True
@@ -194,7 +194,7 @@ ibc i (IBCLib tgt n) f = return f { ibc_libs = (tgt, n) : ibc_libs f }
 ibc i (IBCCGFlag tgt n) f = return f { ibc_cgflags = (tgt, n) : ibc_cgflags f }
 ibc i (IBCDyLib n) f = return f {ibc_dynamic_libs = n : ibc_dynamic_libs f }
 ibc i (IBCHeader tgt n) f = return f { ibc_hdrs = (tgt, n) : ibc_hdrs f }
-ibc i (IBCDef n) f 
+ibc i (IBCDef n) f
    = do f' <- case lookupDefExact n (tt_ctxt i) of
                    Just v -> return f { ibc_defs = (n,v) : ibc_defs f }
                    _ -> ifail "IBC write failed"
@@ -239,13 +239,13 @@ ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
 process :: Bool -- ^ Reexporting
            -> IBCFile -> FilePath -> Idris ()
 process reexp i fn
-   | ver i /= ibcVersion 
+   | ver i /= ibcVersion
        = do iLOG "ibc out of date"
             let e = if ver i < ibcVersion then " an earlier " else " a later "
             ifail $ "Incompatible ibc version.\nThis library was built with"
                     ++ e ++ "version of Idris.\n" ++
                     "Please clean and rebuild."
-                              
+
                               --- please rebuild"
    | otherwise =
             do srcok <- runIO $ doesFileExist (sourcefile i)
@@ -323,7 +323,7 @@ pImportDirs fs = mapM_ addImportDir fs
 
 pImports :: [(Bool, FilePath)] -> Idris ()
 pImports fs
-  = do mapM_ (\(re, f) -> 
+  = do mapM_ (\(re, f) ->
                     do i <- getIState
                        ibcsd <- valIBCSubDir i
                        ids <- allImportDirs
@@ -427,20 +427,20 @@ pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs
 
 pPatdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))] -> Idris ()
-pPatdefs ds 
-   = mapM_ (\ (n, d) -> 
+pPatdefs ds
+   = mapM_ (\ (n, d) ->
                 do i <- getIState
                    putIState (i { idris_patdefs = addDef n (force d) (idris_patdefs i) }))
            ds
 
 pDefs :: Bool -> [Name] -> [(Name, Def)] -> Idris ()
-pDefs reexp syms ds 
+pDefs reexp syms ds
    = mapM_ (\ (n, d) ->
                do d' <- updateDef d
                   case d' of
-                       TyDecl _ _ -> return () 
+                       TyDecl _ _ -> return ()
                        _ -> do iLOG $ "SOLVING " ++ show n
-                               solveDeferred n 
+                               solveDeferred n
                   i <- getIState
 --                   logLvl 1 $ "Added " ++ show (n, d')
                   putIState (i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
@@ -509,8 +509,8 @@ pMDocs ds = mapM_ addMDocStr ds
 
 pAccess :: Bool -- ^ Reexporting?
            -> [(Name, Accessibility)] -> Idris ()
-pAccess reexp ds 
-        = mapM_ (\ (n, a_in) -> 
+pAccess reexp ds
+        = mapM_ (\ (n, a_in) ->
                       do let a = if reexp then a_in else Hidden
                          logLvl 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
                          i <- getIState
@@ -568,7 +568,7 @@ pFunctionErrorHandlers ((fn, arg, handler):ns) = do addFunctionErrorHandlers fn 
 
 pMetavars :: [(Name, (Maybe Name, Int, Bool))] -> Idris ()
 pMetavars ns = do i <- getIState
-                  putIState $ i { idris_metavars = Data.List.reverse ns 
+                  putIState $ i { idris_metavars = Data.List.reverse ns
                                                      ++ idris_metavars i }
 
 ----- For Cheapskate and docstrings
@@ -862,7 +862,7 @@ safeToEnum :: (Enum a, Bounded a, Integral int) => String -> int -> a
 safeToEnum label x' = result
   where
     x = fromIntegral x'
-    result 
+    result
         |  x < fromEnum (minBound `asTypeOf` result)
         || x > fromEnum (maxBound `asTypeOf` result)
             = error $ label ++ ": corrupted binary representation in IBC"
@@ -1248,15 +1248,16 @@ instance (Binary t) => Binary (PDecl' t) where
                                                put x6
                                                put x7
                                                put x8
-                PInstance x1 x2 x3 x4 x5 x6 x7 x8 -> do putWord8 8
-                                                        put x1
-                                                        put x2
-                                                        put x3
-                                                        put x4
-                                                        put x5
-                                                        put x6
-                                                        put x7
-                                                        put x8
+                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 -> do putWord8 8
+                                                           put x1
+                                                           put x2
+                                                           put x3
+                                                           put x4
+                                                           put x5
+                                                           put x6
+                                                           put x7
+                                                           put x8
+                                                           put x9
                 PDSL x1 x2 -> do putWord8 9
                                  put x1
                                  put x2
@@ -1288,7 +1289,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                              put x1
                                              put x2
                                              put x3
-                                             put x4 
+                                             put x4
         get
           = do i <- getWord8
                case i of
@@ -1350,7 +1351,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x6 <- get
                            x7 <- get
                            x8 <- get
-                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8)
+                           x9 <- get
+                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9)
                    9 -> do x1 <- get
                            x2 <- get
                            return (PDSL x1 x2)
@@ -2198,4 +2200,3 @@ instance Binary Codegen where
                           return (Via x1)
                   1 -> return Bytecode
                   _ -> error  "Corrupted binary data for Codegen"
-

@@ -200,11 +200,11 @@ elabDecl' what info (PMutual f ps)
   where isDataDecl (PData _ _ _ _ _ _) = True
         isDataDecl _ = False
 
-        setMutData ns n 
+        setMutData ns n
            = do i <- getIState
                 case lookupCtxt n (idris_datatypes i) of
                    [x] -> do let x' = x { mutual_types = ns }
-                             putIState $ i { idris_datatypes 
+                             putIState $ i { idris_datatypes
                                                 = addDef n x' (idris_datatypes i) }
                    _ -> return ()
 
@@ -233,9 +233,9 @@ elabDecl' what info (PClass doc s f cs n ps pdocs ds)
   | what /= EDefns
     = do iLOG $ "Elaborating class " ++ show n
          elabClass info (s { syn_params = [] }) doc f cs n ps pdocs ds
-elabDecl' what info (PInstance s f cs n ps t expn ds)
+elabDecl' what info (PInstance doc s f cs n ps t expn ds)
     = do iLOG $ "Elaborating instance " ++ show n
-         elabInstance info s what f cs n ps t expn ds
+         elabInstance info s doc what f cs n ps t expn ds
 elabDecl' what info (PRecord doc s f tyn ty opts cdoc cn cty)
   | what /= ETypes
     = do iLOG $ "Elaborating record " ++ show tyn
@@ -257,4 +257,3 @@ elabDecl' what info (PTransform fc safety old new)
     = do elabTransform info fc safety old new
          return ()
 elabDecl' _ _ _ = return () -- skipped this time
-

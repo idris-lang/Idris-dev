@@ -191,7 +191,7 @@ docClass n ci
        mdocs <- mapM (docFun . fst) (class_methods ci)
        return $ ClassDoc n docstr mdocs params instances superclasses
   where
-    getDInst (PInstance _ _ _ _ _ t _ _) = Just t
+    getDInst (PInstance _ _ _ _ _ _ t _ _) = Just t
     getDInst _                           = Nothing
 
 docFun :: Name -> Idris FunDoc

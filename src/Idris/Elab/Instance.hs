@@ -51,6 +51,7 @@ import Data.List.Split (splitOn)
 import Util.Pretty(pretty, text)
 
 elabInstance :: ElabInfo -> SyntaxInfo ->
+                Docstring (Either Err PTerm) ->
                 ElabWhat -> -- phase
                 FC -> [(Name, PTerm)] -> -- constraints
                 Name -> -- the class
@@ -58,7 +59,7 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 PTerm -> -- full instance type
                 Maybe Name -> -- explicit name
                 [PDecl] -> Idris ()
-elabInstance info syn what fc cs n ps t expn ds = do
+elabInstance info syn doc what fc cs n ps t expn ds = do
     i <- getIState
     (n, ci) <- case lookupCtxtName n (idris_classes i) of
                   [c] -> return c
@@ -147,10 +148,10 @@ elabInstance info syn what fc cs n ps t expn ds = do
                           Just m -> sNS (SN (sInstanceN n' (map show ps'))) m
           Just nm -> nm
 
-    substInstance ips pnames (PInstance syn _ cs n ps t expn ds)
-        = PInstance syn fc cs n (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
+    substInstance ips pnames (PInstance doc syn _ cs n ps t expn ds)
+        = PInstance doc syn fc cs n (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
 
-    isOverlapping i (PInstance syn _ _ n ps t expn _)
+    isOverlapping i (PInstance doc syn _ _ n ps t expn _)
         = case lookupCtxtName n (idris_classes i) of
             [(n, ci)] -> let iname = (mkiname n (namespace info) ps expn) in
                             case lookupTy iname (tt_ctxt i) of

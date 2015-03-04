@@ -178,8 +178,7 @@ decl syn = do fc <- getFC
                    <|> params syn
                    <|> mutual syn
                    <|> namespace syn
-                   <|> class_ syn
-                   <|> instance_ syn
+                   <|> (try (class_ syn) <|> instance_ syn)
                    <|> do d <- dsl syn; return [d]
                    <|> directive syn
                    <|> provider syn
@@ -291,7 +290,7 @@ syntaxRule syn
 
     mkSimple' (Expr e : Expr e1 : es) = SimpleExpr e : SimpleExpr e1 :
                                            mkSimple es
-    -- Can't parse a full expression followed by operator like characters due to ambiguity 
+    -- Can't parse a full expression followed by operator like characters due to ambiguity
     mkSimple' (Expr e : Symbol s : es)
       | takeWhile (`elem` opChars) ts /= "" && ts `notElem` invalidOperators  = SimpleExpr e : Symbol s : mkSimple' es
        where ts = dropWhile isSpace . dropWhileEnd isSpace $ s
@@ -587,7 +586,7 @@ ClassBlock ::=
 classBlock :: SyntaxInfo -> IdrisParser [PDecl]
 classBlock syn = do reserved "where"
                     openBlock
-                    ds <- many ((notEndBlock >> instance_ syn) <|> fnDecl syn)
+                    ds <- many (try (notEndBlock >> instance_ syn) <|> fnDecl syn)
                     closeBlock
                     return (concat ds)
                  <?> "class block"
@@ -634,7 +633,7 @@ class_ syn = do (doc, argDocs, acc) <- try (do
 
 @
   Instance ::=
-    'instance' InstanceName? ConstraintList? Name SimpleExpr* InstanceBlock?
+    DocComment_t? 'instance' InstanceName? ConstraintList? Name SimpleExpr* InstanceBlock?
     ;
 @
 
@@ -643,7 +642,12 @@ InstanceName ::= '[' Name ']';
 @
 -}
 instance_ :: SyntaxInfo -> IdrisParser [PDecl]
-instance_ syn = do reserved "instance"; fc <- getFC
+instance_ syn = do doc <- try (do
+                     (doc, _) <- option noDocs docComment
+                     ist <- get
+                     let doc' = annotCode (tryFullExpr syn ist) doc
+                     return doc')
+                   reserved "instance"; fc <- getFC
                    en <- optional instanceName
                    cs <- constraintList syn
                    cn <- fnName
@@ -651,7 +655,7 @@ instance_ syn = do reserved "instance"; fc <- getFC
                    let sc = PApp fc (PRef fc cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- option [] (instanceBlock syn)
-                   return [PInstance syn fc cs cn args t en ds]
+                   return [PInstance doc syn fc cs cn args t en ds]
                  <?> "instance declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fnName; lchar ']'
@@ -1405,7 +1409,7 @@ loadSource lidr f toline
                  case x of
                    PClauses _ _ _ _ -> r
                    PClass _ _ _ _ _ _ _ _ -> r
-                   PInstance _ _ _ _ _ _ _ _ -> r
+                   PInstance _ _ _ _ _ _ _ _ _ -> r
                    _ -> x
 
     addModDoc :: SyntaxInfo -> [String] -> Docstring () -> Idris ()
