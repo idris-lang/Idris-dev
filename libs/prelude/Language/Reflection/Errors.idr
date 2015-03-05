@@ -29,7 +29,7 @@ data Err = Msg String
          | NoTypeDecl TTName
          | NotInjective TT TT TT
          | CantResolve TT
-         | CantResolveAlts (List String)
+         | CantResolveAlts (List TTName)
          | IncompleteTerm TT
          | UniverseError
          | ProgramLineComment
