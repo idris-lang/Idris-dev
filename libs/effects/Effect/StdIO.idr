@@ -9,8 +9,8 @@ import Control.IOExcept
 
 ||| The internal representation of StdIO effects
 data StdIO : Effect where
-     PutStr : String -> { () } StdIO () 
-     GetStr : { () } StdIO String 
+     PutStr : String -> { () } StdIO ()
+     GetStr : { () } StdIO String
      PutCh : Char -> { () } StdIO ()
      GetCh : { () } StdIO Char
 
@@ -22,13 +22,13 @@ data StdIO : Effect where
 instance Handler StdIO IO where
     handle () (PutStr s) k = do putStr s; k () ()
     handle () GetStr     k = do x <- getLine; k x ()
-    handle () (PutCh c)  k = do putChar c; k () () 
+    handle () (PutCh c)  k = do putChar c; k () ()
     handle () GetCh      k = do x <- getChar; k x ()
 
 instance Handler StdIO (IOExcept a) where
     handle () (PutStr s) k = do ioe_lift $ putStr s; k () ()
     handle () GetStr     k = do x <- ioe_lift $ getLine; k x ()
-    handle () (PutCh c)  k = do ioe_lift $ putChar c; k () () 
+    handle () (PutCh c)  k = do ioe_lift $ putChar c; k () ()
     handle () GetCh      k = do x <- ioe_lift $ getChar; k x ()
 
 -------------------------------------------------------------
@@ -58,3 +58,10 @@ getStr = call $ GetStr
 getChar : { [STDIO] } Eff Char
 getChar = call $ GetCh
 
+||| Given a parameter `a` 'show' `a` to standard output.
+print : Show a => a -> { [STDIO] } Eff ()
+print a = putStr (show a)
+
+||| Given a parameter `a` 'show' `a` to a standard output, terminating with a newline
+printLn : Show a => a -> { [STDIO] } Eff ()
+printLn a = putStrLn (show a)
