@@ -19,7 +19,8 @@ New in 0.9.17:
   Specifically, the rewritten lambda, pi, and let binders will now get
   an extra argument of type TTName. This allows more understandable
   dynamic errors in DSL code and more readable code generation results.
-	
+* DSL notation can now be applied with $
+
 New in 0.9.16:
 --------------
 * Inductive-inductive definitions are now supported (i.e. simultaneously
