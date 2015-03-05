@@ -162,7 +162,7 @@ typedef void(*func)(VM*, VAL*);
 #define SETTY(x,t) (x)->ty = (((x)->ty & 0xffff0000) | (t))
 
 #define GETHEAP(x) ((x)->ty >> 16)
-#define SETHEAP(x,y) (x)->ty = (((x)->ty & 0x0000ffff) | ((t) << 16))
+#define SETHEAP(x,y) (x)->ty = (((x)->ty & 0x0000ffff) | ((y) << 16))
 
 // Integers, floats and operators
 
