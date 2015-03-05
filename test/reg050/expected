@@ -1,15 +1,8 @@
-badbangop.idr:16:1:When elaborating right hand side of opUse:
-When elaborating an application of function Prelude.Monad.>>=:
-        Can't unify
-                List Integer
-        with
-                argTy -> retTy
-        
-        Specifically:
-                Can't unify
-                        List
-                with
-                        \{uv0} => argTy -> uv
+./badbangop.idr:7:1: error: ! is
+    not a valid
+    operator, expected: space
+(!) : List a -> Nat -> Maybe a 
+^                              
 ./baddoublebang.idr:6:28: error: unexpected
     Operator without known fixity:
     !!, expected: space
