@@ -70,7 +70,7 @@ elabInstance info syn doc what fc cs n ps t expn ds = do
     let iname = mkiname n (namespace info) ps expn
     let emptyclass = null (class_methods ci)
     when (what /= EDefns || (null ds && not emptyclass)) $ do
-         nty <- elabType' True info syn emptyDocstring [] fc [] iname t
+         nty <- elabType' True info syn doc [] fc [] iname t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
