@@ -77,5 +77,5 @@ testFac : Int
 testFac = interp [] eFac 4
 
 main : IO ()
-main = do print test
-          print testFac
+main = do printLn test
+          printLn testFac

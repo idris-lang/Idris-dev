@@ -35,7 +35,7 @@ runEval env e with (eval e) {
 }
 
 main : IO ()
-main = do print [| (\x => x *2) (Just 4) |]
-          print [| plus (Just 4) (Just 5) |]
-          print (runEval [("x",21), ("y", 20)] (Add (Val 1) (Add (Var "x") (Var "y"))))
-          print (runEval [("x",21)] (Add (Val 1) (Add (Var "x") (Var "y"))))
+main = do printLn [| (\x => x *2) (Just 4) |]
+          printLn [| plus (Just 4) (Just 5) |]
+          printLn (runEval [("x",21), ("y", 20)] (Add (Val 1) (Add (Var "x") (Var "y"))))
+          printLn (runEval [("x",21)] (Add (Val 1) (Add (Var "x") (Var "y"))))

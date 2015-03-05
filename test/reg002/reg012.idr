@@ -30,4 +30,4 @@ swap (x :: Nil)     = x :: Nil
 swap (x :: y :: xs) = (y :: x :: (swap xs))
 
 main : IO ()
-main = print (swap [1,2,3,4,5])
+main = printLn (swap [1,2,3,4,5])

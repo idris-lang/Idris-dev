@@ -7,4 +7,4 @@ fib : Stream Nat
 fib = 0 :: zipWithS (+) fib (1 :: fib)
 
 partial main : IO ()
-main = print (take 15 fib)
+main = printLn (take 15 fib)

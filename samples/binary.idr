@@ -41,7 +41,7 @@ adc (numx # bx) (numy # by) carry
 main : IO ()
 main = do let n1 = zero # b1 # b0 # b1 # b0
           let n2 = zero # b1 # b1 # b1 # b0
-          print (adc n1 n2 b0)
+          printLn (adc n1 n2 b0)
 
 
 
@@ -92,4 +92,3 @@ main.adc_lemma_1 = proof {
     rewrite sym (plusZeroRightNeutral c) ;
     trivial;
 }
-

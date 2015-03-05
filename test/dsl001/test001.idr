@@ -96,8 +96,8 @@ testEnv : Int -> Env [TyInt,TyInt]
 testEnv x = [x,x]
 
 main : IO ()
-main = do { print testFac
-            print test }
+main = do { printLn testFac
+            printLn test }
 
 
 

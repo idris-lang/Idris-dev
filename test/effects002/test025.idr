@@ -30,6 +30,6 @@ testMemory = do Src :- allocate 5
 
 main : IO ()
 main = ioe_run (runInit [Dst := (), Src := ()] testMemory)
-               (\err => print err) (\ok => print ok)
+               (\err => printLn err) (\ok => printLn ok)
 
 
