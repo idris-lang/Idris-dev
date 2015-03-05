@@ -138,7 +138,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
                                  True)
              -- if all else fails, make a new metavariable
                          (if fromProver 
-                             then cantSolveGoal
+                             then fail "cantSolveGoal"
                              else do attack; defer [] nroot; solve) True) True
 
     getFn d Nothing = []
