@@ -2,6 +2,8 @@
 
 module Idris.DSL where
 
+import Data.Generics.Uniplate.Data (transform)
+
 import Idris.AbsSyntax
 
 import Idris.Core.TT
@@ -13,9 +15,17 @@ import Debug.Trace
 debindApp :: SyntaxInfo -> PTerm -> PTerm
 debindApp syn t = debind (dsl_bind (dsl_info syn)) t
 
+dslify :: SyntaxInfo -> IState -> PTerm -> PTerm
+dslify syn i = transform dslifyApp 
+  where
+    dslifyApp (PApp fc (PRef _ f) [a])
+        | [d] <- lookupCtxt f (idris_dsls i)
+            = desugar (syn { dsl_info = d }) i (getTm a)
+    dslifyApp t = t
+
 desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
-desugar syn i t = let t' = expandDo (dsl_info syn) t in
-                      t' -- addImpl i t'
+desugar syn i t = let t' = expandDo (dsl_info syn) t
+                  in dslify syn i t'
 
 mkTTName :: FC -> Name -> PTerm
 mkTTName fc n =
