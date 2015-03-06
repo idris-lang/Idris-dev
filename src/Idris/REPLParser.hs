@@ -258,9 +258,9 @@ cmd_doc name = do
     let constant = do
         c <- P.constant
         eof
-        return $ Right (DocStr (Right c))
+        return $ Right (DocStr (Right c) FullDocs)
 
-    let fnName = fnNameArg (\n -> DocStr (Left n)) name
+    let fnName = fnNameArg (\n -> DocStr (Left n) FullDocs) name
 
     try constant <|> fnName
 

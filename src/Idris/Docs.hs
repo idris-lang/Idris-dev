@@ -1,12 +1,12 @@
-{-# LANGUAGE PatternGuards #-}
-module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, FunDoc(..), Docs (..)) where
+{-# LANGUAGE DeriveFunctor, PatternGuards #-}
+module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, FunDoc, FunDoc'(..), Docs, Docs'(..)) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Delaborate
 import Idris.Core.TT
 import Idris.Core.Evaluate
-import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, renderDocstring, DocTerm, renderDocTerm)
+import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, renderDocstring, DocTerm, renderDocTerm, overview)
 
 import Util.Pretty
 
@@ -18,21 +18,27 @@ import qualified Data.Text as T
 --
 -- Issue #1573 on the Issue tracker.
 --    https://github.com/idris-lang/Idris-dev/issues/1573
-data FunDoc = FD Name (Docstring DocTerm)
-                 [(Name, PTerm, Plicity, Maybe (Docstring DocTerm))] -- args: name, ty, implicit, docs
-                 PTerm -- function type
-                 (Maybe Fixity)
+data FunDoc' d = FD Name d
+                    [(Name, PTerm, Plicity, Maybe d)] -- args: name, ty, implicit, docs
+                    PTerm -- function type
+                    (Maybe Fixity)
+  deriving Functor
 
-data Docs = FunDoc FunDoc
-          | DataDoc FunDoc -- type constructor docs
-                    [FunDoc] -- data constructor docs
-          | ClassDoc Name (Docstring DocTerm)-- class docs
-                     [FunDoc] -- method docs
-                     [(Name, Maybe (Docstring DocTerm))] -- parameters and their docstrings
-                     [PTerm] -- instances
-                     [PTerm] -- superclasses
-          | ModDoc [String] -- Module name
-                   (Docstring DocTerm)
+type FunDoc = FunDoc' (Docstring DocTerm)
+
+data Docs' d = FunDoc (FunDoc' d)
+             | DataDoc (FunDoc' d) -- type constructor docs
+                       [FunDoc' d] -- data constructor docs
+             | ClassDoc Name d   -- class docs
+                        [FunDoc' d] -- method docs
+                        [(Name, Maybe d)] -- parameters and their docstrings
+                        [PTerm] -- instances
+                        [PTerm] -- superclasses
+             | ModDoc [String] -- Module name
+                      d
+  deriving Functor
+
+type Docs = Docs' (Docstring DocTerm)
 
 showDoc ist d
   | nullDocstring d = empty
@@ -144,23 +150,29 @@ pprintDocs ist (ModDoc mod docs)
    = nest 4 $ text "Module" <+> text (concat (intersperse "." mod)) <> colon <$>
               renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) docs
 
+-- | Determine a truncation function depending how much docs the user
+-- wants to see
+howMuch FullDocs     = id
+howMuch OverviewDocs = overview
+
 -- | Given a fully-qualified, disambiguated name, construct the
 -- documentation object for it
-getDocs :: Name -> Idris Docs
-getDocs n@(NS n' ns) | n' == modDocName
+getDocs :: Name -> HowMuchDocs -> Idris Docs
+getDocs n@(NS n' ns) w | n' == modDocName
    = do i <- getIState
         case lookupCtxtExact n (idris_moduledocs i) of
-          Just doc -> return $ ModDoc (reverse (map T.unpack ns)) doc
+          Just doc -> return . ModDoc (reverse (map T.unpack ns)) $ howMuch w doc
           Nothing  -> fail $ "Module docs for " ++ show (reverse (map T.unpack ns)) ++
                              " do not exist! This shouldn't have happened and is a bug."
-getDocs n
+getDocs n w
    = do i <- getIState
-        case lookupCtxt n (idris_classes i) of
-             [ci] -> docClass n ci
-             _ -> case lookupCtxt n (idris_datatypes i) of
-                       [ti] -> docData n ti
-                       _ -> do fd <- docFun n
-                               return (FunDoc fd)
+        docs <- case lookupCtxt n (idris_classes i) of
+                  [ci] -> docClass n ci
+                  _ -> case lookupCtxt n (idris_datatypes i) of
+                         [ti] -> docData n ti
+                         _ -> do fd <- docFun n
+                                 return (FunDoc fd)
+        return $ fmap (howMuch w) docs
 
 docData :: Name -> TypeInfo -> Idris Docs
 docData n ti

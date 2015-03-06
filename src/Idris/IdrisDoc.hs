@@ -273,7 +273,7 @@ loadDocs :: IState     -- ^ IState to extract infomation from
          -> Name       -- ^ Name to load Docs for
          -> IO (Maybe Docs)
 loadDocs ist n
-  | mayHaveDocs n = do docs <- runExceptT $ evalStateT (getDocs n) ist
+  | mayHaveDocs n = do docs <- runExceptT $ evalStateT (getDocs n FullDocs) ist
                        case docs of Right d -> return (Just d)
                                     Left _  -> return Nothing
   | otherwise     = return Nothing

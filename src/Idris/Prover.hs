@@ -202,7 +202,7 @@ receiveInput h e =
             receiveInput h e
        Just (IdeMode.Interpret cmd) -> return (Just cmd)
        Just (IdeMode.TypeOf str) -> return (Just (":t " ++ str))
-       Just (IdeMode.DocsFor str) -> return (Just (":doc " ++ str))
+       Just (IdeMode.DocsFor str _) -> return (Just (":doc " ++ str))
        _ -> return Nothing
 
 ploop :: Name -> Bool -> String -> [String] -> ElabState EState -> Maybe History -> Idris (Term, [String])
@@ -336,7 +336,7 @@ ploop fn d prompt prf e h
                                                     return (False,  e, False, prf,
                                                             Right $ iRenderResult (vsep toShow)))
                                         (\err -> do putIState ist ; ierror err)
-               where showDoc ist (n, d) = do doc <- getDocs n
+               where showDoc ist (n, d) = do doc <- getDocs n FullDocs
                                              return $ pprintDocs ist doc
         docStr (Right c) = do ist <- getIState
                               return (False, e, False, prf, Right . iRenderResult $ pprintConstDocs ist c (constDocs c))
