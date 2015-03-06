@@ -199,3 +199,45 @@ FFI_JS = MkFFI JS_Types String
 JS_IO : Type -> Type
 JS_IO = IO' FFI_JS
 
+
+--------- Foreign Exports 
+
+namespace FFI_Export
+-- It's just like Data.List.Elem, but we don't need all the other stuff
+-- that comes with it, just a proof that a data type is defined.
+  data DataDefined : Type -> List (Type, String) -> String -> Type where
+       DHere : DataDefined x ((x, t) :: xs) t
+       DThere : DataDefined x xs t -> DataDefined x (y :: xs) t
+
+  data FFI_Base : FFI -> List (Type, String) -> Type -> Type where
+       FFI_ExpType : (def : DataDefined t xs n) -> FFI_Base f xs t
+       FFI_Prim : (prim : ffi_types f t) -> FFI_Base f xs t
+
+  %used FFI_ExpType n
+  %used FFI_ExpType def
+  %used FFI_Prim prim
+
+  data FFI_Exportable : FFI -> List (Type, String) -> Type -> Type where
+       FFI_IO : (b : FFI_Base f xs t) -> FFI_Exportable f xs (IO t)
+       FFI_Fun : (b : FFI_Base f xs s) -> FFI_Exportable f xs t -> FFI_Exportable f xs (s -> t)
+       FFI_Ret : (b : FFI_Base f xs t) -> FFI_Exportable f xs t
+
+  %used FFI_IO b
+  %used FFI_Fun b
+  %used FFI_Ret b
+
+  data FFI_Export : FFI -> String -> List (Type, String) -> Type where
+       Data : (x : Type) -> (n : String) -> 
+              (es : FFI_Export f h ((x, n) :: xs)) -> FFI_Export f h xs
+       Fun : (fn : t) -> (n : String) -> {auto prf : FFI_Exportable f xs t} -> 
+             (es : FFI_Export f h xs) -> FFI_Export f h xs
+       End : FFI_Export f h xs
+
+%used Data x
+%used Data n
+%used Data es
+%used Fun fn
+%used Fun n
+%used Fun es
+%used Fun prf
+

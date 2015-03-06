@@ -225,7 +225,8 @@ data IState = IState {
     idris_callswho :: Maybe (M.Map Name [Name]),
     idris_repl_defs :: [Name], -- ^ List of names that were defined in the repl, and can be re-/un-defined
     elab_stack :: [Name], -- ^ Stack of names currently being elaborated
-    idris_symbols :: M.Map Name Name -- ^ Symbol table (preserves sharing of names)
+    idris_symbols :: M.Map Name Name, -- ^ Symbol table (preserves sharing of names)
+    idris_exports :: [Name] -- ^ Functions with ExportList
    }
 
 -- Required for parsers library, and therefore trifecta
@@ -297,6 +298,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCParsedRegion FC
               | IBCModDocs Name -- ^ The name is the special name used to track module docs
               | IBCUsage (Name, Int)
+              | IBCExport Name
   deriving Show
 
 -- | The initial state for the compiler
@@ -309,7 +311,7 @@ idrisInit = IState initContext [] []
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty [] Nothing Nothing [] [] M.empty
+                   AutomaticWidth S.empty [] Nothing Nothing [] [] M.empty []
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).

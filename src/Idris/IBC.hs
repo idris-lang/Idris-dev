@@ -37,7 +37,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 98
+ibcVersion = 99
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -80,7 +80,8 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_patdefs :: ![(Name, ([([Name], Term, Term)], [PTerm]))],
                          ibc_postulates :: ![Name],
                          ibc_parsedSpan :: !(Maybe FC),
-                         ibc_usage :: ![(Name, Int)]
+                         ibc_usage :: ![(Name, Int)],
+                         ibc_exports :: ![Name]
                        }
    deriving Show
 {-!
@@ -88,7 +89,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] []
 
 loadIBC :: Bool -- ^ True = reexport, False = make everything private 
         -> FilePath -> Idris ()
@@ -233,6 +234,7 @@ ibc i (IBCModDocs n) f = case lookupCtxtExact n (idris_moduledocs i) of
                            Just v -> return f { ibc_moduledocs = (n,v) : ibc_moduledocs f }
                            _ -> ifail "IBC write failed"
 ibc i (IBCUsage n) f = return f { ibc_usage = n : ibc_usage f }
+ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
 
 process :: Bool -- ^ Reexporting
            -> IBCFile -> FilePath -> Idris ()
@@ -290,6 +292,7 @@ process reexp i fn
                pPostulates $ force (ibc_postulates i)
                pParsedSpan $ force (ibc_parsedSpan i)
                pUsage $ force (ibc_usage i)
+               pExports $ force (ibc_exports i)
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -310,6 +313,10 @@ pParsedSpan fc = do ist <- getIState
 pUsage :: [(Name, Int)] -> Idris ()
 pUsage ns = do ist <- getIState
                putIState ist { idris_erasureUsed = ns ++ idris_erasureUsed ist }
+
+pExports :: [Name] -> Idris ()
+pExports ns = do ist <- getIState
+                 putIState ist { idris_exports = ns ++ idris_exports ist }
 
 pImportDirs :: [FilePath] -> Idris ()
 pImportDirs fs = mapM_ addImportDir fs
@@ -927,7 +934,7 @@ instance Binary MetaInformation where
              _ -> error "Corrupted binary data for MetaInformation"
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -971,6 +978,7 @@ instance Binary IBCFile where
                put x40
                put x41
                put x42
+               put x43
 
         get
           = do x1 <- get
@@ -1016,7 +1024,8 @@ instance Binary IBCFile where
                     x40 <- get
                     x41 <- get
                     x42 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42)
+                    x43 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where

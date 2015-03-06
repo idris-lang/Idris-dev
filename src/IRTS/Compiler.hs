@@ -11,6 +11,7 @@ import IRTS.CodegenC
 import IRTS.DumpBC
 import IRTS.CodegenJavaScript
 import IRTS.Inliner
+import IRTS.Exports
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -89,12 +90,13 @@ compile codegen f tm
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
         iLOG "Building output"
+        exports <- findExports
 
         case checked of
             OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags
                                             NONE c (toAlist defuns)
-                                            tagged
+                                            tagged exports
 --                        runIO $ case codegen of
 --                               ViaC -> codegenC cginfo
 --                               ViaJava -> codegenJava cginfo

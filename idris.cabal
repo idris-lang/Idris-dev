@@ -723,6 +723,7 @@ Library
                 , IRTS.CodegenC
                 , IRTS.CodegenCommon
                 , IRTS.CodegenJavaScript
+                , IRTS.Exports
                 , IRTS.JavaScript.AST
                 , IRTS.Compiler
                 , IRTS.Defunctionalise

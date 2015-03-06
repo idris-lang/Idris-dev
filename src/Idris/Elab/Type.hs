@@ -181,6 +181,12 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
                          addIBC (IBCErrorHandler n)
                  else ifail $ "The type " ++ show nty' ++ " is invalid for an error handler"
              else ifail "Error handlers can only be defined when the ErrorReflection language extension is enabled."
+         -- if it's an export list type, make a note of it
+         case (unApply usety) of
+              (P _ ut _, _) 
+                 | ut == ffiexport -> do addIBC (IBCExport n)
+                                         addExport n
+              _ -> return ()
          return usety
   where
     -- for making an internalapp, we only want the explicit ones, and don't
@@ -190,6 +196,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          | e == e' = PPi e n ty (mergeTy sc sc')
          | otherwise = mergeTy sc sc'
     mergeTy _ sc = sc
+
+    ffiexport = sNS (sUN "FFI_Export") ["FFI_Export"]
 
     err = txt "Err"
     maybe = txt "Maybe"
