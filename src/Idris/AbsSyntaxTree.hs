@@ -610,7 +610,7 @@ data PDecl' t
        t -- full instance type
        (Maybe Name) -- explicit name
        [PDecl' t]
-       -- ^ Instance declaration: documentation, arguments are syntax info, source
+       -- ^ Instance declaration: arguments are documentation, syntax info, source
        -- location, constraints, class name, parameters, full instance
        -- type, optional explicit name, and definitions
    | PDSL     Name (DSL' t) -- ^ DSL declaration
