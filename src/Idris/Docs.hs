@@ -32,7 +32,7 @@ data Docs' d = FunDoc (FunDoc' d)
              | ClassDoc Name d   -- class docs
                         [FunDoc' d] -- method docs
                         [(Name, Maybe d)] -- parameters and their docstrings
-                        [PTerm] -- instances
+                        [(PTerm, Docstring DocTerm)] -- instances and docs
                         [PTerm] -- superclasses
              | ModDoc [String] -- Module name
                       d
@@ -101,11 +101,11 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
              <$>
              nest 4 (text "Instances:" <$>
                      vsep (if null instances' then [text "<no instances>"]
-                           else map dumpInstance instances'))
+                           else map pprintInstance instances'))
              <>
              (if null subclasses then empty
               else line <$> nest 4 (text "Subclasses:" <$>
-                                    vsep (map (dumpInstance . prettifySubclasses) subclasses)))
+                                    vsep (map (dumpInstance . prettifySubclasses . fst) subclasses)))
              <>
              (if null superclasses then empty
               else line <$> nest 4 (text "Default superclass instances:" <$>
@@ -117,6 +117,17 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
 
     ppo = ppOptionIst ist
     infixes = idris_infixes ist
+
+    pprintInstance (term, doc) =
+      nest 2 (dumpInstance term <>
+              if nullDocstring doc
+                 then empty
+                 else line <>
+                      renderDocstring
+                        (renderDocTerm
+                           (pprintDelab ist)
+                           (normaliseAll (tt_ctxt ist) []))
+                        doc)
 
     dumpInstance :: PTerm -> Doc OutputAnnotation
     dumpInstance = pprintPTerm ppo params' [] infixes
@@ -140,7 +151,7 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
     isSubclass (PPi _                _ _ pt)                                       = isSubclass pt
     isSubclass _                                                                   = False
 
-    (subclasses, instances') = partition isSubclass instances
+    (subclasses, instances') = partition (isSubclass . fst) instances
 
     prettyParameters = if any (isJust . snd) params
                        then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
@@ -186,10 +197,14 @@ docClass n ci
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
            docstr = maybe emptyDocstring fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd))) (class_params ci)
+           instanceDocs = map (maybe emptyDocstring fst .
+                               listToMaybe .
+                               flip lookupCtxt (idris_docstrings i))
+                              (class_instances ci)
            instances = map (delabTy i) (class_instances ci)
            superclasses = catMaybes $ map getDInst (class_default_superclasses ci)
        mdocs <- mapM (docFun . fst) (class_methods ci)
-       return $ ClassDoc n docstr mdocs params instances superclasses
+       return $ ClassDoc n docstr mdocs params (zip instances instanceDocs) superclasses
   where
     getDInst (PInstance _ _ _ _ _ _ t _ _) = Just t
     getDInst _                           = Nothing
