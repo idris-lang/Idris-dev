@@ -344,13 +344,15 @@ runIdeModeCommand h id orig fn mods (IdeMode.TypeOf name) =
     Left err -> iPrintError err
     Right n -> process "(idemode)"
                  (Check (PRef (FC "(idemode)" (0,0) (0,0)) n))
-runIdeModeCommand h id orig fn mods (IdeMode.DocsFor name) =
+runIdeModeCommand h id orig fn mods (IdeMode.DocsFor name w) =
   case parseConst orig name of
-    Success c -> process "(idemode)" (DocStr (Right c))
+    Success c -> process "(idemode)" (DocStr (Right c) (howMuch w))
     Failure _ ->
      case splitName name of
        Left err -> iPrintError err
-       Right n -> process "(idemode)" (DocStr (Left n))
+       Right n -> process "(idemode)" (DocStr (Left n) (howMuch w))
+  where howMuch IdeMode.Overview = OverviewDocs
+        howMuch IdeMode.Full     = FullDocs
 runIdeModeCommand h id orig fn mods (IdeMode.CaseSplit line name) =
   process fn (CaseSplitAt False line (sUN name))
 runIdeModeCommand h id orig fn mods (IdeMode.AddClause line name) =
@@ -553,7 +555,7 @@ idemodeProcess fn (Undefine n) = process fn (Undefine n)
 idemodeProcess fn (ExecVal t) = process fn (ExecVal t)
 idemodeProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
 idemodeProcess fn (Check t) = process fn (Check t)
-idemodeProcess fn (DocStr n) = process fn (DocStr n)
+idemodeProcess fn (DocStr n w) = process fn (DocStr n w)
 idemodeProcess fn Universes = process fn Universes
 idemodeProcess fn (Defn n) = do process fn (Defn n)
                                 iPrintResult ""
@@ -905,21 +907,23 @@ process fn (Check t)
            _ -> iPrintTermWithType (pprintDelab ist tm)
                                    (pprintDelab ist ty)
 
-process fn (DocStr (Left n))
+process fn (DocStr (Left n) w)
    = do ist <- getIState
         let docs = lookupCtxtName n (idris_docstrings ist) ++
-                   map (\(n,d)-> (n, (d,[]))) (lookupCtxtName (modDocN n) (idris_moduledocs ist))
+                   map (\(n,d)-> (n, (d, [])))
+                       (lookupCtxtName (modDocN n) (idris_moduledocs ist))
         case docs of
           [] -> iPrintError $ "No documentation for " ++ show n
           ns -> do toShow <- mapM (showDoc ist) ns
                    iRenderResult (vsep toShow)
-    where showDoc ist (n, d) = do doc <- getDocs n
+    where showDoc ist (n, d) = do doc <- getDocs n w
                                   return $ pprintDocs ist doc
+
           modDocN (NS (UN n) ns) = NS modDocName (n:ns)
           modDocN (UN n)         = NS modDocName [n]
           modDocN _              = sMN 1 "NotFoundForSure"
 
-process fn (DocStr (Right c))
+process fn (DocStr (Right c) _) -- constants only have overviews
    = do ist <- getIState
         iRenderResult $ pprintConstDocs ist c (constDocs c)
 

@@ -2,7 +2,7 @@
 
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
-module Idris.IdeMode(parseMessage, convSExp, IdeModeCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideModeEpoch, getLen, getNChar) where
+module Idris.IdeMode(parseMessage, convSExp, WhatDocs(..), IdeModeCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideModeEpoch, getLen, getNChar) where
 
 import Text.Printf
 import Numeric
@@ -206,6 +206,8 @@ parseSExp = parseString pSExp (Directed (UTF8.fromString "(unknown)") 0 0 0 0)
 
 data Opt = ShowImpl | ErrContext deriving Show
 
+data WhatDocs = Overview | Full
+
 data IdeModeCommand = REPLCompletions String
                     | Interpret String
                     | TypeOf String
@@ -217,7 +219,7 @@ data IdeModeCommand = REPLCompletions String
                     | ProofSearch Bool Int String [String] (Maybe Int) -- ^^ Recursive?, line, name, hints, depth
                     | MakeLemma Int String
                     | LoadFile String (Maybe Int)
-                    | DocsFor String
+                    | DocsFor String WhatDocs
                     | Apropos String
                     | GetOpts
                     | SetOpt Opt Bool
@@ -258,7 +260,10 @@ sexpToCommand (SexpList (SymbolAtom "proof-search" : IntegerAtom line : StringAt
                                 _            -> Nothing)
 sexpToCommand (SexpList [SymbolAtom "make-lemma", IntegerAtom line, StringAtom name])   = Just (MakeLemma (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "refine", IntegerAtom line, StringAtom name, StringAtom hint]) = Just (ProofSearch False (fromInteger line) name [hint] Nothing)
-sexpToCommand (SexpList [SymbolAtom "docs-for", StringAtom name])                       = Just (DocsFor name)
+sexpToCommand (SexpList [SymbolAtom "docs-for", StringAtom name])                       = Just (DocsFor name Full)
+sexpToCommand (SexpList [SymbolAtom "docs-for", StringAtom name, SymbolAtom s])
+  | Just w <- lookup s opts                                                             = Just (DocsFor name w)
+    where opts = [("overview", Overview), ("full", Full)]
 sexpToCommand (SexpList [SymbolAtom "apropos", StringAtom search])                      = Just (Apropos search)
 sexpToCommand (SymbolAtom "get-options")                                                = Just GetOpts
 sexpToCommand (SexpList [SymbolAtom "set-option", SymbolAtom s, BoolAtom b])

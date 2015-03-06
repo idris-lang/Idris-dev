@@ -336,6 +336,8 @@ data Codegen = Via String
 deriving instance NFData Codegen
 !-}
 
+data HowMuchDocs = FullDocs | OverviewDocs
+
 -- | REPL commands
 data Command = Quit
              | Help
@@ -343,7 +345,7 @@ data Command = Quit
              | NewDefn [PDecl] -- ^ Each 'PDecl' should be either a type declaration (at most one) or a clause defining the same name.
              | Undefine [Name]
              | Check PTerm
-             | DocStr (Either Name Const)
+             | DocStr (Either Name Const) HowMuchDocs
              | TotCheck Name
              | Reload
              | Load FilePath (Maybe Int) -- up to maximum line number
