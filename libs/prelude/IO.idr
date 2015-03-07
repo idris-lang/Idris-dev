@@ -212,7 +212,7 @@ namespace FFI_Export
        DThere : DataDefined x xs t -> DataDefined x (y :: xs) t
 
   data FFI_Base : (f : FFI) -> List (Type, ffi_data f) -> Type -> Type where
-       FFI_ExpType : (def : DataDefined t xs n) -> FFI_Base f xs t
+       FFI_ExpType : {n : ffi_data f} -> (def : DataDefined t xs n) -> FFI_Base f xs t
        FFI_Prim : (prim : ffi_types f t) -> FFI_Base f xs t
 
   %used FFI_ExpType n

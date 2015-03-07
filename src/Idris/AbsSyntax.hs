@@ -1300,8 +1300,10 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
         getImps (Bind n (Pi _ t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
+            argInfo n (Imp opt _ _ _) Placeholder 
+                   = (True, PImp 0 True opt n Placeholder)
             argInfo n (Imp opt _ _ _) t'
-                   = (True, PImp (getPriority i t') True opt n t')
+                   = (False, PImp (getPriority i t') True opt n t')
             argInfo n (Exp opt _ _) t'
                    = (InaccessibleArg `elem` opt,
                           PExp (getPriority i t') opt n t')
