@@ -45,7 +45,7 @@ import Paths_idris
 import Util.DynamicLinker
 import qualified Util.Pretty as P
 
-import Idris.Core.TT
+import Idris.Core.TT as TT
 import Idris.Core.Evaluate
 
 import Control.Applicative hiding (Const)
@@ -87,7 +87,7 @@ import System.IO
 {- | Parses module definition
 
 @
-      ModuleHeader ::= 'module' Identifier_t ';'?;
+      ModuleHeader ::= DocComment_t? 'module' Identifier_t ';'?;
 @
 -}
 moduleHeader :: IdrisParser (Maybe (Docstring ()), [String])
@@ -178,7 +178,8 @@ decl syn = do fc <- getFC
                    <|> params syn
                    <|> mutual syn
                    <|> namespace syn
-                   <|> (try (class_ syn) <|> instance_ syn)
+                   <|> class_ syn
+                   <|> instance_ syn
                    <|> do d <- dsl syn; return [d]
                    <|> directive syn
                    <|> provider syn
@@ -347,13 +348,9 @@ fnDecl' :: SyntaxInfo -> IdrisParser PDecl
 fnDecl' syn = checkFixity $
               do (doc, argDocs, fc, opts', n, acc) <- try (do
                         pushIndent
-                        (doc, argDocs) <- option noDocs docComment
+                        (doc, argDocs) <- docstring syn
                         ist <- get
-                        let doc' = annotCode (tryFullExpr syn ist) doc
-                            argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
-                                       | (n, d) <- argDocs ]
-
-                            initOpts = if default_total ist
+                        let initOpts = if default_total ist
                                           then [TotalFn]
                                           else []
                         opts <- fnOpts initOpts
@@ -363,7 +360,7 @@ fnDecl' syn = checkFixity $
                         let n = expandNS syn n_in
                         fc <- getFC
                         lchar ':'
-                        return (doc', argDocs', fc, opts', n, acc))
+                        return (doc, argDocs, fc, opts', n, acc))
                  ty <- typeExpr (allowImp syn)
                  terminator
                  addAcc n acc
@@ -458,12 +455,10 @@ Postulate ::=
 @
 -}
 postulate :: SyntaxInfo -> IdrisParser PDecl
-postulate syn = do doc <- try $ do (doc, _) <- option noDocs docComment
-                                   ist <- get
-                                   let doc' = annotCode (tryFullExpr syn ist) doc
+postulate syn = do doc <- try $ do (doc, _) <- docstring syn
                                    pushIndent
                                    reserved "postulate"
-                                   return doc'
+                                   return doc
                    ist <- get
                    let initOpts = if default_total ist
                                      then [TotalFn]
@@ -586,7 +581,7 @@ ClassBlock ::=
 classBlock :: SyntaxInfo -> IdrisParser [PDecl]
 classBlock syn = do reserved "where"
                     openBlock
-                    ds <- many (try (notEndBlock >> instance_ syn) <|> fnDecl syn)
+                    ds <- many (notEndBlock >> instance_ syn <|> fnDecl syn)
                     closeBlock
                     return (concat ds)
                  <?> "class block"
@@ -607,15 +602,14 @@ Class ::=
 @
 -}
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
-class_ syn = do (doc, argDocs, acc) <- try (do
-                  (doc, argDocs) <- option noDocs docComment
-                  ist <- get
-                  let doc' = annotCode (tryFullExpr syn ist) doc
-                      argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
-                                 | (n, d) <- argDocs ]
-                  acc <- optional accessibility
-                  return (doc', argDocs', acc))
-                reserved "class"; fc <- getFC; cons <- constraintList syn; n_in <- fnName
+class_ syn = do (doc, argDocs, acc)
+                  <- try (do (doc, argDocs) <- docstring syn
+                             acc <- optional accessibility
+                             reserved "class"
+                             return (doc, argDocs, acc))
+                fc <- getFC
+                cons <- constraintList syn
+                n_in <- fnName
                 let n = expandNS syn n_in
                 cs <- many carg
                 ds <- option [] (classBlock syn)
@@ -642,12 +636,9 @@ InstanceName ::= '[' Name ']';
 @
 -}
 instance_ :: SyntaxInfo -> IdrisParser [PDecl]
-instance_ syn = do doc <- try (do
-                     (doc, _) <- option noDocs docComment
-                     ist <- get
-                     let doc' = annotCode (tryFullExpr syn ist) doc
-                     return doc')
-                   reserved "instance"; fc <- getFC
+instance_ syn = do (doc, _)
+                     <- try (docstring syn <* reserved "instance")
+                   fc <- getFC
                    en <- optional instanceName
                    cs <- constraintList syn
                    cn <- fnName
@@ -662,6 +653,18 @@ instance_ syn = do doc <- try (do
                           let n = expandNS syn n_in
                           return n
                        <?> "instance name"
+
+
+-- | Parse a docstring
+docstring :: SyntaxInfo
+          -> IdrisParser (Docstring (Either TT.Err PTerm),
+                          [(Name,Docstring (Either TT.Err PTerm))])
+docstring syn = do (doc, argDocs) <- option noDocs docComment
+                   ist <- get
+                   let doc' = annotCode (tryFullExpr syn ist) doc
+                       argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                                  | (n, d) <- argDocs ]
+                   return (doc', argDocs')
 
 
 {- | Parses a using declaration list
