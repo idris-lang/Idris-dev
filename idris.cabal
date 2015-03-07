@@ -394,6 +394,10 @@ Extra-source-files:
                        test/ffi005/*.idr
                        test/ffi005/run
                        test/ffi005/expected
+                       test/ffi006/*.idr
+                       test/ffi006/*.c
+                       test/ffi006/run
+                       test/ffi006/expected
 
                        test/idrisdoc001/run
                        test/idrisdoc001/expected
