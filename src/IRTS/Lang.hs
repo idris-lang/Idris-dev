@@ -40,11 +40,11 @@ data LExp = LV LVar
 data FDesc = FCon Name
            | FStr String
            | FUnknown
+           | FWorld
            | FApp Name [FDesc]
   deriving (Show, Eq)
 
-data Export = ExportData Name -- Idris name
-                         FDesc -- Exported function descriptor (usually string)
+data Export = ExportData FDesc -- Exported data descriptor (usually string)
             | ExportFun Name -- Idris name
                         FDesc -- Exported function descriptor
                         FDesc -- Return type descriptor

@@ -201,7 +201,7 @@ buildDepMap ci used ctx startNames = addPostulates used $
                  [(sUN "run__IO", Result), (sUN "run__IO", Arg 1)]
 
                 -- Explicit usage declarations from a %used pragma
-                , trace (show used) $ map (\(n, i) -> (n, Arg i)) used 
+                , map (\(n, i) -> (n, Arg i)) used 
 
                 -- MkIO is read by run__IO,
                 -- but this cannot be observed in the source code of programs.
