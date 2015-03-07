@@ -65,8 +65,8 @@ type Vars = Map Name VarInfo
 
 -- Perform usage analysis, write the relevant information in the internal
 -- structures, returning the list of reachable names.
-performUsageAnalysis :: Idris [Name]
-performUsageAnalysis = do
+performUsageAnalysis :: [Name] -> Idris [Name]
+performUsageAnalysis roots = do
     ctx <- tt_ctxt <$> getIState
     startNames <- getStartNames <$> getIState
 
@@ -108,13 +108,12 @@ performUsageAnalysis = do
   where
     getStartNames :: IState -> Either Err [Name]
     getStartNames ist 
-       = do let es = idris_exports ist
-            case lookupCtxtName n (idris_implicits ist) of
-                 [(n', _)] -> Right (n' : es)
-                 []        -> if null es
-                                 then Left (NoSuchVariable n)
-                                 else Right es
-                 more      -> Left (CantResolveAlts (map fst more))
+       = case lookupCtxtName n (idris_implicits ist) of
+              [(n', _)] -> Right (n' : roots)
+              []        -> if null roots
+                              then Left (NoSuchVariable n)
+                              else Right roots
+              more      -> Left (CantResolveAlts (map fst more))
       where
         n = sNS (sUN "main") ["Main"]
 

@@ -421,6 +421,7 @@ data Opt = Filename String
          | NoREPL
          | OLogging Int
          | Output String
+         | Interface
          | TypeCase
          | TypeInType
          | DefaultTotal

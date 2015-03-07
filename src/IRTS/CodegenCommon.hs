@@ -34,6 +34,7 @@ data CodegenInfo = CodegenInfo { outputFile :: String,
                                  simpleDecls :: [(Name, SDecl)],
                                  defunDecls :: [(Name, DDecl)],
                                  liftDecls :: [(Name, LDecl)],
+                                 interfaces :: Bool,
                                  exportDecls :: [ExportIFace]
                                } 
 

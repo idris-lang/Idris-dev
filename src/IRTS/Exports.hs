@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module IRTS.Exports(findExports) where
+module IRTS.Exports(findExports, getExpNames) where
 
 import Idris.AbsSyntax
 import Idris.Core.TT
@@ -8,11 +8,21 @@ import Idris.Core.Evaluate
 import Idris.Error
 import IRTS.Lang
 
+import Data.Maybe
+
 findExports :: Idris [ExportIFace]
 findExports = do exps <- getExports
                  es <- mapM toIFace exps
                  logLvl 2 $ "Exporting " ++ show es
                  return es
+
+getExpNames :: [ExportIFace] -> [Name]
+getExpNames = concatMap expNames
+
+expNames :: ExportIFace -> [Name]
+expNames (Export _ _ es) = mapMaybe fnames es
+  where fnames (ExportData _) = Nothing
+        fnames (ExportFun n _ _ _) = Just n
 
 toIFace :: Name -> Idris ExportIFace
 toIFace n = do i <- getIState

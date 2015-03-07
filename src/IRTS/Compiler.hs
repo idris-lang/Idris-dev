@@ -46,20 +46,30 @@ import System.FilePath ((</>), addTrailingPathSeparator)
 
 -- |  Given a 'main' term to compiler, return the IRs which can be used to
 -- generate code.
-compile :: Codegen -> FilePath -> Term -> Idris CodegenInfo
-compile codegen f tm
+compile :: Codegen -> FilePath -> Maybe Term -> Idris CodegenInfo
+compile codegen f mtm
    = do checkMVs  -- check for undefined metavariables
         checkTotality -- refuse to compile if there are totality problems
-        reachableNames <- performUsageAnalysis
-        maindef <- irMain tm
-        iLOG $ "MAIN: " ++ show maindef
+        exports <- findExports
+
+        reachableNames <- performUsageAnalysis (getExpNames exports)
+        maindef <- case mtm of
+                        Nothing -> return []
+                        Just tm -> do md <- irMain tm
+                                      iLOG $ "MAIN: " ++ show md
+                                      return [(sMN 0 "runMain", md)]
         objs <- getObjectFiles codegen
         libs <- getLibs codegen
         flags <- getFlags codegen
         hdrs <- getHdrs codegen
         impdirs <- allImportDirs
-        defsIn <- mkDecls tm reachableNames
-        let defs = defsIn ++ [(sMN 0 "runMain", maindef)]
+        defsIn <- mkDecls reachableNames
+        -- if no 'main term' given, generate interface files
+        let iface = case mtm of
+                         Nothing -> True
+                         Just _ -> False
+
+        let defs = defsIn ++ maindef
         -- iputStrLn $ showSep "\n" (map show defs)
         -- Inlined top level LDecl made here
         let defsInlined = inlineAll defs
@@ -90,13 +100,11 @@ compile codegen f tm
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
         iLOG "Building output"
-        exports <- findExports
-
         case checked of
             OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags
                                             NONE c (toAlist defuns)
-                                            tagged exports
+                                            tagged iface exports
 --                        runIO $ case codegen of
 --                               ViaC -> codegenC cginfo
 --                               ViaJava -> codegenJava cginfo
@@ -135,8 +143,8 @@ irMain tm = do
     i <- irTerm M.empty [] tm
     return $ LFun [] (sMN 0 "runMain") [] (LForce i)
 
-mkDecls :: Term -> [Name] -> Idris [(Name, LDecl)]
-mkDecls t used
+mkDecls :: [Name] -> Idris [(Name, LDecl)]
+mkDecls used
     = do i <- getIState
          let ds = filter (\(n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
          decls <- mapM build ds

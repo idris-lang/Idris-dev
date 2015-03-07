@@ -125,6 +125,11 @@ void init_threaddata(VM *vm);
 // Clean up a VM once it's no longer needed
 Stats terminate(VM* vm);
 
+// Create a new VM, set up everything with sensible defaults (use when
+// calling Idris from C)
+VM* idris_vm();
+void close_vm(VM* vm);
+
 // Set up key for thread-local data - called once from idris_main
 void init_threadkeys();
 

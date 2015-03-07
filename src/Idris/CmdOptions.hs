@@ -83,6 +83,7 @@ parseFlags = many $
   <|> flag' NoREPL (long "check" <> help "Typecheck only, don't start the REPL")
   <|> (Output <$> strOption (short 'o' <> long "output" <> metavar "FILE" <> help "Specify output file"))
   --   <|> flag' TypeCase (long "typecase")
+  <|> flag' Interface (long "interface" <> help "Generate interface files from ExportLists")
   <|> flag' TypeInType (long "typeintype")
   <|> flag' DefaultTotal (long "total" <> help "Require functions to be total by default")
   <|> flag' DefaultPartial (long "partial")
