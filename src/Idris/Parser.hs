@@ -9,7 +9,7 @@ module Idris.Parser(module Idris.Parser,
 import Prelude hiding (pi)
 
 import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
+import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, Err)
 import Text.Parser.LookAhead
 import Text.Parser.Expression
 import qualified Text.Parser.Token as Tok
@@ -45,7 +45,7 @@ import Paths_idris
 import Util.DynamicLinker
 import qualified Util.Pretty as P
 
-import Idris.Core.TT as TT
+import Idris.Core.TT
 import Idris.Core.Evaluate
 
 import Control.Applicative hiding (Const)
@@ -657,8 +657,8 @@ instance_ syn = do (doc, _)
 
 -- | Parse a docstring
 docstring :: SyntaxInfo
-          -> IdrisParser (Docstring (Either TT.Err PTerm),
-                          [(Name,Docstring (Either TT.Err PTerm))])
+          -> IdrisParser (Docstring (Either Err PTerm),
+                          [(Name,Docstring (Either Err PTerm))])
 docstring syn = do (doc, argDocs) <- option noDocs docComment
                    ist <- get
                    let doc' = annotCode (tryFullExpr syn ist) doc
