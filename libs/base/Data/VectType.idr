@@ -1,4 +1,4 @@
-module Data.VectType 
+module Data.VectType
 
 import Data.Fin
 
@@ -6,7 +6,7 @@ import Data.Fin
 %default total
 
 namespace Vect {
-  
+
 infixr 7 ::
 
 %elim data Vect : Nat -> Type -> Type where
@@ -531,6 +531,8 @@ instance Applicative (Vect k) where
 
     fs <*> vs = zipWith apply fs vs
 
+||| This monad is different from the List monad, (>>=)
+||| uses the diagonal.
 instance Monad (Vect n) where
     m >>= f = diag (map f m)
 
@@ -539,7 +541,7 @@ instance Traversable (Vect n) where
     traverse f (x::xs) = [| Vect.(::) (f x) (traverse f xs) |]
 
 --------------------------------------------------------------------------------
--- Show 
+-- Show
 --------------------------------------------------------------------------------
 
 instance Show a => Show (Vect n a) where
@@ -595,4 +597,3 @@ instance DecEq a => DecEq (Vect n a) where
 
 -- For the primitives, we have to cheat because we don't have access to their
 -- internal implementations.
-
