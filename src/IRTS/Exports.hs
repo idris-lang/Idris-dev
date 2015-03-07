@@ -74,7 +74,7 @@ toFDescRet tm
        = toFDescBase b
    | (P _ io _, [_,_,_,b]) <- unApply tm,
      io == sNS (sUN "FFI_IO") ["FFI_Export"]
-       = toFDescBase b
+       = FIO $ toFDescBase b
    | (P _ fun _, [_,_,_,_,_,t]) <- unApply tm,
      fun == sNS (sUN "FFI_Fun") ["FFI_Export"]
        = toFDescRet t
@@ -92,9 +92,6 @@ toFDescBase tm
 
 toFDescArgs :: Term -> [FDesc]
 toFDescArgs tm 
-   | (P _ io _, [_,_,_,b]) <- unApply tm,
-     io == sNS (sUN "FFI_IO") ["FFI_Export"]
-       = [FWorld] -- World, unused but needed explicitly as an argument
    | (P _ fun _, [_,_,_,_,b,t]) <- unApply tm,
      fun == sNS (sUN "FFI_Fun") ["FFI_Export"]
        = toFDescBase b : toFDescArgs t

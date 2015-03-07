@@ -91,8 +91,12 @@ io_return x = MkIO (\w => prim_io_return x)
 liftPrimIO : (World -> PrimIO a) -> IO' l a
 liftPrimIO = MkIO
 
+call__IO : IO' l a -> PrimIO a
+call__IO (MkIO f) = f (TheWorld prim__TheWorld)
+
+-- Concrete type makes it easier to elaborate at top level
 run__IO : IO' l () -> PrimIO ()
-run__IO (MkIO f) = f (TheWorld prim__TheWorld)
+run__IO f = call__IO f
 
 unsafePerformIO : IO' ffi a -> a
 unsafePerformIO (MkIO f) = unsafePerformPrimIO

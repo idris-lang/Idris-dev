@@ -40,7 +40,7 @@ data LExp = LV LVar
 data FDesc = FCon Name
            | FStr String
            | FUnknown
-           | FWorld
+           | FIO FDesc
            | FApp Name [FDesc]
   deriving (Show, Eq)
 

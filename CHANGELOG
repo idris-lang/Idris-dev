@@ -20,6 +20,8 @@ New in 0.9.17:
   an extra argument of type TTName. This allows more understandable
   dynamic errors in DSL code and more readable code generation results.
 * DSL notation can now be applied with $
+* Added FFI_Export type which allows Idris functions to be exportoed and
+  called from foreign code
 
 New in 0.9.16:
 --------------

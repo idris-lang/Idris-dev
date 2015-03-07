@@ -196,8 +196,9 @@ buildDepMap ci used ctx startNames = addPostulates used $
             [ [] ==> concat
                 -- Main.main ( + export lists) and run__IO, are always evaluated
                 -- but they elude analysis since they come from the seed term.
-                [(map (\n -> (n, Result)) startNames),
-                 [(sUN "run__IO", Result), (sUN "run__IO", Arg 1)]
+                [(map (\n -> (n, Result)) startNames)
+                ,[(sUN "run__IO", Result), (sUN "run__IO", Arg 1)]
+                ,[(sUN "call__IO", Result), (sUN "call__IO", Arg 2)]
 
                 -- Explicit usage declarations from a %used pragma
                 , map (\(n, i) -> (n, Arg i)) used 
