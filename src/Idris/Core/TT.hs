@@ -162,6 +162,8 @@ data Err' t
           | LoadingFailed String (Err' t)
           | ReflectionError [[ErrorReportPart]] (Err' t)
           | ReflectionFailed String (Err' t)
+          | ElabDebug (Maybe String) t [(Name, t, [(Name, Binder t)])]
+            -- ^ User-specified message, proof term, goals with context (first goal is focused)
   deriving (Eq, Functor, Data, Typeable)
 
 type Err = Err' Term

@@ -839,6 +839,10 @@ prunStateT pmax zok ps x s
                     else OK ((v, newpmax, problems p), s')
              Error e -> Error e
 
+debugElaborator :: Maybe String -> Elab' aux a
+debugElaborator msg = do ps <- fmap proof get
+                         lift . Error $ ElabDebug msg (getProofTerm (pterm ps)) [] -- TODO hole info
+
 qshow :: Fails -> String
 qshow fs = show (map (\ (x, y, _, _, _, _, _) -> (x, y)) fs)
 

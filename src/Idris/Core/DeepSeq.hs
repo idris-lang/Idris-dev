@@ -88,6 +88,7 @@ instance NFData Err where
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (ProviderError x1) = rnf x1 `seq` ()
         rnf (LoadingFailed x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (ElabDebug x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
 
 instance NFData ImplicitInfo where
         rnf (Impl x1) = rnf x1 `seq` ()
