@@ -1,0 +1,14 @@
+*interactive008> Type class C
+    class
+
+Parameters:
+    t
+
+Methods:
+    f : C t => t
+        member
+        
+Instances:
+    C A
+      instance
+*interactive008> Bye bye
