@@ -1596,6 +1596,12 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
                   Just name -> fmap Just $ reifyTTName name
            intro n
            returnUnit
+      | n == tacN "prim__Debug", [ty, msg] <- args
+      = do let msg' = fromTTMaybe msg
+           case msg' of
+             Nothing -> debugElaborator Nothing
+             Just (Constant (Str m)) -> debugElaborator (Just m)
+             Just x -> lift . tfail . InternalMsg $ "Can't reify message for debugging: " ++ show x
     runTacTm x = lift . tfail . InternalMsg $ "tactical is not implemented for " ++ show x
 
 -- Running tactics directly

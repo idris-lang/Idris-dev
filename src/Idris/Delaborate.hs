@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintDelabTy, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
@@ -32,6 +33,7 @@ delabTy i n
            (ty:_) -> case lookupCtxt n (idris_implicits i) of
                          (imps:_) -> delabTy' i imps ty False False
                          _ -> delabTy' i [] ty False False
+           [] -> error "delabTy: got non-existing name"
 
 delab' :: IState -> Term -> Bool -> Bool -> PTerm
 delab' i t f mvs = delabTy' i [] t f mvs
@@ -86,6 +88,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
     de env plic (Bind n bb sc) = de ((n,n):env) [] sc
     de env _ (Constant i) = PConstant i
+    de env _ (Proj _ _) = error "Delaboration got run-time-only Proj!"
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
     de env _ (TType i) = PType
@@ -183,6 +186,7 @@ pprintDelabTy i n
                      case lookupCtxt n (idris_implicits i) of
                          (imps:_) -> delabTy' i imps ty False False
                          _ -> delabTy' i [] ty False False
+           [] -> error "pprintDelabTy got a name that doesn't exist"
 
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
 pprintTerm ist = pprintTerm' ist []
@@ -335,10 +339,14 @@ pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
+pprintErr' i (ElabDebug mstr tm holes) =
+  text "Elaboration halted." <>
+  maybe empty (indented . text) mstr <>
+  text "Term: TODO PRINT TERM" <>
+  text "Holes: TODO PRINT AND PRESERVE" 
 
--- Make sure the machine invented names are shown helpfully to the user, so
+-- | Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly
-
 renameMNs :: Term -> Term -> (Term, Term, [Name])
 renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
                     newnames = evalState (getRenames [] ns) 1 in
