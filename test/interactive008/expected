@@ -1,14 +1,15 @@
+Type checking ./interactive008.idr
 *interactive008> Type class C
     class
 
 Parameters:
-    t
+    t   -- a type
 
 Methods:
-    f : C t => t
-        member
+    m : C t => t
+        member of class
         
 Instances:
     C A
-      instance
+      instance of class
 *interactive008> Bye bye

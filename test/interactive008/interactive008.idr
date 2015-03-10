@@ -1,13 +1,12 @@
-
 ||| class
+||| @ t a type
 class C (t : Type) where
-  ||| member
-  f : t
+  ||| member of class
+  m : t
 
 ||| type
-data A : Type where
-  i : A
+data A = B
 
-||| instance
+||| instance of class
 instance C A where
-  f = i
+  m = B
