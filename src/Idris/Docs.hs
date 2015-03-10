@@ -119,15 +119,15 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
     infixes = idris_infixes ist
 
     pprintInstance (term, doc) =
-      nest 2 (dumpInstance term <>
-              if nullDocstring doc
-                 then empty
-                 else line <>
-                      renderDocstring
-                        (renderDocTerm
-                           (pprintDelab ist)
-                           (normaliseAll (tt_ctxt ist) []))
-                        doc)
+      nest 4 (dumpInstance term <>
+               if nullDocstring doc
+                  then empty
+                  else line <>
+                       renderDocstring
+                         (renderDocTerm
+                            (pprintDelab ist)
+                            (normaliseAll (tt_ctxt ist) []))
+                         doc)
 
     dumpInstance :: PTerm -> Doc OutputAnnotation
     dumpInstance = pprintPTerm ppo params' [] infixes
