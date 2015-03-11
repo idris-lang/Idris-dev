@@ -32,7 +32,8 @@ data Docs' d = FunDoc (FunDoc' d)
              | ClassDoc Name d   -- class docs
                         [FunDoc' d] -- method docs
                         [(Name, Maybe d)] -- parameters and their docstrings
-                        [(PTerm, Docstring DocTerm)] -- instances and docs
+                        [(PTerm, (d, [(Name, d)]))] -- instances
+                        [PTerm] -- subclasses
                         [PTerm] -- superclasses
              | ModDoc [String] -- Module name
                       d
@@ -88,7 +89,7 @@ pprintDocs ist (DataDoc t args)
              if null args then text "No constructors."
              else nest 4 (text "Constructors:" <> line <>
                           vsep (map (pprintFD ist) args))
-pprintDocs ist (ClassDoc n doc meths params instances superclasses)
+pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
            = nest 4 (text "Type class" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
                        then empty
@@ -100,12 +101,12 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
                       vsep (map (pprintFD ist) meths))
              <$>
              nest 4 (text "Instances:" <$>
-                     vsep (if null instances' then [text "<no instances>"]
-                           else map pprintInstance instances'))
+                       vsep (if null instances then [text "<no instances>"]
+                             else map pprintInstance instances))
              <>
              (if null subclasses then empty
               else line <$> nest 4 (text "Subclasses:" <$>
-                                    vsep (map (dumpInstance . prettifySubclasses . fst) subclasses)))
+                                    vsep (map (dumpInstance . prettifySubclasses) subclasses)))
              <>
              (if null superclasses then empty
               else line <$> nest 4 (text "Default superclass instances:" <$>
@@ -118,16 +119,29 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
     ppo = ppOptionIst ist
     infixes = idris_infixes ist
 
-    pprintInstance (term, doc) =
+    pprintInstance (term, (doc, argDocs)) =
       nest 4 (dumpInstance term <>
-               if nullDocstring doc
+              (if nullDocstring doc
                   then empty
                   else line <>
                        renderDocstring
                          (renderDocTerm
                             (pprintDelab ist)
                             (normaliseAll (tt_ctxt ist) []))
-                         doc)
+                         doc) <>
+              if null argDocs
+                 then empty
+                 else line <> vsep (map (prettyInstanceParam (map fst argDocs)) argDocs))
+
+    prettyInstanceParam params (name, doc) =
+      if nullDocstring doc
+         then empty
+         else prettyName True False (zip params (repeat False)) name <+>
+              showDoc ist doc
+
+-- if any (isJust . snd) params
+-- then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
+-- else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
     dumpInstance :: PTerm -> Doc OutputAnnotation
     dumpInstance = pprintPTerm ppo params' [] infixes
@@ -151,11 +165,10 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
     isSubclass (PPi _                _ _ pt)                                       = isSubclass pt
     isSubclass _                                                                   = False
 
-    (subclasses, instances') = partition (isSubclass . fst) instances
-
-    prettyParameters = if any (isJust . snd) params
-                       then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
-                       else hsep (punctuate comma (map (prettyName True False params' . fst) params))
+    prettyParameters =
+      if any (isJust . snd) params
+         then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
+         else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
 pprintDocs ist (ModDoc mod docs)
    = nest 4 $ text "Module" <+> text (concat (intersperse "." mod)) <> colon <$>
@@ -197,17 +210,27 @@ docClass n ci
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
            docstr = maybe emptyDocstring fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd))) (class_params ci)
-           instanceDocs = map (maybe emptyDocstring fst .
+           instanceDocs = map (fromMaybe (emptyDocstring, []) .
                                listToMaybe .
                                flip lookupCtxt (idris_docstrings i))
                               (class_instances ci)
-           instances = map (delabTy i) (class_instances ci)
+           instances = zip (map (delabTy i) (class_instances ci)) instanceDocs
+           (subclasses, instances') = partition (isSubclass . fst) instances
            superclasses = catMaybes $ map getDInst (class_default_superclasses ci)
        mdocs <- mapM (docFun . fst) (class_methods ci)
-       return $ ClassDoc n docstr mdocs params (zip instances instanceDocs) superclasses
+       return $ ClassDoc
+                  n docstr mdocs params
+                  instances' (map fst subclasses) superclasses
   where
-    getDInst (PInstance _ _ _ _ _ _ t _ _) = Just t
+    getDInst (PInstance _ _ _ _ _ _ _ t _ _) = Just t
     getDInst _                           = Nothing
+
+    isSubclass (PPi (Constraint _ _) _ (PApp _ _ args) (PApp _ (PRef _ nm) args'))
+      = nm == n && map getTm args == map getTm args'
+    isSubclass (PPi _ _ _ pt)
+      = isSubclass pt
+    isSubclass _
+      = False
 
 docFun :: Name -> Idris FunDoc
 docFun n

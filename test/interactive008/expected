@@ -12,4 +12,7 @@ Methods:
 Instances:
     C A
         instance of class
+    C (D a b)
+        another instance of class
+        a   -- parameter type
 *interactive008> Bye bye

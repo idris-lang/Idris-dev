@@ -1082,8 +1082,8 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs decls)
            (map (mapsnd (expandParams dec ps ns [])) params)
            pDocs
            (map (expandParamsD rhs ist dec ps ns) decls)
-expandParamsD rhs ist dec ps ns (PInstance doc info f cs n params ty cn decls)
-   = PInstance doc info f
+expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs n params ty cn decls)
+   = PInstance doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
            n
            (map (expandParams dec ps ns []) params)
@@ -1300,7 +1300,7 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
         getImps (Bind n (Pi _ t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
-            argInfo n (Imp opt _ _ _) Placeholder 
+            argInfo n (Imp opt _ _ _) Placeholder
                    = (True, PImp 0 True opt n Placeholder)
             argInfo n (Imp opt _ _ _) t'
                    = (False, PImp (getPriority i t') True opt n t')

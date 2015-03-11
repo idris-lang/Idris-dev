@@ -636,7 +636,7 @@ InstanceName ::= '[' Name ']';
 @
 -}
 instance_ :: SyntaxInfo -> IdrisParser [PDecl]
-instance_ syn = do (doc, _)
+instance_ syn = do (doc, argDocs)
                      <- try (docstring syn <* reserved "instance")
                    fc <- getFC
                    en <- optional instanceName
@@ -646,7 +646,7 @@ instance_ syn = do (doc, _)
                    let sc = PApp fc (PRef fc cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- option [] (instanceBlock syn)
-                   return [PInstance doc syn fc cs cn args t en ds]
+                   return [PInstance doc argDocs syn fc cs cn args t en ds]
                  <?> "instance declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fnName; lchar ']'
@@ -1410,9 +1410,9 @@ loadSource lidr f toline
     toMutual (PNamespace x ds) = PNamespace x (map toMutual ds)
     toMutual x = let r = PMutual (fileFC "single mutual") [x] in
                  case x of
-                   PClauses _ _ _ _ -> r
-                   PClass _ _ _ _ _ _ _ _ -> r
-                   PInstance _ _ _ _ _ _ _ _ _ -> r
+                   PClauses{} -> r
+                   PClass{} -> r
+                   PInstance{} -> r
                    _ -> x
 
     addModDoc :: SyntaxInfo -> [String] -> Docstring () -> Idris ()

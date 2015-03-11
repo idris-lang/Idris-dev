@@ -168,7 +168,7 @@ removeOrphans list =
   in  filter ((`S.notMember` children) . (\(n, _, _) -> n)) list
 
   where names (Just (DataDoc _ fds))          = map (\(FD n _ _ _ _) -> n) fds
-        names (Just (ClassDoc _ _ fds _ _ _)) = map (\(FD n _ _ _ _) -> n) fds
+        names (Just (ClassDoc _ _ fds _ _ _ _)) = map (\(FD n _ _ _ _) -> n) fds
         names _                               = []
 
 -- | Whether a Name names something which should be documented
@@ -219,7 +219,7 @@ referredNss (n, Just d, _) =
 
   where getFunDocs (FunDoc f)              = [f]
         getFunDocs (DataDoc f fs)          = f:fs
-        getFunDocs (ClassDoc _ _ fs _ _ _) = fs
+        getFunDocs (ClassDoc _ _ fs _ _ _ _) = fs
         types (FD _ _ args t _)            = t:(map second args)
         second (_, x, _, _)                = x
 
@@ -417,7 +417,7 @@ createIndex nss out =
      BS2.hPut h $ renderHtml $ wrapper Nothing $ do
        H.h1 $ "Namespaces"
        H.ul ! class_ "names" $ do
-         let path ns  = "docs" </> genRelNsPath ns "html" 
+         let path ns  = "docs" </> genRelNsPath ns "html"
              item ns  = do let n    = toHtml $ nsName2Str ns
                                link = toValue $ path ns
                            H.li $ H.a ! href link ! class_ "code" $ n
@@ -439,7 +439,7 @@ createNsDoc :: IState   -- ^ Needed to determine the types of names
 createNsDoc ist ns content out =
   do let tpath                   = out </> "docs" </> (genRelNsPath ns "html")
          dir                     = takeDirectory tpath
-         file                    = takeFileName tpath 
+         file                    = takeFileName tpath
          haveDocs (_, Just d, _) = [d]
          haveDocs _              = []
                                  -- We cannot do anything without a Doc
@@ -575,7 +575,7 @@ createOtherDoc :: IState -- ^ Needed to determine the types of names
                -> H.Html -- ^ Resulting HTML
 createOtherDoc ist (FunDoc fd)                = createFunDoc ist fd
 
-createOtherDoc ist (ClassDoc n docstring fds _ _ _) = do
+createOtherDoc ist (ClassDoc n docstring fds _ _ _ _) = do
   H.dt ! (A.id $ toValue $ show n) $ do
     H.span ! class_ "word" $ do "class"; nbsp
     H.span ! class_ "name type"
