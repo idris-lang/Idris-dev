@@ -249,10 +249,10 @@ elabDecl' _ info (PDSL n dsl)
          addIBC (IBCDSL n)
 elabDecl' what info (PDirective i)
   | what /= EDefns = i
-elabDecl' what info (PProvider syn fc provWhat n)
+elabDecl' what info (PProvider doc syn fc provWhat n)
   | what /= EDefns
     = do iLOG $ "Elaborating type provider " ++ show n
-         elabProvider info syn fc provWhat n
+         elabProvider doc info syn fc provWhat n
 elabDecl' what info (PTransform fc safety old new)
     = do elabTransform info fc safety old new
          return ()
