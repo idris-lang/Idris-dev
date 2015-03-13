@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-idris --nobanner --nocolor interactive008.idr < input
-rm *.ibc

@@ -465,10 +465,6 @@ Extra-source-files:
                        test/interactive007/run
                        test/interactive007/input
                        test/interactive007/expected
-                       test/interactive008/run
-                       test/interactive008/input
-                       test/interactive008/*.idr
-                       test/interactive008/expected
 
                        test/io001/run
                        test/io001/*.idr
@@ -614,6 +610,13 @@ Extra-source-files:
                        test/unique003/run
                        test/unique003/*.idr
                        test/unique003/expected
+
+                       test/docs001/run
+                       test/docs001/input
+                       test/docs001/*.idr
+                       test/docs001/expected
+
+
 
 source-repository head
   type:     git
