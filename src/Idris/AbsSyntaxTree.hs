@@ -57,7 +57,7 @@ data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         liftname :: Name -> Name,
                         namespace :: Maybe [String],
                         elabFC :: Maybe FC,
-                        rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl -> 
+                        rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl ->
                                         Idris () }
 
 toplevel :: ElabInfo
@@ -601,14 +601,19 @@ data PDecl' t
               [PDecl' t] -- declarations
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
               -- class name, parameters, method declarations
-   | PInstance SyntaxInfo FC [(Name, t)] -- constraints
-                             Name -- class
-                             [t] -- parameters
-                             t -- full instance type
-                             (Maybe Name) -- explicit name
-                             [PDecl' t]
-               -- ^ Instance declaration: arguments are syntax info, source location, constraints,
-               -- class name, parameters, full instance type, optional explicit name, and definitions
+   | PInstance
+       (Docstring (Either Err PTerm)) -- Instance docs
+       [(Name, Docstring (Either Err PTerm))] -- Parameter docs
+       SyntaxInfo
+       FC [(Name, t)] -- constraints
+       Name -- class
+       [t] -- parameters
+       t -- full instance type
+       (Maybe Name) -- explicit name
+       [PDecl' t]
+       -- ^ Instance declaration: arguments are documentation, syntax info, source
+       -- location, constraints, class name, parameters, full instance
+       -- type, optional explicit name, and definitions
    | PDSL     Name (DSL' t) -- ^ DSL declaration
    | PSyntax  FC Syntax -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
@@ -688,7 +693,7 @@ declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
 declared (PRecord _ _ _ n _ _ _ c _) = [n, c]
 declared (PClass _ _ _ _ n _ _ ms) = n : concatMap declared ms
-declared (PInstance _ _ _ _ _ _ _ _) = []
+declared (PInstance _ _ _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
 declared (PMutual _ ds) = concatMap declared ds
@@ -707,7 +712,7 @@ tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
 tldeclared (PClass _ _ _ _ n _ _ ms) = concatMap tldeclared ms
-tldeclared (PInstance _ _ _ _ _ _ _ _) = []
+tldeclared (PInstance _ _ _ _ _ _ _ _ _ _) = []
 tldeclared _ = []
 
 defined :: PDecl -> [Name]
@@ -723,7 +728,7 @@ defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
 defined (PRecord _ _ _ n _ _ _ c _) = [n, c]
 defined (PClass _ _ _ _ n _ _ ms) = n : concatMap defined ms
-defined (PInstance _ _ _ _ _ _ _ _) = []
+defined (PInstance _ _ _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
 defined (PSyntax _ _) = []
 defined (PMutual _ ds) = concatMap defined ds
@@ -778,7 +783,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PAlternative Bool [PTerm] -- ^ True if only one may work. (| A, B, C|)
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
            | PType -- ^ 'Type' type
-           | PUniverse Universe -- ^ Some universe 
+           | PUniverse Universe -- ^ Some universe
            | PGoal FC PTerm Name PTerm -- ^ quoteGoal, used for %reflection functions
            | PConstant Const -- ^ Builtin types
            | Placeholder -- ^ Underscore
@@ -1113,7 +1118,7 @@ data SSymbol = Keyword Name
              | Expr Name
              | SimpleExpr Name
     deriving (Show, Eq)
-    
+
 
 {-!
 deriving instance Binary SSymbol
@@ -1388,7 +1393,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
   where
     startPrec = 0
     funcAppPrec = 10
-    
+
     prettySe :: Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe p bnd (PQuote r) =
         text "![" <> pretty r <> text "]"
@@ -1451,7 +1456,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
             [x] -> group (opName True <$> group (prettySe startPrec bnd (getTm x)))
             [l,r] -> let precedence = maybe (startPrec - 1) prec f
                      in bracket p precedence $ inFix (getTm l) (getTm r)
-            (l@(PExp _ _ _ _) : r@(PExp _ _ _ _) : rest) -> 
+            (l@(PExp _ _ _ _) : r@(PExp _ _ _ _) : rest) ->
                    bracket p funcAppPrec $
                           enclose lparen rparen (inFix (getTm l) (getTm r)) <+>
                           align (group (vsep (map (prettyArgS bnd) rest)))
@@ -1467,7 +1472,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
                             Just (Infixr p') -> p'
                             Just f' -> prec f' + 1
                 inFix l r = align . group $
-                  (prettySe left bnd l <+> opName False) <$> 
+                  (prettySe left bnd l <+> opName False) <$>
                     group (prettySe right bnd r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm]) -- symbols, like 'foo
       | PConstant (Idris.Core.TT.Str str) <- getTm tm,
@@ -1486,7 +1491,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
       align $ kwd "case" <+> prettySe startPrec bnd scr <+> kwd "of" <$>
       indent 2 (vsep (map ppcase cases))
       where
-        ppcase (l, r) = let prettyCase = prettySe startPrec 
+        ppcase (l, r) = let prettyCase = prettySe startPrec
                                          ([(n, False) | n <- vars l] ++ bnd)
                         in nest nestingSize $
                              prettyCase l <+> text "=>" <+> prettyCase r
@@ -1557,7 +1562,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
           prettyAs =
             foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe startPrec bnd) as
     prettySe p bnd PType = annotate (AnnType "Type" "The type of types") $ text "Type"
-    prettySe p bnd (PUniverse u) = annotate (AnnType (show u) "The type of unique types") $ text (show u) 
+    prettySe p bnd (PUniverse u) = annotate (AnnType (show u) "The type of unique types") $ text (show u)
     prettySe p bnd (PConstant c) = annotate (AnnConst c) (text (show c))
     -- XXX: add pretty for tactics
     prettySe p bnd (PProof ts) =
@@ -1729,7 +1734,7 @@ showDeclImp o (PNamespace n ps) = text "namespace" <+> text n <> braces (line <>
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
 showDeclImp o (PClass _ _ _ cs n ps _ ds)
    = text "class" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
-showDeclImp o (PInstance _ _ cs n _ t _ ds)
+showDeclImp o (PInstance _ _ _ _ cs n _ t _ ds)
    = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
 -- showDeclImp (PImport o) = "import " ++ o
@@ -1905,16 +1910,16 @@ implicitNamesIn :: [Name] -> IState -> PTerm -> [Name]
 implicitNamesIn uvars ist tm = nub $ ni [] tm
   where
     ni env (PRef _ n)
-        | not (n `elem` env) 
+        | not (n `elem` env)
             = case lookupTy n (tt_ctxt ist) of
                 [] -> [n]
                 _ -> if n `elem` uvars then [n] else []
-    ni env (PApp _ f@(PRef _ n) as) 
+    ni env (PApp _ f@(PRef _ n) as)
         | n `elem` uvars = ni env f ++ concatMap (ni env) (map getTm as)
         | otherwise = concatMap (ni env) (map getTm as)
     ni env (PApp _ f as) = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PCase _ c os)  = ni env c ++ 
+    ni env (PCase _ c os)  = ni env c ++
     -- names in 'os', not counting the names bound in the cases
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
@@ -1944,7 +1949,7 @@ namesIn uvars ist tm = nub $ ni [] tm
                 _ -> if n `elem` (map fst uvars) then [n] else []
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PCase _ c os)  = ni env c ++ 
+    ni env (PCase _ c os)  = ni env c ++
     -- names in 'os', not counting the names bound in the cases
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
@@ -2003,4 +2008,3 @@ getErasureInfo ist n =
     case lookupCtxtExact n (idris_optimisation ist) of
         Just (Optimise inacc detagg) -> map fst inacc
         Nothing -> []
-
