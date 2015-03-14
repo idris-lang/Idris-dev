@@ -22,4 +22,6 @@ notOk n = 2
 b0rken : Integer -> Fin 3
 b0rken n = fromInteger n
 
+x : Fin 4
+x = the (Fin 4) 5
 

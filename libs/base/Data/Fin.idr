@@ -144,12 +144,25 @@ fromInteger {n} x {prf} with (integerToFin x n)
   fromInteger {n} x {prf = ItIsJust} | Just y = y
 
 %language ErrorReflection
+
+||| Attempt to convert a reflected (fromInteger n) to a Nat
+total private
+getNat' : TT -> Maybe TT
+getNat' `(fromInteger ~(TConst (BI c)) : Nat) = Just $ quote (the Nat (fromInteger c))
+getNat' _ = Nothing
+
+||| Attempt to convert a reflected (fromInteger n) to a Nat. Return
+||| the original term on failure.
+total private
+getNat : TT -> TT
+getNat tm = maybe tm id $ getNat' tm
+
 total private
 mkFinIntegerErr : TT -> TT -> List ErrorReportPart -> Maybe (List ErrorReportPart)
 mkFinIntegerErr lit finSize subErr
   = Just [ TextPart "When using", TermPart lit
          , TextPart "as a literal for a"
-         , TermPart `(Fin ~finSize)
+         , TermPart `(Fin ~(getNat finSize))
          , SubReport subErr
          ]
 total
@@ -158,12 +171,12 @@ finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~(TConst c) ~m)) err
   = mkFinIntegerErr (TConst c) m
       [ TermPart (TConst c)
       , TextPart "is not strictly less than"
-      , TermPart m
+      , TermPart (getNat m)
       ]
 finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~(P Bound n t) ~m)) err xs y)
   = mkFinIntegerErr (P Bound n t) m
       [ TextPart "Could not show that", TermPart (P Bound n t)
-      , TextPart "is less than", TermPart m
+      , TextPart "is less than", TermPart (getNat m)
       , TextPart "because", TermPart (P Bound n t)
       , TextPart "is a bound variable instead of a constant"
       , TermPart (TConst (AType (ATInt ITBig)))
@@ -171,7 +184,7 @@ finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~(P Bound n t) ~m)) 
 finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~n ~m)) err xs y)
   = mkFinIntegerErr n m
       [ TextPart "Could not show that" , TermPart n
-      , TextPart "is less than" , TermPart m
+      , TextPart "is less than" , TermPart (getNat m)
       ]
 finFromIntegerErrors _ = Nothing
 

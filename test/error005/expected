@@ -14,3 +14,7 @@ error005.idr:23:24:When elaborating right hand side of b0rken:
 When elaborating argument prf to function Data.Fin.fromInteger:
         When using n as a literal for a Fin 3 
                 Could not show that n is less than 3 because n is a bound variable instead of a constant Integer
+error005.idr:28:1:When elaborating right hand side of x:
+When elaborating argument prf to function Data.Fin.fromInteger:
+        When using 5 as a literal for a Fin 4 
+                5 is not strictly less than 4
