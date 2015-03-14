@@ -1,6 +1,7 @@
 module Data.Fin
 
 %default total
+%access public
 
 ||| Numbers strictly less than some bound.  The name comes from "finite sets".
 |||
@@ -143,19 +144,35 @@ fromInteger {n} x {prf} with (integerToFin x n)
   fromInteger {n} x {prf = ItIsJust} | Just y = y
 
 %language ErrorReflection
-
+total private
+mkFinIntegerErr : TT -> TT -> List ErrorReportPart -> Maybe (List ErrorReportPart)
+mkFinIntegerErr lit finSize subErr
+  = Just [ TextPart "When using", TermPart lit
+         , TextPart "as a literal for a"
+         , TermPart `(Fin ~finSize)
+         , SubReport subErr
+         ]
 total
 finFromIntegerErrors : Err -> Maybe (List ErrorReportPart)
+finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~(TConst c) ~m)) err xs y)
+  = mkFinIntegerErr (TConst c) m
+      [ TermPart (TConst c)
+      , TextPart "is not strictly less than"
+      , TermPart m
+      ]
+finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~(P Bound n t) ~m)) err xs y)
+  = mkFinIntegerErr (P Bound n t) m
+      [ TextPart "Could not show that", TermPart (P Bound n t)
+      , TextPart "is less than", TermPart m
+      , TextPart "because", TermPart (P Bound n t)
+      , TextPart "is a bound variable instead of a constant"
+      , TermPart (TConst (AType (ATInt ITBig)))
+      ]
 finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~n ~m)) err xs y)
-  = Just [ TextPart "When using", TermPart n
-         , TextPart "as a literal for a"
-         , TermPart `(Fin ~m)
-         , SubReport [ TextPart "Could not show that"
-                     , TermPart n
-                     , TextPart "is less than"
-                     , TermPart m
-                     ]
-         ]
+  = mkFinIntegerErr n m
+      [ TextPart "Could not show that" , TermPart n
+      , TextPart "is less than" , TermPart m
+      ]
 finFromIntegerErrors _ = Nothing
 
 %error_handlers Data.Fin.fromInteger prf finFromIntegerErrors

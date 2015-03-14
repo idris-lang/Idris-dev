@@ -18,3 +18,8 @@ ok n = 1
 
 notOk : (n : Nat) -> Fin (plus 2 n)
 notOk n = 2
+
+b0rken : Integer -> Fin 3
+b0rken n = fromInteger n
+
+
