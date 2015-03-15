@@ -1282,11 +1282,13 @@ instance (Binary t) => Binary (PDecl' t) where
                                     put x1
                                     put x2
                 PDirective x1 -> error "Cannot serialize PDirective"
-                PProvider x1 x2 x3 x4 -> do putWord8 15
-                                            put x1
-                                            put x2
-                                            put x3
-                                            put x4
+                PProvider x1 x2 x3 x4 x5 ->
+                  do putWord8 15
+                     put x1
+                     put x2
+                     put x3
+                     put x4
+                     put x5
                 PTransform x1 x2 x3 x4 -> do putWord8 16
                                              put x1
                                              put x2
@@ -1381,7 +1383,8 @@ instance (Binary t) => Binary (PDecl' t) where
                             x2 <- get
                             x3 <- get
                             x4 <- get
-                            return (PProvider x1 x2 x3 x4)
+                            x5 <- get
+                            return (PProvider x1 x2 x3 x4 x5)
                    16 -> do x1 <- get
                             x2 <- get
                             x3 <- get

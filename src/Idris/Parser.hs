@@ -1108,25 +1108,30 @@ totality
 {- | Parses a type provider
 
 @
-Provider ::= '%' 'provide' Provider_What? '(' FnName TypeSig ')' 'with' Expr;
+Provider ::= DocComment_t? '%' 'provide' Provider_What? '(' FnName TypeSig ')' 'with' Expr;
 ProviderWhat ::= 'proof' | 'term' | 'type' | 'postulate'
 @
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
-provider syn = do try (lchar '%' *> reserved "provide");
-                  provideTerm <|> providePostulate
+provider syn = do doc <- try (do (doc, _) <- docstring syn
+                                 lchar '%'
+                                 reserved "provide"
+                                 return doc)
+                  provideTerm doc <|> providePostulate doc
                <?> "type provider"
-  where provideTerm = do lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
-                         fc <- getFC
-                         reserved "with"
-                         e <- expr syn <?> "provider expression"
-                         return  [PProvider syn fc (ProvTerm t e) n]
-        providePostulate = do reserved "postulate"
-                              n <- fnName
-                              fc <- getFC
-                              reserved "with"
-                              e <- expr syn <?> "provider expression"
-                              return [PProvider syn fc (ProvPostulate e) n]
+  where provideTerm doc =
+          do lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
+             fc <- getFC
+             reserved "with"
+             e <- expr syn <?> "provider expression"
+             return  [PProvider doc syn fc (ProvTerm t e) n]
+        providePostulate doc =
+          do reserved "postulate"
+             n <- fnName
+             fc <- getFC
+             reserved "with"
+             e <- expr syn <?> "provider expression"
+             return [PProvider doc syn fc (ProvPostulate e) n]
 
 {- | Parses a transform
 

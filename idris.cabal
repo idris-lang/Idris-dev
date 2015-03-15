@@ -615,6 +615,10 @@ Extra-source-files:
                        test/docs001/input
                        test/docs001/*.idr
                        test/docs001/expected
+                       test/docs002/run
+                       test/docs002/input
+                       test/docs002/*.idr
+                       test/docs002/expected
 
 
 

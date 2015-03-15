@@ -1,0 +1,8 @@
+Type checking ./docs002.idr
+*docs002> T1 : Type
+    Some documentation
+    
+*docs002> T2 : Type
+    Some other documentation
+    
+*docs002> Bye bye

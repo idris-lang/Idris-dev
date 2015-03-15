@@ -23,6 +23,7 @@ New in 0.9.17:
 * Added FFI_Export type which allows Idris functions to be exportoed and
   called from foreign code
 * Instances can now have documentation strings.
+* Type providers can have documentation strings.
 
 New in 0.9.16:
 --------------
