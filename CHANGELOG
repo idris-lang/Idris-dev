@@ -24,6 +24,8 @@ New in 0.9.17:
   called from foreign code
 * Instances can now have documentation strings.
 * Type providers can have documentation strings.
+* Unification errors now (where possible) contain information about provenance
+  of a type
 
 New in 0.9.16:
 --------------

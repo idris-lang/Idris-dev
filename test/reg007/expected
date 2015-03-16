@@ -1,9 +1,9 @@
 reg007.lidr:8:1:A.n is already defined
 reg007.lidr:12:11:When elaborating right hand side of hurrah:
 Can't unify
-        n = lala
+        n = lala (Type of isSame)
 with
-        0 = 1
+        0 = 1 (Expected type)
 
 Specifically:
         Can't unify

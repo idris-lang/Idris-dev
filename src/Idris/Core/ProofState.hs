@@ -477,7 +477,8 @@ fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
 --        let valtyn = normalise ctxt env valty
 --        let tyn = normalise ctxt env ty
-       ns <- unify' ctxt env (valty, Nothing) (ty, Nothing)
+       ns <- unify' ctxt env (valty, Just $ SourceTerm val)
+                             (ty, Just ExpectedType)
        ps <- get
        let (uh, uns) = unified ps
 --        put (ps { unified = (uh, uns ++ ns) })

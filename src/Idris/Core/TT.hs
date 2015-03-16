@@ -120,7 +120,13 @@ data ErrorReportPart = TextPart String
 -- Please remember to keep Err synchronised with
 -- Language.Reflection.Errors.Err in the stdlib!
 
-type Provenance = String
+data Provenance = ExpectedType
+                | SourceTerm Term
+  deriving (Show, Eq, Data, Typeable)
+{-!
+deriving instance NFData Err
+deriving instance Binary Err
+!-}
 
 -- | Idris errors. Used as exceptions in the compiler, but reported to users
 -- if they reach the top level.

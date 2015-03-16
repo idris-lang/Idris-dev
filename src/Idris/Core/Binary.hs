@@ -23,6 +23,18 @@ instance Binary ErrorReportPart where
              3 -> fmap SubReport get
              _ -> error "Corrupted binary data for ErrorReportPart"
 
+instance Binary Provenance where
+  put ExpectedType = putWord8 0
+  put (SourceTerm t) = do putWord8 1
+                          put t
+
+  get = do i <- getWord8
+           case i of
+             0 -> return ExpectedType
+             1 -> do x1 <- get
+                     return (SourceTerm x1)
+             _ -> error "Corrupted binary data for Provenance"
+
 instance Binary a => Binary (Err' a) where
   put (Msg str) = do putWord8 0
                      put str
