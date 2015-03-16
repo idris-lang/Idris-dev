@@ -621,8 +621,16 @@ VAL idris_readStr(VM* vm, FILE* h) {
     {
         /* Make the buffer bigger and read more of the line */
         line_buf_size += BUFSIZE;
-        line_buf = (char *) realloc (line_buf, line_buf_size);
-
+        {   /* limit the scope of new_line_buf to where it's needed for errors*/
+            char *new_line_buf = realloc (line_buf, line_buf_size);
+            if (new_line_buf == NULL)
+            {
+                fprintf(stderr, "Fatal Error: couldn't allocate a larger line buffer.");
+                exit(EXIT_FAILURE);
+            } else {
+                line_buf = new_line_buf;
+            }
+        }
         /* points to last byte again */
         line_ptr = line_buf + line_buf_size - 1;
         /* so we can see if fgets put a 0 there */
