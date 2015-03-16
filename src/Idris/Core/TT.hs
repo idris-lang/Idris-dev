@@ -1545,12 +1545,12 @@ pprintTT bound tm = pp startPrec bound tm
 
     ppb p bound n (Lam ty) sc =
       bracket p startPrec . group . align . hang 2 $
-      text "λ" <> bindingOf n False <+> text "." <> line <> sc
+      text "λ" <+> bindingOf n False <+> text "." <> line <> sc
     ppb p bound n (Pi _ ty k) sc =
       bracket p startPrec . group . align $
       lparen <> (bindingOf n False) <+> colon <+>
       (group . align) (pp startPrec bound ty) <>
-      rparen <> mkArrow k <> line <> sc
+      rparen <+> mkArrow k <> line <> sc
         where mkArrow (UType UniqueType) = text "⇴"
               mkArrow (UType NullType) = text "⥛"
               mkArrow _ = text "→"
@@ -1572,25 +1572,25 @@ pprintTT bound tm = pp startPrec bound tm
       (group . hang 2) (annotate AnnKeyword (text "in") <+> sc)
     ppb p bound n (Hole ty) sc =
       bracket p startPrec . group . align . hang 2 $
-      text "?" <> bindingOf n False <+> text "." <> line <> sc
+      text "?" <+> bindingOf n False <+> text "." <> line <> sc
     ppb p bound n (GHole _ ty) sc =
       bracket p startPrec . group . align . hang 2 $
-      text "¿" <> bindingOf n False <+> text "." <> line <> sc
+      text "¿" <+> bindingOf n False <+> text "." <> line <> sc
     ppb p bound n (Guess ty val) sc =
       bracket p startPrec . group . align . hang 2 $
       text "?" <> bindingOf n False <+>
-      text "≈" <+> pp startPrec bound val <>
+      text "≈" <+> pp startPrec bound val <+>
       text "." <> line <> sc
     ppb p bound n (PVar ty) sc =
       bracket p startPrec . group . align . hang 2 $
       annotate AnnKeyword (text "pat") <+>
-      bindingOf n False <+> colon <+> pp startPrec bound ty <>
+      bindingOf n False <+> colon <+> pp startPrec bound ty <+>
       text "." <> line <>
       sc
     ppb p bound n (PVTy ty) sc =
       bracket p startPrec . group . align . hang 2 $
       annotate AnnKeyword (text "patTy") <+>
-      bindingOf n False <+> colon <+> pp startPrec bound ty <>
+      bindingOf n False <+> colon <+> pp startPrec bound ty <+>
       text "." <> line <>
       sc
 

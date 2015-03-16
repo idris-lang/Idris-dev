@@ -556,6 +556,7 @@ idemodeProcess fn (Undefine n) = process fn (Undefine n)
 idemodeProcess fn (ExecVal t) = process fn (ExecVal t)
 idemodeProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
 idemodeProcess fn (Check t) = process fn (Check t)
+idemodeProcess fn (Core t) = process fn (Core t)
 idemodeProcess fn (DocStr n w) = process fn (DocStr n w)
 idemodeProcess fn Universes = process fn Universes
 idemodeProcess fn (Defn n) = do process fn (Defn n)
@@ -907,6 +908,10 @@ process fn (Check t)
              iPrintTermWithType (prettyIst ist PType) type1Doc
            _ -> iPrintTermWithType (pprintDelab ist tm)
                                    (pprintDelab ist ty)
+
+process fn (Core t)
+   = do (tm, ty) <- elabVal recinfo ERHS t
+        iPrintTermWithType (pprintTT [] tm) (pprintTT [] ty)
 
 process fn (DocStr (Left n) w)
    = do ist <- getIState

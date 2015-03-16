@@ -347,6 +347,7 @@ data Command = Quit
              | NewDefn [PDecl] -- ^ Each 'PDecl' should be either a type declaration (at most one) or a clause defining the same name.
              | Undefine [Name]
              | Check PTerm
+             | Core PTerm
              | DocStr (Either Name Const) HowMuchDocs
              | TotCheck Name
              | Reload

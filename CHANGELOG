@@ -29,6 +29,8 @@ New in 0.9.17:
 * Type providers can have documentation strings.
 * Unification errors now (where possible) contain information about provenance
   of a type
+* New REPL command ":core TM" that shows the elaborated form of TM along with
+  its elaborated type using the syntax of TT
 
 New in 0.9.16:
 --------------

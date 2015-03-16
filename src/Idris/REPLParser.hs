@@ -41,6 +41,7 @@ allHelp = [ (map (':' :) names, args, text)
 parserCommandsForHelp :: CommandTable
 parserCommandsForHelp = 
   [ exprArgCmd ["t", "type"] Check "Check the type of an expression"
+  , exprArgCmd ["core"] Core "View the core language representation of a term"
   , nameArgCmd ["miss", "missing"] Missing "Show missing clauses"
   , (["doc"], NameArg, "Show internal documentation", cmd_doc)
   , (["mkdoc"], NamespaceArg, "Generate IdrisDoc for namespace(s) and dependencies"
