@@ -1,0 +1,11 @@
+package contrib
+
+opts = "--nobaselibs --total -i ../prelude -i ../base"
+modules = Data.Fun, Data.Rel, Data.Buffer,
+          Data.SortedMap, Data.SortedSet,
+
+          Decidable.Decidable, Decidable.Order,
+
+          Network.Cgi,
+
+          System.Concurrency.Process, System.Concurrency.Raw

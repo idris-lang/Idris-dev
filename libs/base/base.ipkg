@@ -3,13 +3,10 @@ package base
 opts = "--nobasepkgs --total -i ../prelude"
 modules = System,
 
-          Network.Cgi, Network.Socket,
+          Network.Socket,
           Debug.Error, Debug.Trace,
 
           System.Info,
-          System.Concurrency.Raw, System.Concurrency.Process,
-
-          Decidable.Decidable, Decidable.Order,
 
           Providers,
 
@@ -20,11 +17,11 @@ modules = System,
           Data.Morphisms,
           Data.Bits, Data.Mod2,
           Data.ZZ, Data.Sign,
-          Data.SortedMap, Data.SortedSet, Data.BoundedList,
-          Data.Fin, Data.Vect, Data.VectType, 
+          Data.BoundedList,
+          Data.Fin, Data.Vect, Data.VectType,
           Data.HVect, Data.Vect.Quantifiers,
-          Data.Floats, Data.Complex, Data.Heap, Data.Fun,
-          Data.Rel, Data.Buffer, Data.Erased,
+          Data.Floats, Data.Complex, Data.Heap,
+          Data.Erased,
           Data.List, Data.Hash, Data.Matrix,
           Data.So,
 
