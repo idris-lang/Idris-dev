@@ -61,7 +61,7 @@ iRender d = do w <- getWidth
                                if n < 1
                                  then renderPretty 1.0 1000000000 d
                                  else renderPretty 0.8 n d
-                 AutomaticWidth | ideMode  -> return $ renderPretty 1.0 1000000000 d
+                 AutomaticWidth | ideMode  -> return $ renderPretty 1.0 80 d
                                 | otherwise -> do width <- runIO getScreenWidth
                                                   return $ renderPretty 0.8 width d
 
