@@ -342,13 +342,24 @@ pprintErr' i (ReflectionFailed msg err) =
 pprintErr' i (ElabDebug msg tm holes) =
   text "Elaboration halted." <>
   maybe empty (indented . text) msg <> line <>
-  text "Term: " <> pprintTerm' i [] (delab i tm) <> line <>
+  text "Term: " <> indented (pprintTerm' i [] (delab i tm)) <> line <>
   text "Holes:" <>
-  (indented . vsep . flip map holes)
-    (\(hn, goal, env) ->
-      vsep (flip map env (\(n, b) -> annName' n (show n) <+> text ":" <+> pprintTerm' i [] (delab i (binderTy b)))) <> -- TODO: nested binders
-      line <> text "----------------------------------" <> line <>
-      annName' hn  (show hn) <+> text ":" <+> pprintTerm' i (zip (map fst env) (repeat True)) (delab i goal) <> line)
+  indented (vsep (map ppHole holes))
+
+  where ppHole :: (Name, Type, Env) -> Doc OutputAnnotation
+        ppHole (hn, goal, env) =
+          ppAssumptions [] (reverse env) <>
+          text "----------------------------------" <> line <>
+          bindingOf hn False <+> text ":" <+>
+          pprintTerm' i (zip (map fst env) (repeat False)) (delab i goal) <> line
+        ppAssumptions :: [Name] -> Env -> Doc OutputAnnotation
+        ppAssumptions ns [] = empty
+        ppAssumptions ns ((n, b) : rest) =
+          bindingOf n False <+>
+          text ":" <+>
+          pprintTerm' i (zip ns (repeat False)) (delab i (binderTy b)) <>
+          line <>
+          ppAssumptions (n:ns) rest
 
 -- | Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly
