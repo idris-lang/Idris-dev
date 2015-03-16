@@ -394,6 +394,10 @@ Extra-source-files:
                        test/ffi005/*.idr
                        test/ffi005/run
                        test/ffi005/expected
+                       test/ffi006/*.idr
+                       test/ffi006/*.c
+                       test/ffi006/run
+                       test/ffi006/expected
 
                        test/idrisdoc001/run
                        test/idrisdoc001/expected
@@ -607,6 +611,17 @@ Extra-source-files:
                        test/unique003/*.idr
                        test/unique003/expected
 
+                       test/docs001/run
+                       test/docs001/input
+                       test/docs001/*.idr
+                       test/docs001/expected
+                       test/docs002/run
+                       test/docs002/input
+                       test/docs002/*.idr
+                       test/docs002/expected
+
+
+
 source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
@@ -723,6 +738,7 @@ Library
                 , IRTS.CodegenC
                 , IRTS.CodegenCommon
                 , IRTS.CodegenJavaScript
+                , IRTS.Exports
                 , IRTS.JavaScript.AST
                 , IRTS.Compiler
                 , IRTS.Defunctionalise

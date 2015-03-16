@@ -278,7 +278,7 @@ inArgTys = map . first . second
 
 typeclassUnify :: Ctxt ClassInfo -> Context -> Type -> Type -> Maybe [(Name, Type)]
 typeclassUnify classInfo ctxt ty tyTry = do
-  res <- tcToMaybe $ match_unify ctxt [] ty retTy [] theHoles []
+  res <- tcToMaybe $ match_unify ctxt [] (ty, Nothing) (retTy, Nothing) [] theHoles []
   guard $ null (theHoles \\ map fst res)
   let argTys' = map (second $ foldr (.) id [ subst n t | (n, t) <- res ]) tcArgs
   return argTys'
@@ -424,7 +424,9 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
   unifyQueue state [] = return state
   unifyQueue state ((ty1, ty2) : queue) = do
     --trace ("go: \n" ++ show state) True `seq` return ()
-    res <- tcToMaybe $ match_unify ctxt [ (n, Pi Nothing ty (TType (UVar 0))) | (n, ty) <- holes state] ty1 ty2 [] (map fst $ holes state) []
+    res <- tcToMaybe $ match_unify ctxt [ (n, Pi Nothing ty (TType (UVar 0))) | (n, ty) <- holes state] 
+                                   (ty1, Nothing) 
+                                   (ty2, Nothing) [] (map fst $ holes state) []
     (state', queueAdditions) <- resolveUnis res state
     guard $ scoreCriterion (score state')
     unifyQueue state' (queue ++ queueAdditions)

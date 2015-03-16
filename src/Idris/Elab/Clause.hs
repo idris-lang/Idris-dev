@@ -464,7 +464,7 @@ checkPossible info fc tcgen fname lhs_in
             Error err -> if tcgen then return (recoverable ctxt err)
                                   else return (validCase ctxt err ||
                                                  recoverable ctxt err)
-    where validCase ctxt (CantUnify _ topx topy e _ _)
+    where validCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
               = let topx' = normalise ctxt [] topx
                     topy' = normalise ctxt [] topy in
                     not (sameFam topx' topy' || not (validCase ctxt e))
@@ -474,7 +474,7 @@ checkPossible info fc tcgen fname lhs_in
           validCase ctxt (ElaboratingArg _ _ _ e) = validCase ctxt e
           validCase ctxt _ = True
 
-          recoverable ctxt (CantUnify r topx topy e _ _)
+          recoverable ctxt (CantUnify r (topx, _) (topy, _) e _ _)
               = let topx' = normalise ctxt [] topx
                     topy' = normalise ctxt [] topy in
                     checkRec topx' topy'
@@ -704,7 +704,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
             OK (_, cs) -> do addConstraints fc cs 
                              logLvl 6 $ "CONSTRAINTS ADDED: " ++ show cs
                              return ()
-            Error e -> ierror (At fc (CantUnify False clhsty crhsty e [] 0))
+            Error e -> ierror (At fc (CantUnify False (clhsty, Nothing) (crhsty, Nothing) e [] 0))
         i <- getIState
         checkInferred fc (delab' i crhs True True) rhs
         -- if the function is declared '%error_reverse', or its type,

@@ -1,8 +1,8 @@
 test020a.idr:16:18:When elaborating right hand side of foo:
 When elaborating an application of function Prelude.List.reverse:
         Can't unify
-                Vect n a
+                Vect n a (Type of xs)
         with
-                List a
+                List a (Expected type)
 [3, 2, 1]
 "Number 42"

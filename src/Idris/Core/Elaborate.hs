@@ -727,10 +727,11 @@ no_errors tac err
             if (length ps' > length ps) then
                case reverse ps' of
                     ((x, y, _, env, inerr, while, _) : _) ->
-                       let env' = map (\(x, b) -> (x, binderTy b)) env in
+                       let (xp, yp) = getProvenance inerr
+                           env' = map (\(x, b) -> (x, binderTy b)) env in
                                   lift $ tfail $ 
                                          case err of
-                                              Nothing -> CantUnify False x y inerr env' 0
+                                              Nothing -> CantUnify False (x, xp) (y, yp) inerr env' 0
                                               Just e -> e
                else return $! ()
 

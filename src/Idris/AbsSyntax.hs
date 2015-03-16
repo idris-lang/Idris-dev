@@ -96,7 +96,7 @@ addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 
 addImported :: Bool -> FilePath -> Idris ()
-addImported pub f 
+addImported pub f
      = do i <- getIState
           putIState $ i { idris_imported = nub $ (f, pub) : idris_imported i }
 
@@ -129,21 +129,29 @@ addErasureUsage :: Name -> Int -> Idris ()
 addErasureUsage n i = do ist <- getIState
                          putIState $ ist { idris_erasureUsed = (n, i) : idris_erasureUsed ist }
 
+addExport :: Name -> Idris ()
+addExport n = do ist <- getIState
+                 putIState $ ist { idris_exports = n : idris_exports ist }
+
 addUsedName :: FC -> Name -> Name -> Idris ()
-addUsedName fc n arg 
+addUsedName fc n arg
     = do ist <- getIState
          case lookupTyName n (tt_ctxt ist) of
-              [(_, ty)] -> addUsage 0 ty
+              [(n', ty)] -> addUsage n' 0 ty
               [] -> throwError (At fc (NoSuchVariable n))
               xs -> throwError (At fc (CantResolveAlts (map fst xs)))
-  where addUsage i (Bind x _ sc) | x == arg = do addIBC (IBCUsage (n, i))
-                                                 addErasureUsage n i
-                                 | otherwise = addUsage (i + 1) sc
-        addUsage _ _ = throwError (At fc (Msg ("No such argument name " ++ show arg)))
+  where addUsage n i (Bind x _ sc) | x == arg = do addIBC (IBCUsage (n, i))
+                                                   addErasureUsage n i
+                                   | otherwise = addUsage n (i + 1) sc
+        addUsage _ _ _ = throwError (At fc (Msg ("No such argument name " ++ show arg)))
 
 getErasureUsage :: Idris [(Name, Int)]
 getErasureUsage = do ist <- getIState;
                      return (idris_erasureUsed ist)
+
+getExports :: Idris [Name]
+getExports = do ist <- getIState
+                return (idris_exports ist)
 
 totcheck :: (FC, Name) -> Idris ()
 totcheck n = do i <- getIState; putIState $ i { idris_totcheck = idris_totcheck i ++ [n] }
@@ -260,7 +268,7 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
 
               where errWhen True
                        = throwError (At fc
-                            (CantUnify False x y (Msg "") [] 0))
+                            (CantUnify False (x, Nothing) (y, Nothing) (Msg "") [] 0))
                     errWhen False = return ()
 
 isTyInferred :: Name -> Idris Bool
@@ -1074,8 +1082,8 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs decls)
            (map (mapsnd (expandParams dec ps ns [])) params)
            pDocs
            (map (expandParamsD rhs ist dec ps ns) decls)
-expandParamsD rhs ist dec ps ns (PInstance info f cs n params ty cn decls)
-   = PInstance info f
+expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs n params ty cn decls)
+   = PInstance doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
            n
            (map (expandParams dec ps ns []) params)
@@ -1292,8 +1300,10 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
         getImps (Bind n (Pi _ t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
+            argInfo n (Imp opt _ _ _) Placeholder
+                   = (True, PImp 0 True opt n Placeholder)
             argInfo n (Imp opt _ _ _) t'
-                   = (True, PImp (getPriority i t') True opt n t')
+                   = (False, PImp (getPriority i t') True opt n t')
             argInfo n (Exp opt _ _) t'
                    = (InaccessibleArg `elem` opt,
                           PExp (getPriority i t') opt n t')
@@ -1542,7 +1552,7 @@ addImpl' inpat env infns ist ptm
                        PLam fc n ty' sc'
              _ -> ai qq env ds (PLam fc (sMN 0 "lamp") ty
                                      (PCase fc (PRef fc (sMN 0 "lamp") )
-                                        [(PRef fc n, sc)])) 
+                                        [(PRef fc n, sc)]))
     ai qq env ds (PLet fc n ty val sc)
       = case lookupDef n (tt_ctxt ist) of
              [] -> let ty' = ai qq env ds ty
@@ -1716,7 +1726,7 @@ stripLinear i tm = evalState (sl tm) [] where
     sl (PPair fc p l r) = do l' <- sl l; r' <- sl r; return (PPair fc p l' r')
     sl (PDPair fc p l t r) = do l' <- sl l
                                 t' <- sl t
-                                r' <- sl r 
+                                r' <- sl r
                                 return (PDPair fc p l' t' r')
     sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var
                               args' <- mapM slA args
@@ -1915,11 +1925,11 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PHidden x) (PHidden y)
           | RightOK xs <- match x y = return xs -- to collect variables
           | otherwise = return [] -- Otherwise hidden things are unmatchable
-    match (PHidden x) y 
-          | RightOK xs <- match x y = return xs 
+    match (PHidden x) y
+          | RightOK xs <- match x y = return xs
           | otherwise = return []
-    match x (PHidden y) 
-          | RightOK xs <- match x y = return xs 
+    match x (PHidden y)
+          | RightOK xs <- match x y = return xs
           | otherwise = return []
     match (PUnifyLog x) y = match' x y
     match x (PUnifyLog y) = match' x y

@@ -23,6 +23,12 @@ New in 0.9.17:
   an extra argument of type TTName. This allows more understandable
   dynamic errors in DSL code and more readable code generation results.
 * DSL notation can now be applied with $
+* Added FFI_Export type which allows Idris functions to be exportoed and
+  called from foreign code
+* Instances can now have documentation strings.
+* Type providers can have documentation strings.
+* Unification errors now (where possible) contain information about provenance
+  of a type
 
 New in 0.9.16:
 --------------
@@ -60,7 +66,7 @@ New in 0.9.15:
   solved automatically.
 * More efficient representation of proof state, leading to faster elaboration
   of large expressions.
-* EXPERIMENTAL Implementation of uniqueness types 
+* EXPERIMENTAL Implementation of uniqueness types
 * Unary negation now desugars to "negate", which is a method of the Neg type class.
   This allows instances of Num that can't be negative, like Nat, and it makes correct
   IEEE Float operations easier to encode. Additionally, unary negation is now available
@@ -74,12 +80,12 @@ New in 0.9.15:
   library (see #1516)
 * Terms in `code blocks` inside of documentation strings are now parsed and
   type checked. If this succeeds, they are rendered in full color in
-  documentation lookups, and with semantic highlighting for IDEs.  
+  documentation lookups, and with semantic highlighting for IDEs.
 * Fenced code blocks in docs defined with the "example" attribute are rendered
   as code examples.
 * Fenced code blocks declared to be Idris code that fail to parse or type check now
   provide error messages to IDE clients.
-* EXPERIMENTAL support for partial evaluation (Scrapping your Inefficient 
+* EXPERIMENTAL support for partial evaluation (Scrapping your Inefficient
   Engine style)
 
 New in 0.9.14:
@@ -156,7 +162,7 @@ New in 0.9.12:
   ||| @ n the first number (examined by the function)
   ||| @ m the second number (not examined)
   plus (n, m : Nat) -> Nat
-* Allow the auto-solve behaviour in the prover to be disabled, for easier 
+* Allow the auto-solve behaviour in the prover to be disabled, for easier
   debugging of proof automation. Use ":set autosolve" and ":unset autosolve".
 * Updated 'effects' library
 * New :apropos command at REPL to search documentation, names, and types
@@ -186,7 +192,7 @@ New in 0.9.11:
   write "with Vect [1,2,3]" at the REPL instead of "the (Vect _ _) [1,2,3]",
   because the Vect constructors are defined in a namespace called Vect.
 * assert_smaller internal function, which marks an expression as smaller than
-  a pattern for use in totality checking. 
+  a pattern for use in totality checking.
   e.g. "assert_smaller (x :: xs) (f xs)" asserts that "f xs" will always be
   structurally smaller than "(x :: xs)"
 * assert_total internal function, which marks a subexpression as assumed to
@@ -211,7 +217,7 @@ New in 0.9.10:
   types may now depend on earlier methods.
 * More flexible class instance resolution, so that function types and lambda
   expressions can be made instances of a type class.
-* Add !expr notation for implicit binding of intermediate results in 
+* Add !expr notation for implicit binding of intermediate results in
   monadic/do/etc expressions.
 * Extend Effects package to cope with possibly failing operations, using
   "if_valid", "if_error", etc.
@@ -336,7 +342,7 @@ User visible changes:
 Internal changes:
 
 * Separate inlining methods at compile-time and run-time
-* Fixed nested parameters blocks 
+* Fixed nested parameters blocks
 * Improve efficiency of elaborator by:
    - only normalising when necessary
    - reducing backtracking with resolving ambiguities
@@ -417,7 +423,7 @@ User visible changes:
 Internal changes:
 
 * Some type class resolution fixes
-* Several minor bug fixes 
+* Several minor bug fixes
 * Performance improvements in resolving overloading and type classes
 
 New in 0.9.1:
@@ -465,11 +471,10 @@ Complete rewrite. User visible changes:
 Internal changes:
 
 * Everything :-)
-* All definitions (functions, classes and instances) are elaborated to top 
-  level, fully explicit, data declarations and pattern matching definitions, 
-  which are verified by a minimal type checker. 
+* All definitions (functions, classes and instances) are elaborated to top
+  level, fully explicit, data declarations and pattern matching definitions,
+  which are verified by a minimal type checker.
 
 This is the first release of a complete reimplementation. There will be bugs.
-If you find any, please do not hesitate to contact Edwin Brady 
+If you find any, please do not hesitate to contact Edwin Brady
 (ecb10@st-andrews.ac.uk).
-

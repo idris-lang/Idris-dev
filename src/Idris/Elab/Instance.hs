@@ -51,6 +51,8 @@ import Data.List.Split (splitOn)
 import Util.Pretty(pretty, text)
 
 elabInstance :: ElabInfo -> SyntaxInfo ->
+                Docstring (Either Err PTerm) ->
+                [(Name, Docstring (Either Err PTerm))] ->
                 ElabWhat -> -- phase
                 FC -> [(Name, PTerm)] -> -- constraints
                 Name -> -- the class
@@ -58,7 +60,7 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 PTerm -> -- full instance type
                 Maybe Name -> -- explicit name
                 [PDecl] -> Idris ()
-elabInstance info syn what fc cs n ps t expn ds = do
+elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
     i <- getIState
     (n, ci) <- case lookupCtxtName n (idris_classes i) of
                   [c] -> return c
@@ -69,7 +71,7 @@ elabInstance info syn what fc cs n ps t expn ds = do
     let iname = mkiname n (namespace info) ps expn
     let emptyclass = null (class_methods ci)
     when (what /= EDefns || (null ds && not emptyclass)) $ do
-         nty <- elabType' True info syn emptyDocstring [] fc [] iname t
+         nty <- elabType' True info syn doc argDocs fc [] iname t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
@@ -147,10 +149,10 @@ elabInstance info syn what fc cs n ps t expn ds = do
                           Just m -> sNS (SN (sInstanceN n' (map show ps'))) m
           Just nm -> nm
 
-    substInstance ips pnames (PInstance syn _ cs n ps t expn ds)
-        = PInstance syn fc cs n (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
+    substInstance ips pnames (PInstance doc argDocs syn _ cs n ps t expn ds)
+        = PInstance doc argDocs syn fc cs n (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
 
-    isOverlapping i (PInstance syn _ _ n ps t expn _)
+    isOverlapping i (PInstance doc argDocs syn _ _ n ps t expn _)
         = case lookupCtxtName n (idris_classes i) of
             [(n, ci)] -> let iname = (mkiname n (namespace info) ps expn) in
                             case lookupTy iname (tt_ctxt i) of

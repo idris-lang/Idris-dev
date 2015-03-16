@@ -8,6 +8,7 @@ import Control.Applicative
 import Control.Arrow
 import Control.Monad.RWS
 import Control.Monad.State
+import qualified Data.Set as S
 import Data.List
 import Data.Maybe
 import qualified Data.Map.Strict as M
@@ -19,7 +20,7 @@ ucheck :: [(UConstraint, FC)] -> TC ()
 ucheck cs = acyclic rels (map fst (M.toList rels))
   where lhs (ULT l _) = l
         lhs (ULE l _) = l
-        cs' = nub cs
+        cs' = S.toList (S.fromList cs)
         rels = mkRels cs' M.empty
 
 type Relations = M.Map UExp [(UConstraint, FC)]

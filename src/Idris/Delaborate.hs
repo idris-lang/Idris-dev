@@ -194,6 +194,11 @@ pprintTerm ist = pprintTerm' ist []
 pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
 pprintTerm' ist bnd tm = pprintPTerm (ppOptionIst ist) bnd [] (idris_infixes ist) tm
 
+pprintProv :: IState -> [(Name, Term)] -> Provenance -> Doc OutputAnnotation
+pprintProv i e ExpectedType = text "Expected type"
+pprintProv i e (SourceTerm tm) 
+  = text "Type of " <> pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm)
+
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)
 
@@ -203,20 +208,28 @@ pprintErr' i (InternalMsg s) =
          text "This is probably a bug, or a missing error message.",
          text ("Please consider reporting at " ++ bugaddr)
        ]
-pprintErr' i (CantUnify _ x_in y_in e sc s) =
+pprintErr' i (CantUnify _ (x_in, xprov) (y_in, yprov) e sc s) =
   let (x_ns, y_ns, nms) = renameMNs x_in y_in
       (x, y) = addImplicitDiffs (delab i x_ns) (delab i y_ns) in
     text "Can't unify" <> indented (annTm x_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
-                                        ++ zip nms (repeat False)) x)) <$>
+                                        ++ zip nms (repeat False)) x)) 
+        <> case xprov of
+                Nothing -> empty
+                Just t -> text " (" <> pprintProv i sc t <> text ")"
+        <$>
     text "with" <> indented (annTm y_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
-                                        ++ zip nms (repeat False)) y)) <>
+                                        ++ zip nms (repeat False)) y)) 
+        <> case yprov of
+                Nothing -> empty
+                Just t -> text " (" <> pprintProv i sc t <> text ")"
+        <>
     case e of
       Msg "" -> empty
         -- if the specific error is the same as the one we just printed,
         -- there's no need to print it
-      CantUnify _ x_in' y_in' _ _ _ | x_in == x_in' && y_in == y_in' -> empty
+      CantUnify _ (x_in', _) (y_in',_) _ _ _ | x_in == x_in' && y_in == y_in' -> empty
       _ -> line <> line <> text "Specifically:" <>
            indented (pprintErr' i e) <>
            if (opt_errContext (idris_options i)) then showSc i sc else empty
