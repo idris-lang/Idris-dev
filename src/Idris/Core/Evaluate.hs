@@ -9,7 +9,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
-                lookupP, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
+                lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
@@ -1007,7 +1007,10 @@ isTCDict n ctxt
          _                          -> False
 
 lookupP :: Name -> Context -> [Term]
-lookupP n ctxt
+lookupP = lookupP_all False
+
+lookupP_all :: Bool -> Name -> Context -> [Term]
+lookupP_all all n ctxt
    = do def <- lookupCtxt n (definitions ctxt)
         p <- case def of
           (Function ty tm, a, _, _)      -> return (P Ref n ty, a)
@@ -1015,7 +1018,7 @@ lookupP n ctxt
           (CaseOp _ ty _ _ _ _, a, _, _) -> return (P Ref n ty, a)
           (Operator ty _ _, a, _, _)     -> return (P Ref n ty, a)
         case snd p of
-          Hidden -> []
+          Hidden -> if all then return (fst p) else []
           _      -> return (fst p)
 
 lookupDefExact :: Name -> Context -> Maybe Def
