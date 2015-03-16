@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris --nobanner --nocolor docs001.idr < input
+rm *.ibc

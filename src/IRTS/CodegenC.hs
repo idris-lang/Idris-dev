@@ -24,15 +24,19 @@ import Control.Monad
 import Debug.Trace
 
 codegenC :: CodeGenerator
-codegenC ci = codegenC' (simpleDecls ci)
-                        (outputFile ci)
-                        (outputType ci)
-                        (includes ci)
-                        (compileObjs ci)
-                        (map mkLib (compileLibs ci) ++
-                            map incdir (importDirs ci))
-                        (compilerFlags ci)
-                        (debugLevel ci)
+codegenC ci = do codegenC' (simpleDecls ci)
+                           (outputFile ci)
+                           (outputType ci)
+                           (includes ci)
+                           (compileObjs ci)
+                           (map mkLib (compileLibs ci) ++
+                               map incdir (importDirs ci))
+                           (compilerFlags ci)
+                           (exportDecls ci)
+                           (interfaces ci)
+                           (debugLevel ci)
+                 when (interfaces ci) $
+                   codegenH (exportDecls ci)
 
   where mkLib l = "-l" ++ l
         incdir i = "-I" ++ i
@@ -44,17 +48,20 @@ codegenC' :: [(Name, SDecl)] ->
              [String] -> -- extra object files
              [String] -> -- extra compiler flags (libraries)
              [String] -> -- extra compiler flags (anything)
+             [ExportIFace] -> 
+             Bool -> -- interfaces too (so make a .o instead)
              DbgLevel ->
              IO ()
-codegenC' defs out exec incs objs libs flags dbg
+codegenC' defs out exec incs objs libs flags exports iface dbg
     = do -- print defs
          let bc = map toBC defs
          let h = concatMap toDecl (map fst bc)
          let cc = concatMap (uncurry toC) bc
+         let hi = concatMap ifaceC (concatMap getExp exports)
          d <- getDataDir
          mprog <- readFile (d </> "rts" </> "idris_main" <.> "c")
          let cout = headers incs ++ debug dbg ++ h ++ cc ++
-                     (if (exec == Executable) then mprog else "")
+                     (if (exec == Executable) then mprog else hi)
          case exec of
            MavenProject -> putStrLn ("FAILURE: output type not supported")
            Raw -> writeFile out cout
@@ -67,21 +74,23 @@ codegenC' defs out exec incs objs libs flags dbg
              libFlags <- getLibFlags
              incFlags <- getIncFlags
              let args = [gccDbg dbg] ++
-                        gccFlags ++
+                        gccFlags iface ++
                         -- # Any flags defined here which alter the RTS API must also be added to config.mk
                         ["-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS", "-msse2",
                          "-I."] ++ objs ++ ["-x", "c"] ++
                         (if (exec == Executable) then [] else ["-c"]) ++
                         [tmpn] ++
-                        concatMap words libFlags ++
+                        (if not iface then concatMap words libFlags else []) ++
                         concatMap words incFlags ++
-                        concatMap words libs ++
+                        (if not iface then concatMap words libs else []) ++
                         concatMap words flags ++
                         ["-o", out]
---              putStrLn gcc
+--              putStrLn (show args)
              exit <- rawSystem comp args
              when (exit /= ExitSuccess) $
                 putStrLn ("FAILURE: " ++ show comp ++ " " ++ show args)
+  where
+    getExp (Export _ _ exp) = exp
 
 headers xs =
   concatMap
@@ -93,7 +102,8 @@ debug _ = ""
 
 -- We're using signed integers now. Make sure we get consistent semantics
 -- out of them from gcc. See e.g. http://thiemonagel.de/2010/01/signed-integer-overflow/
-gccFlags = ["-fwrapv", "-fno-strict-overflow"]
+gccFlags i = if i then ["-fwrapv"]
+                  else ["-fwrapv", "-fno-strict-overflow"]
 
 gccDbg DEBUG = "-g"
 gccDbg TRACE = "-O2"
@@ -311,7 +321,7 @@ toFType (FApp c [_,ity])
     | c == sUN "C_IntT" = FArith (toAType ity)
 toFType (FApp c [_]) 
     | c == sUN "C_Any" = FAny
-toFType t = error (show t ++ " not defined in toFType")
+toFType t = FAny
 
 c_irts (FArith (ATInt ITNative)) l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts (FArith (ATInt ITChar))  l x = c_irts (FArith (ATInt ITNative)) l x
@@ -561,3 +571,100 @@ doOp _ op args = error "doOp of (" ++ show op ++ ") not implemented, arguments (
 
 flUnOp :: String -> String -> String
 flUnOp name val = "MKFLOAT(vm, " ++ name ++ "(GETFLOAT(" ++ val ++ ")))"
+
+-------------------- Interface file generation
+
+-- First, the wrappers in the C file
+
+ifaceC :: Export -> String
+ifaceC (ExportData n) = "typedef VAL " ++ cdesc n ++ ";\n"
+ifaceC (ExportFun n cn ret args)
+   = ctype ret ++ " " ++ cdesc cn ++ 
+         "(VM* vm" ++ showArgs (zip argNames args) ++ ") {\n"
+       ++ mkBody n (zip argNames args) ret ++ "}\n\n"
+  where showArgs [] = ""
+        showArgs ((n, t) : ts) = ", " ++ ctype t ++ " " ++ n ++
+                                 showArgs ts
+
+        argNames = zipWith (++) (repeat "arg") (map show [0..])
+
+mkBody n as t = indent 1 ++ "INITFRAME;\n" ++
+                indent 1 ++ "RESERVE(" ++ show (max (length as) 3) ++ ");\n" ++
+                push 0 as ++ call n ++ retval t
+  where push i [] = ""
+        push i ((n, t) : ts) = indent 1 ++ c_irts (toFType t) 
+                                      ("TOP(" ++ show i ++ ") = ") n
+                                   ++ ";\n" ++ push (i + 1) ts
+
+        call _ = indent 1 ++ "STOREOLD;\n" ++
+                 indent 1 ++ "BASETOP(0);\n" ++
+                 indent 1 ++ "ADDTOP(" ++ show (length as) ++ ");\n" ++
+                 indent 1 ++ "CALL(" ++ cname n ++ ");\n"
+
+        retval (FIO t)
+           = indent 1 ++ "TOP(0) = NULL;\n" ++
+             indent 1 ++ "TOP(1) = NULL;\n" ++
+             indent 1 ++ "TOP(2) = RVAL;\n" ++
+             indent 1 ++ "STOREOLD;\n" ++
+             indent 1 ++ "BASETOP(0);\n" ++
+             indent 1 ++ "ADDTOP(3);\n" ++
+             indent 1 ++ "CALL(" ++ cname (sUN "call__IO") ++ ");\n" ++
+             retval t
+        retval t = indent 1 ++ "return " ++ irts_c (toFType t) "RVAL" ++ ";\n"
+
+ctype (FCon c)
+  | c == sUN "C_Str" = "char*"
+  | c == sUN "C_Float" = "float"
+  | c == sUN "C_Ptr" = "void*"
+  | c == sUN "C_MPtr" = "void*"
+  | c == sUN "C_Unit" = "void"
+ctype (FApp c [_,ity])
+  | c == sUN "C_IntT" = carith ity
+ctype (FApp c [_])
+  | c == sUN "C_Any" = "VAL"
+ctype (FStr s) = s
+ctype FUnknown = "void*"
+ctype (FIO t) = ctype t
+ctype t = error "Can't happen: Not a valid interface type " ++ show t
+
+carith (FCon i)
+  | i == sUN "C_IntChar" = "char"
+  | i == sUN "C_IntNative" = "int"
+carith t = error "Can't happen: Not an exportable arithmetic type"
+
+cdesc (FStr s) = s
+cdesc s = error "Can't happen: Not a valid C name"
+
+-- Then, the header files
+
+codegenH :: [ExportIFace] -> IO ()
+codegenH es = mapM_ writeIFace es
+
+writeIFace :: ExportIFace -> IO ()
+writeIFace (Export ffic hdr exps)
+   | ffic == sUN "FFI_C"
+       = do let hfile = "#ifndef " ++ hdr_guard hdr ++ "\n" ++
+                        "#define " ++ hdr_guard hdr ++ "\n\n" ++
+                        "#include <idris_rts.h>\n\n" ++
+                        concatMap hdr_export exps ++ "\n" ++
+                        "#endif\n\n"
+            writeFile hdr hfile
+   | otherwise = return ()
+
+hdr_guard x = "__" ++ map hchar x
+  where hchar x | isAlphaNum x = toUpper x
+        hchar _ = '_'
+
+hdr_export :: Export -> String
+hdr_export (ExportData n) = "typedef VAL " ++ cdesc n ++ ";\n"
+hdr_export (ExportFun n cn ret args)
+   = ctype ret ++ " " ++ cdesc cn ++ 
+         "(VM* vm" ++ showArgs (zip argNames args) ++ ");\n"
+  where showArgs [] = ""
+        showArgs ((n, t) : ts) = ", " ++ ctype t ++ " " ++ n ++
+                                 showArgs ts
+
+        argNames = zipWith (++) (repeat "arg") (map show [0..])
+
+
+

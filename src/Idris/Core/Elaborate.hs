@@ -28,13 +28,6 @@ import Debug.Trace
 
 import Util.Pretty hiding (fill)
 
--- I don't really want this here, but it's useful for the test shell
-data Command = Theorem Name Raw
-             | Eval Raw
-             | Quit
-             | Print Name
-             | Tac (Elab ())
-
 data ElabState aux = ES (ProofState, aux) String (Maybe (ElabState aux))
   deriving Show
 

@@ -195,6 +195,7 @@ instance Num Nat where
 instance MinBound Nat where
   minBound = Z
 
+||| Casts negative `Integers` to 0.
 instance Cast Integer Nat where
   cast = fromInteger
 
@@ -267,6 +268,7 @@ instance BoundedJoinSemilattice Nat where
   bottom = Z
 
 
+||| Casts negative `Ints` to 0.
 instance Cast Int Nat where
   cast i = fromInteger (cast i)
 
@@ -350,7 +352,7 @@ lcm x y = divNat (x * y) (gcd x y)
 
 
 --------------------------------------------------------------------------------
--- An informative comparison view 
+-- An informative comparison view
 --------------------------------------------------------------------------------
 data CmpNat : Nat -> Nat -> Type where
      CmpLT : (y : _) -> CmpNat x (x + S y)

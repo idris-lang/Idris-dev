@@ -29,7 +29,7 @@ instance Functor f => Functor (StateT s f) where
 instance Monad f => Applicative (StateT s f) where
     pure x = ST (\st => pure (x, st))
 
-    (ST f) <$> (ST a) = ST (\st => do (g, r) <- f st
+    (ST f) <*> (ST a) = ST (\st => do (g, r) <- f st
                                       (b, t) <- a r
                                       return (g b, t))
 

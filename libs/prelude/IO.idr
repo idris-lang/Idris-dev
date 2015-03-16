@@ -23,11 +23,17 @@ WorldRes x = x
 record FFI where
   ffi_types : Type -> Type
   ffi_fn : Type
+  ffi_data : Type
   constructor MkFFI
+
 {-
 record FFI : Type where
      MkFFI : (ffi_types : Type -> Type) -> (ffi_fn : Type) -> FFI
+     MkFFI : (ffi_types : Type -> Type) -> 
+             (ffi_fn : Type) -> 
+             (ffi_data : Type) -> FFI
 -}
+
 abstract 
 data IO' : (lang : FFI) -> Type -> Type where
      MkIO : (World -> PrimIO (WorldRes a)) -> IO' lang a
@@ -94,8 +100,12 @@ io_return x = MkIO (\w => prim_io_return x)
 liftPrimIO : (World -> PrimIO a) -> IO' l a
 liftPrimIO = MkIO
 
+call__IO : IO' l a -> PrimIO a
+call__IO (MkIO f) = f (TheWorld prim__TheWorld)
+
+-- Concrete type makes it easier to elaborate at top level
 run__IO : IO' l () -> PrimIO ()
-run__IO (MkIO f) = f (TheWorld prim__TheWorld)
+run__IO f = call__IO f
 
 unsafePerformIO : IO' ffi a -> a
 unsafePerformIO (MkIO f) = unsafePerformPrimIO
@@ -148,7 +158,7 @@ data C_Types : Type -> Type where
      C_IntT  : C_IntTypes i -> C_Types i
 
 FFI_C : FFI                                     
-FFI_C = MkFFI C_Types String
+FFI_C = MkFFI C_Types String String
 
 IO : Type -> Type
 IO = IO' FFI_C
@@ -199,8 +209,51 @@ mutual
 %used MkJsFn x
 
 FFI_JS : FFI                                     
-FFI_JS = MkFFI JS_Types String
+FFI_JS = MkFFI JS_Types String String
 
 JS_IO : Type -> Type
 JS_IO = IO' FFI_JS
+
+
+--------- Foreign Exports 
+
+namespace FFI_Export
+-- It's just like Data.List.Elem, but we don't need all the other stuff
+-- that comes with it, just a proof that a data type is defined.
+  data DataDefined : Type -> List (Type, s) -> s -> Type where
+       DHere : DataDefined x ((x, t) :: xs) t
+       DThere : DataDefined x xs t -> DataDefined x (y :: xs) t
+
+  data FFI_Base : (f : FFI) -> List (Type, ffi_data f) -> Type -> Type where
+       FFI_ExpType : {n : ffi_data f} -> (def : DataDefined t xs n) -> FFI_Base f xs t
+       FFI_Prim : (prim : ffi_types f t) -> FFI_Base f xs t
+
+  %used FFI_ExpType n
+  %used FFI_ExpType def
+  %used FFI_Prim prim
+
+  data FFI_Exportable : (f : FFI) -> List (Type, ffi_data f) -> Type -> Type where
+       FFI_IO : (b : FFI_Base f xs t) -> FFI_Exportable f xs (IO t)
+       FFI_Fun : (b : FFI_Base f xs s) -> (a : FFI_Exportable f xs t) -> FFI_Exportable f xs (s -> t)
+       FFI_Ret : (b : FFI_Base f xs t) -> FFI_Exportable f xs t
+
+  %used FFI_IO b
+  %used FFI_Fun b
+  %used FFI_Fun a
+  %used FFI_Ret b
+
+  data FFI_Export : (f : FFI) -> String -> List (Type, ffi_data f) -> Type where
+       Data : (x : Type) -> (n : ffi_data f) -> 
+              (es : FFI_Export f h ((x, n) :: xs)) -> FFI_Export f h xs
+       Fun : (fn : t) -> (n : ffi_fn f) -> {auto prf : FFI_Exportable f xs t} -> 
+             (es : FFI_Export f h xs) -> FFI_Export f h xs
+       End : FFI_Export f h xs
+
+%used Data x
+%used Data n
+%used Data es
+%used Fun fn
+%used Fun n
+%used Fun es
+%used Fun prf
 

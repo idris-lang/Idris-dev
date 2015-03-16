@@ -1,0 +1,18 @@
+Type checking ./docs001.idr
+*docs001> Type class C
+    class
+
+Parameters:
+    t   -- a type
+
+Methods:
+    m : C t => t
+        member of class
+        
+Instances:
+    C A
+        instance of class
+    C (D a b)
+        another instance of class
+        a   -- parameter type
+*docs001> Bye bye

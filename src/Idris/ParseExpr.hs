@@ -554,14 +554,8 @@ app syn = do f <- simpleExpr syn
              args <- many (do notEndApp; arg syn)
              case args of
                [] -> return f
-               _  -> return (dslify i (PApp fc f args)))
+               _  -> return (PApp fc f args))
        <?> "function application"
-  where
-    dslify :: IState -> PTerm -> PTerm
-    dslify i (PApp fc (PRef _ f) [a])
-        | [d] <- lookupCtxt f (idris_dsls i)
-            = desugar (syn { dsl_info = d }) i (getTm a)
-    dslify i t = t
 
 {-| Parses a function argument
 @
@@ -878,7 +872,9 @@ pi syn =
                      (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc)) <|> (do
                        try (lchar '{' *> reserved "default")
                        when (st == Static) $ fail "default tactic constraints can not be static"
-                       script <- simpleExpr syn
+                       ist <- get
+                       script' <- simpleExpr syn
+                       let script = debindApp syn . desugar syn ist $ script'
                        xt <- typeDeclList syn
                        lchar '}'
                        symbol "->"

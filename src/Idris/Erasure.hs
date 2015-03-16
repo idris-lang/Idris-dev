@@ -65,12 +65,12 @@ type Vars = Map Name VarInfo
 
 -- Perform usage analysis, write the relevant information in the internal
 -- structures, returning the list of reachable names.
-performUsageAnalysis :: Idris [Name]
-performUsageAnalysis = do
+performUsageAnalysis :: [Name] -> Idris [Name]
+performUsageAnalysis roots = do
     ctx <- tt_ctxt <$> getIState
-    mainName <- getMainName <$> getIState
+    startNames <- getStartNames <$> getIState
 
-    case mainName of
+    case startNames of
       Left reason -> return []  -- no main -> not compiling -> reachability irrelevant
       Right main  -> do
         ci  <- idris_classes <$> getIState
@@ -106,11 +106,14 @@ performUsageAnalysis = do
 
         return $ S.toList reachableNames
   where
-    getMainName :: IState -> Either Err Name
-    getMainName ist = case lookupCtxtName n (idris_implicits ist) of
-        [(n', _)] -> Right n'
-        []        -> Left (NoSuchVariable n)
-        more      -> Left (CantResolveAlts (map fst more))
+    getStartNames :: IState -> Either Err [Name]
+    getStartNames ist 
+       = case lookupCtxtName n (idris_implicits ist) of
+              [(n', _)] -> Right (n' : roots)
+              []        -> if null roots
+                              then Left (NoSuchVariable n)
+                              else Right roots
+              more      -> Left (CantResolveAlts (map fst more))
       where
         n = sNS (sUN "main") ["Main"]
 
@@ -171,9 +174,9 @@ forwardChain deps
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
-buildDepMap :: Ctxt ClassInfo -> [(Name, Int)] -> Context -> Name -> Deps
-buildDepMap ci used ctx mainName = addPostulates used $ 
-                                        dfs S.empty M.empty [mainName]
+buildDepMap :: Ctxt ClassInfo -> [(Name, Int)] -> Context -> [Name] -> Deps
+buildDepMap ci used ctx startNames = addPostulates used $ 
+                                        dfs S.empty M.empty startNames
   where
     -- mark the result of Main.main as used with the empty assumption
     addPostulates :: [(Name, Int)] -> Deps -> Deps
@@ -191,10 +194,11 @@ buildDepMap ci used ctx mainName = addPostulates used $
 
         postulates used = 
             [ [] ==> concat
-                -- These two, Main.main and run__IO, are always evaluated
+                -- Main.main ( + export lists) and run__IO, are always evaluated
                 -- but they elude analysis since they come from the seed term.
-                [ [(mainName,  Result)] 
-                , [(sUN "run__IO", Result), (sUN "run__IO", Arg 1)]
+                [(map (\n -> (n, Result)) startNames)
+                ,[(sUN "run__IO", Result), (sUN "run__IO", Arg 1)]
+                ,[(sUN "call__IO", Result), (sUN "call__IO", Arg 2)]
 
                 -- Explicit usage declarations from a %used pragma
                 , map (\(n, i) -> (n, Arg i)) used 

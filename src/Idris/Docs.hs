@@ -1,12 +1,12 @@
-{-# LANGUAGE PatternGuards #-}
-module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, FunDoc(..), Docs (..)) where
+{-# LANGUAGE DeriveFunctor, PatternGuards #-}
+module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, FunDoc, FunDoc'(..), Docs, Docs'(..)) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Delaborate
 import Idris.Core.TT
 import Idris.Core.Evaluate
-import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, renderDocstring, DocTerm, renderDocTerm)
+import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, renderDocstring, DocTerm, renderDocTerm, overview)
 
 import Util.Pretty
 
@@ -18,21 +18,28 @@ import qualified Data.Text as T
 --
 -- Issue #1573 on the Issue tracker.
 --    https://github.com/idris-lang/Idris-dev/issues/1573
-data FunDoc = FD Name (Docstring DocTerm)
-                 [(Name, PTerm, Plicity, Maybe (Docstring DocTerm))] -- args: name, ty, implicit, docs
-                 PTerm -- function type
-                 (Maybe Fixity)
+data FunDoc' d = FD Name d
+                    [(Name, PTerm, Plicity, Maybe d)] -- args: name, ty, implicit, docs
+                    PTerm -- function type
+                    (Maybe Fixity)
+  deriving Functor
 
-data Docs = FunDoc FunDoc
-          | DataDoc FunDoc -- type constructor docs
-                    [FunDoc] -- data constructor docs
-          | ClassDoc Name (Docstring DocTerm)-- class docs
-                     [FunDoc] -- method docs
-                     [(Name, Maybe (Docstring DocTerm))] -- parameters and their docstrings
-                     [PTerm] -- instances
-                     [PTerm] -- superclasses
-          | ModDoc [String] -- Module name
-                   (Docstring DocTerm)
+type FunDoc = FunDoc' (Docstring DocTerm)
+
+data Docs' d = FunDoc (FunDoc' d)
+             | DataDoc (FunDoc' d) -- type constructor docs
+                       [FunDoc' d] -- data constructor docs
+             | ClassDoc Name d   -- class docs
+                        [FunDoc' d] -- method docs
+                        [(Name, Maybe d)] -- parameters and their docstrings
+                        [(PTerm, (d, [(Name, d)]))] -- instances
+                        [PTerm] -- subclasses
+                        [PTerm] -- superclasses
+             | ModDoc [String] -- Module name
+                      d
+  deriving Functor
+
+type Docs = Docs' (Docstring DocTerm)
 
 showDoc ist d
   | nullDocstring d = empty
@@ -82,7 +89,7 @@ pprintDocs ist (DataDoc t args)
              if null args then text "No constructors."
              else nest 4 (text "Constructors:" <> line <>
                           vsep (map (pprintFD ist) args))
-pprintDocs ist (ClassDoc n doc meths params instances superclasses)
+pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
            = nest 4 (text "Type class" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
                        then empty
@@ -94,8 +101,8 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
                       vsep (map (pprintFD ist) meths))
              <$>
              nest 4 (text "Instances:" <$>
-                     vsep (if null instances' then [text "<no instances>"]
-                           else map dumpInstance instances'))
+                       vsep (if null instances then [text "<no instances>"]
+                             else map pprintInstance instances))
              <>
              (if null subclasses then empty
               else line <$> nest 4 (text "Subclasses:" <$>
@@ -111,6 +118,30 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
 
     ppo = ppOptionIst ist
     infixes = idris_infixes ist
+
+    pprintInstance (term, (doc, argDocs)) =
+      nest 4 (dumpInstance term <>
+              (if nullDocstring doc
+                  then empty
+                  else line <>
+                       renderDocstring
+                         (renderDocTerm
+                            (pprintDelab ist)
+                            (normaliseAll (tt_ctxt ist) []))
+                         doc) <>
+              if null argDocs
+                 then empty
+                 else line <> vsep (map (prettyInstanceParam (map fst argDocs)) argDocs))
+
+    prettyInstanceParam params (name, doc) =
+      if nullDocstring doc
+         then empty
+         else prettyName True False (zip params (repeat False)) name <+>
+              showDoc ist doc
+
+-- if any (isJust . snd) params
+-- then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
+-- else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
     dumpInstance :: PTerm -> Doc OutputAnnotation
     dumpInstance = pprintPTerm ppo params' [] infixes
@@ -134,33 +165,38 @@ pprintDocs ist (ClassDoc n doc meths params instances superclasses)
     isSubclass (PPi _                _ _ pt)                                       = isSubclass pt
     isSubclass _                                                                   = False
 
-    (subclasses, instances') = partition isSubclass instances
-
-    prettyParameters = if any (isJust . snd) params
-                       then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
-                       else hsep (punctuate comma (map (prettyName True False params' . fst) params))
+    prettyParameters =
+      if any (isJust . snd) params
+         then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
+         else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
 pprintDocs ist (ModDoc mod docs)
    = nest 4 $ text "Module" <+> text (concat (intersperse "." mod)) <> colon <$>
               renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) docs
 
+-- | Determine a truncation function depending how much docs the user
+-- wants to see
+howMuch FullDocs     = id
+howMuch OverviewDocs = overview
+
 -- | Given a fully-qualified, disambiguated name, construct the
 -- documentation object for it
-getDocs :: Name -> Idris Docs
-getDocs n@(NS n' ns) | n' == modDocName
+getDocs :: Name -> HowMuchDocs -> Idris Docs
+getDocs n@(NS n' ns) w | n' == modDocName
    = do i <- getIState
         case lookupCtxtExact n (idris_moduledocs i) of
-          Just doc -> return $ ModDoc (reverse (map T.unpack ns)) doc
+          Just doc -> return . ModDoc (reverse (map T.unpack ns)) $ howMuch w doc
           Nothing  -> fail $ "Module docs for " ++ show (reverse (map T.unpack ns)) ++
                              " do not exist! This shouldn't have happened and is a bug."
-getDocs n
+getDocs n w
    = do i <- getIState
-        case lookupCtxt n (idris_classes i) of
-             [ci] -> docClass n ci
-             _ -> case lookupCtxt n (idris_datatypes i) of
-                       [ti] -> docData n ti
-                       _ -> do fd <- docFun n
-                               return (FunDoc fd)
+        docs <- case lookupCtxt n (idris_classes i) of
+                  [ci] -> docClass n ci
+                  _ -> case lookupCtxt n (idris_datatypes i) of
+                         [ti] -> docData n ti
+                         _ -> do fd <- docFun n
+                                 return (FunDoc fd)
+        return $ fmap (howMuch w) docs
 
 docData :: Name -> TypeInfo -> Idris Docs
 docData n ti
@@ -174,13 +210,27 @@ docClass n ci
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
            docstr = maybe emptyDocstring fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd))) (class_params ci)
-           instances = map (delabTy i) (class_instances ci)
+           instanceDocs = map (fromMaybe (emptyDocstring, []) .
+                               listToMaybe .
+                               flip lookupCtxt (idris_docstrings i))
+                              (class_instances ci)
+           instances = zip (map (delabTy i) (class_instances ci)) instanceDocs
+           (subclasses, instances') = partition (isSubclass . fst) instances
            superclasses = catMaybes $ map getDInst (class_default_superclasses ci)
        mdocs <- mapM (docFun . fst) (class_methods ci)
-       return $ ClassDoc n docstr mdocs params instances superclasses
+       return $ ClassDoc
+                  n docstr mdocs params
+                  instances' (map fst subclasses) superclasses
   where
-    getDInst (PInstance _ _ _ _ _ t _ _) = Just t
+    getDInst (PInstance _ _ _ _ _ _ _ t _ _) = Just t
     getDInst _                           = Nothing
+
+    isSubclass (PPi (Constraint _ _) _ (PApp _ _ args) (PApp _ (PRef _ nm) args'))
+      = nm == n && map getTm args == map getTm args'
+    isSubclass (PPi _ _ _ pt)
+      = isSubclass pt
+    isSubclass _
+      = False
 
 docFun :: Name -> Idris FunDoc
 docFun n

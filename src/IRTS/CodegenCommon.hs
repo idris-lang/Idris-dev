@@ -33,7 +33,9 @@ data CodegenInfo = CodegenInfo { outputFile :: String,
                                  debugLevel :: DbgLevel,
                                  simpleDecls :: [(Name, SDecl)],
                                  defunDecls :: [(Name, DDecl)],
-                                 liftDecls :: [(Name, LDecl)] 
+                                 liftDecls :: [(Name, LDecl)],
+                                 interfaces :: Bool,
+                                 exportDecls :: [ExportIFace]
                                } 
 
 type CodeGenerator = CodegenInfo -> IO ()

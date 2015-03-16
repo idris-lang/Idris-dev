@@ -119,7 +119,7 @@ singleLineComment :: MonadicParsing m => m ()
 singleLineComment = (string "--" *>
                      many (satisfy (not . isEol)) *>
                      eol *> pure ())
-                    <?> "single-line comment"
+                    <?> ""
 
 {- | Consumes a multi-line comment
 
@@ -321,10 +321,17 @@ opChars = ":!#$%&*+./<=>?@\\^|-~"
 operatorLetter :: MonadicParsing m => m Char
 operatorLetter = oneOf opChars
 
+
+commentMarkers :: [String]
+commentMarkers = [ "--", "|||" ]
+
+invalidOperators :: [String]
+invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%", "~", "?", "!"]
+
 -- | Parses an operator
 operator :: MonadicParsing m => m String
 operator = do op <- token . some $ operatorLetter
-              when (op `elem` [":", "=>", "->", "<-", "=", "?=", "|"]) $
+              when (op `elem` (invalidOperators ++ commentMarkers)) $
                    fail $ op ++ " is not a valid operator"
               return op
 
@@ -580,7 +587,7 @@ collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
 collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
 collect (PClass doc f s cs n ps pdocs ds : ds')
     = PClass doc f s cs n ps pdocs (collect ds) : collect ds'
-collect (PInstance f s cs n ps t en ds : ds')
-    = PInstance f s cs n ps t en (collect ds) : collect ds'
+collect (PInstance doc argDocs f s cs n ps t en ds : ds')
+    = PInstance doc argDocs f s cs n ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []

@@ -10,8 +10,8 @@ void alloc_heap(Heap * h, size_t heap_size)
     char * mem = malloc(heap_size); 
     if (mem == NULL) {
         fprintf(stderr, 
-                "RTS ERROR: Unable to allocate heap. Requested %d bytes.\n",
-                (int)heap_size);
+                "RTS ERROR: Unable to allocate heap. Requested %zd bytes.\n",
+                heap_size);
         exit(EXIT_FAILURE);
     }
 

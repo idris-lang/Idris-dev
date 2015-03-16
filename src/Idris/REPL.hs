@@ -54,6 +54,7 @@ import Idris.Core.Constraints
 
 import IRTS.Compiler
 import IRTS.CodegenCommon
+import IRTS.Exports
 import IRTS.System
 
 import Control.Category
@@ -344,13 +345,15 @@ runIdeModeCommand h id orig fn mods (IdeMode.TypeOf name) =
     Left err -> iPrintError err
     Right n -> process "(idemode)"
                  (Check (PRef (FC "(idemode)" (0,0) (0,0)) n))
-runIdeModeCommand h id orig fn mods (IdeMode.DocsFor name) =
+runIdeModeCommand h id orig fn mods (IdeMode.DocsFor name w) =
   case parseConst orig name of
-    Success c -> process "(idemode)" (DocStr (Right c))
+    Success c -> process "(idemode)" (DocStr (Right c) (howMuch w))
     Failure _ ->
      case splitName name of
        Left err -> iPrintError err
-       Right n -> process "(idemode)" (DocStr (Left n))
+       Right n -> process "(idemode)" (DocStr (Left n) (howMuch w))
+  where howMuch IdeMode.Overview = OverviewDocs
+        howMuch IdeMode.Full     = FullDocs
 runIdeModeCommand h id orig fn mods (IdeMode.CaseSplit line name) =
   process fn (CaseSplitAt False line (sUN name))
 runIdeModeCommand h id orig fn mods (IdeMode.AddClause line name) =
@@ -553,7 +556,7 @@ idemodeProcess fn (Undefine n) = process fn (Undefine n)
 idemodeProcess fn (ExecVal t) = process fn (ExecVal t)
 idemodeProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
 idemodeProcess fn (Check t) = process fn (Check t)
-idemodeProcess fn (DocStr n) = process fn (DocStr n)
+idemodeProcess fn (DocStr n w) = process fn (DocStr n w)
 idemodeProcess fn Universes = process fn Universes
 idemodeProcess fn (Defn n) = do process fn (Defn n)
                                 iPrintResult ""
@@ -808,8 +811,8 @@ process fn (NewDefn decls) = do
   fixClauses :: PDecl' t -> PDecl' t
   fixClauses (PClauses fc opts _ css@(clause:cs)) =
     PClauses fc opts (getClauseName clause) css
-  fixClauses (PInstance syn fc constraints cls parms ty instName decls) =
-    PInstance syn fc constraints cls parms ty instName (map fixClauses decls)
+  fixClauses (PInstance doc argDocs syn fc constraints cls parms ty instName decls) =
+    PInstance doc argDocs syn fc constraints cls parms ty instName (map fixClauses decls)
   fixClauses decl = decl
 
 process fn (Undefine names) = undefine names
@@ -905,21 +908,23 @@ process fn (Check t)
            _ -> iPrintTermWithType (pprintDelab ist tm)
                                    (pprintDelab ist ty)
 
-process fn (DocStr (Left n))
+process fn (DocStr (Left n) w)
    = do ist <- getIState
         let docs = lookupCtxtName n (idris_docstrings ist) ++
-                   map (\(n,d)-> (n, (d,[]))) (lookupCtxtName (modDocN n) (idris_moduledocs ist))
+                   map (\(n,d)-> (n, (d, [])))
+                       (lookupCtxtName (modDocN n) (idris_moduledocs ist))
         case docs of
           [] -> iPrintError $ "No documentation for " ++ show n
           ns -> do toShow <- mapM (showDoc ist) ns
                    iRenderResult (vsep toShow)
-    where showDoc ist (n, d) = do doc <- getDocs n
+    where showDoc ist (n, d) = do doc <- getDocs n w
                                   return $ pprintDocs ist doc
+
           modDocN (NS (UN n) ns) = NS modDocName (n:ns)
           modDocN (UN n)         = NS modDocName [n]
           modDocN _              = sMN 1 "NotFoundForSure"
 
-process fn (DocStr (Right c))
+process fn (DocStr (Right c) _) -- constants only have overviews
    = do ist <- getIState
         iRenderResult $ pprintConstDocs ist c (constDocs c)
 
@@ -1106,7 +1111,7 @@ process fn Execute
                            t <- codegen
                            -- gcc adds .exe when it builds windows programs
                            progName <- return $ if isWindows then tmpn ++ ".exe" else tmpn
-                           ir <- compile t tmpn m
+                           ir <- compile t tmpn (Just m)
                            runIO $ generate t (fst (head (idris_imported ist))) ir
                            case idris_outputmode ist of
                              RawOutput h -> do runIO $ rawSystem progName []
@@ -1118,9 +1123,13 @@ process fn Execute
 process fn (Compile codegen f)
       | map toLower (takeExtension f) `elem` [".idr", ".lidr", ".idc"] =
           iPrintError $ "Invalid filename for compiler output \"" ++ f ++"\""
-      | otherwise = do (m, _) <- elabVal recinfo ERHS
-                                   (PApp fc (PRef fc (sUN "run__IO"))
-                                   [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
+      | otherwise = do opts <- getCmdLine
+                       let iface = Interface `elem` opts
+                       m <- if iface then return Nothing else
+                            do (m', _) <- elabVal recinfo ERHS
+                                            (PApp fc (PRef fc (sUN "run__IO"))
+                                            [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
+                               return (Just m')
                        ir <- compile codegen f m
                        i <- getIState
                        runIO $ generate codegen (fst (head (idris_imported i))) ir
@@ -1414,9 +1423,10 @@ loadInputs inputs toline -- furthest line to read in input source files
            ist <- getIState
            putIState (ist { idris_tyinfodata = tidata,
                             idris_patdefs = patdefs })
+           exports <- findExports
 
            case opt getOutput opts of
-               [] -> performUsageAnalysis  -- interactive
+               [] -> performUsageAnalysis (getExpNames exports) -- interactive
                _  -> return []  -- batch, will be checked by the compiler
 
            return (map fst ifiles))
@@ -1511,7 +1521,8 @@ idrisMain opts =
                         xs -> last xs
        setOptLevel optimise
        let outty = case opt getOutputTy opts of
-                     [] -> Executable
+                     [] -> if Interface `elem` opts then
+                              Object else Executable
                      xs -> last xs
        let cgn = case opt getCodegen opts of
                    [] -> Via "c"

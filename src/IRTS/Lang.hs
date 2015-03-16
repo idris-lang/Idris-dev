@@ -29,7 +29,7 @@ data LExp = LV LVar
                  Int Name [LExp]
           | LCase CaseType LExp [LAlt]
           | LConst Const
-          | LForeign FDesc -- Function descriptor
+          | LForeign FDesc -- Function descriptor (usually name as string)
                      FDesc -- Return type descriptor
                      [(FDesc, LExp)] -- first LExp is the FFI type description
           | LOp PrimFn [LExp]
@@ -40,7 +40,20 @@ data LExp = LV LVar
 data FDesc = FCon Name
            | FStr String
            | FUnknown
+           | FIO FDesc
            | FApp Name [FDesc]
+  deriving (Show, Eq)
+
+data Export = ExportData FDesc -- Exported data descriptor (usually string)
+            | ExportFun Name -- Idris name
+                        FDesc -- Exported function descriptor
+                        FDesc -- Return type descriptor
+                        [FDesc] -- Argument types
+  deriving (Show, Eq)
+
+data ExportIFace = Export Name -- FFI descriptor
+                          String -- interface file
+                          [Export]
   deriving (Show, Eq)
 
 -- Primitive operators. Backends are not *required* to implement all

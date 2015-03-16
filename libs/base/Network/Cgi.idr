@@ -47,7 +47,7 @@ instance Functor CGI where
 instance Applicative CGI where
     pure v = MkCGI (\s => return (v, s))
 
-    (MkCGI a) <$> (MkCGI b) = MkCGI (\s => do (f, i) <- a s
+    (MkCGI a) <*> (MkCGI b) = MkCGI (\s => do (f, i) <- a s
                                               (c, j) <- b i
                                               return (f c, j))
 

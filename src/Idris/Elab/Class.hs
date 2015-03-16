@@ -109,8 +109,8 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
     mdec x = x
 
     -- TODO: probably should normalise
-    checkDefaultSuperclassInstance :: PDecl -> Idris () 
-    checkDefaultSuperclassInstance (PInstance _ fc cs n ps _ _ _)
+    checkDefaultSuperclassInstance :: PDecl -> Idris ()
+    checkDefaultSuperclassInstance (PInstance _ _ _ fc cs n ps _ _ _)
         = do when (not $ null cs) . tclift
                 $ tfail (At fc (Msg $ "Default superclass instances can't have constraints."))
              i <- getIState
@@ -120,11 +120,11 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
                 $ tfail (At fc (Msg $ "Default instances must be for a superclass constraint on the containing class."))
              return ()
 
-    impbind :: [(Name, PTerm)] -> PTerm -> PTerm 
+    impbind :: [(Name, PTerm)] -> PTerm -> PTerm
     impbind [] x = x
     impbind ((n, ty): ns) x = PPi impl n ty (impbind ns x)
 
-    conbind :: [(Name, PTerm)] -> PTerm -> PTerm 
+    conbind :: [(Name, PTerm)] -> PTerm -> PTerm
     conbind ((c, ty) : ns) x = PPi constraint c ty (conbind ns x)
     conbind [] x = x
 
@@ -133,7 +133,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
            = do t' <- implicit' info syn allmeths n t
                 logLvl 5 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map fst ps) Exp t')),
-                         (n, (doc, o, (toExp (map fst ps) 
+                         (n, (doc, o, (toExp (map fst ps)
                                          (\ l s p -> Imp l s p Nothing) t'))),
                          (n, (syn, o, t) ) )
     tdecl _ _ = ifail "Not allowed in a class declaration"
@@ -155,7 +155,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
 
     tydecl (PTy _ _ _ _ _ _ _) = True
     tydecl _ = False
-    instdecl (PInstance _ _ _ _ _ _ _ _) = True
+    instdecl (PInstance _ _ _ _ _ _ _ _ _ _) = True
     instdecl _ = False
     clause (PClauses _ _ _ _) = True
     clause _ = False
@@ -221,7 +221,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
 
     insertConstraint c (PPi p@(Imp _ _ _ _) n ty sc)
                           = PPi p n ty (insertConstraint c sc)
-    insertConstraint c sc = PPi (constraint { pstatic = Static }) 
+    insertConstraint c sc = PPi (constraint { pstatic = Static })
                                   (sMN 0 "class") c sc
 
     -- make arguments explicit and don't bind class parameters
@@ -230,5 +230,3 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
         | otherwise = PPi (e l s p) n ty (toExp ns e sc)
     toExp ns e (PPi p n ty sc) = PPi p n ty (toExp ns e sc)
     toExp ns e sc = sc
-
-
