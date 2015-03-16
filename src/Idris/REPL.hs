@@ -494,6 +494,15 @@ runIdeModeCommand h id orig fn modes (IdeMode.TermShowImplicits bnd tm) =
   ideModeForceTermImplicits h id bnd True tm
 runIdeModeCommand h id orig fn modes (IdeMode.TermNoImplicits bnd tm) =
   ideModeForceTermImplicits h id bnd False tm
+runIdeModeCommand h id orig fn modes (IdeMode.TermElab bnd tm) =
+  do ist <- getIState
+     let ptm = annotate (AnnTerm bnd tm)
+                 (pprintTT (map fst bnd) tm)
+         msg = (IdeMode.SymbolAtom "ok",
+                displaySpans .
+                renderPretty 0.9 70 .
+                fmap (fancifyAnnots ist) $ ptm)
+     runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
 runIdeModeCommand h id orig fn mods (IdeMode.PrintDef name) =
   case splitName name of
     Left err -> iPrintError err

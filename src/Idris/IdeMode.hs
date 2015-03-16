@@ -229,6 +229,7 @@ data IdeModeCommand = REPLCompletions String
                     | TermNormalise [(Name, Bool)] Term
                     | TermShowImplicits [(Name, Bool)] Term
                     | TermNoImplicits [(Name, Bool)] Term
+                    | TermElab [(Name, Bool)] Term
                     | PrintDef String
                     | ErrString Err
                     | ErrPPrint Err
@@ -278,6 +279,8 @@ sexpToCommand (SexpList [SymbolAtom "show-term-implicits", StringAtom encoded]) 
                                                                                           Just (TermShowImplicits bnd tm)
 sexpToCommand (SexpList [SymbolAtom "hide-term-implicits", StringAtom encoded])         = let (bnd, tm) = decodeTerm encoded in
                                                                                           Just (TermNoImplicits bnd tm)
+sexpToCommand (SexpList [SymbolAtom "elaborate-term", StringAtom encoded])              = let (bnd, tm) = decodeTerm encoded in
+                                                                                          Just (TermElab bnd tm)
 sexpToCommand (SexpList [SymbolAtom "print-definition", StringAtom name])               = Just (PrintDef name)
 sexpToCommand (SexpList [SymbolAtom "error-string", StringAtom encoded])                = Just . ErrString . decodeErr $ encoded
 sexpToCommand (SexpList [SymbolAtom "error-pprint", StringAtom encoded])                = Just . ErrPPrint . decodeErr $ encoded
