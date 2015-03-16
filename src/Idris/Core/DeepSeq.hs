@@ -48,6 +48,7 @@ instance NFData Provenance where
         rnf InferredVal = ()
         rnf GivenVal = ()
         rnf (SourceTerm x1) = rnf x1 `seq` ()
+        rnf (TooManyArgs x1) = rnf x1 `seq` ()
 
 instance NFData Err where
         rnf (Msg x1) = rnf x1 `seq` ()

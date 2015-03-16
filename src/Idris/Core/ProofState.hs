@@ -478,12 +478,19 @@ fill guess ctxt env (Bind x (Hole ty) sc) =
 --        let valtyn = normalise ctxt env valty
 --        let tyn = normalise ctxt env ty
        ns <- unify' ctxt env (valty, Just $ SourceTerm val)
-                             (ty, Just ExpectedType)
+                             (ty, Just (chkPurpose val ty))
        ps <- get
        let (uh, uns) = unified ps
 --        put (ps { unified = (uh, uns ++ ns) })
 --        addLog (show (uh, uns ++ ns))
        return $ Bind x (Guess ty val) sc
+  where
+    -- some expected types show up commonly in errors and indicate a
+    -- specific problem.
+    --   argTy -> retTy suggests a function applied to too many arguments
+    chkPurpose val (Bind _ (Pi _ (P _ (MN _ _) _) _) (P _ (MN _ _) _))
+                   = TooManyArgs val
+    chkPurpose _ _ = ExpectedType
 fill _ _ _ _ = fail "Can't fill here."
 
 -- As fill, but attempts to solve other goals by matching

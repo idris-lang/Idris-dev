@@ -121,6 +121,7 @@ data ErrorReportPart = TextPart String
 -- Language.Reflection.Errors.Err in the stdlib!
 
 data Provenance = ExpectedType
+                | TooManyArgs Term
                 | InferredVal
                 | GivenVal
                 | SourceTerm Term

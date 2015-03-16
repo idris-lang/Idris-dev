@@ -202,6 +202,11 @@ pprintProv i e (SourceTerm tm)
   = text "Type of " <> 
     annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
              (pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm))
+pprintProv i e (TooManyArgs tm) 
+  = text "Is " <> 
+      annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
+               (pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm))
+       <> text " applied to too many arguments?"
 
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)
