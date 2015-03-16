@@ -30,7 +30,7 @@ import Data.Char
 import Data.Data (Data)
 import Numeric (showIntAtBase)
 import qualified Data.Text as T
-import Data.List hiding (insert)
+import Data.List hiding (group, insert)
 import Data.Set(Set, member, fromList, insert)
 import Data.Maybe (listToMaybe)
 import Data.Foldable (Foldable)
@@ -1498,3 +1498,99 @@ allTTNames = nub . allNamesIn
                 nb t = allNamesIn (binderTy t)
         allNamesIn (App f a) = allNamesIn f ++ allNamesIn a
         allNamesIn _ = []
+
+
+-- | Pretty-print a term
+pprintTT :: [Name]  -- ^ The bound names (for highlighting and de Bruijn indices)
+         -> TT Name -- ^ The term to be printed
+         -> Doc OutputAnnotation
+pprintTT bound tm = pp startPrec bound tm
+
+  where
+    startPrec = 0
+    appPrec   = 10
+
+    pp p bound (P Bound n ty) = annotate (AnnBoundName n False) (text $ show n)
+    pp p bound (P nt n ty) = annotate (AnnName n Nothing Nothing Nothing)
+                                          (text $ show n)
+    pp p bound (V i)
+       | i < length bound = let n = bound !! i
+                            in annotate (AnnBoundName n False) (text $ show n)
+       | otherwise        = text ("{{{V" ++ show i ++ "}}}")
+    pp p bound (Bind n b sc) = ppb p bound n b $
+                               pp startPrec (n:bound) sc
+    pp p bound (App tm1 tm2) =
+      bracket p appPrec . group . hang 2 $
+        pp appPrec bound tm1 <> line <>
+        pp (appPrec + 1) bound tm2
+    pp p bound (Constant c) = annotate (AnnConst c) (text (show c))
+    pp p bound (Proj tm i) =
+      lparen <> pp startPrec bound tm <> rparen <>
+      text "!" <> text (show i)
+    pp p bound Erased = text "<<<erased>>>"
+    pp p bound Impossible = text "<<<impossible>>>"
+    pp p bound (TType ue) = annotate (AnnType "Type" "The type of types") $
+                            text "Type"
+    pp p bound (UType u) = text (show u)
+
+    ppb p bound n (Lam ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      text "λ" <> bindingOf n False <+> text "." <> line <> sc
+    ppb p bound n (Pi _ ty k) sc =
+      bracket p startPrec . group . align $
+      lparen <> (bindingOf n False) <+> colon <+>
+      (group . align) (pp startPrec bound ty) <>
+      rparen <> mkArrow k <> line <> sc
+        where mkArrow (UType UniqueType) = text "⇴"
+              mkArrow (UType NullType) = text "⥛"
+              mkArrow _ = text "→"
+    ppb p bound n (Let ty val) sc =
+      bracket p startPrec . group . align $
+      (group . hang 2) (annotate AnnKeyword (text "let") <+>
+                        bindingOf n False <+> colon <+>
+                        pp startPrec bound ty <+>
+                        text "=" <> line <>
+                        pp startPrec bound val) <> line <>
+      (group . hang 2) (annotate AnnKeyword (text "in") <+> sc)
+    ppb p bound n (NLet ty val) sc =
+      bracket p startPrec . group . align $
+      (group . hang 2) (annotate AnnKeyword (text "nlet") <+>
+                        bindingOf n False <+> colon <+>
+                        pp startPrec bound ty <+>
+                        text "=" <> line <>
+                        pp startPrec bound val) <> line <>
+      (group . hang 2) (annotate AnnKeyword (text "in") <+> sc)
+    ppb p bound n (Hole ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      text "?" <> bindingOf n False <+> text "." <> line <> sc
+    ppb p bound n (GHole _ ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      text "¿" <> bindingOf n False <+> text "." <> line <> sc
+    ppb p bound n (Guess ty val) sc =
+      bracket p startPrec . group . align . hang 2 $
+      text "?" <> bindingOf n False <+>
+      text "≈" <+> pp startPrec bound val <>
+      text "." <> line <> sc
+    ppb p bound n (PVar ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      annotate AnnKeyword (text "pat") <+>
+      bindingOf n False <+> colon <+> pp startPrec bound ty <>
+      text "." <> line <>
+      sc
+    ppb p bound n (PVTy ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      annotate AnnKeyword (text "patTy") <+>
+      bindingOf n False <+> colon <+> pp startPrec bound ty <>
+      text "." <> line <>
+      sc
+
+    bracket outer inner doc
+      | outer > inner = lparen <> doc <> rparen
+      | otherwise     = doc
+
+
+-- | Pretty-printer helper for the binding site of a name
+bindingOf :: Name -- ^^ the bound name
+          -> Bool -- ^^ whether the name is implicit
+          -> Doc OutputAnnotation
+bindingOf n imp = annotate (AnnBoundName n imp) (text (show n))

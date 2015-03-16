@@ -342,7 +342,7 @@ pprintErr' i (ReflectionFailed msg err) =
 pprintErr' i (ElabDebug msg tm holes) =
   text "Elaboration halted." <>
   maybe empty (indented . text) msg <> line <>
-  text "Term: " <> indented (pprintTerm' i [] (delab i tm)) <> line <>
+  text "Term: " <> indented (pprintTT [] tm) <> line <>
   text "Holes:" <>
   indented (vsep (map ppHole holes))
 
@@ -351,13 +351,13 @@ pprintErr' i (ElabDebug msg tm holes) =
           ppAssumptions [] (reverse env) <>
           text "----------------------------------" <> line <>
           bindingOf hn False <+> text ":" <+>
-          pprintTerm' i (zip (map fst env) (repeat False)) (delab i goal) <> line
+          pprintTT (map fst (reverse env)) goal <> line
         ppAssumptions :: [Name] -> Env -> Doc OutputAnnotation
         ppAssumptions ns [] = empty
         ppAssumptions ns ((n, b) : rest) =
           bindingOf n False <+>
           text ":" <+>
-          pprintTerm' i (zip ns (repeat False)) (delab i (binderTy b)) <>
+          pprintTT ns (binderTy b) <>
           line <>
           ppAssumptions (n:ns) rest
 

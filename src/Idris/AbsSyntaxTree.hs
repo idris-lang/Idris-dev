@@ -1661,12 +1661,6 @@ isHoleName _      = False
 containsHole :: PTerm -> Bool
 containsHole pterm = or [isHoleName n | PRef _ n <- take 1000 $ universe pterm]
 
--- | Pretty-printer helper for the binding site of a name
-bindingOf :: Name -- ^^ the bound name
-          -> Bool -- ^^ whether the name is implicit
-          -> Doc OutputAnnotation
-bindingOf n imp = annotate (AnnBoundName n imp) (text (show n))
-
 -- | Pretty-printer helper for names that attaches the correct annotations
 prettyName
   :: Bool -- ^^ whether the name should be parenthesised if it is an infix operator
