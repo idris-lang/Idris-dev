@@ -27,12 +27,16 @@ instance Binary Provenance where
   put ExpectedType = putWord8 0
   put (SourceTerm t) = do putWord8 1
                           put t
+  put InferredVal = putWord8 2
+  put GivenVal = putWord8 3
 
   get = do i <- getWord8
            case i of
              0 -> return ExpectedType
              1 -> do x1 <- get
                      return (SourceTerm x1)
+             2 -> return InferredVal
+             3 -> return GivenVal
              _ -> error "Corrupted binary data for Provenance"
 
 instance Binary a => Binary (Err' a) where

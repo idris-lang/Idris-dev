@@ -493,7 +493,8 @@ match_fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
 --        let valtyn = normalise ctxt env valty
 --        let tyn = normalise ctxt env ty
-       ns <- match_unify' ctxt env (valty, Nothing) (ty, Nothing)
+       ns <- match_unify' ctxt env (valty, Just $ SourceTerm val) 
+                                   (ty, Just ExpectedType)
        ps <- get
        let (uh, uns) = unified ps
 --        put (ps { unified = (uh, uns ++ ns) })
@@ -511,7 +512,8 @@ complete_fill :: RunTactic
 complete_fill ctxt env (Bind x (Guess ty val) sc) =
     do let guess = forget val
        (val', valty) <- lift $ check ctxt env guess
-       ns <- unify' ctxt env (valty, Nothing) (ty, Nothing)
+       ns <- unify' ctxt env (valty, Just $ SourceTerm val') 
+                             (ty, Just ExpectedType)
        ps <- get
        let (uh, uns) = unified ps
 --        put (ps { unified = (uh, uns ++ ns) })
@@ -529,7 +531,8 @@ solve ctxt env (Bind x (Guess ty val) sc)
         dropdots <-
              case lookup x (notunified ps) of
                 Just tm -> -- trace ("NEED MATCH: " ++ show (x, tm, val) ++ "\nIN " ++ show (pterm ps)) $
-                            do match_unify' ctxt env (tm, Nothing) (val, Nothing)
+                            do match_unify' ctxt env (tm, Just InferredVal) 
+                                                     (val, Just GivenVal)
                                return [x]
                 _ -> return []
         action (\ps -> ps { holes = traceWhen (unifylog ps) ("Dropping hole " ++ show x) $
@@ -822,13 +825,17 @@ updateEnv ns [] = []
 updateEnv ns ((n, b) : env) 
    = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns env
 
+updateProv ns (SourceTerm t) = SourceTerm $ updateSolvedTerm ns t
+updateProv ns p = p
+
 updateError [] err = err
 updateError ns (At f e) = At f (updateError ns e)
 updateError ns (Elaborating s n e) = Elaborating s n (updateError ns e)
 updateError ns (ElaboratingArg f a env e)
  = ElaboratingArg f a env (updateError ns e)
 updateError ns (CantUnify b (l,lp) (r,rp) e xs sc)
- = CantUnify b (updateSolvedTerm ns l, lp) (updateSolvedTerm ns r, rp) (updateError ns e) xs sc
+ = CantUnify b (updateSolvedTerm ns l, fmap (updateProv ns) lp) 
+               (updateSolvedTerm ns r, fmap (updateProv ns) rp) (updateError ns e) xs sc
 updateError ns e = e
 
 solveInProblems x val [] = []

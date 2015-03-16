@@ -196,6 +196,8 @@ pprintTerm' ist bnd tm = pprintPTerm (ppOptionIst ist) bnd [] (idris_infixes ist
 
 pprintProv :: IState -> [(Name, Term)] -> Provenance -> Doc OutputAnnotation
 pprintProv i e ExpectedType = text "Expected type"
+pprintProv i e InferredVal = text "Inferred value"
+pprintProv i e GivenVal = text "Given value"
 pprintProv i e (SourceTerm tm) 
   = text "Type of " <> pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm)
 

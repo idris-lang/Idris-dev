@@ -45,6 +45,8 @@ instance NFData FC where
 
 instance NFData Provenance where
         rnf ExpectedType = ()
+        rnf InferredVal = ()
+        rnf GivenVal = ()
         rnf (SourceTerm x1) = rnf x1 `seq` ()
 
 instance NFData Err where
