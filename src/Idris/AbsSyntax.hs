@@ -268,7 +268,7 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
 
               where errWhen True
                        = throwError (At fc
-                            (CantUnify False x y (Msg "") [] 0))
+                            (CantUnify False (x, Nothing) (y, Nothing) (Msg "") [] 0))
                     errWhen False = return ()
 
 isTyInferred :: Name -> Idris Bool

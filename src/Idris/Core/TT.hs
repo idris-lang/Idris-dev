@@ -53,7 +53,7 @@ data FC = FC { fc_fname :: String, -- ^ Filename
                fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
                fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
              }
-  deriving (Data, Typeable)             
+  deriving (Data, Typeable, Ord)             
 
 -- | Ignore source location equality (so deriving classes do not compare FCs)
 instance Eq FC where
@@ -120,12 +120,16 @@ data ErrorReportPart = TextPart String
 -- Please remember to keep Err synchronised with
 -- Language.Reflection.Errors.Err in the stdlib!
 
+type Provenance = String
+
 -- | Idris errors. Used as exceptions in the compiler, but reported to users
 -- if they reach the top level.
 data Err' t
           = Msg String
           | InternalMsg String
-          | CantUnify Bool t t (Err' t) [(Name, t)] Int
+          | CantUnify Bool (t, Maybe Provenance) -- Expected type, provenance
+                           (t, Maybe Provenance) -- Actual type, provenance
+                           (Err' t) [(Name, t)] Int
                -- Int is 'score' - how much we did unify
                -- Bool indicates recoverability, True indicates more info may make
                -- unification succeed
@@ -209,7 +213,7 @@ instance Sized ErrorReportPart where
 instance Sized Err where
   size (Msg msg) = length msg
   size (InternalMsg msg) = length msg
-  size (CantUnify _ left right err _ score) = size left + size right + size err
+  size (CantUnify _ left right err _ score) = size (fst left) + size (fst right) + size err
   size (InfiniteUnify _ right _) = size right
   size (CantConvert left right _) = size left + size right
   size (UnifyScope _ _ right _) = size right
@@ -261,7 +265,7 @@ instance Show Err where
 
 instance Pretty Err OutputAnnotation where
   pretty (Msg m) = text m
-  pretty (CantUnify _ l r e _ i) =
+  pretty (CantUnify _ (l, _) (r, _) e _ i) =
       text "Cannot unify" <+> colon <+> pretty l <+> text "and" <+> pretty r <+>
       nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
   pretty (ProviderError msg) = text msg
@@ -781,7 +785,7 @@ instance Show UExp where
 -- | Universe constraints
 data UConstraint = ULT UExp UExp -- ^ Strictly less than
                  | ULE UExp UExp -- ^ Less than or equal to
-  deriving Eq
+  deriving (Eq, Ord)
 
 instance Show UConstraint where
     show (ULT x y) = show x ++ " < " ++ show y

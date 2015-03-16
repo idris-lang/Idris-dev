@@ -969,7 +969,7 @@ process fn (DebugUnify l r)
    = do (ltm, _) <- elabVal recinfo ERHS l
         (rtm, _) <- elabVal recinfo ERHS r
         ctxt <- getContext
-        case unify ctxt [] ltm rtm [] [] [] [] of
+        case unify ctxt [] (ltm, Nothing) (rtm, Nothing) [] [] [] [] of
              OK ans -> iputStrLn (show ans)
              Error e -> iputStrLn (show e)
 

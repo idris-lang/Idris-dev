@@ -268,10 +268,10 @@ elab ist info emode opts fn tm
                               pimp (sUN "a") Placeholder True,
                               pexp ct])) True
 
-    forceErr env (CantUnify _ t t' _ _ _)
+    forceErr env (CantUnify _ (t,_) (t',_) _ _ _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
             ht == txt "Lazy'" = True
-    forceErr env (CantUnify _ t t' _ _ _)
+    forceErr env (CantUnify _ (t,_) (t',_) _ _ _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t'),
             ht == txt "Lazy'" = True
     forceErr env (InfiniteUnify _ t _)
@@ -2547,7 +2547,7 @@ reflectCtxt ctxt = rawList (rawPairTy  (Var $ reflm "TTName") (Var $ reflm "TT")
 reflectErr :: Err -> Raw
 reflectErr (Msg msg) = raw_apply (Var $ reflErrName "Msg") [RConstant (Str msg)]
 reflectErr (InternalMsg msg) = raw_apply (Var $ reflErrName "InternalMsg") [RConstant (Str msg)]
-reflectErr (CantUnify b t1 t2 e ctxt i) =
+reflectErr (CantUnify b (t1,_) (t2,_) e ctxt i) =
   raw_apply (Var $ reflErrName "CantUnify")
             [ rawBool b
             , reflect t1

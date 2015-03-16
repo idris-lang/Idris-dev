@@ -83,7 +83,7 @@ prove opt ctxt lit n ty
                    "Expected type:" ++ show ty)
          case converts ctxt [] ty pty of
               OK _ -> return ()
-              Error e -> ierror (CantUnify False ty pty e [] 0)
+              Error e -> ierror (CantUnify False (ty, Nothing) (pty, Nothing) e [] 0)
          ptm' <- applyOpts ptm
          ei <- getErasureInfo `fmap` getIState
          updateContext (addCasedef n ei (CaseInfo True True False) False (STerm Erased) True False

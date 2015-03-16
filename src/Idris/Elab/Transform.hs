@@ -81,12 +81,12 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
          -- Types must always convert
          case converts ctxt [] clhs_ty crhs_ty of
               OK _ -> return ()
-              Error e -> ierror (At fc (CantUnify False clhs_tm crhs_tm e [] 0))
+              Error e -> ierror (At fc (CantUnify False (clhs_tm, Nothing) (crhs_tm, Nothing) e [] 0))
          -- In safe mode, values must convert (Thinks: This is probably not
          -- useful as is, perhaps it should require a proof of equality instead)
          when safe $ case converts ctxt [] clhs_tm crhs_tm of
               OK _ -> return ()
-              Error e -> ierror (At fc (CantUnify False clhs_tm crhs_tm e [] 0))
+              Error e -> ierror (At fc (CantUnify False (clhs_tm, Nothing) (crhs_tm, Nothing) e [] 0))
 
          case unApply (depat clhs_tm) of
               (P _ tfname _, _) -> do addTrans tfname (clhs_tm, crhs_tm)
