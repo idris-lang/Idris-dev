@@ -339,11 +339,16 @@ pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
-pprintErr' i (ElabDebug mstr tm holes) =
+pprintErr' i (ElabDebug msg tm holes) =
   text "Elaboration halted." <>
-  maybe empty (indented . text) mstr <>
-  text "Term: TODO PRINT TERM" <>
-  text "Holes: TODO PRINT AND PRESERVE" 
+  maybe empty (indented . text) msg <> line <>
+  text "Term: " <> pprintTerm' i [] (delab i tm) <> line <>
+  text "Holes:" <>
+  (indented . vsep . flip map holes)
+    (\(hn, goal, env) ->
+      vsep (flip map env (\(n, b) -> annName' n (show n) <+> text ":" <+> pprintTerm' i [] (delab i (binderTy b)))) <> -- TODO: nested binders
+      line <> text "----------------------------------" <> line <>
+      annName' hn  (show hn) <+> text ":" <+> pprintTerm' i (zip (map fst env) (repeat True)) (delab i goal) <> line)
 
 -- | Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly

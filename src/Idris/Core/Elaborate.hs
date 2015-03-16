@@ -842,7 +842,16 @@ prunStateT pmax zok ps x s
 
 debugElaborator :: Maybe String -> Elab' aux a
 debugElaborator msg = do ps <- fmap proof get
-                         lift . Error $ ElabDebug msg (getProofTerm (pterm ps)) [] -- TODO hole info
+                         saveState -- so we don't need to remember the hole order
+                         hs <- get_holes
+                         holeInfo <- mapM getHoleInfo hs
+                         loadState
+                         lift . Error $ ElabDebug msg (getProofTerm (pterm ps)) holeInfo
+  where getHoleInfo :: Name -> Elab' aux (Name, Type, [(Name, Binder Type)])
+        getHoleInfo h = do focus h
+                           g <- goal
+                           env <- get_env
+                           return (h, g, env)
 
 qshow :: Fails -> String
 qshow fs = show (map (\ (x, y, _, _, _, _, _) -> (x, y)) fs)
