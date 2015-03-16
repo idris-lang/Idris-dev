@@ -199,7 +199,9 @@ pprintProv i e ExpectedType = text "Expected type"
 pprintProv i e InferredVal = text "Inferred value"
 pprintProv i e GivenVal = text "Given value"
 pprintProv i e (SourceTerm tm) 
-  = text "Type of " <> pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm)
+  = text "Type of " <> 
+    annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
+             (pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm))
 
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)
