@@ -21,5 +21,5 @@ countStream : Nat -> Stream Nat
 countStream x = x :: countStream (x + 1)
 
 main : IO ()
-main = print (take 10 (process doubleInt (countStream 1)))
+main = printLn (take 10 (process doubleInt (countStream 1)))
 

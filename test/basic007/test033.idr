@@ -1,4 +1,4 @@
 module Main
 
 main : IO ()
-main = nullPtr null >>= print
+main = nullPtr null >>= printLn

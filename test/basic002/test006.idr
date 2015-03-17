@@ -18,7 +18,7 @@ natToBin k with (parity k)
    natToBin (S (j + j)) | odd {n = j}  = True  :: natToBin j
 
 main : IO ()
-main = do print (natToBin 42)
+main = do printLn (natToBin 42)
 
 ---------- Proofs ----------
 

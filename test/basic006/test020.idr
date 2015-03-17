@@ -21,7 +21,7 @@ test : Integer -> String
 test x = "Number " ++ x
 
 main : IO ()
-main = do print (foo [1,2,3])
-          print (test 42)
+main = do printLn (foo [1,2,3])
+          printLn (test 42)
 
 

@@ -42,13 +42,17 @@ STDIO = MkEff () StdIO
 putStr : String -> { [STDIO] } Eff ()
 putStr s = call $ PutStr s
 
+||| Write a string to standard output, terminating with a newline.
+putStrLn : String -> { [STDIO] } Eff ()
+putStrLn s = putStr (s ++ "\n")
+
 ||| Write a character to standard output.
 putChar : Char -> { [STDIO] } Eff ()
 putChar c = call $ PutCh c
 
-||| Write a string to standard output, terminating with a newline.
-putStrLn : String -> { [STDIO] } Eff ()
-putStrLn s = putStr (s ++ "\n")
+||| Write a character to standard output, terminating with a newline.
+putCharLn : Char -> { [STDIO] } Eff ()
+putCharLn c = putStrLn (singleton c)
 
 ||| Read a string from standard input.
 getStr : { [STDIO] } Eff String

@@ -15,5 +15,5 @@ foo : ListZ Nat
 foo = (1 :: 2 :: 3 :: Nil)
 
 main : IO ()
-main = print foo
+main = printLn foo
 

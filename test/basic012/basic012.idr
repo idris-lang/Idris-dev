@@ -1,7 +1,7 @@
 import Data.Vect
 import Control.Monad.State
 import Control.Monad.Identity
-  
+
 VThing : Type
 VThing = {n : Nat} -> Vect n Int -> Int
 
@@ -31,7 +31,7 @@ testfoo3 xs = foo 42 xs (bar 10)
 AnyST : Type -> Type -> Type
 AnyST s a = {m : _} -> Monad m => StateT s m a
 
-foost: AnyST Int ()
+foost : AnyST Int ()
 foost = do x <- get
            put x
 
@@ -52,11 +52,11 @@ tupleId f (a, b) = (f a, f b)
 
 AppendType : Type
 AppendType = {a, n, m : _} -> Vect n a -> Vect m a -> Vect (n + m) a
-    
+
 append : AppendType
 append [] ys = ys
 append (x :: xs) ys = x :: append xs ys
 
 main : IO ()
 main = do putStrLn (baz 42)
-          print (append [1,2,3] [4,5,6])
+          printLn (append [1,2,3] [4,5,6])

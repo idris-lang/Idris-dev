@@ -12,4 +12,4 @@ pull {n=S _} (FS n) (x :: xs) =
         (v, x::vs)
 
 main : IO ()
-main = print (pull FZ [0, 1, 2])
+main = printLn (pull FZ [0, 1, 2])
