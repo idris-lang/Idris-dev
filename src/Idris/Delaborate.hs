@@ -299,6 +299,12 @@ pprintErr' i (WithFnType ty) =
 pprintErr' i (CantMatch t) =
   text "Can't match on" <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
+pprintErr' i (NoEliminator s t)
+  = text "No " <> text s <> text " for type " <+>
+       annTm t (pprintTerm i (delab i t)) <$>
+    text "Please note that 'induction' is experimental." <$>
+    text "Only types declared with '%elim' can be used." <$>
+    text "Consider writing a pattern matching definition instead."
 pprintErr' i UniverseError = text "Universe inconsistency"
 pprintErr' i (UniqueError NullType n)
            = text "Borrowed name" <+> annName' n (showbasic n)

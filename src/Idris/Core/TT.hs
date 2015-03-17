@@ -159,6 +159,7 @@ data Err' t
                         t
           | CantResolveAlts [Name]
           | IncompleteTerm t
+          | NoEliminator String t
           | UniverseError
           | UniqueError Universe Name
           | UniqueKindError Universe Name

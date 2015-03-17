@@ -83,6 +83,7 @@ instance NFData Err where
         rnf (CantResolve x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (CantResolveAlts x1) = rnf x1 `seq` ()
         rnf (IncompleteTerm x1) = rnf x1 `seq` ()
+        rnf (NoEliminator x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf UniverseError = ()
         rnf ProgramLineComment = ()
         rnf (Inaccessible x1) = rnf x1 `seq` ()
