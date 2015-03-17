@@ -31,7 +31,8 @@ testfoo3 xs = foo 42 xs (bar 10)
 AnyST : Type -> Type -> Type
 AnyST s a = {m : _} -> Monad m => StateT s m a
 
-foost : AnyST Int ()
+-- foost : AnyST Int ()
+foost : StateT Int Maybe ()
 foost = do x <- get
            put x
 

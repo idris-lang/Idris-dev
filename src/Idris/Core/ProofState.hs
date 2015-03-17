@@ -879,6 +879,7 @@ updateProblems ps updates probs = up updates probs where
   ctxt = context ps
   ulog = unifylog ps
   usupp = map fst (notunified ps)
+  dont = dontunify ps
 
   up ns [] = (ns, [])
   up ns (prob@(x, y, ready, env, err, while, um) : ps) =
@@ -890,8 +891,9 @@ updateProblems ps updates probs = up updates probs where
           if newx || newy || ready || 
              any (\n -> n `elem` inj) (refsIn x ++ refsIn y) then 
             case unify ctxt env' (x', lp) (y', rp) inj hs usupp while of
-                 OK (v, []) -> traceWhen ulog ("DID " ++ show (x',y',ready,v)) $
-                                up (ns ++ v) ps
+                 OK (v, []) -> traceWhen ulog ("DID " ++ show (x',y',ready,v,dont)) $
+                                let v' = filter (\(n, _) -> n `notElem` dont) v in
+                                    up (ns ++ v') ps
                  e -> -- trace ("FAILED " ++ show (x',y',ready,e)) $
                        let (ns', ps') = up ns ps in
                            (ns', (x',y', False, env',err', while, um) : ps')
@@ -940,9 +942,7 @@ processTactic EndUnify ps
           ns' = map (\ (n, t) -> (n, updateSolvedTerm ns t)) ns
           (ns'', probs') = updateProblems ps ns' (problems ps)
           tm' = updateSolved ns'' (pterm ps) in
-             traceWhen (unifylog ps) ("(EndUnify) Dropping holes: " ++ show (map fst ns'') ++ "\n" ++ 
-                 show (pterm ps) ++ "\n" ++
-                 show tm') $
+             traceWhen (unifylog ps) ("(EndUnify) Dropping holes: " ++ show (map fst ns'')) $
               return (ps { pterm = tm',
                            unified = (h, []),
                            problems = probs',

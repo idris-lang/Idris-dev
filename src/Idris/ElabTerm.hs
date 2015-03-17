@@ -72,6 +72,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
+                                ptm <- get_term
                                 resolveTC True True 7 g fn ist) ivs
          tm <- get_term
          ctxt <- get_context
@@ -965,17 +966,14 @@ elab ist info emode opts fn tm
     elab' ina fc (PUnifyLog t) = do unifyLog True
                                     elab' ina fc t
                                     unifyLog False
-    elab' ina fc (PQuasiquote t goal)
+    elab' ina fc (PQuasiquote t goalt)
         = do -- First extract the unquoted subterms, replacing them with fresh
              -- names in the quasiquoted term. Claim their reflections to be
              -- an inferred type (to support polytypic quasiquotes).
+             qty <- goal
              (t, unq) <- extractUnquotes 0 t
              let unquoteNames = map fst unq
-             mapM_ (\uqn -> do uqh <- getNameFrom (sMN 0 "uqh")
-                               claim uqh RType
-                               movelast uqh
-                               claim uqn (Var uqh)) unquoteNames
-
+             mapM_ (\uqn -> claim uqn (forget qty)) unquoteNames
 
              -- Save the old state - we need a fresh proof state to avoid
              -- capturing lexically available variables in the quoted term.
@@ -1010,7 +1008,7 @@ elab ist info emode opts fn tm
              letbind nTm (Var qTy) (Var qTm)
 
              -- Fill out the goal type, if relevant
-             case goal of
+             case goalt of
                Nothing  -> return ()
                Just gTy -> do focus qTy
                               elabE (ina { e_qq = True }) fc gTy
@@ -1346,7 +1344,7 @@ findInstances :: IState -> Term -> [Name]
 findInstances ist t
     | (P _ n _, _) <- unApply t
         = case lookupCtxt n (idris_classes ist) of
-            [CI _ _ _ _ _ ins] -> ins
+            [CI _ _ _ _ _ ins _] -> ins
             _ -> []
     | otherwise = []
 
@@ -1382,17 +1380,18 @@ resolveTC :: Bool -- using default Int
              -> Term -- top level goal
              -> Name -- top level function name
              -> IState -> ElabD ()
-resolveTC = resTC' []
+resolveTC def mvok depth top fn ist
+   = do hs <- get_holes
+        resTC' [] def hs depth top fn ist
 
-resTC' tcs def mvok 0 topg fn ist = fail $ "Can't resolve type class"
-resTC' tcs def mvok 1 topg fn ist = try' (trivial' ist) (resolveTC def mvok 0 topg fn ist) True
-resTC' tcs defaultOn mvok depth topg fn ist
+resTC' tcs def topholes 0 topg fn ist = fail $ "Can't resolve type class"
+resTC' tcs def topholes 1 topg fn ist = try' (trivial' ist) (resolveTC def False 0 topg fn ist) True
+resTC' tcs defaultOn topholes depth topg fn ist
   = do compute
        g <- goal
-       hs <- get_holes
-       let argsok = tcArgsOK g hs
---        trace (show (g,hs,argsok,mvok)) $ 
-       if (not argsok && not mvok)
+       let argsok = tcArgsOK g topholes
+--        trace (show (g,hs,argsok,topholes)) $ 
+       if not argsok -- && not mvok)
          then lift $ tfail $ CantResolve True topg
          else do
            ptm <- get_term
@@ -1415,7 +1414,16 @@ resTC' tcs defaultOn mvok depth topg fn ist
        = True
     tcArgsOK ty hs -- if any arguments are metavariables, postpone
        = let (f, as) = unApply ty in
-         not $ any (isMeta hs) as
+             case f of
+                  P _ cn _ -> case lookupCtxtExact cn (idris_classes ist) of
+                                   Just ci -> tcDetArgsOK 0 (class_determiners ci) hs as
+                                   Nothing -> not $ any (isMeta hs) as
+                  _ -> not $ any (isMeta hs) as
+
+    tcDetArgsOK i ds hs (x : xs)
+        | i `elem` ds = not (isMeta hs x) && tcDetArgsOK (i + 1) ds hs xs
+        | otherwise = tcDetArgsOK (i + 1) ds hs xs
+    tcDetArgsOK _ _ _ [] = True
 
     isMeta :: [Name] -> Term -> Bool
     isMeta ns (P _ n _) = n `elem` ns 
@@ -1489,7 +1497,7 @@ resTC' tcs defaultOn mvok depth topg fn ist
                                      let got = fst (unApply t)
                                      let depth' = if tc' `elem` tcs
                                                      then depth - 1 else depth
-                                     resTC' (got : tcs) defaultOn mvok depth' topg fn ist)
+                                     resTC' (got : tcs) defaultOn topholes depth' topg fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
