@@ -658,6 +658,11 @@ Flag CI
   Default:      False
   manual:       True
 
+Flag execonly
+  Description:  Build executables only, skip the libraries and RTS
+  Default:      False
+  manual:       True
+
 Library
   hs-source-dirs: src
   Exposed-modules:
