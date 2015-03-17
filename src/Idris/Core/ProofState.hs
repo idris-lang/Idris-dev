@@ -940,7 +940,9 @@ processTactic EndUnify ps
           ns' = map (\ (n, t) -> (n, updateSolvedTerm ns t)) ns
           (ns'', probs') = updateProblems ps ns' (problems ps)
           tm' = updateSolved ns'' (pterm ps) in
-             traceWhen (unifylog ps) ("(EndUnify) Dropping holes: " ++ show (map fst ns'')) $
+             traceWhen (unifylog ps) ("(EndUnify) Dropping holes: " ++ show (map fst ns'') ++ "\n" ++ 
+                 show (pterm ps) ++ "\n" ++
+                 show tm') $
               return (ps { pterm = tm',
                            unified = (h, []),
                            problems = probs',

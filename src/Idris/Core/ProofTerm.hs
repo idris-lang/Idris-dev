@@ -172,6 +172,9 @@ updateSolvedTerm' xs x = updateSolved' xs x where
                           else (t, False)
     updateSolved' xs t@(P _ n@(MN _ _) _)
         | Just v <- lookup n xs = (v, True)
+    updateSolved' xs t@(P nt n ty)
+        = let (ty', ut) = updateSolved' xs ty in
+              if ut then (P nt n ty', True) else (t, False)
     updateSolved' xs t = (t, False)
 
     updateSolvedB' xs b@(Let t v) = let (t', ut) = updateSolved' xs t 

@@ -272,6 +272,7 @@ instance Show Err where
   show (CantResolve tm) = "CantResolve " ++ show tm
   show (CantResolveAlts xs) = "CantResolveAlts " ++ show xs
   show (IncompleteTerm tm) = "IncompleteTerm " ++ show tm
+  show (NoEliminator s tm) = "NoEliminator " ++ show s ++ " " ++ show tm
   show UniverseError = "UniverseError"
   show ProgramLineComment = "ProgramLineComment"
   show (Inaccessible n) = "Inaccessible " ++ show n

@@ -155,7 +155,7 @@ data Err' t
           | WithFnType t
           | NoTypeDecl Name
           | NotInjective t t t
-          | CantResolve Bool -- ^ True if postponed, False if fatal
+          | CantResolve Bool -- True if postponed, False if fatal
                         t
           | CantResolveAlts [Name]
           | IncompleteTerm t
@@ -936,6 +936,7 @@ vinstances i t = 0
 -- | Replace the outermost (index 0) de Bruijn variable with the given term
 instantiate :: TT n -> TT n -> TT n
 instantiate e = subst 0 where
+    subst i (P nt x ty) = P nt x (subst i ty)
     subst i (V x) | i == x = e
     subst i (Bind x b sc) = Bind x (fmap (subst i) b) (subst (i+1) sc)
     subst i (App f a) = App (subst i f) (subst i a)
@@ -947,6 +948,7 @@ instantiate e = subst 0 where
 -- that has been substituted.
 substV :: TT n -> TT n -> TT n
 substV x tm = dropV 0 (instantiate x tm) where
+    subst i (P nt x ty) = P nt x (subst i ty)
     dropV i (V x) | x > i = V (x - 1)
                   | otherwise = V x
     dropV i (Bind x b sc) = Bind x (fmap (dropV i) b) (dropV (i+1) sc)
@@ -1040,6 +1042,9 @@ subst n v tm = fst $ subst' 0 tm
     -- substitution happens...)
     subst' i (V x) | i == x = (v, True)
     subst' i (P _ x _) | n == x = (v, True)
+    subst' i t@(P nt x ty)
+         = let (ty', ut) = subst' i ty in
+               if ut then (P nt x ty', True) else (t, False)
     subst' i t@(Bind x b sc) | x /= n
          = let (b', ub) = substB' i b
                (sc', usc) = subst' (i+1) sc in
