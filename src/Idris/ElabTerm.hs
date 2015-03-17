@@ -18,6 +18,7 @@ import Idris.Core.Typecheck (check, recheck)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
 import Idris.Elab.Utils
+import Idris.Reflection
 import qualified Util.Pretty as U
 
 import Control.Applicative ((<$>))
@@ -36,6 +37,32 @@ import Debug.Trace
 data ElabMode = ETyDecl | ELHS | ERHS
   deriving Eq
 
+data ElabResult =
+  ElabResult { resultTerm :: Term -- ^ The term resulting from elaboration
+             , resultMetavars :: [(Name, (Int, Maybe Name, Type))]
+               -- ^ Information about new metavariables
+             , resultCaseDecls :: [PDecl]
+               -- ^ Deferred declarations as the meaning of case blocks
+             , resultContext :: Context
+               -- ^ The potentially extended context from new definitions
+             , resultTyDecls :: [(Name, FC, [PArg], Type)]
+               -- ^ Meta-info about the new type declarations
+             }
+
+processTacticDecls :: [(Name, FC, [PArg], Type)] -> Idris ()
+processTacticDecls info =
+  forM_ info $ \(n, fc, impls, ty) ->
+    do logLvl 3 $ "Declaration from tactics: " ++ show n ++ " : " ++ show ty
+       logLvl 3 $ "  It has impls " ++ show impls
+       updateIState $ \i -> i { idris_implicits =
+                                  addDef n impls (idris_implicits i) }
+       addIBC (IBCImp n)
+       ds <- checkDef fc [(n, (-1, Nothing, ty))]
+       addIBC (IBCDef n)
+       let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+       addDeferred ds'
+
+
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
 --
@@ -45,7 +72,7 @@ data ElabMode = ETyDecl | ELHS | ERHS
 -- Also find deferred names in the term and their types
 
 build :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> PTerm ->
-         ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
+         ElabD ElabResult
 build ist info emode opts fn tm
     = do elab ist info emode opts fn tm
          let tmIn = tm
@@ -94,12 +121,13 @@ build ist info emode opts fn tm
          when tydecl (do update_term orderPats
                          mkPat)
 --                          update_term liftPats)
-         EState is _ <- getAux
+         EState is _ impls <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (tm, ds, is)
-            else return (tm, ds, is)
+         ctxt <- get_context
+         if (log /= "") then trace log $ return (ElabResult tm ds is ctxt impls)
+            else return (ElabResult tm ds is ctxt impls)
   where pattern = emode == ELHS
         tydecl = emode == ETyDecl
 
@@ -114,7 +142,7 @@ build ist info emode opts fn tm
 -- know about yet on the LHS of a pattern def)
 
 buildTC :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> PTerm ->
-         ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
+         ElabD ElabResult
 buildTC ist info emode opts fn tm
     = do -- set name supply to begin after highest index in tm
          let ns = allNamesIn tm
@@ -135,12 +163,13 @@ buildTC ist info emode opts fn tm
          -- unification
          when (not (null dots)) $
             lift (Error (CantMatch (getInferTerm tm)))
-         EState is _ <- getAux
+         EState is _ impls <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (tm, ds, is)
-            else return (tm, ds, is)
+         ctxt <- get_context
+         if (log /= "") then trace log $ return (ElabResult tm ds is ctxt impls)
+            else return (ElabResult tm ds is ctxt impls)
   where pattern = emode == ELHS
 
 -- return whether arguments of the given constructor name can be 
@@ -183,9 +212,9 @@ goal_polymorphic =
                               _ -> return True
            _ -> return False
 
--- Returns the set of declarations we need to add to complete the definition
--- (most likely case blocks to elaborate)
-
+-- | Returns the set of declarations we need to add to complete the
+-- definition (most likely case blocks to elaborate) as well as
+-- declarations resulting from user tactic scripts (%runTactics)
 elab :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> PTerm ->
         ElabD ()
 elab ist info emode opts fn tm
@@ -1077,8 +1106,8 @@ elab ist info emode opts fn tm
          focus n
          elab' ina (Just fc') tm
          env <- get_env
-         ctxt <- get_context
-         runTactical (maybe fc' id fc)  ctxt env (P Bound n' Erased)
+         runTactical (maybe fc' id fc) env (P Bound n' Erased)
+         EState _ _ todo <- getAux
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
@@ -1505,11 +1534,17 @@ case_ ind autoSolve ist fn tm = do
          else casetac (forget val)
   when autoSolve solveAll
 
-runTactical :: FC -> Context -> Env -> Term -> ElabD ()
-runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
+tacN :: String -> Name
+tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]
+
+runTactical :: FC -> Env -> Term -> ElabD ()
+runTactical fc env tm = do tm' <- eval tm
+                           runTacTm tm'
+                           return ()
   where
-    eval = normaliseAll ctxt env . finalise
-    tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]
+    eval tm = do ctxt <- get_context
+                 return $ normaliseAll ctxt env (finalise tm)
+
     returnUnit = fmap fst $ get_type_val (Var unitCon)
 
     -- | Do a step in the reflected elaborator monad. The input is the
@@ -1547,26 +1582,31 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
       = do env <- get_env
            fmap fst . get_type_val $ reflectEnv env
       | n == tacN "prim__Fail", [_a, errs] <- args
-      = do parts <- reifyReportParts (eval errs)
+      = do errs' <- eval errs
+           parts <- reifyReportParts errs'
            lift . tfail $ ReflectionError [parts] (Msg "")
       | n == tacN "prim__PureTactical", [_a, tm] <- args
       = return tm
       | n == tacN "prim__BindTactical", [_a, _b, first, andThen] <- args
-      = do let first' = eval first
+      = do first' <- eval first
            res <- runTacTm first'
-           let next = eval (App andThen res)
+           next <- eval (App andThen res)
            runTacTm next
       | n == tacN "prim__Try", [_a, first, alt] <- args
-      = do let first' = eval first
-           let alt' = eval alt
+      = do first' <- eval first
+           alt' <- eval alt
            try' (runTacTm first') (runTacTm alt') True
       | n == tacN "prim__Fill", [raw] <- args
       = do raw' <- reifyRaw raw
            apply raw' []
            returnUnit
-      | n == tacN "prim__Gensym", [eval -> Constant (Str hint)] <- args
-      = do n <- getNameFrom (sMN 0 hint)
-           fmap fst $ get_type_val (reflectName n)
+      | n == tacN "prim__Gensym", [hint] <- args
+      = do hintStr <- eval hint
+           case hintStr of
+             Constant (Str h) -> do
+               n <- getNameFrom (sMN 0 h)
+               fmap fst $ get_type_val (reflectName n)
+             _ -> fail "no hint"
       | n == tacN "prim__Claim", [n, ty] <- args
       = do n' <- reifyTTName n
            ty' <- reifyRaw ty
@@ -1595,6 +1635,29 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
                   Nothing -> return Nothing
                   Just name -> fmap Just $ reifyTTName name
            intro n
+           returnUnit
+      | n == tacN "prim__DeclareType", [decl] <- args
+      = do (RDeclare n args res) <- reifyTyDecl decl
+           ctxt <- get_context
+           let mkPi arg res = RBind (argName arg)
+                                    (Pi Nothing (argTy arg) (RUType AllTypes))
+                                    res
+               rty = foldr mkPi res args
+           (checked, ty') <- lift $ check ctxt [] rty
+           case normaliseAll ctxt [] (finalise ty') of
+             TType _ -> lift . tfail . InternalMsg $
+                          show checked ++ " is not a type: it's " ++ show ty'
+             _       -> return ()
+           case lookupDefExact n ctxt of
+             Just _ -> lift . tfail . InternalMsg $
+                         show n ++ " is already defined."
+             Nothing -> return ()
+           let decl = TyDecl Ref checked
+               ctxt' = addCtxtDef n decl ctxt
+           set_context ctxt'
+           updateAux $ \e -> e { new_tyDecls = (n, fc, map rArgToPArg args, checked) :
+                                               new_tyDecls e }
+           aux <- getAux
            returnUnit
       | n == tacN "prim__Debug", [ty, msg] <- args
       = do let msg' = fromTTMaybe msg
@@ -2748,6 +2811,28 @@ reifyReportPart (App (P (DCon _ _ _) n _) tm)
                   Right (SubReport subParts)
     Nothing -> Left . InternalMsg $ "could not reify subreport " ++ show tm
 reifyReportPart x = Left . InternalMsg $ "could not reify " ++ show x
+
+reifyTyDecl :: Term -> ElabD RTyDecl
+reifyTyDecl (App (App (App (P (DCon _ _ _) n _) tyN) args) ret)
+  | n == tacN "Declare" =
+  do tyN'  <- reifyTTName tyN
+     args' <- case unList args of
+                Nothing -> fail $ "Couldn't reify " ++ show args ++ " as an arglist."
+                Just xs -> mapM reifyRArg xs
+     ret'  <- reifyRaw ret
+     return $ RDeclare tyN' args' ret'
+  where reifyRArg :: Term -> ElabD RArg
+        reifyRArg (App (App (P (DCon _ _ _) n _) argN) argTy)
+          | n == tacN "Explicit"   = liftM2 RExplicit
+                                            (reifyTTName argN)
+                                            (reifyRaw argTy)
+          | n == tacN "Implicit"   = liftM2 RImplicit
+                                            (reifyTTName argN)
+                                            (reifyRaw argTy)                               | n == tacN "Constraint" = liftM2 RConstraint
+                                            (reifyTTName argN)
+                                            (reifyRaw argTy)
+        reifyRArg aTm = fail $ "Couldn't reify " ++ show aTm ++ " as an RArg."
+reifyTyDecl tm = fail $ "Couldn't reify " ++ show tm ++ " as a type declaration."
 
 envTupleType :: Raw
 envTupleType
