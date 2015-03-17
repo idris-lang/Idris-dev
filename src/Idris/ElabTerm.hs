@@ -91,7 +91,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                try (resolveTC True 7 g fn ist)
+                                try (resolveTC True False 7 g fn ist)
                                     (movelast n)) ivs
          ivs <- get_instances
          hs <- get_holes
@@ -99,7 +99,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                resolveTC True 7 g fn ist) ivs
+                                resolveTC True True 7 g fn ist) ivs
          tm <- get_term
          ctxt <- get_context
          probs <- get_probs
@@ -350,7 +350,7 @@ elab ist info emode opts fn tm
             UType _ -> elab' ina (Just fc) (PRef fc unitTy)
             _ -> elab' ina (Just fc) (PRef fc unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = do g <- goal; resolveTC False 5 g fn ist
+       = do g <- goal; resolveTC False False 5 g fn ist
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
@@ -569,7 +569,7 @@ elab ist info emode opts fn tm
                                    g <- goal
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
-                                    then try (resolveTC True 7 g fn ist)
+                                    then try (resolveTC True False 7 g fn ist)
                                              (movelast n)
                                     else movelast n)
                          (ivs' \\ ivs)
@@ -729,7 +729,7 @@ elab ist info emode opts fn tm
                                                     env <- get_env
                                                     hs <- get_holes
                                                     if all (\n -> not (n `elem` hs)) (freeNames g)
-                                                     then try (resolveTC False 7 g fn ist)
+                                                     then try (resolveTC False False 7 g fn ist)
                                                               (movelast n)
                                                      else movelast n)
                                           (ivs' \\ ivs)
@@ -1405,14 +1405,25 @@ proofSearch' ist rec ambigok depth prv top n hints
 -- Resolve type classes. This will only pick up 'normal' instances, never
 -- named instances (hence using 'tcname' to check it's a generated instance
 -- name).
-resolveTC :: Bool -> Int -> Term -> Name -> IState -> ElabD ()
+resolveTC :: Bool -- using default Int
+             -> Bool -- allow metavariables in the goal 
+             -> Int -- depth
+             -> Term -- top level goal
+             -> Name -- top level function name
+             -> IState -> ElabD ()
 resolveTC = resTC' []
 
-resTC' tcs def 0 topg fn ist = fail $ "Can't resolve type class"
-resTC' tcs def 1 topg fn ist = try' (trivial' ist) (resolveTC def 0 topg fn ist) True
-resTC' tcs defaultOn depth topg fn ist
-      = do compute
-           g <- goal
+resTC' tcs def mvok 0 topg fn ist = fail $ "Can't resolve type class"
+resTC' tcs def mvok 1 topg fn ist = try' (trivial' ist) (resolveTC def mvok 0 topg fn ist) True
+resTC' tcs defaultOn mvok depth topg fn ist
+  = do compute
+       g <- goal
+       hs <- get_holes
+       let argsok = tcArgsOK g hs
+--        trace (show (g,hs,argsok,mvok)) $ 
+       if (not argsok && not mvok)
+         then lift $ tfail $ CantResolve True topg
+         else do
            ptm <- get_term
            ulog <- getUnifyLog
            hs <- get_holes
@@ -1429,6 +1440,22 @@ resTC' tcs defaultOn depth topg fn ist
                     let depth' = if scopeOnly then 2 else depth
                     blunderbuss t depth' stk (stk ++ insts)) True
   where
+    tcArgsOK ty hs | (P _ nc _, as) <- unApply ty, nc == numclass && defaultOn
+       = True
+    tcArgsOK ty hs -- if any arguments are metavariables, postpone
+       = let (f, as) = unApply ty in
+         not $ any (isMeta hs) as
+
+    isMeta :: [Name] -> Term -> Bool
+    isMeta ns (P _ n _) = n `elem` ns 
+    isMeta _ _ = False
+
+    notHole hs (P _ n _, c)
+       | (P _ cn _, _) <- unApply c,
+         n `elem` hs && isConName cn (tt_ctxt ist) = False
+       | Constant _ <- c = not (n `elem` hs)
+    notHole _ _ = True
+
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
 
@@ -1456,10 +1483,13 @@ resTC' tcs defaultOn depth topg fn ist
 
     blunderbuss t d stk [] = do -- c <- get_env
                             -- ps <- get_probs
-                            lift $ tfail $ CantResolve topg
+                            lift $ tfail $ CantResolve False topg
     blunderbuss t d stk (n:ns)
         | n /= fn && (n `elem` stk || tcname n) 
-              = try' (resolve n d) (blunderbuss t d stk ns) True
+              = tryCatch (resolve n d) 
+                    (\e -> case e of
+                             CantResolve True _ -> lift $ tfail e
+                             _ -> blunderbuss t d stk ns) 
         | otherwise = blunderbuss t d stk ns
 
     resolve n depth
@@ -1488,7 +1518,7 @@ resTC' tcs defaultOn depth topg fn ist
                                      let got = fst (unApply t)
                                      let depth' = if tc' `elem` tcs
                                                      then depth - 1 else depth
-                                     resTC' (got : tcs) defaultOn depth' topg fn ist)
+                                     resTC' (got : tcs) defaultOn mvok depth' topg fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
@@ -2667,11 +2697,14 @@ reflectErr (NotInjective t1 t2 t3) =
             , reflect t2
             , reflect t3
             ]
-reflectErr (CantResolve t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
+reflectErr (CantResolve _ t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
 reflectErr (CantResolveAlts ss) =
   raw_apply (Var $ reflErrName "CantResolveAlts")
             [rawList (Var $ reflm "TTName") (map reflectName ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
+reflectErr (NoEliminator str t) 
+  = raw_apply (Var $ reflErrName "NoEliminator") [RConstant (Str str),
+                                                  reflect t]
 reflectErr UniverseError = Var $ reflErrName "UniverseError"
 reflectErr ProgramLineComment = Var $ reflErrName "ProgramLineComment"
 reflectErr (Inaccessible n) = raw_apply (Var $ reflErrName "Inaccessible") [reflectName n]
