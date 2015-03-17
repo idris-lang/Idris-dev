@@ -27,7 +27,7 @@ mainProc = do mainID <- myID
 
 repeatIO : Int -> IO ()
 repeatIO 0 = return ()
-repeatIO n = do print n
+repeatIO n = do printLn n
                 run mainProc
                 repeatIO (n - 1)
 

@@ -23,6 +23,7 @@ New in 0.9.17:
   an extra argument of type TTName. This allows more understandable
   dynamic errors in DSL code and more readable code generation results.
 * DSL notation can now be applied with $
+<<<<<<< HEAD
 * Added FFI_Export type which allows Idris functions to be exportoed and
   called from foreign code
 * Instances can now have documentation strings.
@@ -32,7 +33,11 @@ New in 0.9.17:
 * New REPL command ":core TM" that shows the elaborated form of TM along with
   its elaborated type using the syntax of TT. IDE mode has a corresponding
   command :elaborate-term for serialized terms.
-
+* Effectful and IO function names for sending data to STDOUT have been
+  aligned, semantically.
+    + `print` is now for putting showable things to STDOUT.
+    + `printLn` is for putting showable things to STDOUT with a new line
+    + `putCharLn` for putting a single character to STDOUT, with a new line.
 
 New in 0.9.16:
 --------------

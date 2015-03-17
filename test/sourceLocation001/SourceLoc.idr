@@ -36,7 +36,7 @@ using (ctxt : Vect n Ty)
     Var : (i : Fin n) -> Tm ctxt (index i ctxt)
     Lam : Tm (t::ctxt) t' -> Tm ctxt (Arr t t')
     App : Tm ctxt (Arr t t') -> Tm ctxt t -> Tm ctxt t'
-    ||| A term that makes the program halt and print where it halted
+    ||| A term that makes the program halt and printLn where it halted
     Die : {default tactics { sourceLocation } loc : SourceLocation} -> Tm ctxt t
 
   data Env : Vect n Ty -> Type where
@@ -83,11 +83,11 @@ testTerm4 = App testTerm3 MkU
 namespace Main
   main : IO ()
   main = do putStrLn "Testing using definition"
-            print fromRHS
+            printLn fromRHS
             putStrLn "Testing using inline tactics"
-            print fromProofScript
+            printLn fromProofScript
             putStrLn "Testing using metavariable with later definition"
-            print fromMetavar
+            printLn fromMetavar
             putStrLn "-----------------------"
             sequence_ $ with List [ exec testTerm1
                                   , exec testTerm2

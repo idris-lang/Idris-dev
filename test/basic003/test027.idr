@@ -19,7 +19,7 @@ using (Ord a, Num n)
   mprod (x :: xs) = x * mprod xs
 
 main : IO ()
-main = do print $ isort [1,5,3,5,1,9,8]
-          print $ msum [1..10]
-          print $ mprod [1..10]
+main = do printLn $ isort [1,5,3,5,1,9,8]
+          printLn $ msum [1..10]
+          printLn $ mprod [1..10]
 

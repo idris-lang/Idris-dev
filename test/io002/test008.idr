@@ -22,7 +22,7 @@ main = do (a, b) <- ioVals
           let x = "bar"
           putStrLn (show (getVal x 7 testlist))
           let ((y, z) :: _) = testlist
-          print z
+          printLn z
           case lookup x testlist of
                  Just v => putStrLn (show v)
                  Nothing => putStrLn "Not there!"

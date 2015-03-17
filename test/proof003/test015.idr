@@ -72,10 +72,10 @@ readNum = do putStr "Enter a number:"
 
 main : IO ()
 main = do let Just bin1 = natToBin 8 42
-          print bin1
+          printLn bin1
           let Just bin2 = natToBin 8 89
-          print bin2
-          print (adc bin1 bin2 b0)
+          printLn bin2
+          printLn (adc bin1 bin2 b0)
 
 
 
