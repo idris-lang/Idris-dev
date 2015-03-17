@@ -1850,6 +1850,7 @@ runTac autoSolve ist perhapsFC fn tac
         Just fc ->
           do fill $ reflectFC fc
              solve
+    runT Qed = lift . tfail $ Msg "The qed command is only valid in the interactive prover"
     runT x = fail $ "Not implemented " ++ show x
 
     runReflected t = do t' <- reify ist t
