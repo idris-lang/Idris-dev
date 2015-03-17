@@ -289,7 +289,7 @@ pprintErr' i (NotInjective p x y) =
   text "Can't verify injectivity of" <+> annTm p (pprintTerm i (delab i p)) <+>
   text " when unifying" <+> annTm x (pprintTerm i (delab i x)) <+> text "and" <+>
   annTm y (pprintTerm i (delab i y))
-pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
+pprintErr' i (CantResolve _ c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
                                     align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i) . annName) as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n

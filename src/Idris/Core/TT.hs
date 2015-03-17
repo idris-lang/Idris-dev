@@ -155,7 +155,8 @@ data Err' t
           | WithFnType t
           | NoTypeDecl Name
           | NotInjective t t t
-          | CantResolve t
+          | CantResolve Bool -- ^ True if postponed, False if fatal
+                        t
           | CantResolveAlts [Name]
           | IncompleteTerm t
           | UniverseError
@@ -231,7 +232,7 @@ instance Sized Err where
   size (NoSuchVariable name) = size name
   size (NoTypeDecl name) = size name
   size (NotInjective l c r) = size l + size c + size r
-  size (CantResolve trm) = size trm
+  size (CantResolve _ trm) = size trm
   size (NoRewriting trm) = size trm
   size (CantResolveAlts _) = 1
   size (IncompleteTerm trm) = size trm
@@ -246,7 +247,7 @@ instance Sized Err where
 
 score :: Err -> Int
 score (CantUnify _ _ _ m _ s) = s + score m
-score (CantResolve _) = 20
+score (CantResolve _ _) = 20
 score (NoSuchVariable _) = 1000
 score (ProofSearchFail e) = score e
 score (CantSolveGoal _ _) = 100000

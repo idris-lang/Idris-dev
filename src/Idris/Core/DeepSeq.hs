@@ -80,7 +80,7 @@ instance NFData Err where
         rnf (NoTypeDecl x1) = rnf x1 `seq` ()
         rnf (NotInjective x1 x2 x3)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (CantResolve x1) = rnf x1 `seq` ()
+        rnf (CantResolve x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (CantResolveAlts x1) = rnf x1 `seq` ()
         rnf (IncompleteTerm x1) = rnf x1 `seq` ()
         rnf UniverseError = ()
