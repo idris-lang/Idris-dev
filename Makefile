@@ -1,4 +1,4 @@
-.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib test_c test lib_doc lib_doc_clean
+.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib test_c test lib_doc lib_doc_clean user_doc_html user_doc_pdf user_docs
 
 include config.mk
 -include custom.mk
@@ -54,6 +54,17 @@ lib_doc:
 
 lib_doc_clean:
 	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc_clean
+
+user_docs: user_doc_html user_doc_pdf
+
+user_doc_clean:
+	$(MAKE) -C docs clean
+
+user_doc_html:
+	$(MAKE) -C docs html
+
+user_doc_pdf:
+	$(MAKE) -C docs latexpdf
 
 dist/setup-config:
 	$(CABAL) configure $(CABALFLAGS)
