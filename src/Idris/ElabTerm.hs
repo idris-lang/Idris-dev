@@ -999,10 +999,10 @@ elab ist info emode opts fn tm
         = do -- First extract the unquoted subterms, replacing them with fresh
              -- names in the quasiquoted term. Claim their reflections to be
              -- an inferred type (to support polytypic quasiquotes).
-             qty <- goal
+             finalTy <- goal
              (t, unq) <- extractUnquotes 0 t
              let unquoteNames = map fst unq
-             mapM_ (\uqn -> claim uqn (forget qty)) unquoteNames
+             mapM_ (\uqn -> claim uqn (forget finalTy)) unquoteNames
 
              -- Save the old state - we need a fresh proof state to avoid
              -- capturing lexically available variables in the quoted term.
@@ -1052,18 +1052,20 @@ elab ist info emode opts fn tm
              env <- get_env
              loadState
              let quoted = fmap (explicitNames . binderVal) $ lookup nTm env
-
+                 isRaw = case unApply (normaliseAll ctxt env finalTy) of
+                           (P _ n _, []) | n == reflm "Raw" -> True
+                           _ -> False
              case quoted of
                Just q -> do ctxt <- get_context
                             (q', _, _) <- lift $ recheck ctxt [(uq, Lam Erased) | uq <- unquoteNames] (forget q) q
                             if pattern
-                              then do try' (reflectTTQuotePattern unquoteNames q')
-                                           (reflectRawQuotePattern unquoteNames (forget q'))
-                                           True
-                              else do try' (fill $ reflectTTQuote unquoteNames q')
-                                           -- we forget q' instead of using q to ensure rechecking
-                                           (fill $ reflectRawQuote unquoteNames (forget q'))
-                                           True -- ignore errors like proof search does
+                              then if isRaw
+                                      then reflectRawQuotePattern unquoteNames (forget q')
+                                      else reflectTTQuotePattern unquoteNames q'
+                              else do if isRaw
+                                        then -- we forget q' instead of using q to ensure rechecking
+                                             fill $ reflectRawQuote unquoteNames (forget q')
+                                        else fill $ reflectTTQuote unquoteNames q'
                                       solve
 
                Nothing -> lift . tfail . Msg $ "Broken elaboration of quasiquote"
@@ -2463,7 +2465,7 @@ reflectTTQuote unq (P nt n t)
 reflectTTQuote unq (V n)
   = reflCall "V" [RConstant (I n)]
 reflectTTQuote unq (Bind n b x)
-  = reflCall "Bind" [reflectName n, reflectBinderQuote reflectTTQuote unq b, reflectTTQuote unq x]
+  = reflCall "Bind" [reflectName n, reflectBinderQuote reflectTTQuote (reflm "TT") unq b, reflectTTQuote unq x]
 reflectTTQuote unq (App f x)
   = reflCall "App" [reflectTTQuote unq f, reflectTTQuote unq x]
 reflectTTQuote unq (Constant c)
@@ -2480,7 +2482,7 @@ reflectRawQuote unq (Var n)
   | n `elem` unq = Var n
   | otherwise = reflCall "Var" [reflectName n]
 reflectRawQuote unq (RBind n b r) =
-  reflCall "RBind" [reflectName n, reflectBinderQuote reflectRawQuote unq b, reflectRawQuote unq r]
+  reflCall "RBind" [reflectName n, reflectBinderQuote reflectRawQuote (reflm "Raw") unq b, reflectRawQuote unq r]
 reflectRawQuote unq (RApp f x) =
   reflCall "RApp" [reflectRawQuote unq f, reflectRawQuote unq x]
 reflectRawQuote unq RType = Var (reflm "RType")
@@ -2538,27 +2540,27 @@ reflectNameQuotePattern _ -- for all other names, match any
        solve
 
 reflectBinder :: Binder Term -> Raw
-reflectBinder = reflectBinderQuote reflectTTQuote []
+reflectBinder = reflectBinderQuote reflectTTQuote (reflm "TT") []
 
-reflectBinderQuote :: ([Name] -> a -> Raw) -> [Name] -> Binder a -> Raw
-reflectBinderQuote q unq (Lam t)
-   = reflCall "Lam" [Var (reflm "TT"), q unq t]
-reflectBinderQuote q unq (Pi _ t k)
-   = reflCall "Pi" [Var (reflm "TT"), q unq t, q unq k]
-reflectBinderQuote q unq (Let x y)
-   = reflCall "Let" [Var (reflm "TT"), q unq x, q unq y]
-reflectBinderQuote q unq (NLet x y)
-   = reflCall "NLet" [Var (reflm "TT"), q unq x, q unq y]
-reflectBinderQuote q unq (Hole t)
-   = reflCall "Hole" [Var (reflm "TT"), q unq t]
-reflectBinderQuote q unq (GHole _ t)
-   = reflCall "GHole" [Var (reflm "TT"), q unq t]
-reflectBinderQuote q unq (Guess x y)
-   = reflCall "Guess" [Var (reflm "TT"), q unq x, q unq y]
-reflectBinderQuote q unq (PVar t)
-   = reflCall "PVar" [Var (reflm "TT"), q unq t]
-reflectBinderQuote q unq (PVTy t)
-   = reflCall "PVTy" [Var (reflm "TT"), q unq t]
+reflectBinderQuote :: ([Name] -> a -> Raw) -> Name -> [Name] -> Binder a -> Raw
+reflectBinderQuote q ty unq (Lam t)
+   = reflCall "Lam" [Var ty, q unq t]
+reflectBinderQuote q ty unq (Pi _ t k)
+   = reflCall "Pi" [Var ty, q unq t, q unq k]
+reflectBinderQuote q ty unq (Let x y)
+   = reflCall "Let" [Var ty, q unq x, q unq y]
+reflectBinderQuote q ty unq (NLet x y)
+   = reflCall "NLet" [Var ty, q unq x, q unq y]
+reflectBinderQuote q ty unq (Hole t)
+   = reflCall "Hole" [Var ty, q unq t]
+reflectBinderQuote q ty unq (GHole _ t)
+   = reflCall "GHole" [Var ty, q unq t]
+reflectBinderQuote q ty unq (Guess x y)
+   = reflCall "Guess" [Var ty, q unq x, q unq y]
+reflectBinderQuote q ty unq (PVar t)
+   = reflCall "PVar" [Var ty, q unq t]
+reflectBinderQuote q ty unq (PVTy t)
+   = reflCall "PVTy" [Var ty, q unq t]
 
 mkList :: Raw -> [Raw] -> Raw
 mkList ty []      = RApp (Var (sNS (sUN "Nil") ["List", "Prelude"])) ty
