@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, ViewPatterns #-}
+{-# LANGUAGE LambdaCase, PatternGuards, ViewPatterns #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.ElabTerm where
 
@@ -37,6 +37,7 @@ import Debug.Trace
 data ElabMode = ETyDecl | ELHS | ERHS
   deriving Eq
 
+
 data ElabResult =
   ElabResult { resultTerm :: Term -- ^ The term resulting from elaboration
              , resultMetavars :: [(Name, (Int, Maybe Name, Type))]
@@ -45,22 +46,23 @@ data ElabResult =
                -- ^ Deferred declarations as the meaning of case blocks
              , resultContext :: Context
                -- ^ The potentially extended context from new definitions
-             , resultTyDecls :: [(Name, FC, [PArg], Type)]
+             , resultTyDecls :: [RDeclInstructions]
                -- ^ Meta-info about the new type declarations
              }
 
-processTacticDecls :: [(Name, FC, [PArg], Type)] -> Idris ()
+processTacticDecls :: [RDeclInstructions] -> Idris ()
 processTacticDecls info =
-  forM_ info $ \(n, fc, impls, ty) ->
-    do logLvl 3 $ "Declaration from tactics: " ++ show n ++ " : " ++ show ty
-       logLvl 3 $ "  It has impls " ++ show impls
-       updateIState $ \i -> i { idris_implicits =
-                                  addDef n impls (idris_implicits i) }
-       addIBC (IBCImp n)
-       ds <- checkDef fc [(n, (-1, Nothing, ty))]
-       addIBC (IBCDef n)
-       let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
-       addDeferred ds'
+  forM_ info $ \case
+    RTyDeclInstrs n fc impls ty -> 
+      do logLvl 3 $ "Declaration from tactics: " ++ show n ++ " : " ++ show ty
+         logLvl 3 $ "  It has impls " ++ show impls
+         updateIState $ \i -> i { idris_implicits =
+                                    addDef n impls (idris_implicits i) }
+         addIBC (IBCImp n)
+         ds <- checkDef fc [(n, (-1, Nothing, ty))]
+         addIBC (IBCDef n)
+         let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+         addDeferred ds'
 
 
 -- Using the elaborator, convert a term in raw syntax to a fully
@@ -1695,7 +1697,7 @@ runTactical fc env tm = do tm' <- eval tm
            let decl = TyDecl Ref checked
                ctxt' = addCtxtDef n decl ctxt
            set_context ctxt'
-           updateAux $ \e -> e { new_tyDecls = (n, fc, map rArgToPArg args, checked) :
+           updateAux $ \e -> e { new_tyDecls = (RTyDeclInstrs n fc (map rArgToPArg args) checked) :
                                                new_tyDecls e }
            aux <- getAux
            returnUnit

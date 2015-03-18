@@ -633,11 +633,15 @@ deriving instance Binary PDecl'
 deriving instance NFData PDecl'
 !-}
 
--- For elaborator state
+-- | A set of instructions for things that need to happen in IState
+-- after a term elaboration when there's been reflected elaboration.
+data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
+
+-- | For elaborator state
 data EState = EState {
                   case_decls :: [PDecl],
                   delayed_elab :: [Elab' EState ()],
-                  new_tyDecls :: [(Name, FC, [PArg], Type)]
+                  new_tyDecls :: [RDeclInstructions]
               }
 
 initEState :: EState
