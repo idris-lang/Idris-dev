@@ -606,12 +606,6 @@ setWidth :: ConsoleWidth -> Idris ()
 setWidth w = do ist <- getIState
                 put ist { idris_consolewidth = w }
 
-renderWidth :: Idris Int
-renderWidth = do iw <- getWidth
-                 case iw of
-                   InfinitelyWide -> return 100000000
-                   ColsWide n -> return (max n 1)
-                   AutomaticWidth -> runIO getScreenWidth
 
 
 
