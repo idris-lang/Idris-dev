@@ -509,7 +509,7 @@ toAlist :: Ctxt a -> [(Name, a)]
 toAlist ctxt = let allns = map snd (Map.toList ctxt) in
                 concatMap (Map.toList) allns
 
-addAlist :: Show a => [(Name, a)] -> Ctxt a -> Ctxt a
+addAlist :: [(Name, a)] -> Ctxt a -> Ctxt a
 addAlist [] ctxt = ctxt
 addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 

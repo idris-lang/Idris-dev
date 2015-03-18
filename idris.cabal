@@ -730,6 +730,7 @@ Library
                 , Idris.ProofSearch
                 , Idris.Prover
                 , Idris.Providers
+                , Idris.Reflection
                 , Idris.REPL
                 , Idris.REPLParser
                 , Idris.Transforms

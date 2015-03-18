@@ -169,9 +169,11 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
              ty' <- implicit info syn iname ty'
              let ty = addImpl i ty'
              ctxt <- getContext
-             ((tyT, _, _), _) <-
-                   tclift $ elaborate ctxt iname (TType (UVal 0)) initEState
-                            (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
+             (ElabResult tyT _ _ ctxt' newDecls, _) <-
+                tclift $ elaborate ctxt iname (TType (UVal 0)) initEState
+                         (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
+             setContext ctxt'
+             processTacticDecls newDecls
              ctxt <- getContext
              (cty, _) <- recheckC fc [] tyT
              let nty = normalise ctxt [] cty

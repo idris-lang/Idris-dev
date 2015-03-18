@@ -455,6 +455,10 @@ getIState = get
 putIState :: IState -> Idris ()
 putIState = put
 
+updateIState :: (IState -> IState) -> Idris ()
+updateIState f = do i <- getIState
+                    putIState $ f i
+
 withContext :: (IState -> Ctxt a) -> Name -> b -> (a -> Idris b) -> Idris b
 withContext ctx name dflt action = do
     ist <- getIState
@@ -547,7 +551,16 @@ addConstraints fc (v, cs)
 addDeferred = addDeferred' Ref
 addDeferredTyCon = addDeferred' (TCon 0 0)
 
-addDeferred' :: NameType -> [(Name, (Int, Maybe Name, Type, Bool))] -> Idris ()
+-- | Save information about a name that is not yet defined
+addDeferred' :: NameType
+             -> [(Name, (Int, Maybe Name, Type, Bool))]
+                -- ^ The Name is the name being made into a metavar,
+                -- the Int is the number of vars that are part of a
+                -- putative proof context, the Maybe Name is the
+                -- top-level function containing the new metavariable,
+                -- the Type is its type, and the Bool is whether :p is
+                -- allowed
+             -> Idris ()
 addDeferred' nt ns
   = do mapM_ (\(n, (i, _, t, _)) -> updateContext (addTyDecl n nt (tidyNames S.empty t))) ns
        mapM_ (\(n, _) -> when (not (n `elem` primDefs)) $ addIBC (IBCMetavar n)) ns

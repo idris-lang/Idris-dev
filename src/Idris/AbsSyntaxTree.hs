@@ -184,7 +184,11 @@ data IState = IState {
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)],
           -- ^ Full application LHS on source line
-    idris_metavars :: [(Name, (Maybe Name, Int, Bool))], -- ^ The currently defined but not proven metavariables
+    idris_metavars :: [(Name, (Maybe Name, Int, Bool))],
+    -- ^ The currently defined but not proven metavariables. The Int
+    -- is the number of vars to display as a context, the Maybe Name
+    -- is its top-level function, and the Bool is whether :p is
+    -- allowed
     idris_coercions :: [Name],
     idris_errRev :: [(Term, Term)],
     syntax_rules :: SyntaxRules,
@@ -632,10 +636,12 @@ deriving instance NFData PDecl'
 -- For elaborator state
 data EState = EState {
                   case_decls :: [PDecl],
-                  delayed_elab :: [Elab' EState ()]
+                  delayed_elab :: [Elab' EState ()],
+                  new_tyDecls :: [(Name, FC, [PArg], Type)]
               }
 
-initEState = EState [] []
+initEState :: EState
+initEState = EState [] [] []
 
 type ElabD a = Elab' EState a
 

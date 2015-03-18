@@ -22,7 +22,7 @@ import Debug.Trace
 
 import qualified Data.Map as Map
 
-recheckC = recheckC_borrowing False [] 
+recheckC = recheckC_borrowing False []
 
 recheckC_borrowing uniq_check bs fc env t
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
@@ -34,9 +34,13 @@ recheckC_borrowing uniq_check bs fc env t
          addConstraints fc cs
          return (tm, ty)
 
-
+checkDef :: FC -> [(Name, (Int, Maybe Name, Type))]
+         -> Idris [(Name, (Int, Maybe Name, Type))]
 checkDef fc ns = checkAddDef False True fc ns
 
+checkAddDef :: Bool -> Bool -> FC
+            -> [(Name, (Int, Maybe Name, Type))]
+            -> Idris [(Name, (Int, Maybe Name, Type))]
 checkAddDef add toplvl fc [] = return []
 checkAddDef add toplvl fc ((n, (i, top, t)) : ns) 
                = do ctxt <- getContext
@@ -46,7 +50,7 @@ checkAddDef add toplvl fc ((n, (i, top, t)) : ns)
                     ns' <- checkAddDef add toplvl fc ns
                     return ((n, (i, top, t')) : ns')
 
--- Get the list of (index, name) of inaccessible arguments from an elaborated
+-- | Get the list of (index, name) of inaccessible arguments from an elaborated
 -- type
 inaccessibleImps :: Int -> Type -> [Bool] -> [(Int, Name)]
 inaccessibleImps i (Bind n (Pi _ t _) sc) (inacc : ins)
@@ -54,7 +58,7 @@ inaccessibleImps i (Bind n (Pi _ t _) sc) (inacc : ins)
     | otherwise = inaccessibleImps (i + 1) sc ins
 inaccessibleImps _ _ _ = []
 
--- Get the list of (index, name) of inaccessible arguments from the type.
+-- | Get the list of (index, name) of inaccessible arguments from the type.
 inaccessibleArgs :: Int -> PTerm -> [(Int, Name)]
 inaccessibleArgs i (PPi (Imp _ _ _ _) n Placeholder t)
         = (i,n) : inaccessibleArgs (i+1) t  -- unbound implicit
@@ -74,10 +78,9 @@ elabCaseBlock info opts d@(PClauses f o n ps)
              when (AssertTotal `elem` opts) $ setFlags n [AssertTotal]
              rec_elabDecl info EAll info (PClauses f opts' n ps )
 
--- Check that the result of type checking matches what the programmer wrote
+-- | Check that the result of type checking matches what the programmer wrote
 -- (i.e. - if we inferred any arguments that the user provided, make sure
 -- they are the same!)
-
 checkInferred :: FC -> PTerm -> PTerm -> Idris ()
 checkInferred fc inf user =
      do logLvl 6 $ "Checked to\n" ++ showTmImpls inf ++ "\n\nFROM\n\n" ++
@@ -92,9 +95,8 @@ checkInferred fc inf user =
         logLvl 10 $ "Checked match"
 --                           ++ "\n" ++ showImp True inf ++ "\n" ++ showImp True user)
 
--- Return whether inferred term is different from given term
+-- | Return whether inferred term is different from given term
 -- (as above, but return a Bool)
-
 inferredDiff :: FC -> PTerm -> PTerm -> Idris Bool
 inferredDiff fc inf user =
      do i <- getIState
