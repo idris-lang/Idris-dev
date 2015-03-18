@@ -75,7 +75,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
-            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping i (delab i nty))
+            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping i (class_determiners ci) (delab i nty))
                                 (class_instances ci)
                           addInstance intInst n iname
             Just _ -> addInstance intInst n iname
@@ -177,24 +177,34 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
              ctxt <- getContext
              (cty, _) <- recheckC fc [] tyT
              let nty = normalise ctxt [] cty
-             return $ any (isJust . findOverlapping i (delab i nty)) (class_instances ci)
+             return $ any (isJust . findOverlapping i (class_determiners ci) (delab i nty)) (class_instances ci)
 
-    findOverlapping i t n
+    findOverlapping i dets t n
      | take 2 (show n) == "@@" = Nothing
      | otherwise
         = case lookupTy n (tt_ctxt i) of
             [t'] -> let tret = getRetType t
                         tret' = getRetType (delab i t') in
-                        case matchClause i tret' tret of
-                            Right ms -> Just tret'
-                            Left _ -> case matchClause i tret tret' of
-                                Right ms -> Just tret'
-                                Left _ -> Nothing
+                        case matchArgs i dets tret' tret of
+                           Right _ -> Just tret'
+                           Left _ -> case matchArgs i dets tret tret' of
+                                       Right _ -> Just tret'
+                                       Left _ -> Nothing
             _ -> Nothing
     overlapping t' = tclift $ tfail (At fc (Msg $
                           "Overlapping instance: " ++ show t' ++ " already defined"))
     getRetType (PPi _ _ _ sc) = getRetType sc
     getRetType t = t
+
+    matchArgs i dets x y =
+        let x' = keepDets dets x
+            y' = keepDets dets y in
+            matchClause i x' y'
+
+    keepDets dets (PApp fc f args)
+        = PApp fc f $ let a' = zip [0..] args in
+              map snd (filter (\(i, _) -> i `elem` dets) a')
+    keepDets dets t = t
 
     mkMethApp (n, _, _, ty)
           = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))

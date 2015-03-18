@@ -50,12 +50,13 @@ import Data.List.Split (splitOn)
 
 import Util.Pretty(pretty, text)
 
-data MArgTy = IA | EA | CA deriving Show
+data MArgTy = IA Name | EA Name | CA deriving Show
 
 elabClass :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
              FC -> [(Name, PTerm)] ->
-             Name -> [(Name, PTerm)] -> [(Name, Docstring (Either Err PTerm))] -> [PDecl] -> Idris ()
-elabClass info syn_in doc fc constraints tn ps pDocs ds
+             Name -> [(Name, PTerm)] -> [(Name, Docstring (Either Err PTerm))] -> 
+             [Name] -> [PDecl] -> Idris ()
+elabClass info syn_in doc fc constraints tn ps pDocs fds ds
     = do let cn = SN (InstanceCtorN tn) -- sUN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
          let tty = pibind ps PType
          let constraint = PApp fc (PRef fc tn)
@@ -75,7 +76,6 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
          let (methods, imethods)
               = unzip (map (\ ( x,y,z) -> (x, y)) ims)
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
-         addClass tn (CI cn (map nodoc imethods) defaults idecls (map fst ps) [])
          -- build instance constructor type
          -- decorate names of functions to ensure they can't be referred
          -- to elsewhere in the class declaration
@@ -86,6 +86,9 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
          let ddecl = PDatadecl tn tty cons
          logLvl 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
          elabData info (syn { no_imp = no_imp syn ++ mnames }) doc pDocs fc [] ddecl
+
+         dets <- findDets cn fds
+         addClass tn (CI cn (map nodoc imethods) defaults idecls (map fst ps) [] dets)
          -- for each constraint, build a top level function to chase it
          logLvl 5 $ "Building functions"
 --          let usyn = syn { using = map (\ (x,y) -> UImplicit x y) ps
@@ -94,6 +97,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
          mapM_ (rec_elabDecl info EAll info) (concat fns)
          -- for each method, build a top level function
          fns <- mapM (tfun cn constraint syn (map fst imethods)) imethods
+         logLvl 5 $ "Functions " ++ show fns
          mapM_ (rec_elabDecl info EAll info) (concat fns)
          -- add the default definitions
          mapM_ (rec_elabDecl info EAll info) (concat (map (snd.snd) defs))
@@ -201,21 +205,21 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
              return [PTy doc [] syn fc o m ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
 
-    getMArgs (PPi (Imp _ _ _ _) n ty sc) = IA : getMArgs sc
-    getMArgs (PPi (Exp _ _ _) n ty sc) = EA  : getMArgs sc
+    getMArgs (PPi (Imp _ _ _ _) n ty sc) = IA n : getMArgs sc
+    getMArgs (PPi (Exp _ _ _) n ty sc) = EA n : getMArgs sc
     getMArgs (PPi (Constraint _ _) n ty sc) = CA : getMArgs sc
     getMArgs _ = []
 
     getMeth (m:ms) (a:as) x | x == a = PRef fc m
                             | otherwise = getMeth ms as x
 
-    lhsArgs (EA : xs) (n : ns) = [] -- pexp (PRef fc n) : lhsArgs xs ns
-    lhsArgs (IA : xs) ns = lhsArgs xs ns
+    lhsArgs (EA _ : xs) (n : ns) = [] -- pexp (PRef fc n) : lhsArgs xs ns
+    lhsArgs (IA n : xs) ns = pimp n (PRef fc n) False : lhsArgs xs ns
     lhsArgs (CA : xs) ns = lhsArgs xs ns
     lhsArgs [] _ = []
 
-    rhsArgs (EA : xs) (n : ns) = [] -- pexp (PRef fc n) : rhsArgs xs ns
-    rhsArgs (IA : xs) ns = pexp Placeholder : rhsArgs xs ns
+    rhsArgs (EA _ : xs) (n : ns) = [] -- pexp (PRef fc n) : rhsArgs xs ns
+    rhsArgs (IA n : xs) ns = pexp (PRef fc n) : rhsArgs xs ns
     rhsArgs (CA : xs) ns = pconst (PResolveTC fc) : rhsArgs xs ns
     rhsArgs [] _ = []
 
@@ -230,3 +234,17 @@ elabClass info syn_in doc fc constraints tn ps pDocs ds
         | otherwise = PPi (e l s p) n ty (toExp ns e sc)
     toExp ns e (PPi p n ty sc) = PPi p n ty (toExp ns e sc)
     toExp ns e sc = sc
+
+findDets :: Name -> [Name] -> Idris [Int]
+findDets n ns = 
+    do i <- getIState
+       return $ case lookupTyExact n (tt_ctxt i) of
+            Just ty -> getDetPos 0 ns ty
+            Nothing -> []
+  where
+    getDetPos i ns (Bind n (Pi _ _ _) sc)
+       | n `elem` ns = i : getDetPos (i + 1) ns sc
+       | otherwise = getDetPos (i + 1) ns sc
+    getDetPos _ _ _ = []
+
+
