@@ -117,9 +117,6 @@ data ErrorReportPart = TextPart String
                        deriving (Show, Eq, Data, Typeable)
 
 
--- Please remember to keep Err synchronised with
--- Language.Reflection.Errors.Err in the stdlib!
-
 data Provenance = ExpectedType
                 | TooManyArgs Term
                 | InferredVal
@@ -130,6 +127,10 @@ data Provenance = ExpectedType
 deriving instance NFData Err
 deriving instance Binary Err
 !-}
+
+
+-- NB: Please remember to keep Err synchronised with
+-- Language.Reflection.Errors.Err in the stdlib!
 
 -- | Idris errors. Used as exceptions in the compiler, but reported to users
 -- if they reach the top level.
