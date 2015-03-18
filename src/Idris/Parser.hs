@@ -612,11 +612,15 @@ class_ syn = do (doc, argDocs, acc)
                 n_in <- fnName
                 let n = expandNS syn n_in
                 cs <- many carg
+                fds <- option (map fst cs) fundeps
                 ds <- option [] (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass doc syn fc cons n cs argDocs ds]
+                return [PClass doc syn fc cons n cs argDocs fds ds]
              <?> "type-class declaration"
   where
+    fundeps :: IdrisParser [Name]
+    fundeps = do lchar '|'; sepBy name (lchar ',')
+
     carg :: IdrisParser (Name, PTerm)
     carg = do lchar '('; i <- name; lchar ':'; ty <- expr syn; lchar ')'
               return (i, ty)

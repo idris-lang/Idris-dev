@@ -100,7 +100,7 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
         | (P (TCon _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName (sMN 0 "mv") (map fst env) in
-                 checkCycle names (f, Bind n' (Lam t) x)
+             checkCycle names (f, Bind n' (Lam t) x)
     un names tm@(App (P _ f (Bind fn (Pi _ t _) sc)) a) x
         | (P (TCon _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
@@ -110,7 +110,7 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
         | (P (DCon _ _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName (sMN 0 "mv") (map fst env) in
-                 checkCycle names (f, Bind n' (Lam t) x)
+             checkCycle names (f, Bind n' (Lam t) x)
     un names tm@(App (P _ f (Bind fn (Pi _ t _) sc)) a) x
         | (P (DCon _ _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes

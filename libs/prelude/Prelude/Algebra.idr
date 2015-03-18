@@ -316,7 +316,7 @@ class (RingWithUnity a, AbelianGroup b) => Module a b where
 
 class (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedModule a b where
   total moduleScalarMultiplyComposition : (x,y : a) -> (v : b) -> x <#> (y <#> v) = (x <.> y) <#> v
-  total moduleScalarUnityIsUnity : (v : b) -> unity <#> v = v
+  total moduleScalarUnityIsUnity : (v : b) -> unity {a} <#> v = v
   total moduleScalarMultDistributiveWRTVectorAddition : (s : a) -> (v, w : b) -> s <#> (v <+> w) = (s <#> v) <+> (s <#> w)
   total moduleScalarMultDistributiveWRTModuleAddition : (s, t : a) -> (v : b) -> (s <+> t) <#> v = (s <#> v) <+> (t <#> v)
 

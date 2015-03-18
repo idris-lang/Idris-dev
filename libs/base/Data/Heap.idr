@@ -146,7 +146,7 @@ total isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h =
 isEmptySizeZero Empty          p = Refl
 isEmptySizeZero (Node s l e r) p = ?isEmptySizeZeroNodeAbsurd
 
-total emptyHeapValid : Ord a => isValidHeap empty = True
+total emptyHeapValid : Ord a => isValidHeap (empty {a}) = True
 emptyHeapValid = Refl
 
 total singletonHeapValid : Ord a => (e : a) -> isValidHeap $ singleton e = True
