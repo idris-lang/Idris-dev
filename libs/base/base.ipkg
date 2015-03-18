@@ -33,6 +33,7 @@ modules = System,
           Control.Monad.RWS,
           Control.Monad.Trans,
           Control.Monad.State, Control.Monad.Writer, Control.Monad.Reader,
+          Control.Algebra.Lattice, Control.Algebra.VectorSpace,
           Control.Category, Control.Arrow,
           Control.Catchable, Control.IOExcept
 
