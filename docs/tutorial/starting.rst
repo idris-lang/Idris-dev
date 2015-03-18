@@ -66,16 +66,7 @@ The Interactive Environment
 Entering ``idris`` at the shell prompt starts up the interactive
 environment. You should see something like the following:
 
-::
-
-    $ idris
-         ____    __     _
-        /  _/___/ /____(_)____
-        / // __  / ___/ / ___/     Version 0.9.17
-      _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
-     /___/\__,_/_/  /_/____/       Type :? for help
-
-    Idris>
+.. literalinclude:: ../listing/idris-prompt-start.txt
 
 This gives a ``ghci`` style interface which allows evaluation of, as
 well as type checking of, expressions; theorem proving, compilation;
@@ -87,23 +78,6 @@ if successful, creates a bytecode version of the file (in this case
 ``hello.ibc``) to speed up loading in future. The bytecode is
 regenerated if the source file changes.
 
-.. _run1:
-
-.. code-block:: bash
+.. literalinclude:: ../listing/idris-prompt-helloworld.txt
    :caption: Sample Interactive Run
-
-    $ idris hello.idr
-         ____    __     _
-        /  _/___/ /____(_)____
-        / // __  / ___/ / ___/     Version 0.9.17
-      _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
-     /___/\__,_/_/  /_/____/       Type :? for help
-
-    Type checking ./hello.idr
-    *hello> :t main
-    Main.main : IO ()
-    *hello> :c hello
-    *hello> :q
-    Bye bye
-    $ ./hello
-    Hello world
+   :name: run1

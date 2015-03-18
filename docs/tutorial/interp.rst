@@ -263,22 +263,10 @@ type to another if possible. Here, it converts a string to an integer,
 giving 0 if the input is invalid. An example run of this program at the
 ``Idris`` interactive environment is shown in Listing :ref:`factrun`.
 
-.. _factrun:
-.. code-block:: sh
+
+.. literalinclude:: ../listing/idris-prompt-interp.txt
     :caption: Running the well-typed interpreter
-
-    $ idris interp.idr
-         ____    __     _
-        /  _/___/ /____(_)____
-        / // __  / ___/ / ___/     Version 0.9.17
-      _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
-     /___/\__,_/_/  /_/____/       Type :? for help
-
-    Type checking ./interp.idr
-    *interp> :exec
-    Enter a number: 6
-    720
-    *interp>
+    :name: factrun
 
 Aside: ``cast``
 ~~~~~~~~~~~~~~~
