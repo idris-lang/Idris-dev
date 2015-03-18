@@ -1554,7 +1554,9 @@ idrisMain opts =
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
        setColourise $ not quiet && last (True : opt getColour opts)
-       when (not runrepl) $ setWidth InfinitelyWide
+
+       when (not runrepl) $ mapM_ setWidth (opt getConsoleWidth opts)
+
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
        setQuiet (quiet || isJust script || not (null immediate))
@@ -1776,6 +1778,12 @@ getPkgTest _ = Nothing
 getCodegen :: Opt -> Maybe Codegen
 getCodegen (UseCodegen x) = Just x
 getCodegen _ = Nothing
+
+
+getConsoleWidth :: Opt -> Maybe ConsoleWidth
+getConsoleWidth (UseConsoleWidth x) = Just x
+getConsoleWidth _ = Nothing
+
 
 getExecScript :: Opt -> Maybe String
 getExecScript (InterpretScript expr) = Just expr
