@@ -107,10 +107,6 @@ solve maxUniverseLevel inpConstraints =
             doms <- gets domainStore
             let (oldDom, suspects) = doms M.! Var var
             let newDom = domainIntersect oldDom dom
-            varsDoms <- mapM (\ (Var v) -> do
-                                    d <- domainOf (UVar v)
-                                    return (UVar v, d)
-                             ) $ ordNub $ concatMap (varsIn . fst) (suspect : S.toList suspects)
             when (wipeOut newDom) $ lift $ Error $ Msg $ unlines
                 $ "Universe inconsistency."
                 : ("Working on: " ++ show (UVar var))
@@ -119,10 +115,6 @@ solve maxUniverseLevel inpConstraints =
                 : ("New domain: " ++ show newDom)
                 : "Involved constraints: "
                 : map (("\t"++) . show) (suspect : S.toList suspects)
-                ++ ["Involved variables: "]
-                ++ map (\ (v,d) -> "\t"++ show v ++ " = " ++ show d) varsDoms
-                -- ++ ["All constraints"]
-                -- ++ map (show . fst) inpConstraints
             unless (oldDom == newDom) $ do
                 modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
                 addToQueue (Var var)
