@@ -5,6 +5,8 @@
 
 module Data.Heap
 
+import Control.Algebra.Lattice
+
 %default total
 %access public
 

@@ -36,7 +36,8 @@ namespace Builtins
   ||| it. Another way to see dependent pairs is as just data - for instance, the
   ||| length of a vector paired with that vector.
   |||
-  |||  @ a the type of the witness @ P the type of the proof
+  |||  @ a the type of the witness
+  |||  @ P the type of the proof
   data Sigma : (a : Type) -> (P : a -> Type) -> Type where
       MkSigma : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
 

@@ -4,6 +4,7 @@ import Data.Complex
 import Data.ZZ
 import Data.Fin
 import Data.Vect
+import Control.Algebra.VectorSpace
 
 %default total
 
@@ -38,8 +39,7 @@ instance Ring a => Ring (Vect n a) where
 instance RingWithUnity a => RingWithUnity (Vect n a) where
   unity {n} = replicate n unity
 
-instance Field a => Field (Vect n a) where
-  inverseM = map inverseM
+--instance Field a => Field (Vect n a)
 
 instance RingWithUnity a => Module a (Vect n a) where
   (<#>) r v = map (r <.>) v
@@ -203,7 +203,7 @@ instance RingWithUnity Float where
   unity = 1
 
 instance Field Float where
-  inverseM f = 1 / f
+  inverseM f _ = 1 / f
 
 
 instance Semigroup Nat where
