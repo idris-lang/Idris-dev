@@ -4,7 +4,7 @@ module Idris.Core.Constraints ( ucheck ) where
 import Idris.Core.TT ( TC(..), UExp(..), UConstraint(..), FC(..), Err'(..) )
 
 import Control.Applicative
-import Control.Monad.State
+import Control.Monad.State.Strict
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
