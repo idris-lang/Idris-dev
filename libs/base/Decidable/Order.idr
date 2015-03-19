@@ -36,12 +36,12 @@ class (Equivalence t eq) => Congruence t (f : t -> t) (eq : t -> t -> Type) wher
                     eq (f a) (f b)
 
 minimum : (Ordered t to) => t -> t -> t
-minimum x y with (order x y)
+minimum {to} x y with (order {to} x y)
   | Left _ = x
   | Right _ = y
 
 maximum : (Ordered t to) => t -> t -> t
-maximum x y with (order x y)
+maximum {to} x y with (order {to} x y)
   | Left _ = y
   | Right _ = x
 
@@ -103,7 +103,7 @@ total decideLTE : (n : Nat) -> (m : Nat) -> Dec (LTE n m)
 decideLTE    Z      y  = Yes LTEZero
 decideLTE (S x)     Z  = No  zeroNeverGreater
 decideLTE (S x)   (S y) with (decEq (S x) (S y))
-  | Yes eq      = rewrite eq in Yes (reflexive x)
+  | Yes eq      = rewrite eq in Yes (reflexive (S y))
   | No _ with (decideLTE x y)
     | Yes nLTEm = Yes (LTESucc nLTEm)
     | No  nGTm  = No (ltesuccinjective nGTm)
@@ -122,7 +122,7 @@ shift m n mLTEn = LTESucc mLTEn
 instance Ordered Nat LTE where
   order Z      n = Left LTEZero
   order m      Z = Right LTEZero
-  order (S k) (S j) with (order k j)
+  order (S k) (S j) with (order {to=LTE} k j)
     order (S k) (S j) | Left  prf = Left  (shift k j prf)
     order (S k) (S j) | Right prf = Right (shift j k prf)
 

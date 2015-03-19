@@ -38,10 +38,10 @@ test : Meeting 2015
 test = next_year idm_gbg
 
 main : IO ()
-main = do print (record { event->organiser->name } test)
-          print (record { event->organiser->age } test)
-          print (record { event->organiser->age } idm_gbg)
-          print (record { organiser->age } test)
-          print (record { organiser->age } idm_gbg)
-          print (record { year } idm_gbg)
+main = do printLn (record { event->organiser->name } test)
+          printLn (record { event->organiser->age } test)
+          printLn (record { event->organiser->age } idm_gbg)
+          printLn (record { organiser->age } test)
+          printLn (record { organiser->age } idm_gbg)
+          printLn (record { year } idm_gbg)
 

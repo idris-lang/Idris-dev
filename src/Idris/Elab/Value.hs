@@ -63,9 +63,14 @@ elabValBind info aspat norm tm_in
         --    * elaboration as a Type
         --    * elaboration as a function a -> b
 
-        ((tm', defer, is), _) <-
-                tclift (elaborate ctxt (sMN 0 "val") infP initEState
-                        (build i info aspat [Reflection] (sMN 0 "val") (infTerm tm)))
+        (ElabResult tm' defer is ctxt' newDecls, _) <-
+             tclift (elaborate ctxt (sMN 0 "val") infP initEState
+                     (build i info aspat [Reflection] (sMN 0 "val") (infTerm tm)))
+
+        -- Extend the context with new definitions created
+        setContext ctxt'
+        processTacticDecls newDecls
+
         let vtm = orderPats (getInferTerm tm')
 
         def' <- checkDef (fileFC "(input)") defer

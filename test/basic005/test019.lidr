@@ -14,5 +14,5 @@
 >               |   False    =  ifFalse x
 
 > main : IO ()
-> main = print (test ((S 4) ==) 5 Oh)
+> main = printLn (test ((S 4) ==) 5 Oh)
 

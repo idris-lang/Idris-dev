@@ -27,6 +27,6 @@ foo = do val <- dbl
          \x => show val
 
 main : IO ()
-main = do print dbl
+main = do printLn dbl
           putStrLn (foo 3)
 

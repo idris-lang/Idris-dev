@@ -14,11 +14,11 @@ main = do
         Left err => putStrLn err
         Right (_ ** (board ** legal)) => do
           putStrLn "Got board:"
-          print board
+          printLn board
           putStrLn "Solving..."
           case fillBoard board legal of
             Nothing => putStrLn "No solution found"
             Just (solved ** _) => do
               putStrLn "Solution found:"
-              print solved
+              printLn solved
     [self] => putStrLn ("Usage: " ++ self ++ " <board file>")

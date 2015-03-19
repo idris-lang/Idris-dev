@@ -202,6 +202,11 @@ pprintProv i e (SourceTerm tm)
   = text "Type of " <> 
     annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
              (pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm))
+pprintProv i e (TooManyArgs tm) 
+  = text "Is " <> 
+      annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
+               (pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm))
+       <> text " applied to too many arguments?"
 
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)
@@ -284,7 +289,7 @@ pprintErr' i (NotInjective p x y) =
   text "Can't verify injectivity of" <+> annTm p (pprintTerm i (delab i p)) <+>
   text " when unifying" <+> annTm x (pprintTerm i (delab i x)) <+> text "and" <+>
   annTm y (pprintTerm i (delab i y))
-pprintErr' i (CantResolve c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
+pprintErr' i (CantResolve _ c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
                                     align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i) . annName) as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
@@ -294,6 +299,12 @@ pprintErr' i (WithFnType ty) =
 pprintErr' i (CantMatch t) =
   text "Can't match on" <+> annTm t (pprintTerm i (delab i t))
 pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
+pprintErr' i (NoEliminator s t)
+  = text "No " <> text s <> text " for type " <+>
+       annTm t (pprintTerm i (delab i t)) <$>
+    text "Please note that 'induction' is experimental." <$>
+    text "Only types declared with '%elim' can be used." <$>
+    text "Consider writing a pattern matching definition instead."
 pprintErr' i UniverseError = text "Universe inconsistency"
 pprintErr' i (UniqueError NullType n)
            = text "Borrowed name" <+> annName' n (showbasic n)

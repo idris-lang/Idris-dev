@@ -416,14 +416,14 @@ instance Quotable NameType Raw where
   quote (TCon x y) = `(TCon ~(quote {t=Raw} x) ~(quote {t=Raw} y))
 
 instance Quotable a TT => Quotable (List a) TT where
-  quotedTy = `(List ~(quotedTy {a=a}))
-  quote [] = `(List.Nil {a=~quotedTy})
-  quote (x :: xs) = `(List.(::) {a=~quotedTy} ~(quote x) ~(quote xs))
+  quotedTy = `(List ~(quotedTy {a}))
+  quote [] = `(List.Nil {a=~(quotedTy {a})})
+  quote (x :: xs) = `(List.(::) {a=~(quotedTy {a})} ~(quote x) ~(quote xs))
 
 instance Quotable a Raw => Quotable (List a) Raw where
-  quotedTy = `(List ~(quotedTy {a=a}))
-  quote [] = `(List.Nil {a=~quotedTy})
-  quote (x :: xs) = `(List.(::) {a=~quotedTy} ~(quote x) ~(quote xs))
+  quotedTy = `(List ~(quotedTy {a}))
+  quote [] = `(List.Nil {a=~(quotedTy {a})})
+  quote (x :: xs) = `(List.(::) {a=~(quotedTy {a})} ~(quote x) ~(quote xs))
 
 instance Quotable TTName TT where
   quotedTy = `(TTName)

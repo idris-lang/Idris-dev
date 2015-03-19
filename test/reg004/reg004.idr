@@ -13,4 +13,4 @@ h True = r2 where
   r2 = r
 
 main : IO ()
-main = do print (h True); print (h False)
+main = do printLn (h True); printLn (h False)

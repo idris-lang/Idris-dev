@@ -16,5 +16,5 @@ foo : Vect n a -> List a
 foo xs = reverse xs
 
 main : IO ()
-main = print (foo [1,2,3])
+main = printLn (foo [1,2,3])
 

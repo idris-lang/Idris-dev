@@ -478,12 +478,19 @@ fill guess ctxt env (Bind x (Hole ty) sc) =
 --        let valtyn = normalise ctxt env valty
 --        let tyn = normalise ctxt env ty
        ns <- unify' ctxt env (valty, Just $ SourceTerm val)
-                             (ty, Just ExpectedType)
+                             (ty, Just (chkPurpose val ty))
        ps <- get
        let (uh, uns) = unified ps
 --        put (ps { unified = (uh, uns ++ ns) })
 --        addLog (show (uh, uns ++ ns))
        return $ Bind x (Guess ty val) sc
+  where
+    -- some expected types show up commonly in errors and indicate a
+    -- specific problem.
+    --   argTy -> retTy suggests a function applied to too many arguments
+    chkPurpose val (Bind _ (Pi _ (P _ (MN _ _) _) _) (P _ (MN _ _) _))
+                   = TooManyArgs val
+    chkPurpose _ _ = ExpectedType
 fill _ _ _ _ = fail "Can't fill here."
 
 -- As fill, but attempts to solve other goals by matching
@@ -674,8 +681,8 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
   (tmv, tmt) <- lift $ check ctxt env tm
   let tmt' = normalise ctxt env tmt
   let (tacn, tacstr, tactt) = if induction
-              then (ElimN, "an eliminator", "Induction")
-              else (CaseN, "a case function", "Case analysis")
+              then (ElimN, "eliminator", "Induction")
+              else (CaseN, "case analysis", "Case analysis")
   case unApply tmt' of
     (P _ tnm _, tyargs) -> do
         case lookupTy (SN (tacn tnm)) ctxt of
@@ -710,9 +717,10 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              (scv, sct) <- lift $ check ctxt env res'
              let (scv', _) = specialise ctxt env [] scv
              return scv'
-          [] -> lift $ tfail $ Msg $ tactt ++ " needs " ++ tacstr ++ " for " ++ show tnm
+          [] -> lift $ tfail $ NoEliminator tacstr tmt'
           xs -> lift $ tfail $ Msg $ "Multiple definitions found when searching for " ++ tacstr ++ "of " ++ show tnm
-    _ -> fail $ "Unkown type for " ++ if induction then "induction" else "case analysis"
+    _ -> lift $ tfail $ NoEliminator (if induction then "induction" else "case analysis")
+                                     tmt'
     where scname = sMN 0 "scarg"
           makeConsArg (nm, ty) = P Bound nm ty
           bindConsArgs ((nm, ty):args) v = Bind nm (Hole ty) $ bindConsArgs args v
@@ -871,6 +879,7 @@ updateProblems ps updates probs = up updates probs where
   ctxt = context ps
   ulog = unifylog ps
   usupp = map fst (notunified ps)
+  dont = dontunify ps
 
   up ns [] = (ns, [])
   up ns (prob@(x, y, ready, env, err, while, um) : ps) =
@@ -882,8 +891,9 @@ updateProblems ps updates probs = up updates probs where
           if newx || newy || ready || 
              any (\n -> n `elem` inj) (refsIn x ++ refsIn y) then 
             case unify ctxt env' (x', lp) (y', rp) inj hs usupp while of
-                 OK (v, []) -> traceWhen ulog ("DID " ++ show (x',y',ready,v)) $
-                                up (ns ++ v) ps
+                 OK (v, []) -> traceWhen ulog ("DID " ++ show (x',y',ready,v,dont)) $
+                                let v' = filter (\(n, _) -> n `notElem` dont) v in
+                                    up (ns ++ v') ps
                  e -> -- trace ("FAILED " ++ show (x',y',ready,e)) $
                        let (ns', ps') = up ns ps in
                            (ns', (x',y', False, env',err', while, um) : ps')

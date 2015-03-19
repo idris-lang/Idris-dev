@@ -65,9 +65,11 @@ buildType info syn fc opts n ty' = do
          logLvl 3 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
          logLvl 3 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
-         ((tyT', defer, is), log) <-
-               tclift $ elaborate ctxt n (TType (UVal 0)) initEState
-                        (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
+         (ElabResult tyT' defer is ctxt' newDecls, log) <-
+            tclift $ elaborate ctxt n (TType (UVal 0)) initEState
+                     (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
+         setContext ctxt'
+         processTacticDecls newDecls
 
          let tyT = patToImp tyT'
 
@@ -114,12 +116,14 @@ buildType info syn fc opts n ty' = do
     param_pos i ns t = []
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
-elabType :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm)-> [(Name, Docstring (Either Err PTerm))] ->
-            FC -> FnOpts -> Name -> PTerm -> Idris Type
+elabType :: ElabInfo -> SyntaxInfo
+         -> Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))]
+         -> FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType = elabType' False
 
 elabType' :: Bool -> -- normalise it
-             ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))] ->
+             ElabInfo -> SyntaxInfo ->
+             Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))] ->
              FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                                        n  = liftname info n_in in    -}

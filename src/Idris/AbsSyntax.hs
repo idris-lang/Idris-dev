@@ -360,10 +360,10 @@ addInstance :: Bool -> Name -> Name -> Idris ()
 addInstance int n i
     = do ist <- getIState
          case lookupCtxt n (idris_classes ist) of
-                [CI a b c d e ins] ->
-                     do let cs = addDef n (CI a b c d e (addI i ins)) (idris_classes ist)
+                [CI a b c d e ins fds] ->
+                     do let cs = addDef n (CI a b c d e (addI i ins) fds) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
-                _ -> do let cs = addDef n (CI (sMN 0 "none") [] [] [] [] [i]) (idris_classes ist)
+                _ -> do let cs = addDef n (CI (sMN 0 "none") [] [] [] [] [i] []) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
   where addI i ins | int = i : ins
                    | chaser n = ins ++ [i]
@@ -454,6 +454,10 @@ getIState = get
 
 putIState :: IState -> Idris ()
 putIState = put
+
+updateIState :: (IState -> IState) -> Idris ()
+updateIState f = do i <- getIState
+                    putIState $ f i
 
 withContext :: (IState -> Ctxt a) -> Name -> b -> (a -> Idris b) -> Idris b
 withContext ctx name dflt action = do
@@ -547,7 +551,16 @@ addConstraints fc (v, cs)
 addDeferred = addDeferred' Ref
 addDeferredTyCon = addDeferred' (TCon 0 0)
 
-addDeferred' :: NameType -> [(Name, (Int, Maybe Name, Type, Bool))] -> Idris ()
+-- | Save information about a name that is not yet defined
+addDeferred' :: NameType
+             -> [(Name, (Int, Maybe Name, Type, Bool))]
+                -- ^ The Name is the name being made into a metavar,
+                -- the Int is the number of vars that are part of a
+                -- putative proof context, the Maybe Name is the
+                -- top-level function containing the new metavariable,
+                -- the Type is its type, and the Bool is whether :p is
+                -- allowed
+             -> Idris ()
 addDeferred' nt ns
   = do mapM_ (\(n, (i, _, t, _)) -> updateContext (addTyDecl n nt (tidyNames S.empty t))) ns
        mapM_ (\(n, _) -> when (not (n `elem` primDefs)) $ addIBC (IBCMetavar n)) ns
@@ -1075,12 +1088,13 @@ expandParamsD rhs ist dec ps ns (PParams f params pds)
 --                (map (expandParamsD ist dec ps ns) pds)
 expandParamsD rhs ist dec ps ns (PMutual f pds)
    = PMutual f (map (expandParamsD rhs ist dec ps ns) pds)
-expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs decls)
+expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs fds decls)
    = PClass doc info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
            n
            (map (mapsnd (expandParams dec ps ns [])) params)
            pDocs
+           fds
            (map (expandParamsD rhs ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs n params ty cn decls)
    = PInstance doc argDocs info f
