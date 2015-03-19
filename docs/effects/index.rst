@@ -7,12 +7,13 @@ The Effects Tutorial
 A tutorial on the `Effects` package in `Idris`.
 
 .. note::
-   These works are licensed under the Creative Commons
-   Attribution-ShareAlike 4.0 International License. To view a copy of
-   this license, visit http://creativecommons.org/licenses/by-sa/4.0/
-   or send a letter to Creative Commons, PO Box 1866, Mountain View,
-   CA 94042, USA.
 
+   The documentation for Idris has been published under the Creative
+   Commons CC0 License. As such to the extent possible under law, /The
+   Idris Community/ has waived all copyright and related or neighboring
+   rights to Documentation for Idris.
+
+   More information concerning the CC0 can be found online at: http://creativecommons.org/publicdomain/zero/1.0/
 
 .. toctree::
    :maxdepth: 1

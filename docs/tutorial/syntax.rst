@@ -13,7 +13,7 @@ notation.
 
 We have seen ``if...then...else`` expressions, but these are not built
 in. Instead, we can define a function in the prelude as follows (we have
-already seen this function in Section :ref:`sect-lazy`:
+already seen this function in Section :ref:`sect-lazy`):
 
 .. code-block:: idris
 

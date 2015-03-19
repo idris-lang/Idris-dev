@@ -1,5 +1,3 @@
-.. _sect-typesfuns:
-
 ===================
 Types and Functions
 ===================
@@ -190,7 +188,7 @@ indented further than the outer function.
 visible in the ``where`` clause (unless they have been redefined, such
 as ``xs`` here). A name which appears only in the type will be in scope
 in the ``where`` clause if it is a *parameter* to one of the types,
-i.e. it is fixed across the entire structure.
+i.e. it is fixed across the entire structure.
 
 As well as functions, ``where`` blocks can include local data
 declarations, such as the following where ``MyLT`` is not accessible
@@ -549,7 +547,283 @@ us to inject a value directly into an IO operation:
 As we will see later, ``do`` notation is more general than this, and can
 be overloaded.
 
-.. _sect-more-expr:
+.. _sect-lazy:
+
+Laziness
+--------
+
+Normally, arguments to functions are evaluated before the function
+itself (that is, ``Idris`` uses *eager* evaluation). However, this is
+not always the best approach. Consider the following function:
+
+.. code-block:: idris
+
+    boolCase : Bool -> a -> a -> a;
+    boolCase True  t e = t;
+    boolCase False t e = e;
+
+This function uses one of the ``t`` or ``e`` arguments, but not both (in
+fact, this is used to implement the ``if...then...else`` construct as we
+will see later. We would prefer if *only* the argument which was used
+was evaluated. To achieve this, ``Idris`` provides a ``Lazy`` data type,
+which allows evaluation to be suspended:
+
+.. code-block:: idris
+
+    data Lazy : Type -> Type where
+         Delay : (val : a) -> Lazy a
+
+    Force : Lazy a -> a
+
+A value of type ``Lazy a`` is unevaluated until it is forced by
+``Force``. The ``Idris`` type checker knows about the ``Lazy`` type, and
+inserts conversions where necessary between ``Lazy a`` and ``a``, and
+vice versa. We can therefore write ``boolCase`` as follows, without any
+explicit use of ``Force`` or ``Delay``:
+
+.. code-block:: idris
+
+    boolCase : Bool -> Lazy a -> Lazy a -> a;
+    boolCase True  t e = t;
+    boolCase False t e = e;
+
+Useful Data Types
+-----------------
+
+``Idris`` includes a number of useful data types and library functions
+(see the ``libs/`` directory in the distribution). This chapter
+describes a few of these. The functions described here are imported
+automatically by every ``Idris`` program, as part of ``Prelude.idr``.
+
+``List`` and ``Vect``
+~~~~~~~~~~~~~~~~~~~~~
+
+We have already seen the ``List`` and ``Vect`` data types:
+
+.. code-block:: idris
+
+    data List a = Nil | (::) a (List a)
+
+    data Vect : Nat -> Type -> Type where
+       Nil  : Vect Z a
+       (::) : a -> Vect k a -> Vect (S k) a
+
+Note that the constructor names are the same for each — constructor
+names (in fact, names in general) can be overloaded, provided that they
+are declared in different namespaces (see Section :ref:`sect-namespaces`),
+and will typically be resolved according to their type. As syntactic
+sugar, any type with the constructor names ``Nil`` and ``::`` can be
+written in list form. For example:
+
+-  ``[]`` means ``Nil``
+
+-  ``[1,2,3]`` means ``1 :: 2 :: 3 :: Nil``
+
+The library also defines a number of functions for manipulating these
+types. ``map`` is overloaded both for ``List`` and ``Vect`` and applies
+a function to every element of the list or vector.
+
+.. code-block:: idris
+
+    map : (a -> b) -> List a -> List b
+    map f []        = []
+    map f (x :: xs) = f x :: map f xs
+
+    map : (a -> b) -> Vect n a -> Vect n b
+    map f []        = []
+    map f (x :: xs) = f x :: map f xs
+
+For example, given the following vector of integers, and a function to
+double an integer:
+
+.. code-block:: idris
+
+    intVec : Vect 5 Int
+    intVec = [1, 2, 3, 4, 5]
+
+    double : Int -> Int
+    double x = x * 2
+
+the function ``map`` can be used as follows to double every element in
+the vector:
+
+::
+
+    *usefultypes> show (map double intVec)
+    "[2, 4, 6, 8, 10]" : String
+
+You’ll find these examples in ``usefultypes.idr`` in the ``examples/``
+directory. For more details of the functions available on ``List`` and
+``Vect``, look in the library files:
+
+-  ``libs/prelude/Prelude/List.idr``
+
+-  ``libs/base/Data/List.idr``
+
+-  ``libs/base/Data/Vect.idr``
+
+-  ``libs/base/Data/VectType.idr``
+
+Functions include filtering, appending, reversing, and so on. Also
+remember that ``Idris`` is still in development, so if you don’t see the
+function you need, please feel free to add it and submit a patch!
+
+Aside: Anonymous functions and operator sections
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are actually neater ways to write the above expression. One way
+would be to use an anonymous function:
+
+::
+
+    *usefultypes> show (map (\x => x * 2) intVec)
+    "[2, 4, 6, 8, 10]" : String
+
+The notation ``\x => val`` constructs an anonymous function which takes
+one argument, ``x`` and returns the expression ``val``. Anonymous
+functions may take several arguments, separated by commas,
+e.g. \ ``\x, y, z => val``. Arguments may also be given explicit types,
+e.g. \ ``\x : Int => x * 2``, and can pattern match,
+e.g. \ ``\(x, y) => x + y``. We could also use an operator section:
+
+::
+
+    *usefultypes> show (map (* 2) intVec)
+    "[2, 4, 6, 8, 10]" : String
+
+``(*2)`` is shorthand for a function which multiplies a number by 2. It
+expands to ``\x => x * 2``. Similarly, ``(2*)`` would expand to
+``\x => 2 * x``.
+
+Maybe
+~~~~~
+
+``Maybe`` describes an optional value. Either there is a value of the
+given type, or there isn’t:
+
+.. code-block:: idris
+
+    data Maybe a = Just a | Nothing
+
+``Maybe`` is one way of giving a type to an operation that may fail. For
+example, looking something up in a ``List`` (rather than a vector) may
+result in an out of bounds error:
+
+.. code-block:: idris
+
+    list_lookup : Nat -> List a -> Maybe a
+    list_lookup _     Nil         = Nothing
+    list_lookup Z     (x :: xs) = Just x
+    list_lookup (S k) (x :: xs) = list_lookup k xs
+
+The ``maybe`` function is used to process values of type ``Maybe``,
+either by applying a function to the value, if there is one, or by
+providing a default value:
+
+.. code-block:: idris
+
+    maybe : Lazy b -> (a -> b) -> Maybe a -> b
+
+Note that the type of the first argument is ``Lazy b`` rather than
+simply ``b``. Since the default value might not be used, we mark it as
+``Lazy`` in case it is a large expression where evaluating it then
+discarding it would be wasteful.
+
+Tuples and Dependent Pairs
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Values can be paired with the following built-in data type:
+
+.. code-block:: idris
+
+    data Pair a b = MkPair a b
+
+As syntactic sugar, we can write ``(a, b)`` which, according to context,
+means either ``Pair a b`` or ``MkPair a b``. Tuples can contain an
+arbitrary number of values, represented as nested pairs:
+
+.. code-block:: idris
+
+    fred : (String, Int)
+    fred = ("Fred", 42)
+
+    jim : (String, Int, String)
+    jim = ("Jim", 25, "Cambridge")
+
+Dependent Pairs
+~~~~~~~~~~~~~~~
+
+Dependent pairs allow the type of the second element of a pair to depend
+on the value of the first element. Traditionally, these are referred to
+as “sigma types”:
+
+.. code-block:: idris
+
+    data Sigma : (A : Type) -> (P : A -> Type) -> Type where
+       MkSigma : {P : A -> Type} -> (a : A) -> P a -> Sigma A P
+
+Again, there is syntactic sugar for this. ``(a : A ** P)`` is the type
+of a pair of A and P, where the name ``a`` can occur inside ``P``.
+``( a ** p )`` constructs a value of this type. For example, we can pair
+a number with a ``Vect`` of a particular length.
+
+.. code-block:: idris
+
+    vec : (n : Nat ** Vect n Int)
+    vec = (2 ** [3, 4])
+
+If you like, you can write it out the long way, the two are precisely
+equivalent.
+
+.. code-block:: idris
+
+    vec : Sigma Nat (\n => Vect n Int)
+    vec = MkSigma 2 [3, 4]
+
+The type checker could of course infer the value of the first element
+from the length of the vector. We can write an underscore ``_`` in place
+of values which we expect the type checker to fill in, so the above
+definition could also be written as:
+
+.. code-block:: idris
+
+    vec : (n : Nat ** Vect n Int)
+    vec = (_ ** [3, 4])
+
+We might also prefer to omit the type of the first element of the pair,
+since, again, it can be inferred:
+
+.. code-block:: idris
+
+    vec : (n ** Vect n Int)
+    vec = (_ ** [3, 4])
+
+One use for dependent pairs is to return values of dependent types where
+the index is not necessarily known in advance. For example, if we filter
+elements out of a ``Vect`` according to some predicate, we will not know
+in advance what the length of the resulting vector will be:
+
+.. code-block:: idris
+
+    filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
+
+If the ``Vect`` is empty, the result is easy:
+
+.. code-block:: idris
+
+    filter p Nil = (_ ** [])
+
+In the ``::`` case, we need to inspect the result of a recursive call to
+``filter`` to extract the length and the vector from the result. To do
+this, we use ``with`` notation, which allows pattern matching on
+intermediate values:
+
+.. code-block:: idris
+
+    filter p (x :: xs) with (filter p xs)
+      | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
+
+We will see more on ``with`` notation later.
 
 More Expressions
 ----------------
@@ -582,8 +856,6 @@ matching at the top level:
     showPerson : Person -> String
     showPerson p = let MkPerson name age = p in
                        name ++ " is " ++ show age ++ " years old"
-
-
 
 List comprehensions
 ~~~~~~~~~~~~~~~~~~~
