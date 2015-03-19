@@ -5,8 +5,8 @@ Simple Effects
 ==============
 
 So far we have seen how to write programs with locally mutable state
-using the ``STATE`` effect. To recap, we have the definitions in Listing
-:ref:`eff-state` in a module ``Effect.State``.
+using the ``STATE`` effect. To recap, we have the definitions in
+Listing :ref:`eff-state` in a module ``Effect.State``.
 
 .. _eff-state:
 .. code-block:: idris
@@ -26,17 +26,17 @@ using the ``STATE`` effect. To recap, we have the definitions in Listing
 The last line, ``instance Handler State m``, means that the ``STATE``
 effect is usable in any computation context ``m``. That is, a program
 which uses this effect and returns something of type ``a`` can be
-evaluated to something of type ``m a`` using ``run``, for any ``m``. The
-lower case ``State`` is a data type describing the operations which make
-up the ``STATE`` effect itself—we will go into more detail about this in
-:ref:`sect-impleff`.
+evaluated to something of type ``m a`` using ``run``, for any
+``m``. The lower case ``State`` is a data type describing the
+operations which make up the ``STATE`` effect itself—we will go into
+more detail about this in Section :ref:`sect-impleff`.
 
 In this section, we will introduce some other supported effects,
 allowing console I/O, exceptions, random number generation and
 non-deterministic programming. For each effect we introduce, we will
 begin with a summary of the effect, its supported operations, and the
-contexts in which it may be used, like that above for ``STATE``, and go
-on to present some simple examples. At the end, we will see some
+contexts in which it may be used, like that above for ``STATE``, and
+go on to present some simple examples. At the end, we will see some
 examples of programs which combine multiple effects.
 
 All of the effects in the library, including those described in this
@@ -48,9 +48,9 @@ Console I/O
 Console I/O (Listing :ref:`eff-stdio`) is supported with the ``STDIO``
 effect, which allows reading and writing characters and strings to and
 from standard input and standard output. Notice that there is a
-constraint here on the computation context ``m``, because it only makes
-sense to support console I/O operations in a context where we can
-perform (or at the very least simulate) console I/O.
+constraint here on the computation context ``m``, because it only
+makes sense to support console I/O operations in a context where we
+can perform (or at the very least simulate) console I/O.
 
 .. _eff-stdio:
 .. code-block:: idris
@@ -83,17 +83,18 @@ as follows:
                x <- getStr
                putStrLn ("Hello " ++ trim x ++ "!")
 
-We use ``trim`` here to remove the trailing newline from the input. The
-resource associated with ``STDIO`` is simply the empty tuple, which has
-a default value ``()``, so we can run this as follows:
+We use ``trim`` here to remove the trailing newline from the
+input. The resource associated with ``STDIO`` is simply the empty
+tuple, which has a default value ``()``, so we can run this as
+follows:
 
 .. code-block:: idris
 
     main : IO ()
     main = run hello
 
-In ``hello`` we could also use ``!``-notation instead of
-``x <- getStr``, since we only use the string that is read once:
+In ``hello`` we could also use ``!``-notation instead of ``x <-
+getStr``, since we only use the string that is read once:
 
 .. code-block:: idris
 
@@ -101,8 +102,9 @@ In ``hello`` we could also use ``!``-notation instead of
     hello = do putStr "Name? "
                putStrLn ("Hello " ++ trim !getStr ++ "!")
 
-More interestingly, we can combine multiple effects in one program. For
-example, we can loop, counting the number of people we’ve said hello to:
+More interestingly, we can combine multiple effects in one
+program. For example, we can loop, counting the number of people we’ve
+said hello to:
 
 .. code-block:: idris
 
@@ -113,18 +115,18 @@ example, we can loop, counting the number of people we’ve said hello to:
                putStrLn ("I've said hello to: " ++ show !get ++ " people")
                hello
 
-The list of effects given in ``hello`` means that the function can call
-``get`` and ``put`` on an integer state, and any functions which read
-and write from the console. To run this, ``main`` does not need to be
-changed.
+The list of effects given in ``hello`` means that the function can
+call ``get`` and ``put`` on an integer state, and any functions which
+read and write from the console. To run this, ``main`` does not need
+to be changed.
 
 Aside: Resource Types
 ~~~~~~~~~~~~~~~~~~~~~
 
-To find out the resource type of an effect, if necessary (for example if
-we want to initialise a resource explicitiy with ``runInit`` rather than
-using a default value with ``run``) we can run the ``resourceType``
-function at the REPL:
+To find out the resource type of an effect, if necessary (for example
+if we want to initialise a resource explicitiy with ``runInit`` rather
+than using a default value with ``run``) we can run the
+``resourceType`` function at the REPL:
 
 .. code-block:: idris
 
@@ -137,8 +139,9 @@ Exceptions
 ----------
 
 Listing :ref:`eff-exception` gives the definition of the ``EXCEPTION``
-effect, declared in module ``Effect.Exception``. This allows programs to
-exit immediately with an error, or errors to be handled more generally.
+effect, declared in module ``Effect.Exception``. This allows programs
+to exit immediately with an error, or errors to be handled more
+generally.
 
 .. _eff-exception:
 .. code-block:: idris
@@ -180,8 +183,8 @@ paramaterised by an error type:
 
 Programs which support the ``EXCEPTION`` effect can be run in any
 context which has some way of throwing errors, for example, we can run
-``parseNumber`` in the ``Either Err`` context. It returns a value of the
-form ``Right x`` if successful:
+``parseNumber`` in the ``Either Err`` context. It returns a value of
+the form ``Right x`` if successful:
 
 .. code-block:: idris
 
@@ -198,19 +201,19 @@ Or ``Left e`` on failure, carrying the appropriate exception:
     *Exception> the (Either Err Int) $ run (parseNumber 42 "twenty")
     Left NotANumber : Either Err Int
 
-In fact, we can do a little bit better with ``parseNumber``, and have it
-return a *proof* that the integer is in the required range along with
-the integer itself. One way to do this is define a type of bounded
-integers, ``Bounded``:
+In fact, we can do a little bit better with ``parseNumber``, and have
+it return a *proof* that the integer is in the required range along
+with the integer itself. One way to do this is define a type of
+bounded integers, ``Bounded``:
 
 .. code-block:: idris
 
     Bounded : Int -> Type
     Bounded x = (n : Int ** So (n >= 0 && n <= x))
 
-Recall that ``So`` is parameterised by a ``Bool``, and only ``So True``
-is inhabited. We can use ``choose`` to construct such a value from the
-result of a dynamic check:
+Recall that ``So`` is parameterised by a ``Bool``, and only ``So
+True`` is inhabited. We can use ``choose`` to construct such a value
+from the result of a dynamic check:
 
 .. code-block:: idris
 
@@ -260,32 +263,33 @@ be set with ``srand``. A specific seed will lead to a predictable,
 repeatable sequence of random numbers. There are two functions which
 produce a random number:
 
--  ``rndInt``, which returns a random integer between the given lower
+- ``rndInt``, which returns a random integer between the given lower
    and upper bounds.
 
--  ``rndFin``, which returns a random element of a finite set
+- ``rndFin``, which returns a random element of a finite set
    (essentially a number with an upper bound given in its type).
 
 Example
 ~~~~~~~
 
 We can use the ``RND`` effect to implement a simple guessing game. The
-``guess`` function, given a target number, will repeatedly ask the user
-for a guess, and state whether the guess is too high, too low, or
+``guess`` function, given a target number, will repeatedly ask the
+user for a guess, and state whether the guess is too high, too low, or
 correct:
 
 .. code-block:: idris
 
     guess : Int -> { [STDIO] } Eff ()
 
-For reference, the code for ``guess`` is given in Listing :ref:`eff-game`.
-Note that we use ``parseNumber`` as defined previously to read user
-input, but we don’t need to list the ``EXCEPTION`` effect because we use
-a nested ``run`` to invoke ``parseNumber``, independently of the calling
-effectful program.
+For reference, the code for ``guess`` is given in Listing
+:ref:`eff-game`.  Note that we use ``parseNumber`` as defined
+previously to read user input, but we don’t need to list the
+``EXCEPTION`` effect because we use a nested ``run`` to invoke
+``parseNumber``, independently of the calling effectful program.
 
-To invoke these, we pick a random number within the range 0–100, having
-set up the random number generator with a seed, then run ``guess``:
+To invoke these, we pick a random number within the range 0–100,
+having set up the random number generator with a seed, then run
+``guess``:
 
 .. code-block:: idris
 
@@ -322,9 +326,9 @@ do this, see the ``SYSTEM`` effect described in :ref:`sect-appendix`.
 Non-determinism
 ---------------
 
-Listing :ref:`eff-select` gives the definition of the non-determinism effect,
-which allows a program to choose a value non-deterministically from a
-list of possibilities in such a way that the entire computation
+Listing :ref:`eff-select` gives the definition of the non-determinism
+effect, which allows a program to choose a value non-deterministically
+from a list of possibilities in such a way that the entire computation
 succeeds.
 
 .. _eff-select:
@@ -344,10 +348,10 @@ succeeds.
 Example
 ~~~~~~~
 
-The ``SELECT`` effect can be used to solve constraint problems, such as
-finding Pythagorean triples. The idea is to use ``select`` to give a set
-of candidate values, then throw an exception for any combination of
-values which does not satisfy the constraint:
+The ``SELECT`` effect can be used to solve constraint problems, such
+as finding Pythagorean triples. The idea is to use ``select`` to give
+a set of candidate values, then throw an exception for any combination
+of values which does not satisfy the constraint:
 
 .. code-block:: idris
 
@@ -362,14 +366,14 @@ values which does not satisfy the constraint:
 This program chooses a value for ``z`` between ``1`` and ``max``, then
 values for ``y`` and ``x``. In operation, after a ``select``, the
 program executes the rest of the ``do``-block for every possible
-assignment, effectively searching depth-first. If the list is empty (or
-an exception is thrown) execution fails.
+assignment, effectively searching depth-first. If the list is empty
+(or an exception is thrown) execution fails.
 
 There are handlers defined for ``Maybe`` and ``List`` contexts, i.e.
 contexts which can capture failure. Depending on the context ``m``,
-``triple`` will either return the first triple it finds (if in ``Maybe``
-context) or all triples in the range (if in ``List`` context). We can
-try this as follows:
+``triple`` will either return the first triple it finds (if in
+``Maybe`` context) or all triples in the range (if in ``List``
+context). We can try this as follows:
 
 .. code-block:: idris
 
@@ -391,11 +395,12 @@ definition:
 
 Using , we can set up a program so that it reads input from a user,
 checks that the input is valid (i.e both vectors contain integers, and
-are the same length) and if so, pass it on to ``vadd``. First, we write
-a wrapper for ``vadd`` which checks the lengths and throw an exception
-if they are not equal. We can do this for input vectors of length ``n``
-and ``m`` by matching on the implicit arguments ``n`` and ``m`` and
-using ``decEq`` to produce a proof of their equality, if they are equal:
+are the same length) and if so, pass it on to ``vadd``. First, we
+write a wrapper for ``vadd`` which checks the lengths and throw an
+exception if they are not equal. We can do this for input vectors of
+length ``n`` and ``m`` by matching on the implicit arguments ``n`` and
+``m`` and using ``decEq`` to produce a proof of their equality, if
+they are equal:
 
 .. code-block:: idris
 
@@ -412,15 +417,16 @@ following type:
 
     read_vec : { [STDIO] } Eff (p ** Vect p Int)
 
-This returns a dependent pair of a length, and a vector of that length,
-because we cannot know in advance how many integers the user is going to
-input. One way to implement this function, using ``-1`` to indicate the
-end of input, is shown in Listing [readvec]. This uses a variation on
-``parseNumber`` which does not require a number to be within range.
+This returns a dependent pair of a length, and a vector of that
+length, because we cannot know in advance how many integers the user
+is going to input. One way to implement this function, using ``-1`` to
+indicate the end of input, is shown in Listing [readvec]. This uses a
+variation on ``parseNumber`` which does not require a number to be
+within range.
 
 Finally, we write a program which reads two vectors and prints the
-result of pairwise addition of them, throwing an exception if the inputs
-are of differing lengths:
+result of pairwise addition of them, throwing an exception if the
+inputs are of differing lengths:
 
 .. code-block:: idris
 
@@ -431,11 +437,11 @@ are of differing lengths:
                  (_ ** ys) <- read_vec
                  putStrLn (show !(vadd_check xs ys))
 
-By having explicit lengths in the type, we can be sure that ``vadd`` is
-only being used where the lengths of inputs are guaranteed to be equal.
-This does not stop us reading vectors from user input, but it does
-require that the lengths are checked and any discrepancy is dealt with
-gracefully.
+By having explicit lengths in the type, we can be sure that ``vadd``
+is only being used where the lengths of inputs are guaranteed to be
+equal.  This does not stop us reading vectors from user input, but it
+does require that the lengths are checked and any discrepancy is dealt
+with gracefully.
 
 .. code-block:: idris
     :caption: Reading a vector from the console.
@@ -459,16 +465,17 @@ gracefully.
 Example: An Expression Calculator
 ---------------------------------
 
-To show how these effects can fit together, let us consider an evaluator
-for a simple expression language, with addition and integer values.
+To show how these effects can fit together, let us consider an
+evaluator for a simple expression language, with addition and integer
+values.
 
 .. code-block:: idris
 
     data Expr = Val Integer
               | Add Expr Expr
 
-An evaluator for this language always returns an ``Integer``, and there
-are no situations in which it can fail!
+An evaluator for this language always returns an ``Integer``, and
+there are no situations in which it can fail!
 
 .. code-block:: idris
 
@@ -476,9 +483,9 @@ are no situations in which it can fail!
     eval (Val x) = x
     eval (Add l r) = eval l + eval r
 
-If we add variables, however, things get more interesting. The evaluator
-will need to be able to access the values stored in variables, and
-variables may be undefined.
+If we add variables, however, things get more interesting. The
+evaluator will need to be able to access the values stored in
+variables, and variables may be undefined.
 
 .. code-block:: idris
 
@@ -488,7 +495,7 @@ variables may be undefined.
 
 To start, we will change the type of ``eval`` so that it is effectful,
 and supports an exception effect for throwing errors, and a state
-containing a mapping from variable names (as ``String``\ s) to their
+containing a mapping from variable names (as ``String``) to their
 values:
 
 .. code-block:: idris
@@ -527,15 +534,15 @@ sets the state then invokes ``eval``:
             eval' e = do put args
                          eval e
 
-We have picked ``Maybe`` as a computation context here; it needs to be a
-context which is available for every effect supported by ``eval``. In
-particular, because we have exceptions, it needs to be a context which
-supports exceptions. Alternatively, ``Either String`` or ``IO`` would be
-fine, for example.
+We have picked ``Maybe`` as a computation context here; it needs to be
+a context which is available for every effect supported by
+``eval``. In particular, because we have exceptions, it needs to be a
+context which supports exceptions. Alternatively, ``Either String`` or
+``IO`` would be fine, for example.
 
 What if we want to extend the evaluator further, with random number
-generation? To achieve this, we add a new constructor to ``Expr``, which
-gives a random number up to a maximum value:
+generation? To achieve this, we add a new constructor to ``Expr``,
+which gives a random number up to a maximum value:
 
 .. code-block:: idris
 
@@ -544,8 +551,8 @@ gives a random number up to a maximum value:
               | Add Expr Expr
               | Random Integer
 
-Then, we need to deal with the new case, making sure that we extend the
-list of events to include ``RND``. It doen’t matter where ``RND``
+Then, we need to deal with the new case, making sure that we extend
+the list of events to include ``RND``. It doen’t matter where ``RND``
 appears in the list, as long as it is present:
 
 .. code-block:: idris
@@ -563,10 +570,10 @@ has been generated:
                              putStrLn (show val)
                              return val
 
-If we try this without extending the effects list, we would see an error
-something like the following:
+If we try this without extending the effects list, we would see an
+error something like the following:
 
-.. code-block:: idris
+::
 
     Expr.idr:28:6:When elaborating right hand side of eval:
     Can't solve goal
@@ -580,12 +587,12 @@ this simply by updating the type of ``eval`` to include ``STDIO``.
 
     eval : Expr -> { [STDIO, EXCEPTION String, RND, STATE Env] } Eff Integer
 
-Note that using ``STDIO`` will restrict the number of contexts in which
-``eval`` can be ``run`` to those which support ``STDIO``, such as
-``IO``. Once effect lists get longer, it can be a good idea instead to
-encapsulate sets of effects in a type synonym. This is achieved as
+Note that using ``STDIO`` will restrict the number of contexts in
+which ``eval`` can be ``run`` to those which support ``STDIO``, such
+as ``IO``. Once effect lists get longer, it can be a good idea instead
+to encapsulate sets of effects in a type synonym. This is achieved as
 follows, simply by defining a function which computes a type, since
-types are first class in :
+types are first class in ``Idris``:
 
 .. code-block:: idris
 

@@ -16,9 +16,9 @@ effectful operations may be provided.
 State
 -----
 
-Effects are described by *algebraic data types*, where the constructors
-describe the operations provided when the effect is available. Stateful
-operations are described as follows:
+Effects are described by *algebraic data types*, where the
+constructors describe the operations provided when the effect is
+available. Stateful operations are described as follows:
 
 .. code-block:: idris
 
@@ -26,18 +26,19 @@ operations are described as follows:
          Get :      { a }       State a
          Put : b -> { a ==> b } State ()
 
-Each effect is associated with a *resource*, the type of which is given
-with the notation ``{ x ==> x’ }``. This notation gives the resource
-type expected by each operation, and how it updates when the operation
-is run. Here, it means:
+Each effect is associated with a *resource*, the type of which is
+given with the notation ``{ x ==> x’ }``. This notation gives the
+resource type expected by each operation, and how it updates when the
+operation is run. Here, it means:
 
--  ``Get`` takes no arguments. It has a resource of type ``a``, which is
-   not updated, and running the ``Get`` operation returns something of
-   type ``a``.
+- ``Get`` takes no arguments. It has a resource of type ``a``, which
+   is not updated, and running the ``Get`` operation returns something
+   of type ``a``.
 
--  ``Put`` takes a ``b`` as an argument. It has a resource of type ``a``
-   on input, which is updated to a resource of type ``b``. Running the
-   ``Put`` operation returns the element of the unit type.
+- ``Put`` takes a ``b`` as an argument. It has a resource of type
+   ``a`` on input, which is updated to a resource of type
+   ``b``. Running the ``Put`` operation returns the element of the
+   unit type.
 
 ``Effect`` itself is a type synonym, declared as follows:
 
@@ -61,8 +62,8 @@ declarations more readable. It is defined as follows in the library:
            = eff inst (\b => outst)
     syntax "{" [inst] "==>" [outst] "}" [eff] = eff inst (\result => outst)
 
-In order to convert ``State`` (of type ``Effect``) into something usable
-in an effects list, of type ``EFFECT``, we write the following:
+In order to convert ``State`` (of type ``Effect``) into something
+usable in an effects list, of type ``EFFECT``, we write the following:
 
 .. code-block:: idris
 
@@ -70,8 +71,8 @@ in an effects list, of type ``EFFECT``, we write the following:
     STATE t = MkEff t State
 
 ``MkEff`` constructs an ``EFFECT`` by taking the resource type (here,
-the ``t`` which parameterises ``STATE``) and the effect signature (here,
-``State``). For reference, ``EFFECT`` is declared as follows:
+the ``t`` which parameterises ``STATE``) and the effect signature
+(here, ``State``). For reference, ``EFFECT`` is declared as follows:
 
 .. code-block:: idris
 
@@ -90,27 +91,27 @@ work in that context. This is achieved with the following type class:
           handle : resource -> (eff : e t resource resource') ->
                    ((x : t) -> resource' x -> m a) -> m a
 
-We have already seen some instance declarations in the effect summaries
-in Section [sect:simpleff]. An instance of ``Handler e m`` means that
-the effect declared with signature ``e`` can be run in computation
-context ``m``. The ``handle`` function takes:
+We have already seen some instance declarations in the effect
+summaries in Section :ref:`sect-simpleff`. An instance of ``Handler e
+m`` means that the effect declared with signature ``e`` can be run in
+computation context ``m``. The ``handle`` function takes:
 
--  The ``resource`` on input (so, the current value of the state for
+- The ``resource`` on input (so, the current value of the state for
    ``State``)
 
--  The effectful operation (either ``Get`` or ``Put x`` for ``State``)
+- The effectful operation (either ``Get`` or ``Put x`` for ``State``)
 
--  A *continuation*, which we conventionally call ``k``, and should be
+- A *continuation*, which we conventionally call ``k``, and should be
    passed the result value of the operation, and an updated resource.
 
 There are two reasons for taking a continuation here: firstly, this is
-neater because there are multiple return values (a new resource and the
-result of the operation); secondly, and more importantly, the
+neater because there are multiple return values (a new resource and
+the result of the operation); secondly, and more importantly, the
 continuation can be called zero or more times.
 
-A ``Handler`` for ``State`` simply passes on the value of the state, in
-the case of ``Get``, or passes on a new state, in the case of ``Put``.
-It is defined the same way for all computation contexts:
+A ``Handler`` for ``State`` simply passes on the value of the state,
+in the case of ``Get``, or passes on a new state, in the case of
+``Put``.  It is defined the same way for all computation contexts:
 
 .. code-block:: idris
 
@@ -133,10 +134,10 @@ functions in ``Eff``, as follows:
     putM : y -> { [STATE x] ==> [STATE y] } Eff ()
     putM val = call (Put val)
 
-**An implementation detail (aside):** The ``call`` function converts an
-``Effect`` to a function in ``Eff``, given a proof that the effect is
-available. This proof can be constructed automatically by , since it is
-essentially an index into a statically known list of effects:
+**An implementation detail (aside):** The ``call`` function converts
+an ``Effect`` to a function in ``Eff``, given a proof that the effect
+is available. This proof can be constructed automatically by , since
+it is essentially an index into a statically known list of effects:
 
 .. code-block:: idris
 
@@ -144,10 +145,10 @@ essentially an index into a statically known list of effects:
            (eff : e t a b) -> {auto prf : EffElem e a xs} ->
            Eff t xs (\v => updateResTy v xs prf eff)
 
-This is the reason for the ``Can’t solve goal`` error when an effect is
-not available: the implicit proof ``prf`` has not been solved
-automatically because the required effect is not in the list of effects
-``xs``.
+This is the reason for the ``Can’t solve goal`` error when an effect
+is not available: the implicit proof ``prf`` has not been solved
+automatically because the required effect is not in the list of
+effects ``xs``.
 
 Such details are not important for using the library, or even writing
 new effects, however.
@@ -186,10 +187,10 @@ Listing :ref:`eff-statedef` summarises what is required to define the
 Console I/O
 -----------
 
-Listing :ref:`eff-stdiodef` gives the definition of the ``STDIO`` effect,
-including handlers for ``IO`` and ``IOExcept``. We omit the definition
-of the top level ``Eff`` functions, as this merely invoke the effects
-``PutStr``, ``GetStr``, ``PutCh`` and ``GetCh`` directly.
+Listing :ref:`eff-stdiodef` gives the definition of the ``STDIO``
+effect, including handlers for ``IO`` and ``IOExcept``. We omit the
+definition of the top level ``Eff`` functions, as this merely invoke
+the effects ``PutStr``, ``GetStr``, ``PutCh`` and ``GetCh`` directly.
 
 Note that in this case, the resource is the unit type in every case,
 since the handlers merely apply the ``IO`` equivalents of the effects
@@ -269,10 +270,11 @@ Non-determinism
     SELECT : EFFECT
     SELECT = MkEff () Selection
 
-Listing :ref:`eff-selectdef` gives the definition of the ``Select`` effect
-for writing non-deterministic programs, including a handler for ``List``
-context which returns all possible successful values, and a handler for
-``Maybe`` context which returns the first successful value.
+Listing :ref:`eff-selectdef` gives the definition of the ``Select``
+effect for writing non-deterministic programs, including a handler for
+``List`` context which returns all possible successful values, and a
+handler for ``Maybe`` context which returns the first successful
+value.
 
 Here, the continuation is called multiple times in each handler, for
 each value in the list of possible values. In the ``List`` handler, we
@@ -282,12 +284,12 @@ the first value in the last, and try later values only if that fails.
 File Management
 ---------------
 
-Result-dependent effects are no different from non-dependent effects in
-the way they are implemented. Listing :ref:`eff-filedef` illustrates this for
-the ``FILE_IO`` effect. The syntax for state transitions
-``{ x ==> {res} x’ }``, where the result state ``x’`` is computed from
-the result of the operation ``res``, follows that for the equivalent
-``Eff`` programs.
+Result-dependent effects are no different from non-dependent effects
+in the way they are implemented. Listing :ref:`eff-filedef`
+illustrates this for the ``FILE_IO`` effect. The syntax for state
+transitions ``{ x ==> {res} x’ }``, where the result state ``x’`` is
+computed from the result of the operation ``res``, follows that for
+the equivalent ``Eff`` programs.
 
 Note that in the handler for ``Open``, the types passed to the
 continuation ``k`` are different depending on whether the result is

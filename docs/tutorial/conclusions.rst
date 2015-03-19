@@ -11,24 +11,24 @@ dependent types in general, can be obtained from various sources:
    questions on the mailing list.
 
 -  The IRC channel ``#idris``, on
-   `chat.freenode.net <chat.freenode.net>`__.
+   `chat.freenode.net <http://chat.freenode.net>`__.
 
--  The wiki (https://github.com/idris-lang/Idris-dev/wiki/) has further
+- The wiki (https://github.com/idris-lang/Idris-dev/wiki/) has further
    user provided information, in particular:
 
    -  https://github.com/idris-lang/Idris-dev/wiki/Manual
 
    -  https://github.com/idris-lang/Idris-dev/wiki/Language-Features
 
--  Examining the prelude and exploring the ``samples`` in the
+- Examining the prelude and exploring the ``samples`` in the
    distribution. The ``Idris`` source can be found online at:
    https://github.com/idris-lang/Idris-dev.
 
 -  Existing projects on the ``Idris Hackers`` web space:
    http://idris-hackers.github.io.
 
--  Various papers (e.g. [1]_, [2]_, and [3]_).
-   Although these mostly describe older versions of ``Idris``.
+- Various papers (e.g. [1]_, [2]_, and [3]_).  Although these mostly
+   describe older versions of ``Idris``.
 
 .. [1] Edwin Brady and Kevin Hammond. 2012. Resource-Safe systems
        programming with embedded domain specific languages. In

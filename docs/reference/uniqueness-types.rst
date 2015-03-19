@@ -1,8 +1,6 @@
 Uniqueness Types
 ================
 
-.. sectionauthor:: Edwin Brady
-
 Uniqueness Types are an experimental feature available from Idris
 0.9.15. A value with a unique type is guaranteed to have *at most one*
 reference to it at run-time, which means that it can safely be updated
@@ -12,11 +10,11 @@ reactive systems, programs which run in limited memory environments,
 device drivers, and any other system with hard real-time requirements,
 ideally while giving up as little high level conveniences as possible.
 
-They are inspired by linear types, `Uniqueness
-Types <https://en.wikipedia.org/wiki/Uniqueness_type>`__ in the
-`Clean <http://wiki.clean.cs.ru.nl/Clean>`__ programming language, and
-ownership types and borrowed pointers in the
-`Rust <http://www.rust-lang.org/>`__ programming language.
+They are inspired by linear types, `Uniqueness Types
+<https://en.wikipedia.org/wiki/Uniqueness_type>`__ in the `Clean
+<http://wiki.clean.cs.ru.nl/Clean>`__ programming language, and
+ownership types and borrowed pointers in the `Rust
+<http://www.rust-lang.org/>`__ programming language.
 
 Some things we hope to be able to do eventually with uniqueness types
 include:
@@ -39,11 +37,11 @@ declare the type of unique lists as follows:
          Nil   : UList a
          (::)  : a -> UList a -> UList a
 
-If we have a value ``xs : UList a``, then there is at most one reference
-to ``xs`` at run-time. The type checker preserves this guarantee by
-ensuring that there is at most one reference to any value of a unique
-type in a pattern clause. For example, the following function definition
-would be valid:
+If we have a value ``xs : UList a``, then there is at most one
+reference to ``xs`` at run-time. The type checker preserves this
+guarantee by ensuring that there is at most one reference to any value
+of a unique type in a pattern clause. For example, the following
+function definition would be valid:
 
 .. code-block:: idris
 
@@ -55,8 +53,8 @@ In the second clause, ``xs`` is a value of a unique type, and only
 appears once on the right hand side, so this clause is valid. Not only
 that, since we know there can be no other reference to the ``UList a``
 argument, we can reuse its space for building the result! The compiler
-is aware of this, and compiles this definition to an in-place update of
-the list.
+is aware of this, and compiles this definition to an in-place update
+of the list.
 
 The following function definition would not be valid (even assuming an
 implementation of ``++``), however, since ``xs`` appears twice:
@@ -84,14 +82,14 @@ If we explicitly copy, however, the typechecker is happy:
 Note that it's fine to use ``x`` twice, because ``a`` is a ``Type``,
 rather than a ``UniqueType``.
 
-There are some other restrictions on where a ``UniqueType`` can appear,
-so that the uniqueness property is preserved. In particular, the type of
-the function type, ``(x : a) -> b`` depends on the type of ``a`` or
-``b`` - if either is a ``UniqueType``, then the function type is also a
-``UniqueType``. Then, in a data declaration, if the type constructor
-builds a ``Type``, then no constructor can have a ``UniqueType``. For
-example, the following definition is invalid, since it would embed a
-unique value in a possible non-unique value:
+There are some other restrictions on where a ``UniqueType`` can
+appear, so that the uniqueness property is preserved. In particular,
+the type of the function type, ``(x : a) -> b`` depends on the type of
+``a`` or ``b`` - if either is a ``UniqueType``, then the function type
+is also a ``UniqueType``. Then, in a data declaration, if the type
+constructor builds a ``Type``, then no constructor can have a
+``UniqueType``. For example, the following definition is invalid,
+since it would embed a unique value in a possible non-unique value:
 
 .. code-block:: idris
 
@@ -127,15 +125,15 @@ composition as follows:
 
 The ``Type*`` type stands for either unique or non-unique types. Since
 such a function may be passed a ``UniqueType``, any value of type
-``Type*`` must also satisfy the requirement that it appears at most once
-on the right hand side.
+``Type*`` must also satisfy the requirement that it appears at most
+once on the right hand side.
 
 Borrowed Types
 ~~~~~~~~~~~~~~
 
 It quickly becomes obvious when working with uniqueness types that
-having only one reference at a time can be painful. For example, what if
-we want to display a list before updating it?
+having only one reference at a time can be painful. For example, what
+if we want to display a list before updating it?
 
 .. code-block:: idris
 
@@ -158,8 +156,8 @@ the list! So the following function would be invalid:
 
 Still, one would hope to be able to display a unique list without
 problem, since it merely *inspects* the list; there are no updates. We
-can achieve this, using the notion of *borrowing*. A Borrowed type is a
-Unique type which can be inspected at the top level (by pattern
+can achieve this, using the notion of *borrowing*. A Borrowed type is
+a Unique type which can be inspected at the top level (by pattern
 matching, or by *lending* to another function) but no further. This
 ensures that the internals (i.e. the arguments to top level patterns)
 will not be passed to any function which will update them.
@@ -191,21 +189,21 @@ this, we can write ``showU`` as follows:
       showU' [x] = show x
       showU' (Read (x :: xs)) = show x ++ ", " ++ showU' (lend xs)
 
-Unlike a unique value, a borrowed value may be referred to as many times
-as desired. However, there is a restriction on how a borrowed value can
-be used. After all, much like a library book or your neighbour's
-lawnmower, if a function borrows a value it is expected to return it in
-exactly the condition in which it was received!
+Unlike a unique value, a borrowed value may be referred to as many
+times as desired. However, there is a restriction on how a borrowed
+value can be used. After all, much like a library book or your
+neighbour's lawnmower, if a function borrows a value it is expected to
+return it in exactly the condition in which it was received!
 
-The restriction is that when a ``Borrowed`` type is matched, any pattern
-variables under the ``Read`` which have a unique type may not be
-referred to at all on the right hand side (unless they are themselves
-``lent`` to another function).
+The restriction is that when a ``Borrowed`` type is matched, any
+pattern variables under the ``Read`` which have a unique type may not
+be referred to at all on the right hand side (unless they are
+themselves ``lent`` to another function).
 
 Uniqueness information is stored in the type, and in particular in
 function types. Once we're in a unique context, any new function which
-is constructed will be required to have unique type, which prevents the
-following sort of bad program being implemented:
+is constructed will be required to have unique type, which prevents
+the following sort of bad program being implemented:
 
 .. code-block:: idris
 
@@ -234,20 +232,20 @@ Problems/Disadvantages/Still to do...
 This is a work in progress, there is lots to do. The most obvious
 problem is the loss of abstraction. On the one hand, we have more
 precise control over memory usage with ``UniqueType`` and
-``BorrowedType``, but they are not in general compatible with functions
-polymorphic over ``Type``. In the short term, we can start to write
-reactive and low memory systems with this, but longer term it would be
-nice to support more abstraction.
+``BorrowedType``, but they are not in general compatible with
+functions polymorphic over ``Type``. In the short term, we can start
+to write reactive and low memory systems with this, but longer term it
+would be nice to support more abstraction.
 
 We also haven't checked any of the metatheory, so this could all be
 fatally flawed! The implementation is based to a large extent on
-`Uniqueness Typing
-Simplified <http://lambda-the-ultimate.org/node/2708>`__, by de Vries et
-al, so there is reason to believe things should be fine, but we still
-have to do the work.
+`Uniqueness Typing Simplified
+<http://lambda-the-ultimate.org/node/2708>`__, by de Vries et al, so
+there is reason to believe things should be fine, but we still have to
+do the work.
 
 Much as there are with linear types, there are some annoyances when
-trying to prove properties of functions with unique types (for example,
-what counts as a use of a value). Since we require *at most* one use of
-a value, rather than *exactly* one, this seems to be less of an issue in
-practice, but still needs thought.
+trying to prove properties of functions with unique types (for
+example, what counts as a use of a value). Since we require *at most*
+one use of a value, rather than *exactly* one, this seems to be less
+of an issue in practice, but still needs thought.

@@ -3,35 +3,36 @@ New Foreign Function Interface
 
 .. sectionauthor:: Edwin Brady
 
-Ever since Idris has had multiple backends compiling to different target
-languages on potentially different platforms, we have had the problem
-that the foreign function interface (FFI) was written under the
-assumption of compiling to C. As a result, it has been hard to write
-generic code for multiple targets, or even to be sure that if code
-compiles that it will run on the expected target.
+Ever since Idris has had multiple backends compiling to different
+target languages on potentially different platforms, we have had the
+problem that the foreign function interface (FFI) was written under
+the assumption of compiling to C. As a result, it has been hard to
+write generic code for multiple targets, or even to be sure that if
+code compiles that it will run on the expected target.
 
 As of 0.9.17, Idris will have a new foreign function interface (FFI)
 which is aware of multiple targets. Users who are working with the
 default code generator can happily continue writing programs as before
 with no changes, but if you are writing bindings for an external
-library, writing a back end, or working with a non-C back end, there are
-some things you will need to be aware of, which this page describes.
+library, writing a back end, or working with a non-C back end, there
+are some things you will need to be aware of, which this page
+describes.
 
 The ``IO'`` monad, and ``main``
 -------------------------------
 
-The ``IO`` monad exists as before, but is now specific to the C backend
-(or, more precisely, any backend whose foreign function calls are
-compatible with C.) Additionally, there is now an ``IO'`` monad, which
-is parameterised over a FFI descriptor:
+The ``IO`` monad exists as before, but is now specific to the C
+backend (or, more precisely, any backend whose foreign function calls
+are compatible with C.) Additionally, there is now an ``IO'`` monad,
+which is parameterised over a FFI descriptor:
 
 .. code-block:: idris
 
     data IO' : (lang : FFI) -> Type -> Type
 
 The Prelude defines two FFI descriptors which are imported
-automatically, for C and JavaScript/Node, and defines ``IO`` to use the
-C FFI and ``JS_IO`` to use the JavaScript FFI:
+automatically, for C and JavaScript/Node, and defines ``IO`` to use
+the C FFI and ``JS_IO`` to use the JavaScript FFI:
 
 .. code-block:: idris
 
@@ -44,26 +45,27 @@ C FFI and ``JS_IO`` to use the JavaScript FFI:
     JS_IO : Type -> Type
     JS_IO a = IO' FFI_JS a
 
-As before, the entry point to an Idris program is ``main``, but the type
-of ``main`` can now be any instance of ``IO'``, e.g. the following are
-both valid:
+As before, the entry point to an Idris program is ``main``, but the
+type of ``main`` can now be any instance of ``IO'``, e.g. the
+following are both valid:
 
 .. code-block:: idris
 
     main : IO ()
     main : JS_IO ()
 
-The FFI descriptor includes details about which types can be marshalled
-between the foreign language and Idris, and the "target" of a foreign
-function call (typically just a String representation of the function's
-name, but potentially something more complicated such as an external
-library file or even a URL).
+The FFI descriptor includes details about which types can be
+marshalled between the foreign language and Idris, and the "target" of
+a foreign function call (typically just a String representation of the
+function's name, but potentially something more complicated such as an
+external library file or even a URL).
 
 FFI descriptors
 ---------------
 
-An FFI descriptor is a record containing a predicate which holds when a
-type can be marshalled, and the type of the target of a foreign call:
+An FFI descriptor is a record containing a predicate which holds when
+a type can be marshalled, and the type of the target of a foreign
+call:
 
 .. code-block:: idris
 
@@ -112,12 +114,12 @@ type is given by the ``ffi_fn`` field of ``FFI_C`` here), and a function
 type, which gives the expected types of the remaining arguments. Here,
 we're calling an external function ``fileOpen`` which takes, in the C, a
 ``char*`` file name, a ``char*`` mode, and returns a file pointer. It is
-the job of the C back end to convert Idris ``String``\ s to C ``char*``
+the job of the C back end to convert Idris ``String`` to C ``char*``
 and vice versa.
 
 The argument types and return type given here must be present in the
-``fn_types`` predicate of the ``FFI_C`` description for the foreign call
-to be valid.
+``fn_types`` predicate of the ``FFI_C`` description for the foreign
+call to be valid.
 
 **Note** The arguments to ``foreign`` *must* be known at compile time,
 because the foreign calls are generated statically. The ``%inline``
@@ -136,14 +138,18 @@ FFI implementation
 
 In order to write bindings to external libraries, the details of how
 ``foreign`` works are unnecessary --- you simply need to know that
-``foreign`` takes an FFI descriptor, the function name, and its type. It
-is instructive to look a little deeper, however:
+``foreign`` takes an FFI descriptor, the function name, and its
+type. It is instructive to look a little deeper, however:
 
 The type of ``foreign`` is as follows:
 
 .. code-block:: idris
 
-    foreign : (ffi : FFI) -> (fname : ffi_fn f) -> (ty : Type) -> {auto fty : FTy ffi [] ty} -> ty
+    foreign : (ffi : FFI)
+           -> (fname : ffi_fn f)
+           -> (ty : Type)
+           -> {auto fty : FTy ffi [] ty}
+           -> ty
 
 The important argument here is the implicit ``fty``, which contains a
 proof (``FTy``) that the given type is valid according to the FFI
@@ -155,10 +161,11 @@ description ``ffi``:
          FRet : ffi_types f t -> FTy f xs (IO' f t)
          FFun : ffi_types f s -> FTy f (s :: xs) t -> FTy f xs (s -> t)
 
-Notice that this uses the ``ffi_types`` field of the FFI descriptor ---
-these arguments to ``FRet`` and ``FFun`` give explicit proofs that the
-type is valid in this FFI. For example, the above ``do_fopen`` builds
-the following implicit proof as the ``fty`` argument to ``foreign``:
+Notice that this uses the ``ffi_types`` field of the FFI descriptor
+--- these arguments to ``FRet`` and ``FFun`` give explicit proofs that
+the type is valid in this FFI. For example, the above ``do_fopen``
+builds the following implicit proof as the ``fty`` argument to
+``foreign``:
 
 .. code-block:: idris
 
@@ -169,13 +176,13 @@ Compiling foreign calls
 
 (This section assumes some knowledge of the Idris internals.)
 
-When writing a back end, we now need to know how to compile ``foreign``.
-We'll skip the details here of how a ``foreign`` call reaches the
-intermediate representation (the IR), though you can look in ``IO.idr``
-in the ``prelude`` package to see a bit more detail --- a ``foreign``
-call is implemented by the primitive function ``mkForeignPrim``. The
-important part of the IR as defined in ``Lang.hs`` is the following
-constructor:
+When writing a back end, we now need to know how to compile
+``foreign``.  We'll skip the details here of how a ``foreign`` call
+reaches the intermediate representation (the IR), though you can look
+in ``IO.idr`` in the ``prelude`` package to see a bit more detail ---
+a ``foreign`` call is implemented by the primitive function
+``mkForeignPrim``. The important part of the IR as defined in
+``Lang.hs`` is the following constructor:
 
 .. code-block:: idris
 
@@ -186,9 +193,9 @@ constructor:
 
 So, a ``foreign`` call appears in the IR as the ``LForeign``
 constructor, which takes a function descriptor (of a type given by the
-``ffi_fn`` field in the FFI descriptor), a return type descriptor (given
-by an application of ``FTy``), and a list of arguments with type
-descriptors (also given by an application of ``FTy``).
+``ffi_fn`` field in the FFI descriptor), a return type descriptor
+(given by an application of ``FTy``), and a list of arguments with
+type descriptors (also given by an application of ``FTy``).
 
 An ``FDesc`` describes an application of a name to some arguments, and
 is really just a simplified subset of an ``LExp``:
@@ -210,9 +217,9 @@ Our ``do_fopen`` example above arrives in the ``LExp`` form as:
     LForeign (FStr "fileOpen") (FCon (sUN "C_Ptr"))
              [(FCon (sUN "C_Str"), f), (FCon (sUN "C_Str"), m)]
 
-(Assuming that ``f`` and ``m`` stand for the ``LExp`` representations of
-the arguments.) This information should be enough for any back end to
-marshal the arguments and return value appropriately.
+(Assuming that ``f`` and ``m`` stand for the ``LExp`` representations
+of the arguments.) This information should be enough for any back end
+to marshal the arguments and return value appropriately.
 
 .. note::
 
@@ -228,7 +235,8 @@ JavaScript FFI descriptor
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The JavaScript FFI descriptor is a little more complex, because the
-JavaScript FFI supports marshalling functions. It is defined as follows:
+JavaScript FFI supports marshalling functions. It is defined as
+follows:
 
 .. code-block:: idris
 
@@ -255,9 +263,9 @@ JavaScript FFI supports marshalling functions. It is defined as follows:
 The reason for wrapping function types in a ``JsFn`` is to help the
 proof search when building ``FTy``. We hope to improve proof search
 eventually, but for the moment it works much more reliably if the
-indices are disjoint! An example of using this appears in
-`IdrisScript <https://github.com/idris-hackers/IdrisScript>`__ when
-setting timeouts:
+indices are disjoint! An example of using this appears in `IdrisScript
+<https://github.com/idris-hackers/IdrisScript>`__ when setting
+timeouts:
 
 .. code-block:: idris
 

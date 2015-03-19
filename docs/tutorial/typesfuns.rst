@@ -1,3 +1,5 @@
+.. _sect-typefuns:
+
 ===================
 Types and Functions
 ===================
@@ -11,8 +13,8 @@ manipulation, and ``Ptr`` which represents foreign pointers. There are
 also several data types declared in the library, including ``Bool``,
 with values ``True`` and ``False``. We can declare some constants with
 these types. Enter the following into a file ``prims.idr`` and load it
-into the ``Idris`` interactive environment by typing
-``idris prims.idr``:
+into the ``Idris`` interactive environment by typing ``idris
+prims.idr``:
 
 .. code-block:: idris
 
@@ -34,13 +36,14 @@ An ``Idris`` file consists of an optional module declaration (here
 ``module prims``) followed by an optional list of imports (none here,
 however ``Idris`` programs can consist of several modules, and the
 definitions in each module each have their own namespace, as we will
-discuss in Section :ref:`sect-namespaces`) and a collection of declarations
-and definitions. The order of definitions is significant — functions and
-data types must be defined before use. Each definition must have a type
-declaration, for example see ``x : Int``, ``foo : String``, from the
-above listing. Indentation is significant — a new declaration begins at
-the same level of indentation as the preceding declaration.
-Alternatively, declarations may be terminated with a semicolon.
+discuss in Section :ref:`sect-namespaces`) and a collection of
+declarations and definitions. The order of definitions is significant
+— functions and data types must be defined before use. Each definition
+must have a type declaration, for example see ``x : Int``, ``foo :
+String``, from the above listing. Indentation is significant — a new
+declaration begins at the same level of indentation as the preceding
+declaration.  Alternatively, declarations may be terminated with a
+semicolon.
 
 A library module ``prelude`` is automatically imported by every
 ``Idris`` program, including facilities for IO, arithmetic, data
@@ -56,10 +59,10 @@ answer. For example:
     *prims> x == 6*6+6
     True : Bool
 
-All of the usual arithmetic and comparison operators are defined for the
-primitive types. They are overloaded using type classes, as we will
-discuss in Section :ref:`sect-classes` and can be extended to work on user
-defined types. Boolean expressions can be tested with the
+All of the usual arithmetic and comparison operators are defined for
+the primitive types. They are overloaded using type classes, as we
+will discuss in Section :ref:`sect-classes` and can be extended to
+work on user defined types. Boolean expressions can be tested with the
 ``if...then...else`` construct:
 
 ::
@@ -71,8 +74,8 @@ Data Types
 ----------
 
 Data types are declared in a similar way to Haskell data types, with a
-similar syntax. Natural numbers and lists, for example, can be declared
-as follows:
+similar syntax. Natural numbers and lists, for example, can be
+declared as follows:
 
 .. code-block:: idris
 
@@ -81,19 +84,21 @@ as follows:
     data List a = Nil | (::) a (List a) -- Polymorphic lists
 
 The above declarations are taken from the standard library. Unary
-natural numbers can be either zero (``Z``), or the successor of another
-natural number (``S k``). Lists can either be empty (``Nil``) or a value
-added to the front of another list (``x :: xs``). In the declaration for
-``List``, we used an infix operator ``::``. New operators such as this
-can be added using a fixity declaration, as follows:
+natural numbers can be either zero (``Z``), or the successor of
+another natural number (``S k``). Lists can either be empty (``Nil``)
+or a value added to the front of another list (``x :: xs``). In the
+declaration for ``List``, we used an infix operator ``::``. New
+operators such as this can be added using a fixity declaration, as
+follows:
 
 ::
 
     infixr 10 ::
 
 Functions, data constructors and type constructors may all be given
-infix operators as names. They may be used in prefix form if enclosed in
-brackets, e.g. \ ``(::)``. Infix operators can use any of the symbols:
+infix operators as names. They may be used in prefix form if enclosed
+in brackets, e.g. ``(::)``. Infix operators can use any of the
+symbols:
 
 ::
 
@@ -104,9 +109,10 @@ Functions
 
 Functions are implemented by pattern matching, again using a similar
 syntax to Haskell. The main difference is that ``Idris`` requires type
-declarations for all functions, using a single colon ``:`` (rather than
-Haskell’s double colon ``::``). Some natural number arithmetic functions
-can be defined as follows, again taken from the standard library:
+declarations for all functions, using a single colon ``:`` (rather
+than Haskell’s double colon ``::``). Some natural number arithmetic
+functions can be defined as follows, again taken from the standard
+library:
 
 .. code-block:: idris
 
@@ -123,10 +129,11 @@ can be defined as follows, again taken from the standard library:
 The standard arithmetic operators ``+`` and ``*`` are also overloaded
 for use by ``Nat``, and are implemented using the above functions.
 Unlike Haskell, there is no restriction on whether types and function
-names must begin with a capital letter or not. Function names (``plus``
-and ``mult`` above), data constructors (``Z``, ``S``, ``Nil`` and
-``::``) and type constructors (``Nat`` and ``List``) are all part of the
-same namespace. We can test these functions at the ``Idris`` prompt:
+names must begin with a capital letter or not. Function names
+(``plus`` and ``mult`` above), data constructors (``Z``, ``S``,
+``Nil`` and ``::``) and type constructors (``Nat`` and ``List``) are
+all part of the same namespace. We can test these functions at the
+``Idris`` prompt:
 
 ::
 
@@ -135,10 +142,12 @@ same namespace. We can test these functions at the ``Idris`` prompt:
     Idris> mult (S (S (S Z))) (plus (S (S Z)) (S (S Z)))
     12 : Nat
 
-**Note:** ``Idris`` automatically desugars the ``Nat`` representation
-into a more human readable format. The result of
-``plus (S (S Z)) (S (S Z))`` is actually ``(S (S (S (S Z))))`` which is
-the Integer 4. This can be checked at the ``Idris`` prompt:
+.. note::
+
+    ``Idris`` automatically desugars the ``Nat`` representation into a
+    more human readable format. The result of ``plus (S (S Z)) (S (S Z))``
+    is actually ``(S (S (S (S Z))))`` which is the Integer 4. This can be
+    checked at the ``Idris`` prompt:
 
 ::
 
@@ -156,12 +165,12 @@ type classes, meaning that we can also test the functions as follows:
     12 : Nat
 
 You may wonder, by the way, why we have unary natural numbers when our
-computers have perfectly good integer arithmetic built in. The reason is
-primarily that unary numbers have a very convenient structure which is
-easy to reason about, and easy to relate to other data structures as we
-will see later. Nevertheless, we do not want this convenience to be at
-the expense of efficiency. Fortunately, ``Idris`` knows about the
-relationship between ``Nat`` (and similarly structured types) and
+computers have perfectly good integer arithmetic built in. The reason
+is primarily that unary numbers have a very convenient structure which
+is easy to reason about, and easy to relate to other data structures
+as we will see later. Nevertheless, we do not want this convenience to
+be at the expense of efficiency. Fortunately, ``Idris`` knows about
+the relationship between ``Nat`` (and similarly structured types) and
 numbers. This means it can optimise the representation, and functions
 such as ``plus`` and ``mult``.
 
@@ -188,7 +197,7 @@ indented further than the outer function.
 visible in the ``where`` clause (unless they have been redefined, such
 as ``xs`` here). A name which appears only in the type will be in scope
 in the ``where`` clause if it is a *parameter* to one of the types,
-i.e. it is fixed across the entire structure.
+i.e. it is fixed across the entire structure.
 
 As well as functions, ``where`` blocks can include local data
 declarations, such as the following where ``MyLT`` is not accessible
@@ -210,9 +219,9 @@ In general, functions defined in a ``where`` clause need a type
 declaration just like any top level function. However, the type
 declaration for a function ``f`` *can* be omitted if:
 
--  ``f`` appears in the right hand side of the top level definition
+- ``f`` appears in the right hand side of the top level definition
 
--  The type of ``f`` can be completely determined from its first
+- The type of ``f`` can be completely determined from its first
    application
 
 So, for example, the following definitions are legal:
@@ -238,9 +247,9 @@ Vectors
 ~~~~~~~
 
 A standard example of a dependent type is the type of “lists with
-length”, conventionally called vectors in the dependent type literature.
-They are available as part of the ``Idris`` library, by importing
-``Data.Vect``, or we can declare them as follows:
+length”, conventionally called vectors in the dependent type
+literature.  They are available as part of the ``Idris`` library, by
+importing ``Data.Vect``, or we can declare them as follows:
 
 .. code-block:: idris
 
@@ -249,28 +258,28 @@ They are available as part of the ``Idris`` library, by importing
        (::) : a -> Vect k a -> Vect (S k) a
 
 Note that we have used the same constructor names as for ``List``.
-Ad-hoc name overloading such as this is accepted by ``Idris``, provided
-that the names are declared in different namespaces (in practice,
-normally in different modules). Ambiguous constructor names can normally
-be resolved from context.
+Ad-hoc name overloading such as this is accepted by ``Idris``,
+provided that the names are declared in different namespaces (in
+practice, normally in different modules). Ambiguous constructor names
+can normally be resolved from context.
 
 This declares a family of types, and so the form of the declaration is
-rather different from the simple type declarations above. We explicitly
-state the type of the type constructor ``Vect`` — it takes a ``Nat`` and
-a type as an argument, where ``Type`` stands for the type of types. We
-say that ``Vect`` is *indexed* over ``Nat`` and *parameterised* by
-``Type``. Each constructor targets a different part of the family of
-types. ``Nil`` can only be used to construct vectors with zero length,
-and ``::`` to construct vectors with non-zero length. In the type of
-``::``, we state explicitly that an element of type ``a`` and a tail of
-type ``Vect k a`` (i.e., a vector of length ``k``) combine to make a
-vector of length ``S k``.
+rather different from the simple type declarations above. We
+explicitly state the type of the type constructor ``Vect`` — it takes
+a ``Nat`` and a type as an argument, where ``Type`` stands for the
+type of types. We say that ``Vect`` is *indexed* over ``Nat`` and
+*parameterised* by ``Type``. Each constructor targets a different part
+of the family of types. ``Nil`` can only be used to construct vectors
+with zero length, and ``::`` to construct vectors with non-zero
+length. In the type of ``::``, we state explicitly that an element of
+type ``a`` and a tail of type ``Vect k a`` (i.e., a vector of length
+``k``) combine to make a vector of length ``S k``.
 
 We can define functions on dependent types such as ``Vect`` in the same
 way as on simple types such as ``List`` and ``Nat`` above, by pattern
 matching. The type of a function over ``Vect`` will describe what
 happens to the lengths of the vectors involved. For example, ``++``,
-defined as follows, appends two ``Vect``\ s:
+defined as follows, appends two ``Vect``:
 
 .. code-block:: idris
 
@@ -308,9 +317,9 @@ following:
                     with
                             plus k m
 
-This error message suggests that there is a length mismatch between two
-vectors — we needed a vector of length ``k + m``, but provided a vector
-of length ``k + k``.
+This error message suggests that there is a length mismatch between
+two vectors — we needed a vector of length ``k + m``, but provided a
+vector of length ``k + k``.
 
 The Finite Sets
 ~~~~~~~~~~~~~~~
@@ -332,9 +341,9 @@ of elements in the set. Obviously we can’t construct an element of an
 empty set, so neither constructor targets ``Fin Z``.
 
 A useful application of the ``Fin`` family is to represent bounded
-natural numbers. Since the first ``n`` natural numbers form a finite set
-of ``n`` elements, we can treat ``Fin n`` as the set of natural numbers
-bounded by ``n``.
+natural numbers. Since the first ``n`` natural numbers form a finite
+set of ``n`` elements, we can treat ``Fin n`` as the set of natural
+numbers bounded by ``n``.
 
 For example, the following function which looks up an element in a
 ``Vect``, by a bounded index given as a ``Fin n``, is defined in the
@@ -347,15 +356,16 @@ prelude:
     index (FS k) (x :: xs) = index k xs
 
 This function looks up a value at a given location in a vector. The
-location is bounded by the length of the vector (``n`` in each case), so
-there is no need for a run-time bounds check. The type checker
-guarantees that the location is no larger than the length of the vector.
+location is bounded by the length of the vector (``n`` in each case),
+so there is no need for a run-time bounds check. The type checker
+guarantees that the location is no larger than the length of the
+vector.
 
-Note also that there is no case for ``Nil`` here. This is because it is
-impossible. Since there is no element of ``Fin Z``, and the location is
-a ``Fin n``, then ``n`` can not be ``Z``. As a result, attempting to
-look up an element in an empty vector would give a compile time type
-error, since it would force ``n`` to be ``Z``.
+Note also that there is no case for ``Nil`` here. This is because it
+is impossible. Since there is no element of ``Fin Z``, and the
+location is a ``Fin n``, then ``n`` can not be ``Z``. As a result,
+attempting to look up an element in an empty vector would give a
+compile time type error, since it would force ``n`` to be ``Z``.
 
 Implicit Arguments
 ~~~~~~~~~~~~~~~~~~
@@ -376,13 +386,14 @@ names, ``n`` and ``a``, which are not declared explicitly. These are
 
     index : {a:Type} -> {n:Nat} -> Fin n -> Vect n a -> a
 
-Implicit arguments, given in braces ``{}`` in the type declaration, are
-not given in applications of ``index``; their values can be inferred
-from the types of the ``Fin n`` and ``Vect n a`` arguments. Any name
-with a which appears as a parameter or index in a type declaration, but
-which is otherwise free, will be automatically bound as an implicit
-argument. Implicit arguments can still be given explicitly in
-applications, using ``{a=value}`` and ``{n=value}``, for example:
+Implicit arguments, given in braces ``{}`` in the type declaration,
+are not given in applications of ``index``; their values can be
+inferred from the types of the ``Fin n`` and ``Vect n a``
+arguments. Any name with a which appears as a parameter or index in a
+type declaration, but which is otherwise free, will be automatically
+bound as an implicit argument. Implicit arguments can still be given
+explicitly in applications, using ``{a=value}`` and ``{n=value}``, for
+example:
 
 .. code-block:: idris
 
@@ -403,10 +414,10 @@ clear.
 ~~~~~~~~~~~~~~~~~~~~
 
 Sometimes it is useful to provide types of implicit arguments,
-particularly where there is a dependency ordering, or where the implicit
-arguments themselves have dependencies. For example, we may wish to
-state the types of the implicit arguments in the following definition,
-which defines a predicate on vectors:
+particularly where there is a dependency ordering, or where the
+implicit arguments themselves have dependencies. For example, we may
+wish to state the types of the implicit arguments in the following
+definition, which defines a predicate on vectors:
 
 .. code-block:: idris
 
@@ -414,10 +425,10 @@ which defines a predicate on vectors:
        Here :  {x:a} ->   {xs:Vect n a} -> Elem x (x :: xs)
        There : {x,y:a} -> {xs:Vect n a} -> Elem x xs -> Elem x (y :: xs)
 
-An instance of ``Elem x xs`` states that ``x`` is an element of ``xs``.
-We can construct such a predicate if the required element is ``Here``,
-at the head of the vector, or ``There``, in the tail of the vector. For
-example:
+An instance of ``Elem x xs`` states that ``x`` is an element of
+``xs``.  We can construct such a predicate if the required element is
+``Here``, at the head of the vector, or ``There``, in the tail of the
+vector. For example:
 
 .. code-block:: idris
 
@@ -429,8 +440,8 @@ example:
 
 If the same implicit arguments are being used a lot, it can make a
 definition difficult to read. To avoid this problem, a ``using`` block
-gives the types and ordering of any implicit arguments which can appear
-within the block:
+gives the types and ordering of any implicit arguments which can
+appear within the block:
 
 .. code-block:: idris
 
@@ -445,8 +456,8 @@ Note: Declaration Order and ``mutual`` blocks
 In general, functions and data types must be defined before use, since
 dependent types allow functions to appear as part of types, and their
 reduction behaviour to affect type checking. However, this restriction
-can be relaxed by using a ``mutual`` block, which allows data types and
-functions to be defined simultaneously:
+can be relaxed by using a ``mutual`` block, which allows data types
+and functions to be defined simultaneously:
 
 .. code-block:: idris
 
@@ -461,7 +472,8 @@ functions to be defined simultaneously:
 
 In a ``mutual`` block, first all of the type declarations are added,
 then the function bodies. As a result, none of the function types can
-depend on the reduction behaviour of any of the functions in the block.
+depend on the reduction behaviour of any of the functions in the
+block.
 
 I/O
 ---
@@ -477,18 +489,18 @@ side-effects — is that I/O is inherently side-effecting. Therefore in
     data IO a -- IO operation returning a value of type a
 
 We’ll leave the definition of ``IO`` abstract, but effectively it
-describes what the I/O operations to be executed are, rather than how to
-execute them. The resulting operations are executed externally, by the
-run-time system. We’ve already seen one IO program:
+describes what the I/O operations to be executed are, rather than how
+to execute them. The resulting operations are executed externally, by
+the run-time system. We’ve already seen one IO program:
 
 .. code-block:: idris
 
     main : IO ()
     main = putStrLn "Hello world"
 
-The type of ``putStrLn`` explains that it takes a string, and returns an
-element of the unit type ``()`` via an I/O action. There is a variant
-``putStr`` which outputs a string without a newline:
+The type of ``putStrLn`` explains that it takes a string, and returns
+an element of the unit type ``()`` via an I/O action. There is a
+variant ``putStr`` which outputs a string without a newline:
 
 .. code-block:: idris
 
@@ -501,8 +513,8 @@ We can also read strings from user input:
 
     getLine : IO String
 
-A number of other I/O operations are defined in the prelude, for example
-for reading and writing files, including:
+A number of other I/O operations are defined in the prelude, for
+example for reading and writing files, including:
 
 .. code-block:: idris
 
@@ -523,10 +535,10 @@ for reading and writing files, including:
 “``do``” notation
 -----------------
 
-I/O programs will typically need to sequence actions, feeding the output
-of one computation into the input of the next. ``IO`` is an abstract
-type, however, so we can’t access the result of a computation directly.
-Instead, we sequence operations with ``do`` notation:
+I/O programs will typically need to sequence actions, feeding the
+output of one computation into the input of the next. ``IO`` is an
+abstract type, however, so we can’t access the result of a computation
+directly.  Instead, we sequence operations with ``do`` notation:
 
 .. code-block:: idris
 
@@ -538,16 +550,16 @@ Instead, we sequence operations with ``do`` notation:
 The syntax ``x <- iovalue`` executes the I/O operation ``iovalue``, of
 type ``IO a``, and puts the result, of type ``a`` into the variable
 ``x``. In this case, ``getLine`` returns an ``IO String``, so ``name``
-has type ``String``. Indentation is significant — each statement in the
-do block must begin in the same column. The ``return`` operation allows
-us to inject a value directly into an IO operation:
+has type ``String``. Indentation is significant — each statement in
+the do block must begin in the same column. The ``return`` operation
+allows us to inject a value directly into an IO operation:
 
 .. code-block:: idris
 
     return : a -> IO a
 
-As we will see later, ``do`` notation is more general than this, and can
-be overloaded.
+As we will see later, ``do`` notation is more general than this, and
+can be overloaded.
 
 .. _sect-lazy:
 
@@ -564,11 +576,11 @@ not always the best approach. Consider the following function:
     boolCase True  t e = t;
     boolCase False t e = e;
 
-This function uses one of the ``t`` or ``e`` arguments, but not both (in
-fact, this is used to implement the ``if...then...else`` construct as we
-will see later. We would prefer if *only* the argument which was used
-was evaluated. To achieve this, ``Idris`` provides a ``Lazy`` data type,
-which allows evaluation to be suspended:
+This function uses one of the ``t`` or ``e`` arguments, but not both
+(in fact, this is used to implement the ``if...then...else`` construct
+as we will see later. We would prefer if *only* the argument which was
+used was evaluated. To achieve this, ``Idris`` provides a ``Lazy``
+data type, which allows evaluation to be suspended:
 
 .. code-block:: idris
 
@@ -578,10 +590,10 @@ which allows evaluation to be suspended:
     Force : Lazy a -> a
 
 A value of type ``Lazy a`` is unevaluated until it is forced by
-``Force``. The ``Idris`` type checker knows about the ``Lazy`` type, and
-inserts conversions where necessary between ``Lazy a`` and ``a``, and
-vice versa. We can therefore write ``boolCase`` as follows, without any
-explicit use of ``Force`` or ``Delay``:
+``Force``. The ``Idris`` type checker knows about the ``Lazy`` type,
+and inserts conversions where necessary between ``Lazy a`` and ``a``,
+and vice versa. We can therefore write ``boolCase`` as follows,
+without any explicit use of ``Force`` or ``Delay``:
 
 .. code-block:: idris
 
@@ -611,19 +623,19 @@ We have already seen the ``List`` and ``Vect`` data types:
        (::) : a -> Vect k a -> Vect (S k) a
 
 Note that the constructor names are the same for each — constructor
-names (in fact, names in general) can be overloaded, provided that they
-are declared in different namespaces (see Section :ref:`sect-namespaces`),
-and will typically be resolved according to their type. As syntactic
-sugar, any type with the constructor names ``Nil`` and ``::`` can be
-written in list form. For example:
+names (in fact, names in general) can be overloaded, provided that
+they are declared in different namespaces (see Section
+:ref:`sect-namespaces`), and will typically be resolved according to
+their type. As syntactic sugar, any type with the constructor names
+``Nil`` and ``::`` can be written in list form. For example:
 
 -  ``[]`` means ``Nil``
 
 -  ``[1,2,3]`` means ``1 :: 2 :: 3 :: Nil``
 
 The library also defines a number of functions for manipulating these
-types. ``map`` is overloaded both for ``List`` and ``Vect`` and applies
-a function to every element of the list or vector.
+types. ``map`` is overloaded both for ``List`` and ``Vect`` and
+applies a function to every element of the list or vector.
 
 .. code-block:: idris
 
@@ -667,8 +679,8 @@ directory. For more details of the functions available on ``List`` and
 -  ``libs/base/Data/VectType.idr``
 
 Functions include filtering, appending, reversing, and so on. Also
-remember that ``Idris`` is still in development, so if you don’t see the
-function you need, please feel free to add it and submit a patch!
+remember that ``Idris`` is still in development, so if you don’t see
+the function you need, please feel free to add it and submit a patch!
 
 Aside: Anonymous functions and operator sections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -684,18 +696,18 @@ would be to use an anonymous function:
 The notation ``\x => val`` constructs an anonymous function which takes
 one argument, ``x`` and returns the expression ``val``. Anonymous
 functions may take several arguments, separated by commas,
-e.g. \ ``\x, y, z => val``. Arguments may also be given explicit types,
-e.g. \ ``\x : Int => x * 2``, and can pattern match,
-e.g. \ ``\(x, y) => x + y``. We could also use an operator section:
+e.g. ``\x, y, z => val``. Arguments may also be given explicit types,
+e.g. ``\x : Int => x * 2``, and can pattern match,
+e.g. ``\(x, y) => x + y``. We could also use an operator section:
 
 ::
 
     *usefultypes> show (map (* 2) intVec)
     "[2, 4, 6, 8, 10]" : String
 
-``(*2)`` is shorthand for a function which multiplies a number by 2. It
-expands to ``\x => x * 2``. Similarly, ``(2*)`` would expand to
-``\x => 2 * x``.
+``(*2)`` is shorthand for a function which multiplies a number
+by 2. It expands to ``\x => x * 2``. Similarly, ``(2*)`` would expand
+to ``\x => 2 * x``.
 
 Maybe
 ~~~~~
@@ -707,9 +719,9 @@ given type, or there isn’t:
 
     data Maybe a = Just a | Nothing
 
-``Maybe`` is one way of giving a type to an operation that may fail. For
-example, looking something up in a ``List`` (rather than a vector) may
-result in an out of bounds error:
+``Maybe`` is one way of giving a type to an operation that may
+fail. For example, looking something up in a ``List`` (rather than a
+vector) may result in an out of bounds error:
 
 .. code-block:: idris
 
@@ -740,9 +752,9 @@ Values can be paired with the following built-in data type:
 
     data Pair a b = MkPair a b
 
-As syntactic sugar, we can write ``(a, b)`` which, according to context,
-means either ``Pair a b`` or ``MkPair a b``. Tuples can contain an
-arbitrary number of values, represented as nested pairs:
+As syntactic sugar, we can write ``(a, b)`` which, according to
+context, means either ``Pair a b`` or ``MkPair a b``. Tuples can
+contain an arbitrary number of values, represented as nested pairs:
 
 .. code-block:: idris
 
@@ -766,8 +778,8 @@ as “sigma types”:
 
 Again, there is syntactic sugar for this. ``(a : A ** P)`` is the type
 of a pair of A and P, where the name ``a`` can occur inside ``P``.
-``( a ** p )`` constructs a value of this type. For example, we can pair
-a number with a ``Vect`` of a particular length.
+``( a ** p )`` constructs a value of this type. For example, we can
+pair a number with a ``Vect`` of a particular length.
 
 .. code-block:: idris
 
@@ -783,27 +795,28 @@ equivalent.
     vec = MkSigma 2 [3, 4]
 
 The type checker could of course infer the value of the first element
-from the length of the vector. We can write an underscore ``_`` in place
-of values which we expect the type checker to fill in, so the above
-definition could also be written as:
+from the length of the vector. We can write an underscore ``_`` in
+place of values which we expect the type checker to fill in, so the
+above definition could also be written as:
 
 .. code-block:: idris
 
     vec : (n : Nat ** Vect n Int)
     vec = (_ ** [3, 4])
 
-We might also prefer to omit the type of the first element of the pair,
-since, again, it can be inferred:
+We might also prefer to omit the type of the first element of the
+pair, since, again, it can be inferred:
 
 .. code-block:: idris
 
     vec : (n ** Vect n Int)
     vec = (_ ** [3, 4])
 
-One use for dependent pairs is to return values of dependent types where
-the index is not necessarily known in advance. For example, if we filter
-elements out of a ``Vect`` according to some predicate, we will not know
-in advance what the length of the resulting vector will be:
+One use for dependent pairs is to return values of dependent types
+where the index is not necessarily known in advance. For example, if
+we filter elements out of a ``Vect`` according to some predicate, we
+will not know in advance what the length of the resulting vector will
+be:
 
 .. code-block:: idris
 
@@ -815,9 +828,9 @@ If the ``Vect`` is empty, the result is easy:
 
     filter p Nil = (_ ** [])
 
-In the ``::`` case, we need to inspect the result of a recursive call to
-``filter`` to extract the length and the vector from the result. To do
-this, we use ``with`` notation, which allows pattern matching on
+In the ``::`` case, we need to inspect the result of a recursive call
+to ``filter`` to extract the length and the vector from the result. To
+do this, we use ``with`` notation, which allows pattern matching on
 intermediate values:
 
 .. code-block:: idris
@@ -849,9 +862,9 @@ Intermediate values can be calculated using ``let`` bindings:
     splitAt c x = case break (== c) x of
                       (x, y) => (x, strTail y)
 
-We can do simple pattern matching in ``let`` bindings too. For example,
-we can extract fields from a record as follows, as well as by pattern
-matching at the top level:
+We can do simple pattern matching in ``let`` bindings too. For
+example, we can extract fields from a record as follows, as well as by
+pattern matching at the top level:
 
 .. code-block:: idris
 
@@ -872,9 +885,9 @@ for building lists. The general form is:
     [ expression | qualifiers ]
 
 This generates the list of values produced by evaluating the
-``expression``, according to the conditions given by the comma separated
-``qualifiers``. For example, we can build a list of Pythagorean triples
-as follows:
+``expression``, according to the conditions given by the comma
+separated ``qualifiers``. For example, we can build a list of
+Pythagorean triples as follows:
 
 .. code-block:: idris
 
@@ -884,16 +897,16 @@ as follows:
 
 The ``[a..b]`` notation is another shorthand which builds a list of
 numbers between ``a`` and ``b``. Alternatively ``[a,b..c]`` builds a
-list of numbers between ``a`` and ``c`` with the increment specified by
-the difference between ``a`` and ``b``. This works for any numeric type,
-using the ``count`` function from the prelude.
+list of numbers between ``a`` and ``c`` with the increment specified
+by the difference between ``a`` and ``b``. This works for any numeric
+type, using the ``count`` function from the prelude.
 
 ``case`` expressions
 ~~~~~~~~~~~~~~~~~~~~
 
 Another way of inspecting intermediate values of *simple* types is to
-use a ``case`` expression. The following function, for example, splits a
-string into two at a given character:
+use a ``case`` expression. The following function, for example, splits
+a string into two at a given character:
 
 .. code-block:: idris
 
@@ -907,10 +920,11 @@ deconstruct the pair it returns, and remove the first character of the
 second string.
 
 A ``case`` expression can match several cases, for example, to inspect
-an intermediate value of type ``Maybe a``. Recall ``list_lookup`` which
-looks up an index in a list, returning ``Nothing`` if the index is out
-of bounds. We can use this to write ``lookup_default``, which looks up
-an index and returns a default value if the index is out of bounds:
+an intermediate value of type ``Maybe a``. Recall ``list_lookup``
+which looks up an index in a list, returning ``Nothing`` if the index
+is out of bounds. We can use this to write ``lookup_default``, which
+looks up an index and returns a default value if the index is out of
+bounds:
 
 .. code-block:: idris
 
@@ -919,8 +933,8 @@ an index and returns a default value if the index is out of bounds:
                                   Nothing => def
                                   Just x => x
 
-If the index is in bounds, we get the value at that index, otherwise we
-get a default value:
+If the index is in bounds, we get the value at that index, otherwise
+we get a default value:
 
 ::
 
@@ -929,15 +943,15 @@ get a default value:
     *usefultypes> lookup_default 4 [3,4,5,6] (-1)
     -1 : Integer
 
-**Restrictions:** The ``case`` construct is intended for simple analysis
-of intermediate expressions to avoid the need to write auxiliary
-functions, and is also used internally to implement pattern matching
-``let`` and lambda bindings. It will *only* work if:
+**Restrictions:** The ``case`` construct is intended for simple
+analysis of intermediate expressions to avoid the need to write
+auxiliary functions, and is also used internally to implement pattern
+matching ``let`` and lambda bindings. It will *only* work if:
 
 -  Each branch *matches* a value of the same type, and *returns* a value
    of the same type.
 
--  The type of the result is “known”. i.e. the type of the expression
+- The type of the result is “known”. i.e. the type of the expression
    can be determined *without* type checking the ``case``-expression
    itself.
 
@@ -946,8 +960,8 @@ Dependent Records
 
 *Records* are data types which collect several values (the record’s
 *fields*) together. ``Idris`` provides syntax for defining records and
-automatically generating field access and update functions. For example,
-we can represent a person’s name and age in a record:
+*automatically generating field access and update functions. For
+*example, we can represent a person’s name and age in a record:
 
 .. code-block:: idris
 
@@ -958,10 +972,11 @@ we can represent a person’s name and age in a record:
     fred : Person
     fred = MkPerson "Fred" 30
 
-Record declarations are like ``data`` declarations, except that they are
-introduced by the ``record`` keyword, and can only have one constructor.
-The names of the binders in the constructor type (``name`` and ``age``)
-here are the field names, which we can use to access the field values:
+Record declarations are like ``data`` declarations, except that they
+are introduced by the ``record`` keyword, and can only have one
+constructor.  The names of the binders in the constructor type
+(``name`` and ``age``) here are the field names, which we can use to
+access the field values:
 
 ::
 
@@ -972,8 +987,8 @@ here are the field names, which we can use to access the field values:
     *record> :t name
     name : Person -> String
 
-We can also use the field names to update a record (or, more precisely,
-produce a new record with the given fields updated).
+We can also use the field names to update a record (or, more
+precisely, produce a new record with the given fields updated).
 
 .. code-block:: bash
 
@@ -1024,9 +1039,9 @@ syntax:
     record { a->b->c = val } x
 
 This returns a new record, with the field accessed by the path
-``a->b->c`` set to ``x``. The syntax is first class, i.e.
-``record { a->b->c = val }`` itself has a function type. Symmetrically,
-the field can also be accessed with the following syntax:
+``a->b->c`` set to ``x``. The syntax is first class, i.e.  ``record {
+a->b->c = val }`` itself has a function type. Symmetrically, the field
+can also be accessed with the following syntax:
 
 .. code-block:: idris
 

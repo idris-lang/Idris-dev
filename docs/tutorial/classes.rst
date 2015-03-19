@@ -13,9 +13,9 @@ to display different types in a uniform way.
 To achieve this, we use a feature which has proved to be effective in
 Haskell, namely *type classes*. To define a type class, we provide a
 collection of overloaded operations which describe the interface for
-*instances* of that class. A simple example is the ``Show`` type class,
-which is defined in the prelude and provides an interface for converting
-values to ``String``:
+*instances* of that class. A simple example is the ``Show`` type
+class, which is defined in the prelude and provides an interface for
+converting values to ``String``:
 
 .. code-block:: idris
 
@@ -29,9 +29,9 @@ This generates a function of the following type (which we call a
 
     show : Show a => a -> String
 
-We can read this as: “under the constraint that ``a`` is an instance of
-``Show``, take an input ``a`` and return a ``String``.” An instance of a
-class is defined with an ``instance`` declaration, which provides
+We can read this as: “under the constraint that ``a`` is an instance
+of ``Show``, take an input ``a`` and return a ``String``.” An instance
+of a class is defined with an ``instance`` declaration, which provides
 implementations of the function for a specific type. For example, the
 ``Show`` instance for ``Nat`` could be defined as:
 
@@ -41,7 +41,7 @@ implementations of the function for a specific type. For example, the
         show Z = "Z"
         show (S k) = "s" ++ show k
 
-.. code-block:: idris
+::
 
     Idris> show (S (S (S Z)))
     "sssZ" : String
@@ -77,8 +77,8 @@ the built-in types:
         (==) : a -> a -> Bool
         (/=) : a -> a -> Bool
 
-To declare an instance of a type, we have to give definitions of all of
-the methods. For example, for an instance of ``Eq`` for ``Nat``:
+To declare an instance of a type, we have to give definitions of all
+of the methods. For example, for an instance of ``Eq`` for ``Nat``:
 
 .. code-block:: idris
 
@@ -92,8 +92,8 @@ the methods. For example, for an instance of ``Eq`` for ``Nat``:
 
 It is hard to imagine many cases where the ``/=`` method will be
 anything other than the negation of the result of applying the ``==``
-method. It is therefore convenient to give a default definition for each
-method in the class declaration, in terms of the other method:
+method. It is therefore convenient to give a default definition for
+each method in the class declaration, in terms of the other method:
 
 .. code-block:: idris
 
@@ -113,9 +113,9 @@ Extending Classes
 -----------------
 
 Classes can also be extended. A logical next step from an equality
-relation ``Eq`` is to define an ordering relation ``Ord``. We can define
-an ``Ord`` class which inherits methods from ``Eq`` as well as defining
-some of its own:
+relation ``Eq`` is to define an ordering relation ``Ord``. We can
+define an ``Ord`` class which inherits methods from ``Eq`` as well as
+defining some of its own:
 
 .. code-block:: idris
 
@@ -136,18 +136,18 @@ some of its own:
 The ``Ord`` class allows us to compare two values and determine their
 ordering. Only the ``compare`` method is required; every other method
 has a default definition. Using this we can write functions such as
-``sort``, a function which sorts a list into increasing order, provided
-that the element type of the list is in the ``Ord`` class. We give the
-constraints on the type variables left of the fat arrow ``=>``, and the
-function type to the right of the fat arrow:
+``sort``, a function which sorts a list into increasing order,
+provided that the element type of the list is in the ``Ord`` class. We
+give the constraints on the type variables left of the fat arrow
+``=>``, and the function type to the right of the fat arrow:
 
 .. code-block:: idris
 
     sort : Ord a => List a -> List a
 
-Functions, classes and instances can have multiple constraints. Multiple
-constaints are written in brackets in a comma separated list, for
-example:
+Functions, classes and instances can have multiple
+constraints. Multiple constaints are written in brackets in a comma
+separated list, for example:
 
 .. code-block:: idris
 
@@ -159,8 +159,8 @@ Functors and Applicatives
 
 So far, we have seen single parameter type classes, where the parameter
 is of type ``Type``. In general, there can be any number (greater than
-0) of parameters, and the parameters can have *any* type. If the type of
-the parameter is not ``Type``, we need to give an explicit type
+0) of parameters, and the parameters can have *any* type. If the type
+of the parameter is not ``Type``, we need to give an explicit type
 declaration. For example, the ``Functor`` class is defined in the
 library:
 
@@ -198,7 +198,7 @@ Monads and ``do``-notation
 --------------------------
 
 The ``Monad`` class allows us to encapsulate binding and computation,
-and is the basis of ``do``-notation introduced in Section 
+and is the basis of ``do``-notation introduced in Section
 :ref:`sect-do`. It extends ``Applicative`` as defined above, and is
 defined as follows:
 
@@ -210,11 +210,11 @@ defined as follows:
 Inside a ``do`` block, the following syntactic transformations are
 applied:
 
--  ``x <- v; e`` becomes ``v >>= (\backslashx => e)``
+- ``x <- v; e`` becomes ``v >>= (\backslashx => e)``
 
--  ``v; e`` becomes ``v >>= (\backslash_ => e)``
+- ``v; e`` becomes ``v >>= (\backslash_ => e)``
 
--  ``let x = v; e`` becomes ``let x = v in e``
+- ``let x = v; e`` becomes ``let x = v in e``
 
 ``IO`` is an instance of ``Monad``, defined using primitive functions.
 We can also define an instance for ``Maybe``, as follows:
@@ -226,7 +226,7 @@ We can also define an instance for ``Maybe``, as follows:
         (Just x) >>= k = k x
 
 Using this we can, for example, define a function which adds two
-``Maybe Int``\ s, using the monad to encapsulate the error handling:
+``Maybe Int``, using the monad to encapsulate the error handling:
 
 .. code-block:: idris
 
@@ -235,8 +235,8 @@ Using this we can, for example, define a function which adds two
                    y' <- y -- Extract value from y
                    return (x' + y') -- Add them
 
-This function will extract the values from ``x`` and ``y``, if they are
-available, or return ``Nothing`` if they are not. Managing the
+This function will extract the values from ``x`` and ``y``, if they
+are available, or return ``Nothing`` if they are not. Managing the
 ``Nothing`` cases is achieved by the ``>>=`` operator, hidden by the
 ``do`` notation.
 
@@ -252,8 +252,8 @@ available, or return ``Nothing`` if they are not. Managing the
 
 In many cases, using ``do``-notation can make programs unnecessarily
 verbose, particularly in cases such as ``m_add`` above where the value
-bound is used once, immediately. In these cases, we can use a shorthand
-version, as follows:
+bound is used once, immediately. In these cases, we can use a
+shorthand version, as follows:
 
 .. code-block:: idris
 
@@ -261,8 +261,8 @@ version, as follows:
     m_add x y = return (!x + !y)
 
 The notation ``!expr`` means that the expression ``expr`` should be
-evaluated and then implicitly bound. Conceptually, we can think of ``!``
-as being a prefix function with the following type:
+evaluated and then implicitly bound. Conceptually, we can think of
+``!`` as being a prefix function with the following type:
 
 .. code-block:: idris
 
@@ -276,13 +276,13 @@ to right. In practice, ``!``-notation allows us to program in a more
 direct style, while still giving a notational clue as to which
 expressions are monadic.
 
-For example, the expression…
+For example, the expression:
 
 .. code-block:: idris
 
     let y = 42 in f !(g !(print y) !x)
 
-…is lifted to:
+is lifted to:
 
 .. code-block:: idris
 
@@ -294,9 +294,9 @@ For example, the expression…
 Monad comprehensions
 ~~~~~~~~~~~~~~~~~~~~
 
-The list comprehension notation we saw in Section :ref:`sect-more-expr` is more
-general, and applies to anything which is an instance of both ``Monad``
-and ``Alternative``:
+The list comprehension notation we saw in Section
+:ref:`sect-more-expr` is more general, and applies to anything which
+is an instance of both ``Monad`` and ``Alternative``:
 
 .. code-block:: idris
 
@@ -304,18 +304,18 @@ and ``Alternative``:
         empty : f a
         (<|>) : f a -> f a -> f a
 
-In general, a comprehension takes the form
-``[ exp | qual1, qual2, …, qualn ]`` where ``quali`` can be one of:
+In general, a comprehension takes the form ``[ exp | qual1, qual2, …,
+qualn ]`` where ``quali`` can be one of:
 
--  A generator ``x <- e``
+- A generator ``x <- e``
 
--  A *guard*, which is an expression of type ``Bool``
+- A *guard*, which is an expression of type ``Bool``
 
--  A let binding ``let x = e``
+- A let binding ``let x = e``
 
 To translate a comprehension ``[exp | qual1, qual2, …, qualn]``, first
-any qualifier ``qual`` which is a *guard* is translated to
-``guard qual``, using the following function:
+any qualifier ``qual`` which is a *guard* is translated to ``guard
+qual``, using the following function:
 
 .. code-block:: idris
 
@@ -338,13 +338,13 @@ would be:
 Idiom brackets
 --------------
 
-While ``do`` notation gives an alternative meaning to sequencing, idioms
-give an alternative meaning to *application*. The notation and larger
-example in this section is inspired by Conor McBride and Ross Paterson’s
-paper “Applicative Programming with Effects” [1]_.
+While ``do`` notation gives an alternative meaning to sequencing,
+idioms give an alternative meaning to *application*. The notation and
+larger example in this section is inspired by Conor McBride and Ross
+Paterson’s paper “Applicative Programming with Effects” [1]_.
 
 First, let us revisit ``m_add`` above. All it is really doing is
-applying an operator to two values extracted from ``Maybe Int``\ ’s. We
+applying an operator to two values extracted from ``Maybe Int``. We
 could abstract out the application:
 
 .. code-block:: idris
@@ -365,8 +365,8 @@ alternative notion of function application, with explicit calls to
 Rather than having to insert ``m_app`` everywhere there is an
 application, we can use to do the job for us. To do this, we can make
 ``Maybe`` an instance of ``Applicative`` as follows, where ``<>`` is
-defined in the same way as ``m_app`` above (this is defined in the ``Idris``
-library):
+defined in the same way as ``m_app`` above (this is defined in the
+``Idris`` library):
 
 .. code-block:: idris
 
@@ -376,8 +376,9 @@ library):
         (Just f) <*> (Just a) = Just (f a)
         _        <*> _        = Nothing
 
-Using we can use this instance as follows, where a function application
-``[| f a1 …an |]`` is translated into ``pure f <> a1 <> …<> an``:
+Using we can use this instance as follows, where a function
+application ``[| f a1 …an |]`` is translated into ``pure f <> a1 <>
+…<> an``:
 
 .. code-block:: idris
 
@@ -387,9 +388,9 @@ Using we can use this instance as follows, where a function application
 An error-handling interpreter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Idiom notation is commonly useful when defining evaluators. McBride and
-Paterson describe such an evaluator [1]_, for a language similar to the
-following:
+Idiom notation is commonly useful when defining evaluators. McBride
+and Paterson describe such an evaluator [1]_, for a language similar
+to the following:
 
 .. code-block:: idris
 
@@ -423,8 +424,8 @@ retrieve values from the context during evaluation:
 When defining an evaluator for the language, we will be applying
 functions in the context of an ``Eval``, so it is natural to make
 ``Eval`` an instance of ``Applicative``. Before ``Eval`` can be an
-instance of ``Applicative`` it is necessary to make ``Eval`` an instance
-of ``Functor``:
+instance of ``Applicative`` it is necessary to make ``Eval`` an
+instance of ``Functor``:
 
 .. code-block:: idris
 
@@ -471,7 +472,7 @@ To achieve this, instances can be *named* as follows:
 This declares an instance as normal, but with an explicit name,
 ``myord``. The syntax ``compare @{myord}`` gives an explicit instance to
 ``compare``, otherwise it would use the default instance for ``Nat``. We
-can use this, for example, to sort a list of ``Nat`` s in reverse.
+can use this, for example, to sort a list of ``Nat`` in reverse.
 Given the following list:
 
 .. code-block:: idris
@@ -479,7 +480,7 @@ Given the following list:
     testList : List Nat
     testList = [3,4,1]
 
-…e can sort it using the default ``Ord`` instance, then the named
+We can sort it using the default ``Ord`` instance, then the named
 instance ``myord`` as follows, at the ``Idris`` prompt:
 
 ::

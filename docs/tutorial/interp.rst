@@ -6,9 +6,10 @@ Example: The Well-Typed Interpreter
 
 In this section, we’ll use the features we’ve seen so far to write a
 larger example, an interpreter for a simple functional programming
-language, with variables, function application, binary operators and an
-``if...then...else`` construct. We will use the dependent type system to
-ensure that any programs which can be represented are well-typed.
+language, with variables, function application, binary operators and
+an ``if...then...else`` construct. We will use the dependent type
+system to ensure that any programs which can be represented are
+well-typed.
 
 Representing Languages
 ----------------------
@@ -74,8 +75,8 @@ look at each constructor in turn.
 
 We use a nameless representation for variables — they are *de Bruijn
 indexed*. Variables are represented by a proof of their membership in
-the context, ``HasType i G T``, which is a proof that variable ``i`` in
-context ``G`` has type ``T``. This is defined as follows:
+the context, ``HasType i G T``, which is a proof that variable ``i``
+in context ``G`` has type ``T``. This is defined as follows:
 
 .. code-block:: idris
 
@@ -87,17 +88,17 @@ We can treat *Stop* as a proof that the most recently defined variable
 is well-typed, and *Pop n* as a proof that, if the ``n``\ th most
 recently defined variable is well-typed, so is the ``n+1``\ th. In
 practice, this means we use ``Stop`` to refer to the most recently
-defined variable, ``Pop Stop`` to refer to the next, and so on, via the
-``Var`` constructor:
+defined variable, ``Pop Stop`` to refer to the next, and so on, via
+the ``Var`` constructor:
 
 .. code-block:: idris
 
     Var : HasType i G t -> Expr G t
 
-So, in an expression ``\x,\y. x y``, the variable ``x`` would have a de
-Bruijn index of 1, represented as ``Pop Stop``, and ``y 0``, represented
-as ``Stop``. We find these by counting the number of lambdas between the
-definition and the use.
+So, in an expression ``\x,\y. x y``, the variable ``x`` would have a
+de Bruijn index of 1, represented as ``Pop Stop``, and ``y 0``,
+represented as ``Stop``. We find these by counting the number of
+lambdas between the definition and the use.
 
 A value carries a concrete representation of an integer:
 
@@ -105,9 +106,9 @@ A value carries a concrete representation of an integer:
 
     Val : (x : Int) -> Expr G TyInt
 
-A lambda creates a function. In the scope of a function of type
-``a -> t``, there is a new local variable of type ``a``, which is
-expressed by the context index:
+A lambda creates a function. In the scope of a function of type ``a ->
+t``, there is a new local variable of type ``a``, which is expressed
+by the context index:
 
 .. code-block:: idris
 
@@ -128,9 +129,9 @@ informs what the types of the arguments must be:
     Op : (interpTy a -> interpTy b -> interpTy c) ->
          Expr G a -> Expr G b -> Expr G c
 
-Finally, if expressions make a choice given a boolean. Each branch must
-have the same type, and we will evaluate the branches lazily so that
-only the branch which is taken need be evaluated:
+Finally, if expressions make a choice given a boolean. Each branch
+must have the same type, and we will evaluate the branches lazily so
+that only the branch which is taken need be evaluated:
 
 .. code-block:: idris
 
@@ -142,13 +143,14 @@ only the branch which is taken need be evaluated:
 Writing the Interpreter
 -----------------------
 
-When we evaluate an ``Expr``, we’ll need to know the values in scope, as
-well as their types. ``Env`` is an environment, indexed over the types
-in scope. Since an environment is just another form of list, albeit with
-a strongly specified connection to the vector of local variable types,
-we use the usual ``::`` and ``Nil`` constructors so that we can use the
-usual list syntax. Given a proof that a variable is defined in the
-context, we can then produce a value from the environment:
+When we evaluate an ``Expr``, we’ll need to know the values in scope,
+as well as their types. ``Env`` is an environment, indexed over the
+types in scope. Since an environment is just another form of list,
+albeit with a strongly specified connection to the vector of local
+variable types, we use the usual ``::`` and ``Nil`` constructors so
+that we can use the usual list syntax. Given a proof that a variable
+is defined in the context, we can then produce a value from the
+environment:
 
 .. code-block:: idris
 
@@ -258,10 +260,11 @@ function on user input:
               x <- getLine
               print (interp [] fact (cast x))
 
-Here, ``cast`` is an overloaded function which converts a value from one
-type to another if possible. Here, it converts a string to an integer,
-giving 0 if the input is invalid. An example run of this program at the
-``Idris`` interactive environment is shown in Listing :ref:`factrun`.
+Here, ``cast`` is an overloaded function which converts a value from
+one type to another if possible. Here, it converts a string to an
+integer, giving 0 if the input is invalid. An example run of this
+program at the ``Idris`` interactive environment is shown in Listing
+:ref:`factrun`.
 
 
 .. literalinclude:: ../listing/idris-prompt-interp.txt

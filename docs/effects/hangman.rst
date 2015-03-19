@@ -231,8 +231,8 @@ presented in Listing :ref:`mword`.
 Note that the type of ``game`` makes no assumption that there are
 letters to be guessed in the given word (i.e. it is ``w`` rather than
 ``S w``). This is because we will be choosing a word at random from a
-vector of ``String``\ s, and at no point have we made it explicit that
-those ``String``\ s are non-empty.
+vector of ``String``, and at no point have we made it explicit that
+those ``String`` are non-empty.
 
 Finally, we need to initialise the game by picking a word at random from
 a list of candidates, setting it as the target using ``NewWord``, then
@@ -248,9 +248,9 @@ running ``game``:
                  putStrLn !StrState
 
 We use the system time (``time`` from the ``SYSTEM`` effect; see
-Appendix :ref:`sect-appendix`) to initialise the random number generator,
-then pick a random ``Fin`` to index into a list of ``words``. For
-example, we could initialise a word list as follows:
+Appendix :ref:`sect-appendix`) to initialise the random number
+generator, then pick a random ``Fin`` to index into a list of
+``words``. For example, we could initialise a word list as follows:
 
 .. code-block:: idris
 
@@ -261,10 +261,11 @@ example, we could initialise a word list as follows:
 
     wtype = proof search
 
-**Aside:** Rather than have to explicitly declare a type with the
-vector’s length, it is convenient to give a metavariable ``?wtype`` and
-let ``Idris``’s proof search mechanism find the type. This is a limited form of
-type inference, but very useful in practice.
+.. note::
+    Rather than have to explicitly declare a type with the vector’s
+    length, it is convenient to give a metavariable ``?wtype`` and let
+    ``Idris``’s proof search mechanism find the type. This is a
+    limited form of type inference, but very useful in practice.
 
 
 .. _mword:
@@ -300,32 +301,34 @@ type inference, but very useful in practice.
 Discussion
 ----------
 
-Writing the rules separately as an effect, then an implementation which
-uses that effect, ensures that the implementation must follow the rules.
-This has practical applications in more serious contexts;
-``MysteryRules`` for example can be though of as describing a *protocol*
-that a game player most follow, or alternative a *precisely-typed API*.
+Writing the rules separately as an effect, then an implementation
+which uses that effect, ensures that the implementation must follow
+the rules.  This has practical applications in more serious contexts;
+``MysteryRules`` for example can be though of as describing a
+*protocol* that a game player most follow, or alternative a
+*precisely-typed API*.
 
 In practice, we wouldn’t really expect to write rules first then
-implement the game once the rules were complete. Indeed, I didn’t do so
-when constructing this example! Rather, I wrote down a set of likely
-rules making any assumptions *explicit* in the state transitions for
-``MysteryRules``. Then, when implementing ``game`` at first, any
-incorrect assumption was caught as a type error. The following errors
-were caught during development:
+implement the game once the rules were complete. Indeed, I didn’t do
+so when constructing this example! Rather, I wrote down a set of
+likely rules making any assumptions *explicit* in the state
+transitions for ``MysteryRules``. Then, when implementing ``game`` at
+first, any incorrect assumption was caught as a type error. The
+following errors were caught during development:
 
--  Not realising that allowing ``NewWord`` to be an arbitrary string
+- Not realising that allowing ``NewWord`` to be an arbitrary string
    would mean that ``game`` would have to deal with a zero-length word
    as a starting state.
 
--  Forgetting to check whether a game was won before recursively calling
-   ``processGuess``, thus accidentally continuing a finished game.
+- Forgetting to check whether a game was won before recursively
+   calling ``processGuess``, thus accidentally continuing a finished
+   game.
 
--  Accidentally checking the number of missing letters, rather than the
+- Accidentally checking the number of missing letters, rather than the
    number of remaining guesses, when checking if a game was lost.
 
-These are, of course, simple errors, but were caught by the type checker
-before any testing of the game.
+These are, of course, simple errors, but were caught by the type
+checker before any testing of the game.
 
 .. [1]
    Readers may recognise this game by the name “Hangman.”

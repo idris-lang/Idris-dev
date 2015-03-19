@@ -5,12 +5,13 @@ Further Reading
 ===============
 
 This tutorial has given an introduction to writing and reasoning about
-side-effecting programs in , using the library. More details about the
-*implementation* of the library, such as how ``run`` works, how handlers
-are invoked, etc, are given in a separate paper [1]_.
+side-effecting programs in ``Idris``, using the ``Effects`` library.
+More details about the *implementation* of the library, such as how
+``run`` works, how handlers are invoked, etc, are given in a separate
+paper [1]_.
 
-Some libraries and programs which use can be found in the following
-places:
+Some libraries and programs which use ``Effects`` can be found in the
+following places:
 
 -  http://github.com/edwinb/SDL-idris — some bindings for the SDL media
    library, supporting graphics in particular.
@@ -25,11 +26,11 @@ places:
 -  http://github.com/edwinb/Protocols — a high level communication
    protocol description language.
 
-The inspiration for the library was Bauer and Pretnar’s Eff language
-[2]_, which describes a langauge based on algebraic effects and
-handlers.  Other recent languages and libraries have also been built
-on this ideas, e.g. [3]_, [4]_. The theoretical foundations are also
-well-studied [5]_, [6]_, [7]_, [8]_.
+The inspiration for the ``Effects`` library was Bauer and Pretnar’s
+Eff language [2]_, which describes a langauge based on algebraic
+effects and handlers.  Other recent languages and libraries have also
+been built on this ideas, for example [3]_ and [4]_. The theoretical
+foundations are also well-studied see [5]_, [6]_, [7]_, [8]_.
 
 
 

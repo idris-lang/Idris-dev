@@ -4,9 +4,9 @@
 Documenting Idris Code
 ======================
 
-Idris documentation comes in two major forms: comments, which exist for
-a reader’s edification and are ignored by the compiler, and inline API
-documentation, which the compiler parses and stores for future
+Idris documentation comes in two major forms: comments, which exist
+for a reader’s edification and are ignored by the compiler, and inline
+API documentation, which the compiler parses and stores for future
 reference. To consult the documentation for a declaration ``f``, write
 ``:doc f`` at the REPL or use the appropriate command in your editor
 (``C-c C-d`` in Emacs, in Vim).
@@ -14,12 +14,12 @@ reference. To consult the documentation for a declaration ``f``, write
 Comments
 --------
 
-Use comments to explain why code is written the way that it is. Idris’s
-comment syntax is the same as that of Haskell: lines beginning with
-``--`` are comments, and regions bracketed by ``{-`` and ``-}`` are
-comments even if they extend across multiple lines. These can be used to
-comment out lines of code or provide simple documentation for the
-readers of Idris code.
+Use comments to explain why code is written the way that it
+is. Idris’s comment syntax is the same as that of Haskell: lines
+beginning with ``--`` are comments, and regions bracketed by ``{-``
+and ``-}`` are comments even if they extend across multiple
+lines. These can be used to comment out lines of code or provide
+simple documentation for the readers of Idris code.
 
 Inline Documentation
 --------------------
@@ -36,15 +36,16 @@ constructors, or functions can be associated with these arguments using
 their names.
 
 The inline documentation for a declaration is an unbroken string of
-lines, each of which begins with ``|||`` (three pipe symbols). The first
-paragraph of the documentation is taken to be an overview, and in some
-contexts, only this overview will be shown. After the documentation for
-the declaration as a whole, it is possible to associate documetation
-with specific named parameters, which can either be explicitly name or
-the results of converting free variables to implicit parameters.
-Annotations are the same as with Javadoc annotations, that is for the
-named parameter ``(n : T)``, the corresponding annotation is
-``||| @ n Some description`` that is placed before the declaration.
+lines, each of which begins with ``|||`` (three pipe symbols). The
+first paragraph of the documentation is taken to be an overview, and
+in some contexts, only this overview will be shown. After the
+documentation for the declaration as a whole, it is possible to
+associate documetation with specific named parameters, which can
+either be explicitly name or the results of converting free variables
+to implicit parameters.  Annotations are the same as with Javadoc
+annotations, that is for the named parameter ``(n : T)``, the
+corresponding annotation is ``||| @ n Some description`` that is
+placed before the declaration.
 
 Documentation is written in Markdown, though not all contexts will
 display all possible formatting (for example, images are not displayed
@@ -53,6 +54,8 @@ italics correctly). A comprehensive set of examples is given below.
 
 .. code-block:: idris
 
+
+    ||| Modules can also be documented.
     module Docs
 
     ||| Add some numbers.

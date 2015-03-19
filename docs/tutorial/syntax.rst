@@ -2,18 +2,17 @@ Syntax Extensions
 =================
 
 supports the implementation of *Embedded Domain Specific Languages*
-(EDSLs) in several ways [1]_. One way, as we have
-already seen, is through extending ``do`` notation. Another important
-way is to allow extension of the core syntax. In this section we
-describe two ways of extending the syntax: ``syntax`` rules and ``dsl``
-notation.
+(EDSLs) in several ways [1]_. One way, as we have already seen, is
+through extending ``do`` notation. Another important way is to allow
+extension of the core syntax. In this section we describe two ways of
+extending the syntax: ``syntax`` rules and ``dsl`` notation.
 
 ``syntax`` rules
 ----------------
 
 We have seen ``if...then...else`` expressions, but these are not built
-in. Instead, we can define a function in the prelude as follows (we have
-already seen this function in Section :ref:`sect-lazy`):
+in. Instead, we can define a function in the prelude as follows (we
+have already seen this function in Section :ref:`sect-lazy`):
 
 .. code-block:: idris
 
@@ -46,13 +45,13 @@ itself consists of:
    also be used to include reserved words in syntax rules, such as
    ``let`` or ``in``.
 
-The limitations on the form of a syntax rule are that it must include at
-least one symbol or keyword, and there must be no repeated variables
-standing for non-terminals. Any expression can be used, but if there are
-two non-terminals in a row in a rule, only simple expressions may be
-used (that is, variables, constants, or bracketed expressions). Rules
-can use previously defined rules, but may not be recursive. The
-following syntax extensions would therefore be valid:
+The limitations on the form of a syntax rule are that it must include
+at least one symbol or keyword, and there must be no repeated
+variables standing for non-terminals. Any expression can be used, but
+if there are two non-terminals in a row in a rule, only simple
+expressions may be used (that is, variables, constants, or bracketed
+expressions). Rules can use previously defined rules, but may not be
+recursive. The following syntax extensions would therefore be valid:
 
 .. code-block:: idris
 
@@ -63,7 +62,7 @@ following syntax extensions would therefore be valid:
 
 Syntax macros can be further restricted to apply only in patterns (i.e.,
 only on the left hand side of a pattern match clause) or only in terms
-(i.e. everywhere but the left hand side of a pattern match clause) by
+(i.e. everywhere but the left hand side of a pattern match clause) by
 being marked as ``pattern`` or ``term`` syntax rules. For example, we
 might define an interval as follows, with a static check that the lower
 bound is below the upper bound using ``so``:
@@ -74,8 +73,8 @@ bound is below the upper bound using ``so``:
        MkInterval : (lower : Float) -> (upper : Float) ->
                     so (lower < upper) -> Interval
 
-We can define a syntax which, in patterns, always matches ``oh`` for the
-proof argument, and in terms requires a proof term to be provided:
+We can define a syntax which, in patterns, always matches ``oh`` for
+the proof argument, and in terms requires a proof term to be provided:
 
 .. code-block:: idris
 
@@ -97,23 +96,23 @@ forms. For example, a ``for`` loop binds a variable on each iteration:
                   putStrLn ("Number " ++ show x)
               putStrLn "Done!"
 
-Note that we have used the ``{x}`` form to state that ``x`` represents a
-bound variable, substituted on the right hand side. We have also put
+Note that we have used the ``{x}`` form to state that ``x`` represents
+a bound variable, substituted on the right hand side. We have also put
 ``in`` in quotation marks since it is already a reserved word.
 
 ``dsl`` notation
 ----------------
 
-The well-typed interpreter in Section :ref:`sect-interp` is a simple example
-of a common programming pattern with dependent types. Namely: describe
-an *object language* and its type system with dependent types to
-guarantee that only well-typed programs can be represented, then program
-using that representation. Using this approach we can, for example,
-write programs for serialising binary data [2]_ or running
+The well-typed interpreter in Section :ref:`sect-interp` is a simple
+example of a common programming pattern with dependent types. Namely:
+describe an *object language* and its type system with dependent types
+to guarantee that only well-typed programs can be represented, then
+program using that representation. Using this approach we can, for
+example, write programs for serialising binary data [2]_ or running
 concurrent processes safely [3]_.
 
-Unfortunately, the form of object language programs makes it rather hard
-to program this way in practice. Recall the factorial program in
+Unfortunately, the form of object language programs makes it rather
+hard to program this way in practice. Recall the factorial program in
 ``Expr`` for example:
 
 .. code-block:: idris
@@ -124,8 +123,8 @@ to program this way in practice. Recall the factorial program in
                                    (Var Stop)))
 
 Since this is a particularly useful pattern, ``Idris`` provides syntax
-overloading [1]_ to make it easier to program in such
-object languages:
+overloading [1]_ to make it easier to program in such object
+languages:
 
 .. code-block:: idris
 
@@ -138,15 +137,15 @@ object languages:
         index_next  = Pop
         lambda      = mkLam
 
-A ``dsl`` block describes how each syntactic construct is represented in
-an object language. Here, in the ``expr`` language, any variable is
+A ``dsl`` block describes how each syntactic construct is represented
+in an object language. Here, in the ``expr`` language, any variable is
 translated to the ``Var`` constructor, using ``Pop`` and ``Stop`` to
 construct the de Bruijn index (i.e., to count how many bindings since
 the variable itself was bound); and any lambda is translated to a
 ``Lam`` constructor. The ``mkLam`` function simply ignores its first
-argument, which is the name that the user chose for the variable. It is
-also possible to overload ``let`` and dependent function syntax (``pi``)
-in this way. We can now write ``fact`` as follows:
+argument, which is the name that the user chose for the variable. It
+is also possible to overload ``let`` and dependent function syntax
+(``pi``) in this way. We can now write ``fact`` as follows:
 
 .. code-block:: idris
 
@@ -154,8 +153,8 @@ in this way. We can now write ``fact`` as follows:
     fact = expr (\x => If (Op (==) x (Val 0))
                           (Val 1) (Op (*) (app fact (Op (-) x (Val 1))) x))
 
-In this new version, ``expr`` declares that the next expression will be
-overloaded. We can take this further, using idiom brackets, by
+In this new version, ``expr`` declares that the next expression will
+be overloaded. We can take this further, using idiom brackets, by
 declaring:
 
 .. code-block:: idris
@@ -167,9 +166,9 @@ declaring:
     pure = id
 
 Note that there is no need for these to be part of an instance of
-``Applicative``, since idiom bracket notation translates directly to the
-names ``<*>`` and ``pure``, and ad-hoc type-directed overloading is
-allowed. We can now say:
+``Applicative``, since idiom bracket notation translates directly to
+the names ``<*>`` and ``pure``, and ad-hoc type-directed overloading
+is allowed. We can now say:
 
 .. code-block:: idris
 

@@ -1,11 +1,14 @@
+.. _sect-intro:
+
 ===========
 Introducton
 ===========
 
 In conventional programming languages, there is a clear distinction
-between *types* and *values*. For example, in `Haskell <http://www.haskell.org>`_, the following
-are types, representing integers, characters, lists of characters, and
-lists of any value respectively:
+between *types* and *values*. For example, in `Haskell
+<http://www.haskell.org>`_, the following are types, representing
+integers, characters, lists of characters, and lists of any value
+respectively:
 
 -  ``Int``, ``Char``, ``[Char]``, ``[a]``
 
@@ -22,11 +25,11 @@ lists of a given length [1]_, ``Vect n a``, where ``a`` is the element
 type and ``n`` is the length of the list and can be an arbitrary term.
 
 When types can contain values, and where those values describe
-properties (e.g. the length of a list) the type of a function can begin
-to describe its own properties. For example, concatenating two lists has
-the property that the resulting list’s length is the sum of the lengths
-of the two input lists. We can therefore give the following type to the
-``app`` function, which concatenates vectors:
+properties (e.g. the length of a list) the type of a function can
+begin to describe its own properties. For example, concatenating two
+lists has the property that the resulting list’s length is the sum of
+the lengths of the two input lists. We can therefore give the
+following type to the ``app`` function, which concatenates vectors:
 
 .. code-block:: idris
 
@@ -34,10 +37,10 @@ of the two input lists. We can therefore give the following type to the
 
 This tutorial introduces ``Idris``, a general purpose functional
 programming language with dependent types. The goal of the ``Idris``
-project is to build a dependently typed language suitable for verifiable
-*systems* programming. To this end, ``Idris`` is a compiled language
-which aims to generate efficient executable code. It also has a
-lightweight foreign function interface which allows easy interaction
+project is to build a dependently typed language suitable for
+verifiable *systems* programming. To this end, ``Idris`` is a compiled
+language which aims to generate efficient executable code. It also has
+a lightweight foreign function interface which allows easy interaction
 with external ``C`` libraries.
 
 Intended Audience

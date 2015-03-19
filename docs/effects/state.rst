@@ -5,14 +5,14 @@ State
 =====
 
 Many programs, even pure programs, can benefit from locally mutable
-state. For example, consider a program which tags binary tree nodes with
-a counter, by an inorder traversal (i.e. counting depth first, left to
-right). This would perform something like the following:
+state. For example, consider a program which tags binary tree nodes
+with a counter, by an inorder traversal (i.e. counting depth first,
+left to right). This would perform something like the following:
 
 |image|
 
-We can describe binary trees with the following data type ``BTree`` and
-``testTree`` to represent the example input above:
+We can describe binary trees with the following data type ``BTree``
+and ``testTree`` to represent the example input above:
 
 .. code-block:: idris
 
@@ -26,8 +26,8 @@ We can describe binary trees with the following data type ``BTree`` and
                           "Sheila"
                           (Node Leaf "Bob" Leaf))
 
-Then our function to implement tagging, beginning to tag with a specific
-value ``i``, has the following type:
+Then our function to implement tagging, beginning to tag with a
+specific value ``i``, has the following type:
 
 .. code-block:: idris
 
@@ -36,9 +36,9 @@ value ``i``, has the following type:
 First attempt
 -------------
 
-Naïvely, we can implement ``treeTag`` by implementing a helper function
-which propagates a counter, returning the result of the count for each
-subtree:
+Naïvely, we can implement ``treeTag`` by implementing a helper
+function which propagates a counter, returning the result of the count
+for each subtree:
 
 .. code-block:: idris
 
@@ -70,8 +70,9 @@ ensure that state is propagated correctly to the recursive calls (i.e.
 passing the appropriate ``i`` or ``i’``). It is hard to read, because
 the functional details are obscured by the state propagation. Perhaps
 most importantly, there is a common programming pattern here which
-should be abstracted but instead has been implemented by hand. There is
-local mutable state (the counter) which we have had to make explicit.
+should be abstracted but instead has been implemented by hand. There
+is local mutable state (the counter) which we have had to make
+explicit.
 
 Introducing ``Effects``
 -----------------------
@@ -85,27 +86,27 @@ effectful program ``f`` has a type of the following form:
     f : (x1 : a1) -> (x2 : a2) -> ... -> { effs } Eff t
 
 That is, the return type gives the effects that ``f`` supports
-(``effs``, of type ``List EFFECT``) and the type the computation returns
-``t``. So, our ``treeTagAux`` helper could be written with the following
-type:
+(``effs``, of type ``List EFFECT``) and the type the computation
+returns ``t``. So, our ``treeTagAux`` helper could be written with the
+following type:
 
 .. code-block:: idris
 
     treeTagAux : BTree a -> { [STATE Int] } Eff (BTree (Int, a))
 
-That is, ``treeTagAux`` has access to an integer state, because the list
-of available effects includes ``STATE Int``. ``STATE`` is declared as
-follows in the module ``Effect.State`` (that is, we must
+That is, ``treeTagAux`` has access to an integer state, because the
+list of available effects includes ``STATE Int``. ``STATE`` is
+declared as follows in the module ``Effect.State`` (that is, we must
 ``import Effect.State`` to be able to use it):
 
 .. code-block:: idris
 
     STATE : Type -> EFFECT
 
-It is an effect parameterised by a type (by convention, we write effects
-in all capitals). The ``treeTagAux`` function is an effectful program
-which builds a new tree tagged with ``Ints``, and is implemented as
-follows:
+It is an effect parameterised by a type (by convention, we write
+effects in all capitals). The ``treeTagAux`` function is an effectful
+program which builds a new tree tagged with ``Ints``, and is
+implemented as follows:
 
 .. code-block:: idris
 
@@ -118,25 +119,25 @@ follows:
              pure (Node l' (i, x) r')
 
 There are several remarks to be made about this implementation.
-Essentially, it hides the state, which can be accessed using ``get`` and
-updated using ``put``, but it introduces several new features.
+Essentially, it hides the state, which can be accessed using ``get``
+and updated using ``put``, but it introduces several new features.
 Specifically, it uses ``do``-notation, binding variables with ``<-``,
-and a ``pure`` function. There is much to be said about these features,
-but for our purposes, it suffices to know the following:
+and a ``pure`` function. There is much to be said about these
+features, but for our purposes, it suffices to know the following:
 
--  ``do`` blocks allow effectful operations to be sequenced.
+- ``do`` blocks allow effectful operations to be sequenced.
 
--  ``x <- e`` binds the result of an effectful operation ``e`` to a
+- ``x <- e`` binds the result of an effectful operation ``e`` to a
    variable ``x``. For example, in the above code, ``treeTagAux l`` is
-   an effectful operation returning a pair ``(Int, BTree a)``, so ``l’``
-   has type ``(Int, BTree a)``.
+   an effectful operation returning a pair ``(Int, BTree a)``, so
+   ``l’`` has type ``(Int, BTree a)``.
 
--  ``pure e`` turns a pure value ``e`` into the result of an effectful
+- ``pure e`` turns a pure value ``e`` into the result of an effectful
    operation.
 
-The ``get`` and ``put`` functions read and write a state ``t``, assuming
-that the ``STATE t`` effect is available. They have the following types,
-polymorphic in the state ``t`` they manage:
+The ``get`` and ``put`` functions read and write a state ``t``,
+assuming that the ``STATE t`` effect is available. They have the
+following types, polymorphic in the state ``t`` they manage:
 
 .. code-block:: idris
 
@@ -144,15 +145,16 @@ polymorphic in the state ``t`` they manage:
     put : t -> { [STATE t] } Eff ()
 
 A program in ``Eff`` can call any other function in ``Eff`` provided
-that the calling function supports at least the effects required by the
-called function. In this case, it is valid for ``treeTagAux`` to call
-both ``get`` and ``put`` because all three functions support the
+that the calling function supports at least the effects required by
+the called function. In this case, it is valid for ``treeTagAux`` to
+call both ``get`` and ``put`` because all three functions support the
 ``STATE Int`` effect.
 
 Programs in ``Eff`` are run in some underlying *computation context*,
-using the ``run`` or ``runPure`` function. Using ``runPure``, which runs
-an effectful program in the identity context, we can write the
-``treeTag`` function as follows, using ``put`` to initialise the state:
+using the ``run`` or ``runPure`` function. Using ``runPure``, which
+runs an effectful program in the identity context, we can write the
+``treeTag`` function as follows, using ``put`` to initialise the
+state:
 
 .. code-block:: idris
 
@@ -216,11 +218,11 @@ shown in Listing [introprog].
 Effects and Resources
 ---------------------
 
-Each effect is associated with a *resource*, which is initialised before
-an effectful program can be run. For example, in the case of
+Each effect is associated with a *resource*, which is initialised
+before an effectful program can be run. For example, in the case of
 ``STATE Int`` the corresponding resource is the integer state itself.
-The types of ``runPure`` and ``run`` show this (slightly simplified here
-for illustrative purposes):
+The types of ``runPure`` and ``run`` show this (slightly simplified
+here for illustrative purposes):
 
 .. code-block:: idris
 
@@ -238,10 +240,10 @@ class:
 
 Instances of ``Default`` are defined for all primitive types, and many
 library types such as ``List``, ``Vect``, ``Maybe``, pairs, etc.
-However, where no default value exists for a resource type (for example,
-you may want a ``STATE`` type for which there is no ``Default``
-instance) the resource environment can be given explicitly using one of
-the following functions:
+However, where no default value exists for a resource type (for
+example, you may want a ``STATE`` type for which there is no
+``Default`` instance) the resource environment can be given explicitly
+using one of the following functions:
 
 .. code-block:: idris
 
@@ -263,8 +265,8 @@ Labelled Effects
 What if we have more than one state, especially more than one state of
 the same type? How would ``get`` and ``put`` know which state they
 should be referring to? For example, how could we extend the tree
-tagging example such that it additionally counts the number of leaves in
-the tree? One possibility would be to change the state so that it
+tagging example such that it additionally counts the number of leaves
+in the tree? One possibility would be to change the state so that it
 captured both of these values, e.g.:
 
 .. code-block:: idris
@@ -272,16 +274,16 @@ captured both of these values, e.g.:
     treeTagAux : BTree a
                -> { [STATE (Int, Int)] } Eff (BTree (Int, a))
 
-Doing this, however, ties the two states together throughout (as well as
-not indicating which integer is which). It would be nice to be able to
-call effectful programs which guaranteed only to access one of the
-states, for example. In a larger application, this becomes particularly
-important.
+Doing this, however, ties the two states together throughout (as well
+as not indicating which integer is which). It would be nice to be able
+to call effectful programs which guaranteed only to access one of the
+states, for example. In a larger application, this becomes
+particularly important.
 
-The library therefore allows effects in general to be *labelled* so that
-they can be referred to explicitly by a particular name. This allows
-multiple effects of the same type to be included. We can count leaves
-and update the tag separately, by labelling them as follows:
+The library therefore allows effects in general to be *labelled* so
+that they can be referred to explicitly by a particular name. This
+allows multiple effects of the same type to be included. We can count
+leaves and update the tag separately, by labelling them as follows:
 
 .. code-block:: idris
 
@@ -289,16 +291,16 @@ and update the tag separately, by labelling them as follows:
                -> {['Tag ::: STATE Int,
                     'Leaves ::: STATE Int]} Eff (BTree (Int, a))
 
-The ``:::`` operator allows an arbitrary label to be given to an effect.
-This label can be any type—it is simply used to identify an effect
-uniquely. Here, we have used a symbol type. In general ``’name``
-introduces a new symbol, the only purpose of which is to disambiguate
-values [2]_.
+The ``:::`` operator allows an arbitrary label to be given to an
+effect.  This label can be any type—it is simply used to identify an
+effect uniquely. Here, we have used a symbol type. In general
+``’name`` introduces a new symbol, the only purpose of which is to
+disambiguate values [2]_.
 
 When an effect is labelled, its operations are also labelled using the
-``:-`` operator. In this way, we can say explicitly which state we mean
-when using ``get`` and ``put``. The tree tagging program which also
-counts leaves can be written as follows:
+``:-`` operator. In this way, we can say explicitly which state we
+mean when using ``get`` and ``put``. The tree tagging program which
+also counts leaves can be written as follows:
 
 .. code-block:: idris
 
@@ -334,15 +336,15 @@ imperative language):
 
 To summarise, we have:
 
--  ``:::`` to convert an effect to a labelled effect.
+- ``:::`` to convert an effect to a labelled effect.
 
--  ``:-`` to convert an effectful operation to a labelled effectful
+- ``:-`` to convert an effectful operation to a labelled effectful
    operation.
 
--  ``:=`` to initialise a resource for a labelled effect.
+- ``:=`` to initialise a resource for a labelled effect.
 
-Or, more formally with their types (slightly simplified to account only
-for the situation where available effects are not updated):
+Or, more formally with their types (slightly simplified to account
+only for the situation where available effects are not updated):
 
 .. code-block:: idris
 
@@ -359,8 +361,8 @@ Hence, a label can be anything—a string, an integer, a type, etc.
 
 In many cases, using ``do``-notation can make programs unnecessarily
 verbose, particularly in cases where the value bound is used once,
-immediately. The following program returns the length of the ``String``
-stored in the state, for example:
+immediately. The following program returns the length of the
+``String`` stored in the state, for example:
 
 .. code-block:: idris
 
@@ -378,8 +380,8 @@ this. The above program can be written instead as:
     stateLength = pure (length !get)
 
 The notation ``!expr`` means that the expression ``expr`` should be
-evaluated and then implicitly bound. Conceptually, we can think of ``!``
-as being a prefix function with the following type:
+evaluated and then implicitly bound. Conceptually, we can think of
+``!`` as being a prefix function with the following type:
 
 .. code-block:: idris
 
@@ -393,13 +395,13 @@ to right. In practice, ``!``-notation allows us to program in a more
 direct style, while still giving a notational clue as to which
 expressions are effectful.
 
-For example, the expression…
+For example, the expression:
 
 .. code-block:: idris
 
     let y = 42 in f !(g !(print y) !x)
 
-…is lifted to:
+is lifted to:
 
 .. code-block:: idris
 
@@ -411,10 +413,10 @@ For example, the expression…
 Syntactic Sugar and ``Eff``
 ---------------------------
 
-By now, you may be wondering about the syntax we are using for ``Eff``,
-because it doesn’t look like a normal type! (If not, you may safely skip
-this section and return to it later.) In fact, the type of ``Eff`` is
-the following:
+By now, you may be wondering about the syntax we are using for
+``Eff``, because it doesn’t look like a normal type! (If not, you may
+safely skip this section and return to it later.) In fact, the type of
+``Eff`` is the following:
 
 .. code-block:: idris
 
@@ -425,32 +427,32 @@ This is more general than the types we have been writing so far. It is
 parameterised over a result type ``x``, as we have already seen, but
 also a ``List EFFECT`` and a function type ``x -> List EFFECT``.
 
-These additional parameters are the list of *input* effects, and a list
-of *output* effects, computed from the result of an effectful operation.
-That is: running an effectful program can change the set of effects
-available! This is a particularly powerful idea, and we will see its
-consequences in more detail later. Some examples of operations which can
-change the set of available effects are:
+These additional parameters are the list of *input* effects, and a
+list of *output* effects, computed from the result of an effectful
+operation.  That is: running an effectful program can change the set
+of effects available! This is a particularly powerful idea, and we
+will see its consequences in more detail later. Some examples of
+operations which can change the set of available effects are:
 
--  Updating a state containing a dependent type (for example adding an
+- Updating a state containing a dependent type (for example adding an
    element to a vector).
 
--  Opening a file for reading is an effect, but whether the file really
-   *is* open afterwards depends on whether the file was successfully
-   opened.
+- Opening a file for reading is an effect, but whether the file really
+  *is* open afterwards depends on whether the file was successfully
+  opened.
 
--  Closing a file means that reading from the file should no longer be
-   possible.
+- Closing a file means that reading from the file should no longer be
+  possible.
 
 While powerful, this can make uses of the ``Eff`` type hard to read.
-Therefore, the library provides syntactic sugar which is translated such
-that…
+Therefore, the library provides syntactic sugar which is translated
+such that:
 
 .. code-block:: idris
 
     { xs } Eff a
 
-…is expanded to …
+is expanded to
 
 .. code-block:: idris
 
@@ -458,8 +460,8 @@ that…
 
 i.e. the set of effects remains the same on output. This suffices for
 the ``STATE`` example we have seen so far, and for many useful
-side-effecting programs. We could also have written ``treeTagAux`` with
-the expanded type:
+side-effecting programs. We could also have written ``treeTagAux``
+with the expanded type:
 
 .. code-block:: idris
 
@@ -472,14 +474,14 @@ Later, we will see programs which update effects:
 
     { xs ==> xs' } Eff a
 
-…which is expanded to …
+which is expanded to
 
 .. code-block:: idris
 
     Eff a xs (\_ => xs')
 
-i.e. the set of effects is updated to ``xs’`` (think of a transition in
-a state machine). There is, for example, a version of ``put`` which
+i.e. the set of effects is updated to ``xs’`` (think of a transition
+in a state machine). There is, for example, a version of ``put`` which
 updates the type of the state:
 
 .. code-block:: idris
@@ -492,7 +494,7 @@ Also, we have:
 
     { xs ==> {res} xs' } Eff a
 
-…which is expanded to …
+which is expanded to
 
 .. code-block:: idris
 
@@ -501,13 +503,11 @@ Also, we have:
 i.e. the set of effects is updated according to the result of the
 operation ``res``.
 
-.. [1]
-   The earlier paper [3]_ describes the essential implementation details,
-   although the library presented there is an earlier version which is
-   less powerful than that presented in this tutorial.
+.. [1] The earlier paper [3]_ describes the essential implementation
+   details, although the library presented there is an earlier version
+   which is less powerful than that presented in this tutorial.
 
-.. [2]
-   In practice, ``’name`` simply introduces a new empty type
+.. [2] In practice, ``’name`` simply introduces a new empty type
 
 .. [3] Edwin Brady. 2013. Programming and reasoning with algebraic
        effects and dependent types. SIGPLAN Not. 48, 9 (September

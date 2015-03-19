@@ -1,34 +1,33 @@
 Type Providers in Idris
 =======================
 
-.. sectionauthor:: David Christiansen
-
-`Type providers in
-Idris <http://www.itu.dk/people/drc/pubs/dependent-type-providers.pdf>`__
+`Type providers in Idris
+<http://www.itu.dk/people/drc/pubs/dependent-type-providers.pdf>`__
 are simple enough, but there are a few caveats to using them that it
 would be worthwhile to go through the basic steps. We also go over
-foreign functions, because these will often be used with type providers.
+foreign functions, because these will often be used with type
+providers.
 
 The use case
 ------------
 
-First, let's talk about *why* we might want type providers. There are a
-number of reasons to use them and there are other examples available
+First, let's talk about *why* we might want type providers. There are
+a number of reasons to use them and there are other examples available
 around the net, but in this tutorial we'll be using them to port C's
 ``struct stat`` to Idris.
 
-Why do we need type providers? Well, Idris's FFI needs to know the types
-of the things it passes to and from C, but the fields of a
-``struct stat`` are implementation-dependent types that cannot be relied
-upon. We don't just want to hard-code these types into our program... so
-we'll use a type provider to find them at compile time!
+Why do we need type providers? Well, Idris's FFI needs to know the
+types of the things it passes to and from C, but the fields of a
+``struct stat`` are implementation-dependent types that cannot be
+relied upon. We don't just want to hard-code these types into our
+program... so we'll use a type provider to find them at compile time!
 
 A simple example
 ----------------
 
 First, let's go over a basic usage of type providers, because foreign
-functions can be confusing but it's important to remember that providers
-themselves are simple.
+functions can be confusing but it's important to remember that
+providers themselves are simple.
 
 A type provider is simply an IO action that returns a value of this
 type:
@@ -58,11 +57,11 @@ actions. Let's write a simple one now:
     -- the readInt function is left as an exercise
 
 We assume that whoever's compiling the library knows the size of
-size\_t, so we'll just ask them! (Don't worry, we'll get it ourselves
-later.) Then, if their response can be converted to an integer, we
-present ``Provide sizeTSize`` as the result of our IO action; or if it
-can't, we signal a failure. (This will then become a compile-time
-error.)
+``size_t``, so we'll just ask them! (Don't worry, we'll get it
+ourselves later.) Then, if their response can be converted to an
+integer, we present ``Provide sizeTSize`` as the result of our IO
+action; or if it can't, we signal a failure. (This will then become a
+compile-time error.)
 
 Now we can use this IO action as a type provider:
 
@@ -88,8 +87,8 @@ Now we can use this IO action as a type provider:
       putStr " bytes!"
 
 Yay! We... asked the user something at compile time? That's not very
-good, actually. Our library is going to be difficult to compile! This is
-hardly a step up from having them edit in the size of ``size_t``
+good, actually. Our library is going to be difficult to compile! This
+is hardly a step up from having them edit in the size of ``size_t``
 themselves!
 
 Don't worry, there's a better way.
@@ -98,18 +97,18 @@ Foreign Functions
 -----------------
 
 It's actually pretty easy to write a C function that figures out the
-size of size\_t:
+size of ``size_t``:
 
 .. code:: c
 
     int sizeof_size_t() { return sizeof(size_t); }
 
-(Why an int and not a size\_t? The FFI needs to know how to receive the
-return value of this function and translate it into an Idris value. If
-we knew how to do this for values of C type size\_t, we wouldn't need to
-write this function at all! If we really wanted to be safe from
-overflow, we could use an array of multiple integers, but the SIZE of
-size\_t is never going to be a 65535 byte integer.)
+(Why an int and not a ``size_t``? The FFI needs to know how to receive
+the return value of this function and translate it into an Idris
+value. If we knew how to do this for values of C type ``size_t``, we
+wouldn't need to write this function at all! If we really wanted to be
+safe from overflow, we could use an array of multiple integers, but
+the SIZE of ``size_t`` is never going to be a 65535 byte integer.)
 
 So now we can get the size of ``size_t`` as long as we're in C code.
 We'd like to be able to use this from Idris. Can we do this? It turns
@@ -128,24 +127,24 @@ like this:
 
 Pretty simple. ``mkForeign`` takes a specification of what function it
 needs to call, and we construct this specification with ``FFun``. And
-``FFun`` just takes a name, a list of argument types (we have none), and
-a return type.
+``FFun`` just takes a name, a list of argument types (we have none),
+and a return type.
 
 One thing you might want to note: the return type we've specified is
 ``FInt``, not ``Int``. That's because ``Int`` is an idris type and C
 functions don't return idris types. ``FInt`` is not an idris type, but
-is just the representation of the type of a C int. It tells the compiler
-"Treat the return value of this C function like it's a C int, and when
-you pass it back into Idris, convert it to an Idris int."
+is just the representation of the type of a C int. It tells the
+compiler "Treat the return value of this C function like it's a C int,
+and when you pass it back into Idris, convert it to an Idris int."
 
 Caveats of mkForeign
 ^^^^^^^^^^^^^^^^^^^^
 
 First and foremost: ``mkForeign`` is not actually a function. It is
-treated specially by the compiler, and there are certain rules you need
-to follow when using it.
+treated specially by the compiler, and there are certain rules you
+need to follow when using it.
 
--  Rule 1: the name string must be a literal or constant
+- Rule 1: the name string must be a literal or constant
 
 This does not work:
 
@@ -155,14 +154,15 @@ This does not work:
   intIntToInt name = mkForeign (FFun name [FInt, FInt] FInt)
 
 You'll just have to bite the bullet and write out the whole
-``mkForeign`` and ``FFun`` expression each time. \* Rule 2: the "call"
-to ``mkForeign`` must be fully applied
+``mkForeign`` and ``FFun`` expression each time.
+
+- Rule 2: the "call" to ``mkForeign`` must be fully applied
 
 This just means that every argument appearing in the list of argument
 types must be applied wherever you write ``mkForeign``. The arguments
-don't have to be literals or even known at compile time; they just have
-to be there. For example, if we have ``strlen : String -> IO Int``, then
-this is fine:
+don't have to be literals or even known at compile time; they just
+have to be there. For example, if we have ``strlen : String -> IO
+Int``, then this is fine:
 
 .. code-block:: idris
 
@@ -181,7 +181,8 @@ applied. This is okay:
 
 .. code-block:: idris
 
-   lengths : IO [Int]   lengths = mapM strlen listOfStrings
+   lengths : IO [Int]
+   lengths = mapM strlen listOfStrings
 
 Running foreign functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -194,8 +195,8 @@ our code.
 In the interpreter
 ^^^^^^^^^^^^^^^^^^
 
-If we want to call our foreign functions from interpreted code (such as
-the REPL or a type provider), we need to dynamically link a library
+If we want to call our foreign functions from interpreted code (such
+as the REPL or a type provider), we need to dynamically link a library
 containing the symbols we need. This is pretty easy to do with the
 ``%dynamic`` directive:
 
@@ -204,10 +205,10 @@ containing the symbols we need. This is pretty easy to do with the
     %dynamic "./filename.so"
 
 Note that the leading "./" is important: currently, the string you
-provide is interpreted as by dlopen(), which on Unix does not search in
-the current directory by default. If you use the "./", the library will
-be searched for in the directory from which you run idris (*not* the
-location of the file you're running!). Of course, if you're using
+provide is interpreted as by ``dlopen()``, which on Unix does not search
+in the current directory by default. If you use the "./", the library
+will be searched for in the directory from which you run idris (*not*
+the location of the file you're running!). Of course, if you're using
 functions from an installed library rather than something you wrote
 yourself, the "./" is not necessary.
 
@@ -222,18 +223,18 @@ instead. We'll use the ``%include`` and ``%link`` directives:
     %include C "filename.h"
     %link C "filename.o"
 
-Note the extra argument to the directive! We specify that we're linking
-a C header and library. Also, unlike ``%dynamic``, these directives
-search in the current directory by default. (That is, the directory from
-which we run idris.)
+Note the extra argument to the directive! We specify that we're
+linking a C header and library. Also, unlike ``%dynamic``, these
+directives search in the current directory by default. (That is, the
+directory from which we run idris.)
 
 Putting it all together
 -----------------------
 
 So, at the beginning of this article I said we'd use type providers to
-port ``struct stat`` to Idris. The relevant part is just translating all
-the mysterious typedef'd C types into Idris types, and that's what we'll
-do here.
+port ``struct stat`` to Idris. The relevant part is just translating
+all the mysterious typedef'd C types into Idris types, and that's what
+we'll do here.
 
 First, let's write a C file containing functions that we'll bind to.
 

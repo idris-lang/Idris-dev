@@ -80,7 +80,7 @@ digits). As a first attempt, we could try the following, returning a
 Unfortunately, this will not type check because the vector does not get
 extended in both branches of the ``case``!
 
-.. code-block:: idris
+::
 
     MutState.idr:18:19:When elaborating right hand side of Main.case
     block in readInt:
@@ -127,10 +127,11 @@ many values still need to be read into the vector. What this means in
 practice is that the type system has verified that a necessary dynamic
 check (i.e. whether reading a value succeeded) has indeed been done.
 
-**Aside:** Only ``case`` will work here. We cannot use ``if/then/else``
-because the ``then`` and ``else`` branches must have the same type. The
-``case`` construct, however, abstracts over the value being inspected in
-the type of each branch.
+.. note::
+    Only ``case`` will work here. We cannot use ``if/then/else``
+    because the ``then`` and ``else`` branches must have the same
+    type. The ``case`` construct, however, abstracts over the value
+    being inspected in the type of each branch.
 
 File Management
 ---------------
@@ -231,7 +232,7 @@ for writing) then we will get a compile-time error. For example,
 changing ``open name Read`` to ``open name Write`` yields a compile-time
 error of the following form:
 
-.. code-block:: idris
+::
 
     FileTest.idr:16:18:When elaborating right hand side of Main.case
     block in testFile:
@@ -275,14 +276,14 @@ example, we could write:
                         close
 
 This is exactly equivalent to the definition with the explicit ``case``.
-In general, in a ``do``-block, the syntax…
+In general, in a ``do``-block, the syntax:
 
 .. code-block:: idris
 
     do pat <- val | <alternatives>
        p
 
-...is desugared to...
+is desugared to
 
 .. code-block:: idris
 
@@ -292,8 +293,9 @@ In general, in a ``do``-block, the syntax…
             <alternatives>
 
 There can be several ``alternatives``, separated by a vertical bar
-``|``. For example, there is a ``SYSTEM`` effect which supports reading
-command line arguments, among other things (see Appendix :ref:`sect-appendix`). To read command line arguments, we can use
+``|``. For example, there is a ``SYSTEM`` effect which supports
+reading command line arguments, among other things (see Appendix
+:ref:`sect-appendix`). To read command line arguments, we can use
 ``getArgs``:
 
 .. code-block:: idris

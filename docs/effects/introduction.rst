@@ -2,15 +2,15 @@
 Introduction
 ============
 
-Pure functional languages with dependent types such as
-(http://idris-lang.org/) support reasoning about programs directly in
-the type system, promising that we can *know* a program will run
+Pure functional languages with dependent types such as `Idris
+<http://idris-lang.org/>`_ support reasoning about programs directly
+in the type system, promising that we can *know* a program will run
 correctly (i.e. according to the specification in its type) simply
 because it compiles. Realistically, though, things are not so simple:
-programs have to interact with the outside world, with user input, input
-from a network, mutable state, and so on. In this tutorial I will
-introduce the library, which is included with the distribution and
-supports programming and reasoning with side-effecting programs,
+programs have to interact with the outside world, with user input,
+input from a network, mutable state, and so on. In this tutorial I
+will introduce the library, which is included with the distribution
+and supports programming and reasoning with side-effecting programs,
 supporting mutable state, interaction with the outside world,
 exceptions, and verified resource management.
 
@@ -37,13 +37,13 @@ introductory tutorials, is “How do I turn this into a program?” That is,
 given some lists entered by a user, how do we get into a position to be
 able to apply the ``vadd`` function? Before doing so, we will have to:
 
--  Read user input, either from the keyboard, a file, or some other
+- Read user input, either from the keyboard, a file, or some other
    input device.
 
--  Check that the user inputs are valid, i.e. contain only ``Int`` s
+- Check that the user inputs are valid, i.e. contain only ``Int`` s
    and are the same length, and report an error if not.
 
--  Write output
+- Write output
 
 The complete program will include side-effects for I/O and error
 handling, before we can get to the pure core functionality. In this
@@ -56,7 +56,8 @@ Hello world
 ===========
 
 To give an idea of how programs with effects look in , here is the
-ubiquitous “Hello world” program, written using the ``Effects`` library:
+ubiquitous “Hello world” program, written using the ``Effects``
+library:
 
 .. code-block:: idris
 
@@ -70,14 +71,14 @@ ubiquitous “Hello world” program, written using the ``Effects`` library:
    main : IO ()
    main = run hello
 
-As usual, the entry point is ``main``. All ``main`` has to do is invoke
-the ``hello`` function which supports the ``STDIO`` effect for console
-I/O, and returns the unit value. The details of the ``Eff`` type will be
-presented in the remainder of this tutorial.
+As usual, the entry point is ``main``. All ``main`` has to do is
+invoke the ``hello`` function which supports the ``STDIO`` effect for
+console I/O, and returns the unit value. The details of the ``Eff``
+type will be presented in the remainder of this tutorial.
 
-To compile and run this program, ``Idris`` needs to be told to include the
-``Effects`` package, using the ``-p effects`` flag (this flag is required for all examples
-in this tutorial):
+To compile and run this program, ``Idris`` needs to be told to include
+the ``Effects`` package, using the ``-p effects`` flag (this flag is
+required for all examples in this tutorial):
 
 .. code-block:: sh
 
@@ -87,20 +88,21 @@ in this tutorial):
 Outline
 =======
 
-The tutorial is structured as follows: first, in :ref:`sect-state`, we
-will discuss state management, describing why it is important and
-introducing the ``effects`` library to show how it can be used to
-manage state. This section also gives an overview of the syntax of
-effectful programs.  :ref:`sect-simpleff` then introduces a number of
-other effects a program may have: I/O; Exceptions; Random Numbers; and
-Non-determinism, giving examples for each, and an extended example
-combining several effects in one complete program. :ref:`sect-depeff`
-introduces *dependent* effects, showing how states and resources can
-be managed in types. :ref:`sect-impleff` shows how new effects can be
-implemented.  :ref:`sect-hangman` gives an extended example showing
-how to implement a “mystery word” guessing game, using effects to
-describe the rules of the game and ensure they are implemented
-accurately. References to further reading are given in
+The tutorial is structured as follows: first, in Section
+:ref:`sect-state`, we will discuss state management, describing why it
+is important and introducing the ``effects`` library to show how it
+can be used to manage state. This section also gives an overview of
+the syntax of effectful programs. Section :ref:`sect-simpleff` then
+introduces a number of other effects a program may have: I/O;
+Exceptions; Random Numbers; and Non-determinism, giving examples for
+each, and an extended example combining several effects in one
+complete program. Section :ref:`sect-depeff` introduces *dependent*
+effects, showing how states and resources can be managed in
+types. Section :ref:`sect-impleff` shows how new effects can be
+implemented.  Section :ref:`sect-hangman` gives an extended example
+showing how to implement a “mystery word” guessing game, using effects
+to describe the rules of the game and ensure they are implemented
+accurately. References to further reading are given in Section
 :ref:`sect-further`.
 
 .. [1]
