@@ -1198,6 +1198,9 @@ data SyntaxInfo = Syn { using :: [Using],
                         syn_params :: [(Name, PTerm)],
                         syn_namespace :: [String],
                         no_imp :: [Name],
+                        imp_methods :: [Name], -- class methods. When expanding
+                           -- implicits, these should be expanded even under
+                           -- binders
                         decoration :: Name -> Name,
                         inPattern :: Bool,
                         implicitAllowed :: Bool,
@@ -1211,7 +1214,7 @@ deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] id False False Nothing 0 initDSL 0
+defaultSyntax = Syn [] [] [] [] [] id False False Nothing 0 initDSL 0
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n

@@ -56,7 +56,7 @@ elabValBind :: ElabInfo -> ElabMode -> Bool -> PTerm -> Idris (Term, Type, [(Nam
 elabValBind info aspat norm tm_in
    = do ctxt <- getContext
         i <- getIState
-        let tm = addImpl i tm_in
+        let tm = addImpl [] i tm_in
         logLvl 10 (showTmImpls tm)
         -- try:
         --    * ordinary elaboration

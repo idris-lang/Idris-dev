@@ -215,6 +215,7 @@ elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
            Idris (Name, Type)
 elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
     = do checkUndefined fc n
+         logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t_in
          (cty, ckind, t, inacc) <- buildType info syn fc [Constructor] n (if codata then mkLazy t_in else t_in)
          ctxt <- getContext
          let cty' = normalise ctxt [] cty
@@ -223,7 +224,7 @@ elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
          -- Check that the constructor type is, in fact, a part of the family being defined
          tyIs n cty'
 
-         logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t
+         logLvl 5 $ show fc ++ ":Constructor " ++ show n ++ " elaborated : " ++ show t
          logLvl 5 $ "Inaccessible args: " ++ show inacc
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty'
 

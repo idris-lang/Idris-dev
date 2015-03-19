@@ -167,7 +167,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
         = do ty' <- addUsingConstraints syn fc t
              -- TODO think: something more in info?
              ty' <- implicit info syn iname ty'
-             let ty = addImpl i ty'
+             let ty = addImpl [] i ty'
              ctxt <- getContext
              (ElabResult tyT _ _ ctxt' newDecls, _) <-
                 tclift $ elaborate ctxt iname (TType (UVal 0)) initEState
