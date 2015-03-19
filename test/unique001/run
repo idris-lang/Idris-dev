@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-idris $@ unique001.idr -o unique001
+idris --consolewidth 80 $@ unique001.idr -o unique001
 ./unique001
-idris $@ unique001a.idr --check
-idris $@ unique001b.idr --check
-idris $@ unique001c.idr --check
-idris $@ unique001d.idr --check
-idris $@ unique001e.idr --check
+idris --consolewidth 80 $@ unique001a.idr --check
+idris --consolewidth 80 $@ unique001b.idr --check
+idris --consolewidth 80 $@ unique001c.idr --check
+idris --consolewidth 80 $@ unique001d.idr --check
+idris --consolewidth 80 $@ unique001e.idr --check
 rm -f unique001 *.ibc
+k
