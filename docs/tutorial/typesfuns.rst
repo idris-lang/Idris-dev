@@ -518,6 +518,8 @@ for reading and writing files, including:
 
     readFile : String -> IO String
 
+.. _sect-do:
+
 “``do``” notation
 -----------------
 
@@ -824,6 +826,8 @@ intermediate values:
       | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
 
 We will see more on ``with`` notation later.
+
+.. _sect-more-expr:
 
 More Expressions
 ----------------

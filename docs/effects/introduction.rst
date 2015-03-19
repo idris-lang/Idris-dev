@@ -14,9 +14,10 @@ supports programming and reasoning with side-effecting programs,
 supporting mutable state, interaction with the outside world,
 exceptions, and verified resource management.
 
-This tutorial assumes familiarity with pure programming in , as
-described in Sections 1–6 of the main tutorial [1]_. The examples are
-tested with version .
+This tutorial assumes familiarity with pure programming in ``Idris``,
+as described in Sections 1–6 of the main tutorial [1]_. The examples
+are presented are tested with ``Idris`` and can be found in the
+examples directory of the ``Idris`` repository.
 
 Consider, for example, the following introductory function which
 illustrates the kind of properties which can be expressed in the type
@@ -46,16 +47,16 @@ able to apply the ``vadd`` function? Before doing so, we will have to:
 
 The complete program will include side-effects for I/O and error
 handling, before we can get to the pure core functionality. In this
-tutorial, we will see how supports side-effects. Furthermore, we will
-see how we can use the dependent type system to *reason* about stateful
-and side-effecting programs. We will return to this specific example
-later.
+tutorial, we will see how ``Idris`` supports side-effects.
+Furthermore, we will see how we can use the dependent type system to
+*reason* about stateful and side-effecting programs. We will return to
+this specific example later.
 
 Hello world
 ===========
 
 To give an idea of how programs with effects look in , here is the
-ubiquitous “Hello world” program, written using the library:
+ubiquitous “Hello world” program, written using the ``Effects`` library:
 
 .. code-block:: idris
 
@@ -74,8 +75,8 @@ the ``hello`` function which supports the ``STDIO`` effect for console
 I/O, and returns the unit value. The details of the ``Eff`` type will be
 presented in the remainder of this tutorial.
 
-To compile and run this program, needs to be told to include the
-package, using the ``-p`` flag (this flag is required for all examples
+To compile and run this program, ``Idris`` needs to be told to include the
+``Effects`` package, using the ``-p effects`` flag (this flag is required for all examples
 in this tutorial):
 
 .. code-block:: sh
@@ -86,20 +87,21 @@ in this tutorial):
 Outline
 =======
 
-The tutorial is structured as follows: first, in :ref:`sect-state`,
-we will discuss state management, describing why it is important and
-introducing the library to show how it can be used to manage state. This
-section also gives an overview of the syntax of effectful programs.
-:ref:`sect-simpleff` then introduces a number of other effects a
-program may have: I/O; Exceptions; Random Numbers; and Non-determinism,
-giving examples for each, and an extended example combining several
-effects in one complete program. :ref:`sect-depeff` introduces
-*dependent* effects, showing how states and resources can be managed in
-types. :ref:`sect-impleff` shows how new effects can be implemented.
-:ref:`sect-hangman` gives an extended example showing how to
-implement a “mystery word” guessing game, using effects to describe the
-rules of the game and ensure they are implemented accurately. References
-to further reading are given in :ref:`sect-further`.
+The tutorial is structured as follows: first, in :ref:`sect-state`, we
+will discuss state management, describing why it is important and
+introducing the ``effects`` library to show how it can be used to
+manage state. This section also gives an overview of the syntax of
+effectful programs.  :ref:`sect-simpleff` then introduces a number of
+other effects a program may have: I/O; Exceptions; Random Numbers; and
+Non-determinism, giving examples for each, and an extended example
+combining several effects in one complete program. :ref:`sect-depeff`
+introduces *dependent* effects, showing how states and resources can
+be managed in types. :ref:`sect-impleff` shows how new effects can be
+implemented.  :ref:`sect-hangman` gives an extended example showing
+how to implement a “mystery word” guessing game, using effects to
+describe the rules of the game and ensure they are implemented
+accurately. References to further reading are given in
+:ref:`sect-further`.
 
 .. [1]
    You do not, however, need to know what a monad is. A correctness

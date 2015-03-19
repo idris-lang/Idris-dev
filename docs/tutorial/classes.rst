@@ -195,8 +195,9 @@ Monads and ``do``-notation
 --------------------------
 
 The ``Monad`` class allows us to encapsulate binding and computation,
-and is the basis of ``do``-notation introduced in Section [sect:do]. It
-extends ``Applicative`` as defined above, and is defined as follows:
+and is the basis of ``do``-notation introduced in Section 
+:ref:`sect-do`. It extends ``Applicative`` as defined above, and is
+defined as follows:
 
 .. code-block:: idris
 
@@ -384,7 +385,7 @@ An error-handling interpreter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Idiom notation is commonly useful when defining evaluators. McBride and
-Paterson describe such an evaluator [1], for a language similar to the
+Paterson describe such an evaluator [1]_, for a language similar to the
 following:
 
 .. code-block:: idris

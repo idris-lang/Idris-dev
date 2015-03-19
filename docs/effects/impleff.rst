@@ -5,12 +5,13 @@ Creating New Effects
 ====================
 
 We have now seen several side-effecting operations provided by the
-library, and examples of their use in Section :ref:`sect-simpleff`. We have
-also seen how operations may *modify* the available effects by changing
-state in Section :ref:`sect-depeff`. We have not, however, yet seen how these
-operations are implemented. In this section, we describe how a selection
-of the available effects are implemented, and show how new effectful
-operations may be provided.
+``Effects`` library, and examples of their use in Section
+:ref:`sect-simpleff`. We have also seen how operations may *modify*
+the available effects by changing state in Section
+:ref:`sect-depeff`. We have not, however, yet seen how these
+operations are implemented. In this section, we describe how a
+selection of the available effects are implemented, and show how new
+effectful operations may be provided.
 
 State
 -----
