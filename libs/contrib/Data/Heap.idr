@@ -5,6 +5,7 @@
 
 module Data.Heap
 
+
 %default total
 %access public
 
@@ -127,9 +128,6 @@ instance Ord a => Semigroup (MaxiphobicHeap a) where
 
 instance Ord a => Monoid (MaxiphobicHeap a) where
   neutral = empty
-
-instance Ord a => JoinSemilattice (MaxiphobicHeap a) where
-  join = merge
 
 --------------------------------------------------------------------------------
 -- Properties

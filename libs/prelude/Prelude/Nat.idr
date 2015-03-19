@@ -239,18 +239,6 @@ instance Monoid Multiplicative where
 instance Monoid Additive where
   neutral = getAdditive Z
 
-instance MeetSemilattice Nat where
-  meet = minimum
-
-instance JoinSemilattice Nat where
-  join = maximum
-
-instance Lattice Nat where { }
-
-instance BoundedJoinSemilattice Nat where
-  bottom = Z
-
-
 ||| Casts negative `Ints` to 0.
 instance Cast Int Nat where
   cast i = fromInteger (cast i)
