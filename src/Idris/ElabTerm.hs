@@ -1375,9 +1375,12 @@ findInstances :: IState -> Term -> [Name]
 findInstances ist t
     | (P _ n _, _) <- unApply t
         = case lookupCtxt n (idris_classes ist) of
-            [CI _ _ _ _ _ ins _] -> ins
+            [CI _ _ _ _ _ ins _] -> filter accessible ins
             _ -> []
     | otherwise = []
+  where accessible n = case lookupDefAccExact n False (tt_ctxt ist) of
+                            Just (_, Hidden) -> False
+                            _ -> True
 
 -- Try again to solve auto implicits
 solveAuto :: IState -> Name -> Bool -> Name -> ElabD ()
