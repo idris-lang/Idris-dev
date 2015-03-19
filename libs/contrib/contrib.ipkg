@@ -6,6 +6,6 @@ modules = Data.Fun, Data.Rel, Data.Buffer,
 
           Decidable.Decidable, Decidable.Order,
 
-          Network.Cgi,
+          Network.Cgi, Network.Socket
 
           System.Concurrency.Process

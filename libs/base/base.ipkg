@@ -3,7 +3,6 @@ package base
 opts = "--nobasepkgs --total -i ../prelude"
 modules = System,
 
-          Network.Socket,
           Debug.Error, Debug.Trace,
 
           System.Info,
