@@ -77,28 +77,28 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
               = unzip (map (\ ( x,y,z) -> (x, y)) ims)
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
          -- build instance constructor type
-         -- decorate names of functions to ensure they can't be referred
-         -- to elsewhere in the class declaration
          let cty = impbind ps $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
          let cons = [(emptyDocstring, [], cn, cty, fc, [])]
          let ddecl = PDatadecl tn tty cons
          logLvl 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
-         elabData info (syn { no_imp = no_imp syn ++ mnames }) doc pDocs fc [] ddecl
-
+         -- Elaborate the data declaration
+         elabData info (syn { no_imp = no_imp syn ++ mnames,
+                              imp_methods = mnames }) doc pDocs fc [] ddecl
          dets <- findDets cn fds
          addClass tn (CI cn (map nodoc imethods) defaults idecls (map fst ps) [] dets)
+
          -- for each constraint, build a top level function to chase it
-         logLvl 5 $ "Building functions"
---          let usyn = syn { using = map (\ (x,y) -> UImplicit x y) ps
---                                       ++ using syn }
-         fns <- mapM (cfun cn constraint syn (map fst imethods)) constraints
-         mapM_ (rec_elabDecl info EAll info) (concat fns)
+         cfns <- mapM (cfun cn constraint syn (map fst imethods)) constraints
+         mapM_ (rec_elabDecl info EAll info) (concat cfns)
+
          -- for each method, build a top level function
          fns <- mapM (tfun cn constraint syn (map fst imethods)) imethods
          logLvl 5 $ "Functions " ++ show fns
+         -- Elaborate the the top level methods
          mapM_ (rec_elabDecl info EAll info) (concat fns)
+
          -- add the default definitions
          mapM_ (rec_elabDecl info EAll info) (concat (map (snd.snd) defs))
          addIBC (IBCClass tn)
@@ -134,8 +134,8 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
 
     getMName (PTy _ _ _ _ _ n _) = nsroot n
     tdecl allmeths (PTy doc _ syn _ o n t)
-           = do t' <- implicit' info syn allmeths n t
-                logLvl 5 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
+           = do t' <- implicit' info syn (map fst ps ++ allmeths) n t
+                logLvl 2 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map fst ps) Exp t')),
                          (n, (doc, o, (toExp (map fst ps)
                                          (\ l s p -> Imp l s p Nothing) t'))),

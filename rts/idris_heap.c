@@ -5,7 +5,9 @@
 #include <stddef.h>
 #include <stdio.h>
 
-void alloc_heap(Heap * h, size_t heap_size) 
+
+/* Used for initializing the heap. */
+void alloc_heap(Heap * h, size_t heap_size, size_t growth, char * old) 
 {
     char * mem = malloc(heap_size); 
     if (mem == NULL) {
@@ -27,9 +29,9 @@ void alloc_heap(Heap * h, size_t heap_size)
     h->end  = h->heap + heap_size;
 
     h->size   = heap_size;
-    h->growth = heap_size;
+    h->growth = growth;
 
-    h->old = NULL;
+    h->old = old;
 }
 
 void free_heap(Heap * h) {
@@ -39,6 +41,7 @@ void free_heap(Heap * h) {
         free(h->old); 
     }
 }
+
 
 // TODO: more testing
 /******************** Heap testing ********************************************/

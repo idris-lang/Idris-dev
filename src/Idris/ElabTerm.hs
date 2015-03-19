@@ -57,7 +57,7 @@ processTacticDecls info =
        updateIState $ \i -> i { idris_implicits =
                                   addDef n impls (idris_implicits i) }
        addIBC (IBCImp n)
-       ds <- checkDef fc [(n, (-1, Nothing, ty))]
+       ds <- checkDef fc iderr [(n, (-1, Nothing, ty))]
        addIBC (IBCDef n)
        let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
        addDeferred ds'
@@ -1375,9 +1375,12 @@ findInstances :: IState -> Term -> [Name]
 findInstances ist t
     | (P _ n _, _) <- unApply t
         = case lookupCtxt n (idris_classes ist) of
-            [CI _ _ _ _ _ ins _] -> ins
+            [CI _ _ _ _ _ ins _] -> filter accessible ins
             _ -> []
     | otherwise = []
+  where accessible n = case lookupDefAccExact n False (tt_ctxt ist) of
+                            Just (_, Hidden) -> False
+                            _ -> True
 
 -- Try again to solve auto implicits
 solveAuto :: IState -> Name -> Bool -> Name -> ElabD ()
@@ -2708,6 +2711,7 @@ reflectErr (NotInjective t1 t2 t3) =
             , reflect t3
             ]
 reflectErr (CantResolve _ t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
+reflectErr (InvalidTCArg n t) = raw_apply (Var $ reflErrName "InvalidTCArg") [reflectName n, reflect t]
 reflectErr (CantResolveAlts ss) =
   raw_apply (Var $ reflErrName "CantResolveAlts")
             [rawList (Var $ reflm "TTName") (map reflectName ss)]
