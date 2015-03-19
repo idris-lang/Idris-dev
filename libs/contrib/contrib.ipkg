@@ -1,11 +1,13 @@
 package contrib
 
-opts = "--nobaselibs --total -i ../prelude -i ../base"
-modules = Data.Fun, Data.Rel, Data.Buffer,
+opts = "--nobasepkgs --total -i ../prelude -i ../base"
+modules = Control.Isomorphism.Primitives,
+          Data.Fun, Data.Rel, Data.Buffer,
+          Data.Heap,
           Data.SortedMap, Data.SortedSet,
 
           Decidable.Decidable, Decidable.Order,
 
-          Network.Cgi, Network.Socket
+          Network.Cgi, Network.Socket,
 
           System.Concurrency.Process

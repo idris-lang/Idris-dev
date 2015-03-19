@@ -7,8 +7,6 @@ modules = System,
 
           System.Info,
 
-          Providers,
-
           Language.Reflection.Utils,
 
           Syntax.PreorderReasoning,
@@ -19,12 +17,12 @@ modules = System,
           Data.BoundedList,
           Data.Fin, Data.Vect, Data.VectType,
           Data.HVect, Data.Vect.Quantifiers,
-          Data.Floats, Data.Complex, Data.Heap,
+          Data.Floats, Data.Complex,
           Data.Erased,
           Data.List, Data.Hash, Data.Matrix,
           Data.So,
 
-          Control.Isomorphism, Control.Isomorphism.Primitives,
+          Control.Isomorphism,
           Control.Monad.Identity,
           Control.Monad.RWS,
           Control.Monad.Trans,
