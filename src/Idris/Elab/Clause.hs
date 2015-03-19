@@ -548,7 +548,7 @@ elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
 elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
    = do let tcgen = Dictionary `elem` opts
         i <- get
-        let lhs = addImpl i lhs_in
+        let lhs = addImpl [] i lhs_in
         b <- checkPossible info fc tcgen fname lhs_in
         case b of
             True -> tclift $ tfail (At fc

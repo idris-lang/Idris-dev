@@ -57,13 +57,13 @@ buildType info syn fc opts n ty' = do
          ctxt <- getContext
          i <- getIState
 
-         logLvl 3 $ show n ++ " pre-type " ++ showTmImpls ty'
+         logLvl 2 $ show n ++ " pre-type " ++ showTmImpls ty' ++ show (no_imp syn)
          ty' <- addUsingConstraints syn fc ty'
          ty' <- addUsingImpls syn n fc ty'
-         let ty = addImpl i ty'
+         let ty = addImpl (imp_methods syn) i ty'
 
-         logLvl 3 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
-         logLvl 3 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
+         logLvl 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
+         logLvl 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
          (ElabResult tyT' defer is ctxt' newDecls, log) <-
             tclift $ elaborate ctxt n (TType (UVal 0)) initEState
