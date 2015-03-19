@@ -32,6 +32,8 @@ New in 0.9.17:
 * New REPL command ":core TM" that shows the elaborated form of TM along with
   its elaborated type using the syntax of TT. IDE mode has a corresponding
   command :elaborate-term for serialized terms.
+* Records has a new syntax based on fields rather than constructors.
+* Records can now be coinductive.
 
 
 New in 0.9.16:

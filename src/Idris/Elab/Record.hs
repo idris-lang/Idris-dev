@@ -5,9 +5,7 @@ import Idris.AbsSyntax
 import Idris.Docstrings
 import Idris.Error
 import Idris.Delaborate
-
-import Idris.ParseExpr -- Remove me
-
+import Idris.ParseExpr
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
@@ -16,10 +14,6 @@ import Idris.Elab.Data
 import Data.Maybe
 import Data.List
 import Control.Monad
-
--- TODO:
--- Consider what to do about type parameters in projection that do not occur as a parameter.
--- I.e. set_bar : Foo n -> Vect n a
 
 elabRecord :: ElabInfo ->
               (Docstring (Either Err PTerm)) ->
@@ -42,7 +36,7 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields fieldDocs cname cdo
        logLvl 4 $ "Type constructor " ++ showTmImpls tycon
        
        -- Data constructor
-       dconName <- liftM (expandNS csyn) $ generateDConName cname 
+       dconName <- generateDConName cname 
        let dcon = generateDCon params fields
        logLvl 4 $ "Data constructor: " ++ showTmImpls dcon
        
@@ -60,19 +54,22 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields fieldDocs cname cdo
 
        -- The arguments to the constructor
        let constructorArgs = getArgTys ttCons
+       -- If elaborating the constructor has resulted in some new implicit fields we make projection functions for them.
+       let freeFieldsForElab = map (freeField i) (filter (not . isFieldOrParam') constructorArgs)
+           
        -- The parameters for elaboration with their documentation
-           paramsForElab = [((nsroot n), (param_name n), impl, t, d) | (n, t, d) <- zip' i params paramDocs]
-       -- If elaborating the constructor has resulted in some new implicit fields we make a projeciton functions for them.
-           freeFieldsForElab = map (freeField i) (filter (not . isFieldOrParam') constructorArgs)
+       let paramsForElab = [((nsroot n), (param_name n), impl, t, d) | (n, t, d) <- zip' i params paramDocs]
+           
        -- The fields (written by the user) with their documentation.
-           userFieldsForElab = [((nsroot n), n, p, t, d) | ((n, p, t), (_, d)) <- zip fields fieldDocs]
-       -- All things we need to elaborate projection functions for, together with a number denoting their position in the constructor.
-           fieldsForElab = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (freeFieldsForElab ++ paramsForElab ++ userFieldsForElab) [0..]]
+       let userFieldsForElab = [((nsroot n), n, p, t, d) | ((n, p, t), (_, d)) <- zip fields fieldDocs]
+           
+       -- All things we need to elaborate projection functions for, together with a number denoting their position in the constructor.           
+       let fieldsForElab = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (freeFieldsForElab ++ paramsForElab ++ userFieldsForElab) [0..]]
        
        -- Build projection functions
        elabProj dconName fieldsForElab
        -- Build update functions
-       elabUp dconName fieldsForElab -- [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (paramsForElab ++ userFieldsForElab) [0..]]
+       elabUp dconName [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (paramsForElab ++ userFieldsForElab) [0..]]
   where
     -- | Generates a type constructor.
     generateTyCon :: [(Name, Plicity, PTerm)] -> PTerm
@@ -116,7 +113,7 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields fieldDocs cname cdo
     paramNames = [nsroot n | (n, _, _) <- params]
 
     isFieldOrParam :: Name -> Bool
-    isFieldOrParam = flip elem (fieldNames ++ paramNames)
+    isFieldOrParam n = n `elem` (fieldNames ++ paramNames)
 
     isFieldOrParam' :: (Name, a) -> Bool
     isFieldOrParam' = isFieldOrParam . fst
@@ -245,7 +242,7 @@ elabProjection info cname pname plicity pty pdoc psyn fc tty cn phArgs fnames in
     -- | The left hand side of the projection function.
     generateLhs :: PTerm
     generateLhs = let args = lhsArgs index phArgs
-                      in PApp fc (PRef fc pname) [pexp (PApp fc (PRef fc cn) args)]
+                  in PApp fc (PRef fc pname) [pexp (PApp fc (PRef fc cn) args)]
       where
         lhsArgs :: Int -> [PArg] -> [PArg]
         lhsArgs 0 (_ : rest) = (asArg plicity (nsroot cname) (PRef fc pname_in)) : rest

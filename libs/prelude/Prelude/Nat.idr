@@ -200,30 +200,15 @@ instance Cast Integer Nat where
   cast = fromInteger
 
 ||| A wrapper for Nat that specifies the semigroup and monad instances that use (+)
-data Multiplicative : Type where
-  getMultiplicative : Nat -> Multiplicative
-
-{-
 record Multiplicative where
-  multiplicative_n : Nat
   constructor getMultiplicative
--}
-{-
-record Multiplicative : Type where
-  getMultiplicative : Nat -> Multiplicative
--}
+  multiplicative_n : Nat
+
 ||| A wrapper for Nat that specifies the semigroup and monad instances that use (*)
-data Additive : Type where
-  getAdditive : Nat -> Additive
-{-
 record Additive where
-  additive_n : Nat
   constructor getAdditive
--}
-{-
-record Additive : Type where
-  getAdditive : Nat -> Additive
--}
+  additive_n : Nat
+
 instance Semigroup Multiplicative where
   (<+>) left right = getMultiplicative $ left' * right'
     where
