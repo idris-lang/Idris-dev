@@ -2,8 +2,6 @@ module Main
 
 -- Simple test case for trivial type providers.
 
-import Providers
-
 %language TypeProviders
 
 -- Provide the Unit type
