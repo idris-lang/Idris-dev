@@ -31,7 +31,7 @@ script:
   - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal register; fi
-  - if [[ "$TESTS" == "test_c" ]]; then cppcheck -j 2 --enable=all --error-exitcode=1 ./rts/idris_bitstring.c ./rts/idris_bitstring.h ./rts/idris_gc.h ./rts/idris_gc.c ./rts/idris_gmp.h ./rts/idris_gmp.c ./rts/idris_heap.h ./rts/idris_heap.c ./rts/idris_main.c ./rts/idris_net.h ./rts/idris_net.c ./rts/idris_opts.h ./rts/idris_opts.c ./rts/idris_rts.h ./rts/idris_rts.c ./rts/idris_stats.h ./rts/idris_stats.c ./rts/idris_stdfgn.h ./rts/idris_stdfgn.c ./rts/libtest.c ; fi
+  - if [[ "$TESTS" == "test_c" ]]; then cppcheck -j 2 --enable=error --error-exitcode=1 ./rts/idris_bitstring.c ./rts/idris_bitstring.h ./rts/idris_gc.h ./rts/idris_gc.c ./rts/idris_gmp.h ./rts/idris_gmp.c ./rts/idris_heap.h ./rts/idris_heap.c ./rts/idris_main.c ./rts/idris_net.h ./rts/idris_net.c ./rts/idris_opts.h ./rts/idris_opts.c ./rts/idris_rts.h ./rts/idris_rts.c ./rts/idris_stats.h ./rts/idris_stats.c ./rts/idris_stdfgn.h ./rts/idris_stdfgn.c ./rts/libtest.c ; fi
   - if [[ "$TESTS" == "test_llvm" ]]; then git clone --depth 1 https://github.com/idris-hackers/idris-llvm.git ; cd idris-llvm ; cabal install ; cd .. ; fi
   - make -j2 $TESTS
 env:
