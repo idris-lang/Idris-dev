@@ -46,11 +46,14 @@ implementations of the function for a specific type. For example, the
     Idris> show (S (S (S Z)))
     "sssZ" : String
 
-Only one instance of a class can be given for a type — instances may not
-overlap. Instance declarations can themselves have constraints. For
-example, to define a ``Show`` instance for vectors, we need to know that
-there is a ``Show`` instance for the element type, because we are going
-to use it to convert each element to a ``String``:
+Only one instance of a class can be given for a type — instances may
+not overlap. Instance declarations can themselves have constraints.
+To help with resolution, the arguments of an instance must be
+constructors (either data or type constructors), variables or
+constants (i.e. you cannot give an instance for a function).  For
+example, to define a ``Show`` instance for vectors, we need to know
+that there is a ``Show`` instance for the element type, because we are
+going to use it to convert each element to a ``String``:
 
 .. code-block:: idris
 
@@ -486,6 +489,25 @@ instance ``myord`` as follows, at the ``Idris`` prompt:
     *named_instance> show (sort @{myord} testList)
     "[ssssO, sssO, sO]" : String
 
+
+Determining Parameters
+----------------------
+
+When a class has more than one parameter, it can help resolution if
+the parameters used to resolve the type class are restricted. For
+example:
+
+.. code-block:: idris
+
+    class Monad m => MonadState s (m : Type -> Type) | m where
+      get : m s
+      put : s -> m ()
+
+In this class, only ``m`` needs to be known to resolve this class, and
+``s`` can then be determined from the instance. This is declared with
+the ``| m`` after the class declaration. We call ``m`` a *determining
+parameter* of the ``MonadState`` class, because it is the parameter
+used to resolve an instance.
 
 
 .. [1] Conor Mcbride and Ross Paterson. 2008. Applicative programming
