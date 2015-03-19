@@ -8,4 +8,4 @@ modules = Data.Fun, Data.Rel, Data.Buffer,
 
           Network.Cgi,
 
-          System.Concurrency.Process, System.Concurrency.Raw
+          System.Concurrency.Process

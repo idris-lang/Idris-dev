@@ -31,5 +31,7 @@ modules = System,
           Control.Monad.Trans,
           Control.Monad.State, Control.Monad.Writer, Control.Monad.Reader,
           Control.Category, Control.Arrow,
-          Control.Catchable, Control.IOExcept
+          Control.Catchable, Control.IOExcept,
+
+          System.Concurrency.Raw
 
