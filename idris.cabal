@@ -111,6 +111,7 @@ Extra-source-files:
 
                        libs/contrib/contrib.ipkg
                        libs/contrib/Makefile
+                       libs/contrib/Control/*.idr
                        libs/contrib/Control/Isomorphism/*.idr
                        libs/contrib/Data/*.idr
                        libs/contrib/Decidable/*.idr
