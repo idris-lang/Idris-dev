@@ -40,6 +40,9 @@ New in 0.9.17:
 * Classes can now be annotated with 'determining parameters' to say which
   must be available before resolving instances. Only determining parameters
   are checked when checking for overlapping instances.
+* New package 'contrib' containing things that are less mature or less used
+  than the contents of 'base'. 'contrib' is not available by default, so you
+  may need to add '-p contrib' to your .ipkg file or Idris command line.
 
 New in 0.9.16:
 --------------
