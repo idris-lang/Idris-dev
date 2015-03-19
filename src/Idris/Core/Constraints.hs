@@ -73,13 +73,15 @@ solve maxUniverseLevel inpConstraints =
                         ULE a b -> do
                             (lowerA, upperA) <- domainOf a
                             (lowerB, upperB) <- domainOf b
-                            updateDomainOf (cons, fc) a (lowerA, min upperA upperB)
-                            updateDomainOf (cons, fc) b (max lowerB lowerA, upperB)
+                            when (upperB < upperA) $ updateDomainOf (cons, fc) a (lowerA, upperB)
+                            when (lowerA > lowerB) $ updateDomainOf (cons, fc) b (lowerA, upperB)
                         ULT a b -> do
                             (lowerA, upperA) <- domainOf a
                             (lowerB, upperB) <- domainOf b
-                            updateDomainOf (cons, fc) a (lowerA, min upperA (pred upperB))
-                            updateDomainOf (cons, fc) b (max lowerB (succ lowerA), upperB)
+                            let upperB_pred = pred upperB
+                            let lowerA_succ = succ lowerA
+                            when (upperB_pred < upperA) $ updateDomainOf (cons, fc) a (lowerA, upperB_pred)
+                            when (lowerA_succ > lowerB) $ updateDomainOf (cons, fc) b (lowerA_succ, upperB)
                     propagate
 
         -- | extract a solution from the state.
@@ -105,21 +107,18 @@ solve maxUniverseLevel inpConstraints =
         -- | updates the domain of a variable.
         --   this function is also where we fail, inc ase of a domain wipe-out.
         updateDomainOf :: (UConstraint, FC) -> UExp -> (Int, Int) -> StateT SolverState TC ()
-        updateDomainOf suspect (UVar var) dom = do
+        updateDomainOf suspect (UVar var) newDom = do
             doms <- gets domainStore
             let (oldDom, suspects) = doms M.! Var var
-            let newDom = domainIntersect oldDom dom
             when (wipeOut newDom) $ lift $ Error $ Msg $ unlines
                 $ "Universe inconsistency."
                 : ("Working on: " ++ show (UVar var))
                 : ("Old domain: " ++ show oldDom)
-                : ("Inp domain: " ++ show dom)
                 : ("New domain: " ++ show newDom)
                 : "Involved constraints: "
                 : map (("\t"++) . show) (suspect : S.toList suspects)
-            unless (oldDom == newDom) $ do
-                modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
-                addToQueue (Var var)
+            modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
+            addToQueue (Var var)
         updateDomainOf _ UVal{} _ = return ()
 
         -- | add all constraints related to a variable.
@@ -128,10 +127,6 @@ solve maxUniverseLevel inpConstraints =
             case M.lookup var constraints of
                 Nothing -> return ()
                 Just cs -> modify $ \ st -> st { queue = S.union cs (queue st) }
-
-        -- | intersecting two domains, the resulting domain can be wiped out.
-        domainIntersect :: (Int, Int) -> (Int, Int) -> (Int, Int)
-        domainIntersect (a,b) (c,d) = (max a c, min b d)
 
         -- | check if a domain is wiped out.
         wipeOut :: (Int, Int) -> Bool
