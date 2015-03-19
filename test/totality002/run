@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-idris $@ --check test017.idr
-idris $@ --check test017a.idr
-idris $@ --check test017b.idr
+idris --consolewidth 80 $@ --check test017.idr
+idris --consolewidth 80 $@ --check test017a.idr
+idris --consolewidth 80 $@ --check test017b.idr
 rm -f *.ibc
