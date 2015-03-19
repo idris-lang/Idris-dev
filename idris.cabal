@@ -99,7 +99,6 @@ Extra-source-files:
                        libs/base/base.ipkg
                        libs/base/*.idr
                        libs/base/Control/*.idr
-                       libs/base/Control/Isomorphism/*.idr
                        libs/base/Control/Monad/*.idr
                        libs/base/Data/*.idr
                        libs/base/Data/Vect/*.idr
@@ -112,6 +111,7 @@ Extra-source-files:
 
                        libs/contrib/contrib.ipkg
                        libs/contrib/Makefile
+                       libs/contrib/Control/Isomorphism/*.idr
                        libs/contrib/Data/*.idr
                        libs/contrib/Decidable/*.idr
                        libs/contrib/Network/*.idr
