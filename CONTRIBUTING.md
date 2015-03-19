@@ -33,12 +33,14 @@ These packages offer functionality that can be built on top of when constructing
 
 One major point to make is that everything in prelude will be imported automatically, unless given
 the `--noprelude` option.
-A central idea within the Idris Community is that what counts as Idris is: **the compiler plus the Standard Prelude**.
-Other libraries (base, effects, etc) are still part of the distribution, but not necessarily standard.
+Likewise, the contents of base are available with no special options.
+The other two packages that ship with Idris, contrib and effects, require a the use of the `-p` command-line argument to bring their contents into the include path.
+New contributions should probably be sent to contrib first, so that they can get maintained with the Idris distribution.
+If they turn out to be widely applicable and useful, they may later be moved into base.
 
 As Idris is still being developed we are open to suggestions and changes that make improvements to these default packages.
 Major changes to the library (or Idris itself) should ideally be discussed first through the projects official channels of communication i.e. the mailing list, github wiki, or IRC, or as a [Dragon Egg](https://github.com/idris-lang/Idris-dev/wiki/Feature-proposals).
-Developers then seeking to add content to Idriss prelude and default library, should do so through a PR where more discussion's and refinements can be made.
+Developers then seeking to add content to Idris's prelude and default library, should do so through a PR where more discussion's and refinements can be made.
 
 We do not want you wasting your time nor duplicating somebody's work!
 
