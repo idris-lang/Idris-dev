@@ -40,6 +40,8 @@ New in 0.9.17:
 * Classes can now be annotated with 'determining parameters' to say which
   must be available before resolving instances. Only determining parameters
   are checked when checking for overlapping instances.
+* Arguments to class instances are now checked for injectivity.
+  Unification assumes this, so we need to check when instances are defined.
 
 New in 0.9.16:
 --------------

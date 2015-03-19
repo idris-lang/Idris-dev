@@ -15,10 +15,6 @@ class Functor f => Applicative (f : Type -> Type) where
     pure  : a -> f a
     (<*>) : f (a -> b) -> f a -> f b
 
-instance Applicative id where
-    pure a = a
-    f <*> a = f a
-
 class (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type -> Type) where
   applicativeMap : (x : f a) -> (g : a -> b) ->
                    map g x = pure g <*> x

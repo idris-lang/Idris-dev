@@ -135,6 +135,8 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
                                  [PClause fc iname lhs [] rhs wb]]
          iLOG (show idecls)
          mapM_ (rec_elabDecl info EAll info) idecls
+         ist <- getIState
+         checkInjectiveArgs fc n (class_determiners ci) (lookupTyExact iname (tt_ctxt ist))
          addIBC (IBCInstance intInst n iname)
 
   where
@@ -276,3 +278,28 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
     clauseFor m iname ns (PClauses _ _ m' _)
        = decorate ns iname m == decorate ns iname m'
     clauseFor m iname ns _ = False
+
+checkInjectiveArgs :: FC -> Name -> [Int] -> Maybe Type -> Idris ()
+checkInjectiveArgs fc n ds Nothing = return ()
+checkInjectiveArgs fc n ds (Just ty)
+   = do ist <- getIState
+        let (_, args) = unApply (instantiateRetTy ty)
+        ci 0 ist args
+  where
+    ci i ist (a : as) | i `elem` ds 
+       = if isInj ist a then ci (i + 1) ist as
+            else tclift $ tfail (At fc (InvalidTCArg n a))
+    ci i ist (a : as) = ci (i + 1) ist as
+    ci i ist [] = return ()
+
+    isInj i (P Bound n _) = True 
+    isInj i (P _ n _) = isConName n (tt_ctxt i)
+    isInj i (App f a) = isInj i f && isInj i a
+    isInj i (V _) = True
+    isInj i (Bind n b sc) = isInj i sc
+    isInj _ _ = True
+
+    instantiateRetTy (Bind n (Pi _ _ _) sc)
+       = substV (P Bound n Erased) (instantiateRetTy sc)
+    instantiateRetTy t = t
+
