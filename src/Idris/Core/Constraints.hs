@@ -53,7 +53,9 @@ solve maxUniverseLevel inpConstraints =
         constraints = M.map S.fromList $ M.fromListWith (++)
             [ (v, [(c,fc)])
             | (c, fc) <- inpConstraints
-            , v <- varsIn c
+            , let vars = varsIn c
+            , length vars > 1               -- do not register unary constraints
+            , v <- vars
             ]
 
         -- | this is where the actual work is done.
@@ -122,9 +124,10 @@ solve maxUniverseLevel inpConstraints =
 
         -- | add all constraints related to a variable.
         addToQueue :: MonadState SolverState m => Var -> m ()
-        addToQueue var = do
-            let cs = constraints M.! var
-            modify $ \ st -> st { queue = S.union cs (queue st) }
+        addToQueue var =
+            case M.lookup var constraints of
+                Nothing -> return ()
+                Just cs -> modify $ \ st -> st { queue = S.union cs (queue st) }
 
         -- | intersecting two domains, the resulting domain can be wiped out.
         domainIntersect :: (Int, Int) -> (Int, Int) -> (Int, Int)
