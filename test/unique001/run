@@ -7,4 +7,3 @@ idris --consolewidth 80 $@ unique001c.idr --check
 idris --consolewidth 80 $@ unique001d.idr --check
 idris --consolewidth 80 $@ unique001e.idr --check
 rm -f unique001 *.ibc
-k
