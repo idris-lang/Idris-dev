@@ -3,6 +3,9 @@ package contrib
 opts = "--nobasepkgs --total -i ../prelude -i ../base"
 modules = Control.Isomorphism.Primitives,
           Data.Fun, Data.Rel, Data.Buffer,
+          Data.Hash, Data.Matrix,
+          Data.ZZ, Data.Sign,
+          Data.BoundedList,
           Data.Heap,
           Data.SortedMap, Data.SortedSet,
 
