@@ -203,7 +203,7 @@ instance RingWithUnity Float where
   unity = 1
 
 instance Field Float where
-  inverseM f = 1 / f
+  inverseM f _ = 1 / f
 
 
 instance Semigroup Nat where

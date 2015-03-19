@@ -1,6 +1,8 @@
 module Prelude.Algebra
 
 import Builtins
+import Prelude.Classes
+import Prelude.Bool
 
 -- XXX: change?
 infixl 6 <->
@@ -164,12 +166,12 @@ class (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
 ||| + Distributivity of `<.>` and `<->`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
-class RingWithUnity a => Field a where
-  inverseM : a -> a
+class (RingWithUnity a, Eq a) => Field a where
+  inverseM : (x : a) -> (notId : x == neutral = False) -> a
 
 class (VerifiedRing a, Field a) => VerifiedField a where
-  total fieldInverseIsInverseL : (l : a) -> l <.> inverseM l = unity
-  total fieldInverseIsInverseR : (r : a) -> inverseM r <.> r = unity
+  total fieldInverseIsInverseL : (l : a) -> (notId : l == neutral = False) -> l <.> (inverseM l notId) = unity
+  total fieldInverseIsInverseR : (r : a) -> (notId : r == neutral = False) -> (inverseM r notId) <.> r = unity
 
 
 -- XXX todo:

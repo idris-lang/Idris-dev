@@ -29,6 +29,8 @@ class (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedM
 ||| A vector space is a module over a ring that is also a field
 class (Field a, Module a b) => VectorSpace a b where {}
 
+||| An inner product space is a module – or vector space – over a ring, with a binary function
+||| associating a ring value to each pair of vectors.
 class Module a b => InnerProductSpace a b where
   (<||>) : b -> b -> a
 
