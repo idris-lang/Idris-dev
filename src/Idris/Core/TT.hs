@@ -30,7 +30,7 @@ import Data.Char
 import Data.Data (Data)
 import Numeric (showIntAtBase)
 import qualified Data.Text as T
-import Data.List hiding (insert)
+import Data.List hiding (group, insert)
 import Data.Set(Set, member, fromList, insert)
 import Data.Maybe (listToMaybe)
 import Data.Foldable (Foldable)
@@ -53,7 +53,7 @@ data FC = FC { fc_fname :: String, -- ^ Filename
                fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
                fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
              }
-  deriving (Data, Typeable)             
+  deriving (Data, Typeable, Ord)             
 
 -- | Ignore source location equality (so deriving classes do not compare FCs)
 instance Eq FC where
@@ -120,12 +120,25 @@ data ErrorReportPart = TextPart String
 -- Please remember to keep Err synchronised with
 -- Language.Reflection.Errors.Err in the stdlib!
 
+data Provenance = ExpectedType
+                | TooManyArgs Term
+                | InferredVal
+                | GivenVal
+                | SourceTerm Term
+  deriving (Show, Eq, Data, Typeable)
+{-!
+deriving instance NFData Err
+deriving instance Binary Err
+!-}
+
 -- | Idris errors. Used as exceptions in the compiler, but reported to users
 -- if they reach the top level.
 data Err' t
           = Msg String
           | InternalMsg String
-          | CantUnify Bool t t (Err' t) [(Name, t)] Int
+          | CantUnify Bool (t, Maybe Provenance) -- Expected type, provenance
+                           (t, Maybe Provenance) -- Actual type, provenance
+                           (Err' t) [(Name, t)] Int
                -- Int is 'score' - how much we did unify
                -- Bool indicates recoverability, True indicates more info may make
                -- unification succeed
@@ -162,6 +175,8 @@ data Err' t
           | LoadingFailed String (Err' t)
           | ReflectionError [[ErrorReportPart]] (Err' t)
           | ReflectionFailed String (Err' t)
+          | ElabDebug (Maybe String) t [(Name, t, [(Name, Binder t)])]
+            -- ^ User-specified message, proof term, goals with context (first goal is focused)
   deriving (Eq, Functor, Data, Typeable)
 
 type Err = Err' Term
@@ -209,7 +224,7 @@ instance Sized ErrorReportPart where
 instance Sized Err where
   size (Msg msg) = length msg
   size (InternalMsg msg) = length msg
-  size (CantUnify _ left right err _ score) = size left + size right + size err
+  size (CantUnify _ left right err _ score) = size (fst left) + size (fst right) + size err
   size (InfiniteUnify _ right _) = size right
   size (CantConvert left right _) = size left + size right
   size (UnifyScope _ _ right _) = size right
@@ -261,7 +276,7 @@ instance Show Err where
 
 instance Pretty Err OutputAnnotation where
   pretty (Msg m) = text m
-  pretty (CantUnify _ l r e _ i) =
+  pretty (CantUnify _ (l, _) (r, _) e _ i) =
       text "Cannot unify" <+> colon <+> pretty l <+> text "and" <+> pretty r <+>
       nest nestingSize (text "where" <+> pretty e <+> text "with" <+> (text . show $ i))
   pretty (ProviderError msg) = text msg
@@ -781,7 +796,7 @@ instance Show UExp where
 -- | Universe constraints
 data UConstraint = ULT UExp UExp -- ^ Strictly less than
                  | ULE UExp UExp -- ^ Less than or equal to
-  deriving Eq
+  deriving (Eq, Ord)
 
 instance Show UConstraint where
     show (ULT x y) = show x ++ " < " ++ show y
@@ -1496,3 +1511,99 @@ allTTNames = nub . allNamesIn
                 nb t = allNamesIn (binderTy t)
         allNamesIn (App f a) = allNamesIn f ++ allNamesIn a
         allNamesIn _ = []
+
+
+-- | Pretty-print a term
+pprintTT :: [Name]  -- ^ The bound names (for highlighting and de Bruijn indices)
+         -> TT Name -- ^ The term to be printed
+         -> Doc OutputAnnotation
+pprintTT bound tm = pp startPrec bound tm
+
+  where
+    startPrec = 0
+    appPrec   = 10
+
+    pp p bound (P Bound n ty) = annotate (AnnBoundName n False) (text $ show n)
+    pp p bound (P nt n ty) = annotate (AnnName n Nothing Nothing Nothing)
+                                          (text $ show n)
+    pp p bound (V i)
+       | i < length bound = let n = bound !! i
+                            in annotate (AnnBoundName n False) (text $ show n)
+       | otherwise        = text ("{{{V" ++ show i ++ "}}}")
+    pp p bound (Bind n b sc) = ppb p bound n b $
+                               pp startPrec (n:bound) sc
+    pp p bound (App tm1 tm2) =
+      bracket p appPrec . group . hang 2 $
+        pp appPrec bound tm1 <> line <>
+        pp (appPrec + 1) bound tm2
+    pp p bound (Constant c) = annotate (AnnConst c) (text (show c))
+    pp p bound (Proj tm i) =
+      lparen <> pp startPrec bound tm <> rparen <>
+      text "!" <> text (show i)
+    pp p bound Erased = text "<<<erased>>>"
+    pp p bound Impossible = text "<<<impossible>>>"
+    pp p bound (TType ue) = annotate (AnnType "Type" "The type of types") $
+                            text "Type"
+    pp p bound (UType u) = text (show u)
+
+    ppb p bound n (Lam ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      text "λ" <+> bindingOf n False <+> text "." <> line <> sc
+    ppb p bound n (Pi _ ty k) sc =
+      bracket p startPrec . group . align $
+      lparen <> (bindingOf n False) <+> colon <+>
+      (group . align) (pp startPrec bound ty) <>
+      rparen <+> mkArrow k <> line <> sc
+        where mkArrow (UType UniqueType) = text "⇴"
+              mkArrow (UType NullType) = text "⥛"
+              mkArrow _ = text "→"
+    ppb p bound n (Let ty val) sc =
+      bracket p startPrec . group . align $
+      (group . hang 2) (annotate AnnKeyword (text "let") <+>
+                        bindingOf n False <+> colon <+>
+                        pp startPrec bound ty <+>
+                        text "=" <> line <>
+                        pp startPrec bound val) <> line <>
+      (group . hang 2) (annotate AnnKeyword (text "in") <+> sc)
+    ppb p bound n (NLet ty val) sc =
+      bracket p startPrec . group . align $
+      (group . hang 2) (annotate AnnKeyword (text "nlet") <+>
+                        bindingOf n False <+> colon <+>
+                        pp startPrec bound ty <+>
+                        text "=" <> line <>
+                        pp startPrec bound val) <> line <>
+      (group . hang 2) (annotate AnnKeyword (text "in") <+> sc)
+    ppb p bound n (Hole ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      text "?" <+> bindingOf n False <+> text "." <> line <> sc
+    ppb p bound n (GHole _ ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      text "¿" <+> bindingOf n False <+> text "." <> line <> sc
+    ppb p bound n (Guess ty val) sc =
+      bracket p startPrec . group . align . hang 2 $
+      text "?" <> bindingOf n False <+>
+      text "≈" <+> pp startPrec bound val <+>
+      text "." <> line <> sc
+    ppb p bound n (PVar ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      annotate AnnKeyword (text "pat") <+>
+      bindingOf n False <+> colon <+> pp startPrec bound ty <+>
+      text "." <> line <>
+      sc
+    ppb p bound n (PVTy ty) sc =
+      bracket p startPrec . group . align . hang 2 $
+      annotate AnnKeyword (text "patTy") <+>
+      bindingOf n False <+> colon <+> pp startPrec bound ty <+>
+      text "." <> line <>
+      sc
+
+    bracket outer inner doc
+      | outer > inner = lparen <> doc <> rparen
+      | otherwise     = doc
+
+
+-- | Pretty-printer helper for the binding site of a name
+bindingOf :: Name -- ^^ the bound name
+          -> Bool -- ^^ whether the name is implicit
+          -> Doc OutputAnnotation
+bindingOf n imp = annotate (AnnBoundName n imp) (text (show n))

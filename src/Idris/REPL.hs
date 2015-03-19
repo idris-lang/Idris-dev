@@ -494,6 +494,15 @@ runIdeModeCommand h id orig fn modes (IdeMode.TermShowImplicits bnd tm) =
   ideModeForceTermImplicits h id bnd True tm
 runIdeModeCommand h id orig fn modes (IdeMode.TermNoImplicits bnd tm) =
   ideModeForceTermImplicits h id bnd False tm
+runIdeModeCommand h id orig fn modes (IdeMode.TermElab bnd tm) =
+  do ist <- getIState
+     let ptm = annotate (AnnTerm bnd tm)
+                 (pprintTT (map fst bnd) tm)
+         msg = (IdeMode.SymbolAtom "ok",
+                displaySpans .
+                renderPretty 0.9 70 .
+                fmap (fancifyAnnots ist) $ ptm)
+     runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
 runIdeModeCommand h id orig fn mods (IdeMode.PrintDef name) =
   case splitName name of
     Left err -> iPrintError err
@@ -556,6 +565,7 @@ idemodeProcess fn (Undefine n) = process fn (Undefine n)
 idemodeProcess fn (ExecVal t) = process fn (ExecVal t)
 idemodeProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
 idemodeProcess fn (Check t) = process fn (Check t)
+idemodeProcess fn (Core t) = process fn (Core t)
 idemodeProcess fn (DocStr n w) = process fn (DocStr n w)
 idemodeProcess fn Universes = process fn Universes
 idemodeProcess fn (Defn n) = do process fn (Defn n)
@@ -908,6 +918,10 @@ process fn (Check t)
            _ -> iPrintTermWithType (pprintDelab ist tm)
                                    (pprintDelab ist ty)
 
+process fn (Core t)
+   = do (tm, ty) <- elabVal recinfo ERHS t
+        iPrintTermWithType (pprintTT [] tm) (pprintTT [] ty)
+
 process fn (DocStr (Left n) w)
    = do ist <- getIState
         let docs = lookupCtxtName n (idris_docstrings ist) ++
@@ -969,7 +983,7 @@ process fn (DebugUnify l r)
    = do (ltm, _) <- elabVal recinfo ERHS l
         (rtm, _) <- elabVal recinfo ERHS r
         ctxt <- getContext
-        case unify ctxt [] ltm rtm [] [] [] [] of
+        case unify ctxt [] (ltm, Nothing) (rtm, Nothing) [] [] [] [] of
              OK ans -> iputStrLn (show ans)
              Error e -> iputStrLn (show e)
 

@@ -39,6 +39,8 @@ data Tactical : Type -> Type where
   prim__Claim : TTName -> Raw -> Tactical ()
   prim__Intro : Maybe TTName -> Tactical ()
 
+  prim__Debug : {a : Type} -> Maybe String -> Tactical a
+
 -------------
 -- Public API
 -------------
@@ -114,3 +116,9 @@ sourceLocation = do loc <- getSourceLocation
 
 rewriteWith : Raw -> Tactical ()
 rewriteWith rule = prim__Rewrite rule
+
+debug : Tactical a
+debug = prim__Debug Nothing
+
+debugMessage : String -> Tactical a
+debugMessage msg = prim__Debug (Just msg)

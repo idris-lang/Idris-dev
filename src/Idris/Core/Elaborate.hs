@@ -727,10 +727,11 @@ no_errors tac err
             if (length ps' > length ps) then
                case reverse ps' of
                     ((x, y, _, env, inerr, while, _) : _) ->
-                       let env' = map (\(x, b) -> (x, binderTy b)) env in
+                       let (xp, yp) = getProvenance inerr
+                           env' = map (\(x, b) -> (x, binderTy b)) env in
                                   lift $ tfail $ 
                                          case err of
-                                              Nothing -> CantUnify False x y inerr env' 0
+                                              Nothing -> CantUnify False (x, xp) (y, yp) inerr env' 0
                                               Just e -> e
                else return $! ()
 
@@ -778,6 +779,7 @@ try' t1 t2 proofSearch
         recoverableErr (ProofSearchFail _) = False
         recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
         recoverableErr (At _ e) = recoverableErr e
+        recoverableErr (ElabDebug _ _ _) = False
         recoverableErr _ = True
 
 tryWhen :: Bool -> Elab' aux a -> Elab' aux a -> Elab' aux a
@@ -838,6 +840,19 @@ prunStateT pmax zok ps x s
                             ((_,_,_,_,e,_,_):_) -> Error e
                     else OK ((v, newpmax, problems p), s')
              Error e -> Error e
+
+debugElaborator :: Maybe String -> Elab' aux a
+debugElaborator msg = do ps <- fmap proof get
+                         saveState -- so we don't need to remember the hole order
+                         hs <- get_holes
+                         holeInfo <- mapM getHoleInfo hs
+                         loadState
+                         lift . Error $ ElabDebug msg (getProofTerm (pterm ps)) holeInfo
+  where getHoleInfo :: Name -> Elab' aux (Name, Type, [(Name, Binder Type)])
+        getHoleInfo h = do focus h
+                           g <- goal
+                           env <- get_env
+                           return (h, g, env)
 
 qshow :: Fails -> String
 qshow fs = show (map (\ (x, y, _, _, _, _, _) -> (x, y)) fs)

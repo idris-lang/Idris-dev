@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintDelabTy, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
@@ -32,6 +33,7 @@ delabTy i n
            (ty:_) -> case lookupCtxt n (idris_implicits i) of
                          (imps:_) -> delabTy' i imps ty False False
                          _ -> delabTy' i [] ty False False
+           [] -> error "delabTy: got non-existing name"
 
 delab' :: IState -> Term -> Bool -> Bool -> PTerm
 delab' i t f mvs = delabTy' i [] t f mvs
@@ -86,6 +88,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
     de env plic (Bind n bb sc) = de ((n,n):env) [] sc
     de env _ (Constant i) = PConstant i
+    de env _ (Proj _ _) = error "Delaboration got run-time-only Proj!"
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
     de env _ (TType i) = PType
@@ -183,12 +186,27 @@ pprintDelabTy i n
                      case lookupCtxt n (idris_implicits i) of
                          (imps:_) -> delabTy' i imps ty False False
                          _ -> delabTy' i [] ty False False
+           [] -> error "pprintDelabTy got a name that doesn't exist"
 
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
 pprintTerm ist = pprintTerm' ist []
 
 pprintTerm' :: IState -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
 pprintTerm' ist bnd tm = pprintPTerm (ppOptionIst ist) bnd [] (idris_infixes ist) tm
+
+pprintProv :: IState -> [(Name, Term)] -> Provenance -> Doc OutputAnnotation
+pprintProv i e ExpectedType = text "Expected type"
+pprintProv i e InferredVal = text "Inferred value"
+pprintProv i e GivenVal = text "Given value"
+pprintProv i e (SourceTerm tm) 
+  = text "Type of " <> 
+    annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
+             (pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm))
+pprintProv i e (TooManyArgs tm) 
+  = text "Is " <> 
+      annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
+               (pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm))
+       <> text " applied to too many arguments?"
 
 pprintErr :: IState -> Err -> Doc OutputAnnotation
 pprintErr i err = pprintErr' i (fmap (errReverse i) err)
@@ -199,20 +217,28 @@ pprintErr' i (InternalMsg s) =
          text "This is probably a bug, or a missing error message.",
          text ("Please consider reporting at " ++ bugaddr)
        ]
-pprintErr' i (CantUnify _ x_in y_in e sc s) =
+pprintErr' i (CantUnify _ (x_in, xprov) (y_in, yprov) e sc s) =
   let (x_ns, y_ns, nms) = renameMNs x_in y_in
       (x, y) = addImplicitDiffs (delab i x_ns) (delab i y_ns) in
     text "Can't unify" <> indented (annTm x_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
-                                        ++ zip nms (repeat False)) x)) <$>
+                                        ++ zip nms (repeat False)) x)) 
+        <> case xprov of
+                Nothing -> empty
+                Just t -> text " (" <> pprintProv i sc t <> text ")"
+        <$>
     text "with" <> indented (annTm y_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
-                                        ++ zip nms (repeat False)) y)) <>
+                                        ++ zip nms (repeat False)) y)) 
+        <> case yprov of
+                Nothing -> empty
+                Just t -> text " (" <> pprintProv i sc t <> text ")"
+        <>
     case e of
       Msg "" -> empty
         -- if the specific error is the same as the one we just printed,
         -- there's no need to print it
-      CantUnify _ x_in' y_in' _ _ _ | x_in == x_in' && y_in == y_in' -> empty
+      CantUnify _ (x_in', _) (y_in',_) _ _ _ | x_in == x_in' && y_in == y_in' -> empty
       _ -> line <> line <> text "Specifically:" <>
            indented (pprintErr' i e) <>
            if (opt_errContext (idris_options i)) then showSc i sc else empty
@@ -335,10 +361,30 @@ pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
+pprintErr' i (ElabDebug msg tm holes) =
+  text "Elaboration halted." <>
+  maybe empty (indented . text) msg <> line <>
+  text "Term: " <> indented (pprintTT [] tm) <> line <>
+  text "Holes:" <>
+  indented (vsep (map ppHole holes))
 
--- Make sure the machine invented names are shown helpfully to the user, so
+  where ppHole :: (Name, Type, Env) -> Doc OutputAnnotation
+        ppHole (hn, goal, env) =
+          ppAssumptions [] (reverse env) <>
+          text "----------------------------------" <> line <>
+          bindingOf hn False <+> text ":" <+>
+          pprintTT (map fst (reverse env)) goal <> line
+        ppAssumptions :: [Name] -> Env -> Doc OutputAnnotation
+        ppAssumptions ns [] = empty
+        ppAssumptions ns ((n, b) : rest) =
+          bindingOf n False <+>
+          text ":" <+>
+          pprintTT ns (binderTy b) <>
+          line <>
+          ppAssumptions (n:ns) rest
+
+-- | Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly
-
 renameMNs :: Term -> Term -> (Term, Term, [Name])
 renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
                     newnames = evalState (getRenames [] ns) 1 in

@@ -8,6 +8,9 @@ New in 0.9.17:
 * Quasiquotation supports the generation of Language.Reflection.Raw terms
   in addition to Language.Reflection.TT. Types are used for disambiguation,
   defaulting to TT at the REPL.
+* Language.Reflection.Quotable now takes an extra type parameter which
+  determines the type to be quoted to. Instances are provided to quote
+  common types to both TT and Raw.
 * Library operators have been renamed for consistency with Haskell. In
   particular, Applicative.(<$>) is now Applicative.(<*>) and (<$>) is
   now an alias for Functor.map. Correspondingly, ($>) and (<$) have
@@ -24,6 +27,12 @@ New in 0.9.17:
   called from foreign code
 * Instances can now have documentation strings.
 * Type providers can have documentation strings.
+* Unification errors now (where possible) contain information about provenance
+  of a type
+* New REPL command ":core TM" that shows the elaborated form of TM along with
+  its elaborated type using the syntax of TT. IDE mode has a corresponding
+  command :elaborate-term for serialized terms.
+
 
 New in 0.9.16:
 --------------
