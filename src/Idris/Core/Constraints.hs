@@ -1,7 +1,7 @@
 -- | Check universe constraints.
 module Idris.Core.Constraints(ucheck) where
 
-import Idris.Core.TT hiding (I)
+import Idris.Core.TT hiding (I, Var)
 import Idris.Core.Typecheck
 
 import Control.Applicative
@@ -22,8 +22,8 @@ import Debug.Trace
 ucheck :: [(UConstraint, FC)] -> TC ()
 ucheck = void . solve
 
--- TODO: change this to a newtype
-type Var = Int
+newtype Var = Var Int
+    deriving (Eq, Ord, Show)
 
 data SolverState =
     SolverState
@@ -70,8 +70,8 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
             ]
 
         varsIn :: UConstraint -> [Var]
-        varsIn (ULT a b) = [ v | UVar v <- [a,b] ]
-        varsIn (ULE a b) = [ v | UVar v <- [a,b] ]
+        varsIn (ULT a b) = [ Var v | UVar v <- [a,b] ]
+        varsIn (ULE a b) = [ Var v | UVar v <- [a,b] ]
 
         -- propagate :: MonadState SolverState m => m ()
         propagate = do
@@ -110,18 +110,18 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
                     return (Just q)
 
         domainOf :: MonadState SolverState m => UExp -> m (InfInt, InfInt)
-        domainOf (UVar var) = gets ((M.! var) . domainStore)
+        domainOf (UVar var) = gets ((M.! Var var) . domainStore)
         domainOf (UVal val) = return (I val, I val)
 
         -- updateDomainOf :: MonadState SolverState m => UExp -> (InfInt, InfInt) -> m ()
         updateDomainOf (UVar var) dom = do
             doms <- gets domainStore
-            let oldDom = doms M.! var
+            let oldDom = doms M.! Var var
             let newDom = domainIntersect oldDom dom
             when (wipeOut newDom) $ lift $ Error UniverseError
             unless (oldDom == newDom) $ do
-                modify $ \ st -> st { domainStore = M.insert var newDom doms }
-                addToQueue var
+                modify $ \ st -> st { domainStore = M.insert (Var var) newDom doms }
+                addToQueue (Var var)
         updateDomainOf UVal{} _ = return ()
 
         -- addToQueue :: MonadState SolverState m => Var -> m ()
