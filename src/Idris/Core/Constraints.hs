@@ -28,22 +28,8 @@ newtype Var = Var Int
 data SolverState =
     SolverState
         { queue       :: [(UConstraint, FC)]
-        , domainStore :: M.Map Var (InfInt, InfInt)
+        , domainStore :: M.Map Var (Int, Int)
         }
-
-data InfInt = NegInf | I Int | PosInf
-    deriving (Eq, Ord, Show)
-
-instance Enum InfInt where
-    succ (I x) = I (succ x)
-    succ x = x
-    pred (I x) = I (pred x)
-    pred x = x
-    toEnum = I
-    fromEnum (I x) = x
-    fromEnum NegInf = minBound
-    fromEnum PosInf = maxBound
-
 
 solve :: [(UConstraint, FC)] -> TC (M.Map Var Int)
 solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
@@ -54,7 +40,7 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
         initSolverState = SolverState
             { queue = inpConstraints
             , domainStore = M.fromList
-                [ (v, (I 0, I 10))
+                [ (v, (0, 10))
                 | v <- ordNub [ v
                               | (c, _) <- inpConstraints
                               , v <- varsIn c
@@ -93,12 +79,7 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
                     propagate
 
         extractSolution :: (MonadState SolverState m, Functor m) => m (M.Map Var Int)
-        extractSolution = M.map extractVal <$> gets domainStore
-
-        extractVal :: (InfInt, InfInt) -> Int
-        extractVal (_, I x) = x
-        extractVal (I x, _) = x
-        extractVal _ = 0
+        extractSolution = M.map fst <$> gets domainStore
 
         nextConstraint :: MonadState SolverState m => m (Maybe (UConstraint, FC))
         nextConstraint = do
@@ -109,11 +90,11 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
                     modify $ \ st -> st { queue = qs \\ [q] }
                     return (Just q)
 
-        domainOf :: MonadState SolverState m => UExp -> m (InfInt, InfInt)
+        domainOf :: MonadState SolverState m => UExp -> m (Int, Int)
         domainOf (UVar var) = gets ((M.! Var var) . domainStore)
-        domainOf (UVal val) = return (I val, I val)
+        domainOf (UVal val) = return (val, val)
 
-        -- updateDomainOf :: MonadState SolverState m => UExp -> (InfInt, InfInt) -> m ()
+        -- updateDomainOf :: MonadState SolverState m => UExp -> (Int, Int) -> m ()
         updateDomainOf (UVar var) dom = do
             doms <- gets domainStore
             let oldDom = doms M.! Var var
@@ -129,10 +110,10 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
             let cs = constraints M.! var
             modify $ \ st -> st { queue = queue st ++ ordNub cs }
 
-        domainIntersect :: (InfInt, InfInt) -> (InfInt, InfInt) -> (InfInt, InfInt)
+        domainIntersect :: (Int, Int) -> (Int, Int) -> (Int, Int)
         domainIntersect (a,b) (c,d) = (max a c, min b d)
 
-        wipeOut :: (InfInt, InfInt) -> Bool
+        wipeOut :: (Int, Int) -> Bool
         wipeOut (l, u) = l > u
 
 ordNub :: Ord a => [a] -> [a]
