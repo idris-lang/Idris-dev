@@ -26,10 +26,14 @@ make latexpdf
 
 ## Contributing
 
-This manual is licenced under the following Creative Commons License.
+The documentation for Idris has been published under the Creative
+Commons CC0 License. As such to the extent possible under law, /The
+Idris Community/ has waived all copyright and related or neighboring
+rights to Documentation for Idris.
 
-```
-This work is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/4.0/.
-```
+More information concerning the CC0 can be found online at:
 
-When contributing material to the manual please bear in mind that the work will be licensed as above. More information about contribution, such as style information is contained in CONTRIBUTING.md.
+    http://creativecommons.org/publicdomain/zero/1.0/
+
+
+When contributing material to the manual please bear in mind that the work will be licensed as above.
