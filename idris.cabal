@@ -293,6 +293,9 @@ Extra-source-files:
                        test/reg058/run
                        test/reg058/*.idr
                        test/reg058/expected
+                       test/reg059/run
+                       test/reg059/*.idr
+                       test/reg059/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -662,6 +665,11 @@ Flag CI
   Default:      False
   manual:       True
 
+Flag execonly
+  Description:  Build executables only, skip the libraries and RTS
+  Default:      False
+  manual:       True
+
 Library
   hs-source-dirs: src
   Exposed-modules:
@@ -729,6 +737,7 @@ Library
                 , Idris.ProofSearch
                 , Idris.Prover
                 , Idris.Providers
+                , Idris.Reflection
                 , Idris.REPL
                 , Idris.REPLParser
                 , Idris.Transforms

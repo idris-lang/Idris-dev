@@ -6,7 +6,7 @@ import Control.Monad.Trans
 %access public
 
 ||| A computation which runs in a context and produces an output
-class Monad m => MonadState s (m : Type -> Type) where
+class Monad m => MonadState s (m : Type -> Type) | m where
     ||| Get the context
     get : m s
     ||| Write a new context/output

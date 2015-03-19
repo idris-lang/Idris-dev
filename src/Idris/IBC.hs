@@ -37,7 +37,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 99
+ibcVersion = 100
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -365,7 +365,7 @@ pClasses cs = mapM_ (\ (n, c) ->
                            -- Don't lose instances from previous IBCs, which
                            -- could have loaded in any order
                            let is = case lookupCtxtExact n (idris_classes i) of
-                                      Just (CI _ _ _ _ _ ins) -> ins
+                                      Just (CI _ _ _ _ _ ins _) -> ins
                                       _ -> []
                            let c' = c { class_instances =
                                           class_instances c ++ is }
@@ -1238,7 +1238,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                                 put x7
                                                 put x8
                                                 put x9
-                PClass x1 x2 x3 x4 x5 x6 x7 x8
+                PClass x1 x2 x3 x4 x5 x6 x7 x8 x9
                                          -> do putWord8 7
                                                put x1
                                                put x2
@@ -1248,6 +1248,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                                put x6
                                                put x7
                                                put x8
+                                               put x9
                 PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 ->
                   do putWord8 8
                      put x1
@@ -1346,7 +1347,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x6 <- get
                            x7 <- get
                            x8 <- get
-                           return (PClass x1 x2 x3 x4 x5 x6 x7 x8)
+                           x9 <- get
+                           return (PClass x1 x2 x3 x4 x5 x6 x7 x8 x9)
                    8 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1418,7 +1420,7 @@ instance Binary Using where
                     _ -> error "Corrupted binary data for Using"
 
 instance Binary SyntaxInfo where
-        put (Syn x1 x2 x3 x4 _ x5 x6 _ _ x7 _)
+        put (Syn x1 x2 x3 x4 _ _ x5 x6 _ _ x7 _)
           = do put x1
                put x2
                put x3
@@ -1434,7 +1436,7 @@ instance Binary SyntaxInfo where
                x5 <- get
                x6 <- get
                x7 <- get
-               return (Syn x1 x2 x3 x4 id x5 x6 Nothing 0 x7 0)
+               return (Syn x1 x2 x3 x4 [] id x5 x6 Nothing 0 x7 0)
 
 instance (Binary t) => Binary (PClause' t) where
         put x
@@ -2071,19 +2073,21 @@ instance (Binary t) => Binary (PArg' t) where
 
 
 instance Binary ClassInfo where
-        put (CI x1 x2 x3 x4 x5 _)
+        put (CI x1 x2 x3 x4 x5 _ x6)
           = do put x1
                put x2
                put x3
                put x4
                put x5
+               put x6
         get
           = do x1 <- get
                x2 <- get
                x3 <- get
                x4 <- get
                x5 <- get
-               return (CI x1 x2 x3 x4 x5 [])
+               x6 <- get
+               return (CI x1 x2 x3 x4 x5 [] x6)
 
 instance Binary OptInfo where
         put (Optimise x1 x2)

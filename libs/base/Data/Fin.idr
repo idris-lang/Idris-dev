@@ -179,7 +179,7 @@ finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~(P Bound n t) ~m)) 
       , TextPart "is less than", TermPart (getNat m)
       , TextPart "because", TermPart (P Bound n t)
       , TextPart "is a bound variable instead of a constant"
-      , TermPart (TConst (AType (ATInt ITBig)))
+      , TermPart `(Integer : Type)
       ]
 finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~n ~m)) err xs y)
   = mkFinIntegerErr n m

@@ -149,10 +149,10 @@ instance (NFData t) => NFData (PDecl' t) where
               rnf x2 `seq`
                 rnf x3 `seq`
                   rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` ()
-        rnf (PClass x1 x2 x3 x4 x5 x6 x8 x7)
+        rnf (PClass x1 x2 x3 x4 x5 x6 x8 x7 x9)
           = rnf x1 `seq`
               rnf x2 `seq`
-                rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` ()
+                rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` ()
         rnf (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)
           = rnf x1 `seq`
               rnf x2 `seq`
@@ -313,9 +313,9 @@ instance (NFData t) => NFData (PArg' t) where
               rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
 
 instance NFData ClassInfo where
-        rnf (CI x1 x2 x3 x4 x5 x6)
+        rnf (CI x1 x2 x3 x4 x5 x6 x7)
           = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
+              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()
 
 instance NFData OptInfo where
         rnf (Optimise x1 x2)
@@ -353,10 +353,10 @@ instance NFData Using where
         rnf (UConstraint x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance NFData SyntaxInfo where
-        rnf (Syn x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+        rnf (Syn x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
           = rnf x1 `seq`
               rnf x2 `seq`
                 rnf x3 `seq`
                   rnf x4 `seq`
                     rnf x5 `seq`
-                      rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` rnf x10 `seq` rnf x11 `seq` ()
+                      rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` rnf x10 `seq` rnf x11 `seq` rnf x12 `seq` ()

@@ -57,6 +57,13 @@ usesGMP flags =
     Just False -> False
     Nothing -> True
 
+execOnly :: S.ConfigFlags -> Bool
+execOnly flags =
+  case lookup (FlagName "execonly") (S.configConfigurationsFlags flags) of
+    Just True -> True
+    Just False -> False
+    Nothing -> True
+
 isRelease :: S.ConfigFlags -> Bool
 isRelease flags =
     case lookup (FlagName "release") (S.configConfigurationsFlags flags) of
@@ -176,7 +183,7 @@ getVersion args flags = do
       let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
       return (Just buildinfo, [])
 
-idrisBuild _ flags _ local = do
+idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
       buildStdLib
       buildRTS
    where
@@ -199,7 +206,7 @@ idrisBuild _ flags _ local = do
 -- -----------------------------------------------------------------------------
 -- Copy/Install
 
-idrisInstall verbosity copy pkg local = do
+idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ do
       installStdLib
       installRTS
    where

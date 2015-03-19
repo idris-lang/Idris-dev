@@ -88,5 +88,4 @@ testFac : Int
 testFac = interp [] eFac 4
 
 main : IO ()
-main = print testFac
-
+main = printLn testFac

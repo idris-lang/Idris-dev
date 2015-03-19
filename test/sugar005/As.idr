@@ -24,13 +24,13 @@ same _ _ = Nothing
 
 namespace Main
   main : IO ()
-  main = do print $ isS 0
-            print $ isS 1
-            print $ hasS [0,0,0]
-            print $ hasS [0,1,2]
-            print $ isSS 5
-            print $ isSS 0
-            print $ same 1 1
-            print $ same 0 0
-            print $ same 1 0
+  main = do printLn $ isS 0
+            printLn $ isS 1
+            printLn $ hasS [0,0,0]
+            printLn $ hasS [0,1,2]
+            printLn $ isSS 5
+            printLn $ isSS 0
+            printLn $ same 1 1
+            printLn $ same 0 0
+            printLn $ same 1 0
 

@@ -13,5 +13,5 @@ take (S n) (x :: xs) = x :: take n xs
 take n [] = []
 
 main : IO ()
-main = do print (take 10 (Main.countFrom 10))
+main = do printLn (take 10 (Main.countFrom 10))
 

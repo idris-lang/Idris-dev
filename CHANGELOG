@@ -32,7 +32,14 @@ New in 0.9.17:
 * New REPL command ":core TM" that shows the elaborated form of TM along with
   its elaborated type using the syntax of TT. IDE mode has a corresponding
   command :elaborate-term for serialized terms.
-
+* Effectful and IO function names for sending data to STDOUT have been
+  aligned, semantically.
+    + `print` is now for putting showable things to STDOUT.
+    + `printLn` is for putting showable things to STDOUT with a new line
+    + `putCharLn` for putting a single character to STDOUT, with a new line.
+* Classes can now be annotated with 'determining parameters' to say which
+  must be available before resolving instances. Only determining parameters
+  are checked when checking for overlapping instances.
 
 New in 0.9.16:
 --------------

@@ -442,20 +442,30 @@ putStr x = do prim_write x
 putStrLn : String -> IO' ffi ()
 putStrLn x = putStr (x ++ "\n")
 
-||| Output something showable to stdout, with a trailing newline
+||| Output something showable to stdout, without a trailing newline
 partial
 print : Show a => a -> IO' ffi ()
-print x = putStrLn (show x)
+print x = putStr (show x)
+
+||| Output something showable to stdout, with a trailing newline
+partial
+printLn : Show a => a -> IO' ffi ()
+printLn x = putStrLn (show x)
 
 ||| Read one line of input from stdin
 partial
 getLine : IO' ffi String
-getLine = prim_read 
+getLine = prim_read
 
 ||| Write a single character to stdout
 partial
 putChar : Char -> IO ()
-putChar c = foreign FFI_C "putchar" (Int -> IO ()) (cast c) 
+putChar c = foreign FFI_C "putchar" (Int -> IO ()) (cast c)
+
+||| Write a singel character to stdout, with a trailing newline
+partial
+putCharLn : Char -> IO ()
+putCharLn c = putStrLn (singleton c)
 
 ||| Read a single character from stdin
 partial
@@ -484,7 +494,7 @@ stderr = FHandle prim__stderr
 do_fopen : String -> String -> IO Ptr
 do_fopen f m
    = foreign FFI_C "fileOpen" (String -> String -> IO Ptr) f m
-   
+
 ||| Open a file
 ||| @ f the filename
 ||| @ m the mode as a String (`"r"`, `"w"`, or `"r+"`)

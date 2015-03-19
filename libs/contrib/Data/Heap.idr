@@ -146,7 +146,7 @@ total isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h =
 isEmptySizeZero Empty          p = Refl
 isEmptySizeZero (Node s l e r) p = ?isEmptySizeZeroNodeAbsurd
 
-total emptyHeapValid : Ord a => isValidHeap empty = True
+total emptyHeapValid : Ord a => isValidHeap (empty {a}) = True
 emptyHeapValid = Refl
 
 total singletonHeapValid : Ord a => (e : a) -> isValidHeap $ singleton e = True
@@ -182,8 +182,8 @@ isEmptySizeZeroNodeAbsurd = proof {
          does seem to work correctly!
 main : IO ()
 main = do
-  _ <- print $ main.sort [10, 3, 7, 2, 9, 1, 8, 0, 6, 4, 5]
-  _ <- print $ main.sort ["orange", "apple", "pear", "lime", "durian"]
-  _ <- print $ main.sort [("jim", 19, "cs"), ("alice", 20, "english"), ("bob", 50, "engineering")]
+  _ <- printLn $ main.sort [10, 3, 7, 2, 9, 1, 8, 0, 6, 4, 5]
+  _ <- printLn $ main.sort ["orange", "apple", "pear", "lime", "durian"]
+  _ <- printLn $ main.sort [("jim", 19, "cs"), ("alice", 20, "english"), ("bob", 50, "engineering")]
   return ()
 -}
