@@ -28,8 +28,10 @@ import Data.Fin
 ||| A contiguous chunk of n bytes
 abstract
 record Buffer (n : Nat) where
+  constructor MkBuffer
   offset : Nat
-  realBufer : prim__UnsafeBuffer
+  realBuffer : prim__UnsafeBuffer
+
 {-
 record Buffer : Nat -> Type where
   MkBuffer : ( offset : Nat ) -> ( realBuffer : prim__UnsafeBuffer ) -> Buffer n
@@ -48,13 +50,13 @@ bitsFromFin (FS k) = 1 + bitsFromFin k
 ||| approximate ultimate size of the Buffer is known. Users can assume
 ||| the new Buffer is word-aligned.
 public
-allocate : ( hint : Nat ) -> Buffer Z
-allocate = MkBuffer Z . prim__allocate . bitsFromNat
+allocate : ( hint : Nat) -> Buffer Z
+allocate = MkBuffer Z  . prim__allocate . bitsFromNat
 
 ||| Append count repetitions of a Buffer to another Buffer
 %assert_total
 public
-appendBuffer : Buffer n        ->
+appendBuffer : {n : Nat} -> {m : Nat} -> Buffer n        ->
                ( count : Nat ) ->
                Buffer m        ->
                Buffer ( n + count * m )

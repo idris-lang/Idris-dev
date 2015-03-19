@@ -14,13 +14,9 @@ class Monad m => MonadState s (m : Type -> Type) where
 
 ||| The transformer on which the State monad is based
 record StateT (s : Type) (m : Type -> Type) (a : Type) where
-  runStateT : s -> m (a, s)
   constructor ST
-{-
-record StateT : Type -> (Type -> Type) -> Type -> Type where
-    ST : {m : Type -> Type} ->
-         (runStateT : s -> m (a, s)) -> StateT s m a
--}
+  runStateT : s -> m (a, s)
+
 instance Functor f => Functor (StateT s f) where
     map f (ST g) = ST (\st => map (mapFst f) (g st)) where
        mapFst : (a -> x) -> (a, s) -> (x, s)

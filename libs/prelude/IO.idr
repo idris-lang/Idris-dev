@@ -21,18 +21,10 @@ abstract WorldRes : Type -> Type
 WorldRes x = x
 
 record FFI where
+  constructor MkFFI
   ffi_types : Type -> Type
   ffi_fn : Type
   ffi_data : Type
-  constructor MkFFI
-
-{-
-record FFI : Type where
-     MkFFI : (ffi_types : Type -> Type) -> (ffi_fn : Type) -> FFI
-     MkFFI : (ffi_types : Type -> Type) -> 
-             (ffi_fn : Type) -> 
-             (ffi_data : Type) -> FFI
--}
 
 abstract 
 data IO' : (lang : FFI) -> Type -> Type where

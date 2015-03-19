@@ -17,9 +17,8 @@ class (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) where
 
 ||| The transformer base of the Writer monad
 record WriterT (w : Type) (m : Type -> Type) (a : Type) where
-  runWriterT : m (a, w)
   constructor WR
-  
+  runWriterT : m (a, w)
 {-
 record WriterT : Type -> (Type -> Type) -> Type -> Type where
     WR : {m : Type -> Type} ->
