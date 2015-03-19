@@ -18,7 +18,9 @@ ucheck = void . solve 10 . filter (not . ignore)
 newtype Var = Var Int
     deriving (Eq, Ord, Show)
 
-type Domain = (Int, Int)
+data Domain = Domain {-# UNPACK #-} !Int
+                     {-# UNPACK #-} !Int
+    deriving (Eq, Ord, Show)
 
 data SolverState =
     SolverState
@@ -40,7 +42,7 @@ solve maxUniverseLevel inpConstraints =
         initSolverState = SolverState
             { queue = S.fromList inpConstraints
             , domainStore = M.fromList
-                [ (v, ((0, maxUniverseLevel), S.empty))
+                [ (v, (Domain 0 maxUniverseLevel, S.empty))
                 | v <- ordNub [ v
                               | (c, _) <- inpConstraints
                               , v <- varsIn c
@@ -71,22 +73,25 @@ solve maxUniverseLevel inpConstraints =
                 Just (cons, fc) -> do
                     case cons of
                         ULE a b -> do
-                            (lowerA, upperA) <- domainOf a
-                            (lowerB, upperB) <- domainOf b
-                            when (upperB < upperA) $ updateDomainOf (cons, fc) a (lowerA, upperB)
-                            when (lowerA > lowerB) $ updateDomainOf (cons, fc) b (lowerA, upperB)
+                            Domain lowerA upperA <- domainOf a
+                            Domain lowerB upperB <- domainOf b
+                            when (upperB < upperA) $ updateDomainOf (cons, fc) a (Domain lowerA upperB)
+                            when (lowerA > lowerB) $ updateDomainOf (cons, fc) b (Domain lowerA upperB)
                         ULT a b -> do
-                            (lowerA, upperA) <- domainOf a
-                            (lowerB, upperB) <- domainOf b
+                            Domain lowerA upperA <- domainOf a
+                            Domain lowerB upperB <- domainOf b
                             let upperB_pred = pred upperB
                             let lowerA_succ = succ lowerA
-                            when (upperB_pred < upperA) $ updateDomainOf (cons, fc) a (lowerA, upperB_pred)
-                            when (lowerA_succ > lowerB) $ updateDomainOf (cons, fc) b (lowerA_succ, upperB)
+                            when (upperB_pred < upperA) $ updateDomainOf (cons, fc) a (Domain lowerA upperB_pred)
+                            when (lowerA_succ > lowerB) $ updateDomainOf (cons, fc) b (Domain lowerA_succ upperB)
                     propagate
 
         -- | extract a solution from the state.
         extractSolution :: (MonadState SolverState m, Functor m) => m (M.Map Var Int)
-        extractSolution = M.map (fst . fst) <$> gets domainStore
+        extractSolution = M.map (extractValue . fst) <$> gets domainStore
+
+        extractValue :: Domain -> Int
+        extractValue (Domain x _) = x
 
         -- | dequeue the first constraint.
         nextConstraint :: MonadState SolverState m => m (Maybe (UConstraint, FC))
@@ -100,13 +105,13 @@ solve maxUniverseLevel inpConstraints =
 
         -- | look up the domain of a variable from the state.
         --   for convenience, this function also accepts UVal's and returns a singleton domain for them.
-        domainOf :: MonadState SolverState m => UExp -> m (Int, Int)
+        domainOf :: MonadState SolverState m => UExp -> m Domain
         domainOf (UVar var) = gets (fst . (M.! Var var) . domainStore)
-        domainOf (UVal val) = return (val, val)
+        domainOf (UVal val) = return (Domain val val)
 
         -- | updates the domain of a variable.
         --   this function is also where we fail, inc ase of a domain wipe-out.
-        updateDomainOf :: (UConstraint, FC) -> UExp -> (Int, Int) -> StateT SolverState TC ()
+        updateDomainOf :: (UConstraint, FC) -> UExp -> Domain -> StateT SolverState TC ()
         updateDomainOf suspect (UVar var) newDom = do
             doms <- gets domainStore
             let (oldDom, suspects) = doms M.! Var var
@@ -129,8 +134,8 @@ solve maxUniverseLevel inpConstraints =
                 Just cs -> modify $ \ st -> st { queue = S.union cs (queue st) }
 
         -- | check if a domain is wiped out.
-        wipeOut :: (Int, Int) -> Bool
-        wipeOut (l, u) = l > u
+        wipeOut :: Domain -> Bool
+        wipeOut (Domain l u) = l > u
 
 ordNub :: Ord a => [a] -> [a]
 ordNub = S.toList . S.fromList
