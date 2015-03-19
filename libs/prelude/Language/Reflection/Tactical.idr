@@ -16,6 +16,12 @@ data Arg : Type where
 data TyDecl : Type where
   Declare : TTName -> List Arg -> Raw -> TyDecl
 
+data FunClause : Type where
+  MkFunClause : (lhs, rhs : Raw) -> FunClause
+
+data FunDefn : Type where
+  DefineFun : TTName -> List FunClause -> FunDefn
+
 abstract
 data Tactical : Type -> Type where
   -- obligatory control stuff
@@ -48,6 +54,7 @@ data Tactical : Type -> Type where
   prim__Intro : Maybe TTName -> Tactical ()
 
   prim__DeclareType : TyDecl -> Tactical ()
+  prim__DefineFunction : FunDefn -> Tactical ()
 
   prim__Debug : {a : Type} -> Maybe String -> Tactical a
 

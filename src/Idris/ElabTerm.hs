@@ -1701,6 +1701,9 @@ runTactical fc env tm = do tm' <- eval tm
                                                new_tyDecls e }
            aux <- getAux
            returnUnit
+      | n == tacN "prim__DefineFunction", [decl] <- args
+      = do undefined
+           undefined
       | n == tacN "prim__Debug", [ty, msg] <- args
       = do let msg' = fromTTMaybe msg
            case msg' of
@@ -2878,6 +2881,22 @@ reifyTyDecl (App (App (App (P (DCon _ _ _) n _) tyN) args) ret)
                                             (reifyRaw argTy)
         reifyRArg aTm = fail $ "Couldn't reify " ++ show aTm ++ " as an RArg."
 reifyTyDecl tm = fail $ "Couldn't reify " ++ show tm ++ " as a type declaration."
+
+reifyFunDefn :: Term -> ElabD RFunDefn
+reifyFunDefn (App (App (P _ n _) fnN) clauses)
+  | n == tacN "DefineFun" =
+  do fnN' <- reifyTTName fnN
+     clauses' <- case unList clauses of
+                   Nothing -> fail $ "Couldn't reify " ++ show clauses ++ " as a clause list"
+                   Just cs -> mapM reifyC cs
+     return $ RDefineFun fnN' clauses'
+  where reifyC :: Term -> ElabD RFunClause
+        reifyC (App (App (P (DCon _ _ _) n _) lhs) rhs)
+          | n == tacN "MkFunClause" = liftM2 RMkFunClause
+                                             (reifyRaw lhs)
+                                             (reifyRaw rhs)
+        reifyC tm = fail $ "Couldn't reify " ++ show tm ++ " as a clause."
+reifyFunDefn tm = fail $ "Couldn't reify " ++ show tm ++ " as a function declaration."
 
 envTupleType :: Raw
 envTupleType
