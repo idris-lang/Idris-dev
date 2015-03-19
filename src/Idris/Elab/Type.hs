@@ -75,7 +75,7 @@ buildType info syn fc opts n ty' = do
 
          logLvl 3 $ show ty ++ "\nElaborated: " ++ show tyT'
 
-         ds <- checkAddDef True False fc defer
+         ds <- checkAddDef True False fc iderr defer
          -- if the type is not complete, note that we'll need to infer
          -- things later (for solving metavariables)
          when (not (null ds)) $ addTyInferred n
@@ -85,7 +85,7 @@ buildType info syn fc opts n ty' = do
          logLvl 5 $ "Rechecking"
          logLvl 6 $ show tyT
          logLvl 10 $ "Elaborated to " ++ showEnvDbg [] tyT
-         (cty, ckind)   <- recheckC fc [] tyT
+         (cty, ckind)   <- recheckC fc id [] tyT
 
          -- record the implicit and inaccessible arguments
          i <- getIState
@@ -154,7 +154,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          -- Productivity checking now via checking for guarded 'Delay' 
          let opts' = opts -- if corec then (Coinductive : opts) else opts
          let usety = if norm then nty' else nty
-         ds <- checkDef fc [(n, (-1, Nothing, usety))]
+         ds <- checkDef fc iderr [(n, (-1, Nothing, usety))]
          addIBC (IBCDef n)
          let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
          addDeferred ds'

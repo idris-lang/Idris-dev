@@ -57,7 +57,7 @@ processTacticDecls info =
        updateIState $ \i -> i { idris_implicits =
                                   addDef n impls (idris_implicits i) }
        addIBC (IBCImp n)
-       ds <- checkDef fc [(n, (-1, Nothing, ty))]
+       ds <- checkDef fc iderr [(n, (-1, Nothing, ty))]
        addIBC (IBCDef n)
        let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
        addDeferred ds'
