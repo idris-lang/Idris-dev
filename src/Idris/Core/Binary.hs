@@ -594,8 +594,8 @@ instance {- (Binary n) => -} Binary (TT Name) where
                            x2 <- getWord8
                            return (Proj x1 ((fromEnum x2)-1))
                    6 -> return Erased
-                   7 -> do x1 <- get
-                           return (TType x1)
+                   7 -> do _x1 <- get :: Get UExp
+                           return (TType (UVar (-1)))             -- TODO: temp hack, make Edwin fix this!
                    8 -> return Impossible
                    9 -> do x1 <- get
                            return (V x1)

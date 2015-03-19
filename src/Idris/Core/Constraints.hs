@@ -20,15 +20,21 @@ import Debug.Trace
 
 -- | Check that a list of universe constraints can be satisfied.
 ucheck :: [(UConstraint, FC)] -> TC ()
-ucheck = void . solve
+ucheck = void . solve . filter (not . ignore)
+    where ignore (c,_) = any (== Var (-1)) (varsIn c)
+          -- TODO: remove the ignore when Idris.Core.Binary:598
 
 newtype Var = Var Int
     deriving (Eq, Ord, Show)
 
+type Domain = (Int, Int)
+
 data SolverState =
     SolverState
         { queue       :: [(UConstraint, FC)]
-        , domainStore :: M.Map Var (Int, Int)
+        , domainStore :: M.Map Var ( Domain
+                                   , [(UConstraint, FC)]      -- constraints that effected this variable
+                                   )
         }
 
 solve :: [(UConstraint, FC)] -> TC (M.Map Var Int)
@@ -40,7 +46,7 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
         initSolverState = SolverState
             { queue = inpConstraints
             , domainStore = M.fromList
-                [ (v, (0, 10))
+                [ (v, ((0, 10), []))
                 | v <- ordNub [ v
                               | (c, _) <- inpConstraints
                               , v <- varsIn c
@@ -55,31 +61,27 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
             , v <- varsIn c
             ]
 
-        varsIn :: UConstraint -> [Var]
-        varsIn (ULT a b) = [ Var v | UVar v <- [a,b] ]
-        varsIn (ULE a b) = [ Var v | UVar v <- [a,b] ]
-
         -- propagate :: MonadState SolverState m => m ()
         propagate = do
             mcons <- nextConstraint
             case mcons of
                 Nothing -> return ()
-                Just (cons, _fc) -> do
+                Just (cons, fc) -> do
                     case cons of
                         ULE a b -> do
                             (lowerA, upperA) <- domainOf a
                             (lowerB, upperB) <- domainOf b
-                            updateDomainOf a (lowerA, min upperA upperB)
-                            updateDomainOf b (max lowerB lowerA, upperB)
+                            updateDomainOf (cons, fc) a (lowerA, min upperA upperB)
+                            updateDomainOf (cons, fc) b (max lowerB lowerA, upperB)
                         ULT a b -> do
                             (lowerA, upperA) <- domainOf a
                             (lowerB, upperB) <- domainOf b
-                            updateDomainOf a (lowerA, min upperA (pred upperB))
-                            updateDomainOf b (max lowerB (succ lowerA), upperB)
+                            updateDomainOf (cons, fc) a (lowerA, min upperA (pred upperB))
+                            updateDomainOf (cons, fc) b (max lowerB (succ lowerA), upperB)
                     propagate
 
         extractSolution :: (MonadState SolverState m, Functor m) => m (M.Map Var Int)
-        extractSolution = M.map fst <$> gets domainStore
+        extractSolution = M.map (fst . fst) <$> gets domainStore
 
         nextConstraint :: MonadState SolverState m => m (Maybe (UConstraint, FC))
         nextConstraint = do
@@ -91,19 +93,34 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
                     return (Just q)
 
         domainOf :: MonadState SolverState m => UExp -> m (Int, Int)
-        domainOf (UVar var) = gets ((M.! Var var) . domainStore)
+        domainOf (UVar var) = gets (fst . (M.! Var var) . domainStore)
         domainOf (UVal val) = return (val, val)
 
-        -- updateDomainOf :: MonadState SolverState m => UExp -> (Int, Int) -> m ()
-        updateDomainOf (UVar var) dom = do
+        -- updateDomainOf :: MonadState SolverState m => UConstraint -> UExp -> (Int, Int) -> m ()
+        updateDomainOf suspect (UVar var) dom = do
             doms <- gets domainStore
-            let oldDom = doms M.! Var var
+            let (oldDom, suspects) = doms M.! Var var
             let newDom = domainIntersect oldDom dom
-            when (wipeOut newDom) $ lift $ Error UniverseError
+            varsDoms <- mapM (\ (Var v) -> do
+                                    d <- domainOf (UVar v)
+                                    return (UVar v, d)
+                             ) $ ordNub $ concatMap (varsIn . fst) (suspect : suspects)
+            when (wipeOut newDom) $ lift $ Error $ Msg $ unlines
+                $ "Universe inconsistency."
+                : ("Working on: " ++ show (UVar var))
+                : ("Old domain: " ++ show oldDom)
+                : ("Inp domain: " ++ show dom)
+                : ("New domain: " ++ show newDom)
+                : "Involved constraints: "
+                : map (("\t"++) . show) (suspect:suspects)
+                ++ ["Involved variables: "]
+                ++ map (\ (v,d) -> "\t"++ show v ++ " = " ++ show d) varsDoms
+                -- ++ ["All constraints"]
+                -- ++ map (show . fst) inpConstraints
             unless (oldDom == newDom) $ do
-                modify $ \ st -> st { domainStore = M.insert (Var var) newDom doms }
+                modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, suspect:suspects) doms }
                 addToQueue (Var var)
-        updateDomainOf UVal{} _ = return ()
+        updateDomainOf _ UVal{} _ = return ()
 
         -- addToQueue :: MonadState SolverState m => Var -> m ()
         addToQueue var = do
@@ -118,3 +135,7 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
 
 ordNub :: Ord a => [a] -> [a]
 ordNub = S.toList . S.fromList
+
+varsIn :: UConstraint -> [Var]
+varsIn (ULT a b) = [ Var v | UVar v <- [a,b] ]
+varsIn (ULE a b) = [ Var v | UVar v <- [a,b] ]
