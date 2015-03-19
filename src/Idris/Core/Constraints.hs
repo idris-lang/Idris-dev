@@ -5,7 +5,6 @@ import Idris.Core.TT ( TC(..), UExp(..), UConstraint(..), FC(..), Err'(..) )
 
 import Control.Applicative
 import Control.Monad.State
-import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
@@ -23,9 +22,9 @@ type Domain = (Int, Int)
 
 data SolverState =
     SolverState
-        { queue       :: [(UConstraint, FC)]
+        { queue       :: S.Set (UConstraint, FC)
         , domainStore :: M.Map Var ( Domain
-                                   , [(UConstraint, FC)]      -- constraints that effected this variable
+                                   , S.Set (UConstraint, FC)        -- constraints that effected this variable
                                    )
         }
 
@@ -39,9 +38,9 @@ solve maxUniverseLevel inpConstraints =
         --   the queue contains all constraints, the domain store contains the initial domains.
         initSolverState :: SolverState
         initSolverState = SolverState
-            { queue = ordNub inpConstraints
+            { queue = S.fromList inpConstraints
             , domainStore = M.fromList
-                [ (v, ((0, maxUniverseLevel), []))
+                [ (v, ((0, maxUniverseLevel), S.empty))
                 | v <- ordNub [ v
                               | (c, _) <- inpConstraints
                               , v <- varsIn c
@@ -50,8 +49,8 @@ solve maxUniverseLevel inpConstraints =
             }
 
         -- | a map from variables to the list of constraints the variable occurs in.
-        constraints :: M.Map Var [(UConstraint, FC)]
-        constraints = M.map ordNub $ M.fromListWith (++)
+        constraints :: M.Map Var (S.Set (UConstraint, FC))
+        constraints = M.map S.fromList $ M.fromListWith (++)
             [ (v, [(c,fc)])
             | (c, fc) <- inpConstraints
             , v <- varsIn c
@@ -89,10 +88,10 @@ solve maxUniverseLevel inpConstraints =
         nextConstraint :: MonadState SolverState m => m (Maybe (UConstraint, FC))
         nextConstraint = do
             qu <- gets queue
-            case qu of
-                [] -> return Nothing
-                (q:qs) -> do
-                    modify $ \ st -> st { queue = qs \\ [q] }
+            case S.minView qu of
+                Nothing -> return Nothing
+                Just (q,qs) -> do
+                    modify $ \ st -> st { queue = qs }
                     return (Just q)
 
         -- | look up the domain of a variable from the state.
@@ -111,7 +110,7 @@ solve maxUniverseLevel inpConstraints =
             varsDoms <- mapM (\ (Var v) -> do
                                     d <- domainOf (UVar v)
                                     return (UVar v, d)
-                             ) $ ordNub $ concatMap (varsIn . fst) (suspect : suspects)
+                             ) $ ordNub $ concatMap (varsIn . fst) (suspect : S.toList suspects)
             when (wipeOut newDom) $ lift $ Error $ Msg $ unlines
                 $ "Universe inconsistency."
                 : ("Working on: " ++ show (UVar var))
@@ -119,13 +118,13 @@ solve maxUniverseLevel inpConstraints =
                 : ("Inp domain: " ++ show dom)
                 : ("New domain: " ++ show newDom)
                 : "Involved constraints: "
-                : map (("\t"++) . show) (suspect:suspects)
+                : map (("\t"++) . show) (suspect : S.toList suspects)
                 ++ ["Involved variables: "]
                 ++ map (\ (v,d) -> "\t"++ show v ++ " = " ++ show d) varsDoms
                 -- ++ ["All constraints"]
                 -- ++ map (show . fst) inpConstraints
             unless (oldDom == newDom) $ do
-                modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, suspect:suspects) doms }
+                modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
                 addToQueue (Var var)
         updateDomainOf _ UVal{} _ = return ()
 
@@ -133,7 +132,7 @@ solve maxUniverseLevel inpConstraints =
         addToQueue :: MonadState SolverState m => Var -> m ()
         addToQueue var = do
             let cs = constraints M.! var
-            modify $ \ st -> st { queue = queue st ++ cs }
+            modify $ \ st -> st { queue = S.union cs (queue st) }
 
         -- | intersecting two domains, the resulting domain can be wiped out.
         domainIntersect :: (Int, Int) -> (Int, Int) -> (Int, Int)
