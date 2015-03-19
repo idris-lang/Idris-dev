@@ -1,26 +1,18 @@
 -- | Check universe constraints.
-module Idris.Core.Constraints(ucheck) where
+module Idris.Core.Constraints ( ucheck ) where
 
-import Idris.Core.TT hiding (I, Var)
-import Idris.Core.Typecheck
+import Idris.Core.TT ( TC(..), UExp(..), UConstraint(..), FC(..), Err'(..) )
 
 import Control.Applicative
-import Control.Arrow
-import Control.Monad.RWS
 import Control.Monad.State
-import qualified Data.Set as S
 import Data.List
-import Data.Maybe
-import Data.Either
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
-import Control.DeepSeq
-
-import Debug.Trace
 
 -- | Check that a list of universe constraints can be satisfied.
 ucheck :: [(UConstraint, FC)] -> TC ()
-ucheck = void . solve . filter (not . ignore)
+ucheck = void . solve 10 . filter (not . ignore)
     where ignore (c,_) = any (== Var (-1)) (varsIn c)
           -- TODO: remove the ignore when Idris.Core.Binary:598
 
@@ -37,16 +29,19 @@ data SolverState =
                                    )
         }
 
-solve :: [(UConstraint, FC)] -> TC (M.Map Var Int)
-solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
+solve :: Int -> [(UConstraint, FC)] -> TC (M.Map Var Int)
+solve maxUniverseLevel inpConstraints =
+    evalStateT (propagate >> extractSolution) initSolverState
 
     where
 
+        -- | initial solver state.
+        --   the queue contains all constraints, the domain store contains the initial domains.
         initSolverState :: SolverState
         initSolverState = SolverState
-            { queue = inpConstraints
+            { queue = ordNub inpConstraints
             , domainStore = M.fromList
-                [ (v, ((0, 10), []))
+                [ (v, ((0, maxUniverseLevel), []))
                 | v <- ordNub [ v
                               | (c, _) <- inpConstraints
                               , v <- varsIn c
@@ -54,14 +49,20 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
                 ]
             }
 
+        -- | a map from variables to the list of constraints the variable occurs in.
         constraints :: M.Map Var [(UConstraint, FC)]
-        constraints = M.fromListWith (++)
+        constraints = M.map ordNub $ M.fromListWith (++)
             [ (v, [(c,fc)])
             | (c, fc) <- inpConstraints
             , v <- varsIn c
             ]
 
-        -- propagate :: MonadState SolverState m => m ()
+        -- | this is where the actual work is done.
+        --   dequeue the first constraint,
+        --   filter domains,
+        --   update domains (possibly resulting in a domain wipe out),
+        --   until the queue is empty.
+        propagate :: StateT SolverState TC ()
         propagate = do
             mcons <- nextConstraint
             case mcons of
@@ -80,9 +81,11 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
                             updateDomainOf (cons, fc) b (max lowerB (succ lowerA), upperB)
                     propagate
 
+        -- | extract a solution from the state.
         extractSolution :: (MonadState SolverState m, Functor m) => m (M.Map Var Int)
         extractSolution = M.map (fst . fst) <$> gets domainStore
 
+        -- | dequeue the first constraint.
         nextConstraint :: MonadState SolverState m => m (Maybe (UConstraint, FC))
         nextConstraint = do
             qu <- gets queue
@@ -92,11 +95,15 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
                     modify $ \ st -> st { queue = qs \\ [q] }
                     return (Just q)
 
+        -- | look up the domain of a variable from the state.
+        --   for convenience, this function also accepts UVal's and returns a singleton domain for them.
         domainOf :: MonadState SolverState m => UExp -> m (Int, Int)
         domainOf (UVar var) = gets (fst . (M.! Var var) . domainStore)
         domainOf (UVal val) = return (val, val)
 
-        -- updateDomainOf :: MonadState SolverState m => UConstraint -> UExp -> (Int, Int) -> m ()
+        -- | updates the domain of a variable.
+        --   this function is also where we fail, inc ase of a domain wipe-out.
+        updateDomainOf :: (UConstraint, FC) -> UExp -> (Int, Int) -> StateT SolverState TC ()
         updateDomainOf suspect (UVar var) dom = do
             doms <- gets domainStore
             let (oldDom, suspects) = doms M.! Var var
@@ -122,20 +129,24 @@ solve inpConstraints = evalStateT (propagate >> extractSolution) initSolverState
                 addToQueue (Var var)
         updateDomainOf _ UVal{} _ = return ()
 
-        -- addToQueue :: MonadState SolverState m => Var -> m ()
+        -- | add all constraints related to a variable.
+        addToQueue :: MonadState SolverState m => Var -> m ()
         addToQueue var = do
             let cs = constraints M.! var
-            modify $ \ st -> st { queue = queue st ++ ordNub cs }
+            modify $ \ st -> st { queue = queue st ++ cs }
 
+        -- | intersecting two domains, the resulting domain can be wiped out.
         domainIntersect :: (Int, Int) -> (Int, Int) -> (Int, Int)
         domainIntersect (a,b) (c,d) = (max a c, min b d)
 
+        -- | check if a domain is wiped out.
         wipeOut :: (Int, Int) -> Bool
         wipeOut (l, u) = l > u
 
 ordNub :: Ord a => [a] -> [a]
 ordNub = S.toList . S.fromList
 
+-- | variables in a constraint
 varsIn :: UConstraint -> [Var]
 varsIn (ULT a b) = [ Var v | UVar v <- [a,b] ]
 varsIn (ULE a b) = [ Var v | UVar v <- [a,b] ]
