@@ -17,4 +17,4 @@ with
 unique001b.idr:16:7:Borrowed name xs must not be used on RHS
 unique001c.idr:46:6:Unique name f is used more than once
 unique001d.idr:3:7:Borrowed name x must not be used on RHS
-unique001e.idr:4:11:Constructor Main.:: has a UniqueType, but the data type does not
+unique001e.idr:3:10:Constructor Main.Nil has a UniqueType, but the data type does not

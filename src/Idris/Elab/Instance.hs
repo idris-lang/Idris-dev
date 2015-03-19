@@ -175,7 +175,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
              setContext ctxt'
              processTacticDecls newDecls
              ctxt <- getContext
-             (cty, _) <- recheckC fc [] tyT
+             (cty, _) <- recheckC fc id [] tyT
              let nty = normalise ctxt [] cty
              return $ any (isJust . findOverlapping i (class_determiners ci) (delab i nty)) (class_instances ci)
 
