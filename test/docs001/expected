@@ -1,5 +1,5 @@
 Type checking ./docs001.idr
-[?1049h[1;29r[m(B[4l[?7h[H[2J[29;1H[r[?1049l>Type class C
+Type class C
     class
 
 Parameters:

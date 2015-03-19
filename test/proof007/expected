@@ -1,3 +1,4 @@
-DefaultArgUnknownName.idr:9:6:When elaborating right hand side of test:
+DefaultArgUnknownName.idr:9:6:
+When elaborating right hand side of test:
 When elaborating argument [95marg[0m to function [92mDefaultArgUnknownName.funWithBadDefArg[0m:
         No such variable sadgjhsag

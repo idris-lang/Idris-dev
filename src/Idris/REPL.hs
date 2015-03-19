@@ -1518,7 +1518,8 @@ loadInputs inputs toline -- furthest line to read in input source files
 
 idrisMain :: [Opt] -> Idris ()
 idrisMain opts =
-    do let inputs = opt getFile opts
+  do   mapM_ setWidth (opt getConsoleWidth opts)
+       let inputs = opt getFile opts
        let quiet = Quiet `elem` opts
        let nobanner = NoBanner `elem` opts
        let idesl = Idemode `elem` opts || IdemodeSocket `elem` opts
@@ -1533,6 +1534,7 @@ idrisMain opts =
        let optimise = case opt getOptLevel opts of
                         [] -> 2
                         xs -> last xs
+
        setOptLevel optimise
        let outty = case opt getOutputTy opts of
                      [] -> if Interface `elem` opts then
@@ -1555,7 +1557,7 @@ idrisMain opts =
                                             putIState (i { default_total = True })
        setColourise $ not quiet && last (True : opt getColour opts)
 
-       when (not runrepl) $ mapM_ setWidth (opt getConsoleWidth opts)
+
 
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl

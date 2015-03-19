@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-idris $@ test030.idr --check --nocolour
-idris $@ test030a.idr --check --nocolour
+idris --consolewidth 80 $@ test030.idr --check --nocolour
+idris --consolewidth 80 $@ test030a.idr --check --nocolour
 rm -f *.ibc
