@@ -157,6 +157,7 @@ data Err' t
           | NotInjective t t t
           | CantResolve Bool -- True if postponed, False if fatal
                         t
+          | InvalidTCArg Name t
           | CantResolveAlts [Name]
           | IncompleteTerm t
           | NoEliminator String t
@@ -1170,17 +1171,33 @@ unList tm = case unApply tm of
 forget :: TT Name -> Raw
 forget tm = forgetEnv [] tm
 
+safeForget :: TT Name -> Maybe Raw
+safeForget tm = safeForgetEnv [] tm
+
 forgetEnv :: [Name] -> TT Name -> Raw
-forgetEnv env (P _ n _) = Var n
-forgetEnv env (V i)     = Var (env !! i)
-forgetEnv env (Bind n b sc) = let n' = uniqueName n env in
-                                  RBind n' (fmap (forgetEnv env) b)
-                                           (forgetEnv (n':env) sc)
-forgetEnv env (App f a) = RApp (forgetEnv env f) (forgetEnv env a)
-forgetEnv env (Constant c) = RConstant c
-forgetEnv env (TType i) = RType
-forgetEnv env (UType u) = RUType u
-forgetEnv env Erased    = RConstant Forgot
+forgetEnv env tm = case safeForgetEnv env tm of
+                     Just t' -> t'
+                     Nothing -> error $ "Scope error in " ++ show tm
+
+
+safeForgetEnv :: [Name] -> TT Name -> Maybe Raw
+safeForgetEnv env (P _ n _) = Just $ Var n
+safeForgetEnv env (V i) | i < length env = Just $ Var (env !! i)
+                        | otherwise = Nothing 
+safeForgetEnv env (Bind n b sc) 
+     = do let n' = uniqueName n env
+          b' <- safeForgetEnvB env b
+          sc' <- safeForgetEnv (n':env) sc
+          Just $ RBind n' b' sc'
+  where safeForgetEnvB env (Let t v) = liftM2 Let (safeForgetEnv env t) 
+                                                  (safeForgetEnv env v)
+        safeForgetEnvB env b = do ty' <- safeForgetEnv env (binderTy b)
+                                  Just $ fmap (\_ -> ty') b 
+safeForgetEnv env (App f a) = liftM2 RApp (safeForgetEnv env f) (safeForgetEnv env a)
+safeForgetEnv env (Constant c) = Just $ RConstant c
+safeForgetEnv env (TType i) = Just RType
+safeForgetEnv env (UType u) = Just $ RUType u
+safeForgetEnv env Erased    = Just $ RConstant Forgot
 
 -- | Introduce a 'Bind' into the given term for each element of the
 -- given list of (name, binder) pairs.

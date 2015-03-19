@@ -14,9 +14,6 @@ infixl 5 >>=
 class Applicative m => Monad (m : Type -> Type) where
     (>>=)  : m a -> (a -> m b) -> m b
 
-instance Monad id where
-    a >>= f = f a
-
 ||| Also called `join` or mu
 flatten : Monad m => m (m a) -> m a
 flatten a = a >>= id

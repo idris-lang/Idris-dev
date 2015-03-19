@@ -43,6 +43,8 @@ New in 0.9.17:
 * New package 'contrib' containing things that are less mature or less used
   than the contents of 'base'. 'contrib' is not available by default, so you
   may need to add '-p contrib' to your .ipkg file or Idris command line.
+* Arguments to class instances are now checked for injectivity.
+  Unification assumes this, so we need to check when instances are defined.
 
 New in 0.9.16:
 --------------

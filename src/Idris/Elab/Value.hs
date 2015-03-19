@@ -73,13 +73,13 @@ elabValBind info aspat norm tm_in
 
         let vtm = orderPats (getInferTerm tm')
 
-        def' <- checkDef (fileFC "(input)") defer
+        def' <- checkDef (fileFC "(input)") iderr defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info []) is
 
         logLvl 3 ("Value: " ++ show vtm)
-        (vtm_in, vty) <- recheckC (fileFC "(input)") [] vtm
+        (vtm_in, vty) <- recheckC (fileFC "(input)") id [] vtm
 
         let vtm = if norm then normalise (tt_ctxt i) [] vtm_in
                           else vtm_in

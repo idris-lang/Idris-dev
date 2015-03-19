@@ -18,5 +18,3 @@ infixl 4 <$>
 (<$>) : Functor f => (m : a -> b) -> f a -> f b
 m <$> x = map m x
 
-instance Functor id where
-    map f a = f a

@@ -63,7 +63,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
          let lhs_ty = getInferType lhs'
          let newargs = pvars i lhs_tm
 
-         (clhs_tm_in, clhs_ty) <- recheckC fc [] lhs_tm
+         (clhs_tm_in, clhs_ty) <- recheckC fc id [] lhs_tm
          let clhs_tm = renamepats pnames clhs_tm_in
          logLvl 3 ("Transform LHS " ++ show clhs_tm)
 
@@ -80,7 +80,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
          setContext ctxt'
          processTacticDecls newDecls
 
-         (crhs_tm_in, crhs_ty) <- recheckC fc [] rhs'
+         (crhs_tm_in, crhs_ty) <- recheckC fc id [] rhs'
          let crhs_tm = renamepats pnames crhs_tm_in
          logLvl 3 ("Transform RHS " ++ show crhs_tm)
 
