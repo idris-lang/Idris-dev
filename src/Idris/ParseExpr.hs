@@ -1234,6 +1234,7 @@ Tactic ::= 'intro' NameList?
        |   'term'
        |   'undo'
        |   'qed'
+       |   'shipIt'
        |   'abandon'
        |   ':' 'q'
        ;
@@ -1316,6 +1317,7 @@ tactics =
   , noArgs ["term"] ProofTerm
   , noArgs ["undo"] Undo
   , noArgs ["qed"] Qed
+  , noArgs ["shipIt"] Qed
   , noArgs ["abandon", ":q"] Abandon
   , noArgs ["skip"] Skip
   , noArgs ["sourceLocation"] SourceFC
