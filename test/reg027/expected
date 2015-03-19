@@ -1,3 +1,4 @@
 <<int fn>>
 6
-reg027a.idr:9:10:Overlapping instance: Show (Int -> a) already defined
+reg027a.idr:9:10:
+Overlapping instance: Show (Int -> a) already defined
