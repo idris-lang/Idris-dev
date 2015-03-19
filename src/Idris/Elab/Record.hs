@@ -1,281 +1,359 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, ViewPatterns #-}
 module Idris.Elab.Record(elabRecord) where
 
 import Idris.AbsSyntax
-import Idris.ASTUtils
-import Idris.DSL
+import Idris.Docstrings
 import Idris.Error
 import Idris.Delaborate
-import Idris.Imports
-import Idris.ElabTerm
-import Idris.Coverage
-import Idris.DataOpts
-import Idris.Providers
-import Idris.Primitives
-import Idris.Inliner
-import Idris.PartialEval
-import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
-import IRTS.Lang
-import Idris.ParseHelpers (opChars)
 
-import Idris.Elab.Type
-import Idris.Elab.Data
-import Idris.Elab.Utils
+import Idris.ParseExpr -- Remove me
 
 import Idris.Core.TT
-import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
-import Idris.Core.Execute
-import Idris.Core.Typecheck
-import Idris.Core.CaseTree
 
-import Idris.Docstrings
+import Idris.Elab.Data
 
-import Prelude hiding (id, (.))
-import Control.Category
-
-import Control.Applicative hiding (Const)
-import Control.DeepSeq
-import Control.Monad
-import Control.Monad.State.Strict as State
-import Data.List
 import Data.Maybe
-import Debug.Trace
+import Data.List
+import Control.Monad
 
-import qualified Data.Map as Map
-import qualified Data.Set as S
-import qualified Data.Text as T
-import Data.Char(isLetter, toLower)
-import Data.List.Split (splitOn)
+-- TODO:
+-- Consider what to do about type parameters in projection that do not occur as a parameter.
+-- I.e. set_bar : Foo n -> Vect n a
 
-import Util.Pretty(pretty, text)
+elabRecord :: ElabInfo ->
+              (Docstring (Either Err PTerm)) ->
+              SyntaxInfo ->
+              FC ->
+              DataOpts ->
+              Name -> -- ^ Record Type Name
+              [(Name, Plicity, PTerm)] -> -- ^ Parameters
+              [(Name, Docstring (Either Err PTerm))] -> -- ^ Parameter Docs
+              [(Name, Plicity, PTerm)] -> -- ^ Fields
+              [(Name, Docstring (Either Err PTerm))] -> -- ^ Field Docs
+              Maybe Name -> -- ^ Constructor Name
+              (Docstring (Either Err PTerm)) -> -- ^ Constructor Doc
+              SyntaxInfo -> -- ^ Constructor SyntaxInfo
+              Idris ()
+elabRecord info doc rsyn fc opts tyn params paramDocs fields fieldDocs cname cdoc csyn
+  = do logLvl 2 $ "Building data declaration for " ++ show tyn
+       -- Type constructor
+       let tycon = generateTyCon params
+       logLvl 4 $ "Type constructor " ++ showTmImpls tycon
+       
+       -- Data constructor
+       dconName <- liftM (expandNS csyn) $ generateDConName cname 
+       let dcon = generateDCon params fields
+       logLvl 4 $ "Data constructor: " ++ showTmImpls dcon
+       
+       -- Build data declaration for elaboration
+       let datadecl = PDatadecl tyn tycon [(cdoc, [], dconName, dcon, fc, [])]
+       elabData info rsyn doc [] fc opts datadecl
 
-elabRecord :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) -> FC -> Name ->
-              PTerm -> DataOpts -> Docstring (Either Err PTerm) -> Maybe Name -> [(Name, Plicity)] -> PTerm -> Idris ()
-elabRecord info syn doc fc tyn ty opts cdoc mcn args cty_in
-    = do cn <- liftM (expandNS syn) (case mcn of
-           Just cn' -> return (nsroot cn')
-           Nothing  -> if isOp tyn
-                       then generateConsNameOp
-                       else generateConsName (sUN $ "Mk" ++ (show (nsroot tyn))))
+       i <- getIState
 
-         elabData info syn doc [] fc opts (PDatadecl tyn ty [(cdoc, [], cn, cty_in, fc, [])])
-         -- TODO think: something more in info?
-         cty' <- implicit info syn cn cty_in
-         i <- getIState
+       -- The elaborated constructor for the data declaration
+       ttCons <-
+         case lookupTyExact dconName (tt_ctxt i) of
+               Just as -> return as
+               Nothing -> tclift $ tfail $ At fc (Elaborating "record" tyn (Msg "It seems like the constructor for this record has disappeared. :( \n This is a bug. Please report."))
 
-         -- get bound implicits and propagate to setters (in case they
-         -- provide useful information for inference)
-         let extraImpls = getBoundImpls cty'
-
-         cty <- case lookupTy cn (tt_ctxt i) of
-                    [t] -> return (delab i t)
-                    _ -> ifail "Something went inexplicably wrong"
-         cimp <- case lookupCtxt cn (idris_implicits i) of
-                    [imps] -> return imps
-         ppos <- case lookupCtxt tyn (idris_datatypes i) of
-                    [ti] -> return $ param_pos ti
-         let cty_imp = renameBs cimp cty
-         let ptys = getProjs [] cty_imp
-         let ptys_u = getProjs [] cty
-         let recty = getRecTy cty_imp
-         let recty_u = getRecTy cty
-
-         let paramNames = getPNames recty ppos
-
-         -- rename indices when we generate the getter/setter types, so
-         -- that they don't clash with the names of the projections
-         -- we're generating
-         let index_names_in = getRecNameMap "_in" ppos recty
-         let recty_in = substMatches index_names_in recty
-
-         logLvl 3 $ show (recty, recty_u, ppos, paramNames, ptys)
-         -- Substitute indices with projection functions, and parameters with
-         -- the updated parameter name
-         let substs = map (\ (n, _) -> 
-                             if n `elem` paramNames
-                                then (n, PRef fc (mkp n))
-                                else (n, PApp fc (PRef fc n)
-                                                [pexp (PRef fc rec)])) 
-                          ptys 
-
-         -- Generate projection functions
-         proj_decls <- mapM (mkProj recty_in substs cimp cn) (zip ptys [0..])
-         logLvl 3 $ show proj_decls
-         let nonImp = mapMaybe isNonImp (zip cimp ptys_u)
-         let implBinds = getImplB id cty'
-         mapM_ (rec_elabDecl info EAll info) (concat proj_decls)
-         -- Generate update functions
-         when (Codata `notElem` opts)
-           (do update_decls <- mapM (mkUpdate recty_u index_names_in extraImpls
-                                     (getFieldNames cty')
-                                     implBinds (length nonImp) cn) (zip nonImp [0..])
-               logLvl 3 $ show update_decls
-               mapM_ (tryElabDecl info) (update_decls))
+       -- The arguments to the constructor
+       let constructorArgs = getArgTys ttCons
+       -- The parameters for elaboration with their documentation
+           paramsForElab = [((nsroot n), (param_name n), impl, t, d) | (n, t, d) <- zip' i params paramDocs]
+       -- If elaborating the constructor has resulted in some new implicit fields we make a projeciton functions for them.
+           freeFieldsForElab = map (freeField i) (filter (not . isFieldOrParam') constructorArgs)
+       -- The fields (written by the user) with their documentation.
+           userFieldsForElab = [((nsroot n), n, p, t, d) | ((n, p, t), (_, d)) <- zip fields fieldDocs]
+       -- All things we need to elaborate projection functions for, together with a number denoting their position in the constructor.
+           fieldsForElab = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (freeFieldsForElab ++ paramsForElab ++ userFieldsForElab) [0..]]
+       
+       -- Build projection functions
+       elabProj dconName fieldsForElab
+       -- Build update functions
+       elabUp dconName fieldsForElab -- [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (paramsForElab ++ userFieldsForElab) [0..]]
   where
---     syn = syn_in { syn_namespace = show (nsroot tyn) : syn_namespace syn_in }
-    customizeConstructor :: [(Name, Plicity)] -> PTerm -> Idris PTerm
-    customizeConstructor [] t = return t
-    customizeConstructor ns t = cc ns t
-      where
-        cc names (PPi _ n t t')
-          | Just p <- lookup n names = do r <- cc (deleteAssoc n names) t'
-                                          return $ PPi p n t r
-          | otherwise = tclift $ tfail (At fc (Elaborating recString tyn (Msg ("Argument " ++ show n ++ " missing."))))
-          where
-            deleteAssoc :: Eq a => a -> [(a, b)] -> [(a, b)]
-            deleteAssoc y (x@(z,_) : xs) 
-              | z == y    = xs
-              | otherwise = x : (deleteAssoc y xs)
-            deleteAssoc _ [] = []
-        cc [] t = return t
-        cc _ _ = tclift $ tfail (At fc (Elaborating recString tyn (Msg ("Not the right of arguments to constructor. You must mention either all or none."))))
+    -- | Generates a type constructor.
+    generateTyCon :: [(Name, Plicity, PTerm)] -> PTerm
+    generateTyCon ((n, p, t) : rest) = PPi p (nsroot n) t (generateTyCon rest)
+    generateTyCon [] = PType    
 
-    recString = (if Codata `elem` opts then "co" else "") ++ "record "
+    -- | Generates a name for the data constructor if none was specified.
+    generateDConName :: Maybe Name -> Idris Name
+    generateDConName (Just n) = return $ expandNS csyn n
+    generateDConName Nothing  = uniqueName (expandNS csyn $ sMN 0 ("Mk" ++ (show (nsroot tyn))))
+      where
+        uniqueName :: Name -> Idris Name
+        uniqueName n = do i <- getIState
+                          case lookupTyNameExact n (tt_ctxt i) of
+                            Just _  -> uniqueName (nextName n)
+                            Nothing -> return n
+
+    -- | Generates the data constructor type.
+    generateDCon :: [(Name, Plicity, PTerm)] -> [(Name, Plicity, PTerm)] -> PTerm
+    generateDCon ((n, _, t) : ps) as = PPi impl (nsroot n) t (generateDCon ps as)
+    generateDCon [] ((n, p, t) : as) = PPi p    (nsroot n) t (generateDCon [] as)
+    generateDCon [] [] = target
+
+    -- | Creates an PArg from a plicity and a name where the term is a PRef.
+    paramAsArg :: Plicity -> Name -> PArg
+    paramAsArg p n = asArg p (nsroot n) $ PRef fc (nsroot n)
+
+    -- | The target for the constructor and projection functions. Also the source of the update functions.
+    target :: PTerm
+    target = PApp fc (PRef fc tyn) $ map (uncurry paramAsArg) [(p, n) | (n, p, t) <- params]
+
+    -- | Creates a PArg from a plicity and a name where the term is a Placeholder.
+    placeholderArg :: Plicity -> Name -> PArg
+    placeholderArg p n = asArg p (nsroot n) Placeholder
+
+    -- | Root names of all fields in the current record declarations
+    fieldNames :: [Name]
+    fieldNames = [nsroot n | (n, _, _) <- fields]
+
+    paramNames :: [Name]
+    paramNames = [nsroot n | (n, _, _) <- params]
+
+    isFieldOrParam :: Name -> Bool
+    isFieldOrParam = flip elem (fieldNames ++ paramNames)
+
+    isFieldOrParam' :: (Name, a) -> Bool
+    isFieldOrParam' = isFieldOrParam . fst
+
+    isField :: Name -> Bool
+    isField = flip elem fieldNames
+
+    isField' :: (Name, a, b, c, d, f) -> Bool
+    isField' (n, _, _, _, _, _) = isField n
+
+    fieldTerms :: [PTerm]
+    fieldTerms = [t | (_, _, t) <- fields]
+
+    projectInType :: [(Name, Name)] -> PTerm -> PTerm
+    projectInType xs = mapPT st
+      where
+        st :: PTerm -> PTerm
+        st (PRef fc n)
+          | Just pn <- lookup n xs = PApp fc (PRef fc pn) [pexp recRef]
+        st t = t
+
+    -- Delabs the TT to PTerm
+    -- This is not good.
+    -- However, for machine generated implicits, there seems to be no PTerm available.
+    -- Is there a better way to do this without building the setters and getters as TT?
+    freeField :: IState -> (Name, TT Name) -> (Name, Name, Plicity, PTerm, Docstring (Either Err PTerm))
+    freeField i arg = (fst arg, (expandNS rsyn (free_name $ fst arg)), impl, (delab i (snd arg)), emptyDocstring)
+
+    free_name :: Name -> Name
+    free_name (UN n) = sUN ("free_" ++ str n)
+    free_name (MN i n) = sMN i ("free_" ++ str n)
+    free_name (NS n s) = NS (free_name n) s
+    free_name n = n
     
-    generateConsNameOp :: Idris Name
-    generateConsNameOp = generateConsName $ sUN "Mk_Operator_Record0"
+    zip' :: IState -> [(Name, Plicity, PTerm)] -> [(Name, Docstring (Either Err PTerm))] -> [(Name, PTerm, Docstring (Either Err PTerm))]
+    zip' i ((n, _, t) : rest) ((_, d) : rest') = (n, t, d) : (zip' i rest rest')
+    zip' i ((n, _, t) : rest) [] = (n, t, emptyDoc) : (zip' i rest [])
+      where emptyDoc = annotCode (tryFullExpr rsyn i) emptyDocstring
+    zip' _ [] [] = []
 
-    generateConsName :: Name -> Idris Name
-    generateConsName n = do i <- getIState
-                            case lookupTyNameExact (expandNS syn n) (tt_ctxt i) of
-                               Just _  -> generateConsName (nextName n)
-                               Nothing -> return n
+    param_name :: Name -> Name
+    param_name (UN n) = sUN ("param_" ++ str n)
+    param_name (MN i n) = sMN i ("param_" ++ str n)
+    param_name (NS n s) = NS (param_name n) s
+    param_name n = n        
 
-    isOp :: Name -> Bool
-    isOp (UN t) = foldr (||) False (map (\x -> x `elem` opChars) (str t))
-    isOp (NS n _) = isOp n
-    isOp _ = True
-    
-    isNonImp (PExp _ _ _ _, a) = Just a
-    isNonImp _ = Nothing
+    -- | Elaborate the projection functions.
+    elabProj :: Name -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
+    elabProj cn fs = let phArgs = map (uncurry placeholderArg) [(p, n) | (n, _, p, _, _, _) <- fs]
+                         elab = \(n, n', p, t, doc, i) ->
+                           do let t' = projectInType [(m, m') | (m, m', _, _, _, _) <- fs] t
+                              elabProjection info n n' p t' doc rsyn fc target cn phArgs fieldNames i
+                     in mapM_ elab fs
 
-    getPNames (PApp _ _ as) ppos = getpn as ppos
+    -- | Elaborate the update functions.
+    elabUp :: Name -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
+    elabUp cn fs = let args = map (uncurry paramAsArg) [(p, n) | (n, _, p, _, _, _) <- fs]
+                       elab = \(n, n', p, t, doc, i) -> elabUpdate info n n' p t doc rsyn fc target cn args fieldNames i (optionalSetter n)
+                   in mapM_ elab fs
+
+    -- | Decides whether a setter should be generated for a field or not.
+    optionalSetter :: Name -> Bool
+    optionalSetter n = n `notElem` dependentFields && n `notElem` dependedOn
+        
+    -- | A map from a field name to the other fields it depends on.
+    fieldDependencies :: [(Name, [Name])]
+    fieldDependencies = map (uncurry fieldDep) [(n, t) | (n, _, t) <- fields]
+      where                           
+        fieldDep :: Name -> PTerm -> (Name, [Name])
+        fieldDep n t = ((nsroot n), fieldNames `intersect` allNamesIn t)
+
+    -- | A list of fields depending on another field.
+    dependentFields :: [Name]
+    dependentFields = filter depends fieldNames
+      where        
+        depends :: Name -> Bool
+        depends n = case lookup n fieldDependencies of
+                      Just xs -> not $ null xs
+                      Nothing -> False
+
+    -- | A list of fields depended on by other fields.
+    dependedOn :: [Name]
+    dependedOn = concat ((catMaybes (map (\x -> lookup x fieldDependencies) fieldNames)))
+
+-- | Creates and elaborates a projection function.
+elabProjection :: ElabInfo ->
+                  Name -> -- ^ Name of the argument in the constructor
+                  Name -> -- ^ Projection Name
+                  Plicity -> -- ^ Projection Plicity
+                  PTerm -> -- ^ Projection Type
+                  (Docstring (Either Err PTerm)) -> -- ^ Projection Documentation
+                  SyntaxInfo -> -- ^ Projection SyntaxInfo
+                  FC ->
+                  PTerm -> -- ^ Projection Target Type
+                  Name -> -- ^ Data Constructor Name
+                  [PArg] -> -- ^ Placeholder Arguments to constructor
+                  [Name] -> -- ^ All Field Names
+                  Int -> -- ^ Argument Index
+                  Idris ()
+elabProjection info cname pname plicity pty pdoc psyn fc tty cn phArgs fnames index
+  = do logLvl 2 $ "Generating Projection for " ++ show pname
+       
+       let ty = generateTy
+       logLvl 4 $ "Type of " ++ show pname ++ ": " ++ show ty
+       
+       let lhs = generateLhs
+       logLvl 4 $ "LHS of " ++ show pname ++ ": " ++ showTmImpls lhs
+       let rhs = generateRhs
+       logLvl 4 $ "RHS of " ++ show pname ++ ": " ++ showTmImpls rhs
+
+       rec_elabDecl info EAll info ty
+
+       let clause = PClause fc pname lhs [] rhs []
+       rec_elabDecl info EAll info $ PClauses fc [] pname [clause]
+  where
+    -- | The type of the projection function.
+    generateTy :: PDecl
+    generateTy = PTy pdoc [] psyn fc [] pname $ PPi expl recName tty (mapPT applyProjs pty)
+
+    -- | Applies all fields to "rec".
+    applyProjs :: PTerm -> PTerm
+    applyProjs t@(PRef fc name)
+      | (nsroot name) `elem` fnames = PApp fc t [pexp recRef]
+    applyProjs t = t
+
+    -- | The left hand side of the projection function.
+    generateLhs :: PTerm
+    generateLhs = let args = lhsArgs index phArgs
+                      in PApp fc (PRef fc pname) [pexp (PApp fc (PRef fc cn) args)]
       where
-        getpn as [] = []
-        getpn as (i:is) | length as > i,
-                          PRef _ n <- getTm (as!!i) = n : getpn as is
-                        | otherwise = getpn as is
-    getPNames _ _ = []
-   
-    tryElabDecl info (fn, ty, val)
-        = do i <- getIState
-             idrisCatch (do rec_elabDecl info EAll info ty
-                            rec_elabDecl info EAll info val)
-                        (\v -> do iputStrLn $ show fc ++
-                                      ":Warning - can't generate setter for " ++
-                                      show fn ++ " (" ++ show ty ++ ")"
---                                       ++ "\n" ++ pshow i v
-                                  putIState i)
+        lhsArgs :: Int -> [PArg] -> [PArg]
+        lhsArgs 0 (_ : rest) = (asArg plicity (nsroot cname) (PRef fc pname_in)) : rest
+        lhsArgs i (x : rest) = x : (lhsArgs (i-1) rest)
+        lhsArgs _ [] = []
 
-    getBoundImpls (PPi (Imp _ _ _ _) n ty sc) = (n, ty) : getBoundImpls sc
-    getBoundImpls _ = []
+    -- | The "_in" name. Used for the lhs.
+    pname_in :: Name
+    pname_in = rootname -- in_name rootname
 
-    getImplB k (PPi (Imp l s _ _) n Placeholder sc)
-        = getImplB k sc
-    getImplB k (PPi (Imp l s p fa) n ty sc)
-        = getImplB (\x -> k (PPi (Imp l s p fa) n ty x)) sc
-    getImplB k (PPi _ n ty sc)
-        = getImplB k sc
-    getImplB k _ = k
+    rootname :: Name
+    rootname = nsroot cname
 
-    renameBs (PImp _ _ _ _ _ : ps) (PPi p n ty s)
-        = PPi p (mkImp n) ty (renameBs ps (substMatch n (PRef fc (mkImp n)) s))
-    renameBs (_:ps) (PPi p n ty s) = PPi p n ty (renameBs ps s)
-    renameBs _ t = t
+    -- | The right hand side of the projection function.
+    generateRhs :: PTerm
+    generateRhs = PRef fc pname_in
 
-    getProjs acc (PPi _ n ty s) = getProjs ((n, ty) : acc) s
-    getProjs acc r = reverse acc
+-- | Creates and elaborates an update function.
+-- If 'optional' is true, we will not fail if we can't elaborate the update function.
+elabUpdate :: ElabInfo ->
+              Name -> -- ^ Name of the argument in the constructor
+              Name -> -- ^ Field Name
+              Plicity -> -- ^ Field Plicity
+              PTerm -> -- ^ Field Type
+              (Docstring (Either Err PTerm)) -> -- ^ Field Documentation
+              SyntaxInfo -> -- ^ Field SyntaxInfo
+              FC ->
+              PTerm -> -- ^ Projection Source Type
+              Name -> -- ^ Data Constructor Name
+              [PArg] -> -- ^ Arguments to constructor
+              [Name] -> -- ^ All fields
+              Int -> -- ^ Argument Index
+              Bool -> -- ^ Optional
+              Idris ()
+elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i optional
+  = do logLvl 2 $ "Generating Update for " ++ show pname
+       
+       let ty = generateTy
+       logLvl 4 $ "Type of " ++ show set_pname ++ ": " ++ show ty
+       
+       let lhs = generateLhs
+       logLvl 4 $ "LHS of " ++ show set_pname ++ ": " ++ showTmImpls lhs
+       
+       let rhs = generateRhs
+       logLvl 4 $ "RHS of " ++ show set_pname ++ ": " ++ showTmImpls rhs
 
-    getFieldNames (PPi (Exp _ _ _) n _ s) = n : getFieldNames s 
-    getFieldNames (PPi _ _ _ s) = getFieldNames s
-    getFieldNames _ = []
+       let clause = PClause fc set_pname lhs [] rhs []       
 
-    getRecTy (PPi _ n ty s) = getRecTy s
-    getRecTy t = t
+       idrisCatch (do rec_elabDecl info EAll info ty
+                      rec_elabDecl info EAll info $ PClauses fc [] set_pname [clause])
+         (\err -> if optional
+                  then logLvl 2 $ "Could not generate update function for " ++ show pname
+                  else tclift $ tfail $ At fc (Elaborating "record update function" pname err))
+  where
+    -- | The type of the udpate function.
+    generateTy :: PDecl
+    generateTy = PTy pdoc [] psyn fc [] set_pname $ PPi expl (nsroot pname) pty (PPi expl recName sty (substInput sty))
+      where substInput = substMatches [(cname, PRef fc (nsroot pname))]
 
-    -- make sure we pick a consistent name for parameters; any name will do
-    -- otherwise
-    getRecNameMap x ppos (PApp fc t args) 
-         = mapMaybe toMN (zip [0..] (map getTm args))
+    -- | The "_set" name.
+    set_pname :: Name
+    set_pname = set_name pname
+
+    set_name :: Name -> Name
+    set_name (UN n) = sUN ("set_" ++ str n)
+    set_name (MN i n) = sMN i ("set_" ++ str n)
+    set_name (NS n s) = NS (set_name n) s
+    set_name n = n
+
+    -- | The left-hand side of the update function.
+    generateLhs :: PTerm
+    generateLhs = PApp fc (PRef fc set_pname) [pexp $ PRef fc pname_in, pexp constructorPattern]
       where
-        toMN (i, PRef fc n) 
-             | i `elem` ppos = Just (n, PRef fc (mkp n))
-             | otherwise = Just (n, PRef fc (sMN 0 (show n ++ x)))
-        toMN _ = Nothing
-    getRecNameMap x _ _ = []
+        constructorPattern :: PTerm
+        constructorPattern = PApp fc (PRef fc cn) args
 
-    rec = sMN 0 "rec"
+    -- | The "_in" name.
+    pname_in :: Name
+    pname_in = in_name rootname
 
-    -- only UNs propagate properly as parameters (bit of a hack then...)
-    mkp (UN n) = sUN ("_p_" ++ str n)
-    mkp (MN i n) = sMN i ("p_" ++ str n)
-    mkp (NS n s) = NS (mkp n) s
+    rootname :: Name
+    rootname = nsroot pname
 
-    mkImp (UN n) = sUN ("implicit_" ++ str n)
-    mkImp (MN i n) = sMN i ("implicit_" ++ str n)
-    mkImp (NS n s) = NS (mkImp n) s
+    -- | The right-hand side of the update function.
+    generateRhs :: PTerm
+    generateRhs = PApp fc (PRef fc cn) (newArgs i args)
+      where
+        newArgs :: Int -> [PArg] -> [PArg]
+        newArgs 0 (_ : rest) = (asArg plicity (nsroot cname) (PRef fc pname_in)) : rest
+        newArgs i (x : rest) = x : (newArgs (i-1) rest)
+        newArgs _ [] = []
 
-    mkType (UN n) = sUN ("set_" ++ str n)
-    mkType (MN i n) = sMN i ("set_" ++ str n)
-    mkType (NS n s) = NS (mkType n) s
+-- | Post-fixes a name with "_in".
+in_name :: Name -> Name
+in_name (UN n) = sMN 0 (str n ++ "_in")
+in_name (MN i n) = sMN i (str n ++ "_in")
+in_name (NS n s) = NS (in_name n) s
+in_name n = n
 
-    mkProj recty substs cimp cn ((pn_in, pty), pos)
-        = do let pn = expandNS syn pn_in -- projection name
-             -- use pn_in in the indices, consistently, to avoid clash
-             let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] pn
-                            (PPi expl rec recty
-                               (substMatches substs pty))
-             let pls = repeat Placeholder
-             let before = pos
-             let after = length substs - (pos + 1)
-             let args = take before pls ++ PRef fc (mkp pn_in) : take after pls
-             let iargs = map implicitise (zip cimp args)
-             let lhs = PApp fc (PRef fc pn)
-                        [pexp (PApp fc (PRef fc cn) iargs)]
-             let rhs = PRef fc (mkp pn_in)
-             let pclause = PClause fc pn lhs [] rhs []
-             return [pfnTy, PClauses fc [] pn [pclause]]
+-- | Creates a PArg with a given plicity, name, and term.
+asArg :: Plicity -> Name -> PTerm -> PArg
+asArg (Imp os _ _ _) n t = PImp 0 False os n t
+asArg (Exp os _ _) n t = PExp 0 os n t
+asArg (Constraint os _) n t = PConstraint 0 os n t
+asArg (TacImp os _ s) n t = PTacImplicit 0 os n s t
 
-    implicitise (pa, t) = pa { getTm = t }
+-- | Machine name "rec".
+recName :: Name
+recName = sMN 0 "rec"
 
-    -- If the 'pty' we're updating includes anything in 'substs', we're
-    -- updating the type as well, so use recty', otherwise just use
-    -- recty
-    mkUpdate recty inames extras fnames k num cn ((pn, pty), pos)
-       = do let setname = expandNS syn $ mkType pn
-            let valname = sMN 0 "updateval"
-            let pn_out = sMN 0 (show pn ++ "_out")
-            let pn_in = sMN 0 (show pn ++ "_in")
-            let recty_in = substMatches [(pn, PRef fc pn_in)] recty
-            let recty_out = substMatches [(pn, PRef fc pn_out)] recty
-            let pt = substMatches inames $ 
-                       k (implBindUp extras inames (PPi expl pn_out pty
-                           (PPi expl rec recty_in recty_out)))
-            let pfnTy = PTy emptyDocstring [] defaultSyntax fc [] setname pt
---             let pls = map (\x -> PRef fc (sMN x ("field" ++ show x))) [0..num-1]
-            let inames_imp = map (\ (x,_) -> (x, Placeholder)) inames
-            let pls = map (\x -> substMatches inames_imp (PRef fc x)) fnames
-            let lhsArgs = pls
-            let rhsArgs = take pos pls ++ (PRef fc valname) :
-                               drop (pos + 1) pls
-            let before = pos
-            let pclause = PClause fc setname (PApp fc (PRef fc setname)
-                                              [pexp (PRef fc valname),
-                                               pexp (PApp fc (PRef fc cn)
-                                                        (map pexp lhsArgs))])
-                                             []
-                                             (PApp fc (PRef fc cn)
-                                                      (map pexp rhsArgs)) []
-            return (pn, pfnTy, PClauses fc [] setname [pclause])
-
-    implBindUp [] is t = t
-    implBindUp ((n, ty):ns) is t 
-         = let n' = case lookup n is of
-                         Just (PRef _ x) -> x
-                         _ -> n in
-               if n `elem` allNamesIn t 
-                  then PPi impl n' ty (implBindUp ns is t)
-                  else implBindUp ns is t
-
+recRef = PRef emptyFC recName

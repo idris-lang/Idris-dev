@@ -34,7 +34,7 @@ import qualified Data.Text as T
 import Data.Either
 import qualified Data.Set as S
 import Data.Word (Word)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Traversable (Traversable)
 import Data.Typeable
 import Data.Foldable (Foldable)
@@ -564,7 +564,6 @@ inlinable = elem Inlinable
 dictionary :: FnOpts -> Bool
 dictionary = elem Dictionary
 
-
 -- | Data declaration options
 data DataOpt = Codata -- ^ Set if the the data-type is coinductive
              | DefaultEliminator -- ^ Set if an eliminator should be generated for data type
@@ -592,7 +591,17 @@ data PDecl' t
    | PData    (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
    | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
    | PNamespace String [PDecl' t] -- ^ New namespace
-   | PRecord  (Docstring (Either Err PTerm)) SyntaxInfo FC Name t DataOpts (Docstring (Either Err PTerm)) (Maybe Name) [(Name, Plicity)] t  -- ^ Record declaration
+   | PRecord  (Docstring (Either Err PTerm)) SyntaxInfo FC DataOpts
+              Name                 -- Record name
+              [(Name, Plicity, t)] -- Params
+              [(Name, Docstring (Either Err PTerm))] -- Params doc
+              [(Name, Plicity, t)] -- Fields
+              [(Name, Docstring (Either Err PTerm))] -- Fields doc
+              (Maybe Name) -- Optional constructor name
+              (Docstring (Either Err PTerm)) -- Constructor doc
+              SyntaxInfo -- Constructor SyntaxInfo
+              -- ^ Record declaration
+     -- (Docstring (Either Err PTerm)) SyntaxInfo FC Name t DataOpts (Docstring (Either Err PTerm)) (Maybe Name) t  -- ^ Record declaration
    | PClass   (Docstring (Either Err PTerm)) SyntaxInfo FC
               [(Name, t)] -- constraints
               Name
@@ -691,7 +700,8 @@ declared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 declared (PData _ _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
-declared (PRecord _ _ _ n _ _ _ (Just c) _ _) = [n, c]
+declared (PRecord _ _ _ _ n ps _ fs _ cn _ _) = n : (map fstt ps) ++ (map fstt fs) ++ maybeToList cn
+  where fstt (a, _, _) = a
 declared (PClass _ _ _ _ n _ _ ms) = n : concatMap declared ms
 declared (PInstance _ _ _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
@@ -706,7 +716,8 @@ tldeclared (PFix _ _ _) = []
 tldeclared (PTy _ _ _ _ _ n t) = [n]
 tldeclared (PPostulate _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
-tldeclared (PRecord _ _ _ n _ _ _ (Just c) _ _) = [n, c]
+tldeclared (PRecord _ _ _ _ n ps _ fs _ cn _ _) = n : (map fstt ps) ++ (map fstt fs) ++ maybeToList cn
+  where fstt (a, _, _) = a
 tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (_, _, a, _, _, _) = a
 tldeclared (PParams _ _ ds) = []
@@ -727,7 +738,8 @@ defined (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 defined (PData _ _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
-defined (PRecord _ _ _ n _ _ _ (Just c) _ _) = [n, c]
+defined (PRecord _ _ _ _ n ps _ fs _ cn _ _) = n : (map fstt ps) ++ (map fstt fs) ++ maybeToList cn
+  where fstt (a, _, _) = a
 defined (PClass _ _ _ _ n _ _ ms) = n : concatMap defined ms
 defined (PInstance _ _ _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
