@@ -631,7 +631,10 @@ Extra-source-files:
                        test/docs002/input
                        test/docs002/*.idr
                        test/docs002/expected
-
+                       test/docs003/run
+                       test/docs003/input
+                       test/docs003/*.idr
+                       test/docs003/expected
 
 
 source-repository head
