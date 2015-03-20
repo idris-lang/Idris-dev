@@ -1,1 +1,10 @@
-test002.idr:5:6:Universe inconsistency
+Universe inconsistency.
+Working on: v2
+Old domain: Domain 7 7
+New domain: Domain 7 6
+Involved constraints: 
+	(v2 <= s1,test002.idr:5:6)
+	(u2 < v2,test002.idr:5:6)
+	(t1 <= v2,test002.idr:5:6)
+	(v2 <= s1,test002.idr:5:6)
+
