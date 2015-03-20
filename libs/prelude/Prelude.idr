@@ -23,7 +23,7 @@ import public Prelude.Bits
 import public Prelude.Uninhabited
 import public Prelude.Pairs
 import public Prelude.Stream
-
+import public Prelude.Providers
 import public Decidable.Equality
 import public Language.Reflection
 import public Language.Reflection.Errors

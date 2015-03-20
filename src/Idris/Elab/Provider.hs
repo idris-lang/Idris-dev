@@ -112,7 +112,7 @@ elabProvider doc info syn fc what n
           -- error messages with less normalisation
           providerOf :: Type -> Type
           providerOf ty = App (P Ref (sUN "IO") Erased) $
-                            App (P Ref (sNS (sUN "Provider") ["Providers"]) Erased)
+                            App (P Ref (sNS (sUN "Provider") ["Providers", "Prelude"]) Erased)
                               ty
 
           isProviderOf :: Context -> TT Name -> TT Name -> Bool

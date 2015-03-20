@@ -99,19 +99,25 @@ Extra-source-files:
                        libs/base/base.ipkg
                        libs/base/*.idr
                        libs/base/Control/*.idr
-                       libs/base/Control/Isomorphism/*.idr
                        libs/base/Control/Monad/*.idr
                        libs/base/Data/*.idr
                        libs/base/Data/Vect/*.idr
                        libs/base/Debug/*.idr
-                       libs/base/Decidable/*.idr
                        libs/base/Language/Reflection/*.idr
                        libs/base/Makefile
-                       libs/base/Network/*.idr
                        libs/base/System/*.idr
                        libs/base/System/Concurrency/*.idr
                        libs/base/Syntax/*.idr
 
+                       libs/contrib/contrib.ipkg
+                       libs/contrib/Makefile
+                       libs/contrib/Classes/*.idr
+                       libs/contrib/Control/*.idr
+                       libs/contrib/Control/Isomorphism/*.idr
+                       libs/contrib/Data/*.idr
+                       libs/contrib/Decidable/*.idr
+                       libs/contrib/Network/*.idr
+                       libs/contrib/System/Concurrency/*.idr
 
                        libs/effects/Makefile
                        libs/effects/effects.ipkg
