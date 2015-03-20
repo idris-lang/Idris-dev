@@ -14,7 +14,7 @@ typedef struct {
 } Heap;
 
 
-void alloc_heap(Heap * heap, size_t heap_size);
+void alloc_heap(Heap * heap, size_t heap_size, size_t growth, char * old);
 void free_heap(Heap * heap);
 
 

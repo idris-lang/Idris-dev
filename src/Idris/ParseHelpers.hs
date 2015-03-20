@@ -585,8 +585,8 @@ collect (c@(PClauses _ o _ _) : ds)
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
 collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
 collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
-collect (PClass doc f s cs n ps pdocs ds : ds')
-    = PClass doc f s cs n ps pdocs (collect ds) : collect ds'
+collect (PClass doc f s cs n ps pdocs fds ds : ds')
+    = PClass doc f s cs n ps pdocs fds (collect ds) : collect ds'
 collect (PInstance doc argDocs f s cs n ps t en ds : ds')
     = PInstance doc argDocs f s cs n ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds

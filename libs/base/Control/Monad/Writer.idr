@@ -56,7 +56,8 @@ instance Monoid w => MonadTrans (WriterT w) where
 
 ||| Run an action in the Writer monad and transform the written output
 listens : MonadWriter w m => (w -> b) -> m a -> m (a, b)
-listens f m = listens' f (listen m) where
+listens {m} f act = listens' f (listen act) where
+  listens' : (w -> b) -> m (a, w) -> m (a, b)
   listens' f' ma = do (a, w) <- ma
                       return (a, f' w)
 

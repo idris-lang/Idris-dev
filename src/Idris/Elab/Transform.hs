@@ -53,28 +53,34 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
     = do ctxt <- getContext
          i <- getIState
          let lhs = addImplPat i lhs_in
-         ((lhs', dlhs, []), _) <-
+         (ElabResult lhs' dlhs [] ctxt' newDecls, _) <-
               tclift $ elaborate ctxt (sMN 0 "transLHS") infP initEState
                        (erun fc (buildTC i info ELHS [] (sUN "transform")
                                    (infTerm lhs)))
+         setContext ctxt'
+         processTacticDecls newDecls
          let lhs_tm = orderPats (getInferTerm lhs')
          let lhs_ty = getInferType lhs'
          let newargs = pvars i lhs_tm
 
-         (clhs_tm_in, clhs_ty) <- recheckC fc [] lhs_tm
+         (clhs_tm_in, clhs_ty) <- recheckC fc id [] lhs_tm
          let clhs_tm = renamepats pnames clhs_tm_in
          logLvl 3 ("Transform LHS " ++ show clhs_tm)
 
          let rhs = addImplBound i (map fst newargs) rhs_in
-         ((rhs', defer), _) <-
+         ((rhs', defer, ctxt', newDecls), _) <-
               tclift $ elaborate ctxt (sMN 0 "transRHS") clhs_ty initEState
                        (do pbinds i lhs_tm
                            setNextName
-                           erun fc (build i info ERHS [] (sUN "transform") rhs)
+                           (ElabResult _ _ _ ctxt' newDecls) <- erun fc (build i info ERHS [] (sUN "transform") rhs)
                            erun fc $ psolve lhs_tm
                            tt <- get_term
-                           return (runState (collectDeferred Nothing tt) []))
-         (crhs_tm_in, crhs_ty) <- recheckC fc [] rhs'
+                           let (rhs', defer) = runState (collectDeferred Nothing tt) []
+                           return (rhs', defer, ctxt', newDecls))
+         setContext ctxt'
+         processTacticDecls newDecls
+
+         (crhs_tm_in, crhs_ty) <- recheckC fc id [] rhs'
          let crhs_tm = renamepats pnames crhs_tm_in
          logLvl 3 ("Transform RHS " ++ show crhs_tm)
 

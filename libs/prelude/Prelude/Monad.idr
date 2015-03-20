@@ -24,9 +24,6 @@ class (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) where
   monadAssociativity : (mx : m a) -> (f : a -> m b) -> (g : b -> m c) ->
                        (mx >>= f) >>= g = mx >>= (\x => f x >>= g)
 
-instance Monad id where
-    a >>= f = f a
-
 ||| Also called `join` or mu
 flatten : Monad m => m (m a) -> m a
 flatten a = a >>= id

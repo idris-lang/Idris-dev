@@ -18,6 +18,7 @@ import Idris.Core.Typecheck (check, recheck)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
 import Idris.Elab.Utils
+import Idris.Reflection
 import qualified Util.Pretty as U
 
 import Control.Applicative ((<$>))
@@ -36,6 +37,32 @@ import Debug.Trace
 data ElabMode = ETyDecl | ELHS | ERHS
   deriving Eq
 
+data ElabResult =
+  ElabResult { resultTerm :: Term -- ^ The term resulting from elaboration
+             , resultMetavars :: [(Name, (Int, Maybe Name, Type))]
+               -- ^ Information about new metavariables
+             , resultCaseDecls :: [PDecl]
+               -- ^ Deferred declarations as the meaning of case blocks
+             , resultContext :: Context
+               -- ^ The potentially extended context from new definitions
+             , resultTyDecls :: [(Name, FC, [PArg], Type)]
+               -- ^ Meta-info about the new type declarations
+             }
+
+processTacticDecls :: [(Name, FC, [PArg], Type)] -> Idris ()
+processTacticDecls info =
+  forM_ info $ \(n, fc, impls, ty) ->
+    do logLvl 3 $ "Declaration from tactics: " ++ show n ++ " : " ++ show ty
+       logLvl 3 $ "  It has impls " ++ show impls
+       updateIState $ \i -> i { idris_implicits =
+                                  addDef n impls (idris_implicits i) }
+       addIBC (IBCImp n)
+       ds <- checkDef fc iderr [(n, (-1, Nothing, ty))]
+       addIBC (IBCDef n)
+       let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+       addDeferred ds'
+
+
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
 --
@@ -45,7 +72,7 @@ data ElabMode = ETyDecl | ELHS | ERHS
 -- Also find deferred names in the term and their types
 
 build :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> PTerm ->
-         ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
+         ElabD ElabResult
 build ist info emode opts fn tm
     = do elab ist info emode opts fn tm
          let tmIn = tm
@@ -64,7 +91,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                try (resolveTC True 7 g fn ist)
+                                try (resolveTC True False 7 g fn ist)
                                     (movelast n)) ivs
          ivs <- get_instances
          hs <- get_holes
@@ -72,7 +99,8 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                resolveTC True 7 g fn ist) ivs
+                                ptm <- get_term
+                                resolveTC True True 7 g fn ist) ivs
          tm <- get_term
          ctxt <- get_context
          probs <- get_probs
@@ -94,12 +122,13 @@ build ist info emode opts fn tm
          when tydecl (do update_term orderPats
                          mkPat)
 --                          update_term liftPats)
-         EState is _ <- getAux
+         EState is _ impls <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (tm, ds, is)
-            else return (tm, ds, is)
+         ctxt <- get_context
+         if (log /= "") then trace log $ return (ElabResult tm ds is ctxt impls)
+            else return (ElabResult tm ds is ctxt impls)
   where pattern = emode == ELHS
         tydecl = emode == ETyDecl
 
@@ -114,7 +143,7 @@ build ist info emode opts fn tm
 -- know about yet on the LHS of a pattern def)
 
 buildTC :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> PTerm ->
-         ElabD (Term, [(Name, (Int, Maybe Name, Type))], [PDecl])
+         ElabD ElabResult
 buildTC ist info emode opts fn tm
     = do -- set name supply to begin after highest index in tm
          let ns = allNamesIn tm
@@ -135,12 +164,13 @@ buildTC ist info emode opts fn tm
          -- unification
          when (not (null dots)) $
             lift (Error (CantMatch (getInferTerm tm)))
-         EState is _ <- getAux
+         EState is _ impls <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (tm, ds, is)
-            else return (tm, ds, is)
+         ctxt <- get_context
+         if (log /= "") then trace log $ return (ElabResult tm ds is ctxt impls)
+            else return (ElabResult tm ds is ctxt impls)
   where pattern = emode == ELHS
 
 -- return whether arguments of the given constructor name can be 
@@ -183,9 +213,9 @@ goal_polymorphic =
                               _ -> return True
            _ -> return False
 
--- Returns the set of declarations we need to add to complete the definition
--- (most likely case blocks to elaborate)
-
+-- | Returns the set of declarations we need to add to complete the
+-- definition (most likely case blocks to elaborate) as well as
+-- declarations resulting from user tactic scripts (%runTactics)
 elab :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> PTerm ->
         ElabD ()
 elab ist info emode opts fn tm
@@ -321,7 +351,7 @@ elab ist info emode opts fn tm
             UType _ -> elab' ina (Just fc) (PRef fc unitTy)
             _ -> elab' ina (Just fc) (PRef fc unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = do g <- goal; resolveTC False 5 g fn ist
+       = do g <- goal; resolveTC False False 5 g fn ist
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
@@ -540,7 +570,7 @@ elab ist info emode opts fn tm
                                    g <- goal
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
-                                    then try (resolveTC True 7 g fn ist)
+                                    then try (resolveTC True False 7 g fn ist)
                                              (movelast n)
                                     else movelast n)
                          (ivs' \\ ivs)
@@ -700,7 +730,7 @@ elab ist info emode opts fn tm
                                                     env <- get_env
                                                     hs <- get_holes
                                                     if all (\n -> not (n `elem` hs)) (freeNames g)
-                                                     then try (resolveTC False 7 g fn ist)
+                                                     then try (resolveTC False False 7 g fn ist)
                                                               (movelast n)
                                                      else movelast n)
                                           (ivs' \\ ivs)
@@ -965,17 +995,14 @@ elab ist info emode opts fn tm
     elab' ina fc (PUnifyLog t) = do unifyLog True
                                     elab' ina fc t
                                     unifyLog False
-    elab' ina fc (PQuasiquote t goal)
+    elab' ina fc (PQuasiquote t goalt)
         = do -- First extract the unquoted subterms, replacing them with fresh
              -- names in the quasiquoted term. Claim their reflections to be
              -- an inferred type (to support polytypic quasiquotes).
+             finalTy <- goal
              (t, unq) <- extractUnquotes 0 t
              let unquoteNames = map fst unq
-             mapM_ (\uqn -> do uqh <- getNameFrom (sMN 0 "uqh")
-                               claim uqh RType
-                               movelast uqh
-                               claim uqn (Var uqh)) unquoteNames
-
+             mapM_ (\uqn -> claim uqn (forget finalTy)) unquoteNames
 
              -- Save the old state - we need a fresh proof state to avoid
              -- capturing lexically available variables in the quoted term.
@@ -1010,7 +1037,7 @@ elab ist info emode opts fn tm
              letbind nTm (Var qTy) (Var qTm)
 
              -- Fill out the goal type, if relevant
-             case goal of
+             case goalt of
                Nothing  -> return ()
                Just gTy -> do focus qTy
                               elabE (ina { e_qq = True }) fc gTy
@@ -1025,18 +1052,20 @@ elab ist info emode opts fn tm
              env <- get_env
              loadState
              let quoted = fmap (explicitNames . binderVal) $ lookup nTm env
-
+                 isRaw = case unApply (normaliseAll ctxt env finalTy) of
+                           (P _ n _, []) | n == reflm "Raw" -> True
+                           _ -> False
              case quoted of
                Just q -> do ctxt <- get_context
                             (q', _, _) <- lift $ recheck ctxt [(uq, Lam Erased) | uq <- unquoteNames] (forget q) q
                             if pattern
-                              then do try' (reflectTTQuotePattern unquoteNames q')
-                                           (reflectRawQuotePattern unquoteNames (forget q'))
-                                           True
-                              else do try' (fill $ reflectTTQuote unquoteNames q')
-                                           -- we forget q' instead of using q to ensure rechecking
-                                           (fill $ reflectRawQuote unquoteNames (forget q'))
-                                           True -- ignore errors like proof search does
+                              then if isRaw
+                                      then reflectRawQuotePattern unquoteNames (forget q')
+                                      else reflectTTQuotePattern unquoteNames q'
+                              else do if isRaw
+                                        then -- we forget q' instead of using q to ensure rechecking
+                                             fill $ reflectRawQuote unquoteNames (forget q')
+                                        else fill $ reflectTTQuote unquoteNames q'
                                       solve
 
                Nothing -> lift . tfail . Msg $ "Broken elaboration of quasiquote"
@@ -1077,8 +1106,8 @@ elab ist info emode opts fn tm
          focus n
          elab' ina (Just fc') tm
          env <- get_env
-         ctxt <- get_context
-         runTactical (maybe fc' id fc)  ctxt env (P Bound n' Erased)
+         runTactical (maybe fc' id fc) env (P Bound n' Erased)
+         EState _ _ todo <- getAux
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
@@ -1346,9 +1375,12 @@ findInstances :: IState -> Term -> [Name]
 findInstances ist t
     | (P _ n _, _) <- unApply t
         = case lookupCtxt n (idris_classes ist) of
-            [CI _ _ _ _ _ ins] -> ins
+            [CI _ _ _ _ _ ins _] -> filter accessible ins
             _ -> []
     | otherwise = []
+  where accessible n = case lookupDefAccExact n False (tt_ctxt ist) of
+                            Just (_, Hidden) -> False
+                            _ -> True
 
 -- Try again to solve auto implicits
 solveAuto :: IState -> Name -> Bool -> Name -> ElabD ()
@@ -1376,14 +1408,26 @@ proofSearch' ist rec ambigok depth prv top n hints
 -- Resolve type classes. This will only pick up 'normal' instances, never
 -- named instances (hence using 'tcname' to check it's a generated instance
 -- name).
-resolveTC :: Bool -> Int -> Term -> Name -> IState -> ElabD ()
-resolveTC = resTC' []
+resolveTC :: Bool -- using default Int
+             -> Bool -- allow metavariables in the goal 
+             -> Int -- depth
+             -> Term -- top level goal
+             -> Name -- top level function name
+             -> IState -> ElabD ()
+resolveTC def mvok depth top fn ist
+   = do hs <- get_holes
+        resTC' [] def hs depth top fn ist
 
-resTC' tcs def 0 topg fn ist = fail $ "Can't resolve type class"
-resTC' tcs def 1 topg fn ist = try' (trivial' ist) (resolveTC def 0 topg fn ist) True
-resTC' tcs defaultOn depth topg fn ist
-      = do compute
-           g <- goal
+resTC' tcs def topholes 0 topg fn ist = fail $ "Can't resolve type class"
+resTC' tcs def topholes 1 topg fn ist = try' (trivial' ist) (resolveTC def False 0 topg fn ist) True
+resTC' tcs defaultOn topholes depth topg fn ist
+  = do compute
+       g <- goal
+       let argsok = tcArgsOK g topholes
+--        trace (show (g,hs,argsok,topholes)) $ 
+       if not argsok -- && not mvok)
+         then lift $ tfail $ CantResolve True topg
+         else do
            ptm <- get_term
            ulog <- getUnifyLog
            hs <- get_holes
@@ -1400,6 +1444,31 @@ resTC' tcs defaultOn depth topg fn ist
                     let depth' = if scopeOnly then 2 else depth
                     blunderbuss t depth' stk (stk ++ insts)) True
   where
+    tcArgsOK ty hs | (P _ nc _, as) <- unApply ty, nc == numclass && defaultOn
+       = True
+    tcArgsOK ty hs -- if any arguments are metavariables, postpone
+       = let (f, as) = unApply ty in
+             case f of
+                  P _ cn _ -> case lookupCtxtExact cn (idris_classes ist) of
+                                   Just ci -> tcDetArgsOK 0 (class_determiners ci) hs as
+                                   Nothing -> not $ any (isMeta hs) as
+                  _ -> not $ any (isMeta hs) as
+
+    tcDetArgsOK i ds hs (x : xs)
+        | i `elem` ds = not (isMeta hs x) && tcDetArgsOK (i + 1) ds hs xs
+        | otherwise = tcDetArgsOK (i + 1) ds hs xs
+    tcDetArgsOK _ _ _ [] = True
+
+    isMeta :: [Name] -> Term -> Bool
+    isMeta ns (P _ n _) = n `elem` ns 
+    isMeta _ _ = False
+
+    notHole hs (P _ n _, c)
+       | (P _ cn _, _) <- unApply c,
+         n `elem` hs && isConName cn (tt_ctxt ist) = False
+       | Constant _ <- c = not (n `elem` hs)
+    notHole _ _ = True
+
     elabTC n | n /= fn && tcname n = (resolve n depth, show n)
              | otherwise = (fail "Can't resolve", show n)
 
@@ -1427,10 +1496,13 @@ resTC' tcs defaultOn depth topg fn ist
 
     blunderbuss t d stk [] = do -- c <- get_env
                             -- ps <- get_probs
-                            lift $ tfail $ CantResolve topg
+                            lift $ tfail $ CantResolve False topg
     blunderbuss t d stk (n:ns)
         | n /= fn && (n `elem` stk || tcname n) 
-              = try' (resolve n d) (blunderbuss t d stk ns) True
+              = tryCatch (resolve n d) 
+                    (\e -> case e of
+                             CantResolve True _ -> lift $ tfail e
+                             _ -> blunderbuss t d stk ns) 
         | otherwise = blunderbuss t d stk ns
 
     resolve n depth
@@ -1459,7 +1531,7 @@ resTC' tcs defaultOn depth topg fn ist
                                      let got = fst (unApply t)
                                      let depth' = if tc' `elem` tcs
                                                      then depth - 1 else depth
-                                     resTC' (got : tcs) defaultOn depth' topg fn ist)
+                                     resTC' (got : tcs) defaultOn topholes depth' topg fn ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
@@ -1505,11 +1577,17 @@ case_ ind autoSolve ist fn tm = do
          else casetac (forget val)
   when autoSolve solveAll
 
-runTactical :: FC -> Context -> Env -> Term -> ElabD ()
-runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
+tacN :: String -> Name
+tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]
+
+runTactical :: FC -> Env -> Term -> ElabD ()
+runTactical fc env tm = do tm' <- eval tm
+                           runTacTm tm'
+                           return ()
   where
-    eval = normaliseAll ctxt env . finalise
-    tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]
+    eval tm = do ctxt <- get_context
+                 return $ normaliseAll ctxt env (finalise tm)
+
     returnUnit = fmap fst $ get_type_val (Var unitCon)
 
     -- | Do a step in the reflected elaborator monad. The input is the
@@ -1547,26 +1625,31 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
       = do env <- get_env
            fmap fst . get_type_val $ reflectEnv env
       | n == tacN "prim__Fail", [_a, errs] <- args
-      = do parts <- reifyReportParts (eval errs)
+      = do errs' <- eval errs
+           parts <- reifyReportParts errs'
            lift . tfail $ ReflectionError [parts] (Msg "")
       | n == tacN "prim__PureTactical", [_a, tm] <- args
       = return tm
       | n == tacN "prim__BindTactical", [_a, _b, first, andThen] <- args
-      = do let first' = eval first
+      = do first' <- eval first
            res <- runTacTm first'
-           let next = eval (App andThen res)
+           next <- eval (App andThen res)
            runTacTm next
       | n == tacN "prim__Try", [_a, first, alt] <- args
-      = do let first' = eval first
-           let alt' = eval alt
+      = do first' <- eval first
+           alt' <- eval alt
            try' (runTacTm first') (runTacTm alt') True
       | n == tacN "prim__Fill", [raw] <- args
       = do raw' <- reifyRaw raw
            apply raw' []
            returnUnit
-      | n == tacN "prim__Gensym", [eval -> Constant (Str hint)] <- args
-      = do n <- getNameFrom (sMN 0 hint)
-           fmap fst $ get_type_val (reflectName n)
+      | n == tacN "prim__Gensym", [hint] <- args
+      = do hintStr <- eval hint
+           case hintStr of
+             Constant (Str h) -> do
+               n <- getNameFrom (sMN 0 h)
+               fmap fst $ get_type_val (reflectName n)
+             _ -> fail "no hint"
       | n == tacN "prim__Claim", [n, ty] <- args
       = do n' <- reifyTTName n
            ty' <- reifyRaw ty
@@ -1595,6 +1678,29 @@ runTactical fc ctxt env tm = runTacTm (eval tm) >> return ()
                   Nothing -> return Nothing
                   Just name -> fmap Just $ reifyTTName name
            intro n
+           returnUnit
+      | n == tacN "prim__DeclareType", [decl] <- args
+      = do (RDeclare n args res) <- reifyTyDecl decl
+           ctxt <- get_context
+           let mkPi arg res = RBind (argName arg)
+                                    (Pi Nothing (argTy arg) (RUType AllTypes))
+                                    res
+               rty = foldr mkPi res args
+           (checked, ty') <- lift $ check ctxt [] rty
+           case normaliseAll ctxt [] (finalise ty') of
+             TType _ -> lift . tfail . InternalMsg $
+                          show checked ++ " is not a type: it's " ++ show ty'
+             _       -> return ()
+           case lookupDefExact n ctxt of
+             Just _ -> lift . tfail . InternalMsg $
+                         show n ++ " is already defined."
+             Nothing -> return ()
+           let decl = TyDecl Ref checked
+               ctxt' = addCtxtDef n decl ctxt
+           set_context ctxt'
+           updateAux $ \e -> e { new_tyDecls = (n, fc, map rArgToPArg args, checked) :
+                                               new_tyDecls e }
+           aux <- getAux
            returnUnit
       | n == tacN "prim__Debug", [ty, msg] <- args
       = do let msg' = fromTTMaybe msg
@@ -1850,6 +1956,7 @@ runTac autoSolve ist perhapsFC fn tac
         Just fc ->
           do fill $ reflectFC fc
              solve
+    runT Qed = lift . tfail $ Msg "The qed command is only valid in the interactive prover"
     runT x = fail $ "Not implemented " ++ show x
 
     runReflected t = do t' <- reify ist t
@@ -2361,7 +2468,7 @@ reflectTTQuote unq (P nt n t)
 reflectTTQuote unq (V n)
   = reflCall "V" [RConstant (I n)]
 reflectTTQuote unq (Bind n b x)
-  = reflCall "Bind" [reflectName n, reflectBinderQuote reflectTTQuote unq b, reflectTTQuote unq x]
+  = reflCall "Bind" [reflectName n, reflectBinderQuote reflectTTQuote (reflm "TT") unq b, reflectTTQuote unq x]
 reflectTTQuote unq (App f x)
   = reflCall "App" [reflectTTQuote unq f, reflectTTQuote unq x]
 reflectTTQuote unq (Constant c)
@@ -2378,7 +2485,7 @@ reflectRawQuote unq (Var n)
   | n `elem` unq = Var n
   | otherwise = reflCall "Var" [reflectName n]
 reflectRawQuote unq (RBind n b r) =
-  reflCall "RBind" [reflectName n, reflectBinderQuote reflectRawQuote unq b, reflectRawQuote unq r]
+  reflCall "RBind" [reflectName n, reflectBinderQuote reflectRawQuote (reflm "Raw") unq b, reflectRawQuote unq r]
 reflectRawQuote unq (RApp f x) =
   reflCall "RApp" [reflectRawQuote unq f, reflectRawQuote unq x]
 reflectRawQuote unq RType = Var (reflm "RType")
@@ -2436,27 +2543,27 @@ reflectNameQuotePattern _ -- for all other names, match any
        solve
 
 reflectBinder :: Binder Term -> Raw
-reflectBinder = reflectBinderQuote reflectTTQuote []
+reflectBinder = reflectBinderQuote reflectTTQuote (reflm "TT") []
 
-reflectBinderQuote :: ([Name] -> a -> Raw) -> [Name] -> Binder a -> Raw
-reflectBinderQuote q unq (Lam t)
-   = reflCall "Lam" [Var (reflm "TT"), q unq t]
-reflectBinderQuote q unq (Pi _ t k)
-   = reflCall "Pi" [Var (reflm "TT"), q unq t, q unq k]
-reflectBinderQuote q unq (Let x y)
-   = reflCall "Let" [Var (reflm "TT"), q unq x, q unq y]
-reflectBinderQuote q unq (NLet x y)
-   = reflCall "NLet" [Var (reflm "TT"), q unq x, q unq y]
-reflectBinderQuote q unq (Hole t)
-   = reflCall "Hole" [Var (reflm "TT"), q unq t]
-reflectBinderQuote q unq (GHole _ t)
-   = reflCall "GHole" [Var (reflm "TT"), q unq t]
-reflectBinderQuote q unq (Guess x y)
-   = reflCall "Guess" [Var (reflm "TT"), q unq x, q unq y]
-reflectBinderQuote q unq (PVar t)
-   = reflCall "PVar" [Var (reflm "TT"), q unq t]
-reflectBinderQuote q unq (PVTy t)
-   = reflCall "PVTy" [Var (reflm "TT"), q unq t]
+reflectBinderQuote :: ([Name] -> a -> Raw) -> Name -> [Name] -> Binder a -> Raw
+reflectBinderQuote q ty unq (Lam t)
+   = reflCall "Lam" [Var ty, q unq t]
+reflectBinderQuote q ty unq (Pi _ t k)
+   = reflCall "Pi" [Var ty, q unq t, q unq k]
+reflectBinderQuote q ty unq (Let x y)
+   = reflCall "Let" [Var ty, q unq x, q unq y]
+reflectBinderQuote q ty unq (NLet x y)
+   = reflCall "NLet" [Var ty, q unq x, q unq y]
+reflectBinderQuote q ty unq (Hole t)
+   = reflCall "Hole" [Var ty, q unq t]
+reflectBinderQuote q ty unq (GHole _ t)
+   = reflCall "GHole" [Var ty, q unq t]
+reflectBinderQuote q ty unq (Guess x y)
+   = reflCall "Guess" [Var ty, q unq x, q unq y]
+reflectBinderQuote q ty unq (PVar t)
+   = reflCall "PVar" [Var ty, q unq t]
+reflectBinderQuote q ty unq (PVTy t)
+   = reflCall "PVTy" [Var ty, q unq t]
 
 mkList :: Raw -> [Raw] -> Raw
 mkList ty []      = RApp (Var (sNS (sUN "Nil") ["List", "Prelude"])) ty
@@ -2603,11 +2710,15 @@ reflectErr (NotInjective t1 t2 t3) =
             , reflect t2
             , reflect t3
             ]
-reflectErr (CantResolve t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
+reflectErr (CantResolve _ t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
+reflectErr (InvalidTCArg n t) = raw_apply (Var $ reflErrName "InvalidTCArg") [reflectName n, reflect t]
 reflectErr (CantResolveAlts ss) =
   raw_apply (Var $ reflErrName "CantResolveAlts")
             [rawList (Var $ reflm "TTName") (map reflectName ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
+reflectErr (NoEliminator str t) 
+  = raw_apply (Var $ reflErrName "NoEliminator") [RConstant (Str str),
+                                                  reflect t]
 reflectErr UniverseError = Var $ reflErrName "UniverseError"
 reflectErr ProgramLineComment = Var $ reflErrName "ProgramLineComment"
 reflectErr (Inaccessible n) = raw_apply (Var $ reflErrName "Inaccessible") [reflectName n]
@@ -2747,6 +2858,28 @@ reifyReportPart (App (P (DCon _ _ _) n _) tm)
                   Right (SubReport subParts)
     Nothing -> Left . InternalMsg $ "could not reify subreport " ++ show tm
 reifyReportPart x = Left . InternalMsg $ "could not reify " ++ show x
+
+reifyTyDecl :: Term -> ElabD RTyDecl
+reifyTyDecl (App (App (App (P (DCon _ _ _) n _) tyN) args) ret)
+  | n == tacN "Declare" =
+  do tyN'  <- reifyTTName tyN
+     args' <- case unList args of
+                Nothing -> fail $ "Couldn't reify " ++ show args ++ " as an arglist."
+                Just xs -> mapM reifyRArg xs
+     ret'  <- reifyRaw ret
+     return $ RDeclare tyN' args' ret'
+  where reifyRArg :: Term -> ElabD RArg
+        reifyRArg (App (App (P (DCon _ _ _) n _) argN) argTy)
+          | n == tacN "Explicit"   = liftM2 RExplicit
+                                            (reifyTTName argN)
+                                            (reifyRaw argTy)
+          | n == tacN "Implicit"   = liftM2 RImplicit
+                                            (reifyTTName argN)
+                                            (reifyRaw argTy)                               | n == tacN "Constraint" = liftM2 RConstraint
+                                            (reifyTTName argN)
+                                            (reifyRaw argTy)
+        reifyRArg aTm = fail $ "Couldn't reify " ++ show aTm ++ " as an RArg."
+reifyTyDecl tm = fail $ "Couldn't reify " ++ show tm ++ " as a type declaration."
 
 envTupleType :: Raw
 envTupleType

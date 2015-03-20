@@ -31,7 +31,7 @@ infixl 9 .
 
 ||| Function composition
 (.) : (b -> c) -> (a -> b) -> a -> c
-(.) f g x = f (g x)
+(.) f g = \x => f (g x)
 
 ||| Takes in the first two arguments in reverse order.
 ||| @ f the function to flip

@@ -9,7 +9,7 @@ foo x = let Just x' = x | Nothing => 100 in x'
 main : IO ()
 main = do [p, a] <- getArgs | [p] => putStrLn "No arguments!"
                             | (x :: y :: _) => putStrLn "Too many arguments!"
-          print (foo (Just (cast a)))
+          printLn (foo (Just (cast a)))
 
 {-
 

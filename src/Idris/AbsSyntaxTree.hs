@@ -184,7 +184,11 @@ data IState = IState {
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)],
           -- ^ Full application LHS on source line
-    idris_metavars :: [(Name, (Maybe Name, Int, Bool))], -- ^ The currently defined but not proven metavariables
+    idris_metavars :: [(Name, (Maybe Name, Int, Bool))],
+    -- ^ The currently defined but not proven metavariables. The Int
+    -- is the number of vars to display as a context, the Maybe Name
+    -- is its top-level function, and the Bool is whether :p is
+    -- allowed
     idris_coercions :: [Name],
     idris_errRev :: [(Term, Term)],
     syntax_rules :: SyntaxRules,
@@ -594,20 +598,20 @@ data PDecl' t
    | PNamespace String [PDecl' t] -- ^ New namespace
    | PRecord  (Docstring (Either Err PTerm)) SyntaxInfo FC DataOpts
               Name                 -- Record name
-              [(Name, Plicity, t)] -- Params
-              [(Name, Docstring (Either Err PTerm))] -- Params doc
+              [(Name, Plicity, t)] -- Parameters
+              [(Name, Docstring (Either Err PTerm))] -- Parameter docs
               [(Name, Plicity, t)] -- Fields
               [(Name, Docstring (Either Err PTerm))] -- Fields doc
               (Maybe Name) -- Optional constructor name
               (Docstring (Either Err PTerm)) -- Constructor doc
               SyntaxInfo -- Constructor SyntaxInfo
               -- ^ Record declaration
-     -- (Docstring (Either Err PTerm)) SyntaxInfo FC Name t DataOpts (Docstring (Either Err PTerm)) (Maybe Name) t  -- ^ Record declaration
    | PClass   (Docstring (Either Err PTerm)) SyntaxInfo FC
               [(Name, t)] -- constraints
               Name
               [(Name, t)] -- parameters
               [(Name, Docstring (Either Err PTerm))] -- parameter docstrings
+              [Name] -- determining parameters
               [PDecl' t] -- declarations
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
               -- class name, parameters, method declarations
@@ -640,10 +644,12 @@ deriving instance NFData PDecl'
 -- For elaborator state
 data EState = EState {
                   case_decls :: [PDecl],
-                  delayed_elab :: [Elab' EState ()]
+                  delayed_elab :: [Elab' EState ()],
+                  new_tyDecls :: [(Name, FC, [PArg], Type)]
               }
 
-initEState = EState [] []
+initEState :: EState
+initEState = EState [] [] []
 
 type ElabD a = Elab' EState a
 
@@ -701,9 +707,9 @@ declared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 declared (PData _ _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
-declared (PRecord _ _ _ _ n ps _ fs _ cn _ _) = n : (map fstt ps) ++ (map fstt fs) ++ maybeToList cn
+declared (PRecord _ _ _ _ n ps _ fs _ cn _ _) = n : maybeToList cn -- : (map fstt ps) ++ (map fstt fs) ++ maybeToList cn
   where fstt (a, _, _) = a
-declared (PClass _ _ _ _ n _ _ ms) = n : concatMap declared ms
+declared (PClass _ _ _ _ n _ _ _ ms) = n : concatMap declared ms
 declared (PInstance _ _ _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
@@ -717,14 +723,14 @@ tldeclared (PFix _ _ _) = []
 tldeclared (PTy _ _ _ _ _ n t) = [n]
 tldeclared (PPostulate _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
-tldeclared (PRecord _ _ _ _ n ps _ fs _ cn _ _) = n : (map fstt ps) ++ (map fstt fs) ++ maybeToList cn
+tldeclared (PRecord _ _ _ _ n ps _ fs _ cn _ _) = n : maybeToList cn -- (map fstt ps) ++ (map fstt fs) ++ maybeToList cn
   where fstt (a, _, _) = a
 tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
    where fstt (_, _, a, _, _, _) = a
 tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
-tldeclared (PClass _ _ _ _ n _ _ ms) = concatMap tldeclared ms
+tldeclared (PClass _ _ _ _ n _ _ _ ms) = concatMap tldeclared ms
 tldeclared (PInstance _ _ _ _ _ _ _ _ _ _) = []
 tldeclared _ = []
 
@@ -739,9 +745,9 @@ defined (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 defined (PData _ _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
-defined (PRecord _ _ _ _ n ps _ fs _ cn _ _) = n : (map fstt ps) ++ (map fstt fs) ++ maybeToList cn
+defined (PRecord _ _ _ _ n ps _ fs _ cn _ _) = n : maybeToList cn -- (map fstt ps) ++ (map fstt fs) ++ maybeToList cn
   where fstt (a, _, _) = a
-defined (PClass _ _ _ _ n _ _ ms) = n : concatMap defined ms
+defined (PClass _ _ _ _ n _ _ _ ms) = n : concatMap defined ms
 defined (PInstance _ _ _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
 defined (PSyntax _ _) = []
@@ -1042,7 +1048,8 @@ data ClassInfo = CI { instanceName :: Name,
                       class_defaults :: [(Name, (Name, PDecl))], -- method name -> default impl
                       class_default_superclasses :: [PDecl],
                       class_params :: [Name],
-                      class_instances :: [Name] }
+                      class_instances :: [Name],
+                      class_determiners :: [Int] }
     deriving Show
 {-!
 deriving instance Binary ClassInfo
@@ -1203,6 +1210,9 @@ data SyntaxInfo = Syn { using :: [Using],
                         syn_params :: [(Name, PTerm)],
                         syn_namespace :: [String],
                         no_imp :: [Name],
+                        imp_methods :: [Name], -- class methods. When expanding
+                           -- implicits, these should be expanded even under
+                           -- binders
                         decoration :: Name -> Name,
                         inPattern :: Bool,
                         implicitAllowed :: Bool,
@@ -1216,7 +1226,7 @@ deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] id False False Nothing 0 initDSL 0
+defaultSyntax = Syn [] [] [] [] [] id False False Nothing 0 initDSL 0
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n
@@ -1740,7 +1750,7 @@ showDeclImp o (PData _ _ _ _ _ d) = showDImp o { ppopt_impl = True } d
 showDeclImp o (PParams _ ns ps) = text "params" <+> braces (text (show ns) <> line <> showDecls o ps <> line)
 showDeclImp o (PNamespace n ps) = text "namespace" <+> text n <> braces (line <> showDecls o ps <> line)
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
-showDeclImp o (PClass _ _ _ cs n ps _ ds)
+showDeclImp o (PClass _ _ _ cs n ps _ _ ds)
    = text "class" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
 showDeclImp o (PInstance _ _ _ _ cs n _ t _ ds)
    = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds

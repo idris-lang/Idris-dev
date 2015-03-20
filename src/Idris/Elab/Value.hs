@@ -56,25 +56,30 @@ elabValBind :: ElabInfo -> ElabMode -> Bool -> PTerm -> Idris (Term, Type, [(Nam
 elabValBind info aspat norm tm_in
    = do ctxt <- getContext
         i <- getIState
-        let tm = addImpl i tm_in
+        let tm = addImpl [] i tm_in
         logLvl 10 (showTmImpls tm)
         -- try:
         --    * ordinary elaboration
         --    * elaboration as a Type
         --    * elaboration as a function a -> b
 
-        ((tm', defer, is), _) <-
-                tclift (elaborate ctxt (sMN 0 "val") infP initEState
-                        (build i info aspat [Reflection] (sMN 0 "val") (infTerm tm)))
+        (ElabResult tm' defer is ctxt' newDecls, _) <-
+             tclift (elaborate ctxt (sMN 0 "val") infP initEState
+                     (build i info aspat [Reflection] (sMN 0 "val") (infTerm tm)))
+
+        -- Extend the context with new definitions created
+        setContext ctxt'
+        processTacticDecls newDecls
+
         let vtm = orderPats (getInferTerm tm')
 
-        def' <- checkDef (fileFC "(input)") defer
+        def' <- checkDef (fileFC "(input)") iderr defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info []) is
 
         logLvl 3 ("Value: " ++ show vtm)
-        (vtm_in, vty) <- recheckC (fileFC "(input)") [] vtm
+        (vtm_in, vty) <- recheckC (fileFC "(input)") id [] vtm
 
         let vtm = if norm then normalise (tt_ctxt i) [] vtm_in
                           else vtm_in

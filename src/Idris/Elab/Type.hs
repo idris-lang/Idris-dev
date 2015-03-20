@@ -57,23 +57,25 @@ buildType info syn fc opts n ty' = do
          ctxt <- getContext
          i <- getIState
 
-         logLvl 3 $ show n ++ " pre-type " ++ showTmImpls ty'
+         logLvl 2 $ show n ++ " pre-type " ++ showTmImpls ty' ++ show (no_imp syn)
          ty' <- addUsingConstraints syn fc ty'
          ty' <- addUsingImpls syn n fc ty'
-         let ty = addImpl i ty'
+         let ty = addImpl (imp_methods syn) i ty'
 
-         logLvl 3 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
-         logLvl 3 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
+         logLvl 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
+         logLvl 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
-         ((tyT', defer, is), log) <-
-               tclift $ elaborate ctxt n (TType (UVal 0)) initEState
-                        (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
+         (ElabResult tyT' defer is ctxt' newDecls, log) <-
+            tclift $ elaborate ctxt n (TType (UVal 0)) initEState
+                     (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
+         setContext ctxt'
+         processTacticDecls newDecls
 
          let tyT = patToImp tyT'
 
          logLvl 3 $ show ty ++ "\nElaborated: " ++ show tyT'
 
-         ds <- checkAddDef True False fc defer
+         ds <- checkAddDef True False fc iderr defer
          -- if the type is not complete, note that we'll need to infer
          -- things later (for solving metavariables)
          when (not (null ds)) $ addTyInferred n
@@ -83,7 +85,7 @@ buildType info syn fc opts n ty' = do
          logLvl 5 $ "Rechecking"
          logLvl 6 $ show tyT
          logLvl 10 $ "Elaborated to " ++ showEnvDbg [] tyT
-         (cty, ckind)   <- recheckC fc [] tyT
+         (cty, ckind)   <- recheckC fc id [] tyT
 
          -- record the implicit and inaccessible arguments
          i <- getIState
@@ -114,12 +116,14 @@ buildType info syn fc opts n ty' = do
     param_pos i ns t = []
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
-elabType :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm)-> [(Name, Docstring (Either Err PTerm))] ->
-            FC -> FnOpts -> Name -> PTerm -> Idris Type
+elabType :: ElabInfo -> SyntaxInfo
+         -> Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))]
+         -> FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType = elabType' False
 
 elabType' :: Bool -> -- normalise it
-             ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))] ->
+             ElabInfo -> SyntaxInfo ->
+             Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))] ->
              FC -> FnOpts -> Name -> PTerm -> Idris Type
 elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params info) ty_in
                                                        n  = liftname info n_in in    -}
@@ -150,7 +154,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          -- Productivity checking now via checking for guarded 'Delay' 
          let opts' = opts -- if corec then (Coinductive : opts) else opts
          let usety = if norm then nty' else nty
-         ds <- checkDef fc [(n, (-1, Nothing, usety))]
+         ds <- checkDef fc iderr [(n, (-1, Nothing, usety))]
          addIBC (IBCDef n)
          let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
          addDeferred ds'

@@ -8,6 +8,14 @@ import Prelude.Maybe
 import Prelude.Monad
 import Language.Reflection
 
+data Arg : Type where
+  Explicit : TTName -> Raw -> Arg
+  Implicit : TTName -> Raw -> Arg
+  Constraint : TTName -> Raw -> Arg
+
+data TyDecl : Type where
+  Declare : TTName -> List Arg -> Raw -> TyDecl
+
 abstract
 data Tactical : Type -> Type where
   -- obligatory control stuff
@@ -39,7 +47,10 @@ data Tactical : Type -> Type where
   prim__Claim : TTName -> Raw -> Tactical ()
   prim__Intro : Maybe TTName -> Tactical ()
 
+  prim__DeclareType : TyDecl -> Tactical ()
+
   prim__Debug : {a : Type} -> Maybe String -> Tactical a
+
 
 -------------
 -- Public API
@@ -116,6 +127,9 @@ sourceLocation = do loc <- getSourceLocation
 
 rewriteWith : Raw -> Tactical ()
 rewriteWith rule = prim__Rewrite rule
+
+declareType : TyDecl -> Tactical ()
+declareType decl = prim__DeclareType decl
 
 debug : Tactical a
 debug = prim__Debug Nothing

@@ -270,8 +270,10 @@ instance Show Err where
   show (NoTypeDecl n) = "NoTypeDecl " ++ show n
   show (NotInjective tm tm' x) = "NotInjective " ++ show tm ++ " " ++ show tm'
   show (CantResolve tm) = "CantResolve " ++ show tm
+  show (InvalidTCArg n tm) = "InvalidTCName " ++ show n ++ " (" ++ show tm ++ ")"
   show (CantResolveAlts xs) = "CantResolveAlts " ++ show xs
   show (IncompleteTerm tm) = "IncompleteTerm " ++ show tm
+  show (NoEliminator s tm) = "NoEliminator " ++ show s ++ " " ++ show tm
   show UniverseError = "UniverseError"
   show ProgramLineComment = "ProgramLineComment"
   show (Inaccessible n) = "Inaccessible " ++ show n

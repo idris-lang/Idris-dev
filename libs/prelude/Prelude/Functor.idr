@@ -24,5 +24,3 @@ class Functor f => VerifiedFunctor (f : Type -> Type) where
                        (g1 : a -> b) -> (g2 : b -> c) ->
                        map (g2 . g1) x = (map g2 . map g1) x
 
-instance Functor id where
-    map f a = f a

@@ -1,9 +1,6 @@
 record Person (age : Nat) where
   constructor MkPerson
   name : String
-  
---set_param_age : (age_in : Nat) -> Person age -> Person age_in
---set_param_age age_in (MkPerson {age=age} name) = MkPerson {age=age_in} name
 
 record Event where
   constructor MkEvent
@@ -17,9 +14,6 @@ record Meeting (year : Int) where
 
 new_organiser : String -> List (Meeting x) -> List (Meeting x)
 new_organiser n = map (record { event->organiser->name = n }) 
-
---set_param_year : (year_in : Int) -> Meeting year -> Meeting year_in
---set_param_year year_in (MkMeeting {year=year} event organiser) = MkMeeting {year=year_in} event organiser
 
 next_year : Meeting x -> Meeting (x+1)
 next_year m = record { organiser->param_age
@@ -44,10 +38,9 @@ test : Meeting 2015
 test = next_year idm_gbg
 
 main : IO ()
-main = do print (record { event->organiser->name } test)
-          print (record { event->organiser->param_age } test)
-          print (record { event->organiser->param_age } idm_gbg)
-          print (record { organiser->param_age } test)
-          print (record { organiser->param_age } idm_gbg)
-          print (record { param_year } idm_gbg)
-
+main = do printLn (record { event->organiser->name } test)
+          printLn (record { event->organiser->param_age } test)
+          printLn (record { event->organiser->param_age } idm_gbg)
+          printLn (record { organiser->param_age } test)
+          printLn (record { organiser->param_age } idm_gbg)
+          printLn (record { param_year } idm_gbg)

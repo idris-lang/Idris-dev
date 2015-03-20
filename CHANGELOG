@@ -34,7 +34,16 @@ New in 0.9.17:
   command :elaborate-term for serialized terms.
 * Records has a new syntax based on fields rather than constructors.
 * Records can now be coinductive.
-
+* Effectful and IO function names for sending data to STDOUT have been
+  aligned, semantically.
+    + `print` is now for putting showable things to STDOUT.
+    + `printLn` is for putting showable things to STDOUT with a new line
+    + `putCharLn` for putting a single character to STDOUT, with a new line.
+* Classes can now be annotated with 'determining parameters' to say which
+  must be available before resolving instances. Only determining parameters
+  are checked when checking for overlapping instances.
+* Arguments to class instances are now checked for injectivity.
+  Unification assumes this, so we need to check when instances are defined.
 
 New in 0.9.16:
 --------------

@@ -75,7 +75,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
-            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping i (delab i nty))
+            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping i (class_determiners ci) (delab i nty))
                                 (class_instances ci)
                           addInstance intInst n iname
             Just _ -> addInstance intInst n iname
@@ -135,6 +135,8 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
                                  [PClause fc iname lhs [] rhs wb]]
          iLOG (show idecls)
          mapM_ (rec_elabDecl info EAll info) idecls
+         ist <- getIState
+         checkInjectiveArgs fc n (class_determiners ci) (lookupTyExact iname (tt_ctxt ist))
          addIBC (IBCInstance intInst n iname)
 
   where
@@ -167,32 +169,44 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
         = do ty' <- addUsingConstraints syn fc t
              -- TODO think: something more in info?
              ty' <- implicit info syn iname ty'
-             let ty = addImpl i ty'
+             let ty = addImpl [] i ty'
              ctxt <- getContext
-             ((tyT, _, _), _) <-
-                   tclift $ elaborate ctxt iname (TType (UVal 0)) initEState
-                            (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
+             (ElabResult tyT _ _ ctxt' newDecls, _) <-
+                tclift $ elaborate ctxt iname (TType (UVal 0)) initEState
+                         (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
+             setContext ctxt'
+             processTacticDecls newDecls
              ctxt <- getContext
-             (cty, _) <- recheckC fc [] tyT
+             (cty, _) <- recheckC fc id [] tyT
              let nty = normalise ctxt [] cty
-             return $ any (isJust . findOverlapping i (delab i nty)) (class_instances ci)
+             return $ any (isJust . findOverlapping i (class_determiners ci) (delab i nty)) (class_instances ci)
 
-    findOverlapping i t n
+    findOverlapping i dets t n
      | take 2 (show n) == "@@" = Nothing
      | otherwise
         = case lookupTy n (tt_ctxt i) of
             [t'] -> let tret = getRetType t
                         tret' = getRetType (delab i t') in
-                        case matchClause i tret' tret of
-                            Right ms -> Just tret'
-                            Left _ -> case matchClause i tret tret' of
-                                Right ms -> Just tret'
-                                Left _ -> Nothing
+                        case matchArgs i dets tret' tret of
+                           Right _ -> Just tret'
+                           Left _ -> case matchArgs i dets tret tret' of
+                                       Right _ -> Just tret'
+                                       Left _ -> Nothing
             _ -> Nothing
     overlapping t' = tclift $ tfail (At fc (Msg $
                           "Overlapping instance: " ++ show t' ++ " already defined"))
     getRetType (PPi _ _ _ sc) = getRetType sc
     getRetType t = t
+
+    matchArgs i dets x y =
+        let x' = keepDets dets x
+            y' = keepDets dets y in
+            matchClause i x' y'
+
+    keepDets dets (PApp fc f args)
+        = PApp fc f $ let a' = zip [0..] args in
+              map snd (filter (\(i, _) -> i `elem` dets) a')
+    keepDets dets t = t
 
     mkMethApp (n, _, _, ty)
           = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
@@ -264,3 +278,28 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
     clauseFor m iname ns (PClauses _ _ m' _)
        = decorate ns iname m == decorate ns iname m'
     clauseFor m iname ns _ = False
+
+checkInjectiveArgs :: FC -> Name -> [Int] -> Maybe Type -> Idris ()
+checkInjectiveArgs fc n ds Nothing = return ()
+checkInjectiveArgs fc n ds (Just ty)
+   = do ist <- getIState
+        let (_, args) = unApply (instantiateRetTy ty)
+        ci 0 ist args
+  where
+    ci i ist (a : as) | i `elem` ds 
+       = if isInj ist a then ci (i + 1) ist as
+            else tclift $ tfail (At fc (InvalidTCArg n a))
+    ci i ist (a : as) = ci (i + 1) ist as
+    ci i ist [] = return ()
+
+    isInj i (P Bound n _) = True 
+    isInj i (P _ n _) = isConName n (tt_ctxt i)
+    isInj i (App f a) = isInj i f && isInj i a
+    isInj i (V _) = True
+    isInj i (Bind n b sc) = isInj i sc
+    isInj _ _ = True
+
+    instantiateRetTy (Bind n (Pi _ _ _) sc)
+       = substV (P Bound n Erased) (instantiateRetTy sc)
+    instantiateRetTy t = t
+

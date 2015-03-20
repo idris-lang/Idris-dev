@@ -21,4 +21,4 @@ g (C x y z) = x + y
 -- Here, we'd apply the not-a-function to the erased argument 4,
 -- which would make the program go wrong.
 main : IO ()
-main = print $ g (proj 3 f 4)
+main = printLn $ g (proj 3 f 4)

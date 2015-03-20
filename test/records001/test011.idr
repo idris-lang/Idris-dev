@@ -22,9 +22,9 @@ person = MkPerson "Fred" 30
 main : IO ()
 main = do let x = record { name = "foo",
                            more_things = reverse ["a","b"] } testFoo
-          print $ name x
-          print $ name person
-          print $ things x
-          print $ more_things x
-          print $ age (record { age = 25 } person)
+          printLn $ name x
+          printLn $ name person
+          printLn $ things x
+          printLn $ more_things x
+          printLn $ age (record { age = 25 } person)
 
