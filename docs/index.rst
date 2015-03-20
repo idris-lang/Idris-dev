@@ -1,0 +1,84 @@
+.. Idris Manual documentation master file, created by
+   sphinx-quickstart on Sat Feb 28 20:41:47 2015.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Documentation for the Idris Language
+====================================
+
+    This work is licensed under the Creative Commons
+    Attribution-ShareAlike 4.0 International License. To view a copy
+    of this license, visit
+    http://creativecommons.org/licenses/by-sa/4.0/.
+
+* :ref:`reference-index`
+* :ref:`tutorial-index`
+* :ref:`eff-tutorial-index`
+* :ref:`guides-index`
+
+
+.. _reference:
+
+##################
+Language Reference
+##################
+
+.. toctree::
+   :maxdepth: 1
+
+   reference/documenting
+   reference/uniqueness-types
+   reference/ffi
+   reference/erasure
+
+.. _tutorial:
+
+###################
+The Idris Tutorial
+###################
+
+.. toctree::
+   :maxdepth: 1
+
+   tutorial/introduction
+   tutorial/starting
+   tutorial/typesfuns
+   tutorial/classes
+   tutorial/modules
+   tutorial/interp
+   tutorial/views
+   tutorial/theorems
+   tutorial/provisional
+   tutorial/interactive
+   tutorial/syntax
+   tutorial/miscellany
+   tutorial/conclusions
+
+.. _effects:
+
+################
+Learning Effects
+################
+
+.. toctree::
+   :maxdepth: 1
+
+   effects/introduction
+   effects/state
+   effects/simpleeff
+   effects/depeff
+   effects/impleff
+   effects/hangman
+   effects/conclusions
+   effects/summary
+
+.. _guides:
+
+############
+Short Guides
+############
+
+.. toctree::
+   :maxdepth: 1
+
+   guides/type-providers-ffi

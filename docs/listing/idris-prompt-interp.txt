@@ -1,0 +1,12 @@
+$ idris interp.idr
+     ____    __     _
+    /  _/___/ /____(_)____
+    / // __  / ___/ / ___/     Version 0.9.17
+  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
+ /___/\__,_/_/  /_/____/       Type :? for help
+
+Type checking ./interp.idr
+*interp> :exec
+Enter a number: 6
+720
+*interp>
