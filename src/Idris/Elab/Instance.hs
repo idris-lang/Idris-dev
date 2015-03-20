@@ -88,6 +88,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
          -- where block
          wparams <- mapM (\p -> case p of
                                   PApp _ _ args -> getWParams (map getTm args)
+                                  a@(PRef fc f) -> getWParams [a]
                                   _ -> return []) ps
          let pnames = map pname (concat (nub wparams))
          let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
@@ -242,7 +243,9 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
     decorate ns iname (UN n)        = NS (SN (MethodN (UN n))) ns
     decorate ns iname (NS (UN n) s) = NS (SN (MethodN (UN n))) ns
 
-    mkTyDecl (n, op, t, _) = PTy emptyDocstring [] syn fc op n t
+    mkTyDecl (n, op, t, _) 
+        = PTy emptyDocstring [] syn fc op n 
+               (mkUniqueNames [] t)
 
     conbind :: [(Name, PTerm)] -> PTerm -> PTerm
     conbind ((c,ty) : ns) x = PPi constraint c ty (conbind ns x)
