@@ -5,13 +5,15 @@ import Idris.Core.TT ( TC(..), UExp(..), UConstraint(..), FC(..), Err'(..) )
 
 import Control.Applicative
 import Control.Monad.State.Strict
+import Data.Function ( on )
+import Data.List ( partition, nubBy )
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
 
 -- | Check that a list of universe constraints can be satisfied.
 ucheck :: [(UConstraint, FC)] -> TC ()
-ucheck = void . solve 10 . filter (not . ignore)
+ucheck = void . solve 10 . nubBy ((==) `on` fst) . filter (not . ignore)
     where
         -- TODO: remove the first ignore clause once Idris.Core.Binary:598 is dealt with
         ignore (c,_) | any (== Var (-1)) (varsIn c) = True
@@ -27,11 +29,14 @@ data Domain = Domain {-# UNPACK #-} !Int
 
 data SolverState =
     SolverState
-        { queue       :: S.Set (UConstraint, FC)
+        { queue       :: Queue
         , domainStore :: M.Map Var ( Domain
                                    , S.Set (UConstraint, FC)        -- constraints that effected this variable
                                    )
         }
+
+data Queue = Queue [(UConstraint, FC)] (S.Set UConstraint)
+
 
 solve :: Int -> [(UConstraint, FC)] -> TC (M.Map Var Int)
 solve maxUniverseLevel inpConstraints =
@@ -42,21 +47,25 @@ solve maxUniverseLevel inpConstraints =
         -- | initial solver state.
         --   the queue contains all constraints, the domain store contains the initial domains.
         initSolverState :: SolverState
-        initSolverState = SolverState
-            { queue = S.fromList inpConstraints
-            , domainStore = M.fromList
-                [ (v, (Domain 0 maxUniverseLevel, S.empty))
-                | v <- ordNub [ v
-                              | (c, _) <- inpConstraints
-                              , v <- varsIn c
-                              ]
-                ]
-            }
+        initSolverState =
+            let
+                (initUnaryQueue, initQueue) = partition (\ (c,_) -> length (varsIn c) == 1) inpConstraints
+            in
+                SolverState
+                    { queue = Queue (initUnaryQueue ++ initQueue) (S.fromList (map fst (initUnaryQueue ++ initQueue)))
+                    , domainStore = M.fromList
+                        [ (v, (Domain 0 maxUniverseLevel, S.empty))
+                        | v <- ordNub [ v
+                                      | (c, _) <- inpConstraints
+                                      , v <- varsIn c
+                                      ]
+                        ]
+                    }
 
         -- | a map from variables to the list of constraints the variable occurs in.
         constraints :: M.Map Var (S.Set (UConstraint, FC))
-        constraints = M.map S.fromList $ M.fromListWith (++)
-            [ (v, [(c,fc)])
+        constraints = M.fromListWith S.union
+            [ (v, S.singleton (c,fc))
             | (c, fc) <- inpConstraints
             , let vars = varsIn c
             , length vars > 1               -- do not register unary constraints
@@ -99,11 +108,11 @@ solve maxUniverseLevel inpConstraints =
         -- | dequeue the first constraint.
         nextConstraint :: MonadState SolverState m => m (Maybe (UConstraint, FC))
         nextConstraint = do
-            qu <- gets queue
-            case S.minView qu of
-                Nothing -> return Nothing
-                Just (q,qs) -> do
-                    modify $ \ st -> st { queue = qs }
+            Queue list set <- gets queue
+            case list of
+                [] -> return Nothing
+                (q:qs) -> do
+                    modify $ \ st -> st { queue = Queue qs (S.delete (fst q) set) }
                     return (Just q)
 
         -- | look up the domain of a variable from the state.
@@ -134,7 +143,13 @@ solve maxUniverseLevel inpConstraints =
         addToQueue var =
             case M.lookup var constraints of
                 Nothing -> return ()
-                Just cs -> modify $ \ st -> st { queue = S.union cs (queue st) }
+                Just cs -> do
+                    Queue list set <- gets queue
+                    let newCons = [ c | c <- S.toList cs, fst c `S.notMember` set ]
+                    if null newCons
+                        then return ()
+                        else modify $ \ st -> st { queue = Queue (list ++ newCons)
+                                                                 (S.union set (S.fromList (map fst newCons))) }
 
         -- | check if a domain is wiped out.
         wipeOut :: Domain -> Bool
