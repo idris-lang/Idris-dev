@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveFunctor, PatternGuards #-}
+{-# LANGUAGE DeriveFunctor, PatternGuards, MultiWayIf #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, FunDoc, FunDoc'(..), Docs, Docs'(..)) where
 
 import Idris.AbsSyntax
@@ -37,6 +38,7 @@ data Docs' d = FunDoc (FunDoc' d)
                         [(Maybe Name, PTerm, (d, [(Name, d)]))] -- instances: name for named instances, the constraint term, the docs
                         [PTerm] -- subclasses
                         [PTerm] -- superclasses
+             | NamedInstanceDoc Name (FunDoc' d) -- name is class
              | ModDoc [String] -- Module name
                       d
   deriving Functor
@@ -183,6 +185,9 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
          then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
          else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
+pprintDocs ist (NamedInstanceDoc _cls doc)
+   = nest 4 (text "Named instance:" <$> pprintFD ist doc)
+
 pprintDocs ist (ModDoc mod docs)
    = nest 4 $ text "Module" <+> text (concat (intersperse "." mod)) <> colon <$>
               renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) docs
@@ -203,13 +208,23 @@ getDocs n@(NS n' ns) w | n' == modDocName
                              " do not exist! This shouldn't have happened and is a bug."
 getDocs n w
    = do i <- getIState
-        docs <- case lookupCtxt n (idris_classes i) of
-                  [ci] -> docClass n ci
-                  _ -> case lookupCtxt n (idris_datatypes i) of
-                         [ti] -> docData n ti
-                         _ -> do fd <- docFun n
-                                 return (FunDoc fd)
+        docs <- if | Just ci <- lookupCtxtExact n (idris_classes i)
+                     -> docClass n ci
+                   | Just ti <- lookupCtxtExact n (idris_datatypes i)
+                     -> docData n ti
+                   | Just class_ <- classNameForInst i n
+                     -> do fd <- docFun n
+                           return $ NamedInstanceDoc class_ fd
+                   | otherwise
+                     -> do fd <- docFun n
+                           return (FunDoc fd)
         return $ fmap (howMuch w) docs
+  where classNameForInst :: IState -> Name -> Maybe Name
+        classNameForInst ist n =
+          listToMaybe [ cn
+                      | (cn, ci) <- toAlist (idris_classes ist)
+                      , n `elem` class_instances ci
+                      ]
 
 docData :: Name -> TypeInfo -> Idris Docs
 docData n ti
@@ -270,6 +285,7 @@ docFun n
        where funName :: Name -> String
              funName (UN n)   = str n
              funName (NS n _) = funName n
+             funName n        = show n
 
 getPArgNames :: PTerm -> [(Name, Docstring DocTerm)] -> [(Name, PTerm, Plicity, Maybe (Docstring DocTerm))]
 getPArgNames (PPi plicity name ty body) ds =
