@@ -10,6 +10,8 @@ import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, rende
 
 import Util.Pretty
 
+import Control.Arrow (first)
+
 import Data.Maybe
 import Data.List
 import qualified Data.Text as T
@@ -32,7 +34,7 @@ data Docs' d = FunDoc (FunDoc' d)
              | ClassDoc Name d   -- class docs
                         [FunDoc' d] -- method docs
                         [(Name, Maybe d)] -- parameters and their docstrings
-                        [(PTerm, (d, [(Name, d)]))] -- instances
+                        [(Maybe Name, PTerm, (d, [(Name, d)]))] -- instances: name for named instances, the constraint term, the docs
                         [PTerm] -- subclasses
                         [PTerm] -- superclasses
              | ModDoc [String] -- Module name
@@ -102,7 +104,11 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
              <$>
              nest 4 (text "Instances:" <$>
                        vsep (if null instances then [text "<no instances>"]
-                             else map pprintInstance instances))
+                             else map pprintInstance normalInstances))
+             <>
+             (if null namedInstances then empty
+              else line <$> nest 4 (text "Named instances:" <$>
+                                    vsep (map pprintInstance namedInstances)))
              <>
              (if null subclasses then empty
               else line <$> nest 4 (text "Subclasses:" <$>
@@ -113,14 +119,17 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
                                      vsep (map dumpInstance superclasses)))
   where
     params' = zip pNames (repeat False)
+    
+    (normalInstances, namedInstances) = partition (\(n, _, _) -> not $ isJust n)
+                                                  instances
 
     pNames  = map fst params
 
     ppo = ppOptionIst ist
     infixes = idris_infixes ist
 
-    pprintInstance (term, (doc, argDocs)) =
-      nest 4 (dumpInstance term <>
+    pprintInstance (mname, term, (doc, argDocs)) =
+      nest 4 (iname mname <> dumpInstance term <>
               (if nullDocstring doc
                   then empty
                   else line <>
@@ -132,6 +141,10 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
               if null argDocs
                  then empty
                  else line <> vsep (map (prettyInstanceParam (map fst argDocs)) argDocs))
+
+
+    iname Nothing = empty
+    iname (Just n) = annName n <+> colon <> space
 
     prettyInstanceParam params (name, doc) =
       if nullDocstring doc
@@ -209,19 +222,26 @@ docClass n ci
   = do i <- getIState
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
            docstr = maybe emptyDocstring fst docStrings
-           params = map (\pn -> (pn, docStrings >>= (lookup pn . snd))) (class_params ci)
-           instanceDocs = map (fromMaybe (emptyDocstring, []) .
-                               listToMaybe .
-                               flip lookupCtxt (idris_docstrings i))
-                              (class_instances ci)
-           instances = zip (map (delabTy i) (class_instances ci)) instanceDocs
-           (subclasses, instances') = partition (isSubclass . fst) instances
+           params = map (\pn -> (pn, docStrings >>= (lookup pn . snd)))
+                        (class_params ci)
+           docsForInstance inst = fromMaybe (emptyDocstring, []) .
+                                  flip lookupCtxtExact (idris_docstrings i) $
+                                  inst
+           instances = map (\inst -> (namedInst inst,
+                                      delabTy i inst,
+                                      docsForInstance inst))
+                           (nub (class_instances ci))
+           (subclasses, instances') = partition (isSubclass . (\(_,tm,_) -> tm)) instances
            superclasses = catMaybes $ map getDInst (class_default_superclasses ci)
        mdocs <- mapM (docFun . fst) (class_methods ci)
        return $ ClassDoc
                   n docstr mdocs params
-                  instances' (map fst subclasses) superclasses
+                  instances' (map (\(_,tm,_) -> tm) subclasses) superclasses
   where
+    namedInst (NS n ns) = fmap (flip NS ns) (namedInst n)
+    namedInst n@(UN _)  = Just n
+    namedInst _         = Nothing
+    
     getDInst (PInstance _ _ _ _ _ _ _ t _ _) = Just t
     getDInst _                           = Nothing
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Delaborate (bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintDelabTy, pprintErr) where
+module Idris.Delaborate (annName, bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintDelabTy, pprintErr) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
