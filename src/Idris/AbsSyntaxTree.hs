@@ -66,27 +66,27 @@ toplevel = EInfo [] emptyContext id Nothing Nothing (\_ _ _ -> fail "Not impleme
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
 
-data IOption = IOption { opt_logLevel   :: Int,
-                         opt_typecase   :: Bool,
-                         opt_typeintype :: Bool,
-                         opt_coverage   :: Bool,
-                         opt_showimp    :: Bool, -- ^^ show implicits
-                         opt_errContext :: Bool,
-                         opt_repl       :: Bool,
-                         opt_verbose    :: Bool,
-                         opt_nobanner   :: Bool,
-                         opt_quiet      :: Bool,
-                         opt_codegen    :: Codegen,
-                         opt_outputTy   :: OutputType,
-                         opt_ibcsubdir  :: FilePath,
-                         opt_importdirs :: [FilePath],
-                         opt_triple     :: String,
-                         opt_cpu        :: String,
-                         opt_cmdline    :: [Opt], -- remember whole command line
-                         opt_origerr    :: Bool,
-                         opt_autoSolve  :: Bool, -- ^ automatically apply "solve" tactic in prover
-                         opt_autoImport :: [FilePath], -- ^ e.g. Builtins+Prelude
-                         opt_optimise   :: [Optimisation]
+data IOption = IOption { opt_logLevel     :: Int,
+                         opt_typecase     :: Bool,
+                         opt_typeintype   :: Bool,
+                         opt_coverage     :: Bool,
+                         opt_showimp      :: Bool, -- ^^ show implicits
+                         opt_errContext   :: Bool,
+                         opt_repl         :: Bool,
+                         opt_verbose      :: Bool,
+                         opt_nobanner     :: Bool,
+                         opt_quiet        :: Bool,
+                         opt_codegen      :: Codegen,
+                         opt_outputTy     :: OutputType,
+                         opt_ibcsubdir    :: FilePath,
+                         opt_importdirs   :: [FilePath],
+                         opt_triple       :: String,
+                         opt_cpu          :: String,
+                         opt_cmdline      :: [Opt], -- remember whole command line
+                         opt_origerr      :: Bool,
+                         opt_autoSolve    :: Bool, -- ^ automatically apply "solve" tactic in prover
+                         opt_autoImport   :: [FilePath], -- ^ e.g. Builtins+Prelude
+                         opt_optimise     :: [Optimisation]
                        }
     deriving (Show, Eq)
 
@@ -151,6 +151,8 @@ data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
                   | ColsWide Int -- ^ Manually specified - must be positive
                   | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
+   deriving (Show, Eq)
+
 
 -- | The global state used in the Idris monad
 data IState = IState {
@@ -467,6 +469,7 @@ data Opt = Filename String
          | ShowOrigErr
          | AutoWidth -- ^ Automatically adjust terminal width
          | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
+         | UseConsoleWidth ConsoleWidth
     deriving (Show, Eq)
 
 -- Parsed declarations

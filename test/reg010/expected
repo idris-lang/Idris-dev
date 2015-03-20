@@ -1,2 +1,3 @@
-reg010.idr:5:15:When elaborating left hand side of with block in usubst.unsafeSubst:
+reg010.idr:5:15:
+When elaborating left hand side of with block in usubst.unsafeSubst:
 Can't match on with block in usubst.unsafeSubst warg a P x x px

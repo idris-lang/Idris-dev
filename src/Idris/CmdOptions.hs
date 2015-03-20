@@ -11,6 +11,12 @@ import Options.Applicative.Arrows
 import Data.Char
 import Data.Maybe
 
+import Text.ParserCombinators.ReadP hiding (many, option)
+
+import Safe (lastMay)
+
+
+
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 runArgParser :: IO [Opt]
@@ -66,6 +72,7 @@ parser = runA $ proc () -> do
   flags <- asA parseFlags -< ()
   files <- asA (many $ argument (fmap Filename str) (metavar "FILES")) -< ()
   A parseVersion >>> A helper -< (flags ++ files)
+
 
 parseFlags :: Parser [Opt]
 parseFlags = many $
@@ -132,6 +139,10 @@ parseFlags = many $
   <|> (TargetCPU <$> strOption (long "cpu" <> metavar "CPU" <> help "Select target CPU e.g. corei7 or cortex-m3 (for LLVM codegen)"))
   <|> flag' (ColourREPL True) (long "colour" <> long "color" <> help "Force coloured output")
   <|> flag' (ColourREPL False) (long "nocolour" <> long "nocolor" <> help "Disable coloured output")
+
+  <|> (UseConsoleWidth <$> option (str >>= parseConsoleWidth) (long "consolewidth" <> metavar "WIDTH" <> help "Select console width: auto, infinite, nat"))
+
+
   where
     getExt s = case maybeRead s of
       Just ext -> ext
@@ -151,3 +162,22 @@ preProcOpts (x:xs) ys = preProcOpts xs (x:ys)
 parseCodegen :: String -> Codegen
 parseCodegen "bytecode" = Bytecode
 parseCodegen cg = Via (map toLower cg)
+
+
+
+
+parseConsoleWidth :: Monad m => String -> m ConsoleWidth
+parseConsoleWidth "auto" = return AutomaticWidth
+parseConsoleWidth "infinite" = return InfinitelyWide
+parseConsoleWidth  s =
+  case lastMay (readP_to_S (integerReader) s) of
+     Just (r, _) -> return $ ColsWide r
+     _           -> fail $ "Cannot parse: " ++ s
+
+
+
+integerReader :: ReadP Int
+integerReader = do
+    digits <- many1 $ satisfy isDigit 
+    return $ read digits
+

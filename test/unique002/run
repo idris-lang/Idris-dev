@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-idris $@ unique002.idr --check
-idris $@ unique002a.idr --check
+idris --consolewidth 80 $@ unique002.idr --check
+idris --consolewidth 80 $@ unique002a.idr --check
 rm -f *.ibc
