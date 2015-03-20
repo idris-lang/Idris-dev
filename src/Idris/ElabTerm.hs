@@ -805,10 +805,10 @@ elab ist info emode opts fn tm
                      Just b ->
                        case unApply (binderTy b) of
                             (P _ c _, args) ->
-                                case lookupCtxt c (idris_classes ist) of
-                                   [] -> return ()
-                                   _ -> -- type class, set as injective
-                                        do mapM_ setinjArg args
+                                case lookupCtxtExact c (idris_classes ist) of
+                                   Nothing -> return ()
+                                   Just ci -> -- type class, set as injective
+                                        do mapM_ setinjArg (getDets 0 (class_determiners ci) args)
                                         -- maybe we can solve more things now...
                                            ulog <- getUnifyLog
                                            probs <- get_probs
@@ -820,6 +820,10 @@ elab ist info emode opts fn tm
 
             setinjArg (P _ n _) = setinj n
             setinjArg _ = return ()
+
+            getDets i ds [] = []
+            getDets i ds (a : as) | i `elem` ds = a : getDets (i + 1) ds as
+                                  | otherwise = getDets (i + 1) ds as
 
             tacTm (PTactics _) = True
             tacTm (PProof _) = True
