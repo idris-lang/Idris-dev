@@ -104,6 +104,7 @@ Extra-source-files:
                        libs/base/Data/Vect/*.idr
                        libs/base/Debug/*.idr
                        libs/base/Language/Reflection/*.idr
+                       libs/base/Network/*.idr
                        libs/base/Makefile
                        libs/base/System/*.idr
                        libs/base/System/Concurrency/*.idr
@@ -111,6 +112,7 @@ Extra-source-files:
 
                        libs/contrib/contrib.ipkg
                        libs/contrib/Makefile
+                       libs/contrib/Classes/*.idr
                        libs/contrib/Control/*.idr
                        libs/contrib/Control/Isomorphism/*.idr
                        libs/contrib/Data/*.idr
