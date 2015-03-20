@@ -810,6 +810,7 @@ Library
                 , vector-binary-instances < 0.3
                 , xml < 1.4
                 , zlib < 0.6
+                , safe
   Extensions:     MultiParamTypeClasses
                 , DeriveFoldable
                 , DeriveTraversable

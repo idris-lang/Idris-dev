@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-idris $@ reg018a.idr --check
-idris $@ reg018b.idr --check
-idris $@ reg018c.idr --check
-idris $@ reg018d.idr --check
+idris --consolewidth 80 $@ reg018a.idr --check
+idris --consolewidth 80 $@ reg018b.idr --check
+idris --consolewidth 80 $@ reg018c.idr --check
+idris --consolewidth 80 $@ reg018d.idr --check
 rm *.ibc
