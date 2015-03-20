@@ -12,8 +12,11 @@ import qualified Data.Set as S
 -- | Check that a list of universe constraints can be satisfied.
 ucheck :: [(UConstraint, FC)] -> TC ()
 ucheck = void . solve 10 . filter (not . ignore)
-    where ignore (c,_) = any (== Var (-1)) (varsIn c)
-          -- TODO: remove the ignore when Idris.Core.Binary:598
+    where
+        -- TODO: remove the first ignore clause once Idris.Core.Binary:598 is dealt with
+        ignore (c,_) | any (== Var (-1)) (varsIn c) = True
+        ignore (ULE a b, _) = a == b
+        ignore _ = False
 
 newtype Var = Var Int
     deriving (Eq, Ord, Show)
