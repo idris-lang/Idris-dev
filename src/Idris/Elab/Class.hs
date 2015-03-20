@@ -69,7 +69,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
          let idecls = filter instdecl ds -- default superclass instance declarations
          mapM_ checkDefaultSuperclassInstance idecls
          let mnames = map getMName mdecls
-         logLvl 2 $ "Building methods " ++ show mnames
+         logLvl 1 $ "Building methods " ++ show mnames
          ims <- mapM (tdecl mnames) mdecls
          defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint)
                       (filter clause ds)

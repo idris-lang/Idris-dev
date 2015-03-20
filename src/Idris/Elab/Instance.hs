@@ -103,8 +103,11 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
                            op, coninsert cs t', t'))
               (class_methods ci)
          logLvl 3 (show (mtys, ips))
-         let ds' = insertDefaults i iname (class_defaults ci) ns ds
-         iLOG ("Defaults inserted: " ++ show ds' ++ "\n" ++ show ci)
+         logLvl 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (class_methods ci)))
+         let ds_defs = insertDefaults i iname (class_defaults ci) ns ds
+         logLvl 3 ("After defaults: " ++ show ds_defs ++ "\n")
+         let ds' = reorderDefs (map fst (class_methods ci)) $ ds_defs
+         iLOG ("Reordered: " ++ show ds' ++ "\n")
          mapM_ (warnMissing ds' ns iname) (map fst (class_methods ci))
          mapM_ (checkInClass (map fst (class_methods ci))) (concatMap defined ds')
          let wbTys = map mkTyDecl mtys
@@ -248,6 +251,22 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
     coninsert :: [(Name, PTerm)] -> PTerm -> PTerm
     coninsert cs (PPi p@(Imp _ _ _ _) n t sc) = PPi p n t (coninsert cs sc)
     coninsert cs sc = conbind cs sc
+
+    -- Reorder declarations to be in the same order as defined in the
+    -- class declaration (important so that we insert default definitions
+    -- in the right place, and so that dependencies between methods are
+    -- respected)
+    reorderDefs :: [Name] -> [PDecl] -> [PDecl]
+    reorderDefs ns [] = []
+    reorderDefs [] ds = ds
+    reorderDefs (n : ns) ds = case pick n [] ds of 
+                                  Just (def, ds') -> def : reorderDefs ns ds'
+                                  Nothing -> reorderDefs ns ds
+
+    pick n acc [] = Nothing 
+    pick n acc (def@(PClauses _ _ cn cs) : ds)
+         | nsroot n == nsroot cn = Just (def, acc ++ ds)
+    pick n acc (d : ds) = pick n (acc ++ [d]) ds
 
     insertDefaults :: IState -> Name ->
                       [(Name, (Name, PDecl))] -> [T.Text] ->
