@@ -127,7 +127,7 @@ solve maxUniverseLevel inpConstraints =
         updateDomainOf suspect (UVar var) newDom = do
             doms <- gets domainStore
             let (oldDom, suspects) = doms M.! Var var
-            when (wipeOut newDom) $ lift $ Error $ Msg $ unlines
+            when (wipeOut newDom) $ lift $ Error $ At (snd suspect) $ Msg $ unlines
                 $ "Universe inconsistency."
                 : ("Working on: " ++ show (UVar var))
                 : ("Old domain: " ++ show oldDom)
