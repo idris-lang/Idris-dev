@@ -27,6 +27,7 @@ import public Prelude.Providers
 import public Decidable.Equality
 import public Language.Reflection
 import public Language.Reflection.Errors
+import public Math
 
 %access public
 %default total
@@ -336,8 +337,9 @@ natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
 total natEnumFromTo : Nat -> Nat -> List Nat
 natEnumFromTo n m = map (plus n) (natRange ((S m) - n))
 total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
-natEnumFromThenTo _ Z   _ = []
-natEnumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
+natEnumFromThenTo n inc m = case decEq inc Z of
+  Yes _ => []
+  No  p => map (plus n . (* inc)) (natRange (S (divNZ (m - n) inc p)))
 
 class Enum a where
   total pred : a -> a
@@ -375,11 +377,14 @@ instance Enum Integer where
     where go : List Nat -> List Integer
           go [] = []
           go (x :: xs) = n + cast x :: go xs
-  enumFromThenTo _ 0   _ = []
-  enumFromThenTo n inc m = go (natRange (S (fromInteger (abs (m - n)) `div` fromInteger (abs inc))))
+  enumFromThenTo n inc m = case decEq incAsNat 0 of
+      Yes _ => []
+      No  p => go (natRange (S (divNZ (fromInteger (abs (m - n))) incAsNat p)))
     where go : List Nat -> List Integer
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
+          incAsNat : Nat
+          incAsNat = fromInteger (abs inc)
 
 instance Enum Int where
   pred n = n - 1
@@ -395,11 +400,14 @@ instance Enum Int where
          go acc Z     m = m :: acc
          go acc (S k) m = go (m :: acc) k (m - 1)
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
-  enumFromThenTo _ 0   _ = []
-  enumFromThenTo n inc m = go (natRange (S (cast {to=Nat} (abs (m - n)) `div` cast {to=Nat} (abs inc))))
+  enumFromThenTo n inc m = case decEq incAsNat 0 of
+      Yes _ => []
+      No  p => go (natRange (S (divNZ (cast {to=Nat} (abs (m - n))) incAsNat p)))
     where go : List Nat -> List Int
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
+          incAsNat : Nat
+          incAsNat = cast {to=Nat} (abs inc)
 
 syntax "[" [start] ".." [end] "]"
      = enumFromTo start end

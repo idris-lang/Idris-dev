@@ -1,24 +1,30 @@
 module Data.Bits
 
+import Math
 import Data.Fin
 
 %default total
 
-divCeil : Nat -> Nat -> Nat
-divCeil x y = case x `mod` y of
-                Z   => x `div` y
-                S _ => S (x `div` y)
+divCeilNZ : Nat -> (y: Nat) -> Not (y = Z) -> Nat
+divCeilNZ x y p = case (modNZ x y p) of
+  Z   => divNZ x y p
+  S _ => S (divNZ x y p)
+
+divCeil : Nat -> (y: Nat) -> Either (y = Z) Nat
+divCeil x y = case decEq y Z of
+  Yes p => Left p
+  No  p => Right (divCeilNZ x y p)
 
 nextPow2 : Nat -> Nat
-nextPow2 Z = Z
-nextPow2 x = if x == (2 `power` l2x)
-             then l2x
-             else S l2x
-    where
-      l2x = log2 x
+nextPow2 x = case log2 x of
+  Left _    => Z
+  Right l2x => if x == (2 `power` l2x)
+               then l2x
+               else S l2x
 
 nextBytes : Nat -> Nat
-nextBytes bits = (nextPow2 (bits `divCeil` 8))
+nextBytes bits = (nextPow2 (divCeilNZ bits 8 nz))
+  where nz Refl impossible
 
 machineTy : Nat -> Type
 machineTy Z = Bits8
