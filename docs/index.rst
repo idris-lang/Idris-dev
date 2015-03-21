@@ -15,25 +15,11 @@ Documentation for the Idris Language
 
    More information concerning the CC0 can be found online at: http://creativecommons.org/publicdomain/zero/1.0/
 
-* :ref:`reference-index`
 * :ref:`tutorial-index`
 * :ref:`eff-tutorial-index`
+* :ref:`reference-index`
 * :ref:`guides-index`
 
-
-.. _reference:
-
-##################
-Language Reference
-##################
-
-.. toctree::
-   :maxdepth: 1
-
-   reference/documenting
-   reference/uniqueness-types
-   reference/ffi
-   reference/erasure
 
 .. _tutorial:
 
@@ -75,6 +61,20 @@ Learning Effects
    effects/hangman
    effects/conclusions
    effects/summary
+
+.. _reference:
+
+##################
+Language Reference
+##################
+
+.. toctree::
+   :maxdepth: 1
+
+   reference/documenting
+   reference/uniqueness-types
+   reference/ffi
+   reference/erasure
 
 .. _guides:
 

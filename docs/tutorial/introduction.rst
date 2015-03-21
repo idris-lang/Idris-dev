@@ -1,8 +1,8 @@
 .. _sect-intro:
 
-===========
-Introducton
-===========
+============
+Introduction
+============
 
 In conventional programming languages, there is a clear distinction
 between *types* and *values*. For example, in `Haskell
