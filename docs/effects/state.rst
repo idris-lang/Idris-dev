@@ -129,8 +129,8 @@ features, but for our purposes, it suffices to know the following:
 
 - ``x <- e`` binds the result of an effectful operation ``e`` to a
    variable ``x``. For example, in the above code, ``treeTagAux l`` is
-   an effectful operation returning a pair ``(Int, BTree a)``, so
-   ``l’`` has type ``(Int, BTree a)``.
+   an effectful operation returning ``BTree (Int, a)``, so ``l’`` has
+   type ``BTree (Int, a)``.
 
 - ``pure e`` turns a pure value ``e`` into the result of an effectful
    operation.
