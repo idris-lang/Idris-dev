@@ -63,6 +63,7 @@ library:
 
    module Main
 
+   import Effects
    import Effect.StdIO
 
    hello : [STDIO] Eff ()
@@ -71,10 +72,11 @@ library:
    main : IO ()
    main = run hello
 
-As usual, the entry point is ``main``. All ``main`` has to do is
-invoke the ``hello`` function which supports the ``STDIO`` effect for
-console I/O, and returns the unit value. The details of the ``Eff``
-type will be presented in the remainder of this tutorial.
+As usual, the entry point is ``main``. All ``main`` has to do is invoke the
+``hello`` function which supports the ``STDIO`` effect for console I/O, and
+returns the unit value.  All programs using the ``Effects`` library must
+``import Effects``.  The details of the ``Eff`` type will be presented in the
+remainder of this tutorial.
 
 To compile and run this program, ``Idris`` needs to be told to include
 the ``Effects`` package, using the ``-p effects`` flag (this flag is
