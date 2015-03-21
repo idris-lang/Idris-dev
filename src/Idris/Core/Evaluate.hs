@@ -5,7 +5,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 rt_simplify, simplify, specialise, hnf, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Totality(..), PReason(..), MetaInformation(..),
-                Context, initContext, ctxtAlist, uconstraints, next_tvar,
+                Context, initContext, ctxtAlist, next_tvar,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
@@ -786,16 +786,15 @@ data MetaInformation =
 -- | Contexts used for global definitions and for proof state. They contain
 -- universe constraints and existing definitions.
 data Context = MkContext {
-                  uconstraints    :: [UConstraint],
                   next_tvar       :: Int,
                   definitions     :: Ctxt (Def, Accessibility, Totality, MetaInformation)
                 } deriving Show
 
 -- | The initial empty context
-initContext = MkContext [] 0 emptyContext
+initContext = MkContext 0 emptyContext
 
 mapDefCtxt :: (Def -> Def) -> Context -> Context
-mapDefCtxt f (MkContext c t defs) = MkContext c t (mapCtxt f' defs)
+mapDefCtxt f (MkContext t defs) = MkContext t (mapCtxt f' defs)
    where f' (d, a, t, m) = f' (f d, a, t, m)
 
 -- | Get the definitions from a context

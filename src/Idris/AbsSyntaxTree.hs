@@ -157,7 +157,7 @@ data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines sh
 -- | The global state used in the Idris monad
 data IState = IState {
     tt_ctxt :: Context, -- ^ All the currently defined names and their terms
-    idris_constraints :: [(UConstraint, FC)],
+    idris_constraints :: S.Set ConstraintFC,
       -- ^ A list of universe constraints and their corresponding source locations
     idris_infixes :: [FixDecl], -- ^ Currently defined infix operators
     idris_implicits :: Ctxt [PArg],
@@ -309,7 +309,7 @@ data IBCWrite = IBCFix FixDecl
 
 -- | The initial state for the compiler
 idrisInit :: IState
-idrisInit = IState initContext [] []
+idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext

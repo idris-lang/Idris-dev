@@ -543,10 +543,13 @@ addConstraints :: FC -> (Int, [UConstraint]) -> Idris ()
 addConstraints fc (v, cs)
     = do i <- getIState
          let ctxt = tt_ctxt i
-         let ctxt' = ctxt { uconstraints = nub cs ++ uconstraints ctxt,
-                            next_tvar = v }
-         let ics = zip cs (repeat fc) ++ idris_constraints i
+         let ctxt' = ctxt { next_tvar = v }
+         let ics = insertAll (zip cs (repeat fc)) (idris_constraints i)
          putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
+  where
+    insertAll [] c = c
+    insertAll ((c, fc) : cs) ics 
+       = insertAll cs $ S.insert (ConstraintFC c fc) ics
 
 addDeferred = addDeferred' Ref
 addDeferredTyCon = addDeferred' (TCon 0 0)

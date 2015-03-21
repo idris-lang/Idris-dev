@@ -87,6 +87,7 @@ import Control.Concurrent
 import Data.Maybe
 import Data.List hiding (group)
 import Data.Char
+import qualified Data.Set as S
 import Data.Version
 import Data.Word (Word)
 import Data.Either (partitionEithers)
@@ -945,9 +946,10 @@ process fn (DocStr (Right c) _) -- constants only have overviews
 process fn Universes
                      = do i <- getIState
                           let cs = idris_constraints i
+                          let cslist = S.toAscList cs 
 --                        iputStrLn $ showSep "\n" (map show cs)
-                          iputStrLn $ show (map fst cs)
-                          let n = length cs
+                          iputStrLn $ show (map uconstraint cslist)
+                          let n = length cslist
                           iputStrLn $ "(" ++ show n ++ " constraints)"
                           case ucheck cs of
                             Error e -> iPrintError $ pshow i e

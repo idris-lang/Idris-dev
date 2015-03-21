@@ -782,14 +782,6 @@ deriving instance NFData UExp
 instance Sized UExp where
   size _ = 1
 
--- We assume that universe levels have been checked, so anything external
--- can just have the same universe variable and we won't get any new
--- cycles.
-
-instance Binary UExp where
-    put x = return ()
-    get = return (UVar (-1))
-
 instance Show UExp where
     show (UVar x) | x < 26 = [toEnum (x + fromEnum 'a')]
                   | otherwise = toEnum ((x `mod` 26) + fromEnum 'a') : show (x `div` 26)
@@ -800,6 +792,16 @@ instance Show UExp where
 data UConstraint = ULT UExp UExp -- ^ Strictly less than
                  | ULE UExp UExp -- ^ Less than or equal to
   deriving (Eq, Ord)
+
+data ConstraintFC = ConstraintFC { uconstraint :: UConstraint,
+                                   ufc :: FC }
+  deriving Show
+
+instance Eq ConstraintFC where
+    x == y = uconstraint x == uconstraint y  
+
+instance Ord ConstraintFC where
+    compare x y = compare (uconstraint x) (uconstraint y)
 
 instance Show UConstraint where
     show (ULT x y) = show x ++ " < " ++ show y
