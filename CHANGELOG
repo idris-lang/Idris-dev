@@ -1,3 +1,9 @@
+New in 0.9.18:
+--------------
+* Syntax rules no longer perform variable capture. Users of effects will
+  need to explicitly name results in dependent effect signatures instead
+  of using the default name "result".
+
 New in 0.9.17:
 --------------
 * The --ideslave command line option has been replaced with a --ide-mode
