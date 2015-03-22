@@ -117,9 +117,10 @@ FILE_IO t = MkEff t FileIO
 ||| @ m The file mode.
 open : (fname : String)
        -> (m : Mode)
-       -> { [FILE_IO ()] ==> [FILE_IO (if result
-                                          then OpenFile m
-                                          else ())] } Eff Bool
+       -> { [FILE_IO ()] ==> {result}
+            [FILE_IO (if result
+                        then OpenFile m
+                        else ())] } Eff Bool
 open f m = call $ Open f m
 
 
