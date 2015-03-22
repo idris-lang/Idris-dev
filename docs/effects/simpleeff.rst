@@ -592,7 +592,7 @@ which ``eval`` can be ``run`` to those which support ``STDIO``, such
 as ``IO``. Once effect lists get longer, it can be a good idea instead
 to encapsulate sets of effects in a type synonym. This is achieved as
 follows, simply by defining a function which computes a type, since
-types are first class in ``Idris``:
+types are first class in Idris:
 
 .. code-block:: idris
 

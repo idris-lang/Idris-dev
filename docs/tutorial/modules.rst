@@ -4,7 +4,7 @@
 Modules and Namespaces
 =======================
 
-An ``Idris`` program consists of a collection of modules. Each module
+An Idris program consists of a collection of modules. Each module
 includes an optional ``module`` declaration giving the name of the
 module, a list of ``import`` statements giving the other modules which
 are to be imported, and a collection of declarations and definitions of
@@ -76,7 +76,7 @@ Export Modifiers
 
 By default, all names defined in a module are exported for use by other
 modules. However, it is good practice only to export a minimal interface
-and keep internal details abstract. ``Idris`` allows functions, types,
+and keep internal details abstract. Idris allows functions, types,
 and classes to be marked as: ``public``, ``abstract`` or ``private``:
 
 -  ``public`` means that both the name and definition are exported. For

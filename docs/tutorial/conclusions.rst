@@ -4,10 +4,10 @@
 Further Reading
 ===============
 
-Further information about ``Idris`` programming, and programming with
+Further information about Idris programming, and programming with
 dependent types in general, can be obtained from various sources:
 
--  The ``Idris`` web site (http://idris-lang.org/) and by asking
+-  The Idris web site (http://idris-lang.org/) and by asking
    questions on the mailing list.
 
 -  The IRC channel ``#idris``, on
@@ -21,14 +21,14 @@ dependent types in general, can be obtained from various sources:
    -  https://github.com/idris-lang/Idris-dev/wiki/Language-Features
 
 - Examining the prelude and exploring the ``samples`` in the
-   distribution. The ``Idris`` source can be found online at:
+   distribution. The Idris source can be found online at:
    https://github.com/idris-lang/Idris-dev.
 
 -  Existing projects on the ``Idris Hackers`` web space:
    http://idris-hackers.github.io.
 
 - Various papers (e.g. [1]_, [2]_, and [3]_).  Although these mostly
-   describe older versions of ``Idris``.
+   describe older versions of Idris.
 
 .. [1] Edwin Brady and Kevin Hammond. 2012. Resource-Safe systems
        programming with embedded domain specific languages. In

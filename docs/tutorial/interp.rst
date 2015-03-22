@@ -22,7 +22,7 @@ booleans, and functions, represented by ``Ty``:
     data Ty = TyInt | TyBool | TyFun Ty Ty
 
 We can write a function to translate these representations to a concrete
-``Idris`` type — remember that types are first class, so can be
+Idris type — remember that types are first class, so can be
 calculated just like any other value:
 
 .. code-block:: idris
@@ -176,7 +176,7 @@ environment:
                                              else interp env e
 
 Given this, an interpreter (Listing :ref:`interpdef`) is a function which
-translates an ``Expr`` into a concrete ``Idris`` value with respect to a
+translates an ``Expr`` into a concrete Idris value with respect to a
 specific environment:
 
 .. code-block:: idris
@@ -199,7 +199,7 @@ value:
 Lambdas are more interesting. In this case, we construct a function
 which interprets the scope of the lambda with a new value in the
 environment. So, a function in the object language is translated to an
-``Idris`` function:
+Idris function:
 
 .. code-block:: idris
 
@@ -214,8 +214,8 @@ because of its type:
     interp env (App f s) = interp env f (interp env s)
 
 Operators and interpreters are, again, direct translations into the
-equivalent ``Idris`` constructs. For operators, we apply the function to
-its operands directly, and for ``If``, we apply the ``Idris``
+equivalent Idris constructs. For operators, we apply the function to
+its operands directly, and for ``If``, we apply the Idris
 ``if...then...else`` construct directly.
 
 .. code-block:: idris
@@ -263,7 +263,7 @@ function on user input:
 Here, ``cast`` is an overloaded function which converts a value from
 one type to another if possible. Here, it converts a string to an
 integer, giving 0 if the input is invalid. An example run of this
-program at the ``Idris`` interactive environment is shown in Listing
+program at the Idris interactive environment is shown in Listing
 :ref:`factrun`.
 
 

@@ -4,7 +4,7 @@
 Interactive Editing
 ===================
 
-By now, we have seen several examples of how ``Idris``’ dependent type
+By now, we have seen several examples of how Idris’ dependent type
 system can give extra confidence in a function’s correctness by giving
 a more precise description of its intended behaviour in its *type*. We
 have also seen an example of how the type system can help with EDSL
@@ -13,7 +13,7 @@ object language. However, precise types give us more than verification
 of programs — we can also exploit types to help write programs which
 are *correct by construction*.
 
-The ``Idris`` REPL provides several commands for inspecting and
+The Idris REPL provides several commands for inspecting and
 modifying parts of programs, based on their types, such as case
 splitting on a pattern variable, inspecting the type of a
 metavariable, and even a basic proof search mechanism. In this
@@ -121,7 +121,7 @@ according to the same heuristic. If we update the file (using
     vzipWith f [] [] = ?vzipWith_rhs_3
 
 That is, the pattern variable ``ys`` has been split into one case
-``[]``, ``Idris`` having noticed that the other possible case ``y ::
+``[]``, Idris having noticed that the other possible case ``y ::
 ys`` would lead to a unification error.
 
 :addmissing

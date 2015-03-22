@@ -94,11 +94,11 @@ cannot get below O(n) with time complexities.
 One could argue that Idris in fact compiles ``Nat`` via GMP but
 that's a moot point for two reasons:
 
-* First, whenever we try to index our datastructures with anything
-else than ``Nat``, the compiler is not going to come to the rescue.
++ First, whenever we try to index our datastructures with anything
+  else than ``Nat``, the compiler is not going to come to the rescue.
 
-* Second, even with ``Nat``, the GMP integers are *still* there and
-they slow the runtime down.
++ Second, even with ``Nat``, the GMP integers are *still* there and
+  they slow the runtime down.
 
 This ought not to be the case since the ``Nat`` are never used at
 runtime and they are only there for typechecking purposes. Hence we

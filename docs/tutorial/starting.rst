@@ -7,7 +7,7 @@ Getting Started
 Prerequisites
 -------------
 
-Before installing ``Idris``, you will need to make sure you have all
+Before installing Idris, you will need to make sure you have all
 of the necessary libraries and tools. You will need:
 
 - A fairly recent Haskell platform. Version 2013.2.0.0 should be
@@ -20,7 +20,7 @@ of the necessary libraries and tools. You will need:
 Downloading and Installing
 --------------------------
 
-The easiest way to install ``Idris``, if you have all of the
+The easiest way to install Idris, if you have all of the
 prerequisites, is to type:
 
 ::
@@ -33,7 +33,7 @@ development version you can find it, as well as build intructions, on
 GitHub at: https://github.com/idris-lang/Idris-dev.
 
 To check that installation has succeeded, and to write your first
-``Idris`` program, create a file called “``hello.idr``” containing the
+Idris program, create a file called “``hello.idr``” containing the
 following text:
 
 If you are familiar with Haskell, it should be fairly clear what the
@@ -48,11 +48,11 @@ create an executable called ``hello``, which you can run:
     $ ./hello
     Hello world
 
-Note that the ``$`` indicates the shell prompt! Should the ``Idris``
+Note that the ``$`` indicates the shell prompt! Should the Idris
 executable not be found please ensure that you have added
 ``~/.cabal/bin`` to your ``$PATH`` environment variable. Mac OS X
 users may find they need to use ``~/Library/Haskell/bin``
-instead. Some useful options to the ``Idris`` command are:
+instead. Some useful options to the Idris command are:
 
 - ``-o prog`` to compile to an executable called ``prog``.
 

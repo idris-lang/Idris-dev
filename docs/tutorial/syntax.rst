@@ -122,7 +122,7 @@ hard to program this way in practice. Recall the factorial program in
                    (Val 1) (Op (*) (app fact (Op (-) (Var Stop) (Val 1)))
                                    (Var Stop)))
 
-Since this is a particularly useful pattern, ``Idris`` provides syntax
+Since this is a particularly useful pattern, Idris provides syntax
 overloading [1]_ to make it easier to program in such object
 languages:
 

@@ -48,7 +48,7 @@ this to happen silently. We define ``head`` as follows:
     head : (xs : List a) -> {auto p : isCons xs = True} -> a
     head (x :: xs) = x
 
-The ``auto`` annotation on the implicit argument means that ``Idris``
+The ``auto`` annotation on the implicit argument means that Idris
 will attempt to fill in the implicit argument using the ``trivial``
 tactic, which searches through the context for a proof, and tries to
 solve with ``refl`` if a proof is not found. Now when ``head`` is
@@ -72,7 +72,7 @@ to:
 Implicit conversions
 --------------------
 
-``Idris`` supports the creation of *implicit conversions*, which allow
+Idris supports the creation of *implicit conversions*, which allow
 automatic conversion of values from one type to another when required to
 make a term type correct. This is intended to increase convenience and
 reduce verbosity. A contrived but simple example is the following:
@@ -101,7 +101,7 @@ beyond the scope of this tutorial.
 Literate programming
 --------------------
 
-Like Haskell, ``Idris`` supports *literate* programming. If a file has
+Like Haskell, Idris supports *literate* programming. If a file has
 an extension of ``.lidr`` then it is assumed to be a literate file. In
 literate programs, everything is assumed to be a comment unless the line
 begins with a greater than sign ``>``, for example:
@@ -124,7 +124,7 @@ Foreign function calls
 
 For practical programming, it is often necessary to be able to use
 external libraries, particularly for interfacing with the operating
-system, file system, networking, *et cetera*. ``Idris`` provides a
+system, file system, networking, *et cetera*. Idris provides a
 lightweight foreign function interface for achieving this, as part of
 the prelude. For this, we assume a certain amount of knowledge of C and
 the ``gcc`` compiler. First, we define a datatype which describes the
@@ -136,7 +136,7 @@ external types we can handle:
 
 Each of these corresponds directly to a C type. Respectively: ``int``,
 ``double``, ``char``, ``char*``, ``void*`` and ``void``. There is also a
-translation to a concrete ``Idris`` type, described by the following
+translation to a concrete Idris type, described by the following
 function:
 
 .. code-block:: idris
@@ -150,7 +150,7 @@ function:
     interpFTy FUnit   = ()
 
 A foreign function is described by a list of input types and a return
-type, which can then be converted to an ``Idris`` type:
+type, which can then be converted to an Idris type:
 
 .. code-block:: idris
 
@@ -170,7 +170,7 @@ A foreign function is assumed to be impure, so ``ForeignTy`` builds an
 We build a call to a foreign function by giving the name of the
 function, a list of argument types and the return type. The built in
 construct ``mkForeign`` converts this description to a function callable
-by ``Idris``:
+by Idris:
 
 .. code-block:: idris
 
@@ -194,7 +194,7 @@ Include and linker directives
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Foreign function calls are translated directly to calls to C functions,
-with appropriate conversion between the ``Idris`` representation of a
+with appropriate conversion between the Idris representation of a
 value and the C representation. Often this will require extra libraries
 to be linked in, or extra header and object files. This is made possible
 through the following directives:
@@ -303,7 +303,7 @@ are available in an external collection [1]_.
 C Target
 --------
 
-The default target of ``Idris`` is C. Compiling via :
+The default target of Idris is C. Compiling via :
 
 ::
 
@@ -343,7 +343,7 @@ is shown below :
 JavaScript Target
 -----------------
 
-``Idris`` is capable of producing *JavaScript* code that can be run in a
+Idris is capable of producing *JavaScript* code that can be run in a
 browser as well as in the *NodeJS* environment or alike. One can use the
 FFI to communicate with the *JavaScript* ecosystem.
 
@@ -360,7 +360,7 @@ that is tailored for running in the browser issue the following command:
 The resulting file can be embedded into your HTML just like any other
 *JavaScript* code.
 
-Generating code for *NodeJS* is slightly different. ``Idris`` outputs a
+Generating code for *NodeJS* is slightly different. Idris outputs a
 *JavaScript* file that can be directly executed via ``node``.
 
 ::
@@ -421,7 +421,7 @@ the way we use ``f`` in ``twice``, it would be more obvious if
 
 The *JavaScript* FFI is able to understand functions as arguments when
 you give it something of type ``FFunction``. The following example code
-calls ``twice`` in *JavaScript* and returns the result to our ``Idris``
+calls ``twice`` in *JavaScript* and returns the result to our Idris
 program:
 
 .. code-block:: idris
@@ -450,7 +450,7 @@ via FFI which are stored in external files. The *JavaScript* and
 mind that *JavaScript* and *NodeJS* are handled as different code
 generators, therefore you will have to state which one you want to
 target. This means that you can include different files for *JavaScript*
-and *NodeJS* in the same ``Idris`` source file.
+and *NodeJS* in the same Idris source file.
 
 So whenever you want to add an external *JavaScript* file you can do
 this like so:
@@ -488,13 +488,13 @@ This directive compiles into the following *JavaScript*
 Shrinking down generated *JavaScript*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``Idris`` can produce very big chunks of *JavaScript* code. However, the
+Idris can produce very big chunks of *JavaScript* code. However, the
 generated code can be minified using the ``closure-compiler`` from
 Google. Any other minifier is also suitable but ``closure-compiler``
 offers advanced compilation that does some aggressive inlining and code
-elimination. ``Idris`` can take full advantage of this compilation mode
+elimination. Idris can take full advantage of this compilation mode
 and it’s highly recommended to use it when shipping a *JavaScript*
-application written in ``Idris``.
+application written in Idris.
 
 Cumulativity
 ------------
@@ -509,7 +509,7 @@ types themselves have types. For example:
     *universe> :t Vect
     Vect : Nat -> Type -> Type
 
-But what about the type of ``Type``? If we ask ``Idris`` it reports
+But what about the type of ``Type``? If we ask Idris it reports
 
 ::
 

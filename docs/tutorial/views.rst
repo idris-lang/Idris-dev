@@ -28,7 +28,7 @@ The ``with`` rule — matching intermediate values
 ------------------------------------------------
 
 Very often, we need to match on the result of an intermediate
-computation. ``Idris`` provides a construct for this, the ``with``
+computation. Idris provides a construct for this, the ``with``
 rule, inspired by views in ``Epigram`` [1]_, which takes account of
 the fact that matching on a value in a dependently typed language can
 affect what we know about the forms of other values. In its simplest
