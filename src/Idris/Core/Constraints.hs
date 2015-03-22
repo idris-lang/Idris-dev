@@ -32,6 +32,8 @@ data SolverState =
         , domainStore :: M.Map Var ( Domain
                                    , S.Set ConstraintFC        -- constraints that effected this variable
                                    )
+        , cons_lhs    :: M.Map Var (S.Set ConstraintFC)
+        , cons_rhs    :: M.Map Var (S.Set ConstraintFC)
         }
 
 data Queue = Queue [ConstraintFC] (S.Set UConstraint)
@@ -60,6 +62,8 @@ solve maxUniverseLevel ucs =
                                       , v <- varsIn c
                                       ]
                         ]
+                    , cons_lhs = constraintsLHS
+                    , cons_rhs = constraintsRHS
                     }
 
         lhs (ULT (UVar x) _) = Just (Var x)
@@ -175,8 +179,9 @@ solve maxUniverseLevel ucs =
 
         -- | add all constraints (with the given var on the lhs) to the queue
         addToQueueLHS :: MonadState SolverState m => UConstraint -> Var -> m ()
-        addToQueueLHS thisCons var =
-            case M.lookup var constraintsLHS of
+        addToQueueLHS thisCons var = do
+            clhs <- gets cons_lhs
+            case M.lookup var clhs of
                 Nothing -> return ()
                 Just cs -> do
                     Queue list set <- gets queue
@@ -189,8 +194,9 @@ solve maxUniverseLevel ucs =
 
         -- | add all constraints (with the given var on the rhs) to the queue
         addToQueueRHS :: MonadState SolverState m => UConstraint -> Var -> m ()
-        addToQueueRHS thisCons var =
-            case M.lookup var constraintsRHS of
+        addToQueueRHS thisCons var = do
+            crhs <- gets cons_rhs
+            case M.lookup var crhs of
                 Nothing -> return ()
                 Just cs -> do
                     Queue list set <- gets queue
