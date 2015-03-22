@@ -154,7 +154,7 @@ solve maxUniverseLevel inpConstraints =
                 : "Involved constraints: "
                 : map (("\t"++) . show) (suspect : S.toList suspects)
             modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
-            addToQueueRHS (Var var)
+            addToQueueRHS (fst suspect) (Var var)
         updateUpperBoundOf _ UVal{} _ = return ()
 
         updateLowerBoundOf :: (UConstraint, FC) -> UExp -> Int -> StateT SolverState TC ()
@@ -170,30 +170,32 @@ solve maxUniverseLevel inpConstraints =
                 : "Involved constraints: "
                 : map (("\t"++) . show) (suspect : S.toList suspects)
             modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
-            addToQueueLHS (Var var)
+            addToQueueLHS (fst suspect) (Var var)
         updateLowerBoundOf _ UVal{} _ = return ()
 
         -- | add all constraints (with the given var on the lhs) to the queue
-        addToQueueLHS :: MonadState SolverState m => Var -> m ()
-        addToQueueLHS var =
+        addToQueueLHS :: MonadState SolverState m => UConstraint -> Var -> m ()
+        addToQueueLHS thisCons var =
             case M.lookup var constraintsLHS of
                 Nothing -> return ()
                 Just cs -> do
                     Queue list set <- gets queue
-                    let newCons = [ c | c <- S.toList cs, fst c `S.notMember` set ]
+                    let set' = S.insert thisCons set
+                    let newCons = [ c | c <- S.toList cs, fst c `S.notMember` set' ]
                     if null newCons
                         then return ()
                         else modify $ \ st -> st { queue = Queue (list ++ newCons)
                                                                  (S.union set (S.fromList (map fst newCons))) }
 
         -- | add all constraints (with the given var on the rhs) to the queue
-        addToQueueRHS :: MonadState SolverState m => Var -> m ()
-        addToQueueRHS var =
+        addToQueueRHS :: MonadState SolverState m => UConstraint -> Var -> m ()
+        addToQueueRHS thisCons var =
             case M.lookup var constraintsRHS of
                 Nothing -> return ()
                 Just cs -> do
                     Queue list set <- gets queue
-                    let newCons = [ c | c <- S.toList cs, fst c `S.notMember` set ]
+                    let set' = S.insert thisCons set
+                    let newCons = [ c | c <- S.toList cs, fst c `S.notMember` set' ]
                     if null newCons
                         then return ()
                         else modify $ \ st -> st { queue = Queue (list ++ newCons)
