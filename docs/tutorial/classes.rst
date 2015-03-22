@@ -366,7 +366,7 @@ Rather than having to insert ``m_app`` everywhere there is an
 application, we can use to do the job for us. To do this, we can make
 ``Maybe`` an instance of ``Applicative`` as follows, where ``<>`` is
 defined in the same way as ``m_app`` above (this is defined in the
-``Idris`` library):
+Idris library):
 
 .. code-block:: idris
 
@@ -481,7 +481,7 @@ Given the following list:
     testList = [3,4,1]
 
 We can sort it using the default ``Ord`` instance, then the named
-instance ``myord`` as follows, at the ``Idris`` prompt:
+instance ``myord`` as follows, at the Idris prompt:
 
 ::
 

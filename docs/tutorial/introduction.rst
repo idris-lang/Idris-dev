@@ -35,10 +35,10 @@ following type to the ``app`` function, which concatenates vectors:
 
     app : Vect n a -> Vect m a -> Vect (n + m) a
 
-This tutorial introduces ``Idris``, a general purpose functional
-programming language with dependent types. The goal of the ``Idris``
+This tutorial introduces Idris, a general purpose functional
+programming language with dependent types. The goal of the Idris
 project is to build a dependently typed language suitable for
-verifiable *systems* programming. To this end, ``Idris`` is a compiled
+verifiable *systems* programming. To this end, Idris is a compiled
 language which aims to generate efficient executable code. It also has
 a lightweight foreign function interface which allows easy interaction
 with external ``C`` libraries.
@@ -58,7 +58,7 @@ Example Code
 ------------
 
 This tutorial includes some example code, which has been tested with
-``Idris`` version . The files are available in the ``Idris``
+Idris version . The files are available in the Idris
 distribution, and provided along side the tutorial source, so that you
 can try them out easily, under ``tutorial/examples``. However, it is
 strongly recommended that you can type them in yourself, rather than

@@ -71,9 +71,9 @@ Provisional definitions are written in the same way as ordinary
 definitions, except that they introduce the right hand side with a
 ``?=`` rather than ``=``. We define ``parity`` as follows:
 
-When written in this form, instead of reporting a type error, ``Idris``
+When written in this form, instead of reporting a type error, Idris
 will insert a metavariable standing for a theorem which will correct the
-type error. ``Idris`` tells us we have two proof obligations, with names
+type error. Idris tells us we have two proof obligations, with names
 generated from the module and function names:
 
 .. code-block:: idris
@@ -161,14 +161,14 @@ reversed:
 Suspension of Disbelief
 -----------------------
 
-``Idris`` requires that proofs be complete before compiling programs
+Idris requires that proofs be complete before compiling programs
 (although evaluation at the prompt is possible without proof details).
 Sometimes, especially when prototyping, it is easier not to have to do
 this. It might even be beneficial to test programs before attempting to
 prove things about them — if testing finds an error, you know you had
 better not waste your time proving something!
 
-Therefore, ``Idris`` provides a built-in coercion function, which allows
+Therefore, Idris provides a built-in coercion function, which allows
 you to use a value of the incorrect types:
 
 .. code-block:: idris

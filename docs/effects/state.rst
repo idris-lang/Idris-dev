@@ -77,7 +77,7 @@ explicit.
 Introducing ``Effects``
 -----------------------
 
-``Idris`` provides a library, ``Effects`` [3]_, which captures this
+Idris provides a library, ``Effects`` [3]_, which captures this
 pattern and many others involving effectful computation [1]_. An
 effectful program ``f`` has a type of the following form:
 

@@ -7,13 +7,13 @@ Types and Functions
 Primitive Types
 ---------------
 
-``Idris`` defines several primitive types: ``Int``, ``Integer`` and
+Idris defines several primitive types: ``Int``, ``Integer`` and
 ``Float`` for numeric operations, ``Char`` and ``String`` for text
 manipulation, and ``Ptr`` which represents foreign pointers. There are
 also several data types declared in the library, including ``Bool``,
 with values ``True`` and ``False``. We can declare some constants with
 these types. Enter the following into a file ``prims.idr`` and load it
-into the ``Idris`` interactive environment by typing ``idris
+into the Idris interactive environment by typing ``idris
 prims.idr``:
 
 .. code-block:: idris
@@ -32,9 +32,9 @@ prims.idr``:
     quux : Bool
     quux = False
 
-An ``Idris`` file consists of an optional module declaration (here
+An Idris file consists of an optional module declaration (here
 ``module prims``) followed by an optional list of imports (none here,
-however ``Idris`` programs can consist of several modules, and the
+however Idris programs can consist of several modules, and the
 definitions in each module each have their own namespace, as we will
 discuss in Section :ref:`sect-namespaces`) and a collection of
 declarations and definitions. The order of definitions is significant
@@ -46,7 +46,7 @@ declaration.  Alternatively, declarations may be terminated with a
 semicolon.
 
 A library module ``prelude`` is automatically imported by every
-``Idris`` program, including facilities for IO, arithmetic, data
+Idris program, including facilities for IO, arithmetic, data
 structures and various common functions. The prelude defines several
 arithmetic and comparison operators, which we can use at the prompt.
 Evaluating things at the prompt gives an answer, and the type of the
@@ -108,7 +108,7 @@ Functions
 ---------
 
 Functions are implemented by pattern matching, again using a similar
-syntax to Haskell. The main difference is that ``Idris`` requires type
+syntax to Haskell. The main difference is that Idris requires type
 declarations for all functions, using a single colon ``:`` (rather
 than Haskell’s double colon ``::``). Some natural number arithmetic
 functions can be defined as follows, again taken from the standard
@@ -133,7 +133,7 @@ names must begin with a capital letter or not. Function names
 (``plus`` and ``mult`` above), data constructors (``Z``, ``S``,
 ``Nil`` and ``::``) and type constructors (``Nat`` and ``List``) are
 all part of the same namespace. We can test these functions at the
-``Idris`` prompt:
+Idris prompt:
 
 ::
 
@@ -144,10 +144,10 @@ all part of the same namespace. We can test these functions at the
 
 .. note::
 
-    ``Idris`` automatically desugars the ``Nat`` representation into a
+    Idris automatically desugars the ``Nat`` representation into a
     more human readable format. The result of ``plus (S (S Z)) (S (S Z))``
     is actually ``(S (S (S (S Z))))`` which is the Integer 4. This can be
-    checked at the ``Idris`` prompt:
+    checked at the Idris prompt:
 
 ::
 
@@ -169,7 +169,7 @@ computers have perfectly good integer arithmetic built in. The reason
 is primarily that unary numbers have a very convenient structure which
 is easy to reason about, and easy to relate to other data structures
 as we will see later. Nevertheless, we do not want this convenience to
-be at the expense of efficiency. Fortunately, ``Idris`` knows about
+be at the expense of efficiency. Fortunately, Idris knows about
 the relationship between ``Nat`` (and similarly structured types) and
 numbers. This means it can optimise the representation, and functions
 such as ``plus`` and ``mult``.
@@ -248,7 +248,7 @@ Vectors
 
 A standard example of a dependent type is the type of “lists with
 length”, conventionally called vectors in the dependent type
-literature.  They are available as part of the ``Idris`` library, by
+literature.  They are available as part of the Idris library, by
 importing ``Data.Vect``, or we can declare them as follows:
 
 .. code-block:: idris
@@ -258,7 +258,7 @@ importing ``Data.Vect``, or we can declare them as follows:
        (::) : a -> Vect k a -> Vect (S k) a
 
 Note that we have used the same constructor names as for ``List``.
-Ad-hoc name overloading such as this is accepted by ``Idris``,
+Ad-hoc name overloading such as this is accepted by Idris,
 provided that the names are declared in different namespaces (in
 practice, normally in different modules). Ambiguous constructor names
 can normally be resolved from context.
@@ -289,7 +289,7 @@ defined as follows, appends two ``Vect``:
 
 The type of ``(++)`` states that the resulting vector’s length will be
 the sum of the input lengths. If we get the definition wrong in such a
-way that this does not hold, ``Idris`` will not accept the definition.
+way that this does not hold, Idris will not accept the definition.
 For example:
 
 .. code-block:: idris
@@ -298,7 +298,7 @@ For example:
     (++) Nil       ys = ys
     (++) (x :: xs) ys = x :: xs ++ xs -- BROKEN
 
-When run through the ``Idris`` type checker, this results in the
+When run through the Idris type checker, this results in the
 following:
 
 ::
@@ -325,7 +325,7 @@ The Finite Sets
 ~~~~~~~~~~~~~~~
 
 Finite sets, as the name suggests, are sets with a finite number of
-elements. They are available as part of the ``Idris`` library, by
+elements. They are available as part of the Idris library, by
 importing ``Data.Fin``, or can be declared as follows:
 
 .. code-block:: idris
@@ -480,9 +480,9 @@ I/O
 
 Computer programs are of little use if they do not interact with the
 user or the system in some way. The difficulty in a pure language such
-as ``Idris`` — that is, a language where expressions do not have
+as Idris — that is, a language where expressions do not have
 side-effects — is that I/O is inherently side-effecting. Therefore in
-``Idris``, such interactions are encapsulated in the type ``IO``:
+Idris, such interactions are encapsulated in the type ``IO``:
 
 .. code-block:: idris
 
@@ -567,7 +567,7 @@ Laziness
 --------
 
 Normally, arguments to functions are evaluated before the function
-itself (that is, ``Idris`` uses *eager* evaluation). However, this is
+itself (that is, Idris uses *eager* evaluation). However, this is
 not always the best approach. Consider the following function:
 
 .. code-block:: idris
@@ -579,7 +579,7 @@ not always the best approach. Consider the following function:
 This function uses one of the ``t`` or ``e`` arguments, but not both
 (in fact, this is used to implement the ``if...then...else`` construct
 as we will see later. We would prefer if *only* the argument which was
-used was evaluated. To achieve this, ``Idris`` provides a ``Lazy``
+used was evaluated. To achieve this, Idris provides a ``Lazy``
 data type, which allows evaluation to be suspended:
 
 .. code-block:: idris
@@ -590,7 +590,7 @@ data type, which allows evaluation to be suspended:
     Force : Lazy a -> a
 
 A value of type ``Lazy a`` is unevaluated until it is forced by
-``Force``. The ``Idris`` type checker knows about the ``Lazy`` type,
+``Force``. The Idris type checker knows about the ``Lazy`` type,
 and inserts conversions where necessary between ``Lazy a`` and ``a``,
 and vice versa. We can therefore write ``boolCase`` as follows,
 without any explicit use of ``Force`` or ``Delay``:
@@ -604,10 +604,10 @@ without any explicit use of ``Force`` or ``Delay``:
 Useful Data Types
 -----------------
 
-``Idris`` includes a number of useful data types and library functions
+Idris includes a number of useful data types and library functions
 (see the ``libs/`` directory in the distribution). This chapter
 describes a few of these. The functions described here are imported
-automatically by every ``Idris`` program, as part of ``Prelude.idr``.
+automatically by every Idris program, as part of ``Prelude.idr``.
 
 ``List`` and ``Vect``
 ~~~~~~~~~~~~~~~~~~~~~
@@ -679,7 +679,7 @@ directory. For more details of the functions available on ``List`` and
 -  ``libs/base/Data/VectType.idr``
 
 Functions include filtering, appending, reversing, and so on. Also
-remember that ``Idris`` is still in development, so if you don’t see
+remember that Idris is still in development, so if you don’t see
 the function you need, please feel free to add it and submit a patch!
 
 Aside: Anonymous functions and operator sections
@@ -877,7 +877,7 @@ pattern matching at the top level:
 List comprehensions
 ~~~~~~~~~~~~~~~~~~~
 
-``Idris`` provides *comprehension* notation as a convenient shorthand
+Idris provides *comprehension* notation as a convenient shorthand
 for building lists. The general form is:
 
 ::
@@ -959,7 +959,7 @@ Dependent Records
 -----------------
 
 *Records* are data types which collect several values (the record's
-*fields*) together. ``Idris`` provides syntax for defining records and
+*fields*) together. Idris provides syntax for defining records and
 *automatically generating field access and update functions. For
 *example, we can represent a person's name and age in a record:
 
@@ -1029,7 +1029,7 @@ length because it will not affect the type of the record:
 Nested record update
 ~~~~~~~~~~~~~~~~~~~~
 
-``Idris`` also provides a convenient syntax for accessing and updating
+Idris also provides a convenient syntax for accessing and updating
 nested records. For example, if a field is accessible with the
 expression ``c (b (a x))``, it can be updated using the following
 syntax:

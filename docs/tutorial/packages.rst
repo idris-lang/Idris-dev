@@ -4,9 +4,9 @@
 Packages
 ========
 
-``Idris`` includes a simple system for building packages from a
-package description file. These files can be used with the ``Idris``
-compiler to manage the development process of your ``Idris``
+Idris includes a simple system for building packages from a
+package description file. These files can be used with the Idris
+compiler to manage the development process of your Idris
 programmes and packages.
 
 Package Descriptions
@@ -27,7 +27,7 @@ written as follows::
     modules = foo, bar
 
 Other examples of package files can be found in the ``libs`` directory
-of the main ``Idris`` repository, and in `third-party libraries <https://github.com/idris-lang/Idris-dev/wiki/Libraries>`_.
+of the main Idris repository, and in `third-party libraries <https://github.com/idris-lang/Idris-dev/wiki/Libraries>`_.
 
 Other common fields which may be present in an ``ipkg`` file are:
 
@@ -42,13 +42,13 @@ Other common fields which may be present in an ``ipkg`` file are:
   must be present if the executable field is present.
 
 + ``opts = "<idris options>"``, which allows options (such as other
-  packages) to be passed to ``Idris``.
+  packages) to be passed to Idris.
 
 In more advanced cases, particularly to support creating bindings to
 external ``C`` libraries, the following options are available:
 
 + ``makefile = <file>``, which specifies a ``Makefile``, to be built
-  before the ``Idris`` modules, for example to support linking with a
+  before the Idris modules, for example to support linking with a
   ``C`` library.
 
 + ``libs = <libs>``, which gives a comma separated list of libraries
@@ -60,12 +60,12 @@ external ``C`` libraries, the following options are available:
 Using Package files
 -------------------
 
-Given an ``Idris`` package file ``text.ipkg`` it can be used with the ``Idris`` compiler as follows:
+Given an Idris package file ``text.ipkg`` it can be used with the Idris compiler as follows:
 
 + ``idris --build test.ipkg`` will build all modules in the package
 
 + ``idris --install test.ipkg`` will install the package, making it
-  accessible by other ``Idris`` libraries and programs.
+  accessible by other Idris libraries and programs.
 
 + ``idris --clean test.ipkg`` will delete all intermediate code and
   executable files generated when building.

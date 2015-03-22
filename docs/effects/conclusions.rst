@@ -5,7 +5,7 @@ Further Reading
 ===============
 
 This tutorial has given an introduction to writing and reasoning about
-side-effecting programs in ``Idris``, using the ``Effects`` library.
+side-effecting programs in Idris, using the ``Effects`` library.
 More details about the *implementation* of the library, such as how
 ``run`` works, how handlers are invoked, etc, are given in a separate
 paper [1]_.

@@ -14,10 +14,10 @@ and supports programming and reasoning with side-effecting programs,
 supporting mutable state, interaction with the outside world,
 exceptions, and verified resource management.
 
-This tutorial assumes familiarity with pure programming in ``Idris``,
+This tutorial assumes familiarity with pure programming in Idris,
 as described in Sections 1–6 of the main tutorial [1]_. The examples
-are presented are tested with ``Idris`` and can be found in the
-examples directory of the ``Idris`` repository.
+are presented are tested with Idris and can be found in the
+examples directory of the Idris repository.
 
 Consider, for example, the following introductory function which
 illustrates the kind of properties which can be expressed in the type
@@ -47,7 +47,7 @@ able to apply the ``vadd`` function? Before doing so, we will have to:
 
 The complete program will include side-effects for I/O and error
 handling, before we can get to the pure core functionality. In this
-tutorial, we will see how ``Idris`` supports side-effects.
+tutorial, we will see how Idris supports side-effects.
 Furthermore, we will see how we can use the dependent type system to
 *reason* about stateful and side-effecting programs. We will return to
 this specific example later.
@@ -78,7 +78,7 @@ returns the unit value.  All programs using the ``Effects`` library must
 ``import Effects``.  The details of the ``Eff`` type will be presented in the
 remainder of this tutorial.
 
-To compile and run this program, ``Idris`` needs to be told to include
+To compile and run this program, Idris needs to be told to include
 the ``Effects`` package, using the ``-p effects`` flag (this flag is
 required for all examples in this tutorial):
 
