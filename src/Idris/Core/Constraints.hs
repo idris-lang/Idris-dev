@@ -62,14 +62,34 @@ solve maxUniverseLevel ucs =
                         ]
                     }
 
-        -- | a map from variables to the list of constraints the variable occurs in.
-        constraints :: M.Map Var (S.Set ConstraintFC)
-        constraints = M.fromListWith S.union
-            [ (v, S.singleton (ConstraintFC c fc))
-            | ConstraintFC c fc <- inpConstraints
+        lhs (ULT (UVar x) _) = Just (Var x)
+        lhs (ULE (UVar x) _) = Just (Var x)
+        lhs _ = Nothing
+
+        rhs (ULT _ (UVar x)) = Just (Var x)
+        rhs (ULE _ (UVar x)) = Just (Var x)
+        rhs _ = Nothing
+
+        -- | a map from variables to the list of constraints the variable occurs in. (in the LHS of a constraint)
+        constraintsLHS :: M.Map Var (S.Set (UConstraint, FC))
+        constraintsLHS = M.fromListWith S.union
+            [ (v, S.singleton (c,fc))
+            | (c, fc) <- inpConstraints
             , let vars = varsIn c
             , length vars > 1               -- do not register unary constraints
             , v <- vars
+            , lhs c == Just v
+            ]
+
+        -- | a map from variables to the list of constraints the variable occurs in. (in the RHS of a constraint)
+        constraintsRHS :: M.Map Var (S.Set (UConstraint, FC))
+        constraintsRHS = M.fromListWith S.union
+            [ (v, S.singleton (c,fc))
+            | (c, fc) <- inpConstraints
+            , let vars = varsIn c
+            , length vars > 1               -- do not register unary constraints
+            , v <- vars
+            , rhs c == Just v
             ]
 
         -- | this is where the actual work is done.
@@ -87,15 +107,15 @@ solve maxUniverseLevel ucs =
                         ULE a b -> do
                             Domain lowerA upperA <- domainOf a
                             Domain lowerB upperB <- domainOf b
-                            when (upperB < upperA) $ updateDomainOf (ConstraintFC cons fc) a (Domain lowerA upperB)
-                            when (lowerA > lowerB) $ updateDomainOf (ConstraintFC cons fc) b (Domain lowerA upperB)
+                            when (upperB < upperA) $ updateUpperBoundOf (cons, fc) a upperB
+                            when (lowerA > lowerB) $ updateLowerBoundOf (cons, fc) b lowerA
                         ULT a b -> do
                             Domain lowerA upperA <- domainOf a
                             Domain lowerB upperB <- domainOf b
                             let upperB_pred = pred upperB
                             let lowerA_succ = succ lowerA
-                            when (upperB_pred < upperA) $ updateDomainOf (ConstraintFC cons fc) a (Domain lowerA upperB_pred)
-                            when (lowerA_succ > lowerB) $ updateDomainOf (ConstraintFC cons fc) b (Domain lowerA_succ upperB)
+                            when (upperB_pred < upperA) $ updateUpperBoundOf (cons, fc) a upperB_pred
+                            when (lowerA_succ > lowerB) $ updateLowerBoundOf (cons, fc) b lowerA_succ
                     propagate
 
         -- | extract a solution from the state.
@@ -121,13 +141,12 @@ solve maxUniverseLevel ucs =
         domainOf (UVar var) = gets (fst . (M.! Var var) . domainStore)
         domainOf (UVal val) = return (Domain val val)
 
-        -- | updates the domain of a variable.
-        --   this function is also where we fail, inc ase of a domain wipe-out.
-        updateDomainOf :: ConstraintFC -> UExp -> Domain -> StateT SolverState TC ()
-        updateDomainOf suspect (UVar var) newDom = do
+        updateUpperBoundOf :: (UConstraint, FC) -> UExp -> Int -> StateT SolverState TC ()
+        updateUpperBoundOf suspect (UVar var) upper = do
             doms <- gets domainStore
-            let (oldDom, suspects) = doms M.! Var var
-            when (wipeOut newDom) $ lift $ Error $ At (ufc suspect) $ Msg $ unlines
+            let (oldDom@(Domain lower _), suspects) = doms M.! Var var
+            let newDom = Domain lower upper
+            when (wipeOut newDom) $ lift $ Error $ At (snd suspect) $ Msg $ unlines
                 $ "Universe inconsistency."
                 : ("Working on: " ++ show (UVar var))
                 : ("Old domain: " ++ show oldDom)
@@ -135,17 +154,48 @@ solve maxUniverseLevel ucs =
                 : "Involved constraints: "
                 : map (("\t"++) . show) (suspect : S.toList suspects)
             modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
-            addToQueue (Var var)
-        updateDomainOf _ UVal{} _ = return ()
+            addToQueueRHS (fst suspect) (Var var)
+        updateUpperBoundOf _ UVal{} _ = return ()
 
-        -- | add all constraints related to a variable.
-        addToQueue :: MonadState SolverState m => Var -> m ()
-        addToQueue var =
-            case M.lookup var constraints of
+        updateLowerBoundOf :: (UConstraint, FC) -> UExp -> Int -> StateT SolverState TC ()
+        updateLowerBoundOf suspect (UVar var) lower = do
+            doms <- gets domainStore
+            let (oldDom@(Domain _ upper), suspects) = doms M.! Var var
+            let newDom = Domain lower upper
+            when (wipeOut newDom) $ lift $ Error $ At (snd suspect) $ Msg $ unlines
+                $ "Universe inconsistency."
+                : ("Working on: " ++ show (UVar var))
+                : ("Old domain: " ++ show oldDom)
+                : ("New domain: " ++ show newDom)
+                : "Involved constraints: "
+                : map (("\t"++) . show) (suspect : S.toList suspects)
+            modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
+            addToQueueLHS (fst suspect) (Var var)
+        updateLowerBoundOf _ UVal{} _ = return ()
+
+        -- | add all constraints (with the given var on the lhs) to the queue
+        addToQueueLHS :: MonadState SolverState m => UConstraint -> Var -> m ()
+        addToQueueLHS thisCons var =
+            case M.lookup var constraintsLHS of
                 Nothing -> return ()
                 Just cs -> do
                     Queue list set <- gets queue
-                    let newCons = [ c | c <- S.toList cs, uconstraint c `S.notMember` set ]
+                    let set' = S.insert thisCons set
+                    let newCons = [ c | c <- S.toList cs, fst c `S.notMember` set' ]
+                    if null newCons
+                        then return ()
+                        else modify $ \ st -> st { queue = Queue (list ++ newCons)
+                                                                 (S.union set (S.fromList (map fst newCons))) }
+
+        -- | add all constraints (with the given var on the rhs) to the queue
+        addToQueueRHS :: MonadState SolverState m => UConstraint -> Var -> m ()
+        addToQueueRHS thisCons var =
+            case M.lookup var constraintsRHS of
+                Nothing -> return ()
+                Just cs -> do
+                    Queue list set <- gets queue
+                    let set' = S.insert thisCons set
+                    let newCons = [ c | c <- S.toList cs, fst c `S.notMember` set' ]
                     if null newCons
                         then return ()
                         else modify $ \ st -> st { queue = Queue (list ++ newCons)
