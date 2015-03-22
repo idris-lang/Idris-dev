@@ -277,7 +277,7 @@ syntaxRule syn
          when (length ns /= length (nub ns))
             $ unexpected "repeated variable in syntax rule"
          lchar '='
-         tm <- typeExpr (allowImp syn) >>= uniquifyBinders
+         tm <- typeExpr (allowImp syn) >>= uniquifyBinders [n | Binding n <- syms]
          terminator
          return (Rule (mkSimple syms) tm sty)
   where
@@ -301,39 +301,48 @@ syntaxRule syn
     
     -- Prevent syntax variable capture by making all binders under syntax unique
     -- (the ol' Common Lisp GENSYM approach)
-    uniquifyBinders :: PTerm -> IdrisParser PTerm
-    uniquifyBinders = fixBind []
+    uniquifyBinders :: [Name] -> PTerm -> IdrisParser PTerm
+    uniquifyBinders userNames = fixBind []
+      where
+        fixBind :: [(Name, Name)] -> PTerm -> IdrisParser PTerm
+        fixBind rens (PRef fc n) | Just n' <- lookup n rens =
+          return $ PRef fc n'
+        fixBind rens (PPatvar fc n) | Just n' <- lookup n rens =
+          return $ PPatvar fc n'
+        fixBind rens (PLam fc n ty body)
+          | n `elem` userNames = liftM2 (PLam fc n) (fixBind rens ty) (fixBind rens body)
+          | otherwise =
+            do ty' <- fixBind rens ty
+               n' <- gensym n
+               body' <- fixBind ((n,n'):rens) body
+               return $ PLam fc n' ty' body'
+        fixBind rens (PPi plic n argTy body)
+          | n `elem` userNames = liftM2 (PPi plic n) (fixBind rens argTy) (fixBind rens body)
+          | otherwise =
+            do ty' <- fixBind rens argTy
+               n' <- gensym n
+               body' <- fixBind ((n,n'):rens) body
+               return $ (PPi plic n' ty' body')
+        fixBind rens (PLet fc n ty val body)
+          | n `elem` userNames = liftM3 (PLet fc n)
+                                        (fixBind rens ty)
+                                        (fixBind rens val)
+                                        (fixBind rens body)
+          | otherwise =
+            do ty' <- fixBind rens ty
+               val' <- fixBind rens val
+               n' <- gensym n
+               body' <- fixBind ((n,n'):rens) body
+               return $ (PLet fc n' ty' val' body')
+        fixBind rens (PMatchApp fc n) | Just n' <- lookup n rens =
+          return $ PMatchApp fc n'
+        fixBind rens x = descendM (fixBind rens) x
 
-    fixBind :: [(Name, Name)] -> PTerm -> IdrisParser PTerm
-    fixBind rens (PRef fc n) | Just n' <- lookup n rens =
-      return $ PRef fc n'
-    fixBind rens (PPatvar fc n) | Just n' <- lookup n rens =
-      return $ PPatvar fc n'
-    fixBind rens (PLam fc n ty body) =
-      do ty' <- fixBind rens ty
-         n' <- gensym n
-         body' <- fixBind ((n,n'):rens) body
-         return $ PLam fc n' ty' body'
-    fixBind rens (PPi plic n argTy body) =
-      do ty' <- fixBind rens argTy
-         n' <- gensym n
-         body' <- fixBind ((n,n'):rens) body
-         return $ (PPi plic n' ty' body')
-    fixBind rens (PLet fc n ty val body) =
-      do ty' <- fixBind rens ty
-         val' <- fixBind rens val
-         n' <- gensym n
-         body' <- fixBind ((n,n'):rens) body
-         return $ (PLet fc n' ty' val' body')
-    fixBind rens (PMatchApp fc n) | Just n' <- lookup n rens =
-      return $ PMatchApp fc n'
-    fixBind rens x = descendM (fixBind rens) x
-
-    gensym :: Name -> IdrisParser Name
-    gensym n = do ist <- get
-                  let idx = idris_name ist
-                  put ist { idris_name = idx + 1 }
-                  return $ sMN idx (show n)
+        gensym :: Name -> IdrisParser Name
+        gensym n = do ist <- get
+                      let idx = idris_name ist
+                      put ist { idris_name = idx + 1 }
+                      return $ sMN idx (show n)
 
 {- | Parses a syntax symbol (either binding variable, keyword or expression)
 
