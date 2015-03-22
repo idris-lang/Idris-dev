@@ -183,6 +183,7 @@ shown in Listing [introprog].
 
     module Main
 
+    import Effects
     import Effect.State
 
     data BTree a = Leaf

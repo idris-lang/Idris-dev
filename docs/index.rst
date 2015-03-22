@@ -6,30 +6,20 @@
 Documentation for the Idris Language
 ====================================
 
-    This work is licensed under the Creative Commons
-    Attribution-ShareAlike 4.0 International License. To view a copy
-    of this license, visit
-    http://creativecommons.org/licenses/by-sa/4.0/.
+.. note::
 
-* :ref:`reference-index`
+   The documentation for Idris has been published under the Creative
+   Commons CC0 License. As such to the extent possible under law, /The
+   Idris Community/ has waived all copyright and related or neighboring
+   rights to Documentation for Idris.
+
+   More information concerning the CC0 can be found online at: http://creativecommons.org/publicdomain/zero/1.0/
+
 * :ref:`tutorial-index`
 * :ref:`eff-tutorial-index`
+* :ref:`reference-index`
 * :ref:`guides-index`
 
-
-.. _reference:
-
-##################
-Language Reference
-##################
-
-.. toctree::
-   :maxdepth: 1
-
-   reference/documenting
-   reference/uniqueness-types
-   reference/ffi
-   reference/erasure
 
 .. _tutorial:
 
@@ -71,6 +61,20 @@ Learning Effects
    effects/hangman
    effects/conclusions
    effects/summary
+
+.. _reference:
+
+##################
+Language Reference
+##################
+
+.. toctree::
+   :maxdepth: 1
+
+   reference/documenting
+   reference/uniqueness-types
+   reference/ffi
+   reference/erasure
 
 .. _guides:
 

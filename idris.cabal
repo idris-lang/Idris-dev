@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.16
+Version:        0.9.17
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -301,7 +301,9 @@ Extra-source-files:
                        test/reg060/run
                        test/reg060/*.idr
                        test/reg060/expected
-
+                       test/reg061/run
+                       test/reg061/*.idr
+                       test/reg061/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -632,7 +634,10 @@ Extra-source-files:
                        test/docs002/input
                        test/docs002/*.idr
                        test/docs002/expected
-
+                       test/docs003/run
+                       test/docs003/input
+                       test/docs003/*.idr
+                       test/docs003/expected
 
 
 source-repository head

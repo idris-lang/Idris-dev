@@ -1,0 +1,37 @@
+Type checking ./docs003.idr
+Type class Functor
+    Functors
+
+Parameters:
+    f   -- the action of the functor on objects
+
+Methods:
+    map : Functor f => (m : a -> b) -> f a -> f b
+        The action of the functor on morphisms
+        
+Instances:
+    Functor List
+    Functor Stream
+    Functor Provider
+    Functor Binder
+    Functor PrimIO
+    Functor (IO' ffi)
+    Functor Maybe
+    Functor (Either e)
+
+Named instances:
+    docs003.mine : Functor List
+    docs003.another : Functor List
+        More functors!
+
+Subclasses:
+    Traversable f
+    Applicative f
+Named instance:
+    mine : Functor List
+        
+        
+Named instance:
+    another : Functor List
+        More functors!
+        
