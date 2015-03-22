@@ -1,9 +1,9 @@
-test002.idr:5:6:Universe inconsistency.
-Working on: e2
-Old domain: Domain 4 4
-New domain: Domain 4 3
+test002.idr:1:6:Universe inconsistency.
+Working on: t
+Old domain: Domain 6 6
+New domain: Domain 6 5
 Involved constraints: 
-	(e2 < f2,test002.idr:5:6)
-	(e2 < f2,test002.idr:5:6)
-	(i1 <= e2,test002.idr:5:6)
+	ConstraintFC {uconstraint = t <= u, ufc = test002.idr:1:6}
+	ConstraintFC {uconstraint = s < t, ufc = test002.idr:1:6}
+	ConstraintFC {uconstraint = t <= u, ufc = test002.idr:1:6}
 
