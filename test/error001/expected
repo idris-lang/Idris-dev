@@ -1,9 +1,9 @@
 test002.idr:1:6:Universe inconsistency.
-Working on: t
+Working on: z
 Old domain: Domain 6 6
 New domain: Domain 6 5
 Involved constraints: 
-	ConstraintFC {uconstraint = t <= u, ufc = test002.idr:1:6}
-	ConstraintFC {uconstraint = s < t, ufc = test002.idr:1:6}
-	ConstraintFC {uconstraint = t <= u, ufc = test002.idr:1:6}
+	ConstraintFC {uconstraint = z <= a1, ufc = test002.idr:1:6}
+	ConstraintFC {uconstraint = y < z, ufc = test002.idr:1:6}
+	ConstraintFC {uconstraint = z <= a1, ufc = test002.idr:1:6}
 
