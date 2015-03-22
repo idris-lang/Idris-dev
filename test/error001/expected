@@ -1,10 +1,9 @@
 test002.idr:5:6:Universe inconsistency.
-Working on: f2
-Old domain: Domain 7 7
-New domain: Domain 7 6
+Working on: e2
+Old domain: Domain 4 4
+New domain: Domain 4 3
 Involved constraints: 
-	(f2 <= i1,test002.idr:5:6)
 	(e2 < f2,test002.idr:5:6)
-	(j1 <= f2,test002.idr:5:6)
-	(f2 <= i1,test002.idr:5:6)
+	(e2 < f2,test002.idr:5:6)
+	(i1 <= e2,test002.idr:5:6)
 
