@@ -35,6 +35,7 @@ The Idris Tutorial
    tutorial/typesfuns
    tutorial/classes
    tutorial/modules
+   tutorial/packages
    tutorial/interp
    tutorial/views
    tutorial/theorems

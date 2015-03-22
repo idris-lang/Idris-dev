@@ -23,6 +23,7 @@ The is the Idris Tutorial. It will teach you about programming in the Idris Lang
    typesfuns
    classes
    modules
+   packages
    interp
    views
    theorems
