@@ -335,8 +335,7 @@ total natEnumFromThen : Nat -> Nat -> Stream Nat
 natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
 total natEnumFromTo : Nat -> Nat -> List Nat
 natEnumFromTo n m = map (plus n) (natRange ((S m) - n))
-total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
-natEnumFromThenTo _ Z   _ = []
+partial natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
 natEnumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
 
 class Enum a where
@@ -351,7 +350,7 @@ class Enum a where
   enumFromThen x y = map fromNat (natEnumFromThen (toNat x) (toNat y))
   total enumFromTo : a -> a -> List a
   enumFromTo x y = map fromNat (natEnumFromTo (toNat x) (toNat y))
-  total enumFromThenTo : a -> a -> a -> List a
+  partial enumFromThenTo : a -> a -> a -> List a
   enumFromThenTo x1 x2 y = map fromNat (natEnumFromThenTo (toNat x1) (toNat x2) (toNat y))
 
 instance Enum Nat where

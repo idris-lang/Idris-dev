@@ -274,9 +274,8 @@ fact (S n) = (S n) * fact n
 -- Division and modulus
 --------------------------------------------------------------------------------
 
-total
+partial
 modNat : Nat -> Nat -> Nat
-modNat left Z         = left
 modNat left (S right) = mod' left left right
   where
     total mod' : Nat -> Nat -> Nat -> Nat
@@ -287,9 +286,8 @@ modNat left (S right) = mod' left left right
       else
         mod' left (centre - (S right)) right
 
-total
+partial
 divNat : Nat -> Nat -> Nat
-divNat left Z         = S left               -- div by zero
 divNat left (S right) = div' left left right
   where
     total div' : Nat -> Nat -> Nat -> Nat
@@ -304,19 +302,21 @@ instance Integral Nat where
   div = divNat
   mod = modNat
 
+partial
 log2 : Nat -> Nat
-log2 Z = Z
 log2 (S Z) = Z
 log2 n = S (log2 (assert_smaller n (n `divNat` 2)))
 
 --------------------------------------------------------------------------------
 -- GCD and LCM
 --------------------------------------------------------------------------------
+partial
 gcd : Nat -> Nat -> Nat
 gcd a Z = a
 gcd a b = assert_total (gcd b (a `modNat` b))
 
-total lcm : Nat -> Nat -> Nat
+partial
+lcm : Nat -> Nat -> Nat
 lcm _ Z = Z
 lcm Z _ = Z
 lcm x y = divNat (x * y) (gcd x y)
@@ -709,11 +709,6 @@ sucMinL (S l) = cong (sucMinL l)
 total sucMinR : (l : Nat) -> minimum l (S l) = l
 sucMinR Z = Refl
 sucMinR (S l) = cong (sucMinR l)
-
--- div and mod
-total modZeroZero : (n : Nat) -> mod 0 n = Z
-modZeroZero Z     = Refl
-modZeroZero (S n) = Refl
 
 --------------------------------------------------------------------------------
 -- Proofs
