@@ -4,11 +4,13 @@ import Data.Fin
 
 %default total
 
+partial
 divCeil : Nat -> Nat -> Nat
 divCeil x y = case x `mod` y of
                 Z   => x `div` y
                 S _ => S (x `div` y)
 
+%assert_total
 nextPow2 : Nat -> Nat
 nextPow2 Z = Z
 nextPow2 x = if x == (2 `power` l2x)
@@ -17,6 +19,7 @@ nextPow2 x = if x == (2 `power` l2x)
     where
       l2x = log2 x
 
+%assert_total
 nextBytes : Nat -> Nat
 nextBytes bits = (nextPow2 (bits `divCeil` 8))
 
