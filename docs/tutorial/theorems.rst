@@ -116,12 +116,17 @@ We can do the same for the reduction behaviour of plus on successors:
 Even for trival theorems like these, the proofs are a little tricky to
 construct in one go. When things get even slightly more complicated, it
 becomes too much to think about to construct proofs in this ‘batch
-mode’. therefore provides an interactive proof mode.
+mode’. 
+
+Idris provides interactive editing capabilities, which can help with
+building proofs. For more details on building proofs interactively in
+an editor, see :ref:`proofs-index`. In the rest of this section, we discuss
+Idris's interactive proof mode.
 
 Interactive theorem proving
 ---------------------------
 
-Instead of writing the proof in one go, we can use ’s interactive proof
+Instead of writing the proof in one go, we can use Idris’s interactive proof
 mode. To do this, we write the general *structure* of the proof, and use
 the interactive mode to complete the details. We’ll be constructing the
 proof by *induction*, so we write the cases for ``Z`` and ``S``, with a
