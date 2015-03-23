@@ -1193,6 +1193,8 @@ safeForgetEnv env (Bind n b sc)
           Just $ RBind n' b' sc'
   where safeForgetEnvB env (Let t v) = liftM2 Let (safeForgetEnv env t) 
                                                   (safeForgetEnv env v)
+        safeForgetEnvB env (Guess t v) = liftM2 Guess (safeForgetEnv env t) 
+                                                      (safeForgetEnv env v)
         safeForgetEnvB env b = do ty' <- safeForgetEnv env (binderTy b)
                                   Just $ fmap (\_ -> ty') b 
 safeForgetEnv env (App f a) = liftM2 RApp (safeForgetEnv env f) (safeForgetEnv env a)

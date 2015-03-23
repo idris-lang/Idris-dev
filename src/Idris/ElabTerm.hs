@@ -1734,7 +1734,8 @@ runTac autoSolve ist perhapsFC fn tac
         bname _ = Nothing
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
     runT Intros = do g <- goal
-                     attack; intro (bname g)
+                     attack; 
+                     intro (bname g)
                      try' (runT Intros)
                           (return ()) True
       where

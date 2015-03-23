@@ -516,9 +516,22 @@ Extra-source-files:
                        test/proof004/run
                        test/proof004/*.idr
                        test/proof004/expected
+                       test/proof005/run
+                       test/proof005/*.idr
+                       test/proof005/expected
+                       test/proof006/run
+                       test/proof006/*.idr
+                       test/proof006/expected
+                       test/proof007/run
+                       test/proof007/*.idr
+                       test/proof007/expected
                        test/proof008/run
                        test/proof008/*.idr
                        test/proof008/expected
+                       test/proof009/run
+                       test/proof009/*.idr
+                       test/proof009/expected
+                       test/proof009/input
 
                        test/quasiquote001/run
                        test/quasiquote001/*.idr
