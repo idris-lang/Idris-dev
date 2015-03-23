@@ -7,7 +7,7 @@ Theorem Proving
 Equality
 --------
 
-allows propositional equalities to be declared, allowing theorems about
+Idris allows propositional equalities to be declared, allowing theorems about
 programs to be stated and proved. Equality is built in, but conceptually
 has the following definition:
 
@@ -301,7 +301,7 @@ anything:
     empty2 : Void
     empty2 = empty2
 
-Internally, checks every definition for totality, and we can check at
+Internally, Idris checks every definition for totality, and we can check at
 the prompt with the ``:total`` command. We see that neither of the above
 definitions is total:
 
@@ -353,11 +353,10 @@ total, a function ``f`` must:
 Directives and Compiler Flags for Totality
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, allows all definitions, whether total or not. However, it is
-desirable for functions to be total as far as possible, as this provides
-a guarantee that they provide a result for all possible inputs, in
-finite time. It is possible to make total functions a requirement,
-either:
+By default, Idris allows all well-typed definitions, whether total or not.
+However, it is desirable for functions to be total as far as possible, as this
+provides a guarantee that they provide a result for all possible inputs, in
+finite time. It is possible to make total functions a requirement, either:
 
 -  By using the ``--total`` compiler flag.
 
@@ -385,14 +384,13 @@ is total which is not. Do not rely on it for your proofs yet!
 Hints for totality
 ~~~~~~~~~~~~~~~~~~
 
-In cases where you believe a program is total, but does not agree, it is
-possible to give hints to the checker to give more detail for a
-termination argument. The checker works by ensuring that all chains of
-recursive calls eventually lead to one of the arguments decreasing
-towards a base case, but sometimes this is hard to spot. For example,
-the following definition cannot be checked as ``total`` because the
-checker cannot decide that ``filter (<= x) xs`` will always be smaller
-than ``(x :: xs)``:
+In cases where you believe a program is total, but Idris does not agree, it is
+possible to give hints to the checker to give more detail for a termination
+argument. The checker works by ensuring that all chains of recursive calls
+eventually lead to one of the arguments decreasing towards a base case, but
+sometimes this is hard to spot. For example, the following definition cannot be
+checked as ``total`` because the checker cannot decide that ``filter (<= x) xs`` 
+will always be smaller than ``(x :: xs)``:
 
 .. code-block:: idris
 
