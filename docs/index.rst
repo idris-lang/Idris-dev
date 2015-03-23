@@ -17,6 +17,7 @@ Documentation for the Idris Language
 
 * :ref:`tutorial-index`
 * :ref:`eff-tutorial-index`
+* :ref:`proofs-index`
 * :ref:`reference-index`
 * :ref:`guides-index`
 
@@ -62,6 +63,19 @@ Learning Effects
    effects/hangman
    effects/conclusions
    effects/summary
+
+.. _proofs::
+
+###############
+Theorem Proving
+###############
+
+.. toctree::
+   :maxdepth: 1
+
+   proofs/pluscomm
+   proofs/inductive
+   proofs/patterns
 
 .. _reference:
 
