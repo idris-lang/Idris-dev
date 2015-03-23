@@ -33,22 +33,14 @@ declaration:
 
 .. code-block:: idris
 
-    total
     plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
 
-The ``total`` annotation means that we aim to write a function which
-passes the totality checker; i.e. it will terminate on all possible
-well-typed inputs. This is important for proofs, since it provides a
-guarantee that the proof is valid in *all* cases, not just those for
-which it happens to be well-defined.
-
-To create a template definition for the proof, press ``\d`` the
+To create a template definition for the proof, press ``\d`` (or the
 equivalent in your editor of choice) on the line with the type
 declaration. You should see:
 
 .. code-block:: idris
 
-    total
     plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
     plus_commutes n m = ?plus_commutes_rhs
 
@@ -59,7 +51,6 @@ should see:
 
 .. code-block:: idris
 
-    total
     plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
     plus_commutes Z m = ?plus_commutes_rhs_1
     plus_commutes (S k) m = ?plus_commutes_rhs_2
@@ -91,7 +82,6 @@ It is a good idea to give these slightly more meaningful names:
 
 .. code-block:: idris
 
-    total
     plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
     plus_commutes Z m = ?plus_commutes_Z
     plus_commutes (S k) m = ?plus_commutes_S
@@ -107,7 +97,6 @@ yields:
 
     plus_commutes_Z : m = plus m 0
 
-    total
     plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
     plus_commutes Z m = plus_commutes_Z
     plus_commutes (S k) m = ?plus_commutes_S
@@ -280,7 +269,6 @@ state:
 
 .. code-block:: idris
 
-    total
     plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
     plus_commutes Z m = plus_commutes_Z
     plus_commutes (S k) m = ?plus_commutes_S
@@ -301,7 +289,6 @@ follows:
 
 .. code-block:: idris
 
-    total
     plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
     plus_commutes Z m = plus_commutes_Z
     plus_commutes (S k) m = rewrite plus_commutes k m in ?plus_commutes_S
@@ -340,13 +327,21 @@ defined by matching on its first argument. The complete definition is:
 
 .. code-block:: idris
 
+    total
     plus_commutes_S : (k : Nat) -> (m : Nat) -> S (plus m k) = plus m (S k)
     plus_commutes_S k Z = Refl
     plus_commutes_S k (S j) = rewrite plus_commutes_S k j in Refl
 
-All metavariables have now been solved, and ``plus_commutes`` has a
-``total`` annotation, so we have completed the proof of commutativity of
-addition on natural numbers.
+All metavariables have now been solved, 
+
+The ``total`` annotation means that we require the final function to 
+pass the totality checker; i.e. it will terminate on all possible
+well-typed inputs. This is important for proofs, since it provides a
+guarantee that the proof is valid in *all* cases, not just those for
+which it happens to be well-defined.
+
+Now that ``plus_commutes`` has a ``total`` annotation, we have completed the
+proof of commutativity of addition on natural numbers.
 
 .. [1]
    Note that the left and right hand sides of the equality have been
