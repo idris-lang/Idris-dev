@@ -184,7 +184,8 @@ Again, the ``fromInteger 0`` is merely due to ``Nat`` being an instance
 of the ``Num`` typeclass. So we know that ``k = plus k 0``, but how do
 we use this to update the goal to ``S k = S k``?
 
-To achieve this, provides a ``replace`` function as part of the prelude:
+To achieve this, Idris provides a ``replace`` function as part of the
+prelude:
 
 .. code-block:: idris
 
@@ -195,8 +196,8 @@ Given a proof that ``x = y``, and a property ``P`` which holds for
 ``x``, we can get a proof of the same property for ``y``, because we
 know ``x`` and ``y`` must be the same. In practice, this function can be
 a little tricky to use because in general the implicit argument ``P``
-can be hard to infer by unification, so provides a high level syntax
-which calculates the property and applies replace:
+can be hard to infer by unification, so Idris provides a high level
+syntax which calculates the property and applies ``replace``:
 
 .. code-block:: idris
 
