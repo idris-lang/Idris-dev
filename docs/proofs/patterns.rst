@@ -42,7 +42,7 @@ well-typed inputs. This is important for proofs, since it provides a
 guarantee that the proof is valid in *all* cases, not just those for
 which it happens to be well-defined.
 
-To create a template definition for the proof, press ``\backslashd`` the
+To create a template definition for the proof, press ``\d`` the
 equivalent in your editor of choice) on the line with the type
 declaration. You should see:
 
@@ -54,7 +54,7 @@ declaration. You should see:
 
 To prove this by induction on ``n``, as we sketched in Section
 [sect:induction], we begin with a case split on ``n`` (press
-``\backslashc`` with the cursor over the ``n`` in the definition.) You
+``\c`` with the cursor over the ``n`` in the definition.) You
 should see:
 
 .. code-block:: idris
@@ -67,7 +67,7 @@ should see:
 If we inspect the types of the newly created metavariables,
 ``plus_commutes_rhs_1`` and ``plus_commutes_rhs_2``, we see that the
 type of each reflects that ``n`` has been refined to ``Z`` and ``S k``
-in each respective case. Pressing ``\backslasht`` over
+in each respective case. Pressing ``\t`` over
 ``plus_commutes_rhs_1`` shows:
 
 .. code-block:: idris
@@ -100,7 +100,7 @@ Base Case
 ---------
 
 We can create a separate lemma for the base case interactively, by
-pressing ``\backslashl`` with the cursor over ``plus_commutes_Z``. This
+pressing ``\l`` with the cursor over ``plus_commutes_Z``. This
 yields:
 
 .. code-block:: idris
@@ -122,7 +122,7 @@ specific value for its *second argument* (in fact, the left hand side of
 the equality has been reduced from ``plus 0 m``.) Again, we can prove
 this by induction, this time on ``m``.
 
-First, create a template definition with ``\backslashd``:
+First, create a template definition with ``\d``:
 
 .. code-block:: idris
 
@@ -137,7 +137,7 @@ implciit, we will need to bring ``m`` into scope manually:
     plus_commutes_Z : m = plus m 0
     plus_commutes_Z {m} = ?plus_commutes_Z_rhs
 
-Now, case split on ``m`` with ``\backslashc``:
+Now, case split on ``m`` with ``\c``:
 
 .. code-block:: idris
 
@@ -154,7 +154,7 @@ which is easily proved by reflection:
     plus_commutes_Z_rhs_1 : 0 = 0
 
 For such trivial proofs, we can let write the proof automatically by
-pressing ``\backslasho`` with the cursor over ``plus_commutes_Z_rhs_1``.
+pressing ``\o`` with the cursor over ``plus_commutes_Z_rhs_1``.
 This yields:
 
 .. code-block:: idris
@@ -260,7 +260,7 @@ In this case, inspecting the type of the hole gives:
     --------------------------------------
     plus_commutes_Z_rhs_2 : S k = S k
 
-Either way, we can use proof search (``\backslasho``) to complete the
+Either way, we can use proof search (``\o``) to complete the
 proof, giving:
 
 .. code-block:: idris
@@ -320,7 +320,7 @@ The good news is that ``m`` and ``k`` now appear in the correct order.
 However, we still have to show that the successor symbol ``S`` can be
 moved to the front in the right hand side of this equality. This
 remaining lemma takes a similar form to the ``plus_commutes_Z``; we
-begin by making a new top level lemma with ``\backslashl``. This gives:
+begin by making a new top level lemma with ``\l``. This gives:
 
 .. code-block:: idris
 
@@ -328,7 +328,7 @@ begin by making a new top level lemma with ``\backslashl``. This gives:
 
 Unlike the previous case, ``k`` and ``m`` are not made implicit because
 we cannot in general infer arguments to a function from its result.
-Again, we make a template definition with ``\backslashd``:
+Again, we make a template definition with ``\d``:
 
 .. code-block:: idris
 
