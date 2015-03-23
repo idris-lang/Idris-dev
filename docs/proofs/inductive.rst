@@ -75,7 +75,7 @@ To prove that ``plus n m = plus m n`` for all natural numbers ``n`` and
 induction on ``n``, or vice versa. We can sketch an outline of a proof;
 performing induction on ``n``, we have:
 
--  Property ``P`` is ``\backslashx => plus x m = plus m x``.
+-  Property ``P`` is ``\x => plus x m = plus m x``.
 
 -  Show that ``P`` holds in the base case and inductive step:
 
