@@ -86,5 +86,5 @@ checking a file, if successful, creates a bytecode version of the file
 (in this case ``hello.ibc``) to speed up loading in future. The
 bytecode is regenerated if the source file changes.
 
+.. _run1:
 .. literalinclude:: ../listing/idris-prompt-helloworld.txt
-   :name: run1

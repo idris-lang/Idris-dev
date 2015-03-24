@@ -274,8 +274,7 @@ correct:
 
     guess : Int -> { [STDIO] } Eff ()
 
-For reference, the code for ``guess`` is given in Listing
-:ref:`eff-game`.  
+For reference, the code for ``guess`` is given below:
 
 .. _eff-game:
 .. code-block:: idris
