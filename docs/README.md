@@ -10,7 +10,13 @@ To build the manual the following dependencies must be met. We assume that you h
 ### Sphinx-Doc
 
 Python should be installed by default on most systems.
-Sphinx can be installed wither through your hosts package manager or using pip/easy_install.
+Sphinx can be installed either through your hosts package manager or using pip/easy_install.
+
+*Note* [ReadTheDocs](http://www.readthedocs.org) works with Sphinx
+ `v1.2.2`. If you install a more recent version of sphinx then
+ 'incorrectly' marked up documentation may get passed the build system
+ of readthedocs and be ignored. In the past we had several code-blocks
+ disappear because of that.
 
 ### LaTeX
 
