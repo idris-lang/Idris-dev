@@ -98,7 +98,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
         field :: SyntaxInfo -> IdrisParser (Name, PTerm, Plicity, Docstring ())
         field syn = do (doc, _) <- option noDocs docComment
                        c <- optional $ lchar '{'
-                       n <- fnName
+                       n <- fnName <|> do symbol "_"; return $ sUN "__pi_arg"
                        lchar ':'
                        t <- typeExpr (allowImp syn)
                        p <- endPlicity c

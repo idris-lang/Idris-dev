@@ -50,7 +50,7 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields fieldDocs cname cdo
        ttConsTy <-
          case lookupTyExact dconName (tt_ctxt i) of
                Just as -> return as
-               Nothing -> tclift $ tfail $ At fc (Elaborating "record" tyn (InternalMsg "It seems like the constructor for this record has disappeared. :( \n This is a bug. Please report."))
+               Nothing -> tclift $ tfail $ At fc (Elaborating "record " tyn (InternalMsg "It seems like the constructor for this record has disappeared. :( \n This is a bug. Please report."))
 
        -- The arguments to the constructor
        let constructorArgs = getArgTys ttConsTy
@@ -68,6 +68,10 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields fieldDocs cname cdo
        let projectors = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (freeFieldsForElab ++ paramsForElab ++ userFieldsForElab) [0..]]       
        -- Build and elaborate projection functions
        elabProj dconName projectors
+
+       logLvl 1 $ "Dependencies: " ++ show fieldDependencies
+
+       logLvl 1 $ "Depended on: " ++ show dependedOn
 
        -- All things we need to elaborate update functions for, together with a number denoting their position in the constructor.
        let updaters = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (paramsForElab ++ userFieldsForElab) [0..]]
@@ -170,14 +174,6 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields fieldDocs cname cdo
                               elabProjection info n n' p t' doc rsyn fc target cn phArgs fieldNames i
                      in mapM_ elab fs
 
-    projectInType :: [(Name, Name)] -> PTerm -> PTerm
-    projectInType xs = mapPT st
-      where
-        st :: PTerm -> PTerm
-        st (PRef fc n)
-          | Just pn <- lookup n xs = PApp fc (PRef fc pn) [pexp recRef]
-        st t = t
-
     -- | Elaborate the update functions.
     elabUp :: Name -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
     elabUp cn fs = let args = map (uncurry asPRefArg) [(p, n) | (n, _, p, _, _, _) <- fs]
@@ -186,14 +182,14 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields fieldDocs cname cdo
 
     -- | Decides whether a setter should be generated for a field or not.
     optionalSetter :: Name -> Bool
-    optionalSetter n = n `notElem` dependentFields && n `notElem` dependedOn
+    optionalSetter n = n `elem` dependedOn
         
     -- | A map from a field name to the other fields it depends on.
     fieldDependencies :: [(Name, [Name])]
     fieldDependencies = map (uncurry fieldDep) [(n, t) | (n, _, t) <- fields ++ params]
       where                           
         fieldDep :: Name -> PTerm -> (Name, [Name])
-        fieldDep n t = ((nsroot n), fieldNames `intersect` allNamesIn t)
+        fieldDep n t = ((nsroot n), paramNames ++ fieldNames `intersect` allNamesIn t)
 
     -- | A list of fields depending on another field.
     dependentFields :: [Name]
@@ -223,7 +219,7 @@ elabProjection :: ElabInfo ->
                   [Name] -> -- ^ All Field Names
                   Int -> -- ^ Argument Index
                   Idris ()
-elabProjection info cname pname plicity pty pdoc psyn fc tty cn phArgs fnames index
+elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs fnames index
   = do logLvl 1 $ "Generating Projection for " ++ show pname
        
        let ty = generateTy
@@ -241,13 +237,7 @@ elabProjection info cname pname plicity pty pdoc psyn fc tty cn phArgs fnames in
   where
     -- | The type of the projection function.
     generateTy :: PDecl
-    generateTy = PTy pdoc [] psyn fc [] pname $ PPi expl recName tty (mapPT applyProjs pty)
-
-    -- | Applies all fields to "rec".
-    applyProjs :: PTerm -> PTerm
-    applyProjs t@(PRef fc name)
-      | (nsroot name) `elem` fnames = PApp fc t [pexp recRef]
-    applyProjs t = t
+    generateTy = PTy pdoc [] psyn fc [] pname $ PPi expl recName targetTy projTy
 
     -- | The left hand side of the projection function.
     generateLhs :: PTerm
@@ -303,9 +293,10 @@ elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i option
 
        idrisCatch (do rec_elabDecl info EAll info ty
                       rec_elabDecl info EAll info $ PClauses fc [] set_pname [clause])
-         (\err -> if optional
+         (\err -> logLvl 1 $ "Could not generate update function for " ++ show pname)
+                  {-if optional
                   then logLvl 1 $ "Could not generate update function for " ++ show pname
-                  else tclift $ tfail $ At fc (Elaborating "record update function" pname err))
+                  else tclift $ tfail $ At fc (Elaborating "record update function " pname err)) -}
   where
     -- | The type of the udpate function.
     generateTy :: PDecl
@@ -364,3 +355,11 @@ recName :: Name
 recName = sMN 0 "rec"
 
 recRef = PRef emptyFC recName
+
+projectInType :: [(Name, Name)] -> PTerm -> PTerm
+projectInType xs = mapPT st
+  where
+    st :: PTerm -> PTerm
+    st (PRef fc n)
+      | Just pn <- lookup n xs = PApp fc (PRef fc pn) [pexp recRef]
+    st t = t

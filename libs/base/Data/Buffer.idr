@@ -50,13 +50,13 @@ bitsFromFin (FS k) = 1 + bitsFromFin k
 ||| approximate ultimate size of the Buffer is known. Users can assume
 ||| the new Buffer is word-aligned.
 public
-allocate : ( hint : Nat) -> Buffer Z
-allocate = MkBuffer Z  . prim__allocate . bitsFromNat
+allocate : ( hint : Nat ) -> Buffer Z
+allocate = MkBuffer Z . prim__allocate . bitsFromNat
 
 ||| Append count repetitions of a Buffer to another Buffer
 %assert_total
 public
-appendBuffer : {n : Nat} -> {m : Nat} -> Buffer n        ->
+appendBuffer : Buffer n        ->
                ( count : Nat ) ->
                Buffer m        ->
                Buffer ( n + count * m )
