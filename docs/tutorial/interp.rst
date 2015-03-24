@@ -266,8 +266,9 @@ integer, giving 0 if the input is invalid. An example run of this
 program at the Idris interactive environment is:
 
 
+.. _factrun:
 .. literalinclude:: ../listing/idris-prompt-interp.txt
-    :name: factrun
+
 
 Aside: ``cast``
 ~~~~~~~~~~~~~~~
