@@ -5,12 +5,10 @@ Simple Effects
 ==============
 
 So far we have seen how to write programs with locally mutable state
-using the ``STATE`` effect. To recap, we have the definitions in
-Listing :ref:`eff-state` in a module ``Effect.State``.
+using the ``STATE`` effect. To recap, we have the definitions below
+in a module ``Effect.State``
 
-.. _eff-state:
 .. code-block:: idris
-    :caption: State Effect
 
     module Effect.State
 
@@ -45,16 +43,14 @@ section, are summarised in Appendix :ref:`sect-appendix`.
 Console I/O
 -----------
 
-Console I/O (Listing :ref:`eff-stdio`) is supported with the ``STDIO``
+Console I/O is supported with the ``STDIO``
 effect, which allows reading and writing characters and strings to and
 from standard input and standard output. Notice that there is a
 constraint here on the computation context ``m``, because it only
 makes sense to support console I/O operations in a context where we
-can perform (or at the very least simulate) console I/O.
+can perform (or at the very least simulate) console I/O:
 
-.. _eff-stdio:
 .. code-block:: idris
-    :caption: Console I/0 Effect
 
     module Effect.StdIO
 
@@ -138,14 +134,13 @@ than using a default value with ``run``) we can run the
 Exceptions
 ----------
 
-Listing :ref:`eff-exception` gives the definition of the ``EXCEPTION``
-effect, declared in module ``Effect.Exception``. This allows programs
+The ``EXCEPTION``
+effect is declared in module ``Effect.Exception``. This allows programs
 to exit immediately with an error, or errors to be handled more
-generally.
+generally:
 
 .. _eff-exception:
 .. code-block:: idris
-    :caption: Exception Effect
 
     module Effect.Exception
 
@@ -240,11 +235,9 @@ Random Numbers
 --------------
 
 Random number generation is also implemented by the library, in module
-``Effect.Random``. Listing :ref:`eff-random` gives its definition.
+``Effect.Random``:
 
-.. _eff-random:
 .. code-block:: idris
-   :caption: Random Number Effect
 
     module Effect.Random
 
@@ -282,12 +275,30 @@ correct:
     guess : Int -> { [STDIO] } Eff ()
 
 For reference, the code for ``guess`` is given in Listing
-:ref:`eff-game`.  Note that we use ``parseNumber`` as defined
-previously to read user input, but we don’t need to list the
-``EXCEPTION`` effect because we use a nested ``run`` to invoke
-``parseNumber``, independently of the calling effectful program.
+:ref:`eff-game`.  
 
-To invoke these, we pick a random number within the range 0–100,
+.. _eff-game:
+.. code-block:: idris
+
+    guess : Int -> { [STDIO] } Eff ()
+    guess target
+        = do putStr "Guess: "
+             case run {m=Maybe} (parseNumber 100 (trim !getStr)) of
+                  Nothing => do putStrLn "Invalid input"
+                                guess target
+                  Just (v ** _) =>
+                             case compare v target of
+                                 LT => do putStrLn "Too low"
+                                          guess target
+                                 EQ => putStrLn "You win!"
+                                 GT => do putStrLn "Too high"
+                                          guess target
+
+Note that we use ``parseNumber`` as defined previously to read user input, but
+we don’t need to list the ``EXCEPTION`` effect because we use a nested ``run``
+to invoke ``parseNumber``, independently of the calling effectful program.
+
+To invoke this, we pick a random number within the range 0–100,
 having set up the random number generator with a seed, then run
 ``guess``:
 
@@ -305,35 +316,16 @@ predictable game, some better source of randomness would be required,
 for example taking an initial seed from the system time. To see how to
 do this, see the ``SYSTEM`` effect described in :ref:`sect-appendix`.
 
-.. _eff-game:
-.. code-block:: idris
-    :caption: Guessing Game
-
-    guess : Int -> { [STDIO] } Eff ()
-    guess target
-        = do putStr "Guess: "
-             case run {m=Maybe} (parseNumber 100 (trim !getStr)) of
-                  Nothing => do putStrLn "Invalid input"
-                                guess target
-                  Just (v ** _) =>
-                             case compare v target of
-                                 LT => do putStrLn "Too low"
-                                          guess target
-                                 EQ => putStrLn "You win!"
-                                 GT => do putStrLn "Too high"
-                                          guess target
 
 Non-determinism
 ---------------
 
-Listing :ref:`eff-select` gives the definition of the non-determinism
+The listing below gives the definition of the non-determinism
 effect, which allows a program to choose a value non-deterministically
 from a list of possibilities in such a way that the entire computation
-succeeds.
+succeeds:
 
-.. _eff-select:
 .. code-block:: idris
-   :caption: Non-determinism Effect
 
     import Effects
     import Effect.Select
@@ -444,7 +436,6 @@ does require that the lengths are checked and any discrepancy is dealt
 with gracefully.
 
 .. code-block:: idris
-    :caption: Reading a vector from the console.
 
     read_vec : { [STDIO] } Eff (p ** Vect p Int)
     read_vec = do putStr "Number (-1 when done): "

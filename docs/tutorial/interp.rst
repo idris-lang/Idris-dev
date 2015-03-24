@@ -42,21 +42,16 @@ argument, so we define everything in a ``using`` block:
 
     using (G:Vect n Ty)
 
-The full representation of expressions is given in Listing :ref:`exprty`.
-They are indexed by the types of the local variables, and the type of
+Expressions are indexed by the types of the local variables, and the type of
 the expression itself:
 
 .. code-block:: idris
 
     data Expr : Vect n Ty -> Ty -> Type
 
-Since expressions are indexed by their type, we can read the typing
-rules of the language from the definitions of the constructors. Let us
-look at each constructor in turn.
+The full representation of expressions is:
 
-.. _exprty:
 .. code-block:: idris
-    :caption: Expression representation
 
     data HasType : (i : Fin n) -> Vect n Ty -> Ty -> Type where
         Stop : HasType FZ (t :: G) t
@@ -72,6 +67,10 @@ look at each constructor in turn.
         If  : Expr G TyBool ->
               Lazy (Expr G a) ->
               Lazy (Expr G a) -> Expr G a
+
+Since expressions are indexed by their type, we can read the typing
+rules of the language from the definitions of the constructors. Let us
+look at each constructor in turn.
 
 We use a nameless representation for variables — they are *de Bruijn
 indexed*. Variables are represented by a proof of their membership in
@@ -162,11 +161,19 @@ environment:
     lookup Stop    (x :: xs) = x
     lookup (Pop k) (x :: xs) = lookup k xs
 
-.. _interpdef:
+Given this, an interpreter is a function which
+translates an ``Expr`` into a concrete Idris value with respect to a
+specific environment:
+
 .. code-block:: idris
-    :caption: Intepreter Definition
 
     interp : Env G -> Expr G t -> interpTy t
+
+The complete interpreter is defined as follows, for reference. For
+each constructor, we translate it into the corresponding Idris value:
+
+.. code-block:: idris
+
     interp env (Var i)     = lookup i env
     interp env (Val x)     = x
     interp env (Lam sc)    = \x => interp (x :: env) sc
@@ -175,15 +182,8 @@ environment:
     interp env (If x t e)  = if interp env x then interp env t
                                              else interp env e
 
-Given this, an interpreter (Listing :ref:`interpdef`) is a function which
-translates an ``Expr`` into a concrete Idris value with respect to a
-specific environment:
-
-.. code-block:: idris
-
-    interp : Env G -> Expr G t -> interpTy t
-
-To translate a variable, we simply look it up in the environment:
+Let us look at each case in turn.  To translate a variable, we simply look it
+up in the environment:
 
 .. code-block:: idris
 
@@ -263,12 +263,10 @@ function on user input:
 Here, ``cast`` is an overloaded function which converts a value from
 one type to another if possible. Here, it converts a string to an
 integer, giving 0 if the input is invalid. An example run of this
-program at the Idris interactive environment is shown in Listing
-:ref:`factrun`.
+program at the Idris interactive environment is:
 
 
 .. literalinclude:: ../listing/idris-prompt-interp.txt
-    :caption: Running the well-typed interpreter
     :name: factrun
 
 Aside: ``cast``

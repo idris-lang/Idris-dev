@@ -8,14 +8,11 @@ An Idris program consists of a collection of modules. Each module
 includes an optional ``module`` declaration giving the name of the
 module, a list of ``import`` statements giving the other modules which
 are to be imported, and a collection of declarations and definitions of
-types, classes and functions. For example, Listing :ref:`bstmod` gives a
+types, classes and functions. For example, the listing below gives a
 module which defines a binary tree type ``BTree`` (in a file
-``btree.idr``) and Listing :ref:`bstmain` gives a main program (in a file
-``bmain.idr`` which uses the ``bst`` module to sort a list.
+``btree.idr``):;
 
-.. _bstmod:
 .. code-block:: idris
-    :caption: Binary Tree Module
 
     module btree
 
@@ -35,9 +32,10 @@ module which defines a binary tree type ``BTree`` (in a file
     toTree [] = Leaf
     toTree (x :: xs) = insert x (toTree xs)
 
-.. _bstmain:
+Then, this gives a main program (in a file
+``bmain.idr``) which uses the ``bst`` module to sort a list::
+
 .. code-block:: idris
-    :caption: Binary Tree Main Program
 
     module Main
 
@@ -99,12 +97,9 @@ and classes to be marked as: ``public``, ``abstract`` or ``private``:
     If any definition is given an export modifier, then all names with no modifier are assumed to be ``private``.
 
 For our ``btree`` module, it makes sense for the tree data type and the
-functions to be exported as ``abstract``, as we see in
-Listing :ref:`bstmodp`.
+functions to be exported as ``abstract``, as we see below:
 
-.. _bstmodp:
 .. code-block:: idris
-    :caption: Binary Tree Module, with export modifiers
 
     module btree
 

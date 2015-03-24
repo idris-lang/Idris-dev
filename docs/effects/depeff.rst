@@ -156,13 +156,11 @@ file management follows a resource usage protocol with the following
 These requirements can be expressed formally in , by creating a
 ``FILE_IO`` effect parameterised over a file handle state, which is
 either empty, open for reading, or open for writing. The ``FILE_IO``
-effect’s definition is given in Listing :ref:`eff-fileio`. Note that this
+effect’s definition is given below. Note that this
 effect is mainly for illustrative purposes—typically we would also like
 to support random access files and better reporting of error conditions.
 
-.. _eff-fileio:
 .. code-block:: idris
-    :caption: File I/O Effect
 
     module Effect.File
 
@@ -200,7 +198,6 @@ we continue the protocol accordingly.
 
 .. _eff-readfile:
 .. code-block:: idris
-    :caption: Reading a File
 
     readFile : { [FILE_IO (OpenFile Read)] } Eff (List String)
     readFile = readAcc [] where
@@ -210,7 +207,7 @@ we continue the protocol accordingly.
                          then readAcc (!readLine :: acc)
                          else pure (reverse acc)
 
-Given a function ``readFile`` (Listing :ref:`eff-readfile`) which reads from
+Given a function ``readFile``, above, which reads from
 an open file until reaching the end, we can write a program which opens
 a file, reads it, then displays the contents and closes it, as follows,
 correctly following the protocol:

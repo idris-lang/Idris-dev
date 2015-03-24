@@ -156,12 +156,10 @@ new effects, however.
 Summary
 ~~~~~~~
 
-Listing :ref:`eff-statedef` summarises what is required to define the
-``STATE`` effect.
+The following listing summarises what is required to define the
+``STATE`` effect:
 
-.. _eff-statedef:
 .. code-block:: idris
-    :caption: Complete State Effect Definition
 
     data State : Effect where
          Get :      { a }       State a
@@ -187,7 +185,7 @@ Listing :ref:`eff-statedef` summarises what is required to define the
 Console I/O
 -----------
 
-Listing :ref:`eff-stdiodef` gives the definition of the ``STDIO``
+Then listing below gives the definition of the ``STDIO``
 effect, including handlers for ``IO`` and ``IOExcept``. We omit the
 definition of the top level ``Eff`` functions, as this merely invoke
 the effects ``PutStr``, ``GetStr``, ``PutCh`` and ``GetCh`` directly.
@@ -198,7 +196,6 @@ directly.
 
 .. _eff-stdiodef:
 .. code-block:: idris
-    :caption: Console I/O Effect Definition
 
     data StdIO : Effect where
          PutStr : String -> { () } StdIO ()
@@ -224,9 +221,14 @@ directly.
 Exceptions
 ----------
 
-.. _eff-exceptdef:
+The listing below gives the definition of the ``Exception``
+effect, including two of its handlers for ``Maybe`` and ``List``. The
+only operation provided is ``Raise``. The key point to note in the
+definitions of these handlers is that the continuation ``k`` is not
+used. Running ``Raise`` therefore means that computation stops with an
+error.
+
 .. code-block:: idris
-    :caption: Exception Effect Definition
 
     data Exception : Type -> Effect where
          Raise : a -> { () } Exception a b
@@ -240,19 +242,17 @@ Exceptions
     EXCEPTION : Type -> EFFECT
     EXCEPTION t = MkEff () (Exception t)
 
-Listing :ref:`eff-exceptdef` gives the definition of the ``Exception``
-effect, including two of its handlers for ``Maybe`` and ``List``. The
-only operation provided is ``Raise``. The key point to note in the
-definitions of these handlers is that the continuation ``k`` is not
-used. Running ``Raise`` therefore means that computation stops with an
-error.
 
 Non-determinism
 ---------------
 
-.. _eff-selectdef:
+The following listing gives the definition of the ``Select``
+effect for writing non-deterministic programs, including a handler for
+``List`` context which returns all possible successful values, and a
+handler for ``Maybe`` context which returns the first successful
+value.
+
 .. code-block:: idris
-    :caption: Non-determinism Effect Definition
 
     data Selection : Effect where
          Select : List a -> { () } Selection a
@@ -270,11 +270,6 @@ Non-determinism
     SELECT : EFFECT
     SELECT = MkEff () Selection
 
-Listing :ref:`eff-selectdef` gives the definition of the ``Select``
-effect for writing non-deterministic programs, including a handler for
-``List`` context which returns all possible successful values, and a
-handler for ``Maybe`` context which returns the first successful
-value.
 
 Here, the continuation is called multiple times in each handler, for
 each value in the list of possible values. In the ``List`` handler, we
@@ -285,21 +280,13 @@ File Management
 ---------------
 
 Result-dependent effects are no different from non-dependent effects
-in the way they are implemented. Listing :ref:`eff-filedef`
+in the way they are implemented. The listing below 
 illustrates this for the ``FILE_IO`` effect. The syntax for state
 transitions ``{ x ==> {res} x’ }``, where the result state ``x’`` is
 computed from the result of the operation ``res``, follows that for
 the equivalent ``Eff`` programs.
 
-Note that in the handler for ``Open``, the types passed to the
-continuation ``k`` are different depending on whether the result is
-``True`` (opening succeeded) or ``False`` (opening failed). This uses
-``validFile``, defined in the ``Prelude``, to test whether a file
-handler refers to an open file or not.
-
-.. _eff-filedef:
 .. code-block:: idris
-    :caption: File I/O Effect Definition
 
     data FileIO : Effect where
          Open  : String -> (m : Mode) ->
@@ -327,3 +314,10 @@ handler refers to an open file or not.
 
     FILE_IO : Type -> EFFECT
     FILE_IO t = MkEff t FileIO
+
+Note that in the handler for ``Open``, the types passed to the
+continuation ``k`` are different depending on whether the result is
+``True`` (opening succeeded) or ``False`` (opening failed). This uses
+``validFile``, defined in the ``Prelude``, to test whether a file
+handler refers to an open file or not.
+

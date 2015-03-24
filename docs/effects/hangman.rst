@@ -225,8 +225,7 @@ for the game which uses the ``MYSTERY`` effect:
 The type indicates that the game must start in a running state, with
 some guesses available, and eventually reach a not-running state (i.e.
 won or lost). The only way to achieve this is by correctly following the
-stated rules. A possible complete implementation of ``game`` is
-presented in Listing :ref:`mword`.
+stated rules. 
 
 Note that the type of ``game`` makes no assumption that there are
 letters to be guessed in the given word (i.e. it is ``w`` rather than
@@ -267,10 +266,10 @@ generator, then pick a random ``Fin`` to index into a list of
     Idris’s proof search mechanism find the type. This is a
     limited form of type inference, but very useful in practice.
 
+A possible complete implementation of ``game`` is
+presented below: 
 
-.. _mword:
 .. code-block:: idris
-    :caption: Mystery Word Game Implementation
 
     game : { [MYSTERY (Running (S g) w), STDIO] ==>
              [MYSTERY NotRunning, STDIO] } Eff ()

@@ -72,7 +72,7 @@ environment. You should see something like the following:
 This gives a ``ghci`` style interface which allows evaluation of, as
 well as type checking of, expressions; theorem proving, compilation;
 editing; and various other operations. The command ``:?`` gives a list
-of supported commands. Listing :ref:`run1` shows an example run in
+of supported commands. Below, we see an example run in
 which ``hello.idr`` is loaded, the type of ``main`` is checked and
 then the program is compiled to the executable ``hello``. Type
 checking a file, if successful, creates a bytecode version of the file
@@ -80,5 +80,4 @@ checking a file, if successful, creates a bytecode version of the file
 bytecode is regenerated if the source file changes.
 
 .. literalinclude:: ../listing/idris-prompt-helloworld.txt
-   :caption: Sample Interactive Run
    :name: run1
