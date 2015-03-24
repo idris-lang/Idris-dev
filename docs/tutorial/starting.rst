@@ -36,6 +36,13 @@ To check that installation has succeeded, and to write your first
 Idris program, create a file called “``hello.idr``” containing the
 following text:
 
+.. code-block:: idris
+
+    module Main
+
+    main : IO ()
+    main = putStrLn "Hello world"
+
 If you are familiar with Haskell, it should be fairly clear what the
 program is doing and how it works, but if not, we will explain the
 details later. You can compile the program to an executable by
