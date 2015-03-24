@@ -221,8 +221,8 @@ declaration for a function ``f`` *can* be omitted if:
 
 - ``f`` appears in the right hand side of the top level definition
 
-- The type of ``f`` can be completely determined from its first
-   application
+- The type of ``f`` can be completely determined from its first application
+
 
 So, for example, the following definitions are legal:
 
@@ -948,10 +948,10 @@ analysis of intermediate expressions to avoid the need to write
 auxiliary functions, and is also used internally to implement pattern
 matching ``let`` and lambda bindings. It will *only* work if:
 
--  Each branch *matches* a value of the same type, and *returns* a value
-   of the same type.
+- Each branch *matches* a value of the same type, and *returns* a
+   value of the same type.
 
-- The type of the result is “known”. i.e. the type of the expression
+- The type of the result is "known". i.e. the type of the expression
    can be determined *without* type checking the ``case``-expression
    itself.
 

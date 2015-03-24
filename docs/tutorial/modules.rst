@@ -10,7 +10,7 @@ module, a list of ``import`` statements giving the other modules which
 are to be imported, and a collection of declarations and definitions of
 types, classes and functions. For example, the listing below gives a
 module which defines a binary tree type ``BTree`` (in a file
-``btree.idr``):;
+``btree.idr``):
 
 .. code-block:: idris
 
@@ -32,8 +32,9 @@ module which defines a binary tree type ``BTree`` (in a file
     toTree [] = Leaf
     toTree (x :: xs) = insert x (toTree xs)
 
+
 Then, this gives a main program (in a file
-``bmain.idr``) which uses the ``bst`` module to sort a list::
+``bmain.idr``) which uses the ``bst`` module to sort a list:
 
 .. code-block:: idris
 
@@ -44,6 +45,7 @@ Then, this gives a main program (in a file
     main : IO ()
     main = do let t = toTree [1,8,2,7,9,3]
               print (btree.toList t)
+
 
 The same names can be defined in multiple modules. This is possible
 because in practice names are *qualified* with the name of the module.

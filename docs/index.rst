@@ -64,7 +64,7 @@ Learning Effects
    effects/conclusions
    effects/summary
 
-.. _proofs::
+.. _proofs:
 
 ###############
 Theorem Proving
