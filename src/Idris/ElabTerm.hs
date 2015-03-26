@@ -119,9 +119,9 @@ build ist info emode opts fn tm
                                      if inf then return ()
                                             else lift (Error e)
 
-         when tydecl (do update_term orderPats
-                         mkPat)
---                          update_term liftPats)
+         when tydecl (do mkPat
+                         update_term liftPats
+                         update_term orderPats)
          EState is _ impls <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -475,7 +475,7 @@ elab ist info emode opts fn tm
                                _ -> True
            -- this is to stop us resolve type classes recursively
              -- trace (show (n, guarded)) $
-             if (tcname n && ina) then erun fc $ do patvar n; -- update_term liftPats
+             if (tcname n && ina) then erun fc $ do patvar n; update_term liftPats
                else if (defined && not guarded)
                        then do apply (Var n) []; solve
                        else try (do apply (Var n) []; solve)

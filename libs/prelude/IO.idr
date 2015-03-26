@@ -50,8 +50,10 @@ applyEnv : (env : FEnv ffi xs) ->
 applyEnv [] f = f
 applyEnv (x@(_, _) :: xs) f = applyEnv xs (f x)
 
-mkForeignPrim : ForeignPrimType xs env t
--- compiled as primitive
+mkForeignPrim : {xs : _} -> {ffi : _} -> {env : FEnv ffi xs} -> {t : Type} ->
+                ForeignPrimType xs env t
+-- compiled as primitive. Compiler assumes argument order, so make it
+-- explicit here.
 
 %inline
 foreign_prim : (f : FFI) -> 
