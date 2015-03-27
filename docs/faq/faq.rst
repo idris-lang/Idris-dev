@@ -13,6 +13,21 @@ as such includes higher level programming constructs such as type classes and
 do notation. Idris also supports tactic based theorem proving, and has a
 lightweight Hugs/GHCI style interface.
 
+Is Idris production ready?
+--------------------------
+
+Idris is primarily a research tool for exploring the possibilities of software
+development with dependent types, meaning that the primary goal is not (yet) to
+make a system which could be used in production. As such, there are a few rough
+corners, and lots of missing libraries. Nobody is working on Idris full time,
+and we don't have the resources at the moment to polish the system on our own.
+Therefore, we don't recommend building your business around it!
+
+Having said that, contributions which help towards making Idris suitable
+for use in production would be very welcome - this includes (but is not
+limited to) extra library support, polishing the run-time system (and ensuring
+it is robust), providing and maintaining a JVM back end, etc.
+
 Why does Idris use eager evaluation rather than lazy? 
 -----------------------------------------------------
 
@@ -57,6 +72,32 @@ You can make control structures  using the special Lazy type. For example,
 
 The type ``Lazy a`` for ``t`` and ``f`` indicates that those arguments will
 only be evaluated if they are used, that is, they are evaluated lazily.
+
+Evaluation at the REPL doesn't behave as I expect. What's going on?
+-------------------------------------------------------------------
+
+Being a fully dependently typed language, Idris has two phases where it
+evaluates things, compile-time and run-time. At compile-time it will only
+evaluate things which it knows to be total (i.e. terminating and covering all
+possible inputs) in order to keep type checking decidable. The compile-time
+evaluator is part of the Idris kernel, and is implemented in Haskell using a
+HOAS (higher order abstract syntax) style representation of values. Since
+everything is known to have a normal form here, the evaluation strategy doesn't
+actually matter because either way it will get the same answer, and in practice
+it will do whatever the Haskell run-time system chooses to do.
+
+The REPL, for convenience, uses the compile-time notion of evaluation. As well
+as being easier to implement (because we have the evaluator available) this can
+be very useful to show how terms evaluate in the type checker. So you can see
+the difference between:
+
+.. code-block:: idris
+
+    Idris> \n, m => (S n) + m
+    \n => \m => S (plus n m) : Nat -> Nat -> Nat
+
+    Idris> \n, m => n + (S m)
+    \n => \m => plus n (S m) : Nat -> Nat -> Nat
 
 When will Idris be self-hosting?
 --------------------------------
