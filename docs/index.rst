@@ -17,6 +17,7 @@ Documentation for the Idris Language
 
 * :ref:`tutorial-index`
 * :ref:`eff-tutorial-index`
+* :ref:`faq-index`
 * :ref:`proofs-index`
 * :ref:`reference-index`
 * :ref:`guides-index`
@@ -45,6 +46,17 @@ The Idris Tutorial
    tutorial/syntax
    tutorial/miscellany
    tutorial/conclusions
+
+.. _effects:
+
+##########################
+Frequently Asked Questions
+##########################
+
+.. toctree::
+   :maxdepth: 1
+
+   faq/faq
 
 .. _effects:
 
