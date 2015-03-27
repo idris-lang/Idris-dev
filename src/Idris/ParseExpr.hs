@@ -234,6 +234,14 @@ internalExpr syn =
      <|> app syn
      <?> "expression"
 
+{- | Parses the "impossible" keyword
+@
+Impossible ::= 'impossible'
+@
+-}
+impossible :: IdrisParser PTerm
+impossible = PImpossible <$ reserved "impossible"
+
 {- | Parses a case expression
 @
 CaseExpr ::=
@@ -250,13 +258,13 @@ caseExpr syn = do reserved "case"; fc <- getFC
 {- | Parses a case in a case expression
 @
 CaseOption ::=
-  Expr '=>' Expr Terminator
+  Expr (Impossible | '=>' Expr) Terminator
   ;
 @
 -}
 caseOption :: SyntaxInfo -> IdrisParser (PTerm, PTerm)
 caseOption syn = do lhs <- expr (syn { inPattern = True })
-                    r <- PImpossible <$ reserved "impossible" <|> do symbol "=>"; expr syn
+                    r <- impossible <|> symbol "=>" *> expr syn
                     return (lhs, r)
                  <?> "case option"
 
@@ -732,8 +740,8 @@ typeExpr syn = do cs <- if implicitAllowed syn then constraintList syn else retu
 {- | Parses a lambda expression
 @
 Lambda ::=
-    '\\' TypeOptDeclList '=>' Expr
-  | '\\' SimpleExprList  '=>' Expr
+    '\\' TypeOptDeclList LambdaTail
+  | '\\' SimpleExprList  LambdaTail
   ;
 @
 @
@@ -742,21 +750,22 @@ SimpleExprList ::=
   | SimpleExpr ',' SimpleExprList
   ;
 @
+@
+LambdaTail ::=
+    Impossible
+  | '=>' Expr
+@
 -}
 lambda :: SyntaxInfo -> IdrisParser PTerm
 lambda syn = do lchar '\\' <?> "lambda expression"
                 (do xt <- try $ tyOptDeclList syn
                     fc <- getFC
-                    sc <- PImpossible <$ reserved "impossible" <|> do
-                      symbol "=>"
-                      expr syn
+                    sc <- lambdaTail
                     return (bindList (PLam fc) xt sc)) <|> do
                       ps <- sepBy (do fc <- getFC
                                       e <- simpleExpr (syn { inPattern = True })
                                       return (fc, e)) (lchar ',')
-                      sc <- PImpossible <$ reserved "impossible" <|> do
-                        symbol "=>"
-                        expr syn
+                      sc <- lambdaTail
                       return (pmList (zip [0..] ps) sc)
                  <?> "lambda expression"
     where pmList :: [(Int, (FC, PTerm))] -> PTerm -> PTerm
@@ -765,6 +774,8 @@ lambda syn = do lchar '\\' <?> "lambda expression"
                 = PLam fc (sMN i "lamp") Placeholder
                         (PCase fc (PRef fc (sMN i "lamp"))
                                 [(x, pmList xs sc)])
+          lambdaTail :: IdrisParser PTerm
+          lambdaTail = impossible <|> symbol "=>" *> expr syn
 
 {- | Parses a term rewrite expression
 @
