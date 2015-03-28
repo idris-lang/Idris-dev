@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Elab.Type (buildType, elabType, elabType', elabPostulate) where
+module Idris.Elab.Type (buildType, elabType, elabType', 
+                        elabPostulate, elabExtern) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -225,6 +226,20 @@ elabPostulate info syn doc fc opts n ty = do
     elabType info syn doc [] fc opts n ty
     putIState . (\ist -> ist{ idris_postulates = S.insert n (idris_postulates ist) }) =<< getIState
     addIBC (IBCPostulate n)
+
+    -- remove it from the deferred definitions list
+    solveDeferred n
+
+elabExtern :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
+                 FC -> FnOpts -> Name -> PTerm -> Idris ()
+elabExtern info syn doc fc opts n ty = do
+    cty <- elabType info syn doc [] fc opts n ty
+    ist <- getIState
+    let arity = length (getArgTys (normalise (tt_ctxt ist) [] cty))
+
+    putIState . (\ist -> ist{ idris_externs = S.insert (n, arity) (idris_externs ist) }) =<< getIState
+    updateContext (addOperator n cty arity (\x -> Nothing))
+    addIBC (IBCExtern (n, arity))
 
     -- remove it from the deferred definitions list
     solveDeferred n

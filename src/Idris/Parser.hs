@@ -500,10 +500,11 @@ Postulate ::=
 @
 -}
 postulate :: SyntaxInfo -> IdrisParser PDecl
-postulate syn = do doc <- try $ do (doc, _) <- docstring syn
+postulate syn = do (doc, ext)
+                       <- try $ do (doc, _) <- docstring syn
                                    pushIndent
-                                   reserved "postulate"
-                                   return doc
+                                   ext <- ppostDecl
+                                   return (doc, ext)
                    ist <- get
                    let initOpts = if default_total ist
                                      then [TotalFn]
@@ -518,9 +519,10 @@ postulate syn = do doc <- try $ do (doc, _) <- docstring syn
                    fc <- getFC
                    terminator
                    addAcc n acc
-                   return (PPostulate doc syn fc opts' n ty)
+                   return (PPostulate ext doc syn fc opts' n ty)
                  <?> "postulate"
-
+   where ppostDecl = do reserved "postulate"; return False
+                 <|> do lchar '%'; reserved "extern"; return True
 {- | Parses a using declaration
 
 @

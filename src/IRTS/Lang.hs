@@ -69,14 +69,12 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LStrConcat | LStrLt | LStrEq | LStrLen
             | LIntFloat IntTy | LFloatInt IntTy | LIntStr IntTy | LStrInt IntTy
             | LFloatStr | LStrFloat | LChInt IntTy | LIntCh IntTy
-            | LReadStr | LWriteStr | LReadFile | LWriteFile
             | LBitCast ArithTy ArithTy -- Only for values of equal width
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil | LFNegate
 
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
-            | LStdIn | LStdOut | LStdErr
 
             -- system info
             | LSystemInfo
@@ -84,9 +82,7 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LFork
             | LPar -- evaluate argument anywhere, possibly on another
                    -- core or another machine. 'id' is a valid implementation
-            | LVMPtr
-            | LNullPtr
-            | LRegisterPtr
+            | LExternal Name
             | LNoOp
   deriving (Show, Eq)
 

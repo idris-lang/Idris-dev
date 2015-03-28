@@ -1158,19 +1158,14 @@ constants =
   , ("Char",               AType (ATInt ITChar))
   , ("Double",             AType ATFloat)
   , ("String",             StrType)
-  , ("Ptr",                PtrType)
-  , ("ManagedPtr",         ManagedPtrType)
+--   , ("Ptr",                PtrType)
+--   , ("ManagedPtr",         ManagedPtrType)
   , ("prim__WorldType",    WorldType)
   , ("prim__TheWorld",     TheWorld)
---   , ("prim__UnsafeBuffer", BufferType)
   , ("Bits8",              AType (ATInt (ITFixed IT8)))
   , ("Bits16",             AType (ATInt (ITFixed IT16)))
   , ("Bits32",             AType (ATInt (ITFixed IT32)))
   , ("Bits64",             AType (ATInt (ITFixed IT64)))
---   , ("Bits8x16",           AType (ATInt (ITVec IT8 16)))
---   , ("Bits16x8",           AType (ATInt (ITVec IT16 8)))
---   , ("Bits32x4",           AType (ATInt (ITVec IT32 4)))
---   , ("Bits64x2",           AType (ATInt (ITVec IT64 2)))
   ]
  
 constant :: IdrisParser Idris.Core.TT.Const

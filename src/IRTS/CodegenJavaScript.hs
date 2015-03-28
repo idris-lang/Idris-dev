@@ -680,7 +680,8 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
     jsOP'
       | LNoOp <- op = translateReg (last args)
 
-      | LWriteStr <- op,
+      | (LExternal ws) <- op,
+        ws == sUN "prim__writeString",
         (_:str:_) <- args = JSAssign (translateReg reg)
                                (JSApp (JSIdent "i$putStr") [translateReg str])
 
@@ -1269,7 +1270,8 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
 
       | LSystemInfo <- op
       , (arg:_) <- args = jsCall "i$systemInfo"  [translateReg arg]
-      | LNullPtr    <- op
+      | LExternal nul <- op
+      , nul == sUN "prim__null"
       , (_)         <- args = JSNull
       | otherwise = JSError $ "Not implemented: " ++ show op
         where

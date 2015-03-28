@@ -154,3 +154,23 @@ really_believe_me x = prim__believe_me _ _ x
 Float : Type
 Float = Double
 
+-- Pointers as external primitive; there's no literals for these, so no
+-- need for them to be part of the compiler.
+
+abstract data Ptr : Type
+abstract data ManagedPtr : Type
+
+%extern prim__readFile : prim__WorldType -> Ptr -> String
+%extern prim__writeFile : prim__WorldType -> Ptr -> String -> Int
+%extern prim__readString : prim__WorldType -> String
+%extern prim__writeString : prim__WorldType -> String -> Int
+
+%extern prim__vm : Ptr
+%extern prim__stdin : Ptr
+%extern prim__stdout : Ptr
+%extern prim__stderr : Ptr
+
+%extern prim__null : Ptr
+%extern prim__registerPtr : Ptr -> Int -> ManagedPtr
+
+

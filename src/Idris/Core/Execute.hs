@@ -251,6 +251,9 @@ execApp env ctxt c@(EP (TCon _ arity) n _) args =
        let restArgs = drop arity args
        execApp env ctxt (mkEApp c args') restArgs
 
+execApp env ctxt f@(EP _ n _) args 
+    | Just (res, rest) <- getOp n args = do r <- res
+                                            execApp env ctxt r rest
 execApp env ctxt f@(EP _ n _) args =
     do let val = lookupDef n ctxt
        case val of
@@ -260,9 +263,9 @@ execApp env ctxt f@(EP _ n _) args =
              if length args >= arity
                then let args' = take arity args in
                     case getOp n args' of
-                      Just res -> do r <- res
-                                     execApp env ctxt r (drop arity args)
-                      Nothing -> return (mkEApp f args)
+                      Just (res, []) -> do r <- res
+                                           execApp env ctxt r (drop arity args)
+                      _ -> return (mkEApp f args)
                else return (mkEApp f args)
          [CaseOp _ _ _ _ _ (CaseDefs _ ([], STerm tm) _ _)] -> -- nullary fun
              do rhs <- doExec env ctxt tm
@@ -418,41 +421,47 @@ upio = sUN "unsafePerformPrimIO"
 delay = sUN "Delay"
 force = sUN "Force"
 
--- | Look up primitive operations in the global table and transform them into ExecVal functions
-getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
-getOp fn [_, _, x] | fn == pbm = Just (return x)
-getOp fn [_, EConstant (Str n)]
+-- | Look up primitive operations in the global table and transform 
+-- them into ExecVal functions
+getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal, [ExecVal])
+getOp fn (_ : _ : x : xs) | fn == pbm = Just (return x, xs)
+getOp fn (_ : EConstant (Str n) : xs)
     | fn == pws =
-              Just $ do execIO $ putStr n
-                        return (EConstant (I 0))
-getOp fn [_]
+              Just (do execIO $ putStr n
+                       return (EConstant (I 0)), xs)
+getOp fn (_:xs)
     | fn == prs =
-              Just $ do line <- execIO getLine
-                        return (EConstant (Str line))
-getOp fn [_, EP _ fn' _, EConstant (Str n)]
+              Just (do line <- execIO getLine
+                       return (EConstant (Str line)), xs)
+getOp fn (_ : EP _ fn' _ : EConstant (Str n) : xs)
     | fn == pwf && fn' == pstdout =
-              Just $ do execIO $ putStr n
-                        return (EConstant (I 0))
-getOp fn [_, EP _ fn' _]
+              Just (do execIO $ putStr n
+                       return (EConstant (I 0)), xs)
+getOp fn (_ : EP _ fn' _ : xs)
     | fn == prf && fn' == pstdin =
-              Just $ do line <- execIO getLine
-                        return (EConstant (Str line))
-getOp fn [_, EHandle h, EConstant (Str n)]
+              Just (do line <- execIO getLine
+                       return (EConstant (Str line)), xs)
+getOp fn (_ : EHandle h : EConstant (Str n) : xs)
     | fn == pwf =
-              Just $ do execIO $ hPutStr h n
-                        return (EConstant (I 0))
-getOp fn [_, EHandle h]
+              Just (do execIO $ hPutStr h n
+                       return (EConstant (I 0)), xs)
+getOp fn (_ : EHandle h : xs)
     | fn == prf =
-              Just $ do contents <- execIO $ hGetLine h
-                        return (EConstant (Str (contents ++ "\n")))
-getOp fn [_, arg]
+              Just (do contents <- execIO $ hGetLine h
+                       return (EConstant (Str (contents ++ "\n"))), xs)
+getOp fn (_ : arg : xs)
     | fn == prf =
-              Just $ execFail (Msg "Can't use prim__readFile on a raw pointer in the executor.") 
-getOp n args = getPrim n primitives >>= flip applyPrim args
-    where getPrim :: Name -> [Prim] -> Maybe ([ExecVal] -> Maybe ExecVal)
+              Just $ (execFail (Msg "Can't use prim__readFile on a raw pointer in the executor."), xs)
+getOp n args = do (arity, prim) <- getPrim n primitives 
+                  if (length args >= arity) 
+                     then do res <- applyPrim prim (take arity args)
+                             Just (res, drop arity args)
+                     else Nothing
+    where getPrim :: Name -> [Prim] -> Maybe (Int, [ExecVal] -> Maybe ExecVal)
           getPrim n [] = Nothing
-          getPrim n ((Prim pn _ arity def _ _) : prims) | n == pn   = Just $ execPrim def
-                                                        | otherwise = getPrim n prims
+          getPrim n ((Prim pn _ arity def _ _) : prims) 
+             | n == pn   = Just (arity, execPrim def)
+             | otherwise = getPrim n prims
 
           execPrim :: ([Const] -> Maybe Const) -> [ExecVal] -> Maybe ExecVal
           execPrim f args = EConstant <$> (mapM getConst args >>= f)

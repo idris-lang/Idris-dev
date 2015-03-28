@@ -77,9 +77,10 @@ performUsageAnalysis roots = do
         cg  <- idris_callgraph <$> getIState
         opt <- idris_optimisation <$> getIState
         used <- idris_erasureUsed <$> getIState
+        externs <- idris_externs <$> getIState
 
         -- Build the dependency graph.
-        let depMap = buildDepMap ci used ctx main
+        let depMap = buildDepMap ci used (S.toList externs) ctx main
 
         -- Search for reachable nodes in the graph.
         let (residDeps, (reachableNames, minUse)) = minimalUsage depMap
@@ -174,9 +175,10 @@ forwardChain deps
 
 -- Build the dependency graph,
 -- starting the depth-first search from a list of Names.
-buildDepMap :: Ctxt ClassInfo -> [(Name, Int)] -> Context -> [Name] -> Deps
-buildDepMap ci used ctx startNames = addPostulates used $ 
-                                        dfs S.empty M.empty startNames
+buildDepMap :: Ctxt ClassInfo -> [(Name, Int)] -> [(Name, Int)] ->
+               Context -> [Name] -> Deps
+buildDepMap ci used externs ctx startNames 
+    = addPostulates used $ dfs S.empty M.empty startNames
   where
     -- mark the result of Main.main as used with the empty assumption
     addPostulates :: [(Name, Int)] -> Deps -> Deps
@@ -225,6 +227,9 @@ buildDepMap ci used ctx startNames = addPostulates used $
     
                 -- in general, all other primitives use all their arguments
                 , [(n, Arg i) | (n,arity) <- usedPrims, i <- [0..arity-1]]
+
+                -- %externs are assumed to use all their arguments
+                , [(n, Arg i) | (n,arity) <- externs, i <- [0..arity-1]]
 
                 -- mkForeign* functions are special-cased below
                 ]

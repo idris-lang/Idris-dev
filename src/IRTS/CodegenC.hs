@@ -451,16 +451,6 @@ doOp v (LIntStr (ITFixed _)) [x] = v ++ "idris_castBitsStr(vm, " ++ creg x ++ ")
 doOp v LFloatStr [x] = v ++ "idris_castFloatStr(vm, " ++ creg x ++ ")"
 doOp v LStrFloat [x] = v ++ "idris_castStrFloat(vm, " ++ creg x ++ ")"
 
-doOp v LReadStr [_] = v ++ "idris_readStr(vm, stdin)"
-doOp v LWriteStr [_,s] = v ++ "MKINT((i_int)(idris_writeStr(stdout"
-                             ++ ",GETSTR("
-                             ++ creg s ++ "))))"
-
-doOp v LReadFile [_,x] = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
-doOp v LWriteFile [_,x,s] = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
-                              ++ "),GETSTR("
-                              ++ creg s ++ "))))"
-
 doOp v (LSLt (ATInt (ITFixed ty))) [x, y] = bitOp v "SLt" ty [x, y]
 doOp v (LSLe (ATInt (ITFixed ty))) [x, y] = bitOp v "SLte" ty [x, y]
 doOp v (LEq (ATInt (ITFixed ty))) [x, y] = bitOp v "Eq" ty [x, y]
@@ -552,16 +542,8 @@ doOp v LStrIndex [x, y] = v ++ "idris_strIndex(vm, " ++ creg x ++ "," ++ creg y 
 doOp v LStrRev [x] = v ++ "idris_strRev(vm, " ++ creg x ++ ")"
 doOp v LStrLen [x] = v ++ "idris_strlen(vm, " ++ creg x ++ ")"
 
-doOp v LStdIn [] = v ++ "MKPTR(vm, stdin)"
-doOp v LStdOut [] = v ++ "MKPTR(vm, stdout)"
-doOp v LStdErr [] = v ++ "MKPTR(vm, stderr)"
-
 doOp v LFork [x] = v ++ "MKPTR(vm, vmThread(vm, " ++ cname (sMN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LPar [x] = v ++ creg x -- "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"
-doOp v LVMPtr [] = v ++ "MKPTR(vm, vm)"
-doOp v LNullPtr [] = v ++ "MKPTR(vm, NULL)"
-doOp v LRegisterPtr [p, i] = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++
-                                  "), GETINT(" ++ creg i ++ "))"
 doOp v (LChInt ITNative) args = v ++ creg (last args)
 doOp v (LChInt ITChar) args = doOp v (LChInt ITNative) args
 doOp v (LIntCh ITNative) args = v ++ creg (last args)
@@ -569,7 +551,34 @@ doOp v (LIntCh ITChar) args = doOp v (LIntCh ITNative) args
 
 doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
 doOp v LNoOp args = v ++ creg (last args)
-doOp _ op args = error "doOp of (" ++ show op ++ ") not implemented, arguments (" ++ show args ++ ")"
+
+-- Pointer primitives (declared as %extern in Builtins.idr)
+doOp v (LExternal rs) [_] 
+   | rs == sUN "prim__readString" = v ++ "idris_readStr(vm, stdin)"
+doOp v (LExternal ws) [_,s] 
+   | ws == sUN "prim__writeString" 
+             = v ++ "MKINT((i_int)(idris_writeStr(stdout"
+                 ++ ",GETSTR("
+                 ++ creg s ++ "))))"
+
+doOp v (LExternal rf) [_,x] 
+   | rf == sUN "prim__readFile"
+       = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
+doOp v (LExternal wf) [_,x,s] 
+   | wf == sUN "prim__writeFile"
+       = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
+                              ++ "),GETSTR("
+                              ++ creg s ++ "))))"
+doOp v (LExternal vm) [] | vm == sUN "prim__vm" = v ++ "MKPTR(vm, vm)"
+doOp v (LExternal si) [] | si == sUN "prim__stdin" = v ++ "MKPTR(vm, stdin)"
+doOp v (LExternal so) [] | so == sUN "prim__stdout" = v ++ "MKPTR(vm, stdout)"
+doOp v (LExternal se) [] | se == sUN "prim__stderr" = v ++ "MKPTR(vm, stderr)"
+
+doOp v (LExternal nul) [] | nul == sUN "prim__null" = v ++ "MKPTR(vm, NULL)"
+doOp v (LExternal rp) [p, i] | rp == sUN "prim__registerPtr"
+    = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++ "), GETINT(" ++ creg i ++ "))"
+
+doOp _ op args = error $ "doOp not implemented (" ++ show (op, args) ++ ")"
 
 flUnOp :: String -> String -> String
 flUnOp name val = "MKFLOAT(vm, " ++ name ++ "(GETFLOAT(" ++ val ++ ")))"

@@ -226,6 +226,7 @@ data IState = IState {
     module_aliases :: M.Map [T.Text] [T.Text],
     idris_consolewidth :: ConsoleWidth, -- ^ How many chars wide is the console?
     idris_postulates :: S.Set Name,
+    idris_externs :: S.Set (Name, Int),
     idris_erasureUsed :: [(Name, Int)], -- ^ Function/constructor name, argument position is used
     idris_whocalls :: Maybe (M.Map Name [Name]),
     idris_callswho :: Maybe (M.Map Name [Name]),
@@ -300,6 +301,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCErrorHandler Name
               | IBCFunctionErrorHandler Name Name Name
               | IBCPostulate Name
+              | IBCExtern (Name, Int)
               | IBCTotCheckErr FC String
               | IBCParsedRegion FC
               | IBCModDocs Name -- ^ The name is the special name used to track module docs
@@ -317,7 +319,7 @@ idrisInit = IState initContext S.empty []
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty [] Nothing Nothing [] [] M.empty []
+                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty []
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -594,7 +596,8 @@ type ProvideWhat = ProvideWhat' PTerm
 data PDecl' t
    = PFix     FC Fixity [String] -- ^ Fixity declaration
    | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
-   | PPostulate (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
+   | PPostulate Bool -- external def if true
+          (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
    | PCAF     FC Name t -- ^ Top level constant
    | PData    (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
@@ -694,7 +697,7 @@ type PClause = PClause' PTerm
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
 declared (PTy _ _ _ _ _ n t) = [n]
-declared (PPostulate _ _ _ _ n t) = [n]
+declared (PPostulate _ _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PCAF _ n _) = [n]
 declared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
@@ -714,7 +717,7 @@ declared (PDirective _) = []
 tldeclared :: PDecl -> [Name]
 tldeclared (PFix _ _ _) = []
 tldeclared (PTy _ _ _ _ _ n t) = [n]
-tldeclared (PPostulate _ _ _ _ n t) = [n]
+tldeclared (PPostulate _ _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
 tldeclared (PRecord _ _ _ n _ _ _ c _) = [n, c]
 tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
@@ -729,7 +732,7 @@ tldeclared _ = []
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
 defined (PTy _ _ _ _ _ n t) = []
-defined (PPostulate _ _ _ _ n t) = []
+defined (PPostulate _ _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PCAF _ n _) = [n]
 defined (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
