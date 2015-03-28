@@ -149,3 +149,8 @@ believe_me x = prim__believe_me _ _ x
 public %assert_total
 really_believe_me : a -> b
 really_believe_me x = prim__believe_me _ _ x
+
+-- Deprecated - for backward compatibility
+Float : Type
+Float = Double
+

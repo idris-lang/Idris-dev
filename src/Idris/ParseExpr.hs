@@ -1156,7 +1156,7 @@ constants =
   [ ("Integer",            AType (ATInt ITBig))
   , ("Int",                AType (ATInt ITNative))
   , ("Char",               AType (ATInt ITChar))
-  , ("Float",              AType ATFloat)
+  , ("Double",             AType ATFloat)
   , ("String",             StrType)
   , ("Ptr",                PtrType)
   , ("ManagedPtr",         ManagedPtrType)
