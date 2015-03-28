@@ -93,15 +93,10 @@ instance Show Const where
   show (B16 b)    = "(B16 ...)"
   show (B32 b)    = "(B32 ...)"
   show (B64 b)    = "(B64 ...)"
-  show (B8V xs)   = "(B8V ...)"
-  show (B16V xs) = "(B16V ...)"
-  show (B32V xs) = "(B32V ...)"
-  show (B64V xs) = "(B64V ...)"
   show (AType x) = "(AType ...)"
   show StrType = "StrType"
   show PtrType = "PtrType"
   show ManagedPtrType = "ManagedPtrType"
-  show BufferType = "BufferType"
   show VoidType = "VoidType"
   show Forgot = "Forgot"
 
@@ -135,15 +130,10 @@ instance Eq Const where
   (B16 x)        == (B16 y)         = x == y
   (B32 x)        == (B32 y)         = x == y
   (B64 x)        == (B64 y)         = x == y
-  (B8V xs)       == (B8V ys)        = False -- TODO
-  (B16V xs)      == (B16V ys)       = False -- TODO
-  (B32V xs)      == (B32V ys)       = False -- TODO
-  (B64V xs)      == (B64V ys)       = False -- TODO
   (AType x)      == (AType y)       = x == y
   StrType        == StrType         = True
   PtrType        == PtrType         = True
   ManagedPtrType == ManagedPtrType  = True
-  BufferType     == BufferType      = True
   VoidType       == VoidType        = True
   Forgot         == Forgot          = True
   _              == _               = False

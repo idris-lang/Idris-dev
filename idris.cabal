@@ -346,10 +346,6 @@ Extra-source-files:
                        test/basic013/*.idr
                        test/basic013/expected
 
-                       test/buffer001-disabled/*.idr
-                       test/buffer001-disabled/run
-                       test/buffer001-disabled/expected
-
                        test/delab001/*.idr
                        test/delab001/run
                        test/delab001/expected

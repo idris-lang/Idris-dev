@@ -4,7 +4,7 @@ opts = "--nobasepkgs --total -i ../prelude -i ../base"
 modules = Control.Algebra,
           Control.Isomorphism.Primitives,
           Classes.Verified,
-          Data.Fun, Data.Rel, Data.Buffer,
+          Data.Fun, Data.Rel, 
           Data.Hash, Data.Matrix,
           Data.ZZ, Data.Sign,
           Data.BoundedList,
