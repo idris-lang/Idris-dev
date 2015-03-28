@@ -30,9 +30,6 @@ VAL copy(VM* vm, VAL x) {
     case STROFFSET:
         cl = MKSTROFFc(vm, x->info.str_offset);
         break;
-    case BUFFER:
-        cl = MKBUFFERc(vm, x->info.buf);
-        break;
     case BIGINT:
         cl = MKBIGMc(vm, x->info.ptr);
         break;
@@ -53,18 +50,6 @@ VAL copy(VM* vm, VAL x) {
         break;
     case BITS64:
         cl = idris_b64CopyForGC(vm, x);
-        break;
-    case BITS8X16:
-        cl = idris_b8x16CopyForGC(vm, x);
-        break;
-    case BITS16X8:
-        cl = idris_b16x8CopyForGC(vm, x);
-        break;
-    case BITS32X4:
-        cl = idris_b32x4CopyForGC(vm, x);
-        break;
-    case BITS64X2:
-        cl = idris_b64x2CopyForGC(vm, x);
         break;
     case FWD:
         return x->info.ptr;

@@ -182,10 +182,6 @@ bcc i (ASSIGNCONST l c)
     mkConst (B16 x) = "idris_b16const(vm, " ++ show x ++ "U)"
     mkConst (B32 x) = "idris_b32const(vm, " ++ show x ++ "UL)"
     mkConst (B64 x) = "idris_b64const(vm, " ++ show x ++ "ULL)"
-    mkConst (B8V  x) = let x' = V.toList x in "MKB8x16const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "U") x') ++ ")"
-    mkConst (B16V x) = let x' = V.toList x in "MKB16x8const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "U") x') ++ ")"
-    mkConst (B32V x) = let x' = V.toList x in "MKB32x4const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "UL") x') ++ ")"
-    mkConst (B64V x) = let x' = V.toList x in "MKB64x2const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "ULL") x') ++ ")"
     -- if it's a type constant, we won't use it, but equally it shouldn't
     -- report an error. These might creep into generated for various reasons
     -- (especially if erasure is disabled).
@@ -556,11 +552,6 @@ doOp v LStrIndex [x, y] = v ++ "idris_strIndex(vm, " ++ creg x ++ "," ++ creg y 
 doOp v LStrRev [x] = v ++ "idris_strRev(vm, " ++ creg x ++ ")"
 doOp v LStrLen [x] = v ++ "idris_strlen(vm, " ++ creg x ++ ")"
 
-doOp v LAllocate [x] = v ++ "idris_buffer_allocate(vm, " ++ creg x ++ ")"
-doOp v LAppendBuffer [a, b, c, d, e, f] = v ++ "idris_appendBuffer(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ "," ++ creg e ++ "," ++ creg f ++ ")"
-doOp v (LAppend ity en) [a, b, c, d] = v ++ "idris_append" ++ intTyName ity ++ show en ++ "(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ ")"
-doOp v (LPeek ity en) [x, y] = v ++ "idris_peek" ++ intTyName ity ++ show en ++ "(vm, " ++ creg x ++ "," ++ creg y ++ ")"
-
 doOp v LStdIn [] = v ++ "MKPTR(vm, stdin)"
 doOp v LStdOut [] = v ++ "MKPTR(vm, stdout)"
 doOp v LStdErr [] = v ++ "MKPTR(vm, stderr)"
@@ -575,16 +566,6 @@ doOp v (LChInt ITNative) args = v ++ creg (last args)
 doOp v (LChInt ITChar) args = doOp v (LChInt ITNative) args
 doOp v (LIntCh ITNative) args = v ++ creg (last args)
 doOp v (LIntCh ITChar) args = doOp v (LIntCh ITNative) args
-
-doOp v c@(LMkVec IT8  _) args = v ++ "MKB8x16(vm, " ++  (intercalate ", " (map creg args)) ++ ")"
-doOp v c@(LMkVec IT16 _) args = v ++ "MKB16x8(vm, " ++ (intercalate ", " (map creg args)) ++ ")"
-doOp v c@(LMkVec IT32 _) args = v ++ "MKB32x4(vm, " ++ (intercalate ", " (map creg args)) ++ ")"
-doOp v c@(LMkVec IT64 _) args = v ++ "MKB64x2(vm, " ++ (intercalate ", " (map creg args)) ++ ")"
-
-doOp v c@(LIdxVec IT8  _) [p, i] = v ++ "idris_IDXB8x16(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
-doOp v c@(LIdxVec IT16 _) [p, i] = v ++ "idris_IDXB16x8(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
-doOp v c@(LIdxVec IT32 _) [p, i] = v ++ "idris_IDXB32x4(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
-doOp v c@(LIdxVec IT64 _) [p, i] = v ++ "idris_IDXB64x2(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
 
 doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
 doOp v LNoOp args = v ++ creg (last args)

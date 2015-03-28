@@ -565,11 +565,9 @@ intTyWidth ITBig = error "IRTS.Lang.intTyWidth: Big integers have variable width
 
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B8 Word8 | B16 Word16 | B32 Word32 | B64 Word64
-           | B8V (Vector Word8) | B16V (Vector Word16)
-           | B32V (Vector Word32) | B64V (Vector Word64)
            | AType ArithTy | StrType
            | WorldType | TheWorld
-           | PtrType | ManagedPtrType | BufferType | VoidType | Forgot
+           | PtrType | ManagedPtrType | VoidType | Forgot
   deriving (Eq, Ord, Data, Typeable)
 {-!
 deriving instance Binary Const
@@ -580,7 +578,6 @@ isTypeConst :: Const -> Bool
 isTypeConst (AType _) = True
 isTypeConst StrType = True
 isTypeConst ManagedPtrType = True
-isTypeConst BufferType = True
 isTypeConst WorldType = True
 isTypeConst PtrType = True
 isTypeConst VoidType = True
@@ -599,7 +596,6 @@ instance Pretty Const OutputAnnotation where
   pretty StrType = text "String"
   pretty TheWorld = text "%theWorld"
   pretty WorldType = text "prim__World"
-  pretty BufferType = text "prim__UnsafeBuffer"
   pretty PtrType = text "Ptr"
   pretty ManagedPtrType = text "Ptr"
   pretty VoidType = text "Void"
@@ -620,10 +616,6 @@ constIsType (B8 _) = False
 constIsType (B16 _) = False
 constIsType (B32 _) = False
 constIsType (B64 _) = False
-constIsType (B8V _) = False
-constIsType (B16V _) = False
-constIsType (B32V _) = False
-constIsType (B64V _) = False
 constIsType _ = True
 
 -- | Get the docstring for a Const
@@ -635,7 +627,6 @@ constDocs c@(AType ATFloat)                = "Double-precision floating-point nu
 constDocs StrType                          = "Strings in some unspecified encoding"
 constDocs PtrType                          = "Foreign pointers"
 constDocs ManagedPtrType                   = "Managed pointers"
-constDocs BufferType                       = "Copy-on-write buffers"
 constDocs c@(AType (ATInt (ITFixed IT8)))  = "Eight bits (unsigned)"
 constDocs c@(AType (ATInt (ITFixed IT16))) = "Sixteen bits (unsigned)"
 constDocs c@(AType (ATInt (ITFixed IT32))) = "Thirty-two bits (unsigned)"
@@ -657,10 +648,6 @@ constDocs (B32 w)                          = "The thirty-two-bit value 0x" ++
                                              showIntAtBase 16 intToDigit w ""
 constDocs (B64 w)                          = "The sixty-four-bit value 0x" ++
                                              showIntAtBase 16 intToDigit w ""
-constDocs (B8V v)                          = "A vector of eight-bit values"
-constDocs (B16V v)                         = "A vector of sixteen-bit values"
-constDocs (B32V v)                         = "A vector of thirty-two-bit values"
-constDocs (B64V v)                         = "A vector of sixty-four-bit values"
 constDocs prim                             = "Undocumented"
 
 data Universe = NullType | UniqueType | AllTypes
@@ -1303,10 +1290,6 @@ instance Show Const where
     show (B16 x) = show x
     show (B32 x) = show x
     show (B64 x) = show x
-    show (B8V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
-    show (B16V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
-    show (B32V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
-    show (B64V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
     show (AType ATFloat) = "Float"
     show (AType (ATInt ITBig)) = "Integer"
     show (AType (ATInt ITNative)) = "Int"
@@ -1316,7 +1299,6 @@ instance Show Const where
     show TheWorld = "prim__TheWorld"
     show WorldType = "prim__WorldType"
     show StrType = "String"
-    show BufferType = "prim__UnsafeBuffer"
     show PtrType = "Ptr"
     show ManagedPtrType = "ManagedPtr"
     show VoidType = "Void"

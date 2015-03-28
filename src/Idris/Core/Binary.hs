@@ -350,11 +350,6 @@ instance Binary Const where
                         putWord8 (fromIntegral . fromEnum $ ity)
                         putWord8 (fromIntegral count)
 
-                B8V  x1 -> putWord8 21 >> put x1
-                B16V x1 -> putWord8 22 >> put x1
-                B32V x1 -> putWord8 23 >> put x1
-                B64V x1 -> putWord8 24 >> put x1
-                BufferType -> putWord8 25
                 ManagedPtrType -> putWord8 26
                 VoidType -> putWord8 27
                 WorldType -> putWord8 28
@@ -395,11 +390,6 @@ instance Binary Const where
                         c <- getWord8
                         return (AType (ATInt (ITVec (toEnum . fromIntegral $ e) (fromIntegral c))))
 
-                   21 -> fmap B8V get
-                   22 -> fmap B16V get
-                   23 -> fmap B32V get
-                   24 -> fmap B64V get
-                   25 -> return BufferType
                    26 -> return ManagedPtrType
                    27 -> return VoidType
                    28 -> return WorldType
