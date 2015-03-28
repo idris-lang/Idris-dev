@@ -12,6 +12,7 @@ import Util.System
 
 import Numeric
 import Data.Char
+import Data.Bits
 import Data.List (intercalate)
 import qualified Data.Vector.Unboxed as V
 import System.Process
@@ -145,8 +146,26 @@ showCStr s = '"' : foldr ((++) . showChar) "\"" s
         | ord c < 0x10  = "\"\"\\x0" ++ showHex (ord c) "\"\""
         | ord c < 0x20  = "\"\"\\x"  ++ showHex (ord c) "\"\""
         | ord c < 0x7f  = [c]    -- 0x7f = \DEL
-        | ord c < 0x100 = "\"\"\\x"  ++ showHex (ord c) "\"\""
-        | otherwise = error $ "non-8-bit character in string literal: " ++ show c
+        | otherwise = showHexes (utf8bytes (ord c))
+
+    utf8bytes :: Int -> [Int]
+    utf8bytes x = let (h : bytes) = split [] x in
+                      headHex h (length bytes) : map toHex bytes
+      where
+        split acc 0 = acc
+        split acc x = let xbits = x .&. 0x3f 
+                          xrest = shiftR x 6 in
+                          split (xbits : acc) xrest
+
+        headHex h 1 = h + 0xc0
+        headHex h 2 = h + 0xe0
+        headHex h 3 = h + 0xf0
+        headHex h n = error "Can't happen: Invalid UTF8 character"
+
+        toHex i = i + 0x80
+
+    showHexes = foldr ((++) . showUTF8) ""
+    showUTF8 c = "\"\"\\x" ++ showHex c "\"\""
 
 bcc :: Int -> BC -> String
 bcc i (ASSIGN l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
@@ -424,11 +443,6 @@ doOp v (LSLe (ATInt ITBig)) [l, r] = v ++ "idris_bigLe(vm, " ++ creg l ++ ", " +
 doOp v (LSGt (ATInt ITBig)) [l, r] = v ++ "idris_bigGt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LSGe (ATInt ITBig)) [l, r] = v ++ "idris_bigGe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
-doOp v LStrConcat [l,r] = v ++ "idris_concat(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LStrEq [l,r] = v ++ "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LStrLen [x] = v ++ "idris_strlen(vm, " ++ creg x ++ ")"
-
 doOp v (LIntFloat ITNative) [x] = v ++ "idris_castIntFloat(" ++ creg x ++ ")"
 doOp v (LFloatInt ITNative) [x] = v ++ "idris_castFloatInt(" ++ creg x ++ ")"
 doOp v (LSExt ITNative ITBig) [x] = v ++ "idris_castIntBig(vm, " ++ creg x ++ ")"
@@ -529,11 +543,18 @@ doOp v LFFloor [x] = v ++ flUnOp "floor" (creg x)
 doOp v LFCeil [x] = v ++ flUnOp "ceil" (creg x)
 doOp v LFNegate [x] = v ++ "MKFLOAT(vm, -GETFLOAT(" ++ (creg x) ++ "))"
 
+-- String functions which don't need to know we're UTF8
+doOp v LStrConcat [l,r] = v ++ "idris_concat(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v LStrEq [l,r] = v ++ "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+
+-- String functions which need to know we're UTF8
 doOp v LStrHead [x] = v ++ "idris_strHead(vm, " ++ creg x ++ ")"
 doOp v LStrTail [x] = v ++ "idris_strTail(vm, " ++ creg x ++ ")"
 doOp v LStrCons [x, y] = v ++ "idris_strCons(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrIndex [x, y] = v ++ "idris_strIndex(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrRev [x] = v ++ "idris_strRev(vm, " ++ creg x ++ ")"
+doOp v LStrLen [x] = v ++ "idris_strlen(vm, " ++ creg x ++ ")"
 
 doOp v LAllocate [x] = v ++ "idris_buffer_allocate(vm, " ++ creg x ++ ")"
 doOp v LAppendBuffer [a, b, c, d, e, f] = v ++ "idris_appendBuffer(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ "," ++ creg e ++ "," ++ creg f ++ ")"

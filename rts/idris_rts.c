@@ -2,6 +2,7 @@
 
 #include "idris_rts.h"
 #include "idris_gc.h"
+#include "idris_utf8.h"
 #include "idris_bitstring.h"
 
 #ifdef HAS_PTHREAD
@@ -596,7 +597,7 @@ VAL idris_streq(VM* vm, VAL l, VAL r) {
 }
 
 VAL idris_strlen(VM* vm, VAL l) {
-    return MKINT((i_int)(strlen(GETSTR(l))));
+    return MKINT((i_int)(idris_utf8_strlen(GETSTR(l))));
 }
 
 #define BUFSIZE 256
@@ -647,7 +648,7 @@ VAL idris_readStr(VM* vm, FILE* h) {
 }
 
 VAL idris_strHead(VM* vm, VAL str) {
-    return MKINT((i_int)(GETSTR(str)[0]));
+    return idris_strIndex(vm, str, 0);
 }
 
 VAL MKSTROFFc(VM* vm, StrOffset* off) {
@@ -679,27 +680,41 @@ VAL idris_strTail(VM* vm, VAL str) {
         }
 
         cl->info.str_offset->str = root;
-        cl->info.str_offset->offset = offset+1;
+        cl->info.str_offset->offset = offset+idris_utf8_charlen(GETSTR(str));
 
         return cl;
     } else {
-        return MKSTR(vm, GETSTR(str)+1);
+        char* nstr = GETSTR(str);
+        return MKSTR(vm, nstr+idris_utf8_charlen(nstr));
     }
 }
 
 VAL idris_strCons(VM* vm, VAL x, VAL xs) {
     char *xstr = GETSTR(xs);
-    Closure* cl = allocate(sizeof(Closure) +
-                           strlen(xstr) + 2, 0);
-    SETTY(cl, STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-    cl -> info.str[0] = (char)(GETINT(x));
-    strcpy(cl -> info.str+1, xstr);
-    return cl;
+    int xval = GETINT(x);
+    if ((xval & 0x80) == 0) { // ASCII char
+        Closure* cl = allocate(sizeof(Closure) +
+                               strlen(xstr) + 2, 0);
+        SETTY(cl, STRING);
+        cl -> info.str = (char*)cl + sizeof(Closure);
+        cl -> info.str[0] = (char)(GETINT(x));
+        strcpy(cl -> info.str+1, xstr);
+        return cl;
+    } else {
+        char *init = idris_utf8_fromChar(xval);
+        Closure* cl = allocate(sizeof(Closure) + strlen(init) + strlen(xstr) + 1, 0);
+        SETTY(cl, STRING);
+        cl -> info.str = (char*)cl + sizeof(Closure);
+        strcpy(cl -> info.str, init);
+        strcat(cl -> info.str, xstr);
+        free(init);
+        return cl;
+    }
 }
 
 VAL idris_strIndex(VM* vm, VAL str, VAL i) {
-    return MKINT((i_int)(GETSTR(str)[GETINT(i)]));
+    int idx = idris_utf8_index(GETSTR(str), GETINT(i));
+    return MKINT((i_int)idx);
 }
 
 VAL idris_strRev(VM* vm, VAL str) {
@@ -707,14 +722,8 @@ VAL idris_strRev(VM* vm, VAL str) {
     Closure* cl = allocate(sizeof(Closure) +
                            strlen(xstr) + 1, 0);
     SETTY(cl, STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-    int y = 0;
-    int x = strlen(xstr);
-
-    cl-> info.str[x+1] = '\0';
-    while(x>0) {
-        cl -> info.str[y++] = xstr[--x];
-    }
+    cl->info.str = (char*)cl + sizeof(Closure);
+    idris_utf8_rev(xstr, cl->info.str);
     return cl;
 }
 

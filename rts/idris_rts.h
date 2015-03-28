@@ -335,6 +335,8 @@ VAL idris_readStr(VM* vm, FILE* h);
 
 VAL idris_strHead(VM* vm, VAL str);
 VAL idris_strTail(VM* vm, VAL str);
+// This is not expected to be efficient! Mostly we wouldn't expect to call
+// it at all at run time.
 VAL idris_strCons(VM* vm, VAL x, VAL xs);
 VAL idris_strIndex(VM* vm, VAL str, VAL i);
 VAL idris_strRev(VM* vm, VAL str);
