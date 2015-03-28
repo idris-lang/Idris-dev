@@ -95,8 +95,6 @@ instance Show Const where
   show (B64 b)    = "(B64 ...)"
   show (AType x) = "(AType ...)"
   show StrType = "StrType"
-  show PtrType = "PtrType"
-  show ManagedPtrType = "ManagedPtrType"
   show VoidType = "VoidType"
   show Forgot = "Forgot"
 
@@ -112,7 +110,6 @@ instance Eq Reflection.IntTy where
   ITNative    == ITNative    = True
   ITBig       == ITBig       = True
   ITChar      == ITChar      = True
-  (ITVec x i) == (ITVec y j) = x == y && i == j
   _           == _           = False
 
 instance Eq ArithTy where
@@ -132,8 +129,6 @@ instance Eq Const where
   (B64 x)        == (B64 y)         = x == y
   (AType x)      == (AType y)       = x == y
   StrType        == StrType         = True
-  PtrType        == PtrType         = True
-  ManagedPtrType == ManagedPtrType  = True
   VoidType       == VoidType        = True
   Forgot         == Forgot          = True
   _              == _               = False

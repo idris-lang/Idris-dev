@@ -134,7 +134,6 @@ instance NFData IntTy where
         rnf ITNative = ()
         rnf ITBig = ()
         rnf ITChar = ()
-        rnf (ITVec x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance NFData ArithTy where
         rnf (ATInt x1) = rnf x1 `seq` ()
@@ -154,8 +153,6 @@ instance NFData Const where
         rnf WorldType = ()
         rnf TheWorld = ()
         rnf StrType = ()
-        rnf PtrType = ()
-        rnf ManagedPtrType = ()
         rnf VoidType = ()
         rnf Forgot = ()
 

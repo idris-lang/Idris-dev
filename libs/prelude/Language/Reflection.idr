@@ -38,7 +38,6 @@ data TTUExp =
 data NativeTy = IT8 | IT16 | IT32 | IT64
 
 data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
-           | ITVec NativeTy Int
 
 data ArithTy = ATInt Language.Reflection.IntTy | ATFloat
 
@@ -46,7 +45,7 @@ data ArithTy = ATInt Language.Reflection.IntTy | ATFloat
 data Const = I Int | BI Integer | Fl Float | Ch Char | Str String
            | B8 Bits8 | B16 Bits16 | B32 Bits32 | B64 Bits64
            | AType ArithTy | StrType
-           | PtrType | ManagedPtrType | VoidType | Forgot
+           | VoidType | Forgot
            | WorldType | TheWorld
 %name Const c, c'
 
@@ -425,7 +424,6 @@ instance Quotable Reflection.IntTy TT where
   quote ITNative = `(Reflection.ITNative)
   quote ITBig = `(ITBig)
   quote ITChar = `(Reflection.ITChar)
-  quote (ITVec x y) = `(ITVec ~(quote x) ~(quote y))
 
 instance Quotable Reflection.IntTy Raw where
   quotedTy = `(Reflection.IntTy)
@@ -433,7 +431,6 @@ instance Quotable Reflection.IntTy Raw where
   quote ITNative = `(Reflection.ITNative)
   quote ITBig = `(ITBig)
   quote ITChar = `(Reflection.ITChar)
-  quote (ITVec x y) = `(ITVec ~(quote {t=Raw} x) ~(quote {t=Raw} y))
 
 instance Quotable ArithTy TT where
   quotedTy = `(ArithTy)
@@ -458,8 +455,6 @@ instance Quotable Const TT where
   quote (B64 x) = `(B64 ~(quote x))
   quote (AType x) = `(AType ~(quote x))
   quote StrType = `(StrType)
-  quote PtrType = `(PtrType)
-  quote ManagedPtrType = `(ManagedPtrType)
   quote VoidType = `(VoidType)
   quote Forgot = `(Forgot)
   quote WorldType = `(WorldType)
@@ -478,8 +473,6 @@ instance Quotable Const Raw where
   quote (B64 x) = `(B64 ~(quote {t=Raw} x))
   quote (AType x) = `(AType ~(quote {t=Raw} x))
   quote StrType = `(StrType)
-  quote PtrType = `(PtrType)
-  quote ManagedPtrType = `(ManagedPtrType)
   quote VoidType = `(VoidType)
   quote Forgot = `(Forgot)
   quote WorldType = `(WorldType)

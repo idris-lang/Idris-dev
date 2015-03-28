@@ -473,7 +473,6 @@ translateConstant StrType                  = JSType JSStringTy
 translateConstant (AType (ATInt ITBig))    = JSType JSIntegerTy
 translateConstant (AType ATFloat)          = JSType JSFloatTy
 translateConstant (AType (ATInt ITChar))   = JSType JSCharTy
-translateConstant PtrType                  = JSType JSPtrTy
 translateConstant Forgot                   = JSType JSForgotTy
 translateConstant (BI 0)                   = JSNum (JSInteger JSBigZero)
 translateConstant (BI 1)                   = JSNum (JSInteger JSBigOne)

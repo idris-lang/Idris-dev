@@ -342,15 +342,8 @@ instance Binary Const where
                 (AType ATFloat) -> putWord8 11
                 (AType (ATInt ITChar)) -> putWord8 12
                 StrType -> putWord8 13
-                PtrType -> putWord8 14
                 Forgot -> putWord8 15
                 (AType (ATInt (ITFixed ity))) -> putWord8 (fromIntegral (16 + fromEnum ity)) -- 16-19 inclusive
-                (AType (ATInt (ITVec ity count))) -> do
-                        putWord8 20
-                        putWord8 (fromIntegral . fromEnum $ ity)
-                        putWord8 (fromIntegral count)
-
-                ManagedPtrType -> putWord8 26
                 VoidType -> putWord8 27
                 WorldType -> putWord8 28
                 TheWorld -> putWord8 29
@@ -377,7 +370,6 @@ instance Binary Const where
                    11 -> return (AType ATFloat)
                    12 -> return (AType (ATInt ITChar))
                    13 -> return StrType
-                   14 -> return PtrType
                    15 -> return Forgot
 
                    16 -> return (AType (ATInt (ITFixed IT8)))
@@ -385,12 +377,6 @@ instance Binary Const where
                    18 -> return (AType (ATInt (ITFixed IT32)))
                    19 -> return (AType (ATInt (ITFixed IT64)))
 
-                   20 -> do
-                        e <- getWord8
-                        c <- getWord8
-                        return (AType (ATInt (ITVec (toEnum . fromIntegral $ e) (fromIntegral c))))
-
-                   26 -> return ManagedPtrType
                    27 -> return VoidType
                    28 -> return WorldType
                    29 -> return TheWorld

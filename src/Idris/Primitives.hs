@@ -13,7 +13,6 @@ import Data.Word
 import Data.Int
 import Data.Char
 import Data.Function (on)
-import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
 
 data Prim = Prim { p_name  :: Name,
@@ -194,9 +193,6 @@ primitives =
         (1, LSystemInfo) total
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
 
-vecTypes :: [IntTy]
-vecTypes = [ITVec IT8 16, ITVec IT16 8, ITVec IT32 4, ITVec IT64 2]
-
 intOps :: IntTy -> [Prim]
 intOps ity = intCmps ity ++ intArith ity ++ intConv ity
 
@@ -249,29 +245,10 @@ intConv ity =
                (1, LFloatInt ity) total
     ]
 
-vecCmps :: IntTy -> [Prim]
-vecCmps ity =
-    [ iCmp ity "slt" True (bCmp ity (<)) (LSLt . ATInt) total
-    , iCmp ity "slte" True (bCmp ity (<=)) (LSLe . ATInt) total
-    , iCmp ity "eq" True (bCmp ity (==)) (LEq . ATInt) total
-    , iCmp ity "sgte" True (bCmp ity (>=)) (LSGe . ATInt) total
-    , iCmp ity "sgt" True (bCmp ity (>)) (LSGt . ATInt) total
-    , iCmp ity "lt" True (bCmp ity (<)) LLt total
-    , iCmp ity "lte" True (bCmp ity (<=)) LLe total
-    , iCmp ity "gte" True (bCmp ity (>=)) LGe total
-    , iCmp ity "gt" True (bCmp ity (>)) LGt total
-    ]
-
 bitcastPrim :: ArithTy -> ArithTy -> (ArithTy -> [Const] -> Maybe Const) -> PrimFn -> Prim
 bitcastPrim from to impl prim =
     Prim (sUN $ "prim__bitcast" ++ aTyName from ++ "_" ++ aTyName to) (ty [AType from] (AType to)) 1 (impl to)
          (1, prim) total
-
-mapHalf :: (V.Unbox a, V.Unbox b) => ((a, a) -> b) -> Vector a -> Vector b
-mapHalf f xs = V.generate (V.length xs `div` 2) (\i -> f (xs V.! (i*2), xs V.! (i*2+1)))
-
-mapDouble :: (V.Unbox a, V.Unbox b) => (Bool -> a -> b) -> Vector a -> Vector b
-mapDouble f xs = V.generate (V.length xs * 2) (\i -> f (i `rem` 2 == 0) (xs V.! (i `div` 2)))
 
 concatWord8 :: (Word8, Word8) -> Word16
 concatWord8 (high, low) = fromIntegral high .|. (fromIntegral low `shiftL` 8)

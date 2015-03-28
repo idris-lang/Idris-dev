@@ -29,8 +29,6 @@ import qualified Data.Map as M
 import Data.Maybe (mapMaybe, fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Data.Vector.Unboxed (Vector)
-import qualified Data.Vector.Unboxed as V
 
 import Debug.Trace
 
@@ -319,7 +317,6 @@ elab ist info emode opts fn tm
     constType :: Const -> Bool
     constType (AType _) = True
     constType StrType = True
-    constType PtrType = True
     constType VoidType = True
     constType _ = False
 
@@ -2170,7 +2167,6 @@ reifyTTBinderApp _ f args = fail ("Unknown reflection binder: " ++ show (f, args
 
 reifyTTConst :: Term -> ElabD Const
 reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
-reifyTTConst (P _ n _) | n == reflm "PtrType"  = return $ PtrType
 reifyTTConst (P _ n _) | n == reflm "VoidType" = return $ VoidType
 reifyTTConst (P _ n _) | n == reflm "Forgot"   = return $ Forgot
 reifyTTConst t@(App _ _)
@@ -2217,8 +2213,6 @@ reifyIntTy (App (P _ n _) nt) | n == reflm "ITFixed" = fmap ITFixed (reifyNative
 reifyIntTy (P _ n _) | n == reflm "ITNative" = return ITNative
 reifyIntTy (P _ n _) | n == reflm "ITBig" = return ITBig
 reifyIntTy (P _ n _) | n == reflm "ITChar" = return ITChar
-reifyIntTy (App (App (P _ n _) nt) (Constant (I i))) | n == reflm "ITVec" = fmap (flip ITVec i)
-                                                                                 (reifyNativeTy nt)
 reifyIntTy tm = fail $ "The term " ++ show tm ++ " is not a reflected IntTy"
 
 reifyTTUExp :: Term -> ElabD UExp
@@ -2595,12 +2589,6 @@ reflectConstant (AType (ATInt (ITFixed IT8)))  = reflCall "AType" [reflCall "ATI
 reflectConstant (AType (ATInt (ITFixed IT16))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT16")]]]
 reflectConstant (AType (ATInt (ITFixed IT32))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT32")]]]
 reflectConstant (AType (ATInt (ITFixed IT64))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT64")]]]
-reflectConstant (AType (ATInt (ITVec IT8 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT8"), RConstant (I c)]]]
-reflectConstant (AType (ATInt (ITVec IT16 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT16"), RConstant (I c)]]]
-reflectConstant (AType (ATInt (ITVec IT32 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT32"), RConstant (I c)]]]
-reflectConstant (AType (ATInt (ITVec IT64 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT64"), RConstant (I c)]]]
-reflectConstant PtrType = Var (reflm "PtrType")
-reflectConstant ManagedPtrType = Var (reflm "ManagedPtrType")
 reflectConstant VoidType = Var (reflm "VoidType")
 reflectConstant Forgot = Var (reflm "Forgot")
 reflectConstant WorldType = Var (reflm "WorldType")

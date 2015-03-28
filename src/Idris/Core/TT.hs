@@ -524,7 +524,6 @@ instance Pretty NativeTy OutputAnnotation where
     pretty IT64 = text "Bits64"
 
 data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
-           | ITVec NativeTy Int
     deriving (Show, Eq, Ord, Data, Typeable)
 
 intTyName :: IntTy -> String
@@ -532,7 +531,6 @@ intTyName ITNative = "Int"
 intTyName ITBig = "BigInt"
 intTyName (ITFixed sized) = "B" ++ show (nativeTyWidth sized)
 intTyName (ITChar) = "Char"
-intTyName (ITVec ity count) = "B" ++ show (nativeTyWidth ity) ++ "x" ++ show count
 
 data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors https://github.com/idris-lang/Idris-dev/issues/1723
     deriving (Show, Eq, Ord, Data, Typeable)
@@ -547,7 +545,6 @@ instance Pretty ArithTy OutputAnnotation where
     pretty (ATInt ITBig) = text "BigInt"
     pretty (ATInt ITChar) = text "Char"
     pretty (ATInt (ITFixed n)) = pretty n
-    pretty (ATInt (ITVec e c)) = pretty e <> text "x" <> (text . show $ c)
     pretty ATFloat = text "Float"
 
 nativeTyWidth :: NativeTy -> Int
@@ -567,7 +564,7 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B8 Word8 | B16 Word16 | B32 Word32 | B64 Word64
            | AType ArithTy | StrType
            | WorldType | TheWorld
-           | PtrType | ManagedPtrType | VoidType | Forgot
+           | VoidType | Forgot
   deriving (Eq, Ord, Data, Typeable)
 {-!
 deriving instance Binary Const
@@ -577,9 +574,7 @@ deriving instance NFData Const
 isTypeConst :: Const -> Bool
 isTypeConst (AType _) = True
 isTypeConst StrType = True
-isTypeConst ManagedPtrType = True
 isTypeConst WorldType = True
-isTypeConst PtrType = True
 isTypeConst VoidType = True
 isTypeConst _ = False
 
@@ -596,8 +591,6 @@ instance Pretty Const OutputAnnotation where
   pretty StrType = text "String"
   pretty TheWorld = text "%theWorld"
   pretty WorldType = text "prim__World"
-  pretty PtrType = text "Ptr"
-  pretty ManagedPtrType = text "Ptr"
   pretty VoidType = text "Void"
   pretty Forgot = text "Forgot"
   pretty (B8 w) = text . show $ w
@@ -625,16 +618,10 @@ constDocs c@(AType (ATInt ITNative))       = "Fixed-precision integers of undefi
 constDocs c@(AType (ATInt ITChar))         = "Characters in some unspecified encoding"
 constDocs c@(AType ATFloat)                = "Double-precision floating-point numbers"
 constDocs StrType                          = "Strings in some unspecified encoding"
-constDocs PtrType                          = "Foreign pointers"
-constDocs ManagedPtrType                   = "Managed pointers"
 constDocs c@(AType (ATInt (ITFixed IT8)))  = "Eight bits (unsigned)"
 constDocs c@(AType (ATInt (ITFixed IT16))) = "Sixteen bits (unsigned)"
 constDocs c@(AType (ATInt (ITFixed IT32))) = "Thirty-two bits (unsigned)"
 constDocs c@(AType (ATInt (ITFixed IT64))) = "Sixty-four bits (unsigned)"
-constDocs c@(AType (ATInt (ITVec IT8 16))) = "Vectors of sixteen eight-bit values"
-constDocs c@(AType (ATInt (ITVec IT16 8))) = "Vectors of eight sixteen-bit values"
-constDocs c@(AType (ATInt (ITVec IT32 4))) = "Vectors of four thirty-two-bit values"
-constDocs c@(AType (ATInt (ITVec IT64 2))) = "Vectors of two sixty-four-bit values"
 constDocs (Fl f)                           = "A float"
 constDocs (I i)                            = "A fixed-precision integer"
 constDocs (BI i)                           = "An arbitrary-precision integer"
@@ -1295,12 +1282,9 @@ instance Show Const where
     show (AType (ATInt ITNative)) = "Int"
     show (AType (ATInt ITChar)) = "Char"
     show (AType (ATInt (ITFixed it))) = itBitsName it
-    show (AType (ATInt (ITVec it c))) = itBitsName it ++ "x" ++ show c
     show TheWorld = "prim__TheWorld"
     show WorldType = "prim__WorldType"
     show StrType = "String"
-    show PtrType = "Ptr"
-    show ManagedPtrType = "ManagedPtr"
     show VoidType = "Void"
 
 showEnv :: (Eq n, Show n) => EnvTT n -> TT n -> String

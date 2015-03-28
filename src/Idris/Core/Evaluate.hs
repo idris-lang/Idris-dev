@@ -502,12 +502,9 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     findConst (AType ATFloat) (ConCase n 2 [] v : xs) = Just v
     findConst (AType (ATInt ITChar))  (ConCase n 3 [] v : xs) = Just v
     findConst StrType (ConCase n 4 [] v : xs) = Just v
-    findConst PtrType (ConCase n 5 [] v : xs) = Just v
     findConst (AType (ATInt ITBig)) (ConCase n 6 [] v : xs) = Just v
     findConst (AType (ATInt (ITFixed ity))) (ConCase n tag [] v : xs)
         | tag == 7 + fromEnum ity = Just v
-    findConst (AType (ATInt (ITVec ity count))) (ConCase n tag [] v : xs)
-        | tag == (fromEnum ity + 1) * 1000 + count = Just v
     findConst c (_ : xs) = findConst c xs
 
     getValArgs tm = getValArgs' tm []

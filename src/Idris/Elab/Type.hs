@@ -238,7 +238,6 @@ elabExtern info syn doc fc opts n ty = do
     let arity = length (getArgTys (normalise (tt_ctxt ist) [] cty))
 
     putIState . (\ist -> ist{ idris_externs = S.insert (n, arity) (idris_externs ist) }) =<< getIState
-    updateContext (addOperator n cty arity (\x -> Nothing))
     addIBC (IBCExtern (n, arity))
 
     -- remove it from the deferred definitions list

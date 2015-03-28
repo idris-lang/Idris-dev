@@ -14,7 +14,6 @@ import Numeric
 import Data.Char
 import Data.Bits
 import Data.List (intercalate)
-import qualified Data.Vector.Unboxed as V
 import System.Process
 import System.Exit
 import System.IO
@@ -320,10 +319,6 @@ toAType (FCon i)
     | i == sUN "C_IntBits16" = ATInt (ITFixed IT16)
     | i == sUN "C_IntBits32" = ATInt (ITFixed IT32)
     | i == sUN "C_IntBits64" = ATInt (ITFixed IT64)
-    | i == sUN "C_IntB8x16" = ATInt (ITVec IT8 16)
-    | i == sUN "C_IntB16x8" = ATInt (ITVec IT16 8)
-    | i == sUN "C_IntB32x4" = ATInt (ITVec IT32 4)
-    | i == sUN "C_IntB64x2" = ATInt (ITVec IT64 2)
 toAType t = error (show t ++ " not defined in toAType")
 
 toFType (FCon c) 
