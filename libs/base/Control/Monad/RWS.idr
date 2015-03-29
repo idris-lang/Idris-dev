@@ -23,7 +23,7 @@ instance (Monoid w, Monad m) => Applicative (RWST r w s m) where
     pure a = MkRWST $ \_,s => return (a, s, neutral)
     (MkRWST f) <*> (MkRWST v) = MkRWST $ \r,s => do (a, s', w)   <- v r s
                                                     (fn, ss, w') <- f r s
-                                                    return (fn a, ss, w <+> w)
+                                                    return (fn a, ss, w <+> w')
 
 instance (Monoid w, Monad m) => Monad (RWST r w s m) where
     (MkRWST m) >>= k = MkRWST $ \r,s => do  (a, s', w) <- m r s
