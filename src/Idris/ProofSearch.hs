@@ -99,10 +99,11 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     conArgsOK ty
        = let (f, as) = unApply ty in
          case f of
-              P _ n _ -> case lookupCtxt n (idris_datatypes ist) of
-                              [t] -> do rs <- mapM (conReady as) (con_names t)
-                                        return (and rs)
-                              _ -> fail "Ambiguous name"
+              P _ n _ -> case lookupCtxtExact n (idris_datatypes ist) of
+                              Just t -> do rs <- mapM (conReady as) (con_names t)
+                                           return (and rs)
+                              Nothing -> -- local variable, go for it
+                                    return True
               TType _ -> return True
               _ -> fail "Not a data type"
 
@@ -158,12 +159,12 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
                    do let autohints = case lookupCtxtExact n (idris_autohints ist) of
                                            Nothing -> []
                                            Just hs -> hs
-                      case lookupCtxt n (idris_datatypes ist) of
-                          [t] -> tryCons d locs (hints ++ 
-                                                 con_names t ++ 
-                                                 autohints ++ 
-                                                 getFn d fn)
-                          _ -> fail "Not a data type"
+                      case lookupCtxtExact n (idris_datatypes ist) of
+                          Just t -> tryCons d locs (hints ++ 
+                                                    con_names t ++ 
+                                                    autohints ++ 
+                                                    getFn d fn)
+                          Nothing -> fail "Not a data type"
                 _ -> fail "Not a data type"
 
     -- if there are local variables which have a function type, try
@@ -191,10 +192,9 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     -- Like type class resolution, but searching with constructors
     tryCon d locs n = 
          do ty <- goal
-            let imps = case lookupCtxtName n (idris_implicits ist) of
-                            [] -> []
-                            [args] -> map isImp (snd args)
-                            _ -> fail "Ambiguous name"
+            let imps = case lookupCtxtExact n (idris_implicits ist) of
+                            Nothing -> []
+                            Just args -> map isImp args
             ps <- get_probs
             hs <- get_holes
             args <- map snd <$> try' (apply (Var n) imps)
