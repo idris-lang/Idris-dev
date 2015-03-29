@@ -28,18 +28,28 @@ Please clean up any messes that you find, and don't leave behind new messes for 
 ## Contributing to the default libraries.
 
 Idris ships with a set of packages in `libs/` that is provided as a default library.
+
++ `prelude` is the bare minimum required for any Idris program to run.
++ `base` is tried and tested code that may be useful, and has seen active use in multiple projects.
++ `contrib` is code that is experimental in design and want to test before possible inclusion in `base`.
++ `effects` is an implementation of algebraic effects that is packaged alongside Idris.
+
 These packages should not be seen as the *standard* as when working with dependent types we do not necessarily know how best to work with dependent types.
 These packages offer functionality that can be built on top of when constructing Idris programs.
 
-One major point to make is that everything in prelude will be imported automatically, unless given
-the `--noprelude` option.
+When working with packages in `libs/`, it is important to realise that everything in prelude will be imported automatically, unless given the `--noprelude` option.
 Likewise, the contents of base are available with no special options.
-The other two packages that ship with Idris, contrib and effects, require a the use of the `-p` command-line argument to bring their contents into the include path.
+The other two packages that ship with Idris, contrib and effects, require the use of the `-p` command-line argument to bring their contents into the include path.
 New contributions should probably be sent to contrib first, so that they can get maintained with the Idris distribution.
 If they turn out to be widely applicable and useful, they may later be moved into base.
 
 As Idris is still being developed we are open to suggestions and changes that make improvements to these default packages.
-Major changes to the library (or Idris itself) should ideally be discussed first through the projects official channels of communication i.e. the mailing list, github wiki, or IRC, or as a [Dragon Egg](https://github.com/idris-lang/Idris-dev/wiki/Feature-proposals).
+Major changes to the library (or Idris itself) should ideally be discussed first through the project's official channels of communication:
+
+1. The mailing List.
+1. On our IRC Channel `#idris` on freenode, or
+1. As a [Dragon Egg](https://github.com/idris-lang/Idris-dev/wiki/Feature-proposals).
+
 Developers then seeking to add content to Idris's prelude and default library, should do so through a PR where more discussion's and refinements can be made.
 
 We do not want you wasting your time nor duplicating somebody's work!
