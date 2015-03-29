@@ -334,16 +334,25 @@ importing ``Data.Fin``, or can be declared as follows:
        FZ : Fin (S k)
        FS : Fin k -> Fin (S k)
 
+From the signature,  we can see that this is a type constructor that takes a ``Nat``, and produces a type.
+So this is not a set in the sense of a collection that is a container of objects,
+rather it is the canonical set of unnamed elements, as in "the set of 5 elements," for example.
+Effectively, it is a type that captures integers that fall into the range of zero to ``(n - 1)`` where 
+``n`` is the argument used to instantiate the ``Fin`` type.
+For example, ``Fin 5`` can be thought of as the type of integers between 0 and 4.
+
+Let us look at the constructors in greater detail.
+       
 ``FZ`` is the zeroth element of a finite set with ``S k`` elements;
 ``FS n`` is the ``n+1``\ th element of a finite set with ``S k``
 elements. ``Fin`` is indexed by a ``Nat``, which represents the number
-of elements in the set. Obviously we can’t construct an element of an
-empty set, so neither constructor targets ``Fin Z``.
+of elements in the set. Since we can’t construct an element of an
+empty set, neither constructor targets ``Fin Z``.
 
-A useful application of the ``Fin`` family is to represent bounded
+As mentioned above, a useful application of the ``Fin`` family is to represent bounded
 natural numbers. Since the first ``n`` natural numbers form a finite
-set of ``n`` elements, we can treat ``Fin n`` as the set of natural
-numbers bounded by ``n``.
+set of ``n`` elements, we can treat ``Fin n`` as the set of integers
+greater than or equal to zero and less than ``n``.
 
 For example, the following function which looks up an element in a
 ``Vect``, by a bounded index given as a ``Fin n``, is defined in the
@@ -359,7 +368,7 @@ This function looks up a value at a given location in a vector. The
 location is bounded by the length of the vector (``n`` in each case),
 so there is no need for a run-time bounds check. The type checker
 guarantees that the location is no larger than the length of the
-vector.
+vector, and of course no less than zero.
 
 Note also that there is no case for ``Nil`` here. This is because it
 is impossible. Since there is no element of ``Fin Z``, and the
