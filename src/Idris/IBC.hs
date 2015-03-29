@@ -37,7 +37,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 103
+ibcVersion = 104
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -82,7 +82,8 @@ data IBCFile = IBCFile { ver :: Word8,
                          ibc_externs :: ![(Name, Int)],
                          ibc_parsedSpan :: !(Maybe FC),
                          ibc_usage :: ![(Name, Int)],
-                         ibc_exports :: ![Name]
+                         ibc_exports :: ![Name],
+                         ibc_autohints :: ![(Name, Name)]
                        }
    deriving Show
 {-!
@@ -90,7 +91,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] []
 
 loadIBC :: Bool -- ^ True = reexport, False = make everything private
         -> FilePath -> Idris ()
@@ -237,6 +238,7 @@ ibc i (IBCModDocs n) f = case lookupCtxtExact n (idris_moduledocs i) of
                            _ -> ifail "IBC write failed"
 ibc i (IBCUsage n) f = return f { ibc_usage = n : ibc_usage f }
 ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
+ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f }
 
 process :: Bool -- ^ Reexporting
            -> IBCFile -> FilePath -> Idris ()
@@ -296,6 +298,7 @@ process reexp i fn
                pParsedSpan $ force (ibc_parsedSpan i)
                pUsage $ force (ibc_usage i)
                pExports $ force (ibc_exports i)
+               pAutoHints $ force (ibc_autohints i)
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -325,6 +328,9 @@ pUsage ns = do ist <- getIState
 pExports :: [Name] -> Idris ()
 pExports ns = do ist <- getIState
                  putIState ist { idris_exports = ns ++ idris_exports ist }
+
+pAutoHints :: [(Name, Name)] -> Idris ()
+pAutoHints ns = mapM_ (\(n,h) -> addAutoHint n h) ns
 
 pImportDirs :: [FilePath] -> Idris ()
 pImportDirs fs = mapM_ addImportDir fs
@@ -942,7 +948,7 @@ instance Binary MetaInformation where
              _ -> error "Corrupted binary data for MetaInformation"
 
 instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44)
+        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45)
          = {-# SCC "putIBCFile" #-}
             do put x1
                put x2
@@ -988,6 +994,7 @@ instance Binary IBCFile where
                put x42
                put x43
                put x44
+               put x45
 
         get
           = do x1 <- get
@@ -1035,7 +1042,8 @@ instance Binary IBCFile where
                     x42 <- get
                     x43 <- get
                     x44 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44)
+                    x45 <- get
+                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45)
                   else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where
@@ -1072,6 +1080,7 @@ instance Binary FnOpt where
                 Constructor -> putWord8 13
                 CExport x1 -> do putWord8 14
                                  put x1
+                AutoHint -> putWord8 15
         get
           = do i <- getWord8
                case i of
@@ -1092,6 +1101,7 @@ instance Binary FnOpt where
                    13 -> return Constructor
                    14 -> do x1 <- get
                             return $ CExport x1
+                   15 -> return AutoHint
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where

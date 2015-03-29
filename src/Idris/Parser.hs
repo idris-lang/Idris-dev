@@ -479,6 +479,8 @@ fnOpts opts
                  fnOpts (ErrorReverse : opts)
       <|> do try (lchar '%' *> reserved "reflection");
                   fnOpts (Reflection : opts)
+      <|> do try (lchar '%' *> reserved "hint");
+                  fnOpts (AutoHint : opts)
       <|> do lchar '%'; reserved "specialise";
              lchar '['; ns <- sepBy nameTimes (lchar ','); lchar ']'
              fnOpts (Specialise ns : opts)

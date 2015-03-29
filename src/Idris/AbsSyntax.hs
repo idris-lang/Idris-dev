@@ -385,6 +385,23 @@ addClass n i
                       _ -> i
         putIState $ ist { idris_classes = addDef n i' (idris_classes ist) }
 
+addAutoHint :: Name -> Name -> Idris ()
+addAutoHint n hint =
+    do ist <- getIState
+       case lookupCtxtExact n (idris_autohints ist) of
+            Nothing -> 
+                 do let hs = addDef n [hint] (idris_autohints ist)
+                    putIState $ ist { idris_autohints = hs }
+            Just nhints -> 
+                 do let hs = addDef n (hint : nhints) (idris_autohints ist)
+                    putIState $ ist { idris_autohints = hs }
+
+getAutoHints :: Name -> Idris [Name]
+getAutoHints n = do ist <- getIState
+                    case lookupCtxtExact n (idris_autohints ist) of
+                         Nothing -> return []
+                         Just ns -> return ns
+
 addIBC :: IBCWrite -> Idris ()
 addIBC ibc@(IBCDef n)
            = do i <- getIState

@@ -10,6 +10,9 @@ New in 0.9.18:
     '%extern' directive, allowing back ends to define their own special 
     purpose primitives
   + Ptr and ManagedPtr have been removed and replaced with external primitives
+* Add %hint function annotation, which allows functions to be used as
+  hints in proof search for 'auto' arguments. Only functions which return
+  an instance of a data or record type are allowed as hints.
 * Syntax rules no longer perform variable capture. Users of effects will
   need to explicitly name results in dependent effect signatures instead
   of using the default name "result".

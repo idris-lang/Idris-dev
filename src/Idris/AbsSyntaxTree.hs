@@ -179,6 +179,7 @@ data IState = IState {
     idris_tyinfodata :: Ctxt TIData,
     idris_fninfo :: Ctxt FnInfo,
     idris_transforms :: Ctxt [(Term, Term)],
+    idris_autohints :: Ctxt [Name],
     idris_totcheck :: [(FC, Name)], -- names to check totality on
     idris_defertotcheck :: [(FC, Name)], -- names to check at the end
     idris_totcheckfail :: [(FC, String)],
@@ -307,6 +308,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCModDocs Name -- ^ The name is the special name used to track module docs
               | IBCUsage (Name, Int)
               | IBCExport Name
+              | IBCAutoHint Name Name
   deriving Show
 
 -- | The initial state for the compiler
@@ -316,6 +318,7 @@ idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
+                   emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
@@ -560,6 +563,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
            | Constructor -- Data constructor type
+           | AutoHint -- use in auto implicit search
     deriving (Show, Eq)
 {-!
 deriving instance Binary FnOpt
