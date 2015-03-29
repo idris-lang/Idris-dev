@@ -334,7 +334,7 @@ importing ``Data.Fin``, or can be declared as follows:
        FZ : Fin (S k)
        FS : Fin k -> Fin (S k)
 
-From the signature,  we can see that this is a data type that takes a ``Nat``, and produces a type.
+From the signature,  we can see that this is a type constructor that takes a ``Nat``, and produces a type.
 So this is not a set in the sense of a collection that is a container of objects,
 rather it is the canonical set of unnamed elements, as in "the set of 5 elements," for example.
 Effectively, it is a type that captures integers that fall into the range of zero to ``(n - 1)`` where 
@@ -346,8 +346,8 @@ Let us look at the constructors in greater detail.
 ``FZ`` is the zeroth element of a finite set with ``S k`` elements;
 ``FS n`` is the ``n+1``\ th element of a finite set with ``S k``
 elements. ``Fin`` is indexed by a ``Nat``, which represents the number
-of elements in the set. Obviously we can’t construct an element of an
-empty set, so neither constructor targets ``Fin Z``.
+of elements in the set. Since we can’t construct an element of an
+empty set, neither constructor targets ``Fin Z``.
 
 As mentioned above, a useful application of the ``Fin`` family is to represent bounded
 natural numbers. Since the first ``n`` natural numbers form a finite
