@@ -503,12 +503,15 @@ VAL idris_strlen(VM* vm, VAL l) {
 VAL idris_readStr(VM* vm, FILE* h) {
     char *buffer = NULL;
     size_t n = 0;
+    ssize_t len;
+    len = getline(&buffer, &n, h);
 
-    if (getline(&buffer, &n, h) == 0) {
+    if (len <= 0) {
         return MKSTR(vm, "");
     } else {
         return MKSTR(vm, buffer);
     }
+    free(buffer);
 }
 
 VAL idris_strHead(VM* vm, VAL str) {
