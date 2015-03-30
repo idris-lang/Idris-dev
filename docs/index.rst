@@ -88,6 +88,7 @@ Theorem Proving
    proofs/pluscomm
    proofs/inductive
    proofs/patterns
+   proofs/interactive
 
 .. _reference:
 
