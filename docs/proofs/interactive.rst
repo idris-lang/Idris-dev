@@ -8,7 +8,7 @@ tutorial. In this section, we briefly discus tactics.
 
 One way to write proofs interactively is to write the general *structure* of
 the proof, and use the interactive mode to complete the details. 
-Consider the following definition, proved in :ref:`.. _sect-theorems`:
+Consider the following definition, proved in :ref:`sect-theorems`:
 
 .. code-block:: idris
 
