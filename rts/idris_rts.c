@@ -4,6 +4,7 @@
 #include "idris_gc.h"
 #include "idris_utf8.h"
 #include "idris_bitstring.h"
+#include "getline.h"
 
 #ifdef HAS_PTHREAD
 static pthread_key_t vm_key;
@@ -500,16 +501,17 @@ VAL idris_strlen(VM* vm, VAL l) {
 }
 
 VAL idris_readStr(VM* vm, FILE* h) {
-    // FIXME (quickly...): This will fail if there is a line longer than
-    // bufsize characters! 
-    int bufsize = 255;
+    char *buffer = NULL;
+    size_t n = 0;
+    ssize_t len;
+    len = getline(&buffer, &n, h);
 
-    char* buffer = malloc(bufsize+1);
-    if (fgets(buffer, bufsize, h) == 0) {
+    if (len <= 0) {
         return MKSTR(vm, "");
     } else {
         return MKSTR(vm, buffer);
     }
+    free(buffer);
 }
 
 VAL idris_strHead(VM* vm, VAL str) {
