@@ -576,8 +576,10 @@ convEq ctxt holes topx topy = ceq [] topx topy where
         | x `elem` holes || y `elem` holes = return True
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
-    ceq ps x (Bind n (Lam t) (App y (V 0))) = ceq ps x y
-    ceq ps (Bind n (Lam t) (App x (V 0))) y = ceq ps x y
+    ceq ps x (Bind n (Lam t) (App y (V 0))) 
+          = ceq ps x (substV (P Bound n t) y)
+    ceq ps (Bind n (Lam t) (App x (V 0))) y 
+          = ceq ps (substV (P Bound n t) x) y
     ceq ps x (Bind n (Lam t) (App y (P Bound n' _)))
         | n == n' = ceq ps x y
     ceq ps (Bind n (Lam t) (App x (P Bound n' _))) y
