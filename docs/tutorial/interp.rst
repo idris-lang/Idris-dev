@@ -1,8 +1,8 @@
 .. _sect-interp:
 
-===================================
+***********************************
 Example: The Well-Typed Interpreter
-===================================
+***********************************
 
 In this section, we’ll use the features we’ve seen so far to write a
 larger example, an interpreter for a simple functional programming
@@ -12,7 +12,7 @@ system to ensure that any programs which can be represented are
 well-typed.
 
 Representing Languages
-----------------------
+======================
 
 First, let us define the types in the language. We have integers,
 booleans, and functions, represented by ``Ty``:
@@ -140,7 +140,7 @@ that only the branch which is taken need be evaluated:
          Expr G a
 
 Writing the Interpreter
------------------------
+=======================
 
 When we evaluate an ``Expr``, we’ll need to know the values in scope,
 as well as their types. ``Env`` is an environment, indexed over the
@@ -225,7 +225,7 @@ its operands directly, and for ``If``, we apply the Idris
                                              else interp env e
 
 Testing
--------
+=======
 
 We can make some simple test functions. Firstly, adding two inputs
 ``\x. \y. y + x`` is written as follows:
@@ -248,7 +248,7 @@ can be written as:
                            (Var Stop)))
 
 Running
--------
+=======
 
 To finish, we write a ``main`` program which interprets the factorial
 function on user input:
@@ -271,7 +271,7 @@ program at the Idris interactive environment is:
 
 
 Aside: ``cast``
-~~~~~~~~~~~~~~~
+---------------
 
 The prelude defines a type class ``Cast`` which allows conversion
 between types:

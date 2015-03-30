@@ -1,5 +1,6 @@
+******************************
 New Foreign Function Interface
-==============================
+******************************
 
 .. sectionauthor:: Edwin Brady
 
@@ -19,7 +20,7 @@ are some things you will need to be aware of, which this page
 describes.
 
 The ``IO'`` monad, and ``main``
--------------------------------
+===============================
 
 The ``IO`` monad exists as before, but is now specific to the C
 backend (or, more precisely, any backend whose foreign function calls
@@ -61,7 +62,7 @@ function's name, but potentially something more complicated such as an
 external library file or even a URL).
 
 FFI descriptors
----------------
+===============
 
 An FFI descriptor is a record containing a predicate which holds when
 a type can be marshalled, and the type of the target of a foreign
@@ -98,7 +99,7 @@ For C, this is:
                   String -- the name of the C function
 
 Foreign calls
--------------
+=============
 
 To call a foreign function, the ``foreign`` function is used. For
 example:
@@ -134,7 +135,7 @@ example a shorthand for calling external JavaScript functions:
     jscall fname ty = foreign FFI_JS fname ty
 
 FFI implementation
-~~~~~~~~~~~~~~~~~~
+------------------
 
 In order to write bindings to external libraries, the details of how
 ``foreign`` works are unnecessary --- you simply need to know that
@@ -172,7 +173,7 @@ builds the following implicit proof as the ``fty`` argument to
     FFun C_Str (FFun C_Str (FRet C_Ptr))
 
 Compiling foreign calls
------------------------
+=======================
 
 (This section assumes some knowledge of the Idris internals.)
 
@@ -232,7 +233,7 @@ to marshal the arguments and return value appropriately.
    the function ``toFType``, to see how this works in practice.
 
 JavaScript FFI descriptor
-~~~~~~~~~~~~~~~~~~~~~~~~~
+=========================
 
 The JavaScript FFI descriptor is a little more complex, because the
 JavaScript FFI supports marshalling functions. It is defined as

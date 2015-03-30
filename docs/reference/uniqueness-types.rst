@@ -1,5 +1,6 @@
+****************
 Uniqueness Types
-================
+****************
 
 Uniqueness Types are an experimental feature available from Idris
 0.9.15. A value with a unique type is guaranteed to have *at most one*
@@ -25,7 +26,7 @@ include:
    allocate
 
 Using Uniqueness
-~~~~~~~~~~~~~~~~
+================
 
 If ``x : T`` and ``T : UniqueType``, then there is at most one reference
 to ``x`` at any time during run-time execution. For example, we can
@@ -129,7 +130,7 @@ such a function may be passed a ``UniqueType``, any value of type
 once on the right hand side.
 
 Borrowed Types
-~~~~~~~~~~~~~~
+--------------
 
 It quickly becomes obvious when working with uniqueness types that
 having only one reference at a time can be painful. For example, what
@@ -227,7 +228,7 @@ therefore write ``showU`` as follows:
       showU' (x :: xs) = show x ++ ", " ++ showU' xs
 
 Problems/Disadvantages/Still to do...
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
 
 This is a work in progress, there is lots to do. The most obvious
 problem is the loss of abstraction. On the one hand, we have more

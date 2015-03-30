@@ -1,8 +1,8 @@
 .. _tutorial-index:
 
-####################
- The Idris Tutorial
-####################
+##################
+The Idris Tutorial
+##################
 
 The is the Idris Tutorial. It will teach you about programming in the Idris Language.
 

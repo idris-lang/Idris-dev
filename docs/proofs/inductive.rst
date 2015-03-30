@@ -1,5 +1,6 @@
+****************
 Inductive Proofs
-================
+****************
 
 Before embarking on proving ``plus_commutes`` in Idris itself, let us
 consider the overall structure of a proof of some property of natural
@@ -25,7 +26,7 @@ case). Recalling ``plus``:
 
 This is total because it covers all possible inputs (the first argument
 can only be ``Z`` or ``S k`` for some ``k``, and the second argument
-``m`` covers all possible ``Nat``\ s) and in the recursive call, ``k``
+``m`` covers all possible ``Nat``) and in the recursive call, ``k``
 is structurally smaller than ``S k`` so the first argument will always
 reach the base case ``Z`` in any sequence of recursive calls.
 
@@ -50,7 +51,7 @@ function capturing all such inductive definitions:
 .. code-block:: idris
 
     nat_induction : (P : Nat -> Type) ->             -- Property to show
-                    (P Z) ->                         -- Base case 
+                    (P Z) ->                         -- Base case
                     ((k : Nat) -> P k -> P (S k)) -> -- Inductive step
                     (x : Nat) ->                     -- Show for all x
                     P x
@@ -63,12 +64,12 @@ version of ``plus``:
 .. code-block:: idris
 
     plus_ind : Nat -> Nat -> Nat
-    plus_ind n m 
+    plus_ind n m
        = nat_induction (\x => Nat)
                        m                      -- Base case, plus_ind Z m
                        (\k, k_rec => S k_rec) -- Inductive step plus_ind (S k) m
                                               -- where k_rec = plus_ind k m
-                       n 
+                       n
 
 To prove that ``plus n m = plus m n`` for all natural numbers ``n`` and
 ``m``, we can also use induction. Either we can fix ``m`` and perform

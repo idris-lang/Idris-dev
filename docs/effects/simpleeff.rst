@@ -1,8 +1,8 @@
 .. _sect-simpleff:
 
-==============
+**************
 Simple Effects
-==============
+**************
 
 So far we have seen how to write programs with locally mutable state
 using the ``STATE`` effect. To recap, we have the definitions below
@@ -41,7 +41,7 @@ All of the effects in the library, including those described in this
 section, are summarised in Appendix :ref:`sect-appendix`.
 
 Console I/O
------------
+===========
 
 Console I/O is supported with the ``STDIO``
 effect, which allows reading and writing characters and strings to and
@@ -67,7 +67,7 @@ can perform (or at the very least simulate) console I/O:
     instance Handler StdIO (IOExcept a)
 
 Examples
-~~~~~~~~
+--------
 
 A program which reads the user’s name, then says hello, can be written
 as follows:
@@ -117,7 +117,7 @@ read and write from the console. To run this, ``main`` does not need
 to be changed.
 
 Aside: Resource Types
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 To find out the resource type of an effect, if necessary (for example
 if we want to initialise a resource explicitiy with ``runInit`` rather
@@ -132,7 +132,7 @@ than using a default value with ``run``) we can run the
     Int : Type
 
 Exceptions
-----------
+==========
 
 The ``EXCEPTION``
 effect is declared in module ``Effect.Exception``. This allows programs
@@ -155,7 +155,7 @@ generally:
     instance Show a => Handler (Exception a) IO
 
 Example
-~~~~~~~
+-------
 
 Suppose we have a ``String`` which is expected to represent an integer
 in the range ``0`` to ``n``. We can write a function ``parseNumber``
@@ -232,7 +232,7 @@ the boundedness proof:
             else raise NotANumber
 
 Random Numbers
---------------
+==============
 
 Random number generation is also implemented by the library, in module
 ``Effect.Random``:
@@ -263,7 +263,7 @@ produce a random number:
    (essentially a number with an upper bound given in its type).
 
 Example
-~~~~~~~
+-------
 
 We can use the ``RND`` effect to implement a simple guessing game. The
 ``guess`` function, given a target number, will repeatedly ask the
@@ -317,7 +317,7 @@ do this, see the ``SYSTEM`` effect described in :ref:`sect-appendix`.
 
 
 Non-determinism
----------------
+===============
 
 The listing below gives the definition of the non-determinism
 effect, which allows a program to choose a value non-deterministically
@@ -337,7 +337,7 @@ succeeds:
     instance Handler Selection List
 
 Example
-~~~~~~~
+-------
 
 The ``SELECT`` effect can be used to solve constraint problems, such
 as finding Pythagorean triples. The idea is to use ``select`` to give
@@ -373,7 +373,7 @@ context). We can try this as follows:
               print $ the (List _) $ run (triple 100)
 
 ``vadd`` revisited
-------------------
+==================
 
 We now return to the ``vadd`` program from the introduction. Recall the
 definition:
@@ -453,7 +453,7 @@ with gracefully.
                else raise "Not a number"
 
 Example: An Expression Calculator
----------------------------------
+=================================
 
 To show how these effects can fit together, let us consider an
 evaluator for a simple expression language, with addition and integer

@@ -1,8 +1,8 @@
 .. _sect-intro:
 
-============
+************
 Introduction
-============
+************
 
 In conventional programming languages, there is a clear distinction
 between *types* and *values*. For example, in `Haskell
@@ -44,7 +44,7 @@ a lightweight foreign function interface which allows easy interaction
 with external ``C`` libraries.
 
 Intended Audience
------------------
+=================
 
 This tutorial is intended as a brief introduction to the language, and
 is aimed at readers already familiar with a functional language such
@@ -55,7 +55,7 @@ briefly. The reader is also assumed to have some interest in using
 dependent types for writing and verifying systems software.
 
 Example Code
-------------
+============
 
 This tutorial includes some example code, which has been tested with
 Idris version . The files are available in the Idris

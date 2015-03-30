@@ -1,8 +1,8 @@
 .. _sect-provisional:
 
-=======================
+***********************
 Provisional Definitions
-=======================
+***********************
 
 Sometimes when programming with dependent types, the type required by
 the type checker and the type of the program we have written will be
@@ -54,7 +54,7 @@ reduction. These values are obviously equal — how can we rewrite the
 program to fix this problem?
 
 Provisional definitions
------------------------
+=======================
 
 *Provisional definitions* help with this problem by allowing us to defer
 the proof details until a later point. There are two main reasons why
@@ -159,7 +159,7 @@ reversed:
     "[False, True, False, True, False, True]" : String
 
 Suspension of Disbelief
------------------------
+=======================
 
 Idris requires that proofs be complete before compiling programs
 (although evaluation at the prompt is possible without proof details).
@@ -192,7 +192,7 @@ The ``exact`` tactic allows us to provide an exact value for the proof.
 In this case, we assert that the value we gave was correct.
 
 Example: Binary numbers
------------------------
+=======================
 
 Previously, we implemented conversion to binary numbers using the
 ``Parity`` view. Here, we show how to use the same view to implement a

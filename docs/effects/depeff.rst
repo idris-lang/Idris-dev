@@ -1,8 +1,8 @@
 .. _sect-depeff:
 
-=================
+*****************
 Dependent Effects
-=================
+*****************
 
 In the programs we have seen so far, the available effects have remained
 constant. Sometimes, however, an operation can *change* the available
@@ -16,7 +16,7 @@ we will see how this can be used to implement a type-safe and
 resource-safe protocol for file management.
 
 Dependent States
-----------------
+================
 
 Suppose we have a function which reads input from the console, converts
 it to an integer, and adds it to a list which is stored in a ``STATE``.
@@ -59,7 +59,7 @@ It has the following type:
     putM : y -> { [STATE x] ==> [STATE y] } Eff ()
 
 Result-dependent Effects
-------------------------
+========================
 
 Often, whether a state is updated could depend on the success or
 otherwise of an operation. In our ``readInt`` example, we might wish to
@@ -134,7 +134,7 @@ check (i.e. whether reading a value succeeded) has indeed been done.
     being inspected in the type of each branch.
 
 File Management
----------------
+===============
 
 A practical use for dependent effects is in specifying resource usage
 protocols and verifying that they are executed correctly. For example,
@@ -242,7 +242,7 @@ reading, but the effect list contains a ``FILE_IO`` effect carrying a
 file open for writing.
 
 Pattern-matching bind
----------------------
+=====================
 
 It might seem that having to test each potentially failing operation
 with a ``case`` clause could lead to ugly code, with lots of

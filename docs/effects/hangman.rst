@@ -1,8 +1,8 @@
 .. _sect-hangman:
 
-=======================================
+***************************************
 Example: A “Mystery Word” Guessing Game
-=======================================
+***************************************
 
 In this section, we will use the techniques and specific effects
 discussed in the tutorial so far to implement a larger example, a simple
@@ -29,7 +29,7 @@ using the newly defined effect (and any others required to implement the
 interface).
 
 Step 1: Game State
-------------------
+==================
 
 First, we categorise the game states as running games (where there are a
 number of guesses available, and a number of letters still to guess), or
@@ -53,7 +53,7 @@ this data:
     data Mystery : GState -> Type
 
 Step 2: Game Rules
-------------------
+==================
 
 We describe the game rules as a dependent effect, where each action has
 a *precondition* (i.e. what the game state must be before carrying out
@@ -131,7 +131,7 @@ then allow us to play the game.
     MYSTERY h = MkEff (Mystery h) MysteryRules
 
 Step 3: Implement Rules
------------------------
+=======================
 
 To *implement* the rules, we begin by giving a concrete definition of
 game state:
@@ -211,7 +211,7 @@ such a way that the number of missing letters or number of guesses does
 not follow the rules.
 
 Step 4: Implement Interface
----------------------------
+===========================
 
 Having described the rules, and implemented state transitions which
 follow those rules as an effect handler, we can now write an interface
@@ -225,7 +225,7 @@ for the game which uses the ``MYSTERY`` effect:
 The type indicates that the game must start in a running state, with
 some guesses available, and eventually reach a not-running state (i.e.
 won or lost). The only way to achieve this is by correctly following the
-stated rules. 
+stated rules.
 
 Note that the type of ``game`` makes no assumption that there are
 letters to be guessed in the given word (i.e. it is ``w`` rather than
@@ -267,7 +267,7 @@ generator, then pick a random ``Fin`` to index into a list of
     limited form of type inference, but very useful in practice.
 
 A possible complete implementation of ``game`` is
-presented below: 
+presented below:
 
 .. code-block:: idris
 
@@ -298,7 +298,7 @@ presented below:
                                   (S k) => game
 
 Discussion
-----------
+==========
 
 Writing the rules separately as an effect, then an implementation
 which uses that effect, ensures that the implementation must follow
@@ -330,4 +330,4 @@ These are, of course, simple errors, but were caught by the type
 checker before any testing of the game.
 
 .. [1]
-   Readers may recognise this game by the name “Hangman.”
+   Readers may recognise this game by the name “Hangman”.
