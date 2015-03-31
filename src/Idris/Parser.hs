@@ -815,7 +815,7 @@ argExpr syn = let syn' = syn { inPattern = True } in
 @
 RHS ::= '='            Expr
      |  '?='  RHSName? Expr
-     |  'impossible'
+     |  Impossible
      ;
 @
 
@@ -831,7 +831,7 @@ rhs syn n = do lchar '='; expr syn
                                      return n)
                r <- expr syn
                return (addLet fc name r)
-        <|> do reserved "impossible"; return PImpossible
+        <|> impossible
         <?> "function right hand side"
   where mkN :: Name -> Name
         mkN (UN x)   = if (tnull x || not (isAlpha (thead x)))
