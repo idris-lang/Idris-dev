@@ -501,6 +501,7 @@ elab ist info emode opts fn tm
                   if null a'
                      then erun fc $ do apply (Var n) []; solve
                      else elab' ina fc' (PApp fc tm [])
+    elab' ina _ (PLam _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
     elab' ina _ (PLam fc n Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
