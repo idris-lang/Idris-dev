@@ -1,8 +1,8 @@
 .. _sect-classes:
 
-============
+************
 Type Classes
-============
+************
 
 We often want to define functions which work across several different
 data types. For example, we would like arithmetic operators to work on
@@ -65,7 +65,7 @@ going to use it to convert each element to a ``String``:
             show' (x :: xs)  = show x ++ ", " ++ show' xs
 
 Default Definitions
--------------------
+===================
 
 The library defines an ``Eq`` class which provides an interface for
 comparing values for equality or inequality, with instances for all of
@@ -110,7 +110,7 @@ definition is missing, and there is a default definition for it, then
 the default is used instead.
 
 Extending Classes
------------------
+=================
 
 Classes can also be extended. A logical next step from an equality
 relation ``Eq`` is to define an ordering relation ``Ord``. We can
@@ -155,7 +155,7 @@ separated list, for example:
     sortAndShow xs = show (sort xs)
 
 Functors and Applicatives
--------------------------
+=========================
 
 So far, we have seen single parameter type classes, where the parameter
 is of type ``Type``. In general, there can be any number (greater than
@@ -195,7 +195,7 @@ abstracts the notion of function application:
         (<*>) : f (a -> b) -> f a -> f b
 
 Monads and ``do``-notation
---------------------------
+==========================
 
 The ``Monad`` class allows us to encapsulate binding and computation,
 and is the basis of ``do``-notation introduced in Section
@@ -248,7 +248,7 @@ are available, or return ``Nothing`` if they are not. Managing the
     Nothing : Maybe Int
 
 ``!``-notation
-~~~~~~~~~~~~~~
+--------------
 
 In many cases, using ``do``-notation can make programs unnecessarily
 verbose, particularly in cases such as ``m_add`` above where the value
@@ -292,7 +292,7 @@ is lifted to:
                      f g'
 
 Monad comprehensions
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 The list comprehension notation we saw in Section
 :ref:`sect-more-expr` is more general, and applies to anything which
@@ -336,7 +336,7 @@ would be:
     m_add x y = [ x' + y' | x' <- x, y' <- y ]
 
 Idiom brackets
---------------
+==============
 
 While ``do`` notation gives an alternative meaning to sequencing,
 idioms give an alternative meaning to *application*. The notation and
@@ -386,7 +386,7 @@ application ``[| f a1 …an |]`` is translated into ``pure f <> a1 <>
     m_add' x y = [| x + y |]
 
 An error-handling interpreter
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 
 Idiom notation is commonly useful when defining evaluators. McBride
 and Paterson describe such an evaluator [1]_, for a language similar
@@ -455,7 +455,7 @@ to handle errors:
         MkEval envFn => envFn env
 
 Named Instances
----------------
+===============
 
 It can be desirable to have multiple instances of a type class, for
 example to provide alternative methods for sorting or printing values.
@@ -492,7 +492,7 @@ instance ``myord`` as follows, at the Idris prompt:
 
 
 Determining Parameters
-----------------------
+======================
 
 When a class has more than one parameter, it can help resolution if
 the parameters used to resolve the type class are restricted. For

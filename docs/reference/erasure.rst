@@ -1,5 +1,6 @@
+*************************
 Erasure By Usage Analysis
-=========================
+*************************
 
 This work stems from this `feature proposal
 <https://github.com/idris-lang/Idris-dev/wiki/Egg-%232%3A-Erasure-annotations>`__
@@ -8,7 +9,7 @@ is out of date — and sometimes even in direct contradiction with the
 eventual implementation.
 
 Motivation
-----------
+==========
 
 Traditional dependently typed languages (Agda, Coq) are good at
 erasing *proofs* (either via irrelevance or an extra universe).
@@ -52,7 +53,7 @@ The following two sections describe two cases where doing so improves
 the runtime performance asymptotically.
 
 Binary numbers
-~~~~~~~~~~~~~~
+--------------
 
 - O(n) instead of O(log n)
 
@@ -106,7 +107,7 @@ should get rid of them and get runtime code similar to what a idris
 programmer would write.
 
 U-views of lists
-~~~~~~~~~~~~~~~~
+----------------
 
 -  O(n^2) instead of O(n)
 
@@ -141,7 +142,7 @@ linear time — so we need to erase the index ``xs`` if we want to
 achieve this goal.
 
 Changes to Idris
-----------------
+================
 
 Usage analysis is run at every compilation and its outputs are used
 for various purposes. This is actually invisible to the user but it's
@@ -185,7 +186,7 @@ Postulates are no longer required to be collapsible. They are now
 required to be *unused* instead.
 
 Changes to the language
------------------------
+=======================
 
 You can use dots to mark fields that are not intended to be used at
 runtime.
@@ -221,7 +222,7 @@ You can also put dots in types of functions to get more guarantees.
 and free implicits are automatically dotted here, too.
 
 What it means
--------------
+=============
 
 Dot annotations serve two purposes:
 
@@ -235,7 +236,7 @@ are there mainly to help the programmer (and the compiler) refrain
 from using the values they want to erase.
 
 How to use it
--------------
+=============
 
 Ideally, few or no extra annotations are needed -- in practice, it
 turns out that having free implicits automatically dotted is enough to
@@ -250,7 +251,7 @@ compiles to a reasonable binary. Generally, it's sufficient to follow
 erasure warnings (which may be sometimes unhelpful at the moment).
 
 Benchmarks
-----------
+==========
 
 -  source: https://github.com/ziman/idris-benchmarks
 -  results: http://ziman.functor.sk/erasure-bm/
@@ -258,7 +259,7 @@ Benchmarks
 It can be clearly seen that asymptotics are improved by erasure.
 
 Shortcomings
-------------
+============
 
 You can't get warnings in libraries because usage analysis starts from
 ``Main.main``. This will be solved by the planned ``%default_usage``
@@ -300,7 +301,7 @@ only if it is unused in every implementation of the method that occurs
 in the program.
 
 Planned features
-----------------
+================
 
 - Fixes to the above shortcomings in general.
 
@@ -316,10 +317,10 @@ Planned features
    in compiled programs.
 
 Troubleshooting
----------------
+===============
 
 My program is slower
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 The patch introducing erasure by usage analysis also disabled some
 optimisations that were in place before; these are subsumed by the new
@@ -336,14 +337,14 @@ getting compiled into the binary.
 The solution is to change the code so that there are no warnings.
 
 Usage warnings are unhelpful
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 
 This is a known issue and we are working on it. For now, see the section
 `How to read and resolve erasure
 warnings <#how-to-read-and-resolve-erasure-warnings>`__.
 
 There should be no warnings in this function
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------
 
 A possible cause is non-totality of the function (more precisely,
 non-coverage). If a function is non-covering, the program needs to
@@ -361,7 +362,7 @@ https://gist.github.com/ziman/10458331). You can either rephrase the
 function or wait until this is fixed, hopefully soon. Fixed.
 
 The compiler refuses to recognise this thing as erased
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------------
 
 You can force anything to be erased by wrapping it in the ``Erased``
 monad. While this program triggers usage warnings,
@@ -379,10 +380,10 @@ the following program does not:
     f g x = g (Erase x)  -- OK
 
 How to read and resolve erasure warnings
-----------------------------------------
+========================================
 
 Example 1
-~~~~~~~~~
+---------
 
 Consider the following program:
 
@@ -439,7 +440,7 @@ or fixing ``vlen`` to not use the index:
 Which solution is appropriate depends on the usecase.
 
 Example 2
-~~~~~~~~~
+---------
 
 Consider the following program manipulating value-indexed binary
 numbers.
@@ -494,7 +495,7 @@ with every constructor of ``Bin`` and make it a bound implicit:
         I : {n : Nat} -> bin n -> Bin (1 + n + n)
 
 References
-----------
+==========
 
 .. [BMM04] Edwin Brady, Conor McBride, James McKinna: `Inductive
            families need not store their indices

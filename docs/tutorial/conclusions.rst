@@ -1,8 +1,8 @@
 .. _sect-concs:
 
-===============
+***************
 Further Reading
-===============
+***************
 
 Further information about Idris programming, and programming with
 dependent types in general, can be obtained from various sources:

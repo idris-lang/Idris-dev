@@ -1,11 +1,11 @@
 .. _sect-theorems:
 
-===============
+***************
 Theorem Proving
-===============
+***************
 
 Equality
---------
+========
 
 Idris allows propositional equalities to be declared, allowing theorems about
 programs to be stated and proved. Equality is built in, but conceptually
@@ -31,7 +31,7 @@ For example:
 .. _sect-empty:
 
 The Empty Type
---------------
+==============
 
 There is an empty type, :math:`\bot`, which has no constructors. It is
 therefore impossible to construct an element of the empty type, at least
@@ -64,7 +64,7 @@ contradiction.
     void : Void -> a
 
 Simple Theorems
----------------
+===============
 
 When type checking dependent types, the type itself gets *normalised*.
 So imagine we want to prove the following theorem about the reduction
@@ -116,16 +116,16 @@ We can do the same for the reduction behaviour of plus on successors:
 Even for trival theorems like these, the proofs are a little tricky to
 construct in one go. When things get even slightly more complicated, it
 becomes too much to think about to construct proofs in this ‘batch
-mode’. 
+mode’.
 
 Idris provides interactive editing capabilities, which can help with
 building proofs. For more details on building proofs interactively in
-an editor, see :ref:`proofs-index`. 
+an editor, see :ref:`proofs-index`.
 
 .. _sect-totality:
 
 Totality Checking
------------------
+=================
 
 If we really want to trust our proofs, it is important that they are
 defined by *total* functions — that is, a function which is defined for
@@ -195,7 +195,7 @@ total, a function ``f`` must:
 -  Not call any non-total functions
 
 Directives and Compiler Flags for Totality
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------
 
 By default, Idris allows all well-typed definitions, whether total or not.
 However, it is desirable for functions to be total as far as possible, as this
@@ -216,7 +216,7 @@ Finally, the compiler flag ``--warnpartial`` causes to print a warning
 for any undeclared partial function.
 
 Totality checking issues
-~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------
 
 Please note that the totality checker is not perfect! Firstly, it is
 necessarily conservative due to the undecidability of the halting
@@ -226,14 +226,14 @@ into it so far, so there may still be cases where it believes a function
 is total which is not. Do not rely on it for your proofs yet!
 
 Hints for totality
-~~~~~~~~~~~~~~~~~~
+------------------
 
 In cases where you believe a program is total, but Idris does not agree, it is
 possible to give hints to the checker to give more detail for a termination
 argument. The checker works by ensuring that all chains of recursive calls
 eventually lead to one of the arguments decreasing towards a base case, but
 sometimes this is hard to spot. For example, the following definition cannot be
-checked as ``total`` because the checker cannot decide that ``filter (<= x) xs`` 
+checked as ``total`` because the checker cannot decide that ``filter (<= x) xs``
 will always be smaller than ``(x :: xs)``:
 
 .. code-block:: idris

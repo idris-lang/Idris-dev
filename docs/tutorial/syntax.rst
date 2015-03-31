@@ -1,14 +1,17 @@
-Syntax Extensions
-=================
+.. _sect-syntax:
 
-supports the implementation of *Embedded Domain Specific Languages*
-(EDSLs) in several ways [1]_. One way, as we have already seen, is
-through extending ``do`` notation. Another important way is to allow
-extension of the core syntax. In this section we describe two ways of
-extending the syntax: ``syntax`` rules and ``dsl`` notation.
+*****************
+Syntax Extensions
+*****************
+
+Idris supports the implementation of *Embedded Domain Specific
+Languages* (EDSLs) in several ways [1]_. One way, as we have already
+seen, is through extending ``do`` notation. Another important way is
+to allow extension of the core syntax. In this section we describe two
+ways of extending the syntax: ``syntax`` rules and ``dsl`` notation.
 
 ``syntax`` rules
-----------------
+================
 
 We have seen ``if...then...else`` expressions, but these are not built
 in. Instead, we can define a function in the prelude as follows (we
@@ -101,7 +104,7 @@ a bound variable, substituted on the right hand side. We have also put
 ``in`` in quotation marks since it is already a reserved word.
 
 ``dsl`` notation
-----------------
+================
 
 The well-typed interpreter in Section :ref:`sect-interp` is a simple
 example of a common programming pattern with dependent types. Namely:

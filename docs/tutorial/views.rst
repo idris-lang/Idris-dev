@@ -1,11 +1,11 @@
 .. _sec-views:
 
-=============================
+*****************************
 Views and the “``with``” rule
-=============================
+*****************************
 
 Dependent pattern matching
---------------------------
+==========================
 
 Since types can depend on values, the form of some arguments can be
 determined by the value of others. For example, if we were to write
@@ -25,7 +25,7 @@ case, the definition would not be well typed.
 .. _sect-nattobin:
 
 The ``with`` rule — matching intermediate values
-------------------------------------------------
+================================================
 
 Very often, we need to match on the result of an intermediate
 computation. Idris provides a construct for this, the ``with``

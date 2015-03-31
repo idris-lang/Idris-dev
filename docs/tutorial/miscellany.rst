@@ -1,8 +1,8 @@
 .. _sect-misc:
 
-==========
+**********
 Miscellany
-==========
+**********
 
 In this section we discuss a variety of additional features:
 
@@ -15,7 +15,7 @@ In this section we discuss a variety of additional features:
 + the universe hierarchy.
 
 Auto implicit arguments
------------------------
+=======================
 
 We have already seen implicit arguments, which allows arguments to be
 omitted when they can be inferred by the type checker, e.g.
@@ -70,7 +70,7 @@ to:
     head (x :: xs) = x
 
 Implicit conversions
---------------------
+====================
 
 Idris supports the creation of *implicit conversions*, which allow
 automatic conversion of values from one type to another when required to
@@ -99,7 +99,7 @@ specific language, or to hide details of a proof. Such examples are
 beyond the scope of this tutorial.
 
 Literate programming
---------------------
+====================
 
 Like Haskell, Idris supports *literate* programming. If a file has
 an extension of ``.lidr`` then it is assumed to be a literate file. In
@@ -120,7 +120,7 @@ program line (beginning with ``>``) and a comment line (beginning with
 any other character).
 
 Foreign function calls
-----------------------
+======================
 
 For practical programming, it is often necessary to be able to use
 external libraries, particularly for interfacing with the operating
@@ -191,7 +191,7 @@ function is implemented as follows, as a call to an external function
     putStr x = mkForeign (FFun "putStr" [FString] FUnit) x
 
 Include and linker directives
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 
 Foreign function calls are translated directly to calls to C functions,
 with appropriate conversion between the Idris representation of a
@@ -215,7 +215,7 @@ through the following directives:
    object ``x.so``.
 
 Testing foreign function calls
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 Normally, the Idris interpreter (used for typechecking and at the REPL)
 will not perform IO actions. Additionally, as it neither generates C
@@ -232,7 +232,7 @@ command or the ``%dynamic`` directive. For example:
     0.9995736030415051 : Float
 
 Type Providers
---------------
+==============
 
 Idris type providers, inspired by F#’s type providers, are a means of
 making our types be “about” something in the world outside of Idris. For
@@ -301,7 +301,7 @@ provider implementations, including a statically-checked SQLite binding,
 are available in an external collection [1]_.
 
 C Target
---------
+========
 
 The default target of Idris is C. Compiling via :
 
@@ -341,14 +341,14 @@ is shown below :
          putStrLn $ show $ factorial 3
 
 JavaScript Target
------------------
+=================
 
 Idris is capable of producing *JavaScript* code that can be run in a
 browser as well as in the *NodeJS* environment or alike. One can use the
 FFI to communicate with the *JavaScript* ecosystem.
 
 Code Generation
-~~~~~~~~~~~~~~~
+---------------
 
 Code generation is split into two separate targets. To generate code
 that is tailored for running in the browser issue the following command:
@@ -375,7 +375,7 @@ automatically add a newline to the end of each string. This behaviour
 does not show up in the *NodeJS* code generator.
 
 Using the FFI
-~~~~~~~~~~~~~
+-------------
 
 To write a useful application we need to communicate with the outside
 world. Maybe we want to manipulate the DOM or send an Ajax request. For
@@ -441,7 +441,7 @@ program:
 The program outputs ``3``, just like we expected.
 
 Including external *JavaScript* files
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
 
 Whenever one is working with *JavaScript* one might want to include
 external libraries or just some functions that she or he wants to call
@@ -470,7 +470,7 @@ And for use in the browser:
 The given files will be added to the top of the generated code.
 
 Including *NodeJS* modules
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 The *NodeJS* code generator can also include modules with the ``%lib``
 directive.
@@ -486,7 +486,7 @@ This directive compiles into the following *JavaScript*
       var fs = require("fs");
 
 Shrinking down generated *JavaScript*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
 
 Idris can produce very big chunks of *JavaScript* code. However, the
 generated code can be minified using the ``closure-compiler`` from
@@ -497,7 +497,7 @@ and it’s highly recommended to use it when shipping a *JavaScript*
 application written in Idris.
 
 Cumulativity
-------------
+============
 
 Since values can appear in types and *vice versa*, it is natural that
 types themselves have types. For example:

@@ -1,14 +1,14 @@
 .. _sect-appendix:
 
-===============
+***************
 Effects Summary
-===============
+***************
 
 This appendix gives interfaces for the core effects provided by the
 library.
 
 EXCEPTION
----------
+=========
 
 .. code-block:: idris
 
@@ -29,7 +29,7 @@ EXCEPTION
     instance Show a => Handler (Exception a) IO
 
 FILE\_IO
---------
+========
 
 .. code-block:: idris
 
@@ -58,7 +58,7 @@ FILE\_IO
     instance Handler FileIO IO
 
 RND
----
+===
 
 .. code-block:: idris
 
@@ -77,7 +77,7 @@ RND
     instance Handler Random m
 
 SELECT
-------
+======
 
 .. code-block:: idris
 
@@ -93,7 +93,7 @@ SELECT
     instance Handler Selection List
 
 STATE
------
+=====
 
 .. code-block:: idris
 
@@ -111,7 +111,7 @@ STATE
     instance Handler State m
 
 STDIO
------
+=====
 
 .. code-block:: idris
 
@@ -133,7 +133,7 @@ STDIO
     instance Handler StdIO (IOExcept a)
 
 SYSTEM
-------
+======
 
 .. code-block:: idris
 

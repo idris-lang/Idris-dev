@@ -1,5 +1,6 @@
+***********************
 Pattern Matching Proofs
-=======================
+***********************
 
 In this section, we will provide a proof of ``plus_commutes`` directly,
 by writing a pattern matching definition. We will use interactive
@@ -26,7 +27,7 @@ mapping to Emacs commands.
 
 
 Creating a Definition
----------------------
+=====================
 
 To begin, create a file ``pluscomm.idr`` containing the following type
 declaration:
@@ -87,7 +88,7 @@ It is a good idea to give these slightly more meaningful names:
     plus_commutes (S k) m = ?plus_commutes_S
 
 Base Case
----------
+=========
 
 We can create a separate lemma for the base case interactively, by
 pressing ``\l`` with the cursor over ``plus_commutes_Z``. This
@@ -263,7 +264,7 @@ proof, giving:
 The base case is now complete.
 
 Inductive Step
---------------
+==============
 
 Our main theorem, ``plus_commutes`` should currently be in the following
 state:
@@ -333,9 +334,9 @@ defined by matching on its first argument. The complete definition is:
     plus_commutes_S k Z = Refl
     plus_commutes_S k (S j) = rewrite plus_commutes_S k j in Refl
 
-All metavariables have now been solved, 
+All metavariables have now been solved,
 
-The ``total`` annotation means that we require the final function to 
+The ``total`` annotation means that we require the final function to
 pass the totality checker; i.e. it will terminate on all possible
 well-typed inputs. This is important for proofs, since it provides a
 guarantee that the proof is valid in *all* cases, not just those for

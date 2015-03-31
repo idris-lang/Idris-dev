@@ -1,13 +1,14 @@
+***************************
 Interactive Theorem Proving
-===========================
+***************************
 
 Idris also supports interactive theorem proving via tactics. This
-is generally not recommended to be used directly, but rather used as a 
+is generally not recommended to be used directly, but rather used as a
 mechanism for building proof automation which is beyond the scope of this
 tutorial. In this section, we briefly discus tactics.
 
 One way to write proofs interactively is to write the general *structure* of
-the proof, and use the interactive mode to complete the details. 
+the proof, and use the interactive mode to complete the details.
 Consider the following definition, proved in :ref:`sect-theorems`:
 
 .. code-block:: idris
@@ -162,5 +163,3 @@ which is trivially provable:
 
 Again, we can add this proof to the end of our source file using the
 ``:addproof`` command at the interactive prompt.
-
-

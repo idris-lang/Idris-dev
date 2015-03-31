@@ -1,5 +1,6 @@
+********************************************
 Running example: Addition of Natural Numbers
-============================================
+********************************************
 
 Throughout this tutorial, we will be working with the following
 function, defined in the Idris prelude, which defines addition on
@@ -44,7 +45,7 @@ We can use these properties in an Idris program, but in order to do so
 we must *prove* them.
 
 Equality Proofs
----------------
+===============
 
 Idris has a built-in propositional equality type, conceptually defined
 as follows:
@@ -93,7 +94,7 @@ error:
             4 = 5 (Expected type)
 
 Type checking equality proofs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 
 An important step in type checking Idris programs is *unification*,
 which attempts to resolve implicit arguments such as the implicit
@@ -123,7 +124,7 @@ following equalities directly:
     plus_reduces_Sk k m = Refl
 
 Heterogeneous Equality
-----------------------
+======================
 
 Equality in Idris is *heterogeneous*, meaning that we can even propose
 equalities between values in different types:
@@ -164,7 +165,7 @@ there is only one value which will type check:
     vect_eq_length xs _ Refl = Refl
 
 Properties of ``plus``
-----------------------
+======================
 
 Using the ``(=)`` type, we can now state the properties of ``plus``
 given above as Idris type declarations:
@@ -185,4 +186,4 @@ the function.) We will also discuss how to use such equality proofs, and
 see where the need for them arises in practice.
 
 .. [1]
-   This is known as the Curry-Howard correspondence 
+   This is known as the Curry-Howard correspondence.
