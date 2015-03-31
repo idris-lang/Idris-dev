@@ -1,3 +1,19 @@
+New in 0.9.18:
+--------------
+* Strings are now UTF8 encoded in the default back end
+* Some reorganisation of primitives:
+  + Buffer and BitVector primitives have been removed (they were not
+    tested sufficiently, and lack a maintainer)
+  + Float has been renamed 'Double' (Float is defined in the Prelude for
+    compatibility)
+  + Externally defined primitives and  operations now supported with 
+    '%extern' directive, allowing back ends to define their own special 
+    purpose primitives
+  + Ptr and ManagedPtr have been removed and replaced with external primitives
+* Syntax rules no longer perform variable capture. Users of effects will
+  need to explicitly name results in dependent effect signatures instead
+  of using the default name "result".
+
 New in 0.9.17:
 --------------
 * The --ideslave command line option has been replaced with a --ide-mode
@@ -42,6 +58,9 @@ New in 0.9.17:
 * Classes can now be annotated with 'determining parameters' to say which
   must be available before resolving instances. Only determining parameters
   are checked when checking for overlapping instances.
+* New package 'contrib' containing things that are less mature or less used
+  than the contents of 'base'. 'contrib' is not available by default, so you
+  may need to add '-p contrib' to your .ipkg file or Idris command line.
 * Arguments to class instances are now checked for injectivity.
   Unification assumes this, so we need to check when instances are defined.
 

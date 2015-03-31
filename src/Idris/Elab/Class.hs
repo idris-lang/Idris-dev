@@ -69,7 +69,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
          let idecls = filter instdecl ds -- default superclass instance declarations
          mapM_ checkDefaultSuperclassInstance idecls
          let mnames = map getMName mdecls
-         logLvl 2 $ "Building methods " ++ show mnames
+         logLvl 1 $ "Building methods " ++ show mnames
          ims <- mapM (tdecl mnames) mdecls
          defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint)
                       (filter clause ds)
@@ -94,7 +94,8 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
          mapM_ (rec_elabDecl info EAll info) (concat cfns)
 
          -- for each method, build a top level function
-         fns <- mapM (tfun cn constraint syn (map fst imethods)) imethods
+         fns <- mapM (tfun cn constraint (syn { imp_methods = mnames })
+                           (map fst imethods)) imethods
          logLvl 5 $ "Functions " ++ show fns
          -- Elaborate the the top level methods
          mapM_ (rec_elabDecl info EAll info) (concat fns)
@@ -199,7 +200,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
              let anames = map (\x -> sMN x "arg") [0..]
              let lhs = PApp fc (PRef fc m) (pconst capp : lhsArgs margs anames)
              let rhs = PApp fc (getMeth mnames all m) (rhsArgs margs anames)
-             iLOG (showTmImpls ty)
+             iLOG (showTmImpls ty')
              iLOG (show (m, ty', capp, margs))
              iLOG (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
              return [PTy doc [] syn fc o m ty',

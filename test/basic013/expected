@@ -1,0 +1,14 @@
+λx→x
+λx→xλx→x
+x→xλx→xλ
+4
+'\955'
+λx→xλx→xλx→xλx→xλx→x
+'\955'
+20
+'\955'
+λ
+Tail: x→xλx→xλx→xλx→xλx→x
+Tail Tail: →xλx→xλx→xλx→xλx→x
+Cons: λλx→xλx→xλx→xλx→xλx→x
+Reverse: x→xλx→xλx→xλx→xλx→xλ

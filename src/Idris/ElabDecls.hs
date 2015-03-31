@@ -160,10 +160,12 @@ elabDecl' what info (PTy doc argdocs s f o n ty)
     = do iLOG $ "Elaborating type decl " ++ show n ++ show o
          elabType info s doc argdocs f o n ty
          return ()
-elabDecl' what info (PPostulate doc s f o n ty)
+elabDecl' what info (PPostulate b doc s f o n ty)
   | what /= EDefns
     = do iLOG $ "Elaborating postulate " ++ show n ++ show o
-         elabPostulate info s doc f o n ty
+         if b 
+            then elabExtern info s doc f o n ty
+            else elabPostulate info s doc f o n ty
 elabDecl' what info (PData doc argDocs s f co d)
   | what /= ETypes
     = do iLOG $ "Elaborating " ++ show (d_name d)

@@ -69,35 +69,20 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LStrConcat | LStrLt | LStrEq | LStrLen
             | LIntFloat IntTy | LFloatInt IntTy | LIntStr IntTy | LStrInt IntTy
             | LFloatStr | LStrFloat | LChInt IntTy | LIntCh IntTy
-            | LReadStr | LWriteStr | LReadFile | LWriteFile
             | LBitCast ArithTy ArithTy -- Only for values of equal width
 
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil | LFNegate
 
-           -- construction          element extraction     element insertion
-            | LMkVec NativeTy Int | LIdxVec NativeTy Int | LUpdateVec NativeTy Int
-
             | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
-            | LStdIn | LStdOut | LStdErr
 
-            -- Buffers
-            | LAllocate
-            | LAppendBuffer
             -- system info
             | LSystemInfo
-            -- Note that for Bits8 only Native endianness is actually used
-            -- and the user-exposed interface for Bits8 doesn't mention
-            -- endianness
-            | LAppend IntTy Endianness
-            | LPeek IntTy Endianness
 
             | LFork
             | LPar -- evaluate argument anywhere, possibly on another
                    -- core or another machine. 'id' is a valid implementation
-            | LVMPtr
-            | LNullPtr
-            | LRegisterPtr
+            | LExternal Name
             | LNoOp
   deriving (Show, Eq)
 

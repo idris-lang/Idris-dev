@@ -38,17 +38,14 @@ data TTUExp =
 data NativeTy = IT8 | IT16 | IT32 | IT64
 
 data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
-           | ITVec NativeTy Int
 
 data ArithTy = ATInt Language.Reflection.IntTy | ATFloat
 
 ||| Primitive constants
 data Const = I Int | BI Integer | Fl Float | Ch Char | Str String
            | B8 Bits8 | B16 Bits16 | B32 Bits32 | B64 Bits64
-           | B8V Bits8x16 | B16V Bits16x8
-           | B32V Bits32x4 | B64V Bits64x2
            | AType ArithTy | StrType
-           | PtrType | ManagedPtrType | BufferType | VoidType | Forgot
+           | VoidType | Forgot
            | WorldType | TheWorld
 %name Const c, c'
 
@@ -361,38 +358,6 @@ instance Quotable Integer Raw where
   quotedTy = `(Integer)
   quote x = RConstant (BI x)
 
-instance Quotable Bits8x16 TT where
-  quotedTy = `(Bits8x16)
-  quote x = TConst (B8V x)
-
-instance Quotable Bits8x16 Raw where
-  quotedTy = `(Bits8x16)
-  quote x = RConstant (B8V x)
-
-instance Quotable Bits16x8 TT where
-  quotedTy = `(Bits16x8)
-  quote x = TConst (B16V x)
-
-instance Quotable Bits16x8 Raw where
-  quotedTy = `(Bits16x8)
-  quote x = RConstant (B16V x)
-
-instance Quotable Bits32x4 TT where
-  quotedTy = `(Bits32x4)
-  quote x = TConst (B32V x)
-
-instance Quotable Bits32x4 Raw where
-  quotedTy = `(Bits32x4)
-  quote x = RConstant (B32V x)
-
-instance Quotable Bits64x2 TT where
-  quotedTy = `(Bits64x2)
-  quote x = TConst (B64V x)
-
-instance Quotable Bits64x2 Raw where
-  quotedTy = `(Bits64x2)
-  quote x = RConstant (B64V x)
-
 instance Quotable String TT where
   quotedTy = `(String)
   quote x = TConst (Str x)
@@ -459,7 +424,6 @@ instance Quotable Reflection.IntTy TT where
   quote ITNative = `(Reflection.ITNative)
   quote ITBig = `(ITBig)
   quote ITChar = `(Reflection.ITChar)
-  quote (ITVec x y) = `(ITVec ~(quote x) ~(quote y))
 
 instance Quotable Reflection.IntTy Raw where
   quotedTy = `(Reflection.IntTy)
@@ -467,7 +431,6 @@ instance Quotable Reflection.IntTy Raw where
   quote ITNative = `(Reflection.ITNative)
   quote ITBig = `(ITBig)
   quote ITChar = `(Reflection.ITChar)
-  quote (ITVec x y) = `(ITVec ~(quote {t=Raw} x) ~(quote {t=Raw} y))
 
 instance Quotable ArithTy TT where
   quotedTy = `(ArithTy)
@@ -490,15 +453,8 @@ instance Quotable Const TT where
   quote (B16 x) = `(B16 ~(quote x))
   quote (B32 x) = `(B32 ~(quote x))
   quote (B64 x) = `(B64 ~(quote x))
-  quote (B8V xs) = `(B8V ~(quote xs))
-  quote (B16V xs) = `(B16V ~(quote xs))
-  quote (B32V xs) = `(B32V ~(quote xs))
-  quote (B64V xs) = `(B64V ~(quote xs))
   quote (AType x) = `(AType ~(quote x))
   quote StrType = `(StrType)
-  quote PtrType = `(PtrType)
-  quote ManagedPtrType = `(ManagedPtrType)
-  quote BufferType = `(BufferType)
   quote VoidType = `(VoidType)
   quote Forgot = `(Forgot)
   quote WorldType = `(WorldType)
@@ -515,15 +471,8 @@ instance Quotable Const Raw where
   quote (B16 x) = `(B16 ~(quote {t=Raw} x))
   quote (B32 x) = `(B32 ~(quote {t=Raw} x))
   quote (B64 x) = `(B64 ~(quote {t=Raw} x))
-  quote (B8V xs) = `(B8V ~(quote {t=Raw} xs))
-  quote (B16V xs) = `(B16V ~(quote {t=Raw} xs))
-  quote (B32V xs) = `(B32V ~(quote {t=Raw} xs))
-  quote (B64V xs) = `(B64V ~(quote {t=Raw} xs))
   quote (AType x) = `(AType ~(quote {t=Raw} x))
   quote StrType = `(StrType)
-  quote PtrType = `(PtrType)
-  quote ManagedPtrType = `(ManagedPtrType)
-  quote BufferType = `(BufferType)
   quote VoidType = `(VoidType)
   quote Forgot = `(Forgot)
   quote WorldType = `(WorldType)

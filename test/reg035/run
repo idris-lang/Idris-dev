@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-idris --check reg035.idr
-idris --check reg035a.lidr
-idris --check reg035b.idr
+idris --consolewidth 80 --check reg035.idr
+idris --consolewidth 80 --check reg035a.lidr
+idris --consolewidth 80 --check reg035b.idr
 rm -f *.ibc

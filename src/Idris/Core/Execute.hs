@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternGuards, ExistentialQuantification, CPP #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.Execute (execute) where
 
 import Idris.AbsSyntax
@@ -111,7 +112,8 @@ toTT (EThunk ctxt env tm) = do env' <- mapM toBinder env
                                return $ normalise ctxt env' tm
   where toBinder (n, v) = do v' <- toTT v
                              return (n, Let Erased v')
-toTT (EHandle _) = return Erased
+toTT (EHandle _) = execFail $ Msg "Can't convert handles back to TT after execution." 
+toTT (EPtr ptr) = execFail $ Msg "Can't convert pointers back to TT after execution."
 
 unApplyV :: ExecVal -> (ExecVal, [ExecVal])
 unApplyV tm = ua [] tm
@@ -249,6 +251,9 @@ execApp env ctxt c@(EP (TCon _ arity) n _) args =
        let restArgs = drop arity args
        execApp env ctxt (mkEApp c args') restArgs
 
+execApp env ctxt f@(EP _ n _) args 
+    | Just (res, rest) <- getOp n args = do r <- res
+                                            execApp env ctxt r rest
 execApp env ctxt f@(EP _ n _) args =
     do let val = lookupDef n ctxt
        case val of
@@ -258,9 +263,9 @@ execApp env ctxt f@(EP _ n _) args =
              if length args >= arity
                then let args' = take arity args in
                     case getOp n args' of
-                      Just res -> do r <- res
-                                     execApp env ctxt r (drop arity args)
-                      Nothing -> return (mkEApp f args)
+                      Just (res, []) -> do r <- res
+                                           execApp env ctxt r (drop arity args)
+                      _ -> return (mkEApp f args)
                else return (mkEApp f args)
          [CaseOp _ _ _ _ _ (CaseDefs _ ([], STerm tm) _ _)] -> -- nullary fun
              do rhs <- doExec env ctxt tm
@@ -387,8 +392,8 @@ execForeign env ctxt arity ty fn xs onfail
                    Nothing -> fail $ "Could not call foreign function \"" ++ f ++
                                      "\" with args " ++ show (map snd argTs)
                    Just r -> return (mkEApp r xs')
-        Nothing -> return onfail
-   
+        _ -> return onfail
+
 
 splitArg tm | (_, [_,_,l,r]) <- unApplyV tm -- pair, two implicits
     = Just (toFDesc l, r)
@@ -416,38 +421,47 @@ upio = sUN "unsafePerformPrimIO"
 delay = sUN "Delay"
 force = sUN "Force"
 
--- | Look up primitive operations in the global table and transform them into ExecVal functions
-getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal)
-getOp fn [_, _, x] | fn == pbm = Just (return x)
-getOp fn [_, EConstant (Str n)]
+-- | Look up primitive operations in the global table and transform 
+-- them into ExecVal functions
+getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal, [ExecVal])
+getOp fn (_ : _ : x : xs) | fn == pbm = Just (return x, xs)
+getOp fn (_ : EConstant (Str n) : xs)
     | fn == pws =
-              Just $ do execIO $ putStr n
-                        return (EConstant (I 0))
-getOp fn [_]
+              Just (do execIO $ putStr n
+                       return (EConstant (I 0)), xs)
+getOp fn (_:xs)
     | fn == prs =
-              Just $ do line <- execIO getLine
-                        return (EConstant (Str line))
-getOp fn [_, EP _ fn' _, EConstant (Str n)]
+              Just (do line <- execIO getLine
+                       return (EConstant (Str line)), xs)
+getOp fn (_ : EP _ fn' _ : EConstant (Str n) : xs)
     | fn == pwf && fn' == pstdout =
-              Just $ do execIO $ putStr n
-                        return (EConstant (I 0))
-getOp fn [_, EP _ fn' _]
+              Just (do execIO $ putStr n
+                       return (EConstant (I 0)), xs)
+getOp fn (_ : EP _ fn' _ : xs)
     | fn == prf && fn' == pstdin =
-              Just $ do line <- execIO getLine
-                        return (EConstant (Str line))
-getOp fn [_, EHandle h, EConstant (Str n)]
+              Just (do line <- execIO getLine
+                       return (EConstant (Str line)), xs)
+getOp fn (_ : EHandle h : EConstant (Str n) : xs)
     | fn == pwf =
-              Just $ do execIO $ hPutStr h n
-                        return (EConstant (I 0))
-getOp fn [_, EHandle h]
+              Just (do execIO $ hPutStr h n
+                       return (EConstant (I 0)), xs)
+getOp fn (_ : EHandle h : xs)
     | fn == prf =
-              Just $ do contents <- execIO $ hGetLine h
-                        return (EConstant (Str (contents ++ "\n")))
-getOp n args = getPrim n primitives >>= flip applyPrim args
-    where getPrim :: Name -> [Prim] -> Maybe ([ExecVal] -> Maybe ExecVal)
+              Just (do contents <- execIO $ hGetLine h
+                       return (EConstant (Str (contents ++ "\n"))), xs)
+getOp fn (_ : arg : xs)
+    | fn == prf =
+              Just $ (execFail (Msg "Can't use prim__readFile on a raw pointer in the executor."), xs)
+getOp n args = do (arity, prim) <- getPrim n primitives 
+                  if (length args >= arity) 
+                     then do res <- applyPrim prim (take arity args)
+                             Just (res, drop arity args)
+                     else Nothing
+    where getPrim :: Name -> [Prim] -> Maybe (Int, [ExecVal] -> Maybe ExecVal)
           getPrim n [] = Nothing
-          getPrim n ((Prim pn _ arity def _ _) : prims) | n == pn   = Just $ execPrim def
-                                                        | otherwise = getPrim n prims
+          getPrim n ((Prim pn _ arity def _ _) : prims) 
+             | n == pn   = Just (arity, execPrim def)
+             | otherwise = getPrim n prims
 
           execPrim :: ([Const] -> Maybe Const) -> [ExecVal] -> Maybe ExecVal
           execPrim f args = EConstant <$> (mapM getConst args >>= f)
@@ -486,6 +500,7 @@ execCase' env ctxt amap (Case sh n alts) | Just tm <- lookup n amap =
              let amap' = newBindings ++ (filter (\(x,_) -> not (elem x (map fst newBindings))) amap) in
              execCase' env ctxt amap' newCase
          Nothing -> return Nothing
+execCase' _ _ _ cse = fail $ "The impossible happened: tried to exec  " ++ show cse
 
 chooseAlt :: ExecVal -> [CaseAlt] -> Maybe (SC, [(Name, ExecVal)])
 chooseAlt tm (DefaultCase sc : alts) | ok tm = Just (sc, [])
@@ -504,15 +519,6 @@ chooseAlt tm (ConCase n i ns sc : alts) | ((EP _ cn _), args) <- unApplyV tm
 chooseAlt tm (_:alts) = chooseAlt tm alts
 chooseAlt _ [] = Nothing
 
-
-
-
-idrisType :: FType -> ExecVal
-idrisType FUnit = EP Ref unitTy EErased
-idrisType ft = EConstant (idr ft)
-    where idr (FArith ty) = AType ty
-          idr FString = StrType
-          idr FPtr = PtrType
 
 data Foreign = FFun String [(FDesc, ExecVal)] FDesc deriving Show
 
@@ -574,7 +580,7 @@ call (FFun name argTypes retType) args =
           call' (Fun _ h) args FPtr = EPtr <$> (execIO $ callFFI h (retPtr retVoid) (prepArgs args))
           call' (Fun _ h) args FUnit = do _ <- execIO $ callFFI h retVoid (prepArgs args)
                                           return $ EP Ref unitCon EErased
-
+          call' _ _ _ = fail "the impossible happened in call' in Execute.hs"
 
           prepArgs = map prepArg
           prepArg (EConstant (I i)) = argCInt (fromIntegral i)

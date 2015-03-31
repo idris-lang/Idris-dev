@@ -1,4 +1,8 @@
-module Providers
+module Prelude.Providers
+
+import Prelude.Functor
+import Prelude.Applicative
+import Prelude.Monad
 
 ||| Type providers must build one of these in an IO computation.
 public

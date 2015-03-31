@@ -181,15 +181,6 @@ instance DecEq Integer where
              primitiveEq = believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void
 
---------------------------------------------------------------------------------
--- Float
---------------------------------------------------------------------------------
-
-instance DecEq Float where
-    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
-       where primitiveEq : x = y
-             primitiveEq = believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- String

@@ -134,7 +134,6 @@ instance NFData IntTy where
         rnf ITNative = ()
         rnf ITBig = ()
         rnf ITChar = ()
-        rnf (ITVec x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance NFData ArithTy where
         rnf (ATInt x1) = rnf x1 `seq` ()
@@ -150,17 +149,10 @@ instance NFData Const where
         rnf (B16 x1) = rnf x1 `seq` ()
         rnf (B32 x1) = rnf x1 `seq` ()
         rnf (B64 x1) = rnf x1 `seq` ()
-        rnf (B8V x1) = rnf x1 `seq` ()
-        rnf (B16V x1) = rnf x1 `seq` ()
-        rnf (B32V x1) = rnf x1 `seq` ()
-        rnf (B64V x1) = rnf x1 `seq` ()
         rnf (AType x1) = rnf x1 `seq` ()
         rnf WorldType = ()
         rnf TheWorld = ()
         rnf StrType = ()
-        rnf PtrType = ()
-        rnf ManagedPtrType = ()
-        rnf BufferType = ()
         rnf VoidType = ()
         rnf Forgot = ()
 

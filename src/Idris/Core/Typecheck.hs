@@ -86,15 +86,38 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
       | (P nt n' ty : _) <- lookupP_all (not holes) n ctxt 
            = return (P nt n' ty, ty)
       | otherwise = do lift $ tfail $ NoSuchVariable n
-  chk u env ap@(RApp f a)
+  chk u env ap@(RApp f RType) | not holes
+    -- special case to reduce constraintss
       = do (fv, fty) <- chk u env f
-           (av, aty) <- chk u env a
            let fty' = case uniqueBinders (map fst env) (finalise fty) of
                         ty@(Bind x (Pi i s k) t) -> ty
                         _ -> uniqueBinders (map fst env)
                                  $ case hnf ctxt env fty of
                                      ty@(Bind x (Pi i s k) t) -> ty
                                      _ -> normalise ctxt env fty
+           case fty' of
+             Bind x (Pi i (TType v') k) t ->
+               do (v, cs) <- get
+                  put (v+1, ULT (UVar v) v' : cs)
+                  let apty = simplify initContext env
+                                 (Bind x (Let (TType v') (TType (UVar v))) t)
+                  return (App fv (TType (UVar v)), apty)
+             Bind x (Pi i s k) t ->
+                 do (av, aty) <- chk u env RType 
+                    convertsC ctxt env aty s
+                    let apty = simplify initContext env
+                                        (Bind x (Let aty av) t)
+                    return (App fv av, apty)
+             t -> lift $ tfail $ NonFunctionType fv fty
+  chk u env ap@(RApp f a)
+      = do (fv, fty) <- chk u env f
+           let fty' = case uniqueBinders (map fst env) (finalise fty) of
+                        ty@(Bind x (Pi i s k) t) -> ty
+                        _ -> uniqueBinders (map fst env)
+                                 $ case hnf ctxt env fty of
+                                     ty@(Bind x (Pi i s k) t) -> ty
+                                     _ -> normalise ctxt env fty
+           (av, aty) <- chk u env a
            case fty' of
              Bind x (Pi i s k) t ->
                  do convertsC ctxt env aty s
@@ -128,24 +151,25 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
           constType (B16 _) = Constant (AType (ATInt (ITFixed IT16)))
           constType (B32 _) = Constant (AType (ATInt (ITFixed IT32)))
           constType (B64 _) = Constant (AType (ATInt (ITFixed IT64)))
-          constType (B8V  a) = Constant (AType (ATInt (ITVec IT8  (V.length a))))
-          constType (B16V a) = Constant (AType (ATInt (ITVec IT16 (V.length a))))
-          constType (B32V a) = Constant (AType (ATInt (ITVec IT32 (V.length a))))
-          constType (B64V a) = Constant (AType (ATInt (ITVec IT64 (V.length a))))
           constType TheWorld = Constant WorldType
           constType Forgot  = Erased
           constType _       = TType (UVal 0)
-  chk u env (RForce t) = do (_, ty) <- chk u env t
-                            return (Erased, ty)
+  chk u env (RForce t) 
+      = do (_, ty) <- chk u env t
+           return (Erased, ty)
   chk u env (RBind n (Pi i s k) t)
       = do (sv, st) <- chk u env s
-           (kv, kt) <- chk u env k
-           (tv, tt) <- chk st ((n, Pi i sv kv) : env) t
            (v, cs) <- get
+           (kv, kt) <- chk u env k -- no need to validate these constraints, they are independent
+           put (v+1, cs)
+           let maxu = UVar v
+           (tv, tt) <- chk st ((n, Pi i sv kv) : env) t
            case (normalise ctxt env st, normalise ctxt env tt) of
                 (TType su, TType tu) -> do
-                    when (not holes) $ put (v+1, ULE su (UVar v):ULE tu (UVar v):cs)
-                    let k' = st `smaller` kv `smaller` TType (UVar v) `smaller` u
+                    when (not holes) $ do (v, cs) <- get
+                                          put (v, ULE su maxu : 
+                                                  ULE tu maxu : cs)
+                    let k' = TType (UVar v) `smaller` st `smaller` kv `smaller` u
                     return (Bind n (Pi i (uniqueBinders (map fst env) sv) k')
                               (pToV n tv), k')
                 (un, un') ->

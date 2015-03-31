@@ -66,27 +66,27 @@ toplevel = EInfo [] emptyContext id Nothing Nothing (\_ _ _ -> fail "Not impleme
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
 
-data IOption = IOption { opt_logLevel   :: Int,
-                         opt_typecase   :: Bool,
-                         opt_typeintype :: Bool,
-                         opt_coverage   :: Bool,
-                         opt_showimp    :: Bool, -- ^^ show implicits
-                         opt_errContext :: Bool,
-                         opt_repl       :: Bool,
-                         opt_verbose    :: Bool,
-                         opt_nobanner   :: Bool,
-                         opt_quiet      :: Bool,
-                         opt_codegen    :: Codegen,
-                         opt_outputTy   :: OutputType,
-                         opt_ibcsubdir  :: FilePath,
-                         opt_importdirs :: [FilePath],
-                         opt_triple     :: String,
-                         opt_cpu        :: String,
-                         opt_cmdline    :: [Opt], -- remember whole command line
-                         opt_origerr    :: Bool,
-                         opt_autoSolve  :: Bool, -- ^ automatically apply "solve" tactic in prover
-                         opt_autoImport :: [FilePath], -- ^ e.g. Builtins+Prelude
-                         opt_optimise   :: [Optimisation]
+data IOption = IOption { opt_logLevel     :: Int,
+                         opt_typecase     :: Bool,
+                         opt_typeintype   :: Bool,
+                         opt_coverage     :: Bool,
+                         opt_showimp      :: Bool, -- ^^ show implicits
+                         opt_errContext   :: Bool,
+                         opt_repl         :: Bool,
+                         opt_verbose      :: Bool,
+                         opt_nobanner     :: Bool,
+                         opt_quiet        :: Bool,
+                         opt_codegen      :: Codegen,
+                         opt_outputTy     :: OutputType,
+                         opt_ibcsubdir    :: FilePath,
+                         opt_importdirs   :: [FilePath],
+                         opt_triple       :: String,
+                         opt_cpu          :: String,
+                         opt_cmdline      :: [Opt], -- remember whole command line
+                         opt_origerr      :: Bool,
+                         opt_autoSolve    :: Bool, -- ^ automatically apply "solve" tactic in prover
+                         opt_autoImport   :: [FilePath], -- ^ e.g. Builtins+Prelude
+                         opt_optimise     :: [Optimisation]
                        }
     deriving (Show, Eq)
 
@@ -151,11 +151,13 @@ data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
                   | ColsWide Int -- ^ Manually specified - must be positive
                   | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
+   deriving (Show, Eq)
+
 
 -- | The global state used in the Idris monad
 data IState = IState {
     tt_ctxt :: Context, -- ^ All the currently defined names and their terms
-    idris_constraints :: [(UConstraint, FC)],
+    idris_constraints :: S.Set ConstraintFC,
       -- ^ A list of universe constraints and their corresponding source locations
     idris_infixes :: [FixDecl], -- ^ Currently defined infix operators
     idris_implicits :: Ctxt [PArg],
@@ -224,6 +226,7 @@ data IState = IState {
     module_aliases :: M.Map [T.Text] [T.Text],
     idris_consolewidth :: ConsoleWidth, -- ^ How many chars wide is the console?
     idris_postulates :: S.Set Name,
+    idris_externs :: S.Set (Name, Int),
     idris_erasureUsed :: [(Name, Int)], -- ^ Function/constructor name, argument position is used
     idris_whocalls :: Maybe (M.Map Name [Name]),
     idris_callswho :: Maybe (M.Map Name [Name]),
@@ -298,6 +301,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCErrorHandler Name
               | IBCFunctionErrorHandler Name Name Name
               | IBCPostulate Name
+              | IBCExtern (Name, Int)
               | IBCTotCheckErr FC String
               | IBCParsedRegion FC
               | IBCModDocs Name -- ^ The name is the special name used to track module docs
@@ -307,7 +311,7 @@ data IBCWrite = IBCFix FixDecl
 
 -- | The initial state for the compiler
 idrisInit :: IState
-idrisInit = IState initContext [] []
+idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
@@ -315,7 +319,7 @@ idrisInit = IState initContext [] []
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty [] Nothing Nothing [] [] M.empty []
+                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty []
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -467,6 +471,7 @@ data Opt = Filename String
          | ShowOrigErr
          | AutoWidth -- ^ Automatically adjust terminal width
          | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
+         | UseConsoleWidth ConsoleWidth
     deriving (Show, Eq)
 
 -- Parsed declarations
@@ -590,7 +595,8 @@ type ProvideWhat = ProvideWhat' PTerm
 data PDecl' t
    = PFix     FC Fixity [String] -- ^ Fixity declaration
    | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
-   | PPostulate (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
+   | PPostulate Bool -- external def if true
+          (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
    | PCAF     FC Name t -- ^ Top level constant
    | PData    (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
@@ -698,7 +704,7 @@ type PClause = PClause' PTerm
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
 declared (PTy _ _ _ _ _ n t) = [n]
-declared (PPostulate _ _ _ _ n t) = [n]
+declared (PPostulate _ _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PCAF _ n _) = [n]
 declared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
@@ -719,7 +725,7 @@ declared _ = []
 tldeclared :: PDecl -> [Name]
 tldeclared (PFix _ _ _) = []
 tldeclared (PTy _ _ _ _ _ n t) = [n]
-tldeclared (PPostulate _ _ _ _ n t) = [n]
+tldeclared (PPostulate _ _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
 tldeclared (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
 tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
@@ -734,7 +740,7 @@ tldeclared _ = []
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
 defined (PTy _ _ _ _ _ n t) = []
-defined (PPostulate _ _ _ _ n t) = []
+defined (PPostulate _ _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PCAF _ n _) = [n]
 defined (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts

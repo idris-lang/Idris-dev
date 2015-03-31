@@ -185,7 +185,7 @@ isCon _ = False
 build :: (Name, Def) -> Idris (Name, LDecl)
 build (n, d)
     = do i <- getIState
-         case lookup n (idris_scprims i) of
+         case getPrim n i of
               Just (ar, op) ->
                   let args = map (\x -> sMN x "op") [0..] in
                       return (n, (LFun [] n (take ar args)
@@ -193,6 +193,12 @@ build (n, d)
               _ -> do def <- mkLDecl n d
                       logLvl 3 $ "Compiled " ++ show n ++ " =\n\t" ++ show def
                       return (n, def)
+   where getPrim n i 
+             | Just (ar, op) <- lookup n (idris_scprims i) 
+                  = Just (ar, op)
+             | Just ar <- lookup n (S.toList (idris_externs i))
+                  = Just (ar, LExternal n)
+         getPrim n i = Nothing
 
 declArgs args inl n (LLam xs x) = declArgs (args ++ xs) inl n x
 declArgs args inl n x = LFun (if inl then [Inline] else []) n args x
@@ -225,7 +231,9 @@ data VarInfo = VI
 type Vars = M.Map Name VarInfo
 
 irTerm :: Vars -> [Name] -> Term -> Idris LExp
-irTerm vs env tm@(App f a) = case unApply tm of
+irTerm vs env tm@(App f a) = do 
+  ist <- getIState
+  case unApply tm of
     (P _ (UN m) _, args)
         | m == txt "mkForeignPrim"
         -> doForeign vs env (reverse (drop 4 args)) -- drop implicits
@@ -359,9 +367,12 @@ irTerm vs env tm@(App f a) = case unApply tm of
     -- type constructor
     (P (TCon t a) n _, args) -> return LNothing
 
+    -- an external name applied to arguments
+    (P _ n _, args) | S.member (n, length args) (idris_externs ist) -> do
+        LOp (LExternal n) <$> mapM (irTerm vs env) args
+
     -- a name applied to arguments
     (P _ n _, args) -> do
-        ist <- getIState
         case lookup n (idris_scprims ist) of
             -- if it's a primitive that is already saturated,
             -- compile to the corresponding op here already to save work

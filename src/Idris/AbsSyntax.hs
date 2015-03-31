@@ -543,10 +543,13 @@ addConstraints :: FC -> (Int, [UConstraint]) -> Idris ()
 addConstraints fc (v, cs)
     = do i <- getIState
          let ctxt = tt_ctxt i
-         let ctxt' = ctxt { uconstraints = nub cs ++ uconstraints ctxt,
-                            next_tvar = v }
-         let ics = zip cs (repeat fc) ++ idris_constraints i
+         let ctxt' = ctxt { next_tvar = v }
+         let ics = insertAll (zip cs (repeat fc)) (idris_constraints i)
          putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
+  where
+    insertAll [] c = c
+    insertAll ((c, fc) : cs) ics 
+       = insertAll cs $ S.insert (ConstraintFC c fc) ics
 
 addDeferred = addDeferred' Ref
 addDeferredTyCon = addDeferred' (TCon 0 0)
@@ -606,12 +609,6 @@ setWidth :: ConsoleWidth -> Idris ()
 setWidth w = do ist <- getIState
                 put ist { idris_consolewidth = w }
 
-renderWidth :: Idris Int
-renderWidth = do iw <- getWidth
-                 case iw of
-                   InfinitelyWide -> return 100000000
-                   ColsWide n -> return (max n 1)
-                   AutomaticWidth -> runIO getScreenWidth
 
 
 
@@ -1016,13 +1013,13 @@ expandParamsD rhsonly ist dec ps ns (PTy doc argdocs syn fc o n ty)
               PTy doc argdocs syn fc o (dec n) (piBindp expl_param ps (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $
               PTy doc argdocs syn fc o n (expandParams dec ps ns [] ty)
-expandParamsD rhsonly ist dec ps ns (PPostulate doc syn fc o n ty)
+expandParamsD rhsonly ist dec ps ns (PPostulate e doc syn fc o n ty)
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
-              PPostulate doc syn fc o (dec n) (piBind ps
+              PPostulate e doc syn fc o (dec n) (piBind ps
                             (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $
-              PPostulate doc syn fc o n (expandParams dec ps ns [] ty)
+              PPostulate e doc syn fc o n (expandParams dec ps ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc opts n' (map expandParamsC cs)
@@ -1686,9 +1683,9 @@ aiFn inpat expat qq imp_meths ist fc f ds as
         case find n imps [] of
             Just (tm, imps') ->
               PImp p False l n tm : insImpAcc (M.insert n tm pnas) ps given imps'
-            Nothing ->
-              PImp p True l n Placeholder :
-                insImpAcc (M.insert n Placeholder pnas) ps given imps
+            Nothing -> let ph = if f `elem` imp_meths then PRef fc n else Placeholder in
+              PImp p True l n ph :
+                insImpAcc (M.insert n ph pnas) ps given imps
     insImpAcc pnas (PTacImplicit p l n sc' ty : ps) given imps =
       let sc = addImpl imp_meths ist (substMatches (M.toList pnas) sc') in
         case find n imps [] of

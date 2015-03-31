@@ -809,12 +809,6 @@ hasAnyByNilFalse p (x::xs) =
 hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
 hasAnyNilFalse l = ?hasAnyNilFalseBody
 
-instance VerifiedSemigroup (List a) where
-  semigroupOpIsAssociative = appendAssociative
-
-instance VerifiedMonoid (List a) where
-  monoidNeutralIsNeutralL = appendNilRightNeutral
-  monoidNeutralIsNeutralR xs = Refl
 
 --------------------------------------------------------------------------------
 -- Proofs

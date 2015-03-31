@@ -321,10 +321,6 @@ isConstType (B8 _) (AType (ATInt _)) = True
 isConstType (B16 _) (AType (ATInt _)) = True
 isConstType (B32 _) (AType (ATInt _)) = True
 isConstType (B64 _) (AType (ATInt _)) = True
-isConstType (B8V _) (AType (ATInt _)) = True
-isConstType (B16V _) (AType (ATInt _)) = True
-isConstType (B32V _) (AType (ATInt _)) = True
-isConstType (B64V _) (AType (ATInt _)) = True
 isConstType _ _ = False
 
 data Pat = PCon Bool Name Int [Pat]

@@ -5,7 +5,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 rt_simplify, simplify, specialise, hnf, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Totality(..), PReason(..), MetaInformation(..),
-                Context, initContext, ctxtAlist, uconstraints, next_tvar,
+                Context, initContext, ctxtAlist, next_tvar,
                 addToCtxt, setAccess, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
@@ -502,12 +502,9 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     findConst (AType ATFloat) (ConCase n 2 [] v : xs) = Just v
     findConst (AType (ATInt ITChar))  (ConCase n 3 [] v : xs) = Just v
     findConst StrType (ConCase n 4 [] v : xs) = Just v
-    findConst PtrType (ConCase n 5 [] v : xs) = Just v
     findConst (AType (ATInt ITBig)) (ConCase n 6 [] v : xs) = Just v
     findConst (AType (ATInt (ITFixed ity))) (ConCase n tag [] v : xs)
         | tag == 7 + fromEnum ity = Just v
-    findConst (AType (ATInt (ITVec ity count))) (ConCase n tag [] v : xs)
-        | tag == (fromEnum ity + 1) * 1000 + count = Just v
     findConst c (_ : xs) = findConst c xs
 
     getValArgs tm = getValArgs' tm []
@@ -786,16 +783,15 @@ data MetaInformation =
 -- | Contexts used for global definitions and for proof state. They contain
 -- universe constraints and existing definitions.
 data Context = MkContext {
-                  uconstraints    :: [UConstraint],
                   next_tvar       :: Int,
                   definitions     :: Ctxt (Def, Accessibility, Totality, MetaInformation)
                 } deriving Show
 
 -- | The initial empty context
-initContext = MkContext [] 0 emptyContext
+initContext = MkContext 0 emptyContext
 
 mapDefCtxt :: (Def -> Def) -> Context -> Context
-mapDefCtxt f (MkContext c t defs) = MkContext c t (mapCtxt f' defs)
+mapDefCtxt f (MkContext t defs) = MkContext t (mapCtxt f' defs)
    where f' (d, a, t, m) = f' (f d, a, t, m)
 
 -- | Get the definitions from a context

@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.16
+Version:        0.9.17.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -99,19 +99,25 @@ Extra-source-files:
                        libs/base/base.ipkg
                        libs/base/*.idr
                        libs/base/Control/*.idr
-                       libs/base/Control/Isomorphism/*.idr
                        libs/base/Control/Monad/*.idr
                        libs/base/Data/*.idr
                        libs/base/Data/Vect/*.idr
                        libs/base/Debug/*.idr
-                       libs/base/Decidable/*.idr
                        libs/base/Language/Reflection/*.idr
                        libs/base/Makefile
-                       libs/base/Network/*.idr
                        libs/base/System/*.idr
                        libs/base/System/Concurrency/*.idr
                        libs/base/Syntax/*.idr
 
+                       libs/contrib/contrib.ipkg
+                       libs/contrib/Makefile
+                       libs/contrib/Classes/*.idr
+                       libs/contrib/Control/*.idr
+                       libs/contrib/Control/Isomorphism/*.idr
+                       libs/contrib/Data/*.idr
+                       libs/contrib/Decidable/*.idr
+                       libs/contrib/Network/*.idr
+                       libs/contrib/System/Concurrency/*.idr
 
                        libs/effects/Makefile
                        libs/effects/effects.ipkg
@@ -292,6 +298,12 @@ Extra-source-files:
                        test/reg059/run
                        test/reg059/*.idr
                        test/reg059/expected
+                       test/reg060/run
+                       test/reg060/*.idr
+                       test/reg060/expected
+                       test/reg061/run
+                       test/reg061/*.idr
+                       test/reg061/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -330,10 +342,9 @@ Extra-source-files:
                        test/basic012/run
                        test/basic012/*.idr
                        test/basic012/expected
-
-                       test/buffer001-disabled/*.idr
-                       test/buffer001-disabled/run
-                       test/buffer001-disabled/expected
+                       test/basic013/run
+                       test/basic013/*.idr
+                       test/basic013/expected
 
                        test/delab001/*.idr
                        test/delab001/run
@@ -504,9 +515,22 @@ Extra-source-files:
                        test/proof004/run
                        test/proof004/*.idr
                        test/proof004/expected
+                       test/proof005/run
+                       test/proof005/*.idr
+                       test/proof005/expected
+                       test/proof006/run
+                       test/proof006/*.idr
+                       test/proof006/expected
+                       test/proof007/run
+                       test/proof007/*.idr
+                       test/proof007/expected
                        test/proof008/run
                        test/proof008/*.idr
                        test/proof008/expected
+                       test/proof009/run
+                       test/proof009/*.idr
+                       test/proof009/expected
+                       test/proof009/input
 
                        test/quasiquote001/run
                        test/quasiquote001/*.idr
@@ -622,7 +646,10 @@ Extra-source-files:
                        test/docs002/input
                        test/docs002/*.idr
                        test/docs002/expected
-
+                       test/docs003/run
+                       test/docs003/input
+                       test/docs003/*.idr
+                       test/docs003/expected
 
 
 source-repository head
@@ -810,6 +837,7 @@ Library
                 , vector-binary-instances < 0.3
                 , xml < 1.4
                 , zlib < 0.6
+                , safe
   Extensions:     MultiParamTypeClasses
                 , DeriveFoldable
                 , DeriveTraversable

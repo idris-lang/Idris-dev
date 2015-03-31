@@ -13,7 +13,6 @@ import Data.Word
 import Data.Int
 import Data.Char
 import Data.Function (on)
-import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
 
 data Prim = Prim { p_name  :: Name,
@@ -167,43 +166,32 @@ primitives =
    Prim (sUN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
     (1, LStrRev) total,
 
-   Prim (sUN "prim__readFile") (ty [WorldType,PtrType] StrType) 2 (p_cantreduce)
-     (2, LReadFile) total, -- total is okay, because we have 'WorldType'
-   Prim (sUN "prim__writeFile") (ty [WorldType,PtrType,StrType] (AType (ATInt ITNative))) 3 (p_cantreduce)
-     (3, LWriteFile) total,
-   Prim (sUN "prim__readString") (ty [WorldType] StrType) 1 (p_cantreduce)
-     (1, LReadStr) total, -- total is okay, because we have 'WorldType'
-   Prim (sUN "prim__writeString") (ty [WorldType,StrType] (AType (ATInt ITNative))) 2 (p_cantreduce)
-     (2, LWriteStr) total,
-
-   Prim (sUN "prim__vm") (ty [] PtrType) 0 (p_cantreduce)
-     (0, LVMPtr) total,
-   -- Streams
-   Prim (sUN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdIn) total,
-   Prim (sUN "prim__stdout") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdOut) total,
-   Prim (sUN "prim__stderr") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LStdErr) total,
-   Prim (sUN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
-    (0, LNullPtr) total,
-   -- Managed pointer registration
-   Prim (sUN "prim__registerPtr") (ty [PtrType, AType (ATInt ITNative)] ManagedPtrType) 2 (p_cantreduce)
-    (2, LRegisterPtr) total,
-   -- Buffers
-   Prim (sUN "prim__allocate") (ty [AType (ATInt (ITFixed IT64))] BufferType) 1 (p_allocate)
-    (1, LAllocate) total,
-   Prim (sUN "prim__appendBuffer") (ty [BufferType, AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), AType (ATInt (ITFixed IT64)), BufferType] BufferType) 6 (p_appendBuffer)
-    (6, LAppendBuffer) partial,
+--    Prim (sUN "prim__readFile") (ty [WorldType,PtrType] StrType) 2 (p_cantreduce)
+--      (2, LReadFile) total, -- total is okay, because we have 'WorldType'
+--    Prim (sUN "prim__writeFile") (ty [WorldType,PtrType,StrType] (AType (ATInt ITNative))) 3 (p_cantreduce)
+--      (3, LWriteFile) total,
+--    Prim (sUN "prim__readString") (ty [WorldType] StrType) 1 (p_cantreduce)
+--      (1, LReadStr) total, -- total is okay, because we have 'WorldType'
+--    Prim (sUN "prim__writeString") (ty [WorldType,StrType] (AType (ATInt ITNative))) 2 (p_cantreduce)
+--      (2, LWriteStr) total,
+-- 
+--    Prim (sUN "prim__vm") (ty [] PtrType) 0 (p_cantreduce)
+--      (0, LVMPtr) total,
+--    -- Streams
+--    Prim (sUN "prim__stdin") (ty [] PtrType) 0 (p_cantreduce)
+--     (0, LStdIn) total,
+--    Prim (sUN "prim__stdout") (ty [] PtrType) 0 (p_cantreduce)
+--     (0, LStdOut) total,
+--    Prim (sUN "prim__stderr") (ty [] PtrType) 0 (p_cantreduce)
+--     (0, LStdErr) total,
+--    Prim (sUN "prim__null") (ty [] PtrType) 0 (p_cantreduce)
+--     (0, LNullPtr) total,
+--    -- Managed pointer registration
+--    Prim (sUN "prim__registerPtr") (ty [PtrType, AType (ATInt ITNative)] ManagedPtrType) 2 (p_cantreduce)
+--     (2, LRegisterPtr) total,
     Prim (sUN "prim__systemInfo") (ty [AType (ATInt ITNative)] StrType) 1 (p_cantreduce)
         (1, LSystemInfo) total
   ] ++ concatMap intOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64, ITBig, ITNative, ITChar]
-    ++ concatMap vecOps vecTypes
-    ++ concatMap fixedOps [ITFixed IT8, ITFixed IT16, ITFixed IT32, ITFixed IT64] -- ITNative, ITChar, ATFloat ] ++ vecTypes
-    ++ vecBitcasts vecTypes
-
-vecTypes :: [IntTy]
-vecTypes = [ITVec IT8 16, ITVec IT16 8, ITVec IT32 4, ITVec IT64 2]
 
 intOps :: IntTy -> [Prim]
 intOps ity = intCmps ity ++ intArith ity ++ intConv ity
@@ -257,66 +245,10 @@ intConv ity =
                (1, LFloatInt ity) total
     ]
 
-vecCmps :: IntTy -> [Prim]
-vecCmps ity =
-    [ iCmp ity "slt" True (bCmp ity (<)) (LSLt . ATInt) total
-    , iCmp ity "slte" True (bCmp ity (<=)) (LSLe . ATInt) total
-    , iCmp ity "eq" True (bCmp ity (==)) (LEq . ATInt) total
-    , iCmp ity "sgte" True (bCmp ity (>=)) (LSGe . ATInt) total
-    , iCmp ity "sgt" True (bCmp ity (>)) (LSGt . ATInt) total
-    , iCmp ity "lt" True (bCmp ity (<)) LLt total
-    , iCmp ity "lte" True (bCmp ity (<=)) LLe total
-    , iCmp ity "gte" True (bCmp ity (>=)) LGe total
-    , iCmp ity "gt" True (bCmp ity (>)) LGt total
-    ]
-
--- The TODOs in this function are documented as Issue #1617 on the issue tracker.
---
---     https://github.com/idris-lang/Idris-dev/issues/1617
-vecOps :: IntTy -> [Prim]
-vecOps ity@(ITVec elem count) =
-    [ Prim (sUN $ "prim__mk" ++ intTyName ity)
-               (ty (replicate count . AType . ATInt . ITFixed $ elem) (AType . ATInt $ ity))
-               count (mkVecCon elem count) (count, LMkVec elem count) total
-    , Prim (sUN $ "prim__index" ++ intTyName ity)
-               (ty [AType . ATInt $ ity, AType (ATInt (ITFixed IT32))] (AType . ATInt . ITFixed $ elem))
-               2 (mkVecIndex count) (2, LIdxVec elem count) partial -- TODO: Ensure this reduces
-    , Prim (sUN $ "prim__update" ++ intTyName ity)
-               (ty [AType . ATInt $ ity, AType (ATInt (ITFixed IT32)), AType . ATInt . ITFixed $ elem]
-                       (AType . ATInt $ ity))
-               3 (mkVecUpdate elem count) (3, LUpdateVec elem count) partial -- TODO: Ensure this reduces
-    ] ++ intArith ity ++ vecCmps ity
-
 bitcastPrim :: ArithTy -> ArithTy -> (ArithTy -> [Const] -> Maybe Const) -> PrimFn -> Prim
 bitcastPrim from to impl prim =
     Prim (sUN $ "prim__bitcast" ++ aTyName from ++ "_" ++ aTyName to) (ty [AType from] (AType to)) 1 (impl to)
          (1, prim) total
-
-vecBitcasts :: [IntTy] -> [Prim]
-vecBitcasts tys = [bitcastPrim from to bitcastVec (LBitCast from to)
-                       | from <- map ATInt vecTypes, to <- map ATInt vecTypes, from /= to]
-
-fixedOps :: IntTy -> [Prim]
-fixedOps ity@(ITFixed _) =
-    map appendFun endiannesses ++
-    map peekFun endiannesses
-    where
-      endiannesses = [ Native, LE, BE ]
-      tyName = intTyName ity
-      b64 = AType (ATInt (ITFixed IT64))
-      thisTy = AType $ ATInt ity
-      appendFun en = Prim (sUN $ "prim__append" ++ tyName ++ show en)
-                         (ty [BufferType, b64, b64, thisTy] BufferType)
-                         4 (p_append en) (4, LAppend ity en) partial
-      peekFun en = Prim (sUN $ "prim__peek" ++ tyName ++ show en)
-                         (ty [BufferType, b64] thisTy)
-                         2 (p_peek ity en) (2, LPeek ity en) partial
-
-mapHalf :: (V.Unbox a, V.Unbox b) => ((a, a) -> b) -> Vector a -> Vector b
-mapHalf f xs = V.generate (V.length xs `div` 2) (\i -> f (xs V.! (i*2), xs V.! (i*2+1)))
-
-mapDouble :: (V.Unbox a, V.Unbox b) => (Bool -> a -> b) -> Vector a -> Vector b
-mapDouble f xs = V.generate (V.length xs * 2) (\i -> f (i `rem` 2 == 0) (xs V.! (i `div` 2)))
 
 concatWord8 :: (Word8, Word8) -> Word16
 concatWord8 (high, low) = fromIntegral high .|. (fromIntegral low `shiftL` 8)
@@ -338,76 +270,6 @@ truncWord32 False x = fromIntegral x
 truncWord64 :: Bool -> Word64 -> Word32
 truncWord64 True x = fromIntegral (x `shiftR` 32)
 truncWord64 False x = fromIntegral x
-
-bitcastVec :: ArithTy -> [Const] -> Maybe Const
-bitcastVec (ATInt (ITVec IT8  n)) [x@(B8V v)]
-    | V.length v == n = Just x
-bitcastVec (ATInt (ITVec IT16 n))   [B8V v]
-    | V.length v == n*2 = Just . B16V . mapHalf concatWord8 $ v
-bitcastVec (ATInt (ITVec IT32 n))   [B8V v]
-    | V.length v == n*4 = Just . B32V . mapHalf concatWord16 . mapHalf concatWord8 $ v
-bitcastVec (ATInt (ITVec IT64 n))   [B8V v]
-    | V.length v == n*8 = Just . B64V . mapHalf concatWord32 . mapHalf concatWord16 . mapHalf concatWord8 $ v
-
-bitcastVec (ATInt (ITVec IT8  n))   [B16V v]
-    | V.length v * 2 == n = Just . B8V . mapDouble truncWord16 $ v
-bitcastVec (ATInt (ITVec IT16 n)) [x@(B16V v)]
-    | V.length v == n = Just x
-bitcastVec (ATInt (ITVec IT32 n))   [B16V v]
-    | V.length v == n*2 = Just . B32V . mapHalf concatWord16 $ v
-bitcastVec (ATInt (ITVec IT64 n))   [B16V v]
-    | V.length v == n*4 = Just . B64V . mapHalf concatWord32 . mapHalf concatWord16 $ v
-
-bitcastVec (ATInt (ITVec IT8  n))   [B32V v]
-    | V.length v * 4 == n = Just . B8V . mapDouble truncWord16 . mapDouble truncWord32 $ v
-bitcastVec (ATInt (ITVec IT16 n))   [B32V v]
-    | V.length v * 2 == n = Just . B16V . mapDouble truncWord32 $ v
-bitcastVec (ATInt (ITVec IT32 n)) [x@(B32V v)]
-    | V.length v == n = Just x
-bitcastVec (ATInt (ITVec IT64 n))   [B32V v]
-    | V.length v == n*2 = Just . B64V . mapHalf concatWord32 $ v
-
-bitcastVec (ATInt (ITVec IT8  n))   [B64V v]
-    | V.length v * 8 == n = Just . B8V . mapDouble truncWord16 . mapDouble truncWord32 . mapDouble truncWord64 $ v
-bitcastVec (ATInt (ITVec IT16 n))   [B64V v]
-    | V.length v * 4 == n = Just . B16V . mapDouble truncWord32 . mapDouble truncWord64 $ v
-bitcastVec (ATInt (ITVec IT32 n))   [B64V v]
-    | V.length v == n*2 = Just . B32V . mapDouble truncWord64 $ v
-bitcastVec (ATInt (ITVec IT64 n)) [x@(B64V v)]
-    | V.length v == n = Just x
-
-bitcastVec _ _ = Nothing
-
-mkVecCon :: NativeTy -> Int -> [Const] -> Maybe Const
-mkVecCon ity count args
-    | length ints == count = Just (mkVec ity count ints)
-    | otherwise = Nothing
-    where
-      ints = getInt args
-      mkVec :: NativeTy -> Int -> [Integer] -> Const
-      mkVec IT8  len values = B8V  $ V.generate len (fromInteger . (values !!))
-      mkVec IT16 len values = B16V $ V.generate len (fromInteger . (values !!))
-      mkVec IT32 len values = B32V $ V.generate len (fromInteger . (values !!))
-      mkVec IT64 len values = B64V $ V.generate len (fromInteger . (values !!))
-
-mkVecIndex count [vec, B32 i] = Just (idxVec vec)
-    where
-      idxVec :: Const -> Const
-      idxVec (B8V  v) = B8  $ V.unsafeIndex v (fromIntegral i)
-      idxVec (B16V v) = B16 $ V.unsafeIndex v (fromIntegral i)
-      idxVec (B32V v) = B32 $ V.unsafeIndex v (fromIntegral i)
-      idxVec (B64V v) = B64 $ V.unsafeIndex v (fromIntegral i)
-mkVecIndex _ _ = Nothing
-
-mkVecUpdate ity count [vec, B32 i, newElem] = updateVec vec newElem
-    where
-      updateVec :: Const -> Const -> Maybe Const
-      updateVec (B8V  v) (B8  e) = Just . B8V  $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
-      updateVec (B16V v) (B16 e) = Just . B16V $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
-      updateVec (B32V v) (B32 e) = Just . B32V $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
-      updateVec (B64V v) (B64 e) = Just . B64V $ V.unsafeUpdate v (V.singleton (fromIntegral i, e))
-      updateVec _ _ = Nothing
-mkVecUpdate _ _ _ = Nothing
 
 aTyName :: ArithTy -> String
 aTyName (ATInt t) = intTyName t
@@ -470,18 +332,6 @@ bsrem (ITFixed IT64) [B64 x, B64 y]
     = Just $ B64 (fromIntegral (fromIntegral x `rem` fromIntegral y :: Int64))
 bsrem ITNative [I x, I y] = Just $ I (x `rem` y)
 bsrem ITChar [Ch x, Ch y] = Just $ Ch (chr $ (ord x) `rem` (ord y))
-bsrem (ITVec IT8  _) [B8V  x, B8V  y]
-    = Just . B8V  $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `rem` fromIntegral d :: Int8)))  x y
-bsrem (ITVec IT16 _) [B16V x, B16V y]
-    = Just . B16V $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `rem` fromIntegral d :: Int16))) x y
-bsrem (ITVec IT32 _) [B32V x, B32V y]
-    = Just . B32V $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `rem` fromIntegral d :: Int64))) x y
-bsrem (ITVec IT64 _) [B64V x, B64V y]
-    = Just . B64V $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `rem` fromIntegral d :: Int64))) x y
 bsrem _ _ = Nothing
 
 bsdiv :: IntTy -> [Const] -> Maybe Const
@@ -496,18 +346,6 @@ bsdiv (ITFixed IT64) [B64 x, B64 y]
     = Just $ B64 (fromIntegral (fromIntegral x `div` fromIntegral y :: Int64))
 bsdiv ITNative [I x, I y] = Just $ I (x `div` y)
 bsdiv ITChar [Ch x, Ch y] = Just $ Ch (chr $ (ord x) `div` (ord y))
-bsdiv (ITVec IT8  _) [B8V  x, B8V  y]
-    = Just . B8V  $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `div` fromIntegral d :: Int8)))  x y
-bsdiv (ITVec IT16 _) [B16V x, B16V y]
-    = Just . B16V $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `div` fromIntegral d :: Int16))) x y
-bsdiv (ITVec IT32 _) [B32V x, B32V y]
-    = Just . B32V $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `div` fromIntegral d :: Int64))) x y
-bsdiv (ITVec IT64 _) [B64V x, B64V y]
-    = Just . B64V $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `div` fromIntegral d :: Int64))) x y
 bsdiv _ _ = Nothing
 
 bashr :: IntTy -> [Const] -> Maybe Const
@@ -522,18 +360,6 @@ bashr (ITFixed IT64) [B64 x, B64 y]
     = Just $ B64 (fromIntegral (fromIntegral x `shiftR` fromIntegral y :: Int64))
 bashr ITNative [I x, I y] = Just $ I (x `shiftR` y)
 bashr ITChar [Ch x, Ch y] = Just $ Ch (chr $ (ord x) `shiftR` (ord y))
-bashr (ITVec IT8  _) [B8V  x, B8V  y]
-    = Just . B8V  $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `shiftR` fromIntegral d :: Int8)))  x y
-bashr (ITVec IT16 _) [B16V x, B16V y]
-    = Just . B16V $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `shiftR` fromIntegral d :: Int16))) x y
-bashr (ITVec IT32 _) [B32V x, B32V y]
-    = Just . B32V $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `shiftR` fromIntegral d :: Int64))) x y
-bashr (ITVec IT64 _) [B64V x, B64V y]
-    = Just . B64V $
-      V.zipWith (\n d -> (fromIntegral (fromIntegral n `shiftR` fromIntegral d :: Int64))) x y
 bashr _ _ = Nothing
 
 bUn :: IntTy -> (forall a. Bits a => a -> a) -> [Const] -> Maybe Const
@@ -544,10 +370,6 @@ bUn (ITFixed IT64)     op [B64 x] = Just $ B64 (op x)
 bUn ITBig    op [BI x]  = Just $ BI (op x)
 bUn ITNative op [I x]   = Just $ I (op x)
 bUn ITChar op [Ch x] = Just $ Ch (chr $ op (ord x))
-bUn (ITVec IT8  _) op [B8V  x] = Just . B8V  $ V.map op x
-bUn (ITVec IT16 _) op [B16V x] = Just . B16V $ V.map op x
-bUn (ITVec IT32 _) op [B32V x] = Just . B32V $ V.map op x
-bUn (ITVec IT64 _) op [B64V x] = Just . B64V $ V.map op x
 bUn _        _   _      = Nothing
 
 bitBin :: IntTy -> (forall a. (Bits a, Integral a) => a -> a -> a) -> [Const] -> Maybe Const
@@ -558,10 +380,6 @@ bitBin (ITFixed IT64)     op [B64 x, B64 y] = Just $ B64 (op x y)
 bitBin ITBig    op [BI x,  BI y]  = Just $ BI (op x y)
 bitBin ITNative op [I x,   I y]   = Just $ I (op x y)
 bitBin ITChar   op [Ch x,  Ch y]   = Just $ Ch (chr $ op (ord x) (ord y))
-bitBin (ITVec IT8  _) op [B8V  x, B8V  y] = Just . B8V  $ V.zipWith op x y
-bitBin (ITVec IT16 _) op [B16V x, B16V y] = Just . B16V $ V.zipWith op x y
-bitBin (ITVec IT32 _) op [B32V x, B32V y] = Just . B32V $ V.zipWith op x y
-bitBin (ITVec IT64 _) op [B64V x, B64V y] = Just . B64V $ V.zipWith op x y
 bitBin _        _  _              = Nothing
 
 bCmp :: IntTy -> (forall a. (Integral a, Ord a) => a -> a -> Bool) -> [Const] -> Maybe Const
@@ -572,14 +390,6 @@ bCmp (ITFixed IT64)     op [B64 x, B64 y] = Just $ I (if (op x y) then 1 else 0)
 bCmp ITBig    op [BI x, BI y]   = Just $ I (if (op x y) then 1 else 0)
 bCmp ITNative op [I x, I y]     = Just $ I (if (op x y) then 1 else 0)
 bCmp ITChar   op [Ch x, Ch y]     = Just $ I (if (op (ord x) (ord y)) then 1 else 0)
-bCmp (ITVec IT8 _)  op [B8V  x, B8V  y]
-    = Just . B8V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
-bCmp (ITVec IT16 _) op [B16V x, B16V y]
-    = Just . B16V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
-bCmp (ITVec IT32 _) op [B32V x, B32V y]
-    = Just . B32V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
-bCmp (ITVec IT64 _) op [B64V x, B64V y]
-    = Just . B64V . V.map (\b -> if b then -1 else 0) $ V.zipWith op x y
 bCmp _        _  _              = Nothing
 
 
@@ -716,54 +526,6 @@ p_strCons [Ch x, Str xs] = Just $ Str (x:xs)
 p_strCons _ = Nothing
 p_strRev [Str xs] = Just $ Str (reverse xs)
 p_strRev _ = Nothing
-
-p_allocate, p_appendBuffer :: [Const] -> Maybe Const
-p_allocate [B64 _] = Just $ B8V V.empty
-p_allocate n = Nothing
-p_appendBuffer [B8V vect1, B64 size1, B64 count, B64 size2, B64 off, B8V vect2] =
-    Just $ B8V (foldl (V.++)
-                      (V.slice 0 (fromIntegral size1) vect1)
-                      (replicate (fromIntegral count) (V.slice (fromIntegral off) (fromIntegral size2) vect2)))
-p_appendBuffer n = Nothing
-p_append :: Endianness -> [Const] -> Maybe Const
-p_append en [B8V vect, B64 size, B64 count, val] =
-    let bytes = case val of
-                  B8 x -> [x]
-                  B16 x -> [fromIntegral x, fromIntegral (shiftR x 8)]
-                  B32 x -> map (fromIntegral . shiftR x) [0,8..24]
-                  B64 x -> map (fromIntegral . shiftR x) [0,8..56]
-    in Just $ B8V (foldl V.snoc
-                         (V.slice 0 (fromIntegral size) vect)
-                         (concat (replicate (fromIntegral count)
-                                            (case en of
-                                               BE -> reverse bytes
-                                               _  -> bytes))))
-p_append _ _ = Nothing
-
-p_peek :: IntTy -> Endianness -> [Const] -> Maybe Const
-p_peek (ITFixed IT8)  _ [B8V vect, B64 offset] = Just $ B8 (vect V.! fromIntegral offset)
-p_peek (ITFixed IT16) en [B8V vect, B64 offset] =
-    let bytes = [0..1]
-    in Just $ B16 (foldl (\full byte -> shiftL full 8 .|. fromIntegral (vect V.! (fromIntegral offset+byte)))
-                         0
-                         (case en of
-                            BE -> bytes
-                            _  -> reverse bytes))
-p_peek (ITFixed IT32) en [B8V vect, B64 offset] =
-    let bytes = [0..1]
-    in Just $ B32 (foldl (\full byte -> shiftL full 8 .|. fromIntegral (vect V.! (fromIntegral offset+byte)))
-                         0
-                         (case en of
-                            BE -> bytes
-                            _  -> reverse bytes))
-p_peek (ITFixed IT64) en [B8V vect, B64 offset] =
-    let bytes = [0..1]
-    in Just $ B64 (foldl (\full byte -> shiftL full 8 .|. fromIntegral (vect V.! (fromIntegral offset+byte)))
-                         0
-                         (case en of
-                            BE -> bytes
-                            _  -> reverse bytes))
-p_peek _ _ _ = Nothing
 
 p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
