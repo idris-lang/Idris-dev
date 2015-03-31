@@ -18,6 +18,8 @@ import Idris.Colours
 import System.Console.Haskeline
 import System.IO
 
+import Prelude hiding ((<$>))
+
 import Control.Applicative ((<|>))
 
 import Control.Monad.Trans.State.Strict
