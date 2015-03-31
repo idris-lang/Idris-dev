@@ -758,16 +758,18 @@ LambdaTail ::=
 -}
 lambda :: SyntaxInfo -> IdrisParser PTerm
 lambda syn = do lchar '\\' <?> "lambda expression"
-                (do xt <- try $ tyOptDeclList syn
-                    fc <- getFC
-                    sc <- lambdaTail
-                    return (bindList (PLam fc) xt sc)) <|> do
-                      ps <- sepBy (do fc <- getFC
-                                      e <- simpleExpr (syn { inPattern = True })
-                                      return (fc, e)) (lchar ',')
-                      sc <- lambdaTail
-                      return (pmList (zip [0..] ps) sc)
-                 <?> "lambda expression"
+                ((do xt <- try $ tyOptDeclList syn
+                     fc <- getFC
+                     sc <- lambdaTail
+                     return (bindList (PLam fc) xt sc))
+                 <|>
+                 (do ps <- sepBy (do fc <- getFC
+                                     e <- simpleExpr (syn { inPattern = True })
+                                     return (fc, e))
+                                 (lchar ',')
+                     sc <- lambdaTail
+                     return (pmList (zip [0..] ps) sc)))
+                  <?> "lambda expression"
     where pmList :: [(Int, (FC, PTerm))] -> PTerm -> PTerm
           pmList [] sc = sc
           pmList ((i, (fc, x)) : xs) sc
