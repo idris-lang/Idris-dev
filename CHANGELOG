@@ -19,6 +19,8 @@ New in 0.9.18:
 * Pattern-matching lambdas are allowed to be impossible. For example,
   Dec (2 = 3) can now be constructed with No $ \(Refl) impossible, instead of
   requiring a separate lemma.
+* Case alternatives are allowed to be impossible:
+  case Vect.Nil {a=Nat} of { (x::xs) impossible ; [] => True }
 
 New in 0.9.17:
 --------------
