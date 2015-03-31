@@ -18,6 +18,12 @@ Sphinx can be installed either through your hosts package manager or using pip/e
  of readthedocs and be ignored. In the past we had several code-blocks
  disappear because of that.
 
+The ReadTheDocs theme can be installed using pip as follows:
+
+```sh
+pip install sphinx_rtd_theme
+```
+
 ### LaTeX
 
 LaTeX can be install either using your systems package manager or direct from TeXLive.
