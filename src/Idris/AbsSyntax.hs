@@ -1075,11 +1075,8 @@ expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
             else PDatadecl n (expandParams dec ps ns [] ty) (map econ cons)
     econ (doc, argDocs, n, t, fc, fs)
        = (doc, argDocs, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
-expandParamsD rhs ist dec ps ns (PRecord doc syn fc opts n prs pdocs fls fdocs cn cdoc csyn)
-   = PRecord doc syn fc opts n prs pdocs
-                                     fls fdocs
-                                     cn cdoc csyn
-         
+expandParamsD rhs ist dec ps ns d@(PRecord doc rsyn fc opts name prs pdocs fls cn cdoc csyn)
+  = d          
 expandParamsD rhs ist dec ps ns (PParams f params pds)
    = PParams f (ps ++ map (mapsnd (expandParams dec ps ns [])) params)
                (map (expandParamsD True ist dec ps ns) pds)

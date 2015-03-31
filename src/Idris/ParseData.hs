@@ -37,8 +37,6 @@ import qualified Data.ByteString.UTF8 as UTF8
 
 import Debug.Trace
 
-type Docs = Docstring (Either Err PTerm)
-
 {- |Parses a record type declaration
 Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
@@ -60,11 +58,11 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }                                    
                 params <- manyTill (recordParameter rsyn) (reserved "where")
-                (fields, fieldDocs, cname, cdoc) <- indentedBlockS $ agdaStyleBody rsyn tyn
+                (fields, cname, cdoc) <- indentedBlockS $ agdaStyleBody rsyn tyn
                 case cname of
                      Just cn' -> accData acc tyn [cn']
                      Nothing -> return ()
-                return $ PRecord doc rsyn fc opts tyn params paramDocs fields fieldDocs cname cdoc syn
+                return $ PRecord doc rsyn fc opts tyn params paramDocs fields cname cdoc syn
              <?> "record type declaration"
   where    
     getRecNames :: SyntaxInfo -> PTerm -> [Name]
@@ -76,7 +74,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
     toFreeze (Just Frozen) = Just Hidden
     toFreeze x = x
 
-    agdaStyleBody :: SyntaxInfo -> Name -> IdrisParser ([(Name, Plicity, PTerm)], [(Name, Docs)], Maybe Name, Docs)
+    agdaStyleBody :: SyntaxInfo -> Name -> IdrisParser ([((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))], Maybe Name, Docstring (Either Err PTerm))
     agdaStyleBody syn tyn = do
         ist <- get
         fc  <- getFC
@@ -89,20 +87,24 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
         let constructorDoc' = annotate syn ist constructorDoc
 
         fields <- many . indented $ field syn
-
-        let fieldDocs = [(n, annotate syn ist doc) | (n, _, _, doc) <- fields]
-        let fields' = [(n, p, t) | (n, t, p, _) <- fields]
             
-        return (fields', fieldDocs, constructorName, constructorDoc')
+        return (fields, constructorName, constructorDoc')
       where        
-        field :: SyntaxInfo -> IdrisParser (Name, PTerm, Plicity, Docstring ())
-        field syn = do (doc, _) <- option noDocs docComment
+        field :: SyntaxInfo -> IdrisParser ((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))
+        field syn = do doc <- optional docComment
                        c <- optional $ lchar '{'
-                       n <- fnName <|> do symbol "_"; return $ sUN "__pi_arg"
+                       n <- (do n <- fnName
+                                return $ Just (expandNS syn n))
+                        <|> (do symbol "_"
+                                return Nothing)
                        lchar ':'
                        t <- typeExpr (allowImp syn)
                        p <- endPlicity c
-                       return (expandNS syn n, t, p, doc)
+                       ist <- get
+                       let doc' = case doc of
+                                   Just (d,_) -> Just $ annotate syn ist d
+                                   Nothing    -> Nothing
+                       return (n, p, t, doc')
 
         constructor :: IdrisParser Name
         constructor = (reserved "constructor") *> fnName                         
