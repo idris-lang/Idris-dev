@@ -16,6 +16,9 @@ New in 0.9.18:
 * Syntax rules no longer perform variable capture. Users of effects will
   need to explicitly name results in dependent effect signatures instead
   of using the default name "result".
+* Pattern-matching lambdas are allowed to be impossible. For example,
+  Dec (2 = 3) can now be constructed with No $ \(Refl) impossible, instead of
+  requiring a separate lemma.
 
 New in 0.9.17:
 --------------
