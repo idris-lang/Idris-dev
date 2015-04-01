@@ -3,17 +3,17 @@
 38,36,34,32,30,28,26,24,22,20,18,16,14,12,10,8,6,4,2,0,END
 38,36,34,32,30,28,26,24,22,20,18,16,14,12,10,8,6,4,2,0,END
 unique001a.idr:33:11:Can't convert
-        [94mInt[0m -> [94mString[0m
+        Int -> String
 with
-        UniqueType ([94mInt[0m -> [94mString[0m)
+        UniqueType (Int -> String)
 unique001a.idr:44:12:Can't convert
-        [94mInt[0m -> [94mString[0m
+        Int -> String
 with
-        UniqueType ([94mInt[0m -> [94mString[0m)
+        UniqueType (Int -> String)
 unique001a.idr:55:12:Can't convert
-        UniqueType ([94mInt[0m -> [94mString[0m)
+        UniqueType (Int -> String)
 with
-        [94mInt[0m -> [94mString[0m
+        Int -> String
 unique001b.idr:16:7:Borrowed name xs must not be used on RHS
 unique001c.idr:46:6:Unique name f is used more than once
 unique001d.idr:3:7:Borrowed name x must not be used on RHS

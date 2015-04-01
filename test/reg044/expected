@@ -1,11 +1,11 @@
 reg044.idr:4:4:When elaborating right hand side of Main.pf:
 Can't unify
-        [95mb[0m [94m=[0m [95mb[0m (Type of [91mRefl[0m)
+        b = b (Type of Refl)
 with
-        [95ma[0m [94m=[0m [95mb[0m (Expected type)
+        a = b (Expected type)
 
 Specifically:
         Can't unify
-                [95mb[0m
+                b
         with
-                [95ma[0m
+                a

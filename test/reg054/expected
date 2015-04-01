@@ -1,10 +1,10 @@
 reg054.idr:18:5:When elaborating left hand side of inf:
-When elaborating an application of constructor [91mMain.MkInfer[0m:
+When elaborating an application of constructor Main.MkInfer:
         Attempting concrete match on polymorphic argument: 0
 reg054.idr:34:7:When elaborating left hand side of weird:
-When elaborating argument [95mx[0m to Main.weird:
+When elaborating argument x to Main.weird:
         No explicit types on left hand side: Char
 reg054.idr:37:9:Can't convert
-        [94mMaybe[0m a1
+        Maybe a1
 with
-        [95ma[0m
+        a

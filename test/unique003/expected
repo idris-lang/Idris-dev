@@ -1,4 +1,4 @@
 unique003.idr:18:5:Can't convert
-        [94mInt[0m -> [94mString[0m
+        Int -> String
 with
-        UniqueType ([94mInt[0m -> [94mString[0m)
+        UniqueType (Int -> String)

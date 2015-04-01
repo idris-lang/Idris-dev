@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-idris --consolewidth 80 $@ reg054.idr --check
+idris --nocolour --consolewidth 80 $@ reg054.idr --check
