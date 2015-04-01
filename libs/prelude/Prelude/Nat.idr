@@ -136,9 +136,9 @@ lteRefl {n = Z}   = LTEZero
 lteRefl {n = S k} = LTESucc lteRefl
 
 ||| n < m implies n < m + 1
-lteSucc : LTE n m -> LTE n (S m)
-lteSucc LTEZero     = LTEZero
-lteSucc (LTESucc x) = LTESucc (lteSucc x)
+lteSuccRight : LTE n m -> LTE n (S m)
+lteSuccRight LTEZero     = LTEZero
+lteSuccRight (LTESucc x) = LTESucc (lteSuccRight x)
 
 
 ||| Boolean test than one Nat is less than or equal to another
