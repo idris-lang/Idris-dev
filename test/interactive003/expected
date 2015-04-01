@@ -1,4 +1,3 @@
-Type checking ./interactive003.idr
 ys
 x :: app xs ys
 []

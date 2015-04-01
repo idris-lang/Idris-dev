@@ -1,4 +1,6 @@
 package visibility
 
+opts = "--quiet"
+
 modules = Abstract, Visible
 
