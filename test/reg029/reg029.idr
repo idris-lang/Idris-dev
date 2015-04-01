@@ -3,7 +3,7 @@ module Main
 import System
 
 -- necessary to find the getenv symbol
-%dynamic "libm"
+%dynamic "libm","msvcrt"
 
 main : IO ()
 main = do
