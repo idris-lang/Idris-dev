@@ -1,4 +1,6 @@
 package test_datatypes
 
+opts = "--quiet"
+
 modules = TestDatatypes
 

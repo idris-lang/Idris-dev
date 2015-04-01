@@ -2,6 +2,6 @@ package totality
 
 -- totality007
 -- Test that the package builder doesn't allow totality errors in a build
-opts = "--consolewidth 80"
+opts = "--quiet --consolewidth 80"
 sourcedir = src
 modules = Totality

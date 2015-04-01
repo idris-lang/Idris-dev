@@ -1,4 +1,3 @@
-Type checking ./interactive005.idr
 3 : Nat
 Hello, World
 main : IO ()

@@ -1,4 +1,6 @@
 package test_tracing
 
+opts = "--quiet"
+
 modules = TestTracing
 

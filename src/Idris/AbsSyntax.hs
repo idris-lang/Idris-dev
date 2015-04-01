@@ -816,7 +816,9 @@ targetCPU = do i <- getIState
 
 verbose :: Idris Bool
 verbose = do i <- getIState
-             return (opt_verbose (idris_options i))
+             -- Quietness overrides verbosity
+             return (not (opt_quiet (idris_options i)) &&
+                     opt_verbose (idris_options i))
 
 setVerbose :: Bool -> Idris ()
 setVerbose t = do i <- getIState
