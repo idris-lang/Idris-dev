@@ -31,6 +31,12 @@ import public Language.Reflection.Errors
 %access public
 %default total
 
+-- Things that can't be elsewhere for import cycle reasons
+decAsBool : Dec p -> Bool
+decAsBool (Yes _) = True
+decAsBool (No _)  = False
+
+
 -- Show and instances
 
 class Show a where

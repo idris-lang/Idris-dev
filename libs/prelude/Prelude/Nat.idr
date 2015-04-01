@@ -99,6 +99,9 @@ data LTE  : (n, m : Nat) -> Type where
   ||| If n <= m, then n + 1 <= m + 1
   LTESucc : LTE left right -> LTE (S left) (S right)
 
+instance Uninhabited (LTE (S n) Z) where
+  uninhabited LTEZero impossible
+
 ||| Greater than or equal to
 total GTE : Nat -> Nat -> Type
 GTE left right = LTE right left
@@ -126,6 +129,17 @@ isLTE (S k) Z = No succNotLTEzero
 isLTE (S k) (S j) with (isLTE k j)
   isLTE (S k) (S j) | (Yes prf) = Yes (LTESucc prf)
   isLTE (S k) (S j) | (No contra) = No (contra . fromLteSucc)
+
+||| `LTE` is reflexive.
+lteRefl : LTE n n
+lteRefl {n = Z}   = LTEZero
+lteRefl {n = S k} = LTESucc lteRefl
+
+||| n < m implies n < m + 1
+lteSuccRight : LTE n m -> LTE n (S m)
+lteSuccRight LTEZero     = LTEZero
+lteSuccRight (LTESucc x) = LTESucc (lteSuccRight x)
+
 
 ||| Boolean test than one Nat is less than or equal to another
 total lte : Nat -> Nat -> Bool
