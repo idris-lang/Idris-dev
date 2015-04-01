@@ -1,5 +1,6 @@
+***********************
 Type Providers in Idris
-=======================
+***********************
 
 `Type providers in Idris
 <http://www.itu.dk/people/drc/pubs/dependent-type-providers.pdf>`__
@@ -9,7 +10,7 @@ foreign functions, because these will often be used with type
 providers.
 
 The use case
-------------
+============
 
 First, let's talk about *why* we might want type providers. There are
 a number of reasons to use them and there are other examples available
@@ -23,7 +24,7 @@ relied upon. We don't just want to hard-code these types into our
 program... so we'll use a type provider to find them at compile time!
 
 A simple example
-----------------
+================
 
 First, let's go over a basic usage of type providers, because foreign
 functions can be confusing but it's important to remember that
@@ -94,7 +95,7 @@ themselves!
 Don't worry, there's a better way.
 
 Foreign Functions
------------------
+=================
 
 It's actually pretty easy to write a C function that figures out the
 size of ``size_t``:
@@ -114,8 +115,8 @@ So now we can get the size of ``size_t`` as long as we're in C code.
 We'd like to be able to use this from Idris. Can we do this? It turns
 out we can.
 
-mkForeign
-~~~~~~~~~
+``mkForeign``
+-------------
 
 With mkForeign, we can turn a C function into an IO action. It works
 like this:
@@ -138,7 +139,7 @@ compiler "Treat the return value of this C function like it's a C int,
 and when you pass it back into Idris, convert it to an Idris int."
 
 Caveats of mkForeign
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 First and foremost: ``mkForeign`` is not actually a function. It is
 treated specially by the compiler, and there are certain rules you
@@ -185,7 +186,7 @@ applied. This is okay:
    lengths = mapM strlen listOfStrings
 
 Running foreign functions
-~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------
 
 This is all well and good for writing code that will typecheck. To
 actually run the code, we'll need to do just a bit more work. Exactly
@@ -193,7 +194,7 @@ what we need to do depends on whether we want to interpret or compile
 our code.
 
 In the interpreter
-^^^^^^^^^^^^^^^^^^
+------------------
 
 If we want to call our foreign functions from interpreted code (such
 as the REPL or a type provider), we need to dynamically link a library
@@ -213,7 +214,7 @@ functions from an installed library rather than something you wrote
 yourself, the "./" is not necessary.
 
 In an executable
-^^^^^^^^^^^^^^^^
+----------------
 
 If we want to run our code from an executable, we can statically link
 instead. We'll use the ``%include`` and ``%link`` directives:
@@ -229,7 +230,7 @@ directives search in the current directory by default. (That is, the
 directory from which we run idris.)
 
 Putting it all together
------------------------
+=======================
 
 So, at the beginning of this article I said we'd use type providers to
 port ``struct stat`` to Idris. The relevant part is just translating

@@ -146,8 +146,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
            addInternalApp (fc_fname fc) (fst . fc_start $ fc) ty' -- (mergeTy ty' (delab i nty')) -- TODO: Should use span instead of line and filename?
            addIBC (IBCLineApp (fc_fname fc) (fst . fc_start $ fc) ty') -- (mergeTy ty' (delab i nty')))
 
-         let (t, _) = unApply (getRetTy nty')
-         let corec = case t of
+         let (fam, _) = unApply (getRetTy nty')
+         let corec = case fam of
                         P _ rcty _ -> case lookupCtxt rcty (idris_datatypes i) of
                                         [TI _ True _ _ _] -> True
                                         _ -> False
@@ -157,7 +157,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          let usety = if norm then nty' else nty
          ds <- checkDef fc iderr [(n, (-1, Nothing, usety))]
          addIBC (IBCDef n)
-         let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+         let ds' = map (\(n, (i, top, fam)) -> (n, (i, top, fam, True))) ds
          addDeferred ds'
          setFlags n opts'
          checkDocs fc argDocs ty
@@ -171,6 +171,11 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          addIBC (IBCOpt n)
          when (Implicit `elem` opts') $ do addCoercion n
                                            addIBC (IBCCoercion n)
+         when (AutoHint `elem` opts') $ 
+             case fam of
+                P _ tyn _ -> do addAutoHint tyn n
+                                addIBC (IBCAutoHint tyn n)
+                t -> ifail $ "Hints must return a data or record type"
 
          -- If the function is declared as an error handler and the language
          -- extension is enabled, then add it to the list of error handlers.

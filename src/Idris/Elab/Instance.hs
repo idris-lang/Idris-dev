@@ -90,7 +90,9 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
                                   PApp _ _ args -> getWParams (map getTm args)
                                   a@(PRef fc f) -> getWParams [a]
                                   _ -> return []) ps
-         let pnames = map pname (concat (nub wparams))
+         ist <- getIState
+         let pnames = nub $ map pname (concat (nub wparams)) ++
+                          concatMap (namesIn [] ist) ps
          let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
          undefinedSuperclassInstances <- filterM (fmap not . isOverlapping i) superclassInstances
          mapM_ (rec_elabDecl info EAll info) undefinedSuperclassInstances
@@ -119,7 +121,6 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
                                       show (concat (nub wparams))
 
          -- Bring variables in instance head into scope
-         ist <- getIState
          let headVars = nub $ mapMaybe (\p -> case p of
                                                PRef _ n ->
                                                   case lookupTy n (tt_ctxt ist) of

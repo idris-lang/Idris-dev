@@ -1,11 +1,11 @@
 .. _sect-typefuns:
 
-===================
+*******************
 Types and Functions
-===================
+*******************
 
 Primitive Types
----------------
+===============
 
 Idris defines several primitive types: ``Int``, ``Integer`` and
 ``Float`` for numeric operations, ``Char`` and ``String`` for text
@@ -71,7 +71,7 @@ work on user defined types. Boolean expressions can be tested with the
     "The answer!" : String
 
 Data Types
-----------
+==========
 
 Data types are declared in a similar way to Haskell data types, with a
 similar syntax. Natural numbers and lists, for example, can be
@@ -105,7 +105,7 @@ symbols:
     :+-*/=_.?|&><!@$%^~.
 
 Functions
----------
+=========
 
 Functions are implemented by pattern matching, again using a similar
 syntax to Haskell. The main difference is that Idris requires type
@@ -175,7 +175,7 @@ numbers. This means it can optimise the representation, and functions
 such as ``plus`` and ``mult``.
 
 ``where`` clauses
-~~~~~~~~~~~~~~~~~
+-----------------
 
 Functions can also be defined *locally* using ``where`` clauses. For
 example, to define a function which reverses a list, we can use an
@@ -241,10 +241,10 @@ So, for example, the following definitions are legal:
                   where z w = y + w
 
 Dependent Types
----------------
+===============
 
 Vectors
-~~~~~~~
+-------
 
 A standard example of a dependent type is the type of “lists with
 length”, conventionally called vectors in the dependent type
@@ -322,7 +322,7 @@ two vectors — we needed a vector of length ``k + m``, but provided a
 vector of length ``k + k``.
 
 The Finite Sets
-~~~~~~~~~~~~~~~
+---------------
 
 Finite sets, as the name suggests, are sets with a finite number of
 elements. They are available as part of the Idris library, by
@@ -334,16 +334,25 @@ importing ``Data.Fin``, or can be declared as follows:
        FZ : Fin (S k)
        FS : Fin k -> Fin (S k)
 
+From the signature,  we can see that this is a type constructor that takes a ``Nat``, and produces a type.
+So this is not a set in the sense of a collection that is a container of objects,
+rather it is the canonical set of unnamed elements, as in "the set of 5 elements," for example.
+Effectively, it is a type that captures integers that fall into the range of zero to ``(n - 1)`` where
+``n`` is the argument used to instantiate the ``Fin`` type.
+For example, ``Fin 5`` can be thought of as the type of integers between 0 and 4.
+
+Let us look at the constructors in greater detail.
+
 ``FZ`` is the zeroth element of a finite set with ``S k`` elements;
 ``FS n`` is the ``n+1``\ th element of a finite set with ``S k``
 elements. ``Fin`` is indexed by a ``Nat``, which represents the number
-of elements in the set. Obviously we can’t construct an element of an
-empty set, so neither constructor targets ``Fin Z``.
+of elements in the set. Since we can’t construct an element of an
+empty set, neither constructor targets ``Fin Z``.
 
-A useful application of the ``Fin`` family is to represent bounded
+As mentioned above, a useful application of the ``Fin`` family is to represent bounded
 natural numbers. Since the first ``n`` natural numbers form a finite
-set of ``n`` elements, we can treat ``Fin n`` as the set of natural
-numbers bounded by ``n``.
+set of ``n`` elements, we can treat ``Fin n`` as the set of integers
+greater than or equal to zero and less than ``n``.
 
 For example, the following function which looks up an element in a
 ``Vect``, by a bounded index given as a ``Fin n``, is defined in the
@@ -359,7 +368,7 @@ This function looks up a value at a given location in a vector. The
 location is bounded by the length of the vector (``n`` in each case),
 so there is no need for a run-time bounds check. The type checker
 guarantees that the location is no larger than the length of the
-vector.
+vector, and of course no less than zero.
 
 Note also that there is no case for ``Nil`` here. This is because it
 is impossible. Since there is no element of ``Fin Z``, and the
@@ -368,7 +377,7 @@ attempting to look up an element in an empty vector would give a
 compile time type error, since it would force ``n`` to be ``Z``.
 
 Implicit Arguments
-~~~~~~~~~~~~~~~~~~
+------------------
 
 Let us take a closer look at the type of ``index``:
 
@@ -411,7 +420,7 @@ help document a function by making the purpose of an argument more
 clear.
 
 “``using``” notation
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 Sometimes it is useful to provide types of implicit arguments,
 particularly where there is a dependency ordering, or where the
@@ -451,7 +460,7 @@ appear within the block:
          There : Elem x xs -> Elem x (y :: xs)
 
 Note: Declaration Order and ``mutual`` blocks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------------------
 
 In general, functions and data types must be defined before use, since
 dependent types allow functions to appear as part of types, and their
@@ -476,7 +485,7 @@ depend on the reduction behaviour of any of the functions in the
 block.
 
 I/O
----
+===
 
 Computer programs are of little use if they do not interact with the
 user or the system in some way. The difficulty in a pure language such
@@ -533,7 +542,7 @@ example for reading and writing files, including:
 .. _sect-do:
 
 “``do``” notation
------------------
+=================
 
 I/O programs will typically need to sequence actions, feeding the
 output of one computation into the input of the next. ``IO`` is an
@@ -564,7 +573,7 @@ can be overloaded.
 .. _sect-lazy:
 
 Laziness
---------
+========
 
 Normally, arguments to functions are evaluated before the function
 itself (that is, Idris uses *eager* evaluation). However, this is
@@ -602,7 +611,7 @@ without any explicit use of ``Force`` or ``Delay``:
     boolCase False t e = e;
 
 Useful Data Types
------------------
+=================
 
 Idris includes a number of useful data types and library functions
 (see the ``libs/`` directory in the distribution). This chapter
@@ -610,7 +619,7 @@ describes a few of these. The functions described here are imported
 automatically by every Idris program, as part of ``Prelude.idr``.
 
 ``List`` and ``Vect``
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 We have already seen the ``List`` and ``Vect`` data types:
 
@@ -683,7 +692,7 @@ remember that Idris is still in development, so if you don’t see
 the function you need, please feel free to add it and submit a patch!
 
 Aside: Anonymous functions and operator sections
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------
 
 There are actually neater ways to write the above expression. One way
 would be to use an anonymous function:
@@ -710,7 +719,7 @@ by 2. It expands to ``\x => x * 2``. Similarly, ``(2*)`` would expand
 to ``\x => 2 * x``.
 
 Maybe
-~~~~~
+-----
 
 ``Maybe`` describes an optional value. Either there is a value of the
 given type, or there isn’t:
@@ -744,7 +753,7 @@ simply ``b``. Since the default value might not be used, we mark it as
 discarding it would be wasteful.
 
 Tuples and Dependent Pairs
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 Values can be paired with the following built-in data type:
 
@@ -765,7 +774,7 @@ contain an arbitrary number of values, represented as nested pairs:
     jim = ("Jim", 25, "Cambridge")
 
 Dependent Pairs
-~~~~~~~~~~~~~~~
+---------------
 
 Dependent pairs allow the type of the second element of a pair to depend
 on the value of the first element. Traditionally, these are referred to
@@ -843,10 +852,10 @@ We will see more on ``with`` notation later.
 .. _sect-more-expr:
 
 More Expressions
-----------------
+================
 
 ``let`` bindings
-~~~~~~~~~~~~~~~~
+----------------
 
 Intermediate values can be calculated using ``let`` bindings:
 
@@ -875,7 +884,7 @@ pattern matching at the top level:
                        name ++ " is " ++ show age ++ " years old"
 
 List comprehensions
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
 Idris provides *comprehension* notation as a convenient shorthand
 for building lists. The general form is:
@@ -902,7 +911,7 @@ by the difference between ``a`` and ``b``. This works for any numeric
 type, using the ``count`` function from the prelude.
 
 ``case`` expressions
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 Another way of inspecting intermediate values of *simple* types is to
 use a ``case`` expression. The following function, for example, splits
@@ -956,7 +965,7 @@ matching ``let`` and lambda bindings. It will *only* work if:
    itself.
 
 Dependent Records
------------------
+=================
 
 *Records* are data types which collect several values (the record's
 *fields*) together. Idris provides syntax for defining records and
@@ -1027,7 +1036,7 @@ length because it will not affect the type of the record:
       : Class
 
 Nested record update
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 Idris also provides a convenient syntax for accessing and updating
 nested records. For example, if a field is accessible with the

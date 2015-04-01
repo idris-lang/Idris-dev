@@ -1,8 +1,8 @@
 .. _sect-impleff:
 
-====================
+********************
 Creating New Effects
-====================
+********************
 
 We have now seen several side-effecting operations provided by the
 ``Effects`` library, and examples of their use in Section
@@ -14,7 +14,7 @@ selection of the available effects are implemented, and show how new
 effectful operations may be provided.
 
 State
------
+=====
 
 Effects are described by *algebraic data types*, where the
 constructors describe the operations provided when the effect is
@@ -154,7 +154,7 @@ Such details are not important for using the library, or even writing
 new effects, however.
 
 Summary
-~~~~~~~
+-------
 
 The following listing summarises what is required to define the
 ``STATE`` effect:
@@ -183,7 +183,7 @@ The following listing summarises what is required to define the
 
 
 Console I/O
------------
+===========
 
 Then listing below gives the definition of the ``STDIO``
 effect, including handlers for ``IO`` and ``IOExcept``. We omit the
@@ -219,7 +219,7 @@ directly.
     STDIO = MkEff () StdIO
 
 Exceptions
-----------
+==========
 
 The listing below gives the definition of the ``Exception``
 effect, including two of its handlers for ``Maybe`` and ``List``. The
@@ -244,7 +244,7 @@ error.
 
 
 Non-determinism
----------------
+===============
 
 The following listing gives the definition of the ``Select``
 effect for writing non-deterministic programs, including a handler for
@@ -277,10 +277,10 @@ accumulate all successful results, and in the ``Maybe`` handler we try
 the first value in the last, and try later values only if that fails.
 
 File Management
----------------
+===============
 
 Result-dependent effects are no different from non-dependent effects
-in the way they are implemented. The listing below 
+in the way they are implemented. The listing below
 illustrates this for the ``FILE_IO`` effect. The syntax for state
 transitions ``{ x ==> {res} x’ }``, where the result state ``x’`` is
 computed from the result of the operation ``res``, follows that for
@@ -320,4 +320,3 @@ continuation ``k`` are different depending on whether the result is
 ``True`` (opening succeeded) or ``False`` (opening failed). This uses
 ``validFile``, defined in the ``Prelude``, to test whether a file
 handler refers to an open file or not.
-

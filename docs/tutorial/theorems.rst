@@ -1,11 +1,11 @@
 .. _sect-theorems:
 
-===============
+***************
 Theorem Proving
-===============
+***************
 
 Equality
---------
+========
 
 Idris allows propositional equalities to be declared, allowing theorems about
 programs to be stated and proved. Equality is built in, but conceptually
@@ -31,7 +31,7 @@ For example:
 .. _sect-empty:
 
 The Empty Type
---------------
+==============
 
 There is an empty type, :math:`\bot`, which has no constructors. It is
 therefore impossible to construct an element of the empty type, at least
@@ -64,7 +64,7 @@ contradiction.
     void : Void -> a
 
 Simple Theorems
----------------
+===============
 
 When type checking dependent types, the type itself gets *normalised*.
 So imagine we want to prove the following theorem about the reduction
@@ -116,172 +116,16 @@ We can do the same for the reduction behaviour of plus on successors:
 Even for trival theorems like these, the proofs are a little tricky to
 construct in one go. When things get even slightly more complicated, it
 becomes too much to think about to construct proofs in this ‘batch
-mode’. 
+mode’.
 
 Idris provides interactive editing capabilities, which can help with
 building proofs. For more details on building proofs interactively in
-an editor, see :ref:`proofs-index`. In the rest of this section, we discuss
-Idris's interactive proof mode.
-
-Interactive theorem proving
----------------------------
-
-Instead of writing the proof in one go, we can use Idris’s interactive proof
-mode. To do this, we write the general *structure* of the proof, and use
-the interactive mode to complete the details. We’ll be constructing the
-proof by *induction*, so we write the cases for ``Z`` and ``S``, with a
-recursive call in the ``S`` case giving the inductive hypothesis, and
-insert *metavariables* for the rest of the definition:
-
-.. code-block:: idris
-
-    plusReducesZ' : (n:Nat) -> n = plus n Z
-    plusReducesZ' Z     = ?plusredZ_Z
-    plusReducesZ' (S k) = let ih = plusReducesZ' k in
-                          ?plusredZ_S
-
-On running , two global names are created, ``plusredZ_Z`` and
-``plusredZ_S``, with no definition. We can use the ``:m`` command at the
-prompt to find out which metavariables are still to be solved (or, more
-precisely, which functions exist but have no definitions), then the
-``:t`` command to see their types:
-
-.. code-block:: idris
-
-    *theorems> :m
-    Global metavariables:
-            [plusredZ_S,plusredZ_Z]
-
-.. code-block:: idris
-
-    *theorems> :t plusredZ_Z
-    plusredZ_Z : Z = plus Z Z
-
-    *theorems> :t plusredZ_S
-    plusredZ_S : (k : Nat) -> (k = plus k Z) -> S k = plus (S k) Z
-
-The ``:p`` command enters interactive proof mode, which can be used to
-complete the missing definitions.
-
-.. code-block:: idris
-
-    *theorems> :p plusredZ_Z
-
-    ---------------------------------- (plusredZ_Z) --------
-    {hole0} : Z = plus Z Z
-
-This gives us a list of premises (above the line; there are none here)
-and the current goal (below the line; named ``{hole0}`` here). At the
-prompt we can enter tactics to direct the construction of the proof. In
-this case, we can normalise the goal with the ``compute`` tactic:
-
-.. code-block:: idris
-
-    -plusredZ_Z> compute
-
-    ---------------------------------- (plusredZ_Z) --------
-    {hole0} : Z = Z
-
-Now we have to prove that ``Z`` equals ``Z``, which is easy to prove by
-``Refl``. To apply a function, such as ``Refl``, we use ``refine`` which
-introduces subgoals for each of the function’s explicit arguments
-(``Refl`` has none):
-
-.. code-block:: idris
-
-    -plusredZ_Z> refine Refl
-    plusredZ_Z: no more goals
-
-Here, we could also have used the ``trivial`` tactic, which tries to
-refine by ``Refl``, and if that fails, tries to refine by each name in
-the local context. When a proof is complete, we use the ``qed`` tactic
-to add the proof to the global context, and remove the metavariable from
-the unsolved metavariables list. This also outputs a trace of the proof:
-
-.. code-block:: idris
-
-    -plusredZ_Z> qed
-    plusredZ_Z = proof
-        compute
-        refine Refl
-
-.. code-block:: idris
-
-    *theorems> :m
-    Global metavariables:
-            [plusredZ_S]
-
-The ``:addproof`` command, at the interactive prompt, will add the proof
-to the source file (effectively in an appendix). Let us now prove the
-other required lemma, ``plusredZ_S``:
-
-.. code-block:: idris
-
-    *theorems> :p plusredZ_S
-
-    ---------------------------------- (plusredZ_S) --------
-    {hole0} : (k : Nat) -> (k = plus k Z) -> S k = plus (S k) Z
-
-In this case, the goal is a function type, using ``k`` (the argument
-accessible by pattern matching) and ``ih`` — the local variable
-containing the result of the recursive call. We can introduce these as
-premisses using the ``intro`` tactic twice (or ``intros``, which
-introduces all arguments as premisses). This gives:
-
-.. code-block:: idris
-
-      k : Nat
-      ih : k = plus k Z
-    ---------------------------------- (plusredZ_S) --------
-    {hole2} : S k = plus (S k) Z
-
-Since plus is defined by recursion on its first argument, the term
-``plus (S k) Z`` in the goal can be simplified, so we use ``compute``.
-
-.. code-block:: idris
-
-      k : Nat
-      ih : k = plus k Z
-    ---------------------------------- (plusredZ_S) --------
-    {hole2} : S k = S (plus k Z)
-
-We know, from the type of ``ih``, that ``k = plus k Z``, so we would
-like to use this knowledge to replace ``plus k Z`` in the goal with
-``k``. We can achieve this with the ``rewrite`` tactic:
-
-.. code-block:: idris
-
-    -plusredZ_S> rewrite ih
-
-      k : Nat
-      ih : k = plus k Z
-    ---------------------------------- (plusredZ_S) --------
-    {hole3} : S k = S k
-
-    -plusredZ_S>
-
-The ``rewrite`` tactic takes an equality proof as an argument, and tries
-to rewrite the goal using that proof. Here, it results in an equality
-which is trivially provable:
-
-.. code-block:: idris
-
-    -plusredZ_S> trivial
-    plusredZ_S: no more goals
-    -plusredZ_S> qed
-    plusredZ_S = proof {
-        intros;
-        rewrite ih;
-        trivial;
-    }
-
-Again, we can add this proof to the end of our source file using the
-``:addproof`` command at the interactive prompt.
+an editor, see :ref:`proofs-index`.
 
 .. _sect-totality:
 
 Totality Checking
------------------
+=================
 
 If we really want to trust our proofs, it is important that they are
 defined by *total* functions — that is, a function which is defined for
@@ -351,7 +195,7 @@ total, a function ``f`` must:
 -  Not call any non-total functions
 
 Directives and Compiler Flags for Totality
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------
 
 By default, Idris allows all well-typed definitions, whether total or not.
 However, it is desirable for functions to be total as far as possible, as this
@@ -372,7 +216,7 @@ Finally, the compiler flag ``--warnpartial`` causes to print a warning
 for any undeclared partial function.
 
 Totality checking issues
-~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------
 
 Please note that the totality checker is not perfect! Firstly, it is
 necessarily conservative due to the undecidability of the halting
@@ -382,14 +226,14 @@ into it so far, so there may still be cases where it believes a function
 is total which is not. Do not rely on it for your proofs yet!
 
 Hints for totality
-~~~~~~~~~~~~~~~~~~
+------------------
 
 In cases where you believe a program is total, but Idris does not agree, it is
 possible to give hints to the checker to give more detail for a termination
 argument. The checker works by ensuring that all chains of recursive calls
 eventually lead to one of the arguments decreasing towards a base case, but
 sometimes this is hard to spot. For example, the following definition cannot be
-checked as ``total`` because the checker cannot decide that ``filter (<= x) xs`` 
+checked as ``total`` because the checker cannot decide that ``filter (<= x) xs``
 will always be smaller than ``(x :: xs)``:
 
 .. code-block:: idris

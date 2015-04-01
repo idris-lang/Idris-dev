@@ -531,6 +531,9 @@ Extra-source-files:
                        test/proof009/*.idr
                        test/proof009/expected
                        test/proof009/input
+                       test/proof010/run
+                       test/proof010/*.idr
+                       test/proof010/expected
 
                        test/quasiquote001/run
                        test/quasiquote001/*.idr
@@ -608,6 +611,9 @@ Extra-source-files:
                        test/totality008/run
                        test/totality008/*.idr
                        test/totality008/expected
+                       test/totality009/run
+                       test/totality009/*.idr
+                       test/totality009/expected
 
                        test/tutorial001/run
                        test/tutorial001/*.idr
@@ -814,10 +820,10 @@ Library
                 , containers >= 0.5 && < 0.6
                 , deepseq < 1.5
                 , directory >= 1.2 && < 1.3
-                , filepath < 1.4
+                , filepath < 1.5
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
-                , lens >= 4.1.1 && < 4.8
+                , lens >= 4.1.1 && < 4.9
                 , mtl >= 2.1 && < 2.3
                 , network < 2.7
                 , optparse-applicative >= 0.11 && < 0.12

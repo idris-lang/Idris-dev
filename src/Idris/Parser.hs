@@ -479,6 +479,8 @@ fnOpts opts
                  fnOpts (ErrorReverse : opts)
       <|> do try (lchar '%' *> reserved "reflection");
                   fnOpts (Reflection : opts)
+      <|> do try (lchar '%' *> reserved "hint");
+                  fnOpts (AutoHint : opts)
       <|> do lchar '%'; reserved "specialise";
              lchar '['; ns <- sepBy nameTimes (lchar ','); lchar ']'
              fnOpts (Specialise ns : opts)
@@ -813,7 +815,7 @@ argExpr syn = let syn' = syn { inPattern = True } in
 @
 RHS ::= '='            Expr
      |  '?='  RHSName? Expr
-     |  'impossible'
+     |  Impossible
      ;
 @
 
@@ -829,7 +831,7 @@ rhs syn n = do lchar '='; expr syn
                                      return n)
                r <- expr syn
                return (addLet fc name r)
-        <|> do reserved "impossible"; return PImpossible
+        <|> impossible
         <?> "function right hand side"
   where mkN :: Name -> Name
         mkN (UN x)   = if (tnull x || not (isAlpha (thead x)))

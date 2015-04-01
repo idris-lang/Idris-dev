@@ -59,7 +59,7 @@ import IRTS.System
 
 import Control.Category
 import qualified Control.Exception as X
-import Prelude hiding ((.), id)
+import Prelude hiding ((<$>), (.), id)
 import Data.List.Split (splitOn)
 import Data.List (groupBy)
 import qualified Data.Text as T

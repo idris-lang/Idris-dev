@@ -1,8 +1,8 @@
 .. _sect-interactive:
 
-===================
+*******************
 Interactive Editing
-===================
+*******************
 
 By now, we have seen several examples of how Idris’ dependent type
 system can give extra confidence in a function’s correctness by giving
@@ -25,7 +25,7 @@ available.
 
 
 Editing at the REPL
--------------------
+===================
 
 The REPL provides a number of commands, which we will describe
 shortly, which generate new program fragments based on the currently
@@ -59,10 +59,10 @@ A text editor can take advantage of this, along with the editing
 commands, in order to provide interactive editing support.
 
 Editing Commands
-----------------
+================
 
 :addclause
-~~~~~~~~~~
+----------
 
 The ``:addclause n f`` command (abbreviated ``:ac n f``) creates a
 template definition for the function named ``f`` declared on line
@@ -91,7 +91,7 @@ This declares that any names generated for types in the ``Vect`` family
 should be chosen in the order ``xs``, ``ys``, ``zs``, ``ws``.
 
 :casesplit
-~~~~~~~~~~
+----------
 
 The ``:casesplit n x`` command, abbreviated ``:cs n x``, splits the
 pattern variable ``x`` on line ``n`` into the various pattern forms it
@@ -125,7 +125,7 @@ That is, the pattern variable ``ys`` has been split into one case
 ys`` would lead to a unification error.
 
 :addmissing
-~~~~~~~~~~~
+-----------
 
 The ``:addmissing n f`` command, abbreviated ``:am n f``, adds the
 clauses which are required to make the function ``f`` on line ``n``
@@ -148,7 +148,7 @@ generates the required clauses, and eliminates the clauses which would
 lead to unification errors.
 
 :proofsearch
-~~~~~~~~~~~~
+------------
 
 The ``:proofsearch n f`` command, abbreviated ``:ps n f``, attempts to
 find a value for the metavariable ``f`` on line ``n`` by proof search,
@@ -186,7 +186,7 @@ must have type ``c`` and the only way to get this is to apply ``f`` to
 recursively.
 
 :makewith
-~~~~~~~~~
+---------
 
 The ``:makewith n f`` command, abbreviated ``:mw n f``, adds a
 ``with`` to a pattern clause. For example, recall ``parity``. If line
@@ -219,7 +219,7 @@ dependent pattern matching by showing a programmer exactly what the
 valid patterns are.
 
 Interactive Editing in Vim
---------------------------
+==========================
 
 The editor mode for Vim provides syntax highlighting, indentation and
 interactive editing support using the commands described above.

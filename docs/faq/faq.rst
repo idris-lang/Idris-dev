@@ -1,9 +1,9 @@
-==========================
+**************************
 Frequently Asked Questions
-==========================
+**************************
 
 What are the differences between Agda and Idris?
-------------------------------------------------
+================================================
 
 The main difference is that Idris has been designed from the start to support
 verified systems programming through easy interoperability with C and high
@@ -14,7 +14,7 @@ do notation. Idris also supports tactic based theorem proving, and has a
 lightweight Hugs/GHCI style interface.
 
 Is Idris production ready?
---------------------------
+==========================
 
 Idris is primarily a research tool for exploring the possibilities of software
 development with dependent types, meaning that the primary goal is not (yet) to
@@ -28,8 +28,8 @@ for use in production would be very welcome - this includes (but is not
 limited to) extra library support, polishing the run-time system (and ensuring
 it is robust), providing and maintaining a JVM back end, etc.
 
-Why does Idris use eager evaluation rather than lazy? 
------------------------------------------------------
+Why does Idris use eager evaluation rather than lazy?
+=====================================================
 
 Idris uses eager evaluation for more predictable performance, in particular
 because one of the longer term goals is to be able to write efficient and
@@ -57,7 +57,7 @@ concrete ``Int``, whereas ``thing_comp`` is a computation which will produce an
 ``Int``.
 
 How can I make lazy control structures?
----------------------------------------
+=======================================
 
 You can make control structures  using the special Lazy type. For example,
 ``if...then...else`` is defined as follows in the library:
@@ -74,7 +74,7 @@ The type ``Lazy a`` for ``t`` and ``f`` indicates that those arguments will
 only be evaluated if they are used, that is, they are evaluated lazily.
 
 Evaluation at the REPL doesn't behave as I expect. What's going on?
--------------------------------------------------------------------
+===================================================================
 
 Being a fully dependently typed language, Idris has two phases where it
 evaluates things, compile-time and run-time. At compile-time it will only
@@ -100,31 +100,47 @@ the difference between:
     \n => \m => plus n (S m) : Nat -> Nat -> Nat
 
 When will Idris be self-hosting?
---------------------------------
+================================
 
 It’s not a priority, though not a bad idea in the long run. It would be a
 worthwhile effort in the short term to implement libraries to support
 self-hosting, such as a good parsing library.
 
 Does Idris have Universe Polymorphism? What is the type of ``Type``?
---------------------------------------------------------------------
+====================================================================
 
 Rather than Universe polymorphism, Idris has a cumulative hierarchy of
-universes; ``Type : Type 1``, ``Type 1 : Type 2``, etc. 
-Cumulativity means that if ``x : Type n`` then also ``x : Type m``, 
+universes; ``Type : Type 1``, ``Type 1 : Type 2``, etc.
+Cumulativity means that if ``x : Type n`` then also ``x : Type m``,
 provided that ``n <= m``.
 
-What does the name ‘Idris’ mean?
---------------------------------
+Why does Idris use ``Float`` and ``Double`` instead of ``Float32`` and ``Float64``?
+===================================================================================
 
-British people of a certain age may be familiar with this 
+Historically the C language and many other languages have used the
+names ``Float`` and ``Double`` to represent floating point numbers of
+size 32 and 64 respectivly.  Newer languages such as Rust and Julia
+have begun to follow the naming scheme described in `IEE Standard for
+Floating-Point Arithmetic (IEEE 754)
+<http://en.wikipedia.org/wiki/IEEE_floating_point>`_. This describes
+single and double precision numbers as ``Float32`` and ``Float64``;
+the size is described in the type name.
+
+Due to developer familiarity with the older naming convention, and
+choice by the developers of Idris, Idris uses the C style convention.
+That is, the names ``Float`` and ``Double`` are used to describe
+single and double precision numbers.
+
+What does the name ‘Idris’ mean?
+================================
+
+British people of a certain age may be familiar with this
 `singing dragon <https://www.youtube.com/watch?v=G5ZMNyscPcg>`_. If
 that doesn’t help, maybe you can invent a suitable acronym :-) .
 
 Where can I find more answers?
-------------------------------
+==============================
 
 There is an `Unofficial FAQ
 <https://github.com/idris-lang/Idris-dev/wiki/Unofficial-FAQ>`_ on the wiki on
 github which answers more technical questions and may be updated more often.
-

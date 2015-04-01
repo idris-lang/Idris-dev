@@ -15,6 +15,7 @@ Documentation for the Idris Language
 
    More information concerning the CC0 can be found online at: http://creativecommons.org/publicdomain/zero/1.0/
 
+
 * :ref:`tutorial-index`
 * :ref:`eff-tutorial-index`
 * :ref:`faq-index`
@@ -47,7 +48,7 @@ The Idris Tutorial
    tutorial/miscellany
    tutorial/conclusions
 
-.. _effects:
+.. _faq:
 
 ##########################
 Frequently Asked Questions
@@ -88,6 +89,7 @@ Theorem Proving
    proofs/pluscomm
    proofs/inductive
    proofs/patterns
+   proofs/interactive
 
 .. _reference:
 

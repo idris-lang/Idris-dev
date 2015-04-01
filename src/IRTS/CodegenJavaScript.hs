@@ -679,8 +679,7 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
     jsOP'
       | LNoOp <- op = translateReg (last args)
 
-      | (LExternal ws) <- op,
-        ws == sUN "prim__writeString",
+      | LWriteStr <- op,
         (_:str:_) <- args = JSAssign (translateReg reg)
                                (JSApp (JSIdent "i$putStr") [translateReg str])
 

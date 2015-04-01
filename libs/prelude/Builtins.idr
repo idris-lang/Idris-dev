@@ -162,8 +162,6 @@ abstract data ManagedPtr : Type
 
 %extern prim__readFile : prim__WorldType -> Ptr -> String
 %extern prim__writeFile : prim__WorldType -> Ptr -> String -> Int
-%extern prim__readString : prim__WorldType -> String
-%extern prim__writeString : prim__WorldType -> String -> Int
 
 %extern prim__vm : Ptr
 %extern prim__stdin : Ptr

@@ -1,8 +1,8 @@
 .. _sect-further:
 
-===============
+***************
 Further Reading
-===============
+***************
 
 This tutorial has given an introduction to writing and reasoning about
 side-effecting programs in Idris, using the ``Effects`` library.

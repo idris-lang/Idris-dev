@@ -1,8 +1,8 @@
 .. _sect-documenting:
 
-======================
+**********************
 Documenting Idris Code
-======================
+**********************
 
 Idris documentation comes in two major forms: comments, which exist
 for a reader’s edification and are ignored by the compiler, and inline
@@ -12,7 +12,7 @@ reference. To consult the documentation for a declaration ``f``, write
 (``C-c C-d`` in Emacs, in Vim).
 
 Comments
---------
+========
 
 Use comments to explain why code is written the way that it
 is. Idris’s comment syntax is the same as that of Haskell: lines
@@ -22,7 +22,7 @@ lines. These can be used to comment out lines of code or provide
 simple documentation for the readers of Idris code.
 
 Inline Documentation
---------------------
+====================
 
 Idris also supports a comprehensive and rich inline syntax for Idris
 code to be generated. This syntax also allows for named parameters and

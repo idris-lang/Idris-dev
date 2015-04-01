@@ -1,7 +1,7 @@
 # Contributing to Idris-Dev
 
 The Idris Community welcomes pull requests, bug reporting, and bug squashing!
-However, we cannot do it all ourself, and want to make it as easy as possible to contribute changes to get things working.
+However, we cannot do it all ourselves, and want to make it as easy as possible to contribute changes to get things working.
 Here are a few guidelines that we would like contributors to follow so that we can have a chance of keeping on top of things.
 
 ## Getting Started
@@ -22,34 +22,43 @@ We do not want you wasting your time, duplicating somebody's work!
 
 ## The Campsite Rule
 
-A basic rule when contributing to Idris is the **campsite rule**: leave the codebase in better condition than you found it.
+We try to follow the **campsite rule**: leave the code base in better condition than you found it.
 Please clean up any messes that you find, and don't leave behind new messes for the next contributor.
 
 ## Contributing to the default libraries.
 
 Idris ships with a set of packages in `libs/` that is provided as a default library.
-These packages should not be seen as the *standard* as when working with dependent types we do not necessarily know how best to work with dependent types.
+
++ `prelude` is a collection of basic definitions, automatically imported by Idris programs.
++ `base` is tried and tested code that may be useful, and has seen active use in multiple projects.
++ `contrib` is code that is experimental in design and that we want to test before possible inclusion in `base`.
++ `effects` is a library which supports effectful programming.
+
+These packages should not be seen as the *standard* as when working with dependent types; we do not necessarily know how best to work with dependent types yet.
 These packages offer functionality that can be built on top of when constructing Idris programs.
 
-One major point to make is that everything in prelude will be imported automatically, unless given
-the `--noprelude` option.
-Likewise, the contents of base are available with no special options.
-The other two packages that ship with Idris, contrib and effects, require a the use of the `-p` command-line argument to bring their contents into the include path.
-New contributions should probably be sent to contrib first, so that they can get maintained with the Idris distribution.
+Everything in prelude will be imported automatically, unless given the `--noprelude` option.
+The contents of base are available with no special options, but modules must be imported.
+The other two packages that ship with Idris, contrib and effects, require the use of the `-p` command-line argument to bring their contents into the include path.
+
+New contributions should be added to the contrib package (never directly to base or prelude!).
 If they turn out to be widely applicable and useful, they may later be moved into base.
 
 As Idris is still being developed we are open to suggestions and changes that make improvements to these default packages.
-Major changes to the library (or Idris itself) should ideally be discussed first through the projects official channels of communication i.e. the mailing list, github wiki, or IRC, or as a [Dragon Egg](https://github.com/idris-lang/Idris-dev/wiki/Feature-proposals).
-Developers then seeking to add content to Idris's prelude and default library, should do so through a PR where more discussion's and refinements can be made.
+Major changes to the library, or Idris itself, should be discussed first through the project's official channels of communication:
+
+1. The mailing List.
+1. On our IRC Channel `#idris` on freenode, or
+1. As a [Dragon Egg](https://github.com/idris-lang/Idris-dev/wiki/Feature-proposals).
+
+Developers then seeking to add content to Idris's prelude and default library, should do so through a PR where more discussions and refinements can be made.
 
 We do not want you wasting your time nor duplicating somebody's work!
-
-Of note: developers should be prepared to wait until their PR has been discussed and authorized prior to the PRs inclusion.
 
 ## Making Changes
 
 Idris developers and hackers try to adhere to something similar to the [successful git branching model](http://nvie.com/posts/a-successful-git-branching-model/).
-The steps are straightforward.
+The steps are described below.
 
 ### New contributors
 
@@ -85,7 +94,7 @@ The remaining steps are the same for both new and existing contributors:
 
 1. Create, and checkout onto, a topic branch on which to base you work.
   * This is typically the master branch.
-  * For your own sanity, please avoid working on the `master` branch.
+  * Please avoid working on the `master` branch.
 
 ```
 $ git branch fix/master/my_contrib master
@@ -118,7 +127,7 @@ $ git diff --check
           single space, with blank lines in between, but conventions vary here
 
 1. Make sure you have added any necessary tests for your changes.
-1. Run all the tests to assure nothing else was accidentally broken.
+1. Run all the tests to ensure nothing else was accidentally broken.
 
 ```
 $ make test
@@ -136,12 +145,12 @@ From there you will have to wait on one of the `idris-dev` committers to respond
 This response might be an accept or some changes/improvements/alternatives will be suggest.
 We do not guarantee that all requests will be accepted.
 
-## Increases chances of acceptance.
+## Increasing chances of acceptance.
 
 To help increase the chance of your pull request being accepted:
 
 1. Run the tests.
-1. Update the documentation, the surrounding one, examples elsewhere, guides, whatever is affected by your contribution
+1. Update the documentation, the surrounding code, examples elsewhere, guides, whatever is affected by your contribution
 1. Use appropriate code formatting for both Idris and Haskell.
 
 ## Additional Resources

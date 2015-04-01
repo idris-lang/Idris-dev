@@ -289,26 +289,29 @@ elab ist info emode opts fn tm
         --trace ("ELAB " ++ show t') $
         let fc = fileFC "Force"
         env <- get_env
-        handleError (forceErr env)
+        handleError (forceErr t' env)
             (elab' ina fc' t')
             (elab' ina fc' (PApp fc (PRef fc (sUN "Force"))
                              [pimp (sUN "t") Placeholder True,
                               pimp (sUN "a") Placeholder True,
                               pexp ct])) True
 
-    forceErr env (CantUnify _ (t,_) (t',_) _ _ _)
+    forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
-            ht == txt "Lazy'" = True
-    forceErr env (CantUnify _ (t,_) (t',_) _ _ _)
+            ht == txt "Lazy'" = notDelay orig
+    forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t'),
-            ht == txt "Lazy'" = True
-    forceErr env (InfiniteUnify _ t _)
+            ht == txt "Lazy'" = notDelay orig
+    forceErr orig env (InfiniteUnify _ t _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
-            ht == txt "Lazy'" = True
-    forceErr env (Elaborating _ _ t) = forceErr env t
-    forceErr env (ElaboratingArg _ _ _ t) = forceErr env t
-    forceErr env (At _ t) = forceErr env t
-    forceErr env t = False
+            ht == txt "Lazy'" = notDelay orig
+    forceErr orig env (Elaborating _ _ t) = forceErr orig env t
+    forceErr orig env (ElaboratingArg _ _ _ t) = forceErr orig env t
+    forceErr orig env (At _ t) = forceErr orig env t
+    forceErr orig env t = False
+
+    notDelay t@(PApp _ (PRef _ (UN l)) _) | l == txt "Delay" = False
+    notDelay _ = True
 
     local f = do e <- get_env
                  return (f `elem` map fst e)
@@ -498,6 +501,7 @@ elab ist info emode opts fn tm
                   if null a'
                      then erun fc $ do apply (Var n) []; solve
                      else elab' ina fc' (PApp fc tm [])
+    elab' ina _ (PLam _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
     elab' ina _ (PLam fc n Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context

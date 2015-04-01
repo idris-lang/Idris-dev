@@ -91,7 +91,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
             if ambigok || argsok then
                case lookupCtxt nroot (idris_tyinfodata ist) of
                     [TISolution ts] -> findInferredTy ts
-                    _ -> psRec rec maxDepth
+                    _ -> psRec rec maxDepth []
                else autoArg (sUN "auto") -- not enough info in the type yet
   where
     findInferredTy (t : _) = elab (delab ist (toUN t)) 
@@ -99,10 +99,11 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     conArgsOK ty
        = let (f, as) = unApply ty in
          case f of
-              P _ n _ -> case lookupCtxt n (idris_datatypes ist) of
-                              [t] -> do rs <- mapM (conReady as) (con_names t)
-                                        return (and rs)
-                              _ -> fail "Ambiguous name"
+              P _ n _ -> case lookupCtxtExact n (idris_datatypes ist) of
+                              Just t -> do rs <- mapM (conReady as) (con_names t)
+                                           return (and rs)
+                              Nothing -> -- local variable, go for it
+                                    return True
               TType _ -> return True
               _ -> fail "Not a data type"
 
@@ -129,12 +130,17 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     toUN (App f a) = App (toUN f) (toUN a)
     toUN t = t
 
-    psRec _ 0 | fromProver = cantSolveGoal
-    psRec rec 0 = do attack; defer [] nroot; solve --fail "Maximum depth reached"
-    psRec False d = tryCons d hints 
-    psRec True d = do compute
+    -- psRec counts depth and the local variable applications we're under
+    -- (so we don't try a pointless application of something to itself,
+    -- which obviously won't work anyway but might lead us on a wild
+    -- goose chase...)
+    psRec _ 0 locs | fromProver = cantSolveGoal
+    psRec rec 0 locs = do attack; defer [] nroot; solve --fail "Maximum depth reached"
+    psRec False d locs = tryCons d locs hints 
+    psRec True d locs 
+                 = do compute
                       try' (trivial elab ist)
-                           (try' (try' (resolveByCon (d - 1)) (resolveByLocals (d - 1))
+                           (try' (try' (resolveByCon (d - 1) locs) (resolveByLocals (d - 1) locs)
                                  True)
              -- if all else fails, make a new metavariable
                          (if fromProver 
@@ -145,42 +151,50 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     getFn d (Just f) | d < maxDepth-1 = [f]
                      | otherwise = []
 
-    resolveByCon d
+    resolveByCon d locs
         = do t <- goal
              let (f, _) = unApply t
              case f of
-                P _ n _ -> case lookupCtxt n (idris_datatypes ist) of
-                               [t] -> tryCons d (hints ++ con_names t ++
-                                                                getFn d fn)
-                               _ -> fail "Not a data type"
+                P _ n _ -> 
+                   do let autohints = case lookupCtxtExact n (idris_autohints ist) of
+                                           Nothing -> []
+                                           Just hs -> hs
+                      case lookupCtxtExact n (idris_datatypes ist) of
+                          Just t -> tryCons d locs (hints ++ 
+                                                    con_names t ++ 
+                                                    autohints ++ 
+                                                    getFn d fn)
+                          Nothing -> fail "Not a data type"
                 _ -> fail "Not a data type"
 
     -- if there are local variables which have a function type, try
     -- applying them too
-    resolveByLocals d
+    resolveByLocals d locs
         = do env <- get_env
-             tryLocals d env
+             tryLocals d locs env
 
-    tryLocals d [] = fail "Locals failed"
-    tryLocals d ((x, t) : xs) = try' (tryLocal d x t) (tryLocals d xs) True
+    tryLocals d locs [] = fail "Locals failed"
+    tryLocals d locs ((x, t) : xs) 
+       | x `elem` locs = tryLocals d locs xs
+       | otherwise = try' (tryLocal d (x : locs) x t) (tryLocals d locs xs) True
 
-    tryCons d [] = fail "Constructors failed"
-    tryCons d (c : cs) = try' (tryCon d c) (tryCons d cs) True
+    tryCons d locs [] = fail "Constructors failed"
+    tryCons d locs (c : cs) = try' (tryCon d locs c) (tryCons d locs cs) True
 
-    tryLocal d n t = do let a = getPArity (delab ist (binderTy t))
-                        tryLocalArg d n a
+    tryLocal d locs n t 
+          = do let a = getPArity (delab ist (binderTy t))
+               tryLocalArg d locs n a
 
-    tryLocalArg d n 0 = elab (PRef (fileFC "prf") n)
-    tryLocalArg d n i = simple_app False (tryLocalArg d n (i - 1))
-                                   (psRec True d) "proof search local apply"
+    tryLocalArg d locs n 0 = elab (PRef (fileFC "prf") n)
+    tryLocalArg d locs n i = simple_app False (tryLocalArg d locs n (i - 1))
+                                   (psRec True d locs) "proof search local apply"
 
     -- Like type class resolution, but searching with constructors
-    tryCon d n = 
+    tryCon d locs n = 
          do ty <- goal
-            let imps = case lookupCtxtName n (idris_implicits ist) of
-                            [] -> []
-                            [args] -> map isImp (snd args)
-                            _ -> fail "Ambiguous name"
+            let imps = case lookupCtxtExact n (idris_implicits ist) of
+                            Nothing -> []
+                            Just args -> map isImp args
             ps <- get_probs
             hs <- get_holes
             args <- map snd <$> try' (apply (Var n) imps)
@@ -190,7 +204,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
             when (length ps < length ps') $ fail "Can't apply constructor"
             mapM_ (\ (_, h) -> do focus h
                                   aty <- goal
-                                  psRec True d) 
+                                  psRec True d locs) 
                   (filter (\ (x, y) -> not x) (zip (map fst imps) args))
             solve
 

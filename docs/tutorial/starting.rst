@@ -1,11 +1,11 @@
 .. _sect-starting:
 
-===============
+***************
 Getting Started
-===============
+***************
 
 Prerequisites
--------------
+=============
 
 Before installing Idris, you will need to make sure you have all
 of the necessary libraries and tools. You will need:
@@ -18,7 +18,7 @@ of the necessary libraries and tools. You will need:
    from MacPorts/Homebrew and all major Linux distributions.
 
 Downloading and Installing
---------------------------
+==========================
 
 The easiest way to install Idris, if you have all of the
 prerequisites, is to type:
@@ -69,7 +69,7 @@ instead. Some useful options to the Idris command are:
 - ``--help`` display usage summary and command line options
 
 The Interactive Environment
----------------------------
+===========================
 
 Entering ``idris`` at the shell prompt starts up the interactive
 environment. You should see something like the following:

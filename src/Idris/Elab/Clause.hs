@@ -702,7 +702,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         (crhs, crhsty) <- if not inf
                              then recheckC_borrowing True borrowed fc id [] rhs'
                              else return (rhs', clhsty)
-        logLvl 6 $ " ==> " ++ show crhsty ++ "   against   " ++ show clhsty
+        logLvl 6 $ " ==> " ++ showEnvDbg [] crhsty ++ "   against   " ++ showEnvDbg [] clhsty
         ctxt <- getContext
         let constv = next_tvar ctxt
         case LState.runStateT (convertsC ctxt [] crhsty clhsty) (constv, []) of

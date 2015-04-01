@@ -1,8 +1,8 @@
 .. _sect-namespaces:
 
-=======================
+**********************
 Modules and Namespaces
-=======================
+**********************
 
 An Idris program consists of a collection of modules. Each module
 includes an optional ``module`` declaration giving the name of the
@@ -72,7 +72,7 @@ main module, with the ``main`` function, must be called
 ``Main``—although its filename need not be ``Main.idr``.
 
 Export Modifiers
-----------------
+================
 
 By default, all names defined in a module are exported for use by other
 modules. However, it is good practice only to export a minimal interface
@@ -146,7 +146,7 @@ abstract names in module ``C``, but will not re-export anything from
 module ``B``.
 
 Explicit Namespaces
--------------------
+===================
 
 Defining a module also defines a namespace implicitly. However,
 namespaces can also be given *explicitly*. This is most useful if you
@@ -176,7 +176,7 @@ disambiguated by their types:
     "foofoo" : String
 
 Parameterised blocks
---------------------
+====================
 
 Groups of functions can be parameterised over a number of arguments
 using a ``parameters`` declaration, for example:

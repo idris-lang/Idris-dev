@@ -1,6 +1,6 @@
-============
+************
 Introduction
-============
+************
 
 Pure functional languages with dependent types such as `Idris
 <http://idris-lang.org/>`_ support reasoning about programs directly

@@ -1,8 +1,8 @@
 .. _sect-state:
 
-=====
+*****
 State
-=====
+*****
 
 Many programs, even pure programs, can benefit from locally mutable
 state. For example, consider a program which tags binary tree nodes
@@ -34,7 +34,7 @@ specific value ``i``, has the following type:
     treeTag : (i : Int) -> BTree a -> BTree (Int, a)
 
 First attempt
--------------
+=============
 
 Naïvely, we can implement ``treeTag`` by implementing a helper
 function which propagates a counter, returning the result of the count
@@ -75,7 +75,7 @@ is local mutable state (the counter) which we have had to make
 explicit.
 
 Introducing ``Effects``
------------------------
+=======================
 
 Idris provides a library, ``Effects`` [3]_, which captures this
 pattern and many others involving effectful computation [1]_. An
@@ -217,7 +217,7 @@ shown in Listing [introprog].
     main = print (treeTag 1 testTree)
 
 Effects and Resources
----------------------
+=====================
 
 Each effect is associated with a *resource*, which is initialised
 before an effectful program can be run. For example, in the case of
@@ -261,7 +261,7 @@ implemented ``treeTag`` by initialising the state as follows:
     treeTag i x = runPureInit [i] (treeTagAux x)
 
 Labelled Effects
-----------------
+================
 
 What if we have more than one state, especially more than one state of
 the same type? How would ``get`` and ``put`` know which state they
@@ -358,7 +358,7 @@ effect. Note that labels are polymorphic in the label type ``lbl``.
 Hence, a label can be anything—a string, an integer, a type, etc.
 
 ``!``-notation
---------------
+==============
 
 In many cases, using ``do``-notation can make programs unnecessarily
 verbose, particularly in cases where the value bound is used once,
@@ -412,7 +412,7 @@ is lifted to:
                      f g'
 
 Syntactic Sugar and ``Eff``
----------------------------
+===========================
 
 By now, you may be wondering about the syntax we are using for
 ``Eff``, because it doesn’t look like a normal type! (If not, you may

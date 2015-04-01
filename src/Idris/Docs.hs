@@ -11,6 +11,8 @@ import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, rende
 
 import Util.Pretty
 
+import Prelude hiding ((<$>))
+
 import Control.Arrow (first)
 
 import Data.Maybe

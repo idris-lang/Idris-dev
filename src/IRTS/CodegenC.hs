@@ -529,6 +529,13 @@ doOp v LStrConcat [l,r] = v ++ "idris_concat(vm, " ++ creg l ++ ", " ++ creg r +
 doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LStrEq [l,r] = v ++ "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
+doOp v LReadStr [_] = v ++ "idris_readStr(vm, stdin)"
+doOp v LWriteStr [_,s] 
+             = v ++ "MKINT((i_int)(idris_writeStr(stdout"
+                 ++ ",GETSTR("
+                 ++ creg s ++ "))))"
+
+
 -- String functions which need to know we're UTF8
 doOp v LStrHead [x] = v ++ "idris_strHead(vm, " ++ creg x ++ ")"
 doOp v LStrTail [x] = v ++ "idris_strTail(vm, " ++ creg x ++ ")"
@@ -548,14 +555,6 @@ doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
 doOp v LNoOp args = v ++ creg (last args)
 
 -- Pointer primitives (declared as %extern in Builtins.idr)
-doOp v (LExternal rs) [_] 
-   | rs == sUN "prim__readString" = v ++ "idris_readStr(vm, stdin)"
-doOp v (LExternal ws) [_,s] 
-   | ws == sUN "prim__writeString" 
-             = v ++ "MKINT((i_int)(idris_writeStr(stdout"
-                 ++ ",GETSTR("
-                 ++ creg s ++ "))))"
-
 doOp v (LExternal rf) [_,x] 
    | rf == sUN "prim__readFile"
        = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
