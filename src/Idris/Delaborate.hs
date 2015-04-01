@@ -13,6 +13,8 @@ import Idris.Core.Evaluate
 import Idris.Docstrings (overview, renderDocstring, renderDocTerm)
 import Idris.ErrReverse
 
+import Prelude hiding ((<$>))
+
 import Data.List (intersperse, nub)
 import qualified Data.Text as T
 import Control.Monad.State
