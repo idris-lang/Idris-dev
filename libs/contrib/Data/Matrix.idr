@@ -1,5 +1,7 @@
 module Data.Matrix
 
+import Control.Algebra
+
 import Data.Complex
 import Data.ZZ
 import Data.Fin
@@ -211,14 +213,6 @@ instance Semigroup Nat where
 
 instance Monoid Nat where
   neutral = 0
-
-instance VerifiedSemigroup Nat where
-  semigroupOpIsAssociative = plusAssociative
-
-instance VerifiedMonoid Nat where
-  monoidNeutralIsNeutralL = plusZeroRightNeutral
-  monoidNeutralIsNeutralR = plusZeroLeftNeutral
-
 
 instance Semigroup ZZ where
   (<+>) = (+)

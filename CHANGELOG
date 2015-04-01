@@ -1,3 +1,27 @@
+New in 0.9.18:
+--------------
+* Strings are now UTF8 encoded in the default back end
+* Some reorganisation of primitives:
+  + Buffer and BitVector primitives have been removed (they were not
+    tested sufficiently, and lack a maintainer)
+  + Float has been renamed 'Double' (Float is defined in the Prelude for
+    compatibility)
+  + Externally defined primitives and  operations now supported with 
+    '%extern' directive, allowing back ends to define their own special 
+    purpose primitives
+  + Ptr and ManagedPtr have been removed and replaced with external primitives
+* Add %hint function annotation, which allows functions to be used as
+  hints in proof search for 'auto' arguments. Only functions which return
+  an instance of a data or record type are allowed as hints.
+* Syntax rules no longer perform variable capture. Users of effects will
+  need to explicitly name results in dependent effect signatures instead
+  of using the default name "result".
+* Pattern-matching lambdas are allowed to be impossible. For example,
+  Dec (2 = 3) can now be constructed with No $ \(Refl) impossible, instead of
+  requiring a separate lemma.
+* Case alternatives are allowed to be impossible:
+  case Vect.Nil {a=Nat} of { (x::xs) impossible ; [] => True }
+
 New in 0.9.17:
 --------------
 * The --ideslave command line option has been replaced with a --ide-mode
@@ -40,6 +64,11 @@ New in 0.9.17:
 * Classes can now be annotated with 'determining parameters' to say which
   must be available before resolving instances. Only determining parameters
   are checked when checking for overlapping instances.
+* New package 'contrib' containing things that are less mature or less used
+  than the contents of 'base'. 'contrib' is not available by default, so you
+  may need to add '-p contrib' to your .ipkg file or Idris command line.
+* Arguments to class instances are now checked for injectivity.
+  Unification assumes this, so we need to check when instances are defined.
 
 New in 0.9.16:
 --------------

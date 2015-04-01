@@ -18,6 +18,8 @@ import Idris.Colours
 import System.Console.Haskeline
 import System.IO
 
+import Prelude hiding ((<$>))
+
 import Control.Applicative ((<|>))
 
 import Control.Monad.Trans.State.Strict
@@ -66,27 +68,27 @@ toplevel = EInfo [] emptyContext id Nothing Nothing (\_ _ _ -> fail "Not impleme
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
 
-data IOption = IOption { opt_logLevel   :: Int,
-                         opt_typecase   :: Bool,
-                         opt_typeintype :: Bool,
-                         opt_coverage   :: Bool,
-                         opt_showimp    :: Bool, -- ^^ show implicits
-                         opt_errContext :: Bool,
-                         opt_repl       :: Bool,
-                         opt_verbose    :: Bool,
-                         opt_nobanner   :: Bool,
-                         opt_quiet      :: Bool,
-                         opt_codegen    :: Codegen,
-                         opt_outputTy   :: OutputType,
-                         opt_ibcsubdir  :: FilePath,
-                         opt_importdirs :: [FilePath],
-                         opt_triple     :: String,
-                         opt_cpu        :: String,
-                         opt_cmdline    :: [Opt], -- remember whole command line
-                         opt_origerr    :: Bool,
-                         opt_autoSolve  :: Bool, -- ^ automatically apply "solve" tactic in prover
-                         opt_autoImport :: [FilePath], -- ^ e.g. Builtins+Prelude
-                         opt_optimise   :: [Optimisation]
+data IOption = IOption { opt_logLevel     :: Int,
+                         opt_typecase     :: Bool,
+                         opt_typeintype   :: Bool,
+                         opt_coverage     :: Bool,
+                         opt_showimp      :: Bool, -- ^^ show implicits
+                         opt_errContext   :: Bool,
+                         opt_repl         :: Bool,
+                         opt_verbose      :: Bool,
+                         opt_nobanner     :: Bool,
+                         opt_quiet        :: Bool,
+                         opt_codegen      :: Codegen,
+                         opt_outputTy     :: OutputType,
+                         opt_ibcsubdir    :: FilePath,
+                         opt_importdirs   :: [FilePath],
+                         opt_triple       :: String,
+                         opt_cpu          :: String,
+                         opt_cmdline      :: [Opt], -- remember whole command line
+                         opt_origerr      :: Bool,
+                         opt_autoSolve    :: Bool, -- ^ automatically apply "solve" tactic in prover
+                         opt_autoImport   :: [FilePath], -- ^ e.g. Builtins+Prelude
+                         opt_optimise     :: [Optimisation]
                        }
     deriving (Show, Eq)
 
@@ -151,11 +153,13 @@ data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
                   | ColsWide Int -- ^ Manually specified - must be positive
                   | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
+   deriving (Show, Eq)
+
 
 -- | The global state used in the Idris monad
 data IState = IState {
     tt_ctxt :: Context, -- ^ All the currently defined names and their terms
-    idris_constraints :: [(UConstraint, FC)],
+    idris_constraints :: S.Set ConstraintFC,
       -- ^ A list of universe constraints and their corresponding source locations
     idris_infixes :: [FixDecl], -- ^ Currently defined infix operators
     idris_implicits :: Ctxt [PArg],
@@ -177,6 +181,7 @@ data IState = IState {
     idris_tyinfodata :: Ctxt TIData,
     idris_fninfo :: Ctxt FnInfo,
     idris_transforms :: Ctxt [(Term, Term)],
+    idris_autohints :: Ctxt [Name],
     idris_totcheck :: [(FC, Name)], -- names to check totality on
     idris_defertotcheck :: [(FC, Name)], -- names to check at the end
     idris_totcheckfail :: [(FC, String)],
@@ -224,6 +229,7 @@ data IState = IState {
     module_aliases :: M.Map [T.Text] [T.Text],
     idris_consolewidth :: ConsoleWidth, -- ^ How many chars wide is the console?
     idris_postulates :: S.Set Name,
+    idris_externs :: S.Set (Name, Int),
     idris_erasureUsed :: [(Name, Int)], -- ^ Function/constructor name, argument position is used
     idris_whocalls :: Maybe (M.Map Name [Name]),
     idris_callswho :: Maybe (M.Map Name [Name]),
@@ -298,24 +304,27 @@ data IBCWrite = IBCFix FixDecl
               | IBCErrorHandler Name
               | IBCFunctionErrorHandler Name Name Name
               | IBCPostulate Name
+              | IBCExtern (Name, Int)
               | IBCTotCheckErr FC String
               | IBCParsedRegion FC
               | IBCModDocs Name -- ^ The name is the special name used to track module docs
               | IBCUsage (Name, Int)
               | IBCExport Name
+              | IBCAutoHint Name Name
   deriving Show
 
 -- | The initial state for the compiler
 idrisInit :: IState
-idrisInit = IState initContext [] []
+idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
+                   emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty [] Nothing Nothing [] [] M.empty []
+                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty []
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -467,6 +476,7 @@ data Opt = Filename String
          | ShowOrigErr
          | AutoWidth -- ^ Automatically adjust terminal width
          | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
+         | UseConsoleWidth ConsoleWidth
     deriving (Show, Eq)
 
 -- Parsed declarations
@@ -555,6 +565,7 @@ data FnOpt = Inlinable -- always evaluate when simplifying
            | Reflection -- a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
            | Constructor -- Data constructor type
+           | AutoHint -- use in auto implicit search
     deriving (Show, Eq)
 {-!
 deriving instance Binary FnOpt
@@ -591,7 +602,8 @@ type ProvideWhat = ProvideWhat' PTerm
 data PDecl' t
    = PFix     FC Fixity [String] -- ^ Fixity declaration
    | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
-   | PPostulate (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
+   | PPostulate Bool -- external def if true
+          (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
    | PCAF     FC Name t -- ^ Top level constant
    | PData    (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
@@ -695,7 +707,7 @@ type PClause = PClause' PTerm
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
 declared (PTy _ _ _ _ _ n t) = [n]
-declared (PPostulate _ _ _ _ n t) = [n]
+declared (PPostulate _ _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PCAF _ n _) = [n]
 declared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
@@ -715,7 +727,7 @@ declared (PDirective _) = []
 tldeclared :: PDecl -> [Name]
 tldeclared (PFix _ _ _) = []
 tldeclared (PTy _ _ _ _ _ n t) = [n]
-tldeclared (PPostulate _ _ _ _ n t) = [n]
+tldeclared (PPostulate _ _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
 tldeclared (PRecord _ _ _ n _ _ _ c _) = [n, c]
 tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
@@ -730,7 +742,7 @@ tldeclared _ = []
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
 defined (PTy _ _ _ _ _ n t) = []
-defined (PPostulate _ _ _ _ n t) = []
+defined (PPostulate _ _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PCAF _ n _) = [n]
 defined (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
@@ -1202,6 +1214,9 @@ data SyntaxInfo = Syn { using :: [Using],
                         syn_params :: [(Name, PTerm)],
                         syn_namespace :: [String],
                         no_imp :: [Name],
+                        imp_methods :: [Name], -- class methods. When expanding
+                           -- implicits, these should be expanded even under
+                           -- binders
                         decoration :: Name -> Name,
                         inPattern :: Bool,
                         implicitAllowed :: Bool,
@@ -1215,7 +1230,7 @@ deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] id False False Nothing 0 initDSL 0
+defaultSyntax = Syn [] [] [] [] [] id False False Nothing 0 initDSL 0
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n

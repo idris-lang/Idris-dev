@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Elab.Type (buildType, elabType, elabType', elabPostulate) where
+module Idris.Elab.Type (buildType, elabType, elabType', 
+                        elabPostulate, elabExtern) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -57,13 +58,13 @@ buildType info syn fc opts n ty' = do
          ctxt <- getContext
          i <- getIState
 
-         logLvl 3 $ show n ++ " pre-type " ++ showTmImpls ty'
+         logLvl 2 $ show n ++ " pre-type " ++ showTmImpls ty' ++ show (no_imp syn)
          ty' <- addUsingConstraints syn fc ty'
          ty' <- addUsingImpls syn n fc ty'
-         let ty = addImpl i ty'
+         let ty = addImpl (imp_methods syn) i ty'
 
-         logLvl 3 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
-         logLvl 3 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
+         logLvl 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
+         logLvl 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
          (ElabResult tyT' defer is ctxt' newDecls, log) <-
             tclift $ elaborate ctxt n (TType (UVal 0)) initEState
@@ -75,7 +76,7 @@ buildType info syn fc opts n ty' = do
 
          logLvl 3 $ show ty ++ "\nElaborated: " ++ show tyT'
 
-         ds <- checkAddDef True False fc defer
+         ds <- checkAddDef True False fc iderr defer
          -- if the type is not complete, note that we'll need to infer
          -- things later (for solving metavariables)
          when (not (null ds)) $ addTyInferred n
@@ -85,7 +86,7 @@ buildType info syn fc opts n ty' = do
          logLvl 5 $ "Rechecking"
          logLvl 6 $ show tyT
          logLvl 10 $ "Elaborated to " ++ showEnvDbg [] tyT
-         (cty, ckind)   <- recheckC fc [] tyT
+         (cty, ckind)   <- recheckC fc id [] tyT
 
          -- record the implicit and inaccessible arguments
          i <- getIState
@@ -145,8 +146,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
            addInternalApp (fc_fname fc) (fst . fc_start $ fc) ty' -- (mergeTy ty' (delab i nty')) -- TODO: Should use span instead of line and filename?
            addIBC (IBCLineApp (fc_fname fc) (fst . fc_start $ fc) ty') -- (mergeTy ty' (delab i nty')))
 
-         let (t, _) = unApply (getRetTy nty')
-         let corec = case t of
+         let (fam, _) = unApply (getRetTy nty')
+         let corec = case fam of
                         P _ rcty _ -> case lookupCtxt rcty (idris_datatypes i) of
                                         [TI _ True _ _ _] -> True
                                         _ -> False
@@ -154,9 +155,9 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          -- Productivity checking now via checking for guarded 'Delay' 
          let opts' = opts -- if corec then (Coinductive : opts) else opts
          let usety = if norm then nty' else nty
-         ds <- checkDef fc [(n, (-1, Nothing, usety))]
+         ds <- checkDef fc iderr [(n, (-1, Nothing, usety))]
          addIBC (IBCDef n)
-         let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+         let ds' = map (\(n, (i, top, fam)) -> (n, (i, top, fam, True))) ds
          addDeferred ds'
          setFlags n opts'
          checkDocs fc argDocs ty
@@ -170,6 +171,11 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          addIBC (IBCOpt n)
          when (Implicit `elem` opts') $ do addCoercion n
                                            addIBC (IBCCoercion n)
+         when (AutoHint `elem` opts') $ 
+             case fam of
+                P _ tyn _ -> do addAutoHint tyn n
+                                addIBC (IBCAutoHint tyn n)
+                t -> ifail $ "Hints must return a data or record type"
 
          -- If the function is declared as an error handler and the language
          -- extension is enabled, then add it to the list of error handlers.
@@ -225,6 +231,19 @@ elabPostulate info syn doc fc opts n ty = do
     elabType info syn doc [] fc opts n ty
     putIState . (\ist -> ist{ idris_postulates = S.insert n (idris_postulates ist) }) =<< getIState
     addIBC (IBCPostulate n)
+
+    -- remove it from the deferred definitions list
+    solveDeferred n
+
+elabExtern :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
+                 FC -> FnOpts -> Name -> PTerm -> Idris ()
+elabExtern info syn doc fc opts n ty = do
+    cty <- elabType info syn doc [] fc opts n ty
+    ist <- getIState
+    let arity = length (getArgTys (normalise (tt_ctxt ist) [] cty))
+
+    putIState . (\ist -> ist{ idris_externs = S.insert (n, arity) (idris_externs ist) }) =<< getIState
+    addIBC (IBCExtern (n, arity))
 
     -- remove it from the deferred definitions list
     solveDeferred n

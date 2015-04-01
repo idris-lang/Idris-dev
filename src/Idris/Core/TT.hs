@@ -158,6 +158,7 @@ data Err' t
           | NotInjective t t t
           | CantResolve Bool -- True if postponed, False if fatal
                         t
+          | InvalidTCArg Name t
           | CantResolveAlts [Name]
           | IncompleteTerm t
           | NoEliminator String t
@@ -524,7 +525,6 @@ instance Pretty NativeTy OutputAnnotation where
     pretty IT64 = text "Bits64"
 
 data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
-           | ITVec NativeTy Int
     deriving (Show, Eq, Ord, Data, Typeable)
 
 intTyName :: IntTy -> String
@@ -532,7 +532,6 @@ intTyName ITNative = "Int"
 intTyName ITBig = "BigInt"
 intTyName (ITFixed sized) = "B" ++ show (nativeTyWidth sized)
 intTyName (ITChar) = "Char"
-intTyName (ITVec ity count) = "B" ++ show (nativeTyWidth ity) ++ "x" ++ show count
 
 data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors https://github.com/idris-lang/Idris-dev/issues/1723
     deriving (Show, Eq, Ord, Data, Typeable)
@@ -547,7 +546,6 @@ instance Pretty ArithTy OutputAnnotation where
     pretty (ATInt ITBig) = text "BigInt"
     pretty (ATInt ITChar) = text "Char"
     pretty (ATInt (ITFixed n)) = pretty n
-    pretty (ATInt (ITVec e c)) = pretty e <> text "x" <> (text . show $ c)
     pretty ATFloat = text "Float"
 
 nativeTyWidth :: NativeTy -> Int
@@ -565,11 +563,9 @@ intTyWidth ITBig = error "IRTS.Lang.intTyWidth: Big integers have variable width
 
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B8 Word8 | B16 Word16 | B32 Word32 | B64 Word64
-           | B8V (Vector Word8) | B16V (Vector Word16)
-           | B32V (Vector Word32) | B64V (Vector Word64)
            | AType ArithTy | StrType
            | WorldType | TheWorld
-           | PtrType | ManagedPtrType | BufferType | VoidType | Forgot
+           | VoidType | Forgot
   deriving (Eq, Ord, Data, Typeable)
 {-!
 deriving instance Binary Const
@@ -579,10 +575,7 @@ deriving instance NFData Const
 isTypeConst :: Const -> Bool
 isTypeConst (AType _) = True
 isTypeConst StrType = True
-isTypeConst ManagedPtrType = True
-isTypeConst BufferType = True
 isTypeConst WorldType = True
-isTypeConst PtrType = True
 isTypeConst VoidType = True
 isTypeConst _ = False
 
@@ -599,9 +592,6 @@ instance Pretty Const OutputAnnotation where
   pretty StrType = text "String"
   pretty TheWorld = text "%theWorld"
   pretty WorldType = text "prim__World"
-  pretty BufferType = text "prim__UnsafeBuffer"
-  pretty PtrType = text "Ptr"
-  pretty ManagedPtrType = text "Ptr"
   pretty VoidType = text "Void"
   pretty Forgot = text "Forgot"
   pretty (B8 w) = text . show $ w
@@ -620,10 +610,6 @@ constIsType (B8 _) = False
 constIsType (B16 _) = False
 constIsType (B32 _) = False
 constIsType (B64 _) = False
-constIsType (B8V _) = False
-constIsType (B16V _) = False
-constIsType (B32V _) = False
-constIsType (B64V _) = False
 constIsType _ = True
 
 -- | Get the docstring for a Const
@@ -633,17 +619,10 @@ constDocs c@(AType (ATInt ITNative))       = "Fixed-precision integers of undefi
 constDocs c@(AType (ATInt ITChar))         = "Characters in some unspecified encoding"
 constDocs c@(AType ATFloat)                = "Double-precision floating-point numbers"
 constDocs StrType                          = "Strings in some unspecified encoding"
-constDocs PtrType                          = "Foreign pointers"
-constDocs ManagedPtrType                   = "Managed pointers"
-constDocs BufferType                       = "Copy-on-write buffers"
 constDocs c@(AType (ATInt (ITFixed IT8)))  = "Eight bits (unsigned)"
 constDocs c@(AType (ATInt (ITFixed IT16))) = "Sixteen bits (unsigned)"
 constDocs c@(AType (ATInt (ITFixed IT32))) = "Thirty-two bits (unsigned)"
 constDocs c@(AType (ATInt (ITFixed IT64))) = "Sixty-four bits (unsigned)"
-constDocs c@(AType (ATInt (ITVec IT8 16))) = "Vectors of sixteen eight-bit values"
-constDocs c@(AType (ATInt (ITVec IT16 8))) = "Vectors of eight sixteen-bit values"
-constDocs c@(AType (ATInt (ITVec IT32 4))) = "Vectors of four thirty-two-bit values"
-constDocs c@(AType (ATInt (ITVec IT64 2))) = "Vectors of two sixty-four-bit values"
 constDocs (Fl f)                           = "A float"
 constDocs (I i)                            = "A fixed-precision integer"
 constDocs (BI i)                           = "An arbitrary-precision integer"
@@ -657,10 +636,6 @@ constDocs (B32 w)                          = "The thirty-two-bit value 0x" ++
                                              showIntAtBase 16 intToDigit w ""
 constDocs (B64 w)                          = "The sixty-four-bit value 0x" ++
                                              showIntAtBase 16 intToDigit w ""
-constDocs (B8V v)                          = "A vector of eight-bit values"
-constDocs (B16V v)                         = "A vector of sixteen-bit values"
-constDocs (B32V v)                         = "A vector of thirty-two-bit values"
-constDocs (B64V v)                         = "A vector of sixty-four-bit values"
 constDocs prim                             = "Undocumented"
 
 data Universe = NullType | UniqueType | AllTypes
@@ -782,14 +757,6 @@ deriving instance NFData UExp
 instance Sized UExp where
   size _ = 1
 
--- We assume that universe levels have been checked, so anything external
--- can just have the same universe variable and we won't get any new
--- cycles.
-
-instance Binary UExp where
-    put x = return ()
-    get = return (UVar (-1))
-
 instance Show UExp where
     show (UVar x) | x < 26 = [toEnum (x + fromEnum 'a')]
                   | otherwise = toEnum ((x `mod` 26) + fromEnum 'a') : show (x `div` 26)
@@ -800,6 +767,16 @@ instance Show UExp where
 data UConstraint = ULT UExp UExp -- ^ Strictly less than
                  | ULE UExp UExp -- ^ Less than or equal to
   deriving (Eq, Ord)
+
+data ConstraintFC = ConstraintFC { uconstraint :: UConstraint,
+                                   ufc :: FC }
+  deriving Show
+
+instance Eq ConstraintFC where
+    x == y = uconstraint x == uconstraint y  
+
+instance Ord ConstraintFC where
+    compare x y = compare (uconstraint x) (uconstraint y)
 
 instance Show UConstraint where
     show (ULT x y) = show x ++ " < " ++ show y
@@ -1171,17 +1148,35 @@ unList tm = case unApply tm of
 forget :: TT Name -> Raw
 forget tm = forgetEnv [] tm
 
+safeForget :: TT Name -> Maybe Raw
+safeForget tm = safeForgetEnv [] tm
+
 forgetEnv :: [Name] -> TT Name -> Raw
-forgetEnv env (P _ n _) = Var n
-forgetEnv env (V i)     = Var (env !! i)
-forgetEnv env (Bind n b sc) = let n' = uniqueName n env in
-                                  RBind n' (fmap (forgetEnv env) b)
-                                           (forgetEnv (n':env) sc)
-forgetEnv env (App f a) = RApp (forgetEnv env f) (forgetEnv env a)
-forgetEnv env (Constant c) = RConstant c
-forgetEnv env (TType i) = RType
-forgetEnv env (UType u) = RUType u
-forgetEnv env Erased    = RConstant Forgot
+forgetEnv env tm = case safeForgetEnv env tm of
+                     Just t' -> t'
+                     Nothing -> error $ "Scope error in " ++ show tm
+
+
+safeForgetEnv :: [Name] -> TT Name -> Maybe Raw
+safeForgetEnv env (P _ n _) = Just $ Var n
+safeForgetEnv env (V i) | i < length env = Just $ Var (env !! i)
+                        | otherwise = Nothing 
+safeForgetEnv env (Bind n b sc) 
+     = do let n' = uniqueName n env
+          b' <- safeForgetEnvB env b
+          sc' <- safeForgetEnv (n':env) sc
+          Just $ RBind n' b' sc'
+  where safeForgetEnvB env (Let t v) = liftM2 Let (safeForgetEnv env t) 
+                                                  (safeForgetEnv env v)
+        safeForgetEnvB env (Guess t v) = liftM2 Guess (safeForgetEnv env t) 
+                                                      (safeForgetEnv env v)
+        safeForgetEnvB env b = do ty' <- safeForgetEnv env (binderTy b)
+                                  Just $ fmap (\_ -> ty') b 
+safeForgetEnv env (App f a) = liftM2 RApp (safeForgetEnv env f) (safeForgetEnv env a)
+safeForgetEnv env (Constant c) = Just $ RConstant c
+safeForgetEnv env (TType i) = Just RType
+safeForgetEnv env (UType u) = Just $ RUType u
+safeForgetEnv env Erased    = Just $ RConstant Forgot
 
 -- | Introduce a 'Bind' into the given term for each element of the
 -- given list of (name, binder) pairs.
@@ -1283,22 +1278,14 @@ instance Show Const where
     show (B16 x) = show x
     show (B32 x) = show x
     show (B64 x) = show x
-    show (B8V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
-    show (B16V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
-    show (B32V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
-    show (B64V x) = "<" ++ intercalate "," (map show (V.toList x)) ++ ">"
     show (AType ATFloat) = "Float"
     show (AType (ATInt ITBig)) = "Integer"
     show (AType (ATInt ITNative)) = "Int"
     show (AType (ATInt ITChar)) = "Char"
     show (AType (ATInt (ITFixed it))) = itBitsName it
-    show (AType (ATInt (ITVec it c))) = itBitsName it ++ "x" ++ show c
     show TheWorld = "prim__TheWorld"
     show WorldType = "prim__WorldType"
     show StrType = "String"
-    show BufferType = "prim__UnsafeBuffer"
-    show PtrType = "Ptr"
-    show ManagedPtrType = "ManagedPtr"
     show VoidType = "Void"
 
 showEnv :: (Eq n, Show n) => EnvTT n -> TT n -> String

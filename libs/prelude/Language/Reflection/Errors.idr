@@ -29,6 +29,7 @@ data Err = Msg String
          | NoTypeDecl TTName
          | NotInjective TT TT TT
          | CantResolve TT
+         | InvalidTCArg TTName TT
          | CantResolveAlts (List TTName)
          | IncompleteTerm TT
          | NoEliminator String TT

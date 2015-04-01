@@ -113,10 +113,6 @@ constTy (B8 _) = "Bits8"
 constTy (B16 _) = "Bits16"
 constTy (B32 _) = "Bits32"
 constTy (B64 _) = "Bits64"
-constTy (B8V _) = "Bits8x16"
-constTy (B16V _) = "Bits16x8"
-constTy (B32V _) = "Bits32x4"
-constTy (B64V _) = "Bits64x2"
 constTy _ = "Type"
 
 instance SExpable OutputAnnotation where

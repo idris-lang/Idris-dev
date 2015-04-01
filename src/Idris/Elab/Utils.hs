@@ -24,30 +24,36 @@ import qualified Data.Map as Map
 
 recheckC = recheckC_borrowing False []
 
-recheckC_borrowing uniq_check bs fc env t
+recheckC_borrowing uniq_check bs fc mkerr env t
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
          ctxt <- getContext
-         (tm, ty, cs) <- tclift $ case recheck_borrowing uniq_check bs ctxt env (forget t) t of
-                                   Error e -> tfail (At fc e)
+         t' <- case safeForget t of
+                    Just ft -> return ft
+                    Nothing -> tclift $ tfail $ mkerr (At fc (IncompleteTerm t))
+         (tm, ty, cs) <- tclift $ case recheck_borrowing uniq_check bs ctxt env t' t of
+                                   Error e -> tfail (At fc (mkerr e))
                                    OK x -> return x
          logLvl 6 $ "CONSTRAINTS ADDED: " ++ show cs
          addConstraints fc cs
          return (tm, ty)
 
-checkDef :: FC -> [(Name, (Int, Maybe Name, Type))]
-         -> Idris [(Name, (Int, Maybe Name, Type))]
-checkDef fc ns = checkAddDef False True fc ns
+iderr :: Name -> Err -> Err
+iderr _ e = e
 
-checkAddDef :: Bool -> Bool -> FC
+checkDef :: FC -> (Name -> Err -> Err) -> [(Name, (Int, Maybe Name, Type))]
+         -> Idris [(Name, (Int, Maybe Name, Type))]
+checkDef fc mkerr ns = checkAddDef False True fc mkerr ns
+
+checkAddDef :: Bool -> Bool -> FC -> (Name -> Err -> Err)
             -> [(Name, (Int, Maybe Name, Type))]
             -> Idris [(Name, (Int, Maybe Name, Type))]
-checkAddDef add toplvl fc [] = return []
-checkAddDef add toplvl fc ((n, (i, top, t)) : ns) 
+checkAddDef add toplvl fc mkerr [] = return []
+checkAddDef add toplvl fc mkerr ((n, (i, top, t)) : ns) 
                = do ctxt <- getContext
-                    (t', _) <- recheckC fc [] t
+                    (t', _) <- recheckC fc (mkerr n) [] t
                     when add $ do addDeferred [(n, (i, top, t, toplvl))]
                                   addIBC (IBCDef n)
-                    ns' <- checkAddDef add toplvl fc ns
+                    ns' <- checkAddDef add toplvl fc mkerr ns
                     return ((n, (i, top, t')) : ns')
 
 -- | Get the list of (index, name) of inaccessible arguments from an elaborated

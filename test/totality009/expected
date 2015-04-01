@@ -1,0 +1,8 @@
+TestLambdaPossible.idr:9:25:Warning - TestLambdaPossible.case block in wrongPossible is not total as there are missing cases
+TestLambdaPossible.idr:9:1:Warning - TestLambdaPossible.wrongPossible is possibly not total due to: TestLambdaPossible.case block in wrongPossible
+TestLambdaPossible.idr:12:25:Warning - TestLambdaPossible.case block in wrongPossible' is not total as there are missing cases
+TestLambdaPossible.idr:12:1:Warning - TestLambdaPossible.wrongPossible' is possibly not total due to: TestLambdaPossible.case block in wrongPossible'
+TestLambdaPossible.idr:9:15:Warning - TestLambdaPossible.case block in wrongPossible is not total as there are missing cases
+TestLambdaPossible.idr:9:1:Warning - TestLambdaPossible.wrongPossible is possibly not total due to: TestLambdaPossible.case block in wrongPossible
+TestLambdaPossible.idr:12:16:Warning - TestLambdaPossible.case block in wrongPossible' is not total as there are missing cases
+TestLambdaPossible.idr:12:1:Warning - TestLambdaPossible.wrongPossible' is possibly not total due to: TestLambdaPossible.case block in wrongPossible'

@@ -46,7 +46,7 @@ searchByType pkgs pterm = do
   mapM_ loadPkgIndex pkgs
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn name pterm'
-  let pterm'''  = addImpl i pterm''
+  let pterm'''  = addImpl [] i pterm''
   ty <- elabType toplevel syn (fst noDocs) (snd noDocs) emptyFC [] name pterm'
   let names = searchUsing searchPred i ty
   let names' = take numLimit names

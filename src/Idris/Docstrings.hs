@@ -15,6 +15,8 @@ import Util.Pretty
 
 import Idris.Core.TT (OutputAnnotation(..), TextFormatting(..), Name, Term, Err)
 
+import Prelude hiding ((<$>))
+
 import qualified Data.Text as T
 import qualified Data.Foldable as F
 import Data.Foldable (Foldable)

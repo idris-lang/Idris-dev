@@ -1,9 +1,6 @@
 module Main
 
 -- Simple test case for type provider documentation.
-
-import Providers
-
 %language TypeProviders
 
 getType : Int -> IO (Provider Type)

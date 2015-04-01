@@ -1,5 +1,7 @@
 module Prelude.Cast
 
+import public Builtins
+
 ||| Type class for transforming a instance of a data type to another type.
 class Cast from to where
     ||| Perform a cast operation.

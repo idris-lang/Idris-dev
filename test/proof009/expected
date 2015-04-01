@@ -1,0 +1,26 @@
+Type checking ./proof009.idr
+
+
+----------                 Goal:                  ----------
+{hole0} : Int -> Int -> Int
+-Main.arhs> ----------              Other goals:              ----------
+{hole0}
+----------              Assumptions:              ----------
+ x : Int
+----------                 Goal:                  ----------
+{hole1} : Int -> Int
+-Main.arhs> ----------              Other goals:              ----------
+{hole1},{hole0}
+----------              Assumptions:              ----------
+ x : Int
+ y : Int
+----------                 Goal:                  ----------
+{hole2} : Int
+-Main.arhs> arhs: No more goals.
+-Main.arhs> Proof completed!
+Main.arhs = proof
+  intro x
+  intros
+  trivial
+
+

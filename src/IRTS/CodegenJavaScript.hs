@@ -473,7 +473,6 @@ translateConstant StrType                  = JSType JSStringTy
 translateConstant (AType (ATInt ITBig))    = JSType JSIntegerTy
 translateConstant (AType ATFloat)          = JSType JSFloatTy
 translateConstant (AType (ATInt ITChar))   = JSType JSCharTy
-translateConstant PtrType                  = JSType JSPtrTy
 translateConstant Forgot                   = JSType JSForgotTy
 translateConstant (BI 0)                   = JSNum (JSInteger JSBigZero)
 translateConstant (BI 1)                   = JSNum (JSInteger JSBigOne)
@@ -1269,7 +1268,8 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
 
       | LSystemInfo <- op
       , (arg:_) <- args = jsCall "i$systemInfo"  [translateReg arg]
-      | LNullPtr    <- op
+      | LExternal nul <- op
+      , nul == sUN "prim__null"
       , (_)         <- args = JSNull
       | otherwise = JSError $ "Not implemented: " ++ show op
         where

@@ -234,6 +234,14 @@ internalExpr syn =
      <|> app syn
      <?> "expression"
 
+{- | Parses the "impossible" keyword
+@
+Impossible ::= 'impossible'
+@
+-}
+impossible :: IdrisParser PTerm
+impossible = PImpossible <$ reserved "impossible"
+
 {- | Parses a case expression
 @
 CaseExpr ::=
@@ -250,13 +258,13 @@ caseExpr syn = do reserved "case"; fc <- getFC
 {- | Parses a case in a case expression
 @
 CaseOption ::=
-  Expr '=>' Expr Terminator
+  Expr (Impossible | '=>' Expr) Terminator
   ;
 @
 -}
 caseOption :: SyntaxInfo -> IdrisParser (PTerm, PTerm)
 caseOption syn = do lhs <- expr (syn { inPattern = True })
-                    symbol "=>"; r <- expr syn
+                    r <- impossible <|> symbol "=>" *> expr syn
                     return (lhs, r)
                  <?> "case option"
 
@@ -732,8 +740,8 @@ typeExpr syn = do cs <- if implicitAllowed syn then constraintList syn else retu
 {- | Parses a lambda expression
 @
 Lambda ::=
-    '\\' TypeOptDeclList '=>' Expr
-  | '\\' SimpleExprList  '=>' Expr
+    '\\' TypeOptDeclList LambdaTail
+  | '\\' SimpleExprList  LambdaTail
   ;
 @
 @
@@ -742,27 +750,34 @@ SimpleExprList ::=
   | SimpleExpr ',' SimpleExprList
   ;
 @
+@
+LambdaTail ::=
+    Impossible
+  | '=>' Expr
+@
 -}
 lambda :: SyntaxInfo -> IdrisParser PTerm
 lambda syn = do lchar '\\' <?> "lambda expression"
-                (do xt <- try $ tyOptDeclList syn
-                    fc <- getFC
-                    symbol "=>"
-                    sc <- expr syn
-                    return (bindList (PLam fc) xt sc)) <|> do
-                      ps <- sepBy (do fc <- getFC
-                                      e <- simpleExpr (syn { inPattern = True })
-                                      return (fc, e)) (lchar ',')
-                      symbol "=>"
-                      sc <- expr syn
-                      return (pmList (zip [0..] ps) sc)
-                 <?> "lambda expression"
+                ((do xt <- try $ tyOptDeclList syn
+                     fc <- getFC
+                     sc <- lambdaTail
+                     return (bindList (PLam fc) xt sc))
+                 <|>
+                 (do ps <- sepBy (do fc <- getFC
+                                     e <- simpleExpr (syn { inPattern = True })
+                                     return (fc, e))
+                                 (lchar ',')
+                     sc <- lambdaTail
+                     return (pmList (zip [0..] ps) sc)))
+                  <?> "lambda expression"
     where pmList :: [(Int, (FC, PTerm))] -> PTerm -> PTerm
           pmList [] sc = sc
           pmList ((i, (fc, x)) : xs) sc
                 = PLam fc (sMN i "lamp") Placeholder
                         (PCase fc (PRef fc (sMN i "lamp"))
                                 [(x, pmList xs sc)])
+          lambdaTail :: IdrisParser PTerm
+          lambdaTail = impossible <|> symbol "=>" *> expr syn
 
 {- | Parses a term rewrite expression
 @
@@ -1156,21 +1171,16 @@ constants =
   [ ("Integer",            AType (ATInt ITBig))
   , ("Int",                AType (ATInt ITNative))
   , ("Char",               AType (ATInt ITChar))
-  , ("Float",              AType ATFloat)
+  , ("Double",             AType ATFloat)
   , ("String",             StrType)
-  , ("Ptr",                PtrType)
-  , ("ManagedPtr",         ManagedPtrType)
+--   , ("Ptr",                PtrType)
+--   , ("ManagedPtr",         ManagedPtrType)
   , ("prim__WorldType",    WorldType)
   , ("prim__TheWorld",     TheWorld)
-  , ("prim__UnsafeBuffer", BufferType)
   , ("Bits8",              AType (ATInt (ITFixed IT8)))
   , ("Bits16",             AType (ATInt (ITFixed IT16)))
   , ("Bits32",             AType (ATInt (ITFixed IT32)))
   , ("Bits64",             AType (ATInt (ITFixed IT64)))
-  , ("Bits8x16",           AType (ATInt (ITVec IT8 16)))
-  , ("Bits16x8",           AType (ATInt (ITVec IT16 8)))
-  , ("Bits32x4",           AType (ATInt (ITVec IT32 4)))
-  , ("Bits64x2",           AType (ATInt (ITVec IT64 2)))
   ]
  
 constant :: IdrisParser Idris.Core.TT.Const

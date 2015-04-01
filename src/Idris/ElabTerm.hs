@@ -29,8 +29,6 @@ import qualified Data.Map as M
 import Data.Maybe (mapMaybe, fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Data.Vector.Unboxed (Vector)
-import qualified Data.Vector.Unboxed as V
 
 import Debug.Trace
 
@@ -53,17 +51,16 @@ data ElabResult =
 processTacticDecls :: [RDeclInstructions] -> Idris ()
 processTacticDecls info =
   forM_ info $ \case
-    RTyDeclInstrs n fc impls ty -> 
+    RTyDeclInstrs n fc impls ty ->
       do logLvl 3 $ "Declaration from tactics: " ++ show n ++ " : " ++ show ty
          logLvl 3 $ "  It has impls " ++ show impls
          updateIState $ \i -> i { idris_implicits =
                                     addDef n impls (idris_implicits i) }
          addIBC (IBCImp n)
-         ds <- checkDef fc [(n, (-1, Nothing, ty))]
+         ds <- checkDef fc (\_ e -> e) [(n, (-1, Nothing, ty))]
          addIBC (IBCDef n)
          let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
          addDeferred ds'
-
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
@@ -121,9 +118,9 @@ build ist info emode opts fn tm
                                      if inf then return ()
                                             else lift (Error e)
 
-         when tydecl (do update_term orderPats
-                         mkPat)
---                          update_term liftPats)
+         when tydecl (do mkPat
+                         update_term liftPats
+                         update_term orderPats)
          EState is _ impls <- getAux
          tt <- get_term
          let (tm, ds) = runState (collectDeferred (Just fn) tt) []
@@ -293,26 +290,29 @@ elab ist info emode opts fn tm
         --trace ("ELAB " ++ show t') $
         let fc = fileFC "Force"
         env <- get_env
-        handleError (forceErr env)
+        handleError (forceErr t' env)
             (elab' ina fc' t')
             (elab' ina fc' (PApp fc (PRef fc (sUN "Force"))
                              [pimp (sUN "t") Placeholder True,
                               pimp (sUN "a") Placeholder True,
                               pexp ct])) True
 
-    forceErr env (CantUnify _ (t,_) (t',_) _ _ _)
+    forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
-            ht == txt "Lazy'" = True
-    forceErr env (CantUnify _ (t,_) (t',_) _ _ _)
+            ht == txt "Lazy'" = notDelay orig
+    forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t'),
-            ht == txt "Lazy'" = True
-    forceErr env (InfiniteUnify _ t _)
+            ht == txt "Lazy'" = notDelay orig
+    forceErr orig env (InfiniteUnify _ t _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
-            ht == txt "Lazy'" = True
-    forceErr env (Elaborating _ _ t) = forceErr env t
-    forceErr env (ElaboratingArg _ _ _ t) = forceErr env t
-    forceErr env (At _ t) = forceErr env t
-    forceErr env t = False
+            ht == txt "Lazy'" = notDelay orig
+    forceErr orig env (Elaborating _ _ t) = forceErr orig env t
+    forceErr orig env (ElaboratingArg _ _ _ t) = forceErr orig env t
+    forceErr orig env (At _ t) = forceErr orig env t
+    forceErr orig env t = False
+
+    notDelay t@(PApp _ (PRef _ (UN l)) _) | l == txt "Delay" = False
+    notDelay _ = True
 
     local f = do e <- get_env
                  return (f `elem` map fst e)
@@ -321,7 +321,6 @@ elab ist info emode opts fn tm
     constType :: Const -> Bool
     constType (AType _) = True
     constType StrType = True
-    constType PtrType = True
     constType VoidType = True
     constType _ = False
 
@@ -477,7 +476,7 @@ elab ist info emode opts fn tm
                                _ -> True
            -- this is to stop us resolve type classes recursively
              -- trace (show (n, guarded)) $
-             if (tcname n && ina) then erun fc $ do patvar n; -- update_term liftPats
+             if (tcname n && ina) then erun fc $ do patvar n; update_term liftPats
                else if (defined && not guarded)
                        then do apply (Var n) []; solve
                        else try (do apply (Var n) []; solve)
@@ -503,6 +502,7 @@ elab ist info emode opts fn tm
                   if null a'
                      then erun fc $ do apply (Var n) []; solve
                      else elab' ina fc' (PApp fc tm [])
+    elab' ina _ (PLam _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
     elab' ina _ (PLam fc n Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
@@ -807,10 +807,10 @@ elab ist info emode opts fn tm
                      Just b ->
                        case unApply (binderTy b) of
                             (P _ c _, args) ->
-                                case lookupCtxt c (idris_classes ist) of
-                                   [] -> return ()
-                                   _ -> -- type class, set as injective
-                                        do mapM_ setinjArg args
+                                case lookupCtxtExact c (idris_classes ist) of
+                                   Nothing -> return ()
+                                   Just ci -> -- type class, set as injective
+                                        do mapM_ setinjArg (getDets 0 (class_determiners ci) args)
                                         -- maybe we can solve more things now...
                                            ulog <- getUnifyLog
                                            probs <- get_probs
@@ -822,6 +822,10 @@ elab ist info emode opts fn tm
 
             setinjArg (P _ n _) = setinj n
             setinjArg _ = return ()
+
+            getDets i ds [] = []
+            getDets i ds (a : as) | i `elem` ds = a : getDets (i + 1) ds as
+                                  | otherwise = getDets (i + 1) ds as
 
             tacTm (PTactics _) = True
             tacTm (PProof _) = True
@@ -1377,9 +1381,12 @@ findInstances :: IState -> Term -> [Name]
 findInstances ist t
     | (P _ n _, _) <- unApply t
         = case lookupCtxt n (idris_classes ist) of
-            [CI _ _ _ _ _ ins _] -> ins
+            [CI _ _ _ _ _ ins _] -> filter accessible ins
             _ -> []
     | otherwise = []
+  where accessible n = case lookupDefAccExact n False (tt_ctxt ist) of
+                            Just (_, Hidden) -> False
+                            _ -> True
 
 -- Try again to solve auto implicits
 solveAuto :: IState -> Name -> Bool -> Name -> ElabD ()
@@ -1732,7 +1739,8 @@ runTac autoSolve ist perhapsFC fn tac
         bname _ = Nothing
     runT (Intro xs) = mapM_ (\x -> do attack; intro (Just x)) xs
     runT Intros = do g <- goal
-                     attack; intro (bname g)
+                     attack; 
+                     intro (bname g)
                      try' (runT Intros)
                           (return ()) True
       where
@@ -2167,7 +2175,6 @@ reifyTTBinderApp _ f args = fail ("Unknown reflection binder: " ++ show (f, args
 
 reifyTTConst :: Term -> ElabD Const
 reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
-reifyTTConst (P _ n _) | n == reflm "PtrType"  = return $ PtrType
 reifyTTConst (P _ n _) | n == reflm "VoidType" = return $ VoidType
 reifyTTConst (P _ n _) | n == reflm "Forgot"   = return $ Forgot
 reifyTTConst t@(App _ _)
@@ -2214,8 +2221,6 @@ reifyIntTy (App (P _ n _) nt) | n == reflm "ITFixed" = fmap ITFixed (reifyNative
 reifyIntTy (P _ n _) | n == reflm "ITNative" = return ITNative
 reifyIntTy (P _ n _) | n == reflm "ITBig" = return ITBig
 reifyIntTy (P _ n _) | n == reflm "ITChar" = return ITChar
-reifyIntTy (App (App (P _ n _) nt) (Constant (I i))) | n == reflm "ITVec" = fmap (flip ITVec i)
-                                                                                 (reifyNativeTy nt)
 reifyIntTy tm = fail $ "The term " ++ show tm ++ " is not a reflected IntTy"
 
 reifyTTUExp :: Term -> ElabD UExp
@@ -2583,10 +2588,6 @@ reflectConstant c@(B8 _) = reflCall "B8" [RConstant c]
 reflectConstant c@(B16 _) = reflCall "B16" [RConstant c]
 reflectConstant c@(B32 _) = reflCall "B32" [RConstant c]
 reflectConstant c@(B64 _) = reflCall "B64" [RConstant c]
-reflectConstant (B8V ws) = reflCall "B8V" [mkList (Var (sUN "Bits8")) . map (RConstant . B8) . V.toList $ ws]
-reflectConstant (B16V ws) = reflCall "B8V" [mkList (Var (sUN "Bits16")) . map (RConstant . B16) . V.toList $ ws]
-reflectConstant (B32V ws) = reflCall "B8V" [mkList (Var (sUN "Bits32")) . map (RConstant . B32) . V.toList $ ws]
-reflectConstant (B64V ws) = reflCall "B8V" [mkList (Var (sUN "Bits64")) . map (RConstant . B64) . V.toList $ ws]
 reflectConstant (AType (ATInt ITNative)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITNative")]]
 reflectConstant (AType (ATInt ITBig)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITBig")]]
 reflectConstant (AType ATFloat) = reflCall "AType" [Var (reflm "ATFloat")]
@@ -2596,13 +2597,6 @@ reflectConstant (AType (ATInt (ITFixed IT8)))  = reflCall "AType" [reflCall "ATI
 reflectConstant (AType (ATInt (ITFixed IT16))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT16")]]]
 reflectConstant (AType (ATInt (ITFixed IT32))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT32")]]]
 reflectConstant (AType (ATInt (ITFixed IT64))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT64")]]]
-reflectConstant (AType (ATInt (ITVec IT8 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT8"), RConstant (I c)]]]
-reflectConstant (AType (ATInt (ITVec IT16 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT16"), RConstant (I c)]]]
-reflectConstant (AType (ATInt (ITVec IT32 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT32"), RConstant (I c)]]]
-reflectConstant (AType (ATInt (ITVec IT64 c))) = reflCall "AType" [reflCall "ATInt" [reflCall "ITVec" [Var (reflm "IT64"), RConstant (I c)]]]
-reflectConstant PtrType = Var (reflm "PtrType")
-reflectConstant ManagedPtrType = Var (reflm "ManagedPtrType")
-reflectConstant BufferType = Var (reflm "BufferType")
 reflectConstant VoidType = Var (reflm "VoidType")
 reflectConstant Forgot = Var (reflm "Forgot")
 reflectConstant WorldType = Var (reflm "WorldType")
@@ -2713,6 +2707,7 @@ reflectErr (NotInjective t1 t2 t3) =
             , reflect t3
             ]
 reflectErr (CantResolve _ t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
+reflectErr (InvalidTCArg n t) = raw_apply (Var $ reflErrName "InvalidTCArg") [reflectName n, reflect t]
 reflectErr (CantResolveAlts ss) =
   raw_apply (Var $ reflErrName "CantResolveAlts")
             [rawList (Var $ reflm "TTName") (map reflectName ss)]

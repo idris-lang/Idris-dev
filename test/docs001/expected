@@ -1,5 +1,5 @@
 Type checking ./docs001.idr
-*docs001> Type class C
+Type class C
     class
 
 Parameters:
@@ -15,4 +15,3 @@ Instances:
     C (D a b)
         another instance of class
         a   -- parameter type
-*docs001> Bye bye

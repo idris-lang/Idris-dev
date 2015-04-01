@@ -30,9 +30,6 @@ VAL copy(VM* vm, VAL x) {
     case STROFFSET:
         cl = MKSTROFFc(vm, x->info.str_offset);
         break;
-    case BUFFER:
-        cl = MKBUFFERc(vm, x->info.buf);
-        break;
     case BIGINT:
         cl = MKBIGMc(vm, x->info.ptr);
         break;
@@ -53,18 +50,6 @@ VAL copy(VM* vm, VAL x) {
         break;
     case BITS64:
         cl = idris_b64CopyForGC(vm, x);
-        break;
-    case BITS8X16:
-        cl = idris_b8x16CopyForGC(vm, x);
-        break;
-    case BITS16X8:
-        cl = idris_b16x8CopyForGC(vm, x);
-        break;
-    case BITS32X4:
-        cl = idris_b32x4CopyForGC(vm, x);
-        break;
-    case BITS64X2:
-        cl = idris_b64x2CopyForGC(vm, x);
         break;
     case FWD:
         return x->info.ptr;
@@ -112,19 +97,8 @@ void idris_gc(VM* vm) {
     if (vm->heap.old != NULL)
         free(vm->heap.old);
 
-    char* newheap = malloc(vm->heap.size);
-    char* oldheap = vm->heap.heap;
-
-    vm->heap.heap = newheap;
-#ifdef FORCE_ALIGNMENT
-    if (((i_int)(vm->heap.heap)&1) == 1) {
-        vm->heap.next = newheap + 1;
-    } else
-#endif
-    {
-        vm->heap.next = newheap;
-    }
-    vm->heap.end  = newheap + vm->heap.size;
+    /* Allocate swap heap. */
+    alloc_heap(&vm->heap, vm->heap.size, vm->heap.growth, vm->heap.heap);
 
     VAL* root;
 
@@ -139,6 +113,7 @@ void idris_gc(VM* vm) {
         msg->msg = copy(vm, msg->msg);
     }
 #endif
+
     vm->ret = copy(vm, vm->ret);
     vm->reg1 = copy(vm, vm->reg1);
 
@@ -150,7 +125,6 @@ void idris_gc(VM* vm) {
     if ((vm->heap.next - vm->heap.heap) > vm->heap.size >> 1) {
         vm->heap.size += vm->heap.growth;
     }
-    vm->heap.old = oldheap;
 
     STATS_LEAVE_GC(vm->stats, vm->heap.size, vm->heap.next - vm->heap.heap)
     HEAP_CHECK(vm)

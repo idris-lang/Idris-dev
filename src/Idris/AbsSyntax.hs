@@ -385,6 +385,23 @@ addClass n i
                       _ -> i
         putIState $ ist { idris_classes = addDef n i' (idris_classes ist) }
 
+addAutoHint :: Name -> Name -> Idris ()
+addAutoHint n hint =
+    do ist <- getIState
+       case lookupCtxtExact n (idris_autohints ist) of
+            Nothing -> 
+                 do let hs = addDef n [hint] (idris_autohints ist)
+                    putIState $ ist { idris_autohints = hs }
+            Just nhints -> 
+                 do let hs = addDef n (hint : nhints) (idris_autohints ist)
+                    putIState $ ist { idris_autohints = hs }
+
+getAutoHints :: Name -> Idris [Name]
+getAutoHints n = do ist <- getIState
+                    case lookupCtxtExact n (idris_autohints ist) of
+                         Nothing -> return []
+                         Just ns -> return ns
+
 addIBC :: IBCWrite -> Idris ()
 addIBC ibc@(IBCDef n)
            = do i <- getIState
@@ -543,10 +560,13 @@ addConstraints :: FC -> (Int, [UConstraint]) -> Idris ()
 addConstraints fc (v, cs)
     = do i <- getIState
          let ctxt = tt_ctxt i
-         let ctxt' = ctxt { uconstraints = nub cs ++ uconstraints ctxt,
-                            next_tvar = v }
-         let ics = zip cs (repeat fc) ++ idris_constraints i
+         let ctxt' = ctxt { next_tvar = v }
+         let ics = insertAll (zip cs (repeat fc)) (idris_constraints i)
          putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
+  where
+    insertAll [] c = c
+    insertAll ((c, fc) : cs) ics 
+       = insertAll cs $ S.insert (ConstraintFC c fc) ics
 
 addDeferred = addDeferred' Ref
 addDeferredTyCon = addDeferred' (TCon 0 0)
@@ -606,12 +626,6 @@ setWidth :: ConsoleWidth -> Idris ()
 setWidth w = do ist <- getIState
                 put ist { idris_consolewidth = w }
 
-renderWidth :: Idris Int
-renderWidth = do iw <- getWidth
-                 case iw of
-                   InfinitelyWide -> return 100000000
-                   ColsWide n -> return (max n 1)
-                   AutomaticWidth -> runIO getScreenWidth
 
 
 
@@ -1016,13 +1030,13 @@ expandParamsD rhsonly ist dec ps ns (PTy doc argdocs syn fc o n ty)
               PTy doc argdocs syn fc o (dec n) (piBindp expl_param ps (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $
               PTy doc argdocs syn fc o n (expandParams dec ps ns [] ty)
-expandParamsD rhsonly ist dec ps ns (PPostulate doc syn fc o n ty)
+expandParamsD rhsonly ist dec ps ns (PPostulate e doc syn fc o n ty)
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
-              PPostulate doc syn fc o (dec n) (piBind ps
+              PPostulate e doc syn fc o (dec n) (piBind ps
                             (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $
-              PPostulate doc syn fc o n (expandParams dec ps ns [] ty)
+              PPostulate e doc syn fc o n (expandParams dec ps ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc opts n' (map expandParamsC cs)
@@ -1481,31 +1495,34 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
 
 -- Add implicit arguments in function calls
 addImplPat :: IState -> PTerm -> PTerm
-addImplPat = addImpl' True [] []
+addImplPat = addImpl' True [] [] []
 
 addImplBound :: IState -> [Name] -> PTerm -> PTerm
-addImplBound ist ns = addImpl' False ns [] ist
+addImplBound ist ns = addImpl' False ns [] [] ist
 
 addImplBoundInf :: IState -> [Name] -> [Name] -> PTerm -> PTerm
-addImplBoundInf ist ns inf = addImpl' False ns inf ist
+addImplBoundInf ist ns inf = addImpl' False ns inf [] ist
 
 -- | Add the implicit arguments to applications in the term
-addImpl :: IState -> PTerm -> PTerm
+-- [Name] gives the names to always expend, even when under a binder of
+-- that name (this is to expand methods with implicit arguments in dependent
+-- type classes).
+addImpl :: [Name] -> IState -> PTerm -> PTerm
 addImpl = addImpl' False [] []
 
 -- TODO: in patterns, don't add implicits to function names guarded by constructors
 -- and *not* inside a PHidden
 
-addImpl' :: Bool -> [Name] -> [Name] -> IState -> PTerm -> PTerm
-addImpl' inpat env infns ist ptm
+addImpl' :: Bool -> [Name] -> [Name] -> [Name] -> IState -> PTerm -> PTerm
+addImpl' inpat env infns imp_meths ist ptm
          = mkUniqueNames env (ai False (zip env (repeat Nothing)) [] ptm)
   where
     ai :: Bool -> [(Name, Maybe PTerm)] -> [[T.Text]] -> PTerm -> PTerm
     ai qq env ds (PRef fc f)
         | f `elem` infns = PInferRef fc f
-        | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat qq ist fc f ds []
+        | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat qq imp_meths ist fc f ds []
     ai qq env ds (PHidden (PRef fc f))
-        | not (f `elem` map fst env) = PHidden (handleErr $ aiFn inpat False qq ist fc f ds [])
+        | not (f `elem` map fst env) = PHidden (handleErr $ aiFn inpat False qq imp_meths ist fc f ds [])
     ai qq env ds (PEq fc lt rt l r)
       = let lt' = ai qq env ds lt
             rt' = ai qq env ds rt
@@ -1541,7 +1558,7 @@ addImpl' inpat env infns ist ptm
         | f `elem` infns = ai qq env ds (PApp fc (PInferRef fc f) as)
         | not (f `elem` map fst env)
                           = let as' = map (fmap (ai qq env ds)) as in
-                                handleErr $ aiFn inpat False qq ist fc f ds as'
+                                handleErr $ aiFn inpat False qq imp_meths ist fc f ds as'
         | Just (Just ty) <- lookup f env =
              let as' = map (fmap (ai qq env ds)) as
                  arity = getPArity ty in
@@ -1576,7 +1593,9 @@ addImpl' inpat env infns ist ptm
              _ -> ai qq env ds (PCase fc val [(PRef fc n, sc)])
     ai qq env ds (PPi p n ty sc)
       = let ty' = ai qq env ds ty
-            sc' = ai qq ((n, Just ty):env) ds sc in
+            env' = if n `elem` imp_meths then env
+                      else ((n, Just ty) : env)
+            sc' = ai qq env' ds sc in
             PPi p n ty' sc'
     ai qq env ds (PGoal fc r n sc)
       = let r' = ai qq env ds r
@@ -1600,8 +1619,8 @@ addImpl' inpat env infns ist ptm
 -- if in a pattern, and there are no arguments, and there's no possible
 -- names with zero explicit arguments, don't add implicits.
 
-aiFn :: Bool -> Bool -> Bool -> IState -> FC -> Name -> [[T.Text]] -> [PArg] -> Either Err PTerm
-aiFn inpat True qq ist fc f ds []
+aiFn :: Bool -> Bool -> Bool -> [Name] -> IState -> FC -> Name -> [[T.Text]] -> [PArg] -> Either Err PTerm
+aiFn inpat True qq imp_meths ist fc f ds []
   = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar fc f
         alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
@@ -1609,7 +1628,7 @@ aiFn inpat True qq ist fc f ds []
                     if (not (vname f) || tcname f
                            || any (conCaf (tt_ctxt ist)) ialts)
 --                            any constructor alts || any allImp ialts))
-                        then aiFn inpat False qq ist fc f ds [] -- use it as a constructor
+                        then aiFn inpat False qq imp_meths ist fc f ds [] -- use it as a constructor
                         else Right $ PPatvar fc f
     where imp (PExp _ _ _ _) = False
           imp _ = True
@@ -1623,9 +1642,9 @@ aiFn inpat True qq ist fc f ds []
           vname (UN n) = True -- non qualified
           vname _ = False
 
-aiFn inpat expat qq ist fc f ds as
+aiFn inpat expat qq imp_meths ist fc f ds as
     | f `elem` primNames = Right $ PApp fc (PRef fc f) as
-aiFn inpat expat qq ist fc f ds as
+aiFn inpat expat qq imp_meths ist fc f ds as
           -- This is where namespaces get resolved by adding PAlternative
      = do let ns = lookupCtxtName f (idris_implicits ist)
           let nh = filter (\(n, _) -> notHidden n) ns
@@ -1633,15 +1652,20 @@ aiFn inpat expat qq ist fc f ds as
                          [] -> nh
                          x -> x
           case ns' of
-            [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc f') (insertImpl ns as)
+            [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc (isImpName f f')) (insertImpl ns as)
             [] -> if f `elem` (map fst (idris_metavars ist))
                     then Right $ PApp fc (PRef fc f) as
                     else Right $ mkPApp fc (length as) (PRef fc f) as
             alts -> Right $
                          PAlternative True $
-                           map (\(f', ns) -> mkPApp fc (length ns) (PRef fc f')
+                           map (\(f', ns) -> mkPApp fc (length ns) (PRef fc (isImpName f f'))
                                                   (insertImpl ns as)) alts
   where
+    -- if the name is in imp_meths, we should actually refer to the bound
+    -- name rather than the global one after expanding implicits
+    isImpName f f' | f `elem` imp_meths = f
+                   | otherwise = f'
+
     trimAlts [] alts = alts
     trimAlts ns alts
         = filter (\(x, _) -> any (\d -> d `isPrefixOf` nspace x) ns) alts
@@ -1681,11 +1705,11 @@ aiFn inpat expat qq ist fc f ds as
         case find n imps [] of
             Just (tm, imps') ->
               PImp p False l n tm : insImpAcc (M.insert n tm pnas) ps given imps'
-            Nothing ->
-              PImp p True l n Placeholder :
-                insImpAcc (M.insert n Placeholder pnas) ps given imps
+            Nothing -> let ph = if f `elem` imp_meths then PRef fc n else Placeholder in
+              PImp p True l n ph :
+                insImpAcc (M.insert n ph pnas) ps given imps
     insImpAcc pnas (PTacImplicit p l n sc' ty : ps) given imps =
-      let sc = addImpl ist (substMatches (M.toList pnas) sc') in
+      let sc = addImpl imp_meths ist (substMatches (M.toList pnas) sc') in
         case find n imps [] of
             Just (tm, imps') ->
               PTacImplicit p l n sc tm :

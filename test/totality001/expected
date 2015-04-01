@@ -1,3 +1,6 @@
-test010.idr:15:1:Main.foo is possibly not total due to: Main.MkBad
-test010a.idr:9:1:main.bar is possibly not total due to: main.MkBad
-test010b.idr:9:1:main.bar is possibly not total due to: main.MkBad
+test010.idr:15:1:
+Main.foo is possibly not total due to: Main.MkBad
+test010a.idr:9:1:
+main.bar is possibly not total due to: main.MkBad
+test010b.idr:9:1:
+main.bar is possibly not total due to: main.MkBad

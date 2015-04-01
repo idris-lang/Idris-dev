@@ -15,9 +15,11 @@ import Util.ScreenSize (getScreenWidth)
 
 import Control.Monad.Trans.Except (ExceptT (ExceptT), runExceptT)
 
-import System.Console.Haskeline.MonadException 
+import System.Console.Haskeline.MonadException
   (MonadException (controlIO), RunIO (RunIO))
 import System.IO (stdout, Handle, hPutStrLn)
+
+import Prelude hiding ((<$>))
 
 import Data.Char (isAlpha)
 import Data.List (nub, intersperse)

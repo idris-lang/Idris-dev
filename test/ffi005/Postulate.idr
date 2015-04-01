@@ -1,7 +1,5 @@
 module Main
 
-import Providers
-
 %language TypeProviders
 
 bad : IO (Provider Type)

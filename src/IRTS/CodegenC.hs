@@ -12,8 +12,8 @@ import Util.System
 
 import Numeric
 import Data.Char
+import Data.Bits
 import Data.List (intercalate)
-import qualified Data.Vector.Unboxed as V
 import System.Process
 import System.Exit
 import System.IO
@@ -145,8 +145,26 @@ showCStr s = '"' : foldr ((++) . showChar) "\"" s
         | ord c < 0x10  = "\"\"\\x0" ++ showHex (ord c) "\"\""
         | ord c < 0x20  = "\"\"\\x"  ++ showHex (ord c) "\"\""
         | ord c < 0x7f  = [c]    -- 0x7f = \DEL
-        | ord c < 0x100 = "\"\"\\x"  ++ showHex (ord c) "\"\""
-        | otherwise = error $ "non-8-bit character in string literal: " ++ show c
+        | otherwise = showHexes (utf8bytes (ord c))
+
+    utf8bytes :: Int -> [Int]
+    utf8bytes x = let (h : bytes) = split [] x in
+                      headHex h (length bytes) : map toHex bytes
+      where
+        split acc 0 = acc
+        split acc x = let xbits = x .&. 0x3f 
+                          xrest = shiftR x 6 in
+                          split (xbits : acc) xrest
+
+        headHex h 1 = h + 0xc0
+        headHex h 2 = h + 0xe0
+        headHex h 3 = h + 0xf0
+        headHex h n = error "Can't happen: Invalid UTF8 character"
+
+        toHex i = i + 0x80
+
+    showHexes = foldr ((++) . showUTF8) ""
+    showUTF8 c = "\"\"\\x" ++ showHex c "\"\""
 
 bcc :: Int -> BC -> String
 bcc i (ASSIGN l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
@@ -163,10 +181,6 @@ bcc i (ASSIGNCONST l c)
     mkConst (B16 x) = "idris_b16const(vm, " ++ show x ++ "U)"
     mkConst (B32 x) = "idris_b32const(vm, " ++ show x ++ "UL)"
     mkConst (B64 x) = "idris_b64const(vm, " ++ show x ++ "ULL)"
-    mkConst (B8V  x) = let x' = V.toList x in "MKB8x16const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "U") x') ++ ")"
-    mkConst (B16V x) = let x' = V.toList x in "MKB16x8const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "U") x') ++ ")"
-    mkConst (B32V x) = let x' = V.toList x in "MKB32x4const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "UL") x') ++ ")"
-    mkConst (B64V x) = let x' = V.toList x in "MKB64x2const(vm, " ++ intercalate ", " (map (\elem -> show elem ++ "ULL") x') ++ ")"
     -- if it's a type constant, we won't use it, but equally it shouldn't
     -- report an error. These might creep into generated for various reasons
     -- (especially if erasure is disabled).
@@ -305,10 +319,6 @@ toAType (FCon i)
     | i == sUN "C_IntBits16" = ATInt (ITFixed IT16)
     | i == sUN "C_IntBits32" = ATInt (ITFixed IT32)
     | i == sUN "C_IntBits64" = ATInt (ITFixed IT64)
-    | i == sUN "C_IntB8x16" = ATInt (ITVec IT8 16)
-    | i == sUN "C_IntB16x8" = ATInt (ITVec IT16 8)
-    | i == sUN "C_IntB32x4" = ATInt (ITVec IT32 4)
-    | i == sUN "C_IntB64x2" = ATInt (ITVec IT64 2)
 toAType t = error (show t ++ " not defined in toAType")
 
 toFType (FCon c) 
@@ -424,11 +434,6 @@ doOp v (LSLe (ATInt ITBig)) [l, r] = v ++ "idris_bigLe(vm, " ++ creg l ++ ", " +
 doOp v (LSGt (ATInt ITBig)) [l, r] = v ++ "idris_bigGt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LSGe (ATInt ITBig)) [l, r] = v ++ "idris_bigGe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
-doOp v LStrConcat [l,r] = v ++ "idris_concat(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LStrEq [l,r] = v ++ "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v LStrLen [x] = v ++ "idris_strlen(vm, " ++ creg x ++ ")"
-
 doOp v (LIntFloat ITNative) [x] = v ++ "idris_castIntFloat(" ++ creg x ++ ")"
 doOp v (LFloatInt ITNative) [x] = v ++ "idris_castFloatInt(" ++ creg x ++ ")"
 doOp v (LSExt ITNative ITBig) [x] = v ++ "idris_castIntBig(vm, " ++ creg x ++ ")"
@@ -440,16 +445,6 @@ doOp v (LStrInt ITNative) [x] = v ++ "idris_castStrInt(vm, " ++ creg x ++ ")"
 doOp v (LIntStr (ITFixed _)) [x] = v ++ "idris_castBitsStr(vm, " ++ creg x ++ ")"
 doOp v LFloatStr [x] = v ++ "idris_castFloatStr(vm, " ++ creg x ++ ")"
 doOp v LStrFloat [x] = v ++ "idris_castStrFloat(vm, " ++ creg x ++ ")"
-
-doOp v LReadStr [_] = v ++ "idris_readStr(vm, stdin)"
-doOp v LWriteStr [_,s] = v ++ "MKINT((i_int)(idris_writeStr(stdout"
-                             ++ ",GETSTR("
-                             ++ creg s ++ "))))"
-
-doOp v LReadFile [_,x] = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
-doOp v LWriteFile [_,x,s] = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
-                              ++ "),GETSTR("
-                              ++ creg s ++ "))))"
 
 doOp v (LSLt (ATInt (ITFixed ty))) [x, y] = bitOp v "SLt" ty [x, y]
 doOp v (LSLe (ATInt (ITFixed ty))) [x, y] = bitOp v "SLte" ty [x, y]
@@ -529,45 +524,55 @@ doOp v LFFloor [x] = v ++ flUnOp "floor" (creg x)
 doOp v LFCeil [x] = v ++ flUnOp "ceil" (creg x)
 doOp v LFNegate [x] = v ++ "MKFLOAT(vm, -GETFLOAT(" ++ (creg x) ++ "))"
 
+-- String functions which don't need to know we're UTF8
+doOp v LStrConcat [l,r] = v ++ "idris_concat(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v LStrEq [l,r] = v ++ "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+
+doOp v LReadStr [_] = v ++ "idris_readStr(vm, stdin)"
+doOp v LWriteStr [_,s] 
+             = v ++ "MKINT((i_int)(idris_writeStr(stdout"
+                 ++ ",GETSTR("
+                 ++ creg s ++ "))))"
+
+
+-- String functions which need to know we're UTF8
 doOp v LStrHead [x] = v ++ "idris_strHead(vm, " ++ creg x ++ ")"
 doOp v LStrTail [x] = v ++ "idris_strTail(vm, " ++ creg x ++ ")"
 doOp v LStrCons [x, y] = v ++ "idris_strCons(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrIndex [x, y] = v ++ "idris_strIndex(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrRev [x] = v ++ "idris_strRev(vm, " ++ creg x ++ ")"
-
-doOp v LAllocate [x] = v ++ "idris_buffer_allocate(vm, " ++ creg x ++ ")"
-doOp v LAppendBuffer [a, b, c, d, e, f] = v ++ "idris_appendBuffer(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ "," ++ creg e ++ "," ++ creg f ++ ")"
-doOp v (LAppend ity en) [a, b, c, d] = v ++ "idris_append" ++ intTyName ity ++ show en ++ "(vm, " ++ creg a ++ "," ++ creg b ++ "," ++ creg c ++ "," ++ creg d ++ ")"
-doOp v (LPeek ity en) [x, y] = v ++ "idris_peek" ++ intTyName ity ++ show en ++ "(vm, " ++ creg x ++ "," ++ creg y ++ ")"
-
-doOp v LStdIn [] = v ++ "MKPTR(vm, stdin)"
-doOp v LStdOut [] = v ++ "MKPTR(vm, stdout)"
-doOp v LStdErr [] = v ++ "MKPTR(vm, stderr)"
+doOp v LStrLen [x] = v ++ "idris_strlen(vm, " ++ creg x ++ ")"
 
 doOp v LFork [x] = v ++ "MKPTR(vm, vmThread(vm, " ++ cname (sMN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LPar [x] = v ++ creg x -- "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"
-doOp v LVMPtr [] = v ++ "MKPTR(vm, vm)"
-doOp v LNullPtr [] = v ++ "MKPTR(vm, NULL)"
-doOp v LRegisterPtr [p, i] = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++
-                                  "), GETINT(" ++ creg i ++ "))"
 doOp v (LChInt ITNative) args = v ++ creg (last args)
 doOp v (LChInt ITChar) args = doOp v (LChInt ITNative) args
 doOp v (LIntCh ITNative) args = v ++ creg (last args)
 doOp v (LIntCh ITChar) args = doOp v (LIntCh ITNative) args
 
-doOp v c@(LMkVec IT8  _) args = v ++ "MKB8x16(vm, " ++  (intercalate ", " (map creg args)) ++ ")"
-doOp v c@(LMkVec IT16 _) args = v ++ "MKB16x8(vm, " ++ (intercalate ", " (map creg args)) ++ ")"
-doOp v c@(LMkVec IT32 _) args = v ++ "MKB32x4(vm, " ++ (intercalate ", " (map creg args)) ++ ")"
-doOp v c@(LMkVec IT64 _) args = v ++ "MKB64x2(vm, " ++ (intercalate ", " (map creg args)) ++ ")"
-
-doOp v c@(LIdxVec IT8  _) [p, i] = v ++ "idris_IDXB8x16(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
-doOp v c@(LIdxVec IT16 _) [p, i] = v ++ "idris_IDXB16x8(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
-doOp v c@(LIdxVec IT32 _) [p, i] = v ++ "idris_IDXB32x4(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
-doOp v c@(LIdxVec IT64 _) [p, i] = v ++ "idris_IDXB64x2(vm, " ++ creg p ++ ", " ++ creg i ++ ")"
-
 doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
 doOp v LNoOp args = v ++ creg (last args)
-doOp _ op args = error "doOp of (" ++ show op ++ ") not implemented, arguments (" ++ show args ++ ")"
+
+-- Pointer primitives (declared as %extern in Builtins.idr)
+doOp v (LExternal rf) [_,x] 
+   | rf == sUN "prim__readFile"
+       = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
+doOp v (LExternal wf) [_,x,s] 
+   | wf == sUN "prim__writeFile"
+       = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
+                              ++ "),GETSTR("
+                              ++ creg s ++ "))))"
+doOp v (LExternal vm) [] | vm == sUN "prim__vm" = v ++ "MKPTR(vm, vm)"
+doOp v (LExternal si) [] | si == sUN "prim__stdin" = v ++ "MKPTR(vm, stdin)"
+doOp v (LExternal so) [] | so == sUN "prim__stdout" = v ++ "MKPTR(vm, stdout)"
+doOp v (LExternal se) [] | se == sUN "prim__stderr" = v ++ "MKPTR(vm, stderr)"
+
+doOp v (LExternal nul) [] | nul == sUN "prim__null" = v ++ "MKPTR(vm, NULL)"
+doOp v (LExternal rp) [p, i] | rp == sUN "prim__registerPtr"
+    = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++ "), GETINT(" ++ creg i ++ "))"
+
+doOp _ op args = error $ "doOp not implemented (" ++ show (op, args) ++ ")"
 
 flUnOp :: String -> String -> String
 flUnOp name val = "MKFLOAT(vm, " ++ name ++ "(GETFLOAT(" ++ val ++ ")))"

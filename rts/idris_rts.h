@@ -26,8 +26,7 @@
 typedef enum {
     CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
     BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
-    MANAGEDPTR, BUFFER, BITS8X16, BITS16X8, BITS32X4,
-    BITS64X2
+    MANAGEDPTR
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -208,37 +207,12 @@ VAL MKB16(VM* vm, uint16_t b);
 VAL MKB32(VM* vm, uint32_t b);
 VAL MKB64(VM* vm, uint64_t b);
 
-// SSE Vectors
-VAL MKB8x16(VM* vm,
-            VAL v0, VAL v1, VAL v2, VAL v3,
-            VAL v4, VAL v5, VAL v6, VAL v7,
-            VAL v8, VAL v9, VAL v10, VAL v11,
-            VAL v12, VAL v13, VAL v14, VAL v15);
-VAL MKB8x16const(VM* vm,
-                 uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v3,
-                 uint8_t v4, uint8_t v5, uint8_t v6, uint8_t v7,
-                 uint8_t v8, uint8_t v9, uint8_t v10, uint8_t v11,
-                 uint8_t v12, uint8_t v13, uint8_t v14, uint8_t v15);
-VAL MKB16x8(VM* vm,
-            VAL v0, VAL v1, VAL v2, VAL v3,
-            VAL v4, VAL v5, VAL v6, VAL v7);
-VAL MKB16x8const(VM* vm,
-                 uint16_t v0, uint16_t v1, uint16_t v2, uint16_t v3,
-                 uint16_t v4, uint16_t v5, uint16_t v6, uint16_t v7);
-VAL MKB32x4(VM* vm,
-            VAL v0, VAL v1, VAL v2, VAL v3);
-VAL MKB32x4const(VM* vm,
-                 uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3);
-VAL MKB64x2(VM* vm, VAL v0, VAL v1);
-VAL MKB64x2const(VM* vm, uint64_t v0, uint64_t v1);
-
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
 VAL MKMPTRc(VM* vm, void* ptr, size_t size);
-VAL MKBUFFERc(VM* vm, Buffer* buf);
 
 char* GETSTROFF(VAL stroff);
 
@@ -335,13 +309,12 @@ VAL idris_readStr(VM* vm, FILE* h);
 
 VAL idris_strHead(VM* vm, VAL str);
 VAL idris_strTail(VM* vm, VAL str);
+// This is not expected to be efficient! Mostly we wouldn't expect to call
+// it at all at run time.
 VAL idris_strCons(VM* vm, VAL x, VAL xs);
 VAL idris_strIndex(VM* vm, VAL str, VAL i);
 VAL idris_strRev(VM* vm, VAL str);
 
-// Buffer primitives
-VAL idris_buffer_allocate(VM* vm, VAL hint);
-VAL idris_appendBuffer(VM* vm, VAL fst, VAL fstLen, VAL cnt, VAL sndLen, VAL sndOff, VAL snd);
 VAL idris_appendB8Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
 VAL idris_appendB16Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
 VAL idris_appendB16LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);

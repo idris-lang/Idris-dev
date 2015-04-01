@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-idris $@ --check NoInfer.idr
+idris --consolewidth 80 $@ --check NoInfer.idr
 rm -f *.ibc

@@ -64,7 +64,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
     = do let codata = Codata `elem` opts
          iLOG (show fc)
          undef <- isUndefined fc n
-         (cty, _, t, inacc) <- buildType info syn fc [] n t_in
+         (cty, ckind, t, inacc) <- buildType info syn fc [] n t_in
          -- if n is defined already, make sure it is just a type declaration
          -- with the same type we've just elaborated, and no constructors
          -- yet
@@ -76,7 +76,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          let unique = case getRetTy cty of
                            UType UniqueType -> True
                            _ -> False
-         cons <- mapM (elabCon cnameinfo syn n codata (getRetTy cty)) dcons
+         cons <- mapM (elabCon cnameinfo syn n codata (getRetTy cty) ckind) dcons
          ttag <- getName
          i <- getIState
          let as = map (const (Left (Msg ""))) (getArgTys cty)
@@ -210,20 +210,23 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
                      }
 
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
-           Type -> -- for kind checking
+           Type -> -- for unique kind checking
+           Type -> -- data type's kind
            (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, PTerm, FC, [Name]) ->
            Idris (Name, Type)
-elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
+elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
     = do checkUndefined fc n
+         logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t_in
          (cty, ckind, t, inacc) <- buildType info syn fc [Constructor] n (if codata then mkLazy t_in else t_in)
          ctxt <- getContext
          let cty' = normalise ctxt [] cty
          checkUniqueKind ckind expkind
+         addDataConstraint ckind dkind
 
          -- Check that the constructor type is, in fact, a part of the family being defined
          tyIs n cty'
 
-         logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t
+         logLvl 5 $ show fc ++ ":Constructor " ++ show n ++ " elaborated : " ++ show t
          logLvl 5 $ "Inaccessible args: " ++ show inacc
          logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty'
 
@@ -278,6 +281,13 @@ elabCon info syn tn codata expkind (doc, argDocs, n, t_in, fc, forcenames)
         = tclift $ tfail (At fc (UniqueKindError UniqueType n))
     checkUniqueKind (UType AllTypes) _ = return ()
     checkUniqueKind _ _ = return ()
+
+    -- Constructor's kind must be <= expected kind
+    addDataConstraint (TType con) (TType exp) 
+       = do ctxt <- getContext
+            let v = next_tvar ctxt
+            addConstraints fc (v, [ULT con exp])
+    addDataConstraint _ _ = return ()
 
 type EliminatorState = StateT (Map.Map String Int) Idris
 

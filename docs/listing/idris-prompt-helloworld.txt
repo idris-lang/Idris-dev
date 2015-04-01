@@ -1,0 +1,15 @@
+$ idris hello.idr
+     ____    __     _
+    /  _/___/ /____(_)____
+    / // __  / ___/ / ___/     Version 0.9.17
+  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
+ /___/\__,_/_/  /_/____/       Type :? for help
+
+Type checking ./hello.idr
+*hello> :t main
+Main.main : IO ()
+*hello> :c hello
+*hello> :q
+Bye bye
+$ ./hello
+Hello world

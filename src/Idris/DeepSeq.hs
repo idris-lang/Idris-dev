@@ -119,6 +119,7 @@ instance NFData FnOpt where
         rnf Reflection = ()
         rnf (Specialise x1) = rnf x1 `seq` ()
         rnf Constructor = ()
+        rnf AutoHint = ()
 
 instance NFData DataOpt where
         rnf Codata = ()
@@ -132,9 +133,9 @@ instance (NFData t) => NFData (PDecl' t) where
           = rnf x1 `seq`
               rnf x2 `seq`
                 rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()
-        rnf (PPostulate x1 x2 x3 x4 x5 x6)
+        rnf (PPostulate x1 x2 x3 x4 x5 x6 x7)
           = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
+              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()
         rnf (PClauses x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PCAF x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
@@ -353,10 +354,10 @@ instance NFData Using where
         rnf (UConstraint x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance NFData SyntaxInfo where
-        rnf (Syn x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+        rnf (Syn x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
           = rnf x1 `seq`
               rnf x2 `seq`
                 rnf x3 `seq`
                   rnf x4 `seq`
                     rnf x5 `seq`
-                      rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` rnf x10 `seq` rnf x11 `seq` ()
+                      rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` rnf x10 `seq` rnf x11 `seq` rnf x12 `seq` ()

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-idris $@ totality004.idr -o totality004
+idris --consolewidth 80 $@ totality004.idr -o totality004
 ./totality004
-idris $@ --check totality004a.idr 
+idris --consolewidth 80 $@ --check totality004a.idr 
 rm -f totality004 *.ibc

@@ -40,9 +40,6 @@ main = do
   -- Booleans
   putStrLn . show $ test True True
   putStrLn . show $ test True False
-  -- Float
-  putStrLn . show $ test 1.0 1.0
-  putStrLn . show $ test 1.0 2.0
   -- Maybe
   putStrLn . show $ test (Just "hello") (Just "hello")
   putStrLn . show $ test (Just "hello") (Just "world")
