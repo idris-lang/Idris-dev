@@ -2,6 +2,7 @@
 module Data.Nat
 
 import Data.Fin
+import Data.So
 
 import Control.WellFounded
 
@@ -41,7 +42,7 @@ lteToLt' {n = S k} (LTESucc x) = ltSuccSucc $ lteToLt' x
 ||| Convert from LT' to LTE
 ltToLTE : LT' n m -> LTE (S n) m
 ltToLTE LTSucc      = lteRefl
-ltToLTE (LTStep lt) = lteSucc $ ltToLTE lt
+ltToLTE (LTStep lt) = lteSuccRight $ ltToLTE lt
 
 ||| Subtraction gives a result that is actually smaller.
 minusLT' : (x,y : Nat) -> x - y `LT'` S x
@@ -95,14 +96,6 @@ toFinAndBack : (x : Nat) -> (diff : Nat) -> finToNat (toFin x diff) = x
 toFinAndBack Z diff = Refl
 toFinAndBack (S k) diff = cong (toFinAndBack k diff)
 
-||| This property is not the case.
-|||
-||| Use this to ensure properties in implicit arguments.
-|||
-||| @ p the property that doesn't hold
-Nope : Dec p -> Type
-Nope (Yes _) = Void
-Nope (No _)  = ()
 
 ||| The accessibilty predicate used for division.
 private
@@ -123,7 +116,7 @@ accPlusLT' {j = S j} {k = k}   = rewrite sym $ plusSuccRightSucc k (S j) in
 ||| @ nonzero division by zero is nonsense
 total -- yay!
 divMod : (dividend, divisor : Nat) ->
-         {auto nonzero : Nope (decEq divisor Z)} ->
+         {auto nonzero : So (not (decAsBool (decEq divisor Z)))} ->
          DivMod dividend divisor
 divMod _     Z     {nonzero} = absurd nonzero
 divMod Z     (S k)           = DivModRes 0 FZ Refl
@@ -136,7 +129,7 @@ divMod (S j) (S k) {nonzero} = wfInd {P=P} stepDiv (S j) (S k) nonzero
     |||
     ||| @ dividend the dividend to recurse over
     P : (dividend : Nat) -> Type
-    P dividend = (divisor : Nat) -> (nonzero : Nope (decEq divisor Z)) -> DivMod dividend divisor
+    P dividend = (divisor : Nat) -> (nonzero : So (not (decAsBool (decEq divisor Z)))) -> DivMod dividend divisor
 
 
     ||| Well-founded recursion needs a recursion operator.
@@ -160,7 +153,7 @@ divMod (S j) (S k) {nonzero} = wfInd {P=P} stepDiv (S j) (S k) nonzero
           in sym $ cong (plusZeroRightNeutral j)
       -- if n > m, then n = m + d, and the quotient is 1 + ((n - m) / m) with the same remainder
       stepDiv (S (plus k (S diff))) rec (S k)                 nonzero | CmpGT diff =
-        let res = rec (S diff) accPlusLT' (S k) ()
+        let res = rec (S diff) accPlusLT' (S k) Oh
         in case res of
              DivModRes quotient remainder ok =>
                DivModRes (S quotient) remainder $
