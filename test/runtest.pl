@@ -13,7 +13,7 @@ sub sandbox_path {
     my $sandbox = abs_path("$test_dir/../../.cabal-sandbox/bin");
 
     if ( -d $sandbox ) {
-        return "PATH=$sandbox:$PATH";
+        return "PATH=\"$sandbox:$PATH\"";
     } else {
         return "";
     }
