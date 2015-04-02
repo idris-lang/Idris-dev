@@ -288,9 +288,12 @@ fact (S n) = (S n) * fact n
 -- Division and modulus
 --------------------------------------------------------------------------------
 
-partial
-modNat : Nat -> Nat -> Nat
-modNat left (S right) = mod' left left right
+SIsNotZ : {x: Nat} -> (S x = Z) -> Void
+SIsNotZ Refl impossible
+
+modNatNZ : Nat -> (y: Nat) -> Not (y = Z) -> Nat
+modNatNZ left Z         p = void (p Refl)
+modNatNZ left (S right) _ = mod' left left right
   where
     total mod' : Nat -> Nat -> Nat -> Nat
     mod' Z        centre right = centre
@@ -301,8 +304,12 @@ modNat left (S right) = mod' left left right
         mod' left (centre - (S right)) right
 
 partial
-divNat : Nat -> Nat -> Nat
-divNat left (S right) = div' left left right
+modNat : Nat -> Nat -> Nat
+modNat left (S right) = modNatNZ left (S right) SIsNotZ
+
+divNatNZ : Nat -> (y: Nat) -> Not (y = Z) -> Nat
+divNatNZ left Z         p = void (p Refl)
+divNatNZ left (S right) _ = div' left left right
   where
     total div' : Nat -> Nat -> Nat -> Nat
     div' Z        centre right = Z
@@ -312,14 +319,31 @@ divNat left (S right) = div' left left right
       else
         S (div' left (centre - (S right)) right)
 
+partial
+divNat : Nat -> Nat -> Nat
+divNat left (S right) = divNatNZ left (S right) SIsNotZ
+
+divCeilNZ : Nat -> (y: Nat) -> Not (y = 0) -> Nat
+divCeilNZ x y p = case (modNatNZ x y p) of
+  Z   => divNatNZ x y p
+  S _ => S (divNatNZ x y p)
+
+partial
+divCeil : Nat -> Nat -> Nat
+divCeil x (S y) = divCeilNZ x (S y) SIsNotZ
+
 instance Integral Nat where
   div = divNat
   mod = modNat
 
+log2NZ : (x: Nat) -> Not (x = Z) -> Nat
+log2NZ Z         p = void (p Refl)
+log2NZ (S Z)     _ = Z
+log2NZ (S (S n)) _ = S (log2NZ (assert_smaller (S (S n)) (S (divNatNZ n 2 SIsNotZ))) SIsNotZ)
+
 partial
 log2 : Nat -> Nat
-log2 (S Z) = Z
-log2 n = S (log2 (assert_smaller n (n `divNat` 2)))
+log2 (S n) = log2NZ (S n) SIsNotZ
 
 --------------------------------------------------------------------------------
 -- GCD and LCM
