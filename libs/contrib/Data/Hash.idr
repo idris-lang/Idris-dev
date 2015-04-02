@@ -40,14 +40,10 @@ private
 mod64 : Integer -> Bits64
 mod64 i = assert_total $ prim__truncBigInt_B64 (abs i `mod` 0xffffffffffffffff)
 
-%assert_total
-saltedHash64Bits64 : Bits64 -> Bits64 -> Bits64
-saltedHash64Bits64 w salt = foldr (\b,acc => (acc `prim__shlB64` 10) + acc + b)
-                                  salt
-                                  [byte (fromInteger n) w | n <- [7,6..0]] -- djb2 hash function. Not meant for crypto
-
 instance Hashable Bits64 where
-  saltedHash64 = saltedHash64Bits64
+  saltedHash64 w salt = foldr (\b,acc => (acc `prim__shlB64` 10) + acc + b)
+                              salt
+                              [byte (fromInteger n) w | n <- [7,6..0]] -- djb2 hash function. Not meant for crypto
 
 instance Hashable Integer where
   saltedHash64 i = saltedHash64 (mod64 i)
