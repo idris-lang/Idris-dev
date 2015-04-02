@@ -131,6 +131,21 @@ choice by the developers of Idris, Idris uses the C style convention.
 That is, the names ``Float`` and ``Double`` are used to describe
 single and double precision numbers.
 
+What is -ffreestanding?
+=======================
+
+The freestanding flag is used to build Idris binaries which have their
+libs and compiler in a relative path. This is useful for building binaries
+where the install directory is unknown at build time. When passing this
+flag, the IDRIS_LIB_DIR environment variable needs to be set to the path
+where the Idris libs reside relative to the idris executable. The
+IDRIS_TOOLCHAIN_DIR environment variable is optional, if that is set,
+Idris will use that path to find the C compiler.
+
+Example:
+.. code-block::
+   IDRIS_LIB_DIR="./libs" IDRIS_TOOLCHAIN_DIR="./mingw/bin" CABALFLAGS="-fffi -ffreestanding -frelease" make
+
 What does the name ‘Idris’ mean?
 ================================
 

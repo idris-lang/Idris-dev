@@ -29,6 +29,7 @@ import Idris.CmdOptions
 import IRTS.System ( getLibFlags, getIdrisLibDir, getIncFlags )
 
 import Util.DynamicLinker
+import Util.System
 
 import Pkg.Package
 
@@ -43,6 +44,7 @@ main = do opts <- runArgParser
 
 runIdris :: [Opt] -> Idris ()
 runIdris opts = do
+       runIO setupBundledCC
        when (ShowIncs `elem` opts) $ runIO showIncs
        when (ShowLibs `elem` opts) $ runIO showLibs
        when (ShowLibdir `elem` opts) $ runIO showLibdir

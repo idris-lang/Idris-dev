@@ -137,17 +137,33 @@ generateTargetModule verbosity dir targetDir = do
                                     ++ "   dir <- getDataDir\n"
                                     ++ "   return (dir ++ \"/\" ++ name)"
 
+-- a module that has info about existence and location of a bundled toolchain
+generateToolchainModule verbosity srcDir toolDir = do
+    let commonContent = "module Tools_idris where\n\n"
+    let toolContent = case toolDir of
+                        Just dir -> "hasBundledToolchain = True\n" ++
+                                    "getToolchainDir = \"" ++ dir ++ "\"\n"
+                        Nothing -> "hasBundledToolchain = False\n" ++
+                                   "getToolchainDir = \"\""
+    let toolPath = srcDir </> "Tools_idris" Px.<.> "hs"
+    createDirectoryIfMissingVerbose verbosity True srcDir
+    rewriteFile toolPath (commonContent ++ toolContent)
 
 idrisConfigure _ flags _ local = do
-      configureRTS
-      generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
-      when (isFreestanding $ configFlags local) (do
-                targetDir <- lookupEnv "IDRIS_INSTALL_DIR"
+    configureRTS
+    generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
+    if (isFreestanding $ configFlags local)
+        then (do
+                toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"
+                generateToolchainModule verbosity (autogenModulesDir local) toolDir
+                targetDir <- lookupEnv "IDRIS_LIB_DIR"
                 case targetDir of
                      Just d -> generateTargetModule verbosity (autogenModulesDir local) d
                      Nothing -> error $ "Trying to build freestanding without a target directory."
-                                  ++ " Set it by defining IDRIS_INSTALL_DIR.")
-   where
+                                  ++ " Set it by defining IDRIS_LIB_DIR.")
+        else
+                generateToolchainModule verbosity (autogenModulesDir local) Nothing
+    where
       verbosity = S.fromFlag $ S.configVerbosity flags
       version   = pkgVersion . package $ localPkgDescr local
 
@@ -162,6 +178,7 @@ idrisPreSDist args flags = do
   let verb = S.fromFlag (S.sDistVerbosity flags)
   generateVersionModule verb ("src") True
   generateTargetModule verb "src" "./libs"
+  generateToolchainModule verb "src" Nothing
   preSDist simpleUserHooks args flags
 
 idrisPostSDist args flags desc lbi = do
