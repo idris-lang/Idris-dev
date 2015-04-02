@@ -10,6 +10,7 @@ import Idris.Error
 import Idris.ProofSearch
 import Idris.Output (pshow)
 
+import Idris.Core.CaseTree (SC, SC'(STerm))
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
@@ -1596,6 +1597,30 @@ runTactical fc env tm = do tm' <- eval tm
 
     returnUnit = fmap fst $ get_type_val (Var unitCon)
 
+    defineFunction :: RFunDefn -> ElabD ()
+    defineFunction (RDefineFun n clauses) =
+      do ctxt <- get_context
+         ty <- maybe (fail "no type decl") return $ lookupTyExact n ctxt
+         let info = CaseInfo True True False -- TODO document and figure out
+         clauses' <- forM clauses (\(RMkFunClause lhs rhs) ->
+                                    do lhs' <- lift $ check ctxt [] lhs
+                                       rhs' <- lift $ check ctxt [] rhs
+                                       return (fst lhs', fst rhs'))
+         trace (show clauses') $ return ()
+         set_context $
+           addCasedef n (const [])
+                      info False (STerm Erased)
+                      True False -- TODO what are these?
+                      [] [] -- TODO argument types, inaccessible types
+                      (map Right clauses')
+                      (map (\(l,r) -> ([], l, r)) clauses')
+                      (map (\(l,r) -> ([], l, r)) clauses')
+                      (map (\(l,r) -> ([], l, r)) clauses')
+                      (map (\(l,r) -> ([], l, r)) clauses')
+                      ty
+                      ctxt
+         return ()
+
     -- | Do a step in the reflected elaborator monad. The input is the
     -- step, the output is the (reflected) term returned.
     runTacTm :: Term -> ElabD Term
@@ -1709,8 +1734,9 @@ runTactical fc env tm = do tm' <- eval tm
            aux <- getAux
            returnUnit
       | n == tacN "prim__DefineFunction", [decl] <- args
-      = do undefined
-           undefined
+      = do defn <- reifyFunDefn decl
+           defineFunction defn
+           returnUnit
       | n == tacN "prim__Debug", [ty, msg] <- args
       = do let msg' = fromTTMaybe msg
            case msg' of

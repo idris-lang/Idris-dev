@@ -17,7 +17,6 @@ rArgToPArg (RExplicit n _) = PExp 0 [] n Placeholder
 rArgToPArg (RImplicit n _) = PImp 0 False [] n Placeholder
 rArgToPArg (RConstraint n _) = PConstraint 0 [] n Placeholder
 
-data RFunClause = RMkFunClause Raw Raw
+data RFunClause = RMkFunClause Raw Raw deriving Show
 
-data RFunDefn = RDefineFun Name [RFunClause]
-
+data RFunDefn = RDefineFun Name [RFunClause] deriving Show

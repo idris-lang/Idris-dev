@@ -138,6 +138,9 @@ rewriteWith rule = prim__Rewrite rule
 declareType : TyDecl -> Tactical ()
 declareType decl = prim__DeclareType decl
 
+defineFunction : FunDefn -> Tactical ()
+defineFunction defun = prim__DefineFunction defun
+
 debug : Tactical a
 debug = prim__Debug Nothing
 
