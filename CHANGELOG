@@ -1,6 +1,8 @@
 New in 0.9.18:
 --------------
 * Strings are now UTF8 encoded in the default back end
+* Idris source files are now assumed to be in UTF8, regardless of locale
+  settings.
 * Some reorganisation of primitives:
   + Buffer and BitVector primitives have been removed (they were not
     tested sufficiently, and lack a maintainer)
