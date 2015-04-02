@@ -18,6 +18,7 @@ data TyDecl : Type where
 
 data FunClause : Type where
   MkFunClause : (lhs, rhs : Raw) -> FunClause
+  MkImpossibleClause : (lhs : Raw) -> FunClause
 
 data FunDefn : Type where
   DefineFun : TTName -> List FunClause -> FunDefn
@@ -137,6 +138,9 @@ rewriteWith rule = prim__Rewrite rule
 
 declareType : TyDecl -> Tactical ()
 declareType decl = prim__DeclareType decl
+
+defineFunction : FunDefn -> Tactical ()
+defineFunction defun = prim__DefineFunction defun
 
 debug : Tactical a
 debug = prim__Debug Nothing

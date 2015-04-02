@@ -648,6 +648,7 @@ deriving instance NFData PDecl'
 -- | A set of instructions for things that need to happen in IState
 -- after a term elaboration when there's been reflected elaboration.
 data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
+                       | RClausesInstrs Name [([Name], Term, Term)]
 
 -- | For elaborator state
 data EState = EState {
