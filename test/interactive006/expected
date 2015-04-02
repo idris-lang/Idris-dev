@@ -1,2 +1,1 @@
-Type checking ./interactive006.idr
 plus ?foo_rhs2 ?foo_rhs3

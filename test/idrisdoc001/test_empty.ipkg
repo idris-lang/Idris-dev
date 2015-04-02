@@ -1,4 +1,6 @@
 package test_empty
 
+opts = "--quiet"
+
 modules = TestEmpty, TestPrivate
 

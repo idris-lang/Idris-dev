@@ -1,4 +1,6 @@
 package test_merge
 
+opts = "--quiet"
+
 modules = B
 

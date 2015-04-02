@@ -1,4 +1,3 @@
-Type checking ./delab001.idr
 foo : Nat -> String
 foo n = case n of
           0 => "z"

@@ -1,4 +1,5 @@
-module Util.System(tempfile,withTempdir,rmFile,catchIO, isWindows) where
+module Util.System(tempfile,withTempdir,rmFile,catchIO, isWindows,
+                   readSource, writeSource) where
 
 -- System helper functions.
 import Control.Monad (when)
@@ -25,6 +26,16 @@ isWindows = os `elem` ["win32", "mingw32", "cygwin32"]
 tempfile :: IO (FilePath, Handle)
 tempfile = do dir <- getTemporaryDirectory
               openTempFile (normalise dir) "idris"
+
+-- | Read a source file, same as readFile but make sure the encoding is utf-8.
+readSource :: FilePath -> IO String
+readSource f = do h <- openFile f ReadMode
+                  hSetEncoding h utf8
+                  hGetContents h
+
+-- | Write a source file, same as writeFile except the encoding is set to utf-8
+writeSource :: FilePath -> String -> IO ()
+writeSource f s = withFile f WriteMode (\h -> hSetEncoding h utf8 >> hPutStr h s)
 
 withTempdir :: String -> (FilePath -> IO a) -> IO a
 withTempdir subdir callback

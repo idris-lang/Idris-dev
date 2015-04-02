@@ -15,6 +15,7 @@ import Control.Monad.State
 import Data.List
 
 import Debug.Trace
+import Util.System (readSource, writeSource)
 
 data ModuleTree = MTree { mod_path :: IFileType,
                           mod_needsRecheck :: Bool,
@@ -133,7 +134,7 @@ buildTree built fp = btree [] fp
   children lit f done = -- idrisCatch
      do exist <- runIO $ doesFileExist f
         if exist then do
-            file_in <- runIO $ readFile f
+            file_in <- runIO $ readSource f
             file <- if lit then tclift $ unlit f file_in else return file_in
             (_, _, modules, _) <- parseImports f file
             -- The chaser should never report warnings from sub-modules

@@ -1,4 +1,3 @@
-Type checking ./docs001.idr
 Type class C
     class
 

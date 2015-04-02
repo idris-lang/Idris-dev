@@ -1,4 +1,3 @@
-Type checking ./test032.idr
 isElem x [] = ?isElem_rhs_1
 isElem x (y :: xs) = ?isElem_rhs_3
 

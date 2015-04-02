@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-idris --consolewidth 80 --nobanner --nocolor docs002.idr < input
+idris --consolewidth 80 --nobanner --nocolor --quiet docs002.idr < input
 rm *.ibc

@@ -1,3 +1,2 @@
-Type checking ./TestTracing.idr
 TestTracing: Check
 Prelude.Bool: Check

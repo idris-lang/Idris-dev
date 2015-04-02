@@ -1,4 +1,6 @@
 package test_typeclasses
 
+opts = "--quiet"
+
 modules = TestTypeclasses
 
