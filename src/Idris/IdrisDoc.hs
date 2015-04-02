@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 -- | Generation of HTML documentation for Idris code
 module Idris.IdrisDoc (generateDocs) where
@@ -217,9 +218,11 @@ referredNss (n, Just d, _) =
       names  = concatMap (extractPTermNames) ts
   in  S.map getNs $ S.fromList names
 
-  where getFunDocs (FunDoc f)              = [f]
-        getFunDocs (DataDoc f fs)          = f:fs
+  where getFunDocs (FunDoc f)                = [f]
+        getFunDocs (DataDoc f fs)            = f:fs
         getFunDocs (ClassDoc _ _ fs _ _ _ _) = fs
+        getFunDocs (NamedInstanceDoc _ fd)   = [fd]
+        getFunDocs (ModDoc _ _)              = []
         types (FD _ _ args t _)            = t:(map second args)
         second (_, x, _, _)                = x
 
@@ -608,6 +611,8 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
         genArg (name, _, _, Just docstring) = do
           H.dt $ toHtml $ show name
           H.dd $ Docstrings.renderHtml docstring
+
+createOtherDoc ist (NamedInstanceDoc _ fd) = createFunDoc ist fd
 
 createOtherDoc ist (ModDoc _  docstring) = do
   Docstrings.renderHtml docstring
