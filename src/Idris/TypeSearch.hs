@@ -30,7 +30,7 @@ import Idris.Core.Unify (match_unify)
 import Idris.Delaborate (delabTy)
 import Idris.Docstrings (noDocs, overview)
 import Idris.Elab.Type (elabType)
-import Idris.Output (iputStrLn, iRenderOutput, iPrintResult, iRenderResult, prettyDocumentedIst)
+import Idris.Output (iputStrLn, iRenderOutput, iPrintResult, iRenderError, iRenderResult, prettyDocumentedIst)
 import Idris.IBC
 
 import Prelude hiding (pred)
@@ -55,9 +55,13 @@ searchByType pkgs pterm = do
          displayScore theScore <> char ' ' <> prettyDocumentedIst i docInfo
                 | (n, theScore) <- names']
   case idris_outputmode i of
-    RawOutput _  -> do mapM_ iRenderOutput docs
+    RawOutput _  -> do if (not (null docs))
+                          then mapM_ iRenderOutput docs
+                          else iRenderError $ text "No results found"
                        iPrintResult ""
-    IdeMode _ _ -> iRenderResult (vsep docs)
+    IdeMode _ _ -> if (not (null docs))
+                      then iRenderResult (vsep docs)
+                      else iRenderError $ text "No results found"
   putIState i -- don't actually make any changes
   where
     numLimit = 50
