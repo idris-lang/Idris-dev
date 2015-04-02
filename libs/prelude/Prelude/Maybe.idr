@@ -78,17 +78,25 @@ instance (Eq a) => Eq (Maybe a) where
   (Just _) == Nothing  = False
   (Just a) == (Just b) = a == b
 
--- Lift a semigroup into 'Maybe' forming a 'Monoid' according to
--- <http://en.wikipedia.org/wiki/Monoid>: "Any semigroup S may be
--- turned into a monoid simply by adjoining an element i not in S
--- and defining i+i = i and i+s = s = s+i for all s in S."
+||| Prioritised choice. Just like the `Alternative` instance, the
+||| `Semigroup` for `Maybe a` keeps the first succeeding computation.
+|||
+||| **NB**: This is a different choice than in the Haskell libraries.
+||| Use `collectJust` to get the Haskell behaviour.
+instance Semigroup (Maybe a) where
+  Nothing   <+> m = m
+  (Just x)  <+> _ = Just x
 
-instance (Semigroup a) => Semigroup (Maybe a) where
-  Nothing <+> m = m
-  m <+> Nothing = m
+||| Transform any semigroup into a monoid by using `Nothing` as the
+||| designated neutral element and collecting the contents of the
+||| `Just` constructors using a semigroup structure on `a`. This is
+||| the behaviour in the Haskell libraries.
+instance [collectJust] Semigroup a => Semigroup (Maybe a) where
+  Nothing   <+> m       = m
+  m         <+> Nothing = m
   (Just m1) <+> (Just m2) = Just (m1 <+> m2)
 
-instance (Semigroup a) => Monoid (Maybe a) where
+instance  Monoid (Maybe a) where
   neutral = Nothing
 
 instance (Monoid a, Eq a) => Cast a (Maybe a) where
@@ -98,5 +106,5 @@ instance (Monoid a) => Cast (Maybe a) a where
   cast = lowerMaybe
 
 instance Foldable Maybe where
-  foldr _ z Nothing = z
+  foldr _ z Nothing  = z
   foldr f z (Just x) = f x z
