@@ -21,6 +21,9 @@ New in 0.9.18:
   requiring a separate lemma.
 * Case alternatives are allowed to be impossible:
   case Vect.Nil {a=Nat} of { (x::xs) impossible ; [] => True }
+* The default Semigroup and Monoid instances for Maybe are now prioritised
+  choice, keeping the first success as Alternative does. The version that
+  collects successes is now a named instance.
 
 New in 0.9.17:
 --------------
