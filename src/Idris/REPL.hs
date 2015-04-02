@@ -1059,7 +1059,7 @@ process fn' (AddProof prf)
                     else ifail $ "Neither \""++fn''++"\" nor \""++fnExt++"\" exist"
        let fb = fn ++ "~"
        runIO $ copyFile fn fb -- make a backup in case something goes wrong!
-       prog <- runIO $ readFile fb
+       prog <- runIO $ readSource fb
        i <- getIState
        let proofs = proof_list i
        n' <- case prf of
@@ -1071,7 +1071,7 @@ process fn' (AddProof prf)
        case lookup n proofs of
             Nothing -> iputStrLn "No proof to add"
             Just p  -> do let prog' = insertScript (showProof (lit fn) n p) ls
-                          runIO $ writeFile fn (unlines prog')
+                          runIO $ writeSource fn (unlines prog')
                           removeProof n
                           iputStrLn $ "Added proof " ++ show n
                           where ls = (lines prog)

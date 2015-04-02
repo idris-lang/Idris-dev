@@ -43,6 +43,7 @@ import Idris.Docstrings hiding (Unchecked)
 import Paths_idris
 
 import Util.DynamicLinker
+import Util.System (readSource, writeSource)
 import qualified Util.Pretty as P
 
 import Idris.Core.TT
@@ -1345,7 +1346,7 @@ loadSource lidr f toline
              = do iLOG ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
-                  file_in <- runIO $ readFile f
+                  file_in <- runIO $ readSource f
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mdocs, mname, imports_in, pos) <- parseImports f file
                   ai <- getAutoImports
