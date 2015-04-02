@@ -54,14 +54,12 @@ searchByType pkgs pterm = do
        [ let docInfo = (n, delabTy i n, fmap (overview . fst) (lookupCtxtExact n (idris_docstrings i))) in
          displayScore theScore <> char ' ' <> prettyDocumentedIst i docInfo
                 | (n, theScore) <- names']
-  case idris_outputmode i of
-    RawOutput _  -> do if (not (null docs))
-                          then mapM_ iRenderOutput docs
-                          else iRenderError $ text "No results found"
-                       iPrintResult ""
-    IdeMode _ _ -> if (not (null docs))
-                      then iRenderResult (vsep docs)
-                      else iRenderError $ text "No results found"
+  if (not (null docs))
+     then case idris_outputmode i of
+               RawOutput _  -> do mapM_ iRenderOutput docs
+                                  iPrintResult ""
+               IdeMode _ _ -> iRenderResult (vsep docs)
+     else iRenderError $ text "No results found"
   putIState i -- don't actually make any changes
   where
     numLimit = 50
