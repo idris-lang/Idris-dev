@@ -1,4 +1,4 @@
 reg035b.idr:8:6:Can't convert
-        [94mAdditive[0m -> [94mNat[0m
+        Additive -> Nat
 with
-        [94mFin[0m [91m0[0m
+        Fin 0

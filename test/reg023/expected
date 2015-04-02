@@ -1,5 +1,5 @@
 reg023.idr:7:5:When elaborating right hand side of bad:
 Can't unify
-        [94mNat[0m (Type of [91m0[0m)
+        Nat (Type of 0)
 with
-        [92mf[0m [94mNat[0m (Expected type)
+        f Nat (Expected type)
