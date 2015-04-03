@@ -420,7 +420,7 @@ createIndex nss out =
      BS2.hPut h $ renderHtml $ wrapper Nothing $ do
        H.h1 $ "Namespaces"
        H.ul ! class_ "names" $ do
-         let path ns  = "docs" </> genRelNsPath ns "html"
+         let path ns  = "docs" ++ "/" ++ genRelNsPath ns "html"
              item ns  = do let n    = toHtml $ nsName2Str ns
                                link = toValue $ path ns
                            H.li $ H.a ! href link ! class_ "code" $ n
@@ -663,7 +663,7 @@ existingNamespaces :: FilePath -- ^ The base directory containing the
                                --   namespace pages
                    -> IO (S.Set NsName)
 existingNamespaces out = do
-  let docs     = out </> "docs"
+  let docs     = out ++ "/" ++ "docs"
       str2Ns s | s == rootNsStr = []
       str2Ns s = reverse $ T.splitOn (T.singleton '.') (txt s)
       toNs  fp = do isFile    <- doesFileExist $ docs </> fp
