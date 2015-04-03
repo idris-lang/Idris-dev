@@ -582,8 +582,8 @@ idemodeProcess fn (HNF t) = process fn (HNF t)
 --idemodeProcess fn TTShell = process fn TTShell -- need some prove mode!
 idemodeProcess fn (TestInline t) = process fn (TestInline t)
 
-idemodeProcess fn Execute = do process fn Execute
-                               iPrintResult ""
+idemodeProcess fn (Execute t) = do process fn (Execute t)
+                                   iPrintResult ""
 idemodeProcess fn (Compile codegen f) = do process fn (Compile codegen f)
                                            iPrintResult ""
 idemodeProcess fn (LogLvl i) = do process fn (LogLvl i)
@@ -1115,13 +1115,10 @@ process fn (TestInline t)
                                 let tm' = inlineTerm ist tm
                                 c <- colourise
                                 iPrintResult (showTm ist (delab ist tm'))
-process fn Execute
+process fn (Execute tm)
                    = idrisCatch
                        (do ist <- getIState
-                           (m, _) <- elabVal recinfo ERHS
-                                           (PApp fc
-                                              (PRef fc (sUN "run__IO"))
-                                              [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
+                           (m, _) <- elabVal recinfo ERHS (elabExec fc tm)
                            (tmpn, tmph) <- runIO tempfile
                            runIO $ hClose tmph
                            t <- codegen

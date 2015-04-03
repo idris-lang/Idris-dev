@@ -369,7 +369,7 @@ data Command = Quit
              | ModImport String
              | Edit
              | Compile Codegen String
-             | Execute
+             | Execute PTerm
              | ExecVal PTerm
              | Metavars
              | Prove Name
