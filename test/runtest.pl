@@ -10,10 +10,11 @@ my @idrOpts    = ();
 
 sub sandbox_path {
     my ($test_dir,) = @_;
-    my $sandbox = abs_path("$test_dir/../../.cabal-sandbox/bin");
+    my $sandbox = "$test_dir/../../.cabal-sandbox/bin";
 
     if ( -d $sandbox ) {
-        return "PATH=\"$sandbox:$PATH\"";
+        my $sandbox_abs = abs_path($sandbox);
+        return "PATH=\"$sandbox_abs:$PATH\"";
     } else {
         return "";
     }
