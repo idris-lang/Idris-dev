@@ -27,6 +27,7 @@ New in 0.9.18:
 * The default Semigroup and Monoid instances for Maybe are now prioritised
   choice, keeping the first success as Alternative does. The version that
   collects successes is now a named instance.
+* :exec REPL command now takes an optional expression to compile and run/show
 
 New in 0.9.17:
 --------------
