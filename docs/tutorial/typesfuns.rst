@@ -243,12 +243,24 @@ So, for example, the following definitions are legal:
 Dependent Types
 ===============
 
+Dependent types are types that depend on values. It's quite possible you have never encountered such types before,
+so let's take a momement to answer the question: What does it mean for a type to depend on a value?
+First consider a type that depends on a type. ``List a`` is one such example. ``List`` is a type constructor
+that takes a type ``a`` (``a`` is a metavariable here meaning any type), and produces the type of lists that 
+contain only elements of the type provided. For example, ``List Nat`` is the type of lists that contain only ``Nat`` s. 
+
+So if we understand ``List`` as an example of a type that depends on a type,
+a type that depends on a value has a type constructor that takes a value as a parameter. Suppose we could parameterise 
+``List`` not only by the type of elements it contains, but also by the length of the list? Then we could 
+write functions that only apply to lists of three floats, for example. These functions would only accept lists that 
+had been verified (either statically, by the compiler, or dynamically, with runtime tests) to have exactly three elements. 
+That might be a good way to build a three dimensional graphics library, for example. 
+  
 Vectors
 -------
 
-A standard example of a dependent type is the type of “lists with
-length”, conventionally called vectors in the dependent type
-literature.  They are available as part of the Idris library, by
+The accepted name for "lists with length" in the dependent types community is "vectors".
+They are available as part of the Idris library, by
 importing ``Data.Vect``, or we can declare them as follows:
 
 .. code-block:: idris
@@ -263,15 +275,31 @@ provided that the names are declared in different namespaces (in
 practice, normally in different modules). Ambiguous constructor names
 can normally be resolved from context.
 
-This declares a family of types, and so the form of the declaration is
-rather different from the simple type declarations above. We
-explicitly state the type of the type constructor ``Vect`` — it takes
+This example declares a family of types, and so the form of the declaration is
+rather different from the simple type declarations above for types like 
+``MyLT`` that had only simple, non-dependent constructors.
+
+We explicitly state the type of the type constructor ``Vect`` — it takes
 a ``Nat`` and a type as an argument, where ``Type`` stands for the
-type of types. We say that ``Vect`` is *indexed* over ``Nat`` and
+type of types - that is, types whose type constructors have been fully applied, 
+like ``List Nat``, or ``Nat`` itself (because ``Nat`` has no type parameters anyway).
+An example of a "type-like thing" that is not actually a ``Type`` would be ``List``, for example.
+We could make a ``Vect`` that contained exactly three ``Nat`` instances, or one with three
+``List Nat`` instances, but we could not make one that contained exactly 
+three ``List`` instances, because the signature expects a ``Type``, and 
+``List`` by itself is not a complete type.
+
+We say that ``Vect`` is *indexed* over ``Nat`` and
 *parameterised* by ``Type``. Each constructor targets a different part
 of the family of types. ``Nil`` can only be used to construct vectors
 with zero length, and ``::`` to construct vectors with non-zero
-length. In the type of ``::``, we state explicitly that an element of
+length. 
+
+Judging by the constructors, we can see this is not an array-backed data 
+structure as in languages like Java, it is simply a ``List`` with a guaranateed
+fixed length. But how is the length guaranteed?
+
+In the type of ``::``, we state explicitly that an element of
 type ``a`` and a tail of type ``Vect k a`` (i.e., a vector of length
 ``k``) combine to make a vector of length ``S k``.
 
@@ -321,11 +349,22 @@ This error message suggests that there is a length mismatch between
 two vectors — we needed a vector of length ``k + m``, but provided a
 vector of length ``k + k``.
 
+This ability to define these sorts of invariants that are enforced by the compiler is
+extremely powerful, and one of the most important reasons for using a
+dependently typed language.
+
+Note however, that dependent types do not apply only to data structures! 
+They are highly useful for functions as well, as we will see in later sections.
+
 The Finite Sets
 ---------------
 
 Finite sets, as the name suggests, are sets with a finite number of
-elements. They are available as part of the Idris library, by
+elements. They are another example of a dependently typed data structure, 
+one which is indexed by a ``Nat``, but has no ``Type`` parameters. We will 
+see that finite sets have an important relationship with vectors.
+
+They are available as part of the Idris library, by
 importing ``Data.Fin``, or can be declared as follows:
 
 .. code-block:: idris
