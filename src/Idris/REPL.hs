@@ -1229,10 +1229,11 @@ process fn (Apropos pkgs a) =
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
                        | n <- sort names, isUN n ]
-     iRenderResult $ vsep (map (\(m, d) -> text "Module" <+> text m <$>
-                                           ppD ist d <> line) mods) <$>
-                     vsep (map (prettyDocumentedIst ist) aproposInfo)
-     putIState orig
+     if (not (null mods)) || (not (null aproposInfo))
+        then iRenderResult $ vsep (map (\(m, d) -> text "Module" <+> text m <$>
+                                                   ppD ist d <> line) mods) <$>
+                             vsep (map (prettyDocumentedIst ist) aproposInfo)
+        else iRenderError $ text "No results found"
   where isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
