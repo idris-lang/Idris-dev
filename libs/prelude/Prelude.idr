@@ -526,7 +526,7 @@ validFile (FHandle h) = do x <- nullPtr h
 ||| @ test the condition of the loop
 ||| @ body the loop body
 partial -- obviously
-while : (test : IO Bool) -> (body : IO ()) -> IO ()
+while : (test : IO' l Bool) -> (body : IO' l ()) -> IO' l ()
 while t b = do v <- t
                if v then do b
                             while t b
