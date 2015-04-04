@@ -1628,6 +1628,8 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     basename (NS n _) = basename n
     basename n = n
 
+    slist' _ _ e
+      | containsHole e = Nothing
     slist' p bnd (PApp _ (PRef _ nil) _)
       | not (ppopt_impl ppo) && nsroot nil == sUN "Nil" = Just []
     slist' p bnd (PRef _ nil)
