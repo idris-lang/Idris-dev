@@ -1,4 +1,0 @@
-package simpleparser
-
-opts    = "-i ../lib"
-modules = SimpleParser
