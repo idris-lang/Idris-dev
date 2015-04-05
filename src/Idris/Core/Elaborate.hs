@@ -761,11 +761,8 @@ try' t1 t2 proofSearch
        ulog <- getUnifyLog
        ivs <- get_instances
        case prunStateT 999999 False ps t1 s of
-            OK ((v, _, _), s') 
-               | length (instances (proof s')) <= length ivs ->
-                                  do put s'
+            OK ((v, _, _), s') -> do put s'
                                      return $! v
-               | otherwise -> t2
             Error e1 -> traceWhen ulog ("try failed " ++ show e1) $
                          if recoverableErr e1 then
                             do case runStateT t2 s of
