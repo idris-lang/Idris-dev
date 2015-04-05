@@ -24,8 +24,9 @@ Effect = (x : Type) -> Type -> (x -> Type) -> Type
 data EFFECT : Type where
      MkEff : Type -> Effect -> EFFECT
 
--- 'sig' gives the signature for an effect. There are three versions
--- depending on whether there is no state change, a non-dependent change,
+-- 'sig' gives the signature for an effect. There are four versions
+-- depending on whether there is no resource needed, 
+-- no state change, a non-dependent change,
 -- or a dependent change. These are easily disambiguated by type.
 
 namespace NoResourceEffect
