@@ -168,6 +168,11 @@ data EffM : (m : Type -> Type) -> (x : Type)
      liftP    : (prf : SubList ys xs) ->
                 EffM m t ys ys' -> EffM m t xs (\v => updateWith (ys' v) xs prf)
 
+     new      : Handler e' m => (e : EFFECT) -> resTy ->
+                {auto prf : e = MkEff resTy e'} ->
+                EffM m t (e :: es) (\v => e :: es) ->
+                EffM m t es (\v => es)
+
      (:-)     : (l : ty) ->
                 EffM m t [x] xs' -> -- [x] (\v => xs) ->
                 EffM m t [l ::: x] (\v => map (l :::) (xs' v))
@@ -263,6 +268,8 @@ eff env (callP prf effP) k = execEff env prf effP k
 eff env (liftP prf effP) k
    = let env' = dropEnv env prf in
          eff env' effP (\p', envk => k p' (rebuildEnv envk prf env))
+eff env (new (MkEff resTy newEff) res {prf=Refl} effP) k 
+   = eff (res :: env) effP (\p', (val :: envk) => k p' envk)
 -- FIXME:
 -- xs is needed explicitly because otherwise the pattern binding for
 -- 'l' appears too late. Solution seems to be to reorder patterns at the
