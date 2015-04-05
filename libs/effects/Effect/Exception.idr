@@ -4,8 +4,8 @@ import Effects
 import System
 import Control.IOExcept
 
-data Exception : Type -> Effect where
-     Raise : a -> { () } Exception a b
+data Exception : Type -> Effect where 
+     Raise : a -> sig (Exception a) b
 
 instance Handler (Exception a) Maybe where
      handle _ (Raise e) k = Nothing
@@ -14,7 +14,7 @@ instance Handler (Exception a) List where
      handle _ (Raise e) k = []
 
 instance Show a => Handler (Exception a) IO where
-     handle _ (Raise e) k = do printLn e
+     handle _ (Raise e) k = do print e
                                believe_me (exit 1)
 
 instance Handler (Exception a) (IOExcept a) where
@@ -26,16 +26,5 @@ instance Handler (Exception a) (Either a) where
 EXCEPTION : Type -> EFFECT
 EXCEPTION t = MkEff () (Exception t)
 
-raise : a -> { [EXCEPTION a ] } Eff b
+raise : a -> Eff b [EXCEPTION a] 
 raise err = call $ Raise err
-
-
-
-
-
-
--- TODO: Catching exceptions mid program?
--- probably need to invoke a new interpreter
-
--- possibly add a 'handle' to the Eff language so that an alternative
--- handler can be introduced mid interpretation?
