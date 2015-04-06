@@ -189,8 +189,6 @@ docComment = do dc <- pushIndent *> docCommentLine
                                eol ; someSpace
                                return (n, docs)
 
-
-
 -- | Parses some white space
 whiteSpace :: MonadicParsing m => m ()
 whiteSpace = Tok.whiteSpace

@@ -40,6 +40,7 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
        logLvl 1 $ "Data constructor: " ++ showTmImpls dconTy
 
        -- Build data declaration for elaboration
+       iLOG $ foldr (++) "" $ intersperse "\n" (map show dconsArgDocs)
        let datadecl = PDatadecl tyn tycon [(cdoc, dconsArgDocs, dconName, dconTy, fc, [])]
        elabData info rsyn doc paramDocs fc opts datadecl
 
@@ -88,7 +89,7 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
     dconsArgDocs = paramDocs ++ (dcad fieldsWithName)
       where
         dcad :: [(Name, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, Docstring (Either Err PTerm))]
-        dcad ((n, _, _, (Just d)) : rest) = (n, d) : (dcad rest)
+        dcad ((n, _, _, (Just d)) : rest) = ((nsroot n), d) : (dcad rest)
         dcad (_ : rest) = dcad rest
         dcad [] = []
 

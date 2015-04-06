@@ -101,7 +101,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                        t <- typeExpr (allowImp syn)
                        p <- endPlicity c
                        ist <- get
-                       let doc' = case doc of
+                       let doc' = case doc of -- Temp: Throws away any possible arg docs
                                    Just (d,_) -> Just $ annotate syn ist d
                                    Nothing    -> Nothing
                        return (n, p, t, doc')

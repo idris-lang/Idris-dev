@@ -214,8 +214,6 @@ instance Cast Integer Nat where
   cast = fromInteger
 
 ||| A wrapper for Nat that specifies the semigroup and monad instances that use (+)
---record Multiplicative : Type where
---  getMultiplicative : Nat -> Multiplicative
 record Multiplicative where
   constructor getMultiplicative
   _ : Nat
