@@ -153,7 +153,7 @@ IO : Type -> Type
 IO = IO' FFI_C
 
 run__provider : IO' l a -> PrimIO a
-run__provider = call__IO
+run__provider (MkIO f) = f (TheWorld prim__TheWorld)
 
 prim_fork : PrimIO () -> PrimIO Ptr
 prim_fork x = prim_io_return prim__vm -- compiled specially
