@@ -1,5 +1,4 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
-{-# OPTIONS_GHC -O0 #-}
 module Idris.ParseExpr where
 
 import Prelude hiding (pi)
@@ -877,7 +876,7 @@ explicitPi opts st syn
        
 autoImplicit opts st syn
    = do reserved "auto"
-        when (st == Static) $ fail "auto type constraints can not be static"
+        when (st == Static) $ fail "auto implicits can not be static"
         xt <- typeDeclList syn
         lchar '}'
         symbol "->"
@@ -887,7 +886,7 @@ autoImplicit opts st syn
 
 defaultImplicit opts st syn = do
    reserved "default"
-   when (st == Static) $ fail "default tactic constraints can not be static"
+   when (st == Static) $ fail "default implicits can not be static"
    ist <- get
    script' <- simpleExpr syn
    let script = debindApp syn . desugar syn ist $ script'
