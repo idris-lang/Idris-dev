@@ -220,7 +220,7 @@ goal_polymorphic =
 
 -- | Returns the set of declarations we need to add to complete the
 -- definition (most likely case blocks to elaborate) as well as
--- declarations resulting from user tactic scripts (%runTactics)
+-- declarations resulting from user tactic scripts (%runElab)
 elab :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> PTerm ->
         ElabD ()
 elab ist info emode opts fn tm
@@ -1107,11 +1107,11 @@ elab ist info emode opts fn tm
              delayElab $ do focus h
                             dotterm
                             elab' ina fc t
-    elab' ina fc (PRunTactics fc' tm) =
+    elab' ina fc (PRunElab fc' tm) =
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
          n' <- getNameFrom (sMN 0 "tacticExpr")
-         let scriptTy = RApp (Var (sNS (sUN "Tactical") ["Tactical", "Reflection", "Language"])) (Var unitTy)
+         let scriptTy = RApp (Var (sNS (sUN "Elab") ["Elab", "Reflection", "Language"])) (Var unitTy)
          claim n scriptTy
          movelast n
          letbind n' scriptTy (Var n)
@@ -1590,7 +1590,7 @@ case_ ind autoSolve ist fn tm = do
   when autoSolve solveAll
 
 tacN :: String -> Name
-tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]
+tacN str = sNS (sUN str) ["Elab", "Reflection", "Language"]
 
 runTactical :: FC -> Env -> Term -> ElabD ()
 runTactical fc env tm = do tm' <- eval tm
@@ -1679,9 +1679,9 @@ runTactical fc env tm = do tm' <- eval tm
       = do errs' <- eval errs
            parts <- reifyReportParts errs'
            lift . tfail $ ReflectionError [parts] (Msg "")
-      | n == tacN "prim__PureTactical", [_a, tm] <- args
+      | n == tacN "prim__PureElab", [_a, tm] <- args
       = return tm
-      | n == tacN "prim__BindTactical", [_a, _b, first, andThen] <- args
+      | n == tacN "prim__BindElab", [_a, _b, first, andThen] <- args
       = do first' <- eval first
            res <- runTacTm first'
            next <- eval (App andThen res)

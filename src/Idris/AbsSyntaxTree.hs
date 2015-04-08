@@ -826,7 +826,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
            | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
            | PUnquote PTerm -- ^ ~Term
-           | PRunTactics FC PTerm -- ^ %runTactics tm - New-style proof script
+           | PRunElab FC PTerm -- ^ %runElab tm - New-style proof script
        deriving (Eq, Data, Typeable)
 
 
