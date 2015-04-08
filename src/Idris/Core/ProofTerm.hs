@@ -112,7 +112,7 @@ refocus' (Just n) pt@(PT path env tm ups)
       -- First look for the hole in the proof term as-is
       | Just (p', env', tm') <- findHole n env tm
              = PT (replaceTop p' path) env' tm' ups
-      -- Next apply the updates, and look for the hole in the resulting term
+      -- If it's not there, rebuild and look from the top 
       | Just (p', env', tm') <- findHole n [] (rebuildTerm tm (updateSolvedPath ups path))
              = PT p' env' tm' []
       | otherwise = pt
