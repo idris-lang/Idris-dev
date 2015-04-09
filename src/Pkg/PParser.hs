@@ -18,9 +18,6 @@ import Control.Applicative
 
 import Util.System
 
-
-type PParser = StateT PkgDesc IdrisInnerParser
-
 data PkgDesc = PkgDesc { pkgname :: String,
                          libdeps :: [String],
                          objs :: [String],
@@ -34,70 +31,54 @@ data PkgDesc = PkgDesc { pkgname :: String,
                        }
     deriving Show
 
-#if MIN_VERSION_base(4,8,0)
-instance {-# OVERLAPPING #-} TokenParsing PParser where
-#else
-instance TokenParsing PParser where
-#endif
-  someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+someSpace :: IdrisParser ()
+someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
-
+defaultPkg :: PkgDesc
 defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (sUN "") Nothing []
 
 parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do p <- readFile fp
-                  case runparser pPkg defaultPkg fp p of
+                  case runparser pPkg idrisInit fp p of
                        Failure err -> fail (show err)
                        Success x -> return x
 
-pPkg :: PParser PkgDesc
+pPkg :: IdrisParser PkgDesc
 pPkg = do reserved "package"; p <- identifier
-          st <- get
-          put (st { pkgname = p })
-          some pClause
-          st <- get
+          changes <- foldr (.) id <$> some pClause
           eof
-          return st
+          return $ changes defaultPkg{ pkgname = p }
 
-pClause :: PParser ()
+pClause :: IdrisParser (PkgDesc -> PkgDesc)
 pClause = do reserved "executable"; lchar '=';
              exec <- iName []
-             st <- get
-             put (st { execout = Just (if isWindows
+             return $ \st -> st { execout = Just (if isWindows
                                           then ((show exec) ++ ".exe")
                                           else ( show exec )
-                                      ) })
+                                      ) }
       <|> do reserved "main"; lchar '=';
              main <- iName []
-             st <- get
-             put (st { idris_main = main })
+             return $ \st -> st { idris_main = main }
       <|> do reserved "sourcedir"; lchar '=';
              src <- identifier
-             st <- get
-             put (st { sourcedir = src })
+             return $ \st-> st { sourcedir = src }
       <|> do reserved "opts"; lchar '=';
              opts <- stringLiteral
-             st <- get
              let args = pureArgParser (words opts)
-             put (st { idris_opts = args })
+             return $ \st -> st { idris_opts = args }
       <|> do reserved "modules"; lchar '=';
              ms <- sepBy1 (iName []) (lchar ',')
-             st <- get
-             put (st { modules = modules st ++ ms })
+             return $ \st -> st { modules = modules st ++ ms }
       <|> do reserved "libs"; lchar '=';
              ls <- sepBy1 identifier (lchar ',')
-             st <- get
-             put (st { libdeps = libdeps st ++ ls })
+             return $ \st -> st { libdeps = libdeps st ++ ls }
       <|> do reserved "objs"; lchar '=';
              ls <- sepBy1 identifier (lchar ',')
-             st <- get
-             put (st { objs = libdeps st ++ ls })
+             return $ \st -> st { objs = libdeps st ++ ls }
       <|> do reserved "makefile"; lchar '=';
              mk <- iName []
-             st <- get
-             put (st { makefile = Just (show mk) })
+             return $ \st -> st { makefile = Just (show mk) }
       <|> do reserved "tests"; lchar '=';
              ts <- sepBy1 (iName []) (lchar ',')
-             st <- get
-             put st { idris_tests = idris_tests st ++ ts }
+             return $ \st -> st { idris_tests = idris_tests st ++ ts }
 
