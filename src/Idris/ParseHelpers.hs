@@ -118,8 +118,10 @@ p <?> desc = parserTrace desc *> (p Text.Trifecta.<?> desc)
 
 printParserTrace :: Idris ()
 printParserTrace = do
-    prn "Parser trace:"
-    mapM_ (prn . fmtItem) . reverse . idris_parserTrace =<< getIState
+    doTrace <- fget $ opts_parserTrace . ist_options
+    when doTrace $ do
+        prn "Parser trace:"
+        mapM_ (prn . fmtItem) . reverse . idris_parserTrace =<< getIState
   where
     prn :: String -> Idris ()
     prn = logLvl 0
