@@ -4,16 +4,18 @@
 #endif
 module Idris.ParseHelpers where
 
-import Prelude hiding (pi)
+import Prelude hiding (pi, id, (.))
 
 import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
+import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, (<?>))
+import qualified Text.Trifecta
 import Text.Parser.LookAhead
 import Text.Parser.Expression
 import qualified Text.Parser.Token as Tok
 import qualified Text.Parser.Char as Chr
 import qualified Text.Parser.Token.Highlight as Hi
 
+import Idris.ASTUtils
 import Idris.AbsSyntax
 
 import Idris.Core.TT
@@ -24,6 +26,7 @@ import Idris.Output (iWarn)
 
 import qualified Util.Pretty as Pretty (text)
 
+import Control.Category
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
@@ -94,6 +97,36 @@ reportParserWarnings = do ist <- getIState
                                  parserWarnings ist)
                           clearParserWarnings
 
+-- this will always fail to parse
+-- for use in <|>-switched lists
+parserTrace' :: String -> IdrisParser b
+parserTrace' fn = parserTrace fn *> mzero
+
+-- this will always succeed, returning ()
+-- for use in do-blocks
+parserTrace :: String -> IdrisParser ()
+parserTrace fn = do
+    doTrace <- fgetState $ opts_parserTrace . ist_options
+    when doTrace $ do
+        fc <- getFC
+        fmodifyState ist_parserTrace ((fc, fn) :)
+
+-- This is our override for <?> that can also save the parser trace.
+-- Please import Text.Trifecta hiding (<?>) and use this instead.
+(<?>) :: IdrisParser a -> String -> IdrisParser a
+p <?> desc = parserTrace desc *> (p Text.Trifecta.<?> desc)
+
+printParserTrace :: Idris ()
+printParserTrace = do
+    prn "Parser trace:"
+    mapM_ (prn . fmtItem) . reverse . idris_parserTrace =<< getIState
+  where
+    prn :: String -> Idris ()
+    prn = logLvl 0
+
+    fmtItem :: ParserTraceItem -> String
+    fmtItem (fc, desc) = "  " ++ show fc ++ ": " ++ desc
+
 {- * Space, comments and literals (token/lexing like parsers) -}
 
 -- | Consumes any simple whitespace (any character which satisfies Char.isSpace)
@@ -106,7 +139,7 @@ isEol '\n' = True
 isEol  _   = False
 
 -- | A parser that succeeds at the end of the line
-eol :: MonadicParsing m => m ()
+eol :: IdrisParser ()
 eol = (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
 
 {- | Consumes a single-line comment
@@ -115,7 +148,7 @@ eol = (satisfy isEol *> pure ()) <|> lookAhead eof <?> "end of line"
      SingleLineComment_t ::= '--' ~EOL_t* EOL_t ;
 @
  -}
-singleLineComment :: MonadicParsing m => m ()
+singleLineComment :: IdrisParser ()
 singleLineComment = (string "--" *>
                      many (satisfy (not . isEol)) *>
                      eol *> pure ())
@@ -138,11 +171,11 @@ singleLineComment = (string "--" *>
   ;
 @
 -}
-multiLineComment :: MonadicParsing m => m ()
+multiLineComment :: IdrisParser ()
 multiLineComment =     try (string "{-" *> (string "-}") *> pure ())
                    <|> string "{-" *> inCommentChars
-                   <?> ""
-  where inCommentChars :: MonadicParsing m => m ()
+                   <?> "beginning of comment"
+  where inCommentChars :: IdrisParser ()
         inCommentChars =     string "-}" *> pure ()
                          <|> try (multiLineComment) *> inCommentChars
                          <|> string "|||" *> many (satisfy (not . isEol)) *> eol *> inCommentChars
@@ -169,7 +202,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                 return (parseDocstring $ T.pack (concat (intersperse "\n" (dc:rest))),
                         map (\(n, d) -> (n, parseDocstring (T.pack d))) args)
 
-  where docCommentLine :: MonadicParsing m => m String
+  where docCommentLine :: IdrisParser String
         docCommentLine = try (do string "|||"
                                  many (satisfy (==' '))
                                  contents <- option "" (do first <- satisfy (\c -> not (isEol c || c == '@'))
@@ -177,7 +210,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                                                            return $ first:res)
                                  eol ; someSpace
                                  return contents)-- ++ concat rest))
-                        <?> ""
+                        <?> "docstring-line"
 
         argDocCommentLine = do string "|||"
                                many (satisfy isSpace)
@@ -253,23 +286,24 @@ reserved = Tok.reserve idrisStyle
 
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
-reservedOp :: MonadicParsing m => String -> m ()
+reservedOp :: String -> IdrisParser ()
 reservedOp name = token $ try $
   do string name
      notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
 
 -- | Parses an identifier as a token
-identifier :: MonadicParsing m => m String
-identifier = try(do i <- token $ Tok.ident idrisStyle
-                    when (i == "_") $ unexpected "wildcard"
-                    return i)
+identifier :: IdrisParser String
+identifier = try (do i <- token $ Tok.ident idrisStyle
+                     when (i == "_") $ unexpected "wildcard"
+                     return i)
+             <?> "identifier"
 
 -- | Parses an identifier with possible namespace as a name
-iName :: MonadicParsing m => [String] -> m Name
+iName :: [String] -> IdrisParser Name
 iName bad = maybeWithNS identifier False bad <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
-maybeWithNS :: MonadicParsing m => m String -> Bool -> [String] -> m Name
+maybeWithNS :: IdrisParser String -> Bool -> [String] -> IdrisParser Name
 maybeWithNS parser ascend bad = do
   i <- option "" (lookAhead identifier)
   when (i `elem` bad) $ unexpected "reserved identifier"

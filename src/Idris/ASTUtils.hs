@@ -62,6 +62,12 @@ fputState field x = fmodifyState field (const x)
 fmodifyState :: MonadState s m => Field s a -> (a -> a) -> m ()
 fmodifyState field f = modify $ fmodify field f
 
+fsetFlag :: MonadState s m => Field s Bool -> m ()
+fsetFlag field = fputState field True
+
+fclearFlag :: MonadState s m => Field s Bool -> m ()
+fclearFlag field = fputState field False
+
 -- Exact-name context lookup; uses Nothing for deleted values (read+write!).
 -- 
 -- Reading a non-existing value yields Nothing,
@@ -126,13 +132,27 @@ cg_usedpos :: Field CGInfo [(Int, [UsageReason])]
 cg_usedpos = Field usedpos (\v cg -> cg{ usedpos = v })
 
 
+-- Options
+----------
+
+ist_options :: Field IState IOption
+ist_options = Field idris_options (\v ist -> ist{ idris_options = v })
+
+ist_parserTrace :: Field IState [ParserTraceItem]
+ist_parserTrace = Field idris_parserTrace (\v ist -> ist{ idris_parserTrace = v })
+
+
 -- Commandline flags
 --------------------
 
-opts_idrisCmdline :: Field IState [Opt]
-opts_idrisCmdline =
-      Field opt_cmdline (\v opts -> opts{ opt_cmdline = v })
-    . Field idris_options (\v ist -> ist{ idris_options = v })
+opts_idrisCmdline :: Field IOption [Opt]
+opts_idrisCmdline = Field opt_cmdline (\v opts -> opts{ opt_cmdline = v })
+
+opts_parserTrace :: Field IOption Bool
+opts_parserTrace = Field opt_parserTrace (\v opts -> opts{ opt_parserTrace = v })
+
+opts_warnReach :: Field IOption Bool
+opts_warnReach = Field opt_warnReach (\v opts -> opts{ opt_warnReach = v })
 
 -- TT Context
 -------------

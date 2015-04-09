@@ -1198,8 +1198,10 @@ process fn (SetOpt AutoSolve)     = setAutoSolve True
 process fn (UnsetOpt AutoSolve)   = setAutoSolve False
 process fn (SetOpt NoBanner)      = setNoBanner True
 process fn (UnsetOpt NoBanner)    = setNoBanner False
-process fn (SetOpt WarnReach)     = fmodifyState opts_idrisCmdline $ nub . (WarnReach:)
-process fn (UnsetOpt WarnReach)   = fmodifyState opts_idrisCmdline $ delete WarnReach
+process fn (SetOpt WarnReach)     = fsetFlag   $ opts_warnReach . ist_options
+process fn (UnsetOpt WarnReach)   = fclearFlag $ opts_warnReach . ist_options
+process fn (SetOpt ParserTrace)   = fsetFlag   $ opts_parserTrace . ist_options
+process fn (UnsetOpt ParserTrace) = fclearFlag $ opts_parserTrace . ist_options
 
 process fn (SetOpt _) = iPrintError "Not a valid option"
 process fn (UnsetOpt _) = iPrintError "Not a valid option"
@@ -1661,6 +1663,8 @@ idrisMain opts =
     makeOption TypeInType = setTypeInType True
     makeOption NoCoverage = setCoverage False
     makeOption ErrContext = setErrContext True
+    makeOption ParserTrace = fsetFlag $ opts_parserTrace . ist_options
+    makeOption WarnReach   = fsetFlag $ opts_warnReach . ist_options
     makeOption _ = return ()
 
     addPkgDir :: String -> Idris ()

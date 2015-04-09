@@ -103,6 +103,7 @@ parseFlags = many $
   <|> flag' ShowLibdir (long "libdir" <> help "Display library directory")
   <|> flag' ShowIncs (long "include" <> help "Display the includes flags")
   <|> flag' Verbose (short 'V' <> long "verbose" <> help "Loud verbosity")
+  <|> flag' ParserTrace (long "parsertrace" <> help "Print parser trace")
   <|> (IBCSubDir <$> strOption (long "ibcsubdir" <> metavar "FILE" <> help "Write IBC files into sub directory"))
   <|> (ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths"))
   <|> flag' WarnOnly (long "warn")

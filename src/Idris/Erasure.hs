@@ -91,7 +91,7 @@ performUsageAnalysis startNames = do
         logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
 
         -- Check that everything reachable is accessible.
-        checkEnabled <- (WarnReach `elem`) . opt_cmdline . idris_options <$> getIState
+        checkEnabled <- opt_warnReach . idris_options <$> getIState
         when checkEnabled $
             mapM_ (checkAccessibility opt) usage
 
