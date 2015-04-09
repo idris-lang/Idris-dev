@@ -91,7 +91,7 @@ performUsageAnalysis startNames = do
         logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
 
         -- Check that everything reachable is accessible.
-        checkEnabled <- (WarnReach `elem`) . opt_cmdline . idris_options <$> getIState
+        checkEnabled <- opt_warnReach . idris_options <$> getIState
         when checkEnabled $
             mapM_ (checkAccessibility opt) usage
 
@@ -121,7 +121,7 @@ performUsageAnalysis startNames = do
             | otherwise = show i ++ " from " ++ intercalate ", " (map show $ S.toList rs)
 
     storeUsage :: (Name, IntMap (Set Reason)) -> Idris ()
-    storeUsage (n, args) = fputState (cg_usedpos . ist_callgraph n) flat
+    storeUsage (n, args) = fput (cg_usedpos . ist_callgraph n) flat
       where
         flat = [(i, S.toList rs) | (i,rs) <- IM.toList args]
 

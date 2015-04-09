@@ -28,6 +28,8 @@ New in 0.9.18:
   choice, keeping the first success as Alternative does. The version that
   collects successes is now a named instance.
 * :exec REPL command now takes an optional expression to compile and run/show
+* The --parsertrace option (for purposes of debugging the compiler)
+  will print a parser trace.
 
 New in 0.9.17:
 --------------

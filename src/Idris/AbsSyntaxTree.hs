@@ -88,7 +88,9 @@ data IOption = IOption { opt_logLevel     :: Int,
                          opt_origerr      :: Bool,
                          opt_autoSolve    :: Bool, -- ^ automatically apply "solve" tactic in prover
                          opt_autoImport   :: [FilePath], -- ^ e.g. Builtins+Prelude
-                         opt_optimise     :: [Optimisation]
+                         opt_optimise     :: [Optimisation],
+                         opt_parserTrace  :: Bool,
+                         opt_warnReach    :: Bool
                        }
     deriving (Show, Eq)
 
@@ -113,6 +115,8 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_autoSolve  = True
                       , opt_autoImport = []
                       , opt_optimise   = defaultOptimise
+                      , opt_parserTrace = False
+                      , opt_warnReach  = False
                       }
 
 data PPOption = PPOption {
@@ -236,12 +240,16 @@ data IState = IState {
     idris_repl_defs :: [Name], -- ^ List of names that were defined in the repl, and can be re-/un-defined
     elab_stack :: [Name], -- ^ Stack of names currently being elaborated
     idris_symbols :: M.Map Name Name, -- ^ Symbol table (preserves sharing of names)
-    idris_exports :: [Name] -- ^ Functions with ExportList
+    idris_exports :: [Name], -- ^ Functions with ExportList
+    idris_parserTrace :: [ParserTraceItem] -- ^ Parser trace sequence, stored reversed
    }
 
 -- Required for parsers library, and therefore trifecta
 instance Show IState where
   show = const "{internal state}"
+
+-- We define this as a tuple to sidestep the issues with Binary/NFData instances.
+type ParserTraceItem = (FC, String)
 
 data SizeChange = Smaller | Same | Bigger | Unknown
     deriving (Show, Eq)
@@ -324,7 +332,7 @@ idrisInit = IState initContext S.empty []
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty []
+                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] []
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -477,6 +485,7 @@ data Opt = Filename String
          | AutoWidth -- ^ Automatically adjust terminal width
          | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
          | UseConsoleWidth ConsoleWidth
+         | ParserTrace
     deriving (Show, Eq)
 
 -- Parsed declarations

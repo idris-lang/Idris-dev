@@ -9,7 +9,7 @@ module Idris.Parser(module Idris.Parser,
 import Prelude hiding (pi)
 
 import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, Err)
+import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, Err, (<?>))
 import Text.Parser.LookAhead
 import Text.Parser.Expression
 import qualified Text.Parser.Token as Tok
@@ -1274,6 +1274,7 @@ parseProg syn fname input mrk
                                   return []
             Success (x, i)  -> do putIState i
                                   reportParserWarnings
+                                  printParserTrace
                                   return $ collect x
   where mainProg :: IdrisParser ([PDecl], IState)
         mainProg = case mrk of

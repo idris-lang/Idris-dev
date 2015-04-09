@@ -795,7 +795,7 @@ process fn (NewDefn decls) = do
   defineName (PClauses{} : _) = tclift $ tfail (Msg "Only one function body is allowed without a type declaration.")
   -- fixity and syntax declarations are ignored by elabDecls, so they'll have to be handled some other way
   defineName (PFix fc fixity strs : defns) = do
-    fmodifyState idris_fixities (map (Fix fixity) strs ++)
+    fmodify idris_fixities (map (Fix fixity) strs ++)
     unless (null defns) $ defineName defns
   defineName (PSyntax _ syntax:_) = do
     i <- get
@@ -814,7 +814,7 @@ process fn (NewDefn decls) = do
   setReplDefined Nothing = return ()
   setReplDefined (Just n) = do
     oldState <- get
-    fmodifyState repl_definitions (n:)
+    fmodify repl_definitions (n:)
   -- the "name" field of PClauses seems to always be MN 2 "__", so we need to
   -- retrieve the actual name from deeper inside.
   -- This should really be a full recursive walk through the structure of PDecl, but
@@ -844,11 +844,11 @@ process fn (Undefine names) = undefine names
                  undefine' names (undefinedJustNow ++ already)
          else do tclift $ tfail $ Msg ("Can't undefine " ++ show n ++ " because it wasn't defined at the repl")
                  undefine' names already
-    undefOne n = do fputState (ctxt_lookup n . known_terms) Nothing
+    undefOne n = do fput (ctxt_lookup n . known_terms) Nothing
                     -- for now just assume it's a class. Eventually we'll want some kind of
                     -- smart detection of exactly what kind of name we're undefining.
-                    fputState (ctxt_lookup n . known_classes) Nothing
-                    fmodifyState repl_definitions (delete n)
+                    fput (ctxt_lookup n . known_classes) Nothing
+                    fmodify repl_definitions (delete n)
     undefClosure n =
       do replDefs <- idris_repl_defs `fmap` get
          callGraph <- whoCalls n
@@ -1198,8 +1198,10 @@ process fn (SetOpt AutoSolve)     = setAutoSolve True
 process fn (UnsetOpt AutoSolve)   = setAutoSolve False
 process fn (SetOpt NoBanner)      = setNoBanner True
 process fn (UnsetOpt NoBanner)    = setNoBanner False
-process fn (SetOpt WarnReach)     = fmodifyState opts_idrisCmdline $ nub . (WarnReach:)
-process fn (UnsetOpt WarnReach)   = fmodifyState opts_idrisCmdline $ delete WarnReach
+process fn (SetOpt WarnReach)     = opts_warnReach . ist_options .= True
+process fn (UnsetOpt WarnReach)   = opts_warnReach . ist_options .= False
+process fn (SetOpt ParserTrace)   = opts_parserTrace . ist_options .= True
+process fn (UnsetOpt ParserTrace) = opts_parserTrace . ist_options .= False
 
 process fn (SetOpt _) = iPrintError "Not a valid option"
 process fn (UnsetOpt _) = iPrintError "Not a valid option"
@@ -1661,6 +1663,8 @@ idrisMain opts =
     makeOption TypeInType = setTypeInType True
     makeOption NoCoverage = setCoverage False
     makeOption ErrContext = setErrContext True
+    makeOption ParserTrace = opts_parserTrace . ist_options .= True
+    makeOption WarnReach   = opts_warnReach   . ist_options .= True
     makeOption _ = return ()
 
     addPkgDir :: String -> Idris ()
