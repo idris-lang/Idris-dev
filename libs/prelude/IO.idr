@@ -152,13 +152,15 @@ FFI_C = MkFFI C_Types String String
 IO : Type -> Type
 IO = IO' FFI_C
 
+-- Cannot be relaxed as is used by type providers and they expect IO a
+-- in the first argument.
 run__provider : IO a -> PrimIO a
 run__provider (MkIO f) = f (TheWorld prim__TheWorld)
 
 prim_fork : PrimIO () -> PrimIO Ptr
 prim_fork x = prim_io_return prim__vm -- compiled specially
 
-fork : IO () -> IO Ptr
+fork : IO' l () -> IO' l Ptr
 fork (MkIO f) = MkIO (\w => prim_io_bind
                               (prim_fork (prim_io_bind (f w)
                                    (\ x => prim_io_return x)))
