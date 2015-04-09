@@ -62,7 +62,7 @@ execOnly flags =
   case lookup (FlagName "execonly") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
-    Nothing -> True
+    Nothing -> False
 
 isRelease :: S.ConfigFlags -> Bool
 isRelease flags =
