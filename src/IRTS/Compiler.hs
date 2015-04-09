@@ -222,7 +222,7 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
     caseName _ = False
 
 mkLDecl n (TyDecl (DCon tag arity _) _) =
-    LConstructor n tag . length <$> fgetState (cg_usedpos . ist_callgraph n)
+    LConstructor n tag . length <$> fget (cg_usedpos . ist_callgraph n)
 
 mkLDecl n (TyDecl (TCon t a) _) = return $ LConstructor n (-1) a
 mkLDecl n _ = return $ (declArgs [] True n LNothing) -- postulate, never run
@@ -313,8 +313,8 @@ irTerm vs env tm@(App f a) = do
 
     -- data constructor
     (P (DCon t arity _) n _, args) -> do
-        detag <- fgetState (opt_detaggable . ist_optimisation n)
-        used  <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
+        detag <- fget (opt_detaggable . ist_optimisation n)
+        used  <- map fst <$> fget (cg_usedpos . ist_callgraph n)
 
         let isNewtype = length used == 1 && detag
         let argsPruned = [a | (i,a) <- zip [0..] args, i `elem` used]
@@ -597,8 +597,8 @@ irSC vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
 irSC vs (Case up n [alt]) = do
     replacement <- case alt of
         ConCase cn a ns sc -> do
-            detag <- fgetState (opt_detaggable . ist_optimisation cn)
-            used  <- map fst <$> fgetState (cg_usedpos . ist_callgraph cn)
+            detag <- fget (opt_detaggable . ist_optimisation cn)
+            used  <- map fst <$> fget (cg_usedpos . ist_callgraph cn)
             if detag && length used == 1
                 then return . Just $ substSC (ns !! head used) n sc
                 else return Nothing
@@ -639,7 +639,7 @@ irSC vs (Case up n [alt]) = do
 -- to ensure that such case trees don't arise in the first place.
 --
 irSC vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
-    detag <- fgetState (opt_detaggable . ist_optimisation cn)
+    detag <- fget (opt_detaggable . ist_optimisation cn)
     if detag
         then irSC vs (Case up n [ConCase cn a ns sc])
         else LCase up (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
@@ -654,7 +654,7 @@ irSC vs sc@(Case up n alts) = do
     -- everything okay
     LCase up (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
   where
-    isDetaggable (ConCase cn _ _ _) = fgetState $ opt_detaggable . ist_optimisation cn
+    isDetaggable (ConCase cn _ _ _) = fget $ opt_detaggable . ist_optimisation cn
     isDetaggable  _                 = return False
 
 irSC vs ImpossibleCase = return LNothing
@@ -663,7 +663,7 @@ irAlt :: Vars -> LExp -> CaseAlt -> Idris LAlt
 
 -- this leaves out all unused arguments of the constructor
 irAlt vs _ (ConCase n t args sc) = do
-    used <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
+    used <- map fst <$> fget (cg_usedpos . ist_callgraph n)
     let usedArgs = [a | (i,a) <- zip [0..] args, i `elem` used]
     LConCase (-1) n usedArgs <$> irSC (methodVars `M.union` vs) sc
   where

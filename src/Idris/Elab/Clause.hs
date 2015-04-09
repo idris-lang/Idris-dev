@@ -65,7 +65,7 @@ elabClauses info' fc opts n_in cs =
          ist  <- getIState
          optimise <- getOptimise
          let petrans = PETransform `elem` optimise
-         inacc <- map fst <$> fgetState (opt_inaccessible . ist_optimisation n)
+         inacc <- map fst <$> fget (opt_inaccessible . ist_optimisation n)
 
          -- Check n actually exists, with no definition yet
          let tys = lookupTy n ctxt
@@ -89,7 +89,7 @@ elabClauses info' fc opts n_in cs =
            solveDeferred n
 
            -- just ensure that the structure exists
-           fmodifyState (ist_optimisation n) id
+           fmodify (ist_optimisation n) id
            addIBC (IBCOpt n)
 
            ist <- getIState

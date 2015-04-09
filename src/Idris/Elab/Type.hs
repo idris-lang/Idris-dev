@@ -167,7 +167,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
          addDocStr n doc' argDocs'
          addIBC (IBCDoc n)
          addIBC (IBCFlags n opts')
-         fputState (opt_inaccessible . ist_optimisation n) inacc
+         fput (opt_inaccessible . ist_optimisation n) inacc
          addIBC (IBCOpt n)
          when (Implicit `elem` opts') $ do addCoercion n
                                            addIBC (IBCCoercion n)

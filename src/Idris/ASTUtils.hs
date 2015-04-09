@@ -12,17 +12,25 @@ module Idris.ASTUtils where
 -- f :: Idris ()
 -- f = do
 --      -- these two steps:
---      detaggable <- fgetState (opt_detaggable . ist_optimisation typeName)
---      fputState (opt_detaggable . ist_optimisation typeName) (not detaggable)
+--      detaggable <- fget $ opt_detaggable . ist_optimisation typeName
+--      fput (opt_detaggable . ist_optimisation typeName) (not detaggable)
 --
 --      -- are equivalent to:
---      fmodifyState (opt_detaggable . ist_optimisation typeName) not
+--      fmodify (opt_detaggable . ist_optimisation typeName) not
 --
---      -- of course, the long accessor can be put in a variable;
+--      -- Of course, the long accessor can be put in a variable;
 --      -- everything is first-class
 --      let detag n = opt_detaggable . ist_optimisation n
---      fputState (detag n1) True
---      fputState (detag n2) False
+--      fput (detag n1) True
+--      fput (detag n2) False
+--
+--      -- expressed more succintly as
+--      fsetFlag   $ detag n1
+--      fclearFlag $ detag n2
+--
+--      -- or:
+--      detag n1 .= True
+--      detag n2 .= False
 --
 --      -- Note that all these operations handle missing items consistently
 --      -- and transparently, as prescribed by the default values included
@@ -42,31 +50,36 @@ import Idris.Core.Evaluate
 import Idris.AbsSyntaxTree
 
 data Field rec fld = Field
-    { fget :: rec -> fld
-    , fset :: fld -> rec -> rec
+    { fgetField :: rec -> fld
+    , fsetField :: fld -> rec -> rec
     }
 
-fmodify :: Field rec fld -> (fld -> fld) -> rec -> rec
-fmodify field f x = fset field (f $ fget field x) x
+fmodifyField :: Field rec fld -> (fld -> fld) -> rec -> rec
+fmodifyField field f x = fsetField field (f $ fgetField field x) x
 
 instance Category Field where
     id = Field id const
     Field g2 s2 . Field g1 s1 = Field (g2 . g1) (\v2 x1 -> s1 (s2 v2 $ g1 x1) x1)
 
-fgetState :: MonadState s m => Field s a -> m a
-fgetState field = gets $ fget field
+fget :: MonadState s m => Field s a -> m a
+fget field = gets $ fgetField field
 
-fputState :: MonadState s m => Field s a -> a -> m ()
-fputState field x = fmodifyState field (const x)
+fput :: MonadState s m => Field s a -> a -> m ()
+fput field x = fmodify field (const x)
 
-fmodifyState :: MonadState s m => Field s a -> (a -> a) -> m ()
-fmodifyState field f = modify $ fmodify field f
+fmodify :: MonadState s m => Field s a -> (a -> a) -> m ()
+fmodify field f = modify $ fmodifyField field f
+
+-- Control.Category.. is infixr 7
+infix 4 .=
+(.=) :: MonadState s m => Field s a -> a -> m ()
+(.=) = fput
 
 fsetFlag :: MonadState s m => Field s Bool -> m ()
-fsetFlag field = fputState field True
+fsetFlag field = field .= True
 
 fclearFlag :: MonadState s m => Field s Bool -> m ()
-fclearFlag field = fputState field False
+fclearFlag field = field .= False
 
 -- Exact-name context lookup; uses Nothing for deleted values (read+write!).
 -- 
@@ -74,8 +87,8 @@ fclearFlag field = fputState field False
 -- writing Nothing deletes the value (if it existed).
 ctxt_lookup :: Name -> Field (Ctxt a) (Maybe a)
 ctxt_lookup n = Field
-    { fget = lookupCtxtExact n
-    , fset = \newVal -> case newVal of
+    { fgetField = lookupCtxtExact n
+    , fsetField = \newVal -> case newVal of
         Just x  -> addDef n x
         Nothing -> deleteDefExact n
     }

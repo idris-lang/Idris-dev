@@ -106,10 +106,10 @@ parserTrace' fn = parserTrace fn *> mzero
 -- for use in do-blocks
 parserTrace :: String -> IdrisParser ()
 parserTrace fn = do
-    doTrace <- fgetState $ opts_parserTrace . ist_options
+    doTrace <- fget $ opts_parserTrace . ist_options
     when doTrace $ do
         fc <- getFC
-        fmodifyState ist_parserTrace ((fc, fn) :)
+        fmodify ist_parserTrace ((fc, fn) :)
 
 -- This is our override for <?> that can also save the parser trace.
 -- Please import Text.Trifecta hiding (<?>) and use this instead.

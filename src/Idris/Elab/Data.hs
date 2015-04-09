@@ -241,7 +241,7 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
                                          return (n, d')) argDocs
          addDocStr n doc' argDocs'
          addIBC (IBCDoc n)
-         fputState (opt_inaccessible . ist_optimisation n) inacc
+         fput (opt_inaccessible . ist_optimisation n) inacc
          addIBC (IBCOpt n)
          return (n, cty')
   where
