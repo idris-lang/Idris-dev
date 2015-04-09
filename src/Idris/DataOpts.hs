@@ -63,6 +63,12 @@ instance Optimisable (TT Name) where
     applyOpts (P _ (NS (UN fn) mod) _)
        | fn == txt "mult" && mod == prel
         = return (P Ref (sUN "prim__mulBigInt") Erased)
+    applyOpts (P _ (NS (UN fn) mod) _)
+       | fn == txt "divNat" && mod == prel
+        = return (P Ref (sUN "prim__sdivBigInt") Erased)
+    applyOpts (P _ (NS (UN fn) mod) _)
+       | fn == txt "modNat" && mod == prel
+        = return (P Ref (sUN "prim__sremBigInt") Erased)
     applyOpts (App (P _ (NS (UN fn) mod) _) x)
        | fn == txt "fromIntegerNat" && mod == prel
         = applyOpts x
