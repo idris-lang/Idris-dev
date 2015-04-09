@@ -1,10 +1,10 @@
 ./badbangop.idr:7:1: error: ! is
     not a valid
-    operator, expected: space
+    operator, expected: "{-"
 (!) : List a -> Nat -> Maybe a 
 ^                              
 ./baddoublebang.idr:6:28: error: unexpected
     Operator without known fixity:
-    !!, expected: space
+    !!, expected: "{-"
 doubleBang mmn = do pure !!mmn 
                            ^   
