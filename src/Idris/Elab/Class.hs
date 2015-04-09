@@ -175,8 +175,8 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
              let lhs = PApp fc (PRef fc cfn) [pconst capp]
              let rhs = PResolveTC (fileFC "HACK")
              let ty = PPi constraint cnm c con
-             iLOG (showTmImpls ty)
-             iLOG (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
+             logLvl 2 ("Dictionary constraint: " ++ showTmImpls ty)
+             logLvl 2 (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
              i <- getIState
              let conn = case con of
                             PRef _ n -> n
@@ -193,16 +193,16 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
     -- Generate a top level function which looks up a method in a given
     -- dictionary (this is inlinable, always)
     tfun cn c syn all (m, (doc, o, ty))
-        = do let ty' = insertConstraint c ty
+        = do let ty' = expandMethNS syn (insertConstraint c ty)
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
              let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
              let margs = getMArgs ty
              let anames = map (\x -> sMN x "arg") [0..]
              let lhs = PApp fc (PRef fc m) (pconst capp : lhsArgs margs anames)
              let rhs = PApp fc (getMeth mnames all m) (rhsArgs margs anames)
-             iLOG (showTmImpls ty')
+             logLvl 2 ("Top level type: " ++ showTmImpls ty')
              iLOG (show (m, ty', capp, margs))
-             iLOG (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
+             logLvl 2 ("Definition: " ++ showTmImpls lhs ++ " = " ++ showTmImpls rhs)
              return [PTy doc [] syn fc o m ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
 
@@ -235,6 +235,15 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
         | otherwise = PPi (e l s p) n ty (toExp ns e sc)
     toExp ns e (PPi p n ty sc) = PPi p n ty (toExp ns e sc)
     toExp ns e sc = sc
+
+-- In a top level type for a method, expand all the method names namespaces
+-- so that we don't have to disambiguate later
+expandMethNS :: SyntaxInfo 
+                -> PTerm -> PTerm
+expandMethNS syn = mapPT expand
+  where
+    expand (PRef fc n) | n `elem` imp_methods syn = PRef fc $ expandNS syn n
+    expand t = t
 
 findDets :: Name -> [Name] -> Idris [Int]
 findDets n ns = 
