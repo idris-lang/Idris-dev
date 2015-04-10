@@ -1,5 +1,6 @@
+{-# LANGUAGE CPP #-}
 module Util.System(tempfile,withTempdir,rmFile,catchIO, isWindows,
-                   readSource, writeSource) where
+                writeSource, readSource, setupBundledCC) where
 
 -- System helper functions.
 import Control.Monad (when)
@@ -7,12 +8,18 @@ import System.Directory (getTemporaryDirectory
                         , removeFile
                         , removeDirectoryRecursive
                         , createDirectoryIfMissing
+                        , doesDirectoryExist
                         )
-import System.FilePath ((</>), normalise)
+import System.FilePath ((</>), normalise, isAbsolute, dropFileName)
 import System.IO
 import System.Info
 import System.IO.Error
 import Control.Exception as CE
+
+#ifdef FREESTANDING
+import Tools_idris
+import System.Environment (getEnv, setEnv, getExecutablePath)
+#endif
 
 catchIO :: IO a -> (IOError -> IO a) -> IO a
 catchIO = CE.catch
@@ -54,3 +61,24 @@ rmFile f = do putStrLn $ "Removing " ++ f
               catchIO (removeFile f)
                       (\ioerr -> putStrLn $ "WARNING: Cannot remove file "
                                  ++ f ++ ", Error msg:" ++ show ioerr)
+
+setupBundledCC :: IO()
+#ifdef FREESTANDING
+setupBundledCC = when hasBundledToolchain
+                    $ do
+                        exePath <- getExecutablePath
+                        path <- getEnv "PATH"
+                        tcDir <- return getToolchainDir
+                        absolute <- return $ isAbsolute tcDir
+                        target <- return $
+                                    if absolute
+                                       then tcDir
+                                       else dropFileName exePath ++ tcDir
+                        let pathSep = if isWindows then ";" else ":"
+                        present <- doesDirectoryExist target
+                        when present
+                            $ do newPath <- return $ target ++ pathSep ++ path
+                                 setEnv "PATH" newPath
+#else
+setupBundledCC = return ()
+#endif

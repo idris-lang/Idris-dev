@@ -2,6 +2,7 @@ dist
 cabal-dev/
 .cabal-sandbox
 cabal.sandbox.config
+cabal.config
 .hsenv
 *.ibc
 *.o

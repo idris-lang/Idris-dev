@@ -1,5 +1,4 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
-{-# OPTIONS_GHC -O0 #-}
 module Idris.ParseExpr where
 
 import Prelude hiding (pi)
@@ -869,49 +868,67 @@ bindsymbol opts st syn
      = do symbol "->"
           return (Exp opts st False)
 
+explicitPi opts st syn
+   = do xt <- try (lchar '(' *> typeDeclList syn <* lchar ')')
+        binder <- bindsymbol opts st syn
+        sc <- expr syn
+        return (bindList (PPi binder) xt sc)
+       
+autoImplicit opts st syn
+   = do reserved "auto"
+        when (st == Static) $ fail "auto implicits can not be static"
+        xt <- typeDeclList syn
+        lchar '}'
+        symbol "->"
+        sc <- expr syn
+        return (bindList (PPi
+          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc) 
+
+defaultImplicit opts st syn = do
+   reserved "default"
+   when (st == Static) $ fail "default implicits can not be static"
+   ist <- get
+   script' <- simpleExpr syn
+   let script = debindApp syn . desugar syn ist $ script'
+   xt <- typeDeclList syn
+   lchar '}'
+   symbol "->"
+   sc <- expr syn
+   return (bindList (PPi (TacImp [] Dynamic script)) xt sc)
+
+normalImplicit opts st syn = do
+   xt <- typeDeclList syn <* lchar '}'
+   symbol "->"
+   cs <- constraintList syn
+   sc <- expr syn
+   let (im,cl)
+          = if implicitAllowed syn
+               then (Imp opts st False Nothing,
+                      constraint)
+               else (Imp opts st False (Just (Impl False)),
+                     Imp opts st False (Just (Impl True)))
+   return (bindList (PPi im) xt 
+           (bindList (PPi cl) cs sc))
+
+implicitPi opts st syn = 
+      autoImplicit opts st syn
+        <|> defaultImplicit opts st syn
+          <|> normalImplicit opts st syn
+
+unboundPi opts st syn = do
+       x <- opExpr syn
+       (do binder <- bindsymbol opts st syn
+           sc <- expr syn
+           return (PPi binder (sUN "__pi_arg") x sc))
+              <|> return x
+
 pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
      do opts <- piOpts syn
         st   <- static
-        (do xt <- try (lchar '(' *> typeDeclList syn <* lchar ')')
-            binder <- bindsymbol opts st syn
-            sc <- expr syn
-            return (bindList (PPi binder) xt sc)) <|> (do
-               (do try (lchar '{' *> reserved "auto")
-                   when (st == Static) $ fail "auto type constraints can not be static"
-                   xt <- typeDeclList syn
-                   lchar '}'
-                   symbol "->"
-                   sc <- expr syn
-                   return (bindList (PPi
-                     (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc)) <|> (do
-                       try (lchar '{' *> reserved "default")
-                       when (st == Static) $ fail "default tactic constraints can not be static"
-                       ist <- get
-                       script' <- simpleExpr syn
-                       let script = debindApp syn . desugar syn ist $ script'
-                       xt <- typeDeclList syn
-                       lchar '}'
-                       symbol "->"
-                       sc <- expr syn
-                       return (bindList (PPi (TacImp [] Dynamic script)) xt sc))
-                 <|> (do xt <- try (lchar '{' *> typeDeclList syn <* lchar '}')
-                         symbol "->"
-                         cs <- constraintList syn
-                         sc <- expr syn
-                         let (im,cl)
-                                = if implicitAllowed syn
-                                     then (Imp opts st False Nothing,
-                                            constraint)
-                                     else (Imp opts st False (Just (Impl False)),
-                                           Imp opts st False (Just (Impl True)))
-                         return (bindList (PPi im) xt 
-                                 (bindList (PPi cl) cs sc))))
-                 <|> (do x <- opExpr syn
-                         (do binder <- bindsymbol opts st syn
-                             sc <- expr syn
-                             return (PPi binder (sUN "__pi_arg") x sc))
-                          <|> return x)
+        explicitPi opts st syn
+         <|> try (do lchar '{'; implicitPi opts st syn)
+            <|> unboundPi opts st syn
   <?> "dependent type signature"
 
 {- | Parses Possible Options for Pi Expressions
@@ -944,7 +961,7 @@ constraintList1 syn = try (do lchar '('
                               lchar ')'
                               reservedOp "=>"
                               return tys)
-                  <|> try (do t <- expr (disallowImp syn)
+                  <|> try (do t <- opExpr (disallowImp syn)
                               reservedOp "=>"
                               return [(defname, t)])
                   <?> "type constraint list"

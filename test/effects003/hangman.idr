@@ -74,55 +74,59 @@ data HangmanRules : Effect where
 -- the number of missing letters, if not, reduce the number of guesses left
 
      Guess : (x : Char) ->
-             { Hangman (Running (S g) (S w)) ==>
-               {inword} (case inword of
+             sig HangmanRules Bool
+                 (Hangman (Running (S g) (S w)))
+                 (\inword =>
+                        case inword of
                              True => Hangman (Running (S g) w)
-                             False => Hangman (Running g (S w))) }
-                HangmanRules Bool
+                             False => Hangman (Running g (S w)))
 
 -- The 'Won' operation requires that there are no missing letters
 
-     Won  : { Hangman (Running g 0) ==> Hangman NotRunning } HangmanRules ()
+     Won  : sig HangmanRules ()
+                (Hangman (Running g 0))
+                (Hangman NotRunning)
 
 -- The 'Lost' operation requires that there are no guesses left
 
-     Lost : { Hangman (Running 0 g) ==> Hangman NotRunning } HangmanRules ()
+     Lost : sig HangmanRules ()
+                (Hangman (Running 0 g))
+                (Hangman NotRunning)
 
 -- Set up a new game, initialised with 6 guesses and the missing letters in
 -- the given word. Note that if there are no letters in the word, we won't
 -- be able to run 'Guess'!
 
      NewWord : (w : String) -> 
-               { h ==> Hangman (Running 6 (length (letters w))) } HangmanRules ()
+               sig HangmanRules () h (Hangman (Running 6 (length (letters w))))
 
 -- Finally, allow us to get the current game state
      
-     Get  : { h } HangmanRules h
+     Get  : sig HangmanRules h h
 
 HANGMAN : HState -> EFFECT
 HANGMAN h = MkEff (Hangman h) HangmanRules
 
 -- Promote explicit effecst to Eff programs
 
-guess : Char ->
-        { [HANGMAN (Running (S g) (S w))] ==>
-          {inword} [HANGMAN (case inword of
-                                  True => Running (S g) w
-                                  False => Running g (S w))] } Eff Bool
+guess : Char -> Eff Bool
+                [HANGMAN (Running (S g) (S w))]
+                (\inword => [HANGMAN (case inword of
+                                        True => Running (S g) w
+                                        False => Running g (S w))])
 guess c = call (Main.Guess c)
 
-won : { [HANGMAN (Running g 0)] ==> [HANGMAN NotRunning]} Eff ()
+won :  Eff () [HANGMAN (Running g 0)] [HANGMAN NotRunning]
 won = call Won
 
-lost : { [HANGMAN (Running 0 g)] ==> [HANGMAN NotRunning]} Eff ()
+lost : Eff () [HANGMAN (Running 0 g)] [HANGMAN NotRunning]
 lost = call Lost
 
-new_word : (w : String) ->
-           { [HANGMAN h] ==> 
-             [HANGMAN (Running 6 (length (letters w)))]} Eff ()
+new_word : (w : String) -> Eff () [HANGMAN h] 
+                                  [HANGMAN (Running 6 (length (letters w)))]
 new_word w = call (NewWord w)
 
-get : { [HANGMAN h] } Eff (Hangman h)
+get : Eff (Hangman h) [HANGMAN h]
 get = call Get
 
 -----------------------------------------------------------------------
@@ -163,8 +167,8 @@ were valid letters in it!
 soRefl : So x -> (x = True)
 soRefl Oh = Refl 
 
-game : { [HANGMAN (Running (S g) w), STDIO] ==> 
-         [HANGMAN NotRunning, STDIO] } Eff ()
+game : Eff () [HANGMAN (Running (S g) w), STDIO]
+              [HANGMAN NotRunning, STDIO]
 game {w=Z} = won 
 game {w=S _}
      = do putStrLn (show !get)
@@ -175,10 +179,8 @@ game {w=S _}
                (Right p) => do putStrLn "Invalid input!"
                                game
   where 
-    processGuess : -- {g,w:_} ->
-                   Char -> { [HANGMAN (Running (S g) (S w)), STDIO] ==> 
-                             [HANGMAN NotRunning, STDIO] }
-                           Eff ()
+    processGuess : Char -> Eff () [HANGMAN (Running (S g) (S w)), STDIO] 
+                                  [HANGMAN NotRunning, STDIO] 
     processGuess {g} c {w}
       = case !(guess c) of
              True => do putStrLn "Good guess!"
@@ -203,7 +205,7 @@ wlen = proof search
 
 {- It typechecks! Ship it! -}
 
-runGame : { [HANGMAN NotRunning, RND, STDIO] } Eff ()
+runGame : Eff () [HANGMAN NotRunning, RND, STDIO]
 runGame = do srand 1234567890 
              let w = index !(rndFin _) words
              new_word w

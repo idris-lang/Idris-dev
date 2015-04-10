@@ -369,7 +369,7 @@ data Command = Quit
              | ModImport String
              | Edit
              | Compile Codegen String
-             | Execute
+             | Execute PTerm
              | ExecVal PTerm
              | Metavars
              | Prove Name
@@ -1633,6 +1633,8 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     basename (NS n _) = basename n
     basename n = n
 
+    slist' _ _ e
+      | containsHole e = Nothing
     slist' p bnd (PApp _ (PRef _ nil) _)
       | not (ppopt_impl ppo) && nsroot nil == sUN "Nil" = Just []
     slist' p bnd (PRef _ nil)
@@ -1902,31 +1904,35 @@ allNamesIn tm = nub $ ni [] tm
     niTacImp env (TacImp _ _ scr) = ni env scr
     niTacImp _ _                   = []
 
+
 -- Return all names defined in binders in the given term
 boundNamesIn :: PTerm -> [Name]
-boundNamesIn tm = nub $ ni tm
+boundNamesIn tm = S.toList (ni S.empty tm)
   where -- TODO THINK Added niTacImp, but is it right?
-    ni (PApp _ f as)   = ni f ++ concatMap (ni) (map getTm as)
-    ni (PAppBind _ f as)   = ni f ++ concatMap (ni) (map getTm as)
-    ni (PCase _ c os)  = ni c ++ concatMap (ni) (map snd os)
-    ni (PLam fc n ty sc)  = n : (ni ty ++ ni sc)
-    ni (PLet fc n ty val sc)  = n : (ni ty ++ ni val ++ ni sc)
-    ni (PPi p n ty sc) = niTacImp p ++ (n : (ni ty ++ ni sc))
-    ni (PEq _ _ _ l r)     = ni l ++ ni r
-    ni (PRewrite _ l r _) = ni l ++ ni r
-    ni (PTyped l r)    = ni l ++ ni r
-    ni (PPair _ _ l r)   = ni l ++ ni r
-    ni (PDPair _ _ (PRef _ n) t r) = ni t ++ ni r
-    ni (PDPair _ _ l t r) = ni l ++ ni t ++ ni r
-    ni (PAlternative a as) = concatMap (ni) as
-    ni (PHidden tm)    = ni tm
-    ni (PUnifyLog tm)    = ni tm
-    ni (PDisamb _ tm)    = ni tm
-    ni (PNoImplicits tm) = ni tm
-    ni _               = []
+    ni set (PApp _ f as) = niTms (ni set f) (map getTm as)
+    ni set (PAppBind _ f as) = niTms (ni set f) (map getTm as)
+    ni set (PCase _ c os)  = niTms (ni set c) (map snd os)
+    ni set (PLam fc n ty sc)  = S.insert n $ ni (ni set ty) sc
+    ni set (PLet fc n ty val sc) = S.insert n $ ni (ni (ni set ty) val) sc
+    ni set (PPi p n ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
+    ni set (PEq _ _ _ l r) = ni (ni set l) r
+    ni set (PRewrite _ l r _) = ni (ni set l) r
+    ni set (PTyped l r) = ni (ni set l) r
+    ni set (PPair _ _ l r) = ni (ni set l) r
+    ni set (PDPair _ _ (PRef _ n) t r) = ni (ni set t) r
+    ni set (PDPair _ _ l t r) = ni (ni (ni set l) t) r
+    ni set (PAlternative a as) = niTms set as
+    ni set (PHidden tm) = ni set tm
+    ni set (PUnifyLog tm) = ni set tm
+    ni set (PDisamb _ tm) = ni set tm
+    ni set (PNoImplicits tm) = ni set tm
+    ni set _               = set
 
-    niTacImp (TacImp _ _ scr) = ni scr
-    niTacImp _                = []
+    niTms set [] = set
+    niTms set (x : xs) = niTms (ni set x) xs
+
+    niTacImp set (TacImp _ _ scr) = ni set scr
+    niTacImp set _                = set
 
 -- Return names which are valid implicits in the given term (type).
 implicitNamesIn :: [Name] -> IState -> PTerm -> [Name]

@@ -30,6 +30,14 @@ sub runtest {
     my $got = `$sandbox ./run @idrOpts`;
     my $exp = `cat expected`;
 
+    # Allow for variant expected output for tests by overriding expected
+    # when there is an expected.<os> file in the test.
+    # This should be the exception but there are sometimes valid reasons
+    # for os-dependent output.
+    # The endings are msys for windows, darwin for osx and linux for linux
+    if ( -e "expected.$^O") {
+        $exp = `cat expected.$^O`;
+    }
     open my $out, '>', 'output';
     print $out $got;
     close $out;

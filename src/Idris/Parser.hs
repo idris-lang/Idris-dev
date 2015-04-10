@@ -1365,7 +1365,7 @@ loadSource lidr f toline
                   -- process and check module aliases
                   let modAliases = M.fromList
                         [(prep alias, prep realName) | (reexport, realName, Just alias, fc) <- imports]
-                      prep = map T.pack . reverse . Spl.splitOn "/"
+                      prep = map T.pack . reverse . Spl.splitOn [pathSeparator]
                       aliasNames = [(alias, fc) | (_, _, Just alias, fc) <- imports]
                       histogram = groupBy ((==) `on` fst) . sortBy (comparing fst) $ aliasNames
                   case map head . filter ((/= 1) . length) $ histogram of

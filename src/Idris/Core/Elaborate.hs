@@ -759,6 +759,7 @@ try' t1 t2 proofSearch
   = do s <- get
        ps <- get_probs
        ulog <- getUnifyLog
+       ivs <- get_instances
        case prunStateT 999999 False ps t1 s of
             OK ((v, _, _), s') -> do put s'
                                      return $! v
