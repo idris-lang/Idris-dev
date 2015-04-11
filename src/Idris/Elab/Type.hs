@@ -215,8 +215,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     errrep = txt "ErrorReportPart"
 
     tyIsHandler (Bind _ (Pi _ (P _ (NS (UN e) ns1) _) _)
-                        (App (P _ (NS (UN m) ns2) _)
-                             (App (P _ (NS (UN l) ns3) _)
+                        (App _ (P _ (NS (UN m) ns2) _)
+                             (App _ (P _ (NS (UN l) ns3) _)
                                   (P _ (NS (UN r) ns4) _))))
         | e == err && m == maybe && l == lst && r == errrep
         , ns1 == map txt ["Errors","Reflection","Language"]

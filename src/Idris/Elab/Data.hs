@@ -174,7 +174,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
             update ((n, _) : as) (_ : args) = (n, Nothing) : update as args
 
         getDataApp :: Type -> [[Maybe Name]]
-        getDataApp f@(App _ _)
+        getDataApp f@(App _ _ _)
             | (P _ d _, args) <- unApply f
                    = if (d == n) then [mParam args args] else []
         getDataApp (Bind n (Pi _ t _) sc)

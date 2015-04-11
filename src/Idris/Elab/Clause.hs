@@ -433,7 +433,7 @@ elabPE info fc caller r =
             showArg _ = ""
 
             qshow (Bind _ _ _) = "fn"
-            qshow (App f a) = qshow f ++ qshow a
+            qshow (App _ f a) = qshow f ++ qshow a
             qshow (P _ n _) = show n
             qshow (Constant c) = show c
             qshow _ = ""
@@ -494,9 +494,9 @@ checkPossible info fc tcgen fname lhs_in
           -- have no metavars -- just looking to see if a constructor is failing
           -- to unify with a function that may be reduced later
 
-          checkRec (App f a) p@(P _ _ _) = checkRec f p
-          checkRec p@(P _ _ _) (App f a) = checkRec p f
-          checkRec fa@(App _ _) fa'@(App _ _)
+          checkRec (App _ f a) p@(P _ _ _) = checkRec f p
+          checkRec p@(P _ _ _) (App _ f a) = checkRec p f
+          checkRec fa@(App _ _ _) fa'@(App _ _ _)
               | (f, as) <- unApply fa,
                 (f', as') <- unApply fa'
                    = if (length as /= length as')
@@ -745,14 +745,14 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
     -- Find the variable names which appear under a 'Ownership.Read' so that
     -- we know they can't be used on the RHS
     borrowedNames :: [Name] -> Term -> [Name]
-    borrowedNames env (App (App (P _ (NS (UN lend) [owner]) _) _) arg)
+    borrowedNames env (App _ (App _ (P _ (NS (UN lend) [owner]) _) _) arg)
         | owner == txt "Ownership" &&
           (lend == txt "lend" || lend == txt "Read") = getVs arg
        where
          getVs (V i) = [env!!i]
-         getVs (App f a) = nub $ getVs f ++ getVs a
+         getVs (App _ f a) = nub $ getVs f ++ getVs a
          getVs _ = []
-    borrowedNames env (App f a) = nub $ borrowedNames env f ++ borrowedNames env a
+    borrowedNames env (App _ f a) = nub $ borrowedNames env f ++ borrowedNames env a
     borrowedNames env (Bind n b sc) = nub $ borrowedB b ++ borrowedNames (n:env) sc
        where borrowedB (Let t v) = nub $ borrowedNames env t ++ borrowedNames env v
              borrowedB b = borrowedNames env (binderTy b)

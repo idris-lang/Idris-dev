@@ -285,7 +285,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                      = fmapMB (\tm -> ev ntimes stk top env (finalise tm)) t
     -- block reduction immediately under codata (and not forced)
     ev ntimes stk top env
-              (App (App (App d@(P _ (UN dly) _) l@(P _ (UN lco) _)) t) arg)
+              (App _ (App _ (App _ d@(P _ (UN dly) _) l@(P _ (UN lco) _)) t) arg)
        | dly == txt "Delay" && lco == txt "LazyCodata" && not (simpl || atRepl)
             = do let (f, _) = unApply arg
                  let ntimes' = case f of
@@ -299,11 +299,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  when spec $ setBlock False
                  evApply ntimes' stk top env [l',t',arg'] d'
     -- Treat "assert_total" specially, as long as it's defined!
-    ev ntimes stk top env (App (App (P _ n@(UN at) _) _) arg)
+    ev ntimes stk top env (App _ (App _ (P _ n@(UN at) _) _) arg)
        | [(CaseOp _ _ _ _ _ _, _)] <- lookupDefAcc n (spec || atRepl) ctxt,
          at == txt "assert_total" && not simpl
             = ev ntimes (n : stk) top env arg
-    ev ntimes stk top env (App f a)
+    ev ntimes stk top env (App _ f a)
            = do f' <- ev ntimes stk False env f
                 a' <- ev ntimes stk False env a
                 evApply ntimes stk top env [a'] f'
@@ -434,7 +434,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                  Just (altmap, sc) -> evTree ntimes stk top env altmap sc
                                  _ -> return Nothing
 
-    conHeaded tm@(App _ _)
+    conHeaded tm@(App _ _ _)
         | (P (DCon _ _ _) _ _, args) <- unApply tm = True
     conHeaded t = False
 
@@ -540,7 +540,7 @@ instance Quote Value where
                                 v' <- quote i v
                                 let sc'' = pToV (sMN vd "vlet") (addBinder sc')
                                 return (Bind n (Let t' v') sc'')
-    quote i (VApp f a)     = liftM2 App (quote i f) (quote i a)
+    quote i (VApp f a)     = liftM2 (App Complete) (quote i f) (quote i a)
     quote i (VType u)       = return $ TType u
     quote i (VUType u)      = return $ UType u
     quote i VErased        = return $ Erased
@@ -576,13 +576,13 @@ convEq ctxt holes topx topy = ceq [] topx topy where
         | x `elem` holes || y `elem` holes = return True
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
-    ceq ps x (Bind n (Lam t) (App y (V 0))) 
+    ceq ps x (Bind n (Lam t) (App Complete y (V 0))) 
           = ceq ps x (substV (P Bound n t) y)
-    ceq ps (Bind n (Lam t) (App x (V 0))) y 
+    ceq ps (Bind n (Lam t) (App Complete x (V 0))) y 
           = ceq ps (substV (P Bound n t) x) y
-    ceq ps x (Bind n (Lam t) (App y (P Bound n' _)))
+    ceq ps x (Bind n (Lam t) (App Complete y (P Bound n' _)))
         | n == n' = ceq ps x y
-    ceq ps (Bind n (Lam t) (App x (P Bound n' _))) y
+    ceq ps (Bind n (Lam t) (App Complete x (P Bound n' _))) y
         | n == n' = ceq ps x y
 
     ceq ps (Bind n (PVar t) sc) y = ceq ps sc y
@@ -604,7 +604,7 @@ convEq ctxt holes topx topy = ceq [] topx topy where
             ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Pi i v t) (Pi i' v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
-    ceq ps (App fx ax) (App fy ay)   = liftM2 (&&) (ceq ps fx fy) (ceq ps ax ay)
+    ceq ps (App _ fx ax) (App _ fy ay) = liftM2 (&&) (ceq ps fx fy) (ceq ps ax ay)
     ceq ps (Constant x) (Constant y) = return (x == y)
     ceq ps (TType x) (TType y)           = do (v, cs) <- get
                                               put (v, ULE x y : cs)
@@ -1083,5 +1083,5 @@ uniqueBindersCtxt :: Context -> [Name] -> TT Name -> TT Name
 uniqueBindersCtxt ctxt ns (Bind n b sc)
     = let n' = uniqueNameCtxt ctxt n ns in
           Bind n' (fmap (uniqueBindersCtxt ctxt (n':ns)) b) (uniqueBindersCtxt ctxt ns sc)
-uniqueBindersCtxt ctxt ns (App f a) = App (uniqueBindersCtxt ctxt ns f) (uniqueBindersCtxt ctxt ns a)
+uniqueBindersCtxt ctxt ns (App s f a) = App s (uniqueBindersCtxt ctxt ns f) (uniqueBindersCtxt ctxt ns a)
 uniqueBindersCtxt ctxt ns t = t

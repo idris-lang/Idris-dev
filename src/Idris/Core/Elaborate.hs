@@ -258,7 +258,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
                                 else lift $ tfail (NotInjective tm l r)
   where isInj ctxt (P _ n _)
             | isConName n ctxt = True
-        isInj ctxt (App f a) = isInj ctxt f
+        isInj ctxt (App _ f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
         isInj ctxt (TType _) = True
         isInj ctxt (Bind _ (Pi _ _ _) sc) = True
@@ -431,7 +431,7 @@ dotterm = do ES (p, a) s m <- get
      where foB (Guess t v) = union (findOuter h env t) (findOuter h (n:env) v)
            foB (Let t v) = union (findOuter h env t) (findOuter h env v)
            foB b = findOuter h env (binderTy b)
-  findOuter h env (App f a)
+  findOuter h env (App _ f a)
       = union (findOuter h env f) (findOuter h env a)
   findOuter h env _ = []
   
@@ -541,7 +541,7 @@ prepare_apply fn imps =
         | n `elem` hs = let n' = uniqueName n hs in
                             Bind n' (fmap (rebind hs) t) (rebind (n':hs) sc)
         | otherwise = Bind n (fmap (rebind hs) t) (rebind (n:hs) sc)
-    rebind hs (App f a) = App (rebind hs f) (rebind hs a)
+    rebind hs (App s f a) = App s (rebind hs f) (rebind hs a)
     rebind hs t = t
 
 apply, match_apply :: Raw -> [(Bool, Int)] -> Elab' aux [(Name, Name)]

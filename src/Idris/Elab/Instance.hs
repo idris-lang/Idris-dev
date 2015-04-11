@@ -317,7 +317,7 @@ checkInjectiveArgs fc n ds (Just ty)
 
     isInj i (P Bound n _) = True 
     isInj i (P _ n _) = isConName n (tt_ctxt i)
-    isInj i (App f a) = isInj i f && isInj i a
+    isInj i (App _ f a) = isInj i f && isInj i a
     isInj i (V _) = True
     isInj i (Bind n b sc) = isInj i sc
     isInj _ _ = True

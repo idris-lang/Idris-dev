@@ -103,7 +103,7 @@ toTT (EBind n b body) = do n' <- newN n
                       return n'
 toTT (EApp e1 e2) = do e1' <- toTT e1
                        e2' <- toTT e2
-                       return $ App e1' e2'
+                       return $ App Complete e1' e2'
 toTT (EType u) = return $ TType u
 toTT (EUType u) = return $ UType u
 toTT EErased = return Erased
@@ -192,7 +192,7 @@ doExec env ctxt (Bind n (NLet t v) body) = trace "NLet" $ undefined
 doExec env ctxt tm@(Bind n b body) = do b' <- forM b (doExec env ctxt)
                                         return $
                                           EBind n b' (\arg -> doExec ((n, arg):env) ctxt body)
-doExec env ctxt a@(App _ _) =
+doExec env ctxt a@(App _ _ _) =
   do let (f, args) = unApply a
      f' <- doExec env ctxt f
      args' <- case f' of

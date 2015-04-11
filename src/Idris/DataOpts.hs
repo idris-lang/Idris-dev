@@ -63,21 +63,21 @@ instance Optimisable (TT Name) where
     applyOpts (P _ (NS (UN fn) mod) _)
        | fn == txt "mult" && mod == prel
         = return (P Ref (sUN "prim__mulBigInt") Erased)
-    applyOpts (App (P _ (NS (UN fn) mod) _) x)
+    applyOpts (App _ (P _ (NS (UN fn) mod) _) x)
        | fn == txt "fromIntegerNat" && mod == prel
         = applyOpts x
     applyOpts (P _ (NS (UN fn) mod) _)
        | fn == txt "fromIntegerNat" && mod == prel
-        = return (App (P Ref (sNS (sUN "id") ["Basics","Prelude"]) Erased) Erased)
+        = return (App Complete (P Ref (sNS (sUN "id") ["Basics","Prelude"]) Erased) Erased)
     applyOpts (P _ (NS (UN fn) mod) _)
        | fn == txt "toIntegerNat" && mod == prel
-         = return (App (P Ref (sNS (sUN "id") ["Basics","Prelude"]) Erased) Erased)
+         = return (App Complete (P Ref (sNS (sUN "id") ["Basics","Prelude"]) Erased) Erased)
     applyOpts c@(P (DCon t arity uniq) n _)
         = return $ applyDataOptRT n t arity uniq []
-    applyOpts t@(App f a)
+    applyOpts t@(App s f a)
         | (c@(P (DCon t arity uniq) n _), args) <- unApply t
             = applyDataOptRT n t arity uniq <$> mapM applyOpts args
-        | otherwise = App <$> applyOpts f <*> applyOpts a
+        | otherwise = App s <$> applyOpts f <*> applyOpts a
     applyOpts (Bind n b t) = Bind n <$> applyOpts b <*> applyOpts t
     applyOpts (Proj t i) = Proj <$> applyOpts t <*> pure i
     applyOpts t = return t
@@ -103,6 +103,6 @@ applyDataOptRT n tag arity uniq args
           = Constant (BI 0)
     doOpts (NS (UN s) [nat, prelude]) [k]
         | s == txt "S" && nat == txt "Nat" && prelude == txt "Prelude"
-          = App (App (P Ref (sUN "prim__addBigInt") Erased) k) (Constant (BI 1))
+          = App Complete (App Complete (P Ref (sUN "prim__addBigInt") Erased) k) (Constant (BI 1))
 
     doOpts n args = mkApp (P (DCon tag arity uniq) n Erased) args

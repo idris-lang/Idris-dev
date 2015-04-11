@@ -35,9 +35,9 @@ errReverse ist t = rewrite 5 t -- (elideLambdas t)
 
     matchTerm ns l r t
        | Just nmap <- match ns l t = substNames nmap r
-    matchTerm ns l r (App f a) = let f' = matchTerm ns l r f
-                                     a' = matchTerm ns l r a in
-                                     App f' a'
+    matchTerm ns l r (App s f a) = let f' = matchTerm ns l r f
+                                       a' = matchTerm ns l r a in
+                                       App s f' a'
     matchTerm ns l r (Bind n b sc) = let b' = fmap (matchTerm ns l r) b 
                                          sc' = matchTerm ns l r sc in
                                          Bind n b' sc'
@@ -54,16 +54,16 @@ errReverse ist t = rewrite 5 t -- (elideLambdas t)
                         Just ((x, t) : xs')
 
     match' ns (P Ref n _) t | n `elem` ns = Just [(n, t)]
-    match' ns (App f a) (App f' a') = do fs <- match' ns f f'
-                                         as <- match' ns a a'
-                                         Just (fs ++ as)
+    match' ns (App _ f a) (App _ f' a') = do fs <- match' ns f f'
+                                             as <- match' ns a a'
+                                             Just (fs ++ as)
     -- no matching Binds, for now...
     match' ns x y = if x == y then Just [] else Nothing
 
     -- if the term under a lambda is huge, there's no much point in showing
     -- it as it won't be very enlightening.
 
-    elideLambdas (App f a) = App (elideLambdas f) (elideLambdas a)
+    elideLambdas (App s f a) = App s (elideLambdas f) (elideLambdas a)
     elideLambdas (Bind n (Lam t) sc) 
        | size sc > 200 = P Ref (sUN "...") Erased
     elideLambdas (Bind n b sc)

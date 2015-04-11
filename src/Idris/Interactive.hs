@@ -322,7 +322,7 @@ makeLemma fn updatefile l n
         guessImps ctxt _ = []
 
         guarded ctxt n (P _ n' _) | n == n' = True
-        guarded ctxt n ap@(App _ _)
+        guarded ctxt n ap@(App _ _ _)
             | (P _ f _, args) <- unApply ap,
               isConName f ctxt = any (guarded ctxt n) args
 --         guarded ctxt n (Bind (UN cn) (Pi t) sc) -- ignore shadows

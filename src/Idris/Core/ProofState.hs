@@ -328,7 +328,7 @@ computeLet ctxt n tm = cl [] tm where
        | n' == n = let v' = normalise ctxt env v in
                        Bind n' (Let t v') sc
    cl env (Bind n' b sc) = Bind n' (fmap (cl env) b) (cl ((n, b):env) sc)
-   cl env (App f a) = App (cl env f) (cl env a)
+   cl env (App s f a) = App s (cl env f) (cl env a)
    cl env t = t
 
 attack :: RunTactic
@@ -661,9 +661,9 @@ rewrite _ _ _ _ = fail "Can't rewrite here"
 -- an x, and put \x : lt in front
 mkP :: TT Name -> TT Name -> TT Name -> TT Name -> TT Name
 mkP lt l r ty | l == ty = lt
-mkP lt l r (App f a) = let f' = if (r /= f) then mkP lt l r f else f
-                           a' = if (r /= a) then mkP lt l r a else a in
-                           App f' a'
+mkP lt l r (App s f a) = let f' = if (r /= f) then mkP lt l r f else f
+                             a' = if (r /= a) then mkP lt l r a else a in
+                             App s f' a'
 mkP lt l r (Bind n b sc)
                      = let b' = mkPB b
                            sc' = if (r /= sc) then mkP lt l r sc else sc in

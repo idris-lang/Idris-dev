@@ -130,7 +130,7 @@ namesUsed sc = nub $ nu' [] sc where
 
     nut ps (P _ n _) | n `elem` ps = []
                      | otherwise = [n]
-    nut ps (App f a) = nut ps f ++ nut ps a
+    nut ps (App _ f a) = nut ps f ++ nut ps a
     nut ps (Proj t _) = nut ps t
     nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc
     nut ps (Bind n b sc) = nut (n:ps) sc
@@ -155,7 +155,7 @@ findCalls sc topargs = nub $ nu' topargs sc where
 
     nut ps (P Ref n _) | n `elem` ps = []
                      | otherwise = [(n, [])] -- tmp
-    nut ps fn@(App f a)
+    nut ps fn@(App _ f a)
         | (P Ref n _, args) <- unApply fn
              = if n `elem` ps then nut ps f ++ nut ps a
                   else [(n, map argNames args)] ++ concatMap (nut ps) args
@@ -176,8 +176,8 @@ directUse (P _ n _) = [n]
 directUse (Bind n (Let t v) sc) = nub $ directUse v ++ (directUse sc \\ [n])
                                         ++ directUse t
 directUse (Bind n b sc) = nub $ directUse (binderTy b) ++ (directUse sc \\ [n])
-directUse fn@(App f a)
-    | (P Ref (UN pfk) _, [App e w]) <- unApply fn,
+directUse fn@(App _ f a)
+    | (P Ref (UN pfk) _, [App _ e w]) <- unApply fn,
          pfk == txt "prim_fork"
              = directUse e ++ directUse w -- HACK so that fork works
     | (P Ref (UN fce) _, [_, _, a]) <- unApply fn,
@@ -337,7 +337,7 @@ data Pat = PCon Bool Name Int [Pat]
 
 toPats :: Bool -> Bool -> Term -> [Pat]
 toPats reflect tc f = reverse (toPat reflect tc (getArgs f)) where
-   getArgs (App f a) = a : getArgs f
+   getArgs (App _ f a) = a : getArgs f
    getArgs _ = []
 
 toPat :: Bool -> Bool -> [Term] -> [Pat]
@@ -362,7 +362,7 @@ toPat reflect tc = map $ toPat' []
         = PSuc $ toPat' [] p
 
     toPat' []   (P Bound n ty) = PV n ty
-    toPat' args (App f a)      = toPat' (a : args) f
+    toPat' args (App _ f a)    = toPat' (a : args) f
     toPat' [] (Constant x) | isTypeConst x = PTyPat
                            | otherwise     = PConst x
 
@@ -639,7 +639,7 @@ depatt ns tm = dp [] tm
     dpa ms x (SucCase n sc) = SucCase n (dp ms sc)
     dpa ms x (DefaultCase sc) = DefaultCase (dp ms sc)
 
-    applyMaps ms f@(App _ _)
+    applyMaps ms f@(App _ _ _)
        | (P nt cn pty, args) <- unApply f
             = let args' = map (applyMaps ms) args in
                   applyMap ms nt cn pty args'
@@ -652,7 +652,7 @@ depatt ns tm = dp [] tm
           same n (P _ n' _) = n == n'
           same _ _ = False
 
-    applyMaps ms (App f a) = App (applyMaps ms f) (applyMaps ms a)
+    applyMaps ms (App s f a) = App s (applyMaps ms f) (applyMaps ms a)
     applyMaps ms t = t
 
 -- FIXME: Do this for SucCase too
