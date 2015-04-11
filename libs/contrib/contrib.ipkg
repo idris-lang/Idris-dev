@@ -2,6 +2,7 @@ package contrib
 
 opts = "--nobasepkgs --total -i ../prelude -i ../base"
 modules = Control.Algebra,
+	  Control.Algebra.Lattice, Control.Algebra.VectorSpace,
           Control.Isomorphism.Primitives,
           Control.WellFounded,
           Classes.Verified,
