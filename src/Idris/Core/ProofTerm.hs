@@ -7,7 +7,7 @@ evaluation/checking inside the proof system, etc.
 
 module Idris.Core.ProofTerm(ProofTerm, Goal(..), mkProofTerm, getProofTerm,
                             updateSolved, updateSolvedTerm, updateSolvedTerm',
-                            bound_in, bound_in_term, refocus,
+                            bound_in, bound_in_term, refocus, updsubst,
                             Hole, RunTactic',
                             goal, atHole) where
 
@@ -73,6 +73,7 @@ findHole :: Name -> Env -> Term -> Maybe (TermPath, Env, Term)
 findHole n env t = fh' env Top t where
   fh' env path tm@(Bind x h sc) 
       | hole h && n == x = Just (path, env, tm)
+  fh' env path (App Complete _ _) = Nothing
   fh' env path (App s f a)
       | Just (p, env', tm) <- fh' env path a = Just (AppR s f p, env', tm)
       | Just (p, env', tm) <- fh' env path f = Just (AppL s p a, env', tm)
@@ -156,15 +157,16 @@ updateSolvedTerm' xs x = updateSolved' xs x where
     updateSolved' xs (Bind n (Hole ty) t)
         | Just v <- lookup n xs
             = case xs of
-                   [_] -> (subst n v t, True) -- some may be Vs! Can't assume
+                   [_] -> (updsubst n v t, True) -- some may be Vs! Can't assume
                                               -- explicit names
                    _ -> let (t', _) = updateSolved' xs t in
-                            (subst n v t', True)
+                            (updsubst n v t', True)
     updateSolved' xs tm@(Bind n b t)
         | otherwise = let (t', ut) = updateSolved' xs t
                           (b', ub) = updateSolvedB' xs b in
                           if ut || ub then (Bind n b' t', True)
                                       else (tm, False)
+    updateSolved' xs t@(App Complete f a) = (t, False)
     updateSolved' xs t@(App s f a)
         = let (f', uf) = updateSolved' xs f
               (a', ua) = updateSolved' xs a in
@@ -198,6 +200,49 @@ updateSolvedTerm' xs x = updateSolved' xs x where
         noneOfB ns b = noneOf ns (binderTy b)
     noneOf ns _ = True
 
+-- | As 'subst', in TT, but takes advantage of knowing not to substitute
+-- under Complete applications.
+updsubst :: Eq n => n {-^ The id to replace -} ->
+            TT n {-^ The replacement term -} ->
+            TT n {-^ The term to replace in -} ->
+            TT n
+-- subst n v tm = instantiate v (pToV n tm)
+updsubst n v tm = fst $ subst' 0 tm
+  where
+    -- keep track of updates to save allocations - this is a big win on
+    -- large terms in particular
+    -- ('Maybe' would be neater here, but >>= is not the right combinator.
+    -- Feel free to tidy up, as long as it still saves allocating when no
+    -- substitution happens...)
+    subst' i (V x) | i == x = (v, True)
+    subst' i (P _ x _) | n == x = (v, True)
+    subst' i t@(P nt x ty)
+         = let (ty', ut) = subst' i ty in
+               if ut then (P nt x ty', True) else (t, False)
+    subst' i t@(Bind x b sc) | x /= n
+         = let (b', ub) = substB' i b
+               (sc', usc) = subst' (i+1) sc in
+               if ub || usc then (Bind x b' sc', True) else (t, False)
+    subst' i t@(App Complete f a) = (t, False)
+    subst' i t@(App s f a) = let (f', uf) = subst' i f
+                                 (a', ua) = subst' i a in
+                                 if uf || ua then (App s f' a', True) else (t, False)
+    subst' i t@(Proj x idx) = let (x', u) = subst' i x in
+                                  if u then (Proj x' idx, u) else (t, False)
+    subst' i t = (t, False)
+
+    substB' i b@(Let t v) = let (t', ut) = subst' i t
+                                (v', uv) = subst' i v in
+                                if ut || uv then (Let t' v', True)
+                                            else (b, False)
+    substB' i b@(Guess t v) = let (t', ut) = subst' i t
+                                  (v', uv) = subst' i v in
+                                  if ut || uv then (Guess t' v', True)
+                                              else (b, False)
+    substB' i b = let (ty', u) = subst' i (binderTy b) in
+                      if u then (b { binderTy = ty' }, u) else (b, False)
+
+
 -- | Apply solutions to an environment.
 updateEnv :: [(Name, Term)] -> Env -> Env
 updateEnv [] e = e
@@ -208,6 +253,8 @@ updateEnv ns ((n, b) : env) = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns e
 updateSolvedPath :: [(Name, Term)] -> TermPath -> TermPath
 updateSolvedPath [] t = t
 updateSolvedPath ns Top = Top
+updateSolvedPath ns t@(AppL Complete _ _) = t
+updateSolvedPath ns t@(AppR Complete _ _) = t
 updateSolvedPath ns (AppL s p r) = AppL s (updateSolvedPath ns p) (updateSolvedTerm ns r)
 updateSolvedPath ns (AppR s l p) = AppR s (updateSolvedTerm ns l) (updateSolvedPath ns p)
 updateSolvedPath ns (InBind n b sc) 
@@ -246,6 +293,7 @@ goal h pt@(PT path env sub ups)
     g env (Bind n b sc) | hole b && same h n = return $ GD env b
                         | otherwise
                            = g ((n, b):env) sc `mplus` gb env b
+    g env (App Complete f a) = fail "Can't find hole" 
     g env (App _ f a) = g env a `mplus` g env f
     g env t           = fail "Can't find hole"
 

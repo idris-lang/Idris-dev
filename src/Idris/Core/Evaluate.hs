@@ -540,7 +540,7 @@ instance Quote Value where
                                 v' <- quote i v
                                 let sc'' = pToV (sMN vd "vlet") (addBinder sc')
                                 return (Bind n (Let t' v') sc'')
-    quote i (VApp f a)     = liftM2 (App Complete) (quote i f) (quote i a)
+    quote i (VApp f a)     = liftM2 (App MaybeHoles) (quote i f) (quote i a)
     quote i (VType u)       = return $ TType u
     quote i (VUType u)      = return $ UType u
     quote i VErased        = return $ Erased
@@ -576,13 +576,13 @@ convEq ctxt holes topx topy = ceq [] topx topy where
         | x `elem` holes || y `elem` holes = return True
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
-    ceq ps x (Bind n (Lam t) (App Complete y (V 0))) 
+    ceq ps x (Bind n (Lam t) (App _ y (V 0))) 
           = ceq ps x (substV (P Bound n t) y)
-    ceq ps (Bind n (Lam t) (App Complete x (V 0))) y 
+    ceq ps (Bind n (Lam t) (App _ x (V 0))) y 
           = ceq ps (substV (P Bound n t) x) y
-    ceq ps x (Bind n (Lam t) (App Complete y (P Bound n' _)))
+    ceq ps x (Bind n (Lam t) (App _ y (P Bound n' _)))
         | n == n' = ceq ps x y
-    ceq ps (Bind n (Lam t) (App Complete x (P Bound n' _))) y
+    ceq ps (Bind n (Lam t) (App _ x (P Bound n' _))) y
         | n == n' = ceq ps x y
 
     ceq ps (Bind n (PVar t) sc) y = ceq ps sc y
