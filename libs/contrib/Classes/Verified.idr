@@ -80,7 +80,7 @@ class (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
   total ringWithUnityIsUnityL : (l : a) -> l <.> unity = l
   total ringWithUnityIsUnityR : (r : a) -> unity <.> r = r
 
-class (VerifiedRing a, Field a) => VerifiedField a where
+class (VerifiedRingWithUnity a, Field a) => VerifiedField a where
   total fieldInverseIsInverseL : (l : a) -> (notId : Not (l = neutral)) -> l <.> (inverseM l notId) = unity
   total fieldInverseIsInverseR : (r : a) -> (notId : Not (r = neutral)) -> (inverseM r notId) <.> r = unity
 
