@@ -87,10 +87,10 @@ class AbelianGroup a => Ring a where
 class Ring a => RingWithUnity a where
   unity : a
 
-||| Sets equipped with two binary operations, both associative and commutative
-||| supplied with a neutral element, with
-||| distributivity laws relating the two operations.  Must satisfy the following
-||| laws:
+||| Sets equipped with two binary operations – both associative, commutative and
+||| possessing a neutral element – and distributivity laws relating the two
+||| operations. All elements except the additive identity must have a
+||| multiplicative inverse. Must satisfy the following laws:
 |||
 ||| + Associativity of `<+>`:
 |||     forall a b c, a <+> (b <+> c) == (a <+> b) <+> c
@@ -107,14 +107,14 @@ class Ring a => RingWithUnity a where
 ||| + Unity for `<.>`:
 |||     forall a,     a <.> unity     == a
 |||     forall a,     unity <.> a     == a
-||| + InverseM of `<.>`:
-|||     forall a,     a <.> inverseM a == unity
-|||     forall a,     inverseM a <.> a == unity
+||| + InverseM of `<.>`, except for neutral
+|||     forall a /= neutral,  a <.> inverseM a == unity
+|||     forall a /= neutral,  inverseM a <.> a == unity
 ||| + Distributivity of `<.>` and `<->`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 class RingWithUnity a => Field a where
-  inverseM : a -> a
+  inverseM : (x : a) -> Not (x = neutral) -> a
 
 
 -- XXX todo:

@@ -81,8 +81,8 @@ class (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
   total ringWithUnityIsUnityR : (r : a) -> unity <.> r = r
 
 class (VerifiedRing a, Field a) => VerifiedField a where
-  total fieldInverseIsInverseL : (l : a) -> l <.> inverseM l = unity
-  total fieldInverseIsInverseR : (r : a) -> inverseM r <.> r = unity
+  total fieldInverseIsInverseL : (l : a) -> (notId : Not (l = neutral)) -> l <.> (inverseM l notId) = unity
+  total fieldInverseIsInverseR : (r : a) -> (notId : Not (r = neutral)) -> (inverseM r notId) <.> r = unity
 
 
 class JoinSemilattice a => VerifiedJoinSemilattice a where
