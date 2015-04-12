@@ -7,7 +7,6 @@ import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
-import Idris.ElabTerm
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
@@ -21,6 +20,7 @@ import IRTS.Lang
 import Idris.Elab.Type
 import Idris.Elab.Data
 import Idris.Elab.Utils
+import Idris.Elab.Term
 
 import Idris.Core.TT
 import Idris.Core.Elaborate hiding (Tactic(..))

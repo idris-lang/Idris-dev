@@ -730,6 +730,7 @@ Library
                 , Idris.Elab.Provider
                 , Idris.Elab.Transform
                 , Idris.Elab.Value
+                , Idris.Elab.Term
 
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
@@ -748,7 +749,6 @@ Library
                 , Idris.Docstrings
                 , Idris.ElabDecls
                 , Idris.ElabQuasiquote
-                , Idris.ElabTerm
                 , Idris.Erasure
                 , Idris.Error
                 , Idris.ErrReverse

@@ -25,8 +25,8 @@ import Idris.Imports
 import Idris.Delaborate
 import Idris.Error
 import Idris.Elab.Value
+import Idris.Elab.Term
 import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.Coverage
 import Idris.IBC
 import Idris.Unlit

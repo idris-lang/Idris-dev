@@ -12,12 +12,12 @@ import Idris.Core.Evaluate
 import Idris.CaseSplit
 import Idris.AbsSyntax
 import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.Error
 import Idris.Delaborate
 import Idris.Output
 import Idris.IdeMode hiding (IdeModeCommand(..))
 import Idris.Elab.Value
+import Idris.Elab.Term
 
 import Util.Pretty
 import Util.System

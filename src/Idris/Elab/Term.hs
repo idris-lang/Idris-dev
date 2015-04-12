@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards, ViewPatterns #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.ElabTerm where
+module Idris.Elab.Term where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -262,9 +262,7 @@ elab ist info emode opts fn tm
     -- normally correct to call elabE - the ones that don't are desugarings
     -- typically
     elabE :: ElabCtxt -> Maybe FC -> PTerm -> ElabD ()
-    elabE ina fc' t =
-     --do g <- goal
-        --trace ("Elaborating " ++ show t ++ " : " ++ show g) $
+    elabE ina fc' t = 
      do solved <- get_recents
         as <- get_autos
         -- If any of the autos use variables which have recently been solved,
