@@ -1,7 +1,7 @@
 module Control.Algebra
 
 infixl 6 <->
-infixl 6 <.>
+infixl 7 <.>
 
 
 ||| Sets equipped with a single binary operation that is associative, along with
