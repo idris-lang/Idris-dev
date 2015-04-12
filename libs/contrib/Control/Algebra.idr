@@ -60,7 +60,6 @@ class Group a => AbelianGroup a where { }
 class AbelianGroup a => Ring a where
   (<.>) : a -> a -> a
 
-
 ||| Sets equipped with two binary operations, one associative and commutative
 ||| supplied with a neutral element, and the other associative supplied with a
 ||| neutral element, with distributivity laws relating the two operations.  Must
@@ -115,6 +114,16 @@ class Ring a => RingWithUnity a where
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 class RingWithUnity a => Field a where
   inverseM : (x : a) -> Not (x = neutral) -> a
+
+sum : (Foldable t, Monoid a) => t a -> a
+sum = foldr (<+>) neutral
+
+product : (Foldable t, RingWithUnity a) => t a -> a
+product = foldr (<.>) unity
+
+power : RingWithUnity a => a -> Nat -> a
+power _ Z     = unity
+power x (S n) = x <.> (Algebra.power x n)
 
 
 -- XXX todo:
