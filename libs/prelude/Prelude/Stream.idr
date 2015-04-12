@@ -109,6 +109,10 @@ partial -- and the call to foldr isn't guarded anyway!
 scanr : (f : a -> Inf b -> b) -> (xs : Stream a) -> Stream b
 scanr f (x :: xs) = f x (foldr f xs) :: scanr f xs
 
+||| An infinite stream of Fibonacci numbers
+fibs : Stream Nat
+fibs = 0 :: 1 :: zipWith (+) fibs (tail fibs)
+
 instance Applicative Stream where
   pure = repeat
   (<*>) = zipWith apply
