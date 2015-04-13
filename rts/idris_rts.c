@@ -505,6 +505,7 @@ VAL idris_readStr(VM* vm, FILE* h) {
     size_t n = 0;
     ssize_t len;
     len = getline(&buffer, &n, h);
+    strtok(buffer, "\n");
 
     if (len <= 0) {
         return MKSTR(vm, "");
