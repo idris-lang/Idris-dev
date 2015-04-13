@@ -51,8 +51,12 @@ compile codegen f mtm
    = do checkMVs  -- check for undefined metavariables
         checkTotality -- refuse to compile if there are totality problems
         exports <- findExports
+        let rootNames = case mtm of
+                             Nothing -> []
+                             Just t -> freeNames t
 
-        reachableNames <- performUsageAnalysis (getExpNames exports)
+        reachableNames <- performUsageAnalysis 
+                              (rootNames ++ getExpNames exports)
         maindef <- case mtm of
                         Nothing -> return []
                         Just tm -> do md <- irMain tm

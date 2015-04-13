@@ -148,4 +148,4 @@ warnDisamb ist (PQuasiquote tm goal) = warnDisamb ist tm >>
 warnDisamb ist (PUnquote tm) = warnDisamb ist tm
 warnDisamb ist (PAs _ _ tm) = warnDisamb ist tm
 warnDisamb ist (PAppImpl tm _) = warnDisamb ist tm
-warnDisamb ist (PRunTactics _ tm) = warnDisamb ist tm
+warnDisamb ist (PRunElab _ tm) = warnDisamb ist tm

@@ -14,6 +14,8 @@ import Control.Monad
 
 import Paths_idris
 
+import Util.System
+
 data Opts = Opts { inputs :: [FilePath],
                    interface :: Bool,
                    output :: FilePath }
@@ -31,7 +33,8 @@ getOpts = do xs <- getArgs
     process opts [] = opts
 
 c_main :: Opts -> Idris ()
-c_main opts = do elabPrims
+c_main opts = do runIO setupBundledCC
+                 elabPrims
                  loadInputs (inputs opts) Nothing
                  mainProg <- if interface opts 
                                 then liftM Just elabMain

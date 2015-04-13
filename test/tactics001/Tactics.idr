@@ -1,6 +1,6 @@
 module Tactics
 
-import Language.Reflection.Tactical
+import Language.Reflection.Elab
 
 import Data.Vect
 
@@ -18,21 +18,21 @@ refl t x = RApp (RApp (Var (UN "Refl")) t) x
 plusZeroRightNeutralNew : (n : Nat) -> plus n 0 = n
 plusZeroRightNeutralNew Z = Refl
 plusZeroRightNeutralNew (S k) =
-  %runTactics (do rewriteWith `(sym $ plusZeroRightNeutralNew ~(Var "k"))
+  %runElab (do rewriteWith `(sym $ plusZeroRightNeutralNew ~(Var "k"))
                   fill $ refl `(Nat : Type) `(S ~(Var (UN "k")))
                   solve)
 
 plusSuccRightSuccNew : (j, k : Nat) -> plus j (S k) = S (plus j k)
 plusSuccRightSuccNew Z k = Refl
 plusSuccRightSuccNew (S j) k =
-  %runTactics (do rewriteWith `(sym $ plusSuccRightSuccNew ~(Var "j") ~(Var (UN "k")))
+  %runElab (do rewriteWith `(sym $ plusSuccRightSuccNew ~(Var "j") ~(Var (UN "k")))
                   fill $ refl `(Nat : Type) `(S (S (plus ~(Var (UN "j")) ~(Var (UN "k")))))
                   solve)
 
 -- Test that side effects in new tactics work
 
 mkDecl : ()
-mkDecl = %runTactics (do declareType $ Declare (NS (UN "repUnit") ["Tactics"])
+mkDecl = %runElab (do declareType $ Declare (NS (UN "repUnit") ["Tactics"])
                                                [Implicit (UN "z") `(Nat)]
                                                `(Vect ~(Var (UN "z")) ())
                          fill `(() : ())

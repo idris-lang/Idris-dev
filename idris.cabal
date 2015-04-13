@@ -373,6 +373,10 @@ Extra-source-files:
                        test/effects003/*.idr
                        test/effects003/expected
                        test/effects003/input
+                       test/effects004/run
+                       test/effects004/*.idr
+                       test/effects004/expected
+                       test/effects004/input
 
                        test/error001/run
                        test/error001/*.idr
@@ -806,6 +810,7 @@ Library
                 -- Auto Generated
                 , Paths_idris
                 , Version_idris
+                , Tools_idris
 
   Build-depends:  base >=4 && <5
                 , annotated-wl-pprint >= 0.5.3 && < 0.6

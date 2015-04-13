@@ -426,6 +426,7 @@ showCG (SN s) = showCG' s
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
         showCG' (CaseN c) = showCG c ++ "_case"
         showCG' (ElimN sn) = showCG sn ++ "_elim"
+        showCG' (InstanceCtorN n) = showCG n ++ "_ictor"
 showCG NErased = "_"
 
 

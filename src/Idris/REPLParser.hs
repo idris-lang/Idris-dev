@@ -71,7 +71,7 @@ parserCommandsForHelp =
   , noArgCmd ["proofs"] Proofs "Show available proofs"
   , exprArgCmd ["x"] ExecVal "Execute IO actions resulting from an expression using the interpreter"
   , (["c", "compile"], FileArg, "Compile to an executable [codegen] <filename>", cmd_compile)
-  , noArgCmd ["exec", "execute"] Execute "Compile to an executable and run"
+  , (["exec", "execute"], OptionalArg ExprArg, "Compile to an executable and run", cmd_execute)
   , (["dynamic"], FileArg, "Dynamically load a C library (similar to %dynamic)", cmd_dynamic)
   , (["dynamic"], NoArg, "List dynamically loaded C libraries", cmd_dynamic)
   , noArgCmd ["?", "h", "help"] Help "Display this help text"
@@ -275,6 +275,14 @@ cmd_consolewidth name = do
         pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth
                     <|> do discard (P.symbol "infinite"); return InfinitelyWide
                     <|> do n <- fmap fromInteger P.natural; return (ColsWide n)
+
+cmd_execute :: String -> P.IdrisParser (Either String Command)
+cmd_execute name = do
+    tm <- option maintm (P.fullExpr defaultSyntax)
+    return (Right (Execute tm))
+  where
+    maintm = PRef (fileFC "(repl)") (sNS (sUN "main") ["Main"])
+
 
 cmd_dynamic :: String -> P.IdrisParser (Either String Command)
 cmd_dynamic name = do

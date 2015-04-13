@@ -62,6 +62,11 @@ processTacticDecls info =
          addIBC (IBCDef n)
          let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
          addDeferred ds'
+    RClausesInstrs n cs ->
+      do logLvl 3 $ "Pattern-matching definition from tactics: " ++ show n
+         solveDeferred n
+         updateIState $ \i -> i { idris_patdefs = addDef n (cs, []) $ idris_patdefs i } -- TODO: missing clauses
+         addIBC (IBCDef n)
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
@@ -215,7 +220,7 @@ goal_polymorphic =
 
 -- | Returns the set of declarations we need to add to complete the
 -- definition (most likely case blocks to elaborate) as well as
--- declarations resulting from user tactic scripts (%runTactics)
+-- declarations resulting from user tactic scripts (%runElab)
 elab :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> PTerm ->
         ElabD ()
 elab ist info emode opts fn tm
@@ -1102,11 +1107,11 @@ elab ist info emode opts fn tm
              delayElab $ do focus h
                             dotterm
                             elab' ina fc t
-    elab' ina fc (PRunTactics fc' tm) =
+    elab' ina fc (PRunElab fc' tm) =
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
          n' <- getNameFrom (sMN 0 "tacticExpr")
-         let scriptTy = RApp (Var (sNS (sUN "Tactical") ["Tactical", "Reflection", "Language"])) (Var unitTy)
+         let scriptTy = RApp (Var (sNS (sUN "Elab") ["Elab", "Reflection", "Language"])) (Var unitTy)
          claim n scriptTy
          movelast n
          letbind n' scriptTy (Var n)
@@ -1585,7 +1590,7 @@ case_ ind autoSolve ist fn tm = do
   when autoSolve solveAll
 
 tacN :: String -> Name
-tacN str = sNS (sUN str) ["Tactical", "Reflection", "Language"]
+tacN str = sNS (sUN str) ["Elab", "Reflection", "Language"]
 
 runTactical :: FC -> Env -> Term -> ElabD ()
 runTactical fc env tm = do tm' <- eval tm
@@ -1597,28 +1602,43 @@ runTactical fc env tm = do tm' <- eval tm
 
     returnUnit = fmap fst $ get_type_val (Var unitCon)
 
+    patvars :: [Name] -> Term -> ([Name], Term)
+    patvars ns (Bind n (PVar t) sc) = patvars (n : ns) (instantiate (P Bound n t) sc)
+    patvars ns tm                   = (ns, tm)
+
+    pullVars :: (Term, Term) -> ([Name], Term, Term)
+    pullVars (lhs, rhs) = (fst (patvars [] lhs), snd (patvars [] lhs), snd (patvars [] rhs)) -- TODO alpha-convert rhs
+
     defineFunction :: RFunDefn -> ElabD ()
     defineFunction (RDefineFun n clauses) =
       do ctxt <- get_context
          ty <- maybe (fail "no type decl") return $ lookupTyExact n ctxt
          let info = CaseInfo True True False -- TODO document and figure out
-         clauses' <- forM clauses (\(RMkFunClause lhs rhs) ->
-                                    do lhs' <- lift $ check ctxt [] lhs
-                                       rhs' <- lift $ check ctxt [] rhs
-                                       return (fst lhs', fst rhs'))
-         trace (show clauses') $ return ()
+         clauses' <- forM clauses (\case
+                                      RMkFunClause lhs rhs ->
+                                        do lhs' <- fmap fst . lift $ check ctxt [] lhs
+                                           rhs' <- fmap fst . lift $ check ctxt [] rhs
+                                           return $ Right (lhs', rhs')
+                                      RMkImpossibleClause lhs ->
+                                        do lhs' <- fmap fst . lift $ check ctxt [] lhs
+                                           return $ Left lhs')
+         let clauses'' = map (\case Right c -> pullVars c
+                                    Left lhs -> let (ns, lhs') = patvars [] lhs'
+                                                in (ns, lhs', Impossible))
+                            clauses'
          set_context $
            addCasedef n (const [])
                       info False (STerm Erased)
                       True False -- TODO what are these?
                       [] [] -- TODO argument types, inaccessible types
-                      (map Right clauses')
-                      (map (\(l,r) -> ([], l, r)) clauses')
-                      (map (\(l,r) -> ([], l, r)) clauses')
-                      (map (\(l,r) -> ([], l, r)) clauses')
-                      (map (\(l,r) -> ([], l, r)) clauses')
+                      clauses'
+                      clauses''
+                      clauses''
+                      clauses''
+                      clauses''
                       ty
                       ctxt
+         updateAux $ \e -> e { new_tyDecls = RClausesInstrs n clauses'' : new_tyDecls e}
          return ()
 
     -- | Do a step in the reflected elaborator monad. The input is the
@@ -1659,9 +1679,9 @@ runTactical fc env tm = do tm' <- eval tm
       = do errs' <- eval errs
            parts <- reifyReportParts errs'
            lift . tfail $ ReflectionError [parts] (Msg "")
-      | n == tacN "prim__PureTactical", [_a, tm] <- args
+      | n == tacN "prim__PureElab", [_a, tm] <- args
       = return tm
-      | n == tacN "prim__BindTactical", [_a, _b, first, andThen] <- args
+      | n == tacN "prim__BindElab", [_a, _b, first, andThen] <- args
       = do first' <- eval first
            res <- runTacTm first'
            next <- eval (App andThen res)
@@ -2916,6 +2936,8 @@ reifyFunDefn (App (App (P _ n _) fnN) clauses)
           | n == tacN "MkFunClause" = liftM2 RMkFunClause
                                              (reifyRaw lhs)
                                              (reifyRaw rhs)
+        reifyC (App (P (DCon _ _ _) n _) lhs)
+          | n == tacN "MkImpossibleClause" = fmap RMkImpossibleClause $ reifyRaw lhs
         reifyC tm = fail $ "Couldn't reify " ++ show tm ++ " as a clause."
 reifyFunDefn tm = fail $ "Couldn't reify " ++ show tm ++ " as a function declaration."
 

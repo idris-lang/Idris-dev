@@ -18,7 +18,7 @@ Env = List (String, Integer)
 -- Evaluator t
 --    = Eff m [EXCEPTION String, RND, STATE Env] t
 
-eval : Expr -> { [EXCEPTION String, STDIO, RND, STATE Env] } Eff Integer
+eval : Expr -> Eff Integer [EXCEPTION String, STDIO, RND, STATE Env]
 eval (Var x) = do vs <- get
                   case lookup x vs of
                         Nothing => raise ("No such variable " ++ x)

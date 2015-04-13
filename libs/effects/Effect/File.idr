@@ -46,29 +46,29 @@ data FileIO : Effect where
   ||| @ m The file mode.
   Open : (fname: String)
          -> (m : Mode)
-         -> {() ==> {res} if res
-                             then OpenFile m
-                             else ()} FileIO Bool
+         -> sig FileIO Bool () (\res => case res of
+                                             True => OpenFile m
+                                             False => ())
 
   ||| Close a file.
   ||| 
   ||| Closing a file moves the state from Open to closed.
-  Close : {OpenFile m ==> ()} FileIO () 
+  Close : sig FileIO () (OpenFile m) () 
 
   ||| Read a line from the file.
   ||| 
   ||| Only files that are open for reading can be read.
-  ReadLine : {OpenFile Read}  FileIO String 
+  ReadLine : sig FileIO String (OpenFile Read)
   
   ||| Write a string to a file.
   ||| 
   ||| Only file that are open for writing can be written to.
-  WriteString : String -> {OpenFile Write} FileIO ()
+  WriteString : String -> sig FileIO () (OpenFile Write)
 
   ||| End of file?
   ||| 
   ||| Only files open for reading can be tested for EOF
-  EOF : {OpenFile Read}  FileIO Bool
+  EOF : sig FileIO Bool (OpenFile Read)
 
 -- ------------------------------------------------------------ [ The Handlers ]
 
@@ -117,31 +117,31 @@ FILE_IO t = MkEff t FileIO
 ||| @ m The file mode.
 open : (fname : String)
        -> (m : Mode)
-       -> { [FILE_IO ()] ==> {result}
-            [FILE_IO (if result
-                        then OpenFile m
-                        else ())] } Eff Bool
+       -> Eff Bool [FILE_IO ()] 
+                   (\res => [FILE_IO (case res of
+                                           True => OpenFile m
+                                           False => ())])
 open f m = call $ Open f m
 
 
 ||| Close a file.
-close : { [FILE_IO (OpenFile m)] ==> [FILE_IO ()] } Eff ()
+close : Eff () [FILE_IO (OpenFile m)] [FILE_IO ()]
 close = call $ Close
 
 ||| Read a line from the file.
-readLine : { [FILE_IO (OpenFile Read)] } Eff String 
+readLine : Eff String [FILE_IO (OpenFile Read)]
 readLine = call $ ReadLine
 
 ||| Write a string to a file.
-writeString : String -> { [FILE_IO (OpenFile Write)] } Eff ()
+writeString : String -> Eff () [FILE_IO (OpenFile Write)]
 writeString str = call $ WriteString str
 
 ||| Write a line to a file.
-writeLine : String -> { [FILE_IO (OpenFile Write)] } Eff ()
+writeLine : String -> Eff () [FILE_IO (OpenFile Write)]
 writeLine str = call $ WriteString (str ++ "\n")
 
 ||| End of file?
-eof : { [FILE_IO (OpenFile Read)] } Eff Bool 
+eof : Eff Bool [FILE_IO (OpenFile Read)]
 eof = call $ EOF
 
 -- --------------------------------------------------------------------- [ EOF ]
