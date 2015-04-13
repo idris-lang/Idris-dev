@@ -501,6 +501,7 @@ VAL idris_strlen(VM* vm, VAL l) {
 }
 
 VAL idris_readStr(VM* vm, FILE* h) {
+    VAL ret;
     char *buffer = NULL;
     size_t n = 0;
     ssize_t len;
@@ -508,11 +509,12 @@ VAL idris_readStr(VM* vm, FILE* h) {
     strtok(buffer, "\n");
 
     if (len <= 0) {
-        return MKSTR(vm, "");
+        ret = MKSTR(vm, "");
     } else {
-        return MKSTR(vm, buffer);
+        ret = MKSTR(vm, buffer);
     }
     free(buffer);
+    return ret;
 }
 
 VAL idris_strHead(VM* vm, VAL str) {
