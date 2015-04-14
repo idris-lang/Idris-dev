@@ -346,7 +346,7 @@ partial
 printLn : Show a => a -> IO' ffi ()
 printLn x = putStrLn (show x)
 
-||| Read one line of input from stdin
+||| Read one line of input from stdin, without the trailing newline
 partial
 getLine : IO' ffi String
 getLine = prim_read
@@ -545,5 +545,7 @@ readFile fn = do h <- openFile fn Read
     readFile' h contents =
        do x <- feof h
           if not x then do l <- fread h
-                           readFile' h (contents ++ l)
+                           case contents of
+                                "" => readFile' h l
+                                _ => readFile' h (contents ++ "\n" ++ l)
                    else return contents
