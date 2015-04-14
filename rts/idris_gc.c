@@ -53,6 +53,13 @@ VAL copy(VM* vm, VAL x) {
         break;
     case FWD:
         return x->info.ptr;
+    case RAWDATA:
+        {
+            size_t size = x->info.size + sizeof(Closure);
+            cl = allocate(size, 0);
+            memcpy(cl, x, size);
+        }
+        break;
     default:
         break;
     }
