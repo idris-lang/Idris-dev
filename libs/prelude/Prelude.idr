@@ -242,8 +242,8 @@ natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
 total natEnumFromTo : Nat -> Nat -> List Nat
 natEnumFromTo n m = map (plus n) (natRange ((S m) - n))
 total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
-natEnumFromThenTo _ Z   _ = []
-natEnumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
+natEnumFromThenTo _ Z       _ = []
+natEnumFromThenTo n (S inc) m = map (plus n . (* (S inc))) (natRange (S (divNatNZ (m - n) (S inc) SIsNotZ)))
 
 class Enum a where
   total pred : a -> a
@@ -282,7 +282,7 @@ instance Enum Integer where
           go [] = []
           go (x :: xs) = n + cast x :: go xs
   enumFromThenTo _ 0   _ = []
-  enumFromThenTo n inc m = go (natRange (S (fromInteger (abs (m - n)) `div` fromInteger (abs inc))))
+  enumFromThenTo n inc m = go (natRange (S (divNatNZ (fromInteger (abs (m - n))) (S (fromInteger ((abs inc) - 1))) SIsNotZ)))
     where go : List Nat -> List Integer
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
@@ -302,7 +302,7 @@ instance Enum Int where
          go acc (S k) m = go (m :: acc) k (m - 1)
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
   enumFromThenTo _ 0   _ = []
-  enumFromThenTo n inc m = go (natRange (S (cast {to=Nat} (abs (m - n)) `div` cast {to=Nat} (abs inc))))
+  enumFromThenTo n inc m = go (natRange (S (divNatNZ (cast {to=Nat} (abs (m - n))) (S (cast {to=Nat} ((abs inc) - 1))) SIsNotZ)))
     where go : List Nat -> List Int
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs

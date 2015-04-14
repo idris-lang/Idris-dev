@@ -315,10 +315,12 @@ class Integral a where
 
 -- ---------------------------------------------------------------- [ Integers ]
 divBigInt : Integer -> Integer -> Integer
-divBigInt = prim__sdivBigInt
+divBigInt x y = case y == 0 of
+  False => prim__sdivBigInt x y
 
 modBigInt : Integer -> Integer -> Integer
-modBigInt = prim__sremBigInt
+modBigInt x y = case y == 0 of
+  False => prim__sremBigInt x y
 
 instance Integral Integer where
   div = divBigInt
@@ -327,10 +329,12 @@ instance Integral Integer where
 -- --------------------------------------------------------------------- [ Int ]
 
 divInt : Int -> Int -> Int
-divInt = prim__sdivInt
+divInt x y = case y == 0 of
+  False => prim__sdivInt x y
 
 modInt : Int -> Int -> Int
-modInt = prim__sremInt
+modInt x y = case y == 0 of
+  False => prim__sremInt x y
 
 instance Integral Int where
   div = divInt
@@ -338,10 +342,12 @@ instance Integral Int where
 
 -- ------------------------------------------------------------------- [ Bits8 ]
 divB8 : Bits8 -> Bits8 -> Bits8
-divB8 = prim__sdivB8
+divB8 x y = case y == 0 of
+  False => prim__sdivB8 x y
 
 modB8 : Bits8 -> Bits8 -> Bits8
-modB8 = prim__sremB8
+modB8 x y = case y == 0 of
+  False => prim__sremB8 x y
   
 instance Integral Bits8 where
   div = divB8
@@ -349,10 +355,12 @@ instance Integral Bits8 where
 
 -- ------------------------------------------------------------------ [ Bits16 ]
 divB16 : Bits16 -> Bits16 -> Bits16
-divB16 = prim__sdivB16
+divB16 x y = case y == 0 of
+  False => prim__sdivB16 x y
 
 modB16 : Bits16 -> Bits16 -> Bits16
-modB16 = prim__sremB16
+modB16 x y = case y == 0 of
+  False => prim__sremB16 x y
 
 instance Integral Bits16 where
   div = divB16 
@@ -360,10 +368,12 @@ instance Integral Bits16 where
 
 -- ------------------------------------------------------------------ [ Bits32 ]
 divB32 : Bits32 -> Bits32 -> Bits32
-divB32 = prim__sdivB32
+divB32 x y = case y == 0 of
+  False => prim__sdivB32 x y
 
 modB32 : Bits32 -> Bits32 -> Bits32
-modB32 = prim__sremB32
+modB32 x y = case y == 0 of
+  False => prim__sremB32 x y
 
 instance Integral Bits32 where
   div = divB32 
@@ -371,10 +381,12 @@ instance Integral Bits32 where
 
 -- ------------------------------------------------------------------ [ Bits64 ]
 divB64 : Bits64 -> Bits64 -> Bits64
-divB64 = prim__sdivB64
+divB64 x y = case y == 0 of
+  False => prim__sdivB64 x y
 
 modB64 : Bits64 -> Bits64 -> Bits64
-modB64 = prim__sremB64
+modB64 x y = case y == 0 of
+  False => prim__sremB64 x y
 
 instance Integral Bits64 where
   div = divB64 
