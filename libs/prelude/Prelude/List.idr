@@ -309,13 +309,12 @@ mapMaybe f (x::xs) =
 -- Folds
 --------------------------------------------------------------------------------
 
-||| A tail recursive right fold on Lists.
-total foldrImpl : (t -> acc -> acc) -> acc -> (acc -> acc) -> List t -> acc
-foldrImpl f e go [] = go e
-foldrImpl f e go (x::xs) = foldrImpl f e (go . (f x)) xs
-
 instance Foldable List where
-  foldr f e xs = foldrImpl f e id xs
+  foldr c n [] = n
+  foldr c n (x::xs) = c x (foldr c n xs)
+  
+  foldl f q [] = q
+  foldl f q (x::xs) = foldl f (f q x) xs
 
 --------------------------------------------------------------------------------
 -- Special folds
@@ -808,6 +807,15 @@ hasAnyByNilFalse p (x::xs) =
 ||| No list contains an element of the empty list.
 hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
 hasAnyNilFalse l = ?hasAnyNilFalseBody
+
+foldlAsFoldr : (b -> a -> b) -> b -> List a -> b
+foldlAsFoldr f z t = foldr (flip (.) . flip f) id t z
+
+||| The definition of foldl works the same as the default definition
+||| in terms of foldr
+foldlMatchesFoldr : (f : b -> a -> b) -> (q : b) -> (xs : List a) -> foldl f q xs = foldlAsFoldr f q xs
+foldlMatchesFoldr f q [] = Refl
+foldlMatchesFoldr f q (x :: xs) = foldlMatchesFoldr f (f q x) xs
 
 
 --------------------------------------------------------------------------------
