@@ -310,74 +310,80 @@ instance MaxBound Bits64 where
 %default partial
 
 class Integral a where
-   div : a -> a -> a
-   mod : a -> a -> a
+   zero : a
+   divNZ : a -> (y: a) -> Not (y = zero) -> a
+   modNZ : a -> (y: a) -> Not (y = zero) -> a
 
 -- ---------------------------------------------------------------- [ Integers ]
-divBigInt : Integer -> Integer -> Integer
-divBigInt = prim__sdivBigInt
+divBigInt : Integer -> (y: Integer) -> Not (y = (the Integer 0)) -> Integer
+divBigInt x y _ = prim__sdivBigInt x y
 
-modBigInt : Integer -> Integer -> Integer
-modBigInt = prim__sremBigInt
+modBigInt : Integer -> (y: Integer) -> Not (y = (the Integer 0)) -> Integer
+modBigInt x y _ = prim__sremBigInt x y
 
 instance Integral Integer where
-  div = divBigInt
-  mod = modBigInt
+  zero  = 0
+  divNZ = divBigInt
+  modNZ = modBigInt
 
 -- --------------------------------------------------------------------- [ Int ]
 
-divInt : Int -> Int -> Int
-divInt = prim__sdivInt
+divInt : Int -> (y: Int) -> Not (y = (the Int 0)) -> Int
+divInt x y _ = prim__sdivInt x y
 
-modInt : Int -> Int -> Int
-modInt = prim__sremInt
+modInt : Int -> (y: Int) -> Not (y = (the Int 0)) -> Int
+modInt x y _ = prim__sremInt x y
 
 instance Integral Int where
-  div = divInt
-  mod = modInt
+  zero  = 0
+  divNZ = divInt
+  modNZ = modInt
 
 -- ------------------------------------------------------------------- [ Bits8 ]
-divB8 : Bits8 -> Bits8 -> Bits8
-divB8 = prim__sdivB8
+divB8 : Bits8 -> (y: Bits8) -> Not (y = (the Bits8 0)) -> Bits8
+divB8 x y _ = prim__sdivB8 x y
 
-modB8 : Bits8 -> Bits8 -> Bits8
-modB8 = prim__sremB8
+modB8 : Bits8 -> (y: Bits8) -> Not (y = (the Bits8 0)) -> Bits8
+modB8 x y _ = prim__sremB8 x y
   
 instance Integral Bits8 where
-  div = divB8
-  mod = modB8
+  zero  = 0
+  divNZ = divB8
+  modNZ = modB8
 
 -- ------------------------------------------------------------------ [ Bits16 ]
-divB16 : Bits16 -> Bits16 -> Bits16
-divB16 = prim__sdivB16
+divB16 : Bits16 -> (y: Bits16) -> Not (y = (the Bits16 0)) -> Bits16
+divB16 x y _ = prim__sdivB16 x y
 
-modB16 : Bits16 -> Bits16 -> Bits16
-modB16 = prim__sremB16
+modB16 : Bits16 -> (y: Bits16) -> Not (y = (the Bits16 0)) -> Bits16
+modB16 x y _ = prim__sremB16 x y
 
 instance Integral Bits16 where
-  div = divB16 
-  mod = modB16 
+  zero  = 0
+  divNZ = divB16 
+  modNZ = modB16 
 
 -- ------------------------------------------------------------------ [ Bits32 ]
-divB32 : Bits32 -> Bits32 -> Bits32
-divB32 = prim__sdivB32
+divB32 : Bits32 -> (y: Bits32) -> Not (y = (the Bits32 0)) -> Bits32
+divB32 x y _ = prim__sdivB32 x y
 
-modB32 : Bits32 -> Bits32 -> Bits32
-modB32 = prim__sremB32
+modB32 : Bits32 -> (y: Bits32) -> Not (y = (the Bits32 0)) -> Bits32
+modB32 x y _ = prim__sremB32 x y
 
 instance Integral Bits32 where
-  div = divB32 
-  mod = modB32 
+  zero  = 0
+  divNZ = divB32 
+  modNZ = modB32 
 
 -- ------------------------------------------------------------------ [ Bits64 ]
-divB64 : Bits64 -> Bits64 -> Bits64
-divB64 = prim__sdivB64
+divB64 : Bits64 -> (y: Bits64) -> Not (y = (the Bits64 0)) -> Bits64
+divB64 x y _ = prim__sdivB64 x y
 
-modB64 : Bits64 -> Bits64 -> Bits64
-modB64 = prim__sremB64
+modB64 : Bits64 -> (y: Bits64) -> Not (y = (the Bits64 0)) -> Bits64
+modB64 x y _ = prim__sremB64 x y
 
 instance Integral Bits64 where
-  div = divB64 
-  mod = modB64 
-
+  zero  = 0
+  divNZ = divB64 
+  modNZ = modB64 
 

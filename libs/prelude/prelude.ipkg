@@ -12,5 +12,6 @@ modules = Builtins, Prelude, IO,
 
           Language.Reflection, Language.Reflection.Errors, Language.Reflection.Tactical,
 
-          Decidable.Equality
+          Decidable.Equality,
+          Math
 

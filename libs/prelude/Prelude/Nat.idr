@@ -8,6 +8,7 @@ import Prelude.Bool
 import Prelude.Cast
 import Prelude.Classes
 import Prelude.Uninhabited
+import Prelude.Maybe
 
 %access public
 %default total
@@ -289,9 +290,9 @@ fact (S n) = (S n) * fact n
 --------------------------------------------------------------------------------
 
 total
-modNat : Nat -> Nat -> Nat
-modNat left Z         = left
-modNat left (S right) = mod' left left right
+modNat : Nat -> (y: Nat) -> Not (y = Z) -> Nat
+modNat left Z         p = void (p Refl)
+modNat left (S right) p = mod' left left right
   where
     total mod' : Nat -> Nat -> Nat -> Nat
     mod' Z        centre right = centre
@@ -302,9 +303,9 @@ modNat left (S right) = mod' left left right
         mod' left (centre - (S right)) right
 
 total
-divNat : Nat -> Nat -> Nat
-divNat left Z         = S left               -- div by zero
-divNat left (S right) = div' left left right
+divNat : Nat -> (y: Nat) -> Not (y = Z) -> Nat
+divNat left Z         p = void (p Refl)
+divNat left (S right) p = div' left left right
   where
     total div' : Nat -> Nat -> Nat -> Nat
     div' Z        centre right = Z
@@ -315,25 +316,9 @@ divNat left (S right) = div' left left right
         S (div' left (centre - (S right)) right)
 
 instance Integral Nat where
-  div = divNat
-  mod = modNat
-
-log2 : Nat -> Nat
-log2 Z = Z
-log2 (S Z) = Z
-log2 n = S (log2 (assert_smaller n (n `divNat` 2)))
-
---------------------------------------------------------------------------------
--- GCD and LCM
---------------------------------------------------------------------------------
-gcd : Nat -> Nat -> Nat
-gcd a Z = a
-gcd a b = assert_total (gcd b (a `modNat` b))
-
-total lcm : Nat -> Nat -> Nat
-lcm _ Z = Z
-lcm Z _ = Z
-lcm x y = divNat (x * y) (gcd x y)
+  zero  = Z
+  divNZ = divNat
+  modNZ = modNat
 
 
 --------------------------------------------------------------------------------
@@ -723,11 +708,6 @@ sucMinL (S l) = cong (sucMinL l)
 total sucMinR : (l : Nat) -> minimum l (S l) = l
 sucMinR Z = Refl
 sucMinR (S l) = cong (sucMinR l)
-
--- div and mod
-total modZeroZero : (n : Nat) -> mod 0 n = Z
-modZeroZero Z     = Refl
-modZeroZero (S n) = Refl
 
 --------------------------------------------------------------------------------
 -- Proofs

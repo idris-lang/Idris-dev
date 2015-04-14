@@ -38,7 +38,8 @@ byte n w = prim__lshrB64 (prim__andB64 mask w) offset
 ||| Modulo of an integer, downsized to a Bits64
 private
 mod64 : Integer -> Bits64
-mod64 i = assert_total $ prim__truncBigInt_B64 (abs i `mod` 0xffffffffffffffff)
+mod64 i = assert_total $ prim__truncBigInt_B64 (modNZ (abs i) 0xffffffffffffffff nz)
+  where nz Refl impossible
 
 instance Hashable Bits64 where
   saltedHash64 w salt = foldr (\b,acc => (acc `prim__shlB64` 10) + acc + b)
