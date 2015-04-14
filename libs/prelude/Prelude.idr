@@ -545,5 +545,7 @@ readFile fn = do h <- openFile fn Read
     readFile' h contents =
        do x <- feof h
           if not x then do l <- fread h
-                           readFile' h (contents ++ l)
+                           case contents of
+                                "" => readFile' h l
+                                _ => readFile' h (contents ++ "\n" ++ l)
                    else return contents
