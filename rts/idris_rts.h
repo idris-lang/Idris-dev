@@ -26,7 +26,7 @@
 typedef enum {
     CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
     BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
-    MANAGEDPTR
+    MANAGEDPTR, RAWDATA
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -76,6 +76,7 @@ typedef struct Closure {
         __m128i* bits128p;
         Buffer* buf;
         ManagedPtr* mptr;
+        size_t size;
     } info;
 } Closure;
 
