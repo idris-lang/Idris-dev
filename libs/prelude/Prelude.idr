@@ -346,7 +346,7 @@ partial
 printLn : Show a => a -> IO' ffi ()
 printLn x = putStrLn (show x)
 
-||| Read one line of input from stdin
+||| Read one line of input from stdin, without the trailing newline
 partial
 getLine : IO' ffi String
 getLine = prim_read
