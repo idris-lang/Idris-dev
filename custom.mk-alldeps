@@ -1,2 +1,1 @@
-CABALFLAGS += -f LLVM -f FFI -f curses
-
+CABALFLAGS += -f LLVM -f FFI -f curses --disable-documentation --disable-profiling --disable-library-profiling
