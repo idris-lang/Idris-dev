@@ -444,9 +444,7 @@ elabPE info fc caller r =
             qhash hash [] = showHex (abs hash `mod` 0xffffffff) ""
             qhash hash (x:xs) = qhash (hash * 33 + fromEnum x) xs
 
--- checks if the clause is a possible left hand side. Returns the term if
--- possible, otherwise Nothing.
-
+-- | Checks if the clause is a possible left hand side.
 checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris Bool
 checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
