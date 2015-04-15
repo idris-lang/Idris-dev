@@ -19,15 +19,15 @@ plusZeroRightNeutralNew : (n : Nat) -> plus n 0 = n
 plusZeroRightNeutralNew Z = Refl
 plusZeroRightNeutralNew (S k) =
   %runElab (do rewriteWith `(sym $ plusZeroRightNeutralNew ~(Var "k"))
-                  fill $ refl `(Nat : Type) `(S ~(Var (UN "k")))
-                  solve)
+               fill $ refl `(Nat : Type) `(S ~(Var (UN "k")))
+               solve)
 
 plusSuccRightSuccNew : (j, k : Nat) -> plus j (S k) = S (plus j k)
 plusSuccRightSuccNew Z k = Refl
 plusSuccRightSuccNew (S j) k =
   %runElab (do rewriteWith `(sym $ plusSuccRightSuccNew ~(Var "j") ~(Var (UN "k")))
-                  fill $ refl `(Nat : Type) `(S (S (plus ~(Var (UN "j")) ~(Var (UN "k")))))
-                  solve)
+               fill $ refl `(Nat : Type) `(S (S (plus ~(Var (UN "j")) ~(Var (UN "k")))))
+               solve)
 
 -- Test that side effects in new tactics work
 
@@ -35,7 +35,7 @@ mkDecl : ()
 mkDecl = %runElab (do declareType $ Declare (NS (UN "repUnit") ["Tactics"])
                                                [Implicit (UN "z") `(Nat)]
                                                `(Vect ~(Var (UN "z")) ())
-                         fill `(() : ())
-                         solve)
+                      fill `(() : ())
+                      solve)
 
 repUnit = pure ()
