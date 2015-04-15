@@ -2,7 +2,7 @@
 quoters and unquoters along with some supporting datatypes.
 -}
 {-# LANGUAGE PatternGuards #-}
-{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
 module Idris.Reflection where
 
 import Control.Monad (liftM, liftM2)

@@ -70,7 +70,7 @@ buildType info syn fc opts n ty' = do
             tclift $ elaborate ctxt n (TType (UVal 0)) initEState
                      (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
          setContext ctxt'
-         processTacticDecls newDecls
+         processTacticDecls info newDecls
 
          let tyT = patToImp tyT'
 

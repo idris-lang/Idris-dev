@@ -69,7 +69,7 @@ elabValBind info aspat norm tm_in
 
         -- Extend the context with new definitions created
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
 
         let vtm = orderPats (getInferTerm tm')
 

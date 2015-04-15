@@ -10,12 +10,13 @@ import Idris.Error
 import Idris.ProofSearch
 import Idris.Output (pshow)
 
-import Idris.Core.CaseTree (SC, SC'(STerm))
+import Idris.Core.CaseTree (SC, SC'(STerm), findCalls, findUsedArgs)
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
 import Idris.Core.Typecheck (check, recheck)
+import Idris.Coverage (buildSCG, checkDeclTotality, genClauses, recoverableCoverage, validCoverageCase)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
 import Idris.Elab.Utils
@@ -49,24 +50,6 @@ data ElabResult =
                -- ^ Meta-info about the new type declarations
              }
 
-processTacticDecls :: [RDeclInstructions] -> Idris ()
-processTacticDecls info =
-  forM_ info $ \case
-    RTyDeclInstrs n fc impls ty ->
-      do logLvl 3 $ "Declaration from tactics: " ++ show n ++ " : " ++ show ty
-         logLvl 3 $ "  It has impls " ++ show impls
-         updateIState $ \i -> i { idris_implicits =
-                                    addDef n impls (idris_implicits i) }
-         addIBC (IBCImp n)
-         ds <- checkDef fc (\_ e -> e) [(n, (-1, Nothing, ty))]
-         addIBC (IBCDef n)
-         let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
-         addDeferred ds'
-    RClausesInstrs n cs ->
-      do logLvl 3 $ "Pattern-matching definition from tactics: " ++ show n
-         solveDeferred n
-         updateIState $ \i -> i { idris_patdefs = addDef n (cs, []) $ idris_patdefs i } -- TODO: missing clauses
-         addIBC (IBCDef n)
 
 -- Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
@@ -1628,7 +1611,7 @@ runTactical fc env tm = do tm' <- eval tm
            addCasedef n (const [])
                       info False (STerm Erased)
                       True False -- TODO what are these?
-                      [] [] -- TODO argument types, inaccessible types
+                      (map snd $ getArgTys ty) [] -- TODO inaccessible types
                       clauses'
                       clauses''
                       clauses''
@@ -2088,3 +2071,107 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                     parts -> ReflectionError errorparts e
 
 solveAll = try (do solve; solveAll) (return ())
+
+-- | Do the left-over work after creating declarations in reflected
+-- elaborator scripts
+processTacticDecls :: ElabInfo -> [RDeclInstructions] -> Idris ()
+processTacticDecls info steps =
+  -- The order of steps is important: type declarations might
+  -- establish metavars that later function bodies resolve.
+  forM_ (reverse steps) $ \case
+    RTyDeclInstrs n fc impls ty ->
+      do logLvl 3 $ "Declaration from tactics: " ++ show n ++ " : " ++ show ty
+         logLvl 3 $ "  It has impls " ++ show impls
+         updateIState $ \i -> i { idris_implicits =
+                                    addDef n impls (idris_implicits i) }
+         addIBC (IBCImp n)
+         ds <- checkDef fc (\_ e -> e) [(n, (-1, Nothing, ty))]
+         addIBC (IBCDef n)
+         ctxt <- getContext
+         case lookupDef n ctxt of
+           (TyDecl _ _ : _) ->
+             -- If the function isn't defined at the end of the elab script,
+             -- then it must be added as a metavariable. This needs guarding
+             -- to prevent overwriting case defs with a metavar, if the case
+             -- defs come after the type decl in the same script!
+             let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+             in addDeferred ds'
+           _ -> return ()
+    RClausesInstrs n cs ->
+      do logLvl 3 $ "Pattern-matching definition from tactics: " ++ show n
+         solveDeferred n
+         let lhss = map (\(_, lhs, _) -> lhs) cs
+         let fc = fileFC "elab_reflected"
+         pmissing <-
+           do ist <- getIState
+              possible <- genClauses fc n lhss
+                                     (map (\lhs ->
+                                        delab' ist lhs True True) lhss)
+              missing <- filterM (checkPossible n) possible
+              return (filter (noMatch ist lhss) missing)
+         let tot = if null pmissing
+                      then Unchecked -- still need to check recursive calls
+                      else Partial NotCovering -- missing cases implies not total
+         setTotality n tot
+         updateIState $ \i -> i { idris_patdefs =
+                                    addDef n (cs, pmissing) $ idris_patdefs i }
+         addIBC (IBCDef n)
+
+         ctxt <- getContext
+         case lookupDefExact n ctxt of
+           Just (CaseOp _ _ _ _ _ cd) ->
+             -- Here, we populate the call graph with a list of things
+             -- we refer to, so that if they aren't total, the whole
+             -- thing won't be.
+             let (scargs, sc) = cases_compiletime cd
+                 (scargs', sc') = cases_runtime cd
+                 calls = findCalls sc' scargs
+                 used = findUsedArgs sc' scargs'
+                 cg = CGInfo scargs' calls [] used []
+             in do logLvl 2 $ "Called names in reflected elab: " ++ show cg
+                   addToCG n cg
+                   addToCalledG n (nub (map fst calls))
+                   addIBC $ IBCCG n
+           Just _ -> return () -- TODO throw internal error
+           Nothing -> return ()
+
+         -- checkDeclTotality requires that the call graph be present
+         -- before calling it.
+         -- TODO: reduce code duplication with Idris.Elab.Clause
+         buildSCG (fc, n)
+
+         -- Actually run the totality checker. In the main clause
+         -- elaborator, this is deferred until after. Here, we run it
+         -- now to get totality information as early as possible.
+         tot' <- checkDeclTotality (fc, n)
+         setTotality n tot'
+         when (tot' /= Unchecked) $ addIBC (IBCTotal n tot')
+  where
+    -- TODO: see if the code duplication with Idris.Elab.Clause can be
+    -- reduced or eliminated.
+    checkPossible :: Name -> PTerm -> Idris Bool
+    checkPossible fname lhs_in =
+       do ctxt <- getContext
+          ist <- getIState
+          let lhs = addImplPat ist lhs_in
+          let fc = fileFC "elab_reflected_totality"
+          let tcgen = False -- TODO: later we may support dictionary generation
+          case elaborate ctxt (sMN 0 "refPatLHS") infP initEState
+                (erun fc (buildTC ist info ELHS [] fname (infTerm lhs))) of
+            OK (ElabResult lhs' _ _ _ _, _) ->
+              do -- not recursively calling here, because we don't
+                 -- want to run infinitely many times
+                 let lhs_tm = orderPats (getInferTerm lhs')
+                 case recheck ctxt [] (forget lhs_tm) lhs_tm of
+                      OK _ -> return True
+                      err -> return False
+            -- if it's a recoverable error, the case may become possible
+            Error err -> if tcgen then return (recoverableCoverage ctxt err)
+                                  else return (validCoverageCase ctxt err ||
+                                                 recoverableCoverage ctxt err)
+
+
+    -- TODO: Attempt to reduce/eliminate code duplication with Idris.Elab.Clause
+    noMatch i cs tm = all (\x -> case matchClause i (delab' i x True True) tm of
+                                   Right _ -> False
+                                   Left  _ -> True) cs

@@ -455,58 +455,15 @@ checkPossible info fc tcgen fname lhs_in
                             (erun fc (buildTC i info ELHS [] fname (infTerm lhs))) of
             OK (ElabResult lhs' _ _ ctxt' newDecls, _) ->
                do setContext ctxt'
-                  processTacticDecls newDecls
+                  processTacticDecls info newDecls
                   let lhs_tm = orderPats (getInferTerm lhs')
                   case recheck ctxt [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
                        err -> return False
             -- if it's a recoverable error, the case may become possible
-            Error err -> if tcgen then return (recoverable ctxt err)
-                                  else return (validCase ctxt err ||
-                                                 recoverable ctxt err)
-    where validCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
-              = let topx' = normalise ctxt [] topx
-                    topy' = normalise ctxt [] topy in
-                    not (sameFam topx' topy' || not (validCase ctxt e))
-          validCase ctxt (CantConvert _ _ _) = False
-          validCase ctxt (At _ e) = validCase ctxt e
-          validCase ctxt (Elaborating _ _ e) = validCase ctxt e
-          validCase ctxt (ElaboratingArg _ _ _ e) = validCase ctxt e
-          validCase ctxt _ = True
-
-          recoverable ctxt (CantUnify r (topx, _) (topy, _) e _ _)
-              = let topx' = normalise ctxt [] topx
-                    topy' = normalise ctxt [] topy in
-                    checkRec topx' topy'
-          recoverable ctxt (At _ e) = recoverable ctxt e
-          recoverable ctxt (Elaborating _ _ e) = recoverable ctxt e
-          recoverable ctxt (ElaboratingArg _ _ _ e) = recoverable ctxt e
-          recoverable _ _ = False
-
-          sameFam topx topy
-              = case (unApply topx, unApply topy) of
-                     ((P _ x _, _), (P _ y _, _)) -> x == y
-                     _ -> False
-
-          -- different notion of recoverable than in unification, since we
-          -- have no metavars -- just looking to see if a constructor is failing
-          -- to unify with a function that may be reduced later
-
-          checkRec (App f a) p@(P _ _ _) = checkRec f p
-          checkRec p@(P _ _ _) (App f a) = checkRec p f
-          checkRec fa@(App _ _) fa'@(App _ _)
-              | (f, as) <- unApply fa,
-                (f', as') <- unApply fa'
-                   = if (length as /= length as')
-                        then checkRec f f'
-                        else checkRec f f' && and (zipWith checkRec as as')
-          checkRec (P xt x _) (P yt y _) = x == y || ntRec xt yt
-          checkRec _ _ = False
-
-          ntRec x y | Ref <- x = True
-                    | Ref <- y = True
-                    | (Bound, Bound) <- (x, y) = True
-                    | otherwise = False -- name is different, unrecoverable
+            Error err -> if tcgen then return (recoverableCoverage ctxt err)
+                                  else return (validCoverageCase ctxt err ||
+                                                 recoverableCoverage ctxt err)
 
 propagateParams :: IState -> [Name] -> Type -> PTerm -> PTerm
 propagateParams i ps t tm@(PApp _ (PRef fc n) args)
@@ -587,7 +544,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         inj <- get_inj
                         return (res, probs, inj))
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         let lhs_tm = orderPats (getInferTerm lhs')
@@ -672,7 +629,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         probs <- get_probs
                         return (tm, ds, is, probs, ctxt', newDecls))
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         logLvl 5 "DONE CHECK"
@@ -820,7 +777,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
               (errAt "left hand side of with in " fname
                 (erun fc (buildTC i info ELHS opts fname (infTerm lhs))) )
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy (explicitNames (normalise ctxt [] lhs_ty))
@@ -844,7 +801,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                             tt <- get_term
                             return (tt, d, is, ctxt', newDecls))
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
         def' <- checkDef fc iderr defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
@@ -939,7 +896,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                         tt <- get_term
                         return (tt, d, is, ctxt', newDecls))
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
 
         def' <- checkDef fc iderr defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'

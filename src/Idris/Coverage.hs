@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
-
+{-| The coverage and totality checkers for Idris are in this module.
+-}
 module Idris.Coverage where
 
 import Idris.Core.TT
@@ -119,6 +120,52 @@ genClauses fc n xs given
             mkArg (a : as) = do a' <- a
                                 as' <- mkArg as
                                 return (a':as')
+
+-- | Does this error result rule out a case as valid when coverage checking?
+validCoverageCase :: Context -> Err -> Bool
+validCoverageCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
+    = let topx' = normalise ctxt [] topx
+          topy' = normalise ctxt [] topy in
+          not (sameFam topx' topy' || not (validCoverageCase ctxt e))
+  where sameFam topx topy
+            = case (unApply topx, unApply topy) of
+                   ((P _ x _, _), (P _ y _, _)) -> x == y
+                   _ -> False
+validCoverageCase ctxt (CantConvert _ _ _) = False
+validCoverageCase ctxt (At _ e) = validCoverageCase ctxt e
+validCoverageCase ctxt (Elaborating _ _ e) = validCoverageCase ctxt e
+validCoverageCase ctxt (ElaboratingArg _ _ _ e) = validCoverageCase ctxt e
+validCoverageCase ctxt _ = True
+
+-- | Check whether an error is recoverable in the sense needed for
+-- coverage checking.
+recoverableCoverage :: Context -> Err -> Bool
+recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
+    = let topx' = normalise ctxt [] topx
+          topy' = normalise ctxt [] topy in
+          checkRec topx' topy'
+  where -- different notion of recoverable than in unification, since we
+        -- have no metavars -- just looking to see if a constructor is failing
+        -- to unify with a function that may be reduced later
+        checkRec (App f a) p@(P _ _ _) = checkRec f p
+        checkRec p@(P _ _ _) (App f a) = checkRec p f
+        checkRec fa@(App _ _) fa'@(App _ _)
+            | (f, as) <- unApply fa,
+              (f', as') <- unApply fa'
+                 = if (length as /= length as')
+                      then checkRec f f'
+                      else checkRec f f' && and (zipWith checkRec as as')
+        checkRec (P xt x _) (P yt y _) = x == y || ntRec xt yt
+        checkRec _ _ = False
+
+        ntRec x y | Ref <- x = True
+                  | Ref <- y = True
+                  | (Bound, Bound) <- (x, y) = True
+                  | otherwise = False -- name is different, unrecoverable
+recoverableCoverage ctxt (At _ e) = recoverableCoverage ctxt e
+recoverableCoverage ctxt (Elaborating _ _ e) = recoverableCoverage ctxt e
+recoverableCoverage ctxt (ElaboratingArg _ _ _ e) = recoverableCoverage ctxt e
+recoverableCoverage _ _ = False
 
 -- FIXME: Just look for which one is the deepest, then generate all
 -- possibilities up to that depth.
@@ -350,10 +397,9 @@ calcProd i fc topn pats
                    _ -> False
      cotype nt n ty = False
 
--- Calculate the totality of a function from its patterns.
+-- | Calculate the totality of a function from its patterns.
 -- Either follow the size change graph (if inductive) or check for
 -- productivity (if coinductive)
-
 calcTotality :: FC -> Name -> [([Name], Term, Term)] -> Idris Totality
 calcTotality fc n pats
     = do i <- getIState
@@ -450,17 +496,16 @@ checkDeclTotality (fc, n)
          return t
 
 
--- Calculate the size change graph for this definition
-
+-- | Calculate the size change graph for this definition
+--
 -- SCG for a function f consists of a list of:
 --    (g, [(a1, sizechange1), (a2, sizechange2), ..., (an, sizechangen)])
-
+--
 -- where g is a function called
 -- a1 ... an are the arguments of f in positions 1..n of g
 -- sizechange1 ... sizechange2 is how their size has changed wrt the input
 -- to f
 --    Nothing, if the argument is unrelated to the input
-
 buildSCG :: (FC, Name) -> Idris ()
 buildSCG (_, n) = do
    ist <- getIState

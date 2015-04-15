@@ -58,7 +58,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
                        (erun fc (buildTC i info ELHS [] (sUN "transform")
                                    (infTerm lhs)))
          setContext ctxt'
-         processTacticDecls newDecls
+         processTacticDecls info newDecls
          let lhs_tm = orderPats (getInferTerm lhs')
          let lhs_ty = getInferType lhs'
          let newargs = pvars i lhs_tm
@@ -78,7 +78,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
                            let (rhs', defer) = runState (collectDeferred Nothing tt) []
                            return (rhs', defer, ctxt', newDecls))
          setContext ctxt'
-         processTacticDecls newDecls
+         processTacticDecls info newDecls
 
          (crhs_tm_in, crhs_ty) <- recheckC fc id [] rhs'
          let crhs_tm = renamepats pnames crhs_tm_in
