@@ -1706,7 +1706,7 @@ runTactical fc env tm = do tm' <- eval tm
            returnUnit
       | n == tacN "prim__Forget", [tt] <- args
       = do tt' <- reifyTT tt
-           fmap fst . get_type_val $ reflect tt'
+           fmap fst . get_type_val . reflectRaw $ forget tt'
       | n == tacN "prim__Attack", [] <- args
       = do attack
            returnUnit
