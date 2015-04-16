@@ -36,6 +36,7 @@ data Elab : Type -> Type where
   prim__Goal : Elab (TTName, TT)
   prim__Holes : Elab (List TTName)
   prim__Guess : Elab (Maybe TT)
+  prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
 
   prim__SourceLocation : Elab SourceLocation
 
@@ -95,6 +96,9 @@ getHoles = prim__Holes
 
 getGuess : Elab (Maybe TT)
 getGuess = prim__Guess
+
+lookupTy :  TTName -> Elab (List (TTName, NameType, TT))
+lookupTy n = prim__LookupTy n
 
 forgetTypes : TT -> Elab Raw
 forgetTypes tt = prim__Forget tt

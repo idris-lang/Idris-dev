@@ -1650,6 +1650,28 @@ runTactical fc env tm = do tm' <- eval tm
               else fmap fst . get_type_val $
                      RApp (Var (sNS (sUN "Nothing") ["Maybe", "Prelude"]))
                           (Var (reflm "TT"))
+      | n == tacN "prim__LookupTy", [n] <- args
+      = do n' <- reifyTTName n
+           ctxt <- get_context
+           let getNameTypeAndType = \case Function ty _ -> (Ref, ty)
+                                          TyDecl nt ty -> (nt, ty)
+                                          Operator ty _ _ -> (Ref, ty)
+                                          CaseOp _ ty _ _ _ _ -> (Ref, ty)
+               -- Idris tuples nest to the right
+               reflectTriple (x, y, z) =
+                 raw_apply (Var pairCon) [ Var (reflm "TTName")
+                                         , raw_apply (Var pairTy) [Var (reflm "NameType"), Var (reflm "TT")]
+                                         , x
+                                         , raw_apply (Var pairCon) [ Var (reflm "NameType"), Var (reflm "TT")
+                                                                   , y, z]]
+           let defs = [ reflectTriple (reflectName n, reflectNameType nt, reflect ty)
+                        | (n, def) <- lookupNameDef n' ctxt
+                        , let (nt, ty) = getNameTypeAndType def ]
+           fmap fst . get_type_val $
+             rawList (raw_apply (Var pairTy) [ Var (reflm "TTName")
+                                             , raw_apply (Var pairTy) [ Var (reflm "NameType")
+                                                                       , Var (reflm "TT")]])
+                     defs
       | n == tacN "prim__SourceLocation", [] <- args
       = fmap fst . get_type_val $
           reflectFC fc
