@@ -645,11 +645,16 @@ deriving instance Binary PDecl'
 deriving instance NFData PDecl'
 !-}
 
--- For elaborator state
+-- | A set of instructions for things that need to happen in IState
+-- after a term elaboration when there's been reflected elaboration.
+data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
+                       | RClausesInstrs Name [([Name], Term, Term)]
+
+-- | For elaborator state
 data EState = EState {
                   case_decls :: [PDecl],
                   delayed_elab :: [Elab' EState ()],
-                  new_tyDecls :: [(Name, FC, [PArg], Type)]
+                  new_tyDecls :: [RDeclInstructions]
               }
 
 initEState :: EState
@@ -821,7 +826,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
            | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
            | PUnquote PTerm -- ^ ~Term
-           | PRunTactics FC PTerm -- ^ %runTactics tm - New-style proof script
+           | PRunElab FC PTerm -- ^ %runElab tm - New-style proof script
        deriving (Eq, Data, Typeable)
 
 
@@ -1428,16 +1433,16 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     prettySe p bnd (PRef fc n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe p bnd (PLam fc n ty sc) =
       bracket p startPrec . group . align . hang 2 $
-      text "\\" <> bindingOf n False <+> text "=>" <$>
+      text "\\" <> prettyBindingOf n False <+> text "=>" <$>
       prettySe startPrec ((n, False):bnd) sc
     prettySe p bnd (PLet fc n ty v sc) =
       bracket p startPrec . group . align $
-      kwd "let" <+> (group . align . hang 2 $ bindingOf n False <+> text "=" <$> prettySe startPrec bnd v) </>
+      kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe startPrec ((n, False):bnd) sc)
     prettySe p bnd (PPi (Exp l s _) n ty sc)
       | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
           bracket p startPrec . group $
-          enclose lparen rparen (group . align $ bindingOf n False <+> colon <+> prettySe startPrec bnd ty) <+>
+          enclose lparen rparen (group . align $ prettyBindingOf n False <+> colon <+> prettySe startPrec bnd ty) <+>
           st <> text "->" <$> prettySe startPrec ((n, False):bnd) sc
       | otherwise                      =
           bracket p startPrec . group $
@@ -1450,7 +1455,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     prettySe p bnd (PPi (Imp l s _ fa) n ty sc)
       | ppopt_impl ppo =
           bracket p startPrec $
-          lbrace <> bindingOf n True <+> colon <+> prettySe startPrec bnd ty <> rbrace <+>
+          lbrace <> prettyBindingOf n True <+> colon <+> prettySe startPrec bnd ty <> rbrace <+>
           st <> text "->" </> prettySe startPrec ((n, True):bnd) sc
       | otherwise = prettySe startPrec ((n, True):bnd) sc
       where
@@ -1606,6 +1611,14 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     prettySe p bnd (PUnquote t) = text "~" <> prettySe p bnd t
 
     prettySe p bnd _ = text "missing pretty-printer for term"
+
+    prettyBindingOf :: Name -> Bool -> Doc OutputAnnotation
+    prettyBindingOf n imp = annotate (AnnBoundName n imp) (text (display n))
+      where display (UN n)    = T.unpack n
+            display (MN _ n)  = T.unpack n
+            -- If a namespace is specified on a binding form, we'd better show it regardless of the implicits settings
+            display (NS n ns) = (concat . intersperse "." . map T.unpack . reverse) ns ++ "." ++ display n
+            display n         = show n
 
     prettyArgS bnd (PImp _ _ _ n tm) = prettyArgSi bnd (n, tm)
     prettyArgS bnd (PExp _ _ _ tm)   = prettyArgSe bnd tm

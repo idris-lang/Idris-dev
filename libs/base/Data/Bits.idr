@@ -4,21 +4,16 @@ import Data.Fin
 
 %default total
 
-divCeil : Nat -> Nat -> Nat
-divCeil x y = case x `mod` y of
-                Z   => x `div` y
-                S _ => S (x `div` y)
-
 nextPow2 : Nat -> Nat
 nextPow2 Z = Z
-nextPow2 x = if x == (2 `power` l2x)
-             then l2x
-             else S l2x
+nextPow2 (S x) = if (S x) == (2 `power` l2x)
+               then l2x
+               else S l2x
     where
-      l2x = log2 x
+      l2x = log2NZ (S x) SIsNotZ
 
 nextBytes : Nat -> Nat
-nextBytes bits = (nextPow2 (bits `divCeil` 8))
+nextBytes bits = (nextPow2 (divCeilNZ bits 8 SIsNotZ))
 
 machineTy : Nat -> Type
 machineTy Z = Bits8

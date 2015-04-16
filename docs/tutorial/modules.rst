@@ -10,11 +10,11 @@ module, a list of ``import`` statements giving the other modules which
 are to be imported, and a collection of declarations and definitions of
 types, classes and functions. For example, the listing below gives a
 module which defines a binary tree type ``BTree`` (in a file
-``btree.idr``):
+``Btree.idr``):
 
 .. code-block:: idris
 
-    module btree
+    module Btree
 
     data BTree a = Leaf
                  | Node (BTree a) a (BTree a)
@@ -40,23 +40,24 @@ Then, this gives a main program (in a file
 
     module Main
 
-    import btree
+    import Btree
 
     main : IO ()
     main = do let t = toTree [1,8,2,7,9,3]
               print (btree.toList t)
 
 
+
 The same names can be defined in multiple modules. This is possible
 because in practice names are *qualified* with the name of the module.
 The names defined in the ``btree`` module are, in full:
 
-+ ``btree.BTree``
-+ ``btree.Leaf``
-+ ``btree.Node``
-+ ``btree.insert``
-+ ``btree.toList``
-+ ``btree.toTree``
++ ``Btree.BTree``
++ ``Btree.Leaf``
++ ``Btree.Node``
++ ``Btree.insert``
++ ``Btree.toList``
++ ``Btree.toTree``
 
 If names are otherwise unambiguous, there is no need to give the fully
 qualified name. Names can be disambiguated either by giving an explicit
@@ -103,7 +104,7 @@ functions to be exported as ``abstract``, as we see below:
 
 .. code-block:: idris
 
-    module btree
+    module Btree
 
     abstract data BTree a = Leaf
                           | Node (BTree a) a (BTree a)
@@ -137,7 +138,8 @@ the ``public`` modifier on an ``import``. For example:
 
     module A
 
-    import B import public C
+    import B
+    import public C
 
     public a : AType a = ...
 
@@ -154,7 +156,7 @@ wish to overload names within the same module:
 
 .. code-block:: idris
 
-    module foo
+    module Foo
 
     namespace x
       test : Int -> Int

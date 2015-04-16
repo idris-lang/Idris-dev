@@ -220,7 +220,7 @@ InternalExpr ::=
 internalExpr :: SyntaxInfo -> IdrisParser PTerm
 internalExpr syn =
          unifyLog syn
-     <|> runTactics syn
+     <|> runElab syn
      <|> disamb syn
      <|> noImplicits syn
      <|> recordType syn
@@ -497,16 +497,16 @@ unifyLog syn = do try (lchar '%' *> reserved "unifyLog")
 
 {- | Parses a new-style tactics expression
 RunTactics ::=
-  '%' 'runTactics' SimpleExpr
+  '%' 'runElab' SimpleExpr
   ;
 -}
-runTactics :: SyntaxInfo -> IdrisParser PTerm
-runTactics syn = do try (lchar '%' *> reserved "runTactics")
-                    fc <- getFC
-                    tm <- simpleExpr syn
-                    i <- get
-                    return $ PRunTactics fc tm
-                 <?> "new-style tactics expression"
+runElab :: SyntaxInfo -> IdrisParser PTerm
+runElab syn = do try (lchar '%' *> reserved "runElab")
+                 fc <- getFC
+                 tm <- simpleExpr syn
+                 i <- get
+                 return $ PRunElab fc tm
+              <?> "new-style tactics expression"
 
 {- | Parses a disambiguation expression 
 Disamb ::=
