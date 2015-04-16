@@ -83,8 +83,8 @@ rule:
 The value of the result of ``parity k`` affects the form of ``k``,
 because the result of ``parity k`` depends on ``k``. So, as well as
 the patterns for the result of the intermediate computation (``Even``
-and ``odd``) right of the ``\mid``, we also write how the results
-affect the other patterns left of the :math:`\mid`. Note that there is
+and ``odd``) right of the ``|``, we also write how the results
+affect the other patterns left of the ``|``. Note that there is
 a function in the patterns (``+``) and repeated occurrences of
 ``j``—this is allowed because another argument has determined the form
 of these patterns.
