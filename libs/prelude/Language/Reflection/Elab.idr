@@ -100,6 +100,12 @@ getGuess = prim__Guess
 lookupTy :  TTName -> Elab (List (TTName, NameType, TT))
 lookupTy n = prim__LookupTy n
 
+lookupTyExact : TTName -> Elab (TTName, NameType, TT)
+lookupTyExact n = case !(lookupTy n) of
+                    [res] => return res
+                    []    => fail [NamePart n, TextPart "is not defined."]
+                    xs    => fail [NamePart n, TextPart "is ambiguous."]
+
 forgetTypes : TT -> Elab Raw
 forgetTypes tt = prim__Forget tt
 
