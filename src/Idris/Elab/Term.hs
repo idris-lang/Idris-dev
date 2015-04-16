@@ -1000,9 +1000,10 @@ elab ist info emode opts fn tm
              -- Save the old state - we need a fresh proof state to avoid
              -- capturing lexically available variables in the quoted term.
              ctxt <- get_context
+             datatypes <- get_datatypes
              saveState
              updatePS (const .
-                       newProof (sMN 0 "q") ctxt $
+                       newProof (sMN 0 "q") ctxt datatypes $
                        P Ref (reflm "TT") Erased)
 
              -- Re-add the unquotes, letting Idris infer the (fictional)
@@ -2188,7 +2189,7 @@ processTacticDecls info steps =
           let lhs = addImplPat ist lhs_in
           let fc = fileFC "elab_reflected_totality"
           let tcgen = False -- TODO: later we may support dictionary generation
-          case elaborate ctxt (sMN 0 "refPatLHS") infP initEState
+          case elaborate ctxt (idris_datatypes ist) (sMN 0 "refPatLHS") infP initEState
                 (erun fc (buildTC ist info ELHS [] fname (infTerm lhs))) of
             OK (ElabResult lhs' _ _ _ _, _) ->
               do -- not recursively calling here, because we don't

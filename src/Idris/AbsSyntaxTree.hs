@@ -581,14 +581,6 @@ dictionary :: FnOpts -> Bool
 dictionary = elem Dictionary
 
 
--- | Data declaration options
-data DataOpt = Codata -- ^ Set if the the data-type is coinductive
-             | DefaultEliminator -- ^ Set if an eliminator should be generated for data type
-             | DefaultCaseFun -- ^ Set if a case function should be generated for data type
-             | DataErrRev
-    deriving (Show, Eq)
-
-type DataOpts = [DataOpt]
 
 -- | Type provider - what to provide
 data ProvideWhat' t = ProvTerm t t     -- ^ the first is the goal type, the second is the term
@@ -1083,20 +1075,7 @@ deriving instance Binary OptInfo
 deriving instance NFData OptInfo
 !-}
 
-
-data TypeInfo = TI { con_names :: [Name],
-                     codata :: Bool,
-                     data_opts :: DataOpts,
-                     param_pos :: [Int],
-                     mutual_types :: [Name] }
-    deriving Show
-{-!
-deriving instance Binary TypeInfo
-deriving instance NFData TypeInfo
-!-}
-
--- Syntactic sugar info
-
+-- | Syntactic sugar info
 data DSL' t = DSL { dsl_bind    :: t,
                     dsl_return  :: t,
                     dsl_apply   :: t,

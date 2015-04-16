@@ -829,7 +829,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "
     Right (TextPart msg)
 reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
   | n == reflm "NamePart" =
-    case runElab initEState (reifyTTName ttn) (initElaborator NErased initContext Erased) of
+    case runElab initEState (reifyTTName ttn) (initElaborator NErased initContext emptyContext Erased) of
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
        show ttn ++
@@ -837,7 +837,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
       OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "TermPart" =
-  case runElab initEState (reifyTT tm) (initElaborator NErased initContext Erased) of
+  case runElab initEState (reifyTT tm) (initElaborator NErased initContext emptyContext Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
       show tm ++

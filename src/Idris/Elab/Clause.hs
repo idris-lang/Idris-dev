@@ -451,7 +451,7 @@ checkPossible info fc tcgen fname lhs_in
         i <- getIState
         let lhs = addImplPat i lhs_in
         -- if the LHS type checks, it is possible
-        case elaborate ctxt (sMN 0 "patLHS") infP initEState
+        case elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
                             (erun fc (buildTC i info ELHS [] fname (infTerm lhs))) of
             OK (ElabResult lhs' _ _ ctxt' newDecls, _) ->
                do setContext ctxt'
@@ -538,7 +538,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                   "\n" ++ show (fn_ty, fn_is))
 
         ((ElabResult lhs' dlhs [] ctxt' newDecls, probs, inj), _) <-
-           tclift $ elaborate ctxt (sMN 0 "patLHS") infP initEState
+           tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
                     (do res <- errAt "left hand side of " fname
                                  (erun fc (buildTC i info ELHS opts fname (infTerm lhs)))
                         probs <- get_probs
@@ -613,7 +613,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
         ((rhs', defer, is, probs, ctxt', newDecls), _) <-
-           tclift $ elaborate ctxt (sMN 0 "patRHS") clhsty initEState
+           tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patRHS") clhsty initEState
                     (do pbinds ist lhs_tm
                         mapM_ setinj (nub (params ++ inj))
                         setNextName
@@ -774,7 +774,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let lhs = stripLinear i $ stripUnmatchable i $ propagateParams i params fn_ty (addImplPat i lhs_in)
         logLvl 2 ("LHS: " ++ show lhs)
         (ElabResult lhs' dlhs [] ctxt' newDecls, _) <-
-            tclift $ elaborate ctxt (sMN 0 "patLHS") infP initEState
+            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
               (errAt "left hand side of with in " fname
                 (erun fc (buildTC i info ELHS opts fname (infTerm lhs))) )
         setContext ctxt'
@@ -791,7 +791,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         logLvl 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
         ((wval', defer, is, ctxt', newDecls), _) <-
-            tclift $ elaborate ctxt (sMN 0 "withRHS")
+            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "withRHS")
                         (bindTyArgs PVTy bargs infP) initEState
                         (do pbinds i lhs_tm
                             setNextName
@@ -889,7 +889,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         ctxt <- getContext -- New context with block added
         i <- getIState
         ((rhs', defer, is, ctxt', newDecls), _) <-
-           tclift $ elaborate ctxt (sMN 0 "wpatRHS") clhsty initEState
+           tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "wpatRHS") clhsty initEState
                     (do pbinds i lhs_tm
                         setNextName
                         (ElabResult _ d is ctxt' newDecls) <- erun fc (build i info ERHS opts fname rhs)

@@ -41,6 +41,7 @@ data ProofState = PS { thname   :: Name,
                        autos    :: [(Name, [Name])], -- ^ unsolved 'auto' implicits with their holes
                        previous :: Maybe ProofState, -- ^ for undo
                        context  :: Context,
+                       datatypes :: Ctxt TypeInfo,
                        plog     :: String,
                        unifylog :: Bool,
                        done     :: Bool,
@@ -292,14 +293,15 @@ query q = do ps <- get
 addLog :: Monad m => String -> StateT TState m ()
 addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 
-newProof :: Name -> Context -> Type -> ProofState
-newProof n ctxt ty = let h = holeName 0
-                         ty' = vToP ty
-                     in PS n [h] [] 1 (mkProofTerm (Bind h (Hole ty')
-                           (P Bound h ty'))) ty [] (h, []) [] []
-                           Nothing [] []
-                           [] [] []
-                           Nothing ctxt "" False False [] []
+newProof :: Name -> Context -> Ctxt TypeInfo -> Type -> ProofState
+newProof n ctxt datatypes ty =
+  let h = holeName 0
+      ty' = vToP ty
+  in PS n [h] [] 1 (mkProofTerm (Bind h (Hole ty')
+        (P Bound h ty'))) ty [] (h, []) [] []
+        Nothing [] []
+        [] [] []
+        Nothing ctxt datatypes "" False False [] []
 
 type TState = ProofState -- [TacticAction])
 type RunTactic = RunTactic' TState

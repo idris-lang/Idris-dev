@@ -882,6 +882,26 @@ data Datatype n = Data { d_typename :: n,
                          d_cons     :: [(n, TT n)] }
   deriving (Show, Functor, Eq)
 
+-- | Data declaration options
+data DataOpt = Codata -- ^ Set if the the data-type is coinductive
+             | DefaultEliminator -- ^ Set if an eliminator should be generated for data type
+             | DefaultCaseFun -- ^ Set if a case function should be generated for data type
+             | DataErrRev
+    deriving (Show, Eq)
+
+type DataOpts = [DataOpt]
+
+data TypeInfo = TI { con_names :: [Name],
+                     codata :: Bool,
+                     data_opts :: DataOpts,
+                     param_pos :: [Int],
+                     mutual_types :: [Name] }
+    deriving Show
+{-!
+deriving instance Binary TypeInfo
+deriving instance NFData TypeInfo
+!-}
+
 instance Eq n => Eq (TT n) where
     (==) (P xt x _)     (P yt y _)     = x == y
     (==) (V x)          (V y)          = x == y
