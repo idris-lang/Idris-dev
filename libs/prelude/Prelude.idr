@@ -134,6 +134,9 @@ instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
 
+instance (Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
+    show (y ** prf) = show y ++ " ** " ++ show prf
+      
 ---- Functor instances
 
 instance Functor PrimIO where

@@ -1376,7 +1376,7 @@ pruneByType _ t _ as = as
 
 findInstances :: IState -> Term -> [Name]
 findInstances ist t
-    | (P _ n _, _) <- unApply t
+    | (P _ n _, _) <- unApply (getRetTy t)
         = case lookupCtxt n (idris_classes ist) of
             [CI _ _ _ _ _ ins _] -> filter accessible ins
             _ -> []
@@ -1427,17 +1427,17 @@ resTC' tcs defaultOn topholes depth topg fn ist
   = do compute
        g <- goal
        let argsok = tcArgsOK g topholes
---        trace (show (g,hs,argsok,topholes)) $ 
        if not argsok -- && not mvok)
          then lift $ tfail $ CantResolve True topg
          else do
            ptm <- get_term
            ulog <- getUnifyLog
            hs <- get_holes
-           traceWhen ulog ("Resolving class " ++ show g) $
+           env <- get_env
+           traceWhen ulog ("Resolving class " ++ show g ++ "\nin" ++ show env) $
             try' (trivial' ist)
                 (do t <- goal
-                    let (tc, ttypes) = unApply t
+                    let (tc, ttypes) = unApply (getRetTy t)
                     scopeOnly <- needsDefault t tc ttypes
                     let stk = elab_stack ist
                     let insts_in = findInstances ist t
@@ -1447,10 +1447,10 @@ resTC' tcs defaultOn topholes depth topg fn ist
                     let depth' = if scopeOnly then 2 else depth
                     blunderbuss t depth' stk (stk ++ insts)) True
   where
-    tcArgsOK ty hs | (P _ nc _, as) <- unApply ty, nc == numclass && defaultOn
+    tcArgsOK ty hs | (P _ nc _, as) <- unApply (getRetTy ty), nc == numclass && defaultOn
        = True
     tcArgsOK ty hs -- if any arguments are metavariables, postpone
-       = let (f, as) = unApply ty in
+       = let (f, as) = unApply (getRetTy ty) in
              case f of
                   P _ cn _ -> case lookupCtxtExact cn (idris_classes ist) of
                                    Just ci -> tcDetArgsOK 0 (class_determiners ci) hs as
@@ -1467,7 +1467,7 @@ resTC' tcs defaultOn topholes depth topg fn ist
     isMeta _ _ = False
 
     notHole hs (P _ n _, c)
-       | (P _ cn _, _) <- unApply c,
+       | (P _ cn _, _) <- unApply (getRetTy c),
          n `elem` hs && isConName cn (tt_ctxt ist) = False
        | Constant _ <- c = not (n `elem` hs)
     notHole _ _ = True
@@ -1508,11 +1508,22 @@ resTC' tcs defaultOn topholes depth topg fn ist
                              _ -> blunderbuss t d stk ns) 
         | otherwise = blunderbuss t d stk ns
 
+    introImps = do g <- goal
+                   case g of
+                        (Bind _ (Pi _ _ _) sc) -> do attack; intro Nothing
+                                                     num <- introImps
+                                                     return (num + 1)
+                        _ -> return 0
+
+    solven 0 = return ()
+    solven n = do solve; solven (n - 1)
+
     resolve n depth
        | depth == 0 = fail $ "Can't resolve type class"
        | otherwise
-           = do t <- goal
-                let (tc, ttypes) = unApply t
+           = do lams <- introImps
+                t <- goal
+                let (tc, ttypes) = trace (show t) $ unApply (getRetTy t)
 --                 if (all boundVar ttypes) then resolveTC (depth - 1) fn insts ist
 --                   else do
                    -- if there's a hole in the goal, don't even try
@@ -1524,14 +1535,15 @@ resTC' tcs defaultOn topholes depth topg fn ist
                 tm <- get_term
                 args <- map snd <$> try' (apply (Var n) imps)
                                          (match_apply (Var n) imps) True
+                solven lams -- close any implicit lambdas we introduced
                 ps' <- get_probs
                 when (length ps < length ps' || unrecoverable ps') $
                      fail "Can't apply type class"
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
                                      t' <- goal
-                                     let (tc', ttype) = unApply t'
-                                     let got = fst (unApply t)
+                                     let (tc', ttype) = unApply (getRetTy t')
+                                     let got = fst (unApply (getRetTy t))
                                      let depth' = if tc' `elem` tcs
                                                      then depth - 1 else depth
                                      resTC' (got : tcs) defaultOn topholes depth' topg fn ist)
