@@ -23,6 +23,16 @@ data FunClause : Type where
 data FunDefn : Type where
   DefineFun : TTName -> List FunClause -> FunDefn
 
+data TyConArg : Type where
+  Parameter : TTName -> Raw -> TyConArg
+  Index : TTName -> Raw -> TyConArg
+
+data Datatype : Type where
+  MkDatatype : (familyName : TTName) ->
+               (tyConArgs : List TyConArg) -> (tyConRes : Raw) ->
+               (constrs : List (TTName, Raw)) ->
+               Datatype
+
 abstract
 data Elab : Type -> Type where
   -- obligatory control stuff
@@ -37,6 +47,7 @@ data Elab : Type -> Type where
   prim__Holes : Elab (List TTName)
   prim__Guess : Elab (Maybe TT)
   prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
+  prim__LookupDatatype : TTName -> Elab (List Datatype)
 
   prim__SourceLocation : Elab SourceLocation
 
@@ -105,6 +116,15 @@ lookupTyExact n = case !(lookupTy n) of
                     [res] => return res
                     []    => fail [NamePart n, TextPart "is not defined."]
                     xs    => fail [NamePart n, TextPart "is ambiguous."]
+
+lookupDatatype : TTName -> Elab (List Datatype)
+lookupDatatype n = prim__LookupDatatype n
+
+lookupDatatypeExact : TTName -> Elab Datatype
+lookupDatatypeExact n = case !(lookupDatatype n) of
+                          [res] => return res
+                          []    => fail [TextPart "No datatype named", NamePart n]
+                          xs    => fail [TextPart "More than one datatype named", NamePart n]
 
 forgetTypes : TT -> Elab Raw
 forgetTypes tt = prim__Forget tt

@@ -28,7 +28,7 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Maybe (mapMaybe, fromMaybe, catMaybes)
 import qualified Data.Set as S
 import qualified Data.Text as T
 
@@ -1683,6 +1683,13 @@ runTactical fc env tm = do tm' <- eval tm
                                              , raw_apply (Var pairTy) [ Var (reflm "NameType")
                                                                        , Var (reflm "TT")]])
                      defs
+      | n == tacN "prim__LookupDatatype", [name] <- args
+      = do n' <- reifyTTName name
+           datatypes <- get_datatypes
+           ctxt <- get_context
+           fmap fst . get_type_val $
+             rawList (Var (tacN "Datatype"))
+                     (map reflectDatatype (buildDatatypes ctxt datatypes n'))
       | n == tacN "prim__SourceLocation", [] <- args
       = fmap fst . get_type_val $
           reflectFC fc

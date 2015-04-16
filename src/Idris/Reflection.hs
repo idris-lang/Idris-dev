@@ -6,23 +6,31 @@ quoters and unquoters along with some supporting datatypes.
 module Idris.Reflection where
 
 import Control.Monad (liftM, liftM2)
+import Data.Maybe (catMaybes)
 import Data.List ((\\))
 import qualified Data.Text as T
 
 import Idris.Core.Elaborate (claim, fill, focus, getNameFrom, initElaborator,
                              movelast, runElab, solve)
-import Idris.Core.Evaluate (initContext)
+import Idris.Core.Evaluate (Context, Def(TyDecl), initContext, lookupDefExact, lookupTyExact)
 import Idris.Core.TT
 
 import Idris.AbsSyntaxTree (ElabD, IState, PArg'(..), PArg, PTactic, PTactic'(..),
                             PTerm(..), initEState, pairCon, pairTy)
 import Idris.Delaborate (delab)
 
-data RArg = RExplicit { argName :: Name, argTy :: Raw }
-          | RImplicit { argName :: Name, argTy :: Raw }
+data RArg = RExplicit   { argName :: Name, argTy :: Raw }
+          | RImplicit   { argName :: Name, argTy :: Raw }
           | RConstraint { argName :: Name, argTy :: Raw }
+  deriving Show
 
-data RTyDecl = RDeclare Name [RArg] Raw
+data RTyDecl = RDeclare Name [RArg] Raw deriving Show
+
+data RTyConArg = RParameter { tcArgName :: Name, tcArgTy :: Raw }
+               | RIndex     { tcArgName :: Name, tcArgTy :: Raw }
+  deriving Show
+
+data RDatatype = RDatatype Name [RTyConArg] Raw [(Name, Raw)] deriving Show
 
 rArgToPArg :: RArg -> PArg
 rArgToPArg (RExplicit n _) = PExp 0 [] n Placeholder
@@ -896,3 +904,37 @@ envTupleType
   = raw_apply (Var pairTy) [ (Var $ reflm "TTName")
                            , (RApp (Var $ reflm "Binder") (Var $ reflm "TT"))
                            ]
+
+-- | Build the reflected datatype definition(s) that correspond(s) to
+-- a provided unqualified name
+buildDatatypes :: Context -> Ctxt TypeInfo -> Name -> [RDatatype]
+buildDatatypes ctxt datatypes n =
+  catMaybes [ mkDataType dn ti
+            | (dn, ti) <- lookupCtxtName n datatypes
+            ]
+  where mkDataType name (TI {param_pos = params, con_names = constrs}) =
+          do (TyDecl (TCon _ _) ty) <- lookupDefExact name ctxt
+             let (tcargs, tcres) = getArgs params (forget ty) 0
+             conTys <- mapM (fmap forget . flip lookupTyExact ctxt) constrs
+             return $ RDatatype name tcargs tcres $ zip constrs conTys
+
+        getArgs params (RBind an (Pi _ ty _) body) i =
+          let (args, res) = getArgs params body (i+1)
+          in if i `elem` params
+               then (RParameter an ty : args, res )
+               else (RIndex an ty : args, res)
+        getArgs _ tm _ = ([], tm)
+
+reflectDatatype :: RDatatype -> Raw
+reflectDatatype (RDatatype tyn tyConArgs tyConRes constrs) =
+  raw_apply (Var $ tacN "MkDatatype") [ reflectName tyn
+                                      , rawList (Var $ tacN "TyConArg") (map reflectConArg tyConArgs)
+                                      , reflectRaw tyConRes
+                                      , rawList (rawPairTy (Var $ reflm "TTName") (Var $ reflm "Raw"))
+                                                [ rawPair ((Var $ reflm "TTName"), (Var $ reflm "Raw"))
+                                                          (reflectName cn, reflectRaw cty)
+                                                | (cn, cty) <- constrs
+                                                ]
+                                      ]
+  where reflectConArg (RParameter n t) = raw_apply (Var $ tacN "Parameter") [reflectName n, reflectRaw t]
+        reflectConArg (RIndex n t) = raw_apply (Var $ tacN "Index") [reflectName n, reflectRaw t]
