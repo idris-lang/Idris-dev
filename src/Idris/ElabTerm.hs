@@ -1720,9 +1720,10 @@ runTactical fc env tm = do tm' <- eval tm
                rty = foldr mkPi res args
            (checked, ty') <- lift $ check ctxt [] rty
            case normaliseAll ctxt [] (finalise ty') of
-             TType _ -> lift . tfail . InternalMsg $
-                          show checked ++ " is not a type: it's " ++ show ty'
-             _       -> return ()
+             UType _ -> return ()
+             TType _ -> return ()
+             ty''    -> lift . tfail . InternalMsg $
+                          show checked ++ " is not a type: it's " ++ show ty''
            case lookupDefExact n ctxt of
              Just _ -> lift . tfail . InternalMsg $
                          show n ++ " is already defined."
