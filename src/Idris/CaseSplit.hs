@@ -10,13 +10,13 @@ module Idris.CaseSplit(splitOnLine, replaceSplits,
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree (Idris, IState, PTerm)
 import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.Delaborate
 import Idris.Parser
 import Idris.Error
 import Idris.Output
 
 import Idris.Elab.Value
+import Idris.Elab.Term
 
 import Idris.Core.TT
 import Idris.Core.Typecheck

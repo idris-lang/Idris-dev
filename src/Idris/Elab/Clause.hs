@@ -7,7 +7,7 @@ import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
-import Idris.ElabTerm
+import Idris.Elab.Term
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
@@ -433,7 +433,7 @@ elabPE info fc caller r =
             showArg _ = ""
 
             qshow (Bind _ _ _) = "fn"
-            qshow (App f a) = qshow f ++ qshow a
+            qshow (App _ f a) = qshow f ++ qshow a
             qshow (P _ n _) = show n
             qshow (Constant c) = show c
             qshow _ = ""
@@ -464,6 +464,7 @@ checkPossible info fc tcgen fname lhs_in
             Error err -> if tcgen then return (recoverableCoverage ctxt err)
                                   else return (validCoverageCase ctxt err ||
                                                  recoverableCoverage ctxt err)
+
 
 propagateParams :: IState -> [Name] -> Type -> PTerm -> PTerm
 propagateParams i ps t tm@(PApp _ (PRef fc n) args)
@@ -700,14 +701,14 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
     -- Find the variable names which appear under a 'Ownership.Read' so that
     -- we know they can't be used on the RHS
     borrowedNames :: [Name] -> Term -> [Name]
-    borrowedNames env (App (App (P _ (NS (UN lend) [owner]) _) _) arg)
+    borrowedNames env (App _ (App _ (P _ (NS (UN lend) [owner]) _) _) arg)
         | owner == txt "Ownership" &&
           (lend == txt "lend" || lend == txt "Read") = getVs arg
        where
          getVs (V i) = [env!!i]
-         getVs (App f a) = nub $ getVs f ++ getVs a
+         getVs (App _ f a) = nub $ getVs f ++ getVs a
          getVs _ = []
-    borrowedNames env (App f a) = nub $ borrowedNames env f ++ borrowedNames env a
+    borrowedNames env (App _ f a) = nub $ borrowedNames env f ++ borrowedNames env a
     borrowedNames env (Bind n b sc) = nub $ borrowedB b ++ borrowedNames (n:env) sc
        where borrowedB (Let t v) = nub $ borrowedNames env t ++ borrowedNames env v
              borrowedB b = borrowedNames env (binderTy b)

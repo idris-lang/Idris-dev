@@ -328,7 +328,7 @@ computeLet ctxt n tm = cl [] tm where
        | n' == n = let v' = normalise ctxt env v in
                        Bind n' (Let t v') sc
    cl env (Bind n' b sc) = Bind n' (fmap (cl env) b) (cl ((n, b):env) sc)
-   cl env (App f a) = App (cl env f) (cl env a)
+   cl env (App s f a) = App s (cl env f) (cl env a)
    cl env t = t
 
 attack :: RunTactic
@@ -551,13 +551,36 @@ solve ctxt env (Bind x (Guess ty val) sc)
                             recents = x : recents ps,
                             instances = instances ps \\ [x],
                             dotted = dropUnified dropdots (dotted ps) })
-        let tm' = subst x val sc in
-            return tm'
+        let (locked, did) = tryLock (holes ps \\ [x]) (updsubst x val sc) in
+            return locked
   where dropUnified ddots [] = []
         dropUnified ddots ((x, es) : ds)
              | x `elem` ddots || any (\e -> e `elem` ddots) es
                   = dropUnified ddots ds
              | otherwise = (x, es) : dropUnified ddots ds
+
+        tryLock :: [Name] -> Term -> (Term, Bool)
+        tryLock hs tm@(App Complete _ _) = (tm, True)
+        tryLock hs tm@(App s f a) =
+             let (f', fl) = tryLock hs f
+                 (a', al) = tryLock hs a in
+                 if fl && al then (App Complete f' a', True)
+                             else (App s f' a', False)
+        tryLock hs t@(P _ n _) = (t, not $ n `elem` hs)
+        tryLock hs t@(Bind n (Hole _) sc) = (t, False)
+        tryLock hs t@(Bind n (Guess _ _) sc) = (t, False)
+        tryLock hs t@(Bind n (Let ty val) sc) 
+            = let (ty', tyl) = tryLock hs ty
+                  (val', vall) = tryLock hs val
+                  (sc', scl) = tryLock hs sc in
+                  (Bind n (Let ty' val') sc', tyl && vall && scl)
+        tryLock hs t@(Bind n b sc) 
+            = let (bt', btl) = tryLock hs (binderTy b)
+                  (val', vall) = tryLock hs val
+                  (sc', scl) = tryLock hs sc in
+                  (Bind n (b { binderTy = bt' }) sc', btl && scl)
+        tryLock hs t = (t, True)
+
 solve _ _ h@(Bind x t sc)
    = do ps <- get
         case findType x sc of
@@ -581,7 +604,7 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
        (tyv, tyt) <- lift $ check ctxt env ty
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
-           Bind y (Pi _ s _) t -> let t' = subst y (P Bound n s) t in
+           Bind y (Pi _ s _) t -> let t' = updsubst y (P Bound n s) t in
                                       do ns <- unify' ctxt env (s, Nothing) (tyv, Nothing)
                                          ps <- get
                                          let (uh, uns) = unified ps
@@ -600,7 +623,7 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     _ -> hnf ctxt env t
        case t' of
            Bind y (Pi _ s _) t -> -- trace ("in type " ++ show t') $
-               let t' = subst y (P Bound n s) t in
+               let t' = updsubst y (P Bound n s) t in
                    return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
@@ -623,7 +646,7 @@ patvar n ctxt env (Bind x (Hole t) sc) =
                                           (notunified ps),
                            injective = addInj n x (injective ps)
                          })
-       return $ Bind n (PVar t) (subst x (P Bound n t) sc)
+       return $ Bind n (PVar t) (updsubst x (P Bound n t) sc)
   where addInj n x ps | x `elem` ps = n : ps
                       | otherwise = ps
 patvar n ctxt env tm = fail $ "Can't add pattern var at " ++ show tm
@@ -638,7 +661,7 @@ letbind n ty val ctxt env _ = fail "Can't let bind here"
 
 expandLet :: Name -> Term -> RunTactic
 expandLet n v ctxt env tm =
-       return $ subst n v tm
+       return $ updsubst n v tm
 
 rewrite :: Raw -> RunTactic
 rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
@@ -661,9 +684,9 @@ rewrite _ _ _ _ = fail "Can't rewrite here"
 -- an x, and put \x : lt in front
 mkP :: TT Name -> TT Name -> TT Name -> TT Name -> TT Name
 mkP lt l r ty | l == ty = lt
-mkP lt l r (App f a) = let f' = if (r /= f) then mkP lt l r f else f
-                           a' = if (r /= a) then mkP lt l r a else a in
-                           App f' a'
+mkP lt l r (App s f a) = let f' = if (r /= f) then mkP lt l r f else f
+                             a' = if (r /= a) then mkP lt l r a else a in
+                             App s f' a'
 mkP lt l r (Bind n b sc)
                      = let b' = mkPB b
                            sc' = if (r /= sc) then mkP lt l r sc else sc in
@@ -750,7 +773,7 @@ patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     x@(Bind y (PVTy s) t) -> x
                     _ -> hnf ctxt env t
        case t' of
-           Bind y (PVTy s) t -> let t' = subst y (P Bound n s) t in
+           Bind y (PVTy s) t -> let t' = updsubst y (P Bound n s) t in
                                     return $ Bind n (PVar s) (Bind x (Hole t') (P Bound x t'))
            _ -> fail "Nothing to pattern bind"
 patbind n ctxt env _ = fail "Can't pattern bind here"

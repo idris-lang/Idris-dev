@@ -39,21 +39,21 @@ applyTransRulesWith rules tm
    = finalise $ applyAll rules emptyContext (vToP tm)
 
 applyAll :: [(Term, Term)] -> Ctxt [(Term, Term)] -> Term -> Term
-applyAll extra ts ap@(App f a) 
+applyAll extra ts ap@(App s f a) 
     | (P _ fn ty, args) <- unApply ap
          = let rules = case lookupCtxtExact fn ts of
                             Just r -> extra ++ r
                             Nothing -> extra 
-               ap' = App (applyAll extra ts f) (applyAll extra ts a) in
+               ap' = App s (applyAll extra ts f) (applyAll extra ts a) in
                case rules of
                     [] -> ap'
                     rs -> case applyFnRules rs ap of
-                                   Just tm'@(App f' a') ->
-                                     App (applyAll extra ts f')
-                                         (applyAll extra ts a')
+                                   Just tm'@(App s f' a') ->
+                                     App s (applyAll extra ts f')
+                                           (applyAll extra ts a')
                                    Just tm' -> tm'
-                                   _ -> App (applyAll extra ts f) 
-                                            (applyAll extra ts a)
+                                   _ -> App s (applyAll extra ts f) 
+                                              (applyAll extra ts a)
 applyAll extra ts (Bind n b sc) = Bind n (fmap (applyAll extra ts) b) 
                                          (applyAll extra ts sc)
 applyAll extra ts t = t
@@ -94,7 +94,7 @@ matchTerm lhs tm = matchVars [] lhs tm
       doMatch :: [Name] -> Term -> Term -> Maybe [(Name, Term)]
       doMatch ns (P _ n _) tm
            | n `elem` ns = return [(n, tm)]
-      doMatch ns (App f a) (App f' a')
+      doMatch ns (App _ f a) (App _ f' a')
            = do fm <- doMatch ns f f'
                 am <- doMatch ns a a'
                 return (fm ++ am)

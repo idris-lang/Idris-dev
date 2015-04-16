@@ -147,9 +147,9 @@ recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
   where -- different notion of recoverable than in unification, since we
         -- have no metavars -- just looking to see if a constructor is failing
         -- to unify with a function that may be reduced later
-        checkRec (App f a) p@(P _ _ _) = checkRec f p
-        checkRec p@(P _ _ _) (App f a) = checkRec p f
-        checkRec fa@(App _ _) fa'@(App _ _)
+        checkRec (App _ f a) p@(P _ _ _) = checkRec f p
+        checkRec p@(P _ _ _) (App _ f a) = checkRec p f
+        checkRec fa@(App _ _ _) fa'@(App _ _ _)
             | (f, as) <- unApply fa,
               (f', as') <- unApply fa'
                  = if (length as /= length as')
@@ -364,7 +364,7 @@ calcProd i fc topn pats
      prodRec n done (_, _, tm) = prod n done False (delazy' True tm)
 
      prod :: Name -> [Name] -> Bool -> Term -> Idris Bool
-     prod n done ok ap@(App _ _)
+     prod n done ok ap@(App _ _ _)
         | (P nt f _, args) <- unApply ap
             = do recOK <- checkProdRec (n:done) f
                  let ctxt = tt_ctxt i
@@ -376,8 +376,8 @@ calcProd i fc topn pats
                                  return (and (ok : argsprod) )
                          else do argsprod <- mapM (prod n done co) args
                                  return (and argsprod)
-     prod n done ok (App f a) = liftM2 (&&) (prod n done False f)
-                                            (prod n done False a)
+     prod n done ok (App _ f a) = liftM2 (&&) (prod n done False f)
+                                              (prod n done False a)
      prod n done ok (Bind _ (Let t v) sc)
          = liftM2 (&&) (prod n done False v) (prod n done False v)
      prod n done ok (Bind _ b sc) = prod n done ok sc
@@ -414,7 +414,7 @@ calcTotality fc n pats
         = case lookupTotal fn (tt_ctxt i) of
                [Partial _] -> return (Partial (Other [fn]))
                _ -> Nothing
-    checkLHS i (App f a) = mplus (checkLHS i f) (checkLHS i a)
+    checkLHS i (App _ f a) = mplus (checkLHS i f) (checkLHS i a)
     checkLHS _ _ = Nothing
 
 checkTotality :: [Name] -> FC -> Name -> Idris Totality
@@ -522,14 +522,14 @@ buildSCG (_, n) = do
        x -> error $ "buildSCG: " ++ show (n, x)
 
 delazy = delazy' False -- not lazy codata
-delazy' all t@(App f a)
+delazy' all t@(App _ f a)
      | (P _ (UN l) _, [_, _, arg]) <- unApply t,
        l == txt "Force" = delazy' all arg
      | (P _ (UN l) _, [P _ (UN lty) _, _, arg]) <- unApply t,
        l == txt "Delay" && (all || lty == txt "LazyEval") = delazy arg
      | (P _ (UN l) _, [P _ (UN lty) _, arg]) <- unApply t,
        l == txt "Lazy'" && (all || lty == txt "LazyEval") = delazy' all arg
-delazy' all (App f a) = App (delazy' all f) (delazy' all a)
+delazy' all (App s f a) = App s (delazy' all f) (delazy' all a)
 delazy' all (Bind n b sc) = Bind n (fmap (delazy' all) b) (delazy' all sc)
 delazy' all t = t
 
@@ -543,7 +543,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
                           (f, pargs) = unApply (dePat lhs') in
                             findCalls Toplevel (dePat rhs') (patvars lhs') pargs
 
-  findCalls guarded ap@(App f a) pvs pargs
+  findCalls guarded ap@(App _ f a) pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
      -- that it is total.
      | (P _ (UN at) _, [_, _]) <- unApply ap,
@@ -564,7 +564,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
                                       else Unguarded in
               mkChange n args pargs ++
                  concatMap (\x -> findCalls nguarded x pvs pargs) args
-  findCalls guarded (App f a) pvs pargs
+  findCalls guarded (App _ f a) pvs pargs
         = findCalls Unguarded f pvs pargs ++ findCalls Unguarded a pvs pargs
   findCalls guarded (Bind n (Let t v) e) pvs pargs
         = findCalls Unguarded t pvs pargs ++
@@ -606,13 +606,13 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
       smaller (Just tyn) a (t, Just tyt)
          | a == t = isInductive (fst (unApply (getRetTy tyn)))
                                 (fst (unApply (getRetTy tyt)))
-      smaller ty a (ap@(App f s), _)
+      smaller ty a (ap@(App _ f s), _)
           | (P (DCon _ _ _) n _, args) <- unApply ap
                = let tyn = getType n in
                      any (smaller (ty `mplus` Just tyn) a)
                          (zip args (map toJust (getArgTys tyn)))
       -- check higher order recursive arguments
-      smaller ty (App f s) a = smaller ty f a
+      smaller ty (App _ f s) a = smaller ty f a
       smaller _ _ _ = False
 
       toJust (n, t) = Just t

@@ -7,7 +7,6 @@ import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
-import Idris.ElabTerm
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
@@ -21,6 +20,7 @@ import IRTS.Lang
 import Idris.Elab.Type
 import Idris.Elab.Data
 import Idris.Elab.Utils
+import Idris.Elab.Term
 
 import Idris.Core.TT
 import Idris.Core.Elaborate hiding (Tactic(..))
@@ -317,7 +317,7 @@ checkInjectiveArgs fc n ds (Just ty)
 
     isInj i (P Bound n _) = True 
     isInj i (P _ n _) = isConName n (tt_ctxt i)
-    isInj i (App f a) = isInj i f && isInj i a
+    isInj i (App _ f a) = isInj i f && isInj i a
     isInj i (V _) = True
     isInj i (Bind n b sc) = isInj i sc
     isInj _ _ = True

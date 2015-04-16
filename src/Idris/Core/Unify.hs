@@ -96,22 +96,22 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
     -- but it scares me. However, matching is never guaranteed to give a unique
     -- answer, merely a valid one, so perhaps we're okay.
     -- In other words: it may vanish without warning some day :)
-    un names x tm@(App (P _ f (Bind fn (Pi _ t _) sc)) a)
+    un names x tm@(App _ (P _ f (Bind fn (Pi _ t _) sc)) a)
         | (P (TCon _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName (sMN 0 "mv") (map fst env) in
              checkCycle names (f, Bind n' (Lam t) x)
-    un names tm@(App (P _ f (Bind fn (Pi _ t _) sc)) a) x
+    un names tm@(App _ (P _ f (Bind fn (Pi _ t _) sc)) a) x
         | (P (TCon _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName fn (map fst env) in
                  checkCycle names (f, Bind n' (Lam t) x)
-    un names x tm@(App (P _ f (Bind fn (Pi _ t _) sc)) a)
+    un names x tm@(App _ (P _ f (Bind fn (Pi _ t _) sc)) a)
         | (P (DCon _ _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName (sMN 0 "mv") (map fst env) in
              checkCycle names (f, Bind n' (Lam t) x)
-    un names tm@(App (P _ f (Bind fn (Pi _ t _) sc)) a) x
+    un names tm@(App _ (P _ f (Bind fn (Pi _ t _) sc)) a) x
         | (P (DCon _ _ _) _ _, _) <- unApply x,
           holeIn env f || f `elem` holes
            = let n' = uniqueName fn (map fst env) in
@@ -135,7 +135,7 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
         = do h1 <- uB bnames bx by
              h2 <- un (((x, y), binderTy bx) : bnames) sx sy
              combine bnames h1 h2
-    un names (App fx ax) (App fy ay)
+    un names (App _ fx ax) (App _ fy ay)
         = do hf <- un names fx fy
              ha <- un names ax ay
              combine names hf ha
@@ -218,7 +218,7 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
     bind i ns tm
       | i < 0 = tm
       | otherwise = let ((x,y),ty) = ns!!i in
-                        App (Bind y (Lam ty) (bind (i-1) ns tm))
+                        App MaybeHoles (Bind y (Lam ty) (bind (i-1) ns tm))
                             (P Bound x ty)
 
 renameBinders env (x, t) = (x, renameBindersTm env t)
@@ -233,12 +233,12 @@ renameBindersTm env tm = uniqueBinders (map fst env) tm
                            (uniqueBinders (n':env) (rename n n' sc))
         | otherwise = Bind n (fmap (uniqueBinders (n:env)) b)
                              (uniqueBinders (n:env) sc)
-    uniqueBinders env (App f a) = App (uniqueBinders env f) (uniqueBinders env a)
+    uniqueBinders env (App s f a) = App s (uniqueBinders env f) (uniqueBinders env a)
     uniqueBinders env t = t
 
     rename n n' (P nt x ty) | n == x = P nt n' ty
     rename n n' (Bind x b sc) = Bind x (fmap (rename n n') b) (rename n n' sc)
-    rename n n' (App f a) = App (rename n n' f) (rename n n' a)
+    rename n n' (App s f a) = App s (rename n n' f) (rename n n' a)
     rename n n' t = t
 
     explicitHole (Bind n (Hole ty) sc)
@@ -280,7 +280,7 @@ expandLets env (x, tm) = (x, doSubst (reverse env) tm)
 
 hasv :: TT Name -> Bool
 hasv (V x) = True
-hasv (App f a) = hasv f || hasv a
+hasv (App _ f a) = hasv f || hasv a
 hasv (Bind x b sc) = hasv (binderTy b) || hasv sc
 hasv _ = False
 
@@ -315,14 +315,12 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 
     injective (P (DCon _ _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
---     injective (App f (P _ _ _))  = injective f
---     injective (App f (Constant _))  = injective f
-    injective (App f a)          = injective f -- && injective a
+    injective (App _ f a)        = injective f -- && injective a
     injective _                  = False
 
 --     injectiveVar (P _ (MN _ _) _) = True -- TMP HACK
     injectiveVar (P _ n _)        = n `elem` inj
-    injectiveVar (App f a)        = injectiveVar f -- && injective a
+    injectiveVar (App _ f a)      = injectiveVar f -- && injective a
     injectiveVar _ = False
 
     injectiveApp x = injective x || injectiveVar x
@@ -426,18 +424,18 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     un' fn names topx@(Bind n (Hole t) sc) y = unifyTmpFail topx y
     un' fn names x topy@(Bind n (Hole t) sc) = unifyTmpFail x topy
 
-    un' fn bnames appx@(App _ _) appy@(App _ _)
+    un' fn bnames appx@(App _ _ _) appy@(App _ _ _)
         = unApp fn bnames appx appy
 --         = uplus (unApp fn bnames appx appy)
 --                 (unifyTmpFail appx appy) -- take the whole lot
 
-    un' fn bnames x (Bind n (Lam t) (App y (P Bound n' _)))
+    un' fn bnames x (Bind n (Lam t) (App _ y (P Bound n' _)))
         | n == n' = un' False bnames x y
-    un' fn bnames (Bind n (Lam t) (App x (P Bound n' _))) y
+    un' fn bnames (Bind n (Lam t) (App _ x (P Bound n' _))) y
         | n == n' = un' False bnames x y
-    un' fn bnames x (Bind n (Lam t) (App y (V 0)))
+    un' fn bnames x (Bind n (Lam t) (App _ y (V 0)))
         = un' False bnames x y
-    un' fn bnames (Bind n (Lam t) (App x (V 0))) y
+    un' fn bnames (Bind n (Lam t) (App _ x (V 0))) y
         = un' False bnames x y
 --     un' fn bnames (Bind x (PVar _) sx) (Bind y (PVar _) sy)
 --         = un' False ((x,y):bnames) sx sy
@@ -447,14 +445,14 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     -- f D unifies with t -> D. This is dubious, but it helps with type
     -- class resolution for type classes over functions.
 
-    un' fn bnames (App f x) (Bind n (Pi i t k) y)
+    un' fn bnames (App _ f x) (Bind n (Pi i t k) y)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' False bnames x y
              uf <- un' False bnames f (Bind (sMN 0 "uv") (Lam (TType (UVar 0)))
                                       (Bind n (Pi i t k) (V 1)))
              combine bnames ux uf
 
-    un' fn bnames (Bind n (Pi i t k) y) (App f x)
+    un' fn bnames (Bind n (Pi i t k) y) (App _ f x)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' False bnames y x
              uf <- un' False bnames (Bind (sMN 0 "uv") (Lam (TType (UVar 0)))
@@ -481,7 +479,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
                            else do put (UI s ((x, y, True, env, err, from, Unify) : f))
                                    return [] -- lift $ tfail err
 
-    unApp fn bnames appx@(App fx ax) appy@(App fy ay)
+    unApp fn bnames appx@(App _ fx ax) appy@(App _ fy ay)
         -- shortcut for the common case where we just want to check the
         -- arguments are correct
          | (injectiveApp fx && fx == fy)
@@ -545,7 +543,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
             rigid (P (TCon _ _) _ _) = True
             rigid t@(P Ref _ _)      = inenv t || globmetavar t
             rigid (Constant _)       = True
-            rigid (App f a)          = rigid f && rigid a
+            rigid (App _ f a)        = rigid f && rigid a
             rigid t                  = not (metavar t) || globmetavar t
 
             globmetavar t = case unApply t  of
@@ -636,7 +634,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     bind i ns tm
       | i < 0 = tm
       | otherwise = let ((x,y),ty) = ns!!i in
-                        App (Bind y (Lam ty) (bind (i-1) ns tm))
+                        App MaybeHoles (Bind y (Lam ty) (bind (i-1) ns tm))
                             (P Bound x ty)
 
     combineArgs bnames args = ca [] args where
@@ -658,16 +656,16 @@ boundVs :: Int -> Term -> [Int]
 boundVs i (V j) | j < i = []
                 | otherwise = [j]
 boundVs i (Bind n b sc) = boundVs (i + 1) sc
-boundVs i (App f x) = let fs = boundVs i f
-                          xs = boundVs i x in
-                          nub (fs ++ xs)
+boundVs i (App _ f x) = let fs = boundVs i f
+                            xs = boundVs i x in
+                            nub (fs ++ xs)
 boundVs i _ = []
 
 highV :: Int -> Term -> Int
 highV i (V j) | j > i = j
                 | otherwise = i
 highV i (Bind n b sc) = maximum [i, highV i (binderTy b), (highV i sc - 1)]
-highV i (App f x) = max (highV i f) (highV i x)
+highV i (App _ f x) = max (highV i f) (highV i x)
 highV i _ = i
 
 envPos x i [] = 0
@@ -683,9 +681,9 @@ envPos x i ((y, _) : ys) | x == y = i
 --
 -- Issue #1722 on the issue tracker https://github.com/idris-lang/Idris-dev/issues/1722
 --
-recoverable t@(App _ _) _
+recoverable t@(App _ _ _) _
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
-recoverable _ t@(App _ _)
+recoverable _ t@(App _ _ _)
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
 recoverable (P (DCon _ _ _) x _) (P (DCon _ _ _) y _) = x == y
 recoverable (P (TCon _ _) x _) (P (TCon _ _) y _) = x == y
@@ -696,13 +694,13 @@ recoverable (Constant _) (P (TCon _ _) y _) = False
 recoverable (P (TCon _ _) x _) (Constant _) = False
 recoverable (P (DCon _ _ _) x _) (P (TCon _ _) y _) = False
 recoverable (P (TCon _ _) x _) (P (DCon _ _ _) y _) = False
-recoverable p@(Constant _) (App f a) = recoverable p f
-recoverable (App f a) p@(Constant _) = recoverable f p
-recoverable p@(P _ n _) (App f a) = recoverable p f
-recoverable (App f a) p@(P _ _ _) = recoverable f p
-recoverable (App f a) (App f' a')
+recoverable p@(Constant _) (App _ f a) = recoverable p f
+recoverable (App _ f a) p@(Constant _) = recoverable f p
+recoverable p@(P _ n _) (App _ f a) = recoverable p f
+recoverable (App _ f a) p@(P _ _ _) = recoverable f p
+recoverable (App _ f a) (App _ f' a')
     | f == f' = recoverable a a'
-recoverable (App f a) (App f' a')
+recoverable (App _ f a) (App _ f' a')
     = recoverable f f' -- && recoverable a a'
 recoverable f (Bind _ (Pi _ _ _) sc)
     | (P (DCon _ _ _) _ _, _) <- unApply f = False

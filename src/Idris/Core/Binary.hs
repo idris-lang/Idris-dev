@@ -555,9 +555,9 @@ instance {- (Binary n) => -} Binary (TT Name) where
                                     put x1
                                     put x2
                                     put x3
-                App x1 x2 -> do putWord8 3
-                                put x1
-                                put x2
+                App _ x1 x2 -> do putWord8 3
+                                  put x1
+                                  put x2
                 Constant x1 -> do putWord8 4
                                   put x1
                 Proj x1 x2 -> do putWord8 5
@@ -584,7 +584,7 @@ instance {- (Binary n) => -} Binary (TT Name) where
                            return (Bind x1 x2 x3)
                    3 -> do x1 <- get
                            x2 <- get
-                           return (App x1 x2)
+                           return (App Complete x1 x2)
                    4 -> do x1 <- get
                            return (Constant x1)
                    5 -> do x1 <- get

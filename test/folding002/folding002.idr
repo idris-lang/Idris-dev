@@ -5,7 +5,7 @@ addAll : (Foldable t, Num a) => t a -> a
 addAll = foldr (+) 0
 
 n : Integer
-n = 1000000
+n = 100000
 
 numbersList : List Integer
 numbersList = numbersList' n []

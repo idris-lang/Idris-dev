@@ -279,7 +279,7 @@ buildDepMap ci used externs ctx startNames
 
     etaExpand :: [Name] -> Term -> Term
     etaExpand []       t = t
-    etaExpand (n : ns) t = etaExpand ns (App t (P Ref n Erased))
+    etaExpand (n : ns) t = etaExpand ns (App Complete t (P Ref n Erased))
 
     getDepsSC :: Name -> [Name] -> Vars -> SC -> Deps
     getDepsSC fn es vs  ImpossibleCase     = M.empty
@@ -370,7 +370,7 @@ buildDepMap ci used externs ctx startNames
         var t cd = getDepsTerm vs bs cd t
 
     -- applications may add items to Cond
-    getDepsTerm vs bs cd app@(App _ _)
+    getDepsTerm vs bs cd app@(App _ _ _)
         | (fun, args) <- unApply app = case fun of
             -- instance constructors -> create metamethod deps
             P (DCon _ _ _) ctorName@(SN (InstanceCtorN className)) _
@@ -418,8 +418,8 @@ buildDepMap ci used externs ctx startNames
             Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
 
             -- and we interpret applied lets as lambdas
-            Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
-            Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
+            Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam ty) t) t')
+            Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam ty) t) t')
 
             Proj t i
                 -> error $ "cannot[0] analyse projection !" ++ show i ++ " of " ++ show t
@@ -493,9 +493,9 @@ buildDepMap ci used externs ctx startNames
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering
     lamToLet :: [Term] -> Term -> Term
-    lamToLet    xs  (App f x)           = lamToLet (x:xs) f
+    lamToLet    xs  (App _ f x)         = lamToLet (x:xs) f
     lamToLet (x:xs) (Bind n (Lam ty) t) = Bind n (Let ty x) (lamToLet xs t)
-    lamToLet (x:xs)  t                  = App (lamToLet xs t) x
+    lamToLet (x:xs)  t                  = App Complete (lamToLet xs t) x
     lamToLet    []   t                  = t
 
     -- split "\x_i -> T(x_i)" into [x_i] and T

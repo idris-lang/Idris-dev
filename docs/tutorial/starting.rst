@@ -10,12 +10,9 @@ Prerequisites
 Before installing Idris, you will need to make sure you have all
 of the necessary libraries and tools. You will need:
 
-- A fairly recent Haskell platform. Version 2013.2.0.0 should be
-   sufficiently recent, though it is better to be completely up to
-   date.
+- A fairly recent Haskell platform. Version ``2013.2.0.0`` should be sufficiently recent, though it is better to be completely up to date.
 
-- The *GNU Multiple Precision Arithmetic Library* (GMP) is available
-   from MacPorts/Homebrew and all major Linux distributions.
+- The *GNU Multiple Precision Arithmetic Library* (GMP) is available  from MacPorts/Homebrew and all major Linux distributions.
 
 Downloading and Installing
 ==========================
@@ -33,7 +30,7 @@ development version you can find it, as well as build intructions, on
 GitHub at: https://github.com/idris-lang/Idris-dev.
 
 To check that installation has succeeded, and to write your first
-Idris program, create a file called “``hello.idr``” containing the
+Idris program, create a file called ``hello.idr`` containing the
 following text:
 
 .. code-block:: idris
@@ -55,18 +52,17 @@ create an executable called ``hello``, which you can run:
     $ ./hello
     Hello world
 
-Note that the ``$`` indicates the shell prompt! Should the Idris
-executable not be found please ensure that you have added
-``~/.cabal/bin`` to your ``$PATH`` environment variable. Mac OS X
-users may find they need to use ``~/Library/Haskell/bin``
+Please note that the dollar sign ``$`` indicates the shell prompt!
+Should the Idris executable not be found please ensure that you have
+added ``~/.cabal/bin`` to your ``$PATH`` environment variable. Mac OS
+X users may find they need to add ``~/Library/Haskell/bin``
 instead. Some useful options to the Idris command are:
 
 - ``-o prog`` to compile to an executable called ``prog``.
 
-- ``--check`` type check the file and its dependencies without
-   starting the interactive environment.
+- ``--check`` type check the file and its dependencies without starting the interactive environment.
 
-- ``--help`` display usage summary and command line options
+- ``--help`` display usage summary and command line options.
 
 The Interactive Environment
 ===========================

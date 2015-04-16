@@ -8,7 +8,6 @@ import Idris.ASTUtils
 import Idris.Apropos (apropos, aproposModules)
 import Idris.REPLParser
 import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.Erasure
 import Idris.Error
 import Idris.ErrReverse
@@ -39,6 +38,7 @@ import Idris.Elab.Type
 import Idris.Elab.Clause
 import Idris.Elab.Data
 import Idris.Elab.Value
+import Idris.Elab.Term
 
 import Version_idris (gitHash)
 import Util.System

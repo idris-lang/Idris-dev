@@ -12,12 +12,12 @@ import Idris.Core.Evaluate
 import Idris.CaseSplit
 import Idris.AbsSyntax
 import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.Error
 import Idris.Delaborate
 import Idris.Output
 import Idris.IdeMode hiding (IdeModeCommand(..))
 import Idris.Elab.Value
+import Idris.Elab.Term
 
 import Util.Pretty
 import Util.System
@@ -322,7 +322,7 @@ makeLemma fn updatefile l n
         guessImps ctxt _ = []
 
         guarded ctxt n (P _ n' _) | n == n' = True
-        guarded ctxt n ap@(App _ _)
+        guarded ctxt n ap@(App _ _ _)
             | (P _ f _, args) <- unApply ap,
               isConName f ctxt = any (guarded ctxt n) args
 --         guarded ctxt n (Bind (UN cn) (Pi t) sc) -- ignore shadows

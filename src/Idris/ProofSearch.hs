@@ -128,7 +128,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     toUN t@(P nt (MN i n) ty) 
        | ('_':xs) <- str n = t
        | otherwise = P nt (UN n) ty
-    toUN (App f a) = App (toUN f) (toUN a)
+    toUN (App s f a) = App s (toUN f) (toUN a)
     toUN t = t
 
     -- psRec counts depth and the local variable applications we're under

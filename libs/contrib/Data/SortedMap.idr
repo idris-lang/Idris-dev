@@ -2,72 +2,73 @@ module Data.SortedMap
 
 -- TODO: write merge and split
 
-data Tree : Nat -> Type -> Type -> Type where
-  Leaf : k -> v -> Tree Z k v
-  Branch2 : Tree n k v -> k -> Tree n k v -> Tree (S n) k v
-  Branch3 : Tree n k v -> k -> Tree n k v -> k -> Tree n k v -> Tree (S n) k v
+private
+data Tree : Nat -> (k : Type) -> Type -> Ord k -> Type where
+  Leaf : k -> v -> Tree Z k v o
+  Branch2 : Tree n k v o -> k -> Tree n k v o -> Tree (S n) k v o
+  Branch3 : Tree n k v o -> k -> Tree n k v o -> k -> Tree n k v o -> Tree (S n) k v o
 
 branch4 :
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v ->
-  Tree (S (S n)) k v
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o ->
+  Tree (S (S n)) k v o
 branch4 a b c d e f g =
   Branch2 (Branch2 a b c) d (Branch2 e f g)
 
 branch5 :
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v ->
-  Tree (S (S n)) k v
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o ->
+  Tree (S (S n)) k v o
 branch5 a b c d e f g h i =
   Branch2 (Branch2 a b c) d (Branch3 e f g h i)
 
 branch6 :
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v ->
-  Tree (S (S n)) k v
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o ->
+  Tree (S (S n)) k v o
 branch6 a b c d e f g h i j k =
   Branch3 (Branch2 a b c) d (Branch2 e f g) h (Branch2 i j k)
 
 branch7 :
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v -> k ->
-  Tree n k v ->
-  Tree (S (S n)) k v
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o -> k ->
+  Tree n k v o ->
+  Tree (S (S n)) k v o
 branch7 a b c d e f g h i j k l m =
   Branch3 (Branch3 a b c d e) f (Branch2 g h i) j (Branch2 k l m)
 
-merge1 : Tree n k v -> k -> Tree (S n) k v -> k -> Tree (S n) k v -> Tree (S (S n)) k v
+merge1 : Tree n k v o -> k -> Tree (S n) k v o -> k -> Tree (S n) k v o -> Tree (S (S n)) k v o
 merge1 a b (Branch2 c d e) f (Branch2 g h i) = branch5 a b c d e f g h i
 merge1 a b (Branch2 c d e) f (Branch3 g h i j k) = branch6 a b c d e f g h i j k
 merge1 a b (Branch3 c d e f g) h (Branch2 i j k) = branch6 a b c d e f g h i j k
 merge1 a b (Branch3 c d e f g) h (Branch3 i j k l m) = branch7 a b c d e f g h i j k l m
 
-merge2 : Tree (S n) k v -> k -> Tree n k v -> k -> Tree (S n) k v -> Tree (S (S n)) k v
+merge2 : Tree (S n) k v o -> k -> Tree n k v o -> k -> Tree (S n) k v o -> Tree (S (S n)) k v o
 merge2 (Branch2 a b c) d e f (Branch2 g h i) = branch5 a b c d e f g h i
 merge2 (Branch2 a b c) d e f (Branch3 g h i j k) = branch6 a b c d e f g h i j k
 merge2 (Branch3 a b c d e) f g h (Branch2 i j k) = branch6 a b c d e f g h i j k
 merge2 (Branch3 a b c d e) f g h (Branch3 i j k l m) = branch7 a b c d e f g h i j k l m
 
-merge3 : Tree (S n) k v -> k -> Tree (S n) k v -> k -> Tree n k v -> Tree (S (S n)) k v
+merge3 : Tree (S n) k v o -> k -> Tree (S n) k v o -> k -> Tree n k v o -> Tree (S (S n)) k v o
 merge3 (Branch2 a b c) d (Branch2 e f g) h i = branch5 a b c d e f g h i
 merge3 (Branch2 a b c) d (Branch3 e f g h i) j k = branch6 a b c d e f g h i j k
 merge3 (Branch3 a b c d e) f (Branch2 g h i) j k = branch6 a b c d e f g h i j k
 merge3 (Branch3 a b c d e) f (Branch3 g h i j k) l m = branch7 a b c d e f g h i j k l m
 
-treeLookup : Ord k => k -> Tree n k v -> Maybe v
+treeLookup : k -> Tree n k v o -> Maybe v
 treeLookup k (Leaf k' v) =
   if k == k' then
     Just v
@@ -86,7 +87,7 @@ treeLookup k (Branch3 t1 k1 t2 k2 t3) =
   else
     treeLookup k t3
 
-treeInsert' : Ord k => k -> v -> Tree n k v -> Either (Tree n k v) (Tree n k v, k, Tree n k v)
+treeInsert' : k -> v -> Tree n k v o -> Either (Tree n k v o) (Tree n k v o, k, Tree n k v o)
 treeInsert' k v (Leaf k' v') =
   case compare k k' of
     LT => Right (Leaf k v, k, Leaf k' v')
@@ -116,17 +117,17 @@ treeInsert' k v (Branch3 t1 k1 t2 k2 t3) =
         Left t3' => Left (Branch3 t1 k1 t2 k2 t3')
         Right (a, b, c) => Right (Branch2 t1 k1 t2, k2, Branch2 a b c)
 
-treeInsert : Ord k => k -> v -> Tree n k v -> Either (Tree n k v) (Tree (S n) k v)
+treeInsert : k -> v -> Tree n k v o -> Either (Tree n k v o) (Tree (S n) k v o)
 treeInsert k v t =
   case treeInsert' k v t of
     Left t' => Left t'
     Right (a, b, c) => Right (Branch2 a b c)
 
-delType : Nat -> Type -> Type -> Type
-delType Z k v = ()
-delType (S n) k v = Tree n k v
+delType : Nat -> (k : Type) -> Type -> Ord k -> Type
+delType Z k v o = ()
+delType (S n) k v o = Tree n k v o
 
-treeDelete : Ord k => k -> Tree n k v -> Either (Tree n k v) (delType n k v)
+treeDelete : k -> Tree n k v o -> Either (Tree n k v o) (delType n k v o)
 treeDelete k (Leaf k' v) =
   if k == k' then
     Right ()
@@ -183,33 +184,38 @@ treeDelete {n=(S (S _))} k (Branch3 t1 k1 t2 k2 t3) =
       Left t3' => Left (Branch3 t1 k1 t2 k2 t3')
       Right t3' => Left (merge3 t1 k1 t2 k2 t3')
 
-treeToList : Tree n k v -> List (k, v)
+treeToList : Tree n k v o -> List (k, v)
 treeToList = treeToList' (:: [])
   where
-    treeToList' : ((k, v) -> List (k, v)) -> Tree n k v -> List (k, v)
+    treeToList' : ((k, v) -> List (k, v)) -> Tree n k v o -> List (k, v)
     treeToList' cont (Leaf k v) = cont (k, v)
     treeToList' cont (Branch2 t1 _ t2) = treeToList' (:: treeToList' cont t2) t1
     treeToList' cont (Branch3 t1 _ t2 _ t3) = treeToList' (:: treeToList' (:: treeToList' cont t3) t2) t1
 
+abstract
 data SortedMap : Type -> Type -> Type where
-  Empty : SortedMap k v
-  M : (n:Nat) -> Tree n k v -> SortedMap k v
+  Empty : Ord k => SortedMap k v
+  M : (o : Ord k) => (n:Nat) -> Tree n k v o -> SortedMap k v
 
-empty : SortedMap k v
+public
+empty : Ord k => SortedMap k v
 empty = Empty
 
-lookup : Ord k => k -> SortedMap k v -> Maybe v
+public
+lookup : k -> SortedMap k v -> Maybe v
 lookup _ Empty = Nothing
 lookup k (M _ t) = treeLookup k t
 
-insert : Ord k => k -> v -> SortedMap k v -> SortedMap k v
+public
+insert : k -> v -> SortedMap k v -> SortedMap k v
 insert k v Empty = M Z (Leaf k v)
 insert k v (M _ t) =
   case treeInsert k v t of
     Left t' => (M _ t')
     Right t' => (M _ t')
 
-delete : Ord k => k -> SortedMap k v -> SortedMap k v
+public
+delete : k -> SortedMap k v -> SortedMap k v
 delete _ Empty = Empty
 delete k (M Z t) =
   case treeDelete k t of
@@ -220,18 +226,23 @@ delete k (M (S _) t) =
     Left t' => (M _ t')
     Right t' => (M _ t')
 
+public
 fromList : Ord k => List (k, v) -> SortedMap k v
 fromList l = foldl (flip (uncurry insert)) empty l
 
+public
 toList : SortedMap k v -> List (k, v)
 toList Empty = []
 toList (M _ t) = treeToList t
 
-instance Functor (Tree n k) where
-  map f (Leaf k v) = Leaf k (f v)
-  map f (Branch2 t1 k t2) = Branch2 (map f t1) k (map f t2)
-  map f (Branch3 t1 k1 t2 k2 t3) = Branch3 (map f t1) k1 (map f t2) k2 (map f t3)
+public
+treeMap : (a -> b) -> Tree n k a o -> Tree n k b o
+treeMap f (Leaf k v) = Leaf k (f v)
+treeMap f (Branch2 t1 k t2) = Branch2 (treeMap f t1) k (treeMap f t2)
+treeMap f (Branch3 t1 k1 t2 k2 t3) 
+    = Branch3 (treeMap f t1) k1 (treeMap f t2) k2 (treeMap f t3)
 
 instance Functor (SortedMap k) where
   map _ Empty = Empty
-  map f (M n t) = M _ (map f t)
+  map f (M n t) = M _ (treeMap f t)
+

@@ -1,6 +1,7 @@
 Tests are categorised as follows:
 
 basic:       Basic language features, some complete programs
+bignum:      Bignums and GMP
 dsl:         Embedded DSLs and features to support DSL development
 effects:     Effects package
 error:       Error messages and error reflection

@@ -9,13 +9,13 @@ import Idris.Core.Typecheck
 
 import Idris.Elab.Utils
 import Idris.Elab.Value
+import Idris.Elab.Term
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Delaborate
 import Idris.Docs (getDocs, pprintDocs, pprintConstDocs)
 import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.Parser hiding (params)
 import Idris.Error
 import Idris.DataOpts

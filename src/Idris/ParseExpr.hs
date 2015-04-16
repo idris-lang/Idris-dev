@@ -966,9 +966,9 @@ constraintList1 syn = try (do lchar '('
                               return [(defname, t)])
                   <?> "type constraint list"
   where nexpr = try (do n <- name; lchar ':'
-                        e <- expr' (disallowImp syn)
+                        e <- expr syn
                         return (n, e))
-                <|> do e <- expr' (disallowImp syn)
+                <|> do e <- expr syn
                        return (defname, e)
         defname = sMN 0 "constrarg"
 

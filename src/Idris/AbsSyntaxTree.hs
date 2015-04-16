@@ -1258,14 +1258,14 @@ infP = P (TCon 6 0) inferTy (TType (UVal 0))
 
 getInferTerm, getInferType :: Term -> Term
 getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc
-getInferTerm (App (App _ _) tm) = tm
+getInferTerm (App _ (App _ _ _) tm) = tm
 getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n (toTy b) $ getInferType sc
   where toTy (Lam t) = Pi Nothing t (TType (UVar 0))
         toTy (PVar t) = PVTy t
         toTy b = b
-getInferType (App (App _ ty) _) = ty
+getInferType (App _ (App _ _ ty) _) = ty
 
 
 

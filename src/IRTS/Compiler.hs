@@ -235,7 +235,7 @@ data VarInfo = VI
 type Vars = M.Map Name VarInfo
 
 irTerm :: Vars -> [Name] -> Term -> Idris LExp
-irTerm vs env tm@(App f a) = do 
+irTerm vs env tm@(App _ f a) = do 
   ist <- getIState
   case unApply tm of
     (P _ (UN m) _, args)
@@ -297,8 +297,8 @@ irTerm vs env tm@(App f a) = do
 
     -- This case is here until we get more general inlining. It's just
     -- a really common case, and the laziness hurts...
-    (P _ (NS (UN be) [b,p]) _, [_,x,(App (App (App (P _ (UN d) _) _) _) t),
-                                    (App (App (App (P _ (UN d') _) _) _) e)])
+    (P _ (NS (UN be) [b,p]) _, [_,x,(App _ (App _ (App _ (P _ (UN d) _) _) _) t),
+                                    (App _ (App _ (App _ (P _ (UN d') _) _) _) e)])
         | be == txt "boolElim"
         , d  == txt "Delay"
         , d' == txt "Delay"

@@ -13,7 +13,7 @@ occurs :: Name -> Term -> Bool
 occurs n (P Bound _ _) = False
 occurs n (P _ n' _) = n == n'
 occurs n (Bind _ b sc) = occursBinder n b || occurs n sc
-occurs n (App t1 t2) = occurs n t1 || occurs n t2
+occurs n (App _ t1 t2) = occurs n t1 || occurs n t2
 occurs n (Proj t _) = occurs n t
 occurs n _ = False
 
@@ -21,7 +21,7 @@ names :: Term -> [Name]
 names (P Bound _ _) = []
 names (P _ n _) = [n]
 names (Bind _ b sc) = namesBinder b ++ names sc
-names (App t1 t2) = names t1 ++ names t2
+names (App _ t1 t2) = names t1 ++ names t2
 names (Proj t _) = names t
 names _ = []
 

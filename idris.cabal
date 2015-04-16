@@ -346,6 +346,10 @@ Extra-source-files:
                        test/basic013/*.idr
                        test/basic013/expected
 
+                       test/bignum001/run
+                       test/bignum001/*.idr
+                       test/bignum001/expected
+
                        test/delab001/*.idr
                        test/delab001/run
                        test/delab001/expected
@@ -730,6 +734,7 @@ Library
                 , Idris.Elab.Provider
                 , Idris.Elab.Transform
                 , Idris.Elab.Value
+                , Idris.Elab.Term
 
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
@@ -748,7 +753,6 @@ Library
                 , Idris.Docstrings
                 , Idris.ElabDecls
                 , Idris.ElabQuasiquote
-                , Idris.ElabTerm
                 , Idris.Erasure
                 , Idris.Error
                 , Idris.ErrReverse

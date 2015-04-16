@@ -501,7 +501,7 @@ pDefs reexp syms ds
 
     update (P t n ty) = do n' <- getSymbol n
                            return $ P t n' ty
-    update (App f a) = liftM2 App (update f) (update a)
+    update (App s f a) = liftM2 (App s) (update f) (update a)
     update (Bind n b sc) = do b' <- updateB b
                               sc' <- update sc
                               return $ Bind n b' sc'

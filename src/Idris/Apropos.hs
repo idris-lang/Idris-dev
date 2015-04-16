@@ -77,7 +77,7 @@ instance Apropos (TT Name) where
   isApropos str (P (DCon _ _ _) n ty) = isApropos str n || isApropos str ty
   isApropos str (P Bound _ ty)      = isApropos str ty
   isApropos str (Bind n b tm)       = isApropos str b || isApropos str tm
-  isApropos str (App t1 t2)         = isApropos str t1 || isApropos str t2
+  isApropos str (App _ t1 t2)       = isApropos str t1 || isApropos str t2
   isApropos str (Constant const)    = isApropos str const
   isApropos str _                   = False
 

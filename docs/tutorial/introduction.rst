@@ -25,11 +25,12 @@ lists of a given length [1]_, ``Vect n a``, where ``a`` is the element
 type and ``n`` is the length of the list and can be an arbitrary term.
 
 When types can contain values, and where those values describe
-properties (e.g. the length of a list) the type of a function can
-begin to describe its own properties. For example, concatenating two
-lists has the property that the resulting list’s length is the sum of
-the lengths of the two input lists. We can therefore give the
-following type to the ``app`` function, which concatenates vectors:
+properties, for example the length of a list, the type of a function
+can begin to describe its own properties. Take for example the
+concatenatation of two lists. This operation has the property that the
+resulting list's length is the sum of the lengths of the two input
+lists. We can therefore give the following type to the ``app``
+function, which concatenates vectors:
 
 .. code-block:: idris
 
@@ -58,11 +59,10 @@ Example Code
 ============
 
 This tutorial includes some example code, which has been tested with
-Idris version . The files are available in the Idris
-distribution, and provided along side the tutorial source, so that you
-can try them out easily, under ``tutorial/examples``. However, it is
-strongly recommended that you can type them in yourself, rather than
-simply loading and reading them.
+against Idris. These files are available with the Idris distribution,
+so that you can try them out easily. They can be found under
+``samples``. It is, however, strongly recommended that you type
+them in yourself, rather than simply loading and reading them.
 
 .. [1]
    Typically, and perhaps confusingly, referred to in the dependently

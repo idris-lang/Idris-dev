@@ -53,7 +53,7 @@ reify _ (P _ n _) | n == reflm "Compute" = return Compute
 reify _ (P _ n _) | n == reflm "Skip" = return Skip
 reify _ (P _ n _) | n == reflm "SourceFC" = return SourceFC
 reify _ (P _ n _) | n == reflm "Unfocus" = return Unfocus
-reify ist t@(App _ _)
+reify ist t@(App _ _ _)
           | (P _ f _, args) <- unApply t = reifyApp ist f args
 reify _ t = fail ("Unknown tactic " ++ show t)
 
@@ -113,7 +113,7 @@ reifyReportParts errs =
 
 -- | Reify terms from their reflected representation
 reifyTT :: Term -> ElabD Term
-reifyTT t@(App _ _)
+reifyTT t@(App _ _ _)
         | (P _ f _, args) <- unApply t = reifyTTApp f args
 reifyTT t@(P _ n _)
         | n == reflm "Erased" = return $ Erased
@@ -137,7 +137,7 @@ reifyTTApp t [n, b, x]
 reifyTTApp t [f, x]
            | t == reflm "App" = do f' <- reifyTT f
                                    x' <- reifyTT x
-                                   return $ App f' x'
+                                   return $ App Complete f' x'
 reifyTTApp t [c]
            | t == reflm "TConst" = liftM Constant (reifyTTConst c)
 reifyTTApp t [t', Constant (I i)]
@@ -149,7 +149,7 @@ reifyTTApp t args = fail ("Unknown reflection term: " ++ show (t, args))
 
 -- | Reify raw terms from their reflected representation
 reifyRaw :: Term -> ElabD Raw
-reifyRaw t@(App _ _)
+reifyRaw t@(App _ _ _)
          | (P _ f _, args) <- unApply t = reifyRawApp f args
 reifyRaw t@(P _ n _)
          | n == reflm "RType" = return $ RType
@@ -190,7 +190,7 @@ reifyTTNameApp t []
 reifyTTNameApp t args = fail ("Unknown reflection term name: " ++ show (t, args))
 
 reifyTTNamespace :: Term -> ElabD [String]
-reifyTTNamespace t@(App _ _)
+reifyTTNamespace t@(App _ _ _)
   = case unApply t of
       (P _ f _, [Constant StrType])
            | f == sNS (sUN "Nil") ["List", "Prelude"] -> return []
@@ -202,7 +202,7 @@ reifyTTNamespace t = fail ("Unknown reflection namespace arg: " ++ show t)
 reifyTTNameType :: Term -> ElabD NameType
 reifyTTNameType t@(P _ n _) | n == reflm "Bound" = return $ Bound
 reifyTTNameType t@(P _ n _) | n == reflm "Ref" = return $ Ref
-reifyTTNameType t@(App _ _)
+reifyTTNameType t@(App _ _ _)
   = case unApply t of
       (P _ f _, [Constant (I tag), Constant (I num)])
            | f == reflm "DCon" -> return $ DCon tag num False -- FIXME: Uniqueness!
@@ -211,7 +211,7 @@ reifyTTNameType t@(App _ _)
 reifyTTNameType t = fail ("Unknown reflection name type: " ++ show t)
 
 reifyTTBinder :: (Term -> ElabD a) -> Name -> Term -> ElabD (Binder a)
-reifyTTBinder reificator binderType t@(App _ _)
+reifyTTBinder reificator binderType t@(App _ _ _)
   = case unApply t of
      (P _ f _, bt:args) | forget bt == Var binderType
        -> reifyTTBinderApp reificator f args
@@ -243,7 +243,7 @@ reifyTTConst :: Term -> ElabD Const
 reifyTTConst (P _ n _) | n == reflm "StrType"  = return $ StrType
 reifyTTConst (P _ n _) | n == reflm "VoidType" = return $ VoidType
 reifyTTConst (P _ n _) | n == reflm "Forgot"   = return $ Forgot
-reifyTTConst t@(App _ _)
+reifyTTConst t@(App _ _ _)
              | (P _ f _, [arg]) <- unApply t   = reifyTTConstApp f arg
 reifyTTConst t = fail ("Unknown reflection constant: " ++ show t)
 
@@ -271,7 +271,7 @@ reifyTTConstApp f (Constant c@(B64 _))
 reifyTTConstApp f arg = fail ("Unknown reflection constant: " ++ show (f, arg))
 
 reifyArithTy :: Term -> ElabD ArithTy
-reifyArithTy (App (P _ n _) intTy) | n == reflm "ATInt"   = fmap ATInt (reifyIntTy intTy)
+reifyArithTy (App _ (P _ n _) intTy) | n == reflm "ATInt"   = fmap ATInt (reifyIntTy intTy)
 reifyArithTy (P _ n _)             | n == reflm "ATFloat" = return ATFloat
 reifyArithTy x = fail ("Couldn't reify reflected ArithTy: " ++ show x)
 
@@ -283,14 +283,14 @@ reifyNativeTy (P _ n _) | n == reflm "IT8" = return IT8
 reifyNativeTy x = fail $ "Couldn't reify reflected NativeTy " ++ show x
 
 reifyIntTy :: Term -> ElabD IntTy
-reifyIntTy (App (P _ n _) nt) | n == reflm "ITFixed" = fmap ITFixed (reifyNativeTy nt)
+reifyIntTy (App _ (P _ n _) nt) | n == reflm "ITFixed" = fmap ITFixed (reifyNativeTy nt)
 reifyIntTy (P _ n _) | n == reflm "ITNative" = return ITNative
 reifyIntTy (P _ n _) | n == reflm "ITBig" = return ITBig
 reifyIntTy (P _ n _) | n == reflm "ITChar" = return ITChar
 reifyIntTy tm = fail $ "The term " ++ show tm ++ " is not a reflected IntTy"
 
 reifyTTUExp :: Term -> ElabD UExp
-reifyTTUExp t@(App _ _)
+reifyTTUExp t@(App _ _ _)
   = case unApply t of
       (P _ f _, [Constant (I i)]) | f == reflm "UVar" -> return $ UVar i
       (P _ f _, [Constant (I i)]) | f == reflm "UVal" -> return $ UVal i
@@ -359,7 +359,7 @@ reflectTTQuotePattern unq (Bind n b x)
                  solve
        focus x'; reflectTTQuotePattern unq x
        focus b'; reflectBinderQuotePattern reflectTTQuotePattern unq b
-reflectTTQuotePattern unq (App f x)
+reflectTTQuotePattern unq (App _ f x)
   = do f' <- claimTT (sMN 0 "f"); movelast f'
        x' <- claimTT (sMN 0 "x"); movelast x'
        fill $ reflCall "App" [Var f', Var x']
@@ -542,7 +542,7 @@ reflectTTQuote unq (V n)
   = reflCall "V" [RConstant (I n)]
 reflectTTQuote unq (Bind n b x)
   = reflCall "Bind" [reflectName n, reflectBinderQuote reflectTTQuote (reflm "TT") unq b, reflectTTQuote unq x]
-reflectTTQuote unq (App f x)
+reflectTTQuote unq (App _ f x)
   = reflCall "App" [reflectTTQuote unq f, reflectTTQuote unq x]
 reflectTTQuote unq (Constant c)
   = reflCall "TConst" [reflectConstant c]
@@ -814,7 +814,7 @@ reflectFC fc = raw_apply (Var (reflm "FileLoc"))
   where intTy = RConstant (AType (ATInt ITNative))
 
 fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
-fromTTMaybe (App (App (P (DCon _ _ _) (NS (UN just) _) _) ty) tm)
+fromTTMaybe (App _ (App _ (P (DCon _ _ _) (NS (UN just) _) _) ty) tm)
   | just == txt "Just" = Just tm
 fromTTMaybe x          = Nothing
 
@@ -825,9 +825,9 @@ reflErrName n = sNS (sUN n) ["Errors", "Reflection", "Language"]
 -- representation. Not in Idris or ElabD monads because it should be usable
 -- from either.
 reifyReportPart :: Term -> Either Err ErrorReportPart
-reifyReportPart (App (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "TextPart" =
+reifyReportPart (App _ (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "TextPart" =
     Right (TextPart msg)
-reifyReportPart (App (P (DCon _ _ _) n _) ttn)
+reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
   | n == reflm "NamePart" =
     case runElab initEState (reifyTTName ttn) (initElaborator NErased initContext Erased) of
       Error e -> Left . InternalMsg $
@@ -835,7 +835,7 @@ reifyReportPart (App (P (DCon _ _ _) n _) ttn)
        show ttn ++
        " when reflecting an error:" ++ show e
       OK (n', _)-> Right $ NamePart n'
-reifyReportPart (App (P (DCon _ _ _) n _) tm)
+reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "TermPart" =
   case runElab initEState (reifyTT tm) (initElaborator NErased initContext Erased) of
     Error e -> Left . InternalMsg $
@@ -843,7 +843,7 @@ reifyReportPart (App (P (DCon _ _ _) n _) tm)
       show tm ++
       " when reflecting an error:" ++ show e
     OK (tm', _) -> Right $ TermPart tm'
-reifyReportPart (App (P (DCon _ _ _) n _) tm)
+reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "SubReport" =
   case unList tm of
     Just xs -> do subParts <- mapM reifyReportPart xs
@@ -852,7 +852,7 @@ reifyReportPart (App (P (DCon _ _ _) n _) tm)
 reifyReportPart x = Left . InternalMsg $ "could not reify " ++ show x
 
 reifyTyDecl :: Term -> ElabD RTyDecl
-reifyTyDecl (App (App (App (P (DCon _ _ _) n _) tyN) args) ret)
+reifyTyDecl (App _ (App _ (App _ (P (DCon _ _ _) n _) tyN) args) ret)
   | n == tacN "Declare" =
   do tyN'  <- reifyTTName tyN
      args' <- case unList args of
@@ -861,7 +861,7 @@ reifyTyDecl (App (App (App (P (DCon _ _ _) n _) tyN) args) ret)
      ret'  <- reifyRaw ret
      return $ RDeclare tyN' args' ret'
   where reifyRArg :: Term -> ElabD RArg
-        reifyRArg (App (App (P (DCon _ _ _) n _) argN) argTy)
+        reifyRArg (App _ (App _ (P (DCon _ _ _) n _) argN) argTy)
           | n == tacN "Explicit"   = liftM2 RExplicit
                                             (reifyTTName argN)
                                             (reifyRaw argTy)
@@ -874,7 +874,7 @@ reifyTyDecl (App (App (App (P (DCon _ _ _) n _) tyN) args) ret)
 reifyTyDecl tm = fail $ "Couldn't reify " ++ show tm ++ " as a type declaration."
 
 reifyFunDefn :: Term -> ElabD RFunDefn
-reifyFunDefn (App (App (P _ n _) fnN) clauses)
+reifyFunDefn (App _ (App _ (P _ n _) fnN) clauses)
   | n == tacN "DefineFun" =
   do fnN' <- reifyTTName fnN
      clauses' <- case unList clauses of
@@ -882,11 +882,11 @@ reifyFunDefn (App (App (P _ n _) fnN) clauses)
                    Just cs -> mapM reifyC cs
      return $ RDefineFun fnN' clauses'
   where reifyC :: Term -> ElabD RFunClause
-        reifyC (App (App (P (DCon _ _ _) n _) lhs) rhs)
+        reifyC (App _ (App _ (P (DCon _ _ _) n _) lhs) rhs)
           | n == tacN "MkFunClause" = liftM2 RMkFunClause
                                              (reifyRaw lhs)
                                              (reifyRaw rhs)
-        reifyC (App (P (DCon _ _ _) n _) lhs)
+        reifyC (App _ (P (DCon _ _ _) n _) lhs)
           | n == tacN "MkImpossibleClause" = fmap RMkImpossibleClause $ reifyRaw lhs
         reifyC tm = fail $ "Couldn't reify " ++ show tm ++ " as a clause."
 reifyFunDefn tm = fail $ "Couldn't reify " ++ show tm ++ " as a function declaration."
