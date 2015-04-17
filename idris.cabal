@@ -421,6 +421,10 @@ Extra-source-files:
                        test/ffi006/run
                        test/ffi006/expected
 
+                       test/folding001/*.idr
+                       test/folding001/run
+                       test/folding001/expected
+
                        test/idrisdoc001/run
                        test/idrisdoc001/expected
                        test/idrisdoc001/*.idr
