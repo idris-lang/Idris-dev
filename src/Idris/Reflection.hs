@@ -936,5 +936,7 @@ reflectDatatype (RDatatype tyn tyConArgs tyConRes constrs) =
                                                 | (cn, cty) <- constrs
                                                 ]
                                       ]
-  where reflectConArg (RParameter n t) = raw_apply (Var $ tacN "Parameter") [reflectName n, reflectRaw t]
-        reflectConArg (RIndex n t) = raw_apply (Var $ tacN "Index") [reflectName n, reflectRaw t]
+  where reflectConArg (RParameter n t) =
+          raw_apply (Var $ tacN "Parameter") [reflectName n, reflectRaw t]
+        reflectConArg (RIndex n t) =
+          raw_apply (Var $ tacN "Index")     [reflectName n, reflectRaw t]
