@@ -1,7 +1,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.IBC where
+module Idris.IBC (loadIBC, loadPkgIndex,
+                  writeIBC, writePkgIndex) where
 
 import Idris.Core.Evaluate
 import Idris.Core.TT
