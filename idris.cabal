@@ -304,6 +304,9 @@ Extra-source-files:
                        test/reg061/run
                        test/reg061/*.idr
                        test/reg061/expected
+                       test/reg062/run
+                       test/reg062/*.idr
+                       test/reg062/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -349,9 +352,6 @@ Extra-source-files:
                        test/bignum001/run
                        test/bignum001/*.idr
                        test/bignum001/expected
-                       test/bignum002/run
-                       test/bignum002/*.idr
-                       test/bignum002/expected
 
                        test/delab001/*.idr
                        test/delab001/run
