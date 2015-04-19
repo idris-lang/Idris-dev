@@ -129,9 +129,9 @@ build ist info emode opts fn tm
                          update_term orderPats)
          EState is _ impls <- getAux
          tt <- get_term
-         let (tm, ds) = runState (collectDeferred (Just fn) tt) []
-         log <- getLog
          ctxt <- get_context
+         let (tm, ds) = runState (collectDeferred (Just fn) ctxt tt) []
+         log <- getLog
          if (log /= "") then trace log $ return (ElabResult tm ds is ctxt impls)
             else return (ElabResult tm ds is ctxt impls)
   where pattern = emode == ELHS
@@ -171,9 +171,9 @@ buildTC ist info emode opts fn tm
             lift (Error (CantMatch (getInferTerm tm)))
          EState is _ impls <- getAux
          tt <- get_term
-         let (tm, ds) = runState (collectDeferred (Just fn) tt) []
-         log <- getLog
          ctxt <- get_context
+         let (tm, ds) = runState (collectDeferred (Just fn) ctxt tt) []
+         log <- getLog
          if (log /= "") then trace log $ return (ElabResult tm ds is ctxt impls)
             else return (ElabResult tm ds is ctxt impls)
   where pattern = emode == ELHS
@@ -1563,23 +1563,40 @@ resTC' tcs defaultOn topholes depth topg fn ist
        where isImp (PImp p _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
-collectDeferred :: Maybe Name ->
+collectDeferred :: Maybe Name -> Context ->
                    Term -> State [(Name, (Int, Maybe Name, Type))] Term
-collectDeferred top (Bind n (GHole i t) app) =
+collectDeferred top ctxt (Bind n (GHole i t) app) =
     do ds <- get
-       t' <- collectDeferred top t
-       when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, t'))])
-       collectDeferred top app
-collectDeferred top (Bind n b t) = do b' <- cdb b
-                                      t' <- collectDeferred top t
-                                      return (Bind n b' t')
+       t' <- collectDeferred top ctxt t
+       when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, tidyArg [] t'))])
+       collectDeferred top ctxt app
   where
-    cdb (Let t v)   = liftM2 Let (collectDeferred top t) (collectDeferred top v)
-    cdb (Guess t v) = liftM2 Guess (collectDeferred top t) (collectDeferred top v)
-    cdb b           = do ty' <- collectDeferred top (binderTy b)
+    -- Evaluate the top level functions in arguments, if possible, so that
+    -- any immediate specialisation of the function applied to constructors 
+    -- can be done
+    tidyArg env (Bind n b@(Pi im t k) sc) 
+        = Bind n (Pi im (tidy ctxt env t) k)
+                 (tidyArg ((n, b) : env) sc)
+    tidyArg env t = t
+
+    tidy ctxt env t | (f, args) <- unApply t,
+                      P _ n _ <- getFn f
+        = fst $ specialise ctxt env [(n, 99999)] t 
+    tidy ctxt env t = t
+
+    getFn (Bind n (Lam _) t) = getFn t
+    getFn t | (f, a) <- unApply t = f
+
+collectDeferred top ctxt (Bind n b t) = do b' <- cdb b
+                                           t' <- collectDeferred top ctxt t
+                                           return (Bind n b' t')
+  where
+    cdb (Let t v)   = liftM2 Let (collectDeferred top ctxt t) (collectDeferred top ctxt v)
+    cdb (Guess t v) = liftM2 Guess (collectDeferred top ctxt t) (collectDeferred top ctxt v)
+    cdb b           = do ty' <- collectDeferred top ctxt (binderTy b)
                          return (b { binderTy = ty' })
-collectDeferred top (App s f a) = liftM2 (App s) (collectDeferred top f) (collectDeferred top a)
-collectDeferred top t = return t
+collectDeferred top ctxt (App s f a) = liftM2 (App s) (collectDeferred top ctxt f) (collectDeferred top ctxt a)
+collectDeferred top ctxt t = return t
 
 case_ :: Bool -> Bool -> IState -> Name -> PTerm -> ElabD ()
 case_ ind autoSolve ist fn tm = do

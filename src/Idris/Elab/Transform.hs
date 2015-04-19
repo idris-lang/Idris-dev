@@ -75,7 +75,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
                            (ElabResult _ _ _ ctxt' newDecls) <- erun fc (build i info ERHS [] (sUN "transform") rhs)
                            erun fc $ psolve lhs_tm
                            tt <- get_term
-                           let (rhs', defer) = runState (collectDeferred Nothing tt) []
+                           let (rhs', defer) = runState (collectDeferred Nothing ctxt tt) []
                            return (rhs', defer, ctxt', newDecls))
          setContext ctxt'
          processTacticDecls newDecls

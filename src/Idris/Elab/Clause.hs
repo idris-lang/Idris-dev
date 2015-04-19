@@ -670,7 +670,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         aux <- getAux
                         mapM_ (elabCaseHole (case_decls aux)) hs
                         tt <- get_term
-                        let (tm, ds) = runState (collectDeferred (Just fname) tt) []
+                        let (tm, ds) = runState (collectDeferred (Just fname) ctxt tt) []
                         probs <- get_probs
                         return (tm, ds, is, probs, ctxt', newDecls))
         setContext ctxt'
