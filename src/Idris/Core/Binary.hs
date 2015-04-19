@@ -6,7 +6,7 @@ module Idris.Core.Binary where
 import Data.Binary
 import Data.Vector.Binary
 import qualified Data.Text as T
-
+import qualified Data.Text.Encoding as E
 import Idris.Core.TT
 
 instance Binary ErrorReportPart where
@@ -267,9 +267,9 @@ instance Binary Name where
                    _ -> error "Corrupted binary data for Name"
 
 instance Binary T.Text where
-        put x = put (str x)
+        put x = put (E.encodeUtf8 x)
         get = do x <- get
-                 return (txt x)
+                 return (E.decodeUtf8 x)
 
 instance Binary SpecialName where
         put x
