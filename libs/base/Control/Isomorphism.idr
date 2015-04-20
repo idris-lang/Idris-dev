@@ -39,10 +39,10 @@ isoSym (MkIso to from toFrom fromTo) = MkIso from to fromTo toFrom
 
 ||| Disjunction is commutative
 eitherComm : Iso (Either a b) (Either b a)
-eitherComm = MkIso swap swap swapSwap swapSwap
-  where swapSwap : (e : Either a' b') -> swap (swap e) = e
-        swapSwap (Left x) = Refl
-        swapSwap (Right x) = Refl
+eitherComm = MkIso mirror mirror mirrorMirror mirrorMirror
+  where mirrorMirror : (e : Either a' b') -> mirror (mirror e) = e
+        mirrorMirror (Left x) = Refl
+        mirrorMirror (Right x) = Refl
 
 ||| Disjunction is associative
 eitherAssoc : Iso (Either (Either a b) c) (Either a (Either b c))
@@ -113,10 +113,7 @@ eitherCongRight i = eitherCong isoRefl i
 ||| Conjunction is commutative
 pairComm : Iso (a, b) (b, a)
 pairComm = MkIso swap swap swapSwap swapSwap
-  where swap : (a', b') -> (b', a')
-        swap (x, y) = (y, x)
-
-        swapSwap : (x : (a', b')) -> swap (swap x) = x
+  where swapSwap : (x : (a', b')) -> swap (swap x) = x
         swapSwap (x, y) = Refl
 
 ||| Conjunction is associative

@@ -16,9 +16,7 @@ class Category arr => Arrow (arr : Type -> Type -> Type) where
   first  : arr a b -> arr (a, c) (b, c)
 
   second : arr a b -> arr (c, a) (c, b)
-  second f = arrow swap >>> first f >>> arrow swap where
-    swap : (x,y) -> (y,x)
-    swap (x,y) = (y,x)
+  second f = arrow swap >>> first f >>> arrow swap
 
   (***)  : arr a b -> arr a' b' -> arr (a, a') (b, b')
   f *** g = first f >>> second g
@@ -61,7 +59,7 @@ class Arrow arr => ArrowChoice (arr : Type -> Type -> Type) where
   left  : arr a b -> arr (Either a c) (Either b c)
 
   right : arr a b -> arr (Either c a) (Either c b)
-  right f = arrow swap >>> left f >>> arrow swap
+  right f = arrow mirror >>> left f >>> arrow mirror
 
   (+++) : arr a b -> arr c d -> arr (Either a c) (Either b d)
   f +++ g = left f >>> right g

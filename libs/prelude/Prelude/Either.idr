@@ -66,10 +66,10 @@ fromEither : Either a a -> a
 fromEither (Left l)  = l
 fromEither (Right r) = r
 
-||| Either is commutative
-swap : Either a b -> Either b a
-swap (Left  x) = Right x
-swap (Right x) = Left x
+||| Right becomes left and left becomes right
+mirror : Either a b -> Either b a
+mirror (Left  x) = Right x
+mirror (Right x) = Left x
 
 --------------------------------------------------------------------------------
 -- Conversions
