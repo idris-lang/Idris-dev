@@ -12,7 +12,7 @@ infixr 5 <+
 ||| strSnoc "" 'A'
 ||| ```
 strSnoc : String -> Char -> String
-strSnoc s c = s ++ (singleton 'c')
+strSnoc s c = s ++ (singleton c)
 
 ||| Alias of `strSnoc`
 |||
