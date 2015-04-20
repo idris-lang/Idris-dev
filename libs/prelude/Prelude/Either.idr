@@ -66,6 +66,11 @@ fromEither : Either a a -> a
 fromEither (Left l)  = l
 fromEither (Right r) = r
 
+||| Right becomes left and left becomes right
+mirror : Either a b -> Either b a
+mirror (Left  x) = Right x
+mirror (Right x) = Left x
+
 --------------------------------------------------------------------------------
 -- Conversions
 --------------------------------------------------------------------------------
