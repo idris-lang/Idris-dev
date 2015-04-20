@@ -349,6 +349,9 @@ Extra-source-files:
                        test/bignum001/run
                        test/bignum001/*.idr
                        test/bignum001/expected
+                       test/bignum002/run
+                       test/bignum002/*.idr
+                       test/bignum002/expected
 
                        test/delab001/*.idr
                        test/delab001/run
@@ -420,6 +423,10 @@ Extra-source-files:
                        test/ffi006/*.c
                        test/ffi006/run
                        test/ffi006/expected
+
+                       test/folding001/*.idr
+                       test/folding001/run
+                       test/folding001/expected
 
                        test/idrisdoc001/run
                        test/idrisdoc001/expected
