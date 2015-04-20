@@ -61,10 +61,7 @@ class Arrow arr => ArrowChoice (arr : Type -> Type -> Type) where
   left  : arr a b -> arr (Either a c) (Either b c)
 
   right : arr a b -> arr (Either c a) (Either c b)
-  right f = arrow swap >>> left f >>> arrow swap where
-    swap : Either a b -> Either b a
-    swap (Left  x) = Right x
-    swap (Right x) = Left x
+  right f = arrow swap >>> left f >>> arrow swap
 
   (+++) : arr a b -> arr c d -> arr (Either a c) (Either b d)
   f +++ g = left f >>> right g

@@ -40,10 +40,7 @@ isoSym (MkIso to from toFrom fromTo) = MkIso from to fromTo toFrom
 ||| Disjunction is commutative
 eitherComm : Iso (Either a b) (Either b a)
 eitherComm = MkIso swap swap swapSwap swapSwap
-  where swap : Either a' b' -> Either b' a' -- a & b are parameters, so fixed!
-        swap (Left x) = Right x
-        swap (Right x) = Left x
-        swapSwap : (e : Either a' b') -> swap (swap e) = e
+  where swapSwap : (e : Either a' b') -> swap (swap e) = e
         swapSwap (Left x) = Refl
         swapSwap (Right x) = Refl
 
