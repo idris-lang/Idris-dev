@@ -186,27 +186,29 @@ getFixedInType i _ _ _ = []
 getFlexInType i env ps (Bind n (Pi _ t _) sc)
     = nub $ (if (not (n `elem` ps)) then getFlexInType i env ps t else []) ++
             getFlexInType i (n : env) ps (instantiate (P Bound n t) sc)
+
 getFlexInType i env ps tm@(App _ f a)
-    | (P _ tn _, args) <- unApply tm
+    | (P nt tn _, args) <- unApply tm, nt /= Bound
        = case lookupCtxt tn (idris_datatypes i) of
             [t] -> nub $ paramNames args env [x | x <- [0..length args],
                                                   not (x `elem` param_pos t)] 
                           ++ getFlexInType i env ps f ++
                              getFlexInType i env ps a
-            [] -> let ppos = case lookupCtxt tn (idris_fninfo i) of
-                                  [fi] -> fn_params fi 
-                                  [] -> [] in
-                      nub $ paramNames args env [x | x <- [0..length args],
-                                                     not (x `elem` ppos)] 
-                            ++ getFlexInType i env ps f ++
-                               getFlexInType i env ps a
+            [] -> let ppos = case lookupCtxtName tn (idris_fninfo i) of
+                                  [fi] -> fn_params (snd fi)
+                                  [] -> []
+                                  xs -> error ("Too much function info: " ++ show xs)
+                  in nub $ paramNames args env [x | x <- [0..length args],
+                                                    not (x `elem` ppos)] 
+                           ++ getFlexInType i env ps f ++
+                              getFlexInType i env ps a
     | otherwise = nub $ getFlexInType i env ps f ++
                         getFlexInType i env ps a
 getFlexInType i _ _ _ = []
 
--- Treat a name as a parameter if it appears in parameter positions in
+-- | Treat a name as a parameter if it appears in parameter positions in
 -- types, and never in a non-parameter position in a (non-param) argument type.
-
+getParamsInType :: IState -> [Name] -> [PArg] -> Type -> [Name]
 getParamsInType i env ps t = let fix = getFixedInType i env ps t
                                  flex = getFlexInType i env fix t in
                                  [x | x <- fix, not (x `elem` flex)]
