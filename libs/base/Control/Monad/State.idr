@@ -1,6 +1,6 @@
 module Control.Monad.State
 
-import Control.Monad.Identity
+import public Control.Monad.Identity
 import Control.Monad.Trans
 
 %access public
@@ -55,3 +55,15 @@ gets f = do s <- get
 ||| The State monad. See the MonadState class
 State : Type -> Type -> Type
 State s a = StateT s Identity a
+
+||| Unwrap a State monad computation.
+runState : State s a -> s -> (a,s)
+runState m = runIdentity . runStateT m
+
+||| Unwrap a State monad computation, but discard the final state.
+evalState : State s a -> s -> a
+evalState m = fst . runState m
+
+||| Unwrap a State monad computation, but discard the resulting value.
+execState : State s a -> s -> s
+execState m = snd . runState m
