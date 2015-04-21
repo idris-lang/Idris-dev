@@ -52,6 +52,7 @@ parserCommandsForHelp =
     , " Search for values by type", cmd_search)
   , nameArgCmd ["wc", "whocalls"] WhoCalls "List the callers of some name"
   , nameArgCmd ["cw", "callswho"] CallsWho "List the callees of some name"
+  , namespaceArgCmd ["browse"] Browse "List the contents of some namespace"
   , nameArgCmd ["total"] TotCheck "Check the totality of a name"
   , noArgCmd ["r", "reload"] Reload "Reload current file"
   , (["l", "load"], FileArg, "Load a new file"
@@ -136,17 +137,19 @@ parserCommands =
     )
   ]
 
-noArgCmd names command doc = 
+noArgCmd names command doc =
   (names, NoArg, doc, noArgs command)
-nameArgCmd names command doc = 
+nameArgCmd names command doc =
   (names, NameArg, doc, fnNameArg command)
-exprArgCmd names command doc = 
+namespaceArgCmd names command doc =
+  (names, NamespaceArg, doc, namespaceArg command)
+exprArgCmd names command doc =
   (names, ExprArg, doc, exprArg command)
-metavarArgCmd names command doc = 
+metavarArgCmd names command doc =
   (names, MetaVarArg, doc, fnNameArg command)
-optArgCmd names command doc = 
+optArgCmd names command doc =
   (names, OptionArg, doc, optArg command)
-proofArgCmd names command doc = 
+proofArgCmd names command doc =
   (names, NoArg, doc, proofArg command)
 
 pCmd :: P.IdrisParser (Either String Command)
@@ -219,6 +222,11 @@ moduleArg :: (FilePath -> Command) -> String -> P.IdrisParser (Either String Com
 moduleArg = genArg "module" (fmap toPath P.identifier) 
   where
     toPath n = foldl1' (</>) $ splitOn "." n
+
+namespaceArg :: ([String] -> Command) -> String -> P.IdrisParser (Either String Command)
+namespaceArg = genArg "namespace" (fmap toNS P.identifier) 
+  where
+    toNS  = splitOn "."
 
 optArg :: (Opt -> Command) -> String -> P.IdrisParser (Either String Command)
 optArg cmd name = do

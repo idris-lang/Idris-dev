@@ -34,6 +34,8 @@ import Idris.WhoCalls
 import Idris.TypeSearch (searchByType)
 import Idris.IBC (loadPkgIndex, writePkgIndex)
 
+import Idris.REPL.Browse (namesInNS, namespacesInNS)
+
 import Idris.Elab.Type
 import Idris.Elab.Clause
 import Idris.Elab.Data
@@ -463,6 +465,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.WhoCalls n) =
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
                  prettyName True True []
+
 runIdeModeCommand h id orig fn mods (IdeMode.CallsWho n) =
   case splitName n of
        Left err -> iPrintError err
@@ -476,6 +479,20 @@ runIdeModeCommand h id orig fn mods (IdeMode.CallsWho n) =
                  fmap (fancifyAnnots ist) .
                  prettyName True True []
 
+runIdeModeCommand h id orig fn modes (IdeMode.BrowseNS ns) =
+  case splitOn "." ns of
+    [] -> iPrintError "No namespace provided"
+    ns -> do underNSs <- fmap (map $ concat . intersperse ".") $ namespacesInNS ns
+             names <- namesInNS ns
+             if null underNSs && null names
+                then iPrintError "Invalid or empty namespace"
+                else do ist <- getIState
+                        let msg = (IdeMode.SymbolAtom "ok", (underNSs, map (pn ist) names))
+                        runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
+  where pn ist = displaySpans .
+                 renderPretty 0.9 1000 .
+                 fmap (fancifyAnnots ist) .
+                 prettyName True True []
 runIdeModeCommand h id orig fn modes (IdeMode.TermNormalise bnd tm) =
   do ctxt <- getContext
      ist <- getIState
@@ -1257,6 +1274,21 @@ process fn (CallsWho n) =
              prettyName True True [] n <+> text "calls:" <$>
              indent 1 (vsep (map ((text "*" <+>) . align . prettyName True True []) ns)))
            calls
+
+process fn (Browse ns) =
+  do underNSs <- namespacesInNS ns
+     names <- namesInNS ns
+     if null underNSs && null names
+        then iPrintError "Invalid or empty namespace"
+        else do ist <- getIState
+                iRenderResult $
+                  text "Namespaces:" <$>
+                  indent 2 (vsep (map (text . showSep ".") underNSs)) <$>
+                  text "Names:" <$>
+                  indent 2 (vsep (map (\n -> prettyName True False [] n <+> colon <+>
+                                             (group . align $ pprintDelabTy ist n))
+                                      names))
+
 -- IdrisDoc
 process fn (MakeDoc s) =
   do     istate        <- getIState

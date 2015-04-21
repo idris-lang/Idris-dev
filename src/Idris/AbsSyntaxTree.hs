@@ -408,6 +408,7 @@ data Command = Quit
              | Apropos [String] String
              | WhoCalls Name
              | CallsWho Name
+             | Browse [String]
              | MakeDoc String                      -- IdrisDoc
              | Warranty
              | PrintDef Name

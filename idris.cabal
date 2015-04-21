@@ -746,6 +746,8 @@ Library
                 , Idris.Elab.Value
                 , Idris.Elab.Term
 
+                , Idris.REPL.Browse
+
                 , Idris.AbsSyntax
                 , Idris.AbsSyntaxTree
                 , Idris.Apropos
