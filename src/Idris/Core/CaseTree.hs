@@ -136,10 +136,9 @@ namesUsed sc = nub $ nu' [] sc where
     nut ps (Bind n b sc) = nut (n:ps) sc
     nut ps _ = []
 
--- Return all called functions, and which arguments are used in each argument position
--- for the call, in order to help reduce compilation time, and trace all unused
--- arguments
-
+-- | Return all called functions, and which arguments are used
+-- in each argument position for the call, in order to help reduce
+-- compilation time, and trace all unused arguments
 findCalls :: SC -> [Name] -> [(Name, [[Name]])]
 findCalls sc topargs = nub $ nu' topargs sc where
     nu' ps (Case _ n alts) = nub (concatMap (nua (n : ps)) alts)

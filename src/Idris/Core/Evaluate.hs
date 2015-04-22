@@ -887,11 +887,13 @@ addCasedef n ei ci@(CaseInfo inline alwaysInline tcdict)
                            cdef = CaseDefs (args_tot, sc_tot)
                                            (args_ct, sc_ct)
                                            (args_inl, sc_inl)
-                                           (args_rt, sc_rt) in
-                           addDef n (CaseOp (ci { case_inlinable = inlc })
-                                            ty argtys ps_in ps_tot cdef,
-                                      access, Unchecked, EmptyMI) ctxt in
-          uctxt { definitions = ctxt' }
+                                           (args_rt, sc_rt)
+                           op = (CaseOp (ci { case_inlinable = inlc })
+                                                ty argtys ps_in ps_tot cdef,
+                                 access, Unchecked, EmptyMI)
+                       in addDef n op ctxt
+                    other -> error ("Error adding case def: " ++ show other)
+      in uctxt { definitions = ctxt' }
 
 -- simplify a definition for totality checking
 simplifyCasedef :: Name -> ErasureInfo -> Context -> Context

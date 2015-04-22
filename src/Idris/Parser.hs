@@ -1471,6 +1471,7 @@ loadSource lidr f toline
                  case x of
                    PClauses{} -> r
                    PClass{} -> r
+                   PData{} -> r
                    PInstance{} -> r
                    _ -> x
 

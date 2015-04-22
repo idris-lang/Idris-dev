@@ -115,13 +115,13 @@ runElab a e ps = runStateT e (ES (ps, a) "" Nothing)
 execElab :: aux -> Elab' aux a -> ProofState -> TC (ElabState aux)
 execElab a e ps = execStateT e (ES (ps, a) "" Nothing)
 
-initElaborator :: Name -> Context -> Type -> ProofState
+initElaborator :: Name -> Context -> Ctxt TypeInfo -> Type -> ProofState
 initElaborator = newProof
 
-elaborate :: Context -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
-elaborate ctxt n ty d elab = do let ps = initElaborator n ctxt ty
-                                (a, ES ps' str _) <- runElab d elab ps
-                                return $! (a, str)
+elaborate :: Context -> Ctxt TypeInfo -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
+elaborate ctxt datatypes n ty d elab = do let ps = initElaborator n ctxt datatypes ty
+                                          (a, ES ps' str _) <- runElab d elab ps
+                                          return $! (a, str)
 
 -- | Modify the auxiliary state
 updateAux :: (aux -> aux) -> Elab' aux ()
@@ -177,6 +177,14 @@ get_context = do ES p _ _ <- get
 set_context :: Context -> Elab' aux ()
 set_context ctxt = do ES (p, a) logs prev <- get
                       put (ES (p { context = ctxt }, a) logs prev)
+
+get_datatypes :: Elab' aux (Ctxt TypeInfo)
+get_datatypes = do ES p _ _ <- get
+                   return $! (datatypes (fst p))
+
+set_datatypes :: Ctxt TypeInfo -> Elab' aux ()
+set_datatypes ds = do ES (p, a) logs prev <- get
+                      put (ES (p { datatypes = ds }, a) logs prev)
 
 -- | get the proof term
 get_term :: Elab' aux Term

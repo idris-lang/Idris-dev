@@ -25,6 +25,7 @@ instance NFData SpecialName where
         rnf (CaseN x1) = rnf x1 `seq` ()
         rnf (ElimN x1) = rnf x1 `seq` ()
         rnf (InstanceCtorN x1) = rnf x1 `seq` ()
+        rnf (MetaN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance NFData Universe where
         rnf NullType = ()

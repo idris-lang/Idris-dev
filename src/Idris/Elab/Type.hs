@@ -67,10 +67,10 @@ buildType info syn fc opts n ty' = do
          logLvl 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
          (ElabResult tyT' defer is ctxt' newDecls, log) <-
-            tclift $ elaborate ctxt n (TType (UVal 0)) initEState
+            tclift $ elaborate ctxt (idris_datatypes i) n (TType (UVal 0)) initEState
                      (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
          setContext ctxt'
-         processTacticDecls newDecls
+         processTacticDecls info newDecls
 
          let tyT = patToImp tyT'
 

@@ -64,12 +64,12 @@ elabValBind info aspat norm tm_in
         --    * elaboration as a function a -> b
 
         (ElabResult tm' defer is ctxt' newDecls, _) <-
-             tclift (elaborate ctxt (sMN 0 "val") infP initEState
+             tclift (elaborate ctxt (idris_datatypes i) (sMN 0 "val") infP initEState
                      (build i info aspat [Reflection] (sMN 0 "val") (infTerm tm)))
 
         -- Extend the context with new definitions created
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
 
         let vtm = orderPats (getInferTerm tm')
 
