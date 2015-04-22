@@ -39,7 +39,7 @@ isElem x (y :: xs) with (decEq x y)
 
 ||| The intersectBy function returns the intersect of two lists by user-supplied equality predicate.
 intersectBy : (a -> a -> Bool) -> List a -> List a -> List a
-intersectBy eq xs ys    =  [x | x <- xs, any (eq x) ys]
+intersectBy eq xs ys = [x | x <- xs, any (eq x) ys]
 
 ||| Compute the intersection of two lists according to their `Eq` instance.
 |||
