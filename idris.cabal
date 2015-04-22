@@ -829,7 +829,7 @@ Library
                 , Tools_idris
 
   Build-depends:  base >=4 && <5
-                , annotated-wl-pprint >= 0.5.3 && < 0.6
+                , annotated-wl-pprint >= 0.5.3 && < 0.7
                 , ansi-terminal < 0.7
                 , ansi-wl-pprint < 0.7
                 , base64-bytestring < 1.1
