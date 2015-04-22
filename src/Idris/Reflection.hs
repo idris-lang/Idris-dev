@@ -5,6 +5,7 @@ quoters and unquoters along with some supporting datatypes.
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
 module Idris.Reflection where
 
+import Control.Applicative ((<$>), (<*>), pure)
 import Control.Monad (liftM, liftM2)
 import Data.Maybe (catMaybes)
 import Data.List ((\\))
@@ -193,6 +194,39 @@ reifyTTNameApp t [n, ns]
                                       return $ sNS n' ns'
 reifyTTNameApp t [Constant (I i), Constant (Str n)]
                | t == reflm "MN" = return $ sMN i n
+reifyTTNameApp t [sn]
+               | t == reflm "SN"
+               , (P _ f _, args) <- unApply sn = SN <$> reifySN f args
+  where reifySN :: Name -> [Term] -> ElabD SpecialName
+        reifySN t [Constant (I i), n1, n2]
+                | t == reflm "WhereN" = WhereN i <$> reifyTTName n1 <*> reifyTTName n2
+        reifySN t [Constant (I i), n]
+                | t == reflm "WithN" = WithN i <$> reifyTTName n
+        reifySN t [n, ss]
+                | t == reflm "InstanceN" =
+                  case unList ss of
+                    Nothing -> fail "Can't reify InstanceN strings"
+                    Just ss' -> InstanceN <$> reifyTTName n <*>
+                                 pure [T.pack s | Constant (Str s) <- ss']
+        reifySN t [n, Constant (Str s)]
+                | t == reflm "ParentN" =
+                  ParentN <$> reifyTTName n <*> pure (T.pack s)
+        reifySN t [n]
+                | t == reflm "MethodN" =
+                  MethodN <$> reifyTTName n
+        reifySN t [n]
+                | t == reflm "CaseN" =
+                  CaseN <$> reifyTTName n
+        reifySN t [n]
+                | t == reflm "ElimN" =
+                  ElimN <$> reifyTTName n
+        reifySN t [n]
+                | t == reflm "InstanceCtorN" =
+                  InstanceCtorN <$> reifyTTName n
+        reifySN t [n1, n2]
+                | t == reflm "MetaN" =
+                  MetaN <$> reifyTTName n1 <*> reifyTTName n2
+        reifySN t args = fail $ "Can't reify special name " ++ show t ++ show args
 reifyTTNameApp t []
                | t == reflm "NErased" = return NErased
 reifyTTNameApp t args = fail ("Unknown reflection term name: " ++ show (t, args))
@@ -599,6 +633,30 @@ reflectName (MN i n)
   = reflCall "MN" [RConstant (I i), RConstant (Str (str n))]
 reflectName (NErased) = Var (reflm "NErased")
 reflectName n = Var (reflm "NErased") -- special name, not yet implemented
+
+reflectSpecialName :: SpecialName -> Raw
+reflectSpecialName (WhereN i n1 n2) =
+  reflCall "WhereN" [RConstant (I i), reflectName n1, reflectName n2]
+reflectSpecialName (WithN i n) = reflCall "WithN" [ RConstant (I i)
+                                                  , reflectName n
+                                                  ]
+reflectSpecialName (InstanceN inst ss) =
+  reflCall "InstanceN" [ reflectName inst
+                       , mkList (RConstant StrType) $
+                           map (RConstant . Str . T.unpack) ss
+                       ]
+reflectSpecialName (ParentN n s) =
+  reflCall "ParentN" [reflectName n, RConstant (Str (T.unpack s))]
+reflectSpecialName (MethodN n) =
+  reflCall "MethodN" [reflectName n]
+reflectSpecialName (CaseN n) =
+  reflCall "CaseN" [reflectName n]
+reflectSpecialName (ElimN n) =
+  reflCall "ElimN" [reflectName n]
+reflectSpecialName (InstanceCtorN n) =
+  reflCall "InstanceCtorN" [reflectName n]
+reflectSpecialName (MetaN parent meta) =
+  reflCall "MetaN" [reflectName parent, reflectName meta]
 
 -- | Elaborate a name to a pattern.  This means that NS and UN will be intact.
 -- MNs corresponding to will care about the string but not the number.  All

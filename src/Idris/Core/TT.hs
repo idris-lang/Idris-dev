@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor, DeriveDataTypeable #-}
-
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-| TT is the core language of Idris. The language has:
 
    * Full dependent types
@@ -366,6 +366,7 @@ data SpecialName = WhereN Int Name Name
                  | CaseN Name
                  | ElimN Name
                  | InstanceCtorN Name
+                 | MetaN Name Name
   deriving (Eq, Ord, Data, Typeable)
 {-!
 deriving instance Binary SpecialName
@@ -390,6 +391,9 @@ instance Pretty Name OutputAnnotation where
   pretty n@(MN i s) = annotate (AnnName n Nothing Nothing Nothing) $
                       lbrace <+> text (T.unpack s) <+> (text . show $ i) <+> rbrace
   pretty n@(SN s) = annotate (AnnName n Nothing Nothing Nothing) $ text (show s)
+  pretty n@(SymRef i) = annotate (AnnName n Nothing Nothing Nothing) $
+                        text $ "##symbol" ++ show i ++ "##"
+  pretty NErased = annotate (AnnName NErased Nothing Nothing Nothing) $ text "_"
 
 instance Pretty [Name] OutputAnnotation where
   pretty = encloseSep empty empty comma . map pretty
@@ -400,6 +404,7 @@ instance Show Name where
     show (MN _ u) | u == txt "underscore" = "_"
     show (MN i s) = "{" ++ str s ++ show i ++ "}"
     show (SN s) = show s
+    show (SymRef i) = "##symbol" ++ show i ++ "##"
     show NErased = "_"
 
 instance Show SpecialName where
@@ -411,6 +416,7 @@ instance Show SpecialName where
     show (CaseN n) = "case block in " ++ show n
     show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
     show (InstanceCtorN n) = "constructor of " ++ show n
+    show (MetaN parent meta) = "<<" ++ show parent ++ " " ++ show meta ++ ">>"
 
 -- Show a name in a way decorated for code generation, not human reading
 showCG :: Name -> String
@@ -427,6 +433,8 @@ showCG (SN s) = showCG' s
         showCG' (CaseN c) = showCG c ++ "_case"
         showCG' (ElimN sn) = showCG sn ++ "_elim"
         showCG' (InstanceCtorN n) = showCG n ++ "_ictor"
+        showCG' (MetaN parent meta) = showCG parent ++ "_meta_" ++ showCG meta
+showCG (SymRef i) = error "can't do codegen for a symbol reference"
 showCG NErased = "_"
 
 
@@ -861,6 +869,9 @@ instance TermSize (TT Name) where
     termsize n (Proj t i) = termsize n t
     termsize n _ = 1
 
+instance Sized Universe where
+  size u = 1
+
 instance Sized a => Sized (TT a) where
   size (P name n trm) = 1 + size name + size n + size trm
   size (V v) = 1
@@ -869,6 +880,9 @@ instance Sized a => Sized (TT a) where
   size (Constant c) = size c
   size Erased = 1
   size (TType u) = 1 + size u
+  size (Proj a _) = 1 + size a
+  size Impossible = 1
+  size (UType u) = 1 + size u
 
 instance Pretty a o => Pretty (TT a) o where
   pretty _ = text "test"
@@ -952,7 +966,7 @@ instantiate e = subst 0 where
 -- that has been substituted.
 substV :: TT n -> TT n -> TT n
 substV x tm = dropV 0 (instantiate x tm) where
-    subst i (P nt x ty) = P nt x (subst i ty)
+    dropV i (P nt x ty) = P nt x (dropV i ty)
     dropV i (V x) | x > i = V (x - 1)
                   | otherwise = V x
     dropV i (Bind x b sc) = Bind x (fmap (dropV i) b) (dropV (i+1) sc)
@@ -1186,23 +1200,25 @@ forgetEnv env tm = case safeForgetEnv env tm of
 safeForgetEnv :: [Name] -> TT Name -> Maybe Raw
 safeForgetEnv env (P _ n _) = Just $ Var n
 safeForgetEnv env (V i) | i < length env = Just $ Var (env !! i)
-                        | otherwise = Nothing 
-safeForgetEnv env (Bind n b sc) 
+                        | otherwise = Nothing
+safeForgetEnv env (Bind n b sc)
      = do let n' = uniqueName n env
           b' <- safeForgetEnvB env b
           sc' <- safeForgetEnv (n':env) sc
           Just $ RBind n' b' sc'
-  where safeForgetEnvB env (Let t v) = liftM2 Let (safeForgetEnv env t) 
+  where safeForgetEnvB env (Let t v) = liftM2 Let (safeForgetEnv env t)
                                                   (safeForgetEnv env v)
-        safeForgetEnvB env (Guess t v) = liftM2 Guess (safeForgetEnv env t) 
+        safeForgetEnvB env (Guess t v) = liftM2 Guess (safeForgetEnv env t)
                                                       (safeForgetEnv env v)
         safeForgetEnvB env b = do ty' <- safeForgetEnv env (binderTy b)
-                                  Just $ fmap (\_ -> ty') b 
+                                  Just $ fmap (\_ -> ty') b
 safeForgetEnv env (App _ f a) = liftM2 RApp (safeForgetEnv env f) (safeForgetEnv env a)
 safeForgetEnv env (Constant c) = Just $ RConstant c
 safeForgetEnv env (TType i) = Just RType
 safeForgetEnv env (UType u) = Just $ RUType u
 safeForgetEnv env Erased    = Just $ RConstant Forgot
+safeForgetEnv env (Proj tm i) = error "Don't know how to forget a projection"
+safeForgetEnv env Impossible = error "Don't know how to forget Impossible"
 
 -- | Introduce a 'Bind' into the given term for each element of the
 -- given list of (name, binder) pairs.
@@ -1255,6 +1271,7 @@ uniqueBinders ns = ubSet (fromList ns) where
     ubSet ns t = t
 
 
+nextName :: Name -> Name
 nextName (NS x s)    = NS (nextName x) s
 nextName (MN i n)    = MN (i+1) n
 nextName (UN x) = let (num', nm') = T.span isDigit (T.reverse x)
@@ -1274,6 +1291,9 @@ nextName (SN x) = SN (nextName' x)
     nextName' (ElimN n) = ElimN (nextName n)
     nextName' (MethodN n) = MethodN (nextName n)
     nextName' (InstanceCtorN n) = InstanceCtorN (nextName n)
+    nextName' (MetaN parent meta) = MetaN parent (nextName meta)
+nextName NErased = NErased
+nextName (SymRef i) = error "Can't generate a name from a symbol reference"
 
 type Term = TT Name
 type Type = Term
@@ -1313,11 +1333,13 @@ instance Show Const where
     show WorldType = "prim__WorldType"
     show StrType = "String"
     show VoidType = "Void"
+    show Forgot = "Forgot"
 
 showEnv :: (Eq n, Show n) => EnvTT n -> TT n -> String
 showEnv env t = showEnv' env t False
 showEnvDbg env t = showEnv' env t True
 
+prettyEnv :: Env -> Term -> Doc OutputAnnotation
 prettyEnv env t = prettyEnv' env t False
   where
     prettyEnv' env t dbg = prettySe 10 env t dbg
@@ -1351,14 +1373,18 @@ prettyEnv env t = prettyEnv' env t False
     prettySe p env (Constant c) debug = pretty c
     prettySe p env Erased debug = text "[_]"
     prettySe p env (TType i) debug = text "Type" <+> (text . show $ i)
+    prettySe p env Impossible debug = text "Impossible"
+    prettySe p env (UType u) debug = text (show u)
 
     -- Render a `Binder` and its name
     prettySb env n (Lam t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
+    prettySb env n (GHole _ t) = prettyB env "?gdefer" "." n t
     prettySb env n (Pi _ t _) = prettyB env "(" ") ->" n t
     prettySb env n (PVar t) = prettyB env "pat" "." n t
     prettySb env n (PVTy t) = prettyB env "pty" "." n t
     prettySb env n (Let t v) = prettyBv env "let" "in" n t v
+    prettySb env n (NLet t v) = prettyBv env "nlet" "in" n t v
     prettySb env n (Guess t v) = prettyBv env "??" "in" n t v
 
     -- Use `op` and `sc` to delimit `n` (a binding name) and its type
@@ -1404,6 +1430,7 @@ showEnv' env t dbg = se 10 env t where
     sb env n (PVar t) = showb env "pat " ". " n t
     sb env n (PVTy t) = showb env "pty " ". " n t
     sb env n (Let t v)   = showbv env "let " " in " n t v
+    sb env n (NLet t v)   = showbv env "nlet " " in " n t v
     sb env n (Guess t v) = showbv env "?? " " in " n t v
 
     showb env op sc n t    = op ++ show n ++ " : " ++ se 10 env t ++ sc

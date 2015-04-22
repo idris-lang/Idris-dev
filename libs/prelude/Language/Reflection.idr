@@ -11,18 +11,35 @@ import Prelude.Traversable
 
 %access public
 
-data TTName =
-            ||| A user-provided name
-            UN String |
-            ||| A name in some namespace.
-            |||
-            ||| The namespace is in reverse order, so `(NS (UN "foo") ["B", "A"])` represents the name `A.B.foo`
-            NS TTName (List String) |
-            ||| Machine-chosen names
-            MN Int String |
-            ||| Name of something which is never used in scope
-            NErased
-%name TTName n, n'
+mutual
+  data TTName =
+              ||| A user-provided name
+              UN String |
+              ||| A name in some namespace.
+              |||
+              ||| The namespace is in reverse order, so `(NS (UN "foo") ["B", "A"])`
+              ||| represents the name `A.B.foo`
+              NS TTName (List String) |
+              ||| Machine-chosen names
+              MN Int String |
+              ||| Special names, to make conflicts impossible and language features
+              ||| predictable
+              SN SpecialName |
+              ||| Name of something which is never used in scope
+              NErased
+  %name TTName n, n'
+
+  data SpecialName = WhereN Int TTName TTName
+                   | WithN Int TTName
+                   | InstanceN TTName (List String)
+                   | ParentN TTName String
+                   | MethodN TTName
+                   | CaseN TTName
+                   | ElimN TTName
+                   | InstanceCtorN TTName
+                   | MetaN TTName TTName
+
+
 
 implicit
 userSuppliedName : String -> TTName
@@ -390,19 +407,48 @@ instance Quotable a Raw => Quotable (List a) Raw where
   quote [] = `(List.Nil {a=~(quotedTy {a})})
   quote (x :: xs) = `(List.(::) {a=~(quotedTy {a})} ~(quote x) ~(quote xs))
 
-instance Quotable TTName TT where
-  quotedTy = `(TTName)
-  quote (UN x) = `(UN ~(quote x))
-  quote (NS n xs) = `(NS ~(quote n) ~(quote xs))
-  quote (MN x y) = `(MN ~(quote x) ~(quote y))
-  quote NErased = `(NErased)
+mutual
+  instance Quotable TTName TT where
+    quotedTy = `(TTName)
+    quote (UN x) = `(UN ~(quote x))
+    quote (NS n xs) = `(NS ~(quote n) ~(quote xs))
+    quote (MN x y) = `(MN ~(quote x) ~(quote y))
+    quote (SN sn) = `(SN ~(assert_total $ quote sn))
+    quote NErased = `(NErased)
 
-instance Quotable TTName Raw where
-  quotedTy = `(TTName)
-  quote (UN x) = `(UN ~(quote {t=Raw} x))
-  quote (NS n xs) = `(NS ~(quote {t=Raw} n) ~(quote {t=Raw} xs))
-  quote (MN x y) = `(MN ~(quote {t=Raw} x) ~(quote {t=Raw} y))
-  quote NErased = `(NErased)
+  instance Quotable SpecialName TT where
+    quotedTy = `(SpecialName)
+    quote (WhereN i n1 n2) = `(WhereN ~(quote i) ~(quote n1) ~(quote n2))
+    quote (WithN i n) = `(WithN ~(quote i) ~(quote n))
+    quote (InstanceN i ss) = `(InstanceN ~(quote i) ~(quote ss))
+    quote (ParentN n s) = `(ParentN ~(quote n) ~(quote s))
+    quote (MethodN n) = `(MethodN ~(quote n))
+    quote (CaseN n) = `(CaseN ~(quote n))
+    quote (ElimN n) = `(ElimN ~(quote n))
+    quote (InstanceCtorN n) = `(InstanceCtorN ~(quote n))
+    quote (MetaN parent meta) = `(MetaN ~(quote parent) ~(quote meta))
+
+mutual
+  instance Quotable TTName Raw where
+    quotedTy = `(TTName)
+    quote (UN x) = `(UN ~(quote {t=Raw} x))
+    quote (NS n xs) = `(NS ~(quote {t=Raw} n) ~(quote {t=Raw} xs))
+    quote (MN x y) = `(MN ~(quote {t=Raw} x) ~(quote {t=Raw} y))
+    quote (SN sn) = `(SN ~(assert_total $ quote sn))
+    quote NErased = `(NErased)
+
+  instance Quotable SpecialName Raw where
+    quotedTy = `(SpecialName)
+    quote (WhereN i n1 n2) = `(WhereN ~(quote i) ~(quote n1) ~(quote n2))
+    quote (WithN i n) = `(WithN ~(quote i) ~(quote n))
+    quote (InstanceN i ss) = `(InstanceN ~(quote i) ~(quote ss))
+    quote (ParentN n s) = `(ParentN ~(quote n) ~(quote s))
+    quote (MethodN n) = `(MethodN ~(quote n))
+    quote (CaseN n) = `(CaseN ~(quote n))
+    quote (ElimN n) = `(ElimN ~(quote n))
+    quote (InstanceCtorN n) = `(InstanceCtorN ~(quote n))
+    quote (MetaN parent meta) = `(MetaN ~(quote parent) ~(quote meta))
+
 
 instance Quotable NativeTy TT where
     quotedTy = `(NativeTy)
