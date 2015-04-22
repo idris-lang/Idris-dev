@@ -35,10 +35,11 @@ import qualified Control.Monad.State.Strict as ST
 import System.FilePath
 import System.Directory
 import Codec.Compression.Zlib (compress)
+import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 104
+ibcVersion = 105
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -103,9 +104,12 @@ loadIBC reexport fp
                                 Just p -> not p && reexport
                 when redo $
                   do iLOG $ "Loading ibc " ++ fp ++ " " ++ show reexport
-                     ibcf <- runIO $ (bdecode fp :: IO IBCFile)
-                     process reexport ibcf fp
-                     addImported reexport fp
+                     archiveFile <- runIO $ B.readFile fp
+                     case toArchiveOrFail archiveFile of
+                        Left _ -> ifail $ fp ++ " isn't loadable, it may have an old ibc format.\n"
+                                          ++ "Please clean and rebuild it."
+                        Right archive -> do process reexport archive fp
+                                            addImported reexport fp
 
 -- | Load an entire package from its index file
 loadPkgIndex :: String -> Idris ()
@@ -114,15 +118,58 @@ loadPkgIndex pkg = do ddir <- runIO $ getIdrisLibDir
                       fp <- findPkgIndex pkg
                       loadIBC True fp
 
-bencode :: Binary a => FilePath -> a -> IO ()
-bencode f d = B.writeFile f (compress (encode d))
 
-bdecode :: Binary b => FilePath -> IO b
-bdecode f = do d' <- B.readFile f
-               either
-                 (\(_, e) -> error $ "Invalid / corrupted zip format on " ++ show f ++ ": " ++ e)
-                 (return . decode)
-                 (decompressEither d')
+entries :: IBCFile -> [Entry]
+entries i =  [toEntry "ver" 0 (encode $ ver i),
+              toEntry "sourcefile" 0 (encode $ sourcefile i),
+              toEntry "symbols" 0 (encode $ symbols i),
+              toEntry "ibc_imports" 0 (encode $ ibc_imports i),
+              toEntry "ibc_importdirs" 0 (encode $ ibc_importdirs i),
+              toEntry "ibc_implicits" 0 (encode $ ibc_implicits i),
+              toEntry "ibc_fixes" 0 (encode $ ibc_fixes i),
+              toEntry "ibc_statics" 0 (encode $ ibc_statics i),
+              toEntry "ibc_classes" 0 (encode $ ibc_classes i),
+              toEntry "ibc_instances" 0 (encode $ ibc_instances i),
+              toEntry "ibc_dsls" 0 (encode $ ibc_dsls i),
+              toEntry "ibc_datatypes" 0 (encode $ ibc_datatypes i),
+              toEntry "ibc_optimise" 0 (encode $ ibc_optimise i),
+              toEntry "ibc_syntax" 0 (encode $ ibc_syntax i),
+              toEntry "ibc_keywords" 0 (encode $ ibc_keywords i),
+              toEntry "ibc_objs" 0 (encode $ ibc_objs i),
+              toEntry "ibc_libs" 0 (encode $ ibc_libs i),
+              toEntry "ibc_cgflags" 0 (encode $ ibc_cgflags i),
+              toEntry "ibc_dynamic_libs" 0 (encode $ ibc_dynamic_libs i),
+              toEntry "ibc_hdrs" 0 (encode $ ibc_hdrs i),
+              toEntry "ibc_access" 0 (encode $ ibc_access i),
+              toEntry "ibc_total" 0 (encode $ ibc_total i),
+              toEntry "ibc_totcheckfail" 0 (encode $ ibc_totcheckfail i),
+              toEntry "ibc_flags" 0 (encode $ ibc_flags i),
+              toEntry "ibc_fninfo" 0 (encode $ ibc_fninfo i),
+              toEntry "ibc_cg" 0 (encode $ ibc_cg i),
+              toEntry "ibc_defs" 0 (encode $ ibc_defs i),
+              toEntry "ibc_docstrings" 0 (encode $ ibc_docstrings i),
+              toEntry "ibc_moduledocs" 0 (encode $ ibc_moduledocs i),
+              toEntry "ibc_transforms" 0 (encode $ ibc_transforms i),
+              toEntry "ibc_errRev" 0 (encode $ ibc_errRev i),
+              toEntry "ibc_coercions" 0 (encode $ ibc_coercions i),
+              toEntry "ibc_lineapps" 0 (encode $ ibc_lineapps i),
+              toEntry "ibc_namehints" 0 (encode $ ibc_namehints i),
+              toEntry "ibc_metainformation" 0 (encode $ ibc_metainformation i),
+              toEntry "ibc_errorhandlers" 0 (encode $ ibc_errorhandlers i),
+              toEntry "ibc_function_errorhandlers" 0 (encode $ ibc_function_errorhandlers i),
+              toEntry "ibc_metavars" 0 (encode $ ibc_metavars i),
+              toEntry "ibc_patdefs" 0 (encode $ ibc_patdefs i),
+              toEntry "ibc_postulates" 0 (encode $ ibc_postulates i),
+              toEntry "ibc_externs" 0 (encode $ ibc_externs i),
+              toEntry "ibc_parsedSpan" 0 (encode $ ibc_parsedSpan i),
+              toEntry "ibc_usage" 0 (encode $ ibc_usage i),
+              toEntry "ibc_exports" 0 (encode $ ibc_exports i),
+              toEntry "ibc_autohints" 0 (encode $ ibc_autohints i)]
+
+writeArchive :: FilePath -> IBCFile -> Idris ()
+writeArchive fp i = do
+                       let a = Data.List.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
+                       runIO $ B.writeFile fp (fromArchive a)
 
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
@@ -134,7 +181,7 @@ writeIBC src f
          resetNameIdx
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src })
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
-                        runIO $ bencode f ibcf
+                        writeArchive f ibcf
                         iLOG "Written")
             (\c -> do iLOG $ "Failed " ++ pshow i c)
          return ()
@@ -150,7 +197,7 @@ writePkgIndex f
          resetNameIdx
          let ibcf = initIBC { ibc_imports = imps }
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
-                        runIO $ bencode f ibcf
+                        writeArchive f ibcf
                         iLOG "Written")
             (\c -> do iLOG $ "Failed " ++ pshow i c)
          return ()
@@ -241,65 +288,68 @@ ibc i (IBCUsage n) f = return f { ibc_usage = n : ibc_usage f }
 ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
 ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f }
 
-process :: Bool -- ^ Reexporting
-           -> IBCFile -> FilePath -> Idris ()
-process reexp i fn
-   | ver i /= ibcVersion
-       = do iLOG "ibc out of date"
-            let e = if ver i < ibcVersion then " an earlier " else " a later "
-            ifail $ "Incompatible ibc version.\nThis library was built with"
-                    ++ e ++ "version of Idris.\n" ++
-                    "Please clean and rebuild."
+getEntry :: (Binary b, NFData b) => FilePath -> Archive -> Idris b
+getEntry f a = case findEntryByPath f a of
+                Nothing -> ifail $ "Missing IBC part: " ++ f
+                Just e -> do return $ (force . decode . fromEntry) e
 
-                              --- please rebuild"
-   | otherwise =
-            do srcok <- runIO $ doesFileExist (sourcefile i)
-               when srcok $ timestampOlder (sourcefile i) fn
-               v <- verbose
-               quiet <- getQuiet
---                when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
-               pImportDirs $ force (ibc_importdirs i)
-               pImports $ force (ibc_imports i)
-               pImps $ force (ibc_implicits i)
-               pFixes $ force (ibc_fixes i)
-               pStatics $ force (ibc_statics i)
-               pClasses $ force (ibc_classes i)
-               pInstances $ force (ibc_instances i)
-               pDSLs $ force (ibc_dsls i)
-               pDatatypes $ force (ibc_datatypes i)
-               pOptimise $ force (ibc_optimise i)
-               pSyntax $ force (ibc_syntax i)
-               pKeywords $ force (ibc_keywords i)
-               pObjs $ force (ibc_objs i)
-               pLibs $ force (ibc_libs i)
-               pCGFlags $ force (ibc_cgflags i)
-               pDyLibs $ force (ibc_dynamic_libs i)
-               pHdrs $ force (ibc_hdrs i)
-               pDefs reexp (symbols i) $ force (ibc_defs i)
-               pPatdefs $ force (ibc_patdefs i)
-               pAccess reexp $ force (ibc_access i)
-               pFlags $ force (ibc_flags i)
-               pFnInfo $ force (ibc_fninfo i)
-               pTotal $ force (ibc_total i)
-               pTotCheckErr $ force (ibc_totcheckfail i)
-               pCG $ force (ibc_cg i)
-               pDocs $ force (ibc_docstrings i)
-               pMDocs $ force (ibc_moduledocs i)
-               pCoercions $ force (ibc_coercions i)
-               pTrans $ force (ibc_transforms i)
-               pErrRev $ force (ibc_errRev i)
-               pLineApps $ force (ibc_lineapps i)
-               pNameHints $ force (ibc_namehints i)
-               pMetaInformation $ force (ibc_metainformation i)
-               pErrorHandlers $ force (ibc_errorhandlers i)
-               pFunctionErrorHandlers $ force (ibc_function_errorhandlers i)
-               pMetavars $ force (ibc_metavars i)
-               pPostulates $ force (ibc_postulates i)
-               pExterns $ force (ibc_externs i)
-               pParsedSpan $ force (ibc_parsedSpan i)
-               pUsage $ force (ibc_usage i)
-               pExports $ force (ibc_exports i)
-               pAutoHints $ force (ibc_autohints i)
+process :: Bool -- ^ Reexporting
+           -> Archive -> FilePath -> Idris ()
+process reexp i fn = do
+                ver <- getEntry "ver" i
+                when (ver /= ibcVersion) $ do
+                                    iLOG "ibc out of date"
+                                    let e = if ver < ibcVersion
+                                            then " an earlier " else " a later "
+                                    ifail $ "Incompatible ibc version.\nThis library was built with"
+                                            ++ e ++ "version of Idris.\n" ++ "Please clean and rebuild."
+                source <- getEntry "sourcefile" i
+                srcok <- runIO $ doesFileExist source
+                when srcok $ timestampOlder source fn
+                pImportDirs =<< getEntry "ibc_importdirs" i
+                pImports =<< getEntry "ibc_imports" i
+                pImps =<< getEntry "ibc_implicits" i
+                pFixes =<< getEntry "ibc_fixes" i
+                pStatics =<< getEntry "ibc_statics" i
+                pClasses =<< getEntry "ibc_classes" i
+                pInstances =<< getEntry "ibc_instances" i
+                pDSLs =<< getEntry "ibc_dsls" i
+                pDatatypes =<< getEntry "ibc_datatypes" i
+                pOptimise =<< getEntry "ibc_optimise" i
+                pSyntax =<< getEntry "ibc_syntax" i
+                pKeywords =<< getEntry "ibc_keywords" i
+                pObjs =<< getEntry "ibc_objs" i
+                pLibs =<< getEntry "ibc_libs" i
+                pCGFlags =<< getEntry "ibc_cgflags" i
+                pDyLibs =<< getEntry "ibc_dynamic_libs" i
+                pHdrs =<< getEntry "ibc_hdrs" i
+                symbols <- getEntry "symbols" i
+                defs <- getEntry "ibc_defs" i
+                pDefs reexp symbols defs
+                pPatdefs =<< getEntry "ibc_patdefs" i
+                pAccess reexp =<< getEntry "ibc_access" i
+                pFlags =<< getEntry "ibc_flags" i
+                pFnInfo =<< getEntry "ibc_fninfo" i
+                pTotal =<< getEntry "ibc_total" i
+                pTotCheckErr =<< getEntry "ibc_totcheckfail" i
+                pCG =<< getEntry "ibc_cg" i
+                pDocs =<< getEntry "ibc_docstrings" i
+                pMDocs =<< getEntry "ibc_moduledocs" i
+                pCoercions =<< getEntry "ibc_coercions" i
+                pTrans =<< getEntry "ibc_transforms" i
+                pErrRev =<< getEntry "ibc_errRev" i
+                pLineApps =<< getEntry "ibc_lineapps" i
+                pNameHints =<< getEntry "ibc_namehints" i
+                pMetaInformation =<< getEntry "ibc_metainformation" i
+                pErrorHandlers =<< getEntry "ibc_errorhandlers" i
+                pFunctionErrorHandlers =<< getEntry "ibc_function_errorhandlers" i
+                pMetavars =<< getEntry "ibc_metavars" i
+                pPostulates =<< getEntry "ibc_postulates" i
+                pExterns =<< getEntry "ibc_externs" i
+                pParsedSpan =<< getEntry "ibc_parsedSpan" i
+                pUsage =<< getEntry "ibc_usage" i
+                pExports =<< getEntry "ibc_exports" i
+                pAutoHints =<< getEntry "ibc_autohints" i
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -947,105 +997,6 @@ instance Binary MetaInformation where
              1 -> do x1 <- get
                      return (DataMI x1)
              _ -> error "Corrupted binary data for MetaInformation"
-
-instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45)
-         = {-# SCC "putIBCFile" #-}
-            do put x1
-               put x2
-               put x3
-               put x4
-               put x5
-               put x6
-               put x7
-               put x8
-               put x9
-               put x10
-               put x11
-               put x12
-               put x13
-               put x14
-               put x15
-               put x16
-               put x17
-               put x18
-               put x19
-               put x20
-               put x21
-               put x22
-               put x23
-               put x24
-               put x25
-               put x26
-               put x27
-               put x28
-               put x29
-               put x30
-               put x31
-               put x32
-               put x33
-               put x34
-               put x35
-               put x36
-               put x37
-               put x38
-               put x39
-               put x40
-               put x41
-               put x42
-               put x43
-               put x44
-               put x45
-
-        get
-          = do x1 <- get
-               if x1 == ibcVersion then
-                 do x2 <- get
-                    x3 <- get
-                    x4 <- get
-                    x5 <- get
-                    x6 <- get
-                    x7 <- get
-                    x8 <- get
-                    x9 <- get
-                    x10 <- get
-                    x11 <- get
-                    x12 <- get
-                    x13 <- get
-                    x14 <- get
-                    x15 <- get
-                    x16 <- get
-                    x17 <- get
-                    x18 <- get
-                    x19 <- get
-                    x20 <- get
-                    x21 <- get
-                    x22 <- get
-                    x23 <- get
-                    x24 <- get
-                    x25 <- get
-                    x26 <- get
-                    x27 <- get
-                    x28 <- get
-                    x29 <- get
-                    x30 <- get
-                    x31 <- get
-                    x32 <- get
-                    x33 <- get
-                    x34 <- get
-                    x35 <- get
-                    x36 <- get
-                    x37 <- get
-                    x38 <- get
-                    x39 <- get
-                    x40 <- get
-                    x41 <- get
-                    x42 <- get
-                    x43 <- get
-                    x44 <- get
-                    x45 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45)
-                  else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where
   put x = case x of
