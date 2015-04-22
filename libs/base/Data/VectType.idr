@@ -372,14 +372,11 @@ find p (x::xs) with (p x)
   | False = find p xs
 
 ||| Find the index of the first element of the vector that satisfies some test
-findIndex : (a -> Bool) -> Vect n a -> Maybe Nat
-findIndex = findIndex' 0
-  where
-    findIndex' : Nat -> (a -> Bool) -> Vect n a -> Maybe Nat
-    findIndex' cnt p []      = Nothing
-    findIndex' cnt p (x::xs) with (p x)
-      | True  = Just cnt
-      | False = findIndex' (S cnt) p xs
+findIndex : (a -> Bool) -> Vect n a -> Maybe (Fin n)
+findIndex p []        = Nothing
+findIndex p (x :: xs) with (p x)
+  | True  = Just 0
+  | False = map FS (findIndex p xs)
 
 ||| Find the indices of all elements that satisfy some test
 total findIndices : (a -> Bool) -> Vect m a -> (p ** Vect p Nat)
@@ -394,10 +391,10 @@ findIndices = findIndices' 0
        else
         (_ ** tail)
 
-elemIndexBy : (a -> a -> Bool) -> a -> Vect m a -> Maybe Nat
+elemIndexBy : (a -> a -> Bool) -> a -> Vect m a -> Maybe (Fin m)
 elemIndexBy p e = findIndex $ p e
 
-elemIndex : Eq a => a -> Vect m a -> Maybe Nat
+elemIndex : Eq a => a -> Vect m a -> Maybe (Fin m)
 elemIndex = elemIndexBy (==)
 
 total elemIndicesBy : (a -> a -> Bool) -> a -> Vect m a -> (p ** Vect p Nat)

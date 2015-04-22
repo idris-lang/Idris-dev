@@ -408,6 +408,7 @@ data Command = Quit
              | Apropos [String] String
              | WhoCalls Name
              | CallsWho Name
+             | Browse [String]
              | MakeDoc String                      -- IdrisDoc
              | Warranty
              | PrintDef Name
@@ -1750,9 +1751,6 @@ showDeclImp o (PInstance _ _ _ _ cs n _ t _ ds)
    = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
 -- showDeclImp (PImport o) = "import " ++ o
-
-instance Show (Doc OutputAnnotation) where
-  show = flip (displayS . renderCompact) ""
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []

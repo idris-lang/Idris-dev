@@ -28,6 +28,9 @@ New in 0.9.18:
   choice, keeping the first success as Alternative does. The version that
   collects successes is now a named instance.
 * :exec REPL command now takes an optional expression to compile and run/show
+* The return types of `Vect.findIndex`, `Vect.elemIndex` and
+  `Vect.elemIndexBy` were changed from `Maybe Nat` to `Maybe (Fin n)`
+* A new :browse command shows the contents of a namespace
 
 New in 0.9.17:
 --------------
