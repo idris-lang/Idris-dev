@@ -536,10 +536,11 @@ delete = deleteBy (==)
 (\\) : (Eq a) => List a -> List a -> List a
 (\\) =  foldl (flip delete)
 
+||| The unionBy function returns the union of two lists by user-supplied equality predicate.
 unionBy : (a -> a -> Bool) -> List a -> List a -> List a
-unionBy eq xs ys =  xs ++ foldl (flip (deleteBy eq)) (nubBy eq ys) xs
+unionBy eq xs ys = xs ++ foldl (flip (deleteBy eq)) (nubBy eq ys) xs
 
-||| The union function returns the list union of the two lists. For example,
+||| Compute the union of two lists according to their `Eq` instance.
 |||
 ||| ```idris example
 ||| union ['d', 'o', 'g'] ['c', 'o', 'w']
