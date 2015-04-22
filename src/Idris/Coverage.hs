@@ -705,7 +705,7 @@ checkMP ist i mp = if i > 0
             = case lookupTotal f (tt_ctxt ist) of
                    [Total _] -> Unchecked -- okay so far
                    [Partial _] -> Partial (Other [f])
-                   x -> error $ "CAN'T HAPPEN: " ++ (show x)
+                   x -> error $ "CAN'T HAPPEN: " ++ show x ++ " for " ++ show f
         | [TyDecl (TCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = Total []
     tryPath desc path (e@(f, args) : es) arg
