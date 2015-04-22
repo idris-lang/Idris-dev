@@ -359,26 +359,20 @@ timestampOlder src ibc = do srct <- runIO $ getModificationTime src
                                else return ()
 
 pPostulates :: [Name] -> Idris ()
-pPostulates ns = do
-    i <- getIState
-    putIState i{ idris_postulates = idris_postulates i `S.union` S.fromList ns }
+pPostulates ns = updateIState
+                    (\i -> i { idris_postulates = idris_postulates i `S.union` S.fromList ns })
 
 pExterns :: [(Name, Int)] -> Idris ()
-pExterns ns = do
-    i <- getIState
-    putIState i{ idris_externs = idris_externs i `S.union` S.fromList ns }
+pExterns ns = updateIState (\i -> i{ idris_externs = idris_externs i `S.union` S.fromList ns })
 
 pParsedSpan :: Maybe FC -> Idris ()
-pParsedSpan fc = do ist <- getIState
-                    putIState ist { idris_parsedSpan = fc }
+pParsedSpan fc = updateIState (\i -> i { idris_parsedSpan = fc })
 
 pUsage :: [(Name, Int)] -> Idris ()
-pUsage ns = do ist <- getIState
-               putIState ist { idris_erasureUsed = ns ++ idris_erasureUsed ist }
+pUsage ns = updateIState (\i -> i { idris_erasureUsed = ns ++ idris_erasureUsed i })
 
 pExports :: [Name] -> Idris ()
-pExports ns = do ist <- getIState
-                 putIState ist { idris_exports = ns ++ idris_exports ist }
+pExports ns = updateIState (\i -> i { idris_exports = ns ++ idris_exports i })
 
 pAutoHints :: [(Name, Name)] -> Idris ()
 pAutoHints ns = mapM_ (\(n,h) -> addAutoHint n h) ns
@@ -578,8 +572,7 @@ pAccess reexp ds
         = mapM_ (\ (n, a_in) ->
                       do let a = if reexp then a_in else Hidden
                          logLvl 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
-                         i <- getIState
-                         putIState (i { tt_ctxt = setAccess n a (tt_ctxt i) }))
+                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) }))
                    ds
 
 pFlags :: [(Name, [FnOpt])] -> Idris ()
@@ -589,10 +582,7 @@ pFnInfo :: [(Name, FnInfo)] -> Idris ()
 pFnInfo ds = mapM_ (\ (n, a) -> setFnInfo n a) ds
 
 pTotal :: [(Name, Totality)] -> Idris ()
-pTotal ds = mapM_ (\ (n, a) ->
-                      do i <- getIState
-                         putIState (i { tt_ctxt = setTotal n a (tt_ctxt i) }))
-                   ds
+pTotal ds = mapM_ (\ (n, a) -> updateIState (\i -> i { tt_ctxt = setTotal n a (tt_ctxt i) })) ds
 
 pTotCheckErr :: [(FC, String)] -> Idris ()
 pTotCheckErr es = do ist <- getIState
