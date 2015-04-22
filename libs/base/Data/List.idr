@@ -36,3 +36,17 @@ isElem x (y :: xs) with (decEq x y)
                Elem x' (y' :: xs') -> Void
         mkNo f g Here = f Refl
         mkNo f g (There x) = g x
+
+intersectBy : (a -> a -> Bool) -> List a -> List a -> List a
+intersectBy _  [] _     =  []
+intersectBy _  _  []    =  []
+intersectBy eq xs ys    =  [x | x <- xs, any (eq x) ys]
+
+||| The intersect ∩ function returns the list intersect of the two lists. For example,
+|||
+||| ```idris example
+||| intersect [1,2,3,4] [2,4,6,8]
+||| ```
+|||
+intersect : (Eq a) => List a -> List a -> List a
+intersect = intersectBy (==)

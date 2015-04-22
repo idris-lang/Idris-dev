@@ -537,6 +537,8 @@ delete = deleteBy (==)
 (\\) =  foldl (flip delete)
 
 unionBy : (a -> a -> Bool) -> List a -> List a -> List a
+unionBy _  [] _  =  []
+unionBy _  _  [] =  []
 unionBy eq xs ys =  xs ++ foldl (flip (deleteBy eq)) (nubBy eq ys) xs
 
 ||| The union function returns the list union of the two lists. For example,
