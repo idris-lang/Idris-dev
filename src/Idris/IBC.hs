@@ -37,7 +37,7 @@ import Codec.Compression.Zlib (compress)
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word8
-ibcVersion = 104
+ibcVersion = 105
 
 data IBCFile = IBCFile { ver :: Word8,
                          sourcefile :: FilePath,
@@ -1688,6 +1688,8 @@ instance Binary PTerm where
                                         put x2
                 PUnquote x1 -> do putWord8 43
                                   put x1
+                PQuoteName x1 -> do putWord8 44
+                                    put x1
 
 
         get
@@ -1821,6 +1823,8 @@ instance Binary PTerm where
                             return (PQuasiquote x1 x2)
                    43 -> do x1 <- get
                             return (PUnquote x1)
+                   44 -> do x1 <- get
+                            return (PQuoteName x1)
                    _ -> error "Corrupted binary data for PTerm"
 
 instance (Binary t) => Binary (PTactic' t) where
