@@ -1074,6 +1074,13 @@ elab ist info emode opts fn tm
 
 
     elab' ina fc (PUnquote t) = fail "Found unquote outside of quasiquote"
+    elab' ina fc (PQuoteName n) =
+      do ctxt <- get_context
+         case lookupNameDef n ctxt of
+           [(n', _)] -> do fill $ reflectName n'
+                           solve
+           [] -> lift . tfail . NoSuchVariable $ n
+           more -> lift . tfail . CantResolveAlts $ map fst more
     elab' ina fc (PAs _ n t) = lift . tfail . Msg $ "@-pattern not allowed here"
     elab' ina fc (PHidden t) 
       | reflection = elab' ina fc t

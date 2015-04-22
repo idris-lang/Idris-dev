@@ -311,6 +311,7 @@ SimpleExpr ::=
   | Type
   | 'Void'
   | Quasiquote
+  | NameQuote
   | Unquote
   | '_'
   ;
@@ -355,6 +356,7 @@ simpleExpr syn =
                return (PAppBind fc s [])
         <|> bracketed (disallowImp syn)
         <|> quasiquote syn
+        <|> namequote syn
         <|> unquote syn
         <|> do lchar '_'; return Placeholder
         <?> "expression"
@@ -638,6 +640,18 @@ unquote syn = do guard (syn_in_quasiquote syn > 0)
                  e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
                  return $ PUnquote e
               <?> "unquotation"
+
+{-| Parses a quotation of a name (for using the elaborator to resolve boring details)
+
+> NameQuote ::= '`{' Name '}'
+
+-}
+namequote :: SyntaxInfo -> IdrisParser PTerm
+namequote syn = do symbol "`{"
+                   n <- fnName
+                   symbol "}"
+                   return $ PQuoteName n
+                <?> "quoted name"
 
 
 {-| Parses a record field setter expression
