@@ -8,6 +8,12 @@ import Control.Algebra
 -- implementations, then some of them can move back to base (or even
 -- prelude, in the cases of Functor, Applicative, Monad, Semigroup,
 -- and Monoid).
+--
+-- N.B.: One thing to note here is that most numeric classes aren't
+-- really rings, fields, etc. E.g., Int is not a ring because of integer
+-- overflow. Float and Double are not fields, for essentially the same reason.
+-- One can't hope to prove something that isn't true! On the other hand,
+-- Integer probably really is a ring.
 
 class Functor f => VerifiedFunctor (f : Type -> Type) where
   functorIdentity : {a : Type} -> (x : f a) -> map id x = id x
@@ -100,11 +106,14 @@ class (VerifiedJoinSemilattice a, VerifiedMeetSemilattice a) => VerifiedLattice 
 
 class (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, VerifiedLattice a) => VerifiedBoundedLattice a where { }
 
-class (VerifiedRing a, Field a) => VerifiedField a where
-  total fieldInverseIsInverseL : (l : a) -> l <.> inverseM l = unity
-  total fieldInverseIsInverseR : (r : a) -> inverseM r <.> r = unity
+-- XXX: Gives a mysterious type error.
+--class (VerifiedRingWithUnity a, Field a) => VerifiedField a where
+--  total fieldInverseIsInverseL : (l : a) -> (nz : Not (l = neutral))
+--    -> l <.> inverseM l nz = unity {a=a}
+--  total fieldInverseIsInverseR : (r : a) -> (nz : Not (r = neutral))
+--    -> inverseM r nz <.> r = unity {a=a}
 
--- class (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedModule a b where
+--class (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedModule a b where
 --   total moduleScalarMultiplyComposition : (x,y : a) -> (v : b) -> x <#> (y <#> v) = (x <.> y) <#> v
 --   total moduleScalarUnityIsUnity : (v : b) -> unity <#> v = v
 --   total moduleScalarMultDistributiveWRTVectorAddition : (s : a) -> (v, w : b) -> s <#> (v <+> w) = (s <#> v) <+> (s <#> w)

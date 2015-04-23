@@ -244,8 +244,39 @@ class (BoundedJoinSemilattice a, BoundedMeetSemilattice a) => BoundedLattice a w
 ||| + Distributivity of `<.>` and `<->`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
+||| + One is not zero:
+|||     unity /= neutral
 class RingWithUnity a => Field a where
-  inverseM : a -> a
+  inverseM : (x : a) -> Not (x = neutral {a=a}) -> a
+  total oneIsNotZero : Not (unity {a=a} = neutral {a=a})
+
+||| Negative one in a field.
+negativeOne : Field a => a
+negativeOne = inverseM unity oneIsNotZero
+
+||| Subtraction in a field.
+minusF : Field a => a -> a -> a
+minusF x y = x <+> (negativeOne <.> y)
+
+||| Attempts to take a multiplicative inverse in a field, returning Nothing if
+||| the given value is zero (i.e., neutral, the additive identity).
+inverseMaybe : (Field a, Eq a) => a -> Maybe a
+inverseMaybe x =
+  if x == neutral then Nothing
+    else Just $ inverseM x (believe_me {a=(x = neutral)} {b=Void})
+      -- XXX: This is decidedly incorrect, formally speaking! Eq equality
+      -- is not the same thing as = equality; the former doesn't guarantee
+      -- the latter. Is there a better way to do this?
+
+||| Division in a field.
+div : Field a => a -> (y : a) -> Not (y = neutral) -> a
+div x y yNotZero = x <.> (inverseM y yNotZero)
+
+||| Attempted division in a field.
+divMaybe : (Field a, Eq a) => a -> a -> Maybe a
+divMaybe x y = do
+  yInv <- inverseMaybe y
+  return $ x <.> yInv
 
 
 ||| A module over a ring is an additive abelian group of 'vectors' endowed with a
