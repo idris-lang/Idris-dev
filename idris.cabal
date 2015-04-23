@@ -512,6 +512,13 @@ Extra-source-files:
                        test/literate001/*.lidr
                        test/literate001/expected
 
+                       test/meta001/run
+                       test/meta001/*.idr
+                       test/meta001/expected
+                       test/meta002/run
+                       test/meta002/*.idr
+                       test/meta002/expected
+
                        test/primitives001/run
                        test/primitives001/*.idr
                        test/primitives001/expected
