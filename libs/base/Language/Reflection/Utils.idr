@@ -297,3 +297,12 @@ instance Show Err where
   show (ProviderError x) = "ProviderError \"" ++ show x ++ "\""
   show (LoadingFailed x err) = "LoadingFailed " ++ show x ++ " (" ++ show err ++ ")"
 
+-------------------------
+-- Idiom brackets for Raw
+-------------------------
+
+(<*>) : Raw -> Raw -> Raw
+(<*>) = RApp
+
+pure : Raw -> Raw
+pure = id
