@@ -23,7 +23,8 @@ import qualified Cheapskate.Types as CT
 
 import Data.Binary
 import Data.Vector.Binary
-import Data.List
+import Data.List as L
+import Data.Maybe (catMaybes)
 import Data.ByteString.Lazy as B hiding (length, elem, map)
 import qualified Data.Text as T
 import qualified Data.Set as S
@@ -119,56 +120,63 @@ loadPkgIndex pkg = do ddir <- runIO $ getIdrisLibDir
                       loadIBC True fp
 
 
+makeEntry :: (Binary b) => String -> [b] -> Maybe Entry
+makeEntry name val = if L.null val
+                        then Nothing
+                        else Just $ toEntry name 0 (encode val)
+
+
 entries :: IBCFile -> [Entry]
-entries i =  [toEntry "ver" 0 (encode $ ver i),
-              toEntry "sourcefile" 0 (encode $ sourcefile i),
-              toEntry "symbols" 0 (encode $ symbols i),
-              toEntry "ibc_imports" 0 (encode $ ibc_imports i),
-              toEntry "ibc_importdirs" 0 (encode $ ibc_importdirs i),
-              toEntry "ibc_implicits" 0 (encode $ ibc_implicits i),
-              toEntry "ibc_fixes" 0 (encode $ ibc_fixes i),
-              toEntry "ibc_statics" 0 (encode $ ibc_statics i),
-              toEntry "ibc_classes" 0 (encode $ ibc_classes i),
-              toEntry "ibc_instances" 0 (encode $ ibc_instances i),
-              toEntry "ibc_dsls" 0 (encode $ ibc_dsls i),
-              toEntry "ibc_datatypes" 0 (encode $ ibc_datatypes i),
-              toEntry "ibc_optimise" 0 (encode $ ibc_optimise i),
-              toEntry "ibc_syntax" 0 (encode $ ibc_syntax i),
-              toEntry "ibc_keywords" 0 (encode $ ibc_keywords i),
-              toEntry "ibc_objs" 0 (encode $ ibc_objs i),
-              toEntry "ibc_libs" 0 (encode $ ibc_libs i),
-              toEntry "ibc_cgflags" 0 (encode $ ibc_cgflags i),
-              toEntry "ibc_dynamic_libs" 0 (encode $ ibc_dynamic_libs i),
-              toEntry "ibc_hdrs" 0 (encode $ ibc_hdrs i),
-              toEntry "ibc_access" 0 (encode $ ibc_access i),
-              toEntry "ibc_total" 0 (encode $ ibc_total i),
-              toEntry "ibc_totcheckfail" 0 (encode $ ibc_totcheckfail i),
-              toEntry "ibc_flags" 0 (encode $ ibc_flags i),
-              toEntry "ibc_fninfo" 0 (encode $ ibc_fninfo i),
-              toEntry "ibc_cg" 0 (encode $ ibc_cg i),
-              toEntry "ibc_defs" 0 (encode $ ibc_defs i),
-              toEntry "ibc_docstrings" 0 (encode $ ibc_docstrings i),
-              toEntry "ibc_moduledocs" 0 (encode $ ibc_moduledocs i),
-              toEntry "ibc_transforms" 0 (encode $ ibc_transforms i),
-              toEntry "ibc_errRev" 0 (encode $ ibc_errRev i),
-              toEntry "ibc_coercions" 0 (encode $ ibc_coercions i),
-              toEntry "ibc_lineapps" 0 (encode $ ibc_lineapps i),
-              toEntry "ibc_namehints" 0 (encode $ ibc_namehints i),
-              toEntry "ibc_metainformation" 0 (encode $ ibc_metainformation i),
-              toEntry "ibc_errorhandlers" 0 (encode $ ibc_errorhandlers i),
-              toEntry "ibc_function_errorhandlers" 0 (encode $ ibc_function_errorhandlers i),
-              toEntry "ibc_metavars" 0 (encode $ ibc_metavars i),
-              toEntry "ibc_patdefs" 0 (encode $ ibc_patdefs i),
-              toEntry "ibc_postulates" 0 (encode $ ibc_postulates i),
-              toEntry "ibc_externs" 0 (encode $ ibc_externs i),
-              toEntry "ibc_parsedSpan" 0 (encode $ ibc_parsedSpan i),
-              toEntry "ibc_usage" 0 (encode $ ibc_usage i),
-              toEntry "ibc_exports" 0 (encode $ ibc_exports i),
-              toEntry "ibc_autohints" 0 (encode $ ibc_autohints i)]
+entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
+                       makeEntry "sourcefile"  (sourcefile i),
+                       makeEntry "symbols"  (symbols i),
+                       makeEntry "ibc_imports"  (ibc_imports i),
+                       makeEntry "ibc_importdirs"  (ibc_importdirs i),
+                       makeEntry "ibc_implicits"  (ibc_implicits i),
+                       makeEntry "ibc_fixes"  (ibc_fixes i),
+                       makeEntry "ibc_statics"  (ibc_statics i),
+                       makeEntry "ibc_classes"  (ibc_classes i),
+                       makeEntry "ibc_instances"  (ibc_instances i),
+                       makeEntry "ibc_dsls"  (ibc_dsls i),
+                       makeEntry "ibc_datatypes"  (ibc_datatypes i),
+                       makeEntry "ibc_optimise"  (ibc_optimise i),
+                       makeEntry "ibc_syntax"  (ibc_syntax i),
+                       makeEntry "ibc_keywords"  (ibc_keywords i),
+                       makeEntry "ibc_objs"  (ibc_objs i),
+                       makeEntry "ibc_libs"  (ibc_libs i),
+                       makeEntry "ibc_cgflags"  (ibc_cgflags i),
+                       makeEntry "ibc_dynamic_libs"  (ibc_dynamic_libs i),
+                       makeEntry "ibc_hdrs"  (ibc_hdrs i),
+                       makeEntry "ibc_access"  (ibc_access i),
+                       makeEntry "ibc_total"  (ibc_total i),
+                       makeEntry "ibc_totcheckfail"  (ibc_totcheckfail i),
+                       makeEntry "ibc_flags"  (ibc_flags i),
+                       makeEntry "ibc_fninfo"  (ibc_fninfo i),
+                       makeEntry "ibc_cg"  (ibc_cg i),
+                       makeEntry "ibc_defs"  (ibc_defs i),
+                       makeEntry "ibc_docstrings"  (ibc_docstrings i),
+                       makeEntry "ibc_moduledocs"  (ibc_moduledocs i),
+                       makeEntry "ibc_transforms"  (ibc_transforms i),
+                       makeEntry "ibc_errRev"  (ibc_errRev i),
+                       makeEntry "ibc_coercions"  (ibc_coercions i),
+                       makeEntry "ibc_lineapps"  (ibc_lineapps i),
+                       makeEntry "ibc_namehints"  (ibc_namehints i),
+                       makeEntry "ibc_metainformation"  (ibc_metainformation i),
+                       makeEntry "ibc_errorhandlers"  (ibc_errorhandlers i),
+                       makeEntry "ibc_function_errorhandlers"  (ibc_function_errorhandlers i),
+                       makeEntry "ibc_metavars"  (ibc_metavars i),
+                       makeEntry "ibc_patdefs"  (ibc_patdefs i),
+                       makeEntry "ibc_postulates"  (ibc_postulates i),
+                       makeEntry "ibc_externs"  (ibc_externs i),
+                       case ibc_parsedSpan i of
+                            Nothing -> Nothing
+                            Just s -> Just $ toEntry "ibc_parsedSpan" 0 (encode s),
+                       makeEntry "ibc_usage"  (ibc_usage i),
+                       makeEntry "ibc_exports"  (ibc_exports i),
+                       makeEntry "ibc_autohints"  (ibc_autohints i)]
 
 writeArchive :: FilePath -> IBCFile -> Idris ()
-writeArchive fp i = do
-                       let a = Data.List.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
+writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
                        runIO $ B.writeFile fp (fromArchive a)
 
 writeIBC :: FilePath -> FilePath -> Idris ()
@@ -205,7 +213,7 @@ writePkgIndex f
 mkIBC :: [IBCWrite] -> IBCFile -> Idris IBCFile
 mkIBC [] f = return f
 mkIBC (i:is) f = do ist <- getIState
-                    logLvl 5 $ show i ++ " " ++ show (Data.List.length is)
+                    logLvl 5 $ show i ++ " " ++ show (L.length is)
                     f' <- ibc ist i f
                     mkIBC is f'
 
@@ -288,68 +296,68 @@ ibc i (IBCUsage n) f = return f { ibc_usage = n : ibc_usage f }
 ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
 ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f }
 
-getEntry :: (Binary b, NFData b) => FilePath -> Archive -> Idris b
-getEntry f a = case findEntryByPath f a of
-                Nothing -> ifail $ "Missing IBC part: " ++ f
-                Just e -> do return $ (force . decode . fromEntry) e
+getEntry :: (Binary b, NFData b) => b -> FilePath -> Archive -> Idris b
+getEntry alt f a = case findEntryByPath f a of
+                Nothing -> return alt
+                Just e -> return $ (force . decode . fromEntry) e
 
 process :: Bool -- ^ Reexporting
            -> Archive -> FilePath -> Idris ()
 process reexp i fn = do
-                ver <- getEntry "ver" i
+                ver <- getEntry 0 "ver" i
                 when (ver /= ibcVersion) $ do
                                     iLOG "ibc out of date"
                                     let e = if ver < ibcVersion
                                             then " an earlier " else " a later "
                                     ifail $ "Incompatible ibc version.\nThis library was built with"
                                             ++ e ++ "version of Idris.\n" ++ "Please clean and rebuild."
-                source <- getEntry "sourcefile" i
+                source <- getEntry "" "sourcefile" i
                 srcok <- runIO $ doesFileExist source
                 when srcok $ timestampOlder source fn
-                pImportDirs =<< getEntry "ibc_importdirs" i
-                pImports =<< getEntry "ibc_imports" i
-                pImps =<< getEntry "ibc_implicits" i
-                pFixes =<< getEntry "ibc_fixes" i
-                pStatics =<< getEntry "ibc_statics" i
-                pClasses =<< getEntry "ibc_classes" i
-                pInstances =<< getEntry "ibc_instances" i
-                pDSLs =<< getEntry "ibc_dsls" i
-                pDatatypes =<< getEntry "ibc_datatypes" i
-                pOptimise =<< getEntry "ibc_optimise" i
-                pSyntax =<< getEntry "ibc_syntax" i
-                pKeywords =<< getEntry "ibc_keywords" i
-                pObjs =<< getEntry "ibc_objs" i
-                pLibs =<< getEntry "ibc_libs" i
-                pCGFlags =<< getEntry "ibc_cgflags" i
-                pDyLibs =<< getEntry "ibc_dynamic_libs" i
-                pHdrs =<< getEntry "ibc_hdrs" i
-                symbols <- getEntry "symbols" i
-                defs <- getEntry "ibc_defs" i
+                pImportDirs =<< getEntry [] "ibc_importdirs" i
+                pImports =<< getEntry [] "ibc_imports" i
+                pImps =<< getEntry [] "ibc_implicits" i
+                pFixes =<< getEntry [] "ibc_fixes" i
+                pStatics =<< getEntry [] "ibc_statics" i
+                pClasses =<< getEntry [] "ibc_classes" i
+                pInstances =<< getEntry [] "ibc_instances" i
+                pDSLs =<< getEntry [] "ibc_dsls" i
+                pDatatypes =<< getEntry [] "ibc_datatypes" i
+                pOptimise =<< getEntry [] "ibc_optimise" i
+                pSyntax =<< getEntry [] "ibc_syntax" i
+                pKeywords =<< getEntry [] "ibc_keywords" i
+                pObjs =<< getEntry [] "ibc_objs" i
+                pLibs =<< getEntry [] "ibc_libs" i
+                pCGFlags =<< getEntry [] "ibc_cgflags" i
+                pDyLibs =<< getEntry [] "ibc_dynamic_libs" i
+                pHdrs =<< getEntry [] "ibc_hdrs" i
+                symbols <- getEntry [] "symbols" i
+                defs <- getEntry [] "ibc_defs" i
                 pDefs reexp symbols defs
-                pPatdefs =<< getEntry "ibc_patdefs" i
-                pAccess reexp =<< getEntry "ibc_access" i
-                pFlags =<< getEntry "ibc_flags" i
-                pFnInfo =<< getEntry "ibc_fninfo" i
-                pTotal =<< getEntry "ibc_total" i
-                pTotCheckErr =<< getEntry "ibc_totcheckfail" i
-                pCG =<< getEntry "ibc_cg" i
-                pDocs =<< getEntry "ibc_docstrings" i
-                pMDocs =<< getEntry "ibc_moduledocs" i
-                pCoercions =<< getEntry "ibc_coercions" i
-                pTrans =<< getEntry "ibc_transforms" i
-                pErrRev =<< getEntry "ibc_errRev" i
-                pLineApps =<< getEntry "ibc_lineapps" i
-                pNameHints =<< getEntry "ibc_namehints" i
-                pMetaInformation =<< getEntry "ibc_metainformation" i
-                pErrorHandlers =<< getEntry "ibc_errorhandlers" i
-                pFunctionErrorHandlers =<< getEntry "ibc_function_errorhandlers" i
-                pMetavars =<< getEntry "ibc_metavars" i
-                pPostulates =<< getEntry "ibc_postulates" i
-                pExterns =<< getEntry "ibc_externs" i
-                pParsedSpan =<< getEntry "ibc_parsedSpan" i
-                pUsage =<< getEntry "ibc_usage" i
-                pExports =<< getEntry "ibc_exports" i
-                pAutoHints =<< getEntry "ibc_autohints" i
+                pPatdefs =<< getEntry [] "ibc_patdefs" i
+                pAccess reexp =<< getEntry [] "ibc_access" i
+                pFlags =<< getEntry [] "ibc_flags" i
+                pFnInfo =<< getEntry [] "ibc_fninfo" i
+                pTotal =<< getEntry [] "ibc_total" i
+                pTotCheckErr =<< getEntry [] "ibc_totcheckfail" i
+                pCG =<< getEntry [] "ibc_cg" i
+                pDocs =<< getEntry [] "ibc_docstrings" i
+                pMDocs =<< getEntry [] "ibc_moduledocs" i
+                pCoercions =<< getEntry [] "ibc_coercions" i
+                pTrans =<< getEntry [] "ibc_transforms" i
+                pErrRev =<< getEntry [] "ibc_errRev" i
+                pLineApps =<< getEntry [] "ibc_lineapps" i
+                pNameHints =<< getEntry [] "ibc_namehints" i
+                pMetaInformation =<< getEntry [] "ibc_metainformation" i
+                pErrorHandlers =<< getEntry [] "ibc_errorhandlers" i
+                pFunctionErrorHandlers =<< getEntry [] "ibc_function_errorhandlers" i
+                pMetavars =<< getEntry [] "ibc_metavars" i
+                pPostulates =<< getEntry [] "ibc_postulates" i
+                pExterns =<< getEntry [] "ibc_externs" i
+                pParsedSpan =<< getEntry Nothing "ibc_parsedSpan" i
+                pUsage =<< getEntry [] "ibc_usage" i
+                pExports =<< getEntry [] "ibc_exports" i
+                pAutoHints =<< getEntry [] "ibc_autohints" i
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -359,26 +367,20 @@ timestampOlder src ibc = do srct <- runIO $ getModificationTime src
                                else return ()
 
 pPostulates :: [Name] -> Idris ()
-pPostulates ns = do
-    i <- getIState
-    putIState i{ idris_postulates = idris_postulates i `S.union` S.fromList ns }
+pPostulates ns = updateIState
+                    (\i -> i { idris_postulates = idris_postulates i `S.union` S.fromList ns })
 
 pExterns :: [(Name, Int)] -> Idris ()
-pExterns ns = do
-    i <- getIState
-    putIState i{ idris_externs = idris_externs i `S.union` S.fromList ns }
+pExterns ns = updateIState (\i -> i{ idris_externs = idris_externs i `S.union` S.fromList ns })
 
 pParsedSpan :: Maybe FC -> Idris ()
-pParsedSpan fc = do ist <- getIState
-                    putIState ist { idris_parsedSpan = fc }
+pParsedSpan fc = updateIState (\i -> i { idris_parsedSpan = fc })
 
 pUsage :: [(Name, Int)] -> Idris ()
-pUsage ns = do ist <- getIState
-               putIState ist { idris_erasureUsed = ns ++ idris_erasureUsed ist }
+pUsage ns = updateIState (\i -> i { idris_erasureUsed = ns ++ idris_erasureUsed i })
 
 pExports :: [Name] -> Idris ()
-pExports ns = do ist <- getIState
-                 putIState ist { idris_exports = ns ++ idris_exports ist }
+pExports ns = updateIState (\i -> i { idris_exports = ns ++ idris_exports i })
 
 pAutoHints :: [(Name, Name)] -> Idris ()
 pAutoHints ns = mapM_ (\(n,h) -> addAutoHint n h) ns
@@ -578,8 +580,7 @@ pAccess reexp ds
         = mapM_ (\ (n, a_in) ->
                       do let a = if reexp then a_in else Hidden
                          logLvl 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
-                         i <- getIState
-                         putIState (i { tt_ctxt = setAccess n a (tt_ctxt i) }))
+                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) }))
                    ds
 
 pFlags :: [(Name, [FnOpt])] -> Idris ()
@@ -589,10 +590,7 @@ pFnInfo :: [(Name, FnInfo)] -> Idris ()
 pFnInfo ds = mapM_ (\ (n, a) -> setFnInfo n a) ds
 
 pTotal :: [(Name, Totality)] -> Idris ()
-pTotal ds = mapM_ (\ (n, a) ->
-                      do i <- getIState
-                         putIState (i { tt_ctxt = setTotal n a (tt_ctxt i) }))
-                   ds
+pTotal ds = mapM_ (\ (n, a) -> updateIState (\i -> i { tt_ctxt = setTotal n a (tt_ctxt i) })) ds
 
 pTotCheckErr :: [(FC, String)] -> Idris ()
 pTotCheckErr es = do ist <- getIState
@@ -633,7 +631,7 @@ pFunctionErrorHandlers ((fn, arg, handler):ns) = do addFunctionErrorHandlers fn 
 
 pMetavars :: [(Name, (Maybe Name, Int, Bool))] -> Idris ()
 pMetavars ns = do i <- getIState
-                  putIState $ i { idris_metavars = Data.List.reverse ns
+                  putIState $ i { idris_metavars = L.reverse ns
                                                      ++ idris_metavars i }
 
 ----- For Cheapskate and docstrings
