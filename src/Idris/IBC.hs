@@ -443,33 +443,22 @@ pInstances :: [(Bool, Name, Name)] -> Idris ()
 pInstances cs = mapM_ (\ (i, n, ins) -> addInstance i n ins) cs
 
 pDSLs :: [(Name, DSL)] -> Idris ()
-pDSLs cs = mapM_ (\ (n, c) ->
-                        do i <- getIState
-                           putIState (i { idris_dsls
-                                           = addDef n c (idris_dsls i) }))
-                    cs
+pDSLs cs = mapM_ (\ (n, c) -> updateIState (\i ->
+                        i { idris_dsls = addDef n c (idris_dsls i) })) cs
 
 pDatatypes :: [(Name, TypeInfo)] -> Idris ()
-pDatatypes cs = mapM_ (\ (n, c) ->
-                        do i <- getIState
-                           putIState (i { idris_datatypes
-                                           = addDef n c (idris_datatypes i) }))
-                    cs
+pDatatypes cs = mapM_ (\ (n, c) -> updateIState (\i ->
+                        i { idris_datatypes = addDef n c (idris_datatypes i) })) cs
 
 pOptimise :: [(Name, OptInfo)] -> Idris ()
-pOptimise cs = mapM_ (\ (n, c) ->
-                        do i <- getIState
-                           putIState (i { idris_optimisation
-                                           = addDef n c (idris_optimisation i) }))
-                    cs
+pOptimise cs = mapM_ (\ (n, c) -> updateIState (\i ->
+                        i { idris_optimisation = addDef n c (idris_optimisation i) })) cs
 
 pSyntax :: [Syntax] -> Idris ()
-pSyntax s = do i <- getIState
-               putIState (i { syntax_rules = updateSyntaxRules s (syntax_rules i) })
+pSyntax s = updateIState (\i -> i { syntax_rules = updateSyntaxRules s (syntax_rules i) })
 
 pKeywords :: [String] -> Idris ()
-pKeywords k = do i <- getIState
-                 putIState (i { syntax_keywords = k ++ syntax_keywords i })
+pKeywords k = updateIState (\i -> i { syntax_keywords = k ++ syntax_keywords i })
 
 pObjs :: [(Codegen, FilePath)] -> Idris ()
 pObjs os = mapM_ (\ (cg, obj) -> do dirs <- allImportDirs
@@ -493,11 +482,8 @@ pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs
 
 pPatdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))] -> Idris ()
-pPatdefs ds
-   = mapM_ (\ (n, d) ->
-                do i <- getIState
-                   putIState (i { idris_patdefs = addDef n (force d) (idris_patdefs i) }))
-           ds
+pPatdefs ds = mapM_ (\ (n, d) -> updateIState (\i ->
+            i { idris_patdefs = addDef n (force d) (idris_patdefs i) })) ds
 
 pDefs :: Bool -> [Name] -> [(Name, Def)] -> Idris ()
 pDefs reexp syms ds
@@ -507,9 +493,8 @@ pDefs reexp syms ds
                        TyDecl _ _ -> return ()
                        _ -> do iLOG $ "SOLVING " ++ show n
                                solveDeferred n
-                  i <- getIState
+                  updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
 --                   logLvl 1 $ "Added " ++ show (n, d')
-                  putIState (i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
                   if (not reexp) then do iLOG $ "Not exporting " ++ show n
                                          setAccessibility n Hidden
                                  else iLOG $ "Exporting " ++ show n) ds
@@ -569,9 +554,8 @@ pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris
 pDocs ds = mapM_ (\(n, a) -> addDocStr n (fst a) (snd a)) ds
 
 pMDocs :: [(Name, Docstring D.DocTerm)] -> Idris ()
-pMDocs ds = mapM_ addMDocStr ds
-  where addMDocStr (n, d) = do ist <- getIState
-                               putIState ist { idris_moduledocs = addDef n d (idris_moduledocs ist) }
+pMDocs ds = mapM_  (\ (n, d) -> updateIState (\i ->
+            i { idris_moduledocs = addDef n d (idris_moduledocs i) })) ds
 
 pAccess :: Bool -- ^ Reexporting?
            -> [(Name, Accessibility)] -> Idris ()
@@ -579,8 +563,7 @@ pAccess reexp ds
         = mapM_ (\ (n, a_in) ->
                       do let a = if reexp then a_in else Hidden
                          logLvl 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
-                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) }))
-                   ds
+                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })) ds
 
 pFlags :: [(Name, [FnOpt])] -> Idris ()
 pFlags ds = mapM_ (\ (n, a) -> setFlags n a) ds
@@ -592,8 +575,7 @@ pTotal :: [(Name, Totality)] -> Idris ()
 pTotal ds = mapM_ (\ (n, a) -> updateIState (\i -> i { tt_ctxt = setTotal n a (tt_ctxt i) })) ds
 
 pTotCheckErr :: [(FC, String)] -> Idris ()
-pTotCheckErr es = do ist <- getIState
-                     putIState ist { idris_totcheckfail = idris_totcheckfail ist ++ es }
+pTotCheckErr es = updateIState (\i -> i { idris_totcheckfail = idris_totcheckfail i ++ es })
 
 pCG :: [(Name, CGInfo)] -> Idris ()
 pCG ds = mapM_ (\ (n, a) -> addToCG n a) ds
@@ -614,24 +596,19 @@ pNameHints :: [(Name, Name)] -> Idris ()
 pNameHints ns = mapM_ (\ (n, ty) -> addNameHint n ty) ns
 
 pMetaInformation :: [(Name, MetaInformation)] -> Idris ()
-pMetaInformation ds = mapM_ (\ (n, m) ->
-                            do i <- getIState
-                               putIState (i { tt_ctxt = setMetaInformation n m (tt_ctxt i) }))
-                         ds
+pMetaInformation ds = mapM_ (\ (n, m) -> updateIState (\i ->
+                               i { tt_ctxt = setMetaInformation n m (tt_ctxt i) })) ds
 
 pErrorHandlers :: [Name] -> Idris ()
-pErrorHandlers ns = do i <- getIState
-                       putIState $ i { idris_errorhandlers = idris_errorhandlers i ++ ns }
+pErrorHandlers ns = updateIState (\i ->
+                        i { idris_errorhandlers = idris_errorhandlers i ++ ns })
 
 pFunctionErrorHandlers :: [(Name, Name, Name)] -> Idris ()
-pFunctionErrorHandlers [] = return ()
-pFunctionErrorHandlers ((fn, arg, handler):ns) = do addFunctionErrorHandlers fn arg [handler]
-                                                    pFunctionErrorHandlers ns
+pFunctionErrorHandlers ns =  mapM_ (\ (fn,arg,handler) ->
+                                addFunctionErrorHandlers fn arg [handler]) ns
 
 pMetavars :: [(Name, (Maybe Name, Int, Bool))] -> Idris ()
-pMetavars ns = do i <- getIState
-                  putIState $ i { idris_metavars = L.reverse ns
-                                                     ++ idris_metavars i }
+pMetavars ns = updateIState (\i -> i { idris_metavars = L.reverse ns ++ idris_metavars i })
 
 ----- For Cheapskate and docstrings
 
