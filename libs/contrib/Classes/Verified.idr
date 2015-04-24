@@ -1,6 +1,8 @@
 module Classes.Verified
 
 import Control.Algebra
+import Control.Algebra.Lattice
+import Control.Algebra.VectorSpace
 
 -- Due to these being basically unused and difficult to implement,
 -- they're in contrib for a bit. Once a design is found that lets them
@@ -78,6 +80,11 @@ class (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
   total ringWithUnityIsUnityL : (l : a) -> l <.> unity = l
   total ringWithUnityIsUnityR : (r : a) -> unity <.> r = r
 
+--class (VerifiedRingWithUnity a, Field a) => VerifiedField a where
+--  total fieldInverseIsInverseL : (l : a) -> (notId : Not (l = neutral)) -> l <.> (inverseM l notId) = unity
+--  total fieldInverseIsInverseR : (r : a) -> (notId : Not (r = neutral)) -> (inverseM r notId) <.> r = unity
+
+
 class JoinSemilattice a => VerifiedJoinSemilattice a where
   total joinSemilatticeJoinIsAssociative : (l, c, r : a) -> join l (join c r) = join (join l c) r
   total joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
@@ -100,15 +107,11 @@ class (VerifiedJoinSemilattice a, VerifiedMeetSemilattice a) => VerifiedLattice 
 
 class (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, VerifiedLattice a) => VerifiedBoundedLattice a where { }
 
-class (VerifiedRing a, Field a) => VerifiedField a where
-  total fieldInverseIsInverseL : (l : a) -> l <.> inverseM l = unity
-  total fieldInverseIsInverseR : (r : a) -> inverseM r <.> r = unity
 
--- class (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedModule a b where
---   total moduleScalarMultiplyComposition : (x,y : a) -> (v : b) -> x <#> (y <#> v) = (x <.> y) <#> v
---   total moduleScalarUnityIsUnity : (v : b) -> unity <#> v = v
---   total moduleScalarMultDistributiveWRTVectorAddition : (s : a) -> (v, w : b) -> s <#> (v <+> w) = (s <#> v) <+> (s <#> w)
---   total moduleScalarMultDistributiveWRTModuleAddition : (s, t : a) -> (v : b) -> (s <+> t) <#> v = (s <#> v) <+> (t <#> v)
+--class (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedModule a b where
+--  total moduleScalarMultiplyComposition : (x,y : a) -> (v : b) -> x <#> (y <#> v) = (x <.> y) <#> v
+--  total moduleScalarUnityIsUnity : (v : b) -> unity {a} <#> v = v
+--  total moduleScalarMultDistributiveWRTVectorAddition : (s : a) -> (v, w : b) -> s <#> (v <+> w) = (s <#> v) <+> (s <#> w)
+--  total moduleScalarMultDistributiveWRTModuleAddition : (s, t : a) -> (v : b) -> (s <+> t) <#> v = (s <#> v) <+> (t <#> v)
 
--- class (VerifiedField a, VerifiedModule a b) => VerifiedVectorSpace a b where {}
-
+--class (VerifiedField a, VerifiedModule a b) => VerifiedVectorSpace a b where {}
