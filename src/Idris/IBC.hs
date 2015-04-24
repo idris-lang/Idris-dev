@@ -22,6 +22,7 @@ import Paths_idris
 import qualified Cheapskate.Types as CT
 
 import Data.Binary
+import Data.Functor
 import Data.Vector.Binary
 import Data.List as L
 import Data.Maybe (catMaybes)
@@ -168,9 +169,7 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_patdefs"  (ibc_patdefs i),
                        makeEntry "ibc_postulates"  (ibc_postulates i),
                        makeEntry "ibc_externs"  (ibc_externs i),
-                       case ibc_parsedSpan i of
-                            Nothing -> Nothing
-                            Just s -> Just $ toEntry "ibc_parsedSpan" 0 (encode s),
+                       toEntry "ibc_parsedSpan" 0 . encode <$> ibc_parsedSpan i,
                        makeEntry "ibc_usage"  (ibc_usage i),
                        makeEntry "ibc_exports"  (ibc_exports i),
                        makeEntry "ibc_autohints"  (ibc_autohints i)]
