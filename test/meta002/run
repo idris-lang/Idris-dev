@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris $@ --nocolour --check --consolewidth 70 Tacs.idr
+rm -f *.ibc
