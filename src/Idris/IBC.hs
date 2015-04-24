@@ -22,6 +22,7 @@ import Paths_idris
 import qualified Cheapskate.Types as CT
 
 import Data.Binary
+import Data.Functor
 import Data.Vector.Binary
 import Data.List as L
 import Data.Maybe (catMaybes)
@@ -39,10 +40,10 @@ import Codec.Compression.Zlib (compress)
 import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
-ibcVersion :: Word8
-ibcVersion = 105
+ibcVersion :: Word16
+ibcVersion = 106
 
-data IBCFile = IBCFile { ver :: Word8,
+data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
                          symbols :: ![Name],
                          ibc_imports :: ![(Bool, FilePath)],
@@ -168,9 +169,7 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_patdefs"  (ibc_patdefs i),
                        makeEntry "ibc_postulates"  (ibc_postulates i),
                        makeEntry "ibc_externs"  (ibc_externs i),
-                       case ibc_parsedSpan i of
-                            Nothing -> Nothing
-                            Just s -> Just $ toEntry "ibc_parsedSpan" 0 (encode s),
+                       toEntry "ibc_parsedSpan" 0 . encode <$> ibc_parsedSpan i,
                        makeEntry "ibc_usage"  (ibc_usage i),
                        makeEntry "ibc_exports"  (ibc_exports i),
                        makeEntry "ibc_autohints"  (ibc_autohints i)]
