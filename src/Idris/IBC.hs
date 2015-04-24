@@ -40,10 +40,10 @@ import Codec.Compression.Zlib (compress)
 import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
-ibcVersion :: Word8
-ibcVersion = 105
+ibcVersion :: Word16
+ibcVersion = 106
 
-data IBCFile = IBCFile { ver :: Word8,
+data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
                          symbols :: ![Name],
                          ibc_imports :: ![(Bool, FilePath)],
