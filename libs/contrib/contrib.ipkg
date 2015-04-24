@@ -16,7 +16,7 @@ modules = Control.Algebra,
           Data.Heap,
           Data.SortedMap, Data.SortedSet,
 
-          Decidable.Decidable, Decidable.Order,
+          Decidable.Decidable, Decidable.Order, Decidable.ExcludedMiddleInconsistent,
 
           Network.Cgi, Network.Socket,
 
