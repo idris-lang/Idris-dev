@@ -271,7 +271,8 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
     getNamePos _ _ _ = Nothing
 
     -- if the constructor is a UniqueType, the datatype must be too
-    -- (Type* is fine, since that is checked for uniqueness too)
+    -- (AnyType is fine, since that is checked for uniqueness too)
+    -- if hte contructor is AnyType, the datatype must be at least AnyType
     checkUniqueKind (UType NullType) (UType NullType) = return ()
     checkUniqueKind (UType NullType) _
         = tclift $ tfail (At fc (UniqueKindError NullType n))
@@ -279,7 +280,10 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
     checkUniqueKind (UType UniqueType) (UType AllTypes) = return ()
     checkUniqueKind (UType UniqueType) _
         = tclift $ tfail (At fc (UniqueKindError UniqueType n))
-    checkUniqueKind (UType AllTypes) _ = return ()
+    checkUniqueKind (UType AllTypes) (UType AllTypes) = return ()
+    checkUniqueKind (UType AllTypes) (UType UniqueType) = return ()
+    checkUniqueKind (UType AllTypes) _ 
+        = tclift $ tfail (At fc (UniqueKindError AllTypes n))
     checkUniqueKind _ _ = return ()
 
     -- Constructor's kind must be <= expected kind

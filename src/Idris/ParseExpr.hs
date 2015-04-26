@@ -330,6 +330,7 @@ simpleExpr syn =
         <|> proofExpr syn
         <|> tacticsExpr syn
         <|> try (do reserved "Type"; symbol "*"; return $ PUniverse AllTypes)
+        <|> do reserved "AnyType"; return $ PUniverse AllTypes
         <|> do reserved "Type"; return PType
         <|> do reserved "UniqueType"; return $ PUniverse UniqueType
         <|> do reserved "NullType"; return $ PUniverse NullType

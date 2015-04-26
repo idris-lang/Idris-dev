@@ -653,7 +653,7 @@ data Universe = NullType | UniqueType | AllTypes
 instance Show Universe where
     show UniqueType = "UniqueType"
     show NullType = "NullType"
-    show AllTypes = "Type*"
+    show AllTypes = "AnyType"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw

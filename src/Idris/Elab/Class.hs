@@ -106,7 +106,14 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
   where
     nodoc (n, (_, o, t)) = (n, (o, t))
     pibind [] x = x
-    pibind ((n, ty): ns) x = PPi expl n ty (pibind ns x)
+    pibind ((n, ty): ns) x = PPi expl n ty (pibind ns (chkUniq ty x))
+
+    -- To make sure the type constructor of the class is in the appropriate
+    -- uniqueness hierarchy
+    chkUniq u@(PUniverse _) PType = u
+    chkUniq (PUniverse l) (PUniverse r) = PUniverse (min l r)
+    chkUniq (PPi _ _ _ sc) t = chkUniq sc t
+    chkUniq _ t = t
 
     mdec :: Name -> Name
     mdec (UN n) = SN (MethodN (UN n))
