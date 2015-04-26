@@ -1573,6 +1573,10 @@ collectDeferred top ctxt (Bind n (GHole i t) app) =
     tidy ctxt env t | (f, args) <- unApply t,
                       P _ n _ <- getFn f
         = fst $ specialise ctxt env [(n, 99999)] t 
+    tidy ctxt env t@(Bind n (Let _ _) sct)
+                    | (f, args) <- unApply sct,
+                      P _ n _ <- getFn f
+        = fst $ specialise ctxt env [(n, 99999)] t 
     tidy ctxt env t = t
 
     getFn (Bind n (Lam _) t) = getFn t
