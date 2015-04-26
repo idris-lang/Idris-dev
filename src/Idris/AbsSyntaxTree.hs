@@ -645,7 +645,7 @@ data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
 
 -- | For elaborator state
 data EState = EState {
-                  case_decls :: [PDecl],
+                  case_decls :: [(Name, PDecl)],
                   delayed_elab :: [Elab' EState ()],
                   new_tyDecls :: [RDeclInstructions]
               }

@@ -623,10 +623,11 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         errAt "right hand side of " fname
                               (erun fc $ psolve lhs_tm)
                         hs <- get_holes
-                        aux <- getAux
-                        mapM_ (elabCaseHole (case_decls aux)) hs
+                        mapM_ (elabCaseHole is) hs
                         tt <- get_term
-                        let (tm, ds) = runState (collectDeferred (Just fname) ctxt tt) []
+                        aux <- getAux
+                        let (tm, ds) = runState (collectDeferred (Just fname) 
+                                                     (map fst $ case_decls aux) ctxt tt) []
                         probs <- get_probs
                         return (tm, ds, is, probs, ctxt', newDecls))
         setContext ctxt'

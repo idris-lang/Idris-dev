@@ -113,10 +113,10 @@ build ist info emode opts fn tm
          EState is _ impls <- getAux
          tt <- get_term
          ctxt <- get_context
-         let (tm, ds) = runState (collectDeferred (Just fn) ctxt tt) []
+         let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (ElabResult tm ds is ctxt impls)
-            else return (ElabResult tm ds is ctxt impls)
+         if (log /= "") then trace log $ return (ElabResult tm ds (map snd is) ctxt impls)
+            else return (ElabResult tm ds (map snd is) ctxt impls)
   where pattern = emode == ELHS
         tydecl = emode == ETyDecl
 
@@ -155,10 +155,10 @@ buildTC ist info emode opts fn tm
          EState is _ impls <- getAux
          tt <- get_term
          ctxt <- get_context
-         let (tm, ds) = runState (collectDeferred (Just fn) ctxt tt) []
+         let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (ElabResult tm ds is ctxt impls)
-            else return (ElabResult tm ds is ctxt impls)
+         if (log /= "") then trace log $ return (ElabResult tm ds (map snd is) ctxt impls)
+            else return (ElabResult tm ds (map snd is) ctxt impls)
   where pattern = emode == ELHS
 
 -- return whether arguments of the given constructor name can be 
@@ -941,7 +941,7 @@ elab ist info emode opts fn tm
                              (caseBlock fc cname'
                                 (map (isScr scr) (reverse args')) opts)
              -- elaborate case
-             updateAux (\e -> e { case_decls = newdef : case_decls e } )
+             updateAux (\e -> e { case_decls = (cname', newdef) : case_decls e } )
              -- if we haven't got the type yet, hopefully we'll get it later!
              movelast tyn
              solve
@@ -1554,15 +1554,16 @@ resTC' tcs defaultOn topholes depth topg fn ist
        where isImp (PImp p _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
-collectDeferred :: Maybe Name -> Context ->
+collectDeferred :: Maybe Name -> [Name] -> Context ->
                    Term -> State [(Name, (Int, Maybe Name, Type))] Term
-collectDeferred top ctxt (Bind n (GHole i t) app) =
+collectDeferred top casenames ctxt (Bind n (GHole i t) app) =
     do ds <- get
-       t' <- collectDeferred top ctxt t
+       t' <- collectDeferred top casenames ctxt t
        when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, tidyArg [] t'))])
-       collectDeferred top ctxt app
+       collectDeferred top casenames ctxt app
   where
-    -- Evaluate the top level functions in arguments, if possible, so that
+    -- Evaluate the top level functions in arguments, if possible, and if it's
+    -- not a name we're immediately going to define in a case block, so that
     -- any immediate specialisation of the function applied to constructors 
     -- can be done
     tidyArg env (Bind n b@(Pi im t k) sc) 
@@ -1571,27 +1572,31 @@ collectDeferred top ctxt (Bind n (GHole i t) app) =
     tidyArg env t = t
 
     tidy ctxt env t | (f, args) <- unApply t,
-                      P _ n _ <- getFn f
-        = fst $ specialise ctxt env [(n, 99999)] t 
+                      P _ specn _ <- getFn f,
+                      n `notElem` casenames
+        = fst $ specialise ctxt env [(specn, 99999)] t 
     tidy ctxt env t@(Bind n (Let _ _) sct)
                     | (f, args) <- unApply sct,
-                      P _ n _ <- getFn f
-        = fst $ specialise ctxt env [(n, 99999)] t 
+                      P _ specn _ <- getFn f,
+                      n `notElem` casenames
+        = fst $ specialise ctxt env [(specn, 99999)] t 
     tidy ctxt env t = t
 
     getFn (Bind n (Lam _) t) = getFn t
     getFn t | (f, a) <- unApply t = f
 
-collectDeferred top ctxt (Bind n b t) = do b' <- cdb b
-                                           t' <- collectDeferred top ctxt t
-                                           return (Bind n b' t')
+collectDeferred top ns ctxt (Bind n b t) 
+     = do b' <- cdb b
+          t' <- collectDeferred top ns ctxt t
+          return (Bind n b' t')
   where
-    cdb (Let t v)   = liftM2 Let (collectDeferred top ctxt t) (collectDeferred top ctxt v)
-    cdb (Guess t v) = liftM2 Guess (collectDeferred top ctxt t) (collectDeferred top ctxt v)
-    cdb b           = do ty' <- collectDeferred top ctxt (binderTy b)
+    cdb (Let t v)   = liftM2 Let (collectDeferred top ns ctxt t) (collectDeferred top ns ctxt v)
+    cdb (Guess t v) = liftM2 Guess (collectDeferred top ns ctxt t) (collectDeferred top ns ctxt v)
+    cdb b           = do ty' <- collectDeferred top ns ctxt (binderTy b)
                          return (b { binderTy = ty' })
-collectDeferred top ctxt (App s f a) = liftM2 (App s) (collectDeferred top ctxt f) (collectDeferred top ctxt a)
-collectDeferred top ctxt t = return t
+collectDeferred top ns ctxt (App s f a) = liftM2 (App s) (collectDeferred top ns ctxt f) 
+                                                         (collectDeferred top ns ctxt a)
+collectDeferred top ns ctxt t = return t
 
 case_ :: Bool -> Bool -> IState -> Name -> PTerm -> ElabD ()
 case_ ind autoSolve ist fn tm = do
