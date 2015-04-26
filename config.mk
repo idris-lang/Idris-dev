@@ -2,7 +2,7 @@ CC              ?=cc
 CABAL           :=cabal
 # IDRIS_ENABLE_STATS should not be set in final release
 # Any flags defined here which alter the RTS API must also be added to src/IRTS/CodegenC.hs
-CFLAGS          :=-O2 -Wall -DHAS_PTHREAD -DIDRIS_ENABLE_STATS -msse2 $(CFLAGS)
+CFLAGS          :=-O2 -Wall -DHAS_PTHREAD -DIDRIS_ENABLE_STATS $(CFLAGS)
 
 #CABALFLAGS	:=
 ## Disable building of Effects
@@ -14,7 +14,7 @@ else
 	GMP_INCLUDE_DIR      :=-I/usr/local/include
 endif
 
-MACHINE         := $(shell $(CC) -dumpmachine)
+MACHINE         ?= $(shell $(CC) -dumpmachine)
 ifneq (, $(findstring darwin, $(MACHINE)))
 	OS      :=darwin
 else
@@ -27,6 +27,11 @@ else
 	OS      :=unix
 endif
 endif
+endif
+
+# Only include -msse2 on x86 machines
+ifneq (,$(findstring 86, $(MACHINE)))
+	CFLAGS += -msse2
 endif
 
 ifeq ($(OS),darwin)
