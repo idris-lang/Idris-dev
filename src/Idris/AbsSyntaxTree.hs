@@ -628,7 +628,7 @@ data PDecl' t
    | PDSL     Name (DSL' t) -- ^ DSL declaration
    | PSyntax  FC Syntax -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
-   | PDirective (Idris ()) -- ^ Compiler directive. The parser inserts the corresponding action in the Idris monad.
+   | PDirective Directive -- ^ Compiler directive.
    | PProvider (Docstring (Either Err PTerm)) SyntaxInfo FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term
    | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
                             -- bool is True, lhs and rhs must be convertible
@@ -637,6 +637,22 @@ data PDecl' t
 deriving instance Binary PDecl'
 deriving instance NFData PDecl'
 !-}
+
+-- | The set of source directives
+data Directive = DLib Codegen String |
+                 DLink Codegen String |
+                 DFlag Codegen String |
+                 DInclude Codegen String |
+                 DHide Name |
+                 DFreeze Name |
+                 DAccess Accessibility |
+                 DDefault Bool |
+                 DLogging Integer |
+                 DDynamicLibs [String] |
+                 DNameHint Name [Name] |
+                 DErrorHandlers Name Name [Name] |
+                 DLanguage LanguageExt |
+                 DUsed FC Name Name
 
 -- | A set of instructions for things that need to happen in IState
 -- after a term elaboration when there's been reflected elaboration.
