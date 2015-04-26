@@ -771,6 +771,7 @@ Library
                 , Idris.DataOpts
                 , Idris.DeepSeq
                 , Idris.Delaborate
+                , Idris.Directives
                 , Idris.Docs
                 , Idris.Docstrings
                 , Idris.ElabDecls

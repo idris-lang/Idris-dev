@@ -1077,71 +1077,44 @@ Directive' ::= 'lib'            CodeGen String_t
 -}
 directive :: SyntaxInfo -> IdrisParser [PDecl]
 directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- stringLiteral;
-                   return [PDirective (do addLib cgn lib
-                                          addIBC (IBCLib cgn lib))]
+                   return [PDirective (DLib cgn lib)]
              <|> do try (lchar '%' *> reserved "link"); cgn <- codegen_; obj <- stringLiteral;
-                    return [PDirective (do dirs <- allImportDirs
-                                           o <- liftIO $ findInPath dirs obj
-                                           addIBC (IBCObj cgn obj) -- just name, search on loading ibc
-                                           addObjectFile cgn o)]
-             <|> do try (lchar '%' *> reserved "flag"); cgn <- codegen_;
-                    flag <- stringLiteral
-                    return [PDirective (do addIBC (IBCCGFlag cgn flag)
-                                           addFlag cgn flag)]
+                    return [PDirective (DLink cgn obj)]
+             <|> do try (lchar '%' *> reserved "flag"); cgn <- codegen_; flag <- stringLiteral
+                    return [PDirective (DFlag cgn flag)]
              <|> do try (lchar '%' *> reserved "include"); cgn <- codegen_; hdr <- stringLiteral;
-                    return [PDirective (do addHdr cgn hdr
-                                           addIBC (IBCHeader cgn hdr))]
+                    return [PDirective (DInclude cgn hdr)]
              <|> do try (lchar '%' *> reserved "hide"); n <- fnName
-                    return [PDirective (do setAccessibility n Hidden
-                                           addIBC (IBCAccess n Hidden))]
+                    return [PDirective (DHide n)]
              <|> do try (lchar '%' *> reserved "freeze"); n <- iName []
-                    return [PDirective (do setAccessibility n Frozen
-                                           addIBC (IBCAccess n Frozen))]
+                    return [PDirective (DFreeze n)]
              <|> do try (lchar '%' *> reserved "access"); acc <- accessibility
-                    return [PDirective (do i <- get
-                                           put(i { default_access = acc }))]
+                    return [PDirective (DAccess acc)]
              <|> do try (lchar '%' *> reserved "default"); tot <- totality
                     i <- get
                     put (i { default_total = tot } )
-                    return [PDirective (do i <- get
-                                           put(i { default_total = tot }))]
+                    return [PDirective (DDefault tot)]
              <|> do try (lchar '%' *> reserved "logging"); i <- natural;
-                    return [PDirective (setLogLevel (fromInteger i))]
+                    return [PDirective (DLogging i)]
              <|> do try (lchar '%' *> reserved "dynamic"); libs <- sepBy1 stringLiteral (lchar ',');
-                    return [PDirective (do added <- addDyLib libs
-                                           case added of
-                                             Left lib -> addIBC (IBCDyLib (lib_name lib))
-                                             Right msg ->
-                                                 fail $ msg)]
+                    return [PDirective (DDynamicLibs libs)]
              <|> do try (lchar '%' *> reserved "name")
                     ty <- fnName
                     ns <- sepBy1 name (lchar ',')
-                    return [PDirective (do ty' <- disambiguate ty
-                                           mapM_ (addNameHint ty') ns
-                                           mapM_ (\n -> addIBC (IBCNameHint (ty', n))) ns)]
+                    return [PDirective (DNameHint ty ns)]
              <|> do try (lchar '%' *> reserved "error_handlers")
                     fn <- fnName
                     arg <- fnName
                     ns <- sepBy1 name (lchar ',')
-                    return [PDirective (do fn' <- disambiguate fn
-                                           ns' <- mapM disambiguate ns
-                                           addFunctionErrorHandlers fn' arg ns'
-                                           mapM_ (addIBC . IBCFunctionErrorHandler fn' arg) ns')]
+                    return [PDirective (DErrorHandlers fn arg ns) ]
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
-                    return [PDirective (addLangExt ext)]
+                    return [PDirective (DLanguage ext)]
              <|> do fc <- getFC
                     try (lchar '%' *> reserved "used")
                     fn <- fnName
                     arg <- iName []
-                    return [PDirective (addUsedName fc fn arg)]
-
+                    return [PDirective (DUsed fc fn arg)]
              <?> "directive"
-  where disambiguate :: Name -> Idris Name
-        disambiguate n = do i <- getIState
-                            case lookupCtxtName n (idris_implicits i) of
-                              [(n', _)] -> return n'
-                              []        -> throwError (NoSuchVariable n)
-                              more      -> throwError (CantResolveAlts (map fst more))
 
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)

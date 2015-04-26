@@ -8,6 +8,7 @@ import Idris.ASTUtils
 import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
+import Idris.Directives
 import Idris.Imports
 import Idris.Elab.Term
 import Idris.Coverage
@@ -250,7 +251,7 @@ elabDecl' _ info (PDSL n dsl)
          putIState (i { idris_dsls = addDef n dsl (idris_dsls i) })
          addIBC (IBCDSL n)
 elabDecl' what info (PDirective i)
-  | what /= EDefns = i
+  | what /= EDefns = directiveAction i
 elabDecl' what info (PProvider doc syn fc provWhat n)
   | what /= EDefns
     = do iLOG $ "Elaborating type provider " ++ show n
