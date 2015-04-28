@@ -1,6 +1,7 @@
 module Data.CoList
 
 %access public
+-- %default total
 
 ||| Idris will know that it always can produce a new element in finite time
 codata CoList : Type -> Type where
@@ -23,10 +24,14 @@ instance Functor CoList where
   map f (x::xs) = f x :: map f xs
 
 instance Show a => Show (CoList a) where
-    show xs = "[" ++ show' "" xs ++ "]" where
-        show' acc []        = acc
-        show' acc [x]       = acc ++ show x
-        show' acc (x :: xs) = show' (acc ++ show x ++ ", ") xs
+  show xs = "[" ++ show' "" 20 xs ++ "]" where
+    show' : String -> (n : Nat) -> (xs : CoList a) -> String
+    show' acc Z _             = acc
+    show' acc (S n) []        = acc
+    show' acc (S n) [x]       = acc ++ show x
+    show' acc (S n) (x :: xs) =
+      if n > 0 then show' (acc ++ (show x) ++ ", ") n xs
+               else acc ++ (show x) ++ "..."
 
 ||| Take the first `n` elements of `xs`
 |||
