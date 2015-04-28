@@ -41,7 +41,7 @@ import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word16
-ibcVersion = 106
+ibcVersion = 107
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,

@@ -51,6 +51,13 @@ instance NFData Provenance where
         rnf (SourceTerm x1) = rnf x1 `seq` ()
         rnf (TooManyArgs x1) = rnf x1 `seq` ()
 
+instance NFData UConstraint where
+  rnf (ULT x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+  rnf (ULE x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+
+instance NFData ConstraintFC where
+  rnf (ConstraintFC x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+
 instance NFData Err where
         rnf (Msg x1) = rnf x1 `seq` ()
         rnf (InternalMsg x1) = rnf x1 `seq` ()
@@ -86,7 +93,7 @@ instance NFData Err where
         rnf (CantResolveAlts x1) = rnf x1 `seq` ()
         rnf (IncompleteTerm x1) = rnf x1 `seq` ()
         rnf (NoEliminator x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf UniverseError = ()
+        rnf (UniverseError x1 x2 x3 x4 x5) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
         rnf ProgramLineComment = ()
         rnf (Inaccessible x1) = rnf x1 `seq` ()
         rnf (NonCollapsiblePostulate x1) = rnf x1 `seq` ()
