@@ -1818,7 +1818,7 @@ runTactical fc env tm = do tm' <- eval tm
              Nothing -> debugElaborator Nothing
              Just (Constant (Str m)) -> debugElaborator (Just m)
              Just x -> lift . tfail . InternalMsg $ "Can't reify message for debugging: " ++ show x
-    runTacTm x = lift . tfail . InternalMsg $ "tactical is not implemented for " ++ show x
+    runTacTm x = lift . tfail $ ElabScriptStuck x
 
 -- Running tactics directly
 -- if a tactic adds unification problems, return an error
