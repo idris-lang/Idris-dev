@@ -26,12 +26,10 @@ instance Functor CoList where
 instance Show a => Show (CoList a) where
   show xs = "[" ++ show' "" 20 xs ++ "]" where
     show' : String -> (n : Nat) -> (xs : CoList a) -> String
-    show' acc Z _             = acc
+    show' acc Z _             = acc ++ "..."
     show' acc (S n) []        = acc
     show' acc (S n) [x]       = acc ++ show x
-    show' acc (S n) (x :: xs) =
-      if n > 0 then show' (acc ++ (show x) ++ ", ") n xs
-               else acc ++ (show x) ++ ", ..."
+    show' acc (S n) (x :: xs) = show' (acc ++ (show x) ++ ", ") n xs
 
 ||| Take the first `n` elements of `xs`
 |||
