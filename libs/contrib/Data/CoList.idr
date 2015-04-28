@@ -1,7 +1,7 @@
 module Data.CoList
 
 %access public
--- %default total
+%default total
 
 ||| Idris will know that it always can produce a new element in finite time
 codata CoList : Type -> Type where
