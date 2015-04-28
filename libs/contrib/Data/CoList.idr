@@ -3,11 +3,9 @@ module Data.CoList
 %access public
 
 ||| Idris will know that it always can produce a new element in finite time
-codata CoList : Type -> Type
-  where {
-    Nil : CoList a;
-    (::) : a -> CoList a -> CoList a
-  }
+codata CoList : Type -> Type where
+  Nil : CoList a
+  (::) : a -> CoList a -> CoList a
 
 ||| Take the first `n` elements of `xs`
 |||
