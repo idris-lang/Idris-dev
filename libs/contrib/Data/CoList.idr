@@ -31,7 +31,7 @@ instance Show a => Show (CoList a) where
     show' acc (S n) [x]       = acc ++ show x
     show' acc (S n) (x :: xs) =
       if n > 0 then show' (acc ++ (show x) ++ ", ") n xs
-               else acc ++ (show x) ++ "..."
+               else acc ++ (show x) ++ ", ..."
 
 ||| Take the first `n` elements of `xs`
 |||
