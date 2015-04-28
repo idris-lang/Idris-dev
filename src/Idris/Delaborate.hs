@@ -311,7 +311,14 @@ pprintErr' i (NoEliminator s t)
     text "Please note that 'induction' is experimental." <$>
     text "Only types declared with '%elim' can be used." <$>
     text "Consider writing a pattern matching definition instead."
-pprintErr' i UniverseError = text "Universe inconsistency"
+pprintErr' i (UniverseError fc uexp old new suspects) =
+  text "Universe inconsistency." <>
+  (indented . vsep) [ text "Working on:" <+> text (show uexp)
+                    , text "Old domain:" <+> text (show old)
+                    , text "New domain:" <+> text (show new)
+                    , text "Involved constraints:" <+>
+                      (indented . vsep) (map (text . show) suspects)
+                    ]
 pprintErr' i (UniqueError NullType n)
            = text "Borrowed name" <+> annName' n (showbasic n)
                   <+> text "must not be used on RHS"

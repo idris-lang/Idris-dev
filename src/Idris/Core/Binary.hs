@@ -3,6 +3,9 @@
 {-| Binary instances for the core datatypes -}
 module Idris.Core.Binary where
 
+import Control.Applicative ((<*>), (<$>))
+import Control.Monad (liftM2)
+
 import Data.Binary
 import Data.Vector.Binary
 import qualified Data.Text as T
@@ -42,6 +45,22 @@ instance Binary Provenance where
              4 -> do x1 <- get
                      return (TooManyArgs x1)
              _ -> error "Corrupted binary data for Provenance"
+
+instance Binary UConstraint where
+  put (ULT x1 x2) = putWord8 0 >> put x1 >> put x2
+  put (ULE x1 x2) = putWord8 1 >> put x1 >> put x2
+  get = do i <- getWord8
+           case i of
+             0 -> ULT <$> get <*> get
+             1 -> ULE <$> get <*> get
+             _ -> error "Corrupted binary data for UConstraint"
+
+instance Binary ConstraintFC where
+  put (ConstraintFC x1 x2) = putWord8 0 >> put x1 >> put x2
+  get = do i <- getWord8
+           case i of
+             0 -> liftM2 ConstraintFC get get
+             _ -> error "Corrupted binary data for ConstraintFC"
 
 instance Binary a => Binary (Err' a) where
   put (Msg str) = do putWord8 0
@@ -97,7 +116,12 @@ instance Binary a => Binary (Err' a) where
                                 put ns
   put (IncompleteTerm t) = do putWord8 17
                               put t
-  put UniverseError = putWord8 18
+  put (UniverseError x1 x2 x3 x4 x5) = do putWord8 18
+                                          put x1
+                                          put x2
+                                          put x3
+                                          put x4
+                                          put x5
   put (UniqueError u n) = do putWord8 19
                              put u
                              put n
@@ -181,7 +205,7 @@ instance Binary a => Binary (Err' a) where
              15 -> fmap (CantResolve False) get
              16 -> fmap CantResolveAlts get
              17 -> fmap IncompleteTerm get
-             18 -> return UniverseError
+             18 -> UniverseError <$> get <*> get <*> get <*> get <*> get
              19 -> do x <- get ; y <- get
                       return $ UniqueError x y
              20 -> do x <- get ; y <- get

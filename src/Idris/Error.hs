@@ -32,8 +32,9 @@ iucheck = do tit <- typeInType
              logLvl 7 $ "ALL CONSTRAINTS: " ++ show cs
              when (not tit) $
                    (tclift $ ucheck (idris_constraints ist)) `idrisCatch`
-                              (\e -> do setErrSpan (getErrSpan e)
-                                        iputStrLn (pshow ist e))
+                              (\e -> do let fc = getErrSpan e
+                                        setErrSpan fc
+                                        iWarn fc $ pprintErr ist e)
 
 showErr :: Err -> Idris String
 showErr e = getIState >>= return . flip pshow e
@@ -67,6 +68,7 @@ ierror = throwError
 tclift :: TC a -> Idris a
 tclift (OK v) = return v
 tclift (Error err@(At fc e)) = do setErrSpan fc; throwError err
+tclift (Error err@(UniverseError fc _ _ _ _)) = do setErrSpan fc; throwError err
 tclift (Error err) = throwError err
 
 tctry :: TC a -> TC a -> Idris a
@@ -77,6 +79,7 @@ tctry tc1 tc2
 
 getErrSpan :: Err -> FC
 getErrSpan (At fc _) = fc
+getErrSpan (UniverseError fc _ _ _ _) = fc
 getErrSpan _ = emptyFC
 
 --------------------------------------------------------------------

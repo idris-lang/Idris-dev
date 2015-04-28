@@ -847,7 +847,9 @@ reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [
 reflectErr (NoEliminator str t) 
   = raw_apply (Var $ reflErrName "NoEliminator") [RConstant (Str str),
                                                   reflect t]
-reflectErr UniverseError = Var $ reflErrName "UniverseError"
+reflectErr (UniverseError fc ue old new tys) =
+  -- NB: loses information, but OK because this is not likely to be rewritten
+  Var $ reflErrName "UniverseError"
 reflectErr ProgramLineComment = Var $ reflErrName "ProgramLineComment"
 reflectErr (Inaccessible n) = raw_apply (Var $ reflErrName "Inaccessible") [reflectName n]
 reflectErr (NonCollapsiblePostulate n) = raw_apply (Var $ reflErrName "NonCollabsiblePostulate") [reflectName n]
