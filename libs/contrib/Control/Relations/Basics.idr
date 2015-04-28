@@ -1,5 +1,5 @@
 ||| General definitions and theorems about relations
-module Relations
+module Relations.Basics
 
 %default total
 %access public
@@ -164,7 +164,7 @@ transitiveTotalIsComparison trns tot x y z yz with (tot x y)
 
 -- TODO Figure out how to get rid of this.
 
-Relations.cmptrns_rhs_3 = proof
+Relations.Basics.cmptrns_rhs_3 = proof
   intros
   rewrite yEQx 
   exact yz
