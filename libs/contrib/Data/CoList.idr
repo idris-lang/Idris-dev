@@ -7,8 +7,6 @@ codata CoList : Type -> Type where
   Nil : CoList a
   (::) : a -> CoList a -> CoList a
 
-infixr 7 ++
-
 ||| Append two CoLists
 (++) : CoList a -> CoList a -> CoList a
 (++) []      right = right
