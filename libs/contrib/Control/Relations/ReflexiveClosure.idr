@@ -2,59 +2,62 @@
 ||| reflexive closure.
 module Relations.ReflexiveClosure
 import Basics
-import Equivalence
 
 %default total
 %access public
 
-
 ||| Take the reflexive closure of a relation
-data RC : Rel a -> Rel a where
-  RCIncl : rel x y -> RC rel x y
-  RCRefl : RC rel x x
-
-rcRefl : {rel : Rel a} -> Reflexive (RC rel)
-rcRefl _ = RCRefl
+data RC : (eq : Rel a) -> Rel a -> Rel a where
+  RCIncl : rel x y -> RC eq rel x y
+  RCRefl : eq x y -> RC eq rel x y
 
 ||| The reflexive closure is the coarsest finer reflexive relation.
-rcSmallest : {rel, rel' : Rel a} -> rel `Coarser` rel' -> Reflexive rel' ->
-             RC rel `Coarser` rel'
-rcSmallest {a} rcr' ref' x y (RCIncl xy) = rcr' _ _ xy
-rcSmallest {a} rcr' ref' x x RCRefl = ref' x
+rcSmallest : {rel, rel' : Rel a} -> rel `Coarser` rel' -> Reflexive eq rel' ->
+             RC eq rel `Coarser` rel'
+rcSmallest {a} rcr' ref' x y (RCIncl xRELy) = rcr' _ _ xRELy
+rcSmallest {a} rcr' ref' x y (RCRefl xEQy) = ref' x y xEQy
 
 ||| The reflexive closure of a transitive relation is transitive.
-rcTransTrans : {rel : Rel a} -> Transitive rel -> Transitive (RC rel)
-rcTransTrans trns x y z (RCIncl xy) (RCIncl yz) = RCIncl (trns _ _ _ xy yz)
-rcTransTrans trns x z z xz RCRefl = xz
-rcTransTrans trns x x z RCRefl xz = xz
+rcTransTrans : {rel : Rel a} -> (eqEquiv : Equivalence eq) -> (rel `Respects2` eq) ->
+               Transitive rel -> Transitive (RC eq rel)
+rcTransTrans _ relRespEq trns x y z (RCIncl xy) (RCIncl yz) = RCIncl (trns _ _ _ xy yz)
+rcTransTrans _ (f,g) trns x y z (RCIncl xRy) (RCRefl yEz) = RCIncl (f _ _ _ yEz xRy)
+rcTransTrans eqEquiv (f,g) trns x y z (RCRefl xEy) (RCIncl yRz) =
+  let yEx = getSymmetric eqEquiv x y xEy
+  in RCIncl (g _ _ _ yEx yRz)
+rcTransTrans eqEquiv relRespEq trns x y z (RCRefl xy) (RCRefl yz) =
+  RCRefl (getTransitive eqEquiv x y z xy yz)
+
 
 ||| The reflexive closure of an asymmetric relation is antisymmetric.
-rcAsymmetricAntisymmetric : {rel : Rel a} -> Asymmetric rel ->
-                            Antisymmetric (RC rel)
-rcAsymmetricAntisymmetric asym x y (RCIncl xy) (RCIncl yx) =
+rcAsymmetricAntisymmetric : {rel : Rel a} -> rel `Respects2` eq ->
+                            Asymmetric rel -> Antisymmetric eq (RC eq rel)
+rcAsymmetricAntisymmetric relRespEq asym x y (RCIncl xy) (RCIncl yx) =
   absurd $ asym _ _ xy yx
-rcAsymmetricAntisymmetric asym x x RCRefl xx = Refl
-rcAsymmetricAntisymmetric asym x x xx RCRefl = Refl
+rcAsymmetricAntisymmetric relRespEq asym x y (RCRefl xy) yx  = xy
+rcAsymmetricAntisymmetric (f,g) asym x y (RCIncl xRy) (RCRefl yEx)  =
+  let xRx = f _ _ _ yEx xRy
+  in absurd $ asym x x xRx xRx
 
-rcInflationary : {a : Type} -> Inflationary (RC {a})
-rcInflationary rel x y xy = RCIncl xy
+rcInflationary : Inflationary (RC eq)
+rcInflationary {eq} rel x y xy = RCIncl xy
 
-rcIncreasing : {a : Type} -> Increasing (RC {a})
+rcIncreasing : Increasing (RC eq)
 rcIncreasing rel1 rel2 f x y (RCIncl xy) = RCIncl (f x y xy)
-rcIncreasing rel1 rel2 f x x RCRefl = RCRefl
+rcIncreasing rel1 rel2 f x y (RCRefl xEQy) = RCRefl xEQy
 
-rcIdempotent : {a : Type} -> Idempotent (RC {a})
-rcIdempotent {a} rel = MkEquivalent yeah that
+rcIdempotent : {a:Type} -> Idempotent (RC {a} eq)
+rcIdempotent {a} {eq} rel = MkEquivalent yeah that
       where
-        yeah : (x : a) -> (y : a) -> RC rel x y -> RC (RC rel) x y
-        yeah x y (RCIncl z) = RCIncl (RCIncl z)
-        yeah x x RCRefl = RCRefl
-
-        that : (x : a) -> (y : a) -> RC (RC rel) x y -> RC rel x y
+        that : (x : a) -> (y : a) -> RC eq (RC eq rel) x y -> RC eq rel x y
         that x y (RCIncl z) = z
-        that x x RCRefl = RCRefl
+        that x y (RCRefl xEQy) = RCRefl xEQy
+
+        yeah : (x : a) -> (y : a) -> RC eq rel x y -> RC eq (RC eq rel) x y
+        yeah x y (RCIncl z) = RCIncl (RCIncl z)
+        yeah x y (RCRefl xEQy) = RCIncl (RCRefl xEQy)
+
 
 ||| Reflexive closure is a closure operator
-rcIsClosureOperator : ClosureOperator RC
+rcIsClosureOperator : ClosureOperator (RC eq)
 rcIsClosureOperator = MkClosureOperator rcInflationary rcIncreasing rcIdempotent
-

@@ -1,7 +1,7 @@
 ||| General definitions and theorems about relations
 module Relations.TransitiveClosure
 import Basics
-import Equivalence
+
 %default total
 %access public
 
@@ -51,8 +51,8 @@ tcIdempotent {a} rel = MkEquivalent this that
 tcIsClosureOperator : ClosureOperator TC
 tcIsClosureOperator = MkClosureOperator tcInflationary tcIncreasing tcIdempotent
 
-tcReflRefl : {rel : Rel a} -> Reflexive rel -> Reflexive (TC rel)
-tcReflRefl {rel} f x = TCIncl (f x)
+tcReflRefl : {rel : Rel a} -> Reflexive eq rel -> Reflexive eq (TC rel)
+tcReflRefl rfl x y xEQy = TCIncl (rfl x y xEQy)
 
 ||| Alternative definition of transitive closure
 data TC' : Rel a -> Rel a where
