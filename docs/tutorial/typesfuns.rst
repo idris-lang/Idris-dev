@@ -973,8 +973,8 @@ Dependent Records
 
 *Records* are data types which collect several values (the record's
 *fields*) together. Idris provides syntax for defining records and
-*automatically generating field access and update functions. For
-*example, we can represent a person's name and age in a record:
+*automatically generating field access and update functions*. For
+example, we can represent a person's name and age in a record:
 
 .. code-block:: idris
 
