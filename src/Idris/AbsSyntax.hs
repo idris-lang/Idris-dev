@@ -2023,6 +2023,7 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PHidden x) = PHidden (sm xs x)
     sm xs (PUnifyLog x) = PUnifyLog (sm xs x)
     sm xs (PNoImplicits x) = PNoImplicits (sm xs x)
+    sm xs (PRunElab fc script) = PRunElab fc (sm xs script)
     sm xs x = x
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
