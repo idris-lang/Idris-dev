@@ -380,7 +380,7 @@ pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
-pprintErr' i (ElabDebug msg tm holes) =
+pprintErr' i (ElabScriptDebug msg tm holes) =
   text "Elaboration halted." <>
   maybe empty (indented . text) msg <> line <>
   text "Term: " <> indented (pprintTT [] tm) <> line <>
@@ -401,6 +401,9 @@ pprintErr' i (ElabDebug msg tm holes) =
           pprintTT ns (binderTy b) <>
           line <>
           ppAssumptions (n:ns) rest
+pprintErr' i (ElabScriptStuck tm) =
+  text "Can't run" <+> pprintTT [] tm <+> text "as an elaborator script." <$>
+  text "Is it a stuck term?"
 
 -- | Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly

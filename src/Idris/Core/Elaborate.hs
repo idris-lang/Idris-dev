@@ -788,7 +788,7 @@ try' t1 t2 proofSearch
         recoverableErr (ProofSearchFail _) = False
         recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
         recoverableErr (At _ e) = recoverableErr e
-        recoverableErr (ElabDebug _ _ _) = False
+        recoverableErr (ElabScriptDebug _ _ _) = False
         recoverableErr _ = True
 
 tryCatch :: Elab' aux a -> (Err -> Elab' aux a) -> Elab' aux a
@@ -872,7 +872,7 @@ debugElaborator msg = do ps <- fmap proof get
                          hs <- get_holes
                          holeInfo <- mapM getHoleInfo hs
                          loadState
-                         lift . Error $ ElabDebug msg (getProofTerm (pterm ps)) holeInfo
+                         lift . Error $ ElabScriptDebug msg (getProofTerm (pterm ps)) holeInfo
   where getHoleInfo :: Name -> Elab' aux (Name, Type, [(Name, Binder Type)])
         getHoleInfo h = do focus h
                            g <- goal
