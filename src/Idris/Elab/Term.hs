@@ -15,7 +15,7 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
-import Idris.Core.Typecheck (check, recheck)
+import Idris.Core.Typecheck (check, recheck, isType)
 import Idris.Coverage (buildSCG, checkDeclTotality, genClauses, recoverableCoverage, validCoverageCase)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
@@ -1100,7 +1100,9 @@ elab ist info emode opts fn tm
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
          n' <- getNameFrom (sMN 0 "tacticExpr")
-         let scriptTy = RApp (Var (sNS (sUN "Elab") ["Elab", "Reflection", "Language"])) (Var unitTy)
+         let scriptTy = RApp (Var (sNS (sUN "Elab")
+                                  ["Elab", "Reflection", "Language"]))
+                             (Var unitTy)
          claim n scriptTy
          movelast n
          letbind n' scriptTy (Var n)
@@ -1108,11 +1110,10 @@ elab ist info emode opts fn tm
          elab' ina (Just fc') tm
          env <- get_env
          runTactical (maybe fc' id fc) env (P Bound n' Erased)
-         EState _ _ todo <- getAux
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
-    delayElab t = updateAux (\e -> e { delayed_elab = delayed_elab e ++ [t] }) 
+    delayElab t = updateAux (\e -> e { delayed_elab = delayed_elab e ++ [t] })
 
     isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))
     isScr (PRef _ n) (n', b) = (n', (n == n', b))
@@ -1623,6 +1624,7 @@ runTactical fc env tm = do tm' <- eval tm
                            return ()
   where
     eval tm = do ctxt <- get_context
+                 env <- get_env
                  return $ normaliseAll ctxt env (finalise tm)
 
     returnUnit = fmap fst $ get_type_val (Var unitCon)
@@ -1737,7 +1739,7 @@ runTactical fc env tm = do tm' <- eval tm
       = return tm
       | n == tacN "prim__BindElab", [_a, _b, first, andThen] <- args
       = do first' <- eval first
-           res <- runTacTm first'
+           res <- eval =<< runTacTm first'
            next <- eval (App Complete andThen res)
            runTacTm next
       | n == tacN "prim__Try", [_a, first, alt] <- args
@@ -1745,7 +1747,7 @@ runTactical fc env tm = do tm' <- eval tm
            alt' <- eval alt
            try' (runTacTm first') (runTacTm alt') True
       | n == tacN "prim__Fill", [raw] <- args
-      = do raw' <- reifyRaw raw
+      = do raw' <- reifyRaw =<< eval raw
            apply raw' []
            returnUnit
       | n == tacN "prim__Gensym", [hint] <- args
@@ -1784,6 +1786,19 @@ runTactical fc env tm = do tm' <- eval tm
                   Just name -> fmap Just $ reifyTTName name
            intro n
            returnUnit
+      | n == tacN "prim__Forall", [n, ty] <- args
+      = do n' <- reifyTTName n
+           ty' <- reifyRaw ty
+           forall n' Nothing ty'
+           returnUnit
+      | n == tacN "prim__PatVar", [n] <- args
+      = do n' <- reifyTTName n
+           patvar n'
+           returnUnit
+      | n == tacN "prim__PatBind", [n] <- args
+      = do n' <- reifyTTName n
+           patbind n'
+           returnUnit
       | n == tacN "prim__DeclareType", [decl] <- args
       = do (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context
@@ -1812,6 +1827,26 @@ runTactical fc env tm = do tm' <- eval tm
       = do defn <- reifyFunDefn decl
            defineFunction defn
            returnUnit
+      | n == tacN "prim__RecursiveElab", [goal, script] <- args
+      = do goal' <- reifyRaw goal
+           ctxt <- get_context
+           script <- eval script
+           (goalTT, goalTy) <- lift $ check ctxt [] goal'
+           lift $ isType ctxt [] goalTy
+           recH <- getNameFrom (sMN 0 "recElabHole")
+           aux <- getAux
+           datatypes <- get_datatypes
+           env <- get_env
+           (tm_out, ES (_, aux') _ _) <-
+              lift $ runElab aux (runTactical fc env script >> solve >> get_term)
+                             (newProof recH ctxt datatypes goalTT)
+           updateAux $ const aux'
+           env' <- get_env
+           (tm, ty, _) <- lift $ recheck ctxt env (forget tm_out) tm_out
+           let (tm', ty') = (reflect tm, reflect ty)
+           fmap fst . get_type_val $
+             rawPair (Var $ reflm "TT", Var $ reflm "TT")
+                     (tm', ty')
       | n == tacN "prim__Debug", [ty, msg] <- args
       = do let msg' = fromTTMaybe msg
            case msg' of

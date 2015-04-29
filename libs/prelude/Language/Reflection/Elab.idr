@@ -65,9 +65,14 @@ data Elab : Type -> Type where
 
   prim__Claim : TTName -> Raw -> Elab ()
   prim__Intro : Maybe TTName -> Elab ()
+  prim__Forall : TTName -> Raw -> Elab ()
+  prim__PatVar : TTName -> Elab ()
+  prim__PatBind : TTName -> Elab ()
 
   prim__DeclareType : TyDecl -> Elab ()
   prim__DefineFunction : FunDefn -> Elab ()
+
+  prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
 
   prim__Debug : {a : Type} -> Maybe String -> Elab a
 
@@ -150,8 +155,26 @@ attack = prim__Attack
 claim : TTName -> Raw -> Elab ()
 claim n ty = prim__Claim n ty
 
-intro : Maybe TTName -> Elab ()
+||| Introduce a lambda binding around the current hole and focus on
+||| the body. Requires that the hole be in binding form (use
+||| `attack`).
+|||
+||| @ n the name to use for the argument, or `Nothing` to use the name
+|||   in the corresponding hole type (a dependent function)
+intro : (n : Maybe TTName) -> Elab ()
 intro n = prim__Intro n
+
+||| Introduce a dependent function type binding into the current hole,
+||| and focus on the body.
+forall : TTName -> Raw -> Elab ()
+forall n ty = prim__Forall n ty
+
+patvar : TTName -> Elab ()
+patvar n = prim__PatVar n
+
+patbind : TTName -> Elab ()
+patbind n = prim__PatBind n
+
 
 ||| Find out the present source context for the tactic script
 getSourceLocation : Elab SourceLocation
@@ -174,6 +197,9 @@ defineFunction defun = prim__DefineFunction defun
 
 debug : Elab a
 debug = prim__Debug Nothing
+
+runElab : Raw -> Elab () -> Elab (TT, TT)
+runElab goal script = prim__RecursiveElab goal script
 
 debugMessage : String -> Elab a
 debugMessage msg = prim__Debug (Just msg)
