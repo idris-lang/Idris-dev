@@ -136,7 +136,7 @@ warnDisamb ist (PCoerced tm) = warnDisamb ist tm
 warnDisamb ist (PDisamb ds tm) = warnDisamb ist tm >>
                                  mapM_ warnEmpty ds
   where warnEmpty d =
-          when (null (filter (isIn d . fst) (ctxtAlist (tt_ctxt ist)))) $
+          when (not (any (isIn d . fst) (ctxtAlist (tt_ctxt ist)))) $
             ierror . Msg $
               "Nothing found in namespace \"" ++
               intercalate "." (map T.unpack d) ++

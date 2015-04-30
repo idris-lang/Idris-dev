@@ -280,19 +280,19 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
        = insertDefaults i iname defs ns (insertDef i n dn clauses ns iname ds)
 
     insertDef i meth def clauses ns iname decls
-        | null $ filter (clauseFor meth iname ns) decls
+        | not $ any (clauseFor meth iname ns) decls
             = let newd = expandParamsD False i (\n -> meth) [] [def] clauses in
                   -- trace (show newd) $
                   decls ++ [newd]
         | otherwise = decls
 
     warnMissing decls ns iname meth
-        | null $ filter (clauseFor meth iname ns) decls
+        | not $ any (clauseFor meth iname ns) decls
             = iWarn fc . text $ "method " ++ show meth ++ " not defined"
         | otherwise = return ()
 
     checkInClass ns meth
-        | not (null (filter (eqRoot meth) ns)) = return ()
+        | any (eqRoot meth) ns = return ()
         | otherwise = tclift $ tfail (At fc (Msg $
                                 show meth ++ " not a method of class " ++ show n))
 
