@@ -57,6 +57,7 @@ data Elab : Type -> Type where
 
   prim__Solve : Elab ()
   prim__Fill : Raw -> Elab ()
+  prim__Apply : Raw -> Elab ()
   prim__Focus : TTName -> Elab ()
   prim__Unfocus : TTName -> Elab ()
   prim__Attack : Elab ()
@@ -142,6 +143,10 @@ solve = prim__Solve
 
 fill : Raw -> Elab ()
 fill tm = prim__Fill tm
+
+||| Fill with unification
+apply : Raw -> Elab ()
+apply tm = prim__Apply tm
 
 focus : (hole : TTName) -> Elab ()
 focus hole = prim__Focus hole

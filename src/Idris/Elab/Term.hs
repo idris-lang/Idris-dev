@@ -1748,6 +1748,10 @@ runTactical fc env tm = do tm' <- eval tm
            try' (runTacTm first') (runTacTm alt') True
       | n == tacN "prim__Fill", [raw] <- args
       = do raw' <- reifyRaw =<< eval raw
+           fill raw'
+           returnUnit
+      | n == tacN "prim__Apply", [raw] <- args
+      = do raw' <- reifyRaw =<< eval raw
            apply raw' []
            returnUnit
       | n == tacN "prim__Gensym", [hint] <- args

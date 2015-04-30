@@ -647,7 +647,7 @@ codegenH es = mapM_ writeIFace es
 
 writeIFace :: ExportIFace -> IO ()
 writeIFace (Export ffic hdr exps)
-   | ffic == sUN "FFI_C"
+   | ffic == sNS (sUN "FFI_C") ["FFI_C"]
        = do let hfile = "#ifndef " ++ hdr_guard hdr ++ "\n" ++
                         "#define " ++ hdr_guard hdr ++ "\n\n" ++
                         "#include <idris_rts.h>\n\n" ++

@@ -1011,12 +1011,12 @@ lookupP = lookupP_all False
 
 lookupP_all :: Bool -> Name -> Context -> [Term]
 lookupP_all all n ctxt
-   = do def <- lookupCtxt n (definitions ctxt)
+   = do (n', def) <- lookupCtxtName n (definitions ctxt)
         p <- case def of
-          (Function ty tm, a, _, _)      -> return (P Ref n ty, a)
-          (TyDecl nt ty, a, _, _)        -> return (P nt n ty, a)
-          (CaseOp _ ty _ _ _ _, a, _, _) -> return (P Ref n ty, a)
-          (Operator ty _ _, a, _, _)     -> return (P Ref n ty, a)
+          (Function ty tm, a, _, _)      -> return (P Ref n' ty, a)
+          (TyDecl nt ty, a, _, _)        -> return (P nt n' ty, a)
+          (CaseOp _ ty _ _ _ _, a, _, _) -> return (P Ref n' ty, a)
+          (Operator ty _ _, a, _, _)     -> return (P Ref n' ty, a)
         case snd p of
           Hidden -> if all then return (fst p) else []
           _      -> return (fst p)
