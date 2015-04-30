@@ -209,8 +209,8 @@ findAllUsedArgs sc topargs = filter (\x -> x `elem` topargs) (nu' sc) where
 isUsed :: SC -> Name -> Bool
 isUsed sc n = used sc where
 
-  used (Case _ n' alts) = n == n' || or (map usedA alts)
-  used (ProjCase t alts) = n `elem` freeNames t || or (map usedA alts)
+  used (Case _ n' alts) = n == n' || any usedA alts
+  used (ProjCase t alts) = n `elem` freeNames t || any usedA alts
   used (STerm t) = n `elem` freeNames t
   used _ = False
 
