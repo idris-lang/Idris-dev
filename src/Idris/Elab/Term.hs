@@ -1076,11 +1076,15 @@ elab ist info emode opts fn tm
     elab' ina fc (PUnquote t) = fail "Found unquote outside of quasiquote"
     elab' ina fc (PQuoteName n) =
       do ctxt <- get_context
-         case lookupNameDef n ctxt of
-           [(n', _)] -> do fill $ reflectName n'
-                           solve
-           [] -> lift . tfail . NoSuchVariable $ n
-           more -> lift . tfail . CantResolveAlts $ map fst more
+         env <- get_env
+         case lookup n env of
+           Just _ -> do fill $ reflectName n ; solve
+           Nothing ->
+             case lookupNameDef n ctxt of
+               [(n', _)] -> do fill $ reflectName n'
+                               solve
+               [] -> lift . tfail . NoSuchVariable $ n
+               more -> lift . tfail . CantResolveAlts $ map fst more
     elab' ina fc (PAs _ n t) = lift . tfail . Msg $ "@-pattern not allowed here"
     elab' ina fc (PHidden t) 
       | reflection = elab' ina fc t
@@ -1748,6 +1752,10 @@ runTactical fc env tm = do tm' <- eval tm
            try' (runTacTm first') (runTacTm alt') True
       | n == tacN "prim__Fill", [raw] <- args
       = do raw' <- reifyRaw =<< eval raw
+           fill raw'
+           returnUnit
+      | n == tacN "prim__Apply", [raw] <- args
+      = do raw' <- reifyRaw =<< eval raw
            apply raw' []
            returnUnit
       | n == tacN "prim__Gensym", [hint] <- args
@@ -1799,6 +1807,8 @@ runTactical fc env tm = do tm' <- eval tm
       = do n' <- reifyTTName n
            patbind n'
            returnUnit
+      | n == tacN "prim__Compute", [] <- args
+      = do compute ; returnUnit
       | n == tacN "prim__DeclareType", [decl] <- args
       = do (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context

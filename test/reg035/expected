@@ -1,4 +1,1 @@
-reg035b.idr:8:6:Can't convert
-        Additive -> Nat
-with
-        Fin 0
+reg035b.idr:8:6:No such variable __pi_arg

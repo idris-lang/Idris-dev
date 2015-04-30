@@ -57,6 +57,7 @@ data Elab : Type -> Type where
 
   prim__Solve : Elab ()
   prim__Fill : Raw -> Elab ()
+  prim__Apply : Raw -> Elab ()
   prim__Focus : TTName -> Elab ()
   prim__Unfocus : TTName -> Elab ()
   prim__Attack : Elab ()
@@ -68,6 +69,8 @@ data Elab : Type -> Type where
   prim__Forall : TTName -> Raw -> Elab ()
   prim__PatVar : TTName -> Elab ()
   prim__PatBind : TTName -> Elab ()
+
+  prim__Compute : Elab ()
 
   prim__DeclareType : TyDecl -> Elab ()
   prim__DefineFunction : FunDefn -> Elab ()
@@ -143,6 +146,10 @@ solve = prim__Solve
 fill : Raw -> Elab ()
 fill tm = prim__Fill tm
 
+||| Fill with unification
+apply : Raw -> Elab ()
+apply tm = prim__Apply tm
+
 focus : (hole : TTName) -> Elab ()
 focus hole = prim__Focus hole
 
@@ -175,6 +182,8 @@ patvar n = prim__PatVar n
 patbind : TTName -> Elab ()
 patbind n = prim__PatBind n
 
+compute : Elab ()
+compute = prim__Compute
 
 ||| Find out the present source context for the tactic script
 getSourceLocation : Elab SourceLocation

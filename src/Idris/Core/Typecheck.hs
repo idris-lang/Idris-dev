@@ -86,8 +86,8 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
       | Just (i, ty) <- lookupTyEnv n env = return (P Bound n ty, ty)
       -- If we're elaborating, we don't want the private names; if we're
       -- checking an already elaborated term, we do
-      | (P nt n' ty : _) <- lookupP_all (not holes) n ctxt 
-           = return (P nt n' ty, ty)
+      | [P nt n' ty] <- lookupP_all (not holes) n ctxt 
+             = return (P nt n' ty, ty)
       | otherwise = do lift $ tfail $ NoSuchVariable n
   chk u env ap@(RApp f RType) | not holes
     -- special case to reduce constraintss
