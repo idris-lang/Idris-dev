@@ -26,7 +26,7 @@ prerequisites, is to type:
 
 This will install the latest version released on Hackage, along with
 any dependencies. If, however, you would like the most up to date
-development version you can find it, as well as build intructions, on
+development version you can find it, as well as build instructions, on
 GitHub at: https://github.com/idris-lang/Idris-dev.
 
 To check that installation has succeeded, and to write your first
