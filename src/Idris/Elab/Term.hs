@@ -1803,6 +1803,8 @@ runTactical fc env tm = do tm' <- eval tm
       = do n' <- reifyTTName n
            patbind n'
            returnUnit
+      | n == tacN "prim__Compute", [] <- args
+      = do compute ; returnUnit
       | n == tacN "prim__DeclareType", [decl] <- args
       = do (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context

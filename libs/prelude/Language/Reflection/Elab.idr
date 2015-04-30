@@ -70,6 +70,8 @@ data Elab : Type -> Type where
   prim__PatVar : TTName -> Elab ()
   prim__PatBind : TTName -> Elab ()
 
+  prim__Compute : Elab ()
+
   prim__DeclareType : TyDecl -> Elab ()
   prim__DefineFunction : FunDefn -> Elab ()
 
@@ -180,6 +182,8 @@ patvar n = prim__PatVar n
 patbind : TTName -> Elab ()
 patbind n = prim__PatBind n
 
+compute : Elab ()
+compute = prim__Compute
 
 ||| Find out the present source context for the tactic script
 getSourceLocation : Elab SourceLocation
