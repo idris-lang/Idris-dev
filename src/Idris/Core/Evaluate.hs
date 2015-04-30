@@ -74,12 +74,12 @@ instance Show (a -> b) where
 -- | Normalise fully type checked terms (so, assume all names/let bindings resolved)
 normaliseC :: Context -> Env -> TT Name -> TT Name
 normaliseC ctxt env t
-   = evalState (do val <- eval False ctxt [] env t []
+   = evalState (do val <- eval False ctxt [] (map finalEntry env) t []
                    quote 0 val) initEval
 
 normaliseAll :: Context -> Env -> TT Name -> TT Name
 normaliseAll ctxt env t
-   = evalState (do val <- eval False ctxt [] env t [AtREPL]
+   = evalState (do val <- eval False ctxt [] (map finalEntry env) t [AtREPL]
                    quote 0 val) initEval
 
 normalise :: Context -> Env -> TT Name -> TT Name
