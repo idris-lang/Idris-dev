@@ -1,5 +1,6 @@
 New in 0.9.18:
 --------------
+* GHC 7.10 compatibility
 * Add support for bundled toolchains.
 * Strings are now UTF8 encoded in the default back end
 * Idris source files are now assumed to be in UTF8, regardless of locale
