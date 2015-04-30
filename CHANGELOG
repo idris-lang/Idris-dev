@@ -31,8 +31,10 @@ New in 0.9.18:
 * The return types of `Vect.findIndex`, `Vect.elemIndex` and
   `Vect.elemIndexBy` were changed from `Maybe Nat` to `Maybe (Fin n)`
 * A new :browse command shows the contents of a namespace
-* `{n} is syntax for a quotation of the reflected representation of the global
-  name n, if it is uniquely determined
+* `{n} is syntax for a quotation of the reflected representation of the name
+  "n". If "n" is lexically bound, then the resulting quotation will be for it,
+  whereas if it is not, then it will succeed with a quotation of the unique
+  global name that matches.
 
 New in 0.9.17:
 --------------
