@@ -5,7 +5,6 @@ quoters and unquoters along with some supporting datatypes.
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
 module Idris.Reflection where
 
-import Control.Applicative ((<$>), (<*>), pure)
 import Control.Monad (liftM, liftM2)
 import Data.Maybe (catMaybes)
 import Data.List ((\\))
