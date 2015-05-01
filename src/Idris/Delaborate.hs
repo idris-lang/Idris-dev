@@ -382,10 +382,11 @@ pprintErr' i (ReflectionFailed msg err) =
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
 pprintErr' i (ElabScriptDebug msg tm holes) =
   text "Elaboration halted." <>
-  maybe empty (indented . text) msg <> line <>
-  text "Term: " <> indented (pprintTT [] tm) <> line <>
+  maybe empty (indented . text) msg <>
+  line <> line <>
   text "Holes:" <>
-  indented (vsep (map ppHole holes))
+  indented (vsep (map ppHole holes)) <> line <> line <>
+  text "Term: " <> indented (pprintTT [] tm)
 
   where ppHole :: (Name, Type, Env) -> Doc OutputAnnotation
         ppHole (hn, goal, env) =
