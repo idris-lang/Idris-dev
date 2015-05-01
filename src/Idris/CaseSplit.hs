@@ -69,7 +69,7 @@ split n t'
         let t = mergeUserImpl (addImplPat ist t') (delab ist tm) 
         let ctxt = tt_ctxt ist
         case lookup n pats of
-             Nothing -> fail $ show n ++ " is not a pattern variable"
+             Nothing -> ifail $ show n ++ " is not a pattern variable"
              Just ty ->
                 do let splits = findPats ist ty
                    iLOG ("New patterns " ++ showSep ", "  
