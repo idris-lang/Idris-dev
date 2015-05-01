@@ -382,12 +382,11 @@ buildDepMap ci used externs ctx startNames
             P (DCon _ _ _) n _ -> conditionalDeps n args  -- depends on whether (n,#) is used
 
             -- mkForeign* calls must be special-cased because they are variadic
-            -- All arguments must be marked as used, except for the first one,
-            -- which is the (Foreign a) spec that defines the type
-            -- and is not needed at runtime.
+            -- All arguments must be marked as used, except for the first four,
+            -- which define the call type and are not needed at runtime.
             P _ (UN n) _
-                | n `elem` map T.pack ["mkForeignPrim"]
-                -> unconditionalDeps args -- (drop 1 args)
+                | n == T.pack "mkForeignPrim"
+                -> unconditionalDeps $ drop 4 args
 
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used
