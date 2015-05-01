@@ -5,7 +5,7 @@ OBJS = idris_rts.o idris_heap.o idris_gc.o idris_gmp.o idris_bitstring.o \
 HDRS = idris_rts.h idris_heap.h idris_gc.h idris_gmp.h idris_bitstring.h \
        idris_opts.h idris_stats.h mini-gmp.h idris_stdfgn.h idris_net.h \
        idris_utf8.h getline.h
-CFLAGS:=-fPIC $(CFLAGS)
+CFLAGS := $(CFLAGS)
 CFLAGS += $(GMP_INCLUDE_DIR) $(GMP) -DIDRIS_TARGET_OS="\"$(OS)\""
 CFLAGS += -DIDRIS_TARGET_TRIPLE="\"$(MACHINE)\""
 
@@ -21,6 +21,7 @@ endif
 ifeq ($(OS), windows)
 	OBJS += windows/idris_stdfgn.o windows/idris_net.o windows/win_utils.o
 else
+	CFLAGS += -fPIC
 	OBJS += idris_stdfgn.o idris_net.o
 endif
 
