@@ -1180,7 +1180,6 @@ Constant ::=
   | 'String'
   | 'Ptr'
   | 'ManagedPtr'
-  | 'prim__UnsafeBuffer'
   | 'Bits8'
   | 'Bits16'
   | 'Bits32'

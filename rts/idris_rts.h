@@ -41,14 +41,6 @@ typedef struct {
     size_t offset;
 } StrOffset;
 
-typedef struct {
-    // If we ever have multithreaded access to the same heap,
-    // fill is mutable so needs synchronization!
-    size_t fill;
-    size_t cap;
-    unsigned char store[];
-} Buffer;
-
 // A foreign pointer, managed by the idris GC
 typedef struct {
     size_t size;
@@ -73,8 +65,6 @@ typedef struct Closure {
         uint16_t bits16;
         uint32_t bits32;
         uint64_t bits64;
-        __m128i* bits128p;
-        Buffer* buf;
         ManagedPtr* mptr;
         size_t size;
     } info;
