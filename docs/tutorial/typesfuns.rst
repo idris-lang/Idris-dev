@@ -788,7 +788,7 @@ as “sigma types”:
 .. code-block:: idris
 
     data Sigma : (a : Type) -> (P : a -> Type) -> Type where
-       MkSigma : {P : A -> Type} -> (x : a) -> P x -> Sigma a P
+       MkSigma : {P : a -> Type} -> (x : a) -> P x -> Sigma a P
 
 Again, there is syntactic sugar for this. ``(a : A ** P)`` is the type
 of a pair of A and P, where the name ``a`` can occur inside ``P``.
