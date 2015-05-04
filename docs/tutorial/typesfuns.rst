@@ -402,8 +402,9 @@ names, ``n`` and ``a``, which are not declared explicitly. These are
 Implicit arguments, given in braces ``{}`` in the type declaration,
 are not given in applications of ``index``; their values can be
 inferred from the types of the ``Fin n`` and ``Vect n a``
-arguments. Any name with a which appears as a parameter or index in a
-type declaration, but which is otherwise free, will be automatically
+arguments. Any name beginning with a lower case letter which appears 
+as a parameter or index in a
+type declaration, but which is otherwise unbound, will be automatically
 bound as an implicit argument. Implicit arguments can still be given
 explicitly in applications, using ``{a=value}`` and ``{n=value}``, for
 example:
@@ -786,8 +787,8 @@ as “sigma types”:
 
 .. code-block:: idris
 
-    data Sigma : (A : Type) -> (P : A -> Type) -> Type where
-       MkSigma : {P : A -> Type} -> (a : A) -> P a -> Sigma A P
+    data Sigma : (a : Type) -> (P : a -> Type) -> Type where
+       MkSigma : {P : A -> Type} -> (x : a) -> P x -> Sigma a P
 
 Again, there is syntactic sugar for this. ``(a : A ** P)`` is the type
 of a pair of A and P, where the name ``a`` can occur inside ``P``.
