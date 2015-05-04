@@ -10,8 +10,6 @@
 #endif
 #include <stdint.h>
 
-#include <emmintrin.h>
-
 #include "idris_heap.h"
 #include "idris_stats.h"
 
