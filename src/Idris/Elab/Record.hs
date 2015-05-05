@@ -33,19 +33,17 @@ import Data.List
 import Control.Monad
 
 -- | Elaborate a record declaration
-elabRecord ::  ElabInfo ->
-              (Docstring (Either Err PTerm)) -> -- ^ The documentation for the whole declaration
-              SyntaxInfo ->
-              FC ->
-              DataOpts ->
-              Name -> -- ^ Record Type Name
-              [(Name, Plicity, PTerm)] -> -- ^ Parameters
-              [(Name, Docstring (Either Err PTerm))] -> -- ^ Parameter Docs
-              [((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> -- ^ Fields
-              Maybe Name -> -- ^ Constructor Name
-              (Docstring (Either Err PTerm)) -> -- ^ Constructor Doc
-              SyntaxInfo -> -- ^ Constructor SyntaxInfo
-              Idris ()
+elabRecord :: ElabInfo
+           -> (Docstring (Either Err PTerm)) -- ^ The documentation for the whole declaration
+           -> SyntaxInfo -> FC -> DataOpts
+           -> Name  -- ^ The name of the type being defined
+           -> [(Name, Plicity, PTerm)] -- ^ Parameters
+           -> [(Name, Docstring (Either Err PTerm))] -- ^ Parameter Docs
+           -> [((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -- ^ Fields
+           -> Maybe Name -- ^ Constructor Name
+           -> (Docstring (Either Err PTerm)) -- ^ Constructor Doc
+           -> SyntaxInfo -- ^ Constructor SyntaxInfo
+           -> Idris ()
 elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
   = do logLvl 1 $ "Building data declaration for " ++ show tyn
        -- Type constructor
@@ -138,15 +136,13 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
             in (n, p, t, doc) : (fwnad rest)
         fwnad [] = []
 
-elabRecordFunctions :: ElabInfo ->
-              SyntaxInfo ->
-              FC ->
-              Name -> -- ^ Record Type Name
-              [(Name, Plicity, PTerm, Docstring (Either Err PTerm))] -> -- ^ Parameters
-              [(Name, Plicity, PTerm, Docstring (Either Err PTerm))]-> -- ^ Fields
-              Name -> -- ^ Constructor Name
-              PTerm -> -- ^ Target Type
-              Idris ()
+elabRecordFunctions :: ElabInfo -> SyntaxInfo -> FC
+                    -> Name -- ^ Record type name
+                    -> [(Name, Plicity, PTerm, Docstring (Either Err PTerm))] -- ^ Parameters
+                    -> [(Name, Plicity, PTerm, Docstring (Either Err PTerm))] -- ^ Fields
+                    -> Name -- ^ Constructor Name
+                    -> PTerm -- ^ Target type
+                    -> Idris ()
 elabRecordFunctions info rsyn fc tyn params fields dconName target
   = do logLvl 1 $ "Elaborating helper functions for record " ++ show tyn
 
@@ -286,20 +282,19 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
     dependedOn = concat ((catMaybes (map (\x -> lookup x fieldDependencies) fieldNames)))
 
 -- | Creates and elaborates a projection function.
-elabProjection :: ElabInfo ->
-                  Name -> -- ^ Name of the argument in the constructor
-                  Name -> -- ^ Projection Name
-                  Plicity -> -- ^ Projection Plicity
-                  PTerm -> -- ^ Projection Type
-                  (Docstring (Either Err PTerm)) -> -- ^ Projection Documentation
-                  SyntaxInfo -> -- ^ Projection SyntaxInfo
-                  FC ->
-                  PTerm -> -- ^ Projection Target Type
-                  Name -> -- ^ Data Constructor Name
-                  [PArg] -> -- ^ Placeholder Arguments to constructor
-                  [Name] -> -- ^ All Field Names
-                  Int -> -- ^ Argument Index
-                  Idris ()
+elabProjection :: ElabInfo
+               -> Name -- ^ Name of the argument in the constructor
+               -> Name -- ^ Projection Name
+               -> Plicity -- ^ Projection Plicity
+               -> PTerm -- ^ Projection Type
+               -> (Docstring (Either Err PTerm)) -- ^ Projection Documentation
+               -> SyntaxInfo -- ^ Projection SyntaxInfo
+               -> FC -> PTerm -- ^ Projection target type
+               -> Name -- ^ Data constructor tame
+               -> [PArg] -- ^ Placeholder Arguments to constructor
+               -> [Name] -- ^ All Field Names
+               -> Int -- ^ Argument Index
+               -> Idris ()
 elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs fnames index
   = do logLvl 1 $ "Generating Projection for " ++ show pname
        
@@ -343,21 +338,20 @@ elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs f
 
 -- | Creates and elaborates an update function.
 -- If 'optional' is true, we will not fail if we can't elaborate the update function.
-elabUpdate :: ElabInfo ->
-              Name -> -- ^ Name of the argument in the constructor
-              Name -> -- ^ Field Name
-              Plicity -> -- ^ Field Plicity
-              PTerm -> -- ^ Field Type
-              (Docstring (Either Err PTerm)) -> -- ^ Field Documentation
-              SyntaxInfo -> -- ^ Field SyntaxInfo
-              FC ->
-              PTerm -> -- ^ Projection Source Type
-              Name -> -- ^ Data Constructor Name
-              [PArg] -> -- ^ Arguments to constructor
-              [Name] -> -- ^ All fields
-              Int -> -- ^ Argument Index
-              Bool -> -- ^ Optional
-              Idris ()
+elabUpdate :: ElabInfo
+           -> Name -- ^ Name of the argument in the constructor
+           -> Name -- ^ Field Name
+           -> Plicity -- ^ Field Plicity
+           -> PTerm -- ^ Field Type
+           -> (Docstring (Either Err PTerm)) -- ^ Field Documentation
+           -> SyntaxInfo -- ^ Field SyntaxInfo
+           -> FC -> PTerm -- ^ Projection Source Type
+           -> Name -- ^ Data Constructor Name
+           -> [PArg] -- ^ Arguments to constructor
+           -> [Name] -- ^ All fields
+           -> Int -- ^ Argument Index
+           -> Bool -- ^ Optional
+           -> Idris ()
 elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i optional
   = do logLvl 1 $ "Generating Update for " ++ show pname
        
