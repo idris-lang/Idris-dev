@@ -10,8 +10,6 @@
 #endif
 #include <stdint.h>
 
-#include <emmintrin.h>
-
 #include "idris_heap.h"
 #include "idris_stats.h"
 
@@ -41,14 +39,6 @@ typedef struct {
     size_t offset;
 } StrOffset;
 
-typedef struct {
-    // If we ever have multithreaded access to the same heap,
-    // fill is mutable so needs synchronization!
-    size_t fill;
-    size_t cap;
-    unsigned char store[];
-} Buffer;
-
 // A foreign pointer, managed by the idris GC
 typedef struct {
     size_t size;
@@ -73,8 +63,6 @@ typedef struct Closure {
         uint16_t bits16;
         uint32_t bits32;
         uint64_t bits64;
-        __m128i* bits128p;
-        Buffer* buf;
         ManagedPtr* mptr;
         size_t size;
     } info;
@@ -315,27 +303,6 @@ VAL idris_strTail(VM* vm, VAL str);
 VAL idris_strCons(VM* vm, VAL x, VAL xs);
 VAL idris_strIndex(VM* vm, VAL str, VAL i);
 VAL idris_strRev(VM* vm, VAL str);
-
-VAL idris_appendB8Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB16Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB16LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB16BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB32Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB32LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB32BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB64Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB64LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB64BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_peekB8Native(VM* vm, VAL buf, VAL off);
-VAL idris_peekB16Native(VM* vm, VAL buf, VAL off);
-VAL idris_peekB16LE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB16BE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB32Native(VM* vm, VAL buf, VAL off);
-VAL idris_peekB32LE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB32BE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB64Native(VM* vm, VAL buf, VAL off);
-VAL idris_peekB64LE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB64BE(VM* vm, VAL buf, VAL off);
 
 // system infox
 // used indices:
