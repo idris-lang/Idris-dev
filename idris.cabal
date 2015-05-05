@@ -357,6 +357,13 @@ Extra-source-files:
                        test/bignum002/*.idr
                        test/bignum002/expected
 
+                       test/corecords001/*.idr
+                       test/corecords001/run
+                       test/corecords001/expected
+                       test/corecords002/*.idr
+                       test/corecords002/run
+                       test/corecords002/expected
+
                        test/delab001/*.idr
                        test/delab001/run
                        test/delab001/expected
