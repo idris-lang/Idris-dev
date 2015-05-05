@@ -19,11 +19,6 @@ class (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) where
 record WriterT (w : Type) (m : Type -> Type) (a : Type) where
   constructor WR
   runWriterT : m (a, w)
-{-
-record WriterT : Type -> (Type -> Type) -> Type -> Type where
-    WR : {m : Type -> Type} ->
-         (runWriterT : m (a, w)) -> WriterT w m a
--}
 
 instance Functor f => Functor (WriterT w f) where
     map f (WR g) = WR $ map (\w => (f . fst $ w, snd w)) g
