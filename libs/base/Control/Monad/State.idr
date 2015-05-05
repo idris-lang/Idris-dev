@@ -15,10 +15,7 @@ class Monad m => MonadState s (m : Type -> Type) | m where
 ||| The transformer on which the State monad is based
 record StateT (s : Type) (m : Type -> Type) (a : Type) where
   constructor ST
-  runStateT' : s -> m (a, s)
-
-runStateT : StateT s m a -> s -> m (a, s)
-runStateT (ST run) = run
+  runStateT : s -> m (a, s)
 
 instance Functor f => Functor (StateT s f) where
     map f (ST g) = ST (\st => map (mapFst f) (g st)) where
@@ -60,9 +57,8 @@ State : Type -> Type -> Type
 State s a = StateT s Identity a
 
 ||| Unwrap a State monad computation.
-runState : StateT s Identity a -> s -> (a,s)
-runState (ST fun) init = case fun init of
-                           Id x => x
+runState : StateT s Identity a -> s -> (a, s)
+runState act = runIdentity . runStateT act
 
 ||| Unwrap a State monad computation, but discard the final state.
 evalState : State s a -> s -> a

@@ -241,14 +241,16 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
     paramName (UN n) = sUN ("param_" ++ str n)
     paramName (MN i n) = sMN i ("param_" ++ str n)
     paramName (NS n s) = NS (paramName n) s
-    paramName n = n        
+    paramName n = n    
 
     -- | Elaborate the projection functions.
     elabProj :: Name -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
     elabProj cn fs = let phArgs = map (uncurry placeholderArg) [(p, n) | (n, _, p, _, _, _) <- fs]
                          elab = \(n, n', p, t, doc, i) ->
                               -- Use projections in types
-                           do let t' = projectInType [(m, m') | (m, m', _, _, _, _) <- fs] t
+                           do let t' = projectInType [(m, m') | (m, m', _, _, _, _) <- fs
+                                                              -- Parameters are already in scope, so just use them
+                                                              , not (m `elem` paramNames)] t
                               elabProjection info n n' p t' doc rsyn fc target cn phArgs fieldNames i
                      in mapM_ elab fs
 
