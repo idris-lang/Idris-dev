@@ -32,8 +32,9 @@ import Data.Maybe
 import Data.List
 import Control.Monad
 
+-- | Elaborate a record declaration
 elabRecord ::  ElabInfo ->
-              (Docstring (Either Err PTerm)) ->
+              (Docstring (Either Err PTerm)) -> -- ^ The documentation for the whole declaration
               SyntaxInfo ->
               FC ->
               DataOpts ->

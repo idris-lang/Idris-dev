@@ -70,21 +70,22 @@ call:
 
 .. code-block:: idris
 
-    record FFI : Type where
-         MkFFI : (ffi_types : Type -> Type) ->
-                 (ffi_fn : Type) -> FFI
+    record FFI where
+         constructor MkFFI
+         ffi_types : Type -> Type
+         ffi_fn : Type
 
 For C, this is:
 
 .. code-block:: idris
 
-    -- Supported C integer types
+    ||| Supported C integer types
     data C_IntTypes : Type -> Type where
          C_IntChar   : C_IntTypes Char
          C_IntNative : C_IntTypes Int
          ... -- more integer types
 
-    -- Supported C foreign types
+    ||| Supported C foreign types
     data C_Types : Type -> Type where
          C_Str   : C_Types String
          C_Float : C_Types Float

@@ -127,9 +127,9 @@ italics correctly). A comprehensive set of examples is given below.
       ||| @ rest the remaining work
       Later : (rest : Partial a) -> Partial a
 
-    ||| We can document records just like normal data
-    record Yummy : Type where
-
+    ||| We can document records, including their fields and constructors
+    record Yummy where
       ||| Make a yummy
-      ||| @ food what to eat
-      MkYummy : (food : String) -> Yummy
+      constructor MkYummy
+      ||| What to eat
+      food : String
