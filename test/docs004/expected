@@ -1,4 +1,3 @@
-Type checking ./docs004.idr
 MkFoo : (bar : Nat) -> (baz : Bool) -> Foo a
     Constructor for Foo
     Arguments:
