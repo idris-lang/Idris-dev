@@ -855,7 +855,7 @@ Library
                 , filepath < 1.5
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
-                , lens >= 4.1.1 && < 4.9
+                , lens >= 4.1.1 && < 4.10
                 , mtl >= 2.1 && < 2.3
                 , network < 2.7
                 , optparse-applicative >= 0.11 && < 0.12
