@@ -146,7 +146,7 @@ mkPE_TyDecl ist args ty = mkty args ty
         = do nm <- get
              put (nm + 1)
              return (P Bound (sMN nm "spec") Erased)
-    gen (App f a) = App <$> gen f <*> gen a
+    gen (App s f a) = App s <$> gen f <*> gen a
     gen tm = return tm
 
 -- | Checks if a given argument is a type class constraint argument
@@ -291,7 +291,7 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
 
     -- if we have a *defined* function that has static arguments,
     -- it will become a specialised application
-    ga env tm@(App f a) | (P _ n _, args) <- unApply tm,
+    ga env tm@(App _ f a) | (P _ n _, args) <- unApply tm,
                           n `notElem` map fst (idris_metavars ist) =
         ga env f ++ ga env a ++
           case (lookupCtxtExact n (idris_statics ist),

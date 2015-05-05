@@ -15,6 +15,7 @@ import Idris.Error
 import Control.Applicative ((<$>))
 import Control.Monad
 import Control.Monad.State.Strict
+import qualified Data.Set as S
 import Data.List
 import Debug.Trace
 
@@ -91,7 +92,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
             if ambigok || argsok then
                case lookupCtxt nroot (idris_tyinfodata ist) of
                     [TISolution ts] -> findInferredTy ts
-                    _ -> psRec rec maxDepth []
+                    _ -> psRec rec maxDepth [] S.empty
                else autoArg (sUN "auto") -- not enough info in the type yet
   where
     findInferredTy (t : _) = elab (delab ist (toUN t)) 
@@ -127,20 +128,28 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     toUN t@(P nt (MN i n) ty) 
        | ('_':xs) <- str n = t
        | otherwise = P nt (UN n) ty
-    toUN (App f a) = App (toUN f) (toUN a)
+    toUN (App s f a) = App s (toUN f) (toUN a)
     toUN t = t
 
     -- psRec counts depth and the local variable applications we're under
     -- (so we don't try a pointless application of something to itself,
     -- which obviously won't work anyway but might lead us on a wild
     -- goose chase...)
-    psRec _ 0 locs | fromProver = cantSolveGoal
-    psRec rec 0 locs = do attack; defer [] nroot; solve --fail "Maximum depth reached"
-    psRec False d locs = tryCons d locs hints 
-    psRec True d locs 
+    -- Also keep track of the types we've proved so far in this branch
+    -- (if we get back to one we've been to before, we're just in a cycle and
+    -- that's no use)
+    psRec :: Bool -> Int -> [Name] -> S.Set Type -> ElabD ()
+    psRec _ 0 locs tys | fromProver = cantSolveGoal
+    psRec rec 0 locs tys = do attack; defer [] nroot; solve --fail "Maximum depth reached"
+    psRec False d locs tys = tryCons d locs tys hints 
+    psRec True d locs tys
                  = do compute
+                      ty <- goal
+                      when (S.member ty tys) $ fail "Been here before"
+                      let tys' = S.insert ty tys
                       try' (trivial elab ist)
-                           (try' (try' (resolveByCon (d - 1) locs) (resolveByLocals (d - 1) locs)
+                           (try' (try' (resolveByCon (d - 1) locs tys') 
+                                       (resolveByLocals (d - 1) locs tys')
                                  True)
              -- if all else fails, make a new metavariable
                          (if fromProver 
@@ -151,7 +160,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     getFn d (Just f) | d < maxDepth-1 = [f]
                      | otherwise = []
 
-    resolveByCon d locs
+    resolveByCon d locs tys
         = do t <- goal
              let (f, _) = unApply t
              case f of
@@ -160,7 +169,8 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
                                            Nothing -> []
                                            Just hs -> hs
                       case lookupCtxtExact n (idris_datatypes ist) of
-                          Just t -> tryCons d locs (hints ++ 
+                          Just t -> tryCons d locs tys 
+                                                   (hints ++ 
                                                     con_names t ++ 
                                                     autohints ++ 
                                                     getFn d fn)
@@ -169,28 +179,31 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
 
     -- if there are local variables which have a function type, try
     -- applying them too
-    resolveByLocals d locs
+    resolveByLocals d locs tys
         = do env <- get_env
-             tryLocals d locs env
+             tryLocals d locs tys env
 
-    tryLocals d locs [] = fail "Locals failed"
-    tryLocals d locs ((x, t) : xs) 
-       | x `elem` locs = tryLocals d locs xs
-       | otherwise = try' (tryLocal d (x : locs) x t) (tryLocals d locs xs) True
+    tryLocals d locs tys [] = fail "Locals failed"
+    tryLocals d locs tys ((x, t) : xs) 
+       | x `elem` locs = tryLocals d locs tys xs
+       | otherwise = try' (tryLocal d (x : locs) tys x t) 
+                          (tryLocals d locs tys xs) True
 
-    tryCons d locs [] = fail "Constructors failed"
-    tryCons d locs (c : cs) = try' (tryCon d locs c) (tryCons d locs cs) True
+    tryCons d locs tys [] = fail "Constructors failed"
+    tryCons d locs tys (c : cs) 
+        = try' (tryCon d locs tys c) (tryCons d locs tys cs) True
 
-    tryLocal d locs n t 
+    tryLocal d locs tys n t 
           = do let a = getPArity (delab ist (binderTy t))
-               tryLocalArg d locs n a
+               tryLocalArg d locs tys n a
 
-    tryLocalArg d locs n 0 = elab (PRef (fileFC "prf") n)
-    tryLocalArg d locs n i = simple_app False (tryLocalArg d locs n (i - 1))
-                                   (psRec True d locs) "proof search local apply"
+    tryLocalArg d locs tys n 0 = elab (PRef (fileFC "prf") n)
+    tryLocalArg d locs tys n i 
+        = simple_app False (tryLocalArg d locs tys n (i - 1))
+                (psRec True d locs tys) "proof search local apply"
 
     -- Like type class resolution, but searching with constructors
-    tryCon d locs n = 
+    tryCon d locs tys n = 
          do ty <- goal
             let imps = case lookupCtxtExact n (idris_implicits ist) of
                             Nothing -> []
@@ -204,7 +217,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
             when (length ps < length ps') $ fail "Can't apply constructor"
             mapM_ (\ (_, h) -> do focus h
                                   aty <- goal
-                                  psRec True d locs) 
+                                  psRec True d locs tys)
                   (filter (\ (x, y) -> not x) (zip (map fst imps) args))
             solve
 

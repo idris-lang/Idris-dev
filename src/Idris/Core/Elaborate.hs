@@ -115,13 +115,13 @@ runElab a e ps = runStateT e (ES (ps, a) "" Nothing)
 execElab :: aux -> Elab' aux a -> ProofState -> TC (ElabState aux)
 execElab a e ps = execStateT e (ES (ps, a) "" Nothing)
 
-initElaborator :: Name -> Context -> Type -> ProofState
+initElaborator :: Name -> Context -> Ctxt TypeInfo -> Type -> ProofState
 initElaborator = newProof
 
-elaborate :: Context -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
-elaborate ctxt n ty d elab = do let ps = initElaborator n ctxt ty
-                                (a, ES ps' str _) <- runElab d elab ps
-                                return $! (a, str)
+elaborate :: Context -> Ctxt TypeInfo -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
+elaborate ctxt datatypes n ty d elab = do let ps = initElaborator n ctxt datatypes ty
+                                          (a, ES ps' str _) <- runElab d elab ps
+                                          return $! (a, str)
 
 -- | Modify the auxiliary state
 updateAux :: (aux -> aux) -> Elab' aux ()
@@ -177,6 +177,14 @@ get_context = do ES p _ _ <- get
 set_context :: Context -> Elab' aux ()
 set_context ctxt = do ES (p, a) logs prev <- get
                       put (ES (p { context = ctxt }, a) logs prev)
+
+get_datatypes :: Elab' aux (Ctxt TypeInfo)
+get_datatypes = do ES p _ _ <- get
+                   return $! (datatypes (fst p))
+
+set_datatypes :: Ctxt TypeInfo -> Elab' aux ()
+set_datatypes ds = do ES (p, a) logs prev <- get
+                      put (ES (p { datatypes = ds }, a) logs prev)
 
 -- | get the proof term
 get_term :: Elab' aux Term
@@ -258,7 +266,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
                                 else lift $ tfail (NotInjective tm l r)
   where isInj ctxt (P _ n _)
             | isConName n ctxt = True
-        isInj ctxt (App f a) = isInj ctxt f
+        isInj ctxt (App _ f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
         isInj ctxt (TType _) = True
         isInj ctxt (Bind _ (Pi _ _ _) sc) = True
@@ -431,7 +439,7 @@ dotterm = do ES (p, a) s m <- get
      where foB (Guess t v) = union (findOuter h env t) (findOuter h (n:env) v)
            foB (Let t v) = union (findOuter h env t) (findOuter h env v)
            foB b = findOuter h env (binderTy b)
-  findOuter h env (App f a)
+  findOuter h env (App _ f a)
       = union (findOuter h env f) (findOuter h env a)
   findOuter h env _ = []
   
@@ -541,7 +549,7 @@ prepare_apply fn imps =
         | n `elem` hs = let n' = uniqueName n hs in
                             Bind n' (fmap (rebind hs) t) (rebind (n':hs) sc)
         | otherwise = Bind n (fmap (rebind hs) t) (rebind (n:hs) sc)
-    rebind hs (App f a) = App (rebind hs f) (rebind hs a)
+    rebind hs (App s f a) = App s (rebind hs f) (rebind hs a)
     rebind hs t = t
 
 apply, match_apply :: Raw -> [(Bool, Int)] -> Elab' aux [(Name, Name)]
@@ -759,6 +767,7 @@ try' t1 t2 proofSearch
   = do s <- get
        ps <- get_probs
        ulog <- getUnifyLog
+       ivs <- get_instances
        case prunStateT 999999 False ps t1 s of
             OK ((v, _, _), s') -> do put s'
                                      return $! v
@@ -779,7 +788,7 @@ try' t1 t2 proofSearch
         recoverableErr (ProofSearchFail _) = False
         recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
         recoverableErr (At _ e) = recoverableErr e
-        recoverableErr (ElabDebug _ _ _) = False
+        recoverableErr (ElabScriptDebug _ _ _) = False
         recoverableErr _ = True
 
 tryCatch :: Elab' aux a -> (Err -> Elab' aux a) -> Elab' aux a
@@ -863,7 +872,7 @@ debugElaborator msg = do ps <- fmap proof get
                          hs <- get_holes
                          holeInfo <- mapM getHoleInfo hs
                          loadState
-                         lift . Error $ ElabDebug msg (getProofTerm (pterm ps)) holeInfo
+                         lift . Error $ ElabScriptDebug msg (getProofTerm (pterm ps)) holeInfo
   where getHoleInfo :: Name -> Elab' aux (Name, Type, [(Name, Binder Type)])
         getHoleInfo h = do focus h
                            g <- goal

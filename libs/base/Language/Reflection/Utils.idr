@@ -61,18 +61,46 @@ binderTy (Guess t1 t2) = t1
 binderTy (PVar t)      = t
 binderTy (PVTy t)      = t
 
-instance Show TTName where
-  show (UN str)   = "(UN " ++ str ++ ")"
-  show (NS n ns)  = "(NS " ++ show n ++ " " ++ show ns ++ ")"
-  show (MN i str) = "(MN " ++ show i ++ " " ++ show str ++ ")"
-  show NErased    = "NErased"
+mutual
+  instance Show SpecialName where
+    show (WhereN i n1 n2) = "(WhereN " ++ show i ++ " " ++
+                            show n1 ++ " " ++ show n2 ++ ")"
+    show (WithN i n) = "(WithN " ++ show i ++ " " ++ show n ++ ")"
+    show (InstanceN i ss) = "(InstanceN " ++ show i ++ " " ++ show ss ++ ")"
+    show (ParentN n s) = "(ParentN " ++ show n ++ " " ++ show s ++ ")"
+    show (MethodN n) = "(MethodN " ++ show n ++ ")"
+    show (CaseN n) = "(CaseN " ++ show n ++ ")"
+    show (ElimN n) = "(ElimN " ++ show n ++ ")"
+    show (InstanceCtorN n) = "(InstanceCtorN " ++ show n ++ ")"
+    show (MetaN parent meta) = "(MetaN " ++ show parent ++ " " ++ show meta ++ ")"
 
-instance Eq TTName where
-  (UN str1)  == (UN str2)     = str1 == str2
-  (NS n ns)  == (NS n' ns')   = n == n' && ns == ns'
-  (MN i str) == (MN i' str')  = i == i' && str == str'
-  NErased    == NErased       = True
-  x          == y             = False
+  instance Show TTName where
+    show (UN str)   = "(UN " ++ str ++ ")"
+    show (NS n ns)  = "(NS " ++ show n ++ " " ++ show ns ++ ")"
+    show (MN i str) = "(MN " ++ show i ++ " " ++ show str ++ ")"
+    show (SN sn)    = "(SN " ++ assert_total (show sn) ++ ")"
+    show NErased    = "NErased"
+
+mutual
+  instance Eq TTName where
+    (UN str1)  == (UN str2)     = str1 == str2
+    (NS n ns)  == (NS n' ns')   = n == n' && ns == ns'
+    (MN i str) == (MN i' str')  = i == i' && str == str'
+    NErased    == NErased       = True
+    (SN sn)    == (SN sn')      = assert_total $ sn == sn'
+    x          == y             = False
+
+  instance Eq SpecialName where
+    (WhereN i n1 n2)    == (WhereN i' n1' n2')   = i == i' && n1 == n1' && n2 == n2'
+    (WithN i n)         == (WithN i' n')         = i == i' && n == n'
+    (InstanceN i ss)    == (InstanceN i' ss')    = i == i' && ss == ss'
+    (ParentN n s)       == (ParentN n' s')       = n == n' && s == s'
+    (MethodN n)         == (MethodN n')          = n == n'
+    (CaseN n)           == (CaseN n')            = n == n'
+    (ElimN n)           == (ElimN n')            = n == n'
+    (InstanceCtorN n)   == (InstanceCtorN n')    = n == n'
+    (MetaN parent meta) == (MetaN parent' meta') = parent == parent' && meta == meta'
+    _                   == _                     = False
 
 instance Show TTUExp where
   show (UVar i) = "(UVar " ++ show i ++ ")"
@@ -269,3 +297,12 @@ instance Show Err where
   show (ProviderError x) = "ProviderError \"" ++ show x ++ "\""
   show (LoadingFailed x err) = "LoadingFailed " ++ show x ++ " (" ++ show err ++ ")"
 
+-------------------------
+-- Idiom brackets for Raw
+-------------------------
+
+(<*>) : Raw -> Raw -> Raw
+(<*>) = RApp
+
+pure : Raw -> Raw
+pure = id

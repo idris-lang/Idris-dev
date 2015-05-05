@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Elab.Value(elabVal, elabValBind, elabDocTerms) where
+module Idris.Elab.Value(elabVal, elabValBind, elabDocTerms, elabExec) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -8,7 +8,6 @@ import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
-import Idris.ElabTerm
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
@@ -20,6 +19,7 @@ import Idris.Output (iputStrLn, pshow, iWarn)
 import IRTS.Lang
 
 import Idris.Elab.Utils
+import Idris.Elab.Term
 
 import Idris.Core.TT
 import Idris.Core.Elaborate hiding (Tactic(..))
@@ -64,12 +64,12 @@ elabValBind info aspat norm tm_in
         --    * elaboration as a function a -> b
 
         (ElabResult tm' defer is ctxt' newDecls, _) <-
-             tclift (elaborate ctxt (sMN 0 "val") infP initEState
+             tclift (elaborate ctxt (idris_datatypes i) (sMN 0 "val") infP initEState
                      (build i info aspat [Reflection] (sMN 0 "val") (infTerm tm)))
 
         -- Extend the context with new definitions created
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
 
         let vtm = orderPats (getInferTerm tm')
 
@@ -114,3 +114,18 @@ elabDocTerms info str = do typechecked <- Traversable.mapM decorate str
                                             then Example tm
                                             else Checked tm
           | otherwise                   = Unchecked
+
+-- Try running the term directly (as IO ()), then printing it as an Integer
+-- (as a default numeric tye), then printing it as any Showable thing
+elabExec :: FC -> PTerm -> PTerm
+elabExec fc tm = runtm (PAlternative False 
+                   [printtm (PApp fc (PRef fc (sUN "the"))
+                     [pexp (PConstant (AType (ATInt ITBig))), pexp tm]),
+                    tm,
+                    printtm tm
+                    ])
+  where                    
+    runtm t = PApp fc (PRef fc (sUN "run__IO")) [pexp t]
+    printtm t = PApp fc (PRef fc (sUN "printLn")) 
+                  [pimp (sUN "ffi") (PRef fc (sUN "FFI_C")) False, pexp t]
+

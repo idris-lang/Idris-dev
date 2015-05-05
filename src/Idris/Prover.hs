@@ -9,13 +9,13 @@ import Idris.Core.Typecheck
 
 import Idris.Elab.Utils
 import Idris.Elab.Value
+import Idris.Elab.Term
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.Delaborate
 import Idris.Docs (getDocs, pprintDocs, pprintConstDocs)
 import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.Parser hiding (params)
 import Idris.Error
 import Idris.DataOpts
@@ -66,7 +66,7 @@ assumptionNames e
 
 prove :: Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
 prove opt ctxt lit n ty
-    = do let ps = initElaborator n ctxt ty
+    = do ps <- fmap (\ist -> initElaborator n ctxt (idris_datatypes ist) ty) getIState
          idemodePutSExp "start-proof-mode" n
          (tm, prf) <- ploop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) Nothing
          iLOG $ "Adding " ++ show tm

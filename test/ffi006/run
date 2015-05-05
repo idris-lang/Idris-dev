@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 idris $@ ffi006.idr --interface -o ffi006.o
-cc ffi006.c ffi006.o `idris --include` `idris --link` -o ffi006
+${CC:=cc} ffi006.c ffi006.o `idris --include` `idris --link` -o ffi006
 ./ffi006
 rm -f ffi006 *.ibc *.o *.h

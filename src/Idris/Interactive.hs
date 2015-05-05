@@ -12,13 +12,12 @@ import Idris.Core.Evaluate
 import Idris.CaseSplit
 import Idris.AbsSyntax
 import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.Error
 import Idris.Delaborate
 import Idris.Output
 import Idris.IdeMode hiding (IdeModeCommand(..))
-
 import Idris.Elab.Value
+import Idris.Elab.Term
 
 import Util.Pretty
 import Util.System
@@ -34,7 +33,7 @@ import Debug.Trace
 
 caseSplitAt :: FilePath -> Bool -> Int -> Name -> Idris ()
 caseSplitAt fn updatefile l n
-   = do src <- runIO $ readFile fn
+   = do src <- runIO $ readSource fn
         res <- splitOnLine l n fn
         iLOG (showSep "\n" (map show res))
         let (before, (ap : later)) = splitAt (l-1) (lines src)
@@ -42,14 +41,14 @@ caseSplitAt fn updatefile l n
         let new = concat res'
         if updatefile
           then do let fb = fn ++ "~" -- make a backup!
-                  runIO $ writeFile fb (unlines before ++ new ++ unlines later)
+                  runIO $ writeSource fb (unlines before ++ new ++ unlines later)
                   runIO $ copyFile fb fn
           else -- do iputStrLn (show res)
             iPrintResult new
 
 addClauseFrom :: FilePath -> Bool -> Int -> Name -> Idris ()
 addClauseFrom fn updatefile l n
-   = do src <- runIO $ readFile fn
+   = do src <- runIO $ readSource fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
         cl <- getClause l n fn
@@ -57,7 +56,7 @@ addClauseFrom fn updatefile l n
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile
           then do let fb = fn ++ "~"
-                  runIO $ writeFile fb (unlines (before ++ nonblank) ++
+                  runIO $ writeSource fb (unlines (before ++ nonblank) ++
                                         replicate indent ' ' ++
                                         cl ++ "\n" ++
                                         unlines rest)
@@ -71,7 +70,7 @@ addClauseFrom fn updatefile l n
 
 addProofClauseFrom :: FilePath -> Bool -> Int -> Name -> Idris ()
 addProofClauseFrom fn updatefile l n
-   = do src <- runIO $ readFile fn
+   = do src <- runIO $ readSource fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
         cl <- getProofClause l n fn
@@ -79,7 +78,7 @@ addProofClauseFrom fn updatefile l n
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile
           then do let fb = fn ++ "~"
-                  runIO $ writeFile fb (unlines (before ++ nonblank) ++
+                  runIO $ writeSource fb (unlines (before ++ nonblank) ++
                                         replicate indent ' ' ++
                                         cl ++ "\n" ++
                                         unlines rest)
@@ -92,7 +91,7 @@ addProofClauseFrom fn updatefile l n
 
 addMissing :: FilePath -> Bool -> Int -> Name -> Idris ()
 addMissing fn updatefile l n
-   = do src <- runIO $ readFile fn
+   = do src <- runIO $ readSource fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
         i <- getIState
@@ -106,7 +105,7 @@ addMissing fn updatefile l n
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile
           then do let fb = fn ++ "~"
-                  runIO $ writeFile fb (unlines (before ++ nonblank)
+                  runIO $ writeSource fb (unlines (before ++ nonblank)
                                         ++ extras ++ unlines rest)
                   runIO $ copyFile fb fn
           else iPrintResult extras
@@ -141,7 +140,7 @@ addMissing fn updatefile l n
 
 makeWith :: FilePath -> Bool -> Int -> Name -> Idris ()
 makeWith fn updatefile l n
-   = do src <- runIO $ readFile fn
+   = do src <- runIO $ readSource fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let ind = getIndent tyline
         let with = mkWith tyline n
@@ -151,7 +150,7 @@ makeWith fn updatefile l n
                                            not (ind == getIndent x)) later
         if updatefile then
            do let fb = fn ++ "~"
-              runIO $ writeFile fb (unlines (before ++ nonblank)
+              runIO $ writeSource fb (unlines (before ++ nonblank)
                                         ++ with ++ "\n" ++
                                     unlines rest)
               runIO $ copyFile fb fn
@@ -164,7 +163,7 @@ doProofSearch :: FilePath -> Bool -> Bool ->
 doProofSearch fn updatefile rec l n hints Nothing
     = doProofSearch fn updatefile rec l n hints (Just 10)
 doProofSearch fn updatefile rec l n hints (Just depth)
-    = do src <- runIO $ readFile fn
+    = do src <- runIO $ readSource fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
          ctxt <- getContext
          mn <- case lookupNames n ctxt of
@@ -192,7 +191,7 @@ doProofSearch fn updatefile rec l n hints (Just depth)
              (\e -> return ("?" ++ show n))
          if updatefile then
             do let fb = fn ++ "~"
-               runIO $ writeFile fb (unlines before ++
+               runIO $ writeSource fb (unlines before ++
                                      updateMeta False tyline (show n) newmv ++ "\n"
                                        ++ unlines later)
                runIO $ copyFile fb fn
@@ -241,7 +240,7 @@ addBracket True new | any isSpace new = '(' : new ++ ")"
 
 makeLemma :: FilePath -> Bool -> Int -> Name -> Idris ()
 makeLemma fn updatefile l n
-   = do src <- runIO $ readFile fn
+   = do src <- runIO $ readSource fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
 
         -- if the name is in braces, rather than preceded by a ?, treat it
@@ -267,7 +266,7 @@ makeLemma fn updatefile l n
 
             if updatefile then
                do let fb = fn ++ "~"
-                  runIO $ writeFile fb (addLem before tyline lem lem_app later)
+                  runIO $ writeSource fb (addLem before tyline lem lem_app later)
                   runIO $ copyFile fb fn
                else case idris_outputmode i of
                       RawOutput _  -> iPrintResult $ lem ++ "\n" ++ lem_app
@@ -285,7 +284,7 @@ makeLemma fn updatefile l n
                                  " = ?" ++ show n ++ "_rhs"
             if updatefile then
                do let fb = fn ++ "~"
-                  runIO $ writeFile fb (addProv before tyline lem_app later)
+                  runIO $ writeSource fb (addProv before tyline lem_app later)
                   runIO $ copyFile fb fn
                else case idris_outputmode i of
                       RawOutput _  -> iPrintResult $ lem_app
@@ -323,7 +322,7 @@ makeLemma fn updatefile l n
         guessImps ctxt _ = []
 
         guarded ctxt n (P _ n' _) | n == n' = True
-        guarded ctxt n ap@(App _ _)
+        guarded ctxt n ap@(App _ _ _)
             | (P _ f _, args) <- unApply ap,
               isConName f ctxt = any (guarded ctxt n) args
 --         guarded ctxt n (Bind (UN cn) (Pi t) sc) -- ignore shadows

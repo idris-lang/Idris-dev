@@ -7,7 +7,6 @@ import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
-import Idris.ElabTerm
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
@@ -21,6 +20,7 @@ import IRTS.Lang
 import Idris.Elab.Type
 import Idris.Elab.Data
 import Idris.Elab.Utils
+import Idris.Elab.Term
 
 import Idris.Core.TT
 import Idris.Core.Elaborate hiding (Tactic(..))
@@ -177,10 +177,10 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
              let ty = addImpl [] i ty'
              ctxt <- getContext
              (ElabResult tyT _ _ ctxt' newDecls, _) <-
-                tclift $ elaborate ctxt iname (TType (UVal 0)) initEState
+                tclift $ elaborate ctxt (idris_datatypes i) iname (TType (UVal 0)) initEState
                          (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
              setContext ctxt'
-             processTacticDecls newDecls
+             processTacticDecls info newDecls
              ctxt <- getContext
              (cty, _) <- recheckC fc id [] tyT
              let nty = normalise ctxt [] cty
@@ -280,19 +280,19 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
        = insertDefaults i iname defs ns (insertDef i n dn clauses ns iname ds)
 
     insertDef i meth def clauses ns iname decls
-        | null $ filter (clauseFor meth iname ns) decls
+        | not $ any (clauseFor meth iname ns) decls
             = let newd = expandParamsD False i (\n -> meth) [] [def] clauses in
                   -- trace (show newd) $
                   decls ++ [newd]
         | otherwise = decls
 
     warnMissing decls ns iname meth
-        | null $ filter (clauseFor meth iname ns) decls
+        | not $ any (clauseFor meth iname ns) decls
             = iWarn fc . text $ "method " ++ show meth ++ " not defined"
         | otherwise = return ()
 
     checkInClass ns meth
-        | not (null (filter (eqRoot meth) ns)) = return ()
+        | any (eqRoot meth) ns = return ()
         | otherwise = tclift $ tfail (At fc (Msg $
                                 show meth ++ " not a method of class " ++ show n))
 
@@ -317,7 +317,7 @@ checkInjectiveArgs fc n ds (Just ty)
 
     isInj i (P Bound n _) = True 
     isInj i (P _ n _) = isConName n (tt_ctxt i)
-    isInj i (App f a) = isInj i f && isInj i a
+    isInj i (App _ f a) = isInj i f && isInj i a
     isInj i (V _) = True
     isInj i (Bind n b sc) = isInj i sc
     isInj _ _ = True

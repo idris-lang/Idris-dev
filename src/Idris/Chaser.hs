@@ -15,6 +15,7 @@ import Control.Monad.State
 import Data.List
 
 import Debug.Trace
+import Util.System (readSource, writeSource)
 
 data ModuleTree = MTree { mod_path :: IFileType,
                           mod_needsRecheck :: Bool,
@@ -64,6 +65,16 @@ getModuleFiles ts = nub $ execState (modList ts) [] where
                                   then getSrc x : updateToSrc path xs
                                   else x : updateToSrc path xs
 
+-- Strip quotes and the backslash escapes that Haskeline adds
+extractFileName :: String -> String
+extractFileName ('"':xs) = takeWhile (/= '"') xs
+extractFileName ('\'':xs) = takeWhile (/= '\'') xs
+extractFileName x = build x []
+                        where
+                            build [] acc = reverse acc
+                            build ('\\':' ':xs) acc = build xs (' ':acc)
+                            build (x:xs) acc = build xs (x:acc)
+
 getIModTime (IBC i _) = getModificationTime i
 getIModTime (IDR i) = getModificationTime i
 getIModTime (LIDR i) = getModificationTime i
@@ -78,7 +89,7 @@ buildTree built fp = btree [] fp
  where
   btree done f =
     do i <- getIState
-       let file = takeWhile (/= ' ') f
+       let file = extractFileName f
        iLOG $ "CHASING " ++ show file
        ibcsd <- valIBCSubDir i
        ids <- allImportDirs
@@ -133,7 +144,7 @@ buildTree built fp = btree [] fp
   children lit f done = -- idrisCatch
      do exist <- runIO $ doesFileExist f
         if exist then do
-            file_in <- runIO $ readFile f
+            file_in <- runIO $ readSource f
             file <- if lit then tclift $ unlit f file_in else return file_in
             (_, _, modules, _) <- parseImports f file
             -- The chaser should never report warnings from sub-modules

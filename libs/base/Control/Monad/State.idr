@@ -1,6 +1,6 @@
 module Control.Monad.State
 
-import Control.Monad.Identity
+import public Control.Monad.Identity
 import Control.Monad.Trans
 
 %access public
@@ -15,7 +15,10 @@ class Monad m => MonadState s (m : Type -> Type) | m where
 ||| The transformer on which the State monad is based
 record StateT (s : Type) (m : Type -> Type) (a : Type) where
   constructor ST
-  runStateT : s -> m (a, s)
+  runStateT' : s -> m (a, s)
+
+runStateT : StateT s m a -> s -> m (a, s)
+runStateT (ST run) = run
 
 instance Functor f => Functor (StateT s f) where
     map f (ST g) = ST (\st => map (mapFst f) (g st)) where
@@ -55,3 +58,16 @@ gets f = do s <- get
 ||| The State monad. See the MonadState class
 State : Type -> Type -> Type
 State s a = StateT s Identity a
+
+||| Unwrap a State monad computation.
+runState : StateT s Identity a -> s -> (a,s)
+runState (ST fun) init = case fun init of
+                           Id x => x
+
+||| Unwrap a State monad computation, but discard the final state.
+evalState : State s a -> s -> a
+evalState m = fst . runState m
+
+||| Unwrap a State monad computation, but discard the resulting value.
+execState : State s a -> s -> s
+execState m = snd . runState m

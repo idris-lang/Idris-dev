@@ -1,6 +1,10 @@
 New in 0.9.18:
 --------------
+* GHC 7.10 compatibility
+* Add support for bundled toolchains.
 * Strings are now UTF8 encoded in the default back end
+* Idris source files are now assumed to be in UTF8, regardless of locale
+  settings.
 * Some reorganisation of primitives:
   + Buffer and BitVector primitives have been removed (they were not
     tested sufficiently, and lack a maintainer)
@@ -21,6 +25,17 @@ New in 0.9.18:
   requiring a separate lemma.
 * Case alternatives are allowed to be impossible:
   case Vect.Nil {a=Nat} of { (x::xs) impossible ; [] => True }
+* The default Semigroup and Monoid instances for Maybe are now prioritised
+  choice, keeping the first success as Alternative does. The version that
+  collects successes is now a named instance.
+* :exec REPL command now takes an optional expression to compile and run/show
+* The return types of `Vect.findIndex`, `Vect.elemIndex` and
+  `Vect.elemIndexBy` were changed from `Maybe Nat` to `Maybe (Fin n)`
+* A new :browse command shows the contents of a namespace
+* `{n} is syntax for a quotation of the reflected representation of the name
+  "n". If "n" is lexically bound, then the resulting quotation will be for it,
+  whereas if it is not, then it will succeed with a quotation of the unique
+  global name that matches.
 
 New in 0.9.17:
 --------------

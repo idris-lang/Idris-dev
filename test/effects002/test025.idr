@@ -6,8 +6,8 @@ import Control.IOExcept
 import Data.Vect
 
 MemoryIO : Type -> Type -> Type -> Type
-MemoryIO td ts r = { [ Dst ::: RAW_MEMORY td
-                     , Src ::: RAW_MEMORY ts ] } Eff r
+MemoryIO td ts r = Eff r [Dst ::: RAW_MEMORY td,
+                          Src ::: RAW_MEMORY ts]
 
 inpVect : Vect 5 Bits8
 inpVect = map prim__truncInt_B8 [0, 1, 2, 3, 5]

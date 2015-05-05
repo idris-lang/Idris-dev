@@ -5,6 +5,9 @@ import Builtins
 %access public
 %default total
 
+swap : (a, b) -> (b, a)
+swap (x, y) = (y, x)
+
 using (a : Type, P : a -> Type)
 
   ||| Dependent pair where the first field is erased.

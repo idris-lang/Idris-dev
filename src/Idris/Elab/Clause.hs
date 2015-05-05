@@ -7,7 +7,7 @@ import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
-import Idris.ElabTerm
+import Idris.Elab.Term
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
@@ -433,7 +433,7 @@ elabPE info fc caller r =
             showArg _ = ""
 
             qshow (Bind _ _ _) = "fn"
-            qshow (App f a) = qshow f ++ qshow a
+            qshow (App _ f a) = qshow f ++ qshow a
             qshow (P _ n _) = show n
             qshow (Constant c) = show c
             qshow _ = ""
@@ -444,71 +444,27 @@ elabPE info fc caller r =
             qhash hash [] = showHex (abs hash `mod` 0xffffffff) ""
             qhash hash (x:xs) = qhash (hash * 33 + fromEnum x) xs
 
--- checks if the clause is a possible left hand side. Returns the term if
--- possible, otherwise Nothing.
-
+-- | Checks if the clause is a possible left hand side.
 checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris Bool
 checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
         i <- getIState
         let lhs = addImplPat i lhs_in
         -- if the LHS type checks, it is possible
-        case elaborate ctxt (sMN 0 "patLHS") infP initEState
+        case elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
                             (erun fc (buildTC i info ELHS [] fname (infTerm lhs))) of
             OK (ElabResult lhs' _ _ ctxt' newDecls, _) ->
                do setContext ctxt'
-                  processTacticDecls newDecls
+                  processTacticDecls info newDecls
                   let lhs_tm = orderPats (getInferTerm lhs')
                   case recheck ctxt [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
                        err -> return False
             -- if it's a recoverable error, the case may become possible
-            Error err -> if tcgen then return (recoverable ctxt err)
-                                  else return (validCase ctxt err ||
-                                                 recoverable ctxt err)
-    where validCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
-              = let topx' = normalise ctxt [] topx
-                    topy' = normalise ctxt [] topy in
-                    not (sameFam topx' topy' || not (validCase ctxt e))
-          validCase ctxt (CantConvert _ _ _) = False
-          validCase ctxt (At _ e) = validCase ctxt e
-          validCase ctxt (Elaborating _ _ e) = validCase ctxt e
-          validCase ctxt (ElaboratingArg _ _ _ e) = validCase ctxt e
-          validCase ctxt _ = True
+            Error err -> if tcgen then return (recoverableCoverage ctxt err)
+                                  else return (validCoverageCase ctxt err ||
+                                                 recoverableCoverage ctxt err)
 
-          recoverable ctxt (CantUnify r (topx, _) (topy, _) e _ _)
-              = let topx' = normalise ctxt [] topx
-                    topy' = normalise ctxt [] topy in
-                    checkRec topx' topy'
-          recoverable ctxt (At _ e) = recoverable ctxt e
-          recoverable ctxt (Elaborating _ _ e) = recoverable ctxt e
-          recoverable ctxt (ElaboratingArg _ _ _ e) = recoverable ctxt e
-          recoverable _ _ = False
-
-          sameFam topx topy
-              = case (unApply topx, unApply topy) of
-                     ((P _ x _, _), (P _ y _, _)) -> x == y
-                     _ -> False
-
-          -- different notion of recoverable than in unification, since we
-          -- have no metavars -- just looking to see if a constructor is failing
-          -- to unify with a function that may be reduced later
-
-          checkRec (App f a) p@(P _ _ _) = checkRec f p
-          checkRec p@(P _ _ _) (App f a) = checkRec p f
-          checkRec fa@(App _ _) fa'@(App _ _)
-              | (f, as) <- unApply fa,
-                (f', as') <- unApply fa'
-                   = if (length as /= length as')
-                        then checkRec f f'
-                        else checkRec f f' && and (zipWith checkRec as as')
-          checkRec (P xt x _) (P yt y _) = x == y || ntRec xt yt
-          checkRec _ _ = False
-
-          ntRec x y | Ref <- x = True
-                    | Ref <- y = True
-                    | (Bound, Bound) <- (x, y) = True
-                    | otherwise = False -- name is different, unrecoverable
 
 propagateParams :: IState -> [Name] -> Type -> PTerm -> PTerm
 propagateParams i ps t tm@(PApp _ (PRef fc n) args)
@@ -582,14 +538,14 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                   "\n" ++ show (fn_ty, fn_is))
 
         ((ElabResult lhs' dlhs [] ctxt' newDecls, probs, inj), _) <-
-           tclift $ elaborate ctxt (sMN 0 "patLHS") infP initEState
+           tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
                     (do res <- errAt "left hand side of " fname
                                  (erun fc (buildTC i info ELHS opts fname (infTerm lhs)))
                         probs <- get_probs
                         inj <- get_inj
                         return (res, probs, inj))
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         let lhs_tm = orderPats (getInferTerm lhs')
@@ -657,7 +613,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
         ((rhs', defer, is, probs, ctxt', newDecls), _) <-
-           tclift $ elaborate ctxt (sMN 0 "patRHS") clhsty initEState
+           tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patRHS") clhsty initEState
                     (do pbinds ist lhs_tm
                         mapM_ setinj (nub (params ++ inj))
                         setNextName
@@ -667,14 +623,15 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         errAt "right hand side of " fname
                               (erun fc $ psolve lhs_tm)
                         hs <- get_holes
-                        aux <- getAux
-                        mapM_ (elabCaseHole (case_decls aux)) hs
+                        mapM_ (elabCaseHole is) hs
                         tt <- get_term
-                        let (tm, ds) = runState (collectDeferred (Just fname) tt) []
+                        aux <- getAux
+                        let (tm, ds) = runState (collectDeferred (Just fname) 
+                                                     (map fst $ case_decls aux) ctxt tt) []
                         probs <- get_probs
                         return (tm, ds, is, probs, ctxt', newDecls))
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         logLvl 5 "DONE CHECK"
@@ -745,14 +702,14 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
     -- Find the variable names which appear under a 'Ownership.Read' so that
     -- we know they can't be used on the RHS
     borrowedNames :: [Name] -> Term -> [Name]
-    borrowedNames env (App (App (P _ (NS (UN lend) [owner]) _) _) arg)
+    borrowedNames env (App _ (App _ (P _ (NS (UN lend) [owner]) _) _) arg)
         | owner == txt "Ownership" &&
           (lend == txt "lend" || lend == txt "Read") = getVs arg
        where
          getVs (V i) = [env!!i]
-         getVs (App f a) = nub $ getVs f ++ getVs a
+         getVs (App _ f a) = nub $ getVs f ++ getVs a
          getVs _ = []
-    borrowedNames env (App f a) = nub $ borrowedNames env f ++ borrowedNames env a
+    borrowedNames env (App _ f a) = nub $ borrowedNames env f ++ borrowedNames env a
     borrowedNames env (Bind n b sc) = nub $ borrowedB b ++ borrowedNames (n:env) sc
        where borrowedB (Let t v) = nub $ borrowedNames env t ++ borrowedNames env v
              borrowedB b = borrowedNames env (binderTy b)
@@ -818,11 +775,11 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let lhs = stripLinear i $ stripUnmatchable i $ propagateParams i params fn_ty (addImplPat i lhs_in)
         logLvl 2 ("LHS: " ++ show lhs)
         (ElabResult lhs' dlhs [] ctxt' newDecls, _) <-
-            tclift $ elaborate ctxt (sMN 0 "patLHS") infP initEState
+            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
               (errAt "left hand side of with in " fname
                 (erun fc (buildTC i info ELHS opts fname (infTerm lhs))) )
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy (explicitNames (normalise ctxt [] lhs_ty))
@@ -835,7 +792,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         logLvl 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
         ((wval', defer, is, ctxt', newDecls), _) <-
-            tclift $ elaborate ctxt (sMN 0 "withRHS")
+            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "withRHS")
                         (bindTyArgs PVTy bargs infP) initEState
                         (do pbinds i lhs_tm
                             setNextName
@@ -846,7 +803,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                             tt <- get_term
                             return (tt, d, is, ctxt', newDecls))
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
         def' <- checkDef fc iderr defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
@@ -933,7 +890,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         ctxt <- getContext -- New context with block added
         i <- getIState
         ((rhs', defer, is, ctxt', newDecls), _) <-
-           tclift $ elaborate ctxt (sMN 0 "wpatRHS") clhsty initEState
+           tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "wpatRHS") clhsty initEState
                     (do pbinds i lhs_tm
                         setNextName
                         (ElabResult _ d is ctxt' newDecls) <- erun fc (build i info ERHS opts fname rhs)
@@ -941,7 +898,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                         tt <- get_term
                         return (tt, d, is, ctxt', newDecls))
         setContext ctxt'
-        processTacticDecls newDecls
+        processTacticDecls info newDecls
 
         def' <- checkDef fc iderr defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'

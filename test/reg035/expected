@@ -1,4 +1,1 @@
-reg035b.idr:8:6:Can't convert
-        [94mAdditive[0m -> [94mNat[0m
-with
-        [94mFin[0m [91m0[0m
+reg035b.idr:8:6:No such variable __pi_arg

@@ -243,7 +243,8 @@ instance NFData PTerm where
         rnf (PNoImplicits x1) = rnf x1 `seq` ()
         rnf (PQuasiquote x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PUnquote x1) = rnf x1 `seq` ()
-        rnf (PRunTactics x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (PQuoteName x1) = rnf x1 `seq` ()
+        rnf (PRunElab x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance (NFData t) => NFData (PTactic' t) where
         rnf (Intro x1) = rnf x1 `seq` ()

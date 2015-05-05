@@ -32,8 +32,9 @@ iucheck = do tit <- typeInType
              logLvl 7 $ "ALL CONSTRAINTS: " ++ show cs
              when (not tit) $
                    (tclift $ ucheck (idris_constraints ist)) `idrisCatch`
-                              (\e -> do setErrSpan (getErrSpan e)
-                                        iputStrLn (pshow ist e))
+                              (\e -> do let fc = getErrSpan e
+                                        setErrSpan fc
+                                        iWarn fc $ pprintErr ist e)
 
 showErr :: Err -> Idris String
 showErr e = getIState >>= return . flip pshow e
@@ -67,6 +68,7 @@ ierror = throwError
 tclift :: TC a -> Idris a
 tclift (OK v) = return v
 tclift (Error err@(At fc e)) = do setErrSpan fc; throwError err
+tclift (Error err@(UniverseError fc _ _ _ _)) = do setErrSpan fc; throwError err
 tclift (Error err) = throwError err
 
 tctry :: TC a -> TC a -> Idris a
@@ -77,6 +79,7 @@ tctry tc1 tc2
 
 getErrSpan :: Err -> FC
 getErrSpan (At fc _) = fc
+getErrSpan (UniverseError fc _ _ _ _) = fc
 getErrSpan _ = emptyFC
 
 --------------------------------------------------------------------
@@ -133,7 +136,7 @@ warnDisamb ist (PCoerced tm) = warnDisamb ist tm
 warnDisamb ist (PDisamb ds tm) = warnDisamb ist tm >>
                                  mapM_ warnEmpty ds
   where warnEmpty d =
-          when (null (filter (isIn d . fst) (ctxtAlist (tt_ctxt ist)))) $
+          when (not (any (isIn d . fst) (ctxtAlist (tt_ctxt ist)))) $
             ierror . Msg $
               "Nothing found in namespace \"" ++
               intercalate "." (map T.unpack d) ++
@@ -146,6 +149,7 @@ warnDisamb ist (PNoImplicits tm) = warnDisamb ist tm
 warnDisamb ist (PQuasiquote tm goal) = warnDisamb ist tm >>
                                        Foldable.mapM_ (warnDisamb ist) goal
 warnDisamb ist (PUnquote tm) = warnDisamb ist tm
+warnDisamb ist (PQuoteName _) = return ()
 warnDisamb ist (PAs _ _ tm) = warnDisamb ist tm
 warnDisamb ist (PAppImpl tm _) = warnDisamb ist tm
-warnDisamb ist (PRunTactics _ tm) = warnDisamb ist tm
+warnDisamb ist (PRunElab _ tm) = warnDisamb ist tm

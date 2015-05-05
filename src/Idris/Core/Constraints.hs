@@ -145,18 +145,19 @@ solve maxUniverseLevel ucs =
         domainOf (UVar var) = gets (fst . (M.! Var var) . domainStore)
         domainOf (UVal val) = return (Domain val val)
 
+        asPair :: Domain -> (Int, Int)
+        asPair (Domain x y) = (x, y)
+
         updateUpperBoundOf :: ConstraintFC -> UExp -> Int -> StateT SolverState TC ()
         updateUpperBoundOf suspect (UVar var) upper = do
             doms <- gets domainStore
             let (oldDom@(Domain lower _), suspects) = doms M.! Var var
             let newDom = Domain lower upper
-            when (wipeOut newDom) $ lift $ Error $ At (ufc suspect) $ Msg $ unlines
-                $ "Universe inconsistency."
-                : ("Working on: " ++ show (UVar var))
-                : ("Old domain: " ++ show oldDom)
-                : ("New domain: " ++ show newDom)
-                : "Involved constraints: "
-                : map (("\t"++) . show) (suspect : S.toList suspects)
+            when (wipeOut newDom) $
+              lift $ Error $
+                UniverseError (ufc suspect) (UVar var)
+                              (asPair oldDom) (asPair newDom)
+                              (suspect : S.toList suspects)
             modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
             addToQueueRHS (uconstraint suspect) (Var var)
         updateUpperBoundOf _ UVal{} _ = return ()

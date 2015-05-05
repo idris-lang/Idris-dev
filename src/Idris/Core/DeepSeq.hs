@@ -25,6 +25,7 @@ instance NFData SpecialName where
         rnf (CaseN x1) = rnf x1 `seq` ()
         rnf (ElimN x1) = rnf x1 `seq` ()
         rnf (InstanceCtorN x1) = rnf x1 `seq` ()
+        rnf (MetaN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance NFData Universe where
         rnf NullType = ()
@@ -49,6 +50,13 @@ instance NFData Provenance where
         rnf GivenVal = ()
         rnf (SourceTerm x1) = rnf x1 `seq` ()
         rnf (TooManyArgs x1) = rnf x1 `seq` ()
+
+instance NFData UConstraint where
+  rnf (ULT x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+  rnf (ULE x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+
+instance NFData ConstraintFC where
+  rnf (ConstraintFC x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance NFData Err where
         rnf (Msg x1) = rnf x1 `seq` ()
@@ -85,7 +93,7 @@ instance NFData Err where
         rnf (CantResolveAlts x1) = rnf x1 `seq` ()
         rnf (IncompleteTerm x1) = rnf x1 `seq` ()
         rnf (NoEliminator x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf UniverseError = ()
+        rnf (UniverseError x1 x2 x3 x4 x5) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
         rnf ProgramLineComment = ()
         rnf (Inaccessible x1) = rnf x1 `seq` ()
         rnf (NonCollapsiblePostulate x1) = rnf x1 `seq` ()
@@ -97,7 +105,8 @@ instance NFData Err where
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (ProviderError x1) = rnf x1 `seq` ()
         rnf (LoadingFailed x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (ElabDebug x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (ElabScriptDebug x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (ElabScriptStuck x1) = rnf x1 `seq` ()
 
 instance NFData ImplicitInfo where
         rnf (Impl x1) = rnf x1 `seq` ()
@@ -160,7 +169,7 @@ instance (NFData n) => NFData (TT n) where
         rnf (P x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (V x1) = rnf x1 `seq` ()
         rnf (Bind x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (App x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (App x1 x2 x3) = rnf x2 `seq` rnf x3 `seq` ()
         rnf (Constant x1) = rnf x1 `seq` ()
         rnf (Proj x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf Erased = ()

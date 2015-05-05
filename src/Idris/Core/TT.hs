@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor, DeriveDataTypeable #-}
-
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-| TT is the core language of Idris. The language has:
 
    * Full dependent types
@@ -117,9 +117,6 @@ data ErrorReportPart = TextPart String
                        deriving (Show, Eq, Data, Typeable)
 
 
--- Please remember to keep Err synchronised with
--- Language.Reflection.Errors.Err in the stdlib!
-
 data Provenance = ExpectedType
                 | TooManyArgs Term
                 | InferredVal
@@ -130,6 +127,10 @@ data Provenance = ExpectedType
 deriving instance NFData Err
 deriving instance Binary Err
 !-}
+
+
+-- NB: Please remember to keep Err synchronised with
+-- Language.Reflection.Errors.Err in the stdlib!
 
 -- | Idris errors. Used as exceptions in the compiler, but reported to users
 -- if they reach the top level.
@@ -161,7 +162,8 @@ data Err' t
           | CantResolveAlts [Name]
           | IncompleteTerm t
           | NoEliminator String t
-          | UniverseError
+          | UniverseError FC UExp (Int, Int) (Int, Int) [ConstraintFC]
+            -- ^ Location, bad universe, old domain, new domain, suspects
           | UniqueError Universe Name
           | UniqueKindError Universe Name
           | ProgramLineComment
@@ -178,8 +180,9 @@ data Err' t
           | LoadingFailed String (Err' t)
           | ReflectionError [[ErrorReportPart]] (Err' t)
           | ReflectionFailed String (Err' t)
-          | ElabDebug (Maybe String) t [(Name, t, [(Name, Binder t)])]
+          | ElabScriptDebug (Maybe String) t [(Name, t, [(Name, Binder t)])]
             -- ^ User-specified message, proof term, goals with context (first goal is focused)
+          | ElabScriptStuck t
   deriving (Eq, Functor, Data, Typeable)
 
 type Err = Err' Term
@@ -238,7 +241,6 @@ instance Sized Err where
   size (NoRewriting trm) = size trm
   size (CantResolveAlts _) = 1
   size (IncompleteTerm trm) = size trm
-  size UniverseError = 1
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
   size (Elaborating _ n err) = size err
@@ -365,6 +367,7 @@ data SpecialName = WhereN Int Name Name
                  | CaseN Name
                  | ElimN Name
                  | InstanceCtorN Name
+                 | MetaN Name Name
   deriving (Eq, Ord, Data, Typeable)
 {-!
 deriving instance Binary SpecialName
@@ -389,6 +392,9 @@ instance Pretty Name OutputAnnotation where
   pretty n@(MN i s) = annotate (AnnName n Nothing Nothing Nothing) $
                       lbrace <+> text (T.unpack s) <+> (text . show $ i) <+> rbrace
   pretty n@(SN s) = annotate (AnnName n Nothing Nothing Nothing) $ text (show s)
+  pretty n@(SymRef i) = annotate (AnnName n Nothing Nothing Nothing) $
+                        text $ "##symbol" ++ show i ++ "##"
+  pretty NErased = annotate (AnnName NErased Nothing Nothing Nothing) $ text "_"
 
 instance Pretty [Name] OutputAnnotation where
   pretty = encloseSep empty empty comma . map pretty
@@ -399,6 +405,7 @@ instance Show Name where
     show (MN _ u) | u == txt "underscore" = "_"
     show (MN i s) = "{" ++ str s ++ show i ++ "}"
     show (SN s) = show s
+    show (SymRef i) = "##symbol" ++ show i ++ "##"
     show NErased = "_"
 
 instance Show SpecialName where
@@ -410,6 +417,7 @@ instance Show SpecialName where
     show (CaseN n) = "case block in " ++ show n
     show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
     show (InstanceCtorN n) = "constructor of " ++ show n
+    show (MetaN parent meta) = "<<" ++ show parent ++ " " ++ show meta ++ ">>"
 
 -- Show a name in a way decorated for code generation, not human reading
 showCG :: Name -> String
@@ -425,6 +433,9 @@ showCG (SN s) = showCG' s
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
         showCG' (CaseN c) = showCG c ++ "_case"
         showCG' (ElimN sn) = showCG sn ++ "_elim"
+        showCG' (InstanceCtorN n) = showCG n ++ "_ictor"
+        showCG' (MetaN parent meta) = showCG parent ++ "_meta_" ++ showCG meta
+showCG (SymRef i) = error "can't do codegen for a symbol reference"
 showCG NErased = "_"
 
 
@@ -643,7 +654,7 @@ data Universe = NullType | UniqueType | AllTypes
 instance Show Universe where
     show UniqueType = "UniqueType"
     show NullType = "NullType"
-    show AllTypes = "Type*"
+    show AllTypes = "AnyType"
 
 data Raw = Var Name
          | RBind Name (Binder Raw) Raw
@@ -765,11 +776,11 @@ instance Show UExp where
 -- | Universe constraints
 data UConstraint = ULT UExp UExp -- ^ Strictly less than
                  | ULE UExp UExp -- ^ Less than or equal to
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Data, Typeable)
 
 data ConstraintFC = ConstraintFC { uconstraint :: UConstraint,
                                    ufc :: FC }
-  deriving Show
+  deriving (Show, Data, Typeable)
 
 instance Eq ConstraintFC where
     x == y = uconstraint x == uconstraint y  
@@ -806,6 +817,11 @@ instance Eq NameType where
     TCon _ a == TCon _ b = (a == b) -- ignore tag
     _        == _        = False
 
+data AppStatus n = Complete
+                 | MaybeHoles
+                 | Holes [n]
+    deriving (Eq, Ord, Functor, Data, Typeable, Show)
+
 -- | Terms in the core language. The type parameter is the type of
 -- identifiers used for bindings and explicit named references;
 -- usually we use @TT 'Name'@.
@@ -814,7 +830,7 @@ data TT n = P NameType n (TT n) -- ^ named references with type
             -- Pure Type Systems Formalized)
           | V !Int -- ^ a resolved de Bruijn-indexed variable
           | Bind n !(Binder (TT n)) (TT n) -- ^ a binding
-          | App !(TT n) (TT n) -- ^ function, function type, arg
+          | App (AppStatus n) !(TT n) (TT n) -- ^ function, function type, arg
           | Constant Const -- ^ constant
           | Proj (TT n) !Int -- ^ argument projection; runtime only
                              -- (-1) is a special case for 'subtract one from BI'
@@ -850,18 +866,24 @@ instance TermSize (TT Name) where
     termsize n (Bind n' b sc)
        = let rn = if n == n' then sMN 0 "noname" else n in
              termsize rn sc
-    termsize n (App f a) = termsize n f + termsize n a
+    termsize n (App _ f a) = termsize n f + termsize n a
     termsize n (Proj t i) = termsize n t
     termsize n _ = 1
+
+instance Sized Universe where
+  size u = 1
 
 instance Sized a => Sized (TT a) where
   size (P name n trm) = 1 + size name + size n + size trm
   size (V v) = 1
   size (Bind nm binder bdy) = 1 + size nm + size binder + size bdy
-  size (App l r) = 1 + size l + size r
+  size (App _ l r) = 1 + size l + size r
   size (Constant c) = size c
   size Erased = 1
   size (TType u) = 1 + size u
+  size (Proj a _) = 1 + size a
+  size Impossible = 1
+  size (UType u) = 1 + size u
 
 instance Pretty a o => Pretty (TT a) o where
   pretty _ = text "test"
@@ -875,12 +897,32 @@ data Datatype n = Data { d_typename :: n,
                          d_cons     :: [(n, TT n)] }
   deriving (Show, Functor, Eq)
 
+-- | Data declaration options
+data DataOpt = Codata -- ^ Set if the the data-type is coinductive
+             | DefaultEliminator -- ^ Set if an eliminator should be generated for data type
+             | DefaultCaseFun -- ^ Set if a case function should be generated for data type
+             | DataErrRev
+    deriving (Show, Eq)
+
+type DataOpts = [DataOpt]
+
+data TypeInfo = TI { con_names :: [Name],
+                     codata :: Bool,
+                     data_opts :: DataOpts,
+                     param_pos :: [Int],
+                     mutual_types :: [Name] }
+    deriving Show
+{-!
+deriving instance Binary TypeInfo
+deriving instance NFData TypeInfo
+!-}
+
 instance Eq n => Eq (TT n) where
     (==) (P xt x _)     (P yt y _)     = x == y
     (==) (V x)          (V y)          = x == y
     (==) (Bind _ xb xs) (Bind _ yb ys) = xs == ys && xb == yb
-    (==) (App fx ax)    (App fy ay)    = ax == ay && fx == fy
-    (==) (TType _)        (TType _)        = True -- deal with constraints later
+    (==) (App _ fx ax)  (App _ fy ay)  = ax == ay && fx == fy
+    (==) (TType _)      (TType _)      = True -- deal with constraints later
     (==) (Constant x)   (Constant y)   = x == y
     (==) (Proj x i)     (Proj y j)     = x == y && i == j
     (==) Erased         _              = True
@@ -896,15 +938,15 @@ isInjective :: TT n -> Bool
 isInjective (P (DCon _ _ _) _ _) = True
 isInjective (P (TCon _ _) _ _) = True
 isInjective (Constant _)       = True
-isInjective (TType x)            = True
+isInjective (TType x)          = True
 isInjective (Bind _ (Pi _ _ _) sc) = True
-isInjective (App f a)          = isInjective f
+isInjective (App _ f a)        = isInjective f
 isInjective _                  = False
 
 -- | Count the number of instances of a de Bruijn index in a term
 vinstances :: Int -> TT n -> Int
 vinstances i (V x) | i == x = 1
-vinstances i (App f a) = vinstances i f + vinstances i a
+vinstances i (App _ f a) = vinstances i f + vinstances i a
 vinstances i (Bind x b sc) = instancesB b + vinstances (i + 1) sc
   where instancesB (Let t v) = vinstances i v
         instancesB _ = 0
@@ -916,7 +958,7 @@ instantiate e = subst 0 where
     subst i (P nt x ty) = P nt x (subst i ty)
     subst i (V x) | i == x = e
     subst i (Bind x b sc) = Bind x (fmap (subst i) b) (subst (i+1) sc)
-    subst i (App f a) = App (subst i f) (subst i a)
+    subst i (App s f a) = App s (subst i f) (subst i a)
     subst i (Proj x idx) = Proj (subst i x) idx
     subst i t = t
 
@@ -925,11 +967,11 @@ instantiate e = subst 0 where
 -- that has been substituted.
 substV :: TT n -> TT n -> TT n
 substV x tm = dropV 0 (instantiate x tm) where
-    subst i (P nt x ty) = P nt x (subst i ty)
+    dropV i (P nt x ty) = P nt x (dropV i ty)
     dropV i (V x) | x > i = V (x - 1)
                   | otherwise = V x
     dropV i (Bind x b sc) = Bind x (fmap (dropV i) b) (dropV (i+1) sc)
-    dropV i (App f a) = App (dropV i f) (dropV i a)
+    dropV i (App s f a) = App s (dropV i f) (dropV i a)
     dropV i (Proj x idx) = Proj (dropV i x) idx
     dropV i t = t
 
@@ -940,7 +982,7 @@ explicitNames (Bind x b sc) = let b' = fmap explicitNames b in
                                   Bind x b'
                                      (explicitNames (instantiate
                                         (P Bound x (binderTy b')) sc))
-explicitNames (App f a) = App (explicitNames f) (explicitNames a)
+explicitNames (App s f a) = App s (explicitNames f) (explicitNames a)
 explicitNames (Proj x idx) = Proj (explicitNames x) idx
 explicitNames t = t
 
@@ -954,7 +996,7 @@ pToV' n i (Bind x b sc)
 -- resolve names from the *outer* scope which may happen to have the same id.
      | n == x    = Bind x (fmap (pToV' n i) b) sc
      | otherwise = Bind x (fmap (pToV' n i) b) (pToV' n (i+1) sc)
-pToV' n i (App f a) = App (pToV' n i f) (pToV' n i a)
+pToV' n i (App s f a) = App s (pToV' n i f) (pToV' n i a)
 pToV' n i (Proj t idx) = Proj (pToV' n i t) idx
 pToV' n i t = t
 
@@ -965,7 +1007,7 @@ addBinder t = ab 0 t
      ab top (V i) | i >= top = V (i + 1)
                   | otherwise = V i
      ab top (Bind x b sc) = Bind x (fmap (ab top) b) (ab (top + 1) sc)
-     ab top (App f a) = App (ab top f) (ab top a)
+     ab top (App s f a) = App s (ab top f) (ab top a)
      ab top (Proj t idx) = Proj (ab top t) idx
      ab top t = t
 
@@ -984,14 +1026,14 @@ vToP = vToP' [] where
                           P Bound n (binderTy b)
     vToP' env (Bind n b sc) = let b' = fmap (vToP' env) b in
                                   Bind n b' (vToP' ((n, b'):env) sc)
-    vToP' env (App f a) = App (vToP' env f) (vToP' env a)
+    vToP' env (App s f a) = App s (vToP' env f) (vToP' env a)
     vToP' env t = t
 
 -- | Replace every non-free reference to the name of a binding in
 -- the given term with a de Bruijn index.
 finalise :: Eq n => TT n -> TT n
 finalise (Bind x b sc) = Bind x (fmap finalise b) (pToV x (finalise sc))
-finalise (App f a) = App (finalise f) (finalise a)
+finalise (App s f a) = App s (finalise f) (finalise a)
 finalise t = t
 
 -- Once we've finished checking everything about a term we no longer need
@@ -999,7 +1041,7 @@ finalise t = t
 
 pEraseType :: TT n -> TT n
 pEraseType (P nt t _) = P nt t Erased
-pEraseType (App f a) = App (pEraseType f) (pEraseType a)
+pEraseType (App s f a) = App s (pEraseType f) (pEraseType a)
 pEraseType (Bind n b sc) = Bind n (fmap pEraseType b) (pEraseType sc)
 pEraseType t = t
 
@@ -1026,9 +1068,9 @@ subst n v tm = fst $ subst' 0 tm
          = let (b', ub) = substB' i b
                (sc', usc) = subst' (i+1) sc in
                if ub || usc then (Bind x b' sc', True) else (t, False)
-    subst' i t@(App f a) = let (f', uf) = subst' i f
-                               (a', ua) = subst' i a in
-                               if uf || ua then (App f' a', True) else (t, False)
+    subst' i t@(App s f a) = let (f', uf) = subst' i f
+                                 (a', ua) = subst' i a in
+                                 if uf || ua then (App s f' a', True) else (t, False)
     subst' i t@(Proj x idx) = let (x', u) = subst' i x in
                                   if u then (Proj x' idx, u) else (t, False)
     subst' i t = (t, False)
@@ -1053,7 +1095,7 @@ psubst n v tm = s' 0 tm where
    s' i (P _ x _) | n == x = v
    s' i (Bind x b sc) | n == x = Bind x (fmap (s' i) b) sc
                       | otherwise = Bind x (fmap (s' i) b) (s' (i+1) sc)
-   s' i (App f a) = App (s' i f) (s' i a)
+   s' i (App st f a) = App st (s' i f) (s' i a)
    s' i (Proj t idx) = Proj (s' i t) idx
    s' i t = t
 
@@ -1071,7 +1113,7 @@ substTerm :: Eq n => TT n {-^ Old term -} ->
              -> TT n
 substTerm old new = st where
   st t | t == old = new
-  st (App f a) = App (st f) (st a)
+  st (App s f a) = App s (st f) (st a)
   st (Bind x b sc) = Bind x (fmap st b) (st sc)
   st t = t
 
@@ -1085,7 +1127,7 @@ occurrences n t = execState (no' 0 t) 0
        where noB' i (Let t v) = do no' i t; no' i v
              noB' i (Guess t v) = do no' i t; no' i v
              noB' i b = no' i (binderTy b)
-    no' i (App f a) = do no' i f; no' i a
+    no' i (App _ f a) = do no' i f; no' i a
     no' i (Proj x _) = no' i x
     no' i _ = return ()
 
@@ -1099,7 +1141,7 @@ noOccurrence n t = no' 0 t
        where noB' i (Let t v) = no' i t && no' i v
              noB' i (Guess t v) = no' i t && no' i v
              noB' i b = no' i (binderTy b)
-    no' i (App f a) = no' i f && no' i a
+    no' i (App _ f a) = no' i f && no' i a
     no' i (Proj x _) = no' i x
     no' i _ = True
 
@@ -1111,7 +1153,7 @@ freeNames t = nub $ freeNames' t
     freeNames' (Bind n (Let t v) sc) = freeNames' v ++ (freeNames' sc \\ [n])
                                             ++ freeNames' t
     freeNames' (Bind n b sc) = freeNames' (binderTy b) ++ (freeNames' sc \\ [n])
-    freeNames' (App f a) = freeNames' f ++ freeNames' a
+    freeNames' (App _ f a) = freeNames' f ++ freeNames' a
     freeNames' (Proj x i) = freeNames' x
     freeNames' _ = []
 
@@ -1123,14 +1165,14 @@ arity _ = 0
 -- | Deconstruct an application; returns the function and a list of arguments
 unApply :: TT n -> (TT n, [TT n])
 unApply t = ua [] t where
-    ua args (App f a) = ua (a:args) f
+    ua args (App _ f a) = ua (a:args) f
     ua args t         = (t, args)
 
 -- | Returns a term representing the application of the first argument
 -- (a function) to every element of the second argument.
 mkApp :: TT n -> [TT n] -> TT n
 mkApp f [] = f
-mkApp f (a:as) = mkApp (App f a) as
+mkApp f (a:as) = mkApp (App MaybeHoles f a) as
 
 unList :: Term -> Maybe [Term]
 unList tm = case unApply tm of
@@ -1159,23 +1201,25 @@ forgetEnv env tm = case safeForgetEnv env tm of
 safeForgetEnv :: [Name] -> TT Name -> Maybe Raw
 safeForgetEnv env (P _ n _) = Just $ Var n
 safeForgetEnv env (V i) | i < length env = Just $ Var (env !! i)
-                        | otherwise = Nothing 
-safeForgetEnv env (Bind n b sc) 
+                        | otherwise = Nothing
+safeForgetEnv env (Bind n b sc)
      = do let n' = uniqueName n env
           b' <- safeForgetEnvB env b
           sc' <- safeForgetEnv (n':env) sc
           Just $ RBind n' b' sc'
-  where safeForgetEnvB env (Let t v) = liftM2 Let (safeForgetEnv env t) 
+  where safeForgetEnvB env (Let t v) = liftM2 Let (safeForgetEnv env t)
                                                   (safeForgetEnv env v)
-        safeForgetEnvB env (Guess t v) = liftM2 Guess (safeForgetEnv env t) 
+        safeForgetEnvB env (Guess t v) = liftM2 Guess (safeForgetEnv env t)
                                                       (safeForgetEnv env v)
         safeForgetEnvB env b = do ty' <- safeForgetEnv env (binderTy b)
-                                  Just $ fmap (\_ -> ty') b 
-safeForgetEnv env (App f a) = liftM2 RApp (safeForgetEnv env f) (safeForgetEnv env a)
+                                  Just $ fmap (\_ -> ty') b
+safeForgetEnv env (App _ f a) = liftM2 RApp (safeForgetEnv env f) (safeForgetEnv env a)
 safeForgetEnv env (Constant c) = Just $ RConstant c
 safeForgetEnv env (TType i) = Just RType
 safeForgetEnv env (UType u) = Just $ RUType u
 safeForgetEnv env Erased    = Just $ RConstant Forgot
+safeForgetEnv env (Proj tm i) = error "Don't know how to forget a projection"
+safeForgetEnv env Impossible = error "Don't know how to forget Impossible"
 
 -- | Introduce a 'Bind' into the given term for each element of the
 -- given list of (name, binder) pairs.
@@ -1224,10 +1268,11 @@ uniqueBinders ns = ubSet (fromList ns) where
         = let n' = uniqueNameSet n ns
               ns' = insert n' ns in
               Bind n' (fmap (ubSet ns') b) (ubSet ns' sc)
-    ubSet ns (App f a) = App (ubSet ns f) (ubSet ns a)
+    ubSet ns (App s f a) = App s (ubSet ns f) (ubSet ns a)
     ubSet ns t = t
 
 
+nextName :: Name -> Name
 nextName (NS x s)    = NS (nextName x) s
 nextName (MN i n)    = MN (i+1) n
 nextName (UN x) = let (num', nm') = T.span isDigit (T.reverse x)
@@ -1247,6 +1292,9 @@ nextName (SN x) = SN (nextName' x)
     nextName' (ElimN n) = ElimN (nextName n)
     nextName' (MethodN n) = MethodN (nextName n)
     nextName' (InstanceCtorN n) = InstanceCtorN (nextName n)
+    nextName' (MetaN parent meta) = MetaN parent (nextName meta)
+nextName NErased = NErased
+nextName (SymRef i) = error "Can't generate a name from a symbol reference"
 
 type Term = TT Name
 type Type = Term
@@ -1286,11 +1334,13 @@ instance Show Const where
     show WorldType = "prim__WorldType"
     show StrType = "String"
     show VoidType = "Void"
+    show Forgot = "Forgot"
 
 showEnv :: (Eq n, Show n) => EnvTT n -> TT n -> String
 showEnv env t = showEnv' env t False
 showEnvDbg env t = showEnv' env t True
 
+prettyEnv :: Env -> Term -> Doc OutputAnnotation
 prettyEnv env t = prettyEnv' env t False
   where
     prettyEnv' env t dbg = prettySe 10 env t dbg
@@ -1317,21 +1367,25 @@ prettyEnv env t = prettyEnv' env t False
           bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, b):env) sc debug
     prettySe p env (Bind n b sc) debug =
       bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, b):env) sc debug
-    prettySe p env (App f a) debug =
+    prettySe p env (App _ f a) debug =
       bracket p 1 $ prettySe 1 env f debug <+> prettySe 0 env a debug
     prettySe p env (Proj x i) debug =
       prettySe 1 env x debug <+> text ("!" ++ show i)
     prettySe p env (Constant c) debug = pretty c
     prettySe p env Erased debug = text "[_]"
     prettySe p env (TType i) debug = text "Type" <+> (text . show $ i)
+    prettySe p env Impossible debug = text "Impossible"
+    prettySe p env (UType u) debug = text (show u)
 
     -- Render a `Binder` and its name
     prettySb env n (Lam t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
+    prettySb env n (GHole _ t) = prettyB env "?gdefer" "." n t
     prettySb env n (Pi _ t _) = prettyB env "(" ") ->" n t
     prettySb env n (PVar t) = prettyB env "pat" "." n t
     prettySb env n (PVTy t) = prettyB env "pty" "." n t
     prettySb env n (Let t v) = prettyBv env "let" "in" n t v
+    prettySb env n (NLet t v) = prettyBv env "nlet" "in" n t v
     prettySb env n (Guess t v) = prettyBv env "??" "in" n t v
 
     -- Use `op` and `sc` to delimit `n` (a binding name) and its type
@@ -1361,7 +1415,7 @@ showEnv' env t dbg = se 10 env t where
        where arrow (TType _) = " -> "
              arrow u = " [" ++ show u ++ "] -> "
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
-    se p env (App f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
+    se p env (App _ f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Proj x i) = se 1 env x ++ "!" ++ show i
     se p env (Constant c) = show c
     se p env Erased = "[__]"
@@ -1377,6 +1431,7 @@ showEnv' env t dbg = se 10 env t where
     sb env n (PVar t) = showb env "pat " ". " n t
     sb env n (PVTy t) = showb env "pty " ". " n t
     sb env n (Let t v)   = showbv env "let " " in " n t v
+    sb env n (NLet t v)   = showbv env "nlet " " in " n t v
     sb env n (Guess t v) = showbv env "?? " " in " n t v
 
     showb env op sc n t    = op ++ show n ++ " : " ++ se 10 env t ++ sc
@@ -1386,9 +1441,9 @@ showEnv' env t dbg = se 10 env t where
     bracket outer inner str | inner > outer = "(" ++ str ++ ")"
                             | otherwise = str
 
--- | Check whether a term has any holes in it - impure if so
+-- | Check whether a term has any hole bindings in it - impure if so
 pureTerm :: TT Name -> Bool
-pureTerm (App f a) = pureTerm f && pureTerm a
+pureTerm (App _ f a) = pureTerm f && pureTerm a
 pureTerm (Bind n b sc) = notClassName n && pureBinder b && pureTerm sc where
     pureBinder (Hole _) = False
     pureBinder (Guess _ _) = False
@@ -1404,7 +1459,7 @@ pureTerm _ = True
 weakenTm :: Int -> TT n -> TT n
 weakenTm i t = wk i 0 t
   where wk i min (V x) | x >= min = V (i + x)
-        wk i m (App f a)     = App (wk i m f) (wk i m a)
+        wk i m (App s f a)   = App s (wk i m f) (wk i m a)
         wk i m (Bind x b sc) = Bind x (wkb i m b) (wk i (m + 1) sc)
         wk i m t = t
         wkb i m t           = fmap (wk i m) t
@@ -1429,7 +1484,7 @@ weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
 orderPats :: Term -> Term
 orderPats tm = op [] tm
   where
-    op [] (App f a) = App f (op [] a) -- for Infer terms
+    op [] (App s f a) = App s f (op [] a) -- for Infer terms
 
     op ps (Bind n (PVar t) sc) = op ((n, PVar t) : ps) sc
     op ps (Bind n (Hole t) sc) = op ((n, Hole t) : ps) sc
@@ -1454,7 +1509,7 @@ refsIn (Bind n b t) = nub $ nb b ++ refsIn t
   where nb (Let   t v) = nub (refsIn t) ++ nub (refsIn v)
         nb (Guess t v) = nub (refsIn t) ++ nub (refsIn v)
         nb t = refsIn (binderTy t)
-refsIn (App f a) = nub (refsIn f ++ refsIn a)
+refsIn (App s f a) = nub (refsIn f ++ refsIn a)
 refsIn _ = []
 
 -- Make sure all the pattern bindings are as far out as possible
@@ -1491,9 +1546,9 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
                                       return (Bind n (Hole t') sc')
 
 
-    getPats (App f a) = do f' <- getPats f
-                           a' <- getPats a
-                           return (App f' a')
+    getPats (App s f a) = do f' <- getPats f
+                             a' <- getPats a
+                             return (App s f' a')
     getPats t = return t
 
 allTTNames :: Eq n => TT n -> [n]
@@ -1503,7 +1558,7 @@ allTTNames = nub . allNamesIn
           where nb (Let   t v) = allNamesIn t ++ allNamesIn v
                 nb (Guess t v) = allNamesIn t ++ allNamesIn v
                 nb t = allNamesIn (binderTy t)
-        allNamesIn (App f a) = allNamesIn f ++ allNamesIn a
+        allNamesIn (App _ f a) = allNamesIn f ++ allNamesIn a
         allNamesIn _ = []
 
 
@@ -1526,7 +1581,7 @@ pprintTT bound tm = pp startPrec bound tm
        | otherwise        = text ("{{{V" ++ show i ++ "}}}")
     pp p bound (Bind n b sc) = ppb p bound n b $
                                pp startPrec (n:bound) sc
-    pp p bound (App tm1 tm2) =
+    pp p bound (App _ tm1 tm2) =
       bracket p appPrec . group . hang 2 $
         pp appPrec bound tm1 <> line <>
         pp (appPrec + 1) bound tm2

@@ -52,6 +52,7 @@ parserCommandsForHelp =
     , " Search for values by type", cmd_search)
   , nameArgCmd ["wc", "whocalls"] WhoCalls "List the callers of some name"
   , nameArgCmd ["cw", "callswho"] CallsWho "List the callees of some name"
+  , namespaceArgCmd ["browse"] Browse "List the contents of some namespace"
   , nameArgCmd ["total"] TotCheck "Check the totality of a name"
   , noArgCmd ["r", "reload"] Reload "Reload current file"
   , (["l", "load"], FileArg, "Load a new file"
@@ -71,7 +72,7 @@ parserCommandsForHelp =
   , noArgCmd ["proofs"] Proofs "Show available proofs"
   , exprArgCmd ["x"] ExecVal "Execute IO actions resulting from an expression using the interpreter"
   , (["c", "compile"], FileArg, "Compile to an executable [codegen] <filename>", cmd_compile)
-  , noArgCmd ["exec", "execute"] Execute "Compile to an executable and run"
+  , (["exec", "execute"], OptionalArg ExprArg, "Compile to an executable and run", cmd_execute)
   , (["dynamic"], FileArg, "Dynamically load a C library (similar to %dynamic)", cmd_dynamic)
   , (["dynamic"], NoArg, "List dynamically loaded C libraries", cmd_dynamic)
   , noArgCmd ["?", "h", "help"] Help "Display this help text"
@@ -136,17 +137,19 @@ parserCommands =
     )
   ]
 
-noArgCmd names command doc = 
+noArgCmd names command doc =
   (names, NoArg, doc, noArgs command)
-nameArgCmd names command doc = 
+nameArgCmd names command doc =
   (names, NameArg, doc, fnNameArg command)
-exprArgCmd names command doc = 
+namespaceArgCmd names command doc =
+  (names, NamespaceArg, doc, namespaceArg command)
+exprArgCmd names command doc =
   (names, ExprArg, doc, exprArg command)
-metavarArgCmd names command doc = 
+metavarArgCmd names command doc =
   (names, MetaVarArg, doc, fnNameArg command)
-optArgCmd names command doc = 
+optArgCmd names command doc =
   (names, OptionArg, doc, optArg command)
-proofArgCmd names command doc = 
+proofArgCmd names command doc =
   (names, NoArg, doc, proofArg command)
 
 pCmd :: P.IdrisParser (Either String Command)
@@ -220,6 +223,11 @@ moduleArg = genArg "module" (fmap toPath P.identifier)
   where
     toPath n = foldl1' (</>) $ splitOn "." n
 
+namespaceArg :: ([String] -> Command) -> String -> P.IdrisParser (Either String Command)
+namespaceArg = genArg "namespace" (fmap toNS P.identifier) 
+  where
+    toNS  = splitOn "."
+
 optArg :: (Opt -> Command) -> String -> P.IdrisParser (Either String Command)
 optArg cmd name = do
     let emptyArgs = do
@@ -275,6 +283,14 @@ cmd_consolewidth name = do
         pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth
                     <|> do discard (P.symbol "infinite"); return InfinitelyWide
                     <|> do n <- fmap fromInteger P.natural; return (ColsWide n)
+
+cmd_execute :: String -> P.IdrisParser (Either String Command)
+cmd_execute name = do
+    tm <- option maintm (P.fullExpr defaultSyntax)
+    return (Right (Execute tm))
+  where
+    maintm = PRef (fileFC "(repl)") (sNS (sUN "main") ["Main"])
+
 
 cmd_dynamic :: String -> P.IdrisParser (Either String Command)
 cmd_dynamic name = do

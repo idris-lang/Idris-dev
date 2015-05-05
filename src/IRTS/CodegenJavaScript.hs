@@ -47,7 +47,7 @@ initCompileInfo bc =
     lookupBigInt = any (needsBigInt . snd)
       where
         needsBigInt :: [BC] -> Bool
-        needsBigInt bc = or $ map testBCForBigInt bc
+        needsBigInt bc = any testBCForBigInt bc
           where
             testBCForBigInt :: BC -> Bool
             testBCForBigInt (ASSIGNCONST _ c)  =
@@ -55,12 +55,12 @@ initCompileInfo bc =
 
             testBCForBigInt (CONSTCASE _ c d) =
                  maybe False needsBigInt d
-              || (or $ map (needsBigInt . snd) c)
-              || (or $ map (testConstForBigInt . fst) c)
+              || any (needsBigInt . snd) c
+              || any (testConstForBigInt . fst) c
 
             testBCForBigInt (CASE _ _ c d) =
                  maybe False needsBigInt d
-              || (or $ map (needsBigInt . snd) c)
+              || any (needsBigInt . snd) c
 
             testBCForBigInt _ = False
 

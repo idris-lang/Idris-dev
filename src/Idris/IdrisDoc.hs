@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 -- | Generation of HTML documentation for Idris code
 module Idris.IdrisDoc (generateDocs) where
@@ -217,9 +218,11 @@ referredNss (n, Just d, _) =
       names  = concatMap (extractPTermNames) ts
   in  S.map getNs $ S.fromList names
 
-  where getFunDocs (FunDoc f)              = [f]
-        getFunDocs (DataDoc f fs)          = f:fs
+  where getFunDocs (FunDoc f)                = [f]
+        getFunDocs (DataDoc f fs)            = f:fs
         getFunDocs (ClassDoc _ _ fs _ _ _ _) = fs
+        getFunDocs (NamedInstanceDoc _ fd)   = [fd]
+        getFunDocs (ModDoc _ _)              = []
         types (FD _ _ args t _)            = t:(map second args)
         second (_, x, _, _)                = x
 
@@ -318,7 +321,7 @@ extractPTermNames (PCoerced p)       = extract p
 extractPTermNames (PDisamb _ p)      = extract p
 extractPTermNames (PUnifyLog p)      = extract p
 extractPTermNames (PNoImplicits p)   = extract p
-extractPTermNames (PRunTactics _ p)  = extract p
+extractPTermNames (PRunElab _ p)  = extract p
 extractPTermNames _                  = []
 
 -- | Shorter name for extractPTermNames
@@ -417,7 +420,7 @@ createIndex nss out =
      BS2.hPut h $ renderHtml $ wrapper Nothing $ do
        H.h1 $ "Namespaces"
        H.ul ! class_ "names" $ do
-         let path ns  = "docs" </> genRelNsPath ns "html"
+         let path ns  = "docs" ++ "/" ++ genRelNsPath ns "html"
              item ns  = do let n    = toHtml $ nsName2Str ns
                                link = toValue $ path ns
                            H.li $ H.a ! href link ! class_ "code" $ n
@@ -609,6 +612,8 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
           H.dt $ toHtml $ show name
           H.dd $ Docstrings.renderHtml docstring
 
+createOtherDoc ist (NamedInstanceDoc _ fd) = createFunDoc ist fd
+
 createOtherDoc ist (ModDoc _  docstring) = do
   Docstrings.renderHtml docstring
 
@@ -658,7 +663,7 @@ existingNamespaces :: FilePath -- ^ The base directory containing the
                                --   namespace pages
                    -> IO (S.Set NsName)
 existingNamespaces out = do
-  let docs     = out </> "docs"
+  let docs     = out ++ "/" ++ "docs"
       str2Ns s | s == rootNsStr = []
       str2Ns s = reverse $ T.splitOn (T.singleton '.') (txt s)
       toNs  fp = do isFile    <- doesFileExist $ docs </> fp

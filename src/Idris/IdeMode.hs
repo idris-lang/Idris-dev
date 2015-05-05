@@ -222,6 +222,7 @@ data IdeModeCommand = REPLCompletions String
                     | Metavariables Int -- ^^ the Int is the column count for pretty-printing
                     | WhoCalls String
                     | CallsWho String
+                    | BrowseNS String
                     | TermNormalise [(Name, Bool)] Term
                     | TermShowImplicits [(Name, Bool)] Term
                     | TermNoImplicits [(Name, Bool)] Term
@@ -269,6 +270,7 @@ sexpToCommand (SexpList [SymbolAtom "set-option", SymbolAtom s, BoolAtom b])
 sexpToCommand (SexpList [SymbolAtom "metavariables", IntegerAtom cols])                 = Just (Metavariables (fromIntegral cols))
 sexpToCommand (SexpList [SymbolAtom "who-calls", StringAtom name])                      = Just (WhoCalls name)
 sexpToCommand (SexpList [SymbolAtom "calls-who", StringAtom name])                      = Just (CallsWho name)
+sexpToCommand (SexpList [SymbolAtom "browse-namespace", StringAtom ns])                 = Just (BrowseNS ns)
 sexpToCommand (SexpList [SymbolAtom "normalise-term", StringAtom encoded])              = let (bnd, tm) = decodeTerm encoded in
                                                                                           Just (TermNormalise bnd tm)
 sexpToCommand (SexpList [SymbolAtom "show-term-implicits", StringAtom encoded])         = let (bnd, tm) = decodeTerm encoded in

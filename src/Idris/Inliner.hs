@@ -21,7 +21,7 @@ inlineDef ist ds = map (\ (ns, lhs, rhs) -> (ns, lhs, inlineTerm ist rhs)) ds
 inlineTerm :: IState -> Term -> Term
 inlineTerm ist tm = inl tm where
   inl orig@(P _ n _) = inlApp n [] orig
-  inl orig@(App f a)
+  inl orig@(App _ f a)
       | (P _ fn _, args) <- unApply orig = inlApp fn args orig
   inl (Bind n (Let t v) sc) = Bind n (Let t (inl v)) (inl sc)
   inl (Bind n b sc) = Bind n b (inl sc)

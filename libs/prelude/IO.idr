@@ -120,46 +120,48 @@ prim_fwrite h s
    = MkIO (\w => prim_io_return (prim__writeFile (world w) h s))
 
 --------- The C FFI
+namespace FFI_C
+  data Raw : Type -> Type where
+       -- code generated can assume it's compiled just as 't'
+       MkRaw : (x : t) -> Raw t
 
-data Raw : Type -> Type where
-     -- code generated can assume it's compiled just as 't'
-     MkRaw : (x : t) -> Raw t
+  -- Tell erasure analysis not to erase the argument
+  %used MkRaw x
 
--- Tell erasure analysis not to erase the argument
-%used MkRaw x
+  -- Supported C integer types
+  data C_IntTypes : Type -> Type where
+       C_IntChar   : C_IntTypes Char
+       C_IntNative : C_IntTypes Int
+       C_IntBits8  : C_IntTypes Bits8
+       C_IntBits16 : C_IntTypes Bits16
+       C_IntBits32 : C_IntTypes Bits32
+       C_IntBits64 : C_IntTypes Bits64
 
--- Supported C integer types
-data C_IntTypes : Type -> Type where
-     C_IntChar   : C_IntTypes Char
-     C_IntNative : C_IntTypes Int
-     C_IntBits8  : C_IntTypes Bits8
-     C_IntBits16 : C_IntTypes Bits16
-     C_IntBits32 : C_IntTypes Bits32
-     C_IntBits64 : C_IntTypes Bits64
+  -- Supported C foreign types
+  data C_Types : Type -> Type where
+       C_Str   : C_Types String
+       C_Float : C_Types Float
+       C_Ptr   : C_Types Ptr
+       C_MPtr  : C_Types ManagedPtr
+       C_Unit  : C_Types ()
+       C_Any   : C_Types (Raw a)
+       C_IntT  : C_IntTypes i -> C_Types i
 
--- Supported C foreign types
-data C_Types : Type -> Type where
-     C_Str   : C_Types String
-     C_Float : C_Types Float
-     C_Ptr   : C_Types Ptr
-     C_MPtr  : C_Types ManagedPtr
-     C_Unit  : C_Types ()
-     C_Any   : C_Types (Raw a)
-     C_IntT  : C_IntTypes i -> C_Types i
-
-FFI_C : FFI                                     
-FFI_C = MkFFI C_Types String String
+  FFI_C : FFI
+  FFI_C = MkFFI C_Types String String
 
 IO : Type -> Type
 IO = IO' FFI_C
 
+-- Cannot be relaxed as is used by type providers and they expect IO a
+-- in the first argument.
 run__provider : IO a -> PrimIO a
 run__provider (MkIO f) = f (TheWorld prim__TheWorld)
 
 prim_fork : PrimIO () -> PrimIO Ptr
 prim_fork x = prim_io_return prim__vm -- compiled specially
 
-fork : IO () -> IO Ptr
+fork : IO' l () -> IO' l Ptr
 fork (MkIO f) = MkIO (\w => prim_io_bind
                               (prim_fork (prim_io_bind (f w)
                                    (\ x => prim_io_return x)))

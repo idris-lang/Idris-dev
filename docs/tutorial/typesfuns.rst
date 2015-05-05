@@ -12,13 +12,13 @@ Idris defines several primitive types: ``Int``, ``Integer`` and
 manipulation, and ``Ptr`` which represents foreign pointers. There are
 also several data types declared in the library, including ``Bool``,
 with values ``True`` and ``False``. We can declare some constants with
-these types. Enter the following into a file ``prims.idr`` and load it
+these types. Enter the following into a file ``Prims.idr`` and load it
 into the Idris interactive environment by typing ``idris
-prims.idr``:
+Prims.idr``:
 
 .. code-block:: idris
 
-    module prims
+    module Prims
 
     x : Int
     x = 42
@@ -33,17 +33,18 @@ prims.idr``:
     quux = False
 
 An Idris file consists of an optional module declaration (here
-``module prims``) followed by an optional list of imports (none here,
-however Idris programs can consist of several modules, and the
-definitions in each module each have their own namespace, as we will
-discuss in Section :ref:`sect-namespaces`) and a collection of
-declarations and definitions. The order of definitions is significant
-— functions and data types must be defined before use. Each definition
-must have a type declaration, for example see ``x : Int``, ``foo :
-String``, from the above listing. Indentation is significant — a new
-declaration begins at the same level of indentation as the preceding
-declaration.  Alternatively, declarations may be terminated with a
-semicolon.
+``module Prims``) followed by an optional list of imports and a
+collection of declarations and definitions. In this example no imports
+have been specified. However Idris programs can consist of several
+modules and the definitions in each module each have their own
+namespace. This is discussed further in Section
+:ref:`sect-namespaces`). When writing Idris programs both the order in which
+definitions are given and indentation are significant. Functions and
+data types must be defined before use, incidently each definition must
+have a type declaration, for example see ``x : Int``, ``foo :
+String``, from the above listing. New declarations must begin at the
+same level of indentation as the preceding declaration.
+Alternatively, a semicolon ``;`` can be used to terminate declarations.
 
 A library module ``prelude`` is automatically imported by every
 Idris program, including facilities for IO, arithmetic, data
@@ -63,7 +64,7 @@ All of the usual arithmetic and comparison operators are defined for
 the primitive types. They are overloaded using type classes, as we
 will discuss in Section :ref:`sect-classes` and can be extended to
 work on user defined types. Boolean expressions can be tested with the
-``if...then...else`` construct:
+``if...then...else`` construct, for example:
 
 ::
 
@@ -73,9 +74,9 @@ work on user defined types. Boolean expressions can be tested with the
 Data Types
 ==========
 
-Data types are declared in a similar way to Haskell data types, with a
-similar syntax. Natural numbers and lists, for example, can be
-declared as follows:
+Data types are declared in a similar way and with similar syntax to
+Haskell. Natural numbers and lists, for example, can be declared as
+follows:
 
 .. code-block:: idris
 
@@ -193,11 +194,13 @@ does not need to be visible globally:
 Indentation is significant — functions in the ``where`` block must be
 indented further than the outer function.
 
-**Scope:** Any names which are visible in the outer scope are also
-visible in the ``where`` clause (unless they have been redefined, such
-as ``xs`` here). A name which appears only in the type will be in scope
-in the ``where`` clause if it is a *parameter* to one of the types,
-i.e. it is fixed across the entire structure.
+.. note:: Scope
+
+    Any names which are visible in the outer scope are also visible in
+    the ``where`` clause (unless they have been redefined, such as ``xs``
+    here). A name which appears only in the type will be in scope in the
+    ``where`` clause if it is a *parameter* to one of the types, i.e. it
+    is fixed across the entire structure.
 
 As well as functions, ``where`` blocks can include local data
 declarations, such as the following where ``MyLT`` is not accessible
@@ -306,16 +309,17 @@ following:
     $ idris vbroken.idr --check
     vbroken.idr:9:23:When elaborating right hand side of Vect.++:
     When elaborating an application of constructor Vect.:::
-            Can't unify
-                    Vect (k + k) a
-            with
-                    Vect (plus k m) a
+        Can't unify
+                Vect (k + k) a (Type of xs ++ xs)
+        with
+                Vect (plus k m) a (Expected type)
 
-            Specifically:
-                    Can't unify
-                            plus k k
-                    with
-                            plus k m
+        Specifically:
+                Can't unify
+                        plus k k
+                with
+                        plus k m
+
 
 This error message suggests that there is a length mismatch between
 two vectors — we needed a vector of length ``k + m``, but provided a
@@ -398,8 +402,9 @@ names, ``n`` and ``a``, which are not declared explicitly. These are
 Implicit arguments, given in braces ``{}`` in the type declaration,
 are not given in applications of ``index``; their values can be
 inferred from the types of the ``Fin n`` and ``Vect n a``
-arguments. Any name with a which appears as a parameter or index in a
-type declaration, but which is otherwise free, will be automatically
+arguments. Any name beginning with a lower case letter which appears 
+as a parameter or index in a
+type declaration, but which is otherwise unbound, will be automatically
 bound as an implicit argument. Implicit arguments can still be given
 explicitly in applications, using ``{a=value}`` and ``{n=value}``, for
 example:
@@ -782,8 +787,8 @@ as “sigma types”:
 
 .. code-block:: idris
 
-    data Sigma : (A : Type) -> (P : A -> Type) -> Type where
-       MkSigma : {P : A -> Type} -> (a : A) -> P a -> Sigma A P
+    data Sigma : (a : Type) -> (P : a -> Type) -> Type where
+       MkSigma : {P : a -> Type} -> (x : a) -> P x -> Sigma a P
 
 Again, there is syntactic sugar for this. ``(a : A ** P)`` is the type
 of a pair of A and P, where the name ``a`` can occur inside ``P``.
@@ -969,8 +974,8 @@ Dependent Records
 
 *Records* are data types which collect several values (the record's
 *fields*) together. Idris provides syntax for defining records and
-*automatically generating field access and update functions. For
-*example, we can represent a person's name and age in a record:
+*automatically generating field access and update functions*. For
+example, we can represent a person's name and age in a record:
 
 .. code-block:: idris
 

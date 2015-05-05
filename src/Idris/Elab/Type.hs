@@ -8,7 +8,7 @@ import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
-import Idris.ElabTerm
+import Idris.Elab.Term
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
@@ -67,10 +67,10 @@ buildType info syn fc opts n ty' = do
          logLvl 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
          (ElabResult tyT' defer is ctxt' newDecls, log) <-
-            tclift $ elaborate ctxt n (TType (UVal 0)) initEState
+            tclift $ elaborate ctxt (idris_datatypes i) n (TType (UVal 0)) initEState
                      (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
          setContext ctxt'
-         processTacticDecls newDecls
+         processTacticDecls info newDecls
 
          let tyT = patToImp tyT'
 
@@ -215,8 +215,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     errrep = txt "ErrorReportPart"
 
     tyIsHandler (Bind _ (Pi _ (P _ (NS (UN e) ns1) _) _)
-                        (App (P _ (NS (UN m) ns2) _)
-                             (App (P _ (NS (UN l) ns3) _)
+                        (App _ (P _ (NS (UN m) ns2) _)
+                             (App _ (P _ (NS (UN l) ns3) _)
                                   (P _ (NS (UN r) ns4) _))))
         | e == err && m == maybe && l == lst && r == errrep
         , ns1 == map txt ["Errors","Reflection","Language"]

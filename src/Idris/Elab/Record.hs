@@ -5,7 +5,24 @@ import Idris.AbsSyntax
 import Idris.Docstrings
 import Idris.Error
 import Idris.Delaborate
-import Idris.ParseExpr
+import Idris.Imports
+import Idris.Elab.Term
+import Idris.Coverage
+import Idris.DataOpts
+import Idris.Providers
+import Idris.Primitives
+import Idris.Inliner
+import Idris.PartialEval
+import Idris.DeepSeq
+import Idris.Output (iputStrLn, pshow, iWarn)
+import IRTS.Lang
+
+import Idris.ParseExpr (tryFullExpr)
+
+import Idris.Elab.Type
+import Idris.Elab.Data
+import Idris.Elab.Utils
+
 import Idris.Core.TT
 import Idris.Core.Evaluate
 
@@ -427,4 +444,5 @@ projectInType xs = mapPT st
 
 -- | Creates an PArg from a plicity and a name where the term is a PRef.
 asPRefArg :: Plicity -> Name -> PArg
-asPRefArg p n = asArg p (nsroot n) $ PRef emptyFC (nsroot n)    
+asPRefArg p n = asArg p (nsroot n) $ PRef emptyFC (nsroot n)
+

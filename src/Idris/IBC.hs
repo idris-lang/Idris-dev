@@ -1,7 +1,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.IBC where
+module Idris.IBC (loadIBC, loadPkgIndex,
+                  writeIBC, writePkgIndex) where
 
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -21,8 +22,10 @@ import Paths_idris
 import qualified Cheapskate.Types as CT
 
 import Data.Binary
+import Data.Functor
 import Data.Vector.Binary
-import Data.List
+import Data.List as L
+import Data.Maybe (catMaybes)
 import Data.ByteString.Lazy as B hiding (length, elem, map)
 import qualified Data.Text as T
 import qualified Data.Set as S
@@ -34,12 +37,13 @@ import qualified Control.Monad.State.Strict as ST
 import System.FilePath
 import System.Directory
 import Codec.Compression.Zlib (compress)
+import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
-ibcVersion :: Word8
-ibcVersion = 104
+ibcVersion :: Word16
+ibcVersion = 107
 
-data IBCFile = IBCFile { ver :: Word8,
+data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
                          symbols :: ![Name],
                          ibc_imports :: ![(Bool, FilePath)],
@@ -102,9 +106,12 @@ loadIBC reexport fp
                                 Just p -> not p && reexport
                 when redo $
                   do iLOG $ "Loading ibc " ++ fp ++ " " ++ show reexport
-                     ibcf <- runIO $ (bdecode fp :: IO IBCFile)
-                     process reexport ibcf fp
-                     addImported reexport fp
+                     archiveFile <- runIO $ B.readFile fp
+                     case toArchiveOrFail archiveFile of
+                        Left _ -> ifail $ fp ++ " isn't loadable, it may have an old ibc format.\n"
+                                          ++ "Please clean and rebuild it."
+                        Right archive -> do process reexport archive fp
+                                            addImported reexport fp
 
 -- | Load an entire package from its index file
 loadPkgIndex :: String -> Idris ()
@@ -113,15 +120,63 @@ loadPkgIndex pkg = do ddir <- runIO $ getIdrisLibDir
                       fp <- findPkgIndex pkg
                       loadIBC True fp
 
-bencode :: Binary a => FilePath -> a -> IO ()
-bencode f d = B.writeFile f (compress (encode d))
 
-bdecode :: Binary b => FilePath -> IO b
-bdecode f = do d' <- B.readFile f
-               either
-                 (\(_, e) -> error $ "Invalid / corrupted zip format on " ++ show f ++ ": " ++ e)
-                 (return . decode)
-                 (decompressEither d')
+makeEntry :: (Binary b) => String -> [b] -> Maybe Entry
+makeEntry name val = if L.null val
+                        then Nothing
+                        else Just $ toEntry name 0 (encode val)
+
+
+entries :: IBCFile -> [Entry]
+entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
+                       makeEntry "sourcefile"  (sourcefile i),
+                       makeEntry "symbols"  (symbols i),
+                       makeEntry "ibc_imports"  (ibc_imports i),
+                       makeEntry "ibc_importdirs"  (ibc_importdirs i),
+                       makeEntry "ibc_implicits"  (ibc_implicits i),
+                       makeEntry "ibc_fixes"  (ibc_fixes i),
+                       makeEntry "ibc_statics"  (ibc_statics i),
+                       makeEntry "ibc_classes"  (ibc_classes i),
+                       makeEntry "ibc_instances"  (ibc_instances i),
+                       makeEntry "ibc_dsls"  (ibc_dsls i),
+                       makeEntry "ibc_datatypes"  (ibc_datatypes i),
+                       makeEntry "ibc_optimise"  (ibc_optimise i),
+                       makeEntry "ibc_syntax"  (ibc_syntax i),
+                       makeEntry "ibc_keywords"  (ibc_keywords i),
+                       makeEntry "ibc_objs"  (ibc_objs i),
+                       makeEntry "ibc_libs"  (ibc_libs i),
+                       makeEntry "ibc_cgflags"  (ibc_cgflags i),
+                       makeEntry "ibc_dynamic_libs"  (ibc_dynamic_libs i),
+                       makeEntry "ibc_hdrs"  (ibc_hdrs i),
+                       makeEntry "ibc_access"  (ibc_access i),
+                       makeEntry "ibc_total"  (ibc_total i),
+                       makeEntry "ibc_totcheckfail"  (ibc_totcheckfail i),
+                       makeEntry "ibc_flags"  (ibc_flags i),
+                       makeEntry "ibc_fninfo"  (ibc_fninfo i),
+                       makeEntry "ibc_cg"  (ibc_cg i),
+                       makeEntry "ibc_defs"  (ibc_defs i),
+                       makeEntry "ibc_docstrings"  (ibc_docstrings i),
+                       makeEntry "ibc_moduledocs"  (ibc_moduledocs i),
+                       makeEntry "ibc_transforms"  (ibc_transforms i),
+                       makeEntry "ibc_errRev"  (ibc_errRev i),
+                       makeEntry "ibc_coercions"  (ibc_coercions i),
+                       makeEntry "ibc_lineapps"  (ibc_lineapps i),
+                       makeEntry "ibc_namehints"  (ibc_namehints i),
+                       makeEntry "ibc_metainformation"  (ibc_metainformation i),
+                       makeEntry "ibc_errorhandlers"  (ibc_errorhandlers i),
+                       makeEntry "ibc_function_errorhandlers"  (ibc_function_errorhandlers i),
+                       makeEntry "ibc_metavars"  (ibc_metavars i),
+                       makeEntry "ibc_patdefs"  (ibc_patdefs i),
+                       makeEntry "ibc_postulates"  (ibc_postulates i),
+                       makeEntry "ibc_externs"  (ibc_externs i),
+                       toEntry "ibc_parsedSpan" 0 . encode <$> ibc_parsedSpan i,
+                       makeEntry "ibc_usage"  (ibc_usage i),
+                       makeEntry "ibc_exports"  (ibc_exports i),
+                       makeEntry "ibc_autohints"  (ibc_autohints i)]
+
+writeArchive :: FilePath -> IBCFile -> Idris ()
+writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
+                       runIO $ B.writeFile fp (fromArchive a)
 
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
@@ -133,7 +188,7 @@ writeIBC src f
          resetNameIdx
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src })
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
-                        runIO $ bencode f ibcf
+                        writeArchive f ibcf
                         iLOG "Written")
             (\c -> do iLOG $ "Failed " ++ pshow i c)
          return ()
@@ -149,7 +204,7 @@ writePkgIndex f
          resetNameIdx
          let ibcf = initIBC { ibc_imports = imps }
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
-                        runIO $ bencode f ibcf
+                        writeArchive f ibcf
                         iLOG "Written")
             (\c -> do iLOG $ "Failed " ++ pshow i c)
          return ()
@@ -157,7 +212,7 @@ writePkgIndex f
 mkIBC :: [IBCWrite] -> IBCFile -> Idris IBCFile
 mkIBC [] f = return f
 mkIBC (i:is) f = do ist <- getIState
-                    logLvl 5 $ show i ++ " " ++ show (Data.List.length is)
+                    logLvl 5 $ show i ++ " " ++ show (L.length is)
                     f' <- ibc ist i f
                     mkIBC is f'
 
@@ -240,65 +295,68 @@ ibc i (IBCUsage n) f = return f { ibc_usage = n : ibc_usage f }
 ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
 ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f }
 
-process :: Bool -- ^ Reexporting
-           -> IBCFile -> FilePath -> Idris ()
-process reexp i fn
-   | ver i /= ibcVersion
-       = do iLOG "ibc out of date"
-            let e = if ver i < ibcVersion then " an earlier " else " a later "
-            ifail $ "Incompatible ibc version.\nThis library was built with"
-                    ++ e ++ "version of Idris.\n" ++
-                    "Please clean and rebuild."
+getEntry :: (Binary b, NFData b) => b -> FilePath -> Archive -> Idris b
+getEntry alt f a = case findEntryByPath f a of
+                Nothing -> return alt
+                Just e -> return $ (force . decode . fromEntry) e
 
-                              --- please rebuild"
-   | otherwise =
-            do srcok <- runIO $ doesFileExist (sourcefile i)
-               when srcok $ timestampOlder (sourcefile i) fn
-               v <- verbose
-               quiet <- getQuiet
---                when (v && srcok && not quiet) $ iputStrLn $ "Skipping " ++ sourcefile i
-               pImportDirs $ force (ibc_importdirs i)
-               pImports $ force (ibc_imports i)
-               pImps $ force (ibc_implicits i)
-               pFixes $ force (ibc_fixes i)
-               pStatics $ force (ibc_statics i)
-               pClasses $ force (ibc_classes i)
-               pInstances $ force (ibc_instances i)
-               pDSLs $ force (ibc_dsls i)
-               pDatatypes $ force (ibc_datatypes i)
-               pOptimise $ force (ibc_optimise i)
-               pSyntax $ force (ibc_syntax i)
-               pKeywords $ force (ibc_keywords i)
-               pObjs $ force (ibc_objs i)
-               pLibs $ force (ibc_libs i)
-               pCGFlags $ force (ibc_cgflags i)
-               pDyLibs $ force (ibc_dynamic_libs i)
-               pHdrs $ force (ibc_hdrs i)
-               pDefs reexp (symbols i) $ force (ibc_defs i)
-               pPatdefs $ force (ibc_patdefs i)
-               pAccess reexp $ force (ibc_access i)
-               pFlags $ force (ibc_flags i)
-               pFnInfo $ force (ibc_fninfo i)
-               pTotal $ force (ibc_total i)
-               pTotCheckErr $ force (ibc_totcheckfail i)
-               pCG $ force (ibc_cg i)
-               pDocs $ force (ibc_docstrings i)
-               pMDocs $ force (ibc_moduledocs i)
-               pCoercions $ force (ibc_coercions i)
-               pTrans $ force (ibc_transforms i)
-               pErrRev $ force (ibc_errRev i)
-               pLineApps $ force (ibc_lineapps i)
-               pNameHints $ force (ibc_namehints i)
-               pMetaInformation $ force (ibc_metainformation i)
-               pErrorHandlers $ force (ibc_errorhandlers i)
-               pFunctionErrorHandlers $ force (ibc_function_errorhandlers i)
-               pMetavars $ force (ibc_metavars i)
-               pPostulates $ force (ibc_postulates i)
-               pExterns $ force (ibc_externs i)
-               pParsedSpan $ force (ibc_parsedSpan i)
-               pUsage $ force (ibc_usage i)
-               pExports $ force (ibc_exports i)
-               pAutoHints $ force (ibc_autohints i)
+process :: Bool -- ^ Reexporting
+           -> Archive -> FilePath -> Idris ()
+process reexp i fn = do
+                ver <- getEntry 0 "ver" i
+                when (ver /= ibcVersion) $ do
+                                    iLOG "ibc out of date"
+                                    let e = if ver < ibcVersion
+                                            then " an earlier " else " a later "
+                                    ifail $ "Incompatible ibc version.\nThis library was built with"
+                                            ++ e ++ "version of Idris.\n" ++ "Please clean and rebuild."
+                source <- getEntry "" "sourcefile" i
+                srcok <- runIO $ doesFileExist source
+                when srcok $ timestampOlder source fn
+                pImportDirs =<< getEntry [] "ibc_importdirs" i
+                pImports =<< getEntry [] "ibc_imports" i
+                pImps =<< getEntry [] "ibc_implicits" i
+                pFixes =<< getEntry [] "ibc_fixes" i
+                pStatics =<< getEntry [] "ibc_statics" i
+                pClasses =<< getEntry [] "ibc_classes" i
+                pInstances =<< getEntry [] "ibc_instances" i
+                pDSLs =<< getEntry [] "ibc_dsls" i
+                pDatatypes =<< getEntry [] "ibc_datatypes" i
+                pOptimise =<< getEntry [] "ibc_optimise" i
+                pSyntax =<< getEntry [] "ibc_syntax" i
+                pKeywords =<< getEntry [] "ibc_keywords" i
+                pObjs =<< getEntry [] "ibc_objs" i
+                pLibs =<< getEntry [] "ibc_libs" i
+                pCGFlags =<< getEntry [] "ibc_cgflags" i
+                pDyLibs =<< getEntry [] "ibc_dynamic_libs" i
+                pHdrs =<< getEntry [] "ibc_hdrs" i
+                symbols <- getEntry [] "symbols" i
+                defs <- getEntry [] "ibc_defs" i
+                pDefs reexp symbols defs
+                pPatdefs =<< getEntry [] "ibc_patdefs" i
+                pAccess reexp =<< getEntry [] "ibc_access" i
+                pFlags =<< getEntry [] "ibc_flags" i
+                pFnInfo =<< getEntry [] "ibc_fninfo" i
+                pTotal =<< getEntry [] "ibc_total" i
+                pTotCheckErr =<< getEntry [] "ibc_totcheckfail" i
+                pCG =<< getEntry [] "ibc_cg" i
+                pDocs =<< getEntry [] "ibc_docstrings" i
+                pMDocs =<< getEntry [] "ibc_moduledocs" i
+                pCoercions =<< getEntry [] "ibc_coercions" i
+                pTrans =<< getEntry [] "ibc_transforms" i
+                pErrRev =<< getEntry [] "ibc_errRev" i
+                pLineApps =<< getEntry [] "ibc_lineapps" i
+                pNameHints =<< getEntry [] "ibc_namehints" i
+                pMetaInformation =<< getEntry [] "ibc_metainformation" i
+                pErrorHandlers =<< getEntry [] "ibc_errorhandlers" i
+                pFunctionErrorHandlers =<< getEntry [] "ibc_function_errorhandlers" i
+                pMetavars =<< getEntry [] "ibc_metavars" i
+                pPostulates =<< getEntry [] "ibc_postulates" i
+                pExterns =<< getEntry [] "ibc_externs" i
+                pParsedSpan =<< getEntry Nothing "ibc_parsedSpan" i
+                pUsage =<< getEntry [] "ibc_usage" i
+                pExports =<< getEntry [] "ibc_exports" i
+                pAutoHints =<< getEntry [] "ibc_autohints" i
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -308,26 +366,20 @@ timestampOlder src ibc = do srct <- runIO $ getModificationTime src
                                else return ()
 
 pPostulates :: [Name] -> Idris ()
-pPostulates ns = do
-    i <- getIState
-    putIState i{ idris_postulates = idris_postulates i `S.union` S.fromList ns }
+pPostulates ns = updateIState
+                    (\i -> i { idris_postulates = idris_postulates i `S.union` S.fromList ns })
 
 pExterns :: [(Name, Int)] -> Idris ()
-pExterns ns = do
-    i <- getIState
-    putIState i{ idris_externs = idris_externs i `S.union` S.fromList ns }
+pExterns ns = updateIState (\i -> i{ idris_externs = idris_externs i `S.union` S.fromList ns })
 
 pParsedSpan :: Maybe FC -> Idris ()
-pParsedSpan fc = do ist <- getIState
-                    putIState ist { idris_parsedSpan = fc }
+pParsedSpan fc = updateIState (\i -> i { idris_parsedSpan = fc })
 
 pUsage :: [(Name, Int)] -> Idris ()
-pUsage ns = do ist <- getIState
-               putIState ist { idris_erasureUsed = ns ++ idris_erasureUsed ist }
+pUsage ns = updateIState (\i -> i { idris_erasureUsed = ns ++ idris_erasureUsed i })
 
 pExports :: [Name] -> Idris ()
-pExports ns = do ist <- getIState
-                 putIState ist { idris_exports = ns ++ idris_exports ist }
+pExports ns = updateIState (\i -> i { idris_exports = ns ++ idris_exports i })
 
 pAutoHints :: [(Name, Name)] -> Idris ()
 pAutoHints ns = mapM_ (\(n,h) -> addAutoHint n h) ns
@@ -391,33 +443,22 @@ pInstances :: [(Bool, Name, Name)] -> Idris ()
 pInstances cs = mapM_ (\ (i, n, ins) -> addInstance i n ins) cs
 
 pDSLs :: [(Name, DSL)] -> Idris ()
-pDSLs cs = mapM_ (\ (n, c) ->
-                        do i <- getIState
-                           putIState (i { idris_dsls
-                                           = addDef n c (idris_dsls i) }))
-                    cs
+pDSLs cs = mapM_ (\ (n, c) -> updateIState (\i ->
+                        i { idris_dsls = addDef n c (idris_dsls i) })) cs
 
 pDatatypes :: [(Name, TypeInfo)] -> Idris ()
-pDatatypes cs = mapM_ (\ (n, c) ->
-                        do i <- getIState
-                           putIState (i { idris_datatypes
-                                           = addDef n c (idris_datatypes i) }))
-                    cs
+pDatatypes cs = mapM_ (\ (n, c) -> updateIState (\i ->
+                        i { idris_datatypes = addDef n c (idris_datatypes i) })) cs
 
 pOptimise :: [(Name, OptInfo)] -> Idris ()
-pOptimise cs = mapM_ (\ (n, c) ->
-                        do i <- getIState
-                           putIState (i { idris_optimisation
-                                           = addDef n c (idris_optimisation i) }))
-                    cs
+pOptimise cs = mapM_ (\ (n, c) -> updateIState (\i ->
+                        i { idris_optimisation = addDef n c (idris_optimisation i) })) cs
 
 pSyntax :: [Syntax] -> Idris ()
-pSyntax s = do i <- getIState
-               putIState (i { syntax_rules = updateSyntaxRules s (syntax_rules i) })
+pSyntax s = updateIState (\i -> i { syntax_rules = updateSyntaxRules s (syntax_rules i) })
 
 pKeywords :: [String] -> Idris ()
-pKeywords k = do i <- getIState
-                 putIState (i { syntax_keywords = k ++ syntax_keywords i })
+pKeywords k = updateIState (\i -> i { syntax_keywords = k ++ syntax_keywords i })
 
 pObjs :: [(Codegen, FilePath)] -> Idris ()
 pObjs os = mapM_ (\ (cg, obj) -> do dirs <- allImportDirs
@@ -441,11 +482,8 @@ pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs
 
 pPatdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))] -> Idris ()
-pPatdefs ds
-   = mapM_ (\ (n, d) ->
-                do i <- getIState
-                   putIState (i { idris_patdefs = addDef n (force d) (idris_patdefs i) }))
-           ds
+pPatdefs ds = mapM_ (\ (n, d) -> updateIState (\i ->
+            i { idris_patdefs = addDef n (force d) (idris_patdefs i) })) ds
 
 pDefs :: Bool -> [Name] -> [(Name, Def)] -> Idris ()
 pDefs reexp syms ds
@@ -455,9 +493,8 @@ pDefs reexp syms ds
                        TyDecl _ _ -> return ()
                        _ -> do iLOG $ "SOLVING " ++ show n
                                solveDeferred n
-                  i <- getIState
+                  updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
 --                   logLvl 1 $ "Added " ++ show (n, d')
-                  putIState (i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
                   if (not reexp) then do iLOG $ "Not exporting " ++ show n
                                          setAccessibility n Hidden
                                  else iLOG $ "Exporting " ++ show n) ds
@@ -501,7 +538,7 @@ pDefs reexp syms ds
 
     update (P t n ty) = do n' <- getSymbol n
                            return $ P t n' ty
-    update (App f a) = liftM2 App (update f) (update a)
+    update (App s f a) = liftM2 (App s) (update f) (update a)
     update (Bind n b sc) = do b' <- updateB b
                               sc' <- update sc
                               return $ Bind n b' sc'
@@ -517,9 +554,8 @@ pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris
 pDocs ds = mapM_ (\(n, a) -> addDocStr n (fst a) (snd a)) ds
 
 pMDocs :: [(Name, Docstring D.DocTerm)] -> Idris ()
-pMDocs ds = mapM_ addMDocStr ds
-  where addMDocStr (n, d) = do ist <- getIState
-                               putIState ist { idris_moduledocs = addDef n d (idris_moduledocs ist) }
+pMDocs ds = mapM_  (\ (n, d) -> updateIState (\i ->
+            i { idris_moduledocs = addDef n d (idris_moduledocs i) })) ds
 
 pAccess :: Bool -- ^ Reexporting?
            -> [(Name, Accessibility)] -> Idris ()
@@ -527,9 +563,7 @@ pAccess reexp ds
         = mapM_ (\ (n, a_in) ->
                       do let a = if reexp then a_in else Hidden
                          logLvl 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
-                         i <- getIState
-                         putIState (i { tt_ctxt = setAccess n a (tt_ctxt i) }))
-                   ds
+                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })) ds
 
 pFlags :: [(Name, [FnOpt])] -> Idris ()
 pFlags ds = mapM_ (\ (n, a) -> setFlags n a) ds
@@ -538,14 +572,10 @@ pFnInfo :: [(Name, FnInfo)] -> Idris ()
 pFnInfo ds = mapM_ (\ (n, a) -> setFnInfo n a) ds
 
 pTotal :: [(Name, Totality)] -> Idris ()
-pTotal ds = mapM_ (\ (n, a) ->
-                      do i <- getIState
-                         putIState (i { tt_ctxt = setTotal n a (tt_ctxt i) }))
-                   ds
+pTotal ds = mapM_ (\ (n, a) -> updateIState (\i -> i { tt_ctxt = setTotal n a (tt_ctxt i) })) ds
 
 pTotCheckErr :: [(FC, String)] -> Idris ()
-pTotCheckErr es = do ist <- getIState
-                     putIState ist { idris_totcheckfail = idris_totcheckfail ist ++ es }
+pTotCheckErr es = updateIState (\i -> i { idris_totcheckfail = idris_totcheckfail i ++ es })
 
 pCG :: [(Name, CGInfo)] -> Idris ()
 pCG ds = mapM_ (\ (n, a) -> addToCG n a) ds
@@ -566,24 +596,19 @@ pNameHints :: [(Name, Name)] -> Idris ()
 pNameHints ns = mapM_ (\ (n, ty) -> addNameHint n ty) ns
 
 pMetaInformation :: [(Name, MetaInformation)] -> Idris ()
-pMetaInformation ds = mapM_ (\ (n, m) ->
-                            do i <- getIState
-                               putIState (i { tt_ctxt = setMetaInformation n m (tt_ctxt i) }))
-                         ds
+pMetaInformation ds = mapM_ (\ (n, m) -> updateIState (\i ->
+                               i { tt_ctxt = setMetaInformation n m (tt_ctxt i) })) ds
 
 pErrorHandlers :: [Name] -> Idris ()
-pErrorHandlers ns = do i <- getIState
-                       putIState $ i { idris_errorhandlers = idris_errorhandlers i ++ ns }
+pErrorHandlers ns = updateIState (\i ->
+                        i { idris_errorhandlers = idris_errorhandlers i ++ ns })
 
 pFunctionErrorHandlers :: [(Name, Name, Name)] -> Idris ()
-pFunctionErrorHandlers [] = return ()
-pFunctionErrorHandlers ((fn, arg, handler):ns) = do addFunctionErrorHandlers fn arg [handler]
-                                                    pFunctionErrorHandlers ns
+pFunctionErrorHandlers ns =  mapM_ (\ (fn,arg,handler) ->
+                                addFunctionErrorHandlers fn arg [handler]) ns
 
 pMetavars :: [(Name, (Maybe Name, Int, Bool))] -> Idris ()
-pMetavars ns = do i <- getIState
-                  putIState $ i { idris_metavars = Data.List.reverse ns
-                                                     ++ idris_metavars i }
+pMetavars ns = updateIState (\i -> i { idris_metavars = L.reverse ns ++ idris_metavars i })
 
 ----- For Cheapskate and docstrings
 
@@ -946,105 +971,6 @@ instance Binary MetaInformation where
              1 -> do x1 <- get
                      return (DataMI x1)
              _ -> error "Corrupted binary data for MetaInformation"
-
-instance Binary IBCFile where
-        put x@(IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45)
-         = {-# SCC "putIBCFile" #-}
-            do put x1
-               put x2
-               put x3
-               put x4
-               put x5
-               put x6
-               put x7
-               put x8
-               put x9
-               put x10
-               put x11
-               put x12
-               put x13
-               put x14
-               put x15
-               put x16
-               put x17
-               put x18
-               put x19
-               put x20
-               put x21
-               put x22
-               put x23
-               put x24
-               put x25
-               put x26
-               put x27
-               put x28
-               put x29
-               put x30
-               put x31
-               put x32
-               put x33
-               put x34
-               put x35
-               put x36
-               put x37
-               put x38
-               put x39
-               put x40
-               put x41
-               put x42
-               put x43
-               put x44
-               put x45
-
-        get
-          = do x1 <- get
-               if x1 == ibcVersion then
-                 do x2 <- get
-                    x3 <- get
-                    x4 <- get
-                    x5 <- get
-                    x6 <- get
-                    x7 <- get
-                    x8 <- get
-                    x9 <- get
-                    x10 <- get
-                    x11 <- get
-                    x12 <- get
-                    x13 <- get
-                    x14 <- get
-                    x15 <- get
-                    x16 <- get
-                    x17 <- get
-                    x18 <- get
-                    x19 <- get
-                    x20 <- get
-                    x21 <- get
-                    x22 <- get
-                    x23 <- get
-                    x24 <- get
-                    x25 <- get
-                    x26 <- get
-                    x27 <- get
-                    x28 <- get
-                    x29 <- get
-                    x30 <- get
-                    x31 <- get
-                    x32 <- get
-                    x33 <- get
-                    x34 <- get
-                    x35 <- get
-                    x36 <- get
-                    x37 <- get
-                    x38 <- get
-                    x39 <- get
-                    x40 <- get
-                    x41 <- get
-                    x42 <- get
-                    x43 <- get
-                    x44 <- get
-                    x45 <- get
-                    return (IBCFile x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45)
-                  else return (initIBC { ver = x1 })
 
 instance Binary DataOpt where
   put x = case x of
@@ -1678,9 +1604,9 @@ instance Binary PTerm where
                                     put x2
                 PUniverse x1 -> do putWord8 38
                                    put x1
-                PRunTactics x1 x2 -> do putWord8 39
-                                        put x1
-                                        put x2
+                PRunElab x1 x2 -> do putWord8 39
+                                     put x1
+                                     put x2
                 PAs x1 x2 x3 -> do putWord8 40
                                    put x1
                                    put x2
@@ -1692,6 +1618,8 @@ instance Binary PTerm where
                                         put x2
                 PUnquote x1 -> do putWord8 43
                                   put x1
+                PQuoteName x1 -> do putWord8 44
+                                    put x1
 
 
         get
@@ -1813,7 +1741,7 @@ instance Binary PTerm where
                             return (PUniverse x1)
                    39 -> do x1 <- get
                             x2 <- get
-                            return (PRunTactics x1 x2)
+                            return (PRunElab x1 x2)
                    40 -> do x1 <- get
                             x2 <- get
                             x3 <- get
@@ -1825,6 +1753,8 @@ instance Binary PTerm where
                             return (PQuasiquote x1 x2)
                    43 -> do x1 <- get
                             return (PUnquote x1)
+                   44 -> do x1 <- get
+                            return (PQuoteName x1)
                    _ -> error "Corrupted binary data for PTerm"
 
 instance (Binary t) => Binary (PTactic' t) where

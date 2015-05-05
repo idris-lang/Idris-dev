@@ -36,3 +36,16 @@ isElem x (y :: xs) with (decEq x y)
                Elem x' (y' :: xs') -> Void
         mkNo f g Here = f Refl
         mkNo f g (There x) = g x
+
+||| The intersectBy function returns the intersect of two lists by user-supplied equality predicate.
+intersectBy : (a -> a -> Bool) -> List a -> List a -> List a
+intersectBy eq xs ys = [x | x <- xs, any (eq x) ys]
+
+||| Compute the intersection of two lists according to their `Eq` instance.
+|||
+||| ```idris example
+||| intersect [1, 2, 3, 4] [2, 4, 6, 8]
+||| ```
+|||
+intersect : (Eq a) => List a -> List a -> List a
+intersect = intersectBy (==)

@@ -38,6 +38,6 @@ fmt (axiom n) = "axiom " ++ show n
 
 main : IO ()
 main = do
-    n <- map (const 10000) (putStrLn "*oink*")
+    n <- map (const (the Nat 10000)) (putStrLn "*oink*")
     putStrLn . show $ getWitness (f 4 n)
     putStrLn . fmt  $ getProof   (g 4 n)

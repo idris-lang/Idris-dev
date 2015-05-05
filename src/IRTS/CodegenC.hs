@@ -220,11 +220,11 @@ bcc i (CASE True r code def)
                     indent i ++ "}\n"
 
     showCase :: Int -> Maybe [BC] -> [(Int, [BC])] -> String
-    showCase i Nothing [(t, c)] = showCode i c
-    showCase i (Just def) [] = showCode i def
+    showCase i Nothing [(t, c)] = indent i ++ showCode i c
+    showCase i (Just def) [] = indent i ++ showCode i def
     showCase i def ((t, c) : cs)
         = indent i ++ "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
-           ++ indent i ++ "else " ++ showCase i def cs
+           ++ indent i ++ "else\n" ++ showCase i def cs
 
 bcc i (CASE safe r code def)
     = indent i ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n" ++
@@ -307,7 +307,7 @@ bcc i (FOREIGNCALL l rty (FStr fn) args)
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
     where fcall (t, arg) = irts_c (toFType t) (creg arg)
 bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
-bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1); exit(-1);"
+bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
 -- bcc i c = error (show c) -- indent i ++ "// not done yet\n"
 
 -- Deconstruct the Foreign type in the defunctionalised expression and build
@@ -647,7 +647,7 @@ codegenH es = mapM_ writeIFace es
 
 writeIFace :: ExportIFace -> IO ()
 writeIFace (Export ffic hdr exps)
-   | ffic == sUN "FFI_C"
+   | ffic == sNS (sUN "FFI_C") ["FFI_C"]
        = do let hfile = "#ifndef " ++ hdr_guard hdr ++ "\n" ++
                         "#define " ++ hdr_guard hdr ++ "\n\n" ++
                         "#include <idris_rts.h>\n\n" ++

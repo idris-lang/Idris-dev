@@ -816,7 +816,9 @@ targetCPU = do i <- getIState
 
 verbose :: Idris Bool
 verbose = do i <- getIState
-             return (opt_verbose (idris_options i))
+             -- Quietness overrides verbosity
+             return (not (opt_quiet (idris_options i)) &&
+                     opt_verbose (idris_options i))
 
 setVerbose :: Bool -> Idris ()
 setVerbose t = do i <- getIState
@@ -1009,7 +1011,7 @@ expandParams dec ps ns infs tm = en tm
     en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
     en (PAppBind fc f as) = PAppBind fc (en f) (map (fmap en) as)
     en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
-    en (PRunTactics fc tm) = PRunTactics fc (en tm)
+    en (PRunElab fc tm) = PRunElab fc (en tm)
     en t = t
 
     nselem x [] = False
@@ -1478,7 +1480,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     imps top env (PHidden tm)    = imps False env tm
     imps top env (PUnifyLog tm)  = imps False env tm
     imps top env (PNoImplicits tm)  = imps False env tm
-    imps top env (PRunTactics fc tm) = imps False env tm
+    imps top env (PRunElab fc tm) = imps False env tm
     imps top env _               = return ()
 
     pibind using []     sc = sc
@@ -1605,7 +1607,7 @@ addImpl' inpat env infns imp_meths ist ptm
     ai qq env ds (PQuasiquote tm g) = PQuasiquote (ai True env ds tm)
                                                   (fmap (ai True env ds) g)
     ai qq env ds (PUnquote tm) = PUnquote (ai False env ds tm)
-    ai qq env ds (PRunTactics fc tm) = PRunTactics fc (ai False env ds tm)
+    ai qq env ds (PRunElab fc tm) = PRunElab fc (ai False env ds tm)
     ai qq env ds tm = tm
 
     handleErr (Left err) = PElabError err
@@ -2016,6 +2018,7 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PHidden x) = PHidden (sm xs x)
     sm xs (PUnifyLog x) = PUnifyLog (sm xs x)
     sm xs (PNoImplicits x) = PNoImplicits (sm xs x)
+    sm xs (PRunElab fc script) = PRunElab fc (sm xs script)
     sm xs x = x
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
@@ -2142,5 +2145,5 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
   mkUniq (PNoImplicits t) = liftM PNoImplicits (mkUniq t)
   mkUniq (PProof ts) = liftM PProof (mapM mkUniqT ts)
   mkUniq (PTactics ts) = liftM PTactics (mapM mkUniqT ts)
-  mkUniq (PRunTactics fc ts) = liftM (PRunTactics fc ) (mkUniq ts)
+  mkUniq (PRunElab fc ts) = liftM (PRunElab fc ) (mkUniq ts)
   mkUniq t = return t

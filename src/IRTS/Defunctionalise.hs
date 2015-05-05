@@ -162,21 +162,21 @@ addApps defs (n, LFun _ _ args e)
        | needsEval x t = DLet x (DV (Glob x)) (preEval xs t)
        | otherwise = preEval xs t
 
-    needsEval x (DApp _ _ args) = or (map (needsEval x) args)
-    needsEval x (DC _ _ _ args) = or (map (needsEval x) args)
-    needsEval x (DCase up e alts) = needsEval x e || or (map nec alts)
+    needsEval x (DApp _ _ args) = any (needsEval x) args
+    needsEval x (DC _ _ _ args) = any (needsEval x) args
+    needsEval x (DCase up e alts) = needsEval x e || any nec alts
       where nec (DConCase _ _ _ e) = needsEval x e
             nec (DConstCase _ e) = needsEval x e
             nec (DDefaultCase e) = needsEval x e
-    needsEval x (DChkCase e alts) = needsEval x e || or (map nec alts)
+    needsEval x (DChkCase e alts) = needsEval x e || any nec alts
       where nec (DConCase _ _ _ e) = needsEval x e
             nec (DConstCase _ e) = needsEval x e
             nec (DDefaultCase e) = needsEval x e
     needsEval x (DLet n v e)
           | x == n = needsEval x v
           | otherwise = needsEval x v || needsEval x e
-    needsEval x (DForeign _ _ args) = or (map (needsEval x) (map snd args))
-    needsEval x (DOp op args) = or (map (needsEval x) args)
+    needsEval x (DForeign _ _ args) = any (needsEval x) (map snd args)
+    needsEval x (DOp op args) = any (needsEval x) args
     needsEval x (DProj (DV (Glob x')) _) = x == x'
     needsEval x _ = False
 

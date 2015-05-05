@@ -66,13 +66,11 @@ type Vars = Map Name VarInfo
 -- Perform usage analysis, write the relevant information in the internal
 -- structures, returning the list of reachable names.
 performUsageAnalysis :: [Name] -> Idris [Name]
-performUsageAnalysis roots = do
+performUsageAnalysis startNames = do
     ctx <- tt_ctxt <$> getIState
-    startNames <- getStartNames <$> getIState
-
     case startNames of
-      Left reason -> return []  -- no main -> not compiling -> reachability irrelevant
-      Right main  -> do
+      [] -> return []  -- no main -> not compiling -> reachability irrelevant
+      main  -> do
         ci  <- idris_classes <$> getIState
         cg  <- idris_callgraph <$> getIState
         opt <- idris_optimisation <$> getIState
@@ -107,17 +105,6 @@ performUsageAnalysis roots = do
 
         return $ S.toList reachableNames
   where
-    getStartNames :: IState -> Either Err [Name]
-    getStartNames ist 
-       = case lookupCtxtName n (idris_implicits ist) of
-              [(n', _)] -> Right (n' : roots)
-              []        -> if null roots
-                              then Left (NoSuchVariable n)
-                              else Right roots
-              more      -> Left (CantResolveAlts (map fst more))
-      where
-        n = sNS (sUN "main") ["Main"]
-
     indent = ("  " ++)
 
     fmtItem :: (Cond, DepSet) -> String
@@ -292,7 +279,7 @@ buildDepMap ci used externs ctx startNames
 
     etaExpand :: [Name] -> Term -> Term
     etaExpand []       t = t
-    etaExpand (n : ns) t = etaExpand ns (App t (P Ref n Erased))
+    etaExpand (n : ns) t = etaExpand ns (App Complete t (P Ref n Erased))
 
     getDepsSC :: Name -> [Name] -> Vars -> SC -> Deps
     getDepsSC fn es vs  ImpossibleCase     = M.empty
@@ -383,7 +370,7 @@ buildDepMap ci used externs ctx startNames
         var t cd = getDepsTerm vs bs cd t
 
     -- applications may add items to Cond
-    getDepsTerm vs bs cd app@(App _ _)
+    getDepsTerm vs bs cd app@(App _ _ _)
         | (fun, args) <- unApply app = case fun of
             -- instance constructors -> create metamethod deps
             P (DCon _ _ _) ctorName@(SN (InstanceCtorN className)) _
@@ -395,12 +382,11 @@ buildDepMap ci used externs ctx startNames
             P (DCon _ _ _) n _ -> conditionalDeps n args  -- depends on whether (n,#) is used
 
             -- mkForeign* calls must be special-cased because they are variadic
-            -- All arguments must be marked as used, except for the first one,
-            -- which is the (Foreign a) spec that defines the type
-            -- and is not needed at runtime.
+            -- All arguments must be marked as used, except for the first four,
+            -- which define the call type and are not needed at runtime.
             P _ (UN n) _
-                | n `elem` map T.pack ["mkForeignPrim"]
-                -> unconditionalDeps args -- (drop 1 args)
+                | n == T.pack "mkForeignPrim"
+                -> unconditionalDeps $ drop 4 args
 
             -- a bound variable might draw in additional dependencies,
             -- think: f x = x 0  <-- here, `x' _is_ used
@@ -431,8 +417,8 @@ buildDepMap ci used externs ctx startNames
             Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
 
             -- and we interpret applied lets as lambdas
-            Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
-            Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App (Bind n (Lam ty) t) t')
+            Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam ty) t) t')
+            Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam ty) t) t')
 
             Proj t i
                 -> error $ "cannot[0] analyse projection !" ++ show i ++ " of " ++ show t
@@ -506,9 +492,9 @@ buildDepMap ci used externs ctx startNames
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering
     lamToLet :: [Term] -> Term -> Term
-    lamToLet    xs  (App f x)           = lamToLet (x:xs) f
+    lamToLet    xs  (App _ f x)         = lamToLet (x:xs) f
     lamToLet (x:xs) (Bind n (Lam ty) t) = Bind n (Let ty x) (lamToLet xs t)
-    lamToLet (x:xs)  t                  = App (lamToLet xs t) x
+    lamToLet (x:xs)  t                  = App Complete (lamToLet xs t) x
     lamToLet    []   t                  = t
 
     -- split "\x_i -> T(x_i)" into [x_i] and T

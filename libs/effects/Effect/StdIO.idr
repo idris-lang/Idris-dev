@@ -9,10 +9,10 @@ import Control.IOExcept
 
 ||| The internal representation of StdIO effects
 data StdIO : Effect where
-     PutStr : String -> { () } StdIO ()
-     GetStr : { () } StdIO String
-     PutCh : Char -> { () } StdIO ()
-     GetCh : { () } StdIO Char
+     PutStr : String -> sig StdIO ()
+     GetStr : sig StdIO String
+     PutCh : Char -> sig StdIO ()
+     GetCh : sig StdIO Char
 
 
 -------------------------------------------------------------
@@ -39,33 +39,33 @@ STDIO : EFFECT
 STDIO = MkEff () StdIO
 
 ||| Write a string to standard output.
-putStr : String -> { [STDIO] } Eff ()
+putStr : String -> Eff () [STDIO]
 putStr s = call $ PutStr s
 
 ||| Write a string to standard output, terminating with a newline.
-putStrLn : String -> { [STDIO] } Eff ()
+putStrLn : String -> Eff () [STDIO]
 putStrLn s = putStr (s ++ "\n")
 
 ||| Write a character to standard output.
-putChar : Char -> { [STDIO] } Eff ()
+putChar : Char -> Eff () [STDIO]
 putChar c = call $ PutCh c
 
 ||| Write a character to standard output, terminating with a newline.
-putCharLn : Char -> { [STDIO] } Eff ()
+putCharLn : Char -> Eff () [STDIO]
 putCharLn c = putStrLn (singleton c)
 
 ||| Read a string from standard input.
-getStr : { [STDIO] } Eff String
+getStr : Eff String [STDIO]
 getStr = call $ GetStr
 
 ||| Read a character from standard input.
-getChar : { [STDIO] } Eff Char
+getChar : Eff Char [STDIO]
 getChar = call $ GetCh
 
 ||| Given a parameter `a` 'show' `a` to standard output.
-print : Show a => a -> { [STDIO] } Eff ()
+print : Show a => a -> Eff () [STDIO]
 print a = putStr (show a)
 
 ||| Given a parameter `a` 'show' `a` to a standard output, terminating with a newline
-printLn : Show a => a -> { [STDIO] } Eff ()
+printLn : Show a => a -> Eff () [STDIO]
 printLn a = putStrLn (show a)

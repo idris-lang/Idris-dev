@@ -7,7 +7,7 @@ import Idris.DSL
 import Idris.Error
 import Idris.Delaborate
 import Idris.Imports
-import Idris.ElabTerm
+import Idris.Elab.Term
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.Providers
@@ -174,7 +174,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
             update ((n, _) : as) (_ : args) = (n, Nothing) : update as args
 
         getDataApp :: Type -> [[Maybe Name]]
-        getDataApp f@(App _ _)
+        getDataApp f@(App _ _ _)
             | (P _ d _, args) <- unApply f
                    = if (d == n) then [mParam args args] else []
         getDataApp (Bind n (Pi _ t _) sc)
@@ -271,7 +271,8 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
     getNamePos _ _ _ = Nothing
 
     -- if the constructor is a UniqueType, the datatype must be too
-    -- (Type* is fine, since that is checked for uniqueness too)
+    -- (AnyType is fine, since that is checked for uniqueness too)
+    -- if hte contructor is AnyType, the datatype must be at least AnyType
     checkUniqueKind (UType NullType) (UType NullType) = return ()
     checkUniqueKind (UType NullType) _
         = tclift $ tfail (At fc (UniqueKindError NullType n))
@@ -279,7 +280,10 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
     checkUniqueKind (UType UniqueType) (UType AllTypes) = return ()
     checkUniqueKind (UType UniqueType) _
         = tclift $ tfail (At fc (UniqueKindError UniqueType n))
-    checkUniqueKind (UType AllTypes) _ = return ()
+    checkUniqueKind (UType AllTypes) (UType AllTypes) = return ()
+    checkUniqueKind (UType AllTypes) (UType UniqueType) = return ()
+    checkUniqueKind (UType AllTypes) _ 
+        = tclift $ tfail (At fc (UniqueKindError AllTypes n))
     checkUniqueKind _ _ = return ()
 
     -- Constructor's kind must be <= expected kind

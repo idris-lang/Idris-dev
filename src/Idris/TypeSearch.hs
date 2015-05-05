@@ -30,7 +30,7 @@ import Idris.Core.Unify (match_unify)
 import Idris.Delaborate (delabTy)
 import Idris.Docstrings (noDocs, overview)
 import Idris.Elab.Type (elabType)
-import Idris.Output (iputStrLn, iRenderOutput, iPrintResult, iRenderResult, prettyDocumentedIst)
+import Idris.Output (iputStrLn, iRenderOutput, iPrintResult, iRenderError, iRenderResult, prettyDocumentedIst)
 import Idris.IBC
 
 import Prelude hiding (pred)
@@ -54,10 +54,12 @@ searchByType pkgs pterm = do
        [ let docInfo = (n, delabTy i n, fmap (overview . fst) (lookupCtxtExact n (idris_docstrings i))) in
          displayScore theScore <> char ' ' <> prettyDocumentedIst i docInfo
                 | (n, theScore) <- names']
-  case idris_outputmode i of
-    RawOutput _  -> do mapM_ iRenderOutput docs
-                       iPrintResult ""
-    IdeMode _ _ -> iRenderResult (vsep docs)
+  if (not (null docs))
+     then case idris_outputmode i of
+               RawOutput _  -> do mapM_ iRenderOutput docs
+                                  iPrintResult ""
+               IdeMode _ _ -> iRenderResult (vsep docs)
+     else iRenderError $ text "No results found"
   putIState i -- don't actually make any changes
   where
     numLimit = 50
@@ -102,9 +104,9 @@ typeFromDef (def, _, _, _) = get def where
 -- Replace all occurences of `Lazy' s t` with `t` in a type
 unLazy :: Type -> Type
 unLazy typ = case typ of
-  App (App (P _ lazy _) _) ty | lazy == sUN "Lazy'" -> unLazy ty
+  App _ (App _ (P _ lazy _) _) ty | lazy == sUN "Lazy'" -> unLazy ty
   Bind name binder ty -> Bind name (fmap unLazy binder) (unLazy ty)
-  App t1 t2 -> App (unLazy t1) (unLazy t2)
+  App s t1 t2 -> App s (unLazy t1) (unLazy t2)
   Proj ty i -> Proj (unLazy ty) i
   _ -> typ
 
@@ -144,7 +146,7 @@ usedVars = f True where
     Let t v ->   f b t `M.union` f b v
     Guess t v -> f b t `M.union` f b v
     bind -> f b (binderTy bind)
-  f b (App t1 t2) = f b t1 `M.union` f (b && isInjective t1) t2
+  f b (App _ t1 t2) = f b t1 `M.union` f (b && isInjective t1) t2
   f b (Proj t _) = f b t
   f _ (V _) = error "unexpected! run vToP first"
   f _ _ = M.empty
@@ -305,13 +307,14 @@ subsets (x : xs) = let ss = subsets xs in map (x :) ss ++ ss
 -- recalls the number of flips that have been made
 flipEqualities :: Type -> [(Int, Type)]
 flipEqualities t = case t of
-  eq1@(App (App (App (App eq@(P _ eqty _) tyL) tyR) valL) valR) | eqty == eqTy ->
-    [(0, eq1), (1, App (App (App (App eq tyR) tyL) valR) valL)]
+  eq1@(App _ (App _ (App _ (App _ eq@(P _ eqty _) tyL) tyR) valL) valR) | eqty == eqTy ->
+    [(0, eq1), (1, app (app (app (app eq tyR) tyL) valR) valL)]
   Bind n binder sc -> (\bind' (j, sc') -> (fst (binderTy bind') + j, Bind n (fmap snd bind') sc'))
     <$> traverse flipEqualities binder <*> flipEqualities sc
-  App f x -> (\(i, f') (j, x') -> (i + j, App f' x')) 
+  App _ f x -> (\(i, f') (j, x') -> (i + j, app f' x')) 
     <$> flipEqualities f <*> flipEqualities x
   t' -> [(0, t')]
+ where app = App Complete
 
 --DONT run vToP first!
 -- | Try to match two types together in a unification-like procedure.

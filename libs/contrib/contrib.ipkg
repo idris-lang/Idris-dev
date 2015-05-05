@@ -2,16 +2,20 @@ package contrib
 
 opts = "--nobasepkgs --total -i ../prelude -i ../base"
 modules = Control.Algebra,
+          Control.Algebra.Lattice, Control.Algebra.VectorSpace,
+          Control.Algebra.NumericInstances,
           Control.Isomorphism.Primitives,
+          Control.Partial,
           Control.WellFounded,
           Classes.Verified,
-          Data.Fun, Data.Rel, 
+          Data.Fun, Data.Rel,
           Data.Hash, Data.Matrix,
           Data.Nat,
           Data.ZZ, Data.Sign,
           Data.BoundedList,
           Data.Heap,
           Data.SortedMap, Data.SortedSet,
+          Data.CoList,
 
           Decidable.Decidable, Decidable.Order,
 

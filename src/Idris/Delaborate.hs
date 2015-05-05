@@ -49,7 +49,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
   where
     un = fileFC "(val)"
 
-    de env _ (App f a) = deFn env f [a]
+    de env _ (App _ f a) = deFn env f [a]
     de env _ (V i)     | i < length env = PRef un (snd (env!!i))
                        | otherwise = PRef un (sUN ("v" ++ show i ++ ""))
     de env _ (P _ n _) | n == unitTy = PTrue un IsType
@@ -103,7 +103,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                               _ -> ns
     dens n = n
 
-    deFn env (App f a) args = deFn env f (a:args)
+    deFn env (App _ f a) args = deFn env f (a:args)
     deFn env (P _ n _) [l,r]
          | n == pairTy    = PPair un IsType (de env [] l) (de env [] r)
          | n == eqCon     = PRefl un (de env [] r)
@@ -163,7 +163,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                         | otherwise = tm
             nonVar [] = error "Tried to delaborate empty case list"
             nonVar [x] = x
-            nonVar (x@(App _ _) : _) = x
+            nonVar (x@(App _ _ _) : _) = x
             nonVar (x@(P (DCon _ _ _) _ _) : _) = x
             nonVar (x:xs) = nonVar xs
 -- | How far to indent sub-errors
@@ -256,9 +256,9 @@ pprintErr' i (CantConvert x_in y_in env) =
                y)) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
     where flagUnique (Bind n (Pi i t k@(UType u)) sc)
-              = App (P Ref (sUN (show u)) Erased)
+              = App Complete (P Ref (sUN (show u)) Erased)
                     (Bind n (Pi i (flagUnique t) k) (flagUnique sc))
-          flagUnique (App f a) = App (flagUnique f) (flagUnique a)
+          flagUnique (App s f a) = App s (flagUnique f) (flagUnique a)
           flagUnique (Bind n b sc) = Bind n (fmap flagUnique b) (flagUnique sc)
           flagUnique t = t
 pprintErr' i (CantSolveGoal x env) =
@@ -311,7 +311,14 @@ pprintErr' i (NoEliminator s t)
     text "Please note that 'induction' is experimental." <$>
     text "Only types declared with '%elim' can be used." <$>
     text "Consider writing a pattern matching definition instead."
-pprintErr' i UniverseError = text "Universe inconsistency"
+pprintErr' i (UniverseError fc uexp old new suspects) =
+  text "Universe inconsistency." <>
+  (indented . vsep) [ text "Working on:" <+> text (show uexp)
+                    , text "Old domain:" <+> text (show old)
+                    , text "New domain:" <+> text (show new)
+                    , text "Involved constraints:" <+>
+                      (indented . vsep) (map (text . show) suspects)
+                    ]
 pprintErr' i (UniqueError NullType n)
            = text "Borrowed name" <+> annName' n (showbasic n)
                   <+> text "must not be used on RHS"
@@ -373,12 +380,13 @@ pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
-pprintErr' i (ElabDebug msg tm holes) =
+pprintErr' i (ElabScriptDebug msg tm holes) =
   text "Elaboration halted." <>
-  maybe empty (indented . text) msg <> line <>
-  text "Term: " <> indented (pprintTT [] tm) <> line <>
+  maybe empty (indented . text) msg <>
+  line <> line <>
   text "Holes:" <>
-  indented (vsep (map ppHole holes))
+  indented (vsep (map ppHole holes)) <> line <> line <>
+  text "Term: " <> indented (pprintTT [] tm)
 
   where ppHole :: (Name, Type, Env) -> Doc OutputAnnotation
         ppHole (hn, goal, env) =
@@ -394,6 +402,9 @@ pprintErr' i (ElabDebug msg tm holes) =
           pprintTT ns (binderTy b) <>
           line <>
           ppAssumptions (n:ns) rest
+pprintErr' i (ElabScriptStuck tm) =
+  text "Can't run" <+> pprintTT [] tm <+> text "as an elaborator script." <$>
+  text "Is it a stuck term?"
 
 -- | Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly
@@ -423,7 +434,7 @@ renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
 
     rename :: [(Name, Name)] -> Term -> Term
     rename ns (P nt x t) | Just x' <- lookup x ns = P nt x' t
-    rename ns (App f a) = App (rename ns f) (rename ns a)
+    rename ns (App s f a) = App s (rename ns f) (rename ns a)
     rename ns (Bind x b sc)
            = let b' = fmap (rename ns) b
                  sc' = rename ns sc in

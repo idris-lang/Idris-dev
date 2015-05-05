@@ -8,7 +8,6 @@ import Idris.ASTUtils
 import Idris.Apropos (apropos, aproposModules)
 import Idris.REPLParser
 import Idris.ElabDecls
-import Idris.ElabTerm
 import Idris.Erasure
 import Idris.Error
 import Idris.ErrReverse
@@ -35,10 +34,13 @@ import Idris.WhoCalls
 import Idris.TypeSearch (searchByType)
 import Idris.IBC (loadPkgIndex, writePkgIndex)
 
+import Idris.REPL.Browse (namesInNS, namespacesInNS)
+
 import Idris.Elab.Type
 import Idris.Elab.Clause
 import Idris.Elab.Data
 import Idris.Elab.Value
+import Idris.Elab.Term
 
 import Version_idris (gitHash)
 import Util.System
@@ -463,6 +465,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.WhoCalls n) =
                  renderPretty 0.9 1000 .
                  fmap (fancifyAnnots ist) .
                  prettyName True True []
+
 runIdeModeCommand h id orig fn mods (IdeMode.CallsWho n) =
   case splitName n of
        Left err -> iPrintError err
@@ -476,6 +479,20 @@ runIdeModeCommand h id orig fn mods (IdeMode.CallsWho n) =
                  fmap (fancifyAnnots ist) .
                  prettyName True True []
 
+runIdeModeCommand h id orig fn modes (IdeMode.BrowseNS ns) =
+  case splitOn "." ns of
+    [] -> iPrintError "No namespace provided"
+    ns -> do underNSs <- fmap (map $ concat . intersperse ".") $ namespacesInNS ns
+             names <- namesInNS ns
+             if null underNSs && null names
+                then iPrintError "Invalid or empty namespace"
+                else do ist <- getIState
+                        let msg = (IdeMode.SymbolAtom "ok", (underNSs, map (pn ist) names))
+                        runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
+  where pn ist = displaySpans .
+                 renderPretty 0.9 1000 .
+                 fmap (fancifyAnnots ist) .
+                 prettyName True True []
 runIdeModeCommand h id orig fn modes (IdeMode.TermNormalise bnd tm) =
   do ctxt <- getContext
      ist <- getIState
@@ -582,8 +599,8 @@ idemodeProcess fn (HNF t) = process fn (HNF t)
 --idemodeProcess fn TTShell = process fn TTShell -- need some prove mode!
 idemodeProcess fn (TestInline t) = process fn (TestInline t)
 
-idemodeProcess fn Execute = do process fn Execute
-                               iPrintResult ""
+idemodeProcess fn (Execute t) = do process fn (Execute t)
+                                   iPrintResult ""
 idemodeProcess fn (Compile codegen f) = do process fn (Compile codegen f)
                                            iPrintResult ""
 idemodeProcess fn (LogLvl i) = do process fn (LogLvl i)
@@ -1059,7 +1076,7 @@ process fn' (AddProof prf)
                     else ifail $ "Neither \""++fn''++"\" nor \""++fnExt++"\" exist"
        let fb = fn ++ "~"
        runIO $ copyFile fn fb -- make a backup in case something goes wrong!
-       prog <- runIO $ readFile fb
+       prog <- runIO $ readSource fb
        i <- getIState
        let proofs = proof_list i
        n' <- case prf of
@@ -1071,7 +1088,7 @@ process fn' (AddProof prf)
        case lookup n proofs of
             Nothing -> iputStrLn "No proof to add"
             Just p  -> do let prog' = insertScript (showProof (lit fn) n p) ls
-                          runIO $ writeFile fn (unlines prog')
+                          runIO $ writeSource fn (unlines prog')
                           removeProof n
                           iputStrLn $ "Added proof " ++ show n
                           where ls = (lines prog)
@@ -1115,13 +1132,10 @@ process fn (TestInline t)
                                 let tm' = inlineTerm ist tm
                                 c <- colourise
                                 iPrintResult (showTm ist (delab ist tm'))
-process fn Execute
+process fn (Execute tm)
                    = idrisCatch
                        (do ist <- getIState
-                           (m, _) <- elabVal recinfo ERHS
-                                           (PApp fc
-                                              (PRef fc (sUN "run__IO"))
-                                              [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
+                           (m, _) <- elabVal recinfo ERHS (elabExec fc tm)
                            (tmpn, tmph) <- runIO tempfile
                            runIO $ hClose tmph
                            t <- codegen
@@ -1232,10 +1246,11 @@ process fn (Apropos pkgs a) =
                           delabTy ist n,
                           fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
                        | n <- sort names, isUN n ]
-     iRenderResult $ vsep (map (\(m, d) -> text "Module" <+> text m <$>
-                                           ppD ist d <> line) mods) <$>
-                     vsep (map (prettyDocumentedIst ist) aproposInfo)
-     putIState orig
+     if (not (null mods)) || (not (null aproposInfo))
+        then iRenderResult $ vsep (map (\(m, d) -> text "Module" <+> text m <$>
+                                                   ppD ist d <> line) mods) <$>
+                             vsep (map (prettyDocumentedIst ist) aproposInfo)
+        else iRenderError $ text "No results found"
   where isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
@@ -1259,6 +1274,21 @@ process fn (CallsWho n) =
              prettyName True True [] n <+> text "calls:" <$>
              indent 1 (vsep (map ((text "*" <+>) . align . prettyName True True []) ns)))
            calls
+
+process fn (Browse ns) =
+  do underNSs <- namespacesInNS ns
+     names <- namesInNS ns
+     if null underNSs && null names
+        then iPrintError "Invalid or empty namespace"
+        else do ist <- getIState
+                iRenderResult $
+                  text "Namespaces:" <$>
+                  indent 2 (vsep (map (text . showSep ".") underNSs)) <$>
+                  text "Names:" <$>
+                  indent 2 (vsep (map (\n -> prettyName True False [] n <+> colon <+>
+                                             (group . align $ pprintDelabTy ist n))
+                                      names))
+
 -- IdrisDoc
 process fn (MakeDoc s) =
   do     istate        <- getIState
@@ -1557,7 +1587,7 @@ idrisMain opts =
 
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
-       setColourise $ not quiet && last (True : opt getColour opts)
+       setColourise $ not quiet && last ((not isWindows) : opt getColour opts)
 
 
 

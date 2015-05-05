@@ -369,7 +369,7 @@ data Command = Quit
              | ModImport String
              | Edit
              | Compile Codegen String
-             | Execute
+             | Execute PTerm
              | ExecVal PTerm
              | Metavars
              | Prove Name
@@ -408,6 +408,7 @@ data Command = Quit
              | Apropos [String] String
              | WhoCalls Name
              | CallsWho Name
+             | Browse [String]
              | MakeDoc String                      -- IdrisDoc
              | Warranty
              | PrintDef Name
@@ -580,14 +581,6 @@ inlinable = elem Inlinable
 dictionary :: FnOpts -> Bool
 dictionary = elem Dictionary
 
--- | Data declaration options
-data DataOpt = Codata -- ^ Set if the the data-type is coinductive
-             | DefaultEliminator -- ^ Set if an eliminator should be generated for data type
-             | DefaultCaseFun -- ^ Set if a case function should be generated for data type
-             | DataErrRev
-    deriving (Show, Eq)
-
-type DataOpts = [DataOpt]
 
 -- | Type provider - what to provide
 data ProvideWhat' t = ProvTerm t t     -- ^ the first is the goal type, the second is the term
@@ -642,7 +635,7 @@ data PDecl' t
    | PDSL     Name (DSL' t) -- ^ DSL declaration
    | PSyntax  FC Syntax -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
-   | PDirective (Idris ()) -- ^ Compiler directive. The parser inserts the corresponding action in the Idris monad.
+   | PDirective Directive -- ^ Compiler directive.
    | PProvider (Docstring (Either Err PTerm)) SyntaxInfo FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term
    | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
                             -- bool is True, lhs and rhs must be convertible
@@ -652,11 +645,32 @@ deriving instance Binary PDecl'
 deriving instance NFData PDecl'
 !-}
 
--- For elaborator state
+-- | The set of source directives
+data Directive = DLib Codegen String |
+                 DLink Codegen String |
+                 DFlag Codegen String |
+                 DInclude Codegen String |
+                 DHide Name |
+                 DFreeze Name |
+                 DAccess Accessibility |
+                 DDefault Bool |
+                 DLogging Integer |
+                 DDynamicLibs [String] |
+                 DNameHint Name [Name] |
+                 DErrorHandlers Name Name [Name] |
+                 DLanguage LanguageExt |
+                 DUsed FC Name Name
+
+-- | A set of instructions for things that need to happen in IState
+-- after a term elaboration when there's been reflected elaboration.
+data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
+                       | RClausesInstrs Name [([Name], Term, Term)]
+
+-- | For elaborator state
 data EState = EState {
-                  case_decls :: [PDecl],
+                  case_decls :: [(Name, PDecl)],
                   delayed_elab :: [Elab' EState ()],
-                  new_tyDecls :: [(Name, FC, [PArg], Type)]
+                  new_tyDecls :: [RDeclInstructions]
               }
 
 initEState :: EState
@@ -829,7 +843,8 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
            | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
            | PUnquote PTerm -- ^ ~Term
-           | PRunTactics FC PTerm -- ^ %runTactics tm - New-style proof script
+           | PQuoteName Name -- ^ `{n}
+           | PRunElab FC PTerm -- ^ %runElab tm - New-style proof script
        deriving (Eq, Data, Typeable)
 
 
@@ -1048,6 +1063,7 @@ highestFC (PUnifyLog tm) = highestFC tm
 highestFC (PNoImplicits tm) = highestFC tm
 highestFC (PQuasiquote _ _) = Nothing
 highestFC (PUnquote tm) = highestFC tm
+highestFC (PQuoteName _) = Nothing
 
 -- Type class data
 
@@ -1086,20 +1102,7 @@ deriving instance Binary OptInfo
 deriving instance NFData OptInfo
 !-}
 
-
-data TypeInfo = TI { con_names :: [Name],
-                     codata :: Bool,
-                     data_opts :: DataOpts,
-                     param_pos :: [Int],
-                     mutual_types :: [Name] }
-    deriving Show
-{-!
-deriving instance Binary TypeInfo
-deriving instance NFData TypeInfo
-!-}
-
--- Syntactic sugar info
-
+-- | Syntactic sugar info
 data DSL' t = DSL { dsl_bind    :: t,
                     dsl_return  :: t,
                     dsl_apply   :: t,
@@ -1261,14 +1264,14 @@ infP = P (TCon 6 0) inferTy (TType (UVal 0))
 
 getInferTerm, getInferType :: Term -> Term
 getInferTerm (Bind n b sc) = Bind n b $ getInferTerm sc
-getInferTerm (App (App _ _) tm) = tm
+getInferTerm (App _ (App _ _ _) tm) = tm
 getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc) = Bind n (toTy b) $ getInferType sc
   where toTy (Lam t) = Pi Nothing t (TType (UVar 0))
         toTy (PVar t) = PVTy t
         toTy b = b
-getInferType (App (App _ ty) _) = ty
+getInferType (App _ (App _ _ ty) _) = ty
 
 
 
@@ -1436,16 +1439,16 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     prettySe p bnd (PRef fc n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe p bnd (PLam fc n ty sc) =
       bracket p startPrec . group . align . hang 2 $
-      text "\\" <> bindingOf n False <+> text "=>" <$>
+      text "\\" <> prettyBindingOf n False <+> text "=>" <$>
       prettySe startPrec ((n, False):bnd) sc
     prettySe p bnd (PLet fc n ty v sc) =
       bracket p startPrec . group . align $
-      kwd "let" <+> (group . align . hang 2 $ bindingOf n False <+> text "=" <$> prettySe startPrec bnd v) </>
+      kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe startPrec ((n, False):bnd) sc)
     prettySe p bnd (PPi (Exp l s _) n ty sc)
       | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
           bracket p startPrec . group $
-          enclose lparen rparen (group . align $ bindingOf n False <+> colon <+> prettySe startPrec bnd ty) <+>
+          enclose lparen rparen (group . align $ prettyBindingOf n False <+> colon <+> prettySe startPrec bnd ty) <+>
           st <> text "->" <$> prettySe startPrec ((n, False):bnd) sc
       | otherwise                      =
           bracket p startPrec . group $
@@ -1458,7 +1461,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     prettySe p bnd (PPi (Imp l s _ fa) n ty sc)
       | ppopt_impl ppo =
           bracket p startPrec $
-          lbrace <> bindingOf n True <+> colon <+> prettySe startPrec bnd ty <> rbrace <+>
+          lbrace <> prettyBindingOf n True <+> colon <+> prettySe startPrec bnd ty <> rbrace <+>
           st <> text "->" </> prettySe startPrec ((n, True):bnd) sc
       | otherwise = prettySe startPrec ((n, True):bnd) sc
       where
@@ -1612,8 +1615,17 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     prettySe p bnd (PQuasiquote t Nothing) = text "`(" <> prettySe p [] t <> text ")"
     prettySe p bnd (PQuasiquote t (Just g)) = text "`(" <> prettySe p [] t <+> colon <+> prettySe p [] g <> text ")"
     prettySe p bnd (PUnquote t) = text "~" <> prettySe p bnd t
+    prettySe p bnd (PQuoteName n) = text "`{" <> prettyName True (ppopt_impl ppo) bnd n <> text "}"
 
     prettySe p bnd _ = text "missing pretty-printer for term"
+
+    prettyBindingOf :: Name -> Bool -> Doc OutputAnnotation
+    prettyBindingOf n imp = annotate (AnnBoundName n imp) (text (display n))
+      where display (UN n)    = T.unpack n
+            display (MN _ n)  = T.unpack n
+            -- If a namespace is specified on a binding form, we'd better show it regardless of the implicits settings
+            display (NS n ns) = (concat . intersperse "." . map T.unpack . reverse) ns ++ "." ++ display n
+            display n         = show n
 
     prettyArgS bnd (PImp _ _ _ n tm) = prettyArgSi bnd (n, tm)
     prettyArgS bnd (PExp _ _ _ tm)   = prettyArgSe bnd tm
@@ -1636,6 +1648,8 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     basename (NS n _) = basename n
     basename n = n
 
+    slist' _ _ e
+      | containsHole e = Nothing
     slist' p bnd (PApp _ (PRef _ nil) _)
       | not (ppopt_impl ppo) && nsroot nil == sUN "Nil" = Just []
     slist' p bnd (PRef _ nil)
@@ -1764,9 +1778,6 @@ showDeclImp o (PInstance _ _ _ _ cs n _ t _ ds)
    = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
 -- showDeclImp (PImport o) = "import " ++ o
-
-instance Show (Doc OutputAnnotation) where
-  show = flip (displayS . renderCompact) ""
 
 getImps :: [PArg] -> [(Name, PTerm)]
 getImps [] = []
@@ -1905,31 +1916,35 @@ allNamesIn tm = nub $ ni [] tm
     niTacImp env (TacImp _ _ scr) = ni env scr
     niTacImp _ _                   = []
 
+
 -- Return all names defined in binders in the given term
 boundNamesIn :: PTerm -> [Name]
-boundNamesIn tm = nub $ ni tm
+boundNamesIn tm = S.toList (ni S.empty tm)
   where -- TODO THINK Added niTacImp, but is it right?
-    ni (PApp _ f as)   = ni f ++ concatMap (ni) (map getTm as)
-    ni (PAppBind _ f as)   = ni f ++ concatMap (ni) (map getTm as)
-    ni (PCase _ c os)  = ni c ++ concatMap (ni) (map snd os)
-    ni (PLam fc n ty sc)  = n : (ni ty ++ ni sc)
-    ni (PLet fc n ty val sc)  = n : (ni ty ++ ni val ++ ni sc)
-    ni (PPi p n ty sc) = niTacImp p ++ (n : (ni ty ++ ni sc))
-    ni (PEq _ _ _ l r)     = ni l ++ ni r
-    ni (PRewrite _ l r _) = ni l ++ ni r
-    ni (PTyped l r)    = ni l ++ ni r
-    ni (PPair _ _ l r)   = ni l ++ ni r
-    ni (PDPair _ _ (PRef _ n) t r) = ni t ++ ni r
-    ni (PDPair _ _ l t r) = ni l ++ ni t ++ ni r
-    ni (PAlternative a as) = concatMap (ni) as
-    ni (PHidden tm)    = ni tm
-    ni (PUnifyLog tm)    = ni tm
-    ni (PDisamb _ tm)    = ni tm
-    ni (PNoImplicits tm) = ni tm
-    ni _               = []
+    ni set (PApp _ f as) = niTms (ni set f) (map getTm as)
+    ni set (PAppBind _ f as) = niTms (ni set f) (map getTm as)
+    ni set (PCase _ c os)  = niTms (ni set c) (map snd os)
+    ni set (PLam fc n ty sc)  = S.insert n $ ni (ni set ty) sc
+    ni set (PLet fc n ty val sc) = S.insert n $ ni (ni (ni set ty) val) sc
+    ni set (PPi p n ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
+    ni set (PEq _ _ _ l r) = ni (ni set l) r
+    ni set (PRewrite _ l r _) = ni (ni set l) r
+    ni set (PTyped l r) = ni (ni set l) r
+    ni set (PPair _ _ l r) = ni (ni set l) r
+    ni set (PDPair _ _ (PRef _ n) t r) = ni (ni set t) r
+    ni set (PDPair _ _ l t r) = ni (ni (ni set l) t) r
+    ni set (PAlternative a as) = niTms set as
+    ni set (PHidden tm) = ni set tm
+    ni set (PUnifyLog tm) = ni set tm
+    ni set (PDisamb _ tm) = ni set tm
+    ni set (PNoImplicits tm) = ni set tm
+    ni set _               = set
 
-    niTacImp (TacImp _ _ scr) = ni scr
-    niTacImp _                = []
+    niTms set [] = set
+    niTms set (x : xs) = niTms (ni set x) xs
+
+    niTacImp set (TacImp _ _ scr) = ni set scr
+    niTacImp set _                = set
 
 -- Return names which are valid implicits in the given term (type).
 implicitNamesIn :: [Name] -> IState -> PTerm -> [Name]

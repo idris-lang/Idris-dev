@@ -1,5 +1,4 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
-{-# OPTIONS_GHC -O0 #-}
 module Idris.ParseExpr where
 
 import Prelude hiding (pi)
@@ -221,7 +220,7 @@ InternalExpr ::=
 internalExpr :: SyntaxInfo -> IdrisParser PTerm
 internalExpr syn =
          unifyLog syn
-     <|> runTactics syn
+     <|> runElab syn
      <|> disamb syn
      <|> noImplicits syn
      <|> recordType syn
@@ -312,6 +311,7 @@ SimpleExpr ::=
   | Type
   | 'Void'
   | Quasiquote
+  | NameQuote
   | Unquote
   | '_'
   ;
@@ -330,6 +330,7 @@ simpleExpr syn =
         <|> proofExpr syn
         <|> tacticsExpr syn
         <|> try (do reserved "Type"; symbol "*"; return $ PUniverse AllTypes)
+        <|> do reserved "AnyType"; return $ PUniverse AllTypes
         <|> do reserved "Type"; return PType
         <|> do reserved "UniqueType"; return $ PUniverse UniqueType
         <|> do reserved "NullType"; return $ PUniverse NullType
@@ -356,6 +357,7 @@ simpleExpr syn =
                return (PAppBind fc s [])
         <|> bracketed (disallowImp syn)
         <|> quasiquote syn
+        <|> namequote syn
         <|> unquote syn
         <|> do lchar '_'; return Placeholder
         <?> "expression"
@@ -498,16 +500,16 @@ unifyLog syn = do try (lchar '%' *> reserved "unifyLog")
 
 {- | Parses a new-style tactics expression
 RunTactics ::=
-  '%' 'runTactics' SimpleExpr
+  '%' 'runElab' SimpleExpr
   ;
 -}
-runTactics :: SyntaxInfo -> IdrisParser PTerm
-runTactics syn = do try (lchar '%' *> reserved "runTactics")
-                    fc <- getFC
-                    tm <- simpleExpr syn
-                    i <- get
-                    return $ PRunTactics fc tm
-                 <?> "new-style tactics expression"
+runElab :: SyntaxInfo -> IdrisParser PTerm
+runElab syn = do try (lchar '%' *> reserved "runElab")
+                 fc <- getFC
+                 tm <- simpleExpr syn
+                 i <- get
+                 return $ PRunElab fc tm
+              <?> "new-style tactics expression"
 
 {- | Parses a disambiguation expression 
 Disamb ::=
@@ -639,6 +641,18 @@ unquote syn = do guard (syn_in_quasiquote syn > 0)
                  e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
                  return $ PUnquote e
               <?> "unquotation"
+
+{-| Parses a quotation of a name (for using the elaborator to resolve boring details)
+
+> NameQuote ::= '`{' Name '}'
+
+-}
+namequote :: SyntaxInfo -> IdrisParser PTerm
+namequote syn = do symbol "`{"
+                   n <- fnName
+                   symbol "}"
+                   return $ PQuoteName n
+                <?> "quoted name"
 
 
 {-| Parses a record field setter expression
@@ -869,49 +883,67 @@ bindsymbol opts st syn
      = do symbol "->"
           return (Exp opts st False)
 
+explicitPi opts st syn
+   = do xt <- try (lchar '(' *> typeDeclList syn <* lchar ')')
+        binder <- bindsymbol opts st syn
+        sc <- expr syn
+        return (bindList (PPi binder) xt sc)
+       
+autoImplicit opts st syn
+   = do reserved "auto"
+        when (st == Static) $ fail "auto implicits can not be static"
+        xt <- typeDeclList syn
+        lchar '}'
+        symbol "->"
+        sc <- expr syn
+        return (bindList (PPi
+          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc) 
+
+defaultImplicit opts st syn = do
+   reserved "default"
+   when (st == Static) $ fail "default implicits can not be static"
+   ist <- get
+   script' <- simpleExpr syn
+   let script = debindApp syn . desugar syn ist $ script'
+   xt <- typeDeclList syn
+   lchar '}'
+   symbol "->"
+   sc <- expr syn
+   return (bindList (PPi (TacImp [] Dynamic script)) xt sc)
+
+normalImplicit opts st syn = do
+   xt <- typeDeclList syn <* lchar '}'
+   symbol "->"
+   cs <- constraintList syn
+   sc <- expr syn
+   let (im,cl)
+          = if implicitAllowed syn
+               then (Imp opts st False Nothing,
+                      constraint)
+               else (Imp opts st False (Just (Impl False)),
+                     Imp opts st False (Just (Impl True)))
+   return (bindList (PPi im) xt 
+           (bindList (PPi cl) cs sc))
+
+implicitPi opts st syn = 
+      autoImplicit opts st syn
+        <|> defaultImplicit opts st syn
+          <|> normalImplicit opts st syn
+
+unboundPi opts st syn = do
+       x <- opExpr syn
+       (do binder <- bindsymbol opts st syn
+           sc <- expr syn
+           return (PPi binder (sUN "__pi_arg") x sc))
+              <|> return x
+
 pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
      do opts <- piOpts syn
         st   <- static
-        (do xt <- try (lchar '(' *> typeDeclList syn <* lchar ')')
-            binder <- bindsymbol opts st syn
-            sc <- expr syn
-            return (bindList (PPi binder) xt sc)) <|> (do
-               (do try (lchar '{' *> reserved "auto")
-                   when (st == Static) $ fail "auto type constraints can not be static"
-                   xt <- typeDeclList syn
-                   lchar '}'
-                   symbol "->"
-                   sc <- expr syn
-                   return (bindList (PPi
-                     (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc)) <|> (do
-                       try (lchar '{' *> reserved "default")
-                       when (st == Static) $ fail "default tactic constraints can not be static"
-                       ist <- get
-                       script' <- simpleExpr syn
-                       let script = debindApp syn . desugar syn ist $ script'
-                       xt <- typeDeclList syn
-                       lchar '}'
-                       symbol "->"
-                       sc <- expr syn
-                       return (bindList (PPi (TacImp [] Dynamic script)) xt sc))
-                 <|> (do xt <- try (lchar '{' *> typeDeclList syn <* lchar '}')
-                         symbol "->"
-                         cs <- constraintList syn
-                         sc <- expr syn
-                         let (im,cl)
-                                = if implicitAllowed syn
-                                     then (Imp opts st False Nothing,
-                                            constraint)
-                                     else (Imp opts st False (Just (Impl False)),
-                                           Imp opts st False (Just (Impl True)))
-                         return (bindList (PPi im) xt 
-                                 (bindList (PPi cl) cs sc))))
-                 <|> (do x <- opExpr syn
-                         (do binder <- bindsymbol opts st syn
-                             sc <- expr syn
-                             return (PPi binder (sUN "__pi_arg") x sc))
-                          <|> return x)
+        explicitPi opts st syn
+         <|> try (do lchar '{'; implicitPi opts st syn)
+            <|> unboundPi opts st syn
   <?> "dependent type signature"
 
 {- | Parses Possible Options for Pi Expressions
@@ -944,14 +976,14 @@ constraintList1 syn = try (do lchar '('
                               lchar ')'
                               reservedOp "=>"
                               return tys)
-                  <|> try (do t <- expr (disallowImp syn)
+                  <|> try (do t <- opExpr (disallowImp syn)
                               reservedOp "=>"
                               return [(defname, t)])
                   <?> "type constraint list"
   where nexpr = try (do n <- name; lchar ':'
-                        e <- expr' (disallowImp syn)
+                        e <- expr syn
                         return (n, e))
-                <|> do e <- expr' (disallowImp syn)
+                <|> do e <- expr syn
                        return (defname, e)
         defname = sMN 0 "constrarg"
 
@@ -1148,7 +1180,6 @@ Constant ::=
   | 'String'
   | 'Ptr'
   | 'ManagedPtr'
-  | 'prim__UnsafeBuffer'
   | 'Bits8'
   | 'Bits16'
   | 'Bits32'

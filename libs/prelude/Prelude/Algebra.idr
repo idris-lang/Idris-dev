@@ -2,11 +2,7 @@ module Prelude.Algebra
 
 import Builtins
 
--- XXX: change?
-infixl 6 <->
 infixl 6 <+>
-infixl 6 <.>
-infixl 5 <#>
 
 %access public
 

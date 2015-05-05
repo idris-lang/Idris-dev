@@ -77,14 +77,17 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
   smaller _        (UType u) = UType u
   smaller x        _         = x
 
+  astate | holes = MaybeHoles
+         | otherwise = Complete
+
   chk :: Type -> -- uniqueness level
          Env -> Raw -> StateT UCs TC (Term, Type)
   chk u env (Var n)
       | Just (i, ty) <- lookupTyEnv n env = return (P Bound n ty, ty)
       -- If we're elaborating, we don't want the private names; if we're
       -- checking an already elaborated term, we do
-      | (P nt n' ty : _) <- lookupP_all (not holes) n ctxt 
-           = return (P nt n' ty, ty)
+      | [P nt n' ty] <- lookupP_all (not holes) n ctxt 
+             = return (P nt n' ty, ty)
       | otherwise = do lift $ tfail $ NoSuchVariable n
   chk u env ap@(RApp f RType) | not holes
     -- special case to reduce constraintss
@@ -101,13 +104,13 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                   put (v+1, ULT (UVar v) v' : cs)
                   let apty = simplify initContext env
                                  (Bind x (Let (TType v') (TType (UVar v))) t)
-                  return (App fv (TType (UVar v)), apty)
+                  return (App Complete fv (TType (UVar v)), apty)
              Bind x (Pi i s k) t ->
                  do (av, aty) <- chk u env RType 
                     convertsC ctxt env aty s
                     let apty = simplify initContext env
                                         (Bind x (Let aty av) t)
-                    return (App fv av, apty)
+                    return (App astate fv av, apty)
              t -> lift $ tfail $ NonFunctionType fv fty
   chk u env ap@(RApp f a)
       = do (fv, fty) <- chk u env f
@@ -123,7 +126,7 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                  do convertsC ctxt env aty s
                     let apty = simplify initContext env
                                         (Bind x (Let aty av) t)
-                    return (App fv av, apty)
+                    return (App astate fv av, apty)
              t -> lift $ tfail $ NonFunctionType fv fty
   chk u env RType
     | holes = return (TType (UVal 0), TType (UVal 0))
@@ -298,7 +301,7 @@ checkUnique borrowed ctxt env tm
     chkBinders env (P _ n _) = chkName n
     -- 'lending' a unique or nulltype variable doesn't count as a use,
     -- but we still can't lend something that's already been used.
-    chkBinders env (App (App (P _ (NS (UN lend) [owner]) _) t) a)
+    chkBinders env (App _ (App _ (P _ (NS (UN lend) [owner]) _) t) a)
        | isVar a && owner == txt "Ownership" &&
          (lend == txt "lend" || lend == txt "Read")
             = do chkBinders env t -- Check the type normally
@@ -307,7 +310,7 @@ checkUnique borrowed ctxt env tm
                  put (filter (\(n, (ok, _)) -> ok /= LendOnly) st)
                  chkBinders env a
                  put st -- Reset the old state after checking the argument
-    chkBinders env (App f a) = do chkBinders env f; chkBinders env a
+    chkBinders env (App _ f a) = do chkBinders env f; chkBinders env a
     chkBinders env (Bind n b t)
        = do chkBinderName env n b
             st <- get

@@ -16,7 +16,7 @@ exceptions, and verified resource management.
 
 This tutorial assumes familiarity with pure programming in Idris,
 as described in Sections 1–6 of the main tutorial [1]_. The examples
-are presented are tested with Idris and can be found in the
+presented are tested with Idris and can be found in the
 examples directory of the Idris repository.
 
 Consider, for example, the following introductory function which
@@ -66,7 +66,7 @@ library:
    import Effects
    import Effect.StdIO
 
-   hello : [STDIO] Eff ()
+   hello : {[STDIO]} Eff ()
    hello = putStrLn “Hello world!”
 
    main : IO ()

@@ -23,11 +23,11 @@ namespace Builtins
   ||| UniqueTypes.
   ||| @A the type of the left elements in the pair
   ||| @B the type of the left elements in the pair
-  data UPair : (A : Type*) -> (B : Type*) -> Type where
+  data UPair : (A : AnyType) -> (B : AnyType) -> AnyType where
      ||| A pair of elements
      ||| @a the left element of the pair
      ||| @b the right element of the pair
-     MkUPair : {A, B : Type*} -> (a : A) -> (b : B) -> UPair A B
+     MkUPair : {A, B : AnyType} -> (a : A) -> (b : B) -> UPair A B
 
   ||| Dependent pairs
   |||
@@ -36,7 +36,8 @@ namespace Builtins
   ||| it. Another way to see dependent pairs is as just data - for instance, the
   ||| length of a vector paired with that vector.
   |||
-  |||  @ a the type of the witness @ P the type of the proof
+  |||  @ a the type of the witness
+  |||  @ P the type of the proof
   data Sigma : (a : Type) -> (P : a -> Type) -> Type where
       MkSigma : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
 

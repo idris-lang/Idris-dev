@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
-
+{-| The coverage and totality checkers for Idris are in this module.
+-}
 module Idris.Coverage where
 
 import Idris.Core.TT
@@ -119,6 +120,52 @@ genClauses fc n xs given
             mkArg (a : as) = do a' <- a
                                 as' <- mkArg as
                                 return (a':as')
+
+-- | Does this error result rule out a case as valid when coverage checking?
+validCoverageCase :: Context -> Err -> Bool
+validCoverageCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
+    = let topx' = normalise ctxt [] topx
+          topy' = normalise ctxt [] topy in
+          not (sameFam topx' topy' || not (validCoverageCase ctxt e))
+  where sameFam topx topy
+            = case (unApply topx, unApply topy) of
+                   ((P _ x _, _), (P _ y _, _)) -> x == y
+                   _ -> False
+validCoverageCase ctxt (CantConvert _ _ _) = False
+validCoverageCase ctxt (At _ e) = validCoverageCase ctxt e
+validCoverageCase ctxt (Elaborating _ _ e) = validCoverageCase ctxt e
+validCoverageCase ctxt (ElaboratingArg _ _ _ e) = validCoverageCase ctxt e
+validCoverageCase ctxt _ = True
+
+-- | Check whether an error is recoverable in the sense needed for
+-- coverage checking.
+recoverableCoverage :: Context -> Err -> Bool
+recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
+    = let topx' = normalise ctxt [] topx
+          topy' = normalise ctxt [] topy in
+          checkRec topx' topy'
+  where -- different notion of recoverable than in unification, since we
+        -- have no metavars -- just looking to see if a constructor is failing
+        -- to unify with a function that may be reduced later
+        checkRec (App _ f a) p@(P _ _ _) = checkRec f p
+        checkRec p@(P _ _ _) (App _ f a) = checkRec p f
+        checkRec fa@(App _ _ _) fa'@(App _ _ _)
+            | (f, as) <- unApply fa,
+              (f', as') <- unApply fa'
+                 = if (length as /= length as')
+                      then checkRec f f'
+                      else checkRec f f' && and (zipWith checkRec as as')
+        checkRec (P xt x _) (P yt y _) = x == y || ntRec xt yt
+        checkRec _ _ = False
+
+        ntRec x y | Ref <- x = True
+                  | Ref <- y = True
+                  | (Bound, Bound) <- (x, y) = True
+                  | otherwise = False -- name is different, unrecoverable
+recoverableCoverage ctxt (At _ e) = recoverableCoverage ctxt e
+recoverableCoverage ctxt (Elaborating _ _ e) = recoverableCoverage ctxt e
+recoverableCoverage ctxt (ElaboratingArg _ _ _ e) = recoverableCoverage ctxt e
+recoverableCoverage _ _ = False
 
 -- FIXME: Just look for which one is the deepest, then generate all
 -- possibilities up to that depth.
@@ -317,7 +364,7 @@ calcProd i fc topn pats
      prodRec n done (_, _, tm) = prod n done False (delazy' True tm)
 
      prod :: Name -> [Name] -> Bool -> Term -> Idris Bool
-     prod n done ok ap@(App _ _)
+     prod n done ok ap@(App _ _ _)
         | (P nt f _, args) <- unApply ap
             = do recOK <- checkProdRec (n:done) f
                  let ctxt = tt_ctxt i
@@ -329,8 +376,8 @@ calcProd i fc topn pats
                                  return (and (ok : argsprod) )
                          else do argsprod <- mapM (prod n done co) args
                                  return (and argsprod)
-     prod n done ok (App f a) = liftM2 (&&) (prod n done False f)
-                                            (prod n done False a)
+     prod n done ok (App _ f a) = liftM2 (&&) (prod n done False f)
+                                              (prod n done False a)
      prod n done ok (Bind _ (Let t v) sc)
          = liftM2 (&&) (prod n done False v) (prod n done False v)
      prod n done ok (Bind _ b sc) = prod n done ok sc
@@ -350,10 +397,9 @@ calcProd i fc topn pats
                    _ -> False
      cotype nt n ty = False
 
--- Calculate the totality of a function from its patterns.
+-- | Calculate the totality of a function from its patterns.
 -- Either follow the size change graph (if inductive) or check for
 -- productivity (if coinductive)
-
 calcTotality :: FC -> Name -> [([Name], Term, Term)] -> Idris Totality
 calcTotality fc n pats
     = do i <- getIState
@@ -368,7 +414,7 @@ calcTotality fc n pats
         = case lookupTotal fn (tt_ctxt i) of
                [Partial _] -> return (Partial (Other [fn]))
                _ -> Nothing
-    checkLHS i (App f a) = mplus (checkLHS i f) (checkLHS i a)
+    checkLHS i (App _ f a) = mplus (checkLHS i f) (checkLHS i a)
     checkLHS _ _ = Nothing
 
 checkTotality :: [Name] -> FC -> Name -> Idris Totality
@@ -450,17 +496,16 @@ checkDeclTotality (fc, n)
          return t
 
 
--- Calculate the size change graph for this definition
-
+-- | Calculate the size change graph for this definition
+--
 -- SCG for a function f consists of a list of:
 --    (g, [(a1, sizechange1), (a2, sizechange2), ..., (an, sizechangen)])
-
+--
 -- where g is a function called
 -- a1 ... an are the arguments of f in positions 1..n of g
 -- sizechange1 ... sizechange2 is how their size has changed wrt the input
 -- to f
 --    Nothing, if the argument is unrelated to the input
-
 buildSCG :: (FC, Name) -> Idris ()
 buildSCG (_, n) = do
    ist <- getIState
@@ -477,14 +522,14 @@ buildSCG (_, n) = do
        x -> error $ "buildSCG: " ++ show (n, x)
 
 delazy = delazy' False -- not lazy codata
-delazy' all t@(App f a)
+delazy' all t@(App _ f a)
      | (P _ (UN l) _, [_, _, arg]) <- unApply t,
        l == txt "Force" = delazy' all arg
      | (P _ (UN l) _, [P _ (UN lty) _, _, arg]) <- unApply t,
        l == txt "Delay" && (all || lty == txt "LazyEval") = delazy arg
      | (P _ (UN l) _, [P _ (UN lty) _, arg]) <- unApply t,
        l == txt "Lazy'" && (all || lty == txt "LazyEval") = delazy' all arg
-delazy' all (App f a) = App (delazy' all f) (delazy' all a)
+delazy' all (App s f a) = App s (delazy' all f) (delazy' all a)
 delazy' all (Bind n b sc) = Bind n (fmap (delazy' all) b) (delazy' all sc)
 delazy' all t = t
 
@@ -498,7 +543,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
                           (f, pargs) = unApply (dePat lhs') in
                             findCalls Toplevel (dePat rhs') (patvars lhs') pargs
 
-  findCalls guarded ap@(App f a) pvs pargs
+  findCalls guarded ap@(App _ f a) pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
      -- that it is total.
      | (P _ (UN at) _, [_, _]) <- unApply ap,
@@ -519,7 +564,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
                                       else Unguarded in
               mkChange n args pargs ++
                  concatMap (\x -> findCalls nguarded x pvs pargs) args
-  findCalls guarded (App f a) pvs pargs
+  findCalls guarded (App _ f a) pvs pargs
         = findCalls Unguarded f pvs pargs ++ findCalls Unguarded a pvs pargs
   findCalls guarded (Bind n (Let t v) e) pvs pargs
         = findCalls Unguarded t pvs pargs ++
@@ -561,13 +606,13 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
       smaller (Just tyn) a (t, Just tyt)
          | a == t = isInductive (fst (unApply (getRetTy tyn)))
                                 (fst (unApply (getRetTy tyt)))
-      smaller ty a (ap@(App f s), _)
+      smaller ty a (ap@(App _ f s), _)
           | (P (DCon _ _ _) n _, args) <- unApply ap
                = let tyn = getType n in
                      any (smaller (ty `mplus` Just tyn) a)
                          (zip args (map toJust (getArgTys tyn)))
       -- check higher order recursive arguments
-      smaller ty (App f s) a = smaller ty f a
+      smaller ty (App _ f s) a = smaller ty f a
       smaller _ _ _ = False
 
       toJust (n, t) = Just t
@@ -660,7 +705,7 @@ checkMP ist i mp = if i > 0
             = case lookupTotal f (tt_ctxt ist) of
                    [Total _] -> Unchecked -- okay so far
                    [Partial _] -> Partial (Other [f])
-                   x -> error $ "CAN'T HAPPEN: " ++ (show x)
+                   x -> error $ "CAN'T HAPPEN: " ++ show x ++ " for " ++ show f
         | [TyDecl (TCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = Total []
     tryPath desc path (e@(f, args) : es) arg

@@ -134,6 +134,9 @@ instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
 
+instance (Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
+    show (y ** prf) = "(" ++ show y ++ " ** " ++ show prf ++ ")"
+      
 ---- Functor instances
 
 instance Functor PrimIO where
@@ -242,8 +245,8 @@ natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
 total natEnumFromTo : Nat -> Nat -> List Nat
 natEnumFromTo n m = map (plus n) (natRange ((S m) - n))
 total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
-natEnumFromThenTo _ Z   _ = []
-natEnumFromThenTo n inc m = map (plus n . (* inc)) (natRange (S ((m - n) `div` inc)))
+natEnumFromThenTo _ Z       _ = []
+natEnumFromThenTo n (S inc) m = map (plus n . (* (S inc))) (natRange (S (divNatNZ (m - n) (S inc) SIsNotZ)))
 
 class Enum a where
   total pred : a -> a
@@ -282,7 +285,7 @@ instance Enum Integer where
           go [] = []
           go (x :: xs) = n + cast x :: go xs
   enumFromThenTo _ 0   _ = []
-  enumFromThenTo n inc m = go (natRange (S (fromInteger (abs (m - n)) `div` fromInteger (abs inc))))
+  enumFromThenTo n inc m = go (natRange (S (divNatNZ (fromInteger (abs (m - n))) (S (fromInteger ((abs inc) - 1))) SIsNotZ)))
     where go : List Nat -> List Integer
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
@@ -302,7 +305,7 @@ instance Enum Int where
          go acc (S k) m = go (m :: acc) k (m - 1)
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
   enumFromThenTo _ 0   _ = []
-  enumFromThenTo n inc m = go (natRange (S (cast {to=Nat} (abs (m - n)) `div` cast {to=Nat} (abs inc))))
+  enumFromThenTo n inc m = go (natRange (S (divNatNZ (cast {to=Nat} (abs (m - n))) (S (cast {to=Nat} ((abs inc) - 1))) SIsNotZ)))
     where go : List Nat -> List Int
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
@@ -346,7 +349,7 @@ partial
 printLn : Show a => a -> IO' ffi ()
 printLn x = putStrLn (show x)
 
-||| Read one line of input from stdin
+||| Read one line of input from stdin, without the trailing newline
 partial
 getLine : IO' ffi String
 getLine = prim_read
@@ -526,7 +529,7 @@ validFile (FHandle h) = do x <- nullPtr h
 ||| @ test the condition of the loop
 ||| @ body the loop body
 partial -- obviously
-while : (test : IO Bool) -> (body : IO ()) -> IO ()
+while : (test : IO' l Bool) -> (body : IO' l ()) -> IO' l ()
 while t b = do v <- t
                if v then do b
                             while t b
@@ -545,5 +548,7 @@ readFile fn = do h <- openFile fn Read
     readFile' h contents =
        do x <- feof h
           if not x then do l <- fread h
-                           readFile' h (contents ++ l)
+                           case contents of
+                                "" => readFile' h l
+                                _ => readFile' h (contents ++ "\n" ++ l)
                    else return contents

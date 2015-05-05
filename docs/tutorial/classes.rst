@@ -399,7 +399,7 @@ to the following:
               | Add Expr Expr   -- addition
 
 Evaluation will take place relative to a context mapping variables
-(represented as ``String``s) to integer values, and can possibly fail.
+(represented as ``String``\s) to integer values, and can possibly fail.
 We define a data type ``Eval`` to wrap an evaluator:
 
 .. code-block:: idris

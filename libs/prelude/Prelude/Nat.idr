@@ -290,10 +290,12 @@ fact (S n) = (S n) * fact n
 -- Division and modulus
 --------------------------------------------------------------------------------
 
-total
-modNat : Nat -> Nat -> Nat
-modNat left Z         = left
-modNat left (S right) = mod' left left right
+SIsNotZ : {x: Nat} -> (S x = Z) -> Void
+SIsNotZ Refl impossible
+
+modNatNZ : Nat -> (y: Nat) -> Not (y = Z) -> Nat
+modNatNZ left Z         p = void (p Refl)
+modNatNZ left (S right) _ = mod' left left right
   where
     total mod' : Nat -> Nat -> Nat -> Nat
     mod' Z        centre right = centre
@@ -303,10 +305,13 @@ modNat left (S right) = mod' left left right
       else
         mod' left (centre - (S right)) right
 
-total
-divNat : Nat -> Nat -> Nat
-divNat left Z         = S left               -- div by zero
-divNat left (S right) = div' left left right
+partial
+modNat : Nat -> Nat -> Nat
+modNat left (S right) = modNatNZ left (S right) SIsNotZ
+
+divNatNZ : Nat -> (y: Nat) -> Not (y = Z) -> Nat
+divNatNZ left Z         p = void (p Refl)
+divNatNZ left (S right) _ = div' left left right
   where
     total div' : Nat -> Nat -> Nat -> Nat
     div' Z        centre right = Z
@@ -316,23 +321,42 @@ divNat left (S right) = div' left left right
       else
         S (div' left (centre - (S right)) right)
 
+partial
+divNat : Nat -> Nat -> Nat
+divNat left (S right) = divNatNZ left (S right) SIsNotZ
+
+divCeilNZ : Nat -> (y: Nat) -> Not (y = 0) -> Nat
+divCeilNZ x y p = case (modNatNZ x y p) of
+  Z   => divNatNZ x y p
+  S _ => S (divNatNZ x y p)
+
+partial
+divCeil : Nat -> Nat -> Nat
+divCeil x (S y) = divCeilNZ x (S y) SIsNotZ
+
 instance Integral Nat where
   div = divNat
   mod = modNat
 
+log2NZ : (x: Nat) -> Not (x = Z) -> Nat
+log2NZ Z         p = void (p Refl)
+log2NZ (S Z)     _ = Z
+log2NZ (S (S n)) _ = S (log2NZ (assert_smaller (S (S n)) (S (divNatNZ n 2 SIsNotZ))) SIsNotZ)
+
+partial
 log2 : Nat -> Nat
-log2 Z = Z
-log2 (S Z) = Z
-log2 n = S (log2 (assert_smaller n (n `divNat` 2)))
+log2 (S n) = log2NZ (S n) SIsNotZ
 
 --------------------------------------------------------------------------------
 -- GCD and LCM
 --------------------------------------------------------------------------------
+partial
 gcd : Nat -> Nat -> Nat
 gcd a Z = a
 gcd a b = assert_total (gcd b (a `modNat` b))
 
-total lcm : Nat -> Nat -> Nat
+partial
+lcm : Nat -> Nat -> Nat
 lcm _ Z = Z
 lcm Z _ = Z
 lcm x y = divNat (x * y) (gcd x y)
@@ -725,11 +749,6 @@ sucMinL (S l) = cong (sucMinL l)
 total sucMinR : (l : Nat) -> minimum l (S l) = l
 sucMinR Z = Refl
 sucMinR (S l) = cong (sucMinR l)
-
--- div and mod
-total modZeroZero : (n : Nat) -> mod 0 n = Z
-modZeroZero Z     = Refl
-modZeroZero (S n) = Refl
 
 --------------------------------------------------------------------------------
 -- Proofs

@@ -143,7 +143,10 @@ int space(VM* vm, size_t size) {
 }
 
 void* idris_alloc(size_t size) {
-    return allocate(size, 0);
+    Closure* cl = (Closure*) allocate(sizeof(Closure)+size, 0);
+    SETTY(cl, RAWDATA);
+    cl->info.size = size;
+    return (void*)cl+sizeof(Closure);
 }
 
 void* idris_realloc(void* old, size_t old_size, size_t size) {
@@ -501,17 +504,20 @@ VAL idris_strlen(VM* vm, VAL l) {
 }
 
 VAL idris_readStr(VM* vm, FILE* h) {
+    VAL ret;
     char *buffer = NULL;
     size_t n = 0;
     ssize_t len;
     len = getline(&buffer, &n, h);
+    strtok(buffer, "\n");
 
     if (len <= 0) {
-        return MKSTR(vm, "");
+        ret = MKSTR(vm, "");
     } else {
-        return MKSTR(vm, buffer);
+        ret = MKSTR(vm, buffer);
     }
     free(buffer);
+    return ret;
 }
 
 VAL idris_strHead(VM* vm, VAL str) {
@@ -711,6 +717,13 @@ VAL doCopyTo(VM* vm, VAL x) {
         break;
     case BITS64:
         cl = idris_b64CopyForGC(vm, x);
+        break;
+    case RAWDATA:
+        {
+            size_t size = x->info.size + sizeof(Closure);
+            cl = allocate(size, 0);
+            memcpy(cl, x, size);
+        }
         break;
     default:
         assert(0); // We're in trouble if this happens...
