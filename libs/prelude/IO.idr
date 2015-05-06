@@ -160,14 +160,15 @@ run__provider (MkIO f) = f (TheWorld prim__TheWorld)
 prim_fork : PrimIO () -> PrimIO Ptr
 prim_fork x = prim_io_return prim__vm -- compiled specially
 
-fork : IO' l () -> IO' l Ptr
-fork (MkIO f) = MkIO (\w => prim_io_bind
-                              (prim_fork (prim_io_bind (f w)
-                                   (\ x => prim_io_return x)))
-                              (\x => prim_io_return x))
+namespace IO
+  fork : IO' l () -> IO' l Ptr
+  fork (MkIO f) = MkIO (\w => prim_io_bind
+                                (prim_fork (prim_io_bind (f w)
+                                     (\ x => prim_io_return x)))
+                                (\x => prim_io_return x))
 
-forceGC : IO ()
-forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm
+  forceGC : IO ()
+  forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm
 
 --------- The Javascript/Node FFI
 
