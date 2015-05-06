@@ -1,0 +1,13 @@
+records004.idr:6:8:Warning - can't generate setter for n (tydecl Main.A.set_n : {a : _} -> ({n_out0} : Prelude.Nat.Nat) -> ({rec0} : Main.A a) -> Main.A a)
+records004.idr:6:8:Warning - can't generate setter for xs (tydecl Main.A.set_xs : {a : _} -> ({xs_out0} : Prelude.Vect.Vect n Prelude.Nat.Nat) -> ({rec0} : Main.A a) -> Main.A a)
+records004.idr:16:8:Warning - can't generate setter for a (tydecl Main.B.set_a : ({a_out0} : Type) -> ({rec0} : Main.B a_in) -> Main.B a_out)
+records004.idr:16:8:Warning - can't generate setter for n (tydecl Main.B.set_n : ({n_out0} : Prelude.Nat.Nat) -> ({rec0} : Main.B _) -> Main.B _)
+records004.idr:16:8:Warning - can't generate setter for xs (tydecl Main.B.set_xs : ({xs_out0} : Prelude.Vect.Vect n _) -> ({rec0} : Main.B _) -> Main.B _)
+records004.idr:30:8:Warning - can't generate setter for n (tydecl Main.C.set_n : {a : Type} -> {unhelpfulField : a} -> {a1 : Type} -> ({n_out0} : Prelude.Nat.Nat) -> ({rec0} : Main.C {a = a1} n_in) -> Main.C {a = a1} n_out)
+records004.idr:30:8:Warning - can't generate setter for xs (tydecl Main.C.set_xs : {a : Type} -> {unhelpfulField : a} -> {a1 : Type} -> ({xs_out0} : Prelude.Vect.Vect _ a1) -> ({rec0} : Main.C {a = a1} _) -> Main.C {a = a1} _)
+2
+[0, 1]
+3
+[4, 1, 2]
+4
+[True, False, False, True]

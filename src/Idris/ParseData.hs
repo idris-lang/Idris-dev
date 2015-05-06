@@ -37,6 +37,8 @@ import qualified Data.ByteString.UTF8 as UTF8
 
 import Debug.Trace
 
+type RecordCtor = (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, PTerm, FC, [Name])
+
 {- |Parses a record type declaration
 Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
@@ -58,7 +60,7 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
                 ty <- typeExpr (allowImp syn)
                 let tyn = expandNS syn tyn_in
                 reserved "where"
-                (cdoc, cargDocs, cn, cty, _, _) <- indentedBlockS (constructor syn)
+                (cdoc, cargDocs, cn, cty, _, _) <- indentedBlockS (agdaStyleBody syn tyn ty <|> constructor syn)
                 accData acc tyn [cn]
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
@@ -75,6 +77,60 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
     toFreeze :: Maybe Accessibility -> Maybe Accessibility
     toFreeze (Just Frozen) = Just Hidden
     toFreeze x = x
+    
+    agdaStyleBody :: SyntaxInfo -> Name -> PTerm -> IdrisParser RecordCtor
+    agdaStyleBody syn recName recType = do
+        ist <- get
+        fc  <- getFC
+
+        let ctorDoc = parseDocstring . T.pack $ "Constructor of " ++ show recName
+        ctorName <- indented (reserved "constructor" *> fnName)
+
+        fields <- many . indented $ do
+            (doc, argDocs) <- option noDocs docComment
+
+            let expField = do
+                    n <- fnName <* lchar ':'
+                    t <- typeExpr (allowImp syn)
+                    return (n, t, expl)
+
+            -- todo: reuse the implicit syntax from elsewhere to support tacimps
+            let impField = do
+                    symbol "{"
+                    n <- fnName <* lchar ':'
+                    t <- typeExpr (allowImp syn)
+                    symbol "}"
+                    return (n, t, impl)
+
+            (n, t, plicity) <- impField <|> expField
+
+            return (n, t, plicity, doc, argDocs)
+
+        let ctorDoc' = annotate syn ist ctorDoc
+            fieldDocs = [(n, annotate syn ist doc) | (n, t, p, doc, argDocs) <- fields]
+            target = PApp fc (PRef fc recName) (getParams fc recType)
+            ctorType = mkCtorType target [(p, n, t) | (n, t, p, doc, argDocs) <- fields]
+            ctorType' = replaceTarget ctorType recType
+
+        return (ctorDoc', fieldDocs, ctorName, ctorType', fc, [])
+
+    mkCtorType :: PTerm -> [(Plicity, Name, PTerm)] -> PTerm
+    mkCtorType = foldr $ uncurry3 PPi
+
+    replaceTarget :: PTerm -> PTerm -> PTerm
+    replaceTarget trg (PPi p n t ts) = PPi p n t (replaceTarget trg ts)
+    replaceTarget trg _ = trg
+
+    getParams :: FC -> PTerm -> [PArg]
+    getParams fc (PPi (Exp os _ _) n t ts) = (PExp 0 os n $ PRef fc n) : getParams fc ts
+    getParams fc (PPi (Imp os _ _) n t ts) = (PImp 0 False os n $ PRef fc n) : getParams fc ts
+    getParams _ _ = []
+
+    annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
+    annotate syn ist = annotCode $ tryFullExpr syn ist
+
+    uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
+    uncurry3 f (x, y, z) = f x y z
 
 {- | Parses data declaration type (normal or codata)
 DataI ::= 'data' | 'codata';
