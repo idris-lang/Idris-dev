@@ -37,7 +37,7 @@ extractTUnquotes n (GoalType s tac)
 extractTUnquotes n (TCheck t) = extract1 n TCheck t
 extractTUnquotes n (TEval t) = extract1 n TEval t
 extractTUnquotes n (Claim name t) = extract1 n (Claim name) t
-extractTUnquotes n tac = return (tac, []) -- the rest don't contain PTerms
+extractTUnquotes n tac = return (tac, []) -- the rest don't contain PTerms, or have been desugared away
 
 extractPArgUnquotes :: Int -> PArg -> Elab' aux (PArg, [(Name, PTerm)])
 extractPArgUnquotes d (PImp p m opts n t) =
@@ -104,6 +104,11 @@ extractUnquotes n (PCase fc expr cases)
        (pats', exs1) <- fmap unzip $ mapM (extractUnquotes n) pats
        (rhss', exs2) <- fmap unzip $ mapM (extractUnquotes n) rhss
        return (PCase fc expr' (zip pats' rhss'), ex1 ++ concat exs1 ++ concat exs2)
+extractUnquotes n (PIfThenElse fc c t f)
+  = do (c', ex1) <- extractUnquotes n c
+       (t', ex2) <- extractUnquotes n t
+       (f', ex3) <- extractUnquotes n f
+       return (PIfThenElse fc c' t' f', ex1 ++ ex2 ++ ex3)
 extractUnquotes n (PRefl fc x)
   = do (x', ex) <- extractUnquotes n x
        return (PRefl fc x', ex)

@@ -24,7 +24,7 @@ dslify syn i = transform dslifyApp
     dslifyApp t = t
 
 desugar :: SyntaxInfo -> IState -> PTerm -> PTerm
-desugar syn i t = let t' = expandDo (dsl_info syn) t
+desugar syn i t = let t' = expandSugar (dsl_info syn) t
                   in dslify syn i t'
 
 mkTTName :: FC -> Name -> PTerm
@@ -44,50 +44,56 @@ mkTTName fc n =
                                                      , pexp (stringC nm)]
          otherwise -> PRef fc $ reflm "NErased"
 
-expandDo :: DSL -> PTerm -> PTerm
-expandDo dsl (PLam fc n ty tm)
+expandSugar :: DSL -> PTerm -> PTerm
+expandSugar dsl (PLam fc n ty tm)
     | Just lam <- dsl_lambda dsl
         = let sc = PApp fc lam [ pexp (mkTTName fc n)
                                , pexp (var dsl n tm 0)]
-          in expandDo dsl sc
-expandDo dsl (PLam fc n ty tm) = PLam fc n (expandDo dsl ty) (expandDo dsl tm)
-expandDo dsl (PLet fc n ty v tm)
+          in expandSugar dsl sc
+expandSugar dsl (PLam fc n ty tm) = PLam fc n (expandSugar dsl ty) (expandSugar dsl tm)
+expandSugar dsl (PLet fc n ty v tm)
     | Just letb <- dsl_let dsl
         = let sc = PApp (fileFC "(dsl)") letb [ pexp (mkTTName fc n)
                                               , pexp v
                                               , pexp (var dsl n tm 0)]
-          in expandDo dsl sc
-expandDo dsl (PLet fc n ty v tm) = PLet fc n (expandDo dsl ty) (expandDo dsl v) (expandDo dsl tm)
-expandDo dsl (PPi p n ty tm)
+          in expandSugar dsl sc
+expandSugar dsl (PLet fc n ty v tm) = PLet fc n (expandSugar dsl ty) (expandSugar dsl v) (expandSugar dsl tm)
+expandSugar dsl (PPi p n ty tm)
     | Just pi <- dsl_pi dsl
         = let sc = PApp (fileFC "(dsl)") pi [ pexp (mkTTName (fileFC "(dsl)") n)
                                             , pexp ty
                                             , pexp (var dsl n tm 0)]
-          in expandDo dsl sc
-expandDo dsl (PPi p n ty tm) = PPi p n (expandDo dsl ty) (expandDo dsl tm)
-expandDo dsl (PApp fc t args) = PApp fc (expandDo dsl t)
-                                        (map (fmap (expandDo dsl)) args)
-expandDo dsl (PAppBind fc t args) = PAppBind fc (expandDo dsl t)
-                                                (map (fmap (expandDo dsl)) args)
-expandDo dsl (PCase fc s opts) = PCase fc (expandDo dsl s)
-                                        (map (pmap (expandDo dsl)) opts)
-expandDo dsl (PEq fc lt rt l r) = PEq fc (expandDo dsl lt) (expandDo dsl rt)
-                                         (expandDo dsl l) (expandDo dsl r)
-expandDo dsl (PPair fc p l r) = PPair fc p (expandDo dsl l) (expandDo dsl r)
-expandDo dsl (PDPair fc p l t r) = PDPair fc p (expandDo dsl l) (expandDo dsl t)
-                                               (expandDo dsl r)
-expandDo dsl (PAlternative a as) = PAlternative a (map (expandDo dsl) as)
-expandDo dsl (PHidden t) = PHidden (expandDo dsl t)
-expandDo dsl (PNoImplicits t) = PNoImplicits (expandDo dsl t)
-expandDo dsl (PUnifyLog t) = PUnifyLog (expandDo dsl t)
-expandDo dsl (PDisamb ns t) = PDisamb ns (expandDo dsl t)
-expandDo dsl (PReturn fc) = dsl_return dsl
-expandDo dsl (PRewrite fc r t ty)
-    = PRewrite fc r (expandDo dsl t) ty
-expandDo dsl (PGoal fc r n sc)
-    = PGoal fc (expandDo dsl r) n (expandDo dsl sc)
-expandDo dsl (PDoBlock ds)
-    = expandDo dsl $ debind (dsl_bind dsl) (block (dsl_bind dsl) ds)
+          in expandSugar dsl sc
+expandSugar dsl (PPi p n ty tm) = PPi p n (expandSugar dsl ty) (expandSugar dsl tm)
+expandSugar dsl (PApp fc t args) = PApp fc (expandSugar dsl t)
+                                        (map (fmap (expandSugar dsl)) args)
+expandSugar dsl (PAppBind fc t args) = PAppBind fc (expandSugar dsl t)
+                                                (map (fmap (expandSugar dsl)) args)
+expandSugar dsl (PCase fc s opts) = PCase fc (expandSugar dsl s)
+                                        (map (pmap (expandSugar dsl)) opts)
+expandSugar dsl (PIfThenElse fc c t f) =
+  PApp fc (PRef (FC (fc_fname fc) (fc_start fc) (fc_start fc)) (sUN "ifThenElse"))
+       [ PExp 0 [] (sMN 0 "condition") $ expandSugar dsl c
+       , PExp 0 [] (sMN 0 "whenTrue") $ expandSugar dsl t
+       , PExp 0 [] (sMN 0 "whenFalse") $ expandSugar dsl f
+       ]
+expandSugar dsl (PEq fc lt rt l r) = PEq fc (expandSugar dsl lt) (expandSugar dsl rt)
+                                         (expandSugar dsl l) (expandSugar dsl r)
+expandSugar dsl (PPair fc p l r) = PPair fc p (expandSugar dsl l) (expandSugar dsl r)
+expandSugar dsl (PDPair fc p l t r) = PDPair fc p (expandSugar dsl l) (expandSugar dsl t)
+                                               (expandSugar dsl r)
+expandSugar dsl (PAlternative a as) = PAlternative a (map (expandSugar dsl) as)
+expandSugar dsl (PHidden t) = PHidden (expandSugar dsl t)
+expandSugar dsl (PNoImplicits t) = PNoImplicits (expandSugar dsl t)
+expandSugar dsl (PUnifyLog t) = PUnifyLog (expandSugar dsl t)
+expandSugar dsl (PDisamb ns t) = PDisamb ns (expandSugar dsl t)
+expandSugar dsl (PReturn fc) = dsl_return dsl
+expandSugar dsl (PRewrite fc r t ty)
+    = PRewrite fc r (expandSugar dsl t) ty
+expandSugar dsl (PGoal fc r n sc)
+    = PGoal fc (expandSugar dsl r) n (expandSugar dsl sc)
+expandSugar dsl (PDoBlock ds)
+    = expandSugar dsl $ debind (dsl_bind dsl) (block (dsl_bind dsl) ds)
   where
     block b [DoExp fc tm] = tm
     block b [a] = PElabError (Msg "Last statement in do block must be an expression")
@@ -107,9 +113,9 @@ expandDo dsl (PDoBlock ds)
              pexp (PLam fc (sMN 0 "bindx") Placeholder (block b rest))]
     block b _ = PElabError (Msg "Invalid statement in do block")
 
-expandDo dsl (PIdiom fc e) = expandDo dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
-expandDo dsl (PRunElab fc tm) = PRunElab fc $ expandDo dsl tm
-expandDo dsl t = t
+expandSugar dsl (PIdiom fc e) = expandSugar dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
+expandSugar dsl (PRunElab fc tm) = PRunElab fc $ expandSugar dsl tm
+expandSugar dsl t = t
 
 -- | Replace DSL-bound variable in a term
 var :: DSL -> Name -> PTerm -> Int -> PTerm
