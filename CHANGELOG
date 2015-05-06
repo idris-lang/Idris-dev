@@ -36,6 +36,10 @@ New in 0.9.18:
   "n". If "n" is lexically bound, then the resulting quotation will be for it,
   whereas if it is not, then it will succeed with a quotation of the unique
   global name that matches.
+* New syntax for records that closely matches our other record-like structures:
+  type classes. See the updated tutorial for details.
+* Records can be coinductive. Define coinductive records with the "corecord"
+  keyword.
 * if ... then ... else ... is now built-in syntax instead of being defined in
   a library. It is shown in REPL output and error messages, rather than its
   desugaring.
@@ -77,8 +81,6 @@ New in 0.9.17:
 * New REPL command ":core TM" that shows the elaborated form of TM along with
   its elaborated type using the syntax of TT. IDE mode has a corresponding
   command :elaborate-term for serialized terms.
-* Records have a new syntax based on fields rather than constructors.
-* Records can now be coinductive.
 * Effectful and IO function names for sending data to STDOUT have been
   aligned, semantically.
     + `print` is now for putting showable things to STDOUT.
