@@ -11,7 +11,7 @@ pstring Writing = "w"
 data FILE : Purpose -> Type where
     OpenH : File -> FILE p
 
-syntax ifM [test] then [t] else [e]
+syntax "ifM" [test] "then" [t] "else" [e]
     = test >>= (\b => if b then t else e)
 
 open : String -> (p:Purpose) -> Creator (Either () (FILE p))
@@ -35,7 +35,7 @@ syntax reof [h]      = Use eof h
 
 syntax rputStrLn [s] = Lift (putStrLn s)
 
-syntax if opened [f] then [e] else [t] = Check f t e
+syntax "if" "opened" [f] "then" [e] "else" [t] = Check f t e
 
 
 

@@ -11,12 +11,9 @@ import Prelude.Uninhabited
 ||| @ b the condition on the if
 ||| @ t the value if b is true
 ||| @ e the falue if b is false
-boolElim : (b : Bool) -> (t : Lazy a) -> (e : Lazy a) -> a
-boolElim True  t e = t
-boolElim False t e = e
-
--- Syntactic sugar for boolean elimination.
-syntax if [test] then [t] else [e] = boolElim test (Delay t) (Delay e)
+ifThenElse : (b : Bool) -> (t : Lazy a) -> (e : Lazy a) -> a
+ifThenElse True  t e = t
+ifThenElse False t e = e
 
 -- Boolean Operator Precedence
 infixl 4 &&, ||

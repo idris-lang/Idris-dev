@@ -32,5 +32,5 @@
 > modifyFunLemma f (a,b) =
 >   rewrite soTrue (reflexive_eqeq a) in Refl
 
-   replace {P = \ z => boolElim (a == a) b (f a) = boolElim z b (f a)}
+   replace {P = \ z => ifThenElse (a == a) b (f a) = ifThenElse z b (f a)}
            (soTrue (reflexive_eqeq a)) Refl

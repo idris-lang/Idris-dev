@@ -93,8 +93,8 @@ maxCommutative (S left) (S right) =
 
 maxCommutativeStepCase = proof {
     intros;
-    rewrite (boolElimSuccSucc (lte left right) right left);
-    rewrite (boolElimSuccSucc (lte right left) left right);
+    rewrite (ifThenElseSuccSucc (lte left right) right left);
+    rewrite (ifThenElseSuccSucc (lte right left) left right);
     rewrite inductiveHypothesis;
     trivial;
 }

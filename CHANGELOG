@@ -36,6 +36,12 @@ New in 0.9.18:
   "n". If "n" is lexically bound, then the resulting quotation will be for it,
   whereas if it is not, then it will succeed with a quotation of the unique
   global name that matches.
+* if ... then ... else ... is now built-in syntax instead of being defined in
+  a library. It is shown in REPL output and error messages, rather than its
+  desugaring.
+* The desugaring of if ... then ... else ... has been renamed to ifThenElse from
+  boolElim. This is for consistency with GHC Haskell and scala-virtualized, and
+  to reflect that if-notation makes sense with non-Bool datatypes.
 
 New in 0.9.17:
 --------------

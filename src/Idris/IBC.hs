@@ -1620,7 +1620,11 @@ instance Binary PTerm where
                                   put x1
                 PQuoteName x1 -> do putWord8 44
                                     put x1
-
+                PIfThenElse x1 x2 x3 x4 -> do putWord8 45
+                                              put x1
+                                              put x2
+                                              put x3
+                                              put x4
 
         get
           = do i <- getWord8
@@ -1755,6 +1759,11 @@ instance Binary PTerm where
                             return (PUnquote x1)
                    44 -> do x1 <- get
                             return (PQuoteName x1)
+                   45 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            x4 <- get
+                            return (PIfThenElse x1 x2 x3 x4)
                    _ -> error "Corrupted binary data for PTerm"
 
 instance (Binary t) => Binary (PTactic' t) where

@@ -229,7 +229,8 @@ idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved 
                                       "where", "with", "syntax", "proof", "postulate",
                                       "using", "namespace", "class", "instance", "parameters",
                                       "public", "private", "abstract", "implicit",
-                                      "quoteGoal", "constructor"]
+                                      "quoteGoal", "constructor",
+                                      "if", "then", "else"]
 
 char :: MonadicParsing m => Char -> m Char
 char = Chr.char

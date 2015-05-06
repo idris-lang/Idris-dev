@@ -813,6 +813,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PAppImpl PTerm [ImplicitInfo] -- ^ Implicit argument application (introduced during elaboration only)
            | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
            | PMatchApp FC Name -- ^ Make an application by type matching
+           | PIfThenElse FC PTerm PTerm PTerm -- ^ Conditional expressions - elaborated to an overloading of ifThenElse
            | PCase FC PTerm [(PTerm, PTerm)] -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
            | PTrue FC PunInfo -- ^ Unit type..?
            | PRefl FC PTerm -- ^ The canonical proof of the equality type
@@ -863,6 +864,7 @@ mapPT f t = f (mpt t) where
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PAppBind fc t as) = PAppBind fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PCase fc c os) = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
+  mpt (PIfThenElse fc c t e) = PIfThenElse fc (mapPT f c) (mapPT f t) (mapPT f e)
   mpt (PEq fc lt rt l r) = PEq fc (mapPT f lt) (mapPT f rt) (mapPT f l) (mapPT f r)
   mpt (PTyped l r) = PTyped (mapPT f l) (mapPT f r)
   mpt (PPair fc p l r) = PPair fc p (mapPT f l) (mapPT f r)
@@ -1021,6 +1023,7 @@ highestFC (PApp fc _ _) = Just fc
 highestFC (PAppBind fc _ _) = Just fc
 highestFC (PMatchApp fc _) = Just fc
 highestFC (PCase fc _ _) = Just fc
+highestFC (PIfThenElse fc _ _ _) = Just fc
 highestFC (PTrue fc _) = Just fc
 highestFC (PRefl fc _) = Just fc
 highestFC (PResolveTC fc) = Just fc
@@ -1544,9 +1547,15 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
         noNS (NS _ _) = False
         noNS _ = True
 
+    prettySe p bnd (PIfThenElse _ c t f) =
+      group . align . hang 2 . vsep $
+        [ kwd "if" <+> prettySe startPrec bnd c
+        , kwd "then" <+> prettySe startPrec bnd t
+        , kwd "else" <+> prettySe startPrec bnd f
+        ]
     prettySe p bnd (PHidden tm) = text "." <> prettySe funcAppPrec bnd tm
     prettySe p bnd (PRefl _ _) = annName eqCon $ text "Refl"
-    prettySe p bnd (PResolveTC _) = text "resolvetc"
+    prettySe p bnd (PResolveTC _) = kwd "%instance"
     prettySe p bnd (PTrue _ IsType) = annName unitTy $ text "()"
     prettySe p bnd (PTrue _ IsTerm) = annName unitCon $ text "()"
     prettySe p bnd (PTrue _ TypeOrTerm) = text "()"
@@ -1644,10 +1653,6 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     opStr (NS n _) = opStr n
     opStr (UN n) = T.unpack n
 
-    basename :: Name -> Name
-    basename (NS n _) = basename n
-    basename n = n
-
     slist' _ _ e
       | containsHole e = Nothing
     slist' p bnd (PApp _ (PRef _ nil) _)
@@ -1704,6 +1709,11 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
 
     getFixity :: String -> Maybe Fixity
     getFixity = flip M.lookup fixities
+
+-- | Strip away namespace information
+basename :: Name -> Name
+basename (NS n _) = basename n
+basename n = n
 
 -- | Determine whether a name was the one inserted for a hole or
 -- guess by the delaborator
@@ -1858,6 +1868,7 @@ instance Sized PTerm where
   size (PApp fc name args) = 1 + size args
   size (PAppBind fc name args) = 1 + size args
   size (PCase fc trm bdy) = 1 + size trm + size bdy
+  size (PIfThenElse fc c t f) = 1 + sum (map size [c, t, f])
   size (PTrue fc _) = 1
   size (PRefl fc _) = 1
   size (PResolveTC fc) = 1
@@ -1898,6 +1909,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
+    ni env (PIfThenElse _ c t f) = ni env c ++ ni env t ++ ni env f
     ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
@@ -1924,6 +1936,7 @@ boundNamesIn tm = S.toList (ni S.empty tm)
     ni set (PApp _ f as) = niTms (ni set f) (map getTm as)
     ni set (PAppBind _ f as) = niTms (ni set f) (map getTm as)
     ni set (PCase _ c os)  = niTms (ni set c) (map snd os)
+    ni set (PIfThenElse _ c t f) = niTms set [c, t, f]
     ni set (PLam fc n ty sc)  = S.insert n $ ni (ni set ty) sc
     ni set (PLet fc n ty val sc) = S.insert n $ ni (ni (ni set ty) val) sc
     ni set (PPi p n ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
@@ -1964,6 +1977,7 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
     -- names in 'os', not counting the names bound in the cases
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
+    ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
     ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
@@ -1994,6 +2008,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     -- names in 'os', not counting the names bound in the cases
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
+    ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
     ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
@@ -2025,6 +2040,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
+    ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
     ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
     ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r

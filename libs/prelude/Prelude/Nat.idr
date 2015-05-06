@@ -632,31 +632,31 @@ minusSuccPred (S left) (S right) =
   let inductiveHypothesis = minusSuccPred left right in
     ?minusSuccPredStepCase'
 
--- boolElim
-total boolElimSuccSucc : (cond : Bool) -> (t : Nat) -> (f : Nat) ->
-  S (boolElim cond t f) = boolElim cond (S t) (S f)
-boolElimSuccSucc True  t f = Refl
-boolElimSuccSucc False t f = Refl
+-- ifThenElse
+total ifThenElseSuccSucc : (cond : Bool) -> (t : Nat) -> (f : Nat) ->
+  S (ifThenElse cond t f) = ifThenElse cond (S t) (S f)
+ifThenElseSuccSucc True  t f = Refl
+ifThenElseSuccSucc False t f = Refl
 
-total boolElimPlusPlusLeft : (cond : Bool) -> (left : Nat) -> (t : Nat) -> (f : Nat) ->
-  left + (boolElim cond t f) = boolElim cond (left + t) (left + f)
-boolElimPlusPlusLeft True  left t f = Refl
-boolElimPlusPlusLeft False left t f = Refl
+total ifThenElsePlusPlusLeft : (cond : Bool) -> (left : Nat) -> (t : Nat) -> (f : Nat) ->
+  left + (ifThenElse cond t f) = ifThenElse cond (left + t) (left + f)
+ifThenElsePlusPlusLeft True  left t f = Refl
+ifThenElsePlusPlusLeft False left t f = Refl
 
-total boolElimPlusPlusRight : (cond : Bool) -> (right : Nat) -> (t : Nat) -> (f : Nat) ->
-  (boolElim cond t f) + right = boolElim cond (t + right) (f + right)
-boolElimPlusPlusRight True  right t f = Refl
-boolElimPlusPlusRight False right t f = Refl
+total ifThenElsePlusPlusRight : (cond : Bool) -> (right : Nat) -> (t : Nat) -> (f : Nat) ->
+  (ifThenElse cond t f) + right = ifThenElse cond (t + right) (f + right)
+ifThenElsePlusPlusRight True  right t f = Refl
+ifThenElsePlusPlusRight False right t f = Refl
 
-total boolElimMultMultLeft : (cond : Bool) -> (left : Nat) -> (t : Nat) -> (f : Nat) ->
-  left * (boolElim cond t f) = boolElim cond (left * t) (left * f)
-boolElimMultMultLeft True  left t f = Refl
-boolElimMultMultLeft False left t f = Refl
+total ifThenElseMultMultLeft : (cond : Bool) -> (left : Nat) -> (t : Nat) -> (f : Nat) ->
+  left * (ifThenElse cond t f) = ifThenElse cond (left * t) (left * f)
+ifThenElseMultMultLeft True  left t f = Refl
+ifThenElseMultMultLeft False left t f = Refl
 
-total boolElimMultMultRight : (cond : Bool) -> (right : Nat) -> (t : Nat) -> (f : Nat) ->
-  (boolElim cond t f) * right = boolElim cond (t * right) (f * right)
-boolElimMultMultRight True  right t f = Refl
-boolElimMultMultRight False right t f = Refl
+total ifThenElseMultMultRight : (cond : Bool) -> (right : Nat) -> (t : Nat) -> (f : Nat) ->
+  (ifThenElse cond t f) * right = ifThenElse cond (t * right) (f * right)
+ifThenElseMultMultRight True  right t f = Refl
+ifThenElseMultMultRight False right t f = Refl
 
 -- Orders
 total lteNTrue : (n : Nat) -> lte n n = True
@@ -912,13 +912,13 @@ plusZeroRightNeutralStepCase = proof {
 
 maximumSuccSuccStepCase = proof {
     intros;
-    rewrite sym (boolElimSuccSucc (lte left right) (S right) (S left));
+    rewrite sym (ifThenElseSuccSucc (lte left right) (S right) (S left));
     trivial;
 }
 
 minimumSuccSuccStepCase = proof {
     intros;
-    rewrite (boolElimSuccSucc (lte left right) (S left) (S right));
+    rewrite (ifThenElseSuccSucc (lte left right) (S left) (S right));
     trivial;
 }
 

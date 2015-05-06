@@ -86,7 +86,7 @@ class Eq a => Ord a where
     (>=) x y = x > y || x == y
 
     max : a -> a -> a
-    max x y = if (x > y) then x else y
+    max x y = if x > y then x else y
 
     min : a -> a -> a
     min x y = if (x < y) then x else y
