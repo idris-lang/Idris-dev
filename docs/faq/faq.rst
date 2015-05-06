@@ -59,16 +59,16 @@ concrete ``Int``, whereas ``thing_comp`` is a computation which will produce an
 How can I make lazy control structures?
 =======================================
 
-You can make control structures  using the special Lazy type. For example,
-``if...then...else`` is defined as follows in the library:
+You can make control structures using the special Lazy type. For
+example, ``if...then...else...`` in Idris expands to an application of
+a function named ``ifThenElse``. The default implementation for
+Booleans is defined as follows in the library:
 
 .. code-block:: idris
 
-    boolElim : Bool -> (t : Lazy a) -> (e : Lazy a) -> a
-    boolElim True  t e = t
-    boolElim False t e = e
-
-    syntax if [test] then [t] else [e] = boolElim test t e
+    ifThenElse : Bool -> (t : Lazy a) -> (e : Lazy a) -> a
+    ifThenElse True  t e = t
+    ifThenElse False t e = e
 
 The type ``Lazy a`` for ``t`` and ``f`` indicates that those arguments will
 only be evaluated if they are used, that is, they are evaluated lazily.

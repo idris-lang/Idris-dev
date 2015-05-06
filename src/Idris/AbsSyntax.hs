@@ -18,6 +18,7 @@ import System.Console.Haskeline
 import System.IO
 
 import Control.Applicative
+import Control.Monad (liftM3)
 import Control.Monad.State
 
 import Data.List hiding (insert,union)
@@ -1011,6 +1012,7 @@ expandParams dec ps ns infs tm = en tm
     en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
     en (PAppBind fc f as) = PAppBind fc (en f) (map (fmap en) as)
     en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
+    en (PIfThenElse fc c t f) = PIfThenElse fc (en c) (en t) (en f)
     en (PRunElab fc tm) = PRunElab fc (en tm)
     en t = t
 
@@ -1578,6 +1580,9 @@ addImpl' inpat env infns imp_meths ist ptm
     -- If the name in a lambda is a constructor name, do this as a 'case'
     -- instead (it is harmless to do so, especially since the lambda will
     -- be lifted anyway!)
+    ai qq env ds (PIfThenElse fc c t f) = PIfThenElse fc (ai qq env ds c)
+                                                         (ai qq env ds t)
+                                                         (ai qq env ds f)
     ai qq env ds (PLam fc n ty sc)
       = case lookupDef n (tt_ctxt ist) of
              [] -> let ty' = ai qq env ds ty
@@ -1870,9 +1875,8 @@ instance Monad (EitherErr a) where
 toEither (LeftErr e)  = Left e
 toEither (RightOK ho) = Right ho
 
--- syntactic match of a against b, returning pair of variables in a
+-- | Syntactic match of a against b, returning pair of variables in a
 -- and what they match. Returns the pair that failed if not a match.
-
 matchClause :: IState -> PTerm -> PTerm -> Either (PTerm, PTerm) [(Name, PTerm)]
 matchClause = matchClause' False
 
@@ -2013,6 +2017,7 @@ substMatchShadow n shs tm t = sm shs t where
          | otherwise = PPi p x (sm xs t) (sm (x : xs) sc)
     sm xs (PApp f x as) = fullApp $ PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
+    sm xs (PIfThenElse fc c t f) = PIfThenElse fc (sm xs c) (sm xs t) (sm xs f)
     sm xs (PEq f xt yt x y) = PEq f (sm xs xt) (sm xs yt) (sm xs x) (sm xs y)
     sm xs (PRewrite f x y tm) = PRewrite f (sm xs x) (sm xs y)
                                            (fmap (sm xs) tm)
@@ -2041,6 +2046,7 @@ shadow n n' t = sm t where
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
     sm (PAppBind f x as) = PAppBind f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
+    sm (PIfThenElse fc c t f) = PIfThenElse fc (sm c) (sm t) (sm f)
     sm (PEq f xt yt x y) = PEq f (sm xt) (sm yt) (sm x) (sm y)
     sm (PRewrite f x y tm) = PRewrite f (sm x) (sm y) (fmap sm tm)
     sm (PTyped x y) = PTyped (sm x) (sm y)
@@ -2125,6 +2131,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
               alts' <- mapM (\(x,y)-> do x' <- mkUniq x; y' <- mkUniq y
                                          return (x', y')) alts
               return $! PCase fc t' alts'
+  mkUniq (PIfThenElse fc c t f)
+         = liftM3 (PIfThenElse fc) (mkUniq c) (mkUniq t) (mkUniq f)
   mkUniq (PPair fc p l r)
          = do l' <- mkUniq l; r' <- mkUniq r
               return $! PPair fc p l' r'

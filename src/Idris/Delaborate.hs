@@ -15,6 +15,7 @@ import Idris.ErrReverse
 
 import Prelude hiding ((<$>))
 
+import Data.Maybe (mapMaybe)
 import Data.List (intersperse, nub)
 import qualified Data.Text as T
 import Control.Monad.State
@@ -49,7 +50,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
   where
     un = fileFC "(val)"
 
-    de env _ (App _ f a) = deFn env f [a]
+    de env _ (App _ f a) = resugarApp env $ deFn env f [a]
     de env _ (V i)     | i < length env = PRef un (snd (env!!i))
                        | otherwise = PRef un (sUN ("v" ++ show i ++ ""))
     de env _ (P _ n _) | n == unitTy = PTrue un IsType
@@ -148,6 +149,17 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
       where isCN (NS n _) = isCN n
             isCN (SN (CaseN _)) = True
             isCN _ = False
+
+    resugarApp env (PApp _ (PRef _ n) args)
+                 | [c, t, f] <- mapMaybe explicitTerm args
+                 , basename n == sUN "ifThenElse"
+                 = PIfThenElse un c (dedelay t) (dedelay f)
+      where dedelay (PApp _ (PRef _ delay) [_, _, obj])
+              | delay == sUN "Delay" = getTm obj
+            dedelay x = x
+            explicitTerm (PExp {getTm = tm}) = Just tm
+            explicitTerm _ = Nothing
+    resugarApp env tm = tm
 
     delabCase :: [(Name, Name)] -> [PArg] -> Name -> Term -> Name -> [Term] -> Maybe PTerm
     delabCase env imps scvar scrutinee caseName caseArgs =

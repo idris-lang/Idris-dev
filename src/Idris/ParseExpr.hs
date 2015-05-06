@@ -178,6 +178,8 @@ extension syn ns rules =
       = PAppBind fc (update ns t) (map (fmap (update ns)) args)
     update ns (PCase fc c opts)
       = PCase fc (update ns c) (map (pmap (update ns)) opts)
+    update ns (PIfThenElse fc c t f)
+      = PIfThenElse fc (update ns c) (update ns t) (update ns f)
     update ns (PPair fc p l r) = PPair fc p (update ns l) (update ns r)
     update ns (PDPair fc p l t r)
       = PDPair fc p (update ns l) (update ns t) (update ns r)
@@ -210,6 +212,7 @@ InternalExpr ::=
   | Lambda
   | QuoteGoal
   | Let
+  | If
   | RewriteTerm
   | CaseExpr
   | DoBlock
@@ -224,6 +227,7 @@ internalExpr syn =
      <|> disamb syn
      <|> noImplicits syn
      <|> recordType syn
+     <|> if_ syn
      <|> lambda syn
      <|> quoteGoal syn
      <|> let_ syn
@@ -673,7 +677,7 @@ FieldType ::=
 @
 -}
 recordType :: SyntaxInfo -> IdrisParser PTerm
-recordType syn = 
+recordType syn =
       do reserved "record"
          lchar '{'
          fgs <- fieldGetOrSet
@@ -842,7 +846,24 @@ let_binding syn = do fc <- getFC;
                      ts <- option [] (do lchar '|'
                                          sepBy1 (do_alt syn) (lchar '|'))
                      return (fc,pat,ty,v,ts)
-                  
+
+{- | Parses a conditional expression
+@
+If ::= 'if' Expr 'then' Expr 'else' Expr
+@
+
+-}
+if_ :: SyntaxInfo -> IdrisParser PTerm
+if_ syn = (do reserved "if"
+              fc <- getFC
+              c <- expr syn
+              reserved "then"
+              t <- expr syn
+              reserved "else"
+              f <- expr syn
+              return (PIfThenElse fc c t f))
+          <?> "conditional expression"
+
 
 {- | Parses a quote goal
 
