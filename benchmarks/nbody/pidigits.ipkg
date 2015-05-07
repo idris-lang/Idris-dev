@@ -1,0 +1,7 @@
+package nbody
+
+modules = nbody
+
+executable = nbody
+main = nbody
+
