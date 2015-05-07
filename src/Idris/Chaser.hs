@@ -71,7 +71,7 @@ extractFileName ('"':xs) = takeWhile (/= '"') xs
 extractFileName ('\'':xs) = takeWhile (/= '\'') xs
 extractFileName x = build x []
                         where
-                            build [] acc = reverse acc
+                            build [] acc = reverse $ dropWhile (== ' ') acc
                             build ('\\':' ':xs) acc = build xs (' ':acc)
                             build (x:xs) acc = build xs (x:acc)
 
