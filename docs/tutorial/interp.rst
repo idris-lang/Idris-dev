@@ -213,7 +213,7 @@ because of its type:
 
     interp env (App f s) = interp env f (interp env s)
 
-Operators and interpreters are, again, direct translations into the
+Operators and conditionals are, again, direct translations into the
 equivalent Idris constructs. For operators, we apply the function to
 its operands directly, and for ``If``, we apply the Idris
 ``if...then...else`` construct directly.
