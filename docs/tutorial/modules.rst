@@ -26,7 +26,7 @@ module which defines a binary tree type ``BTree`` (in a file
 
     toList : BTree a -> List a
     toList Leaf = []
-    toList (Node l v r) = btree.toList l ++ (v :: btree.toList r)
+    toList (Node l v r) = Btree.toList l ++ (v :: Btree.toList r)
 
     toTree : Ord a => List a -> BTree a
     toTree [] = Leaf
@@ -44,7 +44,7 @@ Then, this gives a main program (in a file
 
     main : IO ()
     main = do let t = toTree [1,8,2,7,9,3]
-              print (btree.toList t)
+              print (Btree.toList t)
 
 
 
@@ -118,7 +118,7 @@ functions to be exported as ``abstract``, as we see below:
     abstract
     toList : BTree a -> List a
     toList Leaf = []
-    toList (Node l v r) = btree.toList l ++ (v :: btree.toList r)
+    toList (Node l v r) = Btree.toList l ++ (v :: Btree.toList r)
 
     abstract
     toTree : Ord a => List a -> BTree a
@@ -144,7 +144,7 @@ directive, for example:
 
     toList : BTree a -> List a
     toList Leaf = []
-    toList (Node l v r) = btree.toList l ++ (v :: btree.toList r)
+    toList (Node l v r) = Btree.toList l ++ (v :: Btree.toList r)
 
     toTree : Ord a => List a -> BTree a
     toTree [] = Leaf
