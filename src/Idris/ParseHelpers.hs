@@ -189,8 +189,6 @@ docComment = do dc <- pushIndent *> docCommentLine
                                eol ; someSpace
                                return (n, docs)
 
-
-
 -- | Parses some white space
 whiteSpace :: MonadicParsing m => m ()
 whiteSpace = Tok.whiteSpace
@@ -224,14 +222,15 @@ idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved 
   where _styleName = "Idris"
         _styleStart = satisfy isAlpha <|> oneOf "_"
         _styleLetter = satisfy isAlphaNum <|> oneOf "_'."
-        _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "Type",
+        _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "corecord", "Type",
                                       "do", "dsl", "import", "impossible",
                                       "case", "of", "total", "partial", "mutual",
                                       "infix", "infixl", "infixr", "rewrite",
                                       "where", "with", "syntax", "proof", "postulate",
                                       "using", "namespace", "class", "instance", "parameters",
                                       "public", "private", "abstract", "implicit",
-                                      "quoteGoal", "if", "then", "else"]
+                                      "quoteGoal", "constructor",
+                                      "if", "then", "else"]
 
 char :: MonadicParsing m => Char -> m Char
 char = Chr.char

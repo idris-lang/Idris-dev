@@ -20,10 +20,11 @@ world (TheWorld w) = w
 abstract WorldRes : Type -> Type
 WorldRes x = x
 
-record FFI : Type where
-     MkFFI : (ffi_types : Type -> Type) -> 
-             (ffi_fn : Type) -> 
-             (ffi_data : Type) -> FFI
+record FFI where
+  constructor MkFFI
+  ffi_types : Type -> Type
+  ffi_fn : Type
+  ffi_data : Type
 
 abstract 
 data IO' : (lang : FFI) -> Type -> Type where

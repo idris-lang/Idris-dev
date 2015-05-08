@@ -1,0 +1,15 @@
+MkFoo : (bar : Nat) -> (baz : Bool) -> Foo a
+    Constructor for Foo
+    Arguments:
+        (implicit) a : Type  -- a type
+        
+        bar : Nat  -- A field bar
+        
+        baz : Bool  -- A field baz
+        
+bar : (rec : Foo a) -> Nat
+    A field bar
+    
+baz : (rec : Foo a) -> Bool
+    A field baz
+    

@@ -13,9 +13,9 @@ class Monad m => MonadState s (m : Type -> Type) | m where
     put : s -> m ()
 
 ||| The transformer on which the State monad is based
-record StateT : Type -> (Type -> Type) -> Type -> Type where
-    ST : {m : Type -> Type} ->
-         (runStateT : s -> m (a, s)) -> StateT s m a
+record StateT (s : Type) (m : Type -> Type) (a : Type) where
+  constructor ST
+  runStateT : s -> m (a, s)
 
 instance Functor f => Functor (StateT s f) where
     map f (ST g) = ST (\st => map (mapFst f) (g st)) where
@@ -57,8 +57,8 @@ State : Type -> Type -> Type
 State s a = StateT s Identity a
 
 ||| Unwrap a State monad computation.
-runState : State s a -> s -> (a,s)
-runState m = runIdentity . runStateT m
+runState : StateT s Identity a -> s -> (a, s)
+runState act = runIdentity . runStateT act
 
 ||| Unwrap a State monad computation, but discard the final state.
 evalState : State s a -> s -> a

@@ -42,31 +42,29 @@ Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
-record syn = do (doc, argDocs, acc, opts) <- try (do
-                      (doc, argDocs) <- option noDocs docComment
+record syn = do (doc, paramDocs, acc, opts) <- try (do
+                      (doc, paramDocs) <- option noDocs docComment
                       ist <- get
                       let doc' = annotCode (tryFullExpr syn ist) doc
-                          argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
-                                     | (n, d) <- argDocs ]
+                          paramDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                                     | (n, d) <- paramDocs ]
                       acc <- optional accessibility
                       opts <- dataOpts []
-                      reserved "record"
-                      return (doc', argDocs', acc, opts))
+                      co <- recordI
+                      return (doc', paramDocs', acc, opts ++ co))
                 fc <- getFC
                 tyn_in <- fnName
-                lchar ':'
-                ty <- typeExpr (allowImp syn)
                 let tyn = expandNS syn tyn_in
-                reserved "where"
-                (cdoc, cargDocs, cn, cty, _, _) <- indentedBlockS (constructor syn)
-                accData acc tyn [cn]
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
-                                                    syn_namespace syn }
-                let fns = getRecNames rsyn cty
-                mapM_ (\n -> addAcc n acc) fns
-                return $ PRecord doc rsyn fc tyn ty opts cdoc cn cty
+                                                    syn_namespace syn }                                    
+                params <- manyTill (recordParameter rsyn) (reserved "where")
+                (fields, cname, cdoc) <- indentedBlockS $ agdaStyleBody rsyn tyn
+                case cname of
+                     Just cn' -> accData acc tyn [cn']
+                     Nothing -> return ()
+                return $ PRecord doc rsyn fc opts tyn params paramDocs fields cname cdoc syn
              <?> "record type declaration"
-  where
+  where    
     getRecNames :: SyntaxInfo -> PTerm -> [Name]
     getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkType n)]
                                        ++ getRecNames syn sc
@@ -76,12 +74,81 @@ record syn = do (doc, argDocs, acc, opts) <- try (do
     toFreeze (Just Frozen) = Just Hidden
     toFreeze x = x
 
+    agdaStyleBody :: SyntaxInfo -> Name -> IdrisParser ([((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))], Maybe Name, Docstring (Either Err PTerm))
+    agdaStyleBody syn tyn = do
+        ist <- get
+        fc  <- getFC
+
+        (constructorName, constructorDoc) <- option (Nothing, emptyDocstring)
+                                             (do (doc, _) <- option noDocs docComment
+                                                 n <- constructor
+                                                 return (Just n, doc))
+
+        let constructorDoc' = annotate syn ist constructorDoc
+
+        fields <- many . indented $ field syn
+            
+        return (fields, constructorName, constructorDoc')
+      where        
+        field :: SyntaxInfo -> IdrisParser ((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))
+        field syn = do doc <- optional docComment
+                       c <- optional $ lchar '{'
+                       n <- (do n <- fnName
+                                return $ Just (expandNS syn n))
+                        <|> (do symbol "_"
+                                return Nothing)
+                       lchar ':'
+                       t <- typeExpr (allowImp syn)
+                       p <- endPlicity c
+                       ist <- get
+                       let doc' = case doc of -- Temp: Throws away any possible arg docs
+                                   Just (d,_) -> Just $ annotate syn ist d
+                                   Nothing    -> Nothing
+                       return (n, p, t, doc')
+
+        constructor :: IdrisParser Name
+        constructor = (reserved "constructor") *> fnName                         
+
+        endPlicity :: Maybe Char -> IdrisParser Plicity
+        endPlicity (Just _) = do lchar '}'
+                                 return impl
+        endPlicity Nothing = return expl
+
+        annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
+        annotate syn ist = annotCode $ tryFullExpr syn ist
+
+recordParameter :: SyntaxInfo -> IdrisParser (Name, Plicity, PTerm)
+recordParameter syn =
+  (do lchar '('
+      (n, pt) <- (namedTy syn <|> onlyName syn)
+      lchar ')'
+      return (n, expl, pt))
+  <|>
+  (do (n, pt) <- onlyName syn
+      return (n, expl, pt))
+                 
+  where
+    namedTy :: SyntaxInfo -> IdrisParser (Name, PTerm)
+    namedTy syn =
+      do n <- fnName
+         lchar ':'
+         ty <- typeExpr (allowImp syn)
+         return (expandNS syn n, ty)
+    onlyName :: SyntaxInfo -> IdrisParser (Name, PTerm)
+    onlyName syn =
+      do n <- fnName
+         return (expandNS syn n, PType)
+
 {- | Parses data declaration type (normal or codata)
 DataI ::= 'data' | 'codata';
 -}
 dataI :: IdrisParser DataOpts
 dataI = do reserved "data"; return []
     <|> do reserved "codata"; return [Codata]
+
+recordI :: IdrisParser DataOpts
+recordI = do reserved "record"; return []
+          <|> do reserved "corecord"; return [Codata]
 
 {- | Parses if a data should not have a default eliminator
 DefaultEliminator ::= 'noelim'?

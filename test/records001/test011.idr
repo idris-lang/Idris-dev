@@ -2,14 +2,16 @@ module Main
 
 import Data.Vect
 
-record Foo : Nat -> Type where
-    MkFoo : (name : String) ->
-            (things : Vect n a) ->
-            (more_things : Vect m b) ->
-            Foo n
-
-record Person : Type where
-    MkPerson : (name : String) -> (age : Int) -> Person
+record Foo (n : Nat) where
+  constructor MkFoo
+  name : String
+  things : Vect n a
+  more_things : Vect m b
+  
+record Person where
+  constructor MkPerson
+  name : String
+  age : Int
 
 testFoo : Foo 3
 testFoo = MkFoo "name" [1,2,3] [4,5,6,7]

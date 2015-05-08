@@ -36,6 +36,10 @@ New in 0.9.18:
   "n". If "n" is lexically bound, then the resulting quotation will be for it,
   whereas if it is not, then it will succeed with a quotation of the unique
   global name that matches.
+* New syntax for records that closely matches our other record-like structures:
+  type classes. See the updated tutorial for details.
+* Records can be coinductive. Define coinductive records with the "corecord"
+  keyword.
 * if ... then ... else ... is now built-in syntax instead of being defined in
   a library. It is shown in REPL output and error messages, rather than its
   desugaring.

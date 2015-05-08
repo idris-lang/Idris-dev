@@ -1,7 +1,8 @@
 module Control.Monad.Identity
 
-public record Identity : Type -> Type where
-    Id : (runIdentity : a) -> Identity a
+public record Identity (a : Type) where
+  constructor Id
+  runIdentity : a
 
 instance Functor Identity where
     map fn (Id a) = Id (fn a)

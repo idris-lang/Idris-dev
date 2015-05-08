@@ -979,18 +979,19 @@ example, we can represent a person's name and age in a record:
 
 .. code-block:: idris
 
-    record Person : Type where
-        MkPerson : (name : String) ->
-                   (age : Int) -> Person
+    record Person where
+        constructor MkPerson
+        name : String
+        age : Int
 
     fred : Person
     fred = MkPerson "Fred" 30
 
-Record declarations are like ``data`` declarations, except that they
-are introduced by the ``record`` keyword, and can only have one
-constructor.  The names of the binders in the constructor type
-(``name`` and ``age``) here are the field names, which we can use to
-access the field values:
+Records can have *parameters*, which are listed between the record
+name and the ``where`` keyword, and *fields*, which are in an indented
+block following the `where` keyword (here, ``name`` and ``age``). The
+constructor name is provided after the ``constructor`` keyword. The
+field names can be used to access the field values:
 
 ::
 
@@ -1002,7 +1003,8 @@ access the field values:
     name : Person -> String
 
 We can also use the field names to update a record (or, more
-precisely, produce a new record with the given fields updated).
+precisely, produce a copy of the record with the given fields
+updated):
 
 .. code-block:: bash
 
@@ -1016,15 +1018,14 @@ updates the given fields in a record.
 
 Records, and fields within records, can have dependent types. Updates
 are allowed to change the type of a field, provided that the result is
-well-typed, and the result does not affect the type of the record as a
-whole. For example:
+well-typed.
 
 .. code-block:: idris
 
-    record Class : Type where
-        ClassInfo : (students : Vect n Person) ->
-                    (className : String) ->
-                    Class
+    record Class where
+        constructor ClassInfo
+        students : Vect n Person
+        className : String
 
 It is safe to update the ``students`` field to a vector of a different
 length because it will not affect the type of the record:
@@ -1037,8 +1038,7 @@ length because it will not affect the type of the record:
 ::
 
     *record> addStudent fred (ClassInfo [] "CS")
-    ClassInfo (prelude.vect.:: (MkPerson "Fred" 30) (prelude.vect.Nil)) "CS"
-      : Class
+    ClassInfo [MkPerson "Fred" 30] "CS" : Class
 
 Nested record update
 --------------------
@@ -1060,3 +1060,32 @@ can also be accessed with the following syntax:
 .. code-block:: idris
 
     record { a->b->c } x
+
+Parameters and Fields
+---------------------
+
+Records can have *parameters*, which are not subject to field
+updates. The parameters appear as arguments to the resulting type, and
+are written following the record type name. For example, a pair type
+could be defined as follows:
+
+.. code-block:: idris
+
+    record Prod a b where
+        constructor Times
+        fst : a
+        snd : b
+
+The parameters to a record type need not be types. For example, we can
+restrict the size of classes using a ``Nat`` parameter to the
+``Class`` record:
+
+.. code-block:: idris
+
+    record SizedClass (size : Nat) where
+        constructor SizedClassInfo
+        students : Vect size Person
+        className : String
+
+Note that it is no longer possible to write ``addStudent`` for this
+type, as that would change the size of the class.

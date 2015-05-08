@@ -16,9 +16,9 @@ class (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) where
     pass   : m (a, w -> w) -> m a
 
 ||| The transformer base of the Writer monad
-record WriterT : Type -> (Type -> Type) -> Type -> Type where
-    WR : {m : Type -> Type} ->
-         (runWriterT : m (a, w)) -> WriterT w m a
+record WriterT (w : Type) (m : Type -> Type) (a : Type) where
+  constructor WR
+  runWriterT : m (a, w)
 
 instance Functor f => Functor (WriterT w f) where
     map f (WR g) = WR $ map (\w => (f . fst $ w, snd w)) g

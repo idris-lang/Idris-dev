@@ -14,9 +14,9 @@ class Monad m => MonadReader r (m : Type -> Type) where
     local : (r -> r) -> m a -> m a
 
 ||| The transformer on which the Reader monad is based
-record ReaderT : Type -> (Type -> Type) -> Type -> Type where
-    RD : {m : Type -> Type} ->
-         (runReaderT : r -> m a) -> ReaderT r m a
+record ReaderT (r : Type) (m : Type -> Type) (a : Type) where
+  constructor RD
+  runReaderT : r -> m a
 
 ||| Create a ReaderT with an empty context
 liftReaderT : {m : Type -> Type} -> m a -> ReaderT r m a
