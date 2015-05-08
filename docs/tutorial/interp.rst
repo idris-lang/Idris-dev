@@ -236,7 +236,7 @@ We can make some simple test functions. Firstly, adding two inputs
     add = Lam (Lam (Op (+) (Var Stop) (Var (Pop Stop))))
 
 More interestingly, a factorial function ``fact``
-(e.g. ``\. if (x == 0) then 1 else (fact (x-1) * x)``),
+(e.g. ``\x. if (x == 0) then 1 else (fact (x-1) * x)``),
 can be written as:
 
 .. code-block:: idris
