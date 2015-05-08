@@ -40,12 +40,15 @@ New in 0.9.18:
   type classes. See the updated tutorial for details.
 * Records can be coinductive. Define coinductive records with the "corecord"
   keyword.
+* Type class constructors can be assigned user-accessible names. This is done
+  using the same syntax as record constructors.
 * if ... then ... else ... is now built-in syntax instead of being defined in
   a library. It is shown in REPL output and error messages, rather than its
   desugaring.
 * The desugaring of if ... then ... else ... has been renamed to ifThenElse from
   boolElim. This is for consistency with GHC Haskell and scala-virtualized, and
   to reflect that if-notation makes sense with non-Bool datatypes.
+
 
 New in 0.9.17:
 --------------

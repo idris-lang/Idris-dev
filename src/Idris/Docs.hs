@@ -40,6 +40,7 @@ data Docs' d = FunDoc (FunDoc' d)
                         [(Maybe Name, PTerm, (d, [(Name, d)]))] -- instances: name for named instances, the constraint term, the docs
                         [PTerm] -- subclasses
                         [PTerm] -- superclasses
+                        (Maybe (FunDoc' d)) -- explicit constructor
              | NamedInstanceDoc Name (FunDoc' d) -- name is class
              | ModDoc [String] -- Module name
                       d
@@ -95,7 +96,7 @@ pprintDocs ist (DataDoc t args)
              if null args then text "No constructors."
              else nest 4 (text "Constructors:" <> line <>
                           vsep (map (pprintFD ist) args))
-pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
+pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ctor)
            = nest 4 (text "Type class" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
                        then empty
@@ -106,6 +107,12 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
              nest 4 (text "Methods:" <$>
                       vsep (map (pprintFD ist) meths))
              <$>
+             maybe empty
+                   ((<> line) . nest 4 .
+                    (text "Instance constructor:" <$>) .
+                    pprintFD ist)
+                   ctor
+             <>
              nest 4 (text "Instances:" <$>
                        vsep (if null instances then [text "<no instances>"]
                              else map pprintInstance normalInstances))
@@ -251,9 +258,14 @@ docClass n ci
            (subclasses, instances') = partition (isSubclass . (\(_,tm,_) -> tm)) instances
            superclasses = catMaybes $ map getDInst (class_default_superclasses ci)
        mdocs <- mapM (docFun . fst) (class_methods ci)
+       let ctorN = instanceCtorName ci
+       ctorDocs <- case basename ctorN of
+                     SN _ -> return Nothing
+                     _    -> fmap Just $ docFun ctorN
        return $ ClassDoc
                   n docstr mdocs params
                   instances' (map (\(_,tm,_) -> tm) subclasses) superclasses
+                  ctorDocs
   where
     namedInst (NS n ns) = fmap (flip NS ns) (namedInst n)
     namedInst n@(UN _)  = Just n

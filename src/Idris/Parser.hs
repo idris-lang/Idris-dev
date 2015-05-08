@@ -624,17 +624,31 @@ MethodOrInstance ::=
 
 @
 ClassBlock ::=
-  'where' OpenBlock MethodOrInstance* CloseBlock
+  'where' OpenBlock Constructor? MethodOrInstance* CloseBlock
   ;
 @
 -}
-classBlock :: SyntaxInfo -> IdrisParser [PDecl]
+classBlock :: SyntaxInfo -> IdrisParser (Maybe Name, Docstring (Either Err PTerm), [PDecl])
 classBlock syn = do reserved "where"
                     openBlock
+                    (cn, cd) <- option (Nothing, emptyDocstring) $
+                                try (do (doc, _) <- option noDocs docComment
+                                        n <- constructor
+                                        return (Just n, doc))
+                    ist <- get
+                    let cd' = annotate syn ist cd
+
                     ds <- many (notEndBlock >> instance_ syn <|> fnDecl syn)
                     closeBlock
-                    return (concat ds)
+                    return (cn, cd', concat ds)
                  <?> "class block"
+
+  where
+    constructor :: IdrisParser Name
+    constructor = reserved "constructor" *> fnName
+
+    annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
+    annotate syn ist = annotCode $ tryFullExpr syn ist
 
 {-| Parses a type class declaration
 
@@ -663,9 +677,9 @@ class_ syn = do (doc, argDocs, acc)
                 let n = expandNS syn n_in
                 cs <- many carg
                 fds <- option (map fst cs) fundeps
-                ds <- option [] (classBlock syn)
+                (cn, cd, ds) <- option (Nothing, fst noDocs, []) (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass doc syn fc cons n cs argDocs fds ds]
+                return [PClass doc syn fc cons n cs argDocs fds ds cn cd]
              <?> "type-class declaration"
   where
     fundeps :: IdrisParser [Name]

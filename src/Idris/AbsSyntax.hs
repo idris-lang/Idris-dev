@@ -1101,7 +1101,7 @@ expandParamsD rhs ist dec ps ns (PParams f params pds)
 --                (map (expandParamsD ist dec ps ns) pds)
 expandParamsD rhs ist dec ps ns (PMutual f pds)
    = PMutual f (map (expandParamsD rhs ist dec ps ns) pds)
-expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs fds decls)
+expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs fds decls cn cd)
    = PClass doc info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
            n
@@ -1109,6 +1109,8 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n params pDocs fds decls)
            pDocs
            fds
            (map (expandParamsD rhs ist dec ps ns) decls)
+           cn
+           cd
 expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs n params ty cn decls)
    = PInstance doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
