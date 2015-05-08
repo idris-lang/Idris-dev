@@ -48,6 +48,7 @@ data ElabResult =
                -- ^ The potentially extended context from new definitions
              , resultTyDecls :: [RDeclInstructions]
                -- ^ Meta-info about the new type declarations
+             , resultHighlighting :: [(FC, OutputAnnotation)]
              }
 
 
@@ -110,13 +111,14 @@ build ist info emode opts fn tm
          when tydecl (do mkPat
                          update_term liftPats
                          update_term orderPats)
-         EState is _ impls <- getAux
+         EState is _ impls highlights <- getAux
          tt <- get_term
          ctxt <- get_context
          let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (ElabResult tm ds (map snd is) ctxt impls)
-            else return (ElabResult tm ds (map snd is) ctxt impls)
+         if log /= ""
+            then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights)
+            else return (ElabResult tm ds (map snd is) ctxt impls highlights)
   where pattern = emode == ELHS
         tydecl = emode == ETyDecl
 
@@ -152,13 +154,14 @@ buildTC ist info emode opts fn tm
          -- unification
          when (not (null dots)) $
             lift (Error (CantMatch (getInferTerm tm)))
-         EState is _ impls <- getAux
+         EState is _ impls highlights <- getAux
          tt <- get_term
          ctxt <- get_context
          let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (ElabResult tm ds (map snd is) ctxt impls)
-            else return (ElabResult tm ds (map snd is) ctxt impls)
+         if (log /= "")
+            then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights)
+            else return (ElabResult tm ds (map snd is) ctxt impls highlights)
   where pattern = emode == ELHS
 
 -- return whether arguments of the given constructor name can be 
@@ -318,24 +321,30 @@ elab ist info emode opts fn tm
           -> PTerm -- ^ The term to elaborate
           -> ElabD ()
     elab' ina fc (PNoImplicits t) = elab' ina fc t -- skip elabE step
-    elab' ina fc PType           = do apply RType []; solve
+    elab' ina fc (PType fc')       =
+      do apply RType []
+         solve
+         highlightSource fc' (AnnType "Type" "The type of types")
     elab' ina fc (PUniverse u)   = do apply (RUType u) []; solve
 --  elab' (_,_,inty) (PConstant c)
 --     | constType c && pattern && not reflection && not inty
 --       = lift $ tfail (Msg "Typecase is not allowed")
-    elab' ina fc tm@(PConstant c) 
+    elab' ina fc tm@(PConstant fc' c) 
          | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
            && isTypeConst c
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
          | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
-         | otherwise = do apply (RConstant c) []; solve
+         | otherwise = do apply (RConstant c) []
+                          solve
+                          highlightSource fc' (AnnConst c)
     elab' ina fc (PQuote r)     = do fill r; solve
     elab' ina _ (PTrue fc _)   =
        do hnf_compute
           g <- goal
           case g of
-            TType _ -> elab' ina (Just fc) (PRef fc unitTy)
+            TType _ -> do highlightSource fc (AnnName unitTy Nothing Nothing Nothing)
+                          elab' ina (Just fc) (PRef fc unitTy)
             UType _ -> elab' ina (Just fc) (PRef fc unitTy)
             _ -> elab' ina (Just fc) (PRef fc unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
@@ -2276,7 +2285,7 @@ processTacticDecls info steps =
           let tcgen = False -- TODO: later we may support dictionary generation
           case elaborate ctxt (idris_datatypes ist) (sMN 0 "refPatLHS") infP initEState
                 (erun fc (buildTC ist info ELHS [] fname (infTerm lhs))) of
-            OK (ElabResult lhs' _ _ _ _, _) ->
+            OK (ElabResult lhs' _ _ _ _ _, _) ->
               do -- not recursively calling here, because we don't
                  -- want to run infinitely many times
                  let lhs_tm = orderPats (getInferTerm lhs')

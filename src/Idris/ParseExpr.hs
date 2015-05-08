@@ -335,18 +335,18 @@ simpleExpr syn =
         <|> tacticsExpr syn
         <|> try (do reserved "Type"; symbol "*"; return $ PUniverse AllTypes)
         <|> do reserved "AnyType"; return $ PUniverse AllTypes
-        <|> do reserved "Type"; return PType
+        <|> PType <$> reservedFC "Type"
         <|> do reserved "UniqueType"; return $ PUniverse UniqueType
         <|> do reserved "NullType"; return $ PUniverse NullType
-        <|> do c <- constant
+        <|> do (c, cfc) <- constant
                fc <- getFC
-               return (modifyConst syn fc (PConstant c))
+               return (modifyConst syn fc (PConstant cfc c))
         <|> do symbol "'"; fc <- getFC; str <- name
                return (PApp fc (PRef fc (sUN "Symbol_"))
-                          [pexp (PConstant (Str (show str)))])
+                          [pexp (PConstant NoFC (Str (show str)))])
         <|> do fc <- getFC
                x <- fnName
-               if inPattern syn 
+               if inPattern syn
                   then option (PRef fc x)
                               (do reservedOp "@"
                                   s <- simpleExpr syn
@@ -445,19 +445,19 @@ bracketedExpr syn e =
 -- name suggests, rather than Int
 {-| Finds optimal type for integer constant -}
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
-modifyConst syn fc (PConstant (BI x))
+modifyConst syn fc (PConstant inFC (BI x))
     | not (inPattern syn)
         = PAlternative False
-             (PApp fc (PRef fc (sUN "fromInteger")) [pexp (PConstant (BI (fromInteger x)))]
+             (PApp fc (PRef fc (sUN "fromInteger")) [pexp (PConstant NoFC (BI (fromInteger x)))]
              : consts)
     | otherwise = PAlternative False consts
     where
-      consts = [ PConstant (BI x)
-               , PConstant (I (fromInteger x))
-               , PConstant (B8 (fromInteger x))
-               , PConstant (B16 (fromInteger x))
-               , PConstant (B32 (fromInteger x))
-               , PConstant (B64 (fromInteger x))
+      consts = [ PConstant inFC (BI x)
+               , PConstant inFC (I (fromInteger x))
+               , PConstant inFC (B8 (fromInteger x))
+               , PConstant inFC (B16 (fromInteger x))
+               , PConstant inFC (B32 (fromInteger x))
+               , PConstant inFC (B64 (fromInteger x))
                ]
 modifyConst syn fc x = x
 
@@ -1219,14 +1219,12 @@ Constant ::=
 -}
 
 constants :: [(String, Idris.Core.TT.Const)]
-constants = 
+constants =
   [ ("Integer",            AType (ATInt ITBig))
   , ("Int",                AType (ATInt ITNative))
   , ("Char",               AType (ATInt ITChar))
   , ("Double",             AType ATFloat)
   , ("String",             StrType)
---   , ("Ptr",                PtrType)
---   , ("ManagedPtr",         ManagedPtrType)
   , ("prim__WorldType",    WorldType)
   , ("prim__TheWorld",     TheWorld)
   , ("Bits8",              AType (ATInt (ITFixed IT8)))
@@ -1234,14 +1232,17 @@ constants =
   , ("Bits32",             AType (ATInt (ITFixed IT32)))
   , ("Bits64",             AType (ATInt (ITFixed IT64)))
   ]
- 
-constant :: IdrisParser Idris.Core.TT.Const
-constant = choice [ do reserved name; return ty | (name, ty) <- constants ]
-        <|> do f <- try float;   return $ Fl f
-        <|> do i <- natural; return $ BI i
-        <|> do s <- verbatimStringLiteral; return $ Str s
-        <|> do s <- stringLiteral;  return $ Str s
-        <|> do c <- try charLiteral; return $ Ch c --Currently ambigous with symbols
+
+-- | Parse a constant and its source span
+constant :: IdrisParser (Idris.Core.TT.Const, FC)
+constant = choice [ do fc <- reservedFC name; return (ty, fc)
+                  | (name, ty) <- constants
+                  ]
+        <|> do f <- try float; return (Fl f, NoFC)
+        <|> do i <- natural; return (BI i, NoFC)
+        <|> do s <- verbatimStringLiteral; return (Str s, NoFC)
+        <|> do s <- stringLiteral;  return (Str s, NoFC)
+        <|> do c <- try charLiteral; return (Ch c, NoFC) --Currently ambigous with symbols
         <?> "constant or literal"
 
 {- | Parses a verbatim multi-line string literal (triple-quoted)
@@ -1389,7 +1390,7 @@ tactics =
           return $ TFail [Idris.Core.TT.TextPart msg])
   , ([":doc"], Just ExprTArg, const $
        do whiteSpace
-          doc <- (Right <$> constant) <|> (Left <$> fnName)
+          doc <- (Right . fst <$> constant) <|> (Left <$> fnName)
           eof
           return (TDocStr doc))
   ]

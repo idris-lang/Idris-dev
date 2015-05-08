@@ -265,7 +265,7 @@ proofArg cmd name = do
 cmd_doc :: String -> P.IdrisParser (Either String Command)
 cmd_doc name = do
     let constant = do
-        c <- P.constant
+        c <- fmap fst P.constant
         eof
         return $ Right (DocStr (Right c) FullDocs)
 

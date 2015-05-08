@@ -66,7 +66,7 @@ elabProvider doc info syn fc what n
          -- The goal type for a postulate is always Type.
          (ty', typ) <- case what of
                          ProvTerm ty p   -> elabVal info ERHS ty
-                         ProvPostulate _ -> elabVal info ERHS PType
+                         ProvPostulate _ -> elabVal info ERHS (PType fc)
          unless (isTType typ) $
            ifail ("Expected a type, got " ++ show ty' ++ " : " ++ show typ)
 

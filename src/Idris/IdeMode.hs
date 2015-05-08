@@ -169,6 +169,8 @@ instance SExpable FC where
     toSExp ((SymbolAtom "filename", StringAtom f),
             (SymbolAtom "start",  IntegerAtom (toInteger sl), IntegerAtom (toInteger sc)),
             (SymbolAtom "end", IntegerAtom (toInteger el), IntegerAtom (toInteger ec)))
+  toSExp NoFC = toSExp ([] :: [String])
+  toSExp (FileFC f) = toSExp [(SymbolAtom "filename", StringAtom f)]
 
 escape :: String -> String
 escape = concatMap escapeChar

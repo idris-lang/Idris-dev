@@ -179,8 +179,8 @@ genAll i args
   where
     -- if they're constants, invent a new one to make sure that
     -- constants which are not explicitly handled are covered
-    inventConsts cs@(PConstant c : _) = map PConstant (ic' (mapMaybe getConst cs))
-      where getConst (PConstant c) = Just c
+    inventConsts cs@(PConstant fc c : _) = map (PConstant NoFC) (ic' (mapMaybe getConst cs))
+      where getConst (PConstant _ c) = Just c
             getConst _ = Nothing
     inventConsts xs = xs
 
@@ -226,7 +226,7 @@ genAll i args
                 ([pimp (sUN "a") Placeholder True,
                   pimp (sUN "P") Placeholder True] ++
                  [pexp t,pexp v]) o
-    otherPats o@(PConstant c) = inventConsts [o] -- return o
+    otherPats o@(PConstant _ c) = inventConsts [o] -- return o
     otherPats arg = return Placeholder
 
     ops fc n xs o
@@ -278,7 +278,7 @@ genAll i args
 
     -- quick check for constructor equality
     quickEq :: PTerm -> PTerm -> Bool
-    quickEq (PConstant n) (PConstant n') = n == n'
+    quickEq (PConstant _ n) (PConstant _ n') = n == n'
     quickEq (PRef _ n) (PRef _ n') = n == n'
     quickEq (PApp _ t as) (PApp _ t' as')
         | length as == length as'

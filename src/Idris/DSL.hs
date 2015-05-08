@@ -33,8 +33,8 @@ mkTTName fc n =
         mkList fc (x:xs) = PApp fc (PRef fc (sNS (sUN "::") ["List", "Prelude"]))
                                    [ pexp (stringC x)
                                    , pexp (mkList fc xs)]
-        stringC = PConstant . Str . str
-        intC = PConstant . I
+        stringC = PConstant fc . Str . str
+        intC = PConstant fc . I
         reflm n = sNS (sUN n) ["Reflection", "Language"]
     in case n of
          UN nm     -> PApp fc (PRef fc (reflm "UN")) [ pexp (stringC nm)]

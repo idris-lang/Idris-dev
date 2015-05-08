@@ -674,8 +674,9 @@ class_ syn = do (doc, argDocs, acc)
     carg :: IdrisParser (Name, PTerm)
     carg = do lchar '('; i <- name; lchar ':'; ty <- expr syn; lchar ')'
               return (i, ty)
-       <|> do i <- name;
-              return (i, PType)
+       <|> do i <- name
+              fc <- getFC
+              return (i, PType fc)
 
 {- | Parses a type class instance declaration
 
@@ -1187,7 +1188,7 @@ parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
 
 {- | Parses a constant form input -}
 parseConst :: IState -> String -> Result Const
-parseConst st = runparser constant st "(input)"
+parseConst st = runparser (fmap fst constant) st "(input)"
 
 {- | Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic

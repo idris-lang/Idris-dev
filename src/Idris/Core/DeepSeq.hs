@@ -43,6 +43,8 @@ instance NFData Raw where
 
 instance NFData FC where
         rnf (FC x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf NoFC = ()
+        rnf (FileFC f) = rnf f `seq` ()
 
 instance NFData Provenance where
         rnf ExpectedType = ()

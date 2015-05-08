@@ -932,7 +932,7 @@ process fn (Check t)
             ty' = normaliseC ctxt [] ty
         case tm of
            TType _ ->
-             iPrintTermWithType (prettyIst ist PType) type1Doc
+             iPrintTermWithType (prettyIst ist (PType emptyFC)) type1Doc
            _ -> iPrintTermWithType (pprintDelab ist tm)
                                    (pprintDelab ist ty)
 

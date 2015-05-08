@@ -250,6 +250,13 @@ symbol = Tok.symbol
 reserved :: MonadicParsing m => String -> m ()
 reserved = Tok.reserve idrisStyle
 
+-- | Parses a reserved identifier, computing its span. Assumes that
+-- reserved identifiers never contain line breaks.
+reservedFC :: MonadicParsing m => String -> m FC
+reservedFC str = do (FC file (l, c) _) <- getFC
+                    Tok.reserve idrisStyle str
+                    return $ FC file (l, c) (l, c + length str)
+
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
 reservedOp :: MonadicParsing m => String -> m ()
@@ -359,6 +366,16 @@ getFC = do s <- position
            return $ FC f (lineNum s, columnNum s) (lineNum s, columnNum s) -- TODO: Change to actual spanning
            -- Issue #1594 on the Issue Tracker.
            -- https://github.com/idris-lang/Idris-dev/issues/1594
+
+{- | Get the span surrounding a parse -}
+withSpan :: MonadicParsing m => m a -> m (a, FC)
+withSpan p = do s <- position
+                let (dir, file) = splitFileName (fileName s)
+                let f = if dir == addTrailingPathSeparator "." then file else fileName s
+                res <- p
+                s' <- position
+                let fc = FC f (lineNum s, columnNum s) (lineNum s', columnNum s')
+                return (res, fc)
 
 {-* Syntax helpers-}
 -- | Bind constraints to term

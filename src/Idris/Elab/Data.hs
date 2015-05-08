@@ -377,7 +377,7 @@ elabCaseFun ind paramPos n ty cons info = do
           where keyOf :: PTerm -> String
                 keyOf (PRef _ name) | isLetter (nameStart name) = (toLower $ nameStart name):"__"
                 keyOf (PApp _ tyf _) = keyOf tyf
-                keyOf PType = "ty__"
+                keyOf (PType _) = "ty__"
                 keyOf _     = "carg__"
                 nameStart :: Name -> Char
                 nameStart n = nameStart' (simpleName n)
@@ -414,7 +414,7 @@ elabCaseFun ind paramPos n ty cons info = do
         mkMotive :: Name -> [Int] -> [(Name, Plicity, PTerm)] -> [(Name, Plicity, PTerm)] -> PTerm
         mkMotive n paramPos params indicies =
           let scrutineeTy = (scrutineeArgName, expl, applyCons n (interlievePos paramPos params indicies 0))
-          in piConstr (indicies ++ [scrutineeTy]) PType
+          in piConstr (indicies ++ [scrutineeTy]) (PType elimFC)
 
         piConstr :: [(Name, Plicity, PTerm)] -> PTerm -> PTerm
         piConstr [] ty = ty

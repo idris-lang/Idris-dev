@@ -15,7 +15,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
 import Idris.Elab.Utils
@@ -63,13 +63,14 @@ elabValBind info aspat norm tm_in
         --    * elaboration as a Type
         --    * elaboration as a function a -> b
 
-        (ElabResult tm' defer is ctxt' newDecls, _) <-
+        (ElabResult tm' defer is ctxt' newDecls highlights, _) <-
              tclift (elaborate ctxt (idris_datatypes i) (sMN 0 "val") infP initEState
                      (build i info aspat [Reflection] (sMN 0 "val") (infTerm tm)))
 
         -- Extend the context with new definitions created
         setContext ctxt'
         processTacticDecls info newDecls
+        sendHighlighting highlights
 
         let vtm = orderPats (getInferTerm tm')
 
@@ -118,14 +119,14 @@ elabDocTerms info str = do typechecked <- Traversable.mapM decorate str
 -- Try running the term directly (as IO ()), then printing it as an Integer
 -- (as a default numeric tye), then printing it as any Showable thing
 elabExec :: FC -> PTerm -> PTerm
-elabExec fc tm = runtm (PAlternative False 
+elabExec fc tm = runtm (PAlternative False
                    [printtm (PApp fc (PRef fc (sUN "the"))
-                     [pexp (PConstant (AType (ATInt ITBig))), pexp tm]),
+                     [pexp (PConstant NoFC (AType (ATInt ITBig))), pexp tm]),
                     tm,
                     printtm tm
                     ])
-  where                    
+  where
     runtm t = PApp fc (PRef fc (sUN "run__IO")) [pexp t]
-    printtm t = PApp fc (PRef fc (sUN "printLn")) 
+    printtm t = PApp fc (PRef fc (sUN "printLn"))
                   [pimp (sUN "ffi") (PRef fc (sUN "FFI_C")) False, pexp t]
 

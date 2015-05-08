@@ -41,7 +41,7 @@ import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word16
-ibcVersion = 107
+ibcVersion = 108
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -1570,14 +1570,16 @@ instance Binary PTerm where
                                          put x2
                 PHidden x1 -> do putWord8 21
                                  put x1
-                PType -> putWord8 22
+                PType x1 -> do putWord8 22
+                               put x1
                 PGoal x1 x2 x3 x4 -> do putWord8 23
                                         put x1
                                         put x2
                                         put x3
                                         put x4
-                PConstant x1 -> do putWord8 24
-                                   put x1
+                PConstant x1 x2 -> do putWord8 24
+                                      put x1
+                                      put x2
                 Placeholder -> putWord8 25
                 PDoBlock x1 -> do putWord8 26
                                   put x1
@@ -1709,14 +1711,16 @@ instance Binary PTerm where
                             return (PAlternative x1 x2)
                    21 -> do x1 <- get
                             return (PHidden x1)
-                   22 -> return PType
+                   22 -> do x1 <- get
+                            return (PType x1)
                    23 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             x4 <- get
                             return (PGoal x1 x2 x3 x4)
                    24 -> do x1 <- get
-                            return (PConstant x1)
+                            x2 <- get
+                            return (PConstant x1 x2)
                    25 -> return Placeholder
                    26 -> do x1 <- get
                             return (PDoBlock x1)

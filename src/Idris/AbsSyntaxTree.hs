@@ -670,13 +670,18 @@ data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
 data EState = EState {
                   case_decls :: [(Name, PDecl)],
                   delayed_elab :: [Elab' EState ()],
-                  new_tyDecls :: [RDeclInstructions]
+                  new_tyDecls :: [RDeclInstructions],
+                  highlighting :: [(FC, OutputAnnotation)]
               }
 
 initEState :: EState
-initEState = EState [] [] []
+initEState = EState [] [] [] []
 
 type ElabD a = Elab' EState a
+
+highlightSource :: FC -> OutputAnnotation -> ElabD ()
+highlightSource fc annot =
+  updateAux (\aux -> aux { highlighting = (fc, annot) : highlighting aux })
 
 -- | One clause of a top-level definition. Term arguments to constructors are:
 --
@@ -825,10 +830,10 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PAs FC Name PTerm -- ^ @-pattern, valid LHS only
            | PAlternative Bool [PTerm] -- ^ True if only one may work. (| A, B, C|)
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
-           | PType -- ^ 'Type' type
+           | PType FC -- ^ 'Type' type
            | PUniverse Universe -- ^ Some universe
            | PGoal FC PTerm Name PTerm -- ^ quoteGoal, used for %reflection functions
-           | PConstant Const -- ^ Builtin types
+           | PConstant FC Const -- ^ Builtin types
            | Placeholder -- ^ Underscore
            | PDoBlock [PDo] -- ^ Do notation
            | PIdiom FC PTerm -- ^ Idiom brackets
@@ -1037,10 +1042,10 @@ highestFC (PAlternative _ args) =
     [] -> Nothing
     (fc:_) -> Just fc
 highestFC (PHidden _) = Nothing
-highestFC PType = Nothing
+highestFC (PType fc) = Just fc
 highestFC (PUniverse _) = Nothing
 highestFC (PGoal fc _ _ _) = Just fc
-highestFC (PConstant _) = Nothing
+highestFC (PConstant fc _) = Just fc
 highestFC Placeholder = Nothing
 highestFC (PDoBlock lines) =
   case map getDoFC lines of
@@ -1256,8 +1261,8 @@ bi = fileFC "builtin"
 inferTy   = sMN 0 "__Infer"
 inferCon  = sMN 0 "__infer"
 inferDecl = PDatadecl inferTy
-                      PType
-                      [(emptyDocstring, [], inferCon, PPi impl (sMN 0 "iType") PType (
+                      (PType bi)
+                      [(emptyDocstring, [], inferCon, PPi impl (sMN 0 "iType") (PType bi) (
                                                    PPi expl (sMN 0 "ival") (PRef bi (sMN 0 "iType"))
                                                    (PRef bi inferTy)), bi, [])]
 inferOpts = []
@@ -1312,11 +1317,11 @@ eqDoc =  fmap (const (Left $ Msg "")) . parseDocstring . T.pack $
           "\n\n" ++
           "You may need to use `(~=~)` to explicitly request heterogeneous equality."
 
-eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType), (n "B", PType)]
+eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType bi), (n "B", PType bi)]
                                  (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
-                                 PType))
+                                 (PType bi)))
                 [(reflDoc, reflParamDoc,
-                  eqCon, PPi impl (n "A") PType (
+                  eqCon, PPi impl (n "A") (PType bi) (
                                   PPi impl (n "x") (PRef bi (n "A"))
                                       (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
                                                                pimp (n "B") Placeholder False,
@@ -1513,7 +1518,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
                   (prettySe left bnd l <+> opName False) <$>
                     group (prettySe right bnd r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm]) -- symbols, like 'foo
-      | PConstant (Idris.Core.TT.Str str) <- getTm tm,
+      | PConstant NoFC (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = annotate (AnnType ("'" ++ str) ("The symbol " ++ str)) $
                                char '\'' <> prettySe startPrec bnd (PRef fc (sUN str))
     prettySe p bnd (PApp _ f as) = -- Normal prefix applications
@@ -1605,9 +1610,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
         where
           prettyAs =
             foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe startPrec bnd) as
-    prettySe p bnd PType = annotate (AnnType "Type" "The type of types") $ text "Type"
+    prettySe p bnd (PType _) = annotate (AnnType "Type" "The type of types") $ text "Type"
     prettySe p bnd (PUniverse u) = annotate (AnnType (show u) "The type of unique types") $ text (show u)
-    prettySe p bnd (PConstant c) = annotate (AnnConst c) (text (show c))
+    prettySe p bnd (PConstant _ c) = annotate (AnnConst c) (text (show c))
     -- XXX: add pretty for tactics
     prettySe p bnd (PProof ts) =
       text "proof" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
@@ -1881,9 +1886,9 @@ instance Sized PTerm where
   size (PUnifyLog tm) = size tm
   size (PDisamb _ tm) = size tm
   size (PNoImplicits tm) = size tm
-  size PType = 1
+  size (PType _) = 1
   size (PUniverse _) = 1
-  size (PConstant const) = 1 + size const
+  size (PConstant fc const) = 1 + size fc + size const
   size Placeholder = 1
   size (PDoBlock dos) = 1 + size dos
   size (PIdiom fc term) = 1 + size term

@@ -90,11 +90,11 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
     de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
     de env plic (Bind n bb sc) = de ((n,n):env) [] sc
-    de env _ (Constant i) = PConstant i
+    de env _ (Constant i) = PConstant NoFC i
     de env _ (Proj _ _) = error "Delaboration got run-time-only Proj!"
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
-    de env _ (TType i) = PType
+    de env _ (TType i) = PType un
     de env _ (UType u) = PUniverse u
 
     dens x | fullname = x

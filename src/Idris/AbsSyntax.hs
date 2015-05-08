@@ -1148,7 +1148,7 @@ getPriority i tm = 1 -- pri tm
     pri (PPair _ _ l r) = max 1 (max (pri l) (pri r))
     pri (PDPair _ _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
     pri (PAlternative a as) = maximum (map pri as)
-    pri (PConstant _) = 0
+    pri (PConstant _ _) = 0
     pri Placeholder = 1
     pri _ = 3
 
@@ -1885,10 +1885,10 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match' x y = match (fullApp x) (fullApp y)
     match (PApp _ (PRef _ (NS (UN fi) [b])) [_,_,x]) x'
         | fi == txt "fromInteger" && b == txt "builtins",
-          PConstant (I _) <- getTm x = match (getTm x) x'
+          PConstant _ (I _) <- getTm x = match (getTm x) x'
     match x' (PApp _ (PRef _ (NS (UN fi) [b])) [_,_,x])
         | fi == txt "fromInteger" && b == txt "builtins",
-          PConstant (I _) <- getTm x = match (getTm x) x'
+          PConstant _ (I _) <- getTm x = match (getTm x) x'
     match (PApp _ (PRef _ (UN l)) [_,x]) x' | l == txt "lazy" = match (getTm x) x'
     match x (PApp _ (PRef _ (UN l)) [_,x']) | l == txt "lazy" = match x (getTm x')
     match (PApp _ f args) (PApp _ f' args')

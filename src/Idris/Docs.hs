@@ -296,12 +296,12 @@ getPArgNames _ _ = []
 
 pprintConstDocs :: IState -> Const -> String -> Doc OutputAnnotation
 pprintConstDocs ist c str = text "Primitive" <+> text (if constIsType c then "type" else "value") <+>
-                            pprintPTerm (ppOptionIst ist) [] [] [] (PConstant c) <+> colon <+>
+                            pprintPTerm (ppOptionIst ist) [] [] [] (PConstant NoFC c) <+> colon <+>
                             pprintPTerm (ppOptionIst ist) [] [] [] (t c) <>
                             nest 4 (line <> text str)
 
-  where t (Fl _)  = PConstant $ AType ATFloat
-        t (BI _)  = PConstant $ AType (ATInt ITBig)
-        t (Str _) = PConstant StrType
-        t (Ch c)  = PConstant $ AType (ATInt ITChar)
-        t _       = PType
+  where t (Fl _)  = PConstant NoFC $ AType ATFloat
+        t (BI _)  = PConstant NoFC $ AType (ATInt ITBig)
+        t (Str _) = PConstant NoFC StrType
+        t (Ch c)  = PConstant NoFC $ AType (ATInt ITChar)
+        t _       = PType NoFC

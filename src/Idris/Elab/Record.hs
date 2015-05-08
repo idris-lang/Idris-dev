@@ -67,7 +67,7 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
     -- | Generates a type constructor.
     generateTyConType :: [(Name, Plicity, PTerm)] -> PTerm
     generateTyConType ((n, p, t) : rest) = PPi p (nsroot n) t (generateTyConType rest)
-    generateTyConType [] = PType
+    generateTyConType [] = (PType fc)
 
     -- | Generates a name for the data constructor if none was specified.
     generateDConName :: Maybe Name -> Idris Name

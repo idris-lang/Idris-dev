@@ -194,6 +194,20 @@ prettyDocumentedIst ist (name, ty, docs) =
   where ppTm = pprintDelab ist
         norm = normaliseAll (tt_ctxt ist) []
 
+sendHighlighting :: [(FC, OutputAnnotation)] -> Idris ()
+sendHighlighting [] = return ()
+sendHighlighting highlights =
+  do ist <- getIState
+     case idris_outputmode ist of
+       RawOutput _ -> return ()
+       IdeMode n h ->
+         let fancier = [toSExp (fc, fancifyAnnots ist annot) | (fc, annot) <- highlights]
+         in runIO . hPutStrLn h $
+              convSExp "output"
+                       (SymbolAtom "ok",
+                        (SymbolAtom "highlight-source", fancier)) n
+
+
 
 renderExternal :: OutputFmt -> Int -> Doc OutputAnnotation -> Idris String
 renderExternal fmt width doc

@@ -53,7 +53,9 @@ data FC = FC { fc_fname :: String, -- ^ Filename
                fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
                fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
              }
-  deriving (Data, Typeable, Ord)             
+        | NoFC -- ^ Locations for machine-generated terms
+        | FileFC { fc_fname :: String } -- ^ Locations with file only
+  deriving (Data, Typeable, Ord)
 
 -- | Ignore source location equality (so deriving classes do not compare FCs)
 instance Eq FC where
@@ -65,14 +67,17 @@ newtype FC' = FC' { unwrapFC :: FC }
 instance Eq FC' where
   FC' fc == FC' fc' = fcEq fc fc'
     where fcEq (FC n s e) (FC n' s' e') = n == n' && s == s' && e == e'
+          fcEq NoFC NoFC = True
+          fcEq (FileFC f) (FileFC f') = f == f'
+          fcEq _ _ = False
 
 -- | Empty source location
 emptyFC :: FC
-emptyFC = fileFC ""
+emptyFC = NoFC
 
--- | Source location with file only
+-- | Source location with file only
 fileFC :: String -> FC
-fileFC s = FC s (0, 0) (0, 0)
+fileFC s = FileFC s
 
 {-!
 deriving instance Binary FC
@@ -81,12 +86,16 @@ deriving instance NFData FC
 
 instance Sized FC where
   size (FC f s e) = 4 + length f
+  size NoFC = 1
+  size (FileFC f) = length f
 
 instance Show FC where
     show (FC f s e) = f ++ ":" ++ showLC s e
       where showLC (sl, sc) (el, ec) | sl == el && sc == ec = show sl ++ ":" ++ show sc
                                      | sl == el             = show sl ++ ":" ++ show sc ++ "-" ++ show ec
                                      | otherwise            = show sl ++ ":" ++ show sc ++ "-" ++ show el ++ ":" ++ show ec
+    show NoFC = "No location"
+    show (FileFC f) = f
 
 -- | Output annotation for pretty-printed name - decides colour
 data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput

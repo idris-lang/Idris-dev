@@ -114,16 +114,16 @@ warnDisamb ist (PPair _ _ x y) = warnDisamb ist x >> warnDisamb ist y
 warnDisamb ist (PDPair _ _ x y z) = warnDisamb ist x >> warnDisamb ist y >> warnDisamb ist z
 warnDisamb ist (PAlternative _ tms) = mapM_ (warnDisamb ist) tms
 warnDisamb ist (PHidden tm) = warnDisamb ist tm
-warnDisamb ist PType = return ()
+warnDisamb ist (PType _) = return ()
 warnDisamb ist (PUniverse _) = return ()
 warnDisamb ist (PGoal _ x _ y) = warnDisamb ist x >> warnDisamb ist y
-warnDisamb ist (PConstant _) = return ()
+warnDisamb ist (PConstant _ _) = return ()
 warnDisamb ist Placeholder = return ()
 warnDisamb ist (PDoBlock steps) = mapM_ wStep steps
   where wStep (DoExp _ x) = warnDisamb ist x
         wStep (DoBind _ _ x) = warnDisamb ist x
         wStep (DoBindP _ x y cs) = warnDisamb ist x >> warnDisamb ist y >>
-                                   mapM_ (\(x,y)-> warnDisamb ist x >> warnDisamb ist y) cs
+                                   mapM_ (\(x,y) -> warnDisamb ist x >> warnDisamb ist y) cs
         wStep (DoLet _ _ x y) = warnDisamb ist x >> warnDisamb ist y
         wStep (DoLetP _ x y) = warnDisamb ist x >> warnDisamb ist y
 warnDisamb ist (PIdiom _ x) = warnDisamb ist x

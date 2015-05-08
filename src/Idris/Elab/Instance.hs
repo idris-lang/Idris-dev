@@ -14,7 +14,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
 import Idris.Elab.Type
@@ -146,7 +146,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
 
   where
     intInst = case ps of
-                [PConstant (AType (ATInt ITNative))] -> True
+                [PConstant NoFC (AType (ATInt ITNative))] -> True
                 _ -> False
 
     mkiname n' ns ps' expn' =
@@ -176,11 +176,12 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
              ty' <- implicit info syn iname ty'
              let ty = addImpl [] i ty'
              ctxt <- getContext
-             (ElabResult tyT _ _ ctxt' newDecls, _) <-
+             (ElabResult tyT _ _ ctxt' newDecls highlights, _) <-
                 tclift $ elaborate ctxt (idris_datatypes i) iname (TType (UVal 0)) initEState
                          (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
              setContext ctxt'
              processTacticDecls info newDecls
+             sendHighlighting highlights
              ctxt <- getContext
              (cty, _) <- recheckC fc id [] tyT
              let nty = normalise ctxt [] cty

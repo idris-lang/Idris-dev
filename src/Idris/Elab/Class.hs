@@ -58,7 +58,7 @@ elabClass :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
              [Name] -> [PDecl] -> Idris ()
 elabClass info syn_in doc fc constraints tn ps pDocs fds ds
     = do let cn = SN (InstanceCtorN tn) -- sUN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
-         let tty = pibind ps PType
+         let tty = pibind ps (PType fc)
          let constraint = PApp fc (PRef fc tn)
                                   (map (pexp . PRef fc) (map fst ps))
 
@@ -110,7 +110,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
 
     -- To make sure the type constructor of the class is in the appropriate
     -- uniqueness hierarchy
-    chkUniq u@(PUniverse _) PType = u
+    chkUniq u@(PUniverse _) (PType _) = u
     chkUniq (PUniverse l) (PUniverse r) = PUniverse (min l r)
     chkUniq (PPi _ _ _ sc) t = chkUniq sc t
     chkUniq _ t = t

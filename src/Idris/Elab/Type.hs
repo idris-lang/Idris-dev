@@ -16,7 +16,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
 import Idris.Elab.Utils
@@ -66,11 +66,12 @@ buildType info syn fc opts n ty' = do
          logLvl 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
          logLvl 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
-         (ElabResult tyT' defer is ctxt' newDecls, log) <-
+         (ElabResult tyT' defer is ctxt' newDecls highlights, log) <-
             tclift $ elaborate ctxt (idris_datatypes i) n (TType (UVal 0)) initEState
                      (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
          setContext ctxt'
          processTacticDecls info newDecls
+         sendHighlighting highlights
 
          let tyT = patToImp tyT'
 

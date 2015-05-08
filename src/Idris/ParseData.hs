@@ -137,7 +137,8 @@ recordParameter syn =
     onlyName :: SyntaxInfo -> IdrisParser (Name, PTerm)
     onlyName syn =
       do n <- fnName
-         return (expandNS syn n, PType)
+         fc <- getFC
+         return (expandNS syn n, PType fc)
 
 {- | Parses data declaration type (normal or codata)
 DataI ::= 'data' | 'codata';
@@ -201,7 +202,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                      accData acc tyn (map (\ (_, _, n, _, _, _) -> n) cons)
                      return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn ty cons))) <|> (do
                     args <- many name
-                    let ty = bindArgs (map (const PType) args) PType
+                    let ty = bindArgs (map (const (PType fc)) args) (PType fc)
                     let tyn = expandNS syn tyn_in
                     option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn ty)) (do
                       try (lchar '=') <|> do reserved "where"
