@@ -46,7 +46,7 @@ declaration. You should see:
     plus_commutes n m = ?plus_commutes_rhs
 
 To prove this by induction on ``n``, as we sketched in Section
-[sect:induction], we begin with a case split on ``n`` (press
+:ref:`sect-inductive`, we begin with a case split on ``n`` (press
 ``\c`` with the cursor over the ``n`` in the definition.) You
 should see:
 
@@ -334,7 +334,7 @@ defined by matching on its first argument. The complete definition is:
     plus_commutes_S k Z = Refl
     plus_commutes_S k (S j) = rewrite plus_commutes_S k j in Refl
 
-All metavariables have now been solved,
+All metavariables have now been solved.
 
 The ``total`` annotation means that we require the final function to
 pass the totality checker; i.e. it will terminate on all possible
