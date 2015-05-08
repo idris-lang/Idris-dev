@@ -107,7 +107,6 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     deFn env (App _ f a) args = deFn env f (a:args)
     deFn env (P _ n _) [l,r]
          | n == pairTy    = PPair un IsType (de env [] l) (de env [] r)
-         | n == eqCon     = PRefl un (de env [] r)
          | n == sUN "lazy" = de env [] r -- TODO: Fix string based matching
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
          | n == sigmaTy
@@ -485,9 +484,6 @@ addImplicitDiffs x y
          = let (a', c') = addI a c
                (b', d') = addI b d in
                (PPi p n a' b', PPi p' n' c' d')
-    addI (PRefl fc a) (PRefl fc' b)
-         = let (a', b') = addI a b in
-               (PRefl fc a', PRefl fc' b')
     addI (PEq fc at bt a b) (PEq fc' ct dt c d)
          | trace (show (at,bt)) False = undefined
          | at `expLike` ct && bt `expLike` dt
@@ -536,7 +532,6 @@ addImplicitDiffs x y
     expLike (PDPair _ _ x _ y) (PDPair _ _ x' _ y') = expLike x x' && expLike y y'
     expLike (PEq _ xt yt x y) (PEq _ xt' yt' x' y')
          = expLike x x' && expLike y y'
-    expLike (PRefl _ x) (PRefl _ x') = expLike x x'
     expLike x y = x == y
 
 -- Issue #1589 on the issue tracker

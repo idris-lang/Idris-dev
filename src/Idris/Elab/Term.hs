@@ -343,9 +343,6 @@ elab ist info emode opts fn tm
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
-    elab' ina _ (PRefl fc t)
-        = elab' ina (Just fc) (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True,
-                                                   pimp (sMN 0 "x") t False])
     elab' ina _ (PEq fc Placeholder Placeholder l r)
        = try (do tyn <- getNameFrom (sMN 0 "aqty")
                  claim tyn RType

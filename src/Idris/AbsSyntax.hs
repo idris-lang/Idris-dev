@@ -1140,7 +1140,6 @@ getPriority i tm = 1 -- pri tm
             [] -> 0 -- must be locally bound, if it's not an error...
     pri (PPi _ _ x y) = max 5 (max (pri x) (pri y))
     pri (PTrue _ _) = 0
-    pri (PRefl _ _) = 1
     pri (PEq _ _ _ l r) = max 1 (max (pri l) (pri r))
     pri (PRewrite _ l r _) = max 1 (max (pri l) (pri r))
     pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as)))
@@ -1608,7 +1607,6 @@ addImpl' inpat env infns imp_meths ist ptm
     ai qq env ds (PHidden tm) = PHidden (ai qq env ds tm)
     -- Don't do PProof or PTactics since implicits get added when scope is
     -- properly known in ElabTerm.runTac
-    ai qq env ds (PRefl fc tm) = PRefl fc (ai qq env ds tm)
     ai qq env ds (PUnifyLog tm) = PUnifyLog (ai qq env ds tm)
     ai qq env ds (PNoImplicits tm) = PNoImplicits (ai qq env ds tm)
     ai qq env ds (PQuasiquote tm g) = PQuasiquote (ai True env ds tm)
@@ -1952,7 +1950,6 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PQuote _) _ = return []
     match (PProof _) _ = return []
     match (PTactics _) _ = return []
-    match (PRefl _ _) (PRefl _ _) = return []
     match (PResolveTC _) (PResolveTC _) = return []
     match (PTrue _ _) (PTrue _ _) = return []
     match (PReturn _) (PReturn _) = return []

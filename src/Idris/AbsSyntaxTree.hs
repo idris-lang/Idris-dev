@@ -818,7 +818,6 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PIfThenElse FC PTerm PTerm PTerm -- ^ Conditional expressions - elaborated to an overloading of ifThenElse
            | PCase FC PTerm [(PTerm, PTerm)] -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
            | PTrue FC PunInfo -- ^ Unit type..?
-           | PRefl FC PTerm -- ^ The canonical proof of the equality type
            | PResolveTC FC -- ^ Solve this dictionary by type class resolution
            | PEq FC PTerm PTerm PTerm PTerm -- ^ Heterogeneous equality type: A = B
            | PRewrite FC PTerm PTerm (Maybe PTerm) -- ^ "rewrite" syntax, with optional result type
@@ -1027,7 +1026,6 @@ highestFC (PMatchApp fc _) = Just fc
 highestFC (PCase fc _ _) = Just fc
 highestFC (PIfThenElse fc _ _ _) = Just fc
 highestFC (PTrue fc _) = Just fc
-highestFC (PRefl fc _) = Just fc
 highestFC (PResolveTC fc) = Just fc
 highestFC (PEq fc _ _ _ _) = Just fc
 highestFC (PRewrite fc _ _ _) = Just fc
@@ -1556,7 +1554,6 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
         , kwd "else" <+> prettySe startPrec bnd f
         ]
     prettySe p bnd (PHidden tm) = text "." <> prettySe funcAppPrec bnd tm
-    prettySe p bnd (PRefl _ _) = annName eqCon $ text "Refl"
     prettySe p bnd (PResolveTC _) = kwd "%instance"
     prettySe p bnd (PTrue _ IsType) = annName unitTy $ text "()"
     prettySe p bnd (PTrue _ IsTerm) = annName unitCon $ text "()"
@@ -1872,7 +1869,6 @@ instance Sized PTerm where
   size (PCase fc trm bdy) = 1 + size trm + size bdy
   size (PIfThenElse fc c t f) = 1 + sum (map size [c, t, f])
   size (PTrue fc _) = 1
-  size (PRefl fc _) = 1
   size (PResolveTC fc) = 1
   size (PEq fc _ _ left right) = 1 + size left + size right
   size (PRewrite fc left right _) = 1 + size left + size right
