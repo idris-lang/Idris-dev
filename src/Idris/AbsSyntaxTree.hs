@@ -612,13 +612,15 @@ data PDecl' t
               -- ^ Record declaration
    | PClass   (Docstring (Either Err PTerm)) SyntaxInfo FC
               [(Name, t)] -- constraints
-              Name
+              Name -- class name
               [(Name, t)] -- parameters
               [(Name, Docstring (Either Err PTerm))] -- parameter docstrings
               [Name] -- determining parameters
               [PDecl' t] -- declarations
+              (Maybe Name) -- instance constructor name
+              (Docstring (Either Err PTerm)) -- instance constructor docs
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
-              -- class name, parameters, method declarations
+              -- class name, parameters, method declarations, optional constructor name
    | PInstance
        (Docstring (Either Err PTerm)) -- Instance docs
        [(Name, Docstring (Either Err PTerm))] -- Parameter docs
@@ -733,7 +735,7 @@ declared (PData _ _ _ _ _ (PLaterdecl n _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
 declared (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
-declared (PClass _ _ _ _ n _ _ _ ms) = n : concatMap declared ms
+declared (PClass _ _ _ _ n _ _ _ ms cn cd) = n : (maybeToList cn ++ concatMap declared ms)
 declared (PInstance _ _ _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
@@ -753,7 +755,7 @@ tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
 tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
-tldeclared (PClass _ _ _ _ n _ _ _ ms) = concatMap tldeclared ms
+tldeclared (PClass _ _ _ _ n _ _ _ ms cn _) = n : (maybeToList cn ++ concatMap tldeclared ms)
 tldeclared (PInstance _ _ _ _ _ _ _ _ _ _) = []
 tldeclared _ = []
 
@@ -769,7 +771,7 @@ defined (PData _ _ _ _ _ (PLaterdecl n _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
 defined (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
-defined (PClass _ _ _ _ n _ _ _ ms) = n : concatMap defined ms
+defined (PClass _ _ _ _ n _ _ _ ms cn _) = n : (maybeToList cn ++ concatMap defined ms)
 defined (PInstance _ _ _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
 defined (PSyntax _ _) = []
@@ -1070,7 +1072,7 @@ highestFC (PQuoteName _) = Nothing
 
 -- Type class data
 
-data ClassInfo = CI { instanceName :: Name,
+data ClassInfo = CI { instanceCtorName :: Name,
                       class_methods :: [(Name, (FnOpts, PTerm))],
                       class_defaults :: [(Name, (Name, PDecl))], -- method name -> default impl
                       class_default_superclasses :: [PDecl],
@@ -1782,7 +1784,7 @@ showDeclImp o (PData _ _ _ _ _ d) = showDImp o { ppopt_impl = True } d
 showDeclImp o (PParams _ ns ps) = text "params" <+> braces (text (show ns) <> line <> showDecls o ps <> line)
 showDeclImp o (PNamespace n ps) = text "namespace" <+> text n <> braces (line <> showDecls o ps <> line)
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
-showDeclImp o (PClass _ _ _ cs n ps _ _ ds)
+showDeclImp o (PClass _ _ _ cs n ps _ _ ds _ _)
    = text "class" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
 showDeclImp o (PInstance _ _ _ _ cs n _ t _ ds)
    = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds

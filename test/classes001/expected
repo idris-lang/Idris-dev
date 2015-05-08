@@ -1,0 +1,27 @@
+Type class MyShow
+    A fancy shower with a constructor
+
+Parameters:
+    a   -- the thing to be shown
+
+Methods:
+    myShow : MyShow a => (x : a) -> String
+        The shower
+        
+Instance constructor:
+    MkMyShow : (myShow : a -> String) -> MyShow a
+        Build a MyShow
+        Arguments:
+            (implicit) a : Type  -- the thing to be shown
+            
+            myShow : a -> String  -- The shower
+            
+Instances:
+    MyShow Integer
+MkMyShow : (myShow : a -> String) -> MyShow a
+    Build a MyShow
+    Arguments:
+        (implicit) a : Type  -- the thing to be shown
+        
+        myShow : a -> String  -- The shower
+        

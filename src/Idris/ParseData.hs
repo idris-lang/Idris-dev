@@ -89,7 +89,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
         fields <- many . indented $ field syn
             
         return (fields, constructorName, constructorDoc')
-      where        
+      where
         field :: SyntaxInfo -> IdrisParser ((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))
         field syn = do doc <- optional docComment
                        c <- optional $ lchar '{'
@@ -107,7 +107,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                        return (n, p, t, doc')
 
         constructor :: IdrisParser Name
-        constructor = (reserved "constructor") *> fnName                         
+        constructor = reserved "constructor" *> fnName
 
         endPlicity :: Maybe Char -> IdrisParser Plicity
         endPlicity (Just _) = do lchar '}'
@@ -126,7 +126,6 @@ recordParameter syn =
   <|>
   (do (n, pt) <- onlyName syn
       return (n, expl, pt))
-                 
   where
     namedTy :: SyntaxInfo -> IdrisParser (Name, PTerm)
     namedTy syn =
