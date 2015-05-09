@@ -7,8 +7,8 @@ import Data.So
 -- case but not on test006.idr, due to the extra computation.
 total
 blargh : (xs, ys : List a) -> So (length xs > length ys) -> GT (length xs) (length ys)
-blargh [] [] Oh impossible
 blargh [] (y :: xs) so = absurd so
 blargh (y :: xs) [] Oh = LTESucc LTEZero
 
--- Missing: blargh (y :: xs) (z :: ys) x = ?blargh_rhs_3
+-- Missing: blargh (y :: xs) (z :: ys) p = ?blargh_rhs_3
+-- blargh [] [] p = ?foo -- impossible

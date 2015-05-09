@@ -143,7 +143,7 @@ recoverableCoverage :: Context -> Err -> Bool
 recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
     = let topx' = normalise ctxt [] topx
           topy' = normalise ctxt [] topy in
-          checkRec topx' topy'
+          r || checkRec topx' topy'
   where -- different notion of recoverable than in unification, since we
         -- have no metavars -- just looking to see if a constructor is failing
         -- to unify with a function that may be reduced later
