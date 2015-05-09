@@ -77,7 +77,7 @@ prefix name f = Prefix (do reservedOp name
 -- | Backtick operator
 backtick :: Operator IdrisParser PTerm
 backtick = Infix (do indentPropHolds gtProp
-                     lchar '`'; n <- fnName
+                     lchar '`'; n <- fst <$> fnName
                      lchar '`'
                      indentPropHolds gtProp
                      fc <- getFC
@@ -101,9 +101,13 @@ nofixityoperator = Infix (do indentPropHolds gtProp
 @
 
 -}
-operatorFront :: IdrisParser Name
-operatorFront = try ((lchar '(' *> reservedOp "="  <* lchar ')') >> (return eqTy))
-            <|> maybeWithNS (lchar '(' *> operator <* lchar ')') False []
+operatorFront :: IdrisParser (Name, FC)
+operatorFront = try (do (FC f (l, c) _) <- getFC
+                        op <- lchar '(' *> reservedOp "="  <* lchar ')'
+                        return (eqTy, FC f (l, c) (l, c+3)))
+            <|> maybeWithNS (do (FC f (l, c) _) <- getFC
+                                op <- lchar '(' *> operator <* lchar ')'
+                                return (op, (FC f (l, c) (l, c+1)))) False []
 
 {- | Parses a function (either normal name or operator)
 
@@ -111,7 +115,7 @@ operatorFront = try ((lchar '(' *> reservedOp "="  <* lchar ')') >> (return eqTy
   FnName ::= Name | OperatorFront;
 @
 -}
-fnName :: IdrisParser Name
+fnName :: IdrisParser (Name, FC)
 fnName = try operatorFront <|> name <?> "function name"
 
 {- | Parses a fixity declaration

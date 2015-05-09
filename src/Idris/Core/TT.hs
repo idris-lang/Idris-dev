@@ -57,6 +57,31 @@ data FC = FC { fc_fname :: String, -- ^ Filename
         | FileFC { fc_fname :: String } -- ^ Locations with file only
   deriving (Data, Typeable, Ord)
 
+-- | Get the largest span containing the two FCs
+spanFC :: FC -> FC -> FC
+spanFC (FC f start end) (FC f' start' end')
+    | f == f' = FC f (minLocation start start') (maxLocation end end')
+    | otherwise = NoFC
+  where minLocation (l, c) (l', c') =
+          case compare l l' of
+            LT -> (l, c)
+            EQ -> (l, min c c')
+            GT -> (l', c')
+        maxLocation (l, c) (l', c') =
+          case compare l l' of
+            LT -> (l', c')
+            EQ -> (l, max c c')
+            GT -> (l, c)
+spanFC fc@(FC f _ _) (FileFC f') | f == f' = fc
+                                 | otherwise = NoFC
+spanFC (FileFC f') fc@(FC f _ _) | f == f' = fc
+                                 | otherwise = NoFC
+spanFC (FileFC f) (FileFC f') | f == f' = FileFC f
+                              | otherwise = NoFC
+spanFC NoFC fc = fc
+spanFC fc NoFC = fc
+
+
 -- | Ignore source location equality (so deriving classes do not compare FCs)
 instance Eq FC where
   _ == _ = True

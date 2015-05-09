@@ -212,19 +212,19 @@ genArg argName argParser cmd name = do
     failure = return $ Left ("Usage is :" ++ name ++ " <" ++ argName ++ ">")
 
 nameArg, fnNameArg :: (Name -> Command) -> String -> P.IdrisParser (Either String Command)
-nameArg = genArg "name" P.name
-fnNameArg = genArg "functionname" P.fnName
+nameArg = genArg "name" $ fst <$> P.name
+fnNameArg = genArg "functionname" $ fst <$> P.fnName
 
 strArg :: (String -> Command) -> String -> P.IdrisParser (Either String Command)
 strArg = genArg "string" (many anyChar)
 
 moduleArg :: (FilePath -> Command) -> String -> P.IdrisParser (Either String Command)
-moduleArg = genArg "module" (fmap toPath P.identifier) 
+moduleArg = genArg "module" (fmap (toPath . fst) P.identifier) 
   where
     toPath n = foldl1' (</>) $ splitOn "." n
 
 namespaceArg :: ([String] -> Command) -> String -> P.IdrisParser (Either String Command)
-namespaceArg = genArg "namespace" (fmap toNS P.identifier) 
+namespaceArg = genArg "namespace" (fmap (toNS . fst) P.identifier) 
   where
     toNS  = splitOn "."
 
@@ -258,8 +258,8 @@ proofArg cmd name = do
     upd <- option False $ do
         P.lchar '!'
         return True
-    l <- fmap fst P.natural
-    n <- P.name;
+    l <- fst <$> P.natural
+    n <- fst <$> P.name;
     return (Right (cmd upd (fromInteger l) n))
 
 cmd_doc :: String -> P.IdrisParser (Either String Command)
@@ -327,20 +327,20 @@ cmd_compile name = do
     let codegenOption :: P.IdrisParser Codegen
         codegenOption = do
             let bytecodeCodegen = discard (P.symbol "bytecode") *> return Bytecode
-                viaCodegen = do x <- P.identifier
+                viaCodegen = do x <- fst <$> P.identifier
                                 return (Via (map toLower x))
             bytecodeCodegen <|> viaCodegen
 
     let hasOneArg = do
         i <- get
-        f <- P.identifier
+        f <- fst <$> P.identifier
         eof
         return $ Right (Compile defaultCodegen f)
 
     let hasTwoArgs = do
         i <- get
         codegen <- codegenOption
-        f <- P.identifier
+        f <- fst <$> P.identifier
         eof
         return $ Right (Compile codegen f)
 
@@ -350,7 +350,7 @@ cmd_compile name = do
 cmd_addproof :: String -> P.IdrisParser (Either String Command)
 cmd_addproof name = do
     n <- option Nothing $ do
-        x <- P.name
+        x <- fst <$> P.name
         return (Just x)
     eof
     return (Right (AddProof n))
@@ -367,7 +367,7 @@ cmd_let name = do
     return (Right (NewDefn defn))
 
 cmd_unlet :: String -> P.IdrisParser (Either String Command)
-cmd_unlet name = (Right . Undefine) `fmap` many P.name
+cmd_unlet name = (Right . Undefine) `fmap` many (fst <$> P.name)
 
 cmd_loadto :: String -> P.IdrisParser (Either String Command)
 cmd_loadto name = do
@@ -459,13 +459,13 @@ cmd_search = packageBasedCmd
 cmd_proofsearch :: String -> P.IdrisParser (Either String Command)
 cmd_proofsearch name = do
     upd <- option False (do P.lchar '!'; return True)
-    l <- fmap (fromInteger . fst) P.natural; n <- P.name
-    hints <- many P.fnName
+    l <- fmap (fromInteger . fst) P.natural; n <- fst <$> P.name
+    hints <- many (fst <$> P.fnName)
     return (Right (DoProofSearch upd True l n hints))
 
 cmd_refine :: String -> P.IdrisParser (Either String Command)
 cmd_refine name = do
    upd <- option False (do P.lchar '!'; return True)
-   l <- fmap (fromInteger . fst) P.natural; n <- P.name
-   hint <- P.fnName
+   l <- fmap (fromInteger . fst) P.natural; n <- fst <$> P.name
+   hint <- fst <$> P.fnName
    return (Right (DoProofSearch upd False l n [hint]))

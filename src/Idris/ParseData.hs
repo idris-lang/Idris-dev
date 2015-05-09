@@ -53,7 +53,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                       co <- recordI
                       return (doc', paramDocs', acc, opts ++ co))
                 fc <- getFC
-                tyn_in <- fnName
+                tyn_in <- fst <$> fnName
                 let tyn = expandNS syn tyn_in
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
@@ -87,13 +87,13 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
         let constructorDoc' = annotate syn ist constructorDoc
 
         fields <- many . indented $ field syn
-            
+
         return (fields, constructorName, constructorDoc')
-      where        
+      where
         field :: SyntaxInfo -> IdrisParser ((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))
         field syn = do doc <- optional docComment
                        c <- optional $ lchar '{'
-                       n <- (do n <- fnName
+                       n <- (do n <- fst <$> fnName
                                 return $ Just (expandNS syn n))
                         <|> (do symbol "_"
                                 return Nothing)
@@ -107,7 +107,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                        return (n, p, t, doc')
 
         constructor :: IdrisParser Name
-        constructor = (reserved "constructor") *> fnName                         
+        constructor = (reserved "constructor") *> (fst <$> fnName)
 
         endPlicity :: Maybe Char -> IdrisParser Plicity
         endPlicity (Just _) = do lchar '}'
@@ -130,13 +130,13 @@ recordParameter syn =
   where
     namedTy :: SyntaxInfo -> IdrisParser (Name, PTerm)
     namedTy syn =
-      do n <- fnName
+      do n <- fst <$> fnName
          lchar ':'
          ty <- typeExpr (allowImp syn)
          return (expandNS syn n, ty)
     onlyName :: SyntaxInfo -> IdrisParser (Name, PTerm)
     onlyName syn =
-      do n <- fnName
+      do n <- fst <$> fnName
          fc <- getFC
          return (expandNS syn n, PType fc)
 
@@ -191,7 +191,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                                    | (n, d) <- argDocs ]
                     return (doc', argDocs', acc, dataOpts))
                fc <- getFC
-               tyn_in <- fnName
+               tyn_in <- fst <$> fnName
                (do try (lchar ':')
                    popIndent
                    ty <- typeExpr (allowImp syn)
@@ -201,7 +201,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                      cons <- indentedBlock (constructor syn)
                      accData acc tyn (map (\ (_, _, n, _, _, _) -> n) cons)
                      return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn ty cons))) <|> (do
-                    args <- many name
+                    args <- many (fst <$> name)
                     let ty = bindArgs (map (const (PType fc)) args) (PType fc)
                     let tyn = expandNS syn tyn_in
                     option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn ty)) (do
@@ -243,11 +243,11 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
 constructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, PTerm, FC, [Name])
 constructor syn
     = do (doc, argDocs) <- option noDocs docComment
-         cn_in <- fnName; fc <- getFC
+         cn_in <- fst <$> fnName; fc <- getFC
          let cn = expandNS syn cn_in
          lchar ':'
          fs <- option [] (do lchar '%'; reserved "erase"
-                             sepBy1 name (lchar ','))
+                             sepBy1 (fst <$> name) (lchar ','))
          ty <- typeExpr (allowImp syn)
          ist <- get
          let doc' = annotCode (tryFullExpr syn ist) doc
@@ -264,7 +264,7 @@ simpleConstructor syn
      = do (doc, _) <- option noDocs (try docComment)
           ist <- get
           let doc' = annotCode (tryFullExpr syn ist) doc
-          cn_in <- fnName
+          cn_in <- fst <$> fnName
           let cn = expandNS syn cn_in
           fc <- getFC
           args <- many (do notEndApp
@@ -277,7 +277,7 @@ DSL ::= 'dsl' FnName OpenBlock Overload'+ CloseBlock;
  -}
 dsl :: SyntaxInfo -> IdrisParser PDecl
 dsl syn = do reserved "dsl"
-             n <- fnName
+             n <- fst <$> fnName
              bs <- indentedBlock (overload syn)
              let dsl = mkDSL bs (dsl_info syn)
              checkDSL dsl
@@ -314,8 +314,8 @@ OverloadIdentifier ::= 'let' | Identifier;
 Overload ::= OverloadIdentifier '=' Expr;
 -}
 overload :: SyntaxInfo -> IdrisParser (String, PTerm)
-overload syn = do o <- identifier <|> do reserved "let"
-                                         return "let"
+overload syn = do o <- (fst <$> identifier) <|> do reserved "let"
+                                                   return "let"
                   if o `notElem` overloadable
                      then fail $ show o ++ " is not an overloading"
                      else do

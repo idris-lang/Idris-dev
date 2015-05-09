@@ -1293,7 +1293,7 @@ process fn (Browse ns) =
 process fn (MakeDoc s) =
   do     istate        <- getIState
          let names      = words s
-             parse n    | Success x <- runparser name istate fn n = Right x
+             parse n    | Success x <- runparser (fmap fst name) istate fn n = Right x
              parse n    = Left n
              (bad, nss) = partitionEithers $ map parse names
          cd            <- runIO $ getCurrentDirectory

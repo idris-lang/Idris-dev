@@ -189,7 +189,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                                many (satisfy isSpace)
                                char '@'
                                many (satisfy isSpace)
-                               n <- name
+                               n <- fst <$> name
                                many (satisfy isSpace)
                                docs <- many (satisfy (not . isEol))
                                eol ; someSpace
@@ -278,37 +278,47 @@ reservedOp name = token $ try $
   do string name
      notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
 
--- | Parses an identifier as a token
-identifier :: MonadicParsing m => m String
-identifier = try(do i <- token $ Tok.ident idrisStyle
+-- | Parses an identifier as a token
+identifier :: (MonadicParsing m) => m (String, FC)
+identifier = try(do (i, fc) <-
+                      token $ do (FC f (l, c) _) <- getFC
+                                 i <- Tok.ident idrisStyle
+                                 return (i, FC f (l, c) (l, c + length i))
                     when (i == "_") $ unexpected "wildcard"
-                    return i)
+                    return (i, fc))
 
 -- | Parses an identifier with possible namespace as a name
-iName :: MonadicParsing m => [String] -> m Name
-iName bad = maybeWithNS identifier False bad <?> "name"
+iName :: (MonadicParsing m, HasLastTokenSpan m) => [String] -> m (Name, FC)
+iName bad = do (n, fc) <- maybeWithNS identifier False bad
+               return (n, fc)
+            <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
-maybeWithNS :: MonadicParsing m => m String -> Bool -> [String] -> m Name
+maybeWithNS :: (MonadicParsing m, HasLastTokenSpan m) => m (String, FC) -> Bool -> [String] -> m (Name, FC)
 maybeWithNS parser ascend bad = do
-  i <- option "" (lookAhead identifier)
+  fc <- getFC
+  i <- option "" (lookAhead (fst <$> identifier))
   when (i `elem` bad) $ unexpected "reserved identifier"
   let transf = if ascend then id else reverse
-  (x, xs) <- choice (transf (parserNoNS parser : parsersNS parser i))
-  return $ mkName (x, xs)
-  where parserNoNS :: MonadicParsing m => m String -> m (String, String)
-        parserNoNS parser = do x <- parser; return (x, "")
-        parserNS   :: MonadicParsing m => m String -> String -> m (String, String)
-        parserNS   parser ns = do xs <- string ns; lchar '.';  x <- parser; return (x, xs)
-        parsersNS  :: MonadicParsing m => m String -> String -> [m (String, String)]
+  (x, xs, fc) <- choice (transf (parserNoNS parser : parsersNS parser i))
+  return (mkName (x, xs), fc)
+  where parserNoNS :: MonadicParsing m => m (String, FC) -> m (String, String, FC)
+        parserNoNS parser = do (x, fc) <- parser; return (x, "", fc)
+        parserNS   :: MonadicParsing m => m (String, FC) -> String -> m (String, String, FC)
+        parserNS   parser ns = do startFC <- getFC
+                                  xs <- string ns
+                                  lchar '.';  (x, nameFC) <- parser
+                                  return (x, xs, spanFC startFC nameFC)
+        parsersNS  :: MonadicParsing m => m (String, FC) -> String -> [m (String, String, FC)]
         parsersNS parser i = [try (parserNS parser ns) | ns <- (initsEndAt (=='.') i)]
 
 -- | Parses a name
-name :: IdrisParser Name
+name :: IdrisParser (Name, FC)
 name = (<?> "name") $ do
     keywords <- syntax_keywords <$> get
     aliases  <- module_aliases  <$> get
-    unalias aliases <$> iName keywords
+    (n, fc) <- iName keywords
+    return (unalias aliases n, fc)
   where
     unalias :: M.Map [T.Text] [T.Text] -> Name -> Name
     unalias aliases (NS n ns) | Just ns' <- M.lookup ns aliases = NS n ns'
