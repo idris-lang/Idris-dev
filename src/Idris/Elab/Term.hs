@@ -653,7 +653,7 @@ elab ist info emode opts fn tm
             solve
     -- if f is local, just do a simple_app
     -- FIXME: Anyone feel like refactoring this mess? - EB
-    elab' ina topfc tm@(PApp fc (PRef _ f) args_in)
+    elab' ina topfc tm@(PApp fc (PRef ffc f) args_in)
       | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
       | otherwise = implicitApp $
@@ -661,6 +661,7 @@ elab ist info emode opts fn tm
             ty <- goal
             fty <- get_type (Var f)
             ctxt <- get_context
+            annot <- findHighlight f
             let args = insertScopedImps fc (normalise ctxt env fty) args_in
             let unmatchableArgs = if pattern 
                                      then getUnmatchable (tt_ctxt ist) f
@@ -671,11 +672,12 @@ elab ist info emode opts fn tm
               lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
             if (f `elem` map fst env && length args == 1 && length args_in == 1)
                then -- simple app, as below
-                    do simple_app False 
+                    do simple_app False
                                   (elabE (ina { e_isfn = True }) (Just fc) (PRef fc f))
                                   (elabE (ina { e_inarg = True }) (Just fc) (getTm (head args)))
                                   (show tm)
                        solve
+                       highlightSource ffc annot
                        return []
                else
                  do ivs <- get_instances
@@ -703,7 +705,7 @@ elab ist info emode opts fn tm
                              sortBy cmpArg (zip ns args)
                     ulog <- getUnifyLog
                     elabArgs ist (ina { e_inarg = e_inarg ina || not isinf }) 
-                           [] fc False f 
+                           [] fc False f
                              (zip ns' (unmatchableArgs ++ repeat False))
                              (f == sUN "Force")
                              (map (\x -> getTm x) eargs) -- TODO: remove this False arg
