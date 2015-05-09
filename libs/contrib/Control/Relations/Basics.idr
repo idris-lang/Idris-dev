@@ -1,5 +1,5 @@
 ||| General definitions and theorems about relations
-module Relations.Basics
+module Control.Relations.Basics
 
 %default total
 %access public
@@ -104,14 +104,6 @@ Decreasing {a} f = (rel1, rel2 : Rel a) -> rel1 `Coarser` rel2 -> f rel2 `Coarse
 ||| it once.
 Idempotent : {default Equivalent eq : Rel (Rel a)} -> (Rel a -> Rel a) -> Type
 Idempotent {eq} {a} f = (rel : Rel a) -> f rel `eq` f (f rel)
-
-||| A closure operator on relations is one that is inflationary,
-||| increasing, and idempotent.
-data ClosureOperator : (Rel a -> Rel a) -> Type where
-  MkClosureOperator : (infl : Inflationary f) ->
-                      (incr : Increasing f) ->
-                      (idem : Idempotent f) ->
-                      ClosureOperator f
 
 ||| Take the inverse image of a relation under a function.
 ||| ``r `On` f`` is the inverse image of `r` under `f`.
