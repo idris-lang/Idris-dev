@@ -67,6 +67,12 @@ instance TokenParsing IdrisParser where
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
+class HasLastTokenSpan m where
+  getLastTokenSpan :: m (Maybe FC)
+
+instance HasLastTokenSpan IdrisParser where
+  getLastTokenSpan = lastTokenSpan <$> get
+
 -- | Helper to run Idris inner parser based stateT parsers
 runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Result res
 runparser p i inputname =
@@ -194,21 +200,21 @@ whiteSpace :: MonadicParsing m => m ()
 whiteSpace = Tok.whiteSpace
 
 -- | Parses a string literal
-stringLiteral :: IdrisParser (String, FC)
+stringLiteral :: (MonadicParsing m, HasLastTokenSpan m) => m (String, FC)
 stringLiteral = do str <- Tok.stringLiteral
-                   fc <- lastTokenSpan <$> get
+                   fc <- getLastTokenSpan
                    return (str, fromMaybe NoFC fc)
 
 -- | Parses a char literal
-charLiteral :: IdrisParser (Char, FC)
+charLiteral :: (MonadicParsing m, HasLastTokenSpan m) => m (Char, FC)
 charLiteral = do ch <- Tok.charLiteral
-                 fc <- lastTokenSpan <$> get
+                 fc <- getLastTokenSpan
                  return (ch, fromMaybe NoFC fc)
 
 -- | Parses a natural number
-natural :: IdrisParser (Integer, FC)
+natural :: (MonadicParsing m, HasLastTokenSpan m) => m (Integer, FC)
 natural = do n <- Tok.natural
-             fc <- lastTokenSpan <$> get
+             fc <- getLastTokenSpan
              return (n, fromMaybe NoFC fc)
 
 -- | Parses an integral number
@@ -216,9 +222,9 @@ integer :: MonadicParsing m => m Integer
 integer = Tok.integer
 
 -- | Parses a floating point number
-float :: IdrisParser (Double, FC)
+float :: (MonadicParsing m, HasLastTokenSpan m) => m (Double, FC)
 float = do f <- Tok.double
-           fc <- lastTokenSpan <$> get
+           fc <- getLastTokenSpan
            return (f, fromMaybe NoFC fc)
 
 {- * Symbols, identifiers, names and operators -}
