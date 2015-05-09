@@ -194,24 +194,32 @@ whiteSpace :: MonadicParsing m => m ()
 whiteSpace = Tok.whiteSpace
 
 -- | Parses a string literal
-stringLiteral :: MonadicParsing m => m String
-stringLiteral = Tok.stringLiteral
+stringLiteral :: IdrisParser (String, FC)
+stringLiteral = do str <- Tok.stringLiteral
+                   fc <- lastTokenSpan <$> get
+                   return (str, fromMaybe NoFC fc)
 
--- | Parses a char literal
-charLiteral :: MonadicParsing m => m Char
-charLiteral = Tok.charLiteral
+-- | Parses a char literal
+charLiteral :: IdrisParser (Char, FC)
+charLiteral = do ch <- Tok.charLiteral
+                 fc <- lastTokenSpan <$> get
+                 return (ch, fromMaybe NoFC fc)
 
 -- | Parses a natural number
-natural :: MonadicParsing m => m Integer
-natural = Tok.natural
+natural :: IdrisParser (Integer, FC)
+natural = do n <- Tok.natural
+             fc <- lastTokenSpan <$> get
+             return (n, fromMaybe NoFC fc)
 
 -- | Parses an integral number
 integer :: MonadicParsing m => m Integer
 integer = Tok.integer
 
 -- | Parses a floating point number
-float :: MonadicParsing m => m Double
-float = Tok.double
+float :: IdrisParser (Double, FC)
+float = do f <- Tok.double
+           fc <- lastTokenSpan <$> get
+           return (f, fromMaybe NoFC fc)
 
 {- * Symbols, identifiers, names and operators -}
 
@@ -367,15 +375,6 @@ getFC = do s <- position
            -- Issue #1594 on the Issue Tracker.
            -- https://github.com/idris-lang/Idris-dev/issues/1594
 
-{- | Get the span surrounding a parse -}
-withSpan :: MonadicParsing m => m a -> m (a, FC)
-withSpan p = do s <- position
-                let (dir, file) = splitFileName (fileName s)
-                let f = if dir == addTrailingPathSeparator "." then file else fileName s
-                res <- p
-                s' <- position
-                let fc = FC f (lineNum s, columnNum s) (lineNum s', columnNum s')
-                return (res, fc)
 
 {-* Syntax helpers-}
 -- | Bind constraints to term

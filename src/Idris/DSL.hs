@@ -72,7 +72,7 @@ expandSugar dsl (PAppBind fc t args) = PAppBind fc (expandSugar dsl t)
 expandSugar dsl (PCase fc s opts) = PCase fc (expandSugar dsl s)
                                         (map (pmap (expandSugar dsl)) opts)
 expandSugar dsl (PIfThenElse fc c t f) =
-  PApp fc (PRef (FC (fc_fname fc) (fc_start fc) (fc_start fc)) (sUN "ifThenElse"))
+  PApp fc (PRef NoFC (sUN "ifThenElse"))
        [ PExp 0 [] (sMN 0 "condition") $ expandSugar dsl c
        , PExp 0 [] (sMN 0 "whenTrue") $ expandSugar dsl t
        , PExp 0 [] (sMN 0 "whenFalse") $ expandSugar dsl f

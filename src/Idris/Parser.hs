@@ -362,7 +362,7 @@ syntaxSym =    try (do lchar '['; n <- name; lchar ']'
                         return (Binding n))
             <|> do n <- iName []
                    return (Keyword n)
-            <|> do sym <- stringLiteral
+            <|> do sym <- fmap fst stringLiteral
                    return (Symbol sym)
             <?> "syntax symbol"
 
@@ -466,7 +466,7 @@ fnOpts opts
         = do reserved "total"; fnOpts (TotalFn : opts)
       <|> do reserved "partial"; fnOpts (PartialFn : (opts \\ [TotalFn]))
       <|> do reserved "covering"; fnOpts (CoveringFn : (opts \\ [TotalFn]))
-      <|> do try (lchar '%' *> reserved "export"); c <- stringLiteral;
+      <|> do try (lchar '%' *> reserved "export"); c <- fmap fst stringLiteral;
                   fnOpts (CExport c : opts)
       <|> do try (lchar '%' *> reserved "no_implicit");
                   fnOpts (NoImplicit : opts)
@@ -490,7 +490,7 @@ fnOpts opts
       <?> "function modifier"
   where nameTimes :: IdrisParser (Name, Maybe Int)
         nameTimes = do n <- fnName
-                       t <- option Nothing (do reds <- natural
+                       t <- option Nothing (do reds <- fmap fst natural
                                                return (Just (fromInteger reds)))
                        return (n, t)
 
@@ -1077,13 +1077,19 @@ Directive' ::= 'lib'            CodeGen String_t
 @
 -}
 directive :: SyntaxInfo -> IdrisParser [PDecl]
-directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- stringLiteral;
+directive syn = do try (lchar '%' *> reserved "lib")
+                   cgn <- codegen_
+                   lib <- fmap fst stringLiteral
                    return [PDirective (DLib cgn lib)]
-             <|> do try (lchar '%' *> reserved "link"); cgn <- codegen_; obj <- stringLiteral;
+             <|> do try (lchar '%' *> reserved "link")
+                    cgn <- codegen_; obj <- fst <$> stringLiteral
                     return [PDirective (DLink cgn obj)]
-             <|> do try (lchar '%' *> reserved "flag"); cgn <- codegen_; flag <- stringLiteral
+             <|> do try (lchar '%' *> reserved "flag")
+                    cgn <- codegen_; flag <- fst <$> stringLiteral
                     return [PDirective (DFlag cgn flag)]
-             <|> do try (lchar '%' *> reserved "include"); cgn <- codegen_; hdr <- stringLiteral;
+             <|> do try (lchar '%' *> reserved "include")
+                    cgn <- codegen_
+                    hdr <- fst <$> stringLiteral
                     return [PDirective (DInclude cgn hdr)]
              <|> do try (lchar '%' *> reserved "hide"); n <- fnName
                     return [PDirective (DHide n)]
@@ -1095,9 +1101,11 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                     i <- get
                     put (i { default_total = tot } )
                     return [PDirective (DDefault tot)]
-             <|> do try (lchar '%' *> reserved "logging"); i <- natural;
+             <|> do try (lchar '%' *> reserved "logging")
+                    i <- fst <$> natural
                     return [PDirective (DLogging i)]
-             <|> do try (lchar '%' *> reserved "dynamic"); libs <- sepBy1 stringLiteral (lchar ',');
+             <|> do try (lchar '%' *> reserved "dynamic")
+                    libs <- sepBy1 (fmap fst stringLiteral) (lchar ',')
                     return [PDirective (DDynamicLibs libs)]
              <|> do try (lchar '%' *> reserved "name")
                     ty <- fnName

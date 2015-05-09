@@ -258,7 +258,7 @@ proofArg cmd name = do
     upd <- option False $ do
         P.lchar '!'
         return True
-    l <- P.natural
+    l <- fmap fst P.natural
     n <- P.name;
     return (Right (cmd upd (fromInteger l) n))
 
@@ -282,7 +282,8 @@ cmd_consolewidth name = do
         pConsoleWidth :: P.IdrisParser ConsoleWidth
         pConsoleWidth = do discard (P.symbol "auto"); return AutomaticWidth
                     <|> do discard (P.symbol "infinite"); return InfinitelyWide
-                    <|> do n <- fmap fromInteger P.natural; return (ColsWide n)
+                    <|> do n <- fmap (fromInteger . fst) P.natural
+                           return (ColsWide n)
 
 cmd_execute :: String -> P.IdrisParser (Either String Command)
 cmd_execute name = do
@@ -307,7 +308,7 @@ cmd_pprint :: String -> P.IdrisParser (Either String Command)
 cmd_pprint name = do
      fmt <- ppFormat
      P.whiteSpace
-     n <- fmap fromInteger P.natural
+     n <- fmap (fromInteger . fst) P.natural
      P.whiteSpace
      t <- P.fullExpr defaultSyntax
      return (Right (PPrint fmt n t))
@@ -349,16 +350,16 @@ cmd_compile name = do
 cmd_addproof :: String -> P.IdrisParser (Either String Command)
 cmd_addproof name = do
     n <- option Nothing $ do
-        x <- P.name;
+        x <- P.name
         return (Just x)
     eof
     return (Right (AddProof n))
 
 cmd_log :: String -> P.IdrisParser (Either String Command)
 cmd_log name = do
-    i <- P.natural
+    i <- fmap (fromIntegral . fst) P.natural
     eof
-    return (Right (LogLvl (fromIntegral i)))
+    return (Right (LogLvl i))
 
 cmd_let :: String -> P.IdrisParser (Either String Command)
 cmd_let name = do
@@ -370,9 +371,9 @@ cmd_unlet name = (Right . Undefine) `fmap` many P.name
 
 cmd_loadto :: String -> P.IdrisParser (Either String Command)
 cmd_loadto name = do
-    toline <- P.natural
+    toline <- fmap (fromInteger . fst) P.natural
     f <- many anyChar;
-    return (Right (Load f (Just (fromInteger toline))))
+    return (Right (Load f (Just toline)))
 
 cmd_colour :: String -> P.IdrisParser (Either String Command)
 cmd_colour name = fmap Right pSetColourCmd
@@ -452,19 +453,19 @@ packageBasedCmd valParser cmd name = do
   return (Right (cmd pkgs val))
 
 cmd_search :: String -> P.IdrisParser (Either String Command)
-cmd_search = packageBasedCmd 
+cmd_search = packageBasedCmd
   (P.typeExpr (defaultSyntax { implicitAllowed = True })) Search
 
 cmd_proofsearch :: String -> P.IdrisParser (Either String Command)
 cmd_proofsearch name = do
     upd <- option False (do P.lchar '!'; return True)
-    l <- P.natural; n <- P.name;
+    l <- fmap (fromInteger . fst) P.natural; n <- P.name
     hints <- many P.fnName
-    return (Right (DoProofSearch upd True (fromInteger l) n hints))
+    return (Right (DoProofSearch upd True l n hints))
 
 cmd_refine :: String -> P.IdrisParser (Either String Command)
 cmd_refine name = do
    upd <- option False (do P.lchar '!'; return True)
-   l <- P.natural; n <- P.name;
+   l <- fmap (fromInteger . fst) P.natural; n <- P.name
    hint <- P.fnName
-   return (Right (DoProofSearch upd False (fromInteger l) n [hint]))
+   return (Right (DoProofSearch upd False l n [hint]))

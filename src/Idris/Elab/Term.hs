@@ -343,8 +343,7 @@ elab ist info emode opts fn tm
        do hnf_compute
           g <- goal
           case g of
-            TType _ -> do highlightSource fc (AnnName unitTy Nothing Nothing Nothing)
-                          elab' ina (Just fc) (PRef fc unitTy)
+            TType _ -> elab' ina (Just fc) (PRef fc unitTy)
             UType _ -> elab' ina (Just fc) (PRef fc unitTy)
             _ -> elab' ina (Just fc) (PRef fc unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
@@ -353,8 +352,9 @@ elab ist info emode opts fn tm
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
     elab' ina _ (PRefl fc t)
-        = elab' ina (Just fc) (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True,
-                                                   pimp (sMN 0 "x") t False])
+        = do elab' ina (Just fc) (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True,
+                                                      pimp (sMN 0 "x") t False])
+             highlightSource fc (AnnName eqCon Nothing Nothing Nothing)
     elab' ina _ (PEq fc Placeholder Placeholder l r)
        = try (do tyn <- getNameFrom (sMN 0 "aqty")
                  claim tyn RType
@@ -427,7 +427,7 @@ elab ist info emode opts fn tm
                                               [pimp (sMN 0 "a") t False,
                                                pimp (sMN 0 "P") Placeholder True,
                                                pexp l, pexp r])
-    elab' ina fc (PAlternative True as) 
+    elab' ina fc (PAlternative True as)
         = do hnf_compute
              ty <- goal
              ctxt <- get_context
@@ -490,13 +490,17 @@ elab ist info emode opts fn tm
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
           | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
-          | otherwise = 
+          | otherwise =
                do fty <- get_type (Var n) -- check for implicits
                   ctxt <- get_context
-                  env <- get_env 
+                  env <- get_env
                   let a' = insertScopedImps fc (normalise ctxt env fty) []
                   if null a'
-                     then erun fc $ do apply (Var n) []; solve
+                     then erun fc $
+                            do apply (Var n) []
+                               hl <- findHighlight n
+                               solve
+                               highlightSource fc hl
                      else elab' ina fc' (PApp fc tm [])
     elab' ina _ (PLam _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
     elab' ina _ (PLam fc n Placeholder sc)
@@ -1385,6 +1389,18 @@ pruneByType env (P _ n _) ctxt as
                _ -> False
 
 pruneByType _ t _ as = as
+
+-- | Use the local elab context to work out the highlighting for a name
+findHighlight :: Name -> ElabD OutputAnnotation
+findHighlight n = do ctxt <- get_context
+                     env <- get_env
+                     case lookup n env of
+                       Just _ -> return $ AnnBoundName n False
+                       Nothing -> case lookupTyExact n ctxt of
+                                    Just _ -> return $ AnnName n Nothing Nothing Nothing
+                                    Nothing -> lift . tfail . InternalMsg $
+                                                 "Can't find name" ++ show n
+
 
 findInstances :: IState -> Term -> [Name]
 findInstances ist t

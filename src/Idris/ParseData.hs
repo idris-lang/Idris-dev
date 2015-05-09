@@ -56,7 +56,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                 tyn_in <- fnName
                 let tyn = expandNS syn tyn_in
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
-                                                    syn_namespace syn }                                    
+                                                    syn_namespace syn }
                 params <- manyTill (recordParameter rsyn) (reserved "where")
                 (fields, cname, cdoc) <- indentedBlockS $ agdaStyleBody rsyn tyn
                 case cname of

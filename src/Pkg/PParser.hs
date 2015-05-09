@@ -5,12 +5,12 @@
 
 module Pkg.PParser where
 
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
+import Text.Trifecta hiding (span, charLiteral, natural, symbol, char, string, whiteSpace)
 
 import Idris.Core.TT
 import Idris.REPL
 import Idris.AbsSyntaxTree
-import Idris.ParseHelpers
+import Idris.ParseHelpers hiding (stringLiteral)
 import Idris.CmdOptions
 
 import Control.Monad.State.Strict

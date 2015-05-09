@@ -29,6 +29,8 @@ import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
 
+import Debug.Trace
+
 -- | Creates table for fixity declarations to build expression parser
 -- using pre-build and user-defined operator/fixity declarations
 table :: [FixDecl] -> OperatorTable IdrisParser PTerm
@@ -121,7 +123,8 @@ Fixity ::=
 -}
 fixity :: IdrisParser PDecl
 fixity = do pushIndent
-            f <- fixityType; i <- natural; ops <- sepBy1 operator (lchar ',')
+            f <- fixityType; i <- fst <$> natural;
+            ops <- sepBy1 operator (lchar ',')
             terminator
             let prec = fromInteger i
             istate <- get

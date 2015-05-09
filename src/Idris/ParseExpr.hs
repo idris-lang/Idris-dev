@@ -1238,11 +1238,11 @@ constant :: IdrisParser (Idris.Core.TT.Const, FC)
 constant = choice [ do fc <- reservedFC name; return (ty, fc)
                   | (name, ty) <- constants
                   ]
-        <|> do f <- try float; return (Fl f, NoFC)
-        <|> do i <- natural; return (BI i, NoFC)
-        <|> do s <- verbatimStringLiteral; return (Str s, NoFC)
-        <|> do s <- stringLiteral;  return (Str s, NoFC)
-        <|> do c <- try charLiteral; return (Ch c, NoFC) --Currently ambigous with symbols
+        <|> do (f, fc) <- try float; return (Fl f, fc)
+        <|> do (i, fc) <- natural; return (BI i, fc)
+        <|> do (s, fc) <- verbatimStringLiteral; return (Str s, fc)
+        <|> do (s, fc) <- stringLiteral;  return (Str s, fc)
+        <|> do (c, fc) <- try charLiteral; return (Ch c, fc) --Currently ambigous with symbols
         <?> "constant or literal"
 
 {- | Parses a verbatim multi-line string literal (triple-quoted)
@@ -1253,9 +1253,12 @@ VerbatimString_t ::=
 ;
 @
  -}
-verbatimStringLiteral :: MonadicParsing m => m String
-verbatimStringLiteral = token $ do try $ string "\"\"\""
-                                   manyTill anyChar $ try (string "\"\"\"")
+verbatimStringLiteral :: MonadicParsing m => m (String, FC)
+verbatimStringLiteral = token $ do (FC f start _) <- getFC
+                                   try $ string "\"\"\""
+                                   str <- manyTill anyChar $ try (string "\"\"\"")
+                                   (FC _ _ end) <- getFC
+                                   return (str, FC f start end)
 
 {- | Parses a static modifier
 
@@ -1370,7 +1373,7 @@ tactics =
   , noArgs ["trivial"] Trivial
   , noArgs ["unify"] DoUnify
   , (["search"], Nothing, const $
-      do depth <- option 10 natural
+      do depth <- option 10 $ fst <$> natural
          return (ProofSearch True True (fromInteger depth) Nothing []))
   , noArgs ["instance"] TCInstance
   , noArgs ["solve"] Solve
@@ -1386,7 +1389,7 @@ tactics =
   , expressionTactic [":t", ":type"] TCheck
   , expressionTactic [":search"] TSearch
   , (["fail"], Just StringLitTArg, const $
-       do msg <- stringLiteral
+       do msg <- fst <$> stringLiteral
           return $ TFail [Idris.Core.TT.TextPart msg])
   , ([":doc"], Just ExprTArg, const $
        do whiteSpace
