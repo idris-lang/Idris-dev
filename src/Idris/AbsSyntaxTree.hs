@@ -1282,7 +1282,7 @@ getInferType (App _ (App _ _ ty) _) = ty
 
 -- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
 
-primNames = [eqTy, eqCon, inferTy, inferCon]
+primNames = [inferTy, inferCon]
 
 unitTy   = sUN "Unit"
 unitCon  = sUN "MkUnit"

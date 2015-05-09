@@ -63,7 +63,7 @@ infix 5 ~=~
 ||| @ x the left side
 ||| @ y the right side
 (~=~) : (x : a) -> (y : b) -> Type
-(~=~) x y = (=) _ _ x y
+(~=~) x y = (x = y)
 
 ||| Perform substitution in a term according to some equality.
 |||
