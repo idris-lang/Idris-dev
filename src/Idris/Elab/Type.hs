@@ -79,7 +79,8 @@ buildType info syn fc opts n ty' = do
          ds <- checkAddDef True False fc iderr defer
          -- if the type is not complete, note that we'll need to infer
          -- things later (for solving metavariables)
-         when (not (null ds)) $ addTyInferred n
+         when (length ds > length is) -- more deferred than case blocks
+              $ addTyInferred n
 
          mapM_ (elabCaseBlock info opts) is
          ctxt <- getContext

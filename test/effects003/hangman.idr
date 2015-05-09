@@ -77,9 +77,9 @@ data HangmanRules : Effect where
              sig HangmanRules Bool
                  (Hangman (Running (S g) (S w)))
                  (\inword =>
-                        case inword of
-                             True => Hangman (Running (S g) w)
-                             False => Hangman (Running g (S w)))
+                        Hangman (case inword of
+                             True => (Running (S g) w)
+                             False => (Running g (S w))))
 
 -- The 'Won' operation requires that there are no missing letters
 
