@@ -1770,9 +1770,12 @@ stripLinear i tm = evalState (sl tm) [] where
                                 t' <- sl t
                                 r' <- sl r
                                 return (PDPair fc p l' t' r')
-    sl (PApp fc fn args) = do -- Just the args, fn isn't matchable as a var
+    sl (PApp fc fn args) = do fn' <- case fn of
+                                     -- Just the args, fn isn't matchable as a var
+                                          PRef _ _ -> return fn
+                                          t -> sl t
                               args' <- mapM slA args
-                              return $ PApp fc fn args'
+                              return $ PApp fc fn' args'
        where slA (PImp p m l n t) = do t' <- sl t
                                        return $ PImp p m l n t'
              slA (PExp p l n t) = do  t' <- sl t
