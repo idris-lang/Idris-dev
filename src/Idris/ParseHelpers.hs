@@ -278,6 +278,12 @@ reservedOp name = token $ try $
   do string name
      notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
 
+reservedOpFC :: MonadicParsing m => String -> m FC
+reservedOpFC name = token $ try $ do (FC f (l, c) _) <- getFC
+                                     string name
+                                     notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
+                                     return (FC f (l, c) (l, c + length name))
+
 -- | Parses an identifier as a token
 identifier :: (MonadicParsing m) => m (String, FC)
 identifier = try(do (i, fc) <-
@@ -303,14 +309,16 @@ maybeWithNS parser ascend bad = do
   (x, xs, fc) <- choice (transf (parserNoNS parser : parsersNS parser i))
   return (mkName (x, xs), fc)
   where parserNoNS :: MonadicParsing m => m (String, FC) -> m (String, String, FC)
-        parserNoNS parser = do (x, fc) <- parser; return (x, "", fc)
+        parserNoNS parser = do startFC <- getFC
+                               (x, nameFC) <- parser
+                               return (x, "", spanFC startFC nameFC)
         parserNS   :: MonadicParsing m => m (String, FC) -> String -> m (String, String, FC)
         parserNS   parser ns = do startFC <- getFC
                                   xs <- string ns
                                   lchar '.';  (x, nameFC) <- parser
                                   return (x, xs, spanFC startFC nameFC)
         parsersNS  :: MonadicParsing m => m (String, FC) -> String -> [m (String, String, FC)]
-        parsersNS parser i = [try (parserNS parser ns) | ns <- (initsEndAt (=='.') i)]
+        parsersNS parser i = [try (parserNS parser ns) | ns <- (initsEndAt (=='.') i)]
 
 -- | Parses a name
 name :: IdrisParser (Name, FC)

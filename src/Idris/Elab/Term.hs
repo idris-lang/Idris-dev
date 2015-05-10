@@ -704,6 +704,11 @@ elab ist info emode opts fn tm
                     let (ns', eargs) = unzip $
                              sortBy cmpArg (zip ns args)
                     ulog <- getUnifyLog
+
+                    annot <- findHighlight f
+                    highlightSource ffc annot
+                    trace ("highlighting " ++ show f ++ " at " ++ show ffc ++ " as " ++ show annot) $ return ()
+
                     elabArgs ist (ina { e_inarg = e_inarg ina || not isinf }) 
                            [] fc False f
                              (zip ns' (unmatchableArgs ++ repeat False))
@@ -1277,7 +1282,7 @@ elab ist info emode opts fn tm
     elabArgs ist ina failed fc retry f [] force _ = return ()
     elabArgs ist ina failed fc r f (((argName, holeName), unm):ns) force (t : args)
         = do hs <- get_holes
-             if holeName `elem` hs then 
+             if holeName `elem` hs then
                 do focus holeName
                    case t of
                       Placeholder -> do movelast holeName

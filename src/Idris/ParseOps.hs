@@ -47,7 +47,7 @@ table fixes
     flatten t = t
 
 
--- | Calculates table for fixtiy declarations
+-- | Calculates table for fixity declarations
 toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
 toTable fs = map (map toBin)
                  (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
@@ -61,9 +61,8 @@ toTable fs = map (map toBin)
 
 -- | Binary operator
 binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
-binary name f = Infix (do fc <- getFC
-                          indentPropHolds gtProp
-                          reservedOp name
+binary name f = Infix (do indentPropHolds gtProp
+                          fc <- reservedOpFC name
                           indentPropHolds gtProp
                           return (f fc))
 
@@ -106,8 +105,10 @@ operatorFront = try (do (FC f (l, c) _) <- getFC
                         op <- lchar '(' *> reservedOp "="  <* lchar ')'
                         return (eqTy, FC f (l, c) (l, c+3)))
             <|> maybeWithNS (do (FC f (l, c) _) <- getFC
-                                op <- lchar '(' *> operator <* lchar ')'
-                                return (op, (FC f (l, c) (l, c+1)))) False []
+                                op <- lchar '(' *> operator
+                                (FC _ _ (l', c')) <- getFC
+                                lchar ')'
+                                return (op, (FC f (l, c) (l', c' + 1)))) False []
 
 {- | Parses a function (either normal name or operator)
 

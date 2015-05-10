@@ -123,10 +123,10 @@ instance Show FC where
     show (FileFC f) = f
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving Show
 
 -- | Text formatting output
-data TextFormatting = BoldText | ItalicText | UnderlineText
+data TextFormatting = BoldText | ItalicText | UnderlineText deriving Show
 
 -- | Output annotations for pretty-printing
 data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe String)
@@ -142,6 +142,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                       | AnnTerm [(Name, Bool)] (TT Name) -- ^ pprint bound vars, original term
                       | AnnSearchResult Ordering -- ^ more general, isomorphic, or more specific
                       | AnnErr Err
+  deriving Show
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String
