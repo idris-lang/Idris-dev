@@ -37,7 +37,7 @@ elabRecord :: ElabInfo
            -> (Docstring (Either Err PTerm)) -- ^ The documentation for the whole declaration
            -> SyntaxInfo -> FC -> DataOpts
            -> Name  -- ^ The name of the type being defined
-           -> [(Name, Plicity, PTerm)] -- ^ Parameters
+           -> [(Name, FC, Plicity, PTerm)] -- ^ Parameters
            -> [(Name, Docstring (Either Err PTerm))] -- ^ Parameter Docs
            -> [((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -- ^ Fields
            -> Maybe Name -- ^ Constructor Name
@@ -51,7 +51,7 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
        logLvl 1 $ "Type constructor " ++ showTmImpls tycon
        
        -- Data constructor
-       dconName <- generateDConName cname 
+       dconName <- generateDConName cname
        let dconTy = generateDConType params fieldsWithNameAndDoc
        logLvl 1 $ "Data constructor: " ++ showTmImpls dconTy
 
@@ -62,11 +62,11 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
 
        iLOG $ "fieldsWithName " ++ show fieldsWithName
        iLOG $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc
-       elabRecordFunctions info rsyn fc tyn paramsAndDoc fieldsWithNameAndDoc dconName target
+       elabRecordFunctions info rsyn fc tyn [(n, p, t, d) | (n, _, p, t, d) <- paramsAndDoc] fieldsWithNameAndDoc dconName target
   where
     -- | Generates a type constructor.
-    generateTyConType :: [(Name, Plicity, PTerm)] -> PTerm
-    generateTyConType ((n, p, t) : rest) = PPi p (nsroot n) t (generateTyConType rest)
+    generateTyConType :: [(Name, FC, Plicity, PTerm)] -> PTerm
+    generateTyConType ((n, nfc, p, t) : rest) = PPi p (nsroot n) nfc t (generateTyConType rest)
     generateTyConType [] = (PType fc)
 
     -- | Generates a name for the data constructor if none was specified.
@@ -81,24 +81,24 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
                             Nothing -> return n
 
     -- | Generates the data constructor type.
-    generateDConType :: [(Name, Plicity, PTerm)] -> [(Name, Plicity, PTerm, a)] -> PTerm
-    generateDConType ((n, _, t) : ps) as                  = PPi impl (nsroot n) t (generateDConType ps as)
-    generateDConType []               ((n, p, t, _) : as) = PPi p    (nsroot n) t (generateDConType [] as)
+    generateDConType :: [(Name, FC, Plicity, PTerm)] -> [(Name, Plicity, PTerm, a)] -> PTerm
+    generateDConType ((n, nfc, _, t) : ps) as                  = PPi impl (nsroot n) NoFC t (generateDConType ps as)
+    generateDConType []               ((n, p, t, _) : as) = PPi p    (nsroot n) NoFC t (generateDConType [] as)
     generateDConType [] [] = target
 
     -- | The target for the constructor and projection functions. Also the source of the update functions.
     target :: PTerm
-    target = PApp fc (PRef fc tyn) $ map (uncurry asPRefArg) [(p, n) | (n, p, _) <- params]
+    target = PApp fc (PRef fc tyn) $ map (uncurry asPRefArg) [(p, n) | (n, _, p, _) <- params]
 
-    paramsAndDoc :: [(Name, Plicity, PTerm, Docstring (Either Err PTerm))]
+    paramsAndDoc :: [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))]
     paramsAndDoc = pad params paramDocs
       where
-        pad :: [(Name, Plicity, PTerm)] -> [(Name, Docstring (Either Err PTerm))] -> [(Name, Plicity, PTerm, Docstring (Either Err PTerm))]
-        pad ((n, p, t) : rest) docs
+        pad :: [(Name, FC, Plicity, PTerm)] -> [(Name, Docstring (Either Err PTerm))] -> [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))]
+        pad ((n, fc, p, t) : rest) docs
           = let d = case lookup n docs of
                      Just d' -> d
                      Nothing -> emptyDocstring
-            in (n, p, t, d) : (pad rest docs)
+            in (n, fc, p, t, d) : (pad rest docs)
         pad _ _ = []
 
     dconsArgDocs :: [(Name, Docstring (Either Err PTerm))]
@@ -149,7 +149,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
        iLOG $ "Fields: " ++ show fieldNames
        iLOG $ "Params: " ++ show paramNames
        -- The elaborated constructor type for the data declaration
-       i <- getIState    
+       i <- getIState
        ttConsTy <-
          case lookupTyExact dconName (tt_ctxt i) of
                Just as -> return as
@@ -238,7 +238,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
     paramName (UN n) = sUN ("param_" ++ str n)
     paramName (MN i n) = sMN i ("param_" ++ str n)
     paramName (NS n s) = NS (paramName n) s
-    paramName n = n    
+    paramName n = n
 
     -- | Elaborate the projection functions.
     elabProj :: Name -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
@@ -264,14 +264,14 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
     -- | A map from a field name to the other fields it depends on.
     fieldDependencies :: [(Name, [Name])]
     fieldDependencies = map (uncurry fieldDep) [(n, t) | (n, _, t, _) <- fields ++ params]
-      where                           
+      where
         fieldDep :: Name -> PTerm -> (Name, [Name])
         fieldDep n t = ((nsroot n), paramNames ++ fieldNames `intersect` allNamesIn t)
 
     -- | A list of fields depending on another field.
     dependentFields :: [Name]
     dependentFields = filter depends fieldNames
-      where        
+      where
         depends :: Name -> Bool
         depends n = case lookup n fieldDependencies of
                       Just xs -> not $ null xs
@@ -313,7 +313,7 @@ elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs f
   where
     -- | The type of the projection function.
     generateTy :: PDecl
-    generateTy = PTy pdoc [] psyn fc [] pname $ PPi expl recName targetTy projTy
+    generateTy = PTy pdoc [] psyn fc [] pname $ PPi expl recName NoFC targetTy projTy
 
     -- | The left hand side of the projection function.
     generateLhs :: PTerm
@@ -373,9 +373,9 @@ elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i option
                   then logLvl 1 $ "Could not generate update function for " ++ show pname
                   else tclift $ tfail $ At fc (Elaborating "record update function " pname err)) -}
   where
-    -- | The type of the udpate function.
+    -- | The type of the update function.
     generateTy :: PDecl
-    generateTy = PTy pdoc [] psyn fc [] set_pname $ PPi expl (nsroot pname) pty (PPi expl recName sty (substInput sty))
+    generateTy = PTy pdoc [] psyn fc [] set_pname $ PPi expl (nsroot pname) NoFC pty (PPi expl recName NoFC sty (substInput sty))
       where substInput = substMatches [(cname, PRef fc (nsroot pname))]
 
     -- | The "_set" name.

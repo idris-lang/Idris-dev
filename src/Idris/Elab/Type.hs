@@ -203,8 +203,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     -- for making an internalapp, we only want the explicit ones, and don't
     -- want the parameters, so just take the arguments which correspond to the
     -- user declared explicit ones
-    mergeTy (PPi e n ty sc) (PPi e' n' _ sc')
-         | e == e' = PPi e n ty (mergeTy sc sc')
+    mergeTy (PPi e n fc ty sc) (PPi e' n' _ _ sc')
+         | e == e' = PPi e n fc ty (mergeTy sc sc')
          | otherwise = mergeTy sc sc'
     mergeTy _ sc = sc
 

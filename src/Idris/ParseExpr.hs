@@ -164,10 +164,10 @@ extension syn ns rules =
     update ns (PRef fc n) = case lookup n ns of
                               Just (SynTm t) -> t
                               _ -> PRef fc n
-    update ns (PLam fc n ty sc)
-      = PLam fc (updateB ns n) (update ns ty) (update (dropn n ns) sc)
-    update ns (PPi p n ty sc)
-      = PPi (updTacImp ns p) (updateB ns n)
+    update ns (PLam fc n nfc ty sc)
+      = PLam fc (updateB ns n) nfc (update ns ty) (update (dropn n ns) sc)
+    update ns (PPi p n fc ty sc)
+      = PPi (updTacImp ns p) (updateB ns n) fc
             (update ns ty) (update (dropn n ns) sc)
     update ns (PLet fc n ty val sc) 
       = PLet fc (updateB ns n) (update ns ty)
@@ -403,7 +403,7 @@ bracketed' syn =
                     -- No prefix operators! (bit of a hack here...)
                     if (o == "-" || o == "!")
                       then fail "minus not allowed in section"
-                      else return $ PLam fc (sMN 1000 "ARG") Placeholder
+                      else return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
                          (PApp fc (PRef fc (sUN o)) [pexp (PRef fc (sMN 1000 "ARG")),
                                                      pexp e]))
         <|> try (do l <- simpleExpr syn
@@ -413,7 +413,7 @@ bracketed' syn =
                     fc0 <- getFC
                     case op of
                          Nothing -> bracketedExpr syn l
-                         Just o -> return $ PLam fc0 (sMN 1000 "ARG") Placeholder
+                         Just o -> return $ PLam fc0 (sMN 1000 "ARG") NoFC Placeholder
                              (PApp fc0 (PRef fc0 (sUN o)) [pexp l,
                                                            pexp (PRef fc0 (sMN 1000 "ARG"))]))
         <|> do l <- expr syn
@@ -688,13 +688,13 @@ recordType syn =
               Left fields ->
                 case rec of
                    Nothing ->
-                       return (PLam fc (sMN 0 "fldx") Placeholder
+                       return (PLam fc (sMN 0 "fldx") NoFC Placeholder
                                    (applyAll fc fields (PRef fc (sMN 0 "fldx"))))
                    Just v -> return (applyAll fc fields v)
               Right fields ->
                 case rec of
                    Nothing ->
-                       return (PLam fc (sMN 0 "fldx") Placeholder
+                       return (PLam fc (sMN 0 "fldx") NoFC Placeholder
                                  (getAll fc (reverse fields) 
                                      (PRef fc (sMN 0 "fldx"))))
                    Just v -> return (getAll fc (reverse fields) v)
@@ -791,7 +791,7 @@ lambda syn = do lchar '\\' <?> "lambda expression"
     where pmList :: [(Int, (FC, PTerm))] -> PTerm -> PTerm
           pmList [] sc = sc
           pmList ((i, (fc, x)) : xs) sc
-                = PLam fc (sMN i "lamp") Placeholder
+                = PLam fc (sMN i "lamp") NoFC Placeholder
                         (PCase fc (PRef fc (sMN i "lamp"))
                                 [(x, pmList xs sc)])
           lambdaTail :: IdrisParser PTerm
@@ -946,7 +946,7 @@ normalImplicit opts st syn = do
    return (bindList (PPi im) xt 
            (bindList (PPi cl) cs sc))
 
-implicitPi opts st syn = 
+implicitPi opts st syn =
       autoImplicit opts st syn
         <|> defaultImplicit opts st syn
           <|> normalImplicit opts st syn
@@ -955,7 +955,7 @@ unboundPi opts st syn = do
        x <- opExpr syn
        (do binder <- bindsymbol opts st syn
            sc <- expr syn
-           return (PPi binder (sUN "__pi_arg") x sc))
+           return (PPi binder (sUN "__pi_arg") NoFC x sc))
               <|> return x
 
 pi :: SyntaxInfo -> IdrisParser PTerm
@@ -987,11 +987,11 @@ ConstraintList ::=
   ;
 @
 -}
-constraintList :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
+constraintList :: SyntaxInfo -> IdrisParser [(Name, FC, PTerm)]
 constraintList syn = try (constraintList1 syn)
                      <|> return []
 
-constraintList1 :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
+constraintList1 :: SyntaxInfo -> IdrisParser [(Name, FC, PTerm)]
 constraintList1 syn = try (do lchar '('
                               tys <- sepBy1 nexpr (lchar ',')
                               lchar ')'
@@ -999,13 +999,13 @@ constraintList1 syn = try (do lchar '('
                               return tys)
                   <|> try (do t <- opExpr (disallowImp syn)
                               reservedOp "=>"
-                              return [(defname, t)])
+                              return [(defname, NoFC, t)])
                   <?> "type constraint list"
-  where nexpr = try (do n <- fst <$> name; lchar ':'
+  where nexpr = try (do (n, fc) <- name; lchar ':'
                         e <- expr syn
-                        return (n, e))
+                        return (n, fc, e))
                 <|> do e <- expr syn
-                       return (defname, e)
+                       return (defname, NoFC, e)
         defname = sMN 0 "constrarg"
 
 {- | Parses a type declaration list
@@ -1023,16 +1023,16 @@ FunctionSignatureList ::=
   ;
 @
 -}
-typeDeclList :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
-typeDeclList syn = try (sepBy1 (do x <- fst <$> fnName
+typeDeclList :: SyntaxInfo -> IdrisParser [(Name, FC, PTerm)]
+typeDeclList syn = try (sepBy1 (do (x, xfc) <- fnName
                                    lchar ':'
                                    t <- typeExpr (disallowImp syn)
-                                   return (x,t))
+                                   return (x, xfc, t))
                            (lchar ','))
-                   <|> do ns <- sepBy1 (fst <$> name) (lchar ',')
+                   <|> do ns <- sepBy1 name (lchar ',')
                           lchar ':'
                           t <- typeExpr (disallowImp syn)
-                          return (map (\x -> (x, t)) ns)
+                          return (map (\(x, xfc) -> (x, xfc, t)) ns)
                    <?> "type declaration list"
 
 {- | Parses a type declaration list with optional parameters
@@ -1047,17 +1047,17 @@ TypeOptDeclList ::=
 NameOrPlaceHolder ::= Name | '_';
 @
 -}
-tyOptDeclList :: SyntaxInfo -> IdrisParser [(Name, PTerm)]
-tyOptDeclList syn = sepBy1 (do x <- nameOrPlaceholder
+tyOptDeclList :: SyntaxInfo -> IdrisParser [(Name, FC, PTerm)]
+tyOptDeclList syn = sepBy1 (do (x, fc) <- nameOrPlaceholder
                                t <- option Placeholder (do lchar ':'
                                                            expr syn)
-                               return (x,t))
+                               return (x, fc, t))
                            (lchar ',')
                     <?> "type declaration list"
-    where  nameOrPlaceholder :: IdrisParser Name
-           nameOrPlaceholder = fst <$> fnName
+    where  nameOrPlaceholder :: IdrisParser (Name, FC)
+           nameOrPlaceholder = fnName
                            <|> do symbol "_"
-                                  return (sMN 0 "underscore")
+                                  return (sMN 0 "underscore", NoFC)
                            <?> "name or placeholder"
 
 {- | Parses a list literal expression e.g. [1,2,3] or a comprehension [ (x, y) | x <- xs , y <- ys ]

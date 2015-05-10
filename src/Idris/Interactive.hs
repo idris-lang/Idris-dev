@@ -197,9 +197,9 @@ doProofSearch fn updatefile rec l n hints (Just depth)
                runIO $ copyFile fb fn
             else iPrintResult newmv
     where dropCtxt 0 sc = sc
-          dropCtxt i (PPi _ _ _ sc) = dropCtxt (i - 1) sc
+          dropCtxt i (PPi _ _ _ _ sc) = dropCtxt (i - 1) sc
           dropCtxt i (PLet _ _ _ _ sc) = dropCtxt (i - 1) sc
-          dropCtxt i (PLam _ _ _ sc) = dropCtxt (i - 1) sc
+          dropCtxt i (PLam _ _ _ _ sc) = dropCtxt (i - 1) sc
           dropCtxt _ t = t
 
           stripNS tm = mapPT dens tm where
@@ -304,11 +304,11 @@ makeLemma fn updatefile l n
         appArgs skip i (Bind _ (Pi _ _ _) sc) = appArgs skip (i - 1) sc
         appArgs skip i _ = ""
 
-        stripMNBind skip (PPi b n@(UN c) ty sc) 
+        stripMNBind skip (PPi b n@(UN c) _ ty sc) 
            | (thead c /= '_' && n `notElem` skip) ||
                take 4 (str c) == "__pi" -- keep in type, but not in app
-                = PPi b n ty (stripMNBind skip sc)
-        stripMNBind skip (PPi b _ ty sc) = stripMNBind skip sc
+                = PPi b n NoFC ty (stripMNBind skip sc)
+        stripMNBind skip (PPi b _ _ ty sc) = stripMNBind skip sc
         stripMNBind skip t = t
 
         -- Guess which binders should be implicits in the generated lemma.

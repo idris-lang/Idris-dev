@@ -201,7 +201,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
             _ -> Nothing
     overlapping t' = tclift $ tfail (At fc (Msg $
                           "Overlapping instance: " ++ show t' ++ " already defined"))
-    getRetType (PPi _ _ _ sc) = getRetType sc
+    getRetType (PPi _ _ _ _ sc) = getRetType sc
     getRetType t = t
 
     matchArgs i dets x y =
@@ -216,16 +216,16 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
 
     mkMethApp (n, _, _, ty)
           = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
-    lamBind i (PPi (Constraint _ _) _ _ sc) sc'
-          = PLam fc (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
-    lamBind i (PPi _ n ty sc) sc'
-          = PLam fc (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
+    lamBind i (PPi (Constraint _ _) _ _ _ sc) sc'
+          = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
+    lamBind i (PPi _ n _ ty sc) sc'
+          = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
-    methArgs i (PPi (Imp _ _ _ _) n ty sc)
+    methArgs i (PPi (Imp _ _ _ _) n _ ty sc)
         = PImp 0 True [] n (PRef fc (sMN i "meth")) : methArgs (i+1) sc
-    methArgs i (PPi (Exp _ _ _) n ty sc)
+    methArgs i (PPi (Exp _ _ _) n _ ty sc)
         = PExp 0 [] (sMN 0 "marg") (PRef fc (sMN i "meth")) : methArgs (i+1) sc
-    methArgs i (PPi (Constraint _ _) n ty sc)
+    methArgs i (PPi (Constraint _ _) n _ ty sc)
         = PConstraint 0 [] (sMN 0 "marg") (PResolveTC fc) : methArgs (i+1) sc
     methArgs i _ = []
 
@@ -250,11 +250,11 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
                (mkUniqueNames [] t)
 
     conbind :: [(Name, PTerm)] -> PTerm -> PTerm
-    conbind ((c,ty) : ns) x = PPi constraint c ty (conbind ns x)
+    conbind ((c,ty) : ns) x = PPi constraint c NoFC ty (conbind ns x)
     conbind [] x = x
 
     coninsert :: [(Name, PTerm)] -> PTerm -> PTerm
-    coninsert cs (PPi p@(Imp _ _ _ _) n t sc) = PPi p n t (coninsert cs sc)
+    coninsert cs (PPi p@(Imp _ _ _ _) n fc t sc) = PPi p n fc t (coninsert cs sc)
     coninsert cs sc = conbind cs sc
 
     -- Reorder declarations to be in the same order as defined in the

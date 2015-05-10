@@ -291,8 +291,8 @@ extractPTermNames :: PTerm  -- ^ Where to extract names from
 extractPTermNames (PRef _ n)         = [n]
 extractPTermNames (PInferRef _ n)    = [n]
 extractPTermNames (PPatvar _ n)      = [n]
-extractPTermNames (PLam _ n p1 p2)   = n : concatMap extract [p1, p2]
-extractPTermNames (PPi _ n p1 p2)    = n : concatMap extract [p1, p2]
+extractPTermNames (PLam _ n _ p1 p2) = n : concatMap extract [p1, p2]
+extractPTermNames (PPi _ n _ p1 p2)  = n : concatMap extract [p1, p2]
 extractPTermNames (PLet _ n p1 p2 p3) = n : concatMap extract [p1, p2, p3]
 extractPTermNames (PTyped p1 p2)     = concatMap extract [p1, p2]
 extractPTermNames (PApp _ p pas)     = let names = concatMap extractPArg pas

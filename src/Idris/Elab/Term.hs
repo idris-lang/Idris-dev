@@ -418,7 +418,10 @@ elab ist info emode opts fn tm
                 _ -> asType
          where asType = elab' ina (Just fc) (PApp fc (PRef fc sigmaTy)
                                         [pexp t,
-                                         pexp (PLam fc n Placeholder r)])
+                                         -- TODO: save the FC from the dependent pair
+                                         -- syntax and put it on this lambda for interactive
+                                         -- semantic highlighting support. NoFC for now.
+                                         pexp (PLam fc n NoFC Placeholder r)])
                asValue = elab' ina (Just fc) (PApp fc (PRef fc existsCon)
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
@@ -514,8 +517,8 @@ elab ist info emode opts fn tm
                                solve
                                highlightSource fc hl
                      else elab' ina fc' (PApp fc tm [])
-    elab' ina _ (PLam _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
-    elab' ina _ (PLam fc n Placeholder sc)
+    elab' ina _ (PLam _ _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
+    elab' ina _ (PLam fc n nfc Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
                when (isTConName n ctxt) $
@@ -524,7 +527,8 @@ elab ist info emode opts fn tm
                attack; intro (Just n);
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm)
                elabE (ina { e_inarg = True } ) (Just fc) sc; solve
-    elab' ec _ (PLam fc n ty sc)
+               highlightSource nfc (AnnBoundName n False)
+    elab' ec _ (PLam fc n nfc ty sc)
           = do tyn <- getNameFrom (sMN 0 "lamty")
                -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
@@ -542,11 +546,13 @@ elab ist info emode opts fn tm
                elabE (ec { e_inarg = True, e_intype = True }) (Just fc) ty
                elabE (ec { e_inarg = True }) (Just fc) sc
                solve
-    elab' ina fc (PPi p n Placeholder sc)
-          = do attack; arg n (is_scoped p) (sMN 0 "ty") 
+               highlightSource nfc (AnnBoundName n False)
+    elab' ina fc (PPi p n nfc Placeholder sc)
+          = do attack; arg n (is_scoped p) (sMN 0 "ty")
                elabE (ina { e_inarg = True, e_intype = True }) fc sc
                solve
-    elab' ina fc (PPi p n ty sc)
+               highlightSource nfc (AnnBoundName n False)
+    elab' ina fc (PPi p n nfc ty sc)
           = do attack; tyn <- getNameFrom (sMN 0 "ty")
                claim tyn RType
                n' <- case n of
@@ -558,6 +564,7 @@ elab ist info emode opts fn tm
                elabE ec' fc ty
                elabE ec' fc sc
                solve
+               highlightSource nfc (AnnBoundName n False)
     elab' ina _ (PLet fc n ty val sc)
           = do attack
                ivs <- get_instances
@@ -793,7 +800,7 @@ elab ist info emode opts fn tm
                                    PAlternative False _ -> 5
                                    PAlternative True _ -> 2
                                    PTactics _ -> 150
-                                   PLam _ _ _ _ -> 3
+                                   PLam _ _ _ _ _ -> 3
                                    PRewrite _ _ _ _ -> 4
                                    PResolveTC _ -> 0
                                    PHidden _ -> 150
@@ -1254,9 +1261,9 @@ elab ist info emode opts fn tm
                  do impn <- unique_hole (sMN 0 "imp")
                     if e_isfn ina -- apply to an implicit immediately
                        then return (PApp emptyFC
-                                         (PLam emptyFC impn Placeholder t)
+                                         (PLam emptyFC impn NoFC Placeholder t)
                                          [pexp Placeholder])
-                       else return (PLam emptyFC impn Placeholder t)
+                       else return (PLam emptyFC impn NoFC Placeholder t)
         addLam _ t = return t
 
     insertCoerce ina t@(PCase _ _ _) = return t
@@ -1390,7 +1397,7 @@ pruneByType env (P _ n _) ctxt as
   where
     headIs var f (PApp _ (PRef _ f') _) = typeHead var f f'
     headIs var f (PApp _ f' _) = headIs var f f'
-    headIs var f (PPi _ _ _ sc) = headIs var f sc
+    headIs var f (PPi _ _ _ _ sc) = headIs var f sc
     headIs var f (PHidden t) = headIs var f t
     headIs _ _ _ = True -- keep if it's not an application
 

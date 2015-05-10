@@ -310,20 +310,20 @@ syntaxRule syn
           return $ PRef fc n'
         fixBind rens (PPatvar fc n) | Just n' <- lookup n rens =
           return $ PPatvar fc n'
-        fixBind rens (PLam fc n ty body)
-          | n `elem` userNames = liftM2 (PLam fc n) (fixBind rens ty) (fixBind rens body)
+        fixBind rens (PLam fc n nfc ty body)
+          | n `elem` userNames = liftM2 (PLam fc n nfc) (fixBind rens ty) (fixBind rens body)
           | otherwise =
             do ty' <- fixBind rens ty
                n' <- gensym n
                body' <- fixBind ((n,n'):rens) body
-               return $ PLam fc n' ty' body'
-        fixBind rens (PPi plic n argTy body)
-          | n `elem` userNames = liftM2 (PPi plic n) (fixBind rens argTy) (fixBind rens body)
+               return $ PLam fc n' nfc ty' body'
+        fixBind rens (PPi plic n nfc argTy body)
+          | n `elem` userNames = liftM2 (PPi plic n nfc) (fixBind rens argTy) (fixBind rens body)
           | otherwise =
             do ty' <- fixBind rens argTy
                n' <- gensym n
                body' <- fixBind ((n,n'):rens) body
-               return $ (PPi plic n' ty' body')
+               return $ (PPi plic n' nfc ty' body')
         fixBind rens (PLet fc n ty val body)
           | n `elem` userNames = liftM3 (PLet fc n)
                                         (fixBind rens ty)
@@ -555,12 +555,13 @@ Params ::=
 params :: SyntaxInfo -> IdrisParser [PDecl]
 params syn =
     do reserved "parameters"; lchar '('; ns <- typeDeclList syn; lchar ')'
+       let ns' = [(n, ty) | (n, _, ty) <- ns]
        openBlock
        let pvars = syn_params syn
-       ds <- many (decl syn { syn_params = pvars ++ ns })
+       ds <- many (decl syn { syn_params = pvars ++ ns' })
        closeBlock
        fc <- getFC
-       return [PParams fc ns (concat ds)]
+       return [PParams fc ns' (concat ds)]
     <?> "parameters declaration"
 
 {- | Parses a mutual declaration (for mutually recursive functions)
@@ -659,13 +660,14 @@ class_ syn = do (doc, argDocs, acc)
                              return (doc, argDocs, acc))
                 fc <- getFC
                 cons <- constraintList syn
+                let cons' = [(c, ty) | (c, _, ty) <- cons]
                 n_in <- fst <$> fnName
                 let n = expandNS syn n_in
                 cs <- many carg
                 fds <- option (map fst cs) fundeps
                 ds <- option [] (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass doc syn fc cons n cs argDocs fds ds]
+                return [PClass doc syn fc cons' n cs argDocs fds ds]
              <?> "type-class declaration"
   where
     fundeps :: IdrisParser [Name]
@@ -696,12 +698,13 @@ instance_ syn = do (doc, argDocs)
                    fc <- getFC
                    en <- optional instanceName
                    cs <- constraintList syn
+                   let cs' = [(c, ty) | (c, _, ty) <- cs]
                    cn <- fst <$> fnName
                    args <- many (simpleExpr syn)
                    let sc = PApp fc (PRef fc cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- option [] (instanceBlock syn)
-                   return [PInstance doc argDocs syn fc cs cn args t en ds]
+                   return [PInstance doc argDocs syn fc cs' cn args t en ds]
                  <?> "instance declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'

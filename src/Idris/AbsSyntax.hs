@@ -952,16 +952,16 @@ expandParams dec ps ns infs tm = en tm
     mkShadow (MN i n) = MN (i+1) n
     mkShadow (NS x s) = NS (mkShadow x) s
 
-    en (PLam fc n t s)
+    en (PLam fc n nfc t s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
-                     PLam fc n' (en t) (en (shadow n n' s))
-       | otherwise = PLam fc n (en t) (en s)
-    en (PPi p n t s)
+                     PLam fc n' nfc (en t) (en (shadow n n' s))
+       | otherwise = PLam fc n nfc (en t) (en s)
+    en (PPi p n nfc t s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in -- TODO THINK SHADOWING TacImp?
-                     PPi (enTacImp p) n' (en t) (en (shadow n n' s))
-       | otherwise = PPi (enTacImp p) n (en t) (en s)
+                     PPi (enTacImp p) n' nfc (en t) (en (shadow n n' s))
+       | otherwise = PPi (enTacImp p) n nfc (en t) (en s)
     en (PLet fc n ty v s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
@@ -1136,7 +1136,7 @@ getPriority i tm = 1 -- pri tm
             ((P (TCon _ _) _ _):_) -> 1
             ((P Ref _ _):_) -> 1
             [] -> 0 -- must be locally bound, if it's not an error...
-    pri (PPi _ _ x y) = max 5 (max (pri x) (pri y))
+    pri (PPi _ _ _ x y) = max 5 (max (pri x) (pri y))
     pri (PTrue _ _) = 0
     pri (PRefl _ _) = 1
     pri (PEq _ _ _ l r) = max 1 (max (pri l) (pri r))
@@ -1182,10 +1182,10 @@ addStatics n tm ptm =
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
-    initStatics (Bind n (Pi _ ty _) sc) (PPi p n' t s)
-            | n /= n' = let (static, dynamic) = initStatics sc (PPi p n' t s) in
+    initStatics (Bind n (Pi _ ty _) sc) (PPi p n' fc t s)
+            | n /= n' = let (static, dynamic) = initStatics sc (PPi p n' fc t s) in
                             (static, (n, ty) : dynamic)
-    initStatics (Bind n (Pi _ ty _) sc) (PPi p n' _ s)
+    initStatics (Bind n (Pi _ ty _) sc) (PPi p n' fc _ s)
             = let (static, dynamic) = initStatics (instantiate (P Bound n ty) sc) s in
                   if pstatic p == Static then ((n, ty) : static, dynamic)
                     else if (not (searchArg p))
@@ -1254,16 +1254,16 @@ addUsingConstraints syn fc t
          -- if all of args in ns, then add it
          doAdd (UConstraint c args : cs) ns t
              | all (\n -> elem n ns) args
-                   = PPi (Constraint [] Dynamic) (sMN 0 "cu")
+                   = PPi (Constraint [] Dynamic) (sMN 0 "cu") NoFC
                          (mkConst c args) (doAdd cs ns t)
              | otherwise = doAdd cs ns t
 
          mkConst c args = PApp fc (PRef fc c)
                            (map (\n -> PExp 0 [] (sMN 0 "carg") (PRef fc n)) args)
 
-         getConstraints (PPi (Constraint _ _) _ c sc)
+         getConstraints (PPi (Constraint _ _) _ _ c sc)
              = getcapp c ++ getConstraints sc
-         getConstraints (PPi _ _ c sc) = getConstraints sc
+         getConstraints (PPi _ _ _ c sc) = getConstraints sc
          getConstraints _ = []
 
          getcapp (PApp _ (PRef _ c) args)
@@ -1300,7 +1300,7 @@ addUsingImpls syn n fc t
          -- if all of args in ns, then add it
          doAdd (UImplicit n ty : cs) ns t
              | elem n ns
-                   = PPi (Imp [] Dynamic False Nothing) n ty (doAdd cs ns t)
+                   = PPi (Imp [] Dynamic False Nothing) n NoFC ty (doAdd cs ns t)
              | otherwise = doAdd cs ns t
 
          -- bind the free names which weren't in the using block
@@ -1308,9 +1308,9 @@ addUsingImpls syn n fc t
          bindFree (n:ns) tm
              | elem n (map iname uimpls) = bindFree ns tm
              | otherwise
-                    = PPi (Imp [] Dynamic False Nothing) n Placeholder (bindFree ns tm)
+                    = PPi (Imp [] Dynamic False Nothing) n NoFC Placeholder (bindFree ns tm)
 
-         getArgnames (PPi _ n c sc)
+         getArgnames (PPi _ n _ c sc)
              = n : getArgnames sc
          getArgnames _ = []
 
@@ -1319,7 +1319,7 @@ addUsingImpls syn n fc t
 
 getUnboundImplicits :: IState -> Type -> PTerm -> [(Bool, PArg)]
 getUnboundImplicits i t tm = getImps t (collectImps tm)
-  where collectImps (PPi p n t sc)
+  where collectImps (PPi p n _ t sc)
             = (n, (p, t)) : collectImps sc
         collectImps _ = []
 
@@ -1419,13 +1419,13 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
        = do (decls, ns) <- get
             let isn = concatMap (namesIn uvars ist) (map getTm as)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PPi (Imp l _ _ _) n ty sc)
+    imps top env (PPi (Imp l _ _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty) `dropAll` [n]
              (decls , ns) <- get
              put (PImp (getPriority ist ty) True l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Exp l _ _) n ty sc)
+    imps top env (PPi (Exp l _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
@@ -1433,7 +1433,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              put (PExp (getPriority ist ty) l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Constraint l _) n ty sc)
+    imps top env (PPi (Constraint l _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
@@ -1441,7 +1441,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              put (PConstraint 10 l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (TacImp l _ scr) n ty sc)
+    imps top env (PPi (TacImp l _ scr) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
@@ -1476,7 +1476,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
         = do (decls, ns) <- get
              let isn = concatMap (namesIn uvars ist) as
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PLam fc n ty sc)
+    imps top env (PLam fc n _ ty sc)
         = do imps False env ty
              imps False (n:env) sc
     imps top env (PHidden tm)    = imps False env tm
@@ -1488,8 +1488,8 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     pibind using []     sc = sc
     pibind using (n:ns) sc
       = case lookup n using of
-            Just ty -> PPi (Imp [] Dynamic False Nothing) n ty (pibind using ns sc)
-            Nothing -> PPi (Imp [] Dynamic False Nothing) n Placeholder
+            Just ty -> PPi (Imp [] Dynamic False Nothing) n NoFC ty (pibind using ns sc)
+            Nothing -> PPi (Imp [] Dynamic False Nothing) n NoFC Placeholder
                                    (pibind using ns sc)
 
 -- Add implicit arguments in function calls
@@ -1572,18 +1572,20 @@ addImpl' inpat env infns imp_meths ist ptm
         -- definition which is passed through addImpl again with more scope
         -- information
             PCase fc c' os
-    -- If the name in a lambda is a constructor name, do this as a 'case'
-    -- instead (it is harmless to do so, especially since the lambda will
-    -- be lifted anyway!)
+
     ai qq env ds (PIfThenElse fc c t f) = PIfThenElse fc (ai qq env ds c)
                                                          (ai qq env ds t)
                                                          (ai qq env ds f)
-    ai qq env ds (PLam fc n ty sc)
+
+    -- If the name in a lambda is a constructor name, do this as a 'case'
+    -- instead (it is harmless to do so, especially since the lambda will
+    -- be lifted anyway!)
+    ai qq env ds (PLam fc n nfc ty sc)
       = case lookupDef n (tt_ctxt ist) of
              [] -> let ty' = ai qq env ds ty
                        sc' = ai qq ((n, Just ty):env) ds sc in
-                       PLam fc n ty' sc'
-             _ -> ai qq env ds (PLam fc (sMN 0 "lamp") ty
+                       PLam fc n nfc ty' sc'
+             _ -> ai qq env ds (PLam fc (sMN 0 "lamp") NoFC ty
                                      (PCase fc (PRef fc (sMN 0 "lamp") )
                                         [(PRef fc n, sc)]))
     ai qq env ds (PLet fc n ty val sc)
@@ -1593,12 +1595,12 @@ addImpl' inpat env infns imp_meths ist ptm
                        sc' = ai qq ((n, Just ty):env) ds sc in
                        PLet fc n ty' val' sc'
              _ -> ai qq env ds (PCase fc val [(PRef fc n, sc)])
-    ai qq env ds (PPi p n ty sc)
+    ai qq env ds (PPi p n nfc ty sc)
       = let ty' = ai qq env ds ty
             env' = if n `elem` imp_meths then env
                       else ((n, Just ty) : env)
             sc' = ai qq env' ds sc in
-            PPi p n ty' sc'
+            PPi p n nfc ty' sc'
     ai qq env ds (PGoal fc r n sc)
       = let r' = ai qq env ds r
             sc' = ai qq ((n, Nothing):env) ds sc in
@@ -1808,8 +1810,8 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
                            else PAlternative b alts'
     su (PPair fc p l r) = PPair fc p (su l) (su r)
     su (PDPair fc p l t r) = PDPair fc p (su l) (su t) (su r)
-    su t@(PLam fc _ _ _) = PHidden t
-    su t@(PPi _ _ _ _) = PHidden t
+    su t@(PLam _ _ _ _ _) = PHidden t
+    su t@(PPi _ _ _ _ _) = PHidden t
     su t@(PEq _ _ _ _ _) = PHidden t
     su t = t
 
@@ -1833,7 +1835,7 @@ findStatics :: IState -> PTerm -> (PTerm, [Bool])
 findStatics ist tm = trace (show tm) $
                       let (ns, ss) = fs tm in
                          runState (pos ns ss tm) []
-  where fs (PPi p n t sc)
+  where fs (PPi p n fc t sc)
             | Static <- pstatic p
                         = let (ns, ss) = fs sc in
                               (namesIn [] ist t : ns, n : ss)
@@ -1843,15 +1845,15 @@ findStatics ist tm = trace (show tm) $
 
         inOne n ns = length (filter id (map (elem n) ns)) == 1
 
-        pos ns ss (PPi p n t sc)
+        pos ns ss (PPi p n fc t sc)
             | elem n ss = do sc' <- pos ns ss sc
                              spos <- get
                              put (True : spos)
-                             return (PPi (p { pstatic = Static }) n t sc')
+                             return (PPi (p { pstatic = Static }) n fc t sc')
             | otherwise = do sc' <- pos ns ss sc
                              spos <- get
                              put (False : spos)
-                             return (PPi p n t sc')
+                             return (PPi p n fc t sc')
         pos ns ss t = return t
 
 -- for 6.12/7 compatibility
@@ -1951,12 +1953,12 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PResolveTC _) (PResolveTC _) = return []
     match (PTrue _ _) (PTrue _ _) = return []
     match (PReturn _) (PReturn _) = return []
-    match (PPi _ _ t s) (PPi _ _ t' s') = do mt <- match' t t'
-                                             ms <- match' s s'
-                                             return (mt ++ ms)
-    match (PLam _ _ t s) (PLam _ _ t' s') = do mt <- match' t t'
-                                               ms <- match' s s'
-                                               return (mt ++ ms)
+    match (PPi _ _ _ t s) (PPi _ _ _ t' s') = do mt <- match' t t'
+                                                 ms <- match' s s'
+                                                 return (mt ++ ms)
+    match (PLam _ _ _ t s) (PLam _ _ _ t' s') = do mt <- match' t t'
+                                                   ms <- match' s s'
+                                                   return (mt ++ ms)
     match (PLet _ _ t ty s) (PLet _ _ t' ty' s') = do mt <- match' t t'
                                                       mty <- match' ty ty'
                                                       ms <- match' s s'
@@ -2003,13 +2005,13 @@ substMatch n = substMatchShadow n []
 substMatchShadow :: Name -> [Name] -> PTerm -> PTerm -> PTerm
 substMatchShadow n shs tm t = sm shs t where
     sm xs (PRef _ n') | n == n' = tm
-    sm xs (PLam fc x t sc) = PLam fc x (sm xs t) (sm xs sc)
-    sm xs (PPi p x t sc)
+    sm xs (PLam fc x xfc t sc) = PLam fc x xfc (sm xs t) (sm xs sc)
+    sm xs (PPi p x fc t sc)
          | x `elem` xs
              = let x' = nextName x in
-                   PPi p x' (sm (x':xs) (substMatch x (PRef emptyFC x') t))
-                            (sm (x':xs) (substMatch x (PRef emptyFC x') sc))
-         | otherwise = PPi p x (sm xs t) (sm (x : xs) sc)
+                   PPi p x' fc (sm (x':xs) (substMatch x (PRef emptyFC x') t))
+                               (sm (x':xs) (substMatch x (PRef emptyFC x') sc))
+         | otherwise = PPi p x fc (sm xs t) (sm (x : xs) sc)
     sm xs (PApp f x as) = fullApp $ PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
     sm xs (PIfThenElse fc c t f) = PIfThenElse fc (sm xs c) (sm xs t) (sm xs f)
@@ -2032,10 +2034,10 @@ substMatchShadow n shs tm t = sm shs t where
 shadow :: Name -> Name -> PTerm -> PTerm
 shadow n n' t = sm t where
     sm (PRef fc x) | n == x = PRef fc n'
-    sm (PLam fc x t sc) | n /= x = PLam fc x (sm t) (sm sc)
-                        | otherwise = PLam fc x (sm t) sc
-    sm (PPi p x t sc) | n /= x = PPi p x (sm t) (sm sc)
-                      | otherwise = PPi p x (sm t) sc
+    sm (PLam fc x xfc t sc) | n /= x = PLam fc x xfc (sm t) (sm sc)
+                            | otherwise = PLam fc x xfc (sm t) sc
+    sm (PPi p x fc t sc) | n /= x = PPi p x fc (sm t) (sm sc)
+                         | otherwise = PPi p x fc (sm t) sc
     sm (PLet fc x t v sc) | n /= x = PLet fc x (sm t) (sm v) (sm sc)
                           | otherwise = PLet fc x (sm t) (sm v) sc
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
@@ -2077,7 +2079,7 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
   mkUniqT tac = return tac
 
   mkUniq :: PTerm -> State (S.Set Name) PTerm
-  mkUniq (PLam fc n ty sc)
+  mkUniq (PLam fc n nfc ty sc)
          = do env <- get
               (n', sc') <-
                     if n `S.member` env
@@ -2088,8 +2090,8 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
               put (S.insert n' env)
               ty' <- mkUniq ty
               sc'' <- mkUniq sc'
-              return $! PLam fc n' ty' sc''
-  mkUniq (PPi p n ty sc)
+              return $! PLam fc n' nfc ty' sc''
+  mkUniq (PPi p n fc ty sc)
          = do env <- get
               (n', sc') <-
                     if n `S.member` env
@@ -2100,7 +2102,7 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
               put (S.insert n' env)
               ty' <- mkUniq ty
               sc'' <- mkUniq sc'
-              return $! PPi p n' ty' sc''
+              return $! PPi p n' fc ty' sc''
   mkUniq (PLet fc n ty val sc)
          = do env <- get
               (n', sc') <-

@@ -251,13 +251,13 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
              else return ()
     tyIs con t = tclift $ tfail (At fc (Elaborating "constructor " con (Msg (show t ++ " is not " ++ show tn))))
 
-    mkLazy (PPi pl n ty sc)
+    mkLazy (PPi pl n nfc ty sc)
         = let ty' = if getTyName ty
                        then PApp fc (PRef fc (sUN "Lazy'"))
                             [pexp (PRef fc (sUN "LazyCodata")),
                              pexp ty]
                        else ty in
-              PPi pl n ty' (mkLazy sc)
+              PPi pl n nfc ty' (mkLazy sc)
     mkLazy t = t
 
     getTyName (PApp _ (PRef _ n) _) = n == nsroot tn
@@ -266,8 +266,8 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
 
 
     getNamePos :: Int -> PTerm -> Name -> Maybe Int
-    getNamePos i (PPi _ n _ sc) x | n == x = Just i
-                                  | otherwise = getNamePos (i + 1) sc x
+    getNamePos i (PPi _ n _ _ sc) x | n == x = Just i
+                                    | otherwise = getNamePos (i + 1) sc x
     getNamePos _ _ _ = Nothing
 
     -- if the constructor is a UniqueType, the datatype must be too
@@ -353,8 +353,8 @@ elabCaseFun ind paramPos n ty cons info = do
         splitPi :: PTerm -> ([(Name, Plicity, PTerm)], PTerm)
         splitPi = splitPi' []
           where splitPi' :: [(Name, Plicity, PTerm)] -> PTerm -> ([(Name, Plicity, PTerm)], PTerm)
-                splitPi' acc (PPi pl n tyl tyr) = splitPi' ((n, pl, tyl):acc) tyr
-                splitPi' acc t                  = (reverse acc, t)
+                splitPi' acc (PPi pl n _ tyl tyr) = splitPi' ((n, pl, tyl):acc) tyr
+                splitPi' acc t                    = (reverse acc, t)
 
         splitPms :: [(Name, Plicity, PTerm)] -> ([(Name, Plicity, PTerm)], [(Name, Plicity, PTerm)])
         splitPms cnstrs = (map fst pms, map fst idxs)
@@ -418,7 +418,7 @@ elabCaseFun ind paramPos n ty cons info = do
 
         piConstr :: [(Name, Plicity, PTerm)] -> PTerm -> PTerm
         piConstr [] ty = ty
-        piConstr ((n, pl, tyb):tyr) ty = PPi pl n tyb (piConstr tyr ty)
+        piConstr ((n, pl, tyb):tyr) ty = PPi pl n NoFC tyb (piConstr tyr ty)
 
         interlievePos :: [Int] -> [a] -> [a] -> Int -> [a]
         interlievePos idxs []     l2     i = l2
@@ -436,9 +436,9 @@ elabCaseFun ind paramPos n ty cons info = do
                _ -> cns
 
         removeParamPis :: [Name] -> [(Name, Plicity, PTerm)] -> PTerm -> PTerm
-        removeParamPis oldParams params (PPi pl n tyb tyr) =
+        removeParamPis oldParams params (PPi pl n fc tyb tyr) =
           case findIndex (== n) oldParams of
-            Nothing -> (PPi pl n (removeParamPis oldParams params tyb) (removeParamPis oldParams params tyr))
+            Nothing -> (PPi pl n fc (removeParamPis oldParams params tyb) (removeParamPis oldParams params tyr))
             Just i  -> (removeParamPis oldParams params tyr)
         removeParamPis oldParams params (PRef _ n) =
           case findIndex (== n) oldParams of

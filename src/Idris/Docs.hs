@@ -163,8 +163,8 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
     dumpInstance :: PTerm -> Doc OutputAnnotation
     dumpInstance = pprintPTerm ppo params' [] infixes
 
-    prettifySubclasses (PPi (Constraint _ _) _ tm _)   = prettifySubclasses tm
-    prettifySubclasses (PPi plcity           nm t1 t2) = PPi plcity (safeHead nm pNames) (prettifySubclasses t1) (prettifySubclasses t2)
+    prettifySubclasses (PPi (Constraint _ _) _ _ tm _)   = prettifySubclasses tm
+    prettifySubclasses (PPi plcity           nm fc t1 t2) = PPi plcity (safeHead nm pNames) NoFC (prettifySubclasses t1) (prettifySubclasses t2)
     prettifySubclasses (PApp fc ref args)              = PApp fc ref $ updateArgs pNames args
     prettifySubclasses tm                              = tm
 
@@ -178,8 +178,8 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses)
     updateRef nm (PRef fc _) = PRef fc nm
     updateRef _  pt          = pt
 
-    isSubclass (PPi (Constraint _ _) _ (PApp _ _ args) (PApp _ (PRef _ nm) args')) = nm == n && map getTm args == map getTm args'
-    isSubclass (PPi _                _ _ pt)                                       = isSubclass pt
+    isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ nm) args')) = nm == n && map getTm args == map getTm args'
+    isSubclass (PPi _   _            _ _ pt)                                       = isSubclass pt
     isSubclass _                                                                   = False
 
     prettyParameters =
@@ -262,9 +262,9 @@ docClass n ci
     getDInst (PInstance _ _ _ _ _ _ _ t _ _) = Just t
     getDInst _                           = Nothing
 
-    isSubclass (PPi (Constraint _ _) _ (PApp _ _ args) (PApp _ (PRef _ nm) args'))
+    isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ nm) args'))
       = nm == n && map getTm args == map getTm args'
-    isSubclass (PPi _ _ _ pt)
+    isSubclass (PPi _ _ _ _ pt)
       = isSubclass pt
     isSubclass _
       = False
@@ -290,7 +290,7 @@ docFun n
              funName n        = show n
 
 getPArgNames :: PTerm -> [(Name, Docstring DocTerm)] -> [(Name, PTerm, Plicity, Maybe (Docstring DocTerm))]
-getPArgNames (PPi plicity name ty body) ds =
+getPArgNames (PPi plicity name _ ty body) ds =
   (name, ty, plicity, lookup name ds) : getPArgNames body ds
 getPArgNames _ _ = []
 

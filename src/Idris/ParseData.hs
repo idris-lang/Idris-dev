@@ -64,10 +64,10 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                      Nothing -> return ()
                 return $ PRecord doc rsyn fc opts tyn params paramDocs fields cname cdoc syn
              <?> "record type declaration"
-  where    
+  where
     getRecNames :: SyntaxInfo -> PTerm -> [Name]
-    getRecNames syn (PPi _ n _ sc) = [expandNS syn n, expandNS syn (mkType n)]
-                                       ++ getRecNames syn sc
+    getRecNames syn (PPi _ n _ _ sc) = [expandNS syn n, expandNS syn (mkType n)]
+                                         ++ getRecNames syn sc
     getRecNames _ _ = []
 
     toFreeze :: Maybe Accessibility -> Maybe Accessibility
@@ -117,28 +117,28 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
         annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
         annotate syn ist = annotCode $ tryFullExpr syn ist
 
-recordParameter :: SyntaxInfo -> IdrisParser (Name, Plicity, PTerm)
+recordParameter :: SyntaxInfo -> IdrisParser (Name, FC, Plicity, PTerm)
 recordParameter syn =
   (do lchar '('
-      (n, pt) <- (namedTy syn <|> onlyName syn)
+      (n, nfc, pt) <- (namedTy syn <|> onlyName syn)
       lchar ')'
-      return (n, expl, pt))
+      return (n, nfc, expl, pt))
   <|>
-  (do (n, pt) <- onlyName syn
-      return (n, expl, pt))
-                 
+  (do (n, nfc, pt) <- onlyName syn
+      return (n, nfc, expl, pt))
+
   where
-    namedTy :: SyntaxInfo -> IdrisParser (Name, PTerm)
+    namedTy :: SyntaxInfo -> IdrisParser (Name, FC, PTerm)
     namedTy syn =
-      do n <- fst <$> fnName
+      do (n, nfc) <- fnName
          lchar ':'
          ty <- typeExpr (allowImp syn)
-         return (expandNS syn n, ty)
-    onlyName :: SyntaxInfo -> IdrisParser (Name, PTerm)
+         return (expandNS syn n, nfc, ty)
+    onlyName :: SyntaxInfo -> IdrisParser (Name, FC, PTerm)
     onlyName syn =
-      do n <- fst <$> fnName
+      do (n, nfc) <- fnName
          fc <- getFC
-         return (expandNS syn n, PType fc)
+         return (expandNS syn n, nfc, PType fc)
 
 {- | Parses data declaration type (normal or codata)
 DataI ::= 'data' | 'codata';
@@ -230,7 +230,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
     mkPApp fc t [] = t
     mkPApp fc t xs = PApp fc t (map pexp xs)
     bindArgs :: [PTerm] -> PTerm -> PTerm
-    bindArgs xs t = foldr (PPi expl (sMN 0 "_t")) t xs
+    bindArgs xs t = foldr (PPi expl (sMN 0 "_t") NoFC) t xs
     combineDataOpts :: DataOpts -> DataOpts
     combineDataOpts opts = if Codata `elem` opts
                               then delete DefaultEliminator opts

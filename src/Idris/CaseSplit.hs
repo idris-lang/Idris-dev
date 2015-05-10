@@ -346,19 +346,19 @@ getClause l fn fp
                       return (show fn ++ " " ++ ap ++ "= ?" 
                                       ++ show fn ++ "_rhs")
    where mkApp :: IState -> PTerm -> [Name] -> String
-         mkApp i (PPi (Exp _ _ False) (MN _ _) ty sc) used
+         mkApp i (PPi (Exp _ _ False) (MN _ _) _ ty sc) used
                = let n = getNameFrom i used ty in
                      show n ++ " " ++ mkApp i sc (n : used) 
-         mkApp i (PPi (Exp _ _ False) (UN n) ty sc) used
+         mkApp i (PPi (Exp _ _ False) (UN n) _ ty sc) used
             | thead n == '_'
                = let n = getNameFrom i used ty in
                      show n ++ " " ++ mkApp i sc (n : used) 
-         mkApp i (PPi (Exp _ _ False) n _ sc) used 
+         mkApp i (PPi (Exp _ _ False) n _ _ sc) used 
                = show n ++ " " ++ mkApp i sc (n : used) 
-         mkApp i (PPi _ _ _ sc) used = mkApp i sc used
+         mkApp i (PPi _ _ _ _ sc) used = mkApp i sc used
          mkApp i _ _ = ""
 
-         getNameFrom i used (PPi _ _ _ _) 
+         getNameFrom i used (PPi _ _ _ _ _)
               = uniqueNameFrom (mkSupply [sUN "f", sUN "g"]) used
          getNameFrom i used (PApp fc f as) = getNameFrom i used f
          getNameFrom i used (PEq _ _ _ _ _) = uniqueNameFrom (mkSupply [sUN "prf"]) used 
@@ -388,7 +388,7 @@ getProofClause :: Int      -- ^ line number that the type is declared
 getProofClause l fn fp
                   = do ty <- getInternalApp fp l
                        return (mkApp ty ++ " = ?" ++ show fn ++ "_rhs")
-   where mkApp (PPi _ _ _ sc) = mkApp sc
+   where mkApp (PPi _ _ _ _ sc) = mkApp sc
          mkApp rt = "(" ++ show rt ++ ") <== " ++ show fn
 
 -- Purely syntactic - turn a pattern match clause into a with and a new

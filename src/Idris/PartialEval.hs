@@ -128,12 +128,12 @@ mkPE_TyDecl :: IState -> [(PEArgType, Term)] -> Type -> PTerm
 mkPE_TyDecl ist args ty = mkty args ty
   where
     mkty ((ExplicitD, v) : xs) (Bind n (Pi _ t k) sc)
-       = PPi expl n (delab ist (generaliseIn t)) (mkty xs sc)
+       = PPi expl n NoFC (delab ist (generaliseIn t)) (mkty xs sc)
     mkty ((ImplicitD, v) : xs) (Bind n (Pi _ t k) sc)
          | concreteClass ist t = mkty xs sc
          | classConstraint ist t 
-             = PPi constraint n (delab ist (generaliseIn t)) (mkty xs sc)
-         | otherwise = PPi impl n (delab ist (generaliseIn t)) (mkty xs sc)
+             = PPi constraint n NoFC (delab ist (generaliseIn t)) (mkty xs sc)
+         | otherwise = PPi impl n NoFC (delab ist (generaliseIn t)) (mkty xs sc)
 
     mkty (_ : xs) t
        = mkty xs t

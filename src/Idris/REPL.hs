@@ -906,7 +906,7 @@ process fn (Check (PRef _ n))
                 (ty:_) -> putTy ppo ist i [] (delab ist (errReverse ist ty))
     putTy :: PPOption -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     putTy ppo ist 0 bnd sc = putGoal ppo ist bnd sc
-    putTy ppo ist i bnd (PPi _ n t sc)
+    putTy ppo ist i bnd (PPi _ n _ t sc)
                = let current = text "  " <>
                                (case n of
                                    MN _ _ -> text "_"

@@ -71,14 +71,14 @@ extractDoUnquotes d (DoLetP fc t t') = fail "Pattern-matching lets cannot be qua
 
 
 extractUnquotes :: Int -> PTerm -> Elab' aux (PTerm, [(Name, PTerm)])
-extractUnquotes n (PLam fc name ty body)
+extractUnquotes n (PLam fc name nfc ty body)
   = do (ty', ex1) <- extractUnquotes n ty
        (body', ex2) <- extractUnquotes n body
-       return (PLam fc name ty' body', ex1 ++ ex2)
-extractUnquotes n (PPi plicity name ty body)
+       return (PLam fc name nfc ty' body', ex1 ++ ex2)
+extractUnquotes n (PPi plicity name fc ty body)
   = do (ty', ex1) <- extractUnquotes n ty
        (body', ex2) <- extractUnquotes n body
-       return (PPi plicity name ty' body', ex1 ++ ex2)
+       return (PPi plicity name fc ty' body', ex1 ++ ex2)
 extractUnquotes n (PLet fc name ty val body)
   = do (ty', ex1) <- extractUnquotes n ty
        (val', ex2) <- extractUnquotes n val

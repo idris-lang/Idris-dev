@@ -61,25 +61,25 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                                   Just (Just _, mi, _) -> mkMVApp n []
                                   _ -> PRef un n
     de env _ (Bind n (Lam ty) sc)
-          = PLam un n (de env [] ty) (de ((n,n):env) [] sc)
+          = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
     de env is (Bind n (Pi (Just impl) ty _) sc)
        | tcinstance impl
-          = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
        | otherwise
-          = PPi (Imp [] Dynamic False (Just impl)) n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (Imp [] Dynamic False (Just impl)) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env ((PImp { argopts = opts }):is) (Bind n (Pi _ ty _) sc)
-          = PPi (Imp opts Dynamic False Nothing) n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (Imp opts Dynamic False Nothing) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env (PConstraint _ _ _ _:is) (Bind n (Pi _ ty _) sc)
-          = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi _ ty _) sc)
-          = PPi (tacimpl tac) n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (tacimpl tac) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env (plic:is) (Bind n (Pi _ ty _) sc)
           = PPi (Exp (argopts plic) Dynamic False)
-                n
+                n NoFC
                 (de env [] ty)
                 (de ((n,n):env) is sc)
     de env [] (Bind n (Pi _ ty _) sc)
-          = PPi expl n (de env [] ty) (de ((n,n):env) [] sc)
+          = PPi expl n NoFC (de env [] ty) (de ((n,n):env) [] sc)
 
     de env imps (Bind n (Let ty val) sc)
           | isCaseApp sc
@@ -477,14 +477,14 @@ addImplicitDiffs x y
                          else (a { getTm = a' } : as',
                                b { getTm = b' } : bs')
              addShows xs ys = (xs, ys)
-    addI (PLam fc n a b) (PLam fc' n' c d)
+    addI (PLam fc n nfc a b) (PLam fc' n' nfc' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
-               (PLam fc n a' b', PLam fc' n' c' d')
-    addI (PPi p n a b) (PPi p' n' c d)
+               (PLam fc n nfc a' b', PLam fc' n' nfc' c' d')
+    addI (PPi p n fc a b) (PPi p' n' fc' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
-               (PPi p n a' b', PPi p' n' c' d')
+               (PPi p n fc a' b', PPi p' n' fc' c' d')
     addI (PRefl fc a) (PRefl fc' b)
          = let (a', b') = addI a b in
                (PRefl fc a', PRefl fc' b')
@@ -528,9 +528,9 @@ addImplicitDiffs x y
     expLike (PApp _ f as) (PApp _ f' as')
         = expLike f f' && length as == length as' &&
           and (zipWith expLike (getExps as) (getExps as'))
-    expLike (PPi _ n s t) (PPi _ n' s' t')
+    expLike (PPi _ n fc s t) (PPi _ n' fc' s' t')
         = n == n' && expLike s s' && expLike t t'
-    expLike (PLam _ n s t) (PLam _ n' s' t')
+    expLike (PLam _ n _ s t) (PLam _ n' _ s' t')
         = n == n' && expLike s s' && expLike t t'
     expLike (PPair _ _ x y) (PPair _ _ x' y') = expLike x x' && expLike y y'
     expLike (PDPair _ _ x _ y) (PDPair _ _ x' _ y') = expLike x x' && expLike y y'

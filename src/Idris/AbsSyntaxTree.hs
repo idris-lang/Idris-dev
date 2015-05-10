@@ -603,7 +603,7 @@ data PDecl' t
    | PNamespace String [PDecl' t] -- ^ New namespace
    | PRecord  (Docstring (Either Err PTerm)) SyntaxInfo FC DataOpts
               Name                 -- Record name
-              [(Name, Plicity, t)] -- Parameters
+              [(Name, FC, Plicity, t)] -- Parameters, where FC is precise name span
               [(Name, Docstring (Either Err PTerm))] -- Param Docs
               [((Maybe Name), Plicity, t, Maybe (Docstring (Either Err PTerm)))] -- Fields
               (Maybe Name) -- Optional constructor name
@@ -810,8 +810,8 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PRef FC Name -- ^ A reference to a variable
            | PInferRef FC Name -- ^ A name to be defined later
            | PPatvar FC Name -- ^ A pattern variable
-           | PLam FC Name PTerm PTerm -- ^ A lambda abstraction
-           | PPi  Plicity Name PTerm PTerm -- ^ (n : t1) -> t2
+           | PLam FC Name FC PTerm PTerm -- ^ A lambda abstraction. Second FC is name span.
+           | PPi  Plicity Name FC PTerm PTerm -- ^ (n : t1) -> t2, where the FC is for the variable
            | PLet FC Name PTerm PTerm PTerm -- ^ A let binding
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
@@ -861,8 +861,8 @@ deriving instance NFData PTerm
 
 mapPT :: (PTerm -> PTerm) -> PTerm -> PTerm
 mapPT f t = f (mpt t) where
-  mpt (PLam fc n t s) = PLam fc n (mapPT f t) (mapPT f s)
-  mpt (PPi p n t s) = PPi p n (mapPT f t) (mapPT f s)
+  mpt (PLam fc n nfc t s) = PLam fc n nfc (mapPT f t) (mapPT f s)
+  mpt (PPi p n nfc t s) = PPi p n nfc (mapPT f t) (mapPT f s)
   mpt (PLet fc n ty v s) = PLet fc n (mapPT f ty) (mapPT f v) (mapPT f s)
   mpt (PRewrite fc t s g) = PRewrite fc (mapPT f t) (mapPT f s)
                                  (fmap (mapPT f) g)
@@ -1020,8 +1020,8 @@ highestFC (PQuote _) = Nothing
 highestFC (PRef fc _) = Just fc
 highestFC (PInferRef fc _) = Just fc
 highestFC (PPatvar fc _) = Just fc
-highestFC (PLam fc _ _ _) = Just fc
-highestFC (PPi  _ _ _ _) = Nothing
+highestFC (PLam fc _ _ _ _) = Just fc
+highestFC (PPi _ _ _ _ _) = Nothing
 highestFC (PLet fc _ _ _ _) = Just fc
 highestFC (PTyped tm ty) = highestFC tm <|> highestFC ty
 highestFC (PApp fc _ _) = Just fc
@@ -1262,8 +1262,8 @@ inferTy   = sMN 0 "__Infer"
 inferCon  = sMN 0 "__infer"
 inferDecl = PDatadecl inferTy
                       (PType bi)
-                      [(emptyDocstring, [], inferCon, PPi impl (sMN 0 "iType") (PType bi) (
-                                                   PPi expl (sMN 0 "ival") (PRef bi (sMN 0 "iType"))
+                      [(emptyDocstring, [], inferCon, PPi impl (sMN 0 "iType") NoFC (PType bi) (
+                                                   PPi expl (sMN 0 "ival") NoFC (PRef bi (sMN 0 "iType"))
                                                    (PRef bi inferTy)), bi, [])]
 inferOpts = []
 
@@ -1321,8 +1321,8 @@ eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType bi), (n "B", PType bi)]
                                  (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
                                  (PType bi)))
                 [(reflDoc, reflParamDoc,
-                  eqCon, PPi impl (n "A") (PType bi) (
-                                  PPi impl (n "x") (PRef bi (n "A"))
+                  eqCon, PPi impl (n "A") NoFC (PType bi) (
+                                  PPi impl (n "x") NoFC (PRef bi (n "A"))
                                       (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
                                                                pimp (n "B") Placeholder False,
                                                                pexp (PRef bi (n "x")),
@@ -1356,7 +1356,7 @@ piBind = piBindp expl
 
 piBindp :: Plicity -> [(Name, PTerm)] -> PTerm -> PTerm
 piBindp p [] t = t
-piBindp p ((n, ty):ns) t = PPi p n ty (piBindp p ns t)
+piBindp p ((n, ty):ns) t = PPi p n NoFC ty (piBindp p ns t)
 
 
 -- Pretty-printing declarations and terms
@@ -1445,7 +1445,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
       | Just str <- slist p bnd e = str
       | Just n <- snat p e = annotate (AnnData "Nat" "") (text (show n))
     prettySe p bnd (PRef fc n) = prettyName True (ppopt_impl ppo) bnd n
-    prettySe p bnd (PLam fc n ty sc) =
+    prettySe p bnd (PLam fc n nfc ty sc) =
       bracket p startPrec . group . align . hang 2 $
       text "\\" <> prettyBindingOf n False <+> text "=>" <$>
       prettySe startPrec ((n, False):bnd) sc
@@ -1453,7 +1453,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
       bracket p startPrec . group . align $
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe startPrec ((n, False):bnd) sc)
-    prettySe p bnd (PPi (Exp l s _) n ty sc)
+    prettySe p bnd (PPi (Exp l s _) n _ ty sc)
       | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
           bracket p startPrec . group $
           enclose lparen rparen (group . align $ prettyBindingOf n False <+> colon <+> prettySe startPrec bnd ty) <+>
@@ -1466,7 +1466,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
           case s of
             Static -> text "[static]" <> space
             _      -> empty
-    prettySe p bnd (PPi (Imp l s _ fa) n ty sc)
+    prettySe p bnd (PPi (Imp l s _ fa) n _ ty sc)
       | ppopt_impl ppo =
           bracket p startPrec $
           lbrace <> prettyBindingOf n True <+> colon <+> prettySe startPrec bnd ty <> rbrace <+>
@@ -1477,10 +1477,10 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
           case s of
             Static -> text "[static]" <> space
             _      -> empty
-    prettySe p bnd (PPi (Constraint _ _) n ty sc) =
+    prettySe p bnd (PPi (Constraint _ _) n _ ty sc) =
       bracket p startPrec $
       prettySe (startPrec + 1) bnd ty <+> text "=>" </> prettySe startPrec ((n, True):bnd) sc
-    prettySe p bnd (PPi (TacImp _ _ s) n ty sc) =
+    prettySe p bnd (PPi (TacImp _ _ s) n _ ty sc) =
       bracket p startPrec $
       lbrace <> kwd "tacimp" <+> pretty n <+> colon <+> prettySe startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe startPrec ((n, True):bnd) sc
@@ -1866,8 +1866,8 @@ showTmImpls = flip (displayS . renderCompact . prettyImp verbosePPOption) ""
 instance Sized PTerm where
   size (PQuote rawTerm) = size rawTerm
   size (PRef fc name) = size name
-  size (PLam fc name ty bdy) = 1 + size ty + size bdy
-  size (PPi plicity name ty bdy) = 1 + size ty + size bdy
+  size (PLam fc name _ ty bdy) = 1 + size ty + size bdy
+  size (PPi plicity name fc ty bdy) = 1 + size ty + size fc + size bdy
   size (PLet fc name ty def bdy) = 1 + size ty + size def + size bdy
   size (PTyped trm ty) = 1 + size trm + size ty
   size (PApp fc name args) = 1 + size args
@@ -1900,7 +1900,7 @@ instance Sized PTerm where
   size _ = 0
 
 getPArity :: PTerm -> Int
-getPArity (PPi _ _ _ sc) = 1 + getPArity sc
+getPArity (PPi _ _ _ _ sc) = 1 + getPArity sc
 getPArity _ = 0
 
 -- Return all names, free or globally bound, in the given term.
@@ -1915,8 +1915,8 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PIfThenElse _ c t f) = ni env c ++ ni env t ++ ni env f
-    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n _ ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
@@ -1942,9 +1942,9 @@ boundNamesIn tm = S.toList (ni S.empty tm)
     ni set (PAppBind _ f as) = niTms (ni set f) (map getTm as)
     ni set (PCase _ c os)  = niTms (ni set c) (map snd os)
     ni set (PIfThenElse _ c t f) = niTms set [c, t, f]
-    ni set (PLam fc n ty sc)  = S.insert n $ ni (ni set ty) sc
+    ni set (PLam fc n _ ty sc)  = S.insert n $ ni (ni set ty) sc
     ni set (PLet fc n ty val sc) = S.insert n $ ni (ni (ni set ty) val) sc
-    ni set (PPi p n ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
+    ni set (PPi p n _ ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
     ni set (PEq _ _ _ l r) = ni (ni set l) r
     ni set (PRewrite _ l r _) = ni (ni set l) r
     ni set (PTyped l r) = ni (ni set l) r
@@ -1983,8 +1983,8 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
     ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
-    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n _ ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n _ ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
@@ -2014,8 +2014,8 @@ namesIn uvars ist tm = nub $ ni [] tm
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
     ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
-    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n nfc ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
@@ -2046,8 +2046,8 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
-    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n _ ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PEq _ _ _ l r)     = ni env l ++ ni env r
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r

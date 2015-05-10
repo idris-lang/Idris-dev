@@ -106,13 +106,13 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
   where
     nodoc (n, (_, o, t)) = (n, (o, t))
     pibind [] x = x
-    pibind ((n, ty): ns) x = PPi expl n ty (pibind ns (chkUniq ty x))
+    pibind ((n, ty): ns) x = PPi expl n NoFC ty (pibind ns (chkUniq ty x))
 
     -- To make sure the type constructor of the class is in the appropriate
     -- uniqueness hierarchy
     chkUniq u@(PUniverse _) (PType _) = u
     chkUniq (PUniverse l) (PUniverse r) = PUniverse (min l r)
-    chkUniq (PPi _ _ _ sc) t = chkUniq sc t
+    chkUniq (PPi _ _ _ _ sc) t = chkUniq sc t
     chkUniq _ t = t
 
     mdec :: Name -> Name
@@ -134,10 +134,10 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
 
     impbind :: [(Name, PTerm)] -> PTerm -> PTerm
     impbind [] x = x
-    impbind ((n, ty): ns) x = PPi impl n ty (impbind ns x)
+    impbind ((n, ty): ns) x = PPi impl n NoFC ty (impbind ns x)
 
     conbind :: [(Name, PTerm)] -> PTerm -> PTerm
-    conbind ((c, ty) : ns) x = PPi constraint c ty (conbind ns x)
+    conbind ((c, ty) : ns) x = PPi constraint c NoFC ty (conbind ns x)
     conbind [] x = x
 
     getMName (PTy _ _ _ _ _ n _) = nsroot n
@@ -181,7 +181,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
              let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
              let lhs = PApp fc (PRef fc cfn) [pconst capp]
              let rhs = PResolveTC (fileFC "HACK")
-             let ty = PPi constraint cnm c con
+             let ty = PPi constraint cnm NoFC c con
              logLvl 2 ("Dictionary constraint: " ++ showTmImpls ty)
              logLvl 2 (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
              i <- getIState
@@ -213,9 +213,9 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
              return [PTy doc [] syn fc o m ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
 
-    getMArgs (PPi (Imp _ _ _ _) n ty sc) = IA n : getMArgs sc
-    getMArgs (PPi (Exp _ _ _) n ty sc) = EA n : getMArgs sc
-    getMArgs (PPi (Constraint _ _) n ty sc) = CA : getMArgs sc
+    getMArgs (PPi (Imp _ _ _ _) n _ ty sc) = IA n : getMArgs sc
+    getMArgs (PPi (Exp _ _ _) n _ ty sc) = EA n : getMArgs sc
+    getMArgs (PPi (Constraint _ _) n _ ty sc) = CA : getMArgs sc
     getMArgs _ = []
 
     getMeth (m:ms) (a:as) x | x == a = PRef fc m
@@ -231,16 +231,16 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
     rhsArgs (CA : xs) ns = pconst (PResolveTC fc) : rhsArgs xs ns
     rhsArgs [] _ = []
 
-    insertConstraint c (PPi p@(Imp _ _ _ _) n ty sc)
-                          = PPi p n ty (insertConstraint c sc)
+    insertConstraint c (PPi p@(Imp _ _ _ _) n fc ty sc)
+                          = PPi p n fc ty (insertConstraint c sc)
     insertConstraint c sc = PPi (constraint { pstatic = Static })
-                                  (sMN 0 "class") c sc
+                                  (sMN 0 "class") NoFC c sc
 
     -- make arguments explicit and don't bind class parameters
-    toExp ns e (PPi (Imp l s p _) n ty sc)
+    toExp ns e (PPi (Imp l s p _) n fc ty sc)
         | n `elem` ns = toExp ns e sc
-        | otherwise = PPi (e l s p) n ty (toExp ns e sc)
-    toExp ns e (PPi p n ty sc) = PPi p n ty (toExp ns e sc)
+        | otherwise = PPi (e l s p) n fc ty (toExp ns e sc)
+    toExp ns e (PPi p n fc ty sc) = PPi p n fc ty (toExp ns e sc)
     toExp ns e sc = sc
 
 -- In a top level type for a method, expand all the method names namespaces
