@@ -309,7 +309,7 @@ pprintErr' i (InvalidTCArg n t)
         <> annName n <$>
         text "(Type class arguments must be injective)"
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
-                                    align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i) . annName) as)))
+                                    align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i True) . annName) as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (WithFnType ty) =
@@ -558,8 +558,9 @@ annName' n str = annotate (AnnName n Nothing Nothing Nothing) (text str)
 annTm :: Term -> Doc OutputAnnotation -> Doc OutputAnnotation
 annTm tm = annotate (AnnTerm [] tm)
 
-fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
-fancifyAnnots ist annot@(AnnName n _ _ _) =
+-- | Add extra metadata to an output annotation, optionally marking metavariables.
+fancifyAnnots :: IState -> Bool -> OutputAnnotation -> OutputAnnotation
+fancifyAnnots ist meta annot@(AnnName n _ _ _) =
   do let ctxt = tt_ctxt ist
          docs = docOverview ist n
          ty   = Just (getTy ist n)
@@ -567,7 +568,9 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
        _ | isDConName      n ctxt -> AnnName n (Just DataOutput) docs ty
        _ | isFnName        n ctxt -> AnnName n (Just FunOutput) docs ty
        _ | isTConName      n ctxt -> AnnName n (Just TypeOutput) docs ty
-       _ | isMetavarName   n ist  -> AnnName n (Just MetavarOutput) docs ty
+       _ | isMetavarName   n ist  -> if meta
+                                       then AnnName n (Just MetavarOutput) docs ty
+                                       else AnnName n (Just FunOutput) docs ty
        _ | isPostulateName n ist  -> AnnName n (Just PostulateOutput) docs ty
        _ | otherwise              -> annot
   where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
@@ -585,7 +588,7 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
         getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
                                   delabTy ist n
                       in (displayS . renderPretty 1.0 50 $ theTy) ""
-fancifyAnnots _ annot = annot
+fancifyAnnots _ _ annot = annot
 
 showSc :: IState -> [(Name, Term)] -> Doc OutputAnnotation
 showSc i [] = empty

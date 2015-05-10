@@ -47,7 +47,7 @@ searchByType pkgs pterm = do
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn name pterm'
   let pterm'''  = addImpl [] i pterm''
-  ty <- elabType toplevel syn (fst noDocs) (snd noDocs) emptyFC [] name pterm'
+  ty <- elabType toplevel syn (fst noDocs) (snd noDocs) emptyFC [] name NoFC pterm'
   let names = searchUsing searchPred i ty
   let names' = take numLimit names
   let docs =

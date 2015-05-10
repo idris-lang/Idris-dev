@@ -1144,7 +1144,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                     put x1
                                     put x2
                                     put x3
-                PTy x1 x2 x3 x4 x5 x6 x7
+                PTy x1 x2 x3 x4 x5 x6 x7 x8
                                    -> do putWord8 1
                                          put x1
                                          put x2
@@ -1153,6 +1153,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                          put x5
                                          put x6
                                          put x7
+                                         put x8
                 PClauses x1 x2 x3 x4 -> do putWord8 2
                                            put x1
                                            put x2
@@ -1258,7 +1259,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x5 <- get
                            x6 <- get
                            x7 <- get
-                           return (PTy x1 x2 x3 x4 x5 x6 x7)
+                           x8 <- get
+                           return (PTy x1 x2 x3 x4 x5 x6 x7 x8)
                    2 -> do x1 <- get
                            x2 <- get
                            x3 <- get

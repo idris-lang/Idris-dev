@@ -71,7 +71,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
     let iname = mkiname n (namespace info) ps expn
     let emptyclass = null (class_methods ci)
     when (what /= EDefns || (null ds && not emptyclass)) $ do
-         nty <- elabType' True info syn doc argDocs fc [] iname t
+         nty <- elabType' True info syn doc argDocs fc [] iname NoFC t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
@@ -245,8 +245,8 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
     decorate ns iname (UN n)        = NS (SN (MethodN (UN n))) ns
     decorate ns iname (NS (UN n) s) = NS (SN (MethodN (UN n))) ns
 
-    mkTyDecl (n, op, t, _) 
-        = PTy emptyDocstring [] syn fc op n 
+    mkTyDecl (n, op, t, _)
+        = PTy emptyDocstring [] syn fc op n NoFC
                (mkUniqueNames [] t)
 
     conbind :: [(Name, PTerm)] -> PTerm -> PTerm

@@ -593,7 +593,7 @@ type ProvideWhat = ProvideWhat' PTerm
 -- datatypes and typeclasses.
 data PDecl' t
    = PFix     FC Fixity [String] -- ^ Fixity declaration
-   | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
+   | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name FC t   -- ^ Type declaration (last FC is precise name location)
    | PPostulate Bool -- external def if true
           (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
@@ -728,7 +728,7 @@ type PClause = PClause' PTerm
 
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
-declared (PTy _ _ _ _ _ n t) = [n]
+declared (PTy _ _ _ _ _ n fc t) = [n]
 declared (PPostulate _ _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PCAF _ n _) = [n]
@@ -749,7 +749,7 @@ declared _ = []
 -- get the names declared, not counting nested parameter blocks
 tldeclared :: PDecl -> [Name]
 tldeclared (PFix _ _ _) = []
-tldeclared (PTy _ _ _ _ _ n t) = [n]
+tldeclared (PTy _ _ _ _ _ n _ t) = [n]
 tldeclared (PPostulate _ _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
 tldeclared (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
@@ -764,7 +764,7 @@ tldeclared _ = []
 
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
-defined (PTy _ _ _ _ _ n t) = []
+defined (PTy _ _ _ _ _ n _ t) = []
 defined (PPostulate _ _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PCAF _ n _) = [n]
@@ -1780,7 +1780,7 @@ showDecls :: PPOption -> [PDecl] -> Doc OutputAnnotation
 showDecls o ds = vsep (map (showDeclImp o) ds)
 
 showDeclImp _ (PFix _ f ops) = text (show f) <+> cat (punctuate (text ",") (map text ops))
-showDeclImp o (PTy _ _ _ _ _ n t) = text "tydecl" <+> text (showCG n) <+> colon <+> prettyImp o t
+showDeclImp o (PTy _ _ _ _ _ n _ t) = text "tydecl" <+> text (showCG n) <+> colon <+> prettyImp o t
 showDeclImp o (PClauses _ _ n cs) = text "pat" <+> text (showCG n) <+> text "\t" <+>
                                       indent 2 (vsep (map (showCImp o) cs))
 showDeclImp o (PData _ _ _ _ _ d) = showDImp o { ppopt_impl = True } d

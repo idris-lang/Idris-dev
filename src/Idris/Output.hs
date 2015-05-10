@@ -33,20 +33,20 @@ instance MonadException m => MonadException (ExceptT Err m) where
 pshow :: IState -> Err -> String
 pshow ist err = displayDecorated (consoleDecorate ist) .
                 renderPretty 1.0 80 .
-                fmap (fancifyAnnots ist) $ pprintErr ist err
+                fmap (fancifyAnnots ist True) $ pprintErr ist err
 
 iWarn :: FC -> Doc OutputAnnotation -> Idris ()
 iWarn fc err =
   do i <- getIState
      case idris_outputmode i of
        RawOutput h ->
-         do err' <- iRender . fmap (fancifyAnnots i) $
+         do err' <- iRender . fmap (fancifyAnnots i True) $
                       case fc of
                         FC fn _ _ | fn /= "" -> text (show fc) <> colon <//> err
                         _ -> err
             runIO . hPutStrLn h $ displayDecorated (consoleDecorate i) err'
        IdeMode n h ->
-         do err' <- iRender . fmap (fancifyAnnots i) $ err
+         do err' <- iRender . fmap (fancifyAnnots i True) $ err
             let (str, spans) = displaySpans err'
             runIO . hPutStrLn h $
               convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
@@ -97,7 +97,7 @@ iRenderOutput doc =
        RawOutput h -> do out <- iRender doc
                          runIO $ putStrLn (displayDecorated (consoleDecorate i) out)
        IdeMode n h ->
-        do (str, spans) <- fmap displaySpans . iRender . fmap (fancifyAnnots i) $ doc
+        do (str, spans) <- fmap displaySpans . iRender . fmap (fancifyAnnots i True) $ doc
            let out = [toSExp str, toSExp spans]
            runIO . hPutStrLn h $ convSExp "write-decorated" out n
 
@@ -112,7 +112,7 @@ ideModeReturnWithStatus status n h out = do
   ist <- getIState
   (str, spans) <- fmap displaySpans .
                   iRender .
-                  fmap (fancifyAnnots ist) $
+                  fmap (fancifyAnnots ist True) $
                   out
   let good = [SymbolAtom status, toSExp str, toSExp spans]
   runIO . hPutStrLn h $ convSExp "return" good n
@@ -168,7 +168,7 @@ iputGoal g = do i <- getIState
                 case idris_outputmode i of
                   RawOutput h -> runIO $ hPutStrLn h (displayDecorated (consoleDecorate i) g)
                   IdeMode n h ->
-                    let (str, spans) = displaySpans . fmap (fancifyAnnots i) $ g
+                    let (str, spans) = displaySpans . fmap (fancifyAnnots i True) $ g
                         goal = [toSExp str, toSExp spans]
                     in runIO . hPutStrLn h $ convSExp "write-goal" goal n
 
@@ -201,7 +201,7 @@ sendHighlighting highlights =
      case idris_outputmode ist of
        RawOutput _ -> return ()
        IdeMode n h ->
-         let fancier = [toSExp (fc, fancifyAnnots ist annot) | (fc, annot) <- highlights]
+         let fancier = [toSExp (fc, fancifyAnnots ist False annot) | (fc, annot) <- highlights]
          in runIO . hPutStrLn h $
               convSExp "output"
                        (SymbolAtom "ok",
@@ -217,7 +217,7 @@ renderExternal fmt width doc
        return . wrap fmt .
          displayDecorated (decorate fmt) .
          renderPretty 1.0 width .
-         fmap (fancifyAnnots ist) $
+         fmap (fancifyAnnots ist True) $
            doc
   where
     decorate _ (AnnFC _) = id

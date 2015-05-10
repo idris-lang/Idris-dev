@@ -156,10 +156,10 @@ elabDecl' _ info (PFix _ _ _)
      = return () -- nothing to elaborate
 elabDecl' _ info (PSyntax _ p)
      = return () -- nothing to elaborate
-elabDecl' what info (PTy doc argdocs s f o n ty)
+elabDecl' what info (PTy doc argdocs s f o n nfc ty)
   | what /= EDefns
     = do iLOG $ "Elaborating type decl " ++ show n ++ show o
-         elabType info s doc argdocs f o n ty
+         elabType info s doc argdocs f o n nfc ty
          return ()
 elabDecl' what info (PPostulate b doc s f o n ty)
   | what /= EDefns

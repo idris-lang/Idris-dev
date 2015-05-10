@@ -438,7 +438,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.Metavariables cols) =
           in
             displaySpans .
             renderPretty 0.9 cols .
-            fmap (fancifyAnnots ist) .
+            fmap (fancifyAnnots ist True) .
             annotate (AnnTerm (zip bnd (take (length bnd) (repeat False))) t) $
               prettyT
 
@@ -463,7 +463,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.WhoCalls n) =
                      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
   where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
-                 fmap (fancifyAnnots ist) .
+                 fmap (fancifyAnnots ist True) .
                  prettyName True True []
 
 runIdeModeCommand h id orig fn mods (IdeMode.CallsWho n) =
@@ -476,7 +476,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.CallsWho n) =
                      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
   where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
-                 fmap (fancifyAnnots ist) .
+                 fmap (fancifyAnnots ist True) .
                  prettyName True True []
 
 runIdeModeCommand h id orig fn modes (IdeMode.BrowseNS ns) =
@@ -491,7 +491,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.BrowseNS ns) =
                         runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
   where pn ist = displaySpans .
                  renderPretty 0.9 1000 .
-                 fmap (fancifyAnnots ist) .
+                 fmap (fancifyAnnots ist True) .
                  prettyName True True []
 runIdeModeCommand h id orig fn modes (IdeMode.TermNormalise bnd tm) =
   do ctxt <- getContext
@@ -506,7 +506,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.TermNormalise bnd tm) =
          msg = (IdeMode.SymbolAtom "ok",
                 displaySpans .
                 renderPretty 0.9 80 .
-                fmap (fancifyAnnots ist) $ ptm)
+                fmap (fancifyAnnots ist True) $ ptm)
      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
 runIdeModeCommand h id orig fn modes (IdeMode.TermShowImplicits bnd tm) =
   ideModeForceTermImplicits h id bnd True tm
@@ -519,7 +519,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.TermElab bnd tm) =
          msg = (IdeMode.SymbolAtom "ok",
                 displaySpans .
                 renderPretty 0.9 70 .
-                fmap (fancifyAnnots ist) $ ptm)
+                fmap (fancifyAnnots ist True) $ ptm)
      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
 runIdeModeCommand h id orig fn mods (IdeMode.PrintDef name) =
   case splitName name of
@@ -535,7 +535,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.ErrPPrint e) =
      let (out, spans) =
            displaySpans .
            renderPretty 0.9 80 .
-           fmap (fancifyAnnots ist) $ pprintErr ist e
+           fmap (fancifyAnnots ist True) $ pprintErr ist e
          msg = (IdeMode.SymbolAtom "ok", out, spans)
      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
 runIdeModeCommand h id orig fn modes IdeMode.GetIdrisVersion =
@@ -558,7 +558,7 @@ ideModeForceTermImplicits h id bnd impl tm =
          msg = (IdeMode.SymbolAtom "ok",
                 displaySpans .
                 renderPretty 0.9 80 .
-                fmap (fancifyAnnots ist) $ expl)
+                fmap (fancifyAnnots ist True) $ expl)
      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
 
 splitName :: String -> Either String Name
@@ -788,7 +788,7 @@ process fn (NewDefn decls) = do
         mapM_ defineName namedGroups where
   namedGroups = groupBy (\d1 d2 -> getName d1 == getName d2) decls
   getName :: PDecl -> Maybe Name
-  getName (PTy docs argdocs syn fc opts name ty) = Just name
+  getName (PTy docs argdocs syn fc opts name _ ty) = Just name
   getName (PClauses fc opts name (clause:clauses)) = Just (getClauseName clause)
   getName (PData doc argdocs syn fc opts dataDecl) = Just (d_name dataDecl)
   getName (PClass doc syn fc constraints name parms parmdocs fds decls) = Just name
@@ -797,7 +797,7 @@ process fn (NewDefn decls) = do
   getClauseName (PClause fc name whole with rhs whereBlock) = name
   getClauseName (PWith fc name whole with rhs pn whereBlock) = name
   defineName :: [PDecl] -> Idris ()
-  defineName (tyDecl@(PTy docs argdocs syn fc opts name ty) : decls) = do
+  defineName (tyDecl@(PTy docs argdocs syn fc opts name _ ty) : decls) = do
     elabDecl EAll recinfo tyDecl
     elabClauses recinfo fc opts name (concatMap getClauses decls)
     setReplDefined (Just name)
@@ -896,7 +896,7 @@ process fn (Check (PRef _ n))
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
-                Just (_, i, _) -> iRenderResult . fmap (fancifyAnnots ist) $
+                Just (_, i, _) -> iRenderResult . fmap (fancifyAnnots ist True) $
                                   showMetavarInfo ppo ist n i
                 Nothing -> iPrintFunTypes [] n (map (\n -> (n, pprintDelabTy ist n)) ts)
           [] -> iPrintError $ "No such variable " ++ show n

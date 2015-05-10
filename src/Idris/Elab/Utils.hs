@@ -124,7 +124,7 @@ checkDocs fc args tm = cd (Map.fromList args) tm
                                 ++ (concat . intersperse ", " . map show . Map.keys) as
                                 ++ " but they were not found."
 
-decorateid decorate (PTy doc argdocs s f o n t) = PTy doc argdocs s f o (decorate n) t
+decorateid decorate (PTy doc argdocs s f o n nfc t) = PTy doc argdocs s f o (decorate n) nfc t
 decorateid decorate (PClauses f o n cs)
    = PClauses f o (decorate n) (map dc cs)
     where dc (PClause fc n t as w ds) = PClause fc (decorate n) (dappname t) as w ds
@@ -272,8 +272,8 @@ getStatics ns (Bind n (Pi _ _ _) t)
 getStatics _ _ = []
 
 mkStatic :: [Name] -> PDecl -> PDecl
-mkStatic ns (PTy doc argdocs syn fc o n ty) 
-    = PTy doc argdocs syn fc o n (mkStaticTy ns ty)
+mkStatic ns (PTy doc argdocs syn fc o n nfc ty) 
+    = PTy doc argdocs syn fc o n nfc (mkStaticTy ns ty)
 mkStatic ns t = t
 
 mkStaticTy :: [Name] -> PTerm -> PTerm

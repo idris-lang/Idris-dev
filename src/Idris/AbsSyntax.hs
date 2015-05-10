@@ -1028,12 +1028,12 @@ expandParams dec ps ns infs tm = en tm
 expandParamsD :: Bool -> -- True = RHS only
                  IState ->
                  (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PDecl -> PDecl
-expandParamsD rhsonly ist dec ps ns (PTy doc argdocs syn fc o n ty)
+expandParamsD rhsonly ist dec ps ns (PTy doc argdocs syn fc o n nfc ty)
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc argdocs syn fc o (dec n) (piBindp expl_param ps (expandParams dec ps ns [] ty))
+              PTy doc argdocs syn fc o (dec n) nfc (piBindp expl_param ps (expandParams dec ps ns [] ty))
          else --trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc argdocs syn fc o n (expandParams dec ps ns [] ty)
+              PTy doc argdocs syn fc o n nfc (expandParams dec ps ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PPostulate e doc syn fc o n ty)
     = if n `elem` ns && (not rhsonly)
          then -- trace (show (n, expandParams dec ps ns ty)) $

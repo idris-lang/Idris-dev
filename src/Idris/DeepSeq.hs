@@ -129,10 +129,12 @@ instance NFData DataOpt where
 
 instance (NFData t) => NFData (PDecl' t) where
         rnf (PFix x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (PTy x1 x2 x3 x4 x5 x6 x7)
+        rnf (PTy x1 x2 x3 x4 x5 x6 x7 x8)
           = rnf x1 `seq`
               rnf x2 `seq`
-                rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()
+                rnf x3 `seq`
+                  rnf x4 `seq`
+                    rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` ()
         rnf (PPostulate x1 x2 x3 x4 x5 x6 x7)
           = rnf x1 `seq`
               rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()

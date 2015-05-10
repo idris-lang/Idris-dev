@@ -313,7 +313,8 @@ elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs f
   where
     -- | The type of the projection function.
     generateTy :: PDecl
-    generateTy = PTy pdoc [] psyn fc [] pname $ PPi expl recName NoFC targetTy projTy
+    generateTy = PTy pdoc [] psyn fc [] pname NoFC $
+                   PPi expl recName NoFC targetTy projTy
 
     -- | The left hand side of the projection function.
     generateLhs :: PTerm
@@ -375,7 +376,9 @@ elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i option
   where
     -- | The type of the update function.
     generateTy :: PDecl
-    generateTy = PTy pdoc [] psyn fc [] set_pname $ PPi expl (nsroot pname) NoFC pty (PPi expl recName NoFC sty (substInput sty))
+    generateTy = PTy pdoc [] psyn fc [] set_pname NoFC $
+                   PPi expl (nsroot pname) NoFC pty $
+                     PPi expl recName NoFC sty (substInput sty)
       where substInput = substMatches [(cname, PRef fc (nsroot pname))]
 
     -- | The "_set" name.

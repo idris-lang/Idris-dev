@@ -392,7 +392,7 @@ fnDecl syn = try (do notEndBlock
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
 fnDecl' syn = checkFixity $
-              do (doc, argDocs, fc, opts', n, acc) <- try (do
+              do (doc, argDocs, fc, opts', n, nfc, acc) <- try (do
                         pushIndent
                         (doc, argDocs) <- docstring syn
                         ist <- get
@@ -402,15 +402,15 @@ fnDecl' syn = checkFixity $
                         opts <- fnOpts initOpts
                         acc <- optional accessibility
                         opts' <- fnOpts opts
-                        n_in <- fst <$> fnName
+                        (n_in, nfc) <- fnName
                         let n = expandNS syn n_in
                         fc <- getFC
                         lchar ':'
-                        return (doc, argDocs, fc, opts', n, acc))
+                        return (doc, argDocs, fc, opts', n, nfc, acc))
                  ty <- typeExpr (allowImp syn)
                  terminator
                  addAcc n acc
-                 return (PTy doc argDocs syn fc opts' n ty)
+                 return (PTy doc argDocs syn fc opts' n nfc ty)
             <|> postulate syn
             <|> caf syn
             <|> pattern syn
@@ -423,7 +423,7 @@ fnDecl' syn = checkFixity $
                                             unless fOk . fail $
                                               "Missing fixity declaration for " ++ show n
                                             return decl
-          getName (PTy _ _ _ _ _ n _) = Just n
+          getName (PTy _ _ _ _ _ n _ _) = Just n
           getName _ = Nothing
           fixityOK (NS n _) = fixityOK n
           fixityOK (UN n)  | all (flip elem opChars) (str n) =
@@ -437,6 +437,7 @@ fnDecl' syn = checkFixity $
 @
 FnOpts ::= 'total'
   | 'partial'
+  | 'covering'
   | 'implicit'
   | '%' 'no_implicit'
   | '%' 'assert_total'

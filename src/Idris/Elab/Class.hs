@@ -140,8 +140,8 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
     conbind ((c, ty) : ns) x = PPi constraint c NoFC ty (conbind ns x)
     conbind [] x = x
 
-    getMName (PTy _ _ _ _ _ n _) = nsroot n
-    tdecl allmeths (PTy doc _ syn _ o n t)
+    getMName (PTy _ _ _ _ _ n nfc _) = nsroot n
+    tdecl allmeths (PTy doc _ syn _ o n nfc t)
            = do t' <- implicit' info syn (map fst ps ++ allmeths) n t
                 logLvl 2 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map fst ps) Exp t')),
@@ -155,7 +155,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
         case lookup n mtys of
             Just (syn, o, ty) -> do let ty' = insertConstraint c ty
                                     let ds = map (decorateid defaultdec)
-                                                 [PTy emptyDocstring [] syn fc [] n ty',
+                                                 [PTy emptyDocstring [] syn fc [] n NoFC ty',
                                                   PClauses fc (o ++ opts) n cs]
                                     iLOG (show ds)
                                     return (n, ((defaultdec n, ds!!1), ds))
@@ -165,7 +165,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
     defaultdec (UN n) = sUN ("default#" ++ str n)
     defaultdec (NS n ns) = NS (defaultdec n) ns
 
-    tydecl (PTy _ _ _ _ _ _ _) = True
+    tydecl (PTy _ _ _ _ _ _ _ _) = True
     tydecl _ = False
     instdecl (PInstance _ _ _ _ _ _ _ _ _ _) = True
     instdecl _ = False
@@ -194,7 +194,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
              addInstance False conn' cfn
              addIBC (IBCInstance False conn' cfn)
 --              iputStrLn ("Added " ++ show (conn, cfn, ty))
-             return [PTy emptyDocstring [] syn fc [] cfn ty,
+             return [PTy emptyDocstring [] syn fc [] cfn NoFC ty,
                      PClauses fc [Dictionary] cfn [PClause fc cfn lhs [] rhs []]]
 
     -- Generate a top level function which looks up a method in a given
@@ -210,7 +210,7 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
              logLvl 2 ("Top level type: " ++ showTmImpls ty')
              iLOG (show (m, ty', capp, margs))
              logLvl 2 ("Definition: " ++ showTmImpls lhs ++ " = " ++ showTmImpls rhs)
-             return [PTy doc [] syn fc o m ty',
+             return [PTy doc [] syn fc o m NoFC ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
 
     getMArgs (PPi (Imp _ _ _ _) n _ ty sc) = IA n : getMArgs sc

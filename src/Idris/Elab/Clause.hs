@@ -374,7 +374,7 @@ elabPE info fc caller r =
                 logLvl 2 $ show n ++ " transformation rule: " ++
                            show rhs ++ " ==> " ++ show lhs
 
-                elabType info defaultSyntax emptyDocstring [] fc opts newnm specTy
+                elabType info defaultSyntax emptyDocstring [] fc opts newnm NoFC specTy
                 let def = map (\(lhs, rhs) ->
                                   PClause fc newnm lhs [] rhs []) 
                               (pe_clauses specdecl)    
@@ -732,7 +732,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 --        = NS (UN ('#':show x)) [show cnum, show fname]
 
     sepBlocks bs = sepBlocks' [] bs where
-      sepBlocks' ns (d@(PTy _ _ _ _ _ n t) : bs)
+      sepBlocks' ns (d@(PTy _ _ _ _ _ n _ t) : bs)
             = let (bf, af) = sepBlocks' (n : ns) bs in
                   (d : bf, af)
       sepBlocks' ns (d@(PClauses _ _ n _) : bs)
