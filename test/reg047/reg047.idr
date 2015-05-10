@@ -6,7 +6,7 @@ data TTSigma : (A : Type) -> (B : A -> Type) -> Type where
 data Nat = zero | succ Nat
 
 Id : (A : Type) -> A -> A -> Type
-Id A = (=) {a0 = A} {b0 = A}
+Id A = (=) {A = A} {B = A}
 
 IdRefl : (A : Type) -> (a : A) -> Id A a a
 IdRefl A a = Refl {a}
