@@ -80,8 +80,8 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
          let cty = impbind ps $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
-         let cons = [(emptyDocstring, [], cn, cty, fc, [])]
-         let ddecl = PDatadecl tn tty cons
+         let cons = [(emptyDocstring, [], cn, NoFC, cty, fc, [])]
+         let ddecl = PDatadecl tn NoFC tty cons
          logLvl 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
          -- Elaborate the data declaration
          elabData info (syn { no_imp = no_imp syn ++ mnames,

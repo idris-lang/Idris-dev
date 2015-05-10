@@ -360,8 +360,8 @@ elab ist info emode opts fn tm
                  claim tyn RType
                  movelast tyn
                  elab' ina (Just fc) (PApp fc (PRef fc eqTy)
-                              [pimp (sUN "A") (PRef fc tyn) True,
-                               pimp (sUN "B") (PRef fc tyn) False,
+                              [pimp (sUN "A") (PRef NoFC tyn) True,
+                               pimp (sUN "B") (PRef NoFC tyn) False,
                                pexp l, pexp r]))
              (do atyn <- getNameFrom (sMN 0 "aqty")
                  btyn <- getNameFrom (sMN 0 "bqty")
@@ -370,8 +370,8 @@ elab ist info emode opts fn tm
                  claim btyn RType
                  movelast btyn
                  elab' ina (Just fc) (PApp fc (PRef fc eqTy)
-                   [pimp (sUN "A") (PRef fc atyn) True,
-                    pimp (sUN "B") (PRef fc btyn) False,
+                   [pimp (sUN "A") (PRef NoFC atyn) True,
+                    pimp (sUN "B") (PRef NoFC btyn) False,
                     pexp l, pexp r]))
 
     elab' ina _ (PEq fc lt rt l r) = elab' ina (Just fc) (PApp fc (PRef fc eqTy)
@@ -1080,9 +1080,12 @@ elab ist info emode opts fn tm
              end_unify
 
              -- We now have an elaborated term. Reflect it and solve the
-             -- original goal in the original proof state.
+             -- original goal in the original proof state, preserving highlighting
              env <- get_env
+             EState _ _ _ hs <- getAux
              loadState
+             updateAux (\aux -> aux { highlighting = hs })
+
              let quoted = fmap (explicitNames . binderVal) $ lookup nTm env
                  isRaw = case unApply (normaliseAll ctxt env finalTy) of
                            (P _ n _, []) | n == reflm "Raw" -> True

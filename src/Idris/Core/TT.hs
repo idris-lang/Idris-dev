@@ -49,13 +49,27 @@ data Option = TTypeInTType
   deriving Eq
 
 -- | Source location. These are typically produced by the parser 'Idris.Parser.getFC'
-data FC = FC { fc_fname :: String, -- ^ Filename
-               fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
+data FC = FC { _fc_fname :: String, -- ^ Filename
+               _fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
                fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
              }
         | NoFC -- ^ Locations for machine-generated terms
-        | FileFC { fc_fname :: String } -- ^ Locations with file only
+        | FileFC { _fc_fname :: String } -- ^ Locations with file only
   deriving (Data, Typeable, Ord)
+
+-- TODO: find uses and destroy them, doing this case analysis at call sites
+-- | Give a notion of filename associated with an FC
+fc_fname :: FC -> String
+fc_fname (FC f _ _) = f
+fc_fname NoFC = "(no file)"
+fc_fname (FileFC f) = f
+
+-- TODO: find uses and destroy them, doing this case analysis at call sites
+-- | Give a notion of filename associated with an FC
+fc_start :: FC -> (Int, Int)
+fc_start (FC _ start _) = start
+fc_start NoFC = (0, 0)
+fc_start (FileFC f) = (0, 0)
 
 -- | Get the largest span containing the two FCs
 spanFC :: FC -> FC -> FC

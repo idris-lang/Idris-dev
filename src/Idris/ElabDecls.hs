@@ -173,7 +173,7 @@ elabDecl' what info (PData doc argDocs s f co d)
          elabData info s doc argDocs f co d
   | otherwise
     = do iLOG $ "Elaborating [type of] " ++ show (d_name d)
-         elabData info s doc argDocs f co (PLaterdecl (d_name d) (d_tcon d))
+         elabData info s doc argDocs f co (PLaterdecl (d_name d) (d_name_fc d) (d_tcon d))
 elabDecl' what info d@(PClauses f o n ps)
   | what /= ETypes
     = do iLOG $ "Elaborating clause " ++ show n

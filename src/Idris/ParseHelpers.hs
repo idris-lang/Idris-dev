@@ -373,6 +373,15 @@ operator = do op <- token . some $ operatorLetter
                    fail $ op ++ " is not a valid operator"
               return op
 
+-- | Parses an operator
+operatorFC :: MonadicParsing m => m (String, FC)
+operatorFC = do (op, fc) <- token $ do (FC f (l, c) _) <- getFC
+                                       op <- some operatorLetter
+                                       return (op, FC f (l, c) (l, c + length op))
+                when (op `elem` (invalidOperators ++ commentMarkers)) $
+                     fail $ op ++ " is not a valid operator"
+                return (op, fc)
+
 {- * Position helpers -}
 {- | Get filename from position (returns "(interactive)" when no source file is given)  -}
 fileName :: Delta -> String

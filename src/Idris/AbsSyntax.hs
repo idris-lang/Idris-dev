@@ -1086,13 +1086,13 @@ expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
   where
     -- just do the type decl, leave constructors alone (parameters will be
     -- added implicitly)
-    expandPData (PDatadecl n ty cons)
+    expandPData (PDatadecl n nfc ty cons)
        = if n `elem` ns
-            then PDatadecl (dec n) (piBind ps (expandParams dec ps ns [] ty))
+            then PDatadecl (dec n) nfc (piBind ps (expandParams dec ps ns [] ty))
                            (map econ cons)
-            else PDatadecl n (expandParams dec ps ns [] ty) (map econ cons)
-    econ (doc, argDocs, n, t, fc, fs)
-       = (doc, argDocs, dec n, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
+            else PDatadecl n nfc (expandParams dec ps ns [] ty) (map econ cons)
+    econ (doc, argDocs, n, nfc, t, fc, fs)
+       = (doc, argDocs, dec n, nfc, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
 expandParamsD rhs ist dec ps ns d@(PRecord doc rsyn fc opts name prs pdocs fls cn cdoc csyn)
   = d          
 expandParamsD rhs ist dec ps ns (PParams f params pds)
@@ -1550,9 +1550,9 @@ addImpl' inpat env infns imp_meths ist ptm
            = let as' = map (ai qq env ds) as in
                  PAlternative a as'
     ai qq env _ (PDisamb ds' as) = ai qq env ds' as
-    ai qq env ds (PApp fc (PInferRef _ f) as)
+    ai qq env ds (PApp fc (PInferRef ffc f) as)
         = let as' = map (fmap (ai qq env ds)) as in
-              PApp fc (PInferRef fc f) as'
+              PApp fc (PInferRef ffc f) as'
     ai qq env ds (PApp fc ftm@(PRef ffc f) as)
         | f `elem` infns = ai qq env ds (PApp fc (PInferRef ffc f) as)
         | not (f `elem` map fst env)

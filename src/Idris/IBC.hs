@@ -1455,23 +1455,27 @@ instance (Binary t) => Binary (PClause' t) where
 instance (Binary t) => Binary (PData' t) where
         put x
           = case x of
-                PDatadecl x1 x2 x3 -> do putWord8 0
-                                         put x1
-                                         put x2
-                                         put x3
-                PLaterdecl x1 x2 -> do putWord8 1
-                                       put x1
-                                       put x2
+                PDatadecl x1 x2 x3 x4 -> do putWord8 0
+                                            put x1
+                                            put x2
+                                            put x3
+                                            put x4
+                PLaterdecl x1 x2 x3 -> do putWord8 1
+                                          put x1
+                                          put x2
+                                          put x3
         get
           = do i <- getWord8
                case i of
                    0 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (PDatadecl x1 x2 x3)
+                           x4 <- get
+                           return (PDatadecl x1 x2 x3 x4)
                    1 -> do x1 <- get
                            x2 <- get
-                           return (PLaterdecl x1 x2)
+                           x3 <- get
+                           return (PLaterdecl x1 x2 x3)
                    _ -> error "Corrupted binary data for PData'"
 
 instance Binary PunInfo where

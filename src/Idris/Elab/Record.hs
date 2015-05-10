@@ -57,7 +57,7 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
 
        -- Build data declaration for elaboration
        iLOG $ foldr (++) "" $ intersperse "\n" (map show dconsArgDocs)
-       let datadecl = PDatadecl tyn tycon [(cdoc, dconsArgDocs, dconName, dconTy, fc, [])]
+       let datadecl = PDatadecl tyn NoFC tycon [(cdoc, dconsArgDocs, dconName, NoFC, dconTy, fc, [])]
        elabData info rsyn doc paramDocs fc opts datadecl
 
        iLOG $ "fieldsWithName " ++ show fieldsWithName

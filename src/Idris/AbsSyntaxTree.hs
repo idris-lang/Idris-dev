@@ -705,11 +705,12 @@ deriving instance NFData PClause'
 
 -- | Data declaration
 data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
+                             d_name_fc :: FC, -- ^ The precise location of the type constructor name
                              d_tcon :: t, -- ^ Type constructor
-                             d_cons :: [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, t, FC, [Name])] -- ^ Constructors
+                             d_cons :: [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, t, FC, [Name])] -- ^ Constructors
                            }
                  -- ^ Data declaration
-               | PLaterdecl { d_name :: Name, d_tcon :: t }
+               | PLaterdecl { d_name :: Name, d_name_fc :: FC, d_tcon :: t }
                  -- ^ "Placeholder" for data whose constructors are defined later
     deriving Functor
 {-!
@@ -732,9 +733,9 @@ declared (PTy _ _ _ _ _ n fc t) = [n]
 declared (PPostulate _ _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PCAF _ n _) = [n]
-declared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, _, a, _, _, _) = a
-declared (PData _ _ _ _ _ (PLaterdecl n _)) = [n]
+declared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
+   where fstt (_, _, a, _, _, _, _) = a
+declared (PData _ _ _ _ _ (PLaterdecl n _ _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
 declared (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
@@ -753,8 +754,8 @@ tldeclared (PTy _ _ _ _ _ n _ t) = [n]
 tldeclared (PPostulate _ _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
 tldeclared (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
-tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, _, a, _, _, _) = a
+tldeclared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
+   where fstt (_, _, a, _, _, _, _) = a
 tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
@@ -768,9 +769,9 @@ defined (PTy _ _ _ _ _ n _ t) = []
 defined (PPostulate _ _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PCAF _ n _) = [n]
-defined (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, _, a, _, _, _) = a
-defined (PData _ _ _ _ _ (PLaterdecl n _)) = []
+defined (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
+   where fstt (_, _, a, _, _, _, _) = a
+defined (PData _ _ _ _ _ (PLaterdecl n _ _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
 defined (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
@@ -1260,9 +1261,9 @@ bi = fileFC "builtin"
 
 inferTy   = sMN 0 "__Infer"
 inferCon  = sMN 0 "__infer"
-inferDecl = PDatadecl inferTy
+inferDecl = PDatadecl inferTy NoFC
                       (PType bi)
-                      [(emptyDocstring, [], inferCon, PPi impl (sMN 0 "iType") NoFC (PType bi) (
+                      [(emptyDocstring, [], inferCon, NoFC, PPi impl (sMN 0 "iType") NoFC (PType bi) (
                                                    PPi expl (sMN 0 "ival") NoFC (PRef bi (sMN 0 "iType"))
                                                    (PRef bi inferTy)), bi, [])]
 inferOpts = []
@@ -1317,16 +1318,16 @@ eqDoc =  fmap (const (Left $ Msg "")) . parseDocstring . T.pack $
           "\n\n" ++
           "You may need to use `(~=~)` to explicitly request heterogeneous equality."
 
-eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType bi), (n "B", PType bi)]
-                                 (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
-                                 (PType bi)))
+eqDecl = PDatadecl eqTy NoFC (piBindp impl [(n "A", PType bi), (n "B", PType bi)]
+                                      (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
+                                      (PType bi)))
                 [(reflDoc, reflParamDoc,
-                  eqCon, PPi impl (n "A") NoFC (PType bi) (
-                                  PPi impl (n "x") NoFC (PRef bi (n "A"))
-                                      (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
-                                                               pimp (n "B") Placeholder False,
-                                                               pexp (PRef bi (n "x")),
-                                                               pexp (PRef bi (n "x"))])), bi, [])]
+                  eqCon, NoFC, PPi impl (n "A") NoFC (PType bi) (
+                                        PPi impl (n "x") NoFC (PRef bi (n "A"))
+                                            (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
+                                                                     pimp (n "B") Placeholder False,
+                                                                     pexp (PRef bi (n "x")),
+                                                                     pexp (PRef bi (n "x"))])), bi, [])]
     where n a = sUN a
           reflDoc = annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $
                       "A proof that `x` in fact equals `x`. To construct this, you must have already " ++
@@ -1772,9 +1773,9 @@ showCImp ppo (PWith _ n l ws r pn w)
 
 
 showDImp :: PPOption -> PData -> Doc OutputAnnotation
-showDImp ppo (PDatadecl n ty cons)
+showDImp ppo (PDatadecl n nfc ty cons)
  = text "data" <+> text (show n) <+> colon <+> prettyImp ppo ty <+> text "where" <$>
-    (indent 2 $ vsep (map (\ (_, _, n, t, _, _) -> pipe <+> prettyName True False [] n <+> colon <+> prettyImp ppo t) cons))
+    (indent 2 $ vsep (map (\ (_, _, n, _, t, _, _) -> pipe <+> prettyName True False [] n <+> colon <+> prettyImp ppo t) cons))
 
 showDecls :: PPOption -> [PDecl] -> Doc OutputAnnotation
 showDecls o ds = vsep (map (showDeclImp o) ds)

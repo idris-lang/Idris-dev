@@ -1,4 +1,5 @@
-tutorial006a.idr:5:23:When elaborating right hand side of vapp:
+tutorial006a.idr:5:23-25:
+When elaborating right hand side of vapp:
 When elaborating argument xs to constructor Data.VectType.Vect.:::
         Can't unify
                 Vect (n + n) a (Type of vapp xs xs)

@@ -924,13 +924,13 @@ clause syn
               ist <- get
               put (ist { lastParse = Just n })
               return $ PClause fc n capp [] r wheres
-       <|> do (l, op) <- try (do
+       <|> do (l, op, nfc) <- try (do
                 pushIndent
                 l <- argExpr syn
-                op <- operator
+                (op, nfc) <- operatorFC
                 when (op == "=" || op == "?=" ) $
                      fail "infix clause definition with \"=\" and \"?=\" not supported "
-                return (l, op))
+                return (l, op, nfc))
               let n = expandNS syn (sUN op)
               r <- argExpr syn
               fc <- getFC
@@ -943,7 +943,7 @@ clause syn
                                             do terminator
                                                return ([], [])]
                   ist <- get
-                  let capp = PApp fc (PRef fc n) [pexp l, pexp r]
+                  let capp = PApp fc (PRef nfc n) [pexp l, pexp r]
                   put (ist { lastParse = Just n })
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
@@ -959,13 +959,13 @@ clause syn
                    put (ist { lastParse = Just n })
                    return $ PWith fc n capp wargs wval pn withs)
        <|> do pushIndent
-              n_in <- fst <$> fnName; let n = expandNS syn n_in
+              (n_in, nfc) <- fnName; let n = expandNS syn n_in
               cargs <- many (constraintArg syn)
               fc <- getFC
               args <- many (try (implicitArg (syn { inPattern = True } ))
                             <|> (fmap pexp (argExpr syn)))
               wargs <- many (wExpr syn)
-              let capp = PApp fc (PRef fc n)
+              let capp = PApp fc (PRef nfc n)
                            (cargs ++ args)
               (do r <- rhs syn n
                   ist <- get

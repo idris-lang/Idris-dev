@@ -1082,23 +1082,28 @@ ExprList ::=
 @
  -}
 listExpr :: SyntaxInfo -> IdrisParser PTerm
-listExpr syn = do lchar '['; fc <- getFC;
-                  try ((lchar ']' <?> "end of list expression") *> return (mkList fc [])) <|> (do
-                    x <- expr syn <?> "expression"
-                    (do try (lchar '|') <?> "list comprehension"
-                        qs <- sepBy1 (do_ syn) (lchar ',')
-                        lchar ']'
-                        return (PDoBlock (map addGuard qs ++
-                                   [DoExp fc (PApp fc (PRef fc (sUN "return"))
-                                                [pexp x])]))) <|> (do
-                          xs <- many ((lchar ',' <?> "list element") *> expr syn)
-                          lchar ']' <?> "end of list expression"
-                          return (mkList fc (x:xs))))
+listExpr syn = do (FC f (l, c) _) <- getFC
+                  lchar '['; fc <- getFC;
+                  (try . token $ do (char ']' <?> "end of list expression")
+                                    (FC _ _ (l', c')) <- getFC
+                                    return (mkNil (FC f (l, c) (l', c'))))
+                   <|> (do x <- expr syn <?> "expression"
+                           (do try (lchar '|') <?> "list comprehension"
+                               qs <- sepBy1 (do_ syn) (lchar ',')
+                               lchar ']'
+                               return (PDoBlock (map addGuard qs ++
+                                          [DoExp fc (PApp fc (PRef fc (sUN "return"))
+                                                       [pexp x])]))) <|>
+                            (do xs <- many ((lchar ',' <?> "list element") *> expr syn)
+                                lchar ']' <?> "end of list expression"
+                                return (mkList fc (x:xs))))
                 <?> "list expression"
   where
+    mkNil :: FC -> PTerm
+    mkNil fc = PRef fc (sUN "Nil")
     mkList :: FC -> [PTerm] -> PTerm
-    mkList fc [] = PRef fc (sUN "Nil")
-    mkList fc (x : xs) = PApp fc (PRef fc (sUN "::")) [pexp x, pexp (mkList fc xs)]
+    mkList fc [] = PRef NoFC (sUN "Nil")
+    mkList fc (x : xs) = PApp fc (PRef NoFC (sUN "::")) [pexp x, pexp (mkList fc xs)]
     addGuard :: PDo -> PDo
     addGuard (DoExp fc e) = DoExp fc (PApp fc (PRef fc (sUN "guard"))
                                               [pexp e])
