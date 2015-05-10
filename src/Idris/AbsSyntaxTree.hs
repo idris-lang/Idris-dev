@@ -1346,7 +1346,7 @@ modDocName = sMN 0 "ModuleDocs"
 
 -- Defined in builtins.idr
 sigmaTy   = sNS (sUN "Sigma") ["Builtins"]
-existsCon = sNS (sUN "MkSigma") ["Builtins"]
+sigmaCon = sNS (sUN "MkSigma") ["Builtins"]
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind = piBindp expl
@@ -1597,10 +1597,10 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
       annotated rparen
       where annotated = case pun of
               IsType -> annName sigmaTy
-              IsTerm -> annName existsCon
+              IsTerm -> annName sigmaCon
               TypeOrTerm -> id
             (left, addBinding) = case (l, pun) of
-              (PRef _ n, IsType) -> (bindingOf n False,        ((n, False) :))
+              (PRef _ n, IsType) -> (bindingOf n False <+> text ":" <+> prettySe startPrec bnd t,        ((n, False) :))
               _ ->                  (prettySe startPrec bnd l, id            )
     prettySe p bnd (PAlternative a as) =
       lparen <> text "|" <> prettyAs <> text "|" <> rparen

@@ -410,11 +410,11 @@ elab ist info emode opts fn tm
          where asType = elab' ina (Just fc) (PApp fc (PRef fc sigmaTy)
                                         [pexp t,
                                          pexp (PLam fc n Placeholder r)])
-               asValue = elab' ina (Just fc) (PApp fc (PRef fc existsCon)
+               asValue = elab' ina (Just fc) (PApp fc (PRef fc sigmaCon)
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
                                           pexp l, pexp r])
-    elab' ina _ (PDPair fc p l t r) = elab' ina (Just fc) (PApp fc (PRef fc existsCon)
+    elab' ina _ (PDPair fc p l t r) = elab' ina (Just fc) (PApp fc (PRef fc sigmaCon)
                                               [pimp (sMN 0 "a") t False,
                                                pimp (sMN 0 "P") Placeholder True,
                                                pexp l, pexp r])
