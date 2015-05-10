@@ -76,10 +76,9 @@ prefix name f = Prefix (do reservedOp name
 -- | Backtick operator
 backtick :: Operator IdrisParser PTerm
 backtick = Infix (do indentPropHolds gtProp
-                     lchar '`'; n <- fst <$> fnName
+                     lchar '`'; (n, fc) <- fnName
                      lchar '`'
                      indentPropHolds gtProp
-                     fc <- getFC
                      return (\x y -> PApp fc (PRef fc n) [pexp x, pexp y])) AssocNone
 
 -- | Operator without fixity (throws an error)
@@ -87,7 +86,7 @@ nofixityoperator :: Operator IdrisParser PTerm
 nofixityoperator = Infix (do indentPropHolds gtProp
                              op <- try operator
                              unexpected $ "Operator without known fixity: " ++ op) AssocNone
-                             
+
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
  optional namespace

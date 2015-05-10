@@ -452,7 +452,10 @@ elab ist info emode opts fn tm
               trySeq' deferr (x : xs)
                   = try' (do elab' ina fc x
                              solveAutos ist fn False) (trySeq' deferr xs) True
-    elab' ina _ (PPatvar fc n) | bindfree = do patvar n; update_term liftPats
+    elab' ina _ (PPatvar fc n) | bindfree
+        = do patvar n
+             update_term liftPats
+             highlightSource fc (AnnBoundName n False)
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed")
@@ -472,11 +475,20 @@ elab ist info emode opts fn tm
                                _ -> True
            -- this is to stop us resolve type classes recursively
              -- trace (show (n, guarded)) $
-             if (tcname n && ina) then erun fc $ do patvar n; update_term liftPats
+             if (tcname n && ina)
+               then erun fc $
+                      do patvar n
+                         update_term liftPats
+                         highlightSource fc (AnnBoundName n False)
                else if (defined && not guarded)
                        then do apply (Var n) []; solve
-                       else try (do apply (Var n) []; solve)
-                                (do patvar n; update_term liftPats)
+                       else try (do apply (Var n) []
+                                    annot <- findHighlight n
+                                    solve
+                                    highlightSource fc annot)
+                                (do patvar n
+                                    update_term liftPats
+                                    highlightSource fc (AnnBoundName n False))
       where inparamBlock n = case lookupCtxtName n (inblock info) of
                                 [] -> False
                                 _ -> True
@@ -707,7 +719,6 @@ elab ist info emode opts fn tm
 
                     annot <- findHighlight f
                     highlightSource ffc annot
-                    trace ("highlighting " ++ show f ++ " at " ++ show ffc ++ " as " ++ show annot) $ return ()
 
                     elabArgs ist (ina { e_inarg = e_inarg ina || not isinf }) 
                            [] fc False f

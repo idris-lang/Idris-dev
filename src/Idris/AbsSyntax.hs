@@ -1519,9 +1519,9 @@ addImpl' inpat env infns imp_meths ist ptm
     ai :: Bool -> [(Name, Maybe PTerm)] -> [[T.Text]] -> PTerm -> PTerm
     ai qq env ds (PRef fc f)
         | f `elem` infns = PInferRef fc f
-        | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat qq imp_meths ist fc f ds []
+        | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat qq imp_meths ist fc f fc ds []
     ai qq env ds (PHidden (PRef fc f))
-        | not (f `elem` map fst env) = PHidden (handleErr $ aiFn inpat False qq imp_meths ist fc f ds [])
+        | not (f `elem` map fst env) = PHidden (handleErr $ aiFn inpat False qq imp_meths ist fc f fc ds [])
     ai qq env ds (PEq fc lt rt l r)
       = let lt' = ai qq env ds lt
             rt' = ai qq env ds rt
@@ -1553,11 +1553,11 @@ addImpl' inpat env infns imp_meths ist ptm
     ai qq env ds (PApp fc (PInferRef _ f) as)
         = let as' = map (fmap (ai qq env ds)) as in
               PApp fc (PInferRef fc f) as'
-    ai qq env ds (PApp fc ftm@(PRef _ f) as)
-        | f `elem` infns = ai qq env ds (PApp fc (PInferRef fc f) as)
+    ai qq env ds (PApp fc ftm@(PRef ffc f) as)
+        | f `elem` infns = ai qq env ds (PApp fc (PInferRef ffc f) as)
         | not (f `elem` map fst env)
                           = let as' = map (fmap (ai qq env ds)) as in
-                                handleErr $ aiFn inpat False qq imp_meths ist fc f ds as'
+                                handleErr $ aiFn inpat False qq imp_meths ist fc f ffc ds as'
         | Just (Just ty) <- lookup f env =
              let as' = map (fmap (ai qq env ds)) as
                  arity = getPArity ty in
@@ -1621,8 +1621,8 @@ addImpl' inpat env infns imp_meths ist ptm
 -- if in a pattern, and there are no arguments, and there's no possible
 -- names with zero explicit arguments, don't add implicits.
 
-aiFn :: Bool -> Bool -> Bool -> [Name] -> IState -> FC -> Name -> [[T.Text]] -> [PArg] -> Either Err PTerm
-aiFn inpat True qq imp_meths ist fc f ds []
+aiFn :: Bool -> Bool -> Bool -> [Name] -> IState -> FC -> Name -> FC -> [[T.Text]] -> [PArg] -> Either Err PTerm
+aiFn inpat True qq imp_meths ist fc f ffc ds []
   = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar fc f
         alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
@@ -1630,7 +1630,7 @@ aiFn inpat True qq imp_meths ist fc f ds []
                     if (not (vname f) || tcname f
                            || any (conCaf (tt_ctxt ist)) ialts)
 --                            any constructor alts || any allImp ialts))
-                        then aiFn inpat False qq imp_meths ist fc f ds [] -- use it as a constructor
+                        then aiFn inpat False qq imp_meths ist fc f fc ds [] -- use it as a constructor
                         else Right $ PPatvar fc f
     where imp (PExp _ _ _ _) = False
           imp _ = True
@@ -1644,9 +1644,9 @@ aiFn inpat True qq imp_meths ist fc f ds []
           vname (UN n) = True -- non qualified
           vname _ = False
 
-aiFn inpat expat qq imp_meths ist fc f ds as
-    | f `elem` primNames = Right $ PApp fc (PRef fc f) as
-aiFn inpat expat qq imp_meths ist fc f ds as
+aiFn inpat expat qq imp_meths ist fc f ffc ds as
+    | f `elem` primNames = Right $ PApp fc (PRef ffc f) as
+aiFn inpat expat qq imp_meths ist fc f ffc ds as
           -- This is where namespaces get resolved by adding PAlternative
      = do let ns = lookupCtxtName f (idris_implicits ist)
           let nh = filter (\(n, _) -> notHidden n) ns
@@ -1654,13 +1654,13 @@ aiFn inpat expat qq imp_meths ist fc f ds as
                          [] -> nh
                          x -> x
           case ns' of
-            [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef fc (isImpName f f')) (insertImpl ns as)
+            [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef ffc (isImpName f f')) (insertImpl ns as)
             [] -> if f `elem` (map fst (idris_metavars ist))
-                    then Right $ PApp fc (PRef fc f) as
-                    else Right $ mkPApp fc (length as) (PRef fc f) as
+                    then Right $ PApp fc (PRef ffc f) as
+                    else Right $ mkPApp fc (length as) (PRef ffc f) as
             alts -> Right $
                          PAlternative True $
-                           map (\(f', ns) -> mkPApp fc (length ns) (PRef fc (isImpName f f'))
+                           map (\(f', ns) -> mkPApp fc (length ns) (PRef ffc (isImpName f f'))
                                                   (insertImpl ns as)) alts
   where
     -- if the name is in imp_meths, we should actually refer to the bound
