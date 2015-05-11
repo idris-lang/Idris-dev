@@ -1188,7 +1188,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                                 put x10
                                                 put x11
                                                 put x12
-                PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11
+                PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12
                                          -> do putWord8 7
                                                put x1
                                                put x2
@@ -1201,7 +1201,8 @@ instance (Binary t) => Binary (PDecl' t) where
                                                put x9
                                                put x10
                                                put x11
-                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 ->
+                                               put x12
+                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 ->
                   do putWord8 8
                      put x1
                      put x2
@@ -1213,6 +1214,7 @@ instance (Binary t) => Binary (PDecl' t) where
                      put x8
                      put x9
                      put x10
+                     put x11
                 PDSL x1 x2 -> do putWord8 9
                                  put x1
                                  put x2
@@ -1307,7 +1309,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x9 <- get
                            x10 <- get
                            x11 <- get
-                           return (PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+                           x12 <- get
+                           return (PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
                    8 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1318,7 +1321,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x8 <- get
                            x9 <- get
                            x10 <- get
-                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)
+                           x11 <- get
+                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
                    9 -> do x1 <- get
                            x2 <- get
                            return (PDSL x1 x2)

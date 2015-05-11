@@ -791,7 +791,7 @@ process fn (NewDefn decls) = do
   getName (PTy docs argdocs syn fc opts name _ ty) = Just name
   getName (PClauses fc opts name (clause:clauses)) = Just (getClauseName clause)
   getName (PData doc argdocs syn fc opts dataDecl) = Just (d_name dataDecl)
-  getName (PClass doc syn fc constraints name parms parmdocs fds decls _ _) = Just name
+  getName (PClass doc syn fc constraints name nfc parms parmdocs fds decls _ _) = Just name
   getName _ = Nothing
   -- getClauseName is partial and I am not sure it's used safely! -- trillioneyes
   getClauseName (PClause fc name whole with rhs whereBlock) = name
@@ -839,8 +839,8 @@ process fn (NewDefn decls) = do
   fixClauses :: PDecl' t -> PDecl' t
   fixClauses (PClauses fc opts _ css@(clause:cs)) =
     PClauses fc opts (getClauseName clause) css
-  fixClauses (PInstance doc argDocs syn fc constraints cls parms ty instName decls) =
-    PInstance doc argDocs syn fc constraints cls parms ty instName (map fixClauses decls)
+  fixClauses (PInstance doc argDocs syn fc constraints cls nfc parms ty instName decls) =
+    PInstance doc argDocs syn fc constraints cls nfc parms ty instName (map fixClauses decls)
   fixClauses decl = decl
 
 process fn (Undefine names) = undefine names

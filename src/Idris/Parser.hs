@@ -630,7 +630,7 @@ ClassBlock ::=
   ;
 @
 -}
-classBlock :: SyntaxInfo -> IdrisParser (Maybe Name, Docstring (Either Err PTerm), [PDecl])
+classBlock :: SyntaxInfo -> IdrisParser (Maybe (Name, FC), Docstring (Either Err PTerm), [PDecl])
 classBlock syn = do reserved "where"
                     openBlock
                     (cn, cd) <- option (Nothing, emptyDocstring) $
@@ -646,8 +646,8 @@ classBlock syn = do reserved "where"
                  <?> "class block"
 
   where
-    constructor :: IdrisParser Name
-    constructor = reserved "constructor" *> (fst <$> fnName)
+    constructor :: IdrisParser (Name, FC)
+    constructor = reserved "constructor" *> fnName
 
     annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
     annotate syn ist = annotCode $ tryFullExpr syn ist
@@ -676,24 +676,24 @@ class_ syn = do (doc, argDocs, acc)
                 fc <- getFC
                 cons <- constraintList syn
                 let cons' = [(c, ty) | (c, _, ty) <- cons]
-                n_in <- fst <$> fnName
+                (n_in, nfc) <- fnName
                 let n = expandNS syn n_in
                 cs <- many carg
-                fds <- option (map fst cs) fundeps
+                fds <- option [(cn, NoFC) | (cn, _, _) <- cs] fundeps
                 (cn, cd, ds) <- option (Nothing, fst noDocs, []) (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass doc syn fc cons' n cs argDocs fds ds cn cd]
+                return [PClass doc syn fc cons' n nfc cs argDocs fds ds cn cd]
              <?> "type-class declaration"
   where
-    fundeps :: IdrisParser [Name]
-    fundeps = do lchar '|'; sepBy (fst <$> name) (lchar ',')
+    fundeps :: IdrisParser [(Name, FC)]
+    fundeps = do lchar '|'; sepBy name (lchar ',')
 
-    carg :: IdrisParser (Name, PTerm)
-    carg = do lchar '('; i <- (fst <$> name); lchar ':'; ty <- expr syn; lchar ')'
-              return (i, ty)
-       <|> do i <- fst <$> name
+    carg :: IdrisParser (Name, FC, PTerm)
+    carg = do lchar '('; (i, ifc) <- name; lchar ':'; ty <- expr syn; lchar ')'
+              return (i, ifc, ty)
+       <|> do (i, ifc) <- name
               fc <- getFC
-              return (i, PType fc)
+              return (i, ifc, PType fc)
 
 {- | Parses a type class instance declaration
 
@@ -714,12 +714,12 @@ instance_ syn = do (doc, argDocs)
                    en <- optional instanceName
                    cs <- constraintList syn
                    let cs' = [(c, ty) | (c, _, ty) <- cs]
-                   cn <- fst <$> fnName
+                   (cn, cnfc) <- fnName
                    args <- many (simpleExpr syn)
-                   let sc = PApp fc (PRef fc cn) (map pexp args)
+                   let sc = PApp fc (PRef cnfc cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- option [] (instanceBlock syn)
-                   return [PInstance doc argDocs syn fc cs' cn args t en ds]
+                   return [PInstance doc argDocs syn fc cs' cn cnfc args t en ds]
                  <?> "instance declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'

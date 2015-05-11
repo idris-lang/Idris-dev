@@ -614,20 +614,22 @@ data PDecl' t
    | PClass   (Docstring (Either Err PTerm)) SyntaxInfo FC
               [(Name, t)] -- constraints
               Name -- class name
-              [(Name, t)] -- parameters
+              FC -- accurate location of class name
+              [(Name, FC, t)] -- parameters and precise locations
               [(Name, Docstring (Either Err PTerm))] -- parameter docstrings
-              [Name] -- determining parameters
+              [(Name, FC)] -- determining parameters and precise locations
               [PDecl' t] -- declarations
-              (Maybe Name) -- instance constructor name
+              (Maybe (Name, FC)) -- instance constructor name and location
               (Docstring (Either Err PTerm)) -- instance constructor docs
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
-              -- class name, parameters, method declarations, optional constructor name
+              -- class name, class name location, parameters, method declarations, optional constructor name
    | PInstance
        (Docstring (Either Err PTerm)) -- Instance docs
        [(Name, Docstring (Either Err PTerm))] -- Parameter docs
        SyntaxInfo
        FC [(Name, t)] -- constraints
        Name -- class
+       FC -- precise location of class
        [t] -- parameters
        t -- full instance type
        (Maybe Name) -- explicit name
@@ -742,8 +744,8 @@ declared (PData _ _ _ _ _ (PLaterdecl n _ _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
 declared (PRecord _ _ _ _ n  _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
-declared (PClass _ _ _ _ n _ _ _ ms cn cd) = n : (maybeToList cn ++ concatMap declared ms)
-declared (PInstance _ _ _ _ _ _ _ _ _ _) = []
+declared (PClass _ _ _ _ n _ _ _ _ ms cn cd) = n : (map fst (maybeToList cn) ++ concatMap declared ms)
+declared (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
 declared (PMutual _ ds) = concatMap declared ds
@@ -762,8 +764,8 @@ tldeclared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
 tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
-tldeclared (PClass _ _ _ _ n _ _ _ ms cn _) = n : (maybeToList cn ++ concatMap tldeclared ms)
-tldeclared (PInstance _ _ _ _ _ _ _ _ _ _) = []
+tldeclared (PClass _ _ _ _ n _ _ _ _ ms cn _) = n : (map fst (maybeToList cn) ++ concatMap tldeclared ms)
+tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
 tldeclared _ = []
 
 defined :: PDecl -> [Name]
@@ -778,8 +780,8 @@ defined (PData _ _ _ _ _ (PLaterdecl n _ _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
 defined (PRecord _ _ _ _ n _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
-defined (PClass _ _ _ _ n _ _ _ ms cn _) = n : (maybeToList cn ++ concatMap defined ms)
-defined (PInstance _ _ _ _ _ _ _ _ _ _) = []
+defined (PClass _ _ _ _ n _ _ _ _ ms cn _) = n : (map fst (maybeToList cn) ++ concatMap defined ms)
+defined (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
 defined (PSyntax _ _) = []
 defined (PMutual _ ds) = concatMap defined ds
@@ -1791,9 +1793,9 @@ showDeclImp o (PData _ _ _ _ _ d) = showDImp o { ppopt_impl = True } d
 showDeclImp o (PParams _ ns ps) = text "params" <+> braces (text (show ns) <> line <> showDecls o ps <> line)
 showDeclImp o (PNamespace n ps) = text "namespace" <+> text n <> braces (line <> showDecls o ps <> line)
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
-showDeclImp o (PClass _ _ _ cs n ps _ _ ds _ _)
+showDeclImp o (PClass _ _ _ cs n _ ps _ _ ds _ _)
    = text "class" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
-showDeclImp o (PInstance _ _ _ _ cs n _ t _ ds)
+showDeclImp o (PInstance _ _ _ _ cs n _ _ t _ ds)
    = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
 -- showDeclImp (PImport o) = "import " ++ o

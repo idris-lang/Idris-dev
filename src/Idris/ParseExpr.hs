@@ -372,8 +372,9 @@ Bracketed ::= '(' Bracketed'
 @
  -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
-bracketed syn = do lchar '(' <?> "parenthesized expression"
-                   bracketed' syn
+bracketed syn = do fc <- getFC
+                   lchar '(' <?> "parenthesized expression"
+                   bracketed' fc syn
 {- |Parses the rest of an expression in braces
 @
 Bracketed' ::=
@@ -387,11 +388,11 @@ Bracketed' ::=
   ;
 @
 -}
-bracketed' :: SyntaxInfo -> IdrisParser PTerm
-bracketed' syn =
-            do lchar ')'
-               fc <- getFC
-               return $ PTrue fc TypeOrTerm
+bracketed' :: FC -> SyntaxInfo -> IdrisParser PTerm
+bracketed' open syn =
+            do (FC f start (l, c)) <- getFC
+               lchar ')'
+               return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
         <|> try (do ln <- fst <$> name; lchar ':';
                     lty <- expr syn
                     reservedOp "**"

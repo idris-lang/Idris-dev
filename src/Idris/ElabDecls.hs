@@ -232,13 +232,13 @@ elabDecl' what info (PNamespace n ps) = mapM_ (elabDecl' what ninfo) ps
     ninfo = case namespace info of
                 Nothing -> info { namespace = Just [n] }
                 Just ns -> info { namespace = Just (n:ns) }
-elabDecl' what info (PClass doc s f cs n ps pdocs fds ds cn cd)
+elabDecl' what info (PClass doc s f cs n nfc ps pdocs fds ds cn cd)
   | what /= EDefns
     = do iLOG $ "Elaborating class " ++ show n
-         elabClass info (s { syn_params = [] }) doc f cs n ps pdocs fds ds cn cd
-elabDecl' what info (PInstance doc argDocs s f cs n ps t expn ds)
+         elabClass info (s { syn_params = [] }) doc f cs n nfc ps pdocs fds ds cn cd
+elabDecl' what info (PInstance doc argDocs s f cs n nfc ps t expn ds)
     = do iLOG $ "Elaborating instance " ++ show n
-         elabInstance info s doc argDocs what f cs n ps t expn ds         
+         elabInstance info s doc argDocs what f cs n nfc ps t expn ds
 elabDecl' what info (PRecord doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn)
   | what /= ETypes
     = do iLOG $ "Elaborating record " ++ show name

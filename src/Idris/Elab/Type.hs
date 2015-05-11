@@ -121,7 +121,8 @@ buildType info syn fc opts n ty' = do
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo -> SyntaxInfo
          -> Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))]
-         -> FC -> FnOpts -> Name -> FC -- ^ The precise location of the name
+         -> FC -> FnOpts
+         -> Name -> FC -- ^ The precise location of the name
          -> PTerm -> Idris Type
 elabType = elabType' False
 
