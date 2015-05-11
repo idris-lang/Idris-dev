@@ -201,12 +201,16 @@ sendHighlighting highlights =
      case idris_outputmode ist of
        RawOutput _ -> return ()
        IdeMode n h ->
-         let fancier = [toSExp (fc, fancifyAnnots ist False annot) | (fc, annot) <- highlights]
+         let fancier = [ toSExp (fc, fancifyAnnots ist False annot)
+                       | (fc, annot) <- highlights, fullFC fc
+                       ]
          in runIO . hPutStrLn h $
               convSExp "output"
                        (SymbolAtom "ok",
                         (SymbolAtom "highlight-source", fancier)) n
 
+  where fullFC (FC _ _ _) = True
+        fullFC _          = False
 
 
 renderExternal :: OutputFmt -> Int -> Doc OutputAnnotation -> Idris String

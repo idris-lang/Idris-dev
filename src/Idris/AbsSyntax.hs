@@ -1690,7 +1690,7 @@ aiFn inpat expat qq imp_meths ist fc f ffc ds as
                     _ -> Public
 
     insertImpl :: [PArg] -> [PArg] -> [PArg]
-    insertImpl ps as = insImpAcc M.empty ps (filter exp as) (filter (not.exp) as)
+    insertImpl ps as = insImpAcc M.empty ps (filter exp as) (filter (not . exp) as)
 
     exp (PExp _ _ _ _) = True
     exp (PConstraint _ _ _ _) = True
