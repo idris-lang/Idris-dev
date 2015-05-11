@@ -474,6 +474,7 @@ elab ist info emode opts fn tm
                  guarded = e_guarded ec
                  inty = e_intype ec
              ctxt <- get_context
+
              let defined = case lookupTy n ctxt of
                                [] -> False
                                _ -> True
@@ -485,7 +486,10 @@ elab ist info emode opts fn tm
                          update_term liftPats
                          highlightSource fc (AnnBoundName n False)
                else if (defined && not guarded)
-                       then do apply (Var n) []; solve
+                       then do apply (Var n) []
+                               annot <- findHighlight n
+                               solve
+                               highlightSource fc annot
                        else try (do apply (Var n) []
                                     annot <- findHighlight n
                                     solve
@@ -693,7 +697,7 @@ elab ist info emode opts fn tm
             if (f `elem` map fst env && length args == 1 && length args_in == 1)
                then -- simple app, as below
                     do simple_app False
-                                  (elabE (ina { e_isfn = True }) (Just fc) (PRef fc f))
+                                  (elabE (ina { e_isfn = True }) (Just fc) (PRef ffc f))
                                   (elabE (ina { e_inarg = True }) (Just fc) (getTm (head args)))
                                   (show tm)
                        solve
