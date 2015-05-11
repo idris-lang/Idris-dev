@@ -603,10 +603,11 @@ data PDecl' t
    | PNamespace String [PDecl' t] -- ^ New namespace
    | PRecord  (Docstring (Either Err PTerm)) SyntaxInfo FC DataOpts
               Name                 -- Record name
+              FC                   -- Record name precise location
               [(Name, FC, Plicity, t)] -- Parameters, where FC is precise name span
               [(Name, Docstring (Either Err PTerm))] -- Param Docs
-              [((Maybe Name), Plicity, t, Maybe (Docstring (Either Err PTerm)))] -- Fields
-              (Maybe Name) -- Optional constructor name
+              [((Maybe (Name, FC)), Plicity, t, Maybe (Docstring (Either Err PTerm)))] -- Fields
+              (Maybe (Name, FC)) -- Optional constructor name and location
               (Docstring (Either Err PTerm)) -- Constructor doc
               SyntaxInfo -- Constructor SyntaxInfo
               -- ^ Record declaration
@@ -740,7 +741,7 @@ declared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
 declared (PData _ _ _ _ _ (PLaterdecl n _ _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
-declared (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
+declared (PRecord _ _ _ _ n  _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 declared (PClass _ _ _ _ n _ _ _ ms cn cd) = n : (maybeToList cn ++ concatMap declared ms)
 declared (PInstance _ _ _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
@@ -755,7 +756,7 @@ tldeclared (PFix _ _ _) = []
 tldeclared (PTy _ _ _ _ _ n _ t) = [n]
 tldeclared (PPostulate _ _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
-tldeclared (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
+tldeclared (PRecord _ _ _ _ n _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 tldeclared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
    where fstt (_, _, a, _, _, _, _) = a
 tldeclared (PParams _ _ ds) = []
@@ -776,7 +777,7 @@ defined (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
 defined (PData _ _ _ _ _ (PLaterdecl n _ _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
-defined (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
+defined (PRecord _ _ _ _ n _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 defined (PClass _ _ _ _ n _ _ _ ms cn _) = n : (maybeToList cn ++ concatMap defined ms)
 defined (PInstance _ _ _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]

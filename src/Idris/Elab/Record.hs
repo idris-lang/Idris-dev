@@ -14,7 +14,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
 import Idris.ParseExpr (tryFullExpr)
@@ -37,21 +37,22 @@ elabRecord :: ElabInfo
            -> (Docstring (Either Err PTerm)) -- ^ The documentation for the whole declaration
            -> SyntaxInfo -> FC -> DataOpts
            -> Name  -- ^ The name of the type being defined
+           -> FC -- ^ The precise source location of the tycon name
            -> [(Name, FC, Plicity, PTerm)] -- ^ Parameters
            -> [(Name, Docstring (Either Err PTerm))] -- ^ Parameter Docs
-           -> [((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -- ^ Fields
-           -> Maybe Name -- ^ Constructor Name
+           -> [(Maybe (Name, FC), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -- ^ Fields
+           -> Maybe (Name, FC) -- ^ Constructor Name
            -> (Docstring (Either Err PTerm)) -- ^ Constructor Doc
            -> SyntaxInfo -- ^ Constructor SyntaxInfo
            -> Idris ()
-elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
+elabRecord info doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc csyn
   = do logLvl 1 $ "Building data declaration for " ++ show tyn
        -- Type constructor
        let tycon = generateTyConType params
        logLvl 1 $ "Type constructor " ++ showTmImpls tycon
        
        -- Data constructor
-       dconName <- generateDConName cname
+       dconName <- generateDConName (fmap fst cname)
        let dconTy = generateDConType params fieldsWithNameAndDoc
        logLvl 1 $ "Data constructor: " ++ showTmImpls dconTy
 
@@ -62,7 +63,13 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
 
        iLOG $ "fieldsWithName " ++ show fieldsWithName
        iLOG $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc
-       elabRecordFunctions info rsyn fc tyn [(n, p, t, d) | (n, _, p, t, d) <- paramsAndDoc] fieldsWithNameAndDoc dconName target
+       elabRecordFunctions info rsyn fc tyn paramsAndDoc fieldsWithNameAndDoc dconName target
+
+       sendHighlighting $
+         [(nfc, AnnName tyn Nothing Nothing Nothing)] ++
+         maybe [] (\(_, cnfc) -> [(cnfc, AnnName dconName Nothing Nothing Nothing)]) cname ++
+         [(ffc, AnnBoundName fn False) | (fn, ffc, _, _, _) <- fieldsWithName]
+
   where
     -- | Generates a type constructor.
     generateTyConType :: [(Name, FC, Plicity, PTerm)] -> PTerm
@@ -81,9 +88,9 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
                             Nothing -> return n
 
     -- | Generates the data constructor type.
-    generateDConType :: [(Name, FC, Plicity, PTerm)] -> [(Name, Plicity, PTerm, a)] -> PTerm
+    generateDConType :: [(Name, FC, Plicity, PTerm)] -> [(Name, FC, Plicity, PTerm, a)] -> PTerm
     generateDConType ((n, nfc, _, t) : ps) as                  = PPi impl (nsroot n) NoFC t (generateDConType ps as)
-    generateDConType []               ((n, p, t, _) : as) = PPi p    (nsroot n) NoFC t (generateDConType [] as)
+    generateDConType []               ((n, _, p, t, _) : as) = PPi p    (nsroot n) NoFC t (generateDConType [] as)
     generateDConType [] [] = target
 
     -- | The target for the constructor and projection functions. Also the source of the update functions.
@@ -104,42 +111,43 @@ elabRecord info doc rsyn fc opts tyn params paramDocs fields cname cdoc csyn
     dconsArgDocs :: [(Name, Docstring (Either Err PTerm))]
     dconsArgDocs = paramDocs ++ (dcad fieldsWithName)
       where
-        dcad :: [(Name, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, Docstring (Either Err PTerm))]
-        dcad ((n, _, _, (Just d)) : rest) = ((nsroot n), d) : (dcad rest)
+        dcad :: [(Name, FC, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, Docstring (Either Err PTerm))]
+        dcad ((n, _, _, _, (Just d)) : rest) = ((nsroot n), d) : (dcad rest)
         dcad (_ : rest) = dcad rest
         dcad [] = []
 
-    fieldsWithName :: [(Name, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))]
+    fieldsWithName :: [(Name, FC, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))]
     fieldsWithName = fwn [] fields
       where
-        fwn :: [Name] -> [(Maybe Name, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))]
+        fwn :: [Name] -> [(Maybe (Name, FC), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, FC, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))]
         fwn ns ((n, p, t, d) : rest)
           = let nn = case n of
                       Just n' -> n'
                       Nothing -> newName ns baseName
-            in (expandNS rsyn $ nn, p, t, d) : (fwn (nn : ns) rest)
+                withNS = expandNS rsyn (fst nn)
+            in (withNS, snd nn, p, t, d) : (fwn (fst nn : ns) rest)
         fwn _ _ = []
 
-        baseName = sUN "__pi_arg"
+        baseName = (sUN "__pi_arg", NoFC)
 
-        newName :: [Name] -> Name -> Name
-        newName ns n
-          | n `elem` ns = newName ns (nextName n)
-          | otherwise = n
-    
-    fieldsWithNameAndDoc :: [(Name, Plicity, PTerm, Docstring (Either Err PTerm))]
+        newName :: [Name] -> (Name, FC) -> (Name, FC)
+        newName ns (n, nfc)
+          | n `elem` ns = newName ns (nextName n, nfc)
+          | otherwise = (n, nfc)
+
+    fieldsWithNameAndDoc :: [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))]
     fieldsWithNameAndDoc = fwnad fieldsWithName
       where
-        fwnad :: [(Name, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, Plicity, PTerm, Docstring (Either Err PTerm))]
-        fwnad ((n, p, t, d) : rest)
+        fwnad :: [(Name, FC, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))]
+        fwnad ((n, nfc, p, t, d) : rest)
           = let doc = fromMaybe emptyDocstring d
-            in (n, p, t, doc) : (fwnad rest)
+            in (n, nfc, p, t, doc) : (fwnad rest)
         fwnad [] = []
 
 elabRecordFunctions :: ElabInfo -> SyntaxInfo -> FC
                     -> Name -- ^ Record type name
-                    -> [(Name, Plicity, PTerm, Docstring (Either Err PTerm))] -- ^ Parameters
-                    -> [(Name, Plicity, PTerm, Docstring (Either Err PTerm))] -- ^ Fields
+                    -> [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))] -- ^ Parameters
+                    -> [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))] -- ^ Fields
                     -> Name -- ^ Constructor Name
                     -> PTerm -- ^ Target type
                     -> Idris ()
@@ -164,11 +172,11 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
            
        -- The parameters for elaboration with their documentation
        -- Parameter functions are all prefixed with "param_".
-       let paramsForElab = [((nsroot n), (paramName n), impl, t, d) | (n, _, t, d) <- params] -- zipParams i params paramDocs]
-           
+       let paramsForElab = [((nsroot n), (paramName n), impl, t, d) | (n, _, _, t, d) <- params] -- zipParams i params paramDocs]
+
        -- The fields (written by the user) with their documentation.
-       let userFieldsForElab = [((nsroot n), n, p, t, d) | (n, p, t, d) <- fields]
-           
+       let userFieldsForElab = [((nsroot n), n, p, t, d) | (n, nfc, p, t, d) <- fields]
+
        -- All things we need to elaborate projection functions for, together with a number denoting their position in the constructor.           
        let projectors = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (freeFieldsForElab ++ paramsForElab ++ userFieldsForElab) [0..]]       
        -- Build and elaborate projection functions
@@ -189,10 +197,10 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
 
     -- | Root names of all fields in the current record declarations
     fieldNames :: [Name]
-    fieldNames = [nsroot n | (n, _, _, _) <- fields]
+    fieldNames = [nsroot n | (n, _, _, _, _) <- fields]
 
     paramNames :: [Name]
-    paramNames = [nsroot n | (n, _, _, _) <- params]
+    paramNames = [nsroot n | (n, _, _, _, _) <- params]
 
     isFieldOrParam :: Name -> Bool
     isFieldOrParam n = n `elem` (fieldNames ++ paramNames)
@@ -207,7 +215,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
     isField' (n, _, _, _, _, _) = isField n
 
     fieldTerms :: [PTerm]
-    fieldTerms = [t | (_, _, t, _) <- fields]
+    fieldTerms = [t | (_, _, _, t, _) <- fields]
 
     -- Delabs the TT to PTerm
     -- This is not good.
@@ -263,7 +271,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
         
     -- | A map from a field name to the other fields it depends on.
     fieldDependencies :: [(Name, [Name])]
-    fieldDependencies = map (uncurry fieldDep) [(n, t) | (n, _, t, _) <- fields ++ params]
+    fieldDependencies = map (uncurry fieldDep) [(n, t) | (n, _, _, t, _) <- fields ++ params]
       where
         fieldDep :: Name -> PTerm -> (Name, [Name])
         fieldDep n t = ((nsroot n), paramNames ++ fieldNames `intersect` allNamesIn t)

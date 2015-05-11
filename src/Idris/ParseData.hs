@@ -53,16 +53,16 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                       co <- recordI
                       return (doc', paramDocs', acc, opts ++ co))
                 fc <- getFC
-                tyn_in <- fst <$> fnName
+                (tyn_in, nfc) <- fnName
                 let tyn = expandNS syn tyn_in
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
                 params <- manyTill (recordParameter rsyn) (reserved "where")
-                (fields, cname, cdoc) <- indentedBlockS $ agdaStyleBody rsyn tyn
+                (fields, cname, cdoc) <- indentedBlockS $ recordBody rsyn tyn
                 case cname of
-                     Just cn' -> accData acc tyn [cn']
+                     Just cn' -> accData acc tyn [fst cn']
                      Nothing -> return ()
-                return $ PRecord doc rsyn fc opts tyn params paramDocs fields cname cdoc syn
+                return $ PRecord doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn
              <?> "record type declaration"
   where
     getRecNames :: SyntaxInfo -> PTerm -> [Name]
@@ -74,8 +74,8 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
     toFreeze (Just Frozen) = Just Hidden
     toFreeze x = x
 
-    agdaStyleBody :: SyntaxInfo -> Name -> IdrisParser ([((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))], Maybe Name, Docstring (Either Err PTerm))
-    agdaStyleBody syn tyn = do
+    recordBody :: SyntaxInfo -> Name -> IdrisParser ([((Maybe (Name, FC)), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))], Maybe (Name, FC), Docstring (Either Err PTerm))
+    recordBody syn tyn = do
         ist <- get
         fc  <- getFC
 
@@ -90,11 +90,11 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
 
         return (fields, constructorName, constructorDoc')
       where
-        field :: SyntaxInfo -> IdrisParser ((Maybe Name), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))
+        field :: SyntaxInfo -> IdrisParser ((Maybe (Name, FC)), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))
         field syn = do doc <- optional docComment
                        c <- optional $ lchar '{'
-                       n <- (do n <- fst <$> fnName
-                                return $ Just (expandNS syn n))
+                       n <- (do (n, nfc) <- fnName
+                                return $ Just (expandNS syn n, nfc))
                         <|> (do symbol "_"
                                 return Nothing)
                        lchar ':'
@@ -106,8 +106,8 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                                    Nothing    -> Nothing
                        return (n, p, t, doc')
 
-        constructor :: IdrisParser Name
-        constructor = (reserved "constructor") *> (fst <$> fnName)
+        constructor :: IdrisParser (Name, FC)
+        constructor = (reserved "constructor") *> fnName
 
 
         endPlicity :: Maybe Char -> IdrisParser Plicity
