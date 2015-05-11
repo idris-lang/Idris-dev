@@ -213,7 +213,7 @@ because of its type:
 
     interp env (App f s) = interp env f (interp env s)
 
-Operators and interpreters are, again, direct translations into the
+Operators and conditionals are, again, direct translations into the
 equivalent Idris constructs. For operators, we apply the function to
 its operands directly, and for ``If``, we apply the Idris
 ``if...then...else`` construct directly.
@@ -236,7 +236,7 @@ We can make some simple test functions. Firstly, adding two inputs
     add = Lam (Lam (Op (+) (Var Stop) (Var (Pop Stop))))
 
 More interestingly, a factorial function ``fact``
-(e.g. ``\. if (x == 0) then 1 else (fact (x-1) * x)``),
+(e.g. ``\x. if (x == 0) then 1 else (fact (x-1) * x)``),
 can be written as:
 
 .. code-block:: idris
