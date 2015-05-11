@@ -114,8 +114,6 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [lt,rt,l,r]
          | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
-         | n == eqTy    = PEq un (de env [] lt) (de env [] rt)
-                                 (de env [] l) (de env [] r)
          | n == sigmaCon = PDPair un IsTerm (de env [] l) Placeholder
                                              (de env [] r)
     deFn env f@(P _ n _) args
@@ -484,30 +482,6 @@ addImplicitDiffs x y
          = let (a', c') = addI a c
                (b', d') = addI b d in
                (PPi p n a' b', PPi p' n' c' d')
-    addI (PEq fc at bt a b) (PEq fc' ct dt c d)
-         | trace (show (at,bt)) False = undefined
-         | at `expLike` ct && bt `expLike` dt
-         = let (a', c') = addI a c
-               (b', d') = addI b d in
-               (PEq fc at bt a' b', PEq fc' ct dt c' d')
-         | otherwise
-         = let (at', ct') = addI at ct
-               (bt', dt') = addI bt dt
-               (a', c') = addI a c
-               (b', d') = addI b d
-               showa = if at `expLike` ct then [] else [AlwaysShow]
-               showb = if bt `expLike` dt then [] else [AlwaysShow] in
-               (PApp fc (PRef fc eqTy) [(pimp (sUN "A") at' True)
-                                               { argopts = showa },
-                                        (pimp (sUN "B") bt' True)
-                                               { argopts = showb },
-                                        pexp a', pexp b'],
-                PApp fc (PRef fc eqTy) [(pimp (sUN "A") ct' True)
-                                               { argopts = showa },
-                                        (pimp (sUN "B") dt' True)
-                                               { argopts = showb },
-                                        pexp c', pexp d'])
-
     addI (PPair fc pi a b) (PPair fc' pi' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
@@ -530,8 +504,6 @@ addImplicitDiffs x y
         = n == n' && expLike s s' && expLike t t'
     expLike (PPair _ _ x y) (PPair _ _ x' y') = expLike x x' && expLike y y'
     expLike (PDPair _ _ x _ y) (PDPair _ _ x' _ y') = expLike x x' && expLike y y'
-    expLike (PEq _ xt yt x y) (PEq _ xt' yt' x' y')
-         = expLike x x' && expLike y y'
     expLike x y = x == y
 
 -- Issue #1589 on the issue tracker

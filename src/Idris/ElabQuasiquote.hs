@@ -109,12 +109,6 @@ extractUnquotes n (PIfThenElse fc c t f)
        (t', ex2) <- extractUnquotes n t
        (f', ex3) <- extractUnquotes n f
        return (PIfThenElse fc c' t' f', ex1 ++ ex2 ++ ex3)
-extractUnquotes n (PEq fc at bt a b)
-  = do (at', ex1) <- extractUnquotes n at
-       (bt', ex2) <- extractUnquotes n bt
-       (a', ex1) <- extractUnquotes n a
-       (b', ex2) <- extractUnquotes n b
-       return (PEq fc at' bt' a' b', ex1 ++ ex2)
 extractUnquotes n (PRewrite fc x y z)
   = do (x', ex1) <- extractUnquotes n x
        (y', ex2) <- extractUnquotes n y
