@@ -499,7 +499,7 @@ elab ist info emode opts fn tm
             bindable (NS _ _) = False
             bindable (UN xs) = True
             bindable n = implicitable n
-    elab' ina _ f@(PInferRef fc n) = elab' ina (Just fc) (PApp fc f [])
+    elab' ina _ f@(PInferRef fc n) = elab' ina (Just fc) (PApp NoFC f [])
     elab' ina fc' tm@(PRef fc n) 
           | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
             && isTConName n (tt_ctxt ist)
@@ -861,10 +861,10 @@ elab ist info emode opts fn tm
             setInjective (PApp _ (PRef _ n) _) = setinj n
             setInjective _ = return ()
 
-    elab' ina _ tm@(PApp fc f [arg]) = 
+    elab' ina _ tm@(PApp fc f [arg]) =
             erun fc $
              do simple_app (not $ headRef f)
-                           (elabE (ina { e_isfn = True }) (Just fc) f) 
+                           (elabE (ina { e_isfn = True }) (Just fc) f)
                            (elabE (ina { e_inarg = True }) (Just fc) (getTm arg))
                                 (show tm)
                 solve

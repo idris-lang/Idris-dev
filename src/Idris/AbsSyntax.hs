@@ -1628,14 +1628,14 @@ addImpl' inpat env infns imp_meths ist ptm
 aiFn :: Bool -> Bool -> Bool -> [Name] -> IState -> FC -> Name -> FC -> [[T.Text]] -> [PArg] -> Either Err PTerm
 aiFn inpat True qq imp_meths ist fc f ffc ds []
   = case lookupDef f (tt_ctxt ist) of
-        [] -> Right $ PPatvar fc f
+        [] -> Right $ PPatvar ffc f
         alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
                     -- trace (show f ++ " " ++ show (fc, any (all imp) ialts, ialts, any constructor alts)) $
                     if (not (vname f) || tcname f
                            || any (conCaf (tt_ctxt ist)) ialts)
 --                            any constructor alts || any allImp ialts))
-                        then aiFn inpat False qq imp_meths ist fc f fc ds [] -- use it as a constructor
-                        else Right $ PPatvar fc f
+                        then aiFn inpat False qq imp_meths ist fc f ffc ds [] -- use it as a constructor
+                        else Right $ PPatvar ffc f
     where imp (PExp _ _ _ _) = False
           imp _ = True
 --           allImp [] = False
