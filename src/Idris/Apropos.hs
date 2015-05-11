@@ -55,7 +55,7 @@ instance Apropos Name where
                   | (n == pairTy || n == pairCon) && str == T.pack "," = True
                   | n == eqTy && str == T.pack "=" = True
                   | n == eqCon && (T.toLower str) == T.pack "Refl" = True
-                  | (n == sigmaTy || n == existsCon) && str == T.pack "**" = True
+                  | (n == sigmaTy || n == sigmaCon) && str == T.pack "**" = True
   isApropos _   _          = False -- we don't care about case blocks, MNs, etc
 
 instance Apropos Def where

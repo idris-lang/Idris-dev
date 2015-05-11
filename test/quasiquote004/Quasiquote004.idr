@@ -5,7 +5,7 @@ import Language.Reflection
 %default total
 
 normPlus : List (TTName, Binder TT) -> TT -> Tactic
-normPlus ctxt `((=) {Nat} {Nat} ~x ~y) = normPlus ctxt x `Seq` normPlus ctxt y
+normPlus ctxt `((=) {A = Nat} {B = Nat} ~x ~y) = normPlus ctxt x `Seq` normPlus ctxt y
 normPlus ctxt `(S ~n) = normPlus ctxt n
 normPlus ctxt `(plus ~n (S ~m)) = Seq (Rewrite `(plusSuccRightSucc ~n ~m))
                                       (normPlus ctxt m)

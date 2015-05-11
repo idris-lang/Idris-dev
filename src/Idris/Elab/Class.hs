@@ -54,10 +54,13 @@ data MArgTy = IA Name | EA Name | CA deriving Show
 
 elabClass :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
              FC -> [(Name, PTerm)] ->
-             Name -> [(Name, PTerm)] -> [(Name, Docstring (Either Err PTerm))] -> 
-             [Name] -> [PDecl] -> Idris ()
-elabClass info syn_in doc fc constraints tn ps pDocs fds ds
-    = do let cn = SN (InstanceCtorN tn) -- sUN ("instance" ++ show tn) -- MN 0 ("instance" ++ show tn)
+             Name -> [(Name, PTerm)] -> [(Name, Docstring (Either Err PTerm))] ->
+             [Name] -> [PDecl] ->
+             Maybe Name {- ^ instance ctor name -} ->
+             Docstring (Either Err PTerm) {- ^ instance ctor docs -} ->
+             Idris ()
+elabClass info syn_in doc fc constraints tn ps pDocs fds ds mcn cd
+    = do let cn = fromMaybe (SN (InstanceCtorN tn)) mcn
          let tty = pibind ps (PType fc)
          let constraint = PApp fc (PRef fc tn)
                                   (map (pexp . PRef fc) (map fst ps))
@@ -80,8 +83,10 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
          let cty = impbind ps $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
-         let cons = [(emptyDocstring, [], cn, NoFC, cty, fc, [])]
+
+         let cons = [(cd, pDocs ++ mapMaybe memberDocs ds, cn, NoFC, cty, fc, [])]
          let ddecl = PDatadecl tn NoFC tty cons
+
          logLvl 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
          -- Elaborate the data declaration
          elabData info (syn { no_imp = no_imp syn ++ mnames,
@@ -242,6 +247,15 @@ elabClass info syn_in doc fc constraints tn ps pDocs fds ds
         | otherwise = PPi (e l s p) n fc ty (toExp ns e sc)
     toExp ns e (PPi p n fc ty sc) = PPi p n fc ty (toExp ns e sc)
     toExp ns e sc = sc
+
+memberDocs :: PDecl -> Maybe (Name, Docstring (Either Err PTerm))
+memberDocs (PTy d _ _ _ _ n _ _) = Just (basename n, d)
+memberDocs (PPostulate _ d _ _ _ n _) = Just (basename n, d)
+memberDocs (PData d _ _ _ _ pdata) = Just (basename $ d_name pdata, d)
+memberDocs (PRecord d _ _ _ n _ _ _ _ _ _ ) = Just (basename n, d)
+memberDocs (PClass d _ _ _ n _ _ _ _ _ _) = Just (basename n, d)
+memberDocs _ = Nothing
+
 
 -- In a top level type for a method, expand all the method names namespaces
 -- so that we don't have to disambiguate later

@@ -109,6 +109,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
         constructor :: IdrisParser Name
         constructor = (reserved "constructor") *> (fst <$> fnName)
 
+
         endPlicity :: Maybe Char -> IdrisParser Plicity
         endPlicity (Just _) = do lchar '}'
                                  return impl
@@ -126,7 +127,6 @@ recordParameter syn =
   <|>
   (do (n, nfc, pt) <- onlyName syn
       return (n, nfc, expl, pt))
-
   where
     namedTy :: SyntaxInfo -> IdrisParser (Name, FC, PTerm)
     namedTy syn =

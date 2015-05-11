@@ -24,6 +24,3 @@ decElem x (y :: xs) with (decEq x y)
     decElem x (y :: xs) | (No notHere) | (Yes prf) = Yes (There prf)
     decElem x (y :: xs) | (No notHere) | (No notThere) = No $ notHereNotThere notHere notThere
 
-notEta : ((a : Type) -> (b : Type) -> (f : a -> b) -> f = (\x => f x)) -> Void
-notEta eta = case eta Nat Nat id of
-                  Refl impossible

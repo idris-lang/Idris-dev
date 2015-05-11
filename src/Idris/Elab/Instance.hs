@@ -130,7 +130,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
 --          let lhs = PRef fc iname
          let lhs = PApp fc (PRef fc iname)
                            (map (\n -> pimp n (PRef fc n) True) headVars)
-         let rhs = PApp fc (PRef fc (instanceName ci))
+         let rhs = PApp fc (PRef fc (instanceCtorName ci))
                            (map (pexp . mkMethApp) mtys)
 
          logLvl 5 $ "Instance LHS " ++ show lhs ++ " " ++ show headVars

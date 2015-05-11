@@ -80,7 +80,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                try (resolveTC True False 7 g fn ist)
+                                try (resolveTC True False 10 g fn ist)
                                     (movelast n)) ivs
          ivs <- get_instances
          hs <- get_holes
@@ -89,7 +89,7 @@ build ist info emode opts fn tm
                              do focus n
                                 g <- goal
                                 ptm <- get_term
-                                resolveTC True True 7 g fn ist) ivs
+                                resolveTC True True 10 g fn ist) ivs
          tm <- get_term
          ctxt <- get_context
          probs <- get_probs
@@ -347,7 +347,7 @@ elab ist info emode opts fn tm
             UType _ -> elab' ina (Just fc) (PRef fc unitTy)
             _ -> elab' ina (Just fc) (PRef fc unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = do g <- goal; resolveTC False False 5 g fn ist
+       = do g <- goal; resolveTC False False 10 g fn ist
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
@@ -418,15 +418,16 @@ elab ist info emode opts fn tm
                 _ -> asType
          where asType = elab' ina (Just fc) (PApp fc (PRef fc sigmaTy)
                                         [pexp t,
+
                                          -- TODO: save the FC from the dependent pair
                                          -- syntax and put it on this lambda for interactive
                                          -- semantic highlighting support. NoFC for now.
                                          pexp (PLam fc n NoFC Placeholder r)])
-               asValue = elab' ina (Just fc) (PApp fc (PRef fc existsCon)
+               asValue = elab' ina (Just fc) (PApp fc (PRef fc sigmaCon)
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
                                           pexp l, pexp r])
-    elab' ina _ (PDPair fc p l t r) = elab' ina (Just fc) (PApp fc (PRef fc existsCon)
+    elab' ina _ (PDPair fc p l t r) = elab' ina (Just fc) (PApp fc (PRef fc sigmaCon)
                                               [pimp (sMN 0 "a") t False,
                                                pimp (sMN 0 "P") Placeholder True,
                                                pexp l, pexp r])
@@ -591,7 +592,7 @@ elab ist info emode opts fn tm
                                    g <- goal
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
-                                    then try (resolveTC True False 7 g fn ist)
+                                    then try (resolveTC True False 10 g fn ist)
                                              (movelast n)
                                     else movelast n)
                          (ivs' \\ ivs)
@@ -757,7 +758,7 @@ elab ist info emode opts fn tm
                                                     env <- get_env
                                                     hs <- get_holes
                                                     if all (\n -> not (n `elem` hs)) (freeNames g)
-                                                     then try (resolveTC False False 7 g fn ist)
+                                                     then try (resolveTC False False 10 g fn ist)
                                                               (movelast n)
                                                      else movelast n)
                                           (ivs' \\ ivs)
@@ -1494,14 +1495,11 @@ resTC' tcs defaultOn topholes depth topg fn ist
             try' (trivial' ist)
                 (do t <- goal
                     let (tc, ttypes) = unApply (getRetTy t)
-                    scopeOnly <- needsDefault t tc ttypes
+                    addDefault t tc ttypes
                     let stk = elab_stack ist
-                    let insts_in = findInstances ist t
-                    let insts = if scopeOnly then filter chaser insts_in
-                                    else insts_in
+                    let insts = findInstances ist t
                     tm <- get_term
-                    let depth' = if scopeOnly then 2 else depth
-                    blunderbuss t depth' stk (stk ++ insts)) True
+                    blunderbuss t depth stk (stk ++ insts)) True
   where
     tcArgsOK ty hs | (P _ nc _, as) <- unApply (getRetTy ty), nc == numclass && defaultOn
        = True
@@ -1541,14 +1539,13 @@ resTC' tcs defaultOn topholes depth topg fn ist
 
     numclass = sNS (sUN "Num") ["Classes","Prelude"]
 
-    needsDefault t num@(P _ nc _) [P Bound a _] | nc == numclass && defaultOn
+    addDefault t num@(P _ nc _) [P Bound a _] | nc == numclass && defaultOn
         = do focus a
              fill (RConstant (AType (ATInt ITBig))) -- default Integer
              solve
-             return False
-    needsDefault t f as
-          | all boundVar as = return True -- fail $ "Can't resolve " ++ show t
-    needsDefault t f a = return False -- trace (show t) $ return ()
+    addDefault t f as
+          | all boundVar as = return () -- True -- fail $ "Can't resolve " ++ show t
+    addDefault t f a = return () -- trace (show t) $ return ()
 
     boundVar (P Bound _ _) = True
     boundVar _ = False

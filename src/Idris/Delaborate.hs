@@ -108,17 +108,17 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     deFn env (P _ n _) [l,r]
          | n == pairTy    = PPair un IsType (de env [] l) (de env [] r)
          | n == eqCon     = PRefl un (de env [] r)
-         | n == sUN "lazy" = de env [] r
+         | n == sUN "lazy" = de env [] r -- TODO: Fix string based matching
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
-         | n == sUN "Sigma"
+         | n == sigmaTy
                = PDPair un IsType (PRef un x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [lt,rt,l,r]
          | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
          | n == eqTy    = PEq un (de env [] lt) (de env [] rt)
                                  (de env [] l) (de env [] r)
-         | n == sUN "Sg_intro" = PDPair un IsTerm (de env [] l) Placeholder
-                                           (de env [] r)
+         | n == sigmaCon = PDPair un IsTerm (de env [] l) Placeholder
+                                             (de env [] r)
     deFn env f@(P _ n _) args
          | n `elem` map snd env
               = PApp un (de env [] f) (map pexp (map (de env []) args))
