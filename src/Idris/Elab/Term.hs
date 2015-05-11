@@ -570,7 +570,7 @@ elab ist info emode opts fn tm
                elabE ec' fc sc
                solve
                highlightSource nfc (AnnBoundName n False)
-    elab' ina _ (PLet fc n ty val sc)
+    elab' ina _ (PLet fc n nfc ty val sc)
           = do attack
                ivs <- get_instances
                tyn <- getNameFrom (sMN 0 "letty")
@@ -606,6 +606,7 @@ elab ist info emode opts fn tm
                                  Just (Let t v) -> v
                                  other -> error ("Value not a let binding: " ++ show other))
                solve
+               highlightSource nfc (AnnBoundName n False)
     elab' ina _ (PGoal fc r n sc) = do
          rty <- goal
          attack

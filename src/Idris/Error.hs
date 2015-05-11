@@ -93,7 +93,7 @@ warnDisamb ist (PInferRef _ _) = return ()
 warnDisamb ist (PPatvar _ _) = return ()
 warnDisamb ist (PLam _ _ _ t b) = warnDisamb ist t >> warnDisamb ist b
 warnDisamb ist (PPi _ _ _ t b) = warnDisamb ist t >> warnDisamb ist b
-warnDisamb ist (PLet _ _ x t b) = warnDisamb ist x >> warnDisamb ist t >> warnDisamb ist b
+warnDisamb ist (PLet _ _ _ x t b) = warnDisamb ist x >> warnDisamb ist t >> warnDisamb ist b
 warnDisamb ist (PTyped x t) = warnDisamb ist x >> warnDisamb ist t
 warnDisamb ist (PApp _ t args) = warnDisamb ist t >>
                                  mapM_ (warnDisamb ist . getTm) args
@@ -124,7 +124,7 @@ warnDisamb ist (PDoBlock steps) = mapM_ wStep steps
         wStep (DoBind _ _ _ x) = warnDisamb ist x
         wStep (DoBindP _ x y cs) = warnDisamb ist x >> warnDisamb ist y >>
                                    mapM_ (\(x,y) -> warnDisamb ist x >> warnDisamb ist y) cs
-        wStep (DoLet _ _ x y) = warnDisamb ist x >> warnDisamb ist y
+        wStep (DoLet _ _ _ x y) = warnDisamb ist x >> warnDisamb ist y
         wStep (DoLetP _ x y) = warnDisamb ist x >> warnDisamb ist y
 warnDisamb ist (PIdiom _ x) = warnDisamb ist x
 warnDisamb ist (PReturn _) = return ()

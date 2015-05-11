@@ -962,11 +962,11 @@ expandParams dec ps ns infs tm = en tm
                = let n' = mkShadow n in -- TODO THINK SHADOWING TacImp?
                      PPi (enTacImp p) n' nfc (en t) (en (shadow n n' s))
        | otherwise = PPi (enTacImp p) n nfc (en t) (en s)
-    en (PLet fc n ty v s)
+    en (PLet fc n nfc ty v s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
-                     PLet fc n' (en ty) (en v) (en (shadow n n' s))
-       | otherwise = PLet fc n (en ty) (en v) (en s)
+                     PLet fc n' nfc (en ty) (en v) (en (shadow n n' s))
+       | otherwise = PLet fc n nfc (en ty) (en v) (en s)
     -- FIXME: Should only do this in a type signature!
     en (PDPair f p (PRef f' n) t r)
        | n `elem` (map fst ps ++ ns) && t /= Placeholder
@@ -1591,12 +1591,12 @@ addImpl' inpat env infns imp_meths ist ptm
              _ -> ai qq env ds (PLam fc (sMN 0 "lamp") NoFC ty
                                      (PCase fc (PRef fc (sMN 0 "lamp") )
                                         [(PRef fc n, sc)]))
-    ai qq env ds (PLet fc n ty val sc)
+    ai qq env ds (PLet fc n nfc ty val sc)
       = case lookupDef n (tt_ctxt ist) of
              [] -> let ty' = ai qq env ds ty
                        val' = ai qq env ds val
                        sc' = ai qq ((n, Just ty):env) ds sc in
-                       PLet fc n ty' val' sc'
+                       PLet fc n nfc ty' val' sc'
              _ -> ai qq env ds (PCase fc val [(PRef fc n, sc)])
     ai qq env ds (PPi p n nfc ty sc)
       = let ty' = ai qq env ds ty
@@ -1965,10 +1965,10 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PLam _ _ _ t s) (PLam _ _ _ t' s') = do mt <- match' t t'
                                                    ms <- match' s s'
                                                    return (mt ++ ms)
-    match (PLet _ _ t ty s) (PLet _ _ t' ty' s') = do mt <- match' t t'
-                                                      mty <- match' ty ty'
-                                                      ms <- match' s s'
-                                                      return (mt ++ mty ++ ms)
+    match (PLet _ _ _ t ty s) (PLet _ _ _ t' ty' s') = do mt <- match' t t'
+                                                          mty <- match' ty ty'
+                                                          ms <- match' s s'
+                                                          return (mt ++ mty ++ ms)
     match (PHidden x) (PHidden y)
           | RightOK xs <- match x y = return xs -- to collect variables
           | otherwise = return [] -- Otherwise hidden things are unmatchable
@@ -2044,8 +2044,8 @@ shadow n n' t = sm t where
                             | otherwise = PLam fc x xfc (sm t) sc
     sm (PPi p x fc t sc) | n /= x = PPi p x fc (sm t) (sm sc)
                          | otherwise = PPi p x fc (sm t) sc
-    sm (PLet fc x t v sc) | n /= x = PLet fc x (sm t) (sm v) (sm sc)
-                          | otherwise = PLet fc x (sm t) (sm v) sc
+    sm (PLet fc x xfc t v sc) | n /= x = PLet fc x xfc (sm t) (sm v) (sm sc)
+                              | otherwise = PLet fc x xfc (sm t) (sm v) sc
     sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
     sm (PAppBind f x as) = PAppBind f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
@@ -2109,7 +2109,7 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
               ty' <- mkUniq ty
               sc'' <- mkUniq sc'
               return $! PPi p n' fc ty' sc''
-  mkUniq (PLet fc n ty val sc)
+  mkUniq (PLet fc n nfc ty val sc)
          = do env <- get
               (n', sc') <-
                     if n `S.member` env
@@ -2120,7 +2120,7 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
               put (S.insert n' env)
               ty' <- mkUniq ty; val' <- mkUniq val
               sc'' <- mkUniq sc'
-              return $! PLet fc n' ty' val' sc''
+              return $! PLet fc n' nfc ty' val' sc''
   mkUniq (PApp fc t args)
          = do t' <- mkUniq t
               args' <- mapM mkUniqA args

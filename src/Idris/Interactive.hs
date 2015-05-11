@@ -198,7 +198,7 @@ doProofSearch fn updatefile rec l n hints (Just depth)
             else iPrintResult newmv
     where dropCtxt 0 sc = sc
           dropCtxt i (PPi _ _ _ _ sc) = dropCtxt (i - 1) sc
-          dropCtxt i (PLet _ _ _ _ sc) = dropCtxt (i - 1) sc
+          dropCtxt i (PLet _ _ _ _ _ sc) = dropCtxt (i - 1) sc
           dropCtxt i (PLam _ _ _ _ sc) = dropCtxt (i - 1) sc
           dropCtxt _ t = t
 

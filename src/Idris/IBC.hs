@@ -1528,12 +1528,13 @@ instance Binary PTerm where
                                          put x3
                                          put x4
                                          put x5
-                PLet x1 x2 x3 x4 x5 -> do putWord8 6
-                                          put x1
-                                          put x2
-                                          put x3
-                                          put x4
-                                          put x5
+                PLet x1 x2 x3 x4 x5 x6 -> do putWord8 6
+                                             put x1
+                                             put x2
+                                             put x3
+                                             put x4
+                                             put x5
+                                             put x6
                 PTyped x1 x2 -> do putWord8 7
                                    put x1
                                    put x2
@@ -1677,7 +1678,8 @@ instance Binary PTerm where
                            x3 <- get
                            x4 <- get
                            x5 <- get
-                           return (PLet x1 x2 x3 x4 x5)
+                           x6 <- get
+                           return (PLet x1 x2 x3 x4 x5 x6)
                    7 -> do x1 <- get
                            x2 <- get
                            return (PTyped x1 x2)
@@ -1969,11 +1971,12 @@ instance (Binary t) => Binary (PDo' t) where
                                           put x2
                                           put x3
                                           put x4
-                DoLet x1 x2 x3 x4 -> do putWord8 3
-                                        put x1
-                                        put x2
-                                        put x3
-                                        put x4
+                DoLet x1 x2 x3 x4 x5 -> do putWord8 3
+                                           put x1
+                                           put x2
+                                           put x3
+                                           put x4
+                                           put x5
                 DoLetP x1 x2 x3 -> do putWord8 4
                                       put x1
                                       put x2
@@ -1998,7 +2001,8 @@ instance (Binary t) => Binary (PDo' t) where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (DoLet x1 x2 x3 x4)
+                           x5 <- get
+                           return (DoLet x1 x2 x3 x4 x5)
                    4 -> do x1 <- get
                            x2 <- get
                            x3 <- get

@@ -169,8 +169,8 @@ extension syn ns rules =
     update ns (PPi p n fc ty sc)
       = PPi (updTacImp ns p) (updateB ns n) fc
             (update ns ty) (update (dropn n ns) sc)
-    update ns (PLet fc n ty val sc) 
-      = PLet fc (updateB ns n) (update ns ty)
+    update ns (PLet fc n nfc ty val sc) 
+      = PLet fc (updateB ns n) nfc (update ns ty)
               (update ns val) (update (dropn n ns) sc)
     update ns (PApp fc t args)
       = PApp fc (update ns t) (map (fmap (update ns)) args)
@@ -189,8 +189,8 @@ extension syn ns rules =
       where upd :: [(Name, SynMatch)] -> [PDo] -> [PDo]
             upd ns (DoExp fc t : ds) = DoExp fc (update ns t) : upd ns ds
             upd ns (DoBind fc n nfc t : ds) = DoBind fc n nfc (update ns t) : upd (dropn n ns) ds
-            upd ns (DoLet fc n ty t : ds) = DoLet fc n (update ns ty) (update ns t)
-                                                : upd (dropn n ns) ds
+            upd ns (DoLet fc n nfc ty t : ds) = DoLet fc n nfc (update ns ty) (update ns t)
+                                                    : upd (dropn n ns) ds
             upd ns (DoBindP fc i t ts : ds) 
                     = DoBindP fc (update ns i) (update ns t) 
                                  (map (\(l,r) -> (update ns l, update ns r)) ts)
@@ -559,7 +559,7 @@ app syn = do f <- simpleExpr syn
              (do try $ reservedOp "<=="
                  fc <- getFC
                  ff <- fst <$> fnName
-                 return (PLet fc (sMN 0 "match")
+                 return (PLet fc (sMN 0 "match") NoFC
                                f
                                (PMatchApp fc ff)
                                (PRef fc (sMN 0 "match")))
@@ -834,12 +834,12 @@ let_ syn = try (do reserved "let"
                    return (buildLets ls sc))
            <?> "let binding"
   where buildLets [] sc = sc
-        buildLets ((fc,PRef _ n,ty,v,[]):ls) sc
-          = PLet fc n ty v (buildLets ls sc)
-        buildLets ((fc,pat,ty,v,alts):ls) sc
+        buildLets ((fc, PRef nfc n, ty, v, []) : ls) sc
+          = PLet fc n nfc ty v (buildLets ls sc)
+        buildLets ((fc, pat, ty, v, alts) : ls) sc
           = PCase fc v ((pat, buildLets ls sc) : alts)
 
-let_binding syn = do fc <- getFC; 
+let_binding syn = do fc <- getFC;
                      pat <- expr' (syn { inPattern = True })
                      ty <- option Placeholder (do lchar ':'; expr' syn)
                      lchar '='
@@ -1142,13 +1142,13 @@ Do ::=
 do_ :: SyntaxInfo -> IdrisParser PDo
 do_ syn
      = try (do reserved "let"
-               i <- fst <$> name
+               (i, ifc) <- name
                ty <- option Placeholder (do lchar ':'
                                             expr' syn)
                reservedOp "="
                fc <- getFC
                e <- expr syn
-               return (DoLet fc i ty e))
+               return (DoLet fc i ifc ty e))
    <|> try (do reserved "let"
                i <- expr' syn
                reservedOp "="

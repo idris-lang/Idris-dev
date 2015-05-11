@@ -86,7 +86,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
           , (P _ cOp _, args) <- unApply sc
           , Just caseblock    <- delabCase env imps n val cOp args = caseblock
           | otherwise    =
-              PLet un n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
+              PLet un n NoFC (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
     de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
     de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
     de env plic (Bind n bb sc) = de ((n,n):env) [] sc

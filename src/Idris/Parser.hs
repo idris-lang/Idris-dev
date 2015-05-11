@@ -324,8 +324,8 @@ syntaxRule syn
                n' <- gensym n
                body' <- fixBind ((n,n'):rens) body
                return $ (PPi plic n' nfc ty' body')
-        fixBind rens (PLet fc n ty val body)
-          | n `elem` userNames = liftM3 (PLet fc n)
+        fixBind rens (PLet fc n nfc ty val body)
+          | n `elem` userNames = liftM3 (PLet fc n nfc)
                                         (fixBind rens ty)
                                         (fixBind rens val)
                                         (fixBind rens body)
@@ -334,7 +334,7 @@ syntaxRule syn
                val' <- fixBind rens val
                n' <- gensym n
                body' <- fixBind ((n,n'):rens) body
-               return $ (PLet fc n' ty' val' body')
+               return $ PLet fc n' nfc ty' val' body'
         fixBind rens (PMatchApp fc n) | Just n' <- lookup n rens =
           return $ PMatchApp fc n'
         fixBind rens x = descendM (fixBind rens) x
@@ -861,10 +861,10 @@ rhs syn n = do lchar '='; expr syn
         n' :: Name
         n' = mkN n
         addLet :: FC -> Name -> PTerm -> PTerm
-        addLet fc nm (PLet fc' n ty val r) = PLet fc' n ty val (addLet fc nm r)
+        addLet fc nm (PLet fc' n nfc ty val r) = PLet fc' n nfc ty val (addLet fc nm r)
         addLet fc nm (PCase fc' t cs) = PCase fc' t (map addLetC cs)
           where addLetC (l, r) = (l, addLet fc nm r)
-        addLet fc nm r = (PLet fc (sUN "value") Placeholder r (PMetavar nm))
+        addLet fc nm r = (PLet fc (sUN "value") NoFC Placeholder r (PMetavar nm))
 
 {- |Parses a function clause
 
@@ -931,7 +931,7 @@ clause syn
                                            return x,
                                         do terminator
                                            return ([], [])]
-              let capp = PLet fc (sMN 0 "match")
+              let capp = PLet fc (sMN 0 "match") NoFC
                               ty
                               (PMatchApp fc n)
                               (PRef fc (sMN 0 "match"))

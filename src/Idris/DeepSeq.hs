@@ -221,8 +221,8 @@ instance NFData PTerm where
         rnf (PLam _ x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PPi x1 x2 x3 x4 x5)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
-        rnf (PLet _ x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (PLet _ x1 x2 x3 x4 x5)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
         rnf (PTyped x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PAppImpl x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PApp x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
@@ -318,8 +318,8 @@ instance (NFData t) => NFData (PDo' t) where
         rnf (DoExp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (DoBind x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (DoBindP x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (DoLet x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (DoLet x1 x2 x3 x4 x5)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
         rnf (DoLetP x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
 
 instance (NFData t) => NFData (PArg' t) where

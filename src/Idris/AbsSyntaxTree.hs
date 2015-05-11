@@ -817,8 +817,8 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PInferRef FC Name -- ^ A name to be defined later
            | PPatvar FC Name -- ^ A pattern variable
            | PLam FC Name FC PTerm PTerm -- ^ A lambda abstraction. Second FC is name span.
-           | PPi  Plicity Name FC PTerm PTerm -- ^ (n : t1) -> t2, where the FC is for the variable
-           | PLet FC Name PTerm PTerm PTerm -- ^ A let binding
+           | PPi  Plicity Name FC PTerm PTerm -- ^ (n : t1) -> t2, where the FC is for the precise location of the variable
+           | PLet FC Name FC PTerm PTerm PTerm -- ^ A let binding (second FC is precise name location)
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
            | PAppImpl PTerm [ImplicitInfo] -- ^ Implicit argument application (introduced during elaboration only)
@@ -869,7 +869,7 @@ mapPT :: (PTerm -> PTerm) -> PTerm -> PTerm
 mapPT f t = f (mpt t) where
   mpt (PLam fc n nfc t s) = PLam fc n nfc (mapPT f t) (mapPT f s)
   mpt (PPi p n nfc t s) = PPi p n nfc (mapPT f t) (mapPT f s)
-  mpt (PLet fc n ty v s) = PLet fc n (mapPT f ty) (mapPT f v) (mapPT f s)
+  mpt (PLet fc n nfc ty v s) = PLet fc n nfc (mapPT f ty) (mapPT f v) (mapPT f s)
   mpt (PRewrite fc t s g) = PRewrite fc (mapPT f t) (mapPT f s)
                                  (fmap (mapPT f) g)
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
@@ -959,7 +959,7 @@ type PTactic = PTactic' PTerm
 data PDo' t = DoExp  FC t
             | DoBind FC Name FC t -- ^ second FC is precise name location
             | DoBindP FC t t [(t,t)]
-            | DoLet  FC Name t t
+            | DoLet  FC Name FC t t -- ^ second FC is precise name location
             | DoLetP FC t t
     deriving (Eq, Functor, Data, Typeable)
 {-!
@@ -971,7 +971,7 @@ instance Sized a => Sized (PDo' a) where
   size (DoExp fc t) = 1 + size fc + size t
   size (DoBind fc nm nfc t) = 1 + size fc + size nm + size nfc + size t
   size (DoBindP fc l r alts) = 1 + size fc + size l + size r + size alts
-  size (DoLet fc nm l r) = 1 + size fc + size nm + size l + size r
+  size (DoLet fc nm nfc l r) = 1 + size fc + size nm + size l + size r
   size (DoLetP fc l r) = 1 + size fc + size l + size r
 
 type PDo = PDo' PTerm
@@ -1028,7 +1028,7 @@ highestFC (PInferRef fc _) = Just fc
 highestFC (PPatvar fc _) = Just fc
 highestFC (PLam fc _ _ _ _) = Just fc
 highestFC (PPi _ _ _ _ _) = Nothing
-highestFC (PLet fc _ _ _ _) = Just fc
+highestFC (PLet fc _ _ _ _ _) = Just fc
 highestFC (PTyped tm ty) = highestFC tm <|> highestFC ty
 highestFC (PApp fc _ _) = Just fc
 highestFC (PAppBind fc _ _) = Just fc
@@ -1061,7 +1061,7 @@ highestFC (PDoBlock lines) =
     getDoFC (DoExp fc t)          = fc
     getDoFC (DoBind fc nm nfc t)  = fc
     getDoFC (DoBindP fc l r alts) = fc
-    getDoFC (DoLet fc nm l r)     = fc
+    getDoFC (DoLet fc nm nfc l r) = fc
     getDoFC (DoLetP fc l r)       = fc
 
 highestFC (PIdiom fc _) = Just fc
@@ -1455,7 +1455,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
       bracket p startPrec . group . align . hang 2 $
       text "\\" <> prettyBindingOf n False <+> text "=>" <$>
       prettySe startPrec ((n, False):bnd) sc
-    prettySe p bnd (PLet fc n ty v sc) =
+    prettySe p bnd (PLet fc n nfc ty v sc) =
       bracket p startPrec . group . align $
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe startPrec ((n, False):bnd) sc)
@@ -1874,7 +1874,7 @@ instance Sized PTerm where
   size (PRef fc name) = size name
   size (PLam fc name _ ty bdy) = 1 + size ty + size bdy
   size (PPi plicity name fc ty bdy) = 1 + size ty + size fc + size bdy
-  size (PLet fc name ty def bdy) = 1 + size ty + size def + size bdy
+  size (PLet fc name nfc ty def bdy) = 1 + size ty + size def + size bdy
   size (PTyped trm ty) = 1 + size trm + size ty
   size (PApp fc name args) = 1 + size args
   size (PAppBind fc name args) = 1 + size args
@@ -1949,7 +1949,7 @@ boundNamesIn tm = S.toList (ni S.empty tm)
     ni set (PCase _ c os)  = niTms (ni set c) (map snd os)
     ni set (PIfThenElse _ c t f) = niTms set [c, t, f]
     ni set (PLam fc n _ ty sc)  = S.insert n $ ni (ni set ty) sc
-    ni set (PLet fc n ty val sc) = S.insert n $ ni (ni (ni set ty) val) sc
+    ni set (PLet fc n nfc ty val sc) = S.insert n $ ni (ni (ni set ty) val) sc
     ni set (PPi p n _ ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
     ni set (PEq _ _ _ l r) = ni (ni set l) r
     ni set (PRewrite _ l r _) = ni (ni set l) r
