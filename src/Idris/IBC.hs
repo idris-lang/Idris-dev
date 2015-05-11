@@ -1959,10 +1959,11 @@ instance (Binary t) => Binary (PDo' t) where
                 DoExp x1 x2 -> do putWord8 0
                                   put x1
                                   put x2
-                DoBind x1 x2 x3 -> do putWord8 1
-                                      put x1
-                                      put x2
-                                      put x3
+                DoBind x1 x2 x3 x4 -> do putWord8 1
+                                         put x1
+                                         put x2
+                                         put x3
+                                         put x4
                 DoBindP x1 x2 x3 x4 -> do putWord8 2
                                           put x1
                                           put x2
@@ -1986,7 +1987,8 @@ instance (Binary t) => Binary (PDo' t) where
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (DoBind x1 x2 x3)
+                           x4 <- get
+                           return (DoBind x1 x2 x3 x4)
                    2 -> do x1 <- get
                            x2 <- get
                            x3 <- get

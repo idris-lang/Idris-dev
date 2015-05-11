@@ -341,7 +341,7 @@ extractPArg (PTacImplicit {pname=n, getScript=p1, getTm=p2})
 -- | Helper function for extractPTermNames
 extractPDo :: PDo -> [Name]
 extractPDo (DoExp   _ p)        = extract p
-extractPDo (DoBind  _ n p)      = n : extract p
+extractPDo (DoBind  _ n _ p)    = n : extract p
 extractPDo (DoBindP _ p1 p2 ps) = let (ps1, ps2) = unzip ps
                                       ps'        = ps1 ++ ps2
                                   in  concatMap extract (p1 : p2 : ps')

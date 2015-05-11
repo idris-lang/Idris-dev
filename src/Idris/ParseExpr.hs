@@ -188,7 +188,7 @@ extension syn ns rules =
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
       where upd :: [(Name, SynMatch)] -> [PDo] -> [PDo]
             upd ns (DoExp fc t : ds) = DoExp fc (update ns t) : upd ns ds
-            upd ns (DoBind fc n t : ds) = DoBind fc n (update ns t) : upd (dropn n ns) ds
+            upd ns (DoBind fc n nfc t : ds) = DoBind fc n nfc (update ns t) : upd (dropn n ns) ds
             upd ns (DoLet fc n ty t : ds) = DoLet fc n (update ns ty) (update ns t)
                                                 : upd (dropn n ns) ds
             upd ns (DoBindP fc i t ts : ds) 
@@ -1155,14 +1155,14 @@ do_ syn
                fc <- getFC
                sc <- expr syn
                return (DoLetP fc i sc))
-   <|> try (do i <- fst <$> name
+   <|> try (do (i, ifc) <- name
                symbol "<-"
                fc <- getFC
                e <- expr syn;
-               option (DoBind fc i e)
+               option (DoBind fc i ifc e)
                       (do lchar '|'
                           ts <- sepBy1 (do_alt syn) (lchar '|')
-                          return (DoBindP fc (PRef fc i) e ts)))
+                          return (DoBindP fc (PRef ifc i) e ts)))
    <|> try (do i <- expr' syn
                symbol "<-"
                fc <- getFC

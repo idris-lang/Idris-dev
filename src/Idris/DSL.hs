@@ -97,8 +97,8 @@ expandSugar dsl (PDoBlock ds)
   where
     block b [DoExp fc tm] = tm
     block b [a] = PElabError (Msg "Last statement in do block must be an expression")
-    block b (DoBind fc n tm : rest)
-        = PApp fc b [pexp tm, pexp (PLam fc n NoFC Placeholder (block b rest))]
+    block b (DoBind fc n nfc tm : rest)
+        = PApp fc b [pexp tm, pexp (PLam fc n nfc Placeholder (block b rest))]
     block b (DoBindP fc p tm alts : rest)
         = PApp fc b [pexp tm, pexp (PLam fc (sMN 0 "bpat") NoFC Placeholder
                                    (PCase fc (PRef fc (sMN 0 "bpat"))

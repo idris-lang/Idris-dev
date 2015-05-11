@@ -957,7 +957,7 @@ instance Sized a => Sized (PTactic' a) where
 type PTactic = PTactic' PTerm
 
 data PDo' t = DoExp  FC t
-            | DoBind FC Name t
+            | DoBind FC Name FC t -- ^ second FC is precise name location
             | DoBindP FC t t [(t,t)]
             | DoLet  FC Name t t
             | DoLetP FC t t
@@ -969,7 +969,7 @@ deriving instance NFData PDo'
 
 instance Sized a => Sized (PDo' a) where
   size (DoExp fc t) = 1 + size fc + size t
-  size (DoBind fc nm t) = 1 + size fc + size nm + size t
+  size (DoBind fc nm nfc t) = 1 + size fc + size nm + size nfc + size t
   size (DoBindP fc l r alts) = 1 + size fc + size l + size r + size alts
   size (DoLet fc nm l r) = 1 + size fc + size nm + size l + size r
   size (DoLetP fc l r) = 1 + size fc + size l + size r
@@ -1059,7 +1059,7 @@ highestFC (PDoBlock lines) =
     (fc:_) -> Just fc
   where
     getDoFC (DoExp fc t)          = fc
-    getDoFC (DoBind fc nm t)      = fc
+    getDoFC (DoBind fc nm nfc t)  = fc
     getDoFC (DoBindP fc l r alts) = fc
     getDoFC (DoLet fc nm l r)     = fc
     getDoFC (DoLetP fc l r)       = fc

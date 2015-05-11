@@ -58,9 +58,9 @@ extractDoUnquotes :: Int -> PDo -> Elab' aux (PDo, [(Name, PTerm)])
 extractDoUnquotes d (DoExp fc tm)
   = do (tm', ex) <- extractUnquotes d tm
        return (DoExp fc tm', ex)
-extractDoUnquotes d (DoBind fc n tm)
+extractDoUnquotes d (DoBind fc n nfc tm)
   = do (tm', ex) <- extractUnquotes d tm
-       return (DoBind fc n tm', ex)
+       return (DoBind fc n nfc tm', ex)
 extractDoUnquotes d (DoBindP fc t t' alts)
   = fail "Pattern-matching binds cannot be quasiquoted"
 extractDoUnquotes d (DoLet  fc n v b)
