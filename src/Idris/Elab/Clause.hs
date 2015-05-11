@@ -837,7 +837,10 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
 
         let mpn = case pn_in of
                        Nothing -> Nothing
-                       Just n -> Just (uniqueName n (map fst bargs))
+                       Just (n, nfc) -> Just (uniqueName n (map fst bargs))
+
+        -- Highlight explicit proofs
+        sendHighlighting $ [(fc, AnnBoundName n False) | (n, fc) <- maybeToList pn_in]
 
         logLvl 10 ("With type " ++ show (getRetTy cwvaltyN) ++
                   " depends on " ++ show pdeps ++ " from " ++ show pvars)

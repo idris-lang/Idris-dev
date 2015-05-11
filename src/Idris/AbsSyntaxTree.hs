@@ -698,10 +698,10 @@ highlightSource fc annot =
 --
 -- 4. The where block (PDecl' t)
 
-data PClause' t = PClause  FC Name t [t] t              [PDecl' t] -- ^ A normal top-level definition.
-                | PWith    FC Name t [t] t (Maybe Name) [PDecl' t]
-                | PClauseR FC        [t] t              [PDecl' t]
-                | PWithR   FC        [t] t (Maybe Name) [PDecl' t]
+data PClause' t = PClause  FC Name t [t] t                    [PDecl' t] -- ^ A normal top-level definition.
+                | PWith    FC Name t [t] t (Maybe (Name, FC)) [PDecl' t]
+                | PClauseR FC        [t] t                    [PDecl' t]
+                | PWithR   FC        [t] t (Maybe (Name, FC)) [PDecl' t]
     deriving Functor
 {-!
 deriving instance Binary PClause'

@@ -1007,7 +1007,7 @@ clause syn
       <?> "function clause"
   where
     optProof = option Nothing (do reserved "proof"
-                                  n <- fst <$> fnName
+                                  n <- fnName
                                   return (Just n))
 
     fillLHS :: Name -> PTerm -> [PTerm] -> PClause -> PClause
