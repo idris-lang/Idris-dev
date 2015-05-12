@@ -324,7 +324,8 @@ SimpleExpr ::=
 simpleExpr :: SyntaxInfo -> IdrisParser PTerm
 simpleExpr syn =
             try (simpleExternalExpr syn)
-        <|> do x <- try (lchar '?' *> (fst <$> name)); return (PMetavar x)
+        <|> do (x, FC f (l, c) end) <- try (lchar '?' *> name)
+               return (PMetavar (FC f (l, c-1) end) x)
         <|> do lchar '%'; fc <- getFC; reserved "instance"; return (PResolveTC fc)
         <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc (SN $ ElimN t))
         <|> proofExpr syn

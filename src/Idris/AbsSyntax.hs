@@ -1930,7 +1930,7 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
                 (x: _) -> return x
                 _ -> LeftErr (a, b)
     match (PCase _ _ _) _ = return [] -- lifted out
-    match (PMetavar _) _ = return [] -- modified
+    match (PMetavar _ _) _ = return [] -- modified
     match (PInferRef _ _) _ = return [] -- modified
     match (PQuote _) _ = return []
     match (PProof _) _ = return []

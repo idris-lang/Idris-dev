@@ -1600,8 +1600,9 @@ instance Binary PTerm where
                                    put x2
                 PReturn x1 -> do putWord8 28
                                  put x1
-                PMetavar x1 -> do putWord8 29
-                                  put x1
+                PMetavar x1 x2 -> do putWord8 29
+                                     put x1
+                                     put x2
                 PProof x1 -> do putWord8 30
                                 put x1
                 PTactics x1 -> do putWord8 31
@@ -1736,7 +1737,8 @@ instance Binary PTerm where
                    28 -> do x1 <- get
                             return (PReturn x1)
                    29 -> do x1 <- get
-                            return (PMetavar x1)
+                            x2 <- get
+                            return (PMetavar x1 x2)
                    30 -> do x1 <- get
                             return (PProof x1)
                    31 -> do x1 <- get
