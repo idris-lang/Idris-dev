@@ -48,6 +48,7 @@ New in 0.9.18:
 * The desugaring of if ... then ... else ... has been renamed to ifThenElse from
   boolElim. This is for consistency with GHC Haskell and scala-virtualized, and
   to reflect that if-notation makes sense with non-Bool datatypes.
+* Agda-style semantic highlighting is supported over the IDE protocol.
 
 
 New in 0.9.17:
