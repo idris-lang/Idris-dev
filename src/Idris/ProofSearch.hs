@@ -22,7 +22,7 @@ import Debug.Trace
 -- Pass in a term elaborator to avoid a cyclic dependency with ElabTerm
 
 trivial :: (PTerm -> ElabD ()) -> IState -> ElabD ()
-trivial elab ist = try' (do elab (PRefl (fileFC "prf") Placeholder)
+trivial elab ist = try' (do elab (PApp (fileFC "prf") (PRef (fileFC "prf") eqCon) [pimp (sUN "A") Placeholder False, pimp (sUN "x") Placeholder False])
                             return ())
                         (do env <- get_env
                             g <- goal

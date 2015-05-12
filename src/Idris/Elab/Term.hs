@@ -343,10 +343,7 @@ elab ist info emode opts fn tm
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
-    elab' ina _ (PRefl fc t)
-        = elab' ina (Just fc) (PApp fc (PRef fc eqCon) [pimp (sMN 0 "A") Placeholder True,
-                                                   pimp (sMN 0 "x") t False])
-    elab' ina _ (PEq fc Placeholder Placeholder l r)
+    elab' ina _ (PApp fc (PRef _ n) args) | n == eqTy, [Placeholder, Placeholder, l, r] <- map getTm args
        = try (do tyn <- getNameFrom (sMN 0 "aqty")
                  claim tyn RType
                  movelast tyn
@@ -365,10 +362,6 @@ elab ist info emode opts fn tm
                     pimp (sUN "B") (PRef fc btyn) False,
                     pexp l, pexp r]))
 
-    elab' ina _ (PEq fc lt rt l r) = elab' ina (Just fc) (PApp fc (PRef fc eqTy)
-                                       [pimp (sUN "A") lt True,
-                                        pimp (sUN "B") rt False,
-                                        pexp l, pexp r])
     elab' ina _ (PPair fc _ l r)
         = do hnf_compute
              g <- goal

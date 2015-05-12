@@ -885,7 +885,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                     (map (pexp . (PRef fc) . fst) bargs_post) ++
                     case mpn of
                          Nothing -> []
-                         Just _ -> [pexp (PRefl fc Placeholder)])
+                         Just _ -> [pexp (PRef fc eqCon)])
         logLvl 5 ("New RHS " ++ showTmImpls rhs)
         ctxt <- getContext -- New context with block added
         i <- getIState
