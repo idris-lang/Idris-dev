@@ -17,7 +17,7 @@ desugarAs lhs rhs
     bindPats :: [(Name, FC, PTerm)] -> PTerm -> PTerm
     bindPats [] rhs = rhs
     bindPats ((n, fc, tm) : ps) rhs
-       = PLet fc n Placeholder tm (bindPats ps rhs)
+       = PLet fc n NoFC Placeholder tm (bindPats ps rhs)
 
 collectAs :: PTerm -> State [(Name, FC, PTerm)] PTerm
 collectAs (PAs fc n tm) = do tm' <- collectAs tm

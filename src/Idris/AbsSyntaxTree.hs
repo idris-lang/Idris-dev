@@ -593,7 +593,7 @@ type ProvideWhat = ProvideWhat' PTerm
 -- datatypes and typeclasses.
 data PDecl' t
    = PFix     FC Fixity [String] -- ^ Fixity declaration
-   | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name t   -- ^ Type declaration
+   | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name FC t   -- ^ Type declaration (last FC is precise name location)
    | PPostulate Bool -- external def if true
           (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
@@ -603,30 +603,33 @@ data PDecl' t
    | PNamespace String [PDecl' t] -- ^ New namespace
    | PRecord  (Docstring (Either Err PTerm)) SyntaxInfo FC DataOpts
               Name                 -- Record name
-              [(Name, Plicity, t)] -- Parameters
+              FC                   -- Record name precise location
+              [(Name, FC, Plicity, t)] -- Parameters, where FC is precise name span
               [(Name, Docstring (Either Err PTerm))] -- Param Docs
-              [((Maybe Name), Plicity, t, Maybe (Docstring (Either Err PTerm)))] -- Fields
-              (Maybe Name) -- Optional constructor name
+              [((Maybe (Name, FC)), Plicity, t, Maybe (Docstring (Either Err PTerm)))] -- Fields
+              (Maybe (Name, FC)) -- Optional constructor name and location
               (Docstring (Either Err PTerm)) -- Constructor doc
               SyntaxInfo -- Constructor SyntaxInfo
               -- ^ Record declaration
    | PClass   (Docstring (Either Err PTerm)) SyntaxInfo FC
               [(Name, t)] -- constraints
               Name -- class name
-              [(Name, t)] -- parameters
+              FC -- accurate location of class name
+              [(Name, FC, t)] -- parameters and precise locations
               [(Name, Docstring (Either Err PTerm))] -- parameter docstrings
-              [Name] -- determining parameters
+              [(Name, FC)] -- determining parameters and precise locations
               [PDecl' t] -- declarations
-              (Maybe Name) -- instance constructor name
+              (Maybe (Name, FC)) -- instance constructor name and location
               (Docstring (Either Err PTerm)) -- instance constructor docs
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
-              -- class name, parameters, method declarations, optional constructor name
+              -- class name, class name location, parameters, method declarations, optional constructor name
    | PInstance
        (Docstring (Either Err PTerm)) -- Instance docs
        [(Name, Docstring (Either Err PTerm))] -- Parameter docs
        SyntaxInfo
        FC [(Name, t)] -- constraints
        Name -- class
+       FC -- precise location of class
        [t] -- parameters
        t -- full instance type
        (Maybe Name) -- explicit name
@@ -672,13 +675,18 @@ data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
 data EState = EState {
                   case_decls :: [(Name, PDecl)],
                   delayed_elab :: [Elab' EState ()],
-                  new_tyDecls :: [RDeclInstructions]
+                  new_tyDecls :: [RDeclInstructions],
+                  highlighting :: [(FC, OutputAnnotation)]
               }
 
 initEState :: EState
-initEState = EState [] [] []
+initEState = EState [] [] [] []
 
 type ElabD a = Elab' EState a
+
+highlightSource :: FC -> OutputAnnotation -> ElabD ()
+highlightSource fc annot =
+  updateAux (\aux -> aux { highlighting = (fc, annot) : highlighting aux })
 
 -- | One clause of a top-level definition. Term arguments to constructors are:
 --
@@ -690,10 +698,10 @@ type ElabD a = Elab' EState a
 --
 -- 4. The where block (PDecl' t)
 
-data PClause' t = PClause  FC Name t [t] t              [PDecl' t] -- ^ A normal top-level definition.
-                | PWith    FC Name t [t] t (Maybe Name) [PDecl' t]
-                | PClauseR FC        [t] t              [PDecl' t]
-                | PWithR   FC        [t] t (Maybe Name) [PDecl' t]
+data PClause' t = PClause  FC Name t [t] t                    [PDecl' t] -- ^ A normal top-level definition.
+                | PWith    FC Name t [t] t (Maybe (Name, FC)) [PDecl' t]
+                | PClauseR FC        [t] t                    [PDecl' t]
+                | PWithR   FC        [t] t (Maybe (Name, FC)) [PDecl' t]
     deriving Functor
 {-!
 deriving instance Binary PClause'
@@ -702,11 +710,12 @@ deriving instance NFData PClause'
 
 -- | Data declaration
 data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
+                             d_name_fc :: FC, -- ^ The precise location of the type constructor name
                              d_tcon :: t, -- ^ Type constructor
-                             d_cons :: [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, t, FC, [Name])] -- ^ Constructors
+                             d_cons :: [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, t, FC, [Name])] -- ^ Constructors
                            }
                  -- ^ Data declaration
-               | PLaterdecl { d_name :: Name, d_tcon :: t }
+               | PLaterdecl { d_name :: Name, d_name_fc :: FC, d_tcon :: t }
                  -- ^ "Placeholder" for data whose constructors are defined later
     deriving Functor
 {-!
@@ -725,18 +734,18 @@ type PClause = PClause' PTerm
 
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
-declared (PTy _ _ _ _ _ n t) = [n]
+declared (PTy _ _ _ _ _ n fc t) = [n]
 declared (PPostulate _ _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PCAF _ n _) = [n]
-declared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, _, a, _, _, _) = a
-declared (PData _ _ _ _ _ (PLaterdecl n _)) = [n]
+declared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
+   where fstt (_, _, a, _, _, _, _) = a
+declared (PData _ _ _ _ _ (PLaterdecl n _ _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ ds) = concatMap declared ds
-declared (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
-declared (PClass _ _ _ _ n _ _ _ ms cn cd) = n : (maybeToList cn ++ concatMap declared ms)
-declared (PInstance _ _ _ _ _ _ _ _ _ _) = []
+declared (PRecord _ _ _ _ n  _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
+declared (PClass _ _ _ _ n _ _ _ _ ms cn cd) = n : (map fst (maybeToList cn) ++ concatMap declared ms)
+declared (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
 declared (PMutual _ ds) = concatMap declared ds
@@ -746,33 +755,33 @@ declared _ = []
 -- get the names declared, not counting nested parameter blocks
 tldeclared :: PDecl -> [Name]
 tldeclared (PFix _ _ _) = []
-tldeclared (PTy _ _ _ _ _ n t) = [n]
+tldeclared (PTy _ _ _ _ _ n _ t) = [n]
 tldeclared (PPostulate _ _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
-tldeclared (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
-tldeclared (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, _, a, _, _, _) = a
+tldeclared (PRecord _ _ _ _ n _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
+tldeclared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
+   where fstt (_, _, a, _, _, _, _) = a
 tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ ds) = concatMap tldeclared ds
-tldeclared (PClass _ _ _ _ n _ _ _ ms cn _) = n : (maybeToList cn ++ concatMap tldeclared ms)
-tldeclared (PInstance _ _ _ _ _ _ _ _ _ _) = []
+tldeclared (PClass _ _ _ _ n _ _ _ _ ms cn _) = n : (map fst (maybeToList cn) ++ concatMap tldeclared ms)
+tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
 tldeclared _ = []
 
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
-defined (PTy _ _ _ _ _ n t) = []
+defined (PTy _ _ _ _ _ n _ t) = []
 defined (PPostulate _ _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PCAF _ n _) = [n]
-defined (PData _ _ _ _ _ (PDatadecl n _ ts)) = n : map fstt ts
-   where fstt (_, _, a, _, _, _) = a
-defined (PData _ _ _ _ _ (PLaterdecl n _)) = []
+defined (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
+   where fstt (_, _, a, _, _, _, _) = a
+defined (PData _ _ _ _ _ (PLaterdecl n _ _)) = []
 defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ ds) = concatMap defined ds
-defined (PRecord _ _ _ _ n _ _ _ cn _ _) = n : maybeToList cn
-defined (PClass _ _ _ _ n _ _ _ ms cn _) = n : (maybeToList cn ++ concatMap defined ms)
-defined (PInstance _ _ _ _ _ _ _ _ _ _) = []
+defined (PRecord _ _ _ _ n _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
+defined (PClass _ _ _ _ n _ _ _ _ ms cn _) = n : (map fst (maybeToList cn) ++ concatMap defined ms)
+defined (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
 defined (PSyntax _ _) = []
 defined (PMutual _ ds) = concatMap defined ds
@@ -807,9 +816,9 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PRef FC Name -- ^ A reference to a variable
            | PInferRef FC Name -- ^ A name to be defined later
            | PPatvar FC Name -- ^ A pattern variable
-           | PLam FC Name PTerm PTerm -- ^ A lambda abstraction
-           | PPi  Plicity Name PTerm PTerm -- ^ (n : t1) -> t2
-           | PLet FC Name PTerm PTerm PTerm -- ^ A let binding
+           | PLam FC Name FC PTerm PTerm -- ^ A lambda abstraction. Second FC is name span.
+           | PPi  Plicity Name FC PTerm PTerm -- ^ (n : t1) -> t2, where the FC is for the precise location of the variable
+           | PLet FC Name FC PTerm PTerm PTerm -- ^ A let binding (second FC is precise name location)
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
            | PAppImpl PTerm [ImplicitInfo] -- ^ Implicit argument application (introduced during elaboration only)
@@ -825,10 +834,10 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PAs FC Name PTerm -- ^ @-pattern, valid LHS only
            | PAlternative Bool [PTerm] -- ^ True if only one may work. (| A, B, C|)
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
-           | PType -- ^ 'Type' type
+           | PType FC -- ^ 'Type' type
            | PUniverse Universe -- ^ Some universe
            | PGoal FC PTerm Name PTerm -- ^ quoteGoal, used for %reflection functions
-           | PConstant Const -- ^ Builtin types
+           | PConstant FC Const -- ^ Builtin types
            | Placeholder -- ^ Underscore
            | PDoBlock [PDo] -- ^ Do notation
            | PIdiom FC PTerm -- ^ Idiom brackets
@@ -856,9 +865,9 @@ deriving instance NFData PTerm
 
 mapPT :: (PTerm -> PTerm) -> PTerm -> PTerm
 mapPT f t = f (mpt t) where
-  mpt (PLam fc n t s) = PLam fc n (mapPT f t) (mapPT f s)
-  mpt (PPi p n t s) = PPi p n (mapPT f t) (mapPT f s)
-  mpt (PLet fc n ty v s) = PLet fc n (mapPT f ty) (mapPT f v) (mapPT f s)
+  mpt (PLam fc n nfc t s) = PLam fc n nfc (mapPT f t) (mapPT f s)
+  mpt (PPi p n nfc t s) = PPi p n nfc (mapPT f t) (mapPT f s)
+  mpt (PLet fc n nfc ty v s) = PLet fc n nfc (mapPT f ty) (mapPT f v) (mapPT f s)
   mpt (PRewrite fc t s g) = PRewrite fc (mapPT f t) (mapPT f s)
                                  (fmap (mapPT f) g)
   mpt (PApp fc t as) = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
@@ -945,9 +954,9 @@ instance Sized a => Sized (PTactic' a) where
 type PTactic = PTactic' PTerm
 
 data PDo' t = DoExp  FC t
-            | DoBind FC Name t
+            | DoBind FC Name FC t -- ^ second FC is precise name location
             | DoBindP FC t t [(t,t)]
-            | DoLet  FC Name t t
+            | DoLet  FC Name FC t t -- ^ second FC is precise name location
             | DoLetP FC t t
     deriving (Eq, Functor, Data, Typeable)
 {-!
@@ -957,9 +966,9 @@ deriving instance NFData PDo'
 
 instance Sized a => Sized (PDo' a) where
   size (DoExp fc t) = 1 + size fc + size t
-  size (DoBind fc nm t) = 1 + size fc + size nm + size t
+  size (DoBind fc nm nfc t) = 1 + size fc + size nm + size nfc + size t
   size (DoBindP fc l r alts) = 1 + size fc + size l + size r + size alts
-  size (DoLet fc nm l r) = 1 + size fc + size nm + size l + size r
+  size (DoLet fc nm nfc l r) = 1 + size fc + size nm + size l + size r
   size (DoLetP fc l r) = 1 + size fc + size l + size r
 
 type PDo = PDo' PTerm
@@ -1014,9 +1023,9 @@ highestFC (PQuote _) = Nothing
 highestFC (PRef fc _) = Just fc
 highestFC (PInferRef fc _) = Just fc
 highestFC (PPatvar fc _) = Just fc
-highestFC (PLam fc _ _ _) = Just fc
-highestFC (PPi  _ _ _ _) = Nothing
-highestFC (PLet fc _ _ _ _) = Just fc
+highestFC (PLam fc _ _ _ _) = Just fc
+highestFC (PPi _ _ _ _ _) = Nothing
+highestFC (PLet fc _ _ _ _ _) = Just fc
 highestFC (PTyped tm ty) = highestFC tm <|> highestFC ty
 highestFC (PApp fc _ _) = Just fc
 highestFC (PAppBind fc _ _) = Just fc
@@ -1034,10 +1043,10 @@ highestFC (PAlternative _ args) =
     [] -> Nothing
     (fc:_) -> Just fc
 highestFC (PHidden _) = Nothing
-highestFC PType = Nothing
+highestFC (PType fc) = Just fc
 highestFC (PUniverse _) = Nothing
 highestFC (PGoal fc _ _ _) = Just fc
-highestFC (PConstant _) = Nothing
+highestFC (PConstant fc _) = Just fc
 highestFC Placeholder = Nothing
 highestFC (PDoBlock lines) =
   case map getDoFC lines of
@@ -1045,9 +1054,9 @@ highestFC (PDoBlock lines) =
     (fc:_) -> Just fc
   where
     getDoFC (DoExp fc t)          = fc
-    getDoFC (DoBind fc nm t)      = fc
+    getDoFC (DoBind fc nm nfc t)  = fc
     getDoFC (DoBindP fc l r alts) = fc
-    getDoFC (DoLet fc nm l r)     = fc
+    getDoFC (DoLet fc nm nfc l r) = fc
     getDoFC (DoLetP fc l r)       = fc
 
 highestFC (PIdiom fc _) = Just fc
@@ -1252,10 +1261,10 @@ bi = fileFC "builtin"
 
 inferTy   = sMN 0 "__Infer"
 inferCon  = sMN 0 "__infer"
-inferDecl = PDatadecl inferTy
-                      PType
-                      [(emptyDocstring, [], inferCon, PPi impl (sMN 0 "iType") PType (
-                                                   PPi expl (sMN 0 "ival") (PRef bi (sMN 0 "iType"))
+inferDecl = PDatadecl inferTy NoFC
+                      (PType bi)
+                      [(emptyDocstring, [], inferCon, NoFC, PPi impl (sMN 0 "iType") NoFC (PType bi) (
+                                                   PPi expl (sMN 0 "ival") NoFC (PRef bi (sMN 0 "iType"))
                                                    (PRef bi inferTy)), bi, [])]
 inferOpts = []
 
@@ -1309,16 +1318,16 @@ eqDoc =  fmap (const (Left $ Msg "")) . parseDocstring . T.pack $
           "\n\n" ++
           "You may need to use `(~=~)` to explicitly request heterogeneous equality."
 
-eqDecl = PDatadecl eqTy (piBindp impl [(n "A", PType), (n "B", PType)]
-                                 (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
-                                 PType))
+eqDecl = PDatadecl eqTy NoFC (piBindp impl [(n "A", PType bi), (n "B", PType bi)]
+                                      (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
+                                      (PType bi)))
                 [(reflDoc, reflParamDoc,
-                  eqCon, PPi impl (n "A") PType (
-                                  PPi impl (n "x") (PRef bi (n "A"))
-                                      (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
-                                                               pimp (n "B") Placeholder False,
-                                                               pexp (PRef bi (n "x")),
-                                                               pexp (PRef bi (n "x"))])), bi, [])]
+                  eqCon, NoFC, PPi impl (n "A") NoFC (PType bi) (
+                                        PPi impl (n "x") NoFC (PRef bi (n "A"))
+                                            (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
+                                                                     pimp (n "B") Placeholder False,
+                                                                     pexp (PRef bi (n "x")),
+                                                                     pexp (PRef bi (n "x"))])), bi, [])]
     where n a = sUN a
           reflDoc = annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $
                       "A proof that `x` in fact equals `x`. To construct this, you must have already " ++
@@ -1348,7 +1357,7 @@ piBind = piBindp expl
 
 piBindp :: Plicity -> [(Name, PTerm)] -> PTerm -> PTerm
 piBindp p [] t = t
-piBindp p ((n, ty):ns) t = PPi p n ty (piBindp p ns t)
+piBindp p ((n, ty):ns) t = PPi p n NoFC ty (piBindp p ns t)
 
 
 -- Pretty-printing declarations and terms
@@ -1437,15 +1446,15 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
       | Just str <- slist p bnd e = str
       | Just n <- snat p e = annotate (AnnData "Nat" "") (text (show n))
     prettySe p bnd (PRef fc n) = prettyName True (ppopt_impl ppo) bnd n
-    prettySe p bnd (PLam fc n ty sc) =
+    prettySe p bnd (PLam fc n nfc ty sc) =
       bracket p startPrec . group . align . hang 2 $
       text "\\" <> prettyBindingOf n False <+> text "=>" <$>
       prettySe startPrec ((n, False):bnd) sc
-    prettySe p bnd (PLet fc n ty v sc) =
+    prettySe p bnd (PLet fc n nfc ty v sc) =
       bracket p startPrec . group . align $
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe startPrec ((n, False):bnd) sc)
-    prettySe p bnd (PPi (Exp l s _) n ty sc)
+    prettySe p bnd (PPi (Exp l s _) n _ ty sc)
       | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
           bracket p startPrec . group $
           enclose lparen rparen (group . align $ prettyBindingOf n False <+> colon <+> prettySe startPrec bnd ty) <+>
@@ -1458,7 +1467,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
           case s of
             Static -> text "[static]" <> space
             _      -> empty
-    prettySe p bnd (PPi (Imp l s _ fa) n ty sc)
+    prettySe p bnd (PPi (Imp l s _ fa) n _ ty sc)
       | ppopt_impl ppo =
           bracket p startPrec $
           lbrace <> prettyBindingOf n True <+> colon <+> prettySe startPrec bnd ty <> rbrace <+>
@@ -1469,10 +1478,10 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
           case s of
             Static -> text "[static]" <> space
             _      -> empty
-    prettySe p bnd (PPi (Constraint _ _) n ty sc) =
+    prettySe p bnd (PPi (Constraint _ _) n _ ty sc) =
       bracket p startPrec $
       prettySe (startPrec + 1) bnd ty <+> text "=>" </> prettySe startPrec ((n, True):bnd) sc
-    prettySe p bnd (PPi (TacImp _ _ s) n ty sc) =
+    prettySe p bnd (PPi (TacImp _ _ s) n _ ty sc) =
       bracket p startPrec $
       lbrace <> kwd "tacimp" <+> pretty n <+> colon <+> prettySe startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe startPrec ((n, True):bnd) sc
@@ -1525,7 +1534,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
                   (prettySe left bnd l <+> opName False) <$>
                     group (prettySe right bnd r)
     prettySe p bnd (PApp _ hd@(PRef fc f) [tm]) -- symbols, like 'foo
-      | PConstant (Idris.Core.TT.Str str) <- getTm tm,
+      | PConstant NoFC (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = annotate (AnnType ("'" ++ str) ("The symbol " ++ str)) $
                                char '\'' <> prettySe startPrec bnd (PRef fc (sUN str))
     prettySe p bnd (PApp _ f as) = -- Normal prefix applications
@@ -1601,9 +1610,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
         where
           prettyAs =
             foldr (\l -> \r -> l <+> text "," <+> r) empty $ map (prettySe startPrec bnd) as
-    prettySe p bnd PType = annotate (AnnType "Type" "The type of types") $ text "Type"
+    prettySe p bnd (PType _) = annotate (AnnType "Type" "The type of types") $ text "Type"
     prettySe p bnd (PUniverse u) = annotate (AnnType (show u) "The type of unique types") $ text (show u)
-    prettySe p bnd (PConstant c) = annotate (AnnConst c) (text (show c))
+    prettySe p bnd (PConstant _ c) = annotate (AnnConst c) (text (show c))
     -- XXX: add pretty for tactics
     prettySe p bnd (PProof ts) =
       text "proof" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
@@ -1763,24 +1772,24 @@ showCImp ppo (PWith _ n l ws r pn w)
 
 
 showDImp :: PPOption -> PData -> Doc OutputAnnotation
-showDImp ppo (PDatadecl n ty cons)
+showDImp ppo (PDatadecl n nfc ty cons)
  = text "data" <+> text (show n) <+> colon <+> prettyImp ppo ty <+> text "where" <$>
-    (indent 2 $ vsep (map (\ (_, _, n, t, _, _) -> pipe <+> prettyName True False [] n <+> colon <+> prettyImp ppo t) cons))
+    (indent 2 $ vsep (map (\ (_, _, n, _, t, _, _) -> pipe <+> prettyName True False [] n <+> colon <+> prettyImp ppo t) cons))
 
 showDecls :: PPOption -> [PDecl] -> Doc OutputAnnotation
 showDecls o ds = vsep (map (showDeclImp o) ds)
 
 showDeclImp _ (PFix _ f ops) = text (show f) <+> cat (punctuate (text ",") (map text ops))
-showDeclImp o (PTy _ _ _ _ _ n t) = text "tydecl" <+> text (showCG n) <+> colon <+> prettyImp o t
+showDeclImp o (PTy _ _ _ _ _ n _ t) = text "tydecl" <+> text (showCG n) <+> colon <+> prettyImp o t
 showDeclImp o (PClauses _ _ n cs) = text "pat" <+> text (showCG n) <+> text "\t" <+>
                                       indent 2 (vsep (map (showCImp o) cs))
 showDeclImp o (PData _ _ _ _ _ d) = showDImp o { ppopt_impl = True } d
 showDeclImp o (PParams _ ns ps) = text "params" <+> braces (text (show ns) <> line <> showDecls o ps <> line)
 showDeclImp o (PNamespace n ps) = text "namespace" <+> text n <> braces (line <> showDecls o ps <> line)
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
-showDeclImp o (PClass _ _ _ cs n ps _ _ ds _ _)
+showDeclImp o (PClass _ _ _ cs n _ ps _ _ ds _ _)
    = text "class" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
-showDeclImp o (PInstance _ _ _ _ cs n _ t _ ds)
+showDeclImp o (PInstance _ _ _ _ cs n _ _ t _ ds)
    = text "instance" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
 -- showDeclImp (PImport o) = "import " ++ o
@@ -1857,9 +1866,9 @@ showTmImpls = flip (displayS . renderCompact . prettyImp verbosePPOption) ""
 instance Sized PTerm where
   size (PQuote rawTerm) = size rawTerm
   size (PRef fc name) = size name
-  size (PLam fc name ty bdy) = 1 + size ty + size bdy
-  size (PPi plicity name ty bdy) = 1 + size ty + size bdy
-  size (PLet fc name ty def bdy) = 1 + size ty + size def + size bdy
+  size (PLam fc name _ ty bdy) = 1 + size ty + size bdy
+  size (PPi plicity name fc ty bdy) = 1 + size ty + size fc + size bdy
+  size (PLet fc name nfc ty def bdy) = 1 + size ty + size def + size bdy
   size (PTyped trm ty) = 1 + size trm + size ty
   size (PApp fc name args) = 1 + size args
   size (PAppBind fc name args) = 1 + size args
@@ -1875,9 +1884,9 @@ instance Sized PTerm where
   size (PUnifyLog tm) = size tm
   size (PDisamb _ tm) = size tm
   size (PNoImplicits tm) = size tm
-  size PType = 1
+  size (PType _) = 1
   size (PUniverse _) = 1
-  size (PConstant const) = 1 + size const
+  size (PConstant fc const) = 1 + size fc + size const
   size Placeholder = 1
   size (PDoBlock dos) = 1 + size dos
   size (PIdiom fc term) = 1 + size term
@@ -1889,7 +1898,7 @@ instance Sized PTerm where
   size _ = 0
 
 getPArity :: PTerm -> Int
-getPArity (PPi _ _ _ sc) = 1 + getPArity sc
+getPArity (PPi _ _ _ _ sc) = 1 + getPArity sc
 getPArity _ = 0
 
 -- Return all names, free or globally bound, in the given term.
@@ -1904,8 +1913,8 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PIfThenElse _ c t f) = ni env c ++ ni env t ++ ni env f
-    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n _ ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PHidden tm)    = ni env tm
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
@@ -1930,9 +1939,9 @@ boundNamesIn tm = S.toList (ni S.empty tm)
     ni set (PAppBind _ f as) = niTms (ni set f) (map getTm as)
     ni set (PCase _ c os)  = niTms (ni set c) (map snd os)
     ni set (PIfThenElse _ c t f) = niTms set [c, t, f]
-    ni set (PLam fc n ty sc)  = S.insert n $ ni (ni set ty) sc
-    ni set (PLet fc n ty val sc) = S.insert n $ ni (ni (ni set ty) val) sc
-    ni set (PPi p n ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
+    ni set (PLam fc n _ ty sc)  = S.insert n $ ni (ni set ty) sc
+    ni set (PLet fc n nfc ty val sc) = S.insert n $ ni (ni (ni set ty) val) sc
+    ni set (PPi p n _ ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
     ni set (PRewrite _ l r _) = ni (ni set l) r
     ni set (PTyped l r) = ni (ni set l) r
     ni set (PPair _ _ l r) = ni (ni set l) r
@@ -1970,8 +1979,8 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
     ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
-    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n _ ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n _ ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ _ l r)   = ni env l ++ ni env r
@@ -2000,8 +2009,8 @@ namesIn uvars ist tm = nub $ ni [] tm
                                 (nub (concatMap (ni env) (map snd os))
                                      \\ nub (concatMap (ni env) (map fst os)))
     ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
-    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n nfc ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ _ l r)   = ni env l ++ ni env r
@@ -2031,8 +2040,8 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
     ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
     ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
-    ni env (PLam fc n ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
+    ni env (PLam fc n _ ty sc)  = ni env ty ++ ni (n:env) sc
+    ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
     ni env (PPair _ _ l r)   = ni env l ++ ni env r

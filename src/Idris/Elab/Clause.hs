@@ -16,7 +16,7 @@ import Idris.Inliner
 import Idris.PartialEval
 import Idris.Transforms
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn, iRenderResult)
+import Idris.Output (iputStrLn, pshow, iWarn, iRenderResult, sendHighlighting)
 import IRTS.Lang
 
 import Idris.Elab.AsPat
@@ -374,7 +374,7 @@ elabPE info fc caller r =
                 logLvl 2 $ show n ++ " transformation rule: " ++
                            show rhs ++ " ==> " ++ show lhs
 
-                elabType info defaultSyntax emptyDocstring [] fc opts newnm specTy
+                elabType info defaultSyntax emptyDocstring [] fc opts newnm NoFC specTy
                 let def = map (\(lhs, rhs) ->
                                   PClause fc newnm lhs [] rhs []) 
                               (pe_clauses specdecl)    
@@ -453,9 +453,10 @@ checkPossible info fc tcgen fname lhs_in
         -- if the LHS type checks, it is possible
         case elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
                             (erun fc (buildTC i info ELHS [] fname (infTerm lhs))) of
-            OK (ElabResult lhs' _ _ ctxt' newDecls, _) ->
+            OK (ElabResult lhs' _ _ ctxt' newDecls highlights, _) ->
                do setContext ctxt'
                   processTacticDecls info newDecls
+                  sendHighlighting highlights
                   let lhs_tm = orderPats (getInferTerm lhs')
                   case recheck ctxt [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
@@ -537,7 +538,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show lhs_in ++
                   "\n" ++ show (fn_ty, fn_is))
 
-        ((ElabResult lhs' dlhs [] ctxt' newDecls, probs, inj), _) <-
+        ((ElabResult lhs' dlhs [] ctxt' newDecls highlights, probs, inj), _) <-
            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
                     (do res <- errAt "left hand side of " fname
                                  (erun fc (buildTC i info ELHS opts fname (infTerm lhs)))
@@ -546,6 +547,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         return (res, probs, inj))
         setContext ctxt'
         processTacticDecls info newDecls
+        sendHighlighting highlights
+        
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         let lhs_tm = orderPats (getInferTerm lhs')
@@ -612,12 +615,12 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logLvl 2 $ "RHS: " ++ show (map fst newargs_all) ++ " " ++ showTmImpls rhs
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
-        ((rhs', defer, is, probs, ctxt', newDecls), _) <-
+        ((rhs', defer, is, probs, ctxt', newDecls, highlights), _) <-
            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patRHS") clhsty initEState
                     (do pbinds ist lhs_tm
                         mapM_ setinj (nub (params ++ inj))
                         setNextName
-                        (ElabResult _ _ is ctxt' newDecls) <- 
+                        (ElabResult _ _ is ctxt' newDecls highlights) <-
                           errAt "right hand side of " fname
                                 (erun fc (build i winfo ERHS opts fname rhs))
                         errAt "right hand side of " fname
@@ -629,9 +632,11 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         let (tm, ds) = runState (collectDeferred (Just fname) 
                                                      (map fst $ case_decls aux) ctxt tt) []
                         probs <- get_probs
-                        return (tm, ds, is, probs, ctxt', newDecls))
+                        return (tm, ds, is, probs, ctxt', newDecls, highlights))
         setContext ctxt'
         processTacticDecls info newDecls
+        sendHighlighting highlights
+
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         logLvl 5 "DONE CHECK"
@@ -727,7 +732,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 --        = NS (UN ('#':show x)) [show cnum, show fname]
 
     sepBlocks bs = sepBlocks' [] bs where
-      sepBlocks' ns (d@(PTy _ _ _ _ _ n t) : bs)
+      sepBlocks' ns (d@(PTy _ _ _ _ _ n _ t) : bs)
             = let (bf, af) = sepBlocks' (n : ns) bs in
                   (d : bf, af)
       sepBlocks' ns (d@(PClauses _ _ n _) : bs)
@@ -774,12 +779,14 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let params = getParamsInType i [] fn_is fn_ty
         let lhs = stripLinear i $ stripUnmatchable i $ propagateParams i params fn_ty (addImplPat i lhs_in)
         logLvl 2 ("LHS: " ++ show lhs)
-        (ElabResult lhs' dlhs [] ctxt' newDecls, _) <-
+        (ElabResult lhs' dlhs [] ctxt' newDecls highlights, _) <-
             tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
               (errAt "left hand side of with in " fname
                 (erun fc (buildTC i info ELHS opts fname (infTerm lhs))) )
         setContext ctxt'
         processTacticDecls info newDecls
+        sendHighlighting highlights
+
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy (explicitNames (normalise ctxt [] lhs_ty))
@@ -791,19 +798,21 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let wval = addImplBound i (map fst bargs) wval_in
         logLvl 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
-        ((wval', defer, is, ctxt', newDecls), _) <-
+        ((wval', defer, is, ctxt', newDecls, highlights), _) <-
             tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "withRHS")
                         (bindTyArgs PVTy bargs infP) initEState
                         (do pbinds i lhs_tm
                             setNextName
                             -- TODO: may want where here - see winfo abpve
-                            (ElabResult _ d is ctxt' newDecls) <- errAt "with value in " fname
+                            (ElabResult _ d is ctxt' newDecls highlights) <- errAt "with value in " fname
                               (erun fc (build i info ERHS opts fname (infTerm wval)))
                             erun fc $ psolve lhs_tm
                             tt <- get_term
-                            return (tt, d, is, ctxt', newDecls))
+                            return (tt, d, is, ctxt', newDecls, highlights))
         setContext ctxt'
         processTacticDecls info newDecls
+        sendHighlighting highlights
+
         def' <- checkDef fc iderr defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
         addDeferred def''
@@ -828,7 +837,10 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
 
         let mpn = case pn_in of
                        Nothing -> Nothing
-                       Just n -> Just (uniqueName n (map fst bargs))
+                       Just (n, nfc) -> Just (uniqueName n (map fst bargs))
+
+        -- Highlight explicit proofs
+        sendHighlighting $ [(fc, AnnBoundName n False) | (n, fc) <- maybeToList pn_in]
 
         logLvl 10 ("With type " ++ show (getRetTy cwvaltyN) ++
                   " depends on " ++ show pdeps ++ " from " ++ show pvars)
@@ -889,16 +901,18 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         logLvl 5 ("New RHS " ++ showTmImpls rhs)
         ctxt <- getContext -- New context with block added
         i <- getIState
-        ((rhs', defer, is, ctxt', newDecls), _) <-
+        ((rhs', defer, is, ctxt', newDecls, highlights), _) <-
            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "wpatRHS") clhsty initEState
                     (do pbinds i lhs_tm
                         setNextName
-                        (ElabResult _ d is ctxt' newDecls) <- erun fc (build i info ERHS opts fname rhs)
+                        (ElabResult _ d is ctxt' newDecls highlights) <-
+                           erun fc (build i info ERHS opts fname rhs)
                         psolve lhs_tm
                         tt <- get_term
-                        return (tt, d, is, ctxt', newDecls))
+                        return (tt, d, is, ctxt', newDecls, highlights))
         setContext ctxt'
         processTacticDecls info newDecls
+        sendHighlighting highlights
 
         def' <- checkDef fc iderr defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'

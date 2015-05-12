@@ -96,7 +96,7 @@ moduleHeader :: IdrisParser (Maybe (Docstring ()), [String])
 moduleHeader =     try (do docs <- optional docComment
                            noArgs docs
                            reserved "module"
-                           i <- identifier
+                           i <- fst <$> identifier
                            option ';' (lchar ';')
                            return (fmap fst docs, moduleName i))
                <|> try (do lchar '%'; reserved "unqualified"
@@ -118,8 +118,8 @@ import_ :: IdrisParser (Bool, String, Maybe String, FC)
 import_ = do fc <- getFC
              reserved "import"
              reexport <- option False (do reserved "public"; return True)
-             id <- identifier
-             newName <- optional (reserved "as" *> identifier)
+             id <- fst <$> identifier
+             newName <- optional (reserved "as" *> (fst <$> identifier))
              option ';' (lchar ';')
              return (reexport, toPath id, toPath <$> newName, fc)
           <?> "import statement"
@@ -310,22 +310,22 @@ syntaxRule syn
           return $ PRef fc n'
         fixBind rens (PPatvar fc n) | Just n' <- lookup n rens =
           return $ PPatvar fc n'
-        fixBind rens (PLam fc n ty body)
-          | n `elem` userNames = liftM2 (PLam fc n) (fixBind rens ty) (fixBind rens body)
+        fixBind rens (PLam fc n nfc ty body)
+          | n `elem` userNames = liftM2 (PLam fc n nfc) (fixBind rens ty) (fixBind rens body)
           | otherwise =
             do ty' <- fixBind rens ty
                n' <- gensym n
                body' <- fixBind ((n,n'):rens) body
-               return $ PLam fc n' ty' body'
-        fixBind rens (PPi plic n argTy body)
-          | n `elem` userNames = liftM2 (PPi plic n) (fixBind rens argTy) (fixBind rens body)
+               return $ PLam fc n' nfc ty' body'
+        fixBind rens (PPi plic n nfc argTy body)
+          | n `elem` userNames = liftM2 (PPi plic n nfc) (fixBind rens argTy) (fixBind rens body)
           | otherwise =
             do ty' <- fixBind rens argTy
                n' <- gensym n
                body' <- fixBind ((n,n'):rens) body
-               return $ (PPi plic n' ty' body')
-        fixBind rens (PLet fc n ty val body)
-          | n `elem` userNames = liftM3 (PLet fc n)
+               return $ (PPi plic n' nfc ty' body')
+        fixBind rens (PLet fc n nfc ty val body)
+          | n `elem` userNames = liftM3 (PLet fc n nfc)
                                         (fixBind rens ty)
                                         (fixBind rens val)
                                         (fixBind rens body)
@@ -334,7 +334,7 @@ syntaxRule syn
                val' <- fixBind rens val
                n' <- gensym n
                body' <- fixBind ((n,n'):rens) body
-               return $ (PLet fc n' ty' val' body')
+               return $ PLet fc n' nfc ty' val' body'
         fixBind rens (PMatchApp fc n) | Just n' <- lookup n rens =
           return $ PMatchApp fc n'
         fixBind rens x = descendM (fixBind rens) x
@@ -356,13 +356,13 @@ SyntaxSym ::=   '[' Name_t ']'
 @
  -}
 syntaxSym :: IdrisParser SSymbol
-syntaxSym =    try (do lchar '['; n <- name; lchar ']'
+syntaxSym =    try (do lchar '['; n <- fst <$> name; lchar ']'
                        return (Expr n))
-            <|> try (do lchar '{'; n <- name; lchar '}'
+            <|> try (do lchar '{'; n <- fst <$> name; lchar '}'
                         return (Binding n))
-            <|> do n <- iName []
+            <|> do n <- fst <$> iName []
                    return (Keyword n)
-            <|> do sym <- stringLiteral
+            <|> do sym <- fmap fst stringLiteral
                    return (Symbol sym)
             <?> "syntax symbol"
 
@@ -392,7 +392,7 @@ fnDecl syn = try (do notEndBlock
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
 fnDecl' syn = checkFixity $
-              do (doc, argDocs, fc, opts', n, acc) <- try (do
+              do (doc, argDocs, fc, opts', n, nfc, acc) <- try (do
                         pushIndent
                         (doc, argDocs) <- docstring syn
                         ist <- get
@@ -402,15 +402,15 @@ fnDecl' syn = checkFixity $
                         opts <- fnOpts initOpts
                         acc <- optional accessibility
                         opts' <- fnOpts opts
-                        n_in <- fnName
+                        (n_in, nfc) <- fnName
                         let n = expandNS syn n_in
                         fc <- getFC
                         lchar ':'
-                        return (doc, argDocs, fc, opts', n, acc))
+                        return (doc, argDocs, fc, opts', n, nfc, acc))
                  ty <- typeExpr (allowImp syn)
                  terminator
                  addAcc n acc
-                 return (PTy doc argDocs syn fc opts' n ty)
+                 return (PTy doc argDocs syn fc opts' n nfc ty)
             <|> postulate syn
             <|> caf syn
             <|> pattern syn
@@ -423,7 +423,7 @@ fnDecl' syn = checkFixity $
                                             unless fOk . fail $
                                               "Missing fixity declaration for " ++ show n
                                             return decl
-          getName (PTy _ _ _ _ _ n _) = Just n
+          getName (PTy _ _ _ _ _ n _ _) = Just n
           getName _ = Nothing
           fixityOK (NS n _) = fixityOK n
           fixityOK (UN n)  | all (flip elem opChars) (str n) =
@@ -437,6 +437,7 @@ fnDecl' syn = checkFixity $
 @
 FnOpts ::= 'total'
   | 'partial'
+  | 'covering'
   | 'implicit'
   | '%' 'no_implicit'
   | '%' 'assert_total'
@@ -466,7 +467,7 @@ fnOpts opts
         = do reserved "total"; fnOpts (TotalFn : opts)
       <|> do reserved "partial"; fnOpts (PartialFn : (opts \\ [TotalFn]))
       <|> do reserved "covering"; fnOpts (CoveringFn : (opts \\ [TotalFn]))
-      <|> do try (lchar '%' *> reserved "export"); c <- stringLiteral;
+      <|> do try (lchar '%' *> reserved "export"); c <- fmap fst stringLiteral;
                   fnOpts (CExport c : opts)
       <|> do try (lchar '%' *> reserved "no_implicit");
                   fnOpts (NoImplicit : opts)
@@ -489,8 +490,8 @@ fnOpts opts
       <|> return opts
       <?> "function modifier"
   where nameTimes :: IdrisParser (Name, Maybe Int)
-        nameTimes = do n <- fnName
-                       t <- option Nothing (do reds <- natural
+        nameTimes = do n <- fst <$> fnName
+                       t <- option Nothing (do reds <- fmap fst natural
                                                return (Just (fromInteger reds)))
                        return (n, t)
 
@@ -515,7 +516,7 @@ postulate syn = do (doc, ext)
                    opts <- fnOpts initOpts
                    acc <- optional accessibility
                    opts' <- fnOpts opts
-                   n_in <- fnName
+                   n_in <- fst <$> fnName
                    let n = expandNS syn n_in
                    lchar ':'
                    ty <- typeExpr (allowImp syn)
@@ -555,12 +556,13 @@ Params ::=
 params :: SyntaxInfo -> IdrisParser [PDecl]
 params syn =
     do reserved "parameters"; lchar '('; ns <- typeDeclList syn; lchar ')'
+       let ns' = [(n, ty) | (n, _, ty) <- ns]
        openBlock
        let pvars = syn_params syn
-       ds <- many (decl syn { syn_params = pvars ++ ns })
+       ds <- many (decl syn { syn_params = pvars ++ ns' })
        closeBlock
        fc <- getFC
-       return [PParams fc ns (concat ds)]
+       return [PParams fc ns' (concat ds)]
     <?> "parameters declaration"
 
 {- | Parses a mutual declaration (for mutually recursive functions)
@@ -592,7 +594,7 @@ Namespace ::=
 -}
 namespace :: SyntaxInfo -> IdrisParser [PDecl]
 namespace syn =
-    do reserved "namespace"; n <- identifier;
+    do reserved "namespace"; n <- fst <$> identifier
        openBlock
        ds <- some (decl syn { syn_namespace = n : syn_namespace syn })
        closeBlock
@@ -628,7 +630,7 @@ ClassBlock ::=
   ;
 @
 -}
-classBlock :: SyntaxInfo -> IdrisParser (Maybe Name, Docstring (Either Err PTerm), [PDecl])
+classBlock :: SyntaxInfo -> IdrisParser (Maybe (Name, FC), Docstring (Either Err PTerm), [PDecl])
 classBlock syn = do reserved "where"
                     openBlock
                     (cn, cd) <- option (Nothing, emptyDocstring) $
@@ -644,7 +646,7 @@ classBlock syn = do reserved "where"
                  <?> "class block"
 
   where
-    constructor :: IdrisParser Name
+    constructor :: IdrisParser (Name, FC)
     constructor = reserved "constructor" *> fnName
 
     annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
@@ -673,23 +675,25 @@ class_ syn = do (doc, argDocs, acc)
                              return (doc, argDocs, acc))
                 fc <- getFC
                 cons <- constraintList syn
-                n_in <- fnName
+                let cons' = [(c, ty) | (c, _, ty) <- cons]
+                (n_in, nfc) <- fnName
                 let n = expandNS syn n_in
                 cs <- many carg
-                fds <- option (map fst cs) fundeps
+                fds <- option [(cn, NoFC) | (cn, _, _) <- cs] fundeps
                 (cn, cd, ds) <- option (Nothing, fst noDocs, []) (classBlock syn)
                 accData acc n (concatMap declared ds)
-                return [PClass doc syn fc cons n cs argDocs fds ds cn cd]
+                return [PClass doc syn fc cons' n nfc cs argDocs fds ds cn cd]
              <?> "type-class declaration"
   where
-    fundeps :: IdrisParser [Name]
+    fundeps :: IdrisParser [(Name, FC)]
     fundeps = do lchar '|'; sepBy name (lchar ',')
 
-    carg :: IdrisParser (Name, PTerm)
-    carg = do lchar '('; i <- name; lchar ':'; ty <- expr syn; lchar ')'
-              return (i, ty)
-       <|> do i <- name;
-              return (i, PType)
+    carg :: IdrisParser (Name, FC, PTerm)
+    carg = do lchar '('; (i, ifc) <- name; lchar ':'; ty <- expr syn; lchar ')'
+              return (i, ifc, ty)
+       <|> do (i, ifc) <- name
+              fc <- getFC
+              return (i, ifc, PType fc)
 
 {- | Parses a type class instance declaration
 
@@ -709,15 +713,16 @@ instance_ syn = do (doc, argDocs)
                    fc <- getFC
                    en <- optional instanceName
                    cs <- constraintList syn
-                   cn <- fnName
+                   let cs' = [(c, ty) | (c, _, ty) <- cs]
+                   (cn, cnfc) <- fnName
                    args <- many (simpleExpr syn)
-                   let sc = PApp fc (PRef fc cn) (map pexp args)
+                   let sc = PApp fc (PRef cnfc cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- option [] (instanceBlock syn)
-                   return [PInstance doc argDocs syn fc cs cn args t en ds]
+                   return [PInstance doc argDocs syn fc cs' cn cnfc args t en ds]
                  <?> "instance declaration"
   where instanceName :: IdrisParser Name
-        instanceName = do lchar '['; n_in <- fnName; lchar ']'
+        instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
                           let n = expandNS syn n_in
                           return n
                        <?> "instance name"
@@ -761,7 +766,7 @@ NameList ::=
 usingDeclList :: SyntaxInfo -> IdrisParser [Using]
 usingDeclList syn
                = try (sepBy1 (usingDecl syn) (lchar ','))
-             <|> do ns <- sepBy1 name (lchar ',')
+             <|> do ns <- sepBy1 (fst <$> name) (lchar ',')
                     lchar ':'
                     t <- typeExpr (disallowImp syn)
                     return (map (\x -> UImplicit x t) ns)
@@ -777,12 +782,12 @@ UsingDecl ::=
 @
 -}
 usingDecl :: SyntaxInfo -> IdrisParser Using
-usingDecl syn = try (do x <- fnName
+usingDecl syn = try (do x <- fst <$> fnName
                         lchar ':'
                         t <- typeExpr (disallowImp syn)
                         return (UImplicit x t))
-            <|> do c <- fnName
-                   xs <- some fnName
+            <|> do c <- fst <$> fnName
+                   xs <- some (fst <$> fnName)
                    return (UConstraint c xs)
             <?> "using declaration"
 
@@ -806,7 +811,7 @@ CAF ::= 'let' FnName '=' Expr Terminator;
 -}
 caf :: SyntaxInfo -> IdrisParser PDecl
 caf syn = do reserved "let"
-             n_in <- fnName; let n = expandNS syn n_in
+             n_in <- fst <$> fnName; let n = expandNS syn n_in
              lchar '='
              t <- expr syn
              terminator
@@ -842,7 +847,7 @@ rhs :: SyntaxInfo -> Name -> IdrisParser PTerm
 rhs syn n = do lchar '='; expr syn
         <|> do symbol "?=";
                fc <- getFC
-               name <- option n' (do symbol "{"; n <- fnName; symbol "}";
+               name <- option n' (do symbol "{"; n <- fst <$> fnName; symbol "}";
                                      return n)
                r <- expr syn
                return (addLet fc name r)
@@ -856,10 +861,10 @@ rhs syn n = do lchar '='; expr syn
         n' :: Name
         n' = mkN n
         addLet :: FC -> Name -> PTerm -> PTerm
-        addLet fc nm (PLet fc' n ty val r) = PLet fc' n ty val (addLet fc nm r)
+        addLet fc nm (PLet fc' n nfc ty val r) = PLet fc' n nfc ty val (addLet fc nm r)
         addLet fc nm (PCase fc' t cs) = PCase fc' t (map addLetC cs)
           where addLetC (l, r) = (l, addLet fc nm r)
-        addLet fc nm r = (PLet fc (sUN "value") Placeholder r (PMetavar nm))
+        addLet fc nm r = (PLet fc (sUN "value") NoFC Placeholder r (PMetavar nm))
 
 {- |Parses a function clause
 
@@ -916,7 +921,7 @@ clause syn
                             symbol "<=="
                             return ty)
               fc <- getFC
-              n_in <- fnName; let n = expandNS syn n_in
+              n_in <- fst <$> fnName; let n = expandNS syn n_in
               r <- rhs syn n
               ist <- get
               let ctxt = tt_ctxt ist
@@ -926,20 +931,20 @@ clause syn
                                            return x,
                                         do terminator
                                            return ([], [])]
-              let capp = PLet fc (sMN 0 "match")
+              let capp = PLet fc (sMN 0 "match") NoFC
                               ty
                               (PMatchApp fc n)
                               (PRef fc (sMN 0 "match"))
               ist <- get
               put (ist { lastParse = Just n })
               return $ PClause fc n capp [] r wheres
-       <|> do (l, op) <- try (do
+       <|> do (l, op, nfc) <- try (do
                 pushIndent
                 l <- argExpr syn
-                op <- operator
+                (op, nfc) <- operatorFC
                 when (op == "=" || op == "?=" ) $
                      fail "infix clause definition with \"=\" and \"?=\" not supported "
-                return (l, op))
+                return (l, op, nfc))
               let n = expandNS syn (sUN op)
               r <- argExpr syn
               fc <- getFC
@@ -952,7 +957,7 @@ clause syn
                                             do terminator
                                                return ([], [])]
                   ist <- get
-                  let capp = PApp fc (PRef fc n) [pexp l, pexp r]
+                  let capp = PApp fc (PRef nfc n) [pexp l, pexp r]
                   put (ist { lastParse = Just n })
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
@@ -968,13 +973,13 @@ clause syn
                    put (ist { lastParse = Just n })
                    return $ PWith fc n capp wargs wval pn withs)
        <|> do pushIndent
-              n_in <- fnName; let n = expandNS syn n_in
+              (n_in, nfc) <- fnName; let n = expandNS syn n_in
               cargs <- many (constraintArg syn)
               fc <- getFC
               args <- many (try (implicitArg (syn { inPattern = True } ))
                             <|> (fmap pexp (argExpr syn)))
               wargs <- many (wExpr syn)
-              let capp = PApp fc (PRef fc n)
+              let capp = PApp fc (PRef nfc n)
                            (cargs ++ args)
               (do r <- rhs syn n
                   ist <- get
@@ -1055,7 +1060,8 @@ Codegen ::= 'C'
 @
 -}
 codegen_ :: IdrisParser Codegen
-codegen_ = do n <- identifier; return (Via (map toLower n))
+codegen_ = do n <- fst <$> identifier
+              return (Via (map toLower n))
        <|> do reserved "Bytecode"; return Bytecode
        <?> "code generation language"
 
@@ -1090,17 +1096,23 @@ Directive' ::= 'lib'            CodeGen String_t
 @
 -}
 directive :: SyntaxInfo -> IdrisParser [PDecl]
-directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- stringLiteral;
+directive syn = do try (lchar '%' *> reserved "lib")
+                   cgn <- codegen_
+                   lib <- fmap fst stringLiteral
                    return [PDirective (DLib cgn lib)]
-             <|> do try (lchar '%' *> reserved "link"); cgn <- codegen_; obj <- stringLiteral;
+             <|> do try (lchar '%' *> reserved "link")
+                    cgn <- codegen_; obj <- fst <$> stringLiteral
                     return [PDirective (DLink cgn obj)]
-             <|> do try (lchar '%' *> reserved "flag"); cgn <- codegen_; flag <- stringLiteral
+             <|> do try (lchar '%' *> reserved "flag")
+                    cgn <- codegen_; flag <- fst <$> stringLiteral
                     return [PDirective (DFlag cgn flag)]
-             <|> do try (lchar '%' *> reserved "include"); cgn <- codegen_; hdr <- stringLiteral;
+             <|> do try (lchar '%' *> reserved "include")
+                    cgn <- codegen_
+                    hdr <- fst <$> stringLiteral
                     return [PDirective (DInclude cgn hdr)]
-             <|> do try (lchar '%' *> reserved "hide"); n <- fnName
+             <|> do try (lchar '%' *> reserved "hide"); n <- fst <$> fnName
                     return [PDirective (DHide n)]
-             <|> do try (lchar '%' *> reserved "freeze"); n <- iName []
+             <|> do try (lchar '%' *> reserved "freeze"); n <- fst <$> iName []
                     return [PDirective (DFreeze n)]
              <|> do try (lchar '%' *> reserved "access"); acc <- accessibility
                     return [PDirective (DAccess acc)]
@@ -1108,25 +1120,27 @@ directive syn = do try (lchar '%' *> reserved "lib"); cgn <- codegen_; lib <- st
                     i <- get
                     put (i { default_total = tot } )
                     return [PDirective (DDefault tot)]
-             <|> do try (lchar '%' *> reserved "logging"); i <- natural;
+             <|> do try (lchar '%' *> reserved "logging")
+                    i <- fst <$> natural
                     return [PDirective (DLogging i)]
-             <|> do try (lchar '%' *> reserved "dynamic"); libs <- sepBy1 stringLiteral (lchar ',');
+             <|> do try (lchar '%' *> reserved "dynamic")
+                    libs <- sepBy1 (fmap fst stringLiteral) (lchar ',')
                     return [PDirective (DDynamicLibs libs)]
              <|> do try (lchar '%' *> reserved "name")
-                    ty <- fnName
-                    ns <- sepBy1 name (lchar ',')
+                    ty <- fst <$> fnName
+                    ns <- sepBy1 (fst <$> name) (lchar ',')
                     return [PDirective (DNameHint ty ns)]
              <|> do try (lchar '%' *> reserved "error_handlers")
-                    fn <- fnName
-                    arg <- fnName
-                    ns <- sepBy1 name (lchar ',')
+                    fn <- fst <$> fnName
+                    arg <- fst <$> fnName
+                    ns <- sepBy1 (fst <$> name) (lchar ',')
                     return [PDirective (DErrorHandlers fn arg ns) ]
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (DLanguage ext)]
              <|> do fc <- getFC
                     try (lchar '%' *> reserved "used")
-                    fn <- fnName
-                    arg <- iName []
+                    fn <- fst <$> fnName
+                    arg <- fst <$> iName []
                     return [PDirective (DUsed fc fn arg)]
              <?> "directive"
 
@@ -1161,14 +1175,14 @@ provider syn = do doc <- try (do (doc, _) <- docstring syn
                   provideTerm doc <|> providePostulate doc
                <?> "type provider"
   where provideTerm doc =
-          do lchar '('; n <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
+          do lchar '('; n <- fst <$> fnName; lchar ':'; t <- typeExpr syn; lchar ')'
              fc <- getFC
              reserved "with"
              e <- expr syn <?> "provider expression"
              return  [PProvider doc syn fc (ProvTerm t e) n]
         providePostulate doc =
           do reserved "postulate"
-             n <- fnName
+             n <- fst <$> fnName
              fc <- getFC
              reserved "with"
              e <- expr syn <?> "provider expression"
@@ -1201,7 +1215,7 @@ parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
 
 {- | Parses a constant form input -}
 parseConst :: IState -> String -> Result Const
-parseConst st = runparser constant st "(input)"
+parseConst st = runparser (fmap fst constant) st "(input)"
 
 {- | Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic

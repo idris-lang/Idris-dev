@@ -41,7 +41,7 @@ import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word16
-ibcVersion = 107
+ibcVersion = 108
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -1144,7 +1144,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                     put x1
                                     put x2
                                     put x3
-                PTy x1 x2 x3 x4 x5 x6 x7
+                PTy x1 x2 x3 x4 x5 x6 x7 x8
                                    -> do putWord8 1
                                          put x1
                                          put x2
@@ -1153,6 +1153,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                          put x5
                                          put x6
                                          put x7
+                                         put x8
                 PClauses x1 x2 x3 x4 -> do putWord8 2
                                            put x1
                                            put x2
@@ -1173,7 +1174,7 @@ instance (Binary t) => Binary (PDecl' t) where
                 PNamespace x1 x2 -> do putWord8 5
                                        put x1
                                        put x2
-                PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 ->
+                PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 ->
                                              do putWord8 6
                                                 put x1
                                                 put x2
@@ -1186,7 +1187,8 @@ instance (Binary t) => Binary (PDecl' t) where
                                                 put x9
                                                 put x10
                                                 put x11
-                PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11
+                                                put x12
+                PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12
                                          -> do putWord8 7
                                                put x1
                                                put x2
@@ -1199,7 +1201,8 @@ instance (Binary t) => Binary (PDecl' t) where
                                                put x9
                                                put x10
                                                put x11
-                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 ->
+                                               put x12
+                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 ->
                   do putWord8 8
                      put x1
                      put x2
@@ -1211,6 +1214,7 @@ instance (Binary t) => Binary (PDecl' t) where
                      put x8
                      put x9
                      put x10
+                     put x11
                 PDSL x1 x2 -> do putWord8 9
                                  put x1
                                  put x2
@@ -1260,7 +1264,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x5 <- get
                            x6 <- get
                            x7 <- get
-                           return (PTy x1 x2 x3 x4 x5 x6 x7)
+                           x8 <- get
+                           return (PTy x1 x2 x3 x4 x5 x6 x7 x8)
                    2 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1291,7 +1296,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x9 <- get
                            x10 <- get
                            x11 <- get
-                           return (PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+                           x12 <- get
+                           return (PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
                    7 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1303,7 +1309,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x9 <- get
                            x10 <- get
                            x11 <- get
-                           return (PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+                           x12 <- get
+                           return (PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
                    8 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1314,7 +1321,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x8 <- get
                            x9 <- get
                            x10 <- get
-                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)
+                           x11 <- get
+                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
                    9 -> do x1 <- get
                            x2 <- get
                            return (PDSL x1 x2)
@@ -1457,23 +1465,27 @@ instance (Binary t) => Binary (PClause' t) where
 instance (Binary t) => Binary (PData' t) where
         put x
           = case x of
-                PDatadecl x1 x2 x3 -> do putWord8 0
-                                         put x1
-                                         put x2
-                                         put x3
-                PLaterdecl x1 x2 -> do putWord8 1
-                                       put x1
-                                       put x2
+                PDatadecl x1 x2 x3 x4 -> do putWord8 0
+                                            put x1
+                                            put x2
+                                            put x3
+                                            put x4
+                PLaterdecl x1 x2 x3 -> do putWord8 1
+                                          put x1
+                                          put x2
+                                          put x3
         get
           = do i <- getWord8
                case i of
                    0 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (PDatadecl x1 x2 x3)
+                           x4 <- get
+                           return (PDatadecl x1 x2 x3 x4)
                    1 -> do x1 <- get
                            x2 <- get
-                           return (PLaterdecl x1 x2)
+                           x3 <- get
+                           return (PLaterdecl x1 x2 x3)
                    _ -> error "Corrupted binary data for PData'"
 
 instance Binary PunInfo where
@@ -1504,22 +1516,25 @@ instance Binary PTerm where
                 PPatvar x1 x2 -> do putWord8 3
                                     put x1
                                     put x2
-                PLam x1 x2 x3 x4 -> do putWord8 4
-                                       put x1
-                                       put x2
-                                       put x3
-                                       put x4
-                PPi x1 x2 x3 x4 -> do putWord8 5
-                                      put x1
-                                      put x2
-                                      put x3
-                                      put x4
-                PLet x1 x2 x3 x4 x5 -> do putWord8 6
+                PLam x1 x2 x3 x4 x5 -> do putWord8 4
                                           put x1
                                           put x2
                                           put x3
                                           put x4
                                           put x5
+                PPi x1 x2 x3 x4 x5 -> do putWord8 5
+                                         put x1
+                                         put x2
+                                         put x3
+                                         put x4
+                                         put x5
+                PLet x1 x2 x3 x4 x5 x6 -> do putWord8 6
+                                             put x1
+                                             put x2
+                                             put x3
+                                             put x4
+                                             put x5
+                                             put x6
                 PTyped x1 x2 -> do putWord8 7
                                    put x1
                                    put x2
@@ -1565,14 +1580,16 @@ instance Binary PTerm where
                                          put x2
                 PHidden x1 -> do putWord8 21
                                  put x1
-                PType -> putWord8 22
+                PType x1 -> do putWord8 22
+                               put x1
                 PGoal x1 x2 x3 x4 -> do putWord8 23
                                         put x1
                                         put x2
                                         put x3
                                         put x4
-                PConstant x1 -> do putWord8 24
-                                   put x1
+                PConstant x1 x2 -> do putWord8 24
+                                      put x1
+                                      put x2
                 Placeholder -> putWord8 25
                 PDoBlock x1 -> do putWord8 26
                                   put x1
@@ -1639,18 +1656,21 @@ instance Binary PTerm where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (PLam x1 x2 x3 x4)
+                           x5 <- get
+                           return (PLam x1 x2 x3 x4 x5)
                    5 -> do x1 <- get
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (PPi x1 x2 x3 x4)
+                           x5 <- get
+                           return (PPi x1 x2 x3 x4 x5)
                    6 -> do x1 <- get
                            x2 <- get
                            x3 <- get
                            x4 <- get
                            x5 <- get
-                           return (PLet x1 x2 x3 x4 x5)
+                           x6 <- get
+                           return (PLet x1 x2 x3 x4 x5 x6)
                    7 -> do x1 <- get
                            x2 <- get
                            return (PTyped x1 x2)
@@ -1695,14 +1715,16 @@ instance Binary PTerm where
                             return (PAlternative x1 x2)
                    21 -> do x1 <- get
                             return (PHidden x1)
-                   22 -> return PType
+                   22 -> do x1 <- get
+                            return (PType x1)
                    23 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             x4 <- get
                             return (PGoal x1 x2 x3 x4)
                    24 -> do x1 <- get
-                            return (PConstant x1)
+                            x2 <- get
+                            return (PConstant x1 x2)
                    25 -> return Placeholder
                    26 -> do x1 <- get
                             return (PDoBlock x1)
@@ -1921,20 +1943,22 @@ instance (Binary t) => Binary (PDo' t) where
                 DoExp x1 x2 -> do putWord8 0
                                   put x1
                                   put x2
-                DoBind x1 x2 x3 -> do putWord8 1
-                                      put x1
-                                      put x2
-                                      put x3
+                DoBind x1 x2 x3 x4 -> do putWord8 1
+                                         put x1
+                                         put x2
+                                         put x3
+                                         put x4
                 DoBindP x1 x2 x3 x4 -> do putWord8 2
                                           put x1
                                           put x2
                                           put x3
                                           put x4
-                DoLet x1 x2 x3 x4 -> do putWord8 3
-                                        put x1
-                                        put x2
-                                        put x3
-                                        put x4
+                DoLet x1 x2 x3 x4 x5 -> do putWord8 3
+                                           put x1
+                                           put x2
+                                           put x3
+                                           put x4
+                                           put x5
                 DoLetP x1 x2 x3 -> do putWord8 4
                                       put x1
                                       put x2
@@ -1948,7 +1972,8 @@ instance (Binary t) => Binary (PDo' t) where
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (DoBind x1 x2 x3)
+                           x4 <- get
+                           return (DoBind x1 x2 x3 x4)
                    2 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -1958,7 +1983,8 @@ instance (Binary t) => Binary (PDo' t) where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (DoLet x1 x2 x3 x4)
+                           x5 <- get
+                           return (DoLet x1 x2 x3 x4 x5)
                    4 -> do x1 <- get
                            x2 <- get
                            x3 <- get

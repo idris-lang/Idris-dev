@@ -16,7 +16,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
 import Idris.Elab.Utils
@@ -66,11 +66,12 @@ buildType info syn fc opts n ty' = do
          logLvl 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
          logLvl 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
-         (ElabResult tyT' defer is ctxt' newDecls, log) <-
+         (ElabResult tyT' defer is ctxt' newDecls highlights, log) <-
             tclift $ elaborate ctxt (idris_datatypes i) n (TType (UVal 0)) initEState
                      (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
          setContext ctxt'
          processTacticDecls info newDecls
+         sendHighlighting highlights
 
          let tyT = patToImp tyT'
 
@@ -120,14 +121,16 @@ buildType info syn fc opts n ty' = do
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo -> SyntaxInfo
          -> Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))]
-         -> FC -> FnOpts -> Name -> PTerm -> Idris Type
+         -> FC -> FnOpts
+         -> Name -> FC -- ^ The precise location of the name
+         -> PTerm -> Idris Type
 elabType = elabType' False
 
 elabType' :: Bool -> -- normalise it
              ElabInfo -> SyntaxInfo ->
              Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))] ->
-             FC -> FnOpts -> Name -> PTerm -> Idris Type
-elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params info) ty_in
+             FC -> FnOpts -> Name -> FC -> PTerm -> Idris Type
+elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (params info) ty_in
                                                        n  = liftname info n_in in    -}
       do checkUndefined fc n
          (cty, _, ty, inacc) <- buildType info syn fc opts n ty'
@@ -192,6 +195,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
                          addIBC (IBCErrorHandler n)
                  else ifail $ "The type " ++ show nty' ++ " is invalid for an error handler"
              else ifail "Error handlers can only be defined when the ErrorReflection language extension is enabled."
+         -- Send highlighting information about the name being declared
+         sendHighlighting [(nfc, AnnName n Nothing Nothing Nothing)]
          -- if it's an export list type, make a note of it
          case (unApply usety) of
               (P _ ut _, _) 
@@ -203,8 +208,8 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
     -- for making an internalapp, we only want the explicit ones, and don't
     -- want the parameters, so just take the arguments which correspond to the
     -- user declared explicit ones
-    mergeTy (PPi e n ty sc) (PPi e' n' _ sc')
-         | e == e' = PPi e n ty (mergeTy sc sc')
+    mergeTy (PPi e n fc ty sc) (PPi e' n' _ _ sc')
+         | e == e' = PPi e n fc ty (mergeTy sc sc')
          | otherwise = mergeTy sc sc'
     mergeTy _ sc = sc
 
@@ -229,7 +234,7 @@ elabType' norm info syn doc argDocs fc opts n ty' = {- let ty' = piBind (params 
 elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
                  FC -> FnOpts -> Name -> PTerm -> Idris ()
 elabPostulate info syn doc fc opts n ty = do
-    elabType info syn doc [] fc opts n ty
+    elabType info syn doc [] fc opts n NoFC ty
     putIState . (\ist -> ist{ idris_postulates = S.insert n (idris_postulates ist) }) =<< getIState
     addIBC (IBCPostulate n)
 
@@ -239,7 +244,7 @@ elabPostulate info syn doc fc opts n ty = do
 elabExtern :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
                  FC -> FnOpts -> Name -> PTerm -> Idris ()
 elabExtern info syn doc fc opts n ty = do
-    cty <- elabType info syn doc [] fc opts n ty
+    cty <- elabType info syn doc [] fc opts n NoFC ty
     ist <- getIState
     let arity = length (getArgTys (normalise (tt_ctxt ist) [] cty))
 

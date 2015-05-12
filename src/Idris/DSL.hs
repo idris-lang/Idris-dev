@@ -33,8 +33,8 @@ mkTTName fc n =
         mkList fc (x:xs) = PApp fc (PRef fc (sNS (sUN "::") ["List", "Prelude"]))
                                    [ pexp (stringC x)
                                    , pexp (mkList fc xs)]
-        stringC = PConstant . Str . str
-        intC = PConstant . I
+        stringC = PConstant fc . Str . str
+        intC = PConstant fc . I
         reflm n = sNS (sUN n) ["Reflection", "Language"]
     in case n of
          UN nm     -> PApp fc (PRef fc (reflm "UN")) [ pexp (stringC nm)]
@@ -45,26 +45,26 @@ mkTTName fc n =
          otherwise -> PRef fc $ reflm "NErased"
 
 expandSugar :: DSL -> PTerm -> PTerm
-expandSugar dsl (PLam fc n ty tm)
+expandSugar dsl (PLam fc n nfc ty tm)
     | Just lam <- dsl_lambda dsl
         = let sc = PApp fc lam [ pexp (mkTTName fc n)
                                , pexp (var dsl n tm 0)]
           in expandSugar dsl sc
-expandSugar dsl (PLam fc n ty tm) = PLam fc n (expandSugar dsl ty) (expandSugar dsl tm)
-expandSugar dsl (PLet fc n ty v tm)
+expandSugar dsl (PLam fc n nfc ty tm) = PLam fc n nfc (expandSugar dsl ty) (expandSugar dsl tm)
+expandSugar dsl (PLet fc n nfc ty v tm)
     | Just letb <- dsl_let dsl
         = let sc = PApp (fileFC "(dsl)") letb [ pexp (mkTTName fc n)
                                               , pexp v
                                               , pexp (var dsl n tm 0)]
           in expandSugar dsl sc
-expandSugar dsl (PLet fc n ty v tm) = PLet fc n (expandSugar dsl ty) (expandSugar dsl v) (expandSugar dsl tm)
-expandSugar dsl (PPi p n ty tm)
+expandSugar dsl (PLet fc n nfc ty v tm) = PLet fc n nfc (expandSugar dsl ty) (expandSugar dsl v) (expandSugar dsl tm)
+expandSugar dsl (PPi p n fc ty tm)
     | Just pi <- dsl_pi dsl
         = let sc = PApp (fileFC "(dsl)") pi [ pexp (mkTTName (fileFC "(dsl)") n)
                                             , pexp ty
                                             , pexp (var dsl n tm 0)]
           in expandSugar dsl sc
-expandSugar dsl (PPi p n ty tm) = PPi p n (expandSugar dsl ty) (expandSugar dsl tm)
+expandSugar dsl (PPi p n fc ty tm) = PPi p n fc (expandSugar dsl ty) (expandSugar dsl tm)
 expandSugar dsl (PApp fc t args) = PApp fc (expandSugar dsl t)
                                         (map (fmap (expandSugar dsl)) args)
 expandSugar dsl (PAppBind fc t args) = PAppBind fc (expandSugar dsl t)
@@ -72,7 +72,7 @@ expandSugar dsl (PAppBind fc t args) = PAppBind fc (expandSugar dsl t)
 expandSugar dsl (PCase fc s opts) = PCase fc (expandSugar dsl s)
                                         (map (pmap (expandSugar dsl)) opts)
 expandSugar dsl (PIfThenElse fc c t f) =
-  PApp fc (PRef (FC (fc_fname fc) (fc_start fc) (fc_start fc)) (sUN "ifThenElse"))
+  PApp fc (PRef NoFC (sUN "ifThenElse"))
        [ PExp 0 [] (sMN 0 "condition") $ expandSugar dsl c
        , PExp 0 [] (sMN 0 "whenTrue") $ expandSugar dsl t
        , PExp 0 [] (sMN 0 "whenFalse") $ expandSugar dsl f
@@ -95,20 +95,20 @@ expandSugar dsl (PDoBlock ds)
   where
     block b [DoExp fc tm] = tm
     block b [a] = PElabError (Msg "Last statement in do block must be an expression")
-    block b (DoBind fc n tm : rest)
-        = PApp fc b [pexp tm, pexp (PLam fc n Placeholder (block b rest))]
+    block b (DoBind fc n nfc tm : rest)
+        = PApp fc b [pexp tm, pexp (PLam fc n nfc Placeholder (block b rest))]
     block b (DoBindP fc p tm alts : rest)
-        = PApp fc b [pexp tm, pexp (PLam fc (sMN 0 "bpat") Placeholder
+        = PApp fc b [pexp tm, pexp (PLam fc (sMN 0 "bpat") NoFC Placeholder
                                    (PCase fc (PRef fc (sMN 0 "bpat"))
                                              ((p, block b rest) : alts)))]
-    block b (DoLet fc n ty tm : rest)
-        = PLet fc n ty tm (block b rest)
+    block b (DoLet fc n nfc ty tm : rest)
+        = PLet fc n nfc ty tm (block b rest)
     block b (DoLetP fc p tm : rest)
         = PCase fc tm [(p, block b rest)]
     block b (DoExp fc tm : rest)
         = PApp fc b
             [pexp tm,
-             pexp (PLam fc (sMN 0 "bindx") Placeholder (block b rest))]
+             pexp (PLam fc (sMN 0 "bindx") NoFC Placeholder (block b rest))]
     block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandSugar dsl (PIdiom fc e) = expandSugar dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
@@ -122,18 +122,18 @@ var dsl n t i = v' i t where
         case dsl_var dsl of
             Nothing -> PElabError (Msg "No 'variable' defined in dsl")
             Just v -> PApp fc v [pexp (mkVar fc i)]
-    v' i (PLam fc n ty sc)
+    v' i (PLam fc n nfc ty sc)
         | Nothing <- dsl_lambda dsl
-            = PLam fc n ty (v' i sc)
-        | otherwise = PLam fc n (v' i ty) (v' (i + 1) sc)
-    v' i (PLet fc n ty val sc)
+            = PLam fc n nfc ty (v' i sc)
+        | otherwise = PLam fc n nfc (v' i ty) (v' (i + 1) sc)
+    v' i (PLet fc n nfc ty val sc)
         | Nothing <- dsl_let dsl
-            = PLet fc n (v' i ty) (v' i val) (v' i sc)
-        | otherwise = PLet fc n (v' i ty) (v' i val) (v' (i + 1) sc)
-    v' i (PPi p n ty sc)
+            = PLet fc n nfc (v' i ty) (v' i val) (v' i sc)
+        | otherwise = PLet fc n nfc (v' i ty) (v' i val) (v' (i + 1) sc)
+    v' i (PPi p n fc ty sc)
         | Nothing <- dsl_pi dsl
-            = PPi p n (v' i ty) (v' i sc)
-        | otherwise = PPi p n (v' i ty) (v' (i+1) sc)
+            = PPi p n fc (v' i ty) (v' i sc)
+        | otherwise = PPi p n fc (v' i ty) (v' (i+1) sc)
     v' i (PTyped l r)    = PTyped (v' i l) (v' i r)
     v' i (PApp f x as)   = PApp f (v' i x) (fmap (fmap (v' i)) as)
     v' i (PCase f t as)  = PCase f (v' i t) (fmap (pmap (v' i)) as)
@@ -187,9 +187,9 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
          = do t' <- db' t
               args' <- mapM dbArg args
               return (PApp fc t' args')
-    db' (PLam fc n ty sc) = return (PLam fc n ty (debind b sc))
-    db' (PLet fc n ty v sc) = do v' <- db' v
-                                 return (PLet fc n ty v' (debind b sc))
+    db' (PLam fc n nfc ty sc) = return (PLam fc n nfc ty (debind b sc))
+    db' (PLet fc n nfc ty v sc) = do v' <- db' v
+                                     return (PLet fc n nfc ty v' (debind b sc))
     db' (PCase fc s opts) = do s' <- db' s
                                return (PCase fc s' (map (pmap (debind b)) opts))
     db' (PPair fc p l r) = do l' <- db' l
@@ -212,6 +212,6 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
 
     bindAll [] tm = tm
     bindAll ((n, fc, t) : bs) tm
-       = PApp fc b [pexp t, pexp (PLam fc n Placeholder (bindAll bs tm))]
+       = PApp fc b [pexp t, pexp (PLam fc n NoFC Placeholder (bindAll bs tm))]
 
 

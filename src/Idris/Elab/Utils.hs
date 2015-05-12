@@ -66,9 +66,9 @@ inaccessibleImps _ _ _ = []
 
 -- | Get the list of (index, name) of inaccessible arguments from the type.
 inaccessibleArgs :: Int -> PTerm -> [(Int, Name)]
-inaccessibleArgs i (PPi (Imp _ _ _ _) n Placeholder t)
+inaccessibleArgs i (PPi (Imp _ _ _ _) n _ Placeholder t)
         = (i,n) : inaccessibleArgs (i+1) t  -- unbound implicit
-inaccessibleArgs i (PPi plicity n ty t)
+inaccessibleArgs i (PPi plicity n _ ty t)
     | InaccessibleArg `elem` pargopts plicity
         = (i,n) : inaccessibleArgs (i+1) t  -- an .{erased : Implicit}
     | otherwise
@@ -117,14 +117,14 @@ inferredDiff fc inf user =
 -- found, or it will give spurious errors.
 checkDocs :: FC -> [(Name, Docstring a)] -> PTerm -> Idris ()
 checkDocs fc args tm = cd (Map.fromList args) tm
-  where cd as (PPi _ n _ sc) = cd (Map.delete n as) sc
+  where cd as (PPi _ n _ _ sc) = cd (Map.delete n as) sc
         cd as _ | Map.null as = return ()
                 | otherwise   = ierror . At fc . Msg $
                                 "There is documentation for argument(s) "
                                 ++ (concat . intersperse ", " . map show . Map.keys) as
                                 ++ " but they were not found."
 
-decorateid decorate (PTy doc argdocs s f o n t) = PTy doc argdocs s f o (decorate n) t
+decorateid decorate (PTy doc argdocs s f o n nfc t) = PTy doc argdocs s f o (decorate n) nfc t
 decorateid decorate (PClauses f o n cs)
    = PClauses f o (decorate n) (map dc cs)
     where dc (PClause fc n t as w ds) = PClause fc (decorate n) (dappname t) as w ds
@@ -272,14 +272,14 @@ getStatics ns (Bind n (Pi _ _ _) t)
 getStatics _ _ = []
 
 mkStatic :: [Name] -> PDecl -> PDecl
-mkStatic ns (PTy doc argdocs syn fc o n ty) 
-    = PTy doc argdocs syn fc o n (mkStaticTy ns ty)
+mkStatic ns (PTy doc argdocs syn fc o n nfc ty) 
+    = PTy doc argdocs syn fc o n nfc (mkStaticTy ns ty)
 mkStatic ns t = t
 
 mkStaticTy :: [Name] -> PTerm -> PTerm
-mkStaticTy ns (PPi p n ty sc) 
-    | n `elem` ns = PPi (p { pstatic = Static }) n ty (mkStaticTy ns sc)
-    | otherwise = PPi p n ty (mkStaticTy ns sc)
+mkStaticTy ns (PPi p n fc ty sc) 
+    | n `elem` ns = PPi (p { pstatic = Static }) n fc ty (mkStaticTy ns sc)
+    | otherwise = PPi p n fc ty (mkStaticTy ns sc)
 mkStaticTy ns t = t
 
 

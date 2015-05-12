@@ -5,12 +5,12 @@
 
 module Pkg.PParser where
 
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
+import Text.Trifecta hiding (span, charLiteral, natural, symbol, char, string, whiteSpace)
 
 import Idris.Core.TT
 import Idris.REPL
 import Idris.AbsSyntaxTree
-import Idris.ParseHelpers
+import Idris.ParseHelpers hiding (stringLiteral)
 import Idris.CmdOptions
 
 import Control.Monad.State.Strict
@@ -34,6 +34,9 @@ data PkgDesc = PkgDesc { pkgname :: String,
                        }
     deriving Show
 
+instance HasLastTokenSpan PParser where
+  getLastTokenSpan = return Nothing
+
 #if MIN_VERSION_base(4,8,0)
 instance {-# OVERLAPPING #-} TokenParsing PParser where
 #else
@@ -51,7 +54,7 @@ parseDesc fp = do p <- readFile fp
                        Success x -> return x
 
 pPkg :: PParser PkgDesc
-pPkg = do reserved "package"; p <- identifier
+pPkg = do reserved "package"; p <- fst <$> identifier
           st <- get
           put (st { pkgname = p })
           some pClause
@@ -68,11 +71,11 @@ pClause = do reserved "executable"; lchar '=';
                                           else ( show exec )
                                       ) })
       <|> do reserved "main"; lchar '=';
-             main <- iName []
+             main <- fst <$> iName []
              st <- get
              put (st { idris_main = main })
       <|> do reserved "sourcedir"; lchar '=';
-             src <- identifier
+             src <- fst <$> identifier
              st <- get
              put (st { sourcedir = src })
       <|> do reserved "opts"; lchar '=';
@@ -81,23 +84,23 @@ pClause = do reserved "executable"; lchar '=';
              let args = pureArgParser (words opts)
              put (st { idris_opts = args })
       <|> do reserved "modules"; lchar '=';
-             ms <- sepBy1 (iName []) (lchar ',')
+             ms <- sepBy1 (fst <$> iName []) (lchar ',')
              st <- get
              put (st { modules = modules st ++ ms })
       <|> do reserved "libs"; lchar '=';
-             ls <- sepBy1 identifier (lchar ',')
+             ls <- sepBy1 (fst <$> identifier) (lchar ',')
              st <- get
              put (st { libdeps = libdeps st ++ ls })
       <|> do reserved "objs"; lchar '=';
-             ls <- sepBy1 identifier (lchar ',')
+             ls <- sepBy1 (fst <$> identifier) (lchar ',')
              st <- get
              put (st { objs = libdeps st ++ ls })
       <|> do reserved "makefile"; lchar '=';
-             mk <- iName []
+             mk <- fst <$> iName []
              st <- get
              put (st { makefile = Just (show mk) })
       <|> do reserved "tests"; lchar '=';
-             ts <- sepBy1 (iName []) (lchar ',')
+             ts <- sepBy1 (fst <$> iName []) (lchar ',')
              st <- get
              put st { idris_tests = idris_tests st ++ ts }
 

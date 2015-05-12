@@ -291,9 +291,9 @@ extractPTermNames :: PTerm  -- ^ Where to extract names from
 extractPTermNames (PRef _ n)         = [n]
 extractPTermNames (PInferRef _ n)    = [n]
 extractPTermNames (PPatvar _ n)      = [n]
-extractPTermNames (PLam _ n p1 p2)   = n : concatMap extract [p1, p2]
-extractPTermNames (PPi _ n p1 p2)    = n : concatMap extract [p1, p2]
-extractPTermNames (PLet _ n p1 p2 p3) = n : concatMap extract [p1, p2, p3]
+extractPTermNames (PLam _ n _ p1 p2) = n : concatMap extract [p1, p2]
+extractPTermNames (PPi _ n _ p1 p2)  = n : concatMap extract [p1, p2]
+extractPTermNames (PLet _ n _ p1 p2 p3) = n : concatMap extract [p1, p2, p3]
 extractPTermNames (PTyped p1 p2)     = concatMap extract [p1, p2]
 extractPTermNames (PApp _ p pas)     = let names = concatMap extractPArg pas
                                        in  (extract p) ++ names
@@ -338,13 +338,13 @@ extractPArg (PTacImplicit {pname=n, getScript=p1, getTm=p2})
 
 -- | Helper function for extractPTermNames
 extractPDo :: PDo -> [Name]
-extractPDo (DoExp   _ p)        = extract p
-extractPDo (DoBind  _ n p)      = n : extract p
-extractPDo (DoBindP _ p1 p2 ps) = let (ps1, ps2) = unzip ps
-                                      ps'        = ps1 ++ ps2
-                                  in  concatMap extract (p1 : p2 : ps')
-extractPDo (DoLet   _ n p1 p2)  = n : concatMap extract [p1, p2]
-extractPDo (DoLetP  _ p1 p2)    = concatMap extract [p1, p2]
+extractPDo (DoExp   _ p)         = extract p
+extractPDo (DoBind  _ n _ p)     = n : extract p
+extractPDo (DoBindP _ p1 p2 ps)  = let (ps1, ps2) = unzip ps
+                                       ps'        = ps1 ++ ps2
+                                   in  concatMap extract (p1 : p2 : ps')
+extractPDo (DoLet   _ n _ p1 p2) = n : concatMap extract [p1, p2]
+extractPDo (DoLetP  _ p1 p2)     = concatMap extract [p1, p2]
 
 -- | Helper function for extractPTermNames
 extractPTactic :: PTactic -> [Name]

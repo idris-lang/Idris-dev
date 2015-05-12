@@ -48,6 +48,7 @@ data ElabResult =
                -- ^ The potentially extended context from new definitions
              , resultTyDecls :: [RDeclInstructions]
                -- ^ Meta-info about the new type declarations
+             , resultHighlighting :: [(FC, OutputAnnotation)]
              }
 
 
@@ -110,13 +111,14 @@ build ist info emode opts fn tm
          when tydecl (do mkPat
                          update_term liftPats
                          update_term orderPats)
-         EState is _ impls <- getAux
+         EState is _ impls highlights <- getAux
          tt <- get_term
          ctxt <- get_context
          let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (ElabResult tm ds (map snd is) ctxt impls)
-            else return (ElabResult tm ds (map snd is) ctxt impls)
+         if log /= ""
+            then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights)
+            else return (ElabResult tm ds (map snd is) ctxt impls highlights)
   where pattern = emode == ELHS
         tydecl = emode == ETyDecl
 
@@ -152,13 +154,14 @@ buildTC ist info emode opts fn tm
          -- unification
          when (not (null dots)) $
             lift (Error (CantMatch (getInferTerm tm)))
-         EState is _ impls <- getAux
+         EState is _ impls highlights <- getAux
          tt <- get_term
          ctxt <- get_context
          let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
          log <- getLog
-         if (log /= "") then trace log $ return (ElabResult tm ds (map snd is) ctxt impls)
-            else return (ElabResult tm ds (map snd is) ctxt impls)
+         if (log /= "")
+            then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights)
+            else return (ElabResult tm ds (map snd is) ctxt impls highlights)
   where pattern = emode == ELHS
 
 -- return whether arguments of the given constructor name can be 
@@ -318,18 +321,23 @@ elab ist info emode opts fn tm
           -> PTerm -- ^ The term to elaborate
           -> ElabD ()
     elab' ina fc (PNoImplicits t) = elab' ina fc t -- skip elabE step
-    elab' ina fc PType           = do apply RType []; solve
+    elab' ina fc (PType fc')       =
+      do apply RType []
+         solve
+         highlightSource fc' (AnnType "Type" "The type of types")
     elab' ina fc (PUniverse u)   = do apply (RUType u) []; solve
 --  elab' (_,_,inty) (PConstant c)
 --     | constType c && pattern && not reflection && not inty
 --       = lift $ tfail (Msg "Typecase is not allowed")
-    elab' ina fc tm@(PConstant c) 
+    elab' ina fc tm@(PConstant fc' c) 
          | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
            && isTypeConst c
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
          | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
-         | otherwise = do apply (RConstant c) []; solve
+         | otherwise = do apply (RConstant c) []
+                          solve
+                          highlightSource fc' (AnnConst c)
     elab' ina fc (PQuote r)     = do fill r; solve
     elab' ina _ (PTrue fc _)   =
        do hnf_compute
@@ -343,13 +351,16 @@ elab ist info emode opts fn tm
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
-    elab' ina _ (PApp fc (PRef _ n) args) | n == eqTy, [Placeholder, Placeholder, l, r] <- map getTm args
+    -- Elaborate the equality type first homogeneously, then
+    -- heterogeneously as a fallback
+    elab' ina _ (PApp fc (PRef _ n) args)
+       | n == eqTy, [Placeholder, Placeholder, l, r] <- map getTm args
        = try (do tyn <- getNameFrom (sMN 0 "aqty")
                  claim tyn RType
                  movelast tyn
                  elab' ina (Just fc) (PApp fc (PRef fc eqTy)
-                              [pimp (sUN "A") (PRef fc tyn) True,
-                               pimp (sUN "B") (PRef fc tyn) False,
+                              [pimp (sUN "A") (PRef NoFC tyn) True,
+                               pimp (sUN "B") (PRef NoFC tyn) False,
                                pexp l, pexp r]))
              (do atyn <- getNameFrom (sMN 0 "aqty")
                  btyn <- getNameFrom (sMN 0 "bqty")
@@ -358,8 +369,8 @@ elab ist info emode opts fn tm
                  claim btyn RType
                  movelast btyn
                  elab' ina (Just fc) (PApp fc (PRef fc eqTy)
-                   [pimp (sUN "A") (PRef fc atyn) True,
-                    pimp (sUN "B") (PRef fc btyn) False,
+                   [pimp (sUN "A") (PRef NoFC atyn) True,
+                    pimp (sUN "B") (PRef NoFC btyn) False,
                     pexp l, pexp r]))
 
     elab' ina _ (PPair fc _ l r)
@@ -402,7 +413,11 @@ elab ist info emode opts fn tm
                 _ -> asType
          where asType = elab' ina (Just fc) (PApp fc (PRef fc sigmaTy)
                                         [pexp t,
-                                         pexp (PLam fc n Placeholder r)])
+
+                                         -- TODO: save the FC from the dependent pair
+                                         -- syntax and put it on this lambda for interactive
+                                         -- semantic highlighting support. NoFC for now.
+                                         pexp (PLam fc n NoFC Placeholder r)])
                asValue = elab' ina (Just fc) (PApp fc (PRef fc sigmaCon)
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
@@ -411,7 +426,7 @@ elab ist info emode opts fn tm
                                               [pimp (sMN 0 "a") t False,
                                                pimp (sMN 0 "P") Placeholder True,
                                                pexp l, pexp r])
-    elab' ina fc (PAlternative True as) 
+    elab' ina fc (PAlternative True as)
         = do hnf_compute
              ty <- goal
              ctxt <- get_context
@@ -436,7 +451,10 @@ elab ist info emode opts fn tm
               trySeq' deferr (x : xs)
                   = try' (do elab' ina fc x
                              solveAutos ist fn False) (trySeq' deferr xs) True
-    elab' ina _ (PPatvar fc n) | bindfree = do patvar n; update_term liftPats
+    elab' ina _ (PPatvar fc n) | bindfree
+        = do patvar n
+             update_term liftPats
+             highlightSource fc (AnnBoundName n False)
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed")
@@ -451,39 +469,56 @@ elab ist info emode opts fn tm
                  guarded = e_guarded ec
                  inty = e_intype ec
              ctxt <- get_context
+
              let defined = case lookupTy n ctxt of
                                [] -> False
                                _ -> True
            -- this is to stop us resolve type classes recursively
              -- trace (show (n, guarded)) $
-             if (tcname n && ina) then erun fc $ do patvar n; update_term liftPats
+             if (tcname n && ina)
+               then erun fc $
+                      do patvar n
+                         update_term liftPats
+                         highlightSource fc (AnnBoundName n False)
                else if (defined && not guarded)
-                       then do apply (Var n) []; solve
-                       else try (do apply (Var n) []; solve)
-                                (do patvar n; update_term liftPats)
+                       then do apply (Var n) []
+                               annot <- findHighlight n
+                               solve
+                               highlightSource fc annot
+                       else try (do apply (Var n) []
+                                    annot <- findHighlight n
+                                    solve
+                                    highlightSource fc annot)
+                                (do patvar n
+                                    update_term liftPats
+                                    highlightSource fc (AnnBoundName n False))
       where inparamBlock n = case lookupCtxtName n (inblock info) of
                                 [] -> False
                                 _ -> True
             bindable (NS _ _) = False
             bindable (UN xs) = True
             bindable n = implicitable n
-    elab' ina _ f@(PInferRef fc n) = elab' ina (Just fc) (PApp fc f [])
+    elab' ina _ f@(PInferRef fc n) = elab' ina (Just fc) (PApp NoFC f [])
     elab' ina fc' tm@(PRef fc n) 
           | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
             && isTConName n (tt_ctxt ist)
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
           | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
-          | otherwise = 
+          | otherwise =
                do fty <- get_type (Var n) -- check for implicits
                   ctxt <- get_context
-                  env <- get_env 
+                  env <- get_env
                   let a' = insertScopedImps fc (normalise ctxt env fty) []
                   if null a'
-                     then erun fc $ do apply (Var n) []; solve
+                     then erun fc $
+                            do apply (Var n) []
+                               hl <- findHighlight n
+                               solve
+                               highlightSource fc hl
                      else elab' ina fc' (PApp fc tm [])
-    elab' ina _ (PLam _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
-    elab' ina _ (PLam fc n Placeholder sc)
+    elab' ina _ (PLam _ _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
+    elab' ina _ (PLam fc n nfc Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
                when (isTConName n ctxt) $
@@ -492,7 +527,8 @@ elab ist info emode opts fn tm
                attack; intro (Just n);
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm)
                elabE (ina { e_inarg = True } ) (Just fc) sc; solve
-    elab' ec _ (PLam fc n ty sc)
+               highlightSource nfc (AnnBoundName n False)
+    elab' ec _ (PLam fc n nfc ty sc)
           = do tyn <- getNameFrom (sMN 0 "lamty")
                -- if n is a type constructor name, this makes no sense...
                ctxt <- get_context
@@ -510,11 +546,13 @@ elab ist info emode opts fn tm
                elabE (ec { e_inarg = True, e_intype = True }) (Just fc) ty
                elabE (ec { e_inarg = True }) (Just fc) sc
                solve
-    elab' ina fc (PPi p n Placeholder sc)
-          = do attack; arg n (is_scoped p) (sMN 0 "ty") 
+               highlightSource nfc (AnnBoundName n False)
+    elab' ina fc (PPi p n nfc Placeholder sc)
+          = do attack; arg n (is_scoped p) (sMN 0 "ty")
                elabE (ina { e_inarg = True, e_intype = True }) fc sc
                solve
-    elab' ina fc (PPi p n ty sc)
+               highlightSource nfc (AnnBoundName n False)
+    elab' ina fc (PPi p n nfc ty sc)
           = do attack; tyn <- getNameFrom (sMN 0 "ty")
                claim tyn RType
                n' <- case n of
@@ -526,7 +564,8 @@ elab ist info emode opts fn tm
                elabE ec' fc ty
                elabE ec' fc sc
                solve
-    elab' ina _ (PLet fc n ty val sc)
+               highlightSource nfc (AnnBoundName n False)
+    elab' ina _ (PLet fc n nfc ty val sc)
           = do attack
                ivs <- get_instances
                tyn <- getNameFrom (sMN 0 "letty")
@@ -562,6 +601,7 @@ elab ist info emode opts fn tm
                                  Just (Let t v) -> v
                                  other -> error ("Value not a let binding: " ++ show other))
                solve
+               highlightSource nfc (AnnBoundName n False)
     elab' ina _ (PGoal fc r n sc) = do
          rty <- goal
          attack
@@ -633,7 +673,7 @@ elab ist info emode opts fn tm
             solve
     -- if f is local, just do a simple_app
     -- FIXME: Anyone feel like refactoring this mess? - EB
-    elab' ina topfc tm@(PApp fc (PRef _ f) args_in)
+    elab' ina topfc tm@(PApp fc (PRef ffc f) args_in)
       | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
       | otherwise = implicitApp $
@@ -641,6 +681,7 @@ elab ist info emode opts fn tm
             ty <- goal
             fty <- get_type (Var f)
             ctxt <- get_context
+            annot <- findHighlight f
             let args = insertScopedImps fc (normalise ctxt env fty) args_in
             let unmatchableArgs = if pattern 
                                      then getUnmatchable (tt_ctxt ist) f
@@ -651,11 +692,12 @@ elab ist info emode opts fn tm
               lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
             if (f `elem` map fst env && length args == 1 && length args_in == 1)
                then -- simple app, as below
-                    do simple_app False 
-                                  (elabE (ina { e_isfn = True }) (Just fc) (PRef fc f))
+                    do simple_app False
+                                  (elabE (ina { e_isfn = True }) (Just fc) (PRef ffc f))
                                   (elabE (ina { e_inarg = True }) (Just fc) (getTm (head args)))
                                   (show tm)
                        solve
+                       highlightSource ffc annot
                        return []
                else
                  do ivs <- get_instances
@@ -682,8 +724,12 @@ elab ist info emode opts fn tm
                     let (ns', eargs) = unzip $
                              sortBy cmpArg (zip ns args)
                     ulog <- getUnifyLog
+
+                    annot <- findHighlight f
+                    highlightSource ffc annot
+
                     elabArgs ist (ina { e_inarg = e_inarg ina || not isinf }) 
-                           [] fc False f 
+                           [] fc False f
                              (zip ns' (unmatchableArgs ++ repeat False))
                              (f == sUN "Force")
                              (map (\x -> getTm x) eargs) -- TODO: remove this False arg
@@ -755,7 +801,7 @@ elab ist info emode opts fn tm
                                    PAlternative False _ -> 5
                                    PAlternative True _ -> 2
                                    PTactics _ -> 150
-                                   PLam _ _ _ _ -> 3
+                                   PLam _ _ _ _ _ -> 3
                                    PRewrite _ _ _ _ -> 4
                                    PResolveTC _ -> 0
                                    PHidden _ -> 150
@@ -815,10 +861,10 @@ elab ist info emode opts fn tm
             setInjective (PApp _ (PRef _ n) _) = setinj n
             setInjective _ = return ()
 
-    elab' ina _ tm@(PApp fc f [arg]) = 
+    elab' ina _ tm@(PApp fc f [arg]) =
             erun fc $
              do simple_app (not $ headRef f)
-                           (elabE (ina { e_isfn = True }) (Just fc) f) 
+                           (elabE (ina { e_isfn = True }) (Just fc) f)
                            (elabE (ina { e_inarg = True }) (Just fc) (getTm arg))
                                 (show tm)
                 solve
@@ -1035,9 +1081,12 @@ elab ist info emode opts fn tm
              end_unify
 
              -- We now have an elaborated term. Reflect it and solve the
-             -- original goal in the original proof state.
+             -- original goal in the original proof state, preserving highlighting
              env <- get_env
+             EState _ _ _ hs <- getAux
              loadState
+             updateAux (\aux -> aux { highlighting = hs })
+
              let quoted = fmap (explicitNames . binderVal) $ lookup nTm env
                  isRaw = case unApply (normaliseAll ctxt env finalTy) of
                            (P _ n _, []) | n == reflm "Raw" -> True
@@ -1216,9 +1265,9 @@ elab ist info emode opts fn tm
                  do impn <- unique_hole (sMN 0 "imp")
                     if e_isfn ina -- apply to an implicit immediately
                        then return (PApp emptyFC
-                                         (PLam emptyFC impn Placeholder t)
+                                         (PLam emptyFC impn NoFC Placeholder t)
                                          [pexp Placeholder])
-                       else return (PLam emptyFC impn Placeholder t)
+                       else return (PLam emptyFC impn NoFC Placeholder t)
         addLam _ t = return t
 
     insertCoerce ina t@(PCase _ _ _) = return t
@@ -1255,7 +1304,7 @@ elab ist info emode opts fn tm
     elabArgs ist ina failed fc retry f [] force _ = return ()
     elabArgs ist ina failed fc r f (((argName, holeName), unm):ns) force (t : args)
         = do hs <- get_holes
-             if holeName `elem` hs then 
+             if holeName `elem` hs then
                 do focus holeName
                    case t of
                       Placeholder -> do movelast holeName
@@ -1352,7 +1401,7 @@ pruneByType env (P _ n _) ctxt as
   where
     headIs var f (PApp _ (PRef _ f') _) = typeHead var f f'
     headIs var f (PApp _ f' _) = headIs var f f'
-    headIs var f (PPi _ _ _ sc) = headIs var f sc
+    headIs var f (PPi _ _ _ _ sc) = headIs var f sc
     headIs var f (PHidden t) = headIs var f t
     headIs _ _ _ = True -- keep if it's not an application
 
@@ -1369,6 +1418,18 @@ pruneByType env (P _ n _) ctxt as
                _ -> False
 
 pruneByType _ t _ as = as
+
+-- | Use the local elab context to work out the highlighting for a name
+findHighlight :: Name -> ElabD OutputAnnotation
+findHighlight n = do ctxt <- get_context
+                     env <- get_env
+                     case lookup n env of
+                       Just _ -> return $ AnnBoundName n False
+                       Nothing -> case lookupTyExact n ctxt of
+                                    Just _ -> return $ AnnName n Nothing Nothing Nothing
+                                    Nothing -> lift . tfail . InternalMsg $
+                                                 "Can't find name" ++ show n
+
 
 findInstances :: IState -> Term -> [Name]
 findInstances ist t
@@ -2265,7 +2326,7 @@ processTacticDecls info steps =
           let tcgen = False -- TODO: later we may support dictionary generation
           case elaborate ctxt (idris_datatypes ist) (sMN 0 "refPatLHS") infP initEState
                 (erun fc (buildTC ist info ELHS [] fname (infTerm lhs))) of
-            OK (ElabResult lhs' _ _ _ _, _) ->
+            OK (ElabResult lhs' _ _ _ _ _, _) ->
               do -- not recursively calling here, because we don't
                  -- want to run infinitely many times
                  let lhs_tm = orderPats (getInferTerm lhs')

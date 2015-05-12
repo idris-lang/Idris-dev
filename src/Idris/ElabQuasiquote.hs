@@ -58,32 +58,32 @@ extractDoUnquotes :: Int -> PDo -> Elab' aux (PDo, [(Name, PTerm)])
 extractDoUnquotes d (DoExp fc tm)
   = do (tm', ex) <- extractUnquotes d tm
        return (DoExp fc tm', ex)
-extractDoUnquotes d (DoBind fc n tm)
+extractDoUnquotes d (DoBind fc n nfc tm)
   = do (tm', ex) <- extractUnquotes d tm
-       return (DoBind fc n tm', ex)
+       return (DoBind fc n nfc tm', ex)
 extractDoUnquotes d (DoBindP fc t t' alts)
   = fail "Pattern-matching binds cannot be quasiquoted"
-extractDoUnquotes d (DoLet  fc n v b)
+extractDoUnquotes d (DoLet  fc n nfc v b)
   = do (v', ex1) <- extractUnquotes d v
        (b', ex2) <- extractUnquotes d b
-       return (DoLet fc n v' b', ex1 ++ ex2)
+       return (DoLet fc n nfc v' b', ex1 ++ ex2)
 extractDoUnquotes d (DoLetP fc t t') = fail "Pattern-matching lets cannot be quasiquoted"
 
 
 extractUnquotes :: Int -> PTerm -> Elab' aux (PTerm, [(Name, PTerm)])
-extractUnquotes n (PLam fc name ty body)
+extractUnquotes n (PLam fc name nfc ty body)
   = do (ty', ex1) <- extractUnquotes n ty
        (body', ex2) <- extractUnquotes n body
-       return (PLam fc name ty' body', ex1 ++ ex2)
-extractUnquotes n (PPi plicity name ty body)
+       return (PLam fc name nfc ty' body', ex1 ++ ex2)
+extractUnquotes n (PPi plicity name fc ty body)
   = do (ty', ex1) <- extractUnquotes n ty
        (body', ex2) <- extractUnquotes n body
-       return (PPi plicity name ty' body', ex1 ++ ex2)
-extractUnquotes n (PLet fc name ty val body)
+       return (PPi plicity name fc ty' body', ex1 ++ ex2)
+extractUnquotes n (PLet fc name nfc ty val body)
   = do (ty', ex1) <- extractUnquotes n ty
        (val', ex2) <- extractUnquotes n val
        (body', ex3) <- extractUnquotes n body
-       return (PLet fc name ty' val' body', ex1 ++ ex2 ++ ex3)
+       return (PLet fc name nfc ty' val' body', ex1 ++ ex2 ++ ex3)
 extractUnquotes n (PTyped tm ty)
   = do (tm', ex1) <- extractUnquotes n tm
        (ty', ex2) <- extractUnquotes n ty

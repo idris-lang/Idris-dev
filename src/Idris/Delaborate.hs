@@ -61,40 +61,40 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                                   Just (Just _, mi, _) -> mkMVApp n []
                                   _ -> PRef un n
     de env _ (Bind n (Lam ty) sc)
-          = PLam un n (de env [] ty) (de ((n,n):env) [] sc)
+          = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
     de env is (Bind n (Pi (Just impl) ty _) sc)
        | tcinstance impl
-          = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
        | otherwise
-          = PPi (Imp [] Dynamic False (Just impl)) n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (Imp [] Dynamic False (Just impl)) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env ((PImp { argopts = opts }):is) (Bind n (Pi _ ty _) sc)
-          = PPi (Imp opts Dynamic False Nothing) n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (Imp opts Dynamic False Nothing) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env (PConstraint _ _ _ _:is) (Bind n (Pi _ ty _) sc)
-          = PPi constraint n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi _ ty _) sc)
-          = PPi (tacimpl tac) n (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (tacimpl tac) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env (plic:is) (Bind n (Pi _ ty _) sc)
           = PPi (Exp (argopts plic) Dynamic False)
-                n
+                n NoFC
                 (de env [] ty)
                 (de ((n,n):env) is sc)
     de env [] (Bind n (Pi _ ty _) sc)
-          = PPi expl n (de env [] ty) (de ((n,n):env) [] sc)
+          = PPi expl n NoFC (de env [] ty) (de ((n,n):env) [] sc)
 
     de env imps (Bind n (Let ty val) sc)
           | isCaseApp sc
           , (P _ cOp _, args) <- unApply sc
           , Just caseblock    <- delabCase env imps n val cOp args = caseblock
           | otherwise    =
-              PLet un n (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
+              PLet un n NoFC (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
     de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
     de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
     de env plic (Bind n bb sc) = de ((n,n):env) [] sc
-    de env _ (Constant i) = PConstant i
+    de env _ (Constant i) = PConstant NoFC i
     de env _ (Proj _ _) = error "Delaboration got run-time-only Proj!"
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
-    de env _ (TType i) = PType
+    de env _ (TType i) = PType un
     de env _ (UType u) = PUniverse u
 
     dens x | fullname = x
@@ -306,7 +306,7 @@ pprintErr' i (InvalidTCArg n t)
         <> annName n <$>
         text "(Type class arguments must be injective)"
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
-                                    align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i) . annName) as)))
+                                    align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i True) . annName) as)))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (WithFnType ty) =
@@ -474,14 +474,14 @@ addImplicitDiffs x y
                          else (a { getTm = a' } : as',
                                b { getTm = b' } : bs')
              addShows xs ys = (xs, ys)
-    addI (PLam fc n a b) (PLam fc' n' c d)
+    addI (PLam fc n nfc a b) (PLam fc' n' nfc' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
-               (PLam fc n a' b', PLam fc' n' c' d')
-    addI (PPi p n a b) (PPi p' n' c d)
+               (PLam fc n nfc a' b', PLam fc' n' nfc' c' d')
+    addI (PPi p n fc a b) (PPi p' n' fc' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
-               (PPi p n a' b', PPi p' n' c' d')
+               (PPi p n fc a' b', PPi p' n' fc' c' d')
     addI (PPair fc pi a b) (PPair fc' pi' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
@@ -498,9 +498,9 @@ addImplicitDiffs x y
     expLike (PApp _ f as) (PApp _ f' as')
         = expLike f f' && length as == length as' &&
           and (zipWith expLike (getExps as) (getExps as'))
-    expLike (PPi _ n s t) (PPi _ n' s' t')
+    expLike (PPi _ n fc s t) (PPi _ n' fc' s' t')
         = n == n' && expLike s s' && expLike t t'
-    expLike (PLam _ n s t) (PLam _ n' s' t')
+    expLike (PLam _ n _ s t) (PLam _ n' _ s' t')
         = n == n' && expLike s s' && expLike t t'
     expLike (PPair _ _ x y) (PPair _ _ x' y') = expLike x x' && expLike y y'
     expLike (PDPair _ _ x _ y) (PDPair _ _ x' _ y') = expLike x x' && expLike y y'
@@ -525,8 +525,9 @@ annName' n str = annotate (AnnName n Nothing Nothing Nothing) (text str)
 annTm :: Term -> Doc OutputAnnotation -> Doc OutputAnnotation
 annTm tm = annotate (AnnTerm [] tm)
 
-fancifyAnnots :: IState -> OutputAnnotation -> OutputAnnotation
-fancifyAnnots ist annot@(AnnName n _ _ _) =
+-- | Add extra metadata to an output annotation, optionally marking metavariables.
+fancifyAnnots :: IState -> Bool -> OutputAnnotation -> OutputAnnotation
+fancifyAnnots ist meta annot@(AnnName n _ _ _) =
   do let ctxt = tt_ctxt ist
          docs = docOverview ist n
          ty   = Just (getTy ist n)
@@ -534,7 +535,9 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
        _ | isDConName      n ctxt -> AnnName n (Just DataOutput) docs ty
        _ | isFnName        n ctxt -> AnnName n (Just FunOutput) docs ty
        _ | isTConName      n ctxt -> AnnName n (Just TypeOutput) docs ty
-       _ | isMetavarName   n ist  -> AnnName n (Just MetavarOutput) docs ty
+       _ | isMetavarName   n ist  -> if meta
+                                       then AnnName n (Just MetavarOutput) docs ty
+                                       else AnnName n (Just FunOutput) docs ty
        _ | isPostulateName n ist  -> AnnName n (Just PostulateOutput) docs ty
        _ | otherwise              -> annot
   where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
@@ -552,7 +555,7 @@ fancifyAnnots ist annot@(AnnName n _ _ _) =
         getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
                                   delabTy ist n
                       in (displayS . renderPretty 1.0 50 $ theTy) ""
-fancifyAnnots _ annot = annot
+fancifyAnnots _ _ annot = annot
 
 showSc :: IState -> [(Name, Term)] -> Doc OutputAnnotation
 showSc i [] = empty

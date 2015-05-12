@@ -14,7 +14,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
 import Idris.Elab.Utils
@@ -53,12 +53,13 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
     = do ctxt <- getContext
          i <- getIState
          let lhs = addImplPat i lhs_in
-         (ElabResult lhs' dlhs [] ctxt' newDecls, _) <-
+         (ElabResult lhs' dlhs [] ctxt' newDecls highlights, _) <-
               tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "transLHS") infP initEState
                        (erun fc (buildTC i info ELHS [] (sUN "transform")
                                    (infTerm lhs)))
          setContext ctxt'
          processTacticDecls info newDecls
+         sendHighlighting highlights
          let lhs_tm = orderPats (getInferTerm lhs')
          let lhs_ty = getInferType lhs'
          let newargs = pvars i lhs_tm
@@ -72,13 +73,14 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
               tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "transRHS") clhs_ty initEState
                        (do pbinds i lhs_tm
                            setNextName
-                           (ElabResult _ _ _ ctxt' newDecls) <- erun fc (build i info ERHS [] (sUN "transform") rhs)
+                           (ElabResult _ _ _ ctxt' newDecls highlights) <- erun fc (build i info ERHS [] (sUN "transform") rhs)
                            erun fc $ psolve lhs_tm
                            tt <- get_term
                            let (rhs', defer) = runState (collectDeferred Nothing [] ctxt tt) []
                            return (rhs', defer, ctxt', newDecls))
          setContext ctxt'
          processTacticDecls info newDecls
+         sendHighlighting highlights
 
          (crhs_tm_in, crhs_ty) <- recheckC fc id [] rhs'
          let crhs_tm = renamepats pnames crhs_tm_in

@@ -156,10 +156,10 @@ elabDecl' _ info (PFix _ _ _)
      = return () -- nothing to elaborate
 elabDecl' _ info (PSyntax _ p)
      = return () -- nothing to elaborate
-elabDecl' what info (PTy doc argdocs s f o n ty)
+elabDecl' what info (PTy doc argdocs s f o n nfc ty)
   | what /= EDefns
     = do iLOG $ "Elaborating type decl " ++ show n ++ show o
-         elabType info s doc argdocs f o n ty
+         elabType info s doc argdocs f o n nfc ty
          return ()
 elabDecl' what info (PPostulate b doc s f o n ty)
   | what /= EDefns
@@ -173,7 +173,7 @@ elabDecl' what info (PData doc argDocs s f co d)
          elabData info s doc argDocs f co d
   | otherwise
     = do iLOG $ "Elaborating [type of] " ++ show (d_name d)
-         elabData info s doc argDocs f co (PLaterdecl (d_name d) (d_tcon d))
+         elabData info s doc argDocs f co (PLaterdecl (d_name d) (d_name_fc d) (d_tcon d))
 elabDecl' what info d@(PClauses f o n ps)
   | what /= ETypes
     = do iLOG $ "Elaborating clause " ++ show n
@@ -232,17 +232,17 @@ elabDecl' what info (PNamespace n ps) = mapM_ (elabDecl' what ninfo) ps
     ninfo = case namespace info of
                 Nothing -> info { namespace = Just [n] }
                 Just ns -> info { namespace = Just (n:ns) }
-elabDecl' what info (PClass doc s f cs n ps pdocs fds ds cn cd)
+elabDecl' what info (PClass doc s f cs n nfc ps pdocs fds ds cn cd)
   | what /= EDefns
     = do iLOG $ "Elaborating class " ++ show n
-         elabClass info (s { syn_params = [] }) doc f cs n ps pdocs fds ds cn cd
-elabDecl' what info (PInstance doc argDocs s f cs n ps t expn ds)
+         elabClass info (s { syn_params = [] }) doc f cs n nfc ps pdocs fds ds cn cd
+elabDecl' what info (PInstance doc argDocs s f cs n nfc ps t expn ds)
     = do iLOG $ "Elaborating instance " ++ show n
-         elabInstance info s doc argDocs what f cs n ps t expn ds         
-elabDecl' what info (PRecord doc rsyn fc opts name ps pdocs fs cname cdoc csyn)
+         elabInstance info s doc argDocs what f cs n nfc ps t expn ds
+elabDecl' what info (PRecord doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn)
   | what /= ETypes
     = do iLOG $ "Elaborating record " ++ show name
-         elabRecord info doc rsyn fc opts name ps pdocs fs cname cdoc csyn
+         elabRecord info doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn
 {-
   | otherwise
     = do iLOG $ "Elaborating [type of] " ++ show tyn

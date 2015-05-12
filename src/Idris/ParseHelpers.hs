@@ -67,6 +67,12 @@ instance TokenParsing IdrisParser where
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (DeltaParsing m, LookAheadParsing m, TokenParsing m, Monad m)
 
+class HasLastTokenSpan m where
+  getLastTokenSpan :: m (Maybe FC)
+
+instance HasLastTokenSpan IdrisParser where
+  getLastTokenSpan = lastTokenSpan <$> get
+
 -- | Helper to run Idris inner parser based stateT parsers
 runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Result res
 runparser p i inputname =
@@ -183,7 +189,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                                many (satisfy isSpace)
                                char '@'
                                many (satisfy isSpace)
-                               n <- name
+                               n <- fst <$> name
                                many (satisfy isSpace)
                                docs <- many (satisfy (not . isEol))
                                eol ; someSpace
@@ -194,24 +200,32 @@ whiteSpace :: MonadicParsing m => m ()
 whiteSpace = Tok.whiteSpace
 
 -- | Parses a string literal
-stringLiteral :: MonadicParsing m => m String
-stringLiteral = Tok.stringLiteral
+stringLiteral :: (MonadicParsing m, HasLastTokenSpan m) => m (String, FC)
+stringLiteral = do str <- Tok.stringLiteral
+                   fc <- getLastTokenSpan
+                   return (str, fromMaybe NoFC fc)
 
--- | Parses a char literal
-charLiteral :: MonadicParsing m => m Char
-charLiteral = Tok.charLiteral
+-- | Parses a char literal
+charLiteral :: (MonadicParsing m, HasLastTokenSpan m) => m (Char, FC)
+charLiteral = do ch <- Tok.charLiteral
+                 fc <- getLastTokenSpan
+                 return (ch, fromMaybe NoFC fc)
 
 -- | Parses a natural number
-natural :: MonadicParsing m => m Integer
-natural = Tok.natural
+natural :: (MonadicParsing m, HasLastTokenSpan m) => m (Integer, FC)
+natural = do n <- Tok.natural
+             fc <- getLastTokenSpan
+             return (n, fromMaybe NoFC fc)
 
 -- | Parses an integral number
 integer :: MonadicParsing m => m Integer
 integer = Tok.integer
 
 -- | Parses a floating point number
-float :: MonadicParsing m => m Double
-float = Tok.double
+float :: (MonadicParsing m, HasLastTokenSpan m) => m (Double, FC)
+float = do f <- Tok.double
+           fc <- getLastTokenSpan
+           return (f, fromMaybe NoFC fc)
 
 {- * Symbols, identifiers, names and operators -}
 
@@ -250,6 +264,13 @@ symbol = Tok.symbol
 reserved :: MonadicParsing m => String -> m ()
 reserved = Tok.reserve idrisStyle
 
+-- | Parses a reserved identifier, computing its span. Assumes that
+-- reserved identifiers never contain line breaks.
+reservedFC :: MonadicParsing m => String -> m FC
+reservedFC str = do (FC file (l, c) _) <- getFC
+                    Tok.reserve idrisStyle str
+                    return $ FC file (l, c) (l, c + length str)
+
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
 reservedOp :: MonadicParsing m => String -> m ()
@@ -257,37 +278,55 @@ reservedOp name = token $ try $
   do string name
      notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
 
--- | Parses an identifier as a token
-identifier :: MonadicParsing m => m String
-identifier = try(do i <- token $ Tok.ident idrisStyle
+reservedOpFC :: MonadicParsing m => String -> m FC
+reservedOpFC name = token $ try $ do (FC f (l, c) _) <- getFC
+                                     string name
+                                     notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
+                                     return (FC f (l, c) (l, c + length name))
+
+-- | Parses an identifier as a token
+identifier :: (MonadicParsing m) => m (String, FC)
+identifier = try(do (i, fc) <-
+                      token $ do (FC f (l, c) _) <- getFC
+                                 i <- Tok.ident idrisStyle
+                                 return (i, FC f (l, c) (l, c + length i))
                     when (i == "_") $ unexpected "wildcard"
-                    return i)
+                    return (i, fc))
 
 -- | Parses an identifier with possible namespace as a name
-iName :: MonadicParsing m => [String] -> m Name
-iName bad = maybeWithNS identifier False bad <?> "name"
+iName :: (MonadicParsing m, HasLastTokenSpan m) => [String] -> m (Name, FC)
+iName bad = do (n, fc) <- maybeWithNS identifier False bad
+               return (n, fc)
+            <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
-maybeWithNS :: MonadicParsing m => m String -> Bool -> [String] -> m Name
+maybeWithNS :: (MonadicParsing m, HasLastTokenSpan m) => m (String, FC) -> Bool -> [String] -> m (Name, FC)
 maybeWithNS parser ascend bad = do
-  i <- option "" (lookAhead identifier)
+  fc <- getFC
+  i <- option "" (lookAhead (fst <$> identifier))
   when (i `elem` bad) $ unexpected "reserved identifier"
   let transf = if ascend then id else reverse
-  (x, xs) <- choice (transf (parserNoNS parser : parsersNS parser i))
-  return $ mkName (x, xs)
-  where parserNoNS :: MonadicParsing m => m String -> m (String, String)
-        parserNoNS parser = do x <- parser; return (x, "")
-        parserNS   :: MonadicParsing m => m String -> String -> m (String, String)
-        parserNS   parser ns = do xs <- string ns; lchar '.';  x <- parser; return (x, xs)
-        parsersNS  :: MonadicParsing m => m String -> String -> [m (String, String)]
-        parsersNS parser i = [try (parserNS parser ns) | ns <- (initsEndAt (=='.') i)]
+  (x, xs, fc) <- choice (transf (parserNoNS parser : parsersNS parser i))
+  return (mkName (x, xs), fc)
+  where parserNoNS :: MonadicParsing m => m (String, FC) -> m (String, String, FC)
+        parserNoNS parser = do startFC <- getFC
+                               (x, nameFC) <- parser
+                               return (x, "", spanFC startFC nameFC)
+        parserNS   :: MonadicParsing m => m (String, FC) -> String -> m (String, String, FC)
+        parserNS   parser ns = do startFC <- getFC
+                                  xs <- string ns
+                                  lchar '.';  (x, nameFC) <- parser
+                                  return (x, xs, spanFC startFC nameFC)
+        parsersNS  :: MonadicParsing m => m (String, FC) -> String -> [m (String, String, FC)]
+        parsersNS parser i = [try (parserNS parser ns) | ns <- (initsEndAt (=='.') i)]
 
 -- | Parses a name
-name :: IdrisParser Name
+name :: IdrisParser (Name, FC)
 name = (<?> "name") $ do
     keywords <- syntax_keywords <$> get
     aliases  <- module_aliases  <$> get
-    unalias aliases <$> iName keywords
+    (n, fc) <- iName keywords
+    return (unalias aliases n, fc)
   where
     unalias :: M.Map [T.Text] [T.Text] -> Name -> Name
     unalias aliases (NS n ns) | Just ns' <- M.lookup ns aliases = NS n ns'
@@ -334,6 +373,15 @@ operator = do op <- token . some $ operatorLetter
                    fail $ op ++ " is not a valid operator"
               return op
 
+-- | Parses an operator
+operatorFC :: MonadicParsing m => m (String, FC)
+operatorFC = do (op, fc) <- token $ do (FC f (l, c) _) <- getFC
+                                       op <- some operatorLetter
+                                       return (op, FC f (l, c) (l, c + length op))
+                when (op `elem` (invalidOperators ++ commentMarkers)) $
+                     fail $ op ++ " is not a valid operator"
+                return (op, fc)
+
 {- * Position helpers -}
 {- | Get filename from position (returns "(interactive)" when no source file is given)  -}
 fileName :: Delta -> String
@@ -360,11 +408,12 @@ getFC = do s <- position
            -- Issue #1594 on the Issue Tracker.
            -- https://github.com/idris-lang/Idris-dev/issues/1594
 
+
 {-* Syntax helpers-}
 -- | Bind constraints to term
-bindList :: (Name -> PTerm -> PTerm -> PTerm) -> [(Name, PTerm)] -> PTerm -> PTerm
-bindList b []          sc = sc
-bindList b ((n, t):bs) sc = b n t (bindList b bs sc)
+bindList :: (Name -> FC -> PTerm -> PTerm -> PTerm) -> [(Name, FC, PTerm)] -> PTerm -> PTerm
+bindList b []              sc = sc
+bindList b ((n, fc, t):bs) sc = b n fc t (bindList b bs sc)
 
 {- * Layout helpers -}
 
@@ -584,9 +633,9 @@ collect (c@(PClauses _ o _ _) : ds)
 collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
 collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
 collect (PNamespace ns ps : ds) = PNamespace ns (collect ps) : collect ds
-collect (PClass doc f s cs n ps pdocs fds ds cn cd : ds')
-    = PClass doc f s cs n ps pdocs fds (collect ds) cn cd : collect ds'
-collect (PInstance doc argDocs f s cs n ps t en ds : ds')
-    = PInstance doc argDocs f s cs n ps t en (collect ds) : collect ds'
+collect (PClass doc f s cs n nfc ps pdocs fds ds cn cd : ds')
+    = PClass doc f s cs n nfc ps pdocs fds (collect ds) cn cd : collect ds'
+collect (PInstance doc argDocs f s cs n nfc ps t en ds : ds')
+    = PInstance doc argDocs f s cs n nfc ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []

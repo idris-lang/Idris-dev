@@ -29,6 +29,8 @@ import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
 
+import Debug.Trace
+
 -- | Creates table for fixity declarations to build expression parser
 -- using pre-build and user-defined operator/fixity declarations
 table :: [FixDecl] -> OperatorTable IdrisParser PTerm
@@ -45,7 +47,7 @@ table fixes
     flatten t = t
 
 
--- | Calculates table for fixtiy declarations
+-- | Calculates table for fixity declarations
 toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
 toTable fs = map (map toBin)
                  (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
@@ -59,9 +61,8 @@ toTable fs = map (map toBin)
 
 -- | Binary operator
 binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
-binary name f = Infix (do fc <- getFC
-                          indentPropHolds gtProp
-                          reservedOp name
+binary name f = Infix (do indentPropHolds gtProp
+                          fc <- reservedOpFC name
                           indentPropHolds gtProp
                           return (f fc))
 
@@ -75,10 +76,9 @@ prefix name f = Prefix (do reservedOp name
 -- | Backtick operator
 backtick :: Operator IdrisParser PTerm
 backtick = Infix (do indentPropHolds gtProp
-                     lchar '`'; n <- fnName
+                     lchar '`'; (n, fc) <- fnName
                      lchar '`'
                      indentPropHolds gtProp
-                     fc <- getFC
                      return (\x y -> PApp fc (PRef fc n) [pexp x, pexp y])) AssocNone
 
 -- | Operator without fixity (throws an error)
@@ -86,7 +86,7 @@ nofixityoperator :: Operator IdrisParser PTerm
 nofixityoperator = Infix (do indentPropHolds gtProp
                              op <- try operator
                              unexpected $ "Operator without known fixity: " ++ op) AssocNone
-                             
+
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
  optional namespace
@@ -99,9 +99,15 @@ nofixityoperator = Infix (do indentPropHolds gtProp
 @
 
 -}
-operatorFront :: IdrisParser Name
-operatorFront = try ((lchar '(' *> reservedOp "="  <* lchar ')') >> (return eqTy))
-            <|> maybeWithNS (lchar '(' *> operator <* lchar ')') False []
+operatorFront :: IdrisParser (Name, FC)
+operatorFront = try (do (FC f (l, c) _) <- getFC
+                        op <- lchar '(' *> reservedOp "="  <* lchar ')'
+                        return (eqTy, FC f (l, c) (l, c+3)))
+            <|> maybeWithNS (do (FC f (l, c) _) <- getFC
+                                op <- lchar '(' *> operator
+                                (FC _ _ (l', c')) <- getFC
+                                lchar ')'
+                                return (op, (FC f (l, c) (l', c' + 1)))) False []
 
 {- | Parses a function (either normal name or operator)
 
@@ -109,7 +115,7 @@ operatorFront = try ((lchar '(' *> reservedOp "="  <* lchar ')') >> (return eqTy
   FnName ::= Name | OperatorFront;
 @
 -}
-fnName :: IdrisParser Name
+fnName :: IdrisParser (Name, FC)
 fnName = try operatorFront <|> name <?> "function name"
 
 {- | Parses a fixity declaration
@@ -121,7 +127,8 @@ Fixity ::=
 -}
 fixity :: IdrisParser PDecl
 fixity = do pushIndent
-            f <- fixityType; i <- natural; ops <- sepBy1 operator (lchar ',')
+            f <- fixityType; i <- fst <$> natural;
+            ops <- sepBy1 operator (lchar ',')
             terminator
             let prec = fromInteger i
             istate <- get

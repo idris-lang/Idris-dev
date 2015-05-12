@@ -297,7 +297,7 @@ ploop fn d prompt prf e h
                   infixes = idris_infixes ist
                   action = case tm of
                     TType _ ->
-                      iPrintTermWithType (prettyImp ppo PType) type1Doc
+                      iPrintTermWithType (prettyImp ppo (PType emptyFC)) type1Doc
                     _ -> let bnd = map (\x -> (fst x, False)) env in
                          iPrintTermWithType (pprintPTerm ppo bnd [] infixes (delab ist tm))
                                              (pprintPTerm ppo bnd [] infixes (delab ist ty))

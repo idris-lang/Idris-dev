@@ -129,10 +129,12 @@ instance NFData DataOpt where
 
 instance (NFData t) => NFData (PDecl' t) where
         rnf (PFix x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (PTy x1 x2 x3 x4 x5 x6 x7)
+        rnf (PTy x1 x2 x3 x4 x5 x6 x7 x8)
           = rnf x1 `seq`
               rnf x2 `seq`
-                rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()
+                rnf x3 `seq`
+                  rnf x4 `seq`
+                    rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` ()
         rnf (PPostulate x1 x2 x3 x4 x5 x6 x7)
           = rnf x1 `seq`
               rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` ()
@@ -145,12 +147,30 @@ instance (NFData t) => NFData (PDecl' t) where
                 rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` ()
         rnf (PParams x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PNamespace x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+        rnf (PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
           = rnf x1 `seq`
               rnf x2 `seq`
                 rnf x3 `seq`
-                  rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` rnf x10 `seq` rnf x11 `seq` ()
-        rnf (PClass x1 x2 x3 x4 x5 x6 x8 x7 x9 x10 x11)
+                  rnf x4 `seq`
+                    rnf x5 `seq`
+                      rnf x6 `seq`
+                        rnf x7 `seq`
+                          rnf x8 `seq`
+                            rnf x9 `seq`
+                              rnf x10 `seq` rnf x11 `seq` rnf x12 `seq` ()
+        rnf (PClass x1 x2 x3 x4 x5 x6 x8 x7 x9 x10 x11 x12)
+          = rnf x1 `seq`
+              rnf x2 `seq`
+                rnf x3 `seq`
+                  rnf x4 `seq`
+                    rnf x5 `seq`
+                      rnf x6 `seq`
+                        rnf x7 `seq`
+                          rnf x8 `seq`
+                            rnf x9 `seq`
+                              rnf x10 `seq`
+                                rnf x11 `seq` rnf x12 `seq` ()
+        rnf (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
           = rnf x1 `seq`
               rnf x2 `seq`
                 rnf x3 `seq`
@@ -160,14 +180,6 @@ instance (NFData t) => NFData (PDecl' t) where
                         rnf x7 `seq`
                           rnf x8 `seq`
                             rnf x9 `seq` rnf x10 `seq` rnf x11 `seq` ()
-        rnf (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)
-          = rnf x1 `seq`
-              rnf x2 `seq`
-                rnf x3 `seq`
-                  rnf x4 `seq`
-                    rnf x5 `seq`
-                      rnf x6 `seq`
-                        rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` rnf x10 `seq` ()
         rnf (PDSL x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PSyntax x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PMutual x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
@@ -197,20 +209,20 @@ instance (NFData t) => NFData (PClause' t) where
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
 
 instance (NFData t) => NFData (PData' t) where
-        rnf (PDatadecl x1 x2 x3)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (PLaterdecl x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (PDatadecl x1 x2 x3 x4)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (PLaterdecl x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
 
 instance NFData PTerm where
         rnf (PQuote x1) = rnf x1 `seq` ()
         rnf (PRef x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PInferRef x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PPatvar x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (PLam _ x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (PPi x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (PLet _ x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (PLam _ x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (PPi x1 x2 x3 x4 x5)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
+        rnf (PLet _ x1 x2 x3 x4 x5)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
         rnf (PTyped x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PAppImpl x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PApp x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
@@ -228,11 +240,11 @@ instance NFData PTerm where
         rnf (PAs x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PAlternative x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PHidden x1) = rnf x1 `seq` ()
-        rnf PType = ()
+        rnf (PType fc) = rnf fc `seq` ()
         rnf (PUniverse _) = ()
         rnf (PGoal x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (PConstant x1) = x1 `seq` ()
+        rnf (PConstant x1 x2) = x1 `seq` x2 `seq` ()
         rnf Placeholder = ()
         rnf (PDoBlock x1) = rnf x1 `seq` ()
         rnf (PIdiom x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
@@ -302,10 +314,10 @@ instance NFData ErrorReportPart where
 
 instance (NFData t) => NFData (PDo' t) where
         rnf (DoExp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (DoBind x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (DoBind x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (DoBindP x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (DoLet x1 x2 x3 x4)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+        rnf (DoLet x1 x2 x3 x4 x5)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
         rnf (DoLetP x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
 
 instance (NFData t) => NFData (PArg' t) where

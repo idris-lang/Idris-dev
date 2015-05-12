@@ -15,7 +15,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
 import Idris.Elab.Type
@@ -51,7 +51,7 @@ import Data.List.Split (splitOn)
 import Util.Pretty(pretty, text)
 
 elabData :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm)-> [(Name, Docstring (Either Err PTerm))] -> FC -> DataOpts -> PData -> Idris ()
-elabData info syn doc argDocs fc opts (PLaterdecl n t_in)
+elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
     = do let codata = Codata `elem` opts
          iLOG (show (fc, doc))
          checkUndefined fc n
@@ -59,8 +59,9 @@ elabData info syn doc argDocs fc opts (PLaterdecl n t_in)
 
          addIBC (IBCDef n)
          updateContext (addTyDecl n (TCon 0 0) cty) -- temporary, to check cons
+         sendHighlighting [(nfc, AnnName n Nothing Nothing Nothing)]
 
-elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
+elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
     = do let codata = Codata `elem` opts
          iLOG (show fc)
          undef <- isUndefined fc n
@@ -116,6 +117,11 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
          -- create a case function
          when (DefaultCaseFun `elem` opts) $
             evalStateT (elabCaseFun False params n t dcons info) Map.empty
+         -- Emit highlighting info
+         sendHighlighting $ [(nfc, AnnName n Nothing Nothing Nothing)] ++
+           map (\(_, _, n, nfc, _, _, _) ->
+                 (nfc, AnnName n Nothing Nothing Nothing))
+               dcons
   where
         setDetaggable :: Name -> Idris ()
         setDetaggable n = do
@@ -194,7 +200,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
                        | otherwise = count n ts
         mParam args (_ : rest) = Nothing : mParam args rest
 
-        cname (_, _, n, _, _, _) = n
+        cname (_, _, n, _, _, _, _) = n
 
         -- Abuse of ElabInfo.
         -- TODO Contemplate whether the ElabInfo type needs modification.
@@ -212,9 +218,9 @@ elabData info syn doc argDocs fc opts (PDatadecl n t_in dcons)
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
            Type -> -- for unique kind checking
            Type -> -- data type's kind
-           (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, PTerm, FC, [Name]) ->
+           (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name]) ->
            Idris (Name, Type)
-elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
+elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcenames)
     = do checkUndefined fc n
          logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t_in
          (cty, ckind, t, inacc) <- buildType info syn fc [Constructor] n (if codata then mkLazy t_in else t_in)
@@ -251,13 +257,13 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
              else return ()
     tyIs con t = tclift $ tfail (At fc (Elaborating "constructor " con (Msg (show t ++ " is not " ++ show tn))))
 
-    mkLazy (PPi pl n ty sc)
+    mkLazy (PPi pl n nfc ty sc)
         = let ty' = if getTyName ty
                        then PApp fc (PRef fc (sUN "Lazy'"))
                             [pexp (PRef fc (sUN "LazyCodata")),
                              pexp ty]
                        else ty in
-              PPi pl n ty' (mkLazy sc)
+              PPi pl n nfc ty' (mkLazy sc)
     mkLazy t = t
 
     getTyName (PApp _ (PRef _ n) _) = n == nsroot tn
@@ -266,8 +272,8 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, t_in, fc, forcenames)
 
 
     getNamePos :: Int -> PTerm -> Name -> Maybe Int
-    getNamePos i (PPi _ n _ sc) x | n == x = Just i
-                                  | otherwise = getNamePos (i + 1) sc x
+    getNamePos i (PPi _ n _ _ sc) x | n == x = Just i
+                                    | otherwise = getNamePos (i + 1) sc x
     getNamePos _ _ _ = Nothing
 
     -- if the constructor is a UniqueType, the datatype must be too
@@ -302,17 +308,17 @@ type EliminatorState = StateT (Map.Map String Int) Idris
 -- FIXME: Many things have name starting with elim internally since this was the only purpose in the first edition of the function
 -- rename to caseFun to match updated intend
 elabCaseFun :: Bool -> [Int] -> Name -> PTerm ->
-                  [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, PTerm, FC, [Name])] ->
+                  [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name])] ->
                   ElabInfo -> EliminatorState ()
 elabCaseFun ind paramPos n ty cons info = do
   elimLog $ "Elaborating case function"
-  put (Map.fromList $ zip (concatMap (\(_, p, _, ty, _, _) -> (map show $ boundNamesIn ty) ++ map (show . fst) p) cons ++ (map show $ boundNamesIn ty)) (repeat 0))
+  put (Map.fromList $ zip (concatMap (\(_, p, _, _, ty, _, _) -> (map show $ boundNamesIn ty) ++ map (show . fst) p) cons ++ (map show $ boundNamesIn ty)) (repeat 0))
   let (cnstrs, _) = splitPi ty
   let (splittedTy@(pms, idxs)) = splitPms cnstrs
   generalParams <- namePis False pms
   motiveIdxs    <- namePis False idxs
   let motive = mkMotive n paramPos generalParams motiveIdxs
-  consTerms <- mapM (\(c@(_, _, cnm, _, _, _)) -> do
+  consTerms <- mapM (\(c@(_, _, cnm, _, _, _, _)) -> do
                                let casefunt = if ind then "elim_" else "case_"
                                name <- freshName $ casefunt ++ simpleName cnm
                                consTerm <- extractConsTerm c generalParams
@@ -321,7 +327,7 @@ elabCaseFun ind paramPos n ty cons info = do
   let motiveConstr = [(motiveName, expl, motive)]
   let scrutinee = (scrutineeName, expl, applyCons n (interlievePos paramPos generalParams scrutineeIdxs 0))
   let eliminatorTy = piConstr (generalParams ++ motiveConstr ++ consTerms ++ scrutineeIdxs ++ [scrutinee]) (applyMotive (map (\(n,_,_) -> PRef elimFC n) scrutineeIdxs) (PRef elimFC scrutineeName))
-  let eliminatorTyDecl = PTy (fmap (const (Left $ Msg "")) . parseDocstring . T.pack $ show n) [] defaultSyntax elimFC [TotalFn] elimDeclName eliminatorTy
+  let eliminatorTyDecl = PTy (fmap (const (Left $ Msg "")) . parseDocstring . T.pack $ show n) [] defaultSyntax elimFC [TotalFn] elimDeclName NoFC eliminatorTy
   let clauseConsElimArgs = map getPiName consTerms
   let clauseGeneralArgs' = map getPiName generalParams ++ [motiveName] ++ clauseConsElimArgs
   let clauseGeneralArgs  = map (\arg -> pexp (PRef elimFC arg)) clauseGeneralArgs'
@@ -353,8 +359,8 @@ elabCaseFun ind paramPos n ty cons info = do
         splitPi :: PTerm -> ([(Name, Plicity, PTerm)], PTerm)
         splitPi = splitPi' []
           where splitPi' :: [(Name, Plicity, PTerm)] -> PTerm -> ([(Name, Plicity, PTerm)], PTerm)
-                splitPi' acc (PPi pl n tyl tyr) = splitPi' ((n, pl, tyl):acc) tyr
-                splitPi' acc t                  = (reverse acc, t)
+                splitPi' acc (PPi pl n _ tyl tyr) = splitPi' ((n, pl, tyl):acc) tyr
+                splitPi' acc t                    = (reverse acc, t)
 
         splitPms :: [(Name, Plicity, PTerm)] -> ([(Name, Plicity, PTerm)], [(Name, Plicity, PTerm)])
         splitPms cnstrs = (map fst pms, map fst idxs)
@@ -377,7 +383,7 @@ elabCaseFun ind paramPos n ty cons info = do
           where keyOf :: PTerm -> String
                 keyOf (PRef _ name) | isLetter (nameStart name) = (toLower $ nameStart name):"__"
                 keyOf (PApp _ tyf _) = keyOf tyf
-                keyOf PType = "ty__"
+                keyOf (PType _) = "ty__"
                 keyOf _     = "carg__"
                 nameStart :: Name -> Char
                 nameStart n = nameStart' (simpleName n)
@@ -414,11 +420,11 @@ elabCaseFun ind paramPos n ty cons info = do
         mkMotive :: Name -> [Int] -> [(Name, Plicity, PTerm)] -> [(Name, Plicity, PTerm)] -> PTerm
         mkMotive n paramPos params indicies =
           let scrutineeTy = (scrutineeArgName, expl, applyCons n (interlievePos paramPos params indicies 0))
-          in piConstr (indicies ++ [scrutineeTy]) PType
+          in piConstr (indicies ++ [scrutineeTy]) (PType elimFC)
 
         piConstr :: [(Name, Plicity, PTerm)] -> PTerm -> PTerm
         piConstr [] ty = ty
-        piConstr ((n, pl, tyb):tyr) ty = PPi pl n tyb (piConstr tyr ty)
+        piConstr ((n, pl, tyb):tyr) ty = PPi pl n NoFC tyb (piConstr tyr ty)
 
         interlievePos :: [Int] -> [a] -> [a] -> Int -> [a]
         interlievePos idxs []     l2     i = l2
@@ -436,9 +442,9 @@ elabCaseFun ind paramPos n ty cons info = do
                _ -> cns
 
         removeParamPis :: [Name] -> [(Name, Plicity, PTerm)] -> PTerm -> PTerm
-        removeParamPis oldParams params (PPi pl n tyb tyr) =
+        removeParamPis oldParams params (PPi pl n fc tyb tyr) =
           case findIndex (== n) oldParams of
-            Nothing -> (PPi pl n (removeParamPis oldParams params tyb) (removeParamPis oldParams params tyr))
+            Nothing -> (PPi pl n fc (removeParamPis oldParams params tyb) (removeParamPis oldParams params tyr))
             Just i  -> (removeParamPis oldParams params tyr)
         removeParamPis oldParams params (PRef _ n) =
           case findIndex (== n) oldParams of
@@ -488,8 +494,8 @@ elabCaseFun ind paramPos n ty cons info = do
               in return $ filter (\(n,_,_) -> not (n `elem` oldParams))implargs
              _ -> return implargs
 
-        extractConsTerm :: (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, PTerm, FC, [Name]) -> [(Name, Plicity, PTerm)] -> EliminatorState PTerm
-        extractConsTerm (doc, argDocs, cnm, ty, fc, fs) generalParameters = do
+        extractConsTerm :: (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name]) -> [(Name, Plicity, PTerm)] -> EliminatorState PTerm
+        extractConsTerm (doc, argDocs, cnm, _, ty, fc, fs) generalParameters = do
           let cons' = replaceParams paramPos generalParameters ty
           let (args, resTy) = splitPi cons'
           implidxs <- implicitIndexes (doc, cnm, ty, fc, fs)
@@ -524,8 +530,8 @@ elabCaseFun ind paramPos n ty cons info = do
         convertImplPi (PImp {getTm = t, pname = n}) = Just (n, expl, t)
         convertImplPi _                             = Nothing
 
-        generateEliminatorClauses :: (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, PTerm, FC, [Name]) -> Name -> [PArg] -> [(Name, Plicity, PTerm)] -> EliminatorState PClause
-        generateEliminatorClauses (doc, _, cnm, ty, fc, fs) cnsElim generalArgs generalParameters = do
+        generateEliminatorClauses :: (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name]) -> Name -> [PArg] -> [(Name, Plicity, PTerm)] -> EliminatorState PClause
+        generateEliminatorClauses (doc, _, cnm, _, ty, fc, fs) cnsElim generalArgs generalParameters = do
           let cons' = replaceParams paramPos generalParameters ty
           let (args, resTy) = splitPi cons'
           i <- State.lift getIState

@@ -66,7 +66,7 @@ elabProvider doc info syn fc what n
          -- The goal type for a postulate is always Type.
          (ty', typ) <- case what of
                          ProvTerm ty p   -> elabVal info ERHS ty
-                         ProvPostulate _ -> elabVal info ERHS PType
+                         ProvPostulate _ -> elabVal info ERHS (PType fc)
          unless (isTType typ) $
            ifail ("Expected a type, got " ++ show ty' ++ " : " ++ show typ)
 
@@ -93,7 +93,7 @@ elabProvider doc info syn fc what n
            Provide tm
              | ProvTerm ty _ <- what ->
                do -- Finally add a top-level definition of the provided term
-                  elabType info syn doc [] fc [] n ty
+                  elabType info syn doc [] fc [] n NoFC ty
                   elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
                   logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
              | ProvPostulate _ <- what ->

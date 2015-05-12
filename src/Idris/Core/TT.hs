@@ -49,11 +49,59 @@ data Option = TTypeInTType
   deriving Eq
 
 -- | Source location. These are typically produced by the parser 'Idris.Parser.getFC'
-data FC = FC { fc_fname :: String, -- ^ Filename
-               fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
-               fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
+data FC = FC { _fc_fname :: String, -- ^ Filename
+               _fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
+               _fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
              }
-  deriving (Data, Typeable, Ord)             
+        | NoFC -- ^ Locations for machine-generated terms
+        | FileFC { _fc_fname :: String } -- ^ Locations with file only
+  deriving (Data, Typeable, Ord)
+
+-- TODO: find uses and destroy them, doing this case analysis at call sites
+-- | Give a notion of filename associated with an FC
+fc_fname :: FC -> String
+fc_fname (FC f _ _) = f
+fc_fname NoFC = "(no file)"
+fc_fname (FileFC f) = f
+
+-- TODO: find uses and destroy them, doing this case analysis at call sites
+-- | Give a notion of start location associated with an FC
+fc_start :: FC -> (Int, Int)
+fc_start (FC _ start _) = start
+fc_start NoFC = (0, 0)
+fc_start (FileFC f) = (0, 0)
+
+-- TODO: find uses and destroy them, doing this case analysis at call sites
+-- | Give a notion of end location associated with an FC
+fc_end :: FC -> (Int, Int)
+fc_end (FC _ _ end) = end
+fc_end NoFC = (0, 0)
+fc_end (FileFC f) = (0, 0)
+
+-- | Get the largest span containing the two FCs
+spanFC :: FC -> FC -> FC
+spanFC (FC f start end) (FC f' start' end')
+    | f == f' = FC f (minLocation start start') (maxLocation end end')
+    | otherwise = NoFC
+  where minLocation (l, c) (l', c') =
+          case compare l l' of
+            LT -> (l, c)
+            EQ -> (l, min c c')
+            GT -> (l', c')
+        maxLocation (l, c) (l', c') =
+          case compare l l' of
+            LT -> (l', c')
+            EQ -> (l, max c c')
+            GT -> (l, c)
+spanFC fc@(FC f _ _) (FileFC f') | f == f' = fc
+                                 | otherwise = NoFC
+spanFC (FileFC f') fc@(FC f _ _) | f == f' = fc
+                                 | otherwise = NoFC
+spanFC (FileFC f) (FileFC f') | f == f' = FileFC f
+                              | otherwise = NoFC
+spanFC NoFC fc = fc
+spanFC fc NoFC = fc
+
 
 -- | Ignore source location equality (so deriving classes do not compare FCs)
 instance Eq FC where
@@ -65,14 +113,17 @@ newtype FC' = FC' { unwrapFC :: FC }
 instance Eq FC' where
   FC' fc == FC' fc' = fcEq fc fc'
     where fcEq (FC n s e) (FC n' s' e') = n == n' && s == s' && e == e'
+          fcEq NoFC NoFC = True
+          fcEq (FileFC f) (FileFC f') = f == f'
+          fcEq _ _ = False
 
 -- | Empty source location
 emptyFC :: FC
-emptyFC = fileFC ""
+emptyFC = NoFC
 
--- | Source location with file only
+-- | Source location with file only
 fileFC :: String -> FC
-fileFC s = FC s (0, 0) (0, 0)
+fileFC s = FileFC s
 
 {-!
 deriving instance Binary FC
@@ -81,18 +132,22 @@ deriving instance NFData FC
 
 instance Sized FC where
   size (FC f s e) = 4 + length f
+  size NoFC = 1
+  size (FileFC f) = length f
 
 instance Show FC where
     show (FC f s e) = f ++ ":" ++ showLC s e
       where showLC (sl, sc) (el, ec) | sl == el && sc == ec = show sl ++ ":" ++ show sc
                                      | sl == el             = show sl ++ ":" ++ show sc ++ "-" ++ show ec
                                      | otherwise            = show sl ++ ":" ++ show sc ++ "-" ++ show el ++ ":" ++ show ec
+    show NoFC = "No location"
+    show (FileFC f) = f
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving Show
 
 -- | Text formatting output
-data TextFormatting = BoldText | ItalicText | UnderlineText
+data TextFormatting = BoldText | ItalicText | UnderlineText deriving Show
 
 -- | Output annotations for pretty-printing
 data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe String)
@@ -108,6 +163,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                       | AnnTerm [(Name, Bool)] (TT Name) -- ^ pprint bound vars, original term
                       | AnnSearchResult Ordering -- ^ more general, isomorphic, or more specific
                       | AnnErr Err
+  deriving Show
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String

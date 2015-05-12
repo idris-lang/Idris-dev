@@ -14,7 +14,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
 import Idris.Elab.Type
@@ -56,11 +56,12 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 ElabWhat -> -- phase
                 FC -> [(Name, PTerm)] -> -- constraints
                 Name -> -- the class
+                FC -> -- precise location of class name
                 [PTerm] -> -- class parameters (i.e. instance)
                 PTerm -> -- full instance type
                 Maybe Name -> -- explicit name
                 [PDecl] -> Idris ()
-elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
+elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
     i <- getIState
     (n, ci) <- case lookupCtxtName n (idris_classes i) of
                   [c] -> return c
@@ -71,7 +72,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
     let iname = mkiname n (namespace info) ps expn
     let emptyclass = null (class_methods ci)
     when (what /= EDefns || (null ds && not emptyclass)) $ do
-         nty <- elabType' True info syn doc argDocs fc [] iname t
+         nty <- elabType' True info syn doc argDocs fc [] iname NoFC t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
@@ -146,7 +147,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
 
   where
     intInst = case ps of
-                [PConstant (AType (ATInt ITNative))] -> True
+                [PConstant NoFC (AType (ATInt ITNative))] -> True
                 _ -> False
 
     mkiname n' ns ps' expn' =
@@ -156,10 +157,10 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
                           Just m -> sNS (SN (sInstanceN n' (map show ps'))) m
           Just nm -> nm
 
-    substInstance ips pnames (PInstance doc argDocs syn _ cs n ps t expn ds)
-        = PInstance doc argDocs syn fc cs n (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
+    substInstance ips pnames (PInstance doc argDocs syn _ cs n nfc ps t expn ds)
+        = PInstance doc argDocs syn fc cs n nfc (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
 
-    isOverlapping i (PInstance doc argDocs syn _ _ n ps t expn _)
+    isOverlapping i (PInstance doc argDocs syn _ _ n nfc ps t expn _)
         = case lookupCtxtName n (idris_classes i) of
             [(n, ci)] -> let iname = (mkiname n (namespace info) ps expn) in
                             case lookupTy iname (tt_ctxt i) of
@@ -176,11 +177,12 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
              ty' <- implicit info syn iname ty'
              let ty = addImpl [] i ty'
              ctxt <- getContext
-             (ElabResult tyT _ _ ctxt' newDecls, _) <-
+             (ElabResult tyT _ _ ctxt' newDecls highlights, _) <-
                 tclift $ elaborate ctxt (idris_datatypes i) iname (TType (UVal 0)) initEState
                          (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
              setContext ctxt'
              processTacticDecls info newDecls
+             sendHighlighting highlights
              ctxt <- getContext
              (cty, _) <- recheckC fc id [] tyT
              let nty = normalise ctxt [] cty
@@ -200,7 +202,7 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
             _ -> Nothing
     overlapping t' = tclift $ tfail (At fc (Msg $
                           "Overlapping instance: " ++ show t' ++ " already defined"))
-    getRetType (PPi _ _ _ sc) = getRetType sc
+    getRetType (PPi _ _ _ _ sc) = getRetType sc
     getRetType t = t
 
     matchArgs i dets x y =
@@ -215,16 +217,16 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
 
     mkMethApp (n, _, _, ty)
           = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
-    lamBind i (PPi (Constraint _ _) _ _ sc) sc'
-          = PLam fc (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
-    lamBind i (PPi _ n ty sc) sc'
-          = PLam fc (sMN i "meth") Placeholder (lamBind (i+1) sc sc')
+    lamBind i (PPi (Constraint _ _) _ _ _ sc) sc'
+          = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
+    lamBind i (PPi _ n _ ty sc) sc'
+          = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
-    methArgs i (PPi (Imp _ _ _ _) n ty sc)
+    methArgs i (PPi (Imp _ _ _ _) n _ ty sc)
         = PImp 0 True [] n (PRef fc (sMN i "meth")) : methArgs (i+1) sc
-    methArgs i (PPi (Exp _ _ _) n ty sc)
+    methArgs i (PPi (Exp _ _ _) n _ ty sc)
         = PExp 0 [] (sMN 0 "marg") (PRef fc (sMN i "meth")) : methArgs (i+1) sc
-    methArgs i (PPi (Constraint _ _) n ty sc)
+    methArgs i (PPi (Constraint _ _) n _ ty sc)
         = PConstraint 0 [] (sMN 0 "marg") (PResolveTC fc) : methArgs (i+1) sc
     methArgs i _ = []
 
@@ -244,16 +246,16 @@ elabInstance info syn doc argDocs what fc cs n ps t expn ds = do
     decorate ns iname (UN n)        = NS (SN (MethodN (UN n))) ns
     decorate ns iname (NS (UN n) s) = NS (SN (MethodN (UN n))) ns
 
-    mkTyDecl (n, op, t, _) 
-        = PTy emptyDocstring [] syn fc op n 
+    mkTyDecl (n, op, t, _)
+        = PTy emptyDocstring [] syn fc op n NoFC
                (mkUniqueNames [] t)
 
     conbind :: [(Name, PTerm)] -> PTerm -> PTerm
-    conbind ((c,ty) : ns) x = PPi constraint c ty (conbind ns x)
+    conbind ((c,ty) : ns) x = PPi constraint c NoFC ty (conbind ns x)
     conbind [] x = x
 
     coninsert :: [(Name, PTerm)] -> PTerm -> PTerm
-    coninsert cs (PPi p@(Imp _ _ _ _) n t sc) = PPi p n t (coninsert cs sc)
+    coninsert cs (PPi p@(Imp _ _ _ _) n fc t sc) = PPi p n fc t (coninsert cs sc)
     coninsert cs sc = conbind cs sc
 
     -- Reorder declarations to be in the same order as defined in the
