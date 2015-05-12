@@ -827,7 +827,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         -- so this doesn't lose anything)
         case getArgTys cwvaltyN of
              [] -> return ()
-             (_:_) -> ierror $ At fc (WithFnType cwvalty)  
+             (_:_) -> ierror $ At fc (WithFnType cwvalty)
 
         let pvars = map fst (getPBtys cwvalty)
         -- we need the unelaborated term to get the names it depends on
@@ -897,7 +897,10 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                     (map (pexp . (PRef fc) . fst) bargs_post) ++
                     case mpn of
                          Nothing -> []
-                         Just _ -> [pexp (PRef fc eqCon)])
+                         Just _ -> [pexp (PApp NoFC (PRef NoFC eqCon)
+                                               [ pimp (sUN "A") Placeholder False
+                                               , pimp (sUN "x") Placeholder False
+                                               ])])
         logLvl 5 ("New RHS " ++ showTmImpls rhs)
         ctxt <- getContext -- New context with block added
         i <- getIState
