@@ -1171,9 +1171,10 @@ instance (Binary t) => Binary (PDecl' t) where
                                        put x1
                                        put x2
                                        put x3
-                PNamespace x1 x2 -> do putWord8 5
-                                       put x1
-                                       put x2
+                PNamespace x1 x2 x3 -> do putWord8 5
+                                          put x1
+                                          put x2
+                                          put x3
                 PRecord x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 ->
                                              do putWord8 6
                                                 put x1
@@ -1284,7 +1285,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            return (PParams x1 x2 x3)
                    5 -> do x1 <- get
                            x2 <- get
-                           return (PNamespace x1 x2)
+                           x3 <- get
+                           return (PNamespace x1 x2 x3)
                    6 -> do x1 <- get
                            x2 <- get
                            x3 <- get

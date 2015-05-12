@@ -195,7 +195,6 @@ prettyDocumentedIst ist (name, ty, docs) =
         norm = normaliseAll (tt_ctxt ist) []
 
 sendHighlighting :: [(FC, OutputAnnotation)] -> Idris ()
-sendHighlighting [] = return ()
 sendHighlighting highlights =
   do ist <- getIState
      case idris_outputmode ist of
@@ -204,10 +203,12 @@ sendHighlighting highlights =
          let fancier = [ toSExp (fc, fancifyAnnots ist False annot)
                        | (fc, annot) <- highlights, fullFC fc
                        ]
-         in runIO . hPutStrLn h $
-              convSExp "output"
-                       (SymbolAtom "ok",
-                        (SymbolAtom "highlight-source", fancier)) n
+         in case fancier of
+              [] -> return ()
+              _  -> runIO . hPutStrLn h $
+                      convSExp "output"
+                               (SymbolAtom "ok",
+                                (SymbolAtom "highlight-source", fancier)) n
 
   where fullFC (FC _ _ _) = True
         fullFC _          = False
@@ -254,6 +255,7 @@ renderExternal fmt width doc
     decorate HTMLOutput (AnnTerm _ _) = id
     decorate HTMLOutput (AnnSearchResult _) = id
     decorate HTMLOutput (AnnErr _) = id
+    decorate HTMLOutput (AnnNamespace _ _) = id
 
     decorate LaTeXOutput (AnnName _ (Just TypeOutput) _ _) =
       latex "IdrisType"
@@ -281,6 +283,7 @@ renderExternal fmt width doc
     decorate LaTeXOutput (AnnTerm _ _) = id
     decorate LaTeXOutput (AnnSearchResult _) = id
     decorate LaTeXOutput (AnnErr _) = id
+    decorate LaTeXOutput (AnnNamespace _ _) = id
 
     tag cls docs str = "<span class=\""++cls++"\""++title++">" ++ str ++ "</span>"
       where title = maybe "" (\d->" title=\"" ++ d ++ "\"") docs

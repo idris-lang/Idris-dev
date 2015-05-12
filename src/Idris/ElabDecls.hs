@@ -18,7 +18,7 @@ import Idris.Primitives
 import Idris.Inliner
 import Idris.PartialEval
 import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn)
+import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
 import Idris.Elab.Utils
@@ -227,11 +227,14 @@ elabDecl' what info (PParams f ns ps)
     pblock i = map (expandParamsD False i id ns
                       (concatMap tldeclared ps)) ps
 
-elabDecl' what info (PNamespace n ps) = mapM_ (elabDecl' what ninfo) ps
+elabDecl' what info (PNamespace n nfc ps) =
+  do mapM_ (elabDecl' what ninfo) ps
+     let ns = reverse (map T.pack newNS)
+     sendHighlighting [(nfc, AnnNamespace ns Nothing)]
   where
-    ninfo = case namespace info of
-                Nothing -> info { namespace = Just [n] }
-                Just ns -> info { namespace = Just (n:ns) }
+    newNS = maybe [n] (n:) (namespace info)
+    ninfo = info { namespace = Just newNS }
+
 elabDecl' what info (PClass doc s f cs n nfc ps pdocs fds ds cn cd)
   | what /= EDefns
     = do iLOG $ "Elaborating class " ++ show n
