@@ -163,6 +163,13 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                       | AnnTerm [(Name, Bool)] (TT Name) -- ^ pprint bound vars, original term
                       | AnnSearchResult Ordering -- ^ more general, isomorphic, or more specific
                       | AnnErr Err
+                      | AnnNamespace [T.Text] (Maybe FilePath)
+                        -- ^ A namespace (e.g. on an import line or in
+                        -- a namespace declaration). Stored starting
+                        -- at the root, with the hierarchy fully
+                        -- resolved. If a file path is present, then
+                        -- the namespace represents a module imported
+                        -- from that file.
   deriving Show
 
 -- | Used for error reflection

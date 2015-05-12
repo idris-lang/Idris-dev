@@ -7,11 +7,12 @@ module Idris.IdeMode(parseMessage, convSExp, WhatDocs(..), IdeModeCommand(..), s
 import Text.Printf
 import Numeric
 import Data.List
+import Data.Maybe (isJust)
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as Lazy
 import qualified Data.ByteString.UTF8 as UTF8
--- import qualified Data.Text as T
+import qualified Data.Text as T
 import Text.Trifecta hiding (Err)
 import Text.Trifecta.Delta
 import System.IO
@@ -115,11 +116,16 @@ constTy (B32 _) = "Bits32"
 constTy (B64 _) = "Bits64"
 constTy _ = "Type"
 
+namespaceOf :: Name -> Maybe String
+namespaceOf (NS _ ns) = Just (intercalate "." $ reverse (map T.unpack ns))
+namespaceOf _         = Nothing
+
 instance SExpable OutputAnnotation where
   toSExp (AnnName n ty d t) = toSExp $ [(SymbolAtom "name", StringAtom (show n)),
                                         (SymbolAtom "implicit", BoolAtom False)] ++
                                        maybeProps [("decor", ty)] ++
-                                       maybeProps [("doc-overview", d), ("type", t)]
+                                       maybeProps [("doc-overview", d), ("type", t)] ++
+                                       maybeProps [("namespace", namespaceOf n)]
   toSExp (AnnBoundName n imp)    = toSExp [(SymbolAtom "name", StringAtom (show n)),
                                            (SymbolAtom "decor", SymbolAtom "bound"),
                                            (SymbolAtom "implicit", BoolAtom imp)]
@@ -150,6 +156,10 @@ instance SExpable OutputAnnotation where
               LT -> "more general than searched type"
               GT -> "more specific than searched type"
   toSExp (AnnErr e) = toSExp [(SymbolAtom "error", StringAtom (encodeErr e))]
+  toSExp (AnnNamespace ns file) =
+    toSExp $ [(SymbolAtom "namespace", StringAtom (intercalate "." (map T.unpack ns)))] ++
+             [(SymbolAtom "decor", SymbolAtom $ if isJust file then "module" else "namespace")] ++
+             maybeProps [("source-file", file)]
 
 encodeTerm :: [(Name, Bool)] -> Term -> String
 encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $

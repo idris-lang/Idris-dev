@@ -92,21 +92,32 @@ import System.IO
       ModuleHeader ::= DocComment_t? 'module' Identifier_t ';'?;
 @
 -}
-moduleHeader :: IdrisParser (Maybe (Docstring ()), [String])
+moduleHeader :: IdrisParser (Maybe (Docstring ()), [String], [(FC, OutputAnnotation)])
 moduleHeader =     try (do docs <- optional docComment
                            noArgs docs
                            reserved "module"
-                           i <- fst <$> identifier
+                           (i, ifc) <- identifier
                            option ';' (lchar ';')
-                           return (fmap fst docs, moduleName i))
+                           let modName = moduleName i
+                           return (fmap fst docs,
+                                   modName,
+                                   [(ifc, AnnNamespace (map T.pack modName) Nothing)]))
                <|> try (do lchar '%'; reserved "unqualified"
-                           return (Nothing, []))
-               <|> return (Nothing, moduleName "Main")
+                           return (Nothing, [], []))
+               <|> return (Nothing, moduleName "Main", [])
   where moduleName x = case span (/='.') x of
                            (x, "")    -> [x]
                            (x, '.':y) -> x : moduleName y
         noArgs (Just (_, args)) | not (null args) = fail "Modules do not take arguments"
         noArgs _ = return ()
+
+data ImportInfo = ImportInfo { import_reexport :: Bool
+                             , import_path :: FilePath
+                             , import_rename :: Maybe (String, FC)
+                             , import_namespace :: [T.Text]
+                             , import_location :: FC
+                             , import_modname_location :: FC
+                             }
 
 {- | Parses an import statement
 
@@ -114,16 +125,19 @@ moduleHeader =     try (do docs <- optional docComment
   Import ::= 'import' Identifier_t ';'?;
 @
  -}
-import_ :: IdrisParser (Bool, String, Maybe String, FC)
+import_ :: IdrisParser ImportInfo
 import_ = do fc <- getFC
              reserved "import"
              reexport <- option False (do reserved "public"; return True)
-             id <- fst <$> identifier
-             newName <- optional (reserved "as" *> (fst <$> identifier))
+             (id, idfc) <- identifier
+             newName <- optional (reserved "as" *> identifier)
              option ';' (lchar ';')
-             return (reexport, toPath id, toPath <$> newName, fc)
+             return $ ImportInfo reexport (toPath id)
+                        (fmap (\(n, fc) -> (toPath n, fc)) newName)
+                        (map T.pack $ ns id) fc idfc
           <?> "import statement"
-  where toPath = foldl1' (</>) . Spl.splitOn "."
+  where ns = Spl.splitOn "."
+        toPath = foldl1' (</>) . ns
 
 {- | Parses program source
 
@@ -594,11 +608,12 @@ Namespace ::=
 -}
 namespace :: SyntaxInfo -> IdrisParser [PDecl]
 namespace syn =
-    do reserved "namespace"; n <- fst <$> identifier
+    do reserved "namespace"
+       (n, nfc) <- identifier
        openBlock
        ds <- some (decl syn { syn_namespace = n : syn_namespace syn })
        closeBlock
-       return [PNamespace n (concat ds)]
+       return [PNamespace n nfc (concat ds)]
      <?> "namespace declaration"
 
 {- | Parses a methods block (for instances)
@@ -1222,16 +1237,21 @@ parseTactic :: IState -> String -> Result PTactic
 parseTactic st = runparser (fullTactic defaultSyntax) st "(input)"
 
 -- | Parse module header and imports
-parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [(Bool, String, Maybe String, FC)], Maybe Delta)
+parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe Delta)
 parseImports fname input
     = do i <- getIState
          case parseString (runInnerParser (evalStateT imports i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
-              Failure err    -> fail (show err)
-              Success (x, i) -> do putIState i
-                                   return x
-  where imports :: IdrisParser ((Maybe (Docstring ()), [String], [(Bool, String, Maybe String, FC)], Maybe Delta), IState)
+              Failure err -> fail (show err)
+              Success (x, annots, i) ->
+                do putIState i
+                   sendHighlighting (addPath annots fname)
+                   return x
+  where imports :: IdrisParser ((Maybe (Docstring ()), [String],
+                                 [ImportInfo],
+                                 Maybe Delta),
+                                [(FC, OutputAnnotation)], IState)
         imports = do whiteSpace
-                     (mdoc, mname) <- moduleHeader
+                     (mdoc, mname, annots) <- moduleHeader
                      ps            <- many import_
                      mrk           <- mark
                      isEof         <- lookAheadMatches eof
@@ -1239,7 +1259,12 @@ parseImports fname input
                                    then Nothing
                                    else Just mrk
                      i     <- get
-                     return ((mdoc, mname, ps, mrk'), i)
+                     return ((mdoc, mname, ps, mrk'), annots, i)
+        addPath :: [(FC, OutputAnnotation)] -> FilePath -> [(FC, OutputAnnotation)]
+        addPath [] _ = []
+        addPath ((fc, AnnNamespace ns Nothing) : annots) path =
+          (fc, AnnNamespace ns (Just path)) : addPath annots path
+        addPath (annot:annots) path = annot : addPath annots path
 
 -- | There should be a better way of doing this...
 findFC :: Doc -> (FC, String)
@@ -1351,23 +1376,37 @@ loadSource lidr f toline
                   file <- if lidr then tclift $ unlit f file_in else return file_in
                   (mdocs, mname, imports_in, pos) <- parseImports f file
                   ai <- getAutoImports
-                  let imports = map (\n -> (True, n, Just n, emptyFC)) ai ++ imports_in
+                  let imports = map (\n -> ImportInfo True n Nothing [] NoFC NoFC) ai ++ imports_in
                   ids <- allImportDirs
                   ibcsd <- valIBCSubDir i
-                  mapM_ (\(re, f) ->
+                  mapM_ (\(re, f, ns, nfc) ->
                                do fp <- findImport ids ibcsd f
                                   case fp of
                                       LIDR fn -> ifail $ "No ibc for " ++ f
                                       IDR fn -> ifail $ "No ibc for " ++ f
-                                      IBC fn src -> loadIBC True fn)
-                        [(re, fn) | (re, fn, _, _) <- imports]
+                                      IBC fn src ->
+                                        do loadIBC True fn
+                                           let srcFn = case src of
+                                                         IDR fn -> Just fn
+                                                         LIDR fn -> Just fn
+                                                         _ -> Nothing
+                                           sendHighlighting [(nfc, AnnNamespace ns srcFn)])
+                        [(re, fn, ns, nfc) | ImportInfo re fn _ ns _ nfc <- imports]
                   reportParserWarnings
 
                   -- process and check module aliases
                   let modAliases = M.fromList
-                        [(prep alias, prep realName) | (reexport, realName, Just alias, fc) <- imports]
+                        [ (prep alias, prep realName)
+                        | ImportInfo { import_reexport = reexport
+                                     , import_path = realName
+                                     , import_rename = Just (alias, _)
+                                     , import_location = fc } <- imports
+                        ]
                       prep = map T.pack . reverse . Spl.splitOn [pathSeparator]
-                      aliasNames = [(alias, fc) | (_, _, Just alias, fc) <- imports]
+                      aliasNames = [ (alias, fc)
+                                   | ImportInfo { import_rename = Just (alias, _)
+                                                , import_location = fc } <- imports
+                                   ]
                       histogram = groupBy ((==) `on` fst) . sortBy (comparing fst) $ aliasNames
                   case map head . filter ((/= 1) . length) $ histogram of
                     []       -> logLvl 3 $ "Module aliases: " ++ show (M.toList modAliases)
@@ -1379,7 +1418,12 @@ loadSource lidr f toline
                   -- record package info in .ibc
                   imps <- allImportDirs
                   mapM_ addIBC (map IBCImportDir imps)
-                  mapM_ (addIBC . IBCImport) [(reexport, realName) | (reexport, realName, alias, fc) <- imports]
+                  mapM_ (addIBC . IBCImport)
+                    [ (reexport, realName)
+                    | ImportInfo { import_reexport = reexport
+                                 , import_path = realName
+                                 } <- imports
+                    ]
                   let syntax = defaultSyntax{ syn_namespace = reverse mname,
                                               maxline = toline }
                   ist <- getIState
@@ -1463,11 +1507,11 @@ loadSource lidr f toline
   where
     namespaces :: [String] -> [PDecl] -> [PDecl]
     namespaces []     ds = ds
-    namespaces (x:xs) ds = [PNamespace x (namespaces xs ds)]
+    namespaces (x:xs) ds = [PNamespace x NoFC (namespaces xs ds)]
 
     toMutual :: PDecl -> PDecl
     toMutual m@(PMutual _ d) = m
-    toMutual (PNamespace x ds) = PNamespace x (map toMutual ds)
+    toMutual (PNamespace x fc ds) = PNamespace x fc (map toMutual ds)
     toMutual x = let r = PMutual (fileFC "single mutual") [x] in
                  case x of
                    PClauses{} -> r
