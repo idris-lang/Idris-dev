@@ -77,8 +77,6 @@ expandSugar dsl (PIfThenElse fc c t f) =
        , PExp 0 [] (sMN 0 "whenTrue") $ expandSugar dsl t
        , PExp 0 [] (sMN 0 "whenFalse") $ expandSugar dsl f
        ]
-expandSugar dsl (PEq fc lt rt l r) = PEq fc (expandSugar dsl lt) (expandSugar dsl rt)
-                                         (expandSugar dsl l) (expandSugar dsl r)
 expandSugar dsl (PPair fc p l r) = PPair fc p (expandSugar dsl l) (expandSugar dsl r)
 expandSugar dsl (PDPair fc p l t r) = PDPair fc p (expandSugar dsl l) (expandSugar dsl t)
                                                (expandSugar dsl r)
@@ -139,7 +137,6 @@ var dsl n t i = v' i t where
     v' i (PTyped l r)    = PTyped (v' i l) (v' i r)
     v' i (PApp f x as)   = PApp f (v' i x) (fmap (fmap (v' i)) as)
     v' i (PCase f t as)  = PCase f (v' i t) (fmap (pmap (v' i)) as)
-    v' i (PEq f lt rt l r) = PEq f (v' i lt) (v' i rt) (v' i l) (v' i r)
     v' i (PPair f p l r) = PPair f p (v' i l) (v' i r)
     v' i (PDPair f p l t r) = PDPair f p (v' i l) (v' i t) (v' i r)
     v' i (PAlternative a as) = PAlternative a $ map (v' i) as

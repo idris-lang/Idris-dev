@@ -972,7 +972,6 @@ expandParams dec ps ns infs tm = en tm
        | n `elem` (map fst ps ++ ns) && t /= Placeholder
            = let n' = mkShadow n in
                  PDPair f p (PRef f' n') (en t) (en (shadow n n' r))
-    en (PEq f lt rt l r) = PEq f (en lt) (en rt) (en l) (en r)
     en (PRewrite f l r g) = PRewrite f (en l) (en r) (fmap en g)
     en (PTyped l r) = PTyped (en l) (en r)
     en (PPair f p l r) = PPair f p (en l) (en r)
@@ -1141,8 +1140,6 @@ getPriority i tm = 1 -- pri tm
             [] -> 0 -- must be locally bound, if it's not an error...
     pri (PPi _ _ _ x y) = max 5 (max (pri x) (pri y))
     pri (PTrue _ _) = 0
-    pri (PRefl _ _) = 1
-    pri (PEq _ _ _ l r) = max 1 (max (pri l) (pri r))
     pri (PRewrite _ l r _) = max 1 (max (pri l) (pri r))
     pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as)))
     pri (PAppBind _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as)))
@@ -1452,10 +1449,6 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              put (PTacImplicit 10 l n scr Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PEq _ _ _ l r)
-        = do (decls, ns) <- get
-             let isn = namesIn uvars ist l ++ namesIn uvars ist r
-             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PRewrite _ l r _)
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist r
@@ -1525,12 +1518,6 @@ addImpl' inpat env infns imp_meths ist ptm
         | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat qq imp_meths ist fc f fc ds []
     ai qq env ds (PHidden (PRef fc f))
         | not (f `elem` map fst env) = PHidden (handleErr $ aiFn inpat False qq imp_meths ist fc f fc ds [])
-    ai qq env ds (PEq fc lt rt l r)
-      = let lt' = ai qq env ds lt
-            rt' = ai qq env ds rt
-            l' = ai qq env ds l
-            r' = ai qq env ds r in
-            PEq fc lt' rt' l' r'
     ai qq env ds (PRewrite fc l r g)
        = let l' = ai qq env ds l
              r' = ai qq env ds r
@@ -1611,7 +1598,6 @@ addImpl' inpat env infns imp_meths ist ptm
     ai qq env ds (PHidden tm) = PHidden (ai qq env ds tm)
     -- Don't do PProof or PTactics since implicits get added when scope is
     -- properly known in ElabTerm.runTac
-    ai qq env ds (PRefl fc tm) = PRefl fc (ai qq env ds tm)
     ai qq env ds (PUnifyLog tm) = PUnifyLog (ai qq env ds tm)
     ai qq env ds (PNoImplicits tm) = PNoImplicits (ai qq env ds tm)
     ai qq env ds (PQuasiquote tm g) = PQuasiquote (ai True env ds tm)
@@ -1791,10 +1777,9 @@ stripLinear i tm = evalState (sl tm) [] where
                                      return $ PTacImplicit p l n sc t'
     sl x = return x
 
--- Remove functions which aren't applied to anything, which must then
+-- | Remove functions which aren't applied to anything, which must then
 -- be resolved by unification. Assume names resolved and alternatives
 -- filled in (so no ambiguity).
-
 stripUnmatchable :: IState -> PTerm -> PTerm
 stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su :: PTerm -> PTerm
@@ -1816,9 +1801,8 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
                            else PAlternative b alts'
     su (PPair fc p l r) = PPair fc p (su l) (su r)
     su (PDPair fc p l t r) = PDPair fc p (su l) (su t) (su r)
-    su t@(PLam _ _ _ _ _) = PHidden t
+    su t@(PLam fc _ _ _ _) = PHidden t
     su t@(PPi _ _ _ _ _) = PHidden t
-    su t@(PEq _ _ _ _ _) = PHidden t
     su t = t
 
     ctxt = tt_ctxt i
@@ -1921,10 +1905,6 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
         | not names && (not (isConName n (tt_ctxt i) ||
                              isFnName n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]
-    match (PEq _ _ _ l r) (PEq _ _ _ l' r')
-                                    = do ml <- match' l l'
-                                         mr <- match' r r'
-                                         return (ml ++ mr)
     match (PRewrite _ l r _) (PRewrite _ l' r' _)
                                     = do ml <- match' l l'
                                          mr <- match' r r'
@@ -1955,7 +1935,6 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PQuote _) _ = return []
     match (PProof _) _ = return []
     match (PTactics _) _ = return []
-    match (PRefl _ _) (PRefl _ _) = return []
     match (PResolveTC _) (PResolveTC _) = return []
     match (PTrue _ _) (PTrue _ _) = return []
     match (PReturn _) (PReturn _) = return []
@@ -2021,7 +2000,6 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PApp f x as) = fullApp $ PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
     sm xs (PIfThenElse fc c t f) = PIfThenElse fc (sm xs c) (sm xs t) (sm xs f)
-    sm xs (PEq f xt yt x y) = PEq f (sm xs xt) (sm xs yt) (sm xs x) (sm xs y)
     sm xs (PRewrite f x y tm) = PRewrite f (sm xs x) (sm xs y)
                                            (fmap (sm xs) tm)
     sm xs (PTyped x y) = PTyped (sm xs x) (sm xs y)
@@ -2050,7 +2028,6 @@ shadow n n' t = sm t where
     sm (PAppBind f x as) = PAppBind f (sm x) (map (fmap sm) as)
     sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
     sm (PIfThenElse fc c t f) = PIfThenElse fc (sm c) (sm t) (sm f)
-    sm (PEq f xt yt x y) = PEq f (sm xt) (sm yt) (sm x) (sm y)
     sm (PRewrite f x y tm) = PRewrite f (sm x) (sm y) (fmap sm tm)
     sm (PTyped x y) = PTyped (sm x) (sm y)
     sm (PPair f p x y) = PPair f p (sm x) (sm y)

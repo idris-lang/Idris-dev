@@ -326,10 +326,6 @@ simpleExpr syn =
             try (simpleExternalExpr syn)
         <|> do x <- try (lchar '?' *> (fst <$> name)); return (PMetavar x)
         <|> do lchar '%'; fc <- getFC; reserved "instance"; return (PResolveTC fc)
-        <|> do fc <- reservedFC "Refl"
-               tm <- option Placeholder (do lchar '{'; t <- expr syn; lchar '}';
-                                            return t)
-               return (PRefl fc tm)
         <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
