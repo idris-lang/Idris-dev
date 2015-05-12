@@ -2,11 +2,13 @@
 
 module Idris.REPL.Browse (namespacesInNS, namesInNS) where
 
+import Control.Monad (filterM)
+
 import Data.List (isSuffixOf, nub)
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T (unpack)
 
-import Idris.Core.Evaluate (ctxtAlist)
+import Idris.Core.Evaluate (ctxtAlist, Accessibility(Hidden), lookupDefAccExact)
 import Idris.Core.TT (Name(..))
 
 import Idris.AbsSyntaxTree (Idris)
@@ -31,7 +33,12 @@ namespacesInNS ns = do let revNS = reverse ns
 namesInNS :: [String] -> Idris [Name]
 namesInNS ns = do let revNS = reverse ns
                   allNames <- fmap ctxtAlist getContext
-                  return [ n | (n, space) <- mapMaybe (getNS . fst) allNames
-                             , revNS == space ]
+                  let namesInSpace = [ n | (n, space) <- mapMaybe (getNS . fst) allNames
+                                         , revNS == space ]
+                  filterM accessible namesInSpace
   where getNS n@(NS (UN n') namespace) = Just (n, (map T.unpack namespace))
         getNS _ = Nothing
+        accessible n = do ctxt <- getContext
+                          case lookupDefAccExact n False ctxt of
+                            Just (_, Hidden ) -> return False
+                            _ -> return True
