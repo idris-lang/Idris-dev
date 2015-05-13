@@ -93,14 +93,14 @@ updateAt (FS k) f (x::xs) = x :: updateAt k f xs
 -- Subvectors
 --------------------------------------------------------------------------------
 
-||| Get the first m elements of a Vect
-||| @ m the number of elements to take
+||| Get the first n elements of a Vect
+||| @ n the number of elements to take
 take : (n : Nat) -> Vect (n + m) a -> Vect n a
 take Z     xs        = []
 take (S k) (x :: xs) = x :: take k xs
 
-||| Remove the first m elements of a Vect
-||| @ m the number of elements to remove
+||| Remove the first n elements of a Vect
+||| @ n the number of elements to remove
 drop : (n : Nat) -> Vect (n + m) a -> Vect m a
 drop Z     xs        = xs
 drop (S k) (x :: xs) = drop k xs
@@ -448,7 +448,7 @@ delete = deleteBy (==)
 ||| A tuple where the first element is a Vect of the n first elements and
 ||| the second element is a Vect of the remaining elements of the original Vect
 ||| It is equivalent to (take n xs, drop n xs)
-||| @ m   the index to split at
+||| @ n   the index to split at
 ||| @ xs  the Vect to split in two
 splitAt : (n : Nat) -> (xs : Vect (n + m) a) -> (Vect n a, Vect m a)
 splitAt n xs = (take n xs, drop n xs)
