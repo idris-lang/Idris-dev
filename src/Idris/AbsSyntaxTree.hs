@@ -844,7 +844,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PDoBlock [PDo] -- ^ Do notation
            | PIdiom FC PTerm -- ^ Idiom brackets
            | PReturn FC
-           | PMetavar Name -- ^ A metavariable, ?name
+           | PMetavar FC Name -- ^ A metavariable, ?name, and its precise location
            | PProof [PTactic] -- ^ Proof script
            | PTactics [PTactic] -- ^ As PProof, but no auto solving
            | PElabError Err -- ^ Error to report on elaboration
@@ -1063,7 +1063,7 @@ highestFC (PDoBlock lines) =
 
 highestFC (PIdiom fc _) = Just fc
 highestFC (PReturn fc) = Just fc
-highestFC (PMetavar _) = Nothing
+highestFC (PMetavar fc _) = Just fc
 highestFC (PProof _) = Nothing
 highestFC (PTactics _) = Nothing
 highestFC (PElabError _) = Nothing
@@ -1620,7 +1620,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
       text "proof" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
     prettySe p bnd (PTactics ts) =
       text "tactics" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
-    prettySe p bnd (PMetavar n) = text "?" <> pretty n
+    prettySe p bnd (PMetavar _ n) = annotate (AnnName n (Just MetavarOutput) Nothing Nothing) $  text "?" <> pretty n
     prettySe p bnd (PReturn f) = kwd "return"
     prettySe p bnd PImpossible = kwd "impossible"
     prettySe p bnd Placeholder = text "_"
@@ -1893,7 +1893,7 @@ instance Sized PTerm where
   size (PDoBlock dos) = 1 + size dos
   size (PIdiom fc term) = 1 + size term
   size (PReturn fc) = 1
-  size (PMetavar name) = 1
+  size (PMetavar _ name) = 1
   size (PProof tactics) = size tactics
   size (PElabError err) = size err
   size PImpossible = 1

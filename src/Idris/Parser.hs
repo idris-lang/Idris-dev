@@ -879,7 +879,7 @@ rhs syn n = do lchar '='; expr syn
         addLet fc nm (PLet fc' n nfc ty val r) = PLet fc' n nfc ty val (addLet fc nm r)
         addLet fc nm (PCase fc' t cs) = PCase fc' t (map addLetC cs)
           where addLetC (l, r) = (l, addLet fc nm r)
-        addLet fc nm r = (PLet fc (sUN "value") NoFC Placeholder r (PMetavar nm))
+        addLet fc nm r = (PLet fc (sUN "value") NoFC Placeholder r (PMetavar NoFC nm))
 
 {- |Parses a function clause
 

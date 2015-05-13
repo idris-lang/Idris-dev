@@ -128,9 +128,9 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
 
     mkMVApp n []
-            = PMetavar n
+            = PMetavar NoFC n
     mkMVApp n args
-            = PApp un (PMetavar n) (map pexp args)
+            = PApp un (PMetavar NoFC n) (map pexp args)
     mkPApp n args
         | Just imps <- lookupCtxtExact n (idris_implicits ist)
             = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)

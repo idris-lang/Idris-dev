@@ -249,7 +249,7 @@ instance NFData PTerm where
         rnf (PDoBlock x1) = rnf x1 `seq` ()
         rnf (PIdiom x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PReturn x1) = rnf x1 `seq` ()
-        rnf (PMetavar x1) = rnf x1 `seq` ()
+        rnf (PMetavar x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PProof x1) = rnf x1 `seq` ()
         rnf (PTactics x1) = rnf x1 `seq` ()
         rnf (PElabError x1) = rnf x1 `seq` ()

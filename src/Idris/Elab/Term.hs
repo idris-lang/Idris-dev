@@ -879,10 +879,10 @@ elab ist info emode opts fn tm
                                             (appImpl es)
                                             (elab' ina fc Placeholder)
                                             (show f)
-    elab' ina fc Placeholder 
+    elab' ina fc Placeholder
         = do (h : hs) <- get_holes
              movelast h
-    elab' ina fc (PMetavar n) =
+    elab' ina fc (PMetavar nfc n) =
           do ptm <- get_term
              -- When building the metavar application, leave out the unique
              -- names which have been used elsewhere in the term, since we
@@ -892,6 +892,7 @@ elab ist info emode opts fn tm
              attack
              defer unique_used n'
              solve
+             highlightSource nfc (AnnName n' (Just MetavarOutput) Nothing Nothing)
         where mkN n@(NS _ _) = n
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
