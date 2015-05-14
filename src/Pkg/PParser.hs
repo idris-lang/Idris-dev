@@ -64,7 +64,7 @@ pPkg = do reserved "package"; p <- fst <$> identifier
 
 pClause :: PParser ()
 pClause = do reserved "executable"; lchar '=';
-             exec <- iName []
+             exec <- fst <$> iName []
              st <- get
              put (st { execout = Just (if isWindows
                                           then ((show exec) ++ ".exe")
