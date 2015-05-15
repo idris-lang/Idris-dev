@@ -353,24 +353,33 @@ pop_estack = do i <- getIState
     where ptail [] = []
           ptail (x : xs) = xs
 
--- Add a class instance function. Dodgy hack: Put integer instances first in the
--- list so they are resolved by default.
+-- | Add a class instance function.
+--
+-- Precondition: the instance should have the correct type.
+--
+-- Dodgy hack 1: Put integer instances first in the list so they are
+-- resolved by default.
+--
 -- Dodgy hack 2: put constraint chasers (@@) last
-
-addInstance :: Bool -> Name -> Name -> Idris ()
-addInstance int n i
+addInstance :: Bool -- ^ whether the name is an Integer instance
+            -> Bool -- ^ whether to include the instance in instance search
+            -> Name -- ^ the name of the class
+            -> Name -- ^ the name of the instance
+            -> Idris ()
+addInstance int res n i
     = do ist <- getIState
          case lookupCtxt n (idris_classes ist) of
                 [CI a b c d e ins fds] ->
                      do let cs = addDef n (CI a b c d e (addI i ins) fds) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
-                _ -> do let cs = addDef n (CI (sMN 0 "none") [] [] [] [] [i] []) (idris_classes ist)
+                _ -> do let cs = addDef n (CI (sMN 0 "none") [] [] [] [] [(i, res)] []) (idris_classes ist)
                         putIState $ ist { idris_classes = cs }
-  where addI i ins | int = i : ins
-                   | chaser n = ins ++ [i]
+  where addI, insI :: Name -> [(Name, Bool)] -> [(Name, Bool)]
+        addI i ins | int = (i, res) : ins
+                   | chaser n = ins ++ [(i, res)]
                    | otherwise = insI i ins
-        insI i [] = [i]
-        insI i (n : ns) | chaser n = i : n : ns
+        insI i [] = [(i, res)]
+        insI i (n : ns) | chaser (fst n) = (i, res) : n : ns
                         | otherwise = n : insI i ns
 
         chaser (UN nm)

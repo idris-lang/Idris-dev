@@ -209,8 +209,8 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              let conn' = case lookupCtxtName conn (idris_classes i) of
                                 [(n, _)] -> n
                                 _ -> conn
-             addInstance False conn' cfn
-             addIBC (IBCInstance False conn' cfn)
+             addInstance False True conn' cfn
+             addIBC (IBCInstance False True conn' cfn)
 --              iputStrLn ("Added " ++ show (conn, cfn, ty))
              return [PTy emptyDocstring [] syn fc [] cfn NoFC ty,
                      PClauses fc [Dictionary] cfn [PClause fc cfn lhs [] rhs []]]

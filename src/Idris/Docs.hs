@@ -232,7 +232,7 @@ getDocs n w
         classNameForInst ist n =
           listToMaybe [ cn
                       | (cn, ci) <- toAlist (idris_classes ist)
-                      , n `elem` class_instances ci
+                      , n `elem` map fst (class_instances ci)
                       ]
 
 docData :: Name -> TypeInfo -> Idris Docs
@@ -254,7 +254,7 @@ docClass n ci
            instances = map (\inst -> (namedInst inst,
                                       delabTy i inst,
                                       docsForInstance inst))
-                           (nub (class_instances ci))
+                           (nub (map fst (class_instances ci)))
            (subclasses, instances') = partition (isSubclass . (\(_,tm,_) -> tm)) instances
            superclasses = catMaybes $ map getDInst (class_default_superclasses ci)
        mdocs <- mapM (docFun . fst) (class_methods ci)

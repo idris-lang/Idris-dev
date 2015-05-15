@@ -74,6 +74,7 @@ data Elab : Type -> Type where
 
   prim__DeclareType : TyDecl -> Elab ()
   prim__DefineFunction : FunDefn -> Elab ()
+  prim__AddInstance : TTName -> TTName -> Elab ()
 
   prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
 
@@ -203,6 +204,13 @@ declareType decl = prim__DeclareType decl
 
 defineFunction : FunDefn -> Elab ()
 defineFunction defun = prim__DefineFunction defun
+
+||| Register a new instance for type class resolution
+|||
+||| @ className the name of the class for which an instance is being registered
+||| @ instName the name of the definition to use in instance search
+addInstance : (className, instName : TTName) -> Elab ()
+addInstance className instName = prim__AddInstance className instName
 
 debug : Elab a
 debug = prim__Debug Nothing

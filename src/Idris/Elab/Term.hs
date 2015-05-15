@@ -1431,12 +1431,14 @@ findHighlight n = do ctxt <- get_context
                                     Nothing -> lift . tfail . InternalMsg $
                                                  "Can't find name" ++ show n
 
-
+-- | Find the names of instances that have been designeated for
+-- searching (i.e. non-named instances or instances from Elab scripts)
 findInstances :: IState -> Term -> [Name]
 findInstances ist t
     | (P _ n _, _) <- unApply (getRetTy t)
         = case lookupCtxt n (idris_classes ist) of
-            [CI _ _ _ _ _ ins _] -> filter accessible ins
+            [CI _ _ _ _ _ ins _] ->
+              [n | (n, True) <- ins, accessible n]
             _ -> []
     | otherwise = []
   where accessible n = case lookupDefAccExact n False (tt_ctxt ist) of
@@ -1466,11 +1468,10 @@ proofSearch' ist rec ambigok depth prv top n hints
          proofSearch rec prv ambigok (not prv) depth
                      (elab ist toplevel ERHS [] (sMN 0 "tac")) top n hints ist
 
--- Resolve type classes. This will only pick up 'normal' instances, never
--- named instances (hence using 'tcname' to check it's a generated instance
--- name).
+-- | Resolve type classes. This will only pick up 'normal' instances, never
+-- named instances (which is enforced by 'findInstances').
 resolveTC :: Bool -- using default Int
-             -> Bool -- allow metavariables in the goal 
+             -> Bool -- allow metavariables in the goal
              -> Int -- depth
              -> Term -- top level goal
              -> Name -- top level function name
@@ -1527,9 +1528,6 @@ resTC' tcs defaultOn topholes depth topg fn ist
        | Constant _ <- c = not (n `elem` hs)
     notHole _ _ = True
 
-    elabTC n | n /= fn && tcname n = (resolve n depth, show n)
-             | otherwise = (fail "Can't resolve", show n)
-
     -- HACK! Rather than giving a special name, better to have some kind
     -- of flag in ClassInfo structure
     chaser (UN nm)
@@ -1555,11 +1553,11 @@ resTC' tcs defaultOn topholes depth topg fn ist
                             -- ps <- get_probs
                             lift $ tfail $ CantResolve False topg
     blunderbuss t d stk (n:ns)
-        | n /= fn && (n `elem` stk || tcname n) 
-              = tryCatch (resolve n d) 
+        | n /= fn -- && (n `elem` stk)
+              = tryCatch (resolve n d)
                     (\e -> case e of
                              CantResolve True _ -> lift $ tfail e
-                             _ -> blunderbuss t d stk ns) 
+                             _ -> blunderbuss t d stk ns)
         | otherwise = blunderbuss t d stk ns
 
     introImps = do g <- goal
@@ -1887,6 +1885,12 @@ runTactical fc env tm = do tm' <- eval tm
       | n == tacN "prim__DefineFunction", [decl] <- args
       = do defn <- reifyFunDefn decl
            defineFunction defn
+           returnUnit
+      | n == tacN "prim__AddInstance", [cls, inst] <- args
+      = do className <- reifyTTName cls
+           instName <- reifyTTName inst
+           updateAux $ \e -> e { new_tyDecls = RAddInstance className instName :
+                                               new_tyDecls e}
            returnUnit
       | n == tacN "prim__RecursiveElab", [goal, script] <- args
       = do goal' <- reifyRaw goal
@@ -2266,6 +2270,12 @@ processTacticDecls info steps =
              let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
              in addDeferred ds'
            _ -> return ()
+    RAddInstance className instName ->
+      do -- The type class resolution machinery relies on a special 
+         logLvl 2 $ "Adding elab script instance " ++ show instName ++
+                    " for " ++ show className
+         addInstance False True className instName
+         addIBC (IBCInstance False True className instName)
     RClausesInstrs n cs ->
       do logLvl 3 $ "Pattern-matching definition from tactics: " ++ show n
          solveDeferred n
