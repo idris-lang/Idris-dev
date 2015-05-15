@@ -15,6 +15,7 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
+import Idris.Core.ProofTerm (getProofTerm)
 import Idris.Core.Typecheck (check, recheck, isType)
 import Idris.Coverage (buildSCG, checkDeclTotality, genClauses, recoverableCoverage, validCoverageCase)
 import Idris.ErrReverse (errReverse)
@@ -1156,7 +1157,7 @@ elab ist info emode opts fn tm
          focus n
          elab' ina (Just fc') tm
          env <- get_env
-         runTactical (maybe fc' id fc) env (P Bound n' Erased)
+         runTactical ist (maybe fc' id fc) env (P Bound n' Erased)
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
@@ -1470,12 +1471,12 @@ proofSearch' ist rec ambigok depth prv top n hints
 
 -- | Resolve type classes. This will only pick up 'normal' instances, never
 -- named instances (which is enforced by 'findInstances').
-resolveTC :: Bool -- using default Int
-             -> Bool -- allow metavariables in the goal
-             -> Int -- depth
-             -> Term -- top level goal
-             -> Name -- top level function name
-             -> IState -> ElabD ()
+resolveTC :: Bool -- ^ using default Int
+          -> Bool -- ^ allow metavariables in the goal
+          -> Int -- ^ depth
+          -> Term -- ^ top level goal, for error messages
+          -> Name -- ^ top level function name, to prevent loops
+          -> IState -> ElabD ()
 resolveTC def mvok depth top fn ist
    = do hs <- get_holes
         resTC' [] def hs depth top fn ist
@@ -1671,16 +1672,16 @@ case_ ind autoSolve ist fn tm = do
   when autoSolve solveAll
 
 
-runTactical :: FC -> Env -> Term -> ElabD ()
-runTactical fc env tm = do tm' <- eval tm
-                           runTacTm tm'
-                           return ()
+runTactical :: IState -> FC -> Env -> Term -> ElabD ()
+runTactical ist fc env tm = do tm' <- eval tm
+                               runTacTm tm'
+                               return ()
   where
     eval tm = do ctxt <- get_context
                  env <- get_env
                  return $ normaliseAll ctxt env (finalise tm)
 
-    returnUnit = fmap fst $ get_type_val (Var unitCon)
+    returnUnit = return $ P (DCon 0 0 False) unitCon (P (TCon 0 0) unitTy Erased)
 
     patvars :: [Name] -> Term -> ([Name], Term)
     patvars ns (Bind n (PVar t) sc) = patvars (n : ns) (instantiate (P Bound n t) sc)
@@ -1892,6 +1893,11 @@ runTactical fc env tm = do tm' <- eval tm
            updateAux $ \e -> e { new_tyDecls = RAddInstance className instName :
                                                new_tyDecls e}
            returnUnit
+      | n == tacN "prim__ResolveTC", [fn] <- args
+      = do g <- goal
+           fn <- reifyTTName fn
+           resolveTC False True 100 g fn ist
+           returnUnit
       | n == tacN "prim__RecursiveElab", [goal, script] <- args
       = do goal' <- reifyRaw goal
            ctxt <- get_context
@@ -1902,9 +1908,10 @@ runTactical fc env tm = do tm' <- eval tm
            aux <- getAux
            datatypes <- get_datatypes
            env <- get_env
-           (tm_out, ES (_, aux') _ _) <-
-              lift $ runElab aux (runTactical fc env script >> solve >> get_term)
+           (_, ES (p, aux') _ _) <-
+              lift $ runElab aux (runTactical ist fc [] script)
                              (newProof recH ctxt datatypes goalTT)
+           let tm_out = getProofTerm (pterm p)
            updateAux $ const aux'
            env' <- get_env
            (tm, ty, _) <- lift $ recheck ctxt env (forget tm_out) tm_out

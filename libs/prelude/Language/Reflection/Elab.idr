@@ -76,6 +76,7 @@ data Elab : Type -> Type where
   prim__DefineFunction : FunDefn -> Elab ()
   prim__AddInstance : TTName -> TTName -> Elab ()
 
+  prim__ResolveTC : TTName -> Elab ()
   prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
 
   prim__Debug : {a : Type} -> Maybe String -> Elab a
@@ -211,6 +212,13 @@ defineFunction defun = prim__DefineFunction defun
 ||| @ instName the name of the definition to use in instance search
 addInstance : (className, instName : TTName) -> Elab ()
 addInstance className instName = prim__AddInstance className instName
+
+||| Attempt to solve the current goal with a type class dictionary
+|||
+||| @ fn the name of the definition being elaborated (to prevent Idris
+||| from looping)
+resolveTC : (fn : TTName) -> Elab ()
+resolveTC fn = prim__ResolveTC fn
 
 debug : Elab a
 debug = prim__Debug Nothing
