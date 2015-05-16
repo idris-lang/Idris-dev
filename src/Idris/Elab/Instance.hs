@@ -77,9 +77,9 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
             Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping i (class_determiners ci) (delab i nty))
-                                (class_instances ci)
-                          addInstance intInst n iname
-            Just _ -> addInstance intInst n iname
+                                (map fst $ class_instances ci)
+                          addInstance intInst True n iname
+            Just _ -> addInstance intInst False n iname
     when (what /= ETypes && (not (null ds && not emptyclass))) $ do
          let ips = zip (class_params ci) ps
          let ns = case n of
@@ -143,7 +143,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          mapM_ (rec_elabDecl info EAll info) idecls
          ist <- getIState
          checkInjectiveArgs fc n (class_determiners ci) (lookupTyExact iname (tt_ctxt ist))
-         addIBC (IBCInstance intInst n iname)
+         addIBC (IBCInstance intInst (isNothing expn) n iname)
 
   where
     intInst = case ps of
@@ -186,7 +186,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
              ctxt <- getContext
              (cty, _) <- recheckC fc id [] tyT
              let nty = normalise ctxt [] cty
-             return $ any (isJust . findOverlapping i (class_determiners ci) (delab i nty)) (class_instances ci)
+             return $ any (isJust . findOverlapping i (class_determiners ci) (delab i nty)) (map fst $ class_instances ci)
 
     findOverlapping i dets t n
      | take 2 (show n) == "@@" = Nothing

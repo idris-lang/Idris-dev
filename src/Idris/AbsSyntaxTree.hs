@@ -274,7 +274,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCImp Name
               | IBCStatic Name
               | IBCClass Name
-              | IBCInstance Bool Name Name
+              | IBCInstance Bool Bool Name Name
               | IBCDSL Name
               | IBCData Name
               | IBCOpt Name
@@ -672,6 +672,7 @@ data Directive = DLib Codegen String |
 -- after a term elaboration when there's been reflected elaboration.
 data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
                        | RClausesInstrs Name [([Name], Term, Term)]
+                       | RAddInstance Name Name
 
 -- | For elaborator state
 data EState = EState {
@@ -1083,7 +1084,7 @@ data ClassInfo = CI { instanceCtorName :: Name,
                       class_defaults :: [(Name, (Name, PDecl))], -- method name -> default impl
                       class_default_superclasses :: [PDecl],
                       class_params :: [Name],
-                      class_instances :: [Name],
+                      class_instances :: [(Name, Bool)], -- the Bool is whether to include in instance search, so named instances are excluded
                       class_determiners :: [Int] }
     deriving Show
 {-!

@@ -439,7 +439,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     className <- getClassName clss
     classDef <- lookupCtxt className classInfo
     n <- class_instances classDef
-    def <- lookupCtxt n (definitions ctxt)
+    def <- lookupCtxt (fst n) (definitions ctxt)
     nty <- normaliseC ctxt [] <$> (case typeFromDef def of Just x -> [x]; Nothing -> [])
     let ty' = vToP (uniqueBinders usedns nty)
     return ty'

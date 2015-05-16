@@ -41,7 +41,7 @@ import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word16
-ibcVersion = 108
+ibcVersion = 109
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -52,7 +52,7 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_fixes :: ![FixDecl],
                          ibc_statics :: ![(Name, [Bool])],
                          ibc_classes :: ![(Name, ClassInfo)],
-                         ibc_instances :: ![(Bool, Name, Name)],
+                         ibc_instances :: ![(Bool, Bool, Name, Name)],
                          ibc_dsls :: ![(Name, DSL)],
                          ibc_datatypes :: ![(Name, TypeInfo)],
                          ibc_optimise :: ![(Name, OptInfo)],
@@ -229,8 +229,8 @@ ibc i (IBCClass n) f
                    = case lookupCtxtExact n (idris_classes i) of
                         Just v -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> ifail "IBC write failed"
-ibc i (IBCInstance int n ins) f
-                   = return f { ibc_instances = (int,n,ins): ibc_instances f     }
+ibc i (IBCInstance int res n ins) f
+                   = return f { ibc_instances = (int, res, n, ins) : ibc_instances f }
 ibc i (IBCDSL n) f
                    = case lookupCtxtExact n (idris_dsls i) of
                         Just v -> return f { ibc_dsls = (n,v): ibc_dsls f     }
@@ -439,8 +439,8 @@ pClasses cs = mapM_ (\ (n, c) ->
                                            = addDef n c' (idris_classes i) }))
                     cs
 
-pInstances :: [(Bool, Name, Name)] -> Idris ()
-pInstances cs = mapM_ (\ (i, n, ins) -> addInstance i n ins) cs
+pInstances :: [(Bool, Bool, Name, Name)] -> Idris ()
+pInstances cs = mapM_ (\ (i, res, n, ins) -> addInstance i res n ins) cs
 
 pDSLs :: [(Name, DSL)] -> Idris ()
 pDSLs cs = mapM_ (\ (n, c) -> updateIState (\i ->
