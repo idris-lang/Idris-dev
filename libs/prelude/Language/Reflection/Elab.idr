@@ -1,3 +1,8 @@
+||| Primitives and tactics for elaborator reflection.
+|||
+||| Elaborator reflection allows Idris code to control Idris's
+||| built-in elaborator, and re-use features like the unifier, the
+||| type checker, and the hole mechanism.
 module Language.Reflection.Elab
 
 import Builtins
