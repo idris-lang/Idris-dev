@@ -73,11 +73,12 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
              comp <- getCC
              libFlags <- getLibFlags
              incFlags <- getIncFlags
+             envFlags <- getEnvFlags
              let args = [gccDbg dbg] ++
                         gccFlags iface ++
                         -- # Any flags defined here which alter the RTS API must also be added to config.mk
                         ["-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS", "-msse2",
-                         "-I."] ++ objs ++ ["-x", "c"] ++
+                         "-I."] ++ objs ++ ["-x", "c"] ++ envFlags ++
                         (if (exec == Executable) then [] else ["-c"]) ++
                         [tmpn] ++
                         (if not iface then concatMap words libFlags else []) ++

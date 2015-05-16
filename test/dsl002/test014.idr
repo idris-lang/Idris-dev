@@ -34,6 +34,7 @@ syntax rreadLine [h] = Use readLine h
 syntax reof [h]      = Use eof h
 
 syntax rputStrLn [s] = Lift (putStrLn s)
+syntax rputStr [s] = Lift (putStr s)
 
 syntax "if" "opened" [f] "then" [e] "else" [t] = Check f t e
 
@@ -57,7 +58,7 @@ readH : String -> RES ()
 readH fn = res (do let x = open fn Reading
                    if opened x then
                        do str <- rreadLine x
-                          rputStrLn str
+                          rputStr str
                           rclose x
                        else rputStrLn "Error")
 

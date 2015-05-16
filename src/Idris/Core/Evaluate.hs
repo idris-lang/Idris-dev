@@ -1007,11 +1007,11 @@ isTCDict n ctxt
          _                          -> False
 
 lookupP :: Name -> Context -> [Term]
-lookupP = lookupP_all False
+lookupP = lookupP_all False False
 
-lookupP_all :: Bool -> Name -> Context -> [Term]
-lookupP_all all n ctxt
-   = do (n', def) <- lookupCtxtName n (definitions ctxt)
+lookupP_all :: Bool -> Bool -> Name -> Context -> [Term]
+lookupP_all all exact n ctxt
+   = do (n', def) <- names 
         p <- case def of
           (Function ty tm, a, _, _)      -> return (P Ref n' ty, a)
           (TyDecl nt ty, a, _, _)        -> return (P nt n' ty, a)
@@ -1020,6 +1020,11 @@ lookupP_all all n ctxt
         case snd p of
           Hidden -> if all then return (fst p) else []
           _      -> return (fst p)
+  where
+    names = let ns = lookupCtxtName n (definitions ctxt) in
+                if exact 
+                   then filter (\ (n', d) -> n' == n) ns
+                   else ns
 
 lookupDefExact :: Name -> Context -> Maybe Def
 lookupDefExact n ctxt = tfst <$> lookupCtxtExact n (definitions ctxt)
