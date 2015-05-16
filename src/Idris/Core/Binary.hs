@@ -5,6 +5,7 @@ module Idris.Core.Binary where
 
 import Control.Applicative ((<*>), (<$>))
 import Control.Monad (liftM2)
+import Control.DeepSeq (($!!))
 
 import Data.Binary
 import Data.Vector.Binary
@@ -308,7 +309,8 @@ instance Binary Name where
 instance Binary T.Text where
         put x = put (E.encodeUtf8 x)
         get = do x <- get
-                 return (E.decodeUtf8 x)
+                 return $!! (E.decodeUtf8 x)
+
 
 instance Binary SpecialName where
         put x
