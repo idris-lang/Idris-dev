@@ -566,12 +566,12 @@ apply' fillt fn imps =
        let dont = if null imps 
                      then head hs : dontunify p
                      else getNonUnify (head hs : dontunify p) imps args
-       let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont) ++ "\n" ++ show ptm) $
+       let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont)) $
                         unified p
        let unify = -- trace ("Not done " ++ show hs) $
                    dropGiven dont hunis hs
-       let notunify = -- trace ("Not done " ++ show hs) $
-                       keepGiven dont hunis hs
+       let notunify = -- trace ("Not done " ++ show (hs, hunis)) $
+                      keepGiven dont hunis hs
        put (ES (p { dontunify = dont, unified = (n, unify),
                     notunified = notunify ++ notunified p }, a) s prev)
        fillt (raw_apply fn (map (Var . snd) args))

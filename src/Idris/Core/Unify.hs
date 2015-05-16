@@ -300,11 +300,12 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
         res ->
                let topxn = renameBindersTm env (normalise ctxt env topx)
                    topyn = renameBindersTm env (normalise ctxt env topy) in
---                     trace ("Unifying " ++ show (topx, topy) ++ "\n\n==>\n" ++ show (topxn, topyn) ++ "\n\n" ++ show res ++ "\n\n") $
+--                     trace ("Unifying " ++ show (topx, topy) ++ "\n\n==>\n" ++ show (topxn, topyn) ++ "\n\n") $
                      case runStateT (un False [] topxn topyn)
                                 (UI 0 []) of
                        OK (v, UI _ fails) ->
                             do v' <- trimSolutions (topx, xfrom) (topy, yfrom) from env v
+--                                trace ("OK " ++ show (topxn, topyn, v, holes)) $ 
                                return (map (renameBinders env) v', reverse fails)
 --         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
                        Error e -> tfail e

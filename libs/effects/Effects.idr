@@ -314,9 +314,11 @@ lift e {prf} = liftP prf e
 ||| implicit and initialised automatically.
 |||
 ||| @prog The effectful program to run.
-run : Applicative m => {default MkDefaultEnv env : Env m xs}
-    -> (prog : EffM m a xs xs') -> m a
-run {env} prog = eff env prog (\r, env => pure r)
+%no_implicit
+run : Applicative m => 
+      (prog : EffM m a xs xs') -> {default MkDefaultEnv env : Env m xs} ->
+      m a
+run prog {env} = eff env prog (\r, env => pure r)
 
 ||| Run an effectful program in the identity context.
 |||
@@ -324,8 +326,10 @@ run {env} prog = eff env prog (\r, env => pure r)
 ||| The `env` argument is implicit and initialised automatically.
 |||
 ||| @prog The effectful program to run.
-runPure : {default MkDefaultEnv env : Env id xs} -> (prog : EffM id a xs xs') -> a
-runPure {env} prog = eff env prog (\r, env => r)
+%no_implicit
+runPure : (prog : EffM id a xs xs') -> 
+          {default MkDefaultEnv env : Env id xs} -> a 
+runPure prog {env} = eff env prog (\r, env => r)
 
 ||| Run an effectful program in a given context `m` with a default value for the environment.
 |||
@@ -333,6 +337,7 @@ runPure {env} prog = eff env prog (\r, env => r)
 |||
 ||| @env The environment to use.
 ||| @prog The effectful program to run.
+%no_implicit
 runInit : Applicative m => (env : Env m xs) -> (prog : EffM m a xs xs') -> m a
 runInit env prog = eff env prog (\r, env => pure r)
 
@@ -342,12 +347,15 @@ runInit env prog = eff env prog (\r, env => pure r)
 |||
 ||| @env The environment to use.
 ||| @prog The effectful program to run.
+%no_implicit
 runPureInit : (env : Env id xs) -> (prog : EffM id a xs xs') -> a
 runPureInit env prog = eff env prog (\r, env => r)
 
+%no_implicit
 runWith : (a -> m a) -> Env m xs -> EffM m a xs xs' -> m a
 runWith inj env prog = eff env prog (\r, env => inj r)
 
+%no_implicit
 runEnv : Applicative m => Env m xs -> EffM m a xs xs' ->
          m (x : a ** Env m (xs' x))
 runEnv env prog = eff env prog (\r, env => pure (r ** env))

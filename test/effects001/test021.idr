@@ -28,6 +28,6 @@ testFile = do True <- open "testFile" Read  | False => putStrLn "Error!"
               putStrLn (show !(Count :- get))
 
 main : IO ()
-main = run testFile
+main = run testFile 
 
 

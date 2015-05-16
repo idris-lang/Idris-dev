@@ -88,20 +88,29 @@ proofSearch False fromProver ambigok deferonfail depth elab _ nroot [fn] ist
 proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist 
        = do compute
             ty <- goal
+            hs <- get_holes
+            env <- get_env
+            tm <- get_term
             argsok <- conArgsOK ty
             if ambigok || argsok then
                case lookupCtxt nroot (idris_tyinfodata ist) of
                     [TISolution ts] -> findInferredTy ts
                     _ -> psRec rec maxDepth [] S.empty
-               else autoArg (sUN "auto") -- not enough info in the type yet
+               else do ptm <- get_term
+                       autoArg (sUN "auto") -- not enough info in the type yet
   where
     findInferredTy (t : _) = elab (delab ist (toUN t)) 
 
     conArgsOK ty
        = let (f, as) = unApply ty in
-         case f of
-              P _ n _ -> case lookupCtxtExact n (idris_datatypes ist) of
-                              Just t -> do rs <- mapM (conReady as) (con_names t)
+           case f of
+              P _ n _ -> 
+                let autohints = case lookupCtxtExact n (idris_autohints ist) of
+                                     Nothing -> []
+                                     Just hs -> hs in
+                    case lookupCtxtExact n (idris_datatypes ist) of
+                              Just t -> do rs <- mapM (conReady as) 
+                                                      (autohints ++ con_names t)
                                            return (and rs)
                               Nothing -> -- local variable, go for it
                                     return True

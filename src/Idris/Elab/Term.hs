@@ -105,7 +105,7 @@ build ist info emode opts fn tm
          probs <- get_probs
          case probs of
             [] -> return ()
-            ((_,_,_,_,e,_,_):es) -> traceWhen u ("Final problems:\n" ++ show probs) $
+            ((_,_,_,_,e,_,_):es) -> traceWhen u ("Final problems:\n" ++ qshow probs ++ "\nin\n" ++ show tm) $
                                      if inf then return ()
                                             else lift (Error e)
 
@@ -259,9 +259,10 @@ elab ist info emode opts fn tm
     elabE ina fc' t = 
      do solved <- get_recents
         as <- get_autos
+        hs <- get_holes
         -- If any of the autos use variables which have recently been solved,
         -- have another go at solving them now.
-        mapM_ (\(a, ns) -> if any (\n -> n `elem` solved) ns
+        mapM_ (\(a, ns) -> if any (\n -> n `elem` solved) ns && head hs /= a
                               then solveAuto ist fn False a
                               else return ()) as
      
@@ -721,9 +722,6 @@ elab ist info emode opts fn tm
                     mapM_ checkIfInjective (map snd ns)
                     unifyProblems -- try again with the new information,
                                   -- to help with disambiguation
-                    -- Sort so that the implicit tactics and alternatives go last
-                    let (ns', eargs) = unzip $
-                             sortBy cmpArg (zip ns args)
                     ulog <- getUnifyLog
 
                     annot <- findHighlight f
@@ -731,9 +729,9 @@ elab ist info emode opts fn tm
 
                     elabArgs ist (ina { e_inarg = e_inarg ina || not isinf }) 
                            [] fc False f
-                             (zip ns' (unmatchableArgs ++ repeat False))
+                             (zip ns (unmatchableArgs ++ repeat False))
                              (f == sUN "Force")
-                             (map (\x -> getTm x) eargs) -- TODO: remove this False arg
+                             (map (\x -> getTm x) args) -- TODO: remove this False arg
                     imp <- if (e_isfn ina) then
                               do guess <- get_guess
                                  gty <- get_type (forget guess)
@@ -784,48 +782,6 @@ elab ist info emode opts fn tm
             getReqImps (Bind x (Pi (Just i) ty _) sc)
                  = i : getReqImps sc
             getReqImps _ = []
-
-            -- normal < alternatives < lambdas < rewrites < tactic < default tactic
-            -- reason for lambdas after alternatives is that having
-            -- the alternative resolved can help with typechecking the lambda
-            -- or the rewrite. Rewrites/tactics need as much information
-            -- as possible about the type.
-            -- FIXME: Better would be to allow alternative resolution to be
-            -- retried after more information is in.
-            cmpArg (_, x) (_, y)
-                | constraint x && not (constraint y) = LT
-                | constraint y && not (constraint x) = GT
-                | otherwise
-                   = compare (conDepth 0 (getTm x) + priority x + alt x)
-                             (conDepth 0 (getTm y) + priority y + alt y)
-                where alt t = case getTm t of
-                                   PAlternative False _ -> 5
-                                   PAlternative True _ -> 2
-                                   PTactics _ -> 150
-                                   PLam _ _ _ _ _ -> 3
-                                   PRewrite _ _ _ _ -> 4
-                                   PResolveTC _ -> 0
-                                   PHidden _ -> 150
-                                   _ -> 1
-
-            constraint (PConstraint _ _ _ _) = True
-            constraint _ = False
-
-            -- Score a point for every level where there is a non-constructor
-            -- function (so higher score --> done later), and lots of points
-            -- if there is a PHidden since this should be unifiable.
-            -- Only relevant when on lhs
-            conDepth d t | not pattern = 0
-            conDepth d (PRef _ f) | isConName f (tt_ctxt ist) = 0
-                                  | otherwise = max (100 - d) 1
-            conDepth d (PApp _ f as)
-               = conDepth d f + sum (map (conDepth (d+1)) (map getTm as))
-            conDepth d (PPatvar _ _) = 0
-            conDepth d (PAlternative _ as) = maximum (map (conDepth d) as)
-            conDepth d (PHidden _) = 150
-            conDepth d Placeholder = 0
-            conDepth d (PResolveTC _) = 0
-            conDepth d t = max (100 - d) 1
 
             checkIfInjective n = do
                 env <- get_env
@@ -1450,6 +1406,7 @@ findInstances ist t
 solveAuto :: IState -> Name -> Bool -> Name -> ElabD ()
 solveAuto ist fn ambigok n
            = do hs <- get_holes
+                tm <- get_term
                 when (n `elem` hs) $ do
                   focus n
                   g <- goal

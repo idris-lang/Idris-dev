@@ -35,5 +35,3 @@ main : IO ()
 main = do putStrLn $ testShow2 [(2, (+1)), (3, abs)]
           putStrLn $ testShow [(True, False), (False, True)]
 
-
-

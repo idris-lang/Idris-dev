@@ -4,7 +4,9 @@ When elaborating an application of constructor Main.MkInfer:
 reg054.idr:34:7:When elaborating left hand side of weird:
 When elaborating argument x to Main.weird:
         No explicit types on left hand side: Char
-reg054.idr:37:9:Can't convert
-        Maybe a1
-with
-        a
+reg054.idr:37:1-8:When elaborating left hand side of tctrick:
+When elaborating an application of Main.tctrick:
+        Can't unify
+                Maybe a1 (Type of Just x)
+        with
+                a (Expected type)

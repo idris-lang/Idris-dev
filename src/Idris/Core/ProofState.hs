@@ -871,6 +871,9 @@ updateError ns (CantUnify b (l,lp) (r,rp) e xs sc)
                (updateSolvedTerm ns r, fmap (updateProv ns) rp) (updateError ns e) xs sc
 updateError ns e = e
 
+updateRes ns [] = []
+updateRes ns ((x, t) : ts) = (x, updateSolvedTerm ns t) : updateRes ns ts
+
 solveInProblems x val [] = []
 solveInProblems x val ((l, r, env, err) : ps)
    = ((psubst x val l, psubst x val r,
@@ -898,7 +901,15 @@ getProvenance _ = (Nothing, Nothing)
 updateProblems :: ProofState -> [(Name, TT Name)] -> Fails 
                     -> ([(Name, TT Name)], Fails)
 -- updateProblems ctxt [] ps inj holes = ([], ps)
-updateProblems ps updates probs = up updates probs where
+updateProblems ps updates probs = rec 10 updates probs
+ where
+  -- keep trying if we make progress, but not too many times...
+  rec 0 us fs = (us, fs)
+  rec n us fs = case up us [] fs of
+                     res@(_, []) -> res
+                     res@(us', _) | length us' == length us -> res
+                     (us', fs') -> rec (n - 1) us' fs'
+
   hs = holes ps
   inj = injective ps
   ctxt = context ps
@@ -906,8 +917,8 @@ updateProblems ps updates probs = up updates probs where
   usupp = map fst (notunified ps)
   dont = dontunify ps
 
-  up ns [] = (ns, [])
-  up ns (prob@(x, y, ready, env, err, while, um) : ps) =
+  up ns acc [] = (ns, map (updateNs ns) (reverse acc))
+  up ns acc (prob@(x, y, ready, env, err, while, um) : ps) =
     let (x', newx) = updateSolvedTerm' ns x
         (y', newy) = updateSolvedTerm' ns y
         (lp, rp) = getProvenance err
@@ -918,13 +929,17 @@ updateProblems ps updates probs = up updates probs where
             case unify ctxt env' (x', lp) (y', rp) inj hs usupp while of
                  OK (v, []) -> traceWhen ulog ("DID " ++ show (x',y',ready,v,dont)) $
                                 let v' = filter (\(n, _) -> n `notElem` dont) v in
-                                    up (ns ++ v') ps
+                                    up (ns ++ v') acc ps
                  e -> -- trace ("FAILED " ++ show (x',y',ready,e)) $
-                       let (ns', ps') = up ns ps in
-                           (ns', (x',y', False, env',err', while, um) : ps')
+                      up ns ((x',y',False,env',err',while,um) : acc) ps
             else -- trace ("SKIPPING " ++ show (x,y,ready)) $
-                 let (ns', ps') = up ns ps in
-                     (ns', (x',y', False, env',err', while, um) : ps')
+                 up ns ((x',y', False, env',err', while, um) : acc) ps
+
+  updateNs ns (x, y, t, env, err, fc, fa)
+       = let (x', newx) = updateSolvedTerm' ns x
+             (y', newy) = updateSolvedTerm' ns y in
+             (x', y', newx || newy, 
+                  updateEnv ns env, updateError ns err, fc, fa)
 
 -- attempt to solve remaining problems with match_unify
 matchProblems :: Bool -> ProofState -> [(Name, TT Name)] -> Fails 
@@ -995,7 +1010,9 @@ processTactic UnifyProblems ps
                        previous = Just ps, plog = "",
                        notunified = updateNotunified ns' (notunified ps),
                        recents = recents ps ++ map fst ns',
+                       dotted = filter (notIn ns') (dotted ps),
                        holes = holes ps \\ (map fst ns') }, plog ps)
+   where notIn ns (h, _) = h `notElem` map fst ns
 processTactic (MatchProblems all) ps
     = do let (ns', probs') = matchProblems all ps [] (problems ps)
              (ns'', probs'') = matchProblems all ps ns' probs'
@@ -1022,14 +1039,16 @@ processTactic t ps
                      let pterm'' = updateSolved ns' (pterm ps')
                      traceWhen (unifylog ps) 
                                  ("Updated problems after solve " ++ qshow probs' ++ "\n" ++
-                                  "(Toplevel) Dropping holes: " ++ show (map fst ns')) $
+                                  "(Toplevel) Dropping holes: " ++ show (map fst ns') ++ "\n" ++
+                                  "Holes were: " ++ show (holes ps')) $
                        return (ps' { pterm = pterm'',
                                      solved = Nothing,
                                      problems = probs',
                                      notunified = updateNotunified ns' (notunified ps'),
                                      previous = Just ps, plog = "",
                                      recents = recents ps' ++ map fst ns',
-                                     holes = holes ps' \\ (map fst ns')}, plog ps')
+                                     holes = holes ps' \\ (map fst ns')
+                                   }, plog ps')
 
 process :: Tactic -> Name -> StateT TState TC ()
 process EndUnify _
