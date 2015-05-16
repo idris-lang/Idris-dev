@@ -1,8 +1,9 @@
 {-# LANGUAGE CPP #-}
 module IRTS.System(getDataFileName, getDataDir, getTargetDir,getCC,getLibFlags,getIdrisLibDir,
-                   getIncFlags,getMvn,getExecutablePom, version) where
+                   getIncFlags, getEnvFlags, getMvn,getExecutablePom, version) where
 
 import Util.System
+import Data.List.Split
 
 import Control.Applicative ((<$>))
 import Data.Maybe (fromMaybe)
@@ -18,6 +19,12 @@ import Paths_idris
 
 getCC :: IO String
 getCC = fromMaybe "gcc" <$> environment "IDRIS_CC"
+
+getEnvFlags :: IO [String]
+getEnvFlags = do flags <- environment "IDRIS_CFLAGS"
+                 case flags of
+                     Nothing -> return $ []
+                     Just s -> return $ splitOn " " s
 
 mvnCommand :: String
 #ifdef mingw32_HOST_OS
