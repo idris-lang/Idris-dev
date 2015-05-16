@@ -245,7 +245,7 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
 -- Main
 
 -- Install libraries during both copy and install
--- See http://hackage.haskell.org/trac/hackage/ticket/718
+-- See https://github.com/haskell/cabal/issues/709
 main = defaultMainWithHooks $ simpleUserHooks
    { postClean = idrisClean
    , postConf  = idrisConfigure
