@@ -352,7 +352,13 @@ printLn x = putStrLn (show x)
 ||| Read one line of input from stdin, without the trailing newline
 partial
 getLine : IO' ffi String
-getLine = prim_read
+getLine = do x <- prim_read
+             return (reverse (trimNL (reverse x)))
+  where trimNL : String -> String
+        trimNL str with (strM str)
+          trimNL "" | StrNil = ""
+          trimNL (strCons '\n' xs) | StrCons _ _ = xs
+          trimNL (strCons x xs)    | StrCons _ _ = strCons x xs
 
 ||| Write a single character to stdout
 partial
@@ -548,7 +554,5 @@ readFile fn = do h <- openFile fn Read
     readFile' h contents =
        do x <- feof h
           if not x then do l <- fread h
-                           case contents of
-                                "" => readFile' h l
-                                _ => readFile' h (contents ++ "\n" ++ l)
+                           readFile' h (contents ++ l)
                    else return contents

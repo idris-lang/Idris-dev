@@ -13,7 +13,7 @@ dumpFile fn = do { h <- openFile fn Read
                                 x <- feof h
                                 return (not x) })
                           (do { l <- fread h
-                                putStrLn l })
+                                putStr l })
                    closeFile h }
 
 main : IO ()
