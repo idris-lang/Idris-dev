@@ -41,7 +41,7 @@ import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word16
-ibcVersion = 109
+ibcVersion = 110
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -1777,6 +1777,21 @@ instance Binary PTerm where
                             x4 <- get
                             return (PIfThenElse x1 x2 x3 x4)
                    _ -> error "Corrupted binary data for PTerm"
+
+instance Binary PAltType where
+        put x 
+          = case x of
+                ExactlyOne x1 -> do putWord8 0
+                                    put x1
+                FirstSuccess -> putWord8 1
+        get
+          = do i <- getWord8
+               case i of
+                   0 -> do x1 <- get
+                           return (ExactlyOne x1)
+                   1 -> return FirstSuccess
+                   _ -> error "Corrupted binary data for PAltType"
+
 
 instance (Binary t) => Binary (PTactic' t) where
         put x

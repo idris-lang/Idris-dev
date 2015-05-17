@@ -263,6 +263,10 @@ instance NFData PTerm where
         rnf (PQuoteName x1) = rnf x1 `seq` ()
         rnf (PRunElab x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
+instance NFData PAltType where
+        rnf (ExactlyOne x1) = rnf x1 `seq` ()
+        rnf FirstSuccess = ()
+
 instance (NFData t) => NFData (PTactic' t) where
         rnf (Intro x1) = rnf x1 `seq` ()
         rnf Intros = ()

@@ -1659,7 +1659,7 @@ aiFn inpat expat qq imp_meths ist fc f ffc ds as
                     then Right $ PApp fc (PRef ffc f) as
                     else Right $ mkPApp fc (length as) (PRef ffc f) as
             alts -> Right $
-                         PAlternative True $
+                         PAlternative (ExactlyOne True) $
                            map (\(f', ns) -> mkPApp fc (length ns) (PRef ffc (isImpName f f'))
                                                   (insertImpl ns as)) alts
   where

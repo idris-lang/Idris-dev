@@ -119,7 +119,7 @@ elabDocTerms info str = do typechecked <- Traversable.mapM decorate str
 -- Try running the term directly (as IO ()), then printing it as an Integer
 -- (as a default numeric tye), then printing it as any Showable thing
 elabExec :: FC -> PTerm -> PTerm
-elabExec fc tm = runtm (PAlternative False
+elabExec fc tm = runtm (PAlternative FirstSuccess
                    [printtm (PApp fc (PRef fc (sUN "the"))
                      [pexp (PConstant NoFC (AType (ATInt ITBig))), pexp tm]),
                     tm,

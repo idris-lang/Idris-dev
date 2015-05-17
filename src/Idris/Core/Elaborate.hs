@@ -747,8 +747,8 @@ no_errors tac err
 try :: Elab' aux a -> Elab' aux a -> Elab' aux a
 try t1 t2 = try' t1 t2 False
 
-handleError :: (Err -> Bool) -> Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
-handleError p t1 t2 proofSearch
+handleError :: (Err -> Bool) -> Elab' aux a -> Elab' aux a -> Elab' aux a
+handleError p t1 t2 
           = do s <- get
                ps <- get_probs
                case runStateT t1 s of

@@ -217,7 +217,7 @@ elab ist info emode opts fn tm
          let fc = maybe "(unknown)"
          elabE initElabCtxt (elabFC info) tm -- (in argument, guarded, in type, in qquote)
          est <- getAux
-         sequence_ (delayed_elab est)
+         sequence_ (get_delayed_elab est)
          end_unify
          ptm <- get_term
          when pattern -- convert remaining holes to pattern vars
@@ -229,6 +229,10 @@ elab ist info emode opts fn tm
   where
     pattern = emode == ELHS
     bindfree = emode == ETyDecl || emode == ELHS
+
+    get_delayed_elab est =
+        let ds = delayed_elab est in
+            map snd $ sortBy (\(p1, _) (p2, _) -> compare p1 p2) ds
 
     tcgen = Dictionary `elem` opts
     reflection = Reflection `elem` opts
@@ -287,7 +291,7 @@ elab ist info emode opts fn tm
             (elab' ina fc' (PApp fc (PRef fc (sUN "Force"))
                              [pimp (sUN "t") Placeholder True,
                               pimp (sUN "a") Placeholder True,
-                              pexp ct])) True
+                              pexp ct]))
 
     forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
@@ -428,7 +432,7 @@ elab ist info emode opts fn tm
                                               [pimp (sMN 0 "a") t False,
                                                pimp (sMN 0 "P") Placeholder True,
                                                pexp l, pexp r])
-    elab' ina fc (PAlternative True as)
+    elab' ina fc (PAlternative (ExactlyOne delayok) as)
         = do hnf_compute
              ty <- goal
              ctxt <- get_context
@@ -438,12 +442,31 @@ elab ist info emode opts fn tm
 --              trace (-- show tc ++ " " ++ show as ++ "\n ==> " ++ 
 --                     show (length as') ++ "\n" ++
 --                     showSep ", " (map showTmImpls as') ++ "\nEND") $
-             tryAll (zip (map (elab' ina fc) as') (map showHd as'))
+             (h : hs) <- get_holes
+             case as' of
+                  [x] -> elab' ina fc x
+                  -- If there's options, try now, and if that fails, postpone
+                  -- to later.
+                  _ -> handleError isAmbiguous
+                           (tryAll (zip (map (elab' ina fc) as') 
+                                        (map showHd as')))
+                        (do movelast h
+                            delayElab 5 $ do
+                              focus h
+                              tryAll (zip (map (elab' ina fc) as') 
+                                          (map showHd as')))
         where showHd (PApp _ (PRef _ n) _) = n
               showHd (PRef _ n) = n
               showHd (PApp _ h _) = showHd h
               showHd x = NErased -- We probably should do something better than this here
-    elab' ina fc (PAlternative False as)
+
+              isAmbiguous (CantResolveAlts _) = delayok
+              isAmbiguous (Elaborating _ _ e) = isAmbiguous e
+              isAmbiguous (ElaboratingArg _ _ _ e) = isAmbiguous e
+              isAmbiguous (At _ e) = isAmbiguous e
+              isAmbiguous _ = False
+
+    elab' ina fc (PAlternative FirstSuccess as)
         = trySeq as
         where -- if none work, take the error from the first
               trySeq (x : xs) = let e1 = elab' ina fc x in
@@ -1097,9 +1120,9 @@ elab ist info emode opts fn tm
              -- Delay dotted things to the end, then when we elaborate them
              -- we can check the result against what was inferred
              movelast h
-             delayElab $ do focus h
-                            dotterm
-                            elab' ina fc t
+             delayElab 10 $ do focus h
+                               dotterm
+                               elab' ina fc t
     elab' ina fc (PRunElab fc' tm) =
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
@@ -1117,7 +1140,13 @@ elab ist info emode opts fn tm
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
-    delayElab t = updateAux (\e -> e { delayed_elab = delayed_elab e ++ [t] })
+    -- delay elaboration of 't', with priority 'pri' until after everything
+    -- else is done.
+    -- The delayed things with lower numbered priority will be elaborated
+    -- first. (In practice, this means delayed alternatives, then PHidden
+    -- things.)
+    delayElab pri t 
+       = updateAux (\e -> e { delayed_elab = delayed_elab e ++ [(pri, t)] })
 
     isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))
     isScr (PRef _ n) (n', b) = (n', (n == n', b))
@@ -1179,7 +1208,7 @@ elab ist info emode opts fn tm
            let tries = if pattern then [t, mkDelay env t] else [mkDelay env t, t]
            case tyh of
                 P _ (UN l) _ | l == txt "Lazy'"
-                    -> return (PAlternative False tries)
+                    -> return (PAlternative FirstSuccess tries)
                 _ -> return t
       where
         mkDelay env (PAlternative b xs) = PAlternative b (map (mkDelay env) xs)
@@ -1197,7 +1226,7 @@ elab ist info emode opts fn tm
     notImplicitable (PRef _ n)
         | [opts] <- lookupCtxt n (idris_flags ist)
             = NoImplicit `elem` opts
-    notImplicitable (PAlternative True as) = any notImplicitable as
+    notImplicitable (PAlternative (ExactlyOne _) as) = any notImplicitable as
     -- case is tricky enough without implicit coercions! If they are needed,
     -- they can go in the branches separately.
     notImplicitable (PCase _ _ _) = True
@@ -1240,8 +1269,9 @@ elab ist info emode opts fn tm
            let t' = case (t, cs) of
                          (PCoerced tm, _) -> tm
                          (_, []) -> t
-                         (_, cs) -> PAlternative False [t ,
-                                       PAlternative True (map (mkCoerce env t) cs)]
+                         (_, cs) -> PAlternative FirstSuccess [t ,
+                                       PAlternative (ExactlyOne False) 
+                                            (map (mkCoerce env t) cs)]
            return t'
        where
          mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in

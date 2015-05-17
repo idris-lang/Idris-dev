@@ -1,5 +1,4 @@
 MAIN-PASS
 Faulty.idr:6:7:When elaborating type of Faulty.fault:
-When elaborating argument x to type constructor =:
-        Can't disambiguate name: A.num, B.C.num
+Can't disambiguate name: A.num, B.C.num
 Multiple.idr:3:1:import alias not unique: "X"

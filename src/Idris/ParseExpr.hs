@@ -445,10 +445,10 @@ bracketedExpr syn e =
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant inFC (BI x))
     | not (inPattern syn)
-        = PAlternative False
+        = PAlternative FirstSuccess
              (PApp fc (PRef fc (sUN "fromInteger")) [pexp (PConstant NoFC (BI (fromInteger x)))]
              : consts)
-    | otherwise = PAlternative False consts
+    | otherwise = PAlternative FirstSuccess consts
     where
       consts = [ PConstant inFC (BI x)
                , PConstant inFC (I (fromInteger x))
@@ -471,7 +471,7 @@ modifyConst syn fc x = x
 -}
 alt :: SyntaxInfo -> IdrisParser PTerm
 alt syn = do symbol "(|"; alts <- sepBy1 (expr' syn) (lchar ','); symbol "|)"
-             return (PAlternative False alts)
+             return (PAlternative FirstSuccess alts)
 
 {- | Parses a possibly hidden simple expression
 @

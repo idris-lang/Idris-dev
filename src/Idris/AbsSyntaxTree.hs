@@ -677,7 +677,7 @@ data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
 -- | For elaborator state
 data EState = EState {
                   case_decls :: [(Name, PDecl)],
-                  delayed_elab :: [Elab' EState ()],
+                  delayed_elab :: [(Int, Elab' EState ())],
                   new_tyDecls :: [RDeclInstructions],
                   highlighting :: [(FC, OutputAnnotation)]
               }
@@ -835,7 +835,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PPair FC PunInfo PTerm PTerm -- ^ A pair (a, b) and whether it's a product type or a pair (solved by elaboration)
            | PDPair FC PunInfo PTerm PTerm PTerm -- ^ A dependent pair (tm : a ** b) and whether it's a sigma type or a pair that inhabits one (solved by elaboration)
            | PAs FC Name PTerm -- ^ @-pattern, valid LHS only
-           | PAlternative Bool [PTerm] -- ^ True if only one may work. (| A, B, C|)
+           | PAlternative PAltType [PTerm] -- ^ True if only one may work. (| A, B, C|)
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
            | PType FC -- ^ 'Type' type
            | PUniverse Universe -- ^ Some universe
@@ -860,6 +860,9 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PRunElab FC PTerm -- ^ %runElab tm - New-style proof script
        deriving (Eq, Data, Typeable)
 
+data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
+              | FirstSuccess 
+       deriving (Eq, Data, Typeable)
 
 {-!
 deriving instance Binary PTerm
