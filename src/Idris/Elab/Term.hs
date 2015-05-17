@@ -850,6 +850,7 @@ elab ist info emode opts fn tm
                 solve
         where headRef (PRef _ _) = True
               headRef (PApp _ f _) = headRef f
+              headRef (PAlternative _ as) = all headRef as
               headRef _ = False
 
     elab' ina fc (PAppImpl f es) = do appImpl (reverse es) -- not that we look... 
