@@ -8,6 +8,8 @@ module Idris.Parser(module Idris.Parser,
 
 import Prelude hiding (pi)
 
+import qualified System.Directory as Dir (makeAbsolute)
+
 import Text.Trifecta.Delta
 import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, Err)
 import Text.Parser.LookAhead
@@ -1244,7 +1246,8 @@ parseImports fname input
               Failure err -> fail (show err)
               Success (x, annots, i) ->
                 do putIState i
-                   sendHighlighting (addPath annots fname)
+                   fname' <- runIO $ Dir.makeAbsolute fname
+                   sendHighlighting $ addPath annots fname'
                    return x
   where imports :: IdrisParser ((Maybe (Docstring ()), [String],
                                  [ImportInfo],
@@ -1263,7 +1266,7 @@ parseImports fname input
         addPath :: [(FC, OutputAnnotation)] -> FilePath -> [(FC, OutputAnnotation)]
         addPath [] _ = []
         addPath ((fc, AnnNamespace ns Nothing) : annots) path =
-          (fc, AnnNamespace ns (Just path)) : addPath annots path
+           (fc, AnnNamespace ns (Just path)) : addPath annots path
         addPath (annot:annots) path = annot : addPath annots path
 
 -- | There should be a better way of doing this...
@@ -1390,7 +1393,10 @@ loadSource lidr f toline
                                                          IDR fn -> Just fn
                                                          LIDR fn -> Just fn
                                                          _ -> Nothing
-                                           sendHighlighting [(nfc, AnnNamespace ns srcFn)])
+                                           srcFnAbs <- case srcFn of
+                                                         Just fn -> fmap Just (runIO $ Dir.makeAbsolute fn)
+                                                         Nothing -> return Nothing
+                                           sendHighlighting [(nfc, AnnNamespace ns srcFnAbs)])
                         [(re, fn, ns, nfc) | ImportInfo re fn _ ns _ nfc <- imports]
                   reportParserWarnings
 
