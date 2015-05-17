@@ -19,15 +19,15 @@ have already seen this function in Section :ref:`sect-lazy`):
 
 .. code-block:: idris
 
-    boolCase : (x:Bool) -> Lazy a -> Lazy a -> a;
-    boolCase True  t e = t;
-    boolCase False t e = e;
+    ifThenElse : (x:Bool) -> Lazy a -> Lazy a -> a;
+    ifThenElse True  t e = t;
+    ifThenElse False t e = e;
 
 and then extend the core syntax with a ``syntax`` declaration:
 
 .. code-block:: idris
 
-    syntax "if" [test] "then" [t] "else" [e] = boolCase test t e;
+    syntax if [test] then [t] else [e] = ifThenElse test t e;
 
 The left hand side of a ``syntax`` declaration describes the syntax
 rule, and the right hand side describes its expansion. The syntax rule
@@ -58,10 +58,10 @@ recursive. The following syntax extensions would therefore be valid:
 
 .. code-block:: idris
 
-    syntax [var] ":=" [val]                    = Assign var val;
-    syntax [test] "?" [t] ":" [e]              = if test then t else e;
-    syntax "select" [x] "from" [t] "where" [w] = SelectWhere x t w;
-    syntax "select" [x] "from" [t]             = Select x t;
+    syntax [var] ":=" [val]                = Assign var val;
+    syntax [test] "?" [t] ":" [e]          = if test then t else e;
+    syntax select [x] from [t] "where" [w] = SelectWhere x t w;
+    syntax select [x] from [t]             = Select x t;
 
 Syntax macros can be further restricted to apply only in patterns (i.e.,
 only on the left hand side of a pattern match clause) or only in terms
@@ -92,7 +92,7 @@ forms. For example, a ``for`` loop binds a variable on each iteration:
 
 .. code-block:: idris
 
-    syntax "for" {x} "in" [xs] ":" [body] = forLoop xs (\x => body)
+    syntax for {x} in [xs] ":" [body] = forLoop xs (\x => body)
 
     main : IO ()
     main = do for x in [1..10]:

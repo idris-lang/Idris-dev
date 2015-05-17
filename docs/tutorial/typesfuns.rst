@@ -586,9 +586,9 @@ not always the best approach. Consider the following function:
 
 .. code-block:: idris
 
-    boolCase : Bool -> a -> a -> a;
-    boolCase True  t e = t;
-    boolCase False t e = e;
+    ifThenElse : Bool -> a -> a -> a;
+    ifThenElse True  t e = t;
+    ifThenElse False t e = e;
 
 This function uses one of the ``t`` or ``e`` arguments, but not both
 (in fact, this is used to implement the ``if...then...else`` construct
@@ -606,14 +606,14 @@ data type, which allows evaluation to be suspended:
 A value of type ``Lazy a`` is unevaluated until it is forced by
 ``Force``. The Idris type checker knows about the ``Lazy`` type,
 and inserts conversions where necessary between ``Lazy a`` and ``a``,
-and vice versa. We can therefore write ``boolCase`` as follows,
+and vice versa. We can therefore write ``ifThenElse`` as follows,
 without any explicit use of ``Force`` or ``Delay``:
 
 .. code-block:: idris
 
-    boolCase : Bool -> Lazy a -> Lazy a -> a;
-    boolCase True  t e = t;
-    boolCase False t e = e;
+    ifThenElse : Bool -> Lazy a -> Lazy a -> a;
+    ifThenElse True  t e = t;
+    ifThenElse False t e = e;
 
 Useful Data Types
 =================
