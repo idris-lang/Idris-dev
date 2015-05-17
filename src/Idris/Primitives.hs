@@ -124,7 +124,7 @@ primitives =
    Prim (sUN "prim__charToInt") (ty [(AType (ATInt ITChar))] (AType (ATInt ITNative))) 1 (c_charToInt)
      (1, LChInt ITNative) total,
    Prim (sUN "prim__intToChar") (ty [(AType (ATInt ITNative))] (AType (ATInt ITChar))) 1 (c_intToChar)
-     (1, LIntCh ITNative) total,
+     (1, LIntCh ITNative) partial,
    Prim (sUN "prim__strToFloat") (ty [StrType] (AType ATFloat)) 1 (c_strToFloat)
      (1, LStrFloat) total,
    Prim (sUN "prim__floatToStr") (ty [(AType ATFloat)] StrType) 1 (c_floatToStr)

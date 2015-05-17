@@ -5,6 +5,7 @@ import Builtins
 import Prelude.Basics
 import Prelude.Bool
 import Prelude.Cast
+import Prelude.Chars
 import Prelude.Classes
 import Prelude.Foldable
 import Prelude.Nat

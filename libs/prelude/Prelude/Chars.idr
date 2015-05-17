@@ -1,14 +1,20 @@
-module Prelude.Char
+module Prelude.Chars
 -- Functions operating over Chars
 
 import Prelude.Bool
 import Prelude.Classes
 import Prelude.List
+import Prelude.Cast
 import Builtins
 
 ||| Return the ASCII representation of the character.
 chr : Int -> Char
-chr x = prim__intToChar x
+chr x = if (x >= 0 && x < 0x11000)
+                then assert_total (prim__intToChar x)
+                else '\0'
+
+instance Cast Int Char where
+    cast = chr
 
 ||| Convert the number to its ASCII equivalent.
 ord : Char -> Int
@@ -48,14 +54,14 @@ isNL x = x == '\r' || x == '\n'
 ||| Non-letters are ignored.
 toUpper : Char -> Char
 toUpper x = if (isLower x)
-               then (prim__intToChar (prim__charToInt x - 32))
+               then assert_total (prim__intToChar (prim__charToInt x - 32))
                else x
 
 ||| Convert a letter to the corresponding lower-case letter, if any.
 ||| Non-letters are ignored.
 toLower : Char -> Char
 toLower x = if (isUpper x)
-               then (prim__intToChar (prim__charToInt x + 32))
+               then assert_total (prim__intToChar (prim__charToInt x + 32))
                else x
 
 ||| Returns true if the character is a hexadecimal digit i.e. in the range [0-9][a-f][A-F]

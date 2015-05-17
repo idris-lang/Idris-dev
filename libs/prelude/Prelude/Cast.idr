@@ -1,5 +1,6 @@
 module Prelude.Cast
 
+import Prelude.Bool
 import public Builtins
 
 ||| Type class for transforming a instance of a data type to another type.
@@ -30,9 +31,6 @@ instance Cast Int Float where
 
 instance Cast Int Integer where
     cast = prim__sextInt_BigInt
-
-instance Cast Int Char where
-    cast = prim__intToChar
 
 -- Float casts
 
