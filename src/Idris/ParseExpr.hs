@@ -1200,18 +1200,12 @@ Constant ::=
     'Integer'
   | 'Int'
   | 'Char'
-  | 'Float'
+  | 'Double'
   | 'String'
-  | 'Ptr'
-  | 'ManagedPtr'
   | 'Bits8'
   | 'Bits16'
   | 'Bits32'
   | 'Bits64'
-  | 'Bits8x16'
-  | 'Bits16x8'
-  | 'Bits32x4'
-  | 'Bits64x2'
   | Float_t
   | Natural_t
   | VerbatimString_t

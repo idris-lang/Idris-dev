@@ -1388,7 +1388,7 @@ instance Show Const where
     show (B16 x) = show x
     show (B32 x) = show x
     show (B64 x) = show x
-    show (AType ATFloat) = "Float"
+    show (AType ATFloat) = "Double"
     show (AType (ATInt ITBig)) = "Integer"
     show (AType (ATInt ITNative)) = "Int"
     show (AType (ATInt ITChar)) = "Char"
