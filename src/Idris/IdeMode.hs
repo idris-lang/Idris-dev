@@ -107,7 +107,7 @@ maybeProps ((n, Nothing):ps) = maybeProps ps
 constTy :: Const -> String
 constTy (I _) = "Int"
 constTy (BI _) = "Integer"
-constTy (Fl _) = "Float"
+constTy (Fl _) = "Double"
 constTy (Ch _) = "Char"
 constTy (Str _) = "String"
 constTy (B8 _) = "Bits8"
