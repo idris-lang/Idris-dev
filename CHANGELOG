@@ -49,6 +49,10 @@ New in 0.9.18:
   boolElim. This is for consistency with GHC Haskell and scala-virtualized, and
   to reflect that if-notation makes sense with non-Bool datatypes.
 * Agda-style semantic highlighting is supported over the IDE protocol.
+* Experimental support for elaborator reflection. Users can now script the
+  elaborator, for use in code generation and proof automation. This feature is
+  still under rapid development and is subject to change without notice. See
+  Language.Reflection.Elab and the %runElab constructs
 
 
 New in 0.9.17:
