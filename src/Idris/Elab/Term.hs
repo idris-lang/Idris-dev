@@ -1451,6 +1451,8 @@ solveAutos ist fn ambigok
 
 trivial' ist
     = trivial (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
+trivialHoles' h ist
+    = trivialHoles h (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
 proofSearch' ist rec ambigok depth prv top n hints
     = do unifyProblems
          proofSearch rec prv ambigok (not prv) depth
@@ -1473,7 +1475,13 @@ resTC' tcs def topholes 1 topg fn ist = try' (trivial' ist) (resolveTC def False
 resTC' tcs defaultOn topholes depth topg fn ist
   = do compute
        g <- goal
-       let argsok = tcArgsOK g topholes
+       -- Resolution can proceed only if there is something concrete in the
+       -- determining argument positions. Keep track of the holes in the
+       -- non-determining position, because it's okay for 'trivial' to solve
+       -- those holes and no others.
+       let (argsok, okholePos) = case tcArgsOK g topholes of
+                                    Nothing -> (False, [])
+                                    Just hs -> (True, hs)
        if not argsok -- && not mvok)
          then lift $ tfail $ CantResolve True topg
          else do
@@ -1481,30 +1489,47 @@ resTC' tcs defaultOn topholes depth topg fn ist
            ulog <- getUnifyLog
            hs <- get_holes
            env <- get_env
-           traceWhen ulog ("Resolving class " ++ show g ++ "\nin" ++ show env) $
-            try' (trivial' ist)
-                (do t <- goal
-                    let (tc, ttypes) = unApply (getRetTy t)
-                    addDefault t tc ttypes
+           t <- goal
+           let (tc, ttypes) = unApply (getRetTy t)
+           let okholes = case tc of
+                              P _ n _ -> zip (repeat n) okholePos
+                              _ -> []
+
+           traceWhen ulog ("Resolving class " ++ show g ++ "\nin" ++ show env ++ "\n" ++ show okholes) $
+            try' (trivialHoles' okholes ist)
+                (do addDefault t tc ttypes
                     let stk = elab_stack ist
                     let insts = findInstances ist t
                     tm <- get_term
                     blunderbuss t depth stk (stk ++ insts)) True
   where
+    -- returns Just hs if okay, where hs are holes which are okay in the
+    -- goal, or Nothing if not okay to proceed
     tcArgsOK ty hs | (P _ nc _, as) <- unApply (getRetTy ty), nc == numclass && defaultOn
-       = True
-    tcArgsOK ty hs -- if any arguments are metavariables, postpone
+       = Just []
+    tcArgsOK ty hs -- if any determining arguments are metavariables, postpone
        = let (f, as) = unApply (getRetTy ty) in
              case f of
                   P _ cn _ -> case lookupCtxtExact cn (idris_classes ist) of
                                    Just ci -> tcDetArgsOK 0 (class_determiners ci) hs as
-                                   Nothing -> not $ any (isMeta hs) as
-                  _ -> not $ any (isMeta hs) as
+                                   Nothing -> if any (isMeta hs) as
+                                                 then Nothing
+                                                 else Just []
+                  _ -> if any (isMeta hs) as
+                          then Nothing
+                          else Just []
 
+    -- return the list of argument positions which can safely be a hole
+    -- or Nothing if one of the determining arguments is a hole
     tcDetArgsOK i ds hs (x : xs)
-        | i `elem` ds = not (isMeta hs x) && tcDetArgsOK (i + 1) ds hs xs
-        | otherwise = tcDetArgsOK (i + 1) ds hs xs
-    tcDetArgsOK _ _ _ [] = True
+        | i `elem` ds = if isMeta hs x
+                           then Nothing
+                           else tcDetArgsOK (i + 1) ds hs xs
+        | otherwise = do rs <- tcDetArgsOK (i + 1) ds hs xs
+                         case x of
+                              P _ n _ -> Just (i : rs)
+                              _ -> Just rs
+    tcDetArgsOK _ _ _ [] = Just []
 
     isMeta :: [Name] -> Term -> Bool
     isMeta ns (P _ n _) = n `elem` ns 

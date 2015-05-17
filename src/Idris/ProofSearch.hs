@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.ProofSearch(trivial, proofSearch) where
+module Idris.ProofSearch(trivial, trivialHoles, proofSearch) where
 
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
@@ -22,7 +22,11 @@ import Debug.Trace
 -- Pass in a term elaborator to avoid a cyclic dependency with ElabTerm
 
 trivial :: (PTerm -> ElabD ()) -> IState -> ElabD ()
-trivial elab ist = try' (do elab (PApp (fileFC "prf") (PRef (fileFC "prf") eqCon) [pimp (sUN "A") Placeholder False, pimp (sUN "x") Placeholder False])
+trivial = trivialHoles []
+
+trivialHoles :: [(Name, Int)] -> (PTerm -> ElabD ()) -> IState -> ElabD ()
+trivialHoles ok elab ist 
+                 = try' (do elab (PApp (fileFC "prf") (PRef (fileFC "prf") eqCon) [pimp (sUN "A") Placeholder False, pimp (sUN "x") Placeholder False])
                             return ())
                         (do env <- get_env
                             g <- goal
@@ -33,11 +37,28 @@ trivial elab ist = try' (do elab (PApp (fileFC "prf") (PRef (fileFC "prf") eqCon
         tryAll ((x, b):xs)
            = do -- if type of x has any holes in it, move on
                 hs <- get_holes
+                let badhs = hs -- filter (flip notElem holesOK) hs
                 g <- goal
-                if all (\n -> not (n `elem` hs)) (freeNames (binderTy b))
+                -- anywhere but the top is okay for a hole, if holesOK set
+                if -- all (\n -> not (n `elem` badhs)) (freeNames (binderTy b))
+                   holesOK hs (binderTy b)
                    then try' (elab (PRef (fileFC "prf") x))
                              (tryAll xs) True
                    else tryAll xs
+        
+        holesOK hs ap@(App _ _ _)
+           | (P _ n _, args) <- unApply ap
+                = holeArgsOK hs n 0 args
+        holesOK hs (App _ f a) = holesOK hs f && holesOK hs a
+        holesOK hs (P _ n _) = not (n `elem` hs)
+        holesOK hs (Bind n b sc) = holesOK hs (binderTy b) && 
+                                   holesOK hs sc
+        holesOK hs _ = True
+
+        holeArgsOK hs n p [] = True
+        holeArgsOK hs n p (a : as)
+           | (n, p) `elem` ok = holeArgsOK hs n (p + 1) as
+           | otherwise = holesOK hs a && holeArgsOK hs n (p + 1) as
 
 cantSolveGoal :: ElabD a
 cantSolveGoal = do g <- goal
