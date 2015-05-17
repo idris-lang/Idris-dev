@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
+{-# LANGUAGE ConstraintKinds, PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
                     module Idris.ParseExpr,
@@ -1251,6 +1251,8 @@ parseImports fname input
                                  Maybe Delta),
                                 [(FC, OutputAnnotation)], IState)
         imports = do whiteSpace
+                     optional shebang
+                     whiteSpace
                      (mdoc, mname, annots) <- moduleHeader
                      ps            <- many import_
                      mrk           <- mark
@@ -1265,6 +1267,8 @@ parseImports fname input
         addPath ((fc, AnnNamespace ns Nothing) : annots) path =
           (fc, AnnNamespace ns (Just path)) : addPath annots path
         addPath (annot:annots) path = annot : addPath annots path
+        shebang :: IdrisParser ()
+        shebang = string "#!" *> many (satisfy $ not . isEol) *> eol *> pure ()
 
 -- | There should be a better way of doing this...
 findFC :: Doc -> (FC, String)
