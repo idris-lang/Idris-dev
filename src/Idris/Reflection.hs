@@ -631,8 +631,9 @@ reflectName (NS n ns)
                   ]
 reflectName (MN i n)
   = reflCall "MN" [RConstant (I i), RConstant (Str (str n))]
-reflectName (NErased) = Var (reflm "NErased")
-reflectName n = Var (reflm "NErased") -- special name, not yet implemented
+reflectName NErased = Var (reflm "NErased")
+reflectName (SN sn) = raw_apply (Var (reflm "SN")) [reflectSpecialName sn]
+reflectName (SymRef _) = error "The impossible happened: symbol table ref survived IBC loading"
 
 reflectSpecialName :: SpecialName -> Raw
 reflectSpecialName (WhereN i n1 n2) =
