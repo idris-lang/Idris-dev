@@ -1635,7 +1635,6 @@ runTactical ist fc env tm = do tm' <- eval tm
                                return ()
   where
     eval tm = do ctxt <- get_context
-                 env <- get_env
                  return $ normaliseAll ctxt env (finalise tm)
 
     returnUnit = return $ P (DCon 0 0 False) unitCon (P (TCon 0 0) unitTy Erased)
