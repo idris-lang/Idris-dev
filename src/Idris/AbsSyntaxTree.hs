@@ -1484,9 +1484,12 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     prettySe p bnd (PPi (Constraint _ _) n _ ty sc) =
       bracket p startPrec $
       prettySe (startPrec + 1) bnd ty <+> text "=>" </> prettySe startPrec ((n, True):bnd) sc
+    prettySe p bnd (PPi (TacImp _ _ (PTactics [ProofSearch _ _ _ _ _])) n _ ty sc) =
+      lbrace <> kwd "auto" <+> pretty n <+> colon <+> prettySe startPrec bnd ty <>
+      rbrace <+> text "->" </> prettySe startPrec ((n, True):bnd) sc
     prettySe p bnd (PPi (TacImp _ _ s) n _ ty sc) =
       bracket p startPrec $
-      lbrace <> kwd "tacimp" <+> pretty n <+> colon <+> prettySe startPrec bnd ty <>
+      lbrace <> kwd "default" <+> prettySe (funcAppPrec + 1) bnd s <+> pretty n <+> colon <+> prettySe startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe startPrec ((n, True):bnd) sc
     -- This case preserves the behavior of the former constructor PEq.
     -- It should be removed if feasible when the pretty-printing of infix
@@ -1618,9 +1621,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     prettySe p bnd (PConstant _ c) = annotate (AnnConst c) (text (show c))
     -- XXX: add pretty for tactics
     prettySe p bnd (PProof ts) =
-      text "proof" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
+      kwd "proof" <+> lbrace <> text "..." <> rbrace
     prettySe p bnd (PTactics ts) =
-      text "tactics" <+> lbrace <> nest nestingSize (text . show $ ts) <> rbrace
+      kwd "tactics" <+> lbrace <> text "..." <> rbrace
     prettySe p bnd (PMetavar _ n) = annotate (AnnName n (Just MetavarOutput) Nothing Nothing) $  text "?" <> pretty n
     prettySe p bnd (PReturn f) = kwd "return"
     prettySe p bnd PImpossible = kwd "impossible"
