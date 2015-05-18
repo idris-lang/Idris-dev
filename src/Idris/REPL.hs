@@ -990,17 +990,17 @@ process fn (Defn n)
                in text (showTm i' (delab i lhs)) <+> text "=" <+>
                   text (showTm i' (delab i rhs))
 process fn (TotCheck n)
-                        = do i <- getIState
-                             case lookupNameTotal n (tt_ctxt i) of
-                                []  -> iPrintError $ "Unknown operator " ++ show n
-                                ts  -> do ist <- getIState
-                                          c <- colourise
-                                          let ppo =  ppOptionIst ist
-                                          let showN n = annotate (AnnName n Nothing Nothing Nothing) . text $
-                                                        showName (Just ist) [] ppo False n
-                                          iRenderResult . vsep .
-                                           map (\(n, t) -> hang 4 $ showN n <+> text "is" <+> showTotal t i) $
-                                           ts
+   = do i <- getIState
+        case lookupNameTotal n (tt_ctxt i) of
+           []  -> iPrintError $ "Unknown operator " ++ show n
+           ts  -> do ist <- getIState
+                     c <- colourise
+                     let ppo =  ppOptionIst ist
+                     let showN n = annotate (AnnName n Nothing Nothing Nothing) . text $
+                                   showName (Just ist) [] ppo False n
+                     iRenderResult . vsep .
+                      map (\(n, t) -> hang 4 $ showN n <+> text "is" <+> showTotal t i) $
+                      ts
 
 process fn (DebugUnify l r)
    = do (ltm, _) <- elabVal recinfo ERHS l
