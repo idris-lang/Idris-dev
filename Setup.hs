@@ -19,8 +19,6 @@ import System.FilePath ((</>), splitDirectories,isAbsolute)
 import System.Directory
 import qualified System.FilePath.Posix as Px
 import System.Process
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 
 -- After Idris is built, we need to check and install the prelude and other libs
 
