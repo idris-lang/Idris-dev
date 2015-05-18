@@ -973,30 +973,34 @@ process fn Universes
                             OK _ -> iPrintResult "Universes OK"
 process fn (Defn n)
                     = do i <- getIState
-                         iputStrLn "Compiled patterns:\n"
-                         iputStrLn $ show (lookupDef n (tt_ctxt i))
-                         case lookupCtxt n (idris_patdefs i) of
-                            [] -> return ()
-                            [(d, _)] -> do iputStrLn "Original definiton:\n"
-                                           mapM_ (printCase i) d
-                         case lookupTotal n (tt_ctxt i) of
-                            [t] -> iputStrLn (showTotal t i)
-                            _ -> return ()
+                         let head = text "Compiled patterns:" <$>
+                                    text (show (lookupDef n (tt_ctxt i)))
+                         let defs =
+                              case lookupCtxt n (idris_patdefs i) of
+                                [] -> empty
+                                [(d, _)] -> text "Original definiton:" <$>
+                                            vsep (map (printCase i) d)
+                         let tot =
+                              case lookupTotal n (tt_ctxt i) of
+                                 [t] -> showTotal t i
+                                 _ -> empty
+                         iRenderResult $ vsep [head, defs, tot]
     where printCase i (_, lhs, rhs)
              = let i' = i { idris_options = (idris_options i) { opt_showimp = True } }
-               in iputStrLn (showTm i' (delab i lhs) ++ " = " ++
-                             showTm i' (delab i rhs))
+               in text (showTm i' (delab i lhs)) <+> text "=" <+>
+                  text (showTm i' (delab i rhs))
 process fn (TotCheck n)
-                        = do i <- getIState
-                             case lookupNameTotal n (tt_ctxt i) of
-                                []  -> iPrintError $ "Unknown operator " ++ show n
-                                ts  -> do ist <- getIState
-                                          c <- colourise
-                                          let ppo =  ppOptionIst ist
-                                          let showN = showName (Just ist) [] ppo c
-                                          iPrintResult . concat . intersperse "\n" .
-                                            map (\(n, t) -> showN n ++ " is " ++ showTotal t i) $
-                                            ts
+   = do i <- getIState
+        case lookupNameTotal n (tt_ctxt i) of
+           []  -> iPrintError $ "Unknown operator " ++ show n
+           ts  -> do ist <- getIState
+                     c <- colourise
+                     let ppo =  ppOptionIst ist
+                     let showN n = annotate (AnnName n Nothing Nothing Nothing) . text $
+                                   showName (Just ist) [] ppo False n
+                     iRenderResult . vsep .
+                      map (\(n, t) -> hang 4 $ showN n <+> text "is" <+> showTotal t i) $
+                      ts
 
 process fn (DebugUnify l r)
    = do (ltm, _) <- elabVal recinfo ERHS l
@@ -1343,13 +1347,22 @@ process fn (PPrint fmt width t)
         iPrintResult =<< renderExternal fmt width (pprintDelab ist tm)
 
 
-showTotal :: Totality -> IState -> String
+showTotal :: Totality -> IState -> Doc OutputAnnotation
 showTotal t@(Partial (Other ns)) i
-   = show t ++ "\n\t" ++ showSep "\n\t" (map (showTotalN i) ns)
-showTotal t i = show t
+   = text "possibly not total due to:" <$>
+     vsep (map (showTotalN i) ns)
+showTotal t@(Partial (Mutual ns)) i
+   = text "possibly not total due to recursive path:" <$>
+     align (group (vsep (punctuate comma
+       (map (\n -> annotate (AnnName n Nothing Nothing Nothing) $
+                   text (show n))
+            ns))))
+showTotal t i = text (show t)
+
+showTotalN :: IState -> Name -> Doc OutputAnnotation
 showTotalN i n = case lookupTotal n (tt_ctxt i) of
                         [t] -> showTotal t i
-                        _ -> ""
+                        _ -> empty
 
 displayHelp = let vstr = showVersion version in
               "\nIdris version " ++ vstr ++ "\n" ++
