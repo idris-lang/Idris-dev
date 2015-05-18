@@ -210,9 +210,9 @@ defined as follows:
 Inside a ``do`` block, the following syntactic transformations are
 applied:
 
-- ``x <- v; e`` becomes ``v >>= (\backslashx => e)``
+- ``x <- v; e`` becomes ``v >>= (\x => e)``
 
-- ``v; e`` becomes ``v >>= (\backslash_ => e)``
+- ``v; e`` becomes ``v >>= (\_ => e)``
 
 - ``let x = v; e`` becomes ``let x = v in e``
 
@@ -236,7 +236,7 @@ Using this we can, for example, define a function which adds two
                    return (x' + y') -- Add them
 
 This function will extract the values from ``x`` and ``y``, if they
-are available, or return ``Nothing`` if they are not. Managing the
+are both available, or return ``Nothing`` if one or both are not ("fail fast"). Managing the
 ``Nothing`` cases is achieved by the ``>>=`` operator, hidden by the
 ``do`` notation.
 
@@ -364,7 +364,7 @@ alternative notion of function application, with explicit calls to
 
 Rather than having to insert ``m_app`` everywhere there is an
 application, we can use to do the job for us. To do this, we can make
-``Maybe`` an instance of ``Applicative`` as follows, where ``<>`` is
+``Maybe`` an instance of ``Applicative`` as follows, where ``<*>`` is
 defined in the same way as ``m_app`` above (this is defined in the
 Idris library):
 
@@ -376,9 +376,9 @@ Idris library):
         (Just f) <*> (Just a) = Just (f a)
         _        <*> _        = Nothing
 
-Using we can use this instance as follows, where a function
-application ``[| f a1 …an |]`` is translated into ``pure f <> a1 <>
-…<> an``:
+Using ``<*>`` we can use this instance as follows, where a function
+application ``[| f a1 …an |]`` is translated into ``pure f <*> a1 <*>
+… <*> an``:
 
 .. code-block:: idris
 
@@ -399,7 +399,7 @@ to the following:
               | Add Expr Expr   -- addition
 
 Evaluation will take place relative to a context mapping variables
-(represented as ``String``\s) to integer values, and can possibly fail.
+(represented as ``String``\s) to ``Int`` values, and can possibly fail.
 We define a data type ``Eval`` to wrap an evaluator:
 
 .. code-block:: idris
