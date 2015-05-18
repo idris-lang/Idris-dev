@@ -20,6 +20,7 @@ import Control.Applicative hiding (Const)
 import Control.Monad.State -- not Strict!
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
+import Data.Maybe (listToMaybe)
 
 import Idris.Core.TT
 import Idris.Core.CaseTree
@@ -952,9 +953,7 @@ lookupTyName n ctxt = do
 
 -- | Get the pair of a fully-qualified name and its type, if there is a unique one matching the name used as a key.
 lookupTyNameExact :: Name -> Context -> Maybe (Name, Type)
-lookupTyNameExact n ctxt = case lookupTyName n ctxt of
-                             [x] -> Just x
-                             _   -> Nothing
+lookupTyNameExact n ctxt = listToMaybe [ (nm, v) | (nm, v) <- lookupTyName n ctxt, nm == n ] 
 
 -- | Get the types that match some name
 lookupTy :: Name -> Context -> [Type]
@@ -962,9 +961,7 @@ lookupTy n ctxt = map snd (lookupTyName n ctxt)
 
 -- | Get the single type that matches some name precisely
 lookupTyExact :: Name -> Context -> Maybe Type
-lookupTyExact n ctxt = case lookupTy n ctxt of
-                         [t] -> Just t
-                         _   -> Nothing
+lookupTyExact n ctxt = fmap snd (lookupTyNameExact n ctxt)
 
 isConName :: Name -> Context -> Bool
 isConName n ctxt = isTConName n ctxt || isDConName n ctxt

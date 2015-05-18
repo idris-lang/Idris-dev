@@ -1378,7 +1378,7 @@ pruneByType env t c as
 
 pruneByType env (P _ n _) ctxt as
 -- if the goal type is polymorphic, keep e
-   | [] <- lookupTy n ctxt = as
+   | Nothing <- lookupTyExact n ctxt = as
    | otherwise
        = let asV = filter (headIs True n) as
              as' = filter (headIs False n) as in
@@ -1388,16 +1388,17 @@ pruneByType env (P _ n _) ctxt as
                         _ -> asV
                _ -> as'
   where
+    headIs var f (PRef _ f') = typeHead var f f'
     headIs var f (PApp _ (PRef _ f') _) = typeHead var f f'
     headIs var f (PApp _ f' _) = headIs var f f'
     headIs var f (PPi _ _ _ _ sc) = headIs var f sc
     headIs var f (PHidden t) = headIs var f t
-    headIs _ _ _ = True -- keep if it's not an application
+    headIs var f t = True -- keep if it's not an application
 
     typeHead var f f'
         = -- trace ("Trying " ++ show f' ++ " for " ++ show n) $
-          case lookupTy f' ctxt of
-               [ty] -> case unApply (getRetTy ty) of
+          case lookupTyExact f' ctxt of
+               Just ty -> case unApply (getRetTy ty) of
                             (P _ ctyn _, _) | isConName ctyn ctxt -> ctyn == f
                             _ -> let ty' = normalise ctxt [] ty in
                                      case unApply (getRetTy ty') of

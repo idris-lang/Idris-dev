@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ disambig001.idr -p effects -o disambig001
+./disambig001 foo bar
+rm -f disambig001 *.ibc
