@@ -757,10 +757,14 @@ elab ist info emode opts fn tm
                              (map (\x -> getTm x) args) -- TODO: remove this False arg
                     imp <- if (e_isfn ina) then
                               do guess <- get_guess
-                                 gty <- get_type (forget guess)
                                  env <- get_env
-                                 let ty_n = normalise ctxt env gty
-                                 return $ getReqImps ty_n
+                                 case safeForgetEnv (map fst env) guess of
+                                      Nothing ->
+                                         return []
+                                      Just rguess -> do
+                                         gty <- get_type rguess
+                                         let ty_n = normalise ctxt env gty
+                                         return $ getReqImps ty_n
                               else return []
                     -- Now we find out how many implicits we needed at the
                     -- end of the application by looking at the goal again
@@ -1250,7 +1254,7 @@ elab ist info emode opts fn tm
       where
         -- just one level at a time
         addLam (Bind n (Pi (Just _) _ _) sc) t =
-                 do impn <- unique_hole (sMN 0 "imp")
+                 do impn <- unique_hole n -- (sMN 0 "scoped_imp")
                     if e_isfn ina -- apply to an implicit immediately
                        then return (PApp emptyFC
                                          (PLam emptyFC impn NoFC Placeholder t)

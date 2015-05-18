@@ -501,7 +501,8 @@ prepare_apply fn imps =
        env <- get_env
        -- let claims = getArgs ty imps
        -- claims <- mkClaims (normalise ctxt env ty) imps []
-       claims <- mkClaims (finalise ty) 
+       claims <- -- trace (show (fn, imps, ty, map fst env, normalise ctxt env (finalise ty))) $ 
+                 mkClaims (finalise ty) 
                           (normalise ctxt env (finalise ty))
                           imps [] (map fst env)
        ES (p, a) s prev <- get
@@ -522,8 +523,8 @@ prepare_apply fn imps =
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
---            trace ("CLAIMING " ++ show (n, t) ++ " with " ++ show (fn, hs)) $
-           claim n (forget t)
+           env <- get_env
+           claim n (forgetEnv (map fst env) t)
            when i (movelast n)
            mkClaims sc' scn is ((n', n) : claims) hs
     -- if we run out of arguments, we need the normalised version...

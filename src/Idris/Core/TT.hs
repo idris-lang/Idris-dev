@@ -1258,7 +1258,7 @@ safeForget tm = safeForgetEnv [] tm
 forgetEnv :: [Name] -> TT Name -> Raw
 forgetEnv env tm = case safeForgetEnv env tm of
                      Just t' -> t'
-                     Nothing -> error $ "Scope error in " ++ show tm
+                     Nothing -> error $ "Scope error in " ++ show tm ++ show env
 
 
 safeForgetEnv :: [Name] -> TT Name -> Maybe Raw
