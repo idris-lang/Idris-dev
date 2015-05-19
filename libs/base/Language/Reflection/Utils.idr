@@ -1,6 +1,7 @@
 module Language.Reflection.Utils
 
 import Language.Reflection
+import Language.Reflection.Elab
 import Language.Reflection.Errors
 
 --------------------------------------------------------
@@ -306,3 +307,15 @@ instance Show Err where
 
 pure : Raw -> Raw
 pure = id
+
+--------------------------------------
+-- Instances for definition reflection
+--------------------------------------
+instance Show Arg where
+  show (Explicit n t) = "(Explicit " ++ show n ++ " " ++ show t ++ ")"
+  show (Implicit n t) = "(Implicit " ++ show n ++ " " ++ show t ++ ")"
+  show (Constraint n t) = "(Constraint " ++ show n ++ " " ++ show t ++ ")"
+
+instance Show TyDecl where
+  show (Declare fn args ret) = "(Declare " ++ show fn ++ " " ++
+                               show args ++ " " ++ show ret ++ ")"
