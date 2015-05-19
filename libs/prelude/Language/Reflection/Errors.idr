@@ -36,6 +36,7 @@ data Err = Msg String
          | UniverseError
          | ProgramLineComment
          | Inaccessible TTName
+         | UnknownImplicit TTName TTName
          | NonCollapsiblePostulate TTName
          | AlreadyDefined TTName
          | ProofSearchFail Err

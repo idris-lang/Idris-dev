@@ -1622,7 +1622,13 @@ addImpl' inpat env infns imp_meths ist ptm
 -- if in a pattern, and there are no arguments, and there's no possible
 -- names with zero explicit arguments, don't add implicits.
 
-aiFn :: Bool -> Bool -> Bool -> [Name] -> IState -> FC -> Name -> FC -> [[T.Text]] -> [PArg] -> Either Err PTerm
+aiFn :: Bool -> Bool -> Bool
+        -> [Name]
+        -> IState -> FC
+        -> Name -- ^ function being applied
+        -> FC -> [[T.Text]]
+        -> [PArg] -> -- ^ initial arguments
+        Either Err PTerm
 aiFn inpat True qq imp_meths ist fc f ffc ds []
   = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar ffc f
@@ -1685,8 +1691,20 @@ aiFn inpat expat qq imp_meths ist fc f ffc ds as
                     Just (n,t) -> t
                     _ -> Public
 
-    insertImpl :: [PArg] -> [PArg] -> [PArg]
-    insertImpl ps as = insImpAcc M.empty ps (filter exp as) (filter (not . exp) as)
+    insertImpl :: [PArg] -- ^ expected argument types (from idris_implicits)
+               -> [PArg] -- ^ given arguments
+               -> [PArg]
+    insertImpl ps as 
+        = let (as', badimpls) = partition (impIn ps) as in
+              map addUnknownImp badimpls ++ 
+              insImpAcc M.empty ps (filter exp as') (filter (not . exp) as')
+
+    -- return True if the second argument is an implicit argument which is
+    -- expected in the implicits, or if it's not an implicit
+    impIn :: [PArg] -> PArg -> Bool
+    impIn ps (PExp _ _ _ _) = True
+    impIn ps (PConstraint  _ _ _ _) = True
+    impIn ps arg = any (\p -> pname arg == pname p) ps
 
     exp (PExp _ _ _ _) = True
     exp (PConstraint _ _ _ _) = True
@@ -1723,11 +1741,10 @@ aiFn inpat expat qq imp_meths ist fc f ffc ds as
                   insImpAcc (M.insert n Placeholder pnas) ps given imps
                 else PTacImplicit p l n sc sc :
                   insImpAcc (M.insert n sc pnas) ps given imps
-    insImpAcc _ expected [] imps = imps -- so that unused implicits give error
-                                     -- TODO: report here, and prune alternatives
-                                     -- Issue #1740 in the Issue Tracker
--- https://github.com/idris-lang/Idris-dev/issues/1740
+    insImpAcc _ expected [] imps = map addUnknownImp imps -- so that unused implicits give error
     insImpAcc _ _        given imps = given ++ imps
+
+    addUnknownImp arg = arg { argopts = UnknownImp : argopts arg }
 
     find n []               acc = Nothing
     find n (PImp _ _ _ n' t : gs) acc

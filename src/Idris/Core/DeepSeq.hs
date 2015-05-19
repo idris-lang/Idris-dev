@@ -98,6 +98,7 @@ instance NFData Err where
         rnf (UniverseError x1 x2 x3 x4 x5) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
         rnf ProgramLineComment = ()
         rnf (Inaccessible x1) = rnf x1 `seq` ()
+        rnf (UnknownImplicit x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (NonCollapsiblePostulate x1) = rnf x1 `seq` ()
         rnf (AlreadyDefined x1) = rnf x1 `seq` ()
         rnf (ProofSearchFail x1) = rnf x1 `seq` ()

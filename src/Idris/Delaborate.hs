@@ -338,6 +338,7 @@ pprintErr' i (UniqueKindError k n) = text "Constructor" <+> annName' n (showbasi
                                    <+> text "but the data type does not"
 pprintErr' i ProgramLineComment = text "Program line next to comment"
 pprintErr' i (Inaccessible n) = annName n <+> text "is not an accessible pattern variable"
+pprintErr' i (UnknownImplicit n f) = annName n <+> text "is not an implicit argument of" <+> annName f
 pprintErr' i (NonCollapsiblePostulate n) = text "The return type of postulate" <+>
                                            annName n <+> text "is not collapsible"
 pprintErr' i (AlreadyDefined n) = annName n<+>

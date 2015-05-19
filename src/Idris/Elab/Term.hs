@@ -708,6 +708,7 @@ elab ist info emode opts fn tm
             ctxt <- get_context
             annot <- findHighlight f
             let args = insertScopedImps fc (normalise ctxt env fty) args_in
+            mapM_ checkKnownImplicit args
             let unmatchableArgs = if pattern 
                                      then getUnmatchable (tt_ctxt ist) f
                                      else []
@@ -715,6 +716,7 @@ elab ist info emode opts fn tm
             when (pattern && not reflection && not (e_qq ina) && not (e_intype ina)
                           && isTConName f (tt_ctxt ist)) $
               lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
+--             trace (show (f, args_in, args)) $ 
             if (f `elem` map fst env && length args == 1 && length args_in == 1)
                then -- simple app, as below
                     do simple_app False
@@ -805,7 +807,12 @@ elab ist info emode opts fn tm
                           [] -> return ()
                           es -> do put s
                                    elab' ina topfc (PAppImpl tm es)
-    
+   
+            checkKnownImplicit imp
+                 | UnknownImp `elem` argopts imp
+                    = lift $ tfail $ UnknownImplicit (pname imp) f
+            checkKnownImplicit _ = return ()
+
             getReqImps (Bind x (Pi (Just i) ty _) sc)
                  = i : getReqImps sc
             getReqImps _ = []

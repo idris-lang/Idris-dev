@@ -291,6 +291,7 @@ instance Show Err where
   show UniverseError = "UniverseError"
   show ProgramLineComment = "ProgramLineComment"
   show (Inaccessible n) = "Inaccessible " ++ show n
+  show (UnknownImplicit n f) = "UnknownImplicit " ++ show n ++ " "  ++ show f
   show (NonCollapsiblePostulate n) = "NonCollapsiblePostulate " ++ show n
   show (AlreadyDefined n) = "AlreadyDefined " ++ show n
   show (ProofSearchFail err) = "ProofSearchFail " ++ show err

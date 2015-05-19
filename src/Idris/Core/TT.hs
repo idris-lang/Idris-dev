@@ -231,6 +231,7 @@ data Err' t
           | UniqueKindError Universe Name
           | ProgramLineComment
           | Inaccessible Name
+          | UnknownImplicit Name Name
           | CantMatch t
           | NonCollapsiblePostulate Name
           | AlreadyDefined Name
@@ -332,6 +333,7 @@ instance Show Err where
                                          show e ++ " in " ++ show sc ++ " " ++ show i
     show (CantSolveGoal g _) = "CantSolve " ++ show g
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
+    show (UnknownImplicit n f) = show n ++ " is not an implicit argument of " ++ show f
     show (ProviderError msg) = "Type provider error: " ++ msg
     show (LoadingFailed fn e) = "Loading " ++ fn ++ " failed: (TT) " ++ show e
     show ProgramLineComment = "Program line next to comment"

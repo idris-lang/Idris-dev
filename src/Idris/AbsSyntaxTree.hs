@@ -987,7 +987,8 @@ type PDo = PDo' PTerm
 data PArg' t = PImp { priority :: Int,
                       machine_inf :: Bool, -- true if the machine inferred it
                       argopts :: [ArgOpt],
-                      pname :: Name, getTm :: t }
+                      pname :: Name, 
+                      getTm :: t }
              | PExp { priority :: Int,
                       argopts :: [ArgOpt],
                       pname :: Name,
@@ -1003,7 +1004,7 @@ data PArg' t = PImp { priority :: Int,
                               getTm :: t }
     deriving (Show, Eq, Functor, Data, Typeable)
 
-data ArgOpt = AlwaysShow | HideDisplay | InaccessibleArg
+data ArgOpt = AlwaysShow | HideDisplay | InaccessibleArg | UnknownImp
     deriving (Show, Eq, Data, Typeable)
 
 instance Sized a => Sized (PArg' a) where
