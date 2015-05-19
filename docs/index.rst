@@ -104,6 +104,7 @@ Language Reference
    reference/uniqueness-types
    reference/ffi
    reference/erasure
+   reference/ide-protocol
 
 .. _guides:
 
@@ -116,11 +117,3 @@ Short Guides
 
    guides/type-providers-ffi
 
-############################
-Implementation Documentation
-############################
-
-.. toctree::
-   :maxdepth: 1
-
-   ide/protocol

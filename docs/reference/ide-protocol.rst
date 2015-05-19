@@ -1,5 +1,5 @@
 ********************
-Idris's IDE Protocol
+The IDE Protocol
 ********************
 
 The Idris REPL has two modes of interaction: a human-readable syntax designed for direct use in a terminal, and a machine-readable syntax designed for using Idris as a backend for external tools.
