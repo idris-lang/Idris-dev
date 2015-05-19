@@ -115,3 +115,12 @@ Short Guides
    :maxdepth: 1
 
    guides/type-providers-ffi
+
+############################
+Implementation Documentation
+############################
+
+.. toctree::
+   :maxdepth: 1
+
+   ide/protocol
