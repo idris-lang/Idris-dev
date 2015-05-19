@@ -514,7 +514,7 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
                         return (Left ptm, lhs)
 elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as whereblock)
    = do let tcgen = Dictionary `elem` opts
-        push_estack fname
+        push_estack fname False
         ctxt <- getContext
         let (lhs_in, rhs_in) = desugarAs lhs_in_as rhs_in_as
 

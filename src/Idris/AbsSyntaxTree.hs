@@ -234,7 +234,8 @@ data IState = IState {
     idris_whocalls :: Maybe (M.Map Name [Name]),
     idris_callswho :: Maybe (M.Map Name [Name]),
     idris_repl_defs :: [Name], -- ^ List of names that were defined in the repl, and can be re-/un-defined
-    elab_stack :: [Name], -- ^ Stack of names currently being elaborated
+    elab_stack :: [(Name, Bool)], -- ^ Stack of names currently being elaborated, Bool set if it's an instance
+                                  -- (instances appear twice; also as a funtion name)
     idris_symbols :: M.Map Name Name, -- ^ Symbol table (preserves sharing of names)
     idris_exports :: [Name] -- ^ Functions with ExportList
    }

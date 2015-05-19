@@ -343,9 +343,10 @@ getNameHints i n =
 addToCalledG :: Name -> [Name] -> Idris ()
 addToCalledG n ns = return () -- TODO
 
-push_estack :: Name -> Idris ()
-push_estack n = do i <- getIState
-                   putIState (i { elab_stack = n : elab_stack i })
+push_estack :: Name -> Bool -> Idris ()
+push_estack n inst 
+    = do i <- getIState
+         putIState (i { elab_stack = (n, inst) : elab_stack i })
 
 pop_estack :: Idris ()
 pop_estack = do i <- getIState

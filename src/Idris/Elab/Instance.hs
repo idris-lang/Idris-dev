@@ -140,7 +140,9 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          let idecls = [PClauses fc [Dictionary] iname
                                  [PClause fc iname lhs [] rhs wb]]
          iLOG (show idecls)
+         push_estack iname True
          mapM_ (rec_elabDecl info EAll info) idecls
+         pop_estack
          ist <- getIState
          checkInjectiveArgs fc n (class_determiners ci) (lookupTyExact iname (tt_ctxt ist))
          addIBC (IBCInstance intInst (isNothing expn) n iname)

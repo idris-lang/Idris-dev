@@ -353,7 +353,7 @@ elab ist info emode opts fn tm
             UType _ -> elab' ina (Just fc) (PRef fc unitTy)
             _ -> elab' ina (Just fc) (PRef fc unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = do g <- goal; resolveTC False False 10 g fn ist
+       = do g <- goal; resolveTC False False 5 g fn ist
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
@@ -1504,9 +1504,8 @@ resTC' tcs defaultOn topholes depth topg fn ist
            traceWhen ulog ("Resolving class " ++ show g ++ "\nin" ++ show env ++ "\n" ++ show okholes) $
             try' (trivialHoles' okholes ist)
                 (do addDefault t tc ttypes
-                    let stk = elab_stack ist
+                    let stk = map fst (filter snd $ elab_stack ist)
                     let insts = findInstances ist t
-                    tm <- get_term
                     blunderbuss t depth stk (stk ++ insts)) True
   where
     -- returns Just hs if okay, where hs are holes which are okay in the
