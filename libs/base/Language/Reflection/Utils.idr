@@ -1,6 +1,7 @@
 module Language.Reflection.Utils
 
 import Language.Reflection
+import Language.Reflection.Elab
 import Language.Reflection.Errors
 
 --------------------------------------------------------
@@ -50,7 +51,7 @@ mkApp tm []      = tm
 mkApp tm (a::as) = mkApp (App tm a) as
 
 total
-binderTy : (Eq t) => Binder t -> t
+binderTy : Binder t -> t
 binderTy (Lam t)       = t
 binderTy (Pi t _)      = t
 binderTy (Let t1 t2)   = t1
@@ -75,7 +76,7 @@ mutual
     show (MetaN parent meta) = "(MetaN " ++ show parent ++ " " ++ show meta ++ ")"
 
   instance Show TTName where
-    show (UN str)   = "(UN " ++ str ++ ")"
+    show (UN str)   = "(UN " ++ show str ++ ")"
     show (NS n ns)  = "(NS " ++ show n ++ " " ++ show ns ++ ")"
     show (MN i str) = "(MN " ++ show i ++ " " ++ show str ++ ")"
     show (SN sn)    = "(SN " ++ assert_total (show sn) ++ ")"
@@ -252,12 +253,12 @@ forget tm = fe [] tm
 instance Show Raw where
   show r = my_show r
     where %assert_total my_show : Raw -> String
-          my_show (Var n) = "Var " ++ show n
-          my_show (RBind n b tm) = "RBind " ++ show n ++ " " ++ show b ++ " (" ++ my_show tm ++ ")"
-          my_show (RApp tm tm') = "RApp " ++ my_show tm ++ " " ++ my_show tm'
+          my_show (Var n) = "(Var " ++ show n ++ ")"
+          my_show (RBind n b tm) = "(RBind " ++ show n ++ " " ++ show b ++ " " ++ my_show tm ++ ")"
+          my_show (RApp tm tm') = "(RApp " ++ my_show tm ++ " " ++ my_show tm' ++ ")"
           my_show RType = "RType"
-          my_show (RForce tm) = "RForce " ++ my_show tm
-          my_show (RConstant c) = "RConstant " ++ show c
+          my_show (RForce tm) = "(RForce " ++ my_show tm ++ ")"
+          my_show (RConstant c) = "(RConstant " ++ show c ++ ")"
 
 instance Show SourceLocation where
   show (FileLoc filename line col) = "FileLoc \"" ++ filename ++ "\" " ++ show line ++ " " ++ show col
@@ -306,3 +307,15 @@ instance Show Err where
 
 pure : Raw -> Raw
 pure = id
+
+--------------------------------------
+-- Instances for definition reflection
+--------------------------------------
+instance Show Arg where
+  show (Explicit n t) = "(Explicit " ++ show n ++ " " ++ show t ++ ")"
+  show (Implicit n t) = "(Implicit " ++ show n ++ " " ++ show t ++ ")"
+  show (Constraint n t) = "(Constraint " ++ show n ++ " " ++ show t ++ ")"
+
+instance Show TyDecl where
+  show (Declare fn args ret) = "(Declare " ++ show fn ++ " " ++
+                               show args ++ " " ++ show ret ++ ")"
