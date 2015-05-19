@@ -707,8 +707,8 @@ elab ist info emode opts fn tm
             fty <- get_type (Var f)
             ctxt <- get_context
             annot <- findHighlight f
+            mapM_ checkKnownImplicit args_in
             let args = insertScopedImps fc (normalise ctxt env fty) args_in
-            mapM_ checkKnownImplicit args
             let unmatchableArgs = if pattern 
                                      then getUnmatchable (tt_ctxt ist) f
                                      else []

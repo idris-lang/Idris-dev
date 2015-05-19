@@ -1697,18 +1697,7 @@ aiFn inpat expat qq imp_meths ist fc f ffc ds as
     insertImpl ps as 
         = let (as', badimpls) = partition (impIn ps) as in
               map addUnknownImp badimpls ++ 
-              insImpAcc M.empty ps (filter exp as') (filter (not . exp) as')
-
-    -- return True if the second argument is an implicit argument which is
-    -- expected in the implicits, or if it's not an implicit
-    impIn :: [PArg] -> PArg -> Bool
-    impIn ps (PExp _ _ _ _) = True
-    impIn ps (PConstraint  _ _ _ _) = True
-    impIn ps arg = any (\p -> pname arg == pname p) ps
-
-    exp (PExp _ _ _ _) = True
-    exp (PConstraint _ _ _ _) = True
-    exp _ = False
+              insImpAcc M.empty ps (filter expArg as') (filter (not . expArg) as')
 
     insImpAcc :: M.Map Name PTerm -- accumulated param names & arg terms
               -> [PArg]           -- parameters
@@ -1752,6 +1741,17 @@ aiFn inpat expat qq imp_meths ist fc f ffc ds as
     find n (PTacImplicit _ _ n' _ t : gs) acc
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
+    
+-- return True if the second argument is an implicit argument which is
+-- expected in the implicits, or if it's not an implicit
+impIn :: [PArg] -> PArg -> Bool
+impIn ps (PExp _ _ _ _) = True
+impIn ps (PConstraint  _ _ _ _) = True
+impIn ps arg = any (\p -> not (expArg arg) && pname arg == pname p) ps
+
+expArg (PExp _ _ _ _) = True
+expArg (PConstraint _ _ _ _) = True
+expArg _ = False
 
 -- replace non-linear occurrences with _
 
@@ -1838,7 +1838,8 @@ stripUnmatchable i tm = tm
 
 mkPApp fc a f [] = f
 mkPApp fc a f as = let rest = drop a as in
-                       appRest fc (PApp fc f (take a as)) rest
+                       if a == 0 then appRest fc f rest
+                          else appRest fc (PApp fc f (take a as)) rest
   where
     appRest fc f [] = f
     appRest fc f (a : as) = appRest fc (PApp fc f [a]) as
