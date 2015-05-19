@@ -102,6 +102,7 @@ addMissing fn updatefile l n
                        [] -> return ""
                        [(_, tms)] -> do tms' <- nameMissing tms
                                         showNew (show n ++ "_rhs") 1 indent tms'
+                       other -> return "" -- happens if called on a metavar, or with no clauses
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile
           then do let fb = fn ++ "~"
