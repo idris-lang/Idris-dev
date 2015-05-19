@@ -1888,7 +1888,9 @@ getPort (_:xs) = getPort xs
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe
 
-ver = showVersion version ++ "-" ++ gitHash
+ver = showVersion version ++ suffix
+        where
+            suffix = if gitHash =="" then "" else "-" ++ gitHash
 
 defaultPort :: PortID
 defaultPort = PortNumber (fromIntegral 4294)
