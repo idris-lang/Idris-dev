@@ -1623,12 +1623,12 @@ addImpl' inpat env infns imp_meths ist ptm
 -- names with zero explicit arguments, don't add implicits.
 
 aiFn :: Bool -> Bool -> Bool
-        -> [Name]
-        -> IState -> FC
-        -> Name -- ^ function being applied
-        -> FC -> [[T.Text]]
-        -> [PArg] -> -- ^ initial arguments
-        Either Err PTerm
+     -> [Name]
+     -> IState -> FC
+     -> Name -- ^ function being applied
+     -> FC -> [[T.Text]]
+     -> [PArg] -- ^ initial arguments
+     -> Either Err PTerm
 aiFn inpat True qq imp_meths ist fc f ffc ds []
   = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar ffc f
