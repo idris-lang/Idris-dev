@@ -24,6 +24,7 @@ import public Prelude.Uninhabited
 import public Prelude.Pairs
 import public Prelude.Stream
 import public Prelude.Providers
+import public Prelude.Show
 import public Decidable.Equality
 import public Language.Reflection
 import public Language.Reflection.Errors
@@ -37,106 +38,6 @@ decAsBool (Yes _) = True
 decAsBool (No _)  = False
 
 
--- Show and instances
-
-class Show a where
-    partial show : a -> String
-
-instance Show Int where
-    show = prim__toStrInt
-
-instance Show Integer where
-    show = prim__toStrBigInt
-
-instance Show Float where
-    show = prim__floatToStr
-
-
-firstCharIs : (Char -> Bool) -> String -> Bool
-firstCharIs p s with (strM s)
-  firstCharIs p ""             | StrNil = False
-  firstCharIs p (strCons c cs) | StrCons c cs = p c
-
-protectEsc : (Char -> Bool) -> String -> String -> String
-protectEsc p f s = f ++ (if firstCharIs p s then "\\&" else "") ++ s
-
-showLitChar : Char -> String -> String
-showLitChar '\a'   = ("\\a" ++)
-showLitChar '\b'   = ("\\b" ++)
-showLitChar '\f'   = ("\\f" ++)
-showLitChar '\n'   = ("\\n" ++)
-showLitChar '\r'   = ("\\r" ++)
-showLitChar '\t'   = ("\\t" ++)
-showLitChar '\v'   = ("\\v" ++)
-showLitChar '\SO'  = protectEsc (== 'H') "\\SO"
-showLitChar '\DEL' = ("\\DEL" ++)
-showLitChar '\\'   = ("\\\\" ++)
-showLitChar c      = case getAt (cast (cast {to=Int} c)) asciiTab of
-                          Just k => strCons '\\' . (k ++)
-                          Nothing => if (c > '\DEL')
-                                        then strCons '\\' . protectEsc isDigit (show (cast {to=Int} c))
-                                        else strCons c
-  where asciiTab : List String
-        asciiTab = ["NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
-                    "BS",  "HT",  "LF",  "VT",  "FF",  "CR",  "SO",  "SI",
-                    "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
-                    "CAN", "EM",  "SUB", "ESC", "FS",  "GS",  "RS",  "US"]
-
-        getAt : Nat -> List String -> Maybe String
-        getAt Z     (x :: xs) = Just x
-        getAt (S k) (x :: xs) = getAt k xs
-        getAt _     []        = Nothing
-
-showLitString : List Char -> String -> String
-showLitString []        = id
-showLitString ('"'::cs) = ("\\\"" ++) . showLitString cs
-showLitString (c  ::cs) = showLitChar c . showLitString cs
-
-instance Show Char where
-  show '\'' = "'\\''"
-  show c    = strCons '\'' (showLitChar c "'")
-
-instance Show String where
-  show cs = strCons '"' (showLitString (cast cs) "\"")
-
-instance Show Nat where
-    show n = show (the Integer (cast n))
-
-instance Show Bool where
-    show True = "True"
-    show False = "False"
-
-instance Show () where
-  show () = "()"
-
-instance Show Bits8 where
-  show b = b8ToString b
-
-instance Show Bits16 where
-  show b = b16ToString b
-
-instance Show Bits32 where
-  show b = b32ToString b
-
-instance Show Bits64 where
-  show b = b64ToString b
-
-instance (Show a, Show b) => Show (a, b) where
-    show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
-
-instance Show a => Show (List a) where
-    show xs = "[" ++ show' "" xs ++ "]" where
-        show' acc []        = acc
-        show' acc [x]       = acc ++ show x
-        show' acc (x :: xs) = show' (acc ++ show x ++ ", ") xs
-
-instance Show a => Show (Maybe a) where
-    show Nothing = "Nothing"
-    show (Just x) = "Just " ++ show x
-
-instance (Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
-    show (y ** prf) = "(" ++ show y ++ " ** " ++ show prf ++ ")"
-      
 ---- Functor instances
 
 instance Functor PrimIO where

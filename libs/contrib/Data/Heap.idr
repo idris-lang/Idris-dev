@@ -114,8 +114,8 @@ sort = Heap.toList . Heap.fromList
 --------------------------------------------------------------------------------
 
 instance Show a => Show (MaxiphobicHeap a) where
-  show Empty = "Empty"
-  show (Node s l e r) = "Node (" ++ show l ++ " " ++ show e ++ " " ++ show r ++ ")"
+  showPrec d Empty = "Empty"
+  showPrec d (Node s l e r) = showCon d "Node" $ " _" ++ showArg l ++ showArg e ++ showArg r
 
 instance Eq a => Eq (MaxiphobicHeap a) where
   Empty              == Empty              = True

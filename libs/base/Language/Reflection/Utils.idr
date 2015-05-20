@@ -64,23 +64,23 @@ binderTy (PVTy t)      = t
 
 mutual
   instance Show SpecialName where
-    show (WhereN i n1 n2) = "(WhereN " ++ show i ++ " " ++
-                            show n1 ++ " " ++ show n2 ++ ")"
-    show (WithN i n) = "(WithN " ++ show i ++ " " ++ show n ++ ")"
-    show (InstanceN i ss) = "(InstanceN " ++ show i ++ " " ++ show ss ++ ")"
-    show (ParentN n s) = "(ParentN " ++ show n ++ " " ++ show s ++ ")"
-    show (MethodN n) = "(MethodN " ++ show n ++ ")"
-    show (CaseN n) = "(CaseN " ++ show n ++ ")"
-    show (ElimN n) = "(ElimN " ++ show n ++ ")"
-    show (InstanceCtorN n) = "(InstanceCtorN " ++ show n ++ ")"
-    show (MetaN parent meta) = "(MetaN " ++ show parent ++ " " ++ show meta ++ ")"
+    showPrec d (WhereN i n1 n2) = showCon d "WhereN" $ showArg i ++
+                            showArg n1 ++ showArg n2
+    showPrec d (WithN i n) = showCon d "WithN" $ showArg i ++ showArg n
+    showPrec d (InstanceN i ss) = showCon d "InstanceN" $ showArg i ++ showArg ss
+    showPrec d (ParentN n s) = showCon d "ParentN" $ showArg n ++ showArg s
+    showPrec d (MethodN n) = showCon d "MethodN" $ showArg n
+    showPrec d (CaseN n) = showCon d "CaseN" $ showArg n
+    showPrec d (ElimN n) = showCon d "ElimN" $ showArg n
+    showPrec d (InstanceCtorN n) = showCon d "InstanceCtorN" $ showArg n
+    showPrec d (MetaN parent meta) = showCon d "MetaN" $ showArg parent ++ showArg meta
 
   instance Show TTName where
-    show (UN str)   = "(UN " ++ show str ++ ")"
-    show (NS n ns)  = "(NS " ++ show n ++ " " ++ show ns ++ ")"
-    show (MN i str) = "(MN " ++ show i ++ " " ++ show str ++ ")"
-    show (SN sn)    = "(SN " ++ assert_total (show sn) ++ ")"
-    show NErased    = "NErased"
+    showPrec d (UN str)   = showCon d "UN" $ showArg str
+    showPrec d (NS n ns)  = showCon d "NS" $ showArg n ++ showArg ns
+    showPrec d (MN i str) = showCon d "MN" $ showArg i ++ showArg str
+    showPrec d (SN sn)    = showCon d "SN" $ assert_total (showArg sn)
+    showPrec d NErased    = "NErased"
 
 mutual
   instance Eq TTName where
@@ -104,28 +104,44 @@ mutual
     _                   == _                     = False
 
 instance Show TTUExp where
-  show (UVar i) = "(UVar " ++ show i ++ ")"
-  show (UVal i) = "(UVal " ++ show i ++ ")"
+  showPrec d (UVar i) = showCon d "UVar" $ showArg i
+  showPrec d (UVal i) = showCon d "UVal" $ showArg i
 
 instance Eq TTUExp where
   (UVar i) == (UVar j) = i == j
   (UVal i) == (UVal j) = i == j
   x        == y        = False
 
+instance Show NativeTy where
+  show IT8  = "IT8"
+  show IT16 = "IT16"
+  show IT32 = "IT32"
+  show IT64 = "IT64"
+
+instance Show IntTy where
+  showPrec d (ITFixed t) = showCon d "ITFixed" $ showArg t
+  showPrec d ITNative    = "ITNative"
+  showPrec d ITBig       = "ITBig"
+  showPrec d ITChar      = "ITChar"
+
+instance Show ArithTy where
+  showPrec d (ATInt t) = showCon d "ATInt" $ showArg t
+  showPrec d ATFloat   = "ATFloat"
+
 instance Show Const where
-  show (I i)      = "(I " ++ show i ++ ")"
-  show (BI n)     = "(BI " ++ show n ++ ")"
-  show (Fl f)     = "(Fl " ++ show f ++ ")"
-  show (Ch c)     = "(Ch " ++ show c ++ ")"
-  show (Str str)  = "(Str " ++ show str ++ ")"
-  show (B8 b)     = "(B8 ...)"
-  show (B16 b)    = "(B16 ...)"
-  show (B32 b)    = "(B32 ...)"
-  show (B64 b)    = "(B64 ...)"
-  show (AType x) = "(AType ...)"
-  show StrType = "StrType"
-  show VoidType = "VoidType"
-  show Forgot = "Forgot"
+  showPrec d (I i)      = showCon d "I" $ showArg i
+  showPrec d (BI n)     = showCon d "BI" $ showArg n
+  showPrec d (Fl f)     = showCon d "Fl" $ showArg f
+  showPrec d (Ch c)     = showCon d "Ch" $ showArg c
+  showPrec d (Str str)  = showCon d "Str" $ showArg str
+  showPrec d (B8 b)     = showCon d "B8" $ showArg b
+  showPrec d (B16 b)    = showCon d "B16" $ showArg b
+  showPrec d (B32 b)    = showCon d "B32" $ showArg b
+  showPrec d (B64 b)    = showCon d "B64" $ showArg b
+  showPrec d (AType x)  = showCon d "AType" $ showArg x
+  showPrec d StrType    = "StrType"
+  showPrec d VoidType   = "VoidType"
+  showPrec d Forgot     = "Forgot"
 
 instance Eq NativeTy where
   IT8  == IT8  = True
@@ -164,10 +180,10 @@ instance Eq Const where
 
 
 instance Show NameType where
-  show Bound = "Bound"
-  show Ref = "Ref"
-  show (DCon t ar) = "(DCon " ++ show t ++ " " ++ show ar ++ ")"
-  show (TCon t ar) = "(TCon " ++ show t ++ " " ++ show ar ++ ")"
+  showPrec d Bound = "Bound"
+  showPrec d Ref = "Ref"
+  showPrec d (DCon t ar) = showCon d "DCon" $ showArg t ++ showArg ar
+  showPrec d (TCon t ar) = showCon d "TCon" $ showArg t ++ showArg ar
 
 instance Eq NameType where
   Bound       == Bound          = True
@@ -177,15 +193,15 @@ instance Eq NameType where
   x           == y              = False
 
 instance (Show a) => Show (Binder a) where
-  show (Lam t) = "(Lam " ++ show t ++ ")"
-  show (Pi t _) = "(Pi " ++ show t ++ ")"
-  show (Let t1 t2) = "(Let " ++ show t1 ++ " " ++ show t2 ++ ")"
-  show (NLet t1 t2) = "(NLet " ++ show t1 ++ " " ++ show t2 ++ ")"
-  show (Hole t) = "(Hole " ++ show t ++ ")"
-  show (GHole t) = "(GHole " ++ show t ++ ")"
-  show (Guess t1 t2) = "(Guess " ++ show t1 ++ " " ++ show t2 ++ ")"
-  show (PVar t) = "(PVar " ++ show t ++ ")"
-  show (PVTy t) = "(PVTy " ++ show t ++ ")"
+  showPrec d (Lam t) = showCon d "Lam" $ showArg t
+  showPrec d (Pi t1 t2) = showCon d "Pi" $ showArg t1 ++ showArg t2
+  showPrec d (Let t1 t2) = showCon d "Let" $ showArg t1 ++ showArg t2
+  showPrec d (NLet t1 t2) = showCon d "NLet" $ showArg t1 ++ showArg t2
+  showPrec d (Hole t) = showCon d "Hole" $ showArg t
+  showPrec d (GHole t) = showCon d "GHole" $ showArg t
+  showPrec d (Guess t1 t2) = showCon d "Guess" $ showArg t1 ++ showArg t2
+  showPrec d (PVar t) = showCon d "PVar" $ showArg t
+  showPrec d (PVTy t) = showCon d "PVTy" $ showArg t
 
 instance (Eq a) => Eq (Binder a) where
   (Lam t)       == (Lam t')         = t == t'
@@ -200,17 +216,17 @@ instance (Eq a) => Eq (Binder a) where
   x             == y                = False
 
 instance Show TT where
-  show = my_show
-    where %assert_total my_show : TT -> String
-          my_show (P nt n t) = "(P " ++ show nt ++ " " ++ show n ++ " " ++ show t ++ ")"
-          my_show (V i) = "(V " ++ show i ++ ")"
-          my_show (Bind n b t) = "(Bind " ++ show n ++ " " ++ show b ++ " " ++ show t ++ ")"
-          my_show (App t1 t2) = "(App " ++ show t1 ++ " " ++ show t2 ++ ")"
-          my_show (TConst c) = "(TConst " ++ show c ++ ")"
-          my_show (Proj tm i) = "(Proj " ++ show tm ++ " " ++ show i ++ ")"
-          my_show Erased = "Erased"
-          my_show Impossible = "Impossible"
-          my_show (TType u) = "(TType " ++ show u ++ ")"
+  showPrec = my_show
+    where %assert_total my_show : Prec -> TT -> String
+          my_show d (P nt n t) = showCon d "P" $ showArg nt ++ showArg n ++ showArg t
+          my_show d (V i) = showCon d "V" $ showArg i
+          my_show d (Bind n b t) = showCon d "Bind" $ showArg n ++ showArg b ++ showArg t
+          my_show d (App t1 t2) = showCon d "App" $ showArg t1 ++ showArg t2
+          my_show d (TConst c) = showCon d "TConst" $ showArg c
+          my_show d (Proj tm i) = showCon d "Proj" $ showArg tm ++ showArg i
+          my_show d Erased = "Erased"
+          my_show d Impossible = "Impossible"
+          my_show d (TType u) = showCon d "TType" $ showArg u
 
 instance Eq TT where
   a == b = equalp a b
@@ -251,53 +267,53 @@ forget tm = fe [] tm
     fe env Impossible    = Nothing
 
 instance Show Raw where
-  show r = my_show r
-    where %assert_total my_show : Raw -> String
-          my_show (Var n) = "(Var " ++ show n ++ ")"
-          my_show (RBind n b tm) = "(RBind " ++ show n ++ " " ++ show b ++ " " ++ my_show tm ++ ")"
-          my_show (RApp tm tm') = "(RApp " ++ my_show tm ++ " " ++ my_show tm' ++ ")"
-          my_show RType = "RType"
-          my_show (RForce tm) = "(RForce " ++ my_show tm ++ ")"
-          my_show (RConstant c) = "(RConstant " ++ show c ++ ")"
+  showPrec = my_show
+    where %assert_total my_show : Prec -> Raw -> String
+          my_show d (Var n) = showCon d "Var" $ showArg n
+          my_show d (RBind n b tm) = showCon d "RBind" $ showArg n ++ showArg b ++ " " ++ my_show App tm
+          my_show d (RApp tm tm') = showCon d "RApp" $ " " ++ my_show App tm ++ " " ++ my_show App tm'
+          my_show d RType = "RType"
+          my_show d (RForce tm) = showCon d "RForce" $ " " ++ my_show App tm
+          my_show d (RConstant c) = showCon d "RConstant" $ showArg c
 
 instance Show SourceLocation where
-  show (FileLoc filename line col) = "FileLoc \"" ++ filename ++ "\" " ++ show line ++ " " ++ show col
+  showPrec d (FileLoc filename line col) = showCon d "FileLoc" $ showArg filename ++ showArg line ++ showArg col
 
 instance Show Err where
-  show (Msg x) = "Msg \"" ++ x ++ "\""
-  show (InternalMsg x) = "InternalMsg \"" ++ x ++ "\""
-  show (CantUnify x tm tm' err xs y) = "CantUnify " ++ show x ++
-                                       " ( " ++ show tm ++ ") (" ++ show tm' ++ ") (" ++ show err ++ ") " ++
-                                       show xs ++ " " ++ show y
-  show (InfiniteUnify n tm xs) = "InfiniteUnify " ++ show n ++ show tm ++ show xs
-  show (CantConvert tm tm' xs) = "CantConvert " ++ show tm ++ show tm' ++ show xs
-  show (CantSolveGoal tm ctxt) = "CantSolveGoal " ++ show tm ++ " " ++ show ctxt
-  show (UnifyScope n n' tm xs) = "UnifyScope " ++ show n ++ " " ++ show n' ++ " " ++ show tm ++ " " ++ show xs
-  show (CantInferType x) = "CantInferType " ++ show x
-  show (NonFunctionType tm tm') = "NonFunctionType " ++ show tm ++ show tm'
-  show (NotEquality tm tm') = "NotEquality " ++ show tm ++ " " ++ show tm'
-  show (TooManyArguments n) = "TooManyArguments " ++ show n
-  show (CantIntroduce tm) = "CantIntroduce " ++ show tm
-  show (NoSuchVariable n) = "NoSuchVariable " ++ show n
-  show (WithFnType tm) = "WithFnType " ++ show tm
-  show (CantMatch tm) = "CantMatch " ++ show tm
-  show (NoTypeDecl n) = "NoTypeDecl " ++ show n
-  show (NotInjective tm tm' x) = "NotInjective " ++ show tm ++ " " ++ show tm'
-  show (CantResolve tm) = "CantResolve " ++ show tm
-  show (InvalidTCArg n tm) = "InvalidTCName " ++ show n ++ " (" ++ show tm ++ ")"
-  show (CantResolveAlts xs) = "CantResolveAlts " ++ show xs
-  show (IncompleteTerm tm) = "IncompleteTerm " ++ show tm
-  show (NoEliminator s tm) = "NoEliminator " ++ show s ++ " " ++ show tm
-  show UniverseError = "UniverseError"
-  show ProgramLineComment = "ProgramLineComment"
-  show (Inaccessible n) = "Inaccessible " ++ show n
-  show (UnknownImplicit n f) = "UnknownImplicit " ++ show n ++ " "  ++ show f
-  show (NonCollapsiblePostulate n) = "NonCollapsiblePostulate " ++ show n
-  show (AlreadyDefined n) = "AlreadyDefined " ++ show n
-  show (ProofSearchFail err) = "ProofSearchFail " ++ show err
-  show (NoRewriting tm) = "NoRewriting " ++ show tm
-  show (ProviderError x) = "ProviderError \"" ++ show x ++ "\""
-  show (LoadingFailed x err) = "LoadingFailed " ++ show x ++ " (" ++ show err ++ ")"
+  showPrec d (Msg x) = showCon d "Msg" $ showArg x
+  showPrec d (InternalMsg x) = showCon d "InternalMsg" $ showArg x
+  showPrec d (CantUnify x tm tm' err xs y) = showCon d "CantUnify" $ showArg x ++
+                                       showArg tm ++ showArg tm' ++ showArg err ++
+                                       showArg xs ++ showArg y
+  showPrec d (InfiniteUnify n tm xs) = showCon d "InfiniteUnify" $ showArg n ++ showArg tm ++ showArg xs
+  showPrec d (CantConvert tm tm' xs) = showCon d "CantConvert" $ showArg tm ++ showArg tm' ++ showArg xs
+  showPrec d (CantSolveGoal tm ctxt) = showCon d "CantSolveGoal" $ showArg tm ++ showArg ctxt
+  showPrec d (UnifyScope n n' tm xs) = showCon d "UnifyScope" $ showArg n ++ showArg n' ++ showArg tm ++ showArg xs
+  showPrec d (CantInferType x) = showCon d "CantInferType" $ showArg x
+  showPrec d (NonFunctionType tm tm') = showCon d "NonFunctionType" $ showArg tm ++ showArg tm'
+  showPrec d (NotEquality tm tm') = showCon d "NotEquality" $ showArg tm ++ showArg tm'
+  showPrec d (TooManyArguments n) = showCon d "TooManyArguments" $ showArg n
+  showPrec d (CantIntroduce tm) = showCon d "CantIntroduce" $ showArg tm
+  showPrec d (NoSuchVariable n) = showCon d "NoSuchVariable" $ showArg n
+  showPrec d (WithFnType tm) = showCon d "WithFnType" $ showArg tm
+  showPrec d (CantMatch tm) = showCon d "CantMatch" $ showArg tm
+  showPrec d (NoTypeDecl n) = showCon d "NoTypeDecl" $ showArg n
+  showPrec d (NotInjective tm tm' x) = showCon d "NotInjective" $ showArg tm ++ showArg tm'
+  showPrec d (CantResolve tm) = showCon d "CantResolve" $ showArg tm
+  showPrec d (InvalidTCArg n tm) = showCon d "InvalidTCName" $ showArg n ++ showArg tm
+  showPrec d (CantResolveAlts xs) = showCon d "CantResolveAlts" $ showArg xs
+  showPrec d (IncompleteTerm tm) = showCon d "IncompleteTerm" $ showArg tm
+  showPrec d (NoEliminator s tm) = showCon d "NoEliminator" $ showArg s ++ showArg tm
+  showPrec d UniverseError = "UniverseError"
+  showPrec d ProgramLineComment = "ProgramLineComment"
+  showPrec d (Inaccessible n) = showCon d "Inaccessible" $ showArg n
+  showPrec d (UnknownImplicit n f) = showCon d "UnknownImplicit" $ showArg n ++ showArg f
+  showPrec d (NonCollapsiblePostulate n) = showCon d "NonCollapsiblePostulate" $ showArg n
+  showPrec d (AlreadyDefined n) = showCon d "AlreadyDefined" $ showArg n
+  showPrec d (ProofSearchFail err) = showCon d "ProofSearchFail" $ showArg err
+  showPrec d (NoRewriting tm) = showCon d "NoRewriting" $ showArg tm
+  showPrec d (ProviderError x) = showCon d "ProviderError" $ showArg x
+  showPrec d (LoadingFailed x err) = showCon d "LoadingFailed" $ showArg x ++ showArg err
 
 -------------------------
 -- Idiom brackets for Raw

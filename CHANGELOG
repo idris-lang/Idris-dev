@@ -1,3 +1,9 @@
+New in 0.9.19:
+--------------
+* The Show class has been moved into Prelude.Show and augmented with the method
+  showPrec, which allows correct parenthesization of showed terms. This comes
+  with the type Prec of precedences and a few helper functions.
+
 New in 0.9.18:
 --------------
 * GHC 7.10 compatibility
