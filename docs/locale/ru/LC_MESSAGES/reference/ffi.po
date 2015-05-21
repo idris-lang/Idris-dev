@@ -1,0 +1,230 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\reference\ffi.rst:3
+msgid "New Foreign Function Interface"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:7
+msgid ""
+"Ever since Idris has had multiple backends compiling to different target "
+"languages on potentially different platforms, we have had the problem that "
+"the foreign function interface (FFI) was written under the assumption of "
+"compiling to C. As a result, it has been hard to write generic code for "
+"multiple targets, or even to be sure that if code compiles that it will run "
+"on the expected target."
+msgstr ""
+
+#: ..\..\reference\ffi.rst:14
+msgid ""
+"As of 0.9.17, Idris will have a new foreign function interface (FFI) which "
+"is aware of multiple targets. Users who are working with the default code "
+"generator can happily continue writing programs as before with no changes, "
+"but if you are writing bindings for an external library, writing a back end,"
+" or working with a non-C back end, there are some things you will need to be"
+" aware of, which this page describes."
+msgstr ""
+
+#: ..\..\reference\ffi.rst:23
+msgid "The ``IO'`` monad, and ``main``"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:25
+msgid ""
+"The ``IO`` monad exists as before, but is now specific to the C backend (or,"
+" more precisely, any backend whose foreign function calls are compatible "
+"with C.) Additionally, there is now an ``IO'`` monad, which is parameterised"
+" over a FFI descriptor:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:34
+msgid ""
+"The Prelude defines two FFI descriptors which are imported automatically, "
+"for C and JavaScript/Node, and defines ``IO`` to use the C FFI and ``JS_IO``"
+" to use the JavaScript FFI:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:49
+msgid ""
+"As before, the entry point to an Idris program is ``main``, but the type of "
+"``main`` can now be any instance of ``IO'``, e.g. the following are both "
+"valid:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:58
+msgid ""
+"The FFI descriptor includes details about which types can be marshalled "
+"between the foreign language and Idris, and the \"target\" of a foreign "
+"function call (typically just a String representation of the function's "
+"name, but potentially something more complicated such as an external library"
+" file or even a URL)."
+msgstr ""
+
+#: ..\..\reference\ffi.rst:65
+msgid "FFI descriptors"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:67
+msgid ""
+"An FFI descriptor is a record containing a predicate which holds when a type"
+" can be marshalled, and the type of the target of a foreign call:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:78
+msgid "For C, this is:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:103
+msgid "Foreign calls"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:105
+msgid ""
+"To call a foreign function, the ``foreign`` function is used. For example:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:114
+msgid ""
+"The ``foreign`` function takes an FFI description, a function name (the type"
+" is given by the ``ffi_fn`` field of ``FFI_C`` here), and a function type, "
+"which gives the expected types of the remaining arguments. Here, we're "
+"calling an external function ``fileOpen`` which takes, in the C, a ``char*``"
+" file name, a ``char*`` mode, and returns a file pointer. It is the job of "
+"the C back end to convert Idris ``String`` to C ``char*`` and vice versa."
+msgstr ""
+
+#: ..\..\reference\ffi.rst:122
+msgid ""
+"The argument types and return type given here must be present in the "
+"``fn_types`` predicate of the ``FFI_C`` description for the foreign call to "
+"be valid."
+msgstr ""
+
+#: ..\..\reference\ffi.rst:126
+msgid ""
+"**Note** The arguments to ``foreign`` *must* be known at compile time, "
+"because the foreign calls are generated statically. The ``%inline`` "
+"directive on a function can be used to give hints to help this, for example "
+"a shorthand for calling external JavaScript functions:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:139
+msgid "FFI implementation"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:141
+msgid ""
+"In order to write bindings to external libraries, the details of how "
+"``foreign`` works are unnecessary --- you simply need to know that "
+"``foreign`` takes an FFI descriptor, the function name, and its type. It is "
+"instructive to look a little deeper, however:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:146
+msgid "The type of ``foreign`` is as follows:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:156
+msgid ""
+"The important argument here is the implicit ``fty``, which contains a proof "
+"(``FTy``) that the given type is valid according to the FFI description "
+"``ffi``:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:166
+msgid ""
+"Notice that this uses the ``ffi_types`` field of the FFI descriptor --- "
+"these arguments to ``FRet`` and ``FFun`` give explicit proofs that the type "
+"is valid in this FFI. For example, the above ``do_fopen`` builds the "
+"following implicit proof as the ``fty`` argument to ``foreign``:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:177
+msgid "Compiling foreign calls"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:179
+msgid "(This section assumes some knowledge of the Idris internals.)"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:181
+msgid ""
+"When writing a back end, we now need to know how to compile ``foreign``.  "
+"We'll skip the details here of how a ``foreign`` call reaches the "
+"intermediate representation (the IR), though you can look in ``IO.idr`` in "
+"the ``prelude`` package to see a bit more detail --- a ``foreign`` call is "
+"implemented by the primitive function ``mkForeignPrim``. The important part "
+"of the IR as defined in ``Lang.hs`` is the following constructor:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:196
+msgid ""
+"So, a ``foreign`` call appears in the IR as the ``LForeign`` constructor, "
+"which takes a function descriptor (of a type given by the ``ffi_fn`` field "
+"in the FFI descriptor), a return type descriptor (given by an application of"
+" ``FTy``), and a list of arguments with type descriptors (also given by an "
+"application of ``FTy``)."
+msgstr ""
+
+#: ..\..\reference\ffi.rst:202
+msgid ""
+"An ``FDesc`` describes an application of a name to some arguments, and is "
+"really just a simplified subset of an ``LExp``:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:212
+msgid ""
+"There are corresponding structures in the lower level IRs, such as the "
+"defunctionalised, simplified and bytecode forms."
+msgstr ""
+
+#: ..\..\reference\ffi.rst:215
+msgid "Our ``do_fopen`` example above arrives in the ``LExp`` form as:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:222
+msgid ""
+"(Assuming that ``f`` and ``m`` stand for the ``LExp`` representations of the"
+" arguments.) This information should be enough for any back end to marshal "
+"the arguments and return value appropriately."
+msgstr ""
+
+#: ..\..\reference\ffi.rst:228
+msgid ""
+"When processing ``FDesc``, be aware that there may be implicit arguments, "
+"which have not been erased. For example, ``C_IntT`` has an implicit argument"
+" ``i``, so will appear in an ``FDesc`` as something of the form ``FApp (sUN "
+"\"C_IntT\") [i, t]`` where ``i`` is the implicit argument (which can be "
+"ignored) and ``t`` is the descriptor of the integer type. See "
+"``CodegenC.hs``, specifically the function ``toFType``, to see how this "
+"works in practice."
+msgstr ""
+
+#: ..\..\reference\ffi.rst:237
+msgid "JavaScript FFI descriptor"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:239
+msgid ""
+"The JavaScript FFI descriptor is a little more complex, because the "
+"JavaScript FFI supports marshalling functions. It is defined as follows:"
+msgstr ""
+
+#: ..\..\reference\ffi.rst:265
+msgid ""
+"The reason for wrapping function types in a ``JsFn`` is to help the proof "
+"search when building ``FTy``. We hope to improve proof search eventually, "
+"but for the moment it works much more reliably if the indices are disjoint! "
+"An example of using this appears in `IdrisScript <https://github.com/idris-"
+"hackers/IdrisScript>`__ when setting timeouts:"
+msgstr ""

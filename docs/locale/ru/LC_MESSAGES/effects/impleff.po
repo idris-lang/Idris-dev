@@ -1,0 +1,255 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\effects\impleff.rst:5
+msgid "Creating New Effects"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:7
+msgid ""
+"We have now seen several side-effecting operations provided by the "
+"``Effects`` library, and examples of their use in Section :ref:`sect-"
+"simpleff`. We have also seen how operations may *modify* the available "
+"effects by changing state in Section :ref:`sect-depeff`. We have not, "
+"however, yet seen how these operations are implemented. In this section, we "
+"describe how a selection of the available effects are implemented, and show "
+"how new effectful operations may be provided."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:17
+msgid "State"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:19
+msgid ""
+"Effects are described by *algebraic data types*, where the constructors "
+"describe the operations provided when the effect is available. Stateful "
+"operations are described as follows:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:29
+msgid ""
+"Each effect is associated with a *resource*, the type of which is given with"
+" the notation ``{ x ==> x’ }``. This notation gives the resource type "
+"expected by each operation, and how it updates when the operation is run. "
+"Here, it means:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:36
+msgid "``Get`` takes no arguments. It has a resource of type ``a``, which"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:35
+msgid ""
+"is not updated, and running the ``Get`` operation returns something of type "
+"``a``."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:41
+msgid "``Put`` takes a ``b`` as an argument. It has a resource of type"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:39
+msgid ""
+"``a`` on input, which is updated to a resource of type ``b``. Running the "
+"``Put`` operation returns the element of the unit type."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:43
+msgid "``Effect`` itself is a type synonym, declared as follows:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:52
+msgid ""
+"That is, an effectful operation returns something of type ``result``, has an"
+" input resource of type ``input_resource``, and a function "
+"``output_resource`` which computes the output resource type from the result."
+" We use the same syntactic sugar as with ``Eff`` to make effect declarations"
+" more readable. It is defined as follows in the library:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:65
+msgid ""
+"In order to convert ``State`` (of type ``Effect``) into something usable in "
+"an effects list, of type ``EFFECT``, we write the following:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:73
+msgid ""
+"``MkEff`` constructs an ``EFFECT`` by taking the resource type (here, the "
+"``t`` which parameterises ``STATE``) and the effect signature (here, "
+"``State``). For reference, ``EFFECT`` is declared as follows:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:82
+msgid ""
+"Recall that to run an effectful program in ``Eff``, we use one of the "
+"``run`` family of functions to run the program in a particular computation "
+"context ``m``. For each effect, therefore, we must explain how it is "
+"executed in a particular computation context for ``run`` to work in that "
+"context. This is achieved with the following type class:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:94
+msgid ""
+"We have already seen some instance declarations in the effect summaries in "
+"Section :ref:`sect-simpleff`. An instance of ``Handler e m`` means that the "
+"effect declared with signature ``e`` can be run in computation context "
+"``m``. The ``handle`` function takes:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:100
+msgid "The ``resource`` on input (so, the current value of the state for"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:100
+msgid "``State``)"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:102
+msgid "The effectful operation (either ``Get`` or ``Put x`` for ``State``)"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:105
+msgid "A *continuation*, which we conventionally call ``k``, and should be"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:105
+msgid "passed the result value of the operation, and an updated resource."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:107
+msgid ""
+"There are two reasons for taking a continuation here: firstly, this is "
+"neater because there are multiple return values (a new resource and the "
+"result of the operation); secondly, and more importantly, the continuation "
+"can be called zero or more times."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:112
+msgid ""
+"A ``Handler`` for ``State`` simply passes on the value of the state, in the "
+"case of ``Get``, or passes on a new state, in the case of ``Put``.  It is "
+"defined the same way for all computation contexts:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:122
+msgid ""
+"This gives enough information for ``Get`` and ``Put`` to be used directly in"
+" ``Eff`` programs. It is tidy, however, to define top level functions in "
+"``Eff``, as follows:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:137
+msgid ""
+"**An implementation detail (aside):** The ``call`` function converts an "
+"``Effect`` to a function in ``Eff``, given a proof that the effect is "
+"available. This proof can be constructed automatically by , since it is "
+"essentially an index into a statically known list of effects:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:148
+msgid ""
+"This is the reason for the ``Can’t solve goal`` error when an effect is not "
+"available: the implicit proof ``prf`` has not been solved automatically "
+"because the required effect is not in the list of effects ``xs``."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:153
+msgid ""
+"Such details are not important for using the library, or even writing new "
+"effects, however."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:157
+msgid "Summary"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:159
+msgid ""
+"The following listing summarises what is required to define the ``STATE`` "
+"effect:"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:186
+msgid "Console I/O"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:188
+msgid ""
+"Then listing below gives the definition of the ``STDIO`` effect, including "
+"handlers for ``IO`` and ``IOExcept``. We omit the definition of the top "
+"level ``Eff`` functions, as this merely invoke the effects ``PutStr``, "
+"``GetStr``, ``PutCh`` and ``GetCh`` directly."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:193
+msgid ""
+"Note that in this case, the resource is the unit type in every case, since "
+"the handlers merely apply the ``IO`` equivalents of the effects directly."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:222
+msgid "Exceptions"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:224
+msgid ""
+"The listing below gives the definition of the ``Exception`` effect, "
+"including two of its handlers for ``Maybe`` and ``List``. The only operation"
+" provided is ``Raise``. The key point to note in the definitions of these "
+"handlers is that the continuation ``k`` is not used. Running ``Raise`` "
+"therefore means that computation stops with an error."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:247
+msgid "Non-determinism"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:249
+msgid ""
+"The following listing gives the definition of the ``Select`` effect for "
+"writing non-deterministic programs, including a handler for ``List`` context"
+" which returns all possible successful values, and a handler for ``Maybe`` "
+"context which returns the first successful value."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:274
+msgid ""
+"Here, the continuation is called multiple times in each handler, for each "
+"value in the list of possible values. In the ``List`` handler, we accumulate"
+" all successful results, and in the ``Maybe`` handler we try the first value"
+" in the last, and try later values only if that fails."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:280
+msgid "File Management"
+msgstr ""
+
+#: ..\..\effects\impleff.rst:282
+msgid ""
+"Result-dependent effects are no different from non-dependent effects in the "
+"way they are implemented. The listing below illustrates this for the "
+"``FILE_IO`` effect. The syntax for state transitions ``{ x ==> {res} x’ }``,"
+" where the result state ``x’`` is computed from the result of the operation "
+"``res``, follows that for the equivalent ``Eff`` programs."
+msgstr ""
+
+#: ..\..\effects\impleff.rst:318
+msgid ""
+"Note that in the handler for ``Open``, the types passed to the continuation "
+"``k`` are different depending on whether the result is ``True`` (opening "
+"succeeded) or ``False`` (opening failed). This uses ``validFile``, defined "
+"in the ``Prelude``, to test whether a file handler refers to an open file or"
+" not."
+msgstr ""

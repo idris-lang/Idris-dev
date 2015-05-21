@@ -1,0 +1,101 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\tutorial\conclusions.rst:5
+msgid "Further Reading"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:7
+msgid ""
+"Further information about Idris programming, and programming with dependent "
+"types in general, can be obtained from various sources:"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:10
+msgid ""
+"The Idris web site (http://idris-lang.org/) and by asking questions on the "
+"mailing list."
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:13
+msgid ""
+"The IRC channel ``#idris``, on `chat.freenode.net "
+"<http://chat.freenode.net>`__."
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:21
+msgid "The wiki (https://github.com/idris-lang/Idris-dev/wiki/) has further"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:17
+msgid "user provided information, in particular:"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:19
+msgid "https://github.com/idris-lang/Idris-dev/wiki/Manual"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:21
+msgid "https://github.com/idris-lang/Idris-dev/wiki/Language-Features"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:25
+msgid "Examining the prelude and exploring the ``samples`` in the"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:24
+msgid ""
+"distribution. The Idris source can be found online at: https://github.com"
+"/idris-lang/Idris-dev."
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:27
+msgid ""
+"Existing projects on the ``Idris Hackers`` web space: http://idris-"
+"hackers.github.io."
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:31
+msgid "Various papers (e.g. [1]_, [2]_, and [3]_).  Although these mostly"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:31
+msgid "describe older versions of Idris."
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:33
+msgid ""
+"Edwin Brady and Kevin Hammond. 2012. Resource-Safe systems programming with "
+"embedded domain specific languages. In Proceedings of the 14th international"
+" conference on Practical Aspects of Declarative Languages (PADL'12), Claudio"
+" Russo and Neng-Fa Zhou (Eds.). Springer-Verlag, Berlin, Heidelberg, "
+"242-257. DOI=10.1007/978-3-642-27694-1_18 "
+"http://dx.doi.org/10.1007/978-3-642-27694-1_18"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:41
+msgid ""
+"Edwin C. Brady. 2011. IDRIS ---: systems programming meets full dependent "
+"types. In Proceedings of the 5th ACM workshop on Programming languages meets"
+" program verification (PLPV '11). ACM, New York, NY, USA, 43-54. "
+"DOI=10.1145/1929529.1929536 http://doi.acm.org/10.1145/1929529.1929536"
+msgstr ""
+
+#: ..\..\tutorial\conclusions.rst:48
+msgid ""
+"Edwin C. Brady and Kevin Hammond. 2010. Scrapping your inefficient engine: "
+"using partial evaluation to improve domain-specific language implementation."
+" In Proceedings of the 15th ACM SIGPLAN international conference on "
+"Functional programming (ICFP '10). ACM, New York, NY, USA, 297-308. "
+"DOI=10.1145/1863543.1863587 http://doi.acm.org/10.1145/1863543.1863587"
+msgstr ""

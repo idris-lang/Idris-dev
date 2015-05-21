@@ -27,7 +27,7 @@ type and ``n`` is the length of the list and can be an arbitrary term.
 When types can contain values, and where those values describe
 properties, for example the length of a list, the type of a function
 can begin to describe its own properties. Take for example the
-concatenatation of two lists. This operation has the property that the
+concatenation of two lists. This operation has the property that the
 resulting list's length is the sum of the lengths of the two input
 lists. We can therefore give the following type to the ``app``
 function, which concatenates vectors:

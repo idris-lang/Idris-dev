@@ -1,0 +1,1278 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Heather <Heather@live.ru>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\tutorial\typesfuns.rst:5
+msgid "Types and Functions"
+msgstr "Типы и функции"
+
+#: ..\..\tutorial\typesfuns.rst:8
+msgid "Primitive Types"
+msgstr "Примитивные (базовые) типы"
+
+#: ..\..\tutorial\typesfuns.rst:10
+msgid ""
+"Idris defines several primitive types: ``Int``, ``Integer`` and ``Float`` "
+"for numeric operations, ``Char`` and ``String`` for text manipulation, and "
+"``Ptr`` which represents foreign pointers. There are also several data types"
+" declared in the library, including ``Bool``, with values ``True`` and "
+"``False``. We can declare some constants with these types. Enter the "
+"following into a file ``Prims.idr`` and load it into the Idris interactive "
+"environment by typing ``idris Prims.idr``:"
+msgstr ""
+"Idris определяет несколько простых типов: ``Int``, ``Integer`` и ``Float`` "
+"для числовых операций, ``Char`` и ``String`` для обработки текста, и "
+"``Ptr``, для работы с внешними указателями. Есть также несколько типов "
+"объявленных в библиотеке, в том числе ``Bool``, со значениями ``True`` и "
+"``False``. Мы можем объявить некоторые константы с этими типами. Введите "
+"следующее в файле ``Prims.idr`` и загрузить его в интерактивную среду Idris, "
+"набрав ``idris Prims.idr``:"
+
+#: ..\..\tutorial\typesfuns.rst:35
+msgid ""
+"An Idris file consists of an optional module declaration (here ``module "
+"Prims``) followed by an optional list of imports and a collection of "
+"declarations and definitions. In this example no imports have been "
+"specified. However Idris programs can consist of several modules and the "
+"definitions in each module each have their own namespace. This is discussed "
+"further in Section :ref:`sect-namespaces`). When writing Idris programs both"
+" the order in which definitions are given and indentation are significant. "
+"Functions and data types must be defined before use, incidently each "
+"definition must have a type declaration, for example see ``x : Int``, ``foo "
+": String``, from the above listing. New declarations must begin at the same "
+"level of indentation as the preceding declaration. Alternatively, a "
+"semicolon ``;`` can be used to terminate declarations."
+msgstr ""
+"Idris файл состоит из необязательной декларации модуля (``module Prims``) "
+"с последующими дополнительным списком импорта и набора объявлений "
+"и определений. В этом примере нет импорта. Idris программы могут состоять из "
+"нескольких модулей и определения в каждом модуле имеют свои собственные "
+"пространства имен (Это обсуждается далее в разделе::ref:`sect-namespaces`). "
+"При написании программы на Idris, порядок, в котором даны определения и "
+"отступы имеют значение. Функции и типы данных должны быть определены до "
+"использования, при этом каждое определение должно иметь объявление типа, "
+" например: ``x : Int``, ``foo : String``, из приведенного выше кода. "
+"Новые объявления должны иметь тот же уровень отступа, как и в предыдущем "
+"объявлении. Кроме того, точка с запятой ``;`` может быть использована "
+"для прекращения объявления."
+
+#: ..\..\tutorial\typesfuns.rst:49
+msgid ""
+"A library module ``prelude`` is automatically imported by every Idris "
+"program, including facilities for IO, arithmetic, data structures and "
+"various common functions. The prelude defines several arithmetic and "
+"comparison operators, which we can use at the prompt. Evaluating things at "
+"the prompt gives an answer, and the type of the answer. For example:"
+msgstr ""
+"Модуль стандартной библиотеки ``prelude`` автоматически импортируется в "
+"каждой Idris программе, в том числе работа с IO, арифметика, структуры и "
+"различные общие функции. ``prelude`` определяет несколько арифметических "
+"операторов и операторов сравнения, которые мы можем использовать в командной "
+"строке. Можно быстро определить тип выражения, например:".
+
+#: ..\..\tutorial\typesfuns.rst:63
+msgid ""
+"All of the usual arithmetic and comparison operators are defined for the "
+"primitive types. They are overloaded using type classes, as we will discuss "
+"in Section :ref:`sect-classes` and can be extended to work on user defined "
+"types. Boolean expressions can be tested with the ``if...then...else`` "
+"construct, for example:"
+msgstr ""
+"Все обычные арифметические операторы и операторы сравнения определены для "
+"примитивных типов. Они перегружены с использованием ``классов типов``, "
+"подробнее в разделе: :ref:`sect-classes` и могут быть расширены для работы "
+"с типами определёнными пользователем. Логические выражения могут быть "
+"проверены с использованием ``if...then...else``, например:"
+
+#: ..\..\tutorial\typesfuns.rst:75
+msgid "Data Types"
+msgstr "Типы данных"
+
+#: ..\..\tutorial\typesfuns.rst:77
+msgid ""
+"Data types are declared in a similar way and with similar syntax to Haskell."
+" Natural numbers and lists, for example, can be declared as follows:"
+msgstr ""
+"Типы данных объявляются по аналогии с синтаксисом Haskell. "
+"Натуральные числа и списки, например, могут быть объявлен следующим образом:"
+
+#: ..\..\tutorial\typesfuns.rst:87
+msgid ""
+"The above declarations are taken from the standard library. Unary natural "
+"numbers can be either zero (``Z``), or the successor of another natural "
+"number (``S k``). Lists can either be empty (``Nil``) or a value added to "
+"the front of another list (``x :: xs``). In the declaration for ``List``, we"
+" used an infix operator ``::``. New operators such as this can be added "
+"using a fixity declaration, as follows:"
+msgstr ""
+"Приведенные выше объявления взяты из стандартной библиотеки. Унарные "
+"естественные числа могут быть либо нулем (``Z``), или следующим значением "
+"(преемником) другого естественного числа (``S k``). Списки могут быть либо "
+"пустым (``Nil``) или как добавляемое значение в друой список (``x :: xs``). "
+"В определении ``List`` мы использовали инфиксный оператор ``::``. Новые "
+"операторы, такие как этот могут быть добавлены используя следующим образом:"
+
+#: ..\..\tutorial\typesfuns.rst:99
+msgid ""
+"Functions, data constructors and type constructors may all be given infix "
+"operators as names. They may be used in prefix form if enclosed in brackets,"
+" e.g. ``(::)``. Infix operators can use any of the symbols:"
+msgstr ""
+"Функции, конструкторы данных и конструкторы типа могут быть инфикс "
+"операторами. Они могут быть использованы в виде префикса, например, "
+"``(::)``. Инфиксные операторы могут использовать любые символы:"
+
+#: ..\..\tutorial\typesfuns.rst:109
+msgid "Functions"
+msgstr "Функции"
+
+#: ..\..\tutorial\typesfuns.rst:111
+msgid ""
+"Functions are implemented by pattern matching, again using a similar syntax "
+"to Haskell. The main difference is that Idris requires type declarations for"
+" all functions, using a single colon ``:`` (rather than Haskell’s double "
+"colon ``::``). Some natural number arithmetic functions can be defined as "
+"follows, again taken from the standard library:"
+msgstr ""
+"Функции реализуются паттерн матчингом, используя похожий на Haskell синтаксис."
+" Главное отличие в том, что в Idris требуется явное объявления типов для "
+"всех функций, используя одно двоеточие ``:`` (вместо ``::``). "
+"Арифметическая функция с натуральным числом может быть определена как:"
+
+#: ..\..\tutorial\typesfuns.rst:130
+msgid ""
+"The standard arithmetic operators ``+`` and ``*`` are also overloaded for "
+"use by ``Nat``, and are implemented using the above functions. Unlike "
+"Haskell, there is no restriction on whether types and function names must "
+"begin with a capital letter or not. Function names (``plus`` and ``mult`` "
+"above), data constructors (``Z``, ``S``, ``Nil`` and ``::``) and type "
+"constructors (``Nat`` and ``List``) are all part of the same namespace. We "
+"can test these functions at the Idris prompt:"
+msgstr ""
+"Стандартные арифметические операторы ``+` и ``*`` также перегружены для "
+"использования с ``Nat`` и реализованы с использованием указанных выше "
+"функций. В отличие от Haskell, типы или имена функций могут "
+"начинаются с заглавной буквы или нет. Имена функций (``plus`` и ``mult``) "
+", конструкторы данных (``Z``, ``S``, ``Nil`` и ``::``) и конструкторы типов "
+"(``Nat`` и ``List``) являются частью того же пространства имен. ""
+"возможно проверить эти функции в строке Idris:"
+
+#: ..\..\tutorial\typesfuns.rst:148
+msgid ""
+"Idris automatically desugars the ``Nat`` representation into a more human "
+"readable format. The result of ``plus (S (S Z)) (S (S Z))`` is actually ``(S"
+" (S (S (S Z))))`` which is the Integer 4. This can be checked at the Idris "
+"prompt:"
+msgstr ""
+"Idris автоматически раскладывает ``Nat`` в более понятный для чтения формат. "
+"Результ ``plus (S (S Z)) (S (S Z))`` фактически ``(S (S (S (S Z))))``, но "
+"мы видим целое 4. Это может быть проверено в Idris:"
+
+#: ..\..\tutorial\typesfuns.rst:158
+msgid ""
+"Like arithmetic operations, integer literals are also overloaded using type "
+"classes, meaning that we can also test the functions as follows:"
+msgstr ""
+"Как арифметические операции, целые литералы также перегружены с "
+"использованием классов типов, это означает, что мы можем протестировать "
+"функции следующим образом:"
+
+#: ..\..\tutorial\typesfuns.rst:168
+msgid ""
+"You may wonder, by the way, why we have unary natural numbers when our "
+"computers have perfectly good integer arithmetic built in. The reason is "
+"primarily that unary numbers have a very convenient structure which is easy "
+"to reason about, and easy to relate to other data structures as we will see "
+"later. Nevertheless, we do not want this convenience to be at the expense of"
+" efficiency. Fortunately, Idris knows about the relationship between ``Nat``"
+" (and similarly structured types) and numbers. This means it can optimise "
+"the representation, and functions such as ``plus`` and ``mult``."
+msgstr ""
+"Вы можете задаться вопросом, почему у нас есть одноместные натуральные числа, "
+"когда наши компьютеры хорошо используют целочисленную арифметику. "
+"Причина в том, в первую очередь, что унарные номера имеют очень удобную "
+"конструкцию, которую легко связать с другими структурами данных, как мы увидим "
+"позже. Тем не менее, мы не хотим платить за это удобство в счет эффективности."
+"К счастью, Idris знает об отношениях между ``Nat`` (А так же "
+"структурированными типами) и числами. Это означает, что можно оптимизировать "
+"представление и функции, такие как ``plus`` и ``mult``."
+
+#: ..\..\tutorial\typesfuns.rst:179
+msgid "``where`` clauses"
+msgstr "``where`` положения"
+
+#: ..\..\tutorial\typesfuns.rst:181
+msgid ""
+"Functions can also be defined *locally* using ``where`` clauses. For "
+"example, to define a function which reverses a list, we can use an auxiliary"
+" function which accumulates the new, reversed list, and which does not need "
+"to be visible globally:"
+msgstr ""
+"Функции могут быть определены *локально* с помощью ``where`` положения. "
+"Например, чтобы определить функцию, которая переворачивает список, "
+"мы можем использовать вспомогательные функции, которые аккумулируют новый, "
+"перевернутый список, и которые не будут видмиы за пределами функции:"
+
+#: ..\..\tutorial\typesfuns.rst:194
+msgid ""
+"Indentation is significant — functions in the ``where`` block must be "
+"indented further than the outer function."
+msgstr ""
+"Отступ является значительным - функции в ``where`` блоке должны находиться "
+"отступом дальше внешних функций."
+
+#: ..\..\tutorial\typesfuns.rst:197
+msgid "Scope"
+msgstr "Охват"
+
+#: ..\..\tutorial\typesfuns.rst:199
+msgid ""
+"Any names which are visible in the outer scope are also visible in the "
+"``where`` clause (unless they have been redefined, such as ``xs`` here). A "
+"name which appears only in the type will be in scope in the ``where`` clause"
+" if it is a *parameter* to one of the types, i.e. it is fixed across the "
+"entire structure."
+msgstr ""
+"Любые имена, которые видны на внешними границами также видна в "
+"``where`` (если они не были переопределены, такие как ``xs`` здесь). "
+"Имя, которое появляется только в типе будет находиться в области видимости "
+"``where`` если это *параметр* к одному из типов, т.е. фиксированный по "
+"всей структуре."
+
+#: ..\..\tutorial\typesfuns.rst:205
+msgid ""
+"As well as functions, ``where`` blocks can include local data declarations, "
+"such as the following where ``MyLT`` is not accessible outside the "
+"definition of ``foo``:"
+msgstr ""
+"Также функции, ``where`` блоки могут включать в себя локальные объявления "
+"данных, как в примере, где ``MyLT`` не доступен за пределами "
+"определения ``foo``:"
+
+#: ..\..\tutorial\typesfuns.rst:221
+msgid ""
+"In general, functions defined in a ``where`` clause need a type declaration "
+"just like any top level function. However, the type declaration for a "
+"function ``f`` *can* be omitted if:"
+msgstr ""
+"В целом, для функций определенных в ``where`` необходимо объявление типа "
+"как и в любой функции топ уровня. Тем не менее, объявление типа для "
+"функции ``f`` *может* быть опущено, если:"
+
+#: ..\..\tutorial\typesfuns.rst:225
+msgid "``f`` appears in the right hand side of the top level definition"
+msgstr "``f`` находится в правой части определения топ уровня"
+
+#: ..\..\tutorial\typesfuns.rst:227
+msgid ""
+"The type of ``f`` can be completely determined from its first application"
+msgstr ""
+"Тип ``f`` может быть полностью определён с первого применения"
+
+#: ..\..\tutorial\typesfuns.rst:230
+msgid "So, for example, the following definitions are legal:"
+msgstr "Так, например, следующие определения являются приемлемыми:"
+
+#: ..\..\tutorial\typesfuns.rst:247
+msgid "Dependent Types"
+msgstr "Зависимые типы"
+
+#: ..\..\tutorial\typesfuns.rst:250
+msgid "Vectors"
+msgstr "Векторы"
+
+#: ..\..\tutorial\typesfuns.rst:252
+msgid ""
+"A standard example of a dependent type is the type of “lists with length”, "
+"conventionally called vectors in the dependent type literature.  They are "
+"available as part of the Idris library, by importing ``Data.Vect``, or we "
+"can declare them as follows:"
+msgstr ""
+"Стандартный пример зависимого типа тип “списки с длиной”, "
+"условно называемые векторы в литературе о зависимых типах. Они "
+"доступны как часть библиотеки Idris, импортируя ``Data.Vect``, или мы "
+"может объявить их следующим образом:"
+
+#: ..\..\tutorial\typesfuns.rst:263
+msgid ""
+"Note that we have used the same constructor names as for ``List``. Ad-hoc "
+"name overloading such as this is accepted by Idris, provided that the names "
+"are declared in different namespaces (in practice, normally in different "
+"modules). Ambiguous constructor names can normally be resolved from context."
+msgstr ""
+"Обратите внимание, что мы использовали те же самые имена конструкторов "
+"как для ``List``. Ad-Hoc перегрузки имён, такие как это, приняты в Idris, "
+"при условии, что имена объявлены в разных пространствах имен (на практике, "
+"как правило, в разных модулях). Неоднозначные имена конструкторов обычно "
+"можно решить из контекста."
+
+#: ..\..\tutorial\typesfuns.rst:269
+msgid ""
+"This declares a family of types, and so the form of the declaration is "
+"rather different from the simple type declarations above. We explicitly "
+"state the type of the type constructor ``Vect`` — it takes a ``Nat`` and a "
+"type as an argument, where ``Type`` stands for the type of types. We say "
+"that ``Vect`` is *indexed* over ``Nat`` and *parameterised* by ``Type``. "
+"Each constructor targets a different part of the family of types. ``Nil`` "
+"can only be used to construct vectors with zero length, and ``::`` to "
+"construct vectors with non-zero length. In the type of ``::``, we state "
+"explicitly that an element of type ``a`` and a tail of type ``Vect k a`` "
+"(i.e., a vector of length ``k``) combine to make a vector of length ``S k``."
+msgstr ""
+"Это объявления семейства типов, а так формы декларации довольно сильно "
+"отличается от простых деклараций типа выше. Мы явно указаем тип тип "
+"конструктора ``Vect`` - он принимает ``Nat`` и тип в качестве аргумента, "
+"где ``Type`` служит для типа типов. Мы говорим, что ``Vect`` является "
+"*индексированным* по ``Nat`` и *параметризируются* через ``Type``. "
+"Каждый конструктор нацелен на соответсвующую часть семейства типов. ``Nil`` "
+"может быть использован только для создания векторов с нулевой длиной, и "
+"``::`` для построению вектора ненулевой длины. В типе ``::``, мы объявляем "
+"явно, что элемент типа ``a`` и хвост типа ``Vect ka`` (то есть, вектор длины "
+"``k``) объединяются, чтобы сделать вектор длиной ``S k``."
+
+#: ..\..\tutorial\typesfuns.rst:281
+msgid ""
+"We can define functions on dependent types such as ``Vect`` in the same way "
+"as on simple types such as ``List`` and ``Nat`` above, by pattern matching. "
+"The type of a function over ``Vect`` will describe what happens to the "
+"lengths of the vectors involved. For example, ``++``, defined as follows, "
+"appends two ``Vect``:"
+msgstr ""
+"Мы можем определить функции для зависимых типов, таких как ``Vect`` таким "
+"же образом, а простых типов, таких как ``List`` и ``Nat`` выше, путем "
+"сопоставления с образцом. Тип функции над ``Vect`` будет описывать то, "
+"что происходит с длинами вовлеченных векторов. Например, ``++``, "
+"определяется следующим образом (слияние двух ``Vect``):"
+
+#: ..\..\tutorial\typesfuns.rst:293
+msgid ""
+"The type of ``(++)`` states that the resulting vector’s length will be the "
+"sum of the input lengths. If we get the definition wrong in such a way that "
+"this does not hold, Idris will not accept the definition. For example:"
+msgstr ""
+"Тип ``(++)`` говорит о том, что длина результирующего вектора будет ровняться "
+"сумме входных длин. Если это условие не выполняется, то Idris "
+"не примет определение. Например:"
+
+#: ..\..\tutorial\typesfuns.rst:304
+msgid ""
+"When run through the Idris type checker, this results in the following:"
+msgstr ""
+"При запуске механизма проверки типов Idris, результат будет следующим:"
+
+#: ..\..\tutorial\typesfuns.rst:324
+msgid ""
+"This error message suggests that there is a length mismatch between two "
+"vectors — we needed a vector of length ``k + m``, but provided a vector of "
+"length ``k + k``."
+msgstr ""
+"Это сообщение об ошибке показывает несоответствие между длиной векторов, "
+"между необходимой длиной ``к + m`` и пользовательской ``k + k``."
+
+#: ..\..\tutorial\typesfuns.rst:329
+msgid "The Finite Sets"
+msgstr "Конечные множества"
+
+#: ..\..\tutorial\typesfuns.rst:331
+msgid ""
+"Finite sets, as the name suggests, are sets with a finite number of "
+"elements. They are available as part of the Idris library, by importing "
+"``Data.Fin``, or can be declared as follows:"
+msgstr ""
+"Конечные множества, как следует из названия, представляют собой наборы "
+"с конечным числом элементов. Они доступны как часть библиотеки Idris, "
+"импортируя ``Data.Fin``, или могут быть объявлены следующим образом:"
+
+#: ..\..\tutorial\typesfuns.rst:341
+msgid ""
+"From the signature,  we can see that this is a type constructor that takes a"
+" ``Nat``, and produces a type. So this is not a set in the sense of a "
+"collection that is a container of objects, rather it is the canonical set of"
+" unnamed elements, as in \"the set of 5 elements,\" for example. "
+"Effectively, it is a type that captures integers that fall into the range of"
+" zero to ``(n - 1)`` where ``n`` is the argument used to instantiate the "
+"``Fin`` type. For example, ``Fin 5`` can be thought of as the type of "
+"integers between 0 and 4."
+msgstr ""
+"От сигнатуры, мы можем видеть, что это конструктор типа, который принимает "
+"``Nat`` и объявляет тип. В этом случае это не коллекция, а канонический набор "
+"безымянных элементы, как в \"множестве 5 элементов, \", например. "
+"По сути, это тип, который захватывает целые числа, которые попадают в диапазон"
+" от нуля до ``(n - 1)``, где ``n`` - это аргумент, используемый для создания "
+"экземпляра ``Fin`` типа. Например, ``Fin 5`` можно рассматривать как тип "
+"целых чисел от 0 до 4."
+
+#: ..\..\tutorial\typesfuns.rst:348
+msgid "Let us look at the constructors in greater detail."
+msgstr "Давайте посмотрим на конструкторы более подробно."
+
+#: ..\..\tutorial\typesfuns.rst:350
+msgid ""
+"``FZ`` is the zeroth element of a finite set with ``S k`` elements; ``FS n``"
+" is the ``n+1``\\ th element of a finite set with ``S k`` elements. ``Fin`` "
+"is indexed by a ``Nat``, which represents the number of elements in the set."
+" Since we can’t construct an element of an empty set, neither constructor "
+"targets ``Fin Z``."
+msgstr ""
+"``FZ`` является нулевым элементом конечного множества ``S k`` элементов; "
+"``FS n`` - ``n + 1``ый элемент конечного множества с ``S k`` элементами. "
+"``Fin`` индексируется ``Nat``, который представляет количество элементов в "
+"наборе. Поскольку мы не можем построить элемент из пустого множества, "
+"не существует конструктора для ``Fin Z``."
+
+#: ..\..\tutorial\typesfuns.rst:356
+msgid ""
+"As mentioned above, a useful application of the ``Fin`` family is to "
+"represent bounded natural numbers. Since the first ``n`` natural numbers "
+"form a finite set of ``n`` elements, we can treat ``Fin n`` as the set of "
+"integers greater than or equal to zero and less than ``n``."
+msgstr ""
+"Как упоминалось выше, полезное применение ``Fin`` может быть в представление "
+"среза натуральных чисел. Мы можем рассматривать ``Fin n`` как набор "
+"целых числел, большие или равные нулю и меньше, чем ``n``."
+
+#: ..\..\tutorial\typesfuns.rst:361
+msgid ""
+"For example, the following function which looks up an element in a ``Vect``,"
+" by a bounded index given as a ``Fin n``, is defined in the prelude:"
+msgstr ""
+"Например, следующая функция, для доступа к элементу в ``Vect``, "
+"по ограничению индекса в качестве ``Fin n``, определяется "
+"в Prelude библиотеке:"
+
+#: ..\..\tutorial\typesfuns.rst:371
+msgid ""
+"This function looks up a value at a given location in a vector. The location"
+" is bounded by the length of the vector (``n`` in each case), so there is no"
+" need for a run-time bounds check. The type checker guarantees that the "
+"location is no larger than the length of the vector, and of course no less "
+"than zero."
+msgstr ""
+"Эта функция ищет значение в данном месте в векторе. Расположение "
+"ограничено длиной вектора (``n`` в каждом случае), так что не существует "
+"нужды для выполнения проверки границ. Проверка типов гарантирует, что "
+"расположение не больше, чем длина вектора, и, конечно, не меньше нуля."
+
+#: ..\..\tutorial\typesfuns.rst:377
+msgid ""
+"Note also that there is no case for ``Nil`` here. This is because it is "
+"impossible. Since there is no element of ``Fin Z``, and the location is a "
+"``Fin n``, then ``n`` can not be ``Z``. As a result, attempting to look up "
+"an element in an empty vector would give a compile time type error, since it"
+" would force ``n`` to be ``Z``."
+msgstr ""
+"Отметим также, что тут нет варианта для ``Nil``. Это потому, что "
+"так как не существует ни одного элемента из ``Fin Z`` с положенем ``Fin n``, "
+"то ``n`` не может быть ``Z``. В результате, попытка искать элемент в пустом "
+"вектора выдаст ошибку типа на этапе компиляции."
+
+#: ..\..\tutorial\typesfuns.rst:384
+msgid "Implicit Arguments"
+msgstr "Неявные аргументы"
+
+#: ..\..\tutorial\typesfuns.rst:386
+msgid "Let us take a closer look at the type of ``index``:"
+msgstr "Давайте внимательнее посмотрим на тип ``index``:"
+
+#: ..\..\tutorial\typesfuns.rst:392
+msgid ""
+"It takes two arguments, an element of the finite set of ``n`` elements, and "
+"a vector with ``n`` elements of type ``a``. But there are also two names, "
+"``n`` and ``a``, which are not declared explicitly. These are *implicit* "
+"arguments to ``index``. We could also write the type of ``index`` as:"
+msgstr ""
+"Он принимает два аргумента, элемент конечного множества ``n`` элементов, и "
+"вектор с ``n`` элементами типа ``a``. Но ``n`` и ``a`` не объявлены явно. "
+"Это *неявные* аргументы ``index``. Мы также могли бы написать тип "
+"``index`` как:"
+
+#: ..\..\tutorial\typesfuns.rst:402
+msgid ""
+"Implicit arguments, given in braces ``{}`` in the type declaration, are not "
+"given in applications of ``index``; their values can be inferred from the "
+"types of the ``Fin n`` and ``Vect n a`` arguments. Any name beginning with a"
+" lower case letter which appears as a parameter or index in a type "
+"declaration, but which is otherwise unbound, will be automatically bound as "
+"an implicit argument. Implicit arguments can still be given explicitly in "
+"applications, using ``{a=value}`` and ``{n=value}``, for example:"
+msgstr ""
+"Неявные аргументы, приведены в скобках ``{}`` в декларации типа, не "
+"приведены в приложениях ``index``, их значения могут быть выведены из "
+"типов ``Fin n`` и аргументов ``Vect n a``. Любое имя, начинающиеся с "
+"маленькой буквой, которое появляется в качестве параметра или индекса в "
+"описании типа, но не связанное, будет автоматически связано, как "
+"неявный аргумент. Неявные аргументы могут быть обозначены явно в "
+"приложениях, используя ``{а = значение}`` и ``{n = значение}``, например:"
+
+#: ..\..\tutorial\typesfuns.rst:416
+msgid ""
+"In fact, any argument, implicit or explicit, may be given a name. We could "
+"have declared the type of ``index`` as:"
+msgstr ""
+"На самом деле, любому аргументу, явному или неявному, может быть дано имя. "
+"Мы могли бы объявить тип ``index`` как:"
+
+#: ..\..\tutorial\typesfuns.rst:423
+msgid ""
+"It is a matter of taste whether you want to do this — sometimes it can help "
+"document a function by making the purpose of an argument more clear."
+msgstr ""
+"Это дело вкуса, хотите ли вы использовать это, но иногда это может помочь "
+"документировать функцию, делая назначения аргумента более понятными."
+
+#: ..\..\tutorial\typesfuns.rst:428
+msgid "“``using``” notation"
+msgstr "``using`` нотация"
+
+#: ..\..\tutorial\typesfuns.rst:430
+msgid ""
+"Sometimes it is useful to provide types of implicit arguments, particularly "
+"where there is a dependency ordering, or where the implicit arguments "
+"themselves have dependencies. For example, we may wish to state the types of"
+" the implicit arguments in the following definition, which defines a "
+"predicate on vectors:"
+msgstr ""
+"Иногда полезно указывать типы неявных аргументов, особенно там, где важен "
+"порядок зависимостей, или там, где неявные аргументы сами по себе имеют "
+"зависимостей. Например, мы можем указывать типы неявных аргументов как в "
+"примере объявления предиката на векторах:"
+
+#: ..\..\tutorial\typesfuns.rst:442
+msgid ""
+"An instance of ``Elem x xs`` states that ``x`` is an element of ``xs``.  We "
+"can construct such a predicate if the required element is ``Here``, at the "
+"head of the vector, or ``There``, in the tail of the vector. For example:"
+msgstr ""
+"Экземпляр ``Elem x xs`` утверждает, что  ``x`` является элементом ``xs``. "
+"Мы можем построить такой предикат, если требуемый элемент ``Here`` находится "
+"в голове (в начале) вектора, или ``There`` находится в хвосте вектора:"
+
+#: ..\..\tutorial\typesfuns.rst:455
+msgid ""
+"If the same implicit arguments are being used a lot, it can make a "
+"definition difficult to read. To avoid this problem, a ``using`` block gives"
+" the types and ordering of any implicit arguments which can appear within "
+"the block:"
+msgstr ""
+"Если же неявные аргументы используются часто, это трудно читать. Чтобы "
+"избежать такой проблемы ``using`` блок задаёт типы и порядок предоставления "
+"каких-либо неявных аргументов, которые могут появиться в блоке:"
+
+#: ..\..\tutorial\typesfuns.rst:468
+msgid "Note: Declaration Order and ``mutual`` blocks"
+msgstr "Примечание: порядок объявления и ``mutual`` блоки"
+
+#: ..\..\tutorial\typesfuns.rst:470
+msgid ""
+"In general, functions and data types must be defined before use, since "
+"dependent types allow functions to appear as part of types, and their "
+"reduction behaviour to affect type checking. However, this restriction can "
+"be relaxed by using a ``mutual`` block, which allows data types and "
+"functions to be defined simultaneously:"
+msgstr ""
+"В целом, функции и типы данных должны быть определены до использования, так "
+"как зависимые типы позволяют функции выступать в качестве части типов, и их "
+"редукция влияет на проверку типа. Тем не менее, это ограничение может "
+"быть смягчено с помощью ``mutual`` блока, который позволяет типам данных и "
+"функциям быть объявлеными одновременно:"
+
+#: ..\..\tutorial\typesfuns.rst:487
+msgid ""
+"In a ``mutual`` block, first all of the type declarations are added, then "
+"the function bodies. As a result, none of the function types can depend on "
+"the reduction behaviour of any of the functions in the block."
+msgstr ""
+"В ``mutual`` блоках сперва следуют объявления типов, а затем функций. "
+"В результате ни один из типов функции не может зависеть от редукции "
+"любой из функций в блоке."
+
+#: ..\..\tutorial\typesfuns.rst:493
+msgid "I/O"
+msgstr "I/O"
+
+#: ..\..\tutorial\typesfuns.rst:495
+msgid ""
+"Computer programs are of little use if they do not interact with the user or"
+" the system in some way. The difficulty in a pure language such as Idris — "
+"that is, a language where expressions do not have side-effects — is that I/O"
+" is inherently side-effecting. Therefore in Idris, such interactions are "
+"encapsulated in the type ``IO``:"
+msgstr ""
+"Компьютерные программы имеют тенденцию взаимодействия с пользователем, или "
+"системой в каком-то виде. Одной из трудностей в чистом языке программирования,"
+"где выражения не имеют побочных эффектов - это взаимодействия с IO, что "
+"влечёт за собой побочные эффекты. Поэтому в Idris такие взаимодействия "
+"заключены в тип ``IO``:"
+
+#: ..\..\tutorial\typesfuns.rst:505
+msgid ""
+"We’ll leave the definition of ``IO`` abstract, but effectively it describes "
+"what the I/O operations to be executed are, rather than how to execute them."
+" The resulting operations are executed externally, by the run-time system. "
+"We’ve already seen one IO program:"
+msgstr ""
+"Мы оставим определение ``IO`` абстрактным, но эффективно он описывает "
+"то, что операции ввода/вывода будут выполнены, а не как их выполнять. "
+"Полученные операции выполняются внешней системой. Мы уже видели "
+"одну программу IO:"
+
+#: ..\..\tutorial\typesfuns.rst:515
+msgid ""
+"The type of ``putStrLn`` explains that it takes a string, and returns an "
+"element of the unit type ``()`` via an I/O action. There is a variant "
+"``putStr`` which outputs a string without a newline:"
+msgstr ""
+"Тип ``putStrLn`` говорит о том, что он принимает строку и возвращает "
+"элемент типа ``()`` с помощью действия I/O. Существует вариант "
+"``putStr`` который выводит строку без символа новой строки:"
+
+#: ..\..\tutorial\typesfuns.rst:524
+msgid "We can also read strings from user input:"
+msgstr "Мы также можем прочитать строки введённые пользователем:"
+
+#: ..\..\tutorial\typesfuns.rst:530
+msgid ""
+"A number of other I/O operations are defined in the prelude, for example for"
+" reading and writing files, including:"
+msgstr ""
+"Ряд других операций ввода/вывода определен в Prelude бибилиотеке, например, "
+"для чтение и записи файлов:"
+
+#: ..\..\tutorial\typesfuns.rst:550
+msgid "“``do``” notation"
+msgstr "“``do``” нотация"
+
+#: ..\..\tutorial\typesfuns.rst:552
+msgid ""
+"I/O programs will typically need to sequence actions, feeding the output of "
+"one computation into the input of the next. ``IO`` is an abstract type, "
+"however, so we can’t access the result of a computation directly.  Instead, "
+"we sequence operations with ``do`` notation:"
+msgstr ""
+"I/O программы, как правило, нуждаются в упорядоченности действий, где "
+"выход одного вычисления идёт на вход следующего. ``IO`` - это абстрактный тип,"
+" однако, таким образом, мы не можем получить доступ к результату вычислений "
+"непосредственно. Вместо этого, мы выполняем операции последовательно с "
+"использованием ``do`` нотации:"
+
+#: ..\..\tutorial\typesfuns.rst:564
+msgid ""
+"The syntax ``x <- iovalue`` executes the I/O operation ``iovalue``, of type "
+"``IO a``, and puts the result, of type ``a`` into the variable ``x``. In "
+"this case, ``getLine`` returns an ``IO String``, so ``name`` has type "
+"``String``. Indentation is significant — each statement in the do block must"
+" begin in the same column. The ``return`` operation allows us to inject a "
+"value directly into an IO operation:"
+msgstr ""
+"Синтаксис ``х <- iovalue`` выполняет операцию ввова/вывода ``iovalue``, типа "
+"``IO a`` и помещает результат типа ``a`` в переменную ``x``. В этом "
+"случае, ``getLine`` возвращает ``IO String``, так ``name`` имеет тип "
+"``String``. Отступ является важной частью синтаксиса - каждый оператор в блоке"
+" должен начнется в той же колонке. Операция ``return`` позволяет передать "
+"значение непосредственно в операции ввода-вывода:"
+
+#: ..\..\tutorial\typesfuns.rst:575
+msgid ""
+"As we will see later, ``do`` notation is more general than this, and can be "
+"overloaded."
+msgstr ""
+"Как мы увидим позже, ``do`` нотация имеет более общее значение и может быть "
+"перегружена."
+
+#: ..\..\tutorial\typesfuns.rst:581
+msgid "Laziness"
+msgstr "Ленивость (отложенные вычисления)"
+
+#: ..\..\tutorial\typesfuns.rst:583
+msgid ""
+"Normally, arguments to functions are evaluated before the function itself "
+"(that is, Idris uses *eager* evaluation). However, this is not always the "
+"best approach. Consider the following function:"
+msgstr ""
+"Как правило, аргументы функций вычисляются перед самой функцией "
+"(то есть, Idris использует *нетерпеливые* вычисления). Тем не менее, это не "
+" всегда лучший подход. Рассмотрим следующую функцию:"
+
+#: ..\..\tutorial\typesfuns.rst:593
+msgid ""
+"This function uses one of the ``t`` or ``e`` arguments, but not both (in "
+"fact, this is used to implement the ``if...then...else`` construct as we "
+"will see later. We would prefer if *only* the argument which was used was "
+"evaluated. To achieve this, Idris provides a ``Lazy`` data type, which "
+"allows evaluation to be suspended:"
+msgstr ""
+"Эта функция использует один из аргументов: ``t`` или ``e``, но не оба."
+"(фактически, это используется для реализации ``if...then...else``, как мы "
+"увидим позже) Мы предпочли бы, если бы *только* один аргумент, который был "
+"использован был выполнен. Чтобы добиться этого, Идрис обеспечивает ``Lazy`` "
+"тип данных, которые позволяют вычислениям быть *подвешенными*:"
+
+#: ..\..\tutorial\typesfuns.rst:606
+msgid ""
+"A value of type ``Lazy a`` is unevaluated until it is forced by ``Force``. "
+"The Idris type checker knows about the ``Lazy`` type, and inserts "
+"conversions where necessary between ``Lazy a`` and ``a``, and vice versa. We"
+" can therefore write ``ifThenElse`` as follows, without any explicit use of "
+"``Force`` or ``Delay``:"
+msgstr ""
+"Значение типа ``Lazy a`` является невычисленным до тех пор, пока он не "
+"вынужден с помощью ``Force``. Механизм проверки типов Idris знает о ``Lazy`` "
+"типах, и делает вставки преобразований между ``Lazy a`` и ``a``, и наоборот. "
+"Поэтому мы может написать ``ifThenElse`` без явного использования "
+"``Force`` или ``Delay``:"
+
+#: ..\..\tutorial\typesfuns.rst:619
+msgid "Useful Data Types"
+msgstr "Полезные типы данных"
+
+#: ..\..\tutorial\typesfuns.rst:621
+msgid ""
+"Idris includes a number of useful data types and library functions (see the "
+"``libs/`` directory in the distribution). This chapter describes a few of "
+"these. The functions described here are imported automatically by every "
+"Idris program, as part of ``Prelude.idr``."
+msgstr ""
+"Idris включает в себя ряд полезных типов данных и функций библиотеки (см "
+"``libs/`` directory in the distribution). В этой главе описывается несколько "
+"этих функций. Они импортированы автоматически в рамках``Prelude.idr``."
+
+#: ..\..\tutorial\typesfuns.rst:627
+msgid "``List`` and ``Vect``"
+msgstr "``List`` и ``Vect``"
+
+#: ..\..\tutorial\typesfuns.rst:629
+msgid "We have already seen the ``List`` and ``Vect`` data types:"
+msgstr "Мы уже видели ``List`` и ``Vect`` типы данных:"
+
+#: ..\..\tutorial\typesfuns.rst:639
+msgid ""
+"Note that the constructor names are the same for each — constructor names "
+"(in fact, names in general) can be overloaded, provided that they are "
+"declared in different namespaces (see Section :ref:`sect-namespaces`), and "
+"will typically be resolved according to their type. As syntactic sugar, any "
+"type with the constructor names ``Nil`` and ``::`` can be written in list "
+"form. For example:"
+msgstr ""
+"Обратите внимание, что имена конструкторов являются одинаковыми для всех, "
+"имена конструкторов (на самом деле, имена в целом) могут быть перегружены "
+"при условии, что они объявлены в разных пространствах имен  "
+"(см раздел :ref:`sect-namespaces`), и как правило, будет решен в соответствии "
+"с их типом. Любой тип с именами конструктора ``Nil`` и ``::`` можно записать "
+"в список. Например:"
+
+#: ..\..\tutorial\typesfuns.rst:646
+msgid "``[]`` means ``Nil``"
+msgstr "``[]`` обозначает ``Nil``"
+
+#: ..\..\tutorial\typesfuns.rst:648
+msgid "``[1,2,3]`` means ``1 :: 2 :: 3 :: Nil``"
+msgstr "``[1,2,3]`` обозначает ``1 :: 2 :: 3 :: Nil``"
+
+#: ..\..\tutorial\typesfuns.rst:650
+msgid ""
+"The library also defines a number of functions for manipulating these types."
+" ``map`` is overloaded both for ``List`` and ``Vect`` and applies a function"
+" to every element of the list or vector."
+msgstr ""
+"Библиотека также определяет ряд функций для манипулирования этими типами. "
+"``map`` перегружен как для ``List`` и ``Vect`` и применяет функцию к "
+"каждому элементу списка или вектора."
+
+#: ..\..\tutorial\typesfuns.rst:664
+msgid ""
+"For example, given the following vector of integers, and a function to "
+"double an integer:"
+msgstr ""
+"Например, если это вектор целых чисел, и функция удвоения целого числа:"
+
+#: ..\..\tutorial\typesfuns.rst:675
+msgid ""
+"the function ``map`` can be used as follows to double every element in the "
+"vector:"
+msgstr ""
+"Функцию ``map`` можно использовать следующим образом и удвоить каждый элемент "
+"в векторе:"
+
+#: ..\..\tutorial\typesfuns.rst:683
+msgid ""
+"You’ll find these examples in ``usefultypes.idr`` in the ``examples/`` "
+"directory. For more details of the functions available on ``List`` and "
+"``Vect``, look in the library files:"
+msgstr ""
+"Вы найдете эти примеры в ``usefultypes.idr`` в ``examples/`` каталоге. "
+"Для более подробной информации о функциях, доступных в ``List`` и "
+"``Vect``, посмотрите в файлах библиотеки:"
+
+#: ..\..\tutorial\typesfuns.rst:687
+msgid "``libs/prelude/Prelude/List.idr``"
+msgstr ""
+
+#: ..\..\tutorial\typesfuns.rst:689
+msgid "``libs/base/Data/List.idr``"
+msgstr ""
+
+#: ..\..\tutorial\typesfuns.rst:691
+msgid "``libs/base/Data/Vect.idr``"
+msgstr ""
+
+#: ..\..\tutorial\typesfuns.rst:693
+msgid "``libs/base/Data/VectType.idr``"
+msgstr ""
+
+#: ..\..\tutorial\typesfuns.rst:695
+msgid ""
+"Functions include filtering, appending, reversing, and so on. Also remember "
+"that Idris is still in development, so if you don’t see the function you "
+"need, please feel free to add it and submit a patch!"
+msgstr ""
+"Функции включают в себя фильтрацию, добавление, реверс и так далее. "
+"Кроме того, помните, что Idris еще находится в разработке, так что если вы не "
+"видите функций, которые вам требуются, пожалуйста, не стесняйтесь в том, чтобы"
+" добавить их и предоставляйте патчи!"
+
+#: ..\..\tutorial\typesfuns.rst:700
+msgid "Aside: Anonymous functions and operator sections"
+msgstr "Анонимные функции и секции операторов"
+
+#: ..\..\tutorial\typesfuns.rst:702
+msgid ""
+"There are actually neater ways to write the above expression. One way would "
+"be to use an anonymous function:"
+msgstr ""
+"Есть более аккуратные способы написать приведенное выше выражение. "
+"Один из способов с использовнием анонимной функции:"
+
+#: ..\..\tutorial\typesfuns.rst:710
+msgid ""
+"The notation ``\\x => val`` constructs an anonymous function which takes one"
+" argument, ``x`` and returns the expression ``val``. Anonymous functions may"
+" take several arguments, separated by commas, e.g. ``\\x, y, z => val``. "
+"Arguments may also be given explicit types, e.g. ``\\x : Int => x * 2``, and"
+" can pattern match, e.g. ``\\(x, y) => x + y``. We could also use an "
+"operator section:"
+msgstr ""
+"Нотация ``\\x => val`` строит анонимную функцию, которая принимает один "
+"аргумент, ``x`` и возвращает выражение ``val``. Анонимные функции могут "
+"иметь несколько аргументов, разделенных запятыми, например, "
+"``\\x, y, z => val``. Аргументы также могут быть даны явными типами, "
+"например, ``\\x : Int => x * 2`` и шаблонами, например, ``\\(x, y) => x + y``."
+" Возможно также использовать секцию операторов:"
+
+#: ..\..\tutorial\typesfuns.rst:722
+msgid ""
+"``(*2)`` is shorthand for a function which multiplies a number by 2. It "
+"expands to ``\\x => x * 2``. Similarly, ``(2*)`` would expand to ``\\x => 2 "
+"* x``."
+msgstr ""
+"``(* 2)`` является сокращением для функции, которая умножает число на 2. "
+"Расширяется до ``\\x => x * 2``. Точно так же, ``(2*)`` расширится в "
+"``\\x => 2 * x``."
+
+#: ..\..\tutorial\typesfuns.rst:727
+msgid "Maybe"
+msgstr "``Maybe``"
+
+#: ..\..\tutorial\typesfuns.rst:729
+msgid ""
+"``Maybe`` describes an optional value. Either there is a value of the given "
+"type, or there isn’t:"
+msgstr ""
+"``Maybe`` описывает необязательное значение:"
+
+#: ..\..\tutorial\typesfuns.rst:736
+msgid ""
+"``Maybe`` is one way of giving a type to an operation that may fail. For "
+"example, looking something up in a ``List`` (rather than a vector) may "
+"result in an out of bounds error:"
+msgstr ""
+"``Maybe`` является одним из способов дать тип операции, которая может "
+"неправильно отработать, например, в случае с ``List`` (вместо вектора), может "
+"выйти за границы сриска:"
+
+#: ..\..\tutorial\typesfuns.rst:747
+msgid ""
+"The ``maybe`` function is used to process values of type ``Maybe``, either "
+"by applying a function to the value, if there is one, or by providing a "
+"default value:"
+msgstr ""
+"Функция ``maybe`` используется для обработки значения типа ``Maybe``, либо "
+"путем применения функции к значению, если есть значение, или предоставления "
+"значения по умолчанию:"
+
+#: ..\..\tutorial\typesfuns.rst:755
+msgid ""
+"Note that the type of the first argument is ``Lazy b`` rather than simply "
+"``b``. Since the default value might not be used, we mark it as ``Lazy`` in "
+"case it is a large expression where evaluating it then discarding it would "
+"be wasteful."
+msgstr ""
+"Обратите внимание, что тип первого аргумента ``Lazy b``, а не просто "
+"``b``. Так как значения по умолчанию не могут быть использованы, мы отмечаем "
+"их как ``Lazy``, так как в случае большого выражения, вычесление "
+"эффективно отбрасывается.
+
+#: ..\..\tutorial\typesfuns.rst:761
+msgid "Tuples and Dependent Pairs"
+msgstr "Кортежи и зависимые пары"
+
+#: ..\..\tutorial\typesfuns.rst:763
+msgid "Values can be paired with the following built-in data type:"
+msgstr "Значения могут быть в паре со следующим встроенным типом данных"
+
+#: ..\..\tutorial\typesfuns.rst:769
+msgid ""
+"As syntactic sugar, we can write ``(a, b)`` which, according to context, "
+"means either ``Pair a b`` or ``MkPair a b``. Tuples can contain an arbitrary"
+" number of values, represented as nested pairs:"
+msgstr ""
+"Как синтаксический сахар, мы можем написать ``(a, b)``, в зависимости от "
+"контекста это означает либо ``Pair a b`` или ``MkPair a b``. Кортежи могут "
+"содержать произвольное количество значений:"
+
+#: ..\..\tutorial\typesfuns.rst:782
+msgid "Dependent Pairs"
+msgstr "Зависимые пары"
+
+#: ..\..\tutorial\typesfuns.rst:784
+msgid ""
+"Dependent pairs allow the type of the second element of a pair to depend on "
+"the value of the first element. Traditionally, these are referred to as "
+"“sigma types”:"
+msgstr ""
+"Зависимые пары позволяют типу второго элемента пары зависеть от "
+"значения первого элемента. Традиционно, они упоминаются как “сигма типы”:"
+
+#: ..\..\tutorial\typesfuns.rst:793
+msgid ""
+"Again, there is syntactic sugar for this. ``(a : A ** P)`` is the type of a "
+"pair of A and P, where the name ``a`` can occur inside ``P``. ``( a ** p )``"
+" constructs a value of this type. For example, we can pair a number with a "
+"``Vect`` of a particular length."
+msgstr ""
+"Опять же, есть синтаксический сахар для этого. ``(a : A ** P)`` является типом"
+" пара А и Р, где ``a`` может быть внутри ``P``. ``( a ** p )`` "
+"строит значение этого типа. Например, мы можем соединить число с "
+"``Vect`` из определенной длины."
+
+#: ..\..\tutorial\typesfuns.rst:803
+msgid ""
+"If you like, you can write it out the long way, the two are precisely "
+"equivalent."
+msgstr ""
+"Если вы хотите, вы можете написать это долгим путём. Это будет эквивалентно "
+"предыдущему примру."
+
+#: ..\..\tutorial\typesfuns.rst:811
+msgid ""
+"The type checker could of course infer the value of the first element from "
+"the length of the vector. We can write an underscore ``_`` in place of "
+"values which we expect the type checker to fill in, so the above definition "
+"could also be written as:"
+msgstr ""
+"Механизм проверки типов может, конечно, сделать вывод значения первого "
+"элемента из длины вектора. Мы можем написать подчеркивания ``_`` вместо "
+"значений, которые мы ожидаем, что механизм проверки типов заполнит, поэтому "
+"приведенное выше определение также может быть записано в виде:"
+
+#: ..\..\tutorial\typesfuns.rst:821
+msgid ""
+"We might also prefer to omit the type of the first element of the pair, "
+"since, again, it can be inferred:"
+msgstr ""
+"Мы могли бы также опустить тип первого элемента пары:"
+
+#: ..\..\tutorial\typesfuns.rst:829
+msgid ""
+"One use for dependent pairs is to return values of dependent types where the"
+" index is not necessarily known in advance. For example, if we filter "
+"elements out of a ``Vect`` according to some predicate, we will not know in "
+"advance what the length of the resulting vector will be:"
+msgstr ""
+"Один из вариантов использования для зависимых пар - это возврат значений "
+"зависимых типов, где индекс не обязательно известен заранее. Например, "
+"если мы фильтруем элементы из ``Vect`` по некоторым предикатом, мы не знаем, "
+"заранее длину результирующего вектора:"
+
+#: ..\..\tutorial\typesfuns.rst:839
+msgid "If the ``Vect`` is empty, the result is easy:"
+msgstr "Если ``Vect`` пуст, результат легко получить:"
+
+#: ..\..\tutorial\typesfuns.rst:845
+msgid ""
+"In the ``::`` case, we need to inspect the result of a recursive call to "
+"``filter`` to extract the length and the vector from the result. To do this,"
+" we use ``with`` notation, which allows pattern matching on intermediate "
+"values:"
+msgstr ""
+"В случае ``::``, мы должны проверить результат рекурсивного вызова к "
+"``filter`` и извлечь длину из результата. Для этого мы используем ``with`` "
+"нотацию, которая выполняет сопоставление с образцом на промежуточном "
+"значении:"
+
+#: ..\..\tutorial\typesfuns.rst:855
+msgid "We will see more on ``with`` notation later."
+msgstr "Мы увидим больше ``with`` нотации позже."
+
+#: ..\..\tutorial\typesfuns.rst:860
+msgid "More Expressions"
+msgstr "Другие выражения"
+
+#: ..\..\tutorial\typesfuns.rst:863
+msgid "``let`` bindings"
+msgstr "``let`` привязки"
+
+#: ..\..\tutorial\typesfuns.rst:865
+msgid "Intermediate values can be calculated using ``let`` bindings:"
+msgstr "Промежуточные значения могут быть рассчитаны с использованием ``let`` "
+"привязки:"
+
+#: ..\..\tutorial\typesfuns.rst:879
+msgid ""
+"We can do simple pattern matching in ``let`` bindings too. For example, we "
+"can extract fields from a record as follows, as well as by pattern matching "
+"at the top level:"
+msgstr ""
+"Мы можем делать сопоставление с шаблоном в ``let`` привязке. Например, мы "
+"может извлекать поля из записи, а также делать сопоставление с образцом "
+"на высшем уровне:"
+
+#: ..\..\tutorial\typesfuns.rst:892
+msgid "List comprehensions"
+msgstr "Списковые выражения"
+
+#: ..\..\tutorial\typesfuns.rst:894
+msgid ""
+"Idris provides *comprehension* notation as a convenient shorthand for "
+"building lists. The general form is:"
+msgstr ""
+"Идрис принимает *списковые выражения* как сокращение для построения списков. "
+"Общая форма:"
+
+#: ..\..\tutorial\typesfuns.rst:901
+msgid ""
+"This generates the list of values produced by evaluating the ``expression``,"
+" according to the conditions given by the comma separated ``qualifiers``. "
+"For example, we can build a list of Pythagorean triples as follows:"
+msgstr ""
+"Это создает список значений, полученных путем выполнения ``expression``, "
+"в соответствии с условиями ``qualifiers`` через запятую. "
+"Например, мы можем построить список из троек Пифагора следующим образом: "
+
+#: ..\..\tutorial\typesfuns.rst:912
+msgid ""
+"The ``[a..b]`` notation is another shorthand which builds a list of numbers "
+"between ``a`` and ``b``. Alternatively ``[a,b..c]`` builds a list of numbers"
+" between ``a`` and ``c`` with the increment specified by the difference "
+"between ``a`` and ``b``. This works for any numeric type, using the "
+"``count`` function from the prelude."
+msgstr ""
+"``[a..b]`` обозначения другого сокращение которое строит список номеров "
+"между ``a`` и ``b``. ``[, b..c]` `строит список номеров "
+"между ``a`` и ``c`` с приращением указанной разницы между "
+"``a`` и ``b``. Это работает для любого числового типа, использующего "
+"``count`` функцию от Prelude библиотеке."
+
+#: ..\..\tutorial\typesfuns.rst:919
+msgid "``case`` expressions"
+msgstr "``case`` выражения"
+
+#: ..\..\tutorial\typesfuns.rst:921
+msgid ""
+"Another way of inspecting intermediate values of *simple* types is to use a "
+"``case`` expression. The following function, for example, splits a string "
+"into two at a given character:"
+msgstr ""
+"Еще один способ проверки промежуточных значений *простых* типов, "
+"``case`` выражения. Следующая функция, например, разбивает строку на две "
+"в положении указанного символа:"
+
+#: ..\..\tutorial\typesfuns.rst:931
+msgid ""
+"``break`` is a library function which breaks a string into a pair of strings"
+" at the point where the given function returns true. We then deconstruct the"
+" pair it returns, and remove the first character of the second string."
+msgstr ""
+"``break`` - это библиотечная функция, которая разбивает строку в пару строк "
+"в точке, где указанная функция возвращает истину. Мы деконструируем "
+"возвращаемое значение и удаляем первый символ второй строки."
+
+#: ..\..\tutorial\typesfuns.rst:936
+msgid ""
+"A ``case`` expression can match several cases, for example, to inspect an "
+"intermediate value of type ``Maybe a``. Recall ``list_lookup`` which looks "
+"up an index in a list, returning ``Nothing`` if the index is out of bounds. "
+"We can use this to write ``lookup_default``, which looks up an index and "
+"returns a default value if the index is out of bounds:"
+msgstr ""
+"``case`` выражение может охватывать несколько случаев, например, для проверки "
+"промежуточное значение типа ``Maybe a``. Напомним ``list_lookup`` который "
+"находит индекс в списке или ``Nothing`` если индекс вне границ."
+"Мы можем использовать это, чтобы написать ``lookup_default``, который ищет "
+"индекс и возвращает значение по умолчанию, если индекс вне границ:"
+
+#: ..\..\tutorial\typesfuns.rst:950
+msgid ""
+"If the index is in bounds, we get the value at that index, otherwise we get "
+"a default value:"
+msgstr ""
+"Если индекс находится в пределах, мы получаем значение по этому индексу, в "
+"противном случае мы получим значение по умолчанию:"
+
+#: ..\..\tutorial\typesfuns.rst:960
+msgid ""
+"**Restrictions:** The ``case`` construct is intended for simple analysis of "
+"intermediate expressions to avoid the need to write auxiliary functions, and"
+" is also used internally to implement pattern matching ``let`` and lambda "
+"bindings. It will *only* work if:"
+msgstr ""
+"**Ограничение** ``case`` конструкция предназначена для простого анализа "
+"промежуточные выражения, чтобы избежать необходимости писать вспомогательные "
+"функции, и также используется внутренне, чтобы реализовать шаблон ``let`` "
+"и лямбда привязки. Это работает при соблюдении следующих условий:"
+
+#: ..\..\tutorial\typesfuns.rst:966
+msgid "Each branch *matches* a value of the same type, and *returns* a"
+msgstr "Каждая ветвь *совпадает* по возвращаемому типу"
+
+#: ..\..\tutorial\typesfuns.rst:966
+msgid "value of the same type."
+msgstr "значение того же типа"
+
+#: ..\..\tutorial\typesfuns.rst:970
+msgid "The type of the result is \"known\". i.e. the type of the expression"
+msgstr "Выходной тип выражения должен быть известен"
+
+#: ..\..\tutorial\typesfuns.rst:969
+msgid ""
+"can be determined *without* type checking the ``case``-expression itself."
+msgstr ""
+"может быть определен *без* проверки типа самого ``case``-выражения."
+
+#: ..\..\tutorial\typesfuns.rst:973
+msgid "Dependent Records"
+msgstr "Зависимые записи"
+
+#: ..\..\tutorial\typesfuns.rst:975
+msgid ""
+"*Records* are data types which collect several values (the record's "
+"*fields*) together. Idris provides syntax for defining records and "
+"*automatically generating field access and update functions*. For example, "
+"we can represent a person's name and age in a record:"
+msgstr ""
+"*Записи* - это типы данных, которые собирают несколько значений (запись в "
+"*поля*) вместе. Idris обеспечивает синтаксис для определения записи и "
+"*автоматической генерации доступа к полям и функциям обновления*. Например, "
+"мы можем представить имя человека и возраст в записи:"
+
+#: ..\..\tutorial\typesfuns.rst:990
+msgid ""
+"Records can have *parameters*, which are listed between the record name and "
+"the ``where`` keyword, and *fields*, which are in an indented block "
+"following the `where` keyword (here, ``name`` and ``age``). The constructor "
+"name is provided after the ``constructor`` keyword. The field names can be "
+"used to access the field values:"
+msgstr ""
+"Записи могут иметь *параметры*, которые перечислены между именем записи и "
+"``where`` и *поля*, в блоке после ``where`` (здесь ``name`` и ``age``). "
+"Конструктор помещен после ключевого слова ``constructor``. Имена полей могут "
+"быть используемы для доступа к значениям полей:"
+
+#: ..\..\tutorial\typesfuns.rst:1005
+msgid ""
+"We can also use the field names to update a record (or, more precisely, "
+"produce a copy of the record with the given fields updated):"
+msgstr ""
+"Мы также можем использовать имена полей, чтобы обновить запись (или, точнее, "
+"произвести копию записи и записать в поле обновленную запись):"
+
+#: ..\..\tutorial\typesfuns.rst:1016
+msgid ""
+"The syntax ``record { field = val, ... }`` generates a function which "
+"updates the given fields in a record."
+msgstr ""
+"Синтаксис ``record { field = val, ... }`` генерирует функцию, которая"
+"обновляет данные поля в записи."
+
+#: ..\..\tutorial\typesfuns.rst:1019
+msgid ""
+"Records, and fields within records, can have dependent types. Updates are "
+"allowed to change the type of a field, provided that the result is well-"
+"typed."
+msgstr ""
+"Записи и поля в записях, могут иметь зависимые типы. Обновления "
+"разрешаются для типов полей, при условии, что значения соответствуют типам."
+
+#: ..\..\tutorial\typesfuns.rst:1030
+msgid ""
+"It is safe to update the ``students`` field to a vector of a different "
+"length because it will not affect the type of the record:"
+msgstr ""
+"Это безопасно обновить длину ``students``, потому что это не повлияет "
+"на тип записи:"
+
+#: ..\..\tutorial\typesfuns.rst:1044
+msgid "Nested record update"
+msgstr "Обновление вложенных записей"
+
+#: ..\..\tutorial\typesfuns.rst:1046
+msgid ""
+"Idris also provides a convenient syntax for accessing and updating nested "
+"records. For example, if a field is accessible with the expression ``c (b (a"
+" x))``, it can be updated using the following syntax:"
+msgstr ""
+"Idris также предоставляет удобный синтаксис для доступа и обновления вложенных"
+" записей. Например, если поле доступно с выражением ``c (b (a  x))``, "
+"оно может быть обновлено, используя следующий синтаксис:"
+
+#: ..\..\tutorial\typesfuns.rst:1055
+msgid ""
+"This returns a new record, with the field accessed by the path ``a->b->c`` "
+"set to ``x``. The syntax is first class, i.e.  ``record { a->b->c = val }`` "
+"itself has a function type. Symmetrically, the field can also be accessed "
+"with the following syntax:"
+msgstr ""
+"Это возвращает новую запись, с полем доступ по пути ``a->b->c`` "
+"установленом в ``x``. Синтаксис первого класса ``record { a->b->c = val }`` "
+"имеет тип функции. Симметрично, поле также можно получить следующим "
+"синтаксисом:"
+
+#: ..\..\tutorial\typesfuns.rst:1065
+msgid "Parameters and Fields"
+msgstr "Параметры и поля"
+
+#: ..\..\tutorial\typesfuns.rst:1067
+msgid ""
+"Records can have *parameters*, which are not subject to field updates. The "
+"parameters appear as arguments to the resulting type, and are written "
+"following the record type name. For example, a pair type could be defined as"
+" follows:"
+msgstr ""
+"Записи могут иметь *параметры*, которые не подлежат обновлению. "
+"Параметры применяются в качестве аргументов к зависимым типам, и пишутся "
+"после имени типа записи. Например, тип пара может быть определен "
+"следующим образом:"
+
+#: ..\..\tutorial\typesfuns.rst:1079
+msgid ""
+"The parameters to a record type need not be types. For example, we can "
+"restrict the size of classes using a ``Nat`` parameter to the ``Class`` "
+"record:"
+msgstr ""
+"Параметры для типа записи не должны быть типами. Например, мы можем "
+"ограничить размер классов, используя параметр ``Nat`` к ``Class`` записи:"
+
+#: ..\..\tutorial\typesfuns.rst:1090
+msgid ""
+"Note that it is no longer possible to write ``addStudent`` for this type, as"
+" that would change the size of the class."
+msgstr ""
+"Обратите внимание, что больше не возможно использовать ``addStudent`` "
+"для этого типа, что бы изменить размер класса."
