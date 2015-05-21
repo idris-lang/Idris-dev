@@ -1,4 +1,7 @@
 CC              ?=cc
+AR              ?=ar
+RANLIB          ?=ranlib
+
 CABAL           :=cabal
 # IDRIS_ENABLE_STATS should not be set in final release
 # Any flags defined here which alter the RTS API must also be added to src/IRTS/CodegenC.hs
