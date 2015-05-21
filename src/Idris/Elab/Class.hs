@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
+{-# OPTIONS_GHC -fwarn-missing-signatures #-}
 module Idris.Elab.Class(elabClass) where
 
 import Idris.AbsSyntax
@@ -47,6 +48,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Char(isLetter, toLower)
 import Data.List.Split (splitOn)
+import Data.Generics.Uniplate.Data (transform)
 
 import Util.Pretty(pretty, text)
 
@@ -83,6 +85,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let (methods, imethods)
               = unzip (map (\ (x, y, z) -> (x, y)) ims)
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
+
          -- build instance constructor type
          let cty = impbind [(pn, pt) | (pn, _, pt) <- ps] $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
@@ -92,6 +95,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let ddecl = PDatadecl tn NoFC tty cons
 
          logLvl 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
+
          -- Elaborate the data declaration
          elabData info (syn { no_imp = no_imp syn ++ mnames,
                               imp_methods = mnames }) doc pDocs fc [] ddecl
@@ -118,7 +122,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
            [(pnfc, AnnBoundName pn False) | (pn, pnfc, _) <- ps] ++
            [(fdfc, AnnBoundName fc False) | (fc, fdfc) <- fds] ++
            maybe [] (\(conN, conNFC) -> [(conNFC, AnnName conN Nothing Nothing Nothing)]) mcn
-           
+
   where
     nodoc (n, (_, _, o, t)) = (n, (o, t))
 
@@ -131,11 +135,6 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     chkUniq (PUniverse l) (PUniverse r) = PUniverse (min l r)
     chkUniq (PPi _ _ _ _ sc) t = chkUniq sc t
     chkUniq _ t = t
-
-    mdec :: Name -> Name
-    mdec (UN n) = SN (MethodN (UN n))
-    mdec (NS x n) = NS (mdec x) n
-    mdec x = x
 
     -- TODO: probably should normalise
     checkDefaultSuperclassInstance :: PDecl -> Idris ()
@@ -171,7 +170,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     defdecl mtys c d@(PClauses fc opts n cs) =
         case lookup n mtys of
             Just (nfc, syn, o, ty) ->
-              do let ty' = insertConstraint c ty
+              do let ty' = insertConstraint c (map fst mtys) ty
                  let ds = map (decorateid defaultdec)
                               [PTy emptyDocstring [] syn fc [] n nfc ty',
                                PClauses fc (o ++ opts) n cs]
@@ -215,10 +214,16 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              return [PTy emptyDocstring [] syn fc [] cfn NoFC ty,
                      PClauses fc [Dictionary] cfn [PClause fc cfn lhs [] rhs []]]
 
-    -- Generate a top level function which looks up a method in a given
+    -- | Generate a top level function which looks up a method in a given
     -- dictionary (this is inlinable, always)
+    tfun :: Name -- ^ The name of the class
+         -> PTerm -- ^ A constraint for the class, to be inserted under the implicit bindings
+         -> SyntaxInfo -> [Name] -- ^ All the method names
+         -> (Name, (FC, Docstring (Either Err PTerm), FnOpts, PTerm))
+            -- ^ The present declaration
+         -> Idris [PDecl]
     tfun cn c syn all (m, (mfc, doc, o, ty))
-        = do let ty' = expandMethNS syn (insertConstraint c ty)
+        = do let ty' = expandMethNS syn (insertConstraint c all ty)
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
              let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
              let margs = getMArgs ty
@@ -236,6 +241,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     getMArgs (PPi (Constraint _ _) n _ ty sc) = CA : getMArgs sc
     getMArgs _ = []
 
+    getMeth :: [Name] -> [Name] -> Name -> PTerm
     getMeth (m:ms) (a:as) x | x == a = PRef fc m
                             | otherwise = getMeth ms as x
 
@@ -249,10 +255,24 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     rhsArgs (CA : xs) ns = pconst (PResolveTC fc) : rhsArgs xs ns
     rhsArgs [] _ = []
 
-    insertConstraint c (PPi p@(Imp _ _ _ _) n fc ty sc)
-                          = PPi p n fc ty (insertConstraint c sc)
-    insertConstraint c sc = PPi (constraint { pstatic = Static })
-                                  (sMN 0 "class") NoFC c sc
+    insertConstraint :: PTerm -> [Name] -> PTerm -> PTerm
+    insertConstraint c all (PPi p@(Imp _ _ _ _) n fc ty sc)
+                              = PPi p n fc ty (insertConstraint c all sc)
+    insertConstraint c all sc = let dictN = sMN 0 "class"
+                                in  PPi (constraint { pstatic = Static })
+                                        dictN NoFC c
+                                        (constrainMeths (map basename all)
+                                                        dictN sc)
+      where
+        -- After we insert the constraint into the lookup, we need to
+        -- ensure that the same dictionary is used to resolve lookups
+        -- to the other methods in the class
+       constrainMeths :: [Name] -> Name -> PTerm -> PTerm
+       constrainMeths allM dictN tm = transform (addC allM dictN) tm
+       addC allM dictN m@(PRef fc n)
+         | n `elem` allM = PApp NoFC m [pconst (PRef NoFC dictN)]
+         | otherwise = m
+       addC _ _ tm = tm
 
     -- make arguments explicit and don't bind class parameters
     toExp ns e (PPi (Imp l s p _) n fc ty sc)
@@ -261,6 +281,13 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     toExp ns e (PPi p n fc ty sc) = PPi p n fc ty (toExp ns e sc)
     toExp ns e sc = sc
 
+-- | Get the method declaration name corresponding to a user-provided name
+mdec :: Name -> Name
+mdec (UN n) = SN (MethodN (UN n))
+mdec (NS x n) = NS (mdec x) n
+mdec x = x
+
+-- | Get the docstring corresponding to a member, if one exists
 memberDocs :: PDecl -> Maybe (Name, Docstring (Either Err PTerm))
 memberDocs (PTy d _ _ _ _ n _ _) = Just (basename n, d)
 memberDocs (PPostulate _ d _ _ _ n _) = Just (basename n, d)
@@ -270,17 +297,18 @@ memberDocs (PClass d _ _ _ n _ _ _ _ _ _ _) = Just (basename n, d)
 memberDocs _ = Nothing
 
 
--- In a top level type for a method, expand all the method names namespaces
+-- | In a top level type for a method, expand all the method names' namespaces
 -- so that we don't have to disambiguate later
-expandMethNS :: SyntaxInfo 
+expandMethNS :: SyntaxInfo
                 -> PTerm -> PTerm
 expandMethNS syn = mapPT expand
   where
     expand (PRef fc n) | n `elem` imp_methods syn = PRef fc $ expandNS syn n
     expand t = t
 
+-- | Find the determining parameter locations
 findDets :: Name -> [Name] -> Idris [Int]
-findDets n ns = 
+findDets n ns =
     do i <- getIState
        return $ case lookupTyExact n (tt_ctxt i) of
             Just ty -> getDetPos 0 ns ty
