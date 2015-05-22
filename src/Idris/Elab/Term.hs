@@ -1843,6 +1843,14 @@ runTactical ist fc env tm = do tm' <- eval tm
            ty' <- reifyRaw ty
            claim n' ty'
            returnUnit
+      | n == tacN "prim__Check", [raw] <- args
+      = do raw' <- reifyRaw =<< eval raw
+           ctxt <- get_context
+           env <- get_env
+           (tm, ty) <- lift $ check ctxt env raw'
+           fmap fst . get_type_val $
+             rawPair (Var (reflm "TT"), Var (reflm "TT"))
+                     (reflect tm,       reflect ty)
       | n == tacN "prim__Forget", [tt] <- args
       = do tt' <- reifyTT tt
            fmap fst . get_type_val . reflectRaw $ forget tt'
