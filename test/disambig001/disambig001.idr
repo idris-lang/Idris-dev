@@ -8,5 +8,5 @@ import Effect.System
 main : IO ()
 main = do 
     args <- System.getArgs
-    putStrLn (concat args)
+    putStrLn (concat (drop 1 args))
 
