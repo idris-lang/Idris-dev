@@ -114,7 +114,7 @@ Extra-source-files:
                        libs/contrib/Classes/*.idr
                        libs/contrib/Control/*.idr
                        libs/contrib/Control/Isomorphism/*.idr
-		       libs/contrib/Control/Algebra/*.idr
+                       libs/contrib/Control/Algebra/*.idr
                        libs/contrib/Data/*.idr
                        libs/contrib/Decidable/*.idr
                        libs/contrib/Network/*.idr
@@ -914,7 +914,7 @@ Library
                 , TemplateHaskell
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts
+  ghc-options:      -threaded -rtsopts -O2
 
   if os(linux)
      cpp-options:   -DLINUX
@@ -958,7 +958,7 @@ Executable idris
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
 
 Executable idris-c
   Main-is:        Main.hs
@@ -971,7 +971,7 @@ Executable idris-c
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
 
 Executable idris-javascript
   Main-is:        Main.hs
