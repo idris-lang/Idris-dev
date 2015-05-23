@@ -311,12 +311,6 @@ instance Binary Name where
                            return (SymRef x1)
                    _ -> error "Corrupted binary data for Name"
 
-instance Binary T.Text where
-        put x = put (E.encodeUtf8 x)
-        get = do x <- get
-                 return $!! (E.decodeUtf8 x)
-
-
 instance Binary SpecialName where
         put x
           = case x of
