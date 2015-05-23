@@ -6,7 +6,7 @@ modules = Builtins, Prelude, IO,
           Prelude.Algebra, Prelude.Basics, Prelude.Bool, Prelude.Cast,
           Prelude.Classes, Prelude.Nat, Prelude.List,
           Prelude.Maybe, Prelude.Monad, Prelude.Applicative, Prelude.Either,
-          Prelude.Strings, Prelude.Chars, Prelude.Functor,
+          Prelude.Strings, Prelude.Chars, Prelude.Show, Prelude.Functor,
           Prelude.Foldable, Prelude.Traversable, Prelude.Bits, Prelude.Stream,
           Prelude.Uninhabited, Prelude.Pairs, Prelude.Providers,
 
