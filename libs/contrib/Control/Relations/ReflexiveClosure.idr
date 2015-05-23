@@ -1,7 +1,8 @@
 ||| General definitions and theorems about
 ||| reflexive closure.
-module Relations.ReflexiveClosure
-import Basics
+module Control.Relations.ReflexiveClosure
+import Control.Relations.Basics
+import Control.Relations.ClosureOperators
 
 %default total
 %access public
@@ -12,10 +13,10 @@ data RC : (eq : Rel a) -> Rel a -> Rel a where
   RCRefl : eq x y -> RC eq rel x y
 
 ||| The reflexive closure is the coarsest finer reflexive relation.
-rcSmallest : {rel, rel' : Rel a} -> rel `Coarser` rel' -> Reflexive eq rel' ->
+rcCoarsest : {rel, rel' : Rel a} -> rel `Coarser` rel' -> Reflexive eq rel' ->
              RC eq rel `Coarser` rel'
-rcSmallest {a} rcr' ref' x y (RCIncl xRELy) = rcr' _ _ xRELy
-rcSmallest {a} rcr' ref' x y (RCRefl xEQy) = ref' x y xEQy
+rcCoarsest {a} rcr' ref' x y (RCIncl xRELy) = rcr' _ _ xRELy
+rcCoarsest {a} rcr' ref' x y (RCRefl xEQy) = ref' x y xEQy
 
 ||| The reflexive closure of a transitive relation is transitive.
 rcTransTrans : {rel : Rel a} -> (eqEquiv : Equivalence eq) -> (rel `Respects2` eq) ->

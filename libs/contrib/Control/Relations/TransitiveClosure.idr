@@ -1,6 +1,7 @@
 ||| General definitions and theorems about relations
-module Relations.TransitiveClosure
-import Basics
+module Control.Relations.TransitiveClosure
+import Control.Relations.Basics
+import Control.Relations.ClosureOperators
 
 %default total
 %access public
@@ -16,12 +17,12 @@ tcTransitive = (\_, _, _, xRy, yRz => TCTrans xRy yRz)
 
 ||| The transitive closure of a relation is the coarsest finer
 ||| transitive relation.
-tcSmallest : {rel, rel' : Rel a} -> rel `Coarser` rel' -> Transitive rel' ->
+tcCoarsest : {rel, rel' : Rel a} -> rel `Coarser` rel' -> Transitive rel' ->
              TC rel `Coarser` rel'
-tcSmallest rsubr' tr' x y (TCIncl xy) = rsubr' _ _ xy
-tcSmallest rsubr' tr' x z (TCTrans {y} xy yz) =
-  let foo = tcSmallest rsubr' tr' x y xy
-      bar = tcSmallest rsubr' tr' y z yz
+tcCoarsest rsubr' tr' x y (TCIncl xy) = rsubr' _ _ xy
+tcCoarsest rsubr' tr' x z (TCTrans {y} xy yz) =
+  let foo = tcCoarsest rsubr' tr' x y xy
+      bar = tcCoarsest rsubr' tr' y z yz
   in tr' _ _ _ foo bar
 
 tcIncreasing : {a : Type} -> Increasing (TC {a})
@@ -51,6 +52,9 @@ tcIdempotent {a} rel = MkEquivalent this that
 tcIsClosureOperator : ClosureOperator TC
 tcIsClosureOperator = MkClosureOperator tcInflationary tcIncreasing tcIdempotent
 
+-- This actually follows immediately from the fact that the transitive
+-- closure is inflationary, but it's easy enough to prove directly.
+||| The transitive closure of a reflexive relation is reflexive.
 tcReflRefl : {rel : Rel a} -> Reflexive eq rel -> Reflexive eq (TC rel)
 tcReflRefl rfl x y xEQy = TCIncl (rfl x y xEQy)
 
@@ -65,12 +69,12 @@ tcTransitive' x y z (TCTrans' {y=y'} xy' y'y) yz =
     TCTrans' xy' (tcTransitive' y' y z y'y yz)
 
 tcThenTC' : {rel : Rel a} -> TC rel `Coarser` TC' rel
-tcThenTC' {a} {rel} = tcSmallest {rel} {rel'=TC' rel} (\x,y,xy=>TCIncl' xy) (tcTransitive' {rel})
+tcThenTC' {a} {rel} = tcCoarsest {rel} {rel'=TC' rel} (\x,y,xy=>TCIncl' xy) (tcTransitive' {rel})
 
 tc'ThenTC : {rel : Rel a} -> TC' rel `Coarser` TC rel
 tc'ThenTC x z (TCIncl' xz) = TCIncl xz
 tc'ThenTC x z (TCTrans' {y} xy yz) = TCTrans (TCIncl xy) (tc'ThenTC y z yz)
 
 ||| The two definitions of transitive closure are equivalent.
-tcEquivTCp : {rel : Rel a} -> Equivalent (TC rel) (TC' rel)
-tcEquivTCp {rel} = MkEquivalent tcThenTC' tc'ThenTC
+tcEquivTC' : {rel : Rel a} -> Equivalent (TC rel) (TC' rel)
+tcEquivTC' = MkEquivalent tcThenTC' tc'ThenTC

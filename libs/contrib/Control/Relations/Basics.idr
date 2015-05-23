@@ -67,16 +67,62 @@ getSymmetric (MkEquivalence rfl trns symm) = symm
 getTransitive : Equivalence rel -> Transitive rel
 getTransitive (MkEquivalence rfl trns symm) = trns
 
+bool : a -> a -> Bool -> a
+bool x y False = x
+bool x y True = y
+
+boolRel : Rel a -> Rel a -> Bool -> Rel a
+boolRel {a} x y t = bool {a = Rel a} x y t
+
+||| The intersection of a family of relations
+IntersectionFamily : .{a : Type} -> (b -> Rel a) -> Rel a
+IntersectionFamily {b} f x y = (p : b) -> f p x y
+
 ||| The intersection of two relations
-Intersection : {a : Type} -> (rel1, rel2 : Rel a) -> Rel a
-Intersection rel1 rel2 x y = (rel1 x y, rel2 x y)
+Intersection : (rel1, rel2 : Rel a) -> Rel a
+Intersection rel1 rel2 = IntersectionFamily (boolRel rel1 rel2)
+
+||| Build a binary intersection
+mkIntersection : {rel1, rel2 : Rel a} -> rel1 x y -> rel2 x y -> Intersection rel1 rel2 x y
+mkIntersection r1xy r2xy False = r1xy
+mkIntersection r1xy r2xy True = r2xy
+
+||| Build a binary intersection from a pair
+mkIntersectionPair : {rel1, rel2 : Rel a} -> (rel1 x y, rel2 x y) -> Intersection rel1 rel2 x y
+mkIntersectionPair (xy1, xy2) = mkIntersection xy1 xy2
+
+||| View a binary intersection as a pair
+viewIntersection : {rel1, rel2 : Rel a} -> Intersection rel1 rel2 x y -> (rel1 x y, rel2 x y)
+viewIntersection ixy = (ixy False, ixy True)
+
+||| The union of a family of relations
+UnionFamily : (b -> Rel a) -> Rel a
+UnionFamily {b} f x y = Sigma b (\q => f q x y)
 
 ||| The union of two relations
-Union : {a : Type} -> (rel1, rel2 : Rel a) -> Rel a
-Union rel1 rel2 x y = Either (rel1 x y) (rel2 x y)
+Union : (rel1, rel2 : Rel a) -> Rel a
+Union rel1 rel2 = UnionFamily (boolRel rel1 rel2)
+
+||| Build a binary union from the left side
+mkUnionLeft : {rel1, rel2 : Rel a} -> rel1 x y -> Union rel1 rel2 x y
+mkUnionLeft r1xy = (False ** r1xy)
+
+||| Build a binary union from the right side
+mkUnionRight : {rel1, rel2 : Rel a} -> rel2 x y -> Union rel1 rel2 x y
+mkUnionRight r2xy = (True ** r2xy)
+
+||| Build a binary union from an Either
+mkUnionEither : {rel1, rel2 : Rel a} -> Either (rel1 x y) (rel2 x y) -> Union rel1 rel2 x y
+mkUnionEither (Left xy) = mkUnionLeft xy
+mkUnionEither (Right xy) = mkUnionRight xy
+
+||| View a binary union as an Either
+viewUnion : {rel1, rel2 : Rel a} -> Union rel1 rel2 x y -> Either (rel1 x y) (rel2 x y)
+viewUnion (False ** pf) = Left pf
+viewUnion (True ** pf) = Right pf
 
 ||| Express that a relation is equivalent to another
-data Equivalent : {a : Type} -> (R1, R2 : Rel a) -> Type where
+data Equivalent : (R1, R2 : Rel a) -> Type where
   MkEquivalent : {R1,R2 : Rel a} -> Coarser R1 R2 -> Coarser R2 R1 -> Equivalent R1 R2
 
 ||| An operation on relations is inflationary if the result is always
@@ -268,23 +314,74 @@ transitiveTotalIsComparison trns tot x y z yz with (tot x y)
   transitiveTotalIsComparison trns tot x y z yz | (Left xy) = Left xy
   transitiveTotalIsComparison trns tot x y z yz | (Right yx) = Right (trns y x z yx yz)
 
-{-
--- TODO Finish this, if it's true, and if possible factor out into smaller
--- useful lemmas.
+intersectionCoarserAll : .{a : Type} -> (rels : b -> Rel a) -> (x : b) -> IntersectionFamily rels `Coarser` rels x
+intersectionCoarserAll rels x p q g = g x
 
-intersectionClosedClosed : (f : Rel a -> Rel a) ->
-                           (ClosureOperator f) ->
-                           {rel1, rel2 : Rel a} ->
-                           Fixed f rel1 -> Fixed f rel2 ->
-                           Fixed f (rel1 `Intersection` rel2)
-intersectionClosedClosed {a} {rel1} {rel2} f (MkClosureOperator infl incr idem) fixed1 fixed2 =
-  MkEquivalent this that
-  where
-    this : (x : a) ->
-           (y : a) ->
-           Intersection rel1 rel2 x y -> f (Intersection rel1 rel2) x y
-    that : (x : a) ->
-           (y : a) ->
-           f (Intersection rel1 rel2) x y -> Intersection rel1 rel2 x y
-    that x y fixy = (?that1, ?that2)
-    -}
+unionFinerAll : .{a : Type} -> (rels : b -> Rel a) -> (x : b) -> rels x `Coarser` UnionFamily rels
+unionFinerAll {a} {b} rels x p q relsxpq = (x ** relsxpq)
+
+intersectionFinest : .{a : Type} ->
+                     (rels : b -> Rel a) ->
+                     (r : Rel a) ->
+                     ((x : b) -> r `Coarser` rels x) ->
+                     r `Coarser` IntersectionFamily rels
+intersectionFinest rels r f x y rxy p = f p x y rxy
+
+unionCoarsest : .{a : Type} ->
+                (rels : b -> Rel a) ->
+                (r : Rel a) ->
+                ((x : b) -> rels x `Coarser` r) ->
+                UnionFamily rels `Coarser` r
+unionCoarsest rels r f x y (q ** prf) = f q x y prf
+
+intersectionTransitiveTrans : .{a : Type} ->
+                              (rels : b -> Rel a) ->
+                              ((x : b) -> Transitive (rels x)) ->
+                              Transitive (IntersectionFamily rels)
+intersectionTransitiveTrans {a} rels allTrans x y z relspxy relspyz p =
+  allTrans p x y z (relspxy p) (relspyz p)
+
+unionSymmetricSym : .{a : Type} ->
+                    (rels : b -> Rel a) ->
+                    ((x : b) -> Symmetric (rels x)) ->
+                    Symmetric (UnionFamily rels)
+unionSymmetricSym rels f x y (q ** relsqxy) = (q ** f q x y relsqxy)
+
+intersectionReflexiveRefl : .{a : Type} ->
+                            (rels : b -> Rel a) ->
+                            ((x : b) -> Reflexive eq (rels x)) ->
+                            Reflexive eq (IntersectionFamily rels)
+intersectionReflexiveRefl rels f x y eqxy p = f p x y eqxy
+
+intersectionPreservesCoarser : {a : Type} ->
+                             (rels1 : b -> Rel a) ->
+                             (rels2 : b -> Rel a) ->
+                             (allCoarser : (x : b) -> rels1 x `Coarser` rels2 x) ->
+                             IntersectionFamily rels1 `Coarser` IntersectionFamily rels2
+intersectionPreservesCoarser rels1 rels2 allCoarser x y pr1 p = allCoarser p x y (pr1 p)
+
+intersectionPreservesEquiv : {a : Type} ->
+                             (rels1 : b -> Rel a) ->
+                             (rels2 : b -> Rel a) ->
+                             (equivs : (x : b) -> rels1 x `Equivalent` rels2 x) ->
+                             IntersectionFamily rels1 `Equivalent` IntersectionFamily rels2
+intersectionPreservesEquiv {a} {b} rels1 rels2 equivs =
+  MkEquivalent (intersectionPreservesCoarser rels1 rels2 (\m => case equivs m of {MkEquivalent this that => this}))
+               (intersectionPreservesCoarser rels2 rels1 (\m => case equivs m of {MkEquivalent this that => that}))
+
+unionPreservesCoarser : {a : Type} ->
+                        (rels1 : b -> Rel a) ->
+                        (rels2 : b -> Rel a) ->
+                        (allCoarser : (x : b) -> rels1 x `Coarser` rels2 x) ->
+                        UnionFamily rels1 `Coarser` UnionFamily rels2
+unionPreservesCoarser rels1 rels2 allCoarser x y (q ** rels1qxy) = (q ** allCoarser q x y rels1qxy)
+
+unionPreservesEquiv : {a : Type} ->
+                      (rels1 : b -> Rel a) ->
+                      (rels2 : b -> Rel a) ->
+                      (equivs : (x : b) -> rels1 x `Equivalent` rels2 x) ->
+                      UnionFamily rels1 `Equivalent` UnionFamily rels2
+
+unionPreservesEquiv {a} {b} rels1 rels2 equivs =
+  MkEquivalent (unionPreservesCoarser rels1 rels2 (\m => case equivs m of {MkEquivalent this that => this}))
+               (unionPreservesCoarser rels2 rels1 (\m => case equivs m of {MkEquivalent this that => that}))

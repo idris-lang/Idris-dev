@@ -1,8 +1,8 @@
 ||| General definitions and theorems about preorders, orders, linear orders,
 ||| strict total orders, and total orders.
-module Relations.Orders
-import Basics
-import ReflexiveClosure
+module Control.Relations.Orders
+import Control.Relations.Basics
+import Control.Relations.ReflexiveClosure
 
 %default total
 %access public
@@ -22,34 +22,33 @@ data Order : (eq : Rel a) -> Rel a -> Type where
 ||| The full complement of basic characteristics of linear orders
 ||| according to nLab. To construct this, use either `mkLinearOrderAsym`
 ||| or `mkLinearOrderTrans`.
-data LinearOrder : (eq : Rel a) -> Rel a -> Type where
-  MkLinearOrder :  (eqEquiv : Equivalence eq) ->
-                   (irref : Irreflexive eq rel) ->
-                   (asym : Asymmetric rel) ->
-                   (trns : Transitive rel) ->
-                   (cmpr : Comparison rel) ->
-                   (conn : Connected eq rel) ->
-                   LinearOrder eq rel
+record LinearOrder (eq : Rel a) (rel : Rel a) where
+  constructor MkLinearOrder
+  eqEquiv : Equivalence eq
+  irref : Irreflexive eq rel
+  asym : Asymmetric rel
+  trns : Transitive rel
+  cmpr : Comparison rel
+  conn : Connected eq rel
 
 ||| A strict total order as defined in the Agda standard library. Unlike a
 ||| a linear order, a strict total order is guaranteed to be decidable. Unlike
 ||| the reflexive reduction of a total order, a strict total order is
 ||| guaranteed to be transitive. A strict total order is guaranteed to be a linear order.
-data StrictTotalOrder : (eq : Rel a) -> Rel a -> Type where
-  MkStrictTotalOrder :
-      (eqEquiv : Equivalence eq) ->
-      (respEq : rel `Respects2` eq) ->
-      (trns : Transitive rel) ->
-      (compare : Trichotomous eq rel) ->
-      StrictTotalOrder eq rel
+record StrictTotalOrder (eq : Rel a) (rel : Rel a) where
+  constructor MkStrictTotalOrder
+  eqEquiv : Equivalence eq
+  respEq : rel `Respects2` eq
+  trns : Transitive rel
+  cmpr : Trichotomous eq rel
 
 ||| The full complement of basic total order properties as described on nLab.
 ||| To construct these, use `mkTotalOrderTrns` or `mkTotalOrderCmpr`.
-data TotalOrder : (eq : Rel a) -> Rel a -> Type where
-  MkTotalOrder :  (ord : Order eq rel) ->
-                  (tot : Total rel) ->
-                  (cmpr : Comparison rel) ->
-                  TotalOrder eq rel
+record TotalOrder (eq : Rel a) (rel : Rel a) where
+  constructor MkTotalOrder
+  ord : Order eq rel
+  tot : Total rel
+  cmpr : Comparison rel
 
 ||| An asymmetric, connected comparison is a linear order.
 mkLinearOrderAsym :
@@ -88,32 +87,32 @@ mkLinearOrderTrans eqEquiv irref trns cmpr conn =
       trns cmpr conn
 
 stoAsymmetric : StrictTotalOrder eq rel -> Asymmetric rel
-stoAsymmetric (MkStrictTotalOrder eqEquiv respEq trns compare) x y xRy yRx with (compare x y)
-  stoAsymmetric (MkStrictTotalOrder eqEquiv respEq trns compare) x y xRy yRx | (TriLT z f g) = g yRx
-  stoAsymmetric (MkStrictTotalOrder eqEquiv respEq trns compare) x y xRy yRx | (TriEQ f z g) = g yRx
-  stoAsymmetric (MkStrictTotalOrder eqEquiv respEq trns compare) x y xRy yRx | (TriGT f g z) = f xRy
+stoAsymmetric foo x y xRy yRx with (cmpr foo x y)
+  | (TriLT z f g) = g yRx
+  | (TriEQ f z g) = g yRx
+  | (TriGT f g z) = f xRy
 
 stoComparison : StrictTotalOrder eq rel -> Comparison rel
-stoComparison (MkStrictTotalOrder eqEquiv respEq trns compare) x y z xRz with (compare x y)
-  stoComparison (MkStrictTotalOrder eqEquiv respEq trns compare) x y z xRz | (TriLT w f g) = Left w
-  stoComparison (MkStrictTotalOrder eqEquiv respEq trns compare) x y z xRz | (TriEQ f w g) with (compare y z)
-    stoComparison (MkStrictTotalOrder eqEquiv respEq trns compare) x y z xRz | (TriEQ f w g) | (TriLT s t u) = Right s
-    stoComparison (MkStrictTotalOrder eqEquiv (this, that) trns compare) x y z xRz | (TriEQ f xEQy g) | (TriEQ s yEQz u) =
-       let xRy = this x _ _ (getSymmetric eqEquiv y z yEQz) xRz in Left xRy
-    stoComparison (MkStrictTotalOrder eqEquiv respEq trns compare) x y z xRz | (TriEQ f xEQy g) | (TriGT s t zRy) =
-      Left $ trns x z y xRz zRy
-  stoComparison (MkStrictTotalOrder eqEquiv respEq trns compare) x y z xRz | (TriGT f g w) with (compare y z)
-    stoComparison (MkStrictTotalOrder eqEquiv respEq trns compare) x y z xRz | (TriGT f g _) | (TriLT yRz s t) = Right yRz
-    stoComparison (MkStrictTotalOrder eqEquiv (this,that) trns compare) x y z xRz | (TriGT f g _) | (TriEQ w yEQz t) =
-      Left $ this x _ _ (getSymmetric eqEquiv y z yEQz) xRz
-    stoComparison (MkStrictTotalOrder eqEquiv respEq trns compare) x y z xRz | (TriGT f g _) | (TriGT w s zRy) =
-                absurd . f $ trns _ z _ xRz zRy
+stoComparison sto x y z xRz with (cmpr sto x y)
+  | (TriLT w f g) = Left w
+  | (TriEQ f w g) with (cmpr sto y z)
+    stoComparison sto x y z xRz | (TriEQ f w g) | (TriLT s t u) = Right s
+    stoComparison sto x y z xRz | (TriEQ f xEQy g) | (TriEQ s yEQz u) =
+       let xRy = case respEq sto of (this, _) => this x _ _ (getSymmetric (eqEquiv sto) y z yEQz) xRz in Left xRy
+    stoComparison sto x y z xRz | (TriEQ f xEQy g) | (TriGT s t zRy) =
+      Left $ trns sto x z y xRz zRy
+  | (TriGT f g w) with (cmpr sto y z)
+    stoComparison sto x y z xRz | (TriGT f g _) | (TriLT yRz s t) = Right yRz
+    stoComparison sto x y z xRz | (TriGT f g _) | (TriEQ w yEQz t) =
+      Left $ case respEq sto of (this,_) => this x _ _ (getSymmetric (eqEquiv sto) y z yEQz) xRz
+    stoComparison sto x y z xRz | (TriGT f g _) | (TriGT w s zRy) =
+                absurd . f $ trns sto _ z _ xRz zRy
 
 stoConnected : StrictTotalOrder eq rel -> Connected eq rel
-stoConnected (MkStrictTotalOrder eqEquiv respEq trns compare) x y notxRy notyRx with (compare x y)
-  stoConnected (MkStrictTotalOrder eqEquiv respEq trns compare) x y notxRy notyRx | (TriLT z f g) = absurd (notxRy z)
-  stoConnected (MkStrictTotalOrder eqEquiv respEq trns compare) x y notxRy notyRx | (TriEQ f z g) = z
-  stoConnected (MkStrictTotalOrder eqEquiv respEq trns compare) x y notxRy notyRx | (TriGT f g z) = absurd (notyRx z)
+stoConnected sto x y notxRy notyRx with (cmpr sto x y)
+  | (TriLT z f g) = absurd (notxRy z)
+  | (TriEQ f z g) = z
+  | (TriGT f g z) = absurd (notyRx z)
 
 ||| A strict total order is a linear order.
 strictTotalOrderIsLinear : StrictTotalOrder eq rel -> LinearOrder eq rel
