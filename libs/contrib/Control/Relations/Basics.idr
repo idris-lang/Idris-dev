@@ -54,18 +54,11 @@ Irreflexive {a} eq rel = (x,y:a) -> x `eq` y -> x `rel` y -> Void
 
 ||| An equivalence relation is a reflexive, transitive, and symmetric
 ||| relation.
-data Equivalence : Rel a -> Type where
-  MkEquivalence : (rfl : Reflexive' rel) -> (trns : Transitive rel) ->
-                  (symm : Symmetric rel) -> Equivalence rel
-
-getReflexive' : Equivalence rel -> Reflexive' rel
-getReflexive' (MkEquivalence rfl trns symm) = rfl
-
-getSymmetric : Equivalence rel -> Symmetric rel
-getSymmetric (MkEquivalence rfl trns symm) = symm
-
-getTransitive : Equivalence rel -> Transitive rel
-getTransitive (MkEquivalence rfl trns symm) = trns
+record Equivalence (rel : Rel a) where
+  constructor MkEquivalence
+  rfl' : Reflexive' rel
+  trns : Transitive rel
+  symm : Symmetric rel
 
 bool : a -> a -> Bool -> a
 bool x y False = x
@@ -223,7 +216,7 @@ equivalentIsEquivalence = MkEquivalence rfl trns symm
 
 equalityIsAntisymmetric : (Equivalence eq) ->
                           Antisymmetric eq (~=~)
-equalityIsAntisymmetric eqEquiv x y xy yx = rewrite xy in getReflexive' eqEquiv y
+equalityIsAntisymmetric eqEquiv x y xy yx = rewrite xy in rfl' eqEquiv y
 
 allRespectEquality2 : rel `Respects2` (~=~)
 allRespectEquality2 = ((\_,p,q,eq,xrp => rewrite sym eq in xrp) ,
@@ -242,7 +235,7 @@ asymmetricIsIrreflexive : (eqEquiv : Equivalence eq) ->
                           (relRespEq : rel `Respects2` eq) ->
                           Asymmetric rel -> Irreflexive eq rel
 asymmetricIsIrreflexive eqEquiv (relRespEq,_) asym x y xEQy xRELy =
-  let xRELx = relRespEq _ _ _ (getSymmetric eqEquiv x y xEQy) xRELy
+  let xRELx = relRespEq _ _ _ (symm eqEquiv x y xEQy) xRELy
   in absurd $ asym x x xRELx xRELx
 
 -- Why can't it solve for `rel` on its own?
@@ -253,8 +246,8 @@ asymmetricIsIrreflexiveSimple {rel} = asymmetricIsIrreflexive {rel} equalityIsEq
 ||| An asymmetric comparison is transitive
 asymmetricComparisonIsTransitive : Asymmetric rel -> Comparison rel -> Transitive rel
 asymmetricComparisonIsTransitive asym cmpr x y z xy yz with (cmpr _ z _ xy)
-  asymmetricComparisonIsTransitive asym cmpr x y z xy yz | (Left xz) = xz
-  asymmetricComparisonIsTransitive asym cmpr x y z xy yz | (Right zy) = absurd (asym _ _ yz zy)
+  | (Left xz) = xz
+  | (Right zy) = absurd (asym _ _ yz zy)
 
 ||| An irreflexive, transitive relation is asymmetric.
 irreflexiveTransitiveIsAsymmetric : (eqEquiv : Equivalence eq) ->
@@ -262,7 +255,7 @@ irreflexiveTransitiveIsAsymmetric : (eqEquiv : Equivalence eq) ->
                                     Transitive rel -> Asymmetric rel
 irreflexiveTransitiveIsAsymmetric eqEquiv irref trns x y xy yx =
   let xx = trns x y x xy yx
-  in irref x x (getReflexive' eqEquiv x) xx
+  in irref x x (rfl' eqEquiv x) xx
 
 ||| A specialization of `irreflexiveTransitiveIsAsymmetric` to equality.
 irreflexiveTransitiveIsAsymmetricSimple : Irreflexive (~=~) rel -> Transitive rel -> Asymmetric rel
@@ -277,7 +270,7 @@ totalIsReflexive {eq} {rel} eqEquiv resp tot x y xEQy with (tot x y)
   totalIsReflexive {eq} {rel} eqEquiv (f,g) tot x y xEQy | (Right yRELx) = f _ _ _ xEQy xRELx
     where
       yEQx : y `eq` x
-      yEQx = getSymmetric eqEquiv x y xEQy
+      yEQx = symm eqEquiv x y xEQy
 
       xRELx : x `rel` x
       xRELx = g x y x yEQx yRELx
