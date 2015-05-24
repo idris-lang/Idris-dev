@@ -1,11 +1,11 @@
 reg044.idr:4:4:When elaborating right hand side of Main.pf:
-Can't unify
+Type mismatch between
         b = b (Type of Refl)
-with
+and
         a = b (Expected type)
 
 Specifically:
-        Can't unify
+        Type mismatch between
                 b
-        with
+        and
                 a

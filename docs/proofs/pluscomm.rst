@@ -88,9 +88,9 @@ error:
 ::
 
     When elaborating right hand side of four_eq_five:
-    Can't unify
+    Type mismatch between
             x = x (Type of Refl)
-    with
+    and
             4 = 5 (Expected type)
 
 Type checking equality proofs

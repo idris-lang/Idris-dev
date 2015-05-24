@@ -1,25 +1,25 @@
 tutorial006a.idr:5:23-25:
 When elaborating right hand side of vapp:
 When elaborating argument xs to constructor Data.VectType.Vect.:::
-        Can't unify
+        Type mismatch between
                 Vect (n + n) a (Type of vapp xs xs)
-        with
+        and
                 Vect (plus n m) a (Expected type)
         
         Specifically:
-                Can't unify
+                Type mismatch between
                         plus n n
-                with
+                and
                         plus n m
 tutorial006b.idr:10:10:
 When elaborating right hand side of with block in Main.parity:
-Can't unify
+Type mismatch between
         Parity (plus (S j) (S j)) (Type of even)
-with
+and
         Parity (S (S (plus j j))) (Expected type)
 
 Specifically:
-        Can't unify
+        Type mismatch between
                 plus (S j) (S j)
-        with
+        and
                 S (S (plus j j))

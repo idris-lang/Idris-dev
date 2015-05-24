@@ -35,15 +35,15 @@ Unfortunately, the type checker rejects this:
 ::
 
     viewsbroken.idr:12:10:When elaborating right hand side of ViewsBroken.parity:
-    Can't unify
+    Type mismatch between 
         Parity (plus (S j) (S j))
-    with
+    and
         Parity (S (S (plus j j)))
 
     Specifically:
-        Can't unify
+        Type mismatch between
             plus (S j) (S j)
-        with
+        and
             S (S (plus j j))
 
 The type checker is telling us that ``(j+1)+(j+1)`` and ``2+j+j`` do not

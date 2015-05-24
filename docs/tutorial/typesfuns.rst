@@ -309,15 +309,15 @@ following:
     $ idris vbroken.idr --check
     vbroken.idr:9:23:When elaborating right hand side of Vect.++:
     When elaborating an application of constructor Vect.:::
-        Can't unify
+        Type mismatch between 
                 Vect (k + k) a (Type of xs ++ xs)
-        with
+        and
                 Vect (plus k m) a (Expected type)
 
         Specifically:
-                Can't unify
+                Type mismatch between
                         plus k k
-                with
+                and
                         plus k m
 
 

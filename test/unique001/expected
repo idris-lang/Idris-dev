@@ -2,17 +2,17 @@
 19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,END
 38,36,34,32,30,28,26,24,22,20,18,16,14,12,10,8,6,4,2,0,END
 38,36,34,32,30,28,26,24,22,20,18,16,14,12,10,8,6,4,2,0,END
-unique001a.idr:33:11:Can't convert
+unique001a.idr:33:11:Type mismatch between
         Int -> String
-with
+and
         UniqueType (Int -> String)
-unique001a.idr:44:12:Can't convert
+unique001a.idr:44:12:Type mismatch between
         Int -> String
-with
+and
         UniqueType (Int -> String)
-unique001a.idr:55:12:Can't convert
+unique001a.idr:55:12:Type mismatch between
         UniqueType (Int -> String)
-with
+and
         Int -> String
 unique001b.idr:16:7:Borrowed name xs must not be used on RHS
 unique001c.idr:46:6:Unique name f is used more than once
