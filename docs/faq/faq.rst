@@ -99,6 +99,30 @@ the difference between:
     Idris> \n, m => n + (S m)
     \n => \m => plus n (S m) : Nat -> Nat -> Nat
 
+I have an obviously terminating program, but Idris says it possibly isn't total. Why is that?
+=============================================================================================
+
+Idris can't decide in general whether a program is terminating due to
+the undecidability of the `Halting Problem
+<https://en.wikipedia.org/wiki/Halting_problem>`_. It is possible, however,
+to identify some programs which are definitely terminating. Idris does this
+using "size change termination" which looks for recursive paths from a
+function back to itself. On such a path, there must be at least one
+argument which converges to a base case. 
+
+- Mutually recursive functions are supported
+- However, all functions on the path must be fully applied. In particular,
+  higher order applications are not supported
+- Idris identifies arguments which converge to a base case by looking for
+  recursive calls to syntactically smaller arguments of inputs. e.g.
+  ``k`` is syntactially smaller than ``S (S k)`` because ``k`` is a
+  subterm of ``S (S k)``, but ``(k, k)`` is
+  not syntactically smaller than ``(S k, S k)``.
+
+If you have a function which you believe to be terminating, but Idris does
+not, you can either restructure the program, or use the ``assert_total``
+function.
+
 When will Idris be self-hosting?
 ================================
 
