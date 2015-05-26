@@ -115,6 +115,7 @@ data Elab : Type -> Type where
   prim__AddInstance : TTName -> TTName -> Elab ()
 
   prim__ResolveTC : TTName -> Elab ()
+  prim__Search : Int -> List TTName -> Elab ()
   prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
 
   prim__Debug : {a : Type} -> Maybe String -> Elab a
@@ -311,6 +312,17 @@ namespace Tactics
   ||| from looping)
   resolveTC : (fn : TTName) -> Elab ()
   resolveTC fn = prim__ResolveTC fn
+
+  ||| Use Idris's internal proof search.
+  search : Elab ()
+  search = prim__Search 100 []
+
+  ||| Use Idris's internal proof search, with more control.
+  |||
+  ||| @ depth the search depth
+  ||| @ hints additional names to try
+  search' : (depth : Int) -> (hints : List TTName) -> Elab ()
+  search' depth hints = prim__Search depth hints
 
   ||| Halt elaboration, dumping the internal state for inspection.
   |||

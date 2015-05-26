@@ -1929,6 +1929,19 @@ runTactical ist fc env tm = do tm' <- eval tm
            fn <- reifyTTName fn
            resolveTC False True 100 g fn ist
            returnUnit
+      | n == tacN "prim__Search", [depth, hints] <- args
+      = do d <- eval depth
+           hints' <- eval hints
+           case (d, unList hints') of
+             (Constant (I i), Just hs) ->
+               do actualHints <- mapM reifyTTName hs
+                  unifyProblems
+                  let psElab = elab ist toplevel ERHS [] (sMN 0 "tac")
+                  proofSearch True True False False i psElab Nothing (sMN 0 "search ") actualHints ist
+                  returnUnit
+             (Constant (I _), Nothing ) ->
+               lift . tfail . InternalMsg $ "Not a list: " ++ show hints'
+             (_, _) -> lift . tfail . InternalMsg $ "Can't reify int " ++ show d
       | n == tacN "prim__RecursiveElab", [goal, script] <- args
       = do goal' <- reifyRaw goal
            ctxt <- get_context
