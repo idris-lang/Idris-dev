@@ -1,7 +1,7 @@
 module Data.HVect
 
 import Data.Fin
-import Data.Vect
+import public Data.Vect
 
 %access public
 %default total
