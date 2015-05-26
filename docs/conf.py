@@ -63,10 +63,13 @@ version = '0.9.17'
 # The full version, including alpha/beta/rc tags.
 release = '0.9.17'
 
-# Different locales support
-locale_dirs = ['locale/']
+# Different locales support, default language is English
+language = 'en'
+
+locale_dirs = [
+    'locale/',
+]
 gettext_compact = False
-language = 'ru'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
