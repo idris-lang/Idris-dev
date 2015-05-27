@@ -22,7 +22,9 @@ instance Eq a => Eq (Complex a) where
     (==) a b = realPart a == realPart b && imagPart a == imagPart b
 
 instance Show a => Show (Complex a) where
-    show (r:+i) = "("++show r++":+"++show i++")"
+    showPrec d (r :+ i) = showParens (d >= plus_i) $ showPrec plus_i r ++ " :+ " ++ showPrec plus_i i
+      where plus_i : Prec
+            plus_i = User 6
 
 
 

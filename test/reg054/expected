@@ -6,7 +6,7 @@ When elaborating argument x to Main.weird:
         No explicit types on left hand side: Char
 reg054.idr:37:1-8:When elaborating left hand side of tctrick:
 When elaborating an application of Main.tctrick:
-        Can't unify
+        Type mismatch between
                 Maybe a1 (Type of Just x)
-        with
+        and
                 a (Expected type)

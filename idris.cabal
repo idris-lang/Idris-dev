@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.18
+Version:        0.9.18.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -114,7 +114,7 @@ Extra-source-files:
                        libs/contrib/Classes/*.idr
                        libs/contrib/Control/*.idr
                        libs/contrib/Control/Isomorphism/*.idr
-		       libs/contrib/Control/Algebra/*.idr
+                       libs/contrib/Control/Algebra/*.idr
                        libs/contrib/Data/*.idr
                        libs/contrib/Decidable/*.idr
                        libs/contrib/Network/*.idr
@@ -314,6 +314,9 @@ Extra-source-files:
                        test/reg064/run
                        test/reg064/*.idr
                        test/reg064/expected
+                       test/reg065/run
+                       test/reg065/*.idr
+                       test/reg065/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -888,7 +891,7 @@ Library
                 , pretty < 1.2
                 , process < 1.3
                 , split < 0.3
-                , text < 1.3
+                , text >=1.2.1.0 && < 1.3
                 , time >= 1.4 && < 1.6
                 , transformers < 0.5
                 , transformers-compat >= 0.3
@@ -911,7 +914,7 @@ Library
                 , TemplateHaskell
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts
+  ghc-options:      -threaded -rtsopts -O2
 
   if os(linux)
      cpp-options:   -DLINUX
@@ -955,7 +958,7 @@ Executable idris
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
 
 Executable idris-c
   Main-is:        Main.hs
@@ -968,7 +971,7 @@ Executable idris-c
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
 
 Executable idris-javascript
   Main-is:        Main.hs

@@ -231,14 +231,14 @@ pprintErr' i (InternalMsg s) =
 pprintErr' i (CantUnify _ (x_in, xprov) (y_in, yprov) e sc s) =
   let (x_ns, y_ns, nms) = renameMNs x_in y_in
       (x, y) = addImplicitDiffs (delab i x_ns) (delab i y_ns) in
-    text "Can't unify" <> indented (annTm x_ns
+    text "Type mismatch between" <> indented (annTm x_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
                                         ++ zip nms (repeat False)) x)) 
         <> case xprov of
                 Nothing -> empty
                 Just t -> text " (" <> pprintProv i sc t <> text ")"
         <$>
-    text "with" <> indented (annTm y_ns
+    text "and" <> indented (annTm y_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
                                         ++ zip nms (repeat False)) y)) 
         <> case yprov of
@@ -257,10 +257,10 @@ pprintErr' i (CantConvert x_in y_in env) =
  let (x_ns, y_ns, nms) = renameMNs x_in y_in
      (x, y) = addImplicitDiffs (delab i (flagUnique x_ns)) 
                                (delab i (flagUnique y_ns)) in
-  text "Can't convert" <>
+  text "Type mismatch between" <>
   indented (annTm x_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
                x)) <$>
-  text "with" <>
+  text "and" <>
   indented (annTm y_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
                y)) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty

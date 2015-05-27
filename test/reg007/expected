@@ -1,12 +1,12 @@
 reg007.lidr:8:1:A.n is already defined
 reg007.lidr:12:11-17:When elaborating right hand side of hurrah:
-Can't unify
+Type mismatch between
         n = lala (Type of isSame)
-with
+and
         0 = 1 (Expected type)
 
 Specifically:
-        Can't unify
+        Type mismatch between
                 1
-        with
+        and
                 0

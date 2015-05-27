@@ -1271,12 +1271,18 @@ parseImports fname input
 
 -- | There should be a better way of doing this...
 findFC :: Doc -> (FC, String)
-findFC x = let s = show (plain x) in
-             case span (/= ':') s of
-               (failname, ':':rest) -> case span isDigit rest of
-                 (line, ':':rest') -> case span isDigit rest' of
-                   (col, ':':msg) -> let pos = (read line, read col) in
-                                         (FC failname pos pos, msg)
+findFC x = let s = show (plain x) in findFC' s
+  where findFC' s = case span (/= ':') s of
+                      -- Horrid kludge to prevent crashes on Windows
+                      (prefix, ':':'\\':rest) ->
+                        case findFC' rest of
+                          (NoFC, msg) -> (NoFC, msg)
+                          (FileFC f, msg) -> (FileFC (prefix ++ ":\\" ++ f), msg)
+                          (FC f start end, msg) -> (FC (prefix ++ ":\\" ++ f) start end, msg)
+                      (failname, ':':rest) -> case span isDigit rest of
+                        (line, ':':rest') -> case span isDigit rest' of
+                          (col, ':':msg) -> let pos = (read line, read col) in
+                                                (FC failname pos pos, msg)
 
 -- | Check if the coloring matches the options and corrects if necessary
 fixColour :: Bool -> ANSI.Doc -> ANSI.Doc

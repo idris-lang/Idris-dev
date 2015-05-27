@@ -1329,7 +1329,7 @@ translateBC info bc
   | NULL r                <- bc = jsNULL info r
   | CALL n                <- bc = jsCALL info n
   | TAILCALL n            <- bc = jsTAILCALL info n
-  | FOREIGNCALL r _ (FStr n) args   
+  | FOREIGNCALL r _ (FStr n) args
                           <- bc = jsFOREIGN info r n (map fcall args)
   | TOPBASE n             <- bc = jsTOPBASE info n
   | BASETOP n             <- bc = jsBASETOP info n
@@ -1346,7 +1346,7 @@ translateBC info bc
   | otherwise                   = JSRaw $ "//" ++ show bc
  where fcall (t, arg) = (toFType t, arg)
 
-toAType (FCon i) 
+toAType (FCon i)
     | i == sUN "JS_IntChar" = ATInt ITChar
     | i == sUN "JS_IntNative" = ATInt ITNative
 toAType t = error (show t ++ " not defined in toAType")
@@ -1359,14 +1359,14 @@ toFnType (FApp c [_,r])
     | c == sUN "JS_FnBase" = FFunction
 toFnType t = error (show t ++ " not defined in toFnType")
 
-toFType (FCon c) 
+toFType (FCon c)
     | c == sUN "JS_Str" = FString
     | c == sUN "JS_Float" = FArith ATFloat
     | c == sUN "JS_Ptr" = FPtr
     | c == sUN "JS_Unit" = FUnit
-toFType (FApp c [_,ity]) 
+toFType (FApp c [_,ity])
     | c == sUN "JS_IntT" = FArith (toAType ity)
-toFType (FApp c [_,fty]) 
+toFType (FApp c [_,fty])
     | c == sUN "JS_FnT" = toFnType fty
 toFType t = error (show t ++ " not yet defined in toFType")
 

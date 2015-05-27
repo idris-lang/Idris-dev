@@ -1,13 +1,13 @@
 Reflect.idr:208:38:
 When elaborating right hand side of testReflect1:
 When elaborating an application of function Reflect.getJust:
-        Can't unify
+        Type mismatch between
                 IsJust (Just x1) (Type of ItIsJust)
-        with
+        and
                 IsJust (prove (getProof x)) (Expected type)
         
         Specifically:
-                Can't unify
+                Type mismatch between
                         Just x
-                with
+                and
                         Nothing

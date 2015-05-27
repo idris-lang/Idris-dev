@@ -1,5 +1,5 @@
 reg023.idr:7:5:When elaborating right hand side of bad:
-Can't unify
+Type mismatch between
         Nat (Type of 0)
-with
+and
         f Nat (Expected type)

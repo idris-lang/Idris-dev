@@ -30,8 +30,8 @@ LIBTARGET = libidris_rts.a
 build: $(LIBTARGET) $(DYLIBTARGET)
 
 $(LIBTARGET) : $(OBJS)
-	ar r $(LIBTARGET) $(OBJS)
-	ranlib $(LIBTARGET)
+	$(AR) r $(LIBTARGET) $(OBJS)
+	$(RANLIB) $(LIBTARGET)
 
 install :
 	mkdir -p $(TARGET)

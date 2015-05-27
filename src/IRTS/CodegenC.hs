@@ -77,7 +77,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
              let args = [gccDbg dbg] ++
                         gccFlags iface ++
                         -- # Any flags defined here which alter the RTS API must also be added to config.mk
-                        ["-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS", "-msse2",
+                        ["-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS",
                          "-I."] ++ objs ++ ["-x", "c"] ++ envFlags ++
                         (if (exec == Executable) then [] else ["-c"]) ++
                         [tmpn] ++

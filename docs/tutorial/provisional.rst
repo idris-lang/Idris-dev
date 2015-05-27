@@ -35,15 +35,15 @@ Unfortunately, the type checker rejects this:
 ::
 
     viewsbroken.idr:12:10:When elaborating right hand side of ViewsBroken.parity:
-    Can't unify
+    Type mismatch between 
         Parity (plus (S j) (S j))
-    with
+    and
         Parity (S (S (plus j j)))
 
     Specifically:
-        Can't unify
+        Type mismatch between
             plus (S j) (S j)
-        with
+        and
             S (S (plus j j))
 
 The type checker is telling us that ``(j+1)+(j+1)`` and ``2+j+j`` do not
@@ -70,6 +70,15 @@ they are useful.
 Provisional definitions are written in the same way as ordinary
 definitions, except that they introduce the right hand side with a
 ``?=`` rather than ``=``. We define ``parity`` as follows:
+
+.. code-block:: idris
+
+    parity : (n:Nat) -> Parity n
+    parity Z = Even {n=Z}
+    parity (S Z) = Odd {n=Z}
+    parity (S (S k)) with (parity k)
+      parity (S (S (j + j))) | Even ?= Even {n=S j}
+      parity (S (S (S (j + j)))) | Odd ?= Odd {n=S j}
 
 When written in this form, instead of reporting a type error, Idris
 will insert a metavariable standing for a theorem which will correct the
