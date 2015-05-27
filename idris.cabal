@@ -914,7 +914,7 @@ Library
                 , TemplateHaskell
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -O2
+  ghc-options:      -threaded -rtsopts -O1
 
   if os(linux)
      cpp-options:   -DLINUX
