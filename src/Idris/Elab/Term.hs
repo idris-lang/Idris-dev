@@ -1730,18 +1730,19 @@ runTactical ist fc env tm = do tm' <- eval tm
                                     Left lhs -> let (ns, lhs') = patvars [] lhs'
                                                 in (ns, lhs', Impossible))
                             clauses'
-         set_context $
-           addCasedef n (const [])
-                      info False (STerm Erased)
-                      True False -- TODO what are these?
-                      (map snd $ getArgTys ty) [] -- TODO inaccessible types
-                      clauses'
-                      clauses''
-                      clauses''
-                      clauses''
-                      clauses''
-                      ty
-                      ctxt
+         ctxt'<- lift $
+                  addCasedef n (const [])
+                             info False (STerm Erased)
+                             True False -- TODO what are these?
+                             (map snd $ getArgTys ty) [] -- TODO inaccessible types
+                             clauses'
+                             clauses''
+                             clauses''
+                             clauses''
+                             clauses''
+                             ty
+                             ctxt
+         set_context ctxt'
          updateAux $ \e -> e { new_tyDecls = RClausesInstrs n clauses'' : new_tyDecls e}
          return ()
 
