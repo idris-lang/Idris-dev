@@ -914,7 +914,7 @@ Library
                 , TemplateHaskell
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -O1
+  ghc-options:      -threaded -rtsopts
 
   if os(linux)
      cpp-options:   -DLINUX
@@ -958,7 +958,7 @@ Executable idris
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-c
   Main-is:        Main.hs
@@ -971,7 +971,7 @@ Executable idris-c
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-javascript
   Main-is:        Main.hs
@@ -984,7 +984,7 @@ Executable idris-javascript
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-node
   Main-is:        Main.hs
@@ -997,4 +997,4 @@ Executable idris-node
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields -O2
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
