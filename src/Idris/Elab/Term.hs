@@ -1730,20 +1730,26 @@ runTactical ist fc env tm = do tm' <- eval tm
                                     Left lhs -> let (ns, lhs') = patvars [] lhs'
                                                 in (ns, lhs', Impossible))
                             clauses'
-         set_context $
-           addCasedef n (const [])
-                      info False (STerm Erased)
-                      True False -- TODO what are these?
-                      (map snd $ getArgTys ty) [] -- TODO inaccessible types
-                      clauses'
-                      clauses''
-                      clauses''
-                      clauses''
-                      clauses''
-                      ty
-                      ctxt
+         ctxt'<- lift $
+                  addCasedef n (const [])
+                             info False (STerm Erased)
+                             True False -- TODO what are these?
+                             (map snd $ getArgTys ty) [] -- TODO inaccessible types
+                             clauses'
+                             clauses''
+                             clauses''
+                             clauses''
+                             clauses''
+                             ty
+                             ctxt
+         set_context ctxt'
          updateAux $ \e -> e { new_tyDecls = RClausesInstrs n clauses'' : new_tyDecls e}
          return ()
+
+    checkClosed :: Raw -> Elab' aux (Term, Type)
+    checkClosed tm = do ctxt <- get_context
+                        (val, ty) <- lift $ check ctxt [] tm
+                        return $! (finalise val, finalise ty)
 
     -- | Do a step in the reflected elaborator monad. The input is the
     -- step, the output is the (reflected) term returned.
@@ -1755,12 +1761,12 @@ runTactical ist fc env tm = do tm' <- eval tm
       | n == tacN "prim__Goal", [] <- args
       = do (h:_) <- get_holes
            t <- goal
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              rawPair (Var (reflm "TTName"), Var (reflm "TT"))
                      (reflectName h,        reflect t)
       | n == tacN "prim__Holes", [] <- args
       = do hs <- get_holes
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              mkList (Var $ reflm "TTName") (map reflectName hs)
       | n == tacN "prim__Guess", [] <- args
       = do ok <- is_guess
@@ -1770,7 +1776,7 @@ runTactical ist fc env tm = do tm' <- eval tm
                         RApp (RApp (Var (sNS (sUN "Just") ["Maybe", "Prelude"]))
                                    (Var (reflm "TT")))
                              guess
-              else fmap fst . get_type_val $
+              else fmap fst . checkClosed $
                      RApp (Var (sNS (sUN "Nothing") ["Maybe", "Prelude"]))
                           (Var (reflm "TT"))
       | n == tacN "prim__LookupTy", [n] <- args
@@ -1790,7 +1796,7 @@ runTactical ist fc env tm = do tm' <- eval tm
            let defs = [ reflectTriple (reflectName n, reflectNameType nt, reflect ty)
                         | (n, def) <- lookupNameDef n' ctxt
                         , let (nt, ty) = getNameTypeAndType def ]
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              rawList (raw_apply (Var pairTy) [ Var (reflm "TTName")
                                              , raw_apply (Var pairTy) [ Var (reflm "NameType")
                                                                        , Var (reflm "TT")]])
@@ -1799,15 +1805,15 @@ runTactical ist fc env tm = do tm' <- eval tm
       = do n' <- reifyTTName name
            datatypes <- get_datatypes
            ctxt <- get_context
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              rawList (Var (tacN "Datatype"))
                      (map reflectDatatype (buildDatatypes ctxt datatypes n'))
       | n == tacN "prim__SourceLocation", [] <- args
-      = fmap fst . get_type_val $
+      = fmap fst . checkClosed $
           reflectFC fc
       | n == tacN "prim__Env", [] <- args
       = do env <- get_env
-           fmap fst . get_type_val $ reflectEnv env
+           fmap fst . checkClosed $ reflectEnv env
       | n == tacN "prim__Fail", [_a, errs] <- args
       = do errs' <- eval errs
            parts <- reifyReportParts errs'
@@ -1843,9 +1849,17 @@ runTactical ist fc env tm = do tm' <- eval tm
            ty' <- reifyRaw ty
            claim n' ty'
            returnUnit
+      | n == tacN "prim__Check", [raw] <- args
+      = do raw' <- reifyRaw =<< eval raw
+           ctxt <- get_context
+           env <- get_env
+           (tm, ty) <- lift $ check ctxt env raw'
+           fmap fst . checkClosed $
+             rawPair (Var (reflm "TT"), Var (reflm "TT"))
+                     (reflect tm,       reflect ty)
       | n == tacN "prim__Forget", [tt] <- args
       = do tt' <- reifyTT tt
-           fmap fst . get_type_val . reflectRaw $ forget tt'
+           fmap fst . checkClosed . reflectRaw $ forget tt'
       | n == tacN "prim__Attack", [] <- args
       = do attack
            returnUnit
@@ -1874,7 +1888,7 @@ runTactical ist fc env tm = do tm' <- eval tm
            returnUnit
       | n == tacN "prim__PatVar", [n] <- args
       = do n' <- reifyTTName n
-           patvar n'
+           patvar' n'
            returnUnit
       | n == tacN "prim__PatBind", [n] <- args
       = do n' <- reifyTTName n
@@ -1921,6 +1935,19 @@ runTactical ist fc env tm = do tm' <- eval tm
            fn <- reifyTTName fn
            resolveTC False True 100 g fn ist
            returnUnit
+      | n == tacN "prim__Search", [depth, hints] <- args
+      = do d <- eval depth
+           hints' <- eval hints
+           case (d, unList hints') of
+             (Constant (I i), Just hs) ->
+               do actualHints <- mapM reifyTTName hs
+                  unifyProblems
+                  let psElab = elab ist toplevel ERHS [] (sMN 0 "tac")
+                  proofSearch True True False False i psElab Nothing (sMN 0 "search ") actualHints ist
+                  returnUnit
+             (Constant (I _), Nothing ) ->
+               lift . tfail . InternalMsg $ "Not a list: " ++ show hints'
+             (_, _) -> lift . tfail . InternalMsg $ "Can't reify int " ++ show d
       | n == tacN "prim__RecursiveElab", [goal, script] <- args
       = do goal' <- reifyRaw goal
            ctxt <- get_context
@@ -1939,7 +1966,7 @@ runTactical ist fc env tm = do tm' <- eval tm
            env' <- get_env
            (tm, ty, _) <- lift $ recheck ctxt env (forget tm_out) tm_out
            let (tm', ty') = (reflect tm, reflect ty)
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              rawPair (Var $ reflm "TT", Var $ reflm "TT")
                      (tm', ty')
       | n == tacN "prim__Debug", [ty, msg] <- args

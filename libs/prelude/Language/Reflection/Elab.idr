@@ -85,6 +85,8 @@ data Elab : Type -> Type where
   prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
   prim__LookupDatatype : TTName -> Elab (List Datatype)
 
+  prim__Check : Raw -> Elab (TT, TT)
+
   prim__SourceLocation : Elab SourceLocation
 
   prim__Forget : TT -> Elab Raw
@@ -113,6 +115,7 @@ data Elab : Type -> Type where
   prim__AddInstance : TTName -> TTName -> Elab ()
 
   prim__ResolveTC : TTName -> Elab ()
+  prim__Search : Int -> List TTName -> Elab ()
   prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
 
   prim__Debug : {a : Type} -> Maybe String -> Elab a
@@ -185,6 +188,10 @@ namespace Tactics
                             [res] => return res
                             []    => fail [TextPart "No datatype named", NamePart n]
                             xs    => fail [TextPart "More than one datatype named", NamePart n]
+
+  ||| Attempt to type-check a term, getting back itself and its type
+  check : (tm : Raw) -> Elab (TT, TT)
+  check tm = prim__Check tm
 
   ||| Convert a type-annotated reflected term to its untyped
   ||| equivalent
@@ -305,6 +312,17 @@ namespace Tactics
   ||| from looping)
   resolveTC : (fn : TTName) -> Elab ()
   resolveTC fn = prim__ResolveTC fn
+
+  ||| Use Idris's internal proof search.
+  search : Elab ()
+  search = prim__Search 100 []
+
+  ||| Use Idris's internal proof search, with more control.
+  |||
+  ||| @ depth the search depth
+  ||| @ hints additional names to try
+  search' : (depth : Int) -> (hints : List TTName) -> Elab ()
+  search' depth hints = prim__Search depth hints
 
   ||| Halt elaboration, dumping the internal state for inspection.
   |||

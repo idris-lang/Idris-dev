@@ -423,7 +423,9 @@ checkTotality path fc n
     | otherwise = do
         t <- getTotality n
         i <- getIState
-        updateContext (simplifyCasedef n $ getErasureInfo i)
+        ctxt' <- do ctxt <- getContext
+                    tclift $ simplifyCasedef n (getErasureInfo i) ctxt
+        setContext ctxt'
         ctxt <- getContext
         i <- getIState
         let opts = case lookupCtxt n (idris_flags i) of

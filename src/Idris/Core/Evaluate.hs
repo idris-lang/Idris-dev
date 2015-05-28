@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances,
              PatternGuards #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 rt_simplify, simplify, specialise, hnf, convEq, convEq',
@@ -157,6 +158,7 @@ bindEnv ((n, b):bs)       tm = Bind n b (bindEnv bs tm)
 unbindEnv :: EnvTT n -> TT n -> TT n
 unbindEnv [] tm = tm
 unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
+unbindEnv env tm = error $ "Impossible case occurred: couldn't unbind env."
 
 usable :: Bool -- specialising
           -> Name -> [(Name, Int)] -> Eval (Bool, [(Name, Int)])
@@ -764,6 +766,7 @@ instance Show Totality where
     show (Partial (Other ns)) = "possibly not total due to: " ++ showSep ", " (map show ns)
     show (Partial (Mutual ns)) = "possibly not total due to recursive path " ++
                                  showSep " --> " (map show ns)
+    show (Partial (UseUndef n)) = "possibly not total because it uses the undefined name " ++ show n
 
 {-!
 deriving instance Binary Accessibility
@@ -866,22 +869,23 @@ addCasedef :: Name -> ErasureInfo -> CaseInfo ->
               [([Name], Term, Term)] -> -- compile time
               [([Name], Term, Term)] -> -- inlined
               [([Name], Term, Term)] -> -- run time
-              Type -> Context -> Context
+              Type -> Context -> TC Context
 addCasedef n ei ci@(CaseInfo inline alwaysInline tcdict)
            tcase covering reflect asserted argtys inacc
            ps_in ps_tot ps_inl ps_ct ps_rt ty uctxt
-    = let ctxt = definitions uctxt
-          access = case lookupDefAcc n False uctxt of
-                        [(_, acc)] -> acc
-                        _ -> Public
-          ctxt' = case (simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_tot ei,
-                        simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_ct ei,
-                        simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_inl ei,
-                        simpleCase tcase covering reflect RunTime emptyFC inacc argtys ps_rt ei) of
-                    (OK (CaseDef args_tot sc_tot _),
-                     OK (CaseDef args_ct sc_ct _),
-                     OK (CaseDef args_inl sc_inl _),
-                     OK (CaseDef args_rt sc_rt _)) ->
+    = do let ctxt = definitions uctxt
+             access = case lookupDefAcc n False uctxt of
+                           [(_, acc)] -> acc
+                           _ -> Public
+         totalityTime <- simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_tot ei
+         compileTime <- simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_ct ei
+         inlined <- simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_inl ei
+         runtime <- simpleCase tcase covering reflect RunTime emptyFC inacc argtys ps_rt ei
+         ctxt' <- case (totalityTime, compileTime, inlined, runtime) of
+                    (CaseDef args_tot sc_tot _,
+                     CaseDef args_ct sc_ct _,
+                     CaseDef args_inl sc_inl _,
+                     CaseDef args_rt sc_rt _) ->
                        let inl = alwaysInline -- tcdict
                            inlc = (inl || small n args_ct sc_ct) && (not asserted)
                            inlr = inl || small n args_rt sc_rt
@@ -892,28 +896,27 @@ addCasedef n ei ci@(CaseInfo inline alwaysInline tcdict)
                            op = (CaseOp (ci { case_inlinable = inlc })
                                                 ty argtys ps_in ps_tot cdef,
                                  access, Unchecked, EmptyMI)
-                       in addDef n op ctxt
-                    other -> error ("Error adding case def: " ++ show other)
-      in uctxt { definitions = ctxt' }
+                       in return $ addDef n op ctxt
+--                    other -> tfail (Msg $ "Error adding case def: " ++ show other)
+         return uctxt { definitions = ctxt' }
 
 -- simplify a definition for totality checking
-simplifyCasedef :: Name -> ErasureInfo -> Context -> Context
+simplifyCasedef :: Name -> ErasureInfo -> Context -> TC Context
 simplifyCasedef n ei uctxt
-   = let ctxt = definitions uctxt
-         ctxt' = case lookupCtxt n ctxt of
-              [(CaseOp ci ty atys [] ps _, acc, tot, metainf)] ->
-                 ctxt -- nothing to simplify (or already done...)
-              [(CaseOp ci ty atys ps_in ps cd, acc, tot, metainf)] ->
-                 let ps_in' = map simpl ps_in
-                     pdef = map debind ps_in' in
-                     case simpleCase False (STerm Erased) False CompileTime emptyFC [] atys pdef ei of
-                       OK (CaseDef args sc _) ->
-                          addDef n (CaseOp ci
-                                           ty atys ps_in' ps (cd { cases_totcheck = (args, sc) }),
-                                    acc, tot, metainf) ctxt
-                       Error err -> error (show err)
-              _ -> ctxt in
-         uctxt { definitions = ctxt' }
+   = do let ctxt = definitions uctxt
+        ctxt' <- case lookupCtxt n ctxt of
+                   [(CaseOp ci ty atys [] ps _, acc, tot, metainf)] ->
+                      return ctxt -- nothing to simplify (or already done...)
+                   [(CaseOp ci ty atys ps_in ps cd, acc, tot, metainf)] ->
+                      do let ps_in' = map simpl ps_in
+                             pdef = map debind ps_in'
+                         CaseDef args sc _ <- simpleCase False (STerm Erased) False CompileTime emptyFC [] atys pdef ei
+                         return $ addDef n (CaseOp ci
+                                              ty atys ps_in' ps (cd { cases_totcheck = (args, sc) }),
+                                              acc, tot, metainf) ctxt
+
+                   _ -> return ctxt
+        return uctxt { definitions = ctxt' }
   where
     depat acc (Bind n (PVar t) sc)
         = depat (n : acc) (instantiate (P Bound n t) sc)
@@ -1068,6 +1071,7 @@ lookupVal n ctxt
         case tfst def of
           (Function _ htm) -> return (veval ctxt [] htm)
           (TyDecl nt ty) -> return (VP nt n (veval ctxt [] ty))
+          _ -> []
 
 lookupTyEnv :: Name -> Env -> Maybe (Int, Type)
 lookupTyEnv n env = li n 0 env where

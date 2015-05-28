@@ -224,17 +224,21 @@ elabClauses info' fc opts n_in cs =
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (inlinable opts) (dictionary opts)
            case lookupTy n ctxt of
-               [ty] -> do updateContext (addCasedef n erInfo caseInfo
+               [ty] -> do ctxt' <- do ctxt <- getContext
+                                      tclift $
+                                        addCasedef n erInfo caseInfo
                                                        tcase defaultcase
                                                        reflect
                                                        (AssertTotal `elem` opts)
                                                        atys
                                                        inacc
                                                        pats_pe
-                                                       pdef 
-                                                       pdef -- compile time 
+                                                       pdef
+                                                       pdef -- compile time
                                                        pdef_inl -- inlined
-                                                       pdef' ty)
+                                                       pdef' ty
+                                                       ctxt
+                          setContext ctxt'
                           addIBC (IBCDef n)
                           setTotality n tot
                           when (not reflect) $ do totcheck (fc, n)

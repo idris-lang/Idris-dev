@@ -269,6 +269,8 @@ simpleCase tc defcase reflect phase fc inacc argtys cs erInfo
           fstT (x, _, _) = x
           lstT (_, _, x) = x
 
+          -- Check that all pattern variables are reachable by a case split
+          -- Otherwise, they won't make sense on the RHS.
           chkAccessible (avs, l, c)
                | phase == RunTime || reflect = return (l, c)
                | otherwise = do mapM_ (acc l) avs

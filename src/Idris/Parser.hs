@@ -1474,7 +1474,10 @@ loadSource lidr f toline
                   -- simplify every definition do give the totality checker
                   -- a better chance
                   mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
-                                  updateContext (simplifyCasedef n $ getErasureInfo i))
+                                  ctxt' <-
+                                    do ctxt <- getContext
+                                       tclift $ simplifyCasedef n (getErasureInfo i) ctxt
+                                  setContext ctxt')
                            (map snd (idris_totcheck i))
                   -- build size change graph from simplified definitions
                   iLOG "Totality checking"

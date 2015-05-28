@@ -195,7 +195,9 @@ elabDecl' what info (PMutual f ps)
          -- Do totality checking after entire mutual block
          i <- get
          mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
-                         updateContext (simplifyCasedef n $ getErasureInfo i))
+                         ctxt' <- do ctxt <- getContext
+                                     tclift $ simplifyCasedef n (getErasureInfo i) ctxt
+                         setContext ctxt')
                  (map snd (idris_totcheck i))
          mapM_ buildSCG (idris_totcheck i)
          mapM_ checkDeclTotality (idris_totcheck i)
