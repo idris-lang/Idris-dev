@@ -1746,6 +1746,11 @@ runTactical ist fc env tm = do tm' <- eval tm
          updateAux $ \e -> e { new_tyDecls = RClausesInstrs n clauses'' : new_tyDecls e}
          return ()
 
+    checkClosed :: Raw -> Elab' aux (Term, Type)
+    checkClosed tm = do ctxt <- get_context
+                        (val, ty) <- lift $ check ctxt [] tm
+                        return $! (finalise val, finalise ty)
+
     -- | Do a step in the reflected elaborator monad. The input is the
     -- step, the output is the (reflected) term returned.
     runTacTm :: Term -> ElabD Term
@@ -1756,12 +1761,12 @@ runTactical ist fc env tm = do tm' <- eval tm
       | n == tacN "prim__Goal", [] <- args
       = do (h:_) <- get_holes
            t <- goal
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              rawPair (Var (reflm "TTName"), Var (reflm "TT"))
                      (reflectName h,        reflect t)
       | n == tacN "prim__Holes", [] <- args
       = do hs <- get_holes
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              mkList (Var $ reflm "TTName") (map reflectName hs)
       | n == tacN "prim__Guess", [] <- args
       = do ok <- is_guess
@@ -1771,7 +1776,7 @@ runTactical ist fc env tm = do tm' <- eval tm
                         RApp (RApp (Var (sNS (sUN "Just") ["Maybe", "Prelude"]))
                                    (Var (reflm "TT")))
                              guess
-              else fmap fst . get_type_val $
+              else fmap fst . checkClosed $
                      RApp (Var (sNS (sUN "Nothing") ["Maybe", "Prelude"]))
                           (Var (reflm "TT"))
       | n == tacN "prim__LookupTy", [n] <- args
@@ -1791,7 +1796,7 @@ runTactical ist fc env tm = do tm' <- eval tm
            let defs = [ reflectTriple (reflectName n, reflectNameType nt, reflect ty)
                         | (n, def) <- lookupNameDef n' ctxt
                         , let (nt, ty) = getNameTypeAndType def ]
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              rawList (raw_apply (Var pairTy) [ Var (reflm "TTName")
                                              , raw_apply (Var pairTy) [ Var (reflm "NameType")
                                                                        , Var (reflm "TT")]])
@@ -1800,15 +1805,15 @@ runTactical ist fc env tm = do tm' <- eval tm
       = do n' <- reifyTTName name
            datatypes <- get_datatypes
            ctxt <- get_context
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              rawList (Var (tacN "Datatype"))
                      (map reflectDatatype (buildDatatypes ctxt datatypes n'))
       | n == tacN "prim__SourceLocation", [] <- args
-      = fmap fst . get_type_val $
+      = fmap fst . checkClosed $
           reflectFC fc
       | n == tacN "prim__Env", [] <- args
       = do env <- get_env
-           fmap fst . get_type_val $ reflectEnv env
+           fmap fst . checkClosed $ reflectEnv env
       | n == tacN "prim__Fail", [_a, errs] <- args
       = do errs' <- eval errs
            parts <- reifyReportParts errs'
@@ -1849,12 +1854,12 @@ runTactical ist fc env tm = do tm' <- eval tm
            ctxt <- get_context
            env <- get_env
            (tm, ty) <- lift $ check ctxt env raw'
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              rawPair (Var (reflm "TT"), Var (reflm "TT"))
                      (reflect tm,       reflect ty)
       | n == tacN "prim__Forget", [tt] <- args
       = do tt' <- reifyTT tt
-           fmap fst . get_type_val . reflectRaw $ forget tt'
+           fmap fst . checkClosed . reflectRaw $ forget tt'
       | n == tacN "prim__Attack", [] <- args
       = do attack
            returnUnit
@@ -1961,7 +1966,7 @@ runTactical ist fc env tm = do tm' <- eval tm
            env' <- get_env
            (tm, ty, _) <- lift $ recheck ctxt env (forget tm_out) tm_out
            let (tm', ty') = (reflect tm, reflect ty)
-           fmap fst . get_type_val $
+           fmap fst . checkClosed $
              rawPair (Var $ reflm "TT", Var $ reflm "TT")
                      (tm', ty')
       | n == tacN "prim__Debug", [ty, msg] <- args
