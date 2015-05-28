@@ -1883,7 +1883,7 @@ runTactical ist fc env tm = do tm' <- eval tm
            returnUnit
       | n == tacN "prim__PatVar", [n] <- args
       = do n' <- reifyTTName n
-           patvar n'
+           patvar' n'
            returnUnit
       | n == tacN "prim__PatBind", [n] <- args
       = do n' <- reifyTTName n
