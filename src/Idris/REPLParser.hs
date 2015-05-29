@@ -268,10 +268,15 @@ cmd_doc name = do
         c <- fmap fst P.constant
         eof
         return $ Right (DocStr (Right c) FullDocs)
+    
+    let pType = do
+        P.reserved "Type"
+        eof
+        return $ Right (DocStr (Left $ P.mkName ("Type", "")) FullDocs)
 
     let fnName = fnNameArg (\n -> DocStr (Left n) FullDocs) name
 
-    try constant <|> fnName
+    try constant <|> pType <|> fnName
 
 cmd_consolewidth :: String -> P.IdrisParser (Either String Command)
 cmd_consolewidth name = do

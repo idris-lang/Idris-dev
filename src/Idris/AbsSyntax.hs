@@ -637,8 +637,8 @@ setWidth :: ConsoleWidth -> Idris ()
 setWidth w = do ist <- getIState
                 put ist { idris_consolewidth = w }
 
-
-
+typeDescription :: String
+typeDescription = "The type of types"
 
 type1Doc :: Doc OutputAnnotation
 type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "Type 1")
