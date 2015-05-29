@@ -942,8 +942,9 @@ process fn (Core t)
 
 process fn (DocStr (Left n) w)
    = do ist <- getIState
-        case show n of
-          "Type" -> iRenderResult $ pprintType1Doc ist
+        let txtType = txt "Type" 
+        case n of
+          (UN txtType) -> iRenderResult $ pprintTypeDoc ist
           _ -> do let docs = lookupCtxtName n (idris_docstrings ist) ++
                              map (\(n,d)-> (n, (d, [])))
                                  (lookupCtxtName (modDocN n) (idris_moduledocs ist))

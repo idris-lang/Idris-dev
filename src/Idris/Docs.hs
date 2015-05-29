@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveFunctor, PatternGuards, MultiWayIf #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, pprintType1Doc, FunDoc, FunDoc'(..), Docs, Docs'(..)) where
+module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, pprintTypeDoc, FunDoc, FunDoc'(..), Docs, Docs'(..)) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -319,6 +319,6 @@ pprintConstDocs ist c str = text "Primitive" <+> text (if constIsType c then "ty
         t _       = PType NoFC
 
 
-pprintType1Doc :: IState -> Doc OutputAnnotation
-pprintType1Doc ist = prettyIst ist (PType emptyFC) <+> colon <+> type1Doc <+>
+pprintTypeDoc :: IState -> Doc OutputAnnotation
+pprintTypeDoc ist = prettyIst ist (PType emptyFC) <+> colon <+> type1Doc <+>
                      nest 4 (line <> text typeDescription) 
