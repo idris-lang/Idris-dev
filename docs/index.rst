@@ -105,6 +105,7 @@ Language Reference
    reference/ffi
    reference/erasure
    reference/ide-protocol
+   reference/semantic-highlighting
 
 .. _guides:
 
@@ -116,4 +117,3 @@ Short Guides
    :maxdepth: 1
 
    guides/type-providers-ffi
-
