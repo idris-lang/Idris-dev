@@ -25,3 +25,4 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    ffi
    erasure
    semantic-highlighting
+   repl

@@ -106,6 +106,7 @@ Language Reference
    reference/erasure
    reference/ide-protocol
    reference/semantic-highlighting
+   reference/repl
 
 .. _guides:
 
