@@ -107,6 +107,10 @@ Language Reference
    reference/ide-protocol
    reference/semantic-highlighting
    reference/repl
+   reference/theorem-prover
+   reference/language-features
+   reference/language-extensions
+   reference/misc
 
 .. _guides:
 

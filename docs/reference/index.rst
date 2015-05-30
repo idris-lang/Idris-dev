@@ -26,3 +26,8 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    erasure
    semantic-highlighting
    repl
+   syntax-guide
+   theorem-prover
+   language-features
+   language-extensions
+   misc
