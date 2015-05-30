@@ -107,7 +107,7 @@ Language Reference
    reference/ide-protocol
    reference/semantic-highlighting
    reference/repl
-   reference/theorem-prover
+   reference/tactics
    reference/language-features
    reference/language-extensions
    reference/misc
@@ -122,3 +122,4 @@ Short Guides
    :maxdepth: 1
 
    guides/type-providers-ffi
+   guides/theorem-prover

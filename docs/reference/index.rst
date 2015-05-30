@@ -27,7 +27,7 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    semantic-highlighting
    repl
    syntax-guide
-   theorem-prover
+   tactics
    language-features
    language-extensions
    misc
