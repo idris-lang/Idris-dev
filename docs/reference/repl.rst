@@ -45,7 +45,7 @@ repl/init in Idris's application data directory. The application data
 directory is the result of the Haskell function call
 ``getAppUserDataDirectory "idris"``, which on most Unix-like systems
 will return $HOME/.idris and on various versions of Windows will return
-paths such as "C:/Documents And Settings/user/Application Data/appName".
+paths such as ``C:/Documents And Settings/user/Application Data/appName``.
 
 The file repl/init is a newline-separate list of REPL commands. Not all
 commands are supported in initialisation scripts — only the subset that

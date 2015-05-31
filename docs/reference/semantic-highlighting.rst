@@ -41,7 +41,7 @@ Idris also supports the pretty printing of code to HTML and LaTeX using the comm
 Customisation
 =============
 
-If you are not happy with the colours used. The VIM and Emacs editor support allows for customisation of the colours used. When pretty printing Idris code as LaTeX and HTML, commands and a CSS style are provided. As of writing support for customising the console colours is not knowingly supported.
+If you are not happy with the colours used. The VIM and Emacs editor support allows for customisation of the colours used. When pretty printing Idris code as LaTeX and HTML, commands and a CSS style are provided. The colours used by the REPL can be customised through the initialisation script.
 
 
 Further Information
