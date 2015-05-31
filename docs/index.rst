@@ -108,6 +108,7 @@ Language Reference
    reference/semantic-highlighting
    reference/repl
    reference/tactics
+   reference/compilation
    reference/language-features
    reference/language-extensions
    reference/misc

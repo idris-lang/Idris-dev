@@ -28,6 +28,7 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    repl
    syntax-guide
    tactics
+   compilation
    language-features
    language-extensions
    misc
