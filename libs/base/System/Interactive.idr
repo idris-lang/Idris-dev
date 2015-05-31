@@ -1,13 +1,12 @@
+||| Various helper functions for creating simple interactive systems.
+||| 
+||| These are mostly intended for helping with teaching, in that they will allow
+||| the easy creation of interactive programs without needing to teach IO
+||| or Effects first, but they also capture some common patterns of interactive
+||| programming.
 module System.Interactive
 
 {-
-Various helper functions for creating simple interactive systems.
-
-These are mostly intended for helping with teaching, in that they will allow
-the easy creation of interactive programs without needing to teach IO
-or Effects first, but they also capture some common patterns of interactive
-programming.
-
 When the interfaces and names are stable, these are intended for the Prelude.
 -}
 
