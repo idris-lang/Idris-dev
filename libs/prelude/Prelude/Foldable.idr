@@ -9,9 +9,23 @@ import Prelude.Algebra
 %access public
 %default total
 
+|||Anything `Foldable` can be reduced to a summary value using a provided operation.
 class Foldable (t : Type -> Type) where
-  foldr : (elt -> acc -> acc) -> acc -> t elt -> acc
-  foldl : (acc -> elt -> acc) -> acc -> t elt -> acc
+  ||| Fold the structure from the right.
+  |||
+  ||| @f The folding function.
+  ||| @res The initial value to fold into.
+  ||| @t The structure we are folding
+  foldr : (f : item -> res -> res) -> res -> t item -> res
+
+  ||| Fold the structure from the left.
+  |||
+  ||| This has a default implementation using `foldr`.
+  |||
+  ||| @f The folding function.
+  ||| @res The initial value to fold into.
+  ||| @t The structure we are folding
+  foldl : (f : res -> item -> res) -> res -> t item -> res
   foldl f z t = foldr (flip (.) . flip f) id t z
 
 ||| Combine each element of a structure into a monoid
@@ -54,4 +68,3 @@ sum = foldr (+) 0
 ||| Multiply together all elements of a structure
 product : (Foldable t, Num a) => t a -> a
 product = foldr (*) 1
-
