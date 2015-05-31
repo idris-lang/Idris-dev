@@ -102,7 +102,7 @@ elabClauses info' fc opts n_in cs =
            -- If the definition is specialisable, this reduces the
            -- RHS
            pe_tm <- doPartialEval ist tpats
-           let pats_pe = if petrans 
+           let pats_pe = if petrans
                             then map (simple_lhs (tt_ctxt ist)) pe_tm
                             else pats_raw
 
@@ -111,7 +111,7 @@ elabClauses info' fc opts n_in cs =
            -- Look for 'static' names and generate new specialised
            -- definitions for them, as well as generating rewrite rules
            -- for partially evaluated definitions
-           newrules <- if petrans 
+           newrules <- if petrans
                           then mapM (\ e -> case e of
                                             Left _ -> return []
                                             Right (l, r) -> elabPE info fc n r) pats_pe
@@ -134,7 +134,7 @@ elabClauses info' fc opts n_in cs =
            -- pdef is the compile-time pattern definition.
            -- This will get further inlined to help with totality checking.
            let pdef = map debind pats_raw
-           -- pdef_pe is the one which will get further optimised 
+           -- pdef_pe is the one which will get further optimised
            -- for run-time, and, partially evaluated
            let pdef_pe = map debind pats_transformed
 
@@ -152,7 +152,7 @@ elabClauses info' fc opts n_in cs =
            numArgs <- tclift $ sameLength pdef
 
            case specNames opts of
-                Just _ -> 
+                Just _ ->
                    do logLvl 3 $ "Partially evaluated:\n" ++ show pats_pe
                 _ -> return ()
            logLvl 3 $ "Transformed:\n" ++ show pats_transformed
@@ -206,11 +206,11 @@ elabClauses info' fc opts n_in cs =
                                 ":warning - Unreachable case: " ++
                                    show (delab ist x)) xs
            let knowncovering = (pcover && cov) || AssertTotal `elem` opts
-           let defaultcase = if knowncovering 
+           let defaultcase = if knowncovering
                                 then STerm Erased
-                                else UnmatchedCase $ "*** " ++ 
-                                      show fc ++ 
-                                       ":unmatched case in " ++ show n ++ 
+                                else UnmatchedCase $ "*** " ++
+                                      show fc ++
+                                       ":unmatched case in " ++ show n ++
                                        " ***"
 
            tree' <- tclift $ simpleCase tcase defaultcase reflect
@@ -357,10 +357,10 @@ elabPE info fc caller r =
                                   [Total _] -> 65536
                                   [Productive] -> 16
                                   _ -> 1
-                let opts = [Specialise ((if pe_simple specdecl 
-                                            then map (\x -> (x, Nothing)) cgns' 
+                let opts = [Specialise ((if pe_simple specdecl
+                                            then map (\x -> (x, Nothing)) cgns'
                                             else []) ++
-                                         (n, Just maxred) : 
+                                         (n, Just maxred) :
                                            mapMaybe (specName (pe_simple specdecl))
                                                     (snd specapp))]
                 logLvl 3 $ "Specialising application: " ++ show specapp
@@ -380,8 +380,8 @@ elabPE info fc caller r =
 
                 elabType info defaultSyntax emptyDocstring [] fc opts newnm NoFC specTy
                 let def = map (\(lhs, rhs) ->
-                                  PClause fc newnm lhs [] rhs []) 
-                              (pe_clauses specdecl)    
+                                  PClause fc newnm lhs [] rhs [])
+                              (pe_clauses specdecl)
                 trans <- elabTransform info fc False rhs lhs
                 elabClauses info fc opts newnm def
                 return [trans]
@@ -429,7 +429,7 @@ elabPE info fc caller r =
     -- get the clause of a specialised application
     getSpecClause ist (n, args)
        = let newnm = sUN ("PE_" ++ show (nsroot n) ++ "_" ++
-                               qhash 5381 (showSep "_" (map showArg args))) in 
+                               qhash 5381 (showSep "_" (map showArg args))) in
                                -- UN (show n ++ show (map snd args)) in
              (n, newnm, mkPE_TermDecl ist newnm n args)
       where showArg (ExplicitS, n) = qshow n
@@ -536,7 +536,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         let params = getParamsInType i [] fn_is fn_ty
         let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
                     propagateParams i params fn_ty (addImplPat i lhs_in)
---         let lhs = mkLHSapp $ 
+--         let lhs = mkLHSapp $
 --                     propagateParams i params fn_ty (addImplPat i lhs_in)
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show lhs_in ++
@@ -552,7 +552,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         setContext ctxt'
         processTacticDecls info newDecls
         sendHighlighting highlights
-        
+
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         let lhs_tm = orderPats (getInferTerm lhs')
@@ -633,7 +633,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         mapM_ (elabCaseHole is) hs
                         tt <- get_term
                         aux <- getAux
-                        let (tm, ds) = runState (collectDeferred (Just fname) 
+                        let (tm, ds) = runState (collectDeferred (Just fname)
                                                      (map fst $ case_decls aux) ctxt tt) []
                         probs <- get_probs
                         return (tm, ds, is, probs, ctxt', newDecls, highlights))
@@ -645,7 +645,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         logLvl 5 "DONE CHECK"
         logLvl 4 $ "---> " ++ show rhs'
-        when (not (null defer)) $ iLOG $ "DEFERRED " ++
+        when (not (null defer)) $ logLvl 2 $ "DEFERRED " ++
                     show (map (\ (n, (_,_,t)) -> (n, t)) defer)
         def' <- checkDef fc (Elaborating "deferred type of ") defer
         let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
@@ -672,7 +672,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         ctxt <- getContext
         let constv = next_tvar ctxt
         case LState.runStateT (convertsC ctxt [] crhsty clhsty) (constv, []) of
-            OK (_, cs) -> do addConstraints fc cs 
+            OK (_, cs) -> do addConstraints fc cs
                              logLvl 6 $ "CONSTRAINTS ADDED: " ++ show cs
                              return ()
             Error e -> ierror (At fc (CantUnify False (clhsty, Nothing) (crhsty, Nothing) e [] 0))
@@ -971,7 +971,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
               ns' = map (keepMvar (map fst mvars) fc') ns_in' in
               return $ substMatches mvars $
                   PApp fc (PRef fc' wname)
-                      (map pexp ns ++ pexp w : (map pexp ns') ++ 
+                      (map pexp ns ++ pexp w : (map pexp ns') ++
                         case pn of
                              Nothing -> []
                              Just pnm -> [pexp (PRef fc pnm)])

@@ -69,7 +69,7 @@ prove opt ctxt lit n ty
     = do ps <- fmap (\ist -> initElaborator n ctxt (idris_datatypes ist) ty) getIState
          idemodePutSExp "start-proof-mode" n
          (tm, prf) <- ploop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) Nothing
-         iLOG $ "Adding " ++ show tm
+         logLvl 2 $ "Adding " ++ show tm
          i <- getIState
          case idris_outputmode i of
            IdeMode _ _ -> idemodePutSExp "end-proof-mode" (n, showProof lit n prf)
