@@ -11,18 +11,21 @@ Compilation Process
 
 Idris follows the following compilation process:
 
-1. Parsing
-2. Type Checking
-  1. Elaboration
-  2. Coverage
-  2. Unification
-  1. Totality Checking
-  1. Erasure
-3. Code Generation
-  1. Defunctionalisation
-  1. Inlining
-  1. Resolving variables
-  2. Code Generation
+#. Parsing
+#. Type Checking
+
+   #. Elaboration
+   #. Coverage
+   #. Unification
+   #. Totality Checking
+   #. Erasure
+
+#. Code Generation
+
+   #. Defunctionalisation
+   #. Inlining
+   #. Resolving variables
+   #. Code Generation
 
 
 Type Checking Only
@@ -31,8 +34,10 @@ Type Checking Only
 With Idris you can ask it to terminate the compilation process after type checking has completed. This is achieved through use of either:
 
 + The command line options
+
   + ``--check`` for files
   + ``--checkpkg`` for packages
+
 + The REPL command: ``:check``
 
 Use of this option will still result in the generation of the Idris binary ``.ibc`` files, and is suitable if you do not wish to generate code from one of the supported backends.
