@@ -111,7 +111,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          let ds_defs = insertDefaults i iname (class_defaults ci) ns ds
          logLvl 3 ("After defaults: " ++ show ds_defs ++ "\n")
          let ds' = reorderDefs (map fst (class_methods ci)) $ ds_defs
-         iLOG ("Reordered: " ++ show ds' ++ "\n")
+         logLvl 2 ("Reordered: " ++ show ds' ++ "\n")
          mapM_ (warnMissing ds' ns iname) (map fst (class_methods ci))
          mapM_ (checkInClass (map fst (class_methods ci))) (concatMap defined ds')
          let wbTys = map mkTyDecl mtys
@@ -139,7 +139,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
 
          let idecls = [PClauses fc [Dictionary] iname
                                  [PClause fc iname lhs [] rhs wb]]
-         iLOG (show idecls)
+         logLvl 2 (show idecls)
          push_estack iname True
          mapM_ (rec_elabDecl info EAll info) idecls
          pop_estack
@@ -267,11 +267,11 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
     reorderDefs :: [Name] -> [PDecl] -> [PDecl]
     reorderDefs ns [] = []
     reorderDefs [] ds = ds
-    reorderDefs (n : ns) ds = case pick n [] ds of 
+    reorderDefs (n : ns) ds = case pick n [] ds of
                                   Just (def, ds') -> def : reorderDefs ns ds'
                                   Nothing -> reorderDefs ns ds
 
-    pick n acc [] = Nothing 
+    pick n acc [] = Nothing
     pick n acc (def@(PClauses _ _ cn cs) : ds)
          | nsroot n == nsroot cn = Just (def, acc ++ ds)
     pick n acc (d : ds) = pick n (acc ++ [d]) ds
@@ -313,13 +313,13 @@ checkInjectiveArgs fc n ds (Just ty)
         let (_, args) = unApply (instantiateRetTy ty)
         ci 0 ist args
   where
-    ci i ist (a : as) | i `elem` ds 
+    ci i ist (a : as) | i `elem` ds
        = if isInj ist a then ci (i + 1) ist as
             else tclift $ tfail (At fc (InvalidTCArg n a))
     ci i ist (a : as) = ci (i + 1) ist as
     ci i ist [] = return ()
 
-    isInj i (P Bound n _) = True 
+    isInj i (P Bound n _) = True
     isInj i (P _ n _) = isConName n (tt_ctxt i)
     isInj i (App _ f a) = isInj i f && isInj i a
     isInj i (V _) = True
@@ -329,4 +329,3 @@ checkInjectiveArgs fc n ds (Just ty)
     instantiateRetTy (Bind n (Pi _ _ _) sc)
        = substV (P Bound n Erased) (instantiateRetTy sc)
     instantiateRetTy t = t
-

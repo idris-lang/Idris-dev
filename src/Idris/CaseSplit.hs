@@ -66,17 +66,17 @@ split n t'
         logLvl 4 ("Elaborated:\n" ++ show tm ++ " : " ++ show ty ++ "\n" ++ show pats)
 --         iputStrLn (show (delab ist tm) ++ " : " ++ show (delab ist ty))
 --         iputStrLn (show pats)
-        let t = mergeUserImpl (addImplPat ist t') (delab ist tm) 
+        let t = mergeUserImpl (addImplPat ist t') (delab ist tm)
         let ctxt = tt_ctxt ist
         case lookup n pats of
              Nothing -> ifail $ show n ++ " is not a pattern variable"
              Just ty ->
                 do let splits = findPats ist ty
-                   iLOG ("New patterns " ++ showSep ", "  
+                   logLvl 2 ("New patterns " ++ showSep ", "
                          (map showTmImpls splits))
                    let newPats_in = zipWith (replaceVar ctxt n) splits (repeat t)
                    logLvl 4 ("Working from " ++ show t)
-                   logLvl 4 ("Trying " ++ showSep "\n" 
+                   logLvl 4 ("Trying " ++ showSep "\n"
                                (map (showTmImpls) newPats_in))
                    newPats <- mapM elabNewPat newPats_in
                    logLvl 3 ("Original:\n" ++ show t)
@@ -84,7 +84,7 @@ split n t'
                               (showSep "\n" (map show (mapMaybe id newPats))))
                    logLvl 3 "----"
                    let newPats' = mergeAllPats ist n t (mapMaybe id newPats)
-                   iLOG ("Name updates " ++ showSep "\n"
+                   logLvl 2 ("Name updates " ++ showSep "\n"
                          (map (\ (p, u) -> show u ++ " " ++ show p) newPats'))
                    return (map snd newPats')
 
@@ -98,7 +98,7 @@ addUpdate n tm = do ms <- get
                     put (ms { updates = ((n, stripNS tm) : updates ms) } )
 
 inventName :: Idris.AbsSyntaxTree.IState -> Maybe Name -> Name -> State MergeState Name
-inventName ist ty n = 
+inventName ist ty n =
     do ms <- get
        let supp = case ty of
                        Nothing -> []
@@ -118,11 +118,11 @@ inventName ist ty n =
              do let n' = uniqueNameFrom nsupp badnames
                 put (ms { invented = (n, n') : invented ms })
                 return n'
-                
+
 mkSupply :: [Name] -> [Name]
 mkSupply ns = mkSupply' ns (map nextName ns)
   where mkSupply' xs ns' = xs ++ mkSupply ns'
-   
+
 varlist :: [Name]
 varlist = map (sUN . (:[])) "xyzwstuv" -- EB's personal preference :)
 
@@ -134,7 +134,7 @@ stripNS tm = mapPT dens tm where
 mergeAllPats :: IState -> Name -> PTerm -> [PTerm] -> [(PTerm, [(Name, PTerm)])]
 mergeAllPats ist cv t [] = []
 mergeAllPats ist cv t (p : ps)
-    = let (p', MS _ _ _ u) = runState (mergePat ist t p Nothing) 
+    = let (p', MS _ _ _ u) = runState (mergePat ist t p Nothing)
                                       (MS [] [] (filter (/=cv) (patvars t)) [])
           ps' = mergeAllPats ist cv t ps in
           ((p', u) : ps')
@@ -179,7 +179,7 @@ mergeUserImpl :: PTerm -> PTerm -> PTerm
 mergeUserImpl x y = x
 
 argTys :: IState -> PTerm -> [Maybe Name]
-argTys ist (PRef fc n) 
+argTys ist (PRef fc n)
     = case lookupTy n (tt_ctxt ist) of
            [ty] -> map (tyName . snd) (getArgTys ty) ++ repeat Nothing
            _ -> repeat Nothing
@@ -237,7 +237,7 @@ replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
         subst orig@(PRef _ v) | v == n = t
                               | isDConName v ctxt = orig
         subst (PRef _ _) = Placeholder
-        subst (PApp fc (PRef _ t) pats) 
+        subst (PApp fc (PRef _ t) pats)
             | isTConName t ctxt = Placeholder -- infer types
         subst (PApp fc f pats) = PApp fc f (map substArg pats)
         subst x = x
@@ -317,7 +317,7 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
                    | otherwise = tm
 
 
-getUniq :: (Show t, Num t) => [Char] -> t -> Idris ([Char], t) 
+getUniq :: (Show t, Num t) => [Char] -> t -> Idris ([Char], t)
 getUniq nm i
        = do ist <- getIState
             let n = nameRoot [] nm ++ "_" ++ show i
@@ -335,45 +335,45 @@ getClause :: Int      -- ^ line number that the type is declared on
           -> Name     -- ^ Function name
           -> FilePath -- ^ Source file name
           -> Idris String
-getClause l fn fp 
+getClause l fn fp
     = do i <- getIState
          case lookupCtxt fn (idris_classes i) of
               [c] -> return (mkClassBodies i (class_methods c))
               _ -> do ty <- getInternalApp fp l
                       ist <- get
                       let ap = mkApp ist ty []
-                      return (show fn ++ " " ++ ap ++ "= ?" 
+                      return (show fn ++ " " ++ ap ++ "= ?"
                                       ++ show fn ++ "_rhs")
    where mkApp :: IState -> PTerm -> [Name] -> String
          mkApp i (PPi (Exp _ _ False) (MN _ _) _ ty sc) used
                = let n = getNameFrom i used ty in
-                     show n ++ " " ++ mkApp i sc (n : used) 
+                     show n ++ " " ++ mkApp i sc (n : used)
          mkApp i (PPi (Exp _ _ False) (UN n) _ ty sc) used
             | thead n == '_'
                = let n = getNameFrom i used ty in
-                     show n ++ " " ++ mkApp i sc (n : used) 
-         mkApp i (PPi (Exp _ _ False) n _ _ sc) used 
-               = show n ++ " " ++ mkApp i sc (n : used) 
+                     show n ++ " " ++ mkApp i sc (n : used)
+         mkApp i (PPi (Exp _ _ False) n _ _ sc) used
+               = show n ++ " " ++ mkApp i sc (n : used)
          mkApp i (PPi _ _ _ _ sc) used = mkApp i sc used
          mkApp i _ _ = ""
 
          getNameFrom i used (PPi _ _ _ _ _)
               = uniqueNameFrom (mkSupply [sUN "f", sUN "g"]) used
          getNameFrom i used (PApp fc f as) = getNameFrom i used f
-         getNameFrom i used (PRef fc f) 
+         getNameFrom i used (PRef fc f)
             = case getNameHints i f of
                    [] -> uniqueName (sUN "x") used
                    ns -> uniqueNameFrom (mkSupply ns) used
-         getNameFrom i used _ = uniqueName (sUN "x") used 
+         getNameFrom i used _ = uniqueName (sUN "x") used
 
          -- write method declarations, indent with 4 spaces
          mkClassBodies :: IState -> [(Name, (FnOpts, PTerm))] -> String
-         mkClassBodies i ns 
+         mkClassBodies i ns
              = showSep "\n"
-                  (zipWith (\(n, (_, ty)) m -> "    " ++ 
+                  (zipWith (\(n, (_, ty)) m -> "    " ++
                             def (show (nsroot n)) ++ " "
                                  ++ mkApp i ty []
-                                 ++ "= ?" 
+                                 ++ "= ?"
                                  ++ show fn ++ "_rhs_" ++ show m) ns [1..])
 
          def n@(x:xs) | not (isAlphaNum x) = "(" ++ n ++ ")"
@@ -423,7 +423,3 @@ nameMissing ps = do ist <- get
                 case mptm of
                      Nothing -> return ptm
                      Just ptm' -> return ptm'
-                       
-
-
-

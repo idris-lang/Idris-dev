@@ -35,7 +35,7 @@ caseSplitAt :: FilePath -> Bool -> Int -> Name -> Idris ()
 caseSplitAt fn updatefile l n
    = do src <- runIO $ readSource fn
         res <- splitOnLine l n fn
-        iLOG (showSep "\n" (map show res))
+        logLvl 2 (showSep "\n" (map show res))
         let (before, (ap : later)) = splitAt (l-1) (lines src)
         res' <- replaceSplits ap res
         let new = concat res'
@@ -159,7 +159,7 @@ makeWith fn updatefile l n
   where getIndent s = length (takeWhile isSpace s)
 
 
-doProofSearch :: FilePath -> Bool -> Bool -> 
+doProofSearch :: FilePath -> Bool -> Bool ->
                  Int -> Name -> [Name] -> Maybe Int -> Idris ()
 doProofSearch fn updatefile rec l n hints Nothing
     = doProofSearch fn updatefile rec l n hints (Just 10)
@@ -220,7 +220,7 @@ updateMeta brack ('?':cs) n new
                      else '?' : mv ++ c : updateMeta True cs n new
              (mv, []) -> if (mv == n) then addBracket brack new else '?' : mv
 updateMeta brack ('=':cs) n new = '=':updateMeta False cs n new
-updateMeta brack (c:cs) n new 
+updateMeta brack (c:cs) n new
   = c : updateMeta (brack || not (isSpace c)) cs n new
 updateMeta brack [] n new = ""
 
@@ -232,7 +232,7 @@ checkProv line n = isProv' False line n
     isProv' _ ('}':cs) n = isProv' True cs n
     isProv' p (_:cs) n = isProv' p cs n
     isProv' _ [] n = False
-    
+
 addBracket False new = new
 addBracket True new@('(':xs) | last xs == ')' = new
 addBracket True new | any isSpace new = '(' : new ++ ")"
@@ -246,7 +246,7 @@ makeLemma fn updatefile l n
 
         -- if the name is in braces, rather than preceded by a ?, treat it
         -- as a lemma in a provisional definition
-        
+
         let isProv = checkProv tyline (show n)
 
         ctxt <- getContext
@@ -299,13 +299,13 @@ makeLemma fn updatefile l n
   where getIndent s = length (takeWhile isSpace s)
 
         appArgs skip 0 _ = ""
-        appArgs skip i (Bind n@(UN c) (Pi _ _ _) sc) 
+        appArgs skip i (Bind n@(UN c) (Pi _ _ _) sc)
            | (thead c /= '_' && n `notElem` skip)
                 = " " ++ show n ++ appArgs skip (i - 1) sc
         appArgs skip i (Bind _ (Pi _ _ _) sc) = appArgs skip (i - 1) sc
         appArgs skip i _ = ""
 
-        stripMNBind skip (PPi b n@(UN c) _ ty sc) 
+        stripMNBind skip (PPi b n@(UN c) _ ty sc)
            | (thead c /= '_' && n `notElem` skip) ||
                take 4 (str c) == "__pi" -- keep in type, but not in app
                 = PPi b n NoFC ty (stripMNBind skip sc)
@@ -317,7 +317,7 @@ makeLemma fn updatefile l n
         -- or at the top level themselves.
         guessImps :: Context -> Term -> [Name]
         guessImps ctxt (Bind n (Pi _ _ _) sc)
-           | guarded ctxt n (substV (P Bound n Erased) sc) 
+           | guarded ctxt n (substV (P Bound n Erased) sc)
                 = n : guessImps ctxt sc
            | otherwise = guessImps ctxt sc
         guessImps ctxt _ = []
@@ -328,14 +328,14 @@ makeLemma fn updatefile l n
               isConName f ctxt = any (guarded ctxt n) args
 --         guarded ctxt n (Bind (UN cn) (Pi t) sc) -- ignore shadows
 --             | thead cn /= '_' = guarded ctxt n t || guarded ctxt n sc
-        guarded ctxt n (Bind _ (Pi _ t _) sc) 
+        guarded ctxt n (Bind _ (Pi _ t _) sc)
             = guarded ctxt n t || guarded ctxt n sc
         guarded ctxt n _ = False
 
         blank = all isSpace
 
         addLem before tyline lem lem_app later
-            = let (bef_end, blankline : bef_start) 
+            = let (bef_end, blankline : bef_start)
                        = case span (not . blank) (reverse before) of
                               (bef, []) -> (bef, "" : [])
                               x -> x
@@ -349,6 +349,6 @@ makeLemma fn updatefile l n
                       = case span (not . blank) later of
                              (bef, []) -> (bef, "" : [])
                              x -> x in
-                  unlines $ before ++ tyline : 
+                  unlines $ before ++ tyline :
                             (later_bef ++ [blankline, lem_app, blankline] ++
                                       later_end)

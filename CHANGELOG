@@ -3,6 +3,7 @@ New in 0.9.19:
 * The Show class has been moved into Prelude.Show and augmented with the method
   showPrec, which allows correct parenthesization of showed terms. This comes
   with the type Prec of precedences and a few helper functions.
+* Logging output has been amended to adhere to verbosity levels.
 
 New in 0.9.18:
 --------------
@@ -16,8 +17,8 @@ New in 0.9.18:
     tested sufficiently, and lack a maintainer)
   + Float has been renamed 'Double' (Float is defined in the Prelude for
     compatibility)
-  + Externally defined primitives and  operations now supported with 
-    '%extern' directive, allowing back ends to define their own special 
+  + Externally defined primitives and  operations now supported with
+    '%extern' directive, allowing back ends to define their own special
     purpose primitives
   + Ptr and ManagedPtr have been removed and replaced with external primitives
 * Add %hint function annotation, which allows functions to be used as

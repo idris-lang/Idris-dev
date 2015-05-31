@@ -53,7 +53,7 @@ import Util.Pretty(pretty, text)
 elabData :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm)-> [(Name, Docstring (Either Err PTerm))] -> FC -> DataOpts -> PData -> Idris ()
 elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
     = do let codata = Codata `elem` opts
-         iLOG (show (fc, doc))
+         logLvl 2 (show (fc, doc))
          checkUndefined fc n
          (cty, _, t, inacc) <- buildType info syn fc [] n t_in
 
@@ -63,7 +63,7 @@ elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
 
 elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
     = do let codata = Codata `elem` opts
-         iLOG (show fc)
+         logLvl 2 (show fc)
          undef <- isUndefined fc n
          (cty, ckind, t, inacc) <- buildType info syn fc [] n t_in
          -- if n is defined already, make sure it is just a type declaration
@@ -238,7 +238,7 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
 
          -- Add to the context (this is temporary, so that later constructors
          -- can be indexed by it)
-         updateContext (addTyDecl n (DCon 0 0 False) cty) 
+         updateContext (addTyDecl n (DCon 0 0 False) cty)
 
          addIBC (IBCDef n)
          checkDocs fc argDocs t
@@ -288,12 +288,12 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
         = tclift $ tfail (At fc (UniqueKindError UniqueType n))
     checkUniqueKind (UType AllTypes) (UType AllTypes) = return ()
     checkUniqueKind (UType AllTypes) (UType UniqueType) = return ()
-    checkUniqueKind (UType AllTypes) _ 
+    checkUniqueKind (UType AllTypes) _
         = tclift $ tfail (At fc (UniqueKindError AllTypes n))
     checkUniqueKind _ _ = return ()
 
     -- Constructor's kind must be <= expected kind
-    addDataConstraint (TType con) (TType exp) 
+    addDataConstraint (TType con) (TType exp)
        = do ctxt <- getContext
             let v = next_tvar ctxt
             addConstraints fc (v, [ULT con exp])

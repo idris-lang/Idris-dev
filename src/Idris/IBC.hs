@@ -105,7 +105,7 @@ loadIBC reexport fp
                                 Nothing -> True
                                 Just p -> not p && reexport
                 when redo $
-                  do iLOG $ "Loading ibc " ++ fp ++ " " ++ show reexport
+                  do logLvl 2 $ "Loading ibc " ++ fp ++ " " ++ show reexport
                      archiveFile <- runIO $ B.readFile fp
                      case toArchiveOrFail archiveFile of
                         Left _ -> ifail $ fp ++ " isn't loadable, it may have an old ibc format.\n"
@@ -180,7 +180,7 @@ writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArch
 
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
-    = do iLOG $ "Writing ibc " ++ show f
+    = do logLvl 2 $ "Writing ibc " ++ show f
          i <- getIState
 --          case (Data.List.map fst (idris_metavars i)) \\ primDefs of
 --                 (_:_) -> ifail "Can't write ibc when there are unsolved metavariables"
@@ -189,8 +189,8 @@ writeIBC src f
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src })
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
-                        iLOG "Written")
-            (\c -> do iLOG $ "Failed " ++ pshow i c)
+                        logLvl 2 "Written")
+            (\c -> do logLvl 2 $ "Failed " ++ pshow i c)
          return ()
 
 -- Write a package index containing all the imports in the current IState
@@ -199,14 +199,14 @@ writePkgIndex :: FilePath -> Idris ()
 writePkgIndex f
     = do i <- getIState
          let imps = map (\ (x, y) -> (True, x)) $ idris_imported i
-         iLOG $ "Writing package index " ++ show f ++ " including\n" ++
+         logLvl 2 $ "Writing package index " ++ show f ++ " including\n" ++
                 show (map snd imps)
          resetNameIdx
          let ibcf = initIBC { ibc_imports = imps }
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
-                        iLOG "Written")
-            (\c -> do iLOG $ "Failed " ++ pshow i c)
+                        logLvl 2 "Written")
+            (\c -> do logLvl 2 $ "Failed " ++ pshow i c)
          return ()
 
 mkIBC :: [IBCWrite] -> IBCFile -> Idris IBCFile
@@ -305,7 +305,7 @@ process :: Bool -- ^ Reexporting
 process reexp i fn = do
                 ver <- getEntry 0 "ver" i
                 when (ver /= ibcVersion) $ do
-                                    iLOG "ibc out of date"
+                                    logLvl 1 "ibc out of date"
                                     let e = if ver < ibcVersion
                                             then " an earlier " else " a later "
                                     ifail $ "Incompatible ibc version.\nThis library was built with"
@@ -395,12 +395,12 @@ pImports fs
                        ids <- allImportDirs
                        fp <- findImport ids ibcsd f
 --                        if (f `elem` imported i)
---                         then iLOG $ "Already read " ++ f
+--                         then logLvl 2 $ "Already read " ++ f
                        putIState (i { imported = f : imported i })
                        case fp of
-                            LIDR fn -> do iLOG $ "Failed at " ++ fn
+                            LIDR fn -> do logLvl 2 $ "Failed at " ++ fn
                                           ifail "Must be an ibc"
-                            IDR fn -> do iLOG $ "Failed at " ++ fn
+                            IDR fn -> do logLvl 2 $ "Failed at " ++ fn
                                          ifail "Must be an ibc"
                             IBC fn src -> loadIBC re fn)
              fs
@@ -491,13 +491,13 @@ pDefs reexp syms ds
                do d' <- updateDef d
                   case d' of
                        TyDecl _ _ -> return ()
-                       _ -> do iLOG $ "SOLVING " ++ show n
+                       _ -> do logLvl 2 $ "SOLVING " ++ show n
                                solveDeferred n
                   updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
 --                   logLvl 1 $ "Added " ++ show (n, d')
-                  if (not reexp) then do iLOG $ "Not exporting " ++ show n
+                  if (not reexp) then do logLvl 2 $ "Not exporting " ++ show n
                                          setAccessibility n Hidden
-                                 else iLOG $ "Exporting " ++ show n) ds
+                                 else logLvl 2 $ "Exporting " ++ show n) ds
   where
     updateDef (CaseOp c t args o s cd)
       = do o' <- mapM updateOrig o
@@ -1781,7 +1781,7 @@ instance Binary PTerm where
                    _ -> error "Corrupted binary data for PTerm"
 
 instance Binary PAltType where
-        put x 
+        put x
           = case x of
                 ExactlyOne x1 -> do putWord8 0
                                     put x1

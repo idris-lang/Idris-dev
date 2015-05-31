@@ -241,7 +241,7 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
           addConstraintRule :: Name -> Term -> Idris ()
           addConstraintRule n t
              = do ist <- get
-                  logLvl 1 $ "TI constraint: " ++ show (n, t)
+                  logLvl 2 $ "TI constraint: " ++ show (n, t)
                   case lookupCtxt n (idris_tyinfodata ist) of
                      [TISolution ts] ->
                          do mapM_ (checkConsistent t) ts
