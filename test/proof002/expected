@@ -1,6 +1,6 @@
 Reflect.idr:208:38:
-When elaborating right hand side of testReflect1:
-When elaborating an application of function Reflect.getJust:
+When checking right hand side of testReflect1:
+When checking an application of function Reflect.getJust:
         Type mismatch between
                 IsJust (Just x1) (Type of ItIsJust)
         and

@@ -1,6 +1,5 @@
-tutorial006a.idr:5:23-25:
-When elaborating right hand side of vapp:
-When elaborating argument xs to constructor Data.VectType.Vect.:::
+tutorial006a.idr:5:23-25:When checking right hand side of vapp:
+When checking argument xs to constructor Data.VectType.Vect.:::
         Type mismatch between
                 Vect (n + n) a (Type of vapp xs xs)
         and
@@ -12,7 +11,7 @@ When elaborating argument xs to constructor Data.VectType.Vect.:::
                 and
                         plus n m
 tutorial006b.idr:10:10:
-When elaborating right hand side of with block in Main.parity:
+When checking right hand side of with block in Main.parity:
 Type mismatch between
         Parity (plus (S j) (S j)) (Type of even)
 and
