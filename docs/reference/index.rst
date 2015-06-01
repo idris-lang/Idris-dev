@@ -24,3 +24,11 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    uniqueness-types
    ffi
    erasure
+   semantic-highlighting
+   repl
+   syntax-guide
+   tactics
+   compilation
+   language-features
+   language-extensions
+   misc

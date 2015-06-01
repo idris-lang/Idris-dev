@@ -108,7 +108,7 @@ the undecidability of the `Halting Problem
 to identify some programs which are definitely terminating. Idris does this
 using "size change termination" which looks for recursive paths from a
 function back to itself. On such a path, there must be at least one
-argument which converges to a base case. 
+argument which converges to a base case.
 
 - Mutually recursive functions are supported
 - However, all functions on the path must be fully applied. In particular,
@@ -166,8 +166,8 @@ where the Idris libs reside relative to the idris executable. The
 IDRIS_TOOLCHAIN_DIR environment variable is optional, if that is set,
 Idris will use that path to find the C compiler.
 
-Example:
-.. code-block::
+Example::
+
    IDRIS_LIB_DIR="./libs" IDRIS_TOOLCHAIN_DIR="./mingw/bin" CABALFLAGS="-fffi -ffreestanding -frelease" make
 
 What does the name ‘Idris’ mean?
