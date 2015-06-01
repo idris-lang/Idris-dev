@@ -1,4 +1,4 @@
-reg049.idr:2:9:When elaborating constructor Main.Bogus:
+reg049.idr:2:9:When checking constructor Main.Bogus:
 Void is not Main.Foo
-reg049.idr:5:6:When elaborating right hand side of uhOh:
+reg049.idr:5:6:When checking right hand side of uhOh:
 No such variable Bogus

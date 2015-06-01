@@ -11,8 +11,8 @@ id x = x
 
 ||| Manually assign a type to an expression.
 ||| @ a the type to assign
-||| @ x the element to get the type
-the : (a : Type) -> (x : a) -> a
+||| @ value the element to get the type
+the : (a : Type) -> (value : a) -> a
 the _ = id
 
 ||| Constant function. Ignores its second argument.

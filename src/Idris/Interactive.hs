@@ -162,7 +162,7 @@ makeWith fn updatefile l n
 doProofSearch :: FilePath -> Bool -> Bool -> 
                  Int -> Name -> [Name] -> Maybe Int -> Idris ()
 doProofSearch fn updatefile rec l n hints Nothing
-    = doProofSearch fn updatefile rec l n hints (Just 10)
+    = doProofSearch fn updatefile rec l n hints (Just 20)
 doProofSearch fn updatefile rec l n hints (Just depth)
     = do src <- runIO $ readSource fn
          let (before, tyline : later) = splitAt (l-1) (lines src)

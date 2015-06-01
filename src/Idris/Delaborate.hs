@@ -346,19 +346,19 @@ pprintErr' i (AlreadyDefined n) = annName n<+>
 pprintErr' i (ProofSearchFail e) = pprintErr' i e
 pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> annTm tm (pprintTerm i (delab i tm))
 pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr' i e
-pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
+pprintErr' i (Elaborating s n e) = text "When checking" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
                                    pprintErr' i e
 pprintErr' i (ElaboratingArg f x _ e)
   | isInternal f = pprintErr' i e
   | isUN x =
-     text "When elaborating argument" <+>
+     text "When checking argument" <+>
      annotate (AnnBoundName x False) (text (showbasic x)) <+> -- TODO check plicity
      -- Issue #1591 on the issue tracker: https://github.com/idris-lang/Idris-dev/issues/1591
      text "to" <+> whatIsName <> annName f <> colon <>
      indented (pprintErr' i e)
   | otherwise =
-     text "When elaborating an application of" <+> whatIsName <>
+     text "When checking an application of" <+> whatIsName <>
      annName f <> colon <> indented (pprintErr' i e)
   where whatIsName = let ctxt = tt_ctxt i
                      in if isTConName f ctxt
