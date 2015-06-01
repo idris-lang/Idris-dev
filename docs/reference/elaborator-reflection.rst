@@ -109,9 +109,32 @@ If the goal type turns out to have been the unit type, we fill using the unit co
 Otherwise, we fail with an error message informing the user that the current goal is not trivial.
 
 Additionally, the elaboration state can be dumped into an error message with the ``debug`` tactic.
-A variant, ``debugMessage``, allows arbitrary strings to be included with the state, allowing for a kind of "``printf`` debuggging" of elaboration scripts.
+A variant, ``debugMessage``, allows arbitrary messages to be included with the state, allowing for a kind of "``printf`` debuggging" of elaboration scripts.
+The message format used by ``debugMessage`` is the same for errors produced by the error reflection mechanism, allowing the re-use of the Idris pretty-printer when rendering messages.
+
+Changing the Global Context
+===========================
+
+``Elab`` scripts can modify the global context during execution.
+Just as the Idris elaborator produces auxiliary definitions to implement features such as ``where``-blocks and ``case`` expressions, user elaboration scripts may need to define functions.
+Furthermore, this allows ``Elab`` reflection to be used to implement features such as type class deriving.
+The operations ``declareType``, ``defineFunction``, and ``addInstance`` allow ``Elab`` scripts to modify the global context.
+
+Using Idris's Features
+======================
+
+The Idris compiler has a number of ways to automate the construction of terms.
+On its own, the ``Elab`` state and its interactions with the unifier allow implicits to be solved using unification.
+Additional operations use further features of Idris.
+In particular, ``resolveTC`` solves the current goal using type class resolution, ``search`` invokes the proof search mechanism, and ``sourceLocation`` finds the context in the original file at which the elaboration script is invoked.
 
 
+Recursive Elaboration
+=====================
+
+The elaboration mechanism can be invoked recursively using the ``runElab`` tactic.
+This tactic takes a goal type and an elaboration script as arguments and runs the script in a fresh lexical evironment to create an inhabitant of the provided goal type.
+This is primarily useful for code generation, particularly for generating pattern-matching clauses, where variable scope needs to be one that isn't the present local context.
 
 Learn More
 ==========
