@@ -188,4 +188,4 @@ They have the format:::
 
   (:output (:ok (:highlight-source POSNS)))
 
-where ``POSNS``is a list of positions to highlight. Each of these is a two-element list whose first element is a position (encoded as for the ``source-loc`` property above) and whose second element is highlighting metadata in the same format used for output.
+where ``POSNS`` is a list of positions to highlight. Each of these is a two-element list whose first element is a position (encoded as for the ``source-loc`` property above) and whose second element is highlighting metadata in the same format used for output.
