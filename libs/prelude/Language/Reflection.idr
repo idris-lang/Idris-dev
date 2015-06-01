@@ -215,6 +215,8 @@ data ErrorReportPart =
                      NamePart TTName |
                      ||| An Idris term, to be pretty printed
                      TermPart TT |
+                     ||| A Raw term to be displayed by the compiler
+                     RawPart Raw |
                      ||| An indented sub-report, to provide more details
                      SubReport (List ErrorReportPart)
 %name ErrorReportPart part, p
@@ -576,14 +578,6 @@ mutual
     quote (PVar x) = `(PVar {a=TT} ~(assert_total (quote x)))
     quote (PVTy x) = `(PVTy {a=TT} ~(assert_total (quote x)))
 
-
-instance Quotable ErrorReportPart TT where
-  quotedTy = `(ErrorReportPart)
-  quote (TextPart x) = `(TextPart ~(quote x))
-  quote (NamePart n) = `(NamePart ~(quote n))
-  quote (TermPart tm) = `(TermPart ~(quote tm))
-  quote (SubReport xs) = `(SubReport ~(assert_total $ quote xs))
-
 mutual
   quoteRaw : Raw -> TT
   quoteRaw (Var n) = `(Var ~(quote n))
@@ -612,6 +606,14 @@ instance Quotable Raw TT where
 instance Quotable (Binder Raw) TT where
   quotedTy = `(Binder Raw)
   quote = quoteRawBinder
+
+instance Quotable ErrorReportPart TT where
+  quotedTy = `(ErrorReportPart)
+  quote (TextPart x) = `(TextPart ~(quote x))
+  quote (NamePart n) = `(NamePart ~(quote n))
+  quote (TermPart tm) = `(TermPart ~(quote tm))
+  quote (RawPart tm) = `(RawPart ~(quote tm))
+  quote (SubReport xs) = `(SubReport ~(assert_total $ quote xs))
 
 instance Quotable Tactic TT where
   quotedTy = `(Tactic)

@@ -1970,11 +1970,9 @@ runTactical ist fc env tm = do tm' <- eval tm
              rawPair (Var $ reflm "TT", Var $ reflm "TT")
                      (tm', ty')
       | n == tacN "prim__Debug", [ty, msg] <- args
-      = do let msg' = fromTTMaybe msg
-           case msg' of
-             Nothing -> debugElaborator Nothing
-             Just (Constant (Str m)) -> debugElaborator (Just m)
-             Just x -> lift . tfail . InternalMsg $ "Can't reify message for debugging: " ++ show x
+      = do msg' <- eval msg
+           parts <- reifyReportParts msg
+           debugElaborator parts
     runTacTm x = lift . tfail $ ElabScriptStuck x
 
 -- Running tactics directly

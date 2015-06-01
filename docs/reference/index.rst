@@ -31,4 +31,7 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    compilation
    language-features
    language-extensions
+   elaborator-reflection
    misc
+
+

@@ -176,6 +176,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
 data ErrorReportPart = TextPart String
                      | NamePart Name
                      | TermPart Term
+                     | RawPart Raw
                      | SubReport [ErrorReportPart]
                        deriving (Show, Eq, Data, Typeable)
 
@@ -244,7 +245,7 @@ data Err' t
           | LoadingFailed String (Err' t)
           | ReflectionError [[ErrorReportPart]] (Err' t)
           | ReflectionFailed String (Err' t)
-          | ElabScriptDebug (Maybe String) t [(Name, t, [(Name, Binder t)])]
+          | ElabScriptDebug [ErrorReportPart] t [(Name, t, [(Name, Binder t)])]
             -- ^ User-specified message, proof term, goals with context (first goal is focused)
           | ElabScriptStuck t
   deriving (Eq, Functor, Data, Typeable)
@@ -288,6 +289,7 @@ deriving instance NFData Err
 instance Sized ErrorReportPart where
   size (TextPart msg) = 1 + length msg
   size (TermPart t) = 1 + size t
+  size (RawPart r) = 1 + size r
   size (NamePart n) = 1 + size n
   size (SubReport rs) = 1 + size rs
 
@@ -1715,6 +1717,53 @@ pprintTT bound tm = pp startPrec bound tm
       | outer > inner = lparen <> doc <> rparen
       | otherwise     = doc
 
+-- | Pretty-print a raw term.
+pprintRaw :: [Name] -- ^ Bound names, for highlighting
+          -> Raw -- ^ The term to pretty-print
+          -> Doc OutputAnnotation
+pprintRaw bound (Var n) =
+  enclose lparen rparen . group . align . hang 2 $
+    (text "Var") <$> annotate (if n `elem` bound
+                                  then AnnBoundName n False
+                                  else AnnName n Nothing Nothing Nothing)
+                              (text $ show n)
+pprintRaw bound (RBind n b body) =
+  enclose lparen rparen . group . align . hang 2 $
+  vsep [ text "RBind"
+       , annotate (AnnBoundName n False) (text $ show n)
+       , ppb b
+       , pprintRaw (n:bound) body]
+  where
+    ppb (Lam ty) = enclose lparen rparen . group . align . hang 2 $
+                   text "Lam" <$> pprintRaw bound ty
+    ppb (Pi _ ty k) = enclose lparen rparen . group . align . hang 2 $
+                      vsep [text "Pi", pprintRaw bound ty, pprintRaw bound k]
+    ppb (Let ty v) = enclose lparen rparen . group . align . hang 2 $
+                     vsep [text "Let", pprintRaw bound ty, pprintRaw bound v]
+    ppb (NLet ty v) = enclose lparen rparen . group . align . hang 2 $
+                      vsep [text "NLet", pprintRaw bound ty, pprintRaw bound v]
+    ppb (Hole ty) = enclose lparen rparen . group . align . hang 2 $
+                    text "Hole" <$> pprintRaw bound ty
+    ppb (GHole _ ty) = enclose lparen rparen . group . align . hang 2 $
+                       text "GHole" <$> pprintRaw bound ty
+    ppb (Guess ty v) = enclose lparen rparen . group . align . hang 2 $
+                       vsep [text "Guess", pprintRaw bound ty, pprintRaw bound v]
+    ppb (PVar ty) = enclose lparen rparen . group . align . hang 2 $
+                    text "PVar" <$> pprintRaw bound ty
+    ppb (PVTy ty) = enclose lparen rparen . group . align . hang 2 $
+                    text "PVTy" <$> pprintRaw bound ty
+pprintRaw bound (RApp f x) =
+  enclose lparen rparen . group . align . hang 2 . vsep $
+  [text "RApp", pprintRaw bound f, pprintRaw bound x]
+pprintRaw bound RType = text "RType"
+pprintRaw bound (RUType u) = enclose lparen rparen . group . align . hang 2 $
+                             text "RUType" <$> text (show u)
+pprintRaw bound (RForce r) =
+  enclose lparen rparen . group . align . hang 2 $
+  vsep [text "RForce", pprintRaw bound r]
+pprintRaw bound (RConstant c) =
+  enclose lparen rparen . group . align . hang 2 $
+  vsep [text "RConstant", annotate (AnnConst c) (text (show c))]
 
 -- | Pretty-printer helper for the binding site of a name
 bindingOf :: Name -- ^^ the bound name

@@ -376,23 +376,18 @@ pprintErr' i (ElaboratingArg f x _ e)
 pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
 pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
 pprintErr' i (ReflectionError parts orig) =
-  let parts' = map (fillSep . map showPart) parts in
+  let parts' = map (fillSep . map (showPart i)) parts in
   align (fillSep parts') <>
   if (opt_origerr (idris_options i))
     then line <> line <> text "Original error:" <$> indented (pprintErr' i orig)
     else empty
-  where showPart :: ErrorReportPart -> Doc OutputAnnotation
-        showPart (TextPart str) = fillSep . map text . words $ str
-        showPart (NamePart n)   = annName n
-        showPart (TermPart tm)  = pprintTerm i (delab i tm)
-        showPart (SubReport rs) = indented . hsep . map showPart $ rs
 pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
 pprintErr' i (ElabScriptDebug msg tm holes) =
   text "Elaboration halted." <>
-  maybe empty (indented . text) msg <>
+  indented (align . hsep $ map (showPart i) msg) <>
   line <> line <>
   text "Holes:" <>
   indented (vsep (map ppHole holes)) <> line <> line <>
@@ -415,6 +410,13 @@ pprintErr' i (ElabScriptDebug msg tm holes) =
 pprintErr' i (ElabScriptStuck tm) =
   text "Can't run" <+> pprintTT [] tm <+> text "as an elaborator script." <$>
   text "Is it a stuck term?"
+
+showPart :: IState -> ErrorReportPart -> Doc OutputAnnotation
+showPart ist (TextPart str) = fillSep . map text . words $ str
+showPart ist (NamePart n)   = annName n
+showPart ist (TermPart tm)  = pprintTerm ist (delab ist tm)
+showPart ist (RawPart tm)   = pprintRaw [] tm
+showPart ist (SubReport rs) = indented . hsep . map (showPart ist) $ rs
 
 -- | Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly

@@ -118,7 +118,7 @@ data Elab : Type -> Type where
   prim__Search : Int -> List TTName -> Elab ()
   prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
 
-  prim__Debug : {a : Type} -> Maybe String -> Elab a
+  prim__Debug : {a : Type} -> List ErrorReportPart -> Elab a
 
 
 -------------
@@ -329,7 +329,7 @@ namespace Tactics
   ||| This is intended for elaboration script developers, not for
   ||| end-users. Use `fail` for final scripts.
   debug : Elab a
-  debug = prim__Debug Nothing
+  debug = prim__Debug []
 
   ||| Halt elaboration, dumping the internal state and displaying a
   ||| message.
@@ -338,8 +338,8 @@ namespace Tactics
   ||| end-users. Use `fail` for final scripts.
   |||
   ||| @ msg the message to display
-  debugMessage : (msg : String) -> Elab a
-  debugMessage msg = prim__Debug (Just msg)
+  debugMessage : (msg : List ErrorReportPart) -> Elab a
+  debugMessage msg = prim__Debug msg
 
   ||| Recursively invoke the reflected elaborator with some goal.
   |||
