@@ -914,6 +914,14 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
       " when reflecting an error:" ++ show e
     OK (tm', _) -> Right $ TermPart tm'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
+  | n == reflm "RawPart" =
+  case runElab initEState (reifyRaw tm) (initElaborator NErased initContext emptyContext Erased) of
+    Error e -> Left . InternalMsg $
+      "could not reify reflected raw term " ++
+      show tm ++
+      " when reflecting an error: " ++ show e
+    OK (tm', _) -> Right $ RawPart tm'
+reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "SubReport" =
   case unList tm of
     Just xs -> do subParts <- mapM reifyReportPart xs

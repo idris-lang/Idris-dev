@@ -310,12 +310,6 @@ instance (NFData t) => NFData (PTactic' t) where
         rnf SourceFC = ()
         rnf Unfocus = ()
 
-instance NFData ErrorReportPart where
-        rnf (TermPart x1) = rnf x1 `seq` ()
-        rnf (TextPart x1) = rnf x1 `seq` ()
-        rnf (NamePart x1) = rnf x1 `seq` ()
-        rnf (SubReport x1) = rnf x1 `seq` ()
-
 instance (NFData t) => NFData (PDo' t) where
         rnf (DoExp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (DoBind x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()

@@ -877,7 +877,7 @@ prunStateT pmax zok ps x s
                     else OK ((v, newpmax, problems p), s')
              Error e -> Error e
 
-debugElaborator :: Maybe String -> Elab' aux a
+debugElaborator :: [ErrorReportPart] -> Elab' aux a
 debugElaborator msg = do ps <- fmap proof get
                          saveState -- so we don't need to remember the hole order
                          hs <- get_holes

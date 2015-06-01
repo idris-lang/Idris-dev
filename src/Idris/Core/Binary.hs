@@ -18,6 +18,7 @@ instance Binary ErrorReportPart where
   put (NamePart n) = do putWord8 1 ; put n
   put (TermPart t) = do putWord8 2 ; put t
   put (SubReport ps) = do putWord8 3 ; put ps
+  put (RawPart r) = do putWord8 4 ; put r
 
   get = do i <- getWord8
            case i of
@@ -25,6 +26,7 @@ instance Binary ErrorReportPart where
              1 -> fmap NamePart get
              2 -> fmap TermPart get
              3 -> fmap SubReport get
+             4 -> fmap RawPart get
              _ -> error "Corrupted binary data for ErrorReportPart"
 
 instance Binary Provenance where
