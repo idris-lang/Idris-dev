@@ -27,7 +27,7 @@ An example interaction from loading the file ``/home/hannes/empty.idr`` looks as
 
 The first message is the request from idris-mode to load the specific file, which length is hex 2a, decimal 42 (including the newline at the end).
 The request identifier is set to 1.
-The first message from Idris is to write the string ``Type checking /home/hannes/empty.idr'', another is to set the prompt to ``*/home/hannes/empty''.
+The first message from Idris is to write the string ``Type checking /home/hannes/empty.idr``, another is to set the prompt to ``*/home/hannes/empty``.
 The answer, starting with ``:return`` is ``ok``, and additional information is that the file was loaded.
 
 There are three atoms in the wire language: numbers, strings, and symbols.
