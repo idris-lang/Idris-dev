@@ -5,7 +5,7 @@ Semantic Highlighting & Pretty Printing
 Since ``v0.9.18`` Idris comes with support for semantic highlighting.
 When using the ``REPL`` or IDE support, Idris will highlight your code accordingly to its meaning within the Idris structure. A precursor to semantic highlighting support is the pretty printing of definitions to console, LaTeX, or HTML.
 
-The default styling scheme used was inspired by Connor McBride's own set of stylings, informally known as *Connor's Colours*.
+The default styling scheme used was inspired by Conor McBride's own set of stylings, informally known as *Conor Colours*.
 
 
 Legend
@@ -41,7 +41,7 @@ Idris also supports the pretty printing of code to HTML and LaTeX using the comm
 Customisation
 =============
 
-If you are not happy with the colours used. The VIM and Emacs editor support allows for customisation of the colours used. When pretty printing Idris code as LaTeX and HTML, commands and a CSS style are provided. The colours used by the REPL can be customised through the initialisation script.
+If you are not happy with the colours used, the VIM and Emacs editor support allows for customisation of the colours. When pretty printing Idris code as LaTeX and HTML, commands and a CSS style are provided. The colours used by the REPL can be customised through the initialisation script.
 
 
 Further Information
