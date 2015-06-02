@@ -46,23 +46,23 @@ elabRecord :: ElabInfo
            -> SyntaxInfo -- ^ Constructor SyntaxInfo
            -> Idris ()
 elabRecord info doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc csyn
-  = do logLvl 1 $ "Building data declaration for " ++ show tyn
+  = do logLvl 2 $ "Building data declaration for " ++ show tyn
        -- Type constructor
        let tycon = generateTyConType params
-       logLvl 1 $ "Type constructor " ++ showTmImpls tycon
-       
+       logLvl 2 $ "Type constructor " ++ showTmImpls tycon
+
        -- Data constructor
        dconName <- generateDConName (fmap fst cname)
        let dconTy = generateDConType params fieldsWithNameAndDoc
-       logLvl 1 $ "Data constructor: " ++ showTmImpls dconTy
+       logLvl 2 $ "Data constructor: " ++ showTmImpls dconTy
 
        -- Build data declaration for elaboration
-       iLOG $ foldr (++) "" $ intersperse "\n" (map show dconsArgDocs)
+       logLvl 2 $ foldr (++) "" $ intersperse "\n" (map show dconsArgDocs)
        let datadecl = PDatadecl tyn NoFC tycon [(cdoc, dconsArgDocs, dconName, NoFC, dconTy, fc, [])]
        elabData info rsyn doc paramDocs fc opts datadecl
 
-       iLOG $ "fieldsWithName " ++ show fieldsWithName
-       iLOG $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc
+       logLvl 2 $ "fieldsWithName " ++ show fieldsWithName
+       logLvl 2 $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc
        elabRecordFunctions info rsyn fc tyn paramsAndDoc fieldsWithNameAndDoc dconName target
 
        sendHighlighting $
@@ -152,10 +152,10 @@ elabRecordFunctions :: ElabInfo -> SyntaxInfo -> FC
                     -> PTerm -- ^ Target type
                     -> Idris ()
 elabRecordFunctions info rsyn fc tyn params fields dconName target
-  = do logLvl 1 $ "Elaborating helper functions for record " ++ show tyn
+  = do logLvl 2 $ "Elaborating helper functions for record " ++ show tyn
 
-       iLOG $ "Fields: " ++ show fieldNames
-       iLOG $ "Params: " ++ show paramNames
+       logLvl 2 $ "Fields: " ++ show fieldNames
+       logLvl 2 $ "Params: " ++ show paramNames
        -- The elaborated constructor type for the data declaration
        i <- getIState
        ttConsTy <-
@@ -165,11 +165,11 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
 
        -- The arguments to the constructor
        let constructorArgs = getArgTys ttConsTy
-       iLOG $ "Cons args: " ++ show constructorArgs
-       iLOG $ "Free fields: " ++ show (filter (not . isFieldOrParam') constructorArgs)
+       logLvl 2 $ "Cons args: " ++ show constructorArgs
+       logLvl 2 $ "Free fields: " ++ show (filter (not . isFieldOrParam') constructorArgs)
        -- If elaborating the constructor has resulted in some new implicit fields we make projection functions for them.
        let freeFieldsForElab = map (freeField i) (filter (not . isFieldOrParam') constructorArgs)
-           
+
        -- The parameters for elaboration with their documentation
        -- Parameter functions are all prefixed with "param_".
        let paramsForElab = [((nsroot n), (paramName n), impl, t, d) | (n, _, _, t, d) <- params] -- zipParams i params paramDocs]
@@ -177,14 +177,14 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
        -- The fields (written by the user) with their documentation.
        let userFieldsForElab = [((nsroot n), n, p, t, d) | (n, nfc, p, t, d) <- fields]
 
-       -- All things we need to elaborate projection functions for, together with a number denoting their position in the constructor.           
-       let projectors = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (freeFieldsForElab ++ paramsForElab ++ userFieldsForElab) [0..]]       
+       -- All things we need to elaborate projection functions for, together with a number denoting their position in the constructor.
+       let projectors = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (freeFieldsForElab ++ paramsForElab ++ userFieldsForElab) [0..]]
        -- Build and elaborate projection functions
        elabProj dconName projectors
 
-       logLvl 1 $ "Dependencies: " ++ show fieldDependencies
+       logLvl 2 $ "Dependencies: " ++ show fieldDependencies
 
-       logLvl 1 $ "Depended on: " ++ show dependedOn
+       logLvl 2 $ "Depended on: " ++ show dependedOn
 
        -- All things we need to elaborate update functions for, together with a number denoting their position in the constructor.
        let updaters = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (paramsForElab ++ userFieldsForElab) [0..]]
@@ -227,7 +227,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
                           plicity = impl -- All free fields are implicit as they are machine generated
                           fieldType = delab i (snd arg) -- The type of the field
                           doc = emptyDocstring -- No docmentation for machine generated fields
-                      in (nameInCons, nameFree, plicity, fieldType, doc) 
+                      in (nameInCons, nameFree, plicity, fieldType, doc)
 
     freeName :: Name -> Name
     freeName (UN n) = sUN ("free_" ++ str n)
@@ -268,7 +268,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
     -- | Decides whether a setter should be generated for a field or not.
     optionalSetter :: Name -> Bool
     optionalSetter n = n `elem` dependedOn
-        
+
     -- | A map from a field name to the other fields it depends on.
     fieldDependencies :: [(Name, [Name])]
     fieldDependencies = map (uncurry fieldDep) [(n, t) | (n, _, _, t, _) <- fields ++ params]
@@ -304,15 +304,15 @@ elabProjection :: ElabInfo
                -> Int -- ^ Argument Index
                -> Idris ()
 elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs fnames index
-  = do logLvl 1 $ "Generating Projection for " ++ show pname
-       
+  = do logLvl 2 $ "Generating Projection for " ++ show pname
+
        let ty = generateTy
-       logLvl 1 $ "Type of " ++ show pname ++ ": " ++ show ty
-       
+       logLvl 2 $ "Type of " ++ show pname ++ ": " ++ show ty
+
        let lhs = generateLhs
-       logLvl 1 $ "LHS of " ++ show pname ++ ": " ++ showTmImpls lhs
+       logLvl 2 $ "LHS of " ++ show pname ++ ": " ++ showTmImpls lhs
        let rhs = generateRhs
-       logLvl 1 $ "RHS of " ++ show pname ++ ": " ++ showTmImpls rhs
+       logLvl 2 $ "RHS of " ++ show pname ++ ": " ++ showTmImpls rhs
 
        rec_elabDecl info EAll info ty
 
@@ -362,18 +362,18 @@ elabUpdate :: ElabInfo
            -> Bool -- ^ Optional
            -> Idris ()
 elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i optional
-  = do logLvl 1 $ "Generating Update for " ++ show pname
-       
-       let ty = generateTy
-       logLvl 1 $ "Type of " ++ show set_pname ++ ": " ++ show ty
-       
-       let lhs = generateLhs
-       logLvl 1 $ "LHS of " ++ show set_pname ++ ": " ++ showTmImpls lhs
-       
-       let rhs = generateRhs
-       logLvl 1 $ "RHS of " ++ show set_pname ++ ": " ++ showTmImpls rhs
+  = do logLvl 2 $ "Generating Update for " ++ show pname
 
-       let clause = PClause fc set_pname lhs [] rhs []       
+       let ty = generateTy
+       logLvl 2 $ "Type of " ++ show set_pname ++ ": " ++ show ty
+
+       let lhs = generateLhs
+       logLvl 2 $ "LHS of " ++ show set_pname ++ ": " ++ showTmImpls lhs
+
+       let rhs = generateRhs
+       logLvl 2 $ "RHS of " ++ show set_pname ++ ": " ++ showTmImpls rhs
+
+       let clause = PClause fc set_pname lhs [] rhs []
 
        idrisCatch (do rec_elabDecl info EAll info ty
                       rec_elabDecl info EAll info $ PClauses fc [] set_pname [clause])
@@ -453,4 +453,3 @@ projectInType xs = mapPT st
 -- | Creates an PArg from a plicity and a name where the term is a PRef.
 asPRefArg :: Plicity -> Name -> PArg
 asPRefArg p n = asArg p (nsroot n) $ PRef emptyFC (nsroot n)
-

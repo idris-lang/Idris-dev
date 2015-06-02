@@ -90,11 +90,11 @@ buildTree built fp = btree [] fp
   btree done f =
     do i <- getIState
        let file = extractFileName f
-       iLOG $ "CHASING " ++ show file
+       logLvl 2 $ "CHASING " ++ show file
        ibcsd <- valIBCSubDir i
        ids <- allImportDirs
        fp <- findImport ids ibcsd file
-       iLOG $ "Found " ++ show fp
+       logLvl 2 $ "Found " ++ show fp
        mt <- runIO $ getIModTime fp
        if (file `elem` built)
           then return [MTree fp False mt []]
