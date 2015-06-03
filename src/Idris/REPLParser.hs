@@ -39,7 +39,7 @@ allHelp = [ (map (':' :) names, args, text)
           | (names, args, text, _) <- parserCommandsForHelp ++ parserCommands ]
 
 parserCommandsForHelp :: CommandTable
-parserCommandsForHelp = 
+parserCommandsForHelp =
   [ exprArgCmd ["t", "type"] Check "Check the type of an expression"
   , exprArgCmd ["core"] Core "View the core language representation of a term"
   , nameArgCmd ["miss", "missing"] Missing "Show missing clauses"
@@ -82,6 +82,7 @@ parserCommandsForHelp =
     , "Turn REPL colours on or off; set a specific colour"
     , cmd_colour)
   , (["consolewidth"], ConsoleWidthArg, "Set the width of the console", cmd_consolewidth)
+  , (["printerdepth"], OptionalArg NumberArg, "Set the maximum pretty-printer depth (no arg for infinite)", cmd_printdepth)
   , noArgCmd ["q", "quit"] Quit "Exit the Idris system"
   , noArgCmd ["w", "warranty"] Warranty "Displays warranty information"
   , (["let"], ManyArgs DeclArg
@@ -96,7 +97,7 @@ parserCommandsForHelp =
     , cmd_pprint)
   ]
 
-parserCommands = 
+parserCommands =
   [ noArgCmd ["u", "universes"] Universes "Display universe constraints"
   , noArgCmd ["errorhandlers"] ListErrorHandlers "List registered error handlers"
 
@@ -284,6 +285,10 @@ cmd_consolewidth name = do
                     <|> do discard (P.symbol "infinite"); return InfinitelyWide
                     <|> do n <- fmap (fromInteger . fst) P.natural
                            return (ColsWide n)
+
+cmd_printdepth :: String -> P.IdrisParser (Either String Command)
+cmd_printdepth _ = do d <- optional (fmap (fromInteger . fst) P.natural)
+                      return (Right $ SetPrinterDepth d)
 
 cmd_execute :: String -> P.IdrisParser (Either String Command)
 cmd_execute name = do

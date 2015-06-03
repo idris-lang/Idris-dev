@@ -637,7 +637,9 @@ setWidth :: ConsoleWidth -> Idris ()
 setWidth w = do ist <- getIState
                 put ist { idris_consolewidth = w }
 
-
+setDepth :: Maybe Int -> Idris ()
+setDepth d = do ist <- getIState
+                put ist { idris_options = (idris_options ist) { opt_printdepth = d } }
 
 
 type1Doc :: Doc OutputAnnotation

@@ -148,7 +148,9 @@ instance SExpable OutputAnnotation where
                        BoldText      -> "bold"
                        ItalicText    -> "italic"
                        UnderlineText -> "underline"
-  toSExp (AnnTerm bnd tm) = toSExp [(SymbolAtom "tt-term", StringAtom (encodeTerm bnd tm))]
+  toSExp (AnnTerm bnd tm)
+    | termSmallerThan 1000 tm = toSExp [(SymbolAtom "tt-term", StringAtom (encodeTerm bnd tm))]
+    | otherwise = SexpList []
   toSExp (AnnSearchResult ordr) = toSExp [(SymbolAtom "doc-overview",
       StringAtom ("Result type is " ++ descr))]
       where descr = case ordr of
