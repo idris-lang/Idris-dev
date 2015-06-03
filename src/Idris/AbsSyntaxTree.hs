@@ -1580,7 +1580,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
         noNS _ = True
 
     prettySe p bnd (PIfThenElse _ c t f) =
-      group . align . hang 2 . vsep $
+      bracket p funcAppPrec . group . align . hang 2 . vsep $
         [ kwd "if" <+> prettySe startPrec bnd c
         , kwd "then" <+> prettySe startPrec bnd t
         , kwd "else" <+> prettySe startPrec bnd f
