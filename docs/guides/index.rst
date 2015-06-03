@@ -19,3 +19,4 @@ Tutorials submitted by community members.
    :maxdepth: 1
 
    type-providers-ffi
+   theorem-prover

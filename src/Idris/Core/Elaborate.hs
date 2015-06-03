@@ -398,9 +398,10 @@ casetac tm = processTactic' (CaseTac tm)
 equiv :: Raw -> Elab' aux ()
 equiv tm = processTactic' (Equiv tm)
 
--- | Turn the current hole into a pattern variable with the provided name, made unique if MN
+-- | Turn the current hole into a pattern variable with the provided
+-- name, made unique if MN
 patvar :: Name -> Elab' aux ()
-patvar n@(SN _) = do apply (Var n) []; solve 
+patvar n@(SN _) = do apply (Var n) []; solve
 patvar n = do env <- get_env
               hs <- get_holes
               if (n `elem` map fst env) then do apply (Var n) []; solve
@@ -410,6 +411,15 @@ patvar n = do env <- get_env
                                     NS _ _ -> return $! n
                                     x -> return $! n
                         processTactic' (PatVar n')
+
+-- | Turn the current hole into a pattern variable with the provided
+-- name, but don't make MNs unique.
+patvar' :: Name -> Elab' aux ()
+patvar' n@(SN _) = do apply (Var n) [] ; solve
+patvar' n = do env <- get_env
+               hs <- get_holes
+               if (n `elem` map fst env) then do apply (Var n) [] ; solve
+                  else processTactic' (PatVar n)
 
 patbind :: Name -> Elab' aux ()
 patbind n = processTactic' (PatBind n)
@@ -867,7 +877,7 @@ prunStateT pmax zok ps x s
                     else OK ((v, newpmax, problems p), s')
              Error e -> Error e
 
-debugElaborator :: Maybe String -> Elab' aux a
+debugElaborator :: [ErrorReportPart] -> Elab' aux a
 debugElaborator msg = do ps <- fmap proof get
                          saveState -- so we don't need to remember the hole order
                          hs <- get_holes

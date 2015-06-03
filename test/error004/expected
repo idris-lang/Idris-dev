@@ -1,8 +1,8 @@
-FunErrTest.idr:35:10:
-When elaborating right hand side of badCadr1:
-When elaborating argument cons1 to function FunErrTest.cadr:
+FunErrTest.idr:35:10:When checking right hand side of badCadr1:
+When checking argument cons1 to function FunErrTest.cadr:
         Could not prove that [] has at least two elements.
-FunErrTest.idr:38:10:
-When elaborating right hand side of badCadr2:
-When elaborating argument cons2 to function FunErrTest.cadr:
-        Could not prove that tail [1] has at least two elements.
+FunErrTest.idr:38:10:When checking right hand side of badCadr2:
+When checking argument cons2 to function FunErrTest.cadr:
+        Could not prove that tail [1] has at least two
+        elements.
+

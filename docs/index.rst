@@ -105,6 +105,13 @@ Language Reference
    reference/ffi
    reference/erasure
    reference/ide-protocol
+   reference/semantic-highlighting
+   reference/repl
+   reference/tactics
+   reference/compilation
+   reference/language-features
+   reference/language-extensions
+   reference/misc
 
 .. _guides:
 
@@ -116,4 +123,4 @@ Short Guides
    :maxdepth: 1
 
    guides/type-providers-ffi
-
+   guides/theorem-prover

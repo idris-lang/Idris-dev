@@ -86,13 +86,16 @@ prove opt ctxt lit n ty
               Error e -> ierror (CantUnify False (ty, Nothing) (pty, Nothing) e [] 0)
          ptm' <- applyOpts ptm
          ei <- getErasureInfo `fmap` getIState
-         updateContext (addCasedef n ei (CaseInfo True True False) False (STerm Erased) True False
-                                 [] []  -- argtys, inaccArgs
-                                 [Right (P Ref n ty, ptm)]
-                                 [([], P Ref n ty, ptm)]
-                                 [([], P Ref n ty, ptm)]
-                                 [([], P Ref n ty, ptm)]
-                                 [([], P Ref n ty, ptm')] ty)
+         ctxt' <- do ctxt <- getContext
+                     tclift $ addCasedef n ei (CaseInfo True True False) False (STerm Erased) True False
+                                [] []  -- argtys, inaccArgs
+                                [Right (P Ref n ty, ptm)]
+                                [([], P Ref n ty, ptm)]
+                                [([], P Ref n ty, ptm)]
+                                [([], P Ref n ty, ptm)]
+                                [([], P Ref n ty, ptm')] ty
+                                ctxt
+         setContext ctxt'
          solveDeferred n
          case idris_outputmode i of
            IdeMode n h ->

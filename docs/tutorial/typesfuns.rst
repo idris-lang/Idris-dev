@@ -246,10 +246,46 @@ So, for example, the following definitions are legal:
 Dependent Types
 ===============
 
+First Class Types
+-----------------
+
+In Idris, types are a first class language construct, meaning that they
+can be computed and manipulated (and passed to functions) just like any
+other language construct. For example, we could write a function which
+computes a type:
+
+.. code-block:: idris
+
+    isSingleton : Bool -> Type
+    isSingleton True = Nat
+    isSingleton False = List Nat
+
+This function calculates the appropriate type from a ``Bool`` which flags
+whether the type should be a singleton or not. We can use this function
+to calculate a type anywhere that a type can be used. For example, it
+can be used to calculate a return type:
+
+.. code-block:: idris
+
+    mkSingle : (x : Bool) -> isSingleton x
+    mkSingle False = 0
+    mkSingle True = []
+
+Or it can be used to have varying input types. The following function
+calculates either the sum of a list of ``Nat``, or returns the given
+``Nat``, depending on whether the singleton flag is true:
+
+.. code-block:: idris
+
+    sum : (single : Bool) -> isSingleton single -> Nat
+    sum False x = x
+    sum True [] = 0
+    sum True (x :: xs) = x + sum True xs
+
 Vectors
 -------
 
-A standard example of a dependent type is the type of “lists with
+A standard example of a dependent data type is the type of “lists with
 length”, conventionally called vectors in the dependent type
 literature.  They are available as part of the Idris library, by
 importing ``Data.Vect``, or we can declare them as follows:

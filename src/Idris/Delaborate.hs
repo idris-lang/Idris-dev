@@ -382,19 +382,19 @@ pprintErr' i (AlreadyDefined n) = annName n<+>
 pprintErr' i (ProofSearchFail e) = pprintErr' i e
 pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> annTm tm (pprintTerm i (delabSugared i tm))
 pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr' i e
-pprintErr' i (Elaborating s n e) = text "When elaborating" <+> text s <>
+pprintErr' i (Elaborating s n e) = text "When checking" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
                                    pprintErr' i e
 pprintErr' i (ElaboratingArg f x _ e)
   | isInternal f = pprintErr' i e
   | isUN x =
-     text "When elaborating argument" <+>
+     text "When checking argument" <+>
      annotate (AnnBoundName x False) (text (showbasic x)) <+> -- TODO check plicity
      -- Issue #1591 on the issue tracker: https://github.com/idris-lang/Idris-dev/issues/1591
      text "to" <+> whatIsName <> annName f <> colon <>
      indented (pprintErr' i e)
   | otherwise =
-     text "When elaborating an application of" <+> whatIsName <>
+     text "When checking an application of" <+> whatIsName <>
      annName f <> colon <> indented (pprintErr' i e)
   where whatIsName = let ctxt = tt_ctxt i
                      in if isTConName f ctxt
@@ -412,23 +412,18 @@ pprintErr' i (ElaboratingArg f x _ e)
 pprintErr' i (ProviderError msg) = text ("Type provider error: " ++ msg)
 pprintErr' i (LoadingFailed fn e) = text "Loading" <+> text fn <+> text "failed:" <+>  pprintErr' i e
 pprintErr' i (ReflectionError parts orig) =
-  let parts' = map (fillSep . map showPart) parts in
+  let parts' = map (fillSep . map (showPart i)) parts in
   align (fillSep parts') <>
   if (opt_origerr (idris_options i))
     then line <> line <> text "Original error:" <$> indented (pprintErr' i orig)
     else empty
-  where showPart :: ErrorReportPart -> Doc OutputAnnotation
-        showPart (TextPart str) = fillSep . map text . words $ str
-        showPart (NamePart n)   = annName n
-        showPart (TermPart tm)  = pprintTerm i (delabSugared i tm)
-        showPart (SubReport rs) = indented . hsep . map showPart $ rs
 pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
   indented (pprintErr' i err) <>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
 pprintErr' i (ElabScriptDebug msg tm holes) =
   text "Elaboration halted." <>
-  maybe empty (indented . text) msg <>
+  indented (align . hsep $ map (showPart i) msg) <>
   line <> line <>
   text "Holes:" <>
   indented (vsep (map ppHole holes)) <> line <> line <>
@@ -451,6 +446,13 @@ pprintErr' i (ElabScriptDebug msg tm holes) =
 pprintErr' i (ElabScriptStuck tm) =
   text "Can't run" <+> pprintTT [] tm <+> text "as an elaborator script." <$>
   text "Is it a stuck term?"
+
+showPart :: IState -> ErrorReportPart -> Doc OutputAnnotation
+showPart ist (TextPart str) = fillSep . map text . words $ str
+showPart ist (NamePart n)   = annName n
+showPart ist (TermPart tm)  = pprintTerm ist (delabSugared ist tm)
+showPart ist (RawPart tm)   = pprintRaw [] tm
+showPart ist (SubReport rs) = indented . hsep . map (showPart ist) $ rs
 
 -- | Make sure the machine invented names are shown helpfully to the user, so
 -- that any names which differ internally also differ visibly

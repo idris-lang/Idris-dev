@@ -1,3 +1,3 @@
 Tacs.idr:247:15:
-When elaborating right hand side of testElab3:
+When checking right hand side of testElab3:
 Unifying ty and ARR ty t would lead to infinite value

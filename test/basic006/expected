@@ -1,5 +1,5 @@
-test020a.idr:16:18:When elaborating right hand side of foo:
-When elaborating an application of function Prelude.List.reverse:
+test020a.idr:16:18:When checking right hand side of foo:
+When checking an application of function Prelude.List.reverse:
         Type mismatch between
                 Vect n a (Type of xs)
         and
