@@ -9,6 +9,9 @@ New in 0.9.19:
   some particular depth when printing. The default is set to a high number to
   make it less dangerous to experiment with infinite structures. Infinite depth
   can be set by calling :printerdepth with no argument.
+* Compiler output shows applications of >>= in do-notation
+* fromInteger i where i is an integer constant is now shown just as i in
+  compiler output
 
 New in 0.9.18:
 --------------

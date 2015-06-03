@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Delaborate (annName, bugaddr, delab, delab', delabMV, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintDelabTy, pprintErr) where
+module Idris.Delaborate (annName, bugaddr, delab, delab', delabMV, delabSugared, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintDelabTy, pprintErr, resugar) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
@@ -15,6 +15,7 @@ import Idris.ErrReverse
 
 import Prelude hiding ((<$>))
 
+import Data.Generics.Uniplate.Data (transform)
 import Data.Maybe (mapMaybe)
 import Data.List (intersperse, nub)
 import qualified Data.Text as T
@@ -24,6 +25,52 @@ import Debug.Trace
 
 bugaddr = "https://github.com/idris-lang/Idris-dev/issues"
 
+-- | Re-add syntactic sugar in a term
+resugar :: IState -> PTerm -> PTerm
+resugar ist = transform flattenDoLet . transform resugarApp
+  where
+    resugarApp (PApp fc (PRef _ n) args)
+      | [c, t, f] <- mapMaybe explicitTerm args
+      , basename n == sUN "ifThenElse"
+      = PIfThenElse fc c (dedelay t) (dedelay f)
+    resugarApp (PApp fc (PRef _ n) args)
+      | [v, PLam _ bn _ _ next] <- mapMaybe explicitTerm args
+      , basename n == sUN ">>="
+      = let step = if bn `elem` namesIn [] ist next
+                      then DoBind fc bn NoFC v
+                      else DoExp NoFC v
+        in case resugarApp next of
+             PDoBlock dos -> PDoBlock (step : dos)
+             expr -> PDoBlock [step, DoExp NoFC expr]
+    resugarApp (PApp fc (PRef _ n) args)
+      | [PConstant fc (BI i)] <- mapMaybe explicitTerm args
+      , basename n == sUN "fromInteger"
+      = PConstant fc (BI i)
+    resugarApp tm = tm
+
+    flattenDoLet (PLet _ ln _ ty v bdy)
+      | PDoBlock dos <- flattenDoLet bdy
+      = PDoBlock (DoLet NoFC ln NoFC ty v : dos)
+    flattenDoLet (PDoBlock dos) =
+      PDoBlock $ concatMap fixExp dos
+        where fixExp (DoExp _ (PLet _ ln _ ty v bdy)) =
+                DoLet NoFC ln NoFC ty v : fixExp (DoExp NoFC bdy)
+              fixExp d = [d]
+    flattenDoLet tm = tm
+
+    dedelay (PApp _ (PRef _ delay) [_, _, obj])
+      | delay == sUN "Delay" = getTm obj
+    dedelay x = x
+
+    explicitTerm (PExp {getTm = tm}) = Just tm
+    explicitTerm _ = Nothing
+
+
+-- | Delaborate and resugar a term
+delabSugared :: IState -> Term -> PTerm
+delabSugared ist tm = resugar ist $ delab ist tm
+
+-- | Delaborate a term without resugaring
 delab :: IState -> Term -> PTerm
 delab i tm = delab' i tm False False
 
@@ -50,7 +97,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
   where
     un = fileFC "(val)"
 
-    de env _ (App _ f a) = resugarApp env $ deFn env f [a]
+    de env _ (App _ f a) = deFn env f [a]
     de env _ (V i)     | i < length env = PRef un (snd (env!!i))
                        | otherwise = PRef un (sUN ("v" ++ show i ++ ""))
     de env _ (P _ n _) | n == unitTy = PTrue un IsType
@@ -147,17 +194,6 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
             isCN (SN (CaseN _)) = True
             isCN _ = False
 
-    resugarApp env (PApp _ (PRef _ n) args)
-                 | [c, t, f] <- mapMaybe explicitTerm args
-                 , basename n == sUN "ifThenElse"
-                 = PIfThenElse un c (dedelay t) (dedelay f)
-      where dedelay (PApp _ (PRef _ delay) [_, _, obj])
-              | delay == sUN "Delay" = getTm obj
-            dedelay x = x
-            explicitTerm (PExp {getTm = tm}) = Just tm
-            explicitTerm _ = Nothing
-    resugarApp env tm = tm
-
     delabCase :: [(Name, Name)] -> [PArg] -> Name -> Term -> Name -> [Term] -> Maybe PTerm
     delabCase env imps scvar scrutinee caseName caseArgs =
       do cases <- case lookupCtxt caseName (idris_patdefs ist) of
@@ -187,7 +223,7 @@ indented = nest errorIndent . (line <>)
 -- | Pretty-print a core term using delaboration
 pprintDelab :: IState -> Term -> Doc OutputAnnotation
 pprintDelab ist tm = annotate (AnnTerm [] tm)
-                              (prettyIst ist (delab ist tm))
+                              (prettyIst ist (delabSugared ist tm))
 
 -- | Pretty-print the type of some name
 pprintDelabTy :: IState -> Name -> Doc OutputAnnotation
@@ -195,8 +231,8 @@ pprintDelabTy i n
     = case lookupTy n (tt_ctxt i) of
            (ty:_) -> annotate (AnnTerm [] ty) . prettyIst i $
                      case lookupCtxt n (idris_implicits i) of
-                         (imps:_) -> delabTy' i imps ty False False
-                         _ -> delabTy' i [] ty False False
+                         (imps:_) -> resugar i $ delabTy' i imps ty False False
+                         _ -> resugar i $ delabTy' i [] ty False False
            [] -> error "pprintDelabTy got a name that doesn't exist"
 
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
@@ -212,11 +248,11 @@ pprintProv i e GivenVal = text "Given value"
 pprintProv i e (SourceTerm tm) 
   = text "Type of " <> 
     annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
-             (pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm))
+             (pprintTerm' i (zip (map fst e) (repeat False)) (delabSugared i tm))
 pprintProv i e (TooManyArgs tm) 
   = text "Is " <> 
       annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
-               (pprintTerm' i (zip (map fst e) (repeat False)) (delab i tm))
+               (pprintTerm' i (zip (map fst e) (repeat False)) (delabSugared i tm))
        <> text " applied to too many arguments?"
 
 pprintErr :: IState -> Err -> Doc OutputAnnotation
@@ -230,7 +266,7 @@ pprintErr' i (InternalMsg s) =
        ]
 pprintErr' i (CantUnify _ (x_in, xprov) (y_in, yprov) e sc s) =
   let (x_ns, y_ns, nms) = renameMNs x_in y_in
-      (x, y) = addImplicitDiffs (delab i x_ns) (delab i y_ns) in
+      (x, y) = addImplicitDiffs (delabSugared i x_ns) (delabSugared i y_ns) in
     text "Type mismatch between" <> indented (annTm x_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
                                         ++ zip nms (repeat False)) x)) 
@@ -255,8 +291,8 @@ pprintErr' i (CantUnify _ (x_in, xprov) (y_in, yprov) e sc s) =
            if (opt_errContext (idris_options i)) then showSc i sc else empty
 pprintErr' i (CantConvert x_in y_in env) =
  let (x_ns, y_ns, nms) = renameMNs x_in y_in
-     (x, y) = addImplicitDiffs (delab i (flagUnique x_ns)) 
-                               (delab i (flagUnique y_ns)) in
+     (x, y) = addImplicitDiffs (delabSugared i (flagUnique x_ns)) 
+                               (delabSugared i (flagUnique y_ns)) in
   text "Type mismatch between" <>
   indented (annTm x_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
                x)) <$>
@@ -272,37 +308,37 @@ pprintErr' i (CantConvert x_in y_in env) =
           flagUnique t = t
 pprintErr' i (CantSolveGoal x env) =
   text "Can't solve goal " <>
-  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i x))) <>
+  indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delabSugared i x))) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (UnifyScope n out tm env) =
   text "Can't unify" <> indented (annName n) <+>
-  text "with" <> indented (annTm tm (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm))) <+>
+  text "with" <> indented (annTm tm (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delabSugared i tm))) <+>
  text "as" <> indented (annName out) <> text "is not in scope" <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (CantInferType t) = text "Can't infer type for" <+> text t
 pprintErr' i (NonFunctionType f ty) =
-  annTm f (pprintTerm i (delab i f)) <+>
+  annTm f (pprintTerm i (delabSugared i f)) <+>
   text "does not have a function type" <+>
-  parens (pprintTerm i (delab i ty))
+  parens (pprintTerm i (delabSugared i ty))
 pprintErr' i (NotEquality tm ty) =
-  annTm tm (pprintTerm i (delab i tm)) <+>
+  annTm tm (pprintTerm i (delabSugared i tm)) <+>
   text "does not have an equality type" <+>
-  annTm ty (parens (pprintTerm i (delab i ty)))
+  annTm ty (parens (pprintTerm i (delabSugared i ty)))
 pprintErr' i (TooManyArguments f) = text "Too many arguments for" <+> annName f
 pprintErr' i (CantIntroduce ty) =
-  text "Can't use lambda here: type is" <+> annTm ty (pprintTerm i (delab i ty))
+  text "Can't use lambda here: type is" <+> annTm ty (pprintTerm i (delabSugared i ty))
 pprintErr' i (InfiniteUnify x tm env) =
   text "Unifying" <+> annName' x (showbasic x) <+> text "and" <+>
-  annTm tm (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delab i tm)) <+>
+  annTm tm (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delabSugared i tm)) <+>
   text "would lead to infinite value" <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (NotInjective p x y) =
-  text "Can't verify injectivity of" <+> annTm p (pprintTerm i (delab i p)) <+>
-  text " when unifying" <+> annTm x (pprintTerm i (delab i x)) <+> text "and" <+>
-  annTm y (pprintTerm i (delab i y))
-pprintErr' i (CantResolve _ c) = text "Can't resolve type class" <+> pprintTerm i (delab i c)
+  text "Can't verify injectivity of" <+> annTm p (pprintTerm i (delabSugared i p)) <+>
+  text " when unifying" <+> annTm x (pprintTerm i (delabSugared i x)) <+> text "and" <+>
+  annTm y (pprintTerm i (delabSugared i y))
+pprintErr' i (CantResolve _ c) = text "Can't resolve type class" <+> pprintTerm i (delabSugared i c)
 pprintErr' i (InvalidTCArg n t) 
-   = annTm t (pprintTerm i (delab i t)) <+> text " cannot be a parameter of "
+   = annTm t (pprintTerm i (delabSugared i t)) <+> text " cannot be a parameter of "
         <> annName n <$>
         text "(Type class arguments must be injective)"
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
@@ -310,13 +346,13 @@ pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (WithFnType ty) =
-  text "Can't match on a function: type is" <+> annTm ty (pprintTerm i (delab i ty))
+  text "Can't match on a function: type is" <+> annTm ty (pprintTerm i (delabSugared i ty))
 pprintErr' i (CantMatch t) =
-  text "Can't match on" <+> annTm t (pprintTerm i (delab i t))
-pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delab i t))
+  text "Can't match on" <+> annTm t (pprintTerm i (delabSugared i t))
+pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delabSugared i t))
 pprintErr' i (NoEliminator s t)
   = text "No " <> text s <> text " for type " <+>
-       annTm t (pprintTerm i (delab i t)) <$>
+       annTm t (pprintTerm i (delabSugared i t)) <$>
     text "Please note that 'induction' is experimental." <$>
     text "Only types declared with '%elim' can be used." <$>
     text "Consider writing a pattern matching definition instead."
@@ -344,7 +380,7 @@ pprintErr' i (NonCollapsiblePostulate n) = text "The return type of postulate" <
 pprintErr' i (AlreadyDefined n) = annName n<+>
                                   text "is already defined"
 pprintErr' i (ProofSearchFail e) = pprintErr' i e
-pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> annTm tm (pprintTerm i (delab i tm))
+pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> annTm tm (pprintTerm i (delabSugared i tm))
 pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr' i e
 pprintErr' i (Elaborating s n e) = text "When checking" <+> text s <>
                                    annName' n (showqual i n) <> colon <$>
@@ -414,7 +450,7 @@ pprintErr' i (ElabScriptStuck tm) =
 showPart :: IState -> ErrorReportPart -> Doc OutputAnnotation
 showPart ist (TextPart str) = fillSep . map text . words $ str
 showPart ist (NamePart n)   = annName n
-showPart ist (TermPart tm)  = pprintTerm ist (delab ist tm)
+showPart ist (TermPart tm)  = pprintTerm ist (delabSugared ist tm)
 showPart ist (RawPart tm)   = pprintRaw [] tm
 showPart ist (SubReport rs) = indented . hsep . map (showPart ist) $ rs
 
@@ -556,7 +592,7 @@ fancifyAnnots ist meta annot@(AnnName n _ _ _) =
                                return (out "")
         getTy :: IState -> Name -> String -- fails if name not already extant!
         getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
-                                  delabTy ist n
+                                  resugar ist $ delabTy ist n
                       in (displayS . renderPretty 1.0 50 $ theTy) ""
 fancifyAnnots _ _ annot = annot
 
@@ -566,7 +602,7 @@ showSc i xs = line <> line <> text "In context:" <>
             indented (vsep (reverse (showSc' [] xs)))
      where showSc' bnd [] = []
            showSc' bnd ((n, ty):ctxt) =
-             let this = bindingOf n False <+> colon <+> pprintTerm' i bnd (delab i ty)
+             let this = bindingOf n False <+> colon <+> pprintTerm' i bnd (delabSugared i ty)
              in this : showSc' ((n,False):bnd) ctxt
 
 

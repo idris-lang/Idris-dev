@@ -1586,7 +1586,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
         noNS _ = True
 
     prettySe d p bnd (PIfThenElse _ c t f) =
-      depth d . group . align . hang 2 . vsep $
+      depth d . bracket p funcAppPrec . group . align . hang 2 . vsep $
         [ kwd "if" <+> prettySe (decD d) startPrec bnd c
         , kwd "then" <+> prettySe (decD d) startPrec bnd t
         , kwd "else" <+> prettySe (decD d) startPrec bnd f
@@ -1640,7 +1640,28 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PReturn f) = kwd "return"
     prettySe d p bnd PImpossible = kwd "impossible"
     prettySe d p bnd Placeholder = text "_"
-    prettySe d p bnd (PDoBlock _) = text "do block pretty not implemented"
+    prettySe d p bnd (PDoBlock dos) =
+      bracket p startPrec $
+      kwd "do" <+> align (vsep (map (group . align . hang 2) (ppdo bnd dos)))
+       where ppdo bnd (DoExp _ tm:dos) = prettySe (decD d) startPrec bnd tm : ppdo bnd dos
+             ppdo bnd (DoBind _ bn _ tm : dos) =
+               (prettyBindingOf bn False <+> text "<-" <+>
+                group (align (hang 2 (prettySe (decD d) startPrec bnd tm)))) :
+               ppdo ((bn, False):bnd) dos
+             ppdo bnd (DoBindP _ _ _ _ : dos) = -- ok because never made by delab
+               text "no pretty printer for pattern-matching do binding" :
+               ppdo bnd dos
+             ppdo bnd (DoLet _ ln _ ty v : dos) =
+               (kwd "let" <+> prettyBindingOf ln False <+>
+                (if ty /= Placeholder
+                   then colon <+> prettySe (decD d) startPrec bnd ty <+> text "="
+                   else text "=") <+>
+                group (align (hang 2 (prettySe (decD d) startPrec bnd v)))) :
+               ppdo ((ln, False):bnd) dos
+             ppdo bnd (DoLetP _ _ _ : dos) = -- ok because never made by delab
+               text "no pretty printer for pattern-matching do binding" :
+               ppdo bnd dos
+             ppdo _ [] = []
     prettySe d p bnd (PCoerced t) = prettySe d p bnd t
     prettySe d p bnd (PElabError s) = pretty s
     -- Quasiquote pprinting ignores bound vars
