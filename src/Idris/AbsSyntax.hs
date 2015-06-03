@@ -641,6 +641,9 @@ setDepth :: Maybe Int -> Idris ()
 setDepth d = do ist <- getIState
                 put ist { idris_options = (idris_options ist) { opt_printdepth = d } }
 
+typeDescription :: String
+typeDescription = "The type of types"
+
 
 type1Doc :: Doc OutputAnnotation
 type1Doc = (annotate (AnnType "Type" "The type of types, one level up") $ text "Type 1")
