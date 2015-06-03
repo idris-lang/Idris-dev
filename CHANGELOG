@@ -5,6 +5,9 @@ New in 0.9.19:
 * The Show class has been moved into Prelude.Show and augmented with the method
   showPrec, which allows correct parenthesization of showed terms. This comes
   with the type Prec of precedences and a few helper functions.
+* Compiler output shows applications of >>= in do-notation
+* fromInteger i where i is an integer constant is now shown just as i in
+  compiler output
 
 New in 0.9.18:
 --------------
