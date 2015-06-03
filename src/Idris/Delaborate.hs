@@ -26,23 +26,49 @@ import Debug.Trace
 bugaddr = "https://github.com/idris-lang/Idris-dev/issues"
 
 -- | Re-add syntactic sugar in a term
-resugar :: PTerm -> PTerm
-resugar = transform resugarApp
+resugar :: IState -> PTerm -> PTerm
+resugar ist = transform flattenDoLet . transform resugarApp
   where
     resugarApp (PApp fc (PRef _ n) args)
       | [c, t, f] <- mapMaybe explicitTerm args
       , basename n == sUN "ifThenElse"
       = PIfThenElse fc c (dedelay t) (dedelay f)
+    resugarApp (PApp fc (PRef _ n) args)
+      | [v, PLam _ bn _ _ next] <- mapMaybe explicitTerm args
+      , basename n == sUN ">>="
+      = let step = if bn `elem` namesIn [] ist next
+                      then DoBind fc bn NoFC v
+                      else DoExp NoFC v
+        in case resugarApp next of
+             PDoBlock dos -> PDoBlock (step : dos)
+             expr -> PDoBlock [step, DoExp NoFC expr]
+    resugarApp (PApp fc (PRef _ n) args)
+      | [PConstant fc (BI i)] <- mapMaybe explicitTerm args
+      , basename n == sUN "fromInteger"
+      = PConstant fc (BI i)
     resugarApp tm = tm
+
+    flattenDoLet (PLet _ ln _ ty v bdy)
+      | PDoBlock dos <- flattenDoLet bdy
+      = PDoBlock (DoLet NoFC ln NoFC ty v : dos)
+    flattenDoLet (PDoBlock dos) =
+      PDoBlock $ concatMap fixExp dos
+        where fixExp (DoExp _ (PLet _ ln _ ty v bdy)) =
+                DoLet NoFC ln NoFC ty v : fixExp (DoExp NoFC bdy)
+              fixExp d = [d]
+    flattenDoLet tm = tm
+
     dedelay (PApp _ (PRef _ delay) [_, _, obj])
       | delay == sUN "Delay" = getTm obj
     dedelay x = x
+
     explicitTerm (PExp {getTm = tm}) = Just tm
     explicitTerm _ = Nothing
 
+
 -- | Delaborate and resugar a term
 delabSugared :: IState -> Term -> PTerm
-delabSugared ist tm = resugar $ delab ist tm
+delabSugared ist tm = resugar ist $ delab ist tm
 
 -- | Delaborate a term without resugaring
 delab :: IState -> Term -> PTerm
@@ -205,8 +231,8 @@ pprintDelabTy i n
     = case lookupTy n (tt_ctxt i) of
            (ty:_) -> annotate (AnnTerm [] ty) . prettyIst i $
                      case lookupCtxt n (idris_implicits i) of
-                         (imps:_) -> resugar $ delabTy' i imps ty False False
-                         _ -> resugar $ delabTy' i [] ty False False
+                         (imps:_) -> resugar i $ delabTy' i imps ty False False
+                         _ -> resugar i $ delabTy' i [] ty False False
            [] -> error "pprintDelabTy got a name that doesn't exist"
 
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
@@ -564,7 +590,7 @@ fancifyAnnots ist meta annot@(AnnName n _ _ _) =
                                return (out "")
         getTy :: IState -> Name -> String -- fails if name not already extant!
         getTy ist n = let theTy = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist) $
-                                  resugar $ delabTy ist n
+                                  resugar ist $ delabTy ist n
                       in (displayS . renderPretty 1.0 50 $ theTy) ""
 fancifyAnnots _ _ annot = annot
 

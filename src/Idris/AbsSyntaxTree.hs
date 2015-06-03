@@ -1633,7 +1633,28 @@ pprintPTerm ppo bnd docArgs infixes = prettySe startPrec bnd
     prettySe p bnd (PReturn f) = kwd "return"
     prettySe p bnd PImpossible = kwd "impossible"
     prettySe p bnd Placeholder = text "_"
-    prettySe p bnd (PDoBlock _) = text "do block pretty not implemented"
+    prettySe p bnd (PDoBlock dos) =
+      bracket p startPrec $
+      kwd "do" <+> align (vsep (map (group . align . hang 2) (ppdo bnd dos)))
+       where ppdo bnd (DoExp _ tm:dos) = prettySe startPrec bnd tm : ppdo bnd dos
+             ppdo bnd (DoBind _ bn _ tm : dos) =
+               (prettyBindingOf bn False <+> text "<-" <+>
+                group (align (hang 2 (prettySe startPrec bnd tm)))) :
+               ppdo ((bn, False):bnd) dos
+             ppdo bnd (DoBindP _ _ _ _ : dos) = -- ok because never made by delab
+               text "no pretty printer for pattern-matching do binding" :
+               ppdo bnd dos
+             ppdo bnd (DoLet _ ln _ ty v : dos) =
+               (kwd "let" <+> prettyBindingOf ln False <+>
+                (if ty /= Placeholder
+                   then colon <+> prettySe startPrec bnd ty <+> text "="
+                   else text "=") <+>
+                group (align (hang 2 (prettySe startPrec bnd v)))) :
+               ppdo ((ln, False):bnd) dos
+             ppdo bnd (DoLetP _ _ _ : dos) = -- ok because never made by delab
+               text "no pretty printer for pattern-matching do binding" :
+               ppdo bnd dos
+             ppdo _ [] = []
     prettySe p bnd (PCoerced t) = prettySe p bnd t
     prettySe p bnd (PElabError s) = pretty s
     -- Quasiquote pprinting ignores bound vars
