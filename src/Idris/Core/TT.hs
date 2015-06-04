@@ -20,6 +20,11 @@
 
 module Idris.Core.TT where
 
+-- Work around AMP without CPP
+import Prelude (Eq(..), Show(..), Ord(..), Functor(..), Monad(..), String, Int, Integer, Ordering(..),
+                Maybe(..), Num(..), Bool(..), Enum(..), Read(..), FilePath, Double,
+                (&&), (||), ($), (.), div, error, fst, snd, not, mod, read, otherwise)
+
 import Control.Applicative (Applicative (..), Alternative)
 import qualified Control.Applicative as A (Alternative (..))
 import Control.Monad.State.Strict
