@@ -261,7 +261,7 @@ instance NFData PTerm where
         rnf (PQuasiquote x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PUnquote x1) = rnf x1 `seq` ()
         rnf (PQuoteName x1) = rnf x1 `seq` ()
-        rnf (PRunElab x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (PRunElab x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
 
 instance NFData PAltType where
         rnf (ExactlyOne x1) = rnf x1 `seq` ()

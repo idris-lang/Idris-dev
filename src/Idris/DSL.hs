@@ -112,7 +112,7 @@ expandSugar dsl (PDoBlock ds)
     block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandSugar dsl (PIdiom fc e) = expandSugar dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
-expandSugar dsl (PRunElab fc tm) = PRunElab fc $ expandSugar dsl tm
+expandSugar dsl (PRunElab fc tm ns) = PRunElab fc (expandSugar dsl tm) ns
 expandSugar dsl t = t
 
 -- | Replace DSL-bound variable in a term
@@ -198,7 +198,7 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     db' (PDPair fc p l t r) = do l' <- db' l
                                  r' <- db' r
                                  return (PDPair fc p l' t r')
-    db' (PRunElab fc t) = fmap (PRunElab fc) (db' t)
+    db' (PRunElab fc t ns) = fmap (\tm -> PRunElab fc tm ns) (db' t)
     db' t = return t
 
     dbArg a = do t' <- db' (getTm a)

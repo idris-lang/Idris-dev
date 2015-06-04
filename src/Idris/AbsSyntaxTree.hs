@@ -863,7 +863,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
            | PUnquote PTerm -- ^ ~Term
            | PQuoteName Name -- ^ `{n}
-           | PRunElab FC PTerm -- ^ %runElab tm - New-style proof script
+           | PRunElab FC PTerm [String] -- ^ %runElab tm - New-style proof script. Args are location, script, enclosing namespace.
        deriving (Eq, Data, Typeable)
 
 data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
@@ -1233,7 +1233,7 @@ initDSL = DSL (PRef f (sUN ">>="))
 
 data Using = UImplicit Name PTerm
            | UConstraint Name [Name]
-    deriving (Show, Eq)
+    deriving (Show, Eq, Data, Typeable)
 {-!
 deriving instance Binary Using
 deriving instance NFData Using

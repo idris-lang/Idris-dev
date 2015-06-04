@@ -320,7 +320,7 @@ extractPTermNames (PCoerced p)       = extract p
 extractPTermNames (PDisamb _ p)      = extract p
 extractPTermNames (PUnifyLog p)      = extract p
 extractPTermNames (PNoImplicits p)   = extract p
-extractPTermNames (PRunElab _ p)  = extract p
+extractPTermNames (PRunElab _ p _)   = extract p
 extractPTermNames _                  = []
 
 -- | Shorter name for extractPTermNames

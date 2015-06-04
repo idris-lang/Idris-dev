@@ -1027,7 +1027,7 @@ expandParams dec ps ns infs tm = en tm
     en (PAppBind fc f as) = PAppBind fc (en f) (map (fmap en) as)
     en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
     en (PIfThenElse fc c t f) = PIfThenElse fc (en c) (en t) (en f)
-    en (PRunElab fc tm) = PRunElab fc (en tm)
+    en (PRunElab fc tm ns) = PRunElab fc (en tm) ns
     en t = t
 
     nselem x [] = False
@@ -1493,7 +1493,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     imps top env (PHidden tm)    = imps False env tm
     imps top env (PUnifyLog tm)  = imps False env tm
     imps top env (PNoImplicits tm)  = imps False env tm
-    imps top env (PRunElab fc tm) = imps False env tm
+    imps top env (PRunElab fc tm ns) = imps False env tm
     imps top env _               = return ()
 
     pibind using []     sc = sc
@@ -1618,7 +1618,7 @@ addImpl' inpat env infns imp_meths ist ptm
     ai qq env ds (PQuasiquote tm g) = PQuasiquote (ai True env ds tm)
                                                   (fmap (ai True env ds) g)
     ai qq env ds (PUnquote tm) = PUnquote (ai False env ds tm)
-    ai qq env ds (PRunElab fc tm) = PRunElab fc (ai False env ds tm)
+    ai qq env ds (PRunElab fc tm ns) = PRunElab fc (ai False env ds tm) ns
     ai qq env ds tm = tm
 
     handleErr (Left err) = PElabError err
@@ -2042,7 +2042,7 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PHidden x) = PHidden (sm xs x)
     sm xs (PUnifyLog x) = PUnifyLog (sm xs x)
     sm xs (PNoImplicits x) = PNoImplicits (sm xs x)
-    sm xs (PRunElab fc script) = PRunElab fc (sm xs script)
+    sm xs (PRunElab fc script ns) = PRunElab fc (sm xs script) ns
     sm xs x = x
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
@@ -2171,5 +2171,5 @@ mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
   mkUniq (PNoImplicits t) = liftM PNoImplicits (mkUniq t)
   mkUniq (PProof ts) = liftM PProof (mapM mkUniqT ts)
   mkUniq (PTactics ts) = liftM PTactics (mapM mkUniqT ts)
-  mkUniq (PRunElab fc ts) = liftM (PRunElab fc ) (mkUniq ts)
+  mkUniq (PRunElab fc ts ns) = liftM (\tm -> PRunElab fc tm ns) (mkUniq ts)
   mkUniq t = return t
