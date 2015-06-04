@@ -35,7 +35,7 @@ import qualified Data.Text as T
 
 import Debug.Trace
 
-data ElabMode = ETyDecl | ELHS | ERHS
+data ElabMode = ETyDecl | ETransLHS | ELHS | ERHS
   deriving Eq
 
 
@@ -220,7 +220,7 @@ elab ist info emode opts fn tm
          sequence_ (get_delayed_elab est)
          end_unify
          ptm <- get_term
-         when pattern -- convert remaining holes to pattern vars
+         when (pattern || intransform) -- convert remaining holes to pattern vars
               (do update_term orderPats
                   unify_all
                   matchProblems False -- only the ones we matched earlier
@@ -228,7 +228,8 @@ elab ist info emode opts fn tm
                   mkPat)
   where
     pattern = emode == ELHS
-    bindfree = emode == ETyDecl || emode == ELHS
+    intransform = emode == ETransLHS
+    bindfree = emode == ETyDecl || emode == ELHS || emode == ETransLHS
 
     get_delayed_elab est =
         let ds = delayed_elab est in
@@ -489,7 +490,7 @@ elab ist info emode opts fn tm
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
       | pattern && not reflection && not (e_qq ec) && e_nomatching ec
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
-      | (pattern || (bindfree && bindable n)) && not (inparamBlock n) && not (e_qq ec)
+      | (pattern || intransform || (bindfree && bindable n)) && not (inparamBlock n) && not (e_qq ec)
         = do let ina = e_inarg ec
                  guarded = e_guarded ec
                  inty = e_intype ec
@@ -500,7 +501,7 @@ elab ist info emode opts fn tm
                                _ -> True
            -- this is to stop us resolve type classes recursively
              -- trace (show (n, guarded)) $
-             if (tcname n && ina)
+             if (tcname n && ina && not intransform)
                then erun fc $
                       do patvar n
                          update_term liftPats
@@ -611,7 +612,7 @@ elab ist info emode opts fn tm
                ivs' <- get_instances
                env <- get_env
                elabE (ina { e_inarg = True }) (Just fc) sc
-               when (not pattern) $
+               when (not (pattern || intransform)) $
                    mapM_ (\n -> do focus n
                                    g <- goal
                                    hs <- get_holes
@@ -799,7 +800,7 @@ elab ist info emode opts fn tm
             -- to be needed.
             implicitApp :: ElabD [ImplicitInfo] -> ElabD ()
             implicitApp elab 
-              | pattern = do elab; return ()
+              | pattern || intransform = do elab; return ()
               | otherwise
                 = do s <- get
                      imps <- elab

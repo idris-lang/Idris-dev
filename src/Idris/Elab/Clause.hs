@@ -376,7 +376,7 @@ elabPE info fc caller r =
                                    showTmImpls rhs)) (pe_clauses specdecl))
 
                 logLvl 2 $ show n ++ " transformation rule: " ++
-                           show rhs ++ " ==> " ++ show lhs
+                           showTmImpls rhs ++ " ==> " ++ showTmImpls lhs
 
                 elabType info defaultSyntax emptyDocstring [] fc opts newnm NoFC specTy
                 let def = map (\(lhs, rhs) ->

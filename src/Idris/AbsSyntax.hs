@@ -1835,6 +1835,7 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su (PDPair fc p l t r) = PDPair fc p (su l) (su t) (su r)
     su t@(PLam fc _ _ _ _) = PHidden t
     su t@(PPi _ _ _ _ _) = PHidden t
+    su t@(PConstant _ c) | isTypeConst c = PHidden t
     su t = t
 
     ctxt = tt_ctxt i
