@@ -16,7 +16,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
 import Idris.Core.ProofTerm (getProofTerm)
-import Idris.Core.Typecheck (check, recheck, isType)
+import Idris.Core.Typecheck (check, recheck, converts, isType)
 import Idris.Coverage (buildSCG, checkDeclTotality, genClauses, recoverableCoverage, validCoverageCase)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
@@ -1720,8 +1720,9 @@ runTactical ist fc env tm = do tm' <- eval tm
          let info = CaseInfo True True False -- TODO document and figure out
          clauses' <- forM clauses (\case
                                       RMkFunClause lhs rhs ->
-                                        do lhs' <- fmap fst . lift $ check ctxt [] lhs
-                                           rhs' <- fmap fst . lift $ check ctxt [] rhs
+                                        do (lhs', lty) <- lift $ check ctxt [] lhs
+                                           (rhs', rty) <- lift $ check ctxt [] rhs
+                                           lift $ converts ctxt [] lty rty
                                            return $ Right (lhs', rhs')
                                       RMkImpossibleClause lhs ->
                                         do lhs' <- fmap fst . lift $ check ctxt [] lhs
