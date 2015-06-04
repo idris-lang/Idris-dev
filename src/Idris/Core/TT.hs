@@ -1249,6 +1249,22 @@ unList tm = case unApply tm of
                      return $ x:rest
               (f, args) -> Nothing
 
+-- | Hard-code a heuristic maximum term size, to prevent attempts to
+-- serialize or force infinite or just gigantic terms
+termSmallerThan :: Int -> Term -> Bool
+termSmallerThan x tm | x <= 0 =  False
+termSmallerThan x (P _ _ ty) = termSmallerThan (x-1) ty
+termSmallerThan x (Bind _ _ tm) = termSmallerThan (x-1) tm
+termSmallerThan x (App _ f a) = termSmallerThan (x-1) f && termSmallerThan (x-1) a
+termSmallerThan x (Proj tm _) = termSmallerThan (x-1) tm
+termSmallerThan x (V i) = True
+termSmallerThan x (Constant c) = True
+termSmallerThan x Erased = True
+termSmallerThan x Impossible = True
+termSmallerThan x (TType u) = True
+termSmallerThan x (UType u) = True
+
+
 -- | Cast a 'TT' term to a 'Raw' value, discarding universe information and
 -- the types of named references and replacing all de Bruijn indices
 -- with the corresponding name. It is an error if there are free de

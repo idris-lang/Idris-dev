@@ -1,0 +1,9 @@
+:consolewidth 50
+:printerdepth 5
+the (List Integer) [1..20]
+:printerdepth 1000
+the (List Integer) [1..100]
+:printerdepth 0
+the (List Integer) [1..100]
+:printerdepth
+the (List Integer) [1..100]

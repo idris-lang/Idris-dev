@@ -496,7 +496,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.BrowseNS ns) =
 runIdeModeCommand h id orig fn modes (IdeMode.TermNormalise bnd tm) =
   do ctxt <- getContext
      ist <- getIState
-     let tm' = force (normaliseAll ctxt [] tm)
+     let tm' = normaliseAll ctxt [] tm
          ptm = annotate (AnnTerm bnd tm')
                (pprintPTerm (ppOptionIst ist)
                             bnd
@@ -634,6 +634,8 @@ idemodeProcess fn (MakeWith False pos str) = process fn (MakeWith False pos str)
 idemodeProcess fn (DoProofSearch False r pos str xs) = process fn (DoProofSearch False r pos str xs)
 idemodeProcess fn (SetConsoleWidth w) = do process fn (SetConsoleWidth w)
                                            iPrintResult ""
+idemodeProcess fn (SetPrinterDepth d) = do process fn (SetPrinterDepth d)
+                                           iPrintResult ""
 idemodeProcess fn (Apropos pkg a) = do process fn (Apropos pkg a)
                                        iPrintResult ""
 idemodeProcess fn (WhoCalls n) = process fn (WhoCalls n)
@@ -767,21 +769,23 @@ process fn (ModImport f) = do fmod <- loadModule f
                                 Just pr -> isetPrompt pr
                                 Nothing -> iPrintError $ "Can't find import " ++ f
 process fn (Eval t)
-                 = withErrorReflection $ do logLvl 5 $ show t
-                                            getIState >>= flip warnDisamb t
-                                            (tm, ty) <- elabVal recinfo ERHS t
-                                            ctxt <- getContext
-                                            let tm' = force (normaliseAll ctxt [] tm)
-                                            let ty' = force (normaliseAll ctxt [] ty)
-                                            -- Add value to context, call it "it"
-                                            updateContext (addCtxtDef (sUN "it") (Function ty' tm'))
-                                            ist <- getIState
-                                            logLvl 3 $ "Raw: " ++ show (tm', ty')
-                                            logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
-                                            let tmDoc = pprintDelab ist tm'
-                                                tyDoc = pprintDelab ist ty'
-                                            iPrintTermWithType tmDoc tyDoc
-
+                 = withErrorReflection $
+                   do logLvl 5 $ show t
+                      getIState >>= flip warnDisamb t
+                      (tm, ty) <- elabVal recinfo ERHS t
+                      ctxt <- getContext
+                      let tm' = perhapsForce $ normaliseAll ctxt [] tm
+                      let ty' = perhapsForce $ normaliseAll ctxt [] ty
+                      -- Add value to context, call it "it"
+                      updateContext (addCtxtDef (sUN "it") (Function ty' tm'))
+                      ist <- getIState
+                      logLvl 3 $ "Raw: " ++ show (tm', ty')
+                      logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
+                      let tmDoc = pprintDelab ist tm'
+                          tyDoc = pprintDelab ist ty'
+                      iPrintTermWithType tmDoc tyDoc
+  where perhapsForce tm | termSmallerThan 100 tm = force tm
+                        | otherwise = tm
 
 process fn (NewDefn decls) = do
         logLvl 3 ("Defining names using these decls: " ++ show (showDecls verbosePPOption decls))
@@ -1239,7 +1243,7 @@ process fn ListErrorHandlers =
        []       -> "No registered error handlers"
        handlers -> "Registered error handlers: " ++ (concat . intersperse ", " . map show) handlers
 process fn (SetConsoleWidth w) = setWidth w
-
+process fn (SetPrinterDepth d) = setDepth d
 process fn (Apropos pkgs a) =
   do orig <- getIState
      when (not (null pkgs)) $

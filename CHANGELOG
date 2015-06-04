@@ -5,6 +5,10 @@ New in 0.9.19:
 * The Show class has been moved into Prelude.Show and augmented with the method
   showPrec, which allows correct parenthesization of showed terms. This comes
   with the type Prec of precedences and a few helper functions.
+* New REPL command :printerdepth that sets the pretty-printer to only descend to
+  some particular depth when printing. The default is set to a high number to
+  make it less dangerous to experiment with infinite structures. Infinite depth
+  can be set by calling :printerdepth with no argument.
 * Compiler output shows applications of >>= in do-notation
 * fromInteger i where i is an integer constant is now shown just as i in
   compiler output
