@@ -41,7 +41,7 @@ import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word16
-ibcVersion = 111
+ibcVersion = 112
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -948,6 +948,7 @@ instance Binary Totality where
                                  put x1
                 Unchecked -> do putWord8 2
                 Productive -> do putWord8 3
+                Generated -> do putWord8 4
         get
           = do i <- getWord8
                case i of
@@ -957,6 +958,7 @@ instance Binary Totality where
                            return (Partial x1)
                    2 -> return Unchecked
                    3 -> return Productive
+                   4 -> return Generated
                    _ -> error "Corrupted binary data for Totality"
 
 instance Binary MetaInformation where
@@ -1007,6 +1009,7 @@ instance Binary FnOpt where
                 CExport x1 -> do putWord8 14
                                  put x1
                 AutoHint -> putWord8 15
+                PEGenerated -> putWord8 16
         get
           = do i <- getWord8
                case i of
@@ -1028,6 +1031,7 @@ instance Binary FnOpt where
                    14 -> do x1 <- get
                             return $ CExport x1
                    15 -> return AutoHint
+                   16 -> return PEGenerated
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where

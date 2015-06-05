@@ -2,8 +2,7 @@ reg054.idr:18:5:When checking left hand side of inf:
 When checking an application of constructor Main.MkInfer:
         Attempting concrete match on polymorphic argument: 0
 reg054.idr:34:7:When checking left hand side of weird:
-When checking argument x to Main.weird:
-        No explicit types on left hand side: Char
+No explicit types on left hand side: Char
 reg054.idr:37:1-8:When checking left hand side of tctrick:
 When checking an application of Main.tctrick:
         Type mismatch between

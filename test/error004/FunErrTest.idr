@@ -17,7 +17,7 @@ cadr []              {cons1=Refl} {cons2=Refl} impossible
 
 extractList : TT -> Maybe TT
 extractList (App (App reflCon (App isCons lst)) _) = Just lst
-extractList _ = Nothing
+extractList t = Just t -- Nothing
 
 total
 has2elts : Err -> Maybe (List ErrorReportPart)
@@ -39,3 +39,4 @@ badCadr2 = cadr [1]
 
 goodCadr : Int
 goodCadr = cadr [1, 2]
+

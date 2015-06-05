@@ -740,6 +740,7 @@ data Totality = Total [Int] -- ^ well-founded arguments
               | Productive -- ^ productive
               | Partial PReason
               | Unchecked
+              | Generated
     deriving Eq
 {-!
 deriving instance NFData Totality
@@ -767,6 +768,7 @@ instance Show Totality where
     show (Partial (Mutual ns)) = "possibly not total due to recursive path " ++
                                  showSep " --> " (map show ns)
     show (Partial (UseUndef n)) = "possibly not total because it uses the undefined name " ++ show n
+    show Generated = "auto-generated"
 
 {-!
 deriving instance Binary Accessibility

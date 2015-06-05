@@ -189,9 +189,9 @@ elabClauses info' fc opts n_in cs =
 
            ist <- getIState
   --          let wf = wellFounded ist n sc
-           let tot = if pcover || AssertTotal `elem` opts
-                      then Unchecked -- finish checking later
-                      else Partial NotCovering -- already know it's not total
+           let tot | pcover || AssertTotal `elem` opts = Unchecked -- finish later
+                   | PEGenerated `elem` opts = Generated 
+                   | otherwise = Partial NotCovering -- already know it's not total
 
   --          case lookupCtxt (namespace info) n (idris_flags ist) of
   --             [fs] -> if TotalFn `elem` fs
@@ -241,7 +241,8 @@ elabClauses info' fc opts n_in cs =
                           setContext ctxt'
                           addIBC (IBCDef n)
                           setTotality n tot
-                          when (not reflect) $ do totcheck (fc, n)
+                          when (not reflect && PEGenerated `notElem` opts) $ 
+                                               do totcheck (fc, n)
                                                   defer_totcheck (fc, n)
                           when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                           i <- getIState
@@ -383,7 +384,7 @@ elabPE info fc caller r =
                                   PClause fc newnm lhs [] rhs []) 
                               (pe_clauses specdecl)    
                 trans <- elabTransform info fc False rhs lhs
-                elabClauses info fc opts newnm def
+                elabClauses info fc (PEGenerated:opts) newnm def
                 return [trans]
              else return [])
           -- if it doesn't work, just don't specialise. Could happen for lots
