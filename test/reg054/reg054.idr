@@ -33,6 +33,9 @@ data Weird : Type -> Type where
 weird : Weird x -> x
 weird {x = Char} y = '5'
 
+weird' : Weird x -> x
+weird' {x = Prelude.Nat.Nat} y = Z
+
 tctrick : a -> Int
 tctrick (Just x) = x
 tctrick Nothing = 42

@@ -373,7 +373,7 @@ elabPE info fc caller r =
                 logLvl 3 $ "PE definition " ++ show newnm ++ ":\n" ++
                              showSep "\n"
                                 (map (\ (lhs, rhs) ->
-                                  (show lhs ++ " = " ++
+                                  (showTmImpls lhs ++ " = " ++
                                    showTmImpls rhs)) (pe_clauses specdecl))
 
                 logLvl 2 $ show n ++ " transformation rule: " ++
@@ -381,7 +381,8 @@ elabPE info fc caller r =
 
                 elabType info defaultSyntax emptyDocstring [] fc opts newnm NoFC specTy
                 let def = map (\(lhs, rhs) ->
-                                  PClause fc newnm lhs [] rhs []) 
+                                 let lhs' = mapPT hiddenToPH $ stripUnmatchable ist lhs in
+                                  PClause fc newnm lhs' [] rhs []) 
                               (pe_clauses specdecl)    
                 trans <- elabTransform info fc False rhs lhs
                 elabClauses info fc (PEGenerated:opts) newnm def
@@ -392,6 +393,9 @@ elabPE info fc caller r =
           -- lifted out).
           (\e -> do logLvl 3 $ "Couldn't specialise: " ++ (pshow ist e)
                     return [])
+
+    hiddenToPH (PHidden _) = Placeholder
+    hiddenToPH x = x
 
     specName simpl (ImplicitS, tm)
         | (P Ref n _, _) <- unApply tm = Just (n, Just (if simpl then 1 else 0))
