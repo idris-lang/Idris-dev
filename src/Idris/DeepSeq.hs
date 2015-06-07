@@ -120,6 +120,7 @@ instance NFData FnOpt where
         rnf (Specialise x1) = rnf x1 `seq` ()
         rnf Constructor = ()
         rnf AutoHint = ()
+        rnf PEGenerated = ()
 
 instance NFData DataOpt where
         rnf Codata = ()
