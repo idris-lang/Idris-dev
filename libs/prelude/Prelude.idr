@@ -457,3 +457,21 @@ readFile fn = do h <- openFile fn Read
           if not x then do l <- fread h
                            readFile' h (contents ++ l)
                    else return contents
+
+------- Some error rewriting
+
+%language ErrorReflection
+  
+cast_part : TT -> ErrorReportPart
+cast_part (P Bound n t) = TextPart "unknown type"
+cast_part x = TermPart x
+  
+%error_handler
+cast_error : Err -> Maybe (List ErrorReportPart)
+cast_error (CantResolve `(Cast ~x ~y))
+     = Just [TextPart "Can't cast from",
+             cast_part x,
+             TextPart "to",
+             cast_part y]
+cast_error _ = Nothing
+
