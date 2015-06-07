@@ -198,6 +198,7 @@ instance NFData Totality where
         rnf Productive = ()
         rnf (Partial x1) = rnf x1 `seq` ()
         rnf Unchecked = ()
+        rnf Generated = ()
         
 instance NFData PReason where
         rnf (Other x1) = rnf x1 `seq` ()
