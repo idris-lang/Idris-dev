@@ -106,7 +106,7 @@ Positive (NegS n) = Void
 zZtoNat : (x:ZZ) -> {auto p : Positive x} -> Nat
 zZtoNat (Pos n) = n 
 
-private
+partial
 zZtoNat' : ZZ -> Nat
 zZtoNat' x with (x) | (Pos n) = n
 
