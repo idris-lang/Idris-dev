@@ -1815,9 +1815,13 @@ stripLinear i tm = evalState (sl tm) [] where
 stripUnmatchable :: IState -> PTerm -> PTerm
 stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su :: PTerm -> PTerm
-    su (PRef fc f)
+    su tm@(PRef fc f)
        | (Bind n (Pi _ t _) sc :_) <- lookupTy f (tt_ctxt i)
           = Placeholder
+       | (TType _ : _) <- lookupTy f (tt_ctxt i)
+          = PHidden tm
+       | (UType _ : _) <- lookupTy f (tt_ctxt i)
+          = PHidden tm
     su (PApp fc f@(PRef _ fn) args)
        -- here we use canBeDConName because the impossible pattern
        -- check will not necessarily fully resolve constructor names,
@@ -1835,6 +1839,7 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su (PDPair fc p l t r) = PDPair fc p (su l) (su t) (su r)
     su t@(PLam fc _ _ _ _) = PHidden t
     su t@(PPi _ _ _ _ _) = PHidden t
+    su t@(PConstant _ c) | isTypeConst c = PHidden t
     su t = t
 
     ctxt = tt_ctxt i

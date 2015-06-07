@@ -197,6 +197,7 @@ mkNewPats ist d ns newname sname lhs rhs | all dynVar (map fst d)
         dynArgs (_ : ns) (V _     : as) = dynArgs ns as
         dynArgs (_ : ns) (P _ _ _ : as) = dynArgs ns as
         dynArgs _ _ = False -- and now we'll get stuck 
+
 mkNewPats ist d ns newname sname lhs rhs =
     PEDecl lhs rhs (map mkClause d) False
   where 
@@ -235,7 +236,7 @@ mkNewPats ist d ns newname sname lhs rhs =
     mkSubst :: (Term, Term) -> Maybe (Name, Term)
     mkSubst (P _ n _, t) = Just (n, t)
     mkSubst _ = Nothing
-
+        
 -- | Creates a new declaration for a specialised function application.
 -- Simple version at the moment: just create a version which is a direct
 -- application of the function to be specialised.

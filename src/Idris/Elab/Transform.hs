@@ -53,9 +53,10 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
     = do ctxt <- getContext
          i <- getIState
          let lhs = addImplPat i lhs_in
+         logLvl 5 ("Transform LHS input: " ++ showTmImpls lhs)
          (ElabResult lhs' dlhs [] ctxt' newDecls highlights, _) <-
               tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "transLHS") infP initEState
-                       (erun fc (buildTC i info ELHS [] (sUN "transform")
+                       (erun fc (buildTC i info ETransLHS [] (sUN "transform")
                                    (infTerm lhs)))
          setContext ctxt'
          processTacticDecls info newDecls
@@ -67,8 +68,11 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
          (clhs_tm_in, clhs_ty) <- recheckC fc id [] lhs_tm
          let clhs_tm = renamepats pnames clhs_tm_in
          logLvl 3 ("Transform LHS " ++ show clhs_tm)
-
+         logLvl 3 ("Transform type " ++ show clhs_ty)
+         
          let rhs = addImplBound i (map fst newargs) rhs_in
+         logLvl 5 ("Transform RHS input: " ++ showTmImpls rhs)
+
          ((rhs', defer, ctxt', newDecls), _) <-
               tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "transRHS") clhs_ty initEState
                        (do pbinds i lhs_tm
