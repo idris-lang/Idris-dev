@@ -42,6 +42,24 @@ instance Eq (HVect []) where
 instance (Eq t, Eq (HVect ts)) => Eq (HVect (t::ts)) where
   (x::xs) == (y::ys) = x == y && xs == ys
 
+total
+hvectInjective1 : {xs, ys: HVect ts} -> {x, y:a} -> x :: xs = y :: ys -> x = y
+hvectInjective1 Refl = Refl
+
+total
+hvectInjective2 : {xs, ys: HVect ts} -> {x, y:a} -> x :: xs = y :: ys -> xs = ys
+hvectInjective2 Refl = Refl
+
+instance DecEq (HVect []) where
+  decEq [] [] = Yes Refl
+
+instance (DecEq t, DecEq (HVect ts)) => DecEq (HVect (t::ts)) where
+  decEq (x::xs) (y::ys) with (decEq x y)
+    decEq (z::xs) (z::ys) | Yes Refl with (decEq xs ys)
+      decEq (z::zs) (z::zs) | Yes Refl | Yes Refl = Yes Refl
+      decEq (z::xs) (z::ys) | Yes Refl | No ctr = No (ctr . hvectInjective2)
+    decEq (x::xs) (y::ys) | No ctr = No (ctr . hvectInjective1)
+
 class Shows (k : Nat) (ts : Vect k Type) where
   shows : HVect ts -> Vect k String
 
