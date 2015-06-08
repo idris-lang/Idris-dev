@@ -573,8 +573,10 @@ splitName s = case reverse $ splitOn "." s of
 idemodeProcess :: FilePath -> Command -> Idris ()
 idemodeProcess fn Warranty = process fn Warranty
 idemodeProcess fn Help = process fn Help
-idemodeProcess fn (ChangeDirectory f) = do process fn (ChangeDirectory f)
-                                           iPrintResult "changed directory to"
+idemodeProcess fn (ChangeDirectory f) =
+  do process fn (ChangeDirectory f)
+     dir <- runIO $ getCurrentDirectory
+     iPrintResult $ "changed directory to " ++ dir
 idemodeProcess fn (ModImport f) = process fn (ModImport f)
 idemodeProcess fn (Eval t) = process fn (Eval t)
 idemodeProcess fn (NewDefn decls) = do process fn (NewDefn decls)
