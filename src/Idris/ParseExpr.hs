@@ -510,7 +510,7 @@ runElab syn = do try (lchar '%' *> reserved "runElab")
                  fc <- getFC
                  tm <- simpleExpr syn
                  i <- get
-                 return $ PRunElab fc tm
+                 return $ PRunElab fc tm (syn_namespace syn)
               <?> "new-style tactics expression"
 
 {- | Parses a disambiguation expression 

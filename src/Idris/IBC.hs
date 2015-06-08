@@ -1625,9 +1625,10 @@ instance Binary PTerm where
                                     put x2
                 PUniverse x1 -> do putWord8 38
                                    put x1
-                PRunElab x1 x2 -> do putWord8 39
-                                     put x1
-                                     put x2
+                PRunElab x1 x2 x3 -> do putWord8 39
+                                        put x1
+                                        put x2
+                                        put x3
                 PAs x1 x2 x3 -> do putWord8 40
                                    put x1
                                    put x2
@@ -1763,7 +1764,8 @@ instance Binary PTerm where
                             return (PUniverse x1)
                    39 -> do x1 <- get
                             x2 <- get
-                            return (PRunElab x1 x2)
+                            x3 <- get
+                            return (PRunElab x1 x2 x3)
                    40 -> do x1 <- get
                             x2 <- get
                             x3 <- get
