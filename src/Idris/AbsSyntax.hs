@@ -16,6 +16,7 @@ import Util.DynamicLinker
 
 import System.Console.Haskeline
 import System.IO
+import System.Directory (canonicalizePath, doesFileExist)
 
 import Control.Applicative
 import Control.Monad (liftM3)
@@ -516,14 +517,26 @@ getName = do i <- getIState;
 addInternalApp :: FilePath -> Int -> PTerm -> Idris ()
 addInternalApp fp l t
     = do i <- getIState
-         putIState (i { idris_lineapps = ((fp, l), t) : idris_lineapps i })
+         -- We canonicalise the path to make "./Test/Module.idr" equal
+         -- to "Test/Module.idr"
+         exists <- runIO $ doesFileExist fp
+         when exists $
+           do fp' <- runIO $ canonicalizePath fp
+              putIState (i { idris_lineapps = ((fp', l), t) : idris_lineapps i })
 
 getInternalApp :: FilePath -> Int -> Idris PTerm
 getInternalApp fp l = do i <- getIState
-                         case lookup (fp, l) (idris_lineapps i) of
-                              Just n' -> return n'
-                              Nothing -> return Placeholder
-                              -- TODO: What if it's not there?
+                         -- We canonicalise the path to make
+                         -- "./Test/Module.idr" equal to
+                         -- "Test/Module.idr"
+                         exists <- runIO $ doesFileExist fp
+                         if exists
+                           then do fp' <- runIO $ canonicalizePath fp
+                                   case lookup (fp', l) (idris_lineapps i) of
+                                     Just n' -> return n'
+                                     Nothing -> return Placeholder
+                                     -- TODO: What if it's not there?
+                           else return Placeholder
 
 -- Pattern definitions are only used for coverage checking, so erase them
 -- when we're done

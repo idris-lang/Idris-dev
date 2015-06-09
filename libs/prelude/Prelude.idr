@@ -462,6 +462,7 @@ readFile fn = do h <- openFile fn Read
 
 %language ErrorReflection
   
+private
 cast_part : TT -> ErrorReportPart
 cast_part (P Bound n t) = TextPart "unknown type"
 cast_part x = TermPart x
@@ -474,4 +475,10 @@ cast_error (CantResolve `(Cast ~x ~y))
              TextPart "to",
              cast_part y]
 cast_error _ = Nothing
+
+%error_handler
+num_error : Err -> Maybe (List ErrorReportPart)
+num_error (CantResolve `(Num ~x))
+     = Just [TermPart x, TextPart "is not a numeric type"]
+num_error _ = Nothing
 
