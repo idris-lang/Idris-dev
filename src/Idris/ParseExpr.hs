@@ -1375,10 +1375,10 @@ tactics =
   , noArgs ["instance"] TCInstance
   , noArgs ["solve"] Solve
   , noArgs ["attack"] Attack
-  , noArgs ["state"] ProofState
-  , noArgs ["term"] ProofTerm
-  , noArgs ["undo"] Undo
-  , noArgs ["qed"] Qed
+  , noArgs ["state", ":state"] ProofState
+  , noArgs ["term", ":term"] ProofTerm
+  , noArgs ["undo", ":undo"] Undo
+  , noArgs ["qed", ":qed"] Qed
   , noArgs ["abandon", ":q"] Abandon
   , noArgs ["skip"] Skip
   , noArgs ["sourceLocation"] SourceFC

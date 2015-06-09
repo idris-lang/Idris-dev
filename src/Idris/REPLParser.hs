@@ -63,7 +63,9 @@ parserCommandsForHelp =
   , noArgCmd ["e", "edit"] Edit "Edit current file using $EDITOR or $VISUAL"
   , noArgCmd ["m", "metavars"] Metavars "Show remaining proof obligations (metavariables)"
   , (["p", "prove"], MetaVarArg, "Prove a metavariable"
-    , nameArg Prove)
+    , nameArg (Prove False))
+  , (["elab"], MetaVarArg, "Build a metavariable using the elaboration shell"
+    , nameArg (Prove True))
   , (["a", "addproof"], NameArg, "Add proof to source file", cmd_addproof)
   , (["rmproof"], NameArg, "Remove proof from proof stack"
     , nameArg RmProof)

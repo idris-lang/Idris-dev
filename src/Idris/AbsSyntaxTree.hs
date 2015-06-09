@@ -209,7 +209,7 @@ data IState = IState {
     idris_cgflags :: [(Codegen, String)],
     idris_hdrs :: [(Codegen, String)],
     idris_imported :: [(FilePath, Bool)], -- ^ Imported ibc file names, whether public
-    proof_list :: [(Name, [String])],
+    proof_list :: [(Name, (Bool, [String]))],
     errSpan :: Maybe FC,
     parserWarnings :: [(FC, Err)],
     lastParse :: Maybe Name,
@@ -377,7 +377,7 @@ data Command = Quit
              | Execute PTerm
              | ExecVal PTerm
              | Metavars
-             | Prove Name
+             | Prove Bool Name -- ^ If false, use prover, if true, use elab shell
              | AddProof (Maybe Name)
              | RmProof Name
              | ShowProof Name
@@ -485,6 +485,11 @@ data Opt = Filename String
          | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
          | UseConsoleWidth ConsoleWidth
     deriving (Show, Eq)
+
+data ElabShellCmd = EQED | EAbandon | EUndo | EProofState | EProofTerm
+                  | EEval PTerm | ECheck PTerm | ESearch PTerm
+                  | EDocStr (Either Name Const)
+  deriving (Show, Eq)
 
 -- Parsed declarations
 

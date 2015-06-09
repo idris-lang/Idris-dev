@@ -1697,10 +1697,10 @@ case_ ind autoSolve ist fn tm = do
   when autoSolve solveAll
 
 
-runTactical :: IState -> FC -> Env -> Term -> [String] -> ElabD ()
+runTactical :: IState -> FC -> Env -> Term -> [String] -> ElabD Term
 runTactical ist fc env tm ns = do tm' <- eval tm
                                   runTacTm tm'
-                                  return ()
+
   where
     eval tm = do ctxt <- get_context
                  return $ normaliseAll ctxt env (finalise tm)
