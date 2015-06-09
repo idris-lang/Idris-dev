@@ -1675,6 +1675,10 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PQuasiquote t (Just g)) = text "`(" <> prettySe (decD d) p [] t <+> colon <+> prettySe (decD d) p [] g <> text ")"
     prettySe d p bnd (PUnquote t) = text "~" <> prettySe (decD d) p bnd t
     prettySe d p bnd (PQuoteName n) = text "`{" <> prettyName True (ppopt_impl ppo) bnd n <> text "}"
+    prettySe d p bnd (PRunElab _ tm _) =
+      bracket p funcAppPrec . group . align . hang 2 $
+      text "%runElab" <$>
+      prettySe (decD d) funcAppPrec bnd tm
 
     prettySe d p bnd _ = text "missing pretty-printer for term"
 
