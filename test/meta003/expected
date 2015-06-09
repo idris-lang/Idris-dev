@@ -1,0 +1,6 @@
+BadDef.idr:12:9:
+When checking right hand side of runBad1:
+Type mismatch between
+        ()
+and
+        String

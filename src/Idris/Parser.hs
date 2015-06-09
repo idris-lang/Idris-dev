@@ -62,6 +62,7 @@ import Data.List
 import Data.Monoid
 import Data.Char
 import Data.Ord
+import Data.Foldable (asum)
 import Data.Generics.Uniplate.Data (descendM)
 import qualified Data.Map as M
 import qualified Data.HashSet as HS
@@ -1237,6 +1238,30 @@ parseConst st = runparser (fmap fst constant) st "(input)"
 {- | Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic
 parseTactic st = runparser (fullTactic defaultSyntax) st "(input)"
+
+{- | Parses a do-step from input (used in the elab shell) -}
+parseElabShellStep :: IState -> String -> Result (Either ElabShellCmd PDo)
+parseElabShellStep ist = runparser (fmap Right (do_ defaultSyntax) <|> fmap Left elabShellCmd) ist "(input)"
+  where elabShellCmd = char ':' >>
+                       (reserved "qed"     >> pure EQED       ) <|>
+                       (reserved "abandon" >> pure EAbandon   ) <|>
+                       (reserved "undo"    >> pure EUndo      ) <|>
+                       (reserved "state"   >> pure EProofState) <|>
+                       (reserved "term"    >> pure EProofTerm ) <|>
+                       (expressionTactic ["e", "eval"] EEval ) <|>
+                       (expressionTactic ["t", "type"] ECheck) <|>
+                       (expressionTactic ["search"] ESearch   ) <|>
+                       (do reserved "doc"
+                           doc <- (Right . fst <$> constant) <|> (Left . fst <$> fnName)
+                           eof
+                           return (EDocStr doc))
+                       <?> "elab command"
+        expressionTactic cmds tactic =
+           do asum (map reserved cmds)
+              t <- spaced (expr defaultSyntax)
+              i <- get
+              return $ tactic (desugar defaultSyntax i t)
+        spaced parser = indentPropHolds gtProp *> parser
 
 -- | Parse module header and imports
 parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe Delta)

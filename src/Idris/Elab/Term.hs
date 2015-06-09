@@ -16,7 +16,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate
 import Idris.Core.Unify
 import Idris.Core.ProofTerm (getProofTerm)
-import Idris.Core.Typecheck (check, recheck, isType)
+import Idris.Core.Typecheck (check, recheck, converts, isType)
 import Idris.Coverage (buildSCG, checkDeclTotality, genClauses, recoverableCoverage, validCoverageCase)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
@@ -1136,7 +1136,7 @@ elab ist info emode opts fn tm
              delayElab 10 $ do focus h
                                dotterm
                                elab' ina fc t
-    elab' ina fc (PRunElab fc' tm) =
+    elab' ina fc (PRunElab fc' tm ns) =
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
          n' <- getNameFrom (sMN 0 "tacticExpr")
@@ -1149,7 +1149,7 @@ elab ist info emode opts fn tm
          focus n
          elab' ina (Just fc') tm
          env <- get_env
-         runTactical ist (maybe fc' id fc) env (P Bound n' Erased)
+         runTactical ist (maybe fc' id fc) env (P Bound n' Erased) ns
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
@@ -1697,10 +1697,10 @@ case_ ind autoSolve ist fn tm = do
   when autoSolve solveAll
 
 
-runTactical :: IState -> FC -> Env -> Term -> ElabD ()
-runTactical ist fc env tm = do tm' <- eval tm
-                               runTacTm tm'
-                               return ()
+runTactical :: IState -> FC -> Env -> Term -> [String] -> ElabD Term
+runTactical ist fc env tm ns = do tm' <- eval tm
+                                  runTacTm tm'
+
   where
     eval tm = do ctxt <- get_context
                  return $ normaliseAll ctxt env (finalise tm)
@@ -1721,8 +1721,9 @@ runTactical ist fc env tm = do tm' <- eval tm
          let info = CaseInfo True True False -- TODO document and figure out
          clauses' <- forM clauses (\case
                                       RMkFunClause lhs rhs ->
-                                        do lhs' <- fmap fst . lift $ check ctxt [] lhs
-                                           rhs' <- fmap fst . lift $ check ctxt [] rhs
+                                        do (lhs', lty) <- lift $ check ctxt [] lhs
+                                           (rhs', rty) <- lift $ check ctxt [] rhs
+                                           lift $ converts ctxt [] lty rty
                                            return $ Right (lhs', rhs')
                                       RMkImpossibleClause lhs ->
                                         do lhs' <- fmap fst . lift $ check ctxt [] lhs
@@ -1812,6 +1813,9 @@ runTactical ist fc env tm = do tm' <- eval tm
       | n == tacN "prim__SourceLocation", [] <- args
       = fmap fst . checkClosed $
           reflectFC fc
+      | n == tacN "prim__Namespace", [] <- args
+      = fmap fst . checkClosed $
+          rawList (RConstant StrType) (map (RConstant . Str) ns)
       | n == tacN "prim__Env", [] <- args
       = do env <- get_env
            fmap fst . checkClosed $ reflectEnv env
@@ -1960,7 +1964,7 @@ runTactical ist fc env tm = do tm' <- eval tm
            datatypes <- get_datatypes
            env <- get_env
            (_, ES (p, aux') _ _) <-
-              lift $ runElab aux (runTactical ist fc [] script)
+              lift $ runElab aux (runTactical ist fc [] script ns)
                              (newProof recH ctxt datatypes goalTT)
            let tm_out = getProofTerm (pterm p)
            updateAux $ const aux'

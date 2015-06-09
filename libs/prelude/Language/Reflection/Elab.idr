@@ -88,6 +88,7 @@ data Elab : Type -> Type where
   prim__Check : Raw -> Elab (TT, TT)
 
   prim__SourceLocation : Elab SourceLocation
+  prim__Namespace : Elab (List String)
 
   prim__Forget : TT -> Elab Raw
 
@@ -279,6 +280,14 @@ namespace Tactics
   sourceLocation = do loc <- getSourceLocation
                       fill (quote loc)
                       solve
+
+  ||| Get the current namespace at the point of tactic execution. This
+  ||| allows scripts to define top-level names conveniently.
+  |||
+  ||| The namespace is represented as a reverse-order list of strings,
+  ||| just as in the representation of names.
+  currentNamespace : Elab (List String)
+  currentNamespace = prim__Namespace
 
   ||| Attempt to rewrite the goal using an equality.
   |||

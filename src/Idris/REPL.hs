@@ -296,9 +296,9 @@ runIdeModeCommand h id orig fn mods (IdeMode.Interpret cmd) =
      i <- getIState
      case parseCmd i "(input)" cmd of
        Failure err -> iPrintError $ show (fixColour False err)
-       Success (Right (Prove n')) ->
+       Success (Right (Prove mode n')) ->
          idrisCatch
-           (do process fn (Prove n')
+           (do process fn (Prove mode n')
                isetPrompt (mkPrompt mods)
                case idris_outputmode i of
                  IdeMode n h -> -- signal completion of proof to ide
@@ -1094,16 +1094,20 @@ process fn' (AddProof prf)
        n' <- case prf of
                 Nothing -> case proofs of
                              [] -> ifail "No proof to add"
-                             ((x, p) : _) -> return x
+                             ((x, _) : _) -> return x
                 Just nm -> return nm
        n <- resolveProof n'
        case lookup n proofs of
             Nothing -> iputStrLn "No proof to add"
-            Just p  -> do let prog' = insertScript (showProof (lit fn) n p) ls
-                          runIO $ writeSource fn (unlines prog')
-                          removeProof n
-                          iputStrLn $ "Added proof " ++ show n
-                          where ls = (lines prog)
+            Just (mode, prf) ->
+              do let script = if mode
+                                 then showRunElab (lit fn) n prf
+                                 else showProof (lit fn) n prf
+                 let prog' = insertScript script ls
+                 runIO $ writeSource fn (unlines prog')
+                 removeProof n
+                 iputStrLn $ "Added proof " ++ show n
+             where ls = (lines prog)
 
 process fn (ShowProof n')
   = do i <- getIState
@@ -1111,9 +1115,11 @@ process fn (ShowProof n')
        let proofs = proof_list i
        case lookup n proofs of
             Nothing -> iPrintError "No proof to show"
-            Just p  -> iPrintResult $ showProof False n p
+            Just (m, p)  -> iPrintResult $ if m
+                                             then showRunElab False n p
+                                             else showProof False n p
 
-process fn (Prove n')
+process fn (Prove mode n')
      = do ctxt <- getContext
           ist <- getIState
           let ns = lookupNames n' ctxt
@@ -1123,7 +1129,7 @@ process fn (Prove n')
               [(n, (_,_,False))] -> return n
               [(_, (_,_,True))]  -> ierror (Msg $ "Declarations not solvable using prover")
               ns -> ierror (CantResolveAlts (map fst ns))
-          prover (lit fn) n
+          prover mode (lit fn) n
           -- recheck totality
           i <- getIState
           totcheck (fileFC "(input)", n)

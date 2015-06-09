@@ -50,7 +50,7 @@ import Data.List.Split (splitOn)
 
 import Util.Pretty(pretty, text)
 
--- Elaborate a value, returning any new bindings created (this will only
+-- | Elaborate a value, returning any new bindings created (this will only
 -- happen if elaborating as a pattern clause)
 elabValBind :: ElabInfo -> ElabMode -> Bool -> PTerm -> Idris (Term, Type, [(Name, Type)])
 elabValBind info aspat norm tm_in
@@ -116,7 +116,7 @@ elabDocTerms info str = do typechecked <- Traversable.mapM decorate str
                                             else Checked tm
           | otherwise                   = Unchecked
 
--- Try running the term directly (as IO ()), then printing it as an Integer
+-- | Try running the term directly (as IO ()), then printing it as an Integer
 -- (as a default numeric tye), then printing it as any Showable thing
 elabExec :: FC -> PTerm -> PTerm
 elabExec fc tm = runtm (PAlternative FirstSuccess

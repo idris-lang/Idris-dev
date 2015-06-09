@@ -70,6 +70,14 @@ We can generate identity functions at any concrete type using the same script:
     idString : String -> String
     idString = %runElab mkId
 
+Interactively Building Elab Scripts
+===================================
+
+To build an ``Elab`` script interactively, use the ``:elab`` command at the REPL.
+It takes the name of a metavariable as an argument.
+The interface is largely the same as in Idris's interactive prover, except all meta-commands start with colon.
+For example, use ``:qed`` instead of ``qed``, ``:abandon`` instead of ``abandon``, and ``:undo`` instead of ``undo``.
+
 
 Failure
 =======

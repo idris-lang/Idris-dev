@@ -12,6 +12,8 @@ New in 0.9.19:
 * Compiler output shows applications of >>= in do-notation
 * fromInteger i where i is an integer constant is now shown just as i in
   compiler output
+* An interactive shell, similar to the prover, for running reflected elaborator
+  actions. Access it with :elab from the REPL.
 
 New in 0.9.18:
 --------------
