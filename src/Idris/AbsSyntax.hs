@@ -1336,7 +1336,7 @@ addUsingImpls syn n fc t
          bindFree (n:ns) tm
              | elem n (map iname uimpls) = bindFree ns tm
              | otherwise
-                    = PPi (Imp [] Dynamic False Nothing) n NoFC Placeholder (bindFree ns tm)
+                    = PPi (Imp [InaccessibleArg] Dynamic False Nothing) n NoFC Placeholder (bindFree ns tm)
 
          getArgnames (PPi _ n _ c sc)
              = n : getArgnames sc
@@ -1376,8 +1376,9 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
 -- argument position.
 
 -- This has become a right mess already. Better redo it some time...
--- TODO: This is obsoleted by the new way of elaborating types, but there's still
--- a couple of places which use it. Clean them up!
+-- TODO: This is obsoleted by the new way of elaborating types, (which
+-- calls addUsingImpls) but there's still a couple of places which use
+-- it. Clean them up!
 --
 -- Issue 1739 in the issue tracker
 --     https://github.com/idris-lang/Idris-dev/issues/1739
@@ -1512,9 +1513,10 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     pibind using []     sc = sc
     pibind using (n:ns) sc
       = case lookup n using of
-            Just ty -> PPi (Imp [] Dynamic False Nothing) n NoFC ty (pibind using ns sc)
-            Nothing -> PPi (Imp [] Dynamic False Nothing) n NoFC Placeholder
-                                   (pibind using ns sc)
+            Just ty -> PPi (Imp [] Dynamic False Nothing)
+                           n NoFC ty (pibind using ns sc)
+            Nothing -> PPi (Imp [InaccessibleArg] Dynamic False Nothing)
+                           n NoFC Placeholder (pibind using ns sc)
 
 -- Add implicit arguments in function calls
 addImplPat :: IState -> PTerm -> PTerm
@@ -2091,9 +2093,8 @@ shadow n n' t = sm t where
     sm (PNoImplicits x) = PNoImplicits (sm x)
     sm x = x
 
--- Rename any binders which are repeated (so that we don't have to mess
+-- | Rename any binders which are repeated (so that we don't have to mess
 -- about with shadowing anywhere else).
-
 mkUniqueNames :: [Name] -> PTerm -> PTerm
 mkUniqueNames env tm = evalState (mkUniq tm) (S.fromList env) where
   inScope :: S.Set Name
