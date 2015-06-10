@@ -1145,7 +1145,7 @@ elab ist info emode opts fn tm
          focus n
          elab' ina (Just fc') tm
          env <- get_env
-         runTactical ist (maybe fc' id fc) env (P Bound n' Erased) ns
+         runElabAction ist (maybe fc' id fc) env (P Bound n' Erased) ns
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
@@ -1698,9 +1698,9 @@ metavarName _                 n@(NS _ _) = n
 metavarName (Just (ns@(_:_))) n          = sNS n ns
 metavarName _                 n          = n
 
-runTactical :: IState -> FC -> Env -> Term -> [String] -> ElabD Term
-runTactical ist fc env tm ns = do tm' <- eval tm
-                                  runTacTm tm'
+runElabAction :: IState -> FC -> Env -> Term -> [String] -> ElabD Term
+runElabAction ist fc env tm ns = do tm' <- eval tm
+                                    runTacTm tm'
 
   where
     eval tm = do ctxt <- get_context
@@ -1965,8 +1965,8 @@ runTactical ist fc env tm ns = do tm' <- eval tm
            datatypes <- get_datatypes
            env <- get_env
            (_, ES (p, aux') _ _) <-
-              lift $ runElab aux (runTactical ist fc [] script ns)
-                             (newProof recH ctxt datatypes goalTT)
+              lift $ runElab aux (runElabAction ist fc [] script ns)
+                                 (newProof recH ctxt datatypes goalTT)
            let tm_out = getProofTerm (pterm p)
            updateAux $ const aux'
            env' <- get_env
