@@ -120,7 +120,7 @@ data Elab : Type -> Type where
   prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
 
   prim__Debug : {a : Type} -> List ErrorReportPart -> Elab a
-
+  prim__Metavar : TTName -> Elab ()
 
 -------------
 -- Public API
@@ -349,6 +349,12 @@ namespace Tactics
   ||| @ msg the message to display
   debugMessage : (msg : List ErrorReportPart) -> Elab a
   debugMessage msg = prim__Debug msg
+
+  ||| Create a new top-level metavariable to solve the current hole.
+  |||
+  ||| @ name the name for the top-level variable
+  metavar : (name : TTName) -> Elab ()
+  metavar name = prim__Metavar name
 
   ||| Recursively invoke the reflected elaborator with some goal.
   |||

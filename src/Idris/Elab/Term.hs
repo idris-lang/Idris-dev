@@ -881,15 +881,11 @@ elab ist info emode opts fn tm
              -- names which have been used elsewhere in the term, since we
              -- won't be able to use them in the resulting application.
              let unique_used = getUniqueUsed (tt_ctxt ist) ptm
-             let n' = mkN n
+             let n' = metavarName (namespace info) n
              attack
              defer unique_used n'
              solve
              highlightSource nfc (AnnName n' (Just MetavarOutput) Nothing Nothing)
-        where mkN n@(NS _ _) = n
-              mkN n = case namespace info of
-                        Just xs@(_:_) -> sNS n xs
-                        _ -> n
     elab' ina fc (PProof ts) = do compute; mapM_ (runTac True ist (elabFC info) fn) ts
     elab' ina fc (PTactics ts)
         | not pattern = do mapM_ (runTac False ist fc fn) ts
@@ -1696,6 +1692,11 @@ case_ ind autoSolve ist fn tm = do
          else casetac (forget val)
   when autoSolve solveAll
 
+-- | Compute the appropriate name for a top-level metavariable
+metavarName :: Maybe [String] -> Name -> Name
+metavarName _                 n@(NS _ _) = n
+metavarName (Just (ns@(_:_))) n          = sNS n ns
+metavarName _                 n          = n
 
 runTactical :: IState -> FC -> Env -> Term -> [String] -> ElabD Term
 runTactical ist fc env tm ns = do tm' <- eval tm
@@ -1974,6 +1975,17 @@ runTactical ist fc env tm ns = do tm' <- eval tm
            fmap fst . checkClosed $
              rawPair (Var $ reflm "TT", Var $ reflm "TT")
                      (tm', ty')
+      | n == tacN "prim__Metavar", [n] <- args
+      = do n' <- reifyTTName n
+           ctxt <- get_context
+           ptm <- get_term
+           -- See documentation above in the elab case for PMetavar
+           let unique_used = getUniqueUsed ctxt ptm
+           let mvn = metavarName (Just ns) n'
+           attack
+           defer unique_used mvn
+           solve
+           returnUnit
       | n == tacN "prim__Debug", [ty, msg] <- args
       = do msg' <- eval msg
            parts <- reifyReportParts msg
