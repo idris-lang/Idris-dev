@@ -6,37 +6,44 @@ quoters and unquoters along with some supporting datatypes.
 module Idris.Reflection where
 
 import Control.Applicative ((<$>), (<*>), pure)
-import Control.Monad (liftM, liftM2)
+import Control.Monad (liftM, liftM2, liftM3)
 import Data.Maybe (catMaybes)
 import Data.List ((\\))
 import qualified Data.Text as T
 
 import Idris.Core.Elaborate (claim, fill, focus, getNameFrom, initElaborator,
                              movelast, runElab, solve)
-import Idris.Core.Evaluate (Context, Def(TyDecl), initContext, lookupDefExact, lookupTyExact)
+import Idris.Core.Evaluate (Def(TyDecl), initContext, lookupDefExact, lookupTyExact)
 import Idris.Core.TT
 
-import Idris.AbsSyntaxTree (ElabD, IState, PArg'(..), PArg, PTactic, PTactic'(..),
-                            PTerm(..), initEState, pairCon, pairTy)
+import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,idris_datatypes),
+                            PArg'(..), PArg, PTactic, PTactic'(..), PTerm(..),
+                            initEState, pairCon, pairTy)
 import Idris.Delaborate (delab)
 
-data RArg = RExplicit   { argName :: Name, argTy :: Raw }
-          | RImplicit   { argName :: Name, argTy :: Raw }
-          | RConstraint { argName :: Name, argTy :: Raw }
+data RErasure = RErased | RNotErased deriving Show
+
+data RArg = RExplicit   { argName :: Name, argErased :: RErasure, argTy :: Raw }
+          | RImplicit   { argName :: Name, argErased :: RErasure, argTy :: Raw }
+          | RConstraint { argName :: Name, argErased :: RErasure, argTy :: Raw }
   deriving Show
 
 data RTyDecl = RDeclare Name [RArg] Raw deriving Show
 
-data RTyConArg = RParameter { tcArgName :: Name, tcArgTy :: Raw }
-               | RIndex     { tcArgName :: Name, tcArgTy :: Raw }
+data RTyConArg = RParameter { tcArgName :: Name, tcArgErased :: RErasure, tcArgTy :: Raw }
+               | RIndex     { tcArgName :: Name, tcArgErased :: RErasure, tcArgTy :: Raw }
   deriving Show
 
-data RDatatype = RDatatype Name [RTyConArg] Raw [(Name, Raw)] deriving Show
+data RDatatype = RDatatype Name [RTyConArg] Raw [(Name, [RArg], Raw)] deriving Show
+
+rArgOpts :: RErasure -> [ArgOpt]
+rArgOpts RErased = [InaccessibleArg]
+rArgOpts _ = []
 
 rArgToPArg :: RArg -> PArg
-rArgToPArg (RExplicit n _) = PExp 0 [] n Placeholder
-rArgToPArg (RImplicit n _) = PImp 0 False [] n Placeholder
-rArgToPArg (RConstraint n _) = PConstraint 0 [] n Placeholder
+rArgToPArg (RExplicit n e _) = PExp 0 (rArgOpts e) n Placeholder
+rArgToPArg (RImplicit n e _) = PImp 0 False (rArgOpts e) n Placeholder
+rArgToPArg (RConstraint n e _) = PConstraint 0 (rArgOpts e) n Placeholder
 
 data RFunClause = RMkFunClause Raw Raw
                 | RMkImpossibleClause Raw
@@ -780,6 +787,13 @@ rawPairTy t1 t2 = raw_apply (Var pairTy) [t1, t2]
 rawPair :: (Raw, Raw) -> (Raw, Raw) -> Raw
 rawPair (a, b) (x, y) = raw_apply (Var pairCon) [a, b, x, y]
 
+-- | Idris tuples nest to the right
+rawTripleTy :: Raw -> Raw -> Raw -> Raw
+rawTripleTy a b c = rawPairTy a (rawPairTy b c)
+
+rawTriple :: (Raw, Raw, Raw) -> (Raw, Raw, Raw) -> Raw
+rawTriple (a, b, c) (x, y, z) = rawPair (a, rawPairTy b c) (x, rawPair (b, c) (y, z))
+
 reflectCtxt :: [(Name, Type)] -> Raw
 reflectCtxt ctxt = rawList (rawPairTy  (Var $ reflm "TTName") (Var $ reflm "TT"))
                            (map (\ (n, t) -> (rawPair (Var $ reflm "TTName", Var $ reflm "TT")
@@ -929,6 +943,12 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
     Nothing -> Left . InternalMsg $ "could not reify subreport " ++ show tm
 reifyReportPart x = Left . InternalMsg $ "could not reify " ++ show x
 
+reifyErasure :: Term -> ElabD RErasure
+reifyErasure (P (DCon _ _ _) n _)
+  | n == tacN "Erased" = return RErased
+  | n == tacN "NotErased" = return RNotErased
+reifyErasure tm = fail $ "Can't reify " ++ show tm ++ " as erasure info."
+
 reifyTyDecl :: Term -> ElabD RTyDecl
 reifyTyDecl (App _ (App _ (App _ (P (DCon _ _ _) n _) tyN) args) ret)
   | n == tacN "Declare" =
@@ -939,14 +959,17 @@ reifyTyDecl (App _ (App _ (App _ (P (DCon _ _ _) n _) tyN) args) ret)
      ret'  <- reifyRaw ret
      return $ RDeclare tyN' args' ret'
   where reifyRArg :: Term -> ElabD RArg
-        reifyRArg (App _ (App _ (P (DCon _ _ _) n _) argN) argTy)
-          | n == tacN "Explicit"   = liftM2 RExplicit
+        reifyRArg (App _ (App _ (App _ (P (DCon _ _ _) n _) argN) argE) argTy)
+          | n == tacN "Explicit"   = liftM3 RExplicit
                                             (reifyTTName argN)
+                                            (reifyErasure argE)
                                             (reifyRaw argTy)
-          | n == tacN "Implicit"   = liftM2 RImplicit
+          | n == tacN "Implicit"   = liftM3 RImplicit
                                             (reifyTTName argN)
-                                            (reifyRaw argTy)                               | n == tacN "Constraint" = liftM2 RConstraint
+                                            (reifyErasure argE)
+                                            (reifyRaw argTy)                                  | n == tacN "Constraint" = liftM3 RConstraint
                                             (reifyTTName argN)
+                                            (reifyErasure argE)
                                             (reifyRaw argTy)
         reifyRArg aTm = fail $ "Couldn't reify " ++ show aTm ++ " as an RArg."
 reifyTyDecl tm = fail $ "Couldn't reify " ++ show tm ++ " as a type declaration."
@@ -975,38 +998,89 @@ envTupleType
                            , (RApp (Var $ reflm "Binder") (Var $ reflm "TT"))
                            ]
 
+-- | Apply Idris's implicit info to get a signature. The [PArg] should
+-- come from a lookup in idris_implicits on IState.
+getArgs :: [PArg] -> Raw -> ([RArg], Raw)
+getArgs []     r = ([], r)
+getArgs (a:as) (RBind n (Pi _ ty _) sc) =
+  let (args, res) = getArgs as sc
+      erased = if InaccessibleArg `elem` argopts a then RErased else RNotErased
+      arg' = case a of
+               PImp {} -> RImplicit n erased ty
+               PExp {} -> RExplicit n erased ty
+               PConstraint {} -> RConstraint n erased ty
+               PTacImplicit {} -> RImplicit n erased ty -- TODO?
+  in (arg':args, res)
+getArgs _ r = ([], r)
+
 -- | Build the reflected datatype definition(s) that correspond(s) to
 -- a provided unqualified name
-buildDatatypes :: Context -> Ctxt TypeInfo -> Name -> [RDatatype]
-buildDatatypes ctxt datatypes n =
+buildDatatypes :: IState -> Name -> [RDatatype]
+buildDatatypes ist n =
   catMaybes [ mkDataType dn ti
             | (dn, ti) <- lookupCtxtName n datatypes
             ]
-  where mkDataType name (TI {param_pos = params, con_names = constrs}) =
-          do (TyDecl (TCon _ _) ty) <- lookupDefExact name ctxt
-             let (tcargs, tcres) = getArgs params (forget ty) 0
-             conTys <- mapM (fmap forget . flip lookupTyExact ctxt) constrs
-             return $ RDatatype name tcargs tcres $ zip constrs conTys
+  where datatypes = idris_datatypes ist
+        ctxt      = tt_ctxt ist
+        impls     = idris_implicits ist
 
-        getArgs params (RBind an (Pi _ ty _) body) i =
-          let (args, res) = getArgs params body (i+1)
+        ctorSig cn = do cty <- fmap forget (lookupTyExact cn ctxt)
+                        argInfo <- lookupCtxtExact cn impls
+                        let (args, res) = getArgs argInfo cty
+                        return (cn, args, res)
+
+        mkDataType name (TI {param_pos = params, con_names = constrs}) =
+          do (TyDecl (TCon _ _) ty) <- lookupDefExact name ctxt
+             implInfo <- lookupCtxtExact name impls
+             let (tcargs, tcres) = getTCArgs params implInfo (forget ty) 0
+             ctors <- mapM ctorSig constrs
+             return $ RDatatype name tcargs tcres ctors
+
+        getTCArgs params implInfo (RBind an (Pi _ ty _) body) i =
+          let (erased, implInfo') = case implInfo of
+                                      [] -> (RNotErased, [])
+                                      (a:as) -> (if InaccessibleArg `elem` argopts a
+                                                    then RErased
+                                                    else RNotErased,
+                                                 as)
+              (args, res) = getTCArgs params implInfo' body (i+1)
           in if i `elem` params
-               then (RParameter an ty : args, res )
-               else (RIndex an ty : args, res)
-        getArgs _ tm _ = ([], tm)
+               then (RParameter an erased ty : args, res )
+               else (RIndex an erased ty : args, res)
+        getTCArgs _ implInfo tm _ = ([], tm)
+
+reflectErasure :: RErasure -> Raw
+reflectErasure RErased    = Var (tacN "Erased")
+reflectErasure RNotErased = Var (tacN "NotErased")
+
+reflectArg :: RArg -> Raw
+reflectArg arg =
+   RApp (RApp (RApp (Var con) (reflectName $ argName arg))
+              (reflectErasure $ argErased arg))
+        (reflectRaw $ argTy arg)
+   where con = case arg of
+                 RExplicit{}   -> tacN "Explicit"
+                 RImplicit{}   -> tacN "Implicit"
+                 RConstraint{} -> tacN "Constraint"
 
 reflectDatatype :: RDatatype -> Raw
 reflectDatatype (RDatatype tyn tyConArgs tyConRes constrs) =
   raw_apply (Var $ tacN "MkDatatype") [ reflectName tyn
                                       , rawList (Var $ tacN "TyConArg") (map reflectConArg tyConArgs)
                                       , reflectRaw tyConRes
-                                      , rawList (rawPairTy (Var $ reflm "TTName") (Var $ reflm "Raw"))
-                                                [ rawPair ((Var $ reflm "TTName"), (Var $ reflm "Raw"))
-                                                          (reflectName cn, reflectRaw cty)
-                                                | (cn, cty) <- constrs
+                                      , rawList (rawTripleTy (Var $ reflm "TTName")
+                                                             (RApp (Var (sNS (sUN "List") ["List", "Prelude"])) (Var $ tacN "Arg"))
+                                                             (Var $ reflm "Raw"))
+                                                [ rawTriple ((Var $ reflm "TTName"),
+                                                             (RApp (Var (sNS (sUN "List") ["List", "Prelude"])) (Var $ tacN "Arg")),
+                                                             (Var $ reflm "Raw"))
+                                                            (reflectName cn,
+                                                             rawList (Var $ tacN "Arg") (map reflectArg cargs),
+                                                             reflectRaw cty)
+                                                | (cn, cargs, cty) <- constrs
                                                 ]
                                       ]
-  where reflectConArg (RParameter n t) =
-          raw_apply (Var $ tacN "Parameter") [reflectName n, reflectRaw t]
-        reflectConArg (RIndex n t) =
-          raw_apply (Var $ tacN "Index")     [reflectName n, reflectRaw t]
+  where reflectConArg (RParameter n e t) =
+          raw_apply (Var $ tacN "Parameter") [reflectName n, reflectErasure e, reflectRaw t]
+        reflectConArg (RIndex n e t) =
+          raw_apply (Var $ tacN "Index")     [reflectName n, reflectErasure e, reflectRaw t]

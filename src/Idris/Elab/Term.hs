@@ -1810,7 +1810,7 @@ runTactical ist fc env tm ns = do tm' <- eval tm
            ctxt <- get_context
            fmap fst . checkClosed $
              rawList (Var (tacN "Datatype"))
-                     (map reflectDatatype (buildDatatypes ctxt datatypes n'))
+                     (map reflectDatatype (buildDatatypes ist n'))
       | n == tacN "prim__SourceLocation", [] <- args
       = fmap fst . checkClosed $
           reflectFC fc
