@@ -33,7 +33,7 @@ plusSuccRightSuccNew (S j) k =
 
 mkDecl : ()
 mkDecl = %runElab (do declareType $ Declare (NS (UN "repUnit") ["Tactics"])
-                                               [Implicit (UN "z") `(Nat)]
+                                               [Implicit (UN "z") NotErased `(Nat)]
                                                `(Vect ~(Var (UN "z")) ())
                       fill `(() : ())
                       solve)
