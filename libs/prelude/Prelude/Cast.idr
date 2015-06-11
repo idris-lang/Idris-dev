@@ -12,6 +12,10 @@ class Cast from to where
 
 -- General casts
 
+private
+id : a -> a
+id x = x
+
 instance Cast a a where
     cast = id
 
