@@ -10,14 +10,10 @@ class Cast from to where
     ||| @orig The original type.
     cast : (orig : from) -> to
 
--- General casts
-
-private
-id : a -> a
-id x = x
+-- General cast
 
 instance Cast a a where
-    cast = id
+    cast x = x
 
 -- String casts
 
