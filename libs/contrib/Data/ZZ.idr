@@ -102,8 +102,13 @@ NonNeg : ZZ -> Type
 NonNeg (Pos n) = ()
 NonNeg (NegS n) = Void
 
+NegNotPos : {n:Nat} -> Type
+NegNotPos {n} = Not (Pos n = NegS n)
+
 zZtoNat : (x:ZZ) -> {auto p : NonNeg x} -> Nat
-zZtoNat (Pos n) = n
+zZtoNat x {p} with (x)
+  | Pos n = n
+  | NegS n = void p
 
 partial
 zZtoNat' : ZZ -> Nat
@@ -116,7 +121,8 @@ instance Enum ZZ where
   fromNat = Pos
 
 instance Cast ZZ Nat where
-    cast = zZtoNat'
+  cast = \x : ZZ => if x <= Pos Z then Z else absZ x
+
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
