@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, CPP #-}
 module Idris.Prover (prover, showProof, showRunElab) where
 
 import Idris.Core.Elaborate hiding (Tactic(..))
@@ -23,6 +23,10 @@ import Idris.Completion
 import qualified Idris.IdeMode as IdeMode
 import Idris.Output
 import Idris.TypeSearch (searchByType)
+
+#if __GLASGOW_HASKELL__ >= 710
+import Prelude hiding ((<$>))
+#endif
 
 import Text.Trifecta.Result(Result(..))
 
