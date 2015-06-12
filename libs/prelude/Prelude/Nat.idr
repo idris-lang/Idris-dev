@@ -360,7 +360,7 @@ lcm : Nat -> Nat -> Nat
 lcm x y = case (x, y) of
                (_, Z) => Z
                (Z, _) => Z
-               (_, _) => lcm' (x * y) (gcd x y)
+               _ => lcm' (x * y) (gcd x y)
   where
     lcm' : Nat -> Nat -> Nat
     lcm' n m with (decEq m Z)
