@@ -1,6 +1,14 @@
 {-# LANGUAGE PatternGuards #-}
 module Idris.Prover (prover, showProof, showRunElab) where
 
+-- Hack for GHC 7.10 and earlier compat without CPP or warnings
+-- This exludes (<$>) as fmap, because wl-pprint uses it for newline
+import Prelude (Eq(..), Show(..),
+                Bool(..), Either(..), Maybe(..), String,
+                (.), ($), (++),
+                concatMap, id, elem, error, fst, flip, foldl, foldr, init,
+                length, lines, map, not, null, repeat, reverse, tail, zip)
+
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
@@ -335,7 +343,7 @@ elabloop fn d prompt prf e prev h env
                     do (tm, ty) <- elabVal recinfo ERHS (inLets ist env expr)
                        (_, e') <- elabStep e saveState -- enable :undo
                        (res, e'') <- elabStep e' $
-                                       runTactical ist NoFC [] tm ["Shell"]
+                                       runElabAction ist NoFC [] tm ["Shell"]
                        ctxt <- getContext
                        (v, vty) <- tclift $ check ctxt [] (forget res)
                        let v'   = normaliseAll ctxt [] v
@@ -346,7 +354,7 @@ elabloop fn d prompt prf e prev h env
                        -- TODO: call elaborator with Elab () as goal here
                        (_, e') <- elabStep e saveState -- enable :undo
                        (_, e'') <- elabStep e' $
-                                     runTactical ist NoFC [] tm ["Shell"]
+                                     runElabAction ist NoFC [] tm ["Shell"]
                        return (True, ElabStep:prev, e'', False, prf ++ [step], env, Right (iPrintResult "")))
            (\err -> return (False, prev, e, False, prf, env, Left err))
        idemodePutSExp "write-proof-state" (prf', length prf')

@@ -328,10 +328,14 @@ pure = id
 --------------------------------------
 -- Instances for definition reflection
 --------------------------------------
+instance Show Erasure where
+  show Erased    = "Erased"
+  show NotErased = "NotErased"
+
 instance Show Arg where
-  show (Explicit n t) = "(Explicit " ++ show n ++ " " ++ show t ++ ")"
-  show (Implicit n t) = "(Implicit " ++ show n ++ " " ++ show t ++ ")"
-  show (Constraint n t) = "(Constraint " ++ show n ++ " " ++ show t ++ ")"
+  show (Explicit n e t) = "(Explicit " ++ show n ++ " " ++ show e ++ " " ++ show t ++ ")"
+  show (Implicit n e t) = "(Implicit " ++ show n ++ " " ++ show e ++ " " ++ show t ++ ")"
+  show (Constraint n e t) = "(Constraint " ++ show n ++ " " ++ show e ++ " " ++ show t ++ ")"
 
 instance Show TyDecl where
   show (Declare fn args ret) = "(Declare " ++ show fn ++ " " ++

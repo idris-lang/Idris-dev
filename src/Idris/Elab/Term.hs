@@ -881,15 +881,11 @@ elab ist info emode opts fn tm
              -- names which have been used elsewhere in the term, since we
              -- won't be able to use them in the resulting application.
              let unique_used = getUniqueUsed (tt_ctxt ist) ptm
-             let n' = mkN n
+             let n' = metavarName (namespace info) n
              attack
              defer unique_used n'
              solve
              highlightSource nfc (AnnName n' (Just MetavarOutput) Nothing Nothing)
-        where mkN n@(NS _ _) = n
-              mkN n = case namespace info of
-                        Just xs@(_:_) -> sNS n xs
-                        _ -> n
     elab' ina fc (PProof ts) = do compute; mapM_ (runTac True ist (elabFC info) fn) ts
     elab' ina fc (PTactics ts)
         | not pattern = do mapM_ (runTac False ist fc fn) ts
@@ -1149,7 +1145,7 @@ elab ist info emode opts fn tm
          focus n
          elab' ina (Just fc') tm
          env <- get_env
-         runTactical ist (maybe fc' id fc) env (P Bound n' Erased) ns
+         runElabAction ist (maybe fc' id fc) env (P Bound n' Erased) ns
          solve
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
@@ -1696,10 +1692,15 @@ case_ ind autoSolve ist fn tm = do
          else casetac (forget val)
   when autoSolve solveAll
 
+-- | Compute the appropriate name for a top-level metavariable
+metavarName :: Maybe [String] -> Name -> Name
+metavarName _                 n@(NS _ _) = n
+metavarName (Just (ns@(_:_))) n          = sNS n ns
+metavarName _                 n          = n
 
-runTactical :: IState -> FC -> Env -> Term -> [String] -> ElabD Term
-runTactical ist fc env tm ns = do tm' <- eval tm
-                                  runTacTm tm'
+runElabAction :: IState -> FC -> Env -> Term -> [String] -> ElabD Term
+runElabAction ist fc env tm ns = do tm' <- eval tm
+                                    runTacTm tm'
 
   where
     eval tm = do ctxt <- get_context
@@ -1809,7 +1810,7 @@ runTactical ist fc env tm ns = do tm' <- eval tm
            ctxt <- get_context
            fmap fst . checkClosed $
              rawList (Var (tacN "Datatype"))
-                     (map reflectDatatype (buildDatatypes ctxt datatypes n'))
+                     (map reflectDatatype (buildDatatypes ist n'))
       | n == tacN "prim__SourceLocation", [] <- args
       = fmap fst . checkClosed $
           reflectFC fc
@@ -1964,8 +1965,8 @@ runTactical ist fc env tm ns = do tm' <- eval tm
            datatypes <- get_datatypes
            env <- get_env
            (_, ES (p, aux') _ _) <-
-              lift $ runElab aux (runTactical ist fc [] script ns)
-                             (newProof recH ctxt datatypes goalTT)
+              lift $ runElab aux (runElabAction ist fc [] script ns)
+                                 (newProof recH ctxt datatypes goalTT)
            let tm_out = getProofTerm (pterm p)
            updateAux $ const aux'
            env' <- get_env
@@ -1974,6 +1975,17 @@ runTactical ist fc env tm ns = do tm' <- eval tm
            fmap fst . checkClosed $
              rawPair (Var $ reflm "TT", Var $ reflm "TT")
                      (tm', ty')
+      | n == tacN "prim__Metavar", [n] <- args
+      = do n' <- reifyTTName n
+           ctxt <- get_context
+           ptm <- get_term
+           -- See documentation above in the elab case for PMetavar
+           let unique_used = getUniqueUsed ctxt ptm
+           let mvn = metavarName (Just ns) n'
+           attack
+           defer unique_used mvn
+           solve
+           returnUnit
       | n == tacN "prim__Debug", [ty, msg] <- args
       = do msg' <- eval msg
            parts <- reifyReportParts msg

@@ -13,17 +13,21 @@ import Prelude.Maybe
 import Prelude.Monad
 import Language.Reflection
 
+||| Erasure annotations reflect Idris's idea of what is intended to be
+||| erased.
+data Erasure = Erased | NotErased
+
 ||| Arguments, with plicity.
 data Arg : Type where
   ||| An explicit argument
-  Explicit : TTName -> Raw -> Arg
+  Explicit : TTName -> Erasure -> Raw -> Arg
 
   ||| An implicit argument, to be solved by unification
-  Implicit : TTName -> Raw -> Arg
+  Implicit : TTName -> Erasure -> Raw -> Arg
 
   ||| A type-class constraint argument, to be solved by type class
   ||| resolution
-  Constraint : TTName -> Raw -> Arg
+  Constraint : TTName -> Erasure -> Raw -> Arg
 
 ||| A type declaration
 data TyDecl : Type where
@@ -41,7 +45,6 @@ data TyDecl : Type where
 ||| A single pattern-matching clause
 data FunClause : Type where
   MkFunClause : (lhs, rhs : Raw) -> FunClause
-  MkImpossibleClause : (lhs : Raw) -> FunClause
 
 ||| A reflected function definition.
 data FunDefn : Type where
@@ -50,10 +53,10 @@ data FunDefn : Type where
 ||| An argument to a type constructor.
 data TyConArg : Type where
   ||| Parameters are consistent across all constructors of the type
-  Parameter : TTName -> Raw -> TyConArg
+  Parameter : TTName -> Erasure -> Raw -> TyConArg
 
   ||| Indices are allowed to vary across constructors
-  Index : TTName -> Raw -> TyConArg
+  Index : TTName -> Erasure -> Raw -> TyConArg
 
 ||| A reflected datatype definition
 data Datatype : Type where
@@ -65,7 +68,7 @@ data Datatype : Type where
   ||| @ constrs the constructors, with their types
   MkDatatype : (familyName : TTName) ->
                (tyConArgs : List TyConArg) -> (tyConRes : Raw) ->
-               (constrs : List (TTName, Raw)) ->
+               (constrs : List (TTName, List Arg, Raw)) ->
                Datatype
 
 ||| A reflected elaboration script.
@@ -120,7 +123,7 @@ data Elab : Type -> Type where
   prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
 
   prim__Debug : {a : Type} -> List ErrorReportPart -> Elab a
-
+  prim__Metavar : TTName -> Elab ()
 
 -------------
 -- Public API
@@ -349,6 +352,12 @@ namespace Tactics
   ||| @ msg the message to display
   debugMessage : (msg : List ErrorReportPart) -> Elab a
   debugMessage msg = prim__Debug msg
+
+  ||| Create a new top-level metavariable to solve the current hole.
+  |||
+  ||| @ name the name for the top-level variable
+  metavar : (name : TTName) -> Elab ()
+  metavar name = prim__Metavar name
 
   ||| Recursively invoke the reflected elaborator with some goal.
   |||
