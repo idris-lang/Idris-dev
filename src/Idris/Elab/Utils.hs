@@ -66,8 +66,6 @@ inaccessibleImps _ _ _ = []
 
 -- | Get the list of (index, name) of inaccessible arguments from the type.
 inaccessibleArgs :: Int -> PTerm -> [(Int, Name)]
-inaccessibleArgs i (PPi (Imp _ _ _ _) n _ Placeholder t)
-        = (i,n) : inaccessibleArgs (i+1) t  -- unbound implicit
 inaccessibleArgs i (PPi plicity n _ ty t)
     | InaccessibleArg `elem` pargopts plicity
         = (i,n) : inaccessibleArgs (i+1) t  -- an .{erased : Implicit}
