@@ -333,10 +333,10 @@ instance Show Erasure where
   show NotErased = "NotErased"
 
 instance Show Arg where
-  show (Explicit n e t) = "(Explicit " ++ show n ++ " " ++ show e ++ " " ++ show t ++ ")"
-  show (Implicit n e t) = "(Implicit " ++ show n ++ " " ++ show e ++ " " ++ show t ++ ")"
-  show (Constraint n e t) = "(Constraint " ++ show n ++ " " ++ show e ++ " " ++ show t ++ ")"
+  showPrec d (Explicit n e t) = showCon d "Explicit" $ showArg n ++ showArg e ++ showArg t
+  showPrec d (Implicit n e t) = showCon d "Implicit" $ showArg n ++ showArg e ++ showArg t
+  showPrec d (Constraint n e t) = showCon d "Constraint" $ showArg n ++ showArg e ++ showArg t
 
 instance Show TyDecl where
-  show (Declare fn args ret) = "(Declare " ++ show fn ++ " " ++
-                               show args ++ " " ++ show ret ++ ")"
+  showPrec d (Declare fn args ret) = showCon d "Declare" $ showArg fn ++
+                                     showArg args ++ showArg ret
