@@ -161,7 +161,15 @@ reifyTTApp t [t', Constant (I i)]
                                     return $ Proj t'' i
 reifyTTApp t [tt]
            | t == reflm "TType" = liftM TType (reifyTTUExp tt)
+reifyTTApp t [tt]
+           | t == reflm "UType" = liftM UType (reifyUniverse tt)
 reifyTTApp t args = fail ("Unknown reflection term: " ++ show (t, args))
+
+reifyUniverse :: Term -> ElabD Universe
+reifyUniverse (P _ n _) | n == reflm "AllTypes" = return AllTypes
+                        | n == reflm "UniqueType" = return UniqueType
+                        | n == reflm "NullType" = return NullType
+reifyUniverse tm = fail ("Unknown reflection universe: " ++ show tm)
 
 -- | Reify raw terms from their reflected representation
 reifyRaw :: Term -> ElabD Raw

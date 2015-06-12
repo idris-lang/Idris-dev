@@ -1,6 +1,14 @@
 {-# LANGUAGE PatternGuards #-}
 module Idris.Prover (prover, showProof, showRunElab) where
 
+-- Hack for GHC 7.10 and earlier compat without CPP or warnings
+-- This exludes (<$>) as fmap, because wl-pprint uses it for newline
+import Prelude (Eq(..), Show(..),
+                Bool(..), Either(..), Maybe(..), String,
+                (.), ($), (++),
+                concatMap, id, elem, error, fst, flip, foldl, foldr, init,
+                length, lines, map, not, null, repeat, reverse, tail, zip)
+
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
 import Idris.Core.Evaluate
