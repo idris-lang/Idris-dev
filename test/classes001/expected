@@ -8,6 +8,7 @@ Methods:
     myShow : MyShow a => (x : a) -> String
         The shower
         
+        The function is Total
 Instance constructor:
     MkMyShow : (myShow : a -> String) -> MyShow a
         Build a MyShow
@@ -25,3 +26,4 @@ MkMyShow : (myShow : a -> String) -> MyShow a
         
         myShow : a -> String  -- The shower
         
+    The function is Total

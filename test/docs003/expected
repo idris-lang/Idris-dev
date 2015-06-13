@@ -8,6 +8,7 @@ Methods:
     map : Functor f => (m : a -> b) -> f a -> f b
         The action of the functor on morphisms
         
+        The function is Total
 Instances:
     Functor List
     Functor Stream

@@ -53,17 +53,26 @@ showDoc ist d
   | otherwise = text "  -- " <>
                 renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) d
 
-pprintFD :: IState -> FunDoc -> Doc OutputAnnotation
-pprintFD ist (FD n doc args ty f)
+pprintFD :: IState -> Bool -> FunDoc -> Doc OutputAnnotation
+pprintFD ist totalityFlag (FD n doc args ty f)
     = nest 4 (prettyName True (ppopt_impl ppo) [] n <+> colon <+>
               pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
                                      , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
+              -- show doc
               renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc <$>
+              -- show fixity
               maybe empty (\f -> text (show f) <> line) f <>
+              -- show arguments doc
               let argshow = showArgs args [] in
-              if not (null argshow)
+              (if not (null argshow)
                 then nest 4 $ text "Arguments:" <$> vsep argshow
-                else empty)
+                else empty) <>
+              -- show totality status
+              let totality = getTotality in
+              (if totalityFlag && not (null totality) then
+                line <> (vsep . map (\t -> text "The function is" <+> t) $ totality)
+               else
+                empty))
 
     where ppo = ppOptionIst ist
           infixes = idris_infixes ist
@@ -87,15 +96,21 @@ pprintFD ist (FD n doc args ty f)
                showArgs args ((n, True):bnd)
           showArgs ((n, _, _, _):args) bnd = showArgs args ((n, True):bnd)
           showArgs []                  _ = []
+          getTotality = map (text . show) $ lookupTotal n (tt_ctxt ist)
 
+pprintFDWithTotality :: IState -> FunDoc -> Doc OutputAnnotation
+pprintFDWithTotality ist = pprintFD ist True
+
+pprintFDWithoutTotality :: IState -> FunDoc -> Doc OutputAnnotation
+pprintFDWithoutTotality ist = pprintFD ist False
 
 pprintDocs :: IState -> Docs -> Doc OutputAnnotation
-pprintDocs ist (FunDoc d) = pprintFD ist d
+pprintDocs ist (FunDoc d) = pprintFDWithTotality ist d
 pprintDocs ist (DataDoc t args)
-           = text "Data type" <+> pprintFD ist t <$>
+           = text "Data type" <+> pprintFDWithoutTotality ist t <$>
              if null args then text "No constructors."
              else nest 4 (text "Constructors:" <> line <>
-                          vsep (map (pprintFD ist) args))
+                          vsep (map (pprintFDWithoutTotality ist) args))
 pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ctor)
            = nest 4 (text "Type class" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
@@ -105,12 +120,12 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ct
              nest 4 (text "Parameters:" <$> prettyParameters)
              <> line <$>
              nest 4 (text "Methods:" <$>
-                      vsep (map (pprintFD ist) meths))
+                      vsep (map (pprintFDWithTotality ist) meths))
              <$>
              maybe empty
                    ((<> line) . nest 4 .
                     (text "Instance constructor:" <$>) .
-                    pprintFD ist)
+                    pprintFDWithoutTotality ist)
                    ctor
              <>
              nest 4 (text "Instances:" <$>
@@ -195,7 +210,7 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ct
          else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
 pprintDocs ist (NamedInstanceDoc _cls doc)
-   = nest 4 (text "Named instance:" <$> pprintFD ist doc)
+   = nest 4 (text "Named instance:" <$> pprintFDWithoutTotality ist doc)
 
 pprintDocs ist (ModDoc mod docs)
    = nest 4 $ text "Module" <+> text (concat (intersperse "." mod)) <> colon <$>
