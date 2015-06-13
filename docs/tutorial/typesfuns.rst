@@ -268,8 +268,8 @@ can be used to calculate a return type:
 .. code-block:: idris
 
     mkSingle : (x : Bool) -> isSingleton x
-    mkSingle False = 0
-    mkSingle True = []
+    mkSingle True = 0
+    mkSingle False = []
 
 Or it can be used to have varying input types. The following function
 calculates either the sum of a list of ``Nat``, or returns the given
@@ -278,9 +278,9 @@ calculates either the sum of a list of ``Nat``, or returns the given
 .. code-block:: idris
 
     sum : (single : Bool) -> isSingleton single -> Nat
-    sum False x = x
-    sum True [] = 0
-    sum True (x :: xs) = x + sum True xs
+    sum True x = x
+    sum False [] = 0
+    sum False (x :: xs) = x + sum False xs
 
 Vectors
 -------
