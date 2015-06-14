@@ -1,9 +1,17 @@
 package effects
 
 opts    = "--nobasepkgs -i ../prelude -i ../base"
-modules = Effects, Effect.Default, Effect.Monad,
 
-          Effect.Exception, Effect.File, Effect.State,
-          Effect.Random, Effect.StdIO, Effect.Select,
-          Effect.Memory, Effect.System, Effect.Trans
+modules = Effects
+        , Effect.Default
+        , Effect.Monad
 
+        , Effect.Exception
+        , Effect.File
+        , Effect.State
+        , Effect.Random
+        , Effect.StdIO
+        , Effect.Select
+        , Effect.Memory
+        , Effect.System
+        , Effect.Trans

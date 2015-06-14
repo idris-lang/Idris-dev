@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+idris $@ effects006.idr -o effects006 -p effects
+./effects006
+rm -f effects006 *.ibc
