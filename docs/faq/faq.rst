@@ -5,13 +5,17 @@ Frequently Asked Questions
 What are the differences between Agda and Idris?
 ================================================
 
-The main difference is that Idris has been designed from the start to support
-verified systems programming through easy interoperability with C and high
-level language constructs to support domain specific language implementation.
-Idris emphasises general-purpose programming, rather than theorem proving, and
-as such includes higher level programming constructs such as type classes and
-do notation. Idris also supports tactic based theorem proving, and has a
-lightweight Hugs/GHCI style interface.
+Like Idris, Agda is a functional language with dependent types, supporting
+dependent pattern matching. Both can be used for writing programs and proofs.
+However, Idris has been designed from the start to emphasise general purpose
+programming rather than theorem proving. As such, it supports interoperability
+with systems libraries and C programs, and language constructs for
+domain specific language implementation. It also includes higher level
+programming constructs such as type classes and do notation.
+
+Idris supports multiple back ends (C and JavaScript by default, with the
+ability to add more via plugins) and has a reference run time system, written
+in C, with a garbage collector and built-in message passing concurrency.
 
 Is Idris production ready?
 ==========================
