@@ -11,7 +11,7 @@
 ||| In this effect the resource we are computing over is the logging
 ||| level itself and the list of categories to show.
 |||
-module Effect.Logging
+module Effect.Logging.Default
 
 import Effects
 import public Effect.Logging.Level
