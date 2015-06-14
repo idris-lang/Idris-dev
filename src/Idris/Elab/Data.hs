@@ -53,7 +53,7 @@ import Util.Pretty(pretty, text)
 elabData :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm)-> [(Name, Docstring (Either Err PTerm))] -> FC -> DataOpts -> PData -> Idris ()
 elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
     = do let codata = Codata `elem` opts
-         iLOG (show (fc, doc))
+         logLvl 1 (show (fc, doc))
          checkUndefined fc n
          (cty, _, t, inacc) <- buildType info syn fc [] n t_in
 
@@ -63,7 +63,7 @@ elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
 
 elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
     = do let codata = Codata `elem` opts
-         iLOG (show fc)
+         logLvl 1 (show fc)
          undef <- isUndefined fc n
          (cty, ckind, t, inacc) <- buildType info syn fc [] n t_in
          -- if n is defined already, make sure it is just a type declaration

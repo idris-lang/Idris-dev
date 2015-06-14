@@ -1205,7 +1205,7 @@ process fn (DynamicLink l)
                                   Nothing -> iPrintError $ "Could not load dynamic lib \"" ++ l ++ "\""
                                   Just x -> do let libs = idris_dynamic_libs i
                                                if x `elem` libs
-                                                  then do iLOG ("Tried to load duplicate library " ++ lib_name x)
+                                                  then do logLvl 1 ("Tried to load duplicate library " ++ lib_name x)
                                                           return ()
                                                   else putIState $ i { idris_dynamic_libs = x:libs }
     where trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
@@ -1476,8 +1476,8 @@ loadInputs inputs toline -- furthest line to read in input source files
                                    (map snd (take (num-1) ninputs))
                                    input
                    let ifiles = getModuleFiles modTree
-                   iLOG ("MODULE TREE : " ++ show modTree)
-                   iLOG ("RELOAD: " ++ show ifiles)
+                   logLvl 1 ("MODULE TREE : " ++ show modTree)
+                   logLvl 1 ("RELOAD: " ++ show ifiles)
                    when (not (all ibc ifiles) || loadCode) $
                         tryLoad False (filter (not . ibc) ifiles)
                    -- return the files that need rechecking
@@ -1696,7 +1696,7 @@ idrisMain opts =
        -- Create Idris data dir + repl history and config dir
        idrisCatch (do dir <- getIdrisUserDataDir
                       exists <- runIO $ doesDirectoryExist dir
-                      unless exists $ iLOG ("Creating " ++ dir)
+                      unless exists $ logLvl 1 ("Creating " ++ dir)
                       runIO $ createDirectoryIfMissing True (dir </> "repl"))
          (\e -> return ())
 

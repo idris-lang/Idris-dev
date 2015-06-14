@@ -1362,7 +1362,7 @@ loadModule' f
         ids <- allImportDirs
         fp <- findImport ids ibcsd file
         if file `elem` imported i
-          then do iLOG $ "Already read " ++ file
+          then do logLvl 1 $ "Already read " ++ file
                   return Nothing
           else do putIState (i { imported = file : imported i })
                   case fp of
@@ -1370,7 +1370,7 @@ loadModule' f
                     LIDR fn -> loadSource True  fn Nothing
                     IBC fn src ->
                       idrisCatch (loadIBC True fn)
-                                 (\c -> do iLOG $ fn ++ " failed " ++ pshow i c
+                                 (\c -> do logLvl 1 $ fn ++ " failed " ++ pshow i c
                                            case src of
                                              IDR sfn -> loadSource False sfn Nothing
                                              LIDR sfn -> loadSource True sfn Nothing)
@@ -1379,7 +1379,7 @@ loadModule' f
 {- | Load idris code from file -}
 loadFromIFile :: Bool -> IFileType -> Maybe Int -> Idris ()
 loadFromIFile reexp i@(IBC fn src) maxline
-   = do iLOG $ "Skipping " ++ getSrcFile i
+   = do logLvl 1 $ "Skipping " ++ getSrcFile i
         idrisCatch (loadIBC reexp fn)
                 (\err -> ierror $ LoadingFailed fn err)
   where
@@ -1403,7 +1403,7 @@ loadSource' lidr r maxline
 {- | Load Idris source code-}
 loadSource :: Bool -> FilePath -> Maybe Int -> Idris ()
 loadSource lidr f toline
-             = do iLOG ("Reading " ++ f)
+             = do logLvl 1 ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
                   file_in <- runIO $ readSource f
@@ -1505,14 +1505,14 @@ loadSource lidr f toline
                                   setContext ctxt')
                            (map snd (idris_totcheck i))
                   -- build size change graph from simplified definitions
-                  iLOG "Totality checking"
+                  logLvl 1 "Totality checking"
                   i <- getIState
                   mapM_ buildSCG (idris_totcheck i)
                   mapM_ checkDeclTotality (idris_totcheck i)
 
                   -- Redo totality check for deferred names
                   let deftots = idris_defertotcheck i
-                  iLOG $ "Totality checking " ++ show deftots
+                  logLvl 1 $ "Totality checking " ++ show deftots
                   mapM_ (\x -> do tot <- getTotality x
                                   case tot of
                                        Total _ -> setTotality x Unchecked
@@ -1520,9 +1520,9 @@ loadSource lidr f toline
                   mapM_ buildSCG deftots
                   mapM_ checkDeclTotality deftots
 
-                  iLOG ("Finished " ++ f)
+                  logLvl 1 ("Finished " ++ f)
                   ibcsd <- valIBCSubDir i
-                  iLOG "Universe checking"
+                  logLvl 1 "Universe checking"
                   iucheck
                   let ibc = ibcPathNoFallback ibcsd f
                   i <- getIState

@@ -90,7 +90,7 @@ prove mode opt ctxt lit n ty
             if mode
               then elabloop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) [] Nothing []
               else ploop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) Nothing
-         iLOG $ "Adding " ++ show tm
+         logLvl 1 $ "Adding " ++ show tm
          i <- getIState
          let shower = if mode
                          then showRunElab

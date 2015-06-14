@@ -60,7 +60,7 @@ compile codegen f mtm
         maindef <- case mtm of
                         Nothing -> return []
                         Just tm -> do md <- irMain tm
-                                      iLOG $ "MAIN: " ++ show md
+                                      logLvl 1 $ "MAIN: " ++ show md
                                       return [(sMN 0 "runMain", md)]
         objs <- getObjectFiles codegen
         libs <- getLibs codegen
@@ -83,13 +83,13 @@ compile codegen f mtm
         let (nexttag, tagged) = addTags 65536 (liftAll defsUniq)
         let ctxtIn = addAlist tagged emptyContext
 
-        iLOG "Defunctionalising"
+        logLvl 1 "Defunctionalising"
         let defuns_in = defunctionalise nexttag ctxtIn
         logLvl 5 $ show defuns_in
-        iLOG "Inlining"
+        logLvl 1 "Inlining"
         let defuns = inline defuns_in
         logLvl 5 $ show defuns
-        iLOG "Resolving variables for CG"
+        logLvl 1 "Resolving variables for CG"
         -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
         let checked = simplifyDefs defuns (toAlist defuns)
         outty <- outputTy
@@ -103,7 +103,7 @@ compile codegen f mtm
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
-        iLOG "Building output"
+        logLvl 1 "Building output"
         case checked of
             OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags

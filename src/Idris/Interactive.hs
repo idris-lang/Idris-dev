@@ -35,7 +35,7 @@ caseSplitAt :: FilePath -> Bool -> Int -> Name -> Idris ()
 caseSplitAt fn updatefile l n
    = do src <- runIO $ readSource fn
         res <- splitOnLine l n fn
-        iLOG (showSep "\n" (map show res))
+        logLvl 1 (showSep "\n" (map show res))
         let (before, (ap : later)) = splitAt (l-1) (lines src)
         res' <- replaceSplits ap res
         let new = concat res'

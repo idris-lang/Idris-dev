@@ -174,7 +174,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                  let ds = map (decorateid defaultdec)
                               [PTy emptyDocstring [] syn fc [] n nfc ty',
                                PClauses fc (o ++ opts) n cs]
-                 iLOG (show ds)
+                 logLvl 1 (show ds)
                  return (n, ((defaultdec n, ds!!1), ds))
             _ -> ifail $ show n ++ " is not a method"
     defdecl _ _ _ = ifail "Can't happen (defdecl)"
@@ -231,7 +231,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              let lhs = PApp fc (PRef fc m) (pconst capp : lhsArgs margs anames)
              let rhs = PApp fc (getMeth mnames all m) (rhsArgs margs anames)
              logLvl 2 ("Top level type: " ++ showTmImpls ty')
-             iLOG (show (m, ty', capp, margs))
+             logLvl 1 (show (m, ty', capp, margs))
              logLvl 2 ("Definition: " ++ showTmImpls lhs ++ " = " ++ showTmImpls rhs)
              return [PTy doc [] syn fc o m mfc ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
