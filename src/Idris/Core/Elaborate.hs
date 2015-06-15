@@ -563,7 +563,12 @@ prepare_apply fn imps =
     rebind hs (App s f a) = App s (rebind hs f) (rebind hs a)
     rebind hs t = t
 
-apply, match_apply :: Raw -> [(Bool, Int)] -> Elab' aux [(Name, Name)]
+-- | Apply an operator, solving some arguments by unification or matching.
+apply, match_apply :: Raw -- ^ The operator to apply
+                   -> [(Bool, Int)] -- ^ For each argument, whether to
+                                    -- attempt to solve it and the
+                                    -- priority in which to do so
+                   -> Elab' aux [(Name, Name)]
 apply = apply' fill
 match_apply = apply' match_fill
 
@@ -574,7 +579,7 @@ apply' fillt fn imps =
        -- (remove from unified list before calling end_unify)
        hs <- get_holes
        ES (p, a) s prev <- get
-       let dont = if null imps 
+       let dont = if null imps
                      then head hs : dontunify p
                      else getNonUnify (head hs : dontunify p) imps args
        let (n, hunis) = -- trace ("AVOID UNIFY: " ++ show (fn, dont)) $

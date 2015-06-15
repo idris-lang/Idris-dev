@@ -1839,10 +1839,20 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       = do raw' <- reifyRaw =<< eval raw
            fill raw'
            returnUnit
-      | n == tacN "prim__Apply", [raw] <- args
+      | n == tacN "prim__Apply" || n == tacN "prim__MatchApply"
+      , [raw, argSpec] <- args
       = do raw' <- reifyRaw =<< eval raw
-           apply raw' []
-           returnUnit
+           argSpec' <- reifyList (reifyPair reifyBool reifyInt) argSpec
+           let op = if n == tacN "prim__Apply"
+                       then apply
+                       else match_apply
+           ns <- op raw' argSpec'
+           fmap fst . checkClosed $
+             rawList (rawPairTy (Var $ reflm "TTName") (Var $ reflm "TTName"))
+                     [ rawPair (Var $ reflm "TTName", Var $ reflm "TTName")
+                               (reflectName n1, reflectName n2)
+                     | (n1, n2) <- ns
+                     ]
       | n == tacN "prim__Gensym", [hint] <- args
       = do hintStr <- eval hint
            case hintStr of

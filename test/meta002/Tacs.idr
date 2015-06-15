@@ -181,7 +181,7 @@ namespace STLC
               mkIx : Fin n -> Elab ()
               mkIx FZ = do envH <- mkEnvH
                            tH <- mkTyH
-                           apply `(Z {t=~(Var tH)} {env=~(Var envH)})
+                           apply `(Z {t=~(Var tH)} {env=~(Var envH)}) []
                            solve
               mkIx (FS i) = do envH <- mkEnvH
                                tH <- mkTyH
@@ -189,7 +189,7 @@ namespace STLC
                                argH <- gensym "arg"
                                claim argH `(Ix ~(Var envH) ~(Var tH))
                                unfocus argH
-                               apply `(S {env=~(Var envH)} {t=~(Var tH)} {t'=~(Var vH)} ~(Var argH))
+                               apply `(S {env=~(Var envH)} {t=~(Var tH)} {t'=~(Var vH)} ~(Var argH)) []
                                solve
                                focus argH
                                mkIx i
@@ -203,6 +203,7 @@ namespace STLC
                                         apply `(Lam {env=~(Var envH)}
                                                     {t=~(Var tH)} {t'=~(Var tH')}
                                                     ~(Var bodyH))
+                                              []
 
                                         solve
                                         focus bodyH
@@ -219,6 +220,7 @@ namespace STLC
                                           apply `(App {env=~(Var envH)}
                                                       {t=~(Var tH)} {t'=~(Var tH')}
                                                       ~(Var fH) ~(Var argH))
+                                                []
                                           solve
                                           focus fH
                                           mkTerm xs tm
@@ -230,11 +232,13 @@ namespace STLC
                                      claim ixH `(Ix ~(Var envH) ~(Var tH))
                                      unfocus ixH
                                      apply `(Var {env=~(Var envH)} {t=~(Var tH)} ~(Var ixH))
+                                           []
                                      solve
                                      focus ixH
                                      mkIx i
               mkTerm xs UnitCon = do envH <- mkEnvH
                                      apply `(UnitCon {env=~(Var envH)})
+                                           []
                                      solve
     testElab : Sigma Ty (Tm [])
     testElab = %runElab (elaborateSTLC (App (Lam "x" UnitCon) UnitCon))
