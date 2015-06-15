@@ -2,20 +2,27 @@ module Effect.Monad
 
 import Effects
 
--- Eff is a monad too, so we can happily use it in a monad transformer.
+data MonadEffT : List EFFECT -> (Type -> Type) -> Type -> Type where
+     MkMonadEffT : EffM m a xs (\v => xs) -> MonadEffT xs m a
 
-using (xs : List EFFECT, m : Type -> Type)
-  instance Functor (\a => EffM m a xs (\v => xs)) where
-    map f prog = do t <- prog
-                    value (f t)
+instance Functor (MonadEffT xs f) where
+    map f (MkMonadEffT x) = MkMonadEffT (do x' <- x
+                                            pure (f x'))
 
-  instance Applicative (\a => EffM m a xs (\v => xs)) where
-    pure = value
-    (<*>) f a = do f' <- f
-                   a' <- a
-                   value (f' a')
+instance Applicative (MonadEffT xs f) where
+    pure x = MkMonadEffT (pure x)
+    (<*>) (MkMonadEffT f) (MkMonadEffT x) 
+          = MkMonadEffT (do f' <- f
+                            x' <- x
+                            pure (f' x'))
 
-  instance Monad (\a => Eff m a xs (\v => xs)) where
-    (>>=) = Effects.(>>=)
+instance Monad (MonadEffT xs f) where
+    (>>=) (MkMonadEffT x) f = MkMonadEffT (do x' <- x
+                                              let MkMonadEffT fx = f x'
+                                              fx)
 
+implicit monadEffT : EffM m a xs (\v => xs) -> MonadEffT xs m a
+monadEffT = MkMonadEffT
 
+MonadEff : List EFFECT -> Type -> Type
+MonadEff xs = MonadEffT xs id

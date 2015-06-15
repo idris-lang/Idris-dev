@@ -1,9 +1,12 @@
 T1 : Type
     Some documentation
     
+    The function is Total
 T2 : Type
     Some other documentation
     
+    The function is Total
 T3 : Int
     Some provided postulate
     
+    The function is not yet checked for totality

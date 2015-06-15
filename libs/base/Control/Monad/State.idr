@@ -1,7 +1,7 @@
 module Control.Monad.State
 
 import public Control.Monad.Identity
-import Control.Monad.Trans
+import public Control.Monad.Trans
 
 %access public
 
