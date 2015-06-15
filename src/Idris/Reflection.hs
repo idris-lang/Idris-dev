@@ -116,6 +116,26 @@ reifyApp ist t [errs]
              | t == reflm "Fail" = fmap TFail (reifyReportParts errs)
 reifyApp _ f args = fail ("Unknown tactic " ++ show (f, args)) -- shouldn't happen
 
+reifyBool :: Term -> ElabD Bool
+reifyBool (P _ n _) | n == sNS (sUN "True") ["Bool", "Prelude"] = return True
+                    | n == sNS (sUN "False") ["Bool", "Prelude"] = return False
+reifyBool tm = fail $ "Not a Boolean: " ++ show tm
+
+reifyInt :: Term -> ElabD Int
+reifyInt (Constant (I i)) = return i
+reifyInt tm = fail $ "Not an Int: " ++ show tm
+
+reifyPair :: (Term -> ElabD a) -> (Term -> ElabD b) -> Term -> ElabD (a, b)
+reifyPair left right (App _ (App _ (App _ (App _ (P _ n _) _) _) x) y)
+  | n == pairCon = liftM2 (,) (left x) (right y)
+reifyPair left right tm = fail $ "Not a pair: " ++ show tm
+
+reifyList :: (Term -> ElabD a) -> Term -> ElabD [a]
+reifyList getElt lst =
+  case unList lst of
+    Nothing -> fail "Couldn't reify a list"
+    Just xs -> mapM getElt xs
+
 reifyReportParts :: Term -> ElabD [ErrorReportPart]
 reifyReportParts errs =
   case unList errs of

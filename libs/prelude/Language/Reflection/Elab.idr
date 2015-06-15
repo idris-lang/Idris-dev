@@ -7,6 +7,7 @@ module Language.Reflection.Elab
 
 import Builtins
 import Prelude.Applicative
+import Prelude.Bool
 import Prelude.Functor
 import Prelude.List
 import Prelude.Maybe
@@ -99,7 +100,8 @@ data Elab : Type -> Type where
 
   prim__Solve : Elab ()
   prim__Fill : Raw -> Elab ()
-  prim__Apply : Raw -> Elab ()
+  prim__Apply : Raw -> List (Bool, Int) -> Elab (List (TTName, TTName))
+  prim__MatchApply : Raw -> List (Bool, Int) -> Elab (List (TTName, TTName))
   prim__Focus : TTName -> Elab ()
   prim__Unfocus : TTName -> Elab ()
   prim__Attack : Elab ()
@@ -217,9 +219,49 @@ namespace Tactics
   fill : Raw -> Elab ()
   fill tm = prim__Fill tm
 
-  ||| Fill with unification
-  apply : Raw -> Elab ()
-  apply tm = prim__Apply tm
+  ||| Attempt to apply an operator to fill the current hole,
+  ||| potentially solving arugments by unification.
+  |||
+  ||| The return value is a list of pairs of names, one for each input
+  ||| argument. The first projection of these pairs is the original
+  ||| name of the argument, from the type declaration, and the second
+  ||| projection is the hole into which it is placed.
+  |||
+  ||| Note that not all of the returned hole names still exist, as
+  ||| they may have been solved.
+  |||
+  ||| @ op the term to apply
+  |||
+  ||| @ argSpec instructions for finding the arguments to the term,
+  |||     where the Boolean states whether or not to attempt to solve
+  |||     the argument and the Int gives the priority in which to do
+  |||     so
+  apply : (op : Raw) ->
+          (argSpec : List (Bool, Int)) ->
+          Elab (List (TTName, TTName))
+  apply tm argSpec = prim__Apply tm argSpec
+
+  ||| Attempt to apply an operator to fill the current hole,
+  ||| potentially solving arugments by matching.
+  |||
+  ||| The return value is a list of pairs of names, one for each input
+  ||| argument. The first projection of these pairs is the original
+  ||| name of the argument, from the type declaration, and the second
+  ||| projection is the hole into which it is placed.
+  |||
+  ||| Note that not all of the returned hole names still exist, as
+  ||| they may have been solved.
+  |||
+  ||| @ op the term to apply
+  |||
+  ||| @ argSpec instructions for finding the arguments to the term,
+  |||     where the Boolean states whether or not to attempt to solve
+  |||     the argument and the Int gives the priority in which to do
+  |||     so
+  matchApply : (op : Raw) ->
+               (argSpec : List (Bool, Int)) ->
+               Elab (List (TTName, TTName))
+  matchApply tm argSpec = prim__Apply tm argSpec
 
   ||| Move the focus to the specified hole
   |||
