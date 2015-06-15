@@ -57,12 +57,12 @@ elabRecord info doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc csyn
        logLvl 1 $ "Data constructor: " ++ showTmImpls dconTy
 
        -- Build data declaration for elaboration
-       iLOG $ foldr (++) "" $ intersperse "\n" (map show dconsArgDocs)
+       logLvl 1 $ foldr (++) "" $ intersperse "\n" (map show dconsArgDocs)
        let datadecl = PDatadecl tyn NoFC tycon [(cdoc, dconsArgDocs, dconName, NoFC, dconTy, fc, [])]
        elabData info rsyn doc paramDocs fc opts datadecl
 
-       iLOG $ "fieldsWithName " ++ show fieldsWithName
-       iLOG $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc
+       logLvl 1 $ "fieldsWithName " ++ show fieldsWithName
+       logLvl 1 $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc
        elabRecordFunctions info rsyn fc tyn paramsAndDoc fieldsWithNameAndDoc dconName target
 
        sendHighlighting $
@@ -154,8 +154,8 @@ elabRecordFunctions :: ElabInfo -> SyntaxInfo -> FC
 elabRecordFunctions info rsyn fc tyn params fields dconName target
   = do logLvl 1 $ "Elaborating helper functions for record " ++ show tyn
 
-       iLOG $ "Fields: " ++ show fieldNames
-       iLOG $ "Params: " ++ show paramNames
+       logLvl 1 $ "Fields: " ++ show fieldNames
+       logLvl 1 $ "Params: " ++ show paramNames
        -- The elaborated constructor type for the data declaration
        i <- getIState
        ttConsTy <-
@@ -165,8 +165,8 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
 
        -- The arguments to the constructor
        let constructorArgs = getArgTys ttConsTy
-       iLOG $ "Cons args: " ++ show constructorArgs
-       iLOG $ "Free fields: " ++ show (filter (not . isFieldOrParam') constructorArgs)
+       logLvl 1 $ "Cons args: " ++ show constructorArgs
+       logLvl 1 $ "Free fields: " ++ show (filter (not . isFieldOrParam') constructorArgs)
        -- If elaborating the constructor has resulted in some new implicit fields we make projection functions for them.
        let freeFieldsForElab = map (freeField i) (filter (not . isFieldOrParam') constructorArgs)
            

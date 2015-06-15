@@ -158,25 +158,25 @@ elabDecl' _ info (PSyntax _ p)
      = return () -- nothing to elaborate
 elabDecl' what info (PTy doc argdocs s f o n nfc ty)
   | what /= EDefns
-    = do iLOG $ "Elaborating type decl " ++ show n ++ show o
+    = do logLvl 1 $ "Elaborating type decl " ++ show n ++ show o
          elabType info s doc argdocs f o n nfc ty
          return ()
 elabDecl' what info (PPostulate b doc s f o n ty)
   | what /= EDefns
-    = do iLOG $ "Elaborating postulate " ++ show n ++ show o
+    = do logLvl 1 $ "Elaborating postulate " ++ show n ++ show o
          if b 
             then elabExtern info s doc f o n ty
             else elabPostulate info s doc f o n ty
 elabDecl' what info (PData doc argDocs s f co d)
   | what /= ETypes
-    = do iLOG $ "Elaborating " ++ show (d_name d)
+    = do logLvl 1 $ "Elaborating " ++ show (d_name d)
          elabData info s doc argDocs f co d
   | otherwise
-    = do iLOG $ "Elaborating [type of] " ++ show (d_name d)
+    = do logLvl 1 $ "Elaborating [type of] " ++ show (d_name d)
          elabData info s doc argDocs f co (PLaterdecl (d_name d) (d_name_fc d) (d_tcon d))
 elabDecl' what info d@(PClauses f o n ps)
   | what /= ETypes
-    = do iLOG $ "Elaborating clause " ++ show n
+    = do logLvl 1 $ "Elaborating clause " ++ show n
          i <- getIState -- get the type options too
          let o' = case lookupCtxt n (idris_flags i) of
                     [fs] -> fs
@@ -190,7 +190,7 @@ elabDecl' what info (PMutual f ps)
          -- record mutually defined data definitions
          let datans = concatMap declared (filter isDataDecl ps)
          mapM_ (setMutData datans) datans
-         iLOG $ "Rechecking for positivity " ++ show datans
+         logLvl 1 $ "Rechecking for positivity " ++ show datans
          mapM_ (\x -> do setTotality x Unchecked) datans
          -- Do totality checking after entire mutual block
          i <- get
@@ -215,7 +215,7 @@ elabDecl' what info (PMutual f ps)
 
 elabDecl' what info (PParams f ns ps)
     = do i <- getIState
-         iLOG $ "Expanding params block with " ++ show ns ++ " decls " ++
+         logLvl 1 $ "Expanding params block with " ++ show ns ++ " decls " ++
                 show (concatMap tldeclared ps)
          let nblock = pblock i
          mapM_ (elabDecl' what info) nblock
@@ -239,18 +239,18 @@ elabDecl' what info (PNamespace n nfc ps) =
 
 elabDecl' what info (PClass doc s f cs n nfc ps pdocs fds ds cn cd)
   | what /= EDefns
-    = do iLOG $ "Elaborating class " ++ show n
+    = do logLvl 1 $ "Elaborating class " ++ show n
          elabClass info (s { syn_params = [] }) doc f cs n nfc ps pdocs fds ds cn cd
 elabDecl' what info (PInstance doc argDocs s f cs n nfc ps t expn ds)
-    = do iLOG $ "Elaborating instance " ++ show n
+    = do logLvl 1 $ "Elaborating instance " ++ show n
          elabInstance info s doc argDocs what f cs n nfc ps t expn ds
 elabDecl' what info (PRecord doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn)
   | what /= ETypes
-    = do iLOG $ "Elaborating record " ++ show name
+    = do logLvl 1 $ "Elaborating record " ++ show name
          elabRecord info doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn
 {-
   | otherwise
-    = do iLOG $ "Elaborating [type of] " ++ show tyn
+    = do logLvl 1 $ "Elaborating [type of] " ++ show tyn
          elabData info s doc [] f [] (PLaterdecl tyn ty)
 -}
 elabDecl' _ info (PDSL n dsl)
@@ -261,7 +261,7 @@ elabDecl' what info (PDirective i)
   | what /= EDefns = directiveAction i
 elabDecl' what info (PProvider doc syn fc provWhat n)
   | what /= EDefns
-    = do iLOG $ "Elaborating type provider " ++ show n
+    = do logLvl 1 $ "Elaborating type provider " ++ show n
          elabProvider doc info syn fc provWhat n
 elabDecl' what info (PTransform fc safety old new)
     = do elabTransform info fc safety old new

@@ -345,7 +345,7 @@ addToCalledG :: Name -> [Name] -> Idris ()
 addToCalledG n ns = return () -- TODO
 
 push_estack :: Name -> Bool -> Idris ()
-push_estack n inst 
+push_estack n inst
     = do i <- getIState
          putIState (i { elab_stack = (n, inst) : elab_stack i })
 
@@ -401,10 +401,10 @@ addAutoHint :: Name -> Name -> Idris ()
 addAutoHint n hint =
     do ist <- getIState
        case lookupCtxtExact n (idris_autohints ist) of
-            Nothing -> 
+            Nothing ->
                  do let hs = addDef n [hint] (idris_autohints ist)
                     putIState $ ist { idris_autohints = hs }
-            Just nhints -> 
+            Just nhints ->
                  do let hs = addDef n (hint : nhints) (idris_autohints ist)
                     putIState $ ist { idris_autohints = hs }
 
@@ -589,7 +589,7 @@ addConstraints fc (v, cs)
          putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
   where
     insertAll [] c = c
-    insertAll ((c, fc) : cs) ics 
+    insertAll ((c, fc) : cs) ics
        = insertAll cs $ S.insert (ConstraintFC c fc) ics
 
 addDeferred = addDeferred' Ref
@@ -945,9 +945,6 @@ logLvl l str = do i <- getIState
 cmdOptType :: Opt -> Idris Bool
 cmdOptType x = do i <- getIState
                   return $ x `elem` opt_cmdline (idris_options i)
-
-iLOG :: String -> Idris ()
-iLOG = logLvl 1
 
 noErrors :: Idris Bool
 noErrors = do i <- getIState
@@ -1714,9 +1711,9 @@ aiFn inpat expat qq imp_meths ist fc f ffc ds as
     insertImpl :: [PArg] -- ^ expected argument types (from idris_implicits)
                -> [PArg] -- ^ given arguments
                -> [PArg]
-    insertImpl ps as 
+    insertImpl ps as
         = let (as', badimpls) = partition (impIn ps) as in
-              map addUnknownImp badimpls ++ 
+              map addUnknownImp badimpls ++
               insImpAcc M.empty ps (filter expArg as') (filter (not . expArg) as')
 
     insImpAcc :: M.Map Name PTerm -- accumulated param names & arg terms
@@ -1761,7 +1758,7 @@ aiFn inpat expat qq imp_meths ist fc f ffc ds as
     find n (PTacImplicit _ _ n' _ t : gs) acc
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
-    
+
 -- return True if the second argument is an implicit argument which is
 -- expected in the implicits, or if it's not an implicit
 impIn :: [PArg] -> PArg -> Bool

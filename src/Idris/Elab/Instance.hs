@@ -111,7 +111,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          let ds_defs = insertDefaults i iname (class_defaults ci) ns ds
          logLvl 3 ("After defaults: " ++ show ds_defs ++ "\n")
          let ds' = reorderDefs (map fst (class_methods ci)) $ ds_defs
-         iLOG ("Reordered: " ++ show ds' ++ "\n")
+         logLvl 1 ("Reordered: " ++ show ds' ++ "\n")
          mapM_ (warnMissing ds' ns iname) (map fst (class_methods ci))
          mapM_ (checkInClass (map fst (class_methods ci))) (concatMap defined ds')
          let wbTys = map mkTyDecl mtys
@@ -139,7 +139,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
 
          let idecls = [PClauses fc [Dictionary] iname
                                  [PClause fc iname lhs [] rhs wb]]
-         iLOG (show idecls)
+         logLvl 1 (show idecls)
          push_estack iname True
          mapM_ (rec_elabDecl info EAll info) idecls
          pop_estack

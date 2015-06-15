@@ -72,7 +72,7 @@ split n t'
              Nothing -> ifail $ show n ++ " is not a pattern variable"
              Just ty ->
                 do let splits = findPats ist ty
-                   iLOG ("New patterns " ++ showSep ", "  
+                   logLvl 1 ("New patterns " ++ showSep ", "  
                          (map showTmImpls splits))
                    let newPats_in = zipWith (replaceVar ctxt n) splits (repeat t)
                    logLvl 4 ("Working from " ++ show t)
@@ -84,7 +84,7 @@ split n t'
                               (showSep "\n" (map show (mapMaybe id newPats))))
                    logLvl 3 "----"
                    let newPats' = mergeAllPats ist n t (mapMaybe id newPats)
-                   iLOG ("Name updates " ++ showSep "\n"
+                   logLvl 1 ("Name updates " ++ showSep "\n"
                          (map (\ (p, u) -> show u ++ " " ++ show p) newPats'))
                    return (map snd newPats')
 
