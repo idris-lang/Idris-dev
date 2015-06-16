@@ -419,11 +419,7 @@ Extra-source-files:
                        test/effects005/run
                        test/effects005/*.idr
                        test/effects005/expected
-                       test/effects005/input
-                       test/effects006/run
-                       test/effects006/*.idr
-                       test/effects006/expected
-                       test/effects006/input
+
 
                        test/error001/run
                        test/error001/*.idr
