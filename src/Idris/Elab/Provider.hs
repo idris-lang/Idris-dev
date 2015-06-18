@@ -52,8 +52,8 @@ import Data.List.Split (splitOn)
 import Util.Pretty(pretty, text)
 
 -- | Elaborate a type provider
-elabProvider :: Docstring (Either Err PTerm) -> ElabInfo -> SyntaxInfo -> FC -> ProvideWhat -> Name -> Idris ()
-elabProvider doc info syn fc what n
+elabProvider :: Docstring (Either Err PTerm) -> ElabInfo -> SyntaxInfo -> FC -> FC -> ProvideWhat -> Name -> Idris ()
+elabProvider doc info syn fc nfc what n
     = do i <- getIState
          -- Ensure that the experimental extension is enabled
          unless (TypeProviders `elem` idris_language_extensions i) $
@@ -98,7 +98,7 @@ elabProvider doc info syn fc what n
                   logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
              | ProvPostulate _ <- what ->
                do -- Add the postulate
-                  elabPostulate info syn doc fc [] n (delab i tm)
+                  elabPostulate info syn doc fc nfc [] n (delab i tm)
                   logLvl 3 $ "Elaborated provided postulate " ++ show n
              | otherwise ->
                ierror . Msg $ "Attempted to provide a postulate where a term was expected."

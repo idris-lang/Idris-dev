@@ -533,14 +533,14 @@ postulate syn = do (doc, ext)
                    opts <- fnOpts initOpts
                    acc <- optional accessibility
                    opts' <- fnOpts opts
-                   n_in <- fst <$> fnName
+                   (n_in, nfc) <- fnName
                    let n = expandNS syn n_in
                    lchar ':'
                    ty <- typeExpr (allowImp syn)
                    fc <- getFC
                    terminator
                    addAcc n acc
-                   return (PPostulate ext doc syn fc opts' n ty)
+                   return (PPostulate ext doc syn fc nfc opts' n ty)
                  <?> "postulate"
    where ppostDecl = do reserved "postulate"; return False
                  <|> do lchar '%'; reserved "extern"; return True
@@ -1193,18 +1193,18 @@ provider syn = do doc <- try (do (doc, _) <- docstring syn
                   provideTerm doc <|> providePostulate doc
                <?> "type provider"
   where provideTerm doc =
-          do lchar '('; n <- fst <$> fnName; lchar ':'; t <- typeExpr syn; lchar ')'
+          do lchar '('; (n, nfc) <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
              fc <- getFC
              reserved "with"
              e <- expr syn <?> "provider expression"
-             return  [PProvider doc syn fc (ProvTerm t e) n]
+             return  [PProvider doc syn fc nfc (ProvTerm t e) n]
         providePostulate doc =
           do reserved "postulate"
-             n <- fst <$> fnName
+             (n, nfc) <- fnName
              fc <- getFC
              reserved "with"
              e <- expr syn <?> "provider expression"
-             return [PProvider doc syn fc (ProvPostulate e) n]
+             return [PProvider doc syn fc nfc (ProvPostulate e) n]
 
 {- | Parses a transform
 

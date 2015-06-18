@@ -607,7 +607,7 @@ data PDecl' t
    = PFix     FC Fixity [String] -- ^ Fixity declaration
    | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name FC t   -- ^ Type declaration (last FC is precise name location)
    | PPostulate Bool -- external def if true
-          (Docstring (Either Err PTerm)) SyntaxInfo FC FnOpts Name t -- ^ Postulate
+          (Docstring (Either Err PTerm)) SyntaxInfo FC FC FnOpts Name t -- ^ Postulate, second FC is precise name location
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
    | PCAF     FC Name t -- ^ Top level constant
    | PData    (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
@@ -655,7 +655,7 @@ data PDecl' t
    | PSyntax  FC Syntax -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
    | PDirective Directive -- ^ Compiler directive.
-   | PProvider (Docstring (Either Err PTerm)) SyntaxInfo FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term
+   | PProvider (Docstring (Either Err PTerm)) SyntaxInfo FC FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term. The second FC is precise highlighting location.
    | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
                             -- bool is True, lhs and rhs must be convertible
  deriving Functor
@@ -750,7 +750,7 @@ type PClause = PClause' PTerm
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
 declared (PTy _ _ _ _ _ n fc t) = [n]
-declared (PPostulate _ _ _ _ _ n t) = [n]
+declared (PPostulate _ _ _ _ _ _ n t) = [n]
 declared (PClauses _ _ n _) = [] -- not a declaration
 declared (PCAF _ n _) = [n]
 declared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
@@ -771,7 +771,7 @@ declared _ = []
 tldeclared :: PDecl -> [Name]
 tldeclared (PFix _ _ _) = []
 tldeclared (PTy _ _ _ _ _ n _ t) = [n]
-tldeclared (PPostulate _ _ _ _ _ n t) = [n]
+tldeclared (PPostulate _ _ _ _ _ _ n t) = [n]
 tldeclared (PClauses _ _ n _) = [] -- not a declaration
 tldeclared (PRecord _ _ _ _ n _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 tldeclared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
@@ -786,7 +786,7 @@ tldeclared _ = []
 defined :: PDecl -> [Name]
 defined (PFix _ _ _) = []
 defined (PTy _ _ _ _ _ n _ t) = []
-defined (PPostulate _ _ _ _ _ n t) = []
+defined (PPostulate _ _ _ _ _ _ n t) = []
 defined (PClauses _ _ n _) = [n] -- not a declaration
 defined (PCAF _ n _) = [n]
 defined (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts

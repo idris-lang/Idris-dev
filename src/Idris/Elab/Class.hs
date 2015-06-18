@@ -290,7 +290,7 @@ mdec x = x
 -- | Get the docstring corresponding to a member, if one exists
 memberDocs :: PDecl -> Maybe (Name, Docstring (Either Err PTerm))
 memberDocs (PTy d _ _ _ _ n _ _) = Just (basename n, d)
-memberDocs (PPostulate _ d _ _ _ n _) = Just (basename n, d)
+memberDocs (PPostulate _ d _ _ _ _ n _) = Just (basename n, d)
 memberDocs (PData d _ _ _ _ pdata) = Just (basename $ d_name pdata, d)
 memberDocs (PRecord d _ _ _ n _ _ _ _ _ _ _ ) = Just (basename n, d)
 memberDocs (PClass d _ _ _ n _ _ _ _ _ _ _) = Just (basename n, d)
