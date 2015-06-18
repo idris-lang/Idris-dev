@@ -6,6 +6,7 @@
 ||| Common aliases and definitions of Logging Levels.
 module Effect.Logging.Level
 
+%access public
 -- ---------------------------------------------- [ Nat Derived Logging Levels ]
 --
 -- Several aliases have been defined to aide in semantic use of the
