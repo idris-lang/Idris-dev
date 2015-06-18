@@ -1232,7 +1232,7 @@ instance (Binary t) => Binary (PDecl' t) where
                 PMutual x1 x2  -> do putWord8 11
                                      put x1
                                      put x2
-                PPostulate x1 x2 x3 x4 x5 x6 x7
+                PPostulate x1 x2 x3 x4 x5 x6 x7 x8
                                    -> do putWord8 12
                                          put x1
                                          put x2
@@ -1241,17 +1241,19 @@ instance (Binary t) => Binary (PDecl' t) where
                                          put x5
                                          put x6
                                          put x7
+                                         put x8
                 PSyntax x1 x2 -> do putWord8 13
                                     put x1
                                     put x2
                 PDirective x1 -> error "Cannot serialize PDirective"
-                PProvider x1 x2 x3 x4 x5 ->
+                PProvider x1 x2 x3 x4 x5 x6 ->
                   do putWord8 15
                      put x1
                      put x2
                      put x3
                      put x4
                      put x5
+                     put x6
                 PTransform x1 x2 x3 x4 -> do putWord8 16
                                              put x1
                                              put x2
@@ -1348,7 +1350,8 @@ instance (Binary t) => Binary (PDecl' t) where
                             x5 <- get
                             x6 <- get
                             x7 <- get
-                            return (PPostulate x1 x2 x3 x4 x5 x6 x7)
+                            x8 <- get
+                            return (PPostulate x1 x2 x3 x4 x5 x6 x7 x8)
                    13 -> do x1 <- get
                             x2 <- get
                             return (PSyntax x1 x2)
@@ -1358,7 +1361,8 @@ instance (Binary t) => Binary (PDecl' t) where
                             x3 <- get
                             x4 <- get
                             x5 <- get
-                            return (PProvider x1 x2 x3 x4 x5)
+                            x6 <- get
+                            return (PProvider x1 x2 x3 x4 x5 x6)
                    16 -> do x1 <- get
                             x2 <- get
                             x3 <- get

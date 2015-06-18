@@ -161,12 +161,12 @@ elabDecl' what info (PTy doc argdocs s f o n nfc ty)
     = do logLvl 1 $ "Elaborating type decl " ++ show n ++ show o
          elabType info s doc argdocs f o n nfc ty
          return ()
-elabDecl' what info (PPostulate b doc s f o n ty)
+elabDecl' what info (PPostulate b doc s f nfc o n ty)
   | what /= EDefns
     = do logLvl 1 $ "Elaborating postulate " ++ show n ++ show o
          if b 
-            then elabExtern info s doc f o n ty
-            else elabPostulate info s doc f o n ty
+            then elabExtern info s doc f nfc o n ty
+            else elabPostulate info s doc f nfc o n ty
 elabDecl' what info (PData doc argDocs s f co d)
   | what /= ETypes
     = do logLvl 1 $ "Elaborating " ++ show (d_name d)
@@ -259,10 +259,10 @@ elabDecl' _ info (PDSL n dsl)
          addIBC (IBCDSL n)
 elabDecl' what info (PDirective i)
   | what /= EDefns = directiveAction i
-elabDecl' what info (PProvider doc syn fc provWhat n)
+elabDecl' what info (PProvider doc syn fc nfc provWhat n)
   | what /= EDefns
     = do logLvl 1 $ "Elaborating type provider " ++ show n
-         elabProvider doc info syn fc provWhat n
+         elabProvider doc info syn fc nfc provWhat n
 elabDecl' what info (PTransform fc safety old new)
     = do elabTransform info fc safety old new
          return ()

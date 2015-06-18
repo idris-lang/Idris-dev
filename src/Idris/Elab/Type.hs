@@ -232,18 +232,19 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
     tyIsHandler _                                           = False
 
 elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
-                 FC -> FnOpts -> Name -> PTerm -> Idris ()
-elabPostulate info syn doc fc opts n ty = do
+                 FC -> FC -> FnOpts -> Name -> PTerm -> Idris ()
+elabPostulate info syn doc fc nfc opts n ty = do
     elabType info syn doc [] fc opts n NoFC ty
     putIState . (\ist -> ist{ idris_postulates = S.insert n (idris_postulates ist) }) =<< getIState
     addIBC (IBCPostulate n)
+    sendHighlighting [(nfc, AnnName n (Just PostulateOutput) Nothing Nothing)]
 
     -- remove it from the deferred definitions list
     solveDeferred n
 
 elabExtern :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
-                 FC -> FnOpts -> Name -> PTerm -> Idris ()
-elabExtern info syn doc fc opts n ty = do
+                 FC -> FC -> FnOpts -> Name -> PTerm -> Idris ()
+elabExtern info syn doc fc nfc opts n ty = do
     cty <- elabType info syn doc [] fc opts n NoFC ty
     ist <- getIState
     let arity = length (getArgTys (normalise (tt_ctxt ist) [] cty))
