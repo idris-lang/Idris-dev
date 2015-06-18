@@ -19,6 +19,7 @@ import Data.Generics.Uniplate.Data (transform)
 import Data.Maybe (mapMaybe)
 import Data.List (intersperse, nub)
 import qualified Data.Text as T
+import Control.Applicative (Alternative((<|>)))
 import Control.Monad.State
 
 import Debug.Trace
@@ -566,18 +567,18 @@ annTm tm = annotate (AnnTerm [] tm)
 
 -- | Add extra metadata to an output annotation, optionally marking metavariables.
 fancifyAnnots :: IState -> Bool -> OutputAnnotation -> OutputAnnotation
-fancifyAnnots ist meta annot@(AnnName n _ _ _) =
+fancifyAnnots ist meta annot@(AnnName n nt _ _) =
   do let ctxt = tt_ctxt ist
          docs = docOverview ist n
          ty   = Just (getTy ist n)
      case () of
-       _ | isDConName      n ctxt -> AnnName n (Just DataOutput) docs ty
-       _ | isFnName        n ctxt -> AnnName n (Just FunOutput) docs ty
-       _ | isTConName      n ctxt -> AnnName n (Just TypeOutput) docs ty
+       _ | isDConName      n ctxt -> AnnName n (nt <|> Just DataOutput) docs ty
+       _ | isFnName        n ctxt -> AnnName n (nt <|>  Just FunOutput) docs ty
+       _ | isTConName      n ctxt -> AnnName n (nt <|>  Just TypeOutput) docs ty
        _ | isMetavarName   n ist  -> if meta
-                                       then AnnName n (Just MetavarOutput) docs ty
-                                       else AnnName n (Just FunOutput) docs ty
-       _ | isPostulateName n ist  -> AnnName n (Just PostulateOutput) docs ty
+                                       then AnnName n (nt <|>  Just MetavarOutput) docs ty
+                                       else AnnName n (nt <|>  Just FunOutput) docs ty
+       _ | isPostulateName n ist  -> AnnName n (nt <|>  Just PostulateOutput) docs ty
        _ | otherwise              -> annot
   where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
         docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
