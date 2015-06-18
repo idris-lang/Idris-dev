@@ -1,0 +1,12 @@
+When checking right hand side of foo:
+When checking an application of function Prelude.Classes.+:
+        Type mismatch between
+                String (Type of "argh")
+        and
+                Nat (Expected type)
+When checking right hand side of foo:
+When checking an application of function Prelude.Classes.+:
+        Type mismatch between
+                String (Type of "argh")
+        and
+                Nat (Expected type)

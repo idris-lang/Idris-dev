@@ -107,6 +107,16 @@ spanFC (FileFC f) (FileFC f') | f == f' = FileFC f
 spanFC NoFC fc = fc
 spanFC fc NoFC = fc
 
+-- | Determine whether the first argument is completely contained in the second
+fcIn :: FC -> FC -> Bool
+fcIn NoFC   _ = False
+fcIn (FileFC _) _ = False
+fcIn (FC {}) NoFC = False
+fcIn (FC {}) (FileFC _) = False
+fcIn (FC fn1 (sl1, sc1) (el1, ec1)) (FC fn2 (sl2, sc2) (el2, ec2)) =
+  fn1 == fn2 &&
+  (sl1 == sl2 && sc1 > sc2 || sl1 > sl2) &&
+  (el1 == el2 && ec1 < ec2 || el1 < el2)
 
 -- | Ignore source location equality (so deriving classes do not compare FCs)
 instance Eq FC where
