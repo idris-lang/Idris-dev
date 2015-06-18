@@ -1191,7 +1191,7 @@ elab ist info emode opts fn tm
              -- old ones with an _
              mkClause args (l, r)
                    = let args' = map (shadowed (allNamesIn l)) args
-                         lhs = PApp (getFC fc l) (PRef (getFC fc l) n)
+                         lhs = PApp (getFC fc l) (PRef NoFC n)
                                  (map (mkLHSarg l) args') in
                             PClause (getFC fc l) n lhs [] r []
 
