@@ -1,4 +1,4 @@
-Reflect.idr:208:38:
+test030a.idr:12:26-14:1:
 When checking right hand side of testReflect1:
 When checking an application of function Reflect.getJust:
         Type mismatch between
