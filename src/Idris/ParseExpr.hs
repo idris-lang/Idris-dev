@@ -91,8 +91,18 @@ expr' syn = try (externalExpr syn)
 {- | Parses a user-defined expression -}
 externalExpr :: SyntaxInfo -> IdrisParser PTerm
 externalExpr syn = do i <- get
-                      extensions syn (syntaxRulesList $ syntax_rules i)
+                      (FC fn start _) <- getFC
+                      expr <- extensions syn (syntaxRulesList $ syntax_rules i)
+                      (FC _ _ end) <- getFC
+                      let outerFC = FC fn start end
+                      return (mapPTermFC (fixFC outerFC) (fixFCH fn outerFC) expr)
                    <?> "user-defined expression"
+  where -- Fix non-highlighting FCs by approximating with the span of the syntax application
+        fixFC outer inner | inner `fcIn` outer = inner
+                          | otherwise          = outer
+        -- Fix highlighting FCs by making them useless, to avoid spurious highlights
+        fixFCH fn outer inner | inner `fcIn` outer = inner
+                              | otherwise          = FileFC fn
 
 {- | Parses a simple user-defined expression -}
 simpleExternalExpr :: SyntaxInfo -> IdrisParser PTerm

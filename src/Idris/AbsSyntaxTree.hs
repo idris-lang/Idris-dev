@@ -873,11 +873,65 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
        deriving (Eq, Data, Typeable)
 
 data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
-              | FirstSuccess 
+              | FirstSuccess
        deriving (Eq, Data, Typeable)
 
+-- | Transform the FCs in a PTerm. The first function transforms the
+-- general-purpose FCs, and the second transforms those that are used
+-- for semantic source highlighting, so they can be treated specially.
+mapPTermFC :: (FC -> FC) -> (FC -> FC) -> PTerm -> PTerm
+mapPTermFC f g (PQuote q) = PQuote q
+mapPTermFC f g (PRef fc n) = PRef (g fc) n
+mapPTermFC f g (PInferRef fc n) = PInferRef (g fc) n
+mapPTermFC f g (PPatvar fc n) = PPatvar (g fc) n
+mapPTermFC f g (PLam fc n fc' t1 t2) = PLam (f fc) n (g fc') (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PPi plic n fc t1 t2) = PPi plic n (g fc) (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PLet fc n fc' t1 t2 t3) = PLet (f fc) n (g fc') (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
+mapPTermFC f g (PTyped t1 t2) = PTyped (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PApp fc t args) = PApp (f fc) (mapPTermFC f g t) (map (fmap (mapPTermFC f g)) args)
+mapPTermFC f g (PAppImpl t1 impls) = PAppImpl (mapPTermFC f g t1) impls
+mapPTermFC f g (PAppBind fc t args) = PAppBind (f fc) (mapPTermFC f g t) (map (fmap (mapPTermFC f g)) args)
+mapPTermFC f g (PMatchApp fc n) = PMatchApp (f fc) n
+mapPTermFC f g (PIfThenElse fc t1 t2 t3) = PIfThenElse (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
+mapPTermFC f g (PCase fc t cases) = PCase (f fc) (mapPTermFC f g t) (map (\(l,r) -> (mapPTermFC f g l, mapPTermFC f g r)) cases)
+mapPTermFC f g (PTrue fc info) = PTrue (f fc) info
+mapPTermFC f g (PResolveTC fc) =  PResolveTC (f fc)
+mapPTermFC f g (PRewrite fc t1 t2 t3) = PRewrite (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (fmap (mapPTermFC f g) t3)
+mapPTermFC f g (PPair fc info t1 t2) = PPair (f fc) info (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PDPair fc info t1 t2 t3) = PDPair (f fc) info (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
+mapPTermFC f g (PAs fc n t) = PAs (f fc) n (mapPTermFC f g t)
+mapPTermFC f g (PAlternative ty ts) = PAlternative ty (map (mapPTermFC f g) ts)
+mapPTermFC f g (PHidden t) = PHidden (mapPTermFC f g t)
+mapPTermFC f g (PType fc) = PType (f fc)
+mapPTermFC f g (PUniverse u) = PUniverse u
+mapPTermFC f g (PGoal fc t1 n t2) = PGoal (f fc) (mapPTermFC f g t1) n (mapPTermFC f g t2)
+mapPTermFC f g (PConstant fc c) = PConstant (f fc) c
+mapPTermFC f g Placeholder = Placeholder
+mapPTermFC f g (PDoBlock dos) = PDoBlock (map mapPDoFC dos)
+  where mapPDoFC (DoExp  fc t) = DoExp (f fc) (mapPTermFC f g t)
+        mapPDoFC (DoBind fc n nfc t) = DoBind (f fc) n (g nfc) (mapPTermFC f g t)
+        mapPDoFC (DoBindP fc t1 t2 alts) =
+          DoBindP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (map (\(l,r)-> (mapPTermFC f g l, mapPTermFC f g r)) alts)
+        mapPDoFC (DoLet fc n nfc t1 t2) = DoLet (f fc) n (g nfc) (mapPTermFC f g t1) (mapPTermFC f g t2)
+        mapPDoFC (DoLetP fc t1 t2) = DoLetP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PIdiom fc t) = PIdiom (f fc) (mapPTermFC f g t)
+mapPTermFC f g (PReturn fc) = PReturn (f fc)
+mapPTermFC f g (PMetavar fc n) = PMetavar (g fc) n
+mapPTermFC f g (PProof tacs) = PProof (map (fmap (mapPTermFC f g)) tacs)
+mapPTermFC f g (PTactics tacs) = PTactics (map (fmap (mapPTermFC f g)) tacs)
+mapPTermFC f g (PElabError err) = PElabError err
+mapPTermFC f g PImpossible = PImpossible
+mapPTermFC f g (PCoerced t) = PCoerced (mapPTermFC f g t)
+mapPTermFC f g (PDisamb msg t) = PDisamb msg (mapPTermFC f g t)
+mapPTermFC f g (PUnifyLog t) = PUnifyLog (mapPTermFC f g t)
+mapPTermFC f g (PNoImplicits t) = PNoImplicits (mapPTermFC f g t)
+mapPTermFC f g (PQuasiquote t1 t2) = PQuasiquote (mapPTermFC f g t1) (fmap (mapPTermFC f g) t2)
+mapPTermFC f g (PUnquote t) = PUnquote (mapPTermFC f g t)
+mapPTermFC f g (PRunElab fc tm ns) = PRunElab (f fc) (mapPTermFC f g tm) ns
+mapPTermFC f g (PQuoteName n) = PQuoteName n
+
 {-!
-deriving instance Binary PTerm
+dg instance Binary PTerm
 deriving instance NFData PTerm
 !-}
 
@@ -968,6 +1022,14 @@ instance Sized a => Sized (PTactic' a) where
   size Skip = 1
   size (TFail ts) = 1 + size ts
   size SourceFC = 1
+  size DoUnify = 1
+  size (CaseTac x) = 1 + size x
+  size (Equiv t) = 1 + size t
+  size (Claim x y) = 1 + size x + size y
+  size Unfocus = 1
+  size (MatchRefine x) = 1 + size x
+  size (LetTacTy x y z) = 1 + size x + size y + size z
+  size TCInstance = 1
 
 type PTactic = PTactic' PTerm
 
@@ -1092,6 +1154,8 @@ highestFC (PNoImplicits tm) = highestFC tm
 highestFC (PQuasiquote _ _) = Nothing
 highestFC (PUnquote tm) = highestFC tm
 highestFC (PQuoteName _) = Nothing
+highestFC (PRunElab fc _ _) = Just fc
+highestFC (PAppImpl t _) = highestFC t
 
 -- Type class data
 
@@ -1429,6 +1493,7 @@ consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
 consoleDecorate ist (AnnTerm _ _) = id
 consoleDecorate ist (AnnSearchResult _) = id
 consoleDecorate ist (AnnErr _) = id
+consoleDecorate ist (AnnNamespace _ _) = id
 
 isPostulateName :: Name -> IState -> Bool
 isPostulateName n ist = S.member n (idris_postulates ist)

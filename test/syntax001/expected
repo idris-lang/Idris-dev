@@ -1,0 +1,12 @@
+Syntax.idr:6:7-9:1:When checking right hand side of foo:
+When checking an application of function Prelude.Classes.+:
+        Type mismatch between
+                String (Type of "argh")
+        and
+                Nat (Expected type)
+SyntaxTest.idr:5:7-6:1:When checking right hand side of foo:
+When checking an application of function Prelude.Classes.+:
+        Type mismatch between
+                String (Type of "argh")
+        and
+                Nat (Expected type)
