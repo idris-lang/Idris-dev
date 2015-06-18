@@ -483,7 +483,7 @@ propagateParams i ps t tm@(PApp _ (PRef fc n) args)
               | Placeholder <- getTm t,
                 n `elem` ps,
                 not (n `elem` allNamesIn tm)
-                    = t { getTm = PRef fc n } : addP sc ts
+                    = t { getTm = PRef NoFC n } : addP sc ts
          addP (Bind n _ sc) (t : ts) = t : addP sc ts
          addP _ ts = ts
 propagateParams i ps t (PRef fc n)
