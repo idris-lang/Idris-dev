@@ -876,57 +876,59 @@ data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
               | FirstSuccess
        deriving (Eq, Data, Typeable)
 
-
-mapPTermFC :: (FC -> FC) -> PTerm -> PTerm
-mapPTermFC f (PQuote q) = PQuote q
-mapPTermFC f (PRef fc n) = PRef (f fc) n
-mapPTermFC f (PInferRef fc n) = PInferRef (f fc) n
-mapPTermFC f (PPatvar fc n) = PPatvar (f fc) n
-mapPTermFC f (PLam fc n fc' t1 t2) = PLam (f fc) n (f fc') (mapPTermFC f t1) (mapPTermFC f t2)
-mapPTermFC f (PPi plic n fc t1 t2) = PPi plic n (f fc) (mapPTermFC f t1) (mapPTermFC f t2)
-mapPTermFC f (PLet fc n fc' t1 t2 t3) = PLet (f fc) n (f fc') (mapPTermFC f t1) (mapPTermFC f t2) (mapPTermFC f t3)
-mapPTermFC f (PTyped t1 t2) = PTyped (mapPTermFC f t1) (mapPTermFC f t2)
-mapPTermFC f (PApp fc t args) = PApp (f fc) (mapPTermFC f t) (map (fmap (mapPTermFC f)) args)
-mapPTermFC f (PAppImpl t1 impls) = PAppImpl (mapPTermFC f t1) impls
-mapPTermFC f (PAppBind fc t args) = PAppBind (f fc) (mapPTermFC f t) (map (fmap (mapPTermFC f)) args)
-mapPTermFC f (PMatchApp fc n) = PMatchApp (f fc) n
-mapPTermFC f (PIfThenElse fc t1 t2 t3) = PIfThenElse (f fc) (mapPTermFC f t1) (mapPTermFC f t2) (mapPTermFC f t3)
-mapPTermFC f (PCase fc t cases) = PCase (f fc) (mapPTermFC f t) (map (\(l,r) -> (mapPTermFC f l, mapPTermFC f r)) cases)
-mapPTermFC f (PTrue fc info) = PTrue (f fc) info
-mapPTermFC f (PResolveTC fc) =  PResolveTC (f fc)
-mapPTermFC f (PRewrite fc t1 t2 t3) = PRewrite (f fc) (mapPTermFC f t1) (mapPTermFC f t2) (fmap (mapPTermFC f) t3)
-mapPTermFC f (PPair fc info t1 t2) = PPair (f fc) info (mapPTermFC f t1) (mapPTermFC f t2)
-mapPTermFC f (PDPair fc info t1 t2 t3) = PDPair (f fc) info (mapPTermFC f t1) (mapPTermFC f t2) (mapPTermFC f t3)
-mapPTermFC f (PAs fc n t) = PAs (f fc) n (mapPTermFC f t)
-mapPTermFC f (PAlternative ty ts) = PAlternative ty (map (mapPTermFC f) ts)
-mapPTermFC f (PHidden t) = PHidden (mapPTermFC f t)
-mapPTermFC f (PType fc) = PType (f fc)
-mapPTermFC f (PUniverse u) = PUniverse u
-mapPTermFC f (PGoal fc t1 n t2) = PGoal (f fc) (mapPTermFC f t1) n (mapPTermFC f t2)
-mapPTermFC f (PConstant fc c) = PConstant (f fc) c
-mapPTermFC f Placeholder = Placeholder
-mapPTermFC f (PDoBlock dos) = PDoBlock (map (mapPDoFC f) dos)
-  where mapPDoFC f (DoExp  fc t) = DoExp (f fc) (mapPTermFC f t)
-        mapPDoFC f (DoBind fc n nfc t) = DoBind (f fc) n (f nfc) (mapPTermFC f t)
-        mapPDoFC f (DoBindP fc t1 t2 alts) =
-          DoBindP (f fc) (mapPTermFC f t1) (mapPTermFC f t2) (map (\(l,r)-> (mapPTermFC f l, mapPTermFC f r)) alts)
-        mapPDoFC f (DoLet fc n nfc t1 t2) = DoLet (f fc) n (f nfc) (mapPTermFC f t1) (mapPTermFC f t2)
-        mapPDoFC f (DoLetP fc t1 t2) = DoLetP (f fc) (mapPTermFC f t1) (mapPTermFC f t2)
-mapPTermFC f (PIdiom fc t) = PIdiom (f fc) (mapPTermFC f t)
-mapPTermFC f (PReturn fc) = PReturn (f fc)
-mapPTermFC f (PMetavar fc n) = PMetavar (f fc) n
-mapPTermFC f (PProof tacs) = PProof (map (fmap (mapPTermFC f)) tacs)
-mapPTermFC f (PTactics tacs) = PTactics (map (fmap (mapPTermFC f)) tacs)
-mapPTermFC f (PElabError err) = PElabError err
-mapPTermFC f PImpossible = PImpossible
-mapPTermFC f (PCoerced t) = PCoerced (mapPTermFC f t)
-mapPTermFC f (PDisamb msg t) = PDisamb msg (mapPTermFC f t)
-mapPTermFC f (PUnifyLog t) = PUnifyLog (mapPTermFC f t)
-mapPTermFC f (PNoImplicits t) = PNoImplicits (mapPTermFC f t)
-mapPTermFC f (PQuasiquote t1 t2) = PQuasiquote (mapPTermFC f t1) (fmap (mapPTermFC f) t2)
-mapPTermFC f (PUnquote t) = PUnquote (mapPTermFC f t)
-mapPTermFC f (PRunElab fc tm ns) = PRunElab (f fc) (mapPTermFC f tm) ns
-mapPTermFC f (PQuoteName n) = PQuoteName n
+-- | Transform the FCs in a PTerm. The first function transforms the
+-- general-purpose FCs, and the second transforms those that are used
+-- for semantic source highlighting, so they can be treated specially.
+mapPTermFC :: (FC -> FC) -> (FC -> FC) -> PTerm -> PTerm
+mapPTermFC f g (PQuote q) = PQuote q
+mapPTermFC f g (PRef fc n) = PRef (g fc) n
+mapPTermFC f g (PInferRef fc n) = PInferRef (g fc) n
+mapPTermFC f g (PPatvar fc n) = PPatvar (g fc) n
+mapPTermFC f g (PLam fc n fc' t1 t2) = PLam (f fc) n (g fc') (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PPi plic n fc t1 t2) = PPi plic n (g fc) (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PLet fc n fc' t1 t2 t3) = PLet (f fc) n (g fc') (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
+mapPTermFC f g (PTyped t1 t2) = PTyped (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PApp fc t args) = PApp (f fc) (mapPTermFC f g t) (map (fmap (mapPTermFC f g)) args)
+mapPTermFC f g (PAppImpl t1 impls) = PAppImpl (mapPTermFC f g t1) impls
+mapPTermFC f g (PAppBind fc t args) = PAppBind (f fc) (mapPTermFC f g t) (map (fmap (mapPTermFC f g)) args)
+mapPTermFC f g (PMatchApp fc n) = PMatchApp (f fc) n
+mapPTermFC f g (PIfThenElse fc t1 t2 t3) = PIfThenElse (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
+mapPTermFC f g (PCase fc t cases) = PCase (f fc) (mapPTermFC f g t) (map (\(l,r) -> (mapPTermFC f g l, mapPTermFC f g r)) cases)
+mapPTermFC f g (PTrue fc info) = PTrue (f fc) info
+mapPTermFC f g (PResolveTC fc) =  PResolveTC (f fc)
+mapPTermFC f g (PRewrite fc t1 t2 t3) = PRewrite (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (fmap (mapPTermFC f g) t3)
+mapPTermFC f g (PPair fc info t1 t2) = PPair (f fc) info (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PDPair fc info t1 t2 t3) = PDPair (f fc) info (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
+mapPTermFC f g (PAs fc n t) = PAs (f fc) n (mapPTermFC f g t)
+mapPTermFC f g (PAlternative ty ts) = PAlternative ty (map (mapPTermFC f g) ts)
+mapPTermFC f g (PHidden t) = PHidden (mapPTermFC f g t)
+mapPTermFC f g (PType fc) = PType (f fc)
+mapPTermFC f g (PUniverse u) = PUniverse u
+mapPTermFC f g (PGoal fc t1 n t2) = PGoal (f fc) (mapPTermFC f g t1) n (mapPTermFC f g t2)
+mapPTermFC f g (PConstant fc c) = PConstant (f fc) c
+mapPTermFC f g Placeholder = Placeholder
+mapPTermFC f g (PDoBlock dos) = PDoBlock (map mapPDoFC dos)
+  where mapPDoFC (DoExp  fc t) = DoExp (f fc) (mapPTermFC f g t)
+        mapPDoFC (DoBind fc n nfc t) = DoBind (f fc) n (g nfc) (mapPTermFC f g t)
+        mapPDoFC (DoBindP fc t1 t2 alts) =
+          DoBindP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (map (\(l,r)-> (mapPTermFC f g l, mapPTermFC f g r)) alts)
+        mapPDoFC (DoLet fc n nfc t1 t2) = DoLet (f fc) n (g nfc) (mapPTermFC f g t1) (mapPTermFC f g t2)
+        mapPDoFC (DoLetP fc t1 t2) = DoLetP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PIdiom fc t) = PIdiom (f fc) (mapPTermFC f g t)
+mapPTermFC f g (PReturn fc) = PReturn (f fc)
+mapPTermFC f g (PMetavar fc n) = PMetavar (g fc) n
+mapPTermFC f g (PProof tacs) = PProof (map (fmap (mapPTermFC f g)) tacs)
+mapPTermFC f g (PTactics tacs) = PTactics (map (fmap (mapPTermFC f g)) tacs)
+mapPTermFC f g (PElabError err) = PElabError err
+mapPTermFC f g PImpossible = PImpossible
+mapPTermFC f g (PCoerced t) = PCoerced (mapPTermFC f g t)
+mapPTermFC f g (PDisamb msg t) = PDisamb msg (mapPTermFC f g t)
+mapPTermFC f g (PUnifyLog t) = PUnifyLog (mapPTermFC f g t)
+mapPTermFC f g (PNoImplicits t) = PNoImplicits (mapPTermFC f g t)
+mapPTermFC f g (PQuasiquote t1 t2) = PQuasiquote (mapPTermFC f g t1) (fmap (mapPTermFC f g) t2)
+mapPTermFC f g (PUnquote t) = PUnquote (mapPTermFC f g t)
+mapPTermFC f g (PRunElab fc tm ns) = PRunElab (f fc) (mapPTermFC f g tm) ns
+mapPTermFC f g (PQuoteName n) = PQuoteName n
 
 {-!
 dg instance Binary PTerm

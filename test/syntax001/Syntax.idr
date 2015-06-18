@@ -1,4 +1,4 @@
- module Syntax
+module Syntax
 
 syntax "fnord" [y] = y + y + y
 
