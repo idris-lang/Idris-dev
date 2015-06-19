@@ -26,11 +26,8 @@ import qualified Data.ByteString.UTF8 as UTF8
 
 parseCmd :: IState -> String -> String -> Result (Either String Command)
 parseCmd i inputname = P.runparser pCmd i inputname . trim
-    where trim = fst . foldr f ("", True) . dropWhile isSpace
-              where f e (xs, False) = (e : xs, False)
-                    f e (xs, True)
-                      | isSpace e = (xs, True)
-                      | otherwise = (e : xs, False)
+    where trim = f . f
+              where f = reverse . dropWhile isSpace
 
 type CommandTable = [ ( [String], CmdArg, String
                     , String -> P.IdrisParser (Either String Command) ) ]
