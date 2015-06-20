@@ -801,6 +801,29 @@ VM* idris_checkMessagesFrom(VM* vm, VM* sender) {
     return 0;
 }
 
+VM* idris_checkMessagesTimeout(VM* vm, int delay) {
+    VM* sender = idris_checkMessagesFrom(vm, NULL);
+    if (sender != NULL) {
+        return sender;
+    }
+
+    struct timespec timeout;
+    int status;
+
+    // Wait either for a timeout or until we get a signal that a message
+    // has arrived.
+    pthread_mutex_lock(&vm->inbox_block);
+    timeout.tv_sec = time (NULL) + delay;
+    timeout.tv_nsec = 0;
+    status = pthread_cond_timedwait(&vm->inbox_waiting, &vm->inbox_block,
+                               &timeout);
+    (void)(status); //don't emit 'unused' warning
+    pthread_mutex_unlock(&vm->inbox_block);
+
+    return idris_checkMessagesFrom(vm, NULL);
+}
+
+
 Msg* idris_getMessageFrom(VM* vm, VM* sender) {
     Msg* msg;
     

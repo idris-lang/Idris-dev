@@ -259,6 +259,8 @@ void idris_sendMessage(VM* sender, VM* dest, VAL msg);
 VM* idris_checkMessages(VM* vm);
 // Check whether there are any messages in the queue
 VM* idris_checkMessagesFrom(VM* vm, VM* sender);
+// Check whether there are any messages in the queue, and wait if not
+VM* idris_checkMessagesTimeout(VM* vm, int timeout);
 // block until there is a message in the queue
 Msg* idris_recvMessage(VM* vm);
 // block until there is a message in the queue

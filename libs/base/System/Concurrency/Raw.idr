@@ -19,6 +19,15 @@ checkMsgs = do msgs <- foreign FFI_C "idris_checkMessages" (Ptr -> IO Ptr)
                null <- nullPtr msgs
                return (not null)
 
+||| Check for messages in the process inbox
+||| If no messages, waits for the given number of seconds
+checkMsgsTimeout : Int -> IO Bool
+checkMsgsTimeout timeout
+          = do msgs <- foreign FFI_C "idris_checkMessagesTimeout" 
+                            (Ptr -> Int -> IO Ptr) prim__vm timeout
+               null <- nullPtr msgs
+               return (not null)
+
 ||| Check for messages in the process inbox.
 ||| Returns either 'Nothing', if none, or 'Just pid' as pid of sender.
 listenMsgs : IO (Maybe Ptr)
