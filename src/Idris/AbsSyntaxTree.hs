@@ -1494,6 +1494,8 @@ consoleDecorate ist (AnnTerm _ _) = id
 consoleDecorate ist (AnnSearchResult _) = id
 consoleDecorate ist (AnnErr _) = id
 consoleDecorate ist (AnnNamespace _ _) = id
+consoleDecorate ist (AnnLink url) =
+   \txt -> Idris.Colours.colourise (IdrisColour Nothing True True False False) txt ++ " (" ++ url ++ ")"
 
 isPostulateName :: Name -> IState -> Bool
 isPostulateName n ist = S.member n (idris_postulates ist)

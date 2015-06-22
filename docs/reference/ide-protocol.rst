@@ -174,6 +174,9 @@ The following keys are available:
   ``text-formatting``
     provides an attribute of formatted text. This is for use with natural-language text, not code, and is presently emitted only from inline documentation. The potential values are ``bold``, ``italic``, and ``underline``.
 
+  ``link-href``
+    provides a URL that the corresponding text is a link to. 
+
   ``tt-term``
     A serialized representation of the Idris core term corresponding to the region of text.
 

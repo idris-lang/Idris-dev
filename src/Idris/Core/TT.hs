@@ -175,6 +175,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                       | AnnKeyword
                       | AnnFC FC
                       | AnnTextFmt TextFormatting
+                      | AnnLink String -- ^ A link to this URL
                       | AnnTerm [(Name, Bool)] (TT Name) -- ^ pprint bound vars, original term
                       | AnnSearchResult Ordering -- ^ more general, isomorphic, or more specific
                       | AnnErr Err

@@ -6,7 +6,7 @@ import Prelude.List
 %access public
 
 ||| Idris's primitive IO, for building abstractions on top of
-abstract 
+abstract
 data PrimIO : Type -> Type where
      prim__IO : a -> PrimIO a
 
@@ -20,13 +20,22 @@ world (TheWorld w) = w
 abstract WorldRes : Type -> Type
 WorldRes x = x
 
+||| An FFI specifier, which describes how a particular compiler
+||| backend handles foreign function calls.
 record FFI where
   constructor MkFFI
+  ||| A family describing which types are available in the FFI
   ffi_types : Type -> Type
+
+  ||| The type used to specify the names of foreign functions in this FFI
   ffi_fn : Type
+
+  ||| How this FFI describes exported datatypes
   ffi_data : Type
 
-abstract 
+||| The IO type, parameterised over the FFI that is available within
+||| it.
+abstract
 data IO' : (lang : FFI) -> Type -> Type where
      MkIO : (World -> PrimIO (WorldRes a)) -> IO' lang a
 
@@ -64,6 +73,19 @@ foreign_prim f fname (FRet y) env
 foreign_prim f fname (FFun arg sc) env
         = \x => foreign_prim f fname sc ((arg, x) :: env)
 
+||| Call a foreign function.
+|||
+||| The particular semantics of foreign function calls depend on the
+||| Idris compiler backend in use. For the default C backend, see the
+||| documentation for `FFI_C`.
+|||
+||| For more details, please consult [the Idris documentation](http://docs.idris-lang.org/en/latest/reference/ffi.html).
+|||
+||| @ f     an FFI descriptor, which is specific to the compiler backend.
+||| @ fname the name of the foreign function
+||| @ ty    the Idris type for the foreign function
+||| @ fty   an automatically-found proof that the Idris type works with
+|||         the FFI in question
 %inline
 foreign : (f : FFI) -> (fname : ffi_fn f) -> (ty : Type) ->
           {auto fty : FTy f [] ty} -> ty
@@ -128,7 +150,7 @@ namespace FFI_C
   -- Tell erasure analysis not to erase the argument
   %used MkRaw x
 
-  -- Supported C integer types
+  ||| Supported C integer types
   data C_IntTypes : Type -> Type where
        C_IntChar   : C_IntTypes Char
        C_IntNative : C_IntTypes Int
@@ -137,7 +159,7 @@ namespace FFI_C
        C_IntBits32 : C_IntTypes Bits32
        C_IntBits64 : C_IntTypes Bits64
 
-  -- Supported C foreign types
+  ||| Supported C foreign types
   data C_Types : Type -> Type where
        C_Str   : C_Types String
        C_Float : C_Types Float
@@ -147,6 +169,8 @@ namespace FFI_C
        C_Any   : C_Types (Raw a)
        C_IntT  : C_IntTypes i -> C_Types i
 
+  ||| A descriptor for the C FFI. See the constructors of `C_Types`
+  ||| and `C_IntTypes` for the concrete types that are available.
   FFI_C : FFI
   FFI_C = MkFFI C_Types String String
 
@@ -201,14 +225,17 @@ mutual
 -- pass we only have 'JsFn' and not the constructor.
 %used MkJsFn x
 
-FFI_JS : FFI                                     
+||| The JavaScript FFI. The strings naming functions in this API are
+||| JavaScript code snippets, into which the arguments are substituted
+||| for the placeholders `%0`, `%1`, etc.
+FFI_JS : FFI
 FFI_JS = MkFFI JS_Types String String
 
 JS_IO : Type -> Type
 JS_IO = IO' FFI_JS
 
 
---------- Foreign Exports 
+--------- Foreign Exports
 
 namespace FFI_Export
 -- It's just like Data.List.Elem, but we don't need all the other stuff

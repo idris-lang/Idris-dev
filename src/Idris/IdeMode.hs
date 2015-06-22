@@ -148,6 +148,7 @@ instance SExpable OutputAnnotation where
                        BoldText      -> "bold"
                        ItalicText    -> "italic"
                        UnderlineText -> "underline"
+  toSExp (AnnLink url) = toSExp [(SymbolAtom "link-href", StringAtom url)]
   toSExp (AnnTerm bnd tm)
     | termSmallerThan 1000 tm = toSExp [(SymbolAtom "tt-term", StringAtom (encodeTerm bnd tm))]
     | otherwise = SexpList []

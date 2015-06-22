@@ -190,8 +190,7 @@ renderInline pp LineBreak = line
 renderInline pp (Emph txt) = annotate (AnnTextFmt ItalicText) $ renderInlines pp txt
 renderInline pp (Strong txt) = annotate (AnnTextFmt BoldText) $ renderInlines pp txt
 renderInline pp (Code txt tm) = pp tm $ T.unpack txt
-renderInline pp (Link body url title) = annotate (AnnTextFmt UnderlineText) (renderInlines pp body) <+>
-                                        parens (text $ T.unpack url)
+renderInline pp (Link body url title) = annotate (AnnLink (T.unpack url)) (renderInlines pp body)
 renderInline pp (Image body url title) = text "<image>" -- TODO
 renderInline pp (Entity a) = text $ "<entity " ++ T.unpack a ++ ">" -- TODO
 renderInline pp (RawHtml txt) = text "<html content>" --TODO
