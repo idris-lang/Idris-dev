@@ -256,6 +256,8 @@ renderExternal fmt width doc
     decorate HTMLOutput (AnnSearchResult _) = id
     decorate HTMLOutput (AnnErr _) = id
     decorate HTMLOutput (AnnNamespace _ _) = id
+    decorate HTMLOutput (AnnLink url) =
+      \txt -> "<a href=\"" ++ url ++ "\">" ++ txt ++ "</a>"
 
     decorate LaTeXOutput (AnnName _ (Just TypeOutput) _ _) =
       latex "IdrisType"
@@ -284,6 +286,7 @@ renderExternal fmt width doc
     decorate LaTeXOutput (AnnSearchResult _) = id
     decorate LaTeXOutput (AnnErr _) = id
     decorate LaTeXOutput (AnnNamespace _ _) = id
+    decorate LaTeXOutput (AnnLink url) = (++ "(\\url{" ++ url ++ "})")
 
     tag cls docs str = "<span class=\""++cls++"\""++title++">" ++ str ++ "</span>"
       where title = maybe "" (\d->" title=\"" ++ d ++ "\"") docs
