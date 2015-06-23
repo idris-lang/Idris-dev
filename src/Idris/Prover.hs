@@ -51,8 +51,8 @@ prover mode lit x =
               case lookupTy x ctxt of
                   [t] -> if elem x (map fst (idris_metavars i))
                                then prove mode (idris_optimisation i) ctxt lit x t
-                               else ifail $ show x ++ " is not a metavariable"
-                  _ -> fail "No such metavariable"
+                               else ifail $ show x ++ " is not a hole"
+                  _ -> fail "No such hole"
 
 showProof :: Bool -> Name -> [String] -> String
 showProof lit n ps

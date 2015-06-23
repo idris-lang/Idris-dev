@@ -63,7 +63,7 @@ parserCommandsForHelp =
     , strArg ChangeDirectory)
   , (["module"], ModuleArg, "Import an extra module", moduleArg ModImport) -- NOTE: dragons
   , noArgCmd ["e", "edit"] Edit "Edit current file using $EDITOR or $VISUAL"
-  , noArgCmd ["m", "metavars"] Metavars "Show remaining proof obligations (metavariables)"
+  , noArgCmd ["m", "metavars"] Metavars "Show remaining proof obligations (metavariables or holes)"
   , (["p", "prove"], MetaVarArg, "Prove a metavariable"
     , nameArg (Prove False))
   , (["elab"], MetaVarArg, "Build a metavariable using the elaboration shell"

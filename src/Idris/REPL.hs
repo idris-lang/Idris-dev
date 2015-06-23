@@ -137,7 +137,7 @@ repl orig mods efile
                           act -- repl orig mods
 
          showMVs c thm [] = ""
-         showMVs c thm ms = "Metavariables: " ++
+         showMVs c thm ms = "Holes: " ++
                                  show' 4 c thm (map fst ms) ++ "\n"
 
          show' 0 c thm ms = let l = length ms in
@@ -1219,8 +1219,8 @@ process fn Metavars
                  = do ist <- getIState
                       let mvs = map fst (idris_metavars ist) \\ primDefs
                       case mvs of
-                        [] -> iPrintError "No global metavariables to solve"
-                        _ -> iPrintResult $ "Global metavariables:\n\t" ++ show mvs
+                        [] -> iPrintError "No global holes to solve"
+                        _ -> iPrintResult $ "Global holes:\n\t" ++ show mvs
 process fn NOP      = return ()
 
 process fn (SetOpt   ErrContext)  = setErrContext True

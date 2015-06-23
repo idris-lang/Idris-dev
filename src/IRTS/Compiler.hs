@@ -120,7 +120,7 @@ compile codegen f mtm
   where checkMVs = do i <- getIState
                       case map fst (idris_metavars i) \\ primDefs of
                             [] -> return ()
-                            ms -> ifail $ "There are undefined metavariables: " ++ show ms
+                            ms -> ifail $ "There are undefined holes: " ++ show ms
         checkTotality = do i <- getIState
                            case idris_totcheckfail i of
                              [] -> return ()

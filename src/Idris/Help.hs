@@ -27,7 +27,7 @@ instance Show CmdArg where
     show NumberArg        = "<number>"
     show NamespaceArg     = "<namespace>"
     show OptionArg        = "<option>"
-    show MetaVarArg       = "<metavar>"
+    show MetaVarArg       = "<hole>"
     show ColourArg        = "<option>"
     show NoArg            = ""
     show SpecialHeaderArg = "Arguments"
@@ -46,5 +46,5 @@ extraHelp =
     , ([":makewith!", ":mw!"], NoArg, ":mw! <line> <name> destructively adds a with clause for the definition of the name on the line")
     , ([":proofsearch!", ":ps!"], NoArg, ":ps! <line> <name> <names> destructively does proof search for name on line, with names as hints")
     , ([":addproofclause!", ":apc!"], NoArg, ":apc! <line> <name> destructively adds a pattern-matching proof clause to name on line")
-    , ([":refine!", ":ref!"], NoArg, ":ref! <line> <name> <name'> destructively attempts to partially solve name on line, with name' as hint, introducing metavariables for arguments that aren't inferrable")
+    , ([":refine!", ":ref!"], NoArg, ":ref! <line> <name> <name'> destructively attempts to partially solve name on line, with name' as hint, introducing holes for arguments that aren't inferrable")
     ]
