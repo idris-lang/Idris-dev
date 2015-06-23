@@ -694,6 +694,11 @@ getCmdLine :: Idris [Opt]
 getCmdLine = do i <- getIState
                 return (opt_cmdline (idris_options i))
 
+getDumpHighlighting :: Idris Bool
+getDumpHighlighting = do ist <- getIState
+                         return (findC (opt_cmdline (idris_options ist)))
+  where findC = elem DumpHighlights
+
 getDumpDefun :: Idris (Maybe FilePath)
 getDumpDefun = do i <- getIState
                   return $ findC (opt_cmdline (idris_options i))

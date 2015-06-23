@@ -141,7 +141,7 @@ parseFlags = many $
   <|> flag' (ColourREPL False) (long "nocolour" <> long "nocolor" <> help "Disable coloured output")
 
   <|> (UseConsoleWidth <$> option (str >>= parseConsoleWidth) (long "consolewidth" <> metavar "WIDTH" <> help "Select console width: auto, infinite, nat"))
-
+  <|> flag' DumpHighlights (long "highlight" <> help "Emit source code highlighting")
 
   where
     getExt s = case maybeRead s of

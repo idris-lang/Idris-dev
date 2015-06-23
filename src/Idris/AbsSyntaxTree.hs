@@ -241,7 +241,8 @@ data IState = IState {
     elab_stack :: [(Name, Bool)], -- ^ Stack of names currently being elaborated, Bool set if it's an instance
                                   -- (instances appear twice; also as a funtion name)
     idris_symbols :: M.Map Name Name, -- ^ Symbol table (preserves sharing of names)
-    idris_exports :: [Name] -- ^ Functions with ExportList
+    idris_exports :: [Name], -- ^ Functions with ExportList
+    idris_highlightedRegions :: [(FC, OutputAnnotation)] -- ^ Highlighting information to output
    }
 
 -- Required for parsers library, and therefore trifecta
@@ -329,7 +330,7 @@ idrisInit = IState initContext S.empty []
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty []
+                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] []
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -484,6 +485,7 @@ data Opt = Filename String
          | AutoWidth -- ^ Automatically adjust terminal width
          | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
          | UseConsoleWidth ConsoleWidth
+         | DumpHighlights
     deriving (Show, Eq)
 
 data ElabShellCmd = EQED | EAbandon | EUndo | EProofState | EProofTerm
