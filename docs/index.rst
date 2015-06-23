@@ -39,6 +39,7 @@ The Idris Tutorial
    tutorial/classes
    tutorial/modules
    tutorial/packages
+   tutorial/testing
    tutorial/interp
    tutorial/views
    tutorial/theorems
@@ -101,6 +102,7 @@ Language Reference
    :maxdepth: 1
 
    reference/documenting
+   reference/packages
    reference/uniqueness-types
    reference/ffi
    reference/erasure

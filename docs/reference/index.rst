@@ -21,6 +21,7 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    :maxdepth: 1
 
    documenting
+   packages
    uniqueness-types
    ffi
    erasure
@@ -33,5 +34,3 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    language-extensions
    elaborator-reflection
    misc
-
-
