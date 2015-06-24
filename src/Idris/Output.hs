@@ -18,6 +18,7 @@ import Control.Monad.Trans.Except (ExceptT (ExceptT), runExceptT)
 import System.Console.Haskeline.MonadException
   (MonadException (controlIO), RunIO (RunIO))
 import System.IO (stdout, Handle, hPutStrLn)
+import System.FilePath (replaceExtension)
 
 import Prelude hiding ((<$>))
 
@@ -198,7 +199,9 @@ sendHighlighting :: [(FC, OutputAnnotation)] -> Idris ()
 sendHighlighting highlights =
   do ist <- getIState
      case idris_outputmode ist of
-       RawOutput _ -> return ()
+       RawOutput _ -> updateIState $
+                      \ist -> ist { idris_highlightedRegions =
+                                      highlights ++ idris_highlightedRegions ist }
        IdeMode n h ->
          let fancier = [ toSExp (fc, fancifyAnnots ist False annot)
                        | (fc, annot) <- highlights, fullFC fc
@@ -213,6 +216,20 @@ sendHighlighting highlights =
   where fullFC (FC _ _ _) = True
         fullFC _          = False
 
+-- | Write the highlighting information to a file, for use in external tools
+-- or in editors that don't support the IDE protocol
+writeHighlights :: FilePath -> Idris ()
+writeHighlights f =
+  do ist <- getIState
+     let hs = reverse $ idris_highlightedRegions ist
+     let hfile = replaceExtension f "idh"
+     let annots = toSExp [ (fc, fancifyAnnots ist False annot)
+                         | (fc@(FC _ _ _), annot) <- hs
+                         ]
+     runIO $ writeFile hfile $ sExpToString annots
+
+clearHighlights :: Idris ()
+clearHighlights = updateIState $ \ist -> ist { idris_highlightedRegions = [] }
 
 renderExternal :: OutputFmt -> Int -> Doc OutputAnnotation -> Idris String
 renderExternal fmt width doc

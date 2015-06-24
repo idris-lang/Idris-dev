@@ -1535,11 +1535,16 @@ loadSource lidr f toline
                     Just docs -> addModDoc syntax mname docs
 
 
-                  -- Finally, write an ibc if checking was successful
+                  -- Finally, write an ibc and highlights if checking was successful
                   ok <- noErrors
                   when ok $
-                    idrisCatch (do writeIBC f ibc; clearIBC)
-                               (\c -> return ()) -- failure is harmless
+                    do idrisCatch (do writeIBC f ibc; clearIBC)
+                                  (\c -> return ()) -- failure is harmless
+                       hl <- getDumpHighlighting
+                       when hl $
+                         idrisCatch (writeHighlights f)
+                                    (const $ return ()) -- failure is harmless
+                  clearHighlights
                   i <- getIState
                   putIState (i { default_total = def_total,
                                  hide_list = [] })

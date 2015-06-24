@@ -14,6 +14,10 @@ New in 0.9.19:
   compiler output
 * An interactive shell, similar to the prover, for running reflected elaborator
   actions. Access it with :elab from the REPL.
+* New command-line option --highlight that causes Idris to save highlighting
+  information when successfully type checking. The information is in the same
+  format sent by the IDE mode, and is saved in a file with the extension ".idh".
+
 
 New in 0.9.18:
 --------------

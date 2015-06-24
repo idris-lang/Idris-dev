@@ -2,7 +2,7 @@
 
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}
 
-module Idris.IdeMode(parseMessage, convSExp, WhatDocs(..), IdeModeCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideModeEpoch, getLen, getNChar) where
+module Idris.IdeMode(parseMessage, convSExp, WhatDocs(..), IdeModeCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideModeEpoch, getLen, getNChar, sExpToString) where
 
 import Text.Printf
 import Numeric
