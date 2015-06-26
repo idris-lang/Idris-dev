@@ -49,11 +49,19 @@ this to happen silently. We define ``head`` as follows:
     head (x :: xs) = x
 
 The ``auto`` annotation on the implicit argument means that Idris
-will attempt to fill in the implicit argument using the ``trivial``
-tactic, which searches through the context for a proof, and tries to
-solve with ``refl`` if a proof is not found. Now when ``head`` is
-applied, the proof can be omitted. In the case that a proof is not
-found, it can be provided explicitly as normal:
+will attempt to fill in the implicit argument by searching for a value
+of the appropriate type. It will try the following, in order:
+
+- Local variables, i.e. names bound in pattern matches or ``let`` bindings,
+  with exactly the right type.
+- The constructors of the required type. If they have arguments, it will
+  search recursively up to a maximum depth of 100.
+- Local variables with function types, searching recursively for the
+  arguments.
+- Any function with the appropriate return type which is marked with the
+  ``%hint`` annotation.
+
+In the case that a proof is not found, it can be provided explicitly as normal:
 
 .. code-block:: idris
 
