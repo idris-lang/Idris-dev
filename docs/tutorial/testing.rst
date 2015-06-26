@@ -33,26 +33,25 @@ A simple test module, with a qualified name of ``Test.NumOps`` can be declared a
 
     import Maths.NumOps
 
-    assertTrue : Eq a => (given : a) -> (expected : a) -> IO ()
-    assertTrue g e = if g == e
+    assertEq : Eq a => (given : a) -> (expected : a) -> IO ()
+    assertEq g e = if g == e
         then putStrLn "Test Passed"
         else putStrLn "Test failed"
 
-    assertFalse : Eq a => (given : a) -> (expected : a) -> IO ()
-    assertFalse g e = if not (g == e)
+    assertNotEq : Eq a => (given : a) -> (expected : a) -> IO ()
+    assertNotEq g e = if not (g == e)
         then putStrLn "Test Passed"
         else putStrLn "Test failed"
 
     testDouble : IO ()
-    testDouble = assertTrue (double 2) 4
+    testDouble = assertEq (double 2) 4
 
     testTriple : IO ()
-    testTriple = assertFalse (triple 2) 5
+    testTriple = assertNotEq (triple 2) 5
 
 
-The functions ``assertTrue`` and ``assertFalse`` are used to run expected passing, and expected failing tests.
-The actual tests are ``testDouble`` and ``testTriple``.
-These tests are specified in the ``maths.ipkg`` file as follows::
+The functions ``assertEq`` and ``assertNotEq`` are used to run expected passing, and failing, equality tests.
+The actual tests are ``testDouble`` and ``testTriple``, and are declared in the ``maths.ipkg`` file as follows::
 
     module maths
 
@@ -63,4 +62,4 @@ These tests are specified in the ``maths.ipkg`` file as follows::
           , Test.NumOps.testTriple
 
 
-The testing framework can be innvoked using: ``idris --testpkg maths.ipkg``.
+The testing framework can be invoked using: ``idris --testpkg maths.ipkg``.
