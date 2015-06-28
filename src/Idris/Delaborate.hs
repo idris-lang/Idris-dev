@@ -354,11 +354,11 @@ pprintErr' i (IncompleteTerm t)
     = align (cat (punctuate (comma <> space) 
             (map pprintIncomplete (nub $ getMissing [] [] t))))
  where 
-   pprintIncomplete (fn, arg)
+   pprintIncomplete (tm, arg)
       = text "Can't infer argument" <+> annName arg <+> text "to" <+>
-               annName fn 
+                   annTm tm (pprintTerm i (delabSugared i tm))
 
-   getMissing :: [Name] -> [Name] -> Term -> [(Name, Name)]
+   getMissing :: [Name] -> [Name] -> Term -> [(Term, Name)]
    getMissing hs env (Bind n (Hole ty) sc)
        = getMissing (n : hs) (n : env) sc
    getMissing hs env (Bind n (Guess _ _) sc)
@@ -371,7 +371,7 @@ pprintErr' i (IncompleteTerm t)
        = getMissing hs env (binderTy b) ++
          getMissing hs (n : env) sc
    getMissing hs env ap@(App _ _ _)
-       | (P _ n _, args) <- unApply ap = getMissingArgs n args
+       | (fn@(P _ n _), args) <- unApply ap = getMissingArgs fn args
      where
        getMissingArgs n [] = []
        getMissingArgs n (V i : as)
