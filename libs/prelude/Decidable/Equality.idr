@@ -123,7 +123,7 @@ instance (DecEq a, DecEq b) => DecEq (a, b) where
 -- List
 --------------------------------------------------------------------------------
 
-lemma_val_not_nil : {x : t, xs : List t} -> ((x :: xs) = Prelude.List.Nil {a = t} -> Void)
+lemma_val_not_nil : {x : t, xs : List t} -> ((x :: xs) = Prelude.List.Nil {elem = t} -> Void)
 lemma_val_not_nil Refl impossible
 
 lemma_x_eq_xs_neq : {x : t, xs : List t, y : t, ys : List t} -> (x = y) -> (xs = ys -> Void) -> ((x :: xs) = (y :: ys) -> Void)

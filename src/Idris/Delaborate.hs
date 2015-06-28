@@ -350,7 +350,38 @@ pprintErr' i (WithFnType ty) =
   text "Can't match on a function: type is" <+> annTm ty (pprintTerm i (delabSugared i ty))
 pprintErr' i (CantMatch t) =
   text "Can't match on" <+> annTm t (pprintTerm i (delabSugared i t))
-pprintErr' i (IncompleteTerm t) = text "Incomplete term" <+> annTm t (pprintTerm i (delabSugared i t))
+pprintErr' i (IncompleteTerm t) 
+    = align (cat (punctuate (comma <> space) 
+            (map pprintIncomplete (nub $ getMissing [] [] t))))
+ where 
+   pprintIncomplete (fn, arg)
+      = text "Can't infer argument" <+> annName arg <+> text "to" <+>
+               annName fn 
+
+   getMissing :: [Name] -> [Name] -> Term -> [(Name, Name)]
+   getMissing hs env (Bind n (Hole ty) sc)
+       = getMissing (n : hs) (n : env) sc
+   getMissing hs env (Bind n (Guess _ _) sc)
+       = getMissing (n : hs) (n : env) sc
+   getMissing hs env (Bind n (Let t v) sc)
+       = getMissing hs env t ++ 
+         getMissing hs env v ++
+         getMissing hs (n : env) sc
+   getMissing hs env (Bind n b sc)
+       = getMissing hs env (binderTy b) ++
+         getMissing hs (n : env) sc
+   getMissing hs env ap@(App _ _ _)
+       | (P _ n _, args) <- unApply ap = getMissingArgs n args
+     where
+       getMissingArgs n [] = []
+       getMissingArgs n (V i : as)
+          | env!!i `elem` hs = (n, env!!i) : getMissingArgs n as
+       getMissingArgs n (P _ a _ : as) 
+          | a `elem` hs = (n, a) : getMissingArgs n as
+       getMissingArgs n (a : as) = getMissing hs env a ++ getMissingArgs n as
+   getMissing hs env (App _ f a)
+       = getMissing hs env f ++ getMissing hs env a
+   getMissing hs env _ = []
 pprintErr' i (NoEliminator s t)
   = text "No " <> text s <> text " for type " <+>
        annTm t (pprintTerm i (delabSugared i t)) <$>

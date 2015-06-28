@@ -401,13 +401,13 @@ instance Quotable NameType Raw where
 
 instance Quotable a TT => Quotable (List a) TT where
   quotedTy = `(List ~(quotedTy {a}))
-  quote [] = `(List.Nil {a=~(quotedTy {a})})
-  quote (x :: xs) = `(List.(::) {a=~(quotedTy {a})} ~(quote x) ~(quote xs))
+  quote [] = `(List.Nil {elem=~(quotedTy {a})})
+  quote (x :: xs) = `(List.(::) {elem=~(quotedTy {a})} ~(quote x) ~(quote xs))
 
 instance Quotable a Raw => Quotable (List a) Raw where
   quotedTy = `(List ~(quotedTy {a}))
-  quote [] = `(List.Nil {a=~(quotedTy {a})})
-  quote (x :: xs) = `(List.(::) {a=~(quotedTy {a})} ~(quote x) ~(quote xs))
+  quote [] = `(List.Nil {elem=~(quotedTy {a})})
+  quote (x :: xs) = `(List.(::) {elem=~(quotedTy {a})} ~(quote x) ~(quote xs))
 
 mutual
   instance Quotable TTName TT where

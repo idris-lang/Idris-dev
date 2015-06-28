@@ -18,11 +18,11 @@ infix 5 \\
 infixr 7 ::,++
 
 ||| Linked lists
-%elim data List a =
+%elim data List elem =
   ||| The empty list
   Nil |
   ||| Cons cell
-  (::) a (List a)
+  (::) elem (List elem)
 
 -- Name hints for interactive editing
 %name List xs, ys, zs, ws
