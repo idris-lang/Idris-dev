@@ -33,7 +33,8 @@ If you haven't previously installed anything using Cabal, then Idris
 may not be on your path. Should the Idris executable not be found
 please ensure that you have added ``~/.cabal/bin`` to your ``$PATH``
 environment variable. Mac OS X users may find they need to add
-``~/Library/Haskell/bin`` instead.
+``~/Library/Haskell/bin`` instead, and Windows users will typically
+find that Cabal installs programs in ``%HOME%\AppData\Roaming\cabal\bin``.
 
 To check that installation has succeeded, and to write your first
 Idris program, create a file called ``hello.idr`` containing the
