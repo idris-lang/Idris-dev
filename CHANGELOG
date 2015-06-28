@@ -17,7 +17,8 @@ New in 0.9.19:
 * New command-line option --highlight that causes Idris to save highlighting
   information when successfully type checking. The information is in the same
   format sent by the IDE mode, and is saved in a file with the extension ".idh".
-
+* Use predicates instead of boolean equality proofs as preconditions 
+  on List functions
 
 New in 0.9.18:
 --------------
