@@ -457,14 +457,14 @@ cmd_apropos = packageBasedCmd (some idChar) Apropos
 
 packageBasedCmd :: P.IdrisParser a -> ([String] -> a -> Command)
                 -> String -> P.IdrisParser (Either String Command)
-packageBasedCmd valParser cmd name = do
-  pkgs <- option [] . try $ do
-    P.lchar '('
-    pks <- sepBy (some idChar) (P.lchar ',')
-    P.lchar ')'
-    return pks
-  val <- valParser
-  return (Right (cmd pkgs val))
+packageBasedCmd valParser cmd name =
+  try (do P.lchar '('
+          pkgs <- sepBy (some idChar) (P.lchar ',')
+          P.lchar ')'
+          val <- valParser
+          return (Right (cmd pkgs val)))
+   <|> do val <- valParser
+          return (Right (cmd [] val))
 
 cmd_search :: String -> P.IdrisParser (Either String Command)
 cmd_search = packageBasedCmd
