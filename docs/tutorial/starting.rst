@@ -29,6 +29,13 @@ any dependencies. If, however, you would like the most up to date
 development version you can find it, as well as build instructions, on
 GitHub at: https://github.com/idris-lang/Idris-dev.
 
+If you haven't previously installed anything using Cabal, then Idris
+may not be on your path. Should the Idris executable not be found
+please ensure that you have added ``~/.cabal/bin`` to your ``$PATH``
+environment variable. Mac OS X users may find they need to add
+``~/Library/Haskell/bin`` instead, and Windows users will typically
+find that Cabal installs programs in ``%HOME%\AppData\Roaming\cabal\bin``.
+
 To check that installation has succeeded, and to write your first
 Idris program, create a file called ``hello.idr`` containing the
 following text:
@@ -53,10 +60,7 @@ create an executable called ``hello``, which you can run:
     Hello world
 
 Please note that the dollar sign ``$`` indicates the shell prompt!
-Should the Idris executable not be found please ensure that you have
-added ``~/.cabal/bin`` to your ``$PATH`` environment variable. Mac OS
-X users may find they need to add ``~/Library/Haskell/bin``
-instead. Some useful options to the Idris command are:
+Some useful options to the Idris command are:
 
 - ``-o prog`` to compile to an executable called ``prog``.
 
