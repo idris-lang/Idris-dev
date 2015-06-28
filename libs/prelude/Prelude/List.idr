@@ -9,6 +9,7 @@ import Prelude.Classes
 import Prelude.Foldable
 import Prelude.Functor
 import Prelude.Maybe
+import Prelude.Uninhabited
 import Prelude.Nat
 
 %access public
@@ -42,6 +43,37 @@ isCons []      = False
 isCons (x::xs) = True
 
 --------------------------------------------------------------------------------
+-- Decidable Predicates
+--------------------------------------------------------------------------------
+
+data NonEmpty : List a -> Type where
+     IsNonEmpty : NonEmpty (x :: xs)
+
+private
+nonEmptyNil : NonEmpty [] -> Void
+nonEmptyNil IsNonEmpty impossible
+
+nonEmpty : (xs : List a) -> Dec (NonEmpty xs)
+nonEmpty [] = No nonEmptyNil
+nonEmpty (x :: xs) = Yes IsNonEmpty
+
+data InBounds : Nat -> List a -> Type where
+     InFirst : InBounds Z (x :: xs)
+     InLater : InBounds k xs -> InBounds (S k) (x :: xs)
+
+instance Uninhabited (InBounds k []) where
+    uninhabited InFirst impossible
+
+inBounds : (n : Nat) -> (xs : List a) -> Dec (InBounds n xs)
+inBounds k [] = No uninhabited
+inBounds Z (x :: xs) = Yes InFirst
+inBounds (S k) (x :: xs) with (inBounds k xs)
+  inBounds (S k) (x :: xs) | (Yes prf) = Yes (InLater prf)
+  inBounds (S k) (x :: xs) | (No contra)
+      = No (\p => case p of
+                       InLater y => contra y)
+
+--------------------------------------------------------------------------------
 -- Length
 --------------------------------------------------------------------------------
 
@@ -59,10 +91,9 @@ length (x::xs) = 1 + length xs
 ||| Find a particular element of a list.
 |||
 ||| @ ok a proof that the index is within bounds
-index : (n : Nat) -> (l : List a) -> (ok : lt n (length l) = True) -> a
-index Z     (x::xs) p    = x
-index (S n) (x::xs) p    = index n xs ?indexTailProof
-index _     []      Refl   impossible
+index : (n : Nat) -> (xs : List a) -> {auto ok : InBounds n xs} -> a
+index Z     (x :: xs) {ok} = x
+index (S k) (x :: xs) {ok = InLater p} = index k xs
 
 ||| Attempt to find a particular element of a list.
 |||
@@ -74,8 +105,8 @@ index' _     []      = Nothing
 
 ||| Get the first element of a non-empty list
 ||| @ ok proof that the list is non-empty
-head : (l : List a) -> {auto ok : isCons l = True} -> a
-head []      {ok=Refl}   impossible
+head : (l : List a) -> {auto ok : NonEmpty l} -> a
+head []      {ok=IsNonEmpty} impossible
 head (x::xs) {ok=p}    = x
 
 ||| Attempt to get the first element of a list. If the list is empty, return
@@ -86,8 +117,8 @@ head' (x::xs) = Just x
 
 ||| Get the tail of a non-empty list.
 ||| @ ok proof that the list is non-empty
-tail : (l : List a) -> {auto ok : isCons l = True} -> List a
-tail []      {ok=Refl}   impossible
+tail : (l : List a) -> {auto ok : NonEmpty l} -> List a
+tail []      {ok=IsNonEmpty} impossible
 tail (x::xs) {ok=p}    = xs
 
 ||| Attempt to get the tail of a list.
@@ -99,10 +130,10 @@ tail' (x::xs) = Just xs
 
 ||| Retrieve the last element of a non-empty list.
 ||| @ ok proof that the list is non-empty
-last : (l : List a) -> {auto ok : isCons l = True} -> a
-last []         {ok=Refl}   impossible
+last : (l : List a) -> {auto ok : NonEmpty l} -> a
+last []         {ok=IsNonEmpty} impossible
 last [x]        {ok=p}    = x
-last (x::y::ys) {ok=p}    = last (y::ys) {ok=Refl}
+last (x::y::ys) {ok=p}    = last (y::ys) {ok=IsNonEmpty}
 
 ||| Attempt to retrieve the last element of a non-empty list.
 |||
@@ -116,10 +147,10 @@ last' (x::xs) =
 
 ||| Return all but the last element of a non-empty list.
 ||| @ ok proof that the list is non-empty
-init : (l : List a) -> {auto ok : isCons l = True} -> List a
-init []         {ok=Refl}   impossible
+init : (l : List a) -> {auto ok : NonEmpty l} -> List a
+init []         {ok=IsNonEmpty} impossible
 init [x]        {ok=p}    = []
-init (x::y::ys) {ok=p}    = x :: init (y::ys) {ok=Refl}
+init (x::y::ys) {ok=p}    = x :: init (y::ys) {ok=IsNonEmpty}
 
 ||| Attempt to Return all but the last element of a list.
 |||
@@ -822,12 +853,6 @@ foldlMatchesFoldr f q (x :: xs) = foldlMatchesFoldr f (f q x) xs
 --------------------------------------------------------------------------------
 -- Proofs
 --------------------------------------------------------------------------------
-
-indexTailProof = proof {
-  intros;
-  rewrite sym p;
-  trivial;
-}
 
 lengthAppendStepCase = proof {
     intros;

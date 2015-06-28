@@ -8,15 +8,15 @@ import Language.Reflection.Utils
 
 total
 cadr :  (xs : List a)
-     -> {auto cons1 : isCons xs = True}
-     -> {auto cons2 : isCons (tail xs) = True}
+     -> {auto cons1 : NonEmpty xs}
+     -> {auto cons2 : NonEmpty (tail xs)}
      -> a
-cadr (x :: (y :: _)) {cons1=Refl} {cons2=Refl} = y
-cadr (x :: [])       {cons1=Refl} {cons2=Refl} impossible
-cadr []              {cons1=Refl} {cons2=Refl} impossible
+cadr (x :: (y :: _)) {cons1=IsNonEmpty} {cons2=IsNonEmpty} = y
+cadr (x :: [])       {cons1=IsNonEmpty} {cons2=IsNonEmpty} impossible
+cadr []              {cons1=IsNonEmpty} {cons2=IsNonEmpty} impossible
 
 extractList : TT -> Maybe TT
-extractList (App (App reflCon (App isCons lst)) _) = Just lst
+extractList (App (App neType _) lst) = Just lst
 extractList t = Just t -- Nothing
 
 total
