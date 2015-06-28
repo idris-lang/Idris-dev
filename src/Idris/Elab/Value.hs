@@ -1,6 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Elab.Value(elabVal, elabValBind, elabDocTerms, elabExec) where
+module Idris.Elab.Value(elabVal, elabValBind, elabDocTerms, 
+                        elabExec, elabREPL) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -130,3 +131,10 @@ elabExec fc tm = runtm (PAlternative FirstSuccess
     printtm t = PApp fc (PRef fc (sUN "printLn"))
                   [pimp (sUN "ffi") (PRef fc (sUN "FFI_C")) False, pexp t]
 
+elabREPL :: ElabInfo -> ElabMode -> PTerm -> Idris (Term, Type)
+elabREPL info aspat tm
+    = idrisCatch (elabVal info aspat tm) catchAmbig
+  where
+    catchAmbig (CantResolveAlts _)
+       = elabVal info aspat (PDisamb [[txt "List"]] tm)
+    catchAmbig e = ierror e

@@ -774,7 +774,7 @@ process fn (Eval t)
                  = withErrorReflection $
                    do logLvl 5 $ show t
                       getIState >>= flip warnDisamb t
-                      (tm, ty) <- elabVal recinfo ERHS t
+                      (tm, ty) <- elabREPL recinfo ERHS t
                       ctxt <- getContext
                       let tm' = perhapsForce $ normaliseAll ctxt [] tm
                       let ty' = perhapsForce $ normaliseAll ctxt [] ty
@@ -931,7 +931,7 @@ process fn (Check (PRef _ n))
 
 
 process fn (Check t)
-   = do (tm, ty) <- elabVal recinfo ERHS t
+   = do (tm, ty) <- elabREPL recinfo ERHS t
         ctxt <- getContext
         ist <- getIState
         let ppo = ppOptionIst ist
@@ -943,7 +943,7 @@ process fn (Check t)
                                    (pprintDelab ist ty)
 
 process fn (Core t)
-   = do (tm, ty) <- elabVal recinfo ERHS t
+   = do (tm, ty) <- elabREPL recinfo ERHS t
         iPrintTermWithType (pprintTT [] tm) (pprintTT [] ty)
 
 process fn (DocStr (Left n) w)
