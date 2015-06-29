@@ -24,11 +24,12 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    packages
    uniqueness-types
    ffi
-   erasure
-   semantic-highlighting
-   repl
    syntax-guide
+   erasure
+   ide-protocol
+   semantic-highlighting
    tactics
+   repl
    compilation
    language-features
    language-extensions
