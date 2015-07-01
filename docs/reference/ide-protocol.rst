@@ -78,14 +78,14 @@ The available commands include:
     The new code is returned with no highlighting.
 
   ``(:proof-search LINE NAME HINTS)``
-    Attempt to fill out the metavariable on ``LINE```named ``NAME`` by proof search.
+    Attempt to fill out the holes on ``LINE```named ``NAME`` by proof search.
     ``HINTS`` is a possibly-empty list of additional things to try while searching.
 
   ``(:docs-for NAME)``
     Look up the documentation for ``NAME``, and return it as a highlighted string.
 
   ``(:metavariables WIDTH)``
-    List the currently-active metavariables, with their types pretty-printed with ``WIDTH`` columns.
+    List the currently-active holes, with their types pretty-printed with ``WIDTH`` columns.
 
   ``(:who-calls NAME)``
     Get a list of callers of ``NAME``

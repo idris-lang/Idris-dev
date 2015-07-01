@@ -17,7 +17,7 @@ Consider the following definition, proved in :ref:`sect-theorems`:
 
 We’ll be constructing the proof by *induction*, so we write the cases for ``Z``
 and ``S``, with a recursive call in the ``S`` case giving the inductive
-hypothesis, and insert *metavariables* for the rest of the definition:
+hypothesis, and insert *holes* for the rest of the definition:
 
 .. code-block:: idris
 
@@ -28,14 +28,14 @@ hypothesis, and insert *metavariables* for the rest of the definition:
 
 On running , two global names are created, ``plusredZ_Z`` and
 ``plusredZ_S``, with no definition. We can use the ``:m`` command at the
-prompt to find out which metavariables are still to be solved (or, more
+prompt to find out which holes are still to be solved (or, more
 precisely, which functions exist but have no definitions), then the
 ``:t`` command to see their types:
 
 .. code-block:: idris
 
     *theorems> :m
-    Global metavariables:
+    Global holes:
             [plusredZ_S,plusredZ_Z]
 
 .. code-block:: idris
@@ -81,8 +81,8 @@ introduces subgoals for each of the function’s explicit arguments
 Here, we could also have used the ``trivial`` tactic, which tries to
 refine by ``Refl``, and if that fails, tries to refine by each name in
 the local context. When a proof is complete, we use the ``qed`` tactic
-to add the proof to the global context, and remove the metavariable from
-the unsolved metavariables list. This also outputs a trace of the proof:
+to add the proof to the global context, and remove the hole from the
+unsolved holes list. This also outputs a trace of the proof:
 
 .. code-block:: idris
 
@@ -94,7 +94,7 @@ the unsolved metavariables list. This also outputs a trace of the proof:
 .. code-block:: idris
 
     *theorems> :m
-    Global metavariables:
+    Global holes:
             [plusredZ_S]
 
 The ``:addproof`` command, at the interactive prompt, will add the proof
