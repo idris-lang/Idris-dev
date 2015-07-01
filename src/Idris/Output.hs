@@ -87,9 +87,10 @@ iPrintFunTypes bnd n overloads = do ist <- getIState
                                     let infixes = idris_infixes ist
                                     let output = vsep (map (uncurry (ppOverload ppo infixes)) overloads)
                                     iRenderResult output
-  where fullName n = prettyName True True bnd n
+  where fullName ppo n | length overloads > 1 = prettyName True True bnd n
+                       | otherwise = prettyName True (ppopt_impl ppo) bnd n 
         ppOverload ppo infixes n tm =
-          fullName n <+> colon <+> align tm
+          fullName ppo n <+> colon <+> align tm
 
 iRenderOutput :: Doc OutputAnnotation -> Idris ()
 iRenderOutput doc =

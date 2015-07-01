@@ -55,7 +55,7 @@ showDoc ist d
 
 pprintFD :: IState -> Bool -> FunDoc -> Doc OutputAnnotation
 pprintFD ist totalityFlag (FD n doc args ty f)
-    = nest 4 (prettyName True (ppopt_impl ppo) [] n <+> colon <+>
+    = nest 4 (prettyName True True [] n <+> colon <+>
               pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
                                      , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
               -- show doc
