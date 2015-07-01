@@ -1,14 +1,14 @@
 3 : Nat
 Hello, World
-main : IO ()
+Main.main : IO ()
     This is a docstring
     
     The function is Total
 Main.main is Total
 Hello, World
-Prelude.Basics.id : a -> a
+id : a -> a
 Prelude.Basics.id : {a : Type} -> (__pi_arg : a) -> a
-Prelude.Basics.id : a -> a
+id : a -> a
 
 	 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY  
 	 EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE     
@@ -22,13 +22,13 @@ Prelude.Basics.id : a -> a
 	 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 	 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-main : IO ()
+Main.main : IO ()
     This
     is a
     docstring
     
     The function is Total
-main : IO ()
+Main.main : IO ()
     This is a docstring
     
     The function is Total

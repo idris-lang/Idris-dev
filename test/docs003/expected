@@ -28,10 +28,10 @@ Subclasses:
     Traversable f
     Applicative f
 Named instance:
-    mine : Functor List
+    docs003.mine : Functor List
         
         
 Named instance:
-    another : Functor List
+    docs003.another : Functor List
         More functors!
         

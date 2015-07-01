@@ -1,4 +1,4 @@
-MkFoo : (bar : Nat) -> (baz : Bool) -> Foo a
+Main.MkFoo : (bar : Nat) -> (baz : Bool) -> Foo a
     Constructor for Foo
     Arguments:
         (implicit) a : Type  -- a type
@@ -8,11 +8,11 @@ MkFoo : (bar : Nat) -> (baz : Bool) -> Foo a
         baz : Bool  -- A field baz
         
     The function is Total
-bar : (rec : Foo a) -> Nat
+Main.Foo.bar : (rec : Foo a) -> Nat
     A field bar
     
     The function is Total
-baz : (rec : Foo a) -> Bool
+Main.Foo.baz : (rec : Foo a) -> Bool
     A field baz
     
     The function is Total

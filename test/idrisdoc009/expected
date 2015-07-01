@@ -1,4 +1,4 @@
-Data type Test : Type
+Data type Test.Test : Type
     Docs for datatype Test.
     
 Constructors:
