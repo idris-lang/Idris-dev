@@ -20,7 +20,7 @@ const : a -> b -> a
 const x = \v => x
 
 ||| Return the first element of a pair.
-fst : (s, t) -> s
+fst : (a, b) -> a
 fst (x, y) = x
 
 ||| Return the second element of a pair.
