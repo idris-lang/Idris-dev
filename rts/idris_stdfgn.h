@@ -1,6 +1,8 @@
 #ifndef _IDRISSTDFGN_H
 #define _IDRISSTDFGN_H
 
+#include "idris_rts.h"
+
 // A collection of useful standard functions to be used by the prelude.
 
 void putStr(char* str);
@@ -22,7 +24,7 @@ void* idris_stdin();
 
 char* getEnvPair(int i);
 
-int idris_time();
+VAL idris_time();
 
 void idris_forceGC();
 

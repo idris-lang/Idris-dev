@@ -73,8 +73,9 @@ exit : Int -> IO ()
 exit code = foreign FFI_C "exit" (Int -> IO ()) code
 
 ||| Get the Unix time
-time : IO Int
-time = foreign FFI_C "idris_time" (IO Int)
+time : IO Integer
+time = do MkRaw t <- foreign FFI_C "idris_time" (IO (Raw Integer))
+          return t
 
 usleep : Int -> IO ()
 usleep i = foreign FFI_C "usleep" (Int -> IO ()) i

@@ -9,7 +9,7 @@ import Control.IOExcept
 
 data System : Effect where
      Args : sig System (List String)
-     Time : sig System Int
+     Time : sig System Integer
      GetEnv : String -> sig System (Maybe String)
      CSystem : String -> sig System Int
 
@@ -33,7 +33,7 @@ SYSTEM = MkEff () System
 getArgs : Eff (List String) [SYSTEM]
 getArgs = call Args
 
-time : Eff Int [SYSTEM]
+time : Eff Integer [SYSTEM]
 time = call Time
 
 getEnv : String -> Eff (Maybe String) [SYSTEM]

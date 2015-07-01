@@ -1,5 +1,6 @@
 #include "idris_stdfgn.h"
 #include "idris_rts.h"
+#include "idris_gmp.h"
 #include "idris_gc.h"
 #include <sys/select.h>
 #include <fcntl.h>
@@ -80,9 +81,9 @@ char* getEnvPair(int i) {
     return *(environ + i);
 }
 
-int idris_time() {
+VAL idris_time() {
     time_t t = time(NULL);
-    return (int)t;
+    return MKBIGI(t);
 }
 
 void idris_forceGC(void* vm) {
