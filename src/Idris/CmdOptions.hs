@@ -78,12 +78,15 @@ parseFlags :: Parser [Opt]
 parseFlags = many $
   flag' NoBanner (long "nobanner" <> help "Suppress the banner")
   <|> flag' Quiet (short 'q' <> long "quiet" <> help "Quiet verbosity")
+  -- IDE Mode Specific Flags
   <|> flag' Idemode (long "ide-mode" <> help "Run the Idris REPL with machine-readable syntax")
   <|> flag' IdemodeSocket (long "ide-mode-socket" <> help "Choose a socket for IDE mode to listen on")
   <|> flag' Idemode (long "ideslave" <> help "Deprecated version of --ide-mode") -- TODO: Remove in v0.9.18
   <|> flag' IdemodeSocket (long "ideslave-socket" <> help "Deprecated version of --ide-mode-socket") -- TODO: Remove in v0.9.18
   <|> (Client <$> strOption (long "client"))
+  -- Logging Flags
   <|> (OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
+  -- Turn off Certain libraries.
   <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")
   <|> flag' NoPrelude (long "noprelude" <> help "Do not use the given prelude")
   <|> flag' NoBuiltins (long "nobuiltins" <> help "Do not use the builtin functions")
@@ -91,7 +94,7 @@ parseFlags = many $
   <|> (Output <$> strOption (short 'o' <> long "output" <> metavar "FILE" <> help "Specify output file"))
   --   <|> flag' TypeCase (long "typecase")
   <|> flag' Interface (long "interface" <> help "Generate interface files from ExportLists")
-  <|> flag' TypeInType (long "typeintype")
+  <|> flag' TypeInType (long "typeintype" <> help "Turn off Universe checking")
   <|> flag' DefaultTotal (long "total" <> help "Require functions to be total by default")
   <|> flag' DefaultPartial (long "partial")
   <|> flag' WarnPartial (long "warnpartial" <> help "Warn about undeclared partial functions")
@@ -128,6 +131,7 @@ parseFlags = many $
   <|> flag' (InterpretScript "Main.main") (long "execute" <> help "Execute as idris")
   <|> (InterpretScript <$> strOption (long "exec" <> metavar "EXPR" <> help "Execute as idris"))
   <|> ((\s -> Extension $ getExt s) <$> strOption (long "extension" <> short 'X' <> metavar "EXT" <> help "Turn on language extension (TypeProviders or ErrorReflection)"))
+  -- Optimisation Levels
   <|> flag' (OptLevel 3) (long "O3")
   <|> flag' (OptLevel 2) (long "O2")
   <|> flag' (OptLevel 1) (long "O1")
@@ -137,6 +141,7 @@ parseFlags = many $
   <|> (OptLevel <$> option auto (short 'O' <> long "level"))
   <|> (TargetTriple <$> strOption (long "target" <> metavar "TRIPLE" <> help "Select target triple (for llvm codegen)"))
   <|> (TargetCPU <$> strOption (long "cpu" <> metavar "CPU" <> help "Select target CPU e.g. corei7 or cortex-m3 (for LLVM codegen)"))
+  -- Colour Options
   <|> flag' (ColourREPL True) (long "colour" <> long "color" <> help "Force coloured output")
   <|> flag' (ColourREPL False) (long "nocolour" <> long "nocolor" <> help "Disable coloured output")
 
@@ -178,6 +183,5 @@ parseConsoleWidth  s =
 
 integerReader :: ReadP Int
 integerReader = do
-    digits <- many1 $ satisfy isDigit 
+    digits <- many1 $ satisfy isDigit
     return $ read digits
-
