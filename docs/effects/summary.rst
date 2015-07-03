@@ -20,7 +20,7 @@ EXCEPTION
 
     EXCEPTION : Type -> EFFECT
 
-    raise : a -> { [EXCEPTION a ] } Eff m b
+    raise : a -> Eff b [EXCEPTION a]
 
     instance           Handler (Exception a) Maybe
     instance           Handler (Exception a) List
@@ -42,18 +42,17 @@ FILE\_IO
 
     data OpenFile : Mode -> Type
 
-    open  : Handler FileIO e => String -> (m : Mode) ->
-            { [FILE_IO ()] ==>
-              {ok} [FILE_IO (if ok then OpenFile m else ())] } Eff e Bool
-    close : Handler FileIO e =>
-            { [FILE_IO (OpenFile m)] ==> [FILE_IO ()] } Eff e ()
+    open : (fname : String)
+           -> (m : Mode)
+           -> Eff Bool [FILE_IO ()] 
+                       (\res => [FILE_IO (case res of
+                                               True => OpenFile m
+                                               False => ())])
+    close : Eff () [FILE_IO (OpenFile m)] [FILE_IO ()]
 
-    readLine  : Handler FileIO e =>
-               { [FILE_IO (OpenFile Read)] } Eff e String
-    writeLine : Handler FileIO e => String ->
-               { [FILE_IO (OpenFile Write)] } Eff e ()
-    eof       : Handler FileIO e =>
-               { [FILE_IO (OpenFile Read)] } Eff e Bool
+    readLine  : Eff String [FILE_IO (OpenFile Read)]
+    writeLine : String -> Eff () [FILE_IO (OpenFile Write)]
+    eof       : Eff Bool [FILE_IO (OpenFile Read)]
 
     instance Handler FileIO IO
 
@@ -70,9 +69,9 @@ RND
 
     RND : EFFECT
 
-    srand  : Integer ->            { [RND] } Eff m ()
-    rndInt : Integer -> Integer -> { [RND] } Eff m Integer
-    rndFin : (k : Nat) ->          { [RND] } Eff m (Fin (S k))
+    srand  : Integer ->            Eff m () [RND]
+    rndInt : Integer -> Integer -> Eff m Integer [RND]
+    rndFin : (k : Nat) ->          Eff m (Fin (S k)) [RND]
 
     instance Handler Random m
 
@@ -87,7 +86,7 @@ SELECT
 
     SELECT : EFFECT
 
-    select : List a -> { [SELECT] } Eff m a
+    select : List a -> Eff m a [SELECT]
 
     instance Handler Selection Maybe
     instance Handler Selection List
@@ -103,10 +102,10 @@ STATE
 
     STATE : Type -> EFFECT
 
-    get    :             { [STATE x] } Eff m x
-    put    : x ->        { [STATE x] } Eff m ()
-    putM   : y ->        { [STATE x] ==> [STATE y] } Eff m ()
-    update : (x -> x) -> { [STATE x] } Eff m ()
+    get    :             Eff m x [STATE x]
+    put    : x ->        Eff m () [STATE x]
+    putM   : y ->        Eff m () [STATE x] [STATE y]
+    update : (x -> x) -> Eff m () [STATE x]
 
     instance Handler State m
 
@@ -122,12 +121,12 @@ STDIO
 
     STDIO : EFFECT
 
-    putChar  : Handler StdIO m => Char ->   { [STDIO] } Eff m ()
-    putStr   : Handler StdIO m => String -> { [STDIO] } Eff m ()
-    putStrLn : Handler StdIO m => String -> { [STDIO] } Eff m ()
+    putChar  : Handler StdIO m => Char ->   Eff m () [STDIO]
+    putStr   : Handler StdIO m => String -> Eff m () [STDIO]
+    putStrLn : Handler StdIO m => String -> Eff m () [STDIO]
 
-    getStr   : Handler StdIO m =>           { [STDIO] } Eff m String
-    getChar  : Handler StdIO m =>           { [STDIO] } Eff m Char
+    getStr   : Handler StdIO m =>           Eff m String [STDIO]
+    getChar  : Handler StdIO m =>           Eff m Char [STDIO]
 
     instance Handler StdIO IO
     instance Handler StdIO (IOExcept a)
@@ -145,9 +144,9 @@ SYSTEM
 
     SYSTEM : EFFECT
 
-    getArgs : Handler System e =>           { [SYSTEM] } Eff e (List String)
-    time    : Handler System e =>           { [SYSTEM] } Eff e Int
-    getEnv  : Handler System e => String -> { [SYSTEM] } Eff e (Maybe String)
+    getArgs : Handler System e =>           Eff e (List String) [SYSTEM]
+    time    : Handler System e =>           Eff e Int [SYSTEM]
+    getEnv  : Handler System e => String -> Eff e (Maybe String) [SYSTEM]
 
     instance Handler System IO
     instance Handler System (IOExcept a)
