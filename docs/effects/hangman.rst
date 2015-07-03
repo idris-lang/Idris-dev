@@ -95,7 +95,7 @@ NewWord
        choice of 6 is somewhat arbitrary here) and the number of unique
        letters in the word still to be guessed.
 
-StrState
+Get
     Get a string representation of the game state. This is for display
     purposes; there are no pre- or postconditions.
 
@@ -106,16 +106,19 @@ effect signature:
 
     data MysteryRules : Effect where
          Guess : (x : Char) ->
-                 { Mystery (Running (S g) (S w)) ==>
-                   {inword} if inword then Mystery (Running (S g) w)
-                                      else Mystery (Running g (S w)) }
-                    MysteryRules Bool
-         Won  : { Mystery (Running g 0) ==> Mystery NotRunning } MysteryRules ()
-         Lost : { Mystery (Running 0 g) ==> Mystery NotRunning } MysteryRules ()
-         NewWord : (w : String) ->
-                   { Mystery NotRunning ==>
-                     Mystery (Running 6 (length (letters w))) } MysteryRules ()
-         StrState : { Mystery h } MysteryRules String
+                 sig MysteryRules Bool
+                     (Mystery (Running (S g) (S w)))
+                     (\inword =>
+                            Mystery (case inword of
+                                 True => (Running (S g) w)
+                                 False => (Running g (S w))))
+         Won  : sig MysteryRules () (Mystery (Running g 0))
+                                    (Mystery NotRunning)
+         Lost : sig MysteryRules () (Mystery (Running 0 g))
+                                    (Mystery NotRunning)
+         NewWord : (w : String) -> 
+                   sig MysteryRules () h (Mystery (Running 6 (length (letters w))))
+         Get : sig MysteryRules String (Mystery h)
 
 This description says nothing about how the rules are implemented. In
 particular, it does not specify *how* to tell whether a guessed letter
@@ -195,7 +198,7 @@ implementation for ``MysteryRules`` is surprisingly straightforward:
         handle (MkG w g got []) Won k = k () (GameWon w)
         handle (MkG w Z got m) Lost k = k () (GameLost w)
 
-        handle st StrState k = k (show st) st
+        handle st Get k = k (show st) st
         handle st (NewWord w) k = k () (initState w)
 
         handle (MkG w (S g) got m) (Guess x) k =
@@ -219,8 +222,8 @@ for the game which uses the ``MYSTERY`` effect:
 
 .. code-block:: idris
 
-    game : { [MYSTERY (Running (S g) w), STDIO] ==>
-             [MYSTERY NotRunning, STDIO] } Eff ()
+    game : Eff () [MYSTERY (Running (S g) w), STDIO]
+                  [MYSTERY NotRunning, STDIO]
 
 The type indicates that the game must start in a running state, with
 some guesses available, and eventually reach a not-running state (i.e.
@@ -239,12 +242,12 @@ running ``game``:
 
 .. code-block:: idris
 
-    runGame : { [MYSTERY NotRunning, RND, SYSTEM, STDIO] } Eff ()
+    runGame : Eff () [MYSTERY NotRunning, RND, SYSTEM, STDIO]
     runGame = do srand (cast !time)
                  let w = index !(rndFin WEWEWE) words
                  NewWord w
                  game
-                 putStrLn !StrState
+                 putStrLn !Get
 
 We use the system time (``time`` from the ``SYSTEM`` effect; see
 Appendix :ref:`sect-appendix`) to initialise the random number
@@ -271,11 +274,11 @@ presented below:
 
 .. code-block:: idris
 
-    game : { [MYSTERY (Running (S g) w), STDIO] ==>
-             [MYSTERY NotRunning, STDIO] } Eff ()
+    game : Eff () [MYSTERY (Running (S g) w), STDIO]
+                  [MYSTERY NotRunning, STDIO]
     game {w=Z} = Won
     game {w=S _}
-         = do putStrLn !StrState
+         = do putStrLn !Get
               putStr "Enter guess: "
               let guess = trim !getStr
               case choose (not (guess == "")) of
@@ -283,9 +286,8 @@ presented below:
                    (Right p) => do putStrLn "Invalid input!"
                                    game
       where
-        processGuess : Char -> { [MYSTERY (Running (S g) (S w)), STDIO] ==>
-                                 [MYSTERY NotRunning, STDIO] }
-                               Eff ()
+        processGuess : Char -> Eff () [MYSTERY (Running (S g) (S w)), STDIO]
+                                      [MYSTERY NotRunning, STDIO]
         processGuess {g} {w} c
           = case !(Main.Guess c) of
                  True => do putStrLn "Good guess!"
@@ -315,16 +317,11 @@ transitions for ``MysteryRules``. Then, when implementing ``game`` at
 first, any incorrect assumption was caught as a type error. The
 following errors were caught during development:
 
-- Not realising that allowing ``NewWord`` to be an arbitrary string
-   would mean that ``game`` would have to deal with a zero-length word
-   as a starting state.
+- Not realising that allowing ``NewWord`` to be an arbitrary string would mean that ``game`` would have to deal with a zero-length word as a starting state.
 
-- Forgetting to check whether a game was won before recursively
-   calling ``processGuess``, thus accidentally continuing a finished
-   game.
+- Forgetting to check whether a game was won before recursively calling ``processGuess``, thus accidentally continuing a finished game.
 
-- Accidentally checking the number of missing letters, rather than the
-   number of remaining guesses, when checking if a game was lost.
+- Accidentally checking the number of missing letters, rather than the number of remaining guesses, when checking if a game was lost.
 
 These are, of course, simple errors, but were caught by the type
 checker before any testing of the game.

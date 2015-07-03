@@ -24,7 +24,7 @@ It might look something like the following:
 
 .. code-block:: idris
 
-    readInt : { [STATE (List Int), STDIO] } Eff ()
+    readInt : Eff () [STATE (List Int), STDIO] 
     readInt = do let x = trim !getStr
                  put (cast x :: !get)
 
@@ -33,7 +33,7 @@ But what if, instead of a list of integers, we would like to store a
 
 .. code-block:: idris
 
-    readInt : { [STATE (Vect n Int), STDIO] } Eff ()
+    readInt : Eff () [STATE (Vect n Int), STDIO]
     readInt = do let x = trim !getStr
                  put (cast x :: !get)
 
@@ -43,8 +43,8 @@ express this as follows:
 
 .. code-block:: idris
 
-    readInt : { [STATE (Vect n Int), STDIO] ==>
-                [STATE (Vect (S n) Int), STDIO] } Eff ()
+    readInt : Eff ()[STATE (Vect n Int), STDIO] 
+                    [STATE (Vect (S n) Int), STDIO]
     readInt = do let x = trim !getStr
                  putM (cast x :: !get)
 
@@ -56,7 +56,7 @@ It has the following type:
 
 .. code-block:: idris
 
-    putM : y -> { [STATE x] ==> [STATE y] } Eff ()
+    putM : y -> Eff () [STATE x] [STATE y]
 
 Result-dependent Effects
 ========================
@@ -69,8 +69,8 @@ digits). As a first attempt, we could try the following, returning a
 
 .. code-block:: idris
 
-    readInt : { [STATE (Vect n Int), STDIO] ==>
-                [STATE (Vect (S n) Int), STDIO] } Eff Bool
+    readInt : Eff Bool [STATE (Vect n Int), STDIO]
+                       [STATE (Vect (S n) Int), STDIO]
     readInt = do let x = trim !getStr
                  case all isDigit (unpack x) of
                       False => pure False
@@ -91,31 +91,31 @@ value read from the user was valid. We can express this in the type:
 
 .. code-block:: idris
 
-    readInt : { [STATE (Vect n Int), STDIO] ==>
-                {ok} if ok then [STATE (Vect (S n) Int), STDIO]
-                           else [STATE (Vect n Int), STDIO] } Eff Bool
+    readInt : Eff Bool [STATE (Vect n Int), STDIO]
+                (\ok => if ok then [STATE (Vect (S n) Int), STDIO]
+                              else [STATE (Vect n Int), STDIO])
     readInt = do let x = trim !getStr
                  case all isDigit (unpack x) of
                       False => pure False
                       True => do putM (cast x :: !get)
-                                 pure True
+                                 pureM True
 
-The notation ``{ xs ==> res xs’ } Eff a`` in a type means that the
-effects available are updated from ``xs`` to ``xs’``, *and* the
-resulting effects ``xs’`` may depend on the result of the operation
-``res``, of type ``a``. Here, the resulting effects are computed from
-the result ``ok``—if ``True``, the vector is extended, otherwise it
-remains the same.
+Using ``pureM`` rather than ``pure`` allows the output effects to be
+calculated from the value given. Its type is:
 
-When using the function, we will naturally have to check its return
+.. code-block:: idris
+
+    pureM : (val : a) -> EffM m a (xs val) xs
+
+When using ``readInt``, we will have to check its return
 value in order to know what the new set of effects is. For example, to
 read a set number of values into a vector, we could write the following:
 
 .. code-block:: idris
 
     readN : (n : Nat) ->
-            { [STATE (Vect m Int), STDIO] ==>
-              [STATE (Vect (n + m) Int), STDIO] } Eff ()
+            Eff () [STATE (Vect m Int), STDIO]
+                   [STATE (Vect (n + m) Int), STDIO]
     readN Z = pure ()
     readN {m} (S k) = case !readInt of
                           True => rewrite plusSuccRightSucc k m in readN k
@@ -171,14 +171,17 @@ to support random access files and better reporting of error conditions.
 
     data OpenFile : Mode -> Type
 
-    open  : String -> (m : Mode) ->
-            { [FILE_IO ()] ==>
-              {ok} [FILE_IO (if ok then OpenFile m else ())] } Eff Bool
-    close : { [FILE_IO (OpenFile m)] ==> [FILE_IO ()] } Eff ()
+    open : (fname : String)
+           -> (m : Mode)
+           -> Eff Bool [FILE_IO ()] 
+                       (\res => [FILE_IO (case res of
+                                               True => OpenFile m
+                                               False => ())])
+    close : Eff () [FILE_IO (OpenFile m)] [FILE_IO ()]
 
-    readLine  : { [FILE_IO (OpenFile Read)] } Eff String
-    writeLine : { [FILE_IO (OpenFile Write)] } Eff ()
-    eof       : { [FILE_IO (OpenFile Read)] } Eff Bool
+    readLine  : Eff String [FILE_IO (OpenFile Read)]
+    writeLine : String -> Eff () [FILE_IO (OpenFile Write)]
+    eof       : Eff Bool [FILE_IO (OpenFile Read)]
 
     instance Handler FileIO IO
 
@@ -186,9 +189,12 @@ In particular, consider the type of ``open``:
 
 .. code-block:: idris
 
-    open  : String -> (m : Mode) ->
-            { [FILE_IO ()] ==>
-              {ok} [FILE_IO (if ok then OpenFile m else ())] } Eff Bool
+    open : (fname : String)
+           -> (m : Mode)
+           -> Eff Bool [FILE_IO ()] 
+                       (\res => [FILE_IO (case res of
+                                               True => OpenFile m
+                                               False => ())])
 
 This returns a ``Bool`` which indicates whether opening the file was
 successful. The resulting state depends on whether the operation was
@@ -199,10 +205,9 @@ we continue the protocol accordingly.
 .. _eff-readfile:
 .. code-block:: idris
 
-    readFile : { [FILE_IO (OpenFile Read)] } Eff (List String)
+    readFile : Eff (List String) [FILE_IO (OpenFile Read)]
     readFile = readAcc [] where
-        readAcc : List String -> { [FILE_IO (OpenFile Read)] }
-                  Eff (List String)
+        readAcc : List String -> Eff (List String) [FILE_IO (OpenFile Read)] 
         readAcc acc = if (not !eof)
                          then readAcc (!readLine :: acc)
                          else pure (reverse acc)
@@ -214,7 +219,7 @@ correctly following the protocol:
 
 .. code-block:: idris
 
-    dumpFile : String -> { [FILE_IO (), STDIO] } Eff ()
+    dumpFile : String -> Eff () [FILE_IO (), STDIO]
     dumpFile name = case !(open name Read) of
                         True => do putStrLn (show !readFile)
                                    close
@@ -255,7 +260,7 @@ Idris supports *pattern-matching* bindings, such as the following:
 
 .. code-block:: idris
 
-    dumpFile : String -> { [FILE_IO (), STDIO] } Eff ()
+    dumpFile : String -> Eff () [FILE_IO (), STDIO]
     dumpFile name = do True <- open name Read
                        putStrLn (show !readFile)
                        close
@@ -267,7 +272,7 @@ example, we could write:
 
 .. code-block:: idris
 
-    dumpFile : String -> { [FILE_IO (), STDIO] } Eff ()
+    dumpFile : String -> Eff () [FILE_IO (), STDIO]
     dumpFile name  = do True <- open name Read | False => putStrLn "Error"
                         putStrLn (show !readFile)
                         close
@@ -297,7 +302,7 @@ reading command line arguments, among other things (see Appendix
 
 .. code-block:: idris
 
-    getArgs : { [SYSTEM] } Eff (List String)
+    getArgs : Eff (List String) [SYSTEM]
 
 A main program can read command line arguments as follows, where in the
 list which is returned, the first element ``prog`` is the executable
@@ -305,7 +310,7 @@ name and the second is an expected argument:
 
 .. code-block:: idris
 
-    emain : { [SYSTEM, STDIO] } Eff ()
+    emain : Eff () [SYSTEM, STDIO]
     emain = do [prog, arg] <- getArgs
                putStrLn $ "Argument is " ++ arg
                {- ... rest of function ... -}
@@ -316,7 +321,7 @@ alternatives to give a better (more informative) error:
 
 .. code-block:: idris
 
-    emain : { [SYSTEM, STDIO] } Eff ()
+    emain : Eff () [SYSTEM, STDIO]
     emain = do [prog, arg] <- getArgs | [] => putStrLn "Can't happen!"
                                       | [prog] => putStrLn "No arguments!"
                                       | _ => putStrLn "Too many arguments!"

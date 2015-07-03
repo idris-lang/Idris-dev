@@ -37,11 +37,9 @@ introductory tutorials, is “How do I turn this into a program?” That is,
 given some lists entered by a user, how do we get into a position to be
 able to apply the ``vadd`` function? Before doing so, we will have to:
 
-- Read user input, either from the keyboard, a file, or some other
-   input device.
+- Read user input, either from the keyboard, a file, or some other input device.
 
-- Check that the user inputs are valid, i.e. contain only ``Int`` s
-   and are the same length, and report an error if not.
+- Check that the user inputs are valid, i.e. contain only ``Int`` and are the same length, and report an error if not.
 
 - Write output
 
@@ -66,7 +64,7 @@ library:
    import Effects
    import Effect.StdIO
 
-   hello : {[STDIO]} Eff ()
+   hello : Eff () [STDIO]
    hello = putStrLn “Hello world!”
 
    main : IO ()
@@ -108,6 +106,4 @@ accurately. References to further reading are given in Section
 :ref:`sect-further`.
 
 .. [1]
-   You do not, however, need to know what a monad is. A correctness
-   property of this tutorial is that the word “monad” should appear
-   exactly twice, both in this footnote.
+   You do not, however, need to know what a monad is!

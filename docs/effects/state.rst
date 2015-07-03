@@ -83,7 +83,7 @@ effectful program ``f`` has a type of the following form:
 
 .. code-block:: idris
 
-    f : (x1 : a1) -> (x2 : a2) -> ... -> { effs } Eff t
+    f : (x1 : a1) -> (x2 : a2) -> ... -> Eff t effs 
 
 That is, the return type gives the effects that ``f`` supports
 (``effs``, of type ``List EFFECT``) and the type the computation
@@ -92,7 +92,7 @@ following type:
 
 .. code-block:: idris
 
-    treeTagAux : BTree a -> { [STATE Int] } Eff (BTree (Int, a))
+    treeTagAux : BTree a -> Eff (BTree (Int, a)) [STATE Int]
 
 That is, ``treeTagAux`` has access to an integer state, because the
 list of available effects includes ``STATE Int``. ``STATE`` is
@@ -141,8 +141,8 @@ following types, polymorphic in the state ``t`` they manage:
 
 .. code-block:: idris
 
-    get :      { [STATE t] } Eff t
-    put : t -> { [STATE t] } Eff ()
+    get :      Eff t [STATE t]
+    put : t -> Eff () [STATE t]
 
 A program in ``Eff`` can call any other function in ``Eff`` provided
 that the calling function supports at least the effects required by
@@ -168,7 +168,7 @@ instead of ``runPure``:
 
 .. code-block:: idris
 
-    treeTagAux : BTree a -> { [STATE Int] } Eff (BTree (Int, a))
+    treeTagAux : BTree a -> Eff (BTree (Int, a)) [STATE Int]
     ...
 
     treeTag : (i : Int) -> BTree a -> IO (BTree (Int, a))
@@ -202,7 +202,7 @@ shown in Listing [introprog].
                         "Sheila"
                         (Node Leaf "Bob" Leaf))
 
-    treeTagAux : BTree a -> { [STATE Int] } Eff (BTree (Int, a))
+    treeTagAux : BTree a -> Eff (BTree (Int, a)) [STATE Int]
     treeTagAux Leaf = pure Leaf
     treeTagAux (Node l x r) = do l' <- treeTagAux l
                                  i <- get
@@ -227,8 +227,8 @@ here for illustrative purposes):
 
 .. code-block:: idris
 
-    runPure : {env : Env id xs} -> { xs } Eff a -> a
-    run : Applicative m => {env : Env m xs} -> { xs } Eff a -> m a
+    runPure : {env : Env id xs} -> Eff a xs -> a
+    run : Applicative m => {env : Env m xs} -> Eff a xs -> m a
 
 The ``env`` argument is implicit, and initialised automatically where
 possible using default values given by instances of the following type
@@ -248,8 +248,8 @@ using one of the following functions:
 
 .. code-block:: idris
 
-    runPureInit : Env id xs -> { xs } Eff a -> a
-    runInit : Applicative m => Env m xs -> { xs } Eff a -> m a
+    runPureInit : Env id xs -> Eff a xs -> a
+    runInit : Applicative m => Env m xs -> Eff a xs -> m a
 
 To be well-typed, the environment must contain resources corresponding
 exactly to the effects in ``xs``. For example, we could also have
@@ -272,8 +272,7 @@ captured both of these values, e.g.:
 
 .. code-block:: idris
 
-    treeTagAux : BTree a
-               -> { [STATE (Int, Int)] } Eff (BTree (Int, a))
+    treeTagAux : BTree a -> Eff (BTree (Int, a)) [STATE (Int, Int)]
 
 Doing this, however, ties the two states together throughout (as well
 as not indicating which integer is which). It would be nice to be able
@@ -288,9 +287,9 @@ leaves and update the tag separately, by labelling them as follows:
 
 .. code-block:: idris
 
-    treeTagAux : BTree a
-               -> {['Tag ::: STATE Int,
-                    'Leaves ::: STATE Int]} Eff (BTree (Int, a))
+    treeTagAux : BTree a ->  Eff (BTree (Int, a))
+                                   ['Tag ::: STATE Int,
+                                    'Leaves ::: STATE Int]
 
 The ``:::`` operator allows an arbitrary label to be given to an
 effect.  This label can be any type—it is simply used to identify an
@@ -320,7 +319,7 @@ applying a function to the current state.
 
 .. code-block:: idris
 
-    update : (x -> x) -> { [STATE x] } Eff ()
+    update : (x -> x) -> Eff () [STATE x]
 
 Finally, our top level ``treeTag`` function now returns a pair of the
 number of leaves, and the new tree. Resources for labelled effects are
@@ -339,8 +338,7 @@ To summarise, we have:
 
 - ``:::`` to convert an effect to a labelled effect.
 
-- ``:-`` to convert an effectful operation to a labelled effectful
-   operation.
+- ``:-`` to convert an effectful operation to a labelled effectful operation.
 
 - ``:=`` to initialise a resource for a labelled effect.
 
@@ -350,7 +348,7 @@ only for the situation where available effects are not updated):
 .. code-block:: idris
 
     (:::) : lbl -> EFFECT -> EFFECT
-    (:-)  : (l : lbl) -> { [x] } Eff a -> { [l ::: x] } Eff a
+    (:-)  : (l : lbl) -> Eff a [x] -> Eff a [l ::: x]
     (:=)  : (l : lbl) -> res -> LRes l res
 
 Here, ``LRes`` is simply the resource type associated with a labelled
@@ -367,7 +365,7 @@ immediately. The following program returns the length of the
 
 .. code-block:: idris
 
-    stateLength : { [STATE String] } Eff Nat
+    stateLength : Eff Nat [STATE String]
     stateLength = do x <- get
                      pure (length x)
 
@@ -377,7 +375,7 @@ this. The above program can be written instead as:
 
 .. code-block:: idris
 
-    stateLength : { [STATE String] } Eff Nat
+    stateLength : Eff Nat [STATE String]
     stateLength = pure (length !get)
 
 The notation ``!expr`` means that the expression ``expr`` should be
@@ -386,7 +384,7 @@ evaluated and then implicitly bound. Conceptually, we can think of
 
 .. code-block:: idris
 
-    (!) : { xs } Eff a -> a
+    (!) : Eff a xs -> a
 
 Note, however, that it is not really a function, merely syntax! In
 practice, a subexpression ``!expr`` will lift ``expr`` as high as
@@ -411,22 +409,22 @@ is lifted to:
                      g' <- g y' x'
                      f g'
 
-Syntactic Sugar and ``Eff``
-===========================
+The Type ``Eff``
+================
 
-By now, you may be wondering about the syntax we are using for
-``Eff``, because it doesn’t look like a normal type! (If not, you may
-safely skip this section and return to it later.) In fact, the type of
-``Eff`` is the following:
+Underneath, ``Eff`` is an overloaded function which translates to an
+underlying type ``EffM``:
 
 .. code-block:: idris
 
-    Eff : (x : Type) ->
-          List EFFECT -> (x -> List EFFECT) -> Type
+    EffM : (m : Type -> Type) -> (t : Type)
+            -> (List EFFECT)
+            -> (t -> List EFFECT) -> Type 
 
 This is more general than the types we have been writing so far. It is
-parameterised over a result type ``x``, as we have already seen, but
-also a ``List EFFECT`` and a function type ``x -> List EFFECT``.
+parameterised over an underying computation context ``m``, a
+result type ``t`` as we have already seen, as well as a ``List EFFECT`` and a
+function type ``t -> List EFFECT``.
 
 These additional parameters are the list of *input* effects, and a
 list of *output* effects, computed from the result of an effectful
@@ -435,8 +433,7 @@ of effects available! This is a particularly powerful idea, and we
 will see its consequences in more detail later. Some examples of
 operations which can change the set of available effects are:
 
-- Updating a state containing a dependent type (for example adding an
-   element to a vector).
+- Updating a state containing a dependent type (for example adding an element to a vector).
 
 - Opening a file for reading is an effect, but whether the file really
   *is* open afterwards depends on whether the file was successfully
@@ -445,19 +442,25 @@ operations which can change the set of available effects are:
 - Closing a file means that reading from the file should no longer be
   possible.
 
-While powerful, this can make uses of the ``Eff`` type hard to read.
-Therefore, the library provides syntactic sugar which is translated
-such that:
+While powerful, this can make uses of the ``EffM`` type hard to read.
+Therefore the library provides an overloaded function ``Eff`` 
+There are the following three versions:
 
 .. code-block:: idris
 
-    { xs } Eff a
+    SimpleEff.Eff : (t : Type) -> (input_effs : List EFFECT) -> Type
+    TransEff.Eff  : (t : Type) -> (input_effs : List EFFECT) -> 
+                                  (output_effs : List EFFECT) -> Type
+    DepEff.Eff    : (t : Type) -> (input_effs : List EFFECT) -> 
+                                  (output_effs_fn : x -> List EFFECT) -> Type
 
-is expanded to
+So far, we have used only the first version, ``SimpleEff.Eff``, which
+is defined as follows:
 
 .. code-block:: idris
 
-    Eff a xs (\_ => xs)
+    Eff : (x : Type) -> (es : List EFFECT) -> Type
+    Eff x es = {m : Type -> Type} -> EffM m x es (\v => es)
 
 i.e. the set of effects remains the same on output. This suffices for
 the ``STATE`` example we have seen so far, and for many useful
@@ -467,19 +470,19 @@ with the expanded type:
 .. code-block:: idris
 
     treeTagAux : BTree a ->
-                 Eff (BTree (Int, a)) [STATE Int] (\x => [STATE Int])
+                 EffM m (BTree (Int, a)) [STATE Int] (\x => [STATE Int])
 
 Later, we will see programs which update effects:
 
 .. code-block:: idris
 
-    { xs ==> xs' } Eff a
+    Eff a xs xs'
 
 which is expanded to
 
 .. code-block:: idris
 
-    Eff a xs (\_ => xs')
+    EffM m a xs (\_ => xs')
 
 i.e. the set of effects is updated to ``xs’`` (think of a transition
 in a state machine). There is, for example, a version of ``put`` which
@@ -487,22 +490,27 @@ updates the type of the state:
 
 .. code-block:: idris
 
-    putM : y -> { [STATE x] ==> [STATE y] } Eff ()
+    putM : y -> Eff () [STATE x] [STATE y]
 
 Also, we have:
 
 .. code-block:: idris
 
-    { xs ==> {res} xs' } Eff a
+    Eff t xs (\res => xs')
 
 which is expanded to
 
 .. code-block:: idris
 
-    Eff a xs (\res => xs')
+    EffM m t xs (\res => xs')
 
 i.e. the set of effects is updated according to the result of the
-operation ``res``.
+operation ``res``, of type ``t``.
+
+Parameterising ``EffM`` over an underlying computation context allows us
+to write effectful programs which are specific to one context, and in some
+cases to write programs which *extend* the list of effects available using
+the ``new`` function, though this is beyond the scope of this tutorial.
 
 .. [1] The earlier paper [3]_ describes the essential implementation
    details, although the library presented there is an earlier version

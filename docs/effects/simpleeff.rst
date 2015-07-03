@@ -14,10 +14,10 @@ in a module ``Effect.State``
 
     STATE : Type -> EFFECT
 
-    get    :             { [STATE x] } Eff x
-    put    : x ->        { [STATE x] } Eff ()
-    putM   : y ->        { [STATE x] ==> [STATE y] } Eff ()
-    update : (x -> x) -> { [STATE x] } Eff ()
+    get    :             Eff x  [STATE x]
+    put    : x ->        Eff () [STATE x]
+    putM   : y ->        Eff () [STATE x] [STATE y]
+    update : (x -> x) -> Eff () [STATE x]
 
     instance Handler State m
 
@@ -56,12 +56,12 @@ can perform (or at the very least simulate) console I/O:
 
     STDIO : EFFECT
 
-    putChar  : Char ->   { [STDIO] } Eff ()
-    putStr   : String -> { [STDIO] } Eff ()
-    putStrLn : String -> { [STDIO] } Eff ()
+    putChar  : Char ->   Eff () [STDIO]
+    putStr   : String -> Eff () [STDIO]
+    putStrLn : String -> Eff () [STDIO]
 
-    getStr   :           { [STDIO] } Eff String
-    getChar  :           { [STDIO] } Eff Char
+    getStr   :           Eff String [STDIO]
+    getChar  :           Eff Char [STDIO]
 
     instance Handler StdIO IO
     instance Handler StdIO (IOExcept a)
@@ -74,7 +74,7 @@ as follows:
 
 .. code-block:: idris
 
-    hello : { [STDIO] } Eff ()
+    hello : Eff () [STDIO]
     hello = do putStr "Name? "
                x <- getStr
                putStrLn ("Hello " ++ trim x ++ "!")
@@ -94,7 +94,7 @@ getStr``, since we only use the string that is read once:
 
 .. code-block:: idris
 
-    hello : { [STDIO] } Eff ()
+    hello : Eff () [STDIO]
     hello = do putStr "Name? "
                putStrLn ("Hello " ++ trim !getStr ++ "!")
 
@@ -104,7 +104,7 @@ said hello to:
 
 .. code-block:: idris
 
-    hello : { [STATE Int, STDIO] } Eff ()
+    hello : Eff () [STATE Int, STDIO]
     hello = do putStr "Name? "
                putStrLn ("Hello " ++ trim !getStr ++ "!")
                update (+1)
@@ -146,7 +146,7 @@ generally:
 
     EXCEPTION : Type -> EFFECT
 
-    raise : a -> { [EXCEPTION a ] } Eff b
+    raise : a -> Eff b [EXCEPTION a]
 
     instance           Handler (Exception a) Maybe
     instance           Handler (Exception a) List
@@ -167,7 +167,7 @@ paramaterised by an error type:
 
     data Err = NotANumber | OutOfRange
 
-    parseNumber : Int -> String -> { [EXCEPTION Err] } Eff Int
+    parseNumber : Int -> String -> Eff Int [EXCEPTION Err]
     parseNumber num str
        = if all isDigit (unpack str)
             then let x = cast str in
@@ -222,7 +222,7 @@ the boundedness proof:
 
 .. code-block:: idris
 
-    parseNumber : (x : Int) -> String -> { [EXCEPTION Err] } Eff (Bounded x)
+    parseNumber : (x : Int) -> String -> Eff (Bounded x) [EXCEPTION Err]
     parseNumber x str
        = if all isDigit (unpack str)
             then let num = cast str in
@@ -243,9 +243,9 @@ Random number generation is also implemented by the library, in module
 
     RND : EFFECT
 
-    srand  : Integer ->            { [RND] } Eff ()
-    rndInt : Integer -> Integer -> { [RND] } Eff Integer
-    rndFin : (k : Nat) ->          { [RND] } Eff (Fin (S k))
+    srand  : Integer ->            Eff () [RND]
+    rndInt : Integer -> Integer -> Eff Integer [RND]
+    rndFin : (k : Nat) ->          Eff (Fin (S k)) [RND]
 
     instance Handler Random m
 
@@ -272,14 +272,14 @@ correct:
 
 .. code-block:: idris
 
-    guess : Int -> { [STDIO] } Eff ()
+    guess : Int -> Eff () [STDIO]
 
 For reference, the code for ``guess`` is given below:
 
 .. _eff-game:
 .. code-block:: idris
 
-    guess : Int -> { [STDIO] } Eff ()
+    guess : Int -> Eff () [STDIO]
     guess target
         = do putStr "Guess: "
              case run {m=Maybe} (parseNumber 100 (trim !getStr)) of
@@ -303,7 +303,7 @@ having set up the random number generator with a seed, then run
 
 .. code-block:: idris
 
-    game : { [RND, STDIO] } Eff ()
+    game : Eff () [RND, STDIO]
     game = do srand 123456789
               guess (fromInteger !(rndInt 0 100))
 
@@ -331,7 +331,7 @@ succeeds:
 
     SELECT : EFFECT
 
-    select : List a -> { [SELECT] } Eff a
+    select : List a -> Eff a [SELECT]
 
     instance Handler Selection Maybe
     instance Handler Selection List
@@ -346,7 +346,7 @@ of values which does not satisfy the constraint:
 
 .. code-block:: idris
 
-    triple : Int -> { [SELECT, EXCEPTION String] } Eff (Int, Int, Int)
+    triple : Int -> Eff (Int, Int, Int) [SELECT, EXCEPTION String]
     triple max = do z <- select [1..max]
                     y <- select [1..z]
                     x <- select [1..y]
@@ -396,7 +396,7 @@ they are equal:
 .. code-block:: idris
 
     vadd_check : Vect n Int -> Vect m Int ->
-                 { [EXCEPTION String] } Eff (Vect m Int)
+                 Eff (Vect m Int) [EXCEPTION String]
     vadd_check {n} {m} xs ys with (decEq n m)
       vadd_check {n} {m=n} xs ys | (Yes Refl) = pure (vadd xs ys)
       vadd_check {n} {m}   xs ys | (No contra) = raise "Length mismatch"
@@ -406,7 +406,7 @@ following type:
 
 .. code-block:: idris
 
-    read_vec : { [STDIO] } Eff (p ** Vect p Int)
+    read_vec : Eff (p ** Vect p Int) [STDIO]
 
 This returns a dependent pair of a length, and a vector of that
 length, because we cannot know in advance how many integers the user
@@ -421,7 +421,7 @@ inputs are of differing lengths:
 
 .. code-block:: idris
 
-    do_vadd : { [STDIO, EXCEPTION String] } Eff ()
+    do_vadd : Eff () [STDIO, EXCEPTION String]
     do_vadd = do putStrLn "Vector 1"
                  (_ ** xs) <- read_vec
                  putStrLn "Vector 2"
@@ -436,7 +436,7 @@ with gracefully.
 
 .. code-block:: idris
 
-    read_vec : { [STDIO] } Eff (p ** Vect p Int)
+    read_vec : Eff (p ** Vect p Int) [STDIO]
     read_vec = do putStr "Number (-1 when done): "
                   case run (parseNumber (trim !getStr)) of
                        Nothing => do putStrLn "Input error"
@@ -446,7 +446,7 @@ with gracefully.
                                             pure (_ ** v :: xs)
                                     else pure (_ ** [])
       where
-        parseNumber : String -> { [EXCEPTION String] } Eff Int
+        parseNumber : String -> Eff Int [EXCEPTION String]
         parseNumber str
           = if all (\x => isDigit x || x == '-') (unpack str)
                then pure (cast str)
@@ -493,7 +493,7 @@ values:
     Env : Type
     Env = List (String, Integer)
 
-    eval : Expr -> { [EXCEPTION String, STATE Env] } Eff Integer
+    eval : Expr -> Eff Integer [EXCEPTION String, STATE Env]
     eval (Val x) = return x
     eval (Add l r) = return $ !(eval l) + !(eval r)
 
@@ -520,7 +520,7 @@ sets the state then invokes ``eval``:
 
     runEval : List (String, Integer) -> Expr -> Maybe Integer
     runEval args expr = run (eval' expr)
-      where eval' : Expr -> { [EXCEPTION String, STATE Env] } Eff Integer
+      where eval' : Expr -> Eff Integer [EXCEPTION String, STATE Env]
             eval' e = do put args
                          eval e
 
@@ -547,7 +547,7 @@ appears in the list, as long as it is present:
 
 .. code-block:: idris
 
-    eval : Expr -> { [EXCEPTION String, RND, STATE Env] } Eff Integer
+    eval : Expr -> Eff Integer [EXCEPTION String, RND, STATE Env]
 
     eval (Random upper) = rndInt 0 upper
 
@@ -575,7 +575,7 @@ this simply by updating the type of ``eval`` to include ``STDIO``.
 
 .. code-block:: idris
 
-    eval : Expr -> { [STDIO, EXCEPTION String, RND, STATE Env] } Eff Integer
+    eval : Expr -> Eff Integer [STDIO, EXCEPTION String, RND, STATE Env]
 
 Note that using ``STDIO`` will restrict the number of contexts in
 which ``eval`` can be ``run`` to those which support ``STDIO``, such
@@ -587,6 +587,6 @@ types are first class in Idris:
 .. code-block:: idris
 
     EvalEff : Type -> Type
-    EvalEff t = { [STDIO, EXCEPTION String, RND, STATE Env] } Eff t
+    EvalEff t = Eff t [STDIO, EXCEPTION String, RND, STATE Env]
 
     eval : Expr -> EvalEff Integer

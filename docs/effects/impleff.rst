@@ -23,24 +23,11 @@ available. Stateful operations are described as follows:
 .. code-block:: idris
 
     data State : Effect where
-         Get :      { a }       State a
-         Put : b -> { a ==> b } State ()
+         Get :      State a  a (\x => a)
+         Put : b -> State () a (\x => b)
 
-Each effect is associated with a *resource*, the type of which is
-given with the notation ``{ x ==> x’ }``. This notation gives the
-resource type expected by each operation, and how it updates when the
-operation is run. Here, it means:
-
-- ``Get`` takes no arguments. It has a resource of type ``a``, which
-   is not updated, and running the ``Get`` operation returns something
-   of type ``a``.
-
-- ``Put`` takes a ``b`` as an argument. It has a resource of type
-   ``a`` on input, which is updated to a resource of type
-   ``b``. Running the ``Put`` operation returns the element of the
-   unit type.
-
-``Effect`` itself is a type synonym, declared as follows:
+``Effect`` itself is a type synonym, giving the required type for an
+effect signature:
 
 .. code-block:: idris
 
@@ -49,18 +36,41 @@ operation is run. Here, it means:
              (input_resource : Type) ->
              (output_resource : result -> Type) -> Type
 
-That is, an effectful operation returns something of type ``result``,
-has an input resource of type ``input_resource``, and a function
-``output_resource`` which computes the output resource type from the
-result. We use the same syntactic sugar as with ``Eff`` to make effect
-declarations more readable. It is defined as follows in the library:
+Each effect is associated with a *resource*. The second argument to
+an effect signature is the resource type on *input* to an operation,
+and the third is a function which computes the resource type on
+*output*. Here, it means:
+
+- ``Get`` takes no arguments. It has a resource of type ``a``, which is not updated, and running the ``Get`` operation returns something of type ``a``.
+
+- ``Put`` takes a ``b`` as an argument. It has a resource of type ``a`` on input, which is updated to a resource of type ``b``. Running the ``Put`` operation returns the element of the unit type.
+
+The effects library provides an overloaded function ``sig``
+which can make effect signatures more concise, particularly when the
+result has no effect on the resource type. For ``State``, we can
+write:
 
 .. code-block:: idris
 
-    syntax "{" [inst] "}" [eff] = eff inst (\result => inst)
-    syntax "{" [inst] "==>" "{" {b} "}" [outst] "}" [eff]
-           = eff inst (\b => outst)
-    syntax "{" [inst] "==>" [outst] "}" [eff] = eff inst (\result => outst)
+    data State : Effect where
+         Get :      sig State a  a
+         Put : b -> sig State () a b
+
+There are four versions of ``sig``, depending on whether we
+are interested in the resource type, and whether we are updating the
+resource. Idris will infer the appropriate version from usage.
+
+.. code-block:: idris
+
+    NoResourceEffect.sig : Effect -> Type -> Type
+    NoUpdateEffect.sig   : Effect -> (ret : Type) -> 
+                                     (resource : Type) -> Type
+    UpdateEffect.sig     : Effect -> (ret : Type) -> 
+                                     (resource_in : Type) -> 
+                                     (resource_out : Type) -> Type
+    DepUpdateEffect.sig  : Effect -> (ret : Type) -> 
+                                     (resource_in : Type) -> 
+                                     (resource_out : ret -> Type) -> Type
 
 In order to convert ``State`` (of type ``Effect``) into something
 usable in an effects list, of type ``EFFECT``, we write the following:
@@ -96,13 +106,11 @@ summaries in Section :ref:`sect-simpleff`. An instance of ``Handler e
 m`` means that the effect declared with signature ``e`` can be run in
 computation context ``m``. The ``handle`` function takes:
 
-- The ``resource`` on input (so, the current value of the state for
-   ``State``)
+- The ``resource`` on input (so, the current value of the state for ``State``)
 
 - The effectful operation (either ``Get`` or ``Put x`` for ``State``)
 
-- A *continuation*, which we conventionally call ``k``, and should be
-   passed the result value of the operation, and an updated resource.
+- A *continuation*, which we conventionally call ``k``, and should be passed the result value of the operation, and an updated resource.
 
 There are two reasons for taking a continuation here: firstly, this is
 neater because there are multiple return values (a new resource and
@@ -125,13 +133,13 @@ functions in ``Eff``, as follows:
 
 .. code-block:: idris
 
-    get : { [STATE x] } Eff x
+    get : Eff x [STATE x]
     get = call Get
 
-    put : x -> { [STATE x] } Eff ()
+    put : x -> Eff () [STATE x]
     put val = call (Put val)
 
-    putM : y -> { [STATE x] ==> [STATE y] } Eff ()
+    putM : y -> Eff () [STATE x] [STATE y]
     putM val = call (Put val)
 
 **An implementation detail (aside):** The ``call`` function converts
@@ -162,8 +170,8 @@ The following listing summarises what is required to define the
 .. code-block:: idris
 
     data State : Effect where
-         Get :      { a }       State a
-         Put : b -> { a ==> b } State ()
+         Get :      sig State a  a
+         Put : b -> sig State () a b
 
     STATE : Type -> EFFECT
     STATE t = MkEff t State
@@ -172,13 +180,13 @@ The following listing summarises what is required to define the
          handle st Get     k = k st st
          handle st (Put n) k = k () n
 
-    get : { [STATE x] } Eff x
+    get : Eff x [STATE x]
     get = call Get
 
-    put : x -> { [STATE x] } Eff ()
+    put : x -> Eff () [STATE x]
     put val = call (Put val)
 
-    putM : y -> { [STATE x] ==> [STATE y] } Eff ()
+    putM : y -> Eff () [STATE x] [STATE y]
     putM val = call (Put val)
 
 
@@ -198,10 +206,10 @@ directly.
 .. code-block:: idris
 
     data StdIO : Effect where
-         PutStr : String -> { () } StdIO ()
-         GetStr : { () } StdIO String
-         PutCh : Char -> { () } StdIO ()
-         GetCh : { () } StdIO Char
+         PutStr : String -> sig StdIO ()
+         GetStr : sig StdIO String
+         PutCh : Char -> sig StdIO ()
+         GetCh : sig StdIO Char
 
     instance Handler StdIO IO where
         handle () (PutStr s) k = do putStr s; k () ()
@@ -231,7 +239,7 @@ error.
 .. code-block:: idris
 
     data Exception : Type -> Effect where
-         Raise : a -> { () } Exception a b
+         Raise : a -> sig (Exception a) b
 
     instance Handler (Exception a) Maybe where
          handle _ (Raise e) k = Nothing
@@ -255,7 +263,7 @@ value.
 .. code-block:: idris
 
     data Selection : Effect where
-         Select : List a -> { () } Selection a
+         Select : List a -> sig Selection a
 
     instance Handler Selection Maybe where
          handle _ (Select xs) k = tryAll xs where
@@ -289,13 +297,16 @@ the equivalent ``Eff`` programs.
 .. code-block:: idris
 
     data FileIO : Effect where
-         Open  : String -> (m : Mode) ->
-                 {() ==> {res} if res then OpenFile m else ()} FileIO Bool
-         Close : {OpenFile m ==> ()}                           FileIO ()
+         Open : (fname: String)
+                -> (m : Mode)
+                -> sig FileIO Bool () (\res => case res of
+                                                    True => OpenFile m
+                                                    False => ())
+         Close : sig FileIO () (OpenFile m)
 
-         ReadLine  :           {OpenFile Read}  FileIO String
-         WriteLine : String -> {OpenFile Write} FileIO ()
-         EOF       :           {OpenFile Read}  FileIO Bool
+         ReadLine  :           sig FileIO String (OpenFile Read)
+         WriteLine : String -> sig FileIO ()     (OpenFile Write)
+         EOF       :           sig FileIO Bool   (OpenFile Read)
 
     instance Handler FileIO IO where
         handle () (Open fname m) k = do h <- openFile fname m
