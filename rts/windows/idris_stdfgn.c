@@ -72,9 +72,9 @@ char* getEnvPair(int i) {
     return *(environ + i);
 }
 
-int idris_time() {
+VAL idris_time() {
     time_t t = time(NULL);
-    return (int)t;
+    return MKBIGI(t);
 }
 
 void idris_forceGC(void* vm) {
