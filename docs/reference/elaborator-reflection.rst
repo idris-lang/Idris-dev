@@ -38,10 +38,12 @@ The meta-operation ``%runElab script`` runs ``script`` in the current elaboratio
 For example, the following script constructs the identity function at type ``Nat``:
 
 .. code-block:: idris
+
     idNat : Nat -> Nat
     idNat = %runElab (do intro (Just (UN "x"))
                          fill (Var (UN "x"))
                          solve)
+
 
 On the right-hand side, the Idris elaborator has the goal ``Nat -> Nat``.
 When it encounters the ``%runElab`` directive, it fulfills this goal by running the provided script.
@@ -56,6 +58,7 @@ Note that there is nothing ``Nat``-specific about the above script.
 We can generate identity functions at any concrete type using the same script:
 
 .. code-block:: idris
+
     mkId : Elab ()
     mkId = do intro (Just (UN "x"))
               fill (Var (UN "x"))
@@ -69,6 +72,7 @@ We can generate identity functions at any concrete type using the same script:
 
     idString : String -> String
     idString = %runElab mkId
+
 
 Interactively Building Elab Scripts
 ===================================
@@ -99,6 +103,7 @@ The ordinary Idris bind syntax can be used to propagate this information.
 For example, a tactic that solves the current goal when it is the unit type might look like this:
 
 .. code-block:: idris
+
     triv : Elab ()
     triv = do compute
               g <- getGoal
@@ -108,6 +113,7 @@ For example, a tactic that solves the current goal when it is the unit type migh
                 otherGoal => fail [ TermPart otherGoal
                                   , TextPart "is not trivial"
                                   ]
+
 
 The tactic ``compute`` normalises the type of its goal with respect to the current context.
 While not strictly necessary, this allows ``triv`` to be used in contexts where the triviality of the goal is not immediately apparent.

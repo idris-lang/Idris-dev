@@ -24,6 +24,7 @@ The is the Idris Tutorial. It will teach you about programming in the Idris Lang
    classes
    modules
    packages
+   testing
    interp
    views
    theorems
