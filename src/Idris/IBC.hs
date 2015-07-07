@@ -41,11 +41,10 @@ import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word16
-ibcVersion = 112
+ibcVersion = 113
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
-                         symbols :: ![Name],
                          ibc_imports :: ![(Bool, FilePath)],
                          ibc_importdirs :: ![FilePath],
                          ibc_implicits :: ![(Name, [PArg])],
@@ -95,7 +94,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] []
 
 loadIBC :: Bool -- ^ True = reexport, False = make everything private
         -> FilePath -> Idris ()
@@ -130,7 +129,6 @@ makeEntry name val = if L.null val
 entries :: IBCFile -> [Entry]
 entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "sourcefile"  (sourcefile i),
-                       makeEntry "symbols"  (symbols i),
                        makeEntry "ibc_imports"  (ibc_imports i),
                        makeEntry "ibc_importdirs"  (ibc_importdirs i),
                        makeEntry "ibc_implicits"  (ibc_implicits i),
@@ -330,9 +328,7 @@ process reexp i fn = do
                 pCGFlags =<< getEntry [] "ibc_cgflags" i
                 pDyLibs =<< getEntry [] "ibc_dynamic_libs" i
                 pHdrs =<< getEntry [] "ibc_hdrs" i
-                symbols <- getEntry [] "symbols" i
-                defs <- getEntry [] "ibc_defs" i
-                pDefs reexp symbols defs
+                pDefs reexp =<< getEntry [] "ibc_defs" i
                 pPatdefs =<< getEntry [] "ibc_patdefs" i
                 pAccess reexp =<< getEntry [] "ibc_access" i
                 pFlags =<< getEntry [] "ibc_flags" i
@@ -485,8 +481,8 @@ pPatdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))] -> Idris ()
 pPatdefs ds = mapM_ (\ (n, d) -> updateIState (\i ->
             i { idris_patdefs = addDef n (force d) (idris_patdefs i) })) ds
 
-pDefs :: Bool -> [Name] -> [(Name, Def)] -> Idris ()
-pDefs reexp syms ds
+pDefs :: Bool -> [(Name, Def)] -> Idris ()
+pDefs reexp ds
    = mapM_ (\ (n, d) ->
                do d' <- updateDef d
                   case d' of
