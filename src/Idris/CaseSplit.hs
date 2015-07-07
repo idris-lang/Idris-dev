@@ -32,7 +32,6 @@ import Text.Parser.Combinators
 import Text.Parser.Char(anyChar)
 import Text.Trifecta(Result(..), parseString)
 import Text.Trifecta.Delta
-import qualified Data.ByteString.UTF8 as UTF8
 
 import Debug.Trace
 

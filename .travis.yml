@@ -6,10 +6,8 @@ ghc:
   - 7.8
 
 before_install:
-  - sudo add-apt-repository --yes ppa:h-rayflood/llvm
   - sudo apt-get update -qq
-  - sudo apt-get install -qq libgc-dev llvm-3.3
-  - sudo apt-get install -qq libghc-unordered-containers-dev libghc-mtl-dev libghc-network-dev libghc-xml-dev libghc-transformers-dev libghc-text-dev libghc-utf8-string-dev libghc-vector-dev libghc-split-dev libghc-ansi-terminal-dev libghc-ansi-wl-pprint-dev
+  - sudo apt-get install -qq libghc-unordered-containers-dev libghc-mtl-dev libghc-network-dev libghc-transformers-dev libghc-text-dev libghc-utf8-string-dev libghc-vector-dev libghc-split-dev libghc-ansi-terminal-dev libghc-ansi-wl-pprint-dev
   # trifecta dependencies
   - sudo apt-get install -qq libghc-blaze-builder-dev libghc-blaze-html-dev libghc-bifunctors-dev libghc-hashable-dev libghc-semigroups-dev libghc-semigroupoids-dev libghc-parallel-dev libghc-comonad-dev libghc-terminfo-dev libghc-keys-dev
   # Haddock dependencies
@@ -17,7 +15,6 @@ before_install:
   # test dependency
   - sudo apt-get install -qq expect
   - sudo apt-get install -qq cppcheck
-  - cabal install alex-3.1.3
 install:
   - cabal install -f FFI --enable-tests --dependencies-only --max-backjumps=-1
   - ghc-pkg list
