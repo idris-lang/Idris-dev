@@ -16,7 +16,7 @@ are *correct by construction*.
 The Idris REPL provides several commands for inspecting and
 modifying parts of programs, based on their types, such as case
 splitting on a pattern variable, inspecting the type of a
-metavariable, and even a basic proof search mechanism. In this
+hole, and even a basic proof search mechanism. In this
 section, we explain how these features can be exploited by a text
 editor, and specifically how to do so in `Vim
 <https://github.com/idris-hackers/idris-vim>`_. An interactive mode
@@ -151,10 +151,10 @@ lead to unification errors.
 ------------
 
 The ``:proofsearch n f`` command, abbreviated ``:ps n f``, attempts to
-find a value for the metavariable ``f`` on line ``n`` by proof search,
+find a value for the hole ``f`` on line ``n`` by proof search,
 trying values of local variables, recursive calls and constructors of
 the required family. Optionally, it can take a list of *hints*, which
-are functions it can try applying to solve the metavariable. For
+are functions it can try applying to solve the hole. For
 example, if the code beginning on line 94 is:
 
 .. code-block:: idris
@@ -237,16 +237,16 @@ each of which update the buffer directly:
 
 - ``\w`` adds a ``with`` clause (using ``:makewith``).
 
-- ``\o`` invokes a proof search to solve the metavariable under the
+- ``\o`` invokes a proof search to solve the hole under the
    cursor (using ``:proofsearch``).
 
 - ``\p`` invokes a proof search with additional hints to solve the
-   metavariable under the cursor (using ``:proofsearch``).
+   hole under the cursor (using ``:proofsearch``).
 
 There are also commands to invoke the type checker and evaluator:
 
 - ``\t`` displays the type of the (globally visible) name under the
-   cursor. In the case of a metavariable, this displays the context
+   cursor. In the case of a hole, this displays the context
    and the expected type.
 
 - ``\e`` prompts for an expression to evaluate.

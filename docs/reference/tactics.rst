@@ -2,12 +2,12 @@
 Tactics and Theorem Proving
 ***************************
 
-Idris supports interactive theorem proving, and theh analyse of
-context through metavariables.  To list all unproven metavariables,
-use the command ``:m``. This will display their qualified names and
-the expected types. To interactively prove a metavariable, use the
-command ``:p name`` where ``name`` is the metavariable. Once the proof
-is complete, the command ``:a`` will append it to the current module.
+Idris supports interactive theorem proving, and the analyse of context
+through holes.  To list all unproven holes, use the command ``:m``.
+This will display their qualified names and the expected types. To
+interactively prove a holes, use the command ``:p name`` where ``name``
+is the hole. Once the proof is complete, the command ``:a`` will append
+it to the current module.
 
 Once in the interactive prover, the following commands are available:
 

@@ -14,13 +14,13 @@ mapping to Emacs commands.
 +---------------------+-----------------+---------------+--------------------------------------------------------------------------------------------+
 |Command              | Vim binding     | Emacs binding | Explanation                                                                                |
 +---------------------+-----------------+---------------+--------------------------------------------------------------------------------------------+
-| Check type          | ``\t``          | ``C-c C-t``   | Show type of identifier or metavariable under the cursor.                                  |
+| Check type          | ``\t``          | ``C-c C-t``   | Show type of identifier or hole under the cursor.                                          |
 +---------------------+-----------------+---------------+--------------------------------------------------------------------------------------------+
-| Proof search        | ``\o``          | ``C-c C-a``   | Attempt to solve metavariable under the cursor by applying simple proof search.            |
+| Proof search        | ``\o``          | ``C-c C-a``   | Attempt to solve hole under the cursor by applying simple proof search.                    |
 +---------------------+-----------------+---------------+--------------------------------------------------------------------------------------------+
 | Make new definition | ``\d``          | ``C-c C-s``   | Add a template definition for the type defined under the cursor.                           |
 +---------------------+-----------------+---------------+--------------------------------------------------------------------------------------------+
-| Make lemma          | ``\l``          | ``C-c C-e``   | Add a top level function with a type which solves the metavariable under the cursor.       |
+| Make lemma          | ``\l``          | ``C-c C-e``   | Add a top level function with a type which solves the hole under the cursor.               |
 +---------------------+-----------------+---------------+--------------------------------------------------------------------------------------------+
 | Split cases         | ``\c``          | ``C-c C-c``   | Create new constructor patterns for each possible case of the variable under the cursor.   |
 +---------------------+-----------------+---------------+--------------------------------------------------------------------------------------------+
@@ -56,7 +56,7 @@ should see:
     plus_commutes Z m = ?plus_commutes_rhs_1
     plus_commutes (S k) m = ?plus_commutes_rhs_2
 
-If we inspect the types of the newly created metavariables,
+If we inspect the types of the newly created holes,
 ``plus_commutes_rhs_1`` and ``plus_commutes_rhs_2``, we see that the
 type of each reflects that ``n`` has been refined to ``Z`` and ``S k``
 in each respective case. Pressing ``\t`` over
@@ -102,7 +102,7 @@ yields:
     plus_commutes Z m = plus_commutes_Z
     plus_commutes (S k) m = ?plus_commutes_S
 
-That is, the metavariable has been filled with a call to a top level
+That is, the hole has been filled with a call to a top level
 function ``plus_commutes_Z``. The argument ``m`` has been made implicit
 because it can be inferred from context when it is applied.
 
@@ -334,7 +334,7 @@ defined by matching on its first argument. The complete definition is:
     plus_commutes_S k Z = Refl
     plus_commutes_S k (S j) = rewrite plus_commutes_S k j in Refl
 
-All metavariables have now been solved.
+All holes have now been solved.
 
 The ``total`` annotation means that we require the final function to
 pass the totality checker; i.e. it will terminate on all possible

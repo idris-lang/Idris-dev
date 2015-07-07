@@ -36,7 +36,7 @@ Explore the Context
 ====================
 
 We start the interactive session by asking Idris to prove the
-metavaraible ``rhs`` using the command ``:p rhs``. Idris by default
+hole ``rhs`` using the command ``:p rhs``. Idris by default
 will show us the initial context. This looks as follows::
 
     *Foo> :p rhs

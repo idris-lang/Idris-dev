@@ -81,14 +81,14 @@ definitions, except that they introduce the right hand side with a
       parity (S (S (S (j + j)))) | Odd ?= Odd {n=S j}
 
 When written in this form, instead of reporting a type error, Idris
-will insert a metavariable standing for a theorem which will correct the
+will insert a hole standing for a theorem which will correct the
 type error. Idris tells us we have two proof obligations, with names
 generated from the module and function names:
 
 .. code-block:: idris
 
     *views> :m
-    Global metavariables:
+    Global holes:
             [views.parity_lemma_2,views.parity_lemma_1]
 
 The first of these has the following type:

@@ -265,7 +265,7 @@ generator, then pick a random ``Fin`` to index into a list of
 
 .. note::
     Rather than have to explicitly declare a type with the vector’s
-    length, it is convenient to give a metavariable ``?wtype`` and let
+    length, it is convenient to give a hole ``?wtype`` and let
     Idris’s proof search mechanism find the type. This is a
     limited form of type inference, but very useful in practice.
 

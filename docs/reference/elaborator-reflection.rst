@@ -78,7 +78,7 @@ Interactively Building Elab Scripts
 ===================================
 
 To build an ``Elab`` script interactively, use the ``:elab`` command at the REPL.
-It takes the name of a metavariable as an argument.
+It takes the name of a hole as an argument.
 The interface is largely the same as in Idris's interactive prover, except all meta-commands start with colon.
 For example, use ``:qed`` instead of ``qed``, ``:abandon`` instead of ``abandon``, and ``:undo`` instead of ``undo``.
 
