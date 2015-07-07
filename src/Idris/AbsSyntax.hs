@@ -27,6 +27,7 @@ import Data.Char
 import qualified Data.Text as T
 import Data.Either
 import qualified Data.Map as M
+import qualified Data.HashMap.Strict as H
 import Data.Maybe
 import qualified Data.Set as S
 import Data.Word (Word)
@@ -1391,7 +1392,7 @@ implicit' :: ElabInfo -> SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
 implicit' info syn ignore n ptm
     = do i <- getIState
          let (tm', impdata) = implicitise syn ignore i ptm
-         defaultArgCheck (eInfoNames info ++ M.keys (idris_implicits i)) impdata
+         defaultArgCheck (eInfoNames info ++ H.keys (idris_implicits i)) impdata
 --          let (tm'', spos) = findStatics i tm'
          putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
          addIBC (IBCImp n)

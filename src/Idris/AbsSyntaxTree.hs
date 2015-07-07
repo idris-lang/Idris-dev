@@ -32,6 +32,7 @@ import Data.Generics.Uniplate.Data (universe)
 import Data.List hiding (group)
 import Data.Char
 import qualified Data.Map.Strict as M
+import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import Data.Either
 import qualified Data.Set as S
@@ -66,7 +67,7 @@ toplevel :: ElabInfo
 toplevel = EInfo [] emptyContext id Nothing Nothing (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
-eInfoNames info = map fst (params info) ++ M.keys (inblock info)
+eInfoNames info = map fst (params info) ++ H.keys (inblock info)
 
 data IOption = IOption { opt_logLevel     :: Int,
                          opt_typecase     :: Bool,
