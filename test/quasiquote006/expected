@@ -8,6 +8,6 @@ No such variable alsdkjflkj
 quasiquote006.idr:15:3:
 When checking right hand side of d:
 Can't disambiguate name: ForeignEnv.::, 
-                         Prelude.List.::, 
-                         Prelude.Stream.::
+                         Prelude.Stream.::, 
+                         Prelude.List.::
 quasiquote006.idr:17:3:Main.d already defined

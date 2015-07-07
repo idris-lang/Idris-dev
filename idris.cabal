@@ -890,6 +890,7 @@ Library
                 , filepath < 1.5
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
+                , hashable >= 1.2.0.0
                 , lens >= 4.1.1 && < 4.12
                 , mtl >= 2.1 && < 2.3
                 , network < 2.7

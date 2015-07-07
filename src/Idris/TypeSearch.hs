@@ -8,9 +8,10 @@ import Control.Applicative (Applicative (..), (<$>), (<*>), (<|>))
 import Control.Arrow (first, second, (&&&), (***))
 import Control.Monad (when, guard)
 
-import Data.List (find, partition, (\\))
+import Data.List (sort, find, partition, (\\))
 import Data.Map (Map)
 import qualified Data.Map as M
+import qualified Data.HashMap.Strict as H
 import Data.Maybe (catMaybes, fromMaybe, isJust, maybeToList, mapMaybe)
 import Data.Monoid (Monoid (mempty, mappend))
 import Data.Ord (comparing)
@@ -69,11 +70,17 @@ searchByType pkgs pterm = do
 -- | Conduct a type-directed search using a given match predicate
 searchUsing :: (IState -> Type -> [(Name, Type)] -> [(Name, a)]) 
   -> IState -> Type -> [(Name, a)]
-searchUsing pred istate ty = pred istate nty . concat . M.elems $ 
-  M.mapWithKey (\key -> M.toAscList . M.mapMaybe (f key)) (definitions ctxt)
+searchUsing pred istate ty = pred istate nty . concat . H.elems $
+  H.mapWithKey (\key -> sift . H.toList . H.map (f key)) (definitions ctxt)
   where
   nty = normaliseC ctxt [] ty
   ctxt = tt_ctxt istate
+  sift xs = sift' xs []
+    where
+        sift' [] acc = sort acc
+        sift' ((a,b):xs) acc = case b of
+                                Just x -> sift' xs ((a, x):acc)
+                                Nothing -> sift' xs acc
   f k x = do
     guard $ not (special k)
     type2 <- typeFromDef x

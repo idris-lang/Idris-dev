@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor, DeriveDataTypeable #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor, DeriveDataTypeable, DeriveGeneric #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-| TT is the core language of Idris. The language has:
 
@@ -30,7 +30,8 @@ import qualified Control.Applicative as A (Alternative (..))
 import Control.Monad.State.Strict
 import Control.Monad.Trans.Except (Except (..))
 import Debug.Trace
-import qualified Data.Map.Strict as Map
+import qualified Data.HashMap.Strict as H
+import Data.Hashable
 import Data.Char
 import Data.Data (Data)
 import Numeric (showIntAtBase)
@@ -46,6 +47,7 @@ import qualified Data.Vector.Unboxed as V
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
 import Foreign.Storable (sizeOf)
+import GHC.Generics (Generic)
 
 import Util.Pretty hiding (Str)
 
@@ -413,7 +415,9 @@ data Name = UN T.Text -- ^ User-provided name
           | NErased -- ^ Name of something which is never used in scope
           | SN SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
-  deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data, Typeable, Generic)
+
+instance Hashable Name
 
 txt :: String -> T.Text
 txt = T.pack
@@ -451,11 +455,13 @@ data SpecialName = WhereN Int Name Name
                  | ElimN Name
                  | InstanceCtorN Name
                  | MetaN Name Name
-  deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data, Typeable, Generic)
 {-!
 deriving instance Binary SpecialName
 deriving instance NFData SpecialName
 !-}
+
+instance Hashable SpecialName
 
 sInstanceN :: Name -> [String] -> SpecialName
 sInstanceN n ss = InstanceN n (map T.pack ss)
@@ -524,8 +530,8 @@ showCG NErased = "_"
 
 -- |Contexts allow us to map names to things. A root name maps to a collection
 -- of things in different namespaces with that name.
-type Ctxt a = Map.Map Name (Map.Map Name a)
-emptyContext = Map.empty
+type Ctxt a = H.HashMap Name (H.HashMap Name a)
+emptyContext = H.empty
 
 mapCtxt :: (a -> b) -> Ctxt a -> Ctxt b
 mapCtxt = fmap . fmap
@@ -551,11 +557,11 @@ nsroot n = n
 
 -- this will overwrite already existing definitions
 addDef :: Name -> a -> Ctxt a -> Ctxt a
-addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
-                        Nothing -> Map.insert (nsroot n)
-                                        (Map.insert n v Map.empty) ctxt
-                        Just xs -> Map.insert (nsroot n)
-                                        (Map.insert n v xs) ctxt
+addDef n v ctxt = case H.lookup (nsroot n) ctxt of
+                        Nothing -> H.insert (nsroot n)
+                                        (H.insert n v H.empty) ctxt
+                        Just xs -> H.insert (nsroot n)
+                                        (H.insert n v xs) ctxt
 
 {-| Look up a name in the context, given an optional namespace.
    The name (n) may itself have a (partial) namespace given.
@@ -573,15 +579,10 @@ addDef n v ctxt = case Map.lookup (nsroot n) ctxt of
 -}
 
 lookupCtxtName :: Name -> Ctxt a -> [(Name, a)]
-lookupCtxtName n ctxt = case Map.lookup (nsroot n) ctxt of
-                                  Just xs -> filterNS (Map.toList xs)
+lookupCtxtName n ctxt = case H.lookup (nsroot n) ctxt of
+                                  Just xs ->  filter (\ (k, _)-> nsmatch n k) $ H.toList xs
                                   Nothing -> []
   where
-    filterNS [] = []
-    filterNS ((found, v) : xs)
-        | nsmatch n found = (found, v) : filterNS xs
-        | otherwise       = filterNS xs
-
     nsmatch (NS n ns) (NS p ps) = ns `isPrefixOf` ps
     nsmatch (NS _ _)  _         = False
     nsmatch looking   found     = True
@@ -590,10 +591,11 @@ lookupCtxt :: Name -> Ctxt a -> [a]
 lookupCtxt n ctxt = map snd (lookupCtxtName n ctxt)
 
 lookupCtxtExact :: Name -> Ctxt a -> Maybe a
-lookupCtxtExact n ctxt = listToMaybe [ v | (nm, v) <- lookupCtxtName n ctxt, nm == n]
+lookupCtxtExact n ctxt = do root <- H.lookup (nsroot n) ctxt
+                            H.lookup n root
 
 deleteDefExact :: Name -> Ctxt a -> Ctxt a
-deleteDefExact n = Map.adjust (Map.delete n) (nsroot n)
+deleteDefExact n = H.adjust (H.delete n) (nsroot n)
 
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt
@@ -601,8 +603,8 @@ updateDef n f ctxt
         foldr (\ (n, t) c -> addDef n (f t) c) ctxt ds
 
 toAlist :: Ctxt a -> [(Name, a)]
-toAlist ctxt = let allns = map snd (Map.toList ctxt) in
-                concatMap (Map.toList) allns
+toAlist ctxt = let allns = map snd (H.toList ctxt) in
+                concatMap (H.toList) allns
 
 addAlist :: [(Name, a)] -> Ctxt a -> Ctxt a
 addAlist [] ctxt = ctxt

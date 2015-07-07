@@ -1,4 +1,4 @@
 MAIN-PASS
 Faulty.idr:6:7:When checking type of Faulty.fault:
-Can't disambiguate name: A.num, B.C.num
+Can't disambiguate name: B.C.num, A.num
 Multiple.idr:3:1:import alias not unique: "X"
