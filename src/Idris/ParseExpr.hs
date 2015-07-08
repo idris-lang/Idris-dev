@@ -576,8 +576,21 @@ app syn = do f <- simpleExpr syn
              args <- many (do notEndApp; arg syn)
              case args of
                [] -> return f
-               _  -> return (PApp fc f args))
+               _  -> return (flattenFromInt fc f args))
        <?> "function application"
+   where 
+    -- bit of a hack to deal with the situation where we're applying a
+    -- literal to an argument, which we may want for obscure applications
+    -- of fromInteger, and this will help disambiguate better.
+    -- We know, at least, it won't be one of the constants!
+    flattenFromInt fc (PAlternative x alts) args
+      | Just i <- getFromInt alts
+           = PApp fc (PRef fc (sUN "fromInteger")) (i : args)
+    flattenFromInt fc f args = PApp fc f args
+
+    getFromInt ((PApp _ (PRef _ n) [a]) : _) | n == sUN "fromInteger" = Just a
+    getFromInt (_ : xs) = getFromInt xs
+    getFromInt _ = Nothing
 
 {-| Parses a function argument
 @
