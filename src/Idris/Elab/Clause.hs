@@ -268,9 +268,14 @@ elabClauses info' fc opts n_in cs =
            -- 'Partial NotCovering'
            when (CoveringFn `elem` opts) $ checkAllCovering fc [] n n
   where
-    noMatch i cs tm = all (\x -> case matchClause i (delab' i x True True) tm of
+    noMatch i cs tm = all (\x -> case trim_matchClause i (delab' i x True True) tm of
                                       Right _ -> False
                                       Left miss -> True) cs
+      where
+        trim_matchClause i (PApp fcl fl ls) (PApp fcr fr rs)
+            = let args = min (length ls) (length rs) in
+                  matchClause i (PApp fcl fl (take args ls))
+                                (PApp fcr fr (take args rs))
 
     checkUndefined n ctxt = case lookupDef n ctxt of
                                  [] -> return ()
