@@ -42,20 +42,19 @@ import IRTS.System
 buildPkg :: Bool -> (Bool, FilePath) -> IO ()
 buildPkg warnonly (install, fp)
      = do pkgdesc <- parseDesc fp
+          dir <- getCurrentDirectory
           let idx = PkgIndex (pkgIndex (pkgname pkgdesc))
           ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
           when (and ok) $
-            do dir <- getCurrentDirectory
-               setCurrentDirectory $ dir </> sourcedir pkgdesc
-               make (makefile pkgdesc)
-               m_ist <- case (execout pkgdesc) of
-                   Nothing -> buildMods (idx : NoREPL : Verbose : idris_opts pkgdesc)
-                                    (modules pkgdesc)
-                   Just o -> do let exec = dir </> o
-                                buildMods
-                                    (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc)
-                                    [idris_main pkgdesc]
-               setCurrentDirectory dir
+            do m_ist <- inPkgDir pkgdesc $
+                          do make (makefile pkgdesc)
+                             case (execout pkgdesc) of
+                               Nothing -> buildMods (idx : NoREPL : Verbose : idris_opts pkgdesc)
+                                                    (modules pkgdesc)
+                               Just o -> do let exec = dir </> o
+                                            buildMods
+                                              (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc)
+                                              [idris_main pkgdesc]
                case m_ist of
                     Nothing -> exitWith (ExitFailure 1)
                     Just ist -> do
@@ -77,12 +76,10 @@ checkPkg warnonly quit fpath
   = do pkgdesc <- parseDesc fpath
        ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
        when (and ok) $
-         do dir <- getCurrentDirectory
-            setCurrentDirectory $ dir </> sourcedir pkgdesc
-            make (makefile pkgdesc)
-            res <- buildMods (NoREPL : Verbose : idris_opts pkgdesc)
-                             (modules pkgdesc)
-            setCurrentDirectory dir
+         do res <- inPkgDir pkgdesc $
+                     do make (makefile pkgdesc)
+                        buildMods (NoREPL : Verbose : idris_opts pkgdesc)
+                                  (modules pkgdesc)
             when quit $ case res of
                           Nothing -> exitWith (ExitFailure 1)
                           Just res' -> do
@@ -115,13 +112,13 @@ cleanPkg :: FilePath -- ^ Path to ipkg file.
 cleanPkg fp
      = do pkgdesc <- parseDesc fp
           dir <- getCurrentDirectory
-          setCurrentDirectory $ dir </> sourcedir pkgdesc
-          clean (makefile pkgdesc)
-          mapM_ rmIBC (modules pkgdesc)
-          rmIdx (pkgname pkgdesc)
-          case execout pkgdesc of
-               Nothing -> return ()
-               Just s -> rmFile $ dir </> s
+          inPkgDir pkgdesc $
+            do clean (makefile pkgdesc)
+               mapM_ rmIBC (modules pkgdesc)
+               rmIdx (pkgname pkgdesc)
+               case execout pkgdesc of
+                    Nothing -> return ()
+                    Just s -> rmFile $ dir </> s
 
 -- | Generate IdrisDoc for package
 -- TODO: Handle case where module does not contain a matching namespace
@@ -163,26 +160,25 @@ testPkg fp
      = do pkgdesc <- parseDesc fp
           ok <- mapM (testLib True (pkgname pkgdesc)) (libdeps pkgdesc)
           when (and ok) $
-            do dir <- getCurrentDirectory
-               setCurrentDirectory $ dir </> sourcedir pkgdesc
-               make (makefile pkgdesc)
-               -- Get a temporary file to save the tests' source in
-               (tmpn, tmph) <- tempIdr
-               hPutStrLn tmph $
-                 "module Test_______\n" ++
-                 concat ["import " ++ show m ++ "\n"
-                         | m <- modules pkgdesc] ++
-                 "namespace Main\n" ++
-                 "  main : IO ()\n" ++
-                 "  main = do " ++
-                 concat [show t ++ "\n            "
-                         | t <- idris_tests pkgdesc]
-               hClose tmph
-               (tmpn', tmph') <- tempfile
-               hClose tmph'
-               m_ist <- idris (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
-               rawSystem tmpn' []
-               setCurrentDirectory dir
+            do m_ist <- inPkgDir pkgdesc $
+                          do make (makefile pkgdesc)
+                             -- Get a temporary file to save the tests' source in
+                             (tmpn, tmph) <- tempIdr
+                             hPutStrLn tmph $
+                               "module Test_______\n" ++
+                               concat ["import " ++ show m ++ "\n"
+                                       | m <- modules pkgdesc] ++
+                               "namespace Main\n" ++
+                               "  main : IO ()\n" ++
+                               "  main = do " ++
+                               concat [show t ++ "\n            "
+                                       | t <- idris_tests pkgdesc]
+                             hClose tmph
+                             (tmpn', tmph') <- tempfile
+                             hClose tmph'
+                             m_ist <- idris (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
+                             rawSystem tmpn' []
+                             return m_ist
                case m_ist of
                  Nothing -> exitWith (ExitFailure 1)
                  Just ist -> do
@@ -197,13 +193,12 @@ testPkg fp
 -- | Install package
 installPkg :: PkgDesc -> IO ()
 installPkg pkgdesc
-     = do dir <- getCurrentDirectory
-          setCurrentDirectory $ dir </> sourcedir pkgdesc
-          case (execout pkgdesc) of
+     = inPkgDir pkgdesc $
+         do case (execout pkgdesc) of
               Nothing -> do mapM_ (installIBC (pkgname pkgdesc)) (modules pkgdesc)
                             installIdx (pkgname pkgdesc)
               Just o -> return () -- do nothing, keep executable locally, for noe
-          mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
+            mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
 
 -- ---------------------------------------------------------- [ Helper Methods ]
 -- Methods for building, testing, installing, and removal of idris
@@ -274,6 +269,18 @@ mkDirCmd = "mkdir "
 #else
 mkDirCmd = "mkdir -p "
 #endif
+
+inPkgDir :: PkgDesc -> IO a -> IO a
+inPkgDir pkgdesc action =
+  do dir <- getCurrentDirectory
+     when (sourcedir pkgdesc /= "") $
+       do putStrLn $ "Entering directory `" ++ ("." </> sourcedir pkgdesc) ++ "'"
+          setCurrentDirectory $ dir </> sourcedir pkgdesc
+     res <- action
+     when (sourcedir pkgdesc /= "") $
+       do putStrLn $ "Leaving directory `" ++ ("." </> sourcedir pkgdesc) ++ "'"
+          setCurrentDirectory dir
+     return res
 
 -- ------------------------------------------------------- [ Makefile Commands ]
 -- | Invoke a Makefile's default target.
