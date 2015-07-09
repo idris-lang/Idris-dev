@@ -688,14 +688,26 @@ recoverable _ t@(App _ _ _)
     | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
 recoverable (P (DCon _ _ _) x _) (P (DCon _ _ _) y _) = x == y
 recoverable (P (TCon _ _) x _) (P (TCon _ _) y _) = x == y
+recoverable (TType _) (P (DCon _ _ _) y _) = False
+recoverable (UType _) (P (DCon _ _ _) y _) = False
 recoverable (Constant _) (P (DCon _ _ _) y _) = False
 recoverable (Constant x) (Constant y) = x == y
+recoverable (P (DCon _ _ _) x _) (TType _) = False
+recoverable (P (DCon _ _ _) x _) (UType _) = False
 recoverable (P (DCon _ _ _) x _) (Constant _) = False
+recoverable (TType _) (P (TCon _ _) y _) = False
+recoverable (UType _) (P (TCon _ _) y _) = False
 recoverable (Constant _) (P (TCon _ _) y _) = False
+recoverable (P (TCon _ _) x _) (TType _) = False
+recoverable (P (TCon _ _) x _) (UType _) = False
 recoverable (P (TCon _ _) x _) (Constant _) = False
 recoverable (P (DCon _ _ _) x _) (P (TCon _ _) y _) = False
 recoverable (P (TCon _ _) x _) (P (DCon _ _ _) y _) = False
+recoverable p@(TType _) (App _ f a) = recoverable p f
+recoverable p@(UType _) (App _ f a) = recoverable p f
 recoverable p@(Constant _) (App _ f a) = recoverable p f
+recoverable (App _ f a) p@(TType _) = recoverable f p
+recoverable (App _ f a) p@(UType _) = recoverable f p
 recoverable (App _ f a) p@(Constant _) = recoverable f p
 recoverable p@(P _ n _) (App _ f a) = recoverable p f
 recoverable (App _ f a) p@(P _ _ _) = recoverable f p
