@@ -19,6 +19,9 @@ New in 0.9.19:
   format sent by the IDE mode, and is saved in a file with the extension ".idh".
 * Use predicates instead of boolean equality proofs as preconditions 
   on List functions
+* More flexible 'case' construct, allowing each branch to target different
+  types, provided that the case analysis does not affect the form of any
+  variable used in the right hand side of the case.
 
 New in 0.9.18:
 --------------

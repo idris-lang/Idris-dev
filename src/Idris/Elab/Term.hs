@@ -967,7 +967,7 @@ elab ist info emode opts fn tm
              -- if the scrutinee is one of the 'args' in env, we should
              -- inspect it directly, rather than adding it as a new argument
              let newdef = PClauses fc [] cname'
-                             (caseBlock fc cname'
+                             (caseBlock fc cname' scr
                                 (map (isScr scr) (reverse args')) opts)
              -- elaborate case
              updateAux (\e -> e { case_decls = (cname', newdef) : case_decls e } )
@@ -1161,9 +1161,10 @@ elab ist info emode opts fn tm
     isScr (PRef _ n) (n', b) = (n', (n == n', b))
     isScr _ (n', b) = (n', (False, b))
 
-    caseBlock :: FC -> Name ->
-                 [(Name, (Bool, Binder Term))] -> [(PTerm, PTerm)] -> [PClause]
-    caseBlock fc n env opts
+    caseBlock :: FC -> Name
+                 -> PTerm -- original scrutinee
+                 -> [(Name, (Bool, Binder Term))] -> [(PTerm, PTerm)] -> [PClause]
+    caseBlock fc n scr env opts
         = let args' = findScr env
               args = map mkarg (map getNmScr args') in
               map (mkClause args) opts
@@ -1189,17 +1190,32 @@ elab ist info emode opts fn tm
              mkarg (n, s) = (PRef fc n, s)
              -- may be shadowed names in the new pattern - so replace the
              -- old ones with an _
+             -- Also, names which don't appear on the rhs should not be
+             -- fixed on the lhs, or this restricts the kind of matching
+             -- we can do to non-dependent types.
              mkClause args (l, r)
                    = let args' = map (shadowed (allNamesIn l)) args
+                         args'' = map (implicitable (allNamesIn r ++
+                                                     keepscrName scr)) args'
                          lhs = PApp (getFC fc l) (PRef NoFC n)
-                                 (map (mkLHSarg l) args') in
+                                 (map (mkLHSarg l) args'') in
                             PClause (getFC fc l) n lhs [] r []
+
+             -- Keep scrutinee available if it's just a name (this makes
+             -- the names in scope look better when looking at a hole on
+             -- the rhs of a case)
+             keepscrName (PRef _ n) = [n]
+             keepscrName _ = []
 
              mkLHSarg l (tm, True) = pexp l
              mkLHSarg l (tm, False) = pexp tm
 
              shadowed new (PRef _ n, s) | n `elem` new = (Placeholder, s)
              shadowed new t = t
+
+             implicitable rhs (PRef _ n, s) | n `notElem` rhs = (Placeholder, s)
+             implicitable rhs t = t
+
 
     getFC d (PApp fc _ _) = fc
     getFC d (PRef fc _) = fc
