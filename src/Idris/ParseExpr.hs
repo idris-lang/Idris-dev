@@ -403,13 +403,13 @@ bracketed' open syn =
             do (FC f start (l, c)) <- getFC
                lchar ')'
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
-        <|> try (do ln <- fst <$> name; lchar ':';
+        <|> try (do (ln, lnfc) <- name; lchar ':';
                     lty <- expr syn
                     reservedOp "**"
                     fc <- getFC
                     r <- expr syn
                     lchar ')'
-                    return (PDPair fc TypeOrTerm (PRef fc ln) lty r))
+                    return (PDPair fc TypeOrTerm (PRef lnfc ln) lty r))
         <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
                     -- No prefix operators! (bit of a hack here...)
                     if (o == "-" || o == "!")

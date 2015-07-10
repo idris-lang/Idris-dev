@@ -409,7 +409,7 @@ elab ist info emode opts fn tm
 --                                                  pexp l, pexp r]))
 --                                   True
 
-    elab' ina _ (PDPair fc p l@(PRef _ n) t r)
+    elab' ina _ (PDPair fc p l@(PRef nfc n) t r)
             = case t of
                 Placeholder ->
                    do hnf_compute
@@ -418,13 +418,9 @@ elab ist info emode opts fn tm
                          TType _ -> asType
                          _ -> asValue
                 _ -> asType
-         where asType = elab' ina (Just fc) (PApp fc (PRef fc sigmaTy)
+         where asType = elab' ina (Just fc) (PApp fc (PRef NoFC sigmaTy)
                                         [pexp t,
-
-                                         -- TODO: save the FC from the dependent pair
-                                         -- syntax and put it on this lambda for interactive
-                                         -- semantic highlighting support. NoFC for now.
-                                         pexp (PLam fc n NoFC Placeholder r)])
+                                         pexp (PLam fc n nfc Placeholder r)])
                asValue = elab' ina (Just fc) (PApp fc (PRef fc sigmaCon)
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
