@@ -242,7 +242,8 @@ data IState = IState {
                                   -- (instances appear twice; also as a funtion name)
     idris_symbols :: M.Map Name Name, -- ^ Symbol table (preserves sharing of names)
     idris_exports :: [Name], -- ^ Functions with ExportList
-    idris_highlightedRegions :: [(FC, OutputAnnotation)] -- ^ Highlighting information to output
+    idris_highlightedRegions :: [(FC, OutputAnnotation)], -- ^ Highlighting information to output
+    idris_parserHighlights :: [(FC, OutputAnnotation)] -- ^ Highlighting information from the parser
    }
 
 -- Required for parsers library, and therefore trifecta
@@ -330,7 +331,7 @@ idrisInit = IState initContext S.empty []
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] []
+                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).

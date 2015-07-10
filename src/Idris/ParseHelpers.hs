@@ -79,6 +79,10 @@ runparser p i inputname =
   parseString (runInnerParser (evalStateT p i))
               (Directed (UTF8.fromString inputname) 0 0 0 0)
 
+highlightP :: FC -> OutputAnnotation -> IdrisParser ()
+highlightP fc annot = do ist <- get
+                         put ist { idris_parserHighlights = (fc, annot) : idris_parserHighlights ist}
+
 noDocCommentHere :: String -> IdrisParser ()
 noDocCommentHere msg =
   optional (do fc <- getFC
@@ -259,6 +263,11 @@ lchar = token . char
 -- | Parses string as a token
 symbol :: MonadicParsing m => String -> m String
 symbol = Tok.symbol
+
+symbolFC :: MonadicParsing m => String -> m FC
+symbolFC str = do (FC file (l, c) _) <- getFC
+                  Tok.symbol str
+                  return $ FC file (l, c) (l, c + length str)
 
 -- | Parses a reserved identifier
 reserved :: MonadicParsing m => String -> m ()

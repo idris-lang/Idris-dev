@@ -196,6 +196,15 @@ prettyDocumentedIst ist (name, ty, docs) =
   where ppTm = pprintDelab ist
         norm = normaliseAll (tt_ctxt ist) []
 
+sendParserHighlighting :: Idris ()
+sendParserHighlighting =
+  do ist <- getIState
+     let hs = map unwrap . nub . map wrap $ idris_parserHighlights ist
+     sendHighlighting hs
+     putIState ist {idris_parserHighlights = []}
+  where wrap (fc, a) = (FC' fc, a)
+        unwrap (fc', a) = (unwrapFC fc', a)
+
 sendHighlighting :: [(FC, OutputAnnotation)] -> Idris ()
 sendHighlighting highlights =
   do ist <- getIState
@@ -276,6 +285,8 @@ renderExternal fmt width doc
     decorate HTMLOutput (AnnNamespace _ _) = id
     decorate HTMLOutput (AnnLink url) =
       \txt -> "<a href=\"" ++ url ++ "\">" ++ txt ++ "</a>"
+    decorate HTMLOutput AnnQuasiquote = id
+    decorate HTMLOutput AnnAntiquote = id
 
     decorate LaTeXOutput (AnnName _ (Just TypeOutput) _ _) =
       latex "IdrisType"
@@ -305,6 +316,8 @@ renderExternal fmt width doc
     decorate LaTeXOutput (AnnErr _) = id
     decorate LaTeXOutput (AnnNamespace _ _) = id
     decorate LaTeXOutput (AnnLink url) = (++ "(\\url{" ++ url ++ "})")
+    decorate LaTeXOutput AnnQuasiquote = id
+    decorate LaTeXOutput AnnAntiquote = id
 
     tag cls docs str = "<span class=\""++cls++"\""++title++">" ++ str ++ "</span>"
       where title = maybe "" (\d->" title=\"" ++ d ++ "\"") docs

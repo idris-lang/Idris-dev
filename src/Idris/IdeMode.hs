@@ -163,6 +163,8 @@ instance SExpable OutputAnnotation where
     toSExp $ [(SymbolAtom "namespace", StringAtom (intercalate "." (map T.unpack ns)))] ++
              [(SymbolAtom "decor", SymbolAtom $ if isJust file then "module" else "namespace")] ++
              maybeProps [("source-file", file)]
+  toSExp AnnQuasiquote = toSExp [(SymbolAtom "quasiquotation", True)]
+  toSExp AnnAntiquote = toSExp [(SymbolAtom "antiquotation", True)]
 
 encodeTerm :: [(Name, Bool)] -> Term -> String
 encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $

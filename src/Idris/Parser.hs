@@ -98,7 +98,8 @@ import System.IO
 moduleHeader :: IdrisParser (Maybe (Docstring ()), [String], [(FC, OutputAnnotation)])
 moduleHeader =     try (do docs <- optional docComment
                            noArgs docs
-                           reserved "module"
+                           modFC <- reservedFC "module"
+                           highlightP modFC AnnKeyword
                            (i, ifc) <- identifier
                            option ';' (lchar ';')
                            let modName = moduleName i
@@ -1430,6 +1431,7 @@ loadSource lidr f toline
                                            sendHighlighting [(nfc, AnnNamespace ns srcFnAbs)])
                         [(re, fn, ns, nfc) | ImportInfo re fn _ ns _ nfc <- imports]
                   reportParserWarnings
+                  sendParserHighlighting
 
                   -- process and check module aliases
                   let modAliases = M.fromList
@@ -1480,6 +1482,7 @@ loadSource lidr f toline
                                                      ibc_write ist
                                        }
                     _ -> return ()
+                  sendParserHighlighting
 
                   -- Parsing done, now process declarations
 

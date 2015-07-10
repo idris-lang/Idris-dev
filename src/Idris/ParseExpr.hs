@@ -147,14 +147,17 @@ extension syn ns rules =
     ruleGroup _ _ = False
 
     extensionSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
-    extensionSymbol (Keyword n)    = do reserved (show n); return Nothing
+    extensionSymbol (Keyword n)    = do fc <- reservedFC (show n)
+                                        highlightP fc AnnKeyword
+                                        return Nothing
     extensionSymbol (Expr n)       = do tm <- expr syn
                                         return $ Just (n, SynTm tm)
     extensionSymbol (SimpleExpr n) = do tm <- simpleExpr syn
                                         return $ Just (n, SynTm tm)
     extensionSymbol (Binding n)    = do b <- fst <$> name
                                         return $ Just (n, SynBind b)
-    extensionSymbol (Symbol s)     = do symbol s
+    extensionSymbol (Symbol s)     = do fc <- symbolFC s
+                                        highlightP fc AnnKeyword
                                         return Nothing
     dropn :: Name -> [(Name, a)] -> [(Name, a)]
     dropn n [] = []
@@ -645,14 +648,19 @@ constraintArg syn = do symbol "@{"
 
 -}
 quasiquote :: SyntaxInfo -> IdrisParser PTerm
-quasiquote syn = do symbol "`("
+quasiquote syn = do startFC <- symbolFC "`("
                     e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
                                     inPattern = False }
-                    g <- optional $ do
-                           symbol ":"
-                           expr syn { inPattern = False } -- don't allow antiquotes
-                    symbol ")"
-                    return $ PQuasiquote e g
+                    g <- optional $
+                           do fc <- symbolFC ":"
+                              ty <- expr syn { inPattern = False } -- don't allow antiquotes
+                              return (ty, fc)
+                    endFC <- symbolFC ")"
+                    mapM_ (uncurry highlightP) [(startFC, AnnKeyword), (endFC, AnnKeyword), (spanFC startFC endFC, AnnQuasiquote)]
+                    case g of
+                      Just (_, fc) -> highlightP fc AnnKeyword
+                      _ -> return ()
+                    return $ PQuasiquote e (fst <$> g)
                  <?> "quasiquotation"
 
 {-| Parses an unquoting inside a quasiquotation (for building reflected terms using the elaborator)
@@ -662,8 +670,11 @@ quasiquote syn = do symbol "`("
 -}
 unquote :: SyntaxInfo -> IdrisParser PTerm
 unquote syn = do guard (syn_in_quasiquote syn > 0)
-                 symbol "~"
+                 startFC <- symbolFC "~"
                  e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
+                 endFC <- getFC
+                 highlightP startFC AnnKeyword
+                 highlightP (spanFC startFC endFC) AnnAntiquote
                  return $ PUnquote e
               <?> "unquotation"
 
