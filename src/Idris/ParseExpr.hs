@@ -656,7 +656,7 @@ quasiquote syn = do startFC <- symbolFC "`("
                               ty <- expr syn { inPattern = False } -- don't allow antiquotes
                               return (ty, fc)
                     endFC <- symbolFC ")"
-                    mapM_ (uncurry highlightP) [(startFC, AnnKeyword), (endFC, AnnKeyword)]
+                    mapM_ (uncurry highlightP) [(startFC, AnnKeyword), (endFC, AnnKeyword), (spanFC startFC endFC, AnnQuasiquote)]
                     case g of
                       Just (_, fc) -> highlightP fc AnnKeyword
                       _ -> return ()
@@ -672,7 +672,9 @@ unquote :: SyntaxInfo -> IdrisParser PTerm
 unquote syn = do guard (syn_in_quasiquote syn > 0)
                  startFC <- symbolFC "~"
                  e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
+                 endFC <- getFC
                  highlightP startFC AnnKeyword
+                 highlightP (spanFC startFC endFC) AnnAntiquote
                  return $ PUnquote e
               <?> "unquotation"
 

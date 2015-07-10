@@ -177,6 +177,12 @@ The following keys are available:
   ``link-href``
     provides a URL that the corresponding text is a link to. 
 
+  ``quasiquotation``
+    states that the region is quasiquoted.
+
+  ``antiquotation``
+    states that the region is antiquoted.
+
   ``tt-term``
     A serialized representation of the Idris core term corresponding to the region of text.
 

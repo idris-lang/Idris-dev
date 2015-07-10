@@ -186,6 +186,8 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                         -- resolved. If a file path is present, then
                         -- the namespace represents a module imported
                         -- from that file.
+                      | AnnQuasiquote
+                      | AnnAntiquote
   deriving (Show, Eq)
 
 -- | Used for error reflection
