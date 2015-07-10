@@ -196,6 +196,13 @@ prettyDocumentedIst ist (name, ty, docs) =
   where ppTm = pprintDelab ist
         norm = normaliseAll (tt_ctxt ist) []
 
+sendParserHighlighting :: Idris ()
+sendParserHighlighting =
+  do ist <- getIState
+     let hs = nub $ idris_parserHighlights ist
+     sendHighlighting hs
+     putIState ist {idris_parserHighlights = []}
+
 sendHighlighting :: [(FC, OutputAnnotation)] -> Idris ()
 sendHighlighting highlights =
   do ist <- getIState

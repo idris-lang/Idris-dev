@@ -159,10 +159,10 @@ instance Show FC where
     show (FileFC f) = f
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving Show
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving (Show, Eq)
 
 -- | Text formatting output
-data TextFormatting = BoldText | ItalicText | UnderlineText deriving Show
+data TextFormatting = BoldText | ItalicText | UnderlineText deriving (Show, Eq)
 
 -- | Output annotations for pretty-printing
 data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe String)
@@ -186,7 +186,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                         -- resolved. If a file path is present, then
                         -- the namespace represents a module imported
                         -- from that file.
-  deriving Show
+  deriving (Show, Eq)
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String
