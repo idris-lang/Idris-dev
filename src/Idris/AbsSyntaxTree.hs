@@ -871,7 +871,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
            | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
            | PUnquote PTerm -- ^ ~Term
-           | PQuoteName Name -- ^ `{n}
+           | PQuoteName Name FC -- ^ `{n} where the FC is the precise highlighting for the name in particular
            | PRunElab FC PTerm [String] -- ^ %runElab tm - New-style proof script. Args are location, script, enclosing namespace.
        deriving (Eq, Data, Typeable)
 
@@ -931,7 +931,7 @@ mapPTermFC f g (PNoImplicits t) = PNoImplicits (mapPTermFC f g t)
 mapPTermFC f g (PQuasiquote t1 t2) = PQuasiquote (mapPTermFC f g t1) (fmap (mapPTermFC f g) t2)
 mapPTermFC f g (PUnquote t) = PUnquote (mapPTermFC f g t)
 mapPTermFC f g (PRunElab fc tm ns) = PRunElab (f fc) (mapPTermFC f g tm) ns
-mapPTermFC f g (PQuoteName n) = PQuoteName n
+mapPTermFC f g (PQuoteName n fc) = PQuoteName n (g fc)
 
 {-!
 dg instance Binary PTerm
@@ -1156,7 +1156,7 @@ highestFC (PUnifyLog tm) = highestFC tm
 highestFC (PNoImplicits tm) = highestFC tm
 highestFC (PQuasiquote _ _) = Nothing
 highestFC (PUnquote tm) = highestFC tm
-highestFC (PQuoteName _) = Nothing
+highestFC (PQuoteName _ fc) = Just fc
 highestFC (PRunElab fc _ _) = Just fc
 highestFC (PAppImpl t _) = highestFC t
 
@@ -1744,7 +1744,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PQuasiquote t Nothing) = text "`(" <> prettySe (decD d) p [] t <> text ")"
     prettySe d p bnd (PQuasiquote t (Just g)) = text "`(" <> prettySe (decD d) p [] t <+> colon <+> prettySe (decD d) p [] g <> text ")"
     prettySe d p bnd (PUnquote t) = text "~" <> prettySe (decD d) p bnd t
-    prettySe d p bnd (PQuoteName n) = text "`{" <> prettyName True (ppopt_impl ppo) bnd n <> text "}"
+    prettySe d p bnd (PQuoteName n _) = text "`{" <> prettyName True (ppopt_impl ppo) bnd n <> text "}"
     prettySe d p bnd (PRunElab _ tm _) =
       bracket p funcAppPrec . group . align . hang 2 $
       text "%runElab" <$>
