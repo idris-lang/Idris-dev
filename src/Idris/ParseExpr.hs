@@ -684,10 +684,15 @@ unquote syn = do guard (syn_in_quasiquote syn > 0)
 
 -}
 namequote :: SyntaxInfo -> IdrisParser PTerm
-namequote syn = do symbol "`{"
-                   n <- fst <$> fnName
-                   symbol "}"
-                   return $ PQuoteName n
+namequote syn = do startFC <- symbolFC "`{"
+                   (n, nfc) <- fnName
+                   endFC <- symbolFC "}"
+                   mapM_ (uncurry highlightP)
+                         [ (startFC, AnnKeyword)
+                         , (endFC, AnnKeyword)
+                         , (spanFC startFC endFC, AnnQuasiquote)
+                         ]
+                   return $ PQuoteName n nfc
                 <?> "quoted name"
 
 

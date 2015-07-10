@@ -41,7 +41,7 @@ import Codec.Archive.Zip
 import Util.Zlib (decompressEither)
 
 ibcVersion :: Word16
-ibcVersion = 113
+ibcVersion = 114
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -1640,8 +1640,9 @@ instance Binary PTerm where
                                         put x2
                 PUnquote x1 -> do putWord8 43
                                   put x1
-                PQuoteName x1 -> do putWord8 44
-                                    put x1
+                PQuoteName x1 x2 -> do putWord8 44
+                                       put x1
+                                       put x2
                 PIfThenElse x1 x2 x3 x4 -> do putWord8 45
                                               put x1
                                               put x2
@@ -1778,7 +1779,8 @@ instance Binary PTerm where
                    43 -> do x1 <- get
                             return (PUnquote x1)
                    44 -> do x1 <- get
-                            return (PQuoteName x1)
+                            x2 <- get
+                            return (PQuoteName x1 x2)
                    45 -> do x1 <- get
                             x2 <- get
                             x3 <- get
