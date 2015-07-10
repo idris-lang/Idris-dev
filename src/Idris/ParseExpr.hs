@@ -648,14 +648,19 @@ constraintArg syn = do symbol "@{"
 
 -}
 quasiquote :: SyntaxInfo -> IdrisParser PTerm
-quasiquote syn = do symbol "`("
+quasiquote syn = do startFC <- symbolFC "`("
                     e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
                                     inPattern = False }
-                    g <- optional $ do
-                           symbol ":"
-                           expr syn { inPattern = False } -- don't allow antiquotes
-                    symbol ")"
-                    return $ PQuasiquote e g
+                    g <- optional $
+                           do fc <- symbolFC ":"
+                              ty <- expr syn { inPattern = False } -- don't allow antiquotes
+                              return (ty, fc)
+                    endFC <- symbolFC ")"
+                    mapM_ (uncurry highlightP) [(startFC, AnnKeyword), (endFC, AnnKeyword)]
+                    case g of
+                      Just (_, fc) -> highlightP fc AnnKeyword
+                      _ -> return ()
+                    return $ PQuasiquote e (fst <$> g)
                  <?> "quasiquotation"
 
 {-| Parses an unquoting inside a quasiquotation (for building reflected terms using the elaborator)
@@ -665,8 +670,9 @@ quasiquote syn = do symbol "`("
 -}
 unquote :: SyntaxInfo -> IdrisParser PTerm
 unquote syn = do guard (syn_in_quasiquote syn > 0)
-                 symbol "~"
+                 startFC <- symbolFC "~"
                  e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
+                 highlightP startFC AnnKeyword
                  return $ PUnquote e
               <?> "unquotation"
 

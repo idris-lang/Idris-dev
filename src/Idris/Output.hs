@@ -199,9 +199,11 @@ prettyDocumentedIst ist (name, ty, docs) =
 sendParserHighlighting :: Idris ()
 sendParserHighlighting =
   do ist <- getIState
-     let hs = nub $ idris_parserHighlights ist
+     let hs = map unwrap . nub . map wrap $ idris_parserHighlights ist
      sendHighlighting hs
      putIState ist {idris_parserHighlights = []}
+  where wrap (fc, a) = (FC' fc, a)
+        unwrap (fc', a) = (unwrapFC fc', a)
 
 sendHighlighting :: [(FC, OutputAnnotation)] -> Idris ()
 sendHighlighting highlights =
