@@ -741,7 +741,7 @@ elab ist info emode opts fn tm
                     ns <- apply (Var f) (map isph args)
 --                    trace ("ns is " ++ show ns) $ return ()
                     -- mark any type class arguments as injective
-                    mapM_ checkIfInjective (map snd ns)
+                    when (not pattern) $ mapM_ checkIfInjective (map snd ns)
                     unifyProblems -- try again with the new information,
                                   -- to help with disambiguation
                     ulog <- getUnifyLog
