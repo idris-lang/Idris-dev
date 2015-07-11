@@ -164,19 +164,19 @@ pvars ist _ = []
 getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi _ t _) sc)
     = nub $ getFixedInType i env [] t ++
             getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
-            ++ case t of
-                    P _ n _ -> if n `elem` env then [n] else []
+            ++ case unApply t of
+                    (P _ n _, _) -> if n `elem` env then [n] else []
                     _ -> []
 getFixedInType i env (_ : is) (Bind n (Pi _ t _) sc)
     = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
 getFixedInType i env is tm@(App _ f a)
     | (P _ tn _, args) <- unApply tm
-       = case lookupCtxt tn (idris_datatypes i) of
-            [t] -> nub $ paramNames args env (param_pos t) ++
-                         getFixedInType i env is f ++
-                         getFixedInType i env is a
-            [] -> nub $ getFixedInType i env is f ++
-                        getFixedInType i env is a
+       = case lookupCtxtExact tn (idris_datatypes i) of
+            Just t -> nub $ paramNames args env (param_pos t) ++
+                            getFixedInType i env is f ++
+                            getFixedInType i env is a
+            Nothing -> nub $ getFixedInType i env is f ++
+                             getFixedInType i env is a
     | otherwise = nub $ getFixedInType i env is f ++
                         getFixedInType i env is a
 getFixedInType i _ _ _ = []
@@ -187,17 +187,16 @@ getFlexInType i env ps (Bind n (Pi _ t _) sc)
 
 getFlexInType i env ps tm@(App _ f a)
     | (P nt tn _, args) <- unApply tm, nt /= Bound
-       = case lookupCtxt tn (idris_datatypes i) of
-            [t] -> nub $ paramNames args env [x | x <- [0..length args],
-                                                  not (x `elem` param_pos t)] 
+       = case lookupCtxtExact tn (idris_datatypes i) of
+            Just t -> nub $ paramNames args env [x | x <- [0..length args],
+                                                     not (x `elem` param_pos t)] 
                           ++ getFlexInType i env ps f ++
                              getFlexInType i env ps a
-            [] -> let ppos = case lookupCtxtName tn (idris_fninfo i) of
-                                  [fi] -> fn_params (snd fi)
-                                  [] -> []
-                                  xs -> error ("Too much function info: " ++ show xs)
-                  in nub $ paramNames args env [x | x <- [0..length args],
-                                                    not (x `elem` ppos)] 
+            Nothing -> let ppos = case lookupCtxtExact tn (idris_fninfo i) of
+                                       Just fi -> fn_params fi
+                                       Nothing -> []
+                       in nub $ paramNames args env [x | x <- [0..length args],
+                                                         not (x `elem` ppos)] 
                            ++ getFlexInType i env ps f ++
                               getFlexInType i env ps a
     | otherwise = nub $ getFlexInType i env ps f ++
