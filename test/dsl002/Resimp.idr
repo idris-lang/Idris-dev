@@ -1,6 +1,6 @@
 module Resimp
 
-import Data.Vect
+import public Data.Vect
 import public Data.Fin
 
 -- IO operations which read a resource

@@ -1,6 +1,6 @@
 module Data.Fun
 
-import Data.Vect
+import public Data.Vect
 
 %default total
 

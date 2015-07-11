@@ -312,7 +312,7 @@ process reexp i fn = do
                 srcok <- runIO $ doesFileExist source
                 when srcok $ timestampOlder source fn
                 pImportDirs =<< getEntry [] "ibc_importdirs" i
-                pImports =<< getEntry [] "ibc_imports" i
+                pImports reexp =<< getEntry [] "ibc_imports" i
                 pImps =<< getEntry [] "ibc_implicits" i
                 pFixes =<< getEntry [] "ibc_fixes" i
                 pStatics =<< getEntry [] "ibc_statics" i
@@ -383,8 +383,8 @@ pAutoHints ns = mapM_ (\(n,h) -> addAutoHint n h) ns
 pImportDirs :: [FilePath] -> Idris ()
 pImportDirs fs = mapM_ addImportDir fs
 
-pImports :: [(Bool, FilePath)] -> Idris ()
-pImports fs
+pImports :: Bool -> [(Bool, FilePath)] -> Idris ()
+pImports reexp fs
   = do mapM_ (\(re, f) ->
                     do i <- getIState
                        ibcsd <- valIBCSubDir i
@@ -398,7 +398,7 @@ pImports fs
                                           ifail "Must be an ibc"
                             IDR fn -> do logLvl 1 $ "Failed at " ++ fn
                                          ifail "Must be an ibc"
-                            IBC fn src -> loadIBC re fn)
+                            IBC fn src -> loadIBC (reexp && re) fn)
              fs
 
 pImps :: [(Name, [PArg])] -> Idris ()
