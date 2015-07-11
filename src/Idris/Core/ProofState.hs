@@ -1025,7 +1025,10 @@ processTactic (MatchProblems all) ps
                        holes = holes ps \\ (map fst ns'') }, plog ps)
 processTactic t ps
     = case holes ps of
-        [] -> fail "Nothing to fill in."
+        [] -> case t of
+                   Focus _ -> return (ps, "") -- harmless to refocus when done, since
+                                              -- 'focus' doesn't fail
+                   _ -> fail $ "Nothing to fill in."
         (h:_)  -> do ps' <- execStateT (process t h) ps
                      let (ns_in, probs')
                                 = case solved ps' of
