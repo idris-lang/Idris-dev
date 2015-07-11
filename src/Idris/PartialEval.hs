@@ -8,6 +8,7 @@ import Idris.AbsSyntax
 import Idris.Delaborate
 
 import Idris.Core.TT
+import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 
 import Control.Monad.State
@@ -298,7 +299,8 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
           case (lookupCtxtExact n (idris_statics ist),
                   lookupCtxtExact n (idris_implicits ist)) of
                (Just statics, Just imps) ->
-                   if (length statics == length args && or statics) then
+                   if (length statics == length args && or statics
+                          && specialisable (tt_ctxt ist) n) then
                       case buildApp env statics imps args [0..] of
                            args -> [(n, args)]
 --                            _ -> []
@@ -308,4 +310,29 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
     ga env (Bind n t sc) = ga (n : env) sc
     ga env t = []
 
+    -- A function is only specialisable if there are no overlapping
+    -- cases in the case tree (otherwise the partial evaluation could
+    -- easily get stuck)
+    specialisable :: Context -> Name -> Bool
+    specialisable ctxt n = case lookupDefExact n ctxt of
+                                Just (CaseOp _ _ _ _ _ cds) ->
+                                     noOverlap (snd (cases_compiletime cds))
+                                _ -> False
+
+    noOverlap :: SC -> Bool
+    noOverlap (Case _ _ [DefaultCase sc]) = noOverlap sc
+    noOverlap (Case _ _ alts) = noOverlapAlts alts
+    noOverlap _ = True
+
+    -- There's an overlap if the case tree has a default case along with
+    -- some other cases. It's fine if there's a default case on its own.
+    noOverlapAlts (ConCase _ _ _ sc : rest) 
+        = noOverlapAlts rest && noOverlap sc
+    noOverlapAlts (FnCase _ _ sc : rest) = noOverlapAlts rest
+    noOverlapAlts (ConstCase _ sc : rest)
+        = noOverlapAlts rest && noOverlap sc
+    noOverlapAlts (SucCase _ sc : rest)
+        = noOverlapAlts rest && noOverlap sc
+    noOverlapAlts (DefaultCase _ : _) = False
+    noOverlapAlts _ = True
 
