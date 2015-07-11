@@ -430,15 +430,7 @@ elab ist info emode opts fn tm
                                                pimp (sMN 0 "P") Placeholder True,
                                                pexp l, pexp r])
     elab' ina fc (PAlternative (ExactlyOne delayok) as)
-        = do hnf_compute
-             ty <- goal
-             ctxt <- get_context
-             let (tc, _) = unApply ty
-             env <- get_env
-             let as' = pruneByType (map fst env) tc ctxt as
---              trace (-- show tc ++ " " ++ show as ++ "\n ==> " ++ 
---                     show (length as') ++ "\n" ++
---                     showSep ", " (map showTmImpls as') ++ "\nEND") $
+        = do as' <- doPrune as
              (h : hs) <- get_holes
              case as' of
                   [x] -> elab' ina fc x
@@ -449,13 +441,27 @@ elab ist info emode opts fn tm
                                         (map showHd as')))
                         (do movelast h
                             delayElab 5 $ do
-                              focus h
-                              tryAll (zip (map (elab' ina fc) as') 
-                                          (map showHd as')))
+                              hs <- get_holes
+                              when (not (null hs)) $ do
+                                  focus h
+                                  as'' <- doPrune as'
+                                  case as'' of
+                                       [x] -> elab' ina fc x
+                                       _ -> tryAll (zip (map (elab' ina fc) as'') 
+                                                        (map showHd as'')))
         where showHd (PApp _ (PRef _ n) _) = n
               showHd (PRef _ n) = n
               showHd (PApp _ h _) = showHd h
               showHd x = NErased -- We probably should do something better than this here
+
+              doPrune as = 
+                  do hnf_compute
+                     ty <- goal
+                     ctxt <- get_context
+                     let (tc, _) = unApply ty
+                     env <- get_env
+                     return $ pruneByType (map fst env) tc ctxt as
+
 
               isAmbiguous (CantResolveAlts _) = delayok
               isAmbiguous (Elaborating _ _ e) = isAmbiguous e
