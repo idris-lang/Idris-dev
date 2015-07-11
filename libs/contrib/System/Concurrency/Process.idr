@@ -34,8 +34,10 @@ myID : Process msg (ProcID msg)
 myID = Lift (return (MkPID prim__vm))
 
 ||| Send a message to another process
-send : ProcID msg -> msg -> Process msg ()
-send (MkPID p) m = Lift (sendToThread p (prim__vm, m))
+||| Returns whether the send was unsuccessful.
+send : ProcID msg -> msg -> Process msg Bool
+send (MkPID p) m = Lift (do x <- sendToThread p (prim__vm, m)
+                            return (x == 1))
 
 ||| Return whether a message is waiting in the queue
 msgWaiting : Process msg Bool

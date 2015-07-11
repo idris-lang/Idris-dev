@@ -11,12 +11,14 @@ ping main proc
         msg <- recv
         Lift (putStrLn ("Reply: " ++ show msg))
         send main "Done"
+        return ()
 
 pong : Process String ()
 pong = do -- Lift (putStrLn "Waiting for message")
           (sender, m) <- recvWithSender
           Lift $ putStrLn ("Received " ++ m)
           send sender ("Hello back!")
+          return ()
 
 mainProc : Process String ()
 mainProc = do mainID <- myID

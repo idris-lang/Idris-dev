@@ -26,6 +26,7 @@ VM* init_vm(int stack_size, size_t heap_size,
 
     VAL* valstack = malloc(stack_size * sizeof(VAL));
 
+    vm->active = 1;
     vm->valstack = valstack;
     vm->valstack_top = valstack;
     vm->valstack_base = valstack;
@@ -104,7 +105,12 @@ Stats terminate(VM* vm) {
     pthread_mutex_destroy(&(vm -> inbox_block));
     pthread_cond_destroy(&(vm -> inbox_waiting));
 #endif
-    free(vm);
+    // free(vm); 
+    // Set the VM as inactive, so that if any message gets sent to it
+    // it will not get there, rather than crash the entire system.
+    // (TODO: We really need to be cleverer than this if we're going to
+    // write programs than create lots of threads...)
+    vm->active = 0;
 
     STATS_LEAVE_EXIT(stats)
     return stats;
@@ -738,7 +744,7 @@ VAL copyTo(VM* vm, VAL x) {
 }
 
 // Add a message to another VM's message queue
-void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
+int idris_sendMessage(VM* sender, VM* dest, VAL msg) {
     // FIXME: If GC kicks in in the middle of the copy, we're in trouble.
     // Probably best check there is enough room in advance. (How?)
 
@@ -748,6 +754,8 @@ void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
 
     // So: we try to copy, if a collection happens, we do the copy again
     // under the assumption there's enough space this time.
+
+    if (dest->active == 0) { return 0; } // No VM to send to
 
     int gcs = dest->stats.collections;
     pthread_mutex_lock(&dest->alloc_lock);
@@ -784,6 +792,7 @@ void idris_sendMessage(VM* sender, VM* dest, VAL msg) {
 
     pthread_mutex_unlock(&(dest->inbox_lock));
 //    printf("Sending [unlock]...\n");
+    return 1;
 }
 
 VM* idris_checkMessages(VM* vm) {

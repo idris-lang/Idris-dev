@@ -78,6 +78,10 @@ struct Msg_t {
 typedef struct Msg_t Msg;
 
 struct VM_t {
+    int active; // 0 if no longer running; keep for message passing
+                // TODO: If we're going to have lots of concurrent threads,
+                // we really need to be cleverer than this!
+
     VAL* valstack;
     VAL* valstack_top;
     VAL* valstack_base;
@@ -253,7 +257,7 @@ void* vmThread(VM* callvm, func f, VAL arg);
 VAL copyTo(VM* newVM, VAL x);
 
 // Add a message to another VM's message queue
-void idris_sendMessage(VM* sender, VM* dest, VAL msg);
+int idris_sendMessage(VM* sender, VM* dest, VAL msg);
 // Check whether there are any messages in the queue and return PID of
 // sender if so (null if not)
 VM* idris_checkMessages(VM* vm);

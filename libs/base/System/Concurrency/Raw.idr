@@ -7,9 +7,10 @@ module System.Concurrency.Raw
 import System
 
 ||| Send a message of any type to the thread with the given thread id
-sendToThread : (thread_id : Ptr) -> a -> IO ()
+||| Returns 1 if the message was sent successfully, 0 otherwise
+sendToThread : (thread_id : Ptr) -> a -> IO Int
 sendToThread {a} dest val
-   = foreign FFI_C "idris_sendMessage" (Ptr -> Ptr -> Raw a -> IO ())
+   = foreign FFI_C "idris_sendMessage" (Ptr -> Ptr -> Raw a -> IO Int)
                 prim__vm dest (MkRaw val)
 
 ||| Check for messages in the process inbox
