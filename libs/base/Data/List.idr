@@ -37,6 +37,14 @@ isElem x (y :: xs) with (decEq x y)
         mkNo f g Here = f Refl
         mkNo f g (There x) = g x
 
+||| Remove the element at the given position.
+|||
+||| @xs The list to be removed from
+||| @p A proof that the element to be removed is in the list
+dropElem : (xs : List a) -> (p : Elem x xs) -> List a
+dropElem (x :: ys) Here = ys 
+dropElem (x :: ys) (There p) = x :: dropElem ys p
+
 ||| The intersectBy function returns the intersect of two lists by user-supplied equality predicate.
 intersectBy : (a -> a -> Bool) -> List a -> List a -> List a
 intersectBy eq xs ys = [x | x <- xs, any (eq x) ys]
