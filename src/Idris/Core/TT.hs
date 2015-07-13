@@ -18,12 +18,35 @@
      programs with implicit syntax into fully explicit terms.
 -}
 
-module Idris.Core.TT where
+module Idris.Core.TT(AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..),
+                     ConstraintFC(..), DataOpt(..), DataOpts(..), Datatype(..),
+                     Env(..), EnvTT(..), Err(..), Err'(..), ErrorReportPart(..),
+                     FC(..), FC'(..), ImplicitInfo(..), IntTy(..), Name(..),
+                     NameOutput(..), NameType(..), NativeTy(..), OutputAnnotation(..),
+                     Provenance(..), Raw(..), SpecialName(..), TC(..), Term(..),
+                     TermSize(..), TextFormatting(..), TT(..),Type(..), TypeInfo(..),
+                     UConstraint(..), UCs(..), UExp(..), Universe(..),
+                     addAlist, addBinder, addDef, allTTNames, arity, bindAll,
+                     bindingOf, bindTyArgs, constDocs, constIsType, deleteDefExact,
+                     discard, emptyContext, emptyFC, explicitNames, fc_end, fc_fname,
+                     fc_start, fcIn, fileFC, finalise, fmapMB, forget, forgetEnv,
+                     freeNames, getArgTys, getRetTy, implicitable, instantiate,
+                     intTyName, isInjective, isTypeConst, liftPats, lookupCtxt,
+                     lookupCtxtExact, lookupCtxtName, mapCtxt, mkApp, nativeTyWidth,
+                     nextName, noOccurrence, nsroot, occurrences, orderPats,
+                     pEraseType, pmap, pprintRaw, pprintTT, prettyEnv, psubst, pToV,
+                     pToVs, pureTerm, raw_apply, raw_unapply, refsIn, safeForget,
+                     safeForgetEnv, score, showCG, showEnv, showEnvDbg, showSep,
+                     sInstanceN, sMN, sNS, spanFC, str, subst, substNames, substTerm,
+                     substV, sUN, tcname, termSmallerThan, tfail, thead, tnull,
+                     toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName,
+                     uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP) where
 
 -- Work around AMP without CPP
-import Prelude (Eq(..), Show(..), Ord(..), Functor(..), Monad(..), String, Int, Integer, Ordering(..),
-                Maybe(..), Num(..), Bool(..), Enum(..), Read(..), FilePath, Double,
-                (&&), (||), ($), (.), div, error, fst, snd, not, mod, read, otherwise)
+import Prelude (Eq(..), Show(..), Ord(..), Functor(..), Monad(..), String, Int,
+                Integer, Ordering(..), Maybe(..), Num(..), Bool(..), Enum(..),
+                Read(..), FilePath, Double, (&&), (||), ($), (.), div, error, fst,
+                snd, not, mod, read, otherwise)
 
 import Control.Applicative (Applicative (..), Alternative)
 import qualified Control.Applicative as A (Alternative (..))
