@@ -1,7 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
              PatternGuards, CPP #-}
 
-module Idris.REPL where
+module Idris.REPL(getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc,
+                  getPkgREPL, getPkgTest, getPort, idris, idrisMain, loadInputs,
+                  opt, runClient, runMain, ver) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -68,10 +70,6 @@ import qualified Data.Text as T
 
 import Text.Trifecta.Result(Result(..))
 
--- import RTS.SC
--- import RTS.Bytecode
--- import RTS.PreC
--- import RTS.CodegenC
 import System.Console.Haskeline as H
 import System.FilePath
 import System.Exit

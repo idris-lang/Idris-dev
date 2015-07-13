@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Inliner where
+module Idris.Inliner(inlineDef, inlineTerm) where
 
 import Idris.Core.TT
 import Idris.AbsSyntax

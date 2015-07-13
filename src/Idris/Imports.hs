@@ -1,4 +1,5 @@
-module Idris.Imports where
+module Idris.Imports(IFileType(..), findImport, findInPath, findPkgIndex,
+                     ibcPathNoFallback, installedPackages, pkgIndex) where
 
 import Control.Applicative ((<$>))
 import Data.List (isSuffixOf)

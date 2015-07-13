@@ -1,5 +1,5 @@
 
-module Idris.Directives where
+module Idris.Directives(directiveAction) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
