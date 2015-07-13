@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.DataOpts where
+module Idris.DataOpts(applyOpts) where
 
 -- Forcing, detagging and collapsing
 

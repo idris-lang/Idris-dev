@@ -1,4 +1,7 @@
-module Idris.ASTUtils where
+module Idris.ASTUtils(Field(), cg_usedpos, ctxt_lookup, fgetState, fmodifyState,
+                      fputState, idris_fixities, ist_callgraph, ist_optimisation,
+                      known_classes, known_terms, opt_detaggable, opt_inaccessible, 
+                      opts_idrisCmdline, repl_definitions) where
 
 -- This implements just a few basic lens-like concepts to ease state updates.
 -- Similar to fclabels in approach, just without the extra dependency.
