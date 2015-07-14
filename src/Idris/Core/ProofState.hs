@@ -759,7 +759,7 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
           replaceIndicies idnms idxs prop = foldM (\t (idnm, idx) -> do (idxv, idxt) <- lift $ check ctxt env (forget idx)
                                                                         let var = P Bound idnm idxt
                                                                         return $ Bind idnm (Lam idxt) (mkP var idxv var t)) prop $ zip idnms idxs
-induction tm induction ctxt env _ = do fail "Can't do induction here"
+casetac tm induction ctxt env _ = fail $ "Can't do " ++ (if induction then "induction" else "case analysis") ++ " here"
 
 
 equiv :: Raw -> RunTactic
