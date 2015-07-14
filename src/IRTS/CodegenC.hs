@@ -570,6 +570,10 @@ doOp v (LExternal so) [] | so == sUN "prim__stdout" = v ++ "MKPTR(vm, stdout)"
 doOp v (LExternal se) [] | se == sUN "prim__stderr" = v ++ "MKPTR(vm, stderr)"
 
 doOp v (LExternal nul) [] | nul == sUN "prim__null" = v ++ "MKPTR(vm, NULL)"
+doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqPtr" 
+    = v ++ "GETPTR(" ++ creg x ++ ") == GETPTR(" ++ creg y ++ ")"
+doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqManagedPtr" 
+    = v ++ "GETMPTR(" ++ creg x ++ ") == GETMPTR(" ++ creg y ++ ")"
 doOp v (LExternal rp) [p, i] | rp == sUN "prim__registerPtr"
     = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++ "), GETINT(" ++ creg i ++ "))"
 

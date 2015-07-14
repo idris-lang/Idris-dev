@@ -170,6 +170,8 @@ abstract data ManagedPtr : Type
 %extern prim__stderr : Ptr
 
 %extern prim__null : Ptr
+%extern prim__eqPtr : Ptr -> Ptr -> Int
+%extern prim__eqManagedPtr : ManagedPtr -> ManagedPtr -> Int
 %extern prim__registerPtr : Ptr -> Int -> ManagedPtr
 
 

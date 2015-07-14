@@ -46,6 +46,12 @@ instance Eq Char where
 instance Eq String where
     (==) = boolOp prim__eqString
 
+instance Eq Ptr where
+    (==) = boolOp prim__eqPtr
+
+instance Eq ManagedPtr where
+    (==) = boolOp prim__eqManagedPtr
+
 instance Eq Bool where
     True  == True  = True
     True  == False = False
