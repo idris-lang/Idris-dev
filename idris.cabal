@@ -868,7 +868,6 @@ Library
   Other-modules:
                   Util.Pretty
                 , Util.Net
-                , Util.Zlib
 
                 , Pkg.PParser
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.ErrReverse where
+module Idris.ErrReverse(errReverse) where
 
 import Idris.AbsSyntax
 import Idris.Core.TT

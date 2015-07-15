@@ -36,9 +36,7 @@ import Control.Monad.State.Strict hiding (get, put)
 import qualified Control.Monad.State.Strict as ST
 import System.FilePath
 import System.Directory
-import Codec.Compression.Zlib (compress)
 import Codec.Archive.Zip
-import Util.Zlib (decompressEither)
 
 ibcVersion :: Word16
 ibcVersion = 114

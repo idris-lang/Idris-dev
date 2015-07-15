@@ -1,4 +1,4 @@
-.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib test_c test lib_doc lib_doc_clean user_doc_html user_doc_pdf user_docs
+.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib fast test_c test lib_doc lib_doc_clean user_doc_html user_doc_pdf user_docs
 
 include config.mk
 -include custom.mk
@@ -65,6 +65,9 @@ user_doc_html:
 
 user_doc_pdf:
 	$(MAKE) -C docs latexpdf
+
+fast:
+	$(CABAL) install $(CABALFLAGS) --ghc-option=-O0
 
 dist/setup-config:
 	$(CABAL) configure $(CABALFLAGS)

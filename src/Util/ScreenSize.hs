@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module Util.ScreenSize where
+module Util.ScreenSize(getScreenWidth) where
 
 import Debug.Trace
 
