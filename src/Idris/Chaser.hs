@@ -116,29 +116,26 @@ buildTree built fp = btree [] fp
                              else return []
                    mt <- idrisCatch (runIO $ getModificationTime fn)
                                     (\c -> runIO $ getIModTime src)
-                   ok <- checkIBCUpToDate fn src
-                   return [MTree (IBC fn src) ok mt ms]
+                   -- FIXME: It's also not up to date if anything it imports has
+                   -- been modified since its own ibc has.
+                   --
+                   -- Issue #1592 on the issue tracker.
+                   --
+                   -- https://github.com/idris-lang/Idris-dev/issues/1592
+                   ibcOutdated <- fn `younger` (getSrcFile src)
+                   ibcValid <- hasValidIBCVersion fn
+                   return [MTree (IBC fn src) (ibcOutdated || not ibcValid) mt ms]
 
           getSrcFile (IBC _ src) = getSrcFile src
           getSrcFile (LIDR src) = src
           getSrcFile (IDR src) = src
 
-          -- FIXME: It's also not up to date if anything it imports has
-          -- been modified since its own ibc has.
-          --
-          -- Issue #1592 on the issue tracker.
-          --
-          -- https://github.com/idris-lang/Idris-dev/issues/1592
-
-          checkIBCUpToDate fn (LIDR src) = older fn src
-          checkIBCUpToDate fn (IDR src) = older fn src
-
-          older ibc src = do exist <- runIO $ doesFileExist src
-                             if exist then do
-                                 ibct <- runIO $ getModificationTime ibc
-                                 srct <- runIO $ getModificationTime src
-                                 return (srct >= ibct)
-                               else return False
+          younger ibc src = do exist <- runIO $ doesFileExist src
+                               if exist then do
+                                   ibct <- runIO $ getModificationTime ibc
+                                   srct <- runIO $ getModificationTime src
+                                   return (srct > ibct)
+                                 else return False
 
   children :: Bool -> FilePath -> [FilePath] -> Idris [ModuleTree]
   children lit f done = -- idrisCatch

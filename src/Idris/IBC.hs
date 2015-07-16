@@ -2,7 +2,8 @@
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.IBC (loadIBC, loadPkgIndex,
-                  writeIBC, writePkgIndex) where
+                  writeIBC, writePkgIndex,
+                  hasValidIBCVersion) where
 
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -93,6 +94,14 @@ deriving instance Binary IBCFile
 
 initIBC :: IBCFile
 initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] []
+
+hasValidIBCVersion :: FilePath -> Idris Bool
+hasValidIBCVersion fp = do
+  archiveFile <- runIO $ B.readFile fp
+  case toArchiveOrFail archiveFile of
+    Left _ -> return False
+    Right archive -> do ver <- getEntry 0 "ver" archive
+                        return (ver == ibcVersion)
 
 loadIBC :: Bool -- ^ True = reexport, False = make everything private
         -> FilePath -> Idris ()
