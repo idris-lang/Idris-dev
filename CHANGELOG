@@ -17,7 +17,9 @@ New in 0.9.19:
 * New command-line option --highlight that causes Idris to save highlighting
   information when successfully type checking. The information is in the same
   format sent by the IDE mode, and is saved in a file with the extension ".idh".
-* Use predicates instead of boolean equality proofs as preconditions 
+* Highlighting information is saved by the parser as well, allowing it to highlight
+  keywords like "case", "of", "let", and "do"
+* Use predicates instead of boolean equality proofs as preconditions
   on List functions
 * More flexible 'case' construct, allowing each branch to target different
   types, provided that the case analysis does not affect the form of any
