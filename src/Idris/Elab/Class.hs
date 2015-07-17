@@ -65,8 +65,8 @@ elabClass :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
 elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     = do let cn = fromMaybe (SN (InstanceCtorN tn)) (fst <$> mcn)
          let tty = pibind (map (\(n, _, ty) -> (n, ty)) ps) (PType fc)
-         let constraint = PApp fc (PRef fc tn)
-                                  (map (pexp . PRef fc) (map (\(n, _, _) -> n) ps))
+         let constraint = PApp fc (PRef fc [] tn)
+                                  (map (pexp . PRef fc []) (map (\(n, _, _) -> n) ps))
 
          let syn =
               syn_in { using = addToUsing (using syn_in)
@@ -142,7 +142,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
         = do when (not $ null cs) . tclift
                 $ tfail (At fc (Msg $ "Default superclass instances can't have constraints."))
              i <- getIState
-             let t = PApp fc (PRef fc n) (map pexp ps)
+             let t = PApp fc (PRef fc [] n) (map pexp ps)
              let isConstrained = any (== t) (map snd constraints)
              when (not isConstrained) . tclift
                 $ tfail (At fc (Msg $ "Default instances must be for a superclass constraint on the containing class."))
@@ -195,16 +195,16 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
         = do let cfn = sUN ('@':'@':show cn ++ "#" ++ show con)
                        -- SN (ParentN cn (show con))
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
-             let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
-             let lhs = PApp fc (PRef fc cfn) [pconst capp]
+             let capp = PApp fc (PRef fc [] cn) (map (pexp . PRef fc []) mnames)
+             let lhs = PApp fc (PRef fc [] cfn) [pconst capp]
              let rhs = PResolveTC (fileFC "HACK")
              let ty = PPi constraint cnm NoFC c con
              logLvl 2 ("Dictionary constraint: " ++ showTmImpls ty)
              logLvl 2 (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
              i <- getIState
              let conn = case con of
-                            PRef _ n -> n
-                            PApp _ (PRef _ n) _ -> n
+                            PRef _ _ n -> n
+                            PApp _ (PRef _ _ n) _ -> n
              let conn' = case lookupCtxtName conn (idris_classes i) of
                                 [(n, _)] -> n
                                 _ -> conn
@@ -225,10 +225,10 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     tfun cn c syn all (m, (mfc, doc, o, ty))
         = do let ty' = expandMethNS syn (insertConstraint c all ty)
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
-             let capp = PApp fc (PRef fc cn) (map (pexp . PRef fc) mnames)
+             let capp = PApp fc (PRef fc [] cn) (map (pexp . PRef fc []) mnames)
              let margs = getMArgs ty
              let anames = map (\x -> sMN x "arg") [0..]
-             let lhs = PApp fc (PRef fc m) (pconst capp : lhsArgs margs anames)
+             let lhs = PApp fc (PRef fc [] m) (pconst capp : lhsArgs margs anames)
              let rhs = PApp fc (getMeth mnames all m) (rhsArgs margs anames)
              logLvl 2 ("Top level type: " ++ showTmImpls ty')
              logLvl 1 (show (m, ty', capp, margs))
@@ -242,16 +242,16 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     getMArgs _ = []
 
     getMeth :: [Name] -> [Name] -> Name -> PTerm
-    getMeth (m:ms) (a:as) x | x == a = PRef fc m
+    getMeth (m:ms) (a:as) x | x == a = PRef fc [] m
                             | otherwise = getMeth ms as x
 
     lhsArgs (EA _ : xs) (n : ns) = [] -- pexp (PRef fc n) : lhsArgs xs ns
-    lhsArgs (IA n : xs) ns = pimp n (PRef fc n) False : lhsArgs xs ns
+    lhsArgs (IA n : xs) ns = pimp n (PRef fc [] n) False : lhsArgs xs ns
     lhsArgs (CA : xs) ns = lhsArgs xs ns
     lhsArgs [] _ = []
 
     rhsArgs (EA _ : xs) (n : ns) = [] -- pexp (PRef fc n) : rhsArgs xs ns
-    rhsArgs (IA n : xs) ns = pexp (PRef fc n) : rhsArgs xs ns
+    rhsArgs (IA n : xs) ns = pexp (PRef fc [] n) : rhsArgs xs ns
     rhsArgs (CA : xs) ns = pconst (PResolveTC fc) : rhsArgs xs ns
     rhsArgs [] _ = []
 
@@ -269,8 +269,8 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
         -- to the other methods in the class
        constrainMeths :: [Name] -> Name -> PTerm -> PTerm
        constrainMeths allM dictN tm = transform (addC allM dictN) tm
-       addC allM dictN m@(PRef fc n)
-         | n `elem` allM = PApp NoFC m [pconst (PRef NoFC dictN)]
+       addC allM dictN m@(PRef fc hls n)
+         | n `elem` allM = PApp NoFC m [pconst (PRef NoFC hls dictN)]
          | otherwise = m
        addC _ _ tm = tm
 
@@ -303,7 +303,7 @@ expandMethNS :: SyntaxInfo
                 -> PTerm -> PTerm
 expandMethNS syn = mapPT expand
   where
-    expand (PRef fc n) | n `elem` imp_methods syn = PRef fc $ expandNS syn n
+    expand (PRef fc hls n) | n `elem` imp_methods syn = PRef fc hls $ expandNS syn n
     expand t = t
 
 -- | Find the determining parameter locations

@@ -310,7 +310,7 @@ elabloop fn d prompt prf e prev h env
                        return (False, prev, e, False, prf, env, Right $ iRenderResult (text "TT:" <+> pprintTT [] tm))
                   EEval tm -> do (d', st', done, prf', go) <- evalTerm e prf tm
                                  return (d', prev, st', done, prf', env, go)
-                  ECheck (PRef _ n) ->
+                  ECheck (PRef _ _ n) ->
                     do (d', st', done, prf', go) <- checkNameType e prf n
                        return (d', prev, st', done, prf', env, go)
                   ECheck tm -> do (d', st', done, prf', go) <- checkType e prf tm
@@ -331,7 +331,7 @@ elabloop fn d prompt prf e prev h env
                        return (True, LetStep:prev, e, False, prf ++ [step], (i, ty', tm' ) : env, Right (iPrintResult ""))
                   DoLet fc i ifc ty expr ->
                     do (tm, ty) <- elabVal recinfo ERHS
-                                     (PApp NoFC (PRef NoFC (sUN "the"))
+                                     (PApp NoFC (PRef NoFC [] (sUN "the"))
                                                 [ pexp (inLets ist env ty)
                                                 , pexp (inLets ist env expr)
                                                 ])
@@ -417,7 +417,7 @@ ploop fn d prompt prf e h
                                 when (not (null hs)) $ ifail "Incomplete proof"
                                 iputStrLn "Proof completed!"
                                 return (False, e, True, prf, Right $ iPrintResult "")
-              Success (TCheck (PRef _ n)) -> checkNameType e prf n
+              Success (TCheck (PRef _ _ n)) -> checkNameType e prf n
               Success (TCheck t) -> checkType e prf t
               Success (TEval t)  -> evalTerm e prf t
               Success (TDocStr x) -> docStr e prf x

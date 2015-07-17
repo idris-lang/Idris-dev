@@ -88,8 +88,8 @@ getErrSpan _ = emptyFC
 -- | Issue a warning on "with"-terms whose namespace is empty or nonexistent
 warnDisamb :: IState -> PTerm -> Idris ()
 warnDisamb ist (PQuote _) = return ()
-warnDisamb ist (PRef _ _) = return ()
-warnDisamb ist (PInferRef _ _) = return ()
+warnDisamb ist (PRef _ _ _) = return ()
+warnDisamb ist (PInferRef _ _ _) = return ()
 warnDisamb ist (PPatvar _ _) = return ()
 warnDisamb ist (PLam _ _ _ t b) = warnDisamb ist t >> warnDisamb ist b
 warnDisamb ist (PPi _ _ _ t b) = warnDisamb ist t >> warnDisamb ist b
@@ -107,8 +107,8 @@ warnDisamb ist (PTrue _ _) = return ()
 warnDisamb ist (PResolveTC _) = return ()
 warnDisamb ist (PRewrite _ x y z) = warnDisamb ist x >> warnDisamb ist y >>
                                     Foldable.mapM_ (warnDisamb ist) z
-warnDisamb ist (PPair _ _ x y) = warnDisamb ist x >> warnDisamb ist y
-warnDisamb ist (PDPair _ _ x y z) = warnDisamb ist x >> warnDisamb ist y >> warnDisamb ist z
+warnDisamb ist (PPair _ _ _ x y) = warnDisamb ist x >> warnDisamb ist y
+warnDisamb ist (PDPair _ _ _ x y z) = warnDisamb ist x >> warnDisamb ist y >> warnDisamb ist z
 warnDisamb ist (PAlternative _ _ tms) = mapM_ (warnDisamb ist) tms
 warnDisamb ist (PHidden tm) = warnDisamb ist tm
 warnDisamb ist (PType _) = return ()

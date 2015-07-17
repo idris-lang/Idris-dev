@@ -10,7 +10,7 @@ import Idris.Error
 -- | Wrap a type provider in the type of type providers
 providerTy :: FC -> PTerm -> PTerm
 providerTy fc tm
-  = PApp fc (PRef fc $ sNS (sUN "Provider" ) ["Providers", "Prelude"]) [PExp 0 [] (sMN 0 "pvarg") tm]
+  = PApp fc (PRef fc [] $ sNS (sUN "Provider" ) ["Providers", "Prelude"]) [PExp 0 [] (sMN 0 "pvarg") tm]
 
 ioret :: Name
 ioret = sUN "prim_io_return"

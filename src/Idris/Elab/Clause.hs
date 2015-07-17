@@ -482,20 +482,20 @@ checkPossible info fc tcgen fname lhs_in
 
 
 propagateParams :: IState -> [Name] -> Type -> PTerm -> PTerm
-propagateParams i ps t tm@(PApp _ (PRef fc n) args)
-     = PApp fc (PRef fc n) (addP t args)
+propagateParams i ps t tm@(PApp _ (PRef fc hls n) args)
+     = PApp fc (PRef fc hls n) (addP t args)
    where addP (Bind n _ sc) (t : ts)
               | Placeholder <- getTm t,
                 n `elem` ps,
                 not (n `elem` allNamesIn tm)
-                    = t { getTm = PRef NoFC n } : addP sc ts
+                    = t { getTm = PRef NoFC [] n } : addP sc ts
          addP (Bind n _ sc) (t : ts) = t : addP sc ts
          addP _ ts = ts
-propagateParams i ps t (PRef fc n)
+propagateParams i ps t (PRef fc hls n)
      = case lookupCtxt n (idris_implicits i) of
             [is] -> let ps' = filter (isImplicit is) ps in
-                        PApp fc (PRef fc n) (map (\x -> pimp x (PRef fc x) True) ps')
-            _ -> PRef fc n
+                        PApp fc (PRef fc hls n) (map (\x -> pimp x (PRef fc [] x) True) ps')
+            _ -> PRef fc hls n
     where isImplicit [] n = False
           isImplicit (PImp _ _ _ x _ : is) n | x == n = True
           isImplicit (_ : is) n = isImplicit is n
@@ -734,7 +734,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
              borrowedB b = borrowedNames env (binderTy b)
     borrowedNames _ _ = []
 
-    mkLHSapp t@(PRef _ _) = PApp fc t []
+    mkLHSapp t@(PRef _ _ _) = PApp fc t []
     mkLHSapp t = t
 
     decorate (NS x ns)
@@ -772,7 +772,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
       where
         isArg' (PClause _ _ (PApp _ _ args) _ _ _)
            = any (\x -> case x of
-                          PRef _ n' -> n == n'
+                          PRef _ _ n' -> n == n'
                           _ -> False) (map getTm args)
         isArg' _ = False
     isArg _ _ = False
@@ -905,13 +905,13 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         mapM_ (rec_elabDecl info EAll info) wb
 
         -- rhs becomes: fname' ps_pre wval ps_post Refl
-        let rhs = PApp fc (PRef fc wname)
-                    (map (pexp . (PRef fc) . fst) bargs_pre ++
+        let rhs = PApp fc (PRef fc [] wname)
+                    (map (pexp . (PRef fc []) . fst) bargs_pre ++
                         pexp wval :
-                    (map (pexp . (PRef fc) . fst) bargs_post) ++
+                    (map (pexp . (PRef fc []) . fst) bargs_post) ++
                     case mpn of
                          Nothing -> []
-                         Just _ -> [pexp (PApp NoFC (PRef NoFC eqCon)
+                         Just _ -> [pexp (PApp NoFC (PRef NoFC [] eqCon)
                                                [ pimp (sUN "A") Placeholder False
                                                , pimp (sUN "x") Placeholder False
                                                ])])
@@ -974,21 +974,21 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         = ifail $ show fc ++ ":badly formed with clause"
 
     addArg (PApp fc f args) w = PApp fc f (args ++ [pexp w])
-    addArg (PRef fc f) w = PApp fc (PRef fc f) [pexp w]
+    addArg (PRef fc hls f) w = PApp fc (PRef fc hls f) [pexp w]
 
-    updateLHS n pn wname mvars ns_in ns_in' (PApp fc (PRef fc' n') args) w
+    updateLHS n pn wname mvars ns_in ns_in' (PApp fc (PRef fc' hls' n') args) w
         = let ns = map (keepMvar (map fst mvars) fc') ns_in
               ns' = map (keepMvar (map fst mvars) fc') ns_in' in
               return $ substMatches mvars $
-                  PApp fc (PRef fc' wname)
+                  PApp fc (PRef fc' [] wname)
                       (map pexp ns ++ pexp w : (map pexp ns') ++ 
                         case pn of
                              Nothing -> []
-                             Just pnm -> [pexp (PRef fc pnm)])
+                             Just pnm -> [pexp (PRef fc [] pnm)])
     updateLHS n pn wname mvars ns_in ns_in' tm w
         = updateLHS n pn wname mvars ns_in ns_in' (PApp fc tm []) w
 
-    keepMvar mvs fc v | v `elem` mvs = PRef fc v
+    keepMvar mvs fc v | v `elem` mvs = PRef fc [] v
                       | otherwise = Placeholder
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))

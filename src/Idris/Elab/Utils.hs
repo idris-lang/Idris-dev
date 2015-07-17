@@ -129,7 +129,7 @@ decorateid decorate (PClauses f o n cs)
           dc (PWith   fc n t as w pn ds)
                  = PWith fc (decorate n) (dappname t) as w pn
                             (map (decorateid decorate) ds)
-          dappname (PApp fc (PRef fc' n) as) = PApp fc (PRef fc' (decorate n)) as
+          dappname (PApp fc (PRef fc' hl n) as) = PApp fc (PRef fc' hl (decorate n)) as
           dappname t = t
 
 

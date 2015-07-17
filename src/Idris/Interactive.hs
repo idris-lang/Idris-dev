@@ -112,7 +112,7 @@ addMissing fn updatefile l n
           else iPrintResult extras
     where showPat = show . stripNS
           stripNS tm = mapPT dens tm where
-              dens (PRef fc n) = PRef fc (nsroot n)
+              dens (PRef fc hls n) = PRef fc hls (nsroot n)
               dens t = t
 
           nsroot (NS n _) = nsroot n
@@ -120,7 +120,7 @@ addMissing fn updatefile l n
           nsroot n = n
 
           getAppName (PApp _ r _) = getAppName r
-          getAppName (PRef _ r) = r
+          getAppName (PRef _ _ r) = r
           getAppName _ = n
 
           makeIndent ind | ".lidr" `isSuffixOf` fn = '>' : ' ' : replicate (ind-2) ' '
@@ -178,10 +178,10 @@ doProofSearch fn updatefile rec l n hints (Just depth)
          let fc = fileFC fn
          let body t = PProof [Try (TSeq Intros (ProofSearch rec False depth t hints))
                                   (ProofSearch rec False depth t hints)]
-         let def = PClause fc mn (PRef fc mn) [] (body top) []
+         let def = PClause fc mn (PRef fc [] mn) [] (body top) []
          newmv <- idrisCatch
              (do elabDecl' EAll recinfo (PClauses fc [] mn [def])
-                 (tm, ty) <- elabVal recinfo ERHS (PRef fc mn)
+                 (tm, ty) <- elabVal recinfo ERHS (PRef fc [] mn)
                  ctxt <- getContext
                  i <- getIState
                  return . flip displayS "" . renderPretty 1.0 80 $
@@ -204,7 +204,7 @@ doProofSearch fn updatefile rec l n hints (Just depth)
           dropCtxt _ t = t
 
           stripNS tm = mapPT dens tm where
-              dens (PRef fc n) = PRef fc (nsroot n)
+              dens (PRef fc hls n) = PRef fc hls (nsroot n)
               dens t = t
 
           nsroot (NS n _) = nsroot n

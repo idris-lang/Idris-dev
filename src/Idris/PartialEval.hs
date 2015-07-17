@@ -206,8 +206,8 @@ mkNewPats ist d ns newname sname lhs rhs =
     mkClause (oldlhs, oldrhs)
          = let (_, as) = unApply oldlhs 
                lhsargs = mkLHSargs [] ns as
-               lhs = PApp emptyFC (PRef emptyFC newname) lhsargs
-               rhs = PApp emptyFC (PRef emptyFC sname) 
+               lhs = PApp emptyFC (PRef emptyFC [] newname) lhsargs
+               rhs = PApp emptyFC (PRef emptyFC [] sname) 
                                   (mkRHSargs ns lhsargs) in
                      (lhs, rhs)
 
@@ -245,7 +245,7 @@ mkNewPats ist d ns newname sname lhs rhs =
 mkPE_TermDecl :: IState -> Name -> Name ->
                  [(PEArgType, Term)] -> PEDecl
 mkPE_TermDecl ist newname sname ns 
-    = let lhs = PApp emptyFC (PRef emptyFC newname) (map pexp (mkp ns)) 
+    = let lhs = PApp emptyFC (PRef emptyFC [] newname) (map pexp (mkp ns)) 
           rhs = eraseImps $ delab ist (mkApp (P Ref sname Erased) (map snd ns)) 
           patdef = lookupCtxtExact sname (idris_patdefs ist)
           newpats = case patdef of

@@ -25,8 +25,8 @@ trivial :: (PTerm -> ElabD ()) -> IState -> ElabD ()
 trivial = trivialHoles []
 
 trivialHoles :: [(Name, Int)] -> (PTerm -> ElabD ()) -> IState -> ElabD ()
-trivialHoles ok elab ist 
-                 = try' (do elab (PApp (fileFC "prf") (PRef (fileFC "prf") eqCon) [pimp (sUN "A") Placeholder False, pimp (sUN "x") Placeholder False])
+trivialHoles ok elab ist
+                 = try' (do elab (PApp (fileFC "prf") (PRef (fileFC "prf") [] eqCon) [pimp (sUN "A") Placeholder False, pimp (sUN "x") Placeholder False])
                             return ())
                         (do env <- get_env
                             g <- goal
@@ -42,7 +42,7 @@ trivialHoles ok elab ist
                 -- anywhere but the top is okay for a hole, if holesOK set
                 if -- all (\n -> not (n `elem` badhs)) (freeNames (binderTy b))
                    holesOK hs (binderTy b)
-                   then try' (elab (PRef (fileFC "prf") x))
+                   then try' (elab (PRef (fileFC "prf") [] x))
                              (tryAll xs) True
                    else tryAll xs
         
@@ -227,7 +227,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
           = do let a = getPArity (delab ist (binderTy t))
                tryLocalArg d locs tys n a
 
-    tryLocalArg d locs tys n 0 = elab (PRef (fileFC "prf") n)
+    tryLocalArg d locs tys n 0 = elab (PRef (fileFC "prf") [] n)
     tryLocalArg d locs tys n i 
         = simple_app False (tryLocalArg d locs tys n (i - 1))
                 (psRec True d locs tys) "proof search local apply"

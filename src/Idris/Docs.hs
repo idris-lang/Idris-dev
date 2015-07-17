@@ -197,12 +197,12 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ct
     updateArgs ps     (a:as)                      = a : updateArgs ps as
     updateArgs _      _                           = []
 
-    updateRef nm (PRef fc _) = PRef fc nm
+    updateRef nm (PRef fc _ _) = PRef fc [] nm
     updateRef _  pt          = pt
 
-    isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ nm) args')) = nm == n && map getTm args == map getTm args'
-    isSubclass (PPi _   _            _ _ pt)                                       = isSubclass pt
-    isSubclass _                                                                   = False
+    isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args')) = nm == n && map getTm args == map getTm args'
+    isSubclass (PPi _   _            _ _ pt)                                           = isSubclass pt
+    isSubclass _                                                                       = False
 
     prettyParameters =
       if any (isJust . snd) params
@@ -289,7 +289,7 @@ docClass n ci
     getDInst (PInstance _ _ _ _ _ _ _ _ t _ _) = Just t
     getDInst _                                 = Nothing
 
-    isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ nm) args'))
+    isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args'))
       = nm == n && map getTm args == map getTm args'
     isSubclass (PPi _ _ _ _ pt)
       = isSubclass pt

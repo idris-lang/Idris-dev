@@ -121,15 +121,15 @@ elabDocTerms info str = do typechecked <- Traversable.mapM decorate str
 -- (as a default numeric tye), then printing it as any Showable thing
 elabExec :: FC -> PTerm -> PTerm
 elabExec fc tm = runtm (PAlternative [] FirstSuccess
-                   [printtm (PApp fc (PRef fc (sUN "the"))
+                   [printtm (PApp fc (PRef fc [] (sUN "the"))
                      [pexp (PConstant NoFC (AType (ATInt ITBig))), pexp tm]),
                     tm,
                     printtm tm
                     ])
   where
-    runtm t = PApp fc (PRef fc (sUN "run__IO")) [pexp t]
-    printtm t = PApp fc (PRef fc (sUN "printLn"))
-                  [pimp (sUN "ffi") (PRef fc (sUN "FFI_C")) False, pexp t]
+    runtm t = PApp fc (PRef fc [] (sUN "run__IO")) [pexp t]
+    printtm t = PApp fc (PRef fc [] (sUN "printLn"))
+                  [pimp (sUN "ffi") (PRef fc [] (sUN "FFI_C")) False, pexp t]
 
 elabREPL :: ElabInfo -> ElabMode -> PTerm -> Idris (Term, Type)
 elabREPL info aspat tm

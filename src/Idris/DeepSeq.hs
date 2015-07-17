@@ -223,8 +223,8 @@ instance (NFData t) => NFData (PData' t) where
 
 instance NFData PTerm where
         rnf (PQuote x1) = rnf x1 `seq` ()
-        rnf (PRef x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (PInferRef x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (PRef x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` x3 `seq` ()
+        rnf (PInferRef x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` x3 `seq` ()
         rnf (PPatvar x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PLam _ x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PPi x1 x2 x3 x4 x5)
@@ -242,9 +242,9 @@ instance NFData PTerm where
         rnf (PResolveTC x1) = rnf x1 `seq` ()
         rnf (PRewrite x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (PPair x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (PDPair x1 x2 x3 x4 x5)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
+        rnf (PPair x1 x2 x3 x4 x5) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` x5 `seq` ()
+        rnf (PDPair x1 x2 x3 x4 x5 x6)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` x6 `seq` ()
         rnf (PAs x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PAlternative x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PHidden x1) = rnf x1 `seq` ()

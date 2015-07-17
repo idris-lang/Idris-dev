@@ -813,7 +813,7 @@ updateN _  n = n
 updateNs :: [(Name, Name)] -> PTerm -> PTerm
 updateNs [] t = t
 updateNs ns t = mapPT updateRef t
-  where updateRef (PRef fc f) = PRef fc (updateN ns f)
+  where updateRef (PRef fc fcs f) = PRef fc fcs (updateN ns f)
         updateRef t = t
 
 -- updateDNs :: [(Name, Name)] -> PDecl -> PDecl
@@ -831,8 +831,8 @@ data PunInfo = IsType | IsTerm | TypeOrTerm deriving (Eq, Show, Data, Typeable)
 
 -- | High level language terms
 data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level language
-           | PRef FC Name -- ^ A reference to a variable
-           | PInferRef FC Name -- ^ A name to be defined later
+           | PRef FC [FC] Name -- ^ A reference to a variable. The FC is its precise source location for highlighting. The list of FCs is a collection of additional highlighting locations.
+           | PInferRef FC [FC] Name -- ^ A name to be defined later
            | PPatvar FC Name -- ^ A pattern variable
            | PLam FC Name FC PTerm PTerm -- ^ A lambda abstraction. Second FC is name span.
            | PPi  Plicity Name FC PTerm PTerm -- ^ (n : t1) -> t2, where the FC is for the precise location of the variable
@@ -847,8 +847,8 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PTrue FC PunInfo -- ^ Unit type..?
            | PResolveTC FC -- ^ Solve this dictionary by type class resolution
            | PRewrite FC PTerm PTerm (Maybe PTerm) -- ^ "rewrite" syntax, with optional result type
-           | PPair FC PunInfo PTerm PTerm -- ^ A pair (a, b) and whether it's a product type or a pair (solved by elaboration)
-           | PDPair FC PunInfo PTerm PTerm PTerm -- ^ A dependent pair (tm : a ** b) and whether it's a sigma type or a pair that inhabits one (solved by elaboration)
+           | PPair FC [FC] PunInfo PTerm PTerm -- ^ A pair (a, b) and whether it's a product type or a pair (solved by elaboration). The list of FCs is its punctuation.
+           | PDPair FC [FC] PunInfo PTerm PTerm PTerm -- ^ A dependent pair (tm : a ** b) and whether it's a sigma type or a pair that inhabits one (solved by elaboration). The [FC] is its punctuation.
            | PAs FC Name PTerm -- ^ @-pattern, valid LHS only
            | PAlternative [(Name, Name)] PAltType [PTerm] -- ^ (| A, B, C|). Includes unapplied unique name mappings for mkUniqueNames.
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
@@ -885,8 +885,8 @@ data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
 -- for semantic source highlighting, so they can be treated specially.
 mapPTermFC :: (FC -> FC) -> (FC -> FC) -> PTerm -> PTerm
 mapPTermFC f g (PQuote q) = PQuote q
-mapPTermFC f g (PRef fc n) = PRef (g fc) n
-mapPTermFC f g (PInferRef fc n) = PInferRef (g fc) n
+mapPTermFC f g (PRef fc fcs n) = PRef (g fc) (map g fcs) n
+mapPTermFC f g (PInferRef fc fcs n) = PInferRef (g fc) (map g fcs) n
 mapPTermFC f g (PPatvar fc n) = PPatvar (g fc) n
 mapPTermFC f g (PLam fc n fc' t1 t2) = PLam (f fc) n (g fc') (mapPTermFC f g t1) (mapPTermFC f g t2)
 mapPTermFC f g (PPi plic n fc t1 t2) = PPi plic n (g fc) (mapPTermFC f g t1) (mapPTermFC f g t2)
@@ -901,8 +901,8 @@ mapPTermFC f g (PCase fc t cases) = PCase (f fc) (mapPTermFC f g t) (map (\(l,r)
 mapPTermFC f g (PTrue fc info) = PTrue (f fc) info
 mapPTermFC f g (PResolveTC fc) =  PResolveTC (f fc)
 mapPTermFC f g (PRewrite fc t1 t2 t3) = PRewrite (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (fmap (mapPTermFC f g) t3)
-mapPTermFC f g (PPair fc info t1 t2) = PPair (f fc) info (mapPTermFC f g t1) (mapPTermFC f g t2)
-mapPTermFC f g (PDPair fc info t1 t2 t3) = PDPair (f fc) info (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
+mapPTermFC f g (PPair fc hls info t1 t2) = PPair (f fc) (map g hls) info (mapPTermFC f g t1) (mapPTermFC f g t2)
+mapPTermFC f g (PDPair fc hls info t1 t2 t3) = PDPair (f fc) (map g hls) info (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
 mapPTermFC f g (PAs fc n t) = PAs (f fc) n (mapPTermFC f g t)
 mapPTermFC f g (PAlternative ns ty ts) = PAlternative ns ty (map (mapPTermFC f g) ts)
 mapPTermFC f g (PHidden t) = PHidden (mapPTermFC f g t)
@@ -951,8 +951,8 @@ mapPT f t = f (mpt t) where
   mpt (PCase fc c os) = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
   mpt (PIfThenElse fc c t e) = PIfThenElse fc (mapPT f c) (mapPT f t) (mapPT f e)
   mpt (PTyped l r) = PTyped (mapPT f l) (mapPT f r)
-  mpt (PPair fc p l r) = PPair fc p (mapPT f l) (mapPT f r)
-  mpt (PDPair fc p l t r) = PDPair fc p (mapPT f l) (mapPT f t) (mapPT f r)
+  mpt (PPair fc hls p l r) = PPair fc hls p (mapPT f l) (mapPT f r)
+  mpt (PDPair fc hls p l t r) = PDPair fc hls p (mapPT f l) (mapPT f t) (mapPT f r)
   mpt (PAlternative ns a as) = PAlternative ns a (map (mapPT f) as)
   mpt (PHidden t) = PHidden (mapPT f t)
   mpt (PDoBlock ds) = PDoBlock (map (fmap (mapPT f)) ds)
@@ -1105,8 +1105,8 @@ type PArg = PArg' PTerm
 -- | Get the highest FC in a term, if one exists
 highestFC :: PTerm -> Maybe FC
 highestFC (PQuote _) = Nothing
-highestFC (PRef fc _) = Just fc
-highestFC (PInferRef fc _) = Just fc
+highestFC (PRef fc _ _) = Just fc
+highestFC (PInferRef fc _ _) = Just fc
 highestFC (PPatvar fc _) = Just fc
 highestFC (PLam fc _ _ _ _) = Just fc
 highestFC (PPi _ _ _ _ _) = Nothing
@@ -1120,8 +1120,8 @@ highestFC (PIfThenElse fc _ _ _) = Just fc
 highestFC (PTrue fc _) = Just fc
 highestFC (PResolveTC fc) = Just fc
 highestFC (PRewrite fc _ _ _) = Just fc
-highestFC (PPair fc _ _ _) = Just fc
-highestFC (PDPair fc _ _ _ _) = Just fc
+highestFC (PPair fc _ _ _ _) = Just fc
+highestFC (PDPair fc _ _ _ _ _) = Just fc
 highestFC (PAs fc _ _) = Just fc
 highestFC (PAlternative _ _ args) =
   case mapMaybe highestFC args of
@@ -1293,10 +1293,10 @@ updateSyntaxRules rules (SyntaxRules sr) = SyntaxRules newRules
     symCompare (SimpleExpr _) (Expr _) = GT
     symCompare (SimpleExpr e1) (SimpleExpr e2) = compare e1 e2
 
-initDSL = DSL (PRef f (sUN ">>="))
-              (PRef f (sUN "return"))
-              (PRef f (sUN "<*>"))
-              (PRef f (sUN "pure"))
+initDSL = DSL (PRef f [] (sUN ">>="))
+              (PRef f [] (sUN "return"))
+              (PRef f [] (sUN "<*>"))
+              (PRef f [] (sUN "pure"))
               Nothing
               Nothing
               Nothing
@@ -1351,11 +1351,11 @@ inferCon  = sMN 0 "__infer"
 inferDecl = PDatadecl inferTy NoFC
                       (PType bi)
                       [(emptyDocstring, [], inferCon, NoFC, PPi impl (sMN 0 "iType") NoFC (PType bi) (
-                                                   PPi expl (sMN 0 "ival") NoFC (PRef bi (sMN 0 "iType"))
-                                                   (PRef bi inferTy)), bi, [])]
+                                                   PPi expl (sMN 0 "ival") NoFC (PRef bi [] (sMN 0 "iType"))
+                                                   (PRef bi [] inferTy)), bi, [])]
 inferOpts = []
 
-infTerm t = PApp bi (PRef bi inferCon) [pimp (sMN 0 "iType") Placeholder True, pexp t]
+infTerm t = PApp bi (PRef bi [] inferCon) [pimp (sMN 0 "iType") Placeholder True, pexp t]
 infP = P (TCon 6 0) inferTy (TType (UVal 0))
 
 getInferTerm, getInferType :: Term -> Term
@@ -1406,15 +1406,15 @@ eqDoc =  fmap (const (Left $ Msg "")) . parseDocstring . T.pack $
           "You may need to use `(~=~)` to explicitly request heterogeneous equality."
 
 eqDecl = PDatadecl eqTy NoFC (piBindp impl [(n "A", PType bi), (n "B", PType bi)]
-                                      (piBind [(n "x", PRef bi (n "A")), (n "y", PRef bi (n "B"))]
+                                      (piBind [(n "x", PRef bi [] (n "A")), (n "y", PRef bi [] (n "B"))]
                                       (PType bi)))
                 [(reflDoc, reflParamDoc,
                   eqCon, NoFC, PPi impl (n "A") NoFC (PType bi) (
-                                        PPi impl (n "x") NoFC (PRef bi (n "A"))
-                                            (PApp bi (PRef bi eqTy) [pimp (n "A") Placeholder False,
+                                        PPi impl (n "x") NoFC (PRef bi [] (n "A"))
+                                            (PApp bi (PRef bi [] eqTy) [pimp (n "A") Placeholder False,
                                                                      pimp (n "B") Placeholder False,
-                                                                     pexp (PRef bi (n "x")),
-                                                                     pexp (PRef bi (n "x"))])), bi, [])]
+                                                                     pexp (PRef bi [] (n "x")),
+                                                                     pexp (PRef bi [] (n "x"))])), bi, [])]
     where n a = sUN a
           reflDoc = annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $
                       "A proof that `x` in fact equals `x`. To construct this, you must have already " ++
@@ -1535,7 +1535,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd e
       | Just str <- slist d p bnd e = depth d $ str
       | Just n <- snat d p e = depth d $ annotate (AnnData "Nat" "") (text (show n))
-    prettySe d p bnd (PRef fc n) = prettyName True (ppopt_impl ppo) bnd n
+    prettySe d p bnd (PRef fc _ n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe d p bnd (PLam fc n nfc ty sc) =
       depth d . bracket p startPrec . group . align . hang 2 $
       text "\\" <> prettyBindingOf n False <+> text "=>" <$>
@@ -1582,7 +1582,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     -- This case preserves the behavior of the former constructor PEq.
     -- It should be removed if feasible when the pretty-printing of infix
     -- operators in general is improved.
-    prettySe d p bnd (PApp _ (PRef _ n) [lt, rt, l, r])
+    prettySe d p bnd (PApp _ (PRef _ _ n) [lt, rt, l, r])
       | n == eqTy, ppopt_impl ppo =
           depth d . bracket p eqPrec $
             enclose lparen rparen eq <+>
@@ -1594,13 +1594,13 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       where eq = annName eqTy (text "=")
             eqPrec = startPrec
             prettyTerm = prettySe (decD d) (eqPrec + 1) bnd
-    prettySe d p bnd (PApp _ (PRef _ f) args) -- normal names, no explicit args
+    prettySe d p bnd (PApp _ (PRef _ _ f) args) -- normal names, no explicit args
       | UN nm <- basename f
       , not (ppopt_impl ppo) && null (getShowArgs args) =
           prettyName True (ppopt_impl ppo) bnd f
-    prettySe d p bnd (PAppBind _ (PRef _ f) [])
+    prettySe d p bnd (PAppBind _ (PRef _ _ f) [])
       | not (ppopt_impl ppo) = text "!" <> prettyName True (ppopt_impl ppo) bnd f
-    prettySe d p bnd (PApp _ (PRef _ op) args) -- infix operators
+    prettySe d p bnd (PApp _ (PRef _ _ op) args) -- infix operators
       | UN nm <- basename op
       , not (tnull nm) &&
         (not (ppopt_impl ppo)) && (not $ isAlpha (thead nm)) =
@@ -1627,10 +1627,10 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
                 inFix l r = align . group $
                   (prettySe (decD d) left bnd l <+> opName False) <$>
                     group (prettySe (decD d) right bnd r)
-    prettySe d p bnd (PApp _ hd@(PRef fc f) [tm]) -- symbols, like 'foo
+    prettySe d p bnd (PApp _ hd@(PRef fc _ f) [tm]) -- symbols, like 'foo
       | PConstant NoFC (Idris.Core.TT.Str str) <- getTm tm,
         f == sUN "Symbol_" = annotate (AnnType ("'" ++ str) ("The symbol " ++ str)) $
-                               char '\'' <> prettySe (decD d) startPrec bnd (PRef fc (sUN str))
+                               char '\'' <> prettySe (decD d) startPrec bnd (PRef fc [] (sUN str))
     prettySe d p bnd (PApp _ f as) = -- Normal prefix applications
       let args = getShowArgs as
           fp   = prettySe (decD d) (startPrec + 1) bnd f
@@ -1678,7 +1678,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       text "rewrite" <+> prettySe (decD d) (startPrec + 1) bnd l <+> text "in" <+> prettySe (decD d) startPrec bnd r
     prettySe d p bnd (PTyped l r) =
       lparen <> prettySe (decD d) startPrec bnd l <+> colon <+> prettySe (decD d) startPrec bnd r <> rparen
-    prettySe d p bnd pair@(PPair _ pun _ _) -- flatten tuples to the right, like parser
+    prettySe d p bnd pair@(PPair _ _ pun _ _) -- flatten tuples to the right, like parser
       | Just elts <- pairElts pair = depth d . enclose (ann lparen) (ann rparen) .
                                      align . group . vsep . punctuate (ann comma) $
                                      map (prettySe (decD d) startPrec bnd) elts
@@ -1686,7 +1686,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
                       TypeOrTerm -> id
                       IsType -> annName pairTy
                       IsTerm -> annName pairCon
-    prettySe d p bnd (PDPair _ pun l t r) =
+    prettySe d p bnd (PDPair _ _ pun l t r) =
       depth d $
       annotated lparen <>
       left <+>
@@ -1698,8 +1698,8 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
               IsTerm -> annName sigmaCon
               TypeOrTerm -> id
             (left, addBinding) = case (l, pun) of
-              (PRef _ n, IsType) -> (bindingOf n False <+> text ":" <+> prettySe (decD d) startPrec bnd t,        ((n, False) :))
-              _ ->                  (prettySe (decD d) startPrec bnd l, id            )
+              (PRef _ _ n, IsType) -> (bindingOf n False <+> text ":" <+> prettySe (decD d) startPrec bnd t, ((n, False) :))
+              _ ->                    (prettySe (decD d) startPrec bnd l, id)
     prettySe d p bnd (PAlternative ns a as) =
       lparen <> text "|" <> prettyAs <> text "|" <> rparen
         where
@@ -1782,11 +1782,11 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     slist' (Just d) _ _ _ | d <= 0 = Nothing
     slist' d _ _ e
       | containsHole e = Nothing
-    slist' d p bnd (PApp _ (PRef _ nil) _)
+    slist' d p bnd (PApp _ (PRef _ _ nil) _)
       | not (ppopt_impl ppo) && nsroot nil == sUN "Nil" = Just []
-    slist' d p bnd (PRef _ nil)
+    slist' d p bnd (PRef _ _ nil)
       | not (ppopt_impl ppo) && nsroot nil == sUN "Nil" = Just []
-    slist' d p bnd (PApp _ (PRef _ cons) args)
+    slist' d p bnd (PApp _ (PRef _ _ cons) args)
       | nsroot cons == sUN "::",
         (PExp {getTm=tl}):(PExp {getTm=hd}):imps <- reverse args,
         all isImp imps,
@@ -1810,15 +1810,15 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     slist _ _ _ _ = Nothing
 
     pairElts :: PTerm -> Maybe [PTerm]
-    pairElts (PPair _ _ x y) | Just elts <- pairElts y = Just (x:elts)
-                             | otherwise = Just [x, y]
+    pairElts (PPair _ _ _ x y) | Just elts <- pairElts y = Just (x:elts)
+                               | otherwise = Just [x, y]
     pairElts _ = Nothing
 
     natns = "Prelude.Nat."
 
     snat :: Maybe Int -> Int -> PTerm -> Maybe Integer
     snat (Just x) _ _ | x <= 0 = Nothing
-    snat d p (PRef _ z)
+    snat d p (PRef _ _ z)
       | show z == (natns++"Z") || show z == "Z" = Just 0
     snat d p (PApp _ s [PExp {getTm=n}])
       | show s == (natns++"S") || show s == "S",
@@ -1858,7 +1858,7 @@ isHoleName _      = False
 
 -- | Check whether a PTerm has been delaborated from a Term containing a Hole or Guess
 containsHole :: PTerm -> Bool
-containsHole pterm = or [isHoleName n | PRef _ n <- take 1000 $ universe pterm]
+containsHole pterm = or [isHoleName n | PRef _ _ n <- take 1000 $ universe pterm]
 
 -- | Pretty-printer helper for names that attaches the correct annotations
 prettyName
@@ -1995,7 +1995,7 @@ showTmImpls = flip (displayS . renderCompact . prettyImp verbosePPOption) ""
 
 instance Sized PTerm where
   size (PQuote rawTerm) = size rawTerm
-  size (PRef fc name) = size name
+  size (PRef fc _ name) = size name
   size (PLam fc name _ ty bdy) = 1 + size ty + size bdy
   size (PPi plicity name fc ty bdy) = 1 + size ty + size fc + size bdy
   size (PLet fc name nfc ty def bdy) = 1 + size ty + size def + size bdy
@@ -2007,9 +2007,9 @@ instance Sized PTerm where
   size (PTrue fc _) = 1
   size (PResolveTC fc) = 1
   size (PRewrite fc left right _) = 1 + size left + size right
-  size (PPair fc _ left right) = 1 + size left + size right
-  size (PDPair fs _ left ty right) = 1 + size left + size ty + size right
-  size (PAlternative ns a alts) = 1 + size alts
+  size (PPair fc _ _ left right) = 1 + size left + size right
+  size (PDPair fs _ _ left ty right) = 1 + size left + size ty + size right
+  size (PAlternative _ a alts) = 1 + size alts
   size (PHidden hidden) = size hidden
   size (PUnifyLog tm) = size tm
   size (PDisamb _ tm) = size tm
@@ -2036,7 +2036,7 @@ getPArity _ = 0
 allNamesIn :: PTerm -> [Name]
 allNamesIn tm = nub $ ni [] tm
   where -- TODO THINK added niTacImp, but is it right?
-    ni env (PRef _ n)
+    ni env (PRef _ _ n)
         | not (n `elem` env) = [n]
     ni env (PPatvar _ n) = [n]
     ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
@@ -2049,10 +2049,10 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PHidden tm)    = ni env tm
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ _ l r)   = ni env l ++ ni env r
-    ni env (PDPair _ _ (PRef _ n) Placeholder r)  = n : ni env r
-    ni env (PDPair _ _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
-    ni env (PDPair _ _ l t r)  = ni env l ++ ni env t ++ ni env r
+    ni env (PPair _ _ _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ _ _ (PRef _ _ n) Placeholder r)  = n : ni env r
+    ni env (PDPair _ _ _ (PRef _ _ n) t r)  = ni env t ++ ni (n:env) r
+    ni env (PDPair _ _ _ l t r)  = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative ns a ls) = concatMap (ni env) ls
     ni env (PUnifyLog tm)    = ni env tm
     ni env (PDisamb _ tm)    = ni env tm
@@ -2076,9 +2076,9 @@ boundNamesIn tm = S.toList (ni S.empty tm)
     ni set (PPi p n _ ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
     ni set (PRewrite _ l r _) = ni (ni set l) r
     ni set (PTyped l r) = ni (ni set l) r
-    ni set (PPair _ _ l r) = ni (ni set l) r
-    ni set (PDPair _ _ (PRef _ n) t r) = ni (ni set t) r
-    ni set (PDPair _ _ l t r) = ni (ni (ni set l) t) r
+    ni set (PPair _ _ _ l r) = ni (ni set l) r
+    ni set (PDPair _ _ _ (PRef _ _ n) t r) = ni (ni set t) r
+    ni set (PDPair _ _ _ l t r) = ni (ni (ni set l) t) r
     ni set (PAlternative ns a as) = niTms set as
     ni set (PHidden tm) = ni set tm
     ni set (PUnifyLog tm) = ni set tm
@@ -2096,12 +2096,12 @@ boundNamesIn tm = S.toList (ni S.empty tm)
 implicitNamesIn :: [Name] -> IState -> PTerm -> [Name]
 implicitNamesIn uvars ist tm = nub $ ni [] tm
   where
-    ni env (PRef _ n)
+    ni env (PRef _ _ n)
         | not (n `elem` env)
             = case lookupTy n (tt_ctxt ist) of
                 [] -> [n]
                 _ -> if n `elem` uvars then [n] else []
-    ni env (PApp _ f@(PRef _ n) as)
+    ni env (PApp _ f@(PRef _ _ n) as)
         | n `elem` uvars = ni env f ++ concatMap (ni env) (map getTm as)
         | otherwise = concatMap (ni env) (map getTm as)
     ni env (PApp _ f as) = ni env f ++ concatMap (ni env) (map getTm as)
@@ -2115,9 +2115,9 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
     ni env (PPi p n _ ty sc) = ni env ty ++ ni (n:env) sc
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ _ l r)   = ni env l ++ ni env r
-    ni env (PDPair _ _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
-    ni env (PDPair _ _ l t r) = ni env l ++ ni env t ++ ni env r
+    ni env (PPair _ _ _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ _ _ (PRef _ _ n) t r) = ni env t ++ ni (n:env) r
+    ni env (PDPair _ _ _ l t r) = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative ns a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
@@ -2129,7 +2129,7 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
 namesIn uvars ist tm = nub $ ni [] tm
   where
-    ni env (PRef _ n)
+    ni env (PRef _ _ n)
         | not (n `elem` env)
             = case lookupTy n (tt_ctxt ist) of
                 [] -> [n]
@@ -2145,9 +2145,9 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ _ l r)   = ni env l ++ ni env r
-    ni env (PDPair _ _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
-    ni env (PDPair _ _ l t r) = ni env l ++ ni env t ++ ni env r
+    ni env (PPair _ _ _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ _ _ (PRef _ _ n) t r) = ni env t ++ ni (n:env) r
+    ni env (PDPair _ _ _ l t r) = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative ns a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
@@ -2163,7 +2163,7 @@ namesIn uvars ist tm = nub $ ni [] tm
 usedNamesIn :: [Name] -> IState -> PTerm -> [Name]
 usedNamesIn vars ist tm = nub $ ni [] tm
   where -- TODO THINK added niTacImp, but is it right?
-    ni env (PRef _ n)
+    ni env (PRef _ _ n)
         | n `elem` vars && not (n `elem` env)
             = case lookupDefExact n (tt_ctxt ist) of
                 Nothing -> [n]
@@ -2176,9 +2176,9 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
     ni env (PRewrite _ l r _) = ni env l ++ ni env r
     ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ _ l r)   = ni env l ++ ni env r
-    ni env (PDPair _ _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
-    ni env (PDPair _ _ l t r) = ni env l ++ ni env t ++ ni env r
+    ni env (PPair _ _ _ l r)   = ni env l ++ ni env r
+    ni env (PDPair _ _ _ (PRef _ _ n) t r) = ni env t ++ ni (n:env) r
+    ni env (PDPair _ _ _ l t r) = ni env l ++ ni env t ++ ni env r
     ni env (PAlternative ns a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm

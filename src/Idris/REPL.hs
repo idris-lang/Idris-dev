@@ -345,7 +345,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.TypeOf name) =
   case splitName name of
     Left err -> iPrintError err
     Right n -> process "(idemode)"
-                 (Check (PRef (FC "(idemode)" (0,0) (0,0)) n))
+                 (Check (PRef (FC "(idemode)" (0,0) (0,0)) [] n))
 runIdeModeCommand h id orig fn mods (IdeMode.DocsFor name w) =
   case parseConst orig name of
     Success c -> process "(idemode)" (DocStr (Right c) (howMuch w))
@@ -581,7 +581,7 @@ idemodeProcess fn (NewDefn decls) = do process fn (NewDefn decls)
                                        iPrintResult "defined"
 idemodeProcess fn (Undefine n) = process fn (Undefine n)
 idemodeProcess fn (ExecVal t) = process fn (ExecVal t)
-idemodeProcess fn (Check (PRef x n)) = process fn (Check (PRef x n))
+idemodeProcess fn (Check (PRef x hls n)) = process fn (Check (PRef x hls n))
 idemodeProcess fn (Check t) = process fn (Check t)
 idemodeProcess fn (Core t) = process fn (Core t)
 idemodeProcess fn (DocStr n w) = process fn (DocStr n w)
@@ -893,7 +893,7 @@ process fn (ExecVal t)
                                               prettyIst ist (delab ist ty'))
                        iPrintTermWithType resOut tyOut
 
-process fn (Check (PRef _ n))
+process fn (Check (PRef _ _ n))
    = do ctxt <- getContext
         ist <- getIState
         let ppo = ppOptionIst ist
@@ -1173,8 +1173,8 @@ process fn (Compile codegen f)
                        let iface = Interface `elem` opts
                        m <- if iface then return Nothing else
                             do (m', _) <- elabVal recinfo ERHS
-                                            (PApp fc (PRef fc (sUN "run__IO"))
-                                            [pexp $ PRef fc (sNS (sUN "main") ["Main"])])
+                                            (PApp fc (PRef fc [] (sUN "run__IO"))
+                                            [pexp $ PRef fc [] (sNS (sUN "main") ["Main"])])
                                return (Just m')
                        ir <- compile codegen f m
                        i <- getIState
@@ -1345,7 +1345,7 @@ process fn (TransformInfo n)
 --                    iputStrLn "---------------"
 --                    showTrans i ts
 
-process fn (PPrint fmt width (PRef _ n))
+process fn (PPrint fmt width (PRef _ _ n))
    = do outs <- pprintDef n
         iPrintResult =<< renderExternal fmt width (vsep outs)
 

@@ -259,15 +259,15 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
 
     mkLazy (PPi pl n nfc ty sc)
         = let ty' = if getTyName ty
-                       then PApp fc (PRef fc (sUN "Lazy'"))
-                            [pexp (PRef fc (sUN "LazyCodata")),
+                       then PApp fc (PRef fc [] (sUN "Lazy'"))
+                            [pexp (PRef fc [] (sUN "LazyCodata")),
                              pexp ty]
                        else ty in
               PPi pl n nfc ty' (mkLazy sc)
     mkLazy t = t
 
-    getTyName (PApp _ (PRef _ n) _) = n == nsroot tn
-    getTyName (PRef _ n) = n == nsroot tn
+    getTyName (PApp _ (PRef _ _ n) _) = n == nsroot tn
+    getTyName (PRef _ _ n) = n == nsroot tn
     getTyName _ = False
 
 
@@ -326,11 +326,11 @@ elabCaseFun ind paramPos n ty cons info = do
   scrutineeIdxs <- namePis False idxs
   let motiveConstr = [(motiveName, expl, motive)]
   let scrutinee = (scrutineeName, expl, applyCons n (interlievePos paramPos generalParams scrutineeIdxs 0))
-  let eliminatorTy = piConstr (generalParams ++ motiveConstr ++ consTerms ++ scrutineeIdxs ++ [scrutinee]) (applyMotive (map (\(n,_,_) -> PRef elimFC n) scrutineeIdxs) (PRef elimFC scrutineeName))
+  let eliminatorTy = piConstr (generalParams ++ motiveConstr ++ consTerms ++ scrutineeIdxs ++ [scrutinee]) (applyMotive (map (\(n,_,_) -> PRef elimFC [] n) scrutineeIdxs) (PRef elimFC [] scrutineeName))
   let eliminatorTyDecl = PTy (fmap (const (Left $ Msg "")) . parseDocstring . T.pack $ show n) [] defaultSyntax elimFC [TotalFn] elimDeclName NoFC eliminatorTy
   let clauseConsElimArgs = map getPiName consTerms
   let clauseGeneralArgs' = map getPiName generalParams ++ [motiveName] ++ clauseConsElimArgs
-  let clauseGeneralArgs  = map (\arg -> pexp (PRef elimFC arg)) clauseGeneralArgs'
+  let clauseGeneralArgs  = map (\arg -> pexp (PRef elimFC [] arg)) clauseGeneralArgs'
   let elimSig = "-- case function signature: " ++ showTmImpls eliminatorTy
   elimLog elimSig
   eliminatorClauses <- mapM (\(cns, cnsElim) -> generateEliminatorClauses cns cnsElim clauseGeneralArgs generalParams) (zip cons clauseConsElimArgs)
@@ -381,7 +381,7 @@ elabCaseFun ind paramPos n ty cons info = do
         mkPiName _ (oldName, pl, piarg) =  do name <- freshName $ keyOf piarg
                                               return (oldName, (name, pl, piarg))
           where keyOf :: PTerm -> String
-                keyOf (PRef _ name) | isLetter (nameStart name) = (toLower $ nameStart name):"__"
+                keyOf (PRef _ _ name) | isLetter (nameStart name) = (toLower $ nameStart name):"__"
                 keyOf (PApp _ tyf _) = keyOf tyf
                 keyOf (PType _) = "ty__"
                 keyOf _     = "carg__"
@@ -446,10 +446,10 @@ elabCaseFun ind paramPos n ty cons info = do
           case findIndex (== n) oldParams of
             Nothing -> (PPi pl n fc (removeParamPis oldParams params tyb) (removeParamPis oldParams params tyr))
             Just i  -> (removeParamPis oldParams params tyr)
-        removeParamPis oldParams params (PRef _ n) =
+        removeParamPis oldParams params (PRef _ _ n) =
           case findIndex (== n) oldParams of
-               Nothing -> (PRef elimFC n)
-               Just i  -> let (newname,_,_) = params !! i in (PRef elimFC (newname))
+               Nothing -> (PRef elimFC [] n)
+               Just i  -> let (newname,_,_) = params !! i in (PRef elimFC [] (newname))
         removeParamPis oldParams params (PApp _ cns args) =
           PApp elimFC (removeParamPis oldParams params cns) $ replaceParamArgs args
             where replaceParamArgs :: [PArg] -> [PArg]
@@ -460,7 +460,7 @@ elabCaseFun ind paramPos n ty cons info = do
                       [n]  ->
                         case findIndex (== n) oldParams of
                           Nothing -> arg:replaceParamArgs args
-                          Just i  -> let (newname,_,_) = params !! i in arg {getTm = PRef elimFC newname}:replaceParamArgs args
+                          Just i  -> let (newname,_,_) = params !! i in arg {getTm = PRef elimFC [] newname}:replaceParamArgs args
         removeParamPis oldParams params t = t
 
         paramNamesOf :: Int -> [Int] -> [PArg] -> [Name]
@@ -468,8 +468,8 @@ elabCaseFun ind paramPos n ty cons info = do
         paramNamesOf i paramPos (arg:args)  = (if i `elem` paramPos then extractName (getTm arg) else []) ++ paramNamesOf (i+1) paramPos args
 
         extractName :: PTerm -> [Name]
-        extractName (PRef _ n) = [n]
-        extractName _          = []
+        extractName (PRef _ _ n) = [n]
+        extractName _            = []
 
         splitArgPms :: PTerm -> ([PTerm], [PTerm])
         splitArgPms (PApp _ f args) = splitArgPms' args
@@ -505,23 +505,23 @@ elabCaseFun ind paramPos n ty cons info = do
           let (_, consIdxs) = splitArgPms resTy
           return $ piConstr (implidxs ++ consArgs ++ recMotives) (applyMotive consIdxs (applyCons cnm consArgs))
             where applyRecMotive :: (Name, Plicity, PTerm) -> (Name, Plicity, PTerm)
-                  applyRecMotive (n,_,ty)  = (sUN $ "ih" ++ simpleName n, expl, applyMotive idxs (PRef elimFC n))
+                  applyRecMotive (n,_,ty)  = (sUN $ "ih" ++ simpleName n, expl, applyMotive idxs (PRef elimFC [] n))
                       where (_, idxs) = splitArgPms ty
 
         findRecArgs :: [(Name, Plicity, PTerm)] -> [(Name, Plicity, PTerm)]
         findRecArgs []                            = []
-        findRecArgs (ty@(_,_,PRef _ tn):rs)            | simpleName tn == simpleName n = ty:findRecArgs rs
-        findRecArgs (ty@(_,_,PApp _ (PRef _ tn) _):rs) | simpleName tn == simpleName n = ty:findRecArgs rs
-        findRecArgs (ty:rs)                                                            = findRecArgs rs
+        findRecArgs (ty@(_,_,PRef _ _ tn):rs)            | simpleName tn == simpleName n = ty:findRecArgs rs
+        findRecArgs (ty@(_,_,PApp _ (PRef _ _ tn) _):rs) | simpleName tn == simpleName n = ty:findRecArgs rs
+        findRecArgs (ty:rs)                                                              = findRecArgs rs
 
         applyCons :: Name -> [(Name, Plicity, PTerm)] -> PTerm
-        applyCons tn targs = PApp elimFC (PRef elimFC tn) (map convertArg targs)
+        applyCons tn targs = PApp elimFC (PRef elimFC [] tn) (map convertArg targs)
 
         convertArg :: (Name, Plicity, PTerm) -> PArg
-        convertArg (n, _, _)      = pexp (PRef elimFC n)
+        convertArg (n, _, _)      = pexp (PRef elimFC [] n)
 
         applyMotive :: [PTerm] -> PTerm -> PTerm
-        applyMotive idxs t = PApp elimFC (PRef elimFC motiveName) (map pexp idxs ++ [pexp t])
+        applyMotive idxs t = PApp elimFC (PRef elimFC [] motiveName) (map pexp idxs ++ [pexp t])
 
         getPiName :: (Name, Plicity, PTerm) -> Name
         getPiName (name,_,_) = name
@@ -539,11 +539,11 @@ elabCaseFun ind paramPos n ty cons info = do
           let (_, generalIdxs') = splitArgPms resTy
           let generalIdxs = map pexp generalIdxs'
           consArgs <- namePis False args
-          let lhsPattern = PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ generalIdxs ++ [pexp $ applyCons cnm consArgs])
+          let lhsPattern = PApp elimFC (PRef elimFC [] elimDeclName) (generalArgs ++ generalIdxs ++ [pexp $ applyCons cnm consArgs])
           let recArgs = findRecArgs consArgs
           let recElims = if ind then map applyRecElim recArgs else []
-          let rhsExpr    = PApp elimFC (PRef elimFC cnsElim) (map convertArg implidxs ++ map convertArg consArgs ++ recElims)
+          let rhsExpr    = PApp elimFC (PRef elimFC [] cnsElim) (map convertArg implidxs ++ map convertArg consArgs ++ recElims)
           return $ PClause elimFC elimDeclName lhsPattern [] rhsExpr []
             where applyRecElim :: (Name, Plicity, PTerm) -> PArg
-                  applyRecElim (constr@(recCnm,_,recTy)) = pexp $ PApp elimFC (PRef elimFC elimDeclName) (generalArgs ++ map pexp idxs ++ [pexp $ PRef elimFC recCnm])
+                  applyRecElim (constr@(recCnm,_,recTy)) = pexp $ PApp elimFC (PRef elimFC [] elimDeclName) (generalArgs ++ map pexp idxs ++ [pexp $ PRef elimFC [] recCnm])
                     where (_, idxs) = splitArgPms recTy

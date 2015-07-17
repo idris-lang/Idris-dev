@@ -174,9 +174,9 @@ extension syn ns rules =
                      _ -> n
 
     update :: [(Name, SynMatch)] -> PTerm -> PTerm
-    update ns (PRef fc n) = case lookup n ns of
-                              Just (SynTm t) -> t
-                              _ -> PRef fc n
+    update ns (PRef fc hls n) = case lookup n ns of
+                                  Just (SynTm t) -> t
+                                  _ -> PRef fc hls n
     update ns (PLam fc n nfc ty sc)
       = PLam fc (updateB ns n) nfc (update ns ty) (update (dropn n ns) sc)
     update ns (PPi p n fc ty sc)
@@ -193,9 +193,9 @@ extension syn ns rules =
       = PCase fc (update ns c) (map (pmap (update ns)) opts)
     update ns (PIfThenElse fc c t f)
       = PIfThenElse fc (update ns c) (update ns t) (update ns f)
-    update ns (PPair fc p l r) = PPair fc p (update ns l) (update ns r)
-    update ns (PDPair fc p l t r)
-      = PDPair fc p (update ns l) (update ns t) (update ns r)
+    update ns (PPair fc hls p l r) = PPair fc hls p (update ns l) (update ns r)
+    update ns (PDPair fc hls p l t r)
+      = PDPair fc hls p (update ns l) (update ns t) (update ns r)
     update ns (PAlternative ms a as) = PAlternative ms a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
@@ -346,7 +346,7 @@ simpleExpr syn =
         <|> do (x, FC f (l, c) end) <- try (lchar '?' *> name)
                return (PMetavar (FC f (l, c-1) end) x)
         <|> do lchar '%'; fc <- getFC; reserved "instance"; return (PResolveTC fc)
-        <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc (SN $ ElimN t))
+        <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc [] (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
         <|> try (do reserved "Type"; symbol "*"; return $ PUniverse AllTypes)
@@ -358,16 +358,16 @@ simpleExpr syn =
                fc <- getFC
                return (modifyConst syn fc (PConstant cfc c))
         <|> do symbol "'"; fc <- getFC; str <- fst <$> name
-               return (PApp fc (PRef fc (sUN "Symbol_"))
+               return (PApp fc (PRef fc [] (sUN "Symbol_"))
                           [pexp (PConstant NoFC (Str (show str)))])
         <|> do (x, fc) <- fnName
                if inPattern syn
-                  then option (PRef fc x)
+                  then option (PRef fc [fc] x)
                               (do reservedOp "@"
                                   s <- simpleExpr syn
                                   fcIn <- getFC
                                   return (PAs fcIn x s))
-                  else return (PRef fc x)
+                  else return (PRef fc [fc] x)
         <|> idiom syn
         <|> listExpr syn
         <|> alt syn
@@ -388,9 +388,9 @@ Bracketed ::= '(' Bracketed'
 @
  -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
-bracketed syn = do fc <- getFC
+bracketed syn = do (FC fn (sl, sc) _) <- getFC
                    lchar '(' <?> "parenthesized expression"
-                   bracketed' fc syn
+                   bracketed' (FC fn (sl, sc) (sl, sc+1)) syn
 {- |Parses the rest of an expression in braces
 @
 Bracketed' ::=
@@ -409,52 +409,52 @@ bracketed' open syn =
             do (FC f start (l, c)) <- getFC
                lchar ')'
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
-        <|> try (do (ln, lnfc) <- name; lchar ':';
+        <|> try (do (ln, lnfc) <- name
+                    colonFC <- lcharFC ':'
                     lty <- expr syn
-                    reservedOp "**"
+                    starsFC <- reservedOpFC "**"
                     fc <- getFC
                     r <- expr syn
-                    lchar ')'
-                    return (PDPair fc TypeOrTerm (PRef lnfc ln) lty r))
+                    close <- lcharFC ')'
+                    return (PDPair fc [open, colonFC, starsFC, close] TypeOrTerm (PRef lnfc [] ln) lty r))
         <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
                     -- No prefix operators! (bit of a hack here...)
                     if (o == "-" || o == "!")
                       then fail "minus not allowed in section"
                       else return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
-                         (PApp fc (PRef fc (sUN o)) [pexp (PRef fc (sMN 1000 "ARG")),
-                                                     pexp e]))
+                         (PApp fc (PRef fc [] (sUN o)) [pexp (PRef fc [] (sMN 1000 "ARG")),
+                                                        pexp e]))
         <|> try (do l <- simpleExpr syn
                     op <- option Nothing (do o <- operator
                                              lchar ')'
                                              return (Just o)) 
                     fc0 <- getFC
                     case op of
-                         Nothing -> bracketedExpr syn l
+                         Nothing -> bracketedExpr syn open l
                          Just o -> return $ PLam fc0 (sMN 1000 "ARG") NoFC Placeholder
-                             (PApp fc0 (PRef fc0 (sUN o)) [pexp l,
-                                                           pexp (PRef fc0 (sMN 1000 "ARG"))]))
+                             (PApp fc0 (PRef fc0 [] (sUN o)) [pexp l,
+                                                              pexp (PRef fc0 [] (sMN 1000 "ARG"))]))
         <|> do l <- expr syn
-               bracketedExpr syn l
+               bracketedExpr syn open l
 
-bracketedExpr :: SyntaxInfo -> PTerm -> IdrisParser PTerm
-bracketedExpr syn e =
+-- | Parse the contents of parentheses, after an expression has been parsed.
+bracketedExpr :: SyntaxInfo -> FC -> PTerm -> IdrisParser PTerm
+bracketedExpr syn openParenFC e =
              do lchar ')'; return e
-        <|>  do fc <- do fc <- getFC
-                         lchar ','
-                         return fc
-                rs <- sepBy1 (do fc' <- getFC; r <- expr syn; return (r, fc')) (lchar ',')
-                lchar ')'
-                return $ PPair fc TypeOrTerm e (mergePairs rs)
-        <|>  do fc <- do fc <- getFC
-                         reservedOp "**"
-                         return fc
+        <|>  do exprs <- many (do comma <- lcharFC ','
+                                  r <- expr syn
+                                  return (r, comma))
+                closeParenFC <- lcharFC ')'
+                let hilite = [openParenFC, closeParenFC] ++ map snd exprs
+                return $ PPair openParenFC hilite TypeOrTerm e (mergePairs exprs)
+        <|>  do starsFC <- reservedOpFC "**"
                 r <- expr syn
-                lchar ')'
-                return (PDPair fc TypeOrTerm e Placeholder r)
+                closeParenFC <- lcharFC ')'
+                return (PDPair starsFC [openParenFC, starsFC, closeParenFC] TypeOrTerm e Placeholder r)
         <?> "end of bracketed expression"
   where mergePairs :: [(PTerm, FC)] -> PTerm
         mergePairs [(t, fc)]    = t
-        mergePairs ((t, fc):rs) = PPair fc TypeOrTerm t (mergePairs rs)
+        mergePairs ((t, fc):rs) = PPair fc [] TypeOrTerm t (mergePairs rs)
 
 -- bit of a hack here. If the integer doesn't fit in an Int, treat it as a
 -- big integer, otherwise try fromInteger and the constants as alternatives.
@@ -465,7 +465,7 @@ modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant inFC (BI x))
     | not (inPattern syn)
         = PAlternative [] FirstSuccess
-             (PApp fc (PRef fc (sUN "fromInteger")) [pexp (PConstant NoFC (BI (fromInteger x)))]
+             (PApp fc (PRef fc [] (sUN "fromInteger")) [pexp (PConstant NoFC (BI (fromInteger x)))]
              : consts)
     | otherwise = PAlternative [] FirstSuccess consts
     where
@@ -580,7 +580,7 @@ app syn = do f <- simpleExpr syn
                  return (PLet fc (sMN 0 "match") NoFC
                                f
                                (PMatchApp fc ff)
-                               (PRef fc (sMN 0 "match")))
+                               (PRef fc [] (sMN 0 "match")))
               <?> "matching application expression") <|> (do
              fc <- getFC
              i <- get
@@ -589,17 +589,17 @@ app syn = do f <- simpleExpr syn
                [] -> return f
                _  -> return (flattenFromInt fc f args))
        <?> "function application"
-   where 
+   where
     -- bit of a hack to deal with the situation where we're applying a
     -- literal to an argument, which we may want for obscure applications
     -- of fromInteger, and this will help disambiguate better.
     -- We know, at least, it won't be one of the constants!
     flattenFromInt fc (PAlternative _ x alts) args
       | Just i <- getFromInt alts
-           = PApp fc (PRef fc (sUN "fromInteger")) (i : args)
+           = PApp fc (PRef fc [] (sUN "fromInteger")) (i : args)
     flattenFromInt fc f args = PApp fc f args
 
-    getFromInt ((PApp _ (PRef _ n) [a]) : _) | n == sUN "fromInteger" = Just a
+    getFromInt ((PApp _ (PRef _ _ n) [a]) : _) | n == sUN "fromInteger" = Just a
     getFromInt (_ : xs) = getFromInt xs
     getFromInt _ = Nothing
 
@@ -628,10 +628,10 @@ ImplicitArg ::=
 -}
 implicitArg :: SyntaxInfo -> IdrisParser PArg
 implicitArg syn = do lchar '{'
-                     n <- fst <$> name
+                     (n, nfc) <- name
                      fc <- getFC
-                     v <- option (PRef fc n) (do lchar '='
-                                                 expr syn)
+                     v <- option (PRef nfc [nfc] n) (do lchar '='
+                                                        expr syn)
                      lchar '}'
                      return (pimp n v True)
                   <?> "implicit function argument"
@@ -735,14 +735,14 @@ recordType syn =
                 case rec of
                    Nothing ->
                        return (PLam fc (sMN 0 "fldx") NoFC Placeholder
-                                   (applyAll fc fields (PRef fc (sMN 0 "fldx"))))
+                                   (applyAll fc fields (PRef fc [] (sMN 0 "fldx"))))
                    Just v -> return (applyAll fc fields v)
               Right fields ->
                 case rec of
                    Nothing ->
                        return (PLam fc (sMN 0 "fldx") NoFC Placeholder
-                                 (getAll fc (reverse fields) 
-                                     (PRef fc (sMN 0 "fldx"))))
+                                 (getAll fc (reverse fields)
+                                     (PRef fc [] (sMN 0 "fldx"))))
                    Just v -> return (getAll fc (reverse fields) v)
 
        <?> "record setting expression"
@@ -766,17 +766,17 @@ recordType syn =
          applyAll fc [] x = x
          applyAll fc ((ns, e) : es) x
             = applyAll fc es (doUpdate fc ns e x)
-            
+
          doUpdate fc [n] e get
-              = PApp fc (PRef fc (mkType n)) [pexp e, pexp get]
+              = PApp fc (PRef fc [] (mkType n)) [pexp e, pexp get]
          doUpdate fc (n : ns) e get
-              = PApp fc (PRef fc (mkType n)) 
-                  [pexp (doUpdate fc ns e (PApp fc (PRef fc n) [pexp get])), 
+              = PApp fc (PRef fc [] (mkType n))
+                  [pexp (doUpdate fc ns e (PApp fc (PRef fc [] n) [pexp get])),
                    pexp get]
 
          getAll :: FC -> [Name] -> PTerm -> PTerm
-         getAll fc [n] e = PApp fc (PRef fc n) [pexp e]
-         getAll fc (n:ns) e = PApp fc (PRef fc n) [pexp (getAll fc ns e)]
+         getAll fc [n] e = PApp fc (PRef fc [] n) [pexp e]
+         getAll fc (n:ns) e = PApp fc (PRef fc [] n) [pexp (getAll fc ns e)]
 
 
 -- | Creates setters for record types on necessary functions
@@ -838,7 +838,7 @@ lambda syn = do lchar '\\' <?> "lambda expression"
           pmList [] sc = sc
           pmList ((i, (fc, x)) : xs) sc
                 = PLam fc (sMN i "lamp") NoFC Placeholder
-                        (PCase fc (PRef fc (sMN i "lamp"))
+                        (PCase fc (PRef fc [] (sMN i "lamp"))
                                 [(x, pmList xs sc)])
           lambdaTail :: IdrisParser PTerm
           lambdaTail = impossible <|> symbol "=>" *> expr syn
@@ -859,7 +859,7 @@ rewriteTerm syn = do kw <- reservedFC "rewrite"
                      highlightP kw AnnKeyword
                      highlightP kw' AnnKeyword
                      return (PRewrite fc
-                             (PApp fc (PRef fc (sUN "sym")) [pexp prf]) sc
+                             (PApp fc (PRef fc [] (sUN "sym")) [pexp prf]) sc
                                giving)
                   <?> "term rewrite expression"
 
@@ -882,7 +882,7 @@ let_ syn = try (do kw <- reservedFC "let"
                    return (buildLets ls sc))
            <?> "let binding"
   where buildLets [] sc = sc
-        buildLets ((fc, PRef nfc n, ty, v, []) : ls) sc
+        buildLets ((fc, PRef nfc _ n, ty, v, []) : ls) sc
           = PLet fc n nfc ty v (buildLets ls sc)
         buildLets ((fc, pat, ty, v, alts) : ls) sc
           = PCase fc v ((pat, buildLets ls sc) : alts)
@@ -1144,20 +1144,26 @@ listExpr syn = do (FC f (l, c) _) <- getFC
                                qs <- sepBy1 (do_ syn) (lchar ',')
                                lchar ']'
                                return (PDoBlock (map addGuard qs ++
-                                          [DoExp fc (PApp fc (PRef fc (sUN "return"))
+                                          [DoExp fc (PApp fc (PRef fc [] (sUN "return"))
                                                        [pexp x])]))) <|>
-                            (do xs <- many ((lchar ',' <?> "list element") *> expr syn)
+                            (do xs <- many (do (FC fn (sl, sc) _) <- getFC
+                                               lchar ',' <?> "list element"
+                                               let commaFC = FC fn (sl, sc) (sl, sc + 1)
+                                               elt <- expr syn
+                                               return (elt, commaFC))
+                                (FC fn (sl, sc) _) <- getFC
                                 lchar ']' <?> "end of list expression"
-                                return (mkList fc (x:xs))))
+                                let rbrackFC = FC fn (sl, sc) (sl, sc+1)
+                                return (mkList fc rbrackFC ((x, (FC f (l, c) (l, c+1))) : xs))))
                 <?> "list expression"
   where
     mkNil :: FC -> PTerm
-    mkNil fc = PRef fc (sUN "Nil")
-    mkList :: FC -> [PTerm] -> PTerm
-    mkList fc [] = PRef NoFC (sUN "Nil")
-    mkList fc (x : xs) = PApp fc (PRef NoFC (sUN "::")) [pexp x, pexp (mkList fc xs)]
+    mkNil fc = PRef fc [fc] (sUN "Nil")
+    mkList :: FC -> FC -> [(PTerm, FC)] -> PTerm
+    mkList errFC nilFC [] = PRef nilFC [nilFC] (sUN "Nil")
+    mkList errFC nilFC ((x, fc) : xs) = PApp errFC (PRef fc [fc] (sUN "::")) [pexp x, pexp (mkList errFC nilFC xs)]
     addGuard :: PDo -> PDo
-    addGuard (DoExp fc e) = DoExp fc (PApp fc (PRef fc (sUN "guard"))
+    addGuard (DoExp fc e) = DoExp fc (PApp fc (PRef fc [] (sUN "guard"))
                                               [pexp e])
     addGuard x = x
 
@@ -1216,7 +1222,7 @@ do_ syn
                option (DoBind fc i ifc e)
                       (do lchar '|'
                           ts <- sepBy1 (do_alt syn) (lchar '|')
-                          return (DoBindP fc (PRef ifc i) e ts)))
+                          return (DoBindP fc (PRef ifc [ifc] i) e ts)))
    <|> try (do i <- expr' syn
                symbol "<-"
                fc <- getFC

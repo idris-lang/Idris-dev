@@ -28,10 +28,10 @@ mkPatTm t = do i <- getIState
                let timp = addImpl' True [] [] [] i t
                evalStateT (toTT (mapPT deNS timp)) 0
   where
-    toTT (PRef _ n) = do i <- lift getIState
-                         case lookupNameDef n (tt_ctxt i) of
-                              [(n', TyDecl nt _)] -> return $ P nt n' Erased
-                              _ -> return $ P Ref n Erased
+    toTT (PRef _ _ n) = do i <- lift getIState
+                           case lookupNameDef n (tt_ctxt i) of
+                                [(n', TyDecl nt _)] -> return $ P nt n' Erased
+                                _ -> return $ P Ref n Erased
     toTT (PApp _ t args) = do t' <- toTT t
                               args' <- mapM (toTT . getTm) args
                               return $ mkApp t' args'
@@ -42,7 +42,7 @@ mkPatTm t = do i <- getIState
                 put (v + 1)
                 return (P Bound (sMN v "imp") Erased)
 
-    deNS (PRef f (NS n _)) = PRef f n
+    deNS (PRef f hl (NS n _)) = PRef f hl n
     deNS t = t
 
 -- | Given a list of LHSs, generate a extra clauses which cover the remaining
@@ -112,7 +112,7 @@ genClauses fc n xs given
             | all (== [Placeholder]) args = []
         mkClauses parg args
             = do args' <- mkArg args
-                 let tm = PApp fc (PRef fc n) (zipWith upd args' parg)
+                 let tm = PApp fc (PRef fc [] n) (zipWith upd args' parg)
                  return tm
           where
             mkArg :: [[PTerm]] -> [[PTerm]]
@@ -214,14 +214,14 @@ genAll i args
     nubMap f acc (x : xs) = nubMap f (fnub' acc (f x)) xs
 
     otherPats :: PTerm -> [PTerm]
-    otherPats o@(PRef fc n) = ops fc n [] o
-    otherPats o@(PApp _ (PRef fc n) xs) = ops fc n xs o
-    otherPats o@(PPair fc _ l r)
+    otherPats o@(PRef fc hl n) = ops fc n [] o
+    otherPats o@(PApp _ (PRef fc hl n) xs) = ops fc n xs o
+    otherPats o@(PPair fc hls _ l r)
         = ops fc pairCon
                 ([pimp (sUN "A") Placeholder True,
                   pimp (sUN "B") Placeholder True] ++
                  [pexp l, pexp r]) o
-    otherPats o@(PDPair fc p t _ v)
+    otherPats o@(PDPair fc hls p t _ v)
         = ops fc (sUN "Ex_intro")
                 ([pimp (sUN "a") Placeholder True,
                   pimp (sUN "P") Placeholder True] ++
@@ -232,7 +232,7 @@ genAll i args
     ops fc n xs o
         | (TyDecl c@(DCon _ arity _) ty : _) <- lookupDef n (tt_ctxt i)
             = do xs' <- mapM otherPats (map getExpTm xs)
-                 let p = resugar (PApp fc (PRef fc n) (zipWith upd xs' xs))
+                 let p = resugar (PApp fc (PRef fc [] n) (zipWith upd xs' xs))
                  let tyn = getTy n (tt_ctxt i)
                  case lookupCtxt tyn (idris_datatypes i) of
                          (TI ns _ _ _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
@@ -243,12 +243,12 @@ genAll i args
     getExpTm t = getTm t
 
     -- put it back to its original form
-    resugar (PApp _ (PRef fc (UN ei)) [_,_,t,v])
+    resugar (PApp _ (PRef fc hl (UN ei)) [_,_,t,v])
       | ei == txt "Ex_intro"
-        = PDPair fc TypeOrTerm (getTm t) Placeholder (getTm v)
-    resugar (PApp _ (PRef fc n) [_,_,l,r])
+        = PDPair fc [] TypeOrTerm (getTm t) Placeholder (getTm v)
+    resugar (PApp _ (PRef fc hl n) [_,_,l,r])
       | n == pairCon
-        = PPair fc IsTerm (getTm l) (getTm r)
+        = PPair fc [] IsTerm (getTm l) (getTm r)
     resugar t = t
 
     dropForce force (x : xs) i | i `elem` force
@@ -265,7 +265,7 @@ genAll i args
 
     mkPat fc x = case lookupCtxt x (idris_implicits i) of
                       (pargs : _)
-                         -> PApp fc (PRef fc x) (map (upd Placeholder) pargs)
+                         -> PApp fc (PRef fc [] x) (map (upd Placeholder) pargs)
                       _ -> error "Can't happen - genAll"
 
     fnub :: [PTerm] -> [PTerm]
@@ -279,7 +279,7 @@ genAll i args
     -- quick check for constructor equality
     quickEq :: PTerm -> PTerm -> Bool
     quickEq (PConstant _ n) (PConstant _ n') = n == n'
-    quickEq (PRef _ n) (PRef _ n') = n == n'
+    quickEq (PRef _ _ n) (PRef _ _ n') = n == n'
     quickEq (PApp _ t as) (PApp _ t' as')
         | length as == length as'
            = quickEq t t' && and (zipWith quickEq (map getTm as) (map getTm as'))

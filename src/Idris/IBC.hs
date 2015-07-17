@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 115
+ibcVersion = 116
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -1522,12 +1522,14 @@ instance Binary PTerm where
           = case x of
                 PQuote x1 -> do putWord8 0
                                 put x1
-                PRef x1 x2 -> do putWord8 1
-                                 put x1
-                                 put x2
-                PInferRef x1 x2 -> do putWord8 2
-                                      put x1
-                                      put x2
+                PRef x1 x2 x3 -> do putWord8 1
+                                    put x1
+                                    put x2
+                                    put x3
+                PInferRef x1 x2 x3 -> do putWord8 2
+                                         put x1
+                                         put x2
+                                         put x3
                 PPatvar x1 x2 -> do putWord8 3
                                     put x1
                                     put x2
@@ -1579,17 +1581,19 @@ instance Binary PTerm where
                                            put x2
                                            put x3
                                            put x4
-                PPair x1 x2 x3 x4 -> do putWord8 18
-                                        put x1
-                                        put x2
-                                        put x3
-                                        put x4
-                PDPair x1 x2 x3 x4 x5 -> do putWord8 19
-                                            put x1
-                                            put x2
-                                            put x3
-                                            put x4
-                                            put x5
+                PPair x1 x2 x3 x4 x5 -> do putWord8 18
+                                           put x1
+                                           put x2
+                                           put x3
+                                           put x4
+                                           put x5
+                PDPair x1 x2 x3 x4 x5 x6 -> do putWord8 19
+                                               put x1
+                                               put x2
+                                               put x3
+                                               put x4
+                                               put x5
+                                               put x6
                 PAlternative x1 x2 x3 -> do putWord8 20
                                             put x1
                                             put x2
@@ -1664,10 +1668,12 @@ instance Binary PTerm where
                            return (PQuote x1)
                    1 -> do x1 <- get
                            x2 <- get
-                           return (PRef x1 x2)
+                           x3 <- get
+                           return (PRef x1 x2 x3)
                    2 -> do x1 <- get
                            x2 <- get
-                           return (PInferRef x1 x2)
+                           x3 <- get
+                           return (PInferRef x1 x2 x3)
                    3 -> do x1 <- get
                            x2 <- get
                            return (PPatvar x1 x2)
@@ -1722,13 +1728,15 @@ instance Binary PTerm where
                             x2 <- get
                             x3 <- get
                             x4 <- get
-                            return (PPair x1 x2 x3 x4)
+                            x5 <- get
+                            return (PPair x1 x2 x3 x4 x5)
                    19 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             x4 <- get
                             x5 <- get
-                            return (PDPair x1 x2 x3 x4 x5)
+                            x6 <- get
+                            return (PDPair x1 x2 x3 x4 x5 x6)
                    20 -> do x1 <- get
                             x2 <- get
                             x3 <- get
