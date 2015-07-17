@@ -403,6 +403,9 @@ Extra-source-files:
                        test/dsl003/run
                        test/dsl003/*.idr
                        test/dsl003/expected
+                       test/dsl004/run
+                       test/dsl004/*.idr
+                       test/dsl004/expected
 
                        test/effects001/run
                        test/effects001/*.idr

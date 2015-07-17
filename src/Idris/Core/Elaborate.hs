@@ -210,6 +210,13 @@ get_holes :: Elab' aux [Name]
 get_holes = do ES p _ _ <- get
                return $! (holes (fst p))
 
+get_usedns :: Elab' aux [Name]
+get_usedns = do ES p _ _ <- get
+                let bs = bound_in (pterm (fst p)) ++
+                         bound_in_term (ptype (fst p))
+                let nouse = holes (fst p) ++ bs ++ dontunify (fst p) ++ usedns (fst p)
+                return $! nouse
+
 get_probs :: Elab' aux Fails
 get_probs = do ES p _ _ <- get
                return $! (problems (fst p))

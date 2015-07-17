@@ -109,7 +109,7 @@ warnDisamb ist (PRewrite _ x y z) = warnDisamb ist x >> warnDisamb ist y >>
                                     Foldable.mapM_ (warnDisamb ist) z
 warnDisamb ist (PPair _ _ x y) = warnDisamb ist x >> warnDisamb ist y
 warnDisamb ist (PDPair _ _ x y z) = warnDisamb ist x >> warnDisamb ist y >> warnDisamb ist z
-warnDisamb ist (PAlternative _ tms) = mapM_ (warnDisamb ist) tms
+warnDisamb ist (PAlternative _ _ tms) = mapM_ (warnDisamb ist) tms
 warnDisamb ist (PHidden tm) = warnDisamb ist tm
 warnDisamb ist (PType _) = return ()
 warnDisamb ist (PUniverse _) = return ()

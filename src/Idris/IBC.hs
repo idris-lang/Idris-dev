@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 114
+ibcVersion = 115
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -1590,9 +1590,10 @@ instance Binary PTerm where
                                             put x3
                                             put x4
                                             put x5
-                PAlternative x1 x2 -> do putWord8 20
-                                         put x1
-                                         put x2
+                PAlternative x1 x2 x3 -> do putWord8 20
+                                            put x1
+                                            put x2
+                                            put x3
                 PHidden x1 -> do putWord8 21
                                  put x1
                 PType x1 -> do putWord8 22
@@ -1730,7 +1731,8 @@ instance Binary PTerm where
                             return (PDPair x1 x2 x3 x4 x5)
                    20 -> do x1 <- get
                             x2 <- get
-                            return (PAlternative x1 x2)
+                            x3 <- get
+                            return (PAlternative x1 x2 x3)
                    21 -> do x1 <- get
                             return (PHidden x1)
                    22 -> do x1 <- get

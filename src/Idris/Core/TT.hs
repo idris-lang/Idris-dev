@@ -1,4 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor, DeriveDataTypeable #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor, 
+             DeriveDataTypeable, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-| TT is the core language of Idris. The language has:
 
@@ -357,7 +358,7 @@ instance Sized Err where
   size _ = 1
 
 score :: Err -> Int
-score (CantUnify _ _ _ m _ s) = s + score m
+score (CantUnify _ _ _ m _ s) = 1 + s + score m
 score (CantResolve _ _) = 20
 score (NoSuchVariable _) = 1000
 score (ProofSearchFail e) = score e
@@ -1384,7 +1385,7 @@ uniqueName n hs | n `elem` hs = uniqueName (nextName n) hs
 
 uniqueNameSet :: Name -> Set Name -> Name
 uniqueNameSet n hs | n `member` hs = uniqueNameSet (nextName n) hs
-                | otherwise   = n
+                   | otherwise   = n
 
 uniqueBinders :: [Name] -> TT Name -> TT Name
 uniqueBinders ns = ubSet (fromList ns) where

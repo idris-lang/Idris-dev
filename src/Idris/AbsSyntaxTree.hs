@@ -850,7 +850,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PPair FC PunInfo PTerm PTerm -- ^ A pair (a, b) and whether it's a product type or a pair (solved by elaboration)
            | PDPair FC PunInfo PTerm PTerm PTerm -- ^ A dependent pair (tm : a ** b) and whether it's a sigma type or a pair that inhabits one (solved by elaboration)
            | PAs FC Name PTerm -- ^ @-pattern, valid LHS only
-           | PAlternative PAltType [PTerm] -- ^ True if only one may work. (| A, B, C|)
+           | PAlternative [(Name, Name)] PAltType [PTerm] -- ^ (| A, B, C|). Includes unapplied unique name mappings for mkUniqueNames.
            | PHidden PTerm -- ^ Irrelevant or hidden pattern
            | PType FC -- ^ 'Type' type
            | PUniverse Universe -- ^ Some universe
@@ -904,7 +904,7 @@ mapPTermFC f g (PRewrite fc t1 t2 t3) = PRewrite (f fc) (mapPTermFC f g t1) (map
 mapPTermFC f g (PPair fc info t1 t2) = PPair (f fc) info (mapPTermFC f g t1) (mapPTermFC f g t2)
 mapPTermFC f g (PDPair fc info t1 t2 t3) = PDPair (f fc) info (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
 mapPTermFC f g (PAs fc n t) = PAs (f fc) n (mapPTermFC f g t)
-mapPTermFC f g (PAlternative ty ts) = PAlternative ty (map (mapPTermFC f g) ts)
+mapPTermFC f g (PAlternative ns ty ts) = PAlternative ns ty (map (mapPTermFC f g) ts)
 mapPTermFC f g (PHidden t) = PHidden (mapPTermFC f g t)
 mapPTermFC f g (PType fc) = PType (f fc)
 mapPTermFC f g (PUniverse u) = PUniverse u
@@ -953,7 +953,7 @@ mapPT f t = f (mpt t) where
   mpt (PTyped l r) = PTyped (mapPT f l) (mapPT f r)
   mpt (PPair fc p l r) = PPair fc p (mapPT f l) (mapPT f r)
   mpt (PDPair fc p l t r) = PDPair fc p (mapPT f l) (mapPT f t) (mapPT f r)
-  mpt (PAlternative a as) = PAlternative a (map (mapPT f) as)
+  mpt (PAlternative ns a as) = PAlternative ns a (map (mapPT f) as)
   mpt (PHidden t) = PHidden (mapPT f t)
   mpt (PDoBlock ds) = PDoBlock (map (fmap (mapPT f)) ds)
   mpt (PProof ts) = PProof (map (fmap (mapPT f)) ts)
@@ -1123,7 +1123,7 @@ highestFC (PRewrite fc _ _ _) = Just fc
 highestFC (PPair fc _ _ _) = Just fc
 highestFC (PDPair fc _ _ _ _) = Just fc
 highestFC (PAs fc _ _) = Just fc
-highestFC (PAlternative _ args) =
+highestFC (PAlternative _ _ args) =
   case mapMaybe highestFC args of
     [] -> Nothing
     (fc:_) -> Just fc
@@ -1700,7 +1700,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
             (left, addBinding) = case (l, pun) of
               (PRef _ n, IsType) -> (bindingOf n False <+> text ":" <+> prettySe (decD d) startPrec bnd t,        ((n, False) :))
               _ ->                  (prettySe (decD d) startPrec bnd l, id            )
-    prettySe d p bnd (PAlternative a as) =
+    prettySe d p bnd (PAlternative ns a as) =
       lparen <> text "|" <> prettyAs <> text "|" <> rparen
         where
           prettyAs =
@@ -2009,7 +2009,7 @@ instance Sized PTerm where
   size (PRewrite fc left right _) = 1 + size left + size right
   size (PPair fc _ left right) = 1 + size left + size right
   size (PDPair fs _ left ty right) = 1 + size left + size ty + size right
-  size (PAlternative a alts) = 1 + size alts
+  size (PAlternative ns a alts) = 1 + size alts
   size (PHidden hidden) = size hidden
   size (PUnifyLog tm) = size tm
   size (PDisamb _ tm) = size tm
@@ -2053,7 +2053,7 @@ allNamesIn tm = nub $ ni [] tm
     ni env (PDPair _ _ (PRef _ n) Placeholder r)  = n : ni env r
     ni env (PDPair _ _ (PRef _ n) t r)  = ni env t ++ ni (n:env) r
     ni env (PDPair _ _ l t r)  = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative a ls) = concatMap (ni env) ls
+    ni env (PAlternative ns a ls) = concatMap (ni env) ls
     ni env (PUnifyLog tm)    = ni env tm
     ni env (PDisamb _ tm)    = ni env tm
     ni env (PNoImplicits tm)    = ni env tm
@@ -2079,7 +2079,7 @@ boundNamesIn tm = S.toList (ni S.empty tm)
     ni set (PPair _ _ l r) = ni (ni set l) r
     ni set (PDPair _ _ (PRef _ n) t r) = ni (ni set t) r
     ni set (PDPair _ _ l t r) = ni (ni (ni set l) t) r
-    ni set (PAlternative a as) = niTms set as
+    ni set (PAlternative ns a as) = niTms set as
     ni set (PHidden tm) = ni set tm
     ni set (PUnifyLog tm) = ni set tm
     ni set (PDisamb _ tm) = ni set tm
@@ -2118,7 +2118,7 @@ implicitNamesIn uvars ist tm = nub $ ni [] tm
     ni env (PPair _ _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
     ni env (PDPair _ _ l t r) = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative a as) = concatMap (ni env) as
+    ni env (PAlternative ns a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
     ni env (PDisamb _ tm)    = ni env tm
@@ -2148,7 +2148,7 @@ namesIn uvars ist tm = nub $ ni [] tm
     ni env (PPair _ _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
     ni env (PDPair _ _ l t r) = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative a as) = concatMap (ni env) as
+    ni env (PAlternative ns a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
     ni env (PDisamb _ tm)    = ni env tm
@@ -2179,7 +2179,7 @@ usedNamesIn vars ist tm = nub $ ni [] tm
     ni env (PPair _ _ l r)   = ni env l ++ ni env r
     ni env (PDPair _ _ (PRef _ n) t r) = ni env t ++ ni (n:env) r
     ni env (PDPair _ _ l t r) = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative a as) = concatMap (ni env) as
+    ni env (PAlternative ns a as) = concatMap (ni env) as
     ni env (PHidden tm)    = ni env tm
     ni env (PUnifyLog tm)    = ni env tm
     ni env (PDisamb _ tm)    = ni env tm

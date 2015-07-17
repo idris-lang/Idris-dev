@@ -246,7 +246,7 @@ instance NFData PTerm where
         rnf (PDPair x1 x2 x3 x4 x5)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
         rnf (PAs x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
-        rnf (PAlternative x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (PAlternative x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (PHidden x1) = rnf x1 `seq` ()
         rnf (PType fc) = rnf fc `seq` ()
         rnf (PUniverse _) = ()
