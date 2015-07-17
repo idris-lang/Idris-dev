@@ -256,7 +256,9 @@ Impossible ::= 'impossible'
 @
 -}
 impossible :: IdrisParser PTerm
-impossible = PImpossible <$ reserved "impossible"
+impossible = do fc <- reservedFC "impossible"
+                highlightP fc AnnKeyword
+                return PImpossible
 
 {- | Parses a case expression
 @
@@ -265,9 +267,11 @@ CaseExpr ::=
 @
 -}
 caseExpr :: SyntaxInfo -> IdrisParser PTerm
-caseExpr syn = do reserved "case"; fc <- getFC
-                  scr <- expr syn; reserved "of";
+caseExpr syn = do kw1 <- reservedFC "case"; fc <- getFC
+                  scr <- expr syn; kw2 <- reservedFC "of";
                   opts <- indentedBlock1 (caseOption syn)
+                  highlightP kw1 AnnKeyword
+                  highlightP kw2 AnnKeyword
                   return (PCase fc scr opts)
                <?> "case expression"
 
@@ -292,8 +296,9 @@ ProofExpr ::=
 @
 -}
 proofExpr :: SyntaxInfo -> IdrisParser PTerm
-proofExpr syn = do reserved "proof"
+proofExpr syn = do kw <- reservedFC "proof"
                    ts <- indentedBlock1 (tactic syn)
+                   highlightP kw AnnKeyword
                    return $ PProof ts
                 <?> "proof block"
 
@@ -305,8 +310,9 @@ TacticsExpr :=
 @
 -}
 tacticsExpr :: SyntaxInfo -> IdrisParser PTerm
-tacticsExpr syn = do reserved "tactics"
+tacticsExpr syn = do kw <- reservedFC "tactics"
                      ts <- indentedBlock1 (tactic syn)
+                     highlightP kw AnnKeyword
                      return $ PTactics ts
                   <?> "tactics block"
 
@@ -508,8 +514,9 @@ UnifyLog ::=
   ;
 -}
 unifyLog :: SyntaxInfo -> IdrisParser PTerm
-unifyLog syn = do try (lchar '%' *> reserved "unifyLog")
+unifyLog syn = do (FC fn (sl, sc) kwEnd) <- try (lchar '%' *> reservedFC "unifyLog")
                   tm <- simpleExpr syn
+                  highlightP (FC fn (sl, sc-1) kwEnd) AnnKeyword
                   return (PUnifyLog tm)
                <?> "unification log expression"
 
@@ -519,10 +526,10 @@ RunTactics ::=
   ;
 -}
 runElab :: SyntaxInfo -> IdrisParser PTerm
-runElab syn = do try (lchar '%' *> reserved "runElab")
+runElab syn = do (FC fn (sl, sc) kwEnd) <- try (lchar '%' *> reservedFC "runElab")
                  fc <- getFC
                  tm <- simpleExpr syn
-                 i <- get
+                 highlightP (FC fn (sl, sc-1) kwEnd) AnnKeyword
                  return $ PRunElab fc tm (syn_namespace syn)
               <?> "new-style tactics expression"
 
@@ -532,11 +539,12 @@ Disamb ::=
   ;
 -}
 disamb :: SyntaxInfo -> IdrisParser PTerm
-disamb syn = do reserved "with";
+disamb syn = do kw <- reservedFC "with"
                 ns <- sepBy1 (fst <$> name) (lchar ',')
                 tm <- expr' syn
+                highlightP kw AnnKeyword
                 return (PDisamb (map tons ns) tm)
-               <?> "unification log expression"
+               <?> "namespace disambiguation expression"
   where tons (NS n s) = txt (show n) : s
         tons n = [txt (show n)]
 {- | Parses a no implicits expression
@@ -715,12 +723,13 @@ FieldType ::=
 -}
 recordType :: SyntaxInfo -> IdrisParser PTerm
 recordType syn =
-      do reserved "record"
+      do kw <- reservedFC "record"
          lchar '{'
          fgs <- fieldGetOrSet
          lchar '}'
          fc <- getFC
          rec <- optional (simpleExpr syn)
+         highlightP kw AnnKeyword
          case fgs of
               Left fields ->
                 case rec of
@@ -842,11 +851,13 @@ RewriteTerm ::=
 @
 -}
 rewriteTerm :: SyntaxInfo -> IdrisParser PTerm
-rewriteTerm syn = do reserved "rewrite"
+rewriteTerm syn = do kw <- reservedFC "rewrite"
                      fc <- getFC
                      prf <- expr syn
                      giving <- optional (do symbol "==>"; expr' syn)
-                     reserved "in";  sc <- expr syn
+                     kw' <- reservedFC "in";  sc <- expr syn
+                     highlightP kw AnnKeyword
+                     highlightP kw' AnnKeyword
                      return (PRewrite fc
                              (PApp fc (PRef fc (sUN "sym")) [pexp prf]) sc
                                giving)
@@ -864,9 +875,10 @@ TypeSig' ::=
 @
  -}
 let_ :: SyntaxInfo -> IdrisParser PTerm
-let_ syn = try (do reserved "let"
+let_ syn = try (do kw <- reservedFC "let"
                    ls <- indentedBlock (let_binding syn)
-                   reserved "in";  sc <- expr syn
+                   kw' <- reservedFC "in";  sc <- expr syn
+                   highlightP kw AnnKeyword; highlightP kw' AnnKeyword
                    return (buildLets ls sc))
            <?> "let binding"
   where buildLets [] sc = sc
@@ -911,12 +923,13 @@ QuoteGoal ::=
 @
  -}
 quoteGoal :: SyntaxInfo -> IdrisParser PTerm
-quoteGoal syn = do reserved "quoteGoal"; n <- fst <$> name;
-                   reserved "by"
+quoteGoal syn = do kw1 <- reservedFC "quoteGoal"; n <- fst <$> name;
+                   kw2 <- reservedFC "by"
                    r <- expr syn
-                   reserved "in"
+                   kw3 <- reservedFC "in"
                    fc <- getFC
                    sc <- expr syn
+                   mapM_ (flip highlightP AnnKeyword) [kw1, kw2, kw3]
                    return (PGoal fc r n sc)
                 <?> "quote goal expression"
 
@@ -948,17 +961,18 @@ explicitPi opts st syn
         return (bindList (PPi binder) xt sc)
        
 autoImplicit opts st syn
-   = do reserved "auto"
+   = do kw <- reservedFC "auto"
         when (st == Static) $ fail "auto implicits can not be static"
         xt <- typeDeclList syn
         lchar '}'
         symbol "->"
         sc <- expr syn
+        highlightP kw AnnKeyword
         return (bindList (PPi
           (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc) 
 
 defaultImplicit opts st syn = do
-   reserved "default"
+   kw <- reservedFC "default"
    when (st == Static) $ fail "default implicits can not be static"
    ist <- get
    script' <- simpleExpr syn
@@ -967,6 +981,7 @@ defaultImplicit opts st syn = do
    lchar '}'
    symbol "->"
    sc <- expr syn
+   highlightP kw AnnKeyword
    return (bindList (PPi (TacImp [] Dynamic script)) xt sc)
 
 normalImplicit opts st syn = do
@@ -1159,8 +1174,9 @@ DoBlock ::=
  -}
 doBlock :: SyntaxInfo -> IdrisParser PTerm
 doBlock syn
-    = do reserved "do"
+    = do kw <- reservedFC "do"
          ds <- indentedBlock1 (do_ syn)
+         highlightP kw AnnKeyword
          return (PDoBlock ds)
       <?> "do block"
 
@@ -1177,19 +1193,21 @@ Do ::=
 -}
 do_ :: SyntaxInfo -> IdrisParser PDo
 do_ syn
-     = try (do reserved "let"
+     = try (do kw <- reservedFC "let"
                (i, ifc) <- name
                ty <- option Placeholder (do lchar ':'
                                             expr' syn)
                reservedOp "="
                fc <- getFC
                e <- expr syn
+               highlightP kw AnnKeyword
                return (DoLet fc i ifc ty e))
-   <|> try (do reserved "let"
+   <|> try (do kw <- reservedFC "let"
                i <- expr' syn
                reservedOp "="
                fc <- getFC
                sc <- expr syn
+               highlightP kw AnnKeyword
                return (DoLetP fc i sc))
    <|> try (do (i, ifc) <- name
                symbol "<-"

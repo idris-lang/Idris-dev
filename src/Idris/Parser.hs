@@ -1146,14 +1146,14 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     libs <- sepBy1 (fmap fst stringLiteral) (lchar ',')
                     return [PDirective (DDynamicLibs libs)]
              <|> do try (lchar '%' *> reserved "name")
-                    ty <- fst <$> fnName
-                    ns <- sepBy1 (fst <$> name) (lchar ',')
-                    return [PDirective (DNameHint ty ns)]
+                    (ty, tyFC) <- fnName
+                    ns <- sepBy1 name (lchar ',')
+                    return [PDirective (DNameHint ty tyFC ns)]
              <|> do try (lchar '%' *> reserved "error_handlers")
-                    fn <- fst <$> fnName
-                    arg <- fst <$> fnName
-                    ns <- sepBy1 (fst <$> name) (lchar ',')
-                    return [PDirective (DErrorHandlers fn arg ns) ]
+                    (fn, nfc) <- fnName
+                    (arg, afc) <- fnName
+                    ns <- sepBy1 name (lchar ',')
+                    return [PDirective (DErrorHandlers fn nfc arg afc ns) ]
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (DLanguage ext)]
              <|> do fc <- getFC

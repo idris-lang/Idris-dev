@@ -4,6 +4,7 @@ module Idris.Directives(directiveAction) where
 import Idris.AbsSyntax
 import Idris.ASTUtils
 import Idris.Imports
+import Idris.Output (sendHighlighting)
 
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -43,15 +44,24 @@ directiveAction (DDynamicLibs libs) = do added <- addDyLib libs
                                              Left lib -> addIBC (IBCDyLib (lib_name lib))
                                              Right msg -> fail $ msg
 
-directiveAction (DNameHint ty ns) = do ty' <- disambiguate ty
-                                       mapM_ (addNameHint ty') ns
-                                       mapM_ (\n -> addIBC (IBCNameHint (ty', n))) ns
+directiveAction (DNameHint ty tyFC ns) = do ty' <- disambiguate ty
+                                            mapM_ (addNameHint ty' . fst) ns
+                                            mapM_ (\n -> addIBC (IBCNameHint (ty', fst n))) ns
+                                            sendHighlighting $
+                                              [(tyFC, AnnName ty' Nothing Nothing Nothing)] ++
+                                              map (\(n, fc) -> (fc, AnnBoundName n False)) ns
 
-directiveAction (DErrorHandlers fn arg ns) = do fn' <- disambiguate fn
-                                                ns' <- mapM disambiguate ns
-                                                addFunctionErrorHandlers fn' arg ns'
-                                                mapM_ (addIBC .
-                                                    IBCFunctionErrorHandler fn' arg) ns'
+directiveAction (DErrorHandlers fn nfc arg afc ns) =
+  do fn' <- disambiguate fn
+     ns' <- mapM (\(n, fc) -> do n' <- disambiguate n
+                                 return (n', fc)) ns
+     addFunctionErrorHandlers fn' arg (map fst ns')
+     mapM_ (addIBC .
+         IBCFunctionErrorHandler fn' arg . fst) ns'
+     sendHighlighting $
+       [(nfc, AnnName fn' Nothing Nothing Nothing),
+        (afc, AnnBoundName arg False)] ++
+       map (\(n, fc) -> (fc, AnnName n Nothing Nothing Nothing)) ns'
 
 directiveAction (DLanguage ext) = addLangExt ext
 
