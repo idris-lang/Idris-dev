@@ -274,6 +274,7 @@ instance NFData PTerm where
 instance NFData PAltType where
         rnf (ExactlyOne x1) = rnf x1 `seq` ()
         rnf FirstSuccess = ()
+        rnf TryImplicit = () 
 
 instance (NFData t) => NFData (PTactic' t) where
         rnf (Intro x1) = rnf x1 `seq` ()
