@@ -116,6 +116,8 @@ Extra-source-files:
                        libs/contrib/Control/Isomorphism/*.idr
                        libs/contrib/Control/Algebra/*.idr
                        libs/contrib/Data/*.idr
+                       libs/contrib/Data/Nat/*.idr
+                       libs/contrib/Data/Nat/DivMod/*.idr
                        libs/contrib/Decidable/*.idr
                        libs/contrib/Network/*.idr
                        libs/contrib/System/Concurrency/*.idr
