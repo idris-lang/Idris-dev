@@ -479,6 +479,66 @@ elab ist info emode opts fn tm
               trySeq' deferr (x : xs)
                   = try' (do elab' ina fc x
                              solveAutos ist fn False) (trySeq' deferr xs) True
+    elab' ina fc (PAlternative TryImplicit (orig : alts)) = do
+        env <- get_env
+        let doelab = elab' ina fc orig
+        tryCatch doelab
+            (\err -> 
+                if recoverableErr err
+                   then -- trace ("NEED IMPLICIT! " ++ show orig ++ "\n" ++
+                        --       show alts ++ "\n" ++
+                        --       showQuick err) $
+                    -- Prune the coercions so that only the ones
+                    -- with the right type to fix the error will be tried!
+                    case pruneAlts err alts env of
+                         [] -> lift $ tfail err
+                         alts' -> 
+                             try' (elab' ina fc (PAlternative (ExactlyOne False) alts'))
+                                  (lift $ tfail err) -- take error from original if all fail
+                                  True
+                   else lift $ tfail err)
+      where
+        recoverableErr (CantUnify _ _ _ _ _ _) = True
+        recoverableErr (CantSolveGoal _ _) = False
+        recoverableErr (CantResolveAlts _) = False
+        recoverableErr (ProofSearchFail (Msg _)) = True
+        recoverableErr (ProofSearchFail _) = False
+        recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
+        recoverableErr (At _ e) = recoverableErr e
+        recoverableErr (ElabScriptDebug _ _ _) = False
+        recoverableErr _ = True
+
+        pruneAlts (CantUnify _ (inc, _) (outc, _) _ _ _) alts env
+            = case unApply (normalise (tt_ctxt ist) env inc) of
+                   (P (TCon _ _) n _, _) -> filter (hasArg n env) alts
+                   (Constant _, _) -> alts
+                   _ -> filter isLend alts -- special case hack for 'Borrowed'
+        pruneAlts (ElaboratingArg _ _ _ e) alts env = pruneAlts e alts env
+        pruneAlts (At _ e) alts env = pruneAlts e alts env
+        pruneAlts _ alts _ = filter isLend alts
+
+        hasArg n env ap | isLend ap = True -- special case hack for 'Borrowed'
+        hasArg n env (PApp _ (PRef _ a) _) 
+             = case lookupTyExact a (tt_ctxt ist) of
+                    Just ty -> let args = map snd (getArgTys (normalise (tt_ctxt ist) env ty)) in
+                                   any (fnIs n) args
+                    Nothing -> False
+        hasArg n _ _ = False
+
+        isLend (PApp _ (PRef _ l) _) = l == sNS (sUN "lend") ["Ownership"]
+        isLend _ = False
+
+        fnIs n ty = case unApply ty of
+                         (P _ n' _, _) -> n == n'
+                         _ -> False
+
+        showQuick (CantUnify _ (l, _) (r, _) _ _ _)
+            = show (l, r)
+        showQuick (ElaboratingArg _ _ _ e) = showQuick e
+        showQuick (At _ e) = showQuick e
+        showQuick (ProofSearchFail (Msg _)) = "search fail"
+        showQuick _ = "No chance"
+
     elab' ina _ (PPatvar fc n) | bindfree
         = do patvar n
              update_term liftPats
@@ -1299,9 +1359,8 @@ elab ist info emode opts fn tm
            let t' = case (t, cs) of
                          (PCoerced tm, _) -> tm
                          (_, []) -> t
-                         (_, cs) -> PAlternative FirstSuccess [t ,
-                                       PAlternative (ExactlyOne False) 
-                                            (map (mkCoerce env t) cs)]
+                         (_, cs) -> PAlternative TryImplicit 
+                                        (t : map (mkCoerce env t) cs)
            return t'
        where
          mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in

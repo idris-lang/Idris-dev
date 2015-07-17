@@ -877,6 +877,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
 
 data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
               | FirstSuccess
+              | TryImplicit
        deriving (Eq, Data, Typeable)
 
 -- | Transform the FCs in a PTerm. The first function transforms the

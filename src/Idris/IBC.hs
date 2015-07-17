@@ -1801,12 +1801,14 @@ instance Binary PAltType where
                 ExactlyOne x1 -> do putWord8 0
                                     put x1
                 FirstSuccess -> putWord8 1
+                TryImplicit -> putWord8 2
         get
           = do i <- getWord8
                case i of
                    0 -> do x1 <- get
                            return (ExactlyOne x1)
                    1 -> return FirstSuccess
+                   2 -> return TryImplicit
                    _ -> error "Corrupted binary data for PAltType"
 
 
