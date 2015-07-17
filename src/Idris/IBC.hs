@@ -1581,17 +1581,19 @@ instance Binary PTerm where
                                            put x2
                                            put x3
                                            put x4
-                PPair x1 x2 x3 x4 -> do putWord8 18
-                                        put x1
-                                        put x2
-                                        put x3
-                                        put x4
-                PDPair x1 x2 x3 x4 x5 -> do putWord8 19
-                                            put x1
-                                            put x2
-                                            put x3
-                                            put x4
-                                            put x5
+                PPair x1 x2 x3 x4 x5 -> do putWord8 18
+                                           put x1
+                                           put x2
+                                           put x3
+                                           put x4
+                                           put x5
+                PDPair x1 x2 x3 x4 x5 x6 -> do putWord8 19
+                                               put x1
+                                               put x2
+                                               put x3
+                                               put x4
+                                               put x5
+                                               put x6
                 PAlternative x1 x2 -> do putWord8 20
                                          put x1
                                          put x2
@@ -1725,13 +1727,15 @@ instance Binary PTerm where
                             x2 <- get
                             x3 <- get
                             x4 <- get
-                            return (PPair x1 x2 x3 x4)
+                            x5 <- get
+                            return (PPair x1 x2 x3 x4 x5)
                    19 -> do x1 <- get
                             x2 <- get
                             x3 <- get
                             x4 <- get
                             x5 <- get
-                            return (PDPair x1 x2 x3 x4 x5)
+                            x6 <- get
+                            return (PDPair x1 x2 x3 x4 x5 x6)
                    20 -> do x1 <- get
                             x2 <- get
                             return (PAlternative x1 x2)

@@ -269,8 +269,8 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
         -- to the other methods in the class
        constrainMeths :: [Name] -> Name -> PTerm -> PTerm
        constrainMeths allM dictN tm = transform (addC allM dictN) tm
-       addC allM dictN m@(PRef fc [] n)
-         | n `elem` allM = PApp NoFC m [pconst (PRef NoFC [] dictN)]
+       addC allM dictN m@(PRef fc hls n)
+         | n `elem` allM = PApp NoFC m [pconst (PRef NoFC hls dictN)]
          | otherwise = m
        addC _ _ tm = tm
 

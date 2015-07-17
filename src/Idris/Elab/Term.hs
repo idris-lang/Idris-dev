@@ -380,22 +380,22 @@ elab ist info emode opts fn tm
                     pimp (sUN "B") (PRef NoFC [] btyn) False,
                     pexp l, pexp r]))
 
-    elab' ina _ (PPair fc _ l r)
+    elab' ina _ (PPair fc hls _ l r)
         = do hnf_compute
              g <- goal
              let (tc, _) = unApply g
              case g of
-                TType _ -> elab' ina (Just fc) (PApp fc (PRef fc [] pairTy)
+                TType _ -> elab' ina (Just fc) (PApp fc (PRef fc hls pairTy)
                                                       [pexp l,pexp r])
-                UType _ -> elab' ina (Just fc) (PApp fc (PRef fc [] upairTy)
+                UType _ -> elab' ina (Just fc) (PApp fc (PRef fc hls upairTy)
                                                       [pexp l,pexp r])
                 _ -> case tc of
                         P _ n _ | n == upairTy 
-                          -> elab' ina (Just fc) (PApp fc (PRef fc [] upairCon)
+                          -> elab' ina (Just fc) (PApp fc (PRef fc hls upairCon)
                                                 [pimp (sUN "A") Placeholder False,
                                                  pimp (sUN "B") Placeholder False,
                                                  pexp l, pexp r])
-                        _ -> elab' ina (Just fc) (PApp fc (PRef fc [] pairCon)
+                        _ -> elab' ina (Just fc) (PApp fc (PRef fc hls pairCon)
                                                 [pimp (sUN "A") Placeholder False,
                                                  pimp (sUN "B") Placeholder False,
                                                  pexp l, pexp r])
@@ -409,7 +409,7 @@ elab ist info emode opts fn tm
 --                                                  pexp l, pexp r]))
 --                                   True
 
-    elab' ina _ (PDPair fc p l@(PRef nfc hl n) t r)
+    elab' ina _ (PDPair fc hls p l@(PRef nfc hl n) t r)
             = case t of
                 Placeholder ->
                    do hnf_compute
@@ -418,17 +418,17 @@ elab ist info emode opts fn tm
                          TType _ -> asType
                          _ -> asValue
                 _ -> asType
-         where asType = elab' ina (Just fc) (PApp fc (PRef NoFC [] sigmaTy)
+         where asType = elab' ina (Just fc) (PApp fc (PRef NoFC hls sigmaTy)
                                         [pexp t,
                                          pexp (PLam fc n nfc Placeholder r)])
-               asValue = elab' ina (Just fc) (PApp fc (PRef fc [] sigmaCon)
+               asValue = elab' ina (Just fc) (PApp fc (PRef fc hls sigmaCon)
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
                                           pexp l, pexp r])
-    elab' ina _ (PDPair fc p l t r) = elab' ina (Just fc) (PApp fc (PRef fc [] sigmaCon)
-                                              [pimp (sMN 0 "a") t False,
-                                               pimp (sMN 0 "P") Placeholder True,
-                                               pexp l, pexp r])
+    elab' ina _ (PDPair fc hls p l t r) = elab' ina (Just fc) (PApp fc (PRef fc hls sigmaCon)
+                                                  [pimp (sMN 0 "a") t False,
+                                                   pimp (sMN 0 "P") Placeholder True,
+                                                   pexp l, pexp r])
     elab' ina fc (PAlternative (ExactlyOne delayok) as)
         = do as' <- doPrune as
              (h : hs) <- get_holes
@@ -594,7 +594,7 @@ elab ist info emode opts fn tm
                elabE ec' fc sc
                solve
                highlightSource nfc (AnnBoundName n False)
-    elab' ina _ (PLet fc n nfc ty val sc)
+    elab' ina _ tm@(PLet fc n nfc ty val sc)
           = do attack
                ivs <- get_instances
                tyn <- getNameFrom (sMN 0 "letty")

@@ -193,9 +193,9 @@ extension syn ns rules =
       = PCase fc (update ns c) (map (pmap (update ns)) opts)
     update ns (PIfThenElse fc c t f)
       = PIfThenElse fc (update ns c) (update ns t) (update ns f)
-    update ns (PPair fc p l r) = PPair fc p (update ns l) (update ns r)
-    update ns (PDPair fc p l t r)
-      = PDPair fc p (update ns l) (update ns t) (update ns r)
+    update ns (PPair fc hls p l r) = PPair fc hls p (update ns l) (update ns r)
+    update ns (PDPair fc hls p l t r)
+      = PDPair fc hls p (update ns l) (update ns t) (update ns r)
     update ns (PAlternative a as) = PAlternative a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
@@ -388,9 +388,9 @@ Bracketed ::= '(' Bracketed'
 @
  -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
-bracketed syn = do fc <- getFC
+bracketed syn = do (FC fn (sl, sc) _) <- getFC
                    lchar '(' <?> "parenthesized expression"
-                   bracketed' fc syn
+                   bracketed' (FC fn (sl, sc) (sl, sc+1)) syn
 {- |Parses the rest of an expression in braces
 @
 Bracketed' ::=
@@ -409,13 +409,14 @@ bracketed' open syn =
             do (FC f start (l, c)) <- getFC
                lchar ')'
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
-        <|> try (do (ln, lnfc) <- name; lchar ':';
+        <|> try (do (ln, lnfc) <- name
+                    colonFC <- lcharFC ':'
                     lty <- expr syn
-                    reservedOp "**"
+                    starsFC <- reservedOpFC "**"
                     fc <- getFC
                     r <- expr syn
-                    lchar ')'
-                    return (PDPair fc TypeOrTerm (PRef lnfc [] ln) lty r))
+                    close <- lcharFC ')'
+                    return (PDPair fc [open, colonFC, starsFC, close] TypeOrTerm (PRef lnfc [] ln) lty r))
         <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
                     -- No prefix operators! (bit of a hack here...)
                     if (o == "-" || o == "!")
@@ -429,32 +430,31 @@ bracketed' open syn =
                                              return (Just o)) 
                     fc0 <- getFC
                     case op of
-                         Nothing -> bracketedExpr syn l
+                         Nothing -> bracketedExpr syn open l
                          Just o -> return $ PLam fc0 (sMN 1000 "ARG") NoFC Placeholder
                              (PApp fc0 (PRef fc0 [] (sUN o)) [pexp l,
                                                               pexp (PRef fc0 [] (sMN 1000 "ARG"))]))
         <|> do l <- expr syn
-               bracketedExpr syn l
+               bracketedExpr syn open l
 
-bracketedExpr :: SyntaxInfo -> PTerm -> IdrisParser PTerm
-bracketedExpr syn e =
+-- | Parse the contents of parentheses, after an expression has been parsed.
+bracketedExpr :: SyntaxInfo -> FC -> PTerm -> IdrisParser PTerm
+bracketedExpr syn openParenFC e =
              do lchar ')'; return e
-        <|>  do fc <- do fc <- getFC
-                         lchar ','
-                         return fc
-                rs <- sepBy1 (do fc' <- getFC; r <- expr syn; return (r, fc')) (lchar ',')
-                lchar ')'
-                return $ PPair fc TypeOrTerm e (mergePairs rs)
-        <|>  do fc <- do fc <- getFC
-                         reservedOp "**"
-                         return fc
+        <|>  do exprs <- many (do comma <- lcharFC ','
+                                  r <- expr syn
+                                  return (r, comma))
+                closeParenFC <- lcharFC ')'
+                let hilite = [openParenFC, closeParenFC] ++ map snd exprs
+                return $ PPair openParenFC hilite TypeOrTerm e (mergePairs exprs)
+        <|>  do starsFC <- reservedOpFC "**"
                 r <- expr syn
-                lchar ')'
-                return (PDPair fc TypeOrTerm e Placeholder r)
+                closeParenFC <- lcharFC ')'
+                return (PDPair starsFC [openParenFC, starsFC, closeParenFC] TypeOrTerm e Placeholder r)
         <?> "end of bracketed expression"
   where mergePairs :: [(PTerm, FC)] -> PTerm
         mergePairs [(t, fc)]    = t
-        mergePairs ((t, fc):rs) = PPair fc TypeOrTerm t (mergePairs rs)
+        mergePairs ((t, fc):rs) = PPair fc [] TypeOrTerm t (mergePairs rs)
 
 -- bit of a hack here. If the integer doesn't fit in an Int, treat it as a
 -- big integer, otherwise try fromInteger and the constants as alternatives.
@@ -882,7 +882,7 @@ let_ syn = try (do kw <- reservedFC "let"
                    return (buildLets ls sc))
            <?> "let binding"
   where buildLets [] sc = sc
-        buildLets ((fc, PRef nfc [] n, ty, v, []) : ls) sc
+        buildLets ((fc, PRef nfc _ n, ty, v, []) : ls) sc
           = PLet fc n nfc ty v (buildLets ls sc)
         buildLets ((fc, pat, ty, v, alts) : ls) sc
           = PCase fc v ((pat, buildLets ls sc) : alts)

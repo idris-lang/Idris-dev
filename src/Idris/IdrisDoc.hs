@@ -306,8 +306,8 @@ extractPTermNames (PIfThenElse _ c t f) = concatMap extract [c, t, f]
 extractPTermNames (PRewrite _ a b m) | Just c <- m =
                                        concatMap extract [a, b, c]
 extractPTermNames (PRewrite _ a b _) = concatMap extract [a, b]
-extractPTermNames (PPair _ _ p1 p2)  = concatMap extract [p1, p2]
-extractPTermNames (PDPair _ _ a b c) = concatMap extract [a, b, c]
+extractPTermNames (PPair _ _ _ p1 p2)  = concatMap extract [p1, p2]
+extractPTermNames (PDPair _ _ _ a b c) = concatMap extract [a, b, c]
 extractPTermNames (PAlternative _ l) = concatMap extract l
 extractPTermNames (PHidden p)        = extract p
 extractPTermNames (PGoal _ p1 n p2)  = n : concatMap extract [p1, p2]

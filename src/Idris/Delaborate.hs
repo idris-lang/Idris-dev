@@ -154,16 +154,16 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
 
     deFn env (App _ f a) args = deFn env f (a:args)
     deFn env (P _ n _) [l,r]
-         | n == pairTy    = PPair un IsType (de env [] l) (de env [] r)
+         | n == pairTy    = PPair un [] IsType (de env [] l) (de env [] r)
          | n == sUN "lazy" = de env [] r -- TODO: Fix string based matching
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
          | n == sigmaTy
-               = PDPair un IsType (PRef un [] x) (de env [] ty)
+               = PDPair un [] IsType (PRef un [] x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [lt,rt,l,r]
-         | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
-         | n == sigmaCon = PDPair un IsTerm (de env [] l) Placeholder
-                                             (de env [] r)
+         | n == pairCon = PPair un [] IsTerm (de env [] l) (de env [] r)
+         | n == sigmaCon = PDPair un [] IsTerm (de env [] l) Placeholder
+                                                (de env [] r)
     deFn env f@(P _ n _) args
          | n `elem` map snd env
               = PApp un (de env [] f) (map pexp (map (de env []) args))
@@ -553,15 +553,15 @@ addImplicitDiffs x y
          = let (a', c') = addI a c
                (b', d') = addI b d in
                (PPi p n fc a' b', PPi p' n' fc' c' d')
-    addI (PPair fc pi a b) (PPair fc' pi' c d)
+    addI (PPair fc hls pi a b) (PPair fc' hls' pi' c d)
          = let (a', c') = addI a c
                (b', d') = addI b d in
-               (PPair fc pi a' b', PPair fc' pi' c' d')
-    addI (PDPair fc pi a t b) (PDPair fc' pi' c u d)
+               (PPair fc hls pi a' b', PPair fc' hls' pi' c' d')
+    addI (PDPair fc hls pi a t b) (PDPair fc' hls' pi' c u d)
          = let (a', c') = addI a c
                (t', u') = addI t u
                (b', d') = addI b d in
-               (PDPair fc pi a' t' b', PDPair fc' pi' c' u' d')
+               (PDPair fc hls pi a' t' b', PDPair fc' hls' pi' c' u' d')
     addI x y = (x, y)
 
     -- Just the ones which appear desugared in errors
@@ -573,8 +573,8 @@ addImplicitDiffs x y
         = n == n' && expLike s s' && expLike t t'
     expLike (PLam _ n _ s t) (PLam _ n' _ s' t')
         = n == n' && expLike s s' && expLike t t'
-    expLike (PPair _ _ x y) (PPair _ _ x' y') = expLike x x' && expLike y y'
-    expLike (PDPair _ _ x _ y) (PDPair _ _ x' _ y') = expLike x x' && expLike y y'
+    expLike (PPair _ _ _ x y) (PPair _ _ _ x' y') = expLike x x' && expLike y y'
+    expLike (PDPair _ _ _ x _ y) (PDPair _ _ _ x' _ y') = expLike x x' && expLike y y'
     expLike x y = x == y
 
 -- Issue #1589 on the issue tracker

@@ -77,9 +77,9 @@ expandSugar dsl (PIfThenElse fc c t f) =
        , PExp 0 [] (sMN 0 "whenTrue") $ expandSugar dsl t
        , PExp 0 [] (sMN 0 "whenFalse") $ expandSugar dsl f
        ]
-expandSugar dsl (PPair fc p l r) = PPair fc p (expandSugar dsl l) (expandSugar dsl r)
-expandSugar dsl (PDPair fc p l t r) = PDPair fc p (expandSugar dsl l) (expandSugar dsl t)
-                                               (expandSugar dsl r)
+expandSugar dsl (PPair fc hls p l r) = PPair fc hls p (expandSugar dsl l) (expandSugar dsl r)
+expandSugar dsl (PDPair fc hls p l t r) = PDPair fc hls p (expandSugar dsl l) (expandSugar dsl t)
+                                                          (expandSugar dsl r)
 expandSugar dsl (PAlternative a as) = PAlternative a (map (expandSugar dsl) as)
 expandSugar dsl (PHidden t) = PHidden (expandSugar dsl t)
 expandSugar dsl (PNoImplicits t) = PNoImplicits (expandSugar dsl t)
@@ -137,8 +137,8 @@ var dsl n t i = v' i t where
     v' i (PTyped l r)    = PTyped (v' i l) (v' i r)
     v' i (PApp f x as)   = PApp f (v' i x) (fmap (fmap (v' i)) as)
     v' i (PCase f t as)  = PCase f (v' i t) (fmap (pmap (v' i)) as)
-    v' i (PPair f p l r) = PPair f p (v' i l) (v' i r)
-    v' i (PDPair f p l t r) = PDPair f p (v' i l) (v' i t) (v' i r)
+    v' i (PPair f hls p l r) = PPair f hls p (v' i l) (v' i r)
+    v' i (PDPair f hls p l t r) = PDPair f hls p (v' i l) (v' i t) (v' i r)
     v' i (PAlternative a as) = PAlternative a $ map (v' i) as
     v' i (PHidden t)     = PHidden (v' i t)
     v' i (PIdiom f t)    = PIdiom f (v' i t)
@@ -192,12 +192,12 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
                                      return (PLet fc n nfc ty v' (debind b sc))
     db' (PCase fc s opts) = do s' <- db' s
                                return (PCase fc s' (map (pmap (debind b)) opts))
-    db' (PPair fc p l r) = do l' <- db' l
-                              r' <- db' r
-                              return (PPair fc p l' r')
-    db' (PDPair fc p l t r) = do l' <- db' l
-                                 r' <- db' r
-                                 return (PDPair fc p l' t r')
+    db' (PPair fc hls p l r) = do l' <- db' l
+                                  r' <- db' r
+                                  return (PPair fc hls p l' r')
+    db' (PDPair fc hls p l t r) = do l' <- db' l
+                                     r' <- db' r
+                                     return (PDPair fc hls p l' t r')
     db' (PRunElab fc t ns) = fmap (\tm -> PRunElab fc tm ns) (db' t)
     db' t = return t
 

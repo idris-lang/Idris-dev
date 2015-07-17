@@ -446,8 +446,8 @@ projectInType :: [(Name, Name)] -> PTerm -> PTerm
 projectInType xs = mapPT st
   where
     st :: PTerm -> PTerm
-    st (PRef fc [] n)
-      | Just pn <- lookup n xs = PApp fc (PRef fc [] pn) [pexp recRef]
+    st (PRef fc hls n)
+      | Just pn <- lookup n xs = PApp fc (PRef fc hls pn) [pexp recRef]
     st t = t
 
 -- | Creates an PArg from a plicity and a name where the term is a PRef.

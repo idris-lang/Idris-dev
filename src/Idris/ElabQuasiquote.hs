@@ -116,15 +116,15 @@ extractUnquotes n (PRewrite fc x y z)
          Just zz -> do (z', ex3) <- extractUnquotes n zz
                        return (PRewrite fc x' y' (Just z'), ex1 ++ ex2 ++ ex3)
          Nothing -> return (PRewrite fc x' y' Nothing, ex1 ++ ex2)
-extractUnquotes n (PPair fc info l r)
+extractUnquotes n (PPair fc hls info l r)
   = do (l', ex1) <- extractUnquotes n l
        (r', ex2) <- extractUnquotes n r
-       return (PPair fc info l' r', ex1 ++ ex2)
-extractUnquotes n (PDPair fc info a b c)
+       return (PPair fc hls info l' r', ex1 ++ ex2)
+extractUnquotes n (PDPair fc hls info a b c)
   = do (a', ex1) <- extractUnquotes n a
        (b', ex2) <- extractUnquotes n b
        (c', ex3) <- extractUnquotes n c
-       return (PDPair fc info a' b' c', ex1 ++ ex2 ++ ex3)
+       return (PDPair fc hls info a' b' c', ex1 ++ ex2 ++ ex3)
 extractUnquotes n (PAlternative b alts)
   = do alts' <- mapM (extractUnquotes n) alts
        let (alts'', exs) = unzip alts'
