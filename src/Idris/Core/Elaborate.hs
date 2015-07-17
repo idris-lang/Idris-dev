@@ -806,7 +806,7 @@ try' t1 t2 proofSearch
              = -- traceWhen r (show err) $
                r || proofSearch
         recoverableErr (CantSolveGoal _ _) = False
-        recoverableErr (CantResolveAlts _) = False
+        recoverableErr (CantResolveAlts _) = proofSearch
         recoverableErr (ProofSearchFail (Msg _)) = True
         recoverableErr (ProofSearchFail _) = False
         recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
@@ -844,6 +844,9 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
     cantResolve :: Elab' aux a
     cantResolve = lift $ tfail $ CantResolveAlts (map snd xs)
 
+    noneValid :: Elab' aux a
+    noneValid = lift $ tfail $ NoValidAlts (map snd xs)
+
     tryAll' :: [Elab' aux a] -> -- successes
                Int -> -- most problems
                (Elab' aux a, Int) -> -- smallest failure
@@ -851,7 +854,7 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
                Elab' aux a
     tryAll' [res] pmax _   [] = res
     tryAll' (_:_) pmax _   [] = cantResolve
-    tryAll' [] pmax (f, _) [] = f
+    tryAll' [] pmax (f, _) [] = noneValid
     tryAll' cs pmax f ((x, msg):xs)
        = do s <- get
             ps <- get_probs

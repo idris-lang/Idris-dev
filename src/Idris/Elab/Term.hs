@@ -512,6 +512,7 @@ elab ist info emode opts fn tm
         recoverableErr (TooManyArguments _) = False
         recoverableErr (CantSolveGoal _ _) = False
         recoverableErr (CantResolveAlts _) = False
+        recoverableErr (NoValidAlts _) = True
         recoverableErr (ProofSearchFail (Msg _)) = True
         recoverableErr (ProofSearchFail _) = False
         recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
@@ -526,6 +527,7 @@ elab ist info emode opts fn tm
                    _ -> filter isLend alts -- special case hack for 'Borrowed'
         pruneAlts (ElaboratingArg _ _ _ e) alts env = pruneAlts e alts env
         pruneAlts (At _ e) alts env = pruneAlts e alts env
+        pruneAlts (NoValidAlts _) alts env = alts
         pruneAlts _ alts _ = filter isLend alts
 
         hasArg n env ap | isLend ap = True -- special case hack for 'Borrowed'
@@ -1377,6 +1379,12 @@ elab ist info emode opts fn tm
                                         (t : map (mkCoerce env t) cs)
            return t'
        where
+--          mkCoerce env (PAlternative ns aty alts@(a : as)) n
+--             = let fc = maybe (fileFC "Coercion") id (highestFC a) in
+--                   addImplBound ist (map fst env)
+--                      (PAlternative ns aty 
+--                        (map (\t -> PApp fc (PRef fc n) [pexp (PCoerced t)])
+--                             alts))
          mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in
                                 addImplBound ist (map fst env)
                                   (PApp fc (PRef fc [] n) [pexp (PCoerced t)])

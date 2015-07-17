@@ -302,6 +302,7 @@ instance Show Err where
   showPrec d (CantResolve tm) = showCon d "CantResolve" $ showArg tm
   showPrec d (InvalidTCArg n tm) = showCon d "InvalidTCName" $ showArg n ++ showArg tm
   showPrec d (CantResolveAlts xs) = showCon d "CantResolveAlts" $ showArg xs
+  showPrec d (NoValidAlts xs) = showCon d "NoValidAlts" $ showArg xs
   showPrec d (IncompleteTerm tm) = showCon d "IncompleteTerm" $ showArg tm
   showPrec d (NoEliminator s tm) = showCon d "NoEliminator" $ showArg s ++ showArg tm
   showPrec d UniverseError = "UniverseError"

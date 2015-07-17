@@ -266,6 +266,7 @@ data Err' t
                         t
           | InvalidTCArg Name t
           | CantResolveAlts [Name]
+          | NoValidAlts [Name]
           | IncompleteTerm t
           | NoEliminator String t
           | UniverseError FC UExp (Int, Int) (Int, Int) [ConstraintFC]
@@ -360,6 +361,7 @@ instance Sized Err where
 score :: Err -> Int
 score (CantUnify _ _ _ m _ s) = 1 + s + score m
 score (CantResolve _ _) = 20
+score (NoValidAlts _) = 0
 score (NoSuchVariable _) = 1000
 score (ProofSearchFail e) = score e
 score (CantSolveGoal _ _) = 100000

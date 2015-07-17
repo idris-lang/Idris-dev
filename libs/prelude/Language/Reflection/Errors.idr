@@ -31,6 +31,7 @@ data Err = Msg String
          | CantResolve TT
          | InvalidTCArg TTName TT
          | CantResolveAlts (List TTName)
+         | NoValidAlts (List TTName)
          | IncompleteTerm TT
          | NoEliminator String TT
          | UniverseError

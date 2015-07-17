@@ -93,6 +93,7 @@ instance NFData Err where
         rnf (CantResolve x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (InvalidTCArg x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (CantResolveAlts x1) = rnf x1 `seq` ()
+        rnf (NoValidAlts x1) = rnf x1 `seq` ()
         rnf (IncompleteTerm x1) = rnf x1 `seq` ()
         rnf (NoEliminator x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (UniverseError x1 x2 x3 x4 x5) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()

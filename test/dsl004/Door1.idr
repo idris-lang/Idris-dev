@@ -30,8 +30,8 @@ action : DoorCmd a -> DoorLang a
 action = Action
 
 testProg : DoorH CLOSED -> DoorLang ()
-testProg h = do h <- Knock h
+testProg h = with Main, Show do -- h <- Knock h
                 h <- Open h
-                h <- Close h
+                -- h <- Close h
                 Return ()
 

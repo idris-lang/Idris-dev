@@ -344,6 +344,8 @@ pprintErr' i (InvalidTCArg n t)
         text "(Type class arguments must be injective)"
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
                                     align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i True) . annName) as)))
+pprintErr' i (NoValidAlts as) = text "Can't disambiguate since no alternative is valid:" <+>
+                                    indented (align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i True) . annName) as))))
 pprintErr' i (NoTypeDecl n) = text "No type declaration for" <+> annName n
 pprintErr' i (NoSuchVariable n) = text "No such variable" <+> annName n
 pprintErr' i (WithFnType ty) =
