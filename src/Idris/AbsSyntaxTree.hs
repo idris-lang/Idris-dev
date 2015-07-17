@@ -678,8 +678,8 @@ data Directive = DLib Codegen String |
                  DDefault Bool |
                  DLogging Integer |
                  DDynamicLibs [String] |
-                 DNameHint Name [Name] |
-                 DErrorHandlers Name Name [Name] |
+                 DNameHint Name FC [(Name, FC)] |
+                 DErrorHandlers Name FC Name FC [(Name, FC)] |
                  DLanguage LanguageExt |
                  DUsed FC Name Name
 
