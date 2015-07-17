@@ -196,7 +196,7 @@ extension syn ns rules =
     update ns (PPair fc hls p l r) = PPair fc hls p (update ns l) (update ns r)
     update ns (PDPair fc hls p l t r)
       = PDPair fc hls p (update ns l) (update ns t) (update ns r)
-    update ns (PAlternative a as) = PAlternative a (map (update ns) as)
+    update ns (PAlternative ms a as) = PAlternative ms a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
     update ns (PDoBlock ds) = PDoBlock $ upd ns ds
       where upd :: [(Name, SynMatch)] -> [PDo] -> [PDo]
@@ -464,10 +464,10 @@ bracketedExpr syn openParenFC e =
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant inFC (BI x))
     | not (inPattern syn)
-        = PAlternative FirstSuccess
+        = PAlternative [] FirstSuccess
              (PApp fc (PRef fc [] (sUN "fromInteger")) [pexp (PConstant NoFC (BI (fromInteger x)))]
              : consts)
-    | otherwise = PAlternative FirstSuccess consts
+    | otherwise = PAlternative [] FirstSuccess consts
     where
       consts = [ PConstant inFC (BI x)
                , PConstant inFC (I (fromInteger x))
@@ -490,7 +490,7 @@ modifyConst syn fc x = x
 -}
 alt :: SyntaxInfo -> IdrisParser PTerm
 alt syn = do symbol "(|"; alts <- sepBy1 (expr' syn) (lchar ','); symbol "|)"
-             return (PAlternative FirstSuccess alts)
+             return (PAlternative [] FirstSuccess alts)
 
 {- | Parses a possibly hidden simple expression
 @
@@ -594,7 +594,7 @@ app syn = do f <- simpleExpr syn
     -- literal to an argument, which we may want for obscure applications
     -- of fromInteger, and this will help disambiguate better.
     -- We know, at least, it won't be one of the constants!
-    flattenFromInt fc (PAlternative x alts) args
+    flattenFromInt fc (PAlternative _ x alts) args
       | Just i <- getFromInt alts
            = PApp fc (PRef fc [] (sUN "fromInteger")) (i : args)
     flattenFromInt fc f args = PApp fc f args

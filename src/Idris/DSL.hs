@@ -80,7 +80,7 @@ expandSugar dsl (PIfThenElse fc c t f) =
 expandSugar dsl (PPair fc hls p l r) = PPair fc hls p (expandSugar dsl l) (expandSugar dsl r)
 expandSugar dsl (PDPair fc hls p l t r) = PDPair fc hls p (expandSugar dsl l) (expandSugar dsl t)
                                                           (expandSugar dsl r)
-expandSugar dsl (PAlternative a as) = PAlternative a (map (expandSugar dsl) as)
+expandSugar dsl (PAlternative ms a as) = PAlternative ms a (map (expandSugar dsl) as)
 expandSugar dsl (PHidden t) = PHidden (expandSugar dsl t)
 expandSugar dsl (PNoImplicits t) = PNoImplicits (expandSugar dsl t)
 expandSugar dsl (PUnifyLog t) = PUnifyLog (expandSugar dsl t)
@@ -139,7 +139,7 @@ var dsl n t i = v' i t where
     v' i (PCase f t as)  = PCase f (v' i t) (fmap (pmap (v' i)) as)
     v' i (PPair f hls p l r) = PPair f hls p (v' i l) (v' i r)
     v' i (PDPair f hls p l t r) = PDPair f hls p (v' i l) (v' i t) (v' i r)
-    v' i (PAlternative a as) = PAlternative a $ map (v' i) as
+    v' i (PAlternative ms a as) = PAlternative ms a $ map (v' i) as
     v' i (PHidden t)     = PHidden (v' i t)
     v' i (PIdiom f t)    = PIdiom f (v' i t)
     v' i (PDoBlock ds)   = PDoBlock (map (fmap (v' i)) ds)

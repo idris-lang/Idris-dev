@@ -6,3 +6,4 @@ data Imp : Type where
 
 testVal : Imp
 testVal = MkImp (apply id Z)
+

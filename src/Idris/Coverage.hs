@@ -37,7 +37,7 @@ mkPatTm t = do i <- getIState
                               return $ mkApp t' args'
     -- For alternatives, pick the first and drop the namespaces. It doesn't
     -- really matter which is taken since matching will ignore the namespace.
-    toTT (PAlternative _ (a : as)) = toTT a
+    toTT (PAlternative _ _ (a : as)) = toTT a
     toTT _ = do v <- get
                 put (v + 1)
                 return (P Bound (sMN v "imp") Erased)

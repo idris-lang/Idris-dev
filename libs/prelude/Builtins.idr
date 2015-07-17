@@ -119,7 +119,8 @@ namespace Ownership
 
   ||| Make a read-only version of a unique value, which can be passed to another
   ||| function without the unique value being consumed.
-  implicit
+  implicit -- needs a special case in the coercion code, since implicits need
+           -- a concrete type to coerce!
   lend : {a : UniqueType} -> a -> Borrowed a
   lend x = Read x
 

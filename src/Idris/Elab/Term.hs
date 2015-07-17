@@ -425,13 +425,20 @@ elab ist info emode opts fn tm
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
                                           pexp l, pexp r])
+
     elab' ina _ (PDPair fc hls p l t r) = elab' ina (Just fc) (PApp fc (PRef fc hls sigmaCon)
                                                   [pimp (sMN 0 "a") t False,
                                                    pimp (sMN 0 "P") Placeholder True,
                                                    pexp l, pexp r])
-    elab' ina fc (PAlternative (ExactlyOne delayok) as)
-        = do as' <- doPrune as
+    elab' ina fc (PAlternative ms (ExactlyOne delayok) as)
+        = do as_pruned <- doPrune as
+             -- Finish the mkUniqueNames job with the pruned set, rather than
+             -- the full set.
+             uns <- get_usedns
+             let as' = map (mkUniqueNames (uns ++ map snd ms) ms) as_pruned
              (h : hs) <- get_holes
+--              trace (show (map showHd as')) $ 
+             ty <- goal
              case as' of
                   [x] -> elab' ina fc x
                   -- If there's options, try now, and if that fails, postpone
@@ -457,10 +464,9 @@ elab ist info emode opts fn tm
               doPrune as = 
                   do hnf_compute
                      ty <- goal
-                     ctxt <- get_context
                      let (tc, _) = unApply ty
                      env <- get_env
-                     return $ pruneByType (map fst env) tc ctxt as
+                     return $ pruneByType env tc ist as
 
 
               isAmbiguous (CantResolveAlts _) = delayok
@@ -469,8 +475,11 @@ elab ist info emode opts fn tm
               isAmbiguous (At _ e) = isAmbiguous e
               isAmbiguous _ = False
 
-    elab' ina fc (PAlternative FirstSuccess as)
-        = trySeq as
+    elab' ina fc (PAlternative ms FirstSuccess as_in)
+        = do -- finish the mkUniqueNames job
+             uns <- get_usedns
+             let as = map (mkUniqueNames (uns ++ map snd ms) ms) as_in
+             trySeq as
         where -- if none work, take the error from the first
               trySeq (x : xs) = let e1 = elab' ina fc x in
                                     try' e1 (trySeq' e1 xs) True
@@ -479,6 +488,68 @@ elab ist info emode opts fn tm
               trySeq' deferr (x : xs)
                   = try' (do elab' ina fc x
                              solveAutos ist fn False) (trySeq' deferr xs) True
+    elab' ina fc (PAlternative ms TryImplicit (orig : alts)) = do
+        env <- get_env
+        ty <- goal
+        let doelab = elab' ina fc orig
+        tryCatch doelab
+            (\err -> 
+                if recoverableErr err
+                   then -- trace ("NEED IMPLICIT! " ++ show orig ++ "\n" ++
+                        --       show alts ++ "\n" ++
+                        --       showQuick err) $
+                    -- Prune the coercions so that only the ones
+                    -- with the right type to fix the error will be tried!
+                    case pruneAlts err alts env of
+                         [] -> lift $ tfail err
+                         alts' -> 
+                             try' (elab' ina fc (PAlternative [] (ExactlyOne False) alts'))
+                                  (lift $ tfail err) -- take error from original if all fail
+                                  True
+                   else lift $ tfail err)
+      where
+        recoverableErr (CantUnify _ _ _ _ _ _) = True
+        recoverableErr (TooManyArguments _) = False
+        recoverableErr (CantSolveGoal _ _) = False
+        recoverableErr (CantResolveAlts _) = False
+        recoverableErr (ProofSearchFail (Msg _)) = True
+        recoverableErr (ProofSearchFail _) = False
+        recoverableErr (ElaboratingArg _ _ _ e) = recoverableErr e
+        recoverableErr (At _ e) = recoverableErr e
+        recoverableErr (ElabScriptDebug _ _ _) = False
+        recoverableErr _ = True
+
+        pruneAlts (CantUnify _ (inc, _) (outc, _) _ _ _) alts env
+            = case unApply (normalise (tt_ctxt ist) env inc) of
+                   (P (TCon _ _) n _, _) -> filter (hasArg n env) alts
+                   (Constant _, _) -> alts
+                   _ -> filter isLend alts -- special case hack for 'Borrowed'
+        pruneAlts (ElaboratingArg _ _ _ e) alts env = pruneAlts e alts env
+        pruneAlts (At _ e) alts env = pruneAlts e alts env
+        pruneAlts _ alts _ = filter isLend alts
+
+        hasArg n env ap | isLend ap = True -- special case hack for 'Borrowed'
+        hasArg n env (PApp _ (PRef _ _ a) _) 
+             = case lookupTyExact a (tt_ctxt ist) of
+                    Just ty -> let args = map snd (getArgTys (normalise (tt_ctxt ist) env ty)) in
+                                   any (fnIs n) args
+                    Nothing -> False
+        hasArg n _ _ = False
+
+        isLend (PApp _ (PRef _ _ l) _) = l == sNS (sUN "lend") ["Ownership"]
+        isLend _ = False
+
+        fnIs n ty = case unApply ty of
+                         (P _ n' _, _) -> n == n'
+                         _ -> False
+
+        showQuick (CantUnify _ (l, _) (r, _) _ _ _)
+            = show (l, r)
+        showQuick (ElaboratingArg _ _ _ e) = showQuick e
+        showQuick (At _ e) = showQuick e
+        showQuick (ProofSearchFail (Msg _)) = "search fail"
+        showQuick _ = "No chance"
+
     elab' ina _ (PPatvar fc n) | bindfree
         = do patvar n
              update_term liftPats
@@ -867,7 +938,7 @@ elab ist info emode opts fn tm
                 solve
         where headRef (PRef _ _ _) = True
               headRef (PApp _ f _) = headRef f
-              headRef (PAlternative _ as) = all headRef as
+              headRef (PAlternative _ _ as) = all headRef as
               headRef _ = False
 
     elab' ina fc (PAppImpl f es) = do appImpl (reverse es) -- not that we look... 
@@ -1227,7 +1298,7 @@ elab ist info emode opts fn tm
 
     getFC d (PApp fc _ _) = fc
     getFC d (PRef fc _ _) = fc
-    getFC d (PAlternative _ (x:_)) = getFC d x
+    getFC d (PAlternative _ _ (x:_)) = getFC d x
     getFC d x = d
 
     insertLazy :: PTerm -> ElabD PTerm
@@ -1241,10 +1312,10 @@ elab ist info emode opts fn tm
            let tries = if pattern then [t, mkDelay env t] else [mkDelay env t, t]
            case tyh of
                 P _ (UN l) _ | l == txt "Lazy'"
-                    -> return (PAlternative FirstSuccess tries)
+                    -> return (PAlternative [] FirstSuccess tries)
                 _ -> return t
       where
-        mkDelay env (PAlternative b xs) = PAlternative b (map (mkDelay env) xs)
+        mkDelay env (PAlternative ms b xs) = PAlternative ms b (map (mkDelay env) xs)
         mkDelay env t
             = let fc = fileFC "Delay" in
                   addImplBound ist (map fst env) (PApp fc (PRef fc [] (sUN "Delay"))
@@ -1259,7 +1330,7 @@ elab ist info emode opts fn tm
     notImplicitable (PRef _ _ n)
         | [opts] <- lookupCtxt n (idris_flags ist)
             = NoImplicit `elem` opts
-    notImplicitable (PAlternative (ExactlyOne _) as) = any notImplicitable as
+    notImplicitable (PAlternative _ (ExactlyOne _) as) = any notImplicitable as
     -- case is tricky enough without implicit coercions! If they are needed,
     -- they can go in the branches separately.
     notImplicitable (PCase _ _ _) = True
@@ -1302,9 +1373,8 @@ elab ist info emode opts fn tm
            let t' = case (t, cs) of
                          (PCoerced tm, _) -> tm
                          (_, []) -> t
-                         (_, cs) -> PAlternative FirstSuccess [t ,
-                                       PAlternative (ExactlyOne False) 
-                                            (map (mkCoerce env t) cs)]
+                         (_, cs) -> PAlternative [] TryImplicit 
+                                        (t : map (mkCoerce env t) cs)
            return t'
        where
          mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in
@@ -1376,12 +1446,12 @@ pruneAlt xs = map prune xs
         = PApp fc1 (PRef fc2 hls f) (fmap (fmap (choose f)) as)
     prune t = t
 
-    choose f (PAlternative a as)
+    choose f (PAlternative ms a as)
         = let as' = fmap (choose f) as
               fs = filter (headIs f) as' in
               case fs of
                  [a] -> a
-                 _ -> PAlternative a as'
+                 _ -> PAlternative ms a as'
 
     choose f (PApp fc f' as) = PApp fc (choose f f') (fmap (fmap (choose f)) as)
     choose f t = t
@@ -1392,8 +1462,8 @@ pruneAlt xs = map prune xs
 
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
-pruneByType :: [Name] -> Term -> -- head of the goal
-               Context -> [PTerm] -> [PTerm]
+pruneByType :: Env -> Term -> -- head of the goal
+               IState -> [PTerm] -> [PTerm]
 -- if an alternative has a locally bound name at the head, take it
 pruneByType env t c as
    | Just a <- locallyBound as = [a]
@@ -1401,15 +1471,16 @@ pruneByType env t c as
     locallyBound [] = Nothing
     locallyBound (t:ts)
        | Just n <- getName t,
-         n `elem` env = Just t
+         n `elem` map fst env = Just t
        | otherwise = locallyBound ts
     getName (PRef _ _ n) = Just n
     getName (PApp _ f _) = getName f
     getName (PHidden t) = getName t
     getName _ = Nothing
 
-pruneByType env (P _ n _) ctxt as
--- if the goal type is polymorphic, keep e
+-- 'n' is the name at the head of the goal type
+pruneByType env (P _ n _) ist as
+-- if the goal type is polymorphic, keep everything
    | Nothing <- lookupTyExact n ctxt = as
    | otherwise
        = let asV = filter (headIs True n) as
@@ -1420,6 +1491,8 @@ pruneByType env (P _ n _) ctxt as
                         _ -> asV
                _ -> as'
   where
+    ctxt = tt_ctxt ist 
+
     headIs var f (PRef _ _ f') = typeHead var f f'
     headIs var f (PApp _ (PRef _ _ f') _) = typeHead var f f'
     headIs var f (PApp _ f' _) = headIs var f f'
@@ -1435,11 +1508,44 @@ pruneByType env (P _ n _) ctxt as
                             _ -> let ty' = normalise ctxt [] ty in
                                      case unApply (getRetTy ty') of
                                           (P _ ftyn _, _) -> ftyn == f
-                                          (V _, _) -> var -- keep, variable
+                                          (V _, _) -> 
+                                            -- keep, variable
+--                                             trace ("Keeping " ++ show (f', ty')
+--                                                      ++ " for " ++ show n) $
+                                              isPlausible ist var env n ty
                                           _ -> False
                _ -> False
 
 pruneByType _ t _ as = as
+
+-- Could the name feasibly be the return type?
+-- If there is a type class constraint on the return type, and no instance
+-- in the environment or globally for that name, then no
+-- Otherwise, yes
+-- (FIXME: This isn't complete, but I'm leaving it here and coming back
+-- to it later - just returns 'var' for now. EB)
+isPlausible :: IState -> Bool -> Env -> Name -> Type -> Bool
+isPlausible ist var env n ty 
+    = let (hvar, classes) = collectConstraints [] [] ty in
+          case hvar of
+               Nothing -> True
+               Just rth -> var -- trace (show (rth, classes)) var
+   where
+     collectConstraints :: [Name] -> [(Term, [Name])] -> Type -> 
+                                     (Maybe Name, [(Term, [Name])])
+     collectConstraints env tcs (Bind n (Pi _ ty _) sc)
+         = let tcs' = case unApply ty of
+                           (P _ c _, _) -> 
+                               case lookupCtxtExact c (idris_classes ist) of
+                                    Just tc -> ((ty, map fst (class_instances tc)) 
+                                                     : tcs) 
+                                    Nothing -> tcs
+                           _ -> tcs 
+                      in
+               collectConstraints (n : env) tcs' sc
+     collectConstraints env tcs t
+         | (V i, _) <- unApply t = (Just (env !! i), tcs)
+         | otherwise = (Nothing, tcs)
 
 -- | Use the local elab context to work out the highlighting for a name
 findHighlight :: Name -> ElabD OutputAnnotation

@@ -250,7 +250,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
 
     mkTyDecl (n, op, t, _)
         = PTy emptyDocstring [] syn fc op n NoFC
-               (mkUniqueNames [] t)
+               (mkUniqueNames [] [] t)
 
     conbind :: [(Name, PTerm)] -> PTerm -> PTerm
     conbind ((c,ty) : ns) x = PPi constraint c NoFC ty (conbind ns x)

@@ -192,4 +192,25 @@ instance DecEq String where
              primitiveEq = believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void
 
+--------------------------------------------------------------------------------
+-- Ptr
+--------------------------------------------------------------------------------
+
+instance DecEq Ptr where
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where primitiveEq : x = y
+             primitiveEq = believe_me (Refl {x})
+             postulate primitiveNotEq : x = y -> Void
+
+--------------------------------------------------------------------------------
+-- ManagedPtr
+--------------------------------------------------------------------------------
+
+instance DecEq ManagedPtr where
+    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+       where primitiveEq : x = y
+             primitiveEq = believe_me (Refl {x})
+             postulate primitiveNotEq : x = y -> Void
+
+
 

@@ -210,6 +210,13 @@ get_holes :: Elab' aux [Name]
 get_holes = do ES p _ _ <- get
                return $! (holes (fst p))
 
+get_usedns :: Elab' aux [Name]
+get_usedns = do ES p _ _ <- get
+                let bs = bound_in (pterm (fst p)) ++
+                         bound_in_term (ptype (fst p))
+                let nouse = holes (fst p) ++ bs ++ dontunify (fst p) ++ usedns (fst p)
+                return $! nouse
+
 get_probs :: Elab' aux Fails
 get_probs = do ES p _ _ <- get
                return $! (problems (fst p))
@@ -812,9 +819,10 @@ tryCatch t1 t2
   = do s <- get
        ps <- get_probs
        ulog <- getUnifyLog
-       case prunStateT 999999 False ps t1 s of
-            OK ((v, _, _), s') -> do put s'
-                                     return $! v
+--        case prunStateT 999999 False ps t1 s of
+       case runStateT t1 s of
+            OK (v, s') -> do put s'
+                             return $! v
             Error e1 -> traceWhen ulog ("tryCatch failed " ++ show e1) $
                           case runStateT (t2 e1) s of
                                OK (v, s') -> do put s'
@@ -863,6 +871,7 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
                             if (s >= i) then (lift (tfail err), s)
                                         else (f, i)
 
+-- Run an elaborator, and fail if any problems are introduced
 prunStateT
   :: Int
      -> Bool

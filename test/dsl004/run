@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+idris $@ Door0.idr --check
+idris $@ Door1.idr --check
+idris $@ Door2.idr --check
+rm -f *.ibc

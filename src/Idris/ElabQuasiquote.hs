@@ -125,10 +125,10 @@ extractUnquotes n (PDPair fc hls info a b c)
        (b', ex2) <- extractUnquotes n b
        (c', ex3) <- extractUnquotes n c
        return (PDPair fc hls info a' b' c', ex1 ++ ex2 ++ ex3)
-extractUnquotes n (PAlternative b alts)
+extractUnquotes n (PAlternative ms b alts)
   = do alts' <- mapM (extractUnquotes n) alts
        let (alts'', exs) = unzip alts'
-       return (PAlternative b alts'', concat exs)
+       return (PAlternative ms b alts'', concat exs)
 extractUnquotes n (PHidden tm)
   = do (tm', ex) <- extractUnquotes n tm
        return (PHidden tm', ex)

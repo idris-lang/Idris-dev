@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 115
+ibcVersion = 116
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -1594,9 +1594,10 @@ instance Binary PTerm where
                                                put x4
                                                put x5
                                                put x6
-                PAlternative x1 x2 -> do putWord8 20
-                                         put x1
-                                         put x2
+                PAlternative x1 x2 x3 -> do putWord8 20
+                                            put x1
+                                            put x2
+                                            put x3
                 PHidden x1 -> do putWord8 21
                                  put x1
                 PType x1 -> do putWord8 22
@@ -1738,7 +1739,8 @@ instance Binary PTerm where
                             return (PDPair x1 x2 x3 x4 x5 x6)
                    20 -> do x1 <- get
                             x2 <- get
-                            return (PAlternative x1 x2)
+                            x3 <- get
+                            return (PAlternative x1 x2 x3)
                    21 -> do x1 <- get
                             return (PHidden x1)
                    22 -> do x1 <- get
@@ -1809,12 +1811,14 @@ instance Binary PAltType where
                 ExactlyOne x1 -> do putWord8 0
                                     put x1
                 FirstSuccess -> putWord8 1
+                TryImplicit -> putWord8 2
         get
           = do i <- getWord8
                case i of
                    0 -> do x1 <- get
                            return (ExactlyOne x1)
                    1 -> return FirstSuccess
+                   2 -> return TryImplicit
                    _ -> error "Corrupted binary data for PAltType"
 
 
