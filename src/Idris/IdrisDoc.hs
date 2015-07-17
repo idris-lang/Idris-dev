@@ -288,8 +288,8 @@ loadDocs ist n
 --   TODO: Remove unnecessary cases
 extractPTermNames :: PTerm  -- ^ Where to extract names from
                   -> [Name] -- ^ Extracted names
-extractPTermNames (PRef _ n)         = [n]
-extractPTermNames (PInferRef _ n)    = [n]
+extractPTermNames (PRef _ _ n)       = [n]
+extractPTermNames (PInferRef _ _ n)  = [n]
 extractPTermNames (PPatvar _ n)      = [n]
 extractPTermNames (PLam _ n _ p1 p2) = n : concatMap extract [p1, p2]
 extractPTermNames (PPi _ n _ p1 p2)  = n : concatMap extract [p1, p2]

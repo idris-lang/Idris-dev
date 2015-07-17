@@ -223,8 +223,8 @@ instance (NFData t) => NFData (PData' t) where
 
 instance NFData PTerm where
         rnf (PQuote x1) = rnf x1 `seq` ()
-        rnf (PRef x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (PInferRef x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (PRef x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` x3 `seq` ()
+        rnf (PInferRef x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` x3 `seq` ()
         rnf (PPatvar x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PLam _ x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (PPi x1 x2 x3 x4 x5)

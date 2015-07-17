@@ -95,7 +95,7 @@ elabRecord info doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc csyn
 
     -- | The target for the constructor and projection functions. Also the source of the update functions.
     target :: PTerm
-    target = PApp fc (PRef fc tyn) $ map (uncurry asPRefArg) [(p, n) | (n, _, p, _) <- params]
+    target = PApp fc (PRef fc [] tyn) $ map (uncurry asPRefArg) [(p, n) | (n, _, p, _) <- params]
 
     paramsAndDoc :: [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))]
     paramsAndDoc = pad params paramDocs
@@ -327,10 +327,10 @@ elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs f
     -- | The left hand side of the projection function.
     generateLhs :: PTerm
     generateLhs = let args = lhsArgs index phArgs
-                  in PApp fc (PRef fc pname) [pexp (PApp fc (PRef fc cn) args)]
+                  in PApp fc (PRef fc [] pname) [pexp (PApp fc (PRef fc [] cn) args)]
       where
         lhsArgs :: Int -> [PArg] -> [PArg]
-        lhsArgs 0 (_ : rest) = (asArg plicity (nsroot cname) (PRef fc pname_in)) : rest
+        lhsArgs 0 (_ : rest) = (asArg plicity (nsroot cname) (PRef fc [] pname_in)) : rest
         lhsArgs i (x : rest) = x : (lhsArgs (i-1) rest)
         lhsArgs _ [] = []
 
@@ -343,7 +343,7 @@ elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs f
 
     -- | The right hand side of the projection function.
     generateRhs :: PTerm
-    generateRhs = PRef fc pname_in
+    generateRhs = PRef fc [] pname_in
 
 -- | Creates and elaborates an update function.
 -- If 'optional' is true, we will not fail if we can't elaborate the update function.
@@ -387,7 +387,7 @@ elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i option
     generateTy = PTy pdoc [] psyn fc [] set_pname NoFC $
                    PPi expl (nsroot pname) NoFC pty $
                      PPi expl recName NoFC sty (substInput sty)
-      where substInput = substMatches [(cname, PRef fc (nsroot pname))]
+      where substInput = substMatches [(cname, PRef fc [] (nsroot pname))]
 
     -- | The "_set" name.
     set_pname :: Name
@@ -401,10 +401,10 @@ elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i option
 
     -- | The left-hand side of the update function.
     generateLhs :: PTerm
-    generateLhs = PApp fc (PRef fc set_pname) [pexp $ PRef fc pname_in, pexp constructorPattern]
+    generateLhs = PApp fc (PRef fc [] set_pname) [pexp $ PRef fc [] pname_in, pexp constructorPattern]
       where
         constructorPattern :: PTerm
-        constructorPattern = PApp fc (PRef fc cn) args
+        constructorPattern = PApp fc (PRef fc [] cn) args
 
     -- | The "_in" name.
     pname_in :: Name
@@ -415,10 +415,10 @@ elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i option
 
     -- | The right-hand side of the update function.
     generateRhs :: PTerm
-    generateRhs = PApp fc (PRef fc cn) (newArgs i args)
+    generateRhs = PApp fc (PRef fc [] cn) (newArgs i args)
       where
         newArgs :: Int -> [PArg] -> [PArg]
-        newArgs 0 (_ : rest) = (asArg plicity (nsroot cname) (PRef fc pname_in)) : rest
+        newArgs 0 (_ : rest) = (asArg plicity (nsroot cname) (PRef fc [] pname_in)) : rest
         newArgs i (x : rest) = x : (newArgs (i-1) rest)
         newArgs _ [] = []
 
@@ -440,17 +440,17 @@ asArg (TacImp os _ s) n t = PTacImplicit 0 os n s t
 recName :: Name
 recName = sMN 0 "rec"
 
-recRef = PRef emptyFC recName
+recRef = PRef emptyFC [] recName
 
 projectInType :: [(Name, Name)] -> PTerm -> PTerm
 projectInType xs = mapPT st
   where
     st :: PTerm -> PTerm
-    st (PRef fc n)
-      | Just pn <- lookup n xs = PApp fc (PRef fc pn) [pexp recRef]
+    st (PRef fc [] n)
+      | Just pn <- lookup n xs = PApp fc (PRef fc [] pn) [pexp recRef]
     st t = t
 
 -- | Creates an PArg from a plicity and a name where the term is a PRef.
 asPRefArg :: Plicity -> Name -> PArg
-asPRefArg p n = asArg p (nsroot n) $ PRef emptyFC (nsroot n)
+asPRefArg p n = asArg p (nsroot n) $ PRef emptyFC [] (nsroot n)
 

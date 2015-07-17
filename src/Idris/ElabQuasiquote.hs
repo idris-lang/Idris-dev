@@ -163,7 +163,7 @@ extractUnquotes n (PQuasiquote tm goal)
   = fmap (\(tm', ex) -> (PQuasiquote tm' goal, ex)) $ extractUnquotes (n+1) tm
 extractUnquotes n (PUnquote tm)
   | n == 0 = do n <- getNameFrom (sMN 0 "unquotation")
-                return (PRef (fileFC "(unquote)") n, [(n, tm)])
+                return (PRef (fileFC "(unquote)") [] n, [(n, tm)])
   | otherwise = fmap (\(tm', ex) -> (PUnquote tm', ex)) $
                 extractUnquotes (n-1) tm
 extractUnquotes n (PRunElab fc tm ns)

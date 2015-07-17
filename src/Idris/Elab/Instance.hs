@@ -68,7 +68,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
                   [] -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
                   cs -> tclift $ tfail $ At fc
                            (CantResolveAlts (map fst cs))
-    let constraint = PApp fc (PRef fc n) (map pexp ps)
+    let constraint = PApp fc (PRef fc [] n) (map pexp ps)
     let iname = mkiname n (namespace info) ps expn
     let emptyclass = null (class_methods ci)
     when (what /= EDefns || (null ds && not emptyclass)) $ do
@@ -89,7 +89,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          -- where block
          wparams <- mapM (\p -> case p of
                                   PApp _ _ args -> getWParams (map getTm args)
-                                  a@(PRef fc f) -> getWParams [a]
+                                  a@(PRef fc _ f) -> getWParams [a]
                                   _ -> return []) ps
          ist <- getIState
          let pnames = nub $ map pname (concat (nub wparams)) ++
@@ -100,7 +100,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          let all_meths = map (nsroot . fst) (class_methods ci)
          let mtys = map (\ (n, (op, t)) ->
                    let t_in = substMatchesShadow ips pnames t
-                       mnamemap = map (\n -> (n, PRef fc (decorate ns iname n)))
+                       mnamemap = map (\n -> (n, PRef fc [] (decorate ns iname n)))
                                       all_meths
                        t' = substMatchesShadow mnamemap pnames t_in in
                        (decorate ns iname n,
@@ -123,15 +123,15 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
 
          -- Bring variables in instance head into scope
          let headVars = nub $ mapMaybe (\p -> case p of
-                                               PRef _ n ->
+                                               PRef _ _ n ->
                                                   case lookupTy n (tt_ctxt ist) of
                                                       [] -> Just n
                                                       _ -> Nothing
                                                _ -> Nothing) ps
 --          let lhs = PRef fc iname
-         let lhs = PApp fc (PRef fc iname)
-                           (map (\n -> pimp n (PRef fc n) True) headVars)
-         let rhs = PApp fc (PRef fc (instanceCtorName ci))
+         let lhs = PApp fc (PRef fc [] iname)
+                           (map (\n -> pimp n (PRef fc [] n) True) headVars)
+         let rhs = PApp fc (PRef fc [] (instanceCtorName ci))
                            (map (pexp . mkMethApp) mtys)
 
          logLvl 5 $ "Instance LHS " ++ show lhs ++ " " ++ show headVars
@@ -218,16 +218,16 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
     keepDets dets t = t
 
     mkMethApp (n, _, _, ty)
-          = lamBind 0 ty (papp fc (PRef fc n) (methArgs 0 ty))
+          = lamBind 0 ty (papp fc (PRef fc [] n) (methArgs 0 ty))
     lamBind i (PPi (Constraint _ _) _ _ _ sc) sc'
           = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
     lamBind i (PPi _ n _ ty sc) sc'
           = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
     methArgs i (PPi (Imp _ _ _ _) n _ ty sc)
-        = PImp 0 True [] n (PRef fc (sMN i "meth")) : methArgs (i+1) sc
+        = PImp 0 True [] n (PRef fc [] (sMN i "meth")) : methArgs (i+1) sc
     methArgs i (PPi (Exp _ _ _) n _ ty sc)
-        = PExp 0 [] (sMN 0 "marg") (PRef fc (sMN i "meth")) : methArgs (i+1) sc
+        = PExp 0 [] (sMN 0 "marg") (PRef fc [] (sMN i "meth")) : methArgs (i+1) sc
     methArgs i (PPi (Constraint _ _) n _ ty sc)
         = PConstraint 0 [] (sMN 0 "marg") (PResolveTC fc) : methArgs (i+1) sc
     methArgs i _ = []
@@ -237,11 +237,11 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
 
     getWParams [] = return []
     getWParams (p : ps)
-      | PRef _ n <- p
+      | PRef _ _ n <- p
         = do ps' <- getWParams ps
              ctxt <- getContext
              case lookupP n ctxt of
-                [] -> return (pimp n (PRef fc n) True : ps')
+                [] -> return (pimp n (PRef fc [] n) True : ps')
                 _ -> return ps'
     getWParams (_ : ps) = getWParams ps
 

@@ -127,7 +127,7 @@ varlist = map (sUN . (:[])) "xyzwstuv" -- EB's personal preference :)
 
 stripNS :: Idris.AbsSyntaxTree.PTerm -> Idris.AbsSyntaxTree.PTerm
 stripNS tm = mapPT dens tm where
-    dens (PRef fc n) = PRef fc (nsroot n)
+    dens (PRef fc hls n) = PRef fc hls (nsroot n)
     dens t = t
 
 mergeAllPats :: IState -> Name -> PTerm -> [PTerm] -> [(PTerm, [(Name, PTerm)])]
@@ -137,7 +137,7 @@ mergeAllPats ist cv t (p : ps)
                                       (MS [] [] (filter (/=cv) (patvars t)) [])
           ps' = mergeAllPats ist cv t ps in
           ((p', u) : ps')
-  where patvars (PRef _ n) = [n]
+  where patvars (PRef _ _ n) = [n]
         patvars (PApp _ _ as) = concatMap (patvars . getTm) as
         patvars (PPatvar _ n) = [n]
         patvars _ = []
@@ -146,19 +146,19 @@ mergePat :: IState -> PTerm -> PTerm -> Maybe Name -> State MergeState PTerm
 -- If any names are unified, make sure they stay unified. Always prefer
 -- user provided name (first pattern)
 mergePat ist (PPatvar fc n) new t
-  = mergePat ist (PRef fc n) new t
+  = mergePat ist (PRef fc [] n) new t
 mergePat ist old (PPatvar fc n) t
-  = mergePat ist old (PRef fc n) t
-mergePat ist orig@(PRef fc n) new@(PRef _ n') t
+  = mergePat ist old (PRef fc [] n) t
+mergePat ist orig@(PRef fc _ n) new@(PRef _ _ n') t
   | isDConName n' (tt_ctxt ist) = do addUpdate n new
                                      return new
   | otherwise
     = do ms <- get
          case lookup n' (namemap ms) of
-              Just x -> do addUpdate n (PRef fc x)
-                           return (PRef fc x)
+              Just x -> do addUpdate n (PRef fc [] x)
+                           return (PRef fc [] x)
               Nothing -> do put (ms { namemap = ((n', n) : namemap ms) })
-                            return (PRef fc n)
+                            return (PRef fc [] n)
 mergePat ist (PApp _ _ args) (PApp fc f args') t
       = do newArgs <- zipWithM mergeArg args (zip args' (argTys ist f))
            return (PApp fc f newArgs)
@@ -169,16 +169,16 @@ mergePat ist (PApp _ _ args) (PApp fc f args') t
                              return (y { machine_inf = machine_inf x,
                                          getTm = tm' })
                         _ -> return (y { getTm = tm' })
-mergePat ist (PRef fc n) tm ty = do tm <- tidy ist tm ty
-                                    addUpdate n tm
-                                    return tm
+mergePat ist (PRef fc _ n) tm ty = do tm <- tidy ist tm ty
+                                      addUpdate n tm
+                                      return tm
 mergePat ist x y t = return y
 
 mergeUserImpl :: PTerm -> PTerm -> PTerm
 mergeUserImpl x y = x
 
 argTys :: IState -> PTerm -> [Maybe Name]
-argTys ist (PRef fc n) 
+argTys ist (PRef fc hls n) 
     = case lookupTy n (tt_ctxt ist) of
            [ty] -> map (tyName . snd) (getArgTys ty) ++ repeat Nothing
            _ -> repeat Nothing
@@ -188,14 +188,14 @@ argTys ist (PRef fc n)
 argTys _ _ = repeat Nothing
 
 tidy :: IState -> PTerm -> Maybe Name -> State MergeState PTerm
-tidy ist orig@(PRef fc n) ty
+tidy ist orig@(PRef fc hls n) ty
      = do ms <- get
           case lookup n (namemap ms) of
-               Just x -> return (PRef fc x)
+               Just x -> return (PRef fc [] x)
                Nothing -> case n of
                                (UN _) -> return orig
                                _ -> do n' <- inventName ist ty n
-                                       return (PRef fc n')
+                                       return (PRef fc [] n')
 tidy ist (PApp fc f args) ty
      = do args' <- zipWithM tidyArg args (argTys ist f)
           return (PApp fc f args')
@@ -222,7 +222,7 @@ findPats ist t | (P _ n _, _) <- unApply t
            [ti] -> map genPat (con_names ti)
            _ -> [Placeholder]
     where genPat n = case lookupCtxt n (idris_implicits ist) of
-                        [args] -> PApp emptyFC (PRef emptyFC n)
+                        [args] -> PApp emptyFC (PRef emptyFC [] n)
                                          (map toPlaceholder args)
                         _ -> error $ "Can't happen (genPat) " ++ show n
           toPlaceholder tm = tm { getTm = Placeholder }
@@ -233,10 +233,10 @@ replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
   where subst :: PTerm -> PTerm
         subst orig@(PPatvar _ v) | v == n = t
                                  | otherwise = Placeholder
-        subst orig@(PRef _ v) | v == n = t
-                              | isDConName v ctxt = orig
-        subst (PRef _ _) = Placeholder
-        subst (PApp fc (PRef _ t) pats) 
+        subst orig@(PRef _ _ v) | v == n = t
+                                | isDConName v ctxt = orig
+        subst (PRef _ _ _) = Placeholder
+        subst (PApp fc (PRef _ _ t) pats) 
             | isTConName t ctxt = Placeholder -- infer types
         subst (PApp fc f pats) = PApp fc f (map substArg pats)
         subst x = x
@@ -281,8 +281,8 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
 
     -- TMP HACK: If there are Nats, we don't want to show as numerals since
     -- this isn't supported in a pattern, so special case here
-    nshow (PRef _ (UN z)) | z == txt "Z" = "Z"
-    nshow (PApp _ (PRef _ (UN s)) [x]) | s == txt "S" =
+    nshow (PRef _ _ (UN z)) | z == txt "Z" = "Z"
+    nshow (PApp _ (PRef _ _ (UN s)) [x]) | s == txt "S" =
                "(S " ++ addBrackets (nshow (getTm x)) ++ ")"
     nshow t = show t
 
@@ -359,7 +359,7 @@ getClause l fn fp
          getNameFrom i used (PPi _ _ _ _ _)
               = uniqueNameFrom (mkSupply [sUN "f", sUN "g"]) used
          getNameFrom i used (PApp fc f as) = getNameFrom i used f
-         getNameFrom i used (PRef fc f) 
+         getNameFrom i used (PRef fc _ f)
             = case getNameHints i f of
                    [] -> uniqueName (sUN "x") used
                    ns -> uniqueNameFrom (mkSupply ns) used
@@ -415,7 +415,7 @@ nameMissing ps = do ist <- get
                                                 newPats
                     return (map fst newPats')
   where
-    base (PApp fc f args) = PApp fc f (map (fmap (const (PRef fc (sUN "_")))) args)
+    base (PApp fc f args) = PApp fc f (map (fmap (const (PRef fc [] (sUN "_")))) args)
     base t = t
 
     nm ptm = do mptm <- elabNewPat ptm

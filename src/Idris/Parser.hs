@@ -324,8 +324,8 @@ syntaxRule syn
     uniquifyBinders userNames = fixBind []
       where
         fixBind :: [(Name, Name)] -> PTerm -> IdrisParser PTerm
-        fixBind rens (PRef fc n) | Just n' <- lookup n rens =
-          return $ PRef fc n'
+        fixBind rens (PRef fc hls n) | Just n' <- lookup n rens =
+          return $ PRef fc hls n'
         fixBind rens (PPatvar fc n) | Just n' <- lookup n rens =
           return $ PPatvar fc n'
         fixBind rens (PLam fc n nfc ty body)
@@ -735,7 +735,7 @@ instance_ syn = do (doc, argDocs)
                    let cs' = [(c, ty) | (c, _, ty) <- cs]
                    (cn, cnfc) <- fnName
                    args <- many (simpleExpr syn)
-                   let sc = PApp fc (PRef cnfc cn) (map pexp args)
+                   let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- option [] (instanceBlock syn)
                    return [PInstance doc argDocs syn fc cs' cn cnfc args t en ds]
@@ -953,7 +953,7 @@ clause syn
               let capp = PLet fc (sMN 0 "match") NoFC
                               ty
                               (PMatchApp fc n)
-                              (PRef fc (sMN 0 "match"))
+                              (PRef fc [] (sMN 0 "match"))
               ist <- get
               put (ist { lastParse = Just n })
               return $ PClause fc n capp [] r wheres
@@ -976,7 +976,7 @@ clause syn
                                             do terminator
                                                return ([], [])]
                   ist <- get
-                  let capp = PApp fc (PRef nfc n) [pexp l, pexp r]
+                  let capp = PApp fc (PRef nfc [nfc] n) [pexp l, pexp r]
                   put (ist { lastParse = Just n })
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
@@ -987,7 +987,7 @@ clause syn
                    ds <- some $ fnDecl syn
                    closeBlock
                    ist <- get
-                   let capp = PApp fc (PRef fc n) [pexp l, pexp r]
+                   let capp = PApp fc (PRef fc [] n) [pexp l, pexp r]
                    let withs = map (fillLHSD n capp wargs) $ concat ds
                    put (ist { lastParse = Just n })
                    return $ PWith fc n capp wargs wval pn withs)
@@ -998,7 +998,7 @@ clause syn
               args <- many (try (implicitArg (syn { inPattern = True } ))
                             <|> (fmap pexp (argExpr syn)))
               wargs <- many (wExpr syn)
-              let capp = PApp fc (PRef nfc n)
+              let capp = PApp fc (PRef nfc [nfc] n)
                            (cargs ++ args)
               (do r <- rhs syn n
                   ist <- get

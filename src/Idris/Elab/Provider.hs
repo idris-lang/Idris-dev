@@ -94,7 +94,7 @@ elabProvider doc info syn fc nfc what n
              | ProvTerm ty _ <- what ->
                do -- Finally add a top-level definition of the provided term
                   elabType info syn doc [] fc [] n NoFC ty
-                  elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc n) []) [] (delab i tm) []]
+                  elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc [] n) []) [] (delab i tm) []]
                   logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
              | ProvPostulate _ <- what ->
                do -- Add the postulate

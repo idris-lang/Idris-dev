@@ -49,7 +49,7 @@ import Data.List.Split (splitOn)
 import Util.Pretty(pretty, text)
 
 elabTransform :: ElabInfo -> FC -> Bool -> PTerm -> PTerm -> Idris (Term, Term)
-elabTransform info fc safe lhs_in@(PApp _ (PRef _ tf) _) rhs_in
+elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
     = do ctxt <- getContext
          i <- getIState
          let lhs = addImplPat i lhs_in

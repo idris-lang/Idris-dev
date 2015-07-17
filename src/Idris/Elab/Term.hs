@@ -289,7 +289,7 @@ elab ist info emode opts fn tm
         env <- get_env
         handleError (forceErr t' env)
             (elab' ina fc' t')
-            (elab' ina fc' (PApp fc (PRef fc (sUN "Force"))
+            (elab' ina fc' (PApp fc (PRef fc [] (sUN "Force"))
                              [pimp (sUN "t") Placeholder True,
                               pimp (sUN "a") Placeholder True,
                               pexp ct]))
@@ -308,7 +308,7 @@ elab ist info emode opts fn tm
     forceErr orig env (At _ t) = forceErr orig env t
     forceErr orig env t = False
 
-    notDelay t@(PApp _ (PRef _ (UN l)) _) | l == txt "Delay" = False
+    notDelay t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Delay" = False
     notDelay _ = True
 
     local f = do e <- get_env
@@ -350,9 +350,9 @@ elab ist info emode opts fn tm
        do hnf_compute
           g <- goal
           case g of
-            TType _ -> elab' ina (Just fc) (PRef fc unitTy)
-            UType _ -> elab' ina (Just fc) (PRef fc unitTy)
-            _ -> elab' ina (Just fc) (PRef fc unitCon)
+            TType _ -> elab' ina (Just fc) (PRef fc [] unitTy)
+            UType _ -> elab' ina (Just fc) (PRef fc [] unitTy)
+            _ -> elab' ina (Just fc) (PRef fc [] unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC False False 5 g fn ist
     elab' ina fc (PResolveTC fc')
@@ -360,14 +360,14 @@ elab ist info emode opts fn tm
              instanceArg c
     -- Elaborate the equality type first homogeneously, then
     -- heterogeneously as a fallback
-    elab' ina _ (PApp fc (PRef _ n) args)
+    elab' ina _ (PApp fc (PRef _ _ n) args)
        | n == eqTy, [Placeholder, Placeholder, l, r] <- map getTm args
        = try (do tyn <- getNameFrom (sMN 0 "aqty")
                  claim tyn RType
                  movelast tyn
-                 elab' ina (Just fc) (PApp fc (PRef fc eqTy)
-                              [pimp (sUN "A") (PRef NoFC tyn) True,
-                               pimp (sUN "B") (PRef NoFC tyn) False,
+                 elab' ina (Just fc) (PApp fc (PRef fc [] eqTy)
+                              [pimp (sUN "A") (PRef NoFC [] tyn) True,
+                               pimp (sUN "B") (PRef NoFC [] tyn) False,
                                pexp l, pexp r]))
              (do atyn <- getNameFrom (sMN 0 "aqty")
                  btyn <- getNameFrom (sMN 0 "bqty")
@@ -375,9 +375,9 @@ elab ist info emode opts fn tm
                  movelast atyn
                  claim btyn RType
                  movelast btyn
-                 elab' ina (Just fc) (PApp fc (PRef fc eqTy)
-                   [pimp (sUN "A") (PRef NoFC atyn) True,
-                    pimp (sUN "B") (PRef NoFC btyn) False,
+                 elab' ina (Just fc) (PApp fc (PRef fc [] eqTy)
+                   [pimp (sUN "A") (PRef NoFC [] atyn) True,
+                    pimp (sUN "B") (PRef NoFC [] btyn) False,
                     pexp l, pexp r]))
 
     elab' ina _ (PPair fc _ l r)
@@ -385,17 +385,17 @@ elab ist info emode opts fn tm
              g <- goal
              let (tc, _) = unApply g
              case g of
-                TType _ -> elab' ina (Just fc) (PApp fc (PRef fc pairTy)
+                TType _ -> elab' ina (Just fc) (PApp fc (PRef fc [] pairTy)
                                                       [pexp l,pexp r])
-                UType _ -> elab' ina (Just fc) (PApp fc (PRef fc upairTy)
+                UType _ -> elab' ina (Just fc) (PApp fc (PRef fc [] upairTy)
                                                       [pexp l,pexp r])
                 _ -> case tc of
                         P _ n _ | n == upairTy 
-                          -> elab' ina (Just fc) (PApp fc (PRef fc upairCon)
+                          -> elab' ina (Just fc) (PApp fc (PRef fc [] upairCon)
                                                 [pimp (sUN "A") Placeholder False,
                                                  pimp (sUN "B") Placeholder False,
                                                  pexp l, pexp r])
-                        _ -> elab' ina (Just fc) (PApp fc (PRef fc pairCon)
+                        _ -> elab' ina (Just fc) (PApp fc (PRef fc [] pairCon)
                                                 [pimp (sUN "A") Placeholder False,
                                                  pimp (sUN "B") Placeholder False,
                                                  pexp l, pexp r])
@@ -409,7 +409,7 @@ elab ist info emode opts fn tm
 --                                                  pexp l, pexp r]))
 --                                   True
 
-    elab' ina _ (PDPair fc p l@(PRef nfc n) t r)
+    elab' ina _ (PDPair fc p l@(PRef nfc hl n) t r)
             = case t of
                 Placeholder ->
                    do hnf_compute
@@ -418,14 +418,14 @@ elab ist info emode opts fn tm
                          TType _ -> asType
                          _ -> asValue
                 _ -> asType
-         where asType = elab' ina (Just fc) (PApp fc (PRef NoFC sigmaTy)
+         where asType = elab' ina (Just fc) (PApp fc (PRef NoFC [] sigmaTy)
                                         [pexp t,
                                          pexp (PLam fc n nfc Placeholder r)])
-               asValue = elab' ina (Just fc) (PApp fc (PRef fc sigmaCon)
+               asValue = elab' ina (Just fc) (PApp fc (PRef fc [] sigmaCon)
                                          [pimp (sMN 0 "a") t False,
                                           pimp (sMN 0 "P") Placeholder True,
                                           pexp l, pexp r])
-    elab' ina _ (PDPair fc p l t r) = elab' ina (Just fc) (PApp fc (PRef fc sigmaCon)
+    elab' ina _ (PDPair fc p l t r) = elab' ina (Just fc) (PApp fc (PRef fc [] sigmaCon)
                                               [pimp (sMN 0 "a") t False,
                                                pimp (sMN 0 "P") Placeholder True,
                                                pexp l, pexp r])
@@ -449,8 +449,8 @@ elab ist info emode opts fn tm
                                        [x] -> elab' ina fc x
                                        _ -> tryAll (zip (map (elab' ina fc) as'') 
                                                         (map showHd as'')))
-        where showHd (PApp _ (PRef _ n) _) = n
-              showHd (PRef _ n) = n
+        where showHd (PApp _ (PRef _ _ n) _) = n
+              showHd (PRef _ _ n) = n
               showHd (PApp _ h _) = showHd h
               showHd x = NErased -- We probably should do something better than this here
 
@@ -486,7 +486,7 @@ elab ist info emode opts fn tm
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed")
-    elab' ec _ tm@(PRef fc n)
+    elab' ec _ tm@(PRef fc hl n)
       | pattern && not reflection && not (e_qq ec) && not (e_intype ec)
             && isTConName n (tt_ctxt ist)
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
@@ -526,8 +526,8 @@ elab ist info emode opts fn tm
             bindable (NS _ _) = False
             bindable (UN xs) = True
             bindable n = implicitable n
-    elab' ina _ f@(PInferRef fc n) = elab' ina (Just fc) (PApp NoFC f [])
-    elab' ina fc' tm@(PRef fc n) 
+    elab' ina _ f@(PInferRef fc hls n) = elab' ina (Just fc) (PApp NoFC f [])
+    elab' ina fc' tm@(PRef fc hls n)
           | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
             && isTConName n (tt_ctxt ist)
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
@@ -541,9 +541,10 @@ elab ist info emode opts fn tm
                   if null a'
                      then erun fc $
                             do apply (Var n) []
-                               hl <- findHighlight n
+                               hilite <- findHighlight n
                                solve
-                               highlightSource fc hl
+                               mapM_ (uncurry highlightSource) $
+                                 (fc, hilite) : map (\f -> (f, hilite)) hls
                      else elab' ina fc' (PApp fc tm [])
     elab' ina _ (PLam _ _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
     elab' ina _ (PLam fc n nfc Placeholder sc)
@@ -646,7 +647,7 @@ elab ist info emode opts fn tm
          solve
 --          elab' ina fc (PLet n Placeholder
 --              (PApp fc r [pexp (delab ist rty)]) sc)
-    elab' ina _ tm@(PApp fc (PInferRef _ f) args) = do
+    elab' ina _ tm@(PApp fc (PInferRef _ _ f) args) = do
          rty <- goal
          ds <- get_deferred
          ctxt <- get_context
@@ -677,7 +678,7 @@ elab ist info emode opts fn tm
              fnTy [] ret  = forget ret
              fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi Nothing xt RType) (fnTy xs ret)
 
-             localVar env (PRef _ x)
+             localVar env (PRef _ _ x)
                            = case lookup x env of
                                   Just _ -> Just x
                                   _ -> Nothing
@@ -701,7 +702,7 @@ elab ist info emode opts fn tm
             solve
     -- if f is local, just do a simple_app
     -- FIXME: Anyone feel like refactoring this mess? - EB
-    elab' ina topfc tm@(PApp fc (PRef ffc f) args_in)
+    elab' ina topfc tm@(PApp fc (PRef ffc hls f) args_in)
       | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
       | otherwise = implicitApp $
@@ -723,11 +724,12 @@ elab ist info emode opts fn tm
             if (f `elem` map fst env && length args == 1 && length args_in == 1)
                then -- simple app, as below
                     do simple_app False
-                                  (elabE (ina { e_isfn = True }) (Just fc) (PRef ffc f))
+                                  (elabE (ina { e_isfn = True }) (Just fc) (PRef ffc hls f))
                                   (elabE (ina { e_inarg = True }) (Just fc) (getTm (head args)))
                                   (show tm)
                        solve
-                       highlightSource ffc annot
+                       mapM (uncurry highlightSource) $
+                         (ffc, annot) : map (\f -> (f, annot)) hls
                        return []
                else
                  do ivs <- get_instances
@@ -753,7 +755,8 @@ elab ist info emode opts fn tm
                     ulog <- getUnifyLog
 
                     annot <- findHighlight f
-                    highlightSource ffc annot
+                    mapM (uncurry highlightSource) $
+                      (ffc, annot) : map (\f -> (f, annot)) hls
 
                     elabArgs ist (ina { e_inarg = e_inarg ina || not isinf }) 
                            [] fc False f
@@ -851,8 +854,8 @@ elab ist info emode opts fn tm
             tacTm (PProof _) = True
             tacTm _ = False
 
-            setInjective (PRef _ n) = setinj n
-            setInjective (PApp _ (PRef _ n) _) = setinj n
+            setInjective (PRef _ _ n) = setinj n
+            setInjective (PApp _ (PRef _ _ n) _) = setinj n
             setInjective _ = return ()
 
     elab' ina _ tm@(PApp fc f [arg]) =
@@ -862,7 +865,7 @@ elab ist info emode opts fn tm
                            (elabE (ina { e_inarg = True }) (Just fc) (getTm arg))
                                 (show tm)
                 solve
-        where headRef (PRef _ _) = True
+        where headRef (PRef _ _ _) = True
               headRef (PApp _ f _) = headRef f
               headRef (PAlternative _ as) = all headRef as
               headRef _ = False
@@ -924,7 +927,7 @@ elab ist info emode opts fn tm
                    elab' ina (Just fc) t
                    focus valn
                    elab' ina (Just fc) sc
-                   elab' ina (Just fc) (PRef fc letn)
+                   elab' ina (Just fc) (PRef fc [] letn)
                    solve
     elab' ina _ c@(PCase fc scr opts)
         = do attack
@@ -1163,7 +1166,7 @@ elab ist info emode opts fn tm
        = updateAux (\e -> e { delayed_elab = delayed_elab e ++ [(pri, t)] })
 
     isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))
-    isScr (PRef _ n) (n', b) = (n', (n == n', b))
+    isScr (PRef _ _ n) (n', b) = (n', (n == n', b))
     isScr _ (n', b) = (n', (False, b))
 
     caseBlock :: FC -> Name
@@ -1192,7 +1195,7 @@ elab ist info emode opts fn tm
 
              getNmScr (n, (s, _)) = (n, s)
 
-             mkarg (n, s) = (PRef fc n, s)
+             mkarg (n, s) = (PRef fc [] n, s)
              -- may be shadowed names in the new pattern - so replace the
              -- old ones with an _
              -- Also, names which don't appear on the rhs should not be
@@ -1202,34 +1205,34 @@ elab ist info emode opts fn tm
                    = let args' = map (shadowed (allNamesIn l)) args
                          args'' = map (implicitable (allNamesIn r ++
                                                      keepscrName scr)) args'
-                         lhs = PApp (getFC fc l) (PRef NoFC n)
+                         lhs = PApp (getFC fc l) (PRef NoFC [] n)
                                  (map (mkLHSarg l) args'') in
                             PClause (getFC fc l) n lhs [] r []
 
              -- Keep scrutinee available if it's just a name (this makes
              -- the names in scope look better when looking at a hole on
              -- the rhs of a case)
-             keepscrName (PRef _ n) = [n]
+             keepscrName (PRef _ _ n) = [n]
              keepscrName _ = []
 
              mkLHSarg l (tm, True) = pexp l
              mkLHSarg l (tm, False) = pexp tm
 
-             shadowed new (PRef _ n, s) | n `elem` new = (Placeholder, s)
+             shadowed new (PRef _ _ n, s) | n `elem` new = (Placeholder, s)
              shadowed new t = t
 
-             implicitable rhs (PRef _ n, s) | n `notElem` rhs = (Placeholder, s)
+             implicitable rhs (PRef _ _ n, s) | n `notElem` rhs = (Placeholder, s)
              implicitable rhs t = t
 
 
     getFC d (PApp fc _ _) = fc
-    getFC d (PRef fc _) = fc
+    getFC d (PRef fc _ _) = fc
     getFC d (PAlternative _ (x:_)) = getFC d x
     getFC d x = d
 
     insertLazy :: PTerm -> ElabD PTerm
-    insertLazy t@(PApp _ (PRef _ (UN l)) _) | l == txt "Delay" = return t
-    insertLazy t@(PApp _ (PRef _ (UN l)) _) | l == txt "Force" = return t
+    insertLazy t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Delay" = return t
+    insertLazy t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Force" = return t
     insertLazy (PCoerced t) = return t
     insertLazy t =
         do ty <- goal
@@ -1244,7 +1247,7 @@ elab ist info emode opts fn tm
         mkDelay env (PAlternative b xs) = PAlternative b (map (mkDelay env) xs)
         mkDelay env t
             = let fc = fileFC "Delay" in
-                  addImplBound ist (map fst env) (PApp fc (PRef fc (sUN "Delay"))
+                  addImplBound ist (map fst env) (PApp fc (PRef fc [] (sUN "Delay"))
                                                  [pexp t])
 
 
@@ -1253,7 +1256,7 @@ elab ist info emode opts fn tm
     -- blowup especially where there are errors deep in large expressions.
     notImplicitable (PApp _ f _) = notImplicitable f
     -- TMP HACK no coercing on bind (make this configurable)
-    notImplicitable (PRef _ n)
+    notImplicitable (PRef _ _ n)
         | [opts] <- lookupCtxt n (idris_flags ist)
             = NoImplicit `elem` opts
     notImplicitable (PAlternative (ExactlyOne _) as) = any notImplicitable as
@@ -1306,7 +1309,7 @@ elab ist info emode opts fn tm
        where
          mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in
                                 addImplBound ist (map fst env)
-                                  (PApp fc (PRef fc n) [pexp (PCoerced t)])
+                                  (PApp fc (PRef fc [] n) [pexp (PCoerced t)])
 
     -- | Elaborate the arguments to a function
     elabArgs :: IState -- ^ The current Idris state
@@ -1369,8 +1372,8 @@ elab ist info emode opts fn tm
 pruneAlt :: [PTerm] -> [PTerm]
 pruneAlt xs = map prune xs
   where
-    prune (PApp fc1 (PRef fc2 f) as)
-        = PApp fc1 (PRef fc2 f) (fmap (fmap (choose f)) as)
+    prune (PApp fc1 (PRef fc2 hls f) as)
+        = PApp fc1 (PRef fc2 hls f) (fmap (fmap (choose f)) as)
     prune t = t
 
     choose f (PAlternative a as)
@@ -1383,7 +1386,7 @@ pruneAlt xs = map prune xs
     choose f (PApp fc f' as) = PApp fc (choose f f') (fmap (fmap (choose f)) as)
     choose f t = t
 
-    headIs f (PApp _ (PRef _ f') _) = f == f'
+    headIs f (PApp _ (PRef _ _ f') _) = f == f'
     headIs f (PApp _ f' _) = headIs f f'
     headIs f _ = True -- keep if it's not an application
 
@@ -1400,7 +1403,7 @@ pruneByType env t c as
        | Just n <- getName t,
          n `elem` env = Just t
        | otherwise = locallyBound ts
-    getName (PRef _ n) = Just n
+    getName (PRef _ _ n) = Just n
     getName (PApp _ f _) = getName f
     getName (PHidden t) = getName t
     getName _ = Nothing
@@ -1417,8 +1420,8 @@ pruneByType env (P _ n _) ctxt as
                         _ -> asV
                _ -> as'
   where
-    headIs var f (PRef _ f') = typeHead var f f'
-    headIs var f (PApp _ (PRef _ f') _) = typeHead var f f'
+    headIs var f (PRef _ _ f') = typeHead var f f'
+    headIs var f (PApp _ (PRef _ _ f') _) = typeHead var f f'
     headIs var f (PApp _ f' _) = headIs var f f'
     headIs var f (PPi _ _ _ _ sc) = headIs var f sc
     headIs var f (PHidden t) = headIs var f t

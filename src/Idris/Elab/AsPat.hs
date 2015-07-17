@@ -44,5 +44,5 @@ replaceUnderscore tm = evalState (transformM (underAs replaceUnderscore') tm) 0
 
 
     replaceUnderscore' :: PTerm -> State Int PTerm
-    replaceUnderscore' Placeholder = PRef emptyFC <$> fresh
+    replaceUnderscore' Placeholder = PRef emptyFC [] <$> fresh
     replaceUnderscore' tm          = return tm

@@ -304,7 +304,7 @@ cmd_execute name = do
     tm <- option maintm (P.fullExpr defaultSyntax)
     return (Right (Execute tm))
   where
-    maintm = PRef (fileFC "(repl)") (sNS (sUN "main") ["Main"])
+    maintm = PRef (fileFC "(repl)") [] (sNS (sUN "main") ["Main"])
 
 
 cmd_dynamic :: String -> P.IdrisParser (Either String Command)

@@ -30,11 +30,11 @@ bugaddr = "https://github.com/idris-lang/Idris-dev/issues"
 resugar :: IState -> PTerm -> PTerm
 resugar ist = transform flattenDoLet . transform resugarApp
   where
-    resugarApp (PApp fc (PRef _ n) args)
+    resugarApp (PApp fc (PRef _ _ n) args)
       | [c, t, f] <- mapMaybe explicitTerm args
       , basename n == sUN "ifThenElse"
       = PIfThenElse fc c (dedelay t) (dedelay f)
-    resugarApp (PApp fc (PRef _ n) args)
+    resugarApp (PApp fc (PRef _ _ n) args)
       | [v, PLam _ bn _ _ next] <- mapMaybe explicitTerm args
       , basename n == sUN ">>="
       = let step = if bn `elem` namesIn [] ist next
@@ -43,7 +43,7 @@ resugar ist = transform flattenDoLet . transform resugarApp
         in case resugarApp next of
              PDoBlock dos -> PDoBlock (step : dos)
              expr -> PDoBlock [step, DoExp NoFC expr]
-    resugarApp (PApp fc (PRef _ n) args)
+    resugarApp (PApp fc (PRef _ _ n) args)
       | [PConstant fc (BI i)] <- mapMaybe explicitTerm args
       , basename n == sUN "fromInteger"
       = PConstant fc (BI i)
@@ -59,7 +59,7 @@ resugar ist = transform flattenDoLet . transform resugarApp
               fixExp d = [d]
     flattenDoLet tm = tm
 
-    dedelay (PApp _ (PRef _ delay) [_, _, obj])
+    dedelay (PApp _ (PRef _ _ delay) [_, _, obj])
       | delay == sUN "Delay" = getTm obj
     dedelay x = x
 
@@ -99,15 +99,15 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     un = fileFC "(val)"
 
     de env _ (App _ f a) = deFn env f [a]
-    de env _ (V i)     | i < length env = PRef un (snd (env!!i))
-                       | otherwise = PRef un (sUN ("v" ++ show i ++ ""))
+    de env _ (V i)     | i < length env = PRef un [] (snd (env!!i))
+                       | otherwise = PRef un [] (sUN ("v" ++ show i ++ ""))
     de env _ (P _ n _) | n == unitTy = PTrue un IsType
                        | n == unitCon = PTrue un IsTerm
-                       | Just n' <- lookup n env = PRef un n'
+                       | Just n' <- lookup n env = PRef un [] n'
                        | otherwise
                             = case lookup n (idris_metavars ist) of
                                   Just (Just _, mi, _) -> mkMVApp n []
-                                  _ -> PRef un n
+                                  _ -> PRef un [] n
     de env _ (Bind n (Lam ty) sc)
           = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
     de env is (Bind n (Pi (Just impl) ty _) sc)
@@ -158,7 +158,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
          | n == sUN "lazy" = de env [] r -- TODO: Fix string based matching
     deFn env (P _ n _) [ty, Bind x (Lam _) r]
          | n == sigmaTy
-               = PDPair un IsType (PRef un x) (de env [] ty)
+               = PDPair un IsType (PRef un [] x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
     deFn env (P _ n _) [lt,rt,l,r]
          | n == pairCon = PPair un IsTerm (de env [] l) (de env [] r)
@@ -181,8 +181,8 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
             = PApp un (PMetavar NoFC n) (map pexp args)
     mkPApp n args
         | Just imps <- lookupCtxtExact n (idris_implicits ist)
-            = PApp un (PRef un n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
-        | otherwise = PApp un (PRef un n) (map pexp args)
+            = PApp un (PRef un [] n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
+        | otherwise = PApp un (PRef un [] n) (map pexp args)
 
     imp (PImp p m l n _) arg = PImp p m l n arg
     imp (PExp p l n _)   arg = PExp p l n arg
@@ -565,7 +565,7 @@ addImplicitDiffs x y
     addI x y = (x, y)
 
     -- Just the ones which appear desugared in errors
-    expLike (PRef _ n) (PRef _ n') = n == n'
+    expLike (PRef _ _ n) (PRef _ _ n') = n == n'
     expLike (PApp _ f as) (PApp _ f' as')
         = expLike f f' && length as == length as' &&
           and (zipWith expLike (getExps as) (getExps as'))

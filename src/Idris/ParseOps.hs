@@ -35,11 +35,11 @@ import Debug.Trace
 -- using pre-build and user-defined operator/fixity declarations
 table :: [FixDecl] -> OperatorTable IdrisParser PTerm
 table fixes
-   = [[prefix "-" (\fc x -> PApp fc (PRef fc (sUN "negate")) [pexp x])]] ++
+   = [[prefix "-" (\fc x -> PApp fc (PRef fc [fc] (sUN "negate")) [pexp x])]] ++
      toTable (reverse fixes) ++
      [[backtick],
       [binary "$" (\fc x y -> flatten $ PApp fc x [pexp y]) AssocRight],
-      [binary "="  (\fc x y -> PApp fc (PRef fc eqTy) [pexp x, pexp y]) AssocLeft],
+      [binary "="  (\fc x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]) AssocLeft],
       [nofixityoperator]]
   where
     flatten :: PTerm -> PTerm -- flatten application
@@ -52,9 +52,9 @@ toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
 toTable fs = map (map toBin)
                  (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
    where toBin (Fix (PrefixN _) op) = prefix op
-                                       (\fc x -> PApp fc (PRef fc (sUN op)) [pexp x])
+                                       (\fc x -> PApp fc (PRef fc [] (sUN op)) [pexp x])
          toBin (Fix f op)
-            = binary op (\fc x y -> PApp fc (PRef fc (sUN op)) [pexp x,pexp y]) (assoc f)
+            = binary op (\fc x y -> PApp fc (PRef fc [] (sUN op)) [pexp x,pexp y]) (assoc f)
          assoc (Infixl _) = AssocLeft
          assoc (Infixr _) = AssocRight
          assoc (InfixN _) = AssocNone
@@ -79,7 +79,7 @@ backtick = Infix (do indentPropHolds gtProp
                      lchar '`'; (n, fc) <- fnName
                      lchar '`'
                      indentPropHolds gtProp
-                     return (\x y -> PApp fc (PRef fc n) [pexp x, pexp y])) AssocNone
+                     return (\x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y])) AssocNone
 
 -- | Operator without fixity (throws an error)
 nofixityoperator :: Operator IdrisParser PTerm
