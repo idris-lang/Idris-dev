@@ -1,5 +1,6 @@
-||| Extra utilities for working with Nats
-module Data.Nat
+||| Division of natural numbers, by iterated subtraction using well-founded
+||| recursion
+module Data.Nat.DivMod.IteratedSubtraction
 
 import Data.Fin
 import Data.So
