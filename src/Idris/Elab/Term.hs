@@ -1379,12 +1379,6 @@ elab ist info emode opts fn tm
                                         (t : map (mkCoerce env t) cs)
            return t'
        where
---          mkCoerce env (PAlternative ns aty alts@(a : as)) n
---             = let fc = maybe (fileFC "Coercion") id (highestFC a) in
---                   addImplBound ist (map fst env)
---                      (PAlternative ns aty 
---                        (map (\t -> PApp fc (PRef fc n) [pexp (PCoerced t)])
---                             alts))
          mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in
                                 addImplBound ist (map fst env)
                                   (PApp fc (PRef fc [] n) [pexp (PCoerced t)])

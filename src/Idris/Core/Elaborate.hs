@@ -95,9 +95,11 @@ errAt thing n elab = do s <- get
                         case runStateT elab s of
                              OK (a, s') -> do put s'
                                               return $! a
-                             Error (At f e) ->
-                                 lift $ Error (At f (Elaborating thing n e))
-                             Error e -> lift $ Error (Elaborating thing n e)
+                             Error e -> lift $ Error (rewriteErr e)
+  where
+    rewriteErr (At f e) = At f (rewriteErr e)
+    rewriteErr (ProofSearchFail e) = ProofSearchFail (rewriteErr e)
+    rewriteErr e = Elaborating thing n e
 
 erun :: FC -> Elab' aux a -> Elab' aux a
 erun f elab = do s <- get
@@ -780,9 +782,7 @@ handleError p t1 t2
                     Error e1 -> if p e1 then
                                    do case runStateT t2 s of
                                          OK (v, s') -> do put s'; return $! v
-                                         Error e2 -> if score e1 >= score e2
-                                                        then lift (tfail e1)
-                                                        else lift (tfail e2)
+                                         Error e2 -> lift (tfail e2)
                                    else lift (tfail e1)
 
 try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
@@ -798,9 +798,7 @@ try' t1 t2 proofSearch
                          if recoverableErr e1 then
                             do case runStateT t2 s of
                                  OK (v, s') -> do put s'; return $! v
-                                 Error e2 -> if score e1 >= score e2
-                                                then lift (tfail e1)
-                                                else lift (tfail e2)
+                                 Error e2 -> lift (tfail e2)
                            else lift (tfail e1)
   where recoverableErr err@(CantUnify r x y _ _ _)
              = -- traceWhen r (show err) $
@@ -827,9 +825,7 @@ tryCatch t1 t2
                           case runStateT (t2 e1) s of
                                OK (v, s') -> do put s'
                                                 return $! v
-                               Error e2 -> if score e1 >= score e2
-                                              then lift (tfail e1)
-                                              else lift (tfail e2)
+                               Error e2 -> lift (tfail e2)
 
 tryWhen :: Bool -> Elab' aux a -> Elab' aux a -> Elab' aux a
 tryWhen True a b = try a b
@@ -839,7 +835,7 @@ tryWhen False a b = a
 -- to False, then the whole tactic fails if there are any new problems
 tryAll :: [(Elab' aux a, Name)] -> Elab' aux a
 tryAll [(x, _)] = x
-tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
+tryAll xs = tryAll' [] 999999 xs
   where
     cantResolve :: Elab' aux a
     cantResolve = lift $ tfail $ CantResolveAlts (map snd xs)
@@ -849,13 +845,12 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
 
     tryAll' :: [Elab' aux a] -> -- successes
                Int -> -- most problems
-               (Elab' aux a, Int) -> -- smallest failure
                [(Elab' aux a, Name)] -> -- still to try
                Elab' aux a
-    tryAll' [res] pmax _   [] = res
-    tryAll' (_:_) pmax _   [] = cantResolve
-    tryAll' [] pmax (f, _) [] = noneValid
-    tryAll' cs pmax f ((x, msg):xs)
+    tryAll' [res] pmax [] = res
+    tryAll' (_:_) pmax [] = cantResolve
+    tryAll' [] pmax    [] = noneValid
+    tryAll' cs pmax    ((x, msg):xs)
        = do s <- get
             ps <- get_probs
             case prunStateT pmax True ps x s of
@@ -863,16 +858,9 @@ tryAll xs = tryAll' [] 999999 (cantResolve, 0) xs
                       do let cs' = if (newps < pmax)
                                       then [do put s'; return $! v]
                                       else (do put s'; return $! v) : cs
-                         tryAll' cs' newps f xs
+                         tryAll' cs' newps xs
                 Error err -> do put s
---                                 if (score err) < 100
-                                tryAll' cs pmax (better err f) xs
---                                     else tryAll' [] pmax (better err f) xs -- give up
-
-
-    better err (f, i) = let s = score err in
-                            if (s >= i) then (lift (tfail err), s)
-                                        else (f, i)
+                                tryAll' cs pmax xs
 
 -- Run an elaborator, and fail if any problems are introduced
 prunStateT

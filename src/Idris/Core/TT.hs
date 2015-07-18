@@ -37,7 +37,7 @@ module Idris.Core.TT(AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
                      nextName, noOccurrence, nsroot, occurrences, orderPats,
                      pEraseType, pmap, pprintRaw, pprintTT, prettyEnv, psubst, pToV,
                      pToVs, pureTerm, raw_apply, raw_unapply, refsIn, safeForget,
-                     safeForgetEnv, score, showCG, showEnv, showEnvDbg, showSep,
+                     safeForgetEnv, showCG, showEnv, showEnvDbg, showSep,
                      sInstanceN, sMN, sNS, spanFC, str, subst, substNames, substTerm,
                      substV, sUN, tcname, termSmallerThan, tfail, thead, tnull,
                      toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName,
@@ -357,19 +357,6 @@ instance Sized Err where
   size (ProviderError msg) = length msg
   size (LoadingFailed fn e) = 1 + length fn + size e
   size _ = 1
-
-score :: Err -> Int
-score (CantUnify _ _ _ m _ s) = 1 + s + score m
-score (CantResolve _ _) = 20
-score (NoValidAlts _) = 0
-score (NoSuchVariable _) = 1000
-score (ProofSearchFail e) = score e
-score (CantSolveGoal _ _) = 100000
-score (InternalMsg _) = -1
-score (At _ e) = score e
-score (ElaboratingArg _ _ _ e) = score e
-score (Elaborating _ _ e) = score e
-score _ = 0
 
 instance Show Err where
     show (Msg s) = s
