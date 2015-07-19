@@ -1,5 +1,8 @@
 module Main
 
+import Data.Vect
+import Data.Fin
+
 data Ty = TyInt | TyBool| TyFun Ty Ty
 
 interpTy : Ty -> Type
