@@ -1228,6 +1228,42 @@ elab ist info emode opts fn tm
          env <- get_env
          runElabAction ist (maybe fc' id fc) env (P Bound n' Erased) ns
          solve
+    elab' ina fc (PConstSugar constFC tm) =
+      -- Here we elaborate the contained term, then calculate
+      -- highlighting for constFC.  The highlighting is the
+      -- highlighting for the outermost constructor of the result of
+      -- evaluating the elaborated term, if one exists (it always
+      -- should, but better to fail gracefully for something silly
+      -- like highlighting info). This is how implicit applications of
+      -- fromInteger get highlighted.
+      do saveState -- so we don't pollute the elaborated term
+         n <- getNameFrom (sMN 0 "cstI")
+         n' <- getNameFrom (sMN 0 "cstIhole")
+         g <- forget <$> goal
+         claim n' g
+         movelast n'
+         -- In order to intercept the elaborated value, we need to
+         -- let-bind it.
+         attack
+         letbind n g (Var n')
+         focus n'
+         elab' ina fc tm
+         env <- get_env
+         ctxt <- get_context
+         let v = fmap (normaliseAll ctxt env . finalise . binderVal)
+                      (lookup n env)
+         loadState -- we have the highlighting - re-elaborate the value
+         elab' ina fc tm
+         case v of
+           Just val -> highlightConst constFC val
+           Nothing -> return ()
+       where highlightConst fc (P _ n _) =
+               highlightSource fc (AnnName n Nothing Nothing Nothing)
+             highlightConst fc (App _ f _) =
+               highlightConst fc f
+             highlightConst fc (Constant c) =
+               highlightSource fc (AnnConst c)
+             highlightConst _ _ = return ()
     elab' ina fc x = fail $ "Unelaboratable syntactic form " ++ showTmImpls x
 
     -- delay elaboration of 't', with priority 'pri' until after everything
