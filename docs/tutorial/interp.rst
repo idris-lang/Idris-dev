@@ -68,6 +68,15 @@ The full representation of expressions is:
               Lazy (Expr G a) ->
               Lazy (Expr G a) -> Expr G a
 
+The code above makes use of the ``Vect`` and ``Fin`` types from the
+Idris standard library. We import them because they are not provided
+in the prelude:
+
+.. code-block:: idris
+
+    import Data.Vect
+    import Data.Fin
+
 Since expressions are indexed by their type, we can read the typing
 rules of the language from the definitions of the constructors. Let us
 look at each constructor in turn.
