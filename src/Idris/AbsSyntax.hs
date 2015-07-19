@@ -1043,6 +1043,7 @@ expandParams dec ps ns infs tm = en tm
     en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
     en (PIfThenElse fc c t f) = PIfThenElse fc (en c) (en t) (en f)
     en (PRunElab fc tm ns) = PRunElab fc (en tm) ns
+    en (PConstSugar fc tm) = PConstSugar fc (en tm)
     en t = t
 
     nselem x [] = False
@@ -1510,6 +1511,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     imps top env (PUnifyLog tm)  = imps False env tm
     imps top env (PNoImplicits tm)  = imps False env tm
     imps top env (PRunElab fc tm ns) = imps False env tm
+    imps top env (PConstSugar fc tm) = imps top env tm -- ignore PConstSugar - it's for highlighting only!
     imps top env _               = return ()
 
     pibind using []     sc = sc
@@ -1637,6 +1639,7 @@ addImpl' inpat env infns imp_meths ist ptm
                                                   (fmap (ai True env ds) g)
     ai qq env ds (PUnquote tm) = PUnquote (ai False env ds tm)
     ai qq env ds (PRunElab fc tm ns) = PRunElab fc (ai False env ds tm) ns
+    ai qq env ds (PConstSugar fc tm) = PConstSugar fc (ai qq env ds tm)
     ai qq env ds tm = tm
 
     handleErr (Left err) = PElabError err
@@ -2065,6 +2068,7 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PUnifyLog x) = PUnifyLog (sm xs x)
     sm xs (PNoImplicits x) = PNoImplicits (sm xs x)
     sm xs (PRunElab fc script ns) = PRunElab fc (sm xs script) ns
+    sm xs (PConstSugar fc tm) = PConstSugar fc (sm xs tm)
     sm xs x = x
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
@@ -2203,6 +2207,7 @@ mkUniqueNames env shadows tm
   mkUniq nmap (PProof ts) = liftM PProof (mapM (mkUniqT nmap) ts)
   mkUniq nmap (PTactics ts) = liftM PTactics (mapM (mkUniqT nmap) ts)
   mkUniq nmap (PRunElab fc ts ns) = liftM (\tm -> PRunElab fc tm ns) (mkUniq nmap ts)
+  mkUniq nmap (PConstSugar fc tm) = liftM (PConstSugar fc) (mkUniq nmap tm)
   mkUniq nmap t = return (shadowAll (M.toList nmap) t)
     where
       shadowAll [] t = t

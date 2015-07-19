@@ -168,6 +168,8 @@ extractUnquotes n (PUnquote tm)
                 extractUnquotes (n-1) tm
 extractUnquotes n (PRunElab fc tm ns)
   = fmap (\(tm', ex) -> (PRunElab fc tm' ns, ex)) $ extractUnquotes n tm
+extractUnquotes n (PConstSugar fc tm)
+  = extractUnquotes n tm
 extractUnquotes n x = return (x, []) -- no subterms!
 
 

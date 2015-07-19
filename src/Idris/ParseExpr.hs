@@ -464,10 +464,12 @@ bracketedExpr syn openParenFC e =
 modifyConst :: SyntaxInfo -> FC -> PTerm -> PTerm
 modifyConst syn fc (PConstant inFC (BI x))
     | not (inPattern syn)
-        = PAlternative [] FirstSuccess
-             (PApp fc (PRef fc [] (sUN "fromInteger")) [pexp (PConstant NoFC (BI (fromInteger x)))]
-             : consts)
-    | otherwise = PAlternative [] FirstSuccess consts
+        = PConstSugar inFC $ -- wrap in original location for highlighting
+            PAlternative [] FirstSuccess
+              (PApp fc (PRef fc [] (sUN "fromInteger")) [pexp (PConstant NoFC (BI (fromInteger x)))]
+              : consts)
+    | otherwise = PConstSugar inFC $
+                    PAlternative [] FirstSuccess consts
     where
       consts = [ PConstant inFC (BI x)
                , PConstant inFC (I (fromInteger x))
