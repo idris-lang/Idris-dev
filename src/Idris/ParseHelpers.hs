@@ -286,6 +286,10 @@ reservedFC str = do (FC file (l, c) _) <- getFC
                     Tok.reserve idrisStyle str
                     return $ FC file (l, c) (l, c + length str)
 
+-- | Parse a reserved identfier, highlighting its span as a keyword
+reservedHL :: String -> IdrisParser ()
+reservedHL str = reservedFC str >>= flip highlightP AnnKeyword
+
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
 reservedOp :: MonadicParsing m => String -> m ()

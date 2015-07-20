@@ -57,7 +57,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                 let tyn = expandNS syn tyn_in
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
-                params <- manyTill (recordParameter rsyn) (reserved "where")
+                params <- manyTill (recordParameter rsyn) (reservedHL "where")
                 (fields, cname, cdoc) <- indentedBlockS $ recordBody rsyn tyn
                 case cname of
                      Just cn' -> accData acc tyn [fst cn']
@@ -107,7 +107,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                        return (n, p, t, doc')
 
         constructor :: IdrisParser (Name, FC)
-        constructor = (reserved "constructor") *> fnName
+        constructor = (reservedHL "constructor") *> fnName
 
 
         endPlicity :: Maybe Char -> IdrisParser Plicity
@@ -144,12 +144,12 @@ recordParameter syn =
 DataI ::= 'data' | 'codata';
 -}
 dataI :: IdrisParser DataOpts
-dataI = do reserved "data"; return []
-    <|> do reserved "codata"; return [Codata]
+dataI = do reservedHL "data"; return []
+    <|> do reservedHL "codata"; return [Codata]
 
 recordI :: IdrisParser DataOpts
-recordI = do reserved "record"; return []
-          <|> do reserved "corecord"; return [Codata]
+recordI = do reservedHL "record"; return []
+          <|> do reservedHL "corecord"; return [Codata]
 
 {- | Parses if a data should not have a default eliminator
 DefaultEliminator ::= 'noelim'?
@@ -197,7 +197,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                    ty <- typeExpr (allowImp syn)
                    let tyn = expandNS syn tyn_in
                    option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
-                     reserved "where"
+                     reservedHL "where"
                      cons <- indentedBlock (constructor syn)
                      accData acc tyn (map (\ (_, _, n, _, _, _, _) -> n) cons)
                      return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn nfc ty cons))) <|> (do
@@ -205,7 +205,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                     let ty = bindArgs (map (const (PType fc)) args) (PType fc)
                     let tyn = expandNS syn tyn_in
                     option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
-                      try (lchar '=') <|> do reserved "where"
+                      try (lchar '=') <|> do reservedHL "where"
                                              let kw = (if DefaultEliminator `elem` dataOpts then "%elim" else "") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
                                              let n  = show tyn_in ++ " "
                                              let s  = kw ++ n
@@ -276,7 +276,7 @@ simpleConstructor syn
 DSL ::= 'dsl' FnName OpenBlock Overload'+ CloseBlock;
  -}
 dsl :: SyntaxInfo -> IdrisParser PDecl
-dsl syn = do reserved "dsl"
+dsl syn = do reservedHL "dsl"
              n <- fst <$> fnName
              bs <- indentedBlock (overload syn)
              let dsl = mkDSL bs (dsl_info syn)
@@ -314,11 +314,12 @@ OverloadIdentifier ::= 'let' | Identifier;
 Overload ::= OverloadIdentifier '=' Expr;
 -}
 overload :: SyntaxInfo -> IdrisParser (String, PTerm)
-overload syn = do o <- (fst <$> identifier) <|> do reserved "let"
-                                                   return "let"
+overload syn = do (o, fc) <- identifier <|> do fc <- reservedFC "let"
+                                               return ("let", fc)
                   if o `notElem` overloadable
                      then fail $ show o ++ " is not an overloading"
                      else do
+                       highlightP fc AnnKeyword
                        lchar '='
                        t <- expr syn
                        return (o, t)
