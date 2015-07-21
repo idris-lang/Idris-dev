@@ -1331,6 +1331,7 @@ translateBC info bc
   | TAILCALL n            <- bc = jsTAILCALL info n
   | FOREIGNCALL r _ (FStr n) args
                           <- bc = jsFOREIGN info r n (map fcall args)
+  | FOREIGNCALL _ _ _ _   <- bc = error "JS FFI call not statically known"
   | TOPBASE n             <- bc = jsTOPBASE info n
   | BASETOP n             <- bc = jsBASETOP info n
   | STOREOLD              <- bc = jsSTOREOLD info
