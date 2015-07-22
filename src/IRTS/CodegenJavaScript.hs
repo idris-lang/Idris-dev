@@ -132,12 +132,12 @@ codegenJS_all target definitions includes libs filename outputType = do
                 ++ idrRuntime
                 ++ tgtRuntime
                 )
-  TIO.writeFile filename (  T.pack runtime
-                         `T.append` T.concat (map compileJS opt)
-                         `T.append` T.concat (map compileJS cons)
-                         `T.append` main
-                         `T.append` invokeMain
-                         )
+  writeSourceText filename (  T.pack runtime
+                           `T.append` T.concat (map compileJS opt)
+                           `T.append` T.concat (map compileJS cons)
+                           `T.append` main
+                           `T.append` invokeMain
+                           )
   setPermissions filename (emptyPermissions { readable   = True
                                             , executable = target == Node
                                             , writable   = True

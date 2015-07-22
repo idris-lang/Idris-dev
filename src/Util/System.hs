@@ -1,9 +1,12 @@
 {-# LANGUAGE CPP #-}
 module Util.System(tempfile,withTempdir,rmFile,catchIO, isWindows,
-                writeSource, readSource, setupBundledCC) where
+                   writeSource, writeSourceText, readSource,
+                   setupBundledCC) where
 
 -- System helper functions.
 import Control.Monad (when)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import System.Directory (getTemporaryDirectory
                         , removeFile
                         , removeDirectoryRecursive
@@ -43,6 +46,10 @@ readSource f = do h <- openFile f ReadMode
 -- | Write a source file, same as writeFile except the encoding is set to utf-8
 writeSource :: FilePath -> String -> IO ()
 writeSource f s = withFile f WriteMode (\h -> hSetEncoding h utf8 >> hPutStr h s)
+
+-- | Write a utf-8 source file from Text
+writeSourceText :: FilePath -> T.Text -> IO ()
+writeSourceText f s = withFile f WriteMode (\h -> hSetEncoding h utf8 >> TIO.hPutStr h s)
 
 withTempdir :: String -> (FilePath -> IO a) -> IO a
 withTempdir subdir callback
