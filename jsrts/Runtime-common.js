@@ -63,6 +63,7 @@ var i$CALL = function(fun,args) {
 
 var i$ffiWrap = function(fid,oldbase,myoldbase) {
   return function() {
+    var oldstack = i$callstack;
     i$callstack = [];
 
     var res = fid;
@@ -84,7 +85,7 @@ var i$ffiWrap = function(fid,oldbase,myoldbase) {
       }
     }
 
-    i$callstack = i$vm.callstack;
+    i$callstack = oldstack;
 
     return i$ret;
   }
