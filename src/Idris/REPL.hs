@@ -54,6 +54,7 @@ import Idris.Core.Evaluate
 import Idris.Core.Execute (execute)
 import Idris.Core.TT
 import Idris.Core.Unify
+import Idris.Core.WHNF
 import Idris.Core.Constraints
 
 import IRTS.Compiler
@@ -595,7 +596,7 @@ idemodeProcess fn (Search ps t) = process fn (Search ps t)
 idemodeProcess fn (Spec t) = process fn (Spec t)
 -- RmProof and AddProof not supported!
 idemodeProcess fn (ShowProof n') = process fn (ShowProof n')
-idemodeProcess fn (HNF t) = process fn (HNF t)
+idemodeProcess fn (WHNF t) = process fn (WHNF t)
 --idemodeProcess fn TTShell = process fn TTShell -- need some prove mode!
 idemodeProcess fn (TestInline t) = process fn (TestInline t)
 
@@ -1135,11 +1136,11 @@ process fn (Prove mode n')
           mapM_ checkDeclTotality (idris_totcheck i)
           warnTotality
 
-process fn (HNF t)
+process fn (WHNF t)
                     = do (tm, ty) <- elabVal recinfo ERHS t
                          ctxt <- getContext
                          ist <- getIState
-                         let tm' = hnf ctxt [] tm
+                         let tm' = whnf ctxt tm
                          iPrintResult (show (delab ist tm'))
 process fn (TestInline t)
                            = do (tm, ty) <- elabVal recinfo ERHS t

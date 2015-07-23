@@ -41,7 +41,7 @@ module Idris.Core.TT(AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
                      sInstanceN, sMN, sNS, spanFC, str, subst, substNames, substTerm,
                      substV, sUN, tcname, termSmallerThan, tfail, thead, tnull,
                      toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName,
-                     uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP) where
+                     uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP, weakenTm) where
 
 -- Work around AMP without CPP
 import Prelude (Eq(..), Show(..), Ord(..), Functor(..), Monad(..), String, Int,

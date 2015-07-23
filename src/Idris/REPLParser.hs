@@ -111,7 +111,7 @@ parserCommands =
 
   , exprArgCmd ["patt"] Pattelab "(Debugging) Elaborate pattern expression"
   , exprArgCmd ["spec"] Spec "?"
-  , exprArgCmd ["hnf"] HNF "?"
+  , exprArgCmd ["whnf"] WHNF "(Debugging) Show weak head normal form of an expression"
   , exprArgCmd ["inline"] TestInline "?"
   , proofArgCmd ["cs", "casesplit"] CaseSplitAt 
       ":cs <line> <name> splits the pattern variable on the line"
