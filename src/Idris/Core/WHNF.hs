@@ -8,11 +8,14 @@ import Idris.Core.TT
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 
+import Debug.Trace
+
 -- A stack entry consists of a term and the environment it is to be
 -- evaluated in (i.e. it's a thunk)
 type StackEntry = (Term, WEnv)
 data WEnv = WEnv Int -- number of free variables
                  [(Term, WEnv)] 
+  deriving Show
 
 type Stack = [StackEntry]
 
@@ -73,11 +76,101 @@ do_whnf ctxt env tm = eval env [] tm
                           TCon t a -> WTCon t a n (ty, env)
                           _ -> WPRef n (ty, env)
                         in
-                unload wp stk
+            case lookupDefExact n ctxt of
+                 Just (CaseOp ci _ _ _ _ cd) -> 
+                      let (ns, tree) = cases_compiletime cd in
+                          case evalCase env ns tree stk of
+                               Just w -> w
+                               Nothing -> unload wp stk
+                 Just (Operator _ i op) -> 
+                          if i <= length stk
+                             then case runOp op (take i stk) of
+                                       Nothing -> unload wp stk
+                                       -- Given that we can't apply constants
+                                       -- to things, and runOp only does
+                                       -- constants for now, this should
+                                       -- never happen...
+                                       Just v -> unload v (drop i stk)
+                             else unload wp stk
+                 _ -> unload wp stk
 
     unload :: WHNF -> Stack -> WHNF
     unload f [] = f
     unload f (a : as) = unload (WApp f a) as
+
+    runOp :: ([Value] -> Maybe Value) -> Stack -> Maybe WHNF
+    runOp op stk = do vals <- mapM toValue stk
+                      case op vals of
+                        Just (VConstant c) -> Just (WConstant c)
+                        _ -> Nothing
+
+    toValue :: (Term, WEnv) -> Maybe Value
+    toValue (tm, tenv) = case eval tenv [] tm of
+                              WConstant c -> Just (VConstant c)
+                              _ -> Nothing
+
+    evalCase :: WEnv -> [Name] -> SC -> Stack -> Maybe WHNF
+    evalCase wenv@(WEnv d env) ns tree args 
+        | length ns > length args = Nothing
+        | otherwise = let args' = take (length ns) args
+                          rest = drop (length ns) args in
+                          do (tm, amap) <- evalTree wenv (zip ns args') tree
+                             let wtm = pToVs (map fst amap) tm
+                             Just $ eval (WEnv d (map snd amap)) rest wtm
+
+    evalTree :: WEnv -> [(Name, (Term, WEnv))] -> SC -> 
+                Maybe (Term, [(Name, (Term, WEnv))])
+    evalTree env amap (STerm tm) = Just (tm, amap)
+    evalTree env amap (Case _ n alts)
+        = case lookup n amap of
+            Just (tm, tenv) -> findAlt env amap 
+                                   (deconstruct (eval tenv [] tm) []) alts
+            _ -> Nothing
+    evalTree _ _ _ = Nothing
+
+    deconstruct :: WHNF -> Stack -> (WHNF, Stack)
+    deconstruct (WApp f arg) stk = deconstruct f (arg : stk)
+    deconstruct t stk = (t, stk) 
+
+    findAlt :: WEnv -> [(Name, (Term, WEnv))] -> (WHNF, Stack) -> 
+               [CaseAlt] ->
+               Maybe (Term, [(Name, (Term, WEnv))])
+    findAlt env amap (WDCon tag _ _ _ _, args) alts 
+        | Just (ns, sc) <- findTag tag alts 
+              = let amap' = updateAmap (zip ns args) amap in
+                    evalTree env amap' sc
+        | Just sc <- findDefault alts
+              = evalTree env amap sc
+    findAlt env amap (WConstant c, []) alts
+        | Just sc <- findConst c alts
+              = evalTree env amap sc
+        | Just sc <- findDefault alts
+              = evalTree env amap sc
+    findAlt _ _ _ _ = Nothing
+
+    findTag :: Int -> [CaseAlt] -> Maybe ([Name], SC)
+    findTag i [] = Nothing
+    findTag i (ConCase n j ns sc : xs) | i == j = Just (ns, sc)
+    findTag i (_ : xs) = findTag i xs
+   
+    findDefault :: [CaseAlt] -> Maybe SC
+    findDefault [] = Nothing
+    findDefault (DefaultCase sc : xs) = Just sc
+    findDefault (_ : xs) = findDefault xs
+
+    findConst c [] = Nothing
+    findConst c (ConstCase c' v : xs) | c == c' = Just v
+    findConst (AType (ATInt ITNative)) (ConCase n 1 [] v : xs) = Just v
+    findConst (AType ATFloat) (ConCase n 2 [] v : xs) = Just v
+    findConst (AType (ATInt ITChar))  (ConCase n 3 [] v : xs) = Just v
+    findConst StrType (ConCase n 4 [] v : xs) = Just v
+    findConst (AType (ATInt ITBig)) (ConCase n 6 [] v : xs) = Just v
+    findConst (AType (ATInt (ITFixed ity))) (ConCase n tag [] v : xs)
+        | tag == 7 + fromEnum ity = Just v
+    findConst c (_ : xs) = findConst c xs
+
+    updateAmap newm amap
+       = newm ++ filter (\ (x, _) -> not (elem x (map fst newm))) amap
 
 quote :: WHNF -> Term
 quote (WDCon t a u n (ty, env)) = P (DCon t a u) n (quoteEnv env ty)
