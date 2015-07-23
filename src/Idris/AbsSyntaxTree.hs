@@ -472,6 +472,7 @@ data Opt = Filename String
          | DumpDefun String
          | DumpCases String
          | UseCodegen Codegen
+         | CodegenArgs String
          | OutputTy OutputType
          | Extension LanguageExt
          | InterpretScript String

@@ -127,6 +127,7 @@ parseFlags = many $
   <|> (DumpDefun <$> strOption (long "dumpdefuns"))
   <|> (DumpCases <$> strOption (long "dumpcases"))
   <|> ((\s -> UseCodegen $ parseCodegen s) <$> strOption (long "codegen" <> metavar "TARGET" <> help "Select code generator: C, Javascript, Node and bytecode are bundled with Idris"))
+  <|> (CodegenArgs <$> strOption (long "cg-opt" <> metavar "ARG" <> help "Arguments to pass to code generator"))
   <|> (EvalExpr <$> strOption (long "eval" <> short 'e' <> metavar "EXPR" <> help "Evaluate an expression without loading the REPL"))
   <|> flag' (InterpretScript "Main.main") (long "execute" <> help "Execute as idris")
   <|> (InterpretScript <$> strOption (long "exec" <> metavar "EXPR" <> help "Execute as idris"))
