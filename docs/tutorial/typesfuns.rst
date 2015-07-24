@@ -105,6 +105,10 @@ symbols:
 
     :+-*/=_.?|&><!@$%^~.
 
+Some operators built from these symbols can't be user defined. These are
+``:``,  ``=>``,  ``->``,  ``<-``,  ``=``,  ``?=``,  ``|``,  ``**``,
+``==>``,  ``\\``,  ``%``,  ``~``,  ``?``,  and ``!``.
+
 Functions
 =========
 
