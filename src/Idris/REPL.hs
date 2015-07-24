@@ -1601,6 +1601,8 @@ idrisMain opts =
        let cgn = case opt getCodegen opts of
                    [] -> Via "c"
                    xs -> last xs
+       let cgFlags = opt getCodegenArgs opts
+
        -- Now set/unset specifically chosen optimisations
        sequence_ (opt getOptimisation opts)
        script <- case opt getExecScript opts of
@@ -1625,6 +1627,7 @@ idrisMain opts =
        setOutputTy outty
        setNoBanner nobanner
        setCodegen cgn
+       mapM_ (addFlag cgn) cgFlags
        mapM_ makeOption opts
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
@@ -1839,6 +1842,9 @@ getCodegen :: Opt -> Maybe Codegen
 getCodegen (UseCodegen x) = Just x
 getCodegen _ = Nothing
 
+getCodegenArgs :: Opt -> Maybe String
+getCodegenArgs (CodegenArgs args) = Just args
+getCodegenArgs _ = Nothing
 
 getConsoleWidth :: Opt -> Maybe ConsoleWidth
 getConsoleWidth (UseConsoleWidth x) = Just x
