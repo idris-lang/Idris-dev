@@ -18,17 +18,36 @@ import Language.Reflection
 ||| erased.
 data Erasure = Erased | NotErased
 
-||| Arguments, with plicity.
-data Arg : Type where
-  ||| An explicit argument
-  Explicit : TTName -> Erasure -> Raw -> Arg
+||| How an argument is provided in high-level Idris
+data Plicity =
+  ||| The argument is directly provided at the application site
+  Explicit |
+  ||| The argument is found by Idris at the application site
+  Implicit |
+  ||| The argument is solved using type class resolution
+  Constraint
 
-  ||| An implicit argument, to be solved by unification
-  Implicit : TTName -> Erasure -> Raw -> Arg
+||| Function arguments
+|||
+||| These are the simplest representation of argument lists, and are
+||| used for functions.
+record FunArg where
+  constructor MkFunArg
+  argName : TTName
+  argTy   : Raw
+  plicity : Plicity
+  erasure : Erasure
 
-  ||| A type-class constraint argument, to be solved by type class
-  ||| resolution
-  Constraint : TTName -> Erasure -> Raw -> Arg
+||| Type constructor arguments
+|||
+||| Each argument is identified as being either a parameter that is
+||| consistent in all constructors, or an index that varies based on
+||| which constructor is selected.
+data TyConArg =
+  ||| Parameters are uniform across the constructors
+  TyConParameter FunArg |
+  ||| Indices are not uniform
+  TyConIndex FunArg
 
 ||| A type declaration
 data TyDecl : Type where
@@ -41,7 +60,7 @@ data TyDecl : Type where
   ||| @ fn the name to be declared, fully-qualified
   ||| @ args the arguments to the function
   ||| @ ret the final return type
-  Declare : (fn : TTName) -> (args : List Arg) -> (ret : Raw) -> TyDecl
+  Declare : (fn : TTName) -> (args : List FunArg) -> (ret : Raw) -> TyDecl
 
 ||| A single pattern-matching clause
 data FunClause : Type where
@@ -51,26 +70,24 @@ data FunClause : Type where
 data FunDefn : Type where
   DefineFun : TTName -> List FunClause -> FunDefn
 
-||| An argument to a type constructor.
-data TyConArg : Type where
-  ||| Parameters are consistent across all constructors of the type
-  Parameter : TTName -> Erasure -> Raw -> TyConArg
 
-  ||| Indices are allowed to vary across constructors
-  Index : TTName -> Erasure -> Raw -> TyConArg
+data CtorArg = CtorParameter FunArg | CtorField FunArg
 
 ||| A reflected datatype definition
-data Datatype : Type where
-  ||| A reflected datatype definition
-  |||
-  ||| @ familyName the name of the type constructor
-  ||| @ tyConArgs the arguments to the type constructor
-  ||| @ tyConRes the result of the type constructor
-  ||| @ constrs the constructors, with their types
-  MkDatatype : (familyName : TTName) ->
-               (tyConArgs : List TyConArg) -> (tyConRes : Raw) ->
-               (constrs : List (TTName, List Arg, Raw)) ->
-               Datatype
+record Datatype where
+  constructor MkDatatype
+
+  ||| The name of the type constructor
+  familyName : TTName
+
+  ||| The arguments to the type constructor
+  tyConArgs : List TyConArg
+
+  ||| The result of the type constructor
+  tyConRes : Raw
+
+  ||| The constructors for the family
+  constructors : List (TTName, List CtorArg, Raw)
 
 ||| A reflected elaboration script.
 abstract

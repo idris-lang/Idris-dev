@@ -2100,7 +2100,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            let decl = TyDecl Ref checked
                ctxt' = addCtxtDef n decl ctxt
            set_context ctxt'
-           updateAux $ \e -> e { new_tyDecls = (RTyDeclInstrs n fc (map rArgToPArg args) checked) :
+           updateAux $ \e -> e { new_tyDecls = (RTyDeclInstrs n fc (map rFunArgToPArg args) checked) :
                                                new_tyDecls e }
            aux <- getAux
            returnUnit

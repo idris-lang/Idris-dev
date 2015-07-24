@@ -333,10 +333,14 @@ instance Show Erasure where
   show Erased    = "Erased"
   show NotErased = "NotErased"
 
-instance Show Arg where
-  showPrec d (Explicit n e t) = showCon d "Explicit" $ showArg n ++ showArg e ++ showArg t
-  showPrec d (Implicit n e t) = showCon d "Implicit" $ showArg n ++ showArg e ++ showArg t
-  showPrec d (Constraint n e t) = showCon d "Constraint" $ showArg n ++ showArg e ++ showArg t
+instance Show Plicity where
+  show Explicit = "Explicit"
+  show Implicit = "Implicit"
+  show Constraint = "Constraint"
+
+instance Show FunArg where
+  showPrec d (MkFunArg n ty plic era) = showCon d "MkFunArg" $ showArg n ++
+                                        showArg ty ++ showArg plic ++ showArg era
 
 instance Show TyDecl where
   showPrec d (Declare fn args ret) = showCon d "Declare" $ showArg fn ++
