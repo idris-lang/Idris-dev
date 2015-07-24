@@ -6,7 +6,12 @@ ghc:
   - 7.8
 
 before_install:
+  # FP Complete key for stack
+  - wget -q -O- https://s3.amazonaws.com/download.fpcomplete.com/ubuntu/fpco.key | sudo apt-key add -
+  - echo 'deb http://download.fpcomplete.com/ubuntu/precise stable main'|sudo tee /etc/apt/sources.list.d/fpco.list
   - sudo apt-get update -qq
+  # Install Stack
+  - sudo apt-get install -qq stack
   - sudo apt-get install -qq libghc-unordered-containers-dev libghc-mtl-dev libghc-network-dev libghc-transformers-dev libghc-text-dev libghc-utf8-string-dev libghc-vector-dev libghc-split-dev libghc-ansi-terminal-dev libghc-ansi-wl-pprint-dev
   # trifecta dependencies
   - sudo apt-get install -qq libghc-blaze-builder-dev libghc-blaze-html-dev libghc-bifunctors-dev libghc-hashable-dev libghc-semigroups-dev libghc-semigroupoids-dev libghc-parallel-dev libghc-comonad-dev libghc-terminfo-dev libghc-keys-dev
@@ -16,6 +21,8 @@ before_install:
   - sudo apt-get install -qq expect
   - sudo apt-get install -qq cppcheck
 install:
+  - stack install
+  - stack test --no-run-tests
   - cabal install -f FFI --enable-tests --dependencies-only --max-backjumps=-1
   - ghc-pkg list
 before_script:
@@ -24,8 +31,9 @@ before_script:
   - tar -xf Idris-dev/dist/idris*.tar.gz
   - cd idris*
 script:
+  - stack setup
   - cabal configure -f FFI -f CI
-  - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
+  - if [[ "$TESTS" != "doc" ]]; then stack build ; cabal build; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal register; fi
   - if [[ "$TESTS" == "test_c" ]]; then cppcheck -j 2 --error-exitcode=1 ./rts/idris_bitstring.c ./rts/idris_bitstring.h ./rts/idris_gc.h ./rts/idris_gc.c ./rts/idris_gmp.h ./rts/idris_gmp.c ./rts/idris_heap.h ./rts/idris_heap.c ./rts/idris_main.c ./rts/idris_net.h ./rts/idris_net.c ./rts/idris_opts.h ./rts/idris_opts.c ./rts/idris_rts.h ./rts/idris_rts.c ./rts/idris_stats.h ./rts/idris_stats.c ./rts/idris_stdfgn.h ./rts/idris_stdfgn.c ./rts/libtest.c ; fi
