@@ -2,7 +2,7 @@
              PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
+module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll, toValue, quoteTerm,
                 rt_simplify, simplify, specialise, hnf, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Totality(..), PReason(..), MetaInformation(..),
@@ -13,7 +13,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
-                Value(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
+                Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
 
 import Debug.Trace
@@ -91,6 +91,13 @@ normaliseTrace :: Bool -> Context -> Env -> TT Name -> TT Name
 normaliseTrace tr ctxt env t
    = evalState (do val <- eval tr ctxt [] (map finalEntry env) (finalise t) []
                    quote 0 val) initEval
+
+toValue :: Context -> Env -> TT Name -> Value
+toValue ctxt env t 
+  = evalState (eval False ctxt [] (map finalEntry env) t []) initEval
+
+quoteTerm :: Value -> TT Name
+quoteTerm val = evalState (quote 0 val) initEval
 
 -- Return a specialised name, and an updated list of reductions available,
 -- so that the caller can tell how much specialisation was achieved.

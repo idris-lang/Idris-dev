@@ -6,7 +6,8 @@ module Idris.Core.WHNF(whnf, WEnv) where
 
 import Idris.Core.TT
 import Idris.Core.CaseTree
-import Idris.Core.Evaluate
+import Idris.Core.Evaluate hiding (quote)
+import qualified Idris.Core.Evaluate as Evaluate 
 
 import Debug.Trace
 
@@ -84,13 +85,9 @@ do_whnf ctxt env tm = eval env [] tm
                                Nothing -> unload wp stk
                  Just (Operator _ i op) -> 
                           if i <= length stk
-                             then case runOp op (take i stk) of
-                                       Nothing -> unload wp stk
-                                       -- Given that we can't apply constants
-                                       -- to things, and runOp only does
-                                       -- constants for now, this should
-                                       -- never happen...
-                                       Just v -> unload v (drop i stk)
+                             then case runOp env op (take i stk) (drop i stk) of
+                                  Just v -> v
+                                  Nothing -> unload wp stk
                              else unload wp stk
                  _ -> unload wp stk
 
@@ -98,16 +95,25 @@ do_whnf ctxt env tm = eval env [] tm
     unload f [] = f
     unload f (a : as) = unload (WApp f a) as
 
-    runOp :: ([Value] -> Maybe Value) -> Stack -> Maybe WHNF
-    runOp op stk = do vals <- mapM toValue stk
-                      case op vals of
-                        Just (VConstant c) -> Just (WConstant c)
-                        _ -> Nothing
+    runOp :: WEnv -> ([Value] -> Maybe Value) -> Stack -> Stack -> Maybe WHNF
+    runOp env op stk rest 
+        = do vals <- mapM tmtoValue stk
+             case op vals of
+                  Just (VConstant c) -> Just $ unload (WConstant c) rest
+                  -- Operators run on values, so we have to convert back
+                  -- and forth. This is pretty ugly, but operators that
+                  -- aren't run on constants are themselves pretty ugly
+                  -- (it's prim__believe_me and prim__syntacticEq, for
+                  -- example) so let's not worry too much...
+                  Just val -> Just $ eval env rest (quoteTerm val)
+                  _ -> Nothing
 
-    toValue :: (Term, WEnv) -> Maybe Value
-    toValue (tm, tenv) = case eval tenv [] tm of
-                              WConstant c -> Just (VConstant c)
-                              _ -> Nothing
+    tmtoValue :: (Term, WEnv) -> Maybe Value
+    tmtoValue (tm, tenv) 
+        = case eval tenv [] tm of
+               WConstant c -> Just (VConstant c)
+               _ -> let tm' = quoteEnv tenv tm in
+                        Just (toValue ctxt [] tm')
 
     evalCase :: WEnv -> [Name] -> SC -> Stack -> Maybe WHNF
     evalCase wenv@(WEnv d env) ns tree args 
