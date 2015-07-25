@@ -132,12 +132,12 @@ codegenJS_all target definitions includes libs filename outputType = do
                 ++ idrRuntime
                 ++ tgtRuntime
                 )
-  TIO.writeFile filename (  T.pack runtime
-                         `T.append` T.concat (map compileJS opt)
-                         `T.append` T.concat (map compileJS cons)
-                         `T.append` main
-                         `T.append` invokeMain
-                         )
+  writeSourceText filename (  T.pack runtime
+                           `T.append` T.concat (map compileJS opt)
+                           `T.append` T.concat (map compileJS cons)
+                           `T.append` main
+                           `T.append` invokeMain
+                           )
   setPermissions filename (emptyPermissions { readable   = True
                                             , executable = target == Node
                                             , writable   = True
@@ -1331,6 +1331,7 @@ translateBC info bc
   | TAILCALL n            <- bc = jsTAILCALL info n
   | FOREIGNCALL r _ (FStr n) args
                           <- bc = jsFOREIGN info r n (map fcall args)
+  | FOREIGNCALL _ _ _ _   <- bc = error "JS FFI call not statically known"
   | TOPBASE n             <- bc = jsTOPBASE info n
   | BASETOP n             <- bc = jsBASETOP info n
   | STOREOLD              <- bc = jsSTOREOLD info

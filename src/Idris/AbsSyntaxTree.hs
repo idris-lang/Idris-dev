@@ -387,7 +387,7 @@ data Command = Quit
              | Universes
              | LogLvl Int
              | Spec PTerm
-             | HNF PTerm
+             | WHNF PTerm
              | TestInline PTerm
              | Defn Name
              | Missing Name
@@ -472,6 +472,7 @@ data Opt = Filename String
          | DumpDefun String
          | DumpCases String
          | UseCodegen Codegen
+         | CodegenArgs String
          | OutputTy OutputType
          | Extension LanguageExt
          | InterpretScript String

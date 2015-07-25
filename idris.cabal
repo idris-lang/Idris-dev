@@ -785,6 +785,7 @@ Library
                 , Idris.Core.TT
                 , Idris.Core.Typecheck
                 , Idris.Core.Unify
+                , Idris.Core.WHNF
 
                 , Idris.Elab.Utils
                 , Idris.Elab.Type

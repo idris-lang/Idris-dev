@@ -594,7 +594,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         rep <- useREPL
         when rep $ do
           addInternalApp (fc_fname fc) (fst . fc_start $ fc) (delabMV i clhs) -- TODO: Should use span instead of line and filename?
-          addIBC (IBCLineApp (fc_fname fc) (fst . fc_start $ fc) (delabMV i clhs))
+        addIBC (IBCLineApp (fc_fname fc) (fst . fc_start $ fc) (delabMV i clhs))
 
         logLvl 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
         -- Elaborate where block
