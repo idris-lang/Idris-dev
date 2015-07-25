@@ -365,7 +365,7 @@ timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
                             ibct <- runIO $ getModificationTime ibc
                             if (srct > ibct)
-                               then ifail "Needs reloading"
+                               then ifail $ "Needs reloading " ++ show (srct, ibct)
                                else return ()
 
 pPostulates :: [Name] -> Idris ()

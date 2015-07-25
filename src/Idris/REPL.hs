@@ -934,12 +934,14 @@ process fn (Check t)
         ctxt <- getContext
         ist <- getIState
         let ppo = ppOptionIst ist
-            ty' = normaliseC ctxt [] ty
+            ty' = if opt_evaltypes (idris_options ist)
+                     then normaliseC ctxt [] ty
+                     else ty
         case tm of
            TType _ ->
              iPrintTermWithType (prettyIst ist (PType emptyFC)) type1Doc
            _ -> iPrintTermWithType (pprintDelab ist tm)
-                                   (pprintDelab ist ty)
+                                   (pprintDelab ist ty')
 
 process fn (Core t)
    = do (tm, ty) <- elabREPL recinfo ERHS t
@@ -1234,6 +1236,8 @@ process fn (SetOpt NoBanner)      = setNoBanner True
 process fn (UnsetOpt NoBanner)    = setNoBanner False
 process fn (SetOpt WarnReach)     = fmodifyState opts_idrisCmdline $ nub . (WarnReach:)
 process fn (UnsetOpt WarnReach)   = fmodifyState opts_idrisCmdline $ delete WarnReach
+process fn (SetOpt EvalTypes)     = setEvalTypes True
+process fn (UnsetOpt EvalTypes)   = setEvalTypes False
 
 process fn (SetOpt _) = iPrintError "Not a valid option"
 process fn (UnsetOpt _) = iPrintError "Not a valid option"

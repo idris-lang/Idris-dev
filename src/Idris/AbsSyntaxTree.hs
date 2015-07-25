@@ -89,7 +89,8 @@ data IOption = IOption { opt_logLevel     :: Int,
                          opt_autoSolve    :: Bool, -- ^ automatically apply "solve" tactic in prover
                          opt_autoImport   :: [FilePath], -- ^ e.g. Builtins+Prelude
                          opt_optimise     :: [Optimisation],
-                         opt_printdepth   :: Maybe Int
+                         opt_printdepth   :: Maybe Int,
+                         opt_evaltypes    :: Bool -- ^ normalise types in :t
                        }
     deriving (Show, Eq)
 
@@ -115,6 +116,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_autoImport = []
                       , opt_optimise   = defaultOptimise
                       , opt_printdepth = Just 5000
+                      , opt_evaltypes  = True
                       }
 
 data PPOption = PPOption {
@@ -451,6 +453,7 @@ data Opt = Filename String
          | DefaultPartial
          | WarnPartial
          | WarnReach
+         | EvalTypes
          | NoCoverage
          | ErrContext
          | ShowImpl

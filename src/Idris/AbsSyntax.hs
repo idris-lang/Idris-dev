@@ -790,6 +790,12 @@ getNoBanner = do i <- getIState
                  let opts = idris_options i
                  return (opt_nobanner opts)
 
+setEvalTypes :: Bool -> Idris ()
+setEvalTypes n = do i <- getIState
+                    let opts = idris_options i
+                    let opt' = opts { opt_evaltypes = n }
+                    putIState $ i { idris_options = opt' }
+
 setQuiet :: Bool -> Idris ()
 setQuiet q = do i <- getIState
                 let opts = idris_options i
