@@ -801,6 +801,9 @@ reflectEnv = foldr consToEnvList emptyEnvList
     emptyEnvList = raw_apply (Var (sNS (sUN "Nil") ["List", "Prelude"]))
                              [envTupleType]
 
+reifyEnv :: Term -> ElabD Env
+reifyEnv = reifyList (reifyPair reifyTTName (reifyTTBinder reifyTT (reflm "TT")))
+
 -- | Reflect an error into the internal datatype of Idris -- TODO
 rawBool :: Bool -> Raw
 rawBool True  = Var (sNS (sUN "True") ["Bool", "Prelude"])

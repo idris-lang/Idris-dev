@@ -2080,6 +2080,14 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            returnUnit
       | n == tacN "prim__Compute", [] <- args
       = do compute ; returnUnit
+      | n == tacN "prim__Normalise", [env, tm] <- args
+      = do env' <- reifyEnv env
+           tm' <- reifyTT tm
+           ctxt <- get_context
+           let out = normaliseAll ctxt env' (finalise tm')
+           fmap fst . checkClosed $ reflect out
+      | n == tacN "prim__Whnf", [env, tm] <- args
+      = undefined -- TODO: merge Edwin's whnf from master, then call here
       | n == tacN "prim__DeclareType", [decl] <- args
       = do (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context

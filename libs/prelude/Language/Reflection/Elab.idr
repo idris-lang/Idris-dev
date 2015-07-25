@@ -130,8 +130,11 @@ data Elab : Type -> Type where
   prim__Forall : TTName -> Raw -> Elab ()
   prim__PatVar : TTName -> Elab ()
   prim__PatBind : TTName -> Elab ()
+  -- TODO: letbind
 
   prim__Compute : Elab ()
+  prim__Normalise : (List (TTName, Binder TT)) -> TT -> Elab TT
+  prim__Whnf : (List (TTName, Binder TT)) -> TT -> Elab TT
 
   prim__DeclareType : TyDecl -> Elab ()
   prim__DefineFunction : FunDefn -> Elab ()
@@ -332,6 +335,20 @@ namespace Tactics
   ||| Normalise the goal.
   compute : Elab ()
   compute = prim__Compute
+
+  ||| Normalise a term in some lexical environment
+  |||
+  ||| @ env the environment in which to compute (get one of these from `getEnv`)
+  ||| @ term the term to normalise
+  normalise : (env : List (TTName, Binder TT)) -> (term : TT) -> Elab TT
+  normalise env term = prim__Normalise env term
+
+  ||| Reduce a term to weak-head normal form
+  |||
+  ||| @ env the environment in which to compute (get one of these from `getEnv`)
+  ||| @ term the term to reduce
+  whnf : (env : List (TTName, Binder TT)) -> (term : TT) -> Elab TT
+  whnf env term = prim__Whnf env term
 
   ||| Find the source context for the elaboration script
   getSourceLocation : Elab SourceLocation
