@@ -17,6 +17,7 @@ import Idris.Core.Evaluate
 import Idris.Core.Unify
 import Idris.Core.ProofTerm (getProofTerm)
 import Idris.Core.Typecheck (check, recheck, converts, isType)
+import Idris.Core.WHNF (whnf)
 import Idris.Coverage (buildSCG, checkDeclTotality, genClauses, recoverableCoverage, validCoverageCase)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
@@ -2086,8 +2087,10 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            ctxt <- get_context
            let out = normaliseAll ctxt env' (finalise tm')
            fmap fst . checkClosed $ reflect out
-      | n == tacN "prim__Whnf", [env, tm] <- args
-      = undefined -- TODO: merge Edwin's whnf from master, then call here
+      | n == tacN "prim__Whnf", [tm] <- args
+      = do tm' <- reifyTT tm
+           ctxt <- get_context
+           fmap fst . checkClosed . reflect $ whnf ctxt tm'
       | n == tacN "prim__DeclareType", [decl] <- args
       = do (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context
