@@ -213,12 +213,12 @@ instance MinBound Nat where
 instance Cast Integer Nat where
   cast = fromInteger
 
-||| A wrapper for Nat that specifies the semigroup and monad instances that use (+)
+||| A wrapper for Nat that specifies the semigroup and monad instances that use (*)
 record Multiplicative where
   constructor getMultiplicative
   _ : Nat
 
-||| A wrapper for Nat that specifies the semigroup and monad instances that use (*)
+||| A wrapper for Nat that specifies the semigroup and monad instances that use (+)
 record Additive where
   constructor getAdditive  
   _ : Nat
