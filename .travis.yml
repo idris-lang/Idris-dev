@@ -1,27 +1,47 @@
 sudo: false
 
+language: haskell
+
 addons:
   apt:
+    sources:
+      - hvr-ghc
     packages:
+      - ghc-7.6.3
+      - ghc-7.8.4
+      - ghc-7.10.1
+      - cabal-install-1.22
       # test dependencies
       - expect
       - cppcheck
 
 env:
-  - TESTS="doc"
-  - TESTS="lib_doc"
-  - TESTS="test_c"
-  #- TESTS="test_llvm"
-  - TESTS="test_js"
+  - GHC="7.6.3"  TESTS="doc"
+  - GHC="7.6.3"  TESTS="lib_doc"
+  - GHC="7.6.3"  TESTS="test_c"
+  - GHC="7.6.3"  TESTS="test_js"
+  - GHC="7.8.4"  TESTS="doc"
+  - GHC="7.8.4"  TESTS="lib_doc"
+  - GHC="7.8.4"  TESTS="test_c"
+  - GHC="7.8.4"  TESTS="test_js"
+  - GHC="7.10.1" TESTS="doc"
+  - GHC="7.10.1" TESTS="lib_doc"
+  - GHC="7.10.1" TESTS="test_c"
+  - GHC="7.10.1" TESTS="test_js"
 
-language: haskell
+matrix:
+  allow_failures:
+    - env: GHC="7.10.1" TESTS="doc"
+    - env: GHC="7.10.1" TESTS="lib_doc"
+    - env: GHC="7.10.1" TESTS="test_c"
+    - env: GHC="7.10.1" TESTS="test_js"
 
-ghc:
-  # Idris won't build on 7.4 and earlier due to dependency
-  # problems. 7.10 isn't yet supported on Travis.
-  - 7.6
-  - 7.8
-
+before_install:
+  - export CABAL="1.22"
+  - export PATH=/opt/ghc/$GHC/bin:/opt/cabal/$CABAL/bin:$PATH
+  - cabal --version
+  - ghc --version
+  - cabal update
 install:
   # haddock dependencies
   - cabal install hscolour
