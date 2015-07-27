@@ -15,6 +15,15 @@ import Prelude.List
 import Prelude.Nat
 import Decidable.Equality
 
+partial
+foldr1 : (a -> a -> a) -> List a -> a
+foldr1 _ [x] = x
+foldr1 f (x::xs) = f x (foldr1 f xs)
+
+partial
+foldl1 : (a -> a -> a) -> List a -> a
+foldl1 f (x::xs) = foldl f x xs
+
 ||| Appends two strings together.
 |||
 ||| ```idris example
@@ -247,15 +256,6 @@ lines' s = case dropWhile isNL s of
 lines : String -> List String
 lines s = map pack $ lines' $ unpack s
 
-partial
-foldr1 : (a -> a -> a) -> List a -> a
-foldr1 _ [x] = x
-foldr1 f (x::xs) = f x (foldr1 f xs)
-
-partial
-foldl1 : (a -> a -> a) -> List a -> a
-foldl1 f (x::xs) = foldl f x xs
-
 ||| Joins the character lists by spaces into a single character list.
 |||
 ||| ```idris example
@@ -263,18 +263,36 @@ foldl1 f (x::xs) = foldl f x xs
 ||| ```
 unwords' : List (List Char) -> List Char
 unwords' [] = []
-unwords' ws = assert_total (foldr1 addSpace ws)
-        where
-            addSpace : List Char -> List Char -> List Char
-            addSpace w s = w ++ (' ' :: s)
+unwords' ws = assert_total (foldr1 addSpace ws) where
+  addSpace : List Char -> List Char -> List Char
+  addSpace w s = w ++ (' ' :: s)
 
-||| Joins the strings by spaces into a single string. 
+||| Joins the strings by spaces into a single string.
 |||
 ||| ```idris example
 ||| unwords ["A", "BC", "D", "E"]
 ||| ```
 unwords : List String -> String
 unwords = pack . unwords' . map unpack
+
+||| Joins the character lists by newlines into a single character list.
+|||
+||| ```idris example
+||| unlines' [['l','i','n','e'], ['l','i','n','e','2'], ['l','n','3'], ['D']]
+||| ```
+unlines' : List (List Char) -> List Char
+unlines' [] = []
+unlines' ls = assert_total (foldr1 addLine ls) where
+  addLine : List Char -> List Char -> List Char
+  addLine l s = l ++ ('\n' :: s)
+
+||| Joins the strings by newlines into a single string.
+|||
+||| ```idris example
+||| unlines ["line", "line2", "ln3", "D"]
+||| ```
+unlines : List String -> String
+unlines = pack . unlines' . map unpack
 
 ||| Returns the length of the string.
 |||
