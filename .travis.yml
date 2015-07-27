@@ -1,21 +1,30 @@
+sudo: false
+
+addons:
+  apt:
+    packages:
+      # test dependencies
+      - expect
+      - cppcheck
+
+env:
+  - TESTS="doc"
+  - TESTS="lib_doc"
+  - TESTS="test_c"
+  #- TESTS="test_llvm"
+  - TESTS="test_js"
+
 language: haskell
+
 ghc:
   # Idris won't build on 7.4 and earlier due to dependency
   # problems. 7.10 isn't yet supported on Travis.
   - 7.6
   - 7.8
 
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq libghc-unordered-containers-dev libghc-mtl-dev libghc-network-dev libghc-transformers-dev libghc-text-dev libghc-utf8-string-dev libghc-vector-dev libghc-split-dev libghc-ansi-terminal-dev libghc-ansi-wl-pprint-dev
-  # trifecta dependencies
-  - sudo apt-get install -qq libghc-blaze-builder-dev libghc-blaze-html-dev libghc-bifunctors-dev libghc-hashable-dev libghc-semigroups-dev libghc-semigroupoids-dev libghc-parallel-dev libghc-comonad-dev libghc-terminfo-dev libghc-keys-dev
-  # Haddock dependencies
-  - sudo apt-get install hscolour
-  # test dependency
-  - sudo apt-get install -qq expect
-  - sudo apt-get install -qq cppcheck
 install:
+  # haddock dependencies
+  - cabal install hscolour
   - cabal install -f FFI --enable-tests --dependencies-only --max-backjumps=-1
   - ghc-pkg list
 before_script:
@@ -31,9 +40,3 @@ script:
   - if [[ "$TESTS" == "test_c" ]]; then cppcheck -j 2 --error-exitcode=1 ./rts/idris_bitstring.c ./rts/idris_bitstring.h ./rts/idris_gc.h ./rts/idris_gc.c ./rts/idris_gmp.h ./rts/idris_gmp.c ./rts/idris_heap.h ./rts/idris_heap.c ./rts/idris_main.c ./rts/idris_net.h ./rts/idris_net.c ./rts/idris_opts.h ./rts/idris_opts.c ./rts/idris_rts.h ./rts/idris_rts.c ./rts/idris_stats.h ./rts/idris_stats.c ./rts/idris_stdfgn.h ./rts/idris_stdfgn.c ./rts/libtest.c ; fi
   - if [[ "$TESTS" == "test_llvm" ]]; then git clone --depth 1 https://github.com/idris-hackers/idris-llvm.git ; cd idris-llvm ; cabal install ; cd .. ; fi
   - make -j2 $TESTS
-env:
-  - TESTS="doc"
-  - TESTS="lib_doc"
-  - TESTS="test_c"
-  #- TESTS="test_llvm"
-  - TESTS="test_js"
