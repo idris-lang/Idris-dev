@@ -15,7 +15,7 @@ class Cast from to where
 instance Cast String Int where
     cast = prim__fromStrInt
 
-instance Cast String Float where
+instance Cast String Double where
     cast = prim__strToFloat
 
 instance Cast String Integer where
@@ -26,24 +26,30 @@ instance Cast String Integer where
 instance Cast Int String where
     cast = prim__toStrInt
 
-instance Cast Int Float where
+instance Cast Int Double where
     cast = prim__toFloatInt
 
 instance Cast Int Integer where
     cast = prim__sextInt_BigInt
 
--- Float casts
+-- Double casts
 
-instance Cast Float String where
+instance Cast Double String where
     cast = prim__floatToStr
 
-instance Cast Float Int where
+instance Cast Double Int where
     cast = prim__fromFloatInt
+
+instance Cast Double Integer where
+    cast = prim__fromFloatBigInt
 
 -- Integer casts
 
 instance Cast Integer String where
     cast = prim__toStrBigInt
+
+instance Cast Integer Double where
+    cast = prim__toFloatBigInt
 
 -- Char casts
 

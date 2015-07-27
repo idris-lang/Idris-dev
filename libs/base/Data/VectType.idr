@@ -1,6 +1,6 @@
 module Data.VectType
 
-import Data.Fin
+import public Data.Fin
 
 %access public
 %default total

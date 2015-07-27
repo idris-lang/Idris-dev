@@ -262,6 +262,9 @@ instance Cast Int Nat where
 instance Cast Nat Int where
   cast = toIntNat
 
+instance Cast Nat Double where
+  cast = cast . toIntegerNat
+
 --------------------------------------------------------------------------------
 -- Auxilliary notions
 --------------------------------------------------------------------------------

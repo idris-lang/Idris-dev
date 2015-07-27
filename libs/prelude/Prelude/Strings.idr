@@ -305,6 +305,14 @@ unlines = pack . unlines' . map unpack
 length : String -> Nat
 length = fromInteger . prim__zextInt_BigInt . prim_lenString
 
+||| Returns a substring of a given string
+||| @index The (zero based) index of the string to extract. If this is
+||| beyond the end of the String, the function returns the empty string.
+||| @len The desired length of the substring. Truncated if this exceeds
+||| the length of the input.
+substr : (index : Nat) -> (len : Nat) -> String -> String
+substr i len = pack . List.take len . drop i . unpack
+
 ||| Lowercases all characters in the string.
 |||
 ||| ```idris example
