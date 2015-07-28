@@ -10,48 +10,57 @@ addons:
       - ghc-7.6.3
       - ghc-7.8.4
       - ghc-7.10.1
-      - cabal-install-1.22
+      - cabal-install-1.20
+      - cabal-install-head
       # test dependencies
       - expect
       - cppcheck
 
 env:
-  - GHC="7.6.3"  TESTS="doc"
-  - GHC="7.6.3"  TESTS="lib_doc"
-  - GHC="7.6.3"  TESTS="test_c"
-  - GHC="7.6.3"  TESTS="test_js"
-  - GHC="7.8.4"  TESTS="doc"
-  - GHC="7.8.4"  TESTS="lib_doc"
-  - GHC="7.8.4"  TESTS="test_c"
-  - GHC="7.8.4"  TESTS="test_js"
-  - GHC="7.10.1" TESTS="doc"
-  - GHC="7.10.1" TESTS="lib_doc"
-  - GHC="7.10.1" TESTS="test_c"
-  - GHC="7.10.1" TESTS="test_js"
+  - CABAL="1.20" GHC="7.6.3"  TESTS="doc"
+  - CABAL="1.20" GHC="7.6.3"  TESTS="lib_doc"
+  - CABAL="1.20" GHC="7.6.3"  TESTS="test_c"
+  - CABAL="1.20" GHC="7.6.3"  TESTS="test_js"
+  - CABAL="1.20" GHC="7.8.4"  TESTS="doc"
+  - CABAL="1.20" GHC="7.8.4"  TESTS="lib_doc"
+  - CABAL="1.20" GHC="7.8.4"  TESTS="test_c"
+  - CABAL="1.20" GHC="7.8.4"  TESTS="test_js"
+  - CABAL="head" GHC="7.10.1" TESTS="doc"
+  - CABAL="head" GHC="7.10.1" TESTS="lib_doc"
+  - CABAL="head" GHC="7.10.1" TESTS="test_c"
+  - CABAL="head" GHC="7.10.1" TESTS="test_js"
 
 matrix:
   allow_failures:
-    - env: GHC="7.10.1" TESTS="doc"
-    - env: GHC="7.10.1" TESTS="lib_doc"
-    - env: GHC="7.10.1" TESTS="test_c"
-    - env: GHC="7.10.1" TESTS="test_js"
+    - env: CABAL="head" GHC="7.10.1" TESTS="doc"
+    - env: CABAL="head" GHC="7.10.1" TESTS="lib_doc"
+    - env: CABAL="head" GHC="7.10.1" TESTS="test_c"
+    - env: CABAL="head" GHC="7.10.1" TESTS="test_js"
+
+cache:
+  directories:
+    - $HOME/.cabal-sandbox
 
 before_install:
-  - export CABAL="1.22"
-  - export PATH=/opt/ghc/$GHC/bin:/opt/cabal/$CABAL/bin:$PATH
+  - export SANDBOX=$HOME/.cabal-sandbox
+  - export PATH=/opt/ghc/$GHC/bin:/opt/cabal/$CABAL/bin:$SANDBOX/bin:$PATH
+  - ls -lh $SANDBOX
+  - env
   - cabal --version
   - ghc --version
   - cabal update
 install:
-  # haddock dependencies
-  - cabal install hscolour
-  - cabal install -f FFI --enable-tests --dependencies-only --max-backjumps=-1
-  - ghc-pkg list
+  - cabal sandbox --sandbox=$SANDBOX init
+  - cabal install hscolour # haddock dependency
+  - cabal install -f FFI --enable-tests --dependencies-only --force-reinstalls
+  - cabal sandbox hc-pkg list
 before_script:
   - cabal sdist
   - cd ..
   - tar -xf Idris-dev/dist/idris*.tar.gz
   - cd idris*
+  - cp -r $SANDBOX .cabal-sandbox
+  - cabal sandbox init
 script:
   - cabal configure -f FFI -f CI
   - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
