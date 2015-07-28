@@ -34,7 +34,7 @@ module which defines a binary tree type ``BTree`` (in a file
 
 
 Then, this gives a main program (in a file
-``bmain.idr``) which uses the ``bst`` module to sort a list:
+``bmain.idr``) which uses the ``Btree`` module to sort a list:
 
 .. code-block:: idris
 
