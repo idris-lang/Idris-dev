@@ -912,10 +912,6 @@ Intermediate values can be calculated using ``let`` bindings:
     showPerson p = let MkPerson name age = p in
                        name ++ " is " ++ show age ++ " years old"
 
-    splitAt : Char -> String -> (String, String)
-    splitAt c x = case break (== c) x of
-                      (x, y) => (x, strTail y)
-
 We can do simple pattern matching in ``let`` bindings too. For
 example, we can extract fields from a record as follows, as well as by
 pattern matching at the top level:
