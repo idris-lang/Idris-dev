@@ -54,9 +54,9 @@ Given an Idris package file ``maths.ipkg`` it can be used with the Idris compile
   package only. This differs from build that type checks **and**
   generates code.
 
-+ ``idris --mathspkg maths.ipkg`` will compile and run any embedded
-  mathss you have specified in the ``tests`` paramater. More
-  information about mathsing is given in the next section.
++ ``idris --testpkg maths.ipkg`` will compile and run any embedded
+  tests you have specified in the ``tests`` paramater. More
+  information about testing is given in the next section.
 
 Once the maths package has been installed, the command line option
 ``--package maths`` makes it accessible (abbreviated to ``-p maths``).
