@@ -71,7 +71,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
     let constraint = PApp fc (PRef fc [] n) (map pexp ps)
     let iname = mkiname n (namespace info) ps expn
     let emptyclass = null (class_methods ci)
-    when (what /= EDefns || (null ds && not emptyclass)) $ do
+    when (what /= EDefns) $ do 
          nty <- elabType' True info syn doc argDocs fc [] iname NoFC t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
