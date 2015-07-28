@@ -137,7 +137,8 @@ decorateid decorate (PClauses f o n cs)
 pbinds :: IState -> Term -> ElabD ()
 pbinds i (Bind n (PVar t) sc) 
     = do attack; patbind n
-         case unApply t of
+         env <- get_env
+         case unApply (normalise (tt_ctxt i) env t) of
               (P _ c _, args) -> case lookupCtxt c (idris_classes i) of
                                    [] -> return ()
                                    _ -> -- type class, set as injective

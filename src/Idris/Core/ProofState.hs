@@ -244,7 +244,8 @@ unify' ctxt env (topx, xfrom) (topy, yfrom) =
            let (notu', probs_notu) = mergeNotunified env (holes ps) (notu ++ notunified ps)
            traceWhen (unifylog ps)
             ("Now solved: " ++ show ns' ++
-             "\nNow problems: " ++ qshow (probs' ++ probs_notu)) $
+             "\nNow problems: " ++ qshow (probs' ++ probs_notu) ++
+             "\nNow injective: " ++ show (updateInj u (injective ps))) $
              put (ps { problems = probs' ++ probs_notu,
                        unified = (h, ns'),
                        injective = updateInj u (injective ps),

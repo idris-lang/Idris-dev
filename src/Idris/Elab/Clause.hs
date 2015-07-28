@@ -543,7 +543,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         let fn_is = case lookupCtxt fname (idris_implicits i) of
                          [t] -> t
                          _ -> []
-        let params = getParamsInType i [] fn_is fn_ty
+        let params = getParamsInType i [] fn_is (normalise ctxt [] fn_ty)
         let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
                     propagateParams i params fn_ty (addImplPat i lhs_in)
 --         let lhs = mkLHSapp $ 
@@ -790,7 +790,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let fn_is = case lookupCtxt fname (idris_implicits i) of
                          [t] -> t
                          _ -> []
-        let params = getParamsInType i [] fn_is fn_ty
+        let params = getParamsInType i [] fn_is (normalise ctxt [] fn_ty)
         let lhs = stripLinear i $ stripUnmatchable i $ propagateParams i params fn_ty (addImplPat i lhs_in)
         logLvl 2 ("LHS: " ++ show lhs)
         (ElabResult lhs' dlhs [] ctxt' newDecls highlights, _) <-

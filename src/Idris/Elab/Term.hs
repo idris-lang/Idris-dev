@@ -901,7 +901,7 @@ elab ist info emode opts fn tm
                 case lookup n env of
                      Nothing -> return ()
                      Just b ->
-                       case unApply (binderTy b) of
+                       case unApply (normalise (tt_ctxt ist) env (binderTy b)) of
                             (P _ c _, args) ->
                                 case lookupCtxtExact c (idris_classes ist) of
                                    Nothing -> return ()
