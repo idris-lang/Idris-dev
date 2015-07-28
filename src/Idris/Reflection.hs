@@ -333,7 +333,7 @@ reifyTTConstApp f (Constant c@(BI _))
                 | f == reflm "BI"  = return $ c
 reifyTTConstApp f (Constant c@(Fl _))
                 | f == reflm "Fl"  = return $ c
-reifyTTConstApp f (Constant c@(I _))
+reifyTTConstApp f (Constant c@(Ch _))
                 | f == reflm "Ch"  = return $ c
 reifyTTConstApp f (Constant c@(Str _))
                 | f == reflm "Str" = return $ c
