@@ -50,7 +50,7 @@ Then, this gives a main program (in a file
 
 The same names can be defined in multiple modules. This is possible
 because in practice names are *qualified* with the name of the module.
-The names defined in the ``btree`` module are, in full:
+The names defined in the ``Btree`` module are, in full:
 
 + ``Btree.BTree``
 + ``Btree.Leaf``
@@ -99,7 +99,7 @@ and classes to be marked as: ``public``, ``abstract`` or ``private``:
 .. note::
     If any definition is given an export modifier, then all names with no modifier are assumed to be ``private``.
 
-For our ``btree`` module, it makes sense for the tree data type and the
+For our ``Btree`` module, it makes sense for the tree data type and the
 functions to be exported as ``abstract``, as we see below:
 
 .. code-block:: idris
