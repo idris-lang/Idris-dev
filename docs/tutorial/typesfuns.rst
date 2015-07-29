@@ -349,7 +349,7 @@ following:
     $ idris vbroken.idr --check
     vbroken.idr:9:23:When elaborating right hand side of Vect.++:
     When elaborating an application of constructor Vect.:::
-        Type mismatch between 
+        Type mismatch between
                 Vect (k + k) a (Type of xs ++ xs)
         and
                 Vect (plus k m) a (Expected type)
@@ -442,7 +442,7 @@ names, ``n`` and ``a``, which are not declared explicitly. These are
 Implicit arguments, given in braces ``{}`` in the type declaration,
 are not given in applications of ``index``; their values can be
 inferred from the types of the ``Fin n`` and ``Vect n a``
-arguments. Any name beginning with a lower case letter which appears 
+arguments. Any name beginning with a lower case letter which appears
 as a parameter or index in a
 type declaration, but which is otherwise unbound, will be automatically
 bound as an implicit argument. Implicit arguments can still be given
@@ -1017,26 +1017,28 @@ example, we can represent a person's name and age in a record:
 
     record Person where
         constructor MkPerson
-        name : String
+        firstName, middleName, lastName : String
         age : Int
 
     fred : Person
-    fred = MkPerson "Fred" 30
+    fred = MkPerson "Fred" "Joe" "Bloggs" 30
 
 Records can have *parameters*, which are listed between the record
 name and the ``where`` keyword, and *fields*, which are in an indented
-block following the `where` keyword (here, ``name`` and ``age``). The
-constructor name is provided after the ``constructor`` keyword. The
-field names can be used to access the field values:
+block following the `where` keyword (here, ``firstName``, ``middleName``,
+``lastName``, and ``age``). You can declare multiple fields on a single
+line, provided that they have the same type. The constructor name is
+provided after the ``constructor`` keyword. The field names can be used to
+access the field values:
 
 ::
 
-    *record> name fred
+    *record> firstName fred
     "Fred" : String
     *record> age fred
     30 : Int
-    *record> :t name
-    name : Person -> String
+    *record> :t firstName
+    firstName : Person -> String
 
 We can also use the field names to update a record (or, more
 precisely, produce a copy of the record with the given fields
@@ -1044,10 +1046,10 @@ updated):
 
 .. code-block:: bash
 
-    *record> record { name = "Jim" } fred
-    MkPerson "Jim" 30 : Person
-    *record> record { name = "Jim", age = 20 } fred
-    MkPerson "Jim" 20 : Person
+    *record> record { firstName = "Jim" } fred
+    MkPerson "Jim" "Joe" "Bloggs" 30 : Person
+    *record> record { firstName = "Jim", age = 20 } fred
+    MkPerson "Jim" "Joe" "Bloggs" 20 : Person
 
 The syntax ``record { field = val, ... }`` generates a function which
 updates the given fields in a record.
@@ -1074,7 +1076,7 @@ length because it will not affect the type of the record:
 ::
 
     *record> addStudent fred (ClassInfo [] "CS")
-    ClassInfo [MkPerson "Fred" 30] "CS" : Class
+    ClassInfo [MkPerson "Fred" "Joe" "Bloggs" 30] "CS" : Class
 
 Nested record update
 --------------------

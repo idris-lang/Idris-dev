@@ -434,6 +434,11 @@ bindList :: (Name -> FC -> PTerm -> PTerm -> PTerm) -> [(Name, FC, PTerm)] -> PT
 bindList b []              sc = sc
 bindList b ((n, fc, t):bs) sc = b n fc t (bindList b bs sc)
 
+{- | @commaSeparated p@ parses one or more occurences of `p`,
+     separated by commas and optional whitespace. -}
+commaSeparated :: MonadicParsing m => m a -> m [a]
+commaSeparated p = p `sepBy1` (spaces >> char ',' >> spaces)
+
 {- * Layout helpers -}
 
 -- | Push indentation to stack

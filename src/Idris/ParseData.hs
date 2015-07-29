@@ -86,25 +86,26 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
 
         let constructorDoc' = annotate syn ist constructorDoc
 
-        fields <- many . indented $ field syn
+        fields <- many . indented $ fieldLine syn
 
-        return (fields, constructorName, constructorDoc')
+        return (concat fields, constructorName, constructorDoc')
       where
-        field :: SyntaxInfo -> IdrisParser ((Maybe (Name, FC)), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))
-        field syn = do doc <- optional docComment
-                       c <- optional $ lchar '{'
-                       n <- (do (n, nfc) <- fnName
-                                return $ Just (expandNS syn n, nfc))
-                        <|> (do symbol "_"
-                                return Nothing)
-                       lchar ':'
-                       t <- typeExpr (allowImp syn)
-                       p <- endPlicity c
-                       ist <- get
-                       let doc' = case doc of -- Temp: Throws away any possible arg docs
-                                   Just (d,_) -> Just $ annotate syn ist d
-                                   Nothing    -> Nothing
-                       return (n, p, t, doc')
+        fieldLine :: SyntaxInfo -> IdrisParser [(Maybe (Name, FC), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))]
+        fieldLine syn = do
+            doc <- optional docComment
+            c <- optional $ lchar '{'
+            let oneName = (do (n, nfc) <- fnName
+                              return $ Just (expandNS syn n, nfc))
+                          <|> (symbol "_" >> return Nothing)
+            ns <- commaSeparated oneName
+            lchar ':'
+            t <- typeExpr (allowImp syn)
+            p <- endPlicity c
+            ist <- get
+            let doc' = case doc of -- Temp: Throws away any possible arg docs
+                        Just (d,_) -> Just $ annotate syn ist d
+                        Nothing    -> Nothing
+            return $ map (\n -> (n, p, t, doc')) ns
 
         constructor :: IdrisParser (Name, FC)
         constructor = (reservedHL "constructor") *> fnName
