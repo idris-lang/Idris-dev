@@ -361,9 +361,11 @@ getClause l fn fp
          getNameFrom i used (PApp fc f as) = getNameFrom i used f
          getNameFrom i used (PRef fc _ f)
             = case getNameHints i f of
-                   [] -> uniqueName (sUN "x") used
+                   [] -> uniqueNameFrom (mkSupply [sUN "x", sUN "y",
+                                                   sUN "z"]) used
                    ns -> uniqueNameFrom (mkSupply ns) used
-         getNameFrom i used _ = uniqueName (sUN "x") used 
+         getNameFrom i used _ = uniqueNameFrom (mkSupply [sUN "x", sUN "y",
+                                                          sUN "z"]) used 
 
          -- write method declarations, indent with 4 spaces
          mkClassBodies :: IState -> [(Name, (FnOpts, PTerm))] -> String
