@@ -29,7 +29,7 @@ Types
 
 In Idris, types are first class values. So a type declaration is the
 same as just declaration of a variable whose type is ``Type``. In Idris,
-variables that denote a type must beging with a capital letter. Example:
+variables that denote a type must begin with a capital letter. Example:
 
 .. code:: idris
 
