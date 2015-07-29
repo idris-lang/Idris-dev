@@ -260,9 +260,12 @@ makeLemma fn updatefile l n
                       _ -> return (-1)
 
         if (not isProv) then do
-            let skip = guessImps (tt_ctxt i) mty
+            let skip = guessImps i (tt_ctxt i) mty
+            let classes = guessClasses i (tt_ctxt i) mty
 
-            let lem = show n ++ " : " ++ show (stripMNBind skip (delab i mty))
+            let lem = show n ++ " : " ++ 
+                            constraints i classes mty ++
+                            show (stripMNBind skip (delab i mty))
             let lem_app = show n ++ appArgs skip margs mty
 
             if updatefile then
@@ -312,15 +315,52 @@ makeLemma fn updatefile l n
         stripMNBind skip (PPi b _ _ ty sc) = stripMNBind skip sc
         stripMNBind skip t = t
 
+        constraints :: IState -> [Name] -> Type -> String
+        constraints i [] ty = ""
+        constraints i [n] ty = showSep ", " (showConstraints i [n] ty) ++ " => "
+        constraints i ns ty = "(" ++ showSep ", " (showConstraints i ns ty) ++ ") => "
+
+        showConstraints i ns (Bind n (Pi _ ty _) sc)
+            | n `elem` ns = show (delab i ty) : 
+                              showConstraints i ns (substV (P Bound n Erased) sc)
+            | otherwise = showConstraints i ns (substV (P Bound n Erased) sc)
+        showConstraints _ _ _ = []
+
         -- Guess which binders should be implicits in the generated lemma.
         -- Make them implicit if they appear guarded by a top level constructor,
         -- or at the top level themselves.
-        guessImps :: Context -> Term -> [Name]
-        guessImps ctxt (Bind n (Pi _ _ _) sc)
+        -- Also, make type class instances implicit
+        guessImps :: IState -> Context -> Term -> [Name]
+        guessImps ist ctxt (Bind n (Pi _ ty _) sc)
            | guarded ctxt n (substV (P Bound n Erased) sc) 
-                = n : guessImps ctxt sc
-           | otherwise = guessImps ctxt sc
-        guessImps ctxt _ = []
+                = n : guessImps ist ctxt sc
+           | isClass ist ty
+                = n : guessImps ist ctxt sc
+           | otherwise = guessImps ist ctxt sc
+        guessImps ist ctxt _ = []
+
+        guessClasses :: IState -> Context -> Term -> [Name]
+        guessClasses ist ctxt (Bind n (Pi _ ty _) sc)
+           | isParamClass ist ty
+                = n : guessClasses ist ctxt sc
+           | otherwise = guessClasses ist ctxt sc
+        guessClasses ist ctxt _ = []
+
+        isClass ist t
+           | (P _ n _, args) <- unApply t
+                = case lookupCtxtExact n (idris_classes ist) of
+                       Just _ -> True
+                       _ -> False
+           | otherwise = False
+        
+        isParamClass ist t
+           | (P _ n _, args) <- unApply t
+                = case lookupCtxtExact n (idris_classes ist) of
+                       Just _ -> any isV args
+                       _ -> False
+           | otherwise = False
+          where isV (V _) = True
+                isV _ = False
 
         guarded ctxt n (P _ n' _) | n == n' = True
         guarded ctxt n ap@(App _ _ _)
