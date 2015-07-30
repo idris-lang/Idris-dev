@@ -226,7 +226,7 @@ namespace FFI_Export
   %used FFI_Prim prim
 
   data FFI_Exportable : (f : FFI) -> List (Type, ffi_data f) -> Type -> Type where
-       FFI_IO : (b : FFI_Base f xs t) -> FFI_Exportable f xs (IO t)
+       FFI_IO : (b : FFI_Base f xs t) -> FFI_Exportable f xs (IO' f t)
        FFI_Fun : (b : FFI_Base f xs s) -> (a : FFI_Exportable f xs t) -> FFI_Exportable f xs (s -> t)
        FFI_Ret : (b : FFI_Base f xs t) -> FFI_Exportable f xs t
 
