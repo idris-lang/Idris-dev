@@ -21,21 +21,28 @@ env:
   - CABAL="1.20" GHC="7.6.3"  TESTS="lib_doc"
   - CABAL="1.20" GHC="7.6.3"  TESTS="test_c"
   - CABAL="1.20" GHC="7.6.3"  TESTS="test_js"
+  - CABAL="1.20" GHC="7.6.3"  TESTS="test_llvm"
   - CABAL="1.20" GHC="7.8.4"  TESTS="doc"
   - CABAL="1.20" GHC="7.8.4"  TESTS="lib_doc"
   - CABAL="1.20" GHC="7.8.4"  TESTS="test_c"
   - CABAL="1.20" GHC="7.8.4"  TESTS="test_js"
+  - CABAL="1.20" GHC="7.8.4"  TESTS="test_llvm"
   - CABAL="head" GHC="7.10.1" TESTS="doc"
   - CABAL="head" GHC="7.10.1" TESTS="lib_doc"
   - CABAL="head" GHC="7.10.1" TESTS="test_c"
   - CABAL="head" GHC="7.10.1" TESTS="test_js"
+  - CABAL="head" GHC="7.10.1" TESTS="test_llvm"
 
 matrix:
+  fast_finish: true
   allow_failures:
+    - env: CABAL="1.20" GHC="7.8.4"  TESTS="test_llvm"
+    - env: CABAL="1.20" GHC="7.6.3"  TESTS="test_llvm"
     - env: CABAL="head" GHC="7.10.1" TESTS="doc"
     - env: CABAL="head" GHC="7.10.1" TESTS="lib_doc"
     - env: CABAL="head" GHC="7.10.1" TESTS="test_c"
     - env: CABAL="head" GHC="7.10.1" TESTS="test_js"
+    - env: CABAL="head" GHC="7.10.1" TESTS="test_llvm"
 
 cache:
   directories:
@@ -60,12 +67,21 @@ before_script:
   - tar -xf Idris-dev/dist/idris*.tar.gz
   - cd idris*
   - cp -r $SANDBOX .cabal-sandbox
+  - export PATH=$(pwd)/.cabal-sandbox/bin:$PATH
   - cabal sandbox init
 script:
   - cabal configure -f FFI -f CI
   - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal register; fi
-  - if [[ "$TESTS" == "test_c" ]]; then cppcheck -j 2 --error-exitcode=1 ./rts/idris_bitstring.c ./rts/idris_bitstring.h ./rts/idris_gc.h ./rts/idris_gc.c ./rts/idris_gmp.h ./rts/idris_gmp.c ./rts/idris_heap.h ./rts/idris_heap.c ./rts/idris_main.c ./rts/idris_net.h ./rts/idris_net.c ./rts/idris_opts.h ./rts/idris_opts.c ./rts/idris_rts.h ./rts/idris_rts.c ./rts/idris_stats.h ./rts/idris_stats.c ./rts/idris_stdfgn.h ./rts/idris_stdfgn.c ./rts/libtest.c ; fi
-  - if [[ "$TESTS" == "test_llvm" ]]; then git clone --depth 1 https://github.com/idris-hackers/idris-llvm.git ; cd idris-llvm ; cabal install ; cd .. ; fi
+  - if [[ "$TESTS" == "test_c" ]]; then
+      cppcheck -j 2 --error-exitcode=1 ./rts/idris_bitstring.c ./rts/idris_bitstring.h ./rts/idris_gc.h ./rts/idris_gc.c ./rts/idris_gmp.h ./rts/idris_gmp.c ./rts/idris_heap.h ./rts/idris_heap.c ./rts/idris_main.c ./rts/idris_net.h ./rts/idris_net.c ./rts/idris_opts.h ./rts/idris_opts.c ./rts/idris_rts.h ./rts/idris_rts.c ./rts/idris_stats.h ./rts/idris_stats.c ./rts/idris_stdfgn.h ./rts/idris_stdfgn.c ./rts/libtest.c ;
+    fi
+  - if [[ "$TESTS" == "test_llvm" ]]; then
+      git clone --depth 1 https://github.com/idris-hackers/idris-llvm.git &&
+      cd idris-llvm &&
+      cabal sandbox --sandbox=../.cabal-sandbox init &&
+      cabal install &&
+      cd .. ;
+    fi
   - make -j2 $TESTS
