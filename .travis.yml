@@ -38,10 +38,6 @@ matrix:
   allow_failures:
     - env: CABAL="1.20" GHC="7.8.4"  TESTS="test_llvm"
     - env: CABAL="1.20" GHC="7.6.3"  TESTS="test_llvm"
-    - env: CABAL="head" GHC="7.10.1" TESTS="doc"
-    - env: CABAL="head" GHC="7.10.1" TESTS="lib_doc"
-    - env: CABAL="head" GHC="7.10.1" TESTS="test_c"
-    - env: CABAL="head" GHC="7.10.1" TESTS="test_js"
     - env: CABAL="head" GHC="7.10.1" TESTS="test_llvm"
 
 cache:
