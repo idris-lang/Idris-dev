@@ -54,7 +54,7 @@ class Group a => AbelianGroup a where { }
 |||     forall a,     inverse a <+> a == neutral
 ||| + Associativity of `<.>`:
 |||     forall a b c, a <.> (b <.> c) == (a <.> b) <.> c
-||| + Distributivity of `<.>` and `<->`:
+||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 class AbelianGroup a => Ring a where
@@ -80,7 +80,7 @@ class AbelianGroup a => Ring a where
 ||| + Neutral for `<.>`:
 |||     forall a,     a <.> unity     == a
 |||     forall a,     unity <.> a     == a
-||| + Distributivity of `<.>` and `<->`:
+||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 class Ring a => RingWithUnity a where
@@ -109,7 +109,7 @@ class Ring a => RingWithUnity a where
 ||| + InverseM of `<.>`, except for neutral
 |||     forall a /= neutral,  a <.> inverseM a == unity
 |||     forall a /= neutral,  inverseM a <.> a == unity
-||| + Distributivity of `<.>` and `<->`:
+||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 class RingWithUnity a => Field a where
