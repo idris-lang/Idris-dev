@@ -123,6 +123,8 @@ parserCommands =
       ":am <line> <name> adds all missing pattern matches for the name on the line"
   , proofArgCmd ["mw", "makewith"] MakeWith
       ":mw <line> <name> adds a with clause for the definition of the name on the line"
+  , proofArgCmd ["mc", "makecase"] MakeCase
+      ":mc <line> <name> adds a case block for the definition of the metavariable on the line"
   , proofArgCmd ["ml", "makelemma"] MakeLemma "?"
   , (["log"], NumberArg, "Set logging verbosity level", cmd_log)
   , (["lto", "loadto"], SeqArgs NumberArg FileArg

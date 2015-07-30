@@ -265,18 +265,23 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
     rep str ((n, tm) : ups) = rep (updatePat False (show n) (nshow tm) str) ups
 
     updateRHSs i [] = return []
-    updateRHSs i (x : xs) = do (x', i') <- updateRHS i x
+    updateRHSs i (x : xs) = do (x', i') <- updateRHS (null xs) i x
                                xs' <- updateRHSs i' xs
                                return (x' : xs')
 
-    updateRHS i ('?':'=':xs) = do (xs', i') <- updateRHS i xs
-                                  return ("?=" ++ xs', i')
-    updateRHS i ('?':xs) = do let (nm, rest) = span (not . isSpace) xs
-                              (nm', i') <- getUniq nm i
-                              return ('?':nm' ++ rest, i')
-    updateRHS i (x : xs) = do (xs', i') <- updateRHS i xs
-                              return (x : xs', i')
-    updateRHS i [] = return ("", i)
+    updateRHS last i ('?':'=':xs) = do (xs', i') <- updateRHS last i xs
+                                       return ("?=" ++ xs', i')
+    updateRHS last i ('?':xs) 
+        = do let (nm, rest_in) = span (not . (\x -> isSpace x || x == ')'
+                                                              || x == '(')) xs
+             let rest = if last then rest_in else
+                           case span (not . (=='\n')) rest_in of
+                                (_, restnl) -> restnl
+             (nm', i') <- getUniq nm i
+             return ('?':nm' ++ rest, i')
+    updateRHS last i (x : xs) = do (xs', i') <- updateRHS last i xs
+                                   return (x : xs', i')
+    updateRHS last i [] = return ("", i)
 
 
     -- TMP HACK: If there are Nats, we don't want to show as numerals since

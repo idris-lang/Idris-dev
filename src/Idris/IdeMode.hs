@@ -229,6 +229,7 @@ data IdeModeCommand = REPLCompletions String
                     | AddProofClause Int String
                     | AddMissing Int String
                     | MakeWithBlock Int String
+                    | MakeCaseBlock Int String
                     | ProofSearch Bool Int String [String] (Maybe Int) -- ^^ Recursive?, line, name, hints, depth
                     | MakeLemma Int String
                     | LoadFile String (Maybe Int)
@@ -261,6 +262,7 @@ sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom n
 sexpToCommand (SexpList [SymbolAtom "add-proof-clause", IntegerAtom line, StringAtom name])   = Just (AddProofClause (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "add-missing", IntegerAtom line, StringAtom name])  = Just (AddMissing (fromInteger line) name)
 sexpToCommand (SexpList [SymbolAtom "make-with", IntegerAtom line, StringAtom name])    = Just (MakeWithBlock (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "make-case", IntegerAtom line, StringAtom name])    = Just (MakeCaseBlock (fromInteger line) name)
 -- The Boolean in ProofSearch means "search recursively"
 -- If it's False, that means "refine", i.e. apply the name and fill in any
 -- arguments which can be done by unification.

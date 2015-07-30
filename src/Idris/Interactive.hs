@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Idris.Interactive(caseSplitAt, addClauseFrom, addProofClauseFrom,
-                         addMissing, makeWith, doProofSearch,
+                         addMissing, makeWith, makeCase, doProofSearch,
                          makeLemma) where
 
 {- Bits and pieces for editing source files interactively, called from
@@ -157,6 +157,47 @@ makeWith fn updatefile l n
               runIO $ copyFile fb fn
            else iPrintResult with
   where getIndent s = length (takeWhile isSpace s)
+
+-- Replace the given metavariable on the given line with a 'case'
+-- block, using a _ for the scrutinee
+makeCase :: FilePath -> Bool -> Int -> Name -> Idris ()
+makeCase fn updatefile l n
+   = do src <- runIO $ readSource fn
+        let (before, tyline : later) = splitAt (l-1) (lines src)
+        let newcase = addCaseSkel (show n) tyline
+
+        if updatefile then
+           do let fb = fn ++ "~"
+              runIO $ writeSource fb (unlines (before ++ newcase ++ later))
+              runIO $ copyFile fb fn
+           else iPrintResult (unlines newcase)
+  where addCaseSkel n line =
+            let b = brackets False line in
+            case findSubstr ('?':n) line of
+                 Just (before, pos, after) ->
+                      [before ++ (if b then "(" else "") ++ "case _ of",
+                       take (pos + (if b then 6 else 5)) (repeat ' ') ++ 
+                             "case_val => ?" ++ n ++ if b then ")" else "",
+                       after]
+                 Nothing -> fail "No such metavariable"
+
+        -- Assume case needs to be bracketed unless the metavariable is
+        -- on its own after an =
+        brackets eq line | line == '?' : show n = not eq
+        brackets eq ('=':ls) = brackets True ls
+        brackets eq (' ':ls) = brackets eq ls
+        brackets eq (l : ls) = brackets False ls
+        brackets eq [] = True
+
+        findSubstr n xs = findSubstr' [] 0 n xs
+
+        findSubstr' acc i n xs | take (length n) xs == n 
+                = Just (reverse acc, i, drop (length n) xs)
+        findSubstr' acc i n [] = Nothing
+        findSubstr' acc i n (x : xs) = findSubstr' (x : acc) (i + 1) n xs
+
+
+
 
 
 doProofSearch :: FilePath -> Bool -> Bool -> 

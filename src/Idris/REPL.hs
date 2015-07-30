@@ -366,6 +366,8 @@ runIdeModeCommand h id orig fn mods (IdeMode.AddMissing line name) =
   process fn (AddMissing False line (sUN name))
 runIdeModeCommand h id orig fn mods (IdeMode.MakeWithBlock line name) =
   process fn (MakeWith False line (sUN name))
+runIdeModeCommand h id orig fn mods (IdeMode.MakeCaseBlock line name) =
+  process fn (MakeCase False line (sUN name))
 runIdeModeCommand h id orig fn mods (IdeMode.ProofSearch r line name hints depth) =
   doProofSearch fn False r line (sUN name) (map sUN hints) depth
 runIdeModeCommand h id orig fn mods (IdeMode.MakeLemma line name) =
@@ -632,6 +634,7 @@ idemodeProcess fn (AddProofClauseFrom False pos str) = process fn (AddProofClaus
 idemodeProcess fn (AddClauseFrom False pos str) = process fn (AddClauseFrom False pos str)
 idemodeProcess fn (AddMissing False pos str) = process fn (AddMissing False pos str)
 idemodeProcess fn (MakeWith False pos str) = process fn (MakeWith False pos str)
+idemodeProcess fn (MakeCase False pos str) = process fn (MakeCase False pos str)
 idemodeProcess fn (DoProofSearch False r pos str xs) = process fn (DoProofSearch False r pos str xs)
 idemodeProcess fn (SetConsoleWidth w) = do process fn (SetConsoleWidth w)
                                            iPrintResult ""
@@ -1049,6 +1052,8 @@ process fn (AddMissing updatefile l n)
     = addMissing fn updatefile l n
 process fn (MakeWith updatefile l n)
     = makeWith fn updatefile l n
+process fn (MakeCase updatefile l n)
+    = makeCase fn updatefile l n
 process fn (MakeLemma updatefile l n)
     = makeLemma fn updatefile l n
 process fn (DoProofSearch updatefile rec l n hints)
