@@ -259,6 +259,7 @@ Multi line String literals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
+
     foo = """
     this is a
     string literal"""
