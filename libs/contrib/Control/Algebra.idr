@@ -115,15 +115,15 @@ class Ring a => RingWithUnity a where
 class RingWithUnity a => Field a where
   inverseM : (x : a) -> Not (x = neutral) -> a
 
-sum : (Foldable t, Monoid a) => t a -> a
-sum = foldr (<+>) neutral
+sum' : (Foldable t, Monoid a) => t a -> a
+sum' = foldr (<+>) neutral
 
-product : (Foldable t, RingWithUnity a) => t a -> a
-product = foldr (<.>) unity
+product' : (Foldable t, RingWithUnity a) => t a -> a
+product' = foldr (<.>) unity
 
-power : RingWithUnity a => a -> Nat -> a
-power _ Z     = unity
-power x (S n) = x <.> (Algebra.power x n)
+pow' : RingWithUnity a => a -> Nat -> a
+pow' _ Z     = unity
+pow' x (S n) = x <.> pow' x n
 
 
 -- XXX todo:
