@@ -27,7 +27,6 @@ instance Show a => Show (Complex a) where
             plus_i = User 6
 
 
-
 -- when we have a type class 'Fractional' (which contains Float and Double),
 -- we can do:
 {-
@@ -60,6 +59,12 @@ phase (x:+y) = atan2 y x
 
 conjugate : Num a => Complex a -> Complex a
 conjugate (r:+i) = (r :+ (0-i))
+
+instance Functor Complex where
+  map f (r :+ i) = f r :+ f i
+
+instance Neg a => Neg (Complex a) where
+  negate = map negate
 
 -- We can't do "instance Num a => Num (Complex a)" because
 -- we need "abs" which needs "magnitude" which needs "sqrt" which needs Float

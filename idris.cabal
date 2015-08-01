@@ -118,6 +118,7 @@ Extra-source-files:
                        libs/contrib/Data/*.idr
                        libs/contrib/Data/Nat/*.idr
                        libs/contrib/Data/Nat/DivMod/*.idr
+                       libs/contrib/Data/Matrix/*.idr
                        libs/contrib/Decidable/*.idr
                        libs/contrib/Network/*.idr
                        libs/contrib/System/Concurrency/*.idr
