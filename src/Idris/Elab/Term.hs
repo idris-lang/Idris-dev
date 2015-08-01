@@ -1813,18 +1813,9 @@ collectDeferred top casenames ctxt (Bind n (GHole i t) app) =
     tidyArg env (Bind n b@(Pi im t k) sc) 
         = Bind n (Pi im (tidy ctxt env t) k)
                  (tidyArg ((n, b) : env) sc)
-    tidyArg env t = t
+    tidyArg env t = tidy ctxt env t
 
-    tidy ctxt env t | (f, args) <- unApply t,
-                      P _ specn _ <- getFn f,
-                      n `notElem` casenames
-        = normalise ctxt env t
-    tidy ctxt env t@(Bind n (Let _ _) sct)
-                    | (f, args) <- unApply sct,
-                      P _ specn _ <- getFn f,
-                      n `notElem` casenames
-        = normalise ctxt env t
-    tidy ctxt env t = t
+    tidy ctxt env t = normalise ctxt env t
 
     getFn (Bind n (Lam _) t) = getFn t
     getFn t | (f, a) <- unApply t = f
