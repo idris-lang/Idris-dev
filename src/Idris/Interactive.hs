@@ -213,12 +213,13 @@ doProofSearch fn updatefile rec l n hints (Just depth)
                     [] -> return n
                     ns -> ierror (CantResolveAlts ns)
          i <- getIState
-         let (top, envlen, _) = case lookup mn (idris_metavars i) of
-                                  Just (t, e, False) -> (t, e, False)
-                                  _ -> (Nothing, 0, True)
+         let (top, envlen, psnames, _) 
+              = case lookup mn (idris_metavars i) of
+                     Just (t, e, ns, False) -> (t, e, ns, False)
+                     _ -> (Nothing, 0, [], True)
          let fc = fileFC fn
-         let body t = PProof [Try (TSeq Intros (ProofSearch rec False depth t hints))
-                                  (ProofSearch rec False depth t hints)]
+         let body t = PProof [Try (TSeq Intros (ProofSearch rec False depth t psnames hints))
+                                  (ProofSearch rec False depth t psnames hints)]
          let def = PClause fc mn (PRef fc [] mn) [] (body top) []
          newmv <- idrisCatch
              (do elabDecl' EAll recinfo (PClauses fc [] mn [def])
@@ -297,7 +298,7 @@ makeLemma fn updatefile l n
                     ns -> ierror (CantResolveAlts (map fst ns))
         i <- getIState
         margs <- case lookup n (idris_metavars i) of
-                      Just (_, arity, _) -> return arity
+                      Just (_, arity, _, _) -> return arity
                       _ -> return (-1)
 
         if (not isProv) then do

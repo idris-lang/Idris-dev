@@ -232,12 +232,12 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                         let tt' = normalise ctxt env tt
                         lift $ isType ctxt env tt'
                         return (Hole tv, tt')
-          checkBinder (GHole i t)
+          checkBinder (GHole i ns t)
             = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
                  let tt' = normalise ctxt env tt
                  lift $ isType ctxt env tt'
-                 return (GHole i tv, tt')
+                 return (GHole i ns tv, tt')
           checkBinder (Guess t v)
             | not holes = lift $ tfail (IncompleteTerm undefined)
             | otherwise
@@ -273,8 +273,8 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
             = return (Bind n (NLet t v) scv, Bind n (Let t v) sct)
           discharge n (Hole t) bt scv sct
             = return (Bind n (Hole t) scv, sct)
-          discharge n (GHole i t) bt scv sct
-            = return (Bind n (GHole i t) scv, sct)
+          discharge n (GHole i ns t) bt scv sct
+            = return (Bind n (GHole i ns t) scv, sct)
           discharge n (Guess t v) bt scv sct
             = return (Bind n (Guess t v) scv, sct)
           discharge n (PVar t) bt scv sct

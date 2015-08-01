@@ -22,10 +22,10 @@ import Debug.Trace
 -- Pass in a term elaborator to avoid a cyclic dependency with ElabTerm
 
 trivial :: (PTerm -> ElabD ()) -> IState -> ElabD ()
-trivial = trivialHoles []
+trivial = trivialHoles [] []
 
-trivialHoles :: [(Name, Int)] -> (PTerm -> ElabD ()) -> IState -> ElabD ()
-trivialHoles ok elab ist
+trivialHoles :: [Name] -> [(Name, Int)] -> (PTerm -> ElabD ()) -> IState -> ElabD ()
+trivialHoles psnames ok elab ist
                  = try' (do elab (PApp (fileFC "prf") (PRef (fileFC "prf") [] eqCon) [pimp (sUN "A") Placeholder False, pimp (sUN "x") Placeholder False])
                             return ())
                         (do env <- get_env
@@ -41,7 +41,7 @@ trivialHoles ok elab ist
                 g <- goal
                 -- anywhere but the top is okay for a hole, if holesOK set
                 if -- all (\n -> not (n `elem` badhs)) (freeNames (binderTy b))
-                   holesOK hs (binderTy b)
+                   holesOK hs (binderTy b) && (null psnames || x `elem` psnames)
                    then try' (elab (PRef (fileFC "prf") [] x))
                              (tryAll xs) True
                    else tryAll xs
@@ -73,9 +73,11 @@ proofSearch :: Bool -> -- recursive search (False for 'refine')
                Bool -> -- ambiguity ok
                Bool -> -- defer on failure
                Int -> -- maximum depth
-               (PTerm -> ElabD ()) -> Maybe Name -> Name -> [Name] ->
+               (PTerm -> ElabD ()) -> Maybe Name -> Name -> 
+               [Name] ->
+               [Name] ->
                IState -> ElabD ()
-proofSearch False fromProver ambigok deferonfail depth elab _ nroot [fn] ist
+proofSearch False fromProver ambigok deferonfail depth elab _ nroot psnames [fn] ist
        = do -- get all possible versions of the name, take the first one that
             -- works
             let all_imps = lookupCtxtName fn (idris_implicits ist)
@@ -106,7 +108,7 @@ proofSearch False fromProver ambigok deferonfail depth elab _ nroot [fn] ist
 
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (True, priority arg) -- try to get all of them by unification
-proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist 
+proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hints ist 
        = do compute
             ty <- goal
             hs <- get_holes
@@ -177,7 +179,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
                       ty <- goal
                       when (S.member ty tys) $ fail "Been here before"
                       let tys' = S.insert ty tys
-                      try' (trivial elab ist)
+                      try' (trivialHoles psnames [] elab ist)
                            (try' (try' (resolveByCon (d - 1) locs tys') 
                                        (resolveByLocals (d - 1) locs tys')
                                  True)
@@ -215,7 +217,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
 
     tryLocals d locs tys [] = fail "Locals failed"
     tryLocals d locs tys ((x, t) : xs) 
-       | x `elem` locs = tryLocals d locs tys xs
+       | x `elem` locs || x `notElem` psnames = tryLocals d locs tys xs
        | otherwise = try' (tryLocal d (x : locs) tys x t) 
                           (tryLocals d locs tys xs) True
 

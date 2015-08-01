@@ -8,3 +8,8 @@ vzipWith : (a -> b -> c) -> Vect n a -> Vect n b -> Vect n c
 vzipWith f [] [] = ?vzipWith_rhs_3
 vzipWith f (x :: xs) (y :: ys) = ?vzipWith_rhs_1
 
+word_length : Vect n String -> Vect n Nat
+word_length [] = []
+word_length (x :: xs) = ?word_length_rhs_2
+
+

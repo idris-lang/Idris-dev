@@ -195,10 +195,11 @@ data IState = IState {
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)],
           -- ^ Full application LHS on source line
-    idris_metavars :: [(Name, (Maybe Name, Int, Bool))],
+    idris_metavars :: [(Name, (Maybe Name, Int, [Name], Bool))],
     -- ^ The currently defined but not proven metavariables. The Int
     -- is the number of vars to display as a context, the Maybe Name
-    -- is its top-level function, and the Bool is whether :p is
+    -- is its top-level function, the [Name] is the list of local variables
+    -- available for proof search and the Bool is whether :p is
     -- allowed
     idris_coercions :: [Name],
     idris_errRev :: [(Term, Term)],
@@ -404,9 +405,11 @@ data Command = Quit
              | MakeWith Bool Int Name
              | MakeCase Bool Int Name
              | MakeLemma Bool Int Name
-             | DoProofSearch Bool Bool Int Name [Name]
-               -- ^ the first bool is whether to update,
-               -- the second is whether to search recursively (i.e. for the arguments)
+             | DoProofSearch Bool -- update file
+                             Bool -- recursive search
+                             Int -- depth
+                             Name -- top level name
+                             [Name] -- hints
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -982,7 +985,9 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
-                | ProofSearch Bool Bool Int (Maybe Name) [Name]
+                | ProofSearch Bool Bool Int (Maybe Name) 
+                              [Name] -- allowed local names
+                              [Name] -- hints
                   -- ^ the bool is whether to search recursively
                 | Solve
                 | Attack
@@ -1580,7 +1585,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PPi (Constraint _ _) n _ ty sc) =
       depth d . bracket p startPrec $
       prettySe (decD d) (startPrec + 1) bnd ty <+> text "=>" </> prettySe (decD d) startPrec ((n, True):bnd) sc
-    prettySe d p bnd (PPi (TacImp _ _ (PTactics [ProofSearch _ _ _ _ _])) n _ ty sc) =
+    prettySe d p bnd (PPi (TacImp _ _ (PTactics [ProofSearch _ _ _ _ _ _])) n _ ty sc) =
       lbrace <> kwd "auto" <+> pretty n <+> colon <+> prettySe (decD d) startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
     prettySe d p bnd (PPi (TacImp _ _ s) n _ ty sc) =

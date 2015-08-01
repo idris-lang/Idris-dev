@@ -2,3 +2,4 @@ ys
 x :: app xs ys
 []
 f x y :: vzipWith f xs ys
+?word_length_rhs_3 :: word_length xs

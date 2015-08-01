@@ -51,6 +51,20 @@ explicit n = do ES (p, a) s m <- get
                 let p' = p { dontunify = n : dontunify p }
                 put (ES (p', a) s m)
 
+-- Add a name that's okay to use in proof search (typically either because 
+-- it was given explicitly on the lhs, or intrduced as an explicit lambda
+-- or let binding)
+addPSname :: Name -> Elab' aux ()
+addPSname n@(UN _)
+     = do ES (p, a) s m <- get
+          let p' = p { psnames = n : psnames p }
+          put (ES (p', a) s m)
+addPSname _ = return () -- can only use user given names
+
+getPSnames :: Elab' aux [Name]
+getPSnames = do ES (p, a) s m <- get
+                return (psnames p)
+
 saveState :: Elab' aux ()
 saveState = do e@(ES p s _) <- get
                put (ES p s (Just e))

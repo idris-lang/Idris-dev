@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 116
+ibcVersion = 117
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -78,7 +78,7 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_metainformation :: ![(Name, MetaInformation)],
                          ibc_errorhandlers :: ![Name],
                          ibc_function_errorhandlers :: ![(Name, Name, Name)], -- fn, arg, handler
-                         ibc_metavars :: ![(Name, (Maybe Name, Int, Bool))],
+                         ibc_metavars :: ![(Name, (Maybe Name, Int, [Name], Bool))],
                          ibc_patdefs :: ![(Name, ([([Name], Term, Term)], [PTerm]))],
                          ibc_postulates :: ![Name],
                          ibc_externs :: ![(Name, Int)],
@@ -610,7 +610,7 @@ pFunctionErrorHandlers :: [(Name, Name, Name)] -> Idris ()
 pFunctionErrorHandlers ns =  mapM_ (\ (fn,arg,handler) ->
                                 addFunctionErrorHandlers fn arg [handler]) ns
 
-pMetavars :: [(Name, (Maybe Name, Int, Bool))] -> Idris ()
+pMetavars :: [(Name, (Maybe Name, Int, [Name], Bool))] -> Idris ()
 pMetavars ns = updateIState (\i -> i { idris_metavars = L.reverse ns ++ idris_metavars i })
 
 ----- For Cheapskate and docstrings
@@ -1869,12 +1869,13 @@ instance (Binary t) => Binary (PTactic' t) where
                                    put x1
                 ByReflection x1 -> do putWord8 20
                                       put x1
-                ProofSearch x1 x2 x3 x4 x5 -> do putWord8 21
-                                                 put x1
-                                                 put x2
-                                                 put x3
-                                                 put x4
-                                                 put x5
+                ProofSearch x1 x2 x3 x4 x5 x6 -> do putWord8 21
+                                                    put x1
+                                                    put x2
+                                                    put x3
+                                                    put x4
+                                                    put x5
+                                                    put x6
                 DoUnify -> putWord8 22
                 CaseTac x1 -> do putWord8 23
                                  put x1
@@ -1954,7 +1955,8 @@ instance (Binary t) => Binary (PTactic' t) where
                             x3 <- get
                             x4 <- get
                             x5 <- get
-                            return (ProofSearch x1 x2 x3 x4 x5)
+                            x6 <- get
+                            return (ProofSearch x1 x2 x3 x4 x5 x6)
                    22 -> return DoUnify
                    23 -> do x1 <- get
                             return (CaseTac x1)

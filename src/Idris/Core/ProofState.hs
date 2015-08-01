@@ -39,6 +39,7 @@ data ProofState = PS { thname   :: Name,
                        deferred :: [Name], -- ^ names we'll need to define
                        instances :: [Name], -- ^ instance arguments (for type classes)
                        autos    :: [(Name, [Name])], -- ^ unsolved 'auto' implicits with their holes
+                       psnames  :: [Name], -- ^ Local names okay to use in proof search
                        previous :: Maybe ProofState, -- ^ for undo
                        context  :: Context,
                        datatypes :: Ctxt TypeInfo,
@@ -301,7 +302,7 @@ newProof n ctxt datatypes ty =
   in PS n [h] [] 1 (mkProofTerm (Bind h (Hole ty')
         (P Bound h ty'))) ty [] (h, []) [] []
         Nothing [] []
-        [] [] []
+        [] [] [] []
         Nothing ctxt datatypes "" False False [] []
 
 type TState = ProofState -- [TacticAction])
@@ -429,7 +430,8 @@ defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     do let env' = filter (\(n, t) -> n `notElem` dropped) env
        action (\ps -> let hs = holes ps in
                           ps { holes = hs \\ [x] })
-       return (Bind n (GHole (length env') (mkTy (reverse env') t))
+       ps <- get
+       return (Bind n (GHole (length env') (psnames ps) (mkTy (reverse env') t))
                       (mkApp (P Ref n ty) (map getP (reverse env'))))
   where
     mkTy []           t = t
@@ -445,7 +447,7 @@ deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                           ds = deferred ps in
                           ps { holes = hs \\ [x],
                                deferred = n : ds })
-       return (Bind n (GHole 0 fty)
+       return (Bind n (GHole 0 [] fty)
                       (mkApp (P Ref n ty) (map getP args)))
   where
     getP n = case lookup n env of
