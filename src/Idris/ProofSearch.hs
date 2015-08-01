@@ -219,9 +219,15 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
        | otherwise = try' (tryLocal d (x : locs) tys x t) 
                           (tryLocals d locs tys xs) True
 
-    tryCons d locs tys [] = fail "Constructors failed"
-    tryCons d locs tys (c : cs) 
-        = try' (tryCon d locs tys c) (tryCons d locs tys cs) True
+    tryCons d locs tys cs = do when (not fromProver) -- in interactive mode,
+                                   -- don't just guess (fine for 'auto',
+                                   -- since that's part of the point...)
+                                   $ checkDisjoint ist [] cs
+                               tryCons' d locs tys cs 
+
+    tryCons' d locs tys [] = fail "Constructors failed"
+    tryCons' d locs tys (c : cs) 
+        = try' (tryCon d locs tys c) (tryCons' d locs tys cs) True
 
     tryLocal d locs tys n t 
           = do let a = getPArity (delab ist (binderTy t))
@@ -254,3 +260,19 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot hints ist
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (False, priority arg) 
 
+-- Fails if any of the given constructor/function names have the same
+-- return type (ignoring local variables - we need to be able to distinguish
+-- by constructor)
+checkDisjoint :: IState -> [Type] -> [Name] -> ElabD ()
+checkDisjoint ist ts [] = return ()
+checkDisjoint ist ts (n : ns) =
+    case lookupTyExact n (tt_ctxt ist) of
+         Just t -> if any (matchTypes (getRetTy t)) ts
+                      then fail "Overlapping constructor types"
+                      else checkDisjoint ist (getRetTy t : ts) ns
+  where
+    matchTypes (V _) (V _) = True
+    matchTypes (App _ f a) (App _ f' a') = matchTypes f f' && matchTypes a a'
+    matchTypes (Bind _ t sc) (Bind _ t' sc') 
+        = matchTypes (binderTy t) (binderTy t') && matchTypes sc sc'
+    matchTypes x y = x == y
