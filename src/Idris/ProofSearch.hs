@@ -201,11 +201,13 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
                                            Nothing -> []
                                            Just hs -> hs
                       case lookupCtxtExact n (idris_datatypes ist) of
-                          Just t -> tryCons d locs tys 
-                                                   (hints ++ 
-                                                    con_names t ++ 
-                                                    autohints ++ 
-                                                    getFn d fn)
+                          Just t -> do
+                             let others = hints ++ con_names t ++ autohints
+                             when (not fromProver) -- in interactive mode,
+                                   -- don't just guess (fine for 'auto',
+                                   -- since that's part of the point...)
+                                   $ checkDisjoint ist [] others
+                             tryCons d locs tys (others ++ getFn d fn)
                           Nothing -> fail "Not a data type"
                 _ -> fail "Not a data type"
 
@@ -221,15 +223,9 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
        | otherwise = try' (tryLocal d (x : locs) tys x t) 
                           (tryLocals d locs tys xs) True
 
-    tryCons d locs tys cs = do when (not fromProver) -- in interactive mode,
-                                   -- don't just guess (fine for 'auto',
-                                   -- since that's part of the point...)
-                                   $ checkDisjoint ist [] cs
-                               tryCons' d locs tys cs 
-
-    tryCons' d locs tys [] = fail "Constructors failed"
-    tryCons' d locs tys (c : cs) 
-        = try' (tryCon d locs tys c) (tryCons' d locs tys cs) True
+    tryCons d locs tys [] = fail "Constructors failed"
+    tryCons d locs tys (c : cs) 
+        = try' (tryCon d locs tys c) (tryCons d locs tys cs) True
 
     tryLocal d locs tys n t 
           = do let a = getPArity (delab ist (binderTy t))
