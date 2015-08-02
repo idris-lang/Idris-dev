@@ -307,7 +307,8 @@ makeLemma fn updatefile l n
 
             let lem = show n ++ " : " ++ 
                             constraints i classes mty ++
-                            show (stripMNBind skip (delab i mty))
+                            showTmOpts (defaultPPOption { ppopt_pinames = True })
+                                       (stripMNBind skip (delab i mty))
             let lem_app = show n ++ appArgs skip margs mty
 
             if updatefile then

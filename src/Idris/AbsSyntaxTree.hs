@@ -121,6 +121,7 @@ defaultOpts = IOption { opt_logLevel   = 0
 
 data PPOption = PPOption {
     ppopt_impl :: Bool -- ^^ whether to show implicits
+  , ppopt_pinames :: Bool -- ^^ whether to show names in pi bindings
   , ppopt_depth :: Maybe Int
 } deriving (Show)
 
@@ -131,16 +132,21 @@ defaultOptimise = [PETransform]
 
 -- | Pretty printing options with default verbosity.
 defaultPPOption :: PPOption
-defaultPPOption = PPOption { ppopt_impl = False , ppopt_depth = Just 200 }
+defaultPPOption = PPOption { ppopt_impl = False, 
+                             ppopt_pinames = False,
+                             ppopt_depth = Just 200 }
 
 -- | Pretty printing options with the most verbosity.
 verbosePPOption :: PPOption
-verbosePPOption = PPOption { ppopt_impl = True, ppopt_depth = Just 200 }
+verbosePPOption = PPOption { ppopt_impl = True,
+                             ppopt_pinames = True,
+                             ppopt_depth = Just 200 }
 
 -- | Get pretty printing options from the big options record.
 ppOption :: IOption -> PPOption
 ppOption opt = PPOption {
     ppopt_impl = opt_showimp opt,
+    ppopt_pinames = False,
     ppopt_depth = opt_printdepth opt
 }
 
@@ -1558,7 +1564,8 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe (decD d) startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe (decD d) startPrec ((n, False):bnd) sc)
     prettySe d p bnd (PPi (Exp l s _) n _ ty sc)
-      | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
+      | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs
+          || ppopt_pinames ppo && uname n =
           depth d . bracket p startPrec . group $
           enclose lparen rparen (group . align $ prettyBindingOf n False <+> colon <+> prettySe (decD d) startPrec bnd ty) <+>
           st <> text "->" <$> prettySe (decD d) startPrec ((n, False):bnd) sc
@@ -1567,6 +1574,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
           group (prettySe (decD d) (startPrec + 1) bnd ty <+> st) <> text "->" <$>
           group (prettySe (decD d) startPrec ((n, False):bnd) sc)
       where
+        uname (UN _) = True
+        uname _ = False
+
         st =
           case s of
             Static -> text "[static]" <> space
@@ -2005,6 +2015,9 @@ showTm ist = displayDecorated (consoleDecorate ist) .
 showTmImpls :: PTerm -> String
 showTmImpls = flip (displayS . renderCompact . prettyImp verbosePPOption) ""
 
+-- | Show a term with specific options 
+showTmOpts :: PPOption -> PTerm -> String
+showTmOpts opt = flip (displayS . renderPretty 1.0 10000000 . prettyImp opt) ""
 
 
 instance Sized PTerm where
