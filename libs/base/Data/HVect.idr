@@ -1,6 +1,5 @@
 module Data.HVect
 
-import Data.Fin
 import public Data.Vect
 
 %access public
