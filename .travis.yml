@@ -9,9 +9,8 @@ addons:
     packages:
       - ghc-7.6.3
       - ghc-7.8.4
-      - ghc-7.10.1
+      - ghc-7.10.2
       - cabal-install-1.20
-      - cabal-install-head
       # test dependencies
       - expect
       - cppcheck
@@ -27,18 +26,18 @@ env:
   - CABAL="1.20" GHC="7.8.4"  TESTS="test_c"
   - CABAL="1.20" GHC="7.8.4"  TESTS="test_js"
   - CABAL="1.20" GHC="7.8.4"  TESTS="test_llvm"
-  - CABAL="head" GHC="7.10.1" TESTS="doc"
-  - CABAL="head" GHC="7.10.1" TESTS="lib_doc"
-  - CABAL="head" GHC="7.10.1" TESTS="test_c"
-  - CABAL="head" GHC="7.10.1" TESTS="test_js"
-  - CABAL="head" GHC="7.10.1" TESTS="test_llvm"
+  - CABAL="1.20" GHC="7.10.2" TESTS="doc"
+  - CABAL="1.20" GHC="7.10.2" TESTS="lib_doc"
+  - CABAL="1.20" GHC="7.10.2" TESTS="test_c"
+  - CABAL="1.20" GHC="7.10.2" TESTS="test_js"
+  - CABAL="1.20" GHC="7.10.2" TESTS="test_llvm"
 
 matrix:
   fast_finish: true
   allow_failures:
     - env: CABAL="1.20" GHC="7.8.4"  TESTS="test_llvm"
     - env: CABAL="1.20" GHC="7.6.3"  TESTS="test_llvm"
-    - env: CABAL="head" GHC="7.10.1" TESTS="test_llvm"
+    - env: CABAL="1.20" GHC="7.10.2" TESTS="test_llvm"
 
 cache:
   directories:
