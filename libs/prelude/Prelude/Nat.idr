@@ -12,7 +12,8 @@ import Prelude.Uninhabited
 %access public
 %default total
 
-||| Unary natural numbers
+||| Natural numbers: unbounded, unsigned integers which can be pattern
+||| matched.
 %elim data Nat =
   ||| Zero
   Z |
