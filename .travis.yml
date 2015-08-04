@@ -17,9 +17,6 @@ addons:
 
 env:
   - CABAL="1.20" GHC="7.6.3"  TESTS="test_c"
-  - CABAL="1.20" GHC="7.6.3"  TESTS="test_js"
-  - CABAL="1.20" GHC="7.6.3"  TESTS="lib_doc"
-  - CABAL="1.20" GHC="7.6.3"  TESTS="doc"
   - CABAL="1.20" GHC="7.8.4"  TESTS="test_c"
   - CABAL="1.20" GHC="7.8.4"  TESTS="test_js"
   - CABAL="1.20" GHC="7.8.4"  TESTS="lib_doc"
