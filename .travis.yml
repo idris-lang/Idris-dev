@@ -1,39 +1,62 @@
+sudo: false
+
 language: haskell
-ghc:
-  # Idris won't build on 7.4 and earlier due to dependency
-  # problems. 7.10 isn't yet supported on Travis.
-  - 7.6
-  - 7.8
+
+addons:
+  apt:
+    sources:
+      - hvr-ghc
+    packages:
+      - ghc-7.6.3
+      - ghc-7.8.4
+      - ghc-7.10.2
+      - cabal-install-1.20
+      # test dependencies
+      - expect
+      - cppcheck
+
+env:
+  - CABAL="1.20" GHC="7.6.3"  TESTS="test_c"
+  - CABAL="1.20" GHC="7.8.4"  TESTS="test_c"
+  - CABAL="1.20" GHC="7.8.4"  TESTS="test_js"
+  - CABAL="1.20" GHC="7.8.4"  TESTS="lib_doc"
+  - CABAL="1.20" GHC="7.8.4"  TESTS="doc"
+  - CABAL="1.20" GHC="7.10.2" TESTS="test_c"
+  - CABAL="1.20" GHC="7.10.2" TESTS="test_js"
+  - CABAL="1.20" GHC="7.10.2" TESTS="lib_doc"
+  - CABAL="1.20" GHC="7.10.2" TESTS="doc"
+
+cache:
+  directories:
+    - $HOME/.cabal-sandbox
 
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq libghc-unordered-containers-dev libghc-mtl-dev libghc-network-dev libghc-transformers-dev libghc-text-dev libghc-utf8-string-dev libghc-vector-dev libghc-split-dev libghc-ansi-terminal-dev libghc-ansi-wl-pprint-dev
-  # trifecta dependencies
-  - sudo apt-get install -qq libghc-blaze-builder-dev libghc-blaze-html-dev libghc-bifunctors-dev libghc-hashable-dev libghc-semigroups-dev libghc-semigroupoids-dev libghc-parallel-dev libghc-comonad-dev libghc-terminfo-dev libghc-keys-dev
-  # Haddock dependencies
-  - sudo apt-get install hscolour
-  # test dependency
-  - sudo apt-get install -qq expect
-  - sudo apt-get install -qq cppcheck
+  - export SANDBOX=$HOME/.cabal-sandbox
+  - export PATH=/opt/ghc/$GHC/bin:/opt/cabal/$CABAL/bin:$SANDBOX/bin:$PATH
+  - ls -lh $SANDBOX
+  - env
+  - cabal --version
+  - ghc --version
+  - cabal update
 install:
-  - cabal install -f FFI --enable-tests --dependencies-only --max-backjumps=-1
-  - ghc-pkg list
+  - cabal sandbox --sandbox=$SANDBOX init
+  - cabal install hscolour # haddock dependency
+  - cabal install -f FFI --enable-tests --dependencies-only --force-reinstalls
+  - cabal sandbox hc-pkg list
 before_script:
   - cabal sdist
   - cd ..
   - tar -xf Idris-dev/dist/idris*.tar.gz
   - cd idris*
+  - cp -r $SANDBOX .cabal-sandbox
+  - export PATH=$(pwd)/.cabal-sandbox/bin:$PATH
+  - cabal sandbox init
 script:
   - cabal configure -f FFI -f CI
   - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
   - if [[ "$TESTS" != "doc" ]]; then cabal register; fi
-  - if [[ "$TESTS" == "test_c" ]]; then cppcheck -j 2 --error-exitcode=1 ./rts/idris_bitstring.c ./rts/idris_bitstring.h ./rts/idris_gc.h ./rts/idris_gc.c ./rts/idris_gmp.h ./rts/idris_gmp.c ./rts/idris_heap.h ./rts/idris_heap.c ./rts/idris_main.c ./rts/idris_net.h ./rts/idris_net.c ./rts/idris_opts.h ./rts/idris_opts.c ./rts/idris_rts.h ./rts/idris_rts.c ./rts/idris_stats.h ./rts/idris_stats.c ./rts/idris_stdfgn.h ./rts/idris_stdfgn.c ./rts/libtest.c ; fi
-  - if [[ "$TESTS" == "test_llvm" ]]; then git clone --depth 1 https://github.com/idris-hackers/idris-llvm.git ; cd idris-llvm ; cabal install ; cd .. ; fi
+  - if [[ "$TESTS" == "test_c" ]]; then
+      cppcheck -j 2 --error-exitcode=1 ./rts/idris_bitstring.c ./rts/idris_bitstring.h ./rts/idris_gc.h ./rts/idris_gc.c ./rts/idris_gmp.h ./rts/idris_gmp.c ./rts/idris_heap.h ./rts/idris_heap.c ./rts/idris_main.c ./rts/idris_net.h ./rts/idris_net.c ./rts/idris_opts.h ./rts/idris_opts.c ./rts/idris_rts.h ./rts/idris_rts.c ./rts/idris_stats.h ./rts/idris_stats.c ./rts/idris_stdfgn.h ./rts/idris_stdfgn.c ./rts/libtest.c ;
+    fi
   - make -j2 $TESTS
-env:
-  - TESTS="doc"
-  - TESTS="lib_doc"
-  - TESTS="test_c"
-  #- TESTS="test_llvm"
-  - TESTS="test_js"
