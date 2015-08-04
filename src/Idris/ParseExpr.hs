@@ -198,18 +198,15 @@ extension syn ns rules =
       = PDPair fc hls p (update ns l) (update ns t) (update ns r)
     update ns (PAlternative ms a as) = PAlternative ms a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
-    update ns (PDoBlock ds) = PDoBlock $ upd ns ds
-      where upd :: [(Name, SynMatch)] -> [PDo] -> [PDo]
-            upd ns (DoExp fc t : ds) = DoExp fc (update ns t) : upd ns ds
-            upd ns (DoBind fc n nfc t : ds) = DoBind fc n nfc (update ns t) : upd (dropn n ns) ds
-            upd ns (DoLet fc n nfc ty t : ds) = DoLet fc n nfc (update ns ty) (update ns t)
-                                                    : upd (dropn n ns) ds
-            upd ns (DoBindP fc i t ts : ds) 
-                    = DoBindP fc (update ns i) (update ns t) 
+    update ns (PDoBlock ds) = PDoBlock $ map (upd ns) ds
+      where upd :: [(Name, SynMatch)] -> PDo -> PDo
+            upd ns (DoExp fc t) = DoExp fc (update ns t)
+            upd ns (DoBind fc n nfc t) = DoBind fc n nfc (update ns t)
+            upd ns (DoLet fc n nfc ty t) = DoLet fc n nfc (update ns ty) (update ns t)
+            upd ns (DoBindP fc i t ts)
+                    = DoBindP fc (update ns i) (update ns t)
                                  (map (\(l,r) -> (update ns l, update ns r)) ts)
-                                                : upd ns ds
-            upd ns (DoLetP fc i t : ds) = DoLetP fc (update ns i) (update ns t)
-                                                : upd ns ds
+            upd ns (DoLetP fc i t) = DoLetP fc (update ns i) (update ns t)
     update ns (PGoal fc r n sc) = PGoal fc (update ns r) n (update ns sc)
     update ns t = t
 
