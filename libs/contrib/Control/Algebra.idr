@@ -116,7 +116,7 @@ class RingWithUnity a => Field a where
   inverseM : (x : a) -> Not (x = neutral) -> a
 
 sum' : (Foldable t, Monoid a) => t a -> a
-sum' = foldr (<+>) neutral
+sum' = concat
 
 product' : (Foldable t, RingWithUnity a) => t a -> a
 product' = foldr (<.>) unity
