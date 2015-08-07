@@ -904,7 +904,7 @@ Library
                 , filepath < 1.5
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
-                , lens >= 4.1.1 && < 4.12
+                , lens >= 4.1.1 && < 4.13
                 , mtl >= 2.1 && < 2.3
                 , network < 2.7
                 , optparse-applicative >= 0.11 && < 0.12
@@ -919,11 +919,10 @@ Library
                 , trifecta >= 1.1 && < 1.6
                 , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3
-                , utf8-string <= 1
-                , vector < 0.11
+                , utf8-string < 1.1
+                , vector < 0.12
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.2.4
-                , zlib < 0.6
                 , safe
   Extensions:     MultiParamTypeClasses
                 , DeriveFoldable
