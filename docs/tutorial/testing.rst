@@ -4,13 +4,21 @@
 Testing Idris Packages
 **********************
 
-As part of the integrated build system a simple testing framework is provided.
-This framework will collect a list of named functions and construct an Idris executable in a fresh environment on your machine.
-This executable lists the named functions under a single ``main`` function, and imports the complete list of modules for the package.
+The integrated build system includes a simple testing framework.
+This framework collects functions listed in the ``ipkg`` file under ``tests``.
+All test functions must return ``IO ()``.
 
 
-It is up to the developer to ensure the correct reporting of test results, and the structure and nature of how the tests are run.
-Further, all test functions must return ``IO ()``, and must be listed in the ``ipkg`` file under ``tests``, and rhe modules containing the test functions must also be listed in the modules section of the ``iPKG`` file.
+When you enter ``idris --testpkg yourmodule.ipkg``,
+the build system creates a temporary file in a fresh environment on your machine
+by listing the ``tests`` functions under a single ``main`` function.
+It compiles this temporary file to an executable and then executes it.
+
+
+The tests themselves are responsible for reporting their success or failure.
+Test functions commonly use ``putStrLn`` to report test results.
+The test framework does not impose any standards for reporting and consequently
+does not aggregate test results.
 
 
 For example, lets take the following list of functions that are defined in a module called ``NumOps`` for a sample package ``maths``.
