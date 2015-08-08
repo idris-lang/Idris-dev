@@ -63,10 +63,10 @@ A simple test module, with a qualified name of ``Test.NumOps`` can be declared a
 The functions ``assertEq`` and ``assertNotEq`` are used to run expected passing, and failing, equality tests.
 The actual tests are ``testDouble`` and ``testTriple``, and are declared in the ``maths.ipkg`` file as follows::
 
-    module maths
+    package maths
 
-    module = Maths.NumOps
-           , Test.NumOps
+    modules = Maths.NumOps
+            , Test.NumOps
 
     tests = Test.NumOps.testDouble
           , Test.NumOps.testTriple
