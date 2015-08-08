@@ -90,21 +90,20 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          wparams <- mapM (\p -> case p of
                                   PApp _ _ args -> getWParams (map getTm args)
                                   a@(PRef fc _ f) -> getWParams [a]
-                                  _ -> return []) ps
+                                  _ -> return []) (ps ++ map snd cs)
+         wparams <- return $ nub $ concat wparams
          ist <- getIState
-         let pnames = nub $ map pname (concat (nub wparams)) ++
-                          concatMap (namesIn [] ist) ps
+         let pnames = nub $ (concatMap (namesIn [] ist) ps ++
+                             concatMap (namesIn [] ist . snd) cs)
          let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
          undefinedSuperclassInstances <- filterM (fmap not . isOverlapping i) superclassInstances
          mapM_ (rec_elabDecl info EAll info) undefinedSuperclassInstances
          let all_meths = map (nsroot . fst) (class_methods ci)
+         let mnamemap = map (\n -> (n, PRef fc [] (decorate ns iname n))) all_meths
          let mtys = map (\ (n, (op, t)) ->
                    let t_in = substMatchesShadow ips pnames t
-                       mnamemap = map (\n -> (n, PRef fc [] (decorate ns iname n)))
-                                      all_meths
                        t' = substMatchesShadow mnamemap pnames t_in in
-                       (decorate ns iname n,
-                           op, coninsert cs t', t'))
+                       (decorate ns iname n, op, t', t'))
               (class_methods ci)
          logLvl 3 (show (mtys, ips))
          logLvl 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (class_methods ci)))
@@ -119,22 +118,13 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          let wb = wbTys ++ wbVals
          logLvl 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp verbosePPOption . mkTyDecl) mtys)
          logLvl 3 $ "Instance is " ++ show ps ++ " implicits " ++
-                                      show (concat (nub wparams))
+                                      show wparams
 
-         -- Bring variables in instance head into scope
-         let headVars = nub $ mapMaybe (\p -> case p of
-                                               PRef _ _ n ->
-                                                  case lookupTy n (tt_ctxt ist) of
-                                                      [] -> Just n
-                                                      _ -> Nothing
-                                               _ -> Nothing) ps
---          let lhs = PRef fc iname
-         let lhs = PApp fc (PRef fc [] iname)
-                           (map (\n -> pimp n (PRef fc [] n) True) headVars)
+         let lhs = PApp fc (PRef fc [] iname) wparams
          let rhs = PApp fc (PRef fc [] (instanceCtorName ci))
                            (map (pexp . mkMethApp) mtys)
 
-         logLvl 5 $ "Instance LHS " ++ show lhs ++ " " ++ show headVars
+         logLvl 5 $ "Instance LHS " ++ show lhs
          logLvl 5 $ "Instance RHS " ++ show rhs
 
          let idecls = [PClauses fc [Dictionary] iname
@@ -251,14 +241,6 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
     mkTyDecl (n, op, t, _)
         = PTy emptyDocstring [] syn fc op n NoFC
                (mkUniqueNames [] [] t)
-
-    conbind :: [(Name, PTerm)] -> PTerm -> PTerm
-    conbind ((c,ty) : ns) x = PPi constraint c NoFC ty (conbind ns x)
-    conbind [] x = x
-
-    coninsert :: [(Name, PTerm)] -> PTerm -> PTerm
-    coninsert cs (PPi p@(Imp _ _ _ _) n fc t sc) = PPi p n fc t (coninsert cs sc)
-    coninsert cs sc = conbind cs sc
 
     -- Reorder declarations to be in the same order as defined in the
     -- class declaration (important so that we insert default definitions
