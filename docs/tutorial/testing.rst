@@ -24,6 +24,7 @@ does not aggregate test results.
 For example, lets take the following list of functions that are defined in a module called ``NumOps`` for a sample package ``maths``.
 
 .. code-block:: idris
+   :caption: Math/NumOps.idr
 
     module Maths.NumOps
 
@@ -36,6 +37,7 @@ For example, lets take the following list of functions that are defined in a mod
 A simple test module, with a qualified name of ``Test.NumOps`` can be declared as
 
 .. code-block:: idris
+   :caption: Math/TestOps.idr
 
     module Test.NumOps
 
