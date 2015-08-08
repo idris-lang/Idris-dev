@@ -1,6 +1,10 @@
-flags: {}
+flags:
+  idris:
+    gmp: true
+    ffi: true
 packages:
 - '.'
-extra-deps: 
+extra-deps:
 - cheapskate-0.1.0.4
+- libffi-0.1
 resolver: nightly-2015-07-24
