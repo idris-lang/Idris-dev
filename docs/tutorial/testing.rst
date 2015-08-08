@@ -81,5 +81,5 @@ The testing framework can then be invoked using ``idris --testpkg maths.ipkg``::
     Test Passed
     Test Passed
 
-Note how both tests have reported success by printing a single ``.``
+Note how both tests have reported success by printing ``Test Passed``
 as we arranged for with the ``assertEq`` and ``assertNoEq`` functions.
