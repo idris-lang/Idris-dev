@@ -45,13 +45,13 @@ A simple test module, with a qualified name of ``Test.NumOps`` can be declared a
 
     assertEq : Eq a => (given : a) -> (expected : a) -> IO ()
     assertEq g e = if g == e
-        then putStrLn "Test Passed"
-        else putStrLn "Test failed"
+        then putStrLn "."
+        else putStrLn "F"
 
     assertNotEq : Eq a => (given : a) -> (expected : a) -> IO ()
     assertNotEq g e = if not (g == e)
-        then putStrLn "Test Passed"
-        else putStrLn "Test failed"
+        then putStrLn "."
+        else putStrLn "F"
 
     testDouble : IO ()
     testDouble = assertEq (double 2) 4
@@ -72,4 +72,14 @@ The actual tests are ``testDouble`` and ``testTriple``, and are declared in the 
           , Test.NumOps.testTriple
 
 
-The testing framework can be invoked using: ``idris --testpkg maths.ipkg``.
+The testing framework can then be invoked using ``idris --testpkg maths.ipkg``::
+
+    > idris --testpkg maths.ipkg
+    Type checking ./Maths/NumOps.idr
+    Type checking ./Test/NumOps.idr
+    Type checking /var/folders/63/np5g0d5j54x1s0z12rf41wxm0000gp/T/idristests144128232716531729.idr
+    .
+    .
+
+Note how both tests have reported success by printing a single ``.``
+as we arranged for with the ``assertEq`` and ``assertNoEq`` functions.
