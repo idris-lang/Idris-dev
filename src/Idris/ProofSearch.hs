@@ -206,7 +206,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
                              when (not fromProver) -- in interactive mode,
                                    -- don't just guess (fine for 'auto',
                                    -- since that's part of the point...)
-                                   $ checkDisjoint ist [] others
+                                   $ checkConstructor ist others
                              tryCons d locs tys (others ++ getFn d fn)
                           Nothing -> fail "Not a data type"
                 _ -> fail "Not a data type"
@@ -249,28 +249,26 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
             ps' <- get_probs
             hs' <- get_holes
             when (length ps < length ps') $ fail "Can't apply constructor"
+            let newhs = filter (\ (x, y) -> not x) (zip (map fst imps) args)
             mapM_ (\ (_, h) -> do focus h
                                   aty <- goal
-                                  psRec True d locs tys)
-                  (filter (\ (x, y) -> not x) (zip (map fst imps) args))
+                                  psRec True d locs tys) newhs      
             solve
 
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (False, priority arg) 
 
--- Fails if any of the given constructor/function names have the same
--- return type (ignoring local variables - we need to be able to distinguish
--- by constructor)
-checkDisjoint :: IState -> [Type] -> [Name] -> ElabD ()
-checkDisjoint ist ts [] = return ()
-checkDisjoint ist ts (n : ns) =
+-- In interactive mode, only search for things if there is some constructor
+-- index to help pick a relevant constructor
+checkConstructor :: IState -> [Name] -> ElabD ()
+checkConstructor ist [] = return ()
+checkConstructor ist (n : ns) =
     case lookupTyExact n (tt_ctxt ist) of
-         Just t -> if any (matchTypes (getRetTy t)) ts
+         Just t -> if not (conIndexed t)
                       then fail "Overlapping constructor types"
-                      else checkDisjoint ist (getRetTy t : ts) ns
+                      else checkConstructor ist ns
   where
-    matchTypes (V _) (V _) = True
-    matchTypes (App _ f a) (App _ f' a') = matchTypes f f' && matchTypes a a'
-    matchTypes (Bind _ t sc) (Bind _ t' sc') 
-        = matchTypes (binderTy t) (binderTy t') && matchTypes sc sc'
-    matchTypes x y = x == y
+    conIndexed t = let (_, args) = unApply (getRetTy t) in
+                       any conHead args
+    conHead t | (P _ n _, _) <- unApply t = isConName n (tt_ctxt ist)
+              | otherwise = False
