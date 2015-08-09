@@ -245,9 +245,8 @@ elabDecl' what info (PInstance doc argDocs s f cs n nfc ps t expn ds)
     = do logLvl 1 $ "Elaborating instance " ++ show n
          elabInstance info s doc argDocs what f cs n nfc ps t expn ds
 elabDecl' what info (PRecord doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn)
-  | what /= ETypes
     = do logLvl 1 $ "Elaborating record " ++ show name
-         elabRecord info doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn
+         elabRecord info what doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn
 {-
   | otherwise
     = do logLvl 1 $ "Elaborating [type of] " ++ show tyn

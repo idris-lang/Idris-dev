@@ -34,6 +34,7 @@ import Control.Monad
 
 -- | Elaborate a record declaration
 elabRecord :: ElabInfo
+           -> ElabWhat
            -> (Docstring (Either Err PTerm)) -- ^ The documentation for the whole declaration
            -> SyntaxInfo -> FC -> DataOpts
            -> Name  -- ^ The name of the type being defined
@@ -45,7 +46,7 @@ elabRecord :: ElabInfo
            -> (Docstring (Either Err PTerm)) -- ^ Constructor Doc
            -> SyntaxInfo -- ^ Constructor SyntaxInfo
            -> Idris ()
-elabRecord info doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc csyn
+elabRecord info what doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc csyn
   = do logLvl 1 $ "Building data declaration for " ++ show tyn
        -- Type constructor
        let tycon = generateTyConType params
@@ -58,17 +59,20 @@ elabRecord info doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc csyn
 
        -- Build data declaration for elaboration
        logLvl 1 $ foldr (++) "" $ intersperse "\n" (map show dconsArgDocs)
-       let datadecl = PDatadecl tyn NoFC tycon [(cdoc, dconsArgDocs, dconName, NoFC, dconTy, fc, [])]
+       let datadecl = case what of
+                           ETypes -> PLaterdecl tyn NoFC tycon
+                           _ -> PDatadecl tyn NoFC tycon [(cdoc, dconsArgDocs, dconName, NoFC, dconTy, fc, [])]
        elabData info rsyn doc paramDocs fc opts datadecl
 
-       logLvl 1 $ "fieldsWithName " ++ show fieldsWithName
-       logLvl 1 $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc
-       elabRecordFunctions info rsyn fc tyn paramsAndDoc fieldsWithNameAndDoc dconName target
+       when (what /= ETypes) $ do
+           logLvl 1 $ "fieldsWithName " ++ show fieldsWithName
+           logLvl 1 $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc
+           elabRecordFunctions info rsyn fc tyn paramsAndDoc fieldsWithNameAndDoc dconName target
 
-       sendHighlighting $
-         [(nfc, AnnName tyn Nothing Nothing Nothing)] ++
-         maybe [] (\(_, cnfc) -> [(cnfc, AnnName dconName Nothing Nothing Nothing)]) cname ++
-         [(ffc, AnnBoundName fn False) | (fn, ffc, _, _, _) <- fieldsWithName]
+           sendHighlighting $
+             [(nfc, AnnName tyn Nothing Nothing Nothing)] ++
+             maybe [] (\(_, cnfc) -> [(cnfc, AnnName dconName Nothing Nothing Nothing)]) cname ++
+             [(ffc, AnnBoundName fn False) | (fn, ffc, _, _, _) <- fieldsWithName]
 
   where
     -- | Generates a type constructor.
