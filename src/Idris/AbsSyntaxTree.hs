@@ -1574,7 +1574,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
           group (prettySe (decD d) (startPrec + 1) bnd ty <+> st) <> text "->" <$>
           group (prettySe (decD d) startPrec ((n, False):bnd) sc)
       where
-        uname (UN _) = True
+        uname (UN n) = case str n of
+                            ('_':_) -> False
+                            _ -> True
         uname _ = False
 
         st =
