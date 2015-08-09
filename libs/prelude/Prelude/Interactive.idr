@@ -4,13 +4,83 @@
 ||| the easy creation of interactive programs without needing to teach IO
 ||| or Effects first, but they also capture some common patterns of interactive
 ||| programming.
-module System.Interactive
+module Prelude.Interactive
 
-{-
-When the interfaces and names are stable, these are intended for the Prelude.
--}
+import Builtins
+import Prelude.List
+import Prelude.File
+import Prelude.Bool
+import Prelude.Classes
+import Prelude.Strings
+import Prelude.Chars
+import Prelude.Show
+import Prelude.Cast
+import Prelude.Maybe
+import Prelude.Functor
+import Prelude.Monad
+import IO
 
-import System
+%access public
+
+---- some basic io
+
+||| Output a string to stdout without a trailing newline
+putStr : String -> IO' ffi ()
+putStr x = do prim_write x
+              return ()
+
+||| Output a string to stdout with a trailing newline
+putStrLn : String -> IO' ffi ()
+putStrLn x = putStr (x ++ "\n")
+
+||| Output something showable to stdout, without a trailing newline
+print : Show a => a -> IO' ffi ()
+print x = putStr (show x)
+
+||| Output something showable to stdout, with a trailing newline
+printLn : Show a => a -> IO' ffi ()
+printLn x = putStrLn (show x)
+
+||| Read one line of input from stdin, without the trailing newline
+getLine : IO' ffi String
+getLine = do x <- prim_read
+             return (reverse (trimNL (reverse x)))
+  where trimNL : String -> String
+        trimNL str with (strM str)
+          trimNL "" | StrNil = ""
+          trimNL (strCons '\n' xs) | StrCons _ _ = xs
+          trimNL (strCons x xs)    | StrCons _ _ = strCons x xs
+
+||| Write a single character to stdout
+putChar : Char -> IO ()
+putChar c = foreign FFI_C "putchar" (Int -> IO ()) (cast c)
+
+||| Write a singel character to stdout, with a trailing newline
+putCharLn : Char -> IO ()
+putCharLn c = putStrLn (singleton c)
+
+||| Read a single character from stdin
+getChar : IO Char
+getChar = map cast $ foreign FFI_C "getchar" (IO Int)
+
+||| Get the command-line arguments that the program was called with.
+partial
+getArgs : IO (List String)
+getArgs = do n <- numArgs
+             ga' [] 0 n
+  where
+    numArgs : IO Int
+    numArgs = foreign FFI_C "idris_numArgs" (IO Int)
+
+    getArg : Int -> IO String
+    getArg x = foreign FFI_C "idris_getArg" (Int -> IO String) x
+
+    partial
+    ga' : List String -> Int -> Int -> IO (List String)
+    ga' acc i n = if (i == n) then (return $ reverse acc) else
+                    do arg <- getArg i
+                       ga' (arg :: acc) (i+1) n
+
 
 ||| Process input from an open file handle, while maintaining a state.
 ||| @ state the input state
@@ -18,7 +88,7 @@ import System
 ||| output and a new state
 ||| @ onEOF the function to run on reaching end of file, returning a String
 ||| to output
-public partial
+partial
 processHandle : File -> 
                 (state : a) ->
                 (onRead : a -> String -> (String, a)) -> 
@@ -38,7 +108,7 @@ processHandle h acc onRead onEOF
 ||| output and a new state
 ||| @ onEOI the function to run on reaching end of input, returning a String
 ||| to output
-public partial
+partial
 processStdin : (state : a) -> 
                (onRead : a -> String -> (String, a)) -> 
                (onEOI : a -> String) -> IO ()
@@ -49,7 +119,7 @@ processStdin = processHandle stdin
 ||| @ prompt the prompt to show 
 ||| @ onInput the function to run on reading input, returning a String to
 ||| output and a new state. Returns Nothing if the repl should exit
-public partial
+partial
 replWith : (state : a) -> (prompt : String) -> 
            (onInput : a -> String -> Maybe (String, a)) -> IO a
 replWith acc prompt fn 
@@ -64,7 +134,7 @@ replWith acc prompt fn
 ||| @ prompt the prompt to show 
 ||| @ onInput the function to run on reading input, returning a String to
 ||| output 
-public partial
+partial
 repl : (prompt : String) -> 
        (onInput : String -> String) -> IO ()
 repl prompt fn 

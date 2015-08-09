@@ -4,22 +4,6 @@ module System
 %default partial
 %access public
 
-||| Get the command-line arguments that the program was called with.
-getArgs : IO (List String)
-getArgs = do n <- numArgs
-             ga' [] 0 n
-  where
-    numArgs : IO Int
-    numArgs = foreign FFI_C "idris_numArgs" (IO Int)
-
-    getArg : Int -> IO String
-    getArg x = foreign FFI_C "idris_getArg" (Int -> IO String) x
-
-    ga' : List String -> Int -> Int -> IO (List String)
-    ga' acc i n = if (i == n) then (return $ reverse acc) else
-                    do arg <- getArg i
-                       ga' (arg :: acc) (i+1) n
-
 ||| Retrieves an value from the environment, if the given key is present,
 ||| otherwise it returns Nothing.
 getEnv : String -> IO (Maybe String)

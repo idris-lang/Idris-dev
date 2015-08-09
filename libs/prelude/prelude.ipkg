@@ -9,6 +9,7 @@ modules = Builtins, Prelude, IO,
           Prelude.Strings, Prelude.Chars, Prelude.Show, Prelude.Functor,
           Prelude.Foldable, Prelude.Traversable, Prelude.Bits, Prelude.Stream,
           Prelude.Uninhabited, Prelude.Pairs, Prelude.Providers,
+          Prelude.Interactive, Prelude.File,
 
           Language.Reflection, Language.Reflection.Errors, Language.Reflection.Elab,
 

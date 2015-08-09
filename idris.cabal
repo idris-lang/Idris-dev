@@ -390,9 +390,6 @@ Extra-source-files:
                        test/delab001/expected
                        test/delab001/input
 
-                       test/disambig001/run
-                       test/disambig001/*.idr
-                       test/disambig001/expected
                        test/disambig002/run
                        test/disambig002/*.idr
                        test/disambig002/expected

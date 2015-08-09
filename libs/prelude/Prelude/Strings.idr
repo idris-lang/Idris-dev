@@ -1,6 +1,7 @@
 module Prelude.Strings
 
 import Builtins
+import IO
 
 import Prelude.Algebra
 import Prelude.Basics
@@ -13,6 +14,7 @@ import Prelude.Foldable
 import Prelude.Functor
 import Prelude.List
 import Prelude.Nat
+import Prelude.Monad
 import Decidable.Equality
 
 partial
@@ -347,3 +349,16 @@ isSuffixOf a b = isSuffixOf (unpack a) (unpack b)
 
 isInfixOf : String -> String -> Bool
 isInfixOf a b = isInfixOf (unpack a) (unpack b)
+
+||| Check if a foreign pointer is null
+partial
+nullPtr : Ptr -> IO Bool
+nullPtr p = do ok <- foreign FFI_C "isNull" (Ptr -> IO Int) p
+               return (ok /= 0)
+
+||| Check if a supposed string was actually a null pointer
+partial
+nullStr : String -> IO Bool
+nullStr p = do ok <- foreign FFI_C "isNull" (String -> IO Int) p
+               return (ok /= 0)
+

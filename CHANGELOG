@@ -26,6 +26,7 @@ New in 0.9.19:
   variable used in the right hand side of the case.
 * Some improvements in interactive editing, particularly in lifting out
   definitions and proof search.
+* Moved System.Interactive, along with getArgs to the Prelude.
 
 New in 0.9.18:
 --------------
