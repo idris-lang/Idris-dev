@@ -250,12 +250,7 @@ codegenJS_all target definitions includes libs filename outputType = do
               , JSApp (
                   JSIdent (translateName (sMN 0 "runMain"))
                 ) [JSNew "i$POINTER" [JSNum (JSInt 0)]]
-              , JSWhile (JSProj jsCALLSTACK "length") (
-                  JSSeq [ JSAlloc "func" (Just jsPOP)
-                        , JSAlloc "args" (Just jsPOP)
-                        , JSApp (JSProj (JSIdent "func") "apply") [JSThis, JSIdent "args"]
-                        ]
-                )
+              , JSApp (JSIdent "i$RUN") []
               ]
 
       invokeMain :: T.Text
