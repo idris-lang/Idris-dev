@@ -596,7 +596,7 @@ jsBASETOP _ 0 = JSAssign jsSTACKBASE jsSTACKTOP
 jsBASETOP _ n = JSAssign jsSTACKBASE (JSBinOp "+" jsSTACKTOP (JSNum (JSInt n)))
 
 jsNULL :: CompileInfo -> Reg -> JS
-jsNULL _ r = JSAssign (translateReg r) JSNull
+jsNULL _ r = JSDelete (translateReg r)
 
 jsERROR :: CompileInfo -> String -> JS
 jsERROR _ = JSError

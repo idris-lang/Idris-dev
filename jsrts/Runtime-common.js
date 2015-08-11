@@ -1,6 +1,6 @@
 /** @constructor */
 var i$VM = function() {
-  this.valstack = [];
+  this.valstack = {};
   this.valstack_top = 0;
   this.valstack_base = 0;
 
