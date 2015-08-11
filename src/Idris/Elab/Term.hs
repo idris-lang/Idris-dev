@@ -42,7 +42,7 @@ data ElabMode = ETyDecl | ETransLHS | ELHS | ERHS
 
 data ElabResult =
   ElabResult { resultTerm :: Term -- ^ The term resulting from elaboration
-             , resultMetavars :: [(Name, (Int, Maybe Name, Type))]
+             , resultMetavars :: [(Name, (Int, Maybe Name, Type, [Name]))]
                -- ^ Information about new metavariables
              , resultCaseDecls :: [PDecl]
                -- ^ Deferred declarations as the meaning of case blocks
@@ -628,6 +628,7 @@ elab ist info emode opts fn tm
                     lift $ tfail (Msg $ "Can't use type constructor " ++ show n ++ " here")
                checkPiGoal n
                attack; intro (Just n);
+               addPSname n -- okay for proof search
                -- trace ("------ intro " ++ show n ++ " ---- \n" ++ show ptm)
                elabE (ina { e_inarg = True } ) (Just fc) sc; solve
                highlightSource nfc (AnnBoundName n False)
@@ -644,6 +645,7 @@ elab ist info emode opts fn tm
                ptm <- get_term
                hs <- get_holes
                introTy (Var tyn) (Just n)
+               addPSname n -- okay for proof search
                focus tyn
                
                elabE (ec { e_inarg = True, e_intype = True }) (Just fc) ty
@@ -652,6 +654,7 @@ elab ist info emode opts fn tm
                highlightSource nfc (AnnBoundName n False)
     elab' ina fc (PPi p n nfc Placeholder sc)
           = do attack; arg n (is_scoped p) (sMN 0 "ty")
+               addPSname n -- okay for proof search
                elabE (ina { e_inarg = True, e_intype = True }) fc sc
                solve
                highlightSource nfc (AnnBoundName n False)
@@ -662,6 +665,7 @@ elab ist info emode opts fn tm
                         MN _ _ -> unique_hole n
                         _ -> return n
                forall n' (is_scoped p) (Var tyn)
+               addPSname n' -- okay for proof search
                focus tyn
                let ec' = ina { e_inarg = True, e_intype = True }
                elabE ec' fc ty
@@ -677,6 +681,7 @@ elab ist info emode opts fn tm
                claim valn (Var tyn)
                explicit valn
                letbind n (Var tyn) (Var valn)
+               addPSname n
                case ty of
                    Placeholder -> return ()
                    _ -> do focus tyn
@@ -902,7 +907,7 @@ elab ist info emode opts fn tm
                 case lookup n env of
                      Nothing -> return ()
                      Just b ->
-                       case unApply (binderTy b) of
+                       case unApply (normalise (tt_ctxt ist) env (binderTy b)) of
                             (P _ c _, args) ->
                                 case lookupCtxtExact c (idris_classes ist) of
                                    Nothing -> return ()
@@ -962,6 +967,7 @@ elab ist info emode opts fn tm
              let unique_used = getUniqueUsed (tt_ctxt ist) ptm
              let n' = metavarName (namespace info) n
              attack
+             psns <- getPSnames
              defer unique_used n'
              solve
              highlightSource nfc (AnnName n' (Just MetavarOutput) Nothing Nothing)
@@ -1621,7 +1627,7 @@ solveAuto ist fn ambigok n
                   g <- goal
                   isg <- is_guess -- if it's a guess, we're working on it recursively, so stop
                   when (not isg) $
-                    proofSearch' ist True ambigok 100 True Nothing fn []
+                    proofSearch' ist True ambigok 100 True Nothing fn [] []
 
 solveAutos :: IState -> Name -> Bool -> ElabD ()
 solveAutos ist fn ambigok
@@ -1630,12 +1636,12 @@ solveAutos ist fn ambigok
 
 trivial' ist
     = trivial (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
-trivialHoles' h ist
-    = trivialHoles h (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
-proofSearch' ist rec ambigok depth prv top n hints
+trivialHoles' psn h ist
+    = trivialHoles psn h (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
+proofSearch' ist rec ambigok depth prv top n psns hints
     = do unifyProblems
          proofSearch rec prv ambigok (not prv) depth
-                     (elab ist toplevel ERHS [] (sMN 0 "tac")) top n hints ist
+                     (elab ist toplevel ERHS [] (sMN 0 "tac")) top n psns hints ist
 
 -- | Resolve type classes. This will only pick up 'normal' instances, never
 -- named instances (which is enforced by 'findInstances').
@@ -1675,7 +1681,7 @@ resTC' tcs defaultOn topholes depth topg fn ist
                               _ -> []
 
            traceWhen ulog ("Resolving class " ++ show g ++ "\nin" ++ show env ++ "\n" ++ show okholes) $
-            try' (trivialHoles' okholes ist)
+            try' (trivialHoles' [] okholes ist)
                 (do addDefault t tc ttypes
                     let stk = map fst (filter snd $ elab_stack ist)
                     let insts = findInstances ist t
@@ -1800,11 +1806,11 @@ resTC' tcs defaultOn topholes depth topg fn ist
              isImp arg = (False, priority arg)
 
 collectDeferred :: Maybe Name -> [Name] -> Context ->
-                   Term -> State [(Name, (Int, Maybe Name, Type))] Term
-collectDeferred top casenames ctxt (Bind n (GHole i t) app) =
+                   Term -> State [(Name, (Int, Maybe Name, Type, [Name]))] Term
+collectDeferred top casenames ctxt (Bind n (GHole i psns t) app) =
     do ds <- get
        t' <- collectDeferred top casenames ctxt t
-       when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, tidyArg [] t'))])
+       when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, tidyArg [] t', psns))])
        collectDeferred top casenames ctxt app
   where
     -- Evaluate the top level functions in arguments, if possible, and if it's
@@ -1814,18 +1820,9 @@ collectDeferred top casenames ctxt (Bind n (GHole i t) app) =
     tidyArg env (Bind n b@(Pi im t k) sc) 
         = Bind n (Pi im (tidy ctxt env t) k)
                  (tidyArg ((n, b) : env) sc)
-    tidyArg env t = t
+    tidyArg env t = tidy ctxt env t
 
-    tidy ctxt env t | (f, args) <- unApply t,
-                      P _ specn _ <- getFn f,
-                      n `notElem` casenames
-        = fst $ specialise ctxt env [(specn, 99999)] t 
-    tidy ctxt env t@(Bind n (Let _ _) sct)
-                    | (f, args) <- unApply sct,
-                      P _ specn _ <- getFn f,
-                      n `notElem` casenames
-        = fst $ specialise ctxt env [(specn, 99999)] t 
-    tidy ctxt env t = t
+    tidy ctxt env t = normalise ctxt env t
 
     getFn (Bind n (Lam _) t) = getFn t
     getFn t | (f, a) <- unApply t = f
@@ -2138,7 +2135,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
                do actualHints <- mapM reifyTTName hs
                   unifyProblems
                   let psElab = elab ist toplevel ERHS [] (sMN 0 "tac")
-                  proofSearch True True False False i psElab Nothing (sMN 0 "search ") actualHints ist
+                  proofSearch True True False False i psElab Nothing (sMN 0 "search ") [] actualHints ist
                   returnUnit
              (Constant (I _), Nothing ) ->
                lift . tfail . InternalMsg $ "Not a list: " ++ show hints'
@@ -2310,8 +2307,8 @@ runTac autoSolve ist perhapsFC fn tac
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
     runT TCInstance = runT (Exact (PResolveTC emptyFC))
-    runT (ProofSearch rec prover depth top hints)
-         = do proofSearch' ist rec False depth prover top fn hints
+    runT (ProofSearch rec prover depth top psns hints)
+         = do proofSearch' ist rec False depth prover top fn psns hints
               when autoSolve solveAll
     runT (Focus n) = focus n
     runT Unfocus = do hs <- get_holes
@@ -2519,7 +2516,7 @@ processTacticDecls info steps =
          updateIState $ \i -> i { idris_implicits =
                                     addDef n impls (idris_implicits i) }
          addIBC (IBCImp n)
-         ds <- checkDef fc (\_ e -> e) [(n, (-1, Nothing, ty))]
+         ds <- checkDef fc (\_ e -> e) [(n, (-1, Nothing, ty, []))]
          addIBC (IBCDef n)
          ctxt <- getContext
          case lookupDef n ctxt of
@@ -2528,7 +2525,7 @@ processTacticDecls info steps =
              -- then it must be added as a metavariable. This needs guarding
              -- to prevent overwriting case defs with a metavar, if the case
              -- defs come after the type decl in the same script!
-             let ds' = map (\(n, (i, top, t)) -> (n, (i, top, t, True))) ds
+             let ds' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, True))) ds
              in addDeferred ds'
            _ -> return ()
     RAddInstance className instName ->

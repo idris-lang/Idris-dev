@@ -89,7 +89,8 @@ data IOption = IOption { opt_logLevel     :: Int,
                          opt_autoSolve    :: Bool, -- ^ automatically apply "solve" tactic in prover
                          opt_autoImport   :: [FilePath], -- ^ e.g. Builtins+Prelude
                          opt_optimise     :: [Optimisation],
-                         opt_printdepth   :: Maybe Int
+                         opt_printdepth   :: Maybe Int,
+                         opt_evaltypes    :: Bool -- ^ normalise types in :t
                        }
     deriving (Show, Eq)
 
@@ -115,10 +116,12 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_autoImport = []
                       , opt_optimise   = defaultOptimise
                       , opt_printdepth = Just 5000
+                      , opt_evaltypes  = True
                       }
 
 data PPOption = PPOption {
     ppopt_impl :: Bool -- ^^ whether to show implicits
+  , ppopt_pinames :: Bool -- ^^ whether to show names in pi bindings
   , ppopt_depth :: Maybe Int
 } deriving (Show)
 
@@ -129,16 +132,21 @@ defaultOptimise = [PETransform]
 
 -- | Pretty printing options with default verbosity.
 defaultPPOption :: PPOption
-defaultPPOption = PPOption { ppopt_impl = False , ppopt_depth = Just 200 }
+defaultPPOption = PPOption { ppopt_impl = False, 
+                             ppopt_pinames = False,
+                             ppopt_depth = Just 200 }
 
 -- | Pretty printing options with the most verbosity.
 verbosePPOption :: PPOption
-verbosePPOption = PPOption { ppopt_impl = True, ppopt_depth = Just 200 }
+verbosePPOption = PPOption { ppopt_impl = True,
+                             ppopt_pinames = True,
+                             ppopt_depth = Just 200 }
 
 -- | Get pretty printing options from the big options record.
 ppOption :: IOption -> PPOption
 ppOption opt = PPOption {
     ppopt_impl = opt_showimp opt,
+    ppopt_pinames = False,
     ppopt_depth = opt_printdepth opt
 }
 
@@ -193,10 +201,11 @@ data IState = IState {
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)],
           -- ^ Full application LHS on source line
-    idris_metavars :: [(Name, (Maybe Name, Int, Bool))],
+    idris_metavars :: [(Name, (Maybe Name, Int, [Name], Bool))],
     -- ^ The currently defined but not proven metavariables. The Int
     -- is the number of vars to display as a context, the Maybe Name
-    -- is its top-level function, and the Bool is whether :p is
+    -- is its top-level function, the [Name] is the list of local variables
+    -- available for proof search and the Bool is whether :p is
     -- allowed
     idris_coercions :: [Name],
     idris_errRev :: [(Term, Term)],
@@ -400,10 +409,13 @@ data Command = Quit
              | AddProofClauseFrom Bool Int Name
              | AddMissing Bool Int Name
              | MakeWith Bool Int Name
+             | MakeCase Bool Int Name
              | MakeLemma Bool Int Name
-             | DoProofSearch Bool Bool Int Name [Name]
-               -- ^ the first bool is whether to update,
-               -- the second is whether to search recursively (i.e. for the arguments)
+             | DoProofSearch Bool -- update file
+                             Bool -- recursive search
+                             Int -- depth
+                             Name -- top level name
+                             [Name] -- hints
              | SetOpt Opt
              | UnsetOpt Opt
              | NOP
@@ -451,6 +463,7 @@ data Opt = Filename String
          | DefaultPartial
          | WarnPartial
          | WarnReach
+         | EvalTypes
          | NoCoverage
          | ErrContext
          | ShowImpl
@@ -978,7 +991,9 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
-                | ProofSearch Bool Bool Int (Maybe Name) [Name]
+                | ProofSearch Bool Bool Int (Maybe Name) 
+                              [Name] -- allowed local names
+                              [Name] -- hints
                   -- ^ the bool is whether to search recursively
                 | Solve
                 | Attack
@@ -1549,7 +1564,8 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe (decD d) startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe (decD d) startPrec ((n, False):bnd) sc)
     prettySe d p bnd (PPi (Exp l s _) n _ ty sc)
-      | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs =
+      | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs
+          || ppopt_pinames ppo && uname n =
           depth d . bracket p startPrec . group $
           enclose lparen rparen (group . align $ prettyBindingOf n False <+> colon <+> prettySe (decD d) startPrec bnd ty) <+>
           st <> text "->" <$> prettySe (decD d) startPrec ((n, False):bnd) sc
@@ -1558,6 +1574,11 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
           group (prettySe (decD d) (startPrec + 1) bnd ty <+> st) <> text "->" <$>
           group (prettySe (decD d) startPrec ((n, False):bnd) sc)
       where
+        uname (UN n) = case str n of
+                            ('_':_) -> False
+                            _ -> True
+        uname _ = False
+
         st =
           case s of
             Static -> text "[static]" <> space
@@ -1576,7 +1597,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PPi (Constraint _ _) n _ ty sc) =
       depth d . bracket p startPrec $
       prettySe (decD d) (startPrec + 1) bnd ty <+> text "=>" </> prettySe (decD d) startPrec ((n, True):bnd) sc
-    prettySe d p bnd (PPi (TacImp _ _ (PTactics [ProofSearch _ _ _ _ _])) n _ ty sc) =
+    prettySe d p bnd (PPi (TacImp _ _ (PTactics [ProofSearch _ _ _ _ _ _])) n _ ty sc) =
       lbrace <> kwd "auto" <+> pretty n <+> colon <+> prettySe (decD d) startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
     prettySe d p bnd (PPi (TacImp _ _ s) n _ ty sc) =
@@ -1996,6 +2017,9 @@ showTm ist = displayDecorated (consoleDecorate ist) .
 showTmImpls :: PTerm -> String
 showTmImpls = flip (displayS . renderCompact . prettyImp verbosePPOption) ""
 
+-- | Show a term with specific options 
+showTmOpts :: PPOption -> PTerm -> String
+showTmOpts opt = flip (displayS . renderPretty 1.0 10000000 . prettyImp opt) ""
 
 
 instance Sized PTerm where

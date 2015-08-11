@@ -366,6 +366,8 @@ runIdeModeCommand h id orig fn mods (IdeMode.AddMissing line name) =
   process fn (AddMissing False line (sUN name))
 runIdeModeCommand h id orig fn mods (IdeMode.MakeWithBlock line name) =
   process fn (MakeWith False line (sUN name))
+runIdeModeCommand h id orig fn mods (IdeMode.MakeCaseBlock line name) =
+  process fn (MakeCase False line (sUN name))
 runIdeModeCommand h id orig fn mods (IdeMode.ProofSearch r line name hints depth) =
   doProofSearch fn False r line (sUN name) (map sUN hints) depth
 runIdeModeCommand h id orig fn mods (IdeMode.MakeLemma line name) =
@@ -632,6 +634,7 @@ idemodeProcess fn (AddProofClauseFrom False pos str) = process fn (AddProofClaus
 idemodeProcess fn (AddClauseFrom False pos str) = process fn (AddClauseFrom False pos str)
 idemodeProcess fn (AddMissing False pos str) = process fn (AddMissing False pos str)
 idemodeProcess fn (MakeWith False pos str) = process fn (MakeWith False pos str)
+idemodeProcess fn (MakeCase False pos str) = process fn (MakeCase False pos str)
 idemodeProcess fn (DoProofSearch False r pos str xs) = process fn (DoProofSearch False r pos str xs)
 idemodeProcess fn (SetConsoleWidth w) = do process fn (SetConsoleWidth w)
                                            iPrintResult ""
@@ -901,8 +904,8 @@ process fn (Check (PRef _ _ n))
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
-                Just (_, i, _) -> iRenderResult . fmap (fancifyAnnots ist True) $
-                                  showMetavarInfo ppo ist n i
+                Just (_, i, _, _) -> iRenderResult . fmap (fancifyAnnots ist True) $
+                                     showMetavarInfo ppo ist n i
                 Nothing -> iPrintFunTypes [] n (map (\n -> (n, pprintDelabTy ist n)) ts)
           [] -> iPrintError $ "No such variable " ++ show n
   where
@@ -934,12 +937,14 @@ process fn (Check t)
         ctxt <- getContext
         ist <- getIState
         let ppo = ppOptionIst ist
-            ty' = normaliseC ctxt [] ty
+            ty' = if opt_evaltypes (idris_options ist)
+                     then normaliseC ctxt [] ty
+                     else ty
         case tm of
            TType _ ->
              iPrintTermWithType (prettyIst ist (PType emptyFC)) type1Doc
            _ -> iPrintTermWithType (pprintDelab ist tm)
-                                   (pprintDelab ist ty)
+                                   (pprintDelab ist ty')
 
 process fn (Core t)
    = do (tm, ty) <- elabREPL recinfo ERHS t
@@ -1047,6 +1052,8 @@ process fn (AddMissing updatefile l n)
     = addMissing fn updatefile l n
 process fn (MakeWith updatefile l n)
     = makeWith fn updatefile l n
+process fn (MakeCase updatefile l n)
+    = makeCase fn updatefile l n
 process fn (MakeLemma updatefile l n)
     = makeLemma fn updatefile l n
 process fn (DoProofSearch updatefile rec l n hints)
@@ -1072,7 +1079,7 @@ process fn (RmProof n')
                             insertMetavar n =
                               do i <- getIState
                                  let ms = idris_metavars i
-                                 putIState $ i { idris_metavars = (n, (Nothing, 0, False)) : ms }
+                                 putIState $ i { idris_metavars = (n, (Nothing, 0, [], False)) : ms }
 
 process fn' (AddProof prf)
   = do fn <- do
@@ -1125,8 +1132,8 @@ process fn (Prove mode n')
           let metavars = mapMaybe (\n -> do c <- lookup n (idris_metavars ist); return (n, c)) ns
           n <- case metavars of
               [] -> ierror (Msg $ "Cannot find metavariable " ++ show n')
-              [(n, (_,_,False))] -> return n
-              [(_, (_,_,True))]  -> ierror (Msg $ "Declarations not solvable using prover")
+              [(n, (_,_,_,False))] -> return n
+              [(_, (_,_,_,True))]  -> ierror (Msg $ "Declarations not solvable using prover")
               ns -> ierror (CantResolveAlts (map fst ns))
           prover mode (lit fn) n
           -- recheck totality
@@ -1234,6 +1241,8 @@ process fn (SetOpt NoBanner)      = setNoBanner True
 process fn (UnsetOpt NoBanner)    = setNoBanner False
 process fn (SetOpt WarnReach)     = fmodifyState opts_idrisCmdline $ nub . (WarnReach:)
 process fn (UnsetOpt WarnReach)   = fmodifyState opts_idrisCmdline $ delete WarnReach
+process fn (SetOpt EvalTypes)     = setEvalTypes True
+process fn (UnsetOpt EvalTypes)   = setEvalTypes False
 
 process fn (SetOpt _) = iPrintError "Not a valid option"
 process fn (UnsetOpt _) = iPrintError "Not a valid option"

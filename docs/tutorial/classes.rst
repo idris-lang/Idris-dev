@@ -363,10 +363,10 @@ alternative notion of function application, with explicit calls to
     m_add' x y = m_app (m_app (Just (+)) x) y
 
 Rather than having to insert ``m_app`` everywhere there is an
-application, we can use to do the job for us. To do this, we can make
-``Maybe`` an instance of ``Applicative`` as follows, where ``<*>`` is
-defined in the same way as ``m_app`` above (this is defined in the
-Idris library):
+application, we can use idiom brackets to do the job for us.
+To do this, we can make ``Maybe`` an instance of ``Applicative``
+as follows, where ``<*>`` is defined in the same way as ``m_app``
+above (this is defined in the Idris library):
 
 .. code-block:: idris
 

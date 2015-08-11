@@ -29,7 +29,7 @@ append (x :: xs) ys ?= x :: append xs ys
 simple.append_lemma_2 = proof {
   intros;
   compute;
-  rewrite (plusSuccRightSucc m n);
+  rewrite (plusSuccRightSucc m k);
   trivial;
 }
 

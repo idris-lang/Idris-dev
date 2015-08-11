@@ -118,6 +118,7 @@ Extra-source-files:
                        libs/contrib/Data/*.idr
                        libs/contrib/Data/Nat/*.idr
                        libs/contrib/Data/Nat/DivMod/*.idr
+                       libs/contrib/Data/Matrix/*.idr
                        libs/contrib/Decidable/*.idr
                        libs/contrib/Network/*.idr
                        libs/contrib/System/Concurrency/*.idr
@@ -125,6 +126,7 @@ Extra-source-files:
                        libs/effects/Makefile
                        libs/effects/effects.ipkg
                        libs/effects/Effect/*.idr
+		       libs/effects/Effect/Logging/*.idr
                        libs/effects/*.idr
 
                        test/Makefile
@@ -388,9 +390,6 @@ Extra-source-files:
                        test/delab001/expected
                        test/delab001/input
 
-                       test/disambig001/run
-                       test/disambig001/*.idr
-                       test/disambig001/expected
                        test/disambig002/run
                        test/disambig002/*.idr
                        test/disambig002/expected
@@ -424,6 +423,10 @@ Extra-source-files:
                        test/effects004/*.idr
                        test/effects004/expected
                        test/effects004/input
+                       test/effects005/run
+                       test/effects005/*.idr
+                       test/effects005/expected
+
 
                        test/error001/run
                        test/error001/*.idr

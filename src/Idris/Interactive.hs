@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Idris.Interactive(caseSplitAt, addClauseFrom, addProofClauseFrom,
-                         addMissing, makeWith, doProofSearch,
+                         addMissing, makeWith, makeCase, doProofSearch,
                          makeLemma) where
 
 {- Bits and pieces for editing source files interactively, called from
@@ -158,6 +158,47 @@ makeWith fn updatefile l n
            else iPrintResult with
   where getIndent s = length (takeWhile isSpace s)
 
+-- Replace the given metavariable on the given line with a 'case'
+-- block, using a _ for the scrutinee
+makeCase :: FilePath -> Bool -> Int -> Name -> Idris ()
+makeCase fn updatefile l n
+   = do src <- runIO $ readSource fn
+        let (before, tyline : later) = splitAt (l-1) (lines src)
+        let newcase = addCaseSkel (show n) tyline
+
+        if updatefile then
+           do let fb = fn ++ "~"
+              runIO $ writeSource fb (unlines (before ++ newcase ++ later))
+              runIO $ copyFile fb fn
+           else iPrintResult (showSep "\n" newcase)
+  where addCaseSkel n line =
+            let b = brackets False line in
+            case findSubstr ('?':n) line of
+                 Just (before, pos, after) ->
+                      [before ++ (if b then "(" else "") ++ "case _ of",
+                       take (pos + (if b then 6 else 5)) (repeat ' ') ++ 
+                             "case_val => ?" ++ n ++ if b then ")" else "",
+                       after]
+                 Nothing -> fail "No such metavariable"
+
+        -- Assume case needs to be bracketed unless the metavariable is
+        -- on its own after an =
+        brackets eq line | line == '?' : show n = not eq
+        brackets eq ('=':ls) = brackets True ls
+        brackets eq (' ':ls) = brackets eq ls
+        brackets eq (l : ls) = brackets False ls
+        brackets eq [] = True
+
+        findSubstr n xs = findSubstr' [] 0 n xs
+
+        findSubstr' acc i n xs | take (length n) xs == n 
+                = Just (reverse acc, i, drop (length n) xs)
+        findSubstr' acc i n [] = Nothing
+        findSubstr' acc i n (x : xs) = findSubstr' (x : acc) (i + 1) n xs
+
+
+
+
 
 doProofSearch :: FilePath -> Bool -> Bool -> 
                  Int -> Name -> [Name] -> Maybe Int -> Idris ()
@@ -172,12 +213,13 @@ doProofSearch fn updatefile rec l n hints (Just depth)
                     [] -> return n
                     ns -> ierror (CantResolveAlts ns)
          i <- getIState
-         let (top, envlen, _) = case lookup mn (idris_metavars i) of
-                                  Just (t, e, False) -> (t, e, False)
-                                  _ -> (Nothing, 0, True)
+         let (top, envlen, psnames, _) 
+              = case lookup mn (idris_metavars i) of
+                     Just (t, e, ns, False) -> (t, e, ns, False)
+                     _ -> (Nothing, 0, [], True)
          let fc = fileFC fn
-         let body t = PProof [Try (TSeq Intros (ProofSearch rec False depth t hints))
-                                  (ProofSearch rec False depth t hints)]
+         let body t = PProof [Try (TSeq Intros (ProofSearch rec False depth t psnames hints))
+                                  (ProofSearch rec False depth t psnames hints)]
          let def = PClause fc mn (PRef fc [] mn) [] (body top) []
          newmv <- idrisCatch
              (do elabDecl' EAll recinfo (PClauses fc [] mn [def])
@@ -256,13 +298,17 @@ makeLemma fn updatefile l n
                     ns -> ierror (CantResolveAlts (map fst ns))
         i <- getIState
         margs <- case lookup n (idris_metavars i) of
-                      Just (_, arity, _) -> return arity
+                      Just (_, arity, _, _) -> return arity
                       _ -> return (-1)
 
         if (not isProv) then do
-            let skip = guessImps (tt_ctxt i) mty
+            let skip = guessImps i (tt_ctxt i) mty
+            let classes = guessClasses i (tt_ctxt i) mty
 
-            let lem = show n ++ " : " ++ show (stripMNBind skip (delab i mty))
+            let lem = show n ++ " : " ++ 
+                            constraints i classes mty ++
+                            showTmOpts (defaultPPOption { ppopt_pinames = True })
+                                       (stripMNBind skip (delab i mty))
             let lem_app = show n ++ appArgs skip margs mty
 
             if updatefile then
@@ -312,15 +358,52 @@ makeLemma fn updatefile l n
         stripMNBind skip (PPi b _ _ ty sc) = stripMNBind skip sc
         stripMNBind skip t = t
 
+        constraints :: IState -> [Name] -> Type -> String
+        constraints i [] ty = ""
+        constraints i [n] ty = showSep ", " (showConstraints i [n] ty) ++ " => "
+        constraints i ns ty = "(" ++ showSep ", " (showConstraints i ns ty) ++ ") => "
+
+        showConstraints i ns (Bind n (Pi _ ty _) sc)
+            | n `elem` ns = show (delab i ty) : 
+                              showConstraints i ns (substV (P Bound n Erased) sc)
+            | otherwise = showConstraints i ns (substV (P Bound n Erased) sc)
+        showConstraints _ _ _ = []
+
         -- Guess which binders should be implicits in the generated lemma.
         -- Make them implicit if they appear guarded by a top level constructor,
         -- or at the top level themselves.
-        guessImps :: Context -> Term -> [Name]
-        guessImps ctxt (Bind n (Pi _ _ _) sc)
+        -- Also, make type class instances implicit
+        guessImps :: IState -> Context -> Term -> [Name]
+        guessImps ist ctxt (Bind n (Pi _ ty _) sc)
            | guarded ctxt n (substV (P Bound n Erased) sc) 
-                = n : guessImps ctxt sc
-           | otherwise = guessImps ctxt sc
-        guessImps ctxt _ = []
+                = n : guessImps ist ctxt sc
+           | isClass ist ty
+                = n : guessImps ist ctxt sc
+           | otherwise = guessImps ist ctxt sc
+        guessImps ist ctxt _ = []
+
+        guessClasses :: IState -> Context -> Term -> [Name]
+        guessClasses ist ctxt (Bind n (Pi _ ty _) sc)
+           | isParamClass ist ty
+                = n : guessClasses ist ctxt sc
+           | otherwise = guessClasses ist ctxt sc
+        guessClasses ist ctxt _ = []
+
+        isClass ist t
+           | (P _ n _, args) <- unApply t
+                = case lookupCtxtExact n (idris_classes ist) of
+                       Just _ -> True
+                       _ -> False
+           | otherwise = False
+        
+        isParamClass ist t
+           | (P _ n _, args) <- unApply t
+                = case lookupCtxtExact n (idris_classes ist) of
+                       Just _ -> any isV args
+                       _ -> False
+           | otherwise = False
+          where isV (V _) = True
+                isV _ = False
 
         guarded ctxt n (P _ n' _) | n == n' = True
         guarded ctxt n ap@(App _ _ _)

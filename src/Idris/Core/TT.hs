@@ -809,6 +809,7 @@ data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}
                         binderVal :: b }
               | Hole  { binderTy  :: !b}
               | GHole { envlen :: Int,
+                        localnames :: [Name],
                         binderTy  :: !b}
               | Guess { binderTy  :: !b,
                         binderVal :: b }
@@ -827,7 +828,7 @@ instance Sized a => Sized (Binder a) where
   size (Let ty val) = 1 + size ty + size val
   size (NLet ty val) = 1 + size ty + size val
   size (Hole ty) = 1 + size ty
-  size (GHole _ ty) = 1 + size ty
+  size (GHole _ _ ty) = 1 + size ty
   size (Guess ty val) = 1 + size ty + size val
   size (PVar ty) = 1 + size ty
   size (PVTy ty) = 1 + size ty
@@ -839,7 +840,7 @@ fmapMB f (Guess t v) = liftM2 Guess (f t) (f v)
 fmapMB f (Lam t)     = liftM Lam (f t)
 fmapMB f (Pi i t k)  = liftM2 (Pi i) (f t) (f k)
 fmapMB f (Hole t)    = liftM Hole (f t)
-fmapMB f (GHole i t) = liftM (GHole i) (f t)
+fmapMB f (GHole i ns t) = liftM (GHole i ns) (f t)
 fmapMB f (PVar t)    = liftM PVar (f t)
 fmapMB f (PVTy t)    = liftM PVTy (f t)
 
@@ -1494,7 +1495,7 @@ prettyEnv env t = prettyEnv' env t False
     -- Render a `Binder` and its name
     prettySb env n (Lam t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
-    prettySb env n (GHole _ t) = prettyB env "?gdefer" "." n t
+    prettySb env n (GHole _ _ t) = prettyB env "?gdefer" "." n t
     prettySb env n (Pi _ t _) = prettyB env "(" ") ->" n t
     prettySb env n (PVar t) = prettyB env "pat" "." n t
     prettySb env n (PVTy t) = prettyB env "pty" "." n t
@@ -1539,7 +1540,7 @@ showEnv' env t dbg = se 10 env t where
 
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
-    sb env n (GHole i t) = showb env "?defer " ". " n t
+    sb env n (GHole i ns t) = showb env "?defer " ". " n t
     sb env n (Pi (Just _) t _)   = showb env "{" "} -> " n t
     sb env n (Pi _ t _)   = showb env "(" ") -> " n t
     sb env n (PVar t) = showb env "pat " ". " n t
@@ -1739,7 +1740,7 @@ pprintTT bound tm = pp startPrec bound tm
     ppb p bound n (Hole ty) sc =
       bracket p startPrec . group . align . hang 2 $
       text "?" <+> bindingOf n False <+> text "." <> line <> sc
-    ppb p bound n (GHole _ ty) sc =
+    ppb p bound n (GHole _ _ ty) sc =
       bracket p startPrec . group . align . hang 2 $
       text "¿" <+> bindingOf n False <+> text "." <> line <> sc
     ppb p bound n (Guess ty val) sc =
@@ -1791,8 +1792,8 @@ pprintRaw bound (RBind n b body) =
                       vsep [text "NLet", pprintRaw bound ty, pprintRaw bound v]
     ppb (Hole ty) = enclose lparen rparen . group . align . hang 2 $
                     text "Hole" <$> pprintRaw bound ty
-    ppb (GHole _ ty) = enclose lparen rparen . group . align . hang 2 $
-                       text "GHole" <$> pprintRaw bound ty
+    ppb (GHole _ _ ty) = enclose lparen rparen . group . align . hang 2 $
+                         text "GHole" <$> pprintRaw bound ty
     ppb (Guess ty v) = enclose lparen rparen . group . align . hang 2 $
                        vsep [text "Guess", pprintRaw bound ty, pprintRaw bound v]
     ppb (PVar ty) = enclose lparen rparen . group . align . hang 2 $

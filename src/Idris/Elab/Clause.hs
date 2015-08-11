@@ -543,7 +543,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         let fn_is = case lookupCtxt fname (idris_implicits i) of
                          [t] -> t
                          _ -> []
-        let params = getParamsInType i [] fn_is fn_ty
+        let params = getParamsInType i [] fn_is (normalise ctxt [] fn_ty)
         let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
                     propagateParams i params fn_ty (addImplPat i lhs_in)
 --         let lhs = mkLHSapp $ 
@@ -632,6 +632,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         ((rhs', defer, is, probs, ctxt', newDecls, highlights), _) <-
            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patRHS") clhsty initEState
                     (do pbinds ist lhs_tm
+                        -- proof search can use explicitly written names
+                        mapM_ addPSname (allNamesIn lhs_in)
                         mapM_ setinj (nub (params ++ inj))
                         setNextName
                         (ElabResult _ _ is ctxt' newDecls highlights) <-
@@ -656,9 +658,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logLvl 5 "DONE CHECK"
         logLvl 4 $ "---> " ++ show rhs'
         when (not (null defer)) $ logLvl 1 $ "DEFERRED " ++
-                    show (map (\ (n, (_,_,t)) -> (n, t)) defer)
+                    show (map (\ (n, (_,_,t,_)) -> (n, t)) defer)
         def' <- checkDef fc (Elaborating "deferred type of ") defer
-        let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False))) def'
         addDeferred def''
         mapM_ (\(n, _) -> addIBC (IBCDef n)) def''
 
@@ -790,7 +792,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let fn_is = case lookupCtxt fname (idris_implicits i) of
                          [t] -> t
                          _ -> []
-        let params = getParamsInType i [] fn_is fn_ty
+        let params = getParamsInType i [] fn_is (normalise ctxt [] fn_ty)
         let lhs = stripLinear i $ stripUnmatchable i $ propagateParams i params fn_ty (addImplPat i lhs_in)
         logLvl 2 ("LHS: " ++ show lhs)
         (ElabResult lhs' dlhs [] ctxt' newDecls highlights, _) <-
@@ -816,6 +818,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
             tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "withRHS")
                         (bindTyArgs PVTy bargs infP) initEState
                         (do pbinds i lhs_tm
+                            -- proof search can use explicitly written names
+                            mapM_ addPSname (allNamesIn lhs_in)
                             setNextName
                             -- TODO: may want where here - see winfo abpve
                             (ElabResult _ d is ctxt' newDecls highlights) <- errAt "with value in " fname
@@ -828,7 +832,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         sendHighlighting highlights
 
         def' <- checkDef fc iderr defer
-        let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
         logLvl 5 ("Checked wval " ++ show wval')
@@ -890,8 +894,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         addIBC (IBCImp wname)
         addIBC (IBCStatic wname)
 
-        def' <- checkDef fc iderr [(wname, (-1, Nothing, wtype))]
-        let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
+        def' <- checkDef fc iderr [(wname, (-1, Nothing, wtype, []))]
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False))) def'
         addDeferred def''
 
         -- in the subdecls, lhs becomes:
@@ -932,7 +936,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         sendHighlighting highlights
 
         def' <- checkDef fc iderr defer
-        let def'' = map (\(n, (i, top, t)) -> (n, (i, top, t, False))) def'
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
         logLvl 5 ("Checked RHS " ++ show rhs')

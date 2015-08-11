@@ -82,7 +82,7 @@ reify _ t = fail ("Unknown tactic " ++ show t)
 reifyApp :: IState -> Name -> [Term] -> ElabD PTactic
 reifyApp ist t [l, r] | t == reflm "Try" = liftM2 Try (reify ist l) (reify ist r)
 reifyApp _ t [Constant (I i)]
-           | t == reflm "Search" = return (ProofSearch True True i Nothing [])
+           | t == reflm "Search" = return (ProofSearch True True i Nothing [] [])
 reifyApp _ t [x]
            | t == reflm "Refine" = do n <- reifyTTName x
                                       return $ Refine n []
@@ -313,7 +313,7 @@ reifyTTBinderApp reif f [x, y]
 reifyTTBinderApp reif f [t]
                       | f == reflm "Hole" = liftM Hole (reif t)
 reifyTTBinderApp reif f [t]
-                      | f == reflm "GHole" = liftM (GHole 0) (reif t)
+                      | f == reflm "GHole" = liftM (GHole 0 []) (reif t)
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Guess" = liftM2 Guess (reif x) (reif y)
 reifyTTBinderApp reif f [t]
@@ -339,7 +339,7 @@ reifyTTConstApp f (Constant c@(BI _))
                 | f == reflm "BI"  = return $ c
 reifyTTConstApp f (Constant c@(Fl _))
                 | f == reflm "Fl"  = return $ c
-reifyTTConstApp f (Constant c@(I _))
+reifyTTConstApp f (Constant c@(Ch _))
                 | f == reflm "Ch"  = return $ c
 reifyTTConstApp f (Constant c@(Str _))
                 | f == reflm "Str" = return $ c
@@ -586,7 +586,7 @@ reflectBinderQuotePattern q ty unq (Hole t)
         fill $ reflCall "Hole" [ty, Var t']
         solve
         focus t'; q unq t
-reflectBinderQuotePattern q ty unq (GHole _ t)
+reflectBinderQuotePattern q ty unq (GHole _ _ t)
    = do t' <- claimTy (sMN 0 "ty") ty; movelast t'
         fill $ reflCall "GHole" [ty, Var t']
         solve
@@ -737,7 +737,7 @@ reflectBinderQuote q ty unq (NLet x y)
    = reflCall "NLet" [Var ty, q unq x, q unq y]
 reflectBinderQuote q ty unq (Hole t)
    = reflCall "Hole" [Var ty, q unq t]
-reflectBinderQuote q ty unq (GHole _ t)
+reflectBinderQuote q ty unq (GHole _ _ t)
    = reflCall "GHole" [Var ty, q unq t]
 reflectBinderQuote q ty unq (Guess x y)
    = reflCall "Guess" [Var ty, q unq x, q unq y]

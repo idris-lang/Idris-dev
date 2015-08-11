@@ -25,6 +25,8 @@ import public Prelude.Pairs
 import public Prelude.Stream
 import public Prelude.Providers
 import public Prelude.Show
+import public Prelude.Interactive
+import public Prelude.File
 import public Decidable.Equality
 import public Language.Reflection
 import public Language.Reflection.Errors
@@ -43,9 +45,6 @@ decAsBool (No _)  = False
 instance Functor PrimIO where
     map f io = prim_io_bind io (prim_io_return . f)
 
-instance Functor (IO' ffi) where
-    map f io = io_bind io (\b => io_return (f b))
-
 instance Functor Maybe where
     map f (Just x) = Just (f x)
     map f Nothing  = Nothing
@@ -60,12 +59,6 @@ instance Applicative PrimIO where
     pure = prim_io_return
 
     am <*> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
-
-instance Applicative (IO' ffi) where
-    pure x = io_return x
-    f <*> a = io_bind f (\f' =>
-                io_bind a (\a' =>
-                  io_return (f' a')))
 
 instance Applicative Maybe where
     pure = Just
@@ -102,9 +95,6 @@ instance Alternative List where
 
 instance Monad PrimIO where
     b >>= k = prim_io_bind b k
-
-instance Monad (IO' ffi) where
-    b >>= k = io_bind b k
 
 instance Monad Maybe where
     Nothing  >>= k = Nothing
@@ -229,183 +219,6 @@ curry f a b = f (a, b)
 uncurry : (a -> b -> c) -> (a, b) -> c
 uncurry f (a, b) = f a b
 
----- some basic io
-
-||| Output a string to stdout without a trailing newline
-putStr : String -> IO' ffi ()
-putStr x = do prim_write x
-              return ()
-
-||| Output a string to stdout with a trailing newline
-putStrLn : String -> IO' ffi ()
-putStrLn x = putStr (x ++ "\n")
-
-||| Output something showable to stdout, without a trailing newline
-partial
-print : Show a => a -> IO' ffi ()
-print x = putStr (show x)
-
-||| Output something showable to stdout, with a trailing newline
-partial
-printLn : Show a => a -> IO' ffi ()
-printLn x = putStrLn (show x)
-
-||| Read one line of input from stdin, without the trailing newline
-partial
-getLine : IO' ffi String
-getLine = do x <- prim_read
-             return (reverse (trimNL (reverse x)))
-  where trimNL : String -> String
-        trimNL str with (strM str)
-          trimNL "" | StrNil = ""
-          trimNL (strCons '\n' xs) | StrCons _ _ = xs
-          trimNL (strCons x xs)    | StrCons _ _ = strCons x xs
-
-||| Write a single character to stdout
-partial
-putChar : Char -> IO ()
-putChar c = foreign FFI_C "putchar" (Int -> IO ()) (cast c)
-
-||| Write a singel character to stdout, with a trailing newline
-partial
-putCharLn : Char -> IO ()
-putCharLn c = putStrLn (singleton c)
-
-||| Read a single character from stdin
-partial
-getChar : IO Char
-getChar = map cast $ foreign FFI_C "getchar" (IO Int)
-
----- some basic file handling
-
-||| A file handle
-abstract
-data File = FHandle Ptr
-
-||| Standard input
-stdin : File
-stdin = FHandle prim__stdin
-
-||| Standard output
-stdout : File
-stdout = FHandle prim__stdout
-
-||| Standard output
-stderr : File
-stderr = FHandle prim__stderr
-
-||| Call the RTS's file opening function
-do_fopen : String -> String -> IO Ptr
-do_fopen f m
-   = foreign FFI_C "fileOpen" (String -> String -> IO Ptr) f m
-
-||| Open a file
-||| @ f the filename
-||| @ m the mode as a String (`"r"`, `"w"`, or `"r+"`)
-fopen : (f : String) -> (m : String) -> IO File
-fopen f m = do h <- do_fopen f m
-               return (FHandle h)
-
-||| Modes for opening files
-data Mode = Read | Write | ReadWrite
-
-||| Open a file
-||| @ f the filename
-||| @ m the mode
-partial
-openFile : (f : String) -> (m : Mode) -> IO File
-openFile f m = fopen f (modeStr m) where
-  modeStr Read  = "r"
-  modeStr Write = "w"
-  modeStr ReadWrite = "r+"
-
-partial
-do_fclose : Ptr -> IO ()
-do_fclose h = foreign FFI_C "fileClose" (Ptr -> IO ()) h
-
-partial
-closeFile : File -> IO ()
-closeFile (FHandle h) = do_fclose h
-
-partial
-do_fread : Ptr -> IO' l String
-do_fread h = prim_fread h
-
-fgetc : File -> IO Char
-fgetc (FHandle h) = return (cast !(foreign FFI_C "fgetc" (Ptr -> IO Int) h))
-
-fgetc' : File -> IO (Maybe Char)
-fgetc' (FHandle h)
-   = do x <- foreign FFI_C "fgetc" (Ptr -> IO Int) h
-        if (x < 0) then return Nothing
-                   else return (Just (cast x))
-
-fflush : File -> IO ()
-fflush (FHandle h) = foreign FFI_C "fflush" (Ptr -> IO ()) h
-
-do_popen : String -> String -> IO Ptr
-do_popen f m = foreign FFI_C "do_popen" (String -> String -> IO Ptr) f m
-
-popen : String -> Mode -> IO File
-popen f m = do ptr <- do_popen f (modeStr m)
-               return (FHandle ptr)
-  where
-    modeStr Read  = "r"
-    modeStr Write = "w"
-    modeStr ReadWrite = "r+"
-
-pclose : File -> IO ()
-pclose (FHandle h) = foreign FFI_C "pclose" (Ptr -> IO ()) h
-
--- mkForeign (FFun "idris_readStr" [FPtr, FPtr] (FAny String))
---                        prim__vm h
-
-partial
-fread : File -> IO' l String
-fread (FHandle h) = do_fread h
-
-partial
-do_fwrite : Ptr -> String -> IO ()
-do_fwrite h s = do prim_fwrite h s
-                   return ()
-
-partial
-fwrite : File -> String -> IO ()
-fwrite (FHandle h) s = do_fwrite h s
-
-partial
-do_feof : Ptr -> IO Int
-do_feof h = foreign FFI_C "fileEOF" (Ptr -> IO Int) h
-
-||| Check if a file handle has reached the end
-feof : File -> IO Bool
-feof (FHandle h) = do eof <- do_feof h
-                      return (not (eof == 0))
-
-partial
-do_ferror : Ptr -> IO Int
-do_ferror h = foreign FFI_C "fileError" (Ptr -> IO Int) h
-
-ferror : File -> IO Bool
-ferror (FHandle h) = do err <- do_ferror h
-                        return (not (err == 0))
-
-fpoll : File -> IO Bool
-fpoll (FHandle h) = do p <- foreign FFI_C "fpoll" (Ptr -> IO Int) h
-                       return (p > 0)
-
-||| Check if a foreign pointer is null
-partial
-nullPtr : Ptr -> IO Bool
-nullPtr p = do ok <- foreign FFI_C "isNull" (Ptr -> IO Int) p
-               return (ok /= 0)
-
-||| Check if a supposed string was actually a null pointer
-partial
-nullStr : String -> IO Bool
-nullStr p = do ok <- foreign FFI_C "isNull" (String -> IO Int) p
-               return (ok /= 0)
-
 namespace JSNull
   ||| Check if a foreign pointer is null
   partial
@@ -425,12 +238,6 @@ eqPtr : Ptr -> Ptr -> IO Bool
 eqPtr x y = do eq <- foreign FFI_C "idris_eqPtr" (Ptr -> Ptr -> IO Int) x y
                return (eq /= 0)
 
-||| Check whether a file handle is actually a null pointer
-partial
-validFile : File -> IO Bool
-validFile (FHandle h) = do x <- nullPtr h
-                           return (not x)
-
 ||| Loop while some test is true
 |||
 ||| @ test the condition of the loop
@@ -441,22 +248,6 @@ while t b = do v <- t
                if v then do b
                             while t b
                     else return ()
-
-||| Read the contents of a file into a string
-partial -- no error checking!
-readFile : String -> IO String
-readFile fn = do h <- openFile fn Read
-                 c <- readFile' h ""
-                 closeFile h
-                 return c
-  where
-    partial
-    readFile' : File -> String -> IO String
-    readFile' h contents =
-       do x <- feof h
-          if not x then do l <- fread h
-                           readFile' h (contents ++ l)
-                   else return contents
 
 ------- Some error rewriting
 

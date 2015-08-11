@@ -52,3 +52,30 @@ mapElem : {xs : Vect k t} -> {f : t -> u} -> Elem x xs -> Elem (f x) (map f xs)
 mapElem Here = Here
 mapElem (There e) = There (mapElem e)
 
+-- Some convenience functions for testing lengths
+
+||| If the given Vect is the required length, return a Vect with that
+||| length in its type, otherwise return Nothing
+||| @len the required length
+||| @xs the vector with the desired length
+-- Needs to be Maybe rather than Dec, because if 'n' is unequal to m, we 
+-- only know we don't know how to make a Vect n a, not that one can't exist.
+isLength : {m : Nat} -> -- expected at run-time
+           (len : Nat) -> (xs : Vect m a) -> Maybe (Vect len a)
+isLength {m} len xs with (decEq m len)
+  isLength {m = m} m xs | (Yes Refl) = Just xs
+  isLength {m = m} len xs | (No contra) = Nothing
+
+||| If the given Vect is at least the required length, return a Vect with
+||| at least that length in its type, otherwise return Nothing
+||| @len the required length
+||| @xs the vector with the desired length
+overLength : {m : Nat} -> -- expected at run-time
+             (len : Nat) -> (xs : Vect m a) -> Maybe (p ** Vect (plus p len) a)
+overLength {m} n xs with (cmp m n)
+  overLength {m = m} (plus m (S y)) xs | (CmpLT y) = Nothing
+  overLength {m = m} m xs | CmpEQ
+         = Just (0 ** xs)
+  overLength {m = plus n (S x)} n xs | (CmpGT x)
+         = Just (S x ** rewrite plusCommutative (S x) n in xs)
+

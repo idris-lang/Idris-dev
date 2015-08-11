@@ -5,7 +5,7 @@ modules = System,
 
           Debug.Error, Debug.Trace,
 
-          System.Info, System.Interactive,
+          System.Info, 
 
           Language.Reflection.Utils,
 

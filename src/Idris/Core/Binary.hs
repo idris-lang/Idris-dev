@@ -499,9 +499,10 @@ instance (Binary b) => Binary (Binder b) where
                                  put x2
                 Hole x1 -> do putWord8 4
                               put x1
-                GHole x1 x2 -> do putWord8 5
-                                  put x1
-                                  put x2
+                GHole x1 x2 x3 -> do putWord8 5
+                                     put x1
+                                     put x2
+                                     put x3
                 Guess x1 x2 -> do putWord8 6
                                   put x1
                                   put x2
@@ -528,7 +529,8 @@ instance (Binary b) => Binary (Binder b) where
                            return (Hole x1)
                    5 -> do x1 <- get
                            x2 <- get
-                           return (GHole x1 x2)
+                           x3 <- get
+                           return (GHole x1 x2 x3)
                    6 -> do x1 <- get
                            x2 <- get
                            return (Guess x1 x2)

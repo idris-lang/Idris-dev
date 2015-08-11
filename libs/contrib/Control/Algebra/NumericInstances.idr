@@ -1,6 +1,9 @@
+||| Instances of algebraic classes (group, ring, etc) for numeric data types,
+||| and Complex number types.
 module Control.Algebra.NumericInstances
 
 import Control.Algebra
+import Control.Algebra.VectorSpace
 import Data.Complex
 import Data.ZZ
 
@@ -102,3 +105,9 @@ instance Ring a => Ring (Complex a) where
 
 instance RingWithUnity a => RingWithUnity (Complex a) where
   unity = (unity :+ neutral)
+
+instance RingWithUnity a => Module a (Complex a) where
+  (<#>) x = map (x <.>)
+
+instance RingWithUnity a => InnerProductSpace a (Complex a) where
+  (x :+ y) <||> z = realPart $ (x :+ inverse y) <.> z

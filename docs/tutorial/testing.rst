@@ -4,18 +4,27 @@
 Testing Idris Packages
 **********************
 
-As part of the integrated build system a simple testing framework is provided.
-This framework will collect a list of named functions and construct an Idris executable in a fresh environment on your machine.
-This executable lists the named functions under a single ``main`` function, and imports the complete list of modules for the package.
+The integrated build system includes a simple testing framework.
+This framework collects functions listed in the ``ipkg`` file under ``tests``.
+All test functions must return ``IO ()``.
 
 
-It is up to the developer to ensure the correct reporting of test results, and the structure and nature of how the tests are run.
-Further, all test functions must return ``IO ()``, and must be listed in the ``ipkg`` file under ``tests``, and rhe modules containing the test functions must also be listed in the modules section of the ``iPKG`` file.
+When you enter ``idris --testpkg yourmodule.ipkg``,
+the build system creates a temporary file in a fresh environment on your machine
+by listing the ``tests`` functions under a single ``main`` function.
+It compiles this temporary file to an executable and then executes it.
+
+
+The tests themselves are responsible for reporting their success or failure.
+Test functions commonly use ``putStrLn`` to report test results.
+The test framework does not impose any standards for reporting and consequently
+does not aggregate test results.
 
 
 For example, lets take the following list of functions that are defined in a module called ``NumOps`` for a sample package ``maths``.
 
 .. code-block:: idris
+   :caption: Math/NumOps.idr
 
     module Maths.NumOps
 
@@ -28,6 +37,7 @@ For example, lets take the following list of functions that are defined in a mod
 A simple test module, with a qualified name of ``Test.NumOps`` can be declared as
 
 .. code-block:: idris
+   :caption: Math/TestOps.idr
 
     module Test.NumOps
 
@@ -36,12 +46,12 @@ A simple test module, with a qualified name of ``Test.NumOps`` can be declared a
     assertEq : Eq a => (given : a) -> (expected : a) -> IO ()
     assertEq g e = if g == e
         then putStrLn "Test Passed"
-        else putStrLn "Test failed"
+        else putStrLn "Test Failed"
 
     assertNotEq : Eq a => (given : a) -> (expected : a) -> IO ()
     assertNotEq g e = if not (g == e)
         then putStrLn "Test Passed"
-        else putStrLn "Test failed"
+        else putStrLn "Test Failed"
 
     testDouble : IO ()
     testDouble = assertEq (double 2) 4
@@ -53,13 +63,23 @@ A simple test module, with a qualified name of ``Test.NumOps`` can be declared a
 The functions ``assertEq`` and ``assertNotEq`` are used to run expected passing, and failing, equality tests.
 The actual tests are ``testDouble`` and ``testTriple``, and are declared in the ``maths.ipkg`` file as follows::
 
-    module maths
+    package maths
 
-    module = Maths.NumOps
-           , Test.NumOps
+    modules = Maths.NumOps
+            , Test.NumOps
 
     tests = Test.NumOps.testDouble
           , Test.NumOps.testTriple
 
 
-The testing framework can be invoked using: ``idris --testpkg maths.ipkg``.
+The testing framework can then be invoked using ``idris --testpkg maths.ipkg``::
+
+    > idris --testpkg maths.ipkg
+    Type checking ./Maths/NumOps.idr
+    Type checking ./Test/NumOps.idr
+    Type checking /var/folders/63/np5g0d5j54x1s0z12rf41wxm0000gp/T/idristests144128232716531729.idr
+    Test Passed
+    Test Passed
+
+Note how both tests have reported success by printing ``Test Passed``
+as we arranged for with the ``assertEq`` and ``assertNoEq`` functions.

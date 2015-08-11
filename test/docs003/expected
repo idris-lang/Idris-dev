@@ -11,11 +11,11 @@ Methods:
         The function is Total
 Instances:
     Functor List
+    Functor (IO' ffi)
     Functor Stream
     Functor Provider
     Functor Binder
     Functor PrimIO
-    Functor (IO' ffi)
     Functor Maybe
     Functor (Either e)
 

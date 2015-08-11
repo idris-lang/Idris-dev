@@ -971,7 +971,7 @@ autoImplicit opts st syn
         sc <- expr syn
         highlightP kw AnnKeyword
         return (bindList (PPi
-          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing []]))) xt sc) 
+          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]))) xt sc) 
 
 defaultImplicit opts st syn = do
    kw <- reservedFC "default"
@@ -1436,7 +1436,7 @@ tactics =
   , noArgs ["unify"] DoUnify
   , (["search"], Nothing, const $
       do depth <- option 10 $ fst <$> natural
-         return (ProofSearch True True (fromInteger depth) Nothing []))
+         return (ProofSearch True True (fromInteger depth) Nothing [] []))
   , noArgs ["instance"] TCInstance
   , noArgs ["solve"] Solve
   , noArgs ["attack"] Attack

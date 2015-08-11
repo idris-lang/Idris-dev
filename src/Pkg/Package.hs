@@ -132,17 +132,17 @@ documentPkg fp =
   do pkgdesc        <- parseDesc fp
      cd             <- getCurrentDirectory
      let pkgDir      = cd </> takeDirectory fp
-         outputDir   = cd </> (pkgname pkgdesc) ++ "_doc"
+         outputDir   = cd </> pkgname pkgdesc ++ "_doc"
          opts        = NoREPL : Verbose : idris_opts pkgdesc
          mods        = modules pkgdesc
          fs          = map (foldl1' (</>) . splitOn "." . showCG) mods
      setCurrentDirectory $ pkgDir </> sourcedir pkgdesc
      make (makefile pkgdesc)
-     setCurrentDirectory $ pkgDir
+     setCurrentDirectory pkgDir
      let run l       = runExceptT . execStateT l
          load []     = return ()
          load (f:fs) = do loadModule f; load fs
-         loader      = do idrisMain opts; load fs
+         loader      = do idrisMain opts; addImportDir (sourcedir pkgdesc); load fs
      idrisInstance  <- run loader idrisInit
      setCurrentDirectory cd
      case idrisInstance of

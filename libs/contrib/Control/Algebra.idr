@@ -54,7 +54,7 @@ class Group a => AbelianGroup a where { }
 |||     forall a,     inverse a <+> a == neutral
 ||| + Associativity of `<.>`:
 |||     forall a b c, a <.> (b <.> c) == (a <.> b) <.> c
-||| + Distributivity of `<.>` and `<->`:
+||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 class AbelianGroup a => Ring a where
@@ -80,7 +80,7 @@ class AbelianGroup a => Ring a where
 ||| + Neutral for `<.>`:
 |||     forall a,     a <.> unity     == a
 |||     forall a,     unity <.> a     == a
-||| + Distributivity of `<.>` and `<->`:
+||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 class Ring a => RingWithUnity a where
@@ -109,21 +109,21 @@ class Ring a => RingWithUnity a where
 ||| + InverseM of `<.>`, except for neutral
 |||     forall a /= neutral,  a <.> inverseM a == unity
 |||     forall a /= neutral,  inverseM a <.> a == unity
-||| + Distributivity of `<.>` and `<->`:
+||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 class RingWithUnity a => Field a where
   inverseM : (x : a) -> Not (x = neutral) -> a
 
-sum : (Foldable t, Monoid a) => t a -> a
-sum = foldr (<+>) neutral
+sum' : (Foldable t, Monoid a) => t a -> a
+sum' = concat
 
-product : (Foldable t, RingWithUnity a) => t a -> a
-product = foldr (<.>) unity
+product' : (Foldable t, RingWithUnity a) => t a -> a
+product' = foldr (<.>) unity
 
-power : RingWithUnity a => a -> Nat -> a
-power _ Z     = unity
-power x (S n) = x <.> (Algebra.power x n)
+pow' : RingWithUnity a => a -> Nat -> a
+pow' _ Z     = unity
+pow' x (S n) = x <.> pow' x n
 
 
 -- XXX todo:

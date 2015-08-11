@@ -18,11 +18,12 @@ import Prelude.Nat
 infix 5 \\
 infixr 7 ::,++
 
-||| Linked lists
+||| Generic lists
 %elim data List elem =
-  ||| The empty list
+  ||| Empty list
   Nil |
-  ||| Cons cell
+  ||| A non-empty list, consisting of a head element and the rest of
+  ||| the list.
   (::) elem (List elem)
 
 -- Name hints for interactive editing

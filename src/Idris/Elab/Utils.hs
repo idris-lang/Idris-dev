@@ -40,21 +40,21 @@ recheckC_borrowing uniq_check bs fc mkerr env t
 iderr :: Name -> Err -> Err
 iderr _ e = e
 
-checkDef :: FC -> (Name -> Err -> Err) -> [(Name, (Int, Maybe Name, Type))]
-         -> Idris [(Name, (Int, Maybe Name, Type))]
+checkDef :: FC -> (Name -> Err -> Err) -> [(Name, (Int, Maybe Name, Type, [Name]))]
+         -> Idris [(Name, (Int, Maybe Name, Type, [Name]))]
 checkDef fc mkerr ns = checkAddDef False True fc mkerr ns
 
 checkAddDef :: Bool -> Bool -> FC -> (Name -> Err -> Err)
-            -> [(Name, (Int, Maybe Name, Type))]
-            -> Idris [(Name, (Int, Maybe Name, Type))]
+            -> [(Name, (Int, Maybe Name, Type, [Name]))]
+            -> Idris [(Name, (Int, Maybe Name, Type, [Name]))]
 checkAddDef add toplvl fc mkerr [] = return []
-checkAddDef add toplvl fc mkerr ((n, (i, top, t)) : ns) 
+checkAddDef add toplvl fc mkerr ((n, (i, top, t, psns)) : ns) 
                = do ctxt <- getContext
                     (t', _) <- recheckC fc (mkerr n) [] t
-                    when add $ do addDeferred [(n, (i, top, t, toplvl))]
+                    when add $ do addDeferred [(n, (i, top, t, psns, toplvl))]
                                   addIBC (IBCDef n)
                     ns' <- checkAddDef add toplvl fc mkerr ns
-                    return ((n, (i, top, t')) : ns')
+                    return ((n, (i, top, t', psns)) : ns')
 
 -- | Get the list of (index, name) of inaccessible arguments from an elaborated
 -- type
@@ -137,7 +137,8 @@ decorateid decorate (PClauses f o n cs)
 pbinds :: IState -> Term -> ElabD ()
 pbinds i (Bind n (PVar t) sc) 
     = do attack; patbind n
-         case unApply t of
+         env <- get_env
+         case unApply (normalise (tt_ctxt i) env t) of
               (P _ c _, args) -> case lookupCtxt c (idris_classes i) of
                                    [] -> return ()
                                    _ -> -- type class, set as injective

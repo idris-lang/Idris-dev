@@ -24,6 +24,9 @@ New in 0.9.19:
 * More flexible 'case' construct, allowing each branch to target different
   types, provided that the case analysis does not affect the form of any
   variable used in the right hand side of the case.
+* Some improvements in interactive editing, particularly in lifting out
+  definitions and proof search.
+* Moved System.Interactive, along with getArgs to the Prelude.
 
 New in 0.9.18:
 --------------

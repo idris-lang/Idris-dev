@@ -159,9 +159,9 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          -- Productivity checking now via checking for guarded 'Delay' 
          let opts' = opts -- if corec then (Coinductive : opts) else opts
          let usety = if norm then nty' else nty
-         ds <- checkDef fc iderr [(n, (-1, Nothing, usety))]
+         ds <- checkDef fc iderr [(n, (-1, Nothing, usety, []))]
          addIBC (IBCDef n)
-         let ds' = map (\(n, (i, top, fam)) -> (n, (i, top, fam, True))) ds
+         let ds' = map (\(n, (i, top, fam, ns)) -> (n, (i, top, fam, ns, True))) ds
          addDeferred ds'
          setFlags n opts'
          checkDocs fc argDocs ty

@@ -1,6 +1,6 @@
 module Data.VectType
 
-import Data.Fin
+import public Data.Fin
 
 %access public
 %default total
@@ -9,9 +9,14 @@ namespace Vect {
 
 infixr 7 ::
 
-%elim data Vect : Nat -> Type -> Type where
+||| Vectors: Generic lists with explicit length in the type
+%elim 
+data Vect : Nat -> Type -> Type where
+  ||| Empty vector 
   Nil  : Vect Z a
-  (::) : (x : a) -> (xs : Vect n a) -> Vect (S n) a
+  ||| A non-empty vector of length `S k`, consisting of a head element and 
+  ||| the rest of the list, of length `k`.
+  (::) : (x : a) -> (xs : Vect k a) -> Vect (S k) a
 
 -- Hints for interactive editing
 %name Vect xs,ys,zs,ws

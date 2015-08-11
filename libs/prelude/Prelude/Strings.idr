@@ -1,6 +1,7 @@
 module Prelude.Strings
 
 import Builtins
+import IO
 
 import Prelude.Algebra
 import Prelude.Basics
@@ -13,7 +14,17 @@ import Prelude.Foldable
 import Prelude.Functor
 import Prelude.List
 import Prelude.Nat
+import Prelude.Monad
 import Decidable.Equality
+
+partial
+foldr1 : (a -> a -> a) -> List a -> a
+foldr1 _ [x] = x
+foldr1 f (x::xs) = f x (foldr1 f xs)
+
+partial
+foldl1 : (a -> a -> a) -> List a -> a
+foldl1 f (x::xs) = foldl f x xs
 
 ||| Appends two strings together.
 |||
@@ -247,15 +258,6 @@ lines' s = case dropWhile isNL s of
 lines : String -> List String
 lines s = map pack $ lines' $ unpack s
 
-partial
-foldr1 : (a -> a -> a) -> List a -> a
-foldr1 _ [x] = x
-foldr1 f (x::xs) = f x (foldr1 f xs)
-
-partial
-foldl1 : (a -> a -> a) -> List a -> a
-foldl1 f (x::xs) = foldl f x xs
-
 ||| Joins the character lists by spaces into a single character list.
 |||
 ||| ```idris example
@@ -263,18 +265,36 @@ foldl1 f (x::xs) = foldl f x xs
 ||| ```
 unwords' : List (List Char) -> List Char
 unwords' [] = []
-unwords' ws = assert_total (foldr1 addSpace ws)
-        where
-            addSpace : List Char -> List Char -> List Char
-            addSpace w s = w ++ (' ' :: s)
+unwords' ws = assert_total (foldr1 addSpace ws) where
+  addSpace : List Char -> List Char -> List Char
+  addSpace w s = w ++ (' ' :: s)
 
-||| Joins the strings by spaces into a single string. 
+||| Joins the strings by spaces into a single string.
 |||
 ||| ```idris example
 ||| unwords ["A", "BC", "D", "E"]
 ||| ```
 unwords : List String -> String
 unwords = pack . unwords' . map unpack
+
+||| Joins the character lists by newlines into a single character list.
+|||
+||| ```idris example
+||| unlines' [['l','i','n','e'], ['l','i','n','e','2'], ['l','n','3'], ['D']]
+||| ```
+unlines' : List (List Char) -> List Char
+unlines' [] = []
+unlines' ls = assert_total (foldr1 addLine ls) where
+  addLine : List Char -> List Char -> List Char
+  addLine l s = l ++ ('\n' :: s)
+
+||| Joins the strings by newlines into a single string.
+|||
+||| ```idris example
+||| unlines ["line", "line2", "ln3", "D"]
+||| ```
+unlines : List String -> String
+unlines = pack . unlines' . map unpack
 
 ||| Returns the length of the string.
 |||
@@ -286,6 +306,14 @@ unwords = pack . unwords' . map unpack
 ||| ```
 length : String -> Nat
 length = fromInteger . prim__zextInt_BigInt . prim_lenString
+
+||| Returns a substring of a given string
+||| @index The (zero based) index of the string to extract. If this is
+||| beyond the end of the String, the function returns the empty string.
+||| @len The desired length of the substring. Truncated if this exceeds
+||| the length of the input.
+substr : (index : Nat) -> (len : Nat) -> String -> String
+substr i len = pack . List.take len . drop i . unpack
 
 ||| Lowercases all characters in the string.
 |||
@@ -321,3 +349,16 @@ isSuffixOf a b = isSuffixOf (unpack a) (unpack b)
 
 isInfixOf : String -> String -> Bool
 isInfixOf a b = isInfixOf (unpack a) (unpack b)
+
+||| Check if a foreign pointer is null
+partial
+nullPtr : Ptr -> IO Bool
+nullPtr p = do ok <- foreign FFI_C "isNull" (Ptr -> IO Int) p
+               return (ok /= 0)
+
+||| Check if a supposed string was actually a null pointer
+partial
+nullStr : String -> IO Bool
+nullStr p = do ok <- foreign FFI_C "isNull" (String -> IO Int) p
+               return (ok /= 0)
+

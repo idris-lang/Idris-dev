@@ -2,7 +2,6 @@ module Effect.Random
 
 import Effects
 import Data.Vect
-import Data.Fin
 
 data Random : Effect where 
      getRandom : sig Random Integer Integer

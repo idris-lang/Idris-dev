@@ -597,7 +597,7 @@ addDeferredTyCon = addDeferred' (TCon 0 0)
 
 -- | Save information about a name that is not yet defined
 addDeferred' :: NameType
-             -> [(Name, (Int, Maybe Name, Type, Bool))]
+             -> [(Name, (Int, Maybe Name, Type, [Name], Bool))]
                 -- ^ The Name is the name being made into a metavar,
                 -- the Int is the number of vars that are part of a
                 -- putative proof context, the Maybe Name is the
@@ -606,10 +606,10 @@ addDeferred' :: NameType
                 -- allowed
              -> Idris ()
 addDeferred' nt ns
-  = do mapM_ (\(n, (i, _, t, _)) -> updateContext (addTyDecl n nt (tidyNames S.empty t))) ns
+  = do mapM_ (\(n, (i, _, t, _, _)) -> updateContext (addTyDecl n nt (tidyNames S.empty t))) ns
        mapM_ (\(n, _) -> when (not (n `elem` primDefs)) $ addIBC (IBCMetavar n)) ns
        i <- getIState
-       putIState $ i { idris_metavars = map (\(n, (i, top, _, isTopLevel)) -> (n, (top, i, isTopLevel))) ns ++
+       putIState $ i { idris_metavars = map (\(n, (i, top, _, ns, isTopLevel)) -> (n, (top, i, ns, isTopLevel))) ns ++
                                             idris_metavars i }
   where
         -- 'tidyNames' is to generate user accessible names in case they are
@@ -789,6 +789,12 @@ getNoBanner :: Idris Bool
 getNoBanner = do i <- getIState
                  let opts = idris_options i
                  return (opt_nobanner opts)
+
+setEvalTypes :: Bool -> Idris ()
+setEvalTypes n = do i <- getIState
+                    let opts = idris_options i
+                    let opt' = opts { opt_evaltypes = n }
+                    putIState $ i { idris_options = opt' }
 
 setQuiet :: Bool -> Idris ()
 setQuiet q = do i <- getIState
