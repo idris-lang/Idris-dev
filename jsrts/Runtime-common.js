@@ -106,7 +106,7 @@ var i$fromCharCode = function(chr) {
 }
 
 var i$RUN = function () {
-  for (var i = 0; i < 1000 && i$callstack.length; i++) {
+  for (var i = 0; i < 10000 && i$callstack.length; i++) {
     var func = i$callstack.pop();
     var args = i$callstack.pop();
     func.apply(this,args);
