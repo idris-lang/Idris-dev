@@ -1,6 +1,6 @@
 /** @constructor */
 var i$VM = function() {
-  this.valstack = [];
+  this.valstack = {};
   this.valstack_top = 0;
   this.valstack_base = 0;
 
@@ -103,4 +103,15 @@ var i$fromCharCode = function(chr) {
     return chr;
   else
     return String.fromCharCode(chr);
+}
+
+var i$RUN = function () {
+  for (var i = 0; i < 1000 && i$callstack.length; i++) {
+    var func = i$callstack.pop();
+    var args = i$callstack.pop();
+    func.apply(this,args);
+  };
+
+  if (i$callstack.length)
+    setTimeout(i$RUN, 0);
 }

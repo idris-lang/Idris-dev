@@ -250,12 +250,7 @@ codegenJS_all target definitions includes libs filename outputType = do
               , JSApp (
                   JSIdent (translateName (sMN 0 "runMain"))
                 ) [JSNew "i$POINTER" [JSNum (JSInt 0)]]
-              , JSWhile (JSProj jsCALLSTACK "length") (
-                  JSSeq [ JSAlloc "func" (Just jsPOP)
-                        , JSAlloc "args" (Just jsPOP)
-                        , JSApp (JSProj (JSIdent "func") "apply") [JSThis, JSIdent "args"]
-                        ]
-                )
+              , JSApp (JSIdent "i$RUN") []
               ]
 
       invokeMain :: T.Text
@@ -601,7 +596,7 @@ jsBASETOP _ 0 = JSAssign jsSTACKBASE jsSTACKTOP
 jsBASETOP _ n = JSAssign jsSTACKBASE (JSBinOp "+" jsSTACKTOP (JSNum (JSInt n)))
 
 jsNULL :: CompileInfo -> Reg -> JS
-jsNULL _ r = JSAssign (translateReg r) JSNull
+jsNULL _ r = JSDelete (translateReg r)
 
 jsERROR :: CompileInfo -> String -> JS
 jsERROR _ = JSError
@@ -680,8 +675,9 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       | LNoOp <- op = translateReg (last args)
 
       | LWriteStr <- op,
-        (_:str:_) <- args = JSAssign (translateReg reg)
-                               (JSApp (JSIdent "i$putStr") [translateReg str])
+        (_:str:_) <- args = JSApp (JSIdent "i$putStr") [translateReg str]
+
+      | LReadStr <- op  = JSApp (JSIdent "i$getLine") []
 
       | (LZExt (ITFixed IT8) ITNative)  <- op = jsUnPackBits $ translateReg (last args)
       | (LZExt (ITFixed IT16) ITNative) <- op = jsUnPackBits $ translateReg (last args)

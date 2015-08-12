@@ -76,6 +76,7 @@ data JS = JSRaw String
         | JSWhile JS JS
         | JSFFI String [JS]
         | JSAnnotation JSAnnotation JS
+        | JSDelete JS
         | JSNoop
         deriving Eq
 
@@ -128,6 +129,9 @@ compileJS' indent (JSAnnotation annotation js) =
   `T.append` T.pack (show annotation)
   `T.append` " */\n"
   `T.append` compileJS' indent js
+
+compileJS' indent (JSDelete js) =
+  "delete " `T.append` compileJS' 0 js
 
 compileJS' indent (JSFFI raw args) =
   ffi raw (map (T.unpack . compileJS' indent) args)
