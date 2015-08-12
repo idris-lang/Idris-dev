@@ -450,8 +450,9 @@ pushIndent = do pos <- position
 -- | Pops indentation from stack
 popIndent :: IdrisParser ()
 popIndent = do ist <- get
-               let (x : xs) = indent_stack ist
-               put (ist { indent_stack = xs })
+               case indent_stack ist of
+                 [] -> error "The impossible happened! Tried to pop an indentation level where none was pushed (underflow)."
+                 (x : xs) -> put (ist { indent_stack = xs })
 
 
 -- | Gets current indentation
