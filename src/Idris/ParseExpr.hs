@@ -177,6 +177,7 @@ extension syn ns rules =
     update ns (PRef fc hls n) = case lookup n ns of
                                   Just (SynTm t) -> t
                                   _ -> PRef fc hls n
+    update ns (PPatvar fc n) = PPatvar fc $ updateB ns n
     update ns (PLam fc n nfc ty sc)
       = PLam fc (updateB ns n) nfc (update ns ty) (update (dropn n ns) sc)
     update ns (PPi p n fc ty sc)
@@ -189,15 +190,20 @@ extension syn ns rules =
       = PApp fc (update ns t) (map (fmap (update ns)) args)
     update ns (PAppBind fc t args)
       = PAppBind fc (update ns t) (map (fmap (update ns)) args)
-    update ns (PCase fc c opts)
-      = PCase fc (update ns c) (map (pmap (update ns)) opts)
+    update ns (PMatchApp fc n) = PMatchApp fc $ updateB ns n
     update ns (PIfThenElse fc c t f)
       = PIfThenElse fc (update ns c) (update ns t) (update ns f)
+    update ns (PCase fc c opts)
+      = PCase fc (update ns c) (map (pmap (update ns)) opts)
+    update ns (PRewrite fc eq tm mty)
+      = PRewrite fc (update ns eq) (update ns tm) (fmap (update ns) mty)
     update ns (PPair fc hls p l r) = PPair fc hls p (update ns l) (update ns r)
     update ns (PDPair fc hls p l t r)
       = PDPair fc hls p (update ns l) (update ns t) (update ns r)
+    update ns (PAs fc n t) = PAs fc (updateB ns n) (update ns t)
     update ns (PAlternative ms a as) = PAlternative ms a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
+    update ns (PGoal fc r n sc) = PGoal fc (update ns r) n (update ns sc)
     update ns (PDoBlock ds) = PDoBlock $ map (upd ns) ds
       where upd :: [(Name, SynMatch)] -> PDo -> PDo
             upd ns (DoExp fc t) = DoExp fc (update ns t)
@@ -207,7 +213,17 @@ extension syn ns rules =
                     = DoBindP fc (update ns i) (update ns t)
                                  (map (\(l,r) -> (update ns l, update ns r)) ts)
             upd ns (DoLetP fc i t) = DoLetP fc (update ns i) (update ns t)
-    update ns (PGoal fc r n sc) = PGoal fc (update ns r) n (update ns sc)
+    update ns (PIdiom fc t) = PIdiom fc $ update ns t
+    update ns (PMetavar fc n) = PMetavar fc $ updateB ns n
+    update ns (PDisamb nsps t) = PDisamb nsps $ update ns t
+    update ns (PUnifyLog t) = PUnifyLog $ update ns t
+    update ns (PNoImplicits t) = PNoImplicits $ update ns t
+    update ns (PQuasiquote tm mty) = PQuasiquote (update ns tm) (fmap (update ns) mty)
+    update ns (PUnquote t) = PUnquote $ update ns t
+    update ns (PQuoteName n fc) = PQuoteName (updateB ns n) fc
+    update ns (PRunElab fc t nsp) = PRunElab fc (update ns t) nsp
+    update ns (PConstSugar fc t) = PConstSugar fc $ update ns t
+    -- PConstSugar probably can't contain anything substitutable, but it's hard to track
     update ns t = t
 
     updTacImp ns (TacImp o st scr)  = TacImp o st (update ns scr)
