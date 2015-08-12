@@ -834,8 +834,9 @@ CAF ::= 'let' FnName '=' Expr Terminator;
 caf :: SyntaxInfo -> IdrisParser PDecl
 caf syn = do reservedHL "let"
              n_in <- fst <$> fnName; let n = expandNS syn n_in
+             pushIndent
              lchar '='
-             t <- expr syn
+             t <- indented $ expr syn
              terminator
              fc <- getFC
              return (PCAF fc n t)
