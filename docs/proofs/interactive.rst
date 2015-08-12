@@ -1,6 +1,12 @@
-***************************
-Interactive Theorem Proving
-***************************
+***************************************
+DEPRECATED: Interactive Theorem Proving
+***************************************
+
+.. warning::
+   **Interactive theorem-proving has been deprecated.**
+   Support for tactic-based theorem proving will eventually be removed from
+   Idris.
+   Existing tactic-based proofs should be rewritten to use ``rewrite`` instead.
 
 Idris also supports interactive theorem proving via tactics. This
 is generally not recommended to be used directly, but rather used as a
