@@ -675,8 +675,9 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       | LNoOp <- op = translateReg (last args)
 
       | LWriteStr <- op,
-        (_:str:_) <- args = JSAssign (translateReg reg)
-                               (JSApp (JSIdent "i$putStr") [translateReg str])
+        (_:str:_) <- args = JSApp (JSIdent "i$putStr") [translateReg str]
+
+      | LReadStr <- op  = JSApp (JSIdent "i$getLine") []
 
       | (LZExt (ITFixed IT8) ITNative)  <- op = jsUnPackBits $ translateReg (last args)
       | (LZExt (ITFixed IT16) ITNative) <- op = jsUnPackBits $ translateReg (last args)
