@@ -7,6 +7,7 @@ module Language.Reflection.Elab
 
 import Builtins
 import Prelude.Applicative
+import Prelude.Basics
 import Prelude.Bool
 import Prelude.Functor
 import Prelude.List
@@ -223,6 +224,12 @@ namespace Tactics
   ||| equivalent
   forgetTypes : TT -> Elab Raw
   forgetTypes tt = prim__Forget tt
+
+  ||| Get the goal type as a Raw term
+  goalType : Elab Raw
+  goalType = do g <- getGoal
+                forgetTypes (snd g)
+
 
   ||| Generate a unique name based on some hint.
   |||
