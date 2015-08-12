@@ -284,7 +284,7 @@ zipWith : (f : a -> b -> c) -> (l : List a) -> (r : List b) ->
 zipWith f []      (y::ys) Refl   impossible
 zipWith f (x::xs) []      Refl   impossible
 zipWith f []      []      p    = []
-zipWith f (x::xs) (y::ys) p    = f x y :: (zipWith f xs ys ?zipWithTailProof)
+zipWith f (x::xs) (y::ys) p    = f x y :: (zipWith f xs ys (succInjective _ _ p))
 
 ||| Combine three lists of the same length elementwise using some function.
 ||| @ f the function to combine elements with
@@ -301,7 +301,7 @@ zipWith3 f []      (y::ys) _       Refl q      impossible
 zipWith3 f (x::xs) []      _       Refl q      impossible
 zipWith3 f []      []      []      p    q    = []
 zipWith3 f (x::xs) (y::ys) (z::zs) p    q    =
-  f x y z :: (zipWith3 f xs ys zs ?zipWith3TailProof ?zipWith3TailProof')
+  f x y z :: (zipWith3 f xs ys zs (succInjective _ _ p) (succInjective _ _ q))
 
 ||| Combine two lists elementwise into pairs
 zip : (l : List a) -> (r : List b) -> (length l = length r) -> List (a, b)
@@ -785,7 +785,7 @@ appendNilRightNeutral : (l : List a) ->
 appendNilRightNeutral []      = Refl
 appendNilRightNeutral (x::xs) =
   let inductiveHypothesis = appendNilRightNeutral xs in
-    ?appendNilRightNeutralStepCase
+    rewrite inductiveHypothesis in Refl
 
 ||| Appending lists is associative.
 appendAssociative : (l : List a) -> (c : List a) -> (r : List a) ->
@@ -793,7 +793,7 @@ appendAssociative : (l : List a) -> (c : List a) -> (r : List a) ->
 appendAssociative []      c r = Refl
 appendAssociative (x::xs) c r =
   let inductiveHypothesis = appendAssociative xs c r in
-    ?appendAssociativeStepCase
+    rewrite inductiveHypothesis in Refl
 
 ||| The length of two lists that are appended is the sum of the lengths
 ||| of the input lists.
@@ -802,7 +802,7 @@ lengthAppend : (left : List a) -> (right : List a) ->
 lengthAppend []      right = Refl
 lengthAppend (x::xs) right =
   let inductiveHypothesis = lengthAppend xs right in
-    ?lengthAppendStepCase
+    rewrite inductiveHypothesis in Refl
 
 ||| Mapping a function over a list doesn't change its length.
 mapPreservesLength : (f : a -> b) -> (l : List a) ->
@@ -810,7 +810,7 @@ mapPreservesLength : (f : a -> b) -> (l : List a) ->
 mapPreservesLength f []      = Refl
 mapPreservesLength f (x::xs) =
   let inductiveHypothesis = mapPreservesLength f xs in
-    ?mapPreservesLengthStepCase
+    rewrite inductiveHypothesis in Refl
 
 ||| Mapping a function over two lists and appending them is equivalent
 ||| to appending them and then mapping the function.
@@ -819,7 +819,7 @@ mapDistributesOverAppend : (f : a -> b) -> (l : List a) -> (r : List a) ->
 mapDistributesOverAppend f []      r = Refl
 mapDistributesOverAppend f (x::xs) r =
   let inductiveHypothesis = mapDistributesOverAppend f xs r in
-    ?mapDistributesOverAppendStepCase
+    rewrite inductiveHypothesis in Refl
 
 ||| Mapping two functions is the same as mapping their composition.
 mapFusion : (f : b -> c) -> (g : a -> b) -> (l : List a) ->
@@ -827,7 +827,7 @@ mapFusion : (f : b -> c) -> (g : a -> b) -> (l : List a) ->
 mapFusion f g []      = Refl
 mapFusion f g (x::xs) =
   let inductiveHypothesis = mapFusion f g xs in
-    ?mapFusionStepCase
+    rewrite inductiveHypothesis in Refl
 
 ||| No list contains an element of the empty list by any predicate.
 hasAnyByNilFalse : (p : a -> a -> Bool) -> (l : List a) ->
@@ -835,11 +835,11 @@ hasAnyByNilFalse : (p : a -> a -> Bool) -> (l : List a) ->
 hasAnyByNilFalse p []      = Refl
 hasAnyByNilFalse p (x::xs) =
   let inductiveHypothesis = hasAnyByNilFalse p xs in
-    ?hasAnyByNilFalseStepCase
+    rewrite inductiveHypothesis in Refl
 
 ||| No list contains an element of the empty list.
 hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
-hasAnyNilFalse l = ?hasAnyNilFalseBody
+hasAnyNilFalse l = rewrite (hasAnyByNilFalse (==) l) in Refl
 
 foldlAsFoldr : (b -> a -> b) -> b -> List a -> b
 foldlAsFoldr f z t = foldr (flip (.) . flip f) id t z
@@ -849,75 +849,4 @@ foldlAsFoldr f z t = foldr (flip (.) . flip f) id t z
 foldlMatchesFoldr : (f : b -> a -> b) -> (q : b) -> (xs : List a) -> foldl f q xs = foldlAsFoldr f q xs
 foldlMatchesFoldr f q [] = Refl
 foldlMatchesFoldr f q (x :: xs) = foldlMatchesFoldr f (f q x) xs
-
-
---------------------------------------------------------------------------------
--- Proofs
---------------------------------------------------------------------------------
-
-lengthAppendStepCase = proof {
-    intros;
-    rewrite inductiveHypothesis;
-    trivial;
-}
-
-hasAnyNilFalseBody = proof {
-    intros;
-    rewrite (hasAnyByNilFalse (==) l);
-    trivial;
-}
-
-hasAnyByNilFalseStepCase = proof {
-    intros;
-    rewrite inductiveHypothesis;
-    trivial;
-}
-
-appendNilRightNeutralStepCase = proof {
-    intros;
-    rewrite inductiveHypothesis;
-    trivial;
-}
-
-appendAssociativeStepCase = proof {
-    intros;
-    rewrite inductiveHypothesis;
-    trivial;
-}
-
-mapFusionStepCase = proof {
-    intros;
-    rewrite inductiveHypothesis;
-    trivial;
-}
-
-mapDistributesOverAppendStepCase = proof {
-    intros;
-    rewrite inductiveHypothesis;
-    trivial;
-}
-
-mapPreservesLengthStepCase = proof {
-    intros;
-    rewrite inductiveHypothesis;
-    trivial;
-}
-
-zipWithTailProof = proof {
-    intros;
-    rewrite (succInjective (length xs) (length ys) p);
-    trivial;
-}
-
-zipWith3TailProof = proof {
-    intros;
-    rewrite (succInjective (length xs) (length ys) p);
-    trivial;
-}
-
-zipWith3TailProof' = proof {
-    intros;
-    rewrite (succInjective (length ys) (length zs) q);
-    trivial;
-}
 
