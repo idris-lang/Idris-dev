@@ -203,7 +203,8 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
                       case lookupCtxtExact n (idris_datatypes ist) of
                           Just t -> do
                              let others = hints ++ con_names t ++ autohints
-                             when (not fromProver) -- in interactive mode,
+                             when (not fromProver && length (con_names t) > 1)
+                                   -- in interactive mode,
                                    -- don't just guess (fine for 'auto',
                                    -- since that's part of the point...)
                                    $ checkConstructor ist others
