@@ -342,6 +342,10 @@ instance Show FunArg where
   showPrec d (MkFunArg n ty plic era) = showCon d "MkFunArg" $ showArg n ++
                                         showArg ty ++ showArg plic ++ showArg era
 
+instance Show CtorArg where
+  showPrec d (CtorParameter fa) = showCon d "CtorParameter" $ showArg fa
+  showPrec d (CtorField fa) = showCon d "CtorField" $ showArg fa
+
 instance Show TyDecl where
   showPrec d (Declare fn args ret) = showCon d "Declare" $ showArg fn ++
                                      showArg args ++ showArg ret
