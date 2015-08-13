@@ -2051,8 +2051,10 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            returnUnit
       | n == tacN "prim__Focus", [what] <- args
       = do n' <- reifyTTName what
-           focus n'
-           returnUnit
+           hs <- get_holes
+           if elem n' hs
+              then focus n' >> returnUnit
+              else lift . tfail . Msg $ "The name " ++ show n' ++ " does not denote a hole"
       | n == tacN "prim__Unfocus", [what] <- args
       = do n' <- reifyTTName what
            movelast n'
