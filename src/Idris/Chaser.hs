@@ -123,7 +123,10 @@ buildTree built fp = btree [] fp
                    --
                    -- https://github.com/idris-lang/Idris-dev/issues/1592
                    ibcOutdated <- fn `younger` (getSrcFile src)
-                   ibcValid <- hasValidIBCVersion fn
+                   -- FIXME (EB): The below 'hasValidIBCVersion' that's
+                   -- commented out appears to be breaking reloading in vim
+                   -- mode. Until we know why, I've commented it out.
+                   ibcValid <- return True -- hasValidIBCVersion fn
                    return [MTree (IBC fn src) (ibcOutdated || not ibcValid) mt ms]
 
           getSrcFile (IBC _ src) = getSrcFile src
