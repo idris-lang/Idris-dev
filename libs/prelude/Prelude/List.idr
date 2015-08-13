@@ -161,8 +161,7 @@ init' []      = Nothing
 init' (x::xs) =
   case xs of
     []    => Just []
-    y::ys =>
-      -- XXX: Problem with typechecking a "do" block here
+    y::ys => 
       case init' $ y::ys of
         Nothing => Nothing
         Just j  => Just $ x :: j
@@ -274,42 +273,38 @@ instance Functor List where
 -- Zips and unzips
 --------------------------------------------------------------------------------
 
-||| Combine two lists of the same length elementwise using some function.
+||| Combine two lists elementwise using some function. If they are different
+||| lengths, the result is truncated to the length of the shorter list.
 ||| @ f the function to combine elements with
 ||| @ l the first list
 ||| @ r the second list
-||| @ ok a proof that the lengths of the inputs are equal
-zipWith : (f : a -> b -> c) -> (l : List a) -> (r : List b) ->
-  (ok : length l = length r) -> List c
-zipWith f []      (y::ys) Refl   impossible
-zipWith f (x::xs) []      Refl   impossible
-zipWith f []      []      p    = []
-zipWith f (x::xs) (y::ys) p    = f x y :: (zipWith f xs ys (succInjective _ _ p))
+zipWith : (f : a -> b -> c) -> (l : List a) -> (r : List b) -> List c
+zipWith f []      (y::ys) = []
+zipWith f (x::xs) []      = []
+zipWith f []      []      = []
+zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
-||| Combine three lists of the same length elementwise using some function.
+||| Combine three lists elementwise using some function. If they are different
+||| lengths, the result is truncated to the length of the shortest list.
 ||| @ f the function to combine elements with
 ||| @ x the first list
 ||| @ y the second list
 ||| @ z the third list
-||| @ ok a proof that the lengths of the first two inputs are equal
-||| @ ok' a proof that the lengths of the second and third inputs are equal
 zipWith3 : (f : a -> b -> c -> d) -> (x : List a) -> (y : List b) ->
-  (z : List c) -> (ok : length x = length y) -> (ok' : length y = length z) -> List d
-zipWith3 f _       []      (z::zs) p    Refl   impossible
-zipWith3 f _       (y::ys) []      p    Refl   impossible
-zipWith3 f []      (y::ys) _       Refl q      impossible
-zipWith3 f (x::xs) []      _       Refl q      impossible
-zipWith3 f []      []      []      p    q    = []
-zipWith3 f (x::xs) (y::ys) (z::zs) p    q    =
-  f x y z :: (zipWith3 f xs ys zs (succInjective _ _ p) (succInjective _ _ q))
+           (z : List c) -> List d
+zipWith3 f _       []      (z::zs) = [] 
+zipWith3 f _       (y::ys) []      = []
+zipWith3 f []      (y::ys) _       = []
+zipWith3 f (x::xs) []      _       = []
+zipWith3 f []      []      []      = []
+zipWith3 f (x::xs) (y::ys) (z::zs) = f x y z :: zipWith3 f xs ys zs
 
 ||| Combine two lists elementwise into pairs
-zip : (l : List a) -> (r : List b) -> (length l = length r) -> List (a, b)
+zip : (l : List a) -> (r : List b) -> List (a, b)
 zip = zipWith (\x,y => (x, y))
 
 ||| Combine three lists elementwise into tuples
-zip3 : (x : List a) -> (y : List b) -> (z : List c) -> (length x = length y) ->
-  (length y = length z) -> List (a, b, c)
+zip3 : (x : List a) -> (y : List b) -> (z : List c) -> List (a, b, c)
 zip3 = zipWith3 (\x,y,z => (x, y, z))
 
 ||| Split a list of pairs into two lists
