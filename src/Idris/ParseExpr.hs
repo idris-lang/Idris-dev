@@ -215,6 +215,8 @@ extension syn ns rules =
             upd ns (DoLetP fc i t) = DoLetP fc (update ns i) (update ns t)
     update ns (PIdiom fc t) = PIdiom fc $ update ns t
     update ns (PMetavar fc n) = PMetavar fc $ updateB ns n
+    update ns (PProof tacs) = PProof $ map (updTactic ns) tacs
+    update ns (PTactics tacs) = PTactics $ map (updTactic ns) tacs
     update ns (PDisamb nsps t) = PDisamb nsps $ update ns t
     update ns (PUnifyLog t) = PUnifyLog $ update ns t
     update ns (PNoImplicits t) = PNoImplicits $ update ns t
@@ -225,6 +227,23 @@ extension syn ns rules =
     update ns (PConstSugar fc t) = PConstSugar fc $ update ns t
     -- PConstSugar probably can't contain anything substitutable, but it's hard to track
     update ns t = t
+
+    updTactic :: [(Name, SynMatch)] -> PTactic -> PTactic
+    -- handle all the ones with Names explicitly, then use fmap for the rest with PTerms
+    updTactic ns (Intro ns') = Intro $ map (updateB ns) ns'
+    updTactic ns (Focus n) = Focus $ updateB ns n
+    updTactic ns (Refine n bs) = Refine (updateB ns n) bs
+    updTactic ns (Claim n t) = Claim (updateB ns n) (update ns t)
+    updTactic ns (MatchRefine n) = MatchRefine (updateB ns n)
+    updTactic ns (LetTac n t) = LetTac (updateB ns n) (update ns t)
+    updTactic ns (LetTacTy n ty tm) = LetTacTy (updateB ns n) (update ns ty) (update ns tm)
+    updTactic ns (ProofSearch rec prover depth top psns hints) = ProofSearch rec prover depth
+      (fmap (updateB ns) top) (map (updateB ns) psns) (map (updateB ns) hints)
+    updTactic ns (Try l r) = Try (updTactic ns l) (updTactic ns r)
+    updTactic ns (TSeq l r) = TSeq (updTactic ns l) (updTactic ns r)
+    updTactic ns (GoalType s tac) = GoalType s $ updTactic ns tac
+    updTactic ns (TDocStr (Left n)) = TDocStr . Left $ updateB ns n
+    updTactic ns t = fmap (update ns) t
 
     updTacImp ns (TacImp o st scr)  = TacImp o st (update ns scr)
     updTacImp _  x                  = x
