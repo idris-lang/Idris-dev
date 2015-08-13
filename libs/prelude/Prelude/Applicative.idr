@@ -5,6 +5,7 @@ import Builtins
 import Prelude.Basics
 import Prelude.Bool
 import Prelude.Classes
+import Prelude.Foldable
 import Prelude.Functor
 
 ---- Applicative functors/Idioms
@@ -48,3 +49,9 @@ guard a = if a then pure () else empty
 when : Applicative f => Bool -> Lazy (f ()) -> f ()
 when True f = Force f
 when False f = pure ()
+
+||| Fold using Alternative
+|||
+||| This is called `asum` in Haskell.
+choice : (Foldable t, Alternative f) => t (f a) -> f a
+choice x = foldr (<|>) empty x
