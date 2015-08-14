@@ -177,6 +177,7 @@ extension syn ns rules =
     update ns (PRef fc hls n) = case lookup n ns of
                                   Just (SynTm t) -> t
                                   _ -> PRef fc hls n
+    update ns (PPatvar fc n) = PPatvar fc $ updateB ns n
     update ns (PLam fc n nfc ty sc)
       = PLam fc (updateB ns n) nfc (update ns ty) (update (dropn n ns) sc)
     update ns (PPi p n fc ty sc)
@@ -189,29 +190,60 @@ extension syn ns rules =
       = PApp fc (update ns t) (map (fmap (update ns)) args)
     update ns (PAppBind fc t args)
       = PAppBind fc (update ns t) (map (fmap (update ns)) args)
-    update ns (PCase fc c opts)
-      = PCase fc (update ns c) (map (pmap (update ns)) opts)
+    update ns (PMatchApp fc n) = PMatchApp fc $ updateB ns n
     update ns (PIfThenElse fc c t f)
       = PIfThenElse fc (update ns c) (update ns t) (update ns f)
+    update ns (PCase fc c opts)
+      = PCase fc (update ns c) (map (pmap (update ns)) opts)
+    update ns (PRewrite fc eq tm mty)
+      = PRewrite fc (update ns eq) (update ns tm) (fmap (update ns) mty)
     update ns (PPair fc hls p l r) = PPair fc hls p (update ns l) (update ns r)
     update ns (PDPair fc hls p l t r)
       = PDPair fc hls p (update ns l) (update ns t) (update ns r)
+    update ns (PAs fc n t) = PAs fc (updateB ns n) (update ns t)
     update ns (PAlternative ms a as) = PAlternative ms a (map (update ns) as)
     update ns (PHidden t) = PHidden (update ns t)
-    update ns (PDoBlock ds) = PDoBlock $ upd ns ds
-      where upd :: [(Name, SynMatch)] -> [PDo] -> [PDo]
-            upd ns (DoExp fc t : ds) = DoExp fc (update ns t) : upd ns ds
-            upd ns (DoBind fc n nfc t : ds) = DoBind fc n nfc (update ns t) : upd (dropn n ns) ds
-            upd ns (DoLet fc n nfc ty t : ds) = DoLet fc n nfc (update ns ty) (update ns t)
-                                                    : upd (dropn n ns) ds
-            upd ns (DoBindP fc i t ts : ds) 
-                    = DoBindP fc (update ns i) (update ns t) 
-                                 (map (\(l,r) -> (update ns l, update ns r)) ts)
-                                                : upd ns ds
-            upd ns (DoLetP fc i t : ds) = DoLetP fc (update ns i) (update ns t)
-                                                : upd ns ds
     update ns (PGoal fc r n sc) = PGoal fc (update ns r) n (update ns sc)
+    update ns (PDoBlock ds) = PDoBlock $ map (upd ns) ds
+      where upd :: [(Name, SynMatch)] -> PDo -> PDo
+            upd ns (DoExp fc t) = DoExp fc (update ns t)
+            upd ns (DoBind fc n nfc t) = DoBind fc n nfc (update ns t)
+            upd ns (DoLet fc n nfc ty t) = DoLet fc n nfc (update ns ty) (update ns t)
+            upd ns (DoBindP fc i t ts)
+                    = DoBindP fc (update ns i) (update ns t)
+                                 (map (\(l,r) -> (update ns l, update ns r)) ts)
+            upd ns (DoLetP fc i t) = DoLetP fc (update ns i) (update ns t)
+    update ns (PIdiom fc t) = PIdiom fc $ update ns t
+    update ns (PMetavar fc n) = PMetavar fc $ updateB ns n
+    update ns (PProof tacs) = PProof $ map (updTactic ns) tacs
+    update ns (PTactics tacs) = PTactics $ map (updTactic ns) tacs
+    update ns (PDisamb nsps t) = PDisamb nsps $ update ns t
+    update ns (PUnifyLog t) = PUnifyLog $ update ns t
+    update ns (PNoImplicits t) = PNoImplicits $ update ns t
+    update ns (PQuasiquote tm mty) = PQuasiquote (update ns tm) (fmap (update ns) mty)
+    update ns (PUnquote t) = PUnquote $ update ns t
+    update ns (PQuoteName n fc) = PQuoteName (updateB ns n) fc
+    update ns (PRunElab fc t nsp) = PRunElab fc (update ns t) nsp
+    update ns (PConstSugar fc t) = PConstSugar fc $ update ns t
+    -- PConstSugar probably can't contain anything substitutable, but it's hard to track
     update ns t = t
+
+    updTactic :: [(Name, SynMatch)] -> PTactic -> PTactic
+    -- handle all the ones with Names explicitly, then use fmap for the rest with PTerms
+    updTactic ns (Intro ns') = Intro $ map (updateB ns) ns'
+    updTactic ns (Focus n) = Focus $ updateB ns n
+    updTactic ns (Refine n bs) = Refine (updateB ns n) bs
+    updTactic ns (Claim n t) = Claim (updateB ns n) (update ns t)
+    updTactic ns (MatchRefine n) = MatchRefine (updateB ns n)
+    updTactic ns (LetTac n t) = LetTac (updateB ns n) (update ns t)
+    updTactic ns (LetTacTy n ty tm) = LetTacTy (updateB ns n) (update ns ty) (update ns tm)
+    updTactic ns (ProofSearch rec prover depth top psns hints) = ProofSearch rec prover depth
+      (fmap (updateB ns) top) (map (updateB ns) psns) (map (updateB ns) hints)
+    updTactic ns (Try l r) = Try (updTactic ns l) (updTactic ns r)
+    updTactic ns (TSeq l r) = TSeq (updTactic ns l) (updTactic ns r)
+    updTactic ns (GoalType s tac) = GoalType s $ updTactic ns tac
+    updTactic ns (TDocStr (Left n)) = TDocStr . Left $ updateB ns n
+    updTactic ns t = fmap (update ns) t
 
     updTacImp ns (TacImp o st scr)  = TacImp o st (update ns scr)
     updTacImp _  x                  = x
