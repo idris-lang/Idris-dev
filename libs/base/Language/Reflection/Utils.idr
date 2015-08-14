@@ -242,6 +242,12 @@ instance Eq TT where
           equalp (TType u)    (TType u')       = u == u'
           equalp x            y                = False
 
+instance Eq Universe where
+  Reflection.NullType   == Reflection.NullType   = True
+  Reflection.UniqueType == Reflection.UniqueType = True
+  Reflection.AllTypes   == Reflection.AllTypes   = True
+  _                     == _                     = False
+
 total
 forget : TT -> Maybe Raw
 forget tm = fe [] tm
