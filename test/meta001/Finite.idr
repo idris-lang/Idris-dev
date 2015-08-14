@@ -28,7 +28,7 @@ mkFin (S k) (S j) = do i <- mkFin k j
                        return `(FS {k=~(quote k)} ~i)
 
 mkToClause : TTName -> (size, i : Nat) ->
-             (constr : (TTName, List Arg, Raw)) ->
+             (constr : (TTName, List CtorArg, Raw)) ->
              Elab FunClause
 mkToClause fn size i (n, [], Var ty) =
   MkFunClause (RApp (Var fn) (Var n)) <$> mkFin size i
@@ -37,7 +37,7 @@ mkToClause fn size i (n, _, ty) =
 
 
 mkFromClause : TTName -> (size, i : Nat) ->
-               (constr : (TTName, List Arg, Raw)) ->
+               (constr : (TTName, List CtorArg, Raw)) ->
                Elab FunClause
 mkFromClause fn size i (n, [], Var ty) =
   return $ MkFunClause (RApp (Var fn) !(mkFin size i)) (Var n)
@@ -45,7 +45,7 @@ mkFromClause fn size i (n, _, ty) =
   fail [TextPart "unsupported constructor", NamePart n]
 
 
-mkOk1Clause : TTName -> (size, i : Nat) -> (constr : (TTName, List Arg, Raw)) -> Elab FunClause
+mkOk1Clause : TTName -> (size, i : Nat) -> (constr : (TTName, List CtorArg, Raw)) -> Elab FunClause
 mkOk1Clause fn size i (n, [], Var ty) =
   return $ MkFunClause (RApp (Var fn) (Var n))
                        [| (Var (UN "Refl")) (Var ty) (Var n) |]
@@ -53,7 +53,7 @@ mkOk1Clause fn size i (n, _, ty) =
   fail [TextPart "unsupported constructor", NamePart n]
 
 
-mkOk2Clause : TTName -> (size, i : Nat) -> (constr : (TTName, List Arg, Raw)) -> Elab FunClause
+mkOk2Clause : TTName -> (size, i : Nat) -> (constr : (TTName, List CtorArg, Raw)) -> Elab FunClause
 mkOk2Clause fn size i (n, [], Var ty) =
   return $ MkFunClause (RApp (Var fn) !(mkFin size i))
                        [| (Var "Refl") `(Fin ~(quote size))
@@ -62,9 +62,9 @@ mkOk2Clause fn size i (n, _, ty) =
   fail [TextPart "unsupported constructor", NamePart n]
 
 
-mkToClauses : TTName -> Nat -> List (TTName, List Arg, Raw) -> Elab (List FunClause)
+mkToClauses : TTName -> Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
 mkToClauses fn size xs = mkToClauses' Z xs
-  where mkToClauses' : Nat -> List (TTName, List Arg, Raw) -> Elab (List FunClause)
+  where mkToClauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
         mkToClauses' k []        = return []
         mkToClauses' k (x :: xs) = do rest <- mkToClauses' (S k) xs
                                       clause <- mkToClause fn size k x
@@ -92,26 +92,26 @@ mkAbsurdFinClause fn goal size =
 
 
 mkFromClauses : TTName -> TTName -> Nat ->
-                List (TTName, List Arg, Raw) -> Elab (List FunClause)
+                List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
 mkFromClauses fn ty size xs = mkFromClauses' Z xs
-  where mkFromClauses' : Nat -> List (TTName, List Arg, Raw) -> Elab (List FunClause)
+  where mkFromClauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
         mkFromClauses' k []        =
              return [!(mkAbsurdFinClause fn (const (Var ty)) size)]
         mkFromClauses' k (x :: xs) = do rest <- mkFromClauses' (S k) xs
                                         clause <- mkFromClause fn size k x
                                         return $ clause :: rest
 
-mkOk1Clauses : TTName -> Nat -> List (TTName, List Arg, Raw) -> Elab (List FunClause)
+mkOk1Clauses : TTName -> Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
 mkOk1Clauses fn size xs = mkOk1Clauses' Z xs
-  where mkOk1Clauses' : Nat -> List (TTName, List Arg, Raw) -> Elab (List FunClause)
+  where mkOk1Clauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
         mkOk1Clauses' k []        = return []
         mkOk1Clauses' k (x :: xs) = do rest <- mkOk1Clauses' (S k) xs
                                        clause <- mkOk1Clause fn size k x
                                        return $ clause :: rest
 
-mkOk2Clauses : TTName -> Nat -> List (TTName, List Arg, Raw) -> (Raw -> Raw) -> Elab (List FunClause)
+mkOk2Clauses : TTName -> Nat -> List (TTName, List CtorArg, Raw) -> (Raw -> Raw) -> Elab (List FunClause)
 mkOk2Clauses fn size xs resTy = mkOk2Clauses' Z xs
-  where mkOk2Clauses' : Nat -> List (TTName, List Arg, Raw) -> Elab (List FunClause)
+  where mkOk2Clauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
         mkOk2Clauses' k []        = return [!(mkAbsurdFinClause fn resTy size)]
         mkOk2Clauses' k (x :: xs) = do rest <- mkOk2Clauses' (S k) xs
                                        clause <- mkOk2Clause fn size k x
@@ -123,19 +123,19 @@ genToFin to from ok1 ok2 ty =
   do (MkDatatype famn tcargs tcres constrs) <- lookupDatatypeExact ty
      let size = length constrs
      argn <- gensym "arg"
-     declareType $ Declare to [Explicit argn NotErased (Var ty)]
+     declareType $ Declare to [MkFunArg argn (Var ty) Explicit NotErased]
                            `(Fin ~(quote size))
      toClauses <- mkToClauses to size constrs
      defineFunction $ DefineFun to toClauses
 
      argn' <- gensym "arg"
-     declareType $ Declare from [Explicit argn' NotErased `(Fin ~(quote size))]
+     declareType $ Declare from [MkFunArg argn' `(Fin ~(quote size)) Explicit NotErased ]
                            (Var ty)
      fromClauses <- mkFromClauses from ty size constrs
      defineFunction $ DefineFun from fromClauses
 
      argn'' <- gensym "arg"
-     declareType $ Declare ok1 [Explicit argn'' NotErased (Var ty)]
+     declareType $ Declare ok1 [MkFunArg argn'' (Var ty) Explicit NotErased]
                            `((=) {A=~(Var ty)} {B=~(Var ty)}
                                  ~(RApp (Var from) (RApp (Var to) (Var argn'')))
                                  ~(Var argn''))
@@ -148,7 +148,7 @@ genToFin to from ok1 ok2 ty =
        (\n => `((=) {A=~fty} {B=~fty}
                    ~(RApp (Var to) (RApp (Var from) n))
                    ~n))
-     declareType $ Declare ok2 [Explicit argn''' NotErased fty]
+     declareType $ Declare ok2 [MkFunArg argn''' fty Explicit NotErased]
                            (ok2ResTy (Var argn'''))
      ok2Clauses <- mkOk2Clauses ok2 size constrs ok2ResTy
      defineFunction $ DefineFun ok2 ok2Clauses
