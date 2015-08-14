@@ -52,6 +52,23 @@ when False f = pure ()
 
 ||| Fold using Alternative
 |||
-||| This is called `asum` in Haskell.
+||| If you have a left-biased alternative operator `<|>`, then `choice`
+||| performs left-biased choice from a list of alternatives, which means that
+||| it evaluates to the left-most non-`empty` alternative.
+|||
+||| If the list is empty, or all values in it are `empty`, then it
+||| evaluates to `empty`.
+|||
+||| Example:
+|||
+||| ```
+||| -- given a parser expression like:
+||| expr = literal <|> keyword <|> funcall
+|||
+||| -- choice lets you write this as:
+||| expr = choice [literal, keyword, funcall]
+||| ```
+|||
+||| Note: In Haskell, `choice` is called `asum`.
 choice : (Foldable t, Alternative f) => t (f a) -> f a
 choice x = foldr (<|>) empty x
