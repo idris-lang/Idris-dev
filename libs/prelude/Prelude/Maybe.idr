@@ -11,9 +11,13 @@ import Prelude.Foldable
 %access public
 %default total
 
+||| An optional value. This can be used to represent the possibility of
+||| failure, where a function may return a value, or not.
 data Maybe a
-    = Nothing
-    | Just a
+    = ||| No value stored
+      Nothing
+    | ||| A value of type `a` is stored
+      Just a
 
 --------------------------------------------------------------------------------
 -- Syntactic tests

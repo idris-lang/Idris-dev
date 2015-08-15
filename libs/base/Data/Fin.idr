@@ -129,6 +129,8 @@ natToFin (S k) (S j) with (natToFin k j)
                           | Nothing = Nothing
 natToFin _ _ = Nothing
 
+||| Convert an `Integer` to a `Fin`, provided the integer is within bounds.
+||| @n The upper bound of the Fin
 integerToFin : Integer -> (n : Nat) -> Maybe (Fin n)
 integerToFin x Z = Nothing -- make sure 'n' is concrete, to save reduction!
 integerToFin x n = if x >= 0 then natToFin (cast x) n else Nothing
