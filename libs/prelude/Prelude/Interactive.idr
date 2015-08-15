@@ -121,14 +121,14 @@ processStdin = processHandle stdin
 ||| output and a new state. Returns Nothing if the repl should exit
 partial
 replWith : (state : a) -> (prompt : String) -> 
-           (onInput : a -> String -> Maybe (String, a)) -> IO a
+           (onInput : a -> String -> Maybe (String, a)) -> IO ()
 replWith acc prompt fn 
    = do putStr prompt
         x <- getLine
         case fn acc x of
              Just (out, acc') => do putStr out 
                                     replWith acc' prompt fn
-             Nothing => return acc
+             Nothing => return ()
 
 ||| A basic read-eval-print loop
 ||| @ prompt the prompt to show 
@@ -138,6 +138,5 @@ partial
 repl : (prompt : String) -> 
        (onInput : String -> String) -> IO ()
 repl prompt fn 
-   = do replWith () prompt (\x, s => Just (fn s, ()))
-        return ()
+   = replWith () prompt (\x, s => Just (fn s, ()))
 
