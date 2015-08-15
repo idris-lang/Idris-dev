@@ -66,10 +66,7 @@ pClause :: PParser ()
 pClause = do reserved "executable"; lchar '=';
              exec <- fst <$> iName []
              st <- get
-             put (st { execout = Just (if isWindows
-                                          then ((show exec) ++ ".exe")
-                                          else ( show exec )
-                                      ) })
+             put (st { execout = Just (show exec) })
       <|> do reserved "main"; lchar '=';
              main <- fst <$> iName []
              st <- get
