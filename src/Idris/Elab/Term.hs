@@ -17,6 +17,7 @@ import Idris.Core.Evaluate
 import Idris.Core.Unify
 import Idris.Core.ProofTerm (getProofTerm)
 import Idris.Core.Typecheck (check, recheck, converts, isType)
+import Idris.Core.WHNF (whnf)
 import Idris.Coverage (buildSCG, checkDeclTotality, genClauses, recoverableCoverage, validCoverageCase)
 import Idris.ErrReverse (errReverse)
 import Idris.ElabQuasiquote (extractUnquotes)
@@ -2050,8 +2051,10 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            returnUnit
       | n == tacN "prim__Focus", [what] <- args
       = do n' <- reifyTTName what
-           focus n'
-           returnUnit
+           hs <- get_holes
+           if elem n' hs
+              then focus n' >> returnUnit
+              else lift . tfail . Msg $ "The name " ++ show n' ++ " does not denote a hole"
       | n == tacN "prim__Unfocus", [what] <- args
       = do n' <- reifyTTName what
            movelast n'
@@ -2077,6 +2080,16 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            returnUnit
       | n == tacN "prim__Compute", [] <- args
       = do compute ; returnUnit
+      | n == tacN "prim__Normalise", [env, tm] <- args
+      = do env' <- reifyEnv env
+           tm' <- reifyTT tm
+           ctxt <- get_context
+           let out = normaliseAll ctxt env' (finalise tm')
+           fmap fst . checkClosed $ reflect out
+      | n == tacN "prim__Whnf", [tm] <- args
+      = do tm' <- reifyTT tm
+           ctxt <- get_context
+           fmap fst . checkClosed . reflect $ whnf ctxt tm'
       | n == tacN "prim__DeclareType", [decl] <- args
       = do (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context
@@ -2097,7 +2110,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            let decl = TyDecl Ref checked
                ctxt' = addCtxtDef n decl ctxt
            set_context ctxt'
-           updateAux $ \e -> e { new_tyDecls = (RTyDeclInstrs n fc (map rArgToPArg args) checked) :
+           updateAux $ \e -> e { new_tyDecls = (RTyDeclInstrs n fc (map rFunArgToPArg args) checked) :
                                                new_tyDecls e }
            aux <- getAux
            returnUnit

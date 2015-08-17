@@ -242,6 +242,12 @@ instance Eq TT where
           equalp (TType u)    (TType u')       = u == u'
           equalp x            y                = False
 
+instance Eq Universe where
+  Reflection.NullType   == Reflection.NullType   = True
+  Reflection.UniqueType == Reflection.UniqueType = True
+  Reflection.AllTypes   == Reflection.AllTypes   = True
+  _                     == _                     = False
+
 total
 forget : TT -> Maybe Raw
 forget tm = fe [] tm
@@ -333,10 +339,18 @@ instance Show Erasure where
   show Erased    = "Erased"
   show NotErased = "NotErased"
 
-instance Show Arg where
-  showPrec d (Explicit n e t) = showCon d "Explicit" $ showArg n ++ showArg e ++ showArg t
-  showPrec d (Implicit n e t) = showCon d "Implicit" $ showArg n ++ showArg e ++ showArg t
-  showPrec d (Constraint n e t) = showCon d "Constraint" $ showArg n ++ showArg e ++ showArg t
+instance Show Plicity where
+  show Explicit = "Explicit"
+  show Implicit = "Implicit"
+  show Constraint = "Constraint"
+
+instance Show FunArg where
+  showPrec d (MkFunArg n ty plic era) = showCon d "MkFunArg" $ showArg n ++
+                                        showArg ty ++ showArg plic ++ showArg era
+
+instance Show CtorArg where
+  showPrec d (CtorParameter fa) = showCon d "CtorParameter" $ showArg fa
+  showPrec d (CtorField fa) = showCon d "CtorField" $ showArg fa
 
 instance Show TyDecl where
   showPrec d (Declare fn args ret) = showCon d "Declare" $ showArg fn ++

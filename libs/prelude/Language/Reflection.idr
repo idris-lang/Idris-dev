@@ -579,33 +579,62 @@ mutual
     quote (PVTy x) = `(PVTy {a=TT} ~(assert_total (quote x)))
 
 mutual
-  quoteRaw : Raw -> TT
-  quoteRaw (Var n) = `(Var ~(quote n))
-  quoteRaw (RBind n b tm) = `(RBind ~(quote n) ~(assert_total $ quoteRawBinder b) ~(quoteRaw tm))
-  quoteRaw (RApp tm tm') = `(RApp ~(quoteRaw tm) ~(quoteRaw tm'))
-  quoteRaw RType = `(RType)
-  quoteRaw (RUType u) = `(RUType ~(quote u))
-  quoteRaw (RForce tm) = `(RForce ~(quoteRaw tm))
-  quoteRaw (RConstant c) = `(RConstant ~(quote c))
+  quoteRawTT : Raw -> TT
+  quoteRawTT (Var n) = `(Var ~(quote n))
+  quoteRawTT (RBind n b tm) = `(RBind ~(quote n) ~(assert_total $ quoteRawBinderTT b) ~(quoteRawTT tm))
+  quoteRawTT (RApp tm tm') = `(RApp ~(quoteRawTT tm) ~(quoteRawTT tm'))
+  quoteRawTT RType = `(RType)
+  quoteRawTT (RUType u) = `(RUType ~(quote u))
+  quoteRawTT (RForce tm) = `(RForce ~(quoteRawTT tm))
+  quoteRawTT (RConstant c) = `(RConstant ~(quote c))
 
-  quoteRawBinder : Binder Raw -> TT
-  quoteRawBinder (Lam x) = `(Lam {a=Raw} ~(quoteRaw x))
-  quoteRawBinder (Pi x k) = `(Pi {a=Raw} ~(quoteRaw x) ~(quoteRaw k))
-  quoteRawBinder (Let x y) = `(Let {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
-  quoteRawBinder (NLet x y) = `(NLet {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
-  quoteRawBinder (Hole x) = `(Hole {a=Raw} ~(quoteRaw x))
-  quoteRawBinder (GHole x) = `(GHole {a=Raw} ~(quoteRaw x))
-  quoteRawBinder (Guess x y) = `(Guess {a=Raw} ~(quoteRaw x) ~(quoteRaw y))
-  quoteRawBinder (PVar x) = `(PVar {a=Raw} ~(quoteRaw x))
-  quoteRawBinder (PVTy x) = `(PVTy {a=Raw} ~(quoteRaw x))
+  quoteRawBinderTT : Binder Raw -> TT
+  quoteRawBinderTT (Lam x) = `(Lam {a=Raw} ~(quoteRawTT x))
+  quoteRawBinderTT (Pi x k) = `(Pi {a=Raw} ~(quoteRawTT x) ~(quoteRawTT k))
+  quoteRawBinderTT (Let x y) = `(Let {a=Raw} ~(quoteRawTT x) ~(quoteRawTT y))
+  quoteRawBinderTT (NLet x y) = `(NLet {a=Raw} ~(quoteRawTT x) ~(quoteRawTT y))
+  quoteRawBinderTT (Hole x) = `(Hole {a=Raw} ~(quoteRawTT x))
+  quoteRawBinderTT (GHole x) = `(GHole {a=Raw} ~(quoteRawTT x))
+  quoteRawBinderTT (Guess x y) = `(Guess {a=Raw} ~(quoteRawTT x) ~(quoteRawTT y))
+  quoteRawBinderTT (PVar x) = `(PVar {a=Raw} ~(quoteRawTT x))
+  quoteRawBinderTT (PVTy x) = `(PVTy {a=Raw} ~(quoteRawTT x))
 
 instance Quotable Raw TT where
   quotedTy = `(Raw)
-  quote = quoteRaw
+  quote = quoteRawTT
 
 instance Quotable (Binder Raw) TT where
   quotedTy = `(Binder Raw)
-  quote = quoteRawBinder
+  quote = quoteRawBinderTT
+
+mutual
+  quoteRawRaw : Raw -> Raw
+  quoteRawRaw (Var n) = `(Var ~(quote n))
+  quoteRawRaw (RBind n b tm) = `(RBind ~(quote n) ~(assert_total $ quoteRawBinderRaw b) ~(quoteRawRaw tm))
+  quoteRawRaw (RApp tm tm') = `(RApp ~(quoteRawRaw tm) ~(quoteRawRaw tm'))
+  quoteRawRaw RType = `(RType)
+  quoteRawRaw (RUType u) = `(RUType ~(quote u))
+  quoteRawRaw (RForce tm) = `(RForce ~(quoteRawRaw tm))
+  quoteRawRaw (RConstant c) = `(RConstant ~(quote c))
+
+  quoteRawBinderRaw : Binder Raw -> Raw
+  quoteRawBinderRaw (Lam x) = `(Lam {a=Raw} ~(quoteRawRaw x))
+  quoteRawBinderRaw (Pi x k) = `(Pi {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw k))
+  quoteRawBinderRaw (Let x y) = `(Let {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw y))
+  quoteRawBinderRaw (NLet x y) = `(NLet {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw y))
+  quoteRawBinderRaw (Hole x) = `(Hole {a=Raw} ~(quoteRawRaw x))
+  quoteRawBinderRaw (GHole x) = `(GHole {a=Raw} ~(quoteRawRaw x))
+  quoteRawBinderRaw (Guess x y) = `(Guess {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw y))
+  quoteRawBinderRaw (PVar x) = `(PVar {a=Raw} ~(quoteRawRaw x))
+  quoteRawBinderRaw (PVTy x) = `(PVTy {a=Raw} ~(quoteRawRaw x))
+
+instance Quotable Raw Raw where
+  quotedTy = `(Raw)
+  quote = quoteRawRaw
+
+instance Quotable (Binder Raw) Raw where
+  quotedTy = `(Binder Raw)
+  quote = quoteRawBinderRaw
 
 instance Quotable ErrorReportPart TT where
   quotedTy = `(ErrorReportPart)
