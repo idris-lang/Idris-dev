@@ -292,12 +292,12 @@ makeLemma fn updatefile l n
         let isProv = checkProv tyline (show n)
 
         ctxt <- getContext
-        mty <- case lookupTyName n ctxt of
-                    [(_,t)] -> return t
-                    [] -> ierror (NoSuchVariable n)
-                    ns -> ierror (CantResolveAlts (map fst ns))
+        (fname, mty) <- case lookupTyName n ctxt of
+                          [t] -> return t
+                          [] -> ierror (NoSuchVariable n)
+                          ns -> ierror (CantResolveAlts (map fst ns))
         i <- getIState
-        margs <- case lookup n (idris_metavars i) of
+        margs <- case lookup fname (idris_metavars i) of
                       Just (_, arity, _, _) -> return arity
                       _ -> return (-1)
 
@@ -308,7 +308,7 @@ makeLemma fn updatefile l n
             let lem = show n ++ " : " ++ 
                             constraints i classes mty ++
                             showTmOpts (defaultPPOption { ppopt_pinames = True })
-                                       (stripMNBind skip (delab i mty))
+                                       (stripMNBind skip margs (delab i mty))
             let lem_app = show n ++ appArgs skip margs mty
 
             if updatefile then
@@ -351,12 +351,13 @@ makeLemma fn updatefile l n
         appArgs skip i (Bind _ (Pi _ _ _) sc) = appArgs skip (i - 1) sc
         appArgs skip i _ = ""
 
-        stripMNBind skip (PPi b n@(UN c) _ ty sc) 
-           | (thead c /= '_' && n `notElem` skip) ||
+        stripMNBind _ args t | args <= 0 = t
+        stripMNBind skip args (PPi b n@(UN c) _ ty sc) 
+           | n `notElem` skip ||
                take 4 (str c) == "__pi" -- keep in type, but not in app
-                = PPi b n NoFC ty (stripMNBind skip sc)
-        stripMNBind skip (PPi b _ _ ty sc) = stripMNBind skip sc
-        stripMNBind skip t = t
+                = PPi b n NoFC ty (stripMNBind skip (args - 1) sc)
+        stripMNBind skip args (PPi b _ _ ty sc) = stripMNBind skip (args - 1) sc
+        stripMNBind skip args t = t
 
         constraints :: IState -> [Name] -> Type -> String
         constraints i [] ty = ""
@@ -374,13 +375,23 @@ makeLemma fn updatefile l n
         -- or at the top level themselves.
         -- Also, make type class instances implicit
         guessImps :: IState -> Context -> Term -> [Name]
+        -- machine names aren't lifted
+        guessImps ist ctxt (Bind n@(MN _ _) (Pi _ ty _) sc) 
+           = n : guessImps ist ctxt sc
         guessImps ist ctxt (Bind n (Pi _ ty _) sc)
            | guarded ctxt n (substV (P Bound n Erased) sc) 
                 = n : guessImps ist ctxt sc
            | isClass ist ty
                 = n : guessImps ist ctxt sc
+           | TType _ <- ty = n : guessImps ist ctxt sc
+           | ignoreName n = n : guessImps ist ctxt sc
            | otherwise = guessImps ist ctxt sc
         guessImps ist ctxt _ = []
+        
+        -- TMP HACK unusable name so don't lift
+        ignoreName n = case show n of
+                            "_aX" -> True
+                            _ -> False
 
         guessClasses :: IState -> Context -> Term -> [Name]
         guessClasses ist ctxt (Bind n (Pi _ ty _) sc)
