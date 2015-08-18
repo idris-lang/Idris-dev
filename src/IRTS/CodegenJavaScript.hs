@@ -1266,7 +1266,10 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       , (arg:_) <- args = jsCall "i$systemInfo"  [translateReg arg]
       | LExternal nul <- op
       , nul == sUN "prim__null"
-      , (_)         <- args = JSNull
+      , _ <- args = JSNull
+      | LExternal ex <- op
+      , ex == sUN "prim__eqPtr"
+      , [lhs, rhs] <- args = JSBinOp "==" (translateReg lhs) (translateReg rhs)
       | otherwise = JSError $ "Not implemented: " ++ show op
         where
           translateBinaryOp :: String -> Reg -> Reg -> JS
