@@ -47,25 +47,35 @@ isCons (x::xs) = True
 -- Decidable Predicates
 --------------------------------------------------------------------------------
 
-data NonEmpty : List a -> Type where
-     IsNonEmpty : NonEmpty (x :: xs)
+||| Satisfiable if `xs` is non-empty (e.g., if `xs` is a cons).
+data NonEmpty : (xs : List a) -> Type where
+    ||| The proof that a cons cell is non-empty
+    IsNonEmpty : NonEmpty (x :: xs)
 
 private
 nonEmptyNil : NonEmpty [] -> Void
 nonEmptyNil IsNonEmpty impossible
 
+||| Decide whether a list is non-empty
 nonEmpty : (xs : List a) -> Dec (NonEmpty xs)
 nonEmpty [] = No nonEmptyNil
 nonEmpty (x :: xs) = Yes IsNonEmpty
 
-data InBounds : Nat -> List a -> Type where
-     InFirst : InBounds Z (x :: xs)
-     InLater : InBounds k xs -> InBounds (S k) (x :: xs)
+||| Satisfiable if `k` is a valid index into `xs`
+|||
+||| @ k the potential index
+||| @ xs the list into which k may be an index
+data InBounds : (k : Nat) -> (xs : List a) -> Type where
+    ||| Z is a valid index into any cons cell
+    InFirst : InBounds Z (x :: xs)
+    ||| Valid indices can be extended
+    InLater : InBounds k xs -> InBounds (S k) (x :: xs)
 
 instance Uninhabited (InBounds k []) where
     uninhabited InFirst impossible
 
-inBounds : (n : Nat) -> (xs : List a) -> Dec (InBounds n xs)
+||| Decide whether `k` is a valid index into `xs`
+inBounds : (k : Nat) -> (xs : List a) -> Dec (InBounds k xs)
 inBounds k [] = No uninhabited
 inBounds Z (x :: xs) = Yes InFirst
 inBounds (S k) (x :: xs) with (inBounds k xs)
@@ -339,7 +349,7 @@ mapMaybe f (x::xs) =
 instance Foldable List where
   foldr c n [] = n
   foldr c n (x::xs) = c x (foldr c n xs)
-  
+
   foldl f q [] = q
   foldl f q (x::xs) = foldl f (f q x) xs
 
@@ -377,8 +387,13 @@ intersperse sep (x::xs) = x :: intersperse' sep xs
     intersperse' sep []      = []
     intersperse' sep (y::ys) = sep :: y :: intersperse' sep ys
 
-intercalate : List a -> List (List a) -> List a
-intercalate sep l = concat $ intersperse sep l
+||| Given a separator list and some more lists, produce a new list by
+||| placing the separator between each of the lists.
+|||
+||| @ sep the separator
+||| @ xss the lists between which the separator will be placed
+intercalate : (sep : List a) -> (xss : List (List a)) -> List a
+intercalate sep xss = concat $ intersperse sep xss
 
 ||| Transposes rows and columns of a list of lists.
 |||
@@ -483,15 +498,20 @@ findIndices = findIndices' Z
       else
         findIndices' (S cnt) p xs
 
+||| Find the index of the first occurrence of an element in a list, using a custom equality test.
 elemIndexBy : (a -> a -> Bool) -> a -> List a -> Maybe Nat
 elemIndexBy p e = findIndex $ p e
 
+||| Find the index of the first occurrence of an element in a list,
+||| using the default equality test for the type of list elements.
 elemIndex : Eq a => a -> List a -> Maybe Nat
 elemIndex = elemIndexBy (==)
 
+||| Find all indices for an element in a list, using a custom equality test.
 elemIndicesBy : (a -> a -> Bool) -> a -> List a -> List Nat
 elemIndicesBy p e = findIndices $ p e
 
+||| Find all indices for an element in a list, using the default equality test for the type of list elements.
 elemIndices : Eq a => a -> List a -> List Nat
 elemIndices = elemIndicesBy (==)
 
@@ -682,7 +702,12 @@ replaceOn a b l = map (\c => if c == a then b else c) l
 -- Predicates
 --------------------------------------------------------------------------------
 
-isPrefixOfBy : (a -> a -> Bool) -> List a -> List a -> Bool
+||| Check whether a list is a prefix of another according to a user-supplied equality test.
+|||
+||| @ eq the equality comparison
+||| @ left the potential prefix
+||| @ right the list that may have `left` as its prefix
+isPrefixOfBy : (eq : a -> a -> Bool) -> (left, right : List a) -> Bool
 isPrefixOfBy p [] right        = True
 isPrefixOfBy p left []         = False
 isPrefixOfBy p (x::xs) (y::ys) =
@@ -777,6 +802,7 @@ listToMaybe (x::xs) = Just x
 -- Misc
 --------------------------------------------------------------------------------
 
+||| Keep the `Just` elements in a list, discarding the `Nothing` elements.
 catMaybes : List (Maybe a) -> List a
 catMaybes []      = []
 catMaybes (x::xs) =
@@ -850,6 +876,7 @@ hasAnyByNilFalse p (x::xs) =
 hasAnyNilFalse : Eq a => (l : List a) -> hasAny [] l = False
 hasAnyNilFalse l = rewrite (hasAnyByNilFalse (==) l) in Refl
 
+||| Implement foldl using foldr, for a later equality proof.
 foldlAsFoldr : (b -> a -> b) -> b -> List a -> b
 foldlAsFoldr f z t = foldr (flip (.) . flip f) id t z
 
