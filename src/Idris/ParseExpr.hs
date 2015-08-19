@@ -937,13 +937,14 @@ If ::= 'if' Expr 'then' Expr 'else' Expr
 
 -}
 if_ :: SyntaxInfo -> IdrisParser PTerm
-if_ syn = (do reserved "if"
+if_ syn = (do ifFC <- reservedFC "if"
               fc <- getFC
               c <- expr syn
-              reserved "then"
+              thenFC <- reservedFC "then"
               t <- expr syn
-              reserved "else"
+              elseFC <- reservedFC "else"
               f <- expr syn
+              mapM_ (flip highlightP AnnKeyword) [ifFC, thenFC, elseFC]
               return (PIfThenElse fc c t f))
           <?> "conditional expression"
 
