@@ -201,6 +201,7 @@ sendParserHighlighting =
   do ist <- getIState
      let hs = map unwrap . nub . map wrap $ idris_parserHighlights ist
      sendHighlighting hs
+     ist <- getIState
      putIState ist {idris_parserHighlights = []}
   where wrap (fc, a) = (FC' fc, a)
         unwrap (fc', a) = (unwrapFC fc', a)
