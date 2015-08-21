@@ -82,7 +82,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                try (resolveTC True False 10 g fn ist)
+                                try (resolveTC' True False 10 g fn ist)
                                     (movelast n)) ivs
          ivs <- get_instances
          hs <- get_holes
@@ -91,7 +91,7 @@ build ist info emode opts fn tm
                              do focus n
                                 g <- goal
                                 ptm <- get_term
-                                resolveTC True True 10 g fn ist) ivs
+                                resolveTC' True True 10 g fn ist) ivs
          tm <- get_term
          ctxt <- get_context
          probs <- get_probs
@@ -355,7 +355,7 @@ elab ist info emode opts fn tm
             UType _ -> elab' ina (Just fc) (PRef fc [] unitTy)
             _ -> elab' ina (Just fc) (PRef fc [] unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = do g <- goal; resolveTC False False 5 g fn ist
+       = do g <- goal; resolveTC' False False 5 g fn ist
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "class")
              instanceArg c
@@ -699,7 +699,7 @@ elab ist info emode opts fn tm
                                    g <- goal
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
-                                    then try (resolveTC True False 10 g fn ist)
+                                    then try (resolveTC' True False 10 g fn ist)
                                              (movelast n)
                                     else movelast n)
                          (ivs' \\ ivs)
@@ -871,7 +871,7 @@ elab ist info emode opts fn tm
                                                     env <- get_env
                                                     hs <- get_holes
                                                     if all (\n -> not (n `elem` hs)) (freeNames g)
-                                                     then try (resolveTC False False 10 g fn ist)
+                                                     then try (resolveTC' False False 10 g fn ist)
                                                               (movelast n)
                                                      else movelast n)
                                           (ivs' \\ ivs)
@@ -1603,20 +1603,6 @@ findHighlight n = do ctxt <- get_context
                                     Nothing -> lift . tfail . InternalMsg $
                                                  "Can't find name" ++ show n
 
--- | Find the names of instances that have been designeated for
--- searching (i.e. non-named instances or instances from Elab scripts)
-findInstances :: IState -> Term -> [Name]
-findInstances ist t
-    | (P _ n _, _) <- unApply (getRetTy t)
-        = case lookupCtxt n (idris_classes ist) of
-            [CI _ _ _ _ _ ins _] ->
-              [n | (n, True) <- ins, accessible n]
-            _ -> []
-    | otherwise = []
-  where accessible n = case lookupDefAccExact n False (tt_ctxt ist) of
-                            Just (_, Hidden) -> False
-                            _ -> True
-
 -- Try again to solve auto implicits
 solveAuto :: IState -> Name -> Bool -> Name -> ElabD ()
 solveAuto ist fn ambigok n
@@ -1642,168 +1628,8 @@ proofSearch' ist rec ambigok depth prv top n psns hints
     = do unifyProblems
          proofSearch rec prv ambigok (not prv) depth
                      (elab ist toplevel ERHS [] (sMN 0 "tac")) top n psns hints ist
-
--- | Resolve type classes. This will only pick up 'normal' instances, never
--- named instances (which is enforced by 'findInstances').
-resolveTC :: Bool -- ^ using default Int
-          -> Bool -- ^ allow metavariables in the goal
-          -> Int -- ^ depth
-          -> Term -- ^ top level goal, for error messages
-          -> Name -- ^ top level function name, to prevent loops
-          -> IState -> ElabD ()
-resolveTC def mvok depth top fn ist
-   = do hs <- get_holes
-        resTC' [] def hs depth top fn ist
-
-resTC' tcs def topholes 0 topg fn ist = fail $ "Can't resolve type class"
-resTC' tcs def topholes 1 topg fn ist = try' (trivial' ist) (resolveTC def False 0 topg fn ist) True
-resTC' tcs defaultOn topholes depth topg fn ist
-  = do compute
-       g <- goal
-       -- Resolution can proceed only if there is something concrete in the
-       -- determining argument positions. Keep track of the holes in the
-       -- non-determining position, because it's okay for 'trivial' to solve
-       -- those holes and no others.
-       let (argsok, okholePos) = case tcArgsOK g topholes of
-                                    Nothing -> (False, [])
-                                    Just hs -> (True, hs)
-       if not argsok -- && not mvok)
-         then lift $ tfail $ CantResolve True topg
-         else do
-           ptm <- get_term
-           ulog <- getUnifyLog
-           hs <- get_holes
-           env <- get_env
-           t <- goal
-           let (tc, ttypes) = unApply (getRetTy t)
-           let okholes = case tc of
-                              P _ n _ -> zip (repeat n) okholePos
-                              _ -> []
-
-           traceWhen ulog ("Resolving class " ++ show g ++ "\nin" ++ show env ++ "\n" ++ show okholes) $
-            try' (trivialHoles' [] okholes ist)
-                (do addDefault t tc ttypes
-                    let stk = map fst (filter snd $ elab_stack ist)
-                    let insts = findInstances ist t
-                    blunderbuss t depth stk (stk ++ insts)) True
-  where
-    -- returns Just hs if okay, where hs are holes which are okay in the
-    -- goal, or Nothing if not okay to proceed
-    tcArgsOK ty hs | (P _ nc _, as) <- unApply (getRetTy ty), nc == numclass && defaultOn
-       = Just []
-    tcArgsOK ty hs -- if any determining arguments are metavariables, postpone
-       = let (f, as) = unApply (getRetTy ty) in
-             case f of
-                  P _ cn _ -> case lookupCtxtExact cn (idris_classes ist) of
-                                   Just ci -> tcDetArgsOK 0 (class_determiners ci) hs as
-                                   Nothing -> if any (isMeta hs) as
-                                                 then Nothing
-                                                 else Just []
-                  _ -> if any (isMeta hs) as
-                          then Nothing
-                          else Just []
-
-    -- return the list of argument positions which can safely be a hole
-    -- or Nothing if one of the determining arguments is a hole
-    tcDetArgsOK i ds hs (x : xs)
-        | i `elem` ds = if isMeta hs x
-                           then Nothing
-                           else tcDetArgsOK (i + 1) ds hs xs
-        | otherwise = do rs <- tcDetArgsOK (i + 1) ds hs xs
-                         case x of
-                              P _ n _ -> Just (i : rs)
-                              _ -> Just rs
-    tcDetArgsOK _ _ _ [] = Just []
-
-    isMeta :: [Name] -> Term -> Bool
-    isMeta ns (P _ n _) = n `elem` ns 
-    isMeta _ _ = False
-
-    notHole hs (P _ n _, c)
-       | (P _ cn _, _) <- unApply (getRetTy c),
-         n `elem` hs && isConName cn (tt_ctxt ist) = False
-       | Constant _ <- c = not (n `elem` hs)
-    notHole _ _ = True
-
-    -- HACK! Rather than giving a special name, better to have some kind
-    -- of flag in ClassInfo structure
-    chaser (UN nm)
-        | ('@':'@':_) <- str nm = True -- old way
-    chaser (SN (ParentN _ _)) = True
-    chaser (NS n _) = chaser n
-    chaser _ = False
-
-    numclass = sNS (sUN "Num") ["Classes","Prelude"]
-
-    addDefault t num@(P _ nc _) [P Bound a _] | nc == numclass && defaultOn
-        = do focus a
-             fill (RConstant (AType (ATInt ITBig))) -- default Integer
-             solve
-    addDefault t f as
-          | all boundVar as = return () -- True -- fail $ "Can't resolve " ++ show t
-    addDefault t f a = return () -- trace (show t) $ return ()
-
-    boundVar (P Bound _ _) = True
-    boundVar _ = False
-
-    blunderbuss t d stk [] = do -- c <- get_env
-                            -- ps <- get_probs
-                            lift $ tfail $ CantResolve False topg
-    blunderbuss t d stk (n:ns)
-        | n /= fn -- && (n `elem` stk)
-              = tryCatch (resolve n d)
-                    (\e -> case e of
-                             CantResolve True _ -> lift $ tfail e
-                             _ -> blunderbuss t d stk ns)
-        | otherwise = blunderbuss t d stk ns
-
-    introImps = do g <- goal
-                   case g of
-                        (Bind _ (Pi _ _ _) sc) -> do attack; intro Nothing
-                                                     num <- introImps
-                                                     return (num + 1)
-                        _ -> return 0
-
-    solven 0 = return ()
-    solven n = do solve; solven (n - 1)
-
-    resolve n depth
-       | depth == 0 = fail $ "Can't resolve type class"
-       | otherwise
-           = do lams <- introImps
-                t <- goal
-                let (tc, ttypes) = trace (show t) $ unApply (getRetTy t)
---                 if (all boundVar ttypes) then resolveTC (depth - 1) fn insts ist
---                   else do
-                   -- if there's a hole in the goal, don't even try
-                let imps = case lookupCtxtName n (idris_implicits ist) of
-                                [] -> []
-                                [args] -> map isImp (snd args) -- won't be overloaded!
-                                xs -> error "The impossible happened - overloading is not expected here!"
-                ps <- get_probs
-                tm <- get_term
-                args <- map snd <$> try' (apply (Var n) imps)
-                                         (match_apply (Var n) imps) True
-                solven lams -- close any implicit lambdas we introduced
-                ps' <- get_probs
-                when (length ps < length ps' || unrecoverable ps') $
-                     fail "Can't apply type class"
---                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
-                mapM_ (\ (_,n) -> do focus n
-                                     t' <- goal
-                                     let (tc', ttype) = unApply (getRetTy t')
-                                     let got = fst (unApply (getRetTy t))
-                                     let depth' = if tc' `elem` tcs
-                                                     then depth - 1 else depth
-                                     resTC' (got : tcs) defaultOn topholes depth' topg fn ist)
-                      (filter (\ (x, y) -> not x) (zip (map fst imps) args))
-                -- if there's any arguments left, we've failed to resolve
-                hs <- get_holes
-                ulog <- getUnifyLog
-                solve
-                traceWhen ulog ("Got " ++ show n) $ return ()
-       where isImp (PImp p _ _ _ _) = (True, p)
-             isImp arg = (False, priority arg)
+resolveTC' di mv depth tm n ist
+    = resolveTC di mv depth tm n (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
 
 collectDeferred :: Maybe Name -> [Name] -> Context ->
                    Term -> State [(Name, (Int, Maybe Name, Type, [Name]))] Term
@@ -2127,7 +1953,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       | n == tacN "prim__ResolveTC", [fn] <- args
       = do g <- goal
            fn <- reifyTTName fn
-           resolveTC False True 100 g fn ist
+           resolveTC' False True 100 g fn ist
            returnUnit
       | n == tacN "prim__Search", [depth, hints] <- args
       = do d <- eval depth

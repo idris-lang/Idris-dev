@@ -540,6 +540,10 @@ Extra-source-files:
                        test/interactive008/run
                        test/interactive008/input
                        test/interactive008/expected
+                       test/interactive009/run
+                       test/interactive009/input
+                       test/interactive009/*.idr
+                       test/interactive009/expected
 
                        test/io001/run
                        test/io001/*.idr
