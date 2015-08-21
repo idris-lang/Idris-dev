@@ -1928,11 +1928,15 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       = do solve
            returnUnit
       | n == tacN "prim__Goal", [] <- args
-      = do (h:_) <- get_holes
-           t <- goal
-           fmap fst . checkClosed $
-             rawPair (Var (reflm "TTName"), Var (reflm "TT"))
-                     (reflectName h,        reflect t)
+      = do hs <- get_holes
+           case hs of
+             (h : _) -> do t <- goal
+                           fmap fst . checkClosed $
+                             rawPair (Var (reflm "TTName"), Var (reflm "TT"))
+                                     (reflectName h,        reflect t)
+             [] -> lift . tfail . Msg $
+                     "Elaboration is complete. There are no goals."
+
       | n == tacN "prim__Holes", [] <- args
       = do hs <- get_holes
            fmap fst . checkClosed $
@@ -2153,10 +2157,14 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            datatypes <- get_datatypes
            env <- get_env
            (_, ES (p, aux') _ _) <-
-              lift $ runElab aux (runElabAction ist fc [] script ns)
-                                 (newProof recH ctxt datatypes goalTT)
+              do (ES (current_p, _) _ _) <- get
+                 lift $ runElab aux (runElabAction ist fc [] script ns)
+                                 ((newProof recH ctxt datatypes goalTT)
+                                  { nextname = nextname current_p})
            let tm_out = getProofTerm (pterm p)
-           updateAux $ const aux'
+           do (ES (prf, _) s e) <- get
+              let p' = prf { nextname = nextname p }
+              put (ES (p', aux') s e)
            env' <- get_env
            (tm, ty, _) <- lift $ recheck ctxt env (forget tm_out) tm_out
            let (tm', ty') = (reflect tm, reflect ty)
