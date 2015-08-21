@@ -289,7 +289,9 @@ pprintErr' i (CantUnify _ (x_in, xprov) (y_in, yprov) e sc s) =
       CantUnify _ (x_in', _) (y_in',_) _ _ _ | x_in == x_in' && y_in == y_in' -> empty
       _ -> line <> line <> text "Specifically:" <>
            indented (pprintErr' i e) <>
-           if (opt_errContext (idris_options i)) then showSc i sc else empty
+           if (opt_errContext (idris_options i))
+             then text "Unification failure" <$> showSc i sc
+             else empty
 pprintErr' i (CantConvert x_in y_in env) =
  let (x_ns, y_ns, nms) = renameMNs x_in y_in
      (x, y) = addImplicitDiffs (delabSugared i (flagUnique x_ns)) 
@@ -300,7 +302,7 @@ pprintErr' i (CantConvert x_in y_in env) =
   text "and" <>
   indented (annTm y_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
                y)) <>
-  if (opt_errContext (idris_options i)) then line <> showSc i env else empty
+  if (opt_errContext (idris_options i)) then line <> text "Conversion failure" <$>  showSc i env else empty
     where flagUnique (Bind n (Pi i t k@(UType u)) sc)
               = App Complete (P Ref (sUN (show u)) Erased)
                     (Bind n (Pi i (flagUnique t) k) (flagUnique sc))
@@ -480,6 +482,8 @@ pprintErr' i (ElabScriptDebug msg tm holes) =
 pprintErr' i (ElabScriptStuck tm) =
   text "Can't run" <+> pprintTT [] tm <+> text "as an elaborator script." <$>
   text "Is it a stuck term?"
+pprintErr' i (RunningElabScript e) =
+  text "While running an elaboration script, the following error occurred" <> colon <$> pprintErr' i e
 
 showPart :: IState -> ErrorReportPart -> Doc OutputAnnotation
 showPart ist (TextPart str) = fillSep . map text . words $ str

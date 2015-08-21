@@ -1262,6 +1262,9 @@ instance (Binary t) => Binary (PDecl' t) where
                                              put x2
                                              put x3
                                              put x4
+                PRunElabDecl x1 x2 -> do putWord8 17
+                                         put x1
+                                         put x2
         get
           = do i <- getWord8
                case i of
@@ -1371,6 +1374,9 @@ instance (Binary t) => Binary (PDecl' t) where
                             x3 <- get
                             x4 <- get
                             return (PTransform x1 x2 x3 x4)
+                   17 -> do x1 <- get
+                            x2 <- get
+                            return (PRunElabDecl x1 x2)
                    _ -> error "Corrupted binary data for PDecl'"
 
 instance Binary t => Binary (ProvideWhat' t) where

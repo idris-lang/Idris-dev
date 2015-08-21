@@ -29,6 +29,7 @@ import Idris.Elab.Record
 import Idris.Elab.Class
 import Idris.Elab.Instance
 import Idris.Elab.Provider
+import Idris.Elab.RunElab
 import Idris.Elab.Transform
 import Idris.Elab.Value
 
@@ -264,5 +265,8 @@ elabDecl' what info (PProvider doc syn fc nfc provWhat n)
          elabProvider doc info syn fc nfc provWhat n
 elabDecl' what info (PTransform fc safety old new)
     = do elabTransform info fc safety old new
+         return ()
+elabDecl' what info (PRunElabDecl fc script)
+    = do elabRunElab info fc script
          return ()
 elabDecl' _ _ _ = return () -- skipped this time

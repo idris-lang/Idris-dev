@@ -1,5 +1,5 @@
-BadDef.idr:12:9:
-When checking right hand side of runBad1:
+BadDef.idr:12:1-9:
+While running an elaboration script, the following error occurred:
 Type mismatch between
         ()
 and

@@ -1983,10 +1983,14 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            datatypes <- get_datatypes
            env <- get_env
            (_, ES (p, aux') _ _) <-
-              lift $ runElab aux (runElabAction ist fc [] script ns)
-                                 (newProof recH ctxt datatypes goalTT)
+              do (ES (current_p, _) _ _) <- get
+                 lift $ runElab aux (runElabAction ist fc [] script ns)
+                                 ((newProof recH ctxt datatypes goalTT)
+                                  { nextname = nextname current_p})
            let tm_out = getProofTerm (pterm p)
-           updateAux $ const aux'
+           do (ES (prf, _) s e) <- get
+              let p' = prf { nextname = nextname p }
+              put (ES (p', aux') s e)
            env' <- get_env
            (tm, ty, _) <- lift $ recheck ctxt env (forget tm_out) tm_out
            let (tm', ty') = (reflect tm, reflect ty)

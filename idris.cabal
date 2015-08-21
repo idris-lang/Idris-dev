@@ -803,6 +803,7 @@ Library
                 , Idris.Elab.Class
                 , Idris.Elab.Instance
                 , Idris.Elab.Provider
+                , Idris.Elab.RunElab
                 , Idris.Elab.Transform
                 , Idris.Elab.Value
                 , Idris.Elab.Term

@@ -27,6 +27,8 @@ New in 0.9.19:
 * Some improvements in interactive editing, particularly in lifting out
   definitions and proof search.
 * Moved System.Interactive, along with getArgs to the Prelude.
+* Major improvements to reflected elaboration scripts, including the ability to run
+  them in a declaration context and many bug fixes.
 
 New in 0.9.18:
 --------------

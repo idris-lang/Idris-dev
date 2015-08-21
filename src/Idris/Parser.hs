@@ -179,6 +179,7 @@ Decl ::=
   | Provider
   | Transform
   | Import!
+  | RunElabDecl
   ;
 @
 -}
@@ -231,6 +232,7 @@ decl' syn =    fixity
            <|> fnDecl' syn
            <|> data_ syn
            <|> record syn
+           <|> runElabDecl syn
            <?> "declaration"
 
 {- | Parses a syntax extension declaration (and adds the rule to parser state)
@@ -1232,6 +1234,22 @@ transform syn = do try (lchar '%' *> reserved "transform")
                    return [PTransform fc False l r]
                 <?> "transform"
 
+{- | Parses a top-level reflected elaborator script
+
+@
+RunElabDecl ::= '%' 'runElab' Expr
+@
+-}
+runElabDecl :: SyntaxInfo -> IdrisParser PDecl
+runElabDecl syn =
+  do kwFC <- try (do fc <- getFC
+                     lchar '%'
+                     fc' <- reservedFC "runElab"
+                     return (spanFC fc fc'))
+     script <- expr syn <?> "elaborator script"
+     highlightP kwFC AnnKeyword
+     return $ PRunElabDecl kwFC script
+  <?> "top-level elaborator script"
 
 {- * Loading and parsing -}
 {- | Parses an expression from input -}

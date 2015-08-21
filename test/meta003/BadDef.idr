@@ -8,5 +8,5 @@ mkN n = NS (UN n) ["BadDef"]
 mkBadDef1 : Elab ()
 mkBadDef1 = do declareType $ Declare (mkN "bad1") [] `(() -> ())
                defineFunction $ DefineFun (mkN "bad1") [MkFunClause `(():()) `("hi")]
-runBad1 : ()
-runBad1 = %runElab (mkBadDef1 *> search)
+
+%runElab mkBadDef1
