@@ -104,16 +104,24 @@ initNextNameFrom ns = do ES (p, a) s e <- get
     maxName m (_ : xs) = maxName m xs
     maxName m [] = m + 1
 
+
+-- | Transform the error returned by an elaboration script, preserving
+-- location information and proof search failure messages.
+transformErr :: (Err -> Err) -> Elab' aux a -> Elab' aux a
+transformErr f elab = do s <- get
+                         case runStateT elab s of
+                           OK (a, s') -> do put s'
+                                            return $! a
+                           Error e -> lift $ Error (rewriteErr e)
+
+    where
+      rewriteErr (At f e) = At f (rewriteErr e)
+      rewriteErr (ProofSearchFail e) = ProofSearchFail (rewriteErr e)
+      rewriteErr e = f e
+
 errAt :: String -> Name -> Elab' aux a -> Elab' aux a
-errAt thing n elab = do s <- get
-                        case runStateT elab s of
-                             OK (a, s') -> do put s'
-                                              return $! a
-                             Error e -> lift $ Error (rewriteErr e)
-  where
-    rewriteErr (At f e) = At f (rewriteErr e)
-    rewriteErr (ProofSearchFail e) = ProofSearchFail (rewriteErr e)
-    rewriteErr e = Elaborating thing n e
+errAt thing n = transformErr (Elaborating thing n)
+
 
 erun :: FC -> Elab' aux a -> Elab' aux a
 erun f elab = do s <- get

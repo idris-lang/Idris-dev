@@ -482,6 +482,8 @@ pprintErr' i (ElabScriptDebug msg tm holes) =
 pprintErr' i (ElabScriptStuck tm) =
   text "Can't run" <+> pprintTT [] tm <+> text "as an elaborator script." <$>
   text "Is it a stuck term?"
+pprintErr' i (RunningElabScript e) =
+  text "While running an elaboration script, the following error occurred" <> colon <$> pprintErr' i e
 
 showPart :: IState -> ErrorReportPart -> Doc OutputAnnotation
 showPart ist (TextPart str) = fillSep . map text . words $ str

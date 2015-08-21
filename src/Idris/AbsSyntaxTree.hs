@@ -622,41 +622,41 @@ type ProvideWhat = ProvideWhat' PTerm
 -- datatypes and typeclasses.
 data PDecl' t
    = PFix     FC Fixity [String] -- ^ Fixity declaration
-   | PTy      (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC FnOpts Name FC t   -- ^ Type declaration (last FC is precise name location)
+   | PTy      (Docstring (Either Err t)) [(Name, Docstring (Either Err t))] SyntaxInfo FC FnOpts Name FC t   -- ^ Type declaration (last FC is precise name location)
    | PPostulate Bool -- external def if true
-          (Docstring (Either Err PTerm)) SyntaxInfo FC FC FnOpts Name t -- ^ Postulate, second FC is precise name location
+          (Docstring (Either Err t)) SyntaxInfo FC FC FnOpts Name t -- ^ Postulate, second FC is precise name location
    | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
    | PCAF     FC Name t -- ^ Top level constant
-   | PData    (Docstring (Either Err PTerm)) [(Name, Docstring (Either Err PTerm))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
+   | PData    (Docstring (Either Err t)) [(Name, Docstring (Either Err t))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
    | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
    | PNamespace String FC [PDecl' t]
      -- ^ New namespace, where FC is accurate location of the
      -- namespace in the file
-   | PRecord  (Docstring (Either Err PTerm)) SyntaxInfo FC DataOpts
+   | PRecord  (Docstring (Either Err t)) SyntaxInfo FC DataOpts
               Name                 -- Record name
               FC                   -- Record name precise location
               [(Name, FC, Plicity, t)] -- Parameters, where FC is precise name span
-              [(Name, Docstring (Either Err PTerm))] -- Param Docs
-              [((Maybe (Name, FC)), Plicity, t, Maybe (Docstring (Either Err PTerm)))] -- Fields
+              [(Name, Docstring (Either Err t))] -- Param Docs
+              [((Maybe (Name, FC)), Plicity, t, Maybe (Docstring (Either Err t)))] -- Fields
               (Maybe (Name, FC)) -- Optional constructor name and location
-              (Docstring (Either Err PTerm)) -- Constructor doc
+              (Docstring (Either Err t)) -- Constructor doc
               SyntaxInfo -- Constructor SyntaxInfo
               -- ^ Record declaration
-   | PClass   (Docstring (Either Err PTerm)) SyntaxInfo FC
+   | PClass   (Docstring (Either Err t)) SyntaxInfo FC
               [(Name, t)] -- constraints
               Name -- class name
               FC -- accurate location of class name
               [(Name, FC, t)] -- parameters and precise locations
-              [(Name, Docstring (Either Err PTerm))] -- parameter docstrings
+              [(Name, Docstring (Either Err t))] -- parameter docstrings
               [(Name, FC)] -- determining parameters and precise locations
               [PDecl' t] -- declarations
               (Maybe (Name, FC)) -- instance constructor name and location
-              (Docstring (Either Err PTerm)) -- instance constructor docs
+              (Docstring (Either Err t)) -- instance constructor docs
               -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
               -- class name, class name location, parameters, method declarations, optional constructor name
    | PInstance
-       (Docstring (Either Err PTerm)) -- Instance docs
-       [(Name, Docstring (Either Err PTerm))] -- Parameter docs
+       (Docstring (Either Err t)) -- Instance docs
+       [(Name, Docstring (Either Err t))] -- Parameter docs
        SyntaxInfo
        FC [(Name, t)] -- constraints
        Name -- class
@@ -672,9 +672,10 @@ data PDecl' t
    | PSyntax  FC Syntax -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
    | PDirective Directive -- ^ Compiler directive.
-   | PProvider (Docstring (Either Err PTerm)) SyntaxInfo FC FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term. The second FC is precise highlighting location.
+   | PProvider (Docstring (Either Err t)) SyntaxInfo FC FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term. The second FC is precise highlighting location.
    | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
                             -- bool is True, lhs and rhs must be convertible
+   | PRunElabDecl FC t
  deriving Functor
 {-!
 deriving instance Binary PDecl'
