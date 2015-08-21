@@ -1754,11 +1754,15 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       = do solve
            returnUnit
       | n == tacN "prim__Goal", [] <- args
-      = do (h:_) <- get_holes
-           t <- goal
-           fmap fst . checkClosed $
-             rawPair (Var (reflm "TTName"), Var (reflm "TT"))
-                     (reflectName h,        reflect t)
+      = do hs <- get_holes
+           case hs of
+             (h : _) -> do t <- goal
+                           fmap fst . checkClosed $
+                             rawPair (Var (reflm "TTName"), Var (reflm "TT"))
+                                     (reflectName h,        reflect t)
+             [] -> lift . tfail . Msg $
+                     "Elaboration is complete. There are no goals."
+
       | n == tacN "prim__Holes", [] <- args
       = do hs <- get_holes
            fmap fst . checkClosed $
