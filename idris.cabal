@@ -540,6 +540,10 @@ Extra-source-files:
                        test/interactive008/run
                        test/interactive008/input
                        test/interactive008/expected
+                       test/interactive009/run
+                       test/interactive009/input
+                       test/interactive009/*.idr
+                       test/interactive009/expected
 
                        test/io001/run
                        test/io001/*.idr
@@ -655,6 +659,9 @@ Extra-source-files:
                        test/syntax001/run
                        test/syntax001/*.idr
                        test/syntax001/expected
+                       test/syntax002/run
+                       test/syntax002/*.idr
+                       test/syntax002/expected
 
                        test/tactics001/run
                        test/tactics001/*.idr

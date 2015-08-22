@@ -730,7 +730,7 @@ simple_app infer fun arg str =
        s <- getNameFrom (sMN 0 "s")
        claim a RType
        claim b RType
-       claim f (RBind (sMN 0 "aX") (Pi Nothing (Var a) RType) (Var b))
+       claim f (RBind (sMN 0 "_aX") (Pi Nothing (Var a) RType) (Var b))
        tm <- get_term
        start_unify s
        -- if 'infer' is set, we're assuming it's a simply typed application

@@ -128,8 +128,10 @@ extensions syn rules = extension syn [] (filter isValid rules)
     isValid (Rule _ _ AnySyntax) = True
     isValid (Rule _ _ PatternSyntax) = inPattern syn
     isValid (Rule _ _ TermSyntax) = not (inPattern syn)
+    isValid (DeclRule _ _) = False
 
 data SynMatch = SynTm PTerm | SynBind FC Name -- ^ the FC is for highlighting information
+  deriving Show
 
 extension :: SyntaxInfo -> [Maybe (Name, SynMatch)] -> [Syntax] -> IdrisParser PTerm
 extension syn ns rules =
@@ -140,7 +142,7 @@ extension syn ns rules =
         extension syn (n : ns) [Rule ss t ctx | (Rule (_:ss) t ctx) <- rs]
       -- If we have more than one Rule in this bucket, our grammar is
       -- nondeterministic.
-      Rule [] ptm _ -> return (flatten (update (mapMaybe id ns) ptm))
+      Rule [] ptm _ -> return (flatten (updateSynMatch (mapMaybe id ns) ptm))
   where
     ruleGroup [] [] = True
     ruleGroup (s1:_) (s2:_) = s1 == s2
@@ -159,15 +161,13 @@ extension syn ns rules =
     extensionSymbol (Symbol s)     = do fc <- symbolFC s
                                         highlightP fc AnnKeyword
                                         return Nothing
-    dropn :: Name -> [(Name, a)] -> [(Name, a)]
-    dropn n [] = []
-    dropn n ((x,t) : xs) | n == x = xs
-                         | otherwise = (x,t):dropn n xs
-
+    
     flatten :: PTerm -> PTerm -- flatten application
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
     flatten t = t
 
+updateSynMatch = update
+  where
     updateB :: [(Name, SynMatch)] -> (Name, FC) -> (Name, FC)
     updateB ns (n, fc) = case lookup n ns of
                            Just (SynBind tfc t) -> (t, tfc)
@@ -251,6 +251,12 @@ extension syn ns rules =
 
     updTacImp ns (TacImp o st scr)  = TacImp o st (update ns scr)
     updTacImp _  x                  = x
+    
+    dropn :: Name -> [(Name, a)] -> [(Name, a)]
+    dropn n [] = []
+    dropn n ((x,t) : xs) | n == x = xs
+                         | otherwise = (x,t):dropn n xs
+
 
 {- | Parses a (normal) built-in expression
 @

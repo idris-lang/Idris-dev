@@ -222,7 +222,7 @@ genAll i args
                   pimp (sUN "B") Placeholder True] ++
                  [pexp l, pexp r]) o
     otherPats o@(PDPair fc hls p t _ v)
-        = ops fc (sUN "Ex_intro")
+        = ops fc sigmaCon
                 ([pimp (sUN "a") Placeholder True,
                   pimp (sUN "P") Placeholder True] ++
                  [pexp t,pexp v]) o
@@ -243,8 +243,8 @@ genAll i args
     getExpTm t = getTm t
 
     -- put it back to its original form
-    resugar (PApp _ (PRef fc hl (UN ei)) [_,_,t,v])
-      | ei == txt "Ex_intro"
+    resugar (PApp _ (PRef fc hl n) [_,_,t,v])
+      | n == sigmaCon 
         = PDPair fc [] TypeOrTerm (getTm t) Placeholder (getTm v)
     resugar (PApp _ (PRef fc hl n) [_,_,l,r])
       | n == pairCon

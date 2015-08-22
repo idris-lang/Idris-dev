@@ -1246,15 +1246,20 @@ deriving instance NFData SynContext
 !-}
 
 data Syntax = Rule [SSymbol] PTerm SynContext
+            | DeclRule [SSymbol] [PDecl]
     deriving Show
 
 syntaxNames :: Syntax -> [Name]
 syntaxNames (Rule syms _ _) = mapMaybe ename syms
            where ename (Keyword n) = Just n
                  ename _           = Nothing
+syntaxNames (DeclRule syms _) = mapMaybe ename syms
+           where ename (Keyword n) = Just n
+                 ename _           = Nothing
 
 syntaxSymbols :: Syntax -> [SSymbol]
 syntaxSymbols (Rule ss _ _) = ss
+syntaxSymbols (DeclRule ss _) = ss
 {-!
 deriving instance Binary Syntax
 deriving instance NFData Syntax
