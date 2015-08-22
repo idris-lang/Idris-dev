@@ -29,6 +29,7 @@ New in 0.9.19:
 * Moved System.Interactive, along with getArgs to the Prelude.
 * Major improvements to reflected elaboration scripts, including the ability to run
   them in a declaration context and many bug fixes.
+* "decl syntax" rules to allow syntax extensions at the declaration level
 
 New in 0.9.18:
 --------------

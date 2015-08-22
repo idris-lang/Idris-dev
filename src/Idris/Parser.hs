@@ -184,7 +184,13 @@ Decl ::=
 @
 -}
 decl :: SyntaxInfo -> IdrisParser [PDecl]
-decl syn = do fc <- getFC
+decl syn = try (externalDecl syn)
+           <|> internalDecl syn
+           <?> "declaration"
+
+internalDecl :: SyntaxInfo -> IdrisParser [PDecl]
+internalDecl syn 
+         = do fc <- getFC
               -- if we're after maxline, stop here
               let continue = case maxline syn of
                                 Nothing -> True
@@ -234,6 +240,124 @@ decl' syn =    fixity
            <|> record syn
            <|> runElabDecl syn
            <?> "declaration"
+
+externalDecl :: SyntaxInfo -> IdrisParser [PDecl]
+externalDecl syn = do i <- get
+                      notEndBlock
+                      FC fn start _ <- getFC
+                      decls <- declExtensions syn (syntaxRulesList $ syntax_rules i)
+                      FC _ _ end <- getFC
+                      let outerFC = FC fn start end
+                      return decls
+
+declExtensions :: SyntaxInfo -> [Syntax] -> IdrisParser [PDecl]
+declExtensions syn rules = declExtension syn [] (filter isDeclRule rules)
+                           <?> "user-defined declaration"
+   where
+     isDeclRule (DeclRule _ _) = True
+     isDeclRule _ = False
+
+declExtension :: SyntaxInfo -> [Maybe (Name, SynMatch)] -> [Syntax] 
+                 -> IdrisParser [PDecl]
+declExtension syn ns rules =
+  choice $ flip map (groupBy (ruleGroup `on` syntaxSymbols) rules) $ \rs ->
+    case head rs of -- can never be []
+      DeclRule (symb:_) _ -> try $ do
+        n <- extSymbol symb
+        declExtension syn (n : ns) [DeclRule ss t | (DeclRule (_:ss) t) <- rs]
+      -- If we have more than one Rule in this bucket, our grammar is
+      -- nondeterministic.
+      DeclRule [] dec -> let r = map (update (mapMaybe id ns)) dec in
+                             return r
+
+  where
+    update :: [(Name, SynMatch)] -> PDecl -> PDecl
+    update ns = updateNs ns . fmap (updateRefs ns) . fmap (updateSynMatch ns)
+
+    updateRefs ns = mapPT newref
+      where
+        newref (PRef fc fcs n) = PRef fc fcs (updateB ns n)
+        newref t = t
+
+    -- Below is a lot of tedious boilerplate which updates any top level
+    -- names in the declaration. It will only change names which are bound in
+    -- the declaration (including method names in classes and field names in
+    -- record declarations, not including pattern variables)
+    updateB :: [(Name, SynMatch)] -> Name -> Name
+    updateB ns (NS n mods) = NS (updateB ns n) mods
+    updateB ns n = case lookup n ns of
+                        Just (SynBind tfc t) -> t
+                        _ -> n
+
+    updateNs :: [(Name, SynMatch)] -> PDecl -> PDecl
+    updateNs ns (PTy doc argdoc s fc o n fc' t)
+          = PTy doc argdoc s fc o (updateB ns n) fc' t
+    updateNs ns (PClauses fc o n cs) 
+         = PClauses fc o (updateB ns n) (map (updateClause ns) cs)
+    updateNs ns (PCAF fc n t) = PCAF fc (updateB ns n) t
+    updateNs ns (PData ds cds s fc o dat)
+         = PData ds cds s fc o (updateData ns dat)
+    updateNs ns (PParams fc ps ds) = PParams fc ps (map (updateNs ns) ds)
+    updateNs ns (PNamespace s fc ds) = PNamespace s fc (map (updateNs ns) ds)
+    updateNs ns (PRecord doc syn fc o n fc' ps pdocs fields cname cdoc s)
+         = PRecord doc syn fc o (updateB ns n) fc' ps pdocs
+                   (map (updateField ns) fields)
+                   (updateRecCon ns cname)
+                   cdoc
+                   s
+    updateNs ns (PClass docs s fc cs cn fc' ps pdocs pdets ds cname cdocs)
+         = PClass docs s fc cs (updateB ns cn) fc' ps pdocs pdets
+                  (map (updateNs ns) ds)
+                  (updateRecCon ns cname)
+                  cdocs
+    updateNs ns (PInstance docs pdocs s fc cs cn fc' ps ity ni ds)
+         = PInstance docs pdocs s fc cs (updateB ns cn) fc'
+                     ps ity (fmap (updateB ns) ni) 
+                            (map (updateNs ns) ds)
+    updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
+    updateNs ns (PProvider docs s fc fc' pw n) 
+        = PProvider docs s fc fc' pw (updateB ns n)
+    updateNs ns d = d
+
+    updateRecCon ns Nothing = Nothing
+    updateRecCon ns (Just (n, fc)) = Just (updateB ns n, fc)
+
+    updateField ns (m, p, t, doc) = (updateRecCon ns m, p, t, doc)
+
+    updateClause ns (PClause fc n t ts t' ds)
+       = PClause fc (updateB ns n) t ts t' (map (update ns) ds)
+    updateClause ns (PWith fc n t ts t' m ds)
+       = PWith fc (updateB ns n) t ts t' m (map (update ns) ds)
+    updateClause ns (PClauseR fc ts t ds)
+       = PClauseR fc ts t (map (update ns) ds)
+    updateClause ns (PWithR fc ts t m ds)
+       = PWithR fc ts t m (map (update ns) ds)
+
+    updateData ns (PDatadecl n fc t cs)
+       = PDatadecl (updateB ns n) fc t (map (updateCon ns) cs)
+    updateData ns (PLaterdecl n fc t)
+       = PLaterdecl (updateB ns n) fc t
+
+    updateCon ns (cd, ads, cn, fc, ty, fc', fns)
+       = (cd, ads, updateB ns cn, fc, ty, fc', fns)
+
+    ruleGroup [] [] = True
+    ruleGroup (s1:_) (s2:_) = s1 == s2
+    ruleGroup _ _ = False
+
+    extSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
+    extSymbol (Keyword n) = do fc <- reservedFC (show n)
+                               highlightP fc AnnKeyword
+                               return Nothing
+    extSymbol (Expr n) = do tm <- expr syn
+                            return $ Just (n, SynTm tm)
+    extSymbol (SimpleExpr n) = do tm <- simpleExpr syn
+                                  return $ Just (n, SynTm tm)
+    extSymbol (Binding n) = do (b, fc) <- name
+                               return $ Just (n, SynBind fc b)
+    extSymbol (Symbol s) = do fc <- symbolFC s
+                              highlightP fc AnnKeyword
+                              return Nothing
 
 {- | Parses a syntax extension declaration (and adds the rule to parser state)
 
@@ -303,6 +427,17 @@ syntaxRule syn
          tm <- typeExpr (allowImp syn) >>= uniquifyBinders [n | Binding n <- syms]
          terminator
          return (Rule (mkSimple syms) tm sty)
+  <|> do reservedHL "decl"; reservedHL "syntax"
+         syms <- some syntaxSym
+         when (all isExpr syms) $ unexpected "missing keywords in syntax rule"
+         let ns = mapMaybe getName syms
+         when (length ns /= length (nub ns))
+            $ unexpected "repeated variable in syntax rule"
+         lchar '='
+         openBlock
+         dec <- some (decl syn)
+         closeBlock
+         return (DeclRule (mkSimple syms) (concat dec))
   where
     isExpr (Expr _) = True
     isExpr _ = False
@@ -317,7 +452,7 @@ syntaxRule syn
                                            mkSimple es
     -- Can't parse a full expression followed by operator like characters due to ambiguity
     mkSimple' (Expr e : Symbol s : es)
-      | takeWhile (`elem` opChars) ts /= "" && ts `notElem` invalidOperators  = SimpleExpr e : Symbol s : mkSimple' es
+      | takeWhile (`elem` opChars) ts /= "" = SimpleExpr e : Symbol s : mkSimple' es
        where ts = dropWhile isSpace . dropWhileEnd isSpace $ s
     mkSimple' (e : es) = e : mkSimple' es
     mkSimple' [] = []

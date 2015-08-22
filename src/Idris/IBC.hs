@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 117
+ibcVersion = 118
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -2174,14 +2174,25 @@ instance Binary SynContext where
 
 instance Binary Syntax where
         put (Rule x1 x2 x3)
-          = do put x1
+          = do putWord8 0
+               put x1
                put x2
                put x3
+        put (DeclRule x1 x2)
+          = do putWord8 1
+               put x1
+               put x2
         get
-          = do x1 <- get
-               x2 <- get
-               x3 <- get
-               return (Rule x1 x2 x3)
+          = do i <- getWord8
+               case i of
+                   0 -> do x1 <- get
+                           x2 <- get
+                           x3 <- get
+                           return (Rule x1 x2 x3)
+                   1 -> do x1 <- get
+                           x2 <- get
+                           return (DeclRule x1 x2)
+                   _ -> error "Corrupted binary data for Syntax"
 
 instance (Binary t) => Binary (DSL' t) where
         put (DSL x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)
