@@ -13,7 +13,10 @@ import Prelude.Functor
 import Prelude.List
 import Prelude.Maybe
 import Prelude.Monad
+import Prelude.Nat
 import Language.Reflection
+
+data Fixity = Infixl Nat | Infixr Nat | Infix Nat | Prefix Nat
 
 ||| Erasure annotations reflect Idris's idea of what is intended to be
 ||| erased.
@@ -144,6 +147,8 @@ data Elab : Type -> Type where
   prim__ResolveTC : TTName -> Elab ()
   prim__Search : Int -> List TTName -> Elab ()
   prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
+
+  prim__Fixity : String -> Elab Fixity
 
   prim__Debug : {a : Type} -> List ErrorReportPart -> Elab a
   prim__Metavar : TTName -> Elab ()
@@ -417,6 +422,15 @@ namespace Tactics
   ||| @ hints additional names to try
   search' : (depth : Int) -> (hints : List TTName) -> Elab ()
   search' depth hints = prim__Search depth hints
+
+  ||| Look up the declared fixity for an operator.
+  |||
+  ||| The lookup fails if the operator does not yet have a fixity or
+  ||| if the string is not a valid operator.
+  |||
+  ||| @ operator the operator string to look up
+  operatorFixity : (operator : String) -> Elab Fixity
+  operatorFixity operator = prim__Fixity operator
 
   ||| Halt elaboration, dumping the internal state for inspection.
   |||

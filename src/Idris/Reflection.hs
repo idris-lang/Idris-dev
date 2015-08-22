@@ -17,7 +17,7 @@ import Idris.Core.Evaluate (Def(TyDecl), initContext, lookupDefExact, lookupTyEx
 import Idris.Core.TT
 
 import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,idris_datatypes),
-                            PArg'(..), PArg, PTactic, PTactic'(..), PTerm(..),
+                            PArg'(..), PArg, PTactic, PTactic'(..), PTerm(..), Fixity (..),
                             initEState, pairCon, pairTy)
 import Idris.Delaborate (delab)
 
@@ -397,6 +397,19 @@ claimTy :: Name -> Raw -> ElabD Name
 claimTy n ty = do n' <- getNameFrom n
                   claim n' ty
                   return n'
+
+intToReflectedNat :: Int -> Raw
+intToReflectedNat i = if i <= 0
+                        then Var (natN "Z")
+                        else RApp (Var (natN "S")) (intToReflectedNat (i - 1))
+  where natN :: String -> Name
+        natN n = sNS (sUN n) ["Nat", "Prelude"]
+
+reflectFixity :: Fixity -> Raw
+reflectFixity (Infixl  p) = RApp (Var (tacN "Infixl")) (intToReflectedNat p)
+reflectFixity (Infixr  p) = RApp (Var (tacN "Infixr")) (intToReflectedNat p)
+reflectFixity (InfixN  p) = RApp (Var (tacN "InfixN")) (intToReflectedNat p)
+reflectFixity (PrefixN p) = RApp (Var (tacN "PrefixN")) (intToReflectedNat p)
 
 -- | Convert a reflected term to a more suitable form for pattern-matching.
 -- In particular, the less-interesting bits are elaborated to _ patterns. This
