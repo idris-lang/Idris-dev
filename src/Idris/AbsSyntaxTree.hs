@@ -751,6 +751,18 @@ data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
                | PLaterdecl { d_name :: Name, d_name_fc :: FC, d_tcon :: t }
                  -- ^ "Placeholder" for data whose constructors are defined later
     deriving Functor
+    
+-- | Transform the FCs in a PData and its associated terms. The first
+-- function transforms the general-purpose FCs, and the second transforms
+-- those that are used for semantic source highlighting, so they can be
+-- treated specially.
+mapPDataFC :: (FC -> FC) -> (FC -> FC) -> PData -> PData
+mapPDataFC f g (PDatadecl n nfc tycon ctors) =
+  PDatadecl n (g nfc) (mapPTermFC f g tycon) (map ctorFC ctors)
+    where ctorFC (doc, argDocs, n, nfc, ty, fc, ns) =
+                 (doc, argDocs, n, g nfc, mapPTermFC f g ty, f fc, ns)
+mapPDataFC f g (PLaterdecl n nfc tycon) =
+  PLaterdecl n (g nfc) (mapPTermFC f g tycon)
 {-!
 deriving instance Binary PData'
 deriving instance NFData PData'
@@ -763,8 +775,76 @@ type PDecl   = PDecl' PTerm
 type PData   = PData' PTerm
 type PClause = PClause' PTerm
 
--- get all the names declared in a decl
+-- | Transform the FCs in a PTerm. The first function transforms the
+-- general-purpose FCs, and the second transforms those that are used
+-- for semantic source highlighting, so they can be treated specially.
+mapPDeclFC :: (FC -> FC) -> (FC -> FC) -> PDecl -> PDecl
+mapPDeclFC f g (PFix fc fixity ops) =
+    PFix (f fc) fixity ops
+mapPDeclFC f g (PTy doc argdocs syn fc opts n nfc ty) =
+    PTy doc argdocs syn (f fc) opts n (g nfc) (mapPTermFC f g ty)
+mapPDeclFC f g (PPostulate ext doc syn fc nfc opts n ty) =
+    PPostulate ext doc syn (f fc) (g nfc) opts n (mapPTermFC f g ty)
 
+mapPDeclFC f g (PClauses fc opts n clauses) =
+    PClauses (f fc) opts n (map (fmap (mapPTermFC f g)) clauses)
+mapPDeclFC f g (PCAF fc n tm) = PCAF (f fc) n (mapPTermFC f g tm)
+mapPDeclFC f g (PData doc argdocs syn fc opts dat) =
+    PData doc argdocs syn (f fc) opts (mapPDataFC f g dat)
+mapPDeclFC f g (PParams fc params decls) =
+    PParams (f fc)
+            (map (\(n, ty) -> (n, mapPTermFC f g ty)) params)
+            (map (mapPDeclFC f g) decls)
+mapPDeclFC f g (PNamespace ns fc decls) =
+    PNamespace ns (f fc) (map (mapPDeclFC f g) decls)
+mapPDeclFC f g (PRecord doc syn fc opts n nfc params paramdocs fields ctor ctorDoc syn') =
+    PRecord doc syn (f fc) opts n (g nfc)
+            (map (\(pn, pnfc, plic, ty) -> (pn, g pnfc, plic, mapPTermFC f g ty)) params)
+            paramdocs
+            (map (\(fn, plic, ty, fdoc) -> (fmap (\(fn', fnfc) -> (fn', g fnfc)) fn,
+                                            plic, mapPTermFC f g ty, fdoc))
+                 fields)
+            (fmap (\(ctorN, ctorNFC) -> (ctorN, g ctorNFC)) ctor)
+            ctorDoc
+            syn'
+mapPDeclFC f g (PClass doc syn fc constrs n nfc params paramDocs det body ctor ctorDoc) =
+    PClass doc syn (f fc)
+           (map (\(constrn, constr) -> (constrn, mapPTermFC f g constr)) constrs)
+           n (g nfc) (map (\(n, nfc, pty) -> (n, g nfc, mapPTermFC f g pty)) params)
+           paramDocs (map (\(dn, dnfc) -> (dn, g dnfc)) det)
+           (map (mapPDeclFC f g) body)
+           (fmap (\(n, nfc) -> (n, g nfc)) ctor)
+           ctorDoc
+mapPDeclFC f g (PInstance doc paramDocs syn fc constrs cn cnfc params instTy instN body) =
+    PInstance doc paramDocs syn (f fc)
+              (map (\(constrN, constrT) -> (constrN, mapPTermFC f g constrT)) constrs)
+              cn (g cnfc) (map (mapPTermFC f g) params)
+              (mapPTermFC f g instTy)
+              instN
+              (map (mapPDeclFC f g) body)
+mapPDeclFC f g (PDSL n dsl) = PDSL n (fmap (mapPTermFC f g) dsl)
+mapPDeclFC f g (PSyntax fc syn) = PSyntax (f fc) $
+                                    case syn of
+                                      Rule syms tm ctxt -> Rule syms (mapPTermFC f g tm) ctxt
+                                      DeclRule syms decls -> DeclRule syms (map (mapPDeclFC f g) decls)
+mapPDeclFC f g (PMutual fc decls) =
+    PMutual (f fc) (map (mapPDeclFC f g) decls)
+mapPDeclFC f g (PDirective d) =
+    PDirective $
+      case d of
+        DNameHint n nfc ns ->
+            DNameHint n (g nfc) (map (\(hn, hnfc) -> (hn, g hnfc)) ns)
+        DErrorHandlers n nfc n' nfc' ns ->
+            DErrorHandlers n (g nfc) n' (g nfc') $
+                map (\(an, anfc) -> (an, g anfc)) ns
+mapPDeclFC f g (PProvider doc syn fc nfc what n) =
+    PProvider doc syn (f fc) (g nfc) (fmap (mapPTermFC f g) what) n
+mapPDeclFC f g (PTransform fc safe l r) =
+    PTransform (f fc) safe (mapPTermFC f g l) (mapPTermFC f g r)
+mapPDeclFC f g (PRunElabDecl fc script) =
+    PRunElabDecl (f fc) (mapPTermFC f g script)
+
+-- | Get all the names declared in a declaration
 declared :: PDecl -> [Name]
 declared (PFix _ _ _) = []
 declared (PTy _ _ _ _ _ n fc t) = [n]

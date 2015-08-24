@@ -248,7 +248,17 @@ externalDecl syn = do i <- get
                       decls <- declExtensions syn (syntaxRulesList $ syntax_rules i)
                       FC _ _ end <- getFC
                       let outerFC = FC fn start end
-                      return decls
+                      return $ map (mapPDeclFC (fixFC outerFC)
+                                               (fixFCH fn outerFC))
+                                   decls
+  where
+    -- | Fix non-highlighting FCs to prevent spurious error location reports
+    fixFC :: FC -> FC -> FC
+    fixFC outer inner | inner `fcIn` outer = inner
+                      | otherwise          = outer
+    -- | Fix highlighting FCs by obliterating them, to avoid spurious highlights
+    fixFCH fn outer inner | inner `fcIn` outer = inner
+                          | otherwise          = FileFC fn
 
 declExtensions :: SyntaxInfo -> [Syntax] -> IdrisParser [PDecl]
 declExtensions syn rules = declExtension syn [] (filter isDeclRule rules)
