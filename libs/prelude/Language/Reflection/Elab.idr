@@ -326,10 +326,14 @@ namespace Tactics
   ||| the body. Requires that the hole be in binding form (use
   ||| `attack`).
   |||
-  ||| @ n the name to use for the argument, or `Nothing` to use the name
-  |||   in the corresponding hole type (a dependent function)
-  intro : (n : Maybe TTName) -> Elab ()
-  intro n = prim__Intro n
+  ||| @ n the name to use for the argument
+  intro : (n : TTName) -> Elab ()
+  intro n = prim__Intro (Just n)
+
+  ||| Introduce a lambda binding around the current hole and focus on
+  ||| the body, using the name provided by the type of the hole.
+  intro' : Elab ()
+  intro' = prim__Intro Nothing
 
   ||| Introduce a dependent function type binding into the current hole,
   ||| and focus on the body.
