@@ -83,7 +83,7 @@ effectful program ``f`` has a type of the following form:
 
 .. code-block:: idris
 
-    f : (x1 : a1) -> (x2 : a2) -> ... -> Eff t effs 
+    f : (x1 : a1) -> (x2 : a2) -> ... -> Eff t effs
 
 That is, the return type gives the effects that ``f`` supports
 (``effs``, of type ``List EFFECT``) and the type the computation
@@ -419,7 +419,7 @@ underlying type ``EffM``:
 
     EffM : (m : Type -> Type) -> (t : Type)
             -> (List EFFECT)
-            -> (t -> List EFFECT) -> Type 
+            -> (t -> List EFFECT) -> Type
 
 This is more general than the types we have been writing so far. It is
 parameterised over an underying computation context ``m``, a
@@ -443,15 +443,15 @@ operations which can change the set of available effects are:
   possible.
 
 While powerful, this can make uses of the ``EffM`` type hard to read.
-Therefore the library provides an overloaded function ``Eff`` 
+Therefore the library provides an overloaded function ``Eff``
 There are the following three versions:
 
 .. code-block:: idris
 
     SimpleEff.Eff : (t : Type) -> (input_effs : List EFFECT) -> Type
-    TransEff.Eff  : (t : Type) -> (input_effs : List EFFECT) -> 
+    TransEff.Eff  : (t : Type) -> (input_effs : List EFFECT) ->
                                   (output_effs : List EFFECT) -> Type
-    DepEff.Eff    : (t : Type) -> (input_effs : List EFFECT) -> 
+    DepEff.Eff    : (t : Type) -> (input_effs : List EFFECT) ->
                                   (output_effs_fn : x -> List EFFECT) -> Type
 
 So far, we have used only the first version, ``SimpleEff.Eff``, which
@@ -521,7 +521,9 @@ the ``new`` function, though this is beyond the scope of this tutorial.
 .. [3] Edwin Brady. 2013. Programming and reasoning with algebraic
        effects and dependent types. SIGPLAN Not. 48, 9 (September
        2013), 133-144. DOI=10.1145/2544174.2500581
-       http://doi.acm.org/10.1145/2544174.2500581
+       http://dl.acm.org/citation.cfm?doid=2544174.2500581
+
+
 
 .. |image| image:: ../image/effects-tree.png
                    :width: 500px

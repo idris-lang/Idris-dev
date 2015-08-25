@@ -15,7 +15,7 @@ They are inspired by linear types, `Uniqueness Types
 <https://en.wikipedia.org/wiki/Uniqueness_type>`__ in the `Clean
 <http://wiki.clean.cs.ru.nl/Clean>`__ programming language, and
 ownership types and borrowed pointers in the `Rust
-<http://www.rust-lang.org/>`__ programming language.
+<https://www.rust-lang.org/>`__ programming language.
 
 Some things we hope to be able to do eventually with uniqueness types
 include:

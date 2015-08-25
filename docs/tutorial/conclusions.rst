@@ -7,7 +7,7 @@ Further Reading
 Further information about Idris programming, and programming with
 dependent types in general, can be obtained from various sources:
 
--  The Idris web site (http://idris-lang.org/) and by asking
+-  The Idris web site (http://www.idris-lang.org/) and by asking
    questions on the mailing list.
 
 -  The IRC channel ``#idris``, on

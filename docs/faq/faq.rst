@@ -150,7 +150,7 @@ names ``Float`` and ``Double`` to represent floating point numbers of
 size 32 and 64 respectivly.  Newer languages such as Rust and Julia
 have begun to follow the naming scheme described in `IEE Standard for
 Floating-Point Arithmetic (IEEE 754)
-<http://en.wikipedia.org/wiki/IEEE_floating_point>`_. This describes
+<https://en.wikipedia.org/wiki/IEEE_floating_point>`_. This describes
 single and double precision numbers as ``Float32`` and ``Float64``;
 the size is described in the type name.
 
