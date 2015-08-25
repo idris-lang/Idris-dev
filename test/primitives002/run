@@ -1,37 +1,41 @@
 #!/usr/bin/env bash
 
-HEAD="module Main
+HEAD='module Main
 
 import Data.Floats
 
 strtake : Nat -> String -> String
 strtake n str = pack (take n (unpack str))
 
-main : IO ()"
+getf : IO Double
+getf = map cast getLine
 
-TESTS=("prim__floatToStr 0.0"
-"prim__strToFloat \"0.0\""
-"prim__addFloat 1.0 1.0"
-"prim__subFloat 1.0 1.0"
-"prim__mulFloat 1.0 1.0"
-"prim__divFloat 1.0 1.0"
-"prim__slteFloat 1.0 1.0"
-"prim__sltFloat 1.0 1.0"
-"prim__sgteFloat 1.0 1.0"
-"prim__sgtFloat 1.0 1.0"
-"prim__eqFloat 1.0 1.0"
-"prim__floatACos 1.0"
-"prim__floatATan 1.0"
-"prim__floatCos 1.0"
-"prim__floatFloor 1.0"
-"prim__floatSin 1.0"
-"prim__floatTan 1.0"
-"prim__floatASin 1.0"
-"prim__floatCeil 1.0"
-"prim__floatExp 1.0"
-"prim__floatLog 1.0"
-"prim__floatSqrt 1.0"
-"prim__negFloat 1.0"
+main : IO ()'
+
+# code separated from input with '#'
+TESTS=('prim__floatToStr !getf#0.0'
+ 'prim__strToFloat !getLine#0.0'
+$'prim__addFloat !getf !getf#1.0\n1.0'
+$'prim__subFloat !getf !getf#1.0\n1.0'
+$'prim__mulFloat !getf !getf#1.0\n1.0'
+$'prim__divFloat !getf !getf#1.0\n1.0'
+$'prim__slteFloat !getf !getf#1.0\n1.0'
+$'prim__sltFloat !getf !getf#1.0\n1.0'
+$'prim__sgteFloat !getf !getf#1.0\n1.0'
+$'prim__sgtFloat !getf !getf#1.0\n1.0'
+$'prim__eqFloat !getf !getf#1.0\n1.0'
+ 'prim__floatACos !getf#1.0'
+ 'prim__floatATan !getf#1.0'
+ 'prim__floatCos !getf#1.0'
+ 'prim__floatFloor !getf#1.0'
+ 'prim__floatSin !getf#1.0'
+ 'prim__floatTan !getf#1.0'
+ 'prim__floatASin !getf#1.0'
+ 'prim__floatCeil !getf#1.0'
+ 'prim__floatExp !getf#1.0'
+ 'prim__floatLog !getf#1.0'
+ 'prim__floatSqrt !getf#1.0'
+ 'prim__negFloat !getf#1.0'
 )
 
 generate_testfile()
@@ -44,9 +48,9 @@ EOF
 
 for T in "${TESTS[@]}"
 do
-    echo ${T}
-    generate_testfile "tmptest.idr" "${T}"
-    idris $@ --quiet tmptest.idr -o tmptest || echo "missing primitive in ${CG}"
-    ./tmptest
+    echo ${T%% *} ${T##*#}
+    generate_testfile "tmptest.idr" "${T%%#*}"
+    idris "$@" --quiet tmptest.idr -o tmptest || echo "missing primitive in ${CG}"
+    ./tmptest <<<"${T##*#}"
     rm tmptest.idr tmptest.ibc tmptest
 done
