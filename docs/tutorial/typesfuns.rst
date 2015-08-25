@@ -346,7 +346,6 @@ can also be accessed with the following syntax:
     record { a->b->c } x
 
 
-
 Dependent Types
 ===============
 
@@ -493,10 +492,10 @@ elements. ``Fin`` is indexed by a ``Nat``, which represents the number
 of elements in the set. Since we can’t construct an element of an
 empty set, neither constructor targets ``Fin Z``.
 
-As mentioned above, a useful application of the ``Fin`` family is to represent bounded
-natural numbers. Since the first ``n`` natural numbers form a finite
-set of ``n`` elements, we can treat ``Fin n`` as the set of integers
-greater than or equal to zero and less than ``n``.
+As mentioned above, a useful application of the ``Fin`` family is to
+represent bounded natural numbers. Since the first ``n`` natural
+numbers form a finite set of ``n`` elements, we can treat ``Fin n`` as
+the set of integers greater than or equal to zero and less than ``n``.
 
 For example, the following function which looks up an element in a
 ``Vect``, by a bounded index given as a ``Fin n``, is defined in the
@@ -605,7 +604,7 @@ appear within the block:
          There : Elem x xs -> Elem x (y :: xs)
 
 Note: Declaration Order and ``mutual`` blocks
----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In general, functions and data types must be defined before use, since
 dependent types allow functions to appear as part of types, and their
@@ -837,7 +836,7 @@ remember that Idris is still in development, so if you don’t see
 the function you need, please feel free to add it and submit a patch!
 
 Aside: Anonymous functions and operator sections
-------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are actually neater ways to write the above expression. One way
 would be to use an anonymous function:
@@ -897,8 +896,8 @@ simply ``b``. Since the default value might not be used, we mark it as
 ``Lazy`` in case it is a large expression where evaluating it then
 discarding it would be wasteful.
 
-Tuples and Dependent Pairs
---------------------------
+Tuples
+------
 
 Values can be paired with the following built-in data type:
 
@@ -993,6 +992,43 @@ intermediate values:
       | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
 
 We will see more on ``with`` notation later.
+
+Dependent Records
+-----------------
+
+Records can also be dependent on values. Records *parameters*, which
+are not subject to field updates. The parameters appear as arguments
+to the resulting type, and are written following the record type
+name. For example, a pair type could be defined as follows:
+
+.. code-block:: idris
+
+    record Prod a b where
+        constructor Times
+        fst : a
+        snd : b
+
+
+Using the class record from the original introduction to records.  The
+size of the class can be restricted using a ``Vect`` and the size
+promoted to the type level by parameterising the record with the size.
+Foe example:
+
+
+.. code-block:: idris
+
+    record SizedClass (size : Nat) where
+        constructor SizedClassInfo
+        students : Vect size Person
+        className : String
+
+**Note** that it is no longer possible to use the ``addStudent``
+method from earlier as that would change the size of the class. To provide an add student the function must specify in the type that the size of the class has been increased by one. As the size if specified using natural numbers, the new value can be incremeated using the successor constructor.
+
+.. code-block:: idris
+
+    addStudent : Person -> SizedClass n -> SizedClass (S n)
+    addStudent p c = record { students = p :: students c } c
 
 .. _sect-more-expr:
 
@@ -1104,40 +1140,3 @@ matching ``let`` and lambda bindings. It will *only* work if:
 - The type of the result is "known". i.e. the type of the expression
    can be determined *without* type checking the ``case``-expression
    itself.
-
-Dependent Records
-=================
-
-Records can also be dependent on values. Records *parameters*, which
-are not subject to field updates. The parameters appear as arguments
-to the resulting type, and are written following the record type
-name. For example, a pair type could be defined as follows:
-
-.. code-block:: idris
-
-    record Prod a b where
-        constructor Times
-        fst : a
-        snd : b
-
-
-Using the class record from the original introduction to records.  The
-size of the class can be restricted using a ``Vect`` and the size
-promoted to the type level by parameterising the record with the size.
-Foe example:
-
-
-.. code-block:: idris
-
-    record SizedClass (size : Nat) where
-        constructor SizedClassInfo
-        students : Vect size Person
-        className : String
-
-**Note** that it is no longer possible to use the ``addStudent``
-method from earlier as that would change the size of the class. To provide an add student the function must specify in the type that the size of the class has been increased by one. As the size if specified using natural numbers, the new value can be incremeated using the successor constructor.
-
-.. code-block:: idris
-
-    addStudent : Person -> SizedClass n -> SizedClass (S n)
-    addStudent p c = record { students = p :: students c } c
