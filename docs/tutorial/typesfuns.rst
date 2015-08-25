@@ -248,104 +248,6 @@ So, for example, the following definitions are legal:
                   where z w = y + w
 
 
-Records
-=======
-
-*Records* are data types which collect several values (the record's
-*fields*) together. Idris provides syntax for defining records and
-*automatically generating field access and update functions*. Unlike
-*the syntax used for data structures, records in Idris follow a
-*different syntax to that seen with Haskell. For example, we can
-*represent a person's name and age in a record:
-
-.. code-block:: idris
-
-    record Person where
-        constructor MkPerson
-        firstName, middleName, lastName : String
-        age : Int
-
-    fred : Person
-    fred = MkPerson "Fred" "Joe" "Bloggs" 30
-
-
-The constructor name is provided using the ``constructor`` keyword,
-and the *fields* are then given which are in an indented block
-following the `where` keyword (here, ``firstName``, ``middleName``,
-``lastName``, and ``age``). You can declare multiple fields on a
-single line, provided that they have the same type.  The field names
-can be used to access the field values:
-
-::
-
-    *record> firstName fred
-    "Fred" : String
-    *record> age fred
-    30 : Int
-    *record> :t firstName
-    firstName : Person -> String
-
-We can also use the field names to update a record (or, more
-precisely, produce a copy of the record with the given fields
-updated):
-
-.. code-block:: bash
-
-    *record> record { firstName = "Jim" } fred
-    MkPerson "Jim" "Joe" "Bloggs" 30 : Person
-    *record> record { firstName = "Jim", age = 20 } fred
-    MkPerson "Jim" "Joe" "Bloggs" 20 : Person
-
-The syntax ``record { field = val, ... }`` generates a function which
-updates the given fields in a record.
-
-Records, and fields within records, can have dependent types. Updates
-are allowed to change the type of a field, provided that the result is
-well-typed.
-
-.. code-block:: idris
-
-    record Class where
-        constructor ClassInfo
-        students : Vect n Person
-        className : String
-
-It is safe to update the ``students`` field to a vector of a different
-length because it will not affect the type of the record:
-
-.. code-block:: idris
-
-    addStudent : Person -> Class -> Class
-    addStudent p c = record { students = p :: students c } c
-
-::
-
-    *record> addStudent fred (ClassInfo [] "CS")
-    ClassInfo [MkPerson "Fred" "Joe" "Bloggs" 30] "CS" : Class
-
-
-Nested record update
---------------------
-
-Idris also provides a convenient syntax for accessing and updating
-nested records. For example, if a field is accessible with the
-expression ``c (b (a x))``, it can be updated using the following
-syntax:
-
-.. code-block:: idris
-
-    record { a->b->c = val } x
-
-This returns a new record, with the field accessed by the path
-``a->b->c`` set to ``x``. The syntax is first class, i.e.  ``record {
-a->b->c = val }`` itself has a function type. Symmetrically, the field
-can also be accessed with the following syntax:
-
-.. code-block:: idris
-
-    record { a->b->c } x
-
-
 Dependent Types
 ===============
 
@@ -992,6 +894,105 @@ intermediate values:
       | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
 
 We will see more on ``with`` notation later.
+
+
+Records
+-------
+
+*Records* are data types which collect several values (the record's
+*fields*) together. Idris provides syntax for defining records and
+*automatically generating field access and update functions*. Unlike
+*the syntax used for data structures, records in Idris follow a
+*different syntax to that seen with Haskell. For example, we can
+*represent a person's name and age in a record:
+
+.. code-block:: idris
+
+    record Person where
+        constructor MkPerson
+        firstName, middleName, lastName : String
+        age : Int
+
+    fred : Person
+    fred = MkPerson "Fred" "Joe" "Bloggs" 30
+
+
+The constructor name is provided using the ``constructor`` keyword,
+and the *fields* are then given which are in an indented block
+following the `where` keyword (here, ``firstName``, ``middleName``,
+``lastName``, and ``age``). You can declare multiple fields on a
+single line, provided that they have the same type.  The field names
+can be used to access the field values:
+
+::
+
+    *record> firstName fred
+    "Fred" : String
+    *record> age fred
+    30 : Int
+    *record> :t firstName
+    firstName : Person -> String
+
+We can also use the field names to update a record (or, more
+precisely, produce a copy of the record with the given fields
+updated):
+
+.. code-block:: bash
+
+    *record> record { firstName = "Jim" } fred
+    MkPerson "Jim" "Joe" "Bloggs" 30 : Person
+    *record> record { firstName = "Jim", age = 20 } fred
+    MkPerson "Jim" "Joe" "Bloggs" 20 : Person
+
+The syntax ``record { field = val, ... }`` generates a function which
+updates the given fields in a record.
+
+Records, and fields within records, can have dependent types. Updates
+are allowed to change the type of a field, provided that the result is
+well-typed.
+
+.. code-block:: idris
+
+    record Class where
+        constructor ClassInfo
+        students : Vect n Person
+        className : String
+
+It is safe to update the ``students`` field to a vector of a different
+length because it will not affect the type of the record:
+
+.. code-block:: idris
+
+    addStudent : Person -> Class -> Class
+    addStudent p c = record { students = p :: students c } c
+
+::
+
+    *record> addStudent fred (ClassInfo [] "CS")
+    ClassInfo [MkPerson "Fred" "Joe" "Bloggs" 30] "CS" : Class
+
+
+Nested record update
+~~~~~~~~~~~~~~~~~~~~
+
+Idris also provides a convenient syntax for accessing and updating
+nested records. For example, if a field is accessible with the
+expression ``c (b (a x))``, it can be updated using the following
+syntax:
+
+.. code-block:: idris
+
+    record { a->b->c = val } x
+
+This returns a new record, with the field accessed by the path
+``a->b->c`` set to ``x``. The syntax is first class, i.e.  ``record {
+a->b->c = val }`` itself has a function type. Symmetrically, the field
+can also be accessed with the following syntax:
+
+.. code-block:: idris
+
+    record { a->b->c } x
+
 
 Dependent Records
 -----------------
