@@ -21,9 +21,11 @@ import Control.IOExcept -- TODO Add IO Logging Handler
 ||| A Logging effect that displays a logging message to be logged at a
 ||| certain level.
 data Logging : Effect where
+    SetLvl : (lvl : Nat)
+          -> sig Logging () Nat Nat
     Log : (lvl : Nat)
        -> (msg : String)
-       -> Logging () Nat (\v => Nat)
+       -> sig Logging () Nat
 
 ||| A Logging Effect.
 LOG : EFFECT
@@ -31,12 +33,19 @@ LOG = MkEff Nat Logging
 
 -- For logging in the IO context
 instance Handler Logging IO where
-    handle l (Log lvl msg) k = do
-      case lvl <= l  of
-        False   => k () l
+    handle st (SetLvl newL) k = k () st
+    handle st (Log lvl msg) k = do
+      case lvl <= st  of
+        False => k () st
         True  =>  do
           printLn $ unwords [show lvl, ":", msg]
-          k () l
+          k () st
+
+||| Set the logging level.
+|||
+||| @l The new logging level.
+setLogLvl : (l : Nat) -> Eff () [LOG]
+setLogLvl l = call $ SetLvl l
 
 ||| Log `msg` at the given level.
 |||

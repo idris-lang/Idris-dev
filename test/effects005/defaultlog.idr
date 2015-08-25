@@ -1,5 +1,5 @@
 import Effects
-import Effect.Logging.Default
+import Effect.Logging
 
 func : Nat -> Eff () [LOG String]
 func x = do
@@ -12,7 +12,12 @@ doubleFunc x = do
   func x
   pure (x+x)
 
+eMain : Eff () [LOG String]
+eMain = do
+  initLogger ALL ["NumOPS"]
+  doubleFunc 3
+
 main : IO ()
 main = do
-   x <- runInit [(ALL,["NumOPS"])] (doubleFunc 3)
+   x <- run eMain
    printLn x
