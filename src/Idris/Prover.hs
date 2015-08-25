@@ -5,7 +5,7 @@ module Idris.Prover (prover, showProof, showRunElab) where
 -- This exludes (<$>) as fmap, because wl-pprint uses it for newline
 import Prelude (Eq(..), Show(..),
                 Bool(..), Either(..), Maybe(..), String,
-                (.), ($), (++),
+                (.), ($), (++), (||),
                 concatMap, id, elem, error, fst, flip, foldl, foldr, init,
                 length, lines, map, not, null, repeat, reverse, tail, zip)
 
@@ -150,7 +150,7 @@ dumpState ist menv ps | (h : hs) <- holes ps = do
   let OK ty  = goalAtFocus ps
   let OK env = envAtFocus ps
   let state = prettyOtherGoals hs <> line <>
-              prettyAssumptions env <> line <>
+              prettyAssumptions ty env <> line <>
               prettyMetaValues (reverse menv) <>
               prettyGoal (zip (assumptionNames env) (repeat False)) ty
   rendered <- iRender state
@@ -168,18 +168,18 @@ dumpState ist menv ps | (h : hs) <- holes ps = do
     assumptionNames :: Env -> [Name]
     assumptionNames = map fst
 
-    prettyPs :: [(Name, Bool)] -> Env -> Doc OutputAnnotation
-    prettyPs bnd [] = empty
-    prettyPs bnd ((n@(MN _ r), _) : bs)
-        | r == txt "rewrite_rule" = prettyPs ((n, False):bnd) bs
-    prettyPs bnd ((n@(MN _ _), _) : bs)
-        | not (n `elem` freeEnvNames bs) = prettyPs bnd bs
-    prettyPs bnd ((n, Let t v) : bs) =
+    prettyPs :: Binder Type -> [(Name, Bool)] -> Env -> Doc OutputAnnotation
+    prettyPs g bnd [] = empty
+    prettyPs g bnd ((n@(MN _ r), _) : bs)
+        | r == txt "rewrite_rule" = prettyPs g ((n, False):bnd) bs
+    prettyPs g bnd ((n@(MN _ _), _) : bs)
+        | not (n `elem` freeEnvNames bs || n `elem` goalNames g) = prettyPs g bnd bs
+    prettyPs g bnd ((n, Let t v) : bs) =
       line <> bindingOf n False <+> text "=" <+> tPretty bnd v <+> colon <+>
-        align (tPretty bnd t) <> prettyPs ((n, False):bnd) bs
-    prettyPs bnd ((n, b) : bs) =
+        align (tPretty bnd t) <> prettyPs g ((n, False):bnd) bs
+    prettyPs g bnd ((n, b) : bs) =
       line <> bindingOf n False <+> colon <+>
-      align (tPretty bnd (binderTy b)) <> prettyPs ((n, False):bnd) bs
+      align (tPretty bnd (binderTy b)) <> prettyPs g ((n, False):bnd) bs
 
     prettyMetaValues [] = empty
     prettyMetaValues mvs =
@@ -196,6 +196,9 @@ dumpState ist menv ps | (h : hs) <- holes ps = do
 
     kwd = annotate AnnKeyword . text
 
+    goalNames (Guess t v) = freeNames t ++ freeNames v
+    goalNames b = freeNames (binderTy b)
+
     prettyG bnd (Guess t v) = tPretty bnd t <+> text "=?=" <+> tPretty bnd v
     prettyG bnd b = tPretty bnd $ binderTy b
 
@@ -203,12 +206,12 @@ dumpState ist menv ps | (h : hs) <- holes ps = do
       text "----------                 Goal:                  ----------" <$$>
       bindingOf h False <+> colon <+> align (prettyG bnd ty)
 
-    prettyAssumptions env =
+    prettyAssumptions g env =
       if length env == 0 then
         empty
       else
         text "----------              Assumptions:              ----------" <>
-        nest nestingSize (prettyPs [] $ reverse env)
+        nest nestingSize (prettyPs g [] $ reverse env)
 
     prettyOtherGoals hs =
       if length hs == 0 then
