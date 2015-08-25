@@ -134,7 +134,7 @@ data Elab : Type -> Type where
   prim__Forall : TTName -> Raw -> Elab ()
   prim__PatVar : TTName -> Elab ()
   prim__PatBind : TTName -> Elab ()
-  -- TODO: letbind
+  prim__LetBind : TTName -> Raw -> Raw -> Elab ()
 
   prim__Compute : Elab ()
   prim__Normalise : (List (TTName, Binder TT)) -> TT -> Elab TT
@@ -347,6 +347,14 @@ namespace Tactics
   ||| Introduce a new pattern binding.
   patbind : TTName -> Elab ()
   patbind n = prim__PatBind n
+
+  ||| Introduce a new let binding
+  |||
+  ||| @ n the name to let bind
+  ||| @ ty the type of the term to be let-bound
+  ||| @ tm the term to be bound
+  letbind : (n : TTName) -> (ty, tm : Raw) -> Elab ()
+  letbind n ty tm = prim__LetBind n ty tm
 
   ||| Normalise the goal.
   compute : Elab ()

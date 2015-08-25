@@ -1908,6 +1908,12 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       = do n' <- reifyTTName n
            patbind n'
            returnUnit
+      | n == tacN "prim__LetBind", [n, ty, tm] <- args
+      = do n' <- reifyTTName n
+           ty' <- reifyRaw ty
+           tm' <- reifyRaw tm
+           letbind n' ty' tm'
+           returnUnit
       | n == tacN "prim__Compute", [] <- args
       = do compute ; returnUnit
       | n == tacN "prim__Normalise", [env, tm] <- args
