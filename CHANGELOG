@@ -30,6 +30,8 @@ New in 0.9.19:
 * Major improvements to reflected elaboration scripts, including the ability to run
   them in a declaration context and many bug fixes.
 * "decl syntax" rules to allow syntax extensions at the declaration level
+* New Logging Effects have been added to facilitate logging of effectful
+  programmes.
 
 New in 0.9.18:
 --------------

@@ -14,9 +14,6 @@
 module Effect.Logging.Simple
 
 import Effects
-import public Effect.Logging.Level
-
-import Control.IOExcept -- TODO Add IO Logging Handler
 
 ||| A Logging effect that displays a logging message to be logged at a
 ||| certain level.
@@ -38,7 +35,7 @@ instance Handler Logging IO where
       case lvl <= st  of
         False => k () st
         True  =>  do
-          printLn $ unwords [show lvl, ":", msg]
+          putStrLn $ unwords [show lvl, ":", msg]
           k () st
 
 ||| Set the logging level.
