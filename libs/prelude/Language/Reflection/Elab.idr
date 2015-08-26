@@ -252,7 +252,7 @@ namespace Tactics
   fill tm = prim__Fill tm
 
   ||| Attempt to apply an operator to fill the current hole,
-  ||| potentially solving arugments by unification.
+  ||| potentially solving arguments by unification.
   |||
   ||| The return value is a list of pairs of names, one for each input
   ||| argument. The first projection of these pairs is the original
