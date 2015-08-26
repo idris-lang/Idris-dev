@@ -470,7 +470,7 @@ VAL idris_castFloatStr(VM* vm, VAL i) {
     Closure* cl = allocate(sizeof(Closure) + sizeof(char)*32, 0);
     SETTY(cl, STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
-    sprintf(cl -> info.str, "%g", GETFLOAT(i));
+    snprintf(cl -> info.str, 32, "%.16g", GETFLOAT(i));
     return cl;
 }
 

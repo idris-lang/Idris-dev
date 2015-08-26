@@ -91,19 +91,22 @@ showCon d conName shownArgs = showParens (d >= App) $ conName ++ shownArgs
 showArg : Show a => (x : a) -> String
 showArg x = " " ++ showPrec App x
 
-instance Show Int where
-  show = prim__toStrInt
-
-instance Show Integer where
-  show = prim__toStrBigInt
-
-instance Show Double where
-  show = prim__floatToStr
-
 firstCharIs : (Char -> Bool) -> String -> Bool
 firstCharIs p s with (strM s)
   firstCharIs p ""             | StrNil = False
   firstCharIs p (strCons c cs) | StrCons c cs = p c
+
+primNumShow : (a -> String) -> Prec -> a -> String
+primNumShow f d x = let str = f x in showParens (d >= PrefixMinus && firstCharIs (== '-') str) str
+
+instance Show Int where
+  showPrec = primNumShow prim__toStrInt
+
+instance Show Integer where
+  showPrec = primNumShow prim__toStrBigInt
+
+instance Show Double where
+  showPrec = primNumShow prim__floatToStr
 
 protectEsc : (Char -> Bool) -> String -> String -> String
 protectEsc p f s = f ++ (if firstCharIs p s then "\\&" else "") ++ s

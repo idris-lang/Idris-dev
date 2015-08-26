@@ -695,15 +695,15 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       | (LSRem (ATInt ITBig))  <- op
       , (lhs:rhs:_)            <- args = invokeMeth lhs "mod" [rhs]
       | (LEq (ATInt ITBig))    <- op
-      , (lhs:rhs:_)            <- args = invokeMeth lhs "equals" [rhs]
+      , (lhs:rhs:_)            <- args = JSPreOp "+" $ invokeMeth lhs "equals" [rhs]
       | (LSLt (ATInt ITBig))   <- op
-      , (lhs:rhs:_)            <- args = invokeMeth lhs "lesser" [rhs]
+      , (lhs:rhs:_)            <- args = JSPreOp "+" $ invokeMeth lhs "lesser" [rhs]
       | (LSLe (ATInt ITBig))   <- op
-      , (lhs:rhs:_)            <- args = invokeMeth lhs "lesserOrEquals" [rhs]
+      , (lhs:rhs:_)            <- args = JSPreOp "+" $ invokeMeth lhs "lesserOrEquals" [rhs]
       | (LSGt (ATInt ITBig))   <- op
-      , (lhs:rhs:_)            <- args = invokeMeth lhs "greater" [rhs]
+      , (lhs:rhs:_)            <- args = JSPreOp "+" $ invokeMeth lhs "greater" [rhs]
       | (LSGe (ATInt ITBig))   <- op
-      , (lhs:rhs:_)            <- args = invokeMeth lhs "greaterOrEquals" [rhs]
+      , (lhs:rhs:_)            <- args = JSPreOp "+" $ invokeMeth lhs "greaterOrEquals" [rhs]
 
       | (LPlus ATFloat)  <- op
       , (lhs:rhs:_)      <- args = translateBinaryOp "+" lhs rhs
@@ -714,15 +714,15 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       | (LSDiv ATFloat)  <- op
       , (lhs:rhs:_)      <- args = translateBinaryOp "/" lhs rhs
       | (LEq ATFloat)    <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp "==" lhs rhs
+      , (lhs:rhs:_)      <- args = translateCompareOp "==" lhs rhs
       | (LSLt ATFloat)   <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp "<" lhs rhs
+      , (lhs:rhs:_)      <- args = translateCompareOp "<" lhs rhs
       | (LSLe ATFloat)   <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp "<=" lhs rhs
+      , (lhs:rhs:_)      <- args = translateCompareOp "<=" lhs rhs
       | (LSGt ATFloat)   <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp ">" lhs rhs
+      , (lhs:rhs:_)      <- args = translateCompareOp ">" lhs rhs
       | (LSGe ATFloat)   <- op
-      , (lhs:rhs:_)      <- args = translateBinaryOp ">=" lhs rhs
+      , (lhs:rhs:_)      <- args = translateCompareOp ">=" lhs rhs
 
       | (LPlus (ATInt ITChar)) <- op
       , (lhs:rhs:_)            <- args =
@@ -761,44 +761,26 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
           ]
 
       | (LLSHR (ITFixed IT8)) <- op
-      , (lhs:rhs:_)           <- args =
-          jsPackUBits8 (
-            JSBinOp ">>" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
-          )
+      , (lhs:rhs:_)           <- args = jsPackUBits8 $ bitsBinaryOp ">>" lhs rhs
 
       | (LLSHR (ITFixed IT16)) <- op
-      , (lhs:rhs:_)            <- args =
-          jsPackUBits16 (
-            JSBinOp ">>" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
-          )
+      , (lhs:rhs:_)            <- args = jsPackUBits16 $ bitsBinaryOp ">>" lhs rhs
 
       | (LLSHR (ITFixed IT32)) <- op
-      , (lhs:rhs:_)            <- args =
-          jsPackUBits32  (
-            JSBinOp ">>" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
-          )
+      , (lhs:rhs:_)            <- args = jsPackUBits32 $ bitsBinaryOp ">>" lhs rhs
 
       | (LLSHR (ITFixed IT64)) <- op
       , (lhs:rhs:_)            <- args =
           jsMeth (translateReg lhs) "shiftRight" [translateReg rhs]
 
       | (LSHL (ITFixed IT8)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits8 (
-            JSBinOp "<<" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
-          )
+      , (lhs:rhs:_)          <- args = jsPackUBits8 $ bitsBinaryOp "<<" lhs rhs
 
       | (LSHL (ITFixed IT16)) <- op
-      , (lhs:rhs:_)           <- args =
-          jsPackUBits16 (
-            JSBinOp "<<" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
-          )
+      , (lhs:rhs:_)           <- args = jsPackUBits16 $ bitsBinaryOp "<<" lhs rhs
 
       | (LSHL (ITFixed IT32)) <- op
-      , (lhs:rhs:_)           <- args =
-          jsPackUBits32  (
-            JSBinOp "<<" (jsUnPackBits $ translateReg lhs) (jsUnPackBits $ translateReg rhs)
-          )
+      , (lhs:rhs:_)           <- args = jsPackUBits32 $ bitsBinaryOp "<<" lhs rhs
 
       | (LSHL (ITFixed IT64)) <- op
       , (lhs:rhs:_)           <- args =
@@ -807,88 +789,52 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
           ]
 
       | (LAnd (ITFixed IT8)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits8 (
-            JSBinOp "&" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = jsPackUBits8 $ bitsBinaryOp "&" lhs rhs
 
       | (LAnd (ITFixed IT16)) <- op
-      , (lhs:rhs:_)           <- args =
-          jsPackUBits16 (
-            JSBinOp "&" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)           <- args = jsPackUBits16 $ bitsBinaryOp "&" lhs rhs
 
       | (LAnd (ITFixed IT32)) <- op
-      , (lhs:rhs:_)           <- args =
-          jsPackUBits32 (
-            JSBinOp "&" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)           <- args = jsPackUBits32 $ bitsBinaryOp "&" lhs rhs
 
       | (LAnd (ITFixed IT64)) <- op
       , (lhs:rhs:_)           <- args =
           jsMeth (translateReg lhs) "and" [translateReg rhs]
 
       | (LOr (ITFixed IT8)) <- op
-      , (lhs:rhs:_)         <- args =
-          jsPackUBits8 (
-            JSBinOp "|" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)         <- args = jsPackUBits8 $ bitsBinaryOp "|" lhs rhs
 
       | (LOr (ITFixed IT16)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits16 (
-            JSBinOp "|" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = jsPackUBits16 $ bitsBinaryOp "|" lhs rhs
 
       | (LOr (ITFixed IT32)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits32 (
-            JSBinOp "|" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = jsPackUBits32 $ bitsBinaryOp "|" lhs rhs
 
       | (LOr (ITFixed IT64)) <- op
       , (lhs:rhs:_)          <- args =
           jsMeth (translateReg lhs) "or" [translateReg rhs]
 
       | (LXOr (ITFixed IT8)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits8 (
-            JSBinOp "^" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = jsPackUBits8 $ bitsBinaryOp "^" lhs rhs
 
       | (LXOr (ITFixed IT16)) <- op
-      , (lhs:rhs:_)           <- args =
-          jsPackUBits16 (
-            JSBinOp "^" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)           <- args = jsPackUBits16 $ bitsBinaryOp "^" lhs rhs
 
       | (LXOr (ITFixed IT32)) <- op
-      , (lhs:rhs:_)           <- args =
-          jsPackUBits32 (
-            JSBinOp "^" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)           <- args = jsPackUBits32 $ bitsBinaryOp "^" lhs rhs
 
       | (LXOr (ITFixed IT64)) <- op
       , (lhs:rhs:_)           <- args =
           jsMeth (translateReg lhs) "xor" [translateReg rhs]
 
       | (LPlus (ATInt (ITFixed IT8))) <- op
-      , (lhs:rhs:_)                   <- args =
-          jsPackUBits8 (
-            JSBinOp "+" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                   <- args = jsPackUBits8 $ bitsBinaryOp "+" lhs rhs
 
       | (LPlus (ATInt (ITFixed IT16))) <- op
-      , (lhs:rhs:_)                    <- args =
-          jsPackUBits16 (
-            JSBinOp "+" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                    <- args = jsPackUBits16 $ bitsBinaryOp "+" lhs rhs
 
       | (LPlus (ATInt (ITFixed IT32))) <- op
-      , (lhs:rhs:_)                    <- args =
-          jsPackUBits32 (
-            JSBinOp "+" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                    <- args = jsPackUBits32 $ bitsBinaryOp "+" lhs rhs
 
       | (LPlus (ATInt (ITFixed IT64))) <- op
       , (lhs:rhs:_)                    <- args =
@@ -897,22 +843,13 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
           ]
 
       | (LMinus (ATInt (ITFixed IT8))) <- op
-      , (lhs:rhs:_)                    <- args =
-          jsPackUBits8 (
-            JSBinOp "-" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                    <- args = jsPackUBits8 $ bitsBinaryOp "-" lhs rhs
 
       | (LMinus (ATInt (ITFixed IT16))) <- op
-      , (lhs:rhs:_)                     <- args =
-          jsPackUBits16 (
-            JSBinOp "-" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                     <- args = jsPackUBits16 $ bitsBinaryOp "-" lhs rhs
 
       | (LMinus (ATInt (ITFixed IT32))) <- op
-      , (lhs:rhs:_)                     <- args =
-          jsPackUBits32 (
-            JSBinOp "-" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                     <- args = jsPackUBits32 $ bitsBinaryOp "-" lhs rhs
 
       | (LMinus (ATInt (ITFixed IT64))) <- op
       , (lhs:rhs:_)                     <- args =
@@ -921,22 +858,13 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
           ]
 
       | (LTimes (ATInt (ITFixed IT8))) <- op
-      , (lhs:rhs:_)                    <- args =
-          jsPackUBits8 (
-            JSBinOp "*" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                    <- args = jsPackUBits8 $ bitsBinaryOp "*" lhs rhs
 
       | (LTimes (ATInt (ITFixed IT16))) <- op
-      , (lhs:rhs:_)                     <- args =
-          jsPackUBits16 (
-            JSBinOp "*" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                     <- args = jsPackUBits16 $ bitsBinaryOp "*" lhs rhs
 
       | (LTimes (ATInt (ITFixed IT32))) <- op
-      , (lhs:rhs:_)                     <- args =
-          jsPackUBits32 (
-            JSBinOp "*" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                     <- args = jsPackUBits32 $ bitsBinaryOp "*" lhs rhs
 
       | (LTimes (ATInt (ITFixed IT64))) <- op
       , (lhs:rhs:_)                     <- args =
@@ -945,110 +873,62 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
           ]
 
       | (LEq (ATInt (ITFixed IT8))) <- op
-      , (lhs:rhs:_)                 <- args =
-          jsPackUBits8 (
-            JSBinOp "==" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                 <- args = bitsCompareOp "==" lhs rhs
 
       | (LEq (ATInt (ITFixed IT16))) <- op
-      , (lhs:rhs:_)                  <- args =
-          jsPackUBits16 (
-            JSBinOp "==" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                  <- args = bitsCompareOp "==" lhs rhs
 
       | (LEq (ATInt (ITFixed IT32))) <- op
-      , (lhs:rhs:_)                  <- args =
-          jsPackUBits32 (
-            JSBinOp "==" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)                  <- args = bitsCompareOp "==" lhs rhs
 
       | (LEq (ATInt (ITFixed IT64))) <- op
-      , (lhs:rhs:_)                   <- args =
-          jsMeth (jsMeth (translateReg lhs) "equals" [translateReg rhs]) "and" [
-            jsBigInt (JSString $ show 0xFFFFFFFFFFFFFFFF)
-          ]
+      , (lhs:rhs:_)                  <- args = JSPreOp "+" $ invokeMeth lhs "equals" [rhs]
 
       | (LLt (ITFixed IT8)) <- op
-      , (lhs:rhs:_)         <- args =
-          jsPackUBits8 (
-            JSBinOp "<" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)         <- args = bitsCompareOp "<" lhs rhs
 
       | (LLt (ITFixed IT16)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits16 (
-            JSBinOp "<" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = bitsCompareOp "<" lhs rhs
 
       | (LLt (ITFixed IT32)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits32 (
-            JSBinOp "<" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = bitsCompareOp "<" lhs rhs
 
       | (LLt (ITFixed IT64)) <- op
-      , (lhs:rhs:_)          <- args = invokeMeth lhs "lesser" [rhs]
+      , (lhs:rhs:_)          <- args = JSPreOp "+" $ invokeMeth lhs "lesser" [rhs]
 
       | (LLe (ITFixed IT8)) <- op
-      , (lhs:rhs:_)         <- args =
-          jsPackUBits8 (
-            JSBinOp "<=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)         <- args = bitsCompareOp "<=" lhs rhs
 
       | (LLe (ITFixed IT16)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits16 (
-            JSBinOp "<=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = bitsCompareOp "<=" lhs rhs
 
       | (LLe (ITFixed IT32)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits32 (
-            JSBinOp "<=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = bitsCompareOp "<=" lhs rhs
 
       | (LLe (ITFixed IT64)) <- op
-      , (lhs:rhs:_)          <- args = invokeMeth lhs "lesserOrEquals" [rhs]
+      , (lhs:rhs:_)          <- args = JSPreOp "+" $ invokeMeth lhs "lesserOrEquals" [rhs]
 
       | (LGt (ITFixed IT8)) <- op
-      , (lhs:rhs:_)         <- args =
-          jsPackUBits8 (
-            JSBinOp ">" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)         <- args = bitsCompareOp ">" lhs rhs
 
       | (LGt (ITFixed IT16)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits16 (
-            JSBinOp ">" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = bitsCompareOp ">" lhs rhs
       | (LGt (ITFixed IT32)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits32 (
-            JSBinOp ">" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = bitsCompareOp ">" lhs rhs
 
       | (LGt (ITFixed IT64)) <- op
-      , (lhs:rhs:_)          <- args = invokeMeth lhs "greater" [rhs]
+      , (lhs:rhs:_)          <- args = JSPreOp "+" $ invokeMeth lhs "greater" [rhs]
 
       | (LGe (ITFixed IT8)) <- op
-      , (lhs:rhs:_)         <- args =
-          jsPackUBits8 (
-            JSBinOp ">=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)         <- args = bitsCompareOp ">=" lhs rhs
 
       | (LGe (ITFixed IT16)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits16 (
-            JSBinOp ">=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = bitsCompareOp ">=" lhs rhs
       | (LGe (ITFixed IT32)) <- op
-      , (lhs:rhs:_)          <- args =
-          jsPackUBits32 (
-            JSBinOp ">=" (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
-          )
+      , (lhs:rhs:_)          <- args = bitsCompareOp ">=" lhs rhs
 
       | (LGe (ITFixed IT64)) <- op
-      , (lhs:rhs:_)          <- args = invokeMeth lhs "greaterOrEquals" [rhs]
+      , (lhs:rhs:_)          <- args = JSPreOp "+" $ invokeMeth lhs "greaterOrEquals" [rhs]
 
       | (LUDiv (ITFixed IT8)) <- op
       , (lhs:rhs:_)           <- args =
@@ -1150,8 +1030,7 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
           jsPackSBits32 $ JSPreOp "~" $ jsUnPackBits (translateReg arg)
 
       | (LCompl (ITFixed IT64)) <- op
-      , (arg:_)     <- args =
-          invokeMeth arg "not" []
+      , (arg:_)                 <- args = invokeMeth arg "not" []
 
       | (LPlus _)   <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "+" lhs rhs
@@ -1164,15 +1043,15 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       | (LSRem _)   <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "%" lhs rhs
       | (LEq _)     <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "==" lhs rhs
+      , (lhs:rhs:_) <- args = translateCompareOp "==" lhs rhs
       | (LSLt _)    <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "<" lhs rhs
+      , (lhs:rhs:_) <- args = translateCompareOp "<" lhs rhs
       | (LSLe _)    <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "<=" lhs rhs
+      , (lhs:rhs:_) <- args = translateCompareOp "<=" lhs rhs
       | (LSGt _)    <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp ">" lhs rhs
+      , (lhs:rhs:_) <- args = translateCompareOp ">" lhs rhs
       | (LSGe _)    <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp ">=" lhs rhs
+      , (lhs:rhs:_) <- args = translateCompareOp ">=" lhs rhs
       | (LAnd _)    <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "&" lhs rhs
       | (LOr _)     <- op
@@ -1189,9 +1068,9 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       | LStrConcat  <- op
       , (lhs:rhs:_) <- args = translateBinaryOp "+" lhs rhs
       | LStrEq      <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "==" lhs rhs
+      , (lhs:rhs:_) <- args = translateCompareOp "==" lhs rhs
       | LStrLt      <- op
-      , (lhs:rhs:_) <- args = translateBinaryOp "<" lhs rhs
+      , (lhs:rhs:_) <- args = translateCompareOp "<" lhs rhs
       | LStrLen     <- op
       , (arg:_)     <- args = JSProj (translateReg arg) "length"
       | (LStrInt ITNative)      <- op
@@ -1269,12 +1148,24 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
       , _ <- args = JSNull
       | LExternal ex <- op
       , ex == sUN "prim__eqPtr"
-      , [lhs, rhs] <- args = JSBinOp "==" (translateReg lhs) (translateReg rhs)
+      , [lhs, rhs] <- args = translateCompareOp "==" lhs rhs
       | otherwise = JSError $ "Not implemented: " ++ show op
         where
           translateBinaryOp :: String -> Reg -> Reg -> JS
           translateBinaryOp op lhs rhs =
             JSBinOp op (translateReg lhs) (translateReg rhs)
+
+          translateCompareOp :: String -> Reg -> Reg -> JS
+          translateCompareOp op lhs rhs =
+            JSPreOp "+" $ translateBinaryOp op lhs rhs
+
+          bitsBinaryOp :: String -> Reg -> Reg -> JS
+          bitsBinaryOp op lhs rhs =
+            JSBinOp op (jsUnPackBits (translateReg lhs)) (jsUnPackBits (translateReg rhs))
+
+          bitsCompareOp :: String -> Reg -> Reg -> JS
+          bitsCompareOp op lhs rhs =
+            JSPreOp "+" $ bitsBinaryOp op lhs rhs
 
           invokeMeth :: Reg -> String -> [Reg] -> JS
           invokeMeth obj meth args =
