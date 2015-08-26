@@ -468,8 +468,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
                                 xs -> error "The impossible happened - overloading is not expected here!"
                 ps <- get_probs
                 tm <- get_term
-                args <- map snd <$> try' (apply (Var n) imps)
-                                         (match_apply (Var n) imps) True
+                args <- map snd <$> apply (Var n) imps
                 solven lams -- close any implicit lambdas we introduced
                 ps' <- get_probs
                 when (length ps < length ps' || unrecoverable ps') $
