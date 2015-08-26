@@ -1,15 +1,15 @@
 prim__floatToStr 0.0
-"0.0"
-prim__strToFloat "0.0"
-0.0
+"0"
+prim__strToFloat 0.0
+0
 prim__addFloat 1.0 1.0
-2.0
+2
 prim__subFloat 1.0 1.0
-0.0
+0
 prim__mulFloat 1.0 1.0
-1.0
+1
 prim__divFloat 1.0 1.0
-1.0
+1
 prim__slteFloat 1.0 1.0
 1
 prim__sltFloat 1.0 1.0
@@ -21,13 +21,13 @@ prim__sgtFloat 1.0 1.0
 prim__eqFloat 1.0 1.0
 1
 prim__floatACos 1.0
-0.0
+0
 prim__floatATan 1.0
 0.78539816
 prim__floatCos 1.0
 0.54030230
 prim__floatFloor 1.0
-1.0
+1
 prim__floatSin 1.0
 0.84147098
 prim__floatTan 1.0
@@ -35,12 +35,12 @@ prim__floatTan 1.0
 prim__floatASin 1.0
 1.57079632
 prim__floatCeil 1.0
-1.0
+1
 prim__floatExp 1.0
 2.71828182
 prim__floatLog 1.0
-0.0
+0
 prim__floatSqrt 1.0
-1.0
+1
 prim__negFloat 1.0
--1.0
+-1
