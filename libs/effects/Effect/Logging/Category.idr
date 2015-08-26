@@ -1,94 +1,37 @@
--- ------------------------------------------------------------- [ Logging.idr ]
--- Module    : Logging.idr
+-- ------------------------------------------------------------ [ Category.idr ]
+-- Module    : Category.idr
 -- Copyright : (c) The Idris Community
 -- License   : see LICENSE
 -- --------------------------------------------------------------------- [ EOH ]
-
 ||| A logging effect that allows messages to be logged using both
 ||| numerical levels and user specified categories. The higher the
 ||| logging level the grater in verbosity the logging.
 |||
 ||| In this effect the resource we are computing over is the logging
 ||| level itself and the list of categories to show.
-|||
-module Effect.Logging
+module Effect.Logging.Category
 
 import Effects
+import public Effect.Logging.Level
 
 %access public
 
--- ---------------------------------------------------- [ Log Level Definition ]
-
-||| Logging levels are natural numbers wrapped in a data type for
-||| convenience.
-|||
-||| Several aliases have been defined to aide in semantic use of the
-||| logging levels. These aliases have come from the Log4j/Python
-||| family of loggers.
-data LogLevel : Nat -> Type where
-  ||| Log No Events
-  OFF : LogLevel 0
-
-  ||| A fine-grained debug message, typically capturing the flow through
-  ||| the application.
-  TRACE : LogLevel 10
-
-  ||| A general debugging event.
-  DEBUG : LogLevel 20
-
-  |||  An event for informational purposes.
-  INFO : LogLevel 30
-
-  ||| An event that might possible lead to an error.
-  WARN : LogLevel 40
-
-  ||| An error in the application, possibly recoverable.
-  ERROR : LogLevel 50
-
-  ||| A severe error that will prevent the application from continuing.
-  FATAL : LogLevel 60
-
-  ||| All events should be logged.
-  ALL : LogLevel 70
-
-  ||| User defined logging level.
-  CUSTOM : (n : Nat) -> {auto prf : LTE n 70} -> LogLevel n
-
-instance Cast (LogLevel n) Nat where
-  cast {n} _ = n
-
-instance Show (LogLevel n) where
-  show OFF        = "OFF"
-  show TRACE      = "TRACE"
-  show DEBUG      = "DEBUG"
-  show INFO       = "INFO"
-  show WARN       = "WARN"
-  show FATAL      = "FATAL"
-  show ERROR      = "ERROR"
-  show ALL        = "ALL"
-  show (CUSTOM n) = unwords ["CUSTOM", show n]
-
-instance Eq (LogLevel n) where
-  (==) x y = lvlEq x y
-    where
-      lvlEq : LogLevel a -> LogLevel b -> Bool
-      lvlEq {a} {b} _ _ = a == b
-
-cmpLevel : LogLevel a -> LogLevel b -> Ordering
-cmpLevel {a} {b} _ _ = compare a b
+-- -------------------------------------------------------- [ Logging Resource ]
 
 ||| The Logging details, this is the resource that the effect is
 ||| defined over.
 record LogRes (a : Type) where
   constructor MkLogRes
-  lvl  : LogLevel n
-  cats : List a
+  getLevel      : LogLevel n
+  getCategories : List a
 
 instance (Show a) => Show (LogRes a) where
   show (MkLogRes l cs) = unwords ["Log Settings:", show l, show cs]
 
 instance Default (LogRes a) where
   default = MkLogRes OFF Nil
+
+-- ------------------------------------------------------- [ Effect Definition ]
 
 ||| A Logging effect to log levels and categories.
 data Logging : Effect where
@@ -126,12 +69,14 @@ data Logging : Effect where
                  (ncats : List a) ->
                  sig Logging () (LogRes a) (LogRes a)
 
+-- -------------------------------------------------------------- [ IO Handler ]
+
 instance Handler Logging IO where
     handle st (SetLogLvl  nlvl)  k = do
-        let newSt = record {lvl = nlvl}  st
+        let newSt = record {getLevel = nlvl}  st
         k () newSt
     handle st (SetLogCats newcs) k = do
-        let newSt = record {cats = newcs} st
+        let newSt = record {getCategories = newcs} st
         k () newSt
 
     handle st  (InitLogger l cs) k = do
@@ -139,24 +84,29 @@ instance Handler Logging IO where
         k () newSt
 
     handle st (Log l cs' msg) k = do
-      case cmpLevel l (lvl st) of
+      case cmpLevel l (getLevel st) of
         GT        => k () st
         otherwise =>  do
-          let res = and $ map (\x => elem x cs') (cats st)
-          let prompt = if isNil (cats st)
+          let res = and $ map (\x => elem x cs') (getCategories st)
+          let prompt = if isNil (getCategories st)
                          then unwords [show l, ":"]
-                         else unwords [show l, ":", show (cats st), ":"]
-          if res || isNil (cats st)
+                         else unwords [show l, ":", show (getCategories st), ":"]
+          if res || isNil (getCategories st)
             then do
               putStrLn $ unwords [prompt, msg]
               k () st
             else k () st
+
+
+-- ------------------------------------------------------- [ Effect Descriptor ]
 
 ||| The Logging effect.
 |||
 ||| @cTy The type used to differentiate categories.
 LOG : (cTy : Type) -> EFFECT
 LOG cTy = MkEff (LogRes cTy) Logging
+
+-- ----------------------------------------------------------- [ Effectful API ]
 
 ||| Change the logging level.
 |||

@@ -15,5 +15,6 @@ modules = Effects
         , Effect.Memory
         , Effect.System
         , Effect.Trans
-        , Effect.Logging
-        , Effect.Logging.Simple
+        , Effect.Logging.Level
+        , Effect.Logging.Default
+        , Effect.Logging.Category
