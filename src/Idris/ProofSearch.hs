@@ -198,11 +198,19 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
                             return $ and (map (notHole hs) (zip as cs))
               Nothing -> fail "Can't happen"
 
+    -- if n is a metavariable, and c is a constructor form, we're not ready
+    -- to run yet
     notHole hs (P _ n _, c)
        | (P _ cn _, _) <- unApply c,
          n `elem` hs && isConName cn (tt_ctxt ist) = False
        | Constant _ <- c = not (n `elem` hs)
+    -- if fa is a metavariable applied to anything, we're not ready to run yet.
+    notHole hs (fa, c)
+       | (P _ fn _, args) <- unApply fa = fn `notElem` hs
     notHole _ _ = True
+
+    inHS hs (P _ n _) = n `elem` hs
+    isHS _ _ = False
 
     toUN t@(P nt (MN i n) ty) 
        | ('_':xs) <- str n = t

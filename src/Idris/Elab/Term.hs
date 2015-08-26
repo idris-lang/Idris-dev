@@ -71,8 +71,6 @@ build ist info emode opts fn tm
                         [TIPartial] -> True
                         _ -> False
 
-         when (not pattern) $ solveAutos ist fn True
-
          hs <- get_holes
          ivs <- get_instances
          ptm <- get_term
@@ -92,6 +90,9 @@ build ist info emode opts fn tm
                                 g <- goal
                                 ptm <- get_term
                                 resolveTC' True True 10 g fn ist) ivs
+         
+         when (not pattern) $ solveAutos ist fn True
+
          tm <- get_term
          ctxt <- get_context
          probs <- get_probs
