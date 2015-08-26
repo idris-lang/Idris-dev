@@ -24,11 +24,11 @@ import Language.Reflection.Utils
 intros : Elab ()
 intros = do g <- getGoal
             case snd g of
-              `(~_ -> ~_) => intro Nothing
+              `(~_ -> ~_) => intro'
               _ => return ()
 
 foo : Nat -> Nat
-foo = %runElab (do intro (Just (UN "fnord"))
+foo = %runElab (do intro (UN "fnord")
                    fill `(plus ~(Var (UN "fnord")) ~(Var (UN "fnord")))
                    solve)
 

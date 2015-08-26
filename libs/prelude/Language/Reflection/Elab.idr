@@ -13,7 +13,10 @@ import Prelude.Functor
 import Prelude.List
 import Prelude.Maybe
 import Prelude.Monad
+import Prelude.Nat
 import Language.Reflection
+
+data Fixity = Infixl Nat | Infixr Nat | Infix Nat | Prefix Nat
 
 ||| Erasure annotations reflect Idris's idea of what is intended to be
 ||| erased.
@@ -131,7 +134,7 @@ data Elab : Type -> Type where
   prim__Forall : TTName -> Raw -> Elab ()
   prim__PatVar : TTName -> Elab ()
   prim__PatBind : TTName -> Elab ()
-  -- TODO: letbind
+  prim__LetBind : TTName -> Raw -> Raw -> Elab ()
 
   prim__Compute : Elab ()
   prim__Normalise : (List (TTName, Binder TT)) -> TT -> Elab TT
@@ -144,6 +147,8 @@ data Elab : Type -> Type where
   prim__ResolveTC : TTName -> Elab ()
   prim__Search : Int -> List TTName -> Elab ()
   prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
+
+  prim__Fixity : String -> Elab Fixity
 
   prim__Debug : {a : Type} -> List ErrorReportPart -> Elab a
   prim__Metavar : TTName -> Elab ()
@@ -247,7 +252,7 @@ namespace Tactics
   fill tm = prim__Fill tm
 
   ||| Attempt to apply an operator to fill the current hole,
-  ||| potentially solving arugments by unification.
+  ||| potentially solving arguments by unification.
   |||
   ||| The return value is a list of pairs of names, one for each input
   ||| argument. The first projection of these pairs is the original
@@ -321,10 +326,14 @@ namespace Tactics
   ||| the body. Requires that the hole be in binding form (use
   ||| `attack`).
   |||
-  ||| @ n the name to use for the argument, or `Nothing` to use the name
-  |||   in the corresponding hole type (a dependent function)
-  intro : (n : Maybe TTName) -> Elab ()
-  intro n = prim__Intro n
+  ||| @ n the name to use for the argument
+  intro : (n : TTName) -> Elab ()
+  intro n = prim__Intro (Just n)
+
+  ||| Introduce a lambda binding around the current hole and focus on
+  ||| the body, using the name provided by the type of the hole.
+  intro' : Elab ()
+  intro' = prim__Intro Nothing
 
   ||| Introduce a dependent function type binding into the current hole,
   ||| and focus on the body.
@@ -338,6 +347,14 @@ namespace Tactics
   ||| Introduce a new pattern binding.
   patbind : TTName -> Elab ()
   patbind n = prim__PatBind n
+
+  ||| Introduce a new let binding
+  |||
+  ||| @ n the name to let bind
+  ||| @ ty the type of the term to be let-bound
+  ||| @ tm the term to be bound
+  letbind : (n : TTName) -> (ty, tm : Raw) -> Elab ()
+  letbind n ty tm = prim__LetBind n ty tm
 
   ||| Normalise the goal.
   compute : Elab ()
@@ -417,6 +434,15 @@ namespace Tactics
   ||| @ hints additional names to try
   search' : (depth : Int) -> (hints : List TTName) -> Elab ()
   search' depth hints = prim__Search depth hints
+
+  ||| Look up the declared fixity for an operator.
+  |||
+  ||| The lookup fails if the operator does not yet have a fixity or
+  ||| if the string is not a valid operator.
+  |||
+  ||| @ operator the operator string to look up
+  operatorFixity : (operator : String) -> Elab Fixity
+  operatorFixity operator = prim__Fixity operator
 
   ||| Halt elaboration, dumping the internal state for inspection.
   |||

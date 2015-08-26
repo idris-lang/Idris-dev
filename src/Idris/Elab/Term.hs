@@ -1909,6 +1909,12 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       = do n' <- reifyTTName n
            patbind n'
            returnUnit
+      | n == tacN "prim__LetBind", [n, ty, tm] <- args
+      = do n' <- reifyTTName n
+           ty' <- reifyRaw ty
+           tm' <- reifyRaw tm
+           letbind n' ty' tm'
+           returnUnit
       | n == tacN "prim__Compute", [] <- args
       = do compute ; returnUnit
       | n == tacN "prim__Normalise", [env, tm] <- args
@@ -2009,6 +2015,20 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            defer unique_used mvn
            solve
            returnUnit
+      | n == tacN "prim__Fixity", [op'] <- args
+      = do opTm <- eval op'
+           case opTm of
+             Constant (Str op) -> 
+               let opChars = ":!#$%&*+./<=>?@\\^|-~"
+                   invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%", "~", "?", "!"]
+                   fixities = idris_infixes ist
+               in if not (all (flip elem opChars) op) || elem op invalidOperators
+                     then lift . tfail . Msg $ "'" ++ op ++ "' is not a valid operator name."
+                     else case nub [f | Fix f someOp <- fixities, someOp == op] of
+                            []   -> lift . tfail . Msg $ "No fixity found for operator '" ++ op ++ "'."
+                            [f]  -> fmap fst . checkClosed $ reflectFixity f
+                            many -> lift . tfail . InternalMsg $ "Ambiguous fixity for '" ++ op ++ "'!  Found " ++ show many
+             _ -> lift . tfail . Msg $ "Not a constant string for an operator name: " ++ show opTm
       | n == tacN "prim__Debug", [ty, msg] <- args
       = do msg' <- eval msg
            parts <- reifyReportParts msg
