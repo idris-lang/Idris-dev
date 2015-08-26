@@ -42,11 +42,11 @@ data LogLevel : Nat -> Type where
   ||| An event that might possible lead to an error.
   WARN : LogLevel 40
 
-  ||| A severe error that will prevent the application from continuing.
-  FATAL : LogLevel 50
-
   ||| An error in the application, possibly recoverable.
-  ERROR : LogLevel 60
+  ERROR : LogLevel 50
+
+  ||| A severe error that will prevent the application from continuing.
+  FATAL : LogLevel 60
 
   ||| All events should be logged.
   ALL : LogLevel 70
