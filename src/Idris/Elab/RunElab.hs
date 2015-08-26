@@ -25,8 +25,8 @@ mustBeElabScript ty =
             OK _    -> return ()
             Error e -> ierror e
 
-elabRunElab :: ElabInfo -> FC -> PTerm -> Idris ()
-elabRunElab info fc script' =
+elabRunElab :: ElabInfo -> FC -> PTerm -> [String] -> Idris ()
+elabRunElab info fc script' ns =
   do -- First elaborate the script itself
      (script, scriptTy) <- elabVal info ERHS script'
      mustBeElabScript scriptTy
@@ -35,7 +35,7 @@ elabRunElab info fc script' =
      (ElabResult tyT' defer is ctxt' newDecls highlights, log) <-
         tclift $ elaborate ctxt (idris_datatypes ist) (sMN 0 "toplLevelElab") elabScriptTy initEState
                  (transformErr RunningElabScript
-                   (erun fc (do tm <- runElabAction ist fc [] script [] --TODO namespace from parser
+                   (erun fc (do tm <- runElabAction ist fc [] script ns
                                 EState is _ impls highlights <- getAux
                                 ctxt <- get_context
                                 let ds = [] -- todo

@@ -196,8 +196,8 @@ instance (NFData t) => NFData (PDecl' t) where
                     rnf x5 `seq` rnf x6 `seq` ()
         rnf (PTransform x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-        rnf (PRunElabDecl x1 x2)
-          = rnf x1 `seq` rnf x2 `seq` ()
+        rnf (PRunElabDecl x1 x2 x3)
+          = rnf x1 `seq` rnf x2 `seq` x3 `seq` ()
 
 instance NFData t => NFData (ProvideWhat' t)  where
         rnf (ProvTerm ty tm)   = rnf ty `seq` rnf tm `seq` ()
