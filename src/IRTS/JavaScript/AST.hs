@@ -194,7 +194,7 @@ compileJS' indent (JSBinOp op lhs rhs) =
   `T.append` compileJS' indent rhs
 
 compileJS' indent (JSPreOp op val) =
-  T.pack op `T.append` compileJS' indent val
+  T.pack op `T.append` "(" `T.append` compileJS' indent val `T.append` ")"
 
 compileJS' indent (JSProj obj field)
   | JSFunction {} <- obj =
