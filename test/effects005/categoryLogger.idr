@@ -1,5 +1,5 @@
 import Effects
-import Effect.Logging
+import Effect.Logging.Category
 
 func : Nat -> Eff () [LOG String]
 func x = do

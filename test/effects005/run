@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-idris $@ simplelog.idr -o simple -p effects
-./simple
-idris $@ defaultlog.idr -o default -p effects
+idris $@ defaultLogger.idr -o default -p effects
 ./default
-rm -f simple default *.ibc
+idris $@ categoryLogger.idr -o category -p effects
+./category
+rm -f default category *.ibc

@@ -126,7 +126,7 @@ Extra-source-files:
                        libs/effects/Makefile
                        libs/effects/effects.ipkg
                        libs/effects/Effect/*.idr
-		       libs/effects/Effect/Logging/*.idr
+		               libs/effects/Effect/Logging/*.idr
                        libs/effects/*.idr
 
                        test/Makefile
