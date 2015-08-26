@@ -145,7 +145,7 @@ instance Handler Logging IO where
           let res = and $ map (\x => elem x cs') (cats st)
           let prompt = if isNil (cats st)
                          then unwords [show l, ":"]
-                         else unwords [show l, ":", show (cats st)]
+                         else unwords [show l, ":", show (cats st), ":"]
           if res || isNil (cats st)
             then do
               putStrLn $ unwords [prompt, msg]
