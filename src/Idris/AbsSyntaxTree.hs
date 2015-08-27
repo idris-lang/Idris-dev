@@ -1576,36 +1576,41 @@ instance Pretty PTerm OutputAnnotation where
 -- | Colourise annotations according to an Idris state. It ignores the names
 -- in the annotation, as there's no good way to show extended information on a
 -- terminal.
-consoleDecorate :: IState -> OutputAnnotation -> String -> String
-consoleDecorate ist _ | not (idris_colourRepl ist) = id
-consoleDecorate ist (AnnConst c) = let theme = idris_colourTheme ist
-                                   in if constIsType c
-                                        then colouriseType theme
-                                        else colouriseData theme
-consoleDecorate ist (AnnData _ _) = colouriseData (idris_colourTheme ist)
-consoleDecorate ist (AnnType _ _) = colouriseType (idris_colourTheme ist)
-consoleDecorate ist (AnnBoundName _ True) = colouriseImplicit (idris_colourTheme ist)
-consoleDecorate ist (AnnBoundName _ False) = colouriseBound (idris_colourTheme ist)
-consoleDecorate ist AnnKeyword = colouriseKeyword (idris_colourTheme ist)
-consoleDecorate ist (AnnName n _ _ _) = let ctxt  = tt_ctxt ist
-                                            theme = idris_colourTheme ist
-                                        in case () of
-                                             _ | isDConName n ctxt     -> colouriseData theme
-                                             _ | isFnName n ctxt       -> colouriseFun theme
-                                             _ | isTConName n ctxt     -> colouriseType theme
-                                             _ | isPostulateName n ist -> colourisePostulate theme
-                                             _ | otherwise             -> id -- don't colourise unknown names
-consoleDecorate ist (AnnFC _) = id
-consoleDecorate ist (AnnTextFmt fmt) = Idris.Colours.colourise (colour fmt)
+annotationColour :: IState -> OutputAnnotation -> Maybe IdrisColour
+annotationColour ist _ | not (idris_colourRepl ist) = Nothing
+annotationColour ist (AnnConst c) =
+    let theme = idris_colourTheme ist
+    in Just $ if constIsType c
+                then typeColour theme
+                else dataColour theme
+annotationColour ist (AnnData _ _) = Just $ dataColour (idris_colourTheme ist)
+annotationColour ist (AnnType _ _) = Just $ typeColour (idris_colourTheme ist)
+annotationColour ist (AnnBoundName _ True) = Just $ implicitColour (idris_colourTheme ist)
+annotationColour ist (AnnBoundName _ False) = Just $ boundVarColour (idris_colourTheme ist)
+annotationColour ist AnnKeyword = Just $ keywordColour (idris_colourTheme ist)
+annotationColour ist (AnnName n _ _ _) =
+  let ctxt = tt_ctxt ist
+      theme = idris_colourTheme ist
+  in case () of
+       _ | isDConName n ctxt     -> Just $ dataColour theme
+       _ | isFnName n ctxt       -> Just $ functionColour theme
+       _ | isTConName n ctxt     -> Just $ typeColour theme
+       _ | isPostulateName n ist -> Just $ postulateColour theme
+       _ | otherwise             -> Nothing -- don't colourise unknown names
+annotationColour ist (AnnTextFmt fmt) = Just (colour fmt)
   where colour BoldText      = IdrisColour Nothing True False True False
         colour UnderlineText = IdrisColour Nothing True True False False
         colour ItalicText    = IdrisColour Nothing True False False True
-consoleDecorate ist (AnnTerm _ _) = id
-consoleDecorate ist (AnnSearchResult _) = id
-consoleDecorate ist (AnnErr _) = id
-consoleDecorate ist (AnnNamespace _ _) = id
-consoleDecorate ist (AnnLink url) =
-   \txt -> Idris.Colours.colourise (IdrisColour Nothing True True False False) txt ++ " (" ++ url ++ ")"
+annotationColour ist _ = Nothing
+
+
+-- | Colourise annotations according to an Idris state. It ignores the names
+-- in the annotation, as there's no good way to show extended
+-- information on a terminal. Note that strings produced this way will
+-- not be coloured on Windows, so the use of the colour rendering
+-- functions in Idris.Output is to be preferred.
+consoleDecorate :: IState -> OutputAnnotation -> String -> String
+consoleDecorate ist ann = maybe id colourise (annotationColour ist ann)
 
 isPostulateName :: Name -> IState -> Bool
 isPostulateName n ist = S.member n (idris_postulates ist)

@@ -30,6 +30,7 @@ New in 0.9.19:
 * Major improvements to reflected elaboration scripts, including the ability to run
   them in a declaration context and many bug fixes.
 * "decl syntax" rules to allow syntax extensions at the declaration level
+* Experimental Windows support for console colours
 
 New in 0.9.18:
 --------------
