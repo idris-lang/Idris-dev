@@ -675,7 +675,8 @@ data PDecl' t
    | PProvider (Docstring (Either Err t)) SyntaxInfo FC FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term. The second FC is precise highlighting location.
    | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
                             -- bool is True, lhs and rhs must be convertible
-   | PRunElabDecl FC t
+   | PRunElabDecl FC t [String] -- ^ FC is decl-level, for errors, and
+                                -- Strings represent the namespace
  deriving Functor
 {-!
 deriving instance Binary PDecl'
@@ -841,8 +842,8 @@ mapPDeclFC f g (PProvider doc syn fc nfc what n) =
     PProvider doc syn (f fc) (g nfc) (fmap (mapPTermFC f g) what) n
 mapPDeclFC f g (PTransform fc safe l r) =
     PTransform (f fc) safe (mapPTermFC f g l) (mapPTermFC f g r)
-mapPDeclFC f g (PRunElabDecl fc script) =
-    PRunElabDecl (f fc) (mapPTermFC f g script)
+mapPDeclFC f g (PRunElabDecl fc script ns) =
+    PRunElabDecl (f fc) (mapPTermFC f g script) ns
 
 -- | Get all the names declared in a declaration
 declared :: PDecl -> [Name]

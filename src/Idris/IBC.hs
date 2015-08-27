@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 118
+ibcVersion = 119
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -1262,9 +1262,10 @@ instance (Binary t) => Binary (PDecl' t) where
                                              put x2
                                              put x3
                                              put x4
-                PRunElabDecl x1 x2 -> do putWord8 17
-                                         put x1
-                                         put x2
+                PRunElabDecl x1 x2 x3 -> do putWord8 17
+                                            put x1
+                                            put x2
+                                            put x3
         get
           = do i <- getWord8
                case i of
@@ -1376,7 +1377,8 @@ instance (Binary t) => Binary (PDecl' t) where
                             return (PTransform x1 x2 x3 x4)
                    17 -> do x1 <- get
                             x2 <- get
-                            return (PRunElabDecl x1 x2)
+                            x3 <- get
+                            return (PRunElabDecl x1 x2 x3)
                    _ -> error "Corrupted binary data for PDecl'"
 
 instance Binary t => Binary (ProvideWhat' t) where

@@ -266,7 +266,7 @@ elabDecl' what info (PProvider doc syn fc nfc provWhat n)
 elabDecl' what info (PTransform fc safety old new)
     = do elabTransform info fc safety old new
          return ()
-elabDecl' what info (PRunElabDecl fc script)
-    = do elabRunElab info fc script
+elabDecl' what info (PRunElabDecl fc script ns)
+    = do elabRunElab info fc script ns
          return ()
 elabDecl' _ _ _ = return () -- skipped this time

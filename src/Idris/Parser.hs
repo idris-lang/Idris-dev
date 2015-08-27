@@ -1393,7 +1393,7 @@ runElabDecl syn =
                      return (spanFC fc fc'))
      script <- expr syn <?> "elaborator script"
      highlightP kwFC AnnKeyword
-     return $ PRunElabDecl kwFC script
+     return $ PRunElabDecl kwFC script (syn_namespace syn)
   <?> "top-level elaborator script"
 
 {- * Loading and parsing -}
